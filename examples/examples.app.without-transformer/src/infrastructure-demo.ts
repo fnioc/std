@@ -18,10 +18,10 @@
 // comparison is the only honest way to teach why the parameter form is the
 // answer.
 //
-// Authored in the MANUAL dialect: explicit tokens at every call site. The
-// with-transformer app's `./infrastructure-demo.ts` is the line-for-line twin
-// and prints the same lines apart from the header — diff them to see exactly
-// what the transformer removes.
+// Authored in the MANUAL dialect: explicit, hand-composed Types at every call
+// site. The with-transformer app's `./infrastructure-demo.ts` is the
+// line-for-line twin and prints the same lines apart from the header — diff
+// them to see exactly what the transformer removes.
 //
 // Nothing here reads a clock, the filesystem or a random source: the output is
 // byte-stable, which the app's checked-in `expected.txt` diff depends on.
@@ -32,9 +32,8 @@ import '@rhombus-std/di';
 // `describeDiError` is the LIBRARY's — classifying what a container threw needs
 // di.core and nothing more. Building the container is this root's, because that
 // is the one thing the engine is for.
-import { addGreetingWorkshop, describeDiError, GREETING_WORKSHOP_TOKEN, GreetingWorkshop,
-  LOCATOR_GREETING_WORKSHOP_TOKEN, LocatorGreetingWorkshop,
-  WorkshopGreeting } from '@rhombus-std/examples.lib.without-transformer';
+import { addGreetingWorkshop, describeDiError, GREETING_WORKSHOP_TYPE, GreetingWorkshop, LOCATOR_GREETING_WORKSHOP_TYPE,
+  LocatorGreetingWorkshop, WorkshopGreeting } from '@rhombus-std/examples.lib.without-transformer';
 
 /** A fresh, empty manifest for one of this chapter's own containers. */
 function newWorkshopManifest(): Manifest<'singleton'> {
@@ -69,7 +68,7 @@ export function demonstrateInfrastructure(): readonly string[] {
     workshop.useGreeting(WorkshopGreeting);
   });
   const defaultProvider = defaults.build();
-  const defaultWorkshop = defaultProvider.getRequiredService(Type.from(GREETING_WORKSHOP_TOKEN)) as GreetingWorkshop;
+  const defaultWorkshop = defaultProvider.getRequiredService(GREETING_WORKSHOP_TYPE) as GreetingWorkshop;
 
   lines.push('app registered no stationery:');
   lines.push(`  stationery overridden: ${defaultWorkshop.stationeryIsOverridden}`);
@@ -82,7 +81,7 @@ export function demonstrateInfrastructure(): readonly string[] {
   const customised = addGreetingWorkshop(newWorkshopManifest(), (workshop) => {
     workshop.useGreeting(WorkshopGreeting).useStationery({ border: '***' });
   });
-  const customWorkshop = customised.build().getRequiredService(Type.from(GREETING_WORKSHOP_TOKEN)) as GreetingWorkshop;
+  const customWorkshop = customised.build().getRequiredService(GREETING_WORKSHOP_TYPE) as GreetingWorkshop;
 
   lines.push('app registered its own stationery:');
   lines.push(`  stationery overridden: ${customWorkshop.stationeryIsOverridden}`);
@@ -112,9 +111,7 @@ export function demonstrateInfrastructure(): readonly string[] {
   // twin below is the WRONG answer, kept only so the right one has something to
   // be compared against. (The resolution chapter has the other case, where a key
   // is not known until a request arrives and no parameter can express it.)
-  const locatorWorkshop = defaultProvider.getRequiredService(
-    Type.from(LOCATOR_GREETING_WORKSHOP_TOKEN),
-  ) as LocatorGreetingWorkshop;
+  const locatorWorkshop = defaultProvider.getRequiredService(LOCATOR_GREETING_WORKSHOP_TYPE) as LocatorGreetingWorkshop;
 
   // Which is also where the two shapes stop being interchangeable in practice.
   // The parameter form asked for its card factory in a constructor slot and

@@ -3,7 +3,7 @@
 // registry-installed method forms.
 
 import type { Manifest, Token } from '@rhombus-std/di.core';
-import { LOGGER_PROVIDER_TOKEN, LoggingBuilder } from '@rhombus-std/logging';
+import { LOGGER_PROVIDER_TYPE, LoggingBuilder } from '@rhombus-std/logging';
 import { ConsoleFormatter, ConsoleFormatterNames, ConsoleLoggerAugmentations, ConsoleLoggerOptions,
   ConsoleLoggerProvider, ConsoleLoggerQueueFullMode, type LogEntry, StringWriter,
   type TextWriter } from '@rhombus-std/logging.console';
@@ -157,7 +157,7 @@ test('addConsole registers exactly one provider per manifest', () => {
   });
   ConsoleLoggerAugmentations.addSimpleConsole(builder);
 
-  const providers = values.filter(([token]) => token === LOGGER_PROVIDER_TOKEN);
+  const providers = values.filter(([token]) => token === LOGGER_PROVIDER_TYPE);
   expect(providers).toHaveLength(1);
   expect(providers[0]?.[1]).toBeInstanceOf(ConsoleLoggerProvider);
 });

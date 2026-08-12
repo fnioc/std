@@ -7,10 +7,10 @@
 //   - a browser-shaped environment (names from settings, content root "/",
 //     NullFileProvider — the HostingEnvironment default),
 //   - browser console logging (@rhombus-std/logging.browserconsole),
-//   - the BrowserLifetime registered under the imported HOST_LIFETIME_TOKEN
+//   - the BrowserLifetime registered under the imported HOST_LIFETIME_TYPE
 //     (last registration wins over the default NullLifetime), alongside the
 //     eagerly-attached PageLifecycleEvents bridge under
-//     PAGE_LIFECYCLE_EVENTS_TOKEN — both via registerBrowserLifetime, the seam
+//     PAGE_LIFECYCLE_EVENTS_TYPE — both via registerBrowserLifetime, the seam
 //     the classic useBrowserLifetime path shares.
 //
 // Running: `BrowserHost.run()` builds and drives the full pipeline (start ->

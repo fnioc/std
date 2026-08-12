@@ -2,16 +2,16 @@
 // IConfigureOptions step (the MetricsConfigureOptions parse) plus a
 // ConfigChangeTokenSource wired to the configuration's reload token, so the
 // assembled reactive `IOptions<MetricsOptions>` re-parses on reload. Each call
-// also registers a METRICS_CONFIGURATION_TOKEN collection value, which the
+// also registers a METRICS_CONFIGURATION_TYPE collection value, which the
 // MetricListenerConfigFactory `addMetrics` registers enumerates to build each
 // listener's merged configuration view.
 
 import type { IConfig } from '@rhombus-std/config.core';
-import { type IMetricsBuilder, METRICS_CHANGE_TOKEN_SOURCE_TOKEN, METRICS_CONFIGURATION_TOKEN,
-  METRICS_CONFIGURE_TOKEN } from '@rhombus-std/diagnostics.core';
+import { type IMetricsBuilder, METRICS_CHANGE_TOKEN_SOURCE_TYPE, METRICS_CONFIGURATION_TYPE,
+  METRICS_CONFIGURE_TYPE } from '@rhombus-std/diagnostics.core';
 import { ConfigChangeTokenSource } from '@rhombus-std/options.augmentations';
 import { type AugmentationSet2, type Flatten, registerAugmentations } from '@rhombus-std/primitives';
-import { tokenfor } from '@rhombus-std/primitives.extras';
+import { typefor } from '@rhombus-std/primitives.extras';
 
 import { MetricsConfig } from './MetricsConfig';
 import { MetricsConfigureOptions } from './MetricsConfigureOptions';
@@ -32,10 +32,10 @@ declare module '@rhombus-std/diagnostics.core' {
 export const MetricsBuilderConfigAugmentations: AugmentationSet2<IMetricsBuilder,
   Flatten<IMetricsBuilderConfigAugmentations>> = {
     addMetricsConfig(builder, config) {
-      builder.services = builder.services.addValue(METRICS_CONFIGURE_TOKEN, new MetricsConfigureOptions(config));
-      builder.services = builder.services.addValue(METRICS_CHANGE_TOKEN_SOURCE_TOKEN,
+      builder.services = builder.services.addValue(METRICS_CONFIGURE_TYPE, new MetricsConfigureOptions(config));
+      builder.services = builder.services.addValue(METRICS_CHANGE_TOKEN_SOURCE_TYPE,
         new ConfigChangeTokenSource(config));
-      builder.services = builder.services.addValue(METRICS_CONFIGURATION_TOKEN, new MetricsConfig(config));
+      builder.services = builder.services.addValue(METRICS_CONFIGURATION_TYPE, new MetricsConfig(config));
       return builder;
     },
   };
@@ -43,4 +43,4 @@ export const MetricsBuilderConfigAugmentations: AugmentationSet2<IMetricsBuilder
 // Registered against the same OPEN token diagnostics.core's listener/rule
 // members use; this member lives downstream because its `IConfig` dependency
 // keeps it out of diagnostics.core. The concrete builder pulls both bags.
-registerAugmentations(tokenfor<IMetricsBuilder>(), MetricsBuilderConfigAugmentations);
+registerAugmentations(typefor<IMetricsBuilder>(), MetricsBuilderConfigAugmentations);

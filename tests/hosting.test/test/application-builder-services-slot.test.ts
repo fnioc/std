@@ -13,10 +13,10 @@ import { Host } from '@rhombus-std/hosting/private/index';
 import type { ILogger, ILoggerProvider } from '@rhombus-std/logging.core';
 import { expect, test } from 'bun:test';
 
-// The tokenfor-derived token logging registers its providers under (§40). Written
-// as a literal because this package does not depend on @rhombus-std/logging --
-// the same shape tests/logging.test uses for the ILogger<T> base.
-const LOGGER_PROVIDER_TOKEN = '@rhombus-std/logging.core:ILoggerProvider';
+// The typefor-derived type logging registers its providers under. Written as a
+// literal because this package does not depend on @rhombus-std/logging -- the
+// same shape tests/logging.test uses for the ILogger<T> base.
+const LOGGER_PROVIDER_TYPE: Type = Type.from('@rhombus-std/logging.core:ILoggerProvider');
 
 /** A do-nothing provider, present only so its registration can be observed. */
 class MarkerLoggerProvider implements ILoggerProvider {
@@ -36,7 +36,7 @@ test('builder.logging registrations reach the manifest build() reads', () => {
   // The chain is immutable, so this only holds because `logging` writes through
   // the SAME slot `builder.services` reads.
   const providers: ILoggerProvider[] = builder.services.build().getRequiredService(
-    Type.from(`Array<${LOGGER_PROVIDER_TOKEN}>`),
+    Type.named('Array', 'global', [LOGGER_PROVIDER_TYPE]),
   );
   expect(providers).toContain(marker);
 });
@@ -53,7 +53,7 @@ test('builder.services and builder.logging registrations both survive into the h
   const host = builder.build();
   expect(host.services.getRequiredService(Type.from('test:First'))).toBe('first');
   expect(host.services.getRequiredService(Type.from('test:Second'))).toBe('second');
-  expect(host.services.getRequiredService(Type.from(`Array<${LOGGER_PROVIDER_TOKEN}>`))).toContain(marker);
+  expect(host.services.getRequiredService(Type.named('Array', 'global', [LOGGER_PROVIDER_TYPE]))).toContain(marker);
 
   host[Symbol.dispose]();
 });

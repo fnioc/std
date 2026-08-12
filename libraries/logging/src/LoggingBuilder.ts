@@ -12,7 +12,7 @@
 import type { Manifest } from '@rhombus-std/di.core';
 import type { ILoggingBuilder } from '@rhombus-std/logging.core';
 import { augment } from '@rhombus-std/primitives';
-import { tokenfor, typefor } from '@rhombus-std/primitives.extras';
+import { typefor } from '@rhombus-std/primitives.extras';
 
 // Binding the ILoggingBuilder interface onto the class flows every
 // augmentation of the interface — this package's `addProvider`/`addFilter`/…,

@@ -7,25 +7,25 @@
 // interface-side merge for THIS const's members lives here beside it; the
 // class-side merge onto the concrete `HostBuilder` (so it SATISFIES the
 // fully-merged interface) stays in `./host-augmentations`, and the `HostBuilder`
-// class itself is decorated with `@augment(tokenfor<IHostBuilder>())`.
+// class itself is decorated with `@augment(typefor<IHostBuilder>())`.
 
 import { MemoryConfigSource } from '@rhombus-std/config';
 import type { ServiceProviderOptions } from '@rhombus-std/di';
 import { type IServiceProvider, RESOLVER_TYPE } from '@rhombus-std/di.core';
 import type { IMetricsBuilder } from '@rhombus-std/diagnostics.core';
-import { HOST_APPLICATION_LIFETIME_TOKEN, type HostBuilderContext, HostDefaults, HostLifecycleAugmentations,
+import { HOST_APPLICATION_LIFETIME_TYPE, type HostBuilderContext, HostDefaults, HostLifecycleAugmentations,
   type IHostApplicationLifetime, type IHostBuilder, type IHostEnvironment } from '@rhombus-std/hosting.core';
-import { LOGGER_FACTORY_TOKEN, LoggingBuilder } from '@rhombus-std/logging';
+import { LOGGER_FACTORY_TYPE, LoggingBuilder } from '@rhombus-std/logging';
 import type { ILoggerFactory, ILoggingBuilder } from '@rhombus-std/logging.core';
 import { Type } from '@rhombus-std/primitives';
 import { type AbortSignal, type AugmentationSet2, type Flatten, registerAugmentations } from '@rhombus-std/primitives';
-import { tokenfor } from '@rhombus-std/primitives.extras';
+import { typefor } from '@rhombus-std/primitives.extras';
 import type { Func } from '@rhombus-toolkit/func';
 import { ConsoleLifetimeOptions } from './ConsoleLifetimeOptions';
 import { addDefaultServices, applyDefaultAppConfig, applyDefaultHostConfig,
   createDefaultServiceProviderOptions } from './default-config';
-import { CONSOLE_LIFETIME_OPTIONS_TOKEN, HOST_ENVIRONMENT_TOKEN, HOST_LIFETIME_TOKEN,
-  HOST_OPTIONS_CONFIGURE_TOKEN } from './framework-tokens';
+import { CONSOLE_LIFETIME_OPTIONS_TYPE, HOST_ENVIRONMENT_TYPE, HOST_LIFETIME_TYPE,
+  HOST_OPTIONS_CONFIGURE_TYPE } from './framework-types';
 import type { HostOptions } from './HostOptions';
 import { ConsoleLifetime } from './internal/ConsoleLifetime';
 import { MetricsBuilder } from './MetricsBuilder';
@@ -111,7 +111,7 @@ export const HostBuilderHostingAugmentations: AugmentationSet2<IHostBuilder,
     configureHostOptions(hostBuilder: IHostBuilder,
       configureOptions: Func<[HostBuilderContext, HostOptions], void> | Func<[HostOptions], void>): IHostBuilder {
       return hostBuilder.configureServices((context, services) =>
-        services.addValue(HOST_OPTIONS_CONFIGURE_TOKEN, (options: HostOptions) => {
+        services.addValue(HOST_OPTIONS_CONFIGURE_TYPE, (options: HostOptions) => {
           if (configureOptions.length >= 2) {
             (configureOptions as Func<[HostBuilderContext, HostOptions], void>)(context, options);
           } else {
@@ -188,13 +188,13 @@ export const HostBuilderHostingAugmentations: AugmentationSet2<IHostBuilder,
       const options = new ConsoleLifetimeOptions();
       configureOptions?.(options);
       return hostBuilder.configureServices((_context, services) => {
-        const withOptions = services.addValue(CONSOLE_LIFETIME_OPTIONS_TOKEN, options);
-        return withOptions.addFactory(HOST_LIFETIME_TOKEN,
+        const withOptions = services.addValue(CONSOLE_LIFETIME_OPTIONS_TYPE, options);
+        return withOptions.addFactory(HOST_LIFETIME_TYPE,
           (resolver: IServiceProvider) =>
-            new ConsoleLifetime(resolver.getRequiredService(Type.from(CONSOLE_LIFETIME_OPTIONS_TOKEN)),
-              resolver.getRequiredService(Type.from(HOST_ENVIRONMENT_TOKEN)),
-              resolver.getRequiredService(Type.from(HOST_APPLICATION_LIFETIME_TOKEN)),
-              resolver.getRequiredService(Type.from(LOGGER_FACTORY_TOKEN))), [[RESOLVER_TYPE]]);
+            new ConsoleLifetime(resolver.getRequiredService(CONSOLE_LIFETIME_OPTIONS_TYPE),
+              resolver.getRequiredService(HOST_ENVIRONMENT_TYPE),
+              resolver.getRequiredService(HOST_APPLICATION_LIFETIME_TYPE),
+              resolver.getRequiredService(LOGGER_FACTORY_TYPE)), [[RESOLVER_TYPE]]);
       });
     },
 
@@ -222,4 +222,4 @@ export const HostBuilderHostingAugmentations: AugmentationSet2<IHostBuilder,
     },
   };
 
-registerAugmentations(tokenfor<IHostBuilder>(), HostBuilderHostingAugmentations);
+registerAugmentations(typefor<IHostBuilder>(), HostBuilderHostingAugmentations);

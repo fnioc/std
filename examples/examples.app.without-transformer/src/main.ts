@@ -24,12 +24,13 @@
 //                                library resolves anything at all.
 //
 // It is wired by hand with plain `tsc`: every registration and resolution names
-// an explicit token. The token strings are spelled exactly as the type-driven
-// dialect derives them for the package-public contracts, which is what lets THIS
-// app consume the built with-transformer library at all — its baked-in tokens
-// agree with these. Diff this file against the with-transformer app's `main.ts`
-// and the only difference is the authoring dialect; the scenario, and the
-// output, are the same.
+// an explicit, hand-composed `Type`. Composed exactly as the type-driven
+// dialect derives them for the package-public contracts, each one INTERNS to
+// the same object the with-transformer library's baked-in Types do, which is
+// what lets THIS app consume the built with-transformer library at all. Diff
+// this file against the with-transformer app's `main.ts` and the only
+// difference is the authoring dialect; the scenario, and the output, are the
+// same.
 //
 // The interop matrix in one file: this manual root composes the with-transformer
 // library's contributions AND the without-transformer library's, each dialect
@@ -46,9 +47,9 @@ import type { ConfigRoot } from '@rhombus-std/config';
 import { RESOLVER_TYPE, Type } from '@rhombus-std/di.core';
 import type { IServiceProvider } from '@rhombus-std/di.core';
 import '@rhombus-std/di';
-import { Host, HOST_APPLICATION_LIFETIME_TOKEN } from '@rhombus-std/hosting';
+import { Host, HOST_APPLICATION_LIFETIME_TYPE } from '@rhombus-std/hosting';
 import type { IHostApplicationLifetime, IHostedLifecycleService } from '@rhombus-std/hosting';
-import { LOGGER_FACTORY_TOKEN } from '@rhombus-std/logging';
+import { LOGGER_FACTORY_TYPE } from '@rhombus-std/logging';
 import type { ILogger, ILoggerFactory } from '@rhombus-std/logging.core';
 import { logInformation } from '@rhombus-std/logging.core';
 import type { IConfigureOptions, IPostConfigureOptions, IValidateOptions } from '@rhombus-std/options';
@@ -56,7 +57,7 @@ import { type IOptions, Options, OptionsFactory, ValidateOptionsResult } from '@
 import { ConfigConfigureOptions } from '@rhombus-std/options.augmentations';
 
 import type { GreetingPolicy, IBanner, IServerReport, ServerOptions } from '@rhombus-std/examples.contracts';
-import { addWithTransformerExamples, EXAMPLE_TOKENS } from '@rhombus-std/examples.lib.with-transformer';
+import { addWithTransformerExamples, EXAMPLE_TYPES } from '@rhombus-std/examples.lib.with-transformer';
 import { addWithoutTransformerExamples } from '@rhombus-std/examples.lib.without-transformer';
 
 // The app-side chapters of the di tour that runs after the host has shut down.
@@ -74,19 +75,21 @@ import { demonstrateOpenGenerics } from './open-generics-demo.js';
 import { demonstrateRegistration } from './registration-demo.js';
 import { demonstrateResolution } from './resolution-demo.js';
 
-// The tokens for the services this APP registers, hand-written in the derived
-// `<import-specifier>:<name>` / closed-generic `base<arg>` grammar. Note what is
-// NOT here: the with-transformer library's own tokens. This root wiring another
+// The Types for the services this APP registers, hand-composed with
+// `Type.named(...)` exactly as `typefor<T>()` derives them. Note what is NOT
+// here: the with-transformer library's own Types. This root wiring another
 // package's classes would be the library rule violated from the other side. The
-// library ships `addWithTransformerExamples`, so the only tokens it still
+// library ships `addWithTransformerExamples`, so the only Types it still
 // exports are the two the worker below has to ASK for.
 //
-// CONFIG_TOKEN has no type-driven counterpart to match — it exists purely to
+// CONFIG_TYPE has no type-driven counterpart to match — it exists purely to
 // thread the manually-built `ConfigRoot` into the hosted worker.
-const SERVER_OPTIONS_TOKEN = '@rhombus-std/options:IOptions<@rhombus-std/examples.contracts:ServerOptions>';
-const POLICY_TOKEN = '@rhombus-std/examples.contracts:GreetingPolicy';
-const POLICY_OPTIONS_TOKEN = '@rhombus-std/options:IOptions<@rhombus-std/examples.contracts:GreetingPolicy>';
-const CONFIG_TOKEN = '@rhombus-std/config:ConfigRoot';
+const POLICY_TYPE = Type.named('GreetingPolicy', '@rhombus-std/examples.contracts');
+const SERVER_OPTIONS_TYPE = Type.named('IOptions', '@rhombus-std/options', [
+  Type.named('ServerOptions', '@rhombus-std/examples.contracts'),
+]);
+const POLICY_OPTIONS_TYPE = Type.named('IOptions', '@rhombus-std/options', [POLICY_TYPE]);
+const CONFIG_TYPE = Type.named('ConfigRoot', '@rhombus-std/config');
 
 // ── config ───────────────────────────────────────────────────────────────────
 
@@ -161,14 +164,14 @@ class InteropWorker implements IHostedLifecycleService {
   public async start(): Promise<void> {
     logInformation(this.#logger, 'start');
 
-    // The two tokens the with-transformer library exports, because ASKING for
+    // The two Types the with-transformer library exports, because ASKING for
     // its services is the one thing the library cannot do on this root's behalf.
     // The banner is registered in its `Promise<…>` wrapper, so the container
     // hands back the promise and the caller awaits it.
-    const report = this.#provider.getRequiredService(Type.from(EXAMPLE_TOKENS.report)) as IServerReport;
-    const banner = await (this.#provider.getRequiredService(Type.from(EXAMPLE_TOKENS.banner)) as Promise<IBanner>);
+    const report = this.#provider.getRequiredService(EXAMPLE_TYPES.report) as IServerReport;
+    const banner = await (this.#provider.getRequiredService(EXAMPLE_TYPES.banner) as Promise<IBanner>);
 
-    const optionsView = this.#provider.getRequiredService(Type.from(SERVER_OPTIONS_TOKEN)) as IOptions<ServerOptions>;
+    const optionsView = this.#provider.getRequiredService(SERVER_OPTIONS_TYPE) as IOptions<ServerOptions>;
     const updates: string[] = [];
     const subscription = optionsView.subscribe!((next: ServerOptions) => {
       updates.push(`  reload fired: MaxConnections is now ${next.MaxConnections}`);
@@ -244,23 +247,23 @@ services = addWithoutTransformerExamples(services);
 // be deciding for every consumer it will ever have.
 
 // The reactive server options — one shared live instance.
-services = services.addValue(SERVER_OPTIONS_TOKEN, serverOptions);
+services = services.addValue(SERVER_OPTIONS_TYPE, serverOptions);
 
 // A config-independent policy, wrapped as a static IOptions<GreetingPolicy> via
 // the augmentation's explicit addOptions(token, tToken) verb.
-services = services.addValue(POLICY_TOKEN, { excitement: '!' } satisfies GreetingPolicy);
-services = services.addOptions(POLICY_OPTIONS_TOKEN, POLICY_TOKEN);
+services = services.addValue(POLICY_TYPE, { excitement: '!' } satisfies GreetingPolicy);
+services = services.addOptions(POLICY_OPTIONS_TYPE, POLICY_TYPE);
 
 // The live config root, so the hosted worker can drive the reload demo.
-services = services.addValue(CONFIG_TOKEN, config);
+services = services.addValue(CONFIG_TYPE, config);
 
-// The hosted worker — explicit-token signature (no hosting transformer exists).
+// The hosted worker — explicit signature (no hosting transformer exists).
 //
 // The composed chain goes BACK onto the builder. `builder.services` is a live
 // slot over an immutable chain, so everything registered into the local
 // `services` above is invisible to `build()` until it is handed back here.
-builder.services = services.addHostedService(InteropWorker, [[RESOLVER_TYPE, HOST_APPLICATION_LIFETIME_TOKEN,
-  LOGGER_FACTORY_TOKEN, CONFIG_TOKEN]]);
+builder.services = services.addHostedService(InteropWorker, [[RESOLVER_TYPE, HOST_APPLICATION_LIFETIME_TYPE,
+  LOGGER_FACTORY_TYPE, CONFIG_TYPE]]);
 
 // ── run the scenario ──────────────────────────────────────────────────────────
 

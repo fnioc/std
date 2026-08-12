@@ -1,9 +1,9 @@
 import { MemoryConfigSource } from '@rhombus-std/config';
 import { Type } from '@rhombus-std/di.core';
-import { BackgroundService, Host, HOST_APPLICATION_LIFETIME_TOKEN, HOST_ENVIRONMENT_TOKEN, HostBuilder,
+import { BackgroundService, Host, HOST_APPLICATION_LIFETIME_TYPE, HOST_ENVIRONMENT_TYPE, HostBuilder,
   type IHostApplicationLifetime, type IHostedLifecycleService,
   type IHostEnvironment } from '@rhombus-std/hosting/private/index';
-import { HOSTED_SERVICE_TOKEN } from '@rhombus-std/hosting/private/internal/Host';
+import { HOSTED_SERVICE_TYPE } from '@rhombus-std/hosting/private/internal/Host';
 import type { Func } from '@rhombus-toolkit/func';
 import { expect, test } from 'bun:test';
 
@@ -79,7 +79,7 @@ test('lifecycle ordering: starting -> start -> started -> applicationStarted -> 
 
   const host = builder.build();
   const lifetime: IHostApplicationLifetime = host.services.getRequiredService(
-    Type.from(HOST_APPLICATION_LIFETIME_TOKEN),
+    HOST_APPLICATION_LIFETIME_TYPE,
   );
   lifetime.applicationStarted.addEventListener('abort', () => events.push('applicationStarted'), { once: true });
   lifetime.applicationStopping.addEventListener('abort', () => events.push('applicationStopping'), { once: true });
@@ -98,7 +98,7 @@ test('IHostApplicationLifetime.stopApplication triggers applicationStopping dire
   const builder = new HostBuilder();
   const host = builder.build();
   const lifetime: IHostApplicationLifetime = host.services.getRequiredService(
-    Type.from(HOST_APPLICATION_LIFETIME_TOKEN),
+    HOST_APPLICATION_LIFETIME_TYPE,
   );
 
   expect(lifetime.applicationStopping.aborted).toBe(false);
@@ -175,7 +175,7 @@ test('addHostedService registers many under one shared token; the host resolves 
   });
 
   const host = builder.build();
-  expect(host.services.isService(HOSTED_SERVICE_TOKEN)).toBe(true);
+  expect(host.services.isService(HOSTED_SERVICE_TYPE)).toBe(true);
 
   await host.start();
   expect(started).toEqual(['A', 'B', 'C']);
@@ -191,7 +191,7 @@ test("IHostEnvironment predicates reflect the built host's environment", async (
   });
 
   const host = builder.build();
-  const environment: IHostEnvironment = host.services.getRequiredService(Type.from(HOST_ENVIRONMENT_TOKEN));
+  const environment: IHostEnvironment = host.services.getRequiredService(HOST_ENVIRONMENT_TYPE);
 
   expect(environment.environmentName).toBe('Development');
   // The fluent method form is installed onto HostingEnvironment by @rhombus-std/hosting.

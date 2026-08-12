@@ -1,5 +1,5 @@
 import { type AbortSignal, type AugmentationSet2, registerAugmentations } from '@rhombus-std/primitives';
-import { tokenfor } from '@rhombus-std/primitives.extras';
+import { typefor } from '@rhombus-std/primitives.extras';
 import type { IHost } from './IHost';
 import type { IHostBuilder } from './IHostBuilder';
 
@@ -29,4 +29,4 @@ export const HostBuilderStartAugmentations: AugmentationSet2<IHostBuilder, IHost
   },
 };
 
-registerAugmentations(tokenfor<IHostBuilder>(), HostBuilderStartAugmentations);
+registerAugmentations(typefor<IHostBuilder>(), HostBuilderStartAugmentations);

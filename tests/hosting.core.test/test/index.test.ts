@@ -1,6 +1,6 @@
 import { DefaultManifest, type Manifest, Type } from '@rhombus-std/di.core';
-import { BackgroundService, Environments, HostAbortedError, HostDefaults, HOSTED_SERVICE_TOKEN,
-  hostedServiceCollectionToken, HostEnvironmentEnvAugmentations, type IHostedService,
+import { BackgroundService, Environments, HostAbortedError, HostDefaults, HOSTED_SERVICE_TYPE,
+  hostedServiceCollectionType, HostEnvironmentEnvAugmentations, type IHostedService,
   type IHostEnvironment } from '@rhombus-std/hosting.core/private/index';
 // Side-effect: installs `addHostedService` onto di.core's Manifest.
 import '@rhombus-std/hosting.core/private/index';
@@ -124,7 +124,7 @@ test('addHostedService registers many under one token; the collection resolves a
 
   const provider = manifest.build();
   const scope = provider.createScope('singleton');
-  const services: IHostedService[] = scope.getRequiredService(Type.from(hostedServiceCollectionToken()));
+  const services: IHostedService[] = scope.getRequiredService(hostedServiceCollectionType());
 
   expect(services).toHaveLength(2);
   for (const service of services) {
@@ -132,13 +132,13 @@ test('addHostedService registers many under one token; the collection resolves a
   }
   expect(order).toEqual(['A', 'B']);
 
-  expect(scope.isService(HOSTED_SERVICE_TOKEN)).toBe(true);
+  expect(scope.isService(HOSTED_SERVICE_TYPE)).toBe(true);
 });
 
 test('the hosted-service collection resolves to an empty array when none are registered', () => {
   let manifest: Manifest<string> = new DefaultManifest();
   const provider = manifest.build();
   const scope = provider.createScope('singleton');
-  const services: IHostedService[] = scope.getRequiredService(Type.from(hostedServiceCollectionToken()));
+  const services: IHostedService[] = scope.getRequiredService(hostedServiceCollectionType());
   expect(services).toEqual([]);
 });

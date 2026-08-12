@@ -18,7 +18,7 @@
 // it peers on di.core rather than on the engine.
 //
 // The mirror of this package is `@rhombus-std/examples.lib.without-transformer`:
-// the same shapes, the same output, hand-written tokens and slot arrays. The two
+// the same shapes, the same output, hand-written Types and slot arrays. The two
 // are behaviourally equivalent by design — that is the no-transformer-first rule
 // made checkable, since both example apps register both libraries and byte-diff
 // their stdout against a checked-in `expected.txt`.
@@ -27,9 +27,9 @@
 
 // ONE function that takes the application's manifest and hands it back with this
 // library's services registered. Everything an app needs to consume this package
-// is this call plus, for a manual-dialect app, the token strings below.
+// is this call plus, for a manual-dialect app, the Types below.
 export { addWithTransformerExamples } from './add-with-transformer-examples.js';
-export { EXAMPLE_TOKENS } from './tokens.js';
+export { EXAMPLE_TYPES } from './types.js';
 
 // ── the services it registers ────────────────────────────────────────────────
 

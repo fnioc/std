@@ -26,11 +26,11 @@ export type { IOptionsChangeTokenSource } from './IOptionsChangeTokenSource.js';
 // for a TOptions it doesn't own (logging.config registers both a custom
 // configure step and a change-token source that way). The derived slot token
 // IS that contract, so the derivation functions are exported: a downstream
-// package appends a step with `services.addValue(configureStepToken(token),
+// package appends a step with `services.addValue(configureStepType(token),
 // step)` (or `add`/`addFactory` for a lazily-constructed step), and the
 // assembly for `token` picks it up like any `configure(...)`-registered one.
-export { changeTokenSourceToken, configureStepToken, postConfigureStepToken, startupValidationTargetToken,
-  validateStepToken } from './option-tokens.js';
+export { changeTokenSourceType, configureStepType, postConfigureStepType, startupValidationTargetType,
+  validateStepType } from './option-types.js';
 
 // Each re-export executes its module, so the `registerAugmentations` side effect
 // installs the verbs onto the manifest.

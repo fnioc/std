@@ -5,9 +5,9 @@
 // category → catch-all), and a configuration reload re-runs the parse and
 // notifies subscribers.
 //
-// Exercised through the public authoring surface only; the options token is
+// Exercised through the public authoring surface only; the options type is
 // the hand-written literal a no-transformer consumer writes — byte-identical
-// to the inline `tokenfor<IOptions<LoggerFilterOptions>>()` the library derives.
+// to the inline `typefor<IOptions<LoggerFilterOptions>>()` the library derives.
 
 import { ConfigBuilder, type IConfigRoot } from '@rhombus-std/config';
 // Side-effect: installs `build` onto di.core's Manifest.
@@ -19,7 +19,9 @@ import { LogLevel } from '@rhombus-std/logging.core';
 import type { IOptions } from '@rhombus-std/options';
 import { describe, expect, test } from 'bun:test';
 
-const FILTER_OPTIONS_TOKEN = '@rhombus-std/options:IOptions<@rhombus-std/logging:LoggerFilterOptions>';
+const FILTER_OPTIONS_TYPE: Type = Type.from(
+  '@rhombus-std/options:IOptions<@rhombus-std/logging:LoggerFilterOptions>',
+);
 
 function rootWith(data: Record<string, string>): IConfigRoot {
   // build() is typed to the index-navigable Section (the coercion seam); the
@@ -33,7 +35,7 @@ function filterOptionsFor(config: IConfigRoot): IOptions<LoggerFilterOptions> {
   const builder = new LoggingBuilder(new DefaultManifest<'singleton'>());
   builder.addConfig(config);
   const provider = builder.services.build().createScope('singleton');
-  const options: IOptions<LoggerFilterOptions> = provider.getRequiredService(Type.from(FILTER_OPTIONS_TOKEN));
+  const options: IOptions<LoggerFilterOptions> = provider.getRequiredService(FILTER_OPTIONS_TYPE);
   return options;
 }
 
@@ -74,7 +76,7 @@ describe('addConfig — the LoggerFilterOptions pipeline', () => {
     config.set('LogLevel:Default', 'Error');
 
     const provider = builder.services.build().createScope('singleton');
-    const options: IOptions<LoggerFilterOptions> = provider.getRequiredService(Type.from(FILTER_OPTIONS_TOKEN));
+    const options: IOptions<LoggerFilterOptions> = provider.getRequiredService(FILTER_OPTIONS_TYPE);
     expect(options.value.rules[0]!.logLevel).toBe(LogLevel.Error);
   });
 
@@ -113,7 +115,7 @@ describe('addConfig — the LoggerFilterOptions pipeline', () => {
     LoggingBuilderConfigAugmentations.addConfig(builder, config);
 
     const provider = builder.services.build().createScope('singleton');
-    const options: IOptions<LoggerFilterOptions> = provider.getRequiredService(Type.from(FILTER_OPTIONS_TOKEN));
+    const options: IOptions<LoggerFilterOptions> = provider.getRequiredService(FILTER_OPTIONS_TYPE);
     expect(options.value.rules[0]!.logLevel).toBe(LogLevel.Debug);
   });
 });

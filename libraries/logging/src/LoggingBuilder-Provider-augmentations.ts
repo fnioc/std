@@ -8,16 +8,16 @@
 // call surface.
 
 import type { ILoggerProvider, ILoggingBuilder, LogLevel } from '@rhombus-std/logging.core';
-import { configureStepToken } from '@rhombus-std/options.augmentations';
+import { configureStepType } from '@rhombus-std/options.augmentations';
 import { type AugmentationSet2, type Flatten, registerAugmentations } from '@rhombus-std/primitives';
-import { tokenfor, typefor } from '@rhombus-std/primitives.extras';
+import { typefor } from '@rhombus-std/primitives.extras';
 import { DefaultLoggerLevelConfigureOptions } from './DefaultLoggerLevelConfigureOptions';
-import { LOGGER_FILTER_OPTIONS_TOKEN, LOGGER_PROVIDER_TOKEN } from './tokens';
+import { LOGGER_FILTER_OPTIONS_TYPE, LOGGER_PROVIDER_TYPE } from './types';
 
 interface ILoggingBuilderProviderAugmentations {
   /**
    * Adds an {@link ILoggerProvider} to the builder, registered under the
-   * enumerable {@link LOGGER_PROVIDER_TOKEN}.
+   * enumerable {@link LOGGER_PROVIDER_TYPE}.
    *
    * The `LoggerFactory` that `addLogging` builds is injected the aggregated
    * `Array<ILoggerProvider>` collection, so every provider added here receives
@@ -44,16 +44,16 @@ declare module '@rhombus-std/logging.core' {
 export const LoggingBuilderProviderAugmentations: AugmentationSet2<ILoggingBuilder,
   Flatten<ILoggingBuilderProviderAugmentations>> = {
     addProvider(builder, provider) {
-      builder.services = builder.services.addValue(LOGGER_PROVIDER_TOKEN, provider);
+      builder.services = builder.services.addValue(LOGGER_PROVIDER_TYPE, provider);
       return builder;
     },
     setMinimumLevel(builder, level) {
-      builder.services = builder.services.addValue(configureStepToken(LOGGER_FILTER_OPTIONS_TOKEN),
+      builder.services = builder.services.addValue(configureStepType(LOGGER_FILTER_OPTIONS_TYPE),
         new DefaultLoggerLevelConfigureOptions(level));
       return builder;
     },
     clearProviders(builder) {
-      builder.services = builder.services.removeAll(LOGGER_PROVIDER_TOKEN);
+      builder.services = builder.services.removeAll(LOGGER_PROVIDER_TYPE);
       return builder;
     },
   };

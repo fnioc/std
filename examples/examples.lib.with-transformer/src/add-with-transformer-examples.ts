@@ -18,15 +18,16 @@
 // Authored in the TOKENLESS dialect, and behaviourally identical to the manual
 // sibling (`addWithoutTransformerExamples` in
 // `@rhombus-std/examples.lib.without-transformer`). The two differ in exactly one
-// respect: there the tokens and the dependency signatures are written out, here
-// they are derived from the type arguments and lowered during this package's
-// build. Nothing else about the shape changes — which is the point of the
-// no-transformer-first rule, and the reason both apps can call either library.
+// respect: there the Types and the dependency signatures are composed by hand,
+// here they are derived from the type arguments and lowered during this
+// package's build. Nothing else about the shape changes — which is the point of
+// the no-transformer-first rule, and the reason both apps can call either
+// library.
 //
 // Registering this library's own classes is this library's business rather than
 // an app's — an application wiring another package's internals is the same rule
 // violation read backwards. What a consumer still needs in order to RESOLVE is
-// the token agreement, and `./tokens.ts` publishes that.
+// the Type agreement, and `./types.ts` publishes that.
 
 import { Type } from '@rhombus-std/di.core';
 import type { Manifest } from '@rhombus-std/di.core';

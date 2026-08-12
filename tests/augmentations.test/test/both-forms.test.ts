@@ -18,7 +18,7 @@ import { MemoryCache, MemoryCacheOptions } from '@rhombus-std/caching.memory';
 import { ConfigBuilder, MemoryConfigBuilderAugmentations } from '@rhombus-std/config';
 import type { IServiceManifestBase } from '@rhombus-std/di.core';
 import { MetricsBuilder } from '@rhombus-std/diagnostics';
-import { type IMetricsListener, METRICS_LISTENER_TOKEN, MetricsBuilderAugmentations, MetricsOptions,
+import { type IMetricsListener, METRICS_LISTENER_TYPE, MetricsBuilderAugmentations, MetricsOptions,
   MetricsOptionsAugmentations, TracingOptions, TracingOptionsAugmentations } from '@rhombus-std/diagnostics.core';
 import { LoggerFilterOptions, LoggerFilterOptionsExtensions } from '@rhombus-std/logging';
 import { LogLevel } from '@rhombus-std/logging.core';
@@ -81,7 +81,7 @@ describe('reverse direction — MetricsBuilder (.core interface, downstream conc
     builder.addMetricsListener(listener); // method form
     MetricsBuilderAugmentations.addMetricsListener(builder, listener); // standalone member form
 
-    expect(recorded).toEqual([[METRICS_LISTENER_TOKEN, listener], [METRICS_LISTENER_TOKEN, listener]]);
+    expect(recorded).toEqual([[METRICS_LISTENER_TYPE, listener], [METRICS_LISTENER_TYPE, listener]]);
   });
 });
 

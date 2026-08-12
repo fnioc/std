@@ -15,9 +15,9 @@ interface ServerOptions {
 
 const OPTIONS_TOKEN = 'test:ServerOptions';
 const OTHER_TOKEN = 'test:OtherOptions';
-// The tokenfor-derived token the host resolves the validator under (§40). A
+// The typefor-derived type the host resolves the validator under. A
 // no-transformer consumer writes the literal string.
-const STARTUP_VALIDATOR_TOKEN = '@rhombus-std/options:IStartupValidator';
+const STARTUP_VALIDATOR_TYPE: Type = Type.from('@rhombus-std/options:IStartupValidator');
 
 describe('validateOnStart', () => {
   test('registers a resolvable IStartupValidator', () => {
@@ -26,7 +26,7 @@ describe('validateOnStart', () => {
     services = services.validateOnStart(OPTIONS_TOKEN);
 
     const provider = services.build().createScope('singleton');
-    const validator: IStartupValidator = provider.getRequiredService(Type.from(STARTUP_VALIDATOR_TOKEN));
+    const validator: IStartupValidator = provider.getRequiredService(STARTUP_VALIDATOR_TYPE);
 
     expect(typeof validator.validate).toBe('function');
   });
@@ -38,7 +38,7 @@ describe('validateOnStart', () => {
     services = services.validateOnStart(OPTIONS_TOKEN);
 
     const provider = services.build().createScope('singleton');
-    const validator: IStartupValidator = provider.getRequiredService(Type.from(STARTUP_VALIDATOR_TOKEN));
+    const validator: IStartupValidator = provider.getRequiredService(STARTUP_VALIDATOR_TYPE);
 
     expect(() => validator.validate()).not.toThrow();
   });
@@ -50,7 +50,7 @@ describe('validateOnStart', () => {
     services = services.validateOnStart(OPTIONS_TOKEN);
 
     const provider = services.build().createScope('singleton');
-    const validator: IStartupValidator = provider.getRequiredService(Type.from(STARTUP_VALIDATOR_TOKEN));
+    const validator: IStartupValidator = provider.getRequiredService(STARTUP_VALIDATOR_TYPE);
 
     expect(() => validator.validate()).toThrow(OptionsValidationError);
     expect(() => validator.validate()).toThrow('port must be positive');
@@ -67,7 +67,7 @@ describe('validateOnStart', () => {
     services = services.validateOnStart(OTHER_TOKEN);
 
     const provider = services.build().createScope('singleton');
-    const validator: IStartupValidator = provider.getRequiredService(Type.from(STARTUP_VALIDATOR_TOKEN));
+    const validator: IStartupValidator = provider.getRequiredService(STARTUP_VALIDATOR_TYPE);
 
     try {
       validator.validate();

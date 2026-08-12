@@ -17,18 +17,19 @@ import { dirname, join } from 'node:path';
 import { entryKind, loadInlineEntries } from './inline-entries.mjs';
 
 // Each compile-time primitive maps to its HOME module — the module an inline body
-// may import it from. `tokenfor` / `tokenof` are pure transformables that home in
-// the authoring package @rhombus-std/primitives.extras (constraint 11 moved them
-// out of the runtime @rhombus-std/primitives leaf — every call elides after
-// lowering). `signaturefor` / `signaturesfor` produce di.core's `DepSlot` shape
+// may import it from. `typefor` / `tokenfor` / `tokenof` are pure transformables
+// that home in the authoring package @rhombus-std/primitives.extras — every call
+// elides after lowering, so the runtime @rhombus-std/primitives leaf carries none
+// of them. `signaturefor` / `signaturesfor` produce di.core's `DepSlot` shape
 // and are called from runtime source too, so they live in @rhombus-std/di.core
 // (every caller already depends on it). `signatureof`, `keyof`, and `valueof` are
 // authoring-time-only and live in @rhombus-std/di.extras, imported by that
 // package's own bodies via a package-relative specifier. Mirrors the Go scanner's
 // knownPrimitives map.
-const PRIMITIVE_HOMES = { tokenfor: '@rhombus-std/primitives.extras', tokenof: '@rhombus-std/primitives.extras',
-  signaturefor: '@rhombus-std/di.core', signaturesfor: '@rhombus-std/di.core', signatureof: '@rhombus-std/di.extras',
-  keyof: '@rhombus-std/di.extras', keyedtokenfor: '@rhombus-std/di.extras', valueof: '@rhombus-std/di.extras',
+const PRIMITIVE_HOMES = { typefor: '@rhombus-std/primitives.extras', tokenfor: '@rhombus-std/primitives.extras',
+  tokenof: '@rhombus-std/primitives.extras', signaturefor: '@rhombus-std/di.core',
+  signaturesfor: '@rhombus-std/di.core', signatureof: '@rhombus-std/di.extras', keyof: '@rhombus-std/di.extras',
+  keyedtokenfor: '@rhombus-std/di.extras', valueof: '@rhombus-std/di.extras',
   isSingular: '@rhombus-std/primitives.extras', singularValue: '@rhombus-std/primitives.extras',
   isFactory: '@rhombus-std/primitives.extras', returntokenfor: '@rhombus-std/primitives.extras',
   paramtokensfor: '@rhombus-std/primitives.extras', schemaof: '@rhombus-std/config.extras' };

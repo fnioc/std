@@ -3,11 +3,11 @@
 // the registry-installed method form (docs §38), and the resolved singleton's
 // end-to-end behavior.
 
-import { DISTRIBUTED_CACHE_TOKEN, MemoryDistributedCache, MemoryDistributedCacheOptions,
+import { DISTRIBUTED_CACHE_TYPE, MemoryDistributedCache, MemoryDistributedCacheOptions,
   ServiceManifestMemoryCacheAugmentations } from '@rhombus-std/caching.memory';
 // Side-effect: installs `build` onto di.core's Manifest.
 import '@rhombus-std/di';
-import { DefaultManifest, type Manifest, Type } from '@rhombus-std/di.core';
+import { DefaultManifest, type Manifest } from '@rhombus-std/di.core';
 import { describe, expect, test } from 'bun:test';
 
 describe('addDistributedMemoryCache', () => {
@@ -22,10 +22,10 @@ describe('addDistributedMemoryCache', () => {
     expect([...services]).toHaveLength(0);
 
     const scope = registered.build().createScope('singleton');
-    const cache: MemoryDistributedCache = scope.getRequiredService(Type.from(DISTRIBUTED_CACHE_TOKEN));
+    const cache: MemoryDistributedCache = scope.getRequiredService(DISTRIBUTED_CACHE_TYPE);
     expect(cache).toBeInstanceOf(MemoryDistributedCache);
     // Singleton: the same instance on every resolve.
-    const cacheAgain: MemoryDistributedCache = scope.getRequiredService(Type.from(DISTRIBUTED_CACHE_TOKEN));
+    const cacheAgain: MemoryDistributedCache = scope.getRequiredService(DISTRIBUTED_CACHE_TYPE);
     expect(cacheAgain).toBe(cache);
 
     // The resolved cache actually works.
@@ -53,7 +53,7 @@ describe('addDistributedMemoryCache', () => {
     expect(seen).toBeUndefined();
 
     const cache: MemoryDistributedCache = returned.build().createScope('singleton')
-      .getRequiredService(Type.from(DISTRIBUTED_CACHE_TOKEN));
+      .getRequiredService(DISTRIBUTED_CACHE_TYPE);
     expect(cache).toBeInstanceOf(MemoryDistributedCache);
     expect(seen).toBeInstanceOf(MemoryDistributedCacheOptions);
   });

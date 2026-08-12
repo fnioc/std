@@ -1,5 +1,5 @@
 import { DefaultManifest, type Manifest, Type } from '@rhombus-std/di.core';
-import { hostedServiceCollectionToken, type IHostedService } from '@rhombus-std/hosting.core/private/index';
+import { hostedServiceCollectionType, type IHostedService } from '@rhombus-std/hosting.core/private/index';
 // Side-effect: installs `addHostedService` onto di.core's Manifest.
 import '@rhombus-std/hosting.core/private/index';
 // Side-effect: installs `build` onto di.core's Manifest.
@@ -23,7 +23,7 @@ test("addHostedService(factory) registers the factory's result under the hosted-
 
   const provider = manifest.build();
   const scope = provider.createScope('singleton');
-  const services: IHostedService[] = scope.getRequiredService(Type.from(hostedServiceCollectionToken()));
+  const services: IHostedService[] = scope.getRequiredService(hostedServiceCollectionType());
 
   expect(services).toHaveLength(1);
   expect(services[0]).toBe(singleton);
@@ -49,7 +49,7 @@ test('addHostedService(factory) injects the live resolver so the factory can pul
 
   const provider = manifest.build();
   const scope = provider.createScope('singleton');
-  const services: IHostedService[] = scope.getRequiredService(Type.from(hostedServiceCollectionToken()));
+  const services: IHostedService[] = scope.getRequiredService(hostedServiceCollectionType());
 
   expect(services).toHaveLength(1);
   expect(services[0]).toBeInstanceOf(Dependency);
@@ -77,7 +77,7 @@ test('addHostedService(ctor) and addHostedService(factory) coexist under the sha
 
   const provider = manifest.build();
   const scope = provider.createScope('singleton');
-  const services: IHostedService[] = scope.getRequiredService(Type.from(hostedServiceCollectionToken()));
+  const services: IHostedService[] = scope.getRequiredService(hostedServiceCollectionType());
 
   expect(services).toHaveLength(2);
   for (const service of services) {

@@ -5,7 +5,7 @@
  *
  * @example
  * ```ts
- * return isFactory<T>() ? this.resolveFactory(returntokenfor<T>(), paramtokensfor<T>()) : this.resolve(tokenfor<T>());
+ * return isFactory<T>() ? this.resolveFactory(returntokenfor<T>(), paramtokensfor<T>()) : this.resolve(typefor<T>());
  * ```
  */
 export function isFactory<T>(): boolean {

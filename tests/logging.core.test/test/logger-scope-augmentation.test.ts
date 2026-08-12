@@ -12,7 +12,7 @@ import { EventId, FormattedLogValues, type ILogger, LoggerAugmentations, LogLeve
 import { augment } from '@rhombus-std/primitives';
 import { describe, expect, test } from 'bun:test';
 
-// The `tokenfor<ILogger>()`-derived augmentation token (a no-transformer test uses
+// The `typefor<ILogger>()`-derived augmentation token (a no-transformer test uses
 // the derived literal directly). `ILogger`'s defaulted `TCategoryName` parameter
 // lowers into the token as `<unknown>`.
 const ILOGGER_TOKEN = '@rhombus-std/logging.core:ILogger<unknown>';

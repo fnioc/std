@@ -19,6 +19,6 @@ export type { DocumentLifecycleEventType, DocumentLike, DocumentVisibilityState,
   WindowLifecycleEventType, WindowLike } from './page-context';
 export { defaultPageContext } from './page-context';
 
-export { BROWSER_LIFETIME_OPTIONS_TOKEN, PAGE_LIFECYCLE_EVENTS_TOKEN } from './tokens';
+export { BROWSER_LIFETIME_OPTIONS_TYPE, PAGE_LIFECYCLE_EVENTS_TYPE } from './types';
 
 export { HostBuilderBrowserLifetimeAugmentations } from './HostBuilder-BrowserLifetime-augmentations';

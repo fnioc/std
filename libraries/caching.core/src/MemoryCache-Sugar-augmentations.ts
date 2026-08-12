@@ -10,7 +10,7 @@
 
 import { type AugmentationSet2, type Flatten, type IChangeToken, type MergeStrategies,
   registerAugmentations } from '@rhombus-std/primitives';
-import { tokenfor } from '@rhombus-std/primitives.extras';
+import { typefor } from '@rhombus-std/primitives.extras';
 import type { Func } from '@rhombus-toolkit/func';
 import { CacheEntrySugarAugmentations } from './CacheEntry-Sugar-augmentations';
 import type { ICacheEntry } from './ICacheEntry';
@@ -212,4 +212,4 @@ const cacheMerge = { tryGetValue(original, _incoming) {
   };
 } } satisfies MergeStrategies;
 
-registerAugmentations(tokenfor<IMemoryCache>(), MemoryCacheSugarAugmentations, cacheMerge);
+registerAugmentations(typefor<IMemoryCache>(), MemoryCacheSugarAugmentations, cacheMerge);

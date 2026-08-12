@@ -1,5 +1,5 @@
 import { type AugmentationSet2, type Flatten, type IChangeToken, registerAugmentations } from '@rhombus-std/primitives';
-import { tokenfor } from '@rhombus-std/primitives.extras';
+import { typefor } from '@rhombus-std/primitives.extras';
 import type { CacheItemPriority } from './CacheItemPriority';
 import type { ICacheEntry } from './ICacheEntry';
 import type { MemoryCacheEntryOptions } from './MemoryCacheEntryOptions';
@@ -106,4 +106,4 @@ export const CacheEntrySugarAugmentations: AugmentationSet2<ICacheEntry, Flatten
   },
 };
 
-registerAugmentations(tokenfor<ICacheEntry>(), CacheEntrySugarAugmentations);
+registerAugmentations(typefor<ICacheEntry>(), CacheEntrySugarAugmentations);

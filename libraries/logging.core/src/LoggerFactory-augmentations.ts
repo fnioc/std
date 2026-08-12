@@ -10,7 +10,7 @@
 
 import { type AugmentationSet2, type Flatten, type MergeStrategies,
   registerAugmentations } from '@rhombus-std/primitives';
-import { tokenfor, typefor } from '@rhombus-std/primitives.extras';
+import { typefor } from '@rhombus-std/primitives.extras';
 import type { AbstractCtor } from '@rhombus-toolkit/func';
 import type { ILogger } from './ILogger';
 import type { ILoggerFactory } from './logger-factory';

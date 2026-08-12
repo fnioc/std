@@ -4,12 +4,12 @@
 // keys, factories, async, and the provider itself.
 //
 // These types live in the shared contracts package for the same reason the
-// greeting contracts do: the transformer derives a token from a type's
+// greeting contracts do: the transformer derives a `Type` from a type's
 // PACKAGE-PUBLIC path, so a contract exported from here derives
-// `@rhombus-std/examples.contracts:IPaymentGateway` — a string the manual dialect
-// can hand-write verbatim. Declaring them inside an application instead would
-// derive an app-private token, and the two dialects could no longer be compared
-// line for line.
+// `Type.named('IPaymentGateway', '@rhombus-std/examples.contracts')` — a Type
+// the manual dialect can compose verbatim. Declaring them inside an application
+// instead would derive an app-private Type, and the two dialects could no
+// longer be compared line for line.
 //
 // PURE TYPES — no runtime code, so every `import type` of these erases.
 
@@ -33,7 +33,7 @@ export interface CheckoutOrder {
 
 /**
  * One check in the validation pipeline. MANY implementations register under this
- * ONE token, which is what makes it a COLLECTION: an app resolving
+ * ONE Type, which is what makes it a COLLECTION: an app resolving
  * `IOrderValidator[]` gets every registration in registration order. This is the
  * shape to reach for whenever "there can be more than one and they all run" —
  * validators, handlers, middleware, plugins.
@@ -48,8 +48,8 @@ export interface IOrderValidator {
 /**
  * A payment backend. Several are registered at once, each under its own KEY, and
  * exactly one is selected per order. A key is not a second resolution system —
- * it is a `#<key>` suffix on the ordinary token, so `IPaymentGateway#card` is
- * just another token the exact lookup finds.
+ * it is a `#<key>` suffix on the ordinary Type, so `IPaymentGateway#card` is
+ * just another Type the exact lookup finds.
  */
 export interface IPaymentGateway {
   readonly label: string;
@@ -81,7 +81,7 @@ export interface IAuditTrail {
  * The service that is deliberately NEVER registered. It exists so the examples
  * can show what a MISS looks like on each verb — `resolve` throws,
  * `tryResolve` returns `undefined`, `isService` answers `false` — without having
- * to invent a fake token nobody would ever write.
+ * to invent a fake Type nobody would ever write.
  */
 export interface IFraudScreen {
   screen(order: CheckoutOrder): string;

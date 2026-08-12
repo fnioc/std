@@ -1,5 +1,5 @@
 import { type AugmentationSet2, registerAugmentations } from '@rhombus-std/primitives';
-import { tokenfor } from '@rhombus-std/primitives.extras';
+import { typefor } from '@rhombus-std/primitives.extras';
 import { Environments } from './Environments';
 import type { IHostEnvironment } from './IHostEnvironment';
 
@@ -34,4 +34,4 @@ export const HostEnvironmentEnvAugmentations: AugmentationSet2<IHostEnvironment,
   },
 };
 
-registerAugmentations(tokenfor<IHostEnvironment>(), HostEnvironmentEnvAugmentations);
+registerAugmentations(typefor<IHostEnvironment>(), HostEnvironmentEnvAugmentations);

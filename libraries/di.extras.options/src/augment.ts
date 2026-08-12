@@ -1,6 +1,6 @@
 // Type-only augmentation contributed to `@rhombus-std/di.core`: adds the
 // 0-arg `addOptions<T>()` overload to `Manifest`, alongside the
-// explicit `addOptions(token, tToken)` overloads from
+// explicit `addOptions(optionsType, tType)` overloads from
 // `@rhombus-std/options.augmentations`. `Provider` is defaulted to match
 // core's type-parameter list.
 //

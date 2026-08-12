@@ -5,14 +5,14 @@
 // Side-effect: installs `build` onto di.core's Manifest.
 import '@rhombus-std/di';
 import { DefaultManifest, type NamedType, Type } from '@rhombus-std/di.core';
-import { LOGGER_FACTORY_TOKEN, LoggerFactory } from '@rhombus-std/logging';
+import { LOGGER_FACTORY_TYPE, LoggerFactory } from '@rhombus-std/logging';
 import type { ILogger, ILoggerFactory } from '@rhombus-std/logging.core';
 import { logError, LogLevel, logTrace, logWarning } from '@rhombus-std/logging.core';
 import { describe, expect, test } from 'bun:test';
 import { RecordingProvider } from './helpers';
 
 // The di token the closing ILogger<T> registration derives from ILogger — the
-// same string `tokenfor<ILogger>()` lowers to inside addLogging.
+// same string `typefor<ILogger>()` lowers to inside addLogging.
 const ILOGGER_TOKEN = '@rhombus-std/logging.core:ILogger';
 
 function levels(provider: RecordingProvider, category: string): LogLevel[] {
@@ -25,8 +25,8 @@ describe('addLogging', () => {
     const services = new DefaultManifest().addLogging((builder) => builder.addProvider(provider));
 
     using root = services.build().createScope('singleton');
-    const factory: ILoggerFactory = root.getRequiredService(Type.from(LOGGER_FACTORY_TOKEN));
-    const another: ILoggerFactory = root.getRequiredService(Type.from(LOGGER_FACTORY_TOKEN));
+    const factory: ILoggerFactory = root.getRequiredService(LOGGER_FACTORY_TYPE);
+    const another: ILoggerFactory = root.getRequiredService(LOGGER_FACTORY_TYPE);
     expect(factory).toBe(another); // singleton
 
     const logger = factory.createLogger('App');
@@ -39,7 +39,7 @@ describe('addLogging', () => {
     const services = new DefaultManifest().addLogging((builder) => builder.addProvider(provider));
 
     using root = services.build().createScope('singleton');
-    const factory: ILoggerFactory = root.getRequiredService(Type.from(LOGGER_FACTORY_TOKEN));
+    const factory: ILoggerFactory = root.getRequiredService(LOGGER_FACTORY_TYPE);
     const logger = factory.createLogger('App');
 
     logTrace(logger, 't');

@@ -16,7 +16,7 @@ import { type IExternalScopeProvider, type ILogger, type ILoggerFactory, type IL
 import { type IOptions, Options } from '@rhombus-std/options';
 import { Type } from '@rhombus-std/primitives';
 import { augment } from '@rhombus-std/primitives';
-import { tokenfor, typefor } from '@rhombus-std/primitives.extras';
+import { typefor } from '@rhombus-std/primitives.extras';
 import type { Func } from '@rhombus-toolkit/func';
 import { Logger } from './Logger';
 import { LoggerExternalScopeProvider } from './LoggerExternalScopeProvider';
@@ -25,7 +25,7 @@ import { LoggerInformation, MessageLogger, ScopeLogger } from './LoggerInformati
 import { LoggerRuleSelector } from './LoggerRuleSelector';
 import { NullLogger } from './null-logger';
 import { isSupportExternalScope } from './support-external-scope-guard';
-import { LOGGER_FACTORY_TOKEN } from './tokens';
+import { LOGGER_FACTORY_TYPE } from './types';
 
 /** A provider plus whether the factory owns its disposal. */
 interface ProviderRegistration {
@@ -178,7 +178,7 @@ export class LoggerFactory implements ILoggerFactory {
   public static create(configure: Func<[ILoggingBuilder], void>): ILoggerFactory {
     const services = new DefaultManifest().addLogging(configure);
     const provider = services.build();
-    const factory = provider.getRequiredService(Type.from(LOGGER_FACTORY_TOKEN));
+    const factory = provider.getRequiredService(LOGGER_FACTORY_TYPE);
     return new DisposingLoggerFactory(factory, provider);
   }
 }

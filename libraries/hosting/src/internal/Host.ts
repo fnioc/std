@@ -11,13 +11,13 @@
 // semantics and deterministic disposal.
 
 import type { ServiceProvider } from '@rhombus-std/di';
-import { BackgroundService, hostedServiceCollectionToken, type IHost, type IHostApplicationLifetime,
+import { BackgroundService, hostedServiceCollectionType, type IHost, type IHostApplicationLifetime,
   type IHostedLifecycleService, type IHostedService, type IHostLifetime } from '@rhombus-std/hosting.core';
 import type { ILogger } from '@rhombus-std/logging.core';
 import type { IStartupValidator } from '@rhombus-std/options';
 import { Type } from '@rhombus-std/primitives';
 import { type AbortSignal, augment } from '@rhombus-std/primitives';
-import { tokenfor } from '@rhombus-std/primitives.extras';
+import { typefor } from '@rhombus-std/primitives.extras';
 import type { Func } from '@rhombus-toolkit/func';
 import { BackgroundServiceErrorBehavior } from '../BackgroundServiceErrorBehavior';
 import type { HostOptions } from '../HostOptions';
@@ -28,7 +28,7 @@ import { hostingLog } from './hosting-log';
 // Re-export the shared hosted-service token so a white-box consumer can reach it
 // alongside the host. The value is hosting.core's token (the one
 // `addHostedService` registers under) so registration and resolution agree.
-export { HOSTED_SERVICE_TOKEN } from '@rhombus-std/hosting.core';
+export { HOSTED_SERVICE_TYPE } from '@rhombus-std/hosting.core';
 
 /** Structural test for {@link IHostedLifecycleService}. */
 function isHostedLifecycleService(service: IHostedService): service is IHostedLifecycleService {
@@ -93,7 +93,7 @@ function aggregate(errors: readonly unknown[], message: string): unknown {
 export interface Host extends IHost {}
 
 /** The internal {@link IHost} implementation. */
-@augment(tokenfor<IHost>())
+@augment(typefor<IHost>())
 export class Host implements IHost, AsyncDisposable {
   readonly #services: ServiceProvider;
   readonly #applicationLifetime: ApplicationLifetime;
@@ -157,7 +157,7 @@ export class Host implements IHost, AsyncDisposable {
       };
 
       const hostedServices: IHostedService[] = this.#services.getRequiredService(
-        Type.from(hostedServiceCollectionToken()),
+        hostedServiceCollectionType(),
       );
       this.#hostedServices = hostedServices;
       this.#hostedLifecycleServices = getHostLifecycles(hostedServices);
@@ -167,7 +167,7 @@ export class Host implements IHost, AsyncDisposable {
       // registered only when `validateOnStart` ran, so resolve it optionally; a
       // validation failure throws out of start.
       const startupValidator: IStartupValidator | undefined = this.#services.getService(
-        Type.from(tokenfor<IStartupValidator>()),
+        typefor<IStartupValidator>(),
       );
       startupValidator?.validate();
 

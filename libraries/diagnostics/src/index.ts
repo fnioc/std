@@ -24,13 +24,13 @@
 // references inside the augmentation block) because unqualified names in a
 // `declare module` body resolve in THIS file's scope.
 import { DefaultManifest, type Manifest, RESOLVER_TYPE } from '@rhombus-std/di.core';
-import { collectionToken, type IMetricsBuilder, type ITracingBuilder, METRICS_CHANGE_TOKEN_SOURCE_TOKEN,
-  METRICS_CONFIGURATION_TOKEN, METRICS_CONFIGURE_TOKEN, METRICS_LISTENER_CONFIGURATION_FACTORY_TOKEN,
-  METRICS_OPTIONS_TOKEN, MetricsOptions, TRACING_CHANGE_TOKEN_SOURCE_TOKEN, TRACING_CONFIGURATION_TOKEN,
-  TRACING_CONFIGURE_TOKEN, TRACING_LISTENER_CONFIGURATION_FACTORY_TOKEN, TRACING_OPTIONS_TOKEN,
+import { collectionType, type IMetricsBuilder, type ITracingBuilder, METRICS_CHANGE_TOKEN_SOURCE_TYPE,
+  METRICS_CONFIGURATION_TYPE, METRICS_CONFIGURE_TYPE, METRICS_LISTENER_CONFIGURATION_FACTORY_TYPE, METRICS_OPTIONS_TYPE,
+  MetricsOptions, TRACING_CHANGE_TOKEN_SOURCE_TYPE, TRACING_CONFIGURATION_TYPE, TRACING_CONFIGURE_TYPE,
+  TRACING_LISTENER_CONFIGURATION_FACTORY_TYPE, TRACING_OPTIONS_TYPE,
   TracingOptions } from '@rhombus-std/diagnostics.core';
 import { type AugmentationSet2, registerAugmentations } from '@rhombus-std/primitives';
-import { tokenfor } from '@rhombus-std/primitives.extras';
+import { typefor } from '@rhombus-std/primitives.extras';
 import type { Func } from '@rhombus-toolkit/func';
 
 import { assembleDiagnosticsOptions } from './assemble-diagnostics-options';
@@ -50,7 +50,7 @@ type IManifestDiagnosticsAugmentations<Scopes extends string> = {
   /**
    * Registers the metrics options assembly and, if `configure` is supplied,
    * runs it over a concrete {@link IMetricsBuilder}. After this call resolving
-   * {@link METRICS_OPTIONS_TOKEN} yields an `IOptions<MetricsOptions>` assembled
+   * {@link METRICS_OPTIONS_TYPE} yields an `IOptions<MetricsOptions>` assembled
    * from every rule / config-bind step registered through the builder, reactive
    * to configuration reloads.
    */
@@ -58,7 +58,7 @@ type IManifestDiagnosticsAugmentations<Scopes extends string> = {
   /**
    * Registers the tracing options assembly and, if `configure` is supplied,
    * runs it over a concrete {@link ITracingBuilder}. After this call resolving
-   * {@link TRACING_OPTIONS_TOKEN} yields an `IOptions<TracingOptions>` assembled
+   * {@link TRACING_OPTIONS_TYPE} yields an `IOptions<TracingOptions>` assembled
    * from every rule / config-bind step registered through the builder, reactive
    * to configuration reloads.
    */
@@ -83,14 +83,14 @@ export const ServiceManifestMetricsAugmentations: AugmentationSet2<DefaultManife
       // scope. Calling addMetrics twice re-registers the (identical) factory --
       // last-wins bare-token resolution keeps that correct. The factory takes the
       // live provider view via a RESOLVER_TYPE slot, exactly like assembleOptions.
-      let m: Manifest<string> = manifest.addFactory(METRICS_OPTIONS_TOKEN,
+      let m: Manifest<string> = manifest.addFactory(METRICS_OPTIONS_TYPE,
         (resolver) =>
-          assembleDiagnosticsOptions(resolver, METRICS_CONFIGURE_TOKEN, METRICS_CHANGE_TOKEN_SOURCE_TOKEN, () =>
+          assembleDiagnosticsOptions(resolver, METRICS_CONFIGURE_TYPE, METRICS_CHANGE_TOKEN_SOURCE_TYPE, () =>
             new MetricsOptions()), [[RESOLVER_TYPE]], 'singleton');
       // The per-listener configuration factory, ctor-injected with the collection
       // of every MetricsConfig marker addMetricsConfig registered.
-      m = m.addClass(METRICS_LISTENER_CONFIGURATION_FACTORY_TOKEN, MetricListenerConfigFactory, [[
-        collectionToken(METRICS_CONFIGURATION_TOKEN),
+      m = m.addClass(METRICS_LISTENER_CONFIGURATION_FACTORY_TYPE, MetricListenerConfigFactory, [[
+        collectionType(METRICS_CONFIGURATION_TYPE),
       ]], 'singleton');
       if (configure) {
         // The cast works around a TS structural-comparison depth limit -- see
@@ -112,14 +112,14 @@ export const ServiceManifestMetricsAugmentations: AugmentationSet2<DefaultManife
 export const ServiceManifestTracingAugmentations: AugmentationSet2<DefaultManifest<string>,
   Pick<IManifestDiagnosticsAugmentations<string>, 'addTracing'>> = {
     addTracing(manifest: DefaultManifest<string>, configure?: Func<[ITracingBuilder], void>): Manifest<string> {
-      let m: Manifest<string> = manifest.addFactory(TRACING_OPTIONS_TOKEN,
+      let m: Manifest<string> = manifest.addFactory(TRACING_OPTIONS_TYPE,
         (resolver) =>
-          assembleDiagnosticsOptions(resolver, TRACING_CONFIGURE_TOKEN, TRACING_CHANGE_TOKEN_SOURCE_TOKEN, () =>
+          assembleDiagnosticsOptions(resolver, TRACING_CONFIGURE_TYPE, TRACING_CHANGE_TOKEN_SOURCE_TYPE, () =>
             new TracingOptions()), [[RESOLVER_TYPE]], 'singleton');
       // The per-listener configuration factory, ctor-injected with the collection
       // of every TracingConfig marker addTracingConfig registered.
-      m = m.addClass(TRACING_LISTENER_CONFIGURATION_FACTORY_TOKEN, DefaultActivityListenerConfigFactory, [[
-        collectionToken(TRACING_CONFIGURATION_TOKEN),
+      m = m.addClass(TRACING_LISTENER_CONFIGURATION_FACTORY_TYPE, DefaultActivityListenerConfigFactory, [[
+        collectionType(TRACING_CONFIGURATION_TYPE),
       ]], 'singleton');
       if (configure) {
         // See the addMetrics cast above for why this is needed.
@@ -135,8 +135,8 @@ export const ServiceManifestTracingAugmentations: AugmentationSet2<DefaultManife
 // OPEN receiver: register both sets against di.core's `Manifest` type. The
 // `DefaultManifest` decorated `@augment(typefor<Manifest>())` in di.core pulls
 // `addMetrics`/`addTracing` onto its prototype.
-registerAugmentations(tokenfor<Manifest>(), ServiceManifestMetricsAugmentations);
-registerAugmentations(tokenfor<Manifest>(), ServiceManifestTracingAugmentations);
+registerAugmentations(typefor<Manifest>(), ServiceManifestMetricsAugmentations);
+registerAugmentations(typefor<Manifest>(), ServiceManifestTracingAugmentations);
 
 // Wholesale re-export of this family's own core (the IMetricsBuilder/
 // ITracingBuilder abstractions, the rule/options data model, and the tokens),
@@ -164,7 +164,7 @@ export { MetricsConfigureOptions } from './metrics/config/MetricsConfigureOption
 export { TracingConfigureOptions } from './tracing/config/TracingConfigureOptions';
 
 // The per-listener configuration factories. `addMetrics`/`addTracing` register
-// the concrete factory at METRICS/TRACING_LISTENER_CONFIGURATION_FACTORY_TOKEN;
+// the concrete factory at METRICS/TRACING_LISTENER_CONFIGURATION_FACTORY_TYPE;
 // a consumer resolves it as IMetricListenerConfigFactory /
 // ActivityListenerConfigFactory and asks for a listener's merged view.
 // The concrete factories and the Metrics/TracingConfig markers are exposed here

@@ -2,14 +2,14 @@
 // builder-level `addFilter` routes through the options-configure pipeline — the
 // port of the reference's `builder.Services.Configure<LoggerFilterOptions>(...)`
 // bridge. Each call registers a configure step against
-// LOGGER_FILTER_OPTIONS_TOKEN; the steps materialize when the consumer registers
+// LOGGER_FILTER_OPTIONS_TYPE; the steps materialize when the consumer registers
 // the `IOptions<LoggerFilterOptions>` assembly for the same token (`addOptions`)
 // and resolves it. Covers both dual-export forms, both overload shapes, rule
 // accumulation across calls, and chaining.
 
 import '@rhombus-std/di';
-import { DefaultManifest, Type } from '@rhombus-std/di.core';
-import { FilterLoggingBuilderExtensions, LOGGER_FILTER_OPTIONS_TOKEN, LoggerFilterOptions,
+import { DefaultManifest } from '@rhombus-std/di.core';
+import { FilterLoggingBuilderExtensions, LOGGER_FILTER_OPTIONS_TYPE, LoggerFilterOptions,
   LoggingBuilder } from '@rhombus-std/logging';
 import type { ILoggingBuilder } from '@rhombus-std/logging.core';
 import { LogLevel } from '@rhombus-std/logging.core';
@@ -27,11 +27,11 @@ import { describe, expect, test } from 'bun:test';
  * configure steps — only the one the builder now holds does.
  */
 function resolveFilterOptions(builder: ILoggingBuilder): LoggerFilterOptions {
-  const services = builder.services.addOptions(LOGGER_FILTER_OPTIONS_TOKEN, () => new LoggerFilterOptions()).as(
+  const services = builder.services.addOptions(LOGGER_FILTER_OPTIONS_TYPE, () => new LoggerFilterOptions()).as(
     'singleton',
   );
   const provider = services.build().createScope('singleton');
-  const options: IOptions<LoggerFilterOptions> = provider.getRequiredService(Type.from(LOGGER_FILTER_OPTIONS_TOKEN));
+  const options: IOptions<LoggerFilterOptions> = provider.getRequiredService(LOGGER_FILTER_OPTIONS_TYPE);
   return options.value;
 }
 
