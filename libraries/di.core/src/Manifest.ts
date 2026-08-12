@@ -1,6 +1,6 @@
 // DO NOT ADD MEMBERS TO THE TYPES IN THIS FILE
 
-import { augment, IterableObject } from '@rhombus-std/primitives';
+import { augment } from '@rhombus-std/primitives';
 import { typefor } from '@rhombus-std/primitives.extras';
 import { ServiceDescriptor } from './ServiceDescriptor';
 

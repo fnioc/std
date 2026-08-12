@@ -15,7 +15,6 @@
 // an idempotent re-bind, but not deduped.
 
 import type { Manifest } from '@rhombus-std/di.core';
-import type { IOptions } from '@rhombus-std/options';
 import { changeTokenSourceType, configureStepType } from '@rhombus-std/options.augmentations';
 import { Type } from '@rhombus-std/primitives';
 import { loggerProviderConfigType } from './ILoggerProviderConfig';

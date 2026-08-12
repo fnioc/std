@@ -1,6 +1,5 @@
 // The `addCommandLine` sugar on the configuration builder.
 
-import type { ConfigBuilder } from '@rhombus-std/config';
 import type { IConfigBuilder, IndexedSection } from '@rhombus-std/config.core';
 import { type AugmentationSet2, type Flatten, registerAugmentations } from '@rhombus-std/primitives';
 import { typefor } from '@rhombus-std/primitives.extras';

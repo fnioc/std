@@ -18,7 +18,6 @@ import type { IConfigBuilder } from '@rhombus-std/config.core';
 import { EnvironmentVariablesConfigSource } from '@rhombus-std/config.env';
 import { JsonConfigSource } from '@rhombus-std/config.json';
 import type { ServiceProviderOptions } from '@rhombus-std/di';
-import { DefaultManifest } from '@rhombus-std/di.core';
 import type { Manifest } from '@rhombus-std/di.core';
 import { HostDefaults, HostEnvironmentEnvAugmentations, type IHostEnvironment } from '@rhombus-std/hosting.core';
 import { LoggingBuilder, LoggingBuilderProviderAugmentations } from '@rhombus-std/logging';

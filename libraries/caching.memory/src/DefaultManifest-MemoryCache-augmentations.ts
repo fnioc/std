@@ -20,7 +20,6 @@ import '@rhombus-std/options.augmentations';
 import type { DefaultManifest, IServiceProvider, Manifest } from '@rhombus-std/di.core';
 import { RESOLVER_TYPE } from '@rhombus-std/di.core';
 import type { ILoggerFactory } from '@rhombus-std/logging.core';
-import type { IOptions } from '@rhombus-std/options';
 import { type AugmentationSet2, registerAugmentations, Type } from '@rhombus-std/primitives';
 import { typefor } from '@rhombus-std/primitives.extras';
 import type { Func } from '@rhombus-toolkit/func';

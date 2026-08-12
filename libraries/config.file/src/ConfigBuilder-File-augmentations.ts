@@ -3,7 +3,6 @@
 // Both live in the builder's shared `properties` bag, so a source picks them up
 // through the plain IConfigBuilder it is handed at build time.
 
-import type { ConfigBuilder } from '@rhombus-std/config';
 import type { IConfigBuilder, IndexedSection } from '@rhombus-std/config.core';
 import type { IFileProvider } from '@rhombus-std/fileproviders.core';
 import { PhysicalFileProvider } from '@rhombus-std/fileproviders.physical';

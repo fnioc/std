@@ -14,9 +14,9 @@ import type { ServiceProviderOptions } from '@rhombus-std/di';
 import { type IServiceProvider, RESOLVER_TYPE } from '@rhombus-std/di.core';
 import type { IMetricsBuilder } from '@rhombus-std/diagnostics.core';
 import { HOST_APPLICATION_LIFETIME_TYPE, type HostBuilderContext, HostDefaults, HostLifecycleAugmentations,
-  type IHostApplicationLifetime, type IHostBuilder, type IHostEnvironment } from '@rhombus-std/hosting.core';
+  type IHostBuilder } from '@rhombus-std/hosting.core';
 import { LOGGER_FACTORY_TYPE, LoggingBuilder } from '@rhombus-std/logging';
-import type { ILoggerFactory, ILoggingBuilder } from '@rhombus-std/logging.core';
+import type { ILoggingBuilder } from '@rhombus-std/logging.core';
 import { Type } from '@rhombus-std/primitives';
 import { type AbortSignal, type AugmentationSet2, type Flatten, registerAugmentations } from '@rhombus-std/primitives';
 import { typefor } from '@rhombus-std/primitives.extras';

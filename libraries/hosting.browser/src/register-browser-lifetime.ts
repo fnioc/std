@@ -8,9 +8,8 @@
 import { type IServiceProvider, RESOLVER_TYPE } from '@rhombus-std/di.core';
 import type { Manifest } from '@rhombus-std/di.core';
 import { HOST_LIFETIME_TYPE } from '@rhombus-std/hosting';
-import { HOST_APPLICATION_LIFETIME_TYPE, type IHostApplicationLifetime } from '@rhombus-std/hosting.core';
+import { HOST_APPLICATION_LIFETIME_TYPE } from '@rhombus-std/hosting.core';
 import { LOGGER_FACTORY_TYPE } from '@rhombus-std/logging';
-import type { ILoggerFactory } from '@rhombus-std/logging.core';
 import { Type } from '@rhombus-std/primitives';
 import { BrowserLifetime } from './BrowserLifetime';
 import type { BrowserLifetimeOptions } from './BrowserLifetimeOptions';

@@ -4,7 +4,6 @@
 // its sugar method is installed through the same augmentation path the external
 // provider packages use: ConfigBuilder itself carries no add* sugar of its own.
 
-import type { ConfigBuilder } from '@rhombus-std/config';
 import type { IConfigBuilder, IndexedSection } from '@rhombus-std/config.core';
 import { type AugmentationSet2, type Flatten, registerAugmentations } from '@rhombus-std/primitives';
 import { typefor } from '@rhombus-std/primitives.extras';
