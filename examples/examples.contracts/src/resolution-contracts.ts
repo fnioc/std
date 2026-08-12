@@ -105,6 +105,4 @@ export interface IExchangeRates {
  */
 export interface IPaymentRouter {
   checkout(order: CheckoutOrder): string;
-  /** Every payment method currently wired up — a KEYED PLURAL scan of one token's key-space. */
-  configuredMethods(): readonly string[];
 }

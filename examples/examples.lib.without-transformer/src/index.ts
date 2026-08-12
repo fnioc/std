@@ -19,14 +19,13 @@
 // it moved.
 //
 // What library code here DOES do with a container, it does only to something it
-// was handed. Three functions in `./manifest-surface-demo.ts` take one narrow
-// face of a provider apiece (`IServiceQuery`, `IRequiredResolver`,
-// `IScopeFactory`) and one of them opens a per-request frame, because that is
-// what those di.core interfaces exist for and library code is what asks for
-// them. `LocatorGreetingWorkshop` takes the whole `IResolver` and is labelled
-// the discouraged shape wherever it appears. The line is not "never touch a
-// provider" — it is "never REACH for one": every provider that reaches this
-// package arrived as a parameter somebody else filled.
+// was handed. `MethodIsConfigured` and `PaymentRouter` take an
+// `IServiceProvider` because the key they look up does not exist until an order
+// arrives, and each says so at its own definition; `LocatorGreetingWorkshop`
+// takes one for no such reason and is labelled the discouraged shape wherever it
+// appears. The line is not "never touch a provider" — it is "never REACH for
+// one": every provider that reaches this package arrived as a parameter somebody
+// else filled.
 
 // ── the library's front door ─────────────────────────────────────────────────
 
@@ -45,27 +44,24 @@ export { addCheckoutServices, AmountIsPositive, AuditTrail, CardGateway, CHECKOU
   InvoiceGateway, MethodIsConfigured, PaymentRouter, Receipt, ReceiptNumbering, TotalWithinLimit,
   WalletGateway } from './resolution-checkout-services.js';
 
-// The library-author infrastructure surface: the `IServiceManifestHolder`
+// The library-author infrastructure surface: the manifest-slot
 // configure-callback seam, the AD-HOC FACTORY PARAMETER that is why a library
-// never needs the provider, the discouraged locator twin it is compared against,
-// and `EmptyServiceProvider` — the one provider a library can hold, because it
-// holds nothing.
-export { demonstrateNullProvider } from './infrastructure-demo.js';
+// never needs the provider, and the discouraged locator twin it is compared
+// against.
 export { addGreetingWorkshop, GREETING_WORKSHOP_TOKEN, GreetingCard, GreetingWorkshop, GreetingWorkshopBuilder,
   LOCATOR_GREETING_WORKSHOP_TOKEN, LocatorGreetingWorkshop, PlainStationery,
   WorkshopGreeting } from './infrastructure-greeting-workshop.js';
 export type { ICardRecipient, ICardStationery, IGreetingWorkshopBuilder } from './infrastructure-greeting-workshop.js';
 
-// The three DIALECT-INDEPENDENT chapters. None of them has a type-driven form to
-// have a twin of — an error class, a token string and a manifest's own data
-// structure are all the same in either dialect — so both example apps run these
-// rather than a with-transformer mirror, and their header lines say so.
+// The DIALECT-INDEPENDENT chapter: an error class has no type-driven form to
+// have a twin of, so both example apps run this one rather than a
+// with-transformer mirror, and their header lines say so.
 
 // The error taxonomy, CLASSIFIED. Every class the container can throw is a
 // di.core export, so the whole branch table fits here — `diagnose` reads any of
 // them, `describeDiError` answers the cheaper "is this ours at all". What a
-// library cannot do is PROVOKE most of them, since that takes a built container,
-// so each app stages those and calls back in through `stagedFailure`. The two
-// registration-time failures throw from the registration call itself and need
-// nothing built, so they are staged here.
+// library cannot do is PROVOKE them, since that takes a built container, so each
+// app stages them and calls back in through `stagedFailure`. The manifest's own
+// argument checking throws from the registration call and needs nothing built,
+// so that one staging lives here — marking where the taxonomy stops.
 export { demonstrateRegistrationErrors, describeDiError, diagnose, stagedFailure } from './errors-demo.js';

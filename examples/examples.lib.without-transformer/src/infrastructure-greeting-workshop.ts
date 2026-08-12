@@ -26,7 +26,7 @@
 // infrastructure-greeting-workshop.ts`: the same scenario, the same output, the
 // type-driven dialect. Diff them to see exactly what the transformer removes.
 
-import { RESOLVER_TYPE, union } from '@rhombus-std/di.core';
+import { RESOLVER_TYPE, Type } from '@rhombus-std/di.core';
 import type { IServiceProvider, Manifest } from '@rhombus-std/di.core';
 import type { IGreeting } from '@rhombus-std/examples.contracts';
 
@@ -37,27 +37,28 @@ interface ManifestSlot<S extends string> {
   services: Manifest<S>;
 }
 
-// ── tokens ───────────────────────────────────────────────────────────────────
+// ── types ────────────────────────────────────────────────────────────────────
 
 // Hand-written in the same `<import-specifier>:<exported-name>` form
-// `@rhombus-std/di.extras` derives, exactly as `./tokens.ts` does. These are
-// LOCAL to this demo — nothing outside it registers or resolves them — so they
-// only have to agree with each other. `GREETING_TOKEN` is re-used from
-// `./tokens.js` because the workshop registers a real `IGreeting` and the card
-// resolves it back through the same slot.
+// `@rhombus-std/di.extras` derives, exactly as `./tokens.ts` does, and read into
+// a `Type` here because the slots below compose them — a union, a callable —
+// rather than only naming them. These are LOCAL to this demo, so they only have
+// to agree with each other. `GREETING_TOKEN` is re-used from `./tokens.js`
+// because the workshop registers a real `IGreeting` and the card resolves it
+// back through the same slot.
 
 /**
  * The per-card recipient. Deliberately NEVER registered: it is an argument, not
  * a service, and that is the whole point of the factory below — a slot the
  * container cannot fill has to come from the caller.
  */
-const CARD_RECIPIENT_TOKEN = '@rhombus-std/examples.lib.without-transformer:ICardRecipient';
+const CARD_RECIPIENT_TYPE = Type.from('@rhombus-std/examples.lib.without-transformer:ICardRecipient');
 
 /** The card stationery. Registered only when the consuming app chooses to override it. */
-const CARD_STATIONERY_TOKEN = '@rhombus-std/examples.lib.without-transformer:ICardStationery';
+const CARD_STATIONERY_TYPE = Type.from('@rhombus-std/examples.lib.without-transformer:ICardStationery');
 
 /** One rendered card. Registered, but never resolved directly — see {@link GreetingWorkshop}. */
-const GREETING_CARD_TOKEN = '@rhombus-std/examples.lib.without-transformer:GreetingCard';
+const GREETING_CARD_TYPE = Type.from('@rhombus-std/examples.lib.without-transformer:GreetingCard');
 
 /** The workshop service itself — the one thing this library registers unconditionally. */
 export const GREETING_WORKSHOP_TOKEN = '@rhombus-std/examples.lib.without-transformer:GreetingWorkshop';
@@ -128,27 +129,27 @@ export class GreetingCard {
  * up when one is wanted. The correct answer is the constructor below: ASK FOR
  * THE CALLABLE. Both dependencies come in as ordinary parameters —
  *
- *   - `mintCard` is an ad-hoc FACTORY. The registration's slot is
- *     `{ type: GREETING_CARD_TOKEN, params: [CARD_RECIPIENT_TOKEN] }`: `params`
- *     names the tokens the CALLER supplies, and every other slot in the target's
- *     signature is resolved from the container as usual. So the container hands
- *     over a `(recipient) => GreetingCard` already wired to the app's greeting,
- *     and the recipient — which no registration stands behind, and none should —
- *     arrives per call. A parameterized factory deliberately does not cache: the
+ *   - `mintCard` is an ad-hoc FACTORY. The registration's slot is a CALLABLE
+ *     type, `Type.func(GREETING_CARD_TYPE, CARD_RECIPIENT_TYPE)`: the return
+ *     type is what the callable produces, and its argument types are the ones
+ *     the CALLER supplies, so every other slot in the target's signature is
+ *     resolved from the container as usual. The container hands over a
+ *     `(recipient) => GreetingCard` already wired to the app's greeting, and the
+ *     recipient — which no registration stands behind, and none should — arrives
+ *     per call. A parameterized factory deliberately does not cache: the
  *     arguments differ every time, so a fresh card is the only correct answer.
  *
- *   - `stationery` is OPTIONAL, spelled as the union of its token with a literal
- *     `undefined`. The union tries its members in order and the literal always
- *     resolves, so an app that registered stationery gets it and an app that did
- *     not gets `undefined` — absence as a legitimate deployment shape rather than
- *     a wiring bug.
+ *   - `stationery` is OPTIONAL, spelled as the union of its type with a literal
+ *     `undefined`. A literal is the union's FALLBACK rather than a competitor,
+ *     so an app that registered stationery gets it and an app that did not gets
+ *     `undefined` — absence as a legitimate deployment shape rather than a
+ *     wiring bug.
  *
  * What this buys, and it is not stylistic. The class's real dependencies are
  * visible in its own signature; a test constructs it with two plain values and
  * no container at all; the wiring mistakes that a locator defers to the first
- * `card()` call now surface when the workshop is built; and the lazy
- * `#mintCard ??=` memo an earlier version needed is simply gone, because the
- * container did the work once at construction.
+ * `card()` call surface when the workshop is built; and there is no memo to
+ * keep, because the container worked the slot plan out once at construction.
  *
  * Compare with {@link LocatorGreetingWorkshop} below, which is this class
  * rewritten the wrong way.
@@ -201,15 +202,15 @@ export class GreetingWorkshop {
  * request that happened to need one.
  *
  * The verbs it uses are all perfectly good verbs — this is not a lesson about
- * `resolveFactory` or `tryResolve` being wrong. It is a lesson about WHERE they
+ * `resolveFactory` or `getService` being wrong. It is a lesson about WHERE they
  * belong: at a composition root, which knows what it is composing, rather than
  * inside a library, which does not.
  *
- * There is exactly one thing it can do that the class above cannot, and this
- * demo uses it for that alone: it CONSTRUCTS against a provider that holds no
- * cards at all — see `demonstrateNullProvider` — because it defers every lookup.
- * A class whose factory slot is filled at construction cannot be built against an
- * empty provider, which is the good failure, at the honest moment.
+ * There is exactly one thing it can do that the class above cannot: it
+ * CONSTRUCTS against a provider that holds no cards at all, because it defers
+ * every lookup. A class whose factory slot is filled at construction cannot be
+ * built against such a provider, which is the good failure, at the honest
+ * moment.
  */
 export class LocatorGreetingWorkshop {
   readonly #resolver: IServiceProvider;
@@ -224,8 +225,8 @@ export class LocatorGreetingWorkshop {
   #mintCard: ((recipient: ICardRecipient) => GreetingCard) | undefined;
 
   /**
-   * `tryResolve` + `??` is the whole "use the app's registration if there is one,
-   * otherwise build my default" idiom: `tryResolve` is the verb whose miss is
+   * `getService` + `??` is the whole "use the app's registration if there is one,
+   * otherwise build my default" idiom: `getService` is the verb whose miss is
    * `undefined` rather than a throw. The union slot on the good class expresses
    * exactly this, declaratively.
    */
@@ -233,27 +234,28 @@ export class LocatorGreetingWorkshop {
 
   public constructor(resolver: IServiceProvider) {
     this.#resolver = resolver;
-    this.stationery = resolver.tryResolve<ICardStationery>(CARD_STATIONERY_TOKEN) ?? new PlainStationery();
+    this.stationery = (resolver.getService(CARD_STATIONERY_TYPE) as ICardStationery | undefined)
+      ?? new PlainStationery();
   }
 
   /**
-   * `resolveFactory(token, params)` IS the partition, done imperatively: `params`
-   * names the tokens the CALLER supplies, and every other slot in the target's
+   * `resolveFactory(type, params)` IS the partition, done imperatively: `params`
+   * names the types the CALLER supplies, and every other slot in the target's
    * signature resolves from the container. Call arguments line up with the
-   * `params` list in order, so `[CARD_RECIPIENT_TOKEN]` means "argument 1 is the
+   * `params` list in order, so `[CARD_RECIPIENT_TYPE]` means "argument 1 is the
    * recipient" — the same plan the good class receives as a constructor
    * parameter, except stated here in a method body where nothing can check it.
    */
   public card(name: string): string {
-    this.#mintCard ??= this.#resolver.resolveFactory<(recipient: ICardRecipient) => GreetingCard>(GREETING_CARD_TOKEN, [
-      CARD_RECIPIENT_TOKEN,
-    ]);
+    this.#mintCard ??= this.#resolver.resolveFactory(GREETING_CARD_TYPE, [CARD_RECIPIENT_TYPE]) as (
+      recipient: ICardRecipient,
+    ) => GreetingCard;
     return this.#mintCard({ name }).render(this.stationery.border);
   }
 
   /** Whether the app registered its own stationery, asked of the container rather than known. */
   public get stationeryIsOverridden(): boolean {
-    return this.#resolver.isService(CARD_STATIONERY_TOKEN);
+    return this.#resolver.isService(CARD_STATIONERY_TYPE);
   }
 }
 
@@ -306,7 +308,7 @@ export class GreetingWorkshopBuilder<S extends string> implements IGreetingWorks
   }
 
   public useStationery(stationery: ICardStationery): IGreetingWorkshopBuilder {
-    this.#holder.services = this.#holder.services.addValue(CARD_STATIONERY_TOKEN, stationery);
+    this.#holder.services = this.#holder.services.addValue(CARD_STATIONERY_TYPE, stationery);
     return this;
   }
 }
@@ -331,15 +333,17 @@ export function addGreetingWorkshop<S extends string>(services: Manifest<S | 'si
   // something built fresh per recipient. Its second slot names a token nothing
   // ever registers; that slot is the caller's, and the factory slot below is
   // what hands it over.
-  holder.services = holder.services.addClass(GREETING_CARD_TOKEN, GreetingCard, [[GREETING_TOKEN,
-    CARD_RECIPIENT_TOKEN]]);
+  holder.services = holder.services.addClass(GREETING_CARD_TYPE, GreetingCard, [[GREETING_TOKEN, CARD_RECIPIENT_TYPE]]);
 
   // The workshop itself goes on last so a consumer cannot forget it. Its whole
   // dependency plan is right here, in the signature, where the container can
-  // check it: a FACTORY slot for the card (with the recipient marked
-  // caller-supplied) and an OPTIONAL stationery slot.
-  holder.services = holder.services.addClass(GREETING_WORKSHOP_TOKEN, GreetingWorkshop, [[{ type: GREETING_CARD_TOKEN,
-    params: [CARD_RECIPIENT_TOKEN] }, union(CARD_STATIONERY_TOKEN, { value: undefined })]], 'singleton');
+  // check it: a CALLABLE slot for the card (whose argument types are the
+  // caller's half) and an OPTIONAL stationery slot, spelled as the union of the
+  // stationery with a literal `undefined` that always resolves.
+  holder.services = holder.services.addClass(GREETING_WORKSHOP_TOKEN, GreetingWorkshop, [[
+    Type.func(GREETING_CARD_TYPE, CARD_RECIPIENT_TYPE),
+    Type.union(CARD_STATIONERY_TYPE, Type.typeLiteral(undefined)),
+  ]], 'singleton');
 
   // The discouraged twin, registered beside it so a reader can resolve both and
   // watch them produce identical cards from very different constructors. The
@@ -352,10 +356,3 @@ export function addGreetingWorkshop<S extends string>(services: Manifest<S | 'si
   ]], 'singleton');
   return holder.services;
 }
-
-// The `IServiceProviderFactory` implementation this file used to carry lives with
-// the composition root now, in each example app. That is where it belongs: its
-// `createServiceProvider` calls `build()`, so it is the ENGINE's seam, and the
-// consumer of it is a HOST (`IHostBuilder.useServiceProviderFactory`), never a
-// library. The type itself is di.core's, so a library is free to be typed against
-// one — it just has no business implementing one.
