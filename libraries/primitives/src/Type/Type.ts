@@ -115,10 +115,12 @@ export namespace Type {
   export function collection(element: Type): NamedType {
     return factory.named('Iterable', 'global', [element]);
   }
+
   /** A constructor signature — `new (...args) => instanceType`, instance type first. */
   export function ctor(instanceType: Type, ...args: readonly Type[]): CtorType {
     return factory.ctor(instanceType, args);
   }
+
   /**
    * Reads a type token back into the {@link Type} it spells — the inverse of {@link stringify}.
    *
@@ -139,8 +141,10 @@ export namespace Type {
     parsed.set(token, type);
     return type;
   }
+
   /** Every token that has already been read, so a repeated request skips the lexer. */
   const parsed = new Map<string, Type>();
+
   /**
    * A function signature — `(...args) => returnType`, return type first.
    *
@@ -151,6 +155,7 @@ export namespace Type {
   export function func(returnType: Type, ...args: readonly Type[]): FunctionType {
     return factory.func(returnType, args);
   }
+
   /**
    * An intersection of the given members — satisfied only by satisfying all of them.
    *
@@ -162,6 +167,7 @@ export namespace Type {
   export function intersection(...types: readonly Type[]): Type {
     return factory.intersection(types);
   }
+
   /**
    * A type referenced by export name and home — parallel to `import { name } from '…'`, with
    * `'global'` naming the built-ins. Generic arguments name the constructed type `Name<Args>`.
@@ -169,6 +175,7 @@ export namespace Type {
   export function named(name: string, from: string = 'global', genericTypes: readonly Type[] = []): NamedType {
     return factory.named(name, from, genericTypes);
   }
+
   /**
    * A structural object type — each entry a member name and its type.
    *
@@ -178,6 +185,7 @@ export namespace Type {
   export function object(members: Readonly<Record<string, Type>>): ObjectType {
     return factory.object(members);
   }
+
   /**
    * A labeled hole standing for a type bound later — an open registration ranges over it, and
    * {@link substitute} or a successful {@link match} fills it.
@@ -185,6 +193,7 @@ export namespace Type {
   export function placeholder(label: string): PlaceholderType {
     return factory.placeholder(label);
   }
+
   /**
    * The given type wearing a tag — the address a keyed registration lives under. The same type
    * under a different tag is a different type.
@@ -192,14 +201,17 @@ export namespace Type {
   export function tag(type: Type, tag: string): TagType {
     return factory.tag(type, tag);
   }
+
   /** A fixed-length, ordered list of member types — `[A, B, C]`. */
   export function tuple(...types: readonly Type[]): TupleType {
     return factory.tuple(types);
   }
+
   /** A single literal value as a type — `'on'`, `42`, `true`, `null`. */
   export function typeLiteral(value: LiteralValue): TypeLiteralType {
     return factory.literal(value);
   }
+
   /**
    * A union of the given members — satisfied by satisfying any one of them.
    *
@@ -213,9 +225,11 @@ export namespace Type {
   export function union(...types: readonly Type[]): Type {
     return factory.union(types);
   }
+
   // #endregion
 
   // #region ops
+
   /**
    * Expands every union into the union-free alternatives it stands for — `(A | B, C)` becomes
    * `(A, C)` and `(B, C)`.
@@ -223,6 +237,7 @@ export namespace Type {
   export function expand(type: Type): readonly Type[] {
     return expandUnionsVisitor.visit(type);
   }
+
   /**
    * Does some instantiation of `pattern` extend `subject`? Success carries the instantiation —
    * one binding per placeholder label in the pattern.
@@ -230,6 +245,7 @@ export namespace Type {
   export function match(pattern: Type, subject: Type) {
     return matchType(pattern, subject);
   }
+
   /**
    * Does `proposed` satisfy `condition`? Success carries one binding per placeholder label in
    * the condition.
@@ -237,17 +253,21 @@ export namespace Type {
   export function satisfies(proposed: Type, condition: Type) {
     return satisfiesType(proposed, condition);
   }
+
   /** Writes the type as its token spelling — the inverse of {@link from}. */
   export function stringify(type: Type): string {
     return stringifyType(type);
   }
+
   /** Replaces each placeholder whose label the map names; other placeholders stay. */
   export function substitute(type: Type, substitutions: ReadonlyMap<string, Type>): Type {
     return substituteType(type, substitutions);
   }
+
   /** Everything malformed about the type, one message per finding — empty means well-formed. */
   export function validate(type: Type): readonly string[] {
     return typeValidatorVisitor.visit(type);
   }
+
   // #endregion
 }
