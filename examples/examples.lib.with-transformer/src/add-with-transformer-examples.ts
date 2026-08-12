@@ -28,13 +28,16 @@
 // violation read backwards. What a consumer still needs in order to RESOLVE is
 // the token agreement, and `./tokens.ts` publishes that.
 
+import { Type } from '@rhombus-std/di.core';
 import type { Manifest } from '@rhombus-std/di.core';
-// The type-driven MINT primitives, and the whole of what this dialect is:
-// `typefor<T>()` becomes the service type a hand author writes out, and
-// `signatureof(F)` becomes the slot arrays. Neither has a runtime footprint —
-// the build folds both and elides these imports along with them.
-import { signatureof } from '@rhombus-std/di.extras';
-import type { IBanner, IGreeting, IServerReport } from '@rhombus-std/examples.contracts';
+import type { GreetingPolicy, IBanner, IGreeting, IHealthCheck, IServerReport,
+  ServerOptions } from '@rhombus-std/examples.contracts';
+import type { IOptions } from '@rhombus-std/options';
+// The type-driven MINT primitive, and the whole of what this dialect is:
+// `typefor<T>()` becomes the service type a hand author writes out. It has no
+// runtime footprint — the build folds every call and elides this import with
+// them — so what survives into the shipped output is exactly what the manual
+// sibling wrote by hand.
 import { typefor } from '@rhombus-std/primitives.extras';
 
 import { fetchBanner } from './fetch-banner.js';
@@ -67,21 +70,24 @@ export function addWithTransformerExamples<S extends string>(
   // `IGreeting` — the same string the manual library writes out — so both
   // libraries' greetings land on one element type and a consumer asking for the
   // collection gets both.
-  services = services.addClass(typefor<IGreeting>(), FormalGreeting, signatureof(FormalGreeting), 'singleton');
+  services = services.addClass(typefor<IGreeting>(), FormalGreeting, [[]], 'singleton');
 
   // The banner, registered ONLY in its `Promise<…>` wrapper. Registering the
   // honest promise (rather than pretending an async fetch is a synchronous value)
   // is what makes an awaited resolution work and a plain one fail loudly — the
   // container never silently hands back an unsettled value.
-  services = services.addFactory(typefor<Promise<IBanner>>(), fetchBanner, signatureof(fetchBanner), 'singleton');
+  services = services.addFactory(typefor<Promise<IBanner>>(), fetchBanner, [[]], 'singleton');
 
-  // The report factory. Its four dependency slots are DERIVED from the function's
-  // parameter types — a collection, two closed generics and an optional union —
-  // which is the single densest piece of boilerplate the sugar removes anywhere
-  // in these examples. Compare `./server-report.ts`'s parameter list with what the
-  // manual dialect has to spell out slot by slot.
-  services = services.addFactory(typefor<IServerReport>(), makeServerReport, signatureof(makeServerReport),
-    'singleton');
+  // The report factory, and the densest slot list anywhere in these examples: a
+  // collection, two closed generics and an optional union. Every one is named by
+  // its TYPE rather than by a string — read it against `./server-report.ts`'s
+  // parameter list and the two line up one for one.
+  services = services.addFactory(typefor<IServerReport>(), makeServerReport, [[
+    typefor<IGreeting[]>(),
+    typefor<IOptions<ServerOptions>>(),
+    typefor<IOptions<GreetingPolicy>>(),
+    Type.union(typefor<IHealthCheck>(), Type.typeLiteral(undefined)),
+  ]], 'singleton');
 
   return services;
 }

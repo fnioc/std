@@ -11,8 +11,8 @@
 //   - the workshop's own registration + lookup are TOKENLESS here
 //     (`typefor<GreetingWorkshop>()` on both the registration and the lookup),
 //     because both sides derive the same type from the same declaration; and
-//   - the dependency signatures are MINTED from the constructors themselves —
-//     `signatureof(GreetingCard)` — instead of being written out as slot arrays.
+//   - every dependency slot is named by its TYPE — `typefor<IGreeting>()` —
+//     instead of by a hand-written token string.
 //
 // Everything else is identical, and deliberately so. Where a token names
 // something that has no type to derive from — a ctor arriving as a runtime
@@ -35,15 +35,13 @@
 // constructors side by side. The comparison IS the lesson; neither class is
 // interesting without the other.
 
-import { RESOLVER_TYPE } from '@rhombus-std/di.core';
+import { RESOLVER_TYPE, Type } from '@rhombus-std/di.core';
 import type { IServiceProvider, Manifest } from '@rhombus-std/di.core';
-// The type-driven dependency-signature MINT primitive. It has no runtime
-// footprint: the build lowers `signatureof(C)` to the slot arrays a hand author
-// would have written, and elides this import along with it.
-import { signatureof } from '@rhombus-std/di.extras';
 import type { IGreeting } from '@rhombus-std/examples.contracts';
-// `typefor<T>()` folds to the very `Type` the registration sugar derives, so a
-// lookup written from a type and a registration written from a type cannot drift.
+// `typefor<T>()` folds to the very `Type` a hand author writes out, so a lookup
+// written from a type and a registration written from a type cannot drift. It
+// has no runtime footprint — every call is folded and this import elided with
+// them.
 import { typefor } from '@rhombus-std/primitives.extras';
 
 /** The mutable slot a builder exposes so siblings share one manifest. */
@@ -117,19 +115,15 @@ export class GreetingCard {
 }
 
 /**
- * The card's dependency signatures, minted from its constructor's parameter
- * TYPES rather than written out as types.
- *
- * `signatureof(C)` reads the constructor itself — one inner array per overload —
- * and lowers to exactly the `[["…:IGreeting", "…:ICardRecipient"]]` the manual
- * dialect writes by hand.
+ * The card's dependency signature — one inner array per constructor overload,
+ * every slot named by its TYPE.
  *
  * Slot 0 derives `"@rhombus-std/examples.contracts:IGreeting"`, the same type the
  * workshop registers the greeting under. `ICardRecipient` derives one that is
  * never registered anywhere; that is the point — it can only ever be filled by
  * the caller.
  */
-const CARD_SIGNATURES = signatureof(GreetingCard);
+const CARD_SIGNATURES = [[typefor<IGreeting>(), typefor<ICardRecipient>()]];
 
 /**
  * The library's one real service, and the model citizen of the package: it mints
@@ -370,8 +364,10 @@ export function addGreetingWorkshop<S extends string>(services: Manifest<S | 'si
   // Registration sugar lowers in any expression context, not only at a module's
   // top level, which is what lets a library function like this one be authored
   // tokenlessly at all.
-  holder.services = holder.services.addClass(typefor<GreetingWorkshop>(), GreetingWorkshop,
-    signatureof(GreetingWorkshop), 'singleton');
+  holder.services = holder.services.addClass(typefor<GreetingWorkshop>(), GreetingWorkshop, [[
+    Type.func(typefor<GreetingCard>(), typefor<ICardRecipient>()),
+    Type.union(typefor<ICardStationery>(), Type.typeLiteral(undefined)),
+  ]], 'singleton');
 
   // The counter-example, at its own derived service type so a caller can resolve
   // both from one container and compare the cards. Its one slot is the intrinsic
