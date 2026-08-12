@@ -7,10 +7,10 @@
 import type { Signatures } from '@rhombus-std/di.core';
 import type { IConfigureOptions } from '@rhombus-std/options';
 import { type AugmentationSet2, type Flatten, registerAugmentations } from '@rhombus-std/primitives';
-import { tokenfor } from '@rhombus-std/primitives.extras';
+import { typefor } from '@rhombus-std/primitives.extras';
 import type { Ctor, Func } from '@rhombus-toolkit/func';
 
-import { METRICS_CONFIGURE_TOKEN, METRICS_LISTENER_TOKEN } from '../tokens';
+import { METRICS_CONFIGURE_TYPE, METRICS_LISTENER_TYPE } from '../types';
 import type { IMetricsBuilder } from './IMetricsBuilder';
 import { METER_SCOPE_ALL, MeterScope } from './MeterScope';
 import type { IMetricsListener } from './metrics-listener';
@@ -47,23 +47,22 @@ declare module '@rhombus-std/diagnostics.core' {
   interface IMetricsBuilder extends IMetricsBuilderAugmentations {}
 }
 
-/** Registers a `IConfigureOptions<MetricsOptions>` step at `token` that runs `apply`. */
+/** Registers a `IConfigureOptions<MetricsOptions>` step that runs `apply`. */
 function configureMetrics(builder: IMetricsBuilder, apply: Func<[options: MetricsOptions], void>): IMetricsBuilder {
   const step: IConfigureOptions<MetricsOptions> = { configure(options: MetricsOptions): void {
     apply(options);
   } };
-  const token: string = METRICS_CONFIGURE_TOKEN;
-  builder.services = builder.services.addValue(token, step);
+  builder.services = builder.services.addValue(METRICS_CONFIGURE_TYPE, step);
   return builder;
 }
 
 export const MetricsBuilderAugmentations: AugmentationSet2<IMetricsBuilder, Flatten<IMetricsBuilderAugmentations>> = {
   addMetricsListener(builder, listener) {
-    builder.services = builder.services.addValue(METRICS_LISTENER_TOKEN, listener);
+    builder.services = builder.services.addValue(METRICS_LISTENER_TYPE, listener);
     return builder;
   },
   addMetricsListenerType(builder, ctor, signatures) {
-    builder.services = builder.services.addClass(METRICS_LISTENER_TOKEN, ctor, signatures);
+    builder.services = builder.services.addClass(METRICS_LISTENER_TYPE, ctor, signatures);
     return builder;
   },
   clearMetricsListeners(builder) {
@@ -75,7 +74,7 @@ export const MetricsBuilderAugmentations: AugmentationSet2<IMetricsBuilder, Flat
     // overload surface `Manifest` carries pushes TS's relationship
     // check past its recursion budget, which it resolves as "not assignable"
     // rather than re-deriving the true relationship.
-    builder.services = builder.services.removeAll(METRICS_LISTENER_TOKEN) as typeof builder.services;
+    builder.services = builder.services.removeAll(METRICS_LISTENER_TYPE) as typeof builder.services;
     return builder;
   },
   enableMetrics(builder, meterName, instrumentName, listenerName, scopes = METER_SCOPE_ALL) {
@@ -90,4 +89,4 @@ export const MetricsBuilderAugmentations: AugmentationSet2<IMetricsBuilder, Flat
   },
 };
 
-registerAugmentations(tokenfor<IMetricsBuilder>(), MetricsBuilderAugmentations);
+registerAugmentations(typefor<IMetricsBuilder>(), MetricsBuilderAugmentations);

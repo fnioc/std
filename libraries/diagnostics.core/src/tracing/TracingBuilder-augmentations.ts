@@ -10,10 +10,10 @@
 
 import type { IConfigureOptions } from '@rhombus-std/options';
 import { type AugmentationSet2, type Flatten, registerAugmentations } from '@rhombus-std/primitives';
-import { tokenfor } from '@rhombus-std/primitives.extras';
+import { typefor } from '@rhombus-std/primitives.extras';
 import type { Func } from '@rhombus-toolkit/func';
 
-import { TRACING_CONFIGURE_TOKEN, TRACING_LISTENER_TOKEN } from '../tokens';
+import { TRACING_CONFIGURE_TYPE, TRACING_LISTENER_TYPE } from '../types';
 import { ActivityListenerBuilder } from './ActivityListenerBuilder';
 import { ACTIVITY_SOURCE_SCOPES_ALL, ActivitySourceScopes } from './ActivitySourceScopes';
 import type { ITracingBuilder } from './ITracingBuilder';
@@ -50,7 +50,7 @@ function configureTracing(builder: ITracingBuilder, apply: Func<[options: Tracin
   const step: IConfigureOptions<TracingOptions> = { configure(options: TracingOptions): void {
     apply(options);
   } };
-  builder.services = builder.services.addValue(TRACING_CONFIGURE_TOKEN, step);
+  builder.services = builder.services.addValue(TRACING_CONFIGURE_TYPE, step);
   return builder;
 }
 
@@ -61,14 +61,14 @@ export const TracingBuilderAugmentations: AugmentationSet2<ITracingBuilder, Flat
     }
     const listenerBuilder = new ActivityListenerBuilder(name);
     configure(listenerBuilder);
-    builder.services = builder.services.addValue(TRACING_LISTENER_TOKEN, listenerBuilder);
+    builder.services = builder.services.addValue(TRACING_LISTENER_TYPE, listenerBuilder);
     return builder;
   },
   clearTracingListeners(builder) {
     // See the sibling MetricsBuilder-augmentations.ts `clearMetricsListeners`
     // comment: the cast works around a TS structural-comparison depth limit on
     // `Manifest`'s large overload surface, not a real type error.
-    builder.services = builder.services.removeAll(TRACING_LISTENER_TOKEN) as typeof builder.services;
+    builder.services = builder.services.removeAll(TRACING_LISTENER_TYPE) as typeof builder.services;
     return builder;
   },
   enableTracing(builder, sourceName, operationName, listenerName, scopes = ACTIVITY_SOURCE_SCOPES_ALL) {
@@ -83,4 +83,4 @@ export const TracingBuilderAugmentations: AugmentationSet2<ITracingBuilder, Flat
   },
 };
 
-registerAugmentations(tokenfor<ITracingBuilder>(), TracingBuilderAugmentations);
+registerAugmentations(typefor<ITracingBuilder>(), TracingBuilderAugmentations);

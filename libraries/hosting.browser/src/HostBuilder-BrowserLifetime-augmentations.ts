@@ -3,7 +3,7 @@
 //
 // OPEN receiver: `IHostBuilder` is owned by hosting.core and extended across
 // packages, so this const registers into the augmentation registry under the
-// shared `tokenfor<IHostBuilder>()` token (alongside hosting.core's `startHost`
+// shared `typefor<IHostBuilder>()` token (alongside hosting.core's `startHost`
 // and hosting's runtime members); the `@augment`-decorated concrete
 // `HostBuilder` (in @rhombus-std/hosting) pulls it onto its prototype. The
 // interface-side merge for THIS const's member lives here beside it, targeting
@@ -16,7 +16,7 @@
 
 import type { IHostBuilder } from '@rhombus-std/hosting.core';
 import { type AugmentationSet2, type Flatten, registerAugmentations } from '@rhombus-std/primitives';
-import { tokenfor } from '@rhombus-std/primitives.extras';
+import { typefor } from '@rhombus-std/primitives.extras';
 import type { Func } from '@rhombus-toolkit/func';
 import { BrowserLifetimeOptions } from './BrowserLifetimeOptions';
 import { registerBrowserLifetime } from './register-browser-lifetime';
@@ -50,4 +50,4 @@ export const HostBuilderBrowserLifetimeAugmentations: AugmentationSet2<IHostBuil
     },
   };
 
-registerAugmentations(tokenfor<IHostBuilder>(), HostBuilderBrowserLifetimeAugmentations);
+registerAugmentations(typefor<IHostBuilder>(), HostBuilderBrowserLifetimeAugmentations);

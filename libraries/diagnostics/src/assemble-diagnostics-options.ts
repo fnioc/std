@@ -1,4 +1,4 @@
-import { collectionToken } from '@rhombus-std/diagnostics.core';
+import { collectionType } from '@rhombus-std/diagnostics.core';
 import { type IConfigureOptions, type IOptions, Options } from '@rhombus-std/options';
 import type { IOptionsChangeTokenSource } from '@rhombus-std/options.augmentations';
 import { type IServiceProvider, Type } from '@rhombus-std/primitives';
@@ -9,22 +9,22 @@ import { CompositeChangeToken } from './CompositeChangeToken';
 /**
  * Assembles the `IOptions<T>` for a diagnostics options type: resolves every
  * `IConfigureOptions<T>` step and `IOptionsChangeTokenSource` registered at
- * `configureToken`/`sourceToken`, builds `T` by running the steps over a fresh
+ * `configureType`/`sourceType`, builds `T` by running the steps over a fresh
  * base, and returns a reactive `IOptions<T>` that re-runs the build whenever a
  * source reports a change — or a static snapshot if no source is registered.
  *
  * @param resolver The live provider view (injected as the factory's `IServiceProvider`).
- * @param configureToken The collection slot holding the `IConfigureOptions<T>` steps.
- * @param sourceToken The collection slot holding the change-token sources.
+ * @param configureType The collection slot holding the `IConfigureOptions<T>` steps.
+ * @param sourceType The collection slot holding the change-token sources.
  * @param makeBase Produces the base instance each build starts from.
  */
-export function assembleDiagnosticsOptions<T>(resolver: IServiceProvider, configureToken: string, sourceToken: string,
+export function assembleDiagnosticsOptions<T>(resolver: IServiceProvider, configureType: Type, sourceType: Type,
   makeBase: Func<[], T>): IOptions<T> {
   const steps: ReadonlyArray<IConfigureOptions<T>> = resolver.getRequiredService(
-    Type.from(collectionToken(configureToken)),
+    collectionType(configureType),
   );
   const sources: ReadonlyArray<IOptionsChangeTokenSource> = resolver.getRequiredService(
-    Type.from(collectionToken(sourceToken)),
+    collectionType(sourceType),
   );
 
   const build = (): T => {

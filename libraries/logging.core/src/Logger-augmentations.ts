@@ -14,7 +14,7 @@
 
 import { type AugmentationSet2, type Flatten, type MergeStrategies,
   registerAugmentations } from '@rhombus-std/primitives';
-import { tokenfor, typefor } from '@rhombus-std/primitives.extras';
+import { typefor } from '@rhombus-std/primitives.extras';
 import { EventId } from './EventId';
 import { formatLogValues, FormattedLogValues } from './formatted-log-values';
 import type { ILogger } from './ILogger';

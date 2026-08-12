@@ -6,7 +6,7 @@
 // decorator in `@rhombus-std/di.core`.
 //
 // Every hosted service registers under the one shared
-// {@link HOSTED_SERVICE_TOKEN} as a singleton, and the host resolves the
+// {@link HOSTED_SERVICE_TYPE} as a singleton, and the host resolves the
 // whole set via the collection wrapper token.
 
 // Named imports: unqualified names in a `declare module` body resolve in THIS
@@ -15,10 +15,10 @@
 import { type DefaultManifest, type IServiceProvider, type Manifest, RESOLVER_TYPE,
   type Signatures } from '@rhombus-std/di.core';
 import { type AugmentationSet2, registerAugmentations } from '@rhombus-std/primitives';
-import { tokenfor } from '@rhombus-std/primitives.extras';
+import { typefor } from '@rhombus-std/primitives.extras';
 import type { Ctor, Func } from '@rhombus-toolkit/func';
 import type { IHostedService } from './IHostedService';
-import { HOSTED_SERVICE_TOKEN } from './tokens';
+import { HOSTED_SERVICE_TYPE } from './types';
 
 type IManifestHostedServiceAugmentations<Scopes extends string> = {
   /**
@@ -69,8 +69,8 @@ export const ServiceManifestHostedServiceAugmentations: AugmentationSet2<Default
     // `signatures` is a dependency-free ctor, stated explicitly as `[[]]`
     // (`addClass` has no overload that omits it).
     return isConstructor(target)
-      ? manifest.addClass(HOSTED_SERVICE_TOKEN, target, signatures ?? [[]], 'singleton')
-      : manifest.addFactory(HOSTED_SERVICE_TOKEN, target, [[RESOLVER_TYPE]], 'singleton');
+      ? manifest.addClass(HOSTED_SERVICE_TYPE, target, signatures ?? [[]], 'singleton')
+      : manifest.addFactory(HOSTED_SERVICE_TYPE, target, [[RESOLVER_TYPE]], 'singleton');
   } };
 
-registerAugmentations(tokenfor<Manifest>(), ServiceManifestHostedServiceAugmentations);
+registerAugmentations(typefor<Manifest>(), ServiceManifestHostedServiceAugmentations);

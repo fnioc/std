@@ -1,9 +1,9 @@
 import { AbortController, type AbortSignal, type AugmentationSet2, clearTimeout, neverSignal, registerAugmentations,
   setTimeout, Type } from '@rhombus-std/primitives';
-import { tokenfor } from '@rhombus-std/primitives.extras';
+import { typefor } from '@rhombus-std/primitives.extras';
 import type { IHost } from './IHost';
 import type { IHostApplicationLifetime } from './IHostApplicationLifetime';
-import { HOST_APPLICATION_LIFETIME_TOKEN } from './tokens';
+import { HOST_APPLICATION_LIFETIME_TYPE } from './types';
 
 type IHostLifecycleAugmentations = {
   /** Alias for {@link runAsync} — there is no separate synchronous entry point in JS. */
@@ -63,7 +63,7 @@ export const HostLifecycleAugmentations: AugmentationSet2<IHost, IHostLifecycleA
   },
 
   async waitForShutdownAsync(host, abortSignal) {
-    const lifetime = host.services.getRequiredService(Type.from(HOST_APPLICATION_LIFETIME_TOKEN));
+    const lifetime = host.services.getRequiredService(HOST_APPLICATION_LIFETIME_TYPE);
 
     const requestStop = (): void => lifetime.stopApplication();
     if (abortSignal !== undefined) {
@@ -96,4 +96,4 @@ export const HostLifecycleAugmentations: AugmentationSet2<IHost, IHostLifecycleA
   },
 };
 
-registerAugmentations(tokenfor<IHost>(), HostLifecycleAugmentations);
+registerAugmentations(typefor<IHost>(), HostLifecycleAugmentations);

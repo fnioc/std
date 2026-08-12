@@ -11,7 +11,7 @@
 // `import "@rhombus-std/logging";`.
 //
 // What it registers:
-//   - the `IOptions<LoggerFilterOptions>` assembly at LOGGER_FILTER_OPTIONS_TOKEN;
+//   - the `IOptions<LoggerFilterOptions>` assembly at LOGGER_FILTER_OPTIONS_TYPE;
 //   - a default configure step pinning the min level to `Information`;
 //   - the singleton `ILoggerFactory -> LoggerFactory`, injected with the
 //     enumerable provider set and the assembled `IOptions<LoggerFilterOptions>`;
@@ -30,24 +30,15 @@ import '@rhombus-std/options.augmentations';
 
 import type { DefaultManifest, Manifest } from '@rhombus-std/di.core';
 import { type ILoggingBuilder, Logger as LoggerOfT, LogLevel } from '@rhombus-std/logging.core';
-import { configureStepToken } from '@rhombus-std/options.augmentations';
-import { type AugmentationSet2, type NamedType, registerAugmentations, Type } from '@rhombus-std/primitives';
-import { tokenfor, typefor } from '@rhombus-std/primitives.extras';
+import { configureStepType } from '@rhombus-std/options.augmentations';
+import { type AugmentationSet2, registerAugmentations, Type } from '@rhombus-std/primitives';
+import { typefor } from '@rhombus-std/primitives.extras';
 import type { Func } from '@rhombus-toolkit/func';
 import { DefaultLoggerLevelConfigureOptions } from './DefaultLoggerLevelConfigureOptions';
 import { LoggerFactory } from './LoggerFactory';
 import { LoggerFilterOptions } from './LoggerFilterOptions';
 import { LoggingBuilder } from './LoggingBuilder';
-import { LOGGER_FACTORY_TOKEN, LOGGER_FILTER_OPTIONS_TOKEN, LOGGER_PROVIDER_TOKEN } from './tokens';
-
-// The base of the open `ILogger<$1>` service token. Hardcoded (not
-// `closeToken(typefor<ILogger>(), "$1")`) because `ILogger` is a defaulted
-// generic: a bare `typefor<ILogger>()` records the default type argument and
-// produces `"…:ILogger<unknown>"`, not the clean service-token base. An
-// explicit `typefor<ILogger<Foo>>()` derives `"…:ILogger<pkg:Foo>"` off this
-// same base, so the open template matches. Mirrors logging.config's
-// `LOGGER_PROVIDER_CONFIGURATION_BASE`.
-const ILOGGER_TOKEN_BASE = '@rhombus-std/logging.core:ILogger';
+import { LOGGER_FACTORY_TYPE, LOGGER_FILTER_OPTIONS_TYPE, LOGGER_PROVIDER_TYPE } from './types';
 
 type IManifestLoggingAugmentations<Scopes extends string> = {
   /**
@@ -74,24 +65,29 @@ export const ServiceManifestLoggingAugmentations: AugmentationSet2<DefaultManife
   IManifestLoggingAugmentations<string>> = {
     addLogging(manifest, configure) {
       // The LoggerFilterOptions assembly + its default (Information) min level.
-      let m: Manifest<string> = manifest.addOptions<LoggerFilterOptions>(LOGGER_FILTER_OPTIONS_TOKEN,
+      let m: Manifest<string> = manifest.addOptions<LoggerFilterOptions>(LOGGER_FILTER_OPTIONS_TYPE,
         () => new LoggerFilterOptions());
-      m = m.addValue(configureStepToken(LOGGER_FILTER_OPTIONS_TOKEN),
+      m = m.addValue(configureStepType(LOGGER_FILTER_OPTIONS_TYPE),
         new DefaultLoggerLevelConfigureOptions(LogLevel.Information));
 
       // ILoggerFactory, injected with the enumerable provider set and the
       // assembled IOptions<LoggerFilterOptions>.
-      m = m.addClass(LOGGER_FACTORY_TOKEN, LoggerFactory, [[
-        Type.named('Array', 'global', [Type.from(LOGGER_PROVIDER_TOKEN)]),
-        LOGGER_FILTER_OPTIONS_TOKEN,
+      m = m.addClass(LOGGER_FACTORY_TYPE, LoggerFactory, [[
+        Type.named('Array', 'global', [LOGGER_PROVIDER_TYPE]),
+        LOGGER_FILTER_OPTIONS_TYPE,
       ]], 'singleton');
 
       // The open ILogger<$1> -> Logger<$1> registration: the closing type flows
       // in through the `$1` placeholder, from which Logger<T> derives its category.
-      const iLoggerBase = Type.from(ILOGGER_TOKEN_BASE) as NamedType;
+      //
+      // The base is written out rather than derived, because `ILogger` is a
+      // defaulted generic: a bare `typefor<ILogger>()` records the default type
+      // argument and yields `ILogger<unknown>`, not the clean open base. An
+      // explicit `typefor<ILogger<Foo>>()` derives off this same base, so the
+      // template matches.
       const hole = Type.placeholder('$1');
-      m = m.addClass(Type.named(iLoggerBase.name, iLoggerBase.from, [hole]), LoggerOfT, [[LOGGER_FACTORY_TOKEN, hole]],
-        'singleton');
+      m = m.addClass(Type.named('ILogger', '@rhombus-std/logging.core', [hole]), LoggerOfT, [[LOGGER_FACTORY_TYPE,
+        hole]], 'singleton');
 
       // `m` is the widened Manifest<string>, whereas
       // ILoggingBuilder.services is the singleton-default `ServiceManifest` --

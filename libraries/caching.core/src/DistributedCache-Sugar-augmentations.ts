@@ -1,5 +1,5 @@
 import { type AbortSignal, type AugmentationSet2, type Flatten, registerAugmentations } from '@rhombus-std/primitives';
-import { tokenfor } from '@rhombus-std/primitives.extras';
+import { typefor } from '@rhombus-std/primitives.extras';
 import type { Ctor } from '@rhombus-toolkit/func';
 import { DistributedCacheEntryOptions, freezeDistributedCacheEntryOptions } from './DistributedCacheEntryOptions';
 import type { IDistributedCache } from './IDistributedCache';
@@ -73,6 +73,6 @@ export const DistributedCacheSugarAugmentations: AugmentationSet2<IDistributedCa
 const { set: _set, ...distributedCacheInstanceMethods } = DistributedCacheSugarAugmentations;
 
 registerAugmentations<IDistributedCache, Flatten<IDistributedCacheSugarAugmentations>>(
-  tokenfor<IDistributedCache>(),
+  typefor<IDistributedCache>(),
   distributedCacheInstanceMethods,
 );

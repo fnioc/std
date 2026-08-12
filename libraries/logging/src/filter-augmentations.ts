@@ -10,10 +10,10 @@ import '@rhombus-std/options.augmentations';
 import type { ILoggingBuilder, LogLevel } from '@rhombus-std/logging.core';
 import { AugmentationSet2, registerAugmentations } from '@rhombus-std/primitives';
 import type { Flatten } from '@rhombus-std/primitives';
-import { tokenfor, typefor } from '@rhombus-std/primitives.extras';
+import { typefor } from '@rhombus-std/primitives.extras';
 import type { Func } from '@rhombus-toolkit/func';
 import { LoggerFilterOptions, LoggerFilterRule } from './LoggerFilterOptions';
-import { LOGGER_FILTER_OPTIONS_TOKEN } from './tokens';
+import { LOGGER_FILTER_OPTIONS_TYPE } from './types';
 interface ILoggerFilterOptionsExtensions {
   addFilter(category: string | undefined, level: LogLevel): this;
   addFilter(filter: Func<[string | undefined, string | undefined, LogLevel], boolean>): this;
@@ -58,12 +58,12 @@ export const FilterLoggingBuilderExtensions: AugmentationSet2<ILoggingBuilder,
     },
   };
 
-/** Registers `configureOptions` as a configure step for the {@link LOGGER_FILTER_OPTIONS_TOKEN} pipeline. */
+/** Registers `configureOptions` as a configure step for the {@link LOGGER_FILTER_OPTIONS_TYPE} pipeline. */
 function configureFilter(builder: ILoggingBuilder,
   configureOptions: Func<[LoggerFilterOptions], void>): ILoggingBuilder {
   // The chain is immutable: `configure` hands back a NEW manifest, so it must be
   // written into the builder's slot -- a bare call would register nothing.
-  builder.services = builder.services.configure(LOGGER_FILTER_OPTIONS_TOKEN, configureOptions);
+  builder.services = builder.services.configure(LOGGER_FILTER_OPTIONS_TYPE, configureOptions);
   return builder;
 }
 

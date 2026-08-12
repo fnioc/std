@@ -4,7 +4,7 @@
 //
 // This is a SECOND concrete `IMetricsBuilder` alongside `@rhombus-std/diagnostics`'s
 // own `MetricsBuilder`; both share the `IMetricsBuilder` receiver, so this class is
-// decorated with `@augment(tokenfor<IMetricsBuilder>())` to pull the metrics
+// decorated with `@augment(typefor<IMetricsBuilder>())` to pull the metrics
 // augmentation bag (`addMetricsListener`/`enableMetrics`/... registered by the
 // diagnostics family) onto its prototype -- otherwise a host's `builder.metrics`
 // would never receive `enableMetrics`. The class-side merge below keeps this
@@ -14,7 +14,7 @@
 import type { Manifest } from '@rhombus-std/di.core';
 import type { IMetricsBuilder } from '@rhombus-std/diagnostics.core';
 import { augment } from '@rhombus-std/primitives';
-import { tokenfor } from '@rhombus-std/primitives.extras';
+import { typefor } from '@rhombus-std/primitives.extras';
 
 // Interface-extends merge (augmentation doctrine): the metrics augmentation
 // members reach `IMetricsBuilder` via diagnostics.core's interface-side merge;
@@ -24,7 +24,7 @@ import { tokenfor } from '@rhombus-std/primitives.extras';
 export interface MetricsBuilder extends IMetricsBuilder {}
 
 /** Carries the service-registration surface the metrics augmentation functions register against. */
-@augment(tokenfor<IMetricsBuilder>())
+@augment(typefor<IMetricsBuilder>())
 export class MetricsBuilder implements IMetricsBuilder {
   readonly #holder: ManifestSlot;
 

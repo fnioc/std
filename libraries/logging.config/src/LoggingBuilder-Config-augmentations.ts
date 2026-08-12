@@ -10,10 +10,9 @@ import type { IConfig } from '@rhombus-std/config.core';
 import { LoggerFilterOptions } from '@rhombus-std/logging';
 import type { ILoggingBuilder } from '@rhombus-std/logging.core';
 import type { IOptions } from '@rhombus-std/options';
-import { changeTokenSourceToken, ConfigChangeTokenSource,
-  configureStepToken } from '@rhombus-std/options.augmentations';
+import { changeTokenSourceType, ConfigChangeTokenSource, configureStepType } from '@rhombus-std/options.augmentations';
 import { type AugmentationSet2, type Flatten, registerAugmentations, Type } from '@rhombus-std/primitives';
-import { tokenfor, typefor } from '@rhombus-std/primitives.extras';
+import { typefor } from '@rhombus-std/primitives.extras';
 import { loggerProviderConfigType } from './ILoggerProviderConfig';
 import type { ILoggerProviderConfigFactory } from './ILoggerProviderConfigFactory';
 import { LoggerFilterConfigureOptions } from './LoggerFilterConfigureOptions';
@@ -74,12 +73,12 @@ export const LoggingBuilderConfigAugmentations: AugmentationSet2<ILoggingBuilder
 
       // The LoggerFilterOptions pipeline: assembly + custom configure step +
       // reload change-token source.
-      const optionsToken = tokenfor<IOptions<LoggerFilterOptions>>();
+      const optionsToken = typefor<IOptions<LoggerFilterOptions>>();
       builder.services = builder.services.addOptions<LoggerFilterOptions>(optionsToken,
         () => new LoggerFilterOptions());
-      builder.services = builder.services.addValue(configureStepToken(optionsToken),
+      builder.services = builder.services.addValue(configureStepType(optionsToken),
         new LoggerFilterConfigureOptions(config));
-      builder.services = builder.services.addValue(changeTokenSourceToken(optionsToken),
+      builder.services = builder.services.addValue(changeTokenSourceType(optionsToken),
         new ConfigChangeTokenSource(config));
 
       builder.services = builder.services.addValue(typefor<LoggingConfig>(), new LoggingConfig(config));

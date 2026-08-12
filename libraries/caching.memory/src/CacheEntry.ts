@@ -15,7 +15,7 @@ import { CacheItemPriority, EvictionReason, type ICacheEntry,
   type PostEvictionCallbackRegistration } from '@rhombus-std/caching.core';
 import { type ILogger, logError } from '@rhombus-std/logging.core';
 import { augment, type IChangeToken } from '@rhombus-std/primitives';
-import { tokenfor } from '@rhombus-std/primitives.extras';
+import { typefor } from '@rhombus-std/primitives.extras';
 
 /**
  * The owning-cache surface a {@link CacheEntry} needs. {@link MemoryCache}
@@ -53,7 +53,7 @@ export function currentCacheEntry(): CacheEntry | undefined {
 export interface CacheEntry extends ICacheEntry {}
 
 /** The concrete cache entry. Committed to its cache on dispose. */
-@augment(tokenfor<ICacheEntry>())
+@augment(typefor<ICacheEntry>())
 export class CacheEntry implements ICacheEntry {
   readonly #host: IMemoryCacheHost;
   readonly #key: unknown;

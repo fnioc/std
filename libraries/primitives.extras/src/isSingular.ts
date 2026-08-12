@@ -6,7 +6,7 @@
  *
  * @example
  * ```ts
- * return isSingular<T>() ? singularValue<T>() : this.resolve(tokenfor<T>());
+ * return isSingular<T>() ? singularValue<T>() : this.resolve(typefor<T>());
  * ```
  */
 export function isSingular<T>(): boolean {

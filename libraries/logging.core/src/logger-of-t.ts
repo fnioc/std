@@ -6,7 +6,7 @@
 
 import type { NamedType } from '@rhombus-std/di.core';
 import { augment } from '@rhombus-std/primitives';
-import { tokenfor, typefor } from '@rhombus-std/primitives.extras';
+import { typefor } from '@rhombus-std/primitives.extras';
 import type { Func } from '@rhombus-toolkit/func';
 import type { EventId } from './EventId';
 import type { ILogger } from './ILogger';

@@ -3,7 +3,7 @@
 //
 // ILoggingBuilder is @rhombus-std/logging.core's own interface (an OPEN
 // receiver extended across the family), so this downstream sink registers its
-// augmentation set against the shared `tokenfor<ILoggingBuilder>()` token: the
+// augmentation set against the shared `typefor<ILoggingBuilder>()` token: the
 // @augment-decorated concrete LoggingBuilder pulls the methods onto its
 // prototype. The exported const IS the standalone call surface.
 //
@@ -27,7 +27,7 @@
 import { LoggingBuilderProviderAugmentations } from '@rhombus-std/logging';
 import type { ILoggingBuilder } from '@rhombus-std/logging.core';
 import { type AugmentationSet2, type Flatten, registerAugmentations } from '@rhombus-std/primitives';
-import { tokenfor, typefor } from '@rhombus-std/primitives.extras';
+import { typefor } from '@rhombus-std/primitives.extras';
 import type { Func } from '@rhombus-toolkit/func';
 import type { ConsoleFormatter } from './ConsoleFormatter';
 import { ConsoleFormatterNames } from './ConsoleFormatterNames';
@@ -102,7 +102,7 @@ declare module '@rhombus-std/logging.core' {
 }
 
 /**
- * Registered against `tokenfor<ILoggingBuilder>()` below and reachable as the
+ * Registered against `typefor<ILoggingBuilder>()` below and reachable as the
  * standalone `ConsoleLoggerAugmentations.addConsole(builder)`.
  */
 export const ConsoleLoggerAugmentations: AugmentationSet2<ILoggingBuilder,

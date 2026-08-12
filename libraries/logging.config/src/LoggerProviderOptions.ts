@@ -3,7 +3,7 @@
 // `LoggerProviderOptions.registerProviderOptions(services, …)`.
 //
 // `registerProviderOptions` registers a CLASS at the options token's derived
-// pipeline slots (`configureStepToken`/`changeTokenSourceToken`), with the
+// pipeline slots (`configureStepType`/`changeTokenSourceType`), with the
 // closed `ILoggerProviderConfig<TProvider>` token as its dep slot -- resolved
 // through the open template the no-arg `addConfig` registers, so the whole
 // chain stays lazy: nothing touches configuration until the
@@ -16,7 +16,7 @@
 
 import type { Manifest } from '@rhombus-std/di.core';
 import type { IOptions } from '@rhombus-std/options';
-import { changeTokenSourceToken, configureStepToken } from '@rhombus-std/options.augmentations';
+import { changeTokenSourceType, configureStepType } from '@rhombus-std/options.augmentations';
 import { Type } from '@rhombus-std/primitives';
 import { loggerProviderConfigType } from './ILoggerProviderConfig';
 import { LoggerProviderConfigureOptions } from './LoggerProviderConfigureOptions';
@@ -46,8 +46,8 @@ export const LoggerProviderOptions = {
     const providerConfig = loggerProviderConfigType(
       typeof providerType === 'string' ? Type.from(providerType) : providerType,
     );
-    return services.addClass(configureStepToken(optionsToken), LoggerProviderConfigureOptions, [[providerConfig]],
-      'singleton').addClass(changeTokenSourceToken(optionsToken), LoggerProviderOptionsChangeTokenSource, [[
+    return services.addClass(configureStepType(optionsToken), LoggerProviderConfigureOptions, [[providerConfig]],
+      'singleton').addClass(changeTokenSourceType(optionsToken), LoggerProviderOptionsChangeTokenSource, [[
         providerConfig,
       ]], 'singleton');
   },
