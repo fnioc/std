@@ -93,17 +93,17 @@ A receiver with its own generic parameter threads it through both the member map
 **4. Write the exported const and install it:**
 
 - **OPEN receiver** — type the const `AugmentationSet2<Receiver, MemberMap>`. `AugmentationSet2` is
-  a mapped type over the member map from step 2: it adds the leading `receiver` parameter to every
-  member and carries every other parameter and return type along, so the object literal itself
-  needs no type annotations at all:
+  a mapped type over the member map from step 2: it types `this` as the receiver in every member
+  and carries every parameter and return type along, so the object literal itself needs no type
+  annotations at all — each member is written as a plain method whose `this` is the receiver:
 
   ```ts
   import { type AugmentationSet2, registerAugmentations } from '@rhombus-std/primitives';
   import { tokenfor } from '@rhombus-std/primitives.extras';
 
   export const ConfigBuilderJsonAugmentations: AugmentationSet2<IConfigBuilder, IConfigBuilderJsonAugmentations> = {
-    addJsonFile(builder, path, optional) {
-      return builder.add(new JsonConfigSource(path, optional));
+    addJsonFile(path, optional) {
+      return this.add(new JsonConfigSource(path, optional));
     },
   };
 
@@ -116,21 +116,23 @@ A receiver with its own generic parameter threads it through both the member map
 - **CLOSED receiver** — call `applyAugmentations(ConcreteClass, TheConst)` directly, wherever the
   concrete class is defined. `applyAugmentations` still takes a plain object literal `satisfies
   AugmentationSet<Receiver>` rather than an `AugmentationSet2`-typed one, so its members keep their
-  hand-written parameter types; only the interface merge in step 3 is shared with the OPEN case:
+  hand-written parameter types (`this` is contextually the receiver in both forms); only the
+  interface merge in step 3 is shared with the OPEN case:
 
   ```ts
   export const MemoryCacheSugarAugmentations = {
-    getOrCreate(cache: IMemoryCache, key: string, factory: () => unknown) {
-      return cache.tryGetValue(key) ?? factory();
+    getOrCreate(key: string, factory: () => unknown) {
+      return this.tryGetValue(key) ?? factory();
     },
   } satisfies AugmentationSet<IMemoryCache>;
 
   applyAugmentations(MemoryCache, MemoryCacheSugarAugmentations);
   ```
 
-This const **is** the callable surface either way — `ConfigBuilderJsonAugmentations.addJsonFile(builder, path)`
-already works, with no installation step, as a plain function. Installation is what additionally
-makes `builder.addJsonFile(path)` work.
+This const **is** the callable surface either way — with no installation step,
+`ConfigBuilderJsonAugmentations.addJsonFile.call(builder, path)` already works, the way any
+extracted method is called on an explicit receiver. Installation is what additionally makes
+`builder.addJsonFile(path)` work.
 
 **Naming at a glance** — the file, the member-map type, and the const all share the same
 `Receiver`/`Topic` pair:
@@ -214,9 +216,11 @@ straight back to whoever called `registerAugmentations`.
 **Collision resolution is blind.** Installing member `n` onto a prototype asks exactly one
 question: is `n` already there?
 
-- **No** → mount a `this`-forwarding thunk that calls the augmentation function receiver-first.
+- **No** → assign the authored method itself (`proto[n] = fn`) — the installed member IS the set's
+  member, so function identity holds, and re-installing the very same function is a silent no-op.
 - **Yes, and a merge strategy was supplied for `n`** → mount a dispatcher that chains the new
-  implementation over whatever was already there.
+  implementation over whatever was already there (both arms are `this`-based; the dispatcher
+  forwards with `fn.call(this, ...args)`).
 - **Yes, and no merge strategy** → **throw**, immediately, naming the class and the member. Never
   silently clobber.
 
