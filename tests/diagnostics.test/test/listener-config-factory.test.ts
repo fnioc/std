@@ -10,7 +10,7 @@
 
 import { ConfigBuilder, type IConfig } from '@rhombus-std/config';
 import '@rhombus-std/di';
-import { DefaultManifest, type Manifest, Type } from '@rhombus-std/di.core';
+import { DefaultManifest, type Manifest } from '@rhombus-std/di.core';
 import { ActivityListenerConfigFactory, DefaultActivityListenerConfigFactory, type IMetricListenerConfigFactory,
   MetricListenerConfigFactory, MetricsConfig, TracingConfig } from '@rhombus-std/diagnostics';
 import { METRICS_LISTENER_CONFIGURATION_FACTORY_TYPE,

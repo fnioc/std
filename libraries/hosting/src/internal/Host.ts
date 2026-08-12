@@ -15,7 +15,6 @@ import { BackgroundService, hostedServiceCollectionType, type IHost, type IHostA
   type IHostedLifecycleService, type IHostedService, type IHostLifetime } from '@rhombus-std/hosting.core';
 import type { ILogger } from '@rhombus-std/logging.core';
 import type { IStartupValidator } from '@rhombus-std/options';
-import { Type } from '@rhombus-std/primitives';
 import { type AbortSignal, augment } from '@rhombus-std/primitives';
 import { typefor } from '@rhombus-std/primitives.extras';
 import type { Func } from '@rhombus-toolkit/func';
