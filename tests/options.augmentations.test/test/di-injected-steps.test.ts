@@ -34,7 +34,7 @@ describe('configure — DI-injected', () => {
   test('resolves a class dep and passes it after the options value', () => {
     let services: Manifest<'singleton'> = new DefaultManifest<'singleton'>();
     services = services.addClass(URL_PROVIDER_TOKEN, UrlProvider, [[]], 'singleton');
-    services = services.addOptions<WidgetOptions>(OPTIONS_TOKEN, baseOptions).as('singleton');
+    services = services.addOptions<WidgetOptions>(OPTIONS_TOKEN, baseOptions);
     services = services.configure<WidgetOptions, [UrlProvider]>(OPTIONS_TOKEN, [URL_PROVIDER_TOKEN],
       (options, urls) => {
         options.url = urls.base;
@@ -50,7 +50,7 @@ describe('configure — DI-injected', () => {
     let services: Manifest<'singleton'> = new DefaultManifest<'singleton'>();
     services = services.addClass(URL_PROVIDER_TOKEN, UrlProvider, [[]], 'singleton');
     services = services.addValue(RETRY_POLICY_TOKEN, { attempts: 4 });
-    services = services.addOptions<WidgetOptions>(OPTIONS_TOKEN, baseOptions).as('singleton');
+    services = services.addOptions<WidgetOptions>(OPTIONS_TOKEN, baseOptions);
     services = services.configure<WidgetOptions, [UrlProvider, { attempts: number; }]>(OPTIONS_TOKEN, [
       URL_PROVIDER_TOKEN,
       RETRY_POLICY_TOKEN,
@@ -68,7 +68,7 @@ describe('configure — DI-injected', () => {
   test('a DI configure composes with a plain configure delegate', () => {
     let services: Manifest<'singleton'> = new DefaultManifest<'singleton'>();
     services = services.addClass(URL_PROVIDER_TOKEN, UrlProvider, [[]], 'singleton');
-    services = services.addOptions<WidgetOptions>(OPTIONS_TOKEN, baseOptions).as('singleton');
+    services = services.addOptions<WidgetOptions>(OPTIONS_TOKEN, baseOptions);
     services = services.configure<WidgetOptions>(OPTIONS_TOKEN, (options) => {
       options.note = 'plain';
     });
@@ -89,7 +89,7 @@ describe('postConfigure — DI-injected', () => {
   test('runs after configure with a resolved dep', () => {
     let services: Manifest<'singleton'> = new DefaultManifest<'singleton'>();
     services = services.addValue(SUFFIX_TOKEN, { text: '!' });
-    services = services.addOptions<WidgetOptions>(OPTIONS_TOKEN, baseOptions).as('singleton');
+    services = services.addOptions<WidgetOptions>(OPTIONS_TOKEN, baseOptions);
     services = services.configure<WidgetOptions>(OPTIONS_TOKEN, (options) => {
       options.note = 'base';
     });
@@ -111,9 +111,7 @@ describe('validate — DI-injected', () => {
   function servicesWithLimit(size: number, max: number): Manifest<'singleton'> {
     let services: Manifest<'singleton'> = new DefaultManifest<'singleton'>();
     services = services.addValue(LIMIT_TOKEN, { max });
-    services = services.addOptions<WidgetOptions>(OPTIONS_TOKEN, () => ({ ...baseOptions(), retries: size })).as(
-      'singleton',
-    );
+    services = services.addOptions<WidgetOptions>(OPTIONS_TOKEN, () => ({ ...baseOptions(), retries: size }));
     return services;
   }
 

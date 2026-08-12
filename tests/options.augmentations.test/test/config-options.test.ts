@@ -27,7 +27,7 @@ describe('configure — section-to-options binding', () => {
     const config = rootWith({ 'Widget:Url': 'http://first', 'Widget:Retries': '3' });
 
     let services: Manifest<'singleton'> = new DefaultManifest<'singleton'>();
-    services = services.addOptions<WidgetOptions>(TOKEN, () => ({ Url: '' })).as('singleton');
+    services = services.addOptions<WidgetOptions>(TOKEN, () => ({ Url: '' }));
     services = services.configure(TOKEN, config.getSection('Widget'));
 
     const provider = services.build().createScope('singleton');
@@ -40,7 +40,7 @@ describe('configure — section-to-options binding', () => {
     const config = rootWith({ 'Widget:Url': 'http://first' });
 
     let services: Manifest<'singleton'> = new DefaultManifest<'singleton'>();
-    services = services.addOptions<WidgetOptions>(TOKEN, () => ({ Url: '' })).as('singleton');
+    services = services.addOptions<WidgetOptions>(TOKEN, () => ({ Url: '' }));
     services = services.configure(TOKEN, config.getSection('Widget'));
 
     const provider = services.build().createScope('singleton');
@@ -70,7 +70,7 @@ describe('configure — section-to-options binding', () => {
     const config = rootWith({ 'Widget:Url': 'http://a', 'Extra:Retries': '5' });
 
     let services: Manifest<'singleton'> = new DefaultManifest<'singleton'>();
-    services = services.addOptions<WidgetOptions>(TOKEN, () => ({ Url: '' })).as('singleton');
+    services = services.addOptions<WidgetOptions>(TOKEN, () => ({ Url: '' }));
     services = services.configure(TOKEN, config.getSection('Widget'));
     services = services.configure(TOKEN, config.getSection('Extra'));
 
@@ -84,7 +84,7 @@ describe('configure — section-to-options binding', () => {
 describe('addOptions — no configured source', () => {
   test('delivers a static snapshot (value from makeBase, no subscribe)', () => {
     let services: Manifest<'singleton'> = new DefaultManifest<'singleton'>();
-    services = services.addOptions<WidgetOptions>(TOKEN, () => ({ Url: 'default' })).as('singleton');
+    services = services.addOptions<WidgetOptions>(TOKEN, () => ({ Url: 'default' }));
 
     const provider = services.build().createScope('singleton');
     const options: IOptions<WidgetOptions> = provider.getRequiredService(Type.from(TOKEN));

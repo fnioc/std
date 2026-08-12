@@ -32,7 +32,7 @@ test('a failing validateOnStart aborts host start before any hosted service runs
 
   const builder = new HostBuilder();
   builder.configureServices((_context, services) => {
-    services = services.addOptions<ServerOptions>(OPTIONS_TOKEN, () => ({ port: 0 })).as('singleton');
+    services = services.addOptions<ServerOptions>(OPTIONS_TOKEN, () => ({ port: 0 }));
     services = services.validate<ServerOptions>(OPTIONS_TOKEN, (o) => o.port > 0, 'port must be positive');
     services = services.validateOnStart(OPTIONS_TOKEN);
     services = services.addHostedService(Worker, [[]]);
@@ -61,7 +61,7 @@ test('valid options let validateOnStart pass and the host starts normally', asyn
 
   const builder = new HostBuilder();
   builder.configureServices((_context, services) => {
-    services = services.addOptions<ServerOptions>(OPTIONS_TOKEN, () => ({ port: 8080 })).as('singleton');
+    services = services.addOptions<ServerOptions>(OPTIONS_TOKEN, () => ({ port: 8080 }));
     services = services.validate<ServerOptions>(OPTIONS_TOKEN, (o) => o.port > 0, 'port must be positive');
     services = services.validateOnStart(OPTIONS_TOKEN);
     services = services.addHostedService(Worker, [[]]);
