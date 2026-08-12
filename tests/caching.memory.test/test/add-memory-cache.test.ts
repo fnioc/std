@@ -3,12 +3,12 @@
 // reference AddOptions + Configure(setupAction) composition: `setup` runs
 // LAZILY when the options resolve), and the ILoggerFactory injection.
 
-import { MEMORY_CACHE_OPTIONS_TOKEN, MEMORY_CACHE_TOKEN, MemoryCache, MemoryCacheOptions,
+import { MEMORY_CACHE_OPTIONS_TYPE, MEMORY_CACHE_TYPE, MemoryCache, MemoryCacheOptions,
   ServiceManifestMemoryCacheAugmentations } from '@rhombus-std/caching.memory';
 // Side-effect: installs `build` onto di.core's Manifest.
 import '@rhombus-std/di';
-import { DefaultManifest, type Manifest, Type } from '@rhombus-std/di.core';
-import { LOGGER_FACTORY_TOKEN, NullLogger } from '@rhombus-std/logging';
+import { DefaultManifest, type Manifest } from '@rhombus-std/di.core';
+import { LOGGER_FACTORY_TYPE, NullLogger } from '@rhombus-std/logging';
 import type { ILogger, ILoggerFactory, ILoggerProvider } from '@rhombus-std/logging.core';
 import { describe, expect, test } from 'bun:test';
 
@@ -30,10 +30,10 @@ describe('addMemoryCache', () => {
     services = services.addMemoryCache();
 
     const scope = services.build().createScope('singleton');
-    const cache: MemoryCache = scope.getRequiredService(Type.from(MEMORY_CACHE_TOKEN));
+    const cache: MemoryCache = scope.getRequiredService(MEMORY_CACHE_TYPE);
     expect(cache).toBeInstanceOf(MemoryCache);
     // Singleton: the same instance on every resolve.
-    const cacheAgain: MemoryCache = scope.getRequiredService(Type.from(MEMORY_CACHE_TOKEN));
+    const cacheAgain: MemoryCache = scope.getRequiredService(MEMORY_CACHE_TYPE);
     expect(cacheAgain).toBe(cache);
 
     // The resolved cache actually works.
@@ -62,7 +62,7 @@ describe('addMemoryCache', () => {
     // Lazy: the configure step has not run at registration/build time.
     expect(ran).toBe(0);
 
-    const cache: MemoryCache = scope.getRequiredService(Type.from(MEMORY_CACHE_TOKEN));
+    const cache: MemoryCache = scope.getRequiredService(MEMORY_CACHE_TYPE);
     expect(ran).toBe(1);
     // The configured options reached the cache: statistics are tracked.
     cache.get('absent');
@@ -76,7 +76,7 @@ describe('addMemoryCache', () => {
     });
 
     const scope = services.build().createScope('singleton');
-    const options: { value: MemoryCacheOptions; } = scope.getRequiredService(Type.from(MEMORY_CACHE_OPTIONS_TOKEN));
+    const options: { value: MemoryCacheOptions; } = scope.getRequiredService(MEMORY_CACHE_OPTIONS_TYPE);
     expect(options.value).toBeInstanceOf(MemoryCacheOptions);
     expect(options.value.name).toBe('configured');
   });
@@ -84,10 +84,10 @@ describe('addMemoryCache', () => {
   test('injects the registered ILoggerFactory into the cache', () => {
     let services: Manifest<'singleton'> = new DefaultManifest<'singleton'>();
     const factory = new RecordingLoggerFactory();
-    services = services.addValue(LOGGER_FACTORY_TOKEN, factory);
+    services = services.addValue(LOGGER_FACTORY_TYPE, factory);
     services = services.addMemoryCache();
 
-    services.build().createScope('singleton').getRequiredService(Type.from(MEMORY_CACHE_TOKEN));
+    services.build().createScope('singleton').getRequiredService(MEMORY_CACHE_TYPE);
 
     expect(factory.categories).toEqual(['MemoryCache']);
   });
@@ -97,18 +97,18 @@ describe('addMemoryCache', () => {
     services = services.addMemoryCache();
 
     const cache: MemoryCache = services.build().createScope('singleton')
-      .getRequiredService(Type.from(MEMORY_CACHE_TOKEN));
+      .getRequiredService(MEMORY_CACHE_TYPE);
     expect(cache).toBeInstanceOf(MemoryCache);
   });
 
   test('keeps an earlier IMemoryCache registration (the reference TryAdd semantics)', () => {
     let services: Manifest<'singleton'> = new DefaultManifest<'singleton'>();
     const sentinel = { marker: 'pre-registered' };
-    services = services.addValue(MEMORY_CACHE_TOKEN, sentinel);
+    services = services.addValue(MEMORY_CACHE_TYPE, sentinel);
 
     services = services.addMemoryCache();
 
-    const resolved = services.build().createScope('singleton').getRequiredService(Type.from(MEMORY_CACHE_TOKEN));
+    const resolved = services.build().createScope('singleton').getRequiredService(MEMORY_CACHE_TYPE);
     expect(resolved).toBe(sentinel);
   });
 });

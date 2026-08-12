@@ -15,8 +15,8 @@
 import '@rhombus-std/di';
 import { DefaultManifest, Type } from '@rhombus-std/di.core';
 import { MetricsBuilder as DiagnosticsMetricsBuilder } from '@rhombus-std/diagnostics';
-import { METRICS_CONFIGURE_TOKEN } from '@rhombus-std/diagnostics.core';
-// The IMetricsBuilder augmentation-registry token is derived by `tokenfor<IMetricsBuilder>()`
+import { METRICS_CONFIGURE_TYPE } from '@rhombus-std/diagnostics.core';
+// The IMetricsBuilder augmentation-registry token is derived by `typefor<IMetricsBuilder>()`
 // at each library's build time; this test (no transformer) uses the derived literal directly.
 const METRICS_BUILDER_AUGMENTATION_TOKEN = '@rhombus-std/diagnostics.core:IMetricsBuilder';
 import { HostApplicationBuilder, MetricsBuilder as HostingMetricsBuilder } from '@rhombus-std/hosting';
@@ -36,7 +36,7 @@ describe("hosting's MetricsBuilder receives the diagnostics-family augmentations
     // builder's manifest, proving the member is diagnostics' real
     // implementation, not a lookalike.
     const configureSteps: unknown[] = builder.services.build().getRequiredService(
-      Type.from(`Array<${METRICS_CONFIGURE_TOKEN}>`),
+      Type.named('Array', 'global', [METRICS_CONFIGURE_TYPE]),
     );
     expect(configureSteps).toHaveLength(1);
   });
