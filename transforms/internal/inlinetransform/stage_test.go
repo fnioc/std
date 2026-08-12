@@ -405,8 +405,9 @@ func TestStageInlinesFreeFunction(t *testing.T) {
 }
 
 // setupImportedValueWorkspace lays out a free-function sugar whose body calls a
-// value its own file imports (`record` from @scope/runtime). The consumer imports
-// only the sugar, so the runtime import must be carried across to it.
+// value its own file imports under an ALIAS (`record as capture`). The consumer
+// imports only the sugar, so the runtime import must be carried across to it — and
+// under the name the CONSUMER file binds, not the body's alias.
 func setupImportedValueWorkspace(t *testing.T) (*driver.Program, string) {
 	t.Helper()
 	root := t.TempDir()
@@ -431,9 +432,9 @@ func setupImportedValueWorkspace(t *testing.T) (*driver.Program, string) {
   "rhombus.inline": { "entries": [ { "impl": "wrap" } ] }
 }`)
 	linkPackage(t, prims, "@scope/runtime", runtime)
-	write(t, filepath.Join(prims, "src", "index.ts"), `import { record } from '@scope/runtime';
+	write(t, filepath.Join(prims, "src", "index.ts"), `import { record as capture } from '@scope/runtime';
 export function wrap<T>(value: T): T {
-  return record(value);
+  return capture(value);
 }
 `)
 
@@ -488,7 +489,10 @@ func TestStageMaterializesImportedValue(t *testing.T) {
 	out := reprint(ec, transform(ec, main))
 
 	if !strings.Contains(out, "record(1)") {
-		t.Errorf("the imported callee must survive lowering as an ordinary call, got:\n%s", out)
+		t.Errorf("the imported callee must survive lowering under the CONSUMER's name for it, got:\n%s", out)
+	}
+	if strings.Contains(out, "capture") {
+		t.Errorf("the body's own alias names nothing in the consumer and must not survive, got:\n%s", out)
 	}
 	if !strings.Contains(out, `from "@scope/runtime"`) && !strings.Contains(out, "from '@scope/runtime'") {
 		t.Errorf("the body's own import must be materialized into the consumer, got:\n%s", out)
