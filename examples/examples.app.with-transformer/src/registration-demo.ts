@@ -1,37 +1,36 @@
-// The SAME registration tour as
-// ../../examples.app.without-transformer/src/registration-demo.ts, authored in
-// the type-driven dialect. Read the two side by side: the scenario, the
-// behaviour and the printed report are identical — only the authoring form
-// differs. Every sugar call below lowers, during the build, to exactly the
-// explicit-token call its sibling writes by hand.
+// A tour of the di REGISTRATION surface, authored WITH the transformer: every
+// service type is DERIVED from the type it names, and no token string appears
+// anywhere. The explicit forms in
+// ../../examples.app.without-transformer/src/registration-demo.ts are the
+// PRIMARY surface; the calls below are sugar for exactly those, and the two
+// print the same report.
 //
 // THE SCENARIO: an order-shipping notifier. A notification goes to a message
-// SINK; an AUDIT LOG records what was sent; a REPOSITORY loads the order.
+// SINK, and an AUDIT LOG records what was sent. Every registration verb below
+// earns its place in that one story rather than standing alone.
 //
-// WHAT THE SUGAR DOES AND DOES NOT REACH:
-//   - `addClass<I>(C)` / `addFactory<I>(fn)` / `addValue<I>(v)` derive the
-//     service TOKEN from `I` and the dependency SIGNATURE from the value's own
-//     parameter types. `addClass(C)` with no type argument self-registers under
-//     the token of what it builds.
-//   - `Keyed<I, "k">` is the type-driven spelling of `.withKey("k")`;
-//     `.as<"scope">()` of `.as("scope")`; `withSignature<[A, B]>()` and
-//     `withSignatures<[[A, B], [A]]>()` of their value-argument twins.
-//   - `addClass<I>(C, overrides)` repoints individual DERIVED slots — the form
-//     that only makes sense when something was derived in the first place.
-//   - The DESCRIPTOR VERBS (`tryAdd*`, `replace*`, `removeAll`) have NO
-//     type-driven form. They take a token string, so `demonstrateDescriptorVerbs`
-//     below is character-for-character the without-transformer version.
-//   - There is no GATED form under the sugar: the signature is always derived,
-//     so the manifest face is never withheld and `withSignature` /
-//     `withSignatures` are overrides rather than a gate. The gated 2-argument
-//     form is a no-transformer affordance; see the sibling file.
+// The demo builds its own container instead of registering into the host's, so
+// it reads top-to-bottom and can be run from anywhere in the app.
 //
-// Everything else — the immutability rule, the discard trap, what each verb is
-// FOR — is unchanged, because the sugar changes nothing but the typing.
+// ── the two things to take away ──────────────────────────────────────────────
+//
+// 1. THE MANIFEST IS IMMUTABLE. Every verb returns a NEW manifest and leaves
+//    the receiver alone, so a call whose result is discarded registers NOTHING.
+//    Thread it: `services = services.addClass(...)`. `demonstrateDiscardTrap`
+//    below shows the failure mode on purpose.
+// 2. A SIGNATURE IS ALWAYS STATED, never inferred. `typefor<T>()` derives the
+//    TYPE a slot names; it does not read a constructor and guess the slot list,
+//    so "this class takes no dependencies" is still written `[[]]` — one
+//    overload, taking nothing.
 
-import { ServiceManifest } from '@rhombus-std/di';
-import type { $, IServiceManifest, IServiceProvider, ManifestEntry, Token, Typeof } from '@rhombus-std/di';
-import type { Keyed } from '@rhombus-std/di.core';
+import { DefaultManifest, Type } from '@rhombus-std/di.core';
+import type { Manifest, ServiceDescriptor } from '@rhombus-std/di.core';
+import '@rhombus-std/di';
+// The type-driven MINT primitive, and the whole of what this dialect is:
+// `typefor<T>()` becomes the very `Type` a hand author composes by name. It has
+// no runtime footprint — the build folds every call and elides this import with
+// them — so the shipped output is exactly what the manual twin wrote out.
+import { typefor } from '@rhombus-std/primitives.extras';
 
 // ── the domain ───────────────────────────────────────────────────────────────
 
@@ -42,9 +41,8 @@ interface IClock {
 
 /**
  * A third-party package's own clock port. Structurally identical to `IClock`,
- * but a DIFFERENT type — so the token derived for `VendorSink`'s parameter is
- * one this application never registers. That is exactly what the override form
- * exists to fix.
+ * but a DIFFERENT type — which is the whole reason `VendorSink` below needs its
+ * dependency slot pointed somewhere by hand.
  */
 interface ILegacyClock {
   now(): string;
@@ -72,22 +70,11 @@ interface IAuditLog {
 }
 
 /**
- * A metrics recorder. Also never registered — it is the PREFERRED member of the
- * notifier's union slot, so resolution falls through it to the audit log.
+ * A metrics recorder. Also never registered — it is one member of the notifier's
+ * union slot, so resolution settles on the audit log instead.
  */
 interface IMetricsRecorder {
   count(name: string): void;
-}
-
-/** The entity the open repository template is closed over. */
-interface Order {
-  readonly id: string;
-}
-
-/** An open-generic repository: registered ONCE as a template, closed per entity. */
-interface IRepository<T> {
-  readonly entityToken: Token;
-  describe(entity: T): string;
 }
 
 /** The service the whole scenario exists to build. */
@@ -95,7 +82,7 @@ interface IOrderNotifier {
   notify(orderId: string): string;
 }
 
-/** A plain settings bag, registered under its own token by self-registration. */
+/** A plain settings bag, registered under its own token. */
 class FeatureFlags {
   public readonly echoToSink = true;
 }
@@ -110,9 +97,10 @@ class FixedClock implements IClock, ILegacyClock {
 }
 
 /**
- * The default sink. Its second constructor parameter is a string LITERAL type,
- * so the derived signature supplies the value directly rather than looking a
- * token up — a type with exactly one inhabitant needs no container.
+ * The default sink. Its second constructor parameter is a plain string that no
+ * container could resolve, so its signature supplies it DIRECTLY as a literal
+ * slot (`Type.typeLiteral('production')`) instead of as a service type — no
+ * lookup happens.
  */
 class PlainTextSink implements IMessageSink {
   public readonly name = 'text';
@@ -130,9 +118,9 @@ class PlainTextSink implements IMessageSink {
 }
 
 /**
- * The keyed sink. Two injectable overloads are registered for it below: the
- * richer `[clock, options]` one and a `[clock]` fallback. `IEmailOptions` is
- * never registered, so the richer one is unsatisfiable and the fallback wins.
+ * The keyed sink. Two injectable overloads are registered for it: the richer
+ * `[clock, options]` one and a `[clock]` fallback. `IEmailOptions` is never
+ * registered, so the richer one is unsatisfiable and the fallback wins.
  */
 class EmailSink implements IMessageSink {
   public readonly name = 'email';
@@ -151,9 +139,9 @@ class EmailSink implements IMessageSink {
 
 /**
  * A sink from a package we cannot edit: its constructor asks for the vendor's
- * own `ILegacyClock` port, so the derived slot names a token nothing registers.
- * The registration below overrides that one slot to point at our own keyed
- * clock instead — adapting a third-party class without touching it.
+ * own `ILegacyClock` port, which this application never registers under that
+ * name. We point the slot at our own keyed clock registration instead — the
+ * signature is ours to write, so adapting a third-party class costs one token.
  */
 class VendorSink implements IMessageSink {
   public readonly name = 'vendor';
@@ -181,9 +169,10 @@ class RecordingSink implements IMessageSink {
 
 /**
  * The audit log. Its `sink` parameter is OPTIONAL, which is the honest way to
- * say "use one if the container has one". An optional parameter derives a UNION
- * slot whose last member is the literal `undefined`, so the slot is always
- * satisfiable and simply yields `undefined` when no sink is registered.
+ * say "use one if the container has one". That is expressed in the signature as
+ * a UNION whose other member is the literal `undefined` — a member that supplies
+ * itself, so the slot is always satisfiable and simply yields `undefined` when
+ * no sink is registered.
  */
 class AuditLog implements IAuditLog {
   readonly #clock: IClock;
@@ -206,33 +195,8 @@ class AuditLog implements IAuditLog {
 }
 
 /**
- * The open repository template. ONE JavaScript class serves every closing: its
- * first parameter is branded `Typeof<T>`, which means "give me the TOKEN STRING
- * of the type argument bound at this position" — the type-driven spelling of
- * the positional `typeArg(1)` slot.
- */
-class SqlRepository<T> implements IRepository<T> {
-  public readonly entityToken: Token;
-  readonly #clock: IClock;
-
-  public constructor(entityToken: Typeof<T>, clock: IClock) {
-    this.entityToken = entityToken;
-    this.#clock = clock;
-  }
-
-  public describe(entity: T): string {
-    // `entityToken` is the full token of whatever the closing bound. Only its
-    // tail is printed, so this line reads the same in both authoring dialects —
-    // they pick their tokens differently, but bind the same entity.
-    const name = this.entityToken.slice(this.entityToken.lastIndexOf(':') + 1);
-    return `${name} ${JSON.stringify(entity)} at ${this.#clock.now()}`;
-  }
-}
-
-/**
  * The notifier factory. `recorder` takes either a metrics recorder or the audit
- * log — a genuine either/or, and a union-typed parameter derives a union slot
- * whose members are tried in order.
+ * log — a genuine either/or, registered as a union slot.
  */
 function makeOrderNotifier(sink: IMessageSink, recorder?: IMetricsRecorder | IAuditLog): IOrderNotifier {
   return { notify(orderId: string): string {
@@ -244,74 +208,52 @@ function makeOrderNotifier(sink: IMessageSink, recorder?: IMetricsRecorder | IAu
   } };
 }
 
-// ── the few tokens that are still written by hand ────────────────────────────
+// ── the service types ────────────────────────────────────────────────────────
 
-// The transformer derives a token for every `<I>` above, so this file never
-// spells one. These two are the exceptions, and both are exceptions for the
-// same reason: they are consumed by a form that takes a token STRING.
-//
-//   - VENDOR_CLOCK_TOKEN is an entry in an override array (see `VendorSink`
-//     below), so its target has to be registered under a name this file chose.
-//   - The `orders.defaults:*` family belongs to the descriptor-verb scenario,
-//     which has no type-driven form at all.
-//
-// Both are spelled exactly as the without-transformer app spells them, which is
-// the point: a hand-written token is an ordinary, supported thing to write, and
-// the two dialects meet on the string.
-const CLOCK_TOKEN = 'orders:IClock';
-const VENDOR_CLOCK_TOKEN = `${CLOCK_TOKEN}#vendor`;
+// Each one is derived from the declaration above it, so a rename moves the
+// service type with the type it names and the two can never drift apart. The
+// manual twin writes the same values out by name.
+const CLOCK_TYPE = typefor<IClock>();
+const SINK_TYPE = typefor<IMessageSink>();
+const EMAIL_OPTIONS_TYPE = typefor<IEmailOptions>();
+const AUDIT_TYPE = typefor<IAuditLog>();
+const METRICS_TYPE = typefor<IMetricsRecorder>();
+const NOTIFIER_TYPE = typefor<IOrderNotifier>();
+const FLAGS_TYPE = typefor<FeatureFlags>();
 
-const DEFAULT_CLOCK_TOKEN = 'orders.defaults:IClock';
-const DEFAULT_SINK_TOKEN = 'orders.defaults:IMessageSink';
-const DEFAULT_NOTIFIER_TOKEN = 'orders.defaults:IOrderNotifier';
+// A KEY is a TAG ON the service type rather than a parallel lookup: `Type.tag`
+// composes one type that carries it, so a keyed request hits exactly the same
+// exact-match lookup an unkeyed one does. A key is a runtime string with no type
+// to derive it from, so this composition is written out in both dialects.
+const VENDOR_CLOCK_TYPE = Type.tag(CLOCK_TYPE, 'vendor');
+const EMAIL_SINK_TYPE = Type.tag(SINK_TYPE, 'email');
+
+// The library-defaults scenario needs its own service types rather than the
+// application's, so that the descriptor verbs below can register, override and
+// strip them without touching the container the rest of the chapter builds. They
+// are tagged rather than separately declared: a tag makes one more type out of a
+// type that already exists.
+const DEFAULT_CLOCK_TYPE = Type.tag(CLOCK_TYPE, 'defaults');
+const DEFAULT_SINK_TYPE = Type.tag(SINK_TYPE, 'defaults');
+const DEFAULT_NOTIFIER_TYPE = Type.tag(NOTIFIER_TYPE, 'defaults');
 
 // ── helpers ──────────────────────────────────────────────────────────────────
 
 /**
- * Counts the registrations bound to `token`. A manifest is an
- * `Iterable<ManifestEntry>` whose entries come out in AUTHORING order, so this
- * is the honest way to observe what a chain of verbs actually recorded —
- * no build, no resolution.
+ * Counts the registrations bound to `type`. A manifest is an
+ * `Iterable<ServiceDescriptor>`, so this is the honest way to observe what a
+ * chain of verbs actually recorded — no build, no resolution. Types are
+ * INTERNED, so two spellings of one type are one object and `===` is the whole
+ * comparison.
  */
-function countRegistrations(services: Iterable<ManifestEntry>, token: Token): number {
+function countRegistrations(services: Iterable<ServiceDescriptor<string>>, type: Type): number {
   let count = 0;
-  for (const entry of services) {
-    if (entry.kind === 'exact' && entry.token === token) {
+  for (const descriptor of services) {
+    if (descriptor.serviceType === type) {
       count += 1;
     }
   }
   return count;
-}
-
-/**
- * Reads back the token the transformer DERIVED for a type, by finding the
- * registration that landed on it. A `removeAll(token)` or a `countRegistrations`
- * needs the token as a string, and there is no `removeAll<T>()` sugar — so a
- * with-transformer author otherwise has to hard-code the derived spelling
- * (`<package>/tokens/<file>:<TypeName>`) and keep it in step by hand. Recovering
- * it from the manifest is the workaround, not the recommended shape; the
- * recommended shape would be a type-driven descriptor verb, which does not
- * exist today.
- *
- * @param services The manifest to search, in authoring order.
- * @param typeName The exported name the derived token ends with.
- */
-function derivedTokenFor(services: Iterable<ManifestEntry>, typeName: string): Token {
-  const suffix = `:${typeName}`;
-  // A `Token` IS a string — that is the whole point of the design — so the
-  // tokens a manifest carries can simply be searched for the type's name.
-  const registered: string[] = [];
-  for (const entry of services) {
-    if (entry.kind === 'exact') {
-      registered.push(entry.token);
-    }
-  }
-
-  const match = registered.find((token) => token.endsWith(suffix));
-  if (match === undefined) {
-    throw new Error(`no registration derived a token ending in "${suffix}"`);
-  }
-  return match;
 }
 
 // ── 1. the immutability trap ─────────────────────────────────────────────────
@@ -319,24 +261,21 @@ function derivedTokenFor(services: Iterable<ManifestEntry>, typeName: string): T
 /**
  * Shows, on purpose, the one mistake this API makes easy to catch: a
  * registration call whose result is thrown away registers nothing. The manifest
- * is a frozen linked list — every verb wraps the receiver in a NEW node — so
- * the only way to keep a registration is to keep the value it returns. The
- * sugar does not change this: it lowers to the same immutable verbs.
+ * is a frozen chain — every verb wraps the receiver in a NEW node — so the only
+ * way to keep a registration is to keep the value it returns.
  */
 function demonstrateDiscardTrap(): string {
-  const empty = new ServiceManifest<'singleton'>();
+  const empty = new DefaultManifest<'singleton'>();
 
   // WRONG — the new manifest is built and immediately dropped on the floor.
   // `empty` is exactly as empty as it was. This compiles, and it is silent.
-  empty.addClass(FeatureFlags).as<'singleton'>();
+  empty.addClass(FLAGS_TYPE, FeatureFlags, [[]], 'singleton');
 
-  // RIGHT — thread the result back in. `addClass(C)` with no type argument
-  // self-registers: the token comes from what the class BUILDS.
-  const threaded = empty.addClass(FeatureFlags).as<'singleton'>();
+  // RIGHT — thread the result back in.
+  const threaded = empty.addClass(FLAGS_TYPE, FeatureFlags, [[]], 'singleton');
 
-  const flagsToken = derivedTokenFor(threaded, 'FeatureFlags');
-  return `immutability: the discarded call registered ${countRegistrations(empty, flagsToken)}, `
-    + `the threaded one registered ${countRegistrations(threaded, flagsToken)}`;
+  return `immutability: the discarded call registered ${countRegistrations(empty, FLAGS_TYPE)}, `
+    + `the threaded one registered ${countRegistrations(threaded, FLAGS_TYPE)}`;
 }
 
 // ── 2. the library's defaults, and a host overriding them ────────────────────
@@ -349,23 +288,21 @@ function demonstrateDiscardTrap(): string {
  * already-registered branch simply hands the receiver back, so the caller
  * threads the result either way.
  *
- * NOTHING HERE IS SUGAR. The descriptor verbs take a token string and have no
- * type-driven form, so this function is identical in the without-transformer
- * app — and a library that wants to ship it as a reusable registration function
- * would write it exactly like this whichever dialect its consumers use.
+ * The scope union is generic so any application union works, and `| 'singleton'`
+ * states the one scope these defaults register at.
  *
  * @param services The application's registration builder.
  */
 function addOrderDefaults<S extends string>(
-  services: IServiceManifest<S | 'singleton'>,
-): IServiceManifest<S | 'singleton'> {
+  services: Manifest<S | 'singleton'>,
+): Manifest<S | 'singleton'> {
   // A default VALUE — the clock every other default depends on.
-  services = services.tryAddValue(DEFAULT_CLOCK_TOKEN, new FixedClock());
+  services = services.tryAddValue(DEFAULT_CLOCK_TYPE, new FixedClock());
   // A default CLASS.
-  services = services.tryAdd(DEFAULT_SINK_TOKEN, PlainTextSink, [[DEFAULT_CLOCK_TOKEN, { value: 'production' }]],
-    'singleton');
+  services = services.tryAddClass(DEFAULT_SINK_TYPE, PlainTextSink, [[DEFAULT_CLOCK_TYPE,
+    Type.typeLiteral('production')]], 'singleton');
   // A default FACTORY.
-  services = services.tryAddFactory(DEFAULT_NOTIFIER_TOKEN, makeOrderNotifier, [[DEFAULT_SINK_TOKEN]], 'singleton');
+  services = services.tryAddFactory(DEFAULT_NOTIFIER_TYPE, makeOrderNotifier, [[DEFAULT_SINK_TYPE]], 'singleton');
   return services;
 }
 
@@ -376,50 +313,51 @@ function addOrderDefaults<S extends string>(
  *                  missing, so applying its defaults twice, or applying them
  *                  after the application registered its own, changes nothing.
  *   - `replace*` — HOST OVERRIDE. The application wants ITS implementation to
- *                  be the only one at that token: drop what is there, register
+ *                  be the only one at that type: drop what is there, register
  *                  anew. (Plain `addClass` would leave both, and collection
  *                  resolution would see the loser too.)
- *   - `removeAll`— TEARDOWN. Strip a token back to nothing, which is what a
+ *   - `removeAll`— TEARDOWN. Strip a type back to nothing, which is what a
  *                  test host or a "no default providers" switch needs.
+ *
+ * None of these has a type-driven form, so this function is IDENTICAL in the
+ * with-transformer app.
  */
 function demonstrateDescriptorVerbs(): string[] {
   const lines: string[] = [];
 
   // Applying the defaults twice leaves exactly one of each.
-  let library = new ServiceManifest<'singleton'>();
+  let library: Manifest<'singleton'> = new DefaultManifest<'singleton'>();
   library = addOrderDefaults(library);
   library = addOrderDefaults(library);
   lines.push(
-    `defaults: applying them twice leaves ${countRegistrations(library, DEFAULT_SINK_TOKEN)} sink `
+    `defaults: applying them twice leaves ${countRegistrations(library, DEFAULT_SINK_TYPE)} sink `
       + `(tryAdd* only registers what is missing)`,
   );
 
   // An application that already wired its own sink keeps it.
-  let application = new ServiceManifest<'singleton'>();
-  application = application.addClass(DEFAULT_SINK_TOKEN, RecordingSink, [[]], 'singleton');
+  let application: Manifest<'singleton'> = new DefaultManifest<'singleton'>();
+  application = application.addClass(DEFAULT_SINK_TYPE, RecordingSink, [[]], 'singleton');
   application = addOrderDefaults(application);
-  const kept = application.build().createScope('singleton').resolve<IMessageSink>(DEFAULT_SINK_TOKEN);
+  const kept = application.build().getRequiredService(DEFAULT_SINK_TYPE) as IMessageSink;
   lines.push(`defaults: an application that registered its own sink keeps it (${kept.name})`);
 
   // The host overrides all three defaults outright.
-  let host = addOrderDefaults(new ServiceManifest<'singleton'>());
-  host = host.replaceValue(DEFAULT_CLOCK_TOKEN, new FixedClock());
-  host = host.replace(DEFAULT_SINK_TOKEN, RecordingSink, [[]], 'singleton');
-  host = host.replaceFactory(DEFAULT_NOTIFIER_TOKEN, makeOrderNotifier, [[DEFAULT_SINK_TOKEN]], 'singleton');
-  const hostScope = host.build().createScope('singleton');
-  hostScope.resolve<IOrderNotifier>(DEFAULT_NOTIFIER_TOKEN).notify('order-7');
-  const recorder = hostScope.resolve<RecordingSink>(DEFAULT_SINK_TOKEN);
+  let host = addOrderDefaults(new DefaultManifest<'singleton'>());
+  host = host.replaceValue(DEFAULT_CLOCK_TYPE, new FixedClock());
+  host = host.replaceClass(DEFAULT_SINK_TYPE, RecordingSink, [[]], 'singleton');
+  host = host.replaceFactory(DEFAULT_NOTIFIER_TYPE, makeOrderNotifier, [[DEFAULT_SINK_TYPE]], 'singleton');
+  const hostProvider = host.build();
+  const recorder = hostProvider.getRequiredService(DEFAULT_SINK_TYPE) as RecordingSink;
   lines.push(
-    `override: replace* swapped all three defaults; the host sink is ${recorder.name}, it captured `
-      + `${recorder.captured.length} message, and ${countRegistrations(host, DEFAULT_SINK_TOKEN)} `
-      + `registration is left at its token`,
+    `override: replace* swapped all three defaults; the host sink is ${recorder.name}, and `
+      + `${countRegistrations(host, DEFAULT_SINK_TYPE)} registration is left at its type`,
   );
 
-  // Teardown strips the token completely.
-  const stripped = host.removeAll(DEFAULT_SINK_TOKEN);
+  // Teardown strips the type completely.
+  const stripped = host.removeAll(DEFAULT_SINK_TYPE);
   lines.push(
-    `teardown: removeAll left ${countRegistrations(stripped, DEFAULT_SINK_TOKEN)} sinks on the new manifest, `
-      + `and ${countRegistrations(host, DEFAULT_SINK_TOKEN)} on the original (nothing mutates)`,
+    `teardown: removeAll left ${countRegistrations(stripped, DEFAULT_SINK_TYPE)} sinks on the new manifest, `
+      + `and ${countRegistrations(host, DEFAULT_SINK_TYPE)} on the original (nothing mutates)`,
   );
 
   return lines;
@@ -428,110 +366,109 @@ function demonstrateDescriptorVerbs(): string[] {
 // ── 3. the application container ─────────────────────────────────────────────
 
 /**
- * Registers the whole scenario. Every call here has a line-for-line twin in the
- * without-transformer app; the comments name it where the shape differs.
+ * Registers the whole scenario. Read it as one pass down the registration
+ * surface: a value (twice, once keyed), two sinks sharing one type plus a keyed
+ * third, an optional dependency, a factory with two overloads, and a
+ * zero-dependency class.
  */
-function buildOrderContainer(): IServiceManifest<'singleton'> {
-  let services = new ServiceManifest<'singleton'>();
+function buildOrderContainer(): Manifest<'singleton'> {
+  let services: Manifest<'singleton'> = new DefaultManifest<'singleton'>();
   const clock = new FixedClock();
 
-  // addValue<I> — an already-built instance under the token derived from `I`.
-  // No signature (there is nothing to construct) and no scope (a value IS its
-  // instance, so caching is moot).
-  services = services.addValue<IClock>(clock);
+  // addValue — an already-built instance. No signature (there is nothing to
+  // construct) and no scope (a value IS its instance, so caching is moot).
+  services = services.addValue(CLOCK_TYPE, clock);
 
-  // The SAME instance again under a KEYED token, `orders:IClock#vendor`. This
-  // one uses the explicit form: its token is an entry in the override array
-  // below, which names tokens as strings. The type-driven spelling would be
-  // `addValue<Keyed<IClock, 'vendor'>>(...)`, but then the token would be
-  // derived and the override array could not name it.
-  services = services.addValue(CLOCK_TOKEN, clock, 'vendor');
+  // The SAME instance again under a KEYED type. Argument 3 is the key, and it is
+  // shorthand for tagging the type: passing `'vendor'` here registers at exactly
+  // the `VENDOR_CLOCK_TYPE` composed above.
+  services = services.addValue(CLOCK_TYPE, clock, 'vendor');
 
-  // The OVERRIDE form: a sparse positional array laid over the DERIVED
-  // signature. `VendorSink`'s only parameter is typed `ILegacyClock`, which
-  // derives a token nothing registers, so slot 0 is repointed at our keyed
-  // clock. An array hole would keep the derived token; an explicit `undefined`
-  // would clear the slot.
+  // A third-party class adapted onto our own clock: its constructor names the
+  // vendor's `ILegacyClock`, but the signature is ours to write, so the slot
+  // simply points at the keyed clock registered above.
+  services = services.addClass(SINK_TYPE, VendorSink, [[VENDOR_CLOCK_TYPE]], 'singleton');
+
+  // addClass, 4-argument form: type, ctor, signatures, scope. The second slot is
+  // a LITERAL — its value is injected verbatim, with no container lookup. (The
+  // 5-argument form takes a key after the scope.)
   //
-  // The without-transformer twin has nothing to override — it simply writes the
-  // signature it wants, `[[VENDOR_CLOCK_TOKEN]]`. This form exists precisely
-  // because the sugar derived one for you.
-  services = services.addClass<IMessageSink>(VendorSink, [VENDOR_CLOCK_TOKEN]).as<'singleton'>();
-
-  // addClass<I> with the signature fully derived: `[clock, environment]` where
-  // `environment` is a literal type, so its value is supplied directly.
-  //
-  // This lands at the SAME token as the vendor sink above. Registering twice at
-  // one token is legal and useful — a collection resolve sees both — and a
-  // single resolve takes the LAST one registered, so this is the sink the rest
+  // This lands at the SAME type as the vendor sink above. Registering twice at
+  // one type is legal and useful — a collection request sees both — and a single
+  // request takes the MOST RECENTLY registered one, so this is the sink the rest
   // of the scenario gets.
-  services = services.addClass<IMessageSink>(PlainTextSink).as<'singleton'>();
+  services = services.addClass(SINK_TYPE, PlainTextSink, [[CLOCK_TYPE, Type.typeLiteral('production')]], 'singleton');
 
-  // `Keyed<I, 'email'>` is the type-driven `.withKey('email')`: the registration
-  // lands on the composed token `<IMessageSink token>#email`.
-  //
-  // `withSignatures<T>()` REPLACES the derived signature set wholesale from a
-  // tuple-of-tuples, and is once-only. The two overloads are tried
-  // longest-first: `[clock, options]` needs `IEmailOptions`, which nothing
-  // registers, so the `[clock]` overload wins and the sink falls back to its
-  // built-in address.
-  services = services.addClass<Keyed<IMessageSink, 'email'>>(EmailSink).withSignatures<
-    [[IClock], [IClock, IEmailOptions]]
-  >().as<'singleton'>();
+  // TWO OVERLOADS for one class, and a KEY. Each inner array is one constructor
+  // overload, and the engine takes the first whose every slot it can supply:
+  // `[clock, options]` needs `IEmailOptions`, which nothing registers, so the
+  // `[clock]` overload wins and the sink falls back to its built-in address.
+  services = services.addClass(SINK_TYPE, EmailSink, [[CLOCK_TYPE, EMAIL_OPTIONS_TYPE], [CLOCK_TYPE]], 'singleton',
+    'email');
 
-  // An OPTIONAL dependency needs no ceremony: `sink?: IMessageSink` derives a
-  // union slot whose last member is the literal `undefined`. Union members are
-  // tried in order and the first resolvable one wins, so this yields the sink
-  // when one is registered and `undefined` when none is.
-  services = services.addClass<IAuditLog>(AuditLog).as<'singleton'>();
+  // An OPTIONAL dependency, spelled honestly: a union whose other member is the
+  // literal `undefined`. A literal member supplies ITSELF rather than competing
+  // for the slot, so this yields the sink when one is registered and `undefined`
+  // when none is — and the slot is never unsatisfiable.
+  services = services.addClass(AUDIT_TYPE, AuditLog, [[CLOCK_TYPE, Type.union(SINK_TYPE, Type.typeLiteral(undefined))]],
+    'singleton');
 
-  // addFactory<I> derives the token from the factory's RETURN type and the
-  // signature from its parameters — here `[sink, union(metrics, audit,
-  // undefined)]`, since the second parameter is a union AND optional. The
-  // metrics recorder is preferred but never registered, so resolution falls
-  // through to the audit log.
-  //
-  // `withSignature<T>()` APPENDS one more injectable overload and is
-  // REPEATABLE, unlike the bulk `withSignatures<T>()` above.
-  services = services.addFactory<IOrderNotifier>(makeOrderNotifier).withSignature<[IMessageSink]>().as<'singleton'>();
+  // The same shape on a FACTORY, whose second parameter is a union of two
+  // SERVICES plus the literal `undefined`. Only the audit log is registered, so
+  // exactly one member can be supplied and the slot settles on it without
+  // ambiguity.
+  services = services.addFactory(NOTIFIER_TYPE, makeOrderNotifier, [[SINK_TYPE,
+    Type.union(METRICS_TYPE, AUDIT_TYPE, Type.typeLiteral(undefined))]], 'singleton');
 
-  // An OPEN template, written as an instantiation expression on both sides:
-  // `$<1>` is the first hole. `SqlRepository`'s `Typeof<T>` parameter derives
-  // the open type-argument slot that substitution closes per resolved token.
-  services = services.addClass<IRepository<$<1>>>(SqlRepository<$<1>>).as<'singleton'>();
-
-  // Self-registration: no type argument, so the token is derived from what the
-  // class BUILDS. Reach for it when the implementation IS the service.
-  services = services.addClass(FeatureFlags).as<'singleton'>();
+  // A zero-dependency class. `[[]]` is not decoration: it states ONE overload
+  // that takes nothing, which is different from supplying no overloads at all.
+  services = services.addClass(FLAGS_TYPE, FeatureFlags, [[]], 'singleton');
 
   return services;
 }
 
+/**
+ * The other way to spell a registration: instead of positional arguments, a
+ * lambda walks the slots by name and hands back what it configured. Each step
+ * returns a NEW node — the same rule the manifest itself follows — and the
+ * manifest verb is withheld until an implementation and a signature have both
+ * been chosen, so an incomplete registration is refused where it is written
+ * rather than at build time.
+ *
+ * It has no type-driven form, so this function too is identical in the twin.
+ */
+function demonstrateConfiguredRegistration(): string {
+  const withClock: Manifest<'singleton'> = new DefaultManifest<'singleton'>().addValue(CLOCK_TYPE, new FixedClock());
+  const services = withClock
+    .add(SINK_TYPE, sink =>
+      sink.asClass(PlainTextSink)
+        .usingSignature(CLOCK_TYPE, Type.typeLiteral('staging'))
+        .withLifetime('singleton'));
+
+  const sink = services.build().getRequiredService(SINK_TYPE) as IMessageSink;
+  return `configured by lambda: ${sink.send('order-99 shipped')}`;
+}
+
 /** Exercises the container and reports what each registration produced. */
-function describeOrderContainer(services: IServiceManifest<'singleton'>): string[] {
-  // `build()` opens no frame; a scope has to be opened for `'singleton'`
-  // registrations to cache.
-  const app: IServiceProvider<'singleton'> = services.build().createScope('singleton');
+function describeOrderContainer(services: Manifest<'singleton'>): string[] {
+  const app = services.build();
 
-  // Tokenless resolution, the mirror of the registration sugar: the token comes
-  // from the type argument. `Keyed<I, 'email'>` reaches the keyed sink.
-  const notifier = app.resolve<IOrderNotifier>();
-  const audit = app.resolve<IAuditLog>();
-  const email = app.resolve<Keyed<IMessageSink, 'email'>>();
-  const repository = app.resolve<IRepository<Order>>();
-  const flags = app.resolve<FeatureFlags>();
-  // The vendor clock was registered under a hand-written token, so it is
-  // resolved by that token too — base plus key.
-  const vendorClock = app.resolve<IClock>(CLOCK_TOKEN, 'vendor');
+  const notifier = app.getRequiredService(NOTIFIER_TYPE) as IOrderNotifier;
+  const audit = app.getRequiredService(AUDIT_TYPE) as IAuditLog;
+  const email = app.getRequiredService(EMAIL_SINK_TYPE) as IMessageSink;
+  const vendorClock = app.getRequiredService(VENDOR_CLOCK_TYPE) as IClock;
+  const flags = app.getRequiredService(FLAGS_TYPE) as FeatureFlags;
 
-  const sinkToken = derivedTokenFor(services, 'IMessageSink');
+  // The optional sink slot found a sink, so the entry the audit log records is
+  // echoed to it as well as kept.
+  audit.record('order-42 shipped');
 
   return [`notify: ${notifier.notify('order-42')}`,
     `audit: ${audit.entries.length} entry, sink echo enabled=${flags.echoToSink}`,
     `keyed sink (key "email"): ${email.send('welcome')}`, `keyed value (key "vendor"): ${vendorClock.now()}`,
-    `open template, closed per entity: ${repository.describe({ id: 'order-42' })}`,
-    `${countRegistrations(services, sinkToken)} sinks share the IMessageSink token; the last one `
-    + `registered wins a single resolve`];
+    `${countRegistrations(services, SINK_TYPE)} sinks share the IMessageSink type; the most recently `
+    + `registered one wins a single request, and all of them answer a collection request `
+    + `(${[...app.getServices(SINK_TYPE)].length})`];
 }
 
 /**
@@ -539,14 +476,13 @@ function describeOrderContainer(services: IServiceManifest<'singleton'>): string
  * slot falls through to `undefined` rather than failing, and — because nothing
  * mutates — the container it was forked from still has all of its sinks.
  */
-function describeSinklessFork(services: IServiceManifest<'singleton'>): string {
-  const sinkToken = derivedTokenFor(services, 'IMessageSink');
-  const noSinks = services.removeAll(sinkToken);
-  const audit = noSinks.build().createScope('singleton').resolve<IAuditLog>();
+function describeSinklessFork(services: Manifest<'singleton'>): string {
+  const noSinks = services.removeAll(SINK_TYPE);
+  const audit = noSinks.build().getRequiredService(AUDIT_TYPE) as IAuditLog;
   audit.record('order-42 shipped');
 
-  return `fork: removeAll left ${countRegistrations(noSinks, sinkToken)} sinks (the original still has `
-    + `${countRegistrations(services, sinkToken)}), so the audit log's optional sink slot resolved to `
+  return `fork: removeAll left ${countRegistrations(noSinks, SINK_TYPE)} sinks (the original still has `
+    + `${countRegistrations(services, SINK_TYPE)}), so the audit log's optional sink slot resolved to `
     + `undefined and it recorded ${audit.entries.length} entry anyway`;
 }
 
@@ -554,12 +490,12 @@ function describeSinklessFork(services: IServiceManifest<'singleton'>): string {
 
 /**
  * Runs the whole registration tour and returns a deterministic report, leaving
- * the caller to decide where the lines go — the same body the
- * without-transformer app returns, from the type-driven dialect.
+ * the caller to decide where the lines go. The with-transformer app returns the
+ * same body from the type-driven dialect.
  */
 export function demonstrateRegistration(): readonly string[] {
   const services = buildOrderContainer();
 
   return ['=== di registration — with transformer ===', demonstrateDiscardTrap(), ...demonstrateDescriptorVerbs(),
-    ...describeOrderContainer(services), describeSinklessFork(services)];
+    ...describeOrderContainer(services), demonstrateConfiguredRegistration(), describeSinklessFork(services)];
 }
