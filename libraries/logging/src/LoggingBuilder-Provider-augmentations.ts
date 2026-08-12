@@ -9,8 +9,8 @@
 
 import type { ILoggerProvider, ILoggingBuilder, LogLevel } from '@rhombus-std/logging.core';
 import { configureStepType } from '@rhombus-std/options.augmentations';
-import { type AugmentationSet2, type Flatten, registerAugmentations } from '@rhombus-std/primitives';
-import { typefor } from '@rhombus-std/primitives.extras';
+import type { AugmentationSet2, Flatten } from '@rhombus-std/primitives';
+import { registerAugmentations } from '@rhombus-std/primitives.extras';
 import { DefaultLoggerLevelConfigureOptions } from './DefaultLoggerLevelConfigureOptions';
 import { LOGGER_FILTER_OPTIONS_TYPE, LOGGER_PROVIDER_TYPE } from './types';
 
@@ -58,4 +58,4 @@ export const LoggingBuilderProviderAugmentations: AugmentationSet2<ILoggingBuild
     },
   };
 
-registerAugmentations(typefor<ILoggingBuilder>(), LoggingBuilderProviderAugmentations);
+registerAugmentations<ILoggingBuilder>(LoggingBuilderProviderAugmentations);

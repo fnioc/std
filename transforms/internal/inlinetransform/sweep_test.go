@@ -140,3 +140,32 @@ func TestSweepFlagsSurvivingSingularValue(t *testing.T) {
 		t.Fatalf("expected 1 SINGULAR_VALUE_NON_SINGULAR from the surviving-singularValue branch, got %+v", diags)
 	}
 }
+
+// TestSweepIgnoresSameNameFromAnotherModule: a free-function sugar is identified by
+// its declaring package, not by its spelling. A call to a same-named function
+// imported from somewhere else is a different function — the pairing a sugar body
+// that forwards to its own runtime namesake makes ordinary.
+func TestSweepIgnoresSameNameFromAnotherModule(t *testing.T) {
+	sf := parse(t, "/sweep/other-module.ts", `import { tokenOf } from 'q';
+export const v = tokenOf(1);
+`)
+	shimast.SetParentInChildrenUnset(sf.AsNode())
+
+	if diags := Sweep(sf, activeResidueArtifacts()); len(diags) != 0 {
+		t.Fatalf("a same-named function from another module is not the sugar, got %+v", diags)
+	}
+}
+
+// TestSweepFlagsSugarFromItsDeclaringModule is the same shape from the package that
+// DOES declare the sugar: the call is the sugar, un-lowered, and must be flagged.
+func TestSweepFlagsSugarFromItsDeclaringModule(t *testing.T) {
+	sf := parse(t, "/sweep/own-module.ts", `import { tokenOf } from 'p';
+export const v = tokenOf(1);
+`)
+	shimast.SetParentInChildrenUnset(sf.AsNode())
+
+	diags := Sweep(sf, activeResidueArtifacts())
+	if len(diags) != 1 || diags[0].Code != "INLINE_UNLOWERED_SUGAR" {
+		t.Fatalf("want one INLINE_UNLOWERED_SUGAR, got %+v", diags)
+	}
+}

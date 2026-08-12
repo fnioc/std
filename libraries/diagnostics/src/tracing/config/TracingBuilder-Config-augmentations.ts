@@ -4,8 +4,8 @@ import type { IConfig } from '@rhombus-std/config.core';
 import { type ITracingBuilder, TRACING_CHANGE_TOKEN_SOURCE_TYPE, TRACING_CONFIGURATION_TYPE,
   TRACING_CONFIGURE_TYPE } from '@rhombus-std/diagnostics.core';
 import { ConfigChangeTokenSource } from '@rhombus-std/options.augmentations';
-import { type AugmentationSet2, type Flatten, registerAugmentations } from '@rhombus-std/primitives';
-import { typefor } from '@rhombus-std/primitives.extras';
+import type { AugmentationSet2, Flatten } from '@rhombus-std/primitives';
+import { registerAugmentations } from '@rhombus-std/primitives.extras';
 
 import { TracingConfig } from './TracingConfig';
 import { TracingConfigureOptions } from './TracingConfigureOptions';
@@ -37,4 +37,4 @@ export const TracingBuilderConfigAugmentations: AugmentationSet2<ITracingBuilder
 // Registered against the same OPEN token diagnostics.core's listener/rule
 // members use; this member lives downstream because its `IConfig` dependency
 // keeps it out of diagnostics.core. The concrete builder pulls both bags.
-registerAugmentations(typefor<ITracingBuilder>(), TracingBuilderConfigAugmentations);
+registerAugmentations<ITracingBuilder>(TracingBuilderConfigAugmentations);

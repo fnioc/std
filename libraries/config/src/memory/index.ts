@@ -5,8 +5,8 @@
 // provider packages use: ConfigBuilder itself carries no add* sugar of its own.
 
 import type { IConfigBuilder, IndexedSection } from '@rhombus-std/config.core';
-import { type AugmentationSet2, type Flatten, registerAugmentations } from '@rhombus-std/primitives';
-import { typefor } from '@rhombus-std/primitives.extras';
+import type { AugmentationSet2, Flatten } from '@rhombus-std/primitives';
+import { registerAugmentations } from '@rhombus-std/primitives.extras';
 import { type ConfigData, MemoryConfigSource } from './MemoryConfigSource';
 
 export { MemoryConfigProvider } from './MemoryConfigProvider';
@@ -37,4 +37,4 @@ export const MemoryConfigBuilderAugmentations: AugmentationSet2<IConfigBuilder,
     },
   };
 
-registerAugmentations(typefor<IConfigBuilder>(), MemoryConfigBuilderAugmentations);
+registerAugmentations<IConfigBuilder>(MemoryConfigBuilderAugmentations);

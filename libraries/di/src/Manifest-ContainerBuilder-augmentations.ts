@@ -1,6 +1,6 @@
 import { type Manifest } from '@rhombus-std/di.core';
-import { type AugmentationSet2, registerAugmentations } from '@rhombus-std/primitives';
-import { typefor } from '@rhombus-std/primitives.extras';
+import type { AugmentationSet2 } from '@rhombus-std/primitives';
+import { registerAugmentations } from '@rhombus-std/primitives.extras';
 import { ServiceProvider } from './ServiceProvider.js';
 import { ServiceProviderOptions } from './ServiceProviderOptions.js';
 
@@ -29,4 +29,4 @@ export const ManifestContainerBuilderAugmentations: AugmentationSet2<
   },
 };
 
-registerAugmentations(typefor<Manifest>(), ManifestContainerBuilderAugmentations);
+registerAugmentations<Manifest>(ManifestContainerBuilderAugmentations);

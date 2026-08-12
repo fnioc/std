@@ -17,8 +17,8 @@ import { HOST_APPLICATION_LIFETIME_TYPE, type HostBuilderContext, HostDefaults, 
   type IHostBuilder } from '@rhombus-std/hosting.core';
 import { LOGGER_FACTORY_TYPE, LoggingBuilder } from '@rhombus-std/logging';
 import type { ILoggingBuilder } from '@rhombus-std/logging.core';
-import { type AbortSignal, type AugmentationSet2, type Flatten, registerAugmentations } from '@rhombus-std/primitives';
-import { typefor } from '@rhombus-std/primitives.extras';
+import type { AbortSignal, AugmentationSet2, Flatten } from '@rhombus-std/primitives';
+import { registerAugmentations } from '@rhombus-std/primitives.extras';
 import type { Func } from '@rhombus-toolkit/func';
 import { ConsoleLifetimeOptions } from './ConsoleLifetimeOptions';
 import { addDefaultServices, applyDefaultAppConfig, applyDefaultHostConfig,
@@ -221,4 +221,4 @@ export const HostBuilderHostingAugmentations: AugmentationSet2<IHostBuilder,
     },
   };
 
-registerAugmentations(typefor<IHostBuilder>(), HostBuilderHostingAugmentations);
+registerAugmentations<IHostBuilder>(HostBuilderHostingAugmentations);

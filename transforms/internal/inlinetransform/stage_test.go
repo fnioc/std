@@ -404,6 +404,122 @@ func TestStageInlinesFreeFunction(t *testing.T) {
 	parse(t, "/free-out.ts", out)
 }
 
+// setupImportedValueWorkspace lays out a free-function sugar whose body calls a
+// value its own file imports under an ALIAS (`record as capture`). The consumer
+// imports only the sugar, so the runtime import must be carried across to it — and
+// under the name the CONSUMER file binds, not the body's alias.
+func setupImportedValueWorkspace(t *testing.T) (*driver.Program, string) {
+	t.Helper()
+	root := t.TempDir()
+	write(t, filepath.Join(root, "package.json"), `{ "name": "ws", "private": true, "workspaces": ["packages/*"] }`)
+
+	runtime := filepath.Join(root, "packages", "runtime")
+	write(t, filepath.Join(runtime, "package.json"), `{
+  "name": "@scope/runtime",
+  "version": "1.0.0",
+  "exports": { ".": { "types": "./src/index.ts", "default": "./src/index.ts" } }
+}`)
+	write(t, filepath.Join(runtime, "src", "index.ts"), `export function record<T>(value: T): T {
+  return value;
+}
+`)
+
+	prims := filepath.Join(root, "packages", "prims")
+	write(t, filepath.Join(prims, "package.json"), `{
+  "name": "@scope/prims",
+  "version": "1.0.0",
+  "exports": { ".": { "types": "./src/index.ts", "default": "./src/index.ts" } },
+  "rhombus.inline": { "entries": [ { "impl": "wrap" } ] }
+}`)
+	linkPackage(t, prims, "@scope/runtime", runtime)
+	write(t, filepath.Join(prims, "src", "index.ts"), `import { record as capture } from '@scope/runtime';
+export function wrap<T>(value: T): T {
+  return capture(value);
+}
+`)
+
+	app := filepath.Join(root, "packages", "app")
+	write(t, filepath.Join(app, "package.json"), `{
+  "name": "@scope/app",
+  "version": "1.0.0",
+  "dependencies": { "@scope/prims": "workspace:*" }
+}`)
+	linkPackage(t, app, "@scope/prims", prims)
+	linkPackage(t, app, "@scope/runtime", runtime)
+	write(t, filepath.Join(app, "main.ts"), `import { wrap } from '@scope/prims';
+export const x = wrap<number>(1);
+`)
+	write(t, filepath.Join(app, "quiet.ts"), `export const untouched = 1;
+`)
+	write(t, filepath.Join(app, "tsconfig.json"), `{
+  "compilerOptions": {
+    "target": "ES2022", "module": "esnext", "moduleResolution": "bundler",
+    "strict": true, "noEmit": true, "skipLibCheck": true
+  },
+  "files": ["main.ts", "quiet.ts", "node_modules/@scope/prims/src/index.ts"]
+}`)
+
+	prog, diags, err := driver.LoadProgram(app, "tsconfig.json", driver.LoadProgramOptions{})
+	if err != nil {
+		t.Fatalf("LoadProgram: %v", err)
+	}
+	if len(diags) != 0 {
+		t.Fatalf("config diagnostics: %v", diags)
+	}
+	return prog, app
+}
+
+// TestStageMaterializesImportedValue drives the import-following mechanism end to
+// end: the substituted body's `record(...)` call survives lowering, and the import
+// that declared it in the body's own file is injected into the consumer so the call
+// resolves there too. The sugar's own import is elided, having no reference left.
+func TestStageMaterializesImportedValue(t *testing.T) {
+	prog, app := setupImportedValueWorkspace(t)
+	defer func() { _ = prog.Close() }()
+
+	artifacts := NewArtifacts()
+	var diags []plugin.Diagnostic
+	transform := Build(prog, bodiesFor(t, app), artifacts, func(d plugin.Diagnostic) { diags = append(diags, d) })
+	if len(diags) != 0 {
+		t.Fatalf("Build raised diagnostics: %+v", diags)
+	}
+
+	ec := shimprinter.NewEmitContext()
+	main := sourceFileWithSuffix(t, prog, "main.ts")
+	out := reprint(ec, transform(ec, main))
+
+	if !strings.Contains(out, "record(1)") {
+		t.Errorf("the imported callee must survive lowering under the CONSUMER's name for it, got:\n%s", out)
+	}
+	if strings.Contains(out, "capture") {
+		t.Errorf("the body's own alias names nothing in the consumer and must not survive, got:\n%s", out)
+	}
+	if !strings.Contains(out, `from "@scope/runtime"`) && !strings.Contains(out, "from '@scope/runtime'") {
+		t.Errorf("the body's own import must be materialized into the consumer, got:\n%s", out)
+	}
+	if strings.Contains(out, "wrap") {
+		t.Errorf("the inlined sugar's import must be elided, got:\n%s", out)
+	}
+	parse(t, "/imported-value-out.ts", out)
+}
+
+// TestStageLeavesUninlinedFileIdentical: a file the stage changes nothing in comes
+// back as the SAME source file. Import materialization must not mint a new node when
+// no body was substituted — the fixed-point loop reads pointer identity as "no
+// change", and a fresh pointer each pass would never terminate.
+func TestStageLeavesUninlinedFileIdentical(t *testing.T) {
+	prog, app := setupImportedValueWorkspace(t)
+	defer func() { _ = prog.Close() }()
+
+	transform := Build(prog, bodiesFor(t, app), NewArtifacts(), func(plugin.Diagnostic) {})
+
+	ec := shimprinter.NewEmitContext()
+	quiet := sourceFileWithSuffix(t, prog, "quiet.ts")
+	if got := transform(ec, quiet); got != quiet {
+		t.Fatalf("a file with no inlined call must return the same source file pointer")
+	}
+}
+
 // linkPackage symlinks appDir/node_modules/<name> to target, mirroring the bun
 // isolated linker's workspace layout the collector resolves through.
 func linkPackage(t *testing.T, appDir, name, target string) {

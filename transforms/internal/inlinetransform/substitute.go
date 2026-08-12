@@ -38,6 +38,11 @@ type Inlining struct {
 	// it is expanded where the body spreads it rather than substituted as a value.
 	RestParam string
 	RestArgs  []*shimast.Node
+	// Bindings rewrites body identifiers that are not parameters — a value the body
+	// reaches through its own file's import, mapped to the way the CONSUMER file
+	// names that same export. Keyed by name rather than position, since these bind
+	// to nothing in the call's argument list.
+	Bindings map[string]*shimast.Node
 }
 
 // Result is Substitute's output. Expr is the rewritten expression to splice in
@@ -85,6 +90,9 @@ func Substitute(ec *shimprinter.EmitContext, in Inlining) Result {
 		if i < len(in.Args) {
 			params[name] = in.Args[i]
 		}
+	}
+	for name, node := range in.Bindings {
+		params[name] = node
 	}
 
 	if in.Receiver == nil {

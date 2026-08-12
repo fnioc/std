@@ -12,6 +12,7 @@
 export { IS_FACTORY_NAME, isFactory } from './isFactory.js';
 export { IS_SINGULAR_NAME, isSingular } from './isSingular.js';
 export { PARAM_TOKENSFOR_NAME, paramtokensfor } from './paramtokensfor.js';
+export { REGISTER_AUGMENTATIONS_NAME, registerAugmentations } from './registerAugmentations.js';
 export { type InlineBody, type InlineBodySet, registerInlineBodies } from './registerInlineBodies.js';
 export { RETURN_TOKENFOR_NAME, returntokenfor } from './returntokenfor.js';
 export { SINGULAR_VALUE_NAME, singularValue } from './singularValue.js';

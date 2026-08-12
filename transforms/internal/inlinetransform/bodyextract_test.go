@@ -4,6 +4,8 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+
+	"github.com/fnioc/std/transforms/internal/valueimport"
 )
 
 // oneImplPackage writes a minimal declaring package: a package.json (no exports,
@@ -219,5 +221,139 @@ export const QueryInline = {
 	_, err := newBodyExtractor().Extract(dir, Entry{Type: "p:Foo", Impl: "QueryInline", Member: "bar"})
 	if err == nil || !strings.Contains(err.Error(), "INLINE_BODY_FREE_IDENTIFIER") {
 		t.Fatalf("want INLINE_BODY_FREE_IDENTIFIER for a marker reference inside a body, got %v", err)
+	}
+}
+
+// TestExtractRecordsImportedValue: a body may call a value its file imports, and
+// Extract records the import's (module, export) so the inline stage can materialize
+// it at the call site. The import declaration is the whole declaration — nothing
+// else names the callee.
+func TestExtractRecordsImportedValue(t *testing.T) {
+	inline := `import { merge } from '@scope/runtime';
+import { tokenfor } from '@rhombus-std/primitives.extras';
+export const QueryInline = {
+  bar<T>(this: any): boolean { return merge(this.isService(tokenfor<T>())); },
+};
+`
+	dir := oneImplPackage(t, indexStub, inline)
+
+	rb, err := newBodyExtractor().Extract(dir, Entry{Type: "p:Foo", Impl: "QueryInline", Member: "bar"})
+	if err != nil {
+		t.Fatalf("a body calling an imported value must extract: %v", err)
+	}
+	want := valueimport.Ref{Module: "@scope/runtime", Export: "merge"}
+	if got := rb.ValueImports["merge"]; got != want {
+		t.Fatalf("ValueImports[merge] = %+v, want %+v", got, want)
+	}
+}
+
+// TestExtractRecordsAliasedImportedValue: an alias binds the LOCAL name to the
+// EXPORTED one. The body references the alias; the recorded Export is the property
+// name, so the import materialized into a consumer names the real export.
+func TestExtractRecordsAliasedImportedValue(t *testing.T) {
+	inline := `import { overrideSignatures as merge } from '@scope/runtime';
+export const QueryInline = {
+  bar<T>(this: any): boolean { return merge(this.isService()); },
+};
+`
+	dir := oneImplPackage(t, indexStub, inline)
+
+	rb, err := newBodyExtractor().Extract(dir, Entry{Type: "p:Foo", Impl: "QueryInline", Member: "bar"})
+	if err != nil {
+		t.Fatalf("an aliased imported value must extract: %v", err)
+	}
+	want := valueimport.Ref{Module: "@scope/runtime", Export: "overrideSignatures"}
+	if got := rb.ValueImports["merge"]; got != want {
+		t.Fatalf("ValueImports[merge] = %+v, want %+v", got, want)
+	}
+}
+
+// TestExtractRecordsOnlyTheBodysOwnImports: a shared impl file's imports are
+// file-wide, so a body records only what IT references. A sibling body's callee
+// must not follow it to its call sites.
+func TestExtractRecordsOnlyTheBodysOwnImports(t *testing.T) {
+	inline := `import { merge, unrelated } from '@scope/runtime';
+export const QueryInline = {
+  bar<T>(this: any): boolean { return merge(this.isService()); },
+  other<T>(this: any): boolean { return unrelated(this.isService()); },
+};
+`
+	dir := oneImplPackage(t, indexStub, inline)
+
+	rb, err := newBodyExtractor().Extract(dir, Entry{Type: "p:Foo", Impl: "QueryInline", Member: "bar"})
+	if err != nil {
+		t.Fatalf("Extract: %v", err)
+	}
+	if _, recorded := rb.ValueImports["unrelated"]; recorded {
+		t.Fatalf("a sibling body's import must not be recorded, got %+v", rb.ValueImports)
+	}
+	if len(rb.ValueImports) != 1 {
+		t.Fatalf("want exactly the one referenced import, got %+v", rb.ValueImports)
+	}
+}
+
+// TestExtractRejectsUnresolvableValues pins the boundary of "the file's imports are
+// the declarations": every shape that does NOT put a resolvable bare value in the
+// body's scope stays the free-identifier authoring error.
+func TestExtractRejectsUnresolvableValues(t *testing.T) {
+	cases := []struct {
+		name   string
+		inline string
+	}{
+		{
+			// Nothing imports it, so nothing declares it.
+			name: "callee the file never imports",
+			inline: `export const QueryInline = {
+  bar<T>(this: any): boolean { return merge(this.isService()); },
+};
+`,
+		},
+		{
+			// An imported value is reachable as a bare identifier only. The head of a
+			// property chain is the body's receiver or a parameter, never an import.
+			name: "imported name as the head of a property chain",
+			inline: `import { Marker } from '@scope/runtime';
+export const QueryInline = {
+  bar<T>(this: any): boolean { return Marker.stringify(this.isService()); },
+};
+`,
+		},
+		{
+			// A relative specifier addresses a file inside the declaring package, which
+			// a consumer's program cannot resolve, so it declares nothing portable.
+			name: "value imported through a relative specifier",
+			inline: `import { merge } from './helpers.js';
+export const QueryInline = {
+  bar<T>(this: any): boolean { return merge(this.isService()); },
+};
+`,
+		},
+		{
+			// A type-only binding has no runtime value to reference.
+			name: "type-only specifier referenced as a value",
+			inline: `import { type Merge } from '@scope/runtime';
+export const QueryInline = {
+  bar<T>(this: any): boolean { return Merge(this.isService()); },
+};
+`,
+		},
+		{
+			name: "type-only clause referenced as a value",
+			inline: `import type { Merge } from '@scope/runtime';
+export const QueryInline = {
+  bar<T>(this: any): boolean { return Merge(this.isService()); },
+};
+`,
+		},
+	}
+
+	for _, c := range cases {
+		t.Run(c.name, func(t *testing.T) {
+			dir := oneImplPackage(t, indexStub, c.inline)
+			_, err := newBodyExtractor().Extract(dir, Entry{Type: "p:Foo", Impl: "QueryInline", Member: "bar"})
+			if err == nil || !strings.Contains(err.Error(), "INLINE_BODY_FREE_IDENTIFIER") {
+				t.Fatalf("want INLINE_BODY_FREE_IDENTIFIER, got %v", err)
+			}
+		})
 	}
 }

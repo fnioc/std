@@ -92,10 +92,13 @@ func Sweep(sf *shimast.SourceFile, artifacts *Artifacts) []plugin.Diagnostic {
 		}
 
 		// (3) surviving free-function sugar: an identifier call to a certified
-		// function while its import binding still exists in the file.
+		// function while the file still imports that name FROM THE DECLARING PACKAGE.
+		// The module is what identifies the sugar — a same-named function imported
+		// from anywhere else is a different function, and a sugar body that forwards
+		// to its own runtime namesake makes that pairing ordinary.
 		if call.Expression.Kind == shimast.KindIdentifier {
 			name := call.Expression.Text()
-			if _, ok := artifacts.SugarFunctions[name]; ok && imports[name] {
+			if pkg, ok := artifacts.SugarFunctions[name]; ok && imports[name] == pkg {
 				diags = append(diags, sweepDiag("INLINE_UNLOWERED_SUGAR", n,
 					fmt.Sprintf("free-function sugar %q survived lowering", name)))
 			}
@@ -118,14 +121,21 @@ func callArity(call *shimast.CallExpression) (int, int) {
 	return typeArgs, valueArgs
 }
 
-// importedNames collects the local names a file's top-level imports still bind.
-func importedNames(sf *shimast.SourceFile) map[string]bool {
-	out := map[string]bool{}
+// importedNames maps each local name a file's top-level imports still bind to the
+// module specifier it was bound from, so a name can be matched against the package
+// that declares it rather than on spelling alone.
+func importedNames(sf *shimast.SourceFile) map[string]string {
+	out := map[string]string{}
 	for _, stmt := range sf.Statements.Nodes {
 		if stmt.Kind != shimast.KindImportDeclaration {
 			continue
 		}
-		clause := stmt.AsImportDeclaration().ImportClause
+		decl := stmt.AsImportDeclaration()
+		spec := decl.ModuleSpecifier
+		if spec == nil || spec.Kind != shimast.KindStringLiteral {
+			continue
+		}
+		clause := decl.ImportClause
 		if clause == nil {
 			continue
 		}
@@ -134,7 +144,7 @@ func importedNames(sf *shimast.SourceFile) map[string]bool {
 			continue
 		}
 		for _, el := range bindings.AsNamedImports().Elements.Nodes {
-			out[el.Name().Text()] = true
+			out[el.Name().Text()] = spec.Text()
 		}
 	}
 	return out

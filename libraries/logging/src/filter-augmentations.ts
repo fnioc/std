@@ -8,9 +8,9 @@
 import '@rhombus-std/options.augmentations';
 
 import type { ILoggingBuilder, LogLevel } from '@rhombus-std/logging.core';
-import { AugmentationSet2, registerAugmentations } from '@rhombus-std/primitives';
+import { AugmentationSet2 } from '@rhombus-std/primitives';
 import type { Flatten } from '@rhombus-std/primitives';
-import { typefor } from '@rhombus-std/primitives.extras';
+import { registerAugmentations } from '@rhombus-std/primitives.extras';
 import type { Func } from '@rhombus-toolkit/func';
 import { LoggerFilterOptions, LoggerFilterRule } from './LoggerFilterOptions';
 import { LOGGER_FILTER_OPTIONS_TYPE } from './types';
@@ -39,7 +39,7 @@ declare module './LoggerFilterOptions' {
   interface LoggerFilterOptions extends ILoggerFilterOptionsExtensions {}
 }
 
-registerAugmentations(typefor<LoggerFilterOptions>(), LoggerFilterOptionsExtensions);
+registerAugmentations<LoggerFilterOptions>(LoggerFilterOptionsExtensions);
 
 interface IFilterLoggingBuilderExtensions {
   addFilter(category: string | undefined, level: LogLevel): this;
@@ -67,4 +67,4 @@ function configureFilter(builder: ILoggingBuilder,
   return builder;
 }
 
-registerAugmentations(typefor<ILoggingBuilder>(), FilterLoggingBuilderExtensions);
+registerAugmentations<ILoggingBuilder>(FilterLoggingBuilderExtensions);

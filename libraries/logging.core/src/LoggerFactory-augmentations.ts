@@ -8,9 +8,8 @@
 // overload (TS2430) -- hence no interface-side merge -- and the typed path is
 // the standalone `LoggerFactoryAugmentations.createLogger(factory, MyService)`.
 
-import { type AugmentationSet2, type Flatten, type MergeStrategies,
-  registerAugmentations } from '@rhombus-std/primitives';
-import { typefor } from '@rhombus-std/primitives.extras';
+import type { AugmentationSet2, Flatten, MergeStrategies } from '@rhombus-std/primitives';
+import { registerAugmentations } from '@rhombus-std/primitives.extras';
 import type { AbstractCtor } from '@rhombus-toolkit/func';
 import type { ILogger } from './ILogger';
 import type { ILoggerFactory } from './logger-factory';
@@ -46,4 +45,4 @@ const factoryMerge = { createLogger(original, incoming) {
   };
 } } satisfies MergeStrategies;
 
-registerAugmentations(typefor<ILoggerFactory>(), LoggerFactoryAugmentations, factoryMerge);
+registerAugmentations<ILoggerFactory>(LoggerFactoryAugmentations, factoryMerge);

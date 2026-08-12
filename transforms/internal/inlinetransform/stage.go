@@ -121,15 +121,20 @@ type fileState struct {
 	emit          func(plugin.Diagnostic)
 	temps         []*shimast.Node // temps needing a hoisted `var` declaration
 	elideFns      map[string]bool // free-function local names now unreferenced
-	// runtimeCallees collects the (module, export) of every RUNTIME callee a
-	// substituted body referenced in this file (§99 `overrideSignatures`), so their
-	// imports are materialized once after the pass.
-	runtimeCallees map[valueimport.Ref]bool
+	// valueBindings holds, per (module, export) a substituted body referenced, how
+	// THIS file names that export — an existing import's local name, or the one the
+	// injected import will introduce. Resolved once per ref, so every call site in
+	// the file agrees and a single import materializes after the pass.
+	valueBindings map[valueimport.Ref]*valueimport.Binding
+	// file is the source file the current pass is rewriting, which value bindings
+	// resolve against.
+	file *shimast.SourceFile
 }
 
 func (st *fileState) run(sf *shimast.SourceFile) *shimast.SourceFile {
 	st.elideFns = map[string]bool{}
-	st.runtimeCallees = map[valueimport.Ref]bool{}
+	st.valueBindings = map[valueimport.Ref]*valueimport.Binding{}
+	st.file = sf
 	var visitor *shimast.NodeVisitor
 	visit := func(node *shimast.Node) *shimast.Node {
 		if node == nil {
@@ -150,21 +155,22 @@ func (st *fileState) run(sf *shimast.SourceFile) *shimast.SourceFile {
 	result := out.AsSourceFile()
 	result = st.hoistTemps(result)
 	result = st.elideFunctionImports(result)
-	result = st.materializeRuntimeCallees(result)
+	result = st.materializeValueImports(result)
 	return result
 }
 
-// materializeRuntimeCallees injects an import for every RUNTIME callee a
-// substituted body referenced in this file (§99 `overrideSignatures`), reusing an
-// existing binding when present. It returns sf unchanged when nothing was recorded
-// (or every callee was already imported), preserving the loop's pointer identity.
-// Refs are ordered deterministically so the injected import order is stable.
-func (st *fileState) materializeRuntimeCallees(sf *shimast.SourceFile) *shimast.SourceFile {
-	if len(st.runtimeCallees) == 0 {
+// materializeValueImports injects an import for every RUNTIME value a substituted
+// body referenced in this file, reusing an existing binding when present — the
+// body's own import declaration, carried across to the call site. It returns sf
+// unchanged when nothing was recorded (or every value was already imported),
+// preserving the loop's pointer identity. Refs are ordered deterministically so the
+// injected import order is stable.
+func (st *fileState) materializeValueImports(sf *shimast.SourceFile) *shimast.SourceFile {
+	if len(st.valueBindings) == 0 {
 		return sf
 	}
-	refs := make([]valueimport.Ref, 0, len(st.runtimeCallees))
-	for ref := range st.runtimeCallees {
+	refs := make([]valueimport.Ref, 0, len(st.valueBindings))
+	for ref := range st.valueBindings {
 		refs = append(refs, ref)
 	}
 	sort.Slice(refs, func(i, j int) bool {
@@ -173,14 +179,41 @@ func (st *fileState) materializeRuntimeCallees(sf *shimast.SourceFile) *shimast.
 		}
 		return refs[i].Export < refs[j].Export
 	})
-	factory := st.ec.Factory.AsNodeFactory()
 	bindings := make([]*valueimport.Binding, 0, len(refs))
 	for _, ref := range refs {
-		binding := valueimport.Resolve(sf, ref)
-		binding.Used = true
-		bindings = append(bindings, binding)
+		bindings = append(bindings, st.valueBindings[ref])
 	}
-	return valueimport.Ensure(factory, sf, bindings...)
+	return valueimport.Ensure(st.ec.Factory.AsNodeFactory(), sf, bindings...)
+}
+
+// importedValueBindings maps each value the body reaches through its own file's
+// import to the way THIS file names that same export. The two spellings differ
+// whenever the body aliases the import — the shape a sugar body takes when it
+// forwards to a runtime function of the same name — so the substituted expression
+// must carry the consumer's name, not the body's. Marking each binding used is what
+// makes materializeValueImports inject the import backing it.
+func (st *fileState) importedValueBindings(body *ResolvedBody) map[string]*shimast.Node {
+	if len(body.ValueImports) == 0 {
+		return nil
+	}
+	factory := st.ec.Factory.AsNodeFactory()
+	out := make(map[string]*shimast.Node, len(body.ValueImports))
+	for local, ref := range body.ValueImports {
+		binding := st.valueBinding(ref)
+		binding.Used = true
+		out[local] = binding.Expr(factory)
+	}
+	return out
+}
+
+// valueBinding resolves how this file names ref's export, once per ref.
+func (st *fileState) valueBinding(ref valueimport.Ref) *valueimport.Binding {
+	if binding, ok := st.valueBindings[ref]; ok {
+		return binding
+	}
+	binding := valueimport.Resolve(st.file, ref)
+	st.valueBindings[ref] = binding
+	return binding
 }
 
 // tryInline attempts to inline one call. It returns (replacement, true) when the
@@ -260,11 +293,6 @@ func (st *fileState) tryInline(node *shimast.Node) (*shimast.Node, bool) {
 	if !ok {
 		return nil, false
 	}
-	// A matched body always references its runtime callees (single-expression form),
-	// so record them for import materialization once the pass completes.
-	for _, ref := range target.body.RuntimeCallees {
-		st.runtimeCallees[ref] = true
-	}
 	return replacement, true
 }
 
@@ -330,6 +358,7 @@ func (st *fileState) inlineCall(node, anchored *shimast.Node, target *matchTarge
 		ReceiverParam: body.ReceiverParam,
 		RestParam:     restParam,
 		RestArgs:      restArgs,
+		Bindings:      st.importedValueBindings(body),
 	}
 	// The arguments SPLICED into the body come from the CURRENT tree (above), so
 	// they carry whatever earlier passes lowered. The arguments the checker is
