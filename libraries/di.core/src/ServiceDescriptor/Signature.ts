@@ -1,6 +1,5 @@
 import { type Token, Type } from '@rhombus-std/primitives';
 
-export type TokenSignatures = ReadonlyArray<readonly Token[]>;
 export type TypeSignatures = ReadonlyArray<readonly Type[]>;
 export namespace TypeSignatures {
   export function from(signatures: Signatures): TypeSignatures {

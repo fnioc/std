@@ -9,5 +9,3 @@ type LastInUnion<T> = ExtractCV<UnionToIntersection<ForceCV<T>>>;
 export type UnionToTuple<T> = _UnionToTuple<T, []>;
 type _UnionToTuple<T, Result extends readonly unknown[], Last = LastInUnion<T>> = [T] extends [never] ? Result
   : _UnionToTuple<Exclude<T, Last>, readonly [Last, ...Result]>;
-
-export type TupleToUnion<T extends readonly unknown[]> = T[number];
