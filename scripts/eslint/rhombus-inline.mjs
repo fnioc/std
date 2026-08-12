@@ -4,9 +4,9 @@
 // it safely: a single return expression written over compile-time primitives,
 // each value parameter used at most once in a runtime position, type parameters
 // only inside primitive type-argument positions, and no free identifiers beyond
-// params / `this` / type params / unaliased primitive imports. The receiver's
-// single-evaluation is the inliner's mechanism, not a lint — bodies may use
-// `this` freely.
+// params / `this` / type params / a primitive import / a value the authoring
+// file imports. The receiver's single-evaluation is the inliner's mechanism,
+// not a lint — bodies may use `this` freely.
 //
 // Every check is syntactic + scope-based (no type services), so the rule runs on
 // the default typescript-eslint parser output.
@@ -32,15 +32,8 @@ const PRIMITIVE_HOMES = { typefor: '@rhombus-std/primitives.extras', tokenfor: '
   keyedtokenfor: '@rhombus-std/di.extras', valueof: '@rhombus-std/di.extras',
   isSingular: '@rhombus-std/primitives.extras', singularValue: '@rhombus-std/primitives.extras',
   isFactory: '@rhombus-std/primitives.extras', returntokenfor: '@rhombus-std/primitives.extras',
-  paramtokensfor: '@rhombus-std/primitives.extras', schemaof: '@rhombus-std/config.extras' };
-
-// Body-imported RUNTIME callees (§99, option B) — a bounded category distinct from
-// the compile-time primitives above: a body may CALL these, they SURVIVE lowering
-// as ordinary function calls, and the inline stage materializes their import. They
-// are allowed ONLY in callee position (never a bare value reference, no globals, no
-// arrows). Mirrors the Go scanner's knownRuntimeCallees map. `overrideSignatures`
-// (di.core) merges a sparse registration-override array at runtime.
-const RUNTIME_CALLEE_HOMES = { overrideSignatures: '@rhombus-std/di.core' };
+  paramtokensfor: '@rhombus-std/primitives.extras', schemaof: '@rhombus-std/config.extras',
+  typefor: '@rhombus-std/primitives.extras' };
 
 /** Walks up from a file to the nearest directory containing a package.json. */
 function findPackageDir(/** @type {string} */ file) {
@@ -76,7 +69,8 @@ const rule = {
       paramReuse:
         'Value parameter {{name}} appears in more than one runtime position; each may appear at most once outside a primitive call.',
       typeParamPosition: 'Type parameter {{name}} may appear only as the whole type argument of a primitive call.',
-      freeIdentifier: 'Identifier {{name}} is not a parameter, `this`, a type parameter, or a known primitive import.',
+      freeIdentifier:
+        'Identifier {{name}} is not a parameter, `this`, a type parameter, a known primitive import, or a value the file imports.',
       noAlias: 'Primitive import {{name}} must be a direct unaliased named import.',
       noNesting:
         'A sugar body may not reference another inlineable declaration ({{name}}); nesting is not yet supported.' } },
@@ -130,9 +124,12 @@ const rule = {
     // Local names bound to a known primitive, and whether each is aliased.
     /** @type {Set<string>} */
     const primitiveLocals = new Set();
-    // Local names bound to a known body-imported RUNTIME callee (§99).
+    // Local names bound to a value the authoring file imports (see
+    // ImportDeclaration below for which imports qualify) — legal as a bare
+    // identifier reference in a body's expression, never as the base of a
+    // property chain.
     /** @type {Set<string>} */
-    const runtimeCalleeLocals = new Set();
+    const valueImportLocals = new Set();
 
     return {
       ImportDeclaration(node) {
@@ -143,17 +140,6 @@ const rule = {
             continue;
           }
           const imported = spec.imported.type === 'Identifier' ? spec.imported.name : String(spec.imported.value);
-          // A body-imported RUNTIME callee (unaliased, from its home module) — a
-          // value the body may CALL, distinct from the compile-time primitives.
-          const calleeHome = RUNTIME_CALLEE_HOMES[imported];
-          if (calleeHome !== undefined && module === calleeHome) {
-            if (spec.local.name !== imported) {
-              context.report({ node: spec, messageId: 'noAlias', data: { name: imported } });
-              continue;
-            }
-            runtimeCalleeLocals.add(spec.local.name);
-            continue;
-          }
           const home = PRIMITIVE_HOMES[imported];
           // Accept a primitive only from its home module directly, or — when its
           // home IS the declaring package — via a package-relative specifier. Any
@@ -161,14 +147,24 @@ const rule = {
           // falls through to the freeIdentifier check).
           const fromHome = module === home;
           const fromOwnPackage = relative && home !== undefined && home === pkgName;
-          if (!fromHome && !fromOwnPackage) {
+          if (fromHome || fromOwnPackage) {
+            if (spec.local.name !== imported) {
+              context.report({ node: spec, messageId: 'noAlias', data: { name: imported } });
+              continue;
+            }
+            primitiveLocals.add(spec.local.name);
             continue;
           }
-          if (spec.local.name !== imported) {
-            context.report({ node: spec, messageId: 'noAlias', data: { name: imported } });
+          // A body's imports are its runtime declarations: a named value import
+          // from a bare package specifier binds its local name for a bare
+          // reference in the body, aliased or not. A primitive name (handled
+          // above) and the module-level `registerInlineBodies` authoring marker
+          // never qualify.
+          const typeOnly = node.importKind === 'type' || spec.importKind === 'type';
+          if (relative || typeOnly || home !== undefined || imported === 'registerInlineBodies') {
             continue;
           }
-          primitiveLocals.add(spec.local.name);
+          valueImportLocals.add(spec.local.name);
         }
       },
 
@@ -191,7 +187,7 @@ const rule = {
           }
           const fn = prop.value;
           if (fn && (fn.type === 'FunctionExpression' || fn.type === 'ArrowFunctionExpression')) {
-            checkBody(context, fn, primitiveLocals, runtimeCalleeLocals, listedNames, listedMembers);
+            checkBody(context, fn, primitiveLocals, valueImportLocals, listedNames, listedMembers);
           }
         }
       },
@@ -201,7 +197,7 @@ const rule = {
         if (!node.id || !freeFns.has(node.id.name)) {
           return;
         }
-        checkBody(context, node, primitiveLocals, runtimeCalleeLocals, listedNames, listedMembers);
+        checkBody(context, node, primitiveLocals, valueImportLocals, listedNames, listedMembers);
       },
     };
   },
@@ -226,7 +222,7 @@ const BANNED = {
 /**
  * Enforces the single-return-expression hygiene on one function-like body.
  */
-function checkBody(context, fn, primitiveLocals, runtimeCalleeLocals, listedNames, listedMembers) {
+function checkBody(context, fn, primitiveLocals, valueImportLocals, listedNames, listedMembers) {
   const body = fn.body;
   if (!body || body.type !== 'BlockStatement' || body.body.length !== 1 || body.body[0].type !== 'ReturnStatement'
     || !body.body[0].argument) {
@@ -252,7 +248,7 @@ function checkBody(context, fn, primitiveLocals, runtimeCalleeLocals, listedName
   // arguments (where a param may repeat and a type param is allowed).
   walkExpression(expr, { onBanned(node, syntax) {
     context.report({ node, messageId: 'bannedSyntax', data: { syntax } });
-  }, onIdentifier(node, insidePrimitiveArgs) {
+  }, onIdentifier(node, insidePrimitiveArgs, isMemberBase) {
     const name = node.name;
     if (valueParams.has(name)) {
       if (!insidePrimitiveArgs) {
@@ -261,6 +257,11 @@ function checkBody(context, fn, primitiveLocals, runtimeCalleeLocals, listedName
       return;
     }
     if (name === 'this' || typeParams.has(name) || primitiveLocals.has(name)) {
+      return;
+    }
+    // An imported value satisfies a bare identifier reference, never the base of
+    // a property chain — `Type.stringify(...)` still reports on `Type`.
+    if (!isMemberBase && valueImportLocals.has(name)) {
       return;
     }
     // A member of another listed impl referenced by identifier → nesting.
@@ -279,7 +280,7 @@ function checkBody(context, fn, primitiveLocals, runtimeCalleeLocals, listedName
     }
   }, onNestedMember(node, name) {
     context.report({ node, messageId: 'noNesting', data: { name } });
-  }, primitiveLocals, runtimeCalleeLocals, listedMembers });
+  }, primitiveLocals, listedMembers });
 
   for (const [name, count] of paramRuntimeUses) {
     if (count > 1) {
@@ -320,7 +321,7 @@ function collectTypeRefs(node) {
  * checks can distinguish runtime positions from primitive positions.
  */
 function walkExpression(root, cb) {
-  const visit = (node, insidePrimitiveArgs) => {
+  const visit = (node, insidePrimitiveArgs, isMemberBase = false) => {
     if (!node || typeof node.type !== 'string') {
       return;
     }
@@ -343,10 +344,6 @@ function walkExpression(root, cb) {
     if (node.type === 'CallExpression') {
       const callee = node.callee;
       const isPrimitive = callee.type === 'Identifier' && cb.primitiveLocals.has(callee.name);
-      // A body-imported RUNTIME callee (§99) is valid in callee position — its
-      // arguments are ordinary runtime positions (NOT primitive args), so it does
-      // not set the insidePrimitiveArgs flag; only its callee identifier is skipped.
-      const isRuntimeCallee = callee.type === 'Identifier' && cb.runtimeCalleeLocals.has(callee.name);
       // A this.<member> call to another listed member is nesting (unless it is
       // the primitive-form call, which the stage handles).
       if (callee.type === 'MemberExpression' && callee.object.type === 'ThisExpression'
@@ -361,9 +358,11 @@ function walkExpression(root, cb) {
       for (const ta of typeArgs) {
         cb.onTypeArg(ta, isPrimitive);
       }
-      // Callee: skip a primitive OR runtime-callee callee identifier (both are
-      // recognized call targets, not free identifiers); otherwise walk it.
-      if (!(callee.type === 'Identifier' && (isPrimitive || isRuntimeCallee))) {
+      // Callee: skip a primitive callee identifier (a recognized call target,
+      // not a free identifier); otherwise walk it — a bare imported-value callee
+      // resolves through the ordinary identifier check below, while a
+      // property-access callee's base still requires the stricter member-base set.
+      if (!(callee.type === 'Identifier' && isPrimitive)) {
         visit(callee, insidePrimitiveArgs);
       }
       for (const arg of node.arguments) {
@@ -373,7 +372,9 @@ function walkExpression(root, cb) {
     }
 
     if (node.type === 'MemberExpression') {
-      visit(node.object, insidePrimitiveArgs);
+      // The object is the base of a property chain — an imported value never
+      // satisfies this position, only a bare identifier reference.
+      visit(node.object, insidePrimitiveArgs, true);
       if (node.computed) {
         visit(node.property, insidePrimitiveArgs);
       }
@@ -381,7 +382,7 @@ function walkExpression(root, cb) {
     }
 
     if (node.type === 'Identifier') {
-      cb.onIdentifier(node, insidePrimitiveArgs);
+      cb.onIdentifier(node, insidePrimitiveArgs, isMemberBase);
       return;
     }
 
