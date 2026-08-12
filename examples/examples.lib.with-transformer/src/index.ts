@@ -42,17 +42,15 @@ export { makeServerReport } from './server-report.js';
 
 // ── the di feature tour ──────────────────────────────────────────────────────
 
-// The library-author infrastructure surface (`IServiceManifestHolder`, the
-// caller/container partition of an ad-hoc factory slot, `EmptyServiceProvider`),
-// demonstrated from inside a library because that is where those pieces are
-// actually reached for. The mirror of
-// `@rhombus-std/examples.lib.without-transformer`'s demonstration: same scenario,
-// same lines, tokenless dialect.
+// The library-author infrastructure surface (the manifest slot, the
+// caller/container partition of an ad-hoc factory slot), demonstrated from
+// inside a library because that is where those pieces are actually reached for.
+// The mirror of `@rhombus-std/examples.lib.without-transformer`'s
+// demonstration: same scenario, same lines, tokenless dialect.
 //
 // The chapter's container-building half lives in each app's own
 // `src/infrastructure-demo.ts`; what this package exports is the pieces it
-// registers and the no-container demonstration.
-export { demonstrateNullProvider } from './infrastructure-demo.js';
+// registers.
 export { addGreetingWorkshop, GreetingCard, GreetingWorkshop, GreetingWorkshopBuilder, LocatorGreetingWorkshop,
   PlainStationery, WorkshopGreeting } from './infrastructure-greeting-workshop.js';
 export type { ICardRecipient, ICardStationery, IGreetingWorkshopBuilder } from './infrastructure-greeting-workshop.js';

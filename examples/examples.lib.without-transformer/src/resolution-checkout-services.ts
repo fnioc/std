@@ -22,7 +22,7 @@
 // one — an ad-hoc FACTORY parameter — so the comparison is readable in one
 // constructor.
 
-import { RESOLVER_TYPE } from '@rhombus-std/di.core';
+import { RESOLVER_TYPE, Type } from '@rhombus-std/di.core';
 import type { Inject, IServiceProvider, Manifest, Typeof } from '@rhombus-std/di.core';
 import type { CheckoutOrder, IAuditTrail, IExchangeRates, IOrderValidator, IPaymentGateway, IPaymentRouter, IReceipt,
   IReceiptNumbering } from '@rhombus-std/examples.contracts';
@@ -31,17 +31,17 @@ import type { CheckoutOrder, IAuditTrail, IExchangeRates, IOrderValidator, IPaym
 
 /**
  * The token strings this library registers under, hand-written in the derived
- * grammar (`<import-specifier>:<exported-name>`, with `Wrapper<…>` for a generic
- * and `#<key>` for a keyed registration). Exported so the without-transformer app
- * can resolve against the very same strings; the with-transformer app never names
- * them, because the transformer derives these exact bytes from the contract types.
+ * grammar (`<import-specifier>:<exported-name>`, with `Wrapper<…>` for a generic).
+ * Exported so the without-transformer app can resolve against the very same
+ * strings; the with-transformer app never names them, because the transformer
+ * derives these exact bytes from the contract types.
  */
 export const CHECKOUT_TOKENS = {
   /** One element token; THREE registrations land on it (see `validators`). */
   validator: '@rhombus-std/examples.contracts:IOrderValidator',
   /** The COLLECTION request over that element token — `IOrderValidator[]` derives this. */
   validators: 'Array<@rhombus-std/examples.contracts:IOrderValidator>',
-  /** The keyed BASE. Nothing registers here bare; every gateway adds a `#<method>` suffix. */
+  /** The keyed BASE. Nothing registers here bare; every gateway carries a key instead. */
   gateway: '@rhombus-std/examples.contracts:IPaymentGateway',
   receipt: '@rhombus-std/examples.contracts:IReceipt',
   numbering: '@rhombus-std/examples.contracts:IReceiptNumbering',
@@ -73,8 +73,15 @@ export const CHECKOUT_TOKENS = {
   resolver: RESOLVER_TYPE,
 } as const;
 
-/** The separator between a base token and a resolution key — `base#key`. */
-const KEY_SEPARATOR = '#';
+/** The gateway base as a `Type`, which every keyed lookup below tags. */
+const GATEWAY_TYPE = Type.from(CHECKOUT_TOKENS.gateway);
+
+/**
+ * The slot that hands a class the gateway BASE TYPE rather than a gateway. It is
+ * an ordinary service type carrying an ordinary value registration — a witness
+ * has no special slot kind, because a `Type` is a value like any other.
+ */
+const GATEWAY_WITNESS_TYPE = Type.named('Typeof', '@rhombus-std/di.core', [GATEWAY_TYPE]);
 
 // ── validators (three registrations, ONE token — the collection) ─────────────
 
@@ -135,26 +142,27 @@ export class AmountIsPositive implements IOrderValidator {
  * Note what it does NOT do: it never resolves a gateway, only probes for one, so
  * it cannot quietly become a service locator for the rest of the checkout.
  *
- * The gateway BASE token arrives as a `Typeof<IPaymentGateway>` parameter — a
- * brand that means "inject the TOKEN STRING of this type, not an instance of it".
- * A manual author supplies it as a literal slot (`{ value: … }`, below); a
- * with-transformer author gets the same literal derived from the type argument.
+ * The gateway BASE arrives as a `Typeof<IPaymentGateway>` parameter — a brand
+ * that means "inject the TYPE of this service, not an instance of it". A manual
+ * author supplies it as a value registration (below); a with-transformer author
+ * gets the same value derived from the type argument.
  */
 export class MethodIsConfigured implements IOrderValidator {
   public readonly name = 'method-is-configured';
   readonly #resolver: IServiceProvider;
-  readonly #gatewayToken: Typeof<IPaymentGateway>;
+  readonly #gatewayType: Typeof<IPaymentGateway>;
 
-  public constructor(resolver: IServiceProvider, gatewayToken: Typeof<IPaymentGateway>) {
+  public constructor(resolver: IServiceProvider, gatewayType: Typeof<IPaymentGateway>) {
     this.#resolver = resolver;
-    this.#gatewayToken = gatewayToken;
+    this.#gatewayType = gatewayType;
   }
 
   public check(order: CheckoutOrder): string {
-    // `isService` takes ONE token and no key, so a keyed probe composes the whole
-    // `base#key` string up front. It never constructs anything — a registered
-    // service whose own dependencies are missing still answers `true`.
-    if (this.#resolver.isService(this.#gatewayToken + KEY_SEPARATOR + order.method)) {
+    // A key is a TAG on the service type rather than an argument beside it, so a
+    // keyed probe tags the base and asks the ordinary question. It never
+    // constructs anything — a registered service whose own dependencies are
+    // missing still answers `true`.
+    if (this.#resolver.isService(Type.tag(this.#gatewayType, order.method))) {
       return 'ok';
     }
     return `no gateway for "${order.method}"`;
@@ -278,31 +286,23 @@ export async function fetchExchangeRates(): Promise<IExchangeRates> {
  */
 export class PaymentRouter implements IPaymentRouter {
   readonly #resolver: IServiceProvider;
-  readonly #gatewayToken: Typeof<IPaymentGateway>;
+  readonly #gatewayType: Typeof<IPaymentGateway>;
   readonly #mintReceipt: (order: CheckoutOrder) => IReceipt;
 
-  public constructor(resolver: IServiceProvider, gatewayToken: Typeof<IPaymentGateway>,
+  public constructor(resolver: IServiceProvider, gatewayType: Typeof<IPaymentGateway>,
     mintReceipt: (order: CheckoutOrder) => IReceipt) {
     this.#resolver = resolver;
-    this.#gatewayToken = gatewayToken;
+    this.#gatewayType = gatewayType;
     this.#mintReceipt = mintReceipt;
   }
 
   public checkout(order: CheckoutOrder): string {
-    // The KEYED SINGULAR form: base token plus a tail key, which the engine
-    // composes into `base#key` before the ordinary exact lookup. `resolve` (not
-    // `tryResolve`) because by this point a validator has already confirmed the
-    // method — a miss now is a wiring bug and should be loud.
-    const gateway = this.#resolver.resolve<IPaymentGateway>(this.#gatewayToken, order.method);
+    // The KEYED form: the base type tagged with the method, which is one type
+    // and so an ordinary exact lookup. `getRequiredService` (not `getService`)
+    // because by this point a validator has already confirmed the method — a
+    // miss now is a wiring bug and should be loud.
+    const gateway = this.#resolver.getRequiredService(Type.tag(this.#gatewayType, order.method)) as IPaymentGateway;
     return `${gateway.charge(order)} → ${this.#mintReceipt(order).text}`;
-  }
-
-  public configuredMethods(): readonly string[] {
-    // The KEYED PLURAL form: a regex over the KEY PORTION of one fixed base
-    // token. `/.+/` means "every non-empty key" — it cannot wander into a
-    // different type, and it excludes any bare (unkeyed) registration. Zero
-    // matches would be `[]`, never a throw.
-    return this.#resolver.resolve<IPaymentGateway>(this.#gatewayToken, /.+/).map((gateway) => gateway.label);
   }
 }
 
@@ -339,12 +339,14 @@ export function addCheckoutServices<S extends string>(
   // array wrapper over a token that several registrations share.
   services = services.addClass(t.validator, TotalWithinLimit, [[t.spendLimit]], 'singleton');
   services = services.addClass(t.validator, AmountIsPositive, [[]], 'singleton');
+  // The gateway base type, registered as an ordinary value so the classes that
+  // probe by key can be handed it.
+  services = services.addValue(GATEWAY_WITNESS_TYPE, GATEWAY_TYPE);
+
   services = services.addClass(
     t.validator,
     MethodIsConfigured,
-    // The provider slot is an ordinary token; the literal slot `{ value: … }`
-    // supplies the gateway base token verbatim, with no container lookup.
-    [[t.resolver, { value: t.gateway }]],
+    [[t.resolver, GATEWAY_WITNESS_TYPE]],
     'singleton',
   );
 
@@ -372,11 +374,11 @@ export function addCheckoutServices<S extends string>(
   services = services.addClass(
     t.router,
     PaymentRouter,
-    // provider slot · literal token slot · FACTORY slot. `{ type, params }` is the
-    // plain-data form of "inject a callable producing `type`, whose own arguments
-    // are `params`"; everything not named in `params` is resolved from the
+    // provider slot · witness slot · CALLABLE slot. `Type.func(result, ...args)`
+    // says "inject a callable producing `result`, whose own arguments are
+    // `args`"; every other slot in the target's signature is resolved from the
     // container instead.
-    [[t.resolver, { value: t.gateway }, { type: t.receipt, params: [t.order] }]],
+    [[t.resolver, GATEWAY_WITNESS_TYPE, Type.func(Type.from(t.receipt), Type.from(t.order))]],
     'singleton',
   );
 

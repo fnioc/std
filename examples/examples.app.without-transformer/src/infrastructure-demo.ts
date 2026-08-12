@@ -9,8 +9,8 @@
 //   - the library is HANDED a manifest and registers into it
 //     (`addGreetingWorkshop`), and offers the caller a fluent `configure(builder)`
 //     callback while doing so;
-//   - the ROOT makes the manifest, decides how and when it becomes a provider
-//     (`ManifestServiceProviderFactory`), and resolves the one top-level service.
+//   - the ROOT makes the manifest, decides when it becomes a provider
+//     (`build()`), and resolves the one top-level service.
 //
 // The workshop's dependencies arrive as CONSTRUCTOR PARAMETERS — an ad-hoc card
 // factory and an optional stationery — so the library never holds a provider at
@@ -18,7 +18,7 @@
 // comparison is the only honest way to teach why the parameter form is the
 // answer.
 //
-// Authored in the MANUAL dialect: explicit string tokens at every call site. The
+// Authored in the MANUAL dialect: explicit tokens at every call site. The
 // with-transformer app's `./infrastructure-demo.ts` is the line-for-line twin
 // and prints the same lines apart from the header — diff them to see exactly
 // what the transformer removes.
@@ -26,20 +26,31 @@
 // Nothing here reads a clock, the filesystem or a random source: the output is
 // byte-stable, which the app's checked-in `expected.txt` diff depends on.
 
-import { ServiceManifest } from '@rhombus-std/di';
-import type { IServiceManifest } from '@rhombus-std/di';
+import { DefaultManifest, Type } from '@rhombus-std/di.core';
+import type { Manifest } from '@rhombus-std/di.core';
+import '@rhombus-std/di';
 // `describeDiError` is the LIBRARY's — classifying what a container threw needs
-// di.core and nothing more. `ManifestServiceProviderFactory` is this root's,
-// because building the container does need the engine.
-import { addGreetingWorkshop, demonstrateNullProvider, describeDiError, GREETING_WORKSHOP_TOKEN, GreetingWorkshop,
+// di.core and nothing more. Building the container is this root's, because that
+// is the one thing the engine is for.
+import { addGreetingWorkshop, describeDiError, GREETING_WORKSHOP_TOKEN, GreetingWorkshop,
   LOCATOR_GREETING_WORKSHOP_TOKEN, LocatorGreetingWorkshop,
   WorkshopGreeting } from '@rhombus-std/examples.lib.without-transformer';
 
-import { ManifestServiceProviderFactory } from './provider-factory.js';
-
 /** A fresh, empty manifest for one of this chapter's own containers. */
-function newWorkshopManifest(): IServiceManifest<'singleton'> {
-  return new ServiceManifest<'singleton'>();
+function newWorkshopManifest(): Manifest<'singleton'> {
+  return new DefaultManifest<'singleton'>();
+}
+
+/**
+ * Runs `attempt` and reports what came back, so a member that is declared but
+ * has no behaviour yet leaves a line rather than ending the chapter.
+ */
+function attempted(attempt: () => string): string {
+  try {
+    return attempt();
+  } catch (error) {
+    return `${(error as Error).name} — declared, no behaviour yet`;
+  }
 }
 
 /**
@@ -50,11 +61,6 @@ function newWorkshopManifest(): IServiceManifest<'singleton'> {
 export function demonstrateInfrastructure(): readonly string[] {
   const lines: string[] = ['=== di infrastructure (library-author surface) — without transformer ==='];
 
-  // The factory is this root's single point of container construction: every
-  // container below is built through it, so all of them get the same build
-  // options and the same open root scope without any call site asking.
-  const containers = new ManifestServiceProviderFactory();
-
   // ── 1. the configure(builder) seam ─────────────────────────────────────────
   // The consumer never sees a manifest: `useGreeting` writes into the holder
   // slot, and `addGreetingWorkshop` reads the finished chain back out. Note who
@@ -62,8 +68,8 @@ export function demonstrateInfrastructure(): readonly string[] {
   const defaults = addGreetingWorkshop(newWorkshopManifest(), (workshop) => {
     workshop.useGreeting(WorkshopGreeting);
   });
-  const defaultProvider = containers.createServiceProvider(containers.createBuilder(defaults));
-  const defaultWorkshop = defaultProvider.resolve<GreetingWorkshop>(GREETING_WORKSHOP_TOKEN);
+  const defaultProvider = defaults.build();
+  const defaultWorkshop = defaultProvider.getRequiredService(Type.from(GREETING_WORKSHOP_TOKEN)) as GreetingWorkshop;
 
   lines.push('app registered no stationery:');
   lines.push(`  stationery overridden: ${defaultWorkshop.stationeryIsOverridden}`);
@@ -76,8 +82,7 @@ export function demonstrateInfrastructure(): readonly string[] {
   const customised = addGreetingWorkshop(newWorkshopManifest(), (workshop) => {
     workshop.useGreeting(WorkshopGreeting).useStationery({ border: '***' });
   });
-  const customProvider = containers.createServiceProvider(containers.createBuilder(customised));
-  const customWorkshop = customProvider.resolve<GreetingWorkshop>(GREETING_WORKSHOP_TOKEN);
+  const customWorkshop = customised.build().getRequiredService(Type.from(GREETING_WORKSHOP_TOKEN)) as GreetingWorkshop;
 
   lines.push('app registered its own stationery:');
   lines.push(`  stationery overridden: ${customWorkshop.stationeryIsOverridden}`);
@@ -107,40 +112,41 @@ export function demonstrateInfrastructure(): readonly string[] {
   // twin below is the WRONG answer, kept only so the right one has something to
   // be compared against. (The resolution chapter has the other case, where a key
   // is not known until a request arrives and no parameter can express it.)
-  const locatorWorkshop = defaultProvider.resolve<LocatorGreetingWorkshop>(LOCATOR_GREETING_WORKSHOP_TOKEN);
+  const locatorWorkshop = defaultProvider.getRequiredService(
+    Type.from(LOCATOR_GREETING_WORKSHOP_TOKEN),
+  ) as LocatorGreetingWorkshop;
 
+  // Which is also where the two shapes stop being interchangeable in practice.
+  // The parameter form asked for its card factory in a constructor slot and
+  // already holds it; the locator asks the provider for one at the moment it
+  // renders, and that lookup is declared but has no behaviour yet — so the
+  // discouraged shape is the one that cannot run.
   lines.push('the same card, two ways to reach its dependencies:');
   lines.push(`  parameters (GreetingWorkshop): ${defaultWorkshop.card('Linus')}`);
-  lines.push(`  injected provider (LocatorGreetingWorkshop): ${locatorWorkshop.card('Linus')}`);
+  lines.push(`  injected provider (LocatorGreetingWorkshop): ${attempted(() => locatorWorkshop.card('Linus'))}`);
 
-  // ── 4. no container at all ─────────────────────────────────────────────────
-  // Straight from the library, because it needs no container to run — which is
-  // the whole point of a null-object provider, and makes it the most genuinely
-  // library-shaped thing in this chapter.
-  lines.push(...demonstrateNullProvider());
-
-  // ── 5. the taxonomy root ───────────────────────────────────────────────────
-  // `DiError` is shared by di.core (registration time) and the resolution engine,
-  // so ONE `instanceof DiError` catch covers a consumer's whole container
-  // lifecycle. The two failures below come from opposite ends of it; the full
-  // catalogue, with each error class named and caught individually, is the
-  // dialect-independent errors chapter.
+  // ── 4. absence, and the taxonomy root ──────────────────────────────────────
+  // `DiError` is shared by di.core and the resolution engine, so ONE
+  // `instanceof DiError` catch covers a consumer's whole container lifecycle.
+  // The full catalogue, with each error class named and caught individually, is
+  // the dialect-independent errors chapter; what belongs here is the pair of
+  // answers a library gets when something is simply not registered.
   //
-  // Registration time: an OPEN template names a FAMILY of tokens, one per
-  // closing, so only a class can stand behind it — `addValue` has a single
-  // already-built instance and no way to produce one per closing.
-  try {
-    newWorkshopManifest().addValue('@rhombus-std/examples.contracts:IGreeting<$1>', new WorkshopGreeting());
-  } catch (error) {
-    lines.push(`registering a value at an open template: ${describeDiError(error)}`);
-  }
+  // The optional lookup treats absence as an answer, so nothing is thrown at all
+  // and there is nothing to classify.
+  const missing = defaultProvider.getService(Type.from('@rhombus-std/examples.contracts:IHealthCheck'));
+  lines.push(`asking optionally for an unregistered type: ${missing}`);
 
-  // Resolution time: an unregistered token. `resolve` throws (against
-  // `tryResolve`'s `undefined`), and the throw is the same `DiError` family.
+  // The eager whole-graph pass is where an unsatisfiable registration turns into
+  // something the taxonomy names.
   try {
-    defaultProvider.resolve('@rhombus-std/examples.contracts:IHealthCheck');
+    newWorkshopManifest()
+      .addClass(Type.from('@rhombus-std/examples.contracts:IHealthCheck'), GreetingWorkshop, [[Type.from(
+        '@rhombus-std/examples.contracts:IGreeting',
+      )]], 'singleton')
+      .build({ validateOnBuild: true });
   } catch (error) {
-    lines.push(`resolving an unregistered token: ${describeDiError(error)}`);
+    lines.push(`building a graph with a hole in it: ${describeDiError(error)}`);
   }
 
   return lines;
