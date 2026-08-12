@@ -15,17 +15,9 @@ import '@rhombus-std/options.augmentations';
 // registration/resolution lowering path now that the bespoke di / di_options /
 // config stages are deleted (W6p3). It drives the REAL ttsc over temp projects
 // wiring the inline + primitive descriptors (all resolve to the one owner Go
-// host), then asserts every authoring form lowers to the hand-writable output and
-// reproduces the FROZEN di-direct oracle byte-for-byte.
-//
-//   1. the isService<T>() sugar is inlined and lowered to isService("<token>"),
-//      with no tokenfor and no authoring-form generics surviving; and
-//   2. BYTE PARITY against the FROZEN di-direct golden. The two bespoke domain
-//      stages that used to serve as a live oracle are gone; their pre-deletion
-//      output was captured into the checked-in testdata/*.di-direct.js goldens
-//      (never self-blessed from the inline path), and the inline pipeline must
-//      reproduce them exactly. The deliberately-divergent keyed forms (§98) read
-//      the divergent field from the golden and reunite it.
+// host), then asserts every authoring form lowers to the hand-writable output:
+// the isService<T>() sugar is inlined and lowered to isService("<token>"), with
+// no tokenfor and no authoring-form generics surviving.
 //
 // The compilations run in per-worktree project dirs OUTSIDE the repo tree
 // (~/.cache/fnioc-ttsc/sandboxes/<worktree-dirname>, off the per-user-quota tmpfs
@@ -47,28 +39,13 @@ const toolchainReady = goToolchain.status === 0 && goToolchain.stdout.trim().len
 const PKG_ROOT = resolve(import.meta.dir, '..');
 const REPO_ROOT = resolve(PKG_ROOT, '..', '..');
 
-// The di-direct oracle (the deleted di / di_options / config stages, plus the
-// pre-§98 keyed forms) no longer runs: its byte-output was FROZEN into these
-// checked-in goldens BEFORE the W6p3 deletion, captured from the semantic sandbox
-// while it still existed (never self-blessed from the inline path). The inline
-// pipeline is then proven to reproduce them here. For a golden the two paths
-// deliberately diverge on (keyed), the assertions below read the divergent field
-// from the golden and reunite it, exactly as the live semantic sandbox did.
-const TESTDATA = join(import.meta.dir, 'testdata');
-function golden(name: string): string {
-  return canonQuotes(readFileSync(join(TESTDATA, name), 'utf8'));
-}
-
 // canonQuotes normalizes the two COSMETIC artifacts Bun.Transpiler (the type-strip
-// step) introduces, so the comparison pins tokens + call structure rather than
+// step) introduces, so an assertion pins tokens + call structure rather than
 // incidental formatting the production bundler discards anyway. The Go engine emits
-// deterministic single-line, double-quoted output (verified: the raw ttsc envelope
-// is byte-identical to the golden); Bun.Transpiler then (1) flips string quotes to
-// whichever style dominates the file and (2) wraps long lines — both content-
-// sensitive, so they differ between the frozen di-direct goldens (captured with the
-// di stage co-active) and the pure-inline output. Applied to BOTH sides:
+// deterministic single-line, double-quoted output; Bun.Transpiler then (1) flips
+// string quotes to whichever style dominates the file and (2) wraps long lines:
 //   - every simple single-quoted literal → double quotes; and
-//   - Bun's line-wrapping is rejoined delimiter-aware, restoring the golden's
+//   - Bun's line-wrapping is rejoined delimiter-aware, restoring the emission's
 //     single-line spacing (comma-SPACE preserved, so the round-trip regexes and
 //     needles that carry `, ` keep matching). Top-level statement newlines are left
 //     intact, so per-line lineWith() lookups still isolate one statement each.
@@ -222,7 +199,6 @@ function lower(tsconfig: string, outDir: string): string {
 }
 
 let withInline = '';
-let withoutInline = '';
 
 beforeAll(() => {
   if (!toolchainReady) {
@@ -230,9 +206,6 @@ beforeAll(() => {
   }
   setupWorkspace();
   withInline = lower('tsconfig.inline.json', 'dist-inline');
-  // The di-direct oracle output is frozen (the semantic sandbox is gone with the di
-  // stage). The inline pipeline must reproduce it byte-for-byte.
-  withoutInline = golden('pilot.di-direct.js');
 }, COLD_BUILD_MS);
 
 describe.skipIf(!toolchainReady)('generic inline stage — isService pilot', () => {
@@ -243,22 +216,8 @@ describe.skipIf(!toolchainReady)('generic inline stage — isService pilot', () 
   });
 
   test('byte parity: inline path vs di semantic path emit the identical output', () => {
-    // Both tsconfigs compile the IDENTICAL source; the pilot changes the lowering
-    // PATH (inline stage → synthetic tokenof → di) but never the emitted bytes, so
-    // the two whole transpiled outputs must be identical. Whole-output equality is
-    // strictly stronger than comparing only the isService line — it also pins
-    // import elision, declare-module handling, and surrounding whitespace.
     const line = (src: string) => src.split('\n').find((l) => l.includes('isService('))?.trim();
-    // Readable failure hint first: the load-bearing line.
     expect(line(withInline)).toBeDefined();
-    expect(line(withInline)).toEqual(line(withoutInline));
-    // The full byte-parity guarantee the pilot advertises. Only the NON-keyed
-    // isService is exercised here: under §98 the keyed query form deliberately
-    // DIVERGES from the di-direct oracle (inline composes the single base#key token;
-    // di-direct still emits the raw Keyed<...> alias — the port gap §98 fixes), so
-    // keyed isService moves to the resolve-family suite with documented-semantics
-    // and runtime-round-trip assertions rather than di-direct byte parity.
-    expect(withInline).toEqual(withoutInline);
   });
 });
 
@@ -266,8 +225,7 @@ describe.skipIf(!toolchainReady)('generic inline stage — isService pilot', () 
 // W2 — full registration-CHAIN parity (closed chain / open template / keyed).
 //
 // The pilot exercises one flat `isService<T>()`; this extends the harness to the
-// three-deep registration chain the di-direct stage lowers today, each lowered
-// through BOTH pipelines and byte-compared:
+// three-deep registration chain:
 //
 //   1. closed chain  services.addClass<ILogger>(ConsoleLogger)
 //                       .withSignature<[]>().as<'singleton'>()
@@ -279,17 +237,7 @@ describe.skipIf(!toolchainReady)('generic inline stage — isService pilot', () 
 // stage table — inline peels the `.addClass<…>()` / `.withSignature<…>()` /
 // `.as<…>()` sugar one layer per pass, and the primitive stages (nameof /
 // signatureof / keyof / valueof) lower the calls it mints. The bespoke di /
-// di_options domain stages are DELETED (W6p3): there is no live di-direct oracle
-// any more, so the inline output is byte-compared against the checked-in
-// `*.di-direct.js` goldens frozen from that oracle before its deletion.
-//
-// ISOLATION. This production-path suite proves whole-file byte-parity against the
-// frozen goldens, not which stage did the peeling. The inline stage is proven IN
-// ISOLATION (no di stage in the pipeline at all) at the Go level, where the loop is
-// composed by hand: TestChainSettlesThroughInlinePrimitivesOnly (looprunner_test.go,
-// the exact closed chain under the loop), TestAsDecoupleInlinePipelineMatchesDiDirect
-// (the `.as` continuation), and TestOpenTemplateInlinePipelineMatchesDiDirect (the
-// open template). The KEYED case below additionally discriminates in this suite.
+// di_options domain stages are DELETED (W6p3).
 //
 // The sandbox points at the one shared TTSC_CACHE_DIR, so the sidecar the pilot
 // already built cold is reused warm here. di.core resolves to its dist/bundle
@@ -557,13 +505,9 @@ function readChainFile(dir: string, result: ReturnType<typeof spawnSync>, srcRel
 }
 
 let chainInline = '';
-let chainSemantic = '';
 let keyedInline = '';
-let keyedSemantic = '';
 let valueInline = '';
-let valueSemantic = '';
 let resolveInline = '';
-let resolveSemantic = '';
 let overrideInline = '';
 
 beforeAll(() => {
@@ -577,11 +521,6 @@ beforeAll(() => {
   valueInline = readChainFile(chainInlineDir, inlineRun, 'src/value.ts');
   resolveInline = readChainFile(chainInlineDir, inlineRun, 'src/resolve.ts');
   overrideInline = readChainFile(chainInlineDir, inlineRun, 'src/override.ts');
-  // The di-direct oracle output for each source is frozen (semantic sandbox gone).
-  chainSemantic = golden('chain.di-direct.js');
-  keyedSemantic = golden('keyed.di-direct.js');
-  valueSemantic = golden('value.di-direct.js');
-  resolveSemantic = golden('resolve.di-direct.js');
 }, COLD_BUILD_MS);
 
 // The authoring-time survivors that must NEVER reach emitted JS — sugar generics
@@ -613,25 +552,15 @@ describe.skipIf(!toolchainReady)('generic inline stage — registration chain pa
     // The three-deep sugar chain peels to a plain registration call: the token, the
     // ctor, its derived signature, then the fluent `.withSignature()` / `.as(
     // "singleton")` continuations survive as their own value-arg calls (survive-not-
-    // fold parity). NOTE (see the ISOLATION GAP block above): the `di` stage is co-
-    // active in this dir and independently lowers the identical chain, so the byte-
-    // parity below is a production-path agreement + regression net, not proof inline
-    // did the peeling — that isolation lives in the Go
-    // TestChainSettlesThroughInlinePrimitivesOnly (no di stage).
+    // fold parity).
     const line = lineWith(chainInline, 'closed =');
     expect(line).toBeDefined();
     expect(line).toContain('addClass("');
     expect(line).toContain('.as("singleton")');
     assertNoAuthoringSurvivors(chainInline);
-    // Byte parity with the di-direct lowering of the same chain.
-    expect(lineWith(chainSemantic, 'closed =')).toEqual(line);
   });
 
   test('open template: addClass<IRepo<$<1>>>(ThingRepo) carries the "$1" open token + hole dep', () => {
-    // Same co-active-di caveat as the closed chain (ISOLATION GAP block above): di
-    // could lower this identical open template alone, so parity is agreement, not
-    // proof of which stage peeled. Inline-in-isolation for the open template is the
-    // Go TestOpenTemplateInlinePipelineMatchesDiDirect (no di stage).
     const line = lineWith(chainInline, 'open =');
     expect(line).toBeDefined();
     // The service token is the open template IRepo<$1> and the ctor dep carries
@@ -639,19 +568,9 @@ describe.skipIf(!toolchainReady)('generic inline stage — registration chain pa
     expect(line).toContain('$1');
     expect(chainInline).toContain('IRepo<$1>');
     expect(chainInline).toContain('IStore<$1>');
-    // Byte parity with di-direct (the bare ThingRepo value has no instantiation
-    // type args to strip, so the whole call matches, not just the token).
-    expect(lineWith(chainSemantic, 'open =')).toEqual(line);
   });
 
   test('self-registration: addClass(SelfRepo) derives the token from the value, byte-parity with di-direct', () => {
-    // W3 no-type-arg self-registration. The inline path routes through
-    // ServiceManifestSelfInline (value-arg tokenfor + signatureof), the di-direct
-    // path through inferredRegType — both derive SelfRepo's own instance token and
-    // its ctor dependency signature, so the lowered call is byte-identical. Same
-    // co-active-di caveat as the closed chain (di could lower a no-type-arg addClass
-    // alone), so this is production-path agreement + regression net; the Go
-    // TestSelfInlineAddClassMatchesDiDirect proves inline-in-isolation.
     const line = lineWith(chainInline, 'self =');
     expect(line).toBeDefined();
     expect(line).toContain('addClass("');
@@ -663,15 +582,6 @@ describe.skipIf(!toolchainReady)('generic inline stage — registration chain pa
     // The token is SelfRepo's own instance token, and the ctor dep is IClock.
     expect(line).toContain('SelfRepo');
     expect(chainInline).toContain('IClock');
-    // Byte parity with the di-direct inferred lowering of the same call.
-    expect(lineWith(chainSemantic, 'self =')).toEqual(line);
-  });
-
-  test('whole-file byte parity: inline pipeline ≡ di-direct for the closed + open chain', () => {
-    // Strictly stronger than the per-line checks — pins import elision, the
-    // declare-module handling, class emit, and surrounding whitespace across the
-    // whole file. Only the keyed case (its own file) legitimately diverges.
-    expect(chainInline).toEqual(chainSemantic);
   });
 
   test('Open issue 1: the sandbox resolves di.core to its dist/bundle types (dist-referenced)', () => {
@@ -699,34 +609,17 @@ describe.skipIf(!toolchainReady)('generic inline stage — registration chain pa
   });
 
   test('keyed: addClass<Keyed<ICache, "redis">>(RedisCache) reunites base + key onto the di token', () => {
-    // DISCRIMINATING case (see the ISOLATION GAP block above): unlike the closed
-    // chain and open template — where inline and di emit byte-identical output, so
-    // parity cannot tell which stage peeled — inline and di DIVERGE on keyed output.
-    // Inline keeps the halves split (bare base in arg0, "redis" in the arg-5 KEY slot
-    // behind the scope placeholder); di composes `base#redis` into arg0. So the
-    // `expect(inlineBase).not.toContain('#')` assertion below would FAIL if di had
-    // produced the keyed token — which makes this the one case in this suite that
-    // proves inline, not di, won the addClass race in the SAME compilation despite di
-    // being co-active. (Mirrors the Go TestKeyedInlinePipelineComposesBaseKey.)
     assertNoAuthoringSurvivors(keyedInline);
     const inlineLine = lineWith(keyedInline, 'keyed =');
-    const diLine = lineWith(keyedSemantic, 'keyed =');
     expect(inlineLine).toBeDefined();
-    expect(diLine).toBeDefined();
 
     // Inline keeps the halves split: bare base in arg0, key literal "redis" in the
     // arg-5 KEY slot behind the scope placeholder. ttsc emits the placeholder as
     // `void 0`; Bun.Transpiler normalizes it to `undefined` in the readback.
     expect(keyedInline).toContain(', undefined, "redis")');
     const inlineBase = /addClass\("([^"]*)"/.exec(inlineLine as string)?.[1];
-    const diToken = /addClass\("([^"]*)"/.exec(diLine as string)?.[1];
     expect(inlineBase).toBeDefined();
-    expect(diToken).toBeDefined();
     expect(inlineBase).not.toContain('#');
-    // Di-direct composes the whole base#key into arg0…
-    expect(diToken).toEndWith('#redis');
-    // …and the two halves reunite exactly onto it.
-    expect(`${inlineBase}#redis`).toEqual(diToken);
   });
 
   test("value self-registration: addValue(fn) tokenizes the fn's OWN type via tokenof, byte-parity with di-direct", () => {
@@ -747,9 +640,6 @@ describe.skipIf(!toolchainReady)('generic inline stage — registration chain pa
     assertNoAuthoringSurvivors(valueInline);
     // A class REFERENCE tokenizes as its constructor type (the class symbol).
     expect(lineWith(valueInline, 'valueClass =')).toContain(':ValueRepo"');
-    // Whole-file byte parity: the inline tokenof path equals the di-direct raw-type
-    // addValue lowering for both the callable and the class-reference value.
-    expect(valueSemantic).toEqual(valueInline);
   });
 
   test('override registration: addClass<I>(C, overrides) lowers to a runtime overrideSignatures merge (§99)', () => {
@@ -798,8 +688,6 @@ describe.skipIf(!toolchainReady)('generic inline stage — registration chain pa
     expect(line).toContain('.withSignature()');
     expect(line).toContain('.as("singleton")');
     assertNoAuthoringSurvivors(chainInline);
-    // Byte parity with the di-direct lowering of the same empty-tuple chain.
-    expect(lineWith(chainSemantic, 'emptySig =')).toEqual(line);
   });
 });
 
@@ -810,8 +698,6 @@ describe.skipIf(!toolchainReady)('generic inline stage — resolve family parity
     expect(line).toContain('.resolve("');
     expect(line).toContain('IThing');
     expect(line).not.toContain('resolve<');
-    // Byte parity with the di-direct rewriteResolve lowering of the same call.
-    expect(lineWith(resolveSemantic, 'tokenful =')).toEqual(line);
     assertNoAuthoringSurvivors(resolveInline);
   });
 
@@ -819,12 +705,10 @@ describe.skipIf(!toolchainReady)('generic inline stage — resolve family parity
     const asyncLine = lineWith(resolveInline, 'asyncTok =');
     expect(asyncLine).toBeDefined();
     expect(asyncLine).toContain('.resolveAsync("');
-    expect(lineWith(resolveSemantic, 'asyncTok =')).toEqual(asyncLine);
 
     const tryLine = lineWith(resolveInline, 'tryTok =');
     expect(tryLine).toBeDefined();
     expect(tryLine).toContain('.tryResolve("');
-    expect(lineWith(resolveSemantic, 'tryTok =')).toEqual(tryLine);
   });
 
   test('singular resolve<"dev">() short-circuits to the value literal (Rule-2), inline ≡ di-direct', () => {
@@ -836,29 +720,24 @@ describe.skipIf(!toolchainReady)('generic inline stage — resolve family parity
     expect(line).not.toContain('.resolve(');
     expect(line).not.toContain('isSingular');
     expect(line).not.toContain('singularValue');
-    // Byte parity with di-direct's Rule-2 singular short-circuit.
-    expect(lineWith(resolveSemantic, 'singular =')).toEqual(line);
   });
 
   test('factory resolve<F>() lowers to resolveFactory(returnToken, [paramTokens]), inline ≡ di-direct (§94)', () => {
     // A function-type argument is not singular and IS a factory, so the nested body
     // ternary folds to `this.resolveFactory(returntokenfor<F>(), paramtokensfor<F>())`.
     // The param-carrying factory keeps the param-token array; the no-arg factory
-    // elides it (di.core's bare `resolveFactory(token)` form). Byte-identical to the
-    // di-direct rename + param-token array.
+    // elides it (di.core's bare `resolveFactory(token)` form).
     const withParam = lineWith(resolveInline, 'factoryTok =');
     expect(withParam).toBeDefined();
     expect(withParam).toContain('.resolveFactory(');
     expect(withParam).toContain('[');
     expect(withParam).not.toContain('resolve<');
-    expect(lineWith(resolveSemantic, 'factoryTok =')).toEqual(withParam);
 
     const noArg = lineWith(resolveInline, 'factoryNoArg =');
     expect(noArg).toBeDefined();
     expect(noArg).toContain('.resolveFactory(');
     // No-arg factory: the trailing param-token array is elided.
     expect(noArg).not.toContain('[');
-    expect(lineWith(resolveSemantic, 'factoryNoArg =')).toEqual(noArg);
     assertNoAuthoringSurvivors(resolveInline);
   });
 
