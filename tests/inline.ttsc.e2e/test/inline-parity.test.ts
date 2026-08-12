@@ -209,7 +209,7 @@ beforeAll(() => {
 }, COLD_BUILD_MS);
 
 describe.skipIf(!toolchainReady)('generic inline stage — isService pilot', () => {
-  test('isService<T>() is inlined and lowered to a token, no sugar or tokenfor survives', () => {
+  test('RETIRED-SURFACE-PENDING: isService<T>() is inlined and lowered to a token, no sugar or tokenfor survives', () => {
     expect(withInline).toContain('isService("');
     expect(withInline).not.toContain('isService<');
     expect(withInline).not.toContain('tokenfor');
@@ -387,10 +387,10 @@ interface ICache {}
 
 declare const provider: IServiceProvider;
 
-export const tokenful = provider.resolve<IThing>();
+export const tokenful = provider.getRequiredService<IThing>();
 export const asyncTok = provider.resolveAsync<IThing>();
-export const tryTok = provider.tryResolve<IThing>();
-export const singular = provider.resolve<'dev'>();
+export const tryTok = provider.getService<IThing>();
+export const singular = provider.getRequiredService<'dev'>();
 // §94 factory forms. resolve<F>() with F a function type lowers to
 // resolveFactory(returnToken, [paramTokens]); a no-arg factory drops the array.
 export const factoryTok = provider.resolve<(a: IThing) => ICache>();
@@ -686,37 +686,41 @@ describe.skipIf(!toolchainReady)('generic inline stage — registration chain pa
 });
 
 describe.skipIf(!toolchainReady)('generic inline stage — resolve family parity (W5)', () => {
-  test('tokenful resolve<I>() lowers to resolve("<token>")', () => {
+  test('tokenful getRequiredService<I>() lowers to getRequiredService("<token>")', () => {
     const line = lineWith(resolveInline, 'tokenful =');
     expect(line).toBeDefined();
-    expect(line).toContain('.resolve("');
+    expect(line).toContain('.getRequiredService("');
     expect(line).toContain('IThing');
-    expect(line).not.toContain('resolve<');
+    expect(line).not.toContain('getRequiredService<');
     assertNoAuthoringSurvivors(resolveInline);
   });
 
-  test('resolveAsync<I>() / tryResolve<I>() keep their method name', () => {
+  test('RETIRED-SURFACE-PENDING: resolveAsync<I>() keeps its method name', () => {
     const asyncLine = lineWith(resolveInline, 'asyncTok =');
     expect(asyncLine).toBeDefined();
     expect(asyncLine).toContain('.resolveAsync("');
-
-    const tryLine = lineWith(resolveInline, 'tryTok =');
-    expect(tryLine).toBeDefined();
-    expect(tryLine).toContain('.tryResolve("');
   });
 
-  test('singular resolve<"dev">() short-circuits to the value literal (Rule-2)', () => {
+  test('tryTok getService<I>() lowers to getService("<token>")', () => {
+    const tryLine = lineWith(resolveInline, 'tryTok =');
+    expect(tryLine).toBeDefined();
+    expect(tryLine).toContain('.getService("');
+    expect(tryLine).not.toContain('getService<');
+    assertNoAuthoringSurvivors(resolveInline);
+  });
+
+  test('singular getRequiredService<"dev">() short-circuits to the value literal (Rule-2)', () => {
     const line = lineWith(resolveInline, 'singular =');
     expect(line).toBeDefined();
     // The whole resolve call collapses to the value itself — no resolve call, no
     // token — proving the fold pruned the tokenful dead branch AND its tokenfor.
     expect(line).toContain('"dev"');
-    expect(line).not.toContain('.resolve(');
+    expect(line).not.toContain('.getRequiredService(');
     expect(line).not.toContain('isSingular');
     expect(line).not.toContain('singularValue');
   });
 
-  test('factory resolve<F>() lowers to resolveFactory(returnToken, [paramTokens]) (§94)', () => {
+  test('RETIRED-SURFACE-PENDING: factory resolve<F>() lowers to resolveFactory(returnToken, [paramTokens]) (§94)', () => {
     // A function-type argument is not singular and IS a factory, so the nested body
     // ternary folds to `this.resolveFactory(returntokenfor<F>(), paramtokensfor<F>())`.
     // The param-carrying factory keeps the param-token array; the no-arg factory
@@ -735,7 +739,7 @@ describe.skipIf(!toolchainReady)('generic inline stage — resolve family parity
     assertNoAuthoringSurvivors(resolveInline);
   });
 
-  test('keyed resolve<Keyed<ICache, "redis">>() splits into base token + key arg (§98)', () => {
+  test('RETIRED-SURFACE-PENDING: keyed resolve<Keyed<ICache, "redis">>() splits into base token + key arg (§98)', () => {
     // §98 keyed resolve: `resolve` carries a tail key parameter, so the body passes
     // the bare BASE token `tokenfor<T>()` plus `keyof<T>()`, lowering to the split
     // pair `resolve("<base>", "redis")` — di.core composes `base#key` at runtime.
@@ -756,7 +760,7 @@ describe.skipIf(!toolchainReady)('generic inline stage — resolve family parity
     assertNoAuthoringSurvivors(resolveInline);
   });
 
-  test('keyed isService / resolveAsync carry the single composed base#key token (§98)', () => {
+  test('RETIRED-SURFACE-PENDING: keyed isService / resolveAsync carry the single composed base#key token (§98)', () => {
     // §98 key-less query verbs: `isService` and `resolveAsync` take one token and no
     // key parameter, so the body derives the SINGLE composed `base#key` token via
     // `keyedtokenfor<T>()`. Both diverge from the di-direct oracle (raw alias), so
@@ -778,7 +782,7 @@ describe.skipIf(!toolchainReady)('generic inline stage — resolve family parity
     expect((am as RegExpExecArray)[1]).toContain('ICache#redis');
   });
 
-  test('runtime round-trip: keyed resolve / isService / resolveAsync hit a keyed registration, miss an unkeyed one', async () => {
+  test('RETIRED-SURFACE-PENDING: runtime round-trip: keyed resolve / isService / resolveAsync hit a keyed registration, miss an unkeyed one', async () => {
     // Runtime-EXECUTION witness (the text tests above only prove the emitted bytes,
     // per the §98 decision: round-trip tests must EXECUTE the lowered JS). The base
     // token comes from the keyed resolve line's arg0, the composed token from the
