@@ -74,11 +74,11 @@ is not reproducible across time or across machines by toolchain version alone.
   package; the build and gate never read it (extends `/tsconfig.editor.json`).
   The root `typecheck` script (`tsc -b`) points at an empty solution stub and checks nothing — don't
   rely on it.
-- **Lint** is `tsc --noEmit` for almost every package (28 of 32 libraries; `-p tsconfig.ci.json`).
+- **Lint** is `tsc --noEmit` for almost every package (29 of 32 libraries; `-p tsconfig.ci.json`).
   Typechecking suffices because the authored tokenless forms type-check against the sugar package's
   `declare module` augmentation — pulled in by a `types` array in the consuming package's
   `tsconfig.json` / `tsconfig.ttsc.json` — with no plugin, since `tokenfor` and the sugar forms have
-  no type-level footprint. Only `di`, `di.core`, `di.extras` and `hosting.core` run `eslint .`
+  no type-level footprint. Only `di`, `di.core` and `hosting.core` run `eslint .`
   (typescript-eslint, type-aware). Formatting is **dprint** (`useBraces: always`).
 - **Go gates** (the ttsc engine's own): `node scripts/gen-go-work.mjs` then, from `transforms/`,
   `go build ./... && go vet ./... && go test ./... && gofmt -l .` (needs mise Go on PATH; the

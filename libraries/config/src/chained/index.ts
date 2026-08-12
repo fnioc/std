@@ -1,6 +1,5 @@
 // Chained provider barrel + the addConfig augmentation.
 
-import type { ConfigBuilder } from '@rhombus-std/config';
 import type { IConfig, IConfigBuilder, IndexedSection } from '@rhombus-std/config.core';
 import { type AugmentationSet2, type Flatten, registerAugmentations } from '@rhombus-std/primitives';
 import { typefor } from '@rhombus-std/primitives.extras';

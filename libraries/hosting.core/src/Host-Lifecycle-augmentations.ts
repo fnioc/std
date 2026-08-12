@@ -1,8 +1,7 @@
 import { AbortController, type AbortSignal, type AugmentationSet2, clearTimeout, neverSignal, registerAugmentations,
-  setTimeout, Type } from '@rhombus-std/primitives';
+  setTimeout } from '@rhombus-std/primitives';
 import { typefor } from '@rhombus-std/primitives.extras';
 import type { IHost } from './IHost';
-import type { IHostApplicationLifetime } from './IHostApplicationLifetime';
 import { HOST_APPLICATION_LIFETIME_TYPE } from './types';
 
 type IHostLifecycleAugmentations = {

@@ -27,7 +27,7 @@
 // Nothing here reads a clock, the filesystem or a random source: the output is
 // byte-stable, which the app's checked-in `expected.txt` diff depends on.
 
-import { DefaultManifest, Type } from '@rhombus-std/di.core';
+import { DefaultManifest } from '@rhombus-std/di.core';
 import type { Manifest } from '@rhombus-std/di.core';
 import '@rhombus-std/di';
 import type { IGreeting, IHealthCheck } from '@rhombus-std/examples.contracts';

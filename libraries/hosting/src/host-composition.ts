@@ -19,8 +19,8 @@
 import type { IConfig } from '@rhombus-std/config.core';
 import { ServiceProviderOptions } from '@rhombus-std/di';
 import type { Manifest } from '@rhombus-std/di.core';
-import { Environments, HOST_APPLICATION_LIFETIME_TYPE, type HostBuilderContext, HostDefaults, type IHost,
-  type IHostLifetime } from '@rhombus-std/hosting.core';
+import { Environments, HOST_APPLICATION_LIFETIME_TYPE, type HostBuilderContext, HostDefaults,
+  type IHost } from '@rhombus-std/hosting.core';
 import { LOGGER_FACTORY_TYPE, LOGGER_PROVIDER_TYPE, LoggerFactory } from '@rhombus-std/logging';
 import type { ILoggerProvider } from '@rhombus-std/logging.core';
 import { Type } from '@rhombus-std/primitives';
