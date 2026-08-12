@@ -132,18 +132,20 @@ export namespace Type {
    *
    * @throws TypeParseError - when the token is malformed.
    */
-  export function from(token: string): Type {
-    const read = parsed.get(token);
-    if (read !== undefined) {
-      return read;
-    }
-    const type = parseType(token);
-    parsed.set(token, type);
-    return type;
-  }
+  export const from = (() => {
+    /** Every token that has already been read, so a repeated request skips the lexer. */
+    const parsed = new Map<string, Type>();
 
-  /** Every token that has already been read, so a repeated request skips the lexer. */
-  const parsed = new Map<string, Type>();
+    return function from(token: string): Type {
+      const read = parsed.get(token);
+      if (read !== undefined) {
+        return read;
+      }
+      const type = parseType(token);
+      parsed.set(token, type);
+      return type;
+    };
+  })();
 
   /**
    * A function signature — `(...args) => returnType`, return type first.
