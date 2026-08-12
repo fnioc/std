@@ -40,7 +40,7 @@ describe('LoggerProviderOptions.registerProviderOptions', () => {
     const logging = new LoggingBuilder(services);
     logging.addConfig(config);
     services = logging.services;
-    services = services.addOptions<FakeProviderOptions>(OPTIONS_TOKEN, () => ({ Format: 'text' })).as('singleton');
+    services = services.addOptions<FakeProviderOptions>(OPTIONS_TOKEN, () => ({ Format: 'text' }));
     services = LoggerProviderOptions.registerProviderOptions(services, OPTIONS_TOKEN, FAKE_PROVIDER_TOKEN);
 
     const provider = services.build().createScope('singleton');
@@ -58,7 +58,7 @@ describe('LoggerProviderOptions.registerProviderOptions', () => {
     const logging = new LoggingBuilder(services);
     logging.addConfig(config);
     services = logging.services;
-    services = services.addOptions<FakeProviderOptions>(OPTIONS_TOKEN, () => ({ Format: 'text' })).as('singleton');
+    services = services.addOptions<FakeProviderOptions>(OPTIONS_TOKEN, () => ({ Format: 'text' }));
     services = LoggerProviderOptions.registerProviderOptions(services, OPTIONS_TOKEN, FAKE_PROVIDER_TOKEN);
 
     const provider = services.build().createScope('singleton');
@@ -84,7 +84,7 @@ describe('LoggerProviderOptions.registerProviderOptions', () => {
     const logging = new LoggingBuilder(services);
     logging.addConfig(config);
     services = logging.services;
-    services = services.addOptions<FakeProviderOptions>(OPTIONS_TOKEN, () => ({ Format: 'text' })).as('singleton');
+    services = services.addOptions<FakeProviderOptions>(OPTIONS_TOKEN, () => ({ Format: 'text' }));
     services = LoggerProviderOptions.registerProviderOptions(services, OPTIONS_TOKEN, FAKE_PROVIDER_TOKEN);
     // The reference's services.Configure<TOptions>(delegate) analog: one more
     // configure source in the SAME pipeline, running after the provider bind.

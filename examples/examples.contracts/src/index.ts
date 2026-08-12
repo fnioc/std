@@ -49,7 +49,7 @@ export interface GreetingPolicy {
 /**
  * An optional health probe. Only the without-transformer library registers one;
  * the with-transformer library does not — so an app probes for it with
- * `isService` / `tryResolve` (#23/#25) and finds it present when that library
+ * `getService`, whose miss is `undefined`, and finds it present when that library
  * was wired in, absent otherwise, without a throw.
  */
 export interface IHealthCheck {
@@ -58,8 +58,8 @@ export interface IHealthCheck {
 
 /**
  * A startup banner fetched asynchronously — registered ONLY as
- * `Promise<IBanner>`, never bare. An app reaches it with `resolveAsync<IBanner>`
- * (#45), which awaits the honest `Promise<T>` fallback before delivering it.
+ * `Promise<IBanner>`, never bare. The registration IS the promise, so an app
+ * awaits what `getRequiredService` hands back for that token before using it.
  */
 export interface IBanner {
   readonly text: string;

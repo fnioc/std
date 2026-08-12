@@ -1,6 +1,6 @@
 // Side-effect: installs `build` onto di.core's Manifest.
 import '@rhombus-std/di';
-import { DefaultManifest, type Manifest } from '@rhombus-std/di.core';
+import { DefaultManifest, type Manifest, Type } from '@rhombus-std/di.core';
 import type { IOptions } from '@rhombus-std/options';
 import { beforeAll, describe, expect, test } from 'bun:test';
 import { spawnSync } from 'node:child_process';
@@ -11,13 +11,13 @@ import { basename, join, resolve } from 'node:path';
 // through the OPEN augmentation registry — the same production path a consumer uses.
 import '@rhombus-std/options.augmentations';
 
-// Production-path e2e for the generic single-expression inline stage — the sole
-// registration/resolution lowering path now that the bespoke di / di_options /
-// config stages are deleted (W6p3). It drives the REAL ttsc over temp projects
-// wiring the inline + primitive descriptors (all resolve to the one owner Go
-// host), then asserts every authoring form lowers to the hand-writable output:
-// the isService<T>() sugar is inlined and lowered to isService("<token>"), with
-// no tokenfor and no authoring-form generics surviving.
+// Production-path e2e for the generic single-expression inline stage, the sole
+// lowering path for the type-driven registration and lookup sugar. It drives the
+// REAL ttsc over temp projects wiring the inline + primitive descriptors (all
+// resolve to the one owner Go host), then asserts each authoring form lowers to
+// exactly what a no-transformer author would have written by hand: the service
+// type's derived token in front, every other argument untouched, and no
+// authoring-form generic or derivation primitive left in the emit.
 //
 // The compilations run in per-worktree project dirs OUTSIDE the repo tree
 // (~/.cache/fnioc-ttsc/sandboxes/<worktree-dirname>, off the per-user-quota tmpfs
@@ -68,9 +68,6 @@ const DI_TRANSFORMER = join(REPO_ROOT, 'libraries', 'di.extras');
 const PRIMITIVES = join(REPO_ROOT, 'libraries', 'primitives');
 const PRIMITIVES_TRANSFORMER = join(REPO_ROOT, 'libraries', 'primitives.extras');
 
-// Outside the repo tree (see the header: an enclosing package.json re-roots token
-// derivation), keyed by the worktree dir name so concurrent sessions don't collide.
-const projDir = join(homedir(), '.cache', 'fnioc-ttsc', 'sandboxes', basename(REPO_ROOT), 'inline');
 // One honest cold Go-sidecar compile fits comfortably here; the second (warm)
 // compilation is seconds. Sized against the sibling suite's single-cold budget
 // with headroom, now that the shared cache guarantees a single cold build.
@@ -124,180 +121,55 @@ function goEnv(): NodeJS.ProcessEnv {
   return env;
 }
 
-const APP_SOURCE = `
-import type { IServiceProvider } from "@rhombus-std/di.core";
-
-// The sugar overload the di.extras declaration-merges onto IServiceQuery —
-// hand-declared here so the program carries it without wiring the transformer's
-// own types (the merge target is the real di.core IServiceQuery).
-declare module "@rhombus-std/di.core" {
-  interface IServiceQuery {
-    isService<T>(): boolean;
-  }
-}
-
-interface ILogger {}
-declare const provider: IServiceProvider<string>;
-
-export const known = provider.isService<ILogger>();
-`;
-
-// Both compilations live in ONE project dir under ONE node_modules, so they
-// share the plugin cache (see the file header). Each tsconfig differs only in
-// its plugin list and its outDir, so their emit never collides.
-function writeTsconfig(name: string, outDir: string, plugins: Array<{ transform: string; }>): void {
-  writeFileSync(join(projDir, name), JSON.stringify({
-    compilerOptions: { target: 'ES2022', module: 'ESNext', moduleResolution: 'Bundler', lib: ['ES2022'], strict: true,
-      outDir: outDir, rootDir: 'src', skipLibCheck: true, noEmitOnError: false, plugins },
-    include: ['src/**/*'],
-  }));
-}
-
-function setupWorkspace(): void {
-  const nm = join(projDir, 'node_modules');
-  mkdirSync(join(nm, '@rhombus-std'), { recursive: true });
-  mkdirSync(join(nm, '@ttsc'), { recursive: true });
-  mkdirSync(join(projDir, 'src'), { recursive: true });
-  rmSync(join(projDir, 'dist-inline'), { recursive: true, force: true });
-
-  link(TS7, join(nm, 'typescript'));
-  link(join(PKG_ROOT, 'node_modules', 'ttsc'), join(nm, 'ttsc'));
-  link(UNPLUGIN, join(nm, '@ttsc', 'unplugin'));
-  link(DI_CORE, join(nm, '@rhombus-std', 'di.core'));
-  link(DI_TRANSFORMER, join(nm, '@rhombus-std', 'di.extras'));
-  link(PRIMITIVES, join(nm, '@rhombus-std', 'primitives'));
-  link(PRIMITIVES_TRANSFORMER, join(nm, '@rhombus-std', 'primitives.extras'));
-
-  // The consumer must depend on di.extras so the collector reaches its
-  // rhombus.inline ServiceQueryInline entry (the isService<T>() body) — with the
-  // di stage deleted (W6p3), that inline body is the ONLY path that lowers the
-  // tokenless isService, so it must be collected. di.core carries the receiver type.
-  writeFileSync(join(projDir, 'package.json'),
-    JSON.stringify({ name: 'inline-e2e-app', version: '0.0.0',
-      dependencies: { '@rhombus-std/di.core': 'workspace:*', '@rhombus-std/di.extras': 'workspace:*' } }));
-  writeFileSync(join(projDir, 'src', 'app.ts'), APP_SOURCE);
-
-  // One descriptor spawns the always-on host (W7): every stage runs regardless of
-  // which @rhombus-std/*.extras descriptor is named, and the sugar bodies in play
-  // come from the dependency scan (di.core + di.extras), not the plugin list.
-  writeTsconfig('tsconfig.inline.json', 'dist-inline', [{ transform: '@rhombus-std/di.extras/ttsc' }]);
-}
-
-function lower(tsconfig: string, outDir: string): string {
-  const result = spawnSync('node', [TTSC, '-p', tsconfig], { cwd: projDir, encoding: 'utf8', env: goEnv() });
-  if (result.status !== 0) {
-    throw new Error(`ttsc failed (status ${result.status}):\n${result.stdout}\n${result.stderr}`);
-  }
-  let lowered: string;
-  try {
-    lowered = readFileSync(join(projDir, outDir, 'app.js'), 'utf8');
-  } catch {
-    const envelope = JSON.parse(result.stdout) as { typescript: Record<string, string>; };
-    lowered = envelope.typescript['src/app.ts'] ?? '';
-  }
-  return canonQuotes(new Bun.Transpiler({ loader: 'ts' }).transformSync(lowered));
-}
-
-let withInline = '';
-
-beforeAll(() => {
-  if (!toolchainReady) {
-    return;
-  }
-  setupWorkspace();
-  withInline = lower('tsconfig.inline.json', 'dist-inline');
-}, COLD_BUILD_MS);
-
-describe.skipIf(!toolchainReady)('generic inline stage — isService pilot', () => {
-  test('RETIRED-SURFACE-PENDING: isService<T>() is inlined and lowered to a token, no sugar or tokenfor survives', () => {
-    expect(withInline).toContain('isService("');
-    expect(withInline).not.toContain('isService<');
-    expect(withInline).not.toContain('tokenfor');
-  });
-});
-
 // ===========================================================================
-// W2 — full registration-CHAIN parity (closed chain / open template / keyed).
+// W2 — registration parity over the type-driven sugar.
 //
-// The pilot exercises one flat `isService<T>()`; this extends the harness to the
-// three-deep registration chain:
+// Three shapes of service type reach the same verb:
 //
-//   1. closed chain  services.addClass<ILogger>(ConsoleLogger)
-//                       .withSignature<[]>().as<'singleton'>()
-//   2. open template services.addClass<IRepo<$<1>>>(ThingRepo)  (hole-carrying dep)
-//   3. keyed         services.addClass<Keyed<ICache, 'redis'>>(RedisCache)
+//   1. closed        services.addClass<ILogger>(ConsoleLogger, [['app:IClock']], 'singleton')
+//   2. open template services.addClass<IRepo<$<1>>>(ThingRepo, [[]])  (hole-carrying dep)
+//   3. keyed         services.addClass<Keyed<ICache, 'redis'>>(RedisCache, [[]])
 //
 // WIRING. The chain sandbox deps {di.core, di.extras}, symlinks the authoring
-// packages, and names ONE spawn descriptor. The always-on host (W7) runs its whole
-// stage table — inline peels the `.addClass<…>()` / `.withSignature<…>()` /
-// `.as<…>()` sugar one layer per pass, and the primitive stages (nameof /
-// signatureof / keyof / valueof) lower the calls it mints. The bespoke di /
-// di_options domain stages are DELETED (W6p3).
+// packages, and names ONE spawn descriptor. The always-on host runs its whole
+// stage table: the inline stage substitutes the sugar body, which puts a
+// `typefor<T>()` in front of the token-taking member, and the primitive stages
+// (nameof / signatureof / keyof / valueof) lower the calls it mints. Every
+// argument the author wrote after the ctor is carried through untouched — the
+// sugar adds the token and nothing else.
 //
-// The sandbox points at the one shared TTSC_CACHE_DIR, so the sidecar the pilot
-// already built cold is reused warm here. di.core resolves to its dist/bundle
-// types (inline substitution works against a dist-referenced di.core).
+// The sandbox points at the one shared TTSC_CACHE_DIR, so a sidecar built cold by
+// any suite is reused warm here. di.core resolves to its dist/bundle types, so
+// inline substitution is exercised against a dist-referenced receiver.
 
 const CHAIN_ROOT = join(homedir(), '.cache', 'fnioc-ttsc', 'sandboxes', basename(REPO_ROOT), 'chain');
 const chainInlineDir = join(CHAIN_ROOT, 'inline');
+const inferredDir = join(CHAIN_ROOT, 'inferred');
 
-// The token-free authoring overloads, hand-declared as a di.core module
-// augmentation — mirroring how the isService pilot hand-declares `isService<T>()`,
-// so the program carries the sugar surface without pulling di.extras's rolled
-// declare-module types (which risk issue #225's INLINE_ROGUE_DUPLICATE). The
-// generic signatures are copied verbatim from di.extras's `src/augment.ts`
-// so the merged member symbols the transforms anchor on are the real faces.
+// The type-driven authoring overloads, hand-declared as a di.core module
+// augmentation so the program carries the sugar surface without pulling
+// di.extras's rolled declare-module types. The signatures are the faces di.extras
+// publishes, so the merged member symbols the stages anchor on are the ones a
+// consumer call actually resolves to.
 const AUTHORING_SOURCE = `
-import type { Ctor, Manifest } from '@rhombus-std/di.core';
+import type { Manifest, Signatures } from '@rhombus-std/di.core';
 
-// The fluent tail was deleted with the classic engine: a verb returns the
-// manifest now. The chain cases below still exercise withSignature and as,
-// which are parked pending the scope decision, so the fixture declares the
-// shapes they need rather than importing types that no longer exist.
-type Slot = 'signature' | 'signatures' | 'scope' | 'key';
-interface AddChain<S extends string, Slots extends Slot, Gated extends boolean> extends Manifest<S> {
-  __slots?: [Slots, Gated];
+interface Ctor<in Args extends readonly any[] = any[], out Instance = any> {
+  new(...args: Args): Instance;
 }
 
 declare module '@rhombus-std/di.core' {
   interface Manifest<Scopes extends string = 'singleton'> {
-    addClass(ctor: Ctor<any[], unknown>): AddChain<Scopes, 'signature' | 'signatures' | 'scope' | 'key', false>;
-    addClass<I>(ctor: Ctor<any[], I>): AddChain<Scopes, 'signature' | 'signatures' | 'scope' | 'key', false>;
-    addClass<I>(ctor: Ctor<any[], I>, overrides: ReadonlyArray<string | undefined>): AddChain<Scopes, 'signature' | 'signatures' | 'scope' | 'key', false>;
-    addValue(value: unknown): Manifest<Scopes>;
-    addValue<I>(value: I): Manifest<Scopes>;
-  }
-  interface IWithSignatureBuilder<S extends string, Slots extends Slot, Gated extends boolean> {
-    withSignature<T extends readonly any[]>(): AddChain<S, Exclude<Slots, 'signatures'>, Gated>;
-  }
-  interface IAsBuilder<S extends string, Slots extends Slot, Gated extends boolean> {
-    as<Scope extends S>(): AddChain<S, Exclude<Slots, 'scope'>, Gated>;
-  }
-  // The tokenless resolve family (W5): resolve on IRequiredResolver,
-  // resolveAsync/tryResolve on IResolver — the faces di-direct anchors on and the
-  // inline ResolverInline bodies target.
-  interface IRequiredResolver {
-    resolve<T>(): T;
-    resolve<F extends (...args: any[]) => any>(): ReturnType<F>;
-  }
-  interface IResolver {
-    resolveAsync<T>(): Promise<T>;
-    tryResolve<T>(): T | undefined;
-  }
-  // The tokenless query predicate (§98 keyed form): isService on IServiceQuery,
-  // the face the inline ServiceQueryInline body targets.
-  interface IServiceQuery {
-    isService<T>(): boolean;
+    addClass<T>(ctor: Ctor, signatures: Signatures, scope?: Scopes, key?: string): Manifest<Scopes>;
+    addValue<T>(value: unknown, key?: string): Manifest<Scopes>;
   }
 }
 
 export {};
 `;
 
-// Cases 1 + 2 — both lower to plain runtime registration calls whose bytes match
-// the di-direct lowering exactly (the value arg is a bare identifier, so there is
-// no instantiation-type-argument stripping to diverge on). Kept in one file so a
-// whole-file byte compare pins import elision + surrounding text, like the pilot.
+// The closed and open service types, kept in one file so a whole-file compare
+// pins import elision and surrounding text alongside the per-line tokens.
 const CHAIN_SOURCE = `
 import type { $, Manifest } from '@rhombus-std/di.core';
 
@@ -307,11 +179,6 @@ interface IRepo<T> {}
 interface IStore<T> {}
 
 class ConsoleLogger implements ILogger {}
-class SelfRepo {
-  constructor(clock: IClock) {
-    void clock;
-  }
-}
 class ThingRepo {
   constructor(store: IStore<$<1>>) {
     void store;
@@ -320,24 +187,16 @@ class ThingRepo {
 
 declare const services: Manifest<'singleton'>;
 
-export const closed = services.addClass<ILogger>(ConsoleLogger).withSignature<[IClock]>().as<'singleton'>();
+export const closed = services.addClass<ILogger>(ConsoleLogger, [['app:IClock']], 'singleton');
 
-export const emptySig = services.addClass<ILogger>(ConsoleLogger).withSignature<[]>().as<'singleton'>();
+export const emptySig = services.addClass<ILogger>(ConsoleLogger, [[]], 'singleton');
 
-// W3 no-type-arg SELF-registration: the token derives from the VALUE (SelfRepo's
-// own instance type), not an explicit <I>. Lowers to the plain 3-arg form.
-export const self = services.addClass(SelfRepo);
-
-export const open = services.addClass<IRepo<$<1>>>(ThingRepo);
+export const open = services.addClass<IRepo<$<1>>>(ThingRepo, [[]]);
 `;
 
-// Case 3 — keyed. The inline pipeline keeps the two halves SPLIT (tokenfor gives
-// the bare base in arg0; keyof gives the key literal in the arg-5 KEY slot, behind
-// the `void 0` scope placeholder), while the di-direct stage COMPOSES `base#key`
-// into arg0. So the keyed emit is NOT byte-identical across paths — instead the
-// two halves must reunite onto the di-direct token (mirrors the Go-level
-// TestKeyedInlinePipelineComposesBaseKey). Own file so the whole-file compare of
-// cases 1+2 is not disturbed by this deliberate divergence.
+// A KEYED service type. Base and key compose into ONE tag token, and the lookup
+// side mints the identical token — that identity is what makes a keyed
+// registration and a keyed lookup meet. Own file so the compare is isolated.
 const KEYED_SOURCE = `
 import type { Keyed, Manifest } from '@rhombus-std/di.core';
 
@@ -346,39 +205,27 @@ class RedisCache implements ICache {}
 
 declare const services: Manifest<'singleton'>;
 
-export const keyed = services.addClass<Keyed<ICache, 'redis'>>(RedisCache);
+export const keyed = services.addClass<Keyed<ICache, 'redis'>>(RedisCache, [[]]);
 `;
 
-// Value-argument self-registration (W3 tokenof). addValue registers an ALREADY-
-// BUILT value under its OWN type — so a CALLABLE value (a factory) must tokenize
-// as the function itself (…:makeThing), NOT its return type (…:Thing). That is the
-// case where the raw-type tokenof (which the addValue self body uses) diverges from
-// the produced-type tokenfor: were the body on tokenfor, valueFn would derive
-// …:Thing and break parity with the di-direct raw-type addValue lowering. A class
-// REFERENCE (valueClass) tokenizes as its constructor type, which carries the
-// class symbol. Own file so the deliberate raw semantics is compared in isolation,
-// like KEYED_SOURCE.
-const VALUE_SOURCE = `
+// A sugar call with NO type argument. The service type is the sugar's type
+// argument, and no parameter mentions it, so there is nothing for the checker to
+// infer it from. The stage refuses with a named diagnostic rather than deriving a
+// token for `unknown` — compiled on its own, since the refusal fails the build.
+const INFERRED_SOURCE = `
 import type { Manifest } from '@rhombus-std/di.core';
 
-interface Thing {}
-class ValueRepo {}
-declare function makeThing(): Thing;
+class SelfRepo {}
 
 declare const services: Manifest<'singleton'>;
 
-export const valueFn = services.addValue(makeThing);
-
-export const valueClass = services.addValue(ValueRepo);
+export const self = services.addClass(SelfRepo, [[]]);
 `;
 
-// Resolve-family source (W5). The tokenless resolve / resolveAsync / tryResolve
-// forms lower through the inline ResolverInline bodies (isSingular / singularValue
-// / tokenfor) OR the di-direct rewriteResolve, which must agree: a NON-singular T
-// resolves to the token form `provider.resolve("<token>")`, and a SINGULAR T
-// short-circuits to the value literal itself (di.core's Rule-2), the dead token arm
-// pruned by the fold. Own file so the resolve compare is isolated from the
-// registration whole-file compare.
+// Lookup-family source (W5). The type-driven get* forms lower through the inline
+// bodies to the Type-taking member: `provider.getService(typefor<T>())` and its
+// two siblings, the token minted by the nameof stage. Own file so the lookup
+// compare is isolated from the registration whole-file compare.
 const RESOLVE_SOURCE = `
 import type { Keyed } from '@rhombus-std/di.core';
 import type { IServiceProvider } from '@rhombus-std/primitives';
@@ -402,26 +249,20 @@ interface ICache {}
 declare const provider: IServiceProvider;
 
 export const tokenful = provider.getRequiredService<IThing>();
-export const asyncTok = provider.resolveAsync<IThing>();
 export const tryTok = provider.getService<IThing>();
+export const many = provider.getServices<IThing>();
+// A type LITERAL is a service type like any other: it derives its own token
+// rather than collapsing to the literal value.
 export const singular = provider.getRequiredService<'dev'>();
-// §94 factory forms. resolve<F>() with F a function type lowers to
-// resolveFactory(returnToken, [paramTokens]); a no-arg factory drops the array.
-export const factoryTok = provider.resolve<(a: IThing) => ICache>();
-export const factoryNoArg = provider.resolve<() => IThing>();
-// §98 keyed forms. resolve/tryResolve carry a tail key parameter → split base + key;
-// isService/resolveAsync are key-less → the single composed base#key token.
-export const keyedTok = provider.resolve<Keyed<ICache, 'redis'>>();
-export const keyedKnown = provider.isService<Keyed<ICache, 'redis'>>();
-export const keyedAsync = provider.resolveAsync<Keyed<ICache, 'redis'>>();
+// A keyed type argument composes base and key into ONE tag token — the same token
+// the keyed registration mints, which is what makes the two meet at runtime.
+export const keyedTok = provider.getService<Keyed<ICache, 'redis'>>();
+export const keyedKnown = provider.getRequiredService<Keyed<ICache, 'redis'>>();
 `;
 
-// Registration OVERRIDE source (§99). `addClass<I>(Class, overrides)` lowers
-// through the inline path to `addClass(token, Class, overrideSignatures(
-// signatureof(Class), overrides))` — a RUNTIME merge helper the inline stage
-// materializes an import for — DELIBERATELY diverging from di-direct's compile-time
-// merge (a `[[...]]` literal). Own file so its runtime-callee shape is asserted in
-// isolation; the overrideSignatures merge semantics are unit-tested in di.test.
+// The signatures argument. Everything the author writes after the ctor reaches the
+// token-taking member unchanged: the sugar's only job is to put the derived token
+// in front of it. Own file so the pass-through is compared in isolation.
 const OVERRIDE_SOURCE = `
 import type { Manifest } from '@rhombus-std/di.core';
 
@@ -437,16 +278,18 @@ class Handler implements IHandler {
 
 declare const services: Manifest<'singleton'>;
 
-export const overridden = services.addClass<IHandler>(Handler, ['pkg:IReqAlt']);
+export const overridden = services.addClass<IHandler>(Handler, [['pkg:IReqAlt', 'pkg:ILog']]);
 `;
 
 function writeChainSrc(dir: string): void {
   const src = join(dir, 'src');
+  // The sandbox outlives the run that made it, and the tsconfig includes the whole
+  // src tree — so a fixture this run no longer writes would still be compiled.
+  rmSync(src, { recursive: true, force: true });
   mkdirSync(src, { recursive: true });
   writeFileSync(join(src, 'authoring.ts'), AUTHORING_SOURCE);
   writeFileSync(join(src, 'chain.ts'), CHAIN_SOURCE);
   writeFileSync(join(src, 'keyed.ts'), KEYED_SOURCE);
-  writeFileSync(join(src, 'value.ts'), VALUE_SOURCE);
   writeFileSync(join(src, 'resolve.ts'), RESOLVE_SOURCE);
   writeFileSync(join(src, 'override.ts'), OVERRIDE_SOURCE);
 }
@@ -475,6 +318,18 @@ function linkChainDeps(dir: string): void {
   link(PRIMITIVES_TRANSFORMER, join(nm, '@rhombus-std', 'primitives.extras'));
 }
 
+function setupInferredWorkspace(): void {
+  rmSync(join(inferredDir, 'dist'), { recursive: true, force: true });
+  linkChainDeps(inferredDir);
+  mkdirSync(join(inferredDir, 'src'), { recursive: true });
+  writeFileSync(join(inferredDir, 'package.json'),
+    JSON.stringify({ name: 'inferred-app', version: '0.0.0',
+      dependencies: { '@rhombus-std/di.core': 'workspace:*', '@rhombus-std/di.extras': 'workspace:*' } }));
+  writeFileSync(join(inferredDir, 'src', 'authoring.ts'), AUTHORING_SOURCE);
+  writeFileSync(join(inferredDir, 'src', 'inferred.ts'), INFERRED_SOURCE);
+  writeChainTsconfig(inferredDir, [{ transform: '@rhombus-std/di.extras/ttsc' }]);
+}
+
 function setupChainWorkspaces(): void {
   rmSync(join(chainInlineDir, 'dist'), { recursive: true, force: true });
 
@@ -501,6 +356,19 @@ function runChainTtsc(dir: string): ReturnType<typeof spawnSync> {
   return result;
 }
 
+// The refusal compile, which is EXPECTED to exit non-zero: the envelope carrying
+// the diagnostics is the result, so an empty one is the harness failing rather
+// than the stage answering.
+function runInferredTtsc(): Diagnostic[] {
+  const result = spawnSync('node', [TTSC, '-p', 'tsconfig.json'], { cwd: inferredDir, encoding: 'utf8', env: goEnv() });
+  // A run that ends in diagnostics writes its envelope to stderr rather than stdout.
+  const envelope = String(result.stdout).trim() || String(result.stderr).trim();
+  if (!envelope) {
+    throw new Error(`ttsc produced no envelope in ${inferredDir} (status ${result.status})`);
+  }
+  return (JSON.parse(envelope) as { diagnostics?: Diagnostic[]; }).diagnostics ?? [];
+}
+
 function readChainFile(dir: string, result: ReturnType<typeof spawnSync>, srcRel: string): string {
   const outFile = join(dir, 'dist', srcRel.replace(/^src\//, '').replace(/\.ts$/, '.js'));
   let lowered: string;
@@ -513,11 +381,13 @@ function readChainFile(dir: string, result: ReturnType<typeof spawnSync>, srcRel
   return canonQuotes(new Bun.Transpiler({ loader: 'ts' }).transformSync(lowered));
 }
 
+type Diagnostic = { file: string; category: string; code: string; messageText: string; };
+
 let chainInline = '';
 let keyedInline = '';
-let valueInline = '';
 let resolveInline = '';
 let overrideInline = '';
+let inferredDiagnostics: Diagnostic[] = [];
 
 beforeAll(() => {
   if (!toolchainReady) {
@@ -527,17 +397,17 @@ beforeAll(() => {
   const inlineRun = runChainTtsc(chainInlineDir);
   chainInline = readChainFile(chainInlineDir, inlineRun, 'src/chain.ts');
   keyedInline = readChainFile(chainInlineDir, inlineRun, 'src/keyed.ts');
-  valueInline = readChainFile(chainInlineDir, inlineRun, 'src/value.ts');
   resolveInline = readChainFile(chainInlineDir, inlineRun, 'src/resolve.ts');
   overrideInline = readChainFile(chainInlineDir, inlineRun, 'src/override.ts');
+
+  setupInferredWorkspace();
+  inferredDiagnostics = runInferredTtsc();
 }, COLD_BUILD_MS);
 
 // The authoring-time survivors that must NEVER reach emitted JS — sugar generics
 // and every derivation primitive. A survivor means the loop under-lowered.
 function assertNoAuthoringSurvivors(out: string): void {
   expect(out).not.toContain('addClass<');
-  expect(out).not.toContain('withSignature<');
-  expect(out).not.toContain('.as<');
   expect(out).not.toContain('tokenfor');
   expect(out).not.toContain('tokenof');
   expect(out).not.toContain('keyedtokenfor');
@@ -556,41 +426,38 @@ function lineWith(src: string, needle: string): string | undefined {
   return src.split('\n').find((l) => l.includes(needle))?.trim();
 }
 
-describe.skipIf(!toolchainReady)('generic inline stage — registration chain parity (W2)', () => {
-  test('closed chain: addClass<I>(C).withSignature<[]>().as<"singleton">() lowers to the value form', () => {
-    // The three-deep sugar chain peels to a plain registration call: the token, the
-    // ctor, its derived signature, then the fluent `.withSignature()` / `.as(
-    // "singleton")` continuations survive as their own value-arg calls (survive-not-
-    // fold parity).
+describe.skipIf(!toolchainReady)('generic inline stage — registration parity (W2)', () => {
+  test('a closed service type mints its token and carries signature + lifetime through', () => {
+    // The sugar's whole contribution is the leading token. Everything the author
+    // wrote after the ctor — the signature list, the lifetime — reaches the
+    // Type-taking member byte-for-byte, in the same order.
     const line = lineWith(chainInline, 'closed =');
     expect(line).toBeDefined();
-    expect(line).toContain('addClass(Type.named("ILogger", "chain-app/tokens/chain"), ConsoleLogger)');
-    expect(line).toContain('.withSignature()');
+    expect(line).toContain(
+      'addClass(Type.named("ILogger", "chain-app/tokens/chain"), ConsoleLogger, [["app:IClock"]], "singleton")',
+    );
     assertNoAuthoringSurvivors(chainInline);
   });
 
-  test('open template: addClass<IRepo<$<1>>>(ThingRepo) carries the "$1" open token + hole dep', () => {
+  test('an empty signature list survives the fixed-point loop unchanged', () => {
+    // `[[]]` is a value argument the sugar never reads, so every pass of the loop
+    // must leave it alone; a pass that re-visited its own output would mangle it.
+    const line = lineWith(chainInline, 'emptySig =');
+    expect(line).toBeDefined();
+    expect(line).toContain(
+      'addClass(Type.named("ILogger", "chain-app/tokens/chain"), ConsoleLogger, [[]], "singleton")',
+    );
+    assertNoAuthoringSurvivors(chainInline);
+  });
+
+  test('an open template carries its hole into both the service token and the ctor dep', () => {
     const line = lineWith(chainInline, 'open =');
     expect(line).toBeDefined();
-    // The service token is the open template IRepo<$1> and the ctor dep carries
-    // the same hole (IStore<$1>) — the load-bearing "$1" text the derivation mints.
+    // The service type is the template IRepo<$1>, its hole minted as a placeholder
+    // rather than a named type.
     expect(line).toContain('Type.named("IRepo", "chain-app/tokens/chain", [Type.placeholder("1")])');
-    expect(chainInline).toContain('IRepo<$1>');
-    expect(chainInline).toContain('IStore<$1>');
-  });
-
-  test('self-registration: addClass(SelfRepo) derives the token from the value', () => {
-    const line = lineWith(chainInline, 'self =');
-    expect(line).toBeDefined();
-    expect(line).toContain('addClass("');
-    // Self-registration is unkeyed and lifetime-unchosen: the plain 3-arg form,
-    // no scope placeholder or trailing key.
-    expect(line).not.toContain('void 0');
-    expect(line).not.toContain('undefined');
+    expect(chainInline).toContain('Type.placeholder("1")');
     assertNoAuthoringSurvivors(chainInline);
-    // The token is SelfRepo's own instance token, and the ctor dep is IClock.
-    expect(line).toContain('SelfRepo');
-    expect(chainInline).toContain('IClock');
   });
 
   test('Open issue 1: the sandbox resolves di.core to its dist/bundle types (dist-referenced)', () => {
@@ -617,216 +484,102 @@ describe.skipIf(!toolchainReady)('generic inline stage — registration chain pa
     }
   });
 
-  test('keyed: addClass<Keyed<ICache, "redis">>(RedisCache) reunites base + key onto the di token', () => {
+  test('a keyed service type composes base and key into one tag token', () => {
     assertNoAuthoringSurvivors(keyedInline);
-    const inlineLine = lineWith(keyedInline, 'keyed =');
-    expect(inlineLine).toBeDefined();
-
-    // Inline keeps the halves split: bare base in arg0, key literal "redis" in the
-    // arg-5 KEY slot behind the scope placeholder. ttsc emits the placeholder as
-    // `void 0`; Bun.Transpiler normalizes it to `undefined` in the readback.
-    expect(keyedInline).toContain('Type.tag(Type.named("ICache", "chain-app/tokens/keyed"), "redis")');
-    const inlineBase = /addClass\("([^"]*)"/.exec(inlineLine as string)?.[1];
-    expect(inlineBase).toBeDefined();
-    expect(inlineBase).not.toContain('#');
+    const line = lineWith(keyedInline, 'keyed =');
+    expect(line).toBeDefined();
+    // One argument, not a base plus a trailing key: the tag IS the service type.
+    expect(line).toContain(
+      'addClass(Type.tag(Type.named("ICache", "chain-app/tokens/keyed"), "redis"), RedisCache, [[]])',
+    );
   });
 
-  test("value self-registration: addValue(fn) tokenizes the fn's OWN type via tokenof", () => {
-    // W3 value-argument self-registration through the REAL ServiceManifestSelfInline
-    // body (end-to-end, unlike the Go tier's fixture body). addValue registers an
-    // already-built value under its OWN type, so a CALLABLE value (makeThing) must
-    // tokenize as the function itself (…:makeThing), NOT its call-signature return
-    // type (…:Thing). This is the exact tokenfor→tokenof divergence: the raw-type
-    // tokenof holds parity with di-direct's raw-type addValue lowering, where the
-    // produced-type tokenfor would have unwrapped to …:Thing and diverged.
-    const fnLine = lineWith(valueInline, 'valueFn =');
-    expect(fnLine).toBeDefined();
-    expect(fnLine).toContain('addValue("');
-    expect(fnLine).toContain(':makeThing"');
-    expect(fnLine).not.toContain(':Thing"');
-    // A value carries no deps and no lifetime — the plain 2-arg addValue form.
-    expect(fnLine).not.toContain('[[');
-    assertNoAuthoringSurvivors(valueInline);
-    // A class REFERENCE tokenizes as its constructor type (the class symbol).
-    expect(lineWith(valueInline, 'valueClass =')).toContain(':ValueRepo"');
-  });
-
-  test('override registration: addClass<I>(C, overrides) lowers to a runtime overrideSignatures merge (§99)', () => {
-    // §99: `addClass<I>(C, overrides)` merges the sparse overrides over the derived
-    // signature at RUNTIME, inside the body, via the di.core `overrideSignatures`
-    // helper — DELIBERATELY diverging from di-direct's compile-time `[[...]]` merge.
-    // The helper is a body-imported RUNTIME callee: it SURVIVES lowering as an
-    // ordinary call, and the inline stage MATERIALIZES its di.core import.
+  test('the signatures argument reaches the member exactly as written', () => {
     const line = lineWith(overrideInline, 'overridden =');
     expect(line).toBeDefined();
-    expect(line).toContain('.addClass(Type.named("IHandler", "chain-app/tokens/override"), Handler)');
-    // The runtime merge helper survives, applied to the derived signature array and
-    // the authored overrides array (quote/spacing normalized by Bun.Transpiler).
-    expect(line).toContain('overrideSignatures(');
-    expect(line).toContain('pkg:IReqAlt');
-    expect(line).toContain('[[');
-    // The derived signature carries the ctor's two dependency tokens.
-    expect(overrideInline).toContain('IReq');
-    expect(overrideInline).toContain('ILog');
-    // The inline stage materialized the runtime helper's di.core value import.
-    const importLine = overrideInline.split('\n').find((l) =>
-      l.includes('import') && l.includes('overrideSignatures') && l.includes('@rhombus-std/di.core')
+    expect(line).toContain(
+      'addClass(Type.named("IHandler", "chain-app/tokens/override"), Handler, [["pkg:IReqAlt", "pkg:ILog"]])',
     );
-    expect(importLine).toBeDefined();
-    // No authoring-form primitive survives (overrideSignatures is a runtime callee,
-    // not a lowered primitive, so it is expected to remain).
     assertNoAuthoringSurvivors(overrideInline);
-    expect(overrideInline).not.toContain('addClass<');
   });
 
-  test('empty-tuple withSignature<[]>() is loop-idempotent (lowers to zero-arg .withSignature())', () => {
-    // Loop-idempotence regression pin (was a test.todo). The EMPTY-tuple
-    // `withSignature<[]>()` lowers to a zero-argument `.withSignature()` — the empty
-    // tuple makes `...signaturefor<[]>()` spread nothing. A subsequent fixed-point
-    // pass then re-visits that factory-built, position-less call; without the
-    // synthetic-node guard in inlinetransform's tryInline it re-matched the
-    // zero-value-arg sugar overload, failed RecoverTypeArguments, and ttsc exited
-    // non-zero with a spurious INLINE_INFERRED_TYPE_ARGUMENT despite byte-correct
-    // emit. With the guard the synthetic call is a clean non-match: ttsc succeeds
-    // (this suite's beforeAll runChainTtsc would THROW on the non-zero exit
-    // otherwise), the loop settles, and the emitted continuation is the bare
-    // zero-arg call. (Go-level pin: TestEmptyTupleWithSignatureDoesNotReMatchOwnOutput.)
-    const line = lineWith(chainInline, 'emptySig =');
-    expect(line).toBeDefined();
-    expect(line).toContain('addClass(Type.named("ILogger", "chain-app/tokens/chain"), ConsoleLogger)');
-    expect(line).toContain('.withSignature()');
-    assertNoAuthoringSurvivors(chainInline);
+  test('a sugar call with no type argument is refused by name, not silently derived', () => {
+    // The service type is the type argument and no parameter mentions it, so an
+    // omitted one has nothing to bind against. Deriving a token for `unknown` would
+    // register a service nobody can ask for, so the stage refuses and says which
+    // call to annotate.
+    expect(inferredDiagnostics.length).toBeGreaterThan(0);
+    for (const diagnostic of inferredDiagnostics) {
+      expect(diagnostic.code).toBe('INLINE_INFERRED_TYPE_ARGUMENT');
+      expect(diagnostic.category).toBe('error');
+      expect(diagnostic.file).toContain('inferred.ts');
+    }
   });
 });
 
-describe.skipIf(!toolchainReady)('generic inline stage — resolve family parity (W5)', () => {
-  test('tokenful getRequiredService<I>() lowers to getRequiredService(Type.named(…))', () => {
+describe.skipIf(!toolchainReady)('generic inline stage — lookup parity (W5)', () => {
+  test('getRequiredService<I>() lowers to the Type-taking member', () => {
     const line = lineWith(resolveInline, 'tokenful =');
     expect(line).toBeDefined();
     expect(line).toContain('.getRequiredService(Type.named("IThing", "chain-app/tokens/resolve"))');
-    expect(line).toContain('IThing');
     expect(line).not.toContain('getRequiredService<');
     assertNoAuthoringSurvivors(resolveInline);
   });
 
-  test('RETIRED-SURFACE-PENDING: resolveAsync<I>() keeps its method name', () => {
-    const asyncLine = lineWith(resolveInline, 'asyncTok =');
-    expect(asyncLine).toBeDefined();
-    expect(asyncLine).toContain('.resolveAsync("');
-  });
-
-  test('tryTok getService<I>() lowers to getService(Type.named(…))', () => {
-    const tryLine = lineWith(resolveInline, 'tryTok =');
-    expect(tryLine).toBeDefined();
-    expect(tryLine).toContain('.getService(Type.named("IThing", "chain-app/tokens/resolve"))');
-    expect(tryLine).not.toContain('getService<');
+  test('getService<I>() lowers to the Type-taking member', () => {
+    const line = lineWith(resolveInline, 'tryTok =');
+    expect(line).toBeDefined();
+    expect(line).toContain('.getService(Type.named("IThing", "chain-app/tokens/resolve"))');
+    expect(line).not.toContain('getService<');
     assertNoAuthoringSurvivors(resolveInline);
   });
 
-  test('singular getRequiredService<"dev">() short-circuits to the value literal (Rule-2)', () => {
+  test('getServices<I>() derives the ELEMENT type, not a collection type', () => {
+    // The collection is the verb's own doing; the type argument names one element,
+    // so the token is the bare element type.
+    const line = lineWith(resolveInline, 'many =');
+    expect(line).toBeDefined();
+    expect(line).toContain('.getServices(Type.named("IThing", "chain-app/tokens/resolve"))');
+    expect(line).not.toContain('getServices<');
+  });
+
+  test('a type LITERAL derives its own token like any other service type', () => {
     const line = lineWith(resolveInline, 'singular =');
     expect(line).toBeDefined();
-    // The whole resolve call collapses to the value itself — no resolve call, no
-    // token — proving the fold pruned the tokenful dead branch AND its tokenfor.
-    expect(line).toContain('"dev"');
-    expect(line).not.toContain('.getRequiredService(');
-    expect(line).not.toContain('isSingular');
-    expect(line).not.toContain('singularValue');
-  });
-
-  test('RETIRED-SURFACE-PENDING: factory resolve<F>() lowers to resolveFactory(returnToken, [paramTokens]) (§94)', () => {
-    // A function-type argument is not singular and IS a factory, so the nested body
-    // ternary folds to `this.resolveFactory(returntokenfor<F>(), paramtokensfor<F>())`.
-    // The param-carrying factory keeps the param-token array; the no-arg factory
-    // elides it (di.core's bare `resolveFactory(token)` form).
-    const withParam = lineWith(resolveInline, 'factoryTok =');
-    expect(withParam).toBeDefined();
-    expect(withParam).toContain('.resolveFactory(');
-    expect(withParam).toContain('[');
-    expect(withParam).not.toContain('resolve<');
-
-    const noArg = lineWith(resolveInline, 'factoryNoArg =');
-    expect(noArg).toBeDefined();
-    expect(noArg).toContain('.resolveFactory(');
-    // No-arg factory: the trailing param-token array is elided.
-    expect(noArg).not.toContain('[');
+    expect(line).toContain('.getRequiredService(Type.typeLiteral("dev"))');
     assertNoAuthoringSurvivors(resolveInline);
   });
 
-  test('RETIRED-SURFACE-PENDING: keyed resolve<Keyed<ICache, "redis">>() splits into base token + key arg (§98)', () => {
-    // §98 keyed resolve: `resolve` carries a tail key parameter, so the body passes
-    // the bare BASE token `tokenfor<T>()` plus `keyof<T>()`, lowering to the split
-    // pair `resolve("<base>", "redis")` — di.core composes `base#key` at runtime.
-    // This DELIBERATELY diverges from the di-direct oracle, whose lowerResolveCall
-    // still emits the raw `Keyed<...>` alias token (the port gap §98 fixes — that
-    // token never matched a keyed registration). So this asserts the documented
-    // split form, NOT byte parity with the semantic path; the runtime round-trip
-    // below proves it actually resolves a keyed registration.
-    const line = lineWith(resolveInline, 'keyedTok =');
-    expect(line).toBeDefined();
-    expect(line).not.toContain('resolve<');
-    expect(line).not.toContain('Keyed<');
-    const m = /\.resolve\("([^"]*)", "redis"\)/.exec(line as string);
-    expect(m).not.toBeNull();
-    const base = (m as RegExpExecArray)[1];
-    expect(base).toContain('ICache');
-    expect(base).not.toContain('#');
+  test('a keyed lookup mints the SAME tag token a keyed registration does', () => {
+    // The identity is the whole point: registration and lookup are two halves of
+    // one keyed contract, and a token that differed between them would miss.
+    const composed = 'Type.tag(Type.named("ICache", "chain-app/tokens/resolve"), "redis")';
+    const getLine = lineWith(resolveInline, 'keyedTok =');
+    expect(getLine).toBeDefined();
+    expect(getLine).toContain(`.getService(${composed})`);
+
+    const requiredLine = lineWith(resolveInline, 'keyedKnown =');
+    expect(requiredLine).toBeDefined();
+    expect(requiredLine).toContain(`.getRequiredService(${composed})`);
     assertNoAuthoringSurvivors(resolveInline);
   });
 
-  test('RETIRED-SURFACE-PENDING: keyed isService / resolveAsync carry the single composed base#key token (§98)', () => {
-    // §98 key-less query verbs: `isService` and `resolveAsync` take one token and no
-    // key parameter, so the body derives the SINGLE composed `base#key` token via
-    // `keyedtokenfor<T>()`. Both diverge from the di-direct oracle (raw alias), so
-    // this asserts the composed form; the round-trip below proves it round-trips.
-    const knownLine = lineWith(resolveInline, 'keyedKnown =');
-    expect(knownLine).toBeDefined();
-    expect(knownLine).not.toContain('isService<');
-    expect(knownLine).not.toContain('Keyed<');
-    const km = /\.isService\("([^"]*)"\)/.exec(knownLine as string);
-    expect(km).not.toBeNull();
-    expect((km as RegExpExecArray)[1]).toContain('ICache#redis');
-
-    const asyncLine = lineWith(resolveInline, 'keyedAsync =');
-    expect(asyncLine).toBeDefined();
-    expect(asyncLine).not.toContain('resolveAsync<');
-    expect(asyncLine).not.toContain('Keyed<');
-    const am = /\.resolveAsync\("([^"]*)"\)/.exec(asyncLine as string);
-    expect(am).not.toBeNull();
-    expect((am as RegExpExecArray)[1]).toContain('ICache#redis');
-  });
-
-  test('RETIRED-SURFACE-PENDING: runtime round-trip: keyed resolve / isService / resolveAsync hit a keyed registration, miss an unkeyed one', async () => {
-    // Runtime-EXECUTION witness (the text tests above only prove the emitted bytes,
-    // per the §98 decision: round-trip tests must EXECUTE the lowered JS). The base
-    // token comes from the keyed resolve line's arg0, the composed token from the
-    // keyed isService line — the transformer's ACTUAL emitted tokens. A keyed
-    // service registered under the composed token must: answer `isService(composed)`
-    // true, `resolve(base, "redis")` (which di.core composes to `base#key`) the
-    // registered value, and `resolveAsync(composed)` the same value. An UNKEYED-only
-    // registration of the same base must answer the keyed probe FALSE — the exact
-    // mismatch §98 fixes (the pre-§98 raw-alias / brand-stripped forms could not).
-    const base =
-      (/\.resolve\("([^"]*)", "redis"\)/.exec(lineWith(resolveInline, 'keyedTok =') as string) as RegExpExecArray)[1];
-    const composed =
-      (/\.isService\("([^"]*)"\)/.exec(lineWith(resolveInline, 'keyedKnown =') as string) as RegExpExecArray)[1];
-    expect(composed).toBe(`${base}#redis`);
-
+  test('runtime round-trip: the emitted keyed token hits a keyed registration and misses an unkeyed one', () => {
+    // The text compares above prove the emitted bytes; this EXECUTES against the
+    // real container, using the tag the transformer actually minted, so a keyed
+    // registration and a keyed lookup are shown to meet rather than assumed to.
     const marker = { tag: 'redis-cache' };
+    const base = Type.named('ICache', 'chain-app/tokens/resolve');
+    const composed = Type.tag(base, 'redis');
 
-    // Keyed registration lands under the composed base#key token.
     let keyed: Manifest<'singleton'> = new DefaultManifest<'singleton'>();
     keyed = keyed.addValue(composed, marker);
-    const keyedProvider = keyed.build().createScope('singleton');
-    expect(keyedProvider.isService(composed)).toBe(true);
-    expect(keyedProvider.resolve(base, 'redis')).toBe(marker);
-    expect(await keyedProvider.resolveAsync(composed)).toBe(marker);
+    expect(keyed.build().getService(composed)).toBe(marker);
 
-    // Unkeyed-only registration of the same base: the keyed probe misses.
+    // An unkeyed registration of the same base does not answer the keyed lookup.
     let unkeyed: Manifest<'singleton'> = new DefaultManifest<'singleton'>();
     unkeyed = unkeyed.addValue(base, marker);
-    const unkeyedProvider = unkeyed.build().createScope('singleton');
-    expect(unkeyedProvider.isService(composed)).toBe(false);
+    expect(unkeyed.build().getService(composed)).toBeUndefined();
   });
 });
 
@@ -980,10 +733,9 @@ describe.skipIf(!toolchainReady)('generic inline stage — addOptions options wi
 
     let services: Manifest<'singleton'> = new DefaultManifest<'singleton'>();
     services = services.addValue(element, value);
-    services = services.addOptions(wrapper, element).as('singleton');
+    services = services.addOptions(wrapper, element);
 
-    const provider = services.build().createScope('singleton');
-    const options = provider.resolve<IOptions<UserOptions>>(wrapper);
+    const options = services.build().getRequiredService(Type.from(wrapper)) as IOptions<UserOptions>;
     // The wrapper resolves an IOptions<T> whose value IS the element-registered T.
     expect(options.value).toBe(value);
   });

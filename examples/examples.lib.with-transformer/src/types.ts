@@ -33,9 +33,9 @@ export const EXAMPLE_TYPES = {
   /** The report assembled from the whole container. */
   report: typefor<IServerReport>(),
   /**
-   * The banner is registered ONLY in its promise wrapper, so `resolveAsync` is
-   * the only way in and this Type carries the `Promise<…>` wrapper the
-   * derivation gives it.
+   * The banner is registered ONLY in its promise wrapper, so the caller awaits
+   * what `getRequiredService` hands back for this Type, which carries the
+   * `Promise<…>` wrapper the derivation gives it.
    */
   banner: typefor<Promise<IBanner>>(),
 } as const;

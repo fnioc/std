@@ -175,7 +175,7 @@ test('addHostedService registers many under one shared token; the host resolves 
   });
 
   const host = builder.build();
-  expect(host.services.isService(HOSTED_SERVICE_TYPE)).toBe(true);
+  expect(host.services.getService(HOSTED_SERVICE_TYPE)).toBeDefined();
 
   await host.start();
   expect(started).toEqual(['A', 'B', 'C']);

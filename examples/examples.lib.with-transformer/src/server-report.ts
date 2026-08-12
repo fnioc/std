@@ -24,8 +24,8 @@
 //     lowers to a union slot — `{ union: ["…:IHealthCheck", { value: undefined
 //     }] }` — so the container tries the registration first and falls back to
 //     `undefined` when nothing is registered. That is the declared equivalent of
-//     `tryResolve(…)`, and it is the better half of the trade: absence becomes
-//     visible in the signature instead of buried in the body.
+//     a `getService` probe, and it is the better half of the trade: absence
+//     becomes visible in the signature instead of buried in the body.
 //
 // The transformer still earns its keep here, but in the REGISTRATION rather than
 // the body: deriving those four Types — one closed generic, one collection

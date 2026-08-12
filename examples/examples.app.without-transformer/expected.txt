@@ -52,14 +52,14 @@ required vs optional lookup
   getRequiredService(IFraudScreen): Error — a required miss is loud
   getService(IAuditTrail): present
   getService(IFraudScreen): undefined
-  isService(IFraudScreen): NotImplementedError — declared, no behaviour yet
+  getService(IFraudScreen) !== undefined: false
 collection resolution — 3 registrations share one type, all of them run
   A-1001: total-within-limit → ok
   A-1001: amount-is-positive → ok
-  A-1001: method-is-configured → NotImplementedError — declared, no behaviour yet
+  A-1001: method-is-configured → ok
   X-9009: total-within-limit → over the 250000 limit
   X-9009: amount-is-positive → ok
-  X-9009: method-is-configured → NotImplementedError — declared, no behaviour yet
+  X-9009: method-is-configured → no gateway for "crypto"
   the same aggregation asked for as a type: 3 validators
 keyed resolution — one base type, three keys
   A-1001 checkout (key "wallet"): wallet debited 4250 for A-1001 → #1001 A-1001 via wallet
@@ -68,7 +68,7 @@ keyed resolution — one base type, three keys
   a keyed registration is not in the bare base's collection: 0 gateways
 factory slots — the caller supplies what the container cannot know
   mint C-3003: invoice raised 12000 for C-3003 → #1001 C-3003 via invoice
-  asking the provider for one: NotImplementedError — declared, no behaviour yet
+  asking the provider for one: #1001 C-3003 via invoice
 async registrations — the promise is the registration
   rates as of 2026-01-01, EUR at 0.85
   the bare type has no registration: undefined
@@ -115,6 +115,6 @@ app registered its own stationery:
   card: *** Hello, Grace ***
 the same card, two ways to reach its dependencies:
   parameters (GreetingWorkshop): -- Hello, Linus --
-  injected provider (LocatorGreetingWorkshop): NotImplementedError — declared, no behaviour yet
+  injected provider (LocatorGreetingWorkshop): -- Hello, Linus --
 asking optionally for an unregistered type: undefined
 building a graph with a hole in it: caught a DiError (ManifestValidationError)

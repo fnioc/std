@@ -26,16 +26,14 @@ type IManifestOptionsAugmentations<Scopes extends string> = {
    * @remarks
    * Distinct from the pipeline overload below by its second argument's
    * type: a token (naming `T` directly) here, a `() => T` base factory
-   * there. Returns the `.as(scope)` continuation so the lifetime is chosen
-   * at the registration site.
+   * there. Returns the manifest with the wrapper registration appended.
    */
   addOptions(optionsType: Type | string, tType: Type | string): Manifest<Scopes>; /**
    * Registers the `IOptions<T>` assembly for `optionsType`: resolving
    * `optionsType` assembles the value from all configure/post-configure/validate
    * steps and change-token sources registered for it (the OptionsFactory
    * pipeline). `makeBase` produces the base instance each pipeline run starts
-   * from. Returns the `.as(scope)` continuation so the lifetime is chosen at
-   * the registration site.
+   * from. Returns the manifest with the assembly registration appended.
    */
   addOptions<T>(optionsType: Type | string, makeBase: Func<[], T>): Manifest<Scopes>; /**
    * Registers a post-configure step for `optionsType`, run after every

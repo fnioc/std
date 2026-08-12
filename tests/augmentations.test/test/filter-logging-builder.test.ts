@@ -27,9 +27,7 @@ import { describe, expect, test } from 'bun:test';
  * configure steps — only the one the builder now holds does.
  */
 function resolveFilterOptions(builder: ILoggingBuilder): LoggerFilterOptions {
-  const services = builder.services.addOptions(LOGGER_FILTER_OPTIONS_TYPE, () => new LoggerFilterOptions()).as(
-    'singleton',
-  );
+  const services = builder.services.addOptions(LOGGER_FILTER_OPTIONS_TYPE, () => new LoggerFilterOptions());
   const provider = services.build().createScope('singleton');
   const options: IOptions<LoggerFilterOptions> = provider.getRequiredService(LOGGER_FILTER_OPTIONS_TYPE);
   return options.value;

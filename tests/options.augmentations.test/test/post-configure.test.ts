@@ -22,7 +22,7 @@ const OPTIONS_TOKEN = 'test:WidgetOptions';
 describe('postConfigure — bare form', () => {
   test('a plain delegate runs after configure, seeing the configured value', () => {
     let services: Manifest<'singleton'> = new DefaultManifest<'singleton'>();
-    services = services.addOptions<WidgetOptions>(OPTIONS_TOKEN, () => ({ suffix: '' })).as('singleton');
+    services = services.addOptions<WidgetOptions>(OPTIONS_TOKEN, () => ({ suffix: '' }));
     services = services.configure<WidgetOptions>(OPTIONS_TOKEN, (options) => {
       options.suffix = 'base';
     });
@@ -40,7 +40,7 @@ describe('postConfigure — bare form', () => {
 
   test('a pre-built IPostConfigureOptions object runs after configure', () => {
     let services: Manifest<'singleton'> = new DefaultManifest<'singleton'>();
-    services = services.addOptions<WidgetOptions>(OPTIONS_TOKEN, () => ({ suffix: '' })).as('singleton');
+    services = services.addOptions<WidgetOptions>(OPTIONS_TOKEN, () => ({ suffix: '' }));
     services = services.configure<WidgetOptions>(OPTIONS_TOKEN, (options) => {
       options.suffix = 'base';
     });
@@ -57,7 +57,7 @@ describe('postConfigure — bare form', () => {
 
   test('every registered post-configure step runs, in registration order', () => {
     let services: Manifest<'singleton'> = new DefaultManifest<'singleton'>();
-    services = services.addOptions<WidgetOptions>(OPTIONS_TOKEN, () => ({ suffix: 'base' })).as('singleton');
+    services = services.addOptions<WidgetOptions>(OPTIONS_TOKEN, () => ({ suffix: 'base' }));
     services = services.postConfigure<WidgetOptions>(OPTIONS_TOKEN, (options) => {
       options.suffix += '-a';
     });

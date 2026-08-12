@@ -69,8 +69,8 @@ export interface IReceiptNumbering {
 /**
  * An OPTIONAL cross-cutting service. It happens to be registered here, but the
  * point of the type is that consumers must not ASSUME it: they reach it with
- * `tryResolve` / `isService` so the same code runs in a deployment that never
- * wired an audit sink.
+ * `getService`, so the same code runs in a deployment that never wired an audit
+ * sink.
  */
 export interface IAuditTrail {
   readonly entries: readonly string[];
@@ -79,9 +79,9 @@ export interface IAuditTrail {
 
 /**
  * The service that is deliberately NEVER registered. It exists so the examples
- * can show what a MISS looks like on each verb — `resolve` throws,
- * `tryResolve` returns `undefined`, `isService` answers `false` — without having
- * to invent a fake Type nobody would ever write.
+ * can show what a MISS looks like on each verb — `getRequiredService` throws,
+ * `getService` returns `undefined` — without having to invent a fake Type
+ * nobody would ever write.
  */
 export interface IFraudScreen {
   screen(order: CheckoutOrder): string;
@@ -89,8 +89,9 @@ export interface IFraudScreen {
 
 /**
  * Rates fetched once at startup. Registered ONLY as `Promise<IExchangeRates>`,
- * never bare, so the sole way to reach it is `resolveAsync`, which awaits the
- * honest `Promise<T>` registration before handing back the value.
+ * never bare: the registration IS the promise, so the caller awaits what
+ * `getRequiredService` hands back for that token. Asking for the bare type
+ * misses — there is no registration for it.
  */
 export interface IExchangeRates {
   readonly asOf: string;
