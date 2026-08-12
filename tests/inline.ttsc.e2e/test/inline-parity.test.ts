@@ -380,7 +380,21 @@ export const valueClass = services.addValue(ValueRepo);
 // pruned by the fold. Own file so the resolve compare is isolated from the
 // registration whole-file compare.
 const RESOLVE_SOURCE = `
-import type { IServiceProvider, Keyed } from '@rhombus-std/di.core';
+import type { Keyed } from '@rhombus-std/di.core';
+import type { IServiceProvider } from '@rhombus-std/primitives';
+
+// The tokenless get* overloads di.extras declaration-merges onto IServiceProvider,
+// hand-declared here so the sandbox program carries them without wiring that
+// package's types. The matcher anchors on the sugar overload at its declaration
+// site, so a program holding only di.core's Type-taking base member has nothing to
+// match and the call passes through with its type argument merely erased.
+declare module '@rhombus-std/primitives' {
+  interface IServiceProvider {
+    getService<T>(): T | undefined;
+    getRequiredService<T>(): T;
+    getServices<T>(): Iterable<T>;
+  }
+}
 
 interface IThing {}
 interface ICache {}
@@ -686,10 +700,10 @@ describe.skipIf(!toolchainReady)('generic inline stage — registration chain pa
 });
 
 describe.skipIf(!toolchainReady)('generic inline stage — resolve family parity (W5)', () => {
-  test('tokenful getRequiredService<I>() lowers to getRequiredService("<token>")', () => {
+  test('tokenful getRequiredService<I>() lowers to getRequiredService(Type.named(…))', () => {
     const line = lineWith(resolveInline, 'tokenful =');
     expect(line).toBeDefined();
-    expect(line).toContain('.getRequiredService("');
+    expect(line).toContain('.getRequiredService(Type.named("IThing", "chain-app/tokens/resolve"))');
     expect(line).toContain('IThing');
     expect(line).not.toContain('getRequiredService<');
     assertNoAuthoringSurvivors(resolveInline);
@@ -701,10 +715,10 @@ describe.skipIf(!toolchainReady)('generic inline stage — resolve family parity
     expect(asyncLine).toContain('.resolveAsync("');
   });
 
-  test('tryTok getService<I>() lowers to getService("<token>")', () => {
+  test('tryTok getService<I>() lowers to getService(Type.named(…))', () => {
     const tryLine = lineWith(resolveInline, 'tryTok =');
     expect(tryLine).toBeDefined();
-    expect(tryLine).toContain('.getService("');
+    expect(tryLine).toContain('.getService(Type.named("IThing", "chain-app/tokens/resolve"))');
     expect(tryLine).not.toContain('getService<');
     assertNoAuthoringSurvivors(resolveInline);
   });
