@@ -374,7 +374,7 @@ Architecture section above. The decisions docs are the full record; this file is
     was renamed to `.extras` (§121): `primitives.extras`, `di.extras`,
     `di.extras.options`, `config.extras`. `primitives.extras` also homes the shared
     authoring-time token primitives (`tokenfor`/`tokenof` moved out of the runtime
-    `primitives` leaf, plus `isSingular`/`singularValue`/`isFactory`/etc.).
+    `primitives` leaf, plus `isSingular`/`singularValue`).
   - Config providers keep their own name instead of a generic qualifier — `config.json`,
     `config.env`, `config.commandline`, plus the file sub-family `config.file`/`config.ini`/
     `config.xml` (the Architecture section above is the authoritative roster). Concrete providers in other families
@@ -507,7 +507,7 @@ system-wide — `mise.toml` declares it, but as `latest`, not a pinned version. 
   dedupes every consumer to one cache key and one spawn. There is no stage selection: once spawned,
   the host runs its WHOLE stage table on every file: `mergesynth` first, once, as a pre-pass, then
   the rest in a fixed canonical order (inline → nameof → signatureof → keyof → valueof → singular →
-  factory → fold → schemaof) looped to a fixed point; a stage that matches nothing is a cheap no-op
+  fold → schemaof) looped to a fixed point; a stage that matches nothing is a cheap no-op
   (disjoint match sets). The bespoke di /
   di-options / config domain stages, the `ttsc.stages` markers, `selectStages`/`BaseBundles`, and
   di.core's preset `./ttsc` descriptor are all GONE — the authoring forms (`add`/`addOptions`/
@@ -520,11 +520,10 @@ system-wide — `mise.toml` declares it, but as `latest`, not a pinned version. 
   `mergesynth` (§103) as a one-shot pre-pass ahead of the loop.
 - **`*.extras` package shapes** — `config.extras` collapses to its single `./ttsc` descriptor (no
   barrel). `primitives.extras` carries a barrel (the token primitives `tokenfor`/`tokenof` + the
-  resolve-family stubs `isSingular`/`singularValue`/`isFactory`/`returntokenfor`/`paramtokensfor`)
-  plus its `./ttsc` descriptor. `di.extras` / `di.extras.options` keep a barrel shipping only the
-  `declare module` authoring augmentation; di.extras also holds the single-expression `inline.ts`
-  sugar bodies (side-parsed from src, never bundled) + the `rhombus.inline` markers + the
-  `signatureof`/`keyof`/`valueof`/`keyedtokenfor` throwing stubs.
+  resolve-family stubs `isSingular`/`singularValue`) plus its `./ttsc` descriptor. `di.extras` /
+  `di.extras.options` keep a barrel shipping only the `declare module` authoring augmentation;
+  di.extras also holds the single-expression `inline.ts` sugar bodies (side-parsed from src, never
+  bundled) + the `rhombus.inline` markers + the `signatureof`/`keyof`/`valueof` throwing stubs.
 - **Emit mechanism** — `ttsc -p` returns a stdout envelope, not files, so the build runs the Go
   plugin as a `@ttsc/unplugin/bun` onLoad transform inside the per-file `Bun.build` stage
   (`buildPackage`'s `ttscProject` via `ttscBunPlugin`). Toolchain pinned by `ttscEnv`
