@@ -189,7 +189,7 @@ where that's cheap, and flag the intended divergence rather than pre-emptively t
   `ConfigRootAugmentations` convenience sets + `exists`, the `ConfigDebugViewContext` type, and the
   `isConfigSection` branded runtime discriminant (a unique-symbol brand the concrete `ConfigSection`
   stamps on itself, the runtime stand-in for the reference's `config is IConfigurationSection`
-  interface test); no longer types-only, it now emits a JS bundle) ← `config` (builder/root/section
+  interface test); it emits a JS bundle) ← `config` (builder/root/section
   engine + reload tokens, §8; `ConfigManager` seeds a default memory source so `set()`
   works before any `add()`, §32; `ConfigProvider#toString` gives `getDebugView` a friendly
   provider label, §33; `ChainedConfigSource`/`ChainedConfigProvider` wrap an
@@ -276,8 +276,8 @@ where that's cheap, and flag the intended divergence rather than pre-emptively t
   `LoggerExternalScopeProvider` (`AsyncLocalStorage`-backed), the `LoggerRuleSelector`
   filter-selection engine actually consulted at log time, and the `addLogging` augmentation onto
   `di.core`'s `Manifest`; ← `logging.core` + `options` + `options.augmentations` + `di`,
-  with `di.core` as its peer — `setMinimumLevel` and `LoggerFactory.create` are real, no longer
-  stubs, §62) ← `logging.config` (config-tree → `LoggerFilterOptions` binding via a lazy
+  with `di.core` as its peer — `setMinimumLevel` and `LoggerFactory.create` are real, §62)
+  ← `logging.config` (config-tree → `LoggerFilterOptions` binding via a lazy
   `addOptions`/`ConfigChangeTokenSource` pipeline, `addConfiguration`, and the full
   `ILoggerProviderConfigFactory`/`ILoggerProviderConfig<T>` provider-configuration
   plumbing over an open di template, §54; ← `logging` + `logging.core` + `config` + `config.core` +
@@ -456,10 +456,9 @@ listed first in the `.` export ahead of `types`, so that package's OWN program r
 not-yet-built src (the §72 TS2664 self-typecheck fix) while every external consumer resolves the
 built dist. `config`'s routes its `with-type-augment.ts` self-`declare module`; `hosting.core.test`'s
 white-box program needs `hosting-core-source` in its own tsconfig, since it pulls hosting.core's src
-through `./private/*`. **The `built` custom condition is retired** (§78): dropped from di.core/di's
-`.` export and from `customConditions` in all nine downstream consumer tsconfigs that used to force
-dist-resolution with it (the `di.extras` pair, the example/app programs, and the di + config
-transformer test programs) — the per-package `-source` conditions above are its narrower replacement.
+through `./private/*`. **There is no `built` custom condition** (§78): neither di.core/di's `.` export nor any consumer
+tsconfig's `customConditions` carries one — the per-package `-source` conditions above are what
+force dist-resolution where it is wanted.
 
 One further deviation, because a **transformer** is in play — now a single **Go/`ttsc`** engine
 (the ts-patch/TS5 track was removed; restore tag `pre-tspatch-removal`):
