@@ -178,6 +178,20 @@
   resolution, no reserved-name carve-out in the door, and NO warning machinery around it:
   shadowing an aggregate is legal and the consequences belong to the registrant.
 
+## Options wiring (ruled 2026-08-13)
+
+- `IOptions<T>` is served by ONE open registration in di — `IOptions<$T>` with a
+  placeholder-parameterized impl, the same mechanism the open logger registration uses. No call
+  site ever composes `IOptions<T>` as a spelled type: the sugar body registers the per-`T`
+  pipeline pieces under bare `typefor<T>()`, the open registration's realize reads its bound
+  placeholder, and a consumer's closed request (`typefor<IOptions<UserOptions>>()` at a call
+  site) matches the open registration through the ordinary match walk.
+- Consequence: the composed-generic derivation question dissolves — no engine grammar
+  extension, no new derivation path — and the tokenfor/tokenof/nameoftransform trio retires
+  once the addOptions body is rewritten to bare `typefor<T>()`. One premise to probe first:
+  bare `typefor<T>()` deriving inside a substituted body (its sibling `tokenof<T>()` is
+  witnessed working there).
+
 ## Open — pending the owner
 
 - Singular short-circuit ruling (decides the `isSingular`/`singularValue`/`valueof` family).
