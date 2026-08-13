@@ -1810,3 +1810,97 @@ onto the class prototype. A file that only exports the const and never calls `ap
 looks complete on read-through — the missing line has no compile-time signal.
 
 _Claude-directed 2026-08-13._
+
+## §163 — `signatureof` emits a Type node; the derivation engine is shared, not typefor-owned
+
+`signatureof(ctor)` / `signatureof(factory)` now lower to a `Type.ctor(...)` / `Type.func(...)`
+node — the instance/return type followed by each dependency's own type, in order — matching
+`TypeSignatures.fromImplType`'s reading (§155) and superseding the retired `[[...]]`
+dependency-signature array the old token-string engine emitted.
+
+The derivation reuses typefor's own type-classification narrowing exactly, because it now IS
+typefor's narrowing: `deriveTyped`/`emitDerived` moved out of `typefortransform` into
+`tokens.DeriveTyped` (classification) and `typeemit.EmitDerived` (emission), since a second
+primitive now needs the same Func/Ctor/Tag layer over `DeriveTypeF`'s named/literal/placeholder
+tree — the comment that once justified keeping it typefor-local ("only typefor does this
+classification") stopped being true the moment signatureof needed it too. `typefortransform` keeps
+only its own accessor-folding peephole (`.returnType`/`.args`/etc.), now built on the shared
+functions. Both primitives derive an identically-shaped value identically: `signatureof(Foo)` and
+`typefor(Foo)` produce the same node for the same `Foo`.
+
+The signatureof stage's own remaining code is a thin caller: a construct/call-signature presence
+check (mirroring the primitive's long-standing "not a constructable or callable value" gate,
+silent — the emit sweep's concern) ahead of the shared derivation, and a kind check rejecting a
+derivation that lands on Tag/Leaf instead of Ctor/Func. The whole array/slot machinery
+(`Signal`/`tokenSlot`/`factorySlot`/`unionSlot`/`literalSlot`/`typeArgSlot` and their per-parameter
+classification) is retired along with it — every one of those forms is now just an ordinary `Type`
+node, resolved generically by the engine rather than pre-digested into a flat runtime shape.
+
+_Claude-directed 2026-08-13, executing the owner's §155/§157 direction._
+
+## §164 — A dependency's type may be a general union or a nullish singleton, not only a named type
+
+`tokens.DeriveTyped` derives a general (non-pure-literal) union into `Type.union(...)` over each
+member's own derivation, and the bare `undefined`/`null` singletons into their own
+`Type.typeLiteral(...)` leaves — extending derivation past `DeriveTypeF`'s literal-union-only
+special case, which existed for the RETIRED flat-token renderer's needs, not this engine's. An
+optional parameter (`dep?: T`, carrying the implicit `T | undefined`) is the ordinary case this
+unlocks; without it, an optional constructor dependency — common, not an edge case — had no
+derivable shape at all.
+
+Members render non-nullish first, the nullish singleton(s) last, regardless of the checker's own
+member order — the convention every other optional-value spelling in this engine already follows.
+A `true`/`false` literal PAIR inside a larger union collapses back to the single wide `boolean`
+member they stand for (the checker flattens `boolean` into its two literals when it sits inside a
+union); a lone boolean literal elsewhere is unaffected.
+
+A REST parameter (`...deps: [A, B]`) is deliberately NOT covered: its own type is the tuple/array
+itself, and `DeriveTyped` has no tuple-expansion case — a rest-parameter constructor reports
+`codeUnderivableToken` rather than misrepresent the signature's arity. This is a shared, pre-existing
+gap (typefor's own value-argument derivation has never expanded a rest parameter either), not
+something new to signatureof; closing it is a separate, larger derivation-engine question.
+
+_Claude-directed 2026-08-13, executing the owner's §155/§157 direction._
+
+## §165 — A factory-typed dependency is a plain `FunctionType` argument; no special injected-callable slot
+
+A constructor parameter whose type is a plain function type (`(dep: IDep) => IThing`) derives as an
+ordinary nested `Type.func(returnType, ...argTypes)` node — the SAME derivation any function-typed
+value gets, nothing signature-position-specific. The landed resolution engine (`ToCallSiteVisitor`,
+`libraries/di/src/internal/CallSite/`) already handles this generically as a synthesis fallback:
+`visitFunc` builds a `LateBoundCallSite` whose invocation re-enters the engine to resolve the
+function type's OWN return type, with the call's own arguments registered as value descriptors for
+the function type's OWN parameter types (`RealizeVisitor.visitLateBound`) — address-keyed, not
+positional. This is a real, tested mechanism (`tests/di.test/test/plan-cache.test.ts`,
+`open-registration.test.ts`), landed independently of this primitive.
+
+The retired token-string engine's `factorySlotFor`/`factorySlotForType` special-casing — reading
+INTO a declared inline function type's own parameters to synthesize a `{ type, params }` slot
+threading a produced concrete class's "caller-supplied holes" — has no equivalent need under the
+new engine: resolution is address-keyed against the whole manifest, not positionally threaded
+through a fixed pipeline, so there is no longer a "declared arity must cover N holes and no more"
+constraint to validate. The §4.5 factory-signature-mismatch diagnostic that checked exactly that
+constraint (`codeFactorySignatureMismatch`, 990003) is retired alongside the slot form it validated
+— it checked a shape that no longer exists, not a shape that still needs checking.
+
+_Claude-directed 2026-08-13, executing the owner's §155/§157 direction; the resolution-model
+reasoning traces to the landed engine, not a fresh ruling._
+
+## §166 — A factory value's OWN directly-holed parameter is a known signatureof gap, not a crash risk
+
+`signatureof(factory)` where `factory`'s own parameter directly names an open-template hole
+(`(store: IStore<$<1>>) => ...`, the hole written straight into the parameter's annotation rather
+than arriving through a class's own generic instantiation) fails to derive: the checker resolves
+that parameter's type differently for an arrow-function-literal parameter than for an
+otherwise-identical constructor parameter of a class, and `tokens.DeriveTyped` reports it
+underivable rather than guess at a node. The call is left un-lowered with a `codeUnderivableToken`
+diagnostic — the same safe degradation every other underivable shape gets, never a malformed
+partial tree and never a crash.
+
+This is narrow: a factory registered under an OPEN service token is a class-only-registration error
+on the (retired) di-direct path, so a hole surfacing through a factory's own parameter was already
+documented as reachable only via a standalone `signatureof` call, never through an actual open
+registration. Closing it is future work, not blocking — the ctor path (a hole arriving via a class's
+own generic instantiation, `Repo<$<1>>`) derives correctly today.
+
+_Claude-directed 2026-08-13, executing the owner's §155/§157 direction._

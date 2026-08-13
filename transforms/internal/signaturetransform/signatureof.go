@@ -1,10 +1,10 @@
 // Package signaturetransform is the Go port of the signatureof primitive: it
 // lowers each `signatureof(ctor)` / `signatureof(factory)` call to the derived
-// dependency-signature array literal (`[[...]]`) over the ttsc-shipped
-// typescript-go checker, reusing the shared signatures extraction engine. It is a
+// `Type.ctor(...)` / `Type.func(...)` node over the ttsc-shipped typescript-go
+// checker, reusing the shared signatures extraction engine. It is a
 // VALUE-argument primitive (unlike the type-argument nameof): `signatureof(ctor)`
-// binds a constructor / factory expression, and its extracted signature is what a
-// hand-written `addClass("token", ctor, [[...]])` would carry.
+// binds a constructor / factory expression, and its extracted node is what a
+// hand-written `addClass("token", ctor, Type.ctor(...))` would carry.
 //
 // The single owner host (cmd/ttsc-std) composes it as the `rhombusstd_signatureof`
 // stage, in canonical order AFTER nameof: it lowers the synthetic third argument
@@ -24,6 +24,8 @@ import (
 	"github.com/fnioc/std/transforms/internal/plugin"
 	"github.com/fnioc/std/transforms/internal/signatures"
 	"github.com/fnioc/std/transforms/internal/tokens"
+	"github.com/fnioc/std/transforms/internal/typeemit"
+	"github.com/fnioc/std/transforms/internal/valueimport"
 )
 
 // signatureofName is the exported identifier the primitive is recognized as —
@@ -32,9 +34,10 @@ import (
 const signatureofName = "signatureof"
 
 // New builds the per-file transform. It visits every call expression and
-// replaces each `signatureof(value)` with the `[[...]]` dependency-signature
-// array literal the signatures engine derives from that value, then elides the now-unused
-// `signatureof` import.
+// replaces each `signatureof(value)` with the `Type.ctor(...)` / `Type.func(...)`
+// node the signatures engine derives from that value, then elides the
+// now-unused `signatureof` import and materializes a `Type` import for any
+// node it emitted.
 //
 // artifacts is the inline stage's per-run state (nil when the inline stage did
 // not run). A substituted `signatureof` call carries no checker symbol (its
@@ -44,13 +47,15 @@ const signatureofName = "signatureof"
 func New(prog *driver.Program, ctx *tokens.Context, artifacts *inlinetransform.Artifacts, emit func(signatures.Diagnostic)) plugin.FileTransform {
 	checker := prog.Checker
 	return func(ec *shimprinter.EmitContext, sf *shimast.SourceFile) *shimast.SourceFile {
+		factory := ec.Factory.AsNodeFactory()
+		binding := valueimport.Resolve(sf, typeemit.Ref)
 		// Which primitive a callee is, and what a registration's value argument is,
 		// are facts about SOURCE-WRITTEN syntax; they are resolved against the parse
 		// node so no checker query ever walks the tree this loop has rewritten (see
 		// plugin.CheckerAnchor — a rewritten registration holds the minted union slot
 		// that nil-derefs the checker).
 		parseAnchor := plugin.NewCheckerAnchor(ec, sf)
-		extractor := signatures.NewExtractor(ctx, checker, ec, sf, emit)
+		extractor := signatures.NewExtractor(ctx, checker, ec, sf, binding, emit)
 		var visitor *shimast.NodeVisitor
 		visit := func(node *shimast.Node) *shimast.Node {
 			if node == nil {
@@ -58,8 +63,8 @@ func New(prog *driver.Program, ctx *tokens.Context, artifacts *inlinetransform.A
 			}
 			if node.Kind == shimast.KindCallExpression {
 				if arg, ok := signatureofArg(checker, parseAnchor, artifacts, node); ok {
-					if lit, ok := extractor.SignatureArray(arg); ok {
-						return lit
+					if typeNode, ok := extractor.TypeNode(arg); ok {
+						return typeNode
 					}
 				}
 			}
@@ -70,7 +75,8 @@ func New(prog *driver.Program, ctx *tokens.Context, artifacts *inlinetransform.A
 		if output == nil {
 			return sf
 		}
-		return elideSignatureofImports(ec.Factory.AsNodeFactory(), output.AsSourceFile())
+		result := elideSignatureofImports(factory, output.AsSourceFile())
+		return valueimport.Ensure(factory, result, binding)
 	}
 }
 
@@ -97,8 +103,8 @@ func signatureofArg(
 //
 // Both the callee AND the returned argument come off the PARSE node. The callee is
 // a checker input (GetSymbolAtLocation) and so is the argument — the extractor
-// resolves it to a class and derives the signature from its constructor, then mints
-// a fresh array literal — so neither may come from the tree the loop has rewritten.
+// resolves its own type and derives a `Type.ctor(...)` / `Type.func(...)` node
+// from it — so neither may come from the tree the loop has rewritten.
 // This stage was the SECOND crash site: with only nameof anchored, a trailing chain
 // call over a registration holding this stage's own minted union slot still walked
 // the checker into that literal (plugin.CheckerAnchor has the mechanism). A call
