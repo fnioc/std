@@ -2,7 +2,7 @@
   "$schema": "http://json-schema.org/draft-07/schema#",
   "$id": "https://github.com/fnioc/std/releases/latest/download/rhombus-std.schema.json",
   "title": "rhombus-std config",
-  "description": "The grammar for a package's \"rhombus-std\" marker (its value in package.json) and for a standalone rhombus-std.json file it, or a peer, imports.",
+  "description": "The grammar for a package's \"rhombus-std\" marker (its value in package.json) and for a standalone rhombus-std.json file it, or a peer, extends.",
   "type": "object",
   "additionalProperties": false,
   "properties": {
@@ -10,9 +10,12 @@
       "type": "string",
       "description": "Points an editor at this schema. A standalone rhombus-std.json file carries it; a package.json marker never needs it."
     },
-    "@imports": {
-      "type": "string",
-      "description": "A path, relative to the file that declares it, to another rhombus-std-shaped JSON file, resolved as this config's BASE. Resolution is blind: a path that isn't a readable file contributes nothing, silently — the same whether this directive was written by hand or supplied by the workspace default. The imported file may itself carry \"@imports\"; a chain may be arbitrarily long, and a cycle (a path already reached earlier in the chain) also contributes nothing rather than looping. This config's own keys deep-merge OVER the imported base and win every leaf collision: an object recurses key-by-key, an array concatenates as imported-then-local with each element left atomic, and any other value replaces."
+    "extends": {
+      "description": "One path, or an array of paths (relative to the file that declares them), each to another rhombus-std-shaped JSON file. An array applies left to right: each path's own resolved content deep-merges over everything accumulated from the paths before it, so a later path wins a leaf collision against an earlier one. The accumulated result of the whole \"extends\" list is this config's BASE — this config's own keys deep-merge OVER it and win every remaining leaf collision. Resolution is blind: a path that isn't a readable file contributes nothing, silently — the same whether this directive was written by hand or supplied by the workspace default. An extended file may itself carry \"extends\"; a chain may be arbitrarily long, and a cycle (a path already reached earlier in the chain) also contributes nothing rather than looping. The merge itself: an object recurses key-by-key, an array concatenates as base-then-winner with each element left atomic, and any other value replaces.",
+      "oneOf": [
+        { "type": "string" },
+        { "type": "array", "items": { "type": "string" } }
+      ]
     },
     "typefor": {
       "type": "object",
