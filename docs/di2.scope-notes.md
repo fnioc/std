@@ -78,3 +78,50 @@ Raw material for the future scope discussion — not decisions. Owner deferred t
   auto-correct semantics, but two realize implementations drift and scope hooks run in two
   variants); a generator-yielding realize (one implementation, but awaits serialize and `yield*`
   infects every visitor method).
+
+## Cache keying — the reference's ServiceIdentifier / ServiceCacheKey (input for the unpark)
+
+The reference engine never keys a cache on a bare type. Two structs compose the key
+(`ServiceLookup/ServiceIdentifier.cs`, `ServiceLookup/ServiceCacheKey.cs`):
+
+- `ServiceIdentifier = (serviceKey?, serviceType)` — the identity of a SERVICE, not a type:
+  keyed services fold the key into identity (null-key and keyed never compare equal). Also carries
+  the open-generic hop (`GetGenericTypeDefinition()` keeps the key, opens the type).
+- `ServiceCacheKey = (identifier, slot)` — the per-REGISTRATION cache key. `slot` is the REVERSE
+  index among same-identifier descriptors: the newest registration — the singular-resolution
+  winner — is always slot 0, so the "resolve one" cache key is `(id, 0)` without knowing how many
+  registrations exist; older ones count up. Both the call-site cache and each scope's
+  resolved-instance store key on this.
+
+Why it matters to our scope model: slot-keying is what makes `getService(T)` and `getServices(T)`
+SHARE instance caches — each registration caches under its own slot, the singular path reads slot
+0, the enumerable path reads every slot. Without it, resolve-one and resolve-all cache separately
+and a scoped/singleton instance can double-instantiate. Our newest-first singular iteration makes
+the reverse-index convention line up exactly (winner ≡ slot 0), and slots are computable once at
+container build from the descriptor chain.
+
+Our translation is cheaper than the reference's: with interned Types (`===`), a
+`ServiceIdentifier` can itself be interned on `(type, key)` — every cache becomes a plain
+`Map<ServiceIdentifier, V>` with identity semantics, no Equals/GetHashCode machinery. Layering:
+it belongs in di.core (a service address composing a TypeIdentifier + key), NOT in the Type union
+— a service identity is not a type, same argument that kept MemberType out. Open-generic
+registrations compose cleanly: an `ILogger<$T>` identifier is a NamedType with a placeholder
+child — still identifier-kind under the partition.
+
+**Owner rule on all of the above (2026-08-12): the scope model here may diverge sharply from the
+reference — nothing from the reference is adopted without its own justification.** The
+ServiceIdentifier/slot material above is INPUT to be argued case-by-case at the unpark, not a
+default.
+
+**Owner constraint (2026-08-12): metadata never holds state.** The reference lets the instance
+cache leak into service metadata (a pre-supplied singleton lives ON its descriptor; a resolved
+singleton is cached ON its call site). Our model keeps descriptors and plans pure — instances
+live only in scope-owned caches keyed by the interned request, never on registration or plan
+records.
+
+**Owner hypothesis (2026-08-13 — NOT in motion, nothing builds on it yet): scopes pull, the engine never pushes.** A
+scope exposes a getOrCreate-shaped door; the engine hands it the RealizeVisitor entrypoint as
+the factory, and the scope alone decides if and when that visitor runs (hit → never; miss → run
+and store under the scope's own lifetime rules). How/where the run happens is undecided. This
+composes the three-layer cache model: the plan memo delivers the same realize entrypoint every
+time, and everything instance-shaped stays behind the scope's door.

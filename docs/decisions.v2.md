@@ -710,21 +710,14 @@ embeds home package specifiers) and was not required.
 
 ---
 
-## §122 — Keyed resolve/isService semantics complete the §98 design; `keyedtokenfor` is the composed-lookup primitive
+## §122 — Keyed addressing is the tag: a keyed request and its registration meet at one interned `TagType`
 
-Every single-token consumer of a possibly-keyed type (`resolveAsync<Keyed<T,K>>()`,
-`isService<Keyed<T,K>>()`) derives its token via `keyedtokenfor<T>()` — the composed-lookup
-primitive that emits the SINGLE `base#key` string for a `Keyed<T,K>`, or the plain base for an
-unkeyed `T` (unkeyed output stays byte-identical to the pre-existing form by construction). The
-split-argument consumers (`resolve`/`tryResolve`, which carry a runtime key parameter) instead
-derive `tokenfor<T>() + keyof<T>()` onto that existing parameter. This corrects a real gap: an
-earlier form derived the single-token consumers' key via the raw alias-preserving `tokenof<T>()`,
-which never matched a `base#key` registration — a keyed `isService`/`resolveAsync` silently
-answered false / threw for every keyed type. di-direct's own `lowerResolveCall`/
-`lowerIsServiceCall` carried the identical latent gap and are corrected by the same bodies. A
-runtime round-trip test (a keyed resolve actually matching a keyed registration) backs the fix,
-since the prior byte-parity-only nets couldn't have caught it — they proved inline matched
-di-direct's output, not that di-direct's output was itself correct.
+A keyed service's address is `Type.tag(type, key)` — an interned node, so the registering side
+and the requesting side hold the `===` same address or they hold different types; there is no
+derived-string keyed token and no composed-lookup primitive. The durable rule this entry
+carries: keyed addressing must be backed by a runtime round-trip test (a keyed request actually
+matching a keyed registration), because parity-style nets only prove two spellings agree — they
+cannot prove the agreed spelling matches anything.
 
 ---
 
@@ -1336,7 +1329,55 @@ review after it. The identity-not-name gate on nominal admission, the honest-flo
 evaluates-to test for a computed name came from the review after THAT — each one a place where two
 walks answered the same question separately and drifted._
 
-## §132 — Augmentation members are `this`-based methods, installed verbatim
+## §132 — An undeclared surface is worse than an unimplemented one
+
+A public member whose semantics are undecided still gets DECLARED: the predicted signature over
+existing types, a body that throws `NotImplementedError`, and nothing else. Runtime errors are an
+honest state; compile errors are not — an absent member blocks every consumer, test, and lowering
+that names it, and forces each of them to invent a workaround. The scaffold rule has three hard
+edges: predict the correct form but never block on the prediction, create no new types without the
+owner, and keep every scaffold additive. `NotImplementedError` itself lives in `primitives` and
+extends plain `Error` — not-implemented is not a container concept, so it does not join the
+`DiError` taxonomy.
+
+_Owner-directed 2026-08-11 (the scope-surface scaffolds); the placement correction is his._
+
+## §133 — Silence is the augmentation contract working; a drifted merge is it failing
+
+A program that never loads a sugar augmentation gets its calls passed through untouched — that is
+the DESIGNED behavior, not a defect, and diagnosing it as one wasted two hypotheses. The loud case
+is different: an authored entry whose member matches nothing anywhere in the project is dead and
+now diagnoses instead of skipping. The sharp lesson came from the app example: a sugar package
+whose `declare module` merge had drifted from the surviving surface SHADOWED the receiver's real
+exports and made it worse to use — removal was the fix. So the pending sugar-roster ruling decides
+exclusions as much as inclusions: a merge that is not kept in step is worse than no merge.
+
+_From the inline-suite diagnosis and the #306 dependency drop, 2026-08-11/12._
+
+## §134 — The live parity suites are the oracle; the frozen goldens are retired
+
+The di-direct goldens pinned the deleted engine's outputs in the deleted token vocabulary. At
+retirement every entry was audited — the rebuilt factory tree's `Type.stringify` against the frozen
+string — and the mismatches were all DESIGNED grammar changes (the `%`-sigil placeholder spelling,
+the tag-composed keyed form), which is what made retirement correct rather than convenient: the old
+strings are unreproducible by construction. Byte-parity now lives only in the running suites, whose
+assertions pin verified emissions that must equal what a no-transformer author would hand-write.
+
+_Audit 9 match / 3 designed-mismatch; retirement its own commit, 2026-08-12._
+
+## §135 — The engine matches the owner's authoring shapes, not the other way round
+
+Two matching-contract changes, both conforming the engine to the sealed sets' authored forms: a
+receiver is not a value parameter however it is spelled (`this:` or receiver-first — both reduce to
+value parameters only, and a leading receiver binds to the receiver), and a forwarding body whose
+last parameter is a rest serves any declaration tail — with exact named-parameter matches always
+beating a rest-match, so discrimination stays load-bearing where two bodies coexist. Parameter
+NAMES remain the discriminator; a member-plus-arity scheme was considered and rejected because the
+provider trio showed arity cannot discriminate.
+
+_Cleared at supervision level against the owner's authored shapes, 2026-08-11; his override stands._
+
+## §136 — Augmentation members are `this`-based methods, installed verbatim
 
 **An augmentation set member IS the prototype member.** Every set — `AugmentationSet<R>` and
 `AugmentationSet2<R, M>` alike — is an object literal of plain methods whose receiver is `this`,
