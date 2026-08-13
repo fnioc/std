@@ -115,15 +115,14 @@ export class GreetingCard {
 }
 
 /**
- * The card's dependency signature — one inner array per constructor overload,
- * every slot named by its TYPE.
+ * The card's composed constructor type, every argument named by its TYPE.
  *
- * Slot 0 derives `"@rhombus-std/examples.contracts:IGreeting"`, the same type the
- * workshop registers the greeting under. `ICardRecipient` derives one that is
- * never registered anywhere; that is the point — it can only ever be filled by
- * the caller.
+ * The first argument derives `"@rhombus-std/examples.contracts:IGreeting"`, the
+ * same type the workshop registers the greeting under. `ICardRecipient` derives
+ * one that is never registered anywhere; that is the point — it can only ever be
+ * filled by the caller.
  */
-const CARD_SIGNATURES = [[typefor<IGreeting>(), typefor<ICardRecipient>()]];
+const CARD_IMPL_TYPE = Type.ctor(typefor<GreetingCard>(), typefor<IGreeting>(), typefor<ICardRecipient>());
 
 /**
  * The library's one real service, and the model citizen of the package: it mints
@@ -306,9 +305,10 @@ export class GreetingWorkshopBuilder<S extends string> implements IGreetingWorks
 
   public useGreeting(greeting: new() => IGreeting): IGreetingWorkshopBuilder {
     // Explicit in BOTH dialects: the ctor arrives as a runtime PARAMETER, so
-    // there is no class type for the transformer to derive a signature — or a
-    // service type — from.
-    this.#holder.services = this.#holder.services.addClass(GREETING_TYPE, greeting, [[]], 'singleton');
+    // there is no class type for the transformer to derive a constructor type —
+    // or a service type — from.
+    this.#holder.services = this.#holder.services.addClass(GREETING_TYPE, greeting, Type.ctor(GREETING_TYPE),
+      'singleton');
     return this;
   }
 
@@ -341,21 +341,22 @@ export function addGreetingWorkshop<S extends string>(services: Manifest<S | 'si
   configure(new GreetingWorkshopBuilder<S>(holder));
 
   // The card. Its SERVICE TYPE is derived (`typefor<GreetingCard>()`) and so is
-  // its signature, because one of its slots — the recipient — is the caller's
-  // and has no registration behind it, which the derivation states rather than
-  // hides.
+  // its composed constructor type, because one of its arguments — the recipient
+  // — is the caller's and has no registration behind it, which the derivation
+  // states rather than hides.
   //
   // No lifetime, so transient: the honest tag for something built fresh per
   // recipient.
-  holder.services = holder.services.addClass(typefor<GreetingCard>(), GreetingCard, CARD_SIGNATURES);
+  holder.services = holder.services.addClass(typefor<GreetingCard>(), GreetingCard, CARD_IMPL_TYPE);
 
   // The workshop itself goes on next so a consumer cannot forget it — and this
-  // one is fully tokenless, right down to its dependency signature. The demo
-  // resolves it with `getRequiredService(typefor<GreetingWorkshop>())`, which derives the
-  // same type from the same class declaration, so neither the callable slot nor
-  // the optional stationery slot is ever named at a call site.
+  // one is fully tokenless, right down to its composed constructor type. The
+  // demo resolves it with `getRequiredService(typefor<GreetingWorkshop>())`,
+  // which derives the same type from the same class declaration, so neither the
+  // callable argument nor the optional stationery argument is ever named at a
+  // call site.
   //
-  // Both slots are worth reading, because neither is a plain named type:
+  // Both arguments are worth reading, because neither is a plain named type:
   // `(recipient: ICardRecipient) => GreetingCard` derives a CALLABLE — return
   // type names what gets built, parameter types name what the CALLER supplies —
   // and `ICardStationery | undefined` derives a UNION with a literal, which is
@@ -364,20 +365,20 @@ export function addGreetingWorkshop<S extends string>(services: Manifest<S | 'si
   // Registration sugar lowers in any expression context, not only at a module's
   // top level, which is what lets a library function like this one be authored
   // tokenlessly at all.
-  holder.services = holder.services.addClass(typefor<GreetingWorkshop>(), GreetingWorkshop, [[
+  holder.services = holder.services.addClass(typefor<GreetingWorkshop>(), GreetingWorkshop, Type.ctor(
+    typefor<GreetingWorkshop>(),
     Type.func(typefor<GreetingCard>(), typefor<ICardRecipient>()),
     Type.union(typefor<ICardStationery>(), Type.typeLiteral(undefined)),
-  ]], 'singleton');
+  ), 'singleton');
 
   // The counter-example, at its own derived service type so a caller can resolve
-  // both from one container and compare the cards. Its one slot is the intrinsic
-  // provider, which `RESOLVER_TYPE` names without deriving anything — "I want the
-  // provider" is plain DI rather than a special slot kind, which is precisely why
-  // nothing stops a library doing it and why the comparison has to be made in
-  // prose.
-  holder.services = holder.services.addClass(typefor<LocatorGreetingWorkshop>(), LocatorGreetingWorkshop, [[
-    RESOLVER_TYPE,
-  ]], 'singleton');
+  // both from one container and compare the cards. Its one argument is the
+  // intrinsic provider, which `RESOLVER_TYPE` names without deriving anything —
+  // "I want the provider" is plain DI rather than a special argument kind, which
+  // is precisely why nothing stops a library doing it and why the comparison has
+  // to be made in prose.
+  holder.services = holder.services.addClass(typefor<LocatorGreetingWorkshop>(), LocatorGreetingWorkshop,
+    Type.ctor(typefor<LocatorGreetingWorkshop>(), RESOLVER_TYPE), 'singleton');
 
   return holder.services;
 }

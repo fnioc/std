@@ -1626,3 +1626,44 @@ allows. Wider coercer growth — arrays, tuples, library globals beyond the four
 undecided.
 
 _Owner-directed 2026-08-13._
+
+## §155 — The manifest verbs' long overload is Type-only; naked signature arrays survive only in the builder
+
+Every manifest verb whose long overload used to take a naked `Signatures` array (`ReadonlyArray<
+ReadonlyArray<Type | string>>`) as its dependency-signature argument now takes the composed impl
+type instead — `ConstructorType | IntersectionType` for `addClass`/`tryAddClass`/`replaceClass`,
+`FunctionType | IntersectionType` for `addFactory`/`tryAddFactory`/`replaceFactory`,
+`ConstructorType | IntersectionType | undefined` for `addHostedService`'s ctor overload. `add`/
+`tryAdd` already took `implType` this way — the array-taking verbs were the residue. Each verb
+derives its stored `TypeSignatures` from the composed type via `TypeSignatures.fromImplType`
+(`libraries/di.core/src/ServiceDescriptor/Signature.ts`): a `ctor`/`func` node yields its own `args`
+directly, an intersection flattens one signature per member, and anything else throws — the same
+"describes nothing callable" error the builder's `withType` has always raised.
+
+The builder chain (`withSignature(...paramTypes)`, `Signatures.overrideSignatures`) is the ONE place
+a naked signature array stays first-class — it is the hand-roller's door, unaffected. Descriptor
+storage (`ServiceDescriptor.ctor`/`factory`, `TypeSignatures`) is unchanged; this is a verb-surface
+spelling change, not a resolution-semantics one.
+
+**Convention, not enforcement**: the composed type's own instance/return slot carries the SERVICE
+address (the same type the verb's first argument names), never the implementation's own concrete
+type — the container reads nothing from that slot, so this is a spelling convention every call site
+in this repo now follows, not a checked invariant.
+
+**Left open**: the `signatureof(ctor)` primitive (`di.extras`) still lowers, on the Go side
+(`transforms/internal/signatures`, `transforms/internal/signaturetransform`), to the RETIRED
+`[[...]]` array form — a pre-Type-native token-string derivation engine that predates this ruling
+and was never updated for it. No current call path actually exercises it: the real `addClass<T>`/
+`addFactory<T>` di.extras sugar (`ManifestServiceAugmentations`) only elides the TOKEN argument
+(`typefor<T>()`) and forwards the rest positionally — it never calls `signatureof` — so
+`tests/di.signatureof.ttsc.e2e`'s fixture (which hand-declares a bare one-argument `addClass<I>
+(ctor)` override matching that forwarding body) never reaches the signatureof stage at all, and
+passes without asserting anything about a third argument. Migrating `signatureof` to emit
+`Type.ctor(...)`/`Type.func(...)` (reusing the value's own construct/call signature the way
+`typefor(value)` already narrows it, `transforms/internal/typefortransform/derive.go`) is real,
+scoped, remaining work — its two open questions are whether a factory-typed dependency argument
+still needs the old engine's special "inject a callable" slot form or collapses to a plain
+`FunctionType` argument, and how an open-template hole (`Typeof<T>`/`typeArgSlot`) spells as a
+`Type` node, which is the closing-type engine lane's (§21) territory to settle first.
+
+_Claude-directed 2026-08-13, executing the owner's §144 ruling._

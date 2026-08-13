@@ -42,7 +42,7 @@ describe('addOptions(token, tToken) — wrap the bound T', () => {
 
     let services: Manifest<'singleton'> = new DefaultManifest<'singleton'>();
     // Explicit-token class registration (transformer-free): a zero-arg ctor.
-    services = services.addClass(ENGINE_TOKEN, Engine, [[]], 'singleton');
+    services = services.addClass(ENGINE_TOKEN, Engine, Type.ctor(Type.from(ENGINE_TOKEN)), 'singleton');
     services = services.addOptions(ENGINE_OPTIONS, ENGINE_TOKEN);
 
     const provider = services.build().createScope('singleton');

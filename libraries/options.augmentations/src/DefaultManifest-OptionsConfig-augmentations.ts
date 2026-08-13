@@ -59,10 +59,13 @@ export const ServiceManifestOptionsConfigAugmentations: AugmentationSet2<Default
       // resolve once, when the assembly reads the slot.
       if (Array.isArray(source)) {
         const callback = configureWithDeps as (options: T, ...deps: Deps) => void;
+        const depTypes = (source as readonly (Type | string)[]).map(dep =>
+          typeof dep === 'string' ? Type.from(dep) : dep
+        );
         return this.addFactory(configureStepType(type),
           (...deps: Deps): IConfigureOptions<T> => ({ configure(options: T): void {
             callback(options, ...deps);
-          } }), [source as readonly (Type | string)[]]);
+          } }), Type.func(configureStepType(type), ...depTypes));
       }
       // A bare delegate is a pure code configure step: registers only the
       // configure slot, no change-token source. The registry's flat bag

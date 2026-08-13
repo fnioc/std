@@ -1,9 +1,38 @@
-import { type Token, Type } from '@rhombus-std/primitives';
+import { type ConstructorType, type FunctionType, type IntersectionType, type Token,
+  Type } from '@rhombus-std/primitives';
 
 export type TypeSignatures = ReadonlyArray<readonly Type[]>;
 export namespace TypeSignatures {
   export function from(signatures: Signatures): TypeSignatures {
     return signatures.map(sig => sig.map(token => typeof token === 'string' ? Type.from(token) : token));
+  }
+
+  /**
+   * The dependency signatures a composed implementation type describes — one
+   * per call signature, in order. An intersection of constructor/function
+   * types describes an overloaded implementation, one member per signature.
+   *
+   * @throws Error - when the type, or an intersection member, describes nothing callable.
+   */
+  export function fromImplType(implType: ConstructorType | FunctionType | IntersectionType): TypeSignatures {
+    if (implType.kind === 'ctor' || implType.kind === 'func') {
+      return [implType.args];
+    }
+    if (implType.kind === 'intersection') {
+      return implType.members.flatMap(member => {
+        if (member.kind !== 'ctor' && member.kind !== 'func' && member.kind !== 'intersection') {
+          throw new Error(
+            `${Type.stringify(member)} describes nothing callable; give a constructor or function `
+              + 'type, or an intersection of them for an overloaded implementation.',
+          );
+        }
+        return fromImplType(member);
+      });
+    }
+    throw new Error(
+      `${Type.stringify(implType)} describes nothing callable; give a constructor or function `
+        + 'type, or an intersection of them for an overloaded implementation.',
+    );
   }
   export function signaturesEqual(left: TypeSignatures, right: TypeSignatures): boolean {
     return left.length === right.length && left.every((signature, index) =>
