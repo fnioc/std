@@ -5,7 +5,7 @@ export interface ServiceProviderOptions {
    * a graph that cannot be satisfied fails at the build instead of at some later resolution.
    * Every failure is collected and raised together as one `ManifestValidationError`.
    *
-   * Open registrations are skipped: with no request to close their placeholders against, there
+   * Open registrations are skipped: with no request to close their generics against, there
    * is nothing to lower yet.
    */
   readonly validateOnBuild?: boolean;

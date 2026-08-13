@@ -14,7 +14,7 @@
 //
 // THE HOLE IS A PLACEHOLDER TYPE, and it is the one thing here with no type to
 // derive it from: a hole stands for a type argument that has not been chosen, so
-// there is no declaration to point `typefor` at. `Type.placeholder(label)`
+// there is no declaration to point `typefor` at. `Type.generic(label)`
 // composes one and `Type.named(base, from, [hole])` puts it where a type
 // argument goes — written out identically in both dialects, because sugar
 // removes boilerplate only where there is a type to remove it from.
@@ -89,8 +89,8 @@ function witnessOf(entity: Type): Type {
 // The open TEMPLATES. A hole is a placeholder type, and it is matched
 // positionally against the closing's arguments — `$1` in `IJoin<$1,$2>` binds
 // the first argument wherever else `$1` appears in that registration.
-const HOLE_1 = Type.placeholder('1');
-const HOLE_2 = Type.placeholder('2');
+const HOLE_1 = Type.generic('1');
+const HOLE_2 = Type.generic('2');
 
 const TABLE_TEMPLATE = tableOf(HOLE_1);
 const REPOSITORY_TEMPLATE = repositoryOf(HOLE_1);

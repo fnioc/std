@@ -85,7 +85,7 @@ export const ServiceManifestLoggingAugmentations: AugmentationSet2<DefaultManife
       // argument and yields `ILogger<unknown>`, not the clean open base. An
       // explicit `typefor<ILogger<Foo>>()` derives off this same base, so the
       // template matches.
-      const hole = Type.placeholder('$1');
+      const hole = Type.generic('$1');
       m = m.addClass(Type.named('ILogger', '@rhombus-std/logging.core', [hole]), LoggerOfT, [[LOGGER_FACTORY_TYPE,
         hole]], 'singleton');
 

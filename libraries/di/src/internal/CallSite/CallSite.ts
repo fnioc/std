@@ -96,7 +96,7 @@ export namespace CallSite {
 
   /**
    * Lowers an ALREADY-CLOSED descriptor — run it through {@link ServiceDescriptor.substitute}
-   * first if the match captured placeholders. `visitor` supplies the recursion that turns each
+   * first if the match captured generics. `visitor` supplies the recursion that turns each
    * signature parameter into the call site producing it. Undefined when no signature has every
    * parameter satisfiable.
    */

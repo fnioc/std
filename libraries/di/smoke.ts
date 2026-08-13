@@ -40,7 +40,7 @@ const manifest = DefaultManifest.empty<string>()
   // .add(ServiceDescriptor.ctor(FOO, Foo, [[]]))
   .add(ServiceDescriptor.ctor(BAR, Bar, [[FOO, Type.typeLiteral('fast')]]))
   .add(ServiceDescriptor.ctor(WIDGET, Widget, [[CONN, FOO]]))
-  .add(ServiceDescriptor.ctor(Type.named('Box', 'app', [Type.placeholder('T')]), Box, [[Type.placeholder('T')]]))
+  .add(ServiceDescriptor.ctor(Type.named('Box', 'app', [Type.generic('T')]), Box, [[Type.generic('T')]]))
   .add(ServiceDescriptor.ctor(HOLDER, Holder, [[SP_TYPE]]));
 
 const sp = new ServiceProvider(manifest);
@@ -108,7 +108,7 @@ try {
 check('union registration cannot serve a lone member', unionRejected);
 check('union registration serves the exact union request', spUnion.resolve(Type.union(A, B)) === 'either');
 
-const echoType = Type.func(Type.placeholder('T'), Type.placeholder('T'));
+const echoType = Type.func(Type.generic('T'), Type.generic('T'));
 const spEcho = new ServiceProvider(
   DefaultManifest.empty<string>().add(ServiceDescriptor.value(echoType, (x: unknown) => x)),
 );

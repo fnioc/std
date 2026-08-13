@@ -447,8 +447,8 @@ describe.skipIf(!toolchainReady)('generic inline stage — registration parity (
     expect(line).toBeDefined();
     // The service type is the template IRepo<$1>, its hole minted as a placeholder
     // rather than a named type.
-    expect(line).toContain('Type.named("IRepo", "chain-app/tokens/chain", [Type.placeholder("1")])');
-    expect(chainInline).toContain('Type.placeholder("1")');
+    expect(line).toContain('Type.named("IRepo", "chain-app/tokens/chain", [Type.generic("1")])');
+    expect(chainInline).toContain('Type.generic("1")');
     assertNoAuthoringSurvivors(chainInline);
   });
 

@@ -5,15 +5,15 @@ import type { CtorServiceDescriptor, FactoryServiceDescriptor, ServiceDescriptor
 import { TypeSignatures } from './Signature';
 
 /**
- * Closes an open registration against the placeholders a `Type.satisfies` match captured,
+ * Closes an open registration against the generics a `Type.satisfies` match captured,
  * rewriting `serviceType` and every signature parameter so the result stands on its own.
  */
 export function substitute<Scopes extends string>(descriptor: ServiceDescriptor<Scopes>,
-  placeholders: ReadonlyMap<string, Type>): ServiceDescriptor<Scopes> {
-  if (!placeholders.size) {
+  generics: ReadonlyMap<string, Type>): ServiceDescriptor<Scopes> {
+  if (!generics.size) {
     return descriptor;
   }
-  const serviceType = Type.substitute(descriptor.serviceType, placeholders);
+  const serviceType = Type.substitute(descriptor.serviceType, generics);
   switch (descriptor.kind) {
     case 'value':
       return { ...descriptor, serviceType };
@@ -21,13 +21,13 @@ export function substitute<Scopes extends string>(descriptor: ServiceDescriptor<
       return {
         ...descriptor,
         serviceType,
-        signatures: TypeSignatures.substituteSignatures(descriptor.signatures, placeholders),
+        signatures: TypeSignatures.substituteSignatures(descriptor.signatures, generics),
       };
     case 'factory':
       return {
         ...descriptor,
         serviceType,
-        signatures: TypeSignatures.substituteSignatures(descriptor.signatures, placeholders),
+        signatures: TypeSignatures.substituteSignatures(descriptor.signatures, generics),
       };
     default:
       return assertNever(descriptor);

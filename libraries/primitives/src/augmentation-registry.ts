@@ -53,12 +53,13 @@ const subscribers = new Map<Type, DeltaInstaller[]>();
  * time. Subscribers are invoked synchronously, so that refusal reaches this caller.
  *
  * @throws TypeParseError - when a string receiver does not spell a type.
+ * @throws TypeError - when the receiver names a shape rather than a declaration.
  */
 export function registerAugmentations<R, I extends Record<PropertyKey, Func>>(receiver: Type | string,
   set: AugmentationSet2<R, I>, merge?: MergeStrategies): void;
 export function registerAugmentations<R>(receiver: Type | string, set: AugmentationSet<R>,
   merge?: MergeStrategies): void {
-  const type = typeof receiver === 'string' ? Type.from(receiver) : receiver;
+  const type = receiverType(receiver);
   const bag = getOrCreate(bags, type, () => new Multimap());
   for (const [name, fn] of Object.entries(set as Record<string, AugmentationFn>)) {
     bag.add(name, [fn, merge?.[name]]);
@@ -84,9 +85,10 @@ export function registerAugmentations<R>(receiver: Type | string, set: Augmentat
  * `new (...) => ...` type — can still be a receiver; only its prototype is touched.
  *
  * @throws TypeParseError - when a string receiver does not spell a type.
+ * @throws TypeError - when the receiver names a shape rather than a declaration.
  */
 export function augment(receiver: Type | string) {
-  const type = typeof receiver === 'string' ? Type.from(receiver) : receiver;
+  const type = receiverType(receiver);
   return function installOnClass<C extends { readonly prototype: object; }>(Ctor: C, _context?: unknown): void {
     const target = Ctor as unknown as Ctor<any[], any>;
 
@@ -105,4 +107,22 @@ export function augment(receiver: Type | string) {
       }
     }
   };
+}
+
+/**
+ * The bag key both doors index by.
+ *
+ * @remarks
+ * A receiver has to be a type IDENTIFIER. Augmenting names the declaration whose prototype the
+ * members land on; a union, a signature or an aggregate describes a shape instead, and there is no
+ * declaration behind it to install onto — a bag under one could only ever sit empty.
+ */
+function receiverType(receiver: Type | string): Type {
+  const type = typeof receiver === 'string' ? Type.from(receiver) : receiver;
+  if (!Type.isIdentifier(type)) {
+    throw new TypeError(
+      `an augmentation receiver names a declaration, and \`${Type.stringify(type)}\` names a shape`,
+    );
+  }
+  return type;
 }

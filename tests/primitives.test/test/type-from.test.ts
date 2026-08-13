@@ -43,10 +43,10 @@ describe('Type.from', () => {
     expect(Type.from('(app:A | app:B)#primary')).toBe(Type.tag(Type.union(A, B), 'primary'));
   });
 
-  test('reads tuples, placeholders and literals', () => {
+  test('reads tuples, generic holes and literals', () => {
     expect(Type.from('[app:A, 5]')).toBe(Type.tuple(A, Type.typeLiteral(5)));
     expect(Type.from('[]')).toBe(Type.tuple());
-    expect(Type.from('%T')).toBe(Type.placeholder('T'));
+    expect(Type.from('%T')).toBe(Type.generic('T'));
     expect(Type.from('42n')).toBe(Type.typeLiteral(42n));
     expect(Type.from('-Infinity')).toBe(Type.typeLiteral(-Infinity));
     expect(Type.from('undefined')).toBe(Type.typeLiteral(undefined));
@@ -97,7 +97,7 @@ describe('escaping', () => {
       [Type.named('IServiceProvider', '@rhombus-std/primitives'), '@rhombus-std/primitives:IServiceProvider'],
       [Type.named('Box', 'app', [Type.named('Foo', 'app')]), 'app:Box<app:Foo>'],
       [Type.object({ a: Type.named('string') }), '{ a: string }'],
-      [Type.placeholder('T'), '%T'],
+      [Type.generic('T'), '%T'],
       [Type.tag(A, 'primary'), 'app:A#primary'],
       [Type.func(A, B), '(app:B) => app:A'],
       [Type.ctor(A, B), 'new (app:B) => app:A'],
@@ -127,8 +127,8 @@ describe('escaping', () => {
     }
   });
 
-  test('a tag, placeholder label and object key carrying grammar characters survive', () => {
-    const awkward = Type.object({ 'key: with; grammar': Type.tag(Type.placeholder('%odd|label'), 'a#tag') });
+  test('a tag, generic hole label and object key carrying grammar characters survive', () => {
+    const awkward = Type.object({ 'key: with; grammar': Type.tag(Type.generic('%odd|label'), 'a#tag') });
     expect(Type.from(Type.stringify(awkward))).toBe(awkward);
   });
 });
@@ -234,12 +234,12 @@ function generate(random: () => number, depth: number): Type {
   const pick = <T>(choices: readonly T[]): T => choices[Math.floor(random() * choices.length)]!;
   const many = (most: number) => Math.floor(random() * (most + 1));
   if (depth <= 0) {
-    switch (pick(['named', 'literal', 'placeholder', 'tuple', 'object'])) {
+    switch (pick(['named', 'literal', 'generic', 'tuple', 'object'])) {
       case 'literal': {
         return Type.typeLiteral(pick(LITERALS));
       }
-      case 'placeholder': {
-        return Type.placeholder(pick(NAMES));
+      case 'generic': {
+        return Type.generic(pick(NAMES));
       }
       case 'tuple': {
         return Type.tuple();
@@ -254,8 +254,7 @@ function generate(random: () => number, depth: number): Type {
   }
   const child = () => generate(random, depth - 1);
   const children = (most: number) => Array.from({ length: many(most) }, child);
-  const kinds = ['union', 'intersection', 'tuple', 'function', 'ctor', 'named', 'object', 'literal', 'placeholder',
-    'tag'];
+  const kinds = ['union', 'intersection', 'tuple', 'func', 'ctor', 'named', 'object', 'literal', 'generic', 'tag'];
   switch (pick(kinds)) {
     case 'union': {
       return Type.union(...Array.from({ length: 2 + many(2) }, child));
@@ -266,7 +265,7 @@ function generate(random: () => number, depth: number): Type {
     case 'tuple': {
       return Type.tuple(...children(3));
     }
-    case 'function': {
+    case 'func': {
       return Type.func(child(), ...children(2));
     }
     case 'ctor': {
@@ -278,8 +277,8 @@ function generate(random: () => number, depth: number): Type {
     case 'literal': {
       return Type.typeLiteral(pick(LITERALS));
     }
-    case 'placeholder': {
-      return Type.placeholder(pick(NAMES));
+    case 'generic': {
+      return Type.generic(pick(NAMES));
     }
     case 'tag': {
       return Type.tag(child(), pick(NAMES));

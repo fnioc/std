@@ -350,7 +350,7 @@ A library declares its inlineable members in a `"rhombus-std"` marker's `"inline
 ```
 
 Fields are partitioned by KIND, not just presence: `type` names a TYPE — a `TypeIdentifier`
-reference (`NamedType`; never a signature-shaped `Type` like `FunctionType`/`CtorType`), the
+reference (`NamedType`; never a signature-shaped `Type` like `FuncType`/`CtorType`), the
 interface an instance member is declared on; `impl` names a VALUE — a fully-qualified
 `<package>:<Name>` export; `member` is the member name, shared by both member shapes. Both `type`
 and `impl` deserialize through the same strict reference grammar (a Go mirror of the TS `Type`

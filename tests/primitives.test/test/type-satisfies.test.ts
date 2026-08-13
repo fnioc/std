@@ -35,32 +35,30 @@ describe('Type.satisfies on tags', () => {
     expect(satisfies(Type.tag(A, 'primary'), Type.tag(Type.union(A, B), 'primary'))).toBe(true);
   });
 
-  test('a placeholder captures a tagged type whole', () => {
-    const [satisfied, placeholders] = Type.satisfies(Type.tag(A, 'primary'), Type.placeholder('T'));
+  test('a generic hole captures a tagged type whole', () => {
+    const [satisfied, generics] = Type.satisfies(Type.tag(A, 'primary'), Type.generic('T'));
     expect(satisfied).toBe(true);
-    expect(placeholders!.get('T')!).toBe(Type.tag(A, 'primary'));
+    expect(generics!.get('T')!).toBe(Type.tag(A, 'primary'));
   });
 
-  test('a placeholder inside a tag captures only what the tag wraps', () => {
-    const [satisfied, placeholders] = Type.satisfies(Type.tag(A, 'primary'),
-      Type.tag(Type.placeholder('T'), 'primary'));
+  test('a generic hole inside a tag captures only what the tag wraps', () => {
+    const [satisfied, generics] = Type.satisfies(Type.tag(A, 'primary'), Type.tag(Type.generic('T'), 'primary'));
     expect(satisfied).toBe(true);
-    expect(placeholders!.get('T')!).toBe(A);
+    expect(generics!.get('T')!).toBe(A);
   });
 });
 
 describe('Type.match on tags', () => {
   test('an open tagged pattern closes over the request it matched', () => {
-    const [matched, placeholders] = Type.match(Type.tag(Type.named('Box', 'app', [Type.placeholder('T')]), 'primary'),
+    const [matched, generics] = Type.match(Type.tag(Type.named('Box', 'app', [Type.generic('T')]), 'primary'),
       Type.tag(Type.named('Box', 'app', [A]), 'primary'));
     expect(matched).toBe(true);
-    expect(placeholders!.get('T')!).toBe(A);
+    expect(generics!.get('T')!).toBe(A);
   });
 
   test('an untagged pattern does not match a tagged subject', () => {
     expect(
-      Type.match(Type.named('Box', 'app', [Type.placeholder('T')]),
-        Type.tag(Type.named('Box', 'app', [A]), 'primary'))[0],
+      Type.match(Type.named('Box', 'app', [Type.generic('T')]), Type.tag(Type.named('Box', 'app', [A]), 'primary'))[0],
     ).toBe(false);
   });
 

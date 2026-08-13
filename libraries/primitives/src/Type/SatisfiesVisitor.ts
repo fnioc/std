@@ -1,48 +1,12 @@
+import type { Func } from '@rhombus-toolkit/func';
+import { isOpenType } from './analyzers.js';
 import { LITERAL_BASE } from './internals/literal-base.js';
 import { stringifyType } from './StringifyVisitor.js';
-import type { CtorType, FunctionType, IntersectionType, NamedType, ObjectType, PlaceholderType, TagType, TupleType,
-  Type, TypeLiteralType, UnionType } from './Type.js';
+import type { AggregateType, ArrayType, AsyncIterableType, AsyncType, CtorType, FuncType, GenericType, IntersectionType,
+  IterableType, NamedType, ObjectType, TagType, TupleType, Type, TypeLiteralType, UnionType } from './Type.js';
 import { TypeVisitor } from './TypeVisitor.js';
 
-/** Failure carries nothing; success carries one entry per placeholder label in the condition. */
-
-type Predicate = (proposed: Type) => boolean;
-
-/** True when any placeholder appears anywhere in the tree. */
-class PlaceholderScanner extends TypeVisitor<boolean> {
-  protected override visitPlaceholder(_type: PlaceholderType): boolean {
-    return true;
-  }
-  protected override visitTypeLiteral(_type: TypeLiteralType): boolean {
-    return false;
-  }
-  protected override visitUnion(type: UnionType): boolean {
-    return type.members.some(member => this.visit(member));
-  }
-  protected override visitIntersection(type: IntersectionType): boolean {
-    return type.members.some(member => this.visit(member));
-  }
-  protected override visitTuple(type: TupleType): boolean {
-    return type.members.some(member => this.visit(member));
-  }
-  protected override visitFunction(type: FunctionType): boolean {
-    return type.args.some(arg => this.visit(arg)) || this.visit(type.returnType);
-  }
-  protected override visitCtor(type: CtorType): boolean {
-    return type.args.some(arg => this.visit(arg)) || this.visit(type.instanceType);
-  }
-  protected override visitNamed(type: NamedType): boolean {
-    return type.genericArgs.some(arg => this.visit(arg));
-  }
-  protected override visitObject(type: ObjectType): boolean {
-    return Object.values(type.members).some(member => this.visit(member));
-  }
-  protected override visitTag(type: TagType): boolean {
-    return this.visit(type.type);
-  }
-}
-
-const placeholderScanner = new PlaceholderScanner();
+type Predicate = Func<[proposed: Type], boolean>;
 
 /**
  * Assignability, in the sense of a TypeScript `extends` clause: does `proposed` fit where
@@ -53,7 +17,7 @@ const placeholderScanner = new PlaceholderScanner();
  * rules that belong to the proposed side (a proposed union must satisfy on every member)
  * are applied by `match` before dispatching.
  *
- * A placeholder in the condition matches anything and records what it matched. A label
+ * A generic hole in the condition matches anything and records what it matched. A label
  * appearing twice must capture equal types both times, so `Pair<%T, %T>` rejects mismatched
  * arguments.
  */
@@ -62,7 +26,7 @@ class SatisfiesVisitor extends TypeVisitor<Predicate> {
 
   /** Entry point: applies the proposed-side rules, then dispatches on the condition. */
   match(proposed: Type, condition: Type): boolean {
-    if (condition.kind === 'placeholder') {
+    if (condition.kind === 'generic') {
       return this.capture(condition.label, proposed);
     }
     if (proposed.kind === 'union') {
@@ -74,30 +38,16 @@ class SatisfiesVisitor extends TypeVisitor<Predicate> {
     return this.visit(condition)(proposed);
   }
 
-  protected override visitPlaceholder(type: PlaceholderType): Predicate {
-    return proposed => this.capture(type.label, proposed);
+  protected override visitArray(type: ArrayType): Predicate {
+    return this.#aggregate(type);
   }
 
-  protected override visitUnion(type: UnionType): Predicate {
-    return proposed => type.members.some(member => this.#attempt(proposed, member));
+  protected override visitAsync(type: AsyncType): Predicate {
+    return this.#aggregate(type);
   }
 
-  protected override visitIntersection(type: IntersectionType): Predicate {
-    return proposed => type.members.every(member => this.match(proposed, member));
-  }
-
-  protected override visitTuple(type: TupleType): Predicate {
-    return proposed =>
-      proposed.kind === 'tuple'
-      && proposed.members.length === type.members.length
-      && type.members.every((member, index) => this.match(proposed.members[index]!, member));
-  }
-
-  protected override visitFunction(type: FunctionType): Predicate {
-    return proposed =>
-      proposed.kind === 'function' && proposed.args.length === type.args.length // Parameters are contravariant: the condition's parameter must fit the proposed one.
-      && type.args.every((arg, index) => this.match(arg, proposed.args[index]!))
-      && this.match(proposed.returnType, type.returnType);
+  protected override visitAsyncIterable(type: AsyncIterableType): Predicate {
+    return this.#aggregate(type);
   }
 
   protected override visitCtor(type: CtorType): Predicate {
@@ -105,6 +55,25 @@ class SatisfiesVisitor extends TypeVisitor<Predicate> {
       proposed.kind === 'ctor' && proposed.args.length === type.args.length // Parameters are contravariant: the condition's parameter must fit the proposed one.
       && type.args.every((arg, index) => this.match(arg, proposed.args[index]!))
       && this.match(proposed.instanceType, type.instanceType);
+  }
+
+  protected override visitFunc(type: FuncType): Predicate {
+    return proposed =>
+      proposed.kind === 'func' && proposed.args.length === type.args.length // Parameters are contravariant: the condition's parameter must fit the proposed one.
+      && type.args.every((arg, index) => this.match(arg, proposed.args[index]!))
+      && this.match(proposed.returnType, type.returnType);
+  }
+
+  protected override visitGeneric(type: GenericType): Predicate {
+    return proposed => this.capture(type.label, proposed);
+  }
+
+  protected override visitIntersection(type: IntersectionType): Predicate {
+    return proposed => type.members.every(member => this.match(proposed, member));
+  }
+
+  protected override visitIterable(type: IterableType): Predicate {
+    return this.#aggregate(type);
   }
 
   protected override visitNamed(type: NamedType): Predicate {
@@ -129,10 +98,6 @@ class SatisfiesVisitor extends TypeVisitor<Predicate> {
       );
   }
 
-  protected override visitTypeLiteral(type: TypeLiteralType): Predicate {
-    return proposed => proposed.kind === 'literal' && Object.is(proposed.value, type.value);
-  }
-
   /**
    * Tags match strictly, in both directions: only the same tag over a satisfying inner type
    * satisfies a tagged condition, and — since every other condition kind demands its own kind of
@@ -143,6 +108,21 @@ class SatisfiesVisitor extends TypeVisitor<Predicate> {
     return proposed => proposed.kind === 'tag' && proposed.tag === type.tag && this.match(proposed.type, type.type);
   }
 
+  protected override visitTuple(type: TupleType): Predicate {
+    return proposed =>
+      proposed.kind === 'tuple'
+      && proposed.members.length === type.members.length
+      && type.members.every((member, index) => this.match(proposed.members[index]!, member));
+  }
+
+  protected override visitTypeLiteral(type: TypeLiteralType): Predicate {
+    return proposed => proposed.kind === 'literal' && Object.is(proposed.value, type.value);
+  }
+
+  protected override visitUnion(type: UnionType): Predicate {
+    return proposed => type.members.some(member => this.#attempt(proposed, member));
+  }
+
   /** Binds a label, requiring any earlier binding of the same label to be the same type. */
   protected capture(label: string, captured: Type): boolean {
     const bound = this.captures.get(label);
@@ -151,6 +131,11 @@ class SatisfiesVisitor extends TypeVisitor<Predicate> {
       return true;
     }
     return bound === captured;
+  }
+
+  /** One aggregate satisfies another of its own kind, covariantly in the element. */
+  #aggregate(type: AggregateType): Predicate {
+    return proposed => proposed.kind === type.kind && this.match(proposed.element, type.element);
   }
 
   /** Tries one branch of a condition union, rolling captures back when it fails. */
@@ -169,18 +154,18 @@ class SatisfiesVisitor extends TypeVisitor<Predicate> {
 
 /**
  * The pattern-match sibling of {@link SatisfiesVisitor}: the PROPOSED side is a pattern whose
- * placeholders capture the condition's fragments, while the subtyping direction is unchanged —
+ * generic holes capture the condition's fragments, while the subtyping direction is unchanged —
  * pattern-instantiated extends condition.
  *
  * @remarks
- * Only the proposed-placeholder interception is added here. In variance-flipped sub-positions
- * (function/ctor parameters) the recursion swaps the sides, so a pattern placeholder arrives as
- * the CONDITION of that sub-match — the inherited condition-placeholder branch captures it, and
+ * Only the proposed-hole interception is added here. In variance-flipped sub-positions
+ * (function/ctor parameters) the recursion swaps the sides, so a pattern hole arrives as
+ * the CONDITION of that sub-match — the inherited condition-hole branch captures it, and
  * the shared {@link captures} map keeps repeated labels consistent across both.
  */
 class PatternMatchVisitor extends SatisfiesVisitor {
   override match(proposed: Type, condition: Type): boolean {
-    if (proposed.kind === 'placeholder') {
+    if (proposed.kind === 'generic') {
       return this.capture(proposed.label, condition);
     }
     return super.match(proposed, condition);
@@ -188,9 +173,9 @@ class PatternMatchVisitor extends SatisfiesVisitor {
 }
 
 export function satisfiesType(proposed: Type, condition: Type): [satisfied: false] | [satisfied: true,
-  placeholders: Map<string, Type>] {
-  if (placeholderScanner.visit(proposed)) {
-    throw new Error(`satisfies: the proposed type may not contain placeholders — got ${stringifyType(proposed)}`);
+  generics: Map<string, Type>] {
+  if (isOpenType(proposed)) {
+    throw new Error(`satisfies: the proposed type may not contain generic holes — got ${stringifyType(proposed)}`);
   }
   const visitor = new SatisfiesVisitor();
   return visitor.match(proposed, condition) ? [true, visitor.captures] : [false];
@@ -198,12 +183,12 @@ export function satisfiesType(proposed: Type, condition: Type): [satisfied: fals
 
 /**
  * Does some instantiation of {@link pattern} extend {@link subject}? Success carries the
- * instantiation: one entry per placeholder label in the pattern.
+ * instantiation: one entry per generic label in the pattern.
  */
 export function matchType(pattern: Type, subject: Type): [matched: false] | [matched: true,
-  placeholders: Map<string, Type>] {
-  if (placeholderScanner.visit(subject)) {
-    throw new Error(`match: the subject type may not contain placeholders — got ${stringifyType(subject)}`);
+  generics: Map<string, Type>] {
+  if (isOpenType(subject)) {
+    throw new Error(`match: the subject type may not contain generic holes — got ${stringifyType(subject)}`);
   }
   const visitor = new PatternMatchVisitor();
   return visitor.match(pattern, subject) ? [true, visitor.captures] : [false];

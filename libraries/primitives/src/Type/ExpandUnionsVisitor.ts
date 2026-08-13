@@ -1,5 +1,6 @@
-import { type CtorType, type FunctionType, type IntersectionType, type NamedType, type ObjectType, type PlaceholderType,
-  type TagType, type TupleType, Type, type TypeLiteralType, type UnionType } from './Type.js';
+import { type ArrayType, type AsyncIterableType, type AsyncType, type CtorType, type FuncType, type GenericType,
+  type IntersectionType, type IterableType, type NamedType, type ObjectType, type TagType, type TupleType, Type,
+  type TypeLiteralType, type UnionType } from './Type.js';
 import { TypeVisitor } from './TypeVisitor.js';
 
 /**
@@ -11,37 +12,49 @@ import { TypeVisitor } from './TypeVisitor.js';
  * takes every union's first member in canonical order.
  */
 class ExpandUnionsVisitor extends TypeVisitor<readonly Type[]> {
-  protected override visitUnion(type: UnionType): readonly Type[] {
-    return type.members.flatMap(member => this.visit(member));
+  protected override visitArray(type: ArrayType): readonly Type[] {
+    return this.visit(type.element).map(element => Type.array(element));
+  }
+  protected override visitAsync(type: AsyncType): readonly Type[] {
+    return this.visit(type.element).map(element => Type.async(element));
+  }
+  protected override visitAsyncIterable(type: AsyncIterableType): readonly Type[] {
+    return this.visit(type.element).map(element => Type.asyncIterable(element));
+  }
+  protected override visitGeneric(type: GenericType): readonly Type[] {
+    return [type];
   }
   protected override visitIntersection(type: IntersectionType): readonly Type[] {
     return this.#product(type.members).map(types => Type.intersection(...types));
   }
-  protected override visitTuple(type: TupleType): readonly Type[] {
-    return this.#product(type.members).map(types => Type.tuple(...types));
-  }
-  protected override visitPlaceholder(type: PlaceholderType): readonly Type[] {
-    return [type];
-  }
-  protected override visitTypeLiteral(type: TypeLiteralType): readonly Type[] {
-    return [type];
-  }
-  protected override visitTag(type: TagType): readonly Type[] {
-    return this.visit(type.type).map(inner => Type.tag(inner, type.tag));
+  protected override visitIterable(type: IterableType): readonly Type[] {
+    return this.visit(type.element).map(element => Type.iterable(element));
   }
   protected override visitNamed(type: NamedType): readonly Type[] {
     return this.#product(type.genericArgs).map(args => Type.named(type.name, type.from, args));
   }
-
-  protected override visitFunction(type: FunctionType): readonly Type[] {
-    return this.#product([...type.args, type.returnType]).map(parts =>
-      Type.func(parts[parts.length - 1]!, ...parts.slice(0, -1))
-    );
+  protected override visitTag(type: TagType): readonly Type[] {
+    return this.visit(type.type).map(inner => Type.tag(inner, type.tag));
+  }
+  protected override visitTuple(type: TupleType): readonly Type[] {
+    return this.#product(type.members).map(types => Type.tuple(...types));
+  }
+  protected override visitTypeLiteral(type: TypeLiteralType): readonly Type[] {
+    return [type];
+  }
+  protected override visitUnion(type: UnionType): readonly Type[] {
+    return type.members.flatMap(member => this.visit(member));
   }
 
   protected override visitCtor(type: CtorType): readonly Type[] {
     return this.#product([...type.args, type.instanceType]).map(parts =>
       Type.ctor(parts[parts.length - 1]!, ...parts.slice(0, -1))
+    );
+  }
+
+  protected override visitFunc(type: FuncType): readonly Type[] {
+    return this.#product([...type.args, type.returnType]).map(parts =>
+      Type.func(parts[parts.length - 1]!, ...parts.slice(0, -1))
     );
   }
 

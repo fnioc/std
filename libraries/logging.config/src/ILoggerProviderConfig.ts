@@ -1,6 +1,6 @@
 // `T` is a compile-time phantom -- it only selects which closed service type to
 // resolve. The runtime identity is what {@link loggerProviderConfigType} builds,
-// and the open template it builds from a placeholder is registered by the no-arg
+// and the open template it builds from a generic hole is registered by the no-arg
 // `addConfig`, so resolving any closing constructs a `LoggerProviderConfig` for
 // that provider.
 
@@ -31,10 +31,10 @@ const BASE = typefor<ILoggerProviderConfig<unknown>>() as NamedType;
  *
  * @remarks
  * One function serves both the closed and the open form, because an open
- * template differs only in taking a placeholder as its argument. Pass the same
- * placeholder object to the registration's service type and to its dependency
- * slot, so the two cannot drift.
+ * template differs only in taking a generic hole as its argument. Pass the same
+ * hole to the registration's service type and to its dependency slot, so the two
+ * cannot drift.
  */
-export function loggerProviderConfigType(argument: Type): NamedType {
+export function loggerProviderConfigType(argument: Type): Type {
   return Type.named(BASE.name, BASE.from, [argument]);
 }

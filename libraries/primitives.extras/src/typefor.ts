@@ -1,4 +1,4 @@
-import type { CtorType, FunctionType, Type } from '@rhombus-std/primitives';
+import type { CtorType, FuncType, Type } from '@rhombus-std/primitives';
 import type { Func } from '@rhombus-toolkit/func';
 
 /**
@@ -11,7 +11,7 @@ import type { Func } from '@rhombus-toolkit/func';
  * as for `"dev"` — so a literal keeps the whole union.
  */
 export type TypeFor<T> = [T] extends [abstract new(...args: never[]) => unknown] ? CtorType
-  : [T] extends [Func<never[], unknown>] ? FunctionType
+  : [T] extends [Func<never[], unknown>] ? FuncType
   : Type;
 
 /**

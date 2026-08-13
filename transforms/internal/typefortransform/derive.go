@@ -41,7 +41,7 @@ type derived struct {
 // brand first (so a keyed factory or class still classifies its stripped base as
 // Func/Ctor beneath the tag), then a construct signature (CtorType — checked
 // before call, matching TypeFor<T>'s own conditional order), then a call
-// signature (FunctionType), and otherwise the plain tokens.DeriveTypeF leaf. Each
+// signature (FuncType), and otherwise the plain tokens.DeriveTypeF leaf. Each
 // recursion point — a signature's return/instance type, its parameters, a tag's
 // inner type — reclassifies from scratch, so a factory that itself returns a
 // factory nests `Type.func(Type.func(...))` the way a hand-writer would spell it.
@@ -106,7 +106,7 @@ func deriveSignatureShaped(
 func kindName(d *derived) string {
 	switch d.kind {
 	case derivedFunc:
-		return "function"
+		return "func"
 	case derivedCtor:
 		return "ctor"
 	case derivedTag:
@@ -118,7 +118,7 @@ func kindName(d *derived) string {
 		case tokens.TypeNodeUnion:
 			return "union"
 		case tokens.TypeNodePlaceholder:
-			return "placeholder"
+			return "generic"
 		default:
 			return "named"
 		}
@@ -218,7 +218,7 @@ func emitLeaf(f *shimast.NodeFactory, binding *valueimport.Binding, n *tokens.Ty
 		}
 		return typeCall(f, binding, "union", members)
 	case tokens.TypeNodePlaceholder:
-		return typeCall(f, binding, "placeholder", []*shimast.Node{f.NewStringLiteral(n.Label, shimast.TokenFlagsNone)})
+		return typeCall(f, binding, "generic", []*shimast.Node{f.NewStringLiteral(n.Label, shimast.TokenFlagsNone)})
 	default: // tokens.TypeNodeNamed
 		args := make([]*shimast.Node, 0, len(n.Args))
 		for _, a := range n.Args {

@@ -1,4 +1,4 @@
-import { AugmentationSet2, type CtorType, type Flatten, type FunctionType, type IntersectionType, Token,
+import { AugmentationSet2, type CtorType, type Flatten, type FuncType, type IntersectionType, Token,
   Type } from '@rhombus-std/primitives';
 import { registerAugmentations } from '@rhombus-std/primitives.extras';
 import type { Ctor, Func } from '@rhombus-toolkit/func';
@@ -11,7 +11,7 @@ interface IManifestDescriptorAugmentations<Scopes extends string> {
   add<T = any>(type: Type | string, configure: Func<[Unstarted<T, Scopes>], IComplete>): Manifest<Scopes>;
   add<T = any>(type: Type | string, ctor: Ctor<any[], T>, implType: CtorType | IntersectionType, scope?: Scopes,
     key?: string): Manifest<Scopes>;
-  add<T = any>(type: Type | string, factory: Func<any[], T>, implType: FunctionType | IntersectionType, scope?: Scopes,
+  add<T = any>(type: Type | string, factory: Func<any[], T>, implType: FuncType | IntersectionType, scope?: Scopes,
     key?: string): Manifest<Scopes>;
   remove(descriptor: ServiceDescriptor<Scopes>): Manifest<Scopes>;
   replace(descriptor: ServiceDescriptor<Scopes>): Manifest<Scopes>;
@@ -21,8 +21,8 @@ interface IManifestDescriptorAugmentations<Scopes extends string> {
   tryAdd<T = any>(type: Type | string, configure: Func<[Unstarted<T, Scopes>], IComplete>): this;
   tryAdd<T = any>(type: Type | string, ctor: Ctor<any[], T>, implType: CtorType | IntersectionType, scope?: Scopes,
     key?: string): this;
-  tryAdd<T = any>(type: Type | string, factory: Func<any[], T>, implType: FunctionType | IntersectionType,
-    scope?: Scopes, key?: string): this;
+  tryAdd<T = any>(type: Type | string, factory: Func<any[], T>, implType: FuncType | IntersectionType, scope?: Scopes,
+    key?: string): this;
 
   tryAddClass(token: Token | Type, ctor: Ctor, signatures: Signatures, scope?: Scopes, key?: string): Manifest<Scopes>;
   tryAddFactory(token: Token | Type, factory: Func<any[], unknown>, signatures: Signatures, scope?: Scopes,
