@@ -1,10 +1,10 @@
 // @ts-check
 // The JS twin of transforms/internal/inlinetransform/entries.go: loads a
-// package.json's "rhombus-std" marker "inline" publish list, composes any
-// imported JSON files (recursively, file-relative, package-scoped,
-// cycle-guarded), and validates every entry's shape. Kept byte-semantically
-// identical to the Go loader so the authoring lint and the build stage agree on
-// which entries exist and which are well-formed.
+// package.json's "rhombus-std" marker "inline" object's "entries" publish
+// list, composes any imported JSON files (recursively, file-relative,
+// package-scoped, cycle-guarded), and validates every entry's shape. Kept
+// byte-semantically identical to the Go loader so the authoring lint and the
+// build stage agree on which entries exist and which are well-formed.
 
 import { readFileSync } from 'node:fs';
 import { dirname, join, relative, resolve } from 'node:path';
@@ -102,6 +102,25 @@ export function loadInlineEntries(/** @type {string} */ packageDir) {
   return composeInline(cfg, root, new Set(), pkgPath);
 }
 
+/**
+ * Reads the "inline" key's "entries" array off cfg (the "rhombus-std" marker's
+ * own object, or a composed imported file). Absence of "inline" is not an
+ * error — it yields no entries. A present "inline" that isn't an object
+ * carrying an "entries" array (the old flat-array shape included) is
+ * INLINE_ENTRY_SHAPE, matching the Go loader's type-mismatch failure on the
+ * same input.
+ * @returns {InlineEntry[]}
+ */
+function inlineEntries(/** @type {any} */ cfg, /** @type {string} */ from) {
+  if (cfg.inline === undefined || cfg.inline === null) {
+    return [];
+  }
+  if (typeof cfg.inline !== 'object' || Array.isArray(cfg.inline) || !Array.isArray(cfg.inline.entries)) {
+    throw new Error(`INLINE_ENTRY_SHAPE: ${from} "inline" must be an object with an "entries" array`);
+  }
+  return cfg.inline.entries;
+}
+
 /** Reads the "name" field of dir/package.json, or null. */
 function readPackageName(/** @type {string} */ dir) {
   try {
@@ -123,7 +142,7 @@ function composeInline(/** @type {any} */ cfg, /** @type {string} */ rootDir, /*
   /** @type {string} */ from) {
   /** @type {InlineEntry[]} */
   const out = [];
-  const entries = Array.isArray(cfg.inline) ? cfg.inline : [];
+  const entries = inlineEntries(cfg, from);
   for (let i = 0; i < entries.length; i++) {
     const e = entries[i];
     const { status } = entryKind(e);

@@ -31,7 +31,7 @@ func buildInlinePresetWorkspace(t *testing.T, mainSrc string) (*driver.Program, 
   "name": "@rhombus-std/di.core",
   "version": "1.0.0",
   "exports": { ".": { "types": "./src/index.ts", "default": "./src/index.ts" } },
-  "rhombus-std": { "inline": [ { "type": "@rhombus-std/di.core:IServiceManifestBase", "impl": "@rhombus-std/di.core:ManifestInline", "member": "addClass" } ] }
+  "rhombus-std": { "inline": { "entries": [ { "type": "@rhombus-std/di.core:IServiceManifestBase", "impl": "@rhombus-std/di.core:ManifestInline", "member": "addClass" } ] } }
 }`)
 	writeFile(t, filepath.Join(core, "src", "index.ts"), `export interface IServiceManifestBase {
   addClass(token: string, ctor: unknown, sig: unknown, scope?: string, key?: string): unknown;

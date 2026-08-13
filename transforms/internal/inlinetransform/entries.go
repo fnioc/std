@@ -102,11 +102,18 @@ func parsesCleanly(ref string) bool {
 	return err == nil
 }
 
-// rawInlineConfig is the "rhombus-std" marker's "inline" object in a
-// package.json.
+// rawInlineConfig is the "rhombus-std" marker's own object in a package.json
+// (or, recursively, an imported JSON file composing into it): "inline" holds
+// the publish list, "import" composes further files into it.
 type rawInlineConfig struct {
-	Inline []Entry         `json:"inline"`
+	Inline *rawInlineBlock `json:"inline"`
 	Import json.RawMessage `json:"import"` // string | []string | absent
+}
+
+// rawInlineBlock is the "inline" key's own object: entries is the publish
+// list.
+type rawInlineBlock struct {
+	Entries []Entry `json:"entries"`
 }
 
 // pkgJSONInline is a minimal package.json view exposing only the marker key.
@@ -115,12 +122,12 @@ type pkgJSONInline struct {
 }
 
 // LoadInlineEntries reads packageDir/package.json's "rhombus-std" marker's
-// "inline" list, composes any imported JSON files (recursively, file-relative,
-// package-scoped, cycle-guarded), validates every entry's shape, and returns
-// the concatenated entry list in encounter order. A package with no
-// "rhombus-std" key returns (nil, nil) — absence is not an error. Malformed
-// JSON, an out-of-package import, an import cycle, or a non-certified entry
-// shape are all hard errors.
+// "inline" object's "entries" list, composes any imported JSON files
+// (recursively, file-relative, package-scoped, cycle-guarded), validates every
+// entry's shape, and returns the concatenated entry list in encounter order. A
+// package with no "rhombus-std" key returns (nil, nil) — absence is not an
+// error. Malformed JSON, an out-of-package import, an import cycle, or a
+// non-certified entry shape are all hard errors.
 func LoadInlineEntries(packageDir string) ([]Entry, error) {
 	packageDir = filepath.Clean(packageDir)
 	seen := map[string]bool{}
@@ -153,8 +160,12 @@ func loadFromPackageJSON(packageDir, rootDir string, seen map[string]bool) ([]En
 // so an impl naming any other package cannot resolve and is rejected here,
 // loudly, at load time rather than as a confusing not-found later.
 func composeInline(cfg *rawInlineConfig, rootDir string, seen map[string]bool, from string) ([]Entry, error) {
-	out := make([]Entry, 0, len(cfg.Inline))
-	for i, e := range cfg.Inline {
+	var entries []Entry
+	if cfg.Inline != nil {
+		entries = cfg.Inline.Entries
+	}
+	out := make([]Entry, 0, len(entries))
+	for i, e := range entries {
 		switch _, status := e.Kind(); status {
 		case StatusMalformed:
 			return nil, fmt.Errorf("INLINE_ENTRY_SHAPE: %s entry %d matches no grammar row (type=%q impl=%q member=%q)", from, i, e.Type, e.Impl, e.Member)

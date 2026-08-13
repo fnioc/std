@@ -55,9 +55,9 @@ describe('entryKind', () => {
 
 describe('loadInlineEntries', () => {
   test('composes imported files in order, both certified rows', () => {
-    const dir = pkg({ inline: [{ type: 'p:A', impl: 'p:A', member: 'm1' }], import: './more.json' });
+    const dir = pkg({ inline: { entries: [{ type: 'p:A', impl: 'p:A', member: 'm1' }] }, import: './more.json' });
     writeFileSync(join(dir, 'more.json'),
-      JSON.stringify({ inline: [{ type: 'p:B', impl: 'p:B', member: 'm2' }, { impl: 'p:freeFn' }] }));
+      JSON.stringify({ inline: { entries: [{ type: 'p:B', impl: 'p:B', member: 'm2' }, { impl: 'p:freeFn' }] } }));
     const entries = loadInlineEntries(dir);
     expect(entries.map((e: { member?: string; impl?: string; }) => e.member ?? e.impl)).toEqual(['m1', 'm2',
       'p:freeFn']);
@@ -65,31 +65,31 @@ describe('loadInlineEntries', () => {
 
   test('malformed shape throws INLINE_ENTRY_SHAPE', () => {
     // type+impl with no member fits no row.
-    const dir = pkg({ inline: [{ type: 'p:A', impl: 'p:AImpl' }] });
+    const dir = pkg({ inline: { entries: [{ type: 'p:A', impl: 'p:AImpl' }] } });
     expect(() => loadInlineEntries(dir)).toThrow(/INLINE_ENTRY_SHAPE/);
   });
 
   test('uncertified shape throws INLINE_KIND_UNCERTIFIED', () => {
-    const ownBody = pkg({ inline: [{ type: 'p:A', member: 'm' }] });
+    const ownBody = pkg({ inline: { entries: [{ type: 'p:A', member: 'm' }] } });
     expect(() => loadInlineEntries(ownBody)).toThrow(/INLINE_KIND_UNCERTIFIED/);
-    const staticMember = pkg({ inline: [{ impl: 'p:AImpl', member: 'm' }] });
+    const staticMember = pkg({ inline: { entries: [{ impl: 'p:AImpl', member: 'm' }] } });
     expect(() => loadInlineEntries(staticMember)).toThrow(/INLINE_KIND_UNCERTIFIED/);
   });
 
   test('impl naming a foreign package throws INLINE_ENTRY_IMPL_FOREIGN', () => {
-    const dir = pkg({ inline: [{ impl: '@other/pkg:tokenOf' }] });
+    const dir = pkg({ inline: { entries: [{ impl: '@other/pkg:tokenOf' }] } });
     expect(() => loadInlineEntries(dir)).toThrow(/INLINE_ENTRY_IMPL_FOREIGN/);
   });
 
   test('import cycle throws', () => {
-    const dir = pkg({ inline: [], import: './a.json' });
-    writeFileSync(join(dir, 'a.json'), JSON.stringify({ inline: [], import: './b.json' }));
-    writeFileSync(join(dir, 'b.json'), JSON.stringify({ inline: [], import: './a.json' }));
+    const dir = pkg({ inline: { entries: [] }, import: './a.json' });
+    writeFileSync(join(dir, 'a.json'), JSON.stringify({ inline: { entries: [] }, import: './b.json' }));
+    writeFileSync(join(dir, 'b.json'), JSON.stringify({ inline: { entries: [] }, import: './a.json' }));
     expect(() => loadInlineEntries(dir)).toThrow(/INLINE_ENTRY_IMPORT_CYCLE/);
   });
 
   test('import escape throws', () => {
-    const dir = pkg({ inline: [], import: '../escape.json' });
+    const dir = pkg({ inline: { entries: [] }, import: '../escape.json' });
     expect(() => loadInlineEntries(dir)).toThrow(/INLINE_ENTRY_IMPORT_ESCAPE/);
   });
 
@@ -100,30 +100,30 @@ describe('loadInlineEntries', () => {
   });
 
   test('import as an array composes each file', () => {
-    const dir = pkg({ inline: [], import: ['./a.json', './b.json'] });
-    writeFileSync(join(dir, 'a.json'), JSON.stringify({ inline: [{ impl: 'p:fromA' }] }));
-    writeFileSync(join(dir, 'b.json'), JSON.stringify({ inline: [{ impl: 'p:fromB' }] }));
+    const dir = pkg({ inline: { entries: [] }, import: ['./a.json', './b.json'] });
+    writeFileSync(join(dir, 'a.json'), JSON.stringify({ inline: { entries: [{ impl: 'p:fromA' }] } }));
+    writeFileSync(join(dir, 'b.json'), JSON.stringify({ inline: { entries: [{ impl: 'p:fromB' }] } }));
     const entries = loadInlineEntries(dir);
     expect(entries.map((e: { impl?: string; }) => e.impl)).toEqual(['p:fromA', 'p:fromB']);
   });
 
   test('malformed imported JSON throws INLINE_ENTRY_IMPORT (aligned with the Go twin)', () => {
-    const dir = pkg({ inline: [], import: './bad.json' });
+    const dir = pkg({ inline: { entries: [] }, import: './bad.json' });
     writeFileSync(join(dir, 'bad.json'), '{ "inline": [ this is not json ');
     expect(() => loadInlineEntries(dir)).toThrow(/INLINE_ENTRY_IMPORT/);
   });
 
   test('non-string/array import throws INLINE_ENTRY_IMPORT', () => {
-    const dir = pkg({ inline: [], import: 42 });
+    const dir = pkg({ inline: { entries: [] }, import: 42 });
     expect(() => loadInlineEntries(dir)).toThrow(/INLINE_ENTRY_IMPORT/);
   });
 
   test('duplicate entry across two imports is concatenated undeduped', () => {
     // The chosen behavior mirrors the Go twin: both copies are returned;
     // deduplication (where it matters) happens later at the decl-map level.
-    const dir = pkg({ inline: [], import: ['./a.json', './b.json'] });
-    writeFileSync(join(dir, 'a.json'), JSON.stringify({ inline: [{ impl: 'p:dup' }] }));
-    writeFileSync(join(dir, 'b.json'), JSON.stringify({ inline: [{ impl: 'p:dup' }] }));
+    const dir = pkg({ inline: { entries: [] }, import: ['./a.json', './b.json'] });
+    writeFileSync(join(dir, 'a.json'), JSON.stringify({ inline: { entries: [{ impl: 'p:dup' }] } }));
+    writeFileSync(join(dir, 'b.json'), JSON.stringify({ inline: { entries: [{ impl: 'p:dup' }] } }));
     const entries = loadInlineEntries(dir);
     expect(entries.map((e: { impl?: string; }) => e.impl)).toEqual(['p:dup', 'p:dup']);
   });

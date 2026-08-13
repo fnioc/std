@@ -58,9 +58,11 @@ func buildOptionsInlineWorkspace(t *testing.T, mainSrc string, withOptions bool)
   "version": "1.0.0",
   "exports": { ".": { "types": "./src/index.ts", "default": "./src/index.ts" } },
   "rhombus-std": {
-    "inline": [
-      { "type": "@rhombus-std/di.core:IServiceManifestBase", "impl": "@rhombus-std/di.core:ManifestOptionsInline", "member": "addOptions" }
-    ]
+    "inline": {
+      "entries": [
+        { "type": "@rhombus-std/di.core:IServiceManifestBase", "impl": "@rhombus-std/di.core:ManifestOptionsInline", "member": "addOptions" }
+      ]
+    }
   }
 }`)
 	writeFile(t, filepath.Join(core, "src", "index.ts"), `export interface IServiceManifestBase {

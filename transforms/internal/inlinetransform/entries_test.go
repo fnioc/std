@@ -60,16 +60,16 @@ func TestLoadInlineEntriesComposition(t *testing.T) {
 	write(t, filepath.Join(root, "package.json"), `{
   "name": "pkg",
   "rhombus-std": {
-    "inline": [ { "type": "p:A", "impl": "pkg:A", "member": "m1" } ],
+    "inline": { "entries": [ { "type": "p:A", "impl": "pkg:A", "member": "m1" } ] },
     "import": "./more.json"
   }
 }`)
 	write(t, filepath.Join(root, "more.json"), `{
-  "inline": [ { "type": "p:B", "impl": "pkg:B", "member": "m2" } ],
+  "inline": { "entries": [ { "type": "p:B", "impl": "pkg:B", "member": "m2" } ] },
   "import": ["./even-more.json"]
 }`)
 	write(t, filepath.Join(root, "even-more.json"), `{
-  "inline": [ { "impl": "pkg:tokenOf" } ]
+  "inline": { "entries": [ { "impl": "pkg:tokenOf" } ] }
 }`)
 
 	entries, err := LoadInlineEntries(root)
@@ -101,7 +101,7 @@ func TestLoadInlineEntriesBadShape(t *testing.T) {
 	// type+impl with no member fits no row.
 	write(t, filepath.Join(root, "package.json"), `{
   "name": "pkg",
-  "rhombus-std": { "inline": [ { "type": "p:A", "impl": "pkg:AImpl" } ] }
+  "rhombus-std": { "inline": { "entries": [ { "type": "p:A", "impl": "pkg:AImpl" } ] } }
 }`)
 	_, err := LoadInlineEntries(root)
 	if err == nil {
@@ -117,8 +117,8 @@ func TestLoadInlineEntriesUncertifiedShape(t *testing.T) {
 	// (impl+member, no type) are recognized-but-not-certified shapes: they must
 	// be rejected with the distinct INLINE_KIND_UNCERTIFIED error, never the
 	// malformed-shape error.
-	ownBody := `{ "name": "pkg", "rhombus-std": { "inline": [ { "type": "p:A", "member": "m" } ] } }`
-	static := `{ "name": "pkg", "rhombus-std": { "inline": [ { "impl": "pkg:AImpl", "member": "m" } ] } }`
+	ownBody := `{ "name": "pkg", "rhombus-std": { "inline": { "entries": [ { "type": "p:A", "member": "m" } ] } } }`
+	static := `{ "name": "pkg", "rhombus-std": { "inline": { "entries": [ { "impl": "pkg:AImpl", "member": "m" } ] } } }`
 	for name, body := range map[string]string{"own-body member": ownBody, "static member": static} {
 		t.Run(name, func(t *testing.T) {
 			root := t.TempDir()
@@ -139,10 +139,10 @@ func TestLoadInlineEntriesCertifiedShapes(t *testing.T) {
 	root := t.TempDir()
 	write(t, filepath.Join(root, "package.json"), `{
   "name": "pkg",
-  "rhombus-std": { "inline": [
+  "rhombus-std": { "inline": { "entries": [
     { "type": "p:A", "impl": "pkg:AImpl", "member": "m" },
     { "impl": "pkg:freeFn" }
-  ] }
+  ] } }
 }`)
 	entries, err := LoadInlineEntries(root)
 	if err != nil {
@@ -162,7 +162,7 @@ func TestLoadInlineEntriesImplMustSelfReference(t *testing.T) {
 	root := t.TempDir()
 	write(t, filepath.Join(root, "package.json"), `{
   "name": "pkg",
-  "rhombus-std": { "inline": [ { "impl": "@other/pkg:tokenOf" } ] }
+  "rhombus-std": { "inline": { "entries": [ { "impl": "@other/pkg:tokenOf" } ] } }
 }`)
 	_, err := LoadInlineEntries(root)
 	if err == nil {
@@ -177,10 +177,10 @@ func TestLoadInlineEntriesImportCycle(t *testing.T) {
 	root := t.TempDir()
 	write(t, filepath.Join(root, "package.json"), `{
   "name": "pkg",
-  "rhombus-std": { "inline": [], "import": "./a.json" }
+  "rhombus-std": { "inline": { "entries": [] }, "import": "./a.json" }
 }`)
-	write(t, filepath.Join(root, "a.json"), `{ "inline": [], "import": "./b.json" }`)
-	write(t, filepath.Join(root, "b.json"), `{ "inline": [], "import": "./a.json" }`)
+	write(t, filepath.Join(root, "a.json"), `{ "inline": { "entries": [] }, "import": "./b.json" }`)
+	write(t, filepath.Join(root, "b.json"), `{ "inline": { "entries": [] }, "import": "./a.json" }`)
 	if _, err := LoadInlineEntries(root); err == nil {
 		t.Fatal("expected INLINE_ENTRY_IMPORT_CYCLE error")
 	}
@@ -190,7 +190,7 @@ func TestLoadInlineEntriesImportEscape(t *testing.T) {
 	root := t.TempDir()
 	write(t, filepath.Join(root, "package.json"), `{
   "name": "pkg",
-  "rhombus-std": { "inline": [], "import": "../escape.json" }
+  "rhombus-std": { "inline": { "entries": [] }, "import": "../escape.json" }
 }`)
 	if _, err := LoadInlineEntries(root); err == nil {
 		t.Fatal("expected INLINE_ENTRY_IMPORT_ESCAPE error")
@@ -204,7 +204,7 @@ func TestLoadInlineEntriesMalformedImportJSON(t *testing.T) {
 	root := t.TempDir()
 	write(t, filepath.Join(root, "package.json"), `{
   "name": "pkg",
-  "rhombus-std": { "inline": [], "import": "./bad.json" }
+  "rhombus-std": { "inline": { "entries": [] }, "import": "./bad.json" }
 }`)
 	write(t, filepath.Join(root, "bad.json"), `{ "inline": [ this is not json `)
 	_, err := LoadInlineEntries(root)
@@ -222,7 +222,7 @@ func TestLoadInlineEntriesNonStringImport(t *testing.T) {
 	root := t.TempDir()
 	write(t, filepath.Join(root, "package.json"), `{
   "name": "pkg",
-  "rhombus-std": { "inline": [], "import": 42 }
+  "rhombus-std": { "inline": { "entries": [] }, "import": 42 }
 }`)
 	_, err := LoadInlineEntries(root)
 	if err == nil {
@@ -242,10 +242,10 @@ func TestLoadInlineEntriesDuplicateAcrossImports(t *testing.T) {
 	root := t.TempDir()
 	write(t, filepath.Join(root, "package.json"), `{
   "name": "pkg",
-  "rhombus-std": { "inline": [], "import": ["./a.json", "./b.json"] }
+  "rhombus-std": { "inline": { "entries": [] }, "import": ["./a.json", "./b.json"] }
 }`)
-	write(t, filepath.Join(root, "a.json"), `{ "inline": [ { "impl": "pkg:dup" } ] }`)
-	write(t, filepath.Join(root, "b.json"), `{ "inline": [ { "impl": "pkg:dup" } ] }`)
+	write(t, filepath.Join(root, "a.json"), `{ "inline": { "entries": [ { "impl": "pkg:dup" } ] } }`)
+	write(t, filepath.Join(root, "b.json"), `{ "inline": { "entries": [ { "impl": "pkg:dup" } ] } }`)
 	entries, err := LoadInlineEntries(root)
 	if err != nil {
 		t.Fatalf("LoadInlineEntries: %v", err)

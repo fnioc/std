@@ -12,7 +12,7 @@ import rhombusInline from '../../../scripts/eslint/rhombus-inline.mjs';
 // nearest package.json). One fixture per messageId (invalid) plus valid bodies.
 
 const DEFAULT_ENTRIES = {
-  inline: [{ type: 'p:Foo', impl: 'fixture:Foo', member: 'bar' }, { impl: 'fixture:tokenOf' }],
+  inline: { entries: [{ type: 'p:Foo', impl: 'fixture:Foo', member: 'bar' }, { impl: 'fixture:tokenOf' }] },
 };
 
 // Fixtures live UNDER cwd: ESLint flat-config's `files` glob matches relative to
@@ -140,7 +140,7 @@ describe('inline-authoring rule', () => {
     // the rule reports entryShape once at the Program node, regardless of the
     // body.
     const src = `export const Foo = {\n  bar<T>(this: any): boolean { return true; },\n};\n`;
-    expect(lintInline(src, { inline: [{ type: 'p:X' }] })).toContain('entryShape');
+    expect(lintInline(src, { inline: { entries: [{ type: 'p:X' }] } })).toContain('entryShape');
   });
 
   test('concrete-type primitive body passes the lint (gap 19 mirror)', () => {
