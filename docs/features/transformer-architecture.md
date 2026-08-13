@@ -256,11 +256,11 @@ string anywhere in the primitive stages. Domain knowledge is allowed to arrive a
 a side-parsed sugar body, a checker-resolved symbol, a structurally-detected brand shape — never
 as a name comparison baked into control flow. Two examples of the distinction:
 
-- `schemaof<T>()`'s handling of config's `OPTIONAL` marker: the marker's (module, export-name)
-  identity flows through the engine as a plain `valueimport.Ref` value — a piece of data threaded
-  through a generic "materialize this import once, honoring an existing binding" mechanism — never
-  as a branch that asks "is this config's OPTIONAL." The generalized mechanism (originally config's
-  own `inject.go`) doesn't know or care what it's injecting.
+- the runtime `Type` namespace object a lowered tree is spelled through: its (module, export-name)
+  identity flows to the engine as a plain `valueimport.Ref` value — a piece of data threaded through
+  a generic "materialize this import once, honoring an existing binding" mechanism — never as a
+  branch that asks which package it came from. The mechanism doesn't know or care what it's
+  injecting.
 - `mergesynth`'s per-member strategy guards are generated **in-process** by typia against the
   member's own parameter types, read straight off the checker — nothing about "which family" or
   "which augmentation" is ever named; the stage reacts to shape, not identity.
@@ -282,17 +282,17 @@ Example/Result columns below are each one real lowering pulled from the engine's
 `pkg:` stands in for whatever module the example type is declared in — a real token carries that
 module's actual name instead.
 
-| Primitive                 | Shape     | Lowers to                                                                                                                      | Example                                                      | Result                               | Home                | Stage         |
-| ------------------------- | --------- | ------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------ | ------------------------------------ | ------------------- | ------------- |
-| `tokenfor<T>()`           | type-arg  | the _service_ token for `T` — strips a `Keyed<T,K>` brand to the bare base                                                     | `tokenfor<IBar>()`                                           | `"pkg:IBar"`                         | `primitives.extras` | `nameof`      |
-| `tokenfor(value)`         | value-arg | the _produced_ token for a value — constructable → construct-sig return, callable → call-sig return, else the value's own type | `tokenfor(Foo)` (`class Foo {}`)                             | `"pkg:Foo"`                          | `primitives.extras` | `nameof`      |
-| `tokenof<T>()`            | type-arg  | the _raw_ token for `T` — never strips a `Keyed<T,K>` brand                                                                    | `tokenof<UserOptions>()`                                     | `"pkg:UserOptions"`                  | `primitives.extras` | `nameof`      |
-| `tokenof(value)`          | value-arg | the raw token for a value's _own_ type — never unwraps a constructor/factory                                                   | `tokenof(makeThing)` (`declare function makeThing(): Thing`) | `"pkg:makeThing"`                    | `primitives.extras` | `nameof`      |
-| `keyof<T>()`              | type-arg  | the key literal of a `Keyed<T,K>`, or `void 0` when unkeyed                                                                    | `keyof<Keyed<ICache, "redis">>()`                            | `"redis"`                            | `di.extras`         | `keyof`       |
-| `signatureof(ctor \| fn)` | value-arg | the `[[...]]` dependency-signature array for a constructor or function value                                                   | `signatureof(Ctor)` (`Ctor: new (d: IDep) => IThing`)        | `[["pkg:IDep"]]`                     | `di.extras`         | `signatureof` |
-| `signaturefor<T>()`       | type-arg  | one overload's `DepSlot[]` minted from a tuple type `T`                                                                        | `...signaturefor<[IA, IB]>()`                                | `"pkg:IA", "pkg:IB"` (flattened in)  | `di.core`           | `signatureof` |
-| `signaturesfor<T>()`      | type-arg  | the whole overload set minted from a tuple-of-tuples `T`                                                                       | `...signaturesfor<[[IA], [IA, IB]]>()`                       | `["pkg:IA"], ["pkg:IA", "pkg:IB"]`   | `di.core`           | `signatureof` |
-| `schemaof<T>()`           | type-arg  | the `{...}` runtime JSON-schema literal for a record type `T`                                                                  | `schemaof<{ ssl?: boolean }>()`                              | `{ ssl: { [OPTIONAL]: "boolean" } }` | `config.extras`     | `schemaof`    |
+| Primitive                 | Shape     | Lowers to                                                                                                                      | Example                                                      | Result                                                                                           | Home                | Stage         |
+| ------------------------- | --------- | ------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------ | ------------------------------------------------------------------------------------------------ | ------------------- | ------------- |
+| `tokenfor<T>()`           | type-arg  | the _service_ token for `T` — strips a `Keyed<T,K>` brand to the bare base                                                     | `tokenfor<IBar>()`                                           | `"pkg:IBar"`                                                                                     | `primitives.extras` | `nameof`      |
+| `tokenfor(value)`         | value-arg | the _produced_ token for a value — constructable → construct-sig return, callable → call-sig return, else the value's own type | `tokenfor(Foo)` (`class Foo {}`)                             | `"pkg:Foo"`                                                                                      | `primitives.extras` | `nameof`      |
+| `tokenof<T>()`            | type-arg  | the _raw_ token for `T` — never strips a `Keyed<T,K>` brand                                                                    | `tokenof<UserOptions>()`                                     | `"pkg:UserOptions"`                                                                              | `primitives.extras` | `nameof`      |
+| `tokenof(value)`          | value-arg | the raw token for a value's _own_ type — never unwraps a constructor/factory                                                   | `tokenof(makeThing)` (`declare function makeThing(): Thing`) | `"pkg:makeThing"`                                                                                | `primitives.extras` | `nameof`      |
+| `keyof<T>()`              | type-arg  | the key literal of a `Keyed<T,K>`, or `void 0` when unkeyed                                                                    | `keyof<Keyed<ICache, "redis">>()`                            | `"redis"`                                                                                        | `di.extras`         | `keyof`       |
+| `signatureof(ctor \| fn)` | value-arg | the `[[...]]` dependency-signature array for a constructor or function value                                                   | `signatureof(Ctor)` (`Ctor: new (d: IDep) => IThing`)        | `[["pkg:IDep"]]`                                                                                 | `di.extras`         | `signatureof` |
+| `signaturefor<T>()`       | type-arg  | one overload's `DepSlot[]` minted from a tuple type `T`                                                                        | `...signaturefor<[IA, IB]>()`                                | `"pkg:IA", "pkg:IB"` (flattened in)                                                              | `di.core`           | `signatureof` |
+| `signaturesfor<T>()`      | type-arg  | the whole overload set minted from a tuple-of-tuples `T`                                                                       | `...signaturesfor<[[IA], [IA, IB]]>()`                       | `["pkg:IA"], ["pkg:IA", "pkg:IB"]`                                                               | `di.core`           | `signatureof` |
+| `schemaof<T>()`           | type-arg  | the `Type` tree describing a record type `T`'s members, stopping at every name                                                 | `schemaof<{ ssl?: boolean }>()`                              | `Type.object({ ssl: Type.union(Type.named("boolean", "global"), Type.typeLiteral(undefined)) })` | `config.extras`     | `schemaof`    |
 
 `signaturefor`/`signaturesfor` sit in `di.core` rather than `di.extras` because they produce
 `di.core`'s own `DepSlot` shape and are legitimately callable from hand-written runtime source
@@ -300,19 +300,25 @@ too — a homing choice about the _value_, not about which stage lowers it. Ever
 the table is authoring-only: it throws unconditionally if it ever runs, so it never needs a
 runtime-shaped home.
 
-**`schemaof<T>()` / `.withType<T>()` surface constraints.** The schema walk uses the same
+**`schemaof<T>()` / `.withType<T>()` surface constraints.** The expansion uses the same
 `typesurface` enumeration as the guard walk, but reads the **writable** direction — coercion
 assigns into a field, so a `get`-only accessor is as unusable as a `#`-named field. A type
 whose entire declared surface is unwritable (every member is `#`-named, `private`/`protected`,
-symbol-keyed, or a `get`-only accessor) is hard error 992003: its schema would be `{}`, which
-coerces nothing, and the schema is not emitted. Two boundary cases follow from this:
+symbol-keyed, or a `get`-only accessor) is hard error 992003: its expansion would be an object type
+with no members, which describes nothing, and nothing is emitted. Two boundary cases follow:
 
-- `Partial<T>`, `Readonly<T>`, and `Pick<T, K>` produce a schema. These are mapped types, and
-  a mapped type's reminted symbols still carry the original accessor declarations — so the
-  writable surface is faithfully enumerated through any of them.
+- `Partial<T>`, `Readonly<T>`, and `Pick<T, K>` expand. These are mapped types, and a mapped
+  type's reminted symbols still carry the original accessor declarations — so the writable
+  surface is faithfully enumerated through any of them.
 - A type whose only members are `get`-only accessors (nothing writable) is refused with hard
-  error 992003. The same type would succeed as a guard target (its accessors are readable), but
-  a schema for it would be `{}` — so the walk stops rather than emitting one.
+  error 992003. The same type would succeed as a guard target (its accessors are readable).
+
+**Expansion stops at a name.** A member whose type has a name of its own is kept as that name —
+spelled exactly as `typefor` would have spelled it — and is never opened up. Only what has no name
+of its own (an inline structure, a tuple) is expanded in place. That is what makes the walk
+terminating without a depth cap or a visited set: a self-referential type reaches its own name and
+stops. It also means the refusal above only ever reaches a type the walk actually opens up; a member
+naming a class never has that class's surface consulted at all.
 
 ## The generic inline stage
 
@@ -541,13 +547,14 @@ export const ConfigBuilderInline = { withType<T>(this: IWithSchemaTarget): unkno
 } };
 ```
 
-`schemaof<T>()` walks `T`'s member shape (nested records, casing, optionality) into the same
-runtime schema-literal grammar `withSchema({...})` accepts by hand — the walk itself is a
-domain-free "type → structural literal" engine; the config-specific part is only the _identity_ of
-the `OPTIONAL` wrapper it emits for an optional field, threaded through as data (see [Domain lives in TypeScript, not in Go](#domain-lives-in-typescript-not-in-go)). An unsupported field shape
-(union, tuple, function, index signature, a non-object root) is a targeted diagnostic naming the
-unsupported construct, and leaves the `schemaof<T>()` call un-lowered rather than emitting a wrong
-schema.
+`schemaof<T>()` expands `T`'s member shape (casing, optionality, inline structures) into the same
+`Type` tree `withSchema(Type.object({...}))` accepts by hand. Nothing about the walk is
+config-specific: it is a domain-free "type → `Type` tree" engine, and the only identity it carries
+is the runtime `Type` namespace object it spells the tree through, threaded as data (see
+[Domain lives in TypeScript, not in Go](#domain-lives-in-typescript-not-in-go)). A member the Type
+grammar has no spelling for (a callable, an anonymous structure with no nameable shape, an index
+signature), or a non-object root, is a targeted diagnostic naming the construct, and leaves the
+`schemaof<T>()` call un-expanded rather than emitting a wrong tree.
 
 ## Parse-anchoring: the checker only ever sees pass-0 syntax
 

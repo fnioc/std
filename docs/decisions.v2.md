@@ -1414,3 +1414,46 @@ body's value parameters align 1:1 with its call's arguments, and `this`-substitu
 `function`, method, accessor, constructor, class, or static block. mergesynth derives guards and
 arity bounds from the member's own parameters (`params[i]` guards `args[i]`), skipping only an
 explicit type-only `this` parameter.
+
+## §137 — The Type grammar is the only structural vocabulary; a primitive names, expands, or observes
+
+**`schemaof<T>()` yields a `Type` tree.** There is no second vocabulary for describing a shape at
+runtime. The config schema was the last holdout — kind-name strings (`"string"` / `"number"` /
+`"boolean"`), plain nested objects, and an `OPTIONAL`-symbol wrapper — and it is gone, along with
+`Schema`, `ObjectSchema`, `OptionalSchema`, `OPTIONAL` and `Infer`. A schema is now
+`Type.object({...})` at every level, a global `string` / `number` / `boolean` at each leaf, and a
+union with `undefined` for a member the configuration may leave out —
+`Type.union(inner, Type.typeLiteral(undefined))`, the one spelling the union canonicalizer keeps
+intact, since nothing subsumes a nullish member.
+
+**Three verbs, one vocabulary.** A type-argument primitive does exactly one of three things, and its
+name says which: `typefor<T>()` NAMES a type (a named type yields its interned `NamedType` address),
+`schemaof<T>()` EXPANDS one (the members of the type it was handed), `signatureof(ctor)` OBSERVES a
+runtime constructor. `tokenfor` / `tokenof` remain the string-token pair pending their own held
+retirement. That is the whole transformable roster.
+
+**Expansion stops at a name.** A member whose type has a name of its own keeps it, spelled exactly
+as `typefor` would have spelled it. Only what has no name — an inline structure, a tuple — is opened
+up in place. This is what the two verbs being distinct MEANS: the expansion adds the members of one
+type and names everything inside it, so a self-referential type terminates by construction rather
+than by a depth cap or a visited set. Its cost is real and accepted: a member naming an interface is
+an address, so a coercion driven by that schema has no structure to descend into and says so.
+
+**Structurally equal expansions are one node.** Two types that expand to the same tree intern to the
+same `ObjectType`. That is correct, not a collision: a structural description is not an address, and
+nothing downstream may read identity as provenance.
+
+**The static image is stated, not inferred.** `Type.object` and `Type.named` erase their arguments'
+literal types, so no type-level image can be recovered from a tree — `Infer<S>` was possible only
+because the retired grammar was made of string literals. `withSchema<U>(schema: ObjectType)` takes
+the shape as a type argument instead: the tree states the shape at runtime, the argument states the
+same shape to the compiler, and a hand-writer names it once at the call site. The sugar is
+unaffected — `withType<U>()` already carried `U` in its own signature.
+
+**`signaturefor`, `signaturesfor` and `keyof` are retired.** All three had zero declarations and
+zero call sites across `libraries/`; they survived only as engine stages, inline-stage support
+machinery, and authoring-lint entries. A primitive nothing authors is not a capability, so they are
+deleted rather than kept warm — the stage table, the `knownPrimitives` roster, and the lint's
+`PRIMITIVE_HOMES` all shrink to what is reachable from authored code.
+
+_Owner-directed 2026-08-13._

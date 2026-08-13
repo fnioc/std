@@ -214,7 +214,10 @@ where that's cheap, and flag the intended divergence rather than pre-emptively t
   (`IniStreamParser` grammar), and `config.xml` (a self-contained tokenizer, NO XML-parser dep;
   encrypted-config decryptor and `KeyPerFile` out of scope). Hosting's default `reloadOnChange` stays
   OFF pending file-provider-watcher disposal ownership (§75, the #182 disposal question).
-  `config.extras` rewrites `.withType<T>()` via the generic `schemaof<T>()` primitive and is
+  A schema is a **`Type` tree** — `Type.object({...})` at every level, a global `string`/`number`/
+  `boolean` at each leaf, a union with `undefined` for an omittable member (§137); `withSchema<U>`
+  takes the shape as a type argument, since a `Type` tree carries no type-level image.
+  `config.extras` rewrites `.withType<T>()` via the `schemaof<T>()` expansion primitive and is
   standalone — di-independent (§15).
 - **`hosting`** — `hosting.core` (`IHost`/`IHostedService`/`IHostedLifecycleService`/
   `BackgroundService`/`IHostApplicationLifetime`/`IHostLifetime`/`IHostBuilder`/
@@ -501,6 +504,14 @@ per-family Go stage (§117). The lowered output equals what a no-transformer aut
 tag `pre-tspatch-removal`); lint/typecheck is plain `tsc`. Go comes from **mise only**, never
 system-wide — `mise.toml` declares it, but as `latest`, not a pinned version. Full mechanics:
 `docs/features/transformer-architecture.md`.
+
+**The primitive roster is three verbs over one vocabulary (§137)**: `typefor<T>()` NAMES a type (a
+named type yields its interned `NamedType` address), `schemaof<T>()` EXPANDS one into the `Type`
+tree describing its members — stopping at every name, so recursion terminates by construction —
+and `signatureof(ctor)` OBSERVES a runtime constructor. `tokenfor`/`tokenof` are the string-token
+pair, pending their own held retirement. There is no second structural vocabulary: the bespoke
+config schema grammar (`Schema`/`Infer`/`OPTIONAL`) and the `signaturefor`/`signaturesfor`/`keyof`
+primitives are all retired.
 
 - **Descriptor wiring — one always-on stage table, NO selection (§119).** Every `*.extras` package's
   `./ttsc` descriptor resolves to the SAME `cmd/ttsc-std` source dir under the SAME name, so `ttsc`
