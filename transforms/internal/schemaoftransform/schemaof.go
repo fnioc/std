@@ -57,7 +57,6 @@ func New(prog *driver.Program, types *tokens.Context, artifacts *inlinetransform
 		binding := valueimport.Resolve(sf, typeemit.Ref)
 		ex := &expansion{
 			checker: checker,
-			program: prog,
 			types:   types,
 			factory: factory,
 			binding: binding,

@@ -5,7 +5,6 @@ import (
 
 	shimast "github.com/microsoft/typescript-go/shim/ast"
 	shimchecker "github.com/microsoft/typescript-go/shim/checker"
-	"github.com/samchon/ttsc/packages/ttsc/driver"
 
 	"github.com/fnioc/std/transforms/internal/tokens"
 	"github.com/fnioc/std/transforms/internal/typeemit"
@@ -54,7 +53,6 @@ const (
 // and the caller materializes the import via valueimport.Ensure afterward.
 type expansion struct {
 	checker       *shimchecker.Checker
-	program       *driver.Program
 	types         *tokens.Context
 	factory       *shimast.NodeFactory
 	binding       *valueimport.Binding
