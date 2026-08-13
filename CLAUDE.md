@@ -365,6 +365,20 @@ before touching):
   (`ILoggingBuilder`, `IMetricsBuilder`, `IHostApplicationBuilder`) exposes it as a WRITABLE slot
   (a local structural `ManifestSlot`) and siblings over one manifest share ONE holder;
   `IHostBuilder.configureServices` takes a RETURNING delegate (§114).
+- **A bare-hole slot delivers the closing TYPE** — in an open registration, a signature slot that
+  IS the generic hole receives the bound closing `Type` node, never an instance and never a
+  registration lookup (`ILogger<$1>` → `Logger`'s category; `ILoggerProviderConfig<$1>` → its
+  section). A hole nested INSIDE a larger slot closes into that expression and resolves as an
+  ordinary service, so one signature carries both readings. An instance of the bare closing type
+  is inexpressible by design — take `IServiceProvider` beside the delivered type and look it up.
+  No `Type` kind carries the distinction: the slot's shape is read BEFORE substitution, which is
+  why the registry hands the lowering the registration plus its captured bindings rather than an
+  already-substituted descriptor (§157).
+- **A plan belongs to its manifest** — plans cache against the manifest; a resolution carrying
+  additional descriptors (a latebound call's arguments) resolves an ephemeral COMPOSED manifest
+  that neither reads nor writes the shared cache, and whose additionals outrank the manifest's own
+  registrations. Union choice is decided per-manifest against that call's full descriptor universe,
+  and a chosen member's RUNTIME failure fails the resolution — never a fallthrough (§158).
 - **Runtime identity is load-bearing** — `di` keeps `di.core` _external_ in its bundle so the
   `Manifest` cross-package augmentations install onto is the same object everywhere;
   a private inlined copy forks identity and breaks the install (§9). config keeps providers
