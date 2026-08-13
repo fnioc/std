@@ -94,13 +94,18 @@ func Sweep(sf *shimast.SourceFile, artifacts *Artifacts) []plugin.Diagnostic {
 		// (3) surviving free-function sugar: an identifier call to a certified
 		// function while the file still imports that name FROM THE DECLARING PACKAGE.
 		// The module is what identifies the sugar — a same-named function imported
-		// from anywhere else is a different function, and a sugar body that forwards
-		// to its own runtime namesake makes that pairing ordinary.
+		// from anywhere else is a different function, and a call importing the name
+		// from the entry's declared forwarding target (`from`) is the runtime
+		// target itself, never sugar residue.
 		if call.Expression.Kind == shimast.KindIdentifier {
 			name := call.Expression.Text()
-			if pkg, ok := artifacts.SugarFunctions[name]; ok && imports[name] == pkg {
-				diags = append(diags, sweepDiag("INLINE_UNLOWERED_SUGAR", n,
-					fmt.Sprintf("free-function sugar %q survived lowering", name)))
+			pkg := imports[name]
+			for _, fn := range artifacts.FunctionSugars {
+				if fn.Member == name && pkg == fn.Module {
+					diags = append(diags, sweepDiag("INLINE_UNLOWERED_SUGAR", n,
+						fmt.Sprintf("free-function sugar %q survived lowering", name)))
+					break
+				}
 			}
 		}
 		return false

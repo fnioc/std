@@ -20,7 +20,7 @@ import (
 
 // buildResolveInlineWorkspace lays out the RESOLVE-family inline workspace: a core
 // package literally named `@rhombus-std/di.core` carrying the runtime resolve
-// surface plus the `rhombus.inline` resolve / resolveAsync / tryResolve entries and
+// surface plus the `rhombus-std` inline resolve / resolveAsync / tryResolve entries and
 // the real `ResolverInline` body
 // (`resolve<T>() => isSingular<T>() ? singularValue<T>() : this.resolve(tokenof<T>())`),
 // so the SAME tokenless resolve call can be lowered two ways — through the INLINE
@@ -37,11 +37,11 @@ func buildResolveInlineWorkspace(t *testing.T, mainSrc string) (*driver.Program,
   "name": "@rhombus-std/di.core",
   "version": "1.0.0",
   "exports": { ".": { "types": "./src/index.ts", "default": "./src/index.ts" } },
-  "rhombus.inline": {
-    "entries": [
-      { "type": "@rhombus-std/di.core:IRequiredResolver", "impl": "ResolverInline", "member": "resolve" },
-      { "type": "@rhombus-std/di.core:IResolver", "impl": "ResolverInline", "member": "resolveAsync" },
-      { "type": "@rhombus-std/di.core:IResolver", "impl": "ResolverInline", "member": "tryResolve" }
+  "rhombus-std": {
+    "inline": [
+      { "type": "@rhombus-std/di.core:IRequiredResolver", "impl": "@rhombus-std/di.core:ResolverInline", "member": "resolve" },
+      { "type": "@rhombus-std/di.core:IResolver", "impl": "@rhombus-std/di.core:ResolverInline", "member": "resolveAsync" },
+      { "type": "@rhombus-std/di.core:IResolver", "impl": "@rhombus-std/di.core:ResolverInline", "member": "tryResolve" }
     ]
   }
 }`)

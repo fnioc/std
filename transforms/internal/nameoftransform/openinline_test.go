@@ -16,7 +16,7 @@ import (
 )
 
 // buildInlinePresetWorkspace lays out the di.core inline PRESET workspace: a core
-// package literally named `@rhombus-std/di.core` carrying the `rhombus.inline`
+// package literally named `@rhombus-std/di.core` carrying the `rhombus-std` inline
 // `addClass` entry and the real ServiceManifestInline body
 // (`addClass<T>(ctor) => this.addClass(tokenfor<T>(), ctor, signatureof(ctor))`), so the SAME
 // open-template registration can be lowered two ways — through the INLINE pipeline
@@ -32,9 +32,7 @@ func buildInlinePresetWorkspace(t *testing.T, mainSrc string) (*driver.Program, 
   "name": "@rhombus-std/di.core",
   "version": "1.0.0",
   "exports": { ".": { "types": "./src/index.ts", "default": "./src/index.ts" } },
-  "rhombus.inline": {
-    "entries": [ { "type": "@rhombus-std/di.core:IServiceManifestBase", "impl": "ManifestInline", "member": "addClass" } ]
-  }
+  "rhombus-std": { "inline": [ { "type": "@rhombus-std/di.core:IServiceManifestBase", "impl": "@rhombus-std/di.core:ManifestInline", "member": "addClass" } ] }
 }`)
 	writeFile(t, filepath.Join(core, "src", "index.ts"), `export interface IServiceManifestBase {
   addClass(token: string, ctor: unknown, sig: unknown, scope?: string, key?: string): unknown;

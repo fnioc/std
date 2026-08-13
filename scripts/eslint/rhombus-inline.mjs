@@ -14,7 +14,7 @@
 import { existsSync, readFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 
-import { entryKind, loadInlineEntries } from './inline-entries.mjs';
+import { entryKind, loadInlineEntries, parseTypeRef } from './inline-entries.mjs';
 
 // Each compile-time primitive maps to its HOME module — the module an inline body
 // may import it from. `typefor` / `tokenfor` / `tokenof` are pure transformables
@@ -29,11 +29,8 @@ import { entryKind, loadInlineEntries } from './inline-entries.mjs';
 const PRIMITIVE_HOMES = { typefor: '@rhombus-std/primitives.extras', tokenfor: '@rhombus-std/primitives.extras',
   tokenof: '@rhombus-std/primitives.extras', signaturefor: '@rhombus-std/di.core',
   signaturesfor: '@rhombus-std/di.core', signatureof: '@rhombus-std/di.extras', keyof: '@rhombus-std/di.extras',
-  keyedtokenfor: '@rhombus-std/di.extras', valueof: '@rhombus-std/di.extras',
-  isSingular: '@rhombus-std/primitives.extras', singularValue: '@rhombus-std/primitives.extras',
-  isFactory: '@rhombus-std/primitives.extras', returntokenfor: '@rhombus-std/primitives.extras',
-  paramtokensfor: '@rhombus-std/primitives.extras', schemaof: '@rhombus-std/config.extras',
-  typefor: '@rhombus-std/primitives.extras' };
+  valueof: '@rhombus-std/di.extras', isSingular: '@rhombus-std/primitives.extras',
+  singularValue: '@rhombus-std/primitives.extras', schemaof: '@rhombus-std/config.extras' };
 
 /** Walks up from a file to the nearest directory containing a package.json. */
 function findPackageDir(/** @type {string} */ file) {
@@ -61,9 +58,9 @@ function readPackageName(/** @type {string} */ packageDir) {
 
 /** @type {import('eslint').Rule.RuleModule} */
 const rule = {
-  meta: { type: 'problem', docs: { description: 'Enforce inlineable sugar-body hygiene for the rhombus.inline stage.' },
-    schema: [],
-    messages: { entryShape: 'rhombus.inline publish list is malformed: {{detail}}',
+  meta: { type: 'problem',
+    docs: { description: 'Enforce inlineable sugar-body hygiene for the rhombus-std inline stage.' }, schema: [],
+    messages: { entryShape: 'rhombus-std inline publish list is malformed: {{detail}}',
       singleReturn: 'An inlineable sugar body must be exactly one `return <expr>;`.',
       bannedSyntax: "A sugar body's returned expression may not use {{syntax}} (single compile-time expression only).",
       paramReuse:
@@ -94,21 +91,23 @@ const rule = {
       } };
     }
 
-    // Impl → set of member names to check (member kind); free functions map their
-    // own name to a sentinel.
+    // Impl's bare NAME (the local declaration a body's export binds to, never
+    // the fully-qualified marker string) → set of member names to check (member
+    // kind); floaters map their own bare name to a sentinel.
     /** @type {Map<string, Set<string>>} */
     const implMembers = new Map();
     /** @type {Set<string>} */
     const freeFns = new Set();
     for (const e of entries) {
       const { kind } = entryKind(e);
+      const implName = parseTypeRef(e.impl).name;
       if (kind === 'member') {
-        if (!implMembers.has(e.impl)) {
-          implMembers.set(e.impl, new Set());
+        if (!implMembers.has(implName)) {
+          implMembers.set(implName, new Set());
         }
-        implMembers.get(e.impl).add(e.member);
-      } else if (kind === 'function') {
-        freeFns.add(e.impl);
+        implMembers.get(implName).add(e.member);
+      } else if (kind === 'floater') {
+        freeFns.add(implName);
       }
     }
     // The set of all listed names (for the nesting check).

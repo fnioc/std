@@ -61,28 +61,24 @@ import (
 // the flat string token. It homes beside `tokenfor` / `tokenof` in
 // `@rhombus-std/primitives.extras`.
 var knownPrimitives = map[string]string{
-	"tokenfor":       "@rhombus-std/primitives.extras",
-	"tokenof":        "@rhombus-std/primitives.extras",
-	"keyedtokenfor":  "@rhombus-std/di.extras",
-	"signatureof":    "@rhombus-std/di.extras",
-	"keyof":          "@rhombus-std/di.extras",
-	"signaturefor":   "@rhombus-std/di.core",
-	"signaturesfor":  "@rhombus-std/di.core",
-	"valueof":        "@rhombus-std/di.extras",
-	"isSingular":     "@rhombus-std/primitives.extras",
-	"singularValue":  "@rhombus-std/primitives.extras",
-	"isFactory":      "@rhombus-std/primitives.extras",
-	"returntokenfor": "@rhombus-std/primitives.extras",
-	"paramtokensfor": "@rhombus-std/primitives.extras",
-	"schemaof":       "@rhombus-std/config.extras",
-	"typefor":        "@rhombus-std/primitives.extras",
+	"tokenfor":      "@rhombus-std/primitives.extras",
+	"tokenof":       "@rhombus-std/primitives.extras",
+	"signatureof":   "@rhombus-std/di.extras",
+	"keyof":         "@rhombus-std/di.extras",
+	"signaturefor":  "@rhombus-std/di.core",
+	"signaturesfor": "@rhombus-std/di.core",
+	"valueof":       "@rhombus-std/di.extras",
+	"isSingular":    "@rhombus-std/primitives.extras",
+	"singularValue": "@rhombus-std/primitives.extras",
+	"schemaof":      "@rhombus-std/config.extras",
+	"typefor":       "@rhombus-std/primitives.extras",
 }
 
 // knownAuthoringMarkers maps each MODULE-LEVEL authoring marker an impl file may
 // import to its HOME module. A marker is the one import category that never
 // appears INSIDE a body: it is a no-op call placed BESIDE a body set
 // (`registerInlineBodies(ManifestChainInline)`) stating in code that the set is
-// published in its package's package.json "rhombus.inline" list — the one
+// published in its package's package.json "rhombus-std" marker "inline" list — the one
 // relationship a reader would otherwise have to open the manifest to discover.
 //
 // It is named here for one reason: a marker is a VALUE import, so without this
@@ -184,13 +180,20 @@ func (b *bodyExtractor) parseFile(path string) (*shimast.SourceFile, error) {
 }
 
 // Extract locates the impl body for entry e in packageDir and returns the
-// resolved body. It follows the impl-file search order (entry file → intra-
-// package re-exports → the conventional src/inline.ts fallback), then reads the
-// member (or free-function) signature and the impl file's primitive imports.
+// resolved body. e.Impl is a fully-qualified "<package>:<Name>" reference (Kind
+// has already certified it self-references packageDir); Name is what the
+// impl-file search order (entry file → intra-package re-exports → the
+// conventional src/inline.ts fallback) looks for. It then reads the member (or
+// floater) signature and the impl file's primitive imports.
 func (b *bodyExtractor) Extract(packageDir string, e Entry) (*ResolvedBody, error) {
 	kind, _ := e.Kind()
 
-	implFile, implNode, err := b.locateImpl(packageDir, e.Impl)
+	implRef, err := ParseTypeRef(e.Impl)
+	if err != nil {
+		return nil, fmt.Errorf("INLINE_ENTRY_SHAPE: %w", err)
+	}
+
+	implFile, implNode, err := b.locateImpl(packageDir, implRef.Name)
 	if err != nil {
 		return nil, err
 	}
@@ -198,7 +201,7 @@ func (b *bodyExtractor) Extract(packageDir string, e Entry) (*ResolvedBody, erro
 
 	var memberNode *shimast.Node
 	switch kind {
-	case KindFunction:
+	case KindFloater:
 		memberNode = implNode // the function declaration itself
 	default:
 		memberNode = findMemberDeclaration(implNode, e.Member)
@@ -223,7 +226,7 @@ func (b *bodyExtractor) Extract(packageDir string, e Entry) (*ResolvedBody, erro
 	// reduce to the same value-parameter list, which is what an overload's
 	// declaration can be compared against.
 	receiverParam := ""
-	if kind != KindFunction && !hasThisParameter(memberNode) && len(params) > 0 {
+	if kind != KindFloater && !hasThisParameter(memberNode) && len(params) > 0 {
 		receiverParam = params[0]
 		params = params[1:]
 		disc.Params = disc.Params[1:]

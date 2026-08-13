@@ -16,11 +16,11 @@
     "directory": "libraries/primitives.extras"
   },
   "type": "module",
-  "//rhombus.inline": "The registerAugmentations<R>() sugar's inline publish list. A free-function entry: `impl` names the exported function in THIS package, and its own single-return body is what the inline stage substitutes at a consumer call site. The body reads `register(typefor<R>(), set, ...rest)`, where `register` is the aliased @rhombus-std/primitives runtime function — the alias is what lets the sugar carry the runtime name — so a consumer's lowered call is the explicit receiver-first registration, with the runtime import carried across from this file.",
-  "rhombus.inline": {
-    "entries": [
+  "//rhombus-std": "The registerAugmentations<R>() sugar's inline publish list. A floater entry: impl is a fully-qualified reference to the exported function in THIS package, and its own single-return body — over the aliased @rhombus-std/primitives runtime function it calls — is what the inline stage substitutes at a consumer call site, with the runtime import carried across from this file.",
+  "rhombus-std": {
+    "inline": [
       {
-        "impl": "registerAugmentations"
+        "impl": "@rhombus-std/primitives.extras:registerAugmentations"
       }
     ]
   },

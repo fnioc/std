@@ -18,7 +18,7 @@ An inline-stage primitive that is ONLY ever called inside inline bodies (never i
 - `schemaof` (config `Schema` from a type) → `config.transformer`, which peers on `config` and already owns the `ts.Type`→`Schema` codegen + the `OPTIONAL` import injection.
 - `tokenfor` STAYS in `@rhombus-std/primitives` — it is the one primitive called in RUNTIME source (`registerAugmentations(tokenfor<T>(), …)`), so every runtime package must import it. That runtime call-site is the discriminator between a universal primitive and an authoring-only one.
 
-Consequences: the inline BODIES and their `rhombus.inline` markers move to the transformer packages too — a runtime package cannot depend on its own transformer (the reverse of the real edge) — which deletes the old "inline.ts excluded from the runtime bundle" gymnastics; runtime packages stay clean. The Go inliner gate becomes a `knownPrimitives` name→home-module map (multi-package). This dissolves the prior schemaof blocker with no gate-widening and no hoisting of config's `Schema`/`OPTIONAL` into the zero-dependency leaf.
+Consequences: the inline BODIES and their `rhombus-std` `inline` markers move to the transformer packages too — a runtime package cannot depend on its own transformer (the reverse of the real edge) — which deletes the old "inline.ts excluded from the runtime bundle" gymnastics; runtime packages stay clean. The Go inliner gate becomes a `knownPrimitives` name→home-module map (multi-package). This dissolves the prior schemaof blocker with no gate-widening and no hoisting of config's `Schema`/`OPTIONAL` into the zero-dependency leaf.
 
 Implementation notes: a primitive cannot be self-imported by its own package name (bun's isolated linker makes no self-symlink → `tsc` fails), so an inline body imports its own package's primitive RELATIVELY (`./signatureof.js`); the gate scanner and the `inline-authoring` eslint rule accept the home-module specifier OR a package-relative one within the primitive's own package. A consumer or fixture of a moved primitive must depend on the transformer package (it peers on the runtime, so it isn't reachable from a runtime-only dep graph). Landed #246 (signatureof); schemaof → config.transformer is the follow-up. _Owner-directed 2026-07-18._
 
@@ -203,7 +203,7 @@ entry records only the ruling. _Owner-approved 2026-07-16._
 
 ## §91 — Inline-stage matching is by symbol identity, not a string key
 
-A `rhombus.inline` entry's `type`+`member` pair resolves through the checker to a symbol, once per
+A `rhombus-std` `inline` entry's `type`+`member` pair resolves through the checker to a symbol, once per
 program: the type reference resolves to a module symbol, then to the merged member symbol that
 TypeScript's declaration merging has already unified from every `declare module` augmentation of
 the interface. Each call site independently resolves its own signature → declaration → symbol, and
@@ -251,7 +251,7 @@ call, applying §92's homing rule to this family. _Owner-directed 2026-07-18._
 
 ## §95 — `addOptions` sugar homes in its transformer satellite
 
-The phantom `addOptions<T>()` typing, its certified inline body, and the `rhombus.inline` marker all
+The phantom `addOptions<T>()` typing, its certified inline body, and the `rhombus-std` `inline` marker all
 live in `di.transformer.options` (per §92); `options.augmentations` keeps only the runtime explicit
 verbs. The compile-time guard stands: without the satellite in the program, the 0-arg form does not
 typecheck — no compiles-then-throws.
@@ -360,13 +360,13 @@ consumer regardless of whether it actually uses sugar. A dependency on a `*.tran
 a precise "I use this family's sugar" signal, since transformer packages peer on their cores and
 are otherwise unreachable from a plain runtime dependency graph.
 
-The same recursive scan that activates stages also collects certified bodies (the `rhombus.inline`
-markers, §91), including from the consumer package itself; a third-party sugar library's own
+The same recursive scan that activates stages also collects certified bodies (the `rhombus-std`
+`inline` markers, §91), including from the consumer package itself; a third-party sugar library's own
 consumers receive the needed stages transitively, through that library's `*.transformer`
 dependencies, with no action of their own. Explicit `tsconfig.ttsc.json` declaration (§90) remains
 the override and opt-out path.
 
-A plain consumer never authors a `rhombus.inline` marker. Authoring one makes a package a toolchain
+A plain consumer never authors a `rhombus-std` `inline` marker. Authoring one makes a package a toolchain
 participant, whose obligations arrive as a bundle: its inline bodies must be certified
 single-expression forms (§91), its body sources ship in the published files, it carries its own
 auto-discovery marker, and it builds through the same transform machinery as every other
@@ -467,7 +467,7 @@ mergesynth — are family-neutral machinery under `transforms/internal/*`, surfa
 `primitives.transformer` (its `ttsc.stages` set, plus the `./inline-ttsc` / `./signatureof-ttsc`
 single-stage override descriptors). A family's own `*.transformer` (di.transformer,
 di.transformer.options, config.transformer) owns only its per-family sugar: the phantom typings, the
-`rhombus.inline` BODIES (§91), and its own stage (`di` / `di_options` / `config`). This complements
+`rhombus-std` `inline` BODIES (§91), and its own stage (`di` / `di_options` / `config`). This complements
 §92's primitive-STUB homing — the stubs and their typings stay in their domain transformer; §104
 records where the STAGE machinery lives.
 

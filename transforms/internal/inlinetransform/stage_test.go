@@ -15,7 +15,7 @@ import (
 
 // buildWorkspace lays out the standard two-package member-sugar workspace with
 // caller-supplied core barrel, impl body, consumer declare-module, and consumer
-// main. The rhombus.inline entry is always the pilot member entry (IQuery /
+// main. The rhombus-std inline entry is always the pilot member entry (IQuery /
 // QueryInline / isService). It returns the loaded consumer program and app dir.
 // Focused variants that need a different entry (free-function, no-witness) have
 // their own setup.
@@ -29,9 +29,7 @@ func buildWorkspace(t *testing.T, coreIndex, inlineBody, sugarDTS, mainSrc strin
   "name": "@scope/core",
   "version": "1.0.0",
   "exports": { ".": { "types": "./src/index.ts", "default": "./src/index.ts" } },
-  "rhombus.inline": {
-    "entries": [ { "type": "@scope/core:IQuery", "impl": "QueryInline", "member": "isService" } ]
-  }
+  "rhombus-std": { "inline": [ { "type": "@scope/core:IQuery", "impl": "@scope/core:QueryInline", "member": "isService" } ] }
 }`)
 	write(t, filepath.Join(core, "src", "index.ts"), coreIndex)
 	write(t, filepath.Join(core, "src", "inline.ts"), inlineBody)
@@ -325,7 +323,7 @@ func setupFreeFunctionInlineWorkspace(t *testing.T) (*driver.Program, string) {
   "name": "@scope/prims",
   "version": "1.0.0",
   "exports": { ".": { "types": "./src/index.ts", "default": "./src/index.ts" } },
-  "rhombus.inline": { "entries": [ { "impl": "identity" } ] }
+  "rhombus-std": { "inline": [ { "impl": "@scope/prims:identity" } ] }
 }`)
 	write(t, filepath.Join(prims, "src", "index.ts"), `export function identity<T>(value: T): T {
   return value;
@@ -398,8 +396,17 @@ func TestStageInlinesFreeFunction(t *testing.T) {
 	if !strings.Contains(out, "keep") {
 		t.Errorf("the still-used `keep` import must survive elision, got:\n%s", out)
 	}
-	if got := artifacts.SugarFunctions["identity"]; got != "@scope/prims" {
-		t.Fatalf("SugarFunctions[identity] = %q, want @scope/prims", got)
+	found := false
+	for _, fn := range artifacts.FunctionSugars {
+		if fn.Member == "identity" {
+			found = true
+			if fn.Module != "@scope/prims" {
+				t.Fatalf("FunctionSugars[identity].Module = %q, want @scope/prims", fn.Module)
+			}
+		}
+	}
+	if !found {
+		t.Fatal("FunctionSugars has no entry for identity")
 	}
 	parse(t, "/free-out.ts", out)
 }
@@ -429,7 +436,7 @@ func setupImportedValueWorkspace(t *testing.T) (*driver.Program, string) {
   "name": "@scope/prims",
   "version": "1.0.0",
   "exports": { ".": { "types": "./src/index.ts", "default": "./src/index.ts" } },
-  "rhombus.inline": { "entries": [ { "impl": "wrap" } ] }
+  "rhombus-std": { "inline": [ { "impl": "@scope/prims:wrap" } ] }
 }`)
 	linkPackage(t, prims, "@scope/runtime", runtime)
 	write(t, filepath.Join(prims, "src", "index.ts"), `import { record as capture } from '@scope/runtime';
@@ -547,9 +554,7 @@ func setupWorkspace(t *testing.T) (*driver.Program, string) {
   "name": "@scope/core",
   "version": "1.0.0",
   "exports": { ".": { "types": "./src/index.ts", "default": "./src/index.ts" } },
-  "rhombus.inline": {
-    "entries": [ { "type": "@scope/core:IQuery", "impl": "QueryInline", "member": "isService" } ]
-  }
+  "rhombus-std": { "inline": [ { "type": "@scope/core:IQuery", "impl": "@scope/core:QueryInline", "member": "isService" } ] }
 }`)
 	write(t, filepath.Join(core, "src", "index.ts"), `export interface IQuery {
   isService(token: string): boolean;
@@ -674,9 +679,7 @@ func setupDeclareModuleOverloadWorkspace(t *testing.T) (*driver.Program, string)
   "name": "@scope/core",
   "version": "1.0.0",
   "exports": { ".": { "types": "./src/index.ts", "default": "./src/index.ts" } },
-  "rhombus.inline": {
-    "entries": [ { "type": "@scope/core:IQuery", "impl": "QueryInline", "member": "isService" } ]
-  }
+  "rhombus-std": { "inline": [ { "type": "@scope/core:IQuery", "impl": "@scope/core:QueryInline", "member": "isService" } ] }
 }`)
 	// The interface is empty here — every isService overload arrives through the
 	// consumer's declare-module augmentation below.

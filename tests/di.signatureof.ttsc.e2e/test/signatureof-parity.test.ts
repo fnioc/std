@@ -11,7 +11,7 @@ import { basename, join, resolve } from 'node:path';
 // they emit byte-identical output:
 //
 //   The type-driven `addClass<I>(C)` / `addFactory<I>(fn)` sugar bodies
-//   (di.extras's rhombus.inline entries) substitute to
+//   (di.extras's rhombus-std inline entries) substitute to
 //   `this.addClass(tokenfor<I>(), C, signatureof(C))`; tokenfor lowers the token,
 //   signatureof lowers the dependency-signature array, leaving the resulting
 //   3-argument `addClass(...)` in place. `addValue<I>(value)` substitutes to
@@ -164,7 +164,7 @@ function setupWorkspace(): void {
   link(PRIMITIVES_TRANSFORMER, join(nm, '@rhombus-std', 'primitives.extras'));
 
   // The consumer must depend on di.core (the type ANCHOR the inline entries name)
-  // AND di.extras (which now owns the rhombus.inline publish list + the
+  // AND di.extras (which now owns the rhombus-std inline publish list + the
   // signatureof primitive), so the inline collector walks to both.
   writeFileSync(
     join(projDir, 'package.json'),

@@ -37,9 +37,7 @@ func buildTransitiveWorkspace(t *testing.T, mainSrc string) (*driver.Program, st
   "name": "@scope/core",
   "version": "1.0.0",
   "exports": { ".": { "types": "./src/index.ts", "default": "./src/index.ts" } },
-  "rhombus.inline": {
-    "entries": [ { "type": "@scope/core:IQuery", "impl": "QueryInline", "member": "isService" } ]
-  }
+  "rhombus-std": { "inline": [ { "type": "@scope/core:IQuery", "impl": "@scope/core:QueryInline", "member": "isService" } ] }
 }`)
 	writeT(t, filepath.Join(core, "src", "index.ts"), `export interface IQuery {
   isService(token: string): boolean;
@@ -126,7 +124,7 @@ func writeT(t *testing.T, path, content string) {
 func transitiveEntry(app string) OwnedEntry {
 	core := filepath.Join(filepath.Dir(app), "core")
 	return OwnedEntry{
-		Entry:      Entry{Type: "@scope/core:IQuery", Impl: "QueryInline", Member: "isService"},
+		Entry:      Entry{Type: "@scope/core:IQuery", Impl: "@scope/core:QueryInline", Member: "isService"},
 		PackageDir: core,
 	}
 }
