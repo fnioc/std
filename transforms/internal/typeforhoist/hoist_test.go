@@ -10,7 +10,7 @@ func clockNode() *Node {
 }
 
 func TestOneConstPerDistinctNode(t *testing.T) {
-	registry := NewRegistry()
+	registry := NewRegistry(TypeRef{Module: "@rhombus-std/primitives", Export: "Type"})
 	clock := clockNode()
 	promised := Named("Promise", "global", []*Node{clockNode()})
 	iterable := Named("Iterable", "global", []*Node{clockNode()})
@@ -29,7 +29,7 @@ func TestOneConstPerDistinctNode(t *testing.T) {
 }
 
 func TestChildrenAreDeclaredBeforeParents(t *testing.T) {
-	registry := NewRegistry()
+	registry := NewRegistry(TypeRef{Module: "@rhombus-std/primitives", Export: "Type"})
 	inner := Named("IClock", "orders", nil)
 	if _, err := registry.Ref(Named("Promise", "global", []*Node{inner})); err != nil {
 		t.Fatal(err)
@@ -47,8 +47,8 @@ func TestChildrenAreDeclaredBeforeParents(t *testing.T) {
 }
 
 func TestNamingIsIndependentOfEncounterOrder(t *testing.T) {
-	forward := NewRegistry()
-	backward := NewRegistry()
+	forward := NewRegistry(TypeRef{Module: "@rhombus-std/primitives", Export: "Type"})
+	backward := NewRegistry(TypeRef{Module: "@rhombus-std/primitives", Export: "Type"})
 	nodes := []func() *Node{
 		func() *Node { return Named("IClock", "orders", nil) },
 		func() *Node { return Named("IMessageSink", "orders", nil) },
@@ -79,7 +79,7 @@ func TestNamingIsIndependentOfEncounterOrder(t *testing.T) {
 }
 
 func TestUnionIdentityIgnoresMemberOrder(t *testing.T) {
-	registry := NewRegistry()
+	registry := NewRegistry(TypeRef{Module: "@rhombus-std/primitives", Export: "Type"})
 	ascending := Union([]*Node{Literal(`"a"`), Literal(`"b"`)})
 	descending := Union([]*Node{Literal(`"b"`), Literal(`"a"`)})
 	if ascending.Key() != descending.Key() {

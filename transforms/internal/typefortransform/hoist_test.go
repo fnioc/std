@@ -8,6 +8,7 @@ import (
 	"github.com/samchon/ttsc/packages/ttsc/driver"
 
 	"github.com/fnioc/std/transforms/internal/plugin"
+	"github.com/fnioc/std/transforms/internal/typeemit"
 	"github.com/fnioc/std/transforms/internal/typeforhoist"
 )
 
@@ -16,7 +17,7 @@ import (
 func hoistTypefor(t *testing.T, prog *driver.Program, app string) (string, *typeforhoist.Registry) {
 	t.Helper()
 	ctx := plugin.NewContext(prog, app)
-	registry := typeforhoist.NewRegistry()
+	registry := typeforhoist.NewRegistry(typeemit.HoistRef())
 	hoist := &Hoist{Registry: registry, SourceRoot: app}
 	transform := New(prog, ctx, nil, hoist, func(d plugin.Diagnostic) {
 		t.Fatalf("unexpected diagnostic: %s %s", d.Code, d.Message)
@@ -106,7 +107,7 @@ export const clock = typefor<IClock>();
 `)
 	defer prog.Close()
 	ctx := plugin.NewContext(prog, app)
-	hoist := &Hoist{Registry: typeforhoist.NewRegistry(), SourceRoot: app}
+	hoist := &Hoist{Registry: typeforhoist.NewRegistry(typeemit.HoistRef()), SourceRoot: app}
 	transform := New(prog, ctx, nil, hoist, func(plugin.Diagnostic) {})
 	ec := shimprinter.NewEmitContext()
 	first := transform(ec, mainSF(t, prog))

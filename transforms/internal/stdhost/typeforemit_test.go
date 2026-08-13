@@ -6,6 +6,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/fnioc/std/transforms/internal/typeemit"
 	"github.com/fnioc/std/transforms/internal/typeforhoist"
 )
 
@@ -57,7 +58,7 @@ func TestHoistedModuleIsWrittenAndCleanedUp(t *testing.T) {
 	roots := emitRoots{source: dir, out: filepath.Join(dir, "out")}
 	path := filepath.Join(roots.out, typeforhoist.ModuleFile)
 
-	registry := typeforhoist.NewRegistry()
+	registry := typeforhoist.NewRegistry(typeemit.HoistRef())
 	if _, err := registry.Ref(typeforhoist.Named("IClock", "orders", nil)); err != nil {
 		t.Fatal(err)
 	}
@@ -74,7 +75,7 @@ func TestHoistedModuleIsWrittenAndCleanedUp(t *testing.T) {
 
 	// A later run that derives nothing takes the module with it rather than
 	// leaving one describing types the project no longer names.
-	if err := writeHoistedModule(typeforhoist.NewRegistry(), roots); err != nil {
+	if err := writeHoistedModule(typeforhoist.NewRegistry(typeemit.HoistRef()), roots); err != nil {
 		t.Fatal(err)
 	}
 	if _, err := os.Stat(path); !os.IsNotExist(err) {

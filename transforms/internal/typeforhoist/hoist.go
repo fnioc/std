@@ -33,12 +33,6 @@ const ModuleBase = "__typefor__"
 // resolves identically for a bundler and for plain Node.
 const ModuleFile = ModuleBase + ".js"
 
-// TypeModule is the module the generated file imports `Type` from.
-const TypeModule = "@rhombus-std/primitives"
-
-// TypeExport is the namespace object every generated const is built through.
-const TypeExport = "Type"
-
 // nameHashLen is how many hex characters of a key's SHA-256 disambiguate a name
 // whose readable part cannot be unique on its own. Forty bits is far past the
 // point where a collision is credible for a project's node count, and the
@@ -195,9 +189,22 @@ func joinKeys(nodes []*Node, sep string) string {
 	return strings.Join(keys, sep)
 }
 
+// TypeRef identifies the value every generated const is built through: the
+// module the factories are exported from and the name they hang off. It is DATA
+// the caller supplies — this package names no module of its own, so the const
+// table and the call-site emission can never disagree about where `Type` comes
+// from.
+type TypeRef struct {
+	Module string
+	Export string
+}
+
 // Registry is one project's const table. It is not safe for concurrent use; the
 // host runs its file loop on one goroutine.
 type Registry struct {
+	// typeRef is the factory namespace the rendered module imports and builds
+	// every const through.
+	typeRef TypeRef
 	// byKey maps a canonical key to the interned node, so a second Ref of the
 	// same type reuses the first node rather than adding a const.
 	byKey map[string]*Node
@@ -210,9 +217,10 @@ type Registry struct {
 	order []*Node
 }
 
-// NewRegistry builds an empty table.
-func NewRegistry() *Registry {
+// NewRegistry builds an empty table whose consts are spelled through typeRef.
+func NewRegistry(typeRef TypeRef) *Registry {
 	return &Registry{
+		typeRef:   typeRef,
 		byKey:     map[string]*Node{},
 		names:     map[string]string{},
 		keyOfName: map[string]string{},
@@ -282,7 +290,7 @@ func (r *Registry) Module() string {
 	}
 	var b strings.Builder
 	b.WriteString(header)
-	b.WriteString("import { " + TypeExport + " } from \"" + TypeModule + "\";\n\n")
+	b.WriteString("import { " + r.typeRef.Export + " } from \"" + r.typeRef.Module + "\";\n\n")
 	for _, n := range r.order {
 		b.WriteString("export const " + r.names[n.key] + " = " + r.expr(n) + ";\n")
 	}
@@ -310,23 +318,23 @@ const header = `// Generated. Every derived type this project names, once each.
 func (r *Registry) expr(n *Node) string {
 	switch n.kind {
 	case KindLiteral:
-		return TypeExport + ".typeLiteral(" + n.literal + ")"
+		return r.typeRef.Export + ".typeLiteral(" + n.literal + ")"
 	case KindUnion:
-		return TypeExport + ".union(" + r.joinNames(n.members) + ")"
+		return r.typeRef.Export + ".union(" + r.joinNames(n.members) + ")"
 	case KindGeneric:
-		return TypeExport + ".generic(\"" + n.label + "\")"
+		return r.typeRef.Export + ".generic(\"" + n.label + "\")"
 	case KindFunc:
-		return TypeExport + ".func(" + r.joinNames(append([]*Node{n.ret}, n.args...)) + ")"
+		return r.typeRef.Export + ".func(" + r.joinNames(append([]*Node{n.ret}, n.args...)) + ")"
 	case KindCtor:
-		return TypeExport + ".ctor(" + r.joinNames(append([]*Node{n.ret}, n.args...)) + ")"
+		return r.typeRef.Export + ".ctor(" + r.joinNames(append([]*Node{n.ret}, n.args...)) + ")"
 	case KindTag:
-		return TypeExport + ".tag(" + r.names[n.inner.key] + ", \"" + n.tag + "\")"
+		return r.typeRef.Export + ".tag(" + r.names[n.inner.key] + ", \"" + n.tag + "\")"
 	case KindUndefined:
-		return TypeExport + ".typeLiteral(undefined)"
+		return r.typeRef.Export + ".typeLiteral(undefined)"
 	case KindNull:
-		return TypeExport + ".typeLiteral(null)"
+		return r.typeRef.Export + ".typeLiteral(null)"
 	default: // KindNamed
-		call := TypeExport + ".named(\"" + n.name + "\", \"" + n.from + "\""
+		call := r.typeRef.Export + ".named(\"" + n.name + "\", \"" + n.from + "\""
 		if len(n.args) != 0 {
 			call += ", [" + r.joinNames(n.args) + "]"
 		}

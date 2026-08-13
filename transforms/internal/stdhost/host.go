@@ -38,6 +38,7 @@ import (
 	"github.com/fnioc/std/transforms/internal/plugin"
 	"github.com/fnioc/std/transforms/internal/signatures"
 	"github.com/fnioc/std/transforms/internal/tokens"
+	"github.com/fnioc/std/transforms/internal/typeemit"
 	"github.com/fnioc/std/transforms/internal/typeforhoist"
 	"github.com/fnioc/std/transforms/internal/typefortransform"
 )
@@ -276,7 +277,7 @@ func runTransform(host Host, args []string) int {
 	var roots emitRoots
 	if emission == EmissionHoisted {
 		roots = resolveEmitRoots(prog, cwd)
-		env.Hoist = &typefortransform.Hoist{Registry: typeforhoist.NewRegistry(), SourceRoot: roots.source}
+		env.Hoist = &typefortransform.Hoist{Registry: typeforhoist.NewRegistry(typeemit.HoistRef()), SourceRoot: roots.source}
 	}
 
 	// Split the selected stages into the one-shot PRE-PASS (mergesynth) and the
