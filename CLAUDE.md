@@ -517,7 +517,7 @@ primitives are all retired.
   `./ttsc` descriptor resolves to the SAME `cmd/ttsc-std` source dir under the SAME name, so `ttsc`
   dedupes every consumer to one cache key and one spawn. There is no stage selection: once spawned,
   the host runs its WHOLE stage table on every file: `mergesynth` first, once, as a pre-pass, then
-  the rest in a fixed canonical order (inline → nameof → signatureof → keyof → schemaof) looped to
+  the rest in a fixed canonical order (inline → nameof → signatureof → schemaof) looped to
   a fixed point; a stage that matches nothing is a cheap no-op
   (disjoint match sets). The bespoke di /
   di-options / config domain stages, the `ttsc.stages` markers, `selectStages`/`BaseBundles`, and
@@ -534,7 +534,7 @@ primitives are all retired.
   its `./ttsc` descriptor. `di.extras` / `di.extras.options` keep a barrel shipping only the
   `declare module` authoring augmentation; di.extras also holds the single-expression `inline.ts`
   sugar bodies (side-parsed from src, never bundled) + the `rhombus-std` `inline` markers + the
-  `signatureof`/`keyof` throwing stubs.
+  `signatureof` throwing stub.
 - **Emit mechanism** — `ttsc -p` returns a stdout envelope, not files, so the build runs the Go
   plugin as a `@ttsc/unplugin/bun` onLoad transform inside the per-file `Bun.build` stage
   (`buildPackage`'s `ttscProject` via `ttscBunPlugin`). Toolchain pinned by `ttscEnv`

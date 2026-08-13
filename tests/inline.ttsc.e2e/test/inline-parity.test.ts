@@ -134,7 +134,7 @@ function goEnv(): NodeJS.ProcessEnv {
 // packages, and names ONE spawn descriptor. The always-on host runs its whole
 // stage table: the inline stage substitutes the sugar body, which puts a
 // `typefor<T>()` in front of the token-taking member, and the primitive stages
-// (nameof / signatureof / keyof) lower the calls it mints. Every argument the
+// (nameof / typefor / signatureof) lower the calls it mints. Every argument the
 // author wrote after the ctor is carried through untouched — the sugar adds the
 // token and nothing else.
 //
@@ -334,7 +334,7 @@ function setupChainWorkspaces(): void {
   rmSync(join(chainInlineDir, 'dist'), { recursive: true, force: true });
 
   // Inline path: di.extras IN deps → the host scan activates the full stage
-  // set (inline + nameof + signatureof + keyof). The tsconfig spells the
+  // set (inline + nameof + typefor + signatureof). The tsconfig spells the
   // primitives descriptors explicitly so ttsc has direct-discovery entries to
   // spawn the host with; the rest arrive through the scan. There is no semantic
   // (di-direct) sandbox — its output is the frozen `*.di-direct.js` golden.
@@ -410,8 +410,6 @@ function assertNoAuthoringSurvivors(out: string): void {
   expect(out).not.toContain('tokenfor');
   expect(out).not.toContain('tokenof');
   expect(out).not.toContain('signatureof');
-  expect(out).not.toContain('signaturefor');
-  expect(out).not.toContain('keyof');
 }
 
 function lineWith(src: string, needle: string): string | undefined {

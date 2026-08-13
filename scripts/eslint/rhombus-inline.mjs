@@ -20,15 +20,11 @@ import { entryKind, loadInlineEntries, parseTypeRef } from './inline-entries.mjs
 // may import it from. `typefor` / `tokenfor` / `tokenof` are pure transformables
 // that home in the authoring package @rhombus-std/primitives.extras — every call
 // elides after lowering, so the runtime @rhombus-std/primitives leaf carries none
-// of them. `signaturefor` / `signaturesfor` produce di.core's `DepSlot` shape
-// and are called from runtime source too, so they live in @rhombus-std/di.core
-// (every caller already depends on it). `signatureof` and `keyof` are
-// authoring-time-only and live in @rhombus-std/di.extras, imported by that
-// package's own bodies via a package-relative specifier. Mirrors the Go scanner's
-// knownPrimitives map.
+// of them. `signatureof` is authoring-time-only and lives in @rhombus-std/di.extras,
+// imported by that package's own bodies via a package-relative specifier. Mirrors
+// the Go scanner's knownPrimitives map.
 const PRIMITIVE_HOMES = { typefor: '@rhombus-std/primitives.extras', tokenfor: '@rhombus-std/primitives.extras',
-  tokenof: '@rhombus-std/primitives.extras', signaturefor: '@rhombus-std/di.core',
-  signaturesfor: '@rhombus-std/di.core', signatureof: '@rhombus-std/di.extras', keyof: '@rhombus-std/di.extras',
+  tokenof: '@rhombus-std/primitives.extras', signatureof: '@rhombus-std/di.extras',
   schemaof: '@rhombus-std/config.extras' };
 
 /** Walks up from a file to the nearest directory containing a package.json. */
@@ -322,11 +318,10 @@ function walkExpression(root, cb) {
       return;
     }
     if (BANNED[node.type]) {
-      // A spread is permitted ONLY when its argument is a primitive call
-      // (`...signaturefor<T>()` / `...signaturesfor<T>()`) — the stage inlines the
-      // primitive's minted members into the surrounding call's argument list, so
-      // the emitted form is the byte-clean, spread-free call a hand author writes.
-      // Any other spread (e.g. `[...this.items]`) stays banned.
+      // A spread is permitted ONLY when its argument is a primitive call — the
+      // stage inlines the primitive's minted members into the surrounding call's
+      // argument list, so the emitted form is the byte-clean, spread-free call a
+      // hand author writes. Any other spread (e.g. `[...this.items]`) stays banned.
       const primitiveSpread = node.type === 'SpreadElement'
         && node.argument?.type === 'CallExpression'
         && node.argument.callee.type === 'Identifier'

@@ -56,12 +56,12 @@ describe('inline-authoring rule', () => {
   });
 
   test('spread of a primitive call is allowed → reports nothing', () => {
-    // `...signaturefor<T>()` spreads a primitive's minted members into the
-    // surrounding call; the stage inlines them, so the rule permits a spread whose
-    // argument is a primitive call (only that shape — `[...this.items]` stays
-    // banned, covered below).
-    const src = `import { signaturefor } from '@rhombus-std/di.core';\n`
-      + `export const Foo = {\n  bar<T extends readonly any[]>(this: any): unknown { return this.withSignature(...signaturefor<T>()); },\n};\n`;
+    // `...typefor<T>()` spreads a primitive's minted members into the surrounding
+    // call; the stage inlines them, so the rule permits a spread whose argument is
+    // a primitive call (only that shape — `[...this.items]` stays banned, covered
+    // below).
+    const src = PRIMITIVE_IMPORT
+      + `export const Foo = {\n  bar<T>(this: any): unknown { return this.withSignature(...typefor<T>()); },\n};\n`;
     expect(lintInline(src)).toEqual([]);
   });
 
