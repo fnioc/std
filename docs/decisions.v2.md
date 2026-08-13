@@ -472,17 +472,16 @@ _Direction owner-directed (export conditions; src-refs internal-only). The share
 
 ---
 
-## §106 — Open-generic matching is typed-`TokenNode` unification; the string grammar stays the classification boundary
+## §106 — Open-generic matching is `Type`-node unification; a generic hole is `Type.generic(label)`
 
-Closing an open template (`pkg:IRepo<$1>`) against a ground token (`pkg:IRepo<pkg:User>`) is done by a typed token model (`di.core/src/token.ts`), not string manipulation. A token STRING stays the registration identity (§9's `Map<Token,…>` keys, §13's grammar); a `TokenNode` is its parsed view — a `ConcreteToken` / `HoleToken` / `ProviderToken` discriminated union with a canonicalising `parse`/`tryParse`, canonical `stringify`, directional `match` (unification), `substitute`, and a `specificity` metric. The engine (`ServiceProviderClass.#lookup`) now closes an open registration by `tryParse(ground) → match(template, ground) → substitute`, replacing the deleted `#matchOpen` / `#bindPattern` string routines.
+Closing an open registration (`IRepo<%T>`) against a ground request (`IRepo<app:User>`) is `Type`-node unification, not string manipulation, and there is no separate token model to keep in step with it. `Type` (§137) is the whole vocabulary: a generic hole is its own node kind — `GenericType = { kind: 'generic', label: string }` — minted by `Type.generic(label)` and written `%<label>` in the token grammar (`libraries/primitives/src/Type/internals/parser.ts`'s `%` case), an arbitrary string label rather than a positional numeric index. `Type.isOpen(type)` (`libraries/primitives/src/Type/analyzers.ts`) reports whether a type still holds a hole anywhere; `Type.match(pattern, subject)` asks whether some instantiation of `pattern` extends `subject`, returning the label→`Type` bindings it captured; `Type.substitute(type, bindings)` replaces each hole the map names. All three are static members of `Type` (`libraries/primitives/src/Type/Type.ts`), each backed by a dedicated visitor (`SatisfiesVisitor`, `SubstituteVisitor`) over the one node tree every other `Type` operation shares (§111).
 
-- **Holes are labels, not indices.** `$N` binds by label, so a template may use non-sequential, reordered holes (`add<IFoo<$7, SomeType, $3>>(Foo<$3, $7>)`): `match` records a label→token map, a repeated label must bind consistently (canonical compare), and `substituteSignaturesByLabel` closes the carried dep signatures by that map — throwing `RangeError` on an unbound label so a gappy template (`IX<$1,$3>` depending on `$2`) stays a clean miss, not a crash.
-- **Why typed, not the earlier regex/string idea.** A no-transformer author can write arbitrary whitespace and quote styles; the parser canonicalises both away in one pass, so semantically-equal tokens compare byte-identically. Decisively, a literal union serialises `" | "`-joined (space-pipe-space) byte-identical to the Go transformer's `strings.Join(members, " | ")`, so a re-derived union matches a transformer-spelled exact registration — regex over raw strings could not carry that guarantee across arbitrary user input.
-- **The string grammar is retained, not deleted.** §13's `isOpenToken` / `parseToken` / `HOLE_PATTERN` / `closeToken` remain the open-vs-closed classification at registration and a public compat surface; `TokenNode` owns only matching + substitution. (`HOLE_PATTERN` was deleted by §129 — the hole grammar is stated once, by the tree parser.) That split is what keeps behaviour byte-identical — exact-match/last-wins (§11), collections (§12), keyed tokens (`base#key`, §98), the provider intrinsic, scopes / captive-dep / validation / disposal, and every error at its exact throw site are all preserved.
-- **Seal derives two frozen index maps** (`SealedManifest.registrations` exact + `openRegistrations` keyed by canonical `baseKey`) via toArray-at-seal in `ServiceManifestClass`.
-- **Partial closing and most-specific-wins selection are both live.** A template mixes concrete args and holes freely (§124), and overlapping open templates rank most-specific-first (§125). `isOpenToken` classifies off the typed tree (§127); the shallow scan over raw arg slices survives only as the fallback for a token the tree grammar refuses.
+- **Holes are labels, not indices.** `Type.match` records one binding per generic label in the pattern, so a template may reuse or reorder labels freely; a repeated label must bind the same `Type` at every occurrence, which interning makes an `===` compare.
+- **One grammar, one parse.** `Type.from` is the sole place a token string becomes a `Type`, for a registration, a request, or a dependency signature alike (§111) — there is no second, shallower classifier a hand-typed template's whitespace or hole spelling could disagree with.
+- **The engine.** `Registry` (`libraries/di/src/internal/Registry.ts`) partitions a manifest once, at construction, into closed registrations (keyed by the interned `Type` itself, reached by `===`) and open registrations (kept in a list); `Registry#answering(request)` answers a closed hit by identity and an open hit by running `Type.match` against each open registration in turn, yielding a `ServiceDescriptor` already closed over whatever the match captured (`ServiceDescriptor.substitute`).
+- **Partial closing is live; most-specific-wins is not.** A registration mixes concrete args and generic holes freely — `Type.match`'s unification is fully recursive over the whole tree, so nothing about registering a partially-closed template needs special-casing (§124's retired ground). Overlapping open registrations are ranked by registration recency, not specificity (§125's retired ground, and the present gap it leaves).
 
-Landed PR #265 (di.test 373 green + full CI gate incl. the `examples.app` e2e). _Design owner-directed_ (the typed-model, label-keyed, unification direction was owner-driven through the design conversation); the behaviour-preservation calls — keeping §13's string predicates as the routing boundary, the `" | "` serialisation fix, and gating partial-closing / most-specific-wins — are Claude's. _2026-07-20._
+§141 records the `Type` taxonomy this matching walks over; §142 the resolution walk that calls it.
 
 ---
 
@@ -523,33 +522,34 @@ _Owner-directed 2026-07-21; GOCACHE refinement owner-approved 2026-07-23._
 
 ---
 
-## §114 — A mutable-slot holder is the seam between an immutable manifest and a stateful builder
+## §114 — A mutable manifest slot is the seam between an immutable manifest and a stateful builder
 
-`ServiceManifest` is immutable (an iterable decorator chain; every verb returns a NEW manifest). Everything that _wraps_ a manifest and is configured by a caller-supplied delegate — `ILoggingBuilder`, `IMetricsBuilder`/`ITracingBuilder`, `IHostApplicationBuilder` — therefore cannot register "into" the manifest it was handed. The seam is a single MUTABLE SLOT: di.core exports `IServiceManifestHolder` (`{ services: IServiceManifest }`), a builder's `services` is that writable slot, and every builder augmentation does `builder.services = builder.services.addX(...)` and returns the same builder. Mutation-shaped ergonomics survive; the chain underneath stays immutable.
+`Manifest` is immutable (§108: an iterable decorator chain; every verb returns a NEW manifest). Everything that _wraps_ a manifest and is configured by a caller-supplied delegate — `ILoggingBuilder`, `IMetricsBuilder`, `IHostApplicationBuilder` — therefore cannot register "into" the manifest it was handed. The seam is a single mutable slot: a builder's constructor accepts `Manifest | ManifestSlot`, where `ManifestSlot` is the structural type `{ services: Manifest }` — a bare manifest gets a private slot allocated for it, an existing slot is SHARED — and every builder augmentation does `builder.services = builder.services.addX(...)` and returns the same builder. Mutation-shaped ergonomics survive; the chain underneath stays immutable. `ManifestSlot` is not one centrally-exported type: `libraries/logging/src/LoggingBuilder.ts` and `libraries/hosting/src/MetricsBuilder.ts` each declare their own — the seam works by structural typing, not a shared nominal interface.
 
 Two consequences are load-bearing:
 
-- **Long-lived sibling builders SHARE one holder.** `HostApplicationBuilder` passes `this` as the holder to its `LoggingBuilder` and `MetricsBuilder`, so `builder.logging.addConsole()`, `builder.metrics.enableMetrics(…)`, and `builder.services = builder.services.add(…)` all land on one chain. Constructing them over a manifest VALUE forks the chain three ways and `build()` silently drops two of them. `LoggingBuilder`/`MetricsBuilder` therefore take `IServiceManifest | IServiceManifestHolder` and expose `services` as an accessor pair, not a field.
-- **A short-lived builder is read back.** `addLogging(configure)` / `addMetrics(configure)` / `configureLogging` allocate a builder, run the delegate, and return `builder.services` — never the manifest they were given.
-- **Per-configuration dedup keys on the BUILDER, not on `builder.services`.** The console sinks' `TryAddEnumerable`-idempotence `WeakMap` would otherwise see a fresh key on every call, since the manifest object changes with each registration.
+- **Long-lived sibling builders SHARE one slot.** `HostApplicationBuilder` passes `this` as the slot to its `LoggingBuilder` and `MetricsBuilder` (through `HostBuilderAdapter`, `libraries/hosting/src/internal/HostBuilderAdapter.ts`), so `builder.logging.addConsole()`, `builder.metrics.enableMetrics(…)`, and `builder.services = builder.services.add(…)` all land on one chain. Constructing them over a manifest VALUE instead would fork the chain three ways.
+- **`IHostBuilder.configureServices` / `configureContainer` are RETURNING delegates** (`Func<[HostBuilderContext, Manifest], Manifest>`, `libraries/hosting.core/src/IHostBuilder.ts`): a delegate is the one place with no builder to write through, so the manifest has to come back out. A void callback there is a silent-drop trap — it typechecks and registers nothing.
 
-`IHostBuilder.configureServices` / `configureContainer` become RETURNING delegates (`Func<[HostBuilderContext, IServiceManifest], IServiceManifest>`): a delegate is the one place with no builder to write through, so the manifest has to come back out. A void `Action` there is a silent-drop trap — it typechecks and registers nothing.
-
-Build-config corollary: a package whose rolled `.d.ts` INLINES di.core forks `IServiceManifestBase` — the inlined copy carries di.core's own `declare module` self-augmentation, whose return types bind to the inlined interface, so `services = services.removeAll(t)` stops typechecking downstream. Every package that depends on di.core must keep it external in `rollup.dts.mjs` (this bit `@rhombus-std/options`).
-
-_Claude's call (holder shape, shared-slot wiring, returning delegates), forced by the owner-directed immutable-manifest change; renumbered §107→§114 (#270/#271 took §107 on main)._
+_Owner-directed (the mutable-slot seam, forced by the immutable-manifest design); the current per-package slot shape is Claude's._
 
 ---
 
-## §108 — Immutable decorator-chain manifest; `addClass`/`addFactory`/`addValue` replace `add`
+## §108 — `Manifest` is an interface; its own body carries three primitives, every registration verb arrives through augmentation
 
-`ServiceManifest` becomes an immutable, iterable decorator chain: every registration verb wraps its receiver in a new frozen node carrying exactly one entry (`yield* inner` then its own, so iteration order is authoring order), and NOTHING mutates — a call whose result is discarded registers nothing. The single ambiguous `add()` (discriminating class vs. factory by argument inspection) is replaced by three explicit verbs — `addClass` / `addFactory` / `addValue` — so the method name carries the discrimination instead of runtime arg inspection. `AddChain`'s slot algebra (`signature` / `signatures` / `scope` / `key`, order-free, each fillable at most once except the repeatable append slot) is the type machinery threading which chain face a call returns; see `docs/libraries/di.md` divergence 11 for the authoring picture and `libraries/di.core/src/authoring.ts` for the implementation. Builders that wrap a manifest and are configured by a caller delegate keep mutation-shaped ergonomics on top via the `IServiceManifestHolder` mutable-slot seam (§107). _Owner-directed (the immutable-chain + verb-split direction); the `AddChain` slot mechanics are Claude's._
+`Manifest<Scopes>` (`libraries/di.core/src/Manifest.ts`) is an interface extending `Iterable<ServiceDescriptor<Scopes>>`, and its own body declares exactly three members — `_add`, `_remove`, `_replace` — each returning a NEW manifest rather than mutating the receiver, so a call whose result is discarded registers nothing. `DefaultManifest` is the concrete, `@augment`-decorated class: an immutable decorator chain where `_add` prepends one descriptor via a generator that yields the new descriptor then delegates to the rest, so iteration order is newest-registration-first.
+
+Every other registration verb — `add`, `addClass`, `addFactory`, `addValue`, `tryAdd` and its typed siblings, `replaceClass`/`replaceFactory`/`replaceValue`, `removeAll` — arrives through augmentation onto `Manifest`, in `libraries/di.core/src/augmentations/`. `add` is not replaced by the typed verbs; it coexists with them as a dispatching entry point taking a bare descriptor, a lambda that walks the per-registration builder (§109), or an implementation plus its composed call-shape type positionally. `addClass`/`addFactory`/`addValue` are separate convenience verbs that compose a `ServiceDescriptor` from a type, an implementation, and a `Signatures` array (`libraries/di.core/src/ServiceDescriptor/Signature.ts`), then forward to `add`. Builders that wrap a manifest and are configured by a caller delegate keep mutation-shaped ergonomics on top via a mutable-slot seam (§114). _Owner-directed (the immutable-chain, verb-carried-by-augmentation direction); the builder's slot mechanics (§109) are Claude's._
 
 ---
 
-## §109 — Gated fluent signature builder: `withSignature` appends, `withSignatures` replaces, sugar overrides
+## §109 — The per-registration builder gates completion on the type system: an impl door, then exactly one call-shape door, then optional lifetime/tag doors
 
-The plugin-less 2-arg `addClass(token, ctor)` / `addFactory(token, factory)` forms withhold the manifest face (`build` / `addClass` / `seal` absent from the returned type) until a dependency signature arrives — a mandatory-signature compile-time gate, not a runtime check. `withSignature(...slots)` opens the gate and is repeatable (APPENDS one more overload each call, strikes only the bulk `signatures` slot); `withSignatures(...sigs)` opens the gate as a once-only BULK replace (strikes both slots). Supplying a signature positionally (the 3+-arg overloads) starts the chain already ungated, and a positional signature can still take a `withSignature` append afterward (`addClass(t, c, [[…]]).withSignature('a')` is hand-writable — this is what keeps the di-direct Go lowering byte-parity, §113). `.as()` / `.withKey()` refine without opening the gate. Under the transformer's type-driven sugar (`addClass<I>(C)`), the signature is derived from the constructor so the chain is never gated — `withSignature<T>()` / `withSignatures<T>()` there are OVERRIDES onto the derived signature, not gate-openers, distinguished by the `Gated` type parameter on `AddChain`. Full mechanics: `libraries/di.core/src/authoring.ts`, `docs/libraries/di.md` divergence 11. _Owner-directed (the gate / append / bulk semantics settled in conversation); Claude's implementation._
+The two-argument `add(type, configure: Func<[Unstarted<T, Scopes>], IComplete>)` form hands the configure lambda a `PendingRegistration` typed as `Unstarted` — every step door still open, no `IComplete` in the intersection — and walks it through `libraries/di.core/src/builder.ts`'s `Pending<T, ImplNode, Scopes, Slots, Ready>` type: each slot still open (`'impl' | 'implType' | 'lifetime' | 'tag'`) contributes one interface to an intersection, so only the doors for open slots are callable. `asClass`/`asFactory`/`asValue` spend the `impl` slot and open `implType` (skipped by `asValue`, already complete once tagged); `withSignature(...paramTypes)` or `withType(implType)` spend `implType` — exactly one of the two, since taking either removes the slot the other also targets — and only this step flips `Ready` to `true`, adding `IComplete` to the intersection. `withLifetime`/`taggedAs` remain independently callable afterward without gating completion further. A lambda that never opens a call-shape door never reaches a value `add`'s overload accepts, so the gate is enforced by the type checker, not a runtime check.
+
+`withSignature` is singular and variadic (`...paramTypes: Array<Type | string>`), taken at most once — there is no separate bulk-replace verb. A registration's whole call shape can also be named positionally, without the builder: `add(type, ctor, implType, scope?, key?)`, where `implType` is one composed constructable or function type — an intersection of them describes an overloaded implementation, one member per call signature (`callSignatures` in `builder.ts` reads them back apart). Sugar (`addClass<T>`, `addFactory<T>`, `add<T>`) derives `T` and, where relevant, `implType`, so the same builder ergonomics are available to a hand-writer and a transformer-driven caller alike.
+
+_Owner-directed (the gated-completion, single-call-shape-door direction); the current slot/intersection mechanics are Claude's._
 
 ---
 
@@ -569,27 +569,32 @@ Claude's, done as a dedicated PR per the owner's "name them right the first time
 
 ---
 
-## §111 — One `TokenNode` tree serves both the resolve side and the signature side
+## §111 — One `Type` tree serves both the resolve side and the signature side
 
-A resolve argument and a signature slot are the SAME expression shape, so `substitute` / `validate` / `stringify` / `match` are written ONCE over a single plain-data discriminated-union tree (`concrete | hole | provider | union | literal | factory`, `libraries/di.core/src/token/`) instead of the five parallel string-substitution routines the pre-immutable-manifest branch had. Nodes stay plain data (never classed) so the established immutable-update idiom (`{ ...n, args }` spread) keeps working; operations are a typed visitor base (`TokenRewriter` for rewrites, `TokenWalker<T>` for queries) dispatching one `assertNever`-closed `switch(kind)`, not `accept`-on-node. The wire format is UNCHANGED: parsing happens at the edges (`parse` / `stringify`) and the stored/emitted `DepSlot` keeps its original compact array-literal shape — the tree is a transient parsed view, never the ABI. Landed as the wire-stable slice of the redesign; `FactoryRef` staying flat (not yet every position a `TokenNode`) and the union-blow-up wiring are the deferred wire-changing remainder (§112). _Owner-directed (the unification + parse-at-edges direction); the visitor shape and node-as-plain-data reasoning are Claude's._
+A resolve request and a dependency-signature slot are the SAME `Type` expression — there is no separate tree for one and not the other. `Type` (`libraries/primitives/src/Type/Type.ts`) is a single plain-data discriminated union, minted through interning factories (`libraries/primitives/src/Type/internals/factories.ts`), and every operation over it — `match`, `satisfies`, `substitute`, `stringify`, `validate` — is written once, as a dedicated `TypeVisitor<T>` subclass (`SatisfiesVisitor`, `SubstituteVisitor`, `StringifyVisitor`, `TypeValidatorVisitor`) dispatching one `switch (kind)`, not `accept`-on-node. Nodes stay plain data, so the immutable-update idiom keeps working, and a `ServiceDescriptor`'s dependency signatures (`TypeSignatures`, `libraries/di.core/src/ServiceDescriptor/Signature.ts`) are literally `ReadonlyArray<readonly Type[]>` — the same `Type` nodes a request is built from, closed over an open registration's captured bindings by `TypeSignatures.substituteSignatures`, which applies `Type.substitute` per parameter.
+
+The wire format is the one grammar `Type.from`/`Type.stringify` run at the data-input/output boundary (§106) — there is no separate parse step for a signature versus a resolve target. _Owner-directed (the one-tree, parse-at-the-boundary direction); the visitor shape and node-as-plain-data reasoning are Claude's._
 
 ---
 
-## §112 — Union blow-up to static overloads: abandoned, not deferred
+## §112 — A union dependency is chosen once, when the plan is built; nothing here falls through if the chosen member later fails to construct
 
-An earlier plan blew a union dependency slot into cartesian overloads at registration time (`[[union(A,B),C]] → [[A,C],[B,C]]`) so union resolution could fold into ordinary overload selection and the per-param runtime union resolver could be deleted. This is ABANDONED, not merely deferred: the equivalence argument was wrong. Per-param `#resolveUnion` has a runtime fall-through a static overload set cannot express — a union member that IS registered but THROWS while building (or whose `Promise` rejects) falls through to the next member at RESOLVE time, while presence-based overload selection can only see registration-time shape. Keeping per-param resolution is therefore load-bearing (`union.test`'s GAP2/GAP4 and the async-reject case). `blowUpSignatures` (`token/slot.ts`) stays implemented and exported but is dead code, to be removed in a vestigial sweep; `Validator` does not reject `union` on the resolve side. _Flagged for owner review — this reverses an earlier "yes" on the blow-up given mid-session; Claude's finding, made while gating the token-tree-unification PR._
+`ToCallSiteVisitor` (`libraries/di/src/internal/CallSite/ToCallSiteVisitor.ts`) decides a union's member at PLAN-BUILD time: `#chosen`/`visitUnion` ask which registered or synthesizable member the union resolves to, and that choice is baked into the `CallSite` the engine memoizes per request (`Engine#planFor`, `libraries/di/src/internal/Engine.ts`). Realizing the plan later never re-asks the question — nothing in `CallSite`/`RealizeVisitor` catches a construction failure and tries the union's next candidate. Multiple members that could each answer the union raise `AmbiguousUnionError` at plan-build time (or take the newest, under `unionAmbiguity: 'newest'`); a literal member is the union's fallback when no other member resolves.
+
+_Claude's finding, flagged for owner review: whether a union member that throws or rejects during construction should fall back to the next candidate is a design question the current engine has not answered either way._
 
 ---
 
 ## §113 — Chain-modifier sugars lower through the general inline stage, not a bespoke Go stage
 
-`.as` / `withSignature` / `withSignatures` lower the same way every other sugar call does: through
-the single-expression inline stage, one call substituted per fixed-point pass (§115) until the
-whole chain resolves — a chain like `addClass<T>(C).withSignature<S>().as<Scope>()` peels one call
-per pass. There is no separate di-direct Go recognizer set: the fixed-point loop reaching inner
-chain positions, together with the transitive-witness module-resolution fix (§119), makes the
-inline path sufficient for both dist-referenced and di-direct consumers, and both emit
-byte-identical output. Full mechanics live at §115; kept here only as a citation anchor.
+`withSignature` / `withType` / `withLifetime` / `taggedAs` lower the same way every other sugar
+call does: through the single-expression inline stage, one call substituted per fixed-point pass
+(§115) until the whole chain resolves — a chain like
+`addClass<T>(C).withSignature(S).taggedAs('primary')` peels one call per pass. There is no separate
+di-direct Go recognizer set: the fixed-point loop reaching inner chain positions, together with the
+transitive-witness module-resolution fix (§119), makes the inline path sufficient for both
+dist-referenced and di-direct consumers, and both emit byte-identical output. Full mechanics live at
+§115; kept here only as a citation anchor.
 
 ---
 
@@ -598,8 +603,9 @@ byte-identical output. Full mechanics live at §115; kept here only as a citatio
 The transform engine runs one ordered set of primitive stages repeatedly, per file, until a pass
 changes nothing (max 16 passes, loud `FIXED_POINT_EXHAUSTED` on exhaustion — never a silent cap),
 instead of a single top-to-bottom sweep. Each stage matches only the OUTERMOST construct it
-recognizes and does not descend into what it produced; a chain (`addClass<T>(C).withSignature<S>()
-.as<Scope>()`) peels one call per pass. This is receiver-recursion-free by construction — no stage
+recognizes and does not descend into what it produced; a chain
+(`addClass<T>(C).withSignature(S).taggedAs('primary')`) peels one call per pass. This is
+receiver-recursion-free by construction — no stage
 author ever writes a visitor that walks into its own output — because the loop supplies the
 recursion.
 
@@ -616,20 +622,21 @@ hurt anything. it's milliseconds."_
 
 ---
 
-## §116 — No-type-arg registration derives the token from the VALUE, never from TS inference
+## §116 — There is no no-type-arg self-registration verb; every convenience verb takes an explicit-or-inferred `T`
 
-`addClass(SqlUserRepo)` / `addFactory(fn)` / `addValue(v)` (self-registration, no explicit `<T>`)
-derive their token from the argument's own type: constructable → its construct-signature return
-type (`tokenfor(value)`); callable → its call-signature return type (`tokenfor(value)`); an
-already-built value → its own raw type, never unwrapped (`tokenof(value)`). `RecoverTypeArguments`
-is never extended to nested/value-based inference to cover this — the derivation is a distinct
-primitive pair (`tokenfor`/`tokenof`, value-arg forms), not a smarter type-argument recovery.
-Interface registration stays explicit (`addClass<ILogger>(ConsoleLogger)`) — there is no
-self-registration path for a type other than the value's own. The `tokenof`/`tokenfor` split
-exists specifically because a single value-arg primitive that branched on "which verb called me"
-would put domain knowledge (which verb wants which derivation) inside the domain-neutral
-primitive; the verb-side sugar body picks the primitive instead. _Owner ruling: "no-type-arg
-registration binds from the VALUE, not from TS inference."_
+`addClass<T>(ctor, signatures, scope?, key?)` / `addFactory<T>(factory, signatures, scope?, key?)` /
+`addValue<T>(value, key?)` (`libraries/di.extras/src/augmentations/Manifest-service-augmentations.ts`)
+each derive their address from the TYPE PARAMETER `T`, via `typefor<T>()` — not from the argument's
+own runtime value, and not from a dedicated value-derivation primitive. `T` may be written explicitly
+at the call site or left to ordinary TypeScript generic inference from the argument (`Ctor<any[], T>`,
+`Func<any[], T>`, or `T` itself); either way, the sugar body substitutes `typefor<T>()` for the
+address, the same primitive every other type-argument-driven sugar call uses (§137).
+
+`tokenfor(value)` / `tokenof(value)` — the value-arg primitives that derive a STRING token from an
+argument's own runtime type rather than a type parameter (`libraries/primitives.extras/src/tokenfor.ts`,
+`.../tokenof.ts`) — still exist, but no current registration verb calls either of them; they are
+general authoring primitives, not part of the registration dialect. Their retirement is tracked at
+§146.
 
 ---
 
@@ -742,246 +749,70 @@ immediately. This retires the prior split behavior where different code paths in
 
 ---
 
-## §124 — The all-holes open-registration rule is retired; a template mixes concrete args and holes freely
+## §124 — There is no separate open-registration classification step; `Type.isOpen` is the one predicate
 
-`ServiceManifestClass.openEntry` used to enforce a v1 rule that every top-level type argument of
-an open service template be exactly a hole (`$N`), throwing `OpenTokenRegistrationError` on
-`addClass("pkg:IRepo<pkg:IUser,$1>", …)`. That rule is retired. The typed matcher (§106) has
-always been fully recursive on its concrete arm — a concrete template arg requires an equal ground
-arg, a hole binds — so partial closing worked end-to-end on the resolve side and only registration
-blocked it. §118 killed the transform-side twin (diagnostics 990008/990009/990010) on the ruling
-that validating a user's design is not a transform's job; this retires the runtime guard §118 left
-standing.
-
-`openEntry` now classifies nothing — `materialise` already routed to it off `isOpenToken` — and
-only parses the template into the tree the engine unifies against. What it still rejects is a
-template no closed token could ever match: one the typed grammar refuses (`"a b<$1>"`, whose base
-stops at the space, leaving trailing text) and a bare hole (`"$1"`), which names no base to bucket
-under. Both previously registered a **silent never-matches** — the unparseable one through
-`openEntry`'s `node !== undefined ? … : parsed.base` fallback, so that phantom is fixed by the same
-change. `OpenRegistration.pattern` (the parsed top-level args, documented as "each exactly a hole")
-is deleted: it was written at registration and read nowhere, and its contract is exactly the
-retired rule. Open-template classification — including the keyed-template and `$0`/`$01` grammar
-edge cases this rule interacts with — is described in full at §127 and §129.
-
-_Owner ruling 2026-07-24: "that all-holes rule is retired — it is no more."_ The replacement
-guard's shape (reject only what can never match, on the typed tree) is Claude's.
+`openEntry`, `ServiceManifestClass`, and the string-grammar registration-time classification this
+entry described do not exist. The current engine draws no distinction between "registering" and
+"matching" an open template: `Registry` (`libraries/di/src/internal/Registry.ts`) partitions every
+registration once, by `Type.isOpen(descriptor.serviceType)`, into a closed map (keyed by identity)
+and an open list matched per request via `Type.match`. A registration mixing concrete args and
+generic holes needs no special-casing, because `Type.match`'s unification is already fully
+recursive over the whole tree — there is no separate all-holes rule to enforce or retire. §106
+records the current matching mechanism; §141 records the `Type` taxonomy it walks.
 
 ---
 
-## §125 — Overlapping open templates are selected most-specific-first, not by recency
+## §125 — Overlapping open registrations are NOT ranked by specificity; the current registry resolves them by registration recency
 
-`ServiceProviderClass.#lookup` scanned the open-template bucket from the end — pure recency, which
-§106 gated deliberately because under the all-holes rule the only possible overlap was
-repeated-hole vs distinct-hole. §124 makes overlap the normal case: `IRepo<User,$1>` and
-`IRepo<$1,$2>` share the `IRepo` bucket, and under recency an author who registers the specific
-template first and the general one second silently resolves through the general one — a wrong
-instance, not an error, and not discoverable. So the ranking §106 named as "a one-guard-removal,
-ME-divergent follow-up" lands with the guard removal.
+`Registry#answering` (`libraries/di/src/internal/Registry.ts`) collects every open registration
+whose service type `Type.match`es the request, and orders every answer — closed and open together —
+by `rank`, the registration's position in manifest iteration order (newest first, since
+`Manifest#_add` prepends). There is no specificity measure: two open registrations both matching one
+request (`IRepo<User,%A>` and `IRepo<%A,%B>` against `IRepo<User,Foo>`) are resolved by which was
+registered more recently, not by which binds fewer holes.
 
-Candidates are ordered by `Specificity.measure` descending, ties broken by descending registration
-index — the exact rule di.core's gated reference manifest already implemented and unit-tested
-(that reference is gone as of §127; the engine's own `rankTemplates` is the only statement of the
-rule now). Ranking is per closing and its result memoizes into `#closedMemo`, so
-the sort is paid once per distinct closed token. Every pre-existing open-generic behaviour survives
-by construction: identical templates score equally and fall to the latest index (last-wins, and
-`.as()`'s scoped copy with it), `IPair<$1,$1>` (score 2) already outranked `IPair<$1,$2>` (1) by
-registration order and now does so regardless of order, and distinct arities never share a bucket
-slot to contend for. _ME-divergent: the reference DI has no most-specific-wins rule (its open
-generics cannot carry a concrete arg at all, so nothing overlaps)._
+This is the exact hazard this entry's original ruling existed to close for the string-token engine —
+a caller registering the specific template first and the general one second silently resolves
+through the general one, a wrong instance rather than an error. No successor ranking has been built
+for the current `Registry`; §106 records what the registry does instead.
 
 ---
 
-## §126 — The di correctness sweep: keyed identity, open-template identity, and use-after-dispose
+## §126 — There is no `libraries/di.core`/`libraries/di` correctness sweep on record for the current engine
 
-A general audit of `libraries/di.core` and `libraries/di` for correctness bugs and vestigial code,
-run on top of §124/§125. Everything below was reproduced against the built bundle before it was
-touched. The findings cluster: most of them are one identity question — _what token, exactly, does
-this operation name?_ — answered inconsistently by two sides of the same seam.
+`materialise`, `#lookup`'s open/closed split, `keyedToken`/`unkeyedToken`, `OpenRegistration`,
+`#collectionRegistrations`, and the dispose-guard mechanics this entry catalogued belonged to the
+string-token engine and do not exist in the current `libraries/di`/`libraries/di.core`.
 
-**Keyed registration.** A keyed registration lives under the composed token `base#key`
-(`keyedToken`), but three places named the bare base instead.
+A keyed request and a keyed registration meet at one interned `Type.tag(base, key)` node (§122), so
+the keyed-identity class of bug this entry catalogued — a verb naming the bare base where the
+composed tag was meant — has no separate string-composition step left to get wrong.
 
-- `materialise` asked `isOpenToken` about the COMPOSED token. The string grammar cannot see a hole
-  past a key, so a keyed open template classified CLOSED and landed as an exact entry on a literal
-  holey string — a dead registration, no error. Classification moves to the BASE token, which the
-  key cannot affect, and everything downstream already handled the keyed case (`TokenNode` parses
-  `base<args>#key`, `openEntry`'s `baseKey` yields the `base#key` the open table is indexed by,
-  `Matcher` compares template key against ground key). `addFactory`/`addValue` gain the same reach.
-  This is the §124 gap, closed without the parser swap that entry contemplated.
-- `tryAdd*` probed `hasRegistrations(base)` and `replace*` called `removeRegistrations(base)` while
-  their add path composed `base#key`. So a keyed `tryAdd` was dropped whenever the UNKEYED token
-  happened to be registered, two `tryAdd`s under different keys collided, and a keyed `replace`
-  DELETED the unkeyed registrations while merely appending a second keyed one. All six verbs now
-  compose through `keyedToken`, which di.core exports package-internally for them.
-
-**Open-entry identity.** An open entry has two names — its TEMPLATE (`pkg:IRepo<$1>`) and the
-canonical BASE it buckets under (`pkg:IRepo`). `removeRegistrations` matched only the base,
-`hasRegistrations` only the template, so no query could satisfy both: `removeAll` handed a template
-removed nothing, and `replace` on a template therefore accumulated duplicates without bound
-(masked at resolve time by the ranked scan). Removal now accepts EITHER name; dedup still accepts
-the template alone. The asymmetry is deliberate: removal is the "drop everything filed under this
-name" verb (the reference `RemoveAll(IRepo<>)` affordance, already pinned by a test), while dedup
-is identity-exact — `pkg:IRepo` and `pkg:IRepo<$1>` are different services.
-
-**Collections aggregate every matching template.** `#collectionRegistrations` reached the open
-table through `#lookup`, which returns at most ONE registration and only when the exact list is
-empty. So several templates covering one closing collapsed to the winner, and an exact registration
-of the closing suppressed the open closings entirely. `#lookup` splits into `#closings(token)` —
-every match, ranked most-specific-first, memoized per closed token — and a thin `#lookup` returning
-`closings[0]`, so singular resolution is unchanged and the memo still guarantees ONE `Registration`
-object per closing (bare-`T` and the aggregate element therefore share a frame-cache slot). ORDER
-is the new rule: the aggregate's last element must be what bare-`T` yields, so the exact list comes
-LAST and the closings are reversed out of their rank; registration order holds within each group.
-
-**Use after dispose.** `#disposed` was read only by `dispose`/`disposeAsync` themselves. A closed
-scope kept resolving, and anything it built landed in the `owned` list that a second (idempotent)
-`dispose()` never re-drains — constructed, cached, silently leaked undisposed. Every entry point,
-`createScope` and the injected `IResolver` view included, now raises `ProviderDisposedError`, the
-reference's `ObjectDisposedException` behaviour. `dispose`/`disposeAsync` stay unguarded.
-
-**Smaller repairs.** A `FactoryRef` slot is satisfiable only when its TARGET resolves — greedy
-selection used to accept it unconditionally and then hard-fail, where an unregistered plain token
-makes it fall through to a shorter signature; the more actionable `FactoryTargetError` is still
-raised when a missing target is the sole obstacle. `EmptyServiceProvider`'s keyed PLURAL overloads
-return `[]` instead of throwing / returning `undefined` (`IRequiredResolver`: "0 matches yields
-`[]` — never throws on count"). `#resolveKeyed` restores the caller's `pattern.lastIndex`.
-`seal()`'s `Object.freeze` on the two Maps is deleted — it seals a Map's own properties, not its
-entry slots, so a "frozen" sealed map still accepts `set`; the per-token LISTS are the real
-immutability and `ReadonlyMap` is the rest. `FactoryTargetError.reason` narrows to
-`"unregistered"`: `"not-a-class"` lost its referent when the three authoring kinds collapsed into
-one `produce` closure, and nothing has ever constructed it.
-
-**A second pass over the sweep's own diff** found four more, each reproduced against the built
-bundle before it was touched. The first is a regression the sweep itself introduced.
-
-- **One mis-authored template poisoned every sibling on its base.** Splitting `#lookup` into
-  `#closings` turned a return-on-first-match scan into a full one, but the `RangeError` arm kept its
-  `return` — so a gappy template reached AFTER a valid winner was already synthesized discarded that
-  winner and every other closing with it, un-memoized, on every resolve. A template that cannot be
-  closed is simply not a candidate FOR THIS closing: the arm now `continue`s, exactly as a `match`
-  miss does, and the empty list at the end is what the sole-gappy-template case (pinned by an
-  existing test) wants. It also keeps a collection from losing the elements a gappy sibling cannot
-  contribute.
-- **Factory callables bypassed the dispose guard.** `#makeFactory`'s two returned closures called
-  the private spine directly. A factory is minted during one resolve and INVOKED arbitrarily later —
-  the guard on the minting call says nothing about the call that builds — so a closed scope kept
-  constructing through a `FactoryRef` slot injected into a long-lived instance. Both closures now
-  open with `#assertLive`.
-- **A live child scope could still cache into a disposed parent frame.** The guard was
-  per-PROVIDER, but disposal deliberately does not cascade, so `#findOwner` still walked up into a
-  closed frame and owned an instance there — the exact leak the guard exists to prevent, one level
-  down. `Scope` carries a `disposed` flag set by `#clear()`, and `#resolveWith` refuses a closed
-  owner. A transient registration owns nothing and is unaffected, as is anything the child's own
-  frame owns.
-- **The key SPELLED INTO the token still classified closed.** `materialise` moved onto the base
-  token, which fixed `.withKey` and the 5-arg form but not `addClass("pkg:IRepo<$1>#k", …)`, where
-  the key is part of the authored token. `unkeyedToken(token)` — a new string-grammar edge that
-  takes the key boundary from the tree parser rather than restating the key grammar — is now the
-  pre-step of every open-vs-closed classification, at the registration boundary and at both of the
-  engine's. That also fixes the diagnosis of `resolve("pkg:IRepo<$1>", "k")`, which raised
-  `UnregisteredTokenError` where the unbound hole was the actionable half of the answer.
-
-**The keyed PLURAL scan sees template closings.** `#resolveKeyed` read only the exact map, so a
-keyed template — newly registrable above — answered `resolve(t, "redis")` but not
-`resolve(t, /redis/)`, and an unkeyed template answered bare `resolve(t)` and `Array<t>` but not
-`resolve(t, /.*/)`. The scan now walks `base`'s key-space across BOTH tables and resolves each
-matching key through `#collectionRegistrations`, which is the same closings-then-exact rule
-`Array<T>` aggregates by and returns the exact list untouched for a key with no template. Exact
-registrations still come first in the key order, so every pre-existing plural ordering holds.
-
-**Breaking public surface**, for the next publish pass to version on: `OpenRegistration.pattern` is
-deleted (the field's whole contract was the retired all-holes rule); `FactoryTargetError.reason`
-narrows from `"unregistered" | "not-a-class"` to `"unregistered"`, so an external
-`reason === "not-a-class"` comparison stops compiling; and `ServiceProviderClass`'s `closedMemo`
-constructor parameter widens from `Map<Token, Registration>` to `Map<Token, readonly
-Registration[]>`, which matters because the class is documented as exported for white-box use. All
-three are dead in-repo — nothing constructed `"not-a-class"` even before this branch. `unkeyedToken`
-is added to di.core's and di's barrels.
-
-**Two findings deliberately NOT acted on**, both being design calls rather than defects:
-
-- `validateScopes` is defeated inside a `Union` slot. A member's `ScopeValidationError` is caught
-  by `#resolveUnion`'s fall-through and the next member wins, so the violation is silently skipped.
-  Whether a validation failure should be a hard stop or a soft miss inside a union is a semantics
-  question about what "the first member that BUILDS" means, not an implementation slip.
-- A non-canonical spelling of a closed token bypasses its exact registration. `#lookup` probes the
-  exact map with the RAW request string but reaches the open table through the CANONICALISED parse,
-  so `resolve("app:IR< app:User >")` is served by the `app:IR<$1>` template even though an exact
-  `app:IR<app:User>` is registered — exact-beats-open violated, two identities for one service.
-  The honest fix is to canonicalise at the registration boundary, which changes the stored map key
-  and therefore what `hasRegistrations`, `removeRegistrations`, and `#resolveKeyed`'s prefix scan
-  all compare against. That is a wire-grammar decision, not a patch.
-
-(A related grammar question — whether `$0`/`$01`/whitespace spellings like `pkg:IZ< $1 >` are holes
-— turned out to be a genuine defect rather than a design call; §127 and §129 resolve it: the tree
-parser and the classifier now share one 1-based, leading-zero-free hole grammar, and
-`HOLE_PATTERN` is gone.)
-
-`Validator` and `parseSlot`/`serialiseSlot` are genuinely public (in the rolled `.d.ts`) with zero
-consumers anywhere. Both are audited as suspected vestigial and DELIBERATELY kept —
-unused-but-correct public API is not a defect, and deleting it is a semver call rather than a
-repair — so their comments, which advertised jobs the live path no longer does, are corrected
-instead, pending an owner call. `TokenManifest`/`TokenProvider` were never public API — they were
-package-private, absent from the rolled `.d.ts` — and `token/manifest.ts` is deleted (§127).
-
-_Claude's calls throughout, on the owner's direction to sweep the family; the collection ordering
-rule, the removal/dedup asymmetry, and the keyed-plural key order are the three that chose between
-defensible alternatives._
+The current engine (`Registry`, `Engine`, `ToCallSiteVisitor` — §106, §111, §112) has no scope or
+disposal model yet: `IServiceScope`/`IServiceScopeFactory` (`libraries/di.core/src/ServiceScope.ts`)
+are declared, and `AsyncServiceScope` is explicitly a "scaffold: the async face of a scope, pending
+the scope model." Use-after-dispose is not yet a question this engine can raise; a correctness
+sweep against it belongs to whichever entry records the scope model once one lands.
 
 ---
 
-## §127 — Open-template classification is spelling-independent; the gated token reference is deleted
+## §127 — Open-template classification is spelling-independent by construction; there is no separate classifier left to disagree with the parser
 
-A second sweep of `libraries/di.core` / `libraries/di`, run because §126's pass applied hard
-pressure to over-deletion and only soft pressure to under-deletion — over-deletion is loud (the
-gate catches it), under-deletion is silent forever.
+`isOpenToken`, the raw-arg-slice fallback, `materialise`, and `openEntry` — the machinery this entry
+fixed a whitespace/hole-spelling disagreement inside — do not exist. `Type.isOpen`
+(`libraries/primitives/src/Type/analyzers.ts`) answers off the parsed `Type` tree, and `Type.from`
+(the token grammar, `libraries/primitives/src/Type/internals/parser.ts`) is the ONE place a token
+string becomes a `Type`, for every consumer — a registration, a request, or a signature parameter
+alike. There is no second, shallower classifier that could disagree with the parser about
+whitespace, hole spelling, or a keyed template's boundary, so the specific defect this entry closed
+(`IRepo<IA, $1>` / `IRepo< $1 >` / `IRepo<$01>` reading CLOSED under a stale regex) has no
+counterpart to reintroduce it.
 
-**`isOpenToken` reads the typed tree.** It classified off raw arg slices: `HOLE_PATTERN`
-(`/^\$[1-9][0-9]*$/`) tested against an un-trimmed slice, while the tree parser skips whitespace
-and normalises hole labels. So `IRepo<IA, $1>` — a space after the comma, the natural hand spelling
-of a §124 mixed template — plus `IRepo< $1 >` and `IRepo<$01>` all read CLOSED. `materialise` is
-the ONLY place a template is routed and `openEntry`'s "reject a template nothing could ever match"
-guard runs only on the branch classification picks, so each landed in the exact map as a literal
-holey token: silent, no error, resolvable by nothing. Not by the closing, and — once the template
-carries a hole dep, which is the whole point of a template — not under its own spelling either,
-since the un-substituted `$1` dep is unsatisfiable. That last part is what §126 got wrong when it
-declined the fix.
+`token/manifest.ts`, `TokenManifest`, `TokenProvider`, `Validator`, and `parseSlot`/`serialiseSlot`
+— all audited here as vestigial or public-but-unconsumed — are gone along with the token-string
+package they lived in.
 
-Classification now parses, and falls back to the shallow scan only for a token the tree grammar
-REFUSES (`"a b<$1>"`), which is what keeps that case classified open and therefore routed to
-`openEntry` where its rejection lives. A `$`-free token short-circuits ahead of the parser, so the
-engine's resolve-time guard stays off the parse path for ordinary tokens. Registration and both
-engine sites run the one predicate, so a request and a registration can no longer disagree about
-what is a template; `resolve("pkg:IRepo< $1 >")` now raises `OpenTokenResolutionError` instead of
-an unhelpful `UnregisteredTokenError`. `unkeyedToken` stays the documented pre-step at each site —
-the tree sees past a key on its own, but the agreement between a composed key and a tail-argument
-key should not rest on the classifier's internals, and the fallback path still needs it.
-
-**Hole labels are 1-based with no leading zero (§129).** `$0` and `$01` are not holes; a token
-spelled that way is not a template and files as an ordinary exact registration.
-
-**`token/manifest.ts` is deleted.** `TokenManifest` / `TokenProvider` / `Descriptor` /
-`SealedTokenManifest` were package-PRIVATE — di.core declares one export and `src/index.ts` omits
-all four — so no consumer could name them and the rolled `.d.ts` carried none of them, while ~120
-lines of the JS bundle were theirs. Their only exercise was a mirror: `token.spike.test.ts` reached
-past the package by raw relative path to assert their own behaviour, and every rule it pinned is
-pinned on the live path in `open-generics.test.ts`. §126 kept them under "unused-but-correct public
-API is not a defect" — an argument that never applied, because they were not public API. Of the two
-behaviours §126 called still-gated there, negative memoization is REJECTED doctrine (`#closings`
-states misses are unbounded and deliberately not memoized), and canon-on-miss variance recovery
-stays described in §126's prose as part of the pending wire-grammar question.
-
-**Referred to the owner, untouched.** `Validator` and `parseSlot`/`serialiseSlot` are genuinely
-public (both in the rolled `.d.ts`) with zero consumers anywhere — no call site, test, example or
-fixture. Cutting unused-but-correct public API is cheap now and expensive after the first publish,
-but it is a policy call, not a repair. Same for the example set's coverage holes: no example opens
-a scope, registers an open template, uses a key, injects a factory, uses a union or literal slot,
-or uses the descriptor verbs — which under the kitchen-sink doctrine is a gap in `examples/`, and
-additive work to scope separately.
-
-_Claude's calls; the `$0` hold-back and the public-API deferrals are the two that deliberately
-stop short of a decision the owner should make. 2026-07-24._
+§106 records the current matching mechanism; §129 records the current hole grammar.
 
 ---
 
@@ -1026,75 +857,37 @@ _Owner-directed 2026-07-24._
 
 ---
 
-## §129 — One hole grammar: 1-based, leading-zero-free, stated only by the tree parser
+## §129 — A generic hole is `Type.generic(label)`, written `%<label>`; there is no numeric `$N` grammar
 
-Two things were spelled `$N` in di.core and only one of them survives in each position.
+The `$1`…`$9` type aliases, `$N` as wire text, `HOLE_PATTERN`, and the two-implementation
+disagreement this entry unified do not exist. A generic hole is its own `Type` node kind —
+`GenericType = { kind: 'generic', label: string }` — minted by `Type.generic(label)`
+(`libraries/primitives/src/Type/internals/factories.ts`) and written `%<label>` in the token
+grammar (`libraries/primitives/src/Type/internals/parser.ts`'s `%` case), with an arbitrary string
+label rather than a positional numeric index. `Type.from`/`Type.stringify` is the one grammar every
+consumer parses and writes a hole through (§111); there is no second implementation of the hole
+rule left to disagree with it, and so no `$0`/leading-zero edge case to resolve — a wire-spelled
+hole either is one, by the one parser's rule, or the text after `%` names something else entirely.
 
-**`$1` … `$9` as TYPES are deleted.** `brands.ts` declared both the generic `$<N>` and nine
-pre-instantiated aliases; the barrel exported all ten. The aliases saved one pair of angle brackets
-and charged a permanent ambiguity for it, because `$1` is also the WIRE text of a hole inside a
-token string (`"pkg:IRepo<$1>"`). One name, two grammars, and a reader had to check for surrounding
-quotes to know which one was in front of them — in a package whose whole job is the boundary
-between a type and the token it derives. `$<N>` is now the only type-position spelling, at every
-label; a bare `$1` is only ever wire text. Nothing outside di.core used the aliases: every
-type-position site in the libraries, tests, examples, docs and the Go fixtures already wrote
-`$<N>`, so the deletion touched `brands.ts`, `src/index.ts` and the di.core README and nothing else.
-
-**Hole LABELS are 1-based with no leading zero, and `token/parse.ts` is the only place that says
-so.** Two implementations disagreed: `edges.ts`'s `HOLE_PATTERN` (`/^\$[1-9][0-9]*$/`) rejected `$0`
-and `$01`, while the tree parser's `#parseHole` consumed any digit run and built a hole node for
-both, folding `$01` onto label 1. §127 documented the split as a deliberate hold-back — "whether
-`$0` is a legal hole is a grammar decision, not a repair" — and left it as one commented line of
-divergence. That is the entry this supersedes: the answer is that a grammar with two
-implementations is wrong regardless of which one wins, and the `Hole<N>` brand already documents
-its own domain as 1-based, so the parser was the side that disagreed with the design.
-
-`#parseHole` now rejects `$0` ("hole labels are 1-based") and any leading zero, alongside the
-out-of-safe-integer-range check it already had. One spelling reaches each label, so canonicalisation
-has nothing to fold and the parser cannot mint a node the brand could not have produced. The Go
-engine's `tokentext.isHoleNode` had implemented exactly this grammar all along, so this closes a
-cross-engine divergence rather than opening one — no token any transform emits, or any author writes
-with `$<N>`, changes shape.
-
-**`HOLE_PATTERN` is gone.** Its only consumer was `isOpenToken`'s fallback for a token the tree
-grammar REFUSES (`"a b<$1>"` — trailing text after the base, which must still classify OPEN so
-`openEntry` can reject it). That fallback now splits the top-level args with the shallow scan and
-puts each one back through `isOpenToken`, so the hole grammar it consults is the parser's.
-`holdsHole` — the tree walk that re-applied the 1-based rule the parser did not enforce — collapses
-into `TokenNode.isOpen` for the same reason. Recursion terminates because every arg slice is
-strictly shorter than the token it came from. `isOpenToken` is now the one predicate and it states
-no grammar of its own.
-
-**What changes for a caller.** `$0` behaves exactly as it always did. `$01` and `$007` join it: not
-holes, so a token carrying one is not a template and files as an ordinary exact registration. A
-would-be template written that way therefore fails at resolve rather than at registration — the
-closing misses, and the token's own spelling raises on the un-substituted dep. That is the standing
-shape `$0` has had since §127 signed it off, not a new hazard, and turning it into a loud
-registration error would mean teaching `isOpenToken` to answer `true` for something that is not a
-template. A "you probably meant a hole" diagnostic belongs at the registration boundary, not in the
-classifier; it is a separate design question and deliberately not taken here.
-
-_Owner-directed 2026-07-24 ("delete all of the `$N` in favour of `$<…>`" / "just make it right" on
-the two hole grammars). The `HOLE_PATTERN` collapse and the residual-hazard call above are Claude's._
+§144 records the `placeholder` → `generic` rename this entry's successor landed under.
 
 ---
 
 ## §130 — A library references the abstractions package; only an entry point references the engine
 
 The whole di error taxonomy is DECLARED in `@rhombus-std/di.core` and re-exported from
-`@rhombus-std/di`. `UnregisteredTokenError`, `OpenTokenResolutionError`,
-`CircularDependencyError`, `MissingMetadataError`, `NoSatisfiableSignatureError`,
-`NoSatisfiableUnionError`, `FactoryTargetError`, `AsyncResolutionRequiredError`,
-`AsyncDisposalRequiredError`, `RegistrationValidationError`, `ScopeValidationError` and
-`ProviderDisposedError` join the `DiError` root and `OpenTokenRegistrationError` that were already
-there. `libraries/di/src/errors.ts` is deleted; the barrel re-export replaces it, so every existing
-`from '@rhombus-std/di'` import keeps working unchanged.
+`@rhombus-std/di`. `UnsatisfiableError`, `CycleError`, `AmbiguousUnionError`, and
+`ManifestValidationError` join the `DiError` root — `libraries/di.core/src/Errors.ts` declares all
+five. `libraries/di/src/index.ts` re-exports them directly, with no separate `errors.ts` file of its
+own, so every `from '@rhombus-std/di'` import naming one keeps working unchanged.
 
 **The rule this enforces.** A library references the abstractions package; only an entry point
 references the engine. It is repo-wide, not an examples-only convention. `examples.lib.*` are its
-existence proof — they declare registrations and take an `IResolver`, and neither one has a runtime
-dependency on `@rhombus-std/di`; the application packages that build a provider are the only things
-in `examples/` that do.
+existence proof — they declare registrations against `Manifest` and take an `IServiceProvider`,
+both importable from `@rhombus-std/di.core` alone, and neither
+`examples.lib.with-transformer` nor `examples.lib.without-transformer` depends on `@rhombus-std/di`
+at all, runtime or dev; the application packages that build a provider are the only things in
+`examples/` that do.
 
 **Why the split was a defect, not tidying.** The di.core / di boundary exists to make one claim: a
 library can do everything a library needs with only a `di.core` reference. Classifying what a
@@ -1104,36 +897,33 @@ on the root `DiError` and nothing else, so it had to take a reference on the eng
 an error class. Nothing about that reference is used at runtime, which is exactly what makes it the
 wrong dependency: the boundary was claiming an independence it did not actually deliver.
 
-**Nothing moved gains an engine dependency.** The moved classes import `DiError`, `Token` and
-`DepSlot` — di.core's own types — and reference no engine internal, which is what made the move
-mechanical. di.core stays the zero-engine-dependency package.
+**Nothing moved gains an engine dependency.** Every leaf class imports only `Type` — di.core's own
+type — and references no engine internal.
 
 **Runtime identity holds (§9/§38).** These are `instanceof` classes, so there must be exactly one
-copy. di keeps di.core external in its bundle, so `libraries/di/dist/bundle/index.js` declares none
-of them and imports all of them from `@rhombus-std/di.core`, whose bundle declares each once; the
-rolled `.d.ts` re-exports rather than inlining. Verified live: `core.X === engine.X` for all
-fourteen classes, and an error thrown by the engine satisfies `instanceof` against the class
+copy. di keeps di.core external in its bundle (`scripts/build-lib.ts`'s external = deps ∪ peers
+derivation), so `libraries/di/dist/bundle/index.js` declares none of the five classes and imports
+all of them from `@rhombus-std/di.core`, whose own bundle declares each once — `core.X === engine.X`
+for every one of them, and an error thrown by the engine satisfies `instanceof` against the class
 imported from `di.core`.
 
-**Two residuals, deliberately not taken here.** `examples.lib.*` still `import type` from
-`@rhombus-std/di` (a devDependency) for `IServiceManifest` / `IResolver`. Those are erased at
-compile time, so no runtime reference survives and the existence proof stands, but a library
-reaching for the engine's name to spell a type it could spell from `di.core` is the same instinct
-this entry rules out. Separately, `examples.lib.*` should spell those types from `di.core`; that is a
-follow-up, not a hole in the rule.
-
 **`logging` is an exception. The rule stands.** `logging` and `hosting` are the only libraries
-carrying a RUNTIME `@rhombus-std/di` dependency, both for the constructible `ServiceManifest` value
-(di.core ships `ServiceManifestClass`; di ships the value and the `build()` patch). `hosting` is an
-entry point by job description, so it is not an exception at all. `logging` is: `LoggerFactory.create`
-stands up a manifest, builds a provider, opens the singleton scope and resolves the factory out of
-it — entry-point work by this entry's letter, inside a library.
+carrying a RUNTIME `@rhombus-std/di` dependency. `di.core` ships `DefaultManifest`, the concrete
+`Manifest` implementation; `di` installs `build()` onto every `Manifest` (an augmentation sealing it
+into a `ServiceProvider`, `libraries/di/src/Manifest-ContainerBuilder-augmentations.ts`). `hosting`
+is an entry point by job description, so it is not an exception at all. `logging` is:
+`LoggerFactory.create` (`libraries/logging/src/LoggerFactory.ts`) does `new
+DefaultManifest().addLogging(configure)`, then `.build()`, then resolves the factory out of the
+provider — entry-point work by this entry's letter, inside a library.
 
 It stays. The API is a legitimate convenience for a consumer who wants logging without composing a
-container, and the ownership problem it creates is solved rather than ignored: the returned
-`DisposingLoggerFactory` owns the scope it made, so disposing the factory disposes everything it
-built. The reference reached the same conclusion independently — its logging assembly takes a full
-dependency on the DI assembly, not just the abstractions, for precisely this one API.
+container, and the returned `DisposingLoggerFactory`'s `[Symbol.dispose]` forwards to the provider
+it built, so the intended shape is "the factory owns the scope it made." Whether that forward
+actually disposes anything today rides on the still-unbuilt scope/dispose model:
+`ServiceProvider.dispose()`/`disposeAsync()` (`libraries/di/src/ServiceProvider.ts`) are currently
+`NotImplementedError` stubs, so calling `LoggerFactory.create`'s disposal path throws rather than
+tearing anything down — a gap in the scope/dispose model generally, not a defect specific to
+`logging`'s carve-out.
 
 **The exception is `logging`, by name. The list is closed.** The paragraph above explains why
 `logging` earned it; it is not a test anyone else may apply. No other library builds a container,
