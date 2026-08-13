@@ -389,6 +389,25 @@ function readTypeModule(dir: string): string {
 }
 
 /**
+ * The `Type.*` factory call the const named in `line` holds — the spelling a
+ * hand-writer would have put at the call site, which the emission moved into
+ * the generated module. Fails loudly when the line names no const, or the
+ * module declares none by that name.
+ */
+function spellingIn(module: string, line: string): string {
+  const referenced = /\$\w+/.exec(line);
+  if (referenced === null) {
+    throw new Error(`no const referenced in: ${line}`);
+  }
+  const name = referenced[0];
+  const declared = new RegExp(`export const \\${name} = (.+);`).exec(module);
+  if (declared === null) {
+    throw new Error(`no const named ${name} in:\n${module}`);
+  }
+  return declared[1]!;
+}
+
+/**
  * The const the module declares for `spelling` — the exact `Type.*` factory call
  * a hand-writer would have spelled at the call site. Fails loudly when the
  * module declares no such const, so the spelling stays pinned byte for byte.
@@ -709,6 +728,7 @@ function setupOptionsWorkspace(): void {
 }
 
 let optionsOut = '';
+let optionsModule = '';
 
 beforeAll(() => {
   if (!toolchainReady) {
@@ -717,6 +737,7 @@ beforeAll(() => {
   setupOptionsWorkspace();
   const run = runChainTtsc(OPTIONS_DIR);
   optionsOut = readChainFile(OPTIONS_DIR, run, 'src/options-app.ts');
+  optionsModule = readTypeModule(OPTIONS_DIR);
 }, COLD_BUILD_MS);
 
 describe.skipIf(!toolchainReady)('generic inline stage — addOptions options witness (W4)', () => {
@@ -730,7 +751,9 @@ describe.skipIf(!toolchainReady)('generic inline stage — addOptions options wi
     expect(optionsOut).not.toContain('addOptions<');
     expect(optionsOut).not.toContain('tokenfor');
     expect(optionsOut).not.toContain('tokenof');
-    const m = /addOptions\(Type\.imported\("([^"]*)", "([^"]*)"\)\)/.exec(line as string);
+    // The verb's sole argument is a const, and the type it holds is spelled in
+    // the generated module.
+    const m = /^Type\.imported\("([^"]*)", "([^"]*)"\)$/.exec(spellingIn(optionsModule, line as string));
     expect(m).not.toBeNull();
     const [, name] = m as RegExpExecArray;
     // The sole argument is the app's own UserOptions type.
@@ -749,7 +772,7 @@ describe.skipIf(!toolchainReady)('generic inline stage — addOptions options wi
     // drift would compile clean and pass the text net above, yet misregister
     // and fail HERE — the gap this test closes.
     const line = lineWith(optionsOut, 'opts =');
-    const m = /addOptions\(Type\.imported\("([^"]*)", "([^"]*)"\)\)/.exec(line as string);
+    const m = /^Type\.imported\("([^"]*)", "([^"]*)"\)$/.exec(spellingIn(optionsModule, line as string));
     expect(m).not.toBeNull();
     const [, name, from] = m as RegExpExecArray;
     const optionsType = Type.imported(name as string, from as string);
