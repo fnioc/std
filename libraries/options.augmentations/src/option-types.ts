@@ -13,22 +13,22 @@ const NAMESPACE = '@rhombus-std/options.augmentations';
 
 /** The slot whose collection holds the {@link IConfigureOptions} steps for `optionsType`. */
 export function configureStepType(optionsType: Type): Type {
-  return Type.named(`${NAMESPACE}/configure`, 'global', [optionsType]);
+  return Type.global(`${NAMESPACE}/configure`, [optionsType]);
 }
 
 /** The slot whose collection holds the {@link IPostConfigureOptions} steps for `optionsType`. */
 export function postConfigureStepType(optionsType: Type): Type {
-  return Type.named(`${NAMESPACE}/post-configure`, 'global', [optionsType]);
+  return Type.global(`${NAMESPACE}/post-configure`, [optionsType]);
 }
 
 /** The slot whose collection holds the {@link IValidateOptions} steps for `optionsType`. */
 export function validateStepType(optionsType: Type): Type {
-  return Type.named(`${NAMESPACE}/validate`, 'global', [optionsType]);
+  return Type.global(`${NAMESPACE}/validate`, [optionsType]);
 }
 
 /** The slot whose collection holds the change-token sources for `optionsType`. */
 export function changeTokenSourceType(optionsType: Type): Type {
-  return Type.named(`${NAMESPACE}/change-token-source`, 'global', [optionsType]);
+  return Type.global(`${NAMESPACE}/change-token-source`, [optionsType]);
 }
 
 /**
@@ -38,7 +38,7 @@ export function changeTokenSourceType(optionsType: Type): Type {
  * slots above this takes NO argument -- one flat list serves the whole container.
  */
 export function startupValidationTargetType(): Type {
-  return Type.named(`${NAMESPACE}/startup-validation-target`);
+  return Type.global(`${NAMESPACE}/startup-validation-target`);
 }
 
 /**

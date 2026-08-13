@@ -6,11 +6,11 @@
 
 import type { Func } from '@rhombus-toolkit/func';
 import { stringifyType } from '../StringifyVisitor.js';
-import type { AggregateType, ArrayType, AsyncIterableType, AsyncType, CtorType, FuncType, GenericType, IntersectionType,
-  IterableType, LiteralValue, NamedType, ObjectType, TagType, TupleType, Type, TypeBrand, TypeLiteralType,
+import type { AggregateType, ArrayType, ConstructorType, FunctionType, GenericType, GlobalType, ImportedType,
+  IntersectionType, IterableType, LiteralValue, ObjectType, TagType, TupleType, Type, TypeBrand, TypeLiteralType,
   UnionType } from '../Type.js';
 import { TypeVisitor } from '../TypeVisitor.js';
-import { type AggregateName, isAggregateName } from './grammar.js';
+import { type AggregateName, GLOBAL_QUALIFIER, isAggregateName } from './grammar.js';
 import { id, intern, isInterned } from './intern.js';
 import { LITERAL_BASE } from './literal-base.js';
 
@@ -44,40 +44,29 @@ export function tuple(members: readonly Type[]): TupleType {
   return intern(`tuple\0${slots.map(id).join(',')}`, () => node<TupleType>({ kind: 'tuple', members: slots }));
 }
 
-export function func(returnType: Type, args: readonly Type[]): FuncType {
+export function func(returnType: Type, args: readonly Type[], genericArgs: readonly Type[]): FunctionType {
   const result = adopt(returnType);
   const slots = args.map(adopt);
+  const quantifiers = genericArgs.map(adopt);
   return intern(
-    `func\0${id(result)}\0${slots.map(id).join(',')}`,
-    () => node<FuncType>({ kind: 'func', args: slots, returnType: result }),
+    `func\0${quantifiers.map(id).join(',')}\0${id(result)}\0${slots.map(id).join(',')}`,
+    () => node<FunctionType>({ kind: 'func', args: slots, returnType: result, genericArgs: quantifiers }),
   );
 }
 
-export function ctor(instanceType: Type, args: readonly Type[]): CtorType {
+export function ctor(instanceType: Type, args: readonly Type[], genericArgs: readonly Type[]): ConstructorType {
   const instance = adopt(instanceType);
   const slots = args.map(adopt);
+  const quantifiers = genericArgs.map(adopt);
   return intern(
-    `ctor\0${id(instance)}\0${slots.map(id).join(',')}`,
-    () => node<CtorType>({ kind: 'ctor', args: slots, instanceType: instance }),
+    `ctor\0${quantifiers.map(id).join(',')}\0${id(instance)}\0${slots.map(id).join(',')}`,
+    () => node<ConstructorType>({ kind: 'ctor', args: slots, instanceType: instance, genericArgs: quantifiers }),
   );
 }
 
 export function array(element: Type): ArrayType {
   const slot = adopt(element);
   return intern(`array\0${id(slot)}`, () => node<ArrayType>({ kind: 'array', element: slot }));
-}
-
-export function async(element: Type): AsyncType {
-  const slot = adopt(element);
-  return intern(`async\0${id(slot)}`, () => node<AsyncType>({ kind: 'async', element: slot }));
-}
-
-export function asyncIterable(element: Type): AsyncIterableType {
-  const slot = adopt(element);
-  return intern(
-    `asyncIterable\0${id(slot)}`,
-    () => node<AsyncIterableType>({ kind: 'asyncIterable', element: slot }),
-  );
 }
 
 export function iterable(element: Type): IterableType {
@@ -92,24 +81,38 @@ export function iterable(element: Type): IterableType {
  */
 const AGGREGATES: Readonly<Record<AggregateName, Func<[Type], AggregateType>>> = {
   Array: array,
-  Async: async,
-  AsyncIterable: asyncIterable,
   Iterable: iterable,
 };
 
 /**
- * A reserved aggregate spelling under `global`, carrying one argument, mints that aggregate's own
- * kind — the same canonicalization {@link union} performs, so every door that can spell an
- * aggregate lands on the one interned node and a named spelling of an aggregate never exists.
+ * A reserved aggregate spelling carrying one argument mints that aggregate's own kind — the same
+ * canonicalization {@link union} performs, so every door that can spell an aggregate lands on the
+ * one interned node and a global spelling of an aggregate never exists.
  */
-export function named(name: string, from: string, genericArgs: readonly Type[]): NamedType | AggregateType {
-  if (from === 'global' && genericArgs.length === 1 && isAggregateName(name)) {
+export function global(name: string, genericArgs: readonly Type[]): AggregateType | GlobalType {
+  if (genericArgs.length === 1 && isAggregateName(name)) {
     return AGGREGATES[name](genericArgs[0]!);
   }
   const slots = genericArgs.map(adopt);
   return intern(
-    `named\0${JSON.stringify(from)}\0${JSON.stringify(name)}\0${slots.map(id).join(',')}`,
-    () => node<NamedType>({ kind: 'named', from, name, genericArgs: slots }),
+    `global\0${JSON.stringify(name)}\0${slots.map(id).join(',')}`,
+    () => node<GlobalType>({ kind: 'global', name, genericArgs: slots }),
+  );
+}
+
+/**
+ * @throws TypeError - when `from` is the ambient scope, which no import reaches.
+ */
+export function imported(name: string, from: string, genericArgs: readonly Type[]): ImportedType {
+  if (from === GLOBAL_QUALIFIER) {
+    throw new TypeError(
+      `'${GLOBAL_QUALIFIER}' is the ambient scope, not a package — spell ${name} as a global type instead`,
+    );
+  }
+  const slots = genericArgs.map(adopt);
+  return intern(
+    `imported\0${JSON.stringify(from)}\0${JSON.stringify(name)}\0${slots.map(id).join(',')}`,
+    () => node<ImportedType>({ kind: 'imported', from, name, genericArgs: slots }),
   );
 }
 
@@ -136,8 +139,14 @@ export function generic(label: string): GenericType {
   );
 }
 
+/**
+ * @throws TypeError - when the type already carries a tag.
+ */
 export function tag(type: Type, name: string): TagType {
   const inner = adopt(type);
+  if (inner.kind === 'tag') {
+    throw new TypeError(`${stringifyType(inner)} already carries a tag — a type wears at most one`);
+  }
   return intern(
     `tag\0${JSON.stringify(name)}\0${id(inner)}`,
     () => node<TagType>({ kind: 'tag', tag: name, type: inner }),
@@ -181,8 +190,8 @@ function canonicalMembers(kind: Composite, members: readonly Type[]): readonly T
 function withoutSubsumedLiterals(members: readonly Type[]): readonly Type[] {
   const bases = new Set(
     members
-      .filter(member => member.kind === 'named' && member.from === 'global')
-      .map(member => LITERAL_BASE[(member as NamedType).name])
+      .filter(member => member.kind === 'global')
+      .map(member => LITERAL_BASE[member.name])
       .filter(base => base !== undefined),
   );
   if (!bases.size) {
@@ -231,29 +240,26 @@ class AdoptVisitor extends TypeVisitor<Type> {
   protected override visitArray(type: ArrayType): Type {
     return array(type.element);
   }
-  protected override visitAsync(type: AsyncType): Type {
-    return async(type.element);
+  protected override visitCtor(type: ConstructorType): Type {
+    return ctor(type.instanceType, type.args, type.genericArgs);
   }
-  protected override visitAsyncIterable(type: AsyncIterableType): Type {
-    return asyncIterable(type.element);
-  }
-  protected override visitCtor(type: CtorType): Type {
-    return ctor(type.instanceType, type.args);
-  }
-  protected override visitFunc(type: FuncType): Type {
-    return func(type.returnType, type.args);
+  protected override visitFunc(type: FunctionType): Type {
+    return func(type.returnType, type.args, type.genericArgs);
   }
   protected override visitGeneric(type: GenericType): Type {
     return generic(type.label);
+  }
+  protected override visitGlobal(type: GlobalType): Type {
+    return global(type.name, type.genericArgs);
+  }
+  protected override visitImported(type: ImportedType): Type {
+    return imported(type.name, type.from, type.genericArgs);
   }
   protected override visitIntersection(type: IntersectionType): Type {
     return intersection(type.members);
   }
   protected override visitIterable(type: IterableType): Type {
     return iterable(type.element);
-  }
-  protected override visitNamed(type: NamedType): Type {
-    return named(type.name, type.from, type.genericArgs);
   }
   protected override visitObject(type: ObjectType): Type {
     return object(type.members);

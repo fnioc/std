@@ -13,32 +13,32 @@ import { Type } from '@rhombus-std/primitives';
 const NAMESPACE = '@rhombus-std/diagnostics';
 
 /** Collection slot: every registered {@link IMetricsListener}. */
-export const METRICS_LISTENER_TYPE: Type = Type.named(`${NAMESPACE}/metrics-listener`);
+export const METRICS_LISTENER_TYPE: Type = Type.global(`${NAMESPACE}/metrics-listener`);
 /** Collection slot: every `IConfigureOptions<MetricsOptions>` step. */
-export const METRICS_CONFIGURE_TYPE: Type = Type.named(`${NAMESPACE}/metrics-configure`);
+export const METRICS_CONFIGURE_TYPE: Type = Type.global(`${NAMESPACE}/metrics-configure`);
 /** Collection slot: every change-token source feeding the reactive `IOptions<MetricsOptions>`. */
-export const METRICS_CHANGE_TOKEN_SOURCE_TYPE: Type = Type.named(`${NAMESPACE}/metrics-change-token-source`);
+export const METRICS_CHANGE_TOKEN_SOURCE_TYPE: Type = Type.global(`${NAMESPACE}/metrics-change-token-source`);
 /** The resolvable `IOptions<MetricsOptions>` the metrics assembly is registered at. */
-export const METRICS_OPTIONS_TYPE: Type = Type.named(`${NAMESPACE}/metrics-options`);
+export const METRICS_OPTIONS_TYPE: Type = Type.global(`${NAMESPACE}/metrics-options`);
 /** Collection slot: every `MetricsConfig` marker `addMetricsConfig` registers. */
-export const METRICS_CONFIGURATION_TYPE: Type = Type.named(`${NAMESPACE}/metrics-configuration`);
+export const METRICS_CONFIGURATION_TYPE: Type = Type.global(`${NAMESPACE}/metrics-configuration`);
 /** The resolvable `IMetricListenerConfigFactory` `addMetrics` registers. */
-export const METRICS_LISTENER_CONFIGURATION_FACTORY_TYPE: Type = Type.named(
+export const METRICS_LISTENER_CONFIGURATION_FACTORY_TYPE: Type = Type.global(
   `${NAMESPACE}/metrics-listener-configuration-factory`,
 );
 
 /** Collection slot: every registered tracing `ActivityListenerBuilder`. */
-export const TRACING_LISTENER_TYPE: Type = Type.named(`${NAMESPACE}/tracing-listener`);
+export const TRACING_LISTENER_TYPE: Type = Type.global(`${NAMESPACE}/tracing-listener`);
 /** Collection slot: every `IConfigureOptions<TracingOptions>` step. */
-export const TRACING_CONFIGURE_TYPE: Type = Type.named(`${NAMESPACE}/tracing-configure`);
+export const TRACING_CONFIGURE_TYPE: Type = Type.global(`${NAMESPACE}/tracing-configure`);
 /** Collection slot: every change-token source feeding the reactive `IOptions<TracingOptions>`. */
-export const TRACING_CHANGE_TOKEN_SOURCE_TYPE: Type = Type.named(`${NAMESPACE}/tracing-change-token-source`);
+export const TRACING_CHANGE_TOKEN_SOURCE_TYPE: Type = Type.global(`${NAMESPACE}/tracing-change-token-source`);
 /** The resolvable `IOptions<TracingOptions>` the tracing assembly is registered at. */
-export const TRACING_OPTIONS_TYPE: Type = Type.named(`${NAMESPACE}/tracing-options`);
+export const TRACING_OPTIONS_TYPE: Type = Type.global(`${NAMESPACE}/tracing-options`);
 /** Collection slot: every `TracingConfig` marker `addTracingConfig` registers. */
-export const TRACING_CONFIGURATION_TYPE: Type = Type.named(`${NAMESPACE}/tracing-configuration`);
+export const TRACING_CONFIGURATION_TYPE: Type = Type.global(`${NAMESPACE}/tracing-configuration`);
 /** The resolvable `ActivityListenerConfigFactory` `addTracing` registers. */
-export const TRACING_LISTENER_CONFIGURATION_FACTORY_TYPE: Type = Type.named(
+export const TRACING_LISTENER_CONFIGURATION_FACTORY_TYPE: Type = Type.global(
   `${NAMESPACE}/tracing-listener-configuration-factory`,
 );
 

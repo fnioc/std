@@ -76,7 +76,7 @@ import { demonstrateRegistration } from './registration-demo.js';
 import { demonstrateResolution } from './resolution-demo.js';
 
 // The Types for the services this APP registers, hand-composed with
-// `Type.named(...)` exactly as `typefor<T>()` derives them. Note what is NOT
+// `Type.global(...)` exactly as `typefor<T>()` derives them. Note what is NOT
 // here: the with-transformer library's own Types. This root wiring another
 // package's classes would be the library rule violated from the other side. The
 // library ships `addWithTransformerExamples`, so the only Types it still
@@ -84,12 +84,12 @@ import { demonstrateResolution } from './resolution-demo.js';
 //
 // CONFIG_TYPE has no type-driven counterpart to match — it exists purely to
 // thread the manually-built `ConfigRoot` into the hosted worker.
-const POLICY_TYPE = Type.named('GreetingPolicy', '@rhombus-std/examples.contracts');
-const SERVER_OPTIONS_TYPE = Type.named('IOptions', '@rhombus-std/options', [
-  Type.named('ServerOptions', '@rhombus-std/examples.contracts'),
+const POLICY_TYPE = Type.imported('GreetingPolicy', '@rhombus-std/examples.contracts');
+const SERVER_OPTIONS_TYPE = Type.imported('IOptions', '@rhombus-std/options', [
+  Type.imported('ServerOptions', '@rhombus-std/examples.contracts'),
 ]);
-const POLICY_OPTIONS_TYPE = Type.named('IOptions', '@rhombus-std/options', [POLICY_TYPE]);
-const CONFIG_TYPE = Type.named('ConfigRoot', '@rhombus-std/config');
+const POLICY_OPTIONS_TYPE = Type.imported('IOptions', '@rhombus-std/options', [POLICY_TYPE]);
+const CONFIG_TYPE = Type.imported('ConfigRoot', '@rhombus-std/config');
 
 // ── config ───────────────────────────────────────────────────────────────────
 

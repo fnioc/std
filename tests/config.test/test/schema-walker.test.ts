@@ -10,9 +10,9 @@ import { ConfigBuilder, SchemaCoercionError } from '@rhombus-std/config';
 import { Type } from '@rhombus-std/primitives';
 import { describe, expect, test } from 'bun:test';
 
-const str = Type.named('string', 'global');
-const num = Type.named('number', 'global');
-const bool = Type.named('boolean', 'global');
+const str = Type.global('string');
+const num = Type.global('number');
+const bool = Type.global('boolean');
 
 /** A member the configuration may leave out. */
 function optional(type: Type): Type {
@@ -92,7 +92,7 @@ describe('withSchema(...).build()', () => {
   test('a member naming a type no configuration value coerces into is reported, not guessed at', () => {
     try {
       new ConfigBuilder().addInMemoryCollection({ When: '2026-01-01' }).withSchema(
-        Type.object({ When: Type.named('Date', 'global') }),
+        Type.object({ When: Type.global('Date') }),
       ).build();
       throw new Error('expected a throw');
     } catch (err) {

@@ -424,7 +424,7 @@ describe.skipIf(!toolchainReady)('generic inline stage — registration parity (
     const line = lineWith(chainInline, 'closed =');
     expect(line).toBeDefined();
     expect(line).toContain(
-      'addClass(Type.named("ILogger", "chain-app/tokens/chain"), ConsoleLogger, [["app:IClock"]], "singleton")',
+      'addClass(Type.imported("ILogger", "chain-app/tokens/chain"), ConsoleLogger, [["app:IClock"]], "singleton")',
     );
     assertNoAuthoringSurvivors(chainInline);
   });
@@ -435,7 +435,7 @@ describe.skipIf(!toolchainReady)('generic inline stage — registration parity (
     const line = lineWith(chainInline, 'emptySig =');
     expect(line).toBeDefined();
     expect(line).toContain(
-      'addClass(Type.named("ILogger", "chain-app/tokens/chain"), ConsoleLogger, [[]], "singleton")',
+      'addClass(Type.imported("ILogger", "chain-app/tokens/chain"), ConsoleLogger, [[]], "singleton")',
     );
     assertNoAuthoringSurvivors(chainInline);
   });
@@ -445,7 +445,7 @@ describe.skipIf(!toolchainReady)('generic inline stage — registration parity (
     expect(line).toBeDefined();
     // The service type is the template IRepo<$1>, its hole minted as a placeholder
     // rather than a named type.
-    expect(line).toContain('Type.named("IRepo", "chain-app/tokens/chain", [Type.generic("1")])');
+    expect(line).toContain('Type.imported("IRepo", "chain-app/tokens/chain", [Type.generic("1")])');
     expect(chainInline).toContain('Type.generic("1")');
     assertNoAuthoringSurvivors(chainInline);
   });
@@ -480,7 +480,7 @@ describe.skipIf(!toolchainReady)('generic inline stage — registration parity (
     expect(line).toBeDefined();
     // One argument, not a base plus a trailing key: the tag IS the service type.
     expect(line).toContain(
-      'addClass(Type.tag(Type.named("ICache", "chain-app/tokens/keyed"), "redis"), RedisCache, [[]])',
+      'addClass(Type.tag(Type.imported("ICache", "chain-app/tokens/keyed"), "redis"), RedisCache, [[]])',
     );
   });
 
@@ -488,7 +488,7 @@ describe.skipIf(!toolchainReady)('generic inline stage — registration parity (
     const line = lineWith(overrideInline, 'overridden =');
     expect(line).toBeDefined();
     expect(line).toContain(
-      'addClass(Type.named("IHandler", "chain-app/tokens/override"), Handler, [["pkg:IReqAlt", "pkg:ILog"]])',
+      'addClass(Type.imported("IHandler", "chain-app/tokens/override"), Handler, [["pkg:IReqAlt", "pkg:ILog"]])',
     );
     assertNoAuthoringSurvivors(overrideInline);
   });
@@ -511,7 +511,7 @@ describe.skipIf(!toolchainReady)('generic inline stage — lookup parity (W5)', 
   test('getRequiredService<I>() lowers to the Type-taking member', () => {
     const line = lineWith(resolveInline, 'tokenful =');
     expect(line).toBeDefined();
-    expect(line).toContain('.getRequiredService(Type.named("IThing", "chain-app/tokens/resolve"))');
+    expect(line).toContain('.getRequiredService(Type.imported("IThing", "chain-app/tokens/resolve"))');
     expect(line).not.toContain('getRequiredService<');
     assertNoAuthoringSurvivors(resolveInline);
   });
@@ -519,7 +519,7 @@ describe.skipIf(!toolchainReady)('generic inline stage — lookup parity (W5)', 
   test('getService<I>() lowers to the Type-taking member', () => {
     const line = lineWith(resolveInline, 'tryTok =');
     expect(line).toBeDefined();
-    expect(line).toContain('.getService(Type.named("IThing", "chain-app/tokens/resolve"))');
+    expect(line).toContain('.getService(Type.imported("IThing", "chain-app/tokens/resolve"))');
     expect(line).not.toContain('getService<');
     assertNoAuthoringSurvivors(resolveInline);
   });
@@ -529,7 +529,7 @@ describe.skipIf(!toolchainReady)('generic inline stage — lookup parity (W5)', 
     // so the token is the bare element type.
     const line = lineWith(resolveInline, 'many =');
     expect(line).toBeDefined();
-    expect(line).toContain('.getServices(Type.named("IThing", "chain-app/tokens/resolve"))');
+    expect(line).toContain('.getServices(Type.imported("IThing", "chain-app/tokens/resolve"))');
     expect(line).not.toContain('getServices<');
   });
 
@@ -543,7 +543,7 @@ describe.skipIf(!toolchainReady)('generic inline stage — lookup parity (W5)', 
   test('a keyed lookup mints the SAME tag token a keyed registration does', () => {
     // The identity is the whole point: registration and lookup are two halves of
     // one keyed contract, and a token that differed between them would miss.
-    const composed = 'Type.tag(Type.named("ICache", "chain-app/tokens/resolve"), "redis")';
+    const composed = 'Type.tag(Type.imported("ICache", "chain-app/tokens/resolve"), "redis")';
     const getLine = lineWith(resolveInline, 'keyedTok =');
     expect(getLine).toBeDefined();
     expect(getLine).toContain(`.getService(${composed})`);
@@ -559,7 +559,7 @@ describe.skipIf(!toolchainReady)('generic inline stage — lookup parity (W5)', 
     // real container, using the tag the transformer actually minted, so a keyed
     // registration and a keyed lookup are shown to meet rather than assumed to.
     const marker = { tag: 'redis-cache' };
-    const base = Type.named('ICache', 'chain-app/tokens/resolve');
+    const base = Type.imported('ICache', 'chain-app/tokens/resolve');
     const composed = Type.tag(base, 'redis');
 
     let keyed: Manifest<'singleton'> = new DefaultManifest<'singleton'>();

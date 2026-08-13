@@ -1,5 +1,5 @@
-import type { ArrayType, AsyncIterableType, AsyncType, CtorType, FuncType, GenericType, IntersectionType, IterableType,
-  NamedType, ObjectType, TagType, TupleType, Type, TypeLiteralType, UnionType } from './Type.js';
+import type { ArrayType, ConstructorType, FunctionType, GenericType, GlobalType, ImportedType, IntersectionType,
+  IterableType, ObjectType, TagType, TupleType, Type, TypeLiteralType, UnionType } from './Type.js';
 
 /**
  * Dispatches a {@link Type} to the handler for its `kind`.
@@ -17,24 +17,22 @@ export abstract class TypeVisitor<out Return, in Context = never> {
     switch (type.kind) {
       case 'array':
         return this.visitArray(type, context);
-      case 'async':
-        return this.visitAsync(type, context);
-      case 'asyncIterable':
-        return this.visitAsyncIterable(type, context);
       case 'ctor':
         return this.visitCtor(type, context);
       case 'func':
         return this.visitFunc(type, context);
       case 'generic':
         return this.visitGeneric(type, context);
+      case 'global':
+        return this.visitGlobal(type, context);
+      case 'imported':
+        return this.visitImported(type, context);
       case 'intersection':
         return this.visitIntersection(type, context);
       case 'iterable':
         return this.visitIterable(type, context);
       case 'literal':
         return this.visitTypeLiteral(type, context);
-      case 'named':
-        return this.visitNamed(type, context);
       case 'object':
         return this.visitObject(type, context);
       case 'tag':
@@ -50,21 +48,19 @@ export abstract class TypeVisitor<out Return, in Context = never> {
 
   protected abstract visitArray(type: ArrayType, context: Context): Return;
 
-  protected abstract visitAsync(type: AsyncType, context: Context): Return;
+  protected abstract visitCtor(type: ConstructorType, context: Context): Return;
 
-  protected abstract visitAsyncIterable(type: AsyncIterableType, context: Context): Return;
-
-  protected abstract visitCtor(type: CtorType, context: Context): Return;
-
-  protected abstract visitFunc(type: FuncType, context: Context): Return;
+  protected abstract visitFunc(type: FunctionType, context: Context): Return;
 
   protected abstract visitGeneric(type: GenericType, context: Context): Return;
+
+  protected abstract visitGlobal(type: GlobalType, context: Context): Return;
+
+  protected abstract visitImported(type: ImportedType, context: Context): Return;
 
   protected abstract visitIntersection(type: IntersectionType, context: Context): Return;
 
   protected abstract visitIterable(type: IterableType, context: Context): Return;
-
-  protected abstract visitNamed(type: NamedType, context: Context): Return;
 
   protected abstract visitObject(type: ObjectType, context: Context): Return;
 

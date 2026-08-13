@@ -8,10 +8,10 @@ import { AmbiguousUnionError, CycleError, DefaultManifest, ManifestValidationErr
 import { Type } from '@rhombus-std/primitives';
 import { describe, expect, test } from 'bun:test';
 
-const CACHE = Type.named('Cache', 'app');
-const REDIS = Type.named('Redis', 'app');
-const REPORT = Type.named('Report', 'app');
-const LOOP = Type.named('Loop', 'app');
+const CACHE = Type.imported('Cache', 'app');
+const REDIS = Type.imported('Redis', 'app');
+const REPORT = Type.imported('Report', 'app');
+const LOOP = Type.imported('Loop', 'app');
 
 class MemoryCache {}
 class RedisCache {}

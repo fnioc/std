@@ -103,7 +103,7 @@ function slotFor(member: Type): Slot {
 
 /** The parser a leaf type names, or `undefined` when it names no coercible leaf. */
 function scalarFor(type: Type): ((raw: string) => ParseResult<unknown>) | undefined {
-  if (type.kind !== 'named' || type.from !== 'global' || type.genericArgs.length > 0) {
+  if (type.kind !== 'global' || type.genericArgs.length > 0) {
     return undefined;
   }
   return SCALARS.get(type.name);

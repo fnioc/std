@@ -47,8 +47,8 @@ describe('cross-package public surface (built dist)', () => {
       '--Host=localhost',
       '--Port=8080',
     ]).withSchema<{ Host: string; Port: number; }>(Type.object({
-      Host: Type.named('string', 'global'),
-      Port: Type.named('number', 'global'),
+      Host: Type.global('string'),
+      Port: Type.global('number'),
     })).build();
 
     assert.deepEqual(config, { Host: 'localhost', Port: 8080 });

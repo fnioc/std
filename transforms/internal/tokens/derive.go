@@ -172,9 +172,10 @@ func baseTokenFor(ctx *Context, symbol *shimast.Symbol, sourceFile *shimast.Sour
 }
 
 // baseTokenForPair is baseTokenFor split into the FROM/NAME pair a structural
-// `Type.named(name, from)` call takes, rather than the flat token string. A
+// `Type.imported(name, from)` call takes, rather than the flat token string. A
 // default-lib type's FROM is the "global" sentinel — the same value that means
-// "no qualifier" when renderNamedBase joins the pair back into a bare name.
+// "no qualifier" when renderNamedBase joins the pair back into a bare name, and
+// that spells the type as `Type.global(name)` instead.
 func baseTokenForPair(ctx *Context, symbol *shimast.Symbol, sourceFile *shimast.SourceFile) (from, name string) {
 	if ctx.IsDefaultLib != nil && ctx.IsDefaultLib(sourceFile) {
 		return "global", symbol.Name

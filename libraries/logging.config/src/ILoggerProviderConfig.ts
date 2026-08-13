@@ -5,7 +5,7 @@
 // that provider.
 
 import type { IConfig } from '@rhombus-std/config.core';
-import { type NamedType, Type } from '@rhombus-std/primitives';
+import { type ImportedType, Type } from '@rhombus-std/primitives';
 import { typefor } from '@rhombus-std/primitives.extras';
 
 /**
@@ -24,7 +24,7 @@ export interface ILoggerProviderConfig<T> {
 // The generic's base, derived rather than spelled. The argument is discarded --
 // only `name` and `from` are read -- and the cast is needed because a derivation
 // narrows to a kind only for a constructor or a function.
-const BASE = typefor<ILoggerProviderConfig<unknown>>() as NamedType;
+const BASE = typefor<ILoggerProviderConfig<unknown>>() as ImportedType;
 
 /**
  * The `ILoggerProviderConfig<argument>` service type.
@@ -36,5 +36,5 @@ const BASE = typefor<ILoggerProviderConfig<unknown>>() as NamedType;
  * cannot drift.
  */
 export function loggerProviderConfigType(argument: Type): Type {
-  return Type.named(BASE.name, BASE.from, [argument]);
+  return Type.imported(BASE.name, BASE.from, [argument]);
 }

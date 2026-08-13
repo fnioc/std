@@ -98,7 +98,20 @@ the plan is to complete the port faithfully, _then_ refactor away from `ME.*` sh
 idiomatic for TS, prefer correctness and say so; hold the `ME.*` shape during the faithful pass only
 where that's cheap, and flag the intended divergence rather than pre-emptively taking it.
 
-- **`primitives`** — universal leaf, zero deps. The change-token trio (`IChangeToken`,
+- **`primitives`** — universal leaf, zero deps. The **`Type` node space** (namespace `Type`, one
+  factory per kind): a type is named by where it is reached from — `Type.imported(name, from,
+  typeArgs?)` (`ImportedType`, kind `'imported'`) for a package, `Type.global(name, typeArgs?)`
+  (`GlobalType`) for the ambient scope, no `from` member and `NominalType` unioning the two (§148);
+  the factory is `imported` because `import` is a reserved word a namespace cannot export, and the
+  namespace is what keeps every factory a documented declaration. Node names are spelled out and a
+  factory pairs with its node — `func`/`ctor` are short only because `function`/`constructor` are
+  unavailable as member names, not because they are callables (§149). Signatures carry their OWN
+  quantifiers in `genericArgs` (open-only, identity-bearing, closed positionally; spec-object door;
+  the token spells them in front — `<%T>(%T) => app:Box<%T>`, §152). `Iterable`/`Array` are the only
+  aggregate kinds — delivery is call-site behavior, so `Type.async` and the dedicated `asyncIterable`
+  kind are cancelled (`Promise<T>` and an ordinary global `AsyncIterable<E>` cover them, §151).
+  **The wire format is fixed**: token strings never move for a TS-surface change. Also the
+  change-token trio (`IChangeToken`,
   `ChangeToken.onChange` — the async-consumer forms real, via a runtime thenable check, §58 — plus
   `CompositeChangeToken` merging N tokens into one, §58) that underpins live-reload (§8), the
   `IServiceProvider` interface every resolution consumer holds, **and** the augmentation infra:
@@ -140,9 +153,11 @@ where that's cheap, and flag the intended divergence rather than pre-emptively t
   registers NOTHING. A service is named by a `Type` (re-exported from `primitives`, authored via
   `typefor<T>()`); public parameters take `Type | string` and normalize through `Type.from`,
   everything internal is `Type` only. A keyed registration composes the key into the type —
-  `Type.tag(base, key)`, never a separate argument or a `base#key` string — and an open template is
-  built structurally, `Type.named(name, from, [Type.generic(label)])`, the generic hole shared
-  between the service type and the signature slot. The WHOLE error taxonomy ships here:
+  `Type.tag(base, key)`, never a separate argument or a `base#key` string, and a type wears AT MOST
+  ONE tag (`TagType.type` and the `tag` base are `Exclude<Type, TagType>`; a tagged base arriving as
+  a value throws rather than re-keying, §150) — and an open template is built structurally,
+  `Type.imported(name, from, [Type.generic(label)])`, the generic hole shared between the service
+  type and the signature slot. The WHOLE error taxonomy ships here:
   `DiError` an abstract root, `UnsatisfiableError`/`CycleError`/`AmbiguousUnionError`/
   `ManifestValidationError` extending it so one `instanceof` classifies any container failure —
   `ManifestValidationError` carries its own readonly `errors` array positionally matching
@@ -511,7 +526,7 @@ system-wide — `mise.toml` declares it, but as `latest`, not a pinned version. 
 `docs/features/transformer-architecture.md`.
 
 **The primitive roster is three verbs over one vocabulary (§137)**: `typefor<T>()` NAMES a type (a
-named type yields its interned `NamedType` address), `schemaof<T>()` EXPANDS one into the `Type`
+named type yields its interned `NominalType` address), `schemaof<T>()` EXPANDS one into the `Type`
 tree describing its members — stopping at every name, so recursion terminates by construction —
 and `signatureof(ctor)` OBSERVES a runtime constructor. `tokenfor`/`tokenof` are the string-token
 pair, pending their own held retirement. There is no second structural vocabulary: the bespoke

@@ -278,9 +278,9 @@ describe.skipIf(!toolchainReady)('ttsc/Go config withType->withSchema byte-parit
   // survives the emit (the sweep would fail the build otherwise).
   test('inline: a flat interface expands to the Type tree, optional member unioned with undefined', () => {
     expect(flat('server')).toContain(
-      '.withSchema(Type.object({ host: Type.named("string", "global"), '
-        + 'port: Type.named("number", "global"), '
-        + 'ssl: Type.union(Type.named("boolean", "global"), Type.typeLiteral(undefined)) }))',
+      '.withSchema(Type.object({ host: Type.global("string"), '
+        + 'port: Type.global("number"), '
+        + 'ssl: Type.union(Type.global("boolean"), Type.typeLiteral(undefined)) }))',
     );
     expect(inlined('server')).not.toContain('.withType');
     expect(inlined('server')).not.toContain('schemaof');
@@ -292,17 +292,17 @@ describe.skipIf(!toolchainReady)('ttsc/Go config withType->withSchema byte-parit
 
   test('inline: an inline structural member expands in place, casing preserved', () => {
     expect(flat('nested')).toContain(
-      '.withSchema(Type.object({ Server: Type.object({ Host: Type.named("string", "global"), '
-        + 'Port: Type.named("number", "global") }), '
-        + 'Database: Type.object({ Primary: Type.object({ Host: Type.named("string", "global"), '
-        + 'PoolSize: Type.named("number", "global") }) }) }))',
+      '.withSchema(Type.object({ Server: Type.object({ Host: Type.global("string"), '
+        + 'Port: Type.global("number") }), '
+        + 'Database: Type.object({ Primary: Type.object({ Host: Type.global("string"), '
+        + 'PoolSize: Type.global("number") }) }) }))',
     );
     expect(inlined('nested')).not.toContain('schemaof');
   });
 
   test('inline: a required boolean is the boolean address, never its two literals', () => {
     const flags = inlined('flags');
-    expect(flat('flags')).toContain('.withSchema(Type.object({ flag: Type.named("boolean", "global") }))');
+    expect(flat('flags')).toContain('.withSchema(Type.object({ flag: Type.global("boolean") }))');
     expect(flags).not.toContain('typeLiteral(true)');
     expect(flags).not.toContain('schemaof');
   });
@@ -311,7 +311,7 @@ describe.skipIf(!toolchainReady)('ttsc/Go config withType->withSchema byte-parit
     const chain = inlined('chain');
     expect(chain).toMatch(/\.add\(src\)\s*\.withSchema\(/);
     expect(flat('chain')).toContain(
-      'Type.object({ Host: Type.named("string", "global"), Port: Type.named("number", "global") })',
+      'Type.object({ Host: Type.global("string"), Port: Type.global("number") })',
     );
     expect(chain).not.toContain('withSchema<');
     expect(chain).not.toContain('.withType');
@@ -329,7 +329,7 @@ describe.skipIf(!toolchainReady)('ttsc/Go config withType->withSchema byte-parit
   test('inline: a member naming another interface stays that name, un-expanded', () => {
     // `Inner` keeps its address; its own member never enters the tree.
     expect(flat('named-member')).toContain(
-      '.withSchema(Type.object({ inner: Type.named("Inner", "config-inline-consumer/tokens/named-member") }))',
+      '.withSchema(Type.object({ inner: Type.imported("Inner", "config-inline-consumer/tokens/named-member") }))',
     );
     expect(inlined('named-member')).not.toContain('schemaof');
   });

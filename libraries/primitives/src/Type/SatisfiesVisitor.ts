@@ -2,8 +2,8 @@ import type { Func } from '@rhombus-toolkit/func';
 import { isOpenType } from './analyzers.js';
 import { LITERAL_BASE } from './internals/literal-base.js';
 import { stringifyType } from './StringifyVisitor.js';
-import type { AggregateType, ArrayType, AsyncIterableType, AsyncType, CtorType, FuncType, GenericType, IntersectionType,
-  IterableType, NamedType, ObjectType, TagType, TupleType, Type, TypeLiteralType, UnionType } from './Type.js';
+import type { AggregateType, ArrayType, ConstructorType, FunctionType, GenericType, GlobalType, ImportedType,
+  IntersectionType, IterableType, ObjectType, TagType, TupleType, Type, TypeLiteralType, UnionType } from './Type.js';
 import { TypeVisitor } from './TypeVisitor.js';
 
 type Predicate = Func<[proposed: Type], boolean>;
@@ -42,22 +42,14 @@ class SatisfiesVisitor extends TypeVisitor<Predicate> {
     return this.#aggregate(type);
   }
 
-  protected override visitAsync(type: AsyncType): Predicate {
-    return this.#aggregate(type);
-  }
-
-  protected override visitAsyncIterable(type: AsyncIterableType): Predicate {
-    return this.#aggregate(type);
-  }
-
-  protected override visitCtor(type: CtorType): Predicate {
+  protected override visitCtor(type: ConstructorType): Predicate {
     return proposed =>
       proposed.kind === 'ctor' && proposed.args.length === type.args.length // Parameters are contravariant: the condition's parameter must fit the proposed one.
       && type.args.every((arg, index) => this.match(arg, proposed.args[index]!))
       && this.match(proposed.instanceType, type.instanceType);
   }
 
-  protected override visitFunc(type: FuncType): Predicate {
+  protected override visitFunc(type: FunctionType): Predicate {
     return proposed =>
       proposed.kind === 'func' && proposed.args.length === type.args.length // Parameters are contravariant: the condition's parameter must fit the proposed one.
       && type.args.every((arg, index) => this.match(arg, proposed.args[index]!))
@@ -68,25 +60,32 @@ class SatisfiesVisitor extends TypeVisitor<Predicate> {
     return proposed => this.capture(type.label, proposed);
   }
 
+  /** A literal satisfies the global name of its own primitive base — `'fast'` fits `string`. */
+  protected override visitGlobal(type: GlobalType): Predicate {
+    return proposed => {
+      if (proposed.kind === 'literal') {
+        return LITERAL_BASE[type.name] === typeof proposed.value;
+      }
+      return proposed.kind === 'global'
+        && proposed.name === type.name
+        && this.#arguments(type.genericArgs, proposed.genericArgs);
+    };
+  }
+
+  protected override visitImported(type: ImportedType): Predicate {
+    return proposed =>
+      proposed.kind === 'imported'
+      && proposed.from === type.from
+      && proposed.name === type.name
+      && this.#arguments(type.genericArgs, proposed.genericArgs);
+  }
+
   protected override visitIntersection(type: IntersectionType): Predicate {
     return proposed => type.members.every(member => this.match(proposed, member));
   }
 
   protected override visitIterable(type: IterableType): Predicate {
     return this.#aggregate(type);
-  }
-
-  protected override visitNamed(type: NamedType): Predicate {
-    return proposed => {
-      if (proposed.kind === 'literal') {
-        return type.from === 'global' && LITERAL_BASE[type.name] === typeof proposed.value;
-      }
-      return proposed.kind === 'named'
-        && proposed.from === type.from
-        && proposed.name === type.name
-        && proposed.genericArgs.length === type.genericArgs.length
-        && type.genericArgs.every((arg, index) => this.match(proposed.genericArgs[index]!, arg));
-    };
   }
 
   protected override visitObject(type: ObjectType): Predicate {
@@ -136,6 +135,11 @@ class SatisfiesVisitor extends TypeVisitor<Predicate> {
   /** One aggregate satisfies another of its own kind, covariantly in the element. */
   #aggregate(type: AggregateType): Predicate {
     return proposed => proposed.kind === type.kind && this.match(proposed.element, type.element);
+  }
+
+  /** Generic arguments match one for one, each covariantly. */
+  #arguments(condition: readonly Type[], proposed: readonly Type[]): boolean {
+    return condition.length === proposed.length && condition.every((arg, index) => this.match(proposed[index]!, arg));
   }
 
   /** Tries one branch of a condition union, rolling captures back when it fails. */

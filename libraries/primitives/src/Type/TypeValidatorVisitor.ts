@@ -1,25 +1,29 @@
-import type { AggregateType, ArrayType, AsyncIterableType, AsyncType, CtorType, FuncType, GenericType, IntersectionType,
-  IterableType, NamedType, ObjectType, TagType, TupleType, Type, TypeLiteralType, UnionType } from './Type.js';
+import { stringifyType } from './StringifyVisitor.js';
+import type { AggregateType, ArrayType, ConstructorType, FunctionType, GenericType, GlobalType, ImportedType,
+  IntersectionType, IterableType, ObjectType, TagType, TupleType, Type, TypeLiteralType, UnionType } from './Type.js';
 import { TypeVisitor } from './TypeVisitor.js';
 
 class TypeValidatorVisitor extends TypeVisitor<readonly string[]> {
   protected override visitArray(type: ArrayType): readonly string[] {
     return this.#element(type);
   }
-  protected override visitAsync(type: AsyncType): readonly string[] {
-    return this.#element(type);
+  protected override visitCtor(type: ConstructorType): readonly string[] {
+    return [...this.#quantifiers(type.genericArgs), ...this.#all(type.args), ...this.visit(type.instanceType)];
   }
-  protected override visitAsyncIterable(type: AsyncIterableType): readonly string[] {
-    return this.#element(type);
-  }
-  protected override visitCtor(type: CtorType): readonly string[] {
-    return [...this.#all(type.args), ...this.visit(type.instanceType)];
-  }
-  protected override visitFunc(type: FuncType): readonly string[] {
-    return [...this.#all(type.args), ...this.visit(type.returnType)];
+  protected override visitFunc(type: FunctionType): readonly string[] {
+    return [...this.#quantifiers(type.genericArgs), ...this.#all(type.args), ...this.visit(type.returnType)];
   }
   protected override visitGeneric(_type: GenericType): readonly string[] {
     return [];
+  }
+  protected override visitGlobal(type: GlobalType): readonly string[] {
+    const own = type.name === 'default'
+      ? ['`default` names nothing on its own — name the export, or reach it through the package it comes from']
+      : [];
+    return [...own, ...this.#all(type.genericArgs)];
+  }
+  protected override visitImported(type: ImportedType): readonly string[] {
+    return this.#all(type.genericArgs);
   }
   protected override visitIntersection(type: IntersectionType): readonly string[] {
     return this.#all(type.members);
@@ -43,11 +47,11 @@ class TypeValidatorVisitor extends TypeVisitor<readonly string[]> {
     return this.#all(type.members);
   }
 
-  protected override visitNamed(type: NamedType): readonly string[] {
-    const own = type.from === 'global' && type.name === 'default'
-      ? ['global:default names nothing — give the export a name, or a `from` other than global']
-      : [];
-    return [...own, ...this.#all(type.genericArgs)];
+  /** A signature quantifies holes; anything else in the list names nothing a request could close. */
+  #quantifiers(quantifiers: readonly Type[]): readonly string[] {
+    return quantifiers
+      .filter(quantifier => quantifier.kind !== 'generic')
+      .map(quantifier => `a signature quantifies generic holes, but ${stringifyType(quantifier)} is not one`);
   }
 
   #all(types: readonly Type[]): readonly string[] {

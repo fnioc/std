@@ -10,13 +10,13 @@ function check(label: string, condition: boolean): void {
   console.log(`ok — ${label}`);
 }
 
-const CONFIG = Type.named('Config', 'app');
-const FOO = Type.named('Foo', 'app');
-const BAR = Type.named('Bar', 'app');
-const CONN = Type.named('Conn', 'app');
-const WIDGET = Type.named('Widget', 'app');
-const HOLDER = Type.named('Holder', 'app');
-const SP_TYPE = Type.named('IServiceProvider', '@rhombus-std/primitives');
+const CONFIG = Type.imported('Config', 'app');
+const FOO = Type.imported('Foo', 'app');
+const BAR = Type.imported('Bar', 'app');
+const CONN = Type.imported('Conn', 'app');
+const WIDGET = Type.imported('Widget', 'app');
+const HOLDER = Type.imported('Holder', 'app');
+const SP_TYPE = Type.imported('IServiceProvider', '@rhombus-std/primitives');
 
 class Foo {}
 class Bar {
@@ -36,11 +36,11 @@ class Holder {
 const manifest = DefaultManifest.empty<string>()
   .addValue(CONFIG, { env: 'dev' })
   // .add(ServiceDescriptor.value(CONFIG, { env: 'dev' }))
-  .addClass(Type.stringify(Type.named('Foo', 'app')), Foo, [[]])
+  .addClass(Type.stringify(Type.imported('Foo', 'app')), Foo, [[]])
   // .add(ServiceDescriptor.ctor(FOO, Foo, [[]]))
   .add(ServiceDescriptor.ctor(BAR, Bar, [[FOO, Type.typeLiteral('fast')]]))
   .add(ServiceDescriptor.ctor(WIDGET, Widget, [[CONN, FOO]]))
-  .add(ServiceDescriptor.ctor(Type.named('Box', 'app', [Type.generic('T')]), Box, [[Type.generic('T')]]))
+  .add(ServiceDescriptor.ctor(Type.imported('Box', 'app', [Type.generic('T')]), Box, [[Type.generic('T')]]))
   .add(ServiceDescriptor.ctor(HOLDER, Holder, [[SP_TYPE]]));
 
 const sp = new ServiceProvider(manifest);
@@ -58,10 +58,10 @@ check('ctor deps + literal param', bar.foo instanceof Foo && bar.mode === 'fast'
 const pair = sp.resolve(Type.tuple(FOO, Type.typeLiteral(5))) as [Foo, number];
 check('tuple resolution', Array.isArray(pair) && pair[0] instanceof Foo && pair[1] === 5);
 
-const viaUnion = sp.resolve(Type.union(Type.named('Missing', 'app'), FOO));
+const viaUnion = sp.resolve(Type.union(Type.imported('Missing', 'app'), FOO));
 check('union falls to the first satisfiable member', viaUnion instanceof Foo);
 
-const boxed = sp.resolve(Type.named('Box', 'app', [FOO])) as Box;
+const boxed = sp.resolve(Type.imported('Box', 'app', [FOO])) as Box;
 check('open generic closes against the request', boxed.inner instanceof Foo);
 
 const holder = sp.resolve(HOLDER) as Holder;
@@ -76,7 +76,7 @@ check('latebound calls are independent', makeWidget(new Conn()).conn !== myConn)
 
 let threw = false;
 try {
-  sp.resolve(Type.named('Missing', 'app'));
+  sp.resolve(Type.imported('Missing', 'app'));
 } catch (error) {
   threw = error instanceof UnsatisfiableError;
 }
@@ -84,18 +84,18 @@ check('unsatisfiable request throws UnsatisfiableError', threw);
 
 const pairFactory = (foo: Foo, bar: Bar) => [foo, bar] as const;
 const spF = new ServiceProvider(
-  manifest.add(ServiceDescriptor.factory(Type.named('Pair', 'app'), pairFactory, [[FOO, BAR]])),
+  manifest.add(ServiceDescriptor.factory(Type.imported('Pair', 'app'), pairFactory, [[FOO, BAR]])),
 );
-const made = spF.resolve(Type.named('Pair', 'app')) as readonly [Foo, Bar];
+const made = spF.resolve(Type.imported('Pair', 'app')) as readonly [Foo, Bar];
 check('factory registration with deps', made[0] instanceof Foo && made[1] instanceof Bar);
 
 const spLit = new ServiceProvider(
   DefaultManifest.empty<string>().add(ServiceDescriptor.value(Type.typeLiteral('dev'), 'dev-value')),
 );
-check('literal registration serves its base type', spLit.resolve(Type.named('string')) === 'dev-value');
+check('literal registration serves its base type', spLit.resolve(Type.global('string')) === 'dev-value');
 
-const A = Type.named('A', 'app');
-const B = Type.named('B', 'app');
+const A = Type.imported('A', 'app');
+const B = Type.imported('B', 'app');
 const spUnion = new ServiceProvider(
   DefaultManifest.empty<string>().add(ServiceDescriptor.value(Type.union(A, B), 'either')),
 );
@@ -154,10 +154,10 @@ const spIterExact = new ServiceProvider(
 check('exact Iterable registration wins outright, never combined',
   spIterExact.resolve(Type.iterable(A)) === 'exact-iter');
 
-const emptyGather = [...sp.resolve(Type.iterable(Type.named('Missing', 'app')))];
+const emptyGather = [...sp.resolve(Type.iterable(Type.imported('Missing', 'app')))];
 check('iterable of nothing is an empty sequence', emptyGather.length === 0);
 
-const STR = Type.named('string');
+const STR = Type.global('string');
 const spBoth = new ServiceProvider(
   DefaultManifest.empty<string>().add(ServiceDescriptor.value(Type.object({ a: STR, b: STR }), 'both')),
 );

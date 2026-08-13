@@ -1189,7 +1189,7 @@ union with `undefined` for a member the configuration may leave out —
 intact, since nothing subsumes a nullish member.
 
 **Three verbs, one vocabulary.** A type-argument primitive does exactly one of three things, and its
-name says which: `typefor<T>()` NAMES a type (a named type yields its interned `NamedType` address),
+name says which: `typefor<T>()` NAMES a type (a named type yields its interned `NominalType` address),
 `schemaof<T>()` EXPANDS one (the members of the type it was handed), `signatureof(ctor)` OBSERVES a
 runtime constructor. `tokenfor` / `tokenof` remain the string-token pair pending their own held
 retirement. That is the whole transformable roster.
@@ -1205,7 +1205,7 @@ an address, so a coercion driven by that schema has no structure to descend into
 same `ObjectType`. That is correct, not a collision: a structural description is not an address, and
 nothing downstream may read identity as provenance.
 
-**The static image is stated, not inferred.** `Type.object` and `Type.named` erase their arguments'
+**The static image is stated, not inferred.** `Type.object` and `Type.global` erase their arguments'
 literal types, so no type-level image can be recovered from a tree — `Infer<S>` was possible only
 because the retired grammar was made of string literals. `withSchema<U>(schema: ObjectType)` takes
 the shape as a type argument instead: the tree states the shape at runtime, the argument states the
@@ -1221,10 +1221,10 @@ roster, and the lint's `PRIMITIVE_HOMES` all shrink to what authored code can re
 
 **An aggregate spelling derives with only its element.** `Iterable` and `AsyncIterable` are declared
 with two defaulted tail parameters, and a bare `Iterable<E>` reference resolves all three, so a
-derivation must trim to the element. The `named` door mints an aggregate kind from a SINGLE argument
-under `global`; a spelling that carried the defaulted tail would land as an ordinary named type that
-no aggregate registration answers, and a derived address would name a different type than the
-hand-written `Type.asyncIterable(E)`.
+derivation must trim to the element. The global door mints an aggregate kind from a SINGLE argument;
+a spelling that carried the defaulted tail would land as an ordinary global type that no aggregate
+registration answers, and a derived address would name a different type than the hand-written
+`Type.iterable(E)`.
 
 _Owner-directed 2026-08-13._
 
@@ -1300,18 +1300,21 @@ _Owner-directed 2026-08-13._
 ## §141 — di2's Type taxonomy: one flat node space, address vs. spec as usage, not identity
 
 di2's `Type` is one flat node space with one public parent — no descriptor union, no overlapping
-door unions. `TypeIdentifier = NamedType | PlaceholderType | TagType` names the ADDRESS-ONLY kinds:
-a pure reference can never self-construct.
+door unions. `TypeIdentifier = NominalType | GenericType | TagType` names the ADDRESS-ONLY kinds:
+a pure reference can never self-construct. `NominalType = GlobalType | ImportedType` is the pair a
+name is reached by — the ambient scope, or an import from a package that the node carries as its
+`from`.
 
 Every `Type` can be an ADDRESS: interning makes any node registrable and resolvable by `===`, so a
 `ServiceDescriptor` may link absolutely any `Type` to an implementation. Every NON-identifier `Type`
 can also be a SPEC — it self-constructs when no registration answers a request for it. The
 capability lives in the USAGE and the registry, never as a dual identity stamped on the node itself.
 
-`TagType = { type: Type, tag: string }`; the inner `type` is unconstrained (a keyed function-typed
-service is spellable). A tag is address-only regardless of its inner type — keying is registration
-intent, so an unregistered keyed request fails rather than constructs. `TypeLiteralType` is a
-self-supplying leaf; it names nothing.
+`TagType = { type: Exclude<Type, TagType>, tag: string }`; the inner `type` is any other kind (a
+keyed function-typed service is spellable), but never a tag itself — a type wears at most one, and
+the door refuses a second rather than re-keying silently. A tag is address-only regardless of its
+inner type — keying is registration intent, so an unregistered keyed request fails rather than
+constructs. `TypeLiteralType` is a self-supplying leaf; it names nothing.
 
 Capability questions (`identifier`, `open`) are answered by MEMOIZED ANALYZERS: computed on first
 ask per unique node by walking the node itself, cached in a `WeakMap` that lives INSIDE the
@@ -1345,7 +1348,7 @@ _Owner-directed 2026-08-13._
 di2 exposes one resolution entrypoint, `getService(request: Type)`. Resolution is LOOKUP, THEN
 CONSTRUCT ON MISS: the lookup answers for any `Type` at all; on a miss, a request that can
 self-describe is constructed by composing looked-up leaves, and a pure reference on a miss fails.
-Requesting an unregistered constructor is construct-on-miss of a `CtorType`: di2 instantiates it,
+Requesting an unregistered constructor is construct-on-miss of a `ConstructorType`: di2 instantiates it,
 resolving its parameter types through the lookup — the injection signature must be DESCRIBED in the
 request, since there is no runtime reflection.
 
@@ -1394,16 +1397,16 @@ _Owner-directed 2026-08-13._
 
 ## §144 — di2's registration dialect: no TypeBuilder, renamed nodes, object-parameter overloads, a generic hand-usable builder
 
-di2 has no `TypeBuilder`, neither general-purpose nor as manifest stages. Two renames land
-(owner-worded): `placeholder` → `generic` (node `GenericType`, kind `'generic'`), and
-`FunctionType` → `FuncType` (pairing with the `func` factory). The multi-field factories — `named`,
-`ctor`, `func`, `tag` — gain OBJECT-PARAMETER overloads whose keys are the node's own published
-fields (`{ name, from?, genericArgs? }`, and so on), one vocabulary labeled at every nesting level
-with defaults skippable independently; positional forms remain for flat use, and the
-homogeneous-list factories (`union` / `intersection` / `tuple`) stay positional-rest only.
+di2 has no `TypeBuilder`, neither general-purpose nor as manifest stages. A node's name is spelled
+out in full and its factory pairs with it: `GenericType` (kind `'generic'`, factory `generic`), and
+the callables `FunctionType` / `ConstructorType` behind `func` / `ctor`. The multi-field factories —
+`global`, `imported`, `ctor`, `func`, `tag` — gain OBJECT-PARAMETER overloads whose keys are the
+node's own published fields (`{ name, from?, genericArgs? }`, and so on), one vocabulary labeled at
+every nesting level with defaults skippable independently; positional forms remain for flat use, and
+the homogeneous-list factories (`union` / `intersection` / `tuple`) stay positional-rest only.
 
 Registration never requires the impl instance's own type: a provided constructor's instance
-`NamedType` is data the container has no use for. The address is what consumers resolve by,
+`NominalType` is data the container has no use for. The address is what consumers resolve by,
 assignability is compile-time-enforced by the sugar constraints (§143), and the composed
 described-constructable carries the address in its instance slot — users supply argument types
 only.
@@ -1438,41 +1441,35 @@ The configure dialect offers `withType` AND `withSignature` after the `as`-verb,
 which must be used — stage types make the completion state reachable only through one of them,
 once, with a runtime guard backing the untyped caller. `withSignature(args)` supplies argument types
 only, composing internally with the address in the instance slot; `withType(node)` supplies the
-whole composed constructable, typed per the `as`-verb (`CtorType` for `asClass`, `FunctionType` for
+whole composed constructable, typed per the `as`-verb (`ConstructorType` for `asClass`, `FunctionType` for
 `asFactory`) — sugar substitutes `withType` with the transform-derived precise node, and a
 hand-writer reaches for `withSignature`. Deep signatures remain irreducibly deep; the object-overload
 factories and named intermediate consts are the spelling relief, not the dialect.
 
 _Owner-directed 2026-08-13._
 
-## §145 — di2's aggregates are first-class node kinds; normalization lives in the `named` door
+## §145 — di2's aggregates are first-class node kinds; normalization lives in the `global` door
 
-Three aggregate factories mint their OWN node kind apiece: `Type.array` (`ArrayType`),
-`Type.asyncIterable` (`AsyncIterableType`), `Type.iterable` (`IterableType`) — each a
-single-`element`-child node. The aggregate names join the parser's one reserved-name mechanism
-beside `Func` / `Ctor` / `ServiceProvider`, and the engine dispatches on kind. This dissolves the
-engine-side reserved-name list, the "NamedType is address-only except three names" asterisk, and the
-pairing-rule scoping clause that predated it — fewer distinct mechanisms, more uniform arms.
+Two aggregate factories mint their OWN node kind apiece: `Type.array` (`ArrayType`) and
+`Type.iterable` (`IterableType`) — each a single-`element`-child node. The aggregate names join the
+parser's one reserved-name mechanism beside `Func` / `Ctor` / `ServiceProvider`, and the engine
+dispatches on kind. This dissolves the engine-side reserved-name list, the "a global name is
+address-only except three names" asterisk, and the pairing-rule scoping clause that predated it —
+fewer distinct mechanisms, more uniform arms.
 
-`AsyncType` joins the same pass: kind `async`, factory `async(element)` (legal, since `async` is
-only contextually reserved), wire spelling `Async<E>` in the reserved set. The node, factory, and
-parser arm land now; its ENGINE arm — async delivery of the element — lands with the parked
-async-realize design, not before.
-
-Normalization lives in the `named` door, with no swap visitor: `named` given a reserved aggregate
-spelling (`'Iterable'` / `'Array'` / `'AsyncIterable'` / `'Async'`, `'global'`, one argument)
-silently returns the corresponding kind node — the same canonicalization contract `union` already
+Normalization lives in the `global` door, with no swap visitor: `global` given a reserved aggregate
+spelling (`'Iterable'` / `'Array'`, one argument) silently returns the corresponding kind node — the same canonicalization contract `union` already
 has. Every path that can spell an aggregate — the parser, derivation-emitted code, hand composition,
-adoption — normalizes at mint, so the kind node is the ONE interned identity and a `NamedType`
+adoption — normalizes at mint, so the kind node is the ONE interned identity and a `GlobalType`
 spelling of an aggregate can never exist. The signature principle is PERMISSIVE IN, EXPRESSIVE OUT:
 as narrow as expressible per call — a literal reserved spelling types as its kind node, a
-non-reserved literal as `NamedType`, a dynamic string as the honest union, each as tight as TS can
+non-reserved literal as `GlobalType`, a dynamic string as the honest union, each as tight as TS can
 prove. The object-parameter overloads (§144) narrow the same way via literal property inference.
 
-An aggregate address's CONTRACT is the protocol alone — an `Iterable` / `AsyncIterable` / `Array` of
-every registration of the element. Binding is a property of the SYNTHESIZED descriptor-miss fallback
-only: the synthesized `array` materializes at resolution, and the synthesized `iterable` /
-`asyncIterable` are late-bound, each element resolving at iteration time (sync or async). A
+An aggregate address's CONTRACT is the protocol alone — an `Iterable` / `Array` of every
+registration of the element. Binding is a property of the SYNTHESIZED descriptor-miss fallback
+only: the synthesized `array` materializes at resolution, and the synthesized `iterable` is
+late-bound, each element resolving at iteration time. A
 registration answering at lookup under an aggregate address binds however its own descriptor binds
 — the engine imposes nothing on it. A registration under an aggregate address answers at lookup
 before synthesis, uniformly, with no reserved-name carve-out in the door and no warning machinery:
@@ -1510,3 +1507,98 @@ the Go `singular` / `valueof` / fold stages, and the short-circuit e2e all retir
 request is served by the describe door, the same as any other request.
 
 _Owner-directed 2026-08-13 (owner: "singular + the lookup thing are all dead")._
+
+## §148 — A type is named by where it is reached from: `Type.imported` for a package, `Type.global` for the ambient scope
+
+One factory named both, and a `from` of `'global'` was the sentinel that meant "no package at all".
+The two readings split into two doors. `Type.imported(name, from, typeArgs?)` names a type an import
+reaches and carries that specifier as its `from`; `Type.global(name, typeArgs?)` names one the
+ambient scope already declares and carries no `from` member, because there is nothing for it to
+hold. Their nodes are `ImportedType` (kind `'imported'`) and `GlobalType` (kind `'global'`), and
+`NominalType` unions them for the call sites that take either.
+
+The doors are strict about the boundary they draw. Handing `Type.imported` a `from` of `'global'`
+throws rather than quietly re-routing to the other door: the ambient scope is not a package, and a
+caller who spells it that way has the wrong door, not a normalizable argument.
+
+The factory is `imported` rather than `import` for one reason: `import` is a reserved word, so no
+namespace can export a member named for it. `Type` is a namespace — every factory a declaration
+carrying its own documentation — and the verb bends to keep it one.
+
+The wire format does not move. A global name is spelled bare and an imported one `from:name`, so
+every token, every derived address and every parity fixture reads byte-for-byte as before; the split
+changes what the TypeScript surface and the node shape say, not what a token says. The token grammar
+still accepts an explicit `global:` qualifier, which the reader hands to the global door, so a token
+round-trips to the node it always did.
+
+_Owner-directed 2026-08-13._
+
+## §149 — Node names are spelled out; a factory pairs with its node's name
+
+A node's type name is written in full: `FunctionType` and `ConstructorType`, never an abbreviation.
+A factory pairs with the node it mints — `global` with `GlobalType`, `imported` with `ImportedType`,
+`tag` with `TagType` — and a spec interface pairs with its factory, so `Type.imported` takes an
+`ImportedSpec`.
+
+The pairing bends only where the full word cannot be a member name. `Type.func` and `Type.ctor` keep
+their short spellings for that reason and no other, and their kind strings stay `'func'` and
+`'ctor'` to match the factories a reader calls. Nothing about being callable makes a factory short;
+the two that are short are the two whose full words are unavailable.
+
+_Owner-directed 2026-08-13._
+
+## §150 — A type wears at most one tag
+
+`TagType.type` is `Exclude<Type, TagType>` and so is the base parameter of `Type.tag`, so the type
+system refuses a tag over a tag wherever the base is statically known. The interning path refuses
+the rest: a tagged base arriving as a value throws, naming the type that already carries a tag, and
+the token reader reports a second `#` as a parse error rather than building a node no factory would.
+
+Re-keying is the alternative this rules out. A keyed registration composes its key into the type, so
+silently replacing or nesting a key would file the registration at an address neither the
+registering side nor the requesting side named, and the miss would surface far from its cause.
+
+One consequence reaches the registration verbs: a verb taking an optional key derives the address it
+files under through a single door, which is where the refusal lives — the check and its message
+exist once rather than beside every verb.
+
+_Owner-directed 2026-08-13._
+
+## §151 — Delivery is not a node kind: `Type.async` and the `asyncIterable` kind are cancelled
+
+Handing a value over later is a property of the call site, not of the type being named. "A `T`
+delivered later" is `Promise<T>` — the ordinary global generic that a `Promise<T>` reference already
+derives to — so `Type.async` and the `Async<E>` wire spelling are gone with nothing replacing them.
+
+`AsyncIterable<E>` factors the same way: an async sequence is a call site's iteration protocol over a
+collection, and `AsyncIterable` is a real TypeScript name that spells as an ordinary global generic.
+Its dedicated aggregate kind is gone too, and with no kind left to produce one, the engine's
+async-iterable call site and its realization go with it.
+
+`Type.iterable` and `Type.array` are the aggregates that remain, and they are the only addresses
+carrying collection-resolution semantics. What survives untouched on the derivation side: an
+`AsyncIterable<E>` reference derives exactly as it did, emitting the ordinary global generic and the
+same token, and the arity trim that keeps a lib-declared `AsyncIterable`'s defaulted tail parameters
+out of a derived address stays — that is derivation hygiene, not a kind.
+
+_Owner-directed 2026-08-13._
+
+## §152 — A signature carries its own quantifiers
+
+`FunctionType` and `ConstructorType` hold a `genericArgs` list: the holes the signature itself
+quantifies, in declaration order, empty for a concrete one. The name is shared with a nominal type's
+constructed arguments and so is the meaning — these are what a request CLOSES, positionally.
+
+Quantifying is part of the type. `<%T>() => app:Box<%T>` ranges over the hole; a signature that
+merely mentions `%T` names one particular open type. Identity includes the list, so those two intern
+as different nodes, and that distinction is the point of carrying it. Substituting a quantified hole
+discharges its quantifier, so closing an open signature lands on the requested node itself rather
+than on a look-alike.
+
+The spec object is the door — a positional `Type.func(returnType, ...args)` call spells a concrete
+signature — and the token grammar extends additively: a quantifier list is written in front of the
+signature it binds, `<%T>(%T) => app:Box<%T>`, reachable through the arrow, `new` and reserved
+`Func` / `Ctor` spellings alike. A token carrying no quantifiers spells exactly as it always did, so
+the parity invariant binds unchanged.
+
+_Owner-directed 2026-08-13._

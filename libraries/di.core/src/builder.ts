@@ -1,6 +1,7 @@
-import { type CtorType, type FuncType, type IntersectionType, Type } from '@rhombus-std/primitives';
+import { type ConstructorType, type FunctionType, type IntersectionType, Type } from '@rhombus-std/primitives';
 import type { Ctor, Func } from '@rhombus-toolkit/func';
 import { assertNever } from '@rhombus-toolkit/type-guards';
+import { withKey } from './service-type';
 import { ServiceDescriptor, type TypeSignatures } from './ServiceDescriptor';
 
 /** A step the lambda has not spent yet. Each verb removes its own, so none can be taken twice. */
@@ -22,8 +23,8 @@ type Pending<T, ImplNode extends Type, Scopes extends string, Slots extends Slot
  * registration that could not satisfy its own address is refused where it is written.
  */
 interface IAsImpl<T, Scopes extends string, Slots extends Slot, Ready extends boolean> {
-  asClass(ctor: Ctor<any[], T>): Pending<T, CtorType, Scopes, Exclude<Slots, 'impl'> | 'implType', Ready>;
-  asFactory(fn: Func<any[], T>): Pending<T, FuncType, Scopes, Exclude<Slots, 'impl'> | 'implType', Ready>;
+  asClass(ctor: Ctor<any[], T>): Pending<T, ConstructorType, Scopes, Exclude<Slots, 'impl'> | 'implType', Ready>;
+  asFactory(fn: Func<any[], T>): Pending<T, FunctionType, Scopes, Exclude<Slots, 'impl'> | 'implType', Ready>;
   asValue(value: T): Pending<T, never, Scopes, Extract<Slots, 'tag'>, true>;
 }
 
@@ -151,10 +152,7 @@ export class PendingRegistration<Scopes extends string> implements PendingState<
 
   /** The descriptor this node describes, filed under `type` and whatever tag it carries. */
   toDescriptor(type: Type): ServiceDescriptor<Scopes> {
-    if (this.tag !== undefined && type.kind === 'tag') {
-      throw new Error(`${Type.stringify(type)} already carries a tag; it cannot take the key ${this.tag}.`);
-    }
-    const serviceType = this.tag === undefined ? type : Type.tag(type, this.tag);
+    const serviceType = withKey(type, this.tag);
     const impl = this.impl;
     if (impl === undefined) {
       throw new Error(`no implementation was chosen for ${Type.stringify(type)}.`);

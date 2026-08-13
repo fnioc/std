@@ -10,7 +10,7 @@
 // published Type and the registered service type are the SAME interned
 // object, never merely two equal strings. The manual sibling
 // (`@rhombus-std/examples.lib.without-transformer`'s `types.ts`) publishes the
-// identical Types by hand, via `Type.named(...)` — interning is what lets the
+// identical Types by hand, via `Type.global(...)` — interning is what lets the
 // two spellings meet on one object, which is what the interop matrix rests on.
 //
 // `typefor` has no runtime footprint: the build folds each call to the `Type`

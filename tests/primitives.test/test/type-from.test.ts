@@ -2,35 +2,35 @@
 // round trip: every Type spells to a token that reads back into the same Type, however deeply
 // nested, and whatever grammar characters its names and literal values happen to contain.
 
-import { Type, TypeParseError } from '@rhombus-std/primitives';
+import { Type, TypeParseError, type UnionType } from '@rhombus-std/primitives';
 import { describe, expect, test } from 'bun:test';
 
-const A = Type.named('A', 'app');
-const B = Type.named('B', 'app');
-const C = Type.named('C', 'app');
+const A = Type.imported('A', 'app');
+const B = Type.imported('B', 'app');
+const C = Type.imported('C', 'app');
 
 describe('Type.from', () => {
   test('reads a qualified name', () => {
-    expect(Type.from('app:Foo')).toBe(Type.named('Foo', 'app'));
+    expect(Type.from('app:Foo')).toBe(Type.imported('Foo', 'app'));
   });
 
   test('an absent qualifier means the global namespace', () => {
-    expect(Type.from('Foo')).toMatchObject({ kind: 'named', from: 'global', name: 'Foo' });
+    expect(Type.from('Foo')).toMatchObject({ kind: 'global', name: 'Foo' });
   });
 
   test('a value-type name is an ordinary named type', () => {
-    expect(Type.from('string')).toBe(Type.named('string'));
-    expect(Type.from('global:string')).toBe(Type.named('string', 'global'));
+    expect(Type.from('string')).toBe(Type.global('string'));
+    expect(Type.from('global:string')).toBe(Type.global('string'));
     expect(Type.from('number')).toBe(Type.from('global:number'));
   });
 
   test('reads nested generics', () => {
-    const nested = Type.named('Box', 'app', [Type.iterable(A)]);
+    const nested = Type.imported('Box', 'app', [Type.iterable(A)]);
     expect(Type.from('app:Box<Iterable<app:A>>')).toBe(nested);
   });
 
   test('reads an object type', () => {
-    expect(Type.from('{ a: string; b: app:B }')).toBe(Type.object({ a: Type.named('string'), b: B }));
+    expect(Type.from('{ a: string; b: app:B }')).toBe(Type.object({ a: Type.global('string'), b: B }));
   });
 
   test('reads a union, with intersection binding tighter', () => {
@@ -40,7 +40,7 @@ describe('Type.from', () => {
 
   test('reads a tag', () => {
     expect(Type.from('app:A#primary')).toBe(Type.tag(A, 'primary'));
-    expect(Type.from('(app:A | app:B)#primary')).toBe(Type.tag(Type.union(A, B), 'primary'));
+    expect(Type.from('(app:A | app:B)#primary')).toBe(Type.tag(Type.union(A, B) as UnionType, 'primary'));
   });
 
   test('reads tuples, generic holes and literals', () => {
@@ -50,6 +50,18 @@ describe('Type.from', () => {
     expect(Type.from('42n')).toBe(Type.typeLiteral(42n));
     expect(Type.from('-Infinity')).toBe(Type.typeLiteral(-Infinity));
     expect(Type.from('undefined')).toBe(Type.typeLiteral(undefined));
+  });
+
+  test('reads a quantified signature', () => {
+    const hole = Type.generic('T');
+    expect(Type.from('<%T>(%T) => app:A')).toBe(Type.func({ returnType: A, args: [hole], genericArgs: [hole] }));
+    expect(Type.from('<%T>new (%T) => app:A')).toBe(Type.ctor({ instanceType: A, args: [hole], genericArgs: [hole] }));
+    expect(Type.from('<%T>Func<app:A, %T>')).toBe(Type.from('<%T>(%T) => app:A'));
+  });
+
+  test('a quantifier list carries only generic holes, and only onto a signature', () => {
+    expect(() => Type.from('<app:A>(app:B) => app:A')).toThrow(TypeParseError);
+    expect(() => Type.from('<%T>app:A')).toThrow(TypeParseError);
   });
 
   test('reads the arrow forms', () => {
@@ -71,32 +83,32 @@ describe('reserved names', () => {
     expect(Type.from('Func<app:A, app:B>')).toBe(Type.func(A, B));
     expect(Type.from('Ctor<app:A, app:B>')).toBe(Type.ctor(A, B));
     expect(Type.from('ServiceProvider')).toMatchObject({
-      kind: 'named',
+      kind: 'imported',
       from: '@rhombus-std/primitives',
       name: 'IServiceProvider',
     });
   });
 
   test('a qualified reserved name is an ordinary named type', () => {
-    expect(Type.from('app:Func')).toBe(Type.named('Func', 'app'));
-    expect(Type.from('app:Ctor')).toBe(Type.named('Ctor', 'app'));
-    expect(Type.from('app:ServiceProvider')).toBe(Type.named('ServiceProvider', 'app'));
+    expect(Type.from('app:Func')).toBe(Type.imported('Func', 'app'));
+    expect(Type.from('app:Ctor')).toBe(Type.imported('Ctor', 'app'));
+    expect(Type.from('app:ServiceProvider')).toBe(Type.imported('ServiceProvider', 'app'));
   });
 
   test('an escaped reserved name is an ordinary named type', () => {
-    expect(Type.from('\\Func')).toBe(Type.named('Func'));
-    expect(Type.from('\\true')).toBe(Type.named('true'));
+    expect(Type.from('\\Func')).toBe(Type.global('Func'));
+    expect(Type.from('\\true')).toBe(Type.global('true'));
   });
 });
 
 describe('escaping', () => {
   test('an ordinary spelling is unescaped', () => {
     const plain: [Type, string][] = [
-      [Type.named('Foo', 'app'), 'app:Foo'],
-      [Type.named('string'), 'string'],
-      [Type.named('IServiceProvider', '@rhombus-std/primitives'), '@rhombus-std/primitives:IServiceProvider'],
-      [Type.named('Box', 'app', [Type.named('Foo', 'app')]), 'app:Box<app:Foo>'],
-      [Type.object({ a: Type.named('string') }), '{ a: string }'],
+      [Type.imported('Foo', 'app'), 'app:Foo'],
+      [Type.global('string'), 'string'],
+      [Type.imported('IServiceProvider', '@rhombus-std/primitives'), '@rhombus-std/primitives:IServiceProvider'],
+      [Type.imported('Box', 'app', [Type.imported('Foo', 'app')]), 'app:Box<app:Foo>'],
+      [Type.object({ a: Type.global('string') }), '{ a: string }'],
       [Type.generic('T'), '%T'],
       [Type.tag(A, 'primary'), 'app:A#primary'],
       [Type.func(A, B), '(app:B) => app:A'],
@@ -116,13 +128,13 @@ describe('escaping', () => {
   });
 
   test('a name carrying grammar characters survives', () => {
-    const named = Type.named('has space<and>:colon', 'a|b', [A]);
+    const named = Type.imported('has space<and>:colon', 'a|b', [A]);
     expect(Type.from(Type.stringify(named))).toBe(named);
   });
 
   test('a name spelled like a keyword survives', () => {
     for (const name of ['true', 'false', 'null', 'undefined', 'NaN', 'Infinity', 'Func', 'Ctor', '1st', '']) {
-      const named = Type.named(name);
+      const named = Type.global(name);
       expect(Type.from(Type.stringify(named))).toBe(named);
     }
   });
@@ -205,7 +217,7 @@ const NAMES = [
   '=>arrow',
   '.dot',
 ];
-const FROMS = ['global', 'app', '@rhombus-std/di.core', 'a:b', 'with space', '', 'pkg-name'];
+const FROMS = ['app', '@rhombus-std/di.core', 'a:b', 'with space', '', 'pkg-name'];
 const LITERALS = [
   'fast',
   '',
@@ -234,7 +246,7 @@ function generate(random: () => number, depth: number): Type {
   const pick = <T>(choices: readonly T[]): T => choices[Math.floor(random() * choices.length)]!;
   const many = (most: number) => Math.floor(random() * (most + 1));
   if (depth <= 0) {
-    switch (pick(['named', 'literal', 'generic', 'tuple', 'object'])) {
+    switch (pick(['global', 'imported', 'literal', 'generic', 'tuple', 'object'])) {
       case 'literal': {
         return Type.typeLiteral(pick(LITERALS));
       }
@@ -247,14 +259,19 @@ function generate(random: () => number, depth: number): Type {
       case 'object': {
         return Type.object({});
       }
+      case 'global': {
+        return Type.global(pick(NAMES));
+      }
       default: {
-        return Type.named(pick(NAMES), pick(FROMS));
+        return Type.imported(pick(NAMES), pick(FROMS));
       }
     }
   }
   const child = () => generate(random, depth - 1);
   const children = (most: number) => Array.from({ length: many(most) }, child);
-  const kinds = ['union', 'intersection', 'tuple', 'func', 'ctor', 'named', 'object', 'literal', 'generic', 'tag'];
+  const quantifiers = () => Array.from(new Set(Array.from({ length: many(2) }, () => pick(NAMES)))).map(Type.generic);
+  const kinds = ['union', 'intersection', 'tuple', 'func', 'ctor', 'global', 'imported', 'object', 'literal', 'generic',
+    'tag'];
   switch (pick(kinds)) {
     case 'union': {
       return Type.union(...Array.from({ length: 2 + many(2) }, child));
@@ -266,10 +283,10 @@ function generate(random: () => number, depth: number): Type {
       return Type.tuple(...children(3));
     }
     case 'func': {
-      return Type.func(child(), ...children(2));
+      return Type.func({ returnType: child(), args: children(2), genericArgs: quantifiers() });
     }
     case 'ctor': {
-      return Type.ctor(child(), ...children(2));
+      return Type.ctor({ instanceType: child(), args: children(2), genericArgs: quantifiers() });
     }
     case 'object': {
       return Type.object(Object.fromEntries(Array.from({ length: many(3) }, () => [pick(NAMES), child()])));
@@ -281,10 +298,15 @@ function generate(random: () => number, depth: number): Type {
       return Type.generic(pick(NAMES));
     }
     case 'tag': {
-      return Type.tag(child(), pick(NAMES));
+      // A tagged type is spellable only under a tag-free one, so a tagged pick contributes its own inner type.
+      const inner = child();
+      return Type.tag(inner.kind === 'tag' ? inner.type : inner, pick(NAMES));
+    }
+    case 'global': {
+      return Type.global(pick(NAMES), children(2));
     }
     default: {
-      return Type.named(pick(NAMES), pick(FROMS), children(2));
+      return Type.imported(pick(NAMES), pick(FROMS), children(2));
     }
   }
 }
