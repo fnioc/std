@@ -105,7 +105,7 @@ Our translation is cheaper than the reference's: with interned Types (`===`), a
 `Map<ServiceIdentifier, V>` with identity semantics, no Equals/GetHashCode machinery. Layering:
 it belongs in di.core (a service address composing a TypeIdentifier + key), NOT in the Type union
 — a service identity is not a type, same argument that kept MemberType out. Open-generic
-registrations compose cleanly: an `ILogger<$1>` identifier is a NamedType with a placeholder
+registrations compose cleanly: an `ILogger<$T>` identifier is a NamedType with a placeholder
 child — still identifier-kind under the partition.
 
 **Owner rule on all of the above (2026-08-12): the scope model here may diverge sharply from the
