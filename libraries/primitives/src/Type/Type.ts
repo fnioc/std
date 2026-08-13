@@ -105,11 +105,13 @@ export namespace Type {
   // #region factories
 
   /**
-   * The aggregate of every registration of `element`, read as an array.
+   * Names the aggregate of every registration of `element` as one indexable array.
    *
    * @remarks
    * The synthesized aggregate materializes at resolution — a real array, indexable immediately,
-   * with nothing left to bind. A registration answering under this address is returned as-is.
+   * with nothing left to bind; a registration answering directly under this address is returned
+   * as-is instead.
+   *
    * The side that registers an element and the side that reads the aggregate must name the same
    * type, and nothing reports it when they don't: the lookup simply finds nothing. Both sides call
    * this, so they cannot drift.
@@ -119,11 +121,13 @@ export namespace Type {
   }
 
   /**
-   * The aggregate of every registration of `element`, read asynchronously.
+   * Names the aggregate of every registration of `element` as one asynchronous sequence.
    *
    * @remarks
    * The synthesized aggregate is late-bound — each element resolves as the async iteration
-   * reaches it, not up front. A registration answering under this address is returned as-is.
+   * reaches it, not up front; a registration answering directly under this address is returned
+   * as-is instead.
+   *
    * The side that registers an element and the side that reads the aggregate must name the same
    * type, and nothing reports it when they don't: the lookup simply finds nothing. Both sides call
    * this, so they cannot drift.
@@ -181,11 +185,12 @@ export namespace Type {
   }
 
   /**
-   * The aggregate of every registration of `element`, read lazily.
+   * Names the aggregate of every registration of `element` as one sequence.
    *
    * @remarks
-   * The synthesized aggregate is late-bound — each element resolves as the iteration reaches
-   * it, not up front. A registration answering under this address is returned as-is.
+   * The synthesized aggregate is late-bound — each element resolves as the iteration reaches it,
+   * not up front; a registration answering directly under this address is returned as-is instead.
+   *
    * The side that registers an element and the side that reads the aggregate must name the same
    * type, and nothing reports it when they don't: the lookup simply finds nothing. Both sides call
    * this, so they cannot drift.
