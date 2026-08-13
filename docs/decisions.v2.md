@@ -1741,6 +1741,43 @@ contributes nothing, not even to the sweep), ACTIVE (a declaration the body serv
 surface is present and declares the member, but no declaration matches the body's shape — nothing
 inlines, the shape still reaches the sweep).
 
+## §160 — One open `IOptions<$T>` registration serves every options type; its base slot is the offer
+
+`IOptions<T>` is registered ONCE, open, and answers every closed request. There is no composed
+second address and no per-type `IOptions` registration: `addOptions` names the BARE `T`, and every
+pipeline slot — configure, post-configure, validate, change-token source — keys off that same bare
+`T`.
+
+The registration's signature carries both readings §157 allows:
+
+```ts
+const hole = Type.generic('$T');
+const openOptions = Type.imported('IOptions', '@rhombus-std/options', [hole]);
+Type.func(openOptions, RESOLVER_TYPE, hole, baseFactoryType(hole));
+```
+
+The bare `hole` slot delivers the CLOSING TYPE NODE, so the implementation learns which `T` closed
+it and derives that type's pipeline slots. That is what makes reload work from one registration: the
+change-token sources it finds are the ones registered for the closing type, so `Options.watch`
+re-runs the pipeline for the right `T` on every fire.
+
+`baseFactoryType(hole)` is a hole standing INSIDE a larger slot, so it closes into
+`baseFactoryType(T)` and resolves as an ordinary dependency. That slot is the OFFER: `addOptions` is
+what registers it, so a `T` nobody called `addOptions` for leaves the open registration unlowerable
+and `getService(IOptions<T>)` answers `undefined`. One registration therefore serves every options
+type without answering for types it was never given.
+
+The two `addOptions` forms differ only in what fills that slot. A base factory registers as itself;
+the wrap form registers a factory over `T`, so the base is whatever `T` resolves to. Both then run
+the same assembly, which is why a wrapped and an assembled value are the same kind of thing
+downstream.
+
+`validateOnStart` is the one slot that cannot key on the bare `T`: `StartupValidator` resolves each
+target and reads `.value` off it, so the flat target list holds the resolvable `IOptions<T>` address.
+It is composed inside the verb, never at a call site.
+
+_Claude-directed 2026-08-13, executing the owner's standing options ruling._
+
 ## §162 — A CLOSED augmentation set's `satisfies AugmentationSet<Receiver>` const is inert without its own `applyAugmentations` call
 
 `satisfies AugmentationSet<Receiver>` only shapes the object literal; it installs nothing. The
