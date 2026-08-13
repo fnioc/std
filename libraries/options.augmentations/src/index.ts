@@ -4,8 +4,8 @@
 // mechanism @rhombus-std/config.json uses to add `addJsonFile` to ConfigBuilder:
 //
 //   - `addOptions<T>(token, makeBase)` -- registers the `IOptions<T>` assembly
-//     (the OptionsFactory pipeline) for `token`. Returns the `.as(scope)`
-//     continuation so the consumer picks the registration lifetime.
+//     (the OptionsFactory pipeline) for `token`. Returns the manifest with the
+//     assembly registration appended.
 //   - `configure(token, section)` -- registers a config-bind configure step
 //     PLUS a change-token source wired to the section's reload token, so the
 //     delivered `IOptions<T>` binds the section and reacts to reloads.
