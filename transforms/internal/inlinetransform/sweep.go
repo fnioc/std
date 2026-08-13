@@ -64,11 +64,11 @@ func Sweep(sf *shimast.SourceFile, artifacts *Artifacts) []plugin.Diagnostic {
 		typeArgs, valueArgs := callArity(call)
 
 		// (2) surviving member sugar: a property-access call whose name is a
-		// certified member and whose (type-arg, value-arg) shape equals the sugar.
+		// certified member and whose (type-arg, value-arg) counts are consistent
+		// with the sugar's shape.
 		if call.Expression.Kind == shimast.KindPropertyAccessExpression {
 			name := call.Expression.AsPropertyAccessExpression().Name().Text()
-			if shape, ok := artifacts.SugarMembers[name]; ok &&
-				typeArgs == shape.TypeArgCount && valueArgs == shape.ValueArgCount {
+			if shape, ok := artifacts.SugarMembers[name]; ok && sugarShapeMatches(shape, typeArgs, valueArgs) {
 				diags = append(diags, sweepDiag("INLINE_UNLOWERED_SUGAR", n,
 					fmt.Sprintf("member sugar %q survived lowering", name)))
 			}
@@ -95,6 +95,21 @@ func Sweep(sf *shimast.SourceFile, artifacts *Artifacts) []plugin.Diagnostic {
 		return false
 	})
 	return diags
+}
+
+// sugarShapeMatches reports whether a call's (type-arg, value-arg) counts are
+// consistent with a certified member-sugar shape. A body with no rest parameter
+// matches only its exact counts. A rest-parameter body forwards whatever
+// follows its leading parameters verbatim and lets its type parameter bind by
+// inference, so it matches ANY value-arg count at or above the leading count
+// (ValueArgCount includes the rest slot itself, hence the -1) and any type-arg
+// count up to the certified one — a call can supply fewer explicit type
+// arguments than a generic declares (inference fills the rest) but never more.
+func sugarShapeMatches(shape MemberShape, typeArgs, valueArgs int) bool {
+	if !shape.HasRest {
+		return typeArgs == shape.TypeArgCount && valueArgs == shape.ValueArgCount
+	}
+	return typeArgs <= shape.TypeArgCount && valueArgs >= shape.ValueArgCount-1
 }
 
 // callArity returns a call's type-argument and value-argument counts.

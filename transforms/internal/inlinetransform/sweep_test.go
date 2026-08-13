@@ -166,3 +166,118 @@ export const v = tokenOf(1);
 		t.Fatalf("a call to the runtime forwarding target must not be flagged, got %+v", diags)
 	}
 }
+
+// TestSugarShapeMatches is a table test of the arity-matching rule itself:
+// a non-rest shape matches only its exact (type-arg, value-arg) counts; a
+// rest-parameter shape (as every di.extras Manifest sugar body is —
+// `<T>(this, ...rest: any[])`, recorded as ValueArgCount 1 for the rest slot
+// itself) matches any value-arg count at or above its leading-parameter count
+// and any type-arg count up to its certified one.
+func TestSugarShapeMatches(t *testing.T) {
+	nonRest := MemberShape{TypeArgCount: 1, ValueArgCount: 0}
+	rest := MemberShape{TypeArgCount: 1, ValueArgCount: 1, HasRest: true}
+
+	cases := []struct {
+		name      string
+		shape     MemberShape
+		typeArgs  int
+		valueArgs int
+		want      bool
+	}{
+		{"non-rest exact match", nonRest, 1, 0, true},
+		{"non-rest wrong value-arg count", nonRest, 1, 1, false},
+		{"non-rest wrong type-arg count", nonRest, 0, 0, false},
+
+		// A rest body's ValueArgCount (1) counts the rest slot itself, so its
+		// leading-parameter floor is 0 — every value-arg count from 0 up matches.
+		{"rest at recorded arity", rest, 1, 1, true},
+		{"rest below recorded arity (addClass(Impl, sigs) shape)", rest, 1, 2, true},
+		{"rest well above recorded arity", rest, 1, 4, true},
+		{"rest at the floor (zero value args)", rest, 1, 0, true},
+		{"rest with inferred (omitted) type argument", rest, 0, 2, true},
+		{"rest with more type args than certified", rest, 2, 2, false},
+	}
+	for _, c := range cases {
+		t.Run(c.name, func(t *testing.T) {
+			got := sugarShapeMatches(c.shape, c.typeArgs, c.valueArgs)
+			if got != c.want {
+				t.Errorf("sugarShapeMatches(%+v, typeArgs=%d, valueArgs=%d) = %v, want %v",
+					c.shape, c.typeArgs, c.valueArgs, got, c.want)
+			}
+		})
+	}
+}
+
+// TestSweepFlagsRestSugarAtAnyArity is the sweep-level proof of the fix: a
+// certified rest-parameter sugar shape (the addClass/addFactory/... family,
+// recorded as TypeArgCount 1 / ValueArgCount 1 / HasRest true, since every
+// di.extras Manifest sugar body is `<T>(this, ...rest: any[])`) must be flagged
+// at a call arity the recorded shape never equals — both a 2-value-arg call
+// (the real addClass(ctor, signatures) shape a strict-equality check can never
+// reach, since the recorded count is 1) and one with its type argument omitted
+// (the checker-supported inferred form).
+func TestSweepFlagsRestSugarAtAnyArity(t *testing.T) {
+	sf := parse(t, "/sweep/rest-residue.ts", `declare const m: any;
+declare const Impl: any;
+declare const sigs: any;
+const a = m.addClass<Impl>(Impl, sigs);
+const b = m.addClass(Impl, sigs);
+`)
+	shimast.SetParentInChildrenUnset(sf.AsNode())
+
+	a := NewArtifacts()
+	a.Active = true
+	a.SugarMembers["addClass"] = MemberShape{TypeArgCount: 1, ValueArgCount: 1, HasRest: true}
+
+	diags := Sweep(sf, a)
+	if len(diags) != 2 {
+		t.Fatalf("expected both the explicit- and inferred-type-argument 2-value-arg calls flagged, got %d: %+v", len(diags), diags)
+	}
+	for _, d := range diags {
+		if d.Code != "INLINE_UNLOWERED_SUGAR" {
+			t.Errorf("want INLINE_UNLOWERED_SUGAR, got %+v", d)
+		}
+	}
+}
+
+// TestSweepFlagsCoveredNonRestShapeUnchanged is the regression guard for the
+// existing exact-arity cases: a non-rest shape (the ServiceProvider
+// getService/getRequiredService/getServices family, recorded with HasRest
+// false) keeps flagging only its exact recorded shape after the arity-matching
+// rule changed, and keeps ignoring a different arity.
+func TestSweepFlagsCoveredNonRestShapeUnchanged(t *testing.T) {
+	sf := parse(t, "/sweep/non-rest.ts", `declare const x: any;
+const matches = x.isService<Foo>();
+const mismatches = x.isService<Foo>('token');
+`)
+	shimast.SetParentInChildrenUnset(sf.AsNode())
+
+	a := NewArtifacts()
+	a.Active = true
+	a.SugarMembers["isService"] = MemberShape{TypeArgCount: 1, ValueArgCount: 0}
+
+	diags := Sweep(sf, a)
+	if len(diags) != 1 || diags[0].Code != "INLINE_UNLOWERED_SUGAR" {
+		t.Fatalf("want exactly 1 INLINE_UNLOWERED_SUGAR for the exact-shape call only, got %+v", diags)
+	}
+}
+
+// TestSweepIgnoresUnregisteredSameNameMember: a call whose callee name does not
+// resolve to any registered sugar member at all (no entry in SugarMembers) is
+// left alone regardless of its arity — the widened arity rule only relaxes
+// matching for a CERTIFIED shape, it never starts matching on name alone.
+func TestSweepIgnoresUnregisteredSameNameMember(t *testing.T) {
+	sf := parse(t, "/sweep/unregistered.ts", `declare const m: any;
+declare const Impl: any;
+declare const sigs: any;
+const a = m.addClass(Impl, sigs);
+`)
+	shimast.SetParentInChildrenUnset(sf.AsNode())
+
+	a := NewArtifacts()
+	a.Active = true
+	// addClass is deliberately NOT registered in SugarMembers here.
+	if diags := Sweep(sf, a); len(diags) != 0 {
+		t.Fatalf("a call to a member with no certified sugar shape must not be flagged, got %+v", diags)
+	}
+}
