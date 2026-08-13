@@ -103,8 +103,8 @@ func resolveMember(prog *driver.Program, checker *shimchecker.Checker, ex *bodyE
 		}
 		return nil, false, fmt.Errorf(
 			"INLINE_DISCRIMINATOR_MISMATCH: %s:%s member %q — impl %q body takes value parameters %v, "+
-				"but no declaration of that member takes the same ones; a receiver belongs in `this` or "+
-				"as the leading parameter, and every other parameter must match the declaration's by name",
+				"but no declaration of that member takes the same ones; a receiver belongs in `this`, "+
+				"and every parameter must match the declaration's by name",
 			pkg, typeName, e.Member, e.Impl, body.Discriminator.Params)
 	}
 

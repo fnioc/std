@@ -27,7 +27,7 @@ import { describe, expect, test } from 'bun:test';
 describe('foreign-class direction — addInMemoryCollection', () => {
   test('method form and standalone form yield the same configuration', () => {
     const viaMethod = new ConfigBuilder().addInMemoryCollection({ Key: 'value' }).build();
-    const viaMember = MemoryConfigBuilderAugmentations.addInMemoryCollection(new ConfigBuilder(), { Key: 'value' })
+    const viaMember = MemoryConfigBuilderAugmentations.addInMemoryCollection.call(new ConfigBuilder(), { Key: 'value' })
       .build();
 
     expect(viaMethod.get('Key')).toBe('value');
@@ -40,12 +40,12 @@ describe('reverse direction — MemoryCache / ICacheEntry', () => {
     const cache = new MemoryCache(new MemoryCacheOptions());
 
     cache.set('a', 1); // method form
-    MemoryCacheSugarAugmentations.set(cache, 'b', 2); // standalone member form
+    MemoryCacheSugarAugmentations.set.call(cache, 'b', 2); // standalone member form
 
     expect(cache.get<number>('a')).toBe(1);
-    expect(MemoryCacheSugarAugmentations.get(cache, 'b')).toBe(2);
+    expect(MemoryCacheSugarAugmentations.get.call(cache, 'b')).toBe(2);
     // cross-check: the two read forms agree on the same key.
-    expect(cache.get('b')).toBe(MemoryCacheSugarAugmentations.get(cache, 'b'));
+    expect(cache.get('b')).toBe(MemoryCacheSugarAugmentations.get.call(cache, 'b'));
   });
 
   test('entry setPriority method form equals the object-literal member form', () => {
@@ -55,7 +55,7 @@ describe('reverse direction — MemoryCache / ICacheEntry', () => {
     viaMethod.setPriority(CacheItemPriority.High);
 
     const viaMember = cache.createEntry('y');
-    CacheEntrySugarAugmentations.setPriority(viaMember, CacheItemPriority.High);
+    CacheEntrySugarAugmentations.setPriority.call(viaMember, CacheItemPriority.High);
 
     expect(viaMethod.priority).toBe(CacheItemPriority.High);
     expect(viaMethod.priority).toBe(viaMember.priority);
@@ -79,7 +79,7 @@ describe('reverse direction — MetricsBuilder (.core interface, downstream conc
     const listener = { name: 'listener' } as IMetricsListener;
 
     builder.addMetricsListener(listener); // method form
-    MetricsBuilderAugmentations.addMetricsListener(builder, listener); // standalone member form
+    MetricsBuilderAugmentations.addMetricsListener.call(builder, listener); // standalone member form
 
     expect(recorded).toEqual([[METRICS_LISTENER_TYPE, listener], [METRICS_LISTENER_TYPE, listener]]);
   });
@@ -97,7 +97,7 @@ describe('reverse direction, value-object receiver — LoggerFilterOptions.addFi
     viaMethod.addFilter(filter); // method form
 
     const viaMember = new LoggerFilterOptions();
-    LoggerFilterOptionsExtensions.addFilter(viaMember, filter); // standalone member form
+    LoggerFilterOptionsExtensions.addFilter.call(viaMember, filter); // standalone member form
 
     expect(viaMethod.rules.length).toBe(1);
     expect(viaMethod.rules[0]).toEqual(viaMember.rules[0]);
@@ -114,8 +114,8 @@ describe('reverse direction, value-object receiver — MetricsOptions (§29/#105
     viaMethod.disableMetrics('meter', 'instrument');
 
     const viaMember = new MetricsOptions();
-    MetricsOptionsAugmentations.enableMetrics(viaMember, 'meter'); // standalone member form
-    MetricsOptionsAugmentations.disableMetrics(viaMember, 'meter', 'instrument');
+    MetricsOptionsAugmentations.enableMetrics.call(viaMember, 'meter'); // standalone member form
+    MetricsOptionsAugmentations.disableMetrics.call(viaMember, 'meter', 'instrument');
 
     expect(viaMethod.rules).toEqual(viaMember.rules);
     expect(viaMethod.rules.map((r) => r.enable)).toEqual([true, false]);
@@ -131,8 +131,8 @@ describe('reverse direction, value-object receiver — TracingOptions (§29/#105
     viaMethod.disableTracing('source', 'operation');
 
     const viaMember = new TracingOptions();
-    TracingOptionsAugmentations.enableTracing(viaMember, 'source'); // standalone member form
-    TracingOptionsAugmentations.disableTracing(viaMember, 'source', 'operation');
+    TracingOptionsAugmentations.enableTracing.call(viaMember, 'source'); // standalone member form
+    TracingOptionsAugmentations.disableTracing.call(viaMember, 'source', 'operation');
 
     expect(viaMethod.rules).toEqual(viaMember.rules);
     expect(viaMethod.rules.map((r) => r.enable)).toEqual([true, false]);

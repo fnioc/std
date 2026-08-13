@@ -73,7 +73,7 @@ function getRegistration(builder: ILoggingBuilder): ConsoleRegistration {
 
 /** `addConsole` with a formatter pre-selected. */
 function addFormatterWithName(builder: ILoggingBuilder, name: string): ILoggingBuilder {
-  return ConsoleLoggerAugmentations.addConsole(builder, (options) => {
+  return ConsoleLoggerAugmentations.addConsole.call(builder, (options) => {
     options.formatterName = name;
   });
 }
@@ -103,12 +103,12 @@ declare module '@rhombus-std/logging.core' {
 
 /**
  * Registered against `typefor<ILoggingBuilder>()` below and reachable as the
- * standalone `ConsoleLoggerAugmentations.addConsole(builder)`.
+ * standalone `ConsoleLoggerAugmentations.addConsole.call(builder)`.
  */
 export const ConsoleLoggerAugmentations: AugmentationSet2<ILoggingBuilder,
   Flatten<ILoggingBuilderConsoleAugmentations>> = {
-    addConsole(builder, configure) {
-      const registration = getRegistration(builder);
+    addConsole(configure) {
+      const registration = getRegistration(this);
       if (registration.provider === undefined) {
         registration.provider = new ConsoleLoggerProvider(registration.loggerOptions, [
           ...registration.pendingFormatters,
@@ -117,48 +117,48 @@ export const ConsoleLoggerAugmentations: AugmentationSet2<ILoggingBuilder,
           new SimpleConsoleFormatter(registration.simpleOptions),
         ]);
         registration.pendingFormatters.length = 0;
-        LoggingBuilderProviderAugmentations.addProvider(builder, registration.provider);
+        LoggingBuilderProviderAugmentations.addProvider.call(this, registration.provider);
       }
       if (configure !== undefined) {
         registration.loggerOptions.reload(configure);
       }
-      return builder;
+      return this;
     },
 
     /**
      * Adds the default console log formatter named `"simple"` — optionally
      * configuring its {@link SimpleConsoleFormatterOptions}.
      */
-    addSimpleConsole(builder, configure) {
-      addFormatterWithName(builder, ConsoleFormatterNames.simple);
+    addSimpleConsole(configure) {
+      addFormatterWithName(this, ConsoleFormatterNames.simple);
       if (configure !== undefined) {
-        getRegistration(builder).simpleOptions.reload(configure);
+        getRegistration(this).simpleOptions.reload(configure);
       }
-      return builder;
+      return this;
     },
 
     /**
      * Adds the console log formatter named `"json"` — optionally configuring
      * its {@link JsonConsoleFormatterOptions}.
      */
-    addJsonConsole(builder, configure) {
-      addFormatterWithName(builder, ConsoleFormatterNames.json);
+    addJsonConsole(configure) {
+      addFormatterWithName(this, ConsoleFormatterNames.json);
       if (configure !== undefined) {
-        getRegistration(builder).jsonOptions.reload(configure);
+        getRegistration(this).jsonOptions.reload(configure);
       }
-      return builder;
+      return this;
     },
 
     /**
      * Adds the console log formatter named `"systemd"` — optionally configuring
      * its {@link ConsoleFormatterOptions}.
      */
-    addSystemdConsole(builder, configure) {
-      addFormatterWithName(builder, ConsoleFormatterNames.systemd);
+    addSystemdConsole(configure) {
+      addFormatterWithName(this, ConsoleFormatterNames.systemd);
       if (configure !== undefined) {
-        getRegistration(builder).systemdOptions.reload(configure);
+        getRegistration(this).systemdOptions.reload(configure);
       }
-      return builder;
+      return this;
     },
 
     /**
@@ -167,14 +167,14 @@ export const ConsoleLoggerAugmentations: AugmentationSet2<ILoggingBuilder,
      * instance — the caller owns the formatter's options, so configuring it
      * happens at construction.
      */
-    addConsoleFormatter(builder, formatter) {
-      const registration = getRegistration(builder);
+    addConsoleFormatter(formatter) {
+      const registration = getRegistration(this);
       if (registration.provider === undefined) {
         registration.pendingFormatters.push(formatter);
       } else {
         registration.provider.addFormatter(formatter);
       }
-      return builder;
+      return this;
     },
   };
 

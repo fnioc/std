@@ -6,6 +6,9 @@
 // against the concrete @rhombus-std/diagnostics builders (the interface-side
 // merge makes the augmented members part of IMetricsBuilder/ITracingBuilder,
 // so a bare `{ services }` literal no longer satisfies the interfaces).
+//
+// The standalone form calls `Set.member.call(builder, ...)`: the augmentation
+// methods are `this`-based and installed verbatim.
 
 import '@rhombus-std/di';
 import { DefaultManifest, type Manifest, Type } from '@rhombus-std/di.core';
@@ -37,9 +40,9 @@ describe('MetricsBuilderAugmentations.clearMetricsListeners', () => {
     const manifest = new DefaultManifest();
     const builder: IMetricsBuilder = new MetricsBuilder(manifest);
 
-    MetricsBuilderAugmentations.addMetricsListener(builder, listener('a'));
-    MetricsBuilderAugmentations.addMetricsListener(builder, listener('b'));
-    const returned = MetricsBuilderAugmentations.clearMetricsListeners(builder);
+    MetricsBuilderAugmentations.addMetricsListener.call(builder, listener('a'));
+    MetricsBuilderAugmentations.addMetricsListener.call(builder, listener('b'));
+    const returned = MetricsBuilderAugmentations.clearMetricsListeners.call(builder);
 
     expect(returned).toBe(builder);
     expect(registered(builder, METRICS_LISTENER_TYPE)).toHaveLength(0);
@@ -49,10 +52,10 @@ describe('MetricsBuilderAugmentations.clearMetricsListeners', () => {
     const manifest = new DefaultManifest();
     const builder: IMetricsBuilder = new MetricsBuilder(manifest);
 
-    MetricsBuilderAugmentations.addMetricsListener(builder, listener('stale'));
-    MetricsBuilderAugmentations.clearMetricsListeners(builder);
+    MetricsBuilderAugmentations.addMetricsListener.call(builder, listener('stale'));
+    MetricsBuilderAugmentations.clearMetricsListeners.call(builder);
     const fresh = listener('fresh');
-    MetricsBuilderAugmentations.addMetricsListener(builder, fresh);
+    MetricsBuilderAugmentations.addMetricsListener.call(builder, fresh);
 
     expect(registered(builder, METRICS_LISTENER_TYPE)).toEqual([fresh]);
   });
@@ -61,9 +64,9 @@ describe('MetricsBuilderAugmentations.clearMetricsListeners', () => {
     const manifest = new DefaultManifest();
     const builder: IMetricsBuilder = new MetricsBuilder(manifest);
 
-    MetricsBuilderAugmentations.addMetricsListener(builder, listener('a'));
-    MetricsBuilderAugmentations.enableMetrics(builder, 'some-meter');
-    MetricsBuilderAugmentations.clearMetricsListeners(builder);
+    MetricsBuilderAugmentations.addMetricsListener.call(builder, listener('a'));
+    MetricsBuilderAugmentations.enableMetrics.call(builder, 'some-meter');
+    MetricsBuilderAugmentations.clearMetricsListeners.call(builder);
 
     expect(registered(builder, METRICS_CONFIGURE_TYPE)).toHaveLength(1);
   });
@@ -84,9 +87,9 @@ describe('TracingBuilderAugmentations.clearTracingListeners', () => {
     const manifest = new DefaultManifest();
     const builder: ITracingBuilder = new TracingBuilder(manifest);
 
-    TracingBuilderAugmentations.addTracingListener(builder, 'L1', () => {});
-    TracingBuilderAugmentations.addTracingListener(builder, 'L2', () => {});
-    const returned = TracingBuilderAugmentations.clearTracingListeners(builder);
+    TracingBuilderAugmentations.addTracingListener.call(builder, 'L1', () => {});
+    TracingBuilderAugmentations.addTracingListener.call(builder, 'L2', () => {});
+    const returned = TracingBuilderAugmentations.clearTracingListeners.call(builder);
 
     expect(returned).toBe(builder);
     expect(registered(builder, TRACING_LISTENER_TYPE)).toHaveLength(0);
@@ -96,10 +99,10 @@ describe('TracingBuilderAugmentations.clearTracingListeners', () => {
     const manifest = new DefaultManifest();
     const builder: ITracingBuilder = new TracingBuilder(manifest);
 
-    TracingBuilderAugmentations.addTracingListener(builder, 'stale', () => {});
-    TracingBuilderAugmentations.enableTracing(builder, 'MySource');
-    TracingBuilderAugmentations.clearTracingListeners(builder);
-    TracingBuilderAugmentations.addTracingListener(builder, 'fresh', () => {});
+    TracingBuilderAugmentations.addTracingListener.call(builder, 'stale', () => {});
+    TracingBuilderAugmentations.enableTracing.call(builder, 'MySource');
+    TracingBuilderAugmentations.clearTracingListeners.call(builder);
+    TracingBuilderAugmentations.addTracingListener.call(builder, 'fresh', () => {});
 
     const remaining = registered(builder, TRACING_LISTENER_TYPE);
     expect(remaining).toHaveLength(1);

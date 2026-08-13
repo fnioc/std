@@ -68,7 +68,7 @@ export const BrowserHost = {
     // (via the settings override above) and the HostingEnvironment default
     // NullFileProvider — see ./browser-environment for the standalone factory.
 
-    BrowserConsoleLoggerAugmentations.addBrowserConsole(builder.logging);
+    BrowserConsoleLoggerAugmentations.addBrowserConsole.call(builder.logging);
 
     const lifetimeOptions = new BrowserLifetimeOptions();
     settings?.configureLifetime?.(lifetimeOptions);

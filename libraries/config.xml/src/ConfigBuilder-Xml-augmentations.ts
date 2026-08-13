@@ -29,11 +29,11 @@ declare module '@rhombus-std/config' {
 
 export const ConfigBuilderXmlAugmentations: AugmentationSet2<IConfigBuilder, Flatten<IConfigBuilderXmlAugmentations>> =
   {
-    addXmlFile(builder, path, opts) {
-      return builder.add(new XmlConfigSource(path, opts));
+    addXmlFile(path, opts) {
+      return this.add(new XmlConfigSource(path, opts));
     },
-    addXmlStream(builder, stream) {
-      return builder.add(new XmlStreamConfigSource(stream));
+    addXmlStream(stream) {
+      return this.add(new XmlStreamConfigSource(stream));
     },
   };
 

@@ -118,8 +118,8 @@ test('addBrowserConsole registers ONE provider per manifest, however many calls 
   const { services, values } = fakeServices();
   const builder = new LoggingBuilder(services);
 
-  BrowserConsoleLoggerAugmentations.addBrowserConsole(builder);
-  BrowserConsoleLoggerAugmentations.addBrowserConsole(builder);
+  BrowserConsoleLoggerAugmentations.addBrowserConsole.call(builder);
+  BrowserConsoleLoggerAugmentations.addBrowserConsole.call(builder);
 
   const providers = values.filter(([token]) => {
     return token === LOGGER_PROVIDER_TYPE;
@@ -134,8 +134,8 @@ test('the per-builder dedup is keyed by the builder, not effectively global', ()
   const first = fakeServices();
   const second = fakeServices();
 
-  BrowserConsoleLoggerAugmentations.addBrowserConsole(new LoggingBuilder(first.services));
-  BrowserConsoleLoggerAugmentations.addBrowserConsole(new LoggingBuilder(second.services));
+  BrowserConsoleLoggerAugmentations.addBrowserConsole.call(new LoggingBuilder(first.services));
+  BrowserConsoleLoggerAugmentations.addBrowserConsole.call(new LoggingBuilder(second.services));
 
   const providersFor = (values: Array<[Token, unknown]>) => {
     return values.filter(([token]) => {

@@ -51,8 +51,8 @@ describe('late registration reaches every decorated class sharing the token', ()
   test("a set registered NOW installs onto both families' MetricsBuilders", () => {
     // Both concrete classes were decorated at module load, long before this
     // registration. The decorator's listener must still pull the new member.
-    registerAugmentations(METRICS_BUILDER_AUGMENTATION_TOKEN, { lateRegisteredProbe(builder: unknown): unknown {
-      return builder;
+    registerAugmentations(METRICS_BUILDER_AUGMENTATION_TOKEN, { lateRegisteredProbe(this: unknown): unknown {
+      return this;
     } });
 
     type Probed = { lateRegisteredProbe(): unknown; };
@@ -61,7 +61,7 @@ describe('late registration reaches every decorated class sharing the token', ()
 
     expect(hosting.lateRegisteredProbe).toBeInstanceOf(Function);
     expect(diagnostics.lateRegisteredProbe).toBeInstanceOf(Function);
-    // Receiver-first thunking: the method form forwards `this`.
+    // Verbatim install: called as a method, the member's `this` is the receiver.
     expect(hosting.lateRegisteredProbe()).toBe(hosting);
     expect(diagnostics.lateRegisteredProbe()).toBe(diagnostics);
   });

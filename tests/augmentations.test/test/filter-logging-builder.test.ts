@@ -70,7 +70,7 @@ describe('builder-level addFilter — configure-step bridge into IOptions<Logger
     viaMethodBuilder.addFilter(filter); // method form
 
     const viaMemberBuilder = new LoggingBuilder(new DefaultManifest<'singleton'>());
-    FilterLoggingBuilderExtensions.addFilter(viaMemberBuilder, filter); // standalone member form
+    FilterLoggingBuilderExtensions.addFilter.call(viaMemberBuilder, filter); // standalone member form
 
     const viaMethod = resolveFilterOptions(viaMethodBuilder);
     const viaMember = resolveFilterOptions(viaMemberBuilder);
@@ -92,6 +92,6 @@ describe('builder-level addFilter — configure-step bridge into IOptions<Logger
     const builder = new LoggingBuilder(new DefaultManifest<'singleton'>());
 
     expect(builder.addFilter('Cat', LogLevel.Information)).toBe(builder);
-    expect(FilterLoggingBuilderExtensions.addFilter(builder, (_p, _c, _l) => true)).toBe(builder);
+    expect(FilterLoggingBuilderExtensions.addFilter.call(builder, (_p, _c, _l) => true)).toBe(builder);
   });
 });

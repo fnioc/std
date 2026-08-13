@@ -31,12 +31,11 @@ declare module '@rhombus-std/diagnostics.core' {
 /** The config-binding member of {@link IMetricsBuilder}. */
 export const MetricsBuilderConfigAugmentations: AugmentationSet2<IMetricsBuilder,
   Flatten<IMetricsBuilderConfigAugmentations>> = {
-    addMetricsConfig(builder, config) {
-      builder.services = builder.services.addValue(METRICS_CONFIGURE_TYPE, new MetricsConfigureOptions(config));
-      builder.services = builder.services.addValue(METRICS_CHANGE_TOKEN_SOURCE_TYPE,
-        new ConfigChangeTokenSource(config));
-      builder.services = builder.services.addValue(METRICS_CONFIGURATION_TYPE, new MetricsConfig(config));
-      return builder;
+    addMetricsConfig(config) {
+      this.services = this.services.addValue(METRICS_CONFIGURE_TYPE, new MetricsConfigureOptions(config));
+      this.services = this.services.addValue(METRICS_CHANGE_TOKEN_SOURCE_TYPE, new ConfigChangeTokenSource(config));
+      this.services = this.services.addValue(METRICS_CONFIGURATION_TYPE, new MetricsConfig(config));
+      return this;
     },
   };
 

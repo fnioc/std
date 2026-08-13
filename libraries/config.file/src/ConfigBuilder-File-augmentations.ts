@@ -50,27 +50,27 @@ declare module '@rhombus-std/config' {
 
 export const ConfigBuilderFileAugmentations: AugmentationSet2<IConfigBuilder,
   Flatten<IConfigBuilderFileAugmentations>> = {
-    setFileProvider(builder, fileProvider) {
-      builder.properties.set(FILE_PROVIDER_KEY, fileProvider);
-      return builder;
+    setFileProvider(fileProvider) {
+      this.properties.set(FILE_PROVIDER_KEY, fileProvider);
+      return this;
     },
-    getFileProvider(builder) {
-      const provider = builder.properties.get(FILE_PROVIDER_KEY);
+    getFileProvider() {
+      const provider = this.properties.get(FILE_PROVIDER_KEY);
       if (provider !== undefined) {
         return provider as IFileProvider;
       }
       // Falls back to a physical provider rooted at the current working directory.
       return new PhysicalFileProvider(process.cwd());
     },
-    setBasePath(builder, basePath) {
-      return ConfigBuilderFileAugmentations.setFileProvider(builder, new PhysicalFileProvider(basePath));
+    setBasePath(basePath) {
+      return ConfigBuilderFileAugmentations.setFileProvider.call(this, new PhysicalFileProvider(basePath));
     },
-    setFileLoadErrorHandler(builder, handler) {
-      builder.properties.set(FILE_LOAD_ERROR_HANDLER_KEY, handler);
-      return builder;
+    setFileLoadErrorHandler(handler) {
+      this.properties.set(FILE_LOAD_ERROR_HANDLER_KEY, handler);
+      return this;
     },
-    getFileLoadErrorHandler(builder) {
-      return builder.properties.get(FILE_LOAD_ERROR_HANDLER_KEY) as FileLoadErrorHandler | undefined;
+    getFileLoadErrorHandler() {
+      return this.properties.get(FILE_LOAD_ERROR_HANDLER_KEY) as FileLoadErrorHandler | undefined;
     },
   };
 

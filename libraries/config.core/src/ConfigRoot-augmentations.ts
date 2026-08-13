@@ -1,7 +1,6 @@
 // A convenience member over IConfigRoot, callable as a fluent method
-// (`root.getDebugView()`) or as the standalone form
-// (`ConfigRootAugmentations.getDebugView(root)`). The install onto the concrete
-// IConfigRoot classes lives in @rhombus-std/config, which can import them.
+// (`root.getDebugView()`) or standalone as
+// (`ConfigRootAugmentations.getDebugView.call(root)`).
 
 import type { AugmentationSet } from '@rhombus-std/primitives';
 import type { Func } from '@rhombus-toolkit/func';
@@ -46,7 +45,7 @@ function getValueAndProvider(root: IConfigRoot, key: string):
   return undefined;
 }
 
-/** Receiver-first convenience member over {@link IConfigRoot}. */
+/** Convenience member over {@link IConfigRoot}. */
 export const ConfigRootAugmentations = {
   /**
    * A human-readable view of the configuration showing where each value came
@@ -58,12 +57,12 @@ export const ConfigRootAugmentations = {
    * The `(provider)` label is `String(provider)` — a provider's `toString`
    * override supplies any distinguishing detail (e.g. a file path).
    */
-  getDebugView(root: IConfigRoot, processValue?: Func<[ConfigDebugViewContext], string>): string {
+  getDebugView(processValue?: Func<[ConfigDebugViewContext], string>): string {
     const parts: string[] = [];
 
     const recurse = (children: Iterable<IConfigSection>, indent: string): void => {
       for (const child of children) {
-        const found = getValueAndProvider(root, child.path);
+        const found = getValueAndProvider(this, child.path);
         if (found) {
           const [value, provider] = found;
           const rendered = processValue ? processValue({ path: child.path, key: child.key, value, provider }) : value;
@@ -75,7 +74,7 @@ export const ConfigRootAugmentations = {
       }
     };
 
-    recurse(root.getChildren(), '');
+    recurse(this.getChildren(), '');
     return parts.join('');
   },
 } satisfies AugmentationSet<IConfigRoot>;

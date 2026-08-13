@@ -28,8 +28,8 @@ declare module '@rhombus-std/config' {
 
 export const ChainedBuilderAugmentations: AugmentationSet2<IConfigBuilder,
   Flatten<IConfigBuilderChainedAugmentations>> = {
-    addConfig(builder, config, shouldDisposeConfig = false) {
-      return builder.add(new ChainedConfigSource({ config, shouldDisposeConfig }));
+    addConfig(config, shouldDisposeConfig = false) {
+      return this.add(new ChainedConfigSource({ config, shouldDisposeConfig }));
     },
   };
 

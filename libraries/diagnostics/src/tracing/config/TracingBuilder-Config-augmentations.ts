@@ -25,12 +25,11 @@ declare module '@rhombus-std/diagnostics.core' {
 /** The config-binding member of {@link ITracingBuilder}. */
 export const TracingBuilderConfigAugmentations: AugmentationSet2<ITracingBuilder,
   Flatten<ITracingBuilderConfigAugmentations>> = {
-    addTracingConfig(builder, config) {
-      builder.services = builder.services.addValue(TRACING_CONFIGURE_TYPE, new TracingConfigureOptions(config));
-      builder.services = builder.services.addValue(TRACING_CHANGE_TOKEN_SOURCE_TYPE,
-        new ConfigChangeTokenSource(config));
-      builder.services = builder.services.addValue(TRACING_CONFIGURATION_TYPE, new TracingConfig(config));
-      return builder;
+    addTracingConfig(config) {
+      this.services = this.services.addValue(TRACING_CONFIGURE_TYPE, new TracingConfigureOptions(config));
+      this.services = this.services.addValue(TRACING_CHANGE_TOKEN_SOURCE_TYPE, new ConfigChangeTokenSource(config));
+      this.services = this.services.addValue(TRACING_CONFIGURATION_TYPE, new TracingConfig(config));
+      return this;
     },
   };
 

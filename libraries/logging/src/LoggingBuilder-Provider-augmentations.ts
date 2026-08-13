@@ -43,18 +43,18 @@ declare module '@rhombus-std/logging.core' {
 
 export const LoggingBuilderProviderAugmentations: AugmentationSet2<ILoggingBuilder,
   Flatten<ILoggingBuilderProviderAugmentations>> = {
-    addProvider(builder, provider) {
-      builder.services = builder.services.addValue(LOGGER_PROVIDER_TYPE, provider);
-      return builder;
+    addProvider(provider) {
+      this.services = this.services.addValue(LOGGER_PROVIDER_TYPE, provider);
+      return this;
     },
-    setMinimumLevel(builder, level) {
-      builder.services = builder.services.addValue(configureStepType(LOGGER_FILTER_OPTIONS_TYPE),
+    setMinimumLevel(level) {
+      this.services = this.services.addValue(configureStepType(LOGGER_FILTER_OPTIONS_TYPE),
         new DefaultLoggerLevelConfigureOptions(level));
-      return builder;
+      return this;
     },
-    clearProviders(builder) {
-      builder.services = builder.services.removeAll(LOGGER_PROVIDER_TYPE);
-      return builder;
+    clearProviders() {
+      this.services = this.services.removeAll(LOGGER_PROVIDER_TYPE);
+      return this;
     },
   };
 

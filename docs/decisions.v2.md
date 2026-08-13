@@ -1351,3 +1351,41 @@ nominal-not-elsewhere reading of "library type", and the weaker-never-narrower c
 review after it. The identity-not-name gate on nominal admission, the honest-floor rule and the
 evaluates-to test for a computed name came from the review after THAT — each one a place where two
 walks answered the same question separately and drifted._
+
+## §132 — Augmentation members are `this`-based methods, installed verbatim
+
+**An augmentation set member IS the prototype member.** Every set — `AugmentationSet<R>` and
+`AugmentationSet2<R, M>` alike — is an object literal of plain methods whose receiver is `this`,
+and installation assigns the authored function straight onto the receiver prototype:
+`proto[name] = set[name]`, no forwarding thunk, no adapter. Function identity therefore holds
+(`proto[name] === set[name]`), which makes two things meaningful that a wrapper made impossible:
+re-installing the very same function is a detectable silent no-op (the double-install shape a
+barrel + `./private/*` load produces), and an installed member can be recognized as its authored
+source.
+
+**Contextual `this` comes from explicit `this` parameters in the set types, not `ThisType<R>`.**
+`AugmentationSet<R>` is `Record<string, (this: R, ...args: any[]) => unknown>`;
+`AugmentationSet2<Rec, Impl>` maps each `Impl` member to `(this: Rec, ...args: Parameters<Impl[K]>) => any`.
+An `& ThisType<Rec>` intersection reads better and was rejected for a checkable reason: an
+intersection strips the implicit index signature of the mapped/`Record` type literal, and that
+index signature is exactly what lets a concrete set satisfy the erased `Record<PropertyKey, Func>`
+parameter the registry and the `registerAugmentations` sugar take. The explicit `this` parameter
+gives an object-literal method the same contextual receiver with zero per-member annotation.
+
+**Merge dispatchers take two `this`-based members.** A `MergeStrategy` receives `original` and
+`incoming` as ordinary methods and forwards both with `fn.call(this, ...args)`; the receiver-first
+`incoming(this, ...)` convention is gone everywhere, including the mergesynth-synthesized
+strategies (`extension.call(this, ...args)` / `original.call(this, ...args)`).
+
+**Standalone calling is `.call`.** A set stays exported, and a member is reachable without
+installation as `Set.member.call(receiver, ...args)` — an extracted method invoked on an explicit
+receiver. The deliberately-standalone receiver-first free functions (`logTrace(logger, ...)`,
+`beginScope(logger, ...)`) are unaffected: they are not set members.
+
+**The engine speaks only `this`.** The inline stage's receiver-as-leading-parameter machinery is
+deleted (`ResolvedBody.ReceiverParam`, the param split, the arg/param index offset); a member
+body's value parameters align 1:1 with its call's arguments, and `this`-substitution respects
+`this`-scope boundaries — it rewrites in the body and through nested arrows, never inside a nested
+`function`, method, accessor, constructor, class, or static block. mergesynth derives guards and
+arity bounds from the member's own parameters (`params[i]` guards `args[i]`), skipping only an
+explicit type-only `this` parameter.

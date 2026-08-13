@@ -23,69 +23,69 @@ declare module '@rhombus-std/caching.core' {
 
 export const CacheEntrySugarAugmentations: AugmentationSet2<ICacheEntry, Flatten<ICacheEntrySugarAugmentations>> = {
   /** Sets the entry's compaction {@link CacheItemPriority}. */
-  setPriority(entry, priority) {
-    entry.priority = priority;
-    return entry;
+  setPriority(priority) {
+    this.priority = priority;
+    return this;
   },
 
   /** Expires the entry when `expirationToken` fires. */
-  addExpirationToken(entry, expirationToken) {
-    entry.expirationTokens.push(expirationToken);
-    return entry;
+  addExpirationToken(expirationToken) {
+    this.expirationTokens.push(expirationToken);
+    return this;
   },
 
   /** Sets an absolute expiration -- a number of milliseconds from now, or an absolute `Date`. */
-  setAbsoluteExpiration(entry, expiration) {
+  setAbsoluteExpiration(expiration) {
     if (expiration instanceof Date) {
-      entry.absoluteExpiration = expiration;
+      this.absoluteExpiration = expiration;
     } else {
-      entry.absoluteExpirationRelativeToNow = expiration;
+      this.absoluteExpirationRelativeToNow = expiration;
     }
-    return entry;
+    return this;
   },
 
   /** Sets how long (in milliseconds) the entry may be inactive before removal. */
-  setSlidingExpiration(entry, offsetMs) {
-    entry.slidingExpiration = offsetMs;
-    return entry;
+  setSlidingExpiration(offsetMs) {
+    this.slidingExpiration = offsetMs;
+    return this;
   },
 
   /** Registers a callback fired after the entry is evicted. */
-  registerPostEvictionCallback(entry, callback, state) {
+  registerPostEvictionCallback(callback, state) {
     const registration = new PostEvictionCallbackRegistration();
     registration.evictionCallback = callback;
     registration.state = state;
-    entry.postEvictionCallbacks.push(registration);
-    return entry;
+    this.postEvictionCallbacks.push(registration);
+    return this;
   },
 
   /** Sets the entry's value. */
-  setValue(entry, value) {
-    entry.value = value;
-    return entry;
+  setValue(value) {
+    this.value = value;
+    return this;
   },
 
   /** Sets the entry's size. Throws if `size` is negative. */
-  setSize(entry, size) {
+  setSize(size) {
     if (size < 0) {
       throw new RangeError(`size must be non-negative, was ${size}.`);
     }
-    entry.size = size;
-    return entry;
+    this.size = size;
+    return this;
   },
 
-  /** Applies every value of `options` to `entry`. Throws if `options` carries a post-eviction registration with no callback. */
-  setOptions(entry, options) {
-    entry.absoluteExpiration = options.absoluteExpiration;
-    entry.absoluteExpirationRelativeToNow = options.absoluteExpirationRelativeToNow;
-    entry.slidingExpiration = options.slidingExpiration;
-    entry.priority = options.priority;
-    entry.size = options.size;
+  /** Applies every value of `options` to the entry. Throws if `options` carries a post-eviction registration with no callback. */
+  setOptions(options) {
+    this.absoluteExpiration = options.absoluteExpiration;
+    this.absoluteExpirationRelativeToNow = options.absoluteExpirationRelativeToNow;
+    this.slidingExpiration = options.slidingExpiration;
+    this.priority = options.priority;
+    this.size = options.size;
 
     const expirationTokens = options.expirationTokensDirect;
     if (expirationTokens !== undefined) {
       for (const token of expirationTokens) {
-        CacheEntrySugarAugmentations.addExpirationToken(entry, token);
+        CacheEntrySugarAugmentations.addExpirationToken.call(this, token);
       }
     }
 
@@ -98,11 +98,11 @@ export const CacheEntrySugarAugmentations: AugmentationSet2<ICacheEntry, Flatten
             `MemoryCacheEntryOptions.postEvictionCallbacks contains a registration with no evictionCallback at index ${i}.`,
           );
         }
-        entry.postEvictionCallbacks.push(registration);
+        this.postEvictionCallbacks.push(registration);
       }
     }
 
-    return entry;
+    return this;
   },
 };
 

@@ -7,9 +7,9 @@ type IServiceScopeFactoryServiceAugmentations = {
 };
 export const ServiceScopeFactoryServiceAugmentations: AugmentationSet2<IServiceScopeFactory,
   IServiceScopeFactoryServiceAugmentations> = {
-    createAsyncScope(serviceScopeFactory: IServiceScopeFactory): AsyncServiceScope {
+    createAsyncScope(): AsyncServiceScope {
       throw new NotImplementedError('IServiceScopeFactory.createAsyncScope');
-      return new AsyncServiceScope(serviceScopeFactory.createScope());
+      return new AsyncServiceScope(this.createScope());
     },
   };
 declare module '@rhombus-std/di.core' {

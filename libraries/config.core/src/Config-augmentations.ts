@@ -1,7 +1,6 @@
 // Convenience members over IConfig, callable as a fluent method
-// (`config.getConnectionString(name)`) or as the standalone form
-// (`ConfigAugmentations.getConnectionString(config, name)`). The install onto the
-// concrete IConfig classes lives in @rhombus-std/config, which can import them.
+// (`config.getConnectionString(name)`) or standalone as
+// (`ConfigAugmentations.getConnectionString.call(config, name)`).
 
 import type { AugmentationSet } from '@rhombus-std/primitives';
 import { isConfigSection } from './config-section-guard';
@@ -39,14 +38,14 @@ export function exists(section: IConfigSection | undefined): boolean {
   return false;
 }
 
-/** Receiver-first convenience members over {@link IConfig}. */
+/** Convenience members over {@link IConfig}. */
 export const ConfigAugmentations = {
   /**
    * The specified connection string from `config`. Shorthand for
    * `config.getSection("ConnectionStrings").get(name)`.
    */
-  getConnectionString(config: IConfig, name: string): string | undefined {
-    return config.getSection('ConnectionStrings').get(name);
+  getConnectionString(name: string): string | undefined {
+    return this.getSection('ConnectionStrings').get(name);
   },
 
   /**
@@ -54,8 +53,8 @@ export const ConfigAugmentations = {
    * {@link IConfig.getSection} -- which always returns a (possibly
    * empty) section -- this throws when no matching section {@link exists}.
    */
-  getRequiredSection(config: IConfig, key: string): IConfigSection {
-    const section = config.getSection(key);
+  getRequiredSection(key: string): IConfigSection {
+    const section = this.getSection(key);
     if (exists(section)) {
       return section;
     }
@@ -71,16 +70,17 @@ export const ConfigAugmentations = {
    * The enumeration root is yielded only when it is itself a section; a bare
    * {@link IConfig} root (empty `path`, not a section) contributes no entry.
    */
-  *asIterable(config: IConfig,
-    makePathsRelative: boolean = false): Generator<[key: string, value: string | undefined], void, unknown> {
-    const rootIsSection = isConfigSection(config);
-    const prefixLength = makePathsRelative && rootIsSection ? config.path.length + 1 : 0;
+  *asIterable(
+    makePathsRelative: boolean = false,
+  ): Generator<[key: string, value: string | undefined], void, unknown> {
+    const rootIsSection = isConfigSection(this);
+    const prefixLength = makePathsRelative && rootIsSection ? this.path.length + 1 : 0;
 
-    const stack: IConfig[] = [config];
+    const stack: IConfig[] = [this];
     while (stack.length) {
       const node = stack.pop()!;
-      const isSection = node === config ? rootIsSection : true;
-      if (isSection && (!makePathsRelative || node !== config)) {
+      const isSection = node === this ? rootIsSection : true;
+      if (isSection && (!makePathsRelative || node !== this)) {
         const section = node as IConfigSection;
         yield [section.path.substring(prefixLength), section.value];
       }

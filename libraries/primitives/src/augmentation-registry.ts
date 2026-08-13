@@ -16,8 +16,8 @@ import { type AugmentationSet, AugmentationSet2, installSet, type MergeStrategie
 import { Multimap } from './Multimap.js';
 import { Type } from './Type/Type.js';
 
-/** A receiver-first augmentation function whose receiver type is erased in the bag. */
-type AugmentationFn = Func<[receiver: never, ...args: never[]], unknown>;
+/** A `this`-based augmentation method whose receiver type is erased in the bag. */
+type AugmentationFn = Func<never[], unknown>;
 
 /**
  * A member contribution: its augmentation function paired with the collision

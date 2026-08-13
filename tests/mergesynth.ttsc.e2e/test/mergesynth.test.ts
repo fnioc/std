@@ -101,12 +101,12 @@ import { tokenfor } from "./tokenfor";
 
 export interface IAlpha {}
 
-// First holder of both names: mounts as plain thunks (no collision yet).
+// First holder of both names: mounts verbatim (no collision yet).
 export const AlphaExtensions = {
-  describe(self: IAlpha, opts: { verbose: boolean } | number): string {
+  describe(opts: { verbose: boolean } | number): string {
     return typeof opts === "number" ? \`A:number:\${opts}\` : \`A:object:\${String(opts.verbose)}\`;
   },
-  pick(self: IAlpha, value: string): string {
+  pick(value: string): string {
     return \`A:pick:\${value}\`;
   },
 };
@@ -116,7 +116,7 @@ export const AlphaExtensions = {
 // Under the no-transformer runtime this registration THROWS (strategy-less
 // collision); this module importing cleanly IS the no-throw proof.
 export const BetaExtensions = {
-  describe(self: IAlpha, tag: string): string {
+  describe(tag: string): string {
     return \`B:string:\${tag}\`;
   },
 };
@@ -124,7 +124,7 @@ export const BetaExtensions = {
 // Un-derivable parameter (unknown): always-pass fallback — this extension wins
 // every pick call, chain order breaking the tie.
 export const DeltaExtensions = {
-  pick(self: IAlpha, value: unknown): string {
+  pick(value: unknown): string {
     return "D:pick";
   },
 };
@@ -134,10 +134,10 @@ export const DeltaExtensions = {
 // The uncovered sibling member (label) forces the gap-fill shape: a
 // synthesized map with the hand-authored object spread LAST over it.
 export const GammaExtensions = {
-  describe(self: IAlpha, flag: boolean): string {
+  describe(flag: boolean): string {
     return \`G:bool:\${String(flag)}\`;
   },
-  label(self: IAlpha, n: number): string {
+  label(n: number): string {
     return \`G:label:\${n}\`;
   },
 };
@@ -151,12 +151,12 @@ const gammaMerge = {
 
 // Arity discrimination: same leading parameter type, different arity.
 export const EpsilonExtensions = {
-  fmt(self: IAlpha, a: number, b: string): string {
+  fmt(a: number, b: string): string {
     return \`E:\${a}:\${b}\`;
   },
 };
 export const ZetaExtensions = {
-  fmt(self: IAlpha, a: number): string {
+  fmt(a: number): string {
     return \`Z:\${a}\`;
   },
 };
@@ -176,16 +176,16 @@ export class EntryOptions {
   private internal: number = 0;
 }
 
-// First holder: mounts as a plain thunk, so it is what a failed guard falls
+// First holder: mounts verbatim, so it is what a failed guard falls
 // through to.
 export const EtaExtensions = {
-  setOptions(self: IAlpha, tag: string): string {
+  setOptions(tag: string): string {
     return \`ETA:\${String(tag)}\`;
   },
 };
 // Collides on setOptions with the accessor-bearing class as its parameter.
 export const ThetaExtensions = {
-  setOptions(self: IAlpha, options: EntryOptions): string {
+  setOptions(options: EntryOptions): string {
     return \`THETA:\${String(options.label)}\`;
   },
 };
@@ -193,26 +193,26 @@ export const ThetaExtensions = {
 // The same class reached ONLY through a record's value type — a position no
 // property or type-argument walk passes through.
 export const IotaExtensions = {
-  configure(self: IAlpha, tag: string): string {
+  configure(tag: string): string {
     return \`IOTA:\${tag}\`;
   },
 };
 export const KappaExtensions = {
-  configure(self: IAlpha, bag: Record<string, EntryOptions>): string {
+  configure(bag: Record<string, EntryOptions>): string {
     return \`KAPPA:\${Object.keys(bag).join(",")}\`;
   },
 };
 
 // A Map carrying a diverging value type: checked the way a hand-written guard
 // checks a Map — \`instanceof\` plus its entries — so a non-Map argument still
-// falls through to the plain thunk that held the name first.
+// falls through to the plain member that held the name first.
 export const LambdaExtensions = {
-  store(self: IAlpha, tag: string): string {
+  store(tag: string): string {
     return \`LAMBDA:\${String(tag)}\`;
   },
 };
 export const MuExtensions = {
-  store(self: IAlpha, entries: Map<string, EntryOptions>): string {
+  store(entries: Map<string, EntryOptions>): string {
     return "MU";
   },
 };
@@ -221,12 +221,12 @@ export const MuExtensions = {
 // which still rejects a value of the wrong runtime kind, and the arity bounds
 // stand on top of it.
 export const NuExtensions = {
-  fetch(self: IAlpha, tag: string): string {
+  fetch(tag: string): string {
     return \`NU:\${String(tag)}\`;
   },
 };
 export const XiExtensions = {
-  fetch(self: IAlpha, pending: Promise<EntryOptions>): string {
+  fetch(pending: Promise<EntryOptions>): string {
     return "XI";
   },
 };
@@ -388,7 +388,7 @@ describe.skipIf(!toolchainReady)('mergesynth on the collapsed host — runtime d
 
   test('colliding describe dispatches by argument shape', () => {
     // Gamma's hand strategy wraps the WHOLE prior chain (dispatcher order:
-    // hand(Gamma) over guard(Beta) over thunk(Alpha)).
+    // hand(Gamma) over guard(Beta) over plain(Alpha)).
     expect(instance.describe(3)).toBe('HAND:A:number:3');
     expect(instance.describe('x')).toBe('HAND:B:string:x');
     expect(instance.describe({ verbose: true })).toBe('HAND:A:object:true');
@@ -409,7 +409,7 @@ describe.skipIf(!toolchainReady)('mergesynth on the collapsed host — runtime d
     expect(instance.setOptions({ absoluteExpirationRelativeToNow: 5, label: 'x' })).toBe('THETA:x');
     expect(instance.setOptions({ absoluteExpirationRelativeToNow: undefined, label: 'y' })).toBe('THETA:y');
     // …and one whose accessor field holds the wrong type does not — it falls
-    // through to Eta, the plain thunk that held the name first. Under a guard
+    // through to Eta, the plain member that held the name first. Under a guard
     // keyed on the #private backing field this clause is `undefined === undefined`
     // and the wrong-shaped object dispatches to Theta.
     expect(instance.setOptions({ absoluteExpirationRelativeToNow: 'nope', label: 'x' })).toBe('ETA:[object Object]');
@@ -420,7 +420,7 @@ describe.skipIf(!toolchainReady)('mergesynth on the collapsed host — runtime d
     // whose entry carries the public shape dispatches to Kappa…
     expect(instance.configure({ a: { absoluteExpirationRelativeToNow: 5, label: 'x' } })).toBe('KAPPA:a');
     // …and one whose entry holds the wrong type does not — it falls through to
-    // Iota, the plain thunk that held the name first.
+    // Iota, the plain member that held the name first.
     expect(instance.configure({ a: { absoluteExpirationRelativeToNow: 'nope', label: 'x' } })).toBe(
       'IOTA:[object Object]',
     );

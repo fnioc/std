@@ -112,7 +112,7 @@ describe('addConfig — the LoggerFilterOptions pipeline', () => {
     const config = rootWith({ 'LogLevel:Default': 'Debug' });
 
     const builder = new LoggingBuilder(new DefaultManifest<'singleton'>());
-    LoggingBuilderConfigAugmentations.addConfig(builder, config);
+    LoggingBuilderConfigAugmentations.addConfig.call(builder, config);
 
     const provider = builder.services.build().createScope('singleton');
     const options: IOptions<LoggerFilterOptions> = provider.getRequiredService(FILTER_OPTIONS_TYPE);

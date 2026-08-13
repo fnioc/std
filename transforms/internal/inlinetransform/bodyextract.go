@@ -122,15 +122,9 @@ func (d Discriminator) Equal(o Discriminator) bool {
 // body-external TYPE-import map (local name -> imported reference) for
 // composed-generic derivation.
 type ResolvedBody struct {
-	Body       *shimast.Node
-	TypeParams []string
-	Params     []string
-	// ReceiverParam is the body's leading parameter when it names the receiver
-	// rather than a value — the augmentation-set authoring shape,
-	// `addClass(manifest, ...rest)`. Empty when the body writes its receiver as a
-	// `this` parameter instead. Either way the receiver is not a value parameter,
-	// so it is excluded from Params and from the discriminator.
-	ReceiverParam    string
+	Body             *shimast.Node
+	TypeParams       []string
+	Params           []string
 	Discriminator    Discriminator
 	PrimitiveImports map[string]string
 	TypeImports      map[string]TypeImportRef
@@ -221,16 +215,6 @@ func (b *bodyExtractor) Extract(packageDir string, e Entry) (*ResolvedBody, erro
 
 	typeParams := typeParamNames(memberNode)
 	params, disc := valueParamsAndDiscriminator(memberNode, typeParams)
-	// A member body takes its receiver either as `this` — already excluded — or as
-	// a leading ordinary parameter. Split the latter out so both authoring shapes
-	// reduce to the same value-parameter list, which is what an overload's
-	// declaration can be compared against.
-	receiverParam := ""
-	if kind != KindFloater && !hasThisParameter(memberNode) && len(params) > 0 {
-		receiverParam = params[0]
-		params = params[1:]
-		disc.Params = disc.Params[1:]
-	}
 	primImports := primitiveImports(implSF, packageName(packageDir))
 	typeImports := bodyTypeImports(implSF)
 
@@ -238,7 +222,6 @@ func (b *bodyExtractor) Extract(packageDir string, e Entry) (*ResolvedBody, erro
 		Body:             expr,
 		TypeParams:       typeParams,
 		Params:           params,
-		ReceiverParam:    receiverParam,
 		Discriminator:    disc,
 		PrimitiveImports: primImports,
 		TypeImports:      typeImports,
@@ -315,11 +298,6 @@ func (b *bodyExtractor) locateImpl(packageDir, implName string) (string, *shimas
 // set is exactly the referenced set.
 func (b *bodyExtractor) checkFreeIdentifiers(rb *ResolvedBody, e Entry, fileValueImports map[string]valueimport.Ref) error {
 	allowed := map[string]bool{}
-	// A receiver named as a leading parameter is a value reference like any other;
-	// it is simply bound to the receiver rather than to an argument.
-	if rb.ReceiverParam != "" {
-		allowed[rb.ReceiverParam] = true
-	}
 	for _, p := range rb.Params {
 		allowed[strings.TrimPrefix(p, "...")] = true
 	}
@@ -483,18 +461,6 @@ func valueParamsAndDiscriminator(node *shimast.Node, typeParams []string) ([]str
 		encoded = append(encoded, enc)
 	}
 	return names, Discriminator{TypeParamCount: len(typeParams), Params: encoded}
-}
-
-// hasThisParameter reports whether a function-like node declares an explicit
-// `this` parameter.
-func hasThisParameter(node *shimast.Node) bool {
-	for _, p := range functionLikeParams(node) {
-		name := p.AsParameterDeclaration().Name()
-		if name != nil && name.Kind == shimast.KindIdentifier && name.Text() == "this" {
-			return true
-		}
-	}
-	return false
 }
 
 // Matches reports whether a body's discriminator can serve the declaration's.

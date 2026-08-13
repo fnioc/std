@@ -72,7 +72,7 @@ declare module '@rhombus-std/di.core' {
 // the impls below carry the disambiguating unions.
 export const ServiceManifestOptionsAugmentations: AugmentationSet2<DefaultManifest<string>,
   IManifestOptionsAugmentations<string>> = {
-    addOptions<T>(manifest: DefaultManifest<string>, optionsType: Type | string,
+    addOptions<T>(this: DefaultManifest<string>, optionsType: Type | string,
       source: Type | string | Func<[], T>): Manifest<string> {
       const type = typeof optionsType === 'string' ? Type.from(optionsType) : optionsType;
       // Two verbs share the name, disambiguated by the second argument:
@@ -80,11 +80,11 @@ export const ServiceManifestOptionsAugmentations: AugmentationSet2<DefaultManife
       //   - a `() => T` base factory → run the OptionsFactory assembly pipeline
       //     over the steps/sources registered for `optionsType`.
       if (typeof source === 'function') {
-        return manifest.addFactory(type, (resolver) => assembleOptions(resolver, type, source), [[RESOLVER_TYPE]]);
+        return this.addFactory(type, (resolver) => assembleOptions(resolver, type, source), [[RESOLVER_TYPE]]);
       }
-      return manifest.addFactory(type, (t: T) => Options.of(t), [[source]]);
+      return this.addFactory(type, (t: T) => Options.of(t), [[source]]);
     },
-    postConfigure<T, Deps extends readonly unknown[]>(manifest: DefaultManifest<string>, optionsType: Type | string,
+    postConfigure<T, Deps extends readonly unknown[]>(this: DefaultManifest<string>, optionsType: Type | string,
       step: IPostConfigureOptions<T> | Func<[T], void> | DepTokens<Deps>,
       configureWithDeps?: (options: T, ...deps: Deps) => void): Manifest<string> {
       const type = typeof optionsType === 'string' ? Type.from(optionsType) : optionsType;
@@ -95,7 +95,7 @@ export const ServiceManifestOptionsAugmentations: AugmentationSet2<DefaultManife
       // deps resolve once, when the assembly reads the slot.
       if (Array.isArray(step)) {
         const callback = configureWithDeps as (options: T, ...deps: Deps) => void;
-        return manifest.addFactory(postConfigureStepType(type),
+        return this.addFactory(postConfigureStepType(type),
           (...deps: Deps): IPostConfigureOptions<T> => ({ postConfigure(options: T): void {
             callback(options, ...deps);
           } }), [step as readonly (Type | string)[]]);
@@ -105,9 +105,9 @@ export const ServiceManifestOptionsAugmentations: AugmentationSet2<DefaultManife
       // runs after every configure step.
       const plain = step as IPostConfigureOptions<T> | Func<[T], void>;
       const wrapped: IPostConfigureOptions<T> = typeof plain === 'function' ? { postConfigure: plain } : plain;
-      return manifest.addValue(postConfigureStepType(type), wrapped);
+      return this.addValue(postConfigureStepType(type), wrapped);
     },
-    validate<T, Deps extends readonly unknown[]>(manifest: DefaultManifest<string>, optionsType: Type | string,
+    validate<T, Deps extends readonly unknown[]>(this: DefaultManifest<string>, optionsType: Type | string,
       validateOrDeps: Func<[T], boolean> | DepTokens<Deps>,
       failureMessageOrValidate?: string | ((options: T, ...deps: Deps) => boolean),
       failureMessage?: string): Manifest<string> {
@@ -119,7 +119,7 @@ export const ServiceManifestOptionsAugmentations: AugmentationSet2<DefaultManife
       if (Array.isArray(validateOrDeps)) {
         const predicate = failureMessageOrValidate as (options: T, ...deps: Deps) => boolean;
         const message = failureMessage ?? DEFAULT_VALIDATION_FAILURE_MESSAGE;
-        return manifest.addFactory(validateStepType(type),
+        return this.addFactory(validateStepType(type),
           (...deps: Deps): IValidateOptions<T> => ({ validate(options: T): ValidateOptionsResult {
             return predicate(options, ...deps) ? ValidateOptionsResult.success : ValidateOptionsResult.fail(message);
           } }), [validateOrDeps as readonly (Type | string)[]]);
@@ -131,7 +131,7 @@ export const ServiceManifestOptionsAugmentations: AugmentationSet2<DefaultManife
       const step: IValidateOptions<T> = { validate(options: T): ValidateOptionsResult {
         return validateFn(options) ? ValidateOptionsResult.success : ValidateOptionsResult.fail(message);
       } };
-      return manifest.addValue(validateStepType(type), step);
+      return this.addValue(validateStepType(type), step);
     },
   };
 

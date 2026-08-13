@@ -151,11 +151,11 @@ test('addConsole registers exactly one provider per manifest', () => {
   const { services, values } = fakeServices();
   const builder = builderOver(services);
 
-  ConsoleLoggerAugmentations.addConsole(builder);
-  ConsoleLoggerAugmentations.addConsole(builder, (options) => {
+  ConsoleLoggerAugmentations.addConsole.call(builder);
+  ConsoleLoggerAugmentations.addConsole.call(builder, (options) => {
     options.maxQueueLength = 7;
   });
-  ConsoleLoggerAugmentations.addSimpleConsole(builder);
+  ConsoleLoggerAugmentations.addSimpleConsole.call(builder);
 
   const providers = values.filter(([token]) => token === LOGGER_PROVIDER_TYPE);
   expect(providers).toHaveLength(1);
@@ -178,11 +178,11 @@ test('configure delegates accumulate onto the shared options and reach the provi
   const builder = builderOver(services);
   const writes: string[] = [];
 
-  ConsoleLoggerAugmentations.addConsole(builder);
+  ConsoleLoggerAugmentations.addConsole.call(builder);
   // A configure applied AFTER the provider exists must still land (the
   // reference OnChange route): select the custom formatter registered late.
-  ConsoleLoggerAugmentations.addConsoleFormatter(builder, new UpperFormatter());
-  ConsoleLoggerAugmentations.addConsole(builder, (options) => {
+  ConsoleLoggerAugmentations.addConsoleFormatter.call(builder, new UpperFormatter());
+  ConsoleLoggerAugmentations.addConsole.call(builder, (options) => {
     options.formatterName = 'upper';
   });
 
@@ -212,7 +212,7 @@ test("addSimpleConsole's configure reaches the built-in simple formatter", async
   const builder = builderOver(services);
   const writes: string[] = [];
 
-  ConsoleLoggerAugmentations.addSimpleConsole(builder, (options) => {
+  ConsoleLoggerAugmentations.addSimpleConsole.call(builder, (options) => {
     options.singleLine = true;
   });
 

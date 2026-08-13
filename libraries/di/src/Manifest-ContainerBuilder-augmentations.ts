@@ -23,9 +23,9 @@ export const ManifestContainerBuilderAugmentations: AugmentationSet2<
   Manifest,
   IManifestContainerBuilderAugmentationsImpl
 > = {
-  build(manifest, ...args) {
+  build(...args) {
     const [options] = args;
-    return new ServiceProvider(manifest, options ?? ServiceProviderOptions.defaults);
+    return new ServiceProvider(this, options ?? ServiceProviderOptions.defaults);
   },
 };
 

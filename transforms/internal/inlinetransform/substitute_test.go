@@ -379,8 +379,8 @@ func TestSubstituteRestParameterSplices(t *testing.T) {
 			ec := shimprinter.NewEmitContext()
 
 			decl := parse(t, "declaring.ts", `
-export function addClass(manifest, ...rest) {
-	return manifest.register(tok, ...rest);
+export function addClass(...rest) {
+	return this.register(tok, ...rest);
 }
 `)
 			body := returnExpr(t, decl)
@@ -389,13 +389,12 @@ export function addClass(manifest, ...rest) {
 			call, receiver, args := findCall(t, consumer, "addClass")
 
 			res := Substitute(ec, Inlining{
-				Body:          body,
-				Receiver:      receiver,
-				Params:        nil,
-				Args:          nil,
-				ReceiverParam: "manifest",
-				RestParam:     "rest",
-				RestArgs:      args,
+				Body:      body,
+				Receiver:  receiver,
+				Params:    nil,
+				Args:      nil,
+				RestParam: "rest",
+				RestArgs:  args,
 			})
 
 			out := reprint(ec, splice(ec, consumer, call, res.Expr))
@@ -406,5 +405,39 @@ export function addClass(manifest, ...rest) {
 				t.Errorf("the spread must not survive substitution, got:\n%s", out)
 			}
 		})
+	}
+}
+
+// A `this` behind a nested non-arrow function belongs to that function's own
+// scope and must survive substitution untouched, while an arrow inherits the
+// enclosing `this` and is substituted. The two substitutable sites sit on a
+// simple receiver, so they duplicate without a temp.
+func TestSubstituteStopsAtOwnThisBoundaries(t *testing.T) {
+	ec := shimprinter.NewEmitContext()
+
+	decl := parse(t, "declaring.ts", `
+export function wire() {
+	return this.use(() => this.tag, function () { return this.tag; });
+}
+`)
+	body := returnExpr(t, decl)
+
+	consumer := parse(t, "consumer.ts", "const answer = reg.wire();\n")
+	call, receiver, args := findCall(t, consumer, "wire")
+
+	res := Substitute(ec, Inlining{Body: body, Receiver: receiver, Args: args})
+	if res.NeedsTempHoist {
+		t.Fatalf("simple receiver must duplicate, not hoist a temp")
+	}
+
+	out := reprint(ec, splice(ec, consumer, call, res.Expr))
+	if !strings.Contains(out, "reg.use(") {
+		t.Errorf("outer `this` must become the receiver, got:\n%s", out)
+	}
+	if !strings.Contains(out, "=> reg.tag") {
+		t.Errorf("an arrow's `this` inherits the inline site and must be substituted, got:\n%s", out)
+	}
+	if !strings.Contains(out, "this.tag") {
+		t.Errorf("a nested function's own `this` must survive untouched, got:\n%s", out)
 	}
 }
