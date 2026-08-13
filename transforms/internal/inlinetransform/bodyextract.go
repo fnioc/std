@@ -61,21 +61,17 @@ import (
 // the flat string token. It homes beside `tokenfor` / `tokenof` in
 // `@rhombus-std/primitives.extras`.
 var knownPrimitives = map[string]string{
-	"tokenfor":       "@rhombus-std/primitives.extras",
-	"tokenof":        "@rhombus-std/primitives.extras",
-	"keyedtokenfor":  "@rhombus-std/di.extras",
-	"signatureof":    "@rhombus-std/di.extras",
-	"keyof":          "@rhombus-std/di.extras",
-	"signaturefor":   "@rhombus-std/di.core",
-	"signaturesfor":  "@rhombus-std/di.core",
-	"valueof":        "@rhombus-std/di.extras",
-	"isSingular":     "@rhombus-std/primitives.extras",
-	"singularValue":  "@rhombus-std/primitives.extras",
-	"isFactory":      "@rhombus-std/primitives.extras",
-	"returntokenfor": "@rhombus-std/primitives.extras",
-	"paramtokensfor": "@rhombus-std/primitives.extras",
-	"schemaof":       "@rhombus-std/config.extras",
-	"typefor":        "@rhombus-std/primitives.extras",
+	"tokenfor":      "@rhombus-std/primitives.extras",
+	"tokenof":       "@rhombus-std/primitives.extras",
+	"signatureof":   "@rhombus-std/di.extras",
+	"keyof":         "@rhombus-std/di.extras",
+	"signaturefor":  "@rhombus-std/di.core",
+	"signaturesfor": "@rhombus-std/di.core",
+	"valueof":       "@rhombus-std/di.extras",
+	"isSingular":    "@rhombus-std/primitives.extras",
+	"singularValue": "@rhombus-std/primitives.extras",
+	"schemaof":      "@rhombus-std/config.extras",
+	"typefor":       "@rhombus-std/primitives.extras",
 }
 
 // knownAuthoringMarkers maps each MODULE-LEVEL authoring marker an impl file may

@@ -29,11 +29,8 @@ import { entryKind, loadInlineEntries, parseTypeRef } from './inline-entries.mjs
 const PRIMITIVE_HOMES = { typefor: '@rhombus-std/primitives.extras', tokenfor: '@rhombus-std/primitives.extras',
   tokenof: '@rhombus-std/primitives.extras', signaturefor: '@rhombus-std/di.core',
   signaturesfor: '@rhombus-std/di.core', signatureof: '@rhombus-std/di.extras', keyof: '@rhombus-std/di.extras',
-  keyedtokenfor: '@rhombus-std/di.extras', valueof: '@rhombus-std/di.extras',
-  isSingular: '@rhombus-std/primitives.extras', singularValue: '@rhombus-std/primitives.extras',
-  isFactory: '@rhombus-std/primitives.extras', returntokenfor: '@rhombus-std/primitives.extras',
-  paramtokensfor: '@rhombus-std/primitives.extras', schemaof: '@rhombus-std/config.extras',
-  typefor: '@rhombus-std/primitives.extras' };
+  valueof: '@rhombus-std/di.extras', isSingular: '@rhombus-std/primitives.extras',
+  singularValue: '@rhombus-std/primitives.extras', schemaof: '@rhombus-std/config.extras' };
 
 /** Walks up from a file to the nearest directory containing a package.json. */
 function findPackageDir(/** @type {string} */ file) {
