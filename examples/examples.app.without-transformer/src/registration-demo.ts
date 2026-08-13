@@ -17,9 +17,10 @@
 //    the receiver alone, so a call whose result is discarded registers NOTHING.
 //    Thread it: `services = services.addClass(...)`. `demonstrateDiscardTrap`
 //    below shows the failure mode on purpose.
-// 2. A SIGNATURE IS ALWAYS STATED, never inferred. Without the transformer
-//    there is nothing to derive a dependency list from, so "this class takes no
-//    dependencies" is written `[[]]` — one overload, taking nothing.
+// 2. A CONSTRUCTOR TYPE IS ALWAYS STATED, never inferred. Without the
+//    transformer there is nothing to derive one from, so "this class takes no
+//    dependencies" is written `Type.ctor(theServiceType)` — one overload,
+//    taking nothing beyond the address.
 
 import { DefaultManifest, Type } from '@rhombus-std/di.core';
 import type { Manifest, ServiceDescriptor } from '@rhombus-std/di.core';

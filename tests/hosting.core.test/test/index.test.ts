@@ -1,4 +1,4 @@
-import { DefaultManifest, type Manifest } from '@rhombus-std/di.core';
+import { DefaultManifest, type Manifest, Type } from '@rhombus-std/di.core';
 import { BackgroundService, Environments, HostAbortedError, HostDefaults, HOSTED_SERVICE_TYPE,
   hostedServiceCollectionType, HostEnvironmentEnvAugmentations, type IHostedService,
   type IHostEnvironment } from '@rhombus-std/hosting.core/private/index';
@@ -119,8 +119,8 @@ test('addHostedService registers many under one token; the collection resolves a
   }
 
   let manifest: Manifest<string> = new DefaultManifest();
-  manifest = manifest.addHostedService(A, [[]]);
-  manifest = manifest.addHostedService(B, [[]]);
+  manifest = manifest.addHostedService(A, Type.ctor(HOSTED_SERVICE_TYPE));
+  manifest = manifest.addHostedService(B, Type.ctor(HOSTED_SERVICE_TYPE));
 
   const provider = manifest.build();
   const scope = provider.createScope('singleton');

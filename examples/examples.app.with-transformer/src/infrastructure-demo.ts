@@ -27,7 +27,7 @@
 // Nothing here reads a clock, the filesystem or a random source: the output is
 // byte-stable, which the app's checked-in `expected.txt` diff depends on.
 
-import { DefaultManifest } from '@rhombus-std/di.core';
+import { DefaultManifest, Type } from '@rhombus-std/di.core';
 import type { Manifest } from '@rhombus-std/di.core';
 import '@rhombus-std/di';
 import type { IGreeting, IHealthCheck } from '@rhombus-std/examples.contracts';
@@ -144,7 +144,8 @@ export function demonstrateInfrastructure(): readonly string[] {
   // something the taxonomy names.
   try {
     newWorkshopManifest()
-      .addClass(typefor<IHealthCheck>(), GreetingWorkshop, [[typefor<IGreeting>()]], 'singleton')
+      .addClass(typefor<IHealthCheck>(), GreetingWorkshop, Type.ctor(typefor<IHealthCheck>(), typefor<IGreeting>()),
+        'singleton')
       .build({ validateOnBuild: true });
   } catch (error) {
     lines.push(`building a graph with a hole in it: ${describeDiError(error)}`);
