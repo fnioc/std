@@ -7,7 +7,7 @@ import { DefaultManifest } from '@rhombus-std/di.core';
 import { IServiceProvider, Type } from '@rhombus-std/primitives';
 import { describe, expect, test } from 'bun:test';
 
-const Bar = Type.named('Bar', 'app');
+const Bar = Type.imported('Bar', 'app');
 
 function providerWithBar(bar: unknown): ServiceProvider {
   return new ServiceProvider(DefaultManifest.empty<string>().addValue(Bar, bar));

@@ -7,7 +7,7 @@ import { ServiceProviderOptions } from './ServiceProviderOptions.js';
 
 // The synthetic address a value-driven `getService` call resolves under. Never persisted —
 // it exists only for the one `additionalServices` entry that call synthesizes, then discards.
-const VALUE_SERVICE_TYPE = Type.named('GetServiceValue', '@rhombus-std/di');
+const VALUE_SERVICE_TYPE = Type.imported('GetServiceValue', '@rhombus-std/di');
 
 // `ServiceProvider` implements the value-driven `getService` overloads directly below — reaching
 // this provider's own resolution engine to realize a caller-supplied `ctor`/`fn` is only possible
