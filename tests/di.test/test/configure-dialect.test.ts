@@ -1,8 +1,9 @@
-// Behaviour tests for the configure dialect — the lambda form of a registration. The stage types
-// are what stop most misuse at the call site; these cover what reaches runtime: the descriptor a
-// walk produces, and the refusals a caller typing through `any` can still provoke.
+// Behaviour tests for the configure dialect — the lambda that walks a registration's steps, and
+// the terse form that states them at once. The stage types are what stop most misuse at the call
+// site; these cover what reaches runtime: the descriptor each form produces, that the two produce
+// the same one, and the refusals a caller typing through `any` can still provoke.
 
-import { DefaultManifest, type Manifest } from '@rhombus-std/di.core';
+import { DefaultManifest, type Manifest, ServiceDescriptor } from '@rhombus-std/di.core';
 import '@rhombus-std/di';
 import { type IntersectionType, Type } from '@rhombus-std/primitives';
 import { describe, expect, test } from 'bun:test';
@@ -85,6 +86,50 @@ describe('withType', () => {
   test('refuses a type that describes nothing callable', () => {
     expect(() => withClock().add<Sink>(SINK, sink => (sink.asClass(Sink) as any).withType(CLOCK)))
       .toThrow(/describes nothing callable/);
+  });
+});
+
+describe('the terse form', () => {
+  test('states a constructed registration in one call, the node saying it is constructed', () => {
+    const services = withClock()
+      .add<Sink>(SINK, Sink, Type.ctor(SINK, CLOCK, Type.typeLiteral('terse')), 'singleton');
+
+    expect((services.build().getRequiredService(SINK) as Sink).environment).toBe('terse');
+  });
+
+  test('a function type names a factory instead, from the same argument position', () => {
+    const services = withClock().add<Sink>(SINK, makeSink, Type.func(SINK, CLOCK));
+
+    expect((services.build().getRequiredService(SINK) as Sink).environment).toBe('from-factory');
+  });
+
+  test('carries the tag through, so a keyed registration is one call too', () => {
+    const services = withClock()
+      .add<Sink>(SINK, Sink, Type.ctor(SINK, CLOCK, Type.typeLiteral('keyed')), 'singleton', 'primary');
+    const [filed] = [...services];
+
+    expect(filed!.serviceType).toBe(Type.tag(SINK, 'primary'));
+  });
+
+  test('files the same descriptor the walk does', () => {
+    const walked = withClock().add<Sink>(SINK,
+      sink =>
+        sink.asClass(Sink).withType(Type.ctor(SINK, CLOCK, Type.typeLiteral('same')))
+          .withLifetime('singleton').taggedAs('primary'));
+    const stated = withClock()
+      .add<Sink>(SINK, Sink, Type.ctor(SINK, CLOCK, Type.typeLiteral('same')), 'singleton', 'primary');
+
+    expect(ServiceDescriptor.equals([...stated][0]!, [...walked][0]!)).toBe(true);
+  });
+
+  test('refuses a node that describes nothing callable', () => {
+    expect(() => withClock().add<Sink>(SINK, Sink, CLOCK as any)).toThrow(/describes nothing callable/);
+  });
+
+  test('refuses an overload set that is called both ways at once', () => {
+    const mixed = Type.intersection(Type.ctor(SINK, CLOCK), Type.func(SINK, CLOCK)) as IntersectionType;
+
+    expect(() => withClock().add<Sink>(SINK, Sink, mixed)).toThrow(/mixes constructor and function signatures/);
   });
 });
 

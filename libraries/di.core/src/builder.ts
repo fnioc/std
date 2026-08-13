@@ -189,12 +189,75 @@ export class PendingRegistration<Scopes extends string> implements PendingState<
   }
 }
 
-/** Runs a configure lambda over a fresh node and returns the descriptor it describes. */
-export function describe<T, Scopes extends string>(type: Type | string,
-  configure: Func<[Unstarted<T, Scopes>], IComplete>): ServiceDescriptor<Scopes> {
-  const node = new PendingRegistration<Scopes>();
-  const configured = configure(node as unknown as Unstarted<T, Scopes>) as unknown as PendingRegistration<Scopes>;
+/**
+ * What a registration verb takes after its service type: the lambda that walks the steps, or the
+ * whole registration stated at once.
+ *
+ * @remarks
+ * The terse form names the implementation's composed type rather than a bare argument list, so a
+ * signature is spelled in one place and one place only. Compose it with the ADDRESS in the instance
+ * slot — "a constructable producing the addressed type" is the strongest claim the container holds
+ * for an explicit registration, and the instance slot is read by nothing else.
+ */
+export type DescribeArgs<Scopes extends string> =
+  | [configure: Func<[Unstarted<any, Scopes>], IComplete>]
+  | [impl: Ctor | Func, implType: Type, scope?: Scopes, key?: string];
+
+/** The descriptor these arguments describe, whichever of the two forms they take. */
+export function describe<Scopes extends string>(type: Type | string,
+  ...args: DescribeArgs<Scopes>): ServiceDescriptor<Scopes> {
+  const configured = args.length === 1
+    ? walkSteps<Scopes>(args[0])
+    : stateSteps<Scopes>(args[0], args[1], args[2], args[3]);
   return configured.toDescriptor(typeof type === 'string' ? Type.from(type) : type);
+}
+
+/** The node a configure lambda leaves behind. */
+function walkSteps<Scopes extends string>(
+  configure: Func<[Unstarted<any, Scopes>], IComplete>,
+): PendingRegistration<Scopes> {
+  const start = new PendingRegistration<Scopes>();
+  return configure(start as unknown as Unstarted<any, Scopes>) as unknown as PendingRegistration<Scopes>;
+}
+
+/** The same node, reached in one statement rather than a walk. */
+function stateSteps<Scopes extends string>(impl: Ctor | Func, implType: Type, scope: Scopes | undefined,
+  key: string | undefined): PendingRegistration<Scopes> {
+  const start = new PendingRegistration<Scopes>();
+  const chosen = namesAConstructor(implType) ? start.asClass(impl as Ctor) : start.asFactory(impl as Func);
+  const shaped = chosen.withType(implType);
+  const scoped = scope === undefined ? shaped : shaped.withLifetime(scope);
+  return key === undefined ? scoped : scoped.taggedAs(key);
+}
+
+/**
+ * Whether the composed type calls its implementation with `new` — which is the whole of what the
+ * terse form needs the node for beyond its argument lists.
+ *
+ * @throws Error - when the type describes nothing callable, or an overload set that is called both
+ * ways at once.
+ */
+function namesAConstructor(implType: Type): boolean {
+  if (implType.kind === 'ctor') {
+    return true;
+  }
+  if (implType.kind === 'function') {
+    return false;
+  }
+  if (implType.kind === 'intersection') {
+    const constructors = implType.members.filter(member => member.kind === 'ctor');
+    if (constructors.length && constructors.length !== implType.members.length) {
+      throw new Error(
+        `${Type.stringify(implType)} mixes constructor and function signatures; one implementation `
+          + 'is called one way or the other.',
+      );
+    }
+    return !!constructors.length;
+  }
+  throw new Error(
+    `${Type.stringify(implType)} describes nothing callable; name a constructor or function type, `
+      + 'or an intersection of them for an overloaded implementation.',
+  );
 }
 
 /**
