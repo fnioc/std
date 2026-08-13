@@ -1,0 +1,82 @@
+{
+  "$schema": "../../schema/rhombus-std.schema.json",
+  "inline": {
+    "entries": [
+      {
+        "type": "@rhombus-std/di.core:Manifest",
+        "impl": "@rhombus-std/di.extras:ManifestServiceAugmentations",
+        "member": "add"
+      },
+      {
+        "type": "@rhombus-std/di.core:Manifest",
+        "impl": "@rhombus-std/di.extras:ManifestServiceAugmentations",
+        "member": "addClass"
+      },
+      {
+        "type": "@rhombus-std/di.core:Manifest",
+        "impl": "@rhombus-std/di.extras:ManifestServiceAugmentations",
+        "member": "addFactory"
+      },
+      {
+        "type": "@rhombus-std/di.core:Manifest",
+        "impl": "@rhombus-std/di.extras:ManifestServiceAugmentations",
+        "member": "addValue"
+      },
+      {
+        "type": "@rhombus-std/di.core:Manifest",
+        "impl": "@rhombus-std/di.extras:ManifestDescriptorAugmentations",
+        "member": "tryAdd"
+      },
+      {
+        "type": "@rhombus-std/di.core:Manifest",
+        "impl": "@rhombus-std/di.extras:ManifestDescriptorAugmentations",
+        "member": "tryAddClass"
+      },
+      {
+        "type": "@rhombus-std/di.core:Manifest",
+        "impl": "@rhombus-std/di.extras:ManifestDescriptorAugmentations",
+        "member": "tryAddFactory"
+      },
+      {
+        "type": "@rhombus-std/di.core:Manifest",
+        "impl": "@rhombus-std/di.extras:ManifestDescriptorAugmentations",
+        "member": "tryAddValue"
+      },
+      {
+        "type": "@rhombus-std/di.core:Manifest",
+        "impl": "@rhombus-std/di.extras:ManifestDescriptorAugmentations",
+        "member": "replaceClass"
+      },
+      {
+        "type": "@rhombus-std/di.core:Manifest",
+        "impl": "@rhombus-std/di.extras:ManifestDescriptorAugmentations",
+        "member": "replaceFactory"
+      },
+      {
+        "type": "@rhombus-std/di.core:Manifest",
+        "impl": "@rhombus-std/di.extras:ManifestDescriptorAugmentations",
+        "member": "replaceValue"
+      },
+      {
+        "type": "@rhombus-std/di.core:Manifest",
+        "impl": "@rhombus-std/di.extras:ManifestDescriptorAugmentations",
+        "member": "removeAll"
+      },
+      {
+        "type": "@rhombus-std/primitives:IServiceProvider",
+        "impl": "@rhombus-std/di.extras:ServiceProviderServiceAugmentations",
+        "member": "getService"
+      },
+      {
+        "type": "@rhombus-std/primitives:IServiceProvider",
+        "impl": "@rhombus-std/di.extras:ServiceProviderServiceAugmentations",
+        "member": "getRequiredService"
+      },
+      {
+        "type": "@rhombus-std/primitives:IServiceProvider",
+        "impl": "@rhombus-std/di.extras:ServiceProviderServiceAugmentations",
+        "member": "getServices"
+      }
+    ]
+  }
+}

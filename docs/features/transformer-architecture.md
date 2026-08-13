@@ -332,21 +332,23 @@ build time, in this repo, in this build. There is no published/carrier form of a
 function, no shipped src, no dist-JS resolution path for it — external consumption of the sugar
 forms stays a deliberately parked follow-up.
 
-### The publish list — the `"rhombus-std"` marker's `"inline"` list
+### The publish list — the `"rhombus-std"` marker's `"inline"` `"entries"` list
 
-A library declares its inlineable members in a `"rhombus-std"` marker's `"inline"` list in
-`package.json`:
+A library declares its inlineable members in the `"entries"` list of a `"rhombus-std"` marker's
+`"inline"` object in `package.json`:
 
 ```jsonc
 {
   "rhombus-std": {
-    "inline": [
-      {
-        "type": "@rhombus-std/di.core:Manifest",
-        "impl": "@rhombus-std/di.extras:ManifestServiceAugmentations",
-        "member": "addClass",
-      },
-    ],
+    "inline": {
+      "entries": [
+        {
+          "type": "@rhombus-std/di.core:Manifest",
+          "impl": "@rhombus-std/di.extras:ManifestServiceAugmentations",
+          "member": "addClass",
+        },
+      ],
+    },
   },
 }
 ```
@@ -372,6 +374,43 @@ There are three shapes:
   (`"@rhombus-std/primitives.extras:registerAugmentations"` for the `registerAugmentations<R>()`
   sugar) — the side-parser only ever reads files inside that package, and a foreign `impl` is
   rejected at load time.
+
+### The `"rhombus-std"` config, `"extends"`, and the default file
+
+Every top-level key under a package's `"rhombus-std"` marker — `"inline"`, and any future feature
+block — reads through one shared resolution step before anything else touches it. A config may
+declare `"extends"` as a sibling of its other keys: one path, or an array of paths (each relative to
+the file that declares them), to another rhombus-std-shaped JSON file. An array applies left to
+right — each path's own resolved content deep-merges over everything accumulated from the paths
+before it, so a later path wins a leaf collision against an earlier one. The whole accumulated
+result is this config's BASE: the config's own keys deep-merge OVER it and win every remaining
+collision — a nested object recurses key-by-key, and an array concatenates (the base's elements
+first, the winning side's appended); an array's own elements are never merged into each other.
+
+```jsonc
+{
+  "rhombus-std": {
+    "extends": "./rhombus-std.json",
+    "inline": {
+      "entries": [/* … */],
+    },
+  },
+}
+```
+
+`"extends"` resolves BLINDLY: a path that isn't a readable file contributes nothing, silently — no
+diagnostic, whether the directive was written by hand or supplied by the default below. A chain may
+be arbitrarily long (an extended file may itself carry `"extends"`); a cycle — a path already
+reached earlier in the same chain — also contributes nothing rather than looping. A file that DOES
+exist but holds malformed JSON is still a hard load-time failure — blindness covers absence, not
+corruption.
+
+A `package.json` with no `"rhombus-std"` key at all resolves as though it had written exactly
+`{ "extends": "./rhombus-std.json" }` — a package with no marker of its own still picks up a sibling
+`rhombus-std.json` when one exists, and resolves to an empty config, silently, when one doesn't. The
+moment `"rhombus-std"` is present with ANY value, including `{}`, that default is out of the picture
+entirely: the package owns its whole config, and the sibling file participates only through an
+`"extends"` the package writes itself.
 
 ### How matching works
 

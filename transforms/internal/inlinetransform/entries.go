@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
-	"strings"
 )
 
 // EntryKind classifies a publish-list entry by field KIND, not just presence:
@@ -102,59 +101,211 @@ func parsesCleanly(ref string) bool {
 	return err == nil
 }
 
-// rawInlineConfig is the "rhombus-std" marker's "inline" object in a
-// package.json.
-type rawInlineConfig struct {
-	Inline []Entry         `json:"inline"`
-	Import json.RawMessage `json:"import"` // string | []string | absent
+// rawInlineBlock is the "inline" key's own object: entries is the publish
+// list.
+type rawInlineBlock struct {
+	Entries []Entry `json:"entries"`
 }
 
-// pkgJSONInline is a minimal package.json view exposing only the marker key.
-type pkgJSONInline struct {
-	RhombusStd *rawInlineConfig `json:"rhombus-std"`
+// extendsKey is the "rhombus-std" config's own file-composition directive.
+const extendsKey = "extends"
+
+// ResolveConfig returns the fully-resolved "rhombus-std" config for
+// packageDir's package.json: local keys deep-merged OVER the (recursively
+// resolved) "extends" chain — a local key wins any leaf collision against the
+// extended base, an object recurses key-by-key, and an array concatenates as
+// base-then-local with each element left atomic (an inline entry never merges
+// field-by-field with another).
+//
+// A package.json with no "rhombus-std" key at all resolves as though it read
+// exactly {"extends": "./rhombus-std.json"} — the one default. A
+// "rhombus-std" key present with ANY value, including {}, is authoritative on
+// its own; the default file never participates once the key exists.
+//
+// Resolution is BLIND: an "extends" path that isn't a readable file
+// contributes nothing, silently, whether the directive was defaulted or
+// explicitly written. A chain may be arbitrarily long; a cycle (a path
+// already in the chain) also contributes nothing rather than looping. A
+// present file with malformed JSON is still a hard error — blindness covers
+// absence, not corruption.
+//
+// This is the one entry point every rhombus-std config reader (the inline
+// publish list, and any future feature block) resolves through.
+//
+// This build has no incremental input-tracking seam: every file this and
+// resolveNode read, including a resolved rhombus-std.json, is re-read fresh
+// on every build rather than registered against a cache key.
+func ResolveConfig(packageDir string) (map[string]any, error) {
+	packageDir = filepath.Clean(packageDir)
+	pkgPath := filepath.Join(packageDir, "package.json")
+	data, err := os.ReadFile(pkgPath)
+	if err != nil {
+		return nil, fmt.Errorf("inline: cannot read %s: %w", pkgPath, err)
+	}
+	var pkg struct {
+		RhombusStd json.RawMessage `json:"rhombus-std"`
+	}
+	if err := json.Unmarshal(data, &pkg); err != nil {
+		return nil, fmt.Errorf("inline: malformed package.json %s: %w", pkgPath, err)
+	}
+	var raw map[string]any
+	if pkg.RhombusStd == nil {
+		raw = map[string]any{extendsKey: "./rhombus-std.json"}
+	} else if err := json.Unmarshal(pkg.RhombusStd, &raw); err != nil {
+		return nil, fmt.Errorf("INLINE_ENTRY_SHAPE: %s %q must be an object: %w", pkgPath, "rhombus-std", err)
+	}
+	return resolveNode(raw, pkgPath, map[string]bool{pkgPath: true})
 }
 
-// LoadInlineEntries reads packageDir/package.json's "rhombus-std" marker's
-// "inline" list, composes any imported JSON files (recursively, file-relative,
-// package-scoped, cycle-guarded), validates every entry's shape, and returns
-// the concatenated entry list in encounter order. A package with no
-// "rhombus-std" key returns (nil, nil) — absence is not an error. Malformed
-// JSON, an out-of-package import, an import cycle, or a non-certified entry
-// shape are all hard errors.
+// resolveNode resolves node's "extends" (if present) against fromFile's own
+// directory and deep-merges node's remaining keys (deepMerge) over the
+// recursively resolved extended base. "extends" is a string or an array of
+// strings; an array applies LEFT TO RIGHT — each path's recursively resolved
+// content deep-merges over everything accumulated from the paths before it,
+// so a later path wins a leaf collision against an earlier one — and node's
+// own keys merge over that whole accumulated result last, winning every
+// collision against anything extended. visited is the set of absolute paths
+// already in the ANCESTOR chain reaching this node; a path already in it
+// contributes nothing rather than being re-read, so a cycle resolves clean
+// instead of looping. Two unrelated branches (e.g. two "extends" array
+// entries that happen to reach the same file by different routes) never
+// falsely collide: each path's recursive call starts from the ancestor set
+// at THIS node, never from a sibling's descendants.
+func resolveNode(node map[string]any, fromFile string, visited map[string]bool) (map[string]any, error) {
+	local := make(map[string]any, len(node))
+	var paths []string
+	hasExtends := false
+	for k, v := range node {
+		if k != extendsKey {
+			local[k] = v
+			continue
+		}
+		hasExtends = true
+		switch val := v.(type) {
+		case string:
+			paths = []string{val}
+		case []any:
+			paths = make([]string, len(val))
+			for i, item := range val {
+				s, ok := item.(string)
+				if !ok {
+					return nil, fmt.Errorf("INLINE_ENTRY_IMPORT: %s %q array entry %d must be a string", fromFile, extendsKey, i)
+				}
+				paths[i] = s
+			}
+		default:
+			return nil, fmt.Errorf("INLINE_ENTRY_IMPORT: %s %q must be a string or array of strings", fromFile, extendsKey)
+		}
+	}
+	if !hasExtends {
+		return local, nil
+	}
+
+	accumulated := map[string]any{}
+	for _, p := range paths {
+		abs := filepath.Clean(filepath.Join(filepath.Dir(fromFile), p))
+		real, rerr := filepath.EvalSymlinks(abs)
+		if rerr != nil {
+			real = abs
+		}
+		if visited[real] {
+			continue
+		}
+		data, err := os.ReadFile(abs)
+		if err != nil {
+			continue
+		}
+		var extended map[string]any
+		if err := json.Unmarshal(data, &extended); err != nil {
+			return nil, fmt.Errorf("INLINE_ENTRY_IMPORT: malformed %s: %w", abs, err)
+		}
+
+		nextVisited := make(map[string]bool, len(visited)+1)
+		for k := range visited {
+			nextVisited[k] = true
+		}
+		nextVisited[real] = true
+		resolved, err := resolveNode(extended, abs, nextVisited)
+		if err != nil {
+			return nil, err
+		}
+		accumulated = deepMerge(accumulated, resolved)
+	}
+	return deepMerge(accumulated, local), nil
+}
+
+// deepMerge merges local OVER base: an object recurses key-by-key (local
+// wins a leaf collision), an array concatenates as base-then-local, and any
+// other value — including a base/local type mismatch — replaces with
+// local's. An array's own elements are never merged into each other; they are
+// concatenated as opaque values.
+func deepMerge(base, local map[string]any) map[string]any {
+	out := make(map[string]any, len(base)+len(local))
+	for k, v := range base {
+		out[k] = v
+	}
+	for k, lv := range local {
+		bv, inBase := out[k]
+		if !inBase {
+			out[k] = lv
+			continue
+		}
+		if bArr, ok := bv.([]any); ok {
+			if lArr, ok := lv.([]any); ok {
+				merged := make([]any, 0, len(bArr)+len(lArr))
+				merged = append(merged, bArr...)
+				merged = append(merged, lArr...)
+				out[k] = merged
+				continue
+			}
+		}
+		if bObj, ok := bv.(map[string]any); ok {
+			if lObj, ok := lv.(map[string]any); ok {
+				out[k] = deepMerge(bObj, lObj)
+				continue
+			}
+		}
+		out[k] = lv
+	}
+	return out
+}
+
+// LoadInlineEntries resolves packageDir's rhombus-std config (ResolveConfig)
+// and returns its "inline" object's "entries" list, validated entry by entry,
+// in resolved order. A resolved config with no "inline" key returns
+// (nil, nil) — absence is not an error. Malformed JSON reached through
+// "extends", or a non-certified entry shape, are hard errors.
 func LoadInlineEntries(packageDir string) ([]Entry, error) {
 	packageDir = filepath.Clean(packageDir)
-	seen := map[string]bool{}
-	return loadFromPackageJSON(packageDir, packageDir, seen)
+	resolved, err := ResolveConfig(packageDir)
+	if err != nil {
+		return nil, err
+	}
+	pkgPath := filepath.Join(packageDir, "package.json")
+	return entriesFromResolved(resolved, packageDir, pkgPath)
 }
 
-// loadFromPackageJSON loads the inline config declared in packageDir's
-// package.json. rootDir bounds the import escape check (imports must resolve
-// inside the owning package). seen is the realpath set guarding import cycles.
-func loadFromPackageJSON(packageDir, rootDir string, seen map[string]bool) ([]Entry, error) {
-	path := filepath.Join(packageDir, "package.json")
-	data, err := os.ReadFile(path)
-	if err != nil {
-		return nil, fmt.Errorf("inline: cannot read %s: %w", path, err)
-	}
-	var pkg pkgJSONInline
-	if err := json.Unmarshal(data, &pkg); err != nil {
-		return nil, fmt.Errorf("inline: malformed package.json %s: %w", path, err)
-	}
-	if pkg.RhombusStd == nil {
+// entriesFromResolved extracts and validates the "inline.entries" list from a
+// resolved config. from names the resolved config's origin, for diagnostics.
+// Every entry's impl (when present) must self-reference packageDir's own
+// package — the side-parser only ever reads files inside it, so an impl
+// naming any other package cannot resolve and is rejected here, loudly, at
+// load time rather than as a confusing not-found later.
+func entriesFromResolved(resolved map[string]any, packageDir, from string) ([]Entry, error) {
+	inlineVal, ok := resolved["inline"]
+	if !ok {
 		return nil, nil
 	}
-	return composeInline(pkg.RhombusStd, rootDir, seen, path)
-}
-
-// composeInline validates cfg's own entries and appends any imported files'
-// entries. from names the file cfg came from, for cycle diagnostics; rootDir
-// is the declaring package's own root, which every entry's impl (when present)
-// must self-reference — the side-parser only ever reads files inside rootDir,
-// so an impl naming any other package cannot resolve and is rejected here,
-// loudly, at load time rather than as a confusing not-found later.
-func composeInline(cfg *rawInlineConfig, rootDir string, seen map[string]bool, from string) ([]Entry, error) {
-	out := make([]Entry, 0, len(cfg.Inline))
-	for i, e := range cfg.Inline {
+	data, err := json.Marshal(inlineVal)
+	if err != nil {
+		return nil, fmt.Errorf("INLINE_ENTRY_SHAPE: %s: %w", from, err)
+	}
+	var block rawInlineBlock
+	if err := json.Unmarshal(data, &block); err != nil {
+		return nil, fmt.Errorf("INLINE_ENTRY_SHAPE: %s \"inline\" must be an object with an \"entries\" array: %w", from, err)
+	}
+	out := make([]Entry, 0, len(block.Entries))
+	for i, e := range block.Entries {
 		switch _, status := e.Kind(); status {
 		case StatusMalformed:
 			return nil, fmt.Errorf("INLINE_ENTRY_SHAPE: %s entry %d matches no grammar row (type=%q impl=%q member=%q)", from, i, e.Type, e.Impl, e.Member)
@@ -166,74 +317,11 @@ func composeInline(cfg *rawInlineConfig, rootDir string, seen map[string]bool, f
 			if err != nil {
 				return nil, fmt.Errorf("INLINE_ENTRY_SHAPE: %s entry %d has a malformed impl %q: %w", from, i, e.Impl, err)
 			}
-			if declaringPkg := packageName(rootDir); implRef.From != declaringPkg {
+			if declaringPkg := packageName(packageDir); implRef.From != declaringPkg {
 				return nil, fmt.Errorf("INLINE_ENTRY_IMPL_FOREIGN: %s entry %d impl %q names package %q, but must self-reference the declaring package %q — the side-parser only reads files inside it", from, i, e.Impl, implRef.From, declaringPkg)
 			}
 		}
 		out = append(out, e)
 	}
-	imports, err := importPaths(cfg.Import, from)
-	if err != nil {
-		return nil, err
-	}
-	for _, rel := range imports {
-		abs := filepath.Clean(filepath.Join(filepath.Dir(from), rel))
-		real, rerr := filepath.EvalSymlinks(abs)
-		if rerr != nil {
-			real = abs
-		}
-		if !withinRoot(rootDir, abs) {
-			return nil, fmt.Errorf("INLINE_ENTRY_IMPORT_ESCAPE: %s imports %q which resolves outside package %s", from, rel, rootDir)
-		}
-		if seen[real] {
-			return nil, fmt.Errorf("INLINE_ENTRY_IMPORT_CYCLE: import cycle reaching %s", abs)
-		}
-		seen[real] = true
-		nested, ierr := loadImportFile(abs, rootDir, seen)
-		if ierr != nil {
-			return nil, ierr
-		}
-		out = append(out, nested...)
-	}
 	return out, nil
-}
-
-// loadImportFile reads one imported JSON file (same schema as the package.json
-// key's value) and composes it.
-func loadImportFile(path, rootDir string, seen map[string]bool) ([]Entry, error) {
-	data, err := os.ReadFile(path)
-	if err != nil {
-		return nil, fmt.Errorf("INLINE_ENTRY_IMPORT: cannot read %s: %w", path, err)
-	}
-	var cfg rawInlineConfig
-	if err := json.Unmarshal(data, &cfg); err != nil {
-		return nil, fmt.Errorf("INLINE_ENTRY_IMPORT: malformed %s: %w", path, err)
-	}
-	return composeInline(&cfg, rootDir, seen, path)
-}
-
-// importPaths normalizes the "import" field (string | []string | absent) to a
-// slice of file-relative paths.
-func importPaths(raw json.RawMessage, from string) ([]string, error) {
-	if len(raw) == 0 {
-		return nil, nil
-	}
-	var one string
-	if err := json.Unmarshal(raw, &one); err == nil {
-		return []string{one}, nil
-	}
-	var many []string
-	if err := json.Unmarshal(raw, &many); err == nil {
-		return many, nil
-	}
-	return nil, fmt.Errorf("INLINE_ENTRY_IMPORT: %s import must be a string or array of strings", from)
-}
-
-// withinRoot reports whether abs lies inside root (root itself included).
-func withinRoot(root, abs string) bool {
-	rel, err := filepath.Rel(root, abs)
-	if err != nil {
-		return false
-	}
-	return rel != ".." && !strings.HasPrefix(rel, ".."+string(filepath.Separator))
 }

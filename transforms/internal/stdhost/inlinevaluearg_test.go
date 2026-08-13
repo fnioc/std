@@ -51,10 +51,12 @@ const sugarCorePkg = `{
   "version": "1.0.0",
   "exports": { ".": { "types": "./src/index.ts", "default": "./src/index.ts" } },
   "rhombus-std": {
-    "inline": [
-      { "type": "@scope/core:IManifest", "impl": "@scope/core:ManifestInline", "member": "addClass" },
-      { "type": "@scope/core:IManifest", "impl": "@scope/core:ManifestInline", "member": "addValue" }
-    ]
+    "inline": {
+      "entries": [
+        { "type": "@scope/core:IManifest", "impl": "@scope/core:ManifestInline", "member": "addClass" },
+        { "type": "@scope/core:IManifest", "impl": "@scope/core:ManifestInline", "member": "addValue" }
+      ]
+    }
   }
 }`
 

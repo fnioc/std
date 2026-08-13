@@ -1,13 +1,13 @@
 // @ts-check
-// The JS twin of transforms/internal/inlinetransform/entries.go: loads a
-// package.json's "rhombus-std" marker "inline" publish list, composes any
-// imported JSON files (recursively, file-relative, package-scoped,
-// cycle-guarded), and validates every entry's shape. Kept byte-semantically
-// identical to the Go loader so the authoring lint and the build stage agree on
-// which entries exist and which are well-formed.
+// The JS twin of transforms/internal/inlinetransform/entries.go: resolves a
+// package.json's "rhombus-std" config (following any "extends" chain,
+// deep-merging local keys over the extended base) and reads its "inline"
+// object's "entries" publish list, validating every entry's shape. Kept
+// byte-semantically identical to the Go loader so the authoring lint and the
+// build stage agree on which entries exist and which are well-formed.
 
 import { readFileSync } from 'node:fs';
-import { dirname, join, relative, resolve } from 'node:path';
+import { dirname, join, resolve } from 'node:path';
 
 /**
  * @typedef {{ type?: string, impl?: string, member?: string }} InlineEntry
@@ -85,45 +85,184 @@ export function parseTypeRef(/** @type {string} */ token) {
   return { from: token.slice(0, i), name: token.slice(i + 1) };
 }
 
+const EXTENDS_KEY = 'extends';
+
 /**
- * Loads and composes the "rhombus-std" marker's "inline" entries declared by
- * packageDir's package.json. Throws on malformed JSON, a non-certified entry
- * shape, an import escaping the package, or an import cycle.
+ * Returns the fully-resolved "rhombus-std" config for packageDir's
+ * package.json: local keys deep-merged (deepMerge) OVER the (recursively
+ * resolved) "extends" chain — a local key wins any leaf collision against
+ * the extended base, an object recurses key-by-key, and an array
+ * concatenates as base-then-local with each element left atomic (an inline
+ * entry never merges field-by-field with another).
+ *
+ * A package.json with no "rhombus-std" key at all resolves as though it read
+ * exactly {"extends": "./rhombus-std.json"} — the one default. A
+ * "rhombus-std" key present with ANY value, including {}, is authoritative
+ * on its own; the default file never participates once the key exists.
+ *
+ * Resolution is BLIND: an "extends" path that isn't a readable file
+ * contributes nothing, silently, whether the directive was defaulted or
+ * explicitly written. A chain may be arbitrarily long; a cycle (a path
+ * already in the chain) also contributes nothing rather than looping. A
+ * present file with malformed JSON is still a hard error — blindness covers
+ * absence, not corruption.
+ *
+ * This is the one entry point every rhombus-std config reader (the inline
+ * publish list, and any future feature block) resolves through.
+ *
+ * This lint run has no incremental input-tracking seam: every file this and
+ * resolveNode read, including a resolved rhombus-std.json, is re-read fresh
+ * each time rather than registered against a cache key.
+ * @returns {Record<string, unknown>}
+ */
+export function resolveConfig(/** @type {string} */ packageDir) {
+  const root = resolve(packageDir);
+  const pkgPath = join(root, 'package.json');
+  const pkg = JSON.parse(readFileSync(pkgPath, 'utf8'));
+  const raw = ('rhombus-std' in pkg) ? pkg['rhombus-std'] : { [EXTENDS_KEY]: './rhombus-std.json' };
+  if (typeof raw !== 'object' || raw === null || Array.isArray(raw)) {
+    throw new Error(`INLINE_ENTRY_SHAPE: ${pkgPath} "rhombus-std" must be an object`);
+  }
+  return resolveNode(raw, pkgPath, new Set([pkgPath]));
+}
+
+/**
+ * Resolves node's "extends" (if present) against fromFile's own directory
+ * and deep-merges node's remaining keys (deepMerge) over the recursively
+ * resolved extended base. "extends" is a string or an array of strings; an
+ * array applies LEFT TO RIGHT — each path's recursively resolved content
+ * deep-merges over everything accumulated from the paths before it, so a
+ * later path wins a leaf collision against an earlier one — and node's own
+ * keys merge over that whole accumulated result last, winning every
+ * collision against anything extended. visited is the set of absolute paths
+ * already in the ANCESTOR chain reaching this node; a path already in it
+ * contributes nothing rather than being re-read, so a cycle resolves clean
+ * instead of looping. Two unrelated branches (e.g. two "extends" array
+ * entries that happen to reach the same file by different routes) never
+ * falsely collide: each path resolves from the ancestor set at THIS node,
+ * never from a sibling's descendants.
+ * @returns {Record<string, unknown>}
+ */
+function resolveNode(/** @type {Record<string, unknown>} */ node, /** @type {string} */ fromFile,
+  /** @type {Set<string>} */ visited) {
+  const local = { ...node };
+  const rawExtends = local[EXTENDS_KEY];
+  delete local[EXTENDS_KEY];
+
+  /** @type {string[]} */
+  let paths;
+  if (rawExtends === undefined) {
+    return local;
+  } else if (typeof rawExtends === 'string') {
+    paths = [rawExtends];
+  } else if (Array.isArray(rawExtends) && rawExtends.every((p) => typeof p === 'string')) {
+    paths = rawExtends;
+  } else {
+    throw new Error(
+      `INLINE_ENTRY_IMPORT: ${fromFile} ${JSON.stringify(EXTENDS_KEY)} must be a string or array of strings`,
+    );
+  }
+
+  let accumulated = /** @type {Record<string, unknown>} */ ({});
+  for (const p of paths) {
+    const abs = resolve(dirname(fromFile), p);
+    if (visited.has(abs)) {
+      continue;
+    }
+    let text;
+    try {
+      text = readFileSync(abs, 'utf8');
+    } catch {
+      continue; // missing -> nothing, blind
+    }
+    let extended;
+    try {
+      extended = JSON.parse(text);
+    } catch (err) {
+      throw new Error(`INLINE_ENTRY_IMPORT: malformed ${abs}: ${err instanceof Error ? err.message : err}`);
+    }
+    if (typeof extended !== 'object' || extended === null || Array.isArray(extended)) {
+      throw new Error(`INLINE_ENTRY_IMPORT: ${abs} must resolve to an object`);
+    }
+
+    const resolved = resolveNode(extended, abs, new Set([...visited, abs]));
+    accumulated = deepMerge(accumulated, resolved);
+  }
+  return deepMerge(accumulated, local);
+}
+
+/**
+ * Merges local OVER base: an object recurses key-by-key (local wins a leaf
+ * collision), an array concatenates as base-then-local, and any other value
+ * — including a base/local type mismatch — replaces with local's. An array's
+ * own elements are never merged into each other; they are concatenated as
+ * opaque values.
+ * @returns {Record<string, unknown>}
+ */
+function deepMerge(/** @type {Record<string, unknown>} */ base, /** @type {Record<string, unknown>} */ local) {
+  const out = { ...base };
+  for (const [k, lv] of Object.entries(local)) {
+    if (!(k in out)) {
+      out[k] = lv;
+      continue;
+    }
+    const bv = out[k];
+    if (Array.isArray(bv) && Array.isArray(lv)) {
+      out[k] = [...bv, ...lv];
+      continue;
+    }
+    if (isPlainObject(bv) && isPlainObject(lv)) {
+      out[k] = deepMerge(bv, lv);
+      continue;
+    }
+    out[k] = lv;
+  }
+  return out;
+}
+
+function isPlainObject(/** @type {unknown} */ v) {
+  return v !== null && typeof v === 'object' && !Array.isArray(v);
+}
+
+/**
+ * Resolves packageDir's rhombus-std config (resolveConfig) and returns its
+ * "inline" object's "entries" list, validated entry by entry, in resolved
+ * order. A resolved config with no "inline" key returns [] — absence is not
+ * an error.
  * @returns {InlineEntry[]}
  */
 export function loadInlineEntries(/** @type {string} */ packageDir) {
   const root = resolve(packageDir);
   const pkgPath = join(root, 'package.json');
-  const pkg = JSON.parse(readFileSync(pkgPath, 'utf8'));
-  const cfg = pkg['rhombus-std'];
-  if (!cfg) {
-    return [];
-  }
-  return composeInline(cfg, root, new Set(), pkgPath);
-}
-
-/** Reads the "name" field of dir/package.json, or null. */
-function readPackageName(/** @type {string} */ dir) {
-  try {
-    return JSON.parse(readFileSync(join(dir, 'package.json'), 'utf8')).name ?? null;
-  } catch {
-    return null;
-  }
+  const resolved = resolveConfig(root);
+  return entriesFromResolved(resolved, root, pkgPath);
 }
 
 /**
- * composeInline validates cfg's own entries and appends any imported files'
- * entries. from names the file cfg came from, for cycle diagnostics; rootDir is
- * the declaring package's own root, which every entry's impl (when present)
- * must self-reference — a foreign-package impl can never resolve through the
- * side-parser and is rejected here, loudly, at load time.
+ * Extracts and validates the "inline.entries" list from a resolved config.
+ * from names the resolved config's origin, for diagnostics. Every entry's
+ * impl (when present) must self-reference packageDir's own package — the
+ * side-parser only ever reads files inside it, so an impl naming any other
+ * package cannot resolve and is rejected here, loudly, at load time rather
+ * than as a confusing not-found later.
  * @returns {InlineEntry[]}
  */
-function composeInline(/** @type {any} */ cfg, /** @type {string} */ rootDir, /** @type {Set<string>} */ seen,
+function entriesFromResolved(/** @type {Record<string, unknown>} */ resolved, /** @type {string} */ packageDir,
   /** @type {string} */ from) {
+  const inlineVal = resolved.inline;
+  if (inlineVal === undefined) {
+    return [];
+  }
+  if (
+    typeof inlineVal !== 'object' || inlineVal === null || Array.isArray(inlineVal)
+    || !Array.isArray(/** @type {any} */ (inlineVal).entries)
+  ) {
+    throw new Error(`INLINE_ENTRY_SHAPE: ${from} "inline" must be an object with an "entries" array`);
+  }
+  const entries = /** @type {any} */ (inlineVal).entries;
+
   /** @type {InlineEntry[]} */
   const out = [];
-  const entries = Array.isArray(cfg.inline) ? cfg.inline : [];
   for (let i = 0; i < entries.length; i++) {
     const e = entries[i];
     const { status } = entryKind(e);
@@ -138,7 +277,7 @@ function composeInline(/** @type {any} */ cfg, /** @type {string} */ rootDir, /*
     }
     if (e.impl) {
       const implRef = parseTypeRef(e.impl);
-      const declaringPkg = readPackageName(rootDir);
+      const declaringPkg = readPackageName(packageDir);
       if (implRef.from !== declaringPkg) {
         throw new Error(
           `INLINE_ENTRY_IMPL_FOREIGN: ${from} entry ${i} impl ${JSON.stringify(e.impl)} names package `
@@ -149,50 +288,14 @@ function composeInline(/** @type {any} */ cfg, /** @type {string} */ rootDir, /*
     }
     out.push(e);
   }
-  for (const rel of importPaths(cfg.import, from)) {
-    const abs = resolve(dirname(from), rel);
-    if (!withinRoot(rootDir, abs)) {
-      throw new Error(`INLINE_ENTRY_IMPORT_ESCAPE: ${from} imports ${rel} outside ${rootDir}`);
-    }
-    if (seen.has(abs)) {
-      throw new Error(`INLINE_ENTRY_IMPORT_CYCLE: import cycle reaching ${abs}`);
-    }
-    seen.add(abs);
-    // Wrap read/parse failures as INLINE_ENTRY_IMPORT, matching the Go twin
-    // (entries.go's loadImportFile) — a bare SyntaxError here would diverge from
-    // the build's coded diagnostic.
-    let text;
-    try {
-      text = readFileSync(abs, 'utf8');
-    } catch (err) {
-      throw new Error(`INLINE_ENTRY_IMPORT: cannot read ${abs}: ${err instanceof Error ? err.message : err}`);
-    }
-    let nested;
-    try {
-      nested = JSON.parse(text);
-    } catch (err) {
-      throw new Error(`INLINE_ENTRY_IMPORT: malformed ${abs}: ${err instanceof Error ? err.message : err}`);
-    }
-    out.push(...composeInline(nested, rootDir, seen, abs));
-  }
   return out;
 }
 
-/** @returns {string[]} */
-function importPaths(/** @type {unknown} */ raw, /** @type {string} */ from) {
-  if (raw === undefined || raw === null) {
-    return [];
+/** Reads the "name" field of dir/package.json, or null. */
+function readPackageName(/** @type {string} */ dir) {
+  try {
+    return JSON.parse(readFileSync(join(dir, 'package.json'), 'utf8')).name ?? null;
+  } catch {
+    return null;
   }
-  if (typeof raw === 'string') {
-    return [raw];
-  }
-  if (Array.isArray(raw) && raw.every((x) => typeof x === 'string')) {
-    return raw;
-  }
-  throw new Error(`INLINE_ENTRY_IMPORT: ${from} import must be a string or array of strings`);
-}
-
-function withinRoot(/** @type {string} */ root, /** @type {string} */ abs) {
-  const rel = relative(root, abs);
-  return rel !== '..' && !rel.startsWith(`..${'/'}`) && !rel.startsWith(`..\\`);
 }

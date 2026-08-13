@@ -29,7 +29,7 @@ func buildWorkspace(t *testing.T, coreIndex, inlineBody, sugarDTS, mainSrc strin
   "name": "@scope/core",
   "version": "1.0.0",
   "exports": { ".": { "types": "./src/index.ts", "default": "./src/index.ts" } },
-  "rhombus-std": { "inline": [ { "type": "@scope/core:IQuery", "impl": "@scope/core:QueryInline", "member": "isService" } ] }
+  "rhombus-std": { "inline": { "entries": [ { "type": "@scope/core:IQuery", "impl": "@scope/core:QueryInline", "member": "isService" } ] } }
 }`)
 	write(t, filepath.Join(core, "src", "index.ts"), coreIndex)
 	write(t, filepath.Join(core, "src", "inline.ts"), inlineBody)
@@ -323,7 +323,7 @@ func setupFreeFunctionInlineWorkspace(t *testing.T) (*driver.Program, string) {
   "name": "@scope/prims",
   "version": "1.0.0",
   "exports": { ".": { "types": "./src/index.ts", "default": "./src/index.ts" } },
-  "rhombus-std": { "inline": [ { "impl": "@scope/prims:identity" } ] }
+  "rhombus-std": { "inline": { "entries": [ { "impl": "@scope/prims:identity" } ] } }
 }`)
 	write(t, filepath.Join(prims, "src", "index.ts"), `export function identity<T>(value: T): T {
   return value;
@@ -436,7 +436,7 @@ func setupImportedValueWorkspace(t *testing.T) (*driver.Program, string) {
   "name": "@scope/prims",
   "version": "1.0.0",
   "exports": { ".": { "types": "./src/index.ts", "default": "./src/index.ts" } },
-  "rhombus-std": { "inline": [ { "impl": "@scope/prims:wrap" } ] }
+  "rhombus-std": { "inline": { "entries": [ { "impl": "@scope/prims:wrap" } ] } }
 }`)
 	linkPackage(t, prims, "@scope/runtime", runtime)
 	write(t, filepath.Join(prims, "src", "index.ts"), `import { record as capture } from '@scope/runtime';
@@ -554,7 +554,7 @@ func setupWorkspace(t *testing.T) (*driver.Program, string) {
   "name": "@scope/core",
   "version": "1.0.0",
   "exports": { ".": { "types": "./src/index.ts", "default": "./src/index.ts" } },
-  "rhombus-std": { "inline": [ { "type": "@scope/core:IQuery", "impl": "@scope/core:QueryInline", "member": "isService" } ] }
+  "rhombus-std": { "inline": { "entries": [ { "type": "@scope/core:IQuery", "impl": "@scope/core:QueryInline", "member": "isService" } ] } }
 }`)
 	write(t, filepath.Join(core, "src", "index.ts"), `export interface IQuery {
   isService(token: string): boolean;
@@ -679,7 +679,7 @@ func setupDeclareModuleOverloadWorkspace(t *testing.T) (*driver.Program, string)
   "name": "@scope/core",
   "version": "1.0.0",
   "exports": { ".": { "types": "./src/index.ts", "default": "./src/index.ts" } },
-  "rhombus-std": { "inline": [ { "type": "@scope/core:IQuery", "impl": "@scope/core:QueryInline", "member": "isService" } ] }
+  "rhombus-std": { "inline": { "entries": [ { "type": "@scope/core:IQuery", "impl": "@scope/core:QueryInline", "member": "isService" } ] } }
 }`)
 	// The interface is empty here — every isService overload arrives through the
 	// consumer's declare-module augmentation below.

@@ -17,86 +17,6 @@
     "directory": "libraries/di.extras"
   },
   "type": "module",
-  "//rhombus-std": "The type-driven sugar publish list. Every member takes its service type as a type argument and no token argument, and forwards to the same-named member with `tokenfor<T>()` in front \u2014 the inline stage substitutes that body at the consumer call site. The `type` ANCHOR names the interface the member is declared on, which is the augmentation target rather than this package; `impl` is a fully-qualified reference to the augmentation set here that carries the body.",
-  "rhombus-std": {
-    "inline": [
-      {
-        "type": "@rhombus-std/di.core:Manifest",
-        "impl": "@rhombus-std/di.extras:ManifestServiceAugmentations",
-        "member": "add"
-      },
-      {
-        "type": "@rhombus-std/di.core:Manifest",
-        "impl": "@rhombus-std/di.extras:ManifestServiceAugmentations",
-        "member": "addClass"
-      },
-      {
-        "type": "@rhombus-std/di.core:Manifest",
-        "impl": "@rhombus-std/di.extras:ManifestServiceAugmentations",
-        "member": "addFactory"
-      },
-      {
-        "type": "@rhombus-std/di.core:Manifest",
-        "impl": "@rhombus-std/di.extras:ManifestServiceAugmentations",
-        "member": "addValue"
-      },
-      {
-        "type": "@rhombus-std/di.core:Manifest",
-        "impl": "@rhombus-std/di.extras:ManifestDescriptorAugmentations",
-        "member": "tryAdd"
-      },
-      {
-        "type": "@rhombus-std/di.core:Manifest",
-        "impl": "@rhombus-std/di.extras:ManifestDescriptorAugmentations",
-        "member": "tryAddClass"
-      },
-      {
-        "type": "@rhombus-std/di.core:Manifest",
-        "impl": "@rhombus-std/di.extras:ManifestDescriptorAugmentations",
-        "member": "tryAddFactory"
-      },
-      {
-        "type": "@rhombus-std/di.core:Manifest",
-        "impl": "@rhombus-std/di.extras:ManifestDescriptorAugmentations",
-        "member": "tryAddValue"
-      },
-      {
-        "type": "@rhombus-std/di.core:Manifest",
-        "impl": "@rhombus-std/di.extras:ManifestDescriptorAugmentations",
-        "member": "replaceClass"
-      },
-      {
-        "type": "@rhombus-std/di.core:Manifest",
-        "impl": "@rhombus-std/di.extras:ManifestDescriptorAugmentations",
-        "member": "replaceFactory"
-      },
-      {
-        "type": "@rhombus-std/di.core:Manifest",
-        "impl": "@rhombus-std/di.extras:ManifestDescriptorAugmentations",
-        "member": "replaceValue"
-      },
-      {
-        "type": "@rhombus-std/di.core:Manifest",
-        "impl": "@rhombus-std/di.extras:ManifestDescriptorAugmentations",
-        "member": "removeAll"
-      },
-      {
-        "type": "@rhombus-std/primitives:IServiceProvider",
-        "impl": "@rhombus-std/di.extras:ServiceProviderServiceAugmentations",
-        "member": "getService"
-      },
-      {
-        "type": "@rhombus-std/primitives:IServiceProvider",
-        "impl": "@rhombus-std/di.extras:ServiceProviderServiceAugmentations",
-        "member": "getRequiredService"
-      },
-      {
-        "type": "@rhombus-std/primitives:IServiceProvider",
-        "impl": "@rhombus-std/di.extras:ServiceProviderServiceAugmentations",
-        "member": "getServices"
-      }
-    ]
-  },
   "main": "./dist/bundle/index.js",
   "types": "./dist/bundle/index.d.ts",
   "exports": {
@@ -120,7 +40,8 @@
   },
   "files": [
     "dist",
-    "ttsc.mjs"
+    "ttsc.mjs",
+    "rhombus-std.json"
   ],
   "scripts": {
     "build": "bun ../../scripts/build-lib.ts",

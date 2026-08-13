@@ -1,0 +1,12 @@
+{
+  "$schema": "../../schema/rhombus-std.schema.json",
+  "inline": {
+    "entries": [
+      {
+        "type": "@rhombus-std/config:ConfigBuilder",
+        "impl": "@rhombus-std/config.extras:ConfigBuilderInline",
+        "member": "withType"
+      }
+    ]
+  }
+}
