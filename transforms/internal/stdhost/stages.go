@@ -102,10 +102,11 @@ func buildNameof(prog *driver.Program, ctx *tokens.Context, env *Env, emit Sink)
 // `typefor<T>()` / `typefor(value)` to the `Type.*` factory tree its argument
 // derives, folding an immediate known-accessor property access (`.instanceType`,
 // `.returnType`, `.args`, `.value`, `.tag`, `.type`, `.kind`) through to the
-// surviving sub-tree. It raises no diagnostics of its own; any it did raise
-// would be hard errors.
+// surviving sub-tree. Where that tree LANDS is the project's choice
+// (Env.Hoist): in one generated module of named consts the call site references,
+// or at the call site itself. Its own diagnostics are hard errors.
 func buildTypefor(prog *driver.Program, ctx *tokens.Context, env *Env, emit Sink) plugin.FileTransform {
-	return typefortransform.New(prog, ctx, env.Artifacts, func(d plugin.Diagnostic) {
+	return typefortransform.New(prog, ctx, env.Artifacts, nil, func(d plugin.Diagnostic) {
 		emit(DiagFromPlugin(d))
 	})
 }

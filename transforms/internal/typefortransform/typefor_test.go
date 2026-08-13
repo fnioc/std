@@ -135,7 +135,7 @@ func reprint(ec *shimprinter.EmitContext, sf *shimast.SourceFile) string {
 func lowerTypefor(t *testing.T, prog *driver.Program, app string) string {
 	t.Helper()
 	ctx := plugin.NewContext(prog, app)
-	transform := New(prog, ctx, nil, func(plugin.Diagnostic) {})
+	transform := New(prog, ctx, nil, nil, func(plugin.Diagnostic) {})
 	ec := shimprinter.NewEmitContext()
 	out := transform(ec, mainSF(t, prog))
 	return reprint(ec, out)
@@ -146,7 +146,7 @@ func lowerTypeforDiags(t *testing.T, prog *driver.Program, app string) (string, 
 	t.Helper()
 	ctx := plugin.NewContext(prog, app)
 	var diags []plugin.Diagnostic
-	transform := New(prog, ctx, nil, func(d plugin.Diagnostic) { diags = append(diags, d) })
+	transform := New(prog, ctx, nil, nil, func(d plugin.Diagnostic) { diags = append(diags, d) })
 	ec := shimprinter.NewEmitContext()
 	out := transform(ec, mainSF(t, prog))
 	return reprint(ec, out), diags
