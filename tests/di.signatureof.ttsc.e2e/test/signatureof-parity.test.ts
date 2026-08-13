@@ -278,6 +278,24 @@ function lower(dir: string, tsconfig: string, outDir: string): LowerResult {
   };
 }
 
+/** The generated const module the sandbox's lowered files import their types from. */
+function readTypeModule(dir: string, outDir: string): string {
+  return readFileSync(join(dir, outDir, '__typefor__.js'), 'utf8');
+}
+
+/**
+ * The const the module declares for `spelling` — the exact `Type.*` factory call
+ * a hand-writer would have spelled at the call site. Fails loudly when the
+ * module declares no such const, so the spelling stays pinned byte for byte.
+ */
+function constFor(module: string, spelling: string): string {
+  const match = new RegExp(`export const (\\$\\w+) = ${spelling.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')};`).exec(module);
+  if (match === null) {
+    throw new Error(`no const spelled ${spelling} in:\n${module}`);
+  }
+  return match[1]!;
+}
+
 let withInline = '';
 let withoutInline = '';
 let handWithInline = '';
@@ -301,16 +319,18 @@ beforeAll(() => {
 
 describe.skipIf(!toolchainReady)('signatureof primitive — addClass / addFactory / addValue sugar', () => {
   test('the sugar is lowered to a Type the caller could have written by hand, with no generics or primitives left', () => {
-    // Each verb takes the service type as its first argument, built through the
-    // Type factories -- which is what a caller writing this without the transform
-    // would reach for, since `Type.from` parses a token string and hands back the
-    // whole union rather than the named type these read as.
-    expect(withInline).toContain('.addClass(Type.imported(');
-    expect(withInline).toContain('.addFactory(Type.imported(');
-    expect(withInline).toContain('.addValue(Type.imported(');
-    // And the factories are reachable: a hand author importing Type needs this
-    // line too, so its absence would mean the emitted file does not stand alone.
-    expect(withInline).toContain(`from "@rhombus-std/primitives"`);
+    const typeModule = readTypeModule(projDir, 'dist-inline');
+    // Each verb takes the service type as its first argument, resolved from the
+    // generated const module — the same Type factories a caller writing this
+    // without the transform would reach for.
+    const fooType = constFor(typeModule, 'Type.imported("IFoo", "di-sig-app/tokens/app")');
+    const barType = constFor(typeModule, 'Type.imported("IBar", "di-sig-app/tokens/app")');
+    const bazType = constFor(typeModule, 'Type.imported("IBaz", "di-sig-app/tokens/app")');
+    expect(withInline).toContain(`.addClass(${fooType}`);
+    expect(withInline).toContain(`.addFactory(${barType}`);
+    expect(withInline).toContain(`.addValue(${bazType}`);
+    // The consts are imported, not re-derived at the call site.
+    expect(withInline).toContain(`from "./__typefor__.js"`);
     expect(withInline).not.toContain('addClass<');
     expect(withInline).not.toContain('addFactory<');
     expect(withInline).not.toContain('addValue<');
@@ -321,6 +341,17 @@ describe.skipIf(!toolchainReady)('signatureof primitive — addClass / addFactor
     expect(withInline).not.toContain('tokenfor<');
     expect(withInline).not.toContain('tokenfor(');
     expect(withInline).not.toContain('signatureof(');
+    // No Type factory of ANY name is spelled at the call site — the whole tree
+    // lives in the generated module.
+    expect(withInline).not.toContain('Type.');
+  });
+
+  test('the generated module mints each distinct type once, with the primitives Type import it needs', () => {
+    const typeModule = readTypeModule(projDir, 'dist-inline');
+    const declarations = [...typeModule.matchAll(/^export const \$\w+ = (Type\.[^;]+);$/gm)].map((m) => m[1]!);
+    expect(declarations.length).toBeGreaterThan(0);
+    expect(new Set(declarations).size).toBe(declarations.length);
+    expect(typeModule).toContain('from "@rhombus-std/primitives"');
   });
 
   test('descriptor independence: two different spawn descriptors emit the identical output', () => {

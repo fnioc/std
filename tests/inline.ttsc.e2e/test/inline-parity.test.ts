@@ -383,10 +383,29 @@ function readChainFile(dir: string, result: ReturnType<typeof spawnSync>, srcRel
 
 type Diagnostic = { file: string; category: string; code: string; messageText: string; };
 
+/** The generated const module the sandbox's lowered files import their types from. */
+function readTypeModule(dir: string): string {
+  return readFileSync(join(dir, 'dist', '__typefor__.js'), 'utf8');
+}
+
+/**
+ * The const the module declares for `spelling` — the exact `Type.*` factory call
+ * a hand-writer would have spelled at the call site. Fails loudly when the
+ * module declares no such const, so the spelling stays pinned byte for byte.
+ */
+function constFor(module: string, spelling: string): string {
+  const match = new RegExp(`export const (\\$\\w+) = ${spelling.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')};`).exec(module);
+  if (match === null) {
+    throw new Error(`no const spelled ${spelling} in:\n${module}`);
+  }
+  return match[1]!;
+}
+
 let chainInline = '';
 let keyedInline = '';
 let resolveInline = '';
 let overrideInline = '';
+let chainModule = '';
 let inferredDiagnostics: Diagnostic[] = [];
 
 beforeAll(() => {
@@ -399,6 +418,9 @@ beforeAll(() => {
   keyedInline = readChainFile(chainInlineDir, inlineRun, 'src/keyed.ts');
   resolveInline = readChainFile(chainInlineDir, inlineRun, 'src/resolve.ts');
   overrideInline = readChainFile(chainInlineDir, inlineRun, 'src/override.ts');
+  // chain.ts / keyed.ts / resolve.ts / override.ts compile in the SAME sandbox,
+  // so they share the one generated const module.
+  chainModule = readTypeModule(chainInlineDir);
 
   setupInferredWorkspace();
   inferredDiagnostics = runInferredTtsc();
@@ -424,9 +446,8 @@ describe.skipIf(!toolchainReady)('generic inline stage — registration parity (
     // Type-taking member byte-for-byte, in the same order.
     const line = lineWith(chainInline, 'closed =');
     expect(line).toBeDefined();
-    expect(line).toContain(
-      'addClass(Type.imported("ILogger", "chain-app/tokens/chain"), ConsoleLogger, [["app:IClock"]], "singleton")',
-    );
+    const logger = constFor(chainModule, 'Type.imported("ILogger", "chain-app/tokens/chain")');
+    expect(line).toContain(`addClass(${logger}, ConsoleLogger, [["app:IClock"]], "singleton")`);
     assertNoAuthoringSurvivors(chainInline);
   });
 
@@ -435,19 +456,20 @@ describe.skipIf(!toolchainReady)('generic inline stage — registration parity (
     // must leave it alone; a pass that re-visited its own output would mangle it.
     const line = lineWith(chainInline, 'emptySig =');
     expect(line).toBeDefined();
-    expect(line).toContain(
-      'addClass(Type.imported("ILogger", "chain-app/tokens/chain"), ConsoleLogger, [[]], "singleton")',
-    );
+    const logger = constFor(chainModule, 'Type.imported("ILogger", "chain-app/tokens/chain")');
+    expect(line).toContain(`addClass(${logger}, ConsoleLogger, [[]], "singleton")`);
     assertNoAuthoringSurvivors(chainInline);
   });
 
   test('an open template carries its hole into both the service token and the ctor dep', () => {
     const line = lineWith(chainInline, 'open =');
     expect(line).toBeDefined();
-    // The service type is the template IRepo<$1>, its hole minted as a placeholder
-    // rather than a named type.
-    expect(line).toContain('Type.imported("IRepo", "chain-app/tokens/chain", [Type.generic("1")])');
-    expect(chainInline).toContain('Type.generic("1")');
+    // The service type is the template IRepo<$1>, its hole minted as its own
+    // const — a placeholder rather than a named type — and the composite
+    // references it by name.
+    const hole = constFor(chainModule, 'Type.generic("1")');
+    const openType = constFor(chainModule, `Type.imported("IRepo", "chain-app/tokens/chain", [${hole}])`);
+    expect(line).toContain(`addClass(${openType}, ThingRepo, [[]])`);
     assertNoAuthoringSurvivors(chainInline);
   });
 
@@ -479,18 +501,18 @@ describe.skipIf(!toolchainReady)('generic inline stage — registration parity (
     assertNoAuthoringSurvivors(keyedInline);
     const line = lineWith(keyedInline, 'keyed =');
     expect(line).toBeDefined();
-    // One argument, not a base plus a trailing key: the tag IS the service type.
-    expect(line).toContain(
-      'addClass(Type.tag(Type.imported("ICache", "chain-app/tokens/keyed"), "redis"), RedisCache, [[]])',
-    );
+    // One argument, not a base plus a trailing key: the tag IS the service type,
+    // and it composes the base's own const rather than re-spelling it.
+    const cache = constFor(chainModule, 'Type.imported("ICache", "chain-app/tokens/keyed")');
+    const keyedCache = constFor(chainModule, `Type.tag(${cache}, "redis")`);
+    expect(line).toContain(`addClass(${keyedCache}, RedisCache, [[]])`);
   });
 
   test('the signatures argument reaches the member exactly as written', () => {
     const line = lineWith(overrideInline, 'overridden =');
     expect(line).toBeDefined();
-    expect(line).toContain(
-      'addClass(Type.imported("IHandler", "chain-app/tokens/override"), Handler, [["pkg:IReqAlt", "pkg:ILog"]])',
-    );
+    const handler = constFor(chainModule, 'Type.imported("IHandler", "chain-app/tokens/override")');
+    expect(line).toContain(`addClass(${handler}, Handler, [["pkg:IReqAlt", "pkg:ILog"]])`);
     assertNoAuthoringSurvivors(overrideInline);
   });
 
@@ -506,13 +528,27 @@ describe.skipIf(!toolchainReady)('generic inline stage — registration parity (
       expect(diagnostic.file).toContain('inferred.ts');
     }
   });
+
+  test('the generated module mints each distinct type once, and every lowered file imports rather than re-derives it', () => {
+    const declarations = [...chainModule.matchAll(/^export const \$\w+ = (Type\.[^;]+);$/gm)].map((m) => m[1]!);
+    expect(declarations.length).toBeGreaterThan(0);
+    expect(new Set(declarations).size).toBe(declarations.length);
+
+    for (const lowered of [chainInline, keyedInline, resolveInline, overrideInline]) {
+      expect(lowered).toContain('from "./__typefor__.js"');
+      // No factory of ANY name survives at a call site — a grep per verb would
+      // go stale the next time the vocabulary gains one.
+      expect(lowered).not.toContain('Type.');
+    }
+  });
 });
 
 describe.skipIf(!toolchainReady)('generic inline stage — lookup parity (W5)', () => {
   test('getRequiredService<I>() lowers to the Type-taking member', () => {
     const line = lineWith(resolveInline, 'tokenful =');
     expect(line).toBeDefined();
-    expect(line).toContain('.getRequiredService(Type.imported("IThing", "chain-app/tokens/resolve"))');
+    const thing = constFor(chainModule, 'Type.imported("IThing", "chain-app/tokens/resolve")');
+    expect(line).toContain(`.getRequiredService(${thing})`);
     expect(line).not.toContain('getRequiredService<');
     assertNoAuthoringSurvivors(resolveInline);
   });
@@ -520,7 +556,8 @@ describe.skipIf(!toolchainReady)('generic inline stage — lookup parity (W5)', 
   test('getService<I>() lowers to the Type-taking member', () => {
     const line = lineWith(resolveInline, 'tryTok =');
     expect(line).toBeDefined();
-    expect(line).toContain('.getService(Type.imported("IThing", "chain-app/tokens/resolve"))');
+    const thing = constFor(chainModule, 'Type.imported("IThing", "chain-app/tokens/resolve")');
+    expect(line).toContain(`.getService(${thing})`);
     expect(line).not.toContain('getService<');
     assertNoAuthoringSurvivors(resolveInline);
   });
@@ -530,21 +567,24 @@ describe.skipIf(!toolchainReady)('generic inline stage — lookup parity (W5)', 
     // so the token is the bare element type.
     const line = lineWith(resolveInline, 'many =');
     expect(line).toBeDefined();
-    expect(line).toContain('.getServices(Type.imported("IThing", "chain-app/tokens/resolve"))');
+    const thing = constFor(chainModule, 'Type.imported("IThing", "chain-app/tokens/resolve")');
+    expect(line).toContain(`.getServices(${thing})`);
     expect(line).not.toContain('getServices<');
   });
 
   test('a type LITERAL derives its own token like any other service type', () => {
     const line = lineWith(resolveInline, 'singular =');
     expect(line).toBeDefined();
-    expect(line).toContain('.getRequiredService(Type.typeLiteral("dev"))');
+    const literal = constFor(chainModule, 'Type.typeLiteral("dev")');
+    expect(line).toContain(`.getRequiredService(${literal})`);
     assertNoAuthoringSurvivors(resolveInline);
   });
 
   test('a keyed lookup mints the SAME tag token a keyed registration does', () => {
     // The identity is the whole point: registration and lookup are two halves of
     // one keyed contract, and a token that differed between them would miss.
-    const composed = 'Type.tag(Type.imported("ICache", "chain-app/tokens/resolve"), "redis")';
+    const cache = constFor(chainModule, 'Type.imported("ICache", "chain-app/tokens/resolve")');
+    const composed = constFor(chainModule, `Type.tag(${cache}, "redis")`);
     const getLine = lineWith(resolveInline, 'keyedTok =');
     expect(getLine).toBeDefined();
     expect(getLine).toContain(`.getService(${composed})`);
