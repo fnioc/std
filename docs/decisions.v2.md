@@ -200,7 +200,7 @@ ruling. _Owner-approved 2026-07-16._
 
 A `rhombus-std` `inline` entry's `type`+`member` pair resolves through the checker to declaration
 sites, once per program: the type reference resolves to a module symbol, then to the exported type,
-and every type on that surface is asked for its own member of the entry's name (§148 states which
+and every type on that surface is asked for its own member of the entry's name (§153 states which
 sites those are and why the surface is walked rather than queried for a property). A call site
 matches by node identity against that set, or — when its binding falls outside it — by the marker's
 own name/shape/receiver triple. Never by a string key, canonical name, or reconstructed token.
@@ -1740,4 +1740,3 @@ Resolving one entry is three-way: ABSENT (the marker's package is not in this pr
 contributes nothing, not even to the sweep), ACTIVE (a declaration the body serves), UNMATCHED (the
 surface is present and declares the member, but no declaration matches the body's shape — nothing
 inlines, the shape still reaches the sweep).
-

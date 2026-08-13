@@ -177,7 +177,7 @@ describe.skipIf(!toolchainReady)('inline stage — consumer merge shapes', () =>
     expect(line).toBeDefined();
     // The derived token leads, and everything the author wrote after the ctor
     // reaches the token-taking member in order.
-    expect(line).toMatch(/addClass\(\s*Type\.named\(\s*['"]ILogger['"]/);
+    expect(line).toMatch(/addClass\(\s*Type\.imported\(\s*['"]ILogger['"]/);
     expect(line).toContain('ConsoleLogger');
     expect(line).not.toContain('addClass<');
   });
