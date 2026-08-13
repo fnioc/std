@@ -104,6 +104,32 @@ export interface UnionType extends TypeBase<'union'> {
 export namespace Type {
   // #region factories
 
+  /**
+   * The aggregate of every registration of `element`, materialized into a real array at
+   * resolution — indexable immediately, with nothing left to bind as it is read.
+   *
+   * @remarks
+   * The side that registers an element and the side that reads the aggregate must name the same
+   * type, and nothing reports it when they don't: the lookup simply finds nothing. Both sides call
+   * this, so they cannot drift.
+   */
+  export function array(element: Type): NamedType {
+    return factory.named('Array', 'global', [element]);
+  }
+
+  /**
+   * The aggregate of every registration of `element`, late-bound and asynchronous — each element
+   * resolves as the async iteration reaches it, not up front.
+   *
+   * @remarks
+   * The side that registers an element and the side that reads the aggregate must name the same
+   * type, and nothing reports it when they don't: the lookup simply finds nothing. Both sides call
+   * this, so they cannot drift.
+   */
+  export function asyncIterable(element: Type): NamedType {
+    return factory.named('AsyncIterable', 'global', [element]);
+  }
+
   /** A constructor signature — `new (...args) => instanceType`, instance type first. */
   export function ctor(instanceType: Type, ...args: readonly Type[]): CtorType {
     return factory.ctor(instanceType, args);
@@ -153,8 +179,8 @@ export namespace Type {
   }
 
   /**
-   * The aggregate of every registration of `element` — the type a container reads to collect them
-   * all, rather than to resolve one.
+   * The aggregate of every registration of `element`, late-bound — each element resolves as the
+   * iteration reaches it, not up front.
    *
    * @remarks
    * The side that registers an element and the side that reads the aggregate must name the same

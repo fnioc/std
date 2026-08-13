@@ -172,6 +172,9 @@ export class ToCallSiteVisitor extends TypeVisitor<CallSite | undefined> {
     if (isIterableType(type)) {
       return CallSite.iterable(this.#collection(type.genericArgs[0]!));
     }
+    if (isAsyncIterableType(type)) {
+      return CallSite.asyncIterable(this.#collection(type.genericArgs[0]!));
+    }
     if (isArrayType(type)) {
       return CallSite.array(this.#collection(type.genericArgs[0]!));
     }
@@ -253,6 +256,10 @@ function isServiceProviderType(type: NamedType): boolean {
 
 function isIterableType(type: NamedType): boolean {
   return type.name === 'Iterable' && type.from === 'global' && type.genericArgs.length === 1;
+}
+
+function isAsyncIterableType(type: NamedType): boolean {
+  return type.name === 'AsyncIterable' && type.from === 'global' && type.genericArgs.length === 1;
 }
 
 /** `T[]` and `Array<T>` derive the same type, so one recognition covers both spellings. */
