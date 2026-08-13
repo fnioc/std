@@ -143,9 +143,9 @@ func New(prog *driver.Program, ctx *tokens.Context, artifacts *inlinetransform.A
 // returns its replacement, or leaves the ORIGINAL node un-lowered when
 // derivation fails — never a malformed partial tree. A source-written failure
 // reports the targeted diagnostic; a synthetic one stays silent (mirrors
-// nameof's lowerTypeArgToken: a substituted call may sit in a dead branch the
-// fold has not pruned yet, so reporting here would make the failure
-// order-dependent on stage sequencing).
+// nameof's lowerTypeArgToken: a mid-loop diagnostic would tie failure reporting
+// to stage order within a pass, and the emit sweep already flags every
+// surviving primitive exactly once after the loop settles).
 func lowerTyped(
 	checker *shimchecker.Checker,
 	ctx *tokens.Context,

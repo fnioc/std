@@ -313,18 +313,14 @@ func registeredValueArg(artifacts *inlinetransform.Artifacts, node *shimast.Node
 // lowerTypeArgToken returns the string-literal replacement for a TYPE-argument
 // token primitive when its derivation succeeded (derived), else leaves the ORIGINAL
 // call UN-LOWERED — never the silent empty token `""` a downstream reader could
-// mistake for a real token (§94/Open issue 4 failure-semantics unification).
+// mistake for a real token.
 //
 // Why un-lowered rather than an immediate diagnostic for the SYNTHETIC
-// (inline-substituted) case: a substituted call may sit in a DEAD ternary branch
-// the fold has not pruned yet (the resolve body's `… : this.resolve(tokenfor<T>())`
-// when T is singular, so the token arm is dead). Emitting during the loop would make
-// the failure ORDER-DEPENDENT — it fires only if the token stage runs before the
-// fold — which the loop forbids. So a synthetic underivable token is left in place,
-// silently, for the fold to prune (dead branch) or the emit SWEEP to flag once, AFTER
-// the loop settles (a surviving live one). A SOURCE-WRITTEN call is real user code
-// that never sits in a fold-pruned branch and runs even when the inline sweep is
-// inactive, so it emits the targeted diagnostic here.
+// (inline-substituted) case: a mid-loop diagnostic would tie failure reporting to
+// stage order within a pass, and the emit SWEEP already flags every surviving
+// primitive exactly once after the loop settles. A SOURCE-WRITTEN call is real user
+// code that runs even when the inline sweep is inactive, so it emits the targeted
+// diagnostic here.
 func lowerTypeArgToken(ec *shimprinter.EmitContext, emit func(plugin.Diagnostic), node *shimast.Node, token string, derived, sourceWritten bool) *shimast.Node {
 	if !derived {
 		if sourceWritten {
