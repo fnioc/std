@@ -1,7 +1,7 @@
 // The TracingOptions-targeted rule mutators: the value-object counterparts of
 // the same-named ITracingBuilder methods, distinguished only by receiver.
 
-import type { AugmentationSet } from '@rhombus-std/primitives';
+import { applyAugmentations, type AugmentationSet } from '@rhombus-std/primitives';
 
 import { ACTIVITY_SOURCE_SCOPES_ALL, ActivitySourceScopes } from './ActivitySourceScopes';
 import { TracingOptions } from './TracingOptions';
@@ -32,3 +32,5 @@ export const TracingOptionsAugmentations = {
     return this;
   },
 } satisfies AugmentationSet<TracingOptions>;
+
+applyAugmentations(TracingOptions, TracingOptionsAugmentations);

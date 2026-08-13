@@ -1740,3 +1740,16 @@ Resolving one entry is three-way: ABSENT (the marker's package is not in this pr
 contributes nothing, not even to the sweep), ACTIVE (a declaration the body serves), UNMATCHED (the
 surface is present and declares the member, but no declaration matches the body's shape — nothing
 inlines, the shape still reaches the sweep).
+
+## §162 — A CLOSED augmentation set's `satisfies AugmentationSet<Receiver>` const is inert without its own `applyAugmentations` call
+
+`satisfies AugmentationSet<Receiver>` only shapes the object literal; it installs nothing. The
+`declare module` block only merges the type onto the receiver's interface; it installs nothing
+either. For a CLOSED receiver, the const's members reach the prototype exclusively through an
+explicit `applyAugmentations(ConcreteClass, TheConst)` call in the same file — omit it and every
+member type-checks, the barrel re-export still evaluates the module, and the method throws
+"is not a function" at the first call site, since nothing ever ran `Object.assign` (or equivalent)
+onto the class prototype. A file that only exports the const and never calls `applyAugmentations`
+looks complete on read-through — the missing line has no compile-time signal.
+
+_Claude-directed 2026-08-13._
