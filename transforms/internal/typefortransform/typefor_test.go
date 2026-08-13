@@ -30,7 +30,8 @@ func buildTypeforWorkspace(t *testing.T, mainSrc string) (*driver.Program, strin
   "exports": { ".": { "types": "./src/index.ts", "default": "./src/index.ts" } }
 }`)
 	writeFile(t, filepath.Join(primitives, "src", "index.ts"), `export declare namespace Type {
-  export function named(name: string, from?: string, genericTypes?: unknown[]): unknown;
+  export function global(name: string, genericTypes?: unknown[]): unknown;
+  export function imported(name: string, from: string, genericTypes?: unknown[]): unknown;
   export function func(returnType: unknown, ...args: unknown[]): unknown;
   export function ctor(instanceType: unknown, ...args: unknown[]): unknown;
   export function tag(type: unknown, tag: string): unknown;
@@ -177,7 +178,7 @@ export const tok = typefor<IThing>();
 	defer func() { _ = prog.Close() }()
 
 	out := lowerTypefor(t, prog, app)
-	want := `Type.named("IThing", "@scope/app/main")`
+	want := `Type.imported("IThing", "@scope/app/main")`
 	if got := exprFor(t, out, "tok"); got != want {
 		t.Fatalf("typefor<IThing>() = %q, want %q\nfull output:\n%s", got, want, out)
 	}
@@ -199,7 +200,7 @@ export const tok = typefor<IThing<IOther>>();
 	defer func() { _ = prog.Close() }()
 
 	out := lowerTypefor(t, prog, app)
-	want := `Type.named("IThing", "@scope/app/main", [Type.named("IOther", "@scope/app/main")])`
+	want := `Type.imported("IThing", "@scope/app/main", [Type.imported("IOther", "@scope/app/main")])`
 	if got := exprFor(t, out, "tok"); got != want {
 		t.Fatalf("typefor<IThing<IOther>>() = %q, want %q\nfull output:\n%s", got, want, out)
 	}
@@ -214,7 +215,7 @@ export const tok = typefor<IThing<$<1>>>();
 	defer func() { _ = prog.Close() }()
 
 	out := lowerTypefor(t, prog, app)
-	want := `Type.named("IThing", "@scope/app/main", [Type.generic("1")])`
+	want := `Type.imported("IThing", "@scope/app/main", [Type.generic("1")])`
 	if got := exprFor(t, out, "tok"); got != want {
 		t.Fatalf("typefor<IThing<$<1>>>() = %q, want %q\nfull output:\n%s", got, want, out)
 	}
@@ -243,7 +244,7 @@ export const tok = typefor<Keyed<IThing, "redis">>();
 	defer func() { _ = prog.Close() }()
 
 	out := lowerTypefor(t, prog, app)
-	want := `Type.tag(Type.named("IThing", "@scope/app/main"), "redis")`
+	want := `Type.tag(Type.imported("IThing", "@scope/app/main"), "redis")`
 	if got := exprFor(t, out, "tok"); got != want {
 		t.Fatalf("typefor<Keyed<IThing,\"redis\">>() = %q, want %q\nfull output:\n%s", got, want, out)
 	}
@@ -258,7 +259,7 @@ export const tok = typefor(Foo);
 	defer func() { _ = prog.Close() }()
 
 	out := lowerTypefor(t, prog, app)
-	want := `Type.ctor(Type.named("Foo", "@scope/app/main"))`
+	want := `Type.ctor(Type.imported("Foo", "@scope/app/main"))`
 	if got := exprFor(t, out, "tok"); got != want {
 		t.Fatalf("typefor(Foo) = %q, want %q\nfull output:\n%s", got, want, out)
 	}
@@ -277,7 +278,7 @@ export const tok = typefor(Foo);
 	defer func() { _ = prog.Close() }()
 
 	out := lowerTypefor(t, prog, app)
-	want := `Type.ctor(Type.named("Foo", "@scope/app/main"), Type.named("IA", "@scope/app/main"), Type.named("IB", "@scope/app/main"))`
+	want := `Type.ctor(Type.imported("Foo", "@scope/app/main"), Type.imported("IA", "@scope/app/main"), Type.imported("IB", "@scope/app/main"))`
 	if got := exprFor(t, out, "tok"); got != want {
 		t.Fatalf("typefor(Foo) = %q, want %q\nfull output:\n%s", got, want, out)
 	}
@@ -292,7 +293,7 @@ export const tok = typefor<() => IThing>();
 	defer func() { _ = prog.Close() }()
 
 	out := lowerTypefor(t, prog, app)
-	want := `Type.func(Type.named("IThing", "@scope/app/main"))`
+	want := `Type.func(Type.imported("IThing", "@scope/app/main"))`
 	if got := exprFor(t, out, "tok"); got != want {
 		t.Fatalf("typefor<() => IThing>() = %q, want %q\nfull output:\n%s", got, want, out)
 	}
@@ -309,7 +310,7 @@ export const tok = typefor<(a: IA, b: IB) => IThing>().returnType;
 	defer func() { _ = prog.Close() }()
 
 	out := lowerTypefor(t, prog, app)
-	want := `Type.named("IThing", "@scope/app/main")`
+	want := `Type.imported("IThing", "@scope/app/main")`
 	if got := exprFor(t, out, "tok"); got != want {
 		t.Fatalf(".returnType fold = %q, want %q\nfull output:\n%s", got, want, out)
 	}
@@ -329,7 +330,7 @@ export const tok = typefor<(a: IA, b: IB) => IThing>().args;
 	defer func() { _ = prog.Close() }()
 
 	out := lowerTypefor(t, prog, app)
-	want := `[Type.named("IA", "@scope/app/main"), Type.named("IB", "@scope/app/main")]`
+	want := `[Type.imported("IA", "@scope/app/main"), Type.imported("IB", "@scope/app/main")]`
 	if got := exprFor(t, out, "tok"); got != want {
 		t.Fatalf(".args fold = %q, want %q\nfull output:\n%s", got, want, out)
 	}
@@ -344,7 +345,7 @@ export const tok = typefor(Foo).instanceType;
 	defer func() { _ = prog.Close() }()
 
 	out := lowerTypefor(t, prog, app)
-	want := `Type.named("Foo", "@scope/app/main")`
+	want := `Type.imported("Foo", "@scope/app/main")`
 	if got := exprFor(t, out, "tok"); got != want {
 		t.Fatalf(".instanceType fold = %q, want %q\nfull output:\n%s", got, want, out)
 	}
@@ -380,7 +381,7 @@ export const inner = typefor<Keyed<IThing, "redis">>().type;
 	if got, want := exprFor(t, out, "tag"), `"redis"`; got != want {
 		t.Fatalf(".tag fold = %q, want %q\nfull output:\n%s", got, want, out)
 	}
-	if got, want := exprFor(t, out, "inner"), `Type.named("IThing", "@scope/app/main")`; got != want {
+	if got, want := exprFor(t, out, "inner"), `Type.imported("IThing", "@scope/app/main")`; got != want {
 		t.Fatalf(".type fold = %q, want %q\nfull output:\n%s", got, want, out)
 	}
 }
@@ -391,7 +392,8 @@ interface IThing {}
 class Foo {}
 export const kFunc = typefor<() => IThing>().kind;
 export const kCtor = typefor(Foo).kind;
-export const kNamed = typefor<IThing>().kind;
+export const kImport = typefor<IThing>().kind;
+export const kGlobal = typefor<string>().kind;
 export const kTag = typefor<Keyed<IThing, "redis">>().kind;
 export const kLit = typefor<"dev">().kind;
 `
@@ -400,11 +402,12 @@ export const kLit = typefor<"dev">().kind;
 
 	out := lowerTypefor(t, prog, app)
 	cases := map[string]string{
-		"kFunc":  `"func"`,
-		"kCtor":  `"ctor"`,
-		"kNamed": `"named"`,
-		"kTag":   `"tag"`,
-		"kLit":   `"literal"`,
+		"kFunc":   `"func"`,
+		"kCtor":   `"ctor"`,
+		"kImport": `"imported"`,
+		"kGlobal": `"global"`,
+		"kTag":    `"tag"`,
+		"kLit":    `"literal"`,
 	}
 	for name, want := range cases {
 		if got := exprFor(t, out, name); got != want {
@@ -451,11 +454,11 @@ export const tok = typefor<IThing>();
 	if count != 1 {
 		t.Fatalf("expected exactly one @rhombus-std/primitives import statement, got %d in output:\n%s", count, out)
 	}
-	want := `T2.named("IThing", "@scope/app/main")`
+	want := `T2.imported("IThing", "@scope/app/main")`
 	if got := exprFor(t, out, "tok"); got != want {
 		t.Fatalf("expected the lowered call to use the existing aliased binding: got %q want %q\nfull output:\n%s", got, want, out)
 	}
-	if strings.Contains(out, "Type.named(") {
+	if strings.Contains(out, "Type.imported(") {
 		t.Fatalf("lowered call should use the existing alias T2, not a fresh Type import:\n%s", out)
 	}
 }
@@ -476,7 +479,7 @@ export const rt = t.returnType;
 	defer func() { _ = prog.Close() }()
 
 	out := lowerTypefor(t, prog, app)
-	wantT := `Type.func(Type.named("IThing", "@scope/app/main"))`
+	wantT := `Type.func(Type.imported("IThing", "@scope/app/main"))`
 	if got := exprFor(t, out, "t"); got != wantT {
 		t.Fatalf("bare typefor call = %q, want %q\nfull output:\n%s", got, wantT, out)
 	}
@@ -561,11 +564,11 @@ export const aiter = typefor<AsyncIterable<IThing>>();
 	defer func() { _ = prog.Close() }()
 
 	out := lowerTypefor(t, prog, app)
-	element := `Type.named("IThing", "@scope/app/main")`
+	element := `Type.imported("IThing", "@scope/app/main")`
 	for _, tc := range []struct{ name, want string }{
-		{"arr", `Type.named("Array", "global", [` + element + `])`},
-		{"iter", `Type.named("Iterable", "global", [` + element + `])`},
-		{"aiter", `Type.named("AsyncIterable", "global", [` + element + `])`},
+		{"arr", `Type.global("Array", [` + element + `])`},
+		{"iter", `Type.global("Iterable", [` + element + `])`},
+		{"aiter", `Type.global("AsyncIterable", [` + element + `])`},
 	} {
 		if got := exprFor(t, out, tc.name); got != tc.want {
 			t.Errorf("%s = %q, want %q\nfull output:\n%s", tc.name, got, tc.want, out)

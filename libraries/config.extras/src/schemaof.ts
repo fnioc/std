@@ -30,9 +30,9 @@ import type { ObjectType } from '@rhombus-std/primitives';
  *
  * schemaof<ServerConfig>();
  * // Type.object({
- * //   host: Type.named('string', 'global'),
- * //   port: Type.named('number', 'global'),
- * //   ssl: Type.union(Type.named('boolean', 'global'), Type.typeLiteral(undefined)),
+ * //   host: Type.global('string'),
+ * //   port: Type.global('number'),
+ * //   ssl: Type.union(Type.global('boolean'), Type.typeLiteral(undefined)),
  * // })
  * ```
  */

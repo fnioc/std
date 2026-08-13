@@ -19,7 +19,7 @@ import { typefor } from './typefor.js';
  * @example
  * ```ts
  * registerAugmentations<IConfigBuilder>(ConfigBuilderJsonAugmentations);
- * // → registerAugmentations(Type.named('IConfigBuilder', '@rhombus-std/config.core'), ConfigBuilderJsonAugmentations)
+ * // → registerAugmentations(Type.imported('IConfigBuilder', '@rhombus-std/config.core'), ConfigBuilderJsonAugmentations)
  * ```
  */
 export function registerAugmentations<R>(set: AugmentationSet2<R, Record<PropertyKey, Func>>,

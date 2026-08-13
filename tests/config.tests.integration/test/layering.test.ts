@@ -53,7 +53,7 @@ describe('layering: addJsonFile / addEnvironmentVariables / addCommandLine (buil
     const typed = new ConfigBuilder().addJsonFile(`${FIXTURES}/base.json`).addJsonFile(`${FIXTURES}/overlay.json`)
       .addEnvironmentVariables({ prefix: 'APP_', env: { APP_SERVER__PORT: '7070' } })
       .withSchema<{ Server: { Port: number; }; }>(Type.object({
-        Server: Type.object({ Port: Type.named('number', 'global') }),
+        Server: Type.object({ Port: Type.global('number') }),
       })).build();
     assert.equal(typed.Server.Port, 7070);
 

@@ -207,13 +207,13 @@ function makeOrderNotifier(sink: IMessageSink, recorder?: IMetricsRecorder | IAu
 // unique. These are short for readability. When you need to INTEROPERATE with
 // registrations the transformer produced, compose the same Type it derives
 // instead — see examples.lib.without-transformer/src/types.ts.
-const CLOCK_TYPE = Type.from('orders:IClock');
-const SINK_TYPE = Type.from('orders:IMessageSink');
-const EMAIL_OPTIONS_TYPE = Type.from('orders:IEmailOptions');
-const AUDIT_TYPE = Type.from('orders:IAuditLog');
-const METRICS_TYPE = Type.from('orders:IMetricsRecorder');
-const NOTIFIER_TYPE = Type.from('orders:IOrderNotifier');
-const FLAGS_TYPE = Type.from('orders:FeatureFlags');
+const CLOCK_TYPE = Type.imported('IClock', 'orders');
+const SINK_TYPE = Type.imported('IMessageSink', 'orders');
+const EMAIL_OPTIONS_TYPE = Type.imported('IEmailOptions', 'orders');
+const AUDIT_TYPE = Type.imported('IAuditLog', 'orders');
+const METRICS_TYPE = Type.imported('IMetricsRecorder', 'orders');
+const NOTIFIER_TYPE = Type.imported('IOrderNotifier', 'orders');
+const FLAGS_TYPE = Type.imported('FeatureFlags', 'orders');
 
 // A KEY is a TAG ON the service type rather than a parallel lookup: `Type.tag`
 // composes one type that carries it, so a keyed request hits exactly the same
@@ -223,9 +223,9 @@ const EMAIL_SINK_TYPE = Type.tag(SINK_TYPE, 'email');
 
 // The library-defaults scenario keeps its own namespace, so the descriptor
 // verbs below name types this file owns end-to-end.
-const DEFAULT_CLOCK_TYPE = Type.from('orders.defaults:IClock');
-const DEFAULT_SINK_TYPE = Type.from('orders.defaults:IMessageSink');
-const DEFAULT_NOTIFIER_TYPE = Type.from('orders.defaults:IOrderNotifier');
+const DEFAULT_CLOCK_TYPE = Type.imported('IClock', 'orders.defaults');
+const DEFAULT_SINK_TYPE = Type.imported('IMessageSink', 'orders.defaults');
+const DEFAULT_NOTIFIER_TYPE = Type.imported('IOrderNotifier', 'orders.defaults');
 
 // ── helpers ──────────────────────────────────────────────────────────────────
 

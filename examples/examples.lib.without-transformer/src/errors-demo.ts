@@ -48,7 +48,7 @@ import type { Manifest } from '@rhombus-std/di.core';
 // each half works against its own throwaway manifest — so agreement here is
 // about the REPORT, not about wiring.
 
-const STORE_TYPE = Type.from('selfcheck:IStore');
+const STORE_TYPE = Type.imported('IStore', 'selfcheck');
 
 // ── the diagnostic ───────────────────────────────────────────────────────────
 

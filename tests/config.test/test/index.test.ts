@@ -98,8 +98,8 @@ describe('public entry point', () => {
   test('end-to-end: build a typed, coerced config through the public entry point alone', () => {
     const typed = new ConfigBuilder().addInMemoryCollection({ Host: 'localhost', Port: '8080' })
       .withSchema<{ Host: string; Port: number; }>(Type.object({
-        Host: Type.named('string', 'global'),
-        Port: Type.named('number', 'global'),
+        Host: Type.global('string'),
+        Port: Type.global('number'),
       })).build();
 
     expect(typed).toEqual({ Host: 'localhost', Port: 8080 });

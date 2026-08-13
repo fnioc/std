@@ -3,6 +3,7 @@ import { registerAugmentations } from '@rhombus-std/primitives.extras';
 import { Ctor, Func } from '@rhombus-toolkit/func';
 import { describe, type IComplete, type Unstarted } from '../builder';
 import { Manifest } from '../Manifest';
+import { withKey } from '../service-type';
 import { ServiceDescriptor, type Signatures, TypeSignatures } from '../ServiceDescriptor';
 
 interface IManifestServiceAugmentations<Scopes extends string> {
@@ -22,34 +23,23 @@ export const ManifestServiceAugmentations: AugmentationSet2<Manifest, Flatten<IM
       if (typeof type === 'string') {
         return this.addClass(Type.from(type), ctor, signatures, scope, key);
       }
-      if (key !== undefined && type.kind === 'tag') {
-        throw new Error(`${Type.stringify(type)} already carries a tag; it cannot take the key ${key}.`);
-      }
       return this.add(
-        ServiceDescriptor.ctor(key === undefined ? type : Type.tag(type, key), ctor, TypeSignatures.from(signatures),
-          scope),
+        ServiceDescriptor.ctor(withKey(type, key), ctor, TypeSignatures.from(signatures), scope),
       );
     },
     addFactory(type, factory, signatures, scope, key) {
       if (typeof type === 'string') {
         return this.addFactory(Type.from(type), factory, signatures, scope, key);
       }
-      if (key !== undefined && type.kind === 'tag') {
-        throw new Error(`${Type.stringify(type)} already carries a tag; it cannot take the key ${key}.`);
-      }
       return this.add(
-        ServiceDescriptor.factory(key === undefined ? type : Type.tag(type, key), factory,
-          TypeSignatures.from(signatures), scope),
+        ServiceDescriptor.factory(withKey(type, key), factory, TypeSignatures.from(signatures), scope),
       );
     },
     addValue(type, value, key) {
       if (typeof type === 'string') {
         return this.addValue(Type.from(type), value, key);
       }
-      if (key !== undefined && type.kind === 'tag') {
-        throw new Error(`${Type.stringify(type)} already carries a tag; it cannot take the key ${key}.`);
-      }
-      return this._add(ServiceDescriptor.value(key === undefined ? type : Type.tag(type, key), value));
+      return this._add(ServiceDescriptor.value(withKey(type, key), value));
     },
   };
 

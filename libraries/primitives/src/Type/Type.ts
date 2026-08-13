@@ -11,28 +11,30 @@ import { typeValidatorVisitor } from './TypeValidatorVisitor.js';
 
 // #region types
 
-/** Types that are only useful as identifiers */
-export type TypeIdentifier =
-  | GenericType
-  | NamedType
-  | TagType;
 /** Types that name every registration of one element type, whatever protocol they hand it back by */
 export type AggregateType =
   | ArrayType
-  | AsyncIterableType
-  | AsyncType
   | IterableType;
+/** A type carrying a name to be looked up under — reached through a package, or already in scope. */
+export type NominalType =
+  | GlobalType
+  | ImportedType;
 /** All Types */
 export type Type =
   | AggregateType
-  | CtorType
-  | FuncType
+  | ConstructorType
+  | FunctionType
   | IntersectionType
   | ObjectType
   | TupleType
   | TypeIdentifier
   | TypeLiteralType
   | UnionType;
+/** Types that are only useful as identifiers */
+export type TypeIdentifier =
+  | GenericType
+  | NominalType
+  | TagType;
 
 /** Marks a node as one the intern table minted. Declared only — nothing carries it at runtime. */
 declare const TYPE_BRAND: unique symbol;
@@ -53,26 +55,82 @@ interface AggregateBase<Kind extends string> extends TypeBase<Kind> {
   readonly element: Type;
 }
 
-export interface ArrayType extends AggregateBase<'array'> {}
-
-export interface AsyncIterableType extends AggregateBase<'asyncIterable'> {}
-
-/** A value delivered later — the element awaited rather than enumerated. */
-export interface AsyncType extends AggregateBase<'async'> {}
-
-export interface CtorType extends TypeBase<'ctor'> {
-  readonly args: readonly Type[];
-  readonly instanceType: Type;
+/** A member of {@link NominalType}: an exported name, and the generic arguments closing it. */
+interface NominalBase<Kind extends string> extends TypeBase<Kind> {
+  /**
+   * The exported name, or 'default' for default exports.
+   */
+  readonly name: string;
+  readonly genericArgs: readonly Type[];
 }
 
-export interface FuncType extends TypeBase<'func'> {
+export interface ArrayType extends AggregateBase<'array'> {}
+
+export interface ConstructorType extends TypeBase<'ctor'> {
+  readonly args: readonly Type[];
+  readonly instanceType: Type;
+  /**
+   * The holes this signature quantifies, in declaration order — empty for a concrete one. A request
+   * closes them positionally, exactly as a nominal type's arguments close. Quantifying a hole is
+   * part of the type: `<%T>() => app:Box<%T>` and a signature that merely mentions `%T` are
+   * different types.
+   */
+  readonly genericArgs: readonly Type[];
+}
+
+/** The fields a {@link Type.ctor} call names, whether it passes them positionally or as one object. */
+export interface CtorSpec {
+  readonly instanceType: Type;
+  readonly args?: readonly Type[];
+  readonly genericArgs?: readonly Type[];
+}
+
+/** The fields a {@link Type.func} call names, whether it passes them positionally or as one object. */
+export interface FuncSpec {
+  readonly returnType: Type;
+  readonly args?: readonly Type[];
+  readonly genericArgs?: readonly Type[];
+}
+
+export interface FunctionType extends TypeBase<'func'> {
   readonly args: readonly Type[];
   readonly returnType: Type;
+  /**
+   * The holes this signature quantifies, in declaration order — empty for a concrete one. A request
+   * closes them positionally, exactly as a nominal type's arguments close. Quantifying a hole is
+   * part of the type: `<%T>() => app:Box<%T>` and a signature that merely mentions `%T` are
+   * different types.
+   */
+  readonly genericArgs: readonly Type[];
 }
 
 /** An open generic argument — a labeled hole standing for a type bound later. */
 export interface GenericType extends TypeBase<'generic'> {
   readonly label: string;
+}
+
+/** The fields a {@link Type.global} call names, whether it passes them positionally or as one object. */
+export interface GlobalSpec {
+  readonly name: string;
+  readonly genericArgs?: readonly Type[];
+}
+
+/** A type the ambient scope already carries — `string`, `Date`, `Promise<T>`; no import reaches it. */
+export interface GlobalType extends NominalBase<'global'> {}
+
+/** The fields a {@link Type.imported} call names, whether it passes them positionally or as one object. */
+export interface ImportedSpec {
+  readonly name: string;
+  readonly from: string;
+  readonly genericArgs?: readonly Type[];
+}
+
+/** parallel to `import { ${name} } from "${from}";` */
+export interface ImportedType extends NominalBase<'imported'> {
+  /**
+   * Literally the 'from' part in the import statement you would use to access this type (package and all).
+   */
+  readonly from: string;
 }
 
 export interface IntersectionType extends TypeBase<'intersection'> {
@@ -83,27 +141,19 @@ export interface IterableType extends AggregateBase<'iterable'> {}
 
 export type LiteralValue = string | number | bigint | boolean | null | undefined;
 
-/** parallel to `import { ${name} } from "${from}";` */
-export interface NamedType extends TypeBase<'named'> {
-  /**
-   * Literally the 'from' part in the import statement you would use to access this type (package and all).
-   * Use 'global' for built-in types.
-   */
-  readonly from: string;
-  /**
-   * The exported name, or 'default' for default exports.
-   */
-  readonly name: string;
-  readonly genericArgs: readonly Type[];
-}
-
 export interface ObjectType extends TypeBase<'object'> {
   readonly members: Readonly<Record<string, Type>>;
 }
 
+/** The fields a {@link Type.tag} call names, whether it passes them positionally or as one object. */
+export interface TagSpec {
+  readonly type: Exclude<Type, TagType>;
+  readonly tag: string;
+}
+
 export interface TagType extends TypeBase<'tag'> {
   readonly tag: string;
-  readonly type: Type;
+  readonly type: Exclude<Type, TagType>;
 }
 
 export interface TupleType extends TypeBase<'tuple'> {
@@ -118,51 +168,6 @@ export interface TypeLiteralType extends TypeBase<'literal'> {
 export interface UnionType extends TypeBase<'union'> {
   readonly members: readonly Type[];
 }
-
-/** The fields a {@link Type.named} call names, whether it passes them positionally or as one object. */
-export interface NamedSpec {
-  readonly name: string;
-  readonly from?: string;
-  readonly genericArgs?: readonly Type[];
-}
-
-export interface CtorSpec {
-  readonly instanceType: Type;
-  readonly args?: readonly Type[];
-}
-
-export interface FuncSpec {
-  readonly returnType: Type;
-  readonly args?: readonly Type[];
-}
-
-export interface TagSpec {
-  readonly type: Type;
-  readonly tag: string;
-}
-
-/**
- * What a {@link Type.named} spelling mints, as narrowly as the call can prove it: an aggregate
- * spelling under `global` carrying one argument is that aggregate's own kind, anything else is a
- * {@link NamedType}, and a name or argument list only known at runtime widens to the honest union
- * of both readings.
- */
-type Named<Name extends string, From extends string, Args extends readonly Type[]> = string extends Name
-  ? NamedType | AggregateType
-  : Name extends AggregateName ? string extends From ? NamedType | Aggregate<Name>
-    : From extends 'global' ? Args extends readonly [Type] ? Aggregate<Name>
-      : number extends Args['length'] ? NamedType | Aggregate<Name>
-      : NamedType
-    : NamedType
-  : NamedType;
-
-/** The node kind one aggregate spelling names. */
-type Aggregate<Name extends AggregateName> = Extract<AggregateType, { kind: typeof AGGREGATE_KINDS[Name]; }>;
-
-type SpecFrom<Spec extends NamedSpec> = Spec extends { from: infer From extends string; } ? From : 'global';
-
-type SpecArgs<Spec extends NamedSpec> = Spec extends { genericArgs: infer Args extends readonly Type[]; } ? Args
-  : readonly [];
 
 // #endregion
 
@@ -195,36 +200,18 @@ export namespace Type {
   }
 
   /**
-   * Names `element` delivered later rather than at once.
+   * A constructor signature — `new (...args) => instanceType`, instance type first.
    *
    * @remarks
-   * The address is spellable and interned; nothing resolves it yet.
+   * The positional form spells a concrete signature; one that quantifies holes of its own passes
+   * them as the spec's `genericArgs`.
    */
-  export function async(element: Type): AsyncType {
-    return factory.async(element);
-  }
-
-  /**
-   * Names the aggregate of every registration of `element` as one asynchronous sequence.
-   *
-   * @remarks
-   * The synthesized aggregate is late-bound — each element resolves as the async iteration
-   * reaches it, not up front; a registration answering directly under this address is returned
-   * as-is instead.
-   *
-   * The side that registers an element and the side that reads the aggregate must name the same
-   * type, and nothing reports it when they don't: the lookup simply finds nothing. Both sides call
-   * this, so they cannot drift.
-   */
-  export function asyncIterable(element: Type): AsyncIterableType {
-    return factory.asyncIterable(element);
-  }
-
-  /** A constructor signature — `new (...args) => instanceType`, instance type first. */
-  export function ctor(instanceType: Type, ...args: readonly Type[]): CtorType;
-  export function ctor(spec: CtorSpec): CtorType;
-  export function ctor(first: Type | CtorSpec, ...args: readonly Type[]): CtorType {
-    return isNode(first) ? factory.ctor(first, args) : factory.ctor(first.instanceType, first.args ?? []);
+  export function ctor(instanceType: Type, ...args: readonly Type[]): ConstructorType;
+  export function ctor(spec: CtorSpec): ConstructorType;
+  export function ctor(first: Type | CtorSpec, ...args: readonly Type[]): ConstructorType {
+    return isNode(first)
+      ? factory.ctor(first, args, [])
+      : factory.ctor(first.instanceType, first.args ?? [], first.genericArgs ?? []);
   }
 
   /**
@@ -233,9 +220,11 @@ export namespace Type {
    * @remarks
    * Some names carry a reserved meaning, and only unqualified: `Func<Return, ...Args>` and
    * `Ctor<Instance, ...Args>` spell the function and constructor kinds, `ServiceProvider` spells
-   * the provider itself, and `Array<E>`, `Iterable<E>`, `AsyncIterable<E>` and `Async<E>` spell
-   * the aggregates. Qualify one — `app:Func` — and it names an ordinary type, as do the
-   * value-type names `string`, `number` and the rest. An absent qualifier means `global`.
+   * the provider itself, and `Array<E>` and `Iterable<E>` spell the aggregates. Qualify one —
+   * `app:Func` — and it names an ordinary type, as do the value-type names `string`, `number` and
+   * the rest. An unqualified name is a global one.
+   *
+   * A callable carrying its own quantifiers is written with them in front: `<%T>(%T) => app:Box<%T>`.
    *
    * @throws TypeParseError - when the token is malformed.
    */
@@ -252,13 +241,18 @@ export namespace Type {
    * A function signature — `(...args) => returnType`, return type first.
    *
    * @remarks
-   * Identity is the shape alone: two signatures with the same return and argument types are the
-   * same type, whichever functions they were read from.
+   * Identity is the shape alone: two signatures with the same return type, argument types and
+   * quantifiers are the same type, whichever functions they were read from.
+   *
+   * The positional form spells a concrete signature; one that quantifies holes of its own passes
+   * them as the spec's `genericArgs`.
    */
-  export function func(returnType: Type, ...args: readonly Type[]): FuncType;
-  export function func(spec: FuncSpec): FuncType;
-  export function func(first: Type | FuncSpec, ...args: readonly Type[]): FuncType {
-    return isNode(first) ? factory.func(first, args) : factory.func(first.returnType, first.args ?? []);
+  export function func(returnType: Type, ...args: readonly Type[]): FunctionType;
+  export function func(spec: FuncSpec): FunctionType;
+  export function func(first: Type | FuncSpec, ...args: readonly Type[]): FunctionType {
+    return isNode(first)
+      ? factory.func(first, args, [])
+      : factory.func(first.returnType, first.args ?? [], first.genericArgs ?? []);
   }
 
   /**
@@ -267,6 +261,61 @@ export namespace Type {
    */
   export function generic(label: string): GenericType {
     return factory.generic(label);
+  }
+
+  /** The node kind one aggregate spelling names. */
+  type Aggregate<Name extends AggregateName> = Extract<AggregateType, { kind: typeof AGGREGATE_KINDS[Name]; }>;
+
+  /**
+   * What a {@link Type.global} spelling mints, as narrowly as the call can prove it: an aggregate
+   * spelling carrying one argument is that aggregate's own kind, anything else is a
+   * {@link GlobalType}, and a name or argument list only known at runtime widens to the honest union
+   * of both readings.
+   */
+  type Global<Name extends string, Args extends readonly Type[]> = string extends Name ? AggregateType | GlobalType
+    : Name extends AggregateName ? Args extends readonly [Type] ? Aggregate<Name>
+      : number extends Args['length'] ? Aggregate<Name> | GlobalType
+      : GlobalType
+    : GlobalType;
+
+  /** The generic arguments a {@link GlobalSpec} names, or none when it leaves them out. */
+  type SpecArgs<Spec extends GlobalSpec> = Spec extends { genericArgs: infer Args extends readonly Type[]; } ? Args
+    : readonly [];
+
+  /**
+   * A type the ambient scope already carries, referenced by name. Generic arguments name the
+   * constructed type `Name<Args>`; leave one open with {@link generic} to describe the generic type
+   * itself.
+   *
+   * @remarks
+   * An aggregate spelling carrying one argument — `Array` or `Iterable` — names that aggregate's own
+   * kind, so the kind node is the one identity the spelling has and every door reaches it.
+   */
+  export function global<
+    const Name extends string,
+    const Args extends readonly Type[] = readonly [],
+  >(name: Name, genericArgs?: Args): Global<Name, Args>;
+  export function global<const Spec extends GlobalSpec>(spec: Spec): Global<Spec['name'], SpecArgs<Spec>>;
+  export function global(first: string | GlobalSpec, genericArgs: readonly Type[] = []): AggregateType | GlobalType {
+    return typeof first === 'string'
+      ? factory.global(first, genericArgs)
+      : factory.global(first.name, first.genericArgs ?? []);
+  }
+
+  /**
+   * A type reached through a package — parallel to `import { name } from '…'`, `from` spelled as the
+   * import statement spells it. Generic arguments name the constructed type `Name<Args>`; leave one
+   * open with {@link generic} to describe the generic type itself.
+   *
+   * @throws TypeError - when `from` names the ambient scope rather than a package.
+   */
+  export function imported(name: string, from: string, genericArgs?: readonly Type[]): ImportedType;
+  export function imported(spec: ImportedSpec): ImportedType;
+  export function imported(first: string | ImportedSpec, from?: string,
+    genericArgs: readonly Type[] = []): ImportedType {
+    return typeof first === 'string'
+      ? factory.imported(first, from!, genericArgs)
+      : factory.imported(first.name, first.from, first.genericArgs ?? []);
   }
 
   /**
@@ -308,34 +357,6 @@ export namespace Type {
   }
 
   /**
-   * A type referenced by export name and home — parallel to `import { name } from '…'`, with
-   * `'global'` naming the built-ins. Generic arguments name the constructed type `Name<Args>`;
-   * leave one open with {@link generic} to describe the generic type itself.
-   *
-   * @remarks
-   * An aggregate spelling under `global` carrying one argument — `Array`, `Iterable`,
-   * `AsyncIterable`, `Async` — names that aggregate's own kind, so the kind node is the one
-   * identity the spelling has and every door reaches it.
-   */
-  export function named<
-    const Name extends string,
-    const From extends string = 'global',
-    const Args extends readonly Type[] = readonly [],
-  >(name: Name, from?: From, genericArgs?: Args): Named<Name, From, Args>;
-  export function named<const Spec extends NamedSpec>(
-    spec: Spec,
-  ): Named<Spec['name'], SpecFrom<Spec>, SpecArgs<Spec>>;
-  export function named(
-    first: string | NamedSpec,
-    from = 'global',
-    genericArgs: readonly Type[] = [],
-  ): NamedType | AggregateType {
-    return typeof first === 'string'
-      ? factory.named(first, from, genericArgs)
-      : factory.named(first.name, first.from ?? 'global', first.genericArgs ?? []);
-  }
-
-  /**
    * A structural object type — each entry a member name and its type.
    *
    * @remarks
@@ -348,8 +369,10 @@ export namespace Type {
   /**
    * The given type wearing a tag — the address a keyed registration lives under. The same type
    * under a different tag is a different type.
+   *
+   * @throws TypeError - when the type is already tagged; a type wears at most one tag.
    */
-  export function tag(type: Type, tag: string): TagType;
+  export function tag(type: Exclude<Type, TagType>, tag: string): TagType;
   export function tag(spec: TagSpec): TagType;
   export function tag(first: Type | TagSpec, tag?: string): TagType {
     return isNode(first) ? factory.tag(first, tag!) : factory.tag(first.type, first.tag);

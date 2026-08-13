@@ -43,7 +43,7 @@ export const s = schemaof<C>();
 	if strings.Contains(tree, "#value") {
 		t.Errorf("emitted a key for the #private backing field — unmatchable at runtime:\n%s", tree)
 	}
-	if !strings.Contains(tree, `value: Type.named("number", "global")`) {
+	if !strings.Contains(tree, `value: Type.global("number")`) {
 		t.Errorf("public accessor `value` missing from the schema:\n%s", tree)
 	}
 }
@@ -61,7 +61,7 @@ export const s = schemaof<C>();
 	if strings.Contains(tree, "secret") {
 		t.Errorf("emitted a key for a `private` member:\n%s", tree)
 	}
-	if !strings.Contains(tree, `host: Type.named("string", "global")`) {
+	if !strings.Contains(tree, `host: Type.global("string")`) {
 		t.Errorf("public member `host` missing from the schema:\n%s", tree)
 	}
 }
@@ -114,7 +114,7 @@ export const s = schemaof<C>();
 	if strings.Contains(tree, "derived") {
 		t.Errorf("emitted a key for a get-only accessor — coercion cannot assign to it:\n%s", tree)
 	}
-	if !strings.Contains(tree, `host: Type.named("string", "global")`) {
+	if !strings.Contains(tree, `host: Type.global("string")`) {
 		t.Errorf("public member `host` missing from the schema:\n%s", tree)
 	}
 }
@@ -166,7 +166,7 @@ export const s = schemaof<C>();
 	if len(codes) != 0 {
 		t.Fatalf("unexpected diagnostics %v", codes)
 	}
-	if !strings.Contains(tree, `inner: Type.named("Inner", "./main")`) {
+	if !strings.Contains(tree, `inner: Type.imported("Inner", "./main")`) {
 		t.Errorf("a named member must stay an address:\n%s", tree)
 	}
 }

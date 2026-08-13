@@ -74,8 +74,8 @@ func PackagePrivateToken(pkgName, pkgDir, declPath, exportName string) string {
 }
 
 // PackagePrivateTokenParts is PackagePrivateToken split into the FROM/NAME pair
-// it joins with `:` — the source specifier a structural `Type.named` call takes as
-// its first two arguments, rather than the flat token string.
+// it joins with `:` — the source specifier a structural `Type.imported` call takes
+// as its first two arguments, rather than the flat token string.
 func PackagePrivateTokenParts(pkgName, pkgDir, declPath, exportName string) (from, name string) {
 	rel, ok := PosixRelative(pkgDir, declPath)
 	var base string

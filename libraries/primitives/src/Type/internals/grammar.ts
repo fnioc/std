@@ -23,15 +23,16 @@ export const KEYWORD_LITERALS: ReadonlyMap<string, LiteralValue> = new Map<strin
   ['undefined', undefined],
 ]);
 
+/** The qualifier naming the ambient scope: the one source an import can never be written against. */
+export const GLOBAL_QUALIFIER = 'global';
+
 /**
- * Each aggregate spelling and the node kind it names. One type argument under `global` is that
+ * Each aggregate spelling and the node kind it names. One type argument on a global name is that
  * aggregate wherever it is spelled — parsed, derived, or composed by hand — so the kind node is
  * the only identity the spelling ever has.
  */
 export const AGGREGATE_KINDS = {
   Array: 'array',
-  Async: 'async',
-  AsyncIterable: 'asyncIterable',
   Iterable: 'iterable',
 } as const;
 
@@ -50,7 +51,7 @@ export const SERVICE_PROVIDER_FROM = '@rhombus-std/primitives';
  *
  * @remarks
  * A name spelled like one of these is escaped so it reads back as a name; qualifying it
- * (`app:Func`) already disambiguates, so only the global namespace consults this set.
+ * (`app:Func`) already disambiguates, so only an unqualified name consults this set.
  */
 export const RESERVED_NAMES: ReadonlySet<string> = new Set([
   ...KEYWORD_LITERALS.keys(),

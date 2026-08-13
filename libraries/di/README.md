@@ -22,7 +22,7 @@ import { DefaultManifest, Type } from '@rhombus-std/di.core';
 interface IGreeter {
   greet(name: string): string;
 }
-const IGreeter = Type.named('IGreeter', 'app');
+const IGreeter = Type.imported('IGreeter', 'app');
 
 class ConsoleGreeter implements IGreeter {
   greet(name: string) {

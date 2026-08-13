@@ -22,16 +22,16 @@ describe('the public slot-type grammar', () => {
   test('each helper derives the namespaced slot type for the options type', () => {
     const namespace = '@rhombus-std/options.augmentations';
     expect(configureStepType(WIDGET_OPTIONS_TYPE)).toBe(
-      Type.named(`${namespace}/configure`, 'global', [WIDGET_OPTIONS_TYPE]),
+      Type.global(`${namespace}/configure`, [WIDGET_OPTIONS_TYPE]),
     );
     expect(postConfigureStepType(WIDGET_OPTIONS_TYPE)).toBe(
-      Type.named(`${namespace}/post-configure`, 'global', [WIDGET_OPTIONS_TYPE]),
+      Type.global(`${namespace}/post-configure`, [WIDGET_OPTIONS_TYPE]),
     );
     expect(validateStepType(WIDGET_OPTIONS_TYPE)).toBe(
-      Type.named(`${namespace}/validate`, 'global', [WIDGET_OPTIONS_TYPE]),
+      Type.global(`${namespace}/validate`, [WIDGET_OPTIONS_TYPE]),
     );
     expect(changeTokenSourceType(WIDGET_OPTIONS_TYPE)).toBe(
-      Type.named(`${namespace}/change-token-source`, 'global', [WIDGET_OPTIONS_TYPE]),
+      Type.global(`${namespace}/change-token-source`, [WIDGET_OPTIONS_TYPE]),
     );
 
     // The structural composition stringifies as a generic application, not a

@@ -3,7 +3,7 @@
 // open-generic hole (`Hole` / `$`), a resolution key (`Keyed`), and a
 // type-argument witness (`Typeof`). All of them erase — zero runtime footprint.
 
-import type { NamedType } from '@rhombus-std/primitives';
+import type { NominalType } from '@rhombus-std/primitives';
 import type { Func } from '@rhombus-toolkit/func';
 
 /** True for a union, false for anything else — including `never`, which distributes to nothing. */
@@ -81,7 +81,7 @@ export type Keyed<T, K extends string> = T & { readonly [KEY]?: K; };
 // ── Typeof ────────────────────────────────────────────────────────────────────
 
 /**
- * Marks a constructor parameter that receives the {@link NamedType} of a type argument instead of a
+ * Marks a constructor parameter that receives the {@link NominalType} of a type argument instead of a
  * resolved instance of it — `Logger<T>` naming its category after `T` rather than constructing one.
  *
  * @remarks
@@ -108,4 +108,4 @@ declare const WITNESS: unique symbol;
 
 export type Typeof<T> = IsUnion<T> extends true ? never
   : [T] extends [Func<never[], unknown>] ? never
-  : NamedType & { readonly [WITNESS]?: T; };
+  : NominalType & { readonly [WITNESS]?: T; };

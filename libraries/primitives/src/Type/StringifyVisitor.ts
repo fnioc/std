@@ -1,7 +1,7 @@
 import { memo } from '../utils/map.js';
 import { escapeSegment } from './internals/grammar.js';
-import type { ArrayType, AsyncIterableType, AsyncType, CtorType, FuncType, GenericType, IntersectionType, IterableType,
-  NamedType, ObjectType, TagType, TupleType, Type, TypeLiteralType, UnionType } from './Type.js';
+import type { ArrayType, ConstructorType, FunctionType, GenericType, GlobalType, ImportedType, IntersectionType,
+  IterableType, ObjectType, TagType, TupleType, Type, TypeLiteralType, UnionType } from './Type.js';
 import { TypeVisitor } from './TypeVisitor.js';
 
 /**
@@ -24,22 +24,18 @@ class StringifyVisitor extends TypeVisitor<string, Precedence> {
   protected override visitArray(type: ArrayType): string {
     return this.#aggregate('Array', type);
   }
-  protected override visitAsync(type: AsyncType): string {
-    return this.#aggregate('Async', type);
-  }
-  protected override visitAsyncIterable(type: AsyncIterableType): string {
-    return this.#aggregate('AsyncIterable', type);
-  }
-  protected override visitCtor(type: CtorType, minimum: Precedence): string {
+  protected override visitCtor(type: ConstructorType, minimum: Precedence): string {
     return this.#parenthesize(
-      `new (${this.#list(type.args)}) => ${this.visit(type.instanceType, Precedence.arrow)}`,
+      `${this.#quantifiers(type.genericArgs)}new (${this.#list(type.args)}) => `
+        + this.visit(type.instanceType, Precedence.arrow),
       Precedence.arrow,
       minimum,
     );
   }
-  protected override visitFunc(type: FuncType, minimum: Precedence): string {
+  protected override visitFunc(type: FunctionType, minimum: Precedence): string {
     return this.#parenthesize(
-      `(${this.#list(type.args)}) => ${this.visit(type.returnType, Precedence.arrow)}`,
+      `${this.#quantifiers(type.genericArgs)}(${this.#list(type.args)}) => `
+        + this.visit(type.returnType, Precedence.arrow),
       Precedence.arrow,
       minimum,
     );
@@ -47,15 +43,19 @@ class StringifyVisitor extends TypeVisitor<string, Precedence> {
   protected override visitGeneric(type: GenericType): string {
     return `%${escapeSegment(type.label)}`;
   }
+  /** The reserved names carry their reserved meaning here, so one used as a name is escaped. */
+  protected override visitGlobal(type: GlobalType): string {
+    return escapeSegment(type.name, true) + this.#genericTypes(type.genericArgs);
+  }
+  protected override visitImported(type: ImportedType): string {
+    return `${escapeSegment(type.from)}:${escapeSegment(type.name)}${this.#genericTypes(type.genericArgs)}`;
+  }
   protected override visitIntersection(type: IntersectionType, minimum: Precedence): string {
     const members = type.members.map(member => this.visit(member, Precedence.tag));
     return this.#parenthesize(members.join(' & '), Precedence.intersection, minimum);
   }
   protected override visitIterable(type: IterableType): string {
     return this.#aggregate('Iterable', type);
-  }
-  protected override visitNamed(type: NamedType): string {
-    return this.#qualifier(type) + this.#genericTypes(type.genericArgs);
   }
   protected override visitObject(type: ObjectType): string {
     const members = Object.entries(type.members)
@@ -88,9 +88,9 @@ class StringifyVisitor extends TypeVisitor<string, Precedence> {
   #list(types: readonly Type[]): string {
     return types.map(member => this.visit(member, Precedence.arrow)).join(', ');
   }
-  #qualifier(type: NamedType): string {
-    const name = escapeSegment(type.name, type.from === 'global');
-    return type.from === 'global' ? name : `${escapeSegment(type.from)}:${name}`;
+  /** The signature's own quantifiers, written in front of it; a concrete signature has none. */
+  #quantifiers(types: readonly Type[]): string {
+    return types.length ? `<${this.#list(types)}>` : '';
   }
   #genericTypes(types: readonly Type[]): string {
     return types.length ? `<${this.#list(types)}>` : '';

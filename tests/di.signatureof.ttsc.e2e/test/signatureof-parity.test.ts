@@ -218,9 +218,9 @@ describe.skipIf(!toolchainReady)('signatureof primitive — addClass / addFactor
     // Type factories -- which is what a caller writing this without the transform
     // would reach for, since `Type.from` parses a token string and hands back the
     // whole union rather than the named type these read as.
-    expect(withInline).toContain('.addClass(Type.named(');
-    expect(withInline).toContain('.addFactory(Type.named(');
-    expect(withInline).toContain('.addValue(Type.named(');
+    expect(withInline).toContain('.addClass(Type.imported(');
+    expect(withInline).toContain('.addFactory(Type.imported(');
+    expect(withInline).toContain('.addValue(Type.imported(');
     // And the factories are reachable: a hand author importing Type needs this
     // line too, so its absence would mean the emitted file does not stand alone.
     expect(withInline).toContain(`from "@rhombus-std/primitives"`);

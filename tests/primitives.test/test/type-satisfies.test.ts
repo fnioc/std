@@ -2,11 +2,11 @@
 // never a refinement of the type it wraps: matching it takes the same tag on both sides, and
 // nothing crosses between the tagged and untagged spellings of one type.
 
-import { Type } from '@rhombus-std/primitives';
+import { Type, type UnionType } from '@rhombus-std/primitives';
 import { describe, expect, test } from 'bun:test';
 
-const A = Type.named('A', 'app');
-const B = Type.named('B', 'app');
+const A = Type.imported('A', 'app');
+const B = Type.imported('B', 'app');
 
 function satisfies(proposed: Type, condition: Type): boolean {
   return Type.satisfies(proposed, condition)[0];
@@ -32,7 +32,7 @@ describe('Type.satisfies on tags', () => {
 
   test('under a shared tag the inner types are matched by the usual rules', () => {
     expect(satisfies(Type.tag(A, 'primary'), Type.tag(B, 'primary'))).toBe(false);
-    expect(satisfies(Type.tag(A, 'primary'), Type.tag(Type.union(A, B), 'primary'))).toBe(true);
+    expect(satisfies(Type.tag(A, 'primary'), Type.tag(Type.union(A, B) as UnionType, 'primary'))).toBe(true);
   });
 
   test('a generic hole captures a tagged type whole', () => {
@@ -50,20 +50,21 @@ describe('Type.satisfies on tags', () => {
 
 describe('Type.match on tags', () => {
   test('an open tagged pattern closes over the request it matched', () => {
-    const [matched, generics] = Type.match(Type.tag(Type.named('Box', 'app', [Type.generic('T')]), 'primary'),
-      Type.tag(Type.named('Box', 'app', [A]), 'primary'));
+    const [matched, generics] = Type.match(Type.tag(Type.imported('Box', 'app', [Type.generic('T')]), 'primary'),
+      Type.tag(Type.imported('Box', 'app', [A]), 'primary'));
     expect(matched).toBe(true);
     expect(generics!.get('T')!).toBe(A);
   });
 
   test('an untagged pattern does not match a tagged subject', () => {
     expect(
-      Type.match(Type.named('Box', 'app', [Type.generic('T')]), Type.tag(Type.named('Box', 'app', [A]), 'primary'))[0],
+      Type.match(Type.imported('Box', 'app', [Type.generic('T')]),
+        Type.tag(Type.imported('Box', 'app', [A]), 'primary'))[0],
     ).toBe(false);
   });
 
   test('a tag survives the token round trip', () => {
-    const tagged = Type.tag(Type.named('Box', 'app', [A]), 'primary');
+    const tagged = Type.tag(Type.imported('Box', 'app', [A]), 'primary');
     expect(Type.stringify(tagged)).toBe('app:Box<app:A>#primary');
     expect(satisfies(Type.from(Type.stringify(tagged)), tagged)).toBe(true);
   });

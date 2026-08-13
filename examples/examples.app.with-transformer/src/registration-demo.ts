@@ -24,7 +24,7 @@
 //    overload, taking nothing.
 
 import { DefaultManifest, Type } from '@rhombus-std/di.core';
-import type { Manifest, ServiceDescriptor } from '@rhombus-std/di.core';
+import type { ImportedType, Manifest, ServiceDescriptor } from '@rhombus-std/di.core';
 import '@rhombus-std/di';
 // The type-driven MINT primitive, and the whole of what this dialect is:
 // `typefor<T>()` becomes the very `Type` a hand author composes by name. It has
@@ -213,12 +213,12 @@ function makeOrderNotifier(sink: IMessageSink, recorder?: IMetricsRecorder | IAu
 // Each one is derived from the declaration above it, so a rename moves the
 // service type with the type it names and the two can never drift apart. The
 // manual twin writes the same values out by name.
-const CLOCK_TYPE = typefor<IClock>();
-const SINK_TYPE = typefor<IMessageSink>();
+const CLOCK_TYPE = typefor<IClock>() as ImportedType;
+const SINK_TYPE = typefor<IMessageSink>() as ImportedType;
 const EMAIL_OPTIONS_TYPE = typefor<IEmailOptions>();
 const AUDIT_TYPE = typefor<IAuditLog>();
 const METRICS_TYPE = typefor<IMetricsRecorder>();
-const NOTIFIER_TYPE = typefor<IOrderNotifier>();
+const NOTIFIER_TYPE = typefor<IOrderNotifier>() as ImportedType;
 const FLAGS_TYPE = typefor<FeatureFlags>();
 
 // A KEY is a TAG ON the service type rather than a parallel lookup: `Type.tag`

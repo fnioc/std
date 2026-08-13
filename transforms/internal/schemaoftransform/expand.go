@@ -49,7 +49,7 @@ const (
 
 // expansion threads everything the walk needs, plus the abort flag it sets when a
 // member has no spelling. Binding is the resolved value-import for the runtime
-// `Type` namespace object; the walk sets its Used flag as it emits factory calls,
+// `Type` object; the walk sets its Used flag as it emits factory calls,
 // and the caller materializes the import via valueimport.Ensure afterward.
 type expansion struct {
 	checker       *shimchecker.Checker
@@ -161,11 +161,7 @@ func hasBothBooleanLiterals(types []*shimchecker.Type) bool {
 
 // booleanNode is the intrinsic `boolean` spelled as its own address.
 func booleanNode(ex *expansion) *shimast.Node {
-	f := ex.factory
-	return typeemit.Call(f, ex.binding, "named", []*shimast.Node{
-		f.NewStringLiteral("boolean", shimast.TokenFlagsNone),
-		f.NewStringLiteral("global", shimast.TokenFlagsNone),
-	})
+	return typeemit.Named(ex.factory, ex.binding, "boolean", typeemit.GlobalFrom, nil)
 }
 
 // singleFor spells one union-free type.
@@ -207,10 +203,7 @@ func singleFor(ex *expansion, t *shimchecker.Type, anchor *shimast.Node) *shimas
 	ex.failed = true
 	ex.addDiagnostic(CodeUnsupportedType, MessageUnsupportedType, anchor)
 	// A harmless placeholder; the failed flag aborts the whole tree.
-	return typeemit.Call(f, ex.binding, "named", []*shimast.Node{
-		f.NewStringLiteral("unknown", shimast.TokenFlagsNone),
-		f.NewStringLiteral("global", shimast.TokenFlagsNone),
-	})
+	return typeemit.Named(f, ex.binding, "unknown", typeemit.GlobalFrom, nil)
 }
 
 // unionMembers flattens a union into its alternatives, or yields t alone.

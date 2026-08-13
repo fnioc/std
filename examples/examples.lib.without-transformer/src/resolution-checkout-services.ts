@@ -31,32 +31,31 @@ import type { CheckoutOrder, IAuditTrail, IExchangeRates, IOrderValidator, IPaym
 // ── types ────────────────────────────────────────────────────────────────────
 
 /**
- * The Types this library registers under, hand-composed with `Type.named(...)`
- * exactly as `@rhombus-std/di.extras` derives them (`Type.named(exportedName,
- * importSpecifier)`, with a generic-wrapper argument for `Wrapper<…>`).
+ * The Types this library registers under, hand-composed with `Type.global(...)`
+ * exactly as `@rhombus-std/di.extras` derives them (`Type.imported(exportedName, * importSpecifier)`, with a generic-wrapper argument for `Wrapper<…>`).
  * Exported so the without-transformer app can resolve against the very same
  * Types; the with-transformer app never names them, because `typefor<T>()`
  * derives the identical, INTERNED object from the contract types themselves.
  */
 export const CHECKOUT_TYPES = {
   /** One element type; THREE registrations land on it (see `validators`). */
-  validator: Type.named('IOrderValidator', '@rhombus-std/examples.contracts'),
+  validator: Type.imported('IOrderValidator', '@rhombus-std/examples.contracts'),
   /** The COLLECTION request over that element type — `IOrderValidator[]` derives this. */
-  validators: Type.array(Type.named('IOrderValidator', '@rhombus-std/examples.contracts')),
+  validators: Type.array(Type.imported('IOrderValidator', '@rhombus-std/examples.contracts')),
   /** The keyed BASE. Nothing registers here bare; every gateway carries a key instead. */
-  gateway: Type.named('IPaymentGateway', '@rhombus-std/examples.contracts'),
-  receipt: Type.named('IReceipt', '@rhombus-std/examples.contracts'),
-  numbering: Type.named('IReceiptNumbering', '@rhombus-std/examples.contracts'),
+  gateway: Type.imported('IPaymentGateway', '@rhombus-std/examples.contracts'),
+  receipt: Type.imported('IReceipt', '@rhombus-std/examples.contracts'),
+  numbering: Type.imported('IReceiptNumbering', '@rhombus-std/examples.contracts'),
   /** Caller-supplied at factory-call time — deliberately never registered. */
-  order: Type.named('CheckoutOrder', '@rhombus-std/examples.contracts'),
-  audit: Type.named('IAuditTrail', '@rhombus-std/examples.contracts'),
+  order: Type.imported('CheckoutOrder', '@rhombus-std/examples.contracts'),
+  audit: Type.imported('IAuditTrail', '@rhombus-std/examples.contracts'),
   /** Registered ONLY in its promise wrapper, so the caller awaits what comes back for it. */
-  ratesPromise: Type.named('Promise', 'global', [Type.named('IExchangeRates', '@rhombus-std/examples.contracts')]),
+  ratesPromise: Type.global('Promise', [Type.imported('IExchangeRates', '@rhombus-std/examples.contracts')]),
   /** The bare rates Type — nothing registers it, so asking for it misses. */
-  rates: Type.named('IExchangeRates', '@rhombus-std/examples.contracts'),
+  rates: Type.imported('IExchangeRates', '@rhombus-std/examples.contracts'),
   /** Never registered by anyone — the deliberate miss the demos probe for. */
-  fraudScreen: Type.named('IFraudScreen', '@rhombus-std/examples.contracts'),
-  router: Type.named('IPaymentRouter', '@rhombus-std/examples.contracts'),
+  fraudScreen: Type.imported('IFraudScreen', '@rhombus-std/examples.contracts'),
+  router: Type.imported('IPaymentRouter', '@rhombus-std/examples.contracts'),
   /**
    * The spend ceiling, pinned to a Type of our own choosing rather than the
    * useless `number` the type alone would derive. `TotalWithinLimit`'s
@@ -64,7 +63,7 @@ export const CHECKOUT_TYPES = {
    * that brand is how a with-transformer author gets the identical slot without
    * hand-writing the signature.
    */
-  spendLimit: Type.named('CheckoutSpendLimitMinor', '@rhombus-std/examples.contracts'),
+  spendLimit: Type.imported('CheckoutSpendLimitMinor', '@rhombus-std/examples.contracts'),
   /**
    * di's INTRINSIC provider Type — the ONE entry in this bag that is not
    * hand-composed, because di.core exports the constant. Reach for the constant
@@ -84,7 +83,7 @@ const GATEWAY_TYPE = CHECKOUT_TYPES.gateway;
  * an ordinary service type carrying an ordinary value registration — a witness
  * has no special slot kind, because a `Type` is a value like any other.
  */
-const GATEWAY_WITNESS_TYPE = Type.named('Typeof', '@rhombus-std/di.core', [GATEWAY_TYPE]);
+const GATEWAY_WITNESS_TYPE = Type.imported('Typeof', '@rhombus-std/di.core', [GATEWAY_TYPE]);
 
 // ── validators (three registrations, ONE Type — the collection) ─────────────
 

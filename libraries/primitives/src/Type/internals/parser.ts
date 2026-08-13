@@ -1,6 +1,7 @@
-import type { CtorType, FuncType, ObjectType, Type } from '../Type.js';
-import { ctor, func, generic, intersection, literal, named, object, tag, tuple, union } from './factories.js';
-import { KEYWORD_LITERALS, SERVICE_PROVIDER_FROM } from './grammar.js';
+import type { ConstructorType, FunctionType, ObjectType, Type } from '../Type.js';
+import { ctor, func, generic, global, imported, intersection, literal, object, tag, tuple,
+  union } from './factories.js';
+import { GLOBAL_QUALIFIER, KEYWORD_LITERALS, SERVICE_PROVIDER_FROM } from './grammar.js';
 import { lex, type LexToken } from './lexer.js';
 import { TypeParseError } from './TypeParseError.js';
 
@@ -40,6 +41,9 @@ class TypeParser {
   }
 
   #type(): Type {
+    if (this.#at('<')) {
+      return this.#quantified();
+    }
     if (this.#atCtor()) {
       return this.#ctor();
     }
@@ -47,6 +51,36 @@ class TypeParser {
       return this.#function();
     }
     return this.#union();
+  }
+
+  /**
+   * A quantifier list in front of a signature — `<%T>(%T) => app:Box<%T>`. Only a signature can
+   * carry one, so anything else after the list is refused where the list was opened.
+   */
+  #quantified(): Type {
+    const opened = this.#peek()!.position;
+    const quantifiers = this.#genericTypes();
+    for (const quantifier of quantifiers) {
+      if (quantifier.kind !== 'generic') {
+        throw this.#error(opened, 'generic holes in the quantifier list');
+      }
+    }
+    if (this.#atCtor()) {
+      const signature = this.#ctor();
+      return ctor(signature.instanceType, signature.args, quantifiers);
+    }
+    if (this.#atArrow()) {
+      const signature = this.#function();
+      return func(signature.returnType, signature.args, quantifiers);
+    }
+    const reserved = this.#union();
+    if (reserved.kind === 'ctor') {
+      return ctor(reserved.instanceType, reserved.args, quantifiers);
+    }
+    if (reserved.kind === 'func') {
+      return func(reserved.returnType, reserved.args, quantifiers);
+    }
+    throw this.#error(opened, 'a signature to carry the quantifier list');
   }
 
   #union(): Type {
@@ -76,6 +110,9 @@ class TypeParser {
   #tagged(): Type {
     let type = this.#primary();
     while (this.#take('#')) {
+      if (type.kind === 'tag') {
+        throw this.#error(this.#lexed[this.#index - 1]!.position, 'no second tag — a type wears at most one');
+      }
       type = tag(type, this.#segment());
     }
     return type;
@@ -118,10 +155,13 @@ class TypeParser {
     }
   }
 
+  /** An unqualified name is a global one, as is the `global` qualifier written out. */
   #named(): Type {
     const first = this.#next();
     if (this.#take(':')) {
-      return named(this.#segment(), first.text, this.#genericTypes());
+      const name = this.#segment();
+      const genericArgs = this.#genericTypes();
+      return first.text === GLOBAL_QUALIFIER ? global(name, genericArgs) : imported(name, first.text, genericArgs);
     }
     if (!first.escaped) {
       const reserved = this.#reserved(first);
@@ -129,13 +169,13 @@ class TypeParser {
         return reserved;
       }
     }
-    return named(first.text, 'global', this.#genericTypes());
+    return global(first.text, this.#genericTypes());
   }
 
   /**
    * The readings an unescaped, unqualified name carries instead of naming a type. `string`,
    * `number` and the other value types are deliberately absent — they name types like any other.
-   * The aggregate spellings are absent too: the `named` door canonicalizes them, so parsing one
+   * The aggregate spellings are absent too: the global door canonicalizes them, so parsing one
    * as an ordinary name already lands on its kind node.
    */
   #reserved(name: LexToken): Type | undefined {
@@ -148,17 +188,17 @@ class TypeParser {
     switch (name.text) {
       case 'Func': {
         const [returnType, ...args] = this.#reservedArguments(name, 'Func<Return, ...Args>');
-        return func(returnType!, args);
+        return func(returnType!, args, []);
       }
       case 'Ctor': {
         const [instanceType, ...args] = this.#reservedArguments(name, 'Ctor<Instance, ...Args>');
-        return ctor(instanceType!, args);
+        return ctor(instanceType!, args, []);
       }
       case 'ServiceProvider': {
         if (this.#at('<')) {
           throw this.#error(this.#peek()!.position, 'no type arguments — `ServiceProvider` names the provider itself');
         }
-        return named('IServiceProvider', SERVICE_PROVIDER_FROM, []);
+        return imported('IServiceProvider', SERVICE_PROVIDER_FROM, []);
       }
       default: {
         return undefined;
@@ -248,19 +288,19 @@ class TypeParser {
     return false;
   }
 
-  #function(): FuncType {
+  #function(): FunctionType {
     this.#expect('(');
     const args = this.#typeList(')');
     this.#expect('=>');
-    return func(this.#type(), args);
+    return func(this.#type(), args, []);
   }
 
-  #ctor(): CtorType {
+  #ctor(): ConstructorType {
     this.#index++;
     this.#expect('(');
     const args = this.#typeList(')');
     this.#expect('=>');
-    return ctor(this.#type(), args);
+    return ctor(this.#type(), args, []);
   }
 
   #peek(): LexToken | undefined {
