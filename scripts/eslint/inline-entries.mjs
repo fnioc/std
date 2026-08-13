@@ -1,7 +1,7 @@
 // @ts-check
 // The JS twin of transforms/internal/inlinetransform/entries.go: resolves a
-// package.json's "rhombus-std" config (following any "@imports" chain,
-// deep-merging local keys over the imported base) and reads its "inline"
+// package.json's "rhombus-std" config (following any "extends" chain,
+// deep-merging local keys over the extended base) and reads its "inline"
 // object's "entries" publish list, validating every entry's shape. Kept
 // byte-semantically identical to the Go loader so the authoring lint and the
 // build stage agree on which entries exist and which are well-formed.
@@ -85,22 +85,22 @@ export function parseTypeRef(/** @type {string} */ token) {
   return { from: token.slice(0, i), name: token.slice(i + 1) };
 }
 
-const IMPORTS_KEY = '@imports';
+const EXTENDS_KEY = 'extends';
 
 /**
  * Returns the fully-resolved "rhombus-std" config for packageDir's
  * package.json: local keys deep-merged (deepMerge) OVER the (recursively
- * resolved) "@imports" chain — a local key wins any leaf collision against
- * the imported base, an object recurses key-by-key, and an array
- * concatenates as imported-then-local with each element left atomic (an
- * inline entry never merges field-by-field with another).
+ * resolved) "extends" chain — a local key wins any leaf collision against
+ * the extended base, an object recurses key-by-key, and an array
+ * concatenates as base-then-local with each element left atomic (an inline
+ * entry never merges field-by-field with another).
  *
  * A package.json with no "rhombus-std" key at all resolves as though it read
- * exactly {"@imports": "./rhombus-std.json"} — the one default. A
+ * exactly {"extends": "./rhombus-std.json"} — the one default. A
  * "rhombus-std" key present with ANY value, including {}, is authoritative
  * on its own; the default file never participates once the key exists.
  *
- * Resolution is BLIND: an "@imports" path that isn't a readable file
+ * Resolution is BLIND: an "extends" path that isn't a readable file
  * contributes nothing, silently, whether the directive was defaulted or
  * explicitly written. A chain may be arbitrarily long; a cycle (a path
  * already in the chain) also contributes nothing rather than looping. A
@@ -119,7 +119,7 @@ export function resolveConfig(/** @type {string} */ packageDir) {
   const root = resolve(packageDir);
   const pkgPath = join(root, 'package.json');
   const pkg = JSON.parse(readFileSync(pkgPath, 'utf8'));
-  const raw = ('rhombus-std' in pkg) ? pkg['rhombus-std'] : { [IMPORTS_KEY]: './rhombus-std.json' };
+  const raw = ('rhombus-std' in pkg) ? pkg['rhombus-std'] : { [EXTENDS_KEY]: './rhombus-std.json' };
   if (typeof raw !== 'object' || raw === null || Array.isArray(raw)) {
     throw new Error(`INLINE_ENTRY_SHAPE: ${pkgPath} "rhombus-std" must be an object`);
   }
@@ -127,47 +127,68 @@ export function resolveConfig(/** @type {string} */ packageDir) {
 }
 
 /**
- * Resolves node's "@imports" (if present) against fromFile's own directory
+ * Resolves node's "extends" (if present) against fromFile's own directory
  * and deep-merges node's remaining keys (deepMerge) over the recursively
- * resolved imported base. visited is the set of absolute paths already in
- * this chain; a path already visited contributes nothing rather than being
- * re-read, so a cycle resolves clean instead of looping.
+ * resolved extended base. "extends" is a string or an array of strings; an
+ * array applies LEFT TO RIGHT — each path's recursively resolved content
+ * deep-merges over everything accumulated from the paths before it, so a
+ * later path wins a leaf collision against an earlier one — and node's own
+ * keys merge over that whole accumulated result last, winning every
+ * collision against anything extended. visited is the set of absolute paths
+ * already in the ANCESTOR chain reaching this node; a path already in it
+ * contributes nothing rather than being re-read, so a cycle resolves clean
+ * instead of looping. Two unrelated branches (e.g. two "extends" array
+ * entries that happen to reach the same file by different routes) never
+ * falsely collide: each path resolves from the ancestor set at THIS node,
+ * never from a sibling's descendants.
  * @returns {Record<string, unknown>}
  */
 function resolveNode(/** @type {Record<string, unknown>} */ node, /** @type {string} */ fromFile,
   /** @type {Set<string>} */ visited) {
   const local = { ...node };
-  const importPath = local[IMPORTS_KEY];
-  delete local[IMPORTS_KEY];
-  if (importPath === undefined) {
+  const rawExtends = local[EXTENDS_KEY];
+  delete local[EXTENDS_KEY];
+
+  /** @type {string[]} */
+  let paths;
+  if (rawExtends === undefined) {
     return local;
-  }
-  if (typeof importPath !== 'string') {
-    throw new Error(`INLINE_ENTRY_IMPORT: ${fromFile} ${JSON.stringify(IMPORTS_KEY)} must be a string`);
+  } else if (typeof rawExtends === 'string') {
+    paths = [rawExtends];
+  } else if (Array.isArray(rawExtends) && rawExtends.every((p) => typeof p === 'string')) {
+    paths = rawExtends;
+  } else {
+    throw new Error(
+      `INLINE_ENTRY_IMPORT: ${fromFile} ${JSON.stringify(EXTENDS_KEY)} must be a string or array of strings`,
+    );
   }
 
-  const abs = resolve(dirname(fromFile), importPath);
-  if (visited.has(abs)) {
-    return local;
-  }
-  let text;
-  try {
-    text = readFileSync(abs, 'utf8');
-  } catch {
-    return local; // missing -> nothing, blind
-  }
-  let imported;
-  try {
-    imported = JSON.parse(text);
-  } catch (err) {
-    throw new Error(`INLINE_ENTRY_IMPORT: malformed ${abs}: ${err instanceof Error ? err.message : err}`);
-  }
-  if (typeof imported !== 'object' || imported === null || Array.isArray(imported)) {
-    throw new Error(`INLINE_ENTRY_IMPORT: ${abs} must resolve to an object`);
-  }
+  let accumulated = /** @type {Record<string, unknown>} */ ({});
+  for (const p of paths) {
+    const abs = resolve(dirname(fromFile), p);
+    if (visited.has(abs)) {
+      continue;
+    }
+    let text;
+    try {
+      text = readFileSync(abs, 'utf8');
+    } catch {
+      continue; // missing -> nothing, blind
+    }
+    let extended;
+    try {
+      extended = JSON.parse(text);
+    } catch (err) {
+      throw new Error(`INLINE_ENTRY_IMPORT: malformed ${abs}: ${err instanceof Error ? err.message : err}`);
+    }
+    if (typeof extended !== 'object' || extended === null || Array.isArray(extended)) {
+      throw new Error(`INLINE_ENTRY_IMPORT: ${abs} must resolve to an object`);
+    }
 
-  const base = resolveNode(imported, abs, new Set([...visited, abs]));
-  return deepMerge(base, local);
+    const resolved = resolveNode(extended, abs, new Set([...visited, abs]));
+    accumulated = deepMerge(accumulated, resolved);
+  }
+  return deepMerge(accumulated, local);
 }
 
 /**
