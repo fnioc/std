@@ -156,11 +156,11 @@ export const ok = provider.isService<IThing>();
 		t.Fatal("resolveModuleSymbol(@scope/core) returned nil — the module-resolution fallback did not anchor the transitive target")
 	}
 
-	_, inert, err := Resolve(prog, prog.Checker, newBodyExtractor(), transitiveEntry(app))
+	_, outcome, err := Resolve(prog, prog.Checker, newBodyExtractor(), transitiveEntry(app))
 	if err != nil {
 		t.Fatalf("Resolve: %v", err)
 	}
-	if inert {
-		t.Fatal("entry went inert for a transitive consumer — the transitive-witness fix regressed")
+	if outcome != OutcomeActive {
+		t.Fatalf("outcome = %v for a transitive consumer — the transitive-witness fix regressed", outcome)
 	}
 }

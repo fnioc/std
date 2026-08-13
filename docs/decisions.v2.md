@@ -198,24 +198,23 @@ ruling. _Owner-approved 2026-07-16._
 
 ## §91 — Inline-stage matching is by symbol identity, not a string key
 
-A `rhombus-std` `inline` entry's `type`+`member` pair resolves through the checker to a symbol, once per
-program: the type reference resolves to a module symbol, then to the merged member symbol that
-TypeScript's declaration merging has already unified from every `declare module` augmentation of
-the interface. Each call site independently resolves its own signature → declaration → symbol, and
-the two sides match by that resolved symbol identity — never by a string key, canonical name, or
-reconstructed token.
-
-Four canonical-string-key designs were tried and rejected before landing here. A string key has to
-be derived from some one declaration site, but the whole point of `declare module` augmentation is
-that N separately-authored declarations of "the same" member collapse onto a single symbol — a
-string reconstructed from any one of those sites can't know about the others, and drifts the moment
-an augmentation changes shape. Symbol identity is what actually exploits the collapse; a string key
-can only approximate it.
+A `rhombus-std` `inline` entry's `type`+`member` pair resolves through the checker to declaration
+sites, once per program: the type reference resolves to a module symbol, then to the exported type,
+and every type on that surface is asked for its own member of the entry's name (§159 states which
+sites those are and why the surface is walked rather than queried for a property). A call site
+matches by node identity against that set, or — when its binding falls outside it — by the marker's
+own name/shape/receiver triple. Never by a string key, canonical name, or reconstructed token.
 
 Scope stays workspace-only — never a published manifest, never a dist/JS resolution path
 (consistent with §87) — and the certified grammar is narrow: interface member (`type`+`impl`+
 `member`) and free function (`impl` only) are certified; class member and object-literal member are
 specced but flagged uncertified. Matching goes one level deep, no recursion.
+
+Four canonical-string-key designs were tried and rejected before landing here. A string key has to
+be derived from some one declaration site, but N separately-authored declarations of "the same"
+member are what `declare module` augmentation exists to produce — a string reconstructed from any
+one of those sites cannot know about the others, and drifts the moment an augmentation changes
+shape.
 
 Full schema, the authoring lint, and the tripwires (rogue-duplicate, emit sweep) live in
 `docs/features/transformer-architecture.md`; this entry records only the identity-vs-string ruling.
@@ -1712,3 +1711,32 @@ fails the whole resolution. There is no fallthrough to another member — a unio
 literal is the fallback for an ABSENT service, not for a broken one.
 
 _Owner-directed 2026-08-13._
+
+## §159 — The inline matcher anchors on the marker-named declaration, not the checker's binding
+
+A `rhombus-std` marker `inline` entry names a declaration site: package, exported type, member. That
+triple is the anchor for both call-site matching and the emit sweep.
+
+Resolving an entry walks the marker's SURFACE — the named type and every type it transitively
+extends — and asks each for its own member of that name. It never asks the named type for its
+PROPERTY of that name: a property lookup answers with one declaration set, and an interface reaching
+two same-named members through two `extends` clauses keeps one and hides the other, so the sugar
+declaration a marker names can be entirely invisible to it. A marker naming a member that exists
+nowhere on the surface is a load-time error, never a skip.
+
+Call-site matching is two-armed. The checker's binding is consulted first, because it alone says
+WHICH overload of a member the author reached. When the bound declaration falls outside every
+marker's mapped set — the shape a hidden same-named sibling produces, and the shape a call that
+binds to nothing produces — the marker decides instead: the callee name is the entry's member, the
+call's shape is one the entry's sugar body accepts, and the RECEIVER carries the marker's named
+type. The last two are what keep anchoring by marker from degrading into matching by name.
+
+The emit sweep anchors on the same triple. Its member table holds every marker member whose surface
+this program carries, not the subset that resolved to something inlineable — an entry whose sugar
+declarations are absent is precisely the case where nothing can lower, so every call to it is
+residue, and keying the table off what resolved is what made that case silent.
+
+Resolving one entry is three-way: ABSENT (the marker's package is not in this program — the entry
+contributes nothing, not even to the sweep), ACTIVE (a declaration the body serves), UNMATCHED (the
+surface is present and declares the member, but no declaration matches the body's shape — nothing
+inlines, the shape still reaches the sweep).
