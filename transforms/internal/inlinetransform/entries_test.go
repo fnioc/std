@@ -55,36 +55,11 @@ func TestEntryKindInference(t *testing.T) {
 	}
 }
 
-func TestLoadInlineEntriesComposition(t *testing.T) {
-	root := t.TempDir()
-	write(t, filepath.Join(root, "package.json"), `{
-  "name": "pkg",
-  "rhombus-std": {
-    "inline": [ { "type": "p:A", "impl": "pkg:A", "member": "m1" } ],
-    "import": "./more.json"
-  }
-}`)
-	write(t, filepath.Join(root, "more.json"), `{
-  "inline": [ { "type": "p:B", "impl": "pkg:B", "member": "m2" } ],
-  "import": ["./even-more.json"]
-}`)
-	write(t, filepath.Join(root, "even-more.json"), `{
-  "inline": [ { "impl": "pkg:tokenOf" } ]
-}`)
-
-	entries, err := LoadInlineEntries(root)
-	if err != nil {
-		t.Fatalf("LoadInlineEntries: %v", err)
-	}
-	if len(entries) != 3 {
-		t.Fatalf("got %d entries, want 3: %+v", len(entries), entries)
-	}
-	if entries[0].Member != "m1" || entries[1].Member != "m2" || entries[2].Impl != "pkg:tokenOf" {
-		t.Fatalf("unexpected entry order/content: %+v", entries)
-	}
-}
-
-func TestLoadInlineEntriesNoKey(t *testing.T) {
+// TestLoadInlineEntriesDefaultWithNoFile: a package.json with no
+// "rhombus-std" key at all resolves as though it read exactly
+// {"extends": "./rhombus-std.json"} — and since no such file exists here,
+// that resolves blindly to an empty config, silently.
+func TestLoadInlineEntriesDefaultWithNoFile(t *testing.T) {
 	root := t.TempDir()
 	write(t, filepath.Join(root, "package.json"), `{ "name": "pkg" }`)
 	entries, err := LoadInlineEntries(root)
@@ -92,7 +67,190 @@ func TestLoadInlineEntriesNoKey(t *testing.T) {
 		t.Fatalf("unexpected error: %v", err)
 	}
 	if entries != nil {
-		t.Fatalf("expected nil entries for a package with no rhombus-std marker, got %+v", entries)
+		t.Fatalf("expected nil entries for a package with no rhombus-std marker and no default file, got %+v", entries)
+	}
+}
+
+// TestResolveConfigDefaultWithFile: no "rhombus-std" key, but a sibling
+// rhombus-std.json exists — the default import loads it.
+func TestResolveConfigDefaultWithFile(t *testing.T) {
+	root := t.TempDir()
+	write(t, filepath.Join(root, "package.json"), `{ "name": "pkg" }`)
+	write(t, filepath.Join(root, "rhombus-std.json"), `{ "inline": { "entries": [ { "impl": "pkg:fromDefault" } ] } }`)
+	entries, err := LoadInlineEntries(root)
+	if err != nil {
+		t.Fatalf("LoadInlineEntries: %v", err)
+	}
+	if len(entries) != 1 || entries[0].Impl != "pkg:fromDefault" {
+		t.Fatalf("expected the default rhombus-std.json to load, got %+v", entries)
+	}
+}
+
+// TestResolveConfigEmptyKeyKillsDefault: "rhombus-std": {} is a PRESENT
+// value — the package owns its whole config, and the default file never
+// participates, even though one exists on disk.
+func TestResolveConfigEmptyKeyKillsDefault(t *testing.T) {
+	root := t.TempDir()
+	write(t, filepath.Join(root, "package.json"), `{ "name": "pkg", "rhombus-std": {} }`)
+	write(t, filepath.Join(root, "rhombus-std.json"), `{ "inline": { "entries": [ { "impl": "pkg:ignored" } ] } }`)
+	entries, err := LoadInlineEntries(root)
+	if err != nil {
+		t.Fatalf("LoadInlineEntries: %v", err)
+	}
+	if entries != nil {
+		t.Fatalf("expected the sibling rhombus-std.json to be ignored once \"rhombus-std\" is present, got %+v", entries)
+	}
+}
+
+// TestResolveConfigExplicitExtendsMissingIsSilent: an explicitly written
+// "extends" naming a file that doesn't exist resolves blindly to nothing —
+// the same silence as the defaulted case, no diagnostic.
+func TestResolveConfigExplicitExtendsMissingIsSilent(t *testing.T) {
+	root := t.TempDir()
+	write(t, filepath.Join(root, "package.json"), `{
+  "name": "pkg",
+  "rhombus-std": { "extends": "./missing.json", "inline": { "entries": [ { "impl": "pkg:local" } ] } }
+}`)
+	entries, err := LoadInlineEntries(root)
+	if err != nil {
+		t.Fatalf("LoadInlineEntries: %v", err)
+	}
+	if len(entries) != 1 || entries[0].Impl != "pkg:local" {
+		t.Fatalf("expected only the local entry, the missing extends contributing nothing, got %+v", entries)
+	}
+}
+
+// TestResolveConfigChainOfTwo: an "extends" chain two files deep resolves
+// the deepest (most-base) file's entries first, each subsequent local layer
+// appended after.
+func TestResolveConfigChainOfTwo(t *testing.T) {
+	root := t.TempDir()
+	write(t, filepath.Join(root, "package.json"), `{
+  "name": "pkg",
+  "rhombus-std": { "extends": "./a.json" }
+}`)
+	write(t, filepath.Join(root, "a.json"), `{ "extends": "./b.json", "inline": { "entries": [ { "impl": "pkg:fromA" } ] } }`)
+	write(t, filepath.Join(root, "b.json"), `{ "inline": { "entries": [ { "impl": "pkg:fromB" } ] } }`)
+	entries, err := LoadInlineEntries(root)
+	if err != nil {
+		t.Fatalf("LoadInlineEntries: %v", err)
+	}
+	if len(entries) != 2 || entries[0].Impl != "pkg:fromB" || entries[1].Impl != "pkg:fromA" {
+		t.Fatalf("expected [fromB, fromA] (base before the local layer that imported it), got %+v", entries)
+	}
+}
+
+// TestResolveConfigCycleResolvesClean: a chain that loops back to a file
+// already in the chain resolves that hop as nothing rather than looping or
+// erroring — the rest of the chain still resolves normally.
+func TestResolveConfigCycleResolvesClean(t *testing.T) {
+	root := t.TempDir()
+	write(t, filepath.Join(root, "package.json"), `{
+  "name": "pkg",
+  "rhombus-std": { "extends": "./a.json" }
+}`)
+	write(t, filepath.Join(root, "a.json"), `{ "extends": "./b.json", "inline": { "entries": [ { "impl": "pkg:fromA" } ] } }`)
+	write(t, filepath.Join(root, "b.json"), `{ "extends": "./a.json", "inline": { "entries": [ { "impl": "pkg:fromB" } ] } }`)
+	entries, err := LoadInlineEntries(root)
+	if err != nil {
+		t.Fatalf("LoadInlineEntries: %v", err)
+	}
+	if len(entries) != 2 || entries[0].Impl != "pkg:fromB" || entries[1].Impl != "pkg:fromA" {
+		t.Fatalf("expected the cycle back to a.json to resolve as nothing rather than loop, got %+v", entries)
+	}
+}
+
+// TestResolveConfigExtendsArrayLaterWinsOverEarlier: "extends" as an array
+// applies left to right — each path's resolved content deep-merges over
+// everything accumulated from the paths before it, so a later path wins a
+// leaf collision against an earlier one, and the local block (present here
+// too) wins over both.
+func TestResolveConfigExtendsArrayLaterWinsOverEarlier(t *testing.T) {
+	root := t.TempDir()
+	write(t, filepath.Join(root, "package.json"), `{
+  "name": "pkg",
+  "rhombus-std": {
+    "extends": ["./a.json", "./b.json"],
+    "fromLocal": "local"
+  }
+}`)
+	write(t, filepath.Join(root, "a.json"), `{ "shared": "from-a", "fromLocal": "should-lose-to-local" }`)
+	write(t, filepath.Join(root, "b.json"), `{ "shared": "from-b", "fromLocal": "should-also-lose-to-local" }`)
+	resolved, err := ResolveConfig(root)
+	if err != nil {
+		t.Fatalf("ResolveConfig: %v", err)
+	}
+	if resolved["shared"] != "from-b" {
+		t.Fatalf("expected the later extends entry (b) to win over the earlier one (a) on \"shared\", got %+v", resolved)
+	}
+	if resolved["fromLocal"] != "local" {
+		t.Fatalf("expected the local block to win over both extended files on \"fromLocal\", got %+v", resolved)
+	}
+}
+
+// TestResolveConfigLocalOverridesExtendedLeaf: an object nested under a
+// resolved config key merges recursively, with a local scalar leaf winning
+// over the same leaf in the imported base.
+func TestResolveConfigLocalOverridesExtendedLeaf(t *testing.T) {
+	root := t.TempDir()
+	write(t, filepath.Join(root, "package.json"), `{
+  "name": "pkg",
+  "rhombus-std": { "extends": "./base.json", "typefor": { "emit": "hoisted" } }
+}`)
+	write(t, filepath.Join(root, "base.json"), `{ "typefor": { "emit": "inline" } }`)
+	resolved, err := ResolveConfig(root)
+	if err != nil {
+		t.Fatalf("ResolveConfig: %v", err)
+	}
+	typefor, ok := resolved["typefor"].(map[string]any)
+	if !ok {
+		t.Fatalf("expected a \"typefor\" object in the resolved config, got %+v", resolved)
+	}
+	if typefor["emit"] != "hoisted" {
+		t.Fatalf("expected the local \"typefor.emit\" to win over the imported base, got %+v", typefor)
+	}
+}
+
+// TestResolveConfigEntriesConcatOrder: a single extends hop concatenates
+// the imported entries first, the local entries appended after.
+func TestResolveConfigEntriesConcatOrder(t *testing.T) {
+	root := t.TempDir()
+	write(t, filepath.Join(root, "package.json"), `{
+  "name": "pkg",
+  "rhombus-std": {
+    "extends": "./rhombus-std.json",
+    "inline": { "entries": [ { "impl": "pkg:local" } ] }
+  }
+}`)
+	write(t, filepath.Join(root, "rhombus-std.json"), `{ "inline": { "entries": [ { "impl": "pkg:imported" } ] } }`)
+	entries, err := LoadInlineEntries(root)
+	if err != nil {
+		t.Fatalf("LoadInlineEntries: %v", err)
+	}
+	if len(entries) != 2 || entries[0].Impl != "pkg:imported" || entries[1].Impl != "pkg:local" {
+		t.Fatalf("expected [imported, local] concatenation order, got %+v", entries)
+	}
+}
+
+// TestResolveConfigEntriesConcatUndeduped: the same entry text arriving via
+// both the imported base and the local block is concatenated verbatim,
+// never deduplicated.
+func TestResolveConfigEntriesConcatUndeduped(t *testing.T) {
+	root := t.TempDir()
+	write(t, filepath.Join(root, "package.json"), `{
+  "name": "pkg",
+  "rhombus-std": {
+    "extends": "./rhombus-std.json",
+    "inline": { "entries": [ { "impl": "pkg:dup" } ] }
+  }
+}`)
+	write(t, filepath.Join(root, "rhombus-std.json"), `{ "inline": { "entries": [ { "impl": "pkg:dup" } ] } }`)
+	entries, err := LoadInlineEntries(root)
+	if err != nil {
+		t.Fatalf("LoadInlineEntries: %v", err)
+	}
+	if len(entries) != 2 || entries[0].Impl != "pkg:dup" || entries[1].Impl != "pkg:dup" {
+		t.Fatalf("expected both dup entries concatenated undeduped, got %+v", entries)
 	}
 }
 
@@ -101,7 +259,7 @@ func TestLoadInlineEntriesBadShape(t *testing.T) {
 	// type+impl with no member fits no row.
 	write(t, filepath.Join(root, "package.json"), `{
   "name": "pkg",
-  "rhombus-std": { "inline": [ { "type": "p:A", "impl": "pkg:AImpl" } ] }
+  "rhombus-std": { "inline": { "entries": [ { "type": "p:A", "impl": "pkg:AImpl" } ] } }
 }`)
 	_, err := LoadInlineEntries(root)
 	if err == nil {
@@ -117,8 +275,8 @@ func TestLoadInlineEntriesUncertifiedShape(t *testing.T) {
 	// (impl+member, no type) are recognized-but-not-certified shapes: they must
 	// be rejected with the distinct INLINE_KIND_UNCERTIFIED error, never the
 	// malformed-shape error.
-	ownBody := `{ "name": "pkg", "rhombus-std": { "inline": [ { "type": "p:A", "member": "m" } ] } }`
-	static := `{ "name": "pkg", "rhombus-std": { "inline": [ { "impl": "pkg:AImpl", "member": "m" } ] } }`
+	ownBody := `{ "name": "pkg", "rhombus-std": { "inline": { "entries": [ { "type": "p:A", "member": "m" } ] } } }`
+	static := `{ "name": "pkg", "rhombus-std": { "inline": { "entries": [ { "impl": "pkg:AImpl", "member": "m" } ] } } }`
 	for name, body := range map[string]string{"own-body member": ownBody, "static member": static} {
 		t.Run(name, func(t *testing.T) {
 			root := t.TempDir()
@@ -139,10 +297,10 @@ func TestLoadInlineEntriesCertifiedShapes(t *testing.T) {
 	root := t.TempDir()
 	write(t, filepath.Join(root, "package.json"), `{
   "name": "pkg",
-  "rhombus-std": { "inline": [
+  "rhombus-std": { "inline": { "entries": [
     { "type": "p:A", "impl": "pkg:AImpl", "member": "m" },
     { "impl": "pkg:freeFn" }
-  ] }
+  ] } }
 }`)
 	entries, err := LoadInlineEntries(root)
 	if err != nil {
@@ -162,7 +320,7 @@ func TestLoadInlineEntriesImplMustSelfReference(t *testing.T) {
 	root := t.TempDir()
 	write(t, filepath.Join(root, "package.json"), `{
   "name": "pkg",
-  "rhombus-std": { "inline": [ { "impl": "@other/pkg:tokenOf" } ] }
+  "rhombus-std": { "inline": { "entries": [ { "impl": "@other/pkg:tokenOf" } ] } }
 }`)
 	_, err := LoadInlineEntries(root)
 	if err == nil {
@@ -173,38 +331,15 @@ func TestLoadInlineEntriesImplMustSelfReference(t *testing.T) {
 	}
 }
 
-func TestLoadInlineEntriesImportCycle(t *testing.T) {
-	root := t.TempDir()
-	write(t, filepath.Join(root, "package.json"), `{
-  "name": "pkg",
-  "rhombus-std": { "inline": [], "import": "./a.json" }
-}`)
-	write(t, filepath.Join(root, "a.json"), `{ "inline": [], "import": "./b.json" }`)
-	write(t, filepath.Join(root, "b.json"), `{ "inline": [], "import": "./a.json" }`)
-	if _, err := LoadInlineEntries(root); err == nil {
-		t.Fatal("expected INLINE_ENTRY_IMPORT_CYCLE error")
-	}
-}
-
-func TestLoadInlineEntriesImportEscape(t *testing.T) {
-	root := t.TempDir()
-	write(t, filepath.Join(root, "package.json"), `{
-  "name": "pkg",
-  "rhombus-std": { "inline": [], "import": "../escape.json" }
-}`)
-	if _, err := LoadInlineEntries(root); err == nil {
-		t.Fatal("expected INLINE_ENTRY_IMPORT_ESCAPE error")
-	}
-}
-
-// TestLoadInlineEntriesMalformedImportJSON: a syntactically-broken imported file
-// is a loud INLINE_ENTRY_IMPORT error (not a bare JSON parse error). The JS twin
+// TestLoadInlineEntriesMalformedExtendedJSON: a syntactically-broken file
+// reached through "extends" is a loud INLINE_ENTRY_IMPORT error (not a bare
+// JSON parse error) — blindness covers absence, not corruption. The JS twin
 // (inline-entries.mjs) is aligned to wrap parse failures the same way.
-func TestLoadInlineEntriesMalformedImportJSON(t *testing.T) {
+func TestLoadInlineEntriesMalformedExtendedJSON(t *testing.T) {
 	root := t.TempDir()
 	write(t, filepath.Join(root, "package.json"), `{
   "name": "pkg",
-  "rhombus-std": { "inline": [], "import": "./bad.json" }
+  "rhombus-std": { "extends": "./bad.json" }
 }`)
 	write(t, filepath.Join(root, "bad.json"), `{ "inline": [ this is not json `)
 	_, err := LoadInlineEntries(root)
@@ -216,44 +351,19 @@ func TestLoadInlineEntriesMalformedImportJSON(t *testing.T) {
 	}
 }
 
-// TestLoadInlineEntriesNonStringImport: an import value that is neither a string
-// nor an array of strings is INLINE_ENTRY_IMPORT.
-func TestLoadInlineEntriesNonStringImport(t *testing.T) {
+// TestLoadInlineEntriesNonStringExtends: an "extends" value that isn't a
+// string is INLINE_ENTRY_IMPORT.
+func TestLoadInlineEntriesNonStringExtends(t *testing.T) {
 	root := t.TempDir()
 	write(t, filepath.Join(root, "package.json"), `{
   "name": "pkg",
-  "rhombus-std": { "inline": [], "import": 42 }
+  "rhombus-std": { "extends": 42 }
 }`)
 	_, err := LoadInlineEntries(root)
 	if err == nil {
-		t.Fatal("expected INLINE_ENTRY_IMPORT error for a non-string/array import")
+		t.Fatal("expected INLINE_ENTRY_IMPORT error for a non-string extends")
 	}
 	if !strings.Contains(err.Error(), "INLINE_ENTRY_IMPORT") {
 		t.Fatalf("want INLINE_ENTRY_IMPORT, got %v", err)
-	}
-}
-
-// TestLoadInlineEntriesDuplicateAcrossImports pins the chosen behavior for the
-// same entry arriving via two imports: the loader CONCATENATES undeduped (both
-// copies are returned). Deduplication, where it matters, happens later at the
-// decl-map level (one node → one target, benign last-wins). The JS twin returns
-// the same undeduped concatenation.
-func TestLoadInlineEntriesDuplicateAcrossImports(t *testing.T) {
-	root := t.TempDir()
-	write(t, filepath.Join(root, "package.json"), `{
-  "name": "pkg",
-  "rhombus-std": { "inline": [], "import": ["./a.json", "./b.json"] }
-}`)
-	write(t, filepath.Join(root, "a.json"), `{ "inline": [ { "impl": "pkg:dup" } ] }`)
-	write(t, filepath.Join(root, "b.json"), `{ "inline": [ { "impl": "pkg:dup" } ] }`)
-	entries, err := LoadInlineEntries(root)
-	if err != nil {
-		t.Fatalf("LoadInlineEntries: %v", err)
-	}
-	if len(entries) != 2 {
-		t.Fatalf("duplicate entries across two imports should be concatenated undeduped (2), got %d: %+v", len(entries), entries)
-	}
-	if entries[0].Impl != "pkg:dup" || entries[1].Impl != "pkg:dup" {
-		t.Fatalf("both entries should be impl=pkg:dup, got %+v", entries)
 	}
 }

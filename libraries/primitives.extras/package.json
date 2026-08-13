@@ -16,14 +16,6 @@
     "directory": "libraries/primitives.extras"
   },
   "type": "module",
-  "//rhombus-std": "The registerAugmentations<R>() sugar's inline publish list. A floater entry: impl is a fully-qualified reference to the exported function in THIS package, and its own single-return body — over the aliased @rhombus-std/primitives runtime function it calls — is what the inline stage substitutes at a consumer call site, with the runtime import carried across from this file.",
-  "rhombus-std": {
-    "inline": [
-      {
-        "impl": "@rhombus-std/primitives.extras:registerAugmentations"
-      }
-    ]
-  },
   "dependencies": {
     "@rhombus-std/primitives": "workspace:^",
     "@rhombus-toolkit/func": "^3.5.3"
@@ -47,7 +39,8 @@
   },
   "files": [
     "dist",
-    "ttsc.mjs"
+    "ttsc.mjs",
+    "rhombus-std.json"
   ],
   "scripts": {
     "build": "bun ../../scripts/build-lib.ts",

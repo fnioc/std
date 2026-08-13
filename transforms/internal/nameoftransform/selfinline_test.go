@@ -37,12 +37,14 @@ func buildSelfInlineWorkspace(t *testing.T, mainSrc string) (*driver.Program, st
   "version": "1.0.0",
   "exports": { ".": { "types": "./src/index.ts", "default": "./src/index.ts" } },
   "rhombus-std": {
-    "inline": [
-      { "type": "@rhombus-std/di.core:IServiceManifestBase", "impl": "@rhombus-std/di.core:ManifestSelfInline", "member": "addClass" },
-      { "type": "@rhombus-std/di.core:IServiceManifestBase", "impl": "@rhombus-std/di.core:ManifestSelfInline", "member": "addFactory" },
-      { "type": "@rhombus-std/di.core:IServiceManifestBase", "impl": "@rhombus-std/di.core:ManifestSelfInline", "member": "addValue" },
-      { "type": "@rhombus-std/di.core:IServiceManifestBase", "impl": "@rhombus-std/di.core:ManifestInline", "member": "addClass" }
-    ]
+    "inline": {
+      "entries": [
+        { "type": "@rhombus-std/di.core:IServiceManifestBase", "impl": "@rhombus-std/di.core:ManifestSelfInline", "member": "addClass" },
+        { "type": "@rhombus-std/di.core:IServiceManifestBase", "impl": "@rhombus-std/di.core:ManifestSelfInline", "member": "addFactory" },
+        { "type": "@rhombus-std/di.core:IServiceManifestBase", "impl": "@rhombus-std/di.core:ManifestSelfInline", "member": "addValue" },
+        { "type": "@rhombus-std/di.core:IServiceManifestBase", "impl": "@rhombus-std/di.core:ManifestInline", "member": "addClass" }
+      ]
+    }
   }
 }`)
 	writeFile(t, filepath.Join(core, "src", "index.ts"), `export interface IServiceManifestBase {

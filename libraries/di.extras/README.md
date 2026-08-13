@@ -40,7 +40,7 @@ manifest.addClass(typefor<IGreeter>(), ConsoleGreeter, [[]]);
 | `ManifestServiceAugmentations`        | The tokenless bodies for `add`, `addClass`, `addFactory`, and `addValue`.                                                                        |
 | `ServiceProviderServiceAugmentations` | The tokenless body backing `getService`/`getRequiredService`/`getServices` on `IServiceProvider`.                                                |
 
-These three augmentation sets aren't meant to be called directly — they're what the transform's marker roster (`package.json`'s `"rhombus-std": { "inline": [...] }`) points at as each tokenless verb's source body.
+These three augmentation sets aren't meant to be called directly — they're what the transform's marker roster (`package.json`'s `"rhombus-std": { "inline": { "entries": [...] } }`) points at as each tokenless verb's source body.
 
 ## How it fits
 

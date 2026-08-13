@@ -35,10 +35,12 @@ func buildChainWorkspace(t *testing.T, mainSrc string) (*driver.Program, string)
   "version": "1.0.0",
   "exports": { ".": { "types": "./src/index.ts", "default": "./src/index.ts" } },
   "rhombus-std": {
-    "inline": [
-      { "type": "@rhombus-std/di.core:IServiceManifestBase", "impl": "@rhombus-std/di.core:ChainInline", "member": "addClass" },
-      { "type": "@rhombus-std/di.core:IWithSignatureBuilder", "impl": "@rhombus-std/di.core:ChainInline", "member": "withSignature" }
-    ]
+    "inline": {
+      "entries": [
+        { "type": "@rhombus-std/di.core:IServiceManifestBase", "impl": "@rhombus-std/di.core:ChainInline", "member": "addClass" },
+        { "type": "@rhombus-std/di.core:IWithSignatureBuilder", "impl": "@rhombus-std/di.core:ChainInline", "member": "withSignature" }
+      ]
+    }
   }
 }`)
 	writeFile(t, filepath.Join(core, "src", "index.ts"), `export interface IWithSignatureBuilder {

@@ -22,7 +22,7 @@ func TestCollectOwnEntries(t *testing.T) {
 	app := filepath.Join(root, "packages", "app")
 	write(t, filepath.Join(app, "package.json"), `{
   "name": "@scope/app",
-  "rhombus-std": { "inline": [ { "impl": "@scope/app:own" } ] }
+  "rhombus-std": { "inline": { "entries": [ { "impl": "@scope/app:own" } ] } }
 }`)
 
 	owned, err := Collect(app)
@@ -49,12 +49,12 @@ func TestCollectCyclicDeps(t *testing.T) {
 	write(t, filepath.Join(root, "packages", "a", "package.json"), `{
   "name": "@scope/a",
   "dependencies": { "@scope/b": "workspace:*" },
-  "rhombus-std": { "inline": [ { "impl": "@scope/a:a" } ] }
+  "rhombus-std": { "inline": { "entries": [ { "impl": "@scope/a:a" } ] } }
 }`)
 	write(t, filepath.Join(root, "packages", "b", "package.json"), `{
   "name": "@scope/b",
   "dependencies": { "@scope/a": "workspace:*" },
-  "rhombus-std": { "inline": [ { "impl": "@scope/b:b" } ] }
+  "rhombus-std": { "inline": { "entries": [ { "impl": "@scope/b:b" } ] } }
 }`)
 
 	owned, err := Collect(filepath.Join(root, "packages", "a"))
@@ -83,11 +83,11 @@ func TestCollectPeerAndDevDeps(t *testing.T) {
 }`)
 	write(t, filepath.Join(root, "packages", "peer", "package.json"), `{
   "name": "@scope/peer",
-  "rhombus-std": { "inline": [ { "impl": "@scope/peer:peer" } ] }
+  "rhombus-std": { "inline": { "entries": [ { "impl": "@scope/peer:peer" } ] } }
 }`)
 	write(t, filepath.Join(root, "packages", "dev", "package.json"), `{
   "name": "@scope/dev",
-  "rhombus-std": { "inline": [ { "impl": "@scope/dev:dev" } ] }
+  "rhombus-std": { "inline": { "entries": [ { "impl": "@scope/dev:dev" } ] } }
 }`)
 
 	owned, err := Collect(filepath.Join(root, "packages", "app"))
@@ -124,11 +124,11 @@ func TestCollectProjectBodiesRootOnlyDevDeps(t *testing.T) {
 	write(t, filepath.Join(root, "packages", "roottf", "package.json"), `{
   "name": "@scope/roottf",
   "dependencies": { "@scope/deptf": "workspace:*" },
-  "rhombus-std": { "inline": [ { "impl": "@scope/roottf:roottf" } ] }
+  "rhombus-std": { "inline": { "entries": [ { "impl": "@scope/roottf:roottf" } ] } }
 }`)
 	write(t, filepath.Join(root, "packages", "deptf", "package.json"), `{
   "name": "@scope/deptf",
-  "rhombus-std": { "inline": [ { "impl": "@scope/deptf:deptf" } ] }
+  "rhombus-std": { "inline": { "entries": [ { "impl": "@scope/deptf:deptf" } ] } }
 }`)
 	// core: no bodies, but devDeps an authoring package whose bodies must NOT leak —
 	// the core is not the root, so its devDeps are its own build tooling.
@@ -138,7 +138,7 @@ func TestCollectProjectBodiesRootOnlyDevDeps(t *testing.T) {
 }`)
 	write(t, filepath.Join(root, "packages", "leaktf", "package.json"), `{
   "name": "@scope/leaktf",
-  "rhombus-std": { "inline": [ { "impl": "@scope/leaktf:leaktf" } ] }
+  "rhombus-std": { "inline": { "entries": [ { "impl": "@scope/leaktf:leaktf" } ] } }
 }`)
 
 	scan, err := CollectProject(filepath.Join(root, "packages", "app"))
@@ -183,7 +183,7 @@ func TestCollectProjectNoPackageJsonDegradesToEmpty(t *testing.T) {
 }`)
 	write(t, filepath.Join(root, "packages", "tf", "package.json"), `{
   "name": "@scope/tf",
-  "rhombus-std": { "inline": [ { "impl": "@scope/tf:tf" } ] }
+  "rhombus-std": { "inline": { "entries": [ { "impl": "@scope/tf:tf" } ] } }
 }`)
 	ws, err := CollectProject(filepath.Join(root, "packages", "app"))
 	if err != nil {
@@ -208,7 +208,7 @@ func TestWorkspaceObjectForm(t *testing.T) {
 }`)
 	write(t, filepath.Join(root, "packages", "lib", "package.json"), `{
   "name": "@scope/lib",
-  "rhombus-std": { "inline": [ { "impl": "@scope/lib:lib" } ] }
+  "rhombus-std": { "inline": { "entries": [ { "impl": "@scope/lib:lib" } ] } }
 }`)
 
 	owned, err := Collect(filepath.Join(root, "packages", "app"))

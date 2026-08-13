@@ -149,7 +149,7 @@ func setupOverloadedFunctionWorkspace(t *testing.T) (*driver.Program, string) {
   "name": "@scope/prims",
   "version": "1.0.0",
   "exports": { ".": { "types": "./src/index.ts", "default": "./src/index.ts" } },
-  "rhombus-std": { "inline": [ { "impl": "@scope/prims:identity" } ] }
+  "rhombus-std": { "inline": { "entries": [ { "impl": "@scope/prims:identity" } ] } }
 }`)
 	write(t, filepath.Join(prims, "src", "index.ts"), `export function identity<T>(value: T): T;
 export function identity<T>(value: T): T {
@@ -225,7 +225,7 @@ func setupFunctionWorkspace(t *testing.T, importsPrims bool) (*driver.Program, s
   "version": "1.0.0",
   "exports": { ".": { "types": "./src/index.ts", "default": "./src/index.ts" } },
   "rhombus-std": {
-    "inline": [ { "impl": "@scope/prims:identity" } ]
+    "inline": { "entries": [ { "impl": "@scope/prims:identity" } ] }
   }
 }`)
 	write(t, filepath.Join(prims, "src", "index.ts"), `export function identity<T>(value: T): T {
