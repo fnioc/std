@@ -240,15 +240,15 @@ one that understood `IOptions<T>`, one that understood config schemas — each h
 family's authoring sugar as compiler-plugin logic. All three are gone. In their place:
 
 - **One small set of domain-agnostic primitives**, each doing one mechanical thing over the
-  checker (derive a token from a type, derive a dependency-signature array from a constructor,
-  derive a literal value from a literal type, derive a JSON-schema literal from a record type
-  shape). None of them knows what `di` or `config` or "a registration" means.
+  checker (address a type, derive a dependency-signature array from a constructor, derive a
+  literal value from a literal type, expand a record type into the `Type` tree describing its
+  members). None of them knows what `di` or `config` or "a registration" means.
 - **Shipped TypeScript sugar bodies** — ordinary, typed, single-return-expression functions,
   authored in each family's own `*.extras` package — that compose those primitives the same way a
-  by-hand author would. `addClass<T>(ctor)` isn't a Go rule any more; it's a TypeScript function
-  whose body is `this.addClass(tokenfor<T>(), ctor, signatureof(ctor))`, and the generic **inline
-  stage** substitutes that body's return expression at your call site before the primitive stages
-  ever see it.
+  by-hand author would. `addClass<T>(...)` isn't a Go rule any more; it's a TypeScript method whose
+  body is `(this as any).addClass(typefor<T>(), ...rest)`, and the generic **inline stage**
+  substitutes that body's return expression at your call site before the primitive stages ever see
+  it.
 
 This split is a hard rule, not a style preference: **no domain name may appear in Go transform
 source.** There is no `if calleeName == "addClass"` and no hardcoded `"@rhombus-std/di.core:..."`
@@ -288,6 +288,8 @@ module's actual name instead.
 | `tokenfor(value)`         | value-arg | the _produced_ token for a value — constructable → construct-sig return, callable → call-sig return, else the value's own type | `tokenfor(Foo)` (`class Foo {}`)                             | `"pkg:Foo"`                                                                                      | `primitives.extras` | `nameof`      |
 | `tokenof<T>()`            | type-arg  | the _raw_ token for `T` — never strips a `Keyed<T,K>` brand                                                                    | `tokenof<UserOptions>()`                                     | `"pkg:UserOptions"`                                                                              | `primitives.extras` | `nameof`      |
 | `tokenof(value)`          | value-arg | the raw token for a value's _own_ type — never unwraps a constructor/factory                                                   | `tokenof(makeThing)` (`declare function makeThing(): Thing`) | `"pkg:makeThing"`                                                                                | `primitives.extras` | `nameof`      |
+| `typefor<T>()`            | type-arg  | the runtime `Type` node addressing `T` — the structural sibling of `tokenfor`'s flat string                                    | `typefor<IBar>()`                                            | `Type.named("IBar", "pkg")`                                                                      | `primitives.extras` | `typefor`     |
+| `typefor(value)`          | value-arg | the `Type` node a value's own shape spells — a class as the constructor it is, parameters and all                              | `typefor(Foo)` (`class Foo { constructor(a: IA) {} }`)       | `Type.ctor(Type.named("Foo", "pkg"), Type.named("IA", "pkg"))`                                   | `primitives.extras` | `typefor`     |
 | `signatureof(ctor \| fn)` | value-arg | the `[[...]]` dependency-signature array for a constructor or function value                                                   | `signatureof(Ctor)` (`Ctor: new (d: IDep) => IThing`)        | `[["pkg:IDep"]]`                                                                                 | `di.extras`         | `signatureof` |
 | `schemaof<T>()`           | type-arg  | the `Type` tree describing a record type `T`'s members, stopping at every name                                                 | `schemaof<{ ssl?: boolean }>()`                              | `Type.object({ ssl: Type.union(Type.named("boolean", "global"), Type.typeLiteral(undefined)) })` | `config.extras`     | `schemaof`    |
 
