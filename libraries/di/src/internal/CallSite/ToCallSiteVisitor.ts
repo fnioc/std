@@ -74,6 +74,7 @@ export class ToCallSiteVisitor extends TypeVisitor<CallSite | undefined> {
     return CallSite.asyncIterable(this.#collection(type.element));
   }
 
+  /** Parked: composing one from its parameter types on a miss awaits its design ruling. */
   protected override visitCtor(_type: CtorType): CallSite | undefined {
     return undefined;
   }
@@ -101,6 +102,7 @@ export class ToCallSiteVisitor extends TypeVisitor<CallSite | undefined> {
     return isServiceProviderType(type) ? CallSite.serviceProvider() : undefined;
   }
 
+  /** Parked: composing one from its property types on a miss awaits its design ruling. */
   protected override visitObject(_type: ObjectType): CallSite | undefined {
     return undefined;
   }

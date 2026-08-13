@@ -64,11 +64,11 @@ func Sweep(sf *shimast.SourceFile, artifacts *Artifacts) []plugin.Diagnostic {
 		typeArgs, valueArgs := callArity(call)
 
 		// (2) surviving member sugar: a property-access call whose name is a
-		// certified member and whose (type-arg, value-arg) shape equals the sugar.
+		// certified member and whose (type-arg, value-arg) counts are consistent
+		// with the sugar's shape.
 		if call.Expression.Kind == shimast.KindPropertyAccessExpression {
 			name := call.Expression.AsPropertyAccessExpression().Name().Text()
-			if shape, ok := artifacts.SugarMembers[name]; ok &&
-				typeArgs == shape.TypeArgCount && valueArgs == shape.ValueArgCount {
+			if shape, ok := artifacts.SugarMembers[name]; ok && sugarShapeMatches(shape, typeArgs, valueArgs) {
 				diags = append(diags, sweepDiag("INLINE_UNLOWERED_SUGAR", n,
 					fmt.Sprintf("member sugar %q survived lowering", name)))
 			}
@@ -95,6 +95,31 @@ func Sweep(sf *shimast.SourceFile, artifacts *Artifacts) []plugin.Diagnostic {
 		return false
 	})
 	return diags
+}
+
+// sugarShapeMatches reports whether a call's (type-arg, value-arg) counts are
+// consistent with a certified member-sugar shape. Type-argument count stays an
+// EXACT match on both branches: it is what separates a surviving sugar call
+// from the stage's own substitution output. A rest-parameter body's own
+// splice (`this.addClass(typefor<T>(), ...rest)`) lowers to a call on the
+// SAME member name carrying ZERO type arguments — the explicit one was
+// consumed turning `typefor<T>()` into a token argument — so a correctly
+// lowered call is syntactically identical to an ordinary token-taking call at
+// that arity, and the sweep must not mistake it for residue. (A sugar call
+// that omits its own explicit type argument and relies on inference is, for
+// the same reason, indistinguishable from lowered output here and is a
+// deliberate blind spot — the sweep only catches an unlowered call that still
+// spells its type argument.)
+//
+// Value-arity is what a rest-parameter body relaxes: it forwards whatever
+// follows its leading parameters verbatim, so it matches ANY value-arg count
+// at or above the leading count (ValueArgCount includes the rest slot itself,
+// hence the -1). A body with no rest parameter matches only its exact counts.
+func sugarShapeMatches(shape MemberShape, typeArgs, valueArgs int) bool {
+	if !shape.HasRest {
+		return typeArgs == shape.TypeArgCount && valueArgs == shape.ValueArgCount
+	}
+	return typeArgs == shape.TypeArgCount && valueArgs >= shape.ValueArgCount-1
 }
 
 // callArity returns a call's type-argument and value-argument counts.
