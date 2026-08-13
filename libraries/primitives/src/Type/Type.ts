@@ -201,7 +201,8 @@ export namespace Type {
 
   /**
    * A type referenced by export name and home — parallel to `import { name } from '…'`, with
-   * `'global'` naming the built-ins. Generic arguments name the constructed type `Name<Args>`.
+   * `'global'` naming the built-ins. Generic arguments name the constructed type `Name<Args>`;
+   * leave one open with {@link placeholder} to describe the generic type itself.
    */
   export function named(name: string, from: string = 'global', genericTypes: readonly Type[] = []): NamedType {
     return factory.named(name, from, genericTypes);
@@ -218,8 +219,8 @@ export namespace Type {
   }
 
   /**
-   * A labeled hole standing for a type bound later — an open registration ranges over it, and
-   * {@link substitute} or a successful {@link match} fills it.
+   * An open generic argument — a labeled hole standing for a type bound later. An open
+   * registration ranges over it, and {@link substitute} or a successful {@link match} fills it.
    */
   export function placeholder(label: string): PlaceholderType {
     return factory.placeholder(label);
