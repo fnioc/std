@@ -266,23 +266,18 @@ function namesAConstructor(implType: Type): boolean {
  * @throws Error - when the type describes nothing callable.
  */
 function* callSignatures(implType: Type): Generator<readonly Type[]> {
-  switch (implType.kind) {
-    case 'ctor':
-    case 'func': {
-      yield implType.args;
-      return;
-    }
-    case 'intersection': {
-      for (const member of implType.members) {
-        yield* callSignatures(member);
-      }
-      return;
-    }
-    default: {
-      throw new Error(
-        `${Type.stringify(implType)} describes nothing callable; withType takes a constructor or `
-          + 'function type, or an intersection of them for an overloaded implementation.',
-      );
-    }
+  if (implType.kind === 'ctor' || implType.kind === 'func') {
+    yield implType.args;
+    return;
   }
+  if (implType.kind === 'intersection') {
+    for (const member of implType.members) {
+      yield* callSignatures(member);
+    }
+    return;
+  }
+  throw new Error(
+    `${Type.stringify(implType)} describes nothing callable; withType takes a constructor or `
+      + 'function type, or an intersection of them for an overloaded implementation.',
+  );
 }
