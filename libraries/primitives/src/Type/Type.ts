@@ -1,3 +1,4 @@
+import { getOrCreate } from '../utils/map.js';
 import { expandUnionsVisitor } from './ExpandUnionsVisitor.js';
 import * as factory from './internals/factories.js';
 import { parseType } from './internals/parser.js';
@@ -137,13 +138,7 @@ export namespace Type {
     const parsed = new Map<string, Type>();
 
     return function from(token: string): Type {
-      const read = parsed.get(token);
-      if (read !== undefined) {
-        return read;
-      }
-      const type = parseType(token);
-      parsed.set(token, type);
-      return type;
+      return getOrCreate(parsed, token, parseType);
     };
   })();
 
