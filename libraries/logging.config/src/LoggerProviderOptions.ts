@@ -27,12 +27,12 @@ export const LoggerProviderOptions = {
    * Indicates that settings for the provider `TProvider` should be loaded
    * into the `TOptions` type: appends a provider-bound configure step and
    * change-token source to `optionsType`'s pipeline slots. Requires the
-   * provider-configuration services (the no-arg `addConfig`) and an
-   * `addOptions(optionsType, …)` assembly registration for the type.
+   * provider-configuration services (the no-arg `addConfig`) and a prior
+   * `addOptions(optionsType, …)` for the type.
    *
    * @param services The registration builder to register on.
-   * @param optionsType The `IOptions<TOptions>` type the steps attach to —
-   * the same type the `addOptions`/`configure` pipeline uses.
+   * @param optionsType The BARE `TOptions` type the steps attach to — the same
+   * type the `addOptions`/`configure` pipeline uses.
    * @param providerType The provider type. A type token naming it is read
    * into one.
    * @returns The manifest carrying both registrations. The chain is immutable,

@@ -26,4 +26,5 @@ export { LoggerFactory } from './LoggerFactory';
 export { LoggerFilterOptions, LoggerFilterRule } from './LoggerFilterOptions';
 export { LoggingBuilder } from './LoggingBuilder';
 export { NullLogger, NullLoggerFactory, NullLoggerProvider } from './null-logger';
-export { LOGGER_FACTORY_TYPE, LOGGER_FILTER_OPTIONS_TYPE, LOGGER_PROVIDER_TYPE } from './types';
+export { LOGGER_FACTORY_TYPE, LOGGER_FILTER_OPTIONS_ACCESSOR_TYPE, LOGGER_FILTER_OPTIONS_TYPE,
+  LOGGER_PROVIDER_TYPE } from './types';

@@ -8,7 +8,7 @@ import { ConfigBuilder, type IConfigRoot } from '@rhombus-std/config';
 import '@rhombus-std/di';
 import { DefaultManifest, type Manifest, Type } from '@rhombus-std/di.core';
 import type { IOptions } from '@rhombus-std/options';
-import { changeTokenSourceType, ConfigChangeTokenSource, configureStepType, postConfigureStepType,
+import { changeTokenSourceType, ConfigChangeTokenSource, configureStepType, optionsAddressType, postConfigureStepType,
   validateStepType } from '@rhombus-std/options.augmentations';
 import { describe, expect, test } from 'bun:test';
 
@@ -55,8 +55,8 @@ describe('the public slot-type grammar', () => {
     } });
     services = services.addValue(changeTokenSourceType(WIDGET_OPTIONS_TYPE), new ConfigChangeTokenSource(config));
 
-    const provider = services.build().createScope('singleton');
-    const options: IOptions<WidgetOptions> = provider.getRequiredService(WIDGET_OPTIONS_TYPE);
+    const provider = services.build();
+    const options: IOptions<WidgetOptions> = provider.getRequiredService(optionsAddressType(WIDGET_OPTIONS_TYPE));
     expect(options.value).toEqual({ Url: 'http://first' });
 
     const seen: WidgetOptions[] = [];

@@ -8,7 +8,7 @@
 import '@rhombus-std/di';
 import { DefaultManifest, type Manifest, Type } from '@rhombus-std/di.core';
 import { type IOptions, OptionsValidationError } from '@rhombus-std/options';
-import '@rhombus-std/options.augmentations';
+import { optionsAddressType } from '@rhombus-std/options.augmentations';
 import { describe, expect, test } from 'bun:test';
 
 interface WidgetOptions {
@@ -41,8 +41,8 @@ describe('configure — DI-injected', () => {
         options.url = urls.base;
       });
 
-    const provider = services.build().createScope('singleton');
-    const options: IOptions<WidgetOptions> = provider.getRequiredService(Type.from(OPTIONS_TOKEN));
+    const provider = services.build();
+    const options: IOptions<WidgetOptions> = provider.getRequiredService(optionsAddressType(Type.from(OPTIONS_TOKEN)));
 
     expect(options.value.url).toBe('http://svc');
   });
@@ -61,8 +61,8 @@ describe('configure — DI-injected', () => {
       options.retries = policy.attempts;
     });
 
-    const provider = services.build().createScope('singleton');
-    const options: IOptions<WidgetOptions> = provider.getRequiredService(Type.from(OPTIONS_TOKEN));
+    const provider = services.build();
+    const options: IOptions<WidgetOptions> = provider.getRequiredService(optionsAddressType(Type.from(OPTIONS_TOKEN)));
 
     expect(options.value).toEqual({ url: 'http://svc', retries: 4, note: '' });
   });
@@ -80,8 +80,8 @@ describe('configure — DI-injected', () => {
         options.url = urls.base;
       });
 
-    const provider = services.build().createScope('singleton');
-    const options: IOptions<WidgetOptions> = provider.getRequiredService(Type.from(OPTIONS_TOKEN));
+    const provider = services.build();
+    const options: IOptions<WidgetOptions> = provider.getRequiredService(optionsAddressType(Type.from(OPTIONS_TOKEN)));
 
     expect(options.value.url).toBe('http://svc');
     expect(options.value.note).toBe('plain');
@@ -101,8 +101,8 @@ describe('postConfigure — DI-injected', () => {
         options.note += suffix.text;
       });
 
-    const provider = services.build().createScope('singleton');
-    const options: IOptions<WidgetOptions> = provider.getRequiredService(Type.from(OPTIONS_TOKEN));
+    const provider = services.build();
+    const options: IOptions<WidgetOptions> = provider.getRequiredService(optionsAddressType(Type.from(OPTIONS_TOKEN)));
 
     expect(options.value.note).toBe('base!');
   });
@@ -123,10 +123,12 @@ describe('validate — DI-injected', () => {
     services = services.validate<WidgetOptions, [{ max: number; }]>(OPTIONS_TOKEN, [LIMIT_TOKEN],
       (options, limit) => options.retries <= limit.max, 'retries over limit');
 
-    const provider = services.build().createScope('singleton');
+    const provider = services.build();
 
     expect(() => {
-      const options: IOptions<WidgetOptions> = provider.getRequiredService(Type.from(OPTIONS_TOKEN));
+      const options: IOptions<WidgetOptions> = provider.getRequiredService(
+        optionsAddressType(Type.from(OPTIONS_TOKEN)),
+      );
       return options;
     }).not.toThrow();
   });
@@ -136,14 +138,18 @@ describe('validate — DI-injected', () => {
     services = services.validate<WidgetOptions, [{ max: number; }]>(OPTIONS_TOKEN, [LIMIT_TOKEN],
       (options, limit) => options.retries <= limit.max, 'retries over limit');
 
-    const provider = services.build().createScope('singleton');
+    const provider = services.build();
 
     expect(() => {
-      const options: IOptions<WidgetOptions> = provider.getRequiredService(Type.from(OPTIONS_TOKEN));
+      const options: IOptions<WidgetOptions> = provider.getRequiredService(
+        optionsAddressType(Type.from(OPTIONS_TOKEN)),
+      );
       return options;
     }).toThrow(OptionsValidationError);
     expect(() => {
-      const options: IOptions<WidgetOptions> = provider.getRequiredService(Type.from(OPTIONS_TOKEN));
+      const options: IOptions<WidgetOptions> = provider.getRequiredService(
+        optionsAddressType(Type.from(OPTIONS_TOKEN)),
+      );
       return options;
     }).toThrow('retries over limit');
   });
@@ -153,10 +159,12 @@ describe('validate — DI-injected', () => {
     services = services.validate<WidgetOptions, [{ max: number; }]>(OPTIONS_TOKEN, [LIMIT_TOKEN],
       (options, limit) => options.retries <= limit.max);
 
-    const provider = services.build().createScope('singleton');
+    const provider = services.build();
 
     expect(() => {
-      const options: IOptions<WidgetOptions> = provider.getRequiredService(Type.from(OPTIONS_TOKEN));
+      const options: IOptions<WidgetOptions> = provider.getRequiredService(
+        optionsAddressType(Type.from(OPTIONS_TOKEN)),
+      );
       return options;
     }).toThrow('A validation error has occurred.');
   });
