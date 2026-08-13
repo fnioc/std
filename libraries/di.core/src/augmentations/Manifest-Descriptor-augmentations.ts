@@ -1,19 +1,28 @@
-import { AugmentationSet2, type Flatten, Token, Type } from '@rhombus-std/primitives';
+import { AugmentationSet2, type CtorType, type Flatten, type FunctionType, type IntersectionType, Token,
+  Type } from '@rhombus-std/primitives';
 import { registerAugmentations } from '@rhombus-std/primitives.extras';
 import type { Ctor, Func } from '@rhombus-toolkit/func';
 
-import { describe, type IComplete, type Unstarted } from '../builder';
+import { describe, type DescribeArgs, type IComplete, type Unstarted } from '../builder';
 import { type Manifest } from '../Manifest';
 import { ServiceDescriptor, type Signatures, TypeSignatures } from '../ServiceDescriptor';
 interface IManifestDescriptorAugmentations<Scopes extends string> {
   add(descriptor: ServiceDescriptor<Scopes>): Manifest<Scopes>;
   add<T = any>(type: Type | string, configure: Func<[Unstarted<T, Scopes>], IComplete>): Manifest<Scopes>;
+  add<T = any>(type: Type | string, ctor: Ctor<any[], T>, implType: CtorType | IntersectionType, scope?: Scopes,
+    key?: string): Manifest<Scopes>;
+  add<T = any>(type: Type | string, factory: Func<any[], T>, implType: FunctionType | IntersectionType, scope?: Scopes,
+    key?: string): Manifest<Scopes>;
   remove(descriptor: ServiceDescriptor<Scopes>): Manifest<Scopes>;
   replace(descriptor: ServiceDescriptor<Scopes>): Manifest<Scopes>;
   addMany(descriptors: Iterable<ServiceDescriptor<Scopes>>): Manifest<Scopes>;
   tryAdd(...descriptors: ReadonlyArray<ServiceDescriptor<Scopes>>): Manifest<Scopes>;
 
   tryAdd<T = any>(type: Type | string, configure: Func<[Unstarted<T, Scopes>], IComplete>): this;
+  tryAdd<T = any>(type: Type | string, ctor: Ctor<any[], T>, implType: CtorType | IntersectionType, scope?: Scopes,
+    key?: string): this;
+  tryAdd<T = any>(type: Type | string, factory: Func<any[], T>, implType: FunctionType | IntersectionType,
+    scope?: Scopes, key?: string): this;
 
   tryAddClass(token: Token | Type, ctor: Ctor, signatures: Signatures, scope?: Scopes, key?: string): Manifest<Scopes>;
   tryAddFactory(token: Token | Type, factory: Func<any[], unknown>, signatures: Signatures, scope?: Scopes,
@@ -35,10 +44,11 @@ declare module '@rhombus-std/di.core' {
 
 export const ManifestDescriptorAugmentations: AugmentationSet2<Manifest,
   Flatten<IManifestDescriptorAugmentations<any>>> = {
-    add(descriptorOrType: any, configure?: any) {
-      return this._add(
-        configure === undefined ? descriptorOrType : describe<any, any>(descriptorOrType, configure),
-      );
+    add(descriptorOrType: any, ...rest: any[]) {
+      if (!rest.length) {
+        return this._add(descriptorOrType);
+      }
+      return this._add(describe(descriptorOrType, ...rest as DescribeArgs<any>));
     },
     remove(descriptor) {
       return this._remove(descriptor);
@@ -50,8 +60,10 @@ export const ManifestDescriptorAugmentations: AugmentationSet2<Manifest,
       return Iterator.from(descriptors).reduce((man, descriptor) => man._add(descriptor), this);
     },
     tryAdd(...args: any[]) {
+      // A descriptor never reaches the second slot as a function, so that is what separates the
+      // two type-first forms from the rest-of-descriptors one.
       const descriptors: ReadonlyArray<ServiceDescriptor<any>> = typeof args[1] === 'function'
-        ? [describe(args[0], args[1])]
+        ? [describe(args[0], ...args.slice(1) as DescribeArgs<any>)]
         : args;
       return Iterator.from(descriptors)
         .filter(newDesc => !Iterator.from(this).some(existingDesc => ServiceDescriptor.matches(newDesc, existingDesc)))
