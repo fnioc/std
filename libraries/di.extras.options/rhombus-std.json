@@ -1,0 +1,12 @@
+{
+  "$schema": "../../schema/rhombus-std.schema.json",
+  "inline": {
+    "entries": [
+      {
+        "type": "@rhombus-std/di.core:Manifest",
+        "impl": "@rhombus-std/di.extras.options:ServiceOptionsInline",
+        "member": "addOptions"
+      }
+    ]
+  }
+}

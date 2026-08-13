@@ -14,18 +14,16 @@ const ajv = new Ajv({ allErrors: true, strict: true });
 const validate = ajv.compile(schema);
 
 const LIVE_MARKERS = [
-  'libraries/di.extras/package.json',
-  'libraries/di.extras.options/package.json',
-  'libraries/config.extras/package.json',
-  'libraries/primitives.extras/package.json',
+  'libraries/di.extras/rhombus-std.json',
+  'libraries/di.extras.options/rhombus-std.json',
+  'libraries/config.extras/rhombus-std.json',
+  'libraries/primitives.extras/rhombus-std.json',
 ];
 
 describe('rhombus-std.schema.json drift', () => {
   for (const relPath of LIVE_MARKERS) {
-    test(`${relPath}'s "rhombus-std" marker validates`, () => {
-      const pkg = JSON.parse(readFileSync(join(REPO_ROOT, relPath), 'utf8'));
-      const marker = pkg['rhombus-std'];
-      expect(marker).toBeDefined();
+    test(`${relPath} validates`, () => {
+      const marker = JSON.parse(readFileSync(join(REPO_ROOT, relPath), 'utf8'));
       const ok = validate(marker);
       expect(ok, JSON.stringify(validate.errors, null, 2)).toBe(true);
     });

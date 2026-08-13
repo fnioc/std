@@ -18,18 +18,6 @@
     "directory": "libraries/di.extras.options"
   },
   "type": "module",
-  "//rhombus-std": "The addOptions<T>() sugar's inline publish list. The body lives in src/inline.ts (authoring-only substitution source, kept out of the barrel + dist); the inline stage side-parses it and substitutes at consumer call sites, then the tokenfor stage lowers the composed IOptions<T> + bare T tokens. The `type` ANCHOR is the di.core Manifest interface (the augmentation target); `impl` (ServiceOptionsInline) is a fully-qualified reference resolving in THIS package — tokenfor is the runtime-leaf primitive and IOptions the peered @rhombus-std/options type the composed wrapper derives over.",
-  "rhombus-std": {
-    "inline": {
-      "entries": [
-        {
-          "type": "@rhombus-std/di.core:Manifest",
-          "impl": "@rhombus-std/di.extras.options:ServiceOptionsInline",
-          "member": "addOptions"
-        }
-      ]
-    }
-  },
   "main": "./dist/bundle/index.js",
   "types": "./dist/bundle/index.d.ts",
   "exports": {
@@ -53,7 +41,8 @@
   },
   "files": [
     "dist",
-    "ttsc.mjs"
+    "ttsc.mjs",
+    "rhombus-std.json"
   ],
   "scripts": {
     "build": "bun ../../scripts/build-lib.ts",
