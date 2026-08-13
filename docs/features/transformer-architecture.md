@@ -427,21 +427,38 @@ a hard load-time failure naming the offending file and the JSON path the schema 
 
 ### How matching works
 
-Each entry resolves **once per program through the checker**: the type reference resolves to a
-module symbol, then the merged member symbol — TypeScript's declaration merging has already
-unified every `declare module` augmentation of the interface into that one symbol. A structural
-overload discriminator (type-parameter count, value-parameter count _and names_, `this` excluded)
-separates a sugar overload from the runtime ones sharing its member name. A call site inlines iff
-its resolved signature's declaration is one the merged symbol carries and the sugar entry claims —
-by declaration identity, never by string comparison. **Parameter names on the body are
-load-bearing** — the discriminator checks them, so a sugar body's `ctor`/`factory`/`value`
-parameter names must match the declared overload's exactly, or the body silently discriminates
-against the wrong (or no) call site.
+**The entry names the declaration; the checker never gets to pick a different one.** Each entry
+resolves once per program: the type reference resolves to a module symbol, then to the exported
+type, and then every type on that **surface** — the named one and each it transitively extends — is
+asked for its own member of the entry's name. The union is the entry's declaration set.
+
+Walking the surface rather than asking it for its `member` property is what makes the anchor hold.
+A property lookup answers with one declaration set per name, and an interface that reaches two
+same-named members through two `extends` clauses keeps one and hides the other — which is exactly
+the shape a receiver takes when an abstractions package and its authoring package each contribute a
+member map. Ask for the property and the sugar declaration can be invisible; walk the surface and it
+is always found. An entry naming a member that exists nowhere on its surface is a **load-time
+failure**, never a skip.
+
+A structural overload discriminator (type-parameter count, value-parameter count _and names_,
+`this` excluded) then separates the sugar overload from the runtime ones sharing its member name.
+**Parameter names on the body are load-bearing** — the discriminator checks them, so a sugar body's
+`ctor`/`factory`/`value` parameter names must match the declared overload's exactly, or the body
+discriminates against the wrong overload.
+
+A call site matches two ways. Its resolved signature's declaration being one the entry claims is the
+first and preferred one, because the binding is the only thing that says WHICH overload of a member
+the author reached. When the binding lands outside every entry's set — a hidden same-named sibling
+answered instead, or the call binds to nothing at all — the entry claims the call on its own terms:
+the callee name is its member, the call's shape is one its body accepts, and the **receiver carries
+the entry's named type**. Those last two are what keep this from becoming a name comparison.
 
 Two hard build failures keep a drifted install honest: a **rogue-duplicate** check when a call
-resolves to a same-named member outside the merged symbol (dist skew, two physical copies of an
-interface), and an **emit sweep** that fails the build if any primitive or listed-sugar call
-survives to the output un-lowered.
+resolves to a same-named member outside the entry's set on an unrelated copy of the interface (dist
+skew, two physical copies), and an **emit sweep** that fails the build if any primitive or
+listed-sugar call survives to the output un-lowered. The sweep tests against every entry whose
+surface the program carries — including one whose sugar declarations turned out to be missing, which
+is the case where nothing could lower and every call is therefore residue.
 
 ### Authoring rules (lint-enforced)
 
