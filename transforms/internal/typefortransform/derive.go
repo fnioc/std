@@ -5,6 +5,7 @@ import (
 	shimchecker "github.com/microsoft/typescript-go/shim/checker"
 
 	"github.com/fnioc/std/transforms/internal/tokens"
+	"github.com/fnioc/std/transforms/internal/typeemit"
 	"github.com/fnioc/std/transforms/internal/valueimport"
 )
 
@@ -168,7 +169,7 @@ func emitAccessor(f *shimast.NodeFactory, binding *valueimport.Binding, d *deriv
 		if d.kind != derivedLeaf || d.leaf.Kind != tokens.TypeNodeLiteral {
 			return nil, false
 		}
-		return literalExpr(f, d.leaf.Literal), true
+		return typeemit.Literal(f, d.leaf.Literal), true
 	default:
 		return nil, false
 	}
@@ -179,16 +180,16 @@ func emitAccessor(f *shimast.NodeFactory, binding *valueimport.Binding, d *deriv
 func emitDerived(f *shimast.NodeFactory, binding *valueimport.Binding, d *derived) *shimast.Node {
 	switch d.kind {
 	case derivedFunc:
-		return typeCall(f, binding, "func", signatureShapedArgs(f, binding, d))
+		return typeemit.Call(f, binding, "func", signatureShapedArgs(f, binding, d))
 	case derivedCtor:
-		return typeCall(f, binding, "ctor", signatureShapedArgs(f, binding, d))
+		return typeemit.Call(f, binding, "ctor", signatureShapedArgs(f, binding, d))
 	case derivedTag:
-		return typeCall(f, binding, "tag", []*shimast.Node{
+		return typeemit.Call(f, binding, "tag", []*shimast.Node{
 			emitDerived(f, binding, d.inner),
 			f.NewStringLiteral(d.tag, shimast.TokenFlagsNone),
 		})
 	default: // derivedLeaf
-		return emitLeaf(f, binding, d.leaf)
+		return typeemit.Leaf(f, binding, d.leaf)
 	}
 }
 
@@ -202,73 +203,4 @@ func signatureShapedArgs(f *shimast.NodeFactory, binding *valueimport.Binding, d
 		out = append(out, emitDerived(f, binding, a))
 	}
 	return out
-}
-
-// emitLeaf builds the `Type.*` factory-call expression a tokens.TypeNode
-// spells — the structural twin of the flat-string renderer in
-// internal/tokens/typenode.go, over the SAME tree.
-func emitLeaf(f *shimast.NodeFactory, binding *valueimport.Binding, n *tokens.TypeNode) *shimast.Node {
-	switch n.Kind {
-	case tokens.TypeNodeLiteral:
-		return typeCall(f, binding, "typeLiteral", []*shimast.Node{literalExpr(f, n.Literal)})
-	case tokens.TypeNodeUnion:
-		members := make([]*shimast.Node, 0, len(n.Members))
-		for _, m := range n.Members {
-			members = append(members, emitLeaf(f, binding, m))
-		}
-		return typeCall(f, binding, "union", members)
-	case tokens.TypeNodePlaceholder:
-		return typeCall(f, binding, "generic", []*shimast.Node{f.NewStringLiteral(n.Label, shimast.TokenFlagsNone)})
-	default: // tokens.TypeNodeNamed
-		args := make([]*shimast.Node, 0, len(n.Args))
-		for _, a := range n.Args {
-			args = append(args, emitLeaf(f, binding, a))
-		}
-		callArgs := []*shimast.Node{
-			f.NewStringLiteral(n.Name, shimast.TokenFlagsNone),
-			f.NewStringLiteral(n.From, shimast.TokenFlagsNone),
-		}
-		if len(args) != 0 {
-			callArgs = append(callArgs, f.NewArrayLiteralExpression(f.NewNodeList(args), false))
-		}
-		return typeCall(f, binding, "named", callArgs)
-	}
-}
-
-// typeCall builds `<Type>.<method>(...args)`, marking binding as referenced so
-// the caller knows to materialize its import.
-func typeCall(f *shimast.NodeFactory, binding *valueimport.Binding, method string, args []*shimast.Node) *shimast.Node {
-	binding.Used = true
-	callee := f.NewPropertyAccessExpression(binding.Expr(f), nil, f.NewIdentifier(method), 0)
-	return f.NewCallExpression(callee, nil, nil, f.NewNodeList(args), 0)
-}
-
-// literalExpr renders a literal value as its TS literal expression — a string /
-// boolean keyword, a numeric / bigint literal (negative rendered as a unary minus
-// over the magnitude). Null/Undefined never reach a TypeNodeLiteral (tokens'
-// literalNodeValue excludes them, since `Type.typeLiteral` takes a scalar JS
-// value with no runtime-representable null/undefined literal type distinct from
-// the value itself), so those two LiteralKind cases have no branch here.
-func literalExpr(f *shimast.NodeFactory, v tokens.LiteralValue) *shimast.Node {
-	switch v.Kind {
-	case tokens.LiteralString:
-		return f.NewStringLiteral(v.Str, shimast.TokenFlagsNone)
-	case tokens.LiteralBoolean:
-		if v.Bool {
-			return f.NewKeywordExpression(shimast.KindTrueKeyword)
-		}
-		return f.NewKeywordExpression(shimast.KindFalseKeyword)
-	case tokens.LiteralBigInt:
-		lit := f.NewBigIntLiteral(v.Text+"n", shimast.TokenFlagsNone)
-		if v.Negated {
-			return f.NewPrefixUnaryExpression(shimast.KindMinusToken, lit)
-		}
-		return lit
-	default: // LiteralNumber
-		lit := f.NewNumericLiteral(v.Text, shimast.TokenFlagsNone)
-		if v.Negated {
-			return f.NewPrefixUnaryExpression(shimast.KindMinusToken, lit)
-		}
-		return lit
-	}
 }
