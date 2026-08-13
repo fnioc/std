@@ -4,45 +4,44 @@ Owner ruling (2026-08-13): two new `getService` overloads taking the value itsel
 `getService<T>(ctor: new (...args: never[]) => T): T` and
 `getService<T>(fn: (...args: never[]) => T): T`.
 
-## Status
+## Status: implemented, gated, PR #342 open as draft
 
-Blocked on the dependency-resolution mechanism. Researched the engine
-(`libraries/di/src/internal/Engine.ts`, `CallSite.ts`, `ToCallSiteVisitor.ts`,
-`RealizeVisitor.ts`) and `libraries/di/src/ServiceProvider.ts`. Confirmed:
+Mechanism confirmed against direct precedent in
+`libraries/hosting.core/src/DefaultManifest-HostedService-augmentations.ts`'s `addHostedService`
+factory form, which already solves the same "give a value-driven registration its deps without
+reflection" problem via `RESOLVER_TYPE` (`libraries/di.core/src/resolver.ts`). See
+`docs/decisions.v2.md` §153 for the full ruling record.
 
-- `getService`'s base signature is a direct member of `IServiceProvider` in
-  `libraries/primitives/src/IServiceProvider.ts`, not an augmentation.
-- The MO-sealed getService-adjacent files are
-  `libraries/di.core/src/augmentations/ServiceProvider-service-augmentations.ts`
-  (getRequiredService/getServices) and
-  `libraries/di.extras/src/augmentations/ServiceProvider-service-augmentations.ts`
-  (tokenless sugar, calling `this.getService(typefor<T>())`).
-- The concrete engine (`this.#engine.resolve(type, { serviceProvider, additionalServices })`)
-  lives only in `libraries/di/src/ServiceProvider.ts`, behind a true `#`-private field —
-  unreachable from any `AugmentationSet2` closure (`this: IServiceProvider`). The new
-  overloads' runtime logic can only live inside `ServiceProvider.ts` itself.
-- `docs/decisions.v2.md` §128 killed `ActivatorUtilities`-style reflection-based
-  construction as porting noise ("no runtime reflection ... `resolveFactory(token, params?)`
-  ... neither needs reflection"). This overload reintroduces a version of that capability
-  under a narrower, value-driven (not reflection-based) contract — flagged for the
-  decisions.v2.md entry, not a blocker.
+## Implementation
 
-Sent the open question to team-lead: without reflection or transformer sugar, what
-signature does the synthesized `ServiceDescriptor` carry for an arbitrary ctor/fn's real
-parameters? Best-guess reading pending confirmation: the constructed value receives the
-current `IServiceProvider` as its sole argument (the one type the engine can always resolve
-without a registry entry — `ToCallSiteVisitor.isServiceProviderType` → `CallSite.serviceProvider()`)
-and pulls whatever it needs itself via `provider.getRequiredService(...)` in its own body.
+- `libraries/di/src/ServiceProvider.ts` — the two new overload signatures plus dispatch, added
+  directly on `getService` (the base `Type | Token` form is a primitive class member, not
+  augmentation-registry material, and neither are these — `#engine` is a true `#`-private field
+  no augmentation closure can reach). A `declare module` extension onto `IServiceProvider`
+  accompanies them for type visibility, though see the known limitation below.
+- `docs/decisions.v2.md` §153 — the ruling record.
+- `tests/di.test/test/get-service-value.test.ts` / `.types.ts` — behavior and inference coverage.
 
-## Done so far
+## Known limitation (pre-existing, not introduced by this change)
 
-- Worktree + draft PR scaffolding.
-- Runtime dispatch discriminant (construct-vs-call classification, `Reflect.apply`/
-  `Reflect.construct`, the TypeError-message rescue retry) — unambiguous per the brief,
-  built independent of the deps-resolution answer.
+An `IServiceProvider`-typed caller does not see the two new overloads today — confirmed the same
+gap already affects `getService<T>()`'s existing zero-argument sugar (di.extras) and `Manifest`'s
+tokenless `addClass<T>()`. TS does not merge an overload contributed through `extends` against a
+member already declared directly on the target interface. The `declare module` block stays as the
+correct shape for when that gap closes; it is currently inert for interface-typed callers.
 
-## Not started
+## Gates (all green except the documented pre-existing red)
 
-- The actual `getService` overload wiring (pending the answer above).
-- Tests.
-- decisions.v2.md entry.
+- `bun run build`: 0.
+- `bun run test`: known-red baseline unrelated to this change (11 packages, all pre-existing —
+  `ServiceProvider.dispose`/`disposeAsync` NotImplementedError, caching's
+  `MemoryCacheEntryOptions`/`DistributedCacheEntryOptions` setter stubs, diagnostics
+  `enableMetrics`/`enableTracing` stubs, a `primitives.test` fuzz-test timeout). `di.test` itself:
+  68/68 green, 0 new failures anywhere.
+- `bun run test:e2e` (the six `tests/*.ttsc.e2e` suites, run directly since the root `test` script
+  chains `&&` after the unit-test phase and never reaches e2e while any package is red): all 6
+  green.
+- `bun run lint`: 0.
+- `bun run format:check`: clean.
+
+PR kept in draft per instructions — not marked ready.
