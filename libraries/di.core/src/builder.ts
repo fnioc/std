@@ -1,4 +1,4 @@
-import { type CtorType, type FunctionType, type IntersectionType, Type } from '@rhombus-std/primitives';
+import { type CtorType, type FuncType, type IntersectionType, Type } from '@rhombus-std/primitives';
 import type { Ctor, Func } from '@rhombus-toolkit/func';
 import { assertNever } from '@rhombus-toolkit/type-guards';
 import { ServiceDescriptor, type TypeSignatures } from './ServiceDescriptor';
@@ -23,7 +23,7 @@ type Pending<T, ImplNode extends Type, Scopes extends string, Slots extends Slot
  */
 interface IAsImpl<T, Scopes extends string, Slots extends Slot, Ready extends boolean> {
   asClass(ctor: Ctor<any[], T>): Pending<T, CtorType, Scopes, Exclude<Slots, 'impl'> | 'implType', Ready>;
-  asFactory(fn: Func<any[], T>): Pending<T, FunctionType, Scopes, Exclude<Slots, 'impl'> | 'implType', Ready>;
+  asFactory(fn: Func<any[], T>): Pending<T, FuncType, Scopes, Exclude<Slots, 'impl'> | 'implType', Ready>;
   asValue(value: T): Pending<T, never, Scopes, Extract<Slots, 'tag'>, true>;
 }
 
@@ -241,7 +241,7 @@ function namesAConstructor(implType: Type): boolean {
   if (implType.kind === 'ctor') {
     return true;
   }
-  if (implType.kind === 'function') {
+  if (implType.kind === 'func') {
     return false;
   }
   if (implType.kind === 'intersection') {
@@ -268,7 +268,7 @@ function namesAConstructor(implType: Type): boolean {
 function* callSignatures(implType: Type): Generator<readonly Type[]> {
   switch (implType.kind) {
     case 'ctor':
-    case 'function': {
+    case 'func': {
       yield implType.args;
       return;
     }
