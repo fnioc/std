@@ -16,7 +16,7 @@ import { CacheEntrySugarAugmentations, CacheItemPriority,
   MemoryCacheSugarAugmentations } from '@rhombus-std/caching.core';
 import { MemoryCache, MemoryCacheOptions } from '@rhombus-std/caching.memory';
 import { ConfigBuilder, MemoryConfigBuilderAugmentations } from '@rhombus-std/config';
-import type { IServiceManifestBase } from '@rhombus-std/di.core';
+import type { Manifest } from '@rhombus-std/di.core';
 import { MetricsBuilder } from '@rhombus-std/diagnostics';
 import { type IMetricsListener, METRICS_LISTENER_TYPE, MetricsBuilderAugmentations, MetricsOptions,
   MetricsOptionsAugmentations, TracingOptions, TracingOptionsAugmentations } from '@rhombus-std/diagnostics.core';
@@ -68,11 +68,11 @@ describe('reverse direction — MetricsBuilder (.core interface, downstream conc
     // the real immutable chain does — a double that returned `undefined` (or
     // itself) would hide the threading the augmentation now has to do.
     const recorded: Array<[unknown, unknown]> = [];
-    const make = (): IServiceManifestBase => {
+    const make = (): Manifest => {
       return { add: () => make(), addFactory: () => make(), addValue: (token: unknown, value: unknown) => {
         recorded.push([token, value]);
         return make();
-      }, build: () => undefined } as unknown as IServiceManifestBase;
+      }, build: () => undefined } as unknown as Manifest;
     };
 
     const builder = new MetricsBuilder(make());

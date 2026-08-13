@@ -142,7 +142,9 @@ describe('the 8x config-provider reality (the killer regression, §73/1)', () =>
 
     // Re-register a fresh distinct member: the eight existing slots must be the
     // SAME function objects -- proof nothing was re-installed over itself.
-    registerAugmentations(TOKEN, { addProbe(this: { added: string[]; }): void {
+    registerAugmentations<{ added: string[]; }, Record<string, () => void>>(TOKEN, { addProbe(this: {
+      added: string[];
+    }): void {
       this.added.push('addProbe');
     } });
     names.forEach((name, i) => {
@@ -413,14 +415,18 @@ describe('dispatch-path collision propagates to the registrant (§79 defect fix)
 
     // Decorate FIRST, then register the first member -- it installs via delta.
     augment(TOKEN)(Recv);
-    registerAugmentations(TOKEN, { addFoo(this: { seen: string[]; }): void {
+    registerAugmentations<{ seen: string[]; }, Record<string, () => void>>(TOKEN, { addFoo(this: {
+      seen: string[];
+    }): void {
       this.seen.push('first');
     } });
 
     // A SECOND same-name registration with no strategy collides at install. The
     // throw must surface HERE (not be swallowed out-of-band).
     expect(() =>
-      registerAugmentations(TOKEN, { addFoo(this: { seen: string[]; }): void {
+      registerAugmentations<{ seen: string[]; }, Record<string, () => void>>(TOKEN, { addFoo(this: {
+        seen: string[];
+      }): void {
         this.seen.push('second');
       } })
     ).toThrow(/augmentation "addFoo" collides on Recv/);
