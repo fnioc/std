@@ -1,5 +1,4 @@
 export { signatureof, SIGNATUREOF_NAME } from './signatureof.js';
-export { valueof, VALUEOF_NAME } from './valueof.js';
 
 // Named rather than a side-effect import: a `rhombus-std` inline entry's `impl` is
 // resolved by walking this entry's re-export graph, so a set that is only
