@@ -1,4 +1,4 @@
-import { type CtorType, type FunctionType, Type } from '@rhombus-std/primitives';
+import { type CtorType, type FunctionType, type IntersectionType, Type } from '@rhombus-std/primitives';
 import type { Ctor, Func } from '@rhombus-toolkit/func';
 import { assertNever } from '@rhombus-toolkit/type-guards';
 import { ServiceDescriptor, type TypeSignatures } from './ServiceDescriptor';
@@ -40,10 +40,11 @@ interface IWithImplType<T, ImplNode extends Type, Scopes extends string, Slots e
   withSignature(...paramTypes: Array<Type | string>): Pending<T, ImplNode, Scopes, Exclude<Slots, 'implType'>, true>;
 
   /**
-   * The implementation's whole type. An intersection of them describes an overloaded
+   * The implementation's whole type — a constructor type after {@link IAsImpl.asClass}, a function
+   * type after {@link IAsImpl.asFactory}. An intersection of them describes an overloaded
    * implementation, where each member is one call signature the container may use.
    */
-  withType(implType: ImplNode): Pending<T, ImplNode, Scopes, Exclude<Slots, 'implType'>, true>;
+  withType(implType: ImplNode | IntersectionType): Pending<T, ImplNode, Scopes, Exclude<Slots, 'implType'>, true>;
 }
 
 interface IWithLifetime<T, ImplNode extends Type, Scopes extends string, Slots extends Slot, Ready extends boolean> {

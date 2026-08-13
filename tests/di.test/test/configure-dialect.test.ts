@@ -4,7 +4,7 @@
 
 import { DefaultManifest, type Manifest } from '@rhombus-std/di.core';
 import '@rhombus-std/di';
-import { Type } from '@rhombus-std/primitives';
+import { type IntersectionType, Type } from '@rhombus-std/primitives';
 import { describe, expect, test } from 'bun:test';
 
 interface IClock {
@@ -70,12 +70,14 @@ describe('withType', () => {
   });
 
   test('an intersection describes an overloaded implementation, one call signature per member', () => {
+    // `Type.intersection` returns a lone surviving member as itself, so its declared return is the
+    // whole of `Type`; a caller naming a genuine intersection says so.
+    const overloaded = Type.intersection(
+      Type.ctor(SINK, Type.named('IMissing', 'app'), Type.typeLiteral('unreachable')),
+      Type.ctor(SINK, CLOCK, Type.typeLiteral('fallback')),
+    ) as IntersectionType;
     // The first member asks for a type nothing registers, so the second is the one that lowers.
-    const services = withClock().add<Sink>(SINK, sink =>
-      sink.asClass(Sink).withType(Type.intersection(
-        Type.ctor(SINK, Type.named('IMissing', 'app'), Type.typeLiteral('unreachable')),
-        Type.ctor(SINK, CLOCK, Type.typeLiteral('fallback')),
-      )));
+    const services = withClock().add<Sink>(SINK, sink => sink.asClass(Sink).withType(overloaded));
 
     expect((services.build().getRequiredService(SINK) as Sink).environment).toBe('fallback');
   });
@@ -115,11 +117,12 @@ describe('lifetime and tag', () => {
         sink.withLifetime('singleton').taggedAs('primary').asClass(Sink)
           .withSignature(CLOCK, Type.typeLiteral('staging')));
 
-    const [tagged] = [...tagFirst];
-    const [other] = [...lifetimeFirst];
-    expect(tagged!.serviceType).toBe(Type.tag(SINK, 'primary'));
-    expect(other!.serviceType).toBe(tagged!.serviceType);
-    expect(other!.scope).toBe(tagged!.scope!);
+    const tagged = [...tagFirst][0]!;
+    const other = [...lifetimeFirst][0]!;
+    expect(tagged.serviceType).toBe(Type.tag(SINK, 'primary'));
+    expect(other.serviceType).toBe(tagged.serviceType);
+    expect(tagged.kind === 'ctor' && tagged.scope).toBe('singleton');
+    expect(other.kind === 'ctor' && other.scope).toBe('singleton');
   });
 
   test('a tag on a type that already carries one is refused', () => {
