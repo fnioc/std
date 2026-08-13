@@ -1,4 +1,5 @@
-import { Manifest, RESOLVER_TYPE, ServiceDescriptor, UnsatisfiableError } from '@rhombus-std/di.core';
+import { Manifest, RESOLVER_TYPE, ServiceDescriptor, type TypeSignatures,
+  UnsatisfiableError } from '@rhombus-std/di.core';
 import { augment, type IServiceProvider, NotImplementedError, type Token, Type } from '@rhombus-std/primitives';
 import { typefor } from '@rhombus-std/primitives.extras';
 import type { Ctor, Func } from '@rhombus-toolkit/func';
@@ -8,6 +9,10 @@ import { ServiceProviderOptions } from './ServiceProviderOptions.js';
 // The synthetic address a value-driven `getService` call resolves under. Never persisted —
 // it exists only for the one `additionalServices` entry that call synthesizes, then discards.
 const VALUE_SERVICE_TYPE = Type.imported('GetServiceValue', '@rhombus-std/di');
+
+// The one seam a value-driven call's dependency contract runs through — every synthesized
+// descriptor below takes its signature from here, so the contract is a one-line swap.
+const VALUE_SERVICE_SIGNATURE: TypeSignatures = [[RESOLVER_TYPE]];
 
 // `ServiceProvider` implements the value-driven `getService` overloads directly below — reaching
 // this provider's own resolution engine to realize a caller-supplied `ctor`/`fn` is only possible
@@ -97,22 +102,25 @@ export class ServiceProvider {
   }
 
   /**
-   * Classifies `value` as construct-only or callable and invokes it with this provider as its
-   * one argument, synthesizing a throwaway {@link ServiceDescriptor} and resolving it through
-   * the engine's `additionalServices` channel rather than invoking `value` directly — the same
-   * door {@link RESOLVER_TYPE} always resolves through, so a caller-supplied `value` is realized
-   * exactly like a registered one, just against a manifest composed for this one call and
-   * discarded after.
+   * Classifies `value` as construct-only or callable and invokes it with the
+   * {@link VALUE_SERVICE_SIGNATURE} dependency resolved, synthesizing a throwaway
+   * {@link ServiceDescriptor} and resolving it through the engine's `additionalServices` channel
+   * rather than invoking `value` directly — so a caller-supplied `value` is realized exactly like
+   * a registered one, just against a manifest composed for this one call and discarded after.
    */
   #getServiceFromValue(value: Function): any {
     if (isConstructOnly(value)) {
-      return this.#resolveValue(ServiceDescriptor.ctor(VALUE_SERVICE_TYPE, value as Ctor, [[RESOLVER_TYPE]]));
+      return this.#resolveValue(ServiceDescriptor.ctor(VALUE_SERVICE_TYPE, value as Ctor, VALUE_SERVICE_SIGNATURE));
     }
     try {
-      return this.#resolveValue(ServiceDescriptor.factory(VALUE_SERVICE_TYPE, value as Func, [[RESOLVER_TYPE]]));
+      return this.#resolveValue(
+        ServiceDescriptor.factory(VALUE_SERVICE_TYPE, value as Func, VALUE_SERVICE_SIGNATURE),
+      );
     } catch (error) {
       if (error instanceof TypeError && error.message.includes('constructor')) {
-        return this.#resolveValue(ServiceDescriptor.ctor(VALUE_SERVICE_TYPE, value as Ctor, [[RESOLVER_TYPE]]));
+        return this.#resolveValue(
+          ServiceDescriptor.ctor(VALUE_SERVICE_TYPE, value as Ctor, VALUE_SERVICE_SIGNATURE),
+        );
       }
       throw error;
     }

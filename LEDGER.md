@@ -18,9 +18,23 @@ reflection" problem via `RESOLVER_TYPE` (`libraries/di.core/src/resolver.ts`). S
   directly on `getService` (the base `Type | Token` form is a primitive class member, not
   augmentation-registry material, and neither are these — `#engine` is a true `#`-private field
   no augmentation closure can reach). A `declare module` extension onto `IServiceProvider`
-  accompanies them for type visibility, though see the known limitation below.
+  accompanies them for type visibility, though see the known limitation below. No separate
+  augmentations file exists in `di` for this — an earlier attempt at one (a near-empty file with
+  a `declare module` block and no runtime content) broke the ttsc lowering stage's per-file
+  bundling for unrelated sibling files in the same package; folded into `ServiceProvider.ts`
+  instead once that reproduced twice. `VALUE_SERVICE_SIGNATURE` is the single seam every
+  synthesized descriptor's dependency contract draws from — a one-line swap if the owner rules
+  the zero-arg contract instead of the `RESOLVER_TYPE` one.
 - `docs/decisions.v2.md` §153 — the ruling record.
 - `tests/di.test/test/get-service-value.test.ts` / `.types.ts` — behavior and inference coverage.
+
+## Observation for whoever next touches CLAUDE.md's hosting section (not actioned here)
+
+CLAUDE.md describes `useDefaultServiceProvider` as threading `ServiceProviderOptions` through
+`build()` "via a `WeakMap` side channel on the classic builder". That's stale: the real mechanism
+today (`libraries/hosting/src/ServiceProviderOptionsFactory.ts`) is a module-private `Symbol` key
+in the builder's own `properties` Map, no `WeakMap` anywhere in `libraries/hosting/src`. Left
+alone per instruction — audit-autofix owns hosting territory this cycle.
 
 ## Known limitation (pre-existing, not introduced by this change)
 
