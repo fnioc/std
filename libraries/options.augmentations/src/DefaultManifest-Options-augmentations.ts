@@ -80,9 +80,11 @@ export const ServiceManifestOptionsAugmentations: AugmentationSet2<DefaultManife
       //   - a `() => T` base factory → run the OptionsFactory assembly pipeline
       //     over the steps/sources registered for `optionsType`.
       if (typeof source === 'function') {
-        return this.addFactory(type, (resolver) => assembleOptions(resolver, type, source), [[RESOLVER_TYPE]]);
+        return this.addFactory(type, (resolver) => assembleOptions(resolver, type, source),
+          Type.func(type, RESOLVER_TYPE));
       }
-      return this.addFactory(type, (t: T) => Options.of(t), [[source]]);
+      const sourceType = typeof source === 'string' ? Type.from(source) : source;
+      return this.addFactory(type, (t: T) => Options.of(t), Type.func(type, sourceType));
     },
     postConfigure<T, Deps extends readonly unknown[]>(this: DefaultManifest<string>, optionsType: Type | string,
       step: IPostConfigureOptions<T> | Func<[T], void> | DepTokens<Deps>,
@@ -95,10 +97,13 @@ export const ServiceManifestOptionsAugmentations: AugmentationSet2<DefaultManife
       // deps resolve once, when the assembly reads the slot.
       if (Array.isArray(step)) {
         const callback = configureWithDeps as (options: T, ...deps: Deps) => void;
+        const depTypes = (step as readonly (Type | string)[]).map(dep =>
+          typeof dep === 'string' ? Type.from(dep) : dep
+        );
         return this.addFactory(postConfigureStepType(type),
           (...deps: Deps): IPostConfigureOptions<T> => ({ postConfigure(options: T): void {
             callback(options, ...deps);
-          } }), [step as readonly (Type | string)[]]);
+          } }), Type.func(postConfigureStepType(type), ...depTypes));
       }
       // A bare delegate is wrapped into an IPostConfigureOptions<T>; both append
       // to the type's post-configure slot, which `assembleOptions` reads and
@@ -119,10 +124,13 @@ export const ServiceManifestOptionsAugmentations: AugmentationSet2<DefaultManife
       if (Array.isArray(validateOrDeps)) {
         const predicate = failureMessageOrValidate as (options: T, ...deps: Deps) => boolean;
         const message = failureMessage ?? DEFAULT_VALIDATION_FAILURE_MESSAGE;
+        const depTypes = (validateOrDeps as readonly (Type | string)[]).map(dep =>
+          typeof dep === 'string' ? Type.from(dep) : dep
+        );
         return this.addFactory(validateStepType(type),
           (...deps: Deps): IValidateOptions<T> => ({ validate(options: T): ValidateOptionsResult {
             return predicate(options, ...deps) ? ValidateOptionsResult.success : ValidateOptionsResult.fail(message);
-          } }), [validateOrDeps as readonly (Type | string)[]]);
+          } }), Type.func(validateStepType(type), ...depTypes));
       }
       // Wraps the predicate into an IValidateOptions<T> step appended to the
       // type's validate slot.

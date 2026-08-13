@@ -2,7 +2,7 @@ import { Type } from '@rhombus-std/di.core';
 import { HOST_LIFETIME_TYPE } from '@rhombus-std/hosting';
 import { BROWSER_LIFETIME_OPTIONS_TYPE, BrowserHost, BrowserLifetime, type BrowserLifetimeOptions,
   createBrowserEnvironment, PAGE_LIFECYCLE_EVENTS_TYPE, PageLifecycleEvents } from '@rhombus-std/hosting.browser';
-import { Environments, type IHostLifetime } from '@rhombus-std/hosting.core';
+import { Environments, HOSTED_SERVICE_TYPE, type IHostLifetime } from '@rhombus-std/hosting.core';
 import { LOGGER_PROVIDER_TYPE } from '@rhombus-std/logging';
 import { BrowserConsoleLoggerProvider } from '@rhombus-std/logging.browserconsole';
 import type { ILoggerProvider } from '@rhombus-std/logging.core';
@@ -98,7 +98,7 @@ test('BrowserHost.run() starts, ignores a bfcache pagehide, and stops on a termi
       public async stop(): Promise<void> {
         events.push('stop');
       }
-    }, [[]]);
+    }, Type.ctor(HOSTED_SERVICE_TYPE));
   });
 
   // Wait until the host has started (the lifetime subscribes before hosted

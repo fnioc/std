@@ -10,11 +10,10 @@
 // whole set via the collection wrapper token.
 
 // Named imports: unqualified names in a `declare module` body resolve in THIS
-// file's scope, so `Signatures`/`Manifest`/`DefaultManifest` must be
-// importable here.
-import { type DefaultManifest, type IServiceProvider, type Manifest, RESOLVER_TYPE,
-  type Signatures } from '@rhombus-std/di.core';
-import { type AugmentationSet2, registerAugmentations } from '@rhombus-std/primitives';
+// file's scope, so `Manifest`/`DefaultManifest` must be importable here.
+import { type DefaultManifest, type IServiceProvider, type Manifest, RESOLVER_TYPE } from '@rhombus-std/di.core';
+import { type AugmentationSet2, type ConstructorType, type IntersectionType, registerAugmentations,
+  Type } from '@rhombus-std/primitives';
 import { typefor } from '@rhombus-std/primitives.extras';
 import type { Ctor, Func } from '@rhombus-toolkit/func';
 import type { IHostedService } from './IHostedService';
@@ -34,10 +33,10 @@ type IManifestHostedServiceAugmentations<Scopes extends string> = {
   addHostedService(implementationFactory: Func<[IServiceProvider], IHostedService>): Manifest<Scopes>;
   /**
    * Registers `ctor` as an {@link IHostedService} the host will start and
-   * stop alongside its lifetime. `signatures` carries the ctor's dep
-   * signatures; omitted, a dependency-free ctor is assumed.
+   * stop alongside its lifetime. `implType` is the ctor's composed
+   * constructor type; omitted, a dependency-free ctor is assumed.
    */
-  addHostedService(ctor: Ctor, signatures?: Signatures): Manifest<Scopes>;
+  addHostedService(ctor: Ctor, implType?: ConstructorType | IntersectionType): Manifest<Scopes>;
 };
 
 // `Provider` is defaulted so the merge's type-parameter list matches the
@@ -55,21 +54,21 @@ function isConstructor(target: Ctor | Func<[IServiceProvider], IHostedService>):
 
 export const ServiceManifestHostedServiceAugmentations: AugmentationSet2<DefaultManifest<string>,
   IManifestHostedServiceAugmentations<string>> = { addHostedService(
-    // The ctor form carries optional dep signatures; the factory form is a
-    // lone provider-taking function. A class value matches the
+    // The ctor form carries an optional composed constructor type; the factory
+    // form is a lone provider-taking function. A class value matches the
     // construct-signature arm, an arrow/function the call-signature arm.
-    ...rest: [ctor: Ctor, signatures?: Signatures] | [
+    ...rest: [ctor: Ctor, implType?: ConstructorType | IntersectionType] | [
       implementationFactory: Func<[IServiceProvider], IHostedService>,
     ]
   ): Manifest<string> {
-    const [target, signatures] = rest;
-    // The factory form injects the live resolver (via the `[[RESOLVER_TYPE]]`
-    // dep signature) so the delegate receives it. A ctor form with no
-    // `signatures` is a dependency-free ctor, stated explicitly as `[[]]`
-    // (`addClass` has no overload that omits it).
+    const [target, implType] = rest;
+    // The factory form injects the live resolver (via the `Type.func(...,
+    // RESOLVER_TYPE)` composed type) so the delegate receives it. A ctor form
+    // with no `implType` is a dependency-free ctor, stated explicitly as one
+    // that carries no argument types (`addClass` has no overload that omits it).
     return isConstructor(target)
-      ? this.addClass(HOSTED_SERVICE_TYPE, target, signatures ?? [[]], 'singleton')
-      : this.addFactory(HOSTED_SERVICE_TYPE, target, [[RESOLVER_TYPE]], 'singleton');
+      ? this.addClass(HOSTED_SERVICE_TYPE, target, implType ?? Type.ctor(HOSTED_SERVICE_TYPE), 'singleton')
+      : this.addFactory(HOSTED_SERVICE_TYPE, target, Type.func(HOSTED_SERVICE_TYPE, RESOLVER_TYPE), 'singleton');
   } };
 
 registerAugmentations(typefor<Manifest>(), ServiceManifestHostedServiceAugmentations);

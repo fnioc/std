@@ -36,7 +36,7 @@ class Holder {
 const manifest = DefaultManifest.empty<string>()
   .addValue(CONFIG, { env: 'dev' })
   // .add(ServiceDescriptor.value(CONFIG, { env: 'dev' }))
-  .addClass(Type.stringify(Type.imported('Foo', 'app')), Foo, [[]])
+  .addClass(Type.stringify(Type.imported('Foo', 'app')), Foo, Type.ctor(FOO))
   // .add(ServiceDescriptor.ctor(FOO, Foo, [[]]))
   .add(ServiceDescriptor.ctor(BAR, Bar, [[FOO, Type.typeLiteral('fast')]]))
   .add(ServiceDescriptor.ctor(WIDGET, Widget, [[CONN, FOO]]))

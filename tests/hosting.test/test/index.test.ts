@@ -1,4 +1,5 @@
 import { MemoryConfigSource } from '@rhombus-std/config';
+import { Type } from '@rhombus-std/di.core';
 import { BackgroundService, Host, HOST_APPLICATION_LIFETIME_TYPE, HOST_ENVIRONMENT_TYPE, HostBuilder,
   type IHostApplicationLifetime, type IHostedLifecycleService,
   type IHostEnvironment } from '@rhombus-std/hosting/private/index';
@@ -35,7 +36,7 @@ test('HostBuilder.build runs and stops its hosted services', async () => {
   }
 
   const builder = new HostBuilder();
-  builder.configureServices((_context, services) => services.addHostedService(Worker, [[]]));
+  builder.configureServices((_context, services) => services.addHostedService(Worker, Type.ctor(HOSTED_SERVICE_TYPE)));
 
   const host = builder.build();
   expect(host.services).toBeDefined();
@@ -74,7 +75,9 @@ test('lifecycle ordering: starting -> start -> started -> applicationStarted -> 
   }
 
   const builder = new HostBuilder();
-  builder.configureServices((_context, services) => services.addHostedService(Recorder, [[]]));
+  builder.configureServices((_context, services) =>
+    services.addHostedService(Recorder, Type.ctor(HOSTED_SERVICE_TYPE))
+  );
 
   const host = builder.build();
   const lifetime: IHostApplicationLifetime = host.services.getRequiredService(
@@ -128,7 +131,7 @@ test('BackgroundService: execute runs on start; stop aborts its stopping signal'
   }
 
   const builder = new HostBuilder();
-  builder.configureServices((_context, services) => services.addHostedService(Worker, [[]]));
+  builder.configureServices((_context, services) => services.addHostedService(Worker, Type.ctor(HOSTED_SERVICE_TYPE)));
 
   const host = builder.build();
   await host.start();
@@ -167,9 +170,9 @@ test('addHostedService registers many under one shared token; the host resolves 
 
   const builder = new HostBuilder();
   builder.configureServices((_context, services) => {
-    services = services.addHostedService(A, [[]]);
-    services = services.addHostedService(B, [[]]);
-    services = services.addHostedService(C, [[]]);
+    services = services.addHostedService(A, Type.ctor(HOSTED_SERVICE_TYPE));
+    services = services.addHostedService(B, Type.ctor(HOSTED_SERVICE_TYPE));
+    services = services.addHostedService(C, Type.ctor(HOSTED_SERVICE_TYPE));
     return services;
   });
 
@@ -237,7 +240,7 @@ test('Host.createApplicationBuilder().build() produces a runnable IHost', async 
   expect(builder.config).toBeDefined();
   expect(builder.logging).toBeDefined();
 
-  builder.services = builder.services.addHostedService(Worker, [[]]);
+  builder.services = builder.services.addHostedService(Worker, Type.ctor(HOSTED_SERVICE_TYPE));
 
   const host = builder.build();
   await host.start();

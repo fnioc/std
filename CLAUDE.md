@@ -357,8 +357,11 @@ before touching):
   never appears in a public type (§1, §10).
 - **The manifest is IMMUTABLE** — `Manifest` is an iterable decorator chain: every verb
   (`add`/`addFactory`/`addValue`, the descriptor verbs, every augmentation) returns a NEW manifest
-  and leaves the receiver alone, so a discarded result registers NOTHING. `signatures` is a
-  required arg 3; `scope` is arg 4 and `key` arg 5. A builder that wraps a manifest
+  and leaves the receiver alone, so a discarded result registers NOTHING. A verb's long overload
+  takes the impl's composed TYPE NODE (`implType`, a `ConstructorType`/`FunctionType` or an
+  `IntersectionType` of them for an overloaded implementation) as a required arg 3, from which the
+  verb derives the stored dependency signatures; `scope` is arg 4 and `key` arg 5. Naked signature
+  arrays survive only on the builder chain's `withSignature`. A builder that wraps a manifest
   (`ILoggingBuilder`, `IMetricsBuilder`, `IHostApplicationBuilder`) exposes it as a WRITABLE slot
   (a local structural `ManifestSlot`) and siblings over one manifest share ONE holder;
   `IHostBuilder.configureServices` takes a RETURNING delegate (§114).

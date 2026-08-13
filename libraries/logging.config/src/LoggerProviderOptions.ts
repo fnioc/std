@@ -46,9 +46,9 @@ export const LoggerProviderOptions = {
     const providerConfig = loggerProviderConfigType(
       typeof providerType === 'string' ? Type.from(providerType) : providerType,
     );
-    return services.addClass(configureStepType(options), LoggerProviderConfigureOptions, [[providerConfig]],
-      'singleton').addClass(changeTokenSourceType(options), LoggerProviderOptionsChangeTokenSource, [[
-        providerConfig,
-      ]], 'singleton');
+    return services.addClass(configureStepType(options), LoggerProviderConfigureOptions,
+      Type.ctor(configureStepType(options), providerConfig), 'singleton')
+      .addClass(changeTokenSourceType(options), LoggerProviderOptionsChangeTokenSource,
+        Type.ctor(changeTokenSourceType(options), providerConfig), 'singleton');
   },
 };

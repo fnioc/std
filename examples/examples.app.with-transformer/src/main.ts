@@ -42,10 +42,10 @@
 
 import { ConfigBuilder } from '@rhombus-std/config';
 import type { ConfigRoot } from '@rhombus-std/config';
-import { RESOLVER_TYPE } from '@rhombus-std/di.core';
+import { RESOLVER_TYPE, Type } from '@rhombus-std/di.core';
 import type { IServiceProvider } from '@rhombus-std/di.core';
 import '@rhombus-std/di';
-import { Host } from '@rhombus-std/hosting';
+import { Host, HOSTED_SERVICE_TYPE } from '@rhombus-std/hosting';
 import type { IHostApplicationLifetime, IHostedLifecycleService } from '@rhombus-std/hosting';
 import type { ILogger, ILoggerFactory } from '@rhombus-std/logging.core';
 import { logInformation } from '@rhombus-std/logging.core';
@@ -256,8 +256,9 @@ services = services.addValue(typefor<ConfigRoot>(), config);
 // The composed chain goes BACK onto the builder. `builder.services` is a live
 // slot over an immutable chain, so everything registered into the local
 // `services` above is invisible to `build()` until it is handed back here.
-builder.services = services.addHostedService(InteropWorker, [[RESOLVER_TYPE, typefor<IHostApplicationLifetime>(),
-  typefor<ILoggerFactory>(), typefor<ConfigRoot>()]]);
+builder.services = services.addHostedService(InteropWorker,
+  Type.ctor(HOSTED_SERVICE_TYPE, RESOLVER_TYPE, typefor<IHostApplicationLifetime>(), typefor<ILoggerFactory>(),
+    typefor<ConfigRoot>()));
 
 // ── run the scenario ──────────────────────────────────────────────────────────
 
