@@ -2,7 +2,13 @@ import { type AugmentationSet2, type IServiceProvider, Type } from '@rhombus-std
 import { registerAugmentations } from '@rhombus-std/primitives.extras';
 
 type IServiceProviderServiceAugmentations = {
+  /** @throws Error - when nothing is registered for `serviceType`. */
   getRequiredService(serviceType: Type): any;
+
+  /**
+   * Every registration of `serviceType`, as one sequence. Nothing registered is an empty
+   * sequence rather than an absence, so this neither throws nor answers `undefined`.
+   */
   getServices(serviceType: Type): Iterable<any>;
 };
 declare module '@rhombus-std/primitives' {
@@ -18,7 +24,7 @@ export const ServiceProviderServiceAugmentations: AugmentationSet2<IServiceProvi
       return service;
     },
     getServices(serviceType: Type): Iterable<any> {
-      return this.getRequiredService(Type.named('Iterable', 'global', [serviceType]));
+      return this.getService(Type.iterable(serviceType));
     },
   };
 

@@ -4,10 +4,10 @@ import { registerAugmentations, typefor } from '@rhombus-std/primitives.extras';
 import { Ctor, Func } from '@rhombus-toolkit/func';
 
 interface IManifestServiceAugmentations<Scopes extends string> {
-  add<T>(configure: Func<[Unstarted<Scopes>], IComplete>): Manifest<Scopes>;
-  addClass<T>(ctor: Ctor, signatures: Signatures, scope?: Scopes, key?: string): this;
-  addFactory<T>(factory: Func<any[], unknown>, signatures: Signatures, scope?: Scopes, key?: string): this;
-  addValue<T>(value: unknown, key?: string): this;
+  add<T>(configure: Func<[Unstarted<T, Scopes>], IComplete>): Manifest<Scopes>;
+  addClass<T>(ctor: Ctor<any[], T>, signatures: Signatures, scope?: Scopes, key?: string): this;
+  addFactory<T>(factory: Func<any[], T>, signatures: Signatures, scope?: Scopes, key?: string): this;
+  addValue<T>(value: T, key?: string): this;
 }
 
 declare module '@rhombus-std/di.core' {
