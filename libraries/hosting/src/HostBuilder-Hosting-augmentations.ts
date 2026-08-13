@@ -10,7 +10,7 @@
 // class itself is decorated with `@augment(typefor<IHostBuilder>())`.
 
 import { MemoryConfigSource } from '@rhombus-std/config';
-import type { ServiceProviderOptions } from '@rhombus-std/di';
+import { ServiceProviderOptions } from '@rhombus-std/di';
 import { type IServiceProvider, RESOLVER_TYPE } from '@rhombus-std/di.core';
 import type { IMetricsBuilder } from '@rhombus-std/diagnostics.core';
 import { HOST_APPLICATION_LIFETIME_TYPE, type HostBuilderContext, HostDefaults, HostLifecycleAugmentations,
@@ -52,7 +52,7 @@ interface IHostBuilderHostingAugmentations {
   configureLogging(configureLoggingDelegate: Func<[HostBuilderContext, ILoggingBuilder], void>): this;
   configureMetrics(configureMetricsDelegate: Func<[IMetricsBuilder], void>): this;
   configureMetrics(configureMetricsDelegate: Func<[HostBuilderContext, IMetricsBuilder], void>): this;
-  useDefaultServiceProvider(configure: Func<[ServiceProviderOptions], void>): this;
+  useDefaultServiceProvider(configure: Func<[ServiceProviderOptions], ServiceProviderOptions>): this;
   useConsoleLifetime(configureOptions?: Func<[ConsoleLifetimeOptions], void>): this;
   runConsoleAsync(abortSignal?: AbortSignal): Promise<void>;
   runConsoleAsync(configureOptions: Func<[ConsoleLifetimeOptions], void>, abortSignal?: AbortSignal): Promise<void>;
@@ -164,17 +164,17 @@ export const HostBuilderHostingAugmentations: AugmentationSet2<IHostBuilder,
     },
 
     /**
-     * Specifies the default service-provider configuration. The delegate
-     * configures a fresh {@link ServiceProviderOptions} (`validateScopes` /
-     * `validateOnBuild`) that `build()` then threads into
+     * Specifies the default service-provider configuration. The delegate receives
+     * {@link ServiceProviderOptions.defaults} and returns the
+     * {@link ServiceProviderOptions} (`validateScopes` / `validateOnBuild` /
+     * `unionAmbiguity`) that `build()` then threads into
      * `ServiceManifest.build(options)`. Overrides any options set by an earlier
      * `configureDefaults`.
      */
     useDefaultServiceProvider(
-      configure: Func<[ServiceProviderOptions], void>,
+      configure: Func<[ServiceProviderOptions], ServiceProviderOptions>,
     ): IHostBuilder {
-      const options: ServiceProviderOptions = {};
-      configure(options);
+      const options = configure(ServiceProviderOptions.defaults);
       setServiceProviderOptionsFactory(this, () => options);
       return this;
     },

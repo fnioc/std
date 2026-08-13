@@ -26,8 +26,9 @@ export function tokenfor<T>(): string;
 export function tokenfor(value: unknown): string;
 export function tokenfor(_value?: unknown): string {
   throw new Error(
-    'tokenfor() requires the @rhombus-std/primitives.extras build-time transformer, '
-      + 'or pass an explicit token string.',
+    "tokenfor() requires @rhombus-std/primitives.extras's authoring transform to run. "
+      + 'It has not been applied. Depend on @rhombus-std/primitives.extras so ttsc spawns the '
+      + '@rhombus-std transform host, or pass an explicit token string.',
   );
 }
 

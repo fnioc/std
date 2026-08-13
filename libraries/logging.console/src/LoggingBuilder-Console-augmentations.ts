@@ -26,7 +26,7 @@
 
 import { LoggingBuilderProviderAugmentations } from '@rhombus-std/logging';
 import type { ILoggingBuilder } from '@rhombus-std/logging.core';
-import type { AugmentationSet2, Flatten } from '@rhombus-std/primitives';
+import { type AugmentationSet2, type Flatten, getOrCreate } from '@rhombus-std/primitives';
 import { registerAugmentations } from '@rhombus-std/primitives.extras';
 import type { Func } from '@rhombus-toolkit/func';
 import type { ConsoleFormatter } from './ConsoleFormatter';
@@ -59,16 +59,14 @@ interface ConsoleRegistration {
 const registrations = new WeakMap<ILoggingBuilder, ConsoleRegistration>();
 
 function getRegistration(builder: ILoggingBuilder): ConsoleRegistration {
-  let registration = registrations.get(builder);
-  if (registration === undefined) {
-    registration = { loggerOptions: new ReloadableOptions(new ConsoleLoggerOptions()),
-      simpleOptions: new ReloadableOptions(new SimpleConsoleFormatterOptions()),
-      systemdOptions: new ReloadableOptions(new ConsoleFormatterOptions()),
-      jsonOptions: new ReloadableOptions(new JsonConsoleFormatterOptions()), pendingFormatters: [],
-      provider: undefined };
-    registrations.set(builder, registration);
-  }
-  return registration;
+  return getOrCreate(registrations, builder, () => ({
+    loggerOptions: new ReloadableOptions(new ConsoleLoggerOptions()),
+    simpleOptions: new ReloadableOptions(new SimpleConsoleFormatterOptions()),
+    systemdOptions: new ReloadableOptions(new ConsoleFormatterOptions()),
+    jsonOptions: new ReloadableOptions(new JsonConsoleFormatterOptions()),
+    pendingFormatters: [],
+    provider: undefined,
+  }));
 }
 
 /** `addConsole` with a formatter pre-selected. */

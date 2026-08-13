@@ -3,7 +3,15 @@ import { registerAugmentations, typefor } from '@rhombus-std/primitives.extras';
 import { AsyncServiceScope, type IServiceScope, type IServiceScopeFactory } from '../ServiceScope';
 
 type IServiceProviderServiceScopeAugmentations = {
+  /** The child {@link IServiceScope} `name` creates, through the registered {@link IServiceScopeFactory}. */
   createScope(name?: string): IServiceScope;
+
+  /**
+   * @remarks
+   * Declared ahead of implementation so callers can compile against it; the lifetime and
+   * disposal model this depends on is still undecided.
+   * @throws {NotImplementedError} always, until that model is decided.
+   */
   createAsyncScope(): AsyncServiceScope;
 };
 declare module '@rhombus-std/primitives' {
@@ -17,7 +25,6 @@ export const ServiceProviderServiceScopeAugmentations: AugmentationSet2<IService
     },
     createAsyncScope(): AsyncServiceScope {
       throw new NotImplementedError('IServiceProvider.createAsyncScope');
-      return new AsyncServiceScope(this.createScope());
     },
   };
 

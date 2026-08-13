@@ -120,4 +120,53 @@ describe('withSchema(...).build()', () => {
 
     expect(config).toEqual({ Host: 'h', Mode: undefined });
   });
+
+  test('a member typed as a union of string literals coerces by equality', () => {
+    const schema = Type.object({ Mode: Type.union(Type.typeLiteral('fast'), Type.typeLiteral('slow')) });
+
+    const config = new ConfigBuilder().addInMemoryCollection({ Mode: 'fast' }).withSchema(schema).build();
+
+    expect(config).toEqual({ Mode: 'fast' });
+  });
+
+  test('a member typed as a union of number/boolean/bigint literals coerces by parse-then-equality', () => {
+    const schema = Type.object({
+      Level: Type.union(Type.typeLiteral(1), Type.typeLiteral(2), Type.typeLiteral(3)),
+      Strict: Type.union(Type.typeLiteral(true), Type.typeLiteral(false)),
+      Big: Type.union(Type.typeLiteral(10n), Type.typeLiteral(20n)),
+    });
+
+    const config = new ConfigBuilder().addInMemoryCollection({ Level: '2', Strict: 'on', Big: '20' })
+      .withSchema(schema).build();
+
+    expect(config).toEqual({ Level: 2, Strict: true, Big: 20n });
+  });
+
+  test('a literal-union member survives being unioned with undefined -- optional, still literal-checked', () => {
+    const schema = Type.object({
+      Mode: Type.union(Type.typeLiteral('fast'), Type.typeLiteral('slow'), Type.typeLiteral(undefined)),
+    });
+
+    const absent = new ConfigBuilder().addInMemoryCollection({}).withSchema(schema).build();
+    expect(absent).toEqual({ Mode: undefined });
+
+    expect(() => new ConfigBuilder().addInMemoryCollection({ Mode: 'medium' }).withSchema(schema).build()).toThrow(
+      SchemaCoercionError,
+    );
+  });
+
+  test('a value naming no allowed literal is reported with the allowed values, not guessed at', () => {
+    const schema = Type.object({ Mode: Type.union(Type.typeLiteral('fast'), Type.typeLiteral('slow')) });
+
+    try {
+      new ConfigBuilder().addInMemoryCollection({ Mode: 'medium' }).withSchema(schema).build();
+      throw new Error('expected a throw');
+    } catch (err) {
+      expect(err).toBeInstanceOf(SchemaCoercionError);
+      const issue = (err as SchemaCoercionError).issues[0]!;
+      expect(issue).toContain('Mode');
+      expect(issue).toContain('"fast"');
+      expect(issue).toContain('"slow"');
+    }
+  });
 });

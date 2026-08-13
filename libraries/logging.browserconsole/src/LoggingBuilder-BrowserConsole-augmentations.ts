@@ -14,7 +14,7 @@
 
 import { LoggingBuilderProviderAugmentations } from '@rhombus-std/logging';
 import type { ILoggingBuilder } from '@rhombus-std/logging.core';
-import type { AugmentationSet2, Flatten } from '@rhombus-std/primitives';
+import { type AugmentationSet2, type Flatten, getOrCreate } from '@rhombus-std/primitives';
 import { registerAugmentations } from '@rhombus-std/primitives.extras';
 import { BrowserConsoleLoggerProvider } from './BrowserConsoleLoggerProvider';
 
@@ -48,12 +48,11 @@ export const BrowserConsoleLoggerAugmentations: AugmentationSet2<ILoggingBuilder
      * platform console global.
      */
     addBrowserConsole(): ILoggingBuilder {
-      let provider = registrations.get(this);
-      if (provider === undefined) {
-        provider = new BrowserConsoleLoggerProvider();
-        registrations.set(this, provider);
-        LoggingBuilderProviderAugmentations.addProvider.call(this, provider);
-      }
+      getOrCreate(registrations, this, (builder) => {
+        const provider = new BrowserConsoleLoggerProvider();
+        LoggingBuilderProviderAugmentations.addProvider.call(builder, provider);
+        return provider;
+      });
       return this;
     },
   };
