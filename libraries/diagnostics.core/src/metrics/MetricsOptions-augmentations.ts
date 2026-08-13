@@ -3,7 +3,7 @@
 //
 // `undefined` name arguments match anything.
 
-import type { AugmentationSet } from '@rhombus-std/primitives';
+import { applyAugmentations, type AugmentationSet } from '@rhombus-std/primitives';
 
 import { InstrumentRule } from './InstrumentRule';
 import { METER_SCOPE_ALL, MeterScope } from './MeterScope';
@@ -32,3 +32,5 @@ export const MetricsOptionsAugmentations = {
     return this;
   },
 } satisfies AugmentationSet<MetricsOptions>;
+
+applyAugmentations(MetricsOptions, MetricsOptionsAugmentations);

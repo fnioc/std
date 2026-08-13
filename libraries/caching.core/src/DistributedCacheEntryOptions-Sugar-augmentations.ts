@@ -1,7 +1,7 @@
 // Convenience methods on DistributedCacheEntryOptions -- set absolute/sliding
 // expiration -- dot-callable on any options bag. Each returns it for chaining.
 
-import { type AugmentationSet } from '@rhombus-std/primitives';
+import { applyAugmentations, type AugmentationSet } from '@rhombus-std/primitives';
 import { DistributedCacheEntryOptions } from './DistributedCacheEntryOptions';
 
 interface IDistributedCacheEntryOptionsSugarAugmentations {
@@ -30,3 +30,5 @@ export const DistributedCacheEntryOptionsSugarAugmentations = {
     return this;
   },
 } satisfies AugmentationSet<DistributedCacheEntryOptions>;
+
+applyAugmentations(DistributedCacheEntryOptions, DistributedCacheEntryOptionsSugarAugmentations);
