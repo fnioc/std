@@ -10,8 +10,8 @@ import (
 // TypeRef is a marker reference deserialized through the SAME grammar the rest
 // of the engine spells types in — a Go mirror of the TS Type model's NamedType
 // shape (Type.named(name, from, genericArgs)), one of the three TypeIdentifier
-// kinds (NamedType | PlaceholderType | TagType): a type IDENTIFIER, never a
-// signature-shaped Type (FunctionType, CtorType, …). A marker entry's `type` or
+// kinds (NamedType | GenericType | TagType): a type IDENTIFIER, never a
+// signature-shaped Type (FuncType, CtorType, …). A marker entry's `type` or
 // `impl` string always deserializes into exactly this: a name, the module it
 // comes from, and any generic type arguments — reusing tokentext.ParseToken
 // for the "<...>" layer, so there is one grammar for a closed-generic token

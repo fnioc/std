@@ -42,7 +42,7 @@ export const CHECKOUT_TYPES = {
   /** One element type; THREE registrations land on it (see `validators`). */
   validator: Type.named('IOrderValidator', '@rhombus-std/examples.contracts'),
   /** The COLLECTION request over that element type — `IOrderValidator[]` derives this. */
-  validators: Type.named('Array', 'global', [Type.named('IOrderValidator', '@rhombus-std/examples.contracts')]),
+  validators: Type.array(Type.named('IOrderValidator', '@rhombus-std/examples.contracts')),
   /** The keyed BASE. Nothing registers here bare; every gateway carries a key instead. */
   gateway: Type.named('IPaymentGateway', '@rhombus-std/examples.contracts'),
   receipt: Type.named('IReceipt', '@rhombus-std/examples.contracts'),

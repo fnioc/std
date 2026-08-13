@@ -4,10 +4,13 @@
  * equality everywhere downstream.
  */
 
+import type { Func } from '@rhombus-toolkit/func';
 import { stringifyType } from '../StringifyVisitor.js';
-import type { CtorType, FunctionType, IntersectionType, LiteralValue, NamedType, ObjectType, PlaceholderType, TagType,
-  TupleType, Type, TypeBrand, TypeLiteralType, UnionType } from '../Type.js';
+import type { AggregateType, ArrayType, AsyncIterableType, AsyncType, CtorType, FuncType, GenericType, IntersectionType,
+  IterableType, LiteralValue, NamedType, ObjectType, TagType, TupleType, Type, TypeBrand, TypeLiteralType,
+  UnionType } from '../Type.js';
 import { TypeVisitor } from '../TypeVisitor.js';
+import { type AggregateName, isAggregateName } from './grammar.js';
 import { id, intern, isInterned } from './intern.js';
 import { LITERAL_BASE } from './literal-base.js';
 
@@ -41,12 +44,12 @@ export function tuple(members: readonly Type[]): TupleType {
   return intern(`tuple\0${slots.map(id).join(',')}`, () => node<TupleType>({ kind: 'tuple', members: slots }));
 }
 
-export function func(returnType: Type, args: readonly Type[]): FunctionType {
+export function func(returnType: Type, args: readonly Type[]): FuncType {
   const result = adopt(returnType);
   const slots = args.map(adopt);
   return intern(
-    `function\0${id(result)}\0${slots.map(id).join(',')}`,
-    () => node<FunctionType>({ kind: 'function', args: slots, returnType: result }),
+    `func\0${id(result)}\0${slots.map(id).join(',')}`,
+    () => node<FuncType>({ kind: 'func', args: slots, returnType: result }),
   );
 }
 
@@ -59,7 +62,50 @@ export function ctor(instanceType: Type, args: readonly Type[]): CtorType {
   );
 }
 
-export function named(name: string, from: string, genericArgs: readonly Type[]): NamedType {
+export function array(element: Type): ArrayType {
+  const slot = adopt(element);
+  return intern(`array\0${id(slot)}`, () => node<ArrayType>({ kind: 'array', element: slot }));
+}
+
+export function async(element: Type): AsyncType {
+  const slot = adopt(element);
+  return intern(`async\0${id(slot)}`, () => node<AsyncType>({ kind: 'async', element: slot }));
+}
+
+export function asyncIterable(element: Type): AsyncIterableType {
+  const slot = adopt(element);
+  return intern(
+    `asyncIterable\0${id(slot)}`,
+    () => node<AsyncIterableType>({ kind: 'asyncIterable', element: slot }),
+  );
+}
+
+export function iterable(element: Type): IterableType {
+  const slot = adopt(element);
+  return intern(`iterable\0${id(slot)}`, () => node<IterableType>({ kind: 'iterable', element: slot }));
+}
+
+/**
+ * The aggregate each reserved spelling mints. Keyed by {@link AggregateName}, so a spelling added
+ * to the grammar without a factory here is a compile error rather than a name that reads as an
+ * ordinary type.
+ */
+const AGGREGATES: Readonly<Record<AggregateName, Func<[Type], AggregateType>>> = {
+  Array: array,
+  Async: async,
+  AsyncIterable: asyncIterable,
+  Iterable: iterable,
+};
+
+/**
+ * A reserved aggregate spelling under `global`, carrying one argument, mints that aggregate's own
+ * kind — the same canonicalization {@link union} performs, so every door that can spell an
+ * aggregate lands on the one interned node and a named spelling of an aggregate never exists.
+ */
+export function named(name: string, from: string, genericArgs: readonly Type[]): NamedType | AggregateType {
+  if (from === 'global' && genericArgs.length === 1 && isAggregateName(name)) {
+    return AGGREGATES[name](genericArgs[0]!);
+  }
   const slots = genericArgs.map(adopt);
   return intern(
     `named\0${JSON.stringify(from)}\0${JSON.stringify(name)}\0${slots.map(id).join(',')}`,
@@ -83,10 +129,10 @@ export function literal(value: LiteralValue): TypeLiteralType {
   return intern(literalKey(value), () => node<TypeLiteralType>({ kind: 'literal', value }));
 }
 
-export function placeholder(label: string): PlaceholderType {
+export function generic(label: string): GenericType {
   return intern(
-    `placeholder\0${JSON.stringify(label)}`,
-    () => node<PlaceholderType>({ kind: 'placeholder', label }),
+    `generic\0${JSON.stringify(label)}`,
+    () => node<GenericType>({ kind: 'generic', label }),
   );
 }
 
@@ -182,20 +228,29 @@ function adopt(type: Type): Type {
 }
 
 class AdoptVisitor extends TypeVisitor<Type> {
-  protected override visitUnion(type: UnionType): Type {
-    return union(type.members);
+  protected override visitArray(type: ArrayType): Type {
+    return array(type.element);
+  }
+  protected override visitAsync(type: AsyncType): Type {
+    return async(type.element);
+  }
+  protected override visitAsyncIterable(type: AsyncIterableType): Type {
+    return asyncIterable(type.element);
+  }
+  protected override visitCtor(type: CtorType): Type {
+    return ctor(type.instanceType, type.args);
+  }
+  protected override visitFunc(type: FuncType): Type {
+    return func(type.returnType, type.args);
+  }
+  protected override visitGeneric(type: GenericType): Type {
+    return generic(type.label);
   }
   protected override visitIntersection(type: IntersectionType): Type {
     return intersection(type.members);
   }
-  protected override visitTuple(type: TupleType): Type {
-    return tuple(type.members);
-  }
-  protected override visitFunction(type: FunctionType): Type {
-    return func(type.returnType, type.args);
-  }
-  protected override visitCtor(type: CtorType): Type {
-    return ctor(type.instanceType, type.args);
+  protected override visitIterable(type: IterableType): Type {
+    return iterable(type.element);
   }
   protected override visitNamed(type: NamedType): Type {
     return named(type.name, type.from, type.genericArgs);
@@ -203,14 +258,17 @@ class AdoptVisitor extends TypeVisitor<Type> {
   protected override visitObject(type: ObjectType): Type {
     return object(type.members);
   }
+  protected override visitTag(type: TagType): Type {
+    return tag(type.type, type.tag);
+  }
+  protected override visitTuple(type: TupleType): Type {
+    return tuple(type.members);
+  }
   protected override visitTypeLiteral(type: TypeLiteralType): Type {
     return literal(type.value);
   }
-  protected override visitPlaceholder(type: PlaceholderType): Type {
-    return placeholder(type.label);
-  }
-  protected override visitTag(type: TagType): Type {
-    return tag(type.type, type.tag);
+  protected override visitUnion(type: UnionType): Type {
+    return union(type.members);
   }
 }
 

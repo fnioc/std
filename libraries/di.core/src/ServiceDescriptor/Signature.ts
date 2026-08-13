@@ -13,8 +13,8 @@ export namespace TypeSignatures {
   }
 
   export function substituteSignatures(signatures: TypeSignatures,
-    placeholders: ReadonlyMap<string, Type>): TypeSignatures {
-    return signatures.map(signature => signature.map(param => Type.substitute(param, placeholders)));
+    generics: ReadonlyMap<string, Type>): TypeSignatures {
+    return signatures.map(signature => signature.map(param => Type.substitute(param, generics)));
   }
 }
 

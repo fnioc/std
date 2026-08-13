@@ -17,7 +17,7 @@ describe('one object per type', () => {
     expect(Type.from('[app:A, app:B]')).toBe(Type.tuple(A, B));
     expect(Type.from('{ a: app:A }')).toBe(Type.object({ a: A }));
     expect(Type.from('app:A#primary')).toBe(Type.tag(A, 'primary'));
-    expect(Type.from('%T')).toBe(Type.placeholder('T'));
+    expect(Type.from('%T')).toBe(Type.generic('T'));
     expect(Type.from('5')).toBe(Type.typeLiteral(5));
     expect(Type.from('(app:B) => app:A')).toBe(Type.func(A, B));
     expect(Type.from('new (app:B) => app:A')).toBe(Type.ctor(A, B));
@@ -117,13 +117,13 @@ describe('interned nodes are sealed', () => {
 
 describe('substitution', () => {
   test('a substitution that changes nothing returns the same object', () => {
-    const open = Type.named('Box', 'app', [Type.placeholder('T')]);
+    const open = Type.named('Box', 'app', [Type.generic('T')]);
     expect(Type.substitute(open, new Map())).toBe(open);
     expect(Type.substitute(open, new Map([['U', A]]))).toBe(open);
   });
 
   test('a closed type is the one the factory would have built', () => {
-    const open = Type.named('Box', 'app', [Type.placeholder('T')]);
+    const open = Type.named('Box', 'app', [Type.generic('T')]);
     expect(Type.substitute(open, new Map([['T', A]]))).toBe(Type.named('Box', 'app', [A]));
   });
 });
@@ -142,7 +142,7 @@ describe('collection', () => {
 
   test('the composing and the reading side land on one object', () => {
     expect(Type.iterable(A)).toBe(Type.iterable(A));
-    expect(Type.iterable(A)).toBe(Type.from('Iterable<app:A>'));
+    expect(Type.from('Iterable<app:A>')).toBe(Type.iterable(A));
   });
 
   test('a different element is a different aggregate', () => {
@@ -150,7 +150,7 @@ describe('collection', () => {
   });
 
   test('nests, so an aggregate is itself collectable', () => {
-    expect(Type.iterable(Type.iterable(A))).toBe(Type.from('Iterable<Iterable<app:A>>'));
+    expect(Type.from('Iterable<Iterable<app:A>>')).toBe(Type.iterable(Type.iterable(A)));
   });
 });
 
@@ -161,7 +161,7 @@ describe('array aggregate', () => {
 
   test('the composing and the reading side land on one object', () => {
     expect(Type.array(A)).toBe(Type.array(A));
-    expect(Type.array(A)).toBe(Type.from('Array<app:A>'));
+    expect(Type.from('Array<app:A>')).toBe(Type.array(A));
   });
 
   test('a different element is a different aggregate', () => {
@@ -169,7 +169,7 @@ describe('array aggregate', () => {
   });
 
   test('nests, so an aggregate is itself collectable', () => {
-    expect(Type.array(Type.array(A))).toBe(Type.from('Array<Array<app:A>>'));
+    expect(Type.from('Array<Array<app:A>>')).toBe(Type.array(Type.array(A)));
   });
 
   test('a different aggregate kind over the same element is a different type', () => {
@@ -184,7 +184,7 @@ describe('async iterable aggregate', () => {
 
   test('the composing and the reading side land on one object', () => {
     expect(Type.asyncIterable(A)).toBe(Type.asyncIterable(A));
-    expect(Type.asyncIterable(A)).toBe(Type.from('AsyncIterable<app:A>'));
+    expect(Type.from('AsyncIterable<app:A>')).toBe(Type.asyncIterable(A));
   });
 
   test('a different element is a different aggregate', () => {
@@ -192,7 +192,7 @@ describe('async iterable aggregate', () => {
   });
 
   test('nests, so an aggregate is itself collectable', () => {
-    expect(Type.asyncIterable(Type.asyncIterable(A))).toBe(Type.from('AsyncIterable<AsyncIterable<app:A>>'));
+    expect(Type.from('AsyncIterable<AsyncIterable<app:A>>')).toBe(Type.asyncIterable(Type.asyncIterable(A)));
   });
 
   test('a different aggregate kind over the same element is a different type', () => {

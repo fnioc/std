@@ -1,5 +1,5 @@
 import type { IComplete, Manifest, ServiceDescriptor, Signatures, Unstarted } from '@rhombus-std/di.core';
-import { AugmentationSet2, type CtorType, type Flatten, type FunctionType, type IntersectionType, Token,
+import { AugmentationSet2, type CtorType, type Flatten, type FuncType, type IntersectionType, Token,
   Type } from '@rhombus-std/primitives';
 import { registerAugmentations, typefor } from '@rhombus-std/primitives.extras';
 import { Ctor, Func } from '@rhombus-toolkit/func';
@@ -7,7 +7,7 @@ import { Ctor, Func } from '@rhombus-toolkit/func';
 interface IManifestServiceAugmentations<Scopes extends string> {
   add<T>(configure: Func<[Unstarted<T, Scopes>], IComplete>): Manifest<Scopes>;
   add<T>(ctor: Ctor<any[], T>, implType: CtorType | IntersectionType, scope?: Scopes, key?: string): Manifest<Scopes>;
-  add<T>(factory: Func<any[], T>, implType: FunctionType | IntersectionType, scope?: Scopes,
+  add<T>(factory: Func<any[], T>, implType: FuncType | IntersectionType, scope?: Scopes,
     key?: string): Manifest<Scopes>;
   addClass<T>(ctor: Ctor<any[], T>, signatures: Signatures, scope?: Scopes, key?: string): this;
   addFactory<T>(factory: Func<any[], T>, signatures: Signatures, scope?: Scopes, key?: string): this;

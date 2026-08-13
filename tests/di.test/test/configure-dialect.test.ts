@@ -5,7 +5,7 @@
 
 import { DefaultManifest, type Manifest, ServiceDescriptor } from '@rhombus-std/di.core';
 import '@rhombus-std/di';
-import { type IntersectionType, Type } from '@rhombus-std/primitives';
+import { Type } from '@rhombus-std/primitives';
 import { describe, expect, test } from 'bun:test';
 
 interface IClock {
@@ -71,12 +71,10 @@ describe('withType', () => {
   });
 
   test('an intersection describes an overloaded implementation, one call signature per member', () => {
-    // `Type.intersection` returns a lone surviving member as itself, so its declared return is the
-    // whole of `Type`; a caller naming a genuine intersection says so.
     const overloaded = Type.intersection(
       Type.ctor(SINK, Type.named('IMissing', 'app'), Type.typeLiteral('unreachable')),
       Type.ctor(SINK, CLOCK, Type.typeLiteral('fallback')),
-    ) as IntersectionType;
+    );
     // The first member asks for a type nothing registers, so the second is the one that lowers.
     const services = withClock().add<Sink>(SINK, sink => sink.asClass(Sink).withType(overloaded));
 
@@ -127,7 +125,7 @@ describe('the terse form', () => {
   });
 
   test('refuses an overload set that is called both ways at once', () => {
-    const mixed = Type.intersection(Type.ctor(SINK, CLOCK), Type.func(SINK, CLOCK)) as IntersectionType;
+    const mixed = Type.intersection(Type.ctor(SINK, CLOCK), Type.func(SINK, CLOCK));
 
     expect(() => withClock().add<Sink>(SINK, Sink, mixed)).toThrow(/mixes constructor and function signatures/);
   });

@@ -1,19 +1,8 @@
-import type { CtorType, FunctionType, ObjectType, Type, TypeLiteralType } from '../Type.js';
-import { ctor, func, intersection, literal, named, object, placeholder, tag, tuple, union } from './factories.js';
+import type { CtorType, FuncType, ObjectType, Type } from '../Type.js';
+import { ctor, func, generic, intersection, literal, named, object, tag, tuple, union } from './factories.js';
+import { KEYWORD_LITERALS, SERVICE_PROVIDER_FROM } from './grammar.js';
 import { lex, type LexToken } from './lexer.js';
 import { TypeParseError } from './TypeParseError.js';
-
-/** The `from` a bare `ServiceProvider` resolves to. */
-const SERVICE_PROVIDER_FROM = '@rhombus-std/primitives';
-
-const KEYWORD_LITERALS: ReadonlyMap<string, TypeLiteralType['value']> = new Map<string, TypeLiteralType['value']>([
-  ['true', true],
-  ['false', false],
-  ['null', null],
-  ['undefined', undefined],
-  ['NaN', NaN],
-  ['Infinity', Infinity],
-]);
 
 const OPENERS = new Set(['(', '[', '{', '<']);
 const CLOSERS = new Set([')', ']', '}', '>']);
@@ -121,7 +110,7 @@ class TypeParser {
       }
       case '%': {
         this.#index++;
-        return placeholder(this.#segment());
+        return generic(this.#segment());
       }
       default: {
         throw this.#error(token.position, 'a type');
@@ -146,6 +135,8 @@ class TypeParser {
   /**
    * The readings an unescaped, unqualified name carries instead of naming a type. `string`,
    * `number` and the other value types are deliberately absent — they name types like any other.
+   * The aggregate spellings are absent too: the `named` door canonicalizes them, so parsing one
+   * as an ordinary name already lands on its kind node.
    */
   #reserved(name: LexToken): Type | undefined {
     if (KEYWORD_LITERALS.has(name.text)) {
@@ -257,7 +248,7 @@ class TypeParser {
     return false;
   }
 
-  #function(): FunctionType {
+  #function(): FuncType {
     this.#expect('(');
     const args = this.#typeList(')');
     this.#expect('=>');

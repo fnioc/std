@@ -12,7 +12,7 @@
 // closed registration on demand for whichever closing is asked for. Adding a
 // fourth entity later costs one `Seed<T>` value and nothing else.
 //
-// THE HOLE IS A PLACEHOLDER TYPE. `Type.placeholder(label)` composes one, and
+// THE HOLE IS A PLACEHOLDER TYPE. `Type.generic(label)` composes one, and
 // `Type.named(base, from, [hole])` puts it where a type argument goes. Where the
 // type-driven dialect writes the compile-time brands `$<1>` / `Hole<1, Entity>`,
 // this file composes the same value directly — the brands exist so a transformer
@@ -88,8 +88,8 @@ function witnessOf(entity: Type): Type {
 // The open TEMPLATES. A hole is a placeholder type, and it is matched
 // positionally against the closing's arguments — `$1` in `IJoin<$1,$2>` binds
 // the first argument wherever else `$1` appears in that registration.
-const HOLE_1 = Type.placeholder('1');
-const HOLE_2 = Type.placeholder('2');
+const HOLE_1 = Type.generic('1');
+const HOLE_2 = Type.generic('2');
 
 const TABLE_TEMPLATE = tableOf(HOLE_1);
 const REPOSITORY_TEMPLATE = repositoryOf(HOLE_1);
