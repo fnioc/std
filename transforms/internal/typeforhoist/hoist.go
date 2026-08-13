@@ -46,7 +46,8 @@ const TypeExport = "Type"
 const nameHashLen = 10
 
 // maxReadableLen bounds the readable part of a name, so a deeply-generic type
-// does not produce a hundred-character identifier.
+// does not produce a hundred-character identifier. A longer spelling keeps its
+// TAIL, which is the type's own name.
 const maxReadableLen = 40
 
 // Kind discriminates a Node's populated fields — one case per `Type` factory a
@@ -297,9 +298,10 @@ const header = `// Generated. Every derived type this project names, once each.
 // Type.from("…") of the same spelling are the same object.
 //
 // A name is "$" plus the type's canonical spelling with every non-alphanumeric
-// character replaced by "_". A spelling that was entirely alphanumeric is unique
-// on its own; anything else carries a short hash of the spelling, so the name
-// stays readable and still cannot collide.
+// character replaced by "_", trimmed to its last 40 characters — the type's own
+// name, since a spelling reads qualifier-first. A spelling that was entirely
+// alphanumeric is unique on its own; anything else carries a short hash of the
+// full spelling, so the name stays readable and still cannot collide.
 
 `
 
@@ -351,7 +353,10 @@ func nameFor(key string) string {
 		return "$" + readable
 	}
 	if len(readable) > maxReadableLen {
-		readable = strings.Trim(readable[:maxReadableLen], "_")
+		// Keep the TAIL: a spelling reads qualifier-first, so its last characters
+		// are the type's own name — the part someone scanning the module is
+		// looking for.
+		readable = strings.TrimLeft(readable[len(readable)-maxReadableLen:], "_")
 	}
 	sum := sha256.Sum256([]byte(key))
 	suffix := hex.EncodeToString(sum[:])[:nameHashLen]

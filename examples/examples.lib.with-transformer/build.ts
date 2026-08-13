@@ -8,12 +8,13 @@
 // be lowered before anything can execute. The Go engine runs during the
 // Bun.build emit:
 //
-//   - dist/*.js  — Bun.build bundles the barrel, with @ttsc/unplugin/bun running
-//     the di.extras Go plugin as an onLoad transform so each tokenless call
-//     is lowered to its explicit `Type` as Bun emits. The workspace runtime deps
-//     stay EXTERNAL — a consumer resolves the same @rhombus-std/di.core identity
-//     at runtime, never a bundled copy, which is what keeps the augmentation
-//     installs and the error taxonomy shared.
+//   - dist/*.js  — a per-file STAGE runs @ttsc/unplugin/bun over each src file in
+//     isolation, lowering every tokenless call to its explicit `Type` (and
+//     writing the generated consts a hoisted call site references into the same
+//     stage directory); a plugin-free Bun.build then bundles that emit into the
+//     barrel. The workspace runtime deps stay EXTERNAL — a consumer resolves the
+//     same @rhombus-std/di.core identity at runtime, never a bundled copy, which
+//     is what keeps the augmentation installs and the error taxonomy shared.
 //   - dist/index.d.ts — the clean authored surface, emitted by plain tsc
 //     (typescript 5). The lowered calls are real di.core methods with no
 //     type-level footprint, so the d.ts is identical with or without lowering.
@@ -21,7 +22,7 @@
 import { spawnSync } from 'node:child_process';
 import { rmSync } from 'node:fs';
 import { join } from 'node:path';
-import { readTsconfigTransforms, ttscBunPlugin } from '../../scripts/build-package';
+import { readTsconfigTransforms, stagedEntrypoint, stageLowering } from '../../scripts/build-package';
 
 const dir = import.meta.dir;
 const dist = join(dir, 'dist');
@@ -43,16 +44,18 @@ if (dts.status !== 0) {
 const manual = readTsconfigTransforms(dir, 'tsconfig.ttsc.json');
 const ttscTransforms = manual.length > 0 ? manual : undefined;
 
+// ttscTransforms is undefined, so @ttsc/unplugin/bun runs auto-discovery (the
+// one owner host, deduped to a single spawn); the host self-selects the stages.
+const stageDir = await stageLowering({ dir, name: 'examples.lib.with-transformer', ttscProject: 'tsconfig.ttsc.json',
+  ttscTransforms });
+
 const js = await Bun.build({
-  entrypoints: [join(dir, 'src/index.ts')],
+  entrypoints: [stagedEntrypoint(stageDir, 'src/index.ts')],
   outdir: dist,
   target: 'node',
   format: 'esm',
   external: ['@rhombus-std/di.core', '@rhombus-std/options', '@rhombus-std/examples.contracts',
     '@rhombus-std/primitives'],
-  // ttscTransforms is undefined, so @ttsc/unplugin/bun runs auto-discovery (the
-  // one owner host, deduped to a single spawn); the host self-selects the stages.
-  plugins: [await ttscBunPlugin(dir, 'tsconfig.ttsc.json', ttscTransforms)],
 });
 if (!js.success) {
   for (const log of js.logs) {
