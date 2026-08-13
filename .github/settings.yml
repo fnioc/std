@@ -138,6 +138,9 @@ labels:
   - name: v1
     color: c5def7
     description: Deferred enhancement pass (post-v0)
+  - name: di classic
+    color: ededed
+    description: Predates the scope/ManifestScope redesign of the di family
 
   # Package families.
   - name: primitives
