@@ -60,4 +60,12 @@ describe('async iterable resolution', () => {
     const done = await iterator.next();
     expect(done.done).toBe(true);
   });
+
+  test('a registration made directly under the address answers as itself, never synthesized', () => {
+    const manifest = DefaultManifest.empty<string>()
+      .add(ServiceDescriptor.value(A, 'a-val'))
+      .add(ServiceDescriptor.value(Type.asyncIterable(A), 'exact-async-iter'));
+    const provider = new ServiceProvider(manifest);
+    expect(provider.getService(Type.asyncIterable(A))).toBe('exact-async-iter');
+  });
 });
