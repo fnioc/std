@@ -442,7 +442,7 @@ function demonstrateConfiguredRegistration(): string {
   const services = withClock
     .add(SINK_TYPE, sink =>
       sink.asClass(PlainTextSink)
-        .usingSignature(CLOCK_TYPE, Type.typeLiteral('staging'))
+        .withSignature(CLOCK_TYPE, Type.typeLiteral('staging'))
         .withLifetime('singleton'));
 
   const sink = services.build().getRequiredService(SINK_TYPE) as IMessageSink;

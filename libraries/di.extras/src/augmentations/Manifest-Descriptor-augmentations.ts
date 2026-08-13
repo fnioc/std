@@ -4,17 +4,17 @@ import { registerAugmentations, typefor } from '@rhombus-std/primitives.extras';
 import type { Ctor, Func } from '@rhombus-toolkit/func';
 
 interface IManifestDescriptorAugmentations<Scopes extends string> {
-  tryAdd<T>(configure: Func<[Unstarted<Scopes>], IComplete>): Manifest<Scopes>;
+  tryAdd<T>(configure: Func<[Unstarted<T, Scopes>], IComplete>): Manifest<Scopes>;
 
-  tryAddClass<T>(ctor: Ctor, signatures: Signatures, scope?: Scopes, key?: string): Manifest<Scopes>;
-  tryAddFactory<T>(factory: Func<any[], unknown>, signatures: Signatures, scope?: Scopes,
-    key?: string): Manifest<Scopes>;
-  tryAddValue<T>(value: unknown, key?: string): Manifest<Scopes>;
+  tryAddClass<T>(ctor: Ctor<any[], T>, signatures: Signatures, scope?: Scopes, key?: string): Manifest<Scopes>;
+  tryAddFactory<T>(factory: Func<any[], T>, signatures: Signatures, scope?: Scopes, key?: string): Manifest<Scopes>;
+  tryAddValue<T>(value: T, key?: string): Manifest<Scopes>;
 
-  replaceClass<T>(ctor: Ctor, signatures: Signatures, scope: Scopes | undefined, key?: string): Manifest<Scopes>;
-  replaceFactory<T>(factory: Func<any[], unknown>, signatures: Signatures, scope: Scopes | undefined,
+  replaceClass<T>(ctor: Ctor<any[], T>, signatures: Signatures, scope: Scopes | undefined,
     key?: string): Manifest<Scopes>;
-  replaceValue<T>(value: unknown, key?: string): Manifest<Scopes>;
+  replaceFactory<T>(factory: Func<any[], T>, signatures: Signatures, scope: Scopes | undefined,
+    key?: string): Manifest<Scopes>;
+  replaceValue<T>(value: T, key?: string): Manifest<Scopes>;
 
   removeAll<T>(key?: string): Manifest<Scopes>;
 }
