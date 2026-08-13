@@ -484,20 +484,6 @@ const keyofPrimitiveName = "keyof"
 // Substitute returns the bare outer call; a non-call root (defensive) is left
 // untouched, keeping the keyof arg for the stage to lower to `void 0`.
 func (st *fileState) elideUnkeyedKeyArg(expr *shimast.Node, body *ResolvedBody, env map[string]*shimchecker.Type) *shimast.Node {
-	// The resolve-family bodies (§94) are a CONDITIONAL, not a bare call:
-	// `isSingular<T>() ? singularValue<T>() : this.resolve(tokenfor<T>(), keyof<T>())`.
-	// The keyof argument lives in the whenFalse branch (the token-resolve arm the
-	// fold keeps for a non-singular T), so descend there and elide from it. The
-	// singular whenTrue arm never carries a keyof, and the fold prunes it anyway.
-	if expr.Kind == shimast.KindConditionalExpression {
-		cond := expr.AsConditionalExpression()
-		newWhenFalse := st.elideUnkeyedKeyArg(cond.WhenFalse, body, env)
-		if newWhenFalse == cond.WhenFalse {
-			return expr
-		}
-		factory := st.ec.Factory.AsNodeFactory()
-		return factory.UpdateConditionalExpression(cond, cond.Condition, cond.QuestionToken, cond.WhenTrue, cond.ColonToken, newWhenFalse)
-	}
 	if expr.Kind != shimast.KindCallExpression {
 		return expr
 	}

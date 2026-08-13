@@ -96,8 +96,8 @@
     //
     // Scope note: this suppresses only the body file's own exports, so the file
     // stays IN the graph and its ordinary imports still count -- which is what
-    // keeps `signatureof`/`valueof`/`keyof` silent. A file-level `ignore` would
-    // drop those edges and manufacture three new false positives.
+    // keeps `signatureof`/`keyof` silent. A file-level `ignore` would drop those
+    // edges and manufacture false positives.
     "**/src/inline.ts": ["exports", "files"],
   },
 

@@ -252,7 +252,7 @@ func splitTypeToken(token string) (pkg, typeName string, ok bool) {
 //     ITS location.
 //
 //  2. Real module RESOLUTION from a consumer source file (the transitive-witness
-//     fix, §94's W5 scope addition). A dist-referenced re-export
+//     fix). A dist-referenced re-export
 //     (`@rhombus-std/di`'s bundle `export … from '@rhombus-std/di.core'`) carries
 //     the specifier but does NOT resolve from di's OWN dist location under the
 //     isolated linker, so (1) returns nil for a consumer that reaches the target

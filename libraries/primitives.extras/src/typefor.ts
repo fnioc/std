@@ -8,8 +8,7 @@ import type { Func } from '@rhombus-toolkit/func';
  * @remarks
  * Only the two kinds whose accessors carry the derivation are narrowed. A literal branch would be
  * unsound in the case that matters — `[T] extends [string]` holds for the wide `string` as readily
- * as for `"dev"` — so a literal keeps the whole union and {@link isSingular} / {@link singularValue}
- * remain the way to reach its value.
+ * as for `"dev"` — so a literal keeps the whole union.
  */
 export type TypeFor<T> = [T] extends [abstract new(...args: never[]) => unknown] ? CtorType
   : [T] extends [Func<never[], unknown>] ? FunctionType

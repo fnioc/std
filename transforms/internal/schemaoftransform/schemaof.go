@@ -2,7 +2,7 @@
 // lowers each `schemaof<T>()` call to the runtime config-schema object literal for
 // T over the ttsc-shipped typescript-go checker, materializing the `OPTIONAL`
 // value-import any wrapped field needs, then elides the now-unreferenced import.
-// It is a TYPE-argument primitive, sibling to nameof/keyof/valueof/singular.
+// It is a TYPE-argument primitive, sibling to nameof/keyof.
 //
 // It is the engine half of the config family's `.withType<T>()` sugar: the inline
 // body `withType<T>(this) { return this.withSchema(schemaof<T>()); }` substitutes

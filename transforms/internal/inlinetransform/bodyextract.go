@@ -36,20 +36,8 @@ import (
 // from it — the type-argument siblings of the value-argument `signatureof`. They
 // produce di.core's `DepSlot` shape and are called from runtime source too, so
 // they home in `@rhombus-std/di.core` and a body imports them by that package name
-// (the peered core). `valueof<T>()` binds a literal TYPE argument and lowers to its
-// VALUE (`valueof<"scoped">()` → `"scoped"`) — the authoring-only half of the
-// `.as<Scope>()` sugar, homed in `@rhombus-std/di.extras` beside signatureof /
-// keyof and imported via a package-relative specifier. A hardcoded map suffices —
-// the declare-by-marker generalization is a future enhancement.
-// `isSingular<T>()` / `singularValue<T>()` bind a TYPE argument and are the
-// resolve-family sugar's compile-time SINGULAR-type predicate / value (§94):
-// `isSingular<T>()` lowers to a boolean literal and `singularValue<T>()` to the
-// singular type's value literal, so a resolve body can branch
-// `isSingular<T>() ? singularValue<T>() : this.resolve(tokenfor<T>())` and the
-// engine constant-folds the dead branch away. Both are authoring-time-only
-// (never in runtime source), so they home in the token-grammar transformer
-// `@rhombus-std/primitives.extras` beside `tokenfor` / `tokenof` (the §92 homing
-// rule; constraint 11 reunited the whole family there).
+// (the peered core). A hardcoded map suffices — the declare-by-marker
+// generalization is a future enhancement.
 // `schemaof<T>()` binds a TYPE argument and lowers to the config family's runtime
 // schema object literal — the engine half of the `.withType<T>()` sugar body
 // `this.withSchema(schemaof<T>())`. It is authoring-time-only, so it homes in the
@@ -67,9 +55,6 @@ var knownPrimitives = map[string]string{
 	"keyof":         "@rhombus-std/di.extras",
 	"signaturefor":  "@rhombus-std/di.core",
 	"signaturesfor": "@rhombus-std/di.core",
-	"valueof":       "@rhombus-std/di.extras",
-	"isSingular":    "@rhombus-std/primitives.extras",
-	"singularValue": "@rhombus-std/primitives.extras",
 	"schemaof":      "@rhombus-std/config.extras",
 	"typefor":       "@rhombus-std/primitives.extras",
 }

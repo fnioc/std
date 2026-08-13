@@ -41,12 +41,12 @@ export interface InlineBodySet {
  *
  * @example
  * ```ts
- * export const ManifestChainInline = {
- *   as<Scope extends string>(this: IInlineChainTarget): Manifest {
- *     return this.as(valueof<Scope>());
+ * export const ConfigBuilderInline = {
+ *   withType<T>(this: IWithSchemaTarget): unknown {
+ *     return this.withSchema(schemaof<T>());
  *   },
  * };
- * registerInlineBodies(ManifestChainInline);
+ * registerInlineBodies(ConfigBuilderInline);
  * ```
  */
 export function registerInlineBodies(_bodies: InlineBodySet): void {
