@@ -24,7 +24,7 @@ this is the real, complete form, and it works with plain `tsc`:
 ```ts
 import '@rhombus-std/options.augmentations'; // installs the runtime addOptions verb
 
-services = services.addOptions('@rhombus-std/options:IOptions<app:AppOptions>', 'app:AppOptions').as('singleton');
+services = services.addOptions('@rhombus-std/options:IOptions<app:AppOptions>', 'app:AppOptions');
 ```
 
 Writing that wrapper token out by hand is what this plugin exists to remove. Importing
@@ -33,7 +33,7 @@ brings the 0-argument sugar into scope for typechecking, alongside `@rhombus-std
 (the two compose; order doesn't matter). With both in scope, you write:
 
 ```ts
-services = services.addOptions<AppOptions>().as('singleton');
+services = services.addOptions<AppOptions>();
 ```
 
 and it compiles to exactly the explicit call above — the plugin derives both

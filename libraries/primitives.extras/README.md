@@ -22,8 +22,9 @@ from types.
 bun add @rhombus-std/primitives.extras @rhombus-std/primitives
 ```
 
-`primitives.extras` supplies the build-time engine; `tokenfor<T>()` itself is an ordinary
-import from `@rhombus-std/primitives` (below) — you need both packages.
+`primitives.extras` supplies both the build-time engine and the `tokenfor<T>()` import
+itself (below); it depends on `@rhombus-std/primitives` in turn, so both packages
+end up in your lockfile either way.
 
 ## Usage
 
@@ -38,7 +39,7 @@ const token = 'my-package:IUserRepository';
 the string, and let the transformer fill in the string for you.
 
 ```ts
-import { tokenfor } from '@rhombus-std/primitives';
+import { tokenfor } from '@rhombus-std/primitives.extras';
 
 interface IUserRepository {
   findById(id: string): Promise<User>;
@@ -73,9 +74,9 @@ compatible versions of the same dependency unify on one token.
 
 ## Key exports
 
-This package has no JavaScript API of its own — it's a build-time-only Go/`ttsc` engine
-descriptor. The one thing you actually import, `tokenfor<T>()`, is exported by
-[`@rhombus-std/primitives`](../primitives/README.md); see [Usage](#usage) above.
+Its JavaScript API is `tokenfor<T>()` itself (and its sibling `tokenof()`) —
+everything else this package carries is the build-time-only Go/`ttsc` engine
+descriptor those calls lower through. See [Usage](#usage) above.
 
 ## How it fits
 
@@ -89,14 +90,13 @@ dependency so `ttsc` activates its `nameof`/`inline`/`signatureof` stages
 alongside their own; a dependency-injection consumer usually doesn't need to
 reference this package directly. A library author minting their own
 augmentation tokens, outside dependency injection entirely, can depend on it
-the same way and call `tokenfor<T>()` (from
-[`@rhombus-std/primitives`](../primitives/README.md)) on their own terms.
+the same way and call `tokenfor<T>()` directly on their own terms.
 
 ## Notes
 
-- This package is build-time only — a pure Go/`ttsc` engine descriptor with no JavaScript API
-  and no runtime footprint at all. The `tokenfor<T>()` guard-rail error lives in
-  [`@rhombus-std/primitives`](../primitives/README.md), which owns the runtime stub.
+- Its JavaScript surface is small on purpose: `tokenfor<T>()`, `tokenof()` and their guard-rail
+  errors (thrown only when the transformer isn't wired up) are the whole of it — everything else
+  the package carries is the build-time-only Go/`ttsc` engine descriptor those calls lower through.
 - `tokenfor<T>()`'s runtime body only ever executes if the transformer isn't
   wired up; a correctly configured build never reaches it.
 - `tokenfor<T>()` calls are rewritten in the same pass as `di.extras`'s own stages — the

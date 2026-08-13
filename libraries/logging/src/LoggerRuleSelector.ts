@@ -17,7 +17,7 @@ import type { LoggerFilterOptions, LoggerFilterRule } from './LoggerFilterOption
 import type { LoggerFilterDelegate } from './LoggerInformation';
 
 /** The selected filter for one provider/category: the effective min level and optional delegate. */
-export interface SelectedRule {
+interface SelectedRule {
   minLevel: LogLevel | undefined;
   filter: LoggerFilterDelegate | undefined;
 }
@@ -27,7 +27,7 @@ export interface SelectedRule {
  * returning its `minLevel`/`filter` (or the global `minLevel` and no filter
  * when nothing matches).
  */
-export function select(options: LoggerFilterOptions, providerType: string, category: string): SelectedRule {
+function select(options: LoggerFilterOptions, providerType: string, category: string): SelectedRule {
   let current: LoggerFilterRule | undefined;
   for (const rule of options.rules) {
     if (isBetter(rule, current, providerType, category)) {

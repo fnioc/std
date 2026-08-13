@@ -27,11 +27,11 @@ export interface BrowserEnvironmentSettings {
 // SYMBOL here flows every current and future IHostEnvironment augmentation onto
 // this concrete holder, so it satisfies `implements IHostEnvironment` without
 // restating any member.
-export interface BrowserHostingEnvironment extends IHostEnvironment {}
+interface BrowserHostingEnvironment extends IHostEnvironment {}
 
 /** The mutable browser {@link IHostEnvironment} — see the module documentation. */
 @augment(typefor<IHostEnvironment>())
-export class BrowserHostingEnvironment implements IHostEnvironment {
+class BrowserHostingEnvironment implements IHostEnvironment {
   public environmentName: string = Environments.Production;
   public applicationName = '';
   public contentRootPath = '/';
