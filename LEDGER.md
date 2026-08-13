@@ -57,7 +57,7 @@ sub-second precision, silently truncating any TOML value that carried it; `RFC33
 fraction when one is present and omits it cleanly when it isn't.
 
 Mirrored exactly on the JS side by `smol-toml`'s `TomlDate.toISOString()` — a method it overrides
-specifically to reproduce the *authored* textual form (not `Date.prototype.toString()`, which
+specifically to reproduce the _authored_ textual form (not `Date.prototype.toString()`, which
 renders the host's local timezone and would silently corrupt every value; verified this the hard
 way with a probe script before trusting it). Since JS `Date` only carries millisecond precision,
 `toISOString()` always emits a `.000` fraction for a zero-fraction value where Go's `RFC3339Nano`

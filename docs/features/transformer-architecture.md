@@ -417,7 +417,7 @@ moment one is found the rest are never even consulted, so two sibling defaults n
 merge. A package with no marker of its own resolves to an empty config, silently, when none exist.
 The moment `"rhombus-std"` is present with ANY value, including `{}`, the default probe never runs
 at all: the package owns its whole config, and a sibling participates only through an `"extends"`
-the package writes itself. An *explicit* `"extends"` — written by hand, or reached partway down an
+the package writes itself. An _explicit_ `"extends"` — written by hand, or reached partway down an
 `"extends"` chain — keeps the full array fold described above regardless; first-match-stop is a
 property of the implicit default alone.
 
