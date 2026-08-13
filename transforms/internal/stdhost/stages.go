@@ -3,7 +3,6 @@ package stdhost
 import (
 	"github.com/samchon/ttsc/packages/ttsc/driver"
 
-	"github.com/fnioc/std/transforms/internal/factorytransform"
 	"github.com/fnioc/std/transforms/internal/foldtransform"
 	"github.com/fnioc/std/transforms/internal/inlinetransform"
 	"github.com/fnioc/std/transforms/internal/keyoftransform"
@@ -48,9 +47,9 @@ const stagePrefix = "rhombusstd_"
 // `signaturesfor<T>()`, including the inline stage's synthetic calls), then keyof
 // (the keyed-registration KEY lowering, including the inline stage's synthetic
 // keyof calls), then valueof (the literal-value lowering of `valueof<Scope>()` —
-// the `.as<Scope>()` sugar's scope half), then singular / factory (the
-// resolve-family predicate + value primitives), then fold (dead-branch pruning of
-// the boolean-literal ternaries singular/factory produce), then schemaof (the
+// the `.as<Scope>()` sugar's scope half), then singular (the resolve-family
+// predicate + value primitives), then fold (dead-branch pruning of the
+// boolean-literal ternaries singular produces), then schemaof (the
 // config `.withType<T>()` sugar's schema-literal lowering). All stages own
 // DISJOINT match sets, so correctness never depends on this order — it is fixed
 // only for reproducible output.
@@ -67,7 +66,6 @@ func BaseStages() []Stage {
 		{Name: stagePrefix + "keyof", Build: buildKeyof},
 		{Name: stagePrefix + "valueof", Build: buildValueof},
 		{Name: stagePrefix + "singular", Build: buildSingular},
-		{Name: stagePrefix + "factory", Build: buildFactory},
 		{Name: stagePrefix + "fold", Build: buildFold},
 		{Name: stagePrefix + "schemaof", Build: buildSchemaof},
 	}
@@ -179,19 +177,6 @@ func buildSingular(prog *driver.Program, ctx *tokens.Context, env *Env, emit Sin
 // conditions the resolve sugar branches on. It raises no diagnostics of its own.
 func buildFold(prog *driver.Program, _ *tokens.Context, _ *Env, emit Sink) plugin.FileTransform {
 	return foldtransform.New(prog, func(d plugin.Diagnostic) {
-		emit(DiagFromPlugin(d))
-	})
-}
-
-// buildFactory activates the resolve-family FACTORY primitives stage (§94, factory
-// form). It lowers `isFactory<T>()` to a boolean literal, `returntokenfor<T>()` to
-// the factory return type's token, and `paramtokensfor<T>()` to the parameter-token
-// array (elided as a trailing `resolveFactory` argument for a no-arg factory). It
-// runs after singular and before the fold, so the `isFactory` boolean it produces
-// is available to the fold's dead-branch pruning. A factory parameter whose type
-// yields no token raises a targeted diagnostic.
-func buildFactory(prog *driver.Program, ctx *tokens.Context, env *Env, emit Sink) plugin.FileTransform {
-	return factorytransform.New(prog, ctx, env.Artifacts, func(d plugin.Diagnostic) {
 		emit(DiagFromPlugin(d))
 	})
 }

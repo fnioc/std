@@ -31,7 +31,7 @@ mergesynth (one-shot pre-pass)
 ┌─────────────────────────────────────────────────────────────┐
 │ loop until a pass changes nothing (max 16 passes):           │
 │   inline → nameof → signatureof → keyof → valueof →          │
-│   singular → factory → fold → schemaof                       │
+│   singular → fold → schemaof                                 │
 └─────────────────────────────────────────────────────────────┘
 ```
 
@@ -66,7 +66,7 @@ m.addClass('app:IUserRepo', SqlUserRepo, [['app:IDb']], void 0, void 0).withSign
 **The enabling invariant is disjoint match sets.** Every transform in the loop owns matches no
 other transform can claim: `inline` matches sugar declarations (a specific set of certified
 member/function shapes); each primitive stage matches its own callee symbol (`nameof` only ever
-matches `tokenfor`/`tokenof`/`keyedtokenfor` calls, `signatureof` only its own three names, and so
+matches `tokenfor`/`tokenof` calls, `signatureof` only its own three names, and so
 on); `fold` only matches a boolean-literal-condition ternary. Nothing in the set can produce work
 for a stage that already ran this pass and claim it belongs to an earlier one — that's what makes
 "run the whole set repeatedly, no intrinsic order" both correct and terminating. A new stage
@@ -292,7 +292,6 @@ module's actual name instead.
 | `tokenfor(value)`         | value-arg | the _produced_ token for a value — constructable → construct-sig return, callable → call-sig return, else the value's own type | `tokenfor(Foo)` (`class Foo {}`)                             | `"pkg:Foo"`                          | `primitives.extras` | `nameof`      |
 | `tokenof<T>()`            | type-arg  | the _raw_ token for `T` — never strips a `Keyed<T,K>` brand                                                                    | `tokenof<UserOptions>()`                                     | `"pkg:UserOptions"`                  | `primitives.extras` | `nameof`      |
 | `tokenof(value)`          | value-arg | the raw token for a value's _own_ type — never unwraps a constructor/factory                                                   | `tokenof(makeThing)` (`declare function makeThing(): Thing`) | `"pkg:makeThing"`                    | `primitives.extras` | `nameof`      |
-| `keyedtokenfor<T>()`      | type-arg  | the single _composed_ `base#key` token for a `Keyed<T,K>`, or the plain base for an unkeyed `T`                                | `keyedtokenfor<Keyed<ICache, "redis">>()`                    | `"pkg:ICache#redis"`                 | `di.extras`         | `nameof`      |
 | `keyof<T>()`              | type-arg  | the key literal of a `Keyed<T,K>`, or `void 0` when unkeyed                                                                    | `keyof<Keyed<ICache, "redis">>()`                            | `"redis"`                            | `di.extras`         | `keyof`       |
 | `signatureof(ctor \| fn)` | value-arg | the `[[...]]` dependency-signature array for a constructor or function value                                                   | `signatureof(Ctor)` (`Ctor: new (d: IDep) => IThing`)        | `[["pkg:IDep"]]`                     | `di.extras`         | `signatureof` |
 | `signaturefor<T>()`       | type-arg  | one overload's `DepSlot[]` minted from a tuple type `T`                                                                        | `...signaturefor<[IA, IB]>()`                                | `"pkg:IA", "pkg:IB"` (flattened in)  | `di.core`           | `signatureof` |
@@ -300,9 +299,6 @@ module's actual name instead.
 | `valueof<T>()`            | type-arg  | a literal type's own value (the `.as<Scope>()` sugar's scope argument)                                                         | `valueof<'scoped'>()`                                        | `"scoped"`                           | `di.extras`         | `valueof`     |
 | `isSingular<T>()`         | type-arg  | `true`/`false` — is `T` a literal/null/undefined/void (Rule-2 singular)                                                        | `isSingular<'dev'>()`                                        | `true`                               | `primitives.extras` | `singular`    |
 | `singularValue<T>()`      | type-arg  | the literal value itself, for a singular `T`                                                                                   | `singularValue<'dev'>()`                                     | `"dev"`                              | `primitives.extras` | `singular`    |
-| `isFactory<T>()`          | type-arg  | `true`/`false` — does `T` carry a call signature                                                                               | `isFactory<(dep: IDep) => IThing>()`                         | `true`                               | `primitives.extras` | `factory`     |
-| `returntokenfor<T>()`     | type-arg  | the token of a factory type `T`'s _return_ type                                                                                | `returntokenfor<(dep: IDep) => IThing>()`                    | `"pkg:IThing"`                       | `primitives.extras` | `factory`     |
-| `paramtokensfor<T>()`     | type-arg  | the `[token, ...]` array of a factory type `T`'s parameter tokens (`Inject`-brand aware); elided when empty                    | `paramtokensfor<(dep: IDep) => IThing>()`                    | `["pkg:IDep"]`                       | `primitives.extras` | `factory`     |
 | `schemaof<T>()`           | type-arg  | the `{...}` runtime JSON-schema literal for a record type `T`                                                                  | `schemaof<{ ssl?: boolean }>()`                              | `{ ssl: { [OPTIONAL]: "boolean" } }` | `config.extras`     | `schemaof`    |
 
 `signaturefor`/`signaturesfor` sit in `di.core` rather than `di.extras` because they produce
@@ -329,7 +325,7 @@ coerces nothing, and the schema is not emitted. Two boundary cases follow from t
 
 A sugar body dispatches on a compile-time predicate with an ordinary ternary —
 `isSingular<T>() ? singularValue<T>() : this.resolve(tokenfor<T>(), keyof<T>())`. Once `singular`
-(or `factory`) lowers the predicate call to a boolean _literal_, the `fold` stage constant-folds
+lowers the predicate call to a boolean _literal_, the `fold` stage constant-folds
 the whole conditional: `true ? A : B → A`, `false ? A : B → B`, post-order so a nested ternary
 collapses in one pass. This runs **before the sweep**, so the primitive call sitting in the dead
 branch never has to lower at all — a `singularValue<T>()` under the pruned arm of a non-singular
@@ -339,9 +335,9 @@ wrapper leaves around a folded ternary, so `(true ? resolve(t) : …)` collapses
 `resolve(t)` — byte-identical to what a by-hand author would have written, never a stray paren
 surviving into the emit.
 
-A `singularValue<T>()` (or `paramtokensfor<T>()`/`returntokenfor<T>()`) that survives the fold
-**unguarded** — i.e. genuinely reachable, not merely a dead branch — is a real authoring error and
-gets a targeted diagnostic naming the problem, never a silent empty emission.
+A `singularValue<T>()` that survives the fold **unguarded** — i.e. genuinely reachable, not
+merely a dead branch — is a real authoring error and gets a targeted diagnostic naming the
+problem, never a silent empty emission.
 
 ## The generic inline stage
 
@@ -502,39 +498,27 @@ registration's original arguments — `.addClass(...).withSignature<T>()` surviv
 independent, hand-writable continuation, matching what a by-hand author could have chained onto
 the same call.
 
-`isService<T>()` and the resolve family (`resolve`/`resolveAsync`/`tryResolve`) both compose the
-keyed lookup token with `keyedtokenfor<T>()` where the runtime member takes no separate key
-parameter, and with the split `tokenfor<T>() + keyof<T>()` pair where it does:
+`isService<T>()` and the resolve family (`resolve`/`resolveAsync`/`tryResolve`) each compose the
+keyed lookup token from the split `tokenfor<T>() + keyof<T>()` pair — the base token and the key
+(`void 0` when `T` is unkeyed):
 
 ```ts
 export const ServiceQueryInline = { isService<T>(this: IServiceQuery): boolean {
-  return this.isService(keyedtokenfor<T>());
+  return this.isService(tokenfor<T>(), keyof<T>());
 } };
 
 export const ResolverInline = { resolve<T>(this: IInlineResolveTarget): T {
-  return isSingular<T>()
-    ? singularValue<T>()
-    : isFactory<T>()
-    ? this.resolveFactory(returntokenfor<T>(), paramtokensfor<T>())
-    : this.resolve(tokenfor<T>(), keyof<T>());
+  return isSingular<T>() ? singularValue<T>() : this.resolve(tokenfor<T>(), keyof<T>());
 }, resolveAsync<T>(this: IInlineResolveTarget): Promise<T> | T {
-  return isSingular<T>()
-    ? singularValue<T>()
-    : isFactory<T>()
-    ? this.resolveFactory(returntokenfor<T>(), paramtokensfor<T>())
-    : this.resolveAsync(keyedtokenfor<T>());
+  return isSingular<T>() ? singularValue<T>() : this.resolveAsync(tokenfor<T>(), keyof<T>());
 }, tryResolve<T>(this: IInlineResolveTarget): T | undefined {
   return isSingular<T>() ? singularValue<T>() : this.tryResolve(tokenfor<T>(), keyof<T>());
 } };
 ```
 
-Reading the nested ternary top to bottom: a **singular** `T` (a literal, `null`, `undefined`, or
-`void`) short-circuits to the literal value itself with no runtime lookup at all — the fold stage
-prunes the other two arms entirely once `isSingular<T>()` lowers to `true`. A **factory** `T` (a
-function type) renames the call to `resolveFactory` and derives its return-type token plus its
-parameter-token array. Everything else is the plain tokenful resolve. `resolveAsync` has no key
-parameter on the runtime side, so its keyed form composes the single `keyedtokenfor<T>()` token
-instead of the split pair — the same asymmetry `isService` has, for the same reason.
+Reading the ternary: a **singular** `T` (a literal, `null`, `undefined`, or `void`) short-circuits
+to the literal value itself with no runtime lookup at all — the fold stage prunes the other arm
+entirely once `isSingular<T>()` lowers to `true`. Everything else is the plain tokenful call.
 
 ### Options (`di.extras.options`)
 
@@ -740,7 +724,7 @@ call site:
   call-site-bound argument types — resolved against the _consumer's_ program later, in the
   lowering stage that owns the token-derivation context.
 
-A downstream stage (`nameof`, `signatureof`, `keyof`, `valueof`, `singular`, `factory`,
+A downstream stage (`nameof`, `signatureof`, `keyof`, `valueof`, `singular`,
 `schemaof`) checks the artifacts map first for any call it visits; a hit means "this is my
 substituted work from this run," a miss falls through to the ordinary checker-anchored
 source-written path. After the loop's final pass, an **emit sweep** walks the artifacts one more
@@ -915,13 +899,12 @@ Each is recorded in `docs/decisions.v2.md` (§115–§123).
   primitive branch on which verb called it — keeping the domain-neutral primitive genuinely
   domain-neutral meant the _verb_ (registration-body-side knowledge) has to pick which primitive
   to call, not the primitive guessing at its caller.
-- **The keyed-semantics fix (§98)** — the resolve/isService/resolveAsync bodies originally derived
-  their single token with `tokenfor<T>()`, which strips a `Keyed<T,K>` brand — silently matching
-  the _wrong_ (unkeyed) registration, or matching nothing, for a keyed lookup. The fix routes the
-  single-token consumers through the raw-preserving `tokenof<T>()`/`keyedtokenfor<T>()` primitives
-  instead, so a keyed resolve actually round-trips a keyed registration; the registration bodies
-  themselves were already correct (they split base + `keyof` onto separate arguments) and were
-  untouched.
+- **The keyed-semantics fix (§98)** — a resolve body that derives its token with `tokenfor<T>()`
+  strips a `Keyed<T,K>` brand — silently matching the _wrong_ (unkeyed) registration, or matching
+  nothing, for a keyed lookup. The fix routes a keyed consumer through the raw-preserving
+  `tokenof<T>()` instead, so a keyed resolve actually round-trips a keyed registration; the
+  registration bodies themselves were already correct (they split base + `keyof` onto separate
+  arguments) and were untouched.
 - **The transitive-witness fix** — a consumer reaching a sugar-target module only _transitively_
   (importing `@rhombus-std/di` without importing `@rhombus-std/di.core` directly, even though
   `di`'s own bundle re-exports it) could make the inline stage's module-resolution check return
