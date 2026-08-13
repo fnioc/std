@@ -6,9 +6,9 @@
 
 import type { Func } from '@rhombus-toolkit/func';
 import { stringifyType } from '../StringifyVisitor.js';
-import type { AggregateType, ArrayType, AsyncIterableType, AsyncType, ConstructorType, FunctionType, GenericType,
-  GlobalType, ImportType, IntersectionType, IterableType, LiteralValue, ObjectType, TagType, TupleType, Type, TypeBrand,
-  TypeLiteralType, UnionType } from '../Type.js';
+import type { AggregateType, ArrayType, ConstructorType, FunctionType, GenericType, GlobalType, ImportType,
+  IntersectionType, IterableType, LiteralValue, ObjectType, TagType, TupleType, Type, TypeBrand, TypeLiteralType,
+  UnionType } from '../Type.js';
 import { TypeVisitor } from '../TypeVisitor.js';
 import { type AggregateName, GLOBAL_QUALIFIER, isAggregateName } from './grammar.js';
 import { id, intern, isInterned } from './intern.js';
@@ -67,19 +67,6 @@ export function array(element: Type): ArrayType {
   return intern(`array\0${id(slot)}`, () => node<ArrayType>({ kind: 'array', element: slot }));
 }
 
-export function async(element: Type): AsyncType {
-  const slot = adopt(element);
-  return intern(`async\0${id(slot)}`, () => node<AsyncType>({ kind: 'async', element: slot }));
-}
-
-export function asyncIterable(element: Type): AsyncIterableType {
-  const slot = adopt(element);
-  return intern(
-    `asyncIterable\0${id(slot)}`,
-    () => node<AsyncIterableType>({ kind: 'asyncIterable', element: slot }),
-  );
-}
-
 export function iterable(element: Type): IterableType {
   const slot = adopt(element);
   return intern(`iterable\0${id(slot)}`, () => node<IterableType>({ kind: 'iterable', element: slot }));
@@ -92,8 +79,6 @@ export function iterable(element: Type): IterableType {
  */
 const AGGREGATES: Readonly<Record<AggregateName, Func<[Type], AggregateType>>> = {
   Array: array,
-  Async: async,
-  AsyncIterable: asyncIterable,
   Iterable: iterable,
 };
 
@@ -252,12 +237,6 @@ function adopt(type: Type): Type {
 class AdoptVisitor extends TypeVisitor<Type> {
   protected override visitArray(type: ArrayType): Type {
     return array(type.element);
-  }
-  protected override visitAsync(type: AsyncType): Type {
-    return async(type.element);
-  }
-  protected override visitAsyncIterable(type: AsyncIterableType): Type {
-    return asyncIterable(type.element);
   }
   protected override visitCtor(type: ConstructorType): Type {
     return ctor(type.instanceType, type.args);

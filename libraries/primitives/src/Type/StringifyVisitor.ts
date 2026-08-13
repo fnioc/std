@@ -1,8 +1,7 @@
 import { memo } from '../utils/map.js';
 import { escapeSegment } from './internals/grammar.js';
-import type { ArrayType, AsyncIterableType, AsyncType, ConstructorType, FunctionType, GenericType, GlobalType,
-  ImportType, IntersectionType, IterableType, ObjectType, TagType, TupleType, Type, TypeLiteralType,
-  UnionType } from './Type.js';
+import type { ArrayType, ConstructorType, FunctionType, GenericType, GlobalType, ImportType, IntersectionType,
+  IterableType, ObjectType, TagType, TupleType, Type, TypeLiteralType, UnionType } from './Type.js';
 import { TypeVisitor } from './TypeVisitor.js';
 
 /**
@@ -24,12 +23,6 @@ type Precedence = typeof Precedence[keyof typeof Precedence];
 class StringifyVisitor extends TypeVisitor<string, Precedence> {
   protected override visitArray(type: ArrayType): string {
     return this.#aggregate('Array', type);
-  }
-  protected override visitAsync(type: AsyncType): string {
-    return this.#aggregate('Async', type);
-  }
-  protected override visitAsyncIterable(type: AsyncIterableType): string {
-    return this.#aggregate('AsyncIterable', type);
   }
   protected override visitCtor(type: ConstructorType, minimum: Precedence): string {
     return this.#parenthesize(

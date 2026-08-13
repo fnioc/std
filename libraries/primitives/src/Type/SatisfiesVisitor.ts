@@ -2,9 +2,8 @@ import type { Func } from '@rhombus-toolkit/func';
 import { isOpenType } from './analyzers.js';
 import { LITERAL_BASE } from './internals/literal-base.js';
 import { stringifyType } from './StringifyVisitor.js';
-import type { AggregateType, ArrayType, AsyncIterableType, AsyncType, ConstructorType, FunctionType, GenericType,
-  GlobalType, ImportType, IntersectionType, IterableType, ObjectType, TagType, TupleType, Type, TypeLiteralType,
-  UnionType } from './Type.js';
+import type { AggregateType, ArrayType, ConstructorType, FunctionType, GenericType, GlobalType, ImportType,
+  IntersectionType, IterableType, ObjectType, TagType, TupleType, Type, TypeLiteralType, UnionType } from './Type.js';
 import { TypeVisitor } from './TypeVisitor.js';
 
 type Predicate = Func<[proposed: Type], boolean>;
@@ -40,14 +39,6 @@ class SatisfiesVisitor extends TypeVisitor<Predicate> {
   }
 
   protected override visitArray(type: ArrayType): Predicate {
-    return this.#aggregate(type);
-  }
-
-  protected override visitAsync(type: AsyncType): Predicate {
-    return this.#aggregate(type);
-  }
-
-  protected override visitAsyncIterable(type: AsyncIterableType): Predicate {
     return this.#aggregate(type);
   }
 

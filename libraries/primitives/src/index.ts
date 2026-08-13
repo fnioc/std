@@ -21,9 +21,8 @@ export type { TimeoutHandle } from './TimeoutHandle.js';
 export type { Token } from './Token.js';
 export { TypeParseError } from './Type/internals/TypeParseError.js';
 export { Type } from './Type/Type.js';
-export type { AggregateType, ArrayType, AsyncIterableType, AsyncType, ConstructorType, CtorSpec, FuncSpec, FunctionType,
-  GenericType, GlobalSpec, GlobalType, ImportSpec, ImportType, IntersectionType, IterableType, LiteralValue,
-  NominalType, ObjectType, TagSpec, TagType, TupleType, TypeIdentifier, TypeLiteralType,
-  UnionType } from './Type/Type.js';
+export type { AggregateType, ArrayType, ConstructorType, CtorSpec, FuncSpec, FunctionType, GenericType, GlobalSpec,
+  GlobalType, ImportSpec, ImportType, IntersectionType, IterableType, LiteralValue, NominalType, ObjectType, TagSpec,
+  TagType, TupleType, TypeIdentifier, TypeLiteralType, UnionType } from './Type/Type.js';
 export { TypeVisitor } from './Type/TypeVisitor.js';
 export * from './utils/index.js';

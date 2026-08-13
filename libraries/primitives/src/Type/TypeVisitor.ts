@@ -1,6 +1,5 @@
-import type { ArrayType, AsyncIterableType, AsyncType, ConstructorType, FunctionType, GenericType, GlobalType,
-  ImportType, IntersectionType, IterableType, ObjectType, TagType, TupleType, Type, TypeLiteralType,
-  UnionType } from './Type.js';
+import type { ArrayType, ConstructorType, FunctionType, GenericType, GlobalType, ImportType, IntersectionType,
+  IterableType, ObjectType, TagType, TupleType, Type, TypeLiteralType, UnionType } from './Type.js';
 
 /**
  * Dispatches a {@link Type} to the handler for its `kind`.
@@ -18,10 +17,6 @@ export abstract class TypeVisitor<out Return, in Context = never> {
     switch (type.kind) {
       case 'array':
         return this.visitArray(type, context);
-      case 'async':
-        return this.visitAsync(type, context);
-      case 'asyncIterable':
-        return this.visitAsyncIterable(type, context);
       case 'ctor':
         return this.visitCtor(type, context);
       case 'func':
@@ -52,10 +47,6 @@ export abstract class TypeVisitor<out Return, in Context = never> {
   }
 
   protected abstract visitArray(type: ArrayType, context: Context): Return;
-
-  protected abstract visitAsync(type: AsyncType, context: Context): Return;
-
-  protected abstract visitAsyncIterable(type: AsyncIterableType, context: Context): Return;
 
   protected abstract visitCtor(type: ConstructorType, context: Context): Return;
 

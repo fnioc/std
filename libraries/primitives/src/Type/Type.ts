@@ -11,21 +11,14 @@ import { typeValidatorVisitor } from './TypeValidatorVisitor.js';
 
 // #region types
 
-/** Types that are only useful as identifiers */
-export type TypeIdentifier =
-  | GenericType
-  | NominalType
-  | TagType;
+/** Types that name every registration of one element type, whatever protocol they hand it back by */
+export type AggregateType =
+  | ArrayType
+  | IterableType;
 /** A type carrying a name to be looked up under — reached through a package, or already in scope. */
 export type NominalType =
   | GlobalType
   | ImportType;
-/** Types that name every registration of one element type, whatever protocol they hand it back by */
-export type AggregateType =
-  | ArrayType
-  | AsyncIterableType
-  | AsyncType
-  | IterableType;
 /** All Types */
 export type Type =
   | AggregateType
@@ -37,6 +30,11 @@ export type Type =
   | TypeIdentifier
   | TypeLiteralType
   | UnionType;
+/** Types that are only useful as identifiers */
+export type TypeIdentifier =
+  | GenericType
+  | NominalType
+  | TagType;
 
 /** Marks a node as one the intern table minted. Declared only — nothing carries it at runtime. */
 declare const TYPE_BRAND: unique symbol;
@@ -68,14 +66,21 @@ interface NominalBase<Kind extends string> extends TypeBase<Kind> {
 
 export interface ArrayType extends AggregateBase<'array'> {}
 
-export interface AsyncIterableType extends AggregateBase<'asyncIterable'> {}
-
-/** A value delivered later — the element awaited rather than enumerated. */
-export interface AsyncType extends AggregateBase<'async'> {}
-
 export interface ConstructorType extends TypeBase<'ctor'> {
   readonly args: readonly Type[];
   readonly instanceType: Type;
+}
+
+/** The fields a {@link Type.ctor} call names, whether it passes them positionally or as one object. */
+export interface CtorSpec {
+  readonly instanceType: Type;
+  readonly args?: readonly Type[];
+}
+
+/** The fields a {@link Type.func} call names, whether it passes them positionally or as one object. */
+export interface FuncSpec {
+  readonly returnType: Type;
+  readonly args?: readonly Type[];
 }
 
 export interface FunctionType extends TypeBase<'func'> {
@@ -88,8 +93,21 @@ export interface GenericType extends TypeBase<'generic'> {
   readonly label: string;
 }
 
+/** The fields a {@link Type.global} call names, whether it passes them positionally or as one object. */
+export interface GlobalSpec {
+  readonly name: string;
+  readonly genericArgs?: readonly Type[];
+}
+
 /** A type the ambient scope already carries — `string`, `Date`, `Promise<T>`; no import reaches it. */
 export interface GlobalType extends NominalBase<'global'> {}
+
+/** The fields a {@link Type.import} call names, whether it passes them positionally or as one object. */
+export interface ImportSpec {
+  readonly name: string;
+  readonly from: string;
+  readonly genericArgs?: readonly Type[];
+}
 
 /** parallel to `import { ${name} } from "${from}";` */
 export interface ImportType extends NominalBase<'import'> {
@@ -111,6 +129,12 @@ export interface ObjectType extends TypeBase<'object'> {
   readonly members: Readonly<Record<string, Type>>;
 }
 
+/** The fields a {@link Type.tag} call names, whether it passes them positionally or as one object. */
+export interface TagSpec {
+  readonly type: Exclude<Type, TagType>;
+  readonly tag: string;
+}
+
 export interface TagType extends TypeBase<'tag'> {
   readonly tag: string;
   readonly type: Exclude<Type, TagType>;
@@ -128,52 +152,6 @@ export interface TypeLiteralType extends TypeBase<'literal'> {
 export interface UnionType extends TypeBase<'union'> {
   readonly members: readonly Type[];
 }
-
-/** The fields a {@link Type.global} call names, whether it passes them positionally or as one object. */
-export interface GlobalSpec {
-  readonly name: string;
-  readonly genericArgs?: readonly Type[];
-}
-
-/** The fields a {@link Type.import} call names, whether it passes them positionally or as one object. */
-export interface ImportSpec {
-  readonly name: string;
-  readonly from: string;
-  readonly genericArgs?: readonly Type[];
-}
-
-export interface CtorSpec {
-  readonly instanceType: Type;
-  readonly args?: readonly Type[];
-}
-
-export interface FuncSpec {
-  readonly returnType: Type;
-  readonly args?: readonly Type[];
-}
-
-export interface TagSpec {
-  readonly type: Exclude<Type, TagType>;
-  readonly tag: string;
-}
-
-/**
- * What a {@link Type.global} spelling mints, as narrowly as the call can prove it: an aggregate
- * spelling carrying one argument is that aggregate's own kind, anything else is a
- * {@link GlobalType}, and a name or argument list only known at runtime widens to the honest union
- * of both readings.
- */
-type Global<Name extends string, Args extends readonly Type[]> = string extends Name ? AggregateType | GlobalType
-  : Name extends AggregateName ? Args extends readonly [Type] ? Aggregate<Name>
-    : number extends Args['length'] ? Aggregate<Name> | GlobalType
-    : GlobalType
-  : GlobalType;
-
-/** The node kind one aggregate spelling names. */
-type Aggregate<Name extends AggregateName> = Extract<AggregateType, { kind: typeof AGGREGATE_KINDS[Name]; }>;
-
-type SpecArgs<Spec extends GlobalSpec> = Spec extends { genericArgs: infer Args extends readonly Type[]; } ? Args
-  : readonly [];
 
 // #endregion
 
@@ -195,32 +173,6 @@ function array(element: Type): ArrayType {
   return factory.array(element);
 }
 
-/**
- * Names `element` delivered later rather than at once.
- *
- * @remarks
- * The address is spellable and interned; nothing resolves it yet.
- */
-function async(element: Type): AsyncType {
-  return factory.async(element);
-}
-
-/**
- * Names the aggregate of every registration of `element` as one asynchronous sequence.
- *
- * @remarks
- * The synthesized aggregate is late-bound — each element resolves as the async iteration
- * reaches it, not up front; a registration answering directly under this address is returned
- * as-is instead.
- *
- * The side that registers an element and the side that reads the aggregate must name the same
- * type, and nothing reports it when they don't: the lookup simply finds nothing. Both sides call
- * this, so they cannot drift.
- */
-function asyncIterable(element: Type): AsyncIterableType {
-  return factory.asyncIterable(element);
-}
-
 /** A constructor signature — `new (...args) => instanceType`, instance type first. */
 function ctor(instanceType: Type, ...args: readonly Type[]): ConstructorType;
 function ctor(spec: CtorSpec): ConstructorType;
@@ -228,24 +180,14 @@ function ctor(first: Type | CtorSpec, ...args: readonly Type[]): ConstructorType
   return isNode(first) ? factory.ctor(first, args) : factory.ctor(first.instanceType, first.args ?? []);
 }
 
-/** Every token that has already been read, so a repeated request skips the lexer. */
-const parsedTokens = new Map<string, Type>();
+const from = (() => {
+  /** Every token that has already been read, so a repeated request skips the lexer. */
+  const parsed = new Map<string, Type>();
 
-/**
- * Reads a type token back into the {@link Type} it spells — the inverse of {@link stringify}.
- *
- * @remarks
- * Some names carry a reserved meaning, and only unqualified: `Func<Return, ...Args>` and
- * `Ctor<Instance, ...Args>` spell the function and constructor kinds, `ServiceProvider` spells
- * the provider itself, and `Array<E>`, `Iterable<E>`, `AsyncIterable<E>` and `Async<E>` spell
- * the aggregates. Qualify one — `app:Func` — and it names an ordinary type, as do the
- * value-type names `string`, `number` and the rest. An unqualified name is a global one.
- *
- * @throws TypeParseError - when the token is malformed.
- */
-function from(token: string): Type {
-  return getOrCreate(parsedTokens, token, parseTypeString);
-}
+  return function from(token: string): Type {
+    return getOrCreate(parsed, token, parseTypeString);
+  };
+})();
 
 /**
  * A function signature — `(...args) => returnType`, return type first.
@@ -268,15 +210,33 @@ function generic(label: string): GenericType {
   return factory.generic(label);
 }
 
+/** The node kind one aggregate spelling names. */
+type Aggregate<Name extends AggregateName> = Extract<AggregateType, { kind: typeof AGGREGATE_KINDS[Name]; }>;
+
+/**
+ * What a {@link Type.global} spelling mints, as narrowly as the call can prove it: an aggregate
+ * spelling carrying one argument is that aggregate's own kind, anything else is a
+ * {@link GlobalType}, and a name or argument list only known at runtime widens to the honest union
+ * of both readings.
+ */
+type Global<Name extends string, Args extends readonly Type[]> = string extends Name ? AggregateType | GlobalType
+  : Name extends AggregateName ? Args extends readonly [Type] ? Aggregate<Name>
+    : number extends Args['length'] ? Aggregate<Name> | GlobalType
+    : GlobalType
+  : GlobalType;
+
+/** The generic arguments a {@link GlobalSpec} names, or none when it leaves them out. */
+type SpecArgs<Spec extends GlobalSpec> = Spec extends { genericArgs: infer Args extends readonly Type[]; } ? Args
+  : readonly [];
+
 /**
  * A type the ambient scope already carries, referenced by name. Generic arguments name the
  * constructed type `Name<Args>`; leave one open with {@link generic} to describe the generic type
  * itself.
  *
  * @remarks
- * An aggregate spelling carrying one argument — `Array`, `Iterable`, `AsyncIterable`, `Async` —
- * names that aggregate's own kind, so the kind node is the one identity the spelling has and every
- * door reaches it.
+ * An aggregate spelling carrying one argument — `Array` or `Iterable` — names that aggregate's own
+ * kind, so the kind node is the one identity the spelling has and every door reaches it.
  */
 function global<
   const Name extends string,
@@ -468,9 +428,19 @@ function validate(type: Type): readonly string[] {
  */
 export const Type = {
   array,
-  async,
-  asyncIterable,
   ctor,
+  /**
+   * Reads a type token back into the {@link Type} it spells — the inverse of {@link Type.stringify}.
+   *
+   * @remarks
+   * Some names carry a reserved meaning, and only unqualified: `Func<Return, ...Args>` and
+   * `Ctor<Instance, ...Args>` spell the function and constructor kinds, `ServiceProvider` spells
+   * the provider itself, and `Array<E>` and `Iterable<E>` spell the aggregates. Qualify one —
+   * `app:Func` — and it names an ordinary type, as do the value-type names `string`, `number` and
+   * the rest. An unqualified name is a global one.
+   *
+   * @throws TypeParseError - when the token is malformed.
+   */
   from,
   func,
   generic,

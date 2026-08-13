@@ -1221,10 +1221,10 @@ roster, and the lint's `PRIMITIVE_HOMES` all shrink to what authored code can re
 
 **An aggregate spelling derives with only its element.** `Iterable` and `AsyncIterable` are declared
 with two defaulted tail parameters, and a bare `Iterable<E>` reference resolves all three, so a
-derivation must trim to the element. The `named` door mints an aggregate kind from a SINGLE argument
-under `global`; a spelling that carried the defaulted tail would land as an ordinary named type that
-no aggregate registration answers, and a derived address would name a different type than the
-hand-written `Type.asyncIterable(E)`.
+derivation must trim to the element. The global door mints an aggregate kind from a SINGLE argument;
+a spelling that carried the defaulted tail would land as an ordinary global type that no aggregate
+registration answers, and a derived address would name a different type than the hand-written
+`Type.iterable(E)`.
 
 _Owner-directed 2026-08-13._
 
@@ -1450,21 +1450,20 @@ _Owner-directed 2026-08-13._
 
 ## §145 — di2's aggregates are first-class node kinds; normalization lives in the `global` door
 
-Three aggregate factories mint their OWN node kind apiece: `Type.array` (`ArrayType`),
-`Type.asyncIterable` (`AsyncIterableType`), `Type.iterable` (`IterableType`) — each a
-single-`element`-child node. The aggregate names join the parser's one reserved-name mechanism
-beside `Func` / `Ctor` / `ServiceProvider`, and the engine dispatches on kind. This dissolves the
-engine-side reserved-name list, the "a global name is address-only except three names" asterisk, and the
-pairing-rule scoping clause that predated it — fewer distinct mechanisms, more uniform arms.
+Two aggregate factories mint their OWN node kind apiece: `Type.array` (`ArrayType`) and
+`Type.iterable` (`IterableType`) — each a single-`element`-child node. The aggregate names join the
+parser's one reserved-name mechanism beside `Func` / `Ctor` / `ServiceProvider`, and the engine
+dispatches on kind. This dissolves the engine-side reserved-name list, the "a global name is
+address-only except three names" asterisk, and the pairing-rule scoping clause that predated it —
+fewer distinct mechanisms, more uniform arms.
 
-`AsyncType` joins the same pass: kind `async`, factory `async(element)` (legal, since `async` is
-only contextually reserved), wire spelling `Async<E>` in the reserved set. The node, factory, and
-parser arm land now; its ENGINE arm — async delivery of the element — lands with the parked
-async-realize design, not before.
+Delivery is not a grammar kind. A value handed over later is `Promise<T>`, the ordinary global
+generic a `Promise<T>` reference already derives to, and `AsyncIterable<E>` is likewise an ordinary
+global generic naming a real TypeScript type. Neither carries collection-resolution semantics; only
+`Iterable` and `Array` do.
 
 Normalization lives in the `global` door, with no swap visitor: `global` given a reserved aggregate
-spelling (`'Iterable'` / `'Array'` / `'AsyncIterable'` / `'Async'`, one argument)
-silently returns the corresponding kind node — the same canonicalization contract `union` already
+spelling (`'Iterable'` / `'Array'`, one argument) silently returns the corresponding kind node — the same canonicalization contract `union` already
 has. Every path that can spell an aggregate — the parser, derivation-emitted code, hand composition,
 adoption — normalizes at mint, so the kind node is the ONE interned identity and a `GlobalType`
 spelling of an aggregate can never exist. The signature principle is PERMISSIVE IN, EXPRESSIVE OUT:
@@ -1472,10 +1471,10 @@ as narrow as expressible per call — a literal reserved spelling types as its k
 non-reserved literal as `GlobalType`, a dynamic string as the honest union, each as tight as TS can
 prove. The object-parameter overloads (§144) narrow the same way via literal property inference.
 
-An aggregate address's CONTRACT is the protocol alone — an `Iterable` / `AsyncIterable` / `Array` of
-every registration of the element. Binding is a property of the SYNTHESIZED descriptor-miss fallback
-only: the synthesized `array` materializes at resolution, and the synthesized `iterable` /
-`asyncIterable` are late-bound, each element resolving at iteration time (sync or async). A
+An aggregate address's CONTRACT is the protocol alone — an `Iterable` / `Array` of every
+registration of the element. Binding is a property of the SYNTHESIZED descriptor-miss fallback
+only: the synthesized `array` materializes at resolution, and the synthesized `iterable` is
+late-bound, each element resolving at iteration time. A
 registration answering at lookup under an aggregate address binds however its own descriptor binds
 — the engine imposes nothing on it. A registration under an aggregate address answers at lookup
 before synthesis, uniformly, with no reserved-name carve-out in the door and no warning machinery:

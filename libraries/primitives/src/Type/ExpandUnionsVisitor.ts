@@ -1,7 +1,7 @@
 import { tag as tagType } from './internals/factories.js';
-import { type ArrayType, type AsyncIterableType, type AsyncType, type ConstructorType, type FunctionType,
-  type GenericType, type GlobalType, type ImportType, type IntersectionType, type IterableType, type ObjectType,
-  type TagType, type TupleType, Type, type TypeLiteralType, type UnionType } from './Type.js';
+import { type ArrayType, type ConstructorType, type FunctionType, type GenericType, type GlobalType, type ImportType,
+  type IntersectionType, type IterableType, type ObjectType, type TagType, type TupleType, Type, type TypeLiteralType,
+  type UnionType } from './Type.js';
 import { TypeVisitor } from './TypeVisitor.js';
 
 /**
@@ -15,12 +15,6 @@ import { TypeVisitor } from './TypeVisitor.js';
 class ExpandUnionsVisitor extends TypeVisitor<readonly Type[]> {
   protected override visitArray(type: ArrayType): readonly Type[] {
     return this.visit(type.element).map(element => Type.array(element));
-  }
-  protected override visitAsync(type: AsyncType): readonly Type[] {
-    return this.visit(type.element).map(element => Type.async(element));
-  }
-  protected override visitAsyncIterable(type: AsyncIterableType): readonly Type[] {
-    return this.visit(type.element).map(element => Type.asyncIterable(element));
   }
   protected override visitGeneric(type: GenericType): readonly Type[] {
     return [type];

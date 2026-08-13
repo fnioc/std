@@ -1,8 +1,7 @@
 import { AmbiguousUnionError, CycleError, type ServiceDescriptor } from '@rhombus-std/di.core';
-import { type ArrayType, type AsyncIterableType, type AsyncType, type ConstructorType, first, type FunctionType,
-  type GenericType, type GlobalType, type ImportType, type IntersectionType, isAllThere, type IterableType,
-  type ObjectType, type TagType, type TupleType, Type, type TypeLiteralType, TypeVisitor,
-  type UnionType } from '@rhombus-std/primitives';
+import { type ArrayType, type ConstructorType, first, type FunctionType, type GenericType, type GlobalType,
+  type ImportType, type IntersectionType, isAllThere, type IterableType, type ObjectType, type TagType, type TupleType,
+  Type, type TypeLiteralType, TypeVisitor, type UnionType } from '@rhombus-std/primitives';
 import type { Registry } from '../Registry.js';
 import { CallSite } from './CallSite.js';
 
@@ -64,15 +63,6 @@ export class ToCallSiteVisitor extends TypeVisitor<CallSite | undefined> {
 
   protected override visitArray(type: ArrayType): CallSite | undefined {
     return CallSite.array(this.#collection(type.element));
-  }
-
-  /** Parked: the address is spellable and interned, and nothing delivers it yet. */
-  protected override visitAsync(_type: AsyncType): CallSite | undefined {
-    return undefined;
-  }
-
-  protected override visitAsyncIterable(type: AsyncIterableType): CallSite | undefined {
-    return CallSite.asyncIterable(this.#collection(type.element));
   }
 
   /** Parked: composing one from its parameter types on a miss awaits its design ruling. */

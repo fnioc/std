@@ -33,8 +33,6 @@ export const GLOBAL_QUALIFIER = 'global';
  */
 export const AGGREGATE_KINDS = {
   Array: 'array',
-  Async: 'async',
-  AsyncIterable: 'asyncIterable',
   Iterable: 'iterable',
 } as const;
 

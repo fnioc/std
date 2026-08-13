@@ -1,16 +1,9 @@
-import type { AggregateType, ArrayType, AsyncIterableType, AsyncType, ConstructorType, FunctionType, GenericType,
-  GlobalType, ImportType, IntersectionType, IterableType, ObjectType, TagType, TupleType, Type, TypeLiteralType,
-  UnionType } from './Type.js';
+import type { AggregateType, ArrayType, ConstructorType, FunctionType, GenericType, GlobalType, ImportType,
+  IntersectionType, IterableType, ObjectType, TagType, TupleType, Type, TypeLiteralType, UnionType } from './Type.js';
 import { TypeVisitor } from './TypeVisitor.js';
 
 class TypeValidatorVisitor extends TypeVisitor<readonly string[]> {
   protected override visitArray(type: ArrayType): readonly string[] {
-    return this.#element(type);
-  }
-  protected override visitAsync(type: AsyncType): readonly string[] {
-    return this.#element(type);
-  }
-  protected override visitAsyncIterable(type: AsyncIterableType): readonly string[] {
     return this.#element(type);
   }
   protected override visitCtor(type: ConstructorType): readonly string[] {

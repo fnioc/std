@@ -9,9 +9,9 @@
  */
 
 import { memo } from '../utils/map.js';
-import type { AggregateType, ArrayType, AsyncIterableType, AsyncType, ConstructorType, FunctionType, GenericType,
-  GlobalType, ImportType, IntersectionType, IterableType, NominalType, ObjectType, TagType, TupleType, Type,
-  TypeLiteralType, UnionType } from './Type.js';
+import type { AggregateType, ArrayType, ConstructorType, FunctionType, GenericType, GlobalType, ImportType,
+  IntersectionType, IterableType, NominalType, ObjectType, TagType, TupleType, Type, TypeLiteralType,
+  UnionType } from './Type.js';
 import { TypeVisitor } from './TypeVisitor.js';
 
 /** The kinds that name a type without describing one. */
@@ -36,12 +36,6 @@ export function isIdentifierType(type: Type): boolean {
 export const isOpenType = (() => {
   class OpenScanner extends TypeVisitor<boolean> {
     protected override visitArray(type: ArrayType): boolean {
-      return this.#element(type);
-    }
-    protected override visitAsync(type: AsyncType): boolean {
-      return this.#element(type);
-    }
-    protected override visitAsyncIterable(type: AsyncIterableType): boolean {
       return this.#element(type);
     }
     protected override visitCtor(type: ConstructorType): boolean {

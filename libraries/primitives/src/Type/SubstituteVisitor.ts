@@ -1,7 +1,7 @@
 import { tag as tagType } from './internals/factories.js';
-import { type ArrayType, type AsyncIterableType, type AsyncType, type ConstructorType, type FunctionType,
-  type GenericType, type GlobalType, type ImportType, type IntersectionType, type IterableType, type ObjectType,
-  type TagType, type TupleType, Type, type TypeLiteralType, type UnionType } from './Type.js';
+import { type ArrayType, type ConstructorType, type FunctionType, type GenericType, type GlobalType, type ImportType,
+  type IntersectionType, type IterableType, type ObjectType, type TagType, type TupleType, Type, type TypeLiteralType,
+  type UnionType } from './Type.js';
 import { TypeVisitor } from './TypeVisitor.js';
 
 /**
@@ -22,14 +22,6 @@ class SubstituteVisitor extends TypeVisitor<Type> {
 
   protected override visitArray(type: ArrayType): Type {
     return Type.array(this.visit(type.element));
-  }
-
-  protected override visitAsync(type: AsyncType): Type {
-    return Type.async(this.visit(type.element));
-  }
-
-  protected override visitAsyncIterable(type: AsyncIterableType): Type {
-    return Type.asyncIterable(this.visit(type.element));
   }
 
   protected override visitCtor(type: ConstructorType): Type {
