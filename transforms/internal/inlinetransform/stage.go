@@ -66,6 +66,7 @@ func Build(prog *driver.Program, owned []OwnedEntry, artifacts *Artifacts, emit 
 			artifacts.SugarMembers[resolved.Member] = MemberShape{
 				TypeArgCount:  resolved.Body.Discriminator.TypeParamCount,
 				ValueArgCount: len(resolved.Body.Params),
+				HasRest:       bodyHasRestParam(resolved.Body.Params),
 			}
 		}
 	}
@@ -796,6 +797,12 @@ func (st *fileState) elideFunctionImports(sf *shimast.SourceFile) *shimast.Sourc
 		return sf
 	}
 	return factory.UpdateSourceFile(sf, factory.NewNodeList(kept), sf.EndOfFileToken).AsSourceFile()
+}
+
+// bodyHasRestParam reports whether a body's last value parameter is a rest
+// parameter, per the "..." encoding valueParamsAndDiscriminator applies.
+func bodyHasRestParam(params []string) bool {
+	return len(params) > 0 && strings.HasPrefix(params[len(params)-1], "...")
 }
 
 // strippedParamNames removes the rest-parameter "..." encoding prefix so the
