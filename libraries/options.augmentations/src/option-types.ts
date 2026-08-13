@@ -4,6 +4,9 @@
 // through the collection wrapper. Deriving these deterministically is what lets
 // the append side (`configure`) and the read side (`assembleOptions`) agree
 // without sharing state.
+//
+// Every slot keys on the BARE `T`, never on `IOptions<T>`: one open registration
+// serves the whole family and derives these from the type that closed it.
 
 import { Type } from '@rhombus-std/primitives';
 
@@ -29,6 +32,32 @@ export function validateStepType(optionsType: Type): Type {
 /** The slot whose collection holds the change-token sources for `optionsType`. */
 export function changeTokenSourceType(optionsType: Type): Type {
   return Type.global(`${NAMESPACE}/change-token-source`, [optionsType]);
+}
+
+/**
+ * The slot holding the base factory for `optionsType` — the `() => T` every
+ * pipeline run starts from.
+ *
+ * @remarks
+ * This slot is what OFFERS an options type. The single open `IOptions<$T>`
+ * registration takes it as a dependency, so a type with nothing registered here
+ * leaves that registration unlowerable and `getService(IOptions<T>)` answers
+ * `undefined` rather than assembling a value nobody asked for.
+ */
+export function baseFactoryType(optionsType: Type): Type {
+  return Type.global(`${NAMESPACE}/base`, [optionsType]);
+}
+
+/**
+ * The address `IOptions<T>` resolves at.
+ *
+ * @remarks
+ * The composed address is spelled HERE and nowhere else — every authoring verb
+ * takes the bare `T`. Only {@link startupValidationTargetType}'s list needs it,
+ * because `StartupValidator` resolves each target and reads `.value` off it.
+ */
+export function optionsAddressType(optionsType: Type): Type {
+  return Type.imported('IOptions', '@rhombus-std/options', [optionsType]);
 }
 
 /**

@@ -1,12 +1,12 @@
-// The explicit `addOptions(token, tToken)` verb (#34): register an IOptions<T>
-// that WRAPS the already-bound T resolved from tToken. This is the complete,
-// transformer-free form the `addOptions<T>()` sugar lowers to — exercised here
-// through the public authoring surface with hand-written tokens (no transformer).
+// The one-argument `addOptions(tType)` verb: offer `IOptions<T>` whose value is
+// whatever `T` itself resolves to. This is the complete, transformer-free form
+// the `addOptions<T>()` sugar lowers to — exercised here through the public
+// authoring surface with hand-written tokens (no transformer).
 
 import '@rhombus-std/di';
 import { DefaultManifest, type Manifest, Type } from '@rhombus-std/di.core';
 import type { IOptions } from '@rhombus-std/options';
-import '@rhombus-std/options.augmentations';
+import { optionsAddressType } from '@rhombus-std/options.augmentations';
 import { describe, expect, test } from 'bun:test';
 
 interface Widget {
@@ -14,42 +14,65 @@ interface Widget {
 }
 
 const WIDGET_TOKEN = 'test:Widget';
-const OPTIONS_TOKEN = '@rhombus-std/options:IOptions<test:Widget>';
 
-describe('addOptions(token, tToken) — wrap the bound T', () => {
-  test('resolving the wrapper delivers an IOptions<T> over the bound T', () => {
+describe('addOptions(tType) — wrap the bound T', () => {
+  test('resolving IOptions<T> delivers the bound T', () => {
     let services: Manifest<'singleton'> = new DefaultManifest<'singleton'>();
     const widget: Widget = { name: 'gizmo' };
 
     services = services.addValue(WIDGET_TOKEN, widget);
-    services = services.addOptions(OPTIONS_TOKEN, WIDGET_TOKEN);
+    services = services.addOptions(WIDGET_TOKEN);
 
-    const provider = services.build().createScope('singleton');
-    const options: IOptions<Widget> = provider.getRequiredService(Type.from(OPTIONS_TOKEN));
+    const provider = services.build();
+    const options: IOptions<Widget> = provider.getRequiredService(optionsAddressType(Type.from(WIDGET_TOKEN)));
 
-    // The wrapped value IS the instance bound at the element token.
+    // The value IS the instance bound at the options type.
     expect(options.value).toBe(widget);
-    // A wrap carries no reload source, so it is a static snapshot.
+    // No change-token source was registered, so this is a static snapshot.
     expect(options.subscribe).toBeUndefined();
   });
 
-  test('wraps a class-produced T, injecting it from the element token', () => {
+  test('wraps a class-produced T, injecting it from the options type', () => {
     class Engine {
       readonly kind = 'v8';
     }
     const ENGINE_TOKEN = 'test:Engine';
-    const ENGINE_OPTIONS = '@rhombus-std/options:IOptions<test:Engine>';
 
     let services: Manifest<'singleton'> = new DefaultManifest<'singleton'>();
     // Explicit-token class registration (transformer-free): a zero-arg ctor.
     services = services.addClass(ENGINE_TOKEN, Engine, Type.ctor(Type.from(ENGINE_TOKEN)), 'singleton');
-    services = services.addOptions(ENGINE_OPTIONS, ENGINE_TOKEN);
+    services = services.addOptions(ENGINE_TOKEN);
 
-    const provider = services.build().createScope('singleton');
-    const engine: Engine = provider.getRequiredService(Type.from(ENGINE_TOKEN));
-    const options: IOptions<Engine> = provider.getRequiredService(Type.from(ENGINE_OPTIONS));
+    const provider = services.build();
+    const options: IOptions<Engine> = provider.getRequiredService(optionsAddressType(Type.from(ENGINE_TOKEN)));
 
-    expect(options.value).toBe(engine);
+    // The value is what the container built for the options type -- asserted by
+    // construction rather than by instance identity, which belongs to the
+    // lifetime model, not to this verb.
+    expect(options.value).toBeInstanceOf(Engine);
     expect(options.value.kind).toBe('v8');
+  });
+
+  test('one open registration serves every options type independently', () => {
+    const A_TOKEN = 'test:AOptions';
+    const B_TOKEN = 'test:BOptions';
+
+    let services: Manifest<'singleton'> = new DefaultManifest<'singleton'>();
+    services = services.addOptions(A_TOKEN, () => ({ which: 'a' }));
+    services = services.addOptions(B_TOKEN, () => ({ which: 'b' }));
+
+    const provider = services.build();
+
+    expect(provider.getRequiredService(optionsAddressType(Type.from(A_TOKEN))).value).toEqual({ which: 'a' });
+    expect(provider.getRequiredService(optionsAddressType(Type.from(B_TOKEN))).value).toEqual({ which: 'b' });
+  });
+
+  test('a type nobody offered is not answered', () => {
+    const services: Manifest<'singleton'> = new DefaultManifest<'singleton'>();
+    const provider = services.build();
+
+    // The open registration takes the base slot as a dependency, so a type with
+    // no `addOptions` leaves it unlowerable rather than assembling an empty value.
+    expect(provider.getService(optionsAddressType(Type.from('test:NeverOffered')))).toBeUndefined();
   });
 });

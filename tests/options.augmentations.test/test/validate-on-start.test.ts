@@ -25,7 +25,7 @@ describe('validateOnStart', () => {
     services = services.addOptions<ServerOptions>(OPTIONS_TOKEN, () => ({ port: 8080 }));
     services = services.validateOnStart(OPTIONS_TOKEN);
 
-    const provider = services.build().createScope('singleton');
+    const provider = services.build();
     const validator: IStartupValidator = provider.getRequiredService(STARTUP_VALIDATOR_TYPE);
 
     expect(typeof validator.validate).toBe('function');
@@ -37,7 +37,7 @@ describe('validateOnStart', () => {
     services = services.validate<ServerOptions>(OPTIONS_TOKEN, (o) => o.port > 0, 'port must be positive');
     services = services.validateOnStart(OPTIONS_TOKEN);
 
-    const provider = services.build().createScope('singleton');
+    const provider = services.build();
     const validator: IStartupValidator = provider.getRequiredService(STARTUP_VALIDATOR_TYPE);
 
     expect(() => validator.validate()).not.toThrow();
@@ -49,7 +49,7 @@ describe('validateOnStart', () => {
     services = services.validate<ServerOptions>(OPTIONS_TOKEN, (o) => o.port > 0, 'port must be positive');
     services = services.validateOnStart(OPTIONS_TOKEN);
 
-    const provider = services.build().createScope('singleton');
+    const provider = services.build();
     const validator: IStartupValidator = provider.getRequiredService(STARTUP_VALIDATOR_TYPE);
 
     expect(() => validator.validate()).toThrow(OptionsValidationError);
@@ -66,7 +66,7 @@ describe('validateOnStart', () => {
     services = services.validate<ServerOptions>(OTHER_TOKEN, (o) => o.port > 0, 'second bad');
     services = services.validateOnStart(OTHER_TOKEN);
 
-    const provider = services.build().createScope('singleton');
+    const provider = services.build();
     const validator: IStartupValidator = provider.getRequiredService(STARTUP_VALIDATOR_TYPE);
 
     try {

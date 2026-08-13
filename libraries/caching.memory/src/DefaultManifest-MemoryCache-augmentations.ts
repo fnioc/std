@@ -24,7 +24,8 @@ import { type AugmentationSet2, registerAugmentations, Type } from '@rhombus-std
 import { typefor } from '@rhombus-std/primitives.extras';
 import type { Func } from '@rhombus-toolkit/func';
 import { DISTRIBUTED_CACHE_TYPE } from './distributed-cache-type';
-import { MEMORY_CACHE_OPTIONS_TYPE, MEMORY_DISTRIBUTED_CACHE_OPTIONS_TYPE } from './memory-cache-options-type';
+import { MEMORY_CACHE_OPTIONS_ACCESSOR_TYPE, MEMORY_CACHE_OPTIONS_TYPE, MEMORY_DISTRIBUTED_CACHE_OPTIONS_ACCESSOR_TYPE,
+  MEMORY_DISTRIBUTED_CACHE_OPTIONS_TYPE } from './memory-cache-options-type';
 import { MEMORY_CACHE_TYPE } from './memory-cache-type';
 import { MemoryCache } from './MemoryCache';
 import { MemoryCacheOptions } from './MemoryCacheOptions';
@@ -91,7 +92,7 @@ export const ServiceManifestMemoryCacheAugmentations: AugmentationSet2<DefaultMa
       // `clearMetricsListeners` for the full explanation).
       m = m.tryAddFactory(MEMORY_CACHE_TYPE,
         (resolver: IServiceProvider) =>
-          new MemoryCache(resolver.getRequiredService(MEMORY_CACHE_OPTIONS_TYPE),
+          new MemoryCache(resolver.getRequiredService(MEMORY_CACHE_OPTIONS_ACCESSOR_TYPE),
             resolver.getService(LOGGER_FACTORY_TYPE)), Type.func(MEMORY_CACHE_TYPE, RESOLVER_TYPE),
         'singleton') as Manifest<
           string
@@ -111,7 +112,7 @@ export const ServiceManifestMemoryCacheAugmentations: AugmentationSet2<DefaultMa
       // See addMemoryCache's cast above for why this is needed.
       m = m.tryAddFactory(DISTRIBUTED_CACHE_TYPE, (resolver: IServiceProvider) =>
         new MemoryDistributedCache(
-          resolver.getRequiredService(MEMORY_DISTRIBUTED_CACHE_OPTIONS_TYPE),
+          resolver.getRequiredService(MEMORY_DISTRIBUTED_CACHE_OPTIONS_ACCESSOR_TYPE),
           resolver.getService(LOGGER_FACTORY_TYPE),
         ), Type.func(DISTRIBUTED_CACHE_TYPE, RESOLVER_TYPE), 'singleton') as Manifest<string>;
       return m;

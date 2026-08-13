@@ -249,10 +249,10 @@ services = addWithoutTransformerExamples(services);
 // The reactive server options — one shared live instance.
 services = services.addValue(SERVER_OPTIONS_TYPE, serverOptions);
 
-// A config-independent policy, wrapped as a static IOptions<GreetingPolicy> via
-// the augmentation's explicit addOptions(token, tToken) verb.
+// A config-independent policy, offered as IOptions<GreetingPolicy> via the
+// augmentation's explicit addOptions verb, which names the BARE type.
 services = services.addValue(POLICY_TYPE, { excitement: '!' } satisfies GreetingPolicy);
-services = services.addOptions(POLICY_OPTIONS_TYPE, POLICY_TYPE);
+services = services.addOptions(POLICY_TYPE);
 
 // The live config root, so the hosted worker can drive the reload demo.
 services = services.addValue(CONFIG_TYPE, config);

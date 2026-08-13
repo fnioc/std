@@ -1,7 +1,7 @@
 {
   "name": "@rhombus-std/di.extras.options",
   "version": "0.0.0",
-  "description": "A @rhombus-std/di.extras satellite: the type-only declare-module for the addOptions<T>() sugar plus its rhombus-std inline body. A Go/ttsc descriptor package — the sugar is substituted from its inline body (this.addOptions(tokenfor(IOptions<T>), tokenfor(T))) by the shared owner binary's inline + tokenfor stages.",
+  "description": "A @rhombus-std/di.extras satellite: the type-only declare-module for the addOptions<T>() sugar plus its rhombus-std inline body. A Go/ttsc descriptor package — the sugar is substituted from its inline body (this.addOptions(typefor(T))) by the shared owner binary's inline + typefor stages.",
   "keywords": [
     "options",
     "dependency-injection",

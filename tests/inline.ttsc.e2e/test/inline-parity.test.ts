@@ -7,9 +7,9 @@ import { spawnSync } from 'node:child_process';
 import { existsSync, mkdirSync, readFileSync, rmSync, symlinkSync, writeFileSync } from 'node:fs';
 import { homedir } from 'node:os';
 import { basename, join, resolve } from 'node:path';
-// Side-effect import: installs the addOptions augmentation onto Manifest
+// Importing this package also installs the addOptions augmentation onto Manifest
 // through the OPEN augmentation registry — the same production path a consumer uses.
-import '@rhombus-std/options.augmentations';
+import { optionsAddressType } from '@rhombus-std/options.augmentations';
 
 // Production-path e2e for the generic single-expression inline stage, the sole
 // lowering path for the type-driven registration and lookup sugar. It drives the
@@ -613,7 +613,7 @@ import type { Manifest, Type } from '@rhombus-std/di.core';
 declare module '@rhombus-std/di.core' {
   interface Manifest<Scopes extends string = 'singleton'> {
     addOptions<T>(): Manifest<Scopes>;
-    addOptions(token: Type | string, tToken: Type | string): Manifest<Scopes>;
+    addOptions(tType: Type | string): Manifest<Scopes>;
   }
 }
 export {};
@@ -680,42 +680,39 @@ beforeAll(() => {
 }, COLD_BUILD_MS);
 
 describe.skipIf(!toolchainReady)('generic inline stage — addOptions options witness (W4)', () => {
-  test('addOptions<T>() lowers to the relationally-locked two-token verb', () => {
+  test('addOptions<T>() lowers to the one-argument verb over the bare options type', () => {
     const line = lineWith(optionsOut, 'opts =');
     expect(line).toBeDefined();
-    // Two-token verb over the peered options package's IOptions — no sugar type
-    // argument and neither token primitive (the wrapper's tokenfor, the element's
-    // tokenof) survives.
-    expect(line).toContain('addOptions("@rhombus-std/options:IOptions<');
+    // The verb names the BARE T. `IOptions` is never composed here: one open
+    // registration answers every request, so the sugar has only its own type
+    // argument to derive.
+    expect(line).not.toContain('IOptions');
     expect(optionsOut).not.toContain('addOptions<');
     expect(optionsOut).not.toContain('tokenfor');
     expect(optionsOut).not.toContain('tokenof');
-    const m = /addOptions\("(@rhombus-std\/options:IOptions<[^"]*>)", "([^"]*)"\)/.exec(line as string);
+    const m = /addOptions\(Type\.imported\("([^"]*)", "([^"]*)"\)\)/.exec(line as string);
     expect(m).not.toBeNull();
-    const [, wrapper, element] = m as RegExpExecArray;
-    // Relational lock: the wrapper is IOptions<element> over the SAME element token
-    // the second argument carries (both minted from the one element derivation).
-    expect(wrapper).toEqual(`@rhombus-std/options:IOptions<${element}>`);
-    // The element is the app's own UserOptions type.
-    expect(element).toContain('UserOptions');
+    const [, name] = m as RegExpExecArray;
+    // The sole argument is the app's own UserOptions type.
+    expect(name).toEqual('UserOptions');
   });
 
-  test('registry dispatch: the emitted two-token verb resolves IOptions<T> through the real augmentation', () => {
-    // Runtime-EXECUTION witness (the text tests above only prove the emitted bytes).
-    // It feeds the transformer's ACTUAL emitted (wrapper, element) tokens to a real
-    // Manifest whose addOptions is installed the production way — the
-    // top-of-file `import '@rhombus-std/options.augmentations'` mounts it into the
-    // OPEN augmentation registry, so the call below dispatches through the installed
-    // DefaultManifest proto-wrapper, not a standalone. Registering the element
-    // token's value and resolving the wrapper must deliver an IOptions<T> over that
-    // exact value: proof the two emitted tokens land in the right runtime slots
-    // (wrapper = registration key, element = the wrapped dependency). Argument-order
-    // or shape drift would compile clean and pass every text net above, yet misregister
+  test('registry dispatch: the emitted verb resolves IOptions<T> through the real augmentation', () => {
+    // Runtime-EXECUTION witness (the text test above only proves the emitted bytes).
+    // It feeds the transformer's ACTUAL emitted type to a real Manifest whose
+    // addOptions is installed the production way — the top-of-file
+    // `import '@rhombus-std/options.augmentations'` mounts it into the OPEN
+    // augmentation registry, so the call below dispatches through the installed
+    // DefaultManifest proto-wrapper, not a standalone. Registering that type's
+    // value and resolving IOptions over it must deliver the registered value:
+    // proof the emitted type lands in the runtime slot the verb reads. Shape
+    // drift would compile clean and pass the text net above, yet misregister
     // and fail HERE — the gap this test closes.
     const line = lineWith(optionsOut, 'opts =');
-    const m = /addOptions\("(@rhombus-std\/options:IOptions<[^"]*>)", "([^"]*)"\)/.exec(line as string);
+    const m = /addOptions\(Type\.imported\("([^"]*)", "([^"]*)"\)\)/.exec(line as string);
     expect(m).not.toBeNull();
-    const [, wrapper, element] = m as RegExpExecArray;
+    const [, name, from] = m as RegExpExecArray;
+    const optionsType = Type.imported(name as string, from as string);
 
     interface UserOptions {
       name: string;
@@ -723,11 +720,11 @@ describe.skipIf(!toolchainReady)('generic inline stage — addOptions options wi
     const value: UserOptions = { name: 'ada' };
 
     let services: Manifest<'singleton'> = new DefaultManifest<'singleton'>();
-    services = services.addValue(element, value);
-    services = services.addOptions(wrapper, element);
+    services = services.addValue(optionsType, value);
+    services = services.addOptions(optionsType);
 
-    const options = services.build().getRequiredService(Type.from(wrapper)) as IOptions<UserOptions>;
-    // The wrapper resolves an IOptions<T> whose value IS the element-registered T.
+    const options = services.build().getRequiredService(optionsAddressType(optionsType)) as IOptions<UserOptions>;
+    // IOptions<T> resolves to a value that IS the registered T.
     expect(options.value).toBe(value);
   });
 });
