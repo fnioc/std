@@ -44,12 +44,19 @@ const nameHashLen = 10
 // TAIL, which is the type's own name.
 const maxReadableLen = 40
 
+// GlobalFrom is the FROM a name carries when the ambient scope declares it —
+// the token grammar's own sentinel, which is why the flat spelling of such a
+// type is the bare name with no qualifier. A node carrying it spells as
+// `Type.global`, everything else as `Type.imported`.
+const GlobalFrom = "global"
+
 // Kind discriminates a Node's populated fields — one case per `Type` factory a
 // derived typefor tree can spell.
 type Kind int
 
 const (
-	// KindNamed is `Type.named(name, from[, args])`.
+	// KindNamed is `Type.imported(name, from[, args])`, or `Type.global(name[,
+	// args])` when the ambient scope declares it.
 	KindNamed Kind = iota
 	// KindLiteral is `Type.typeLiteral(value)`.
 	KindLiteral
@@ -334,7 +341,12 @@ func (r *Registry) expr(n *Node) string {
 	case KindNull:
 		return r.typeRef.Export + ".typeLiteral(null)"
 	default: // KindNamed
-		call := r.typeRef.Export + ".named(\"" + n.name + "\", \"" + n.from + "\""
+		// A name is addressed by where it is reached from: the ambient scope
+		// declares a global, and there is no specifier for it to carry.
+		call := r.typeRef.Export + ".global(\"" + n.name + "\""
+		if n.from != GlobalFrom {
+			call = r.typeRef.Export + ".imported(\"" + n.name + "\", \"" + n.from + "\""
+		}
 		if len(n.args) != 0 {
 			call += ", [" + r.joinNames(n.args) + "]"
 		}

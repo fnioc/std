@@ -36,14 +36,14 @@ export const clock = typefor<IClock>();
 	defer prog.Close()
 	out, registry := hoistTypefor(t, prog, app)
 
-	if strings.Contains(out, "Type.named(") {
+	if strings.Contains(out, "Type.") {
 		t.Fatalf("a hoisted call site spells no factory of its own:\n%s", out)
 	}
 	if registry.Len() != 1 {
 		t.Fatalf("want 1 interned node, got %d", registry.Len())
 	}
 	module := registry.Module()
-	if !strings.Contains(module, `Type.named("IClock", "@scope/app/main")`) {
+	if !strings.Contains(module, `Type.imported("IClock", "@scope/app/main")`) {
 		t.Fatalf("the const carries the derived spelling:\n%s", module)
 	}
 	name := constNameIn(t, module)
@@ -74,7 +74,7 @@ export const promised = typefor<Promise<IClock>>();
 	if got := strings.Count(registry.Module(), "\nexport const "); got != 2 {
 		t.Fatalf("want 2 consts rendered, got %d:\n%s", got, registry.Module())
 	}
-	if strings.Count(registry.Module(), `Type.named("IClock"`) != 1 {
+	if strings.Count(registry.Module(), `Type.imported("IClock"`) != 1 {
 		t.Fatalf("IClock is spelled exactly once:\n%s", registry.Module())
 	}
 	// One import declaration carrying both names, not one per reference.
@@ -94,7 +94,9 @@ export const promised = typefor<Promise<IClock>>();
 
 	module := registry.Module()
 	inner := constNameIn(t, module)
-	if !strings.Contains(module, `Type.named("Promise", "global", [`+inner+`])`) {
+	// Promise is declared by the ambient scope, so it spells as a global and
+	// carries no specifier — only its argument, by name.
+	if !strings.Contains(module, `Type.global("Promise", [`+inner+`])`) {
 		t.Fatalf("the composite references the member const:\n%s", module)
 	}
 }
@@ -131,7 +133,7 @@ export const kind = typefor<IClock>().kind;
 	defer prog.Close()
 	out, registry := hoistTypefor(t, prog, app)
 
-	if !strings.Contains(out, `export const kind = "named"`) {
+	if !strings.Contains(out, `export const kind = "imported"`) {
 		t.Fatalf("`.kind` folds to its discriminant, hoisted or not:\n%s", out)
 	}
 	// Only what SURVIVES the fold is interned: the class's instance type, never

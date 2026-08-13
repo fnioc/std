@@ -288,19 +288,22 @@ describe('typefor emission modes', () => {
   test.skipIf(!toolchainReady)('a composite const references its members instead of re-spelling them', () => {
     const declared = constants(modules.get('hoisted')!);
     const nameOf = (spelling: string): string => [...declared].find(([, held]) => held === spelling)![0];
-    const clock = nameOf('Type.named("IClock", "typefor-emit-app/tokens/app")');
-    const log = nameOf('Type.named("IAuditLog", "typefor-emit-app/tokens/app")');
-    const systemClock = nameOf('Type.named("SystemClock", "typefor-emit-app/tokens/app")');
+    const clock = nameOf('Type.imported("IClock", "typefor-emit-app/tokens/app")');
+    const log = nameOf('Type.imported("IAuditLog", "typefor-emit-app/tokens/app")');
+    const systemClock = nameOf('Type.imported("SystemClock", "typefor-emit-app/tokens/app")');
 
     // A generic argument, a constructor's instance type and parameters, and a
     // function's return and parameters are all references — every composite is
     // one factory call over names, never a nested tree.
-    expect(declared.get(nameOf(`Type.named("Promise", "global", [${clock}])`))).toBeDefined();
+    // Promise is declared by the ambient scope, so it is addressed as a global
+    // and carries no specifier — only its argument, by name.
+    expect(declared.get(nameOf(`Type.global("Promise", [${clock}])`))).toBeDefined();
     expect([...declared.values()]).toContain(`Type.ctor(${systemClock}, ${log})`);
     expect([...declared.values()]).toContain(`Type.func(${clock}, ${log})`);
     for (const spelling of declared.values()) {
       if (spelling.startsWith('Type.ctor(') || spelling.startsWith('Type.func(')) {
-        expect(spelling).not.toContain('Type.named(');
+        expect(spelling).not.toContain('Type.imported(');
+        expect(spelling).not.toContain('Type.global(');
       }
     }
   });
@@ -309,9 +312,9 @@ describe('typefor emission modes', () => {
     const app = lowered.get('inline')!;
     expect(modules.get('inline')).toBe('');
     expect(app).not.toContain(TYPE_MODULE);
-    expect(app).toContain('Type.named("IClock", "typefor-emit-app/tokens/app")');
+    expect(app).toContain('Type.imported("IClock", "typefor-emit-app/tokens/app")');
     expect(app).toContain(
-      'Type.named("Promise", "global", [Type.named("IClock", "typefor-emit-app/tokens/app")])',
+      'Type.global("Promise", [Type.imported("IClock", "typefor-emit-app/tokens/app")])',
     );
     expect(app).toContain('Type.union(Type.typeLiteral("debug"), Type.typeLiteral("info"))');
   });

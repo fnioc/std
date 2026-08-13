@@ -142,7 +142,7 @@ func TestHoistedModuleIsWrittenAndCleanedUp(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if !strings.Contains(string(written), `Type.named("IClock", "orders")`) {
+	if !strings.Contains(string(written), `Type.imported("IClock", "orders")`) {
 		t.Fatalf("the module carries the const:\n%s", written)
 	}
 

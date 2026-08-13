@@ -321,8 +321,8 @@ across builds and independent of which file reached the type first.
 // __typefor__.js
 import { Type } from '@rhombus-std/primitives';
 
-export const $orders_IClock_3f9a2b1c8d = Type.named('IClock', 'orders');
-export const $Promise_orders_IClock_c07e41a95b = Type.named('Promise', 'global', [$orders_IClock_3f9a2b1c8d]);
+export const $orders_IClock_3f9a2b1c8d = Type.imported('IClock', 'orders');
+export const $Promise_orders_IClock_c07e41a95b = Type.global('Promise', [$orders_IClock_3f9a2b1c8d]);
 ```
 
 The mode rides the PROJECT, never the shared `./ttsc` descriptor: the descriptor is what every
