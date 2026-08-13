@@ -1,20 +1,16 @@
-// Package schemaoftransform is the generic `schemaof<T>()` primitive stage: it
-// lowers each `schemaof<T>()` call to the runtime config-schema object literal for
-// T over the ttsc-shipped typescript-go checker, materializing the `OPTIONAL`
-// value-import any wrapped field needs, then elides the now-unreferenced import.
-// It is a TYPE-argument primitive, sibling to nameof/keyof.
+// Package schemaoftransform is the `schemaof<T>()` primitive stage: it expands
+// each call into the runtime `Type` tree describing T's structure, over the
+// ttsc-shipped typescript-go checker, then elides the now-unreferenced import.
+// It is a TYPE-argument primitive — the EXPAND spelling beside typefor's ADDRESS
+// spelling: typefor names a type, schemaof opens one up.
 //
-// It is the engine half of the config family's `.withType<T>()` sugar: the inline
-// body `withType<T>(this) { return this.withSchema(schemaof<T>()); }` substitutes
-// at a consumer call site, and this stage lowers the synthetic `schemaof<T>()` the
-// substitution mints. The schema walk it runs (internal/schema) is the SAME code
-// the config `.withType` stage (the parity oracle, until its phase-3 deletion)
-// drives, so the two paths emit byte-identical literals by construction.
+// Expansion stops at a name. A member whose type has one keeps it, spelled exactly
+// as typefor would have, so what schemaof adds is the members of the type it was
+// handed and nothing self-referential can run away.
 //
-// FAILURE UX (§ owner: "a transform still reports its OWN inability to lower"): an
-// unsupported field type or a non-object root leaves the `schemaof<T>()` call
-// UN-LOWERED and reports the SAME targeted diagnostic the config stage does
-// (992001 / 992002) — NOT the generic "primitive survived" sweep error (the sweep
+// FAILURE UX: a member the Type grammar cannot spell, or a non-object root, leaves
+// the `schemaof<T>()` call UN-LOWERED and reports a targeted diagnostic (992001 /
+// 992002 / 992003) — NOT the generic "primitive survived" sweep error (the sweep
 // defers to this stage for schemaof; see inlinetransform.Sweep). Because the loop
 // re-runs this stage each pass, a per-run set dedupes the diagnostic to one
 // emission per failing call node (the node survives identity across passes).
@@ -22,9 +18,7 @@
 // The single owner host (cmd/ttsc-std) composes it as the `rhombusstd_schemaof`
 // stage. A substituted call carries no checker symbol (its callee is a side-parsed
 // clone), so it is anchored via the inline artifacts; a source-written call is
-// anchored by resolving its callee to the primitive symbol, mirroring keyof's two
-// branches (source-written is not an authored path today — the primitive is
-// body-only — but the anchor is kept for symmetry and robustness).
+// anchored by resolving its callee to the primitive symbol.
 package schemaoftransform
 
 import (
@@ -35,8 +29,8 @@ import (
 
 	"github.com/fnioc/std/transforms/internal/inlinetransform"
 	"github.com/fnioc/std/transforms/internal/plugin"
-	"github.com/fnioc/std/transforms/internal/schema"
 	"github.com/fnioc/std/transforms/internal/tokens"
+	"github.com/fnioc/std/transforms/internal/typeemit"
 	"github.com/fnioc/std/transforms/internal/valueimport"
 )
 
@@ -47,26 +41,26 @@ import (
 const schemaofName = "schemaof"
 
 // New builds the per-file transform: it visits every call expression, replaces
-// each lowerable `schemaof<T>()` with T's runtime schema literal (injecting the
-// OPTIONAL import a wrapped field needs), leaves an unsupported one un-lowered with
-// a targeted diagnostic, then elides the now-unreferenced `schemaof` import.
+// each expandable `schemaof<T>()` with T's runtime `Type` tree (injecting the
+// `Type` import the tree is spelled through), leaves an unsupported one un-lowered
+// with a targeted diagnostic, then elides the now-unreferenced `schemaof` import.
 //
 // artifacts is the inline stage's per-run state (nil when the inline stage did not
 // run). emitted dedupes the failure diagnostic across the fixed-point loop's
 // repeated passes: a failing call node survives identity between passes, so a set
 // keyed on it emits exactly once.
-func New(prog *driver.Program, _ *tokens.Context, artifacts *inlinetransform.Artifacts, emit func(plugin.Diagnostic)) plugin.FileTransform {
+func New(prog *driver.Program, types *tokens.Context, artifacts *inlinetransform.Artifacts, emit func(plugin.Diagnostic)) plugin.FileTransform {
 	checker := prog.Checker
 	emitted := map[*shimast.Node]bool{}
 	return func(ec *shimprinter.EmitContext, sf *shimast.SourceFile) *shimast.SourceFile {
 		factory := ec.Factory.AsNodeFactory()
-		optional := valueimport.Resolve(sf, schema.OptionalMarker)
-		ctx := &schema.Context{
-			Checker:  checker,
-			Program:  prog,
-			Factory:  factory,
-			Optional: optional,
-			AddDiagnostic: func(code, message string, anchor *shimast.Node) {
+		binding := valueimport.Resolve(sf, typeemit.Ref)
+		ex := &expansion{
+			checker: checker,
+			types:   types,
+			factory: factory,
+			binding: binding,
+			addDiagnostic: func(code, message string, anchor *shimast.Node) {
 				emit(plugin.Diagnostic{
 					File:    sf.FileName(),
 					Start:   anchorPos(anchor),
@@ -93,9 +87,9 @@ func New(prog *driver.Program, _ *tokens.Context, artifacts *inlinetransform.Art
 					if emitted[node] {
 						return node
 					}
-					literal, done := schema.LiteralForType(ctx, t, node)
+					tree, done := expandRoot(ex, t, node)
 					if done {
-						return literal
+						return tree
 					}
 					// Unsupported type / non-object root: the walk already reported the
 					// targeted 992001/992002. Leave the call un-lowered (no silent
@@ -112,7 +106,7 @@ func New(prog *driver.Program, _ *tokens.Context, artifacts *inlinetransform.Art
 			return sf
 		}
 		result := elideSchemaofImports(factory, output.AsSourceFile())
-		return valueimport.Ensure(factory, result, optional)
+		return valueimport.Ensure(factory, result, binding)
 	}
 }
 

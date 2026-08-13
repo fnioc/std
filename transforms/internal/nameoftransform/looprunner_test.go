@@ -1,6 +1,7 @@
 package nameoftransform
 
 import (
+	"path/filepath"
 	"testing"
 
 	shimast "github.com/microsoft/typescript-go/shim/ast"
@@ -8,7 +9,6 @@ import (
 	"github.com/samchon/ttsc/packages/ttsc/driver"
 
 	"github.com/fnioc/std/transforms/internal/inlinetransform"
-	"github.com/fnioc/std/transforms/internal/keyoftransform"
 	"github.com/fnioc/std/transforms/internal/plugin"
 	"github.com/fnioc/std/transforms/internal/schemaoftransform"
 	"github.com/fnioc/std/transforms/internal/signatures"
@@ -19,6 +19,91 @@ import (
 // plugin.RunToFixedPoint directly (stdhost cannot be imported here — it depends on
 // this package).
 const loopMaxPasses = 16
+
+// buildChainWorkspace stands up a di.core-as-source workspace whose registration
+// chain carries a second type-driven append sugar (`withSignature<T>()`), so the
+// full inline pipeline lowers a realistic `addClass<I>(C).withSignature<T>()`
+// two-hop chain — the fixture the loop-settling tests below drive.
+func buildChainWorkspace(t *testing.T, mainSrc string) (*driver.Program, string) {
+	t.Helper()
+	root := t.TempDir()
+	writeFile(t, filepath.Join(root, "package.json"), `{ "name": "ws", "private": true, "workspaces": ["packages/*"] }`)
+
+	core := filepath.Join(root, "packages", "di.core")
+	writeFile(t, filepath.Join(core, "package.json"), `{
+  "name": "@rhombus-std/di.core",
+  "version": "1.0.0",
+  "exports": { ".": { "types": "./src/index.ts", "default": "./src/index.ts" } },
+  "rhombus-std": {
+    "inline": [
+      { "type": "@rhombus-std/di.core:IServiceManifestBase", "impl": "@rhombus-std/di.core:ChainInline", "member": "addClass" },
+      { "type": "@rhombus-std/di.core:IWithSignatureBuilder", "impl": "@rhombus-std/di.core:ChainInline", "member": "withSignature" }
+    ]
+  }
+}`)
+	writeFile(t, filepath.Join(core, "src", "index.ts"), `export interface IWithSignatureBuilder {
+  withSignature(token: unknown): IChain;
+}
+export interface IChain extends IWithSignatureBuilder {}
+export interface IServiceManifestBase {
+  addClass(token: string, ctor: unknown, sig: unknown, scope?: string, key?: string): IChain;
+}
+export declare const services: IServiceManifestBase;
+`)
+	// The inline bodies: addClass derives token + dep-array, withSignature appends a
+	// second type-driven token onto the chain.
+	writeFile(t, filepath.Join(core, "src", "inline.ts"), `import { tokenfor } from '@rhombus-std/primitives.extras';
+import { signatureof } from '@rhombus-std/di.extras';
+import type { IChain, IServiceManifestBase, IWithSignatureBuilder } from './index';
+export const ChainInline = {
+  addClass<T>(this: IServiceManifestBase, ctor: unknown): IChain {
+    return this.addClass(tokenfor<T>(), ctor, signatureof(ctor));
+  },
+  withSignature<T>(this: IWithSignatureBuilder): IChain {
+    return this.withSignature(tokenfor<T>());
+  },
+};
+`)
+
+	app := filepath.Join(root, "packages", "app")
+	writeFile(t, filepath.Join(app, "package.json"), `{
+  "name": "@scope/app",
+  "version": "1.0.0",
+  "dependencies": { "@rhombus-std/di.core": "workspace:*" }
+}`)
+	linkPkg(t, app, "@rhombus-std/di.core", core)
+
+	// The consumer augmentation mirroring di.extras's real declare-module: the
+	// type-driven addClass<T>() / withSignature<T>() overloads merge onto their
+	// respective di.core faces.
+	writeFile(t, filepath.Join(app, "sugar.d.ts"), `declare module '@rhombus-std/di.core' {
+  interface IServiceManifestBase {
+    addClass<T>(ctor: unknown): IChain;
+  }
+  interface IWithSignatureBuilder {
+    withSignature<T>(): IChain;
+  }
+}
+export {};
+`)
+	writeFile(t, filepath.Join(app, "main.ts"), mainSrc)
+	writeFile(t, filepath.Join(app, "tsconfig.json"), `{
+  "compilerOptions": {
+    "target": "ES2022", "module": "esnext", "moduleResolution": "bundler",
+    "strict": true, "noEmit": true, "skipLibCheck": true
+  },
+  "files": ["main.ts", "sugar.d.ts", "node_modules/@rhombus-std/di.core/src/index.ts"]
+}`)
+
+	prog, diags, err := driver.LoadProgram(app, "tsconfig.json", driver.LoadProgramOptions{})
+	if err != nil {
+		t.Fatalf("LoadProgram: %v", err)
+	}
+	if len(diags) != 0 {
+		t.Fatalf("config diagnostics: %v", diags)
+	}
+	return prog, app
+}
 
 // buildLoopedStages constructs every looped-set stage over prog, sharing ONE
 // artifacts bag exactly as the owner host composes them, and returns them in the
@@ -36,9 +121,8 @@ func buildLoopedStages(t *testing.T, prog *driver.Program, app string, artifacts
 	inlineT := inlinetransform.Build(prog, bodies, artifacts, func(plugin.Diagnostic) {})
 	nameofT := New(prog, ctx, artifacts, func(plugin.Diagnostic) {})
 	sigT := signaturetransform.New(prog, ctx, artifacts, func(signatures.Diagnostic) {})
-	keyofT := keyoftransform.New(prog, ctx, artifacts, func(plugin.Diagnostic) {})
 	schemaofT := schemaoftransform.New(prog, ctx, artifacts, func(plugin.Diagnostic) {})
-	return []plugin.FileTransform{inlineT, nameofT, sigT, keyofT, schemaofT}
+	return []plugin.FileTransform{inlineT, nameofT, sigT, schemaofT}
 }
 
 // TestLoopCanaryZeroMatchPreservesPointer is the CENTRAL identity canary: a file
@@ -54,12 +138,12 @@ func TestLoopCanaryZeroMatchPreservesPointer(t *testing.T) {
 	// A file with no sugar call and no primitive call — nothing any looped stage can
 	// match — but the inline entries still RESOLVE (artifacts Active), so the inline
 	// stage runs its real visitor rather than the trivial no-entry no-op closure.
-	prog, app := buildWithSigChainWorkspace(t, "export const x = 1;\n")
+	prog, app := buildChainWorkspace(t, "export const x = 1;\n")
 	defer func() { _ = prog.Close() }()
 
 	artifacts := inlinetransform.NewArtifacts()
 	stages := buildLoopedStages(t, prog, app, artifacts)
-	names := []string{"inline", "nameof", "signatureof", "keyof", "schemaof"}
+	names := []string{"inline", "nameof", "signatureof", "schemaof"}
 
 	ec := shimprinter.NewEmitContext()
 	sf := mainSF(t, prog)
@@ -93,14 +177,14 @@ func TestLoopNoOpIdentityTable(t *testing.T) {
 interface IFoo {}
 interface IDep {}
 class Foo implements IFoo {}
-services.addClass<IFoo>(Foo).withSignature<[IDep]>();
+services.addClass<IFoo>(Foo).withSignature<IDep>();
 `
-	prog, app := buildWithSigChainWorkspace(t, src)
+	prog, app := buildChainWorkspace(t, src)
 	defer func() { _ = prog.Close() }()
 
 	artifacts := inlinetransform.NewArtifacts()
 	stages := buildLoopedStages(t, prog, app, artifacts)
-	names := []string{"inline", "nameof", "signatureof", "keyof", "schemaof"}
+	names := []string{"inline", "nameof", "signatureof", "schemaof"}
 
 	ec := shimprinter.NewEmitContext()
 	settled, _, exhausted := plugin.RunToFixedPoint(ec, stages, mainSF(t, prog), loopMaxPasses)
@@ -130,7 +214,7 @@ services.addClass<IFoo>(Foo).withSignature<[IDep]>();
 // file settling on exactly maxPasses passes spends being correctly reported as
 // settled instead of failing the run (plugin.RunToFixedPoint).
 func TestRunToFixedPointExhaustsWhenNonSettling(t *testing.T) {
-	prog, app := buildWithSigChainWorkspace(t, "export const x = 1;\nexport const y = 2;\n")
+	prog, app := buildChainWorkspace(t, "export const x = 1;\nexport const y = 2;\n")
 	defer func() { _ = prog.Close() }()
 	_ = app
 
@@ -167,8 +251,8 @@ func TestRunToFixedPointExhaustsWhenNonSettling(t *testing.T) {
 }
 
 // buildSelfInlineLoop builds the inline + primitive stages (inline, nameof,
-// signatureof, keyof — NO di stage) over a self-inline workspace, sharing ONE
-// artifacts bag in canonical order. It is the inline-ISOLATION loop for the
+// signatureof — NO di stage) over a self-inline workspace, sharing ONE artifacts
+// bag in canonical order. It is the inline-ISOLATION loop for the
 // self-registration cases: excluding the di stage proves the inline path alone
 // settles, the same isolation TestChainSettlesThroughInlinePrimitivesOnly uses for
 // the chain.
@@ -183,7 +267,6 @@ func buildSelfInlineLoop(t *testing.T, prog *driver.Program, app string, artifac
 		inlinetransform.Build(prog, bodies, artifacts, func(plugin.Diagnostic) {}),
 		New(prog, ctx, artifacts, func(plugin.Diagnostic) {}),
 		signaturetransform.New(prog, ctx, artifacts, func(signatures.Diagnostic) {}),
-		keyoftransform.New(prog, ctx, artifacts, func(plugin.Diagnostic) {}),
 	}
 }
 
@@ -275,9 +358,9 @@ func TestChainSettlesThroughInlinePrimitivesOnly(t *testing.T) {
 interface IFoo {}
 interface IDep {}
 class Foo implements IFoo {}
-services.addClass<IFoo>(Foo).withSignature<[IDep]>();
+services.addClass<IFoo>(Foo).withSignature<IDep>();
 `
-	prog, app := buildWithSigChainWorkspace(t, src)
+	prog, app := buildChainWorkspace(t, src)
 	defer func() { _ = prog.Close() }()
 
 	artifacts := inlinetransform.NewArtifacts()
@@ -290,7 +373,6 @@ services.addClass<IFoo>(Foo).withSignature<[IDep]>();
 		inlinetransform.Build(prog, bodies, artifacts, func(plugin.Diagnostic) {}),
 		New(prog, ctx, artifacts, func(plugin.Diagnostic) {}),
 		signaturetransform.New(prog, ctx, artifacts, func(signatures.Diagnostic) {}),
-		keyoftransform.New(prog, ctx, artifacts, func(plugin.Diagnostic) {}),
 	}
 
 	ec := shimprinter.NewEmitContext()

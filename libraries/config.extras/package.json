@@ -1,7 +1,7 @@
 {
   "name": "@rhombus-std/config.extras",
   "version": "0.0.0",
-  "description": "The @rhombus-std/config authoring transformer: rewrites .withType<T>() on a ConfigBuilder into a generated .withSchema({...}) runtime schema literal at compile time. A Go/ttsc descriptor package — the lowering runs in the shared owner binary.",
+  "description": "The @rhombus-std/config authoring transformer: rewrites .withType<T>() on a ConfigBuilder into a generated .withSchema(Type.object({...})) call at compile time. A Go/ttsc descriptor package — the transform runs in the shared owner binary.",
   "keywords": [
     "configuration",
     "config",
@@ -17,7 +17,7 @@
     "directory": "libraries/config.extras"
   },
   "type": "module",
-  "//rhombus-std": "The .withType<T>() config-schema sugar's inline publish list. The body lives in src/inline.ts (authoring-only substitution source, kept out of any barrel + dist); the inline stage side-parses it and substitutes at consumer call sites, then the schemaof stage lowers the schemaof<T>() it mints into the runtime schema literal. The `type` ANCHOR is @rhombus-std/config's ConfigBuilder interface (the withType<U>() augmentation target, declared in config's with-type-augment.ts); `impl` (ConfigBuilderInline) is a fully-qualified reference resolving in THIS package — schemaof is the authoring-time config-schema primitive homed here (src/schemaof.ts), imported package-relative.",
+  "//rhombus-std": "The .withType<T>() config-schema sugar's inline publish list. The body lives in src/inline.ts (authoring-only substitution source, kept out of any barrel + dist); the inline stage side-parses it and substitutes at consumer call sites, then the schemaof stage expands the schemaof<T>() it mints into the runtime Type tree. The `type` ANCHOR is @rhombus-std/config's ConfigBuilder interface (the withType<U>() augmentation target, declared in config's with-type-augment.ts); `impl` (ConfigBuilderInline) is a fully-qualified reference resolving in THIS package — schemaof is the authoring-time type-expansion primitive homed here (src/schemaof.ts), imported package-relative.",
   "rhombus-std": {
     "inline": [
       {
@@ -42,6 +42,7 @@
     "lint": "bun x tsc --noEmit -p tsconfig.ci.json"
   },
   "dependencies": {
+    "@rhombus-std/primitives": "workspace:*",
     "@rhombus-std/primitives.extras": "workspace:*"
   },
   "peerDependencies": {

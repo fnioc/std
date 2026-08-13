@@ -1,15 +1,19 @@
-// Coercion primitives + the schema-walker.
+// Coercion primitives + the schema walker.
+//
+// A schema is a `Type` tree: `Type.object({...})` at every level, a global
+// `string` / `number` / `boolean` at each leaf, and a union with `undefined` for a
+// member the configuration may leave out. `build()` walks it against the
+// configuration tree and produces the plain object it describes.
 //
 // `parseNumber`/`parseBoolean` are the ONLY definitions of numeric/boolean
 // coercion in the codebase. Both the on-demand section helpers (getNum/getBool,
-// which THROW on the first bad value) and the schema-walker (coerceBySchema,
-// which AGGREGATES every problem before throwing) call them, so the rules can
-// never drift apart. The discriminated `ParseResult` lets each consumer pick
-// its own failure mode.
+// which THROW on the first bad value) and the walker (coerceBySchema, which
+// AGGREGATES every problem before throwing) call them, so the rules can never
+// drift apart. The discriminated `ParseResult` lets each consumer pick its own
+// failure mode.
 
 import { exists, type IConfig } from '@rhombus-std/config.core';
-import { assertNever } from '@rhombus-toolkit/type-guards';
-import { OPTIONAL, type Schema } from './schema';
+import { type ObjectType, Type } from '@rhombus-std/primitives';
 
 export type ParseResult<T> = { readonly ok: true; readonly value: T; } | { readonly ok: false;
   readonly reason: string; };
@@ -64,85 +68,107 @@ export class SchemaCoercionError extends Error {
   }
 }
 
-function isLeaf(s: Schema): s is 'string' | 'number' | 'boolean' {
-  return s === 'string' || s === 'number' || s === 'boolean';
+/** The leaf types a configuration value coerces into, each with its parser. */
+const SCALARS = new Map<string, (raw: string) => ParseResult<unknown>>([
+  ['string', (raw) => ({ ok: true, value: raw })],
+  ['number', parseNumber],
+  ['boolean', parseBoolean],
+]);
+
+/** One member of a schema: the type it names, and whether it may be absent. */
+interface Slot {
+  readonly type: Type;
+  readonly optional: boolean;
 }
 
-function isOptional(s: Schema): s is { readonly [OPTIONAL]: Schema; } {
-  return typeof s === 'object' && s !== null && OPTIONAL in s;
+function isUndefined(type: Type): boolean {
+  return type.kind === 'literal' && type.value === undefined;
 }
 
-function present(node: IConfig, inner: Schema, key: string): boolean {
-  return isLeaf(inner) ? node.get(key) !== undefined : exists(node.getSection(key));
+/**
+ * Reads a member's slot. A member is optional exactly when its type unions with
+ * `undefined`; what is left over after dropping it is the type a present value
+ * must satisfy.
+ */
+function slotFor(member: Type): Slot {
+  if (member.kind !== 'union') {
+    return { type: member, optional: false };
+  }
+  const present = member.members.filter((alternative) => !isUndefined(alternative));
+  if (present.length === member.members.length) {
+    return { type: member, optional: false };
+  }
+  return { type: present.length === 1 ? present[0]! : Type.union(...present), optional: true };
 }
 
-function walkRequired(node: IConfig, schema: Schema, key: string, path: readonly string[], issues: string[]): unknown {
+/** The parser a leaf type names, or `undefined` when it names no coercible leaf. */
+function scalarFor(type: Type): ((raw: string) => ParseResult<unknown>) | undefined {
+  if (type.kind !== 'named' || type.from !== 'global' || type.genericArgs.length > 0) {
+    return undefined;
+  }
+  return SCALARS.get(type.name);
+}
+
+/** Is a value for this member present in the configuration at all? */
+function present(node: IConfig, type: Type, key: string): boolean {
+  return scalarFor(type) !== undefined ? node.get(key) !== undefined : exists(node.getSection(key));
+}
+
+function walkRequired(node: IConfig, type: Type, key: string, path: readonly string[], issues: string[]): unknown {
   const fullPath = [...path, key].join(':');
 
-  if (isLeaf(schema)) {
+  const scalar = scalarFor(type);
+  if (scalar !== undefined) {
     const raw = node.get(key);
     if (raw === undefined) {
       issues.push(`missing required key "${fullPath}"`);
       return undefined;
     }
-    switch (schema) {
-      case 'string':
-        return raw;
-      case 'number': {
-        const r = parseNumber(raw);
-        if (!r.ok) {
-          issues.push(`invalid number for "${fullPath}": ${JSON.stringify(raw)}`);
-          return undefined;
-        }
-        return r.value;
-      }
-      case 'boolean': {
-        const r = parseBoolean(raw);
-        if (!r.ok) {
-          issues.push(`invalid boolean for "${fullPath}": ${JSON.stringify(raw)}`);
-          return undefined;
-        }
-        return r.value;
-      }
-      default:
-        return assertNever(schema);
+    const parsed = scalar(raw);
+    if (!parsed.ok) {
+      issues.push(`invalid value for "${fullPath}": ${parsed.reason}`);
+      return undefined;
     }
+    return parsed.value;
   }
 
-  const section = node.getSection(key);
-  if (!exists(section)) {
-    issues.push(`missing required key "${fullPath}"`);
-    return {};
+  if (type.kind === 'object') {
+    const section = node.getSection(key);
+    if (!exists(section)) {
+      issues.push(`missing required key "${fullPath}"`);
+      return {};
+    }
+    return walkObject(section, type, [...path, key], issues);
   }
-  return walkObject(section, schema as Record<PropertyKey, Schema>, [...path, key], issues);
+
+  issues.push(
+    `no configuration value coerces into ${Type.stringify(type)}, named by "${fullPath}" -- `
+      + 'a schema names string, number, boolean and object types',
+  );
+  return undefined;
 }
 
-function walkObject(node: IConfig, schema: Record<PropertyKey, Schema>, path: readonly string[],
+function walkObject(node: IConfig, schema: ObjectType, path: readonly string[],
   issues: string[]): Record<string, unknown> {
   const result: Record<string, unknown> = {};
-  // Only string keys are walked -- OPTIONAL is a symbol and only ever appears
-  // INSIDE a wrapper, never as a sibling of the object's string keys.
-  for (const key of Object.keys(schema)) {
-    const sub = schema[key] as Schema;
-    if (isOptional(sub)) {
-      const inner = sub[OPTIONAL];
-      result[key] = present(node, inner, key) ? walkRequired(node, inner, key, path, issues) : undefined;
-    } else {
-      result[key] = walkRequired(node, sub, key, path, issues);
-    }
+  for (const [key, member] of Object.entries(schema.members)) {
+    const slot = slotFor(member);
+    result[key] = slot.optional && !present(node, slot.type, key)
+      ? undefined
+      : walkRequired(node, slot.type, key, path, issues);
   }
   return result;
 }
 
 /**
  * Coerces `config` per `schema`, or throws {@link SchemaCoercionError} listing
- * every missing-required / invalid leaf. The returned shape mirrors `Infer<S>`
- * exactly, so `build()`'s cast to `Infer<S>` never lies: a field typed `number`
- * is always a real, finite `number`.
+ * every missing-required, invalid or uncoercible member. The returned shape
+ * mirrors the schema exactly, so `build()`'s cast never lies: a member typed
+ * `number` is always a real, finite `number`.
  */
-export function coerceBySchema(config: IConfig, schema: Schema): unknown {
+export function coerceBySchema(config: IConfig, schema: ObjectType): unknown {
   const issues: string[] = [];
-  const value = walkObject(config, schema as Record<PropertyKey, Schema>, [], issues);
+  const value = walkObject(config, schema, [], issues);
   if (issues.length > 0) {
     throw new SchemaCoercionError(issues);
   }

@@ -20,14 +20,11 @@ import { entryKind, loadInlineEntries, parseTypeRef } from './inline-entries.mjs
 // may import it from. `typefor` / `tokenfor` / `tokenof` are pure transformables
 // that home in the authoring package @rhombus-std/primitives.extras — every call
 // elides after lowering, so the runtime @rhombus-std/primitives leaf carries none
-// of them. `signaturefor` / `signaturesfor` produce di.core's `DepSlot` shape
-// and are called from runtime source too, so they live in @rhombus-std/di.core
-// (every caller already depends on it). `signatureof` is authoring-time-only and
-// lives in @rhombus-std/di.extras, imported by that package's own bodies via a
-// package-relative specifier.
+// of them. `signatureof` is authoring-time-only and lives in @rhombus-std/di.extras,
+// imported by that package's own bodies via a package-relative specifier. Mirrors
+// the Go scanner's knownPrimitives map.
 const PRIMITIVE_HOMES = { typefor: '@rhombus-std/primitives.extras', tokenfor: '@rhombus-std/primitives.extras',
-  tokenof: '@rhombus-std/primitives.extras', signaturefor: '@rhombus-std/di.core',
-  signaturesfor: '@rhombus-std/di.core', signatureof: '@rhombus-std/di.extras',
+  tokenof: '@rhombus-std/primitives.extras', signatureof: '@rhombus-std/di.extras',
   schemaof: '@rhombus-std/config.extras' };
 
 /** Walks up from a file to the nearest directory containing a package.json. */
@@ -329,9 +326,8 @@ function walkExpression(root, cb) {
     if (BANNED[node.type]) {
       // A spread is permitted in exactly two shapes, both splice points the
       // generic inline stage substitutes wholesale rather than runtime spreads:
-      //   - its argument is a primitive call (`...signaturefor<T>()` /
-      //     `...signaturesfor<T>()`) — the stage inlines the primitive's minted
-      //     members into the surrounding call's argument list;
+      //   - its argument is a primitive call — the stage inlines the
+      //     primitive's minted members into the surrounding call's argument list;
       //   - its argument is the body's own trailing rest parameter (`...rest`)
       //     — the stage binds a rest parameter to the call's remaining
       //     arguments as a list and splices that list at this exact spread

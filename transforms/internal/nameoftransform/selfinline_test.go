@@ -54,9 +54,6 @@ export declare const services: IServiceManifestBase;
 declare const HOLE: unique symbol;
 export type Hole<N extends number, C = unknown> = C & { readonly [HOLE]?: N };
 export type $<N extends number> = Hole<N>;
-declare const KEY: unique symbol;
-export type Keyed<T, K extends string> = T & { readonly [KEY]?: K };
-export declare function keyof<T>(): string | undefined;
 `)
 	// The real sugar bodies, authored over the compile-time primitives (tokenfor /
 	// tokenof from primitives, signatureof from di.extras). The self bodies omit
@@ -66,11 +63,11 @@ export declare function keyof<T>(): string | undefined;
 	// the di engine's raw-type addValue path); the generic body is present only so a
 	// no-type-arg call has an alternative overload to (correctly) NOT bind to.
 	writeFile(t, filepath.Join(core, "src", "inline.ts"), `import { tokenfor, tokenof } from '@rhombus-std/primitives.extras';
-import { signatureof, keyof } from '@rhombus-std/di.extras';
+import { signatureof } from '@rhombus-std/di.extras';
 import type { IServiceManifestBase } from './index';
 export const ManifestInline = {
   addClass<T>(this: IServiceManifestBase, ctor: unknown): unknown {
-    return this.addClass(tokenfor<T>(), ctor, signatureof(ctor), void 0, keyof<T>());
+    return this.addClass(tokenfor<T>(), ctor, signatureof(ctor));
   },
 };
 export const ManifestSelfInline = {

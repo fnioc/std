@@ -1,14 +1,34 @@
-// The Tier 1 schema-walker: withSchema(...).build() coerces the config into a
+// The Tier 1 schema walker: withSchema(...).build() coerces the config into a
 // typed POJO, or throws an aggregating SchemaCoercionError.
+//
+// A schema is a `Type` tree. The type argument on withSchema states the shape to
+// the compiler; the tree states the same shape at runtime. `bun test` type-checks
+// nothing, so the static half of that pairing is held by the package's `lint`
+// script (`tsc -p tsconfig.json`, which includes test/**/*).
 
-import { ConfigBuilder, OPTIONAL, SchemaCoercionError } from '@rhombus-std/config';
+import { ConfigBuilder, SchemaCoercionError } from '@rhombus-std/config';
+import { Type } from '@rhombus-std/primitives';
 import { describe, expect, test } from 'bun:test';
 
+const str = Type.named('string', 'global');
+const num = Type.named('number', 'global');
+const bool = Type.named('boolean', 'global');
+
+/** A member the configuration may leave out. */
+function optional(type: Type): Type {
+  return Type.union(type, Type.typeLiteral(undefined));
+}
+
+interface ServerSection {
+  Server: { Host: string; Port: number; Ssl?: boolean; };
+}
+
 describe('withSchema(...).build()', () => {
-  test('coerces leaves and threads the inferred type', () => {
+  test('coerces leaves and threads the named type', () => {
     const config = new ConfigBuilder().addInMemoryCollection({ 'Server:Host': 'h', 'Server:Port': '8080',
-      'Server:Ssl': 'on' }).withSchema({ Server: { Host: 'string', Port: 'number', Ssl: { [OPTIONAL]: 'boolean' } } })
-      .build();
+      'Server:Ssl': 'on' }).withSchema<ServerSection>(
+        Type.object({ Server: Type.object({ Host: str, Port: num, Ssl: optional(bool) }) }),
+      ).build();
 
     expect(config).toEqual({ Server: { Host: 'h', Port: 8080, Ssl: true } });
     // Static: Port is a number, Ssl is boolean | undefined.
@@ -17,19 +37,21 @@ describe('withSchema(...).build()', () => {
   });
 
   test('an absent optional leaf coerces to undefined without raising an issue', () => {
-    const config = new ConfigBuilder().addInMemoryCollection({ Host: 'h', Port: '1' }).withSchema({ Host: 'string',
-      Port: 'number', Ssl: { [OPTIONAL]: 'boolean' } }).build();
+    const config = new ConfigBuilder().addInMemoryCollection({ Host: 'h', Port: '1' }).withSchema(
+      Type.object({ Host: str, Port: num, Ssl: optional(bool) }),
+    ).build();
 
     expect(config).toEqual({ Host: 'h', Port: 1, Ssl: undefined });
   });
 
   test('a missing required leaf throws SchemaCoercionError naming the path', () => {
-    expect(() =>
-      new ConfigBuilder().addInMemoryCollection({ Port: '1' }).withSchema({ Host: 'string', Port: 'number' }).build()
-    ).toThrow(SchemaCoercionError);
+    const schema = Type.object({ Host: str, Port: num });
+
+    expect(() => new ConfigBuilder().addInMemoryCollection({ Port: '1' }).withSchema(schema).build())
+      .toThrow(SchemaCoercionError);
 
     try {
-      new ConfigBuilder().addInMemoryCollection({ Port: '1' }).withSchema({ Host: 'string', Port: 'number' }).build();
+      new ConfigBuilder().addInMemoryCollection({ Port: '1' }).withSchema(schema).build();
     } catch (err) {
       expect((err as SchemaCoercionError).issues.some((i) => i.includes('Host'))).toBe(true);
     }
@@ -37,8 +59,9 @@ describe('withSchema(...).build()', () => {
 
   test('aggregates a missing top-level key AND a bad deep number into one throw', () => {
     try {
-      new ConfigBuilder().addInMemoryCollection({ 'Server:Db:Pool': 'not-a-number' }).withSchema({ Host: 'string',
-        Server: { Db: { Pool: 'number' } } }).build();
+      new ConfigBuilder().addInMemoryCollection({ 'Server:Db:Pool': 'not-a-number' }).withSchema(
+        Type.object({ Host: str, Server: Type.object({ Db: Type.object({ Pool: num }) }) }),
+      ).build();
       throw new Error('expected a throw');
     } catch (err) {
       expect(err).toBeInstanceOf(SchemaCoercionError);
@@ -51,15 +74,50 @@ describe('withSchema(...).build()', () => {
 
   test('coerces nested objects', () => {
     const config = new ConfigBuilder().addInMemoryCollection({ 'Database:Primary:Host': 'db',
-      'Database:Primary:PoolSize': '10' }).withSchema({ Database: { Primary: { Host: 'string', PoolSize: 'number' } } })
-      .build();
+      'Database:Primary:PoolSize': '10' }).withSchema<{ Database: { Primary: { Host: string; PoolSize: number; }; }; }>(
+        Type.object({ Database: Type.object({ Primary: Type.object({ Host: str, PoolSize: num }) }) }),
+      ).build();
 
     expect(config.Database.Primary.PoolSize).toBe(10);
   });
 
   test('resolves schema keys case-insensitively against the store', () => {
-    const config = new ConfigBuilder().addInMemoryCollection({ PORT: '8080' }).withSchema({ Port: 'number' }).build();
+    const config = new ConfigBuilder().addInMemoryCollection({ PORT: '8080' }).withSchema(
+      Type.object({ Port: num }),
+    ).build();
 
     expect(config).toEqual({ Port: 8080 });
+  });
+
+  test('a member naming a type no configuration value coerces into is reported, not guessed at', () => {
+    try {
+      new ConfigBuilder().addInMemoryCollection({ When: '2026-01-01' }).withSchema(
+        Type.object({ When: Type.named('Date', 'global') }),
+      ).build();
+      throw new Error('expected a throw');
+    } catch (err) {
+      expect(err).toBeInstanceOf(SchemaCoercionError);
+      expect((err as SchemaCoercionError).issues[0]).toContain('When');
+    }
+  });
+
+  test('a member unioning two coercible leaves is reported -- one value cannot be both', () => {
+    try {
+      new ConfigBuilder().addInMemoryCollection({ Mode: 'fast' }).withSchema(
+        Type.object({ Mode: Type.union(str, num) }),
+      ).build();
+      throw new Error('expected a throw');
+    } catch (err) {
+      expect(err).toBeInstanceOf(SchemaCoercionError);
+      expect((err as SchemaCoercionError).issues[0]).toContain('Mode');
+    }
+  });
+
+  test('optionality survives an alternative being dropped -- what is left is still a union', () => {
+    const config = new ConfigBuilder().addInMemoryCollection({ Host: 'h' }).withSchema(
+      Type.object({ Host: str, Mode: Type.union(str, num, Type.typeLiteral(undefined)) }),
+    ).build();
+
+    expect(config).toEqual({ Host: 'h', Mode: undefined });
   });
 });

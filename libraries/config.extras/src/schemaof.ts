@@ -1,18 +1,47 @@
+import type { ObjectType } from '@rhombus-std/primitives';
+
 /**
- * Compile-time config schema for `T`: leaf types resolve to `"string"` /
- * `"number"` / `"boolean"`, nested records to nested object literals, and an
- * optional field wraps as `{ [OPTIONAL]: innerSchema }`.
+ * `T` expanded into the `Type` tree describing its structure.
+ *
+ * @remarks
+ * Where `typefor` NAMES a type, `schemaof` OPENS one up: the result is a
+ * `Type.object` carrying one entry per public, writable member of `T`.
+ *
+ * Expansion stops at a name. A member whose type has one of its own keeps it,
+ * spelled exactly as `typefor` would have, so what `schemaof` adds is the members
+ * of the type it was handed — and a self-referential type terminates rather than
+ * expanding forever. Only what has no name — an inline structure, a tuple — is
+ * opened up in place.
+ *
+ * An OPTIONAL member is its own type unioned with `undefined`
+ * (`Type.union(inner, Type.typeLiteral(undefined))`), the one spelling the union
+ * grammar keeps intact: nothing subsumes a nullish member.
+ *
+ * Two types that expand to the same structure yield the SAME node, since a
+ * structural description is not an address.
  *
  * @example
  * ```ts
- * schemaof<ServerConfig>(); // → { host: "string", port: "number" }
+ * interface ServerConfig {
+ *   host: string;
+ *   port: number;
+ *   ssl?: boolean;
+ * }
+ *
+ * schemaof<ServerConfig>();
+ * // Type.object({
+ * //   host: Type.named('string', 'global'),
+ * //   port: Type.named('number', 'global'),
+ * //   ssl: Type.union(Type.named('boolean', 'global'), Type.typeLiteral(undefined)),
+ * // })
  * ```
  */
-export function schemaof<T>(): unknown {
+export function schemaof<T>(): ObjectType {
   void (null as T | null);
   throw new Error(
     "schemaof<T>() requires @rhombus-std/config.extras's compile-time transform to run. "
-      + 'It has not been applied. Use withSchema({...}) directly, or configure the transformer.',
+      + 'It has not been applied. Write the Type tree with the Type factories directly, or '
+      + 'configure the transformer.',
   );
 }
 
