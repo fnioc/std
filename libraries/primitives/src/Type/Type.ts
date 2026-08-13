@@ -105,10 +105,11 @@ export namespace Type {
   // #region factories
 
   /**
-   * The aggregate of every registration of `element`, materialized into a real array at
-   * resolution — indexable immediately, with nothing left to bind as it is read.
+   * The aggregate of every registration of `element`, read as an array.
    *
    * @remarks
+   * The synthesized aggregate materializes at resolution — a real array, indexable immediately,
+   * with nothing left to bind. A registration answering under this address is returned as-is.
    * The side that registers an element and the side that reads the aggregate must name the same
    * type, and nothing reports it when they don't: the lookup simply finds nothing. Both sides call
    * this, so they cannot drift.
@@ -118,10 +119,11 @@ export namespace Type {
   }
 
   /**
-   * The aggregate of every registration of `element`, late-bound and asynchronous — each element
-   * resolves as the async iteration reaches it, not up front.
+   * The aggregate of every registration of `element`, read asynchronously.
    *
    * @remarks
+   * The synthesized aggregate is late-bound — each element resolves as the async iteration
+   * reaches it, not up front. A registration answering under this address is returned as-is.
    * The side that registers an element and the side that reads the aggregate must name the same
    * type, and nothing reports it when they don't: the lookup simply finds nothing. Both sides call
    * this, so they cannot drift.
@@ -179,10 +181,11 @@ export namespace Type {
   }
 
   /**
-   * The aggregate of every registration of `element`, late-bound — each element resolves as the
-   * iteration reaches it, not up front.
+   * The aggregate of every registration of `element`, read lazily.
    *
    * @remarks
+   * The synthesized aggregate is late-bound — each element resolves as the iteration reaches
+   * it, not up front. A registration answering under this address is returned as-is.
    * The side that registers an element and the side that reads the aggregate must name the same
    * type, and nothing reports it when they don't: the lookup simply finds nothing. Both sides call
    * this, so they cannot drift.
