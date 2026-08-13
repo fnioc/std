@@ -273,10 +273,21 @@ export namespace Type {
    * An intersection of the given members — satisfied only by satisfying all of them.
    *
    * @remarks
-   * Canonicalized exactly as {@link union} is, minus the literal reduction.
+   * Canonicalized exactly as {@link union} is, minus the literal reduction: members are
+   * flattened, deduped and ordered canonically, and a lone survivor is returned as itself rather
+   * than as a one-member intersection. One member written therefore types as that member, and two
+   * or more as an intersection — the exception being the same member written twice, which dedupes
+   * to one node under a type saying otherwise. A member list only known at runtime types as the
+   * whole of {@link Type}, since nothing can be counted.
+   *
+   * {@link union} narrows no further than `Type` for its own reason: a literal standing beside its
+   * primitive base is dropped, so two written members routinely reduce to one.
    *
    * @throws TypeError - when no member survives.
    */
+  export function intersection<Member extends Type>(type: Member): Member;
+  export function intersection(first: Type, second: Type, ...rest: readonly Type[]): IntersectionType;
+  export function intersection(...types: readonly Type[]): Type;
   export function intersection(...types: readonly Type[]): Type {
     return factory.intersection(types);
   }
