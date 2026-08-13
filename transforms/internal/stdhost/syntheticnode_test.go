@@ -11,20 +11,19 @@ import (
 // FIXED, with the same fixtures asserting lowered output instead of a crash.
 //
 // THE MECHANISM. A slot for an OPTIONAL (or defaulted) constructor parameter
-// lowers to a union slot — the object literal `{ union: [token, { value: void 0
-// }] }` — which the signatures engine mints through the emit factory. A minted
-// node was never seen by the binder, so it carries no symbol. On the NEXT pass of
-// the fixed-point loop a stage asked the checker about the enclosing call chain
-// (nameof resolved the callee's symbol, signatureof resolved its own, the inline
-// stage resolved the callee's signature); resolving that reached the receiver's
-// overload resolution, which contextually typed the minted object literal's
-// property assignment, and checker.getContextualTypeForObjectLiteralElement
-// dereferenced the symbol it assumes every element has:
+// lowers to a `Type.union(...)` node — minted through the emit factory. A
+// minted node was never seen by the binder, so it carries no symbol. On the
+// NEXT pass of the fixed-point loop a stage asked the checker about the
+// enclosing call chain (nameof resolved the callee's symbol, signatureof
+// resolved its own, the inline stage resolved the callee's signature);
+// resolving that reached the receiver's overload resolution, which
+// contextually typed the minted argument, and a checker query that assumes
+// every node has a symbol dereferenced the nil one a minted node carries:
 //
 //	symbol := c.getSymbolOfDeclaration(element)          // nil for a minted node
 //	return c.getTypeOfPropertyOfContextualTypeEx(t, symbol.Name, …)  // nil deref
 //
-// So it took BOTH halves: a minted object literal in the argument list AND a later
+// So it took BOTH halves: a minted node in the argument list AND a later
 // checker query over the chain that contains it.
 //
 // THE REPAIR (plugin.CheckerAnchor). Every in-loop checker query now resolves its
@@ -86,14 +85,15 @@ export class Widget {
 `
 
 // syntheticLoweredRegistration is the registration every shape below must lower
-// to, byte for byte: the derived token, the constructor, and the ONE-slot
-// signature whose optional parameter became the minted union slot. Asserting the
+// to, byte for byte: the derived token, the constructor, and the Type.ctor(...)
+// node whose optional parameter became the minted union node. Asserting the
 // full text (not just "it didn't crash") is what keeps a fix that lowers LESS from
 // passing — a matcher that skipped a rebuilt chain would leave `signatureof(...)`
 // standing here.
-const syntheticLoweredRegistration = `manifest.addClass("pkg:Widget", Widget, ` +
-	`[["@rhombus-std/synthetic-fixture/tokens/app:IClock", ` +
-	`{ union: ["@rhombus-std/synthetic-fixture/tokens/app:IOptions", { value: void 0 }] }]])`
+const syntheticLoweredRegistration = `manifest.addClass("pkg:Widget", Widget, Type.ctor(` +
+	`Type.imported("Widget", "@rhombus-std/synthetic-fixture/tokens/app"), ` +
+	`Type.imported("IClock", "@rhombus-std/synthetic-fixture/tokens/app"), ` +
+	`Type.union(Type.imported("IOptions", "@rhombus-std/synthetic-fixture/tokens/app"), Type.typeLiteral(undefined))))`
 
 // syntheticFixture assembles the two-file fixture around one registration
 // statement.
@@ -164,8 +164,8 @@ func TestUnchainedRegistrationLowersIdentically(t *testing.T) {
 	if !strings.Contains(lowered, syntheticLoweredRegistration) {
 		t.Fatalf("the control registration did not lower as expected.\nwant to contain:\n%s\ngot:\n%s", syntheticLoweredRegistration, lowered)
 	}
-	if !strings.Contains(lowered, "union:") {
-		t.Fatalf("the fixture did not mint the union slot the chained cases depend on — the pins above would be vacuous:\n%s", lowered)
+	if !strings.Contains(lowered, "Type.union(") {
+		t.Fatalf("the fixture did not mint the union node the chained cases depend on — the pins above would be vacuous:\n%s", lowered)
 	}
 	if strings.Contains(lowered, "signatureof") {
 		t.Fatalf("signatureof survived lowering:\n%s", lowered)
@@ -202,8 +202,8 @@ export const m = manifest.addClass("pkg:Widget", Widget, signatureof(Widget)).as
 		t.Fatalf("an all-required constructor must lower cleanly; code = %d\ndiagnostics = %+v\nstderr: %s", code, env.Diagnostics, stderr)
 	}
 	lowered := loweredApp(t, env)
-	if strings.Contains(lowered, "union:") {
-		t.Fatalf("an all-required constructor must derive bare token strings, no union slot:\n%s", lowered)
+	if strings.Contains(lowered, "Type.union(") {
+		t.Fatalf("an all-required constructor must derive plain Type nodes, no union:\n%s", lowered)
 	}
 	if strings.Contains(lowered, "signatureof") {
 		t.Fatalf("signatureof survived lowering:\n%s", lowered)

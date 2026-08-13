@@ -319,12 +319,12 @@ func lowerMain(t *testing.T, prog *driver.Program, app string) (string, []signat
 }
 
 // TestNewLowersDepSlotKinds drives the New transform end-to-end over source-written
-// `signatureof(value)` calls spanning the dep-slot kinds the extractor derives: a
-// constructor with an injectable interface param (tokenSlot), a factory value
-// (factorySlot), and a no-dependency class (empty signature). Every primitive call
-// is lowered to its `[[...]]` array, none survives, the import is elided, and no
-// diagnostic is raised (the standalone signatureof path carries no service token,
-// so it runs no dependency-hole check).
+// `signatureof(value)` calls spanning the shapes the extractor derives: a
+// constructor with a dependency param, a factory value, and a no-dependency
+// class. Every primitive call lowers to its `Type.ctor(...)` / `Type.func(...)`
+// node — the same node typefor(value) would derive for the identical value —
+// none survives as a call, the `signatureof` import is elided, a `Type` import
+// is injected, and no diagnostic is raised.
 func TestNewLowersDepSlotKinds(t *testing.T) {
 	mainSrc := `import { signatureof } from '@scope/prims';
 interface IDep {}
@@ -351,25 +351,33 @@ export const s3 = signatureof(NoDep);
 	if strings.Contains(out, "signatureof") {
 		t.Errorf("the signatureof import was not elided:\n%s", out)
 	}
-	// tokenSlot: WithDep's IDep constructor param derives a token referencing IDep.
-	if !strings.Contains(out, "IDep") {
-		t.Errorf("WithDep's IDep dependency slot is missing:\n%s", out)
+	if !strings.Contains(out, `import { Type } from "@rhombus-std/primitives"`) {
+		t.Errorf("a Type import should have been injected:\n%s", out)
 	}
-	// empty: a no-dependency class lowers to `[[]]`.
-	if !strings.Contains(out, "[[]]") {
-		t.Errorf("the no-dependency class NoDep should lower to an empty [[]] array:\n%s", out)
+	// WithDep: a constructor with one dependency derives its instance type
+	// followed by that dependency's type.
+	wantWithDep := `Type.ctor(Type.imported("WithDep", "@scope/app/main"), Type.imported("IDep", "@scope/app/main"))`
+	if !strings.Contains(out, wantWithDep) {
+		t.Errorf("WithDep should derive %q:\n%s", wantWithDep, out)
 	}
-	// factorySlot: the factory value derives a non-empty signature (its IDep param).
-	if strings.Count(out, "IDep") < 2 {
-		t.Errorf("the factory value should derive its IDep param slot too:\n%s", out)
+	// NoDep: a no-dependency class derives its instance type alone.
+	wantNoDep := `Type.ctor(Type.imported("NoDep", "@scope/app/main"))`
+	if !strings.Contains(out, wantNoDep) {
+		t.Errorf("NoDep should derive %q:\n%s", wantNoDep, out)
+	}
+	// factory: a callable value derives its return type (WithDep's instance,
+	// not the WithDep constructor) followed by its own parameter's type.
+	wantFactory := `Type.func(Type.imported("WithDep", "@scope/app/main"), Type.imported("IDep", "@scope/app/main"))`
+	if !strings.Contains(out, wantFactory) {
+		t.Errorf("the factory value should derive %q:\n%s", wantFactory, out)
 	}
 }
 
-// TestNewUnderivableParamStillErrors keeps the pre-existing 990006 behavior on the
-// signatureof path: a constructor param whose type has no derivable token (an
-// anonymous object type) lowers to the `??unresolvable??` sentinel AND raises
-// codeUnderivableToken — the value's own signature concern (the transform's own
-// inability to lower), reported with or without a surrounding registration.
+// TestNewUnderivableParamStillErrors keeps the pre-existing 990006 behavior on
+// the signatureof path: a constructor param whose type has no derivable shape
+// (an anonymous object type) leaves the signatureof(...) call un-lowered and
+// raises codeUnderivableToken — mirroring typefor's own underivable-value
+// behavior (never a malformed partial tree).
 func TestNewUnderivableParamStillErrors(t *testing.T) {
 	mainSrc := `import { signatureof } from '@scope/prims';
 class Bad { constructor(dep: { readonly a: number }) { void dep; } }
@@ -379,8 +387,8 @@ export const s = signatureof(Bad);
 	defer func() { _ = prog.Close() }()
 
 	out, diags := lowerMain(t, prog, app)
-	if !strings.Contains(out, "??unresolvable??") {
-		t.Errorf("an underivable param should lower to the ??unresolvable?? sentinel:\n%s", out)
+	if !strings.Contains(out, "signatureof(Bad)") {
+		t.Errorf("an underivable param must leave the call un-lowered:\n%s", out)
 	}
 	found := false
 	for _, d := range diags {

@@ -11,20 +11,19 @@ import { basename, join, resolve } from 'node:path';
 // they emit byte-identical output:
 //
 //   The type-driven `addClass<I>(C)` / `addFactory<I>(fn)` sugar bodies
-//   (di.extras's rhombus-std inline entries) substitute to
-//   `this.addClass(tokenfor<I>(), C, signatureof(C))`; tokenfor lowers the token,
-//   signatureof lowers the dependency-signature array, leaving the resulting
-//   3-argument `addClass(...)` in place. `addValue<I>(value)` substitutes to
-//   `this.addValue(tokenfor<I>(), value)` — no `signatureof`, since a value carries
-//   no deps — which tokenfor alone lowers to the 2-argument `addValue("token",
-//   value)`.
+//   (di.extras's rhombus-std inline entries) substitute their token argument
+//   via tokenfor, forwarding the rest positionally — no signatureof call is
+//   inserted by that sugar today, so `services.addClass<IFoo>(Foo)` alone
+//   never reaches the signatureof stage. That gap is covered separately below
+//   by a genuine SOURCE-WRITTEN signatureof(ctor) call, the shape a
+//   hand-writer reaches for directly.
 //
-// The load-bearing guarantee is descriptor independence: the whole always-on stage
-// table runs regardless of which descriptor spawned the host, so the two lowerings
-// are byte-identical — the derived signatureof array, the bare addValue token, and
-// import elision all pinned. The sibling inline.ttsc.e2e suite covers the token
-// derivation itself; this one covers the value-argument signatureof primitive over
-// a non-trivial (dependency-carrying) signature, plus the deps-free addValue form.
+// The load-bearing guarantee for the sugar half is descriptor independence:
+// the whole always-on stage table runs regardless of which descriptor spawned
+// the host, so the two lowerings are byte-identical. The sibling
+// inline.ttsc.e2e suite covers the token derivation itself; this one covers
+// the deps-free addValue form plus, in the second describe block below, the
+// signatureof primitive itself over a non-trivial (dependency-carrying) value.
 //
 // Toolchain pinning, the single shared plugin cache, and the one-project-dir /
 // two-tsconfig layout all mirror the inline.ttsc.e2e harness; see its header.
@@ -139,8 +138,32 @@ services.addFactory<IBar>((dep: IDep) => new BarImpl(dep));
 services.addValue<IBaz>(bazValue);
 `;
 
-function writeTsconfig(name: string, outDir: string, plugins: Array<{ transform: string; }>): void {
-  writeFileSync(join(projDir, name), JSON.stringify({
+// HAND_SOURCE is the genuine hand-writer's path: an EXPLICIT `signatureof(ctor)`
+// third argument to the REAL (unmodified) di.core Manifest.addClass overload — no
+// sugar, no inline substitution, no local declare-module override. This is the
+// shape §155's own worked example spells (`this.addClass(typefor<IFoo>(), Foo,
+// signatureof(Foo))`), and the one this suite was missing: the addClass<T>() sugar
+// above never calls signatureof at all (its body forwards its own arguments
+// positionally after the token), so APP_SOURCE alone never reaches this stage.
+const HAND_SOURCE = `
+import type { Manifest } from "@rhombus-std/di.core";
+import { typefor } from "@rhombus-std/primitives.extras";
+import { signatureof } from "@rhombus-std/di.extras";
+
+interface IClock {}
+interface IWidget {}
+
+class Widget implements IWidget {
+  constructor(clock: IClock) { void clock; }
+}
+
+declare const services: Manifest<"singleton">;
+
+export const registered = services.addClass(typefor<IWidget>(), Widget, signatureof(Widget));
+`;
+
+function writeTsconfig(dir: string, name: string, outDir: string, plugins: Array<{ transform: string; }>): void {
+  writeFileSync(join(dir, name), JSON.stringify({
     compilerOptions: { target: 'ES2022', module: 'ESNext', moduleResolution: 'Bundler', lib: ['ES2022'], strict: true,
       outDir: outDir, rootDir: 'src', skipLibCheck: true, noEmitOnError: false, plugins },
     include: ['src/**/*'],
@@ -151,6 +174,10 @@ function setupWorkspace(): void {
   const nm = join(projDir, 'node_modules');
   mkdirSync(join(nm, '@rhombus-std'), { recursive: true });
   mkdirSync(join(nm, '@ttsc'), { recursive: true });
+  // Wiped, not merely overwritten: `include: ['src/**/*']` picks up EVERY file
+  // here, so a stale leftover from a prior fixture shape (e.g. this project
+  // once also carried hand.ts) would silently recompile alongside app.ts.
+  rmSync(join(projDir, 'src'), { recursive: true, force: true });
   mkdirSync(join(projDir, 'src'), { recursive: true });
   rmSync(join(projDir, 'dist-inline'), { recursive: true, force: true });
   rmSync(join(projDir, 'dist-semantic'), { recursive: true, force: true });
@@ -181,35 +208,95 @@ function setupWorkspace(): void {
   // must be byte-identical; that descriptor-independence is what the parity test
   // below asserts. The di.extras/ttsc descriptor is the DI authoring package a
   // consumer directly depends on; primitives.extras/ttsc is its transitive base.
-  writeTsconfig('tsconfig.inline.json', 'dist-inline', [{ transform: '@rhombus-std/di.extras/ttsc' }]);
-  writeTsconfig('tsconfig.semantic.json', 'dist-semantic', [{ transform: '@rhombus-std/primitives.extras/ttsc' }]);
+  writeTsconfig(projDir, 'tsconfig.inline.json', 'dist-inline', [{ transform: '@rhombus-std/di.extras/ttsc' }]);
+  writeTsconfig(projDir, 'tsconfig.semantic.json', 'dist-semantic', [{
+    transform: '@rhombus-std/primitives.extras/ttsc',
+  }]);
 }
 
-function lower(tsconfig: string, outDir: string): string {
-  const result = spawnSync('node', [TTSC, '-p', tsconfig], { cwd: projDir, encoding: 'utf8', env: goEnv() });
+// The hand-written signatureof fixture gets its OWN, fully isolated project —
+// sharing app.ts's project confused the inline collector (a source-written
+// signatureof(Widget) call alongside app.ts's addClass<T>() sugar produced
+// spurious INLINE_INFERRED_TYPE_ARGUMENT diagnostics against app.ts's OWN
+// calls), so it is driven independently rather than folded into setupWorkspace.
+const handProjDir = join(homedir(), '.cache', 'fnioc-ttsc', 'sandboxes', basename(REPO_ROOT), 'signatureof-hand');
+
+function setupHandWorkspace(): void {
+  const nm = join(handProjDir, 'node_modules');
+  mkdirSync(join(nm, '@rhombus-std'), { recursive: true });
+  mkdirSync(join(nm, '@ttsc'), { recursive: true });
+  rmSync(join(handProjDir, 'src'), { recursive: true, force: true });
+  mkdirSync(join(handProjDir, 'src'), { recursive: true });
+  rmSync(join(handProjDir, 'dist-inline'), { recursive: true, force: true });
+
+  link(TS7, join(nm, 'typescript'));
+  link(join(PKG_ROOT, 'node_modules', 'ttsc'), join(nm, 'ttsc'));
+  link(UNPLUGIN, join(nm, '@ttsc', 'unplugin'));
+  link(DI_CORE, join(nm, '@rhombus-std', 'di.core'));
+  link(DI_TRANSFORMER, join(nm, '@rhombus-std', 'di.extras'));
+  link(PRIMITIVES, join(nm, '@rhombus-std', 'primitives'));
+  link(PRIMITIVES_TRANSFORMER, join(nm, '@rhombus-std', 'primitives.extras'));
+
+  writeFileSync(
+    join(handProjDir, 'package.json'),
+    JSON.stringify({ name: 'di-sig-hand', version: '0.0.0',
+      dependencies: { '@rhombus-std/di.core': 'workspace:*', '@rhombus-std/di.extras': 'workspace:*' } }),
+  );
+  writeFileSync(join(handProjDir, 'src', 'hand.ts'), HAND_SOURCE);
+  writeTsconfig(handProjDir, 'tsconfig.inline.json', 'dist-inline', [{ transform: '@rhombus-std/di.extras/ttsc' }]);
+}
+
+// A LowerResult exposes both the JS a caller would run (types stripped, the
+// existing app.ts / descriptor-independence assertions read this) and the
+// still-typed TypeScript ttsc lowered a source file to — the form
+// TestSignatureofHandWrittenRetypechecks below re-typechecks, since the JS
+// form has no types left to check.
+interface LowerResult {
+  js(file: string): string;
+  ts(file: string): string;
+}
+
+function lower(dir: string, tsconfig: string, outDir: string): LowerResult {
+  const result = spawnSync('node', [TTSC, '-p', tsconfig], { cwd: dir, encoding: 'utf8', env: goEnv() });
   if (result.status !== 0) {
     throw new Error(`ttsc failed (status ${result.status}):\n${result.stdout}\n${result.stderr}`);
   }
-  let lowered: string;
-  try {
-    lowered = readFileSync(join(projDir, outDir, 'app.js'), 'utf8');
-  } catch {
-    const envelope = JSON.parse(result.stdout) as { typescript: Record<string, string>; };
-    lowered = envelope.typescript['src/app.ts'] ?? '';
-  }
-  return new Bun.Transpiler({ loader: 'ts' }).transformSync(lowered);
+  const envelope = JSON.parse(result.stdout) as { typescript: Record<string, string>; };
+  return {
+    js(file: string): string {
+      let lowered: string;
+      try {
+        lowered = readFileSync(join(dir, outDir, `${file}.js`), 'utf8');
+      } catch {
+        lowered = envelope.typescript[`src/${file}.ts`] ?? '';
+      }
+      return new Bun.Transpiler({ loader: 'ts' }).transformSync(lowered);
+    },
+    ts(file: string): string {
+      return envelope.typescript[`src/${file}.ts`] ?? '';
+    },
+  };
 }
 
 let withInline = '';
 let withoutInline = '';
+let handWithInline = '';
+let handTypedWithInline = '';
 
 beforeAll(() => {
   if (!toolchainReady) {
     return;
   }
   setupWorkspace();
-  withInline = lower('tsconfig.inline.json', 'dist-inline');
-  withoutInline = lower('tsconfig.semantic.json', 'dist-semantic');
+  const inlineResult = lower(projDir, 'tsconfig.inline.json', 'dist-inline');
+  const semanticResult = lower(projDir, 'tsconfig.semantic.json', 'dist-semantic');
+  withInline = inlineResult.js('app');
+  withoutInline = semanticResult.js('app');
+
+  setupHandWorkspace();
+  const handResult = lower(handProjDir, 'tsconfig.inline.json', 'dist-inline');
+  handWithInline = handResult.js('hand');
+  handTypedWithInline = handResult.ts('hand');
 }, COLD_BUILD_MS);
 
 describe.skipIf(!toolchainReady)('signatureof primitive — addClass / addFactory / addValue sugar', () => {
@@ -249,5 +336,109 @@ describe.skipIf(!toolchainReady)('signatureof primitive — addClass / addFactor
     expect(addValueLine(withInline)).toBeDefined();
     expect(addValueLine(withInline)).toEqual(addValueLine(withoutInline));
     expect(withInline).toEqual(withoutInline);
+  });
+});
+
+// balancedCall returns the argument-list text of the call opening at marker
+// (the substring from marker's matching `(` to its balanced `)`, exclusive of
+// both parens) — used below to isolate the Type.ctor(...) node's own arguments
+// from the surrounding addClass(...) call.
+function balancedCall(src: string, marker: string): string {
+  const start = src.indexOf(marker);
+  if (start < 0) {
+    throw new Error(`marker ${JSON.stringify(marker)} not found in:\n${src}`);
+  }
+  const open = start + marker.length - 1;
+  let depth = 0;
+  for (let i = open; i < src.length; i++) {
+    if (src[i] === '(') {
+      depth++;
+    } else if (src[i] === ')') {
+      depth--;
+      if (depth === 0) {
+        return src.slice(open + 1, i);
+      }
+    }
+  }
+  throw new Error(`unterminated call at ${open} in:\n${src}`);
+}
+
+// topLevelArgCount splits a balanced argument-list text on its TOP-LEVEL commas
+// (depth 0 — nested calls' own commas don't count), returning how many
+// positional arguments it holds.
+function topLevelArgCount(argsText: string): number {
+  let depth = 0;
+  let count = argsText.trim().length === 0 ? 0 : 1;
+  for (const ch of argsText) {
+    if (ch === '(' || ch === '[') {
+      depth++;
+    } else if (ch === ')' || ch === ']') {
+      depth--;
+    } else if (ch === ',' && depth === 0) {
+      count++;
+    }
+  }
+  return count;
+}
+
+// retypecheck runs a plain (plugin-less) tsc over already-lowered source —
+// text with every primitive already substituted, so no ttsc host is needed —
+// against the REAL di.core / primitives packages, asserting it type-checks
+// clean. This is what proves the emitted Type.ctor(...) node is genuinely
+// assignable to addClass's real `implType: ConstructorType | IntersectionType`
+// parameter, not merely a string a hand-writer COULD have typed.
+function retypecheck(source: string): { readonly status: number | null; readonly output: string; } {
+  const dir = join(handProjDir, 'retypecheck');
+  rmSync(dir, { recursive: true, force: true });
+  const nm = join(dir, 'node_modules');
+  mkdirSync(join(nm, '@rhombus-std'), { recursive: true });
+  link(TS7, join(nm, 'typescript'));
+  link(DI_CORE, join(nm, '@rhombus-std', 'di.core'));
+  link(PRIMITIVES, join(nm, '@rhombus-std', 'primitives'));
+  writeFileSync(join(dir, 'lowered.ts'), source);
+  writeFileSync(join(dir, 'tsconfig.json'), JSON.stringify({
+    compilerOptions: { target: 'ES2022', module: 'ESNext', moduleResolution: 'Bundler', lib: ['ES2022'], strict: true,
+      noEmit: true, skipLibCheck: true },
+    include: ['lowered.ts'],
+  }));
+  const result = spawnSync('node', [join(TS7, 'bin', 'tsc'), '-p', 'tsconfig.json'], { cwd: dir, encoding: 'utf8' });
+  return { status: result.status, output: result.stdout + result.stderr };
+}
+
+describe.skipIf(!toolchainReady)("signatureof primitive — a hand-writer's explicit third argument", () => {
+  test('signatureof(ctor) lowers to the Type.ctor(...) node a hand-writer would spell', () => {
+    // The primitive is fully lowered: no signatureof/typefor call, no Type import
+    // missing.
+    expect(handWithInline).not.toContain('signatureof(');
+    expect(handWithInline).not.toContain('typefor(');
+    expect(handWithInline).toContain(`from "@rhombus-std/primitives"`);
+
+    const want = `.addClass(Type.imported("IWidget", "di-sig-hand/tokens/hand"), Widget, `
+      + `Type.ctor(Type.imported("Widget", "di-sig-hand/tokens/hand"), Type.imported("IClock", "di-sig-hand/tokens/hand")))`;
+    expect(handWithInline).toContain(want);
+  });
+
+  test('the Type.ctor(...) node carries one argument per real dependency (the arity blind spot)', () => {
+    // Widget's constructor takes exactly one dependency (clock: IClock), so its
+    // derived node must carry exactly two positional arguments: the instance type
+    // FOLLOWED BY that one dependency — never a bare instance type (an arity that
+    // would silently drop the dependency) and never more than two (a duplicated or
+    // phantom slot).
+    const ctorArgs = balancedCall(handWithInline, 'Type.ctor(');
+    expect(topLevelArgCount(ctorArgs)).toBe(2);
+  });
+
+  test('the lowered registration re-typechecks against the REAL di.core Manifest.addClass', () => {
+    // handTypedWithInline is the lowered file BEFORE tsc's own type-stripping
+    // emit — signatureof(Widget) already substituted to Type.ctor(...), every
+    // other primitive gone, but the surrounding TS (the interfaces, the class,
+    // the import statements) still intact. Feeding it back through a plain,
+    // plugin-less tsc against the real di.core/primitives packages is the proof
+    // that addClass's real `implType: ConstructorType | IntersectionType`
+    // parameter accepts the derived node — not just that the string LOOKS right.
+    expect(handTypedWithInline).not.toContain('signatureof(');
+    const { status, output } = retypecheck(handTypedWithInline);
+    expect(status).toBe(0);
+    expect(output.trim()).toBe('');
   });
 });

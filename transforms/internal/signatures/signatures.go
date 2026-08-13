@@ -1,15 +1,15 @@
-// Package signatures is the shared constructor/factory dependency-signature
-// extraction engine. It derives the `[[...]]` dependency-signature array a class
-// or factory VALUE lowers to — the value-inspection half of a registration — over
-// the ttsc-shipped typescript-go checker. The signatureof primitive stage drives
-// it; the emitted literal is byte-identical to the third argument a hand-written
-// `addClass("token", ctor, [[...]])` registration carries.
+// Package signatures is the shared constructor/factory dependency-type
+// extraction engine. It derives the `Type.ctor(...)` / `Type.func(...)` node a
+// class or factory VALUE lowers to — the value-inspection half of a
+// registration — over the ttsc-shipped typescript-go checker, reusing
+// typefor's own type-classification narrowing (tokens.DeriveTyped). The
+// signatureof primitive stage drives it; the emitted node is exactly the third
+// argument a hand-written `addClass("token", ctor, Type.ctor(...))`
+// registration carries.
 //
 // It carries no service-token / registration-verb knowledge (token derivation,
-// override merging, open-template classification) — those belonged to the deleted
-// registration stage. Only the value-signature extraction, the §4.5 factory-param
-// check, and the dependency-hole check a fully-lowered registration's sibling
-// token enables live here.
+// override merging, open-template classification) — those belong to the
+// manifest verbs themselves. Only the value-type extraction lives here.
 package signatures
 
 import (
@@ -18,16 +18,14 @@ import (
 
 	"github.com/fnioc/std/transforms/internal/plugin"
 	"github.com/fnioc/std/transforms/internal/tokens"
+	"github.com/fnioc/std/transforms/internal/valueimport"
 )
 
-// Stable diagnostic codes — part of the observable surface, asserted on by name
-// rather than message text. Kept byte-identical to the reference transformer.
+// Stable diagnostic codes — part of the observable surface, asserted on by
+// name rather than message text.
 const (
-	// codeFactorySignatureMismatch: a factory param's call signature does not
-	// cover the produced constructor's caller-supplied holes (§4.5).
-	codeFactorySignatureMismatch = "990003"
-	// codeUnderivableToken: a parameter type has no derivable token and no
-	// `Inject<T,"tok">` brand.
+	// codeUnderivableToken: a dependency's type has no derivable shape (an
+	// anonymous / structural type with no stable name).
 	codeUnderivableToken = "990006"
 	// codeUnboundTypeParameter: a type reaches derivation still referencing an
 	// unbound type parameter (a bare generic class registered without an
@@ -57,20 +55,17 @@ type Diagnostic struct {
 }
 
 // context is the per-file lowering context: the program-wide token derivation
-// context plus the per-file checker, node factory, source file, parse anchor, and
-// diagnostic sink.
+// context plus the per-file checker, node factory, source file, `Type` import
+// binding, parse anchor, and diagnostic sink.
 type context struct {
 	tokens  *tokens.Context
 	checker *shimchecker.Checker
 	factory *shimast.NodeFactory
 	sf      *shimast.SourceFile
+	binding *valueimport.Binding
 	addDiag func(Diagnostic)
 	// parseAnchor resolves a node to the pristine parse node before the checker is
-	// asked about it — the engine-wide rule (plugin.CheckerAnchor). Every other
-	// checker call in this engine is symbol- or type-driven (a declaration off a
-	// symbol, a type off a type), which is loop-invariant by construction; the one
-	// SYNTAX-driven query is extractFromExpression's GetSymbolAtLocation, and that
-	// is where this is used.
+	// asked about it — the engine-wide rule (plugin.CheckerAnchor).
 	parseAnchor plugin.CheckerAnchor
 }
 
