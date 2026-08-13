@@ -36,7 +36,7 @@ describe("hosting's MetricsBuilder receives the diagnostics-family augmentations
     // builder's manifest, proving the member is diagnostics' real
     // implementation, not a lookalike.
     const configureSteps: unknown[] = builder.services.build().getRequiredService(
-      Type.named('Array', 'global', [METRICS_CONFIGURE_TYPE]),
+      Type.array(METRICS_CONFIGURE_TYPE),
     );
     expect(configureSteps).toHaveLength(1);
   });

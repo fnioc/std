@@ -73,7 +73,7 @@ export const ServiceManifestLoggingAugmentations: AugmentationSet2<DefaultManife
       // ILoggerFactory, injected with the enumerable provider set and the
       // assembled IOptions<LoggerFilterOptions>.
       m = m.addClass(LOGGER_FACTORY_TYPE, LoggerFactory, [[
-        Type.named('Array', 'global', [LOGGER_PROVIDER_TYPE]),
+        Type.array(LOGGER_PROVIDER_TYPE),
         LOGGER_FILTER_OPTIONS_TYPE,
       ]], 'singleton');
 

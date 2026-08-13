@@ -47,5 +47,5 @@ export const TRACING_LISTENER_CONFIGURATION_FACTORY_TYPE: Type = Type.named(
  * collection request and aggregates every registration of the element into.
  */
 export function collectionType(element: Type): Type {
-  return Type.named('Array', 'global', [element]);
+  return Type.array(element);
 }
