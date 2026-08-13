@@ -77,15 +77,19 @@ type Artifacts struct {
 	// PrimitiveCalls maps a substituted primitive call node to its resolved use.
 	PrimitiveCalls map[*shimast.Node]PrimitiveUse
 	// SugarMembers maps a certified member name to its sugar call shape, for the
-	// emit sweep's member-sugar residue check.
+	// emit sweep's member-sugar residue check. It is keyed off the MARKER, not off
+	// what resolved: a member whose sugar declarations turned out to be absent
+	// still publishes its shape, so a call written in that shape is reported
+	// rather than passed through.
 	SugarMembers map[string]MemberShape
 	// FunctionSugars holds every certified, active free-function entry resolved
 	// against this program, for the emit sweep's free-function residue check —
 	// the entry's own resolution (Module/Member) IS the check's data, so no
 	// separate name-keyed registry is built alongside it.
 	FunctionSugars []*Resolved
-	// Active is set once the inline stage is selected AND at least one entry
-	// resolved non-inert; the sweep and the nameof handoff key off it.
+	// Active is set once the inline stage is selected AND at least one entry's
+	// surface is present in this program — whether or not anything inlined. The
+	// sweep and the nameof handoff key off it.
 	Active bool
 }
 

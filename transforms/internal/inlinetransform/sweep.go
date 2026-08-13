@@ -17,9 +17,14 @@ const schemaofPrimitive = "schemaof"
 
 // Sweep is emit tripwire 2: a syntactic walk of a fully-lowered output file that
 // hard-errors on any surviving primitive or listed-sugar call. It runs after all
-// selected stages, only when the inline stage was active. It turns the inert
-// paths (a drifted augment-vs-impl signature degrades to "sugar calls pass
-// through") into a loud compile-time failure instead of a runtime throw.
+// selected stages, whenever the inline stage had a marker surface in the program.
+//
+// It anchors on the MARKER, exactly as matching does: the member table it tests
+// against is every marker member whose surface this program carries, not the
+// subset that resolved to something inlineable. A member whose sugar declarations
+// are missing is the case that most needs the report — nothing could lower, so
+// every call to it is residue — and keying the table off what resolved is what
+// made that case silent.
 //
 // Known accepted residual (documented): a first-party stranger generic member
 // named exactly like a listed sugar member with the same call shape would

@@ -42,13 +42,24 @@ func Build(prog *driver.Program, owned []OwnedEntry, artifacts *Artifacts, emit 
 
 	inlineByDecl := map[*shimast.Node]*matchTarget{}
 	var resolvedList []*Resolved
+	// A member whose sugar declarations are absent still publishes its shape to the
+	// sweep, but must never displace an entry that can actually inline the name.
+	unmatchedShapes := map[string]MemberShape{}
 	for _, oe := range owned {
-		resolved, inert, rerr := Resolve(prog, checker, ex, oe)
+		resolved, outcome, rerr := Resolve(prog, checker, ex, oe)
 		if rerr != nil {
 			emit(plugin.Diagnostic{Code: "INLINE_RESOLVE", Message: rerr.Error()})
 			return noop
 		}
-		if inert {
+		if outcome == OutcomeAbsent {
+			continue
+		}
+		// The marker's surface is in this program, so a call naming its member is
+		// this stage's business whether or not a declaration matched — the sweep
+		// reports one it could not lower rather than letting it through.
+		artifacts.Active = true
+		if outcome == OutcomeUnmatched {
+			unmatchedShapes[resolved.Member] = resolved.Shape()
 			continue
 		}
 		resolvedList = append(resolvedList, resolved)
@@ -62,18 +73,18 @@ func Build(prog *driver.Program, owned []OwnedEntry, artifacts *Artifacts, emit 
 		if resolved.Kind == KindFloater {
 			artifacts.FunctionSugars = append(artifacts.FunctionSugars, resolved)
 		} else {
-			artifacts.SugarMembers[resolved.Member] = MemberShape{
-				TypeArgCount:  resolved.Body.Discriminator.TypeParamCount,
-				ValueArgCount: len(resolved.Body.Params),
-				HasRest:       bodyHasRestParam(resolved.Body.Params),
-			}
+			artifacts.SugarMembers[resolved.Member] = resolved.Shape()
+		}
+	}
+	for member, shape := range unmatchedShapes {
+		if _, claimed := artifacts.SugarMembers[member]; !claimed {
+			artifacts.SugarMembers[member] = shape
 		}
 	}
 
 	if len(inlineByDecl) == 0 {
 		return noop
 	}
-	artifacts.Active = true
 
 	memberNames := map[string]bool{}
 	functionNames := map[string]bool{}
@@ -269,16 +280,21 @@ func (st *fileState) tryInline(node *shimast.Node) (*shimast.Node, bool) {
 		return nil, false
 	}
 
+	// The binding is consulted FIRST because it names which overload of a member
+	// the author reached, which the marker alone cannot say. When it lands outside
+	// every marker's mapped set the marker decides instead — the shape a
+	// same-named member on a second `extends` clause produces, and the shape a
+	// call that binds to nothing at all produces.
 	decl := resolvedDeclaration(st.checker, anchored)
-	if decl == nil {
-		return nil, false
-	}
 	target := st.inlineByDecl[decl]
 	if target == nil {
-		// The call bound to a declaration outside every entry's mapped set. If it
-		// is provably the same logical member on a duplicate copy, that is the
-		// rogue-duplicate tripwire; otherwise a stranger — skip silently.
-		if st.isRogueDuplicate(decl, calleeName) {
+		target = st.markerAnchored(anchored, calleeName)
+	}
+	if target == nil {
+		// Neither the binding nor the marker claimed the call. If the bound
+		// declaration is provably the same logical member on a duplicate copy,
+		// that is the rogue-duplicate tripwire; otherwise a stranger — skip.
+		if decl != nil && st.isRogueDuplicate(decl, calleeName) {
 			st.emit(plugin.Diagnostic{
 				Code:    "INLINE_ROGUE_DUPLICATE",
 				File:    nodeFile(node),
@@ -294,6 +310,59 @@ func (st *fileState) tryInline(node *shimast.Node) (*shimast.Node, bool) {
 		return nil, false
 	}
 	return replacement, true
+}
+
+// markerAnchored matches a call against the entry the MARKER names. The callee
+// name has already matched some entry's member; this adds the two tests that make
+// the claim safe — the call's shape is one the entry's sugar body accepts, and the
+// RECEIVER carries the type the marker named. A same-named member on an unrelated
+// receiver fails the second; a token-taking sibling on the SAME receiver fails the
+// first. That pair is what keeps anchoring by marker from degrading into matching
+// by name.
+//
+// anchored is the pass-0 call, so the shape tested is the one the author wrote —
+// which is the shape the marker's sugar body describes.
+//
+// A floater is never claimed here: it has no receiver, and same-named function
+// declarations merge into an overload set rather than hiding one, so a floater's
+// binding cannot be taken from it in the first place.
+func (st *fileState) markerAnchored(anchored *shimast.Node, calleeName string) *matchTarget {
+	callee := anchored.AsCallExpression().Expression
+	if callee.Kind != shimast.KindPropertyAccessExpression {
+		return nil
+	}
+	typeArgs, valueArgs := callArity(anchored.AsCallExpression())
+	var receiverType *shimchecker.Type
+	typed := false
+	var restBodied *matchTarget
+	for _, r := range st.resolvedList {
+		if r.Kind == KindFloater || r.Member != calleeName {
+			continue
+		}
+		shape := r.Shape()
+		if !sugarShapeMatches(shape, typeArgs, valueArgs) {
+			continue
+		}
+		// Typing the receiver costs a checker query, so it waits until a candidate
+		// has cleared the two free tests.
+		if !typed {
+			receiverType = st.checker.GetTypeAtLocation(callee.AsPropertyAccessExpression().Expression)
+			typed = true
+		}
+		if !carriesSurface(st.checker, receiverType, r.TypeSymbol) {
+			continue
+		}
+		// A body naming the declaration's parameters exactly beats one that only
+		// absorbed them into a rest — the preference supersedes applies when two
+		// entries map one declaration.
+		if !shape.HasRest {
+			return &matchTarget{resolved: r, body: r.Body}
+		}
+		if restBodied == nil {
+			restBodied = &matchTarget{resolved: r, body: r.Body}
+		}
+	}
+	return restBodied
 }
 
 // inlineCall performs the substitution for a matched call. node is the CURRENT
