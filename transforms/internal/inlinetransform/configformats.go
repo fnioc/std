@@ -127,7 +127,7 @@ func normalizeParsed(v any) any {
 		}
 		return out
 	case time.Time:
-		return val.Format(time.RFC3339)
+		return val.Format(time.RFC3339Nano)
 	case toml.LocalDate:
 		return val.String()
 	case toml.LocalTime:

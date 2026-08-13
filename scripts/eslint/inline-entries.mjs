@@ -6,8 +6,12 @@
 // byte-semantically identical to the Go loader so the authoring lint and the
 // build stage agree on which entries exist and which are well-formed.
 
+import Ajv from 'ajv';
 import { readFileSync } from 'node:fs';
-import { dirname, join, resolve } from 'node:path';
+import { dirname, extname, join, resolve } from 'node:path';
+import { fileURLToPath } from 'node:url';
+import yaml from 'js-yaml';
+import * as TOML from 'smol-toml';
 
 /**
  * @typedef {{ type?: string, impl?: string, member?: string }} InlineEntry
@@ -87,6 +91,135 @@ export function parseTypeRef(/** @type {string} */ token) {
 
 const EXTENDS_KEY = 'extends';
 
+const SCHEMA_PATH = resolve(dirname(fileURLToPath(import.meta.url)), '..', '..', 'schema', 'rhombus-std.schema.json');
+
+/** @type {import('ajv').ValidateFunction | undefined} */
+let compiledConfigValidator;
+
+/** Compiles schema/rhombus-std.schema.json once and caches the validator. */
+function configValidator() {
+  if (!compiledConfigValidator) {
+    const schema = JSON.parse(readFileSync(SCHEMA_PATH, 'utf8'));
+    const ajv = new Ajv({ allErrors: true, strict: true });
+    compiledConfigValidator = ajv.compile(schema);
+  }
+  return compiledConfigValidator;
+}
+
+/**
+ * Validates node — one resolved rhombus-std config node — against
+ * schema/rhombus-std.schema.json, tagging a failure with source (the file,
+ * package.json marker, or resolved-config label it came from) and the JSON
+ * path ajv's own error list carries.
+ */
+function validateConfigNode(/** @type {unknown} */ node, /** @type {string} */ source) {
+  const validate = configValidator();
+  if (validate(node)) {
+    return;
+  }
+  const detail = (validate.errors ?? [])
+    .map((e) => `at ${JSON.stringify(e.instancePath || '/')}: ${e.message}`)
+    .join('; ');
+  throw new Error(`INLINE_CONFIG_SCHEMA: ${source} does not match the rhombus-std config schema: ${detail}`);
+}
+
+/**
+ * Parses data (already-read file content) into the canonical JSON data model
+ * (a plain object tree of string/number/boolean/null/array/object), picking a
+ * parser by path's extension: .yaml/.yml is YAML, .toml is TOML, and
+ * everything else — including .json and no extension — is JSON, the format
+ * every rhombus-std config file used before "extends" could name a sibling in
+ * another format. A present-but-unparseable file, an unresolvable YAML anchor
+ * cycle, or a top level that isn't an object are all loud INLINE_ENTRY_IMPORT
+ * errors. The JS twin of entries.go's parseConfigFile.
+ * @returns {Record<string, unknown>}
+ */
+export function parseConfigFile(/** @type {string} */ path, /** @type {string} */ data) {
+  let decoded;
+  try {
+    const ext = extname(path).toLowerCase();
+    if (ext === '.yaml' || ext === '.yml') {
+      decoded = parseYAML(data);
+    } else if (ext === '.toml') {
+      decoded = normalizeParsed(TOML.parse(data));
+    } else {
+      decoded = JSON.parse(data);
+    }
+  } catch (err) {
+    throw new Error(`INLINE_ENTRY_IMPORT: malformed ${path}: ${err instanceof Error ? err.message : err}`);
+  }
+  if (typeof decoded !== 'object' || decoded === null || Array.isArray(decoded)) {
+    throw new Error(`INLINE_ENTRY_IMPORT: ${path} must resolve to an object`);
+  }
+  return /** @type {Record<string, unknown>} */ (decoded);
+}
+
+/**
+ * Parses data as YAML, rejecting a self-referential anchor/alias cycle before
+ * walking it any further, then normalizes the result (normalizeParsed) onto
+ * the canonical JSON data model.
+ */
+function parseYAML(/** @type {string} */ data) {
+  const decoded = yaml.load(data);
+  checkYAMLCycle(decoded, new Set());
+  return normalizeParsed(decoded);
+}
+
+/**
+ * Walks value depth-first over the current ancestor path and fails the
+ * moment a node is already on that path — js-yaml's own load() happily
+ * builds a genuinely self-referential object graph for a cyclic anchor/alias
+ * pair, so this runs before anything else touches the decoded value.
+ */
+function checkYAMLCycle(/** @type {unknown} */ value, /** @type {Set<object>} */ path) {
+  if (value === null || typeof value !== 'object') {
+    return;
+  }
+  if (path.has(value)) {
+    throw new Error('anchor cycle');
+  }
+  path.add(value);
+  try {
+    for (const child of Object.values(value)) {
+      checkYAMLCycle(child, path);
+    }
+  } finally {
+    path.delete(value);
+  }
+}
+
+/**
+ * Recursively coerces a YAML- or TOML-decoded value onto the canonical JSON
+ * data model. A YAML timestamp scalar (js-yaml resolves it to a native Date)
+ * and a TOML temporal value (smol-toml's TomlDate, covering offset/local
+ * datetime and local date/time) both render as RFC3339 — or the equivalent
+ * ISO 8601 date/time-only text for a local, offset-less value — via their own
+ * toISOString(), with a trailing zero fraction (".000") dropped to match the
+ * Go loader's RFC3339Nano formatting exactly. Every other value is already
+ * JSON-shaped (js-yaml and smol-toml both decode mappings/tables into plain
+ * objects with string keys, and JSON.parse's own number type already matches
+ * both parsers' plain-number output), so this is otherwise a structural
+ * recursion only.
+ * @returns {unknown}
+ */
+function normalizeParsed(/** @type {unknown} */ v) {
+  if (Array.isArray(v)) {
+    return v.map(normalizeParsed);
+  }
+  if (v instanceof TOML.TomlDate || v instanceof Date) {
+    return v.toISOString().replace(/\.000(?=$|Z$|[+-]\d{2}:\d{2}$)/, '');
+  }
+  if (v !== null && typeof v === 'object') {
+    /** @type {Record<string, unknown>} */
+    const out = {};
+    for (const [k, sub] of Object.entries(v)) {
+      out[k] = normalizeParsed(sub);
+    }
+    return out;
+  }
+  return v;
+}
+
 /**
  * Returns the fully-resolved "rhombus-std" config for packageDir's
  * package.json: local keys deep-merged (deepMerge) OVER the (recursively
@@ -96,22 +229,30 @@ const EXTENDS_KEY = 'extends';
  * entry never merges field-by-field with another).
  *
  * A package.json with no "rhombus-std" key at all resolves as though it read
- * exactly {"extends": "./rhombus-std.json"} — the one default. A
- * "rhombus-std" key present with ANY value, including {}, is authoritative
- * on its own; the default file never participates once the key exists.
+ * exactly
+ *
+ *   {"extends": ["./rhombus-std.toml", "./rhombus-std.yml", "./rhombus-std.yaml", "./rhombus-std.json"]}
+ *
+ * — the one default, each sibling tried in turn under the same blind
+ * resolution and later-wins fold as any other "extends" array, so a missing
+ * format contributes nothing and JSON, listed last, wins a conflict between
+ * whichever siblings exist. A "rhombus-std" key present with ANY value,
+ * including {}, is authoritative on its own; the default files never
+ * participate once the key exists.
  *
  * Resolution is BLIND: an "extends" path that isn't a readable file
  * contributes nothing, silently, whether the directive was defaulted or
  * explicitly written. A chain may be arbitrarily long; a cycle (a path
  * already in the chain) also contributes nothing rather than looping. A
- * present file with malformed JSON is still a hard error — blindness covers
- * absence, not corruption.
+ * present file that fails to parse, or whose content doesn't match
+ * schema/rhombus-std.schema.json, is still a hard error — blindness covers
+ * absence, not corruption or an invalid shape.
  *
  * This is the one entry point every rhombus-std config reader (the inline
  * publish list, and any future feature block) resolves through.
  *
  * This lint run has no incremental input-tracking seam: every file this and
- * resolveNode read, including a resolved rhombus-std.json, is re-read fresh
+ * resolveNode read, including a resolved rhombus-std config, is re-read fresh
  * each time rather than registered against a cache key.
  * @returns {Record<string, unknown>}
  */
@@ -119,11 +260,22 @@ export function resolveConfig(/** @type {string} */ packageDir) {
   const root = resolve(packageDir);
   const pkgPath = join(root, 'package.json');
   const pkg = JSON.parse(readFileSync(pkgPath, 'utf8'));
-  const raw = ('rhombus-std' in pkg) ? pkg['rhombus-std'] : { [EXTENDS_KEY]: './rhombus-std.json' };
+  const raw = ('rhombus-std' in pkg)
+    ? pkg['rhombus-std']
+    : {
+      [EXTENDS_KEY]: [
+        './rhombus-std.toml',
+        './rhombus-std.yml',
+        './rhombus-std.yaml',
+        './rhombus-std.json',
+      ],
+    };
   if (typeof raw !== 'object' || raw === null || Array.isArray(raw)) {
     throw new Error(`INLINE_ENTRY_SHAPE: ${pkgPath} "rhombus-std" must be an object`);
   }
-  return resolveNode(raw, pkgPath, new Set([pkgPath]));
+  const resolved = resolveNode(raw, pkgPath, new Set([pkgPath]));
+  validateConfigNode(resolved, `${pkgPath} (fully resolved)`);
+  return resolved;
 }
 
 /**
@@ -145,6 +297,7 @@ export function resolveConfig(/** @type {string} */ packageDir) {
  */
 function resolveNode(/** @type {Record<string, unknown>} */ node, /** @type {string} */ fromFile,
   /** @type {Set<string>} */ visited) {
+  validateConfigNode(node, fromFile);
   const local = { ...node };
   const rawExtends = local[EXTENDS_KEY];
   delete local[EXTENDS_KEY];
@@ -175,15 +328,7 @@ function resolveNode(/** @type {Record<string, unknown>} */ node, /** @type {str
     } catch {
       continue; // missing -> nothing, blind
     }
-    let extended;
-    try {
-      extended = JSON.parse(text);
-    } catch (err) {
-      throw new Error(`INLINE_ENTRY_IMPORT: malformed ${abs}: ${err instanceof Error ? err.message : err}`);
-    }
-    if (typeof extended !== 'object' || extended === null || Array.isArray(extended)) {
-      throw new Error(`INLINE_ENTRY_IMPORT: ${abs} must resolve to an object`);
-    }
+    const extended = parseConfigFile(abs, text);
 
     const resolved = resolveNode(extended, abs, new Set([...visited, abs]));
     accumulated = deepMerge(accumulated, resolved);
