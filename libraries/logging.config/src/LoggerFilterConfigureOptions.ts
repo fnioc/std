@@ -30,7 +30,7 @@ const LEVEL_BY_NAME: Record<string, LogLevel> = { trace: LogLevel.Trace, debug: 
  * Parses a configured level value (a level name, case-insensitive, or its
  * numeric ordinal). Throws on a non-empty unrecognized value.
  */
-export function parseLogLevel(value: string): LogLevel {
+function parseLogLevel(value: string): LogLevel {
   const named = LEVEL_BY_NAME[value.trim().toLowerCase()];
   if (named !== undefined) {
     return named;

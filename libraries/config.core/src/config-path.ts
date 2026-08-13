@@ -27,16 +27,3 @@ export function getSectionKey(path: string): string {
   const lastDelimiterIndex = path.lastIndexOf(':');
   return lastDelimiterIndex < 0 ? path : path.substring(lastDelimiterIndex + 1);
 }
-
-/**
- * Extracts the parent path for `path` -- the original minus its last segment,
- * or `null` if `path` is already a top-level node.
- */
-export function getParentPath(path: string): string | null {
-  if (!path.trim()) {
-    return null;
-  }
-
-  const lastDelimiterIndex = path.lastIndexOf(':');
-  return lastDelimiterIndex < 0 ? null : path.substring(0, lastDelimiterIndex);
-}
