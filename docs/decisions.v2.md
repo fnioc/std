@@ -189,10 +189,6 @@ Rejected alternatives:
 - **Build-time generated hosts** — whole-module cache-key poisoning plus `v0.0.0` resolve
   mechanics.
 
-**Superseded by §103:** `mergesynth` (#213) originally ran in a separate in-repo-only host to keep
-the published `ttsc-std` typia-free. §103 folds it into the one binary — `ttsc-std` links typia (a
-build-time plugin binary, never shipped runtime); the emitted JS stays typia-free plain JS.
-
 Declare-by-depending (a marker that lets `ttsc` auto-discover a consumer's declared stages from its
 dependency graph rather than a hand-authored list) is a supported nice-to-have, not a requirement
 of this decision.
@@ -488,7 +484,7 @@ Closing an open template (`pkg:IRepo<$1>`) against a ground token (`pkg:IRepo<pk
 - **Why typed, not the earlier regex/string idea.** A no-transformer author can write arbitrary whitespace and quote styles; the parser canonicalises both away in one pass, so semantically-equal tokens compare byte-identically. Decisively, a literal union serialises `" | "`-joined (space-pipe-space) byte-identical to the Go transformer's `strings.Join(members, " | ")`, so a re-derived union matches a transformer-spelled exact registration — regex over raw strings could not carry that guarantee across arbitrary user input.
 - **The string grammar is retained, not deleted.** §13's `isOpenToken` / `parseToken` / `HOLE_PATTERN` / `closeToken` remain the open-vs-closed classification at registration and a public compat surface; `TokenNode` owns only matching + substitution. (`HOLE_PATTERN` was deleted by §129 — the hole grammar is stated once, by the tree parser.) That split is what keeps behaviour byte-identical — exact-match/last-wins (§11), collections (§12), keyed tokens (`base#key`, §98), the provider intrinsic, scopes / captive-dep / validation / disposal, and every error at its exact throw site are all preserved.
 - **Seal derives two frozen index maps** (`SealedManifest.registrations` exact + `openRegistrations` keyed by canonical `baseKey`) via toArray-at-seal in `ServiceManifestClass`.
-- **Gated OFF (deliberate, no consumer yet):** partial closing (a concrete arg inside a template) and most-specific-wins template selection are implemented and unit-tested in `token.ts` (`match`'s concrete arm, `specificity`) but the engine keeps the all-holes open-registration guard and scans templates pure-recency. Enabling them is a one-guard-removal, ME-divergent follow-up. — **SUPERSEDED:** both are now live — the all-holes registration guard is retired so partial closing works (§124), and template selection is most-specific-first (§125). The string-grammar-as-classifier half is superseded too: `isOpenToken` reads the typed tree now (§127), so `materialise` and `#lookup` classify off `TokenNode` and the shallow scan survives only as the fallback for a token the tree grammar refuses.
+- **Partial closing and most-specific-wins selection are both live.** A template mixes concrete args and holes freely (§124), and overlapping open templates rank most-specific-first (§125). `isOpenToken` classifies off the typed tree (§127); the shallow scan over raw arg slices survives only as the fallback for a token the tree grammar refuses.
 
 Landed PR #265 (di.test 373 green + full CI gate incl. the `examples.app` e2e). _Design owner-directed_ (the typed-model, label-keyed, unification direction was owner-driven through the design conversation); the behaviour-preservation calls — keeping §13's string predicates as the routing boundary, the `" | "` serialisation fix, and gating partial-closing / most-specific-wins — are Claude's. _2026-07-20._
 
@@ -579,9 +575,15 @@ An earlier plan blew a union dependency slot into cartesian overloads at registr
 
 ---
 
-## §113 — Chain sugars (`.as` / `withSignature` / `withSignatures`) need di-direct Go recognizers, not just inline bodies
+## §113 — Chain-modifier sugars lower through the general inline stage, not a bespoke Go stage
 
-The general single-expression inline stage is not sufficient to lower the three chain-modifier sugars on its own, for two independent reasons: it substitutes only the OUTERMOST call in a chain, so inner modifiers (`.withSignature` / `.withSignatures`, and a `.as` preceding them) are never reached; and it is INERT once `di.core` ships dist-referenced (the real consumer mode has no `di.core`-source witness for the inline substitution to match against). The `di` Go stage therefore owns DI-DIRECT lowering for all three (the `.as`, `withSignature`, and `withSignatures` recognizers), routed through the same factored `valueof` / `signaturefor` extraction the inline path uses, so both paths emit byte-identical output. This reverses an earlier "general-inline-only, avoid bespoke Go" steer for these three sugars specifically — the di-direct recognizers are load-bearing and must not be deleted in a vestigial-code sweep. _Claude's finding (made while gating the fluent-signature-builder PR); flagged for owner review since it reverses the inline-only steer._ **Superseded by §115** — the fixed-point rewrite deleted the `di` Go stage and its recognizers; the loop reaches inner chain positions and the transitive-witness module-resolution fix makes the inline path active for di-direct consumers, so the chain sugars lower through inline bodies for both paths.
+`.as` / `withSignature` / `withSignatures` lower the same way every other sugar call does: through
+the single-expression inline stage, one call substituted per fixed-point pass (§115) until the
+whole chain resolves — a chain like `addClass<T>(C).withSignature<S>().as<Scope>()` peels one call
+per pass. There is no separate di-direct Go recognizer set: the fixed-point loop reaching inner
+chain positions, together with the transitive-witness module-resolution fix (§119), makes the
+inline path sufficient for both dist-referenced and di-direct consumers, and both emit
+byte-identical output. Full mechanics live at §115; kept here only as a citation anchor.
 
 ---
 
@@ -600,11 +602,11 @@ no other stage can claim** (inline: sugar declarations; each primitive stage: it
 symbol; mergesynth: `registerAugmentations`/`applyAugmentations` installs). A new stage must be
 checked against this invariant before joining the set. In-pass order (documented in
 `transformer-architecture.md`) is a reproducibility choice, never a correctness dependency — no
-stage may require running before/after another within one pass. This supersedes §113's holding
-that the chain sugars needed bespoke di-direct Go recognizers: with the loop reaching inner chain
-positions and the transitive-witness module-resolution fix (§119) making inline active for
-di-direct consumers, the di Go stage and its recognizers were deleted. _Owner ruling: "a few extra
-iterations doesn't hurt anything. it's milliseconds."_
+stage may require running before/after another within one pass. The di Go stage and its bespoke
+chain-sugar recognizers (§113) are deleted: with the loop reaching inner chain positions and the
+transitive-witness module-resolution fix (§119) making inline active for di-direct consumers, chain
+sugars lower through inline bodies for both paths. _Owner ruling: "a few extra iterations doesn't
+hurt anything. it's milliseconds."_
 
 ---
 
@@ -754,22 +756,8 @@ under. Both previously registered a **silent never-matches** — the unparseable
 `openEntry`'s `node !== undefined ? … : parsed.base` fallback, so that phantom is fixed by the same
 change. `OpenRegistration.pattern` (the parsed top-level args, documented as "each exactly a hole")
 is deleted: it was written at registration and read nowhere, and its contract is exactly the
-retired rule.
-
-One known gap stayed OPEN at the time, pinned by a test rather than fixed: `materialise`
-classified with the string-grammar `isOpenToken`, which requires the closing `>` to be the token's
-last character, so a KEYED open template (`pkg:IRepo<$1>#k`, reachable via `.withKey`) read as
-closed and registered as an exact holey entry no closing could resolve. Moving the classifier onto
-`TokenNode.tryParse` + `TokenNode.isOpen` would fix that and drop the string grammar's second
-parser, but it also flips `$0` from not-a-hole (`HOLE_PATTERN` is `/^\$[1-9][0-9]*$/`) to a hole
-(the typed parser accepts any digits), which `token-grammar.test.ts` pins. — **CLOSED by §126**,
-which classifies the UNKEYED token instead: a key suffix can neither introduce nor remove a hole,
-so stripping it needs no new parser and leaves the `$0` question untouched. — **§127 then took the
-`tryParse` route anyway**, because the key was only one of several spellings the raw-slice scan
-could not see; `$0` is still held back by an explicit 1-based rule in the classifier, so the
-`token-grammar.test.ts` pin stands. — **§129 closed the `$0` question the other way round**: the
-tree parser adopted the 1-based, leading-zero-free grammar, so there is no laxer grammar left for a
-classifier rule to hold back against and `HOLE_PATTERN` is deleted.
+retired rule. Open-template classification — including the keyed-template and `$0`/`$01` grammar
+edge cases this rule interacts with — is described in full at §127 and §129.
 
 _Owner ruling 2026-07-24: "that all-holes rule is retired — it is no more."_ The replacement
 guard's shape (reject only what can never match, on the typed tree) is Claude's.
@@ -859,7 +847,7 @@ immutability and `ReadonlyMap` is the rest. `FactoryTargetError.reason` narrows 
 `"unregistered"`: `"not-a-class"` lost its referent when the three authoring kinds collapsed into
 one `produce` closure, and nothing has ever constructed it.
 
-**A second pass over the sweep's own diff** found five more, each reproduced against the built
+**A second pass over the sweep's own diff** found four more, each reproduced against the built
 bundle before it was touched. The first is a regression the sweep itself introduced.
 
 - **One mis-authored template poisoned every sibling on its base.** Splitting `#lookup` into
@@ -888,12 +876,6 @@ bundle before it was touched. The first is a regression the sweep itself introdu
   pre-step of every open-vs-closed classification, at the registration boundary and at both of the
   engine's. That also fixes the diagnosis of `resolve("pkg:IRepo<$1>", "k")`, which raised
   `UnregisteredTokenError` where the unbound hole was the actionable half of the answer.
-- **`ActivatorUtilities.slotResolvable` drifted from the mirror it documents.** The engine learned
-  that a `FactoryRef` is satisfiable only when its target resolves; the public mirror kept returning
-  `true` unconditionally, so an unregistered factory target raised `FactoryTargetError` instead of
-  falling through to the caller-supplied arguments the way an unregistered plain token does. —
-  **MOOT under §128**: the whole activation surface is deleted, so the hand-kept mirror this fix
-  repaired no longer exists. The drift is what §128 cites as the upkeep the surface was charging.
 
 **The keyed PLURAL scan sees template closings.** `#resolveKeyed` read only the exact map, so a
 keyed template — newly registrable above — answered `resolve(t, "redis")` but not
@@ -912,7 +894,7 @@ Registration[]>`, which matters because the class is documented as exported for 
 three are dead in-repo — nothing constructed `"not-a-class"` even before this branch. `unkeyedToken`
 is added to di.core's and di's barrels.
 
-**Three findings deliberately NOT acted on**, all being design calls rather than defects:
+**Two findings deliberately NOT acted on**, both being design calls rather than defects:
 
 - `validateScopes` is defeated inside a `Union` slot. A member's `ScopeValidationError` is caught
   by `#resolveUnion`'s fall-through and the next member wins, so the violation is silently skipped.
@@ -925,26 +907,18 @@ is added to di.core's and di's barrels.
   The honest fix is to canonicalise at the registration boundary, which changes the stored map key
   and therefore what `hasRegistrations`, `removeRegistrations`, and `#resolveKeyed`'s prefix scan
   all compare against. That is a wire-grammar decision, not a patch.
-- The two grammars disagree about `$0`, `$01`, and whitespace spellings (`pkg:IZ< $1 >`):
-  `HOLE_PATTERN` is `/^\$[1-9][0-9]*$/` and the tree parser accepts any digits, so those tokens
-  classify CLOSED and register exact. That is not a dead entry — each resolves under the same
-  spelling it registered under — so it is the canonicalisation question above wearing a different
-  hat, not a separate defect. `token-grammar.test.ts` pins the `$0` half. — **WRONG, and corrected
-  by §127**: the "resolves under its own spelling" test holds only for a template with no hole
-  DEPS. Give `pkg:IZ<pkg:IA, $1>` the `[['$1']]` signature that motivates it and the entry resolves
-  under nothing — the closing misses the exact map, and its own spelling raises
-  `NoSatisfiableSignatureError` on the un-substituted `$1`. The whitespace and `$01` halves were a
-  separate defect; only `$0` is the canonicalisation question. — **CLOSED by §129**: the two
-  grammars are one, `$0` and `$01` are not holes on either side, and `HOLE_PATTERN` is gone.
 
-`Validator`, `parseSlot`/`serialiseSlot`, and `TokenManifest`/`TokenProvider` were audited as
-suspected vestigial and DELIBERATELY kept. Each is exported, correct, and (for the manifest pair)
-exercised by `token.spike.test.ts`; unused-but-correct public API is not a defect, and deleting it
-is a semver call rather than a repair. Their comments — which advertised jobs the live path no
-longer does — are corrected instead. — **PARTLY REVERSED by §127**: the manifest pair was never
-public API (absent from the rolled `.d.ts`), so keeping it shipped unreachable runtime on a policy
-argument that did not apply to it, and it is deleted. `Validator` and `parseSlot`/`serialiseSlot`
-ARE public and stay, pending an owner call.
+(A related grammar question — whether `$0`/`$01`/whitespace spellings like `pkg:IZ< $1 >` are holes
+— turned out to be a genuine defect rather than a design call; §127 and §129 resolve it: the tree
+parser and the classifier now share one 1-based, leading-zero-free hole grammar, and
+`HOLE_PATTERN` is gone.)
+
+`Validator` and `parseSlot`/`serialiseSlot` are genuinely public (in the rolled `.d.ts`) with zero
+consumers anywhere. Both are audited as suspected vestigial and DELIBERATELY kept —
+unused-but-correct public API is not a defect, and deleting it is a semver call rather than a
+repair — so their comments, which advertised jobs the live path no longer does, are corrected
+instead, pending an owner call. `TokenManifest`/`TokenProvider` were never public API — they were
+package-private, absent from the rolled `.d.ts` — and `token/manifest.ts` is deleted (§127).
 
 _Claude's calls throughout, on the owner's direction to sweep the family; the collection ordering
 rule, the removal/dedup asymmetry, and the keyed-plural key order are the three that chose between
@@ -979,14 +953,8 @@ an unhelpful `UnregisteredTokenError`. `unkeyedToken` stays the documented pre-s
 the tree sees past a key on its own, but the agreement between a composed key and a tail-argument
 key should not rest on the classifier's internals, and the fallback path still needs it.
 
-**`$0` is deliberately held back.** Hole labels are 1-based, the parser will build a hole node for
-any digit run, and the classifier states the 1-based rule explicitly rather than adopting the laxer
-grammar. So one divergence survives, on purpose and in one commented line: whether `$0` is a legal
-hole is a grammar decision, not a repair. `$01` is NOT in that class — it parses to the same node
-`$1` does, so treating it as a hole is the canonicalisation contract, not a new semantic. —
-**SUPERSEDED by §129**, which took the grammar decision: the parser is now 1-based and
-leading-zero-free, `$01` joins `$0` as not-a-hole, and the classifier's duplicate rule is deleted
-rather than kept in step.
+**Hole labels are 1-based with no leading zero (§129).** `$0` and `$01` are not holes; a token
+spelled that way is not a template and files as an ordinary exact registration.
 
 **`token/manifest.ts` is deleted.** `TokenManifest` / `TokenProvider` / `Descriptor` /
 `SealedTokenManifest` were package-PRIVATE — di.core declares one export and `src/index.ts` omits
@@ -1414,3 +1382,285 @@ body's value parameters align 1:1 with its call's arguments, and `this`-substitu
 `function`, method, accessor, constructor, class, or static block. mergesynth derives guards and
 arity bounds from the member's own parameters (`params[i]` guards `args[i]`), skipping only an
 explicit type-only `this` parameter.
+
+## §138 — The inline marker grammar: three entry shapes, typed deserialization, loud on ambiguity
+
+A `"rhombus-std".inline` marker entry deserializes into one of three shapes, partitioned by which
+field carries a type and which carries a value — `type` names a TYPE, `impl` names a VALUE:
+
+- **Instance member** — `{ type, member, impl? }`. `type` is the receiver type; `impl` is present
+  exactly when the member's declaration is ambient (its body lives in the value's `member`-named
+  property).
+- **Static / namespace / const member** (one shape — the three are the same thing) — `{ impl,
+  member }`, no `type`; the value is both the call-base anchor and the body holder.
+- **Floater** — `{ impl }`; the function value's own source is the body.
+
+Every declaration-reference field parses through the one Type grammar, strictly: a missing,
+unqualified, or unparseable reference is a loud load-time error, never a permissive skip or a raw
+string threaded past deserialization. `type` must deserialize to identifier-kind — a
+signature-shaped type in that field is a loud error. `impl` is fully qualified and must
+self-reference its declaring package (the side-parse boundary); violating that is a loud validation
+error. An entry whose declaration already has a body takes no `impl` — the declaration's own source
+is the body — and a substituted body's runtime imports come from the body file's own imports
+(import-following), never from the entry. A grammar-valid shape with no certified matcher fails
+loudly (an uncertified-kind diagnostic), never silently.
+
+Matching stays certified only for the shapes already landed (§91: interface member and free
+function). Static / namespace / const-member and class-member (shape-1-without-`impl`) matching are
+grammar-valid but their matchers are not yet certified, and nested member paths (`A.B.fn`) are
+describable by the grammar but deliberately unimplemented — both open edges, pending certification
+work.
+
+Go stays agnostic of the inlinable roster itself (U2, `decisions.user.md`; the general
+source-agnostic principle is §117's) — nothing in the marker grammar introduces a name table, a
+per-sugar list, or a special-cased identifier in engine code.
+
+_Owner-directed 2026-08-12/13._
+
+## §139 — Free identifiers in a sugar body are import-bound and bare-only; the unlowered sweep anchors on the declaring package
+
+A free identifier inside a sugar body is legal exactly when the authoring file imports it — a
+named, non-type-only binding from a bare package specifier — and the consumer receives that same
+`(module, export)` pair, spelled as the consumer's own binding. An imported binding is BARE-ONLY: it
+can never head a dotted call inside a body. This is closed permanently, not parked pending a future
+extension.
+
+The unlowered-sugar sweep — the diagnostic that catches a sugar call nothing certified matched —
+anchors on the marker's DECLARING PACKAGE, never on spelling alone: a same-named export from a
+different package is a different function and does not satisfy the sweep. Absence is designed
+silence only at the PER-PROGRAM level — a program that never reaches a target module gets the
+pass-through behavior §133 describes — but PROJECT-level inertness (every program in the project
+failing to reach an authored marker) is a loud diagnostic, not a silent no-op.
+
+Member-body substitution, `this`-rewriting across function boundaries, and 1:1 parameter alignment
+with call-site arguments are already stated at §136 and unchanged by this entry.
+
+_Owner-directed 2026-08-13._
+
+## §140 — Contextual `this` typing has one exception; the augmentation inventory is discovered two ways
+
+Two refinements on the `this`-based augmentation model settled at §79/§136:
+
+- Contextual `this` typing on a set's members needs no per-member annotation, with one exception:
+  contextual `this` does not propagate through a member's OWN generic type parameters, so such a
+  member carries an explicit `this:` parameter instead of relying on the set type's contextual
+  inference.
+- The augmentation inventory — the roster a tool (a lint rule, a scan, mergesynth) needs to
+  enumerate — is discovered from TWO sources, both counted as augmentations: `registerAugmentations`
+  call sites, and any set typed against the augmentation-set types (`AugmentationSet` /
+  `AugmentationSet2`) with no accompanying register call.
+
+_Owner-directed 2026-08-13._
+
+## §141 — di2's Type taxonomy: one flat node space, address vs. spec as usage, not identity
+
+di2's `Type` is one flat node space with one public parent — no descriptor union, no overlapping
+door unions. `TypeIdentifier = NamedType | PlaceholderType | TagType` names the ADDRESS-ONLY kinds:
+a pure reference can never self-construct.
+
+Every `Type` can be an ADDRESS: interning makes any node registrable and resolvable by `===`, so a
+`ServiceDescriptor` may link absolutely any `Type` to an implementation. Every NON-identifier `Type`
+can also be a SPEC — it self-constructs when no registration answers a request for it. The
+capability lives in the USAGE and the registry, never as a dual identity stamped on the node itself.
+
+`TagType = { type: Type, tag: string }`; the inner `type` is unconstrained (a keyed function-typed
+service is spellable). A tag is address-only regardless of its inner type — keying is registration
+intent, so an unregistered keyed request fails rather than constructs. `TypeLiteralType` is a
+self-supplying leaf; it names nothing.
+
+Capability questions (`identifier`, `open`) are answered by MEMOIZED ANALYZERS: computed on first
+ask per unique node by walking the node itself, cached in a `WeakMap` that lives INSIDE the
+analyzer, single-consumer state whose only writer is the walk that derived the answer. Interned,
+frozen identity makes the cache exact forever. No side-table describes a node without that
+provenance guarantee, and nodes stay pure data — capability never becomes a member on the node
+itself.
+
+THE MATCH WALK COLLECTS ITS OWN PLACEHOLDERS: the walk visits every placeholder position anyway, and
+the very next step — instantiation — needs exactly that collection, so the bindings ARE the
+placeholder inventory and no pre-scan runs inside the match path. The memoized analyzers serve only
+the genuine standalone gates: partitioning registrations closed-vs-open at the registry (closed
+answers by `===` alone and never enters matching), the augmentation receiver door, and marker
+validation. The intern table itself stays pure identity — it learns no type-theory questions, and no
+mint-order invariant is load-bearing. Steady-state predicates are O(1); the closed/open partition is
+VOCABULARY, never a dispatch axis.
+
+`TokenType` and `ConstructableType` — the string-token era's node kinds — are deleted. Types are
+interned; `===` is equality; `Type.from` runs only at data-input boundaries (external strings, the
+`Type | string` public door) — internal code spells a `Type` via a factory or `typefor`, never
+`Type.from`.
+
+di2 decisions stay distinct from di's own `TokenNode` model (§106/§111/§122/§129); this entry
+describes di2's `Type` layer, not a replacement for the shipped di token grammar.
+
+_Owner-directed 2026-08-13._
+
+## §142 — di2's container door: one entrypoint, lookup-then-construct-on-miss, three memo layers
+
+di2 exposes one resolution entrypoint, `getService(request: Type)`. Resolution is LOOKUP, THEN
+CONSTRUCT ON MISS: the lookup answers for any `Type` at all; on a miss, a request that can
+self-describe is constructed by composing looked-up leaves, and a pure reference on a miss fails.
+Requesting an unregistered constructor is construct-on-miss of a `CtorType`: di2 instantiates it,
+resolving its parameter types through the lookup — the injection signature must be DESCRIBED in the
+request, since there is no runtime reflection.
+
+THE CACHING MODEL IS THREE MEMO LAYERS, one per lifetime, and nothing else:
+
+1. **Types** are memoized globally — interning, `===` identity, immortal.
+2. **Plans** are memoized per provider, keyed on the interned request, dying with the provider —
+   conditioned on a purity audit (plan construction is a pure function of the request node and the
+   provider's fixed descriptor set, reading no runtime state). A failed construction is not cached;
+   determinism makes rebuild-and-rethrow identical.
+3. **Instances** are cached per scope, internally — `realize` interprets a plan's lifetime data
+   against the asking scope, and scopes own their instance caches outright.
+
+Every visitor serves the making of a `Type` or a plan, so those two memo layers absorb all
+resolution-path caching; the standalone analyzers' memos (§141) serve build/registration-time gates
+only. Plans hold no instances and scopes hold no plans — the layers meet only at `realize`.
+Resolve-one and resolve-all share instance caches, so a scoped or singleton instance never
+double-instantiates via the enumerable path.
+
+Metadata never holds state: descriptors and plans stay pure, and instances live only in scope-owned
+caches keyed by the interned request. The scope model adopts nothing from prior art without its own
+justification, case by case.
+
+_Owner-directed 2026-08-13._
+
+## §143 — di2's descriptor impl description composes one node; the address stands in the instance slot
+
+A descriptor's impl description is one composed node, not a separate registration-time check: sugar
+derives the exact impl type by transform (the way it derives signatures), and the explicit API is
+unchanged — the registration verb composes the node internally from the provided signatures, with
+the ADDRESS standing in the instance slot. That stand-in is honest: "a constructable producing the
+addressed type" is the strongest guarantee the container ever holds for an explicit registration.
+Plan construction consumes only the args and the door, so one plan-builder contract serves both
+registered and construct-on-miss paths; it is built only when that unified plan-builder itself is
+built, not before.
+
+Sugar declarations enforce impl-produces-address at COMPILE TIME: `addClass<T>(ctor: Ctor<any[],
+T>)`, `addValue<T>(value: T)` — the sealed declarations carry the constraint themselves. The
+di.core/di.extras same-name double-merge fix rides with this, since the generic forms must be
+reachable from consumer programs.
+
+Non-behavioral dialect calls made under delegation stay minimal: `asValue`'s stage offers only
+`taggedAs` and completion, and `withLifetime`/`taggedAs` commute.
+
+_Owner-directed 2026-08-13._
+
+## §144 — di2's registration dialect: no TypeBuilder, renamed nodes, object-parameter overloads, a generic hand-usable builder
+
+di2 has no `TypeBuilder`, neither general-purpose nor as manifest stages. Two renames land
+(owner-worded): `placeholder` → `generic` (node `GenericType`, kind `'generic'`), and
+`FunctionType` → `FuncType` (pairing with the `func` factory). The multi-field factories — `named`,
+`ctor`, `func`, `tag` — gain OBJECT-PARAMETER overloads whose keys are the node's own published
+fields (`{ name, from?, genericArgs? }`, and so on), one vocabulary labeled at every nesting level
+with defaults skippable independently; positional forms remain for flat use, and the
+homogeneous-list factories (`union` / `intersection` / `tuple`) stay positional-rest only.
+
+Registration never requires the impl instance's own type: a provided constructor's instance
+`NamedType` is data the container has no use for. The address is what consumers resolve by,
+assignability is compile-time-enforced by the sugar constraints (§143), and the composed
+described-constructable carries the address in its instance slot — users supply argument types
+only.
+
+The signature verb is `withSignature` (the owner delegated the naming choice; `using-` was the one
+odd prefix and dies with it), SINGULAR and variadic: `withSignature(...paramTypes)`, exactly once
+per chain. A multi-signature (overloaded) impl is expressed through `withType` with an intersection
+of constructables — plurality lives in the composed node, not in the verb. Verb naming beyond this
+is case-by-case; prefix uniformity is not itself a goal, and `taggedAs` — the one address-rewriting
+verb — stands, since it looks different because it is different.
+
+Every builder-carrying API also offers a positional overload taking everything at once: an
+`implType` argument (one composed constructable node), never naked signatures — the
+signatures-as-arrays spelling lives only in the builder's `withSignature`. A hand-composer of a
+positional `implType` puts the address in the instance slot, the same documented convention as
+above; sugar derives the precise node. Builders read as fluent English, and the positional twin is
+the terse complete form.
+
+The builder form is HAND-USABLE: `add(type, configure)` takes the address as the first positional
+argument and the builder lambda second. The sugar form `add<T>(configure)` is exactly that overload
+with the first argument derived and deleted — a one-argument-forward inline body whose parity with
+the hand-written form is trivially visible — so builder ergonomics are never transformer-exclusive.
+
+THE BUILDER IS GENERIC: its stages carry the service type `T`, and every impl door enforces
+extension — `asClass(ctor: Ctor<any[], T>)`, `asFactory(fn: Func<any[], T>)`, `asValue(value: T)` —
+the same constraint (§143) threaded through the builder path, not only the flat verbs. `T` defaults
+to `any`: `add<T = any>(type, configure)`. Sugar derives `T` precisely; a hand-roller may spell it
+(`add<IRepo>(…)`) for full enforcement, or omit it for `<any>` and no enforcement — opt-in safety,
+consequences owned, no `Type`-surface change, no phantom.
+
+The configure dialect offers `withType` AND `withSignature` after the `as`-verb, EXACTLY ONE of
+which must be used — stage types make the completion state reachable only through one of them,
+once, with a runtime guard backing the untyped caller. `withSignature(args)` supplies argument types
+only, composing internally with the address in the instance slot; `withType(node)` supplies the
+whole composed constructable, typed per the `as`-verb (`CtorType` for `asClass`, `FunctionType` for
+`asFactory`) — sugar substitutes `withType` with the transform-derived precise node, and a
+hand-writer reaches for `withSignature`. Deep signatures remain irreducibly deep; the object-overload
+factories and named intermediate consts are the spelling relief, not the dialect.
+
+_Owner-directed 2026-08-13._
+
+## §145 — di2's aggregates are first-class node kinds; normalization lives in the `named` door
+
+Three aggregate factories mint their OWN node kind apiece: `Type.array` (`ArrayType`),
+`Type.asyncIterable` (`AsyncIterableType`), `Type.iterable` (`IterableType`) — each a
+single-`element`-child node. The aggregate names join the parser's one reserved-name mechanism
+beside `Func` / `Ctor` / `ServiceProvider`, and the engine dispatches on kind. This dissolves the
+engine-side reserved-name list, the "NamedType is address-only except three names" asterisk, and the
+pairing-rule scoping clause that predated it — fewer distinct mechanisms, more uniform arms.
+
+`AsyncType` joins the same pass: kind `async`, factory `async(element)` (legal, since `async` is
+only contextually reserved), wire spelling `Async<E>` in the reserved set. The node, factory, and
+parser arm land now; its ENGINE arm — async delivery of the element — lands with the parked
+async-realize design, not before.
+
+Normalization lives in the `named` door, with no swap visitor: `named` given a reserved aggregate
+spelling (`'Iterable'` / `'Array'` / `'AsyncIterable'` / `'Async'`, `'global'`, one argument)
+silently returns the corresponding kind node — the same canonicalization contract `union` already
+has. Every path that can spell an aggregate — the parser, derivation-emitted code, hand composition,
+adoption — normalizes at mint, so the kind node is the ONE interned identity and a `NamedType`
+spelling of an aggregate can never exist. The signature principle is PERMISSIVE IN, EXPRESSIVE OUT:
+as narrow as expressible per call — a literal reserved spelling types as its kind node, a
+non-reserved literal as `NamedType`, a dynamic string as the honest union, each as tight as TS can
+prove. The object-parameter overloads (§144) narrow the same way via literal property inference.
+
+An aggregate address's CONTRACT is the protocol alone — an `Iterable` / `AsyncIterable` / `Array` of
+every registration of the element. Binding is a property of the SYNTHESIZED descriptor-miss fallback
+only: the synthesized `array` materializes at resolution, and the synthesized `iterable` /
+`asyncIterable` are late-bound, each element resolving at iteration time (sync or async). A
+registration answering at lookup under an aggregate address binds however its own descriptor binds
+— the engine imposes nothing on it. A registration under an aggregate address answers at lookup
+before synthesis, uniformly, with no reserved-name carve-out in the door and no warning machinery:
+shadowing an aggregate is legal, and the consequences belong to the registrant.
+
+`getServices(type)` forwards to the iterable aggregate through the one resolution door and never
+throws or returns `undefined` for zero matches — the empty aggregate is the answer.
+
+_Owner-directed 2026-08-13._
+
+## §146 — di2's `IOptions<T>` is one open registration; the composed-generic derivation question is still open
+
+`IOptions<T>` is served by ONE open registration in di2 — `IOptions<$T>` with a
+placeholder-parameterized impl, the same mechanism the open logger registration already uses. No
+call site composes `IOptions<T>` as a spelled type: the sugar body registers the per-`T` pipeline
+pieces under a bare `typefor<T>()`, the open registration's `realize` reads its bound placeholder,
+and a consumer's closed request (`typefor<IOptions<UserOptions>>()` at a call site) matches the open
+registration through the ordinary match walk.
+
+The consequence is that the composed-generic derivation question dissolves for this case — no
+engine grammar extension, no new derivation path is needed — and the `tokenfor`/`tokenof`/
+`nameoftransform` trio retires once the `addOptions` body is rewritten to bare `typefor<T>()`.
+
+**Still open**: whether a bare `typefor<T>()` derives correctly inside a SUBSTITUTED body is
+unverified — its sibling `tokenof<T>()` is witnessed working there, but `typefor<T>()`'s own
+substituted-body behavior is the premise to probe before the trio retirement can proceed.
+
+_Owner-directed 2026-08-13._
+
+## §147 — Singular death names its own retiring machinery
+
+§94 states the ruling: sugar always asks the container, and there is no compile-time singularity
+dispatch. Retiring that machinery by name: the `isSingular` / `singularValue` / `valueof` stubs,
+the Go `singular` / `valueof` / fold stages, and the short-circuit e2e all retire. A literal-typed
+request is served by the describe door, the same as any other request.
+
+_Owner-directed 2026-08-13 (owner: "singular + the lookup thing are all dead")._
