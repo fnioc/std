@@ -61,7 +61,7 @@ export const LoggingBuilderConfigAugmentations: AugmentationSet2<ILoggingBuilder
       this.services = this.services.addClass(typefor<ILoggerProviderConfigFactory>(), LoggerProviderConfigFactory, [[
         Type.array(typefor<LoggingConfig>()),
       ]], 'singleton');
-      const hole = Type.placeholder('$1');
+      const hole = Type.generic('$1');
       this.services = this.services.addClass(loggerProviderConfigType(hole), LoggerProviderConfig, [[
         typefor<ILoggerProviderConfigFactory>(),
         hole,

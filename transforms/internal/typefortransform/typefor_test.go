@@ -35,7 +35,7 @@ func buildTypeforWorkspace(t *testing.T, mainSrc string) (*driver.Program, strin
   export function ctor(instanceType: unknown, ...args: unknown[]): unknown;
   export function tag(type: unknown, tag: string): unknown;
   export function typeLiteral(value: unknown): unknown;
-  export function placeholder(label: string): unknown;
+  export function generic(label: string): unknown;
   export function union(...types: unknown[]): unknown;
 }
 `)
@@ -214,7 +214,7 @@ export const tok = typefor<IThing<$<1>>>();
 	defer func() { _ = prog.Close() }()
 
 	out := lowerTypefor(t, prog, app)
-	want := `Type.named("IThing", "@scope/app/main", [Type.placeholder("1")])`
+	want := `Type.named("IThing", "@scope/app/main", [Type.generic("1")])`
 	if got := exprFor(t, out, "tok"); got != want {
 		t.Fatalf("typefor<IThing<$<1>>>() = %q, want %q\nfull output:\n%s", got, want, out)
 	}
@@ -400,7 +400,7 @@ export const kLit = typefor<"dev">().kind;
 
 	out := lowerTypefor(t, prog, app)
 	cases := map[string]string{
-		"kFunc":  `"function"`,
+		"kFunc":  `"func"`,
 		"kCtor":  `"ctor"`,
 		"kNamed": `"named"`,
 		"kTag":   `"tag"`,

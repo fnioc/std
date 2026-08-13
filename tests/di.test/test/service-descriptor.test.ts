@@ -45,9 +45,9 @@ describe('equals', () => {
 describe('substitute', () => {
   test('closes an open registration onto the type the factories would have built', () => {
     const open = ServiceDescriptor.ctor(
-      Type.named('Box', 'app', [Type.placeholder('T')]),
+      Type.named('Box', 'app', [Type.generic('T')]),
       Impl,
-      [[Type.placeholder('T')]],
+      [[Type.generic('T')]],
     );
     const closed = ServiceDescriptor.substitute(open, new Map([['T', A]]));
     expect(closed.serviceType).toBe(Type.named('Box', 'app', [A]));

@@ -1,13 +1,49 @@
 /**
- * The lexical rules shared by the type-token writer and reader: which characters an
- * identifier segment may carry unescaped, and how to spell one that cannot.
+ * The rules a type token is written and read by: which characters an identifier segment may carry
+ * unescaped, how to spell one that cannot, and the unqualified names that carry a reading of their
+ * own. The reserved set is derived from the tables below, so a name gains its reserved meaning and
+ * its escaping in the same edit.
  */
+
+import type { LiteralValue } from '../Type.js';
 
 /** Characters legal inside an unescaped segment. */
 const SAFE = /[A-Za-z0-9_$@/.-]/;
 
 /** A segment that needs no escaping at all: a safe body that opens with a letter-ish character. */
 const PLAIN = /^[A-Za-z_$@][A-Za-z0-9_$@/.-]*$/;
+
+/** The unqualified spellings that name a literal value rather than a type. */
+export const KEYWORD_LITERALS: ReadonlyMap<string, LiteralValue> = new Map<string, LiteralValue>([
+  ['Infinity', Infinity],
+  ['NaN', NaN],
+  ['false', false],
+  ['null', null],
+  ['true', true],
+  ['undefined', undefined],
+]);
+
+/**
+ * Each aggregate spelling and the node kind it names. One type argument under `global` is that
+ * aggregate wherever it is spelled — parsed, derived, or composed by hand — so the kind node is
+ * the only identity the spelling ever has.
+ */
+export const AGGREGATE_KINDS = {
+  Array: 'array',
+  Async: 'async',
+  AsyncIterable: 'asyncIterable',
+  Iterable: 'iterable',
+} as const;
+
+/** An aggregate's wire spelling. */
+export type AggregateName = keyof typeof AGGREGATE_KINDS;
+
+export function isAggregateName(name: string): name is AggregateName {
+  return Object.hasOwn(AGGREGATE_KINDS, name);
+}
+
+/** The `from` a bare `ServiceProvider` resolves to. */
+export const SERVICE_PROVIDER_FROM = '@rhombus-std/primitives';
 
 /**
  * Names that mean something other than "a type called this" when they stand unqualified.
@@ -17,16 +53,12 @@ const PLAIN = /^[A-Za-z_$@][A-Za-z0-9_$@/.-]*$/;
  * (`app:Func`) already disambiguates, so only the global namespace consults this set.
  */
 export const RESERVED_NAMES: ReadonlySet<string> = new Set([
-  'true',
-  'false',
-  'null',
-  'undefined',
-  'NaN',
-  'Infinity',
-  'new',
-  'Func',
+  ...KEYWORD_LITERALS.keys(),
+  ...Object.keys(AGGREGATE_KINDS),
   'Ctor',
+  'Func',
   'ServiceProvider',
+  'new',
 ]);
 
 export function isSafeChar(char: string): boolean {
