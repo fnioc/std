@@ -10,7 +10,7 @@
 import '@rhombus-std/di';
 import { DefaultManifest, type Manifest, Type } from '@rhombus-std/di.core';
 import type { IOptions, IPostConfigureOptions } from '@rhombus-std/options';
-import '@rhombus-std/options.augmentations';
+import { optionsAddressType } from '@rhombus-std/options.augmentations';
 import { describe, expect, test } from 'bun:test';
 
 interface WidgetOptions {
@@ -30,8 +30,8 @@ describe('postConfigure — bare form', () => {
       options.suffix += '!';
     });
 
-    const provider = services.build().createScope('singleton');
-    const options: IOptions<WidgetOptions> = provider.getRequiredService(Type.from(OPTIONS_TOKEN));
+    const provider = services.build();
+    const options: IOptions<WidgetOptions> = provider.getRequiredService(optionsAddressType(Type.from(OPTIONS_TOKEN)));
 
     // 'base!' proves ordering: the post-configure ran after the configure and
     // appended to its result, not before it.
@@ -49,8 +49,8 @@ describe('postConfigure — bare form', () => {
     } };
     services = services.postConfigure<WidgetOptions>(OPTIONS_TOKEN, step);
 
-    const provider = services.build().createScope('singleton');
-    const options: IOptions<WidgetOptions> = provider.getRequiredService(Type.from(OPTIONS_TOKEN));
+    const provider = services.build();
+    const options: IOptions<WidgetOptions> = provider.getRequiredService(optionsAddressType(Type.from(OPTIONS_TOKEN)));
 
     expect(options.value.suffix).toBe('base!');
   });
@@ -65,8 +65,8 @@ describe('postConfigure — bare form', () => {
       options.suffix += '-b';
     } });
 
-    const provider = services.build().createScope('singleton');
-    const options: IOptions<WidgetOptions> = provider.getRequiredService(Type.from(OPTIONS_TOKEN));
+    const provider = services.build();
+    const options: IOptions<WidgetOptions> = provider.getRequiredService(optionsAddressType(Type.from(OPTIONS_TOKEN)));
 
     expect(options.value.suffix).toBe('base-a-b');
   });

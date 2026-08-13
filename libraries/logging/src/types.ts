@@ -17,11 +17,16 @@ export const LOGGER_FACTORY_TYPE: Type = typefor<ILoggerFactory>();
 export const LOGGER_PROVIDER_TYPE: Type = typefor<ILoggerProvider>();
 
 /**
- * The `IOptions<LoggerFilterOptions>` wrapper the assembly is keyed at, NOT the
- * bare `LoggerFilterOptions` type. This is the convergence point: `addLogging`
- * registers the assembly here, the builder-level `addFilter`/`setMinimumLevel`
+ * The options type the filter pipeline is keyed at. This is the convergence
+ * point: `addLogging` offers it, the builder-level `addFilter`/`setMinimumLevel`
  * append their configure steps to this type's pipeline slots, and
- * logging.config's `addConfig` derives the SAME type inline — so all three
- * compose into one `IOptions<LoggerFilterOptions>` the `LoggerFactory` consumes.
+ * logging.config's `addConfig` names the SAME type — so all three compose into
+ * the one value {@link LOGGER_FILTER_OPTIONS_ACCESSOR_TYPE} delivers.
  */
-export const LOGGER_FILTER_OPTIONS_TYPE: Type = typefor<IOptions<LoggerFilterOptions>>();
+export const LOGGER_FILTER_OPTIONS_TYPE: Type = typefor<LoggerFilterOptions>();
+
+/**
+ * The address `LoggerFactory` takes its filter options from — what the open
+ * `IOptions<$T>` registration answers for {@link LOGGER_FILTER_OPTIONS_TYPE}.
+ */
+export const LOGGER_FILTER_OPTIONS_ACCESSOR_TYPE: Type = typefor<IOptions<LoggerFilterOptions>>();

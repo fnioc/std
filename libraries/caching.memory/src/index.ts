@@ -15,7 +15,8 @@ export { MemoryCacheEntryOptions } from '@rhombus-std/caching.core';
 export { ServiceManifestMemoryCacheAugmentations } from './DefaultManifest-MemoryCache-augmentations';
 export { DISTRIBUTED_CACHE_TYPE } from './distributed-cache-type';
 export type { ISystemClock } from './ISystemClock';
-export { MEMORY_CACHE_OPTIONS_TYPE, MEMORY_DISTRIBUTED_CACHE_OPTIONS_TYPE } from './memory-cache-options-type';
+export { MEMORY_CACHE_OPTIONS_ACCESSOR_TYPE, MEMORY_CACHE_OPTIONS_TYPE, MEMORY_DISTRIBUTED_CACHE_OPTIONS_ACCESSOR_TYPE,
+  MEMORY_DISTRIBUTED_CACHE_OPTIONS_TYPE } from './memory-cache-options-type';
 export { MEMORY_CACHE_TYPE } from './memory-cache-type';
 export { MemoryCacheOptions } from './MemoryCacheOptions';
 export { MemoryDistributedCache } from './MemoryDistributedCache';

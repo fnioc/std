@@ -3,13 +3,16 @@
 // runtime prototype assignment through the OPEN-set registry), the same
 // mechanism @rhombus-std/config.json uses to add `addJsonFile` to ConfigBuilder:
 //
-//   - `addOptions<T>(token, makeBase)` -- registers the `IOptions<T>` assembly
-//     (the OptionsFactory pipeline) for `token`. Returns the manifest with the
-//     assembly registration appended.
-//   - `configure(token, section)` -- registers a config-bind configure step
+//   - `addOptions(T[, makeBase])` -- offers `IOptions<T>` for the options type
+//     `T`, either over a base factory or over whatever `T` itself resolves to.
+//   - `configure(T, section)` -- registers a config-bind configure step
 //     PLUS a change-token source wired to the section's reload token, so the
 //     delivered `IOptions<T>` binds the section and reacts to reloads.
-//   - `validateOnStart(token)` -- forces the pipeline to run at host startup.
+//   - `validateOnStart(T)` -- forces the pipeline to run at host startup.
+//
+// Every verb names the BARE `T`. `IOptions<T>` is registered once, open, and
+// answers every closed request; the type that closed it arrives through a
+// bare-hole signature slot, from which the assembly finds that type's steps.
 //
 // A consumer who only wants the sugar takes a bare side-effect import:
 // `import "@rhombus-std/options.augmentations";`. This package MUST keep
@@ -29,8 +32,8 @@ export type { IOptionsChangeTokenSource } from './IOptionsChangeTokenSource.js';
 // package appends a step with `services.addValue(configureStepType(token),
 // step)` (or `add`/`addFactory` for a lazily-constructed step), and the
 // assembly for `token` picks it up like any `configure(...)`-registered one.
-export { changeTokenSourceType, configureStepType, postConfigureStepType, startupValidationTargetType,
-  validateStepType } from './option-types.js';
+export { baseFactoryType, changeTokenSourceType, configureStepType, optionsAddressType, postConfigureStepType,
+  startupValidationTargetType, validateStepType } from './option-types.js';
 
 // Each re-export executes its module, so the `registerAugmentations` side effect
 // installs the verbs onto the manifest.

@@ -69,12 +69,12 @@ export const LoggingBuilderConfigAugmentations: AugmentationSet2<ILoggingBuilder
       }
       const [config] = rest;
 
-      // The LoggerFilterOptions pipeline: assembly + custom configure step +
-      // reload change-token source.
-      const optionsToken = typefor<IOptions<LoggerFilterOptions>>();
-      this.services = this.services.addOptions<LoggerFilterOptions>(optionsToken, () => new LoggerFilterOptions());
-      this.services = this.services.addValue(configureStepType(optionsToken), new LoggerFilterConfigureOptions(config));
-      this.services = this.services.addValue(changeTokenSourceType(optionsToken), new ConfigChangeTokenSource(config));
+      // The LoggerFilterOptions pipeline: the offer + a custom configure step +
+      // the reload change-token source.
+      const optionsType = typefor<LoggerFilterOptions>();
+      this.services = this.services.addOptions<LoggerFilterOptions>(optionsType, () => new LoggerFilterOptions());
+      this.services = this.services.addValue(configureStepType(optionsType), new LoggerFilterConfigureOptions(config));
+      this.services = this.services.addValue(changeTokenSourceType(optionsType), new ConfigChangeTokenSource(config));
 
       this.services = this.services.addValue(typefor<LoggingConfig>(), new LoggingConfig(config));
       return this;

@@ -6,7 +6,7 @@ import { ConfigBuilder, type IConfigRoot } from '@rhombus-std/config';
 import '@rhombus-std/di';
 import { DefaultManifest, type Manifest, Type } from '@rhombus-std/di.core';
 import type { IOptions } from '@rhombus-std/options';
-import '@rhombus-std/options.augmentations';
+import { optionsAddressType } from '@rhombus-std/options.augmentations';
 import { describe, expect, test } from 'bun:test';
 
 interface WidgetOptions {
@@ -30,8 +30,8 @@ describe('configure — section-to-options binding', () => {
     services = services.addOptions<WidgetOptions>(TOKEN, () => ({ Url: '' }));
     services = services.configure(TOKEN, config.getSection('Widget'));
 
-    const provider = services.build().createScope('singleton');
-    const options: IOptions<WidgetOptions> = provider.getRequiredService(Type.from(TOKEN));
+    const provider = services.build();
+    const options: IOptions<WidgetOptions> = provider.getRequiredService(optionsAddressType(Type.from(TOKEN)));
 
     expect(options.value).toEqual({ Url: 'http://first', Retries: '3' });
   });
@@ -43,8 +43,8 @@ describe('configure — section-to-options binding', () => {
     services = services.addOptions<WidgetOptions>(TOKEN, () => ({ Url: '' }));
     services = services.configure(TOKEN, config.getSection('Widget'));
 
-    const provider = services.build().createScope('singleton');
-    const options: IOptions<WidgetOptions> = provider.getRequiredService(Type.from(TOKEN));
+    const provider = services.build();
+    const options: IOptions<WidgetOptions> = provider.getRequiredService(optionsAddressType(Type.from(TOKEN)));
 
     const seen: WidgetOptions[] = [];
     const registration = options.subscribe!((value) => seen.push(value));
@@ -74,8 +74,8 @@ describe('configure — section-to-options binding', () => {
     services = services.configure(TOKEN, config.getSection('Widget'));
     services = services.configure(TOKEN, config.getSection('Extra'));
 
-    const provider = services.build().createScope('singleton');
-    const options: IOptions<WidgetOptions> = provider.getRequiredService(Type.from(TOKEN));
+    const provider = services.build();
+    const options: IOptions<WidgetOptions> = provider.getRequiredService(optionsAddressType(Type.from(TOKEN)));
 
     expect(options.value).toEqual({ Url: 'http://a', Retries: '5' });
   });
@@ -86,8 +86,8 @@ describe('addOptions — no configured source', () => {
     let services: Manifest<'singleton'> = new DefaultManifest<'singleton'>();
     services = services.addOptions<WidgetOptions>(TOKEN, () => ({ Url: 'default' }));
 
-    const provider = services.build().createScope('singleton');
-    const options: IOptions<WidgetOptions> = provider.getRequiredService(Type.from(TOKEN));
+    const provider = services.build();
+    const options: IOptions<WidgetOptions> = provider.getRequiredService(optionsAddressType(Type.from(TOKEN)));
 
     expect(options.value).toEqual({ Url: 'default' });
     expect(options.subscribe).toBeUndefined();
