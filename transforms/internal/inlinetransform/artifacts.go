@@ -59,10 +59,16 @@ type ComposedTypeArg struct {
 }
 
 // MemberShape is a certified member-sugar call shape (type-arg count, value-arg
-// count) — the sweep flags a surviving call of exactly this shape.
+// count) the sweep matches a surviving call against. HasRest marks a body whose
+// last value parameter is a rest parameter: such a body absorbs any number of
+// trailing arguments and lets its type parameter bind by inference, so
+// ValueArgCount is the body's OWN parameter count (rest slot included) rather
+// than a call's required argument count — the sweep treats it as a floor, not an
+// exact count, and TypeArgCount as a ceiling.
 type MemberShape struct {
 	TypeArgCount  int
 	ValueArgCount int
+	HasRest       bool
 }
 
 // Artifacts is the per-run state the inline stage hands to downstream stages and

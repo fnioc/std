@@ -102,7 +102,7 @@ function isTypesOnly(manifest: Manifest): boolean {
   return !Object.values(dot).some((value) => value.endsWith('.js'));
 }
 
-/** The published conditions trio for one surviving subpath (the §7 dist-swap). */
+/** The published conditions for one surviving subpath (the §7 dist-swap). */
 function derivePublishedConditions(conditions: Conditions, typesOnly: boolean): Conditions {
   const typesSource = conditions.types ?? conditions.source ?? conditions.default;
   const out: Record<string, string> = {};
@@ -110,8 +110,13 @@ function derivePublishedConditions(conditions: Conditions, typesOnly: boolean): 
   if (conditions.import !== undefined) {
     out.import = toDist(conditions.import, 'js');
   }
+  // An authoring-only package declares no runtime condition at all, so there is
+  // nothing for `default` to resolve to and the subpath publishes as `types`
+  // alone — a resolver that reaches it for a value import should find nothing.
   const defaultSource = conditions.default ?? conditions.import ?? conditions.bun;
-  out.default = toDist(defaultSource, typesOnly ? 'dts' : 'js');
+  if (defaultSource !== undefined) {
+    out.default = toDist(defaultSource, typesOnly ? 'dts' : 'js');
+  }
   return out;
 }
 

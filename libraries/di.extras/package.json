@@ -97,14 +97,11 @@
       }
     ]
   },
-  "main": "./dist/bundle/index.js",
   "types": "./dist/bundle/index.d.ts",
   "exports": {
     ".": {
       "source": "./src/index.ts",
-      "types": "./dist/bundle/index.d.ts",
-      "import": "./dist/bundle/index.js",
-      "default": "./dist/bundle/index.js"
+      "types": "./dist/bundle/index.d.ts"
     },
     "./ttsc": "./ttsc.mjs",
     "./tokens/*": {
@@ -117,6 +114,10 @@
     "plugin": {
       "transform": "@rhombus-std/di.extras/ttsc"
     }
+  },
+  "//rhombusBuild": "typesOnly -- an authoring-only package: its members are substituted at a consumer's call site by the inline stage (walked from src by the ttsc engine, never value-imported), so it ships no runtime bundle -- only the rolled .d.ts the declare-module sugar needs to typecheck.",
+  "rhombusBuild": {
+    "typesOnly": true
   },
   "files": [
     "dist",
@@ -142,13 +143,10 @@
   "publishConfig": {
     "access": "public",
     "provenance": true,
-    "main": "./dist/bundle/index.js",
     "types": "./dist/bundle/index.d.ts",
     "exports": {
       ".": {
-        "types": "./dist/bundle/index.d.ts",
-        "import": "./dist/bundle/index.js",
-        "default": "./dist/bundle/index.js"
+        "types": "./dist/bundle/index.d.ts"
       },
       "./ttsc": "./ttsc.mjs"
     }

@@ -225,11 +225,17 @@ function checkBody(context, fn, primitiveLocals, valueImportLocals, listedNames,
 
   const typeParams = new Set((fn.typeParameters?.params ?? []).map((p) => p.name?.name).filter(Boolean));
   const valueParams = new Set();
+  // A trailing rest parameter's name, if the body has one — the generic inline
+  // stage binds it to the argument LIST tail and splices that list wherever the
+  // body spreads it (substitute.go's `rest.expand`), so `...rest` is that
+  // mechanism's splice point, not a runtime spread.
+  let restParamName = null;
   for (const p of fn.params) {
     if (p.type === 'Identifier' && p.name !== 'this') {
       valueParams.add(p.name);
     } else if (p.type === 'RestElement' && p.argument.type === 'Identifier') {
       valueParams.add(p.argument.name);
+      restParamName = p.argument.name;
     }
   }
 
@@ -238,7 +244,7 @@ function checkBody(context, fn, primitiveLocals, valueImportLocals, listedNames,
 
   // A stack marking whether the current position is inside a primitive call's
   // arguments (where a param may repeat and a type param is allowed).
-  walkExpression(expr, { onBanned(node, syntax) {
+  walkExpression(expr, { restParamName, onBanned(node, syntax) {
     context.report({ node, messageId: 'bannedSyntax', data: { syntax } });
   }, onIdentifier(node, insidePrimitiveArgs, isMemberBase) {
     const name = node.name;
@@ -318,15 +324,26 @@ function walkExpression(root, cb) {
       return;
     }
     if (BANNED[node.type]) {
-      // A spread is permitted ONLY when its argument is a primitive call — the
-      // stage inlines the primitive's minted members into the surrounding call's
-      // argument list, so the emitted form is the byte-clean, spread-free call a
-      // hand author writes. Any other spread (e.g. `[...this.items]`) stays banned.
+      // A spread is permitted in exactly two shapes, both splice points the
+      // generic inline stage substitutes wholesale rather than runtime spreads:
+      //   - its argument is a primitive call — the stage inlines the
+      //     primitive's minted members into the surrounding call's argument list;
+      //   - its argument is the body's own trailing rest parameter (`...rest`)
+      //     — the stage binds a rest parameter to the call's remaining
+      //     arguments as a list and splices that list at this exact spread
+      //     (substitute.go's `rest.expand`), so the emitted form is the
+      //     byte-clean, spread-free call a hand author writes either way.
+      // Any other spread (e.g. `[...this.items]`, spreading a non-rest param)
+      // stays banned.
       const primitiveSpread = node.type === 'SpreadElement'
         && node.argument?.type === 'CallExpression'
         && node.argument.callee.type === 'Identifier'
         && cb.primitiveLocals.has(node.argument.callee.name);
-      if (!primitiveSpread) {
+      const restForwardSpread = node.type === 'SpreadElement'
+        && node.argument?.type === 'Identifier'
+        && cb.restParamName !== null
+        && node.argument.name === cb.restParamName;
+      if (!primitiveSpread && !restForwardSpread) {
         cb.onBanned(node, BANNED[node.type]);
         // Keep walking to surface nested issues too.
       }
