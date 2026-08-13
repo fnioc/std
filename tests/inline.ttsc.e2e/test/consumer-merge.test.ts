@@ -170,6 +170,21 @@ if (toolchainReady) {
   unwired = runTtsc(UNWIRED_DIR, 'src/unwired.ts');
 }
 
+/**
+ * The const the sandbox's generated module declares for `spelling` — the exact
+ * `Type.*` factory call a hand-writer would have spelled at the call site.
+ * Fails loudly when no such const exists, so the spelling stays pinned byte for
+ * byte even though the call site only carries a reference to it.
+ */
+function constFor(dir: string, spelling: string): string {
+  const module = readFileSync(join(dir, 'dist', '__typefor__.js'), 'utf8');
+  const match = new RegExp(`export const (\\$\\w+) = ${spelling.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')};`).exec(module);
+  if (match === null) {
+    throw new Error(`no const spelled ${spelling} in:\n${module}`);
+  }
+  return match[1]!;
+}
+
 describe.skipIf(!toolchainReady)('inline stage — consumer merge shapes', () => {
   test('a member-map receiver lowers the sugar call to the token-taking member', () => {
     expect(merged.status).toBe(0);
@@ -177,7 +192,8 @@ describe.skipIf(!toolchainReady)('inline stage — consumer merge shapes', () =>
     expect(line).toBeDefined();
     // The derived token leads, and everything the author wrote after the ctor
     // reaches the token-taking member in order.
-    expect(line).toMatch(/addClass\(\s*Type\.imported\(\s*['"]ILogger['"]/);
+    const logger = constFor(MERGED_DIR, 'Type.imported("ILogger", "merged-app/tokens/merged")');
+    expect(line).toMatch(new RegExp(`addClass\\(\\s*${logger.replace('$', '\\$')}\\b`));
     expect(line).toContain('ConsoleLogger');
     expect(line).not.toContain('addClass<');
   });
