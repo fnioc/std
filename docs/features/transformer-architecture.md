@@ -332,21 +332,23 @@ build time, in this repo, in this build. There is no published/carrier form of a
 function, no shipped src, no dist-JS resolution path for it — external consumption of the sugar
 forms stays a deliberately parked follow-up.
 
-### The publish list — the `"rhombus-std"` marker's `"inline"` list
+### The publish list — the `"rhombus-std"` marker's `"inline"` `"entries"` list
 
-A library declares its inlineable members in a `"rhombus-std"` marker's `"inline"` list in
-`package.json`:
+A library declares its inlineable members in the `"entries"` list of a `"rhombus-std"` marker's
+`"inline"` object in `package.json`:
 
 ```jsonc
 {
   "rhombus-std": {
-    "inline": [
-      {
-        "type": "@rhombus-std/di.core:Manifest",
-        "impl": "@rhombus-std/di.extras:ManifestServiceAugmentations",
-        "member": "addClass",
-      },
-    ],
+    "inline": {
+      "entries": [
+        {
+          "type": "@rhombus-std/di.core:Manifest",
+          "impl": "@rhombus-std/di.extras:ManifestServiceAugmentations",
+          "member": "addClass",
+        },
+      ],
+    },
   },
 }
 ```
