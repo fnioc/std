@@ -7,9 +7,9 @@ import { basename, join, resolve } from 'node:path';
 // Production-path e2e parity: drives the REAL ttsc (typescript-go toolchain) over
 // a temp project that wires the Go tokenfor plugin through the `@rhombus-std/
 // primitives.extras/ttsc` descriptor, then asserts the emitted JS carries
-// the SAME byte-identical token strings the hand-written TypeScript tokenfor
-// transformer produces (the parity corpus lives in
-// tests/di.extras.test/test/{tokens,tokenfor}.test.ts).
+// the exact token strings tokenfor<T>() is meant to lower to. There is no
+// TypeScript-side tokenfor oracle to compare against — that suite is gone — so
+// the witness pins the canonical token SHAPE directly.
 //
 // The throwaway project lives OUTSIDE the repo tree, per-worktree, at
 // ~/.cache/fnioc-ttsc/sandboxes/<worktree-dirname>: it must sit outside any

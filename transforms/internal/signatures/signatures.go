@@ -15,7 +15,6 @@ package signatures
 import (
 	shimast "github.com/microsoft/typescript-go/shim/ast"
 	shimchecker "github.com/microsoft/typescript-go/shim/checker"
-	shimprinter "github.com/microsoft/typescript-go/shim/printer"
 
 	"github.com/fnioc/std/transforms/internal/plugin"
 	"github.com/fnioc/std/transforms/internal/tokens"
@@ -66,7 +65,6 @@ type context struct {
 	factory *shimast.NodeFactory
 	sf      *shimast.SourceFile
 	addDiag func(Diagnostic)
-	ec      *shimprinter.EmitContext
 	// parseAnchor resolves a node to the pristine parse node before the checker is
 	// asked about it — the engine-wide rule (plugin.CheckerAnchor). Every other
 	// checker call in this engine is symbol- or type-driven (a declaration off a

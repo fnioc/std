@@ -36,7 +36,6 @@ func NewExtractor(
 		factory:     ec.Factory.AsNodeFactory(),
 		sf:          sf,
 		addDiag:     addDiag,
-		ec:          ec,
 		parseAnchor: plugin.NewCheckerAnchor(ec, sf),
 	}}
 }
