@@ -1,0 +1,101 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://github.com/fnioc/std/releases/latest/download/rhombus-std.schema.json",
+  "title": "rhombus-std config",
+  "description": "The grammar for a package's \"rhombus-std\" marker (its value in package.json) and for a standalone rhombus-std.json file it, or a peer, imports.",
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "$schema": {
+      "type": "string",
+      "description": "Points an editor at this schema. A standalone rhombus-std.json file carries it; a package.json marker never needs it."
+    },
+    "@imports": {
+      "type": "string",
+      "description": "A path, relative to the file that declares it, to another rhombus-std-shaped JSON file, resolved as this config's BASE. Resolution is blind: a path that isn't a readable file contributes nothing, silently — the same whether this directive was written by hand or supplied by the workspace default. The imported file may itself carry \"@imports\"; a chain may be arbitrarily long, and a cycle (a path already reached earlier in the chain) also contributes nothing rather than looping. This config's own keys deep-merge OVER the imported base and win every leaf collision: an object recurses key-by-key, an array concatenates as imported-then-local with each element left atomic, and any other value replaces."
+    },
+    "typefor": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "Controls how the typefor<T>() authoring primitive emits the runtime Type value it derives.",
+      "properties": {
+        "emit": {
+          "type": "string",
+          "enum": ["hoisted", "inline"],
+          "default": "hoisted",
+          "description": "\"hoisted\" lifts the derived Type to a shared module-level constant; \"inline\" writes it fresh at each call site."
+        }
+      }
+    },
+    "inline": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "The type-driven sugar publish list: every entry names a member the inline stage substitutes at a consumer call site.",
+      "properties": {
+        "entries": {
+          "type": "array",
+          "description": "The publish list, in declaration order.",
+          "items": { "$ref": "#/definitions/entry" }
+        }
+      }
+    }
+  },
+  "definitions": {
+    "entry": {
+      "description": "One publish-list entry, in one of three shapes distinguished by which fields are present.",
+      "oneOf": [
+        { "$ref": "#/definitions/instanceMemberEntry" },
+        { "$ref": "#/definitions/staticMemberEntry" },
+        { "$ref": "#/definitions/floaterEntry" }
+      ]
+    },
+    "instanceMemberEntry": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["type", "impl", "member"],
+      "description": "An instance-member sugar entry: the interface member named by \"type\"/\"member\" is ambient, its body living on \"impl\"'s \"member\"-named property.",
+      "properties": {
+        "type": {
+          "type": "string",
+          "description": "A \"<package>:<Name>\" reference to the interface the member is declared on."
+        },
+        "impl": {
+          "type": "string",
+          "description": "A \"<package>:<Name>\" reference to the export whose \"member\"-named property holds the body."
+        },
+        "member": {
+          "type": "string",
+          "description": "The member name shared by \"type\" and \"impl\"."
+        }
+      }
+    },
+    "staticMemberEntry": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["impl", "member"],
+      "description": "A static / namespace-const member sugar entry: \"impl\" is both the call-base anchor and the body holder.",
+      "properties": {
+        "impl": {
+          "type": "string",
+          "description": "A \"<package>:<Name>\" reference to the value that is both the call-base anchor and the body holder."
+        },
+        "member": {
+          "type": "string",
+          "description": "The member name on \"impl\"."
+        }
+      }
+    },
+    "floaterEntry": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["impl"],
+      "description": "A free-standing sugar entry: \"impl\"'s own source is the body.",
+      "properties": {
+        "impl": {
+          "type": "string",
+          "description": "A \"<package>:<Name>\" reference to the function whose own source is the body."
+        }
+      }
+    }
+  }
+}
