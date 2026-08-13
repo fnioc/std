@@ -1778,6 +1778,26 @@ It is composed inside the verb, never at a call site.
 
 _Claude-directed 2026-08-13, executing the owner's standing options ruling._
 
+## §161 — `tokenfor`/`tokenof` leave the authoring surface; their Go stage stays, pending its own pass
+
+The two token primitives are gone from `primitives.extras`. Their last call site was the
+`addOptions<T>()` sugar body, which composed `IOptions<T>`; once one open registration serves the
+family §160 the sugar derives only its own bare `T`, and `typefor` plus the `Type` factories cover
+every derivation the libraries make. Nothing in `libraries/`, `examples/` or any unit test names
+either primitive.
+
+The Go `nameof` stage that lowers them is NOT retired with them, because it still has live
+consumers of its own: `tests/primitives.extras.ttsc.e2e` pins its lowering byte-parity across ten
+type shapes, and `tests/declare-by-depending.ttsc.e2e` uses a `tokenfor` call as the observable
+proving whether a host spawned at all. Both declare the primitive locally rather than importing it,
+so both stayed green through the removal — the stage is reachable only from those fixtures now.
+
+Retiring the stage is therefore a separate pass, and a larger one than a call-site sweep: it means
+rehoming the declare-by-depending probe onto `typefor` (whose emit is a `Type.*` call tree, not a
+flat string, so the fixture needs a `Type` import and different assertions), deciding whether the
+byte-parity suite moves to `typefor` or goes, and only then deleting the stage and the
+composed-generic machinery that exists solely to feed it.
+
 ## §162 — A CLOSED augmentation set's `satisfies AugmentationSet<Receiver>` const is inert without its own `applyAugmentations` call
 
 `satisfies AugmentationSet<Receiver>` only shapes the object literal; it installs nothing. The
