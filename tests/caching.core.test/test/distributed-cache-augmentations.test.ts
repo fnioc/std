@@ -92,6 +92,6 @@ describe('DistributedCacheSugarAugmentations', () => {
   });
 
   test('standalone surface snapshot (member names)', () => {
-    expect(Object.keys(DistributedCacheSugarAugmentations).sort()).toEqual(['getString', 'set', 'setString']);
+    expect(Object.keys(DistributedCacheSugarAugmentations).toSorted()).toEqual(['getString', 'set', 'setString']);
   });
 });

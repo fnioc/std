@@ -199,7 +199,9 @@ test('json: compact single-line JSON with the reference property order', () => {
   expect(output.endsWith('\n')).toBeTrue();
   expect(JSON.parse(output)).toEqual({ EventId: 10, LogLevel: 'Information', Category: 'Test.Category',
     Message: 'Request received', State: {} });
-  expect(Object.keys(JSON.parse(output))).toEqual(['EventId', 'LogLevel', 'Category', 'Message', 'State']);
+  const parsed = JSON.parse(output) as { EventId: number; LogLevel: string; Category: string; Message: string;
+    State: unknown; };
+  expect(Object.keys(parsed)).toEqual(['EventId', 'LogLevel', 'Category', 'Message', 'State']);
 });
 
 test('json: state key/value pairs and differing state message are written', () => {

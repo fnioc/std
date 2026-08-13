@@ -55,6 +55,6 @@ describe('applyAugmentations', () => {
 
   test('the augmentation set is a plain object of this-based functions', () => {
     expect(BoxExtensions.add).toBeInstanceOf(Function);
-    expect(Object.keys(BoxExtensions).sort()).toEqual(['add', 'read']);
+    expect(Object.keys(BoxExtensions).toSorted()).toEqual(['add', 'read']);
   });
 });
