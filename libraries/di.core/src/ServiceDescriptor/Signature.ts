@@ -18,15 +18,21 @@ export namespace TypeSignatures {
     if (implType.kind === 'ctor' || implType.kind === 'func') {
       return [implType.args];
     }
-    return implType.members.flatMap(member => {
-      if (member.kind !== 'ctor' && member.kind !== 'func' && member.kind !== 'intersection') {
-        throw new Error(
-          `${Type.stringify(member)} describes nothing callable; give a constructor or function `
-            + 'type, or an intersection of them for an overloaded implementation.',
-        );
-      }
-      return fromImplType(member);
-    });
+    if (implType.kind === 'intersection') {
+      return implType.members.flatMap(member => {
+        if (member.kind !== 'ctor' && member.kind !== 'func' && member.kind !== 'intersection') {
+          throw new Error(
+            `${Type.stringify(member)} describes nothing callable; give a constructor or function `
+              + 'type, or an intersection of them for an overloaded implementation.',
+          );
+        }
+        return fromImplType(member);
+      });
+    }
+    throw new Error(
+      `${Type.stringify(implType)} describes nothing callable; give a constructor or function `
+        + 'type, or an intersection of them for an overloaded implementation.',
+    );
   }
   export function signaturesEqual(left: TypeSignatures, right: TypeSignatures): boolean {
     return left.length === right.length && left.every((signature, index) =>
