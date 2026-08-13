@@ -1667,6 +1667,35 @@ still needs the old engine's special "inject a callable" slot form or collapses 
 
 _Claude-directed 2026-08-13, executing the owner's §144 ruling._
 
+## §156 — typefor emits through a project-wide const table, by default
+
+A `typefor<T>()` call site emits a reference to a named const rather than the `Type.*` factory tree
+it derives; the consts live together in one generated module the build materializes at the emit
+root. `"rhombus-std": { "typefor": { "emit": "hoisted" | "inline" } }` in a package's own
+package.json picks the form, defaulting to `hoisted`. The mode rides the PROJECT because the shared
+`./ttsc` descriptor is what every consumer dedupes to one spawn and one cache key — nothing that
+varies per consumer can live there.
+
+The table is a DAG: a node interns under its canonical token spelling, children intern before
+parents, and a composite const references its member consts by name, so no subtree is spelled twice
+and the number of consts equals the number of distinct derived types. A const's name is `$` plus
+that spelling with every non-alphanumeric character replaced by `_`, trimmed to its last 40
+characters, plus a short hash of the full spelling for any spelling that was not already entirely
+alphanumeric — a pure function of the spelling, so naming is stable across builds and independent of
+which file reached a type first.
+
+Parity is exact and checked: expanding every const back into its call sites reproduces the inline
+emission byte for byte (`tests/typefor.ttsc.e2e`). The runtime already interns structurally
+identical types to one object, so the choice moves where a tree is written and never what it
+evaluates to.
+
+The generated module is build output. It lands in the program's `outDir`, which for every
+lowering-enabled package is the per-file stage directory the plugin-free bundle pass consumes — so
+the two `examples/*.with-transformer` builds now stage before they bundle, like every library.
+
+_Owner-directed 2026-08-13 (owner: hoisted is the default; zero redundancy in DAG form,
+deterministic collision-free naming, build output rather than committed source)._
+
 ## §157 — A bare-hole signature slot delivers the closing type; an instance of it is inexpressible
 
 In an open registration, a signature slot that IS a generic-hole node receives the BOUND CLOSING
