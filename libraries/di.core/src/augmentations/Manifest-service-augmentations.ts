@@ -7,9 +7,29 @@ import { withKey } from '../service-type';
 import { ServiceDescriptor, type Signatures, TypeSignatures } from '../ServiceDescriptor';
 
 interface IManifestServiceAugmentations<Scopes extends string> {
+  /**
+   * Registers `ctor` under `type` as a constructor-built service, always — even when the manifest
+   * already holds an entry for the same address.
+   *
+   * @throws Error - when `key` is given and `type` already carries a tag.
+   */
   addClass(type: Token | Type, ctor: Ctor, signatures: Signatures, scope?: Scopes, key?: string): this;
+
+  /**
+   * Registers `factory` under `type` as a factory-built service, always — even when the manifest
+   * already holds an entry for the same address.
+   *
+   * @throws Error - when `key` is given and `type` already carries a tag.
+   */
   addFactory(type: Token | Type, factory: Func<any[], unknown>, signatures: Signatures, scope?: Scopes,
     key?: string): this;
+
+  /**
+   * Registers `value` under `type` directly, with no construction step, always — even when the
+   * manifest already holds an entry for the same address.
+   *
+   * @throws Error - when `key` is given and `type` already carries a tag.
+   */
   addValue(type: Token | Type, value: unknown, key?: string): this;
 }
 

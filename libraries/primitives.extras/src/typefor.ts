@@ -47,8 +47,9 @@ export function typefor<T>(): TypeFor<T>;
 export function typefor<V>(value: V): TypeFor<V>;
 export function typefor(_value?: unknown): Type {
   throw new Error(
-    'typefor() requires the @rhombus-std/primitives.extras build-time transformer, '
-      + 'or pass a type token string to a public API that accepts one.',
+    "typefor() requires @rhombus-std/primitives.extras's authoring transform to run. "
+      + 'It has not been applied. Depend on @rhombus-std/primitives.extras so ttsc spawns the '
+      + '@rhombus-std transform host, or pass a type token string to a public API that accepts one.',
   );
 }
 

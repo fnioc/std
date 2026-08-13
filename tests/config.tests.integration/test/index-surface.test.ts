@@ -57,6 +57,16 @@ describe('cross-package public surface (built dist)', () => {
     assert.equal(port, 8080);
   });
 
+  test('withSchema(...).build() coerces a literal-union member through the built dist', () => {
+    const config: { readonly Mode: 'fast' | 'slow'; } = new ConfigBuilder().addCommandLine([
+      '--Mode=fast',
+    ]).withSchema<{ Mode: 'fast' | 'slow'; }>(Type.object({
+      Mode: Type.union(Type.typeLiteral('fast'), Type.typeLiteral('slow')),
+    })).build();
+
+    assert.deepEqual(config, { Mode: 'fast' });
+  });
+
   test('the with-type-augment subpath ships its throwing stub in dist and throws under node', async () => {
     await import('@rhombus-std/config/with-type-augment');
     const builder = new ConfigBuilder();

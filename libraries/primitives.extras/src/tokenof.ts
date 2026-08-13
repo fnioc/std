@@ -32,8 +32,9 @@ export function tokenof<T>(): string;
 export function tokenof(value: unknown): string;
 export function tokenof(_value?: unknown): string {
   throw new Error(
-    'tokenof() requires the @rhombus-std/primitives.extras build-time transformer, '
-      + 'or pass an explicit token string.',
+    "tokenof() requires @rhombus-std/primitives.extras's authoring transform to run. "
+      + 'It has not been applied. Depend on @rhombus-std/primitives.extras so ttsc spawns the '
+      + '@rhombus-std transform host, or pass an explicit token string.',
   );
 }
 

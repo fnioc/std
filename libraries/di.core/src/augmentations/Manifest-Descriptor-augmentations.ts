@@ -8,15 +8,37 @@ import { type Manifest } from '../Manifest';
 import { withKey } from '../service-type';
 import { ServiceDescriptor, type Signatures, TypeSignatures } from '../ServiceDescriptor';
 interface IManifestDescriptorAugmentations<Scopes extends string> {
+  /**
+   * Adds a service registration to the manifest: a {@link ServiceDescriptor} directly, `type`
+   * paired with a configure lambda run against the fluent builder, or `type` paired with a
+   * constructor or factory and its implementation type. Always registers, even when the manifest
+   * already holds an entry for the same address.
+   */
   add(descriptor: ServiceDescriptor<Scopes>): Manifest<Scopes>;
   add<T = any>(type: Type | string, configure: Func<[Unstarted<T, Scopes>], IComplete>): Manifest<Scopes>;
   add<T = any>(type: Type | string, ctor: Ctor<any[], T>, implType: ConstructorType | IntersectionType, scope?: Scopes,
     key?: string): Manifest<Scopes>;
   add<T = any>(type: Type | string, factory: Func<any[], T>, implType: FunctionType | IntersectionType, scope?: Scopes,
     key?: string): Manifest<Scopes>;
+
+  /** Drops the descriptor equal to `descriptor`, if the manifest holds one; otherwise unchanged. */
   remove(descriptor: ServiceDescriptor<Scopes>): Manifest<Scopes>;
+
+  /**
+   * Swaps in `descriptor` for the first descriptor occupying the same registration slot — see
+   * {@link ServiceDescriptor.matches} — leaving every other descriptor untouched. Nothing
+   * occupying that slot means the manifest comes back unchanged.
+   */
   replace(descriptor: ServiceDescriptor<Scopes>): Manifest<Scopes>;
+
+  /** Adds every descriptor in `descriptors` to the manifest, in order — the last one ends up newest. */
   addMany(descriptors: Iterable<ServiceDescriptor<Scopes>>): Manifest<Scopes>;
+
+  /**
+   * Adds each of the given descriptors — or, given `type` paired with a configure lambda, a
+   * constructor, or a factory, the single descriptor that shape describes — skipping any whose
+   * address already {@link ServiceDescriptor.matches} an existing entry.
+   */
   tryAdd(...descriptors: ReadonlyArray<ServiceDescriptor<Scopes>>): Manifest<Scopes>;
 
   tryAdd<T = any>(type: Type | string, configure: Func<[Unstarted<T, Scopes>], IComplete>): this;
@@ -25,9 +47,29 @@ interface IManifestDescriptorAugmentations<Scopes extends string> {
   tryAdd<T = any>(type: Type | string, factory: Func<any[], T>, implType: FunctionType | IntersectionType,
     scope?: Scopes, key?: string): this;
 
+  /**
+   * The typed shorthand for {@link tryAdd}'s constructor form: registers `ctor` under `token`
+   * unless the manifest already holds a matching entry.
+   *
+   * @throws Error - when `key` is given and `token` already carries a tag.
+   */
   tryAddClass(token: Token | Type, ctor: Ctor, signatures: Signatures, scope?: Scopes, key?: string): Manifest<Scopes>;
+
+  /**
+   * The typed shorthand for {@link tryAdd}'s factory form: registers `factory` under `token`
+   * unless the manifest already holds a matching entry.
+   *
+   * @throws Error - when `key` is given and `token` already carries a tag.
+   */
   tryAddFactory(token: Token | Type, factory: Func<any[], unknown>, signatures: Signatures, scope?: Scopes,
     key?: string): Manifest<Scopes>;
+
+  /**
+   * Registers `value` under `token` directly, with no construction step, unless the manifest
+   * already holds a matching entry.
+   *
+   * @throws Error - when `key` is given and `token` already carries a tag.
+   */
   tryAddValue(token: Token | Type, value: unknown, key?: string): Manifest<Scopes>;
 
   /**
@@ -53,6 +95,8 @@ interface IManifestDescriptorAugmentations<Scopes extends string> {
    */
   replaceValue(token: Token | Type, value: unknown, key?: string): Manifest<Scopes>;
 
+  /** Drops every descriptor registered for `token` (narrowed by `key`, if given), leaving every
+   * other entry untouched. */
   removeAll(token: Token | Type, key?: string): Manifest<Scopes>;
 }
 
