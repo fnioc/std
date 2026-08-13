@@ -2,7 +2,7 @@
 
 `@rhombus-std/di.extras`, `di.extras.options`, `config.extras`, and `primitives.extras`
 each rewrite TypeScript at compile time — `tokenfor<T>()`, `addClass<T>()`, `addOptions<T>()`,
-`withType<T>()`, `resolve<T>()`, and friends. What each rewrite actually _does_ is documented on
+`withType<T>()`, `getService<T>()`, and friends. What each rewrite actually _does_ is documented on
 its own package (see each package's README). This doc covers the machinery underneath all of
 them: how they run in your build, and how one small set of domain-agnostic primitives — run
 together, over and over, until nothing changes — replaces what used to be four separate
@@ -30,7 +30,7 @@ mergesynth (one-shot pre-pass)
   ↓
 ┌─────────────────────────────────────────────────────────────┐
 │ loop until a pass changes nothing (max 16 passes):           │
-│   inline → nameof → signatureof → schemaof                   │
+│   inline → nameof → typefor → signatureof → schemaof         │
 └─────────────────────────────────────────────────────────────┘
 ```
 
@@ -46,7 +46,7 @@ first (see [Parse-anchoring](#parse-anchoring-the-checker-only-ever-sees-pass-0-
 ```ts
 // what you write
 class Startup {
-  configure(m: IServiceManifest) {
+  configure(m: Manifest) {
     return m.addClass<IUserRepo>(SqlUserRepo).addFactory<IThing>(makeThing);
   }
 }
@@ -340,9 +340,9 @@ A library declares its inlineable members in a `"rhombus-std"` marker's `"inline
   "rhombus-std": {
     "inline": [
       {
-        "type": "@rhombus-std/di.core:IServiceQuery",
-        "impl": "@rhombus-std/di.extras:ServiceQueryInline",
-        "member": "isService",
+        "type": "@rhombus-std/di.core:Manifest",
+        "impl": "@rhombus-std/di.extras:ManifestServiceAugmentations",
+        "member": "addClass",
       },
     ],
   },
@@ -404,23 +404,21 @@ allowed to be imported from (its one authoring home, per the table above).
 
 ### The body marker — `registerInlineBodies`
 
-The publish list above is the **only** thing that points at a body set: no TypeScript anywhere
-imports `ManifestChainInline`, so nothing in the code says the object has a role at all. Each set
-therefore carries a marker beside its declaration, at module level:
+The publish list above is the **only** thing that points at a body set: nothing else in the code
+says the object has a role at all, so an otherwise-unreferenced set reads as dead code. A body set
+carries a marker beside its declaration, at module level, to say so directly:
 
 ```ts
-export const ServiceManifestInline = {
-  addClass<T>(this: IInlineRegistrationTarget, ctor: Ctor): IServiceManifest {
-    return this.addClass(tokenfor<T>(), ctor, signatureof(ctor));
-  },
-};
-registerInlineBodies(ServiceManifestInline);
+export const ConfigBuilderInline = { withType<T>(this: IWithSchemaTarget): unknown {
+  return this.withSchema(schemaof<T>());
+} };
+registerInlineBodies(ConfigBuilderInline);
 ```
 
 It is the inline-body sister of the augmentation registry's `registerAugmentations` — a statement
 next to the declaration that names its registered role — and it is a deliberate runtime **no-op**:
-the register it refers to is the `package.json` entry, and `src/inline.ts` is never bundled or
-executed. It is imported from `@rhombus-std/primitives.extras` (authoring-time-only, and the one
+the register it refers to is the `package.json` entry, and the file this lives in is never bundled
+or executed. It is imported from `@rhombus-std/primitives.extras` (authoring-time-only, and the one
 package every body-carrying package already depends on).
 
 **Two reasons, and the shape follows from having both.** One is readability, above. The other is
@@ -439,54 +437,63 @@ identifier inside a body that is not a parameter, type parameter, or known primi
 included. Both the ESLint rule and the Go extractor pin this: a module-level call is clean, a
 reference from inside a body is a free identifier.
 
+**A set that is already a named export of its package's barrel needs no marker of its own** — the
+export itself is the real reference the dead-code scan is looking for. `di.extras`'s augmentation
+sets (below) are exported by name from `src/index.ts` specifically so an `impl` entry can resolve
+to them by walking that re-export graph; the marker's whole job is already done.
+
 ## The sugar bodies, family by family
 
 Everything below is ordinary TypeScript, side-parsed by the inline stage out of each package's
-`src/inline.ts` and never bundled or shipped — the body is substitution source, not runtime code.
+source and never bundled or shipped — the body is substitution source, not runtime code.
 
 ### Registration (`di.extras`)
 
+`di.extras`'s sugar bodies live in `src/augmentations/`, one file per receiver, and each file's
+object literal does two jobs at once: the `declare module '@rhombus-std/di.core'` block above it
+merges the generic `<T>()` overload onto the receiver, and the object literal itself is the body
+the inline stage side-parses and substitutes at a matching call site. There is no separate
+authoring-only body file for this family. Every member is a `this`-based method with a trailing
+rest parameter that forwards its call verbatim to the same-named member on the real receiver — the
+only thing it mints is the leading type argument, via `typefor<T>()`:
+
 ```ts
-export const ServiceManifestInline = { addClass<T>(this: IInlineRegistrationTarget, ctor: Ctor): IServiceManifest {
-  return this.addClass(tokenfor<T>(), ctor, signatureof(ctor));
-}, addFactory<T>(this: IInlineRegistrationTarget, factory: Factory): IServiceManifest {
-  return this.addFactory(tokenfor<T>(), factory, signatureof(factory));
-}, addValue<I>(this: IInlineRegistrationTarget, value: unknown): IServiceManifest {
-  return this.addValue(tokenfor<I>(), value);
-} };
+export const ManifestServiceAugmentations: AugmentationSet2<Manifest,
+  Flatten<IManifestServiceSugarAugmentations<string>>> = {
+    add<T>(this: Manifest, ...rest: any[]) {
+      return (this as any).add(typefor<T>(), ...rest);
+    },
+    addClass<T>(this: Manifest, ...rest: any[]) {
+      return (this as any).addClass(typefor<T>(), ...rest);
+    },
+    // addFactory / addValue follow the same shape
+  };
 ```
 
-A **separate, zero-type-parameter** object literal (`ServiceManifestSelfInline`) covers the
-no-type-arg self-registration forms (`addClass(ctor)`, `addFactory(fn)`, `addValue(value)`),
-discriminated from the generic forms purely by type-parameter count — same member names, same
-value-parameter names, no collision. Their token derivation is **value-derived, never
-TS-inferred**: `addClass`/`addFactory` use `tokenfor(value)` (the _produced_-type primitive — a
-constructable value tokenizes as the instance it builds), and `addValue` uses `tokenof(value)`
-(the _raw_-type twin — an already-built value registers under its own type, never unwrapped).
-
-`isService<T>()` and the resolve family (`resolve`/`resolveAsync`/`tryResolve`) each derive their
-lookup token from `tokenfor<T>()`. Sugar always asks the container: there is no compile-time
-short-circuit for a literal-typed request — the engine's own constant synthesis is what serves
-those at resolve time.
+`ManifestDescriptorAugmentations`, in a sibling file, carries the identical shape for `tryAdd`,
+`tryAddClass`/`tryAddFactory`/`tryAddValue`, `replaceClass`/`replaceFactory`/`replaceValue`, and
+`removeAll`. `ServiceProviderServiceAugmentations` puts the same pattern on a different receiver,
+`IServiceProvider`, for members with nothing left to forward once the type argument is minted:
 
 ```ts
-export const ServiceQueryInline = { isService<T>(this: IServiceQuery): boolean {
-  return this.isService(tokenfor<T>());
-} };
-
-export const ResolverInline = { resolve<T>(this: IInlineResolveTarget): T {
-  return this.resolve(tokenfor<T>());
-}, resolveAsync<T>(this: IInlineResolveTarget): Promise<T> | T {
-  return this.resolveAsync(tokenfor<T>());
-}, tryResolve<T>(this: IInlineResolveTarget): T | undefined {
-  return this.tryResolve(tokenfor<T>());
-} };
+export const ServiceProviderServiceAugmentations: AugmentationSet2<IServiceProvider,
+  IServiceProviderServiceSugarAugmentations> = {
+    getService<T>(this: IServiceProvider): T | undefined {
+      return this.getService(typefor<T>());
+    },
+    getRequiredService<T>(this: IServiceProvider): T {
+      return this.getRequiredService(typefor<T>());
+    },
+    getServices<T>(this: IServiceProvider): Iterable<T> {
+      return this.getServices(typefor<T>());
+    },
+  };
 ```
 
 ### Options (`di.extras.options`)
 
 ```ts
-export const ServiceOptionsInline = { addOptions<T>(this: IInlineOptionsTarget): IServiceManifest {
+export const ServiceOptionsInline = { addOptions<T>(this: IInlineOptionsTarget): Manifest {
   return this.addOptions(tokenfor<IOptions<T>>(), tokenof<T>());
 } };
 ```
@@ -626,14 +633,14 @@ symbol. Then:
 
 ```ts
 // authored: Widget's second constructor parameter is optional
-manifest.addClass('pkg:Widget', Widget, signatureof(Widget)).as('singleton');
+manifest.addClass('pkg:Widget', Widget, signatureof(Widget)).addValue('pkg:IWidgetOptions', defaultOptions);
 ```
 
 Pass 1 lowers `signatureof(Widget)` into that minted object literal. Pass 2 reaches the trailing
-`.as('singleton')` and asks the checker to resolve it. Answering means typing the receiver, which
-means resolving the `addClass` overload, which means contextually typing the minted object literal,
-and `getContextualTypeForObjectLiteralElement` dereferences the symbol it assumes every element
-has:
+`.addValue(...)` call and asks the checker to resolve it. Answering means typing the receiver,
+which means resolving the `addClass` overload, which means contextually typing the minted object
+literal, and `getContextualTypeForObjectLiteralElement` dereferences the symbol it assumes every
+element has:
 
 ```go
 symbol := c.getSymbolOfDeclaration(element)                       // nil: the binder never saw it
@@ -687,7 +694,7 @@ call site:
   call-site-bound argument types — resolved against the _consumer's_ program later, in the
   lowering stage that owns the token-derivation context.
 
-A downstream stage (`nameof`, `signatureof`, `schemaof`) checks the artifacts map first
+A downstream stage (`nameof`, `typefor`, `signatureof`, `schemaof`) checks the artifacts map first
 for any call it visits; a hit means "this is my
 substituted work from this run," a miss falls through to the ordinary checker-anchored
 source-written path. After the loop's final pass, an **emit sweep** walks the artifacts one more
