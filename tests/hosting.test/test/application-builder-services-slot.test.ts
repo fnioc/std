@@ -35,9 +35,7 @@ test('builder.logging registrations reach the manifest build() reads', () => {
 
   // The chain is immutable, so this only holds because `logging` writes through
   // the SAME slot `builder.services` reads.
-  const providers: ILoggerProvider[] = builder.services.build().getRequiredService(
-    Type.named('Array', 'global', [LOGGER_PROVIDER_TYPE]),
-  );
+  const providers: ILoggerProvider[] = builder.services.build().getRequiredService(Type.array(LOGGER_PROVIDER_TYPE));
   expect(providers).toContain(marker);
 });
 
@@ -53,7 +51,7 @@ test('builder.services and builder.logging registrations both survive into the h
   const host = builder.build();
   expect(host.services.getRequiredService(Type.from('test:First'))).toBe('first');
   expect(host.services.getRequiredService(Type.from('test:Second'))).toBe('second');
-  expect(host.services.getRequiredService(Type.named('Array', 'global', [LOGGER_PROVIDER_TYPE]))).toContain(marker);
+  expect(host.services.getRequiredService(Type.array(LOGGER_PROVIDER_TYPE))).toContain(marker);
 
   host[Symbol.dispose]();
 });

@@ -15,6 +15,7 @@ import { type AugmentationSet, AugmentationSet2, installSet, type MergeStrategie
   type MergeStrategy } from './augmentations.js';
 import { Multimap } from './Multimap.js';
 import { Type } from './Type/Type.js';
+import { getOrCreate } from './utils/map.js';
 
 /** A `this`-based augmentation method whose receiver type is erased in the bag. */
 type AugmentationFn = Func<never[], unknown>;
@@ -58,11 +59,7 @@ export function registerAugmentations<R, I extends Record<PropertyKey, Func>>(re
 export function registerAugmentations<R>(receiver: Type | string, set: AugmentationSet<R>,
   merge?: MergeStrategies): void {
   const type = typeof receiver === 'string' ? Type.from(receiver) : receiver;
-  let bag = bags.get(type);
-  if (bag === undefined) {
-    bag = new Multimap();
-    bags.set(type, bag);
-  }
+  const bag = getOrCreate(bags, type, () => new Multimap());
   for (const [name, fn] of Object.entries(set as Record<string, AugmentationFn>)) {
     bag.add(name, [fn, merge?.[name]]);
   }
@@ -93,11 +90,7 @@ export function augment(receiver: Type | string) {
   return function installOnClass<C extends { readonly prototype: object; }>(Ctor: C, _context?: unknown): void {
     const target = Ctor as unknown as Ctor<any[], any>;
 
-    let installers = subscribers.get(type);
-    if (installers === undefined) {
-      installers = [];
-      subscribers.set(type, installers);
-    }
+    const installers = getOrCreate(subscribers, type, () => []);
     installers.push(function(set: AugmentationSet<any>, merge: MergeStrategies | undefined) {
       installSet(target, set, merge);
     });
