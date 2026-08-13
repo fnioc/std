@@ -38,7 +38,8 @@
 
 - A free identifier in a sugar body is legal exactly when the authoring file imports it — a
   named, non-type-only binding from a bare package specifier. The consumer receives that same
-  `(module, export)`, spelled as the consumer's own binding.
+  `(module, export)`, spelled as the consumer's own binding. An imported binding is BARE-ONLY:
+  it never heads a dotted call in a body — closed permanently (owner, 2026-08-13), not parked.
 - Substituted output equals what a no-transformer author writes by hand — byte parity.
 - Member-body substitution rewrites `this` to the receiver expression, respecting function
   boundaries: rewritten in the body and in nested arrows; never inside a nested `function` or
@@ -95,9 +96,6 @@
   The intern table itself stays pure identity: it learns no type-theory questions, and no
   mint-order invariant is load-bearing. Steady-state predicates are O(1); the partition is
   VOCABULARY, never a dispatch axis.
-- Reserved-aggregate names (`Iterable`, `Array`, `ServiceProvider`) behave as engine-provided
-  constructors; candidate reframe: engine pre-registrations of open generics — a registration
-  fact, not a grammar special.
 - `TokenType` and `ConstructableType` are deleted. Types are interned; `===` is equality;
   `Type.from` only at data-input boundaries.
 
@@ -142,6 +140,8 @@
 ## Type spelling & the registration dialect (ruled 2026-08-13)
 
 - NO TypeBuilder — neither general-purpose nor as manifest stages.
+- CONFIRMED renames (owner-worded): `placeholder` → `generic` (node `GenericType`, kind
+  `'generic'`); `FunctionType` → `FuncType` (pairing with `func`).
 - The multi-field factories (`named`, `ctor`, `func`, `tag`) gain OBJECT-PARAMETER overloads
   whose keys are the node's own published fields (`{ name, from?, genericArgs? }`, …) — one
   vocabulary, labeled at every nesting level, defaults skippable independently. Positional
@@ -152,6 +152,33 @@
   assignability is compile-time-enforced by the sugar constraints, and the composed
   described-constructable carries the ADDRESS in its instance slot. Users supply argument
   types only.
+- The verb is `withSignature` (owner delegated the choice; `using-` was the one odd prefix and
+  dies with it): SINGULAR and variadic — `withSignature(...paramTypes)`, exactly once. A
+  multi-signature (overloaded) impl is expressed through `withType` with an intersection of
+  constructables — the composed node is where plurality lives, not the verb.
+- Verb naming is case-by-case; prefix uniformity is NOT a goal (owner-ruled). `taggedAs`
+  stands — the one address-rewriting verb looks different because it is different.
+- EVERY builder-carrying API also offers an overload taking EVERYTHING at once, positionally
+  (ruled 2026-08-13). The positional variant takes an `implType` (one composed constructable
+  node) and NEVER naked signatures — the signatures-as-arrays spelling lives only in the
+  builder's `withSignature`; supporting both spellings positionally is not worth the surface.
+  Hand-composers of a positional `implType` put the ADDRESS in the instance slot (the
+  documented convention — it is the strongest claim the container holds anyway); sugar derives
+  the precise node. Builders read as fluent English; the positional twin is the terse complete
+  form.
+- The builder form is HAND-USABLE (ruled 2026-08-13): `add(type, configure)` — the address as
+  the first positional argument, the builder lambda second. The sugar form `add<T>(configure)`
+  is exactly that overload with the first argument derived and deleted — the inline body is a
+  one-argument forward, the parity invariant is trivially visible, and builder ergonomics are
+  never transformer-exclusive.
+- THE BUILDER IS GENERIC (ruled 2026-08-13): the stages carry the service type `T`, and every
+  impl door enforces extension — `asClass(ctor: Ctor<any[], T>)`, `asFactory(fn: Func<any[],
+  T>)`, `asValue(value: T)` — the ruling-4 constraint threaded through the builder path, not
+  only the flat verbs. RESOLVED (owner, 2026-08-13): `T` defaults to `any` —
+  `add<T = any>(type, configure)`. Sugar derives `T` precisely; a hand-roller may spell it
+  (`add<IRepo>(…)`) and get full enforcement; a hand-roller who omits it gets `<any>` and no
+  enforcement — opt-in safety, consequences owned, no Type-surface change, no phantom.
+
 - The configure dialect offers `withType` AND `withSignature` after the `as`-verb, EXACTLY ONE
   of which must be used (stage types make `IComplete` reachable only through one of them, once;
   a runtime guard backs the untyped caller). `withSignature(args)` supplies argument types only
@@ -165,7 +192,30 @@
 ## Aggregates (ruled 2026-08-13)
 
 - Three aggregate factories: `Type.array`, `Type.asyncIterable`, `Type.iterable` — each minting
-  the reserved `NamedType` (`Array<E>`, `AsyncIterable<E>`, `Iterable<E>`).
+  its OWN node kind (`ArrayType`, `AsyncIterableType`, `IterableType`, single `element` child;
+  ruled 2026-08-13). The aggregate names join the parser's one reserved-name mechanism beside
+  `Func`/`Ctor`/`ServiceProvider`; the engine dispatches on kind. This dissolves the
+  engine-side reserved-name list, the "NamedType is address-only except three names" asterisk,
+  and the pairing-rule scoping clause — fewer distinct mechanisms, more uniform arms. The
+  engine-pre-registration reframe is struck as no longer needed.
+- `AsyncType` joins the same pass (ruled 2026-08-13): kind `async`, factory `async(element)`
+  (legal — `async` is only contextually reserved), wire spelling `Async<E>` in the reserved
+  set. The node, factory, and parser arm land now; its ENGINE arm (async delivery of the
+  element) lands with the parked async realize design, not before.
+- NORMALIZATION LIVES IN THE `named` DOOR (no swap visitor): `named` with a reserved aggregate
+  spelling (`'Iterable'`/`'Array'`/`'AsyncIterable'`/`'Async'`, `'global'`, one arg) silently
+  returns the corresponding kind node — the same canonicalization contract `union` already has
+  (a factory returns the canonical node for the spelling, whatever its kind). Every path that
+  can spell an aggregate (parser, derivation-emitted code, hand composition, adoption)
+  normalizes at mint, so the kind node is the ONE interned identity and a NamedType spelling of
+  an aggregate can never exist. Signature principle (owner: "PERMISSIVE IN,
+  EXPRESSIVE OUT"): as narrow as expressible per call — a literal reserved spelling types as
+  its kind node, a non-reserved literal as `NamedType`, a dynamic string as the honest union,
+  each as tight as TS can prove; the implementation signature may leave its return unannotated
+  (the declared surface carries the narrowing — bare body inference would widen every call to
+  the branch union, so the precision lives in overloads/conditionals, not the impl). The
+  object-parameter overloads narrow the same way via literal property inference. Exact TS
+  mechanics settle in-lane against real tsc feedback.
 - An aggregate address's CONTRACT is the protocol alone (an Iterable / AsyncIterable / Array of
   every registration of the element). Binding is a property of the SYNTHESIZED descriptor-miss
   fallback only: the synthesized `array` materializes at resolution; the synthesized `iterable`
@@ -191,6 +241,17 @@
   once the addOptions body is rewritten to bare `typefor<T>()`. One premise to probe first:
   bare `typefor<T>()` deriving inside a substituted body (its sibling `tokenof<T>()` is
   witnessed working there).
+
+## Closed by the 2026-08-13 collapse order
+
+- SINGULAR IS DEAD (owner: "singular + the lookup thing are all dead"): sugar always asks the
+  container; the isSingular/singularValue/valueof stubs, the Go singular/valueof/fold stages,
+  and the short-circuit e2e all retire. Literal-typed requests are served by the describe door.
+- Non-behavioral dialect calls made under delegation: `asValue`'s stage offers `taggedAs` and
+  completion only; `withLifetime`/`taggedAs` commute.
+- THE COLLAPSE ORDER (standing): branches merge and collapse toward main in whatever order is
+  most natural and supports ASAP parallelism — lanes → feat-di2-core-gaps → #303 → #274 →
+  main, each hop gate-verified.
 
 ## Open — pending the owner
 
