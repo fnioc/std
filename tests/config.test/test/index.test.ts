@@ -6,8 +6,9 @@
 
 import { compareConfigKeys, ConfigBuilder, type ConfigObject, configPath, ConfigProvider, ConfigRoot, ConfigSection,
   type IConfig, type IConfigBuilder, type IConfigProvider, type IConfigRoot, type IConfigSection, type IConfigSource,
-  type IndexedSection, type Infer, type ITryGetResult, MemoryConfigProvider, MemoryConfigSource, type ObjectSchema,
-  OPTIONAL, type OptionalSchema, type Schema, SchemaCoercionError } from '@rhombus-std/config';
+  type IndexedSection, type ITryGetResult, MemoryConfigProvider, MemoryConfigSource,
+  SchemaCoercionError } from '@rhombus-std/config';
+import { Type } from '@rhombus-std/primitives';
 import { describe, expect, test } from 'bun:test';
 
 describe('public entry point', () => {
@@ -20,7 +21,6 @@ describe('public entry point', () => {
     expect(MemoryConfigSource).toBeDefined();
     expect(MemoryConfigProvider).toBeDefined();
     expect(SchemaCoercionError).toBeDefined();
-    expect(typeof OPTIONAL).toBe('symbol');
     expect(configPath).toBeDefined();
     expect(configPath.combine('Server', 'Port')).toBe('Server:Port');
     expect(configPath.getSectionKey('Server:Port')).toBe('Port');
@@ -96,10 +96,11 @@ describe('public entry point', () => {
   });
 
   test('end-to-end: build a typed, coerced config through the public entry point alone', () => {
-    const typed = new ConfigBuilder().addInMemoryCollection({ Host: 'localhost', Port: '8080' }).withSchema({
-      Host: 'string',
-      Port: 'number',
-    }).build();
+    const typed = new ConfigBuilder().addInMemoryCollection({ Host: 'localhost', Port: '8080' })
+      .withSchema<{ Host: string; Port: number; }>(Type.object({
+        Host: Type.named('string', 'global'),
+        Port: Type.named('number', 'global'),
+      })).build();
 
     expect(typed).toEqual({ Host: 'localhost', Port: 8080 });
     // The generic threads through so `Port` is statically a number.
@@ -119,13 +120,6 @@ describe('public entry point', () => {
     type _Try = ITryGetResult<string>;
     type _Deep = ConfigObject;
     type _Indexed = IndexedSection;
-    type _Obj = ObjectSchema;
-    type _Opt = OptionalSchema;
-    // A concrete, non-recursive schema shape -- `Infer<Schema>` (the fully
-    // recursive union `Schema` itself) sends `tsc` into TS2589; this exercises
-    // `Infer` in a type position without that runaway recursion.
-    type _Inferred = Infer<{ a: 'string'; b: { c: 'number'; }; }>;
-    const _schema: Schema = 'string';
-    expect(_schema).toBe('string');
+    expect(configPath.combine('A', 'B')).toBe('A:B');
   });
 });

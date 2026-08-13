@@ -16,6 +16,7 @@ import { join } from 'node:path';
 import { describe, test } from 'node:test';
 
 import { ConfigBuilder } from '@rhombus-std/config';
+import { Type } from '@rhombus-std/primitives';
 // Bare side-effect imports: install addJsonFile / addEnvironmentVariables /
 // addCommandLine onto ConfigBuilder.prototype from each provider's
 // built dist.
@@ -50,9 +51,10 @@ describe('layering: addJsonFile / addEnvironmentVariables / addCommandLine (buil
     assert.equal(config.get('Server:Port'), '7070');
     // Same, seen through a typed section-scoped build (case-insensitive resolution).
     const typed = new ConfigBuilder().addJsonFile(`${FIXTURES}/base.json`).addJsonFile(`${FIXTURES}/overlay.json`)
-      .addEnvironmentVariables({ prefix: 'APP_', env: { APP_SERVER__PORT: '7070' } }).withSchema({
-        Server: { Port: 'number' },
-      }).build();
+      .addEnvironmentVariables({ prefix: 'APP_', env: { APP_SERVER__PORT: '7070' } })
+      .withSchema<{ Server: { Port: number; }; }>(Type.object({
+        Server: Type.object({ Port: Type.named('number', 'global') }),
+      })).build();
     assert.equal(typed.Server.Port, 7070);
 
     assert.equal(config.get('Server:Host'), 'localhost');
