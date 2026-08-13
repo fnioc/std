@@ -45,7 +45,7 @@ class TypeParser {
     const type = this.#type();
     const trailing = this.#peek();
     if (trailing) {
-      throw this.#error(trailing.position, 'the end of the token');
+      throw this.#error(trailing.position, `nothing after the complete type, but '${trailing.text}' follows`);
     }
     return type;
   }
