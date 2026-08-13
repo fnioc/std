@@ -19,8 +19,12 @@ export default tseslint.config({
 }, {
   // Inline-sugar authoring files: the hygiene the generic inline stage relies
   // on (single return expression over compile-time primitives). Rides the
-  // type-aware block's parser settings; the rule itself uses none.
-  files: ['libraries/*/src/inline.ts'],
+  // type-aware block's parser settings; the rule itself uses none. A marker
+  // body lives wherever its declaring package puts it — the rule locates it by
+  // walking that package's own `rhombus-std` inline publish list, not by file
+  // name — so the glob only needs to reach every candidate file; `inline.ts`
+  // and a package's `augmentations/*.ts` are the two shapes in use today.
+  files: ['libraries/*/src/inline.ts', 'libraries/*/src/augmentations/*.ts'],
   plugins: { 'rhombus-inline': rhombusInline },
   rules: { 'rhombus-inline/inline-authoring': 'error' },
 }, {
