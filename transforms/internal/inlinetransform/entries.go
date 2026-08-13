@@ -118,22 +118,30 @@ const extendsKey = "extends"
 // field-by-field with another).
 //
 // A package.json with no "rhombus-std" key at all resolves as though it read
-// exactly {"extends": "./rhombus-std.json"} — the one default. A
-// "rhombus-std" key present with ANY value, including {}, is authoritative on
-// its own; the default file never participates once the key exists.
+// exactly
+//
+//	{"extends": ["./rhombus-std.toml", "./rhombus-std.yml", "./rhombus-std.yaml", "./rhombus-std.json"]}
+//
+// — the one default, each sibling tried in turn under the same blind
+// resolution and later-wins fold as any other "extends" array, so a missing
+// format contributes nothing and JSON, listed last, wins a conflict between
+// whichever siblings exist. A "rhombus-std" key present with ANY value,
+// including {}, is authoritative on its own; the default files never
+// participate once the key exists.
 //
 // Resolution is BLIND: an "extends" path that isn't a readable file
 // contributes nothing, silently, whether the directive was defaulted or
 // explicitly written. A chain may be arbitrarily long; a cycle (a path
 // already in the chain) also contributes nothing rather than looping. A
-// present file with malformed JSON is still a hard error — blindness covers
-// absence, not corruption.
+// present file that fails to parse, or whose content doesn't match
+// schema/rhombus-std.schema.json, is still a hard error — blindness covers
+// absence, not corruption or an invalid shape.
 //
 // This is the one entry point every rhombus-std config reader (the inline
 // publish list, and any future feature block) resolves through.
 //
 // This build has no incremental input-tracking seam: every file this and
-// resolveNode read, including a resolved rhombus-std.json, is re-read fresh
+// resolveNode read, including a resolved rhombus-std config, is re-read fresh
 // on every build rather than registered against a cache key.
 func ResolveConfig(packageDir string) (map[string]any, error) {
 	packageDir = filepath.Clean(packageDir)
@@ -150,11 +158,23 @@ func ResolveConfig(packageDir string) (map[string]any, error) {
 	}
 	var raw map[string]any
 	if pkg.RhombusStd == nil {
-		raw = map[string]any{extendsKey: "./rhombus-std.json"}
+		raw = map[string]any{extendsKey: []any{
+			"./rhombus-std.toml",
+			"./rhombus-std.yml",
+			"./rhombus-std.yaml",
+			"./rhombus-std.json",
+		}}
 	} else if err := json.Unmarshal(pkg.RhombusStd, &raw); err != nil {
 		return nil, fmt.Errorf("INLINE_ENTRY_SHAPE: %s %q must be an object: %w", pkgPath, "rhombus-std", err)
 	}
-	return resolveNode(raw, pkgPath, map[string]bool{pkgPath: true})
+	resolved, err := resolveNode(raw, pkgPath, map[string]bool{pkgPath: true})
+	if err != nil {
+		return nil, err
+	}
+	if err := validateConfigNode(resolved, fmt.Sprintf("%s (fully resolved)", pkgPath)); err != nil {
+		return nil, err
+	}
+	return resolved, nil
 }
 
 // resolveNode resolves node's "extends" (if present) against fromFile's own
@@ -172,6 +192,9 @@ func ResolveConfig(packageDir string) (map[string]any, error) {
 // falsely collide: each path's recursive call starts from the ancestor set
 // at THIS node, never from a sibling's descendants.
 func resolveNode(node map[string]any, fromFile string, visited map[string]bool) (map[string]any, error) {
+	if err := validateConfigNode(node, fromFile); err != nil {
+		return nil, err
+	}
 	local := make(map[string]any, len(node))
 	var paths []string
 	hasExtends := false
@@ -215,9 +238,9 @@ func resolveNode(node map[string]any, fromFile string, visited map[string]bool) 
 		if err != nil {
 			continue
 		}
-		var extended map[string]any
-		if err := json.Unmarshal(data, &extended); err != nil {
-			return nil, fmt.Errorf("INLINE_ENTRY_IMPORT: malformed %s: %w", abs, err)
+		extended, err := parseConfigFile(abs, data)
+		if err != nil {
+			return nil, err
 		}
 
 		nextVisited := make(map[string]bool, len(visited)+1)
