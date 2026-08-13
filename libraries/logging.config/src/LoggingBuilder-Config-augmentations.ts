@@ -59,7 +59,7 @@ export const LoggingBuilderConfigAugmentations: AugmentationSet2<ILoggingBuilder
       // registration produced, so the final value is what the caller reads
       // back through `builder.services`.
       this.services = this.services.addClass(typefor<ILoggerProviderConfigFactory>(), LoggerProviderConfigFactory, [[
-        Type.named('Array', 'global', [typefor<LoggingConfig>()]),
+        Type.array(typefor<LoggingConfig>()),
       ]], 'singleton');
       const hole = Type.placeholder('$1');
       this.services = this.services.addClass(loggerProviderConfigType(hole), LoggerProviderConfig, [[

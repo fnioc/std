@@ -31,7 +31,7 @@ function listener(name: string): IMetricsListener {
  * single one of these registrations — only the one the builder now holds does.
  */
 function registered(builder: { services: Manifest; }, type: Type): unknown[] {
-  const results: unknown[] = builder.services.build().getRequiredService(Type.named('Array', 'global', [type]));
+  const results: unknown[] = builder.services.build().getRequiredService(Type.array(type));
   return results;
 }
 

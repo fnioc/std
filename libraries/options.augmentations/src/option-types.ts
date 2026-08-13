@@ -46,5 +46,5 @@ export function startupValidationTargetType(): Type {
  * request to aggregate every registration of the element.
  */
 export function collectionType(element: Type): Type {
-  return Type.named('Array', 'global', [element]);
+  return Type.array(element);
 }

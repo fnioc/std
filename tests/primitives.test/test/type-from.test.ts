@@ -25,7 +25,7 @@ describe('Type.from', () => {
   });
 
   test('reads nested generics', () => {
-    const nested = Type.named('Box', 'app', [Type.named('Iterable', 'global', [A])]);
+    const nested = Type.named('Box', 'app', [Type.iterable(A)]);
     expect(Type.from('app:Box<Iterable<app:A>>')).toBe(nested);
   });
 

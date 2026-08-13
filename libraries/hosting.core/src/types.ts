@@ -21,5 +21,5 @@ export const HOST_APPLICATION_LIFETIME_TYPE: Type = typefor<IHostApplicationLife
  * registration order (empty array if none).
  */
 export function hostedServiceCollectionType(): Type {
-  return Type.named('Array', 'global', [HOSTED_SERVICE_TYPE]);
+  return Type.array(HOSTED_SERVICE_TYPE);
 }

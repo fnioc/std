@@ -189,9 +189,7 @@ export function resolveHost(services: Manifest, framework: FrameworkServices, co
   serviceProviderOptions?: ServiceProviderOptions): IHost {
   const provider = services.build(serviceProviderOptions ?? ServiceProviderOptions.defaults);
 
-  const loggerProviders: ILoggerProvider[] = provider.getRequiredService(
-    Type.named('Array', 'global', [LOGGER_PROVIDER_TYPE]),
-  );
+  const loggerProviders: ILoggerProvider[] = provider.getRequiredService(Type.array(LOGGER_PROVIDER_TYPE));
   for (const loggerProvider of loggerProviders) {
     framework.loggerFactory.addProvider(loggerProvider);
   }
@@ -202,7 +200,7 @@ export function resolveHost(services: Manifest, framework: FrameworkServices, co
   // the same mutated instance).
   framework.hostOptions.initialize(config);
   const configureSteps: Func<[HostOptions], void>[] = provider.getRequiredService(
-    Type.named('Array', 'global', [HOST_OPTIONS_CONFIGURE_TYPE]),
+    Type.array(HOST_OPTIONS_CONFIGURE_TYPE),
   );
   for (const configureStep of configureSteps) {
     configureStep(framework.hostOptions);

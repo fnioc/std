@@ -41,9 +41,7 @@ test('the facade composes settings config, browser environment, console logging,
   const host = builder.build();
 
   // Logging: the browser console provider is registered.
-  const providers: ILoggerProvider[] = host.services.getRequiredService(
-    Type.named('Array', 'global', [LOGGER_PROVIDER_TYPE]),
-  );
+  const providers: ILoggerProvider[] = host.services.getRequiredService(Type.array(LOGGER_PROVIDER_TYPE));
   expect(providers.some((provider) => {
     return provider instanceof BrowserConsoleLoggerProvider;
   })).toBe(true);

@@ -132,7 +132,7 @@ const spIter = new ServiceProvider(
     .add(ServiceDescriptor.value(A, 'a-val'))
     .add(ServiceDescriptor.value(Type.union(A, B), 'either')),
 );
-const gathered = [...spIter.resolve(Type.named('Iterable', 'global', [Type.union(A, B)]))];
+const gathered = [...spIter.resolve(Type.iterable(Type.union(A, B)))];
 check('iterable collects every matching registration, no union double-count',
   gathered.length === 2 && gathered.includes('a-val') && gathered.includes('either'));
 
@@ -142,19 +142,19 @@ const spIterTuple = new ServiceProvider(
     .add(ServiceDescriptor.value(B, 'b-val'))
     .add(ServiceDescriptor.value(Type.tuple(A, B), 'pre-made')),
 );
-const tuples = [...spIterTuple.resolve(Type.named('Iterable', 'global', [Type.tuple(A, B)]))];
+const tuples = [...spIterTuple.resolve(Type.iterable(Type.tuple(A, B)))];
 check('iterable adds the synthesis result alongside registrations', tuples.length === 2 && tuples.includes('pre-made')
   && tuples.some(t => Array.isArray(t) && t[0] === 'a-val' && t[1] === 'b-val'));
 
 const spIterExact = new ServiceProvider(
   DefaultManifest.empty<string>()
     .add(ServiceDescriptor.value(A, 'a-val'))
-    .add(ServiceDescriptor.value(Type.named('Iterable', 'global', [A]), 'exact-iter')),
+    .add(ServiceDescriptor.value(Type.iterable(A), 'exact-iter')),
 );
 check('exact Iterable registration wins outright, never combined',
-  spIterExact.resolve(Type.named('Iterable', 'global', [A])) === 'exact-iter');
+  spIterExact.resolve(Type.iterable(A)) === 'exact-iter');
 
-const emptyGather = [...sp.resolve(Type.named('Iterable', 'global', [Type.named('Missing', 'app')]))];
+const emptyGather = [...sp.resolve(Type.iterable(Type.named('Missing', 'app')))];
 check('iterable of nothing is an empty sequence', emptyGather.length === 0);
 
 const STR = Type.named('string');
