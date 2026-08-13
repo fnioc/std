@@ -2,7 +2,16 @@ import { type AugmentationSet2, type IServiceProvider, Type } from '@rhombus-std
 import { registerAugmentations } from '@rhombus-std/primitives.extras';
 
 type IServiceProviderServiceAugmentations = {
-  /** @throws Error - when nothing is registered for `serviceType`. */
+  /**
+   * The value registered for `serviceType`, for a caller that treats its absence as a fault
+   * rather than an answer.
+   *
+   * @remarks
+   * Only absence raises. A registration whose value is falsy — `0`, `false`, `''` — is an answer
+   * like any other and comes back untouched.
+   *
+   * @throws Error - when nothing is registered for `serviceType`.
+   */
   getRequiredService(serviceType: Type): any;
 
   /**
@@ -18,7 +27,9 @@ export const ServiceProviderServiceAugmentations: AugmentationSet2<IServiceProvi
   IServiceProviderServiceAugmentations> = {
     getRequiredService(serviceType: Type): any {
       const service = this.getService(serviceType);
-      if (!service) {
+      // `undefined` is what getService answers for a miss and nothing else, so it is the only
+      // reading of absence available here — falsiness would swallow a registered `0` or `''`.
+      if (service === undefined) {
         throw new Error(`nothing is registered for ${Type.stringify(serviceType)}.`);
       }
       return service;
