@@ -520,8 +520,10 @@ One further deviation, because a **transformer** is in play — now a single **G
   not the `Type.*` tree it derives; the engine writes one `__typefor__.js` per project into the
   program's `outDir` (so, the stage dir) holding one const per distinct derived type, composites
   referencing their members by name. `"rhombus-std": { "typefor": { "emit": "hoisted" | "inline" } }`
-  in a package's own package.json picks the form — **`hoisted` is the default**, and it rides the
-  PROJECT because the shared `./ttsc` descriptor is the one-spawn/one-cache-key dedup point.
+  picks the form — **`hoisted` is the default**, and it rides the PROJECT because the shared
+  `./ttsc` descriptor is the one-spawn/one-cache-key dedup point. It is read through
+  `inlinetransform.ResolveConfig`, the one entry point every rhombus-std config reader shares, so
+  the emission may be declared in the package.json marker or in any file that marker `extends`.
 
 Published `dist` is **bundled** (`bun build` for JS, `rollup-plugin-dts` for one rolled `.d.ts`),
 never raw `tsc` output — extensionless bundler-style imports don't resolve under plain Node ESM

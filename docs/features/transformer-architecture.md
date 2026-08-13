@@ -298,7 +298,10 @@ none of them needs a runtime-shaped home.
 
 **Where a `typefor` result is written.** The `Result` column above is the tree the type spells; a
 project chooses where that tree LANDS with
-`"rhombus-std": { "typefor": { "emit": "hoisted" | "inline" } }` in its own package.json.
+`"rhombus-std": { "typefor": { "emit": "hoisted" | "inline" } }`. It is read through the same
+resolution every rhombus-std config reader shares, so it may sit in the package.json marker or in
+any file that marker `extends` — including the `rhombus-std.json` a markerless package.json reaches
+by default.
 
 - **`hoisted`** (the default) collects every derived type into one generated module,
   `__typefor__.js`, written at the program's `outDir` — which for a lowering-enabled package is the

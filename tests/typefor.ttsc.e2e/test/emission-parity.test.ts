@@ -5,22 +5,22 @@ import { homedir } from 'node:os';
 import { basename, join, resolve } from 'node:path';
 
 // Production-path e2e for the two typefor EMISSION modes. It drives the REAL ttsc
-// over three temp projects carrying IDENTICAL source and differing only in what
-// their package.json declares:
-//
-//   hoisted — "rhombus-std": { "typefor": { "emit": "hoisted" } }
-//   inline  — "rhombus-std": { "typefor": { "emit": "inline" } }
-//   default — no marker at all
+// over four temp projects carrying IDENTICAL source and differing only in how
+// they declare their emission (see DECLARATIONS): two that state it in a
+// `rhombus-std.json` a markerless package.json reaches by the default `extends`,
+// one that declares nothing at all, and one whose marker extends a sidecar and
+// contradicts it.
 //
 // HOISTED collects every derived type into one generated module of named consts
 // and leaves a reference at each call site; INLINE spells each `Type.*` factory
 // tree where it was derived. The load-bearing guarantee is that the two describe
 // the SAME types: expanding every const back into its call site reproduces the
-// inline output byte for byte. Alongside it, `default` must equal `hoisted` — the
-// ruling that hoisted is what a project gets without asking.
+// inline output byte for byte. Around it: `default` must equal `hoisted` — the
+// ruling that hoisted is what a project gets without asking — and `override`
+// must too, since a marker's own key wins what it extends.
 //
-// Each project sits at its own directory because the mode rides package.json,
-// and all three share one package NAME: a derived type embeds the name of the
+// Each project sits at its own directory because the emission rides the project,
+// and all four share one package NAME: a derived type embeds the name of the
 // package that declares it, so two differently-named projects could not be
 // compared byte for byte.
 //
@@ -117,7 +117,7 @@ export const clockCtor = typefor<typeof SystemClock>();
 export const clockFactory = typefor<typeof makeClock>();
 `;
 
-type Mode = 'hoisted' | 'inline' | 'default';
+type Mode = 'hoisted' | 'inline' | 'default' | 'override';
 
 /** The project directory a mode's sandbox lives at. */
 function projectDir(mode: Mode): string {
@@ -125,8 +125,29 @@ function projectDir(mode: Mode): string {
 }
 
 /**
- * Lay out one mode's project: the same source and tsconfig every time, and a
- * package.json that differs only in the emission marker.
+ * How each sandbox declares its emission — the `rhombus-std` marker its
+ * package.json carries, and the `rhombus-std.json` beside it.
+ *
+ * A package.json with NO marker resolves as though it read
+ * `{ "extends": "./rhombus-std.json" }`, so `hoisted` and `inline` state their
+ * mode in the sidecar and nothing in package.json. `default` writes no sidecar
+ * for that defaulted directive to find, and takes the engine default. `override`
+ * has both, with the marker extending the sidecar and contradicting it, so its
+ * output pins which one wins.
+ */
+const DECLARATIONS: Record<Mode, { marker?: unknown; sidecar?: unknown; }> = {
+  hoisted: { sidecar: { typefor: { emit: 'hoisted' } } },
+  inline: { sidecar: { typefor: { emit: 'inline' } } },
+  default: {},
+  override: {
+    marker: { extends: './rhombus-std.json', typefor: { emit: 'hoisted' } },
+    sidecar: { typefor: { emit: 'inline' } },
+  },
+};
+
+/**
+ * Lay out one mode's project: the same source and tsconfig every time, and only
+ * the emission declaration differing.
  */
 function setupProject(mode: Mode): void {
   const dir = projectDir(mode);
@@ -135,23 +156,28 @@ function setupProject(mode: Mode): void {
   mkdirSync(join(nm, '@ttsc'), { recursive: true });
   mkdirSync(join(dir, 'src'), { recursive: true });
   rmSync(join(dir, 'dist'), { recursive: true, force: true });
+  rmSync(join(dir, 'rhombus-std.json'), { force: true });
 
   link(TS7, join(nm, 'typescript'));
   link(join(PKG_ROOT, 'node_modules', 'ttsc'), join(nm, 'ttsc'));
   link(UNPLUGIN, join(nm, '@ttsc', 'unplugin'));
   link(PRIMITIVES_EXTRAS, join(nm, '@rhombus-std', 'primitives.extras'));
 
+  const { marker, sidecar } = DECLARATIONS[mode];
   const manifest: Record<string, unknown> = {
-    // One name across all three projects: a derived type embeds the declaring
+    // One name across every project: a derived type embeds the declaring
     // package's name, so differing names would make the outputs incomparable.
     name: 'typefor-emit-app',
     version: '0.0.0',
     dependencies: { '@rhombus-std/primitives.extras': 'workspace:*' },
   };
-  if (mode !== 'default') {
-    manifest['rhombus-std'] = { typefor: { emit: mode } };
+  if (marker !== undefined) {
+    manifest['rhombus-std'] = marker;
   }
   writeFileSync(join(dir, 'package.json'), JSON.stringify(manifest));
+  if (sidecar !== undefined) {
+    writeFileSync(join(dir, 'rhombus-std.json'), JSON.stringify(sidecar));
+  }
   writeFileSync(join(dir, 'src', 'app.ts'), APP_SOURCE);
   writeFileSync(
     join(dir, 'tsconfig.json'),
@@ -234,7 +260,7 @@ beforeAll(() => {
   if (!toolchainReady) {
     return;
   }
-  for (const mode of ['hoisted', 'inline', 'default'] as const) {
+  for (const mode of ['hoisted', 'inline', 'default', 'override'] as const) {
     setupProject(mode);
     lowered.set(mode, lower(mode));
     modules.set(mode, typeModule(mode));
@@ -309,4 +335,17 @@ describe('typefor emission modes', () => {
     expect(modules.get('default')).toBe(modules.get('hoisted'));
     expect(modules.get('default')).not.toBe('');
   });
+
+  test.skipIf(!toolchainReady)('the mode reads through the resolved config, and the marker wins what it extends',
+    () => {
+      // `hoisted` and `inline` state their mode ONLY in rhombus-std.json, reached
+      // through the directive a markerless package.json defaults to — so the two
+      // differing outputs above are themselves the evidence that an extended file
+      // is read at all.
+      expect(lowered.get('inline')).not.toBe(lowered.get('hoisted'));
+      // `override` extends a sidecar asking for inline and declares hoisted over
+      // it: the marker's own key wins the collision.
+      expect(lowered.get('override')).toBe(lowered.get('hoisted'));
+      expect(modules.get('override')).toBe(modules.get('hoisted'));
+    });
 });

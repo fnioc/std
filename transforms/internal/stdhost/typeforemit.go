@@ -1,7 +1,6 @@
 package stdhost
 
 import (
-	"encoding/json"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -10,6 +9,7 @@ import (
 
 	"github.com/samchon/ttsc/packages/ttsc/driver"
 
+	"github.com/fnioc/std/transforms/internal/inlinetransform"
 	"github.com/fnioc/std/transforms/internal/typeforhoist"
 )
 
@@ -25,60 +25,78 @@ const (
 	EmissionInline Emission = "inline"
 )
 
-// markerSection is the `rhombus-std` marker's typefor member:
+// typeforKey is the resolved config's block naming the emission:
 //
 //	{ "rhombus-std": { "typefor": { "emit": "hoisted" } } }
 //
 // The choice rides the PROJECT, never the shared ttsc descriptor — the
 // descriptor is what every consumer dedupes to one spawn and one cache key, so
-// nothing that varies per consumer may live there.
-type markerSection struct {
-	Typefor *struct {
-		Emit string `json:"emit"`
-	} `json:"typefor"`
-}
+// nothing that varies per consumer may live there. Within the project it may
+// come from the package.json marker or from any file that marker extends;
+// resolution flattens the difference away before this reads it.
+const typeforKey = "typefor"
 
-// projectManifest is the minimal package.json view carrying the marker.
-type projectManifest struct {
-	RhombusStd *markerSection `json:"rhombus-std"`
-}
+// emitKey names the emission inside that block.
+const emitKey = "emit"
 
-// emissionFor classifies a project's marker section. A section that is absent,
-// or that names no emission, is the default; an unrecognized value is a hard
-// error rather than a silent fallback, since the two forms are not
-// interchangeable output. declaredIn names the file the section came from, for
-// that error.
-func emissionFor(marker *markerSection, declaredIn string) (Emission, error) {
-	if marker == nil || marker.Typefor == nil || marker.Typefor.Emit == "" {
+// emissionFor classifies the typefor block of a project's RESOLVED rhombus-std
+// config. An absent block, or one naming no emission, is the default; a
+// malformed block and an unrecognized emission are hard errors rather than
+// silent fallbacks, since the two forms are not interchangeable output.
+// packageDir names the project the config resolved for, so an error points at
+// something a reader can open.
+func emissionFor(resolved map[string]any, packageDir string) (Emission, error) {
+	value, present := resolved[typeforKey]
+	if !present {
 		return EmissionHoisted, nil
 	}
-	switch emission := Emission(marker.Typefor.Emit); emission {
+	block, ok := value.(map[string]any)
+	if !ok {
+		return "", fmt.Errorf(
+			`typefor emission: %s resolves "rhombus-std".%s to a %T — it must be an object`,
+			packageDir, typeforKey, value,
+		)
+	}
+	emit, present := block[emitKey]
+	if !present {
+		return EmissionHoisted, nil
+	}
+	name, ok := emit.(string)
+	if !ok {
+		return "", fmt.Errorf(
+			`typefor emission: %s resolves "rhombus-std".%s.%s to a %T — it must be %q or %q`,
+			packageDir, typeforKey, emitKey, emit, EmissionHoisted, EmissionInline,
+		)
+	}
+	switch emission := Emission(name); emission {
 	case EmissionHoisted, EmissionInline:
 		return emission, nil
 	default:
 		return "", fmt.Errorf(
-			`typefor emission: %s declares "rhombus-std".typefor.emit = %q — it must be %q or %q`,
-			declaredIn, marker.Typefor.Emit, EmissionHoisted, EmissionInline,
+			`typefor emission: %s resolves "rhombus-std".%s.%s to %q — it must be %q or %q`,
+			packageDir, typeforKey, emitKey, name, EmissionHoisted, EmissionInline,
 		)
 	}
 }
 
-// readEmission is emissionFor over the marker cwd's package.json declares. A
-// project with no package.json at all takes the default.
+// readEmission is emissionFor over cwd's resolved rhombus-std config — the one
+// entry point every reader of that config shares, so a project may declare the
+// emission in its package.json marker or in a file the marker extends. A
+// project with no package.json at all takes the default, matching what the
+// dependency scan does with the same absence.
 func readEmission(cwd string) (Emission, error) {
 	path := filepath.Join(cwd, "package.json")
-	data, err := os.ReadFile(path)
-	if err != nil {
+	if _, err := os.Stat(path); err != nil {
 		if os.IsNotExist(err) {
 			return EmissionHoisted, nil
 		}
 		return "", fmt.Errorf("typefor emission: cannot read %s: %w", path, err)
 	}
-	var manifest projectManifest
-	if err := json.Unmarshal(data, &manifest); err != nil {
-		return "", fmt.Errorf("typefor emission: malformed %s: %w", path, err)
+	resolved, err := inlinetransform.ResolveConfig(cwd)
+	if err != nil {
+		return "", fmt.Errorf("typefor emission: %w", err)
 	}
-	return emissionFor(manifest.RhombusStd, path)
+	return emissionFor(resolved, cwd)
 }
 
 // emitRoots are the two directories hoisted emission is anchored to: the root of

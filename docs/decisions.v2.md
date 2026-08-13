@@ -1671,10 +1671,12 @@ _Claude-directed 2026-08-13, executing the owner's §144 ruling._
 
 A `typefor<T>()` call site emits a reference to a named const rather than the `Type.*` factory tree
 it derives; the consts live together in one generated module the build materializes at the emit
-root. `"rhombus-std": { "typefor": { "emit": "hoisted" | "inline" } }` in a package's own
-package.json picks the form, defaulting to `hoisted`. The mode rides the PROJECT because the shared
-`./ttsc` descriptor is what every consumer dedupes to one spawn and one cache key — nothing that
-varies per consumer can live there.
+root. `"rhombus-std": { "typefor": { "emit": "hoisted" | "inline" } }` picks the form, defaulting to
+`hoisted`. The mode rides the PROJECT because the shared `./ttsc` descriptor is what every consumer
+dedupes to one spawn and one cache key — nothing that varies per consumer can live there. It is read
+through `ResolveConfig`, the one entry point every rhombus-std config reader shares, so a project may
+declare it in the package.json marker or in any file that marker `extends` — including the
+`rhombus-std.json` a markerless package.json reaches by default.
 
 The table is a DAG: a node interns under its canonical token spelling, children intern before
 parents, and a composite const references its member consts by name, so no subtree is spelled twice
