@@ -205,7 +205,7 @@ const NAMES = [
   '=>arrow',
   '.dot',
 ];
-const FROMS = ['global', 'app', '@rhombus-std/di2.core', 'a:b', 'with space', '', 'pkg-name'];
+const FROMS = ['global', 'app', '@rhombus-std/di.core', 'a:b', 'with space', '', 'pkg-name'];
 const LITERALS = [
   'fast',
   '',

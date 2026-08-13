@@ -6,7 +6,7 @@
 // @rhombus-std/di.core is external for a STRONGER reason than tidiness: inlining
 // it copies di.core's own `declare module "@rhombus-std/di.core"` self-augmentation
 // (the `removeAll`/`tryAdd*`/`replace*` descriptor verbs) into this bundle, and the
-// copy's return types bind to the INLINED `IServiceManifestBase`, not the real one.
+// copy's return types bind to the INLINED `Manifest`, not the real one.
 // A consumer that loads both then sees two forked manifest interfaces: `manifest`
 // carries every cross-package augmentation while `manifest.removeAll(...)`'s result
 // carries none, so `services = services.removeAll(t)` fails to typecheck. Keeping

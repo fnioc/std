@@ -55,7 +55,7 @@ func TestRefusedParameterDoesNotDisarmItsSibling(t *testing.T) {
 	out, _ := run(t, `
 export class Sealed { #a: number = 0; }
 export const AlphaExtensions = {
-  setOptions(self: IAlpha, a: string, b: Sealed): void {},
+  setOptions(a: string, b: Sealed): void {},
 };
 registerAugmentations("t:IAlpha", AlphaExtensions);
 `)
@@ -74,7 +74,7 @@ registerAugmentations("t:IAlpha", AlphaExtensions);
 func TestRestParameterKeepsAGuardOverItsElements(t *testing.T) {
 	out, diags := run(t, divergingInner+`
 export const AlphaExtensions = {
-  setOptions(self: IAlpha, ...o: Map<string, Inner>[]): void {},
+  setOptions(...o: Map<string, Inner>[]): void {},
 };
 registerAugmentations("t:IAlpha", AlphaExtensions);
 `)
@@ -101,7 +101,7 @@ func TestRestParameterOverAFlooredElementStillNarrows(t *testing.T) {
 	out, diags := run(t, `
 export class Sealed { #a: number = 0; }
 export const AlphaExtensions = {
-  setOptions(self: IAlpha, ...o: Sealed[]): void {},
+  setOptions(...o: Sealed[]): void {},
 };
 registerAugmentations("t:IAlpha", AlphaExtensions);
 `)
@@ -169,7 +169,7 @@ func TestObjectKeywordKeepsItsFloor(t *testing.T) {
 func TestObjectKeywordRestParameterNarrowsByItsElements(t *testing.T) {
 	out, diags := run(t, `
 export const AlphaExtensions = {
-  setOptions(self: IAlpha, ...o: object[]): void {},
+  setOptions(...o: object[]): void {},
 };
 registerAugmentations("t:IAlpha", AlphaExtensions);
 `)

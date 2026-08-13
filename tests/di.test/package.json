@@ -2,16 +2,16 @@
   "name": "@rhombus-std/di.test",
   "private": true,
   "version": "0.0.0",
-  "description": "Tests for @rhombus-std/di. Not published.",
+  "description": "Tests for @rhombus-std/di and @rhombus-std/di.core. Not published.",
   "license": "MIT",
   "type": "module",
   "scripts": {
     "test": "bun test",
-    "lint": "eslint ."
+    "lint": "tsc -p tsconfig.json --noEmit"
   },
   "devDependencies": {
     "@rhombus-std/di": "workspace:*",
     "@rhombus-std/di.core": "workspace:*",
-    "@rhombus-toolkit/func": "^3.5.3"
+    "@rhombus-std/primitives": "workspace:*"
   }
 }

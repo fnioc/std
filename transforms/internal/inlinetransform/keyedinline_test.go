@@ -29,9 +29,7 @@ func setupKeyedInlineWorkspace(t *testing.T) (*driver.Program, string) {
   "name": "@scope/core",
   "version": "1.0.0",
   "exports": { ".": { "types": "./src/index.ts", "default": "./src/index.ts" } },
-  "rhombus.inline": {
-    "entries": [ { "type": "@scope/core:IServiceManifestBase", "impl": "ManifestInline", "member": "addClass" } ]
-  }
+  "rhombus-std": { "inline": [ { "type": "@scope/core:IServiceManifestBase", "impl": "@scope/core:ManifestInline", "member": "addClass" } ] }
 }`)
 	write(t, filepath.Join(core, "src", "index.ts"), `export interface IServiceManifestBase {
   addClass(token: string, ctor: unknown, sig: unknown, scope?: string, key?: string): unknown;

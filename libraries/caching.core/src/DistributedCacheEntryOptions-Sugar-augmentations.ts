@@ -15,19 +15,18 @@ declare module '@rhombus-std/caching.core' {
 
 export const DistributedCacheEntryOptionsSugarAugmentations = {
   /** Sets an absolute expiration -- a number of milliseconds from now, or an absolute `Date`. */
-  setAbsoluteExpiration(options: DistributedCacheEntryOptions,
-    expiration: number | Date): DistributedCacheEntryOptions {
+  setAbsoluteExpiration(expiration: number | Date): DistributedCacheEntryOptions {
     if (expiration instanceof Date) {
-      options.absoluteExpiration = expiration;
+      this.absoluteExpiration = expiration;
     } else {
-      options.absoluteExpirationRelativeToNow = expiration;
+      this.absoluteExpirationRelativeToNow = expiration;
     }
-    return options;
+    return this;
   },
 
   /** Sets how long (in milliseconds) the cache entry may be inactive before removal. */
-  setSlidingExpiration(options: DistributedCacheEntryOptions, offsetMs: number): DistributedCacheEntryOptions {
-    options.slidingExpiration = offsetMs;
-    return options;
+  setSlidingExpiration(offsetMs: number): DistributedCacheEntryOptions {
+    this.slidingExpiration = offsetMs;
+    return this;
   },
 } satisfies AugmentationSet<DistributedCacheEntryOptions>;

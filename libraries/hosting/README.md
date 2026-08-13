@@ -65,5 +65,5 @@ For running the same host model inside a web page instead of a process, see [`ho
 ## Notes
 
 - The bundled logging sink is console-only for now; other sinks aren't wired into `configureDefaults` yet.
-- `useServiceProviderFactory` is accepted for call-site compatibility but is a no-op — there's a single container implementation, so there's no alternate factory to swap in. `configureContainer` does run its delegates (against the same `ServiceManifest` the container builds from), for the same reason.
+- `configureContainer` does run its delegates (against the same manifest the container builds from), but there is a single container implementation, so there is no alternate provider factory to swap in.
 - Around `start`/`stop`, the host also runs `IHostedLifecycleService`'s `starting`/`started` (before/after `start`) and `stopping`/`stopped` (before/after `stop`) hooks, and fires the `IHostApplicationLifetime` signals `applicationStarted`, `applicationStopping`, and `applicationStopped` at the corresponding points. Implement the plain `IHostedService`'s bare `start`/`stop` if you don't need the finer-grained hooks.

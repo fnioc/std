@@ -48,23 +48,6 @@ const nameofName = "tokenfor"
 // difference is the ProducedTypeOf unwrap tokenfor applies and tokenof skips.
 const tokenofName = "tokenof"
 
-// keyedTokenforName is the exported identifier the transformer recognizes as
-// keyedtokenfor — the COMPOSED keyed-lookup twin of tokenfor. Where
-// `tokenfor<T>()` derives the bare BASE token (ServiceBaseTokenFor strips a
-// `Keyed<T, K>` brand) so a registration body can compose `base` + a separate
-// `keyof<T>()` key, `keyedtokenfor<T>()` derives the SINGLE composed `base#key`
-// string di.core registers a keyed service under — the exact token the di-direct
-// registration path mints via KeyedTokenFor. It is the token the keyed forms of
-// `isService<T>()` / `resolveAsync<T>()` need: those verbs take one token
-// argument and no key parameter (§98), so a keyed query must arrive already
-// composed. For an UNKEYED T it derives identically to `tokenfor<T>()`
-// (KeyedTokenFor misses, so it falls through to DeriveTokenF, which equals
-// ServiceBaseTokenFor for a non-keyed type), keeping unkeyed lowering
-// byte-identical with no elision. It lowers in THIS stage; the composition is
-// pure token grammar (KeyedTokenFor || DeriveTokenF), the same two-way choice
-// di-direct's tokenForReg makes.
-const keyedTokenforName = "keyedtokenfor"
-
 // valueArgUnderivableCode is the diagnostic a value-argument token derivation
 // raises when the argument's type yields no derivable token (an anonymous /
 // unnameable type) — a lowering failure the stage reports rather than emitting a
@@ -72,11 +55,10 @@ const keyedTokenforName = "keyedtokenfor"
 const valueArgUnderivableCode = "VALUE_ARG_TOKEN_UNDERIVABLE"
 
 // typeArgUnderivableCode is the diagnostic a TYPE-argument token derivation raises
-// when the type argument yields no derivable token (an anonymous / structural type,
-// or a function type that must instead be resolved as a factory) — a lowering
-// failure the stage reports rather than emitting a silent empty token (the
-// failure-semantics unification, §94/Open issue 4). It leaves the call un-lowered,
-// so the emit sweep also backstops it.
+// when the type argument yields no derivable token (an anonymous / structural
+// type) — a lowering failure the stage reports rather than emitting a silent
+// empty token. It leaves the call un-lowered, so the emit sweep also backstops
+// it.
 const typeArgUnderivableCode = "TYPE_ARG_TOKEN_UNDERIVABLE"
 
 // composedUnlowerableCode is the diagnostic a COMPOSED-generic token derivation
@@ -146,22 +128,6 @@ func New(prog *driver.Program, ctx *tokens.Context, artifacts *inlinetransform.A
 				// inner leaf does, keeping the wrapper/element pair relationally locked.
 				if use, ok := registeredTokenofType(artifacts, node); ok {
 					token, derived := tokens.DeriveTokenF(ctx, use.TypeArgs[0], nil)
-					return lowerTypeArgToken(ec, emit, node, token, derived, false)
-				}
-				// TYPE-argument keyedtokenfor<T>() — COMPOSED keyed lookup token,
-				// source-written. Derives the single `base#key` string a keyed service
-				// registers under (KeyedTokenFor), falling through to the plain base for
-				// an unkeyed T (DeriveTokenF) so it is byte-identical to tokenfor<T>()
-				// there. It is the token the keyed `isService` / `resolveAsync` bodies
-				// need, since those verbs take one token and no key parameter (§98).
-				if t, ok := typeArgCall(checker, parseAnchor, node, keyedTokenforName); ok {
-					token, derived := keyedOrRawTokenFor(ctx, t)
-					return lowerTypeArgToken(ec, emit, node, token, derived, true)
-				}
-				// TYPE-argument keyedtokenfor<T>() — COMPOSED keyed lookup token,
-				// synthetic (inline-substituted). The synthetic twin of the branch above.
-				if use, ok := registeredKeyedTokenforType(artifacts, node); ok {
-					token, derived := keyedOrRawTokenFor(ctx, use.TypeArgs[0])
 					return lowerTypeArgToken(ec, emit, node, token, derived, false)
 				}
 				// TYPE-argument tokenfor<Wrapper<T>>() — COMPOSED generic, synthetic
@@ -250,34 +216,6 @@ func registeredTokenofType(artifacts *inlinetransform.Artifacts, node *shimast.N
 		return inlinetransform.PrimitiveUse{}, false
 	}
 	return use, true
-}
-
-// registeredKeyedTokenforType reports whether node is a synthetic `keyedtokenfor`
-// call the inline stage registered with a resolved TYPE argument
-// (`keyedtokenfor<T>()`). It is the composed-keyed twin of registeredTokenofType,
-// disjoint from every other type-arg primitive by callee symbol.
-func registeredKeyedTokenforType(artifacts *inlinetransform.Artifacts, node *shimast.Node) (inlinetransform.PrimitiveUse, bool) {
-	if artifacts == nil {
-		return inlinetransform.PrimitiveUse{}, false
-	}
-	use, ok := artifacts.PrimitiveCalls[node]
-	if !ok || use.Name != keyedTokenforName || len(use.TypeArgs) == 0 {
-		return inlinetransform.PrimitiveUse{}, false
-	}
-	return use, true
-}
-
-// keyedOrRawTokenFor derives the COMPOSED keyed lookup token for a service type —
-// `base#key` when T carries the `Keyed<T, K>` brand, else the plain base token. It
-// is the same two-way choice di-direct's tokenForReg makes (KeyedTokenFor first,
-// DeriveTokenF as the fallthrough), so a keyedtokenfor<T>() and a di-direct keyed
-// registration mint the same token. For an unkeyed T it equals ServiceBaseTokenFor
-// (tokenfor<T>()), keeping unkeyed isService/resolveAsync byte-identical.
-func keyedOrRawTokenFor(ctx *tokens.Context, t *shimchecker.Type) (string, bool) {
-	if token, ok := tokens.KeyedTokenFor(ctx, t); ok {
-		return token, true
-	}
-	return tokens.DeriveTokenF(ctx, t, nil)
 }
 
 // composedBase memoizes one base-symbol resolution: the symbol (nil when the
@@ -375,18 +313,14 @@ func registeredValueArg(artifacts *inlinetransform.Artifacts, node *shimast.Node
 // lowerTypeArgToken returns the string-literal replacement for a TYPE-argument
 // token primitive when its derivation succeeded (derived), else leaves the ORIGINAL
 // call UN-LOWERED — never the silent empty token `""` a downstream reader could
-// mistake for a real token (§94/Open issue 4 failure-semantics unification).
+// mistake for a real token.
 //
 // Why un-lowered rather than an immediate diagnostic for the SYNTHETIC
-// (inline-substituted) case: a substituted call may sit in a DEAD ternary branch
-// the fold has not pruned yet (the resolve body's `… : this.resolve(tokenfor<T>())`
-// when T is singular, so the token arm is dead). Emitting during the loop would make
-// the failure ORDER-DEPENDENT — it fires only if the token stage runs before the
-// fold — which the loop forbids. So a synthetic underivable token is left in place,
-// silently, for the fold to prune (dead branch) or the emit SWEEP to flag once, AFTER
-// the loop settles (a surviving live one). A SOURCE-WRITTEN call is real user code
-// that never sits in a fold-pruned branch and runs even when the inline sweep is
-// inactive, so it emits the targeted diagnostic here.
+// (inline-substituted) case: a mid-loop diagnostic would tie failure reporting to
+// stage order within a pass, and the emit SWEEP already flags every surviving
+// primitive exactly once after the loop settles. A SOURCE-WRITTEN call is real user
+// code that runs even when the inline sweep is inactive, so it emits the targeted
+// diagnostic here.
 func lowerTypeArgToken(ec *shimprinter.EmitContext, emit func(plugin.Diagnostic), node *shimast.Node, token string, derived, sourceWritten bool) *shimast.Node {
 	if !derived {
 		if sourceWritten {
@@ -512,10 +446,10 @@ func elideNameofImport(factory *shimast.NodeFactory, statement *shimast.Node) *s
 }
 
 // isLoweredPrimitiveName reports whether name is a token primitive THIS stage
-// lowers to an inline literal (`tokenfor` / `tokenof` / `keyedtokenfor`), leaving
-// its import unreferenced and elidable.
+// lowers to an inline literal (`tokenfor` / `tokenof`), leaving its import
+// unreferenced and elidable.
 func isLoweredPrimitiveName(name string) bool {
-	return name == nameofName || name == tokenofName || name == keyedTokenforName
+	return name == nameofName || name == tokenofName
 }
 
 // exportedName is a named import specifier's exported name — its property name
@@ -529,10 +463,10 @@ func exportedName(element *shimast.Node) string {
 }
 
 // typeArgCall reports whether node is a source-written single-TYPE-argument call
-// to the primitive named primName — `tokenfor<T>()`, `tokenof<T>()` or
-// `keyedtokenfor<T>()` — and returns the type argument's checker type. The three
-// are disjoint by callee symbol, so a call matches at most one primName; and they
-// are disjoint from the value-argument forms by type-argument count.
+// to the primitive named primName — `tokenfor<T>()` or `tokenof<T>()` — and
+// returns the type argument's checker type. The two are disjoint by callee
+// symbol, so a call matches at most one primName; and they are disjoint from the
+// value-argument forms by type-argument count.
 //
 // EVERYTHING IT HANDS THE CHECKER COMES OFF THE PARSE NODE. parseAnchor resolves
 // the call back to the pristine node the binder saw, and the callee and the type

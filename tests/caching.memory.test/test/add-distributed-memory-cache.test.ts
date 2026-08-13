@@ -3,14 +3,16 @@
 // the registry-installed method form (docs §38), and the resolved singleton's
 // end-to-end behavior.
 
-import { DISTRIBUTED_CACHE_TOKEN, MemoryDistributedCache, MemoryDistributedCacheOptions,
+import { DISTRIBUTED_CACHE_TYPE, MemoryDistributedCache, MemoryDistributedCacheOptions,
   ServiceManifestMemoryCacheAugmentations } from '@rhombus-std/caching.memory';
-import { type IServiceManifest, ServiceManifest, ServiceManifestClass } from '@rhombus-std/di';
+// Side-effect: installs `build` onto di.core's Manifest.
+import '@rhombus-std/di';
+import { DefaultManifest, type Manifest } from '@rhombus-std/di.core';
 import { describe, expect, test } from 'bun:test';
 
 describe('addDistributedMemoryCache', () => {
   test('method form registers a resolvable IDistributedCache singleton', async () => {
-    const services = new ServiceManifest<'singleton'>();
+    const services = new DefaultManifest<'singleton'>();
     const registered = services.addDistributedMemoryCache();
 
     // Immutable chain: the verb hands back a NEW manifest carrying the
@@ -20,10 +22,11 @@ describe('addDistributedMemoryCache', () => {
     expect([...services]).toHaveLength(0);
 
     const scope = registered.build().createScope('singleton');
-    const cache = scope.resolve<MemoryDistributedCache>(DISTRIBUTED_CACHE_TOKEN);
+    const cache: MemoryDistributedCache = scope.getRequiredService(DISTRIBUTED_CACHE_TYPE);
     expect(cache).toBeInstanceOf(MemoryDistributedCache);
     // Singleton: the same instance on every resolve.
-    expect(scope.resolve<MemoryDistributedCache>(DISTRIBUTED_CACHE_TOKEN)).toBe(cache);
+    const cacheAgain: MemoryDistributedCache = scope.getRequiredService(DISTRIBUTED_CACHE_TYPE);
+    expect(cacheAgain).toBe(cache);
 
     // The resolved cache actually works.
     await cache.setString('key', 'value');
@@ -32,15 +35,14 @@ describe('addDistributedMemoryCache', () => {
 
   test('standalone member form matches, and setup joins the options pipeline lazily', () => {
     // The standalone member's receiver is the concrete, scope-generic
-    // ServiceManifestClass<string> (the public `ServiceManifest` value IS that
-    // class, but its constructor types instances as the base interface).
-    const services = new ServiceManifestClass<string>();
+    // DefaultManifest<string>.
+    const services = new DefaultManifest<string>();
     let seen: MemoryDistributedCacheOptions | undefined;
 
     // Annotated: an AugmentationSet2-typed member's return widens to `any`, and a
     // resolve off `any` cannot take an explicit type argument.
-    const returned: IServiceManifest<string> = ServiceManifestMemoryCacheAugmentations
-      .addDistributedMemoryCache(services, (options) => {
+    const returned: Manifest<string> = ServiceManifestMemoryCacheAugmentations
+      .addDistributedMemoryCache.call(services, (options) => {
         seen = options;
       });
 
@@ -50,7 +52,8 @@ describe('addDistributedMemoryCache', () => {
     // configure step runs when the options resolve, not at registration.
     expect(seen).toBeUndefined();
 
-    const cache = returned.build().createScope('singleton').resolve<MemoryDistributedCache>(DISTRIBUTED_CACHE_TOKEN);
+    const cache: MemoryDistributedCache = returned.build().createScope('singleton')
+      .getRequiredService(DISTRIBUTED_CACHE_TYPE);
     expect(cache).toBeInstanceOf(MemoryDistributedCache);
     expect(seen).toBeInstanceOf(MemoryDistributedCacheOptions);
   });

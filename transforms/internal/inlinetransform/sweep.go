@@ -8,10 +8,6 @@ import (
 	"github.com/fnioc/std/transforms/internal/plugin"
 )
 
-// singularValuePrimitive is the primitive name whose survival past the fold gets a
-// targeted diagnostic (§94) rather than the generic unlowered-primitive one.
-const singularValuePrimitive = "singularValue"
-
 // schemaofPrimitive is the config-schema primitive whose OWN stage reports its
 // lowering failures (the targeted 992001/992002) and leaves the call un-lowered.
 // A surviving `schemaof<T>()` is therefore already accompanied by that precise
@@ -45,18 +41,6 @@ func Sweep(sf *shimast.SourceFile, artifacts *Artifacts) []plugin.Diagnostic {
 		// (1) surviving primitive: a nameof call with type args, or a node still
 		// carrying a registered PrimitiveUse.
 		if use, registered := artifacts.PrimitiveCalls[n]; registered {
-			// A surviving `singularValue<T>()` is a TARGETED failure, not the generic
-			// one: the singular stage leaves it un-lowered when T is not singular, and
-			// the fold prunes it away in every GUARDED position
-			// (`isSingular<T>() ? singularValue<T>() : …`), so one that reaches here is
-			// unguarded over a non-singular type — name that specifically (§94) rather
-			// than the opaque "primitive survived" message. This is failure reporting
-			// keyed on the primitive NAME (data), not context-sensitive matching.
-			if use.Name == singularValuePrimitive {
-				diags = append(diags, sweepDiag("SINGULAR_VALUE_NON_SINGULAR", n,
-					"singularValue<T>() resolved a non-singular type — it is only valid in the true arm of an isSingular<T>() guard, over a type with exactly one value (a literal, null, undefined, or void)"))
-				return false
-			}
 			// A surviving `schemaof<T>()` is an un-lowerable schema (unsupported field
 			// type / non-object root); its own stage already reported the targeted
 			// 992001/992002 and left the call in place. Defer to that — don't add the
@@ -92,12 +76,20 @@ func Sweep(sf *shimast.SourceFile, artifacts *Artifacts) []plugin.Diagnostic {
 		}
 
 		// (3) surviving free-function sugar: an identifier call to a certified
-		// function while its import binding still exists in the file.
+		// function while the file still imports that name FROM THE DECLARING PACKAGE.
+		// The module is what identifies the sugar — a same-named function imported
+		// from anywhere else is a different function, and a call importing the name
+		// from the entry's declared forwarding target (`from`) is the runtime
+		// target itself, never sugar residue.
 		if call.Expression.Kind == shimast.KindIdentifier {
 			name := call.Expression.Text()
-			if _, ok := artifacts.SugarFunctions[name]; ok && imports[name] {
-				diags = append(diags, sweepDiag("INLINE_UNLOWERED_SUGAR", n,
-					fmt.Sprintf("free-function sugar %q survived lowering", name)))
+			pkg := imports[name]
+			for _, fn := range artifacts.FunctionSugars {
+				if fn.Member == name && pkg == fn.Module {
+					diags = append(diags, sweepDiag("INLINE_UNLOWERED_SUGAR", n,
+						fmt.Sprintf("free-function sugar %q survived lowering", name)))
+					break
+				}
 			}
 		}
 		return false
@@ -118,14 +110,21 @@ func callArity(call *shimast.CallExpression) (int, int) {
 	return typeArgs, valueArgs
 }
 
-// importedNames collects the local names a file's top-level imports still bind.
-func importedNames(sf *shimast.SourceFile) map[string]bool {
-	out := map[string]bool{}
+// importedNames maps each local name a file's top-level imports still bind to the
+// module specifier it was bound from, so a name can be matched against the package
+// that declares it rather than on spelling alone.
+func importedNames(sf *shimast.SourceFile) map[string]string {
+	out := map[string]string{}
 	for _, stmt := range sf.Statements.Nodes {
 		if stmt.Kind != shimast.KindImportDeclaration {
 			continue
 		}
-		clause := stmt.AsImportDeclaration().ImportClause
+		decl := stmt.AsImportDeclaration()
+		spec := decl.ModuleSpecifier
+		if spec == nil || spec.Kind != shimast.KindStringLiteral {
+			continue
+		}
+		clause := decl.ImportClause
 		if clause == nil {
 			continue
 		}
@@ -134,7 +133,7 @@ func importedNames(sf *shimast.SourceFile) map[string]bool {
 			continue
 		}
 		for _, el := range bindings.AsNamedImports().Elements.Nodes {
-			out[el.Name().Text()] = true
+			out[el.Name().Text()] = spec.Text()
 		}
 	}
 	return out

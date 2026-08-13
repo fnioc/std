@@ -10,7 +10,9 @@
 // template), so nothing touches configuration until `IOptions<T>` materializes.
 
 import { ConfigBuilder, type IConfigRoot } from '@rhombus-std/config';
-import { ServiceManifest } from '@rhombus-std/di';
+// Side-effect: installs `build` onto di.core's Manifest.
+import '@rhombus-std/di';
+import { DefaultManifest, type Manifest, Type } from '@rhombus-std/di.core';
 import { LoggingBuilder } from '@rhombus-std/logging';
 import { LoggerProviderOptions } from '@rhombus-std/logging.config';
 import type { IOptions } from '@rhombus-std/options';
@@ -34,15 +36,15 @@ describe('LoggerProviderOptions.registerProviderOptions', () => {
     const config = rootWith({ 'FakeProvider:Format': 'json', 'FakeProvider:MaxDepth': '3',
       'OtherProvider:Format': 'xml' });
 
-    let services = new ServiceManifest<'singleton'>();
+    let services: Manifest<'singleton'> = new DefaultManifest<'singleton'>();
     const logging = new LoggingBuilder(services);
     logging.addConfig(config);
     services = logging.services;
-    services = services.addOptions<FakeProviderOptions>(OPTIONS_TOKEN, () => ({ Format: 'text' })).as('singleton');
+    services = services.addOptions<FakeProviderOptions>(OPTIONS_TOKEN, () => ({ Format: 'text' }));
     services = LoggerProviderOptions.registerProviderOptions(services, OPTIONS_TOKEN, FAKE_PROVIDER_TOKEN);
 
     const provider = services.build().createScope('singleton');
-    const options = provider.resolve<IOptions<FakeProviderOptions>>(OPTIONS_TOKEN);
+    const options: IOptions<FakeProviderOptions> = provider.getRequiredService(Type.from(OPTIONS_TOKEN));
 
     // Only FakeProvider's section binds; the configure step deep-merges onto
     // the makeBase value.
@@ -52,15 +54,15 @@ describe('LoggerProviderOptions.registerProviderOptions', () => {
   test('a reload re-binds and notifies subscribers (the change-token source)', () => {
     const config = rootWith({ 'FakeProvider:Format': 'json' });
 
-    let services = new ServiceManifest<'singleton'>();
+    let services: Manifest<'singleton'> = new DefaultManifest<'singleton'>();
     const logging = new LoggingBuilder(services);
     logging.addConfig(config);
     services = logging.services;
-    services = services.addOptions<FakeProviderOptions>(OPTIONS_TOKEN, () => ({ Format: 'text' })).as('singleton');
+    services = services.addOptions<FakeProviderOptions>(OPTIONS_TOKEN, () => ({ Format: 'text' }));
     services = LoggerProviderOptions.registerProviderOptions(services, OPTIONS_TOKEN, FAKE_PROVIDER_TOKEN);
 
     const provider = services.build().createScope('singleton');
-    const options = provider.resolve<IOptions<FakeProviderOptions>>(OPTIONS_TOKEN);
+    const options: IOptions<FakeProviderOptions> = provider.getRequiredService(Type.from(OPTIONS_TOKEN));
     expect(options.value.Format).toBe('json');
 
     const seen: FakeProviderOptions[] = [];
@@ -78,11 +80,11 @@ describe('LoggerProviderOptions.registerProviderOptions', () => {
   test("composes with a consumer's own configure step for the same token", () => {
     const config = rootWith({ 'FakeProvider:Format': 'json' });
 
-    let services = new ServiceManifest<'singleton'>();
+    let services: Manifest<'singleton'> = new DefaultManifest<'singleton'>();
     const logging = new LoggingBuilder(services);
     logging.addConfig(config);
     services = logging.services;
-    services = services.addOptions<FakeProviderOptions>(OPTIONS_TOKEN, () => ({ Format: 'text' })).as('singleton');
+    services = services.addOptions<FakeProviderOptions>(OPTIONS_TOKEN, () => ({ Format: 'text' }));
     services = LoggerProviderOptions.registerProviderOptions(services, OPTIONS_TOKEN, FAKE_PROVIDER_TOKEN);
     // The reference's services.Configure<TOptions>(delegate) analog: one more
     // configure source in the SAME pipeline, running after the provider bind.
@@ -91,7 +93,7 @@ describe('LoggerProviderOptions.registerProviderOptions', () => {
     });
 
     const provider = services.build().createScope('singleton');
-    const options = provider.resolve<IOptions<FakeProviderOptions>>(OPTIONS_TOKEN);
+    const options: IOptions<FakeProviderOptions> = provider.getRequiredService(Type.from(OPTIONS_TOKEN));
 
     expect(options.value).toEqual({ Format: 'json', MaxDepth: '9' });
   });

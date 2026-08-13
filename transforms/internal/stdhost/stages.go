@@ -3,8 +3,6 @@ package stdhost
 import (
 	"github.com/samchon/ttsc/packages/ttsc/driver"
 
-	"github.com/fnioc/std/transforms/internal/factorytransform"
-	"github.com/fnioc/std/transforms/internal/foldtransform"
 	"github.com/fnioc/std/transforms/internal/inlinetransform"
 	"github.com/fnioc/std/transforms/internal/keyoftransform"
 	"github.com/fnioc/std/transforms/internal/mergesynthtransform"
@@ -13,9 +11,8 @@ import (
 	"github.com/fnioc/std/transforms/internal/schemaoftransform"
 	"github.com/fnioc/std/transforms/internal/signatures"
 	"github.com/fnioc/std/transforms/internal/signaturetransform"
-	"github.com/fnioc/std/transforms/internal/singulartransform"
 	"github.com/fnioc/std/transforms/internal/tokens"
-	"github.com/fnioc/std/transforms/internal/valueoftransform"
+	"github.com/fnioc/std/transforms/internal/typefortransform"
 )
 
 // stagePrefix namespaces each stage's internal name (e.g. "rhombusstd_nameof").
@@ -39,17 +36,16 @@ const stagePrefix = "rhombusstd_"
 // call — it runs before nameof so nameof still lowers the call's token argument,
 // and later stages leave the synthesized object untouched), then nameof (its
 // token lowering and import elision, including the inline stage's synthetic
-// nameof calls), then signatureof (the dependency-signature array lowering — the
-// value-argument `signatureof(ctor)` AND its type-argument minting siblings
-// `signaturefor<T>()` / `signaturesfor<T>()`, including the inline stage's
-// synthetic calls), then keyof (the keyed-registration KEY lowering, including
-// the inline stage's synthetic keyof calls), then valueof (the literal-value
-// lowering of `valueof<Scope>()` — the `.as<Scope>()` sugar's scope half), then
-// singular / factory (the resolve-family predicate + value primitives), then fold
-// (dead-branch pruning of the boolean-literal ternaries singular/factory produce),
-// then schemaof (the config `.withType<T>()` sugar's schema-literal lowering). All
-// stages own DISJOINT match sets, so correctness never depends on this order — it
-// is fixed only for reproducible output.
+// nameof calls), then typefor (the structured `Type.*` lowering of
+// `typefor<T>()` / `typefor(value)` — the runtime-`Type` sibling of nameof's flat
+// string token, disjoint from it by callee), then signatureof (the
+// dependency-signature array lowering — the value-argument `signatureof(ctor)`
+// AND its type-argument minting siblings `signaturefor<T>()` /
+// `signaturesfor<T>()`, including the inline stage's synthetic calls), then keyof
+// (the keyed-registration KEY lowering, including the inline stage's synthetic
+// keyof calls), then schemaof (the config `.withType<T>()` sugar's
+// schema-literal lowering). All stages own DISJOINT match sets, so correctness
+// never depends on this order — it is fixed only for reproducible output.
 //
 // Returned as a fresh slice each call so a caller can reorder or extend it
 // without mutating shared state.
@@ -58,12 +54,9 @@ func BaseStages() []Stage {
 		{Name: stagePrefix + "inline", Build: buildInline},
 		{Name: stagePrefix + "mergesynth", Build: buildMergesynth},
 		{Name: stagePrefix + "nameof", Build: buildNameof},
+		{Name: stagePrefix + "typefor", Build: buildTypefor},
 		{Name: stagePrefix + "signatureof", Build: buildSignatureof},
 		{Name: stagePrefix + "keyof", Build: buildKeyof},
-		{Name: stagePrefix + "valueof", Build: buildValueof},
-		{Name: stagePrefix + "singular", Build: buildSingular},
-		{Name: stagePrefix + "factory", Build: buildFactory},
-		{Name: stagePrefix + "fold", Build: buildFold},
 		{Name: stagePrefix + "schemaof", Build: buildSchemaof},
 	}
 }
@@ -110,6 +103,18 @@ func buildNameof(prog *driver.Program, ctx *tokens.Context, env *Env, emit Sink)
 	})
 }
 
+// buildTypefor activates the typefor primitive stage. It lowers each
+// `typefor<T>()` / `typefor(value)` to the `Type.*` factory tree its argument
+// derives, folding an immediate known-accessor property access (`.instanceType`,
+// `.returnType`, `.args`, `.value`, `.tag`, `.type`, `.kind`) through to the
+// surviving sub-tree. It raises no diagnostics of its own; any it did raise
+// would be hard errors.
+func buildTypefor(prog *driver.Program, ctx *tokens.Context, env *Env, emit Sink) plugin.FileTransform {
+	return typefortransform.New(prog, ctx, env.Artifacts, func(d plugin.Diagnostic) {
+		emit(DiagFromPlugin(d))
+	})
+}
+
 // buildSignatureof activates the signatureof primitive stage. It drives the
 // shared signatures extraction engine, so it is category-aware: a §4.5 advisory
 // Warning is reported without failing emit (only hard errors gate the build),
@@ -126,55 +131,6 @@ func buildSignatureof(prog *driver.Program, ctx *tokens.Context, env *Env, emit 
 // diagnostics of its own; any it did raise would be hard errors.
 func buildKeyof(prog *driver.Program, ctx *tokens.Context, env *Env, emit Sink) plugin.FileTransform {
 	return keyoftransform.New(prog, ctx, env.Artifacts, func(d plugin.Diagnostic) {
-		emit(DiagFromPlugin(d))
-	})
-}
-
-// buildValueof activates the valueof primitive stage. It lowers each
-// `valueof<Scope>()` — the inline stage's synthetic `.as<Scope>()` scope call and
-// any source-written one — to the scope's literal value expression. It raises no
-// diagnostics of its own; any it did raise would be hard errors.
-func buildValueof(prog *driver.Program, ctx *tokens.Context, env *Env, emit Sink) plugin.FileTransform {
-	return valueoftransform.New(prog, ctx, env.Artifacts, func(d plugin.Diagnostic) {
-		emit(DiagFromPlugin(d))
-	})
-}
-
-// buildSingular activates the resolve-family SINGULAR predicate/value primitive
-// stage (§94). It lowers each `isSingular<T>()` — the inline resolve body's
-// compile-time singular-type test — to a boolean literal, and each
-// `singularValue<T>()` over a singular T to that type's value literal (leaving a
-// non-singular one un-lowered for the fold to prune or the sweep to flag). It runs
-// after the token/keyof/valueof primitives and before the fold, whose
-// boolean-ternary pruning consumes the `isSingular` literals it produces. It
-// raises no diagnostics of its own.
-func buildSingular(prog *driver.Program, ctx *tokens.Context, env *Env, emit Sink) plugin.FileTransform {
-	return singulartransform.New(prog, ctx, env.Artifacts, func(d plugin.Diagnostic) {
-		emit(DiagFromPlugin(d))
-	})
-}
-
-// buildFold activates the generic constant-fold / dead-branch-prune stage. It is
-// a domain-agnostic AST simplification: a conditional (ternary) expression whose
-// condition is a boolean literal folds to the taken branch (`true ? A : B` -> A,
-// `false ? A : B` -> B), so a dead branch's primitives are removed before the emit
-// sweep sees them. It runs after the singular stage produces the boolean-literal
-// conditions the resolve sugar branches on. It raises no diagnostics of its own.
-func buildFold(prog *driver.Program, _ *tokens.Context, _ *Env, emit Sink) plugin.FileTransform {
-	return foldtransform.New(prog, func(d plugin.Diagnostic) {
-		emit(DiagFromPlugin(d))
-	})
-}
-
-// buildFactory activates the resolve-family FACTORY primitives stage (§94, factory
-// form). It lowers `isFactory<T>()` to a boolean literal, `returntokenfor<T>()` to
-// the factory return type's token, and `paramtokensfor<T>()` to the parameter-token
-// array (elided as a trailing `resolveFactory` argument for a no-arg factory). It
-// runs after singular and before the fold, so the `isFactory` boolean it produces
-// is available to the fold's dead-branch pruning. A factory parameter whose type
-// yields no token raises a targeted diagnostic.
-func buildFactory(prog *driver.Program, ctx *tokens.Context, env *Env, emit Sink) plugin.FileTransform {
-	return factorytransform.New(prog, ctx, env.Artifacts, func(d plugin.Diagnostic) {
 		emit(DiagFromPlugin(d))
 	})
 }

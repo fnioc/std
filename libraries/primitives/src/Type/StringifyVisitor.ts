@@ -18,7 +18,7 @@ const Precedence = {
 } as const;
 type Precedence = typeof Precedence[keyof typeof Precedence];
 
-/** Renders a {@link Type} as its source-level spelling — `@rhombus-std/di2.core:Foo<string | [number, pkg:something]>`. */
+/** Renders a {@link Type} as its source-level spelling — `@rhombus-std/di.core:Foo<string | [number, pkg:something]>`. */
 class StringifyVisitor extends TypeVisitor<string, Precedence> {
   protected override visitCtor(type: CtorType, minimum: Precedence): string {
     return this.#parenthesize(

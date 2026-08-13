@@ -2,8 +2,8 @@
 // surface (the barrel), plus @rhombus-std/logging's LoggingBuilder for the
 // registry-installed method forms.
 
-import type { IServiceManifest, Token } from '@rhombus-std/di.core';
-import { LOGGER_PROVIDER_TOKEN, LoggingBuilder } from '@rhombus-std/logging';
+import type { Manifest, Token } from '@rhombus-std/di.core';
+import { LOGGER_PROVIDER_TYPE, LoggingBuilder } from '@rhombus-std/logging';
 import { ConsoleFormatter, ConsoleFormatterNames, ConsoleLoggerAugmentations, ConsoleLoggerOptions,
   ConsoleLoggerProvider, ConsoleLoggerQueueFullMode, type LogEntry, StringWriter,
   type TextWriter } from '@rhombus-std/logging.console';
@@ -12,15 +12,15 @@ import { Options } from '@rhombus-std/options';
 import { expect, test } from 'bun:test';
 
 /** A recording stand-in for the di.core registration builder. */
-function fakeServices(): { services: IServiceManifest; values: Array<[Token, unknown]>; } {
+function fakeServices(): { services: Manifest; values: Array<[Token, unknown]>; } {
   const values: Array<[Token, unknown]> = [];
   const services = { addValue(token: Token, value: unknown): void {
     values.push([token, value]);
-  } } as unknown as IServiceManifest;
+  } } as unknown as Manifest;
   return { services, values };
 }
 
-function builderOver(services: IServiceManifest): ILoggingBuilder {
+function builderOver(services: Manifest): ILoggingBuilder {
   return new LoggingBuilder(services);
 }
 
@@ -151,13 +151,13 @@ test('addConsole registers exactly one provider per manifest', () => {
   const { services, values } = fakeServices();
   const builder = builderOver(services);
 
-  ConsoleLoggerAugmentations.addConsole(builder);
-  ConsoleLoggerAugmentations.addConsole(builder, (options) => {
+  ConsoleLoggerAugmentations.addConsole.call(builder);
+  ConsoleLoggerAugmentations.addConsole.call(builder, (options) => {
     options.maxQueueLength = 7;
   });
-  ConsoleLoggerAugmentations.addSimpleConsole(builder);
+  ConsoleLoggerAugmentations.addSimpleConsole.call(builder);
 
-  const providers = values.filter(([token]) => token === LOGGER_PROVIDER_TOKEN);
+  const providers = values.filter(([token]) => token === LOGGER_PROVIDER_TYPE);
   expect(providers).toHaveLength(1);
   expect(providers[0]?.[1]).toBeInstanceOf(ConsoleLoggerProvider);
 });
@@ -178,11 +178,11 @@ test('configure delegates accumulate onto the shared options and reach the provi
   const builder = builderOver(services);
   const writes: string[] = [];
 
-  ConsoleLoggerAugmentations.addConsole(builder);
+  ConsoleLoggerAugmentations.addConsole.call(builder);
   // A configure applied AFTER the provider exists must still land (the
   // reference OnChange route): select the custom formatter registered late.
-  ConsoleLoggerAugmentations.addConsoleFormatter(builder, new UpperFormatter());
-  ConsoleLoggerAugmentations.addConsole(builder, (options) => {
+  ConsoleLoggerAugmentations.addConsoleFormatter.call(builder, new UpperFormatter());
+  ConsoleLoggerAugmentations.addConsole.call(builder, (options) => {
     options.formatterName = 'upper';
   });
 
@@ -212,7 +212,7 @@ test("addSimpleConsole's configure reaches the built-in simple formatter", async
   const builder = builderOver(services);
   const writes: string[] = [];
 
-  ConsoleLoggerAugmentations.addSimpleConsole(builder, (options) => {
+  ConsoleLoggerAugmentations.addSimpleConsole.call(builder, (options) => {
     options.singleLine = true;
   });
 

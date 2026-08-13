@@ -31,7 +31,7 @@ export { HostDefaults } from './HostDefaults';
 // The shared DI-slot token ABI (registration + resolution travel through these),
 // plus the augmentation-registry tokens for the host/builder/environment
 // receivers.
-export { HOST_APPLICATION_LIFETIME_TOKEN, HOSTED_SERVICE_TOKEN, hostedServiceCollectionToken } from './tokens';
+export { HOST_APPLICATION_LIFETIME_TYPE, HOSTED_SERVICE_TYPE, hostedServiceCollectionType } from './types';
 
 // Host lifetime helpers + builder-start, as object-literal augmentation sets
 // that register against their receiver tokens. Each set's members are also
@@ -45,4 +45,4 @@ export { HostEnvironmentEnvAugmentations } from './HostEnvironment-Env-augmentat
 
 // The `addHostedService` registration augmentation + its side-effect
 // registration against di.core's ServiceManifest augmentation token.
-export { ServiceManifestHostedServiceAugmentations } from './ServiceManifest-HostedService-augmentations';
+export { ServiceManifestHostedServiceAugmentations } from './DefaultManifest-HostedService-augmentations';

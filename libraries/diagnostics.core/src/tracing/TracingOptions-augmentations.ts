@@ -20,15 +20,15 @@ declare module '@rhombus-std/diagnostics.core' {
 
 export const TracingOptionsAugmentations = {
   /** Appends an ENABLE {@link TracingRule} directly to a {@link TracingOptions}. */
-  enableTracing(options: TracingOptions, sourceName?: string, operationName?: string, listenerName?: string,
+  enableTracing(sourceName?: string, operationName?: string, listenerName?: string,
     scopes: ActivitySourceScopes = ACTIVITY_SOURCE_SCOPES_ALL): TracingOptions {
-    options.rules.push(new TracingRule(sourceName, operationName, listenerName, scopes, true));
-    return options;
+    this.rules.push(new TracingRule(sourceName, operationName, listenerName, scopes, true));
+    return this;
   },
   /** Appends a DISABLE {@link TracingRule} directly to a {@link TracingOptions}. */
-  disableTracing(options: TracingOptions, sourceName?: string, operationName?: string, listenerName?: string,
+  disableTracing(sourceName?: string, operationName?: string, listenerName?: string,
     scopes: ActivitySourceScopes = ACTIVITY_SOURCE_SCOPES_ALL): TracingOptions {
-    options.rules.push(new TracingRule(sourceName, operationName, listenerName, scopes, false));
-    return options;
+    this.rules.push(new TracingRule(sourceName, operationName, listenerName, scopes, false));
+    return this;
   },
 } satisfies AugmentationSet<TracingOptions>;

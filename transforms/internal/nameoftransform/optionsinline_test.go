@@ -29,7 +29,7 @@ const canonicalAddOptions = `.addOptions("@rhombus-std/options:IOptions<@scope/a
 // buildOptionsInlineWorkspace lays out the W4 addOptions workspace: a real on-disk
 // `@rhombus-std/options` exporting a generic `IOptions<T>` (the composed wrapper
 // base the tokenfor stage resolves against the program), a core package literally
-// named `@rhombus-std/di.core` carrying the `addOptions` rhombus.inline entry with
+// named `@rhombus-std/di.core` carrying the `addOptions` rhombus-std inline entry with
 // its real body (`addOptions<T>() => this.addOptions(tokenfor<IOptions<T>>(),
 // tokenfor<T>())`), and a consumer main.ts that spells the sugar. It is the fixture
 // the addOptions inline-parity, failure-path, and loop-stability tests drive.
@@ -57,9 +57,9 @@ func buildOptionsInlineWorkspace(t *testing.T, mainSrc string, withOptions bool)
   "name": "@rhombus-std/di.core",
   "version": "1.0.0",
   "exports": { ".": { "types": "./src/index.ts", "default": "./src/index.ts" } },
-  "rhombus.inline": {
-    "entries": [
-      { "type": "@rhombus-std/di.core:IServiceManifestBase", "impl": "ManifestOptionsInline", "member": "addOptions" }
+  "rhombus-std": {
+    "inline": [
+      { "type": "@rhombus-std/di.core:IServiceManifestBase", "impl": "@rhombus-std/di.core:ManifestOptionsInline", "member": "addOptions" }
     ]
   }
 }`)

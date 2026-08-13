@@ -3,14 +3,14 @@
 // This example library is authored in the tokenless di dialect and consumed
 // only as its BUILD (every exports condition resolves to dist), so the
 // transformer MUST run: the tokenless registration forms, the signaturefor /
-// signaturesfor mints, the tokenfor calls in tokens.ts and the resolve<T>() /
-// tryResolve<T>() calls in infrastructure-greeting-workshop.ts all have to be
-// lowered before anything can execute. The Go engine runs during the Bun.build
-// emit:
+// signaturesfor mints, and the typefor<T>() calls in types.ts and
+// infrastructure-greeting-workshop.ts — naming service types and dependency
+// slots, including inside `Type.func(...)` — all have to be lowered before
+// anything can execute. The Go engine runs during the Bun.build emit:
 //
 //   - dist/*.js  — Bun.build bundles the barrel, with @ttsc/unplugin/bun running
 //     the di.extras Go plugin as an onLoad transform so each tokenless call
-//     is lowered to its string token as Bun emits. The workspace runtime deps
+//     is lowered to its explicit `Type` as Bun emits. The workspace runtime deps
 //     stay EXTERNAL — a consumer resolves the same @rhombus-std/di.core identity
 //     at runtime, never a bundled copy, which is what keeps the augmentation
 //     installs and the error taxonomy shared.
@@ -48,7 +48,8 @@ const js = await Bun.build({
   outdir: dist,
   target: 'node',
   format: 'esm',
-  external: ['@rhombus-std/di.core', '@rhombus-std/options', '@rhombus-std/examples.contracts'],
+  external: ['@rhombus-std/di.core', '@rhombus-std/options', '@rhombus-std/examples.contracts',
+    '@rhombus-std/primitives'],
   // ttscTransforms is undefined, so @ttsc/unplugin/bun runs auto-discovery (the
   // one owner host, deduped to a single spawn); the host self-selects the stages.
   plugins: [await ttscBunPlugin(dir, 'tsconfig.ttsc.json', ttscTransforms)],

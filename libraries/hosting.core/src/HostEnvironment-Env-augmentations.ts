@@ -1,5 +1,5 @@
-import { type AugmentationSet2, registerAugmentations } from '@rhombus-std/primitives';
-import { tokenfor } from '@rhombus-std/primitives.extras';
+import type { AugmentationSet2 } from '@rhombus-std/primitives';
+import { registerAugmentations } from '@rhombus-std/primitives.extras';
 import { Environments } from './Environments';
 import type { IHostEnvironment } from './IHostEnvironment';
 
@@ -20,18 +20,18 @@ declare module '@rhombus-std/hosting.core' {
 
 /** Augmentation set for {@link IHostEnvironment}; each member is also directly callable. */
 export const HostEnvironmentEnvAugmentations: AugmentationSet2<IHostEnvironment, IHostEnvironmentEnvAugmentations> = {
-  isEnvironment(hostEnvironment, environmentName) {
-    return hostEnvironment.environmentName.toLowerCase() === environmentName.toLowerCase();
+  isEnvironment(environmentName) {
+    return this.environmentName.toLowerCase() === environmentName.toLowerCase();
   },
-  isDevelopment(hostEnvironment) {
-    return HostEnvironmentEnvAugmentations.isEnvironment(hostEnvironment, Environments.Development);
+  isDevelopment() {
+    return HostEnvironmentEnvAugmentations.isEnvironment.call(this, Environments.Development);
   },
-  isStaging(hostEnvironment) {
-    return HostEnvironmentEnvAugmentations.isEnvironment(hostEnvironment, Environments.Staging);
+  isStaging() {
+    return HostEnvironmentEnvAugmentations.isEnvironment.call(this, Environments.Staging);
   },
-  isProduction(hostEnvironment) {
-    return HostEnvironmentEnvAugmentations.isEnvironment(hostEnvironment, Environments.Production);
+  isProduction() {
+    return HostEnvironmentEnvAugmentations.isEnvironment.call(this, Environments.Production);
   },
 };
 
-registerAugmentations(tokenfor<IHostEnvironment>(), HostEnvironmentEnvAugmentations);
+registerAugmentations<IHostEnvironment>(HostEnvironmentEnvAugmentations);

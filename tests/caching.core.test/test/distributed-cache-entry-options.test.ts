@@ -67,8 +67,9 @@ describe('DistributedCacheEntryOptionsSugarAugmentations — both forms', () => 
   });
 
   test('standalone member form matches the method form', () => {
-    const viaMember = DistributedCacheEntryOptionsSugarAugmentations.setSlidingExpiration(
-      DistributedCacheEntryOptionsSugarAugmentations.setAbsoluteExpiration(new DistributedCacheEntryOptions(), 3_000),
+    const viaMember = DistributedCacheEntryOptionsSugarAugmentations.setSlidingExpiration.call(
+      DistributedCacheEntryOptionsSugarAugmentations.setAbsoluteExpiration.call(new DistributedCacheEntryOptions(),
+        3_000),
       2_000,
     );
     expect(viaMember.absoluteExpirationRelativeToNow).toBe(3_000);

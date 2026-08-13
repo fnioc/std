@@ -18,7 +18,7 @@ An inline-stage primitive that is ONLY ever called inside inline bodies (never i
 - `schemaof` (config `Schema` from a type) → `config.transformer`, which peers on `config` and already owns the `ts.Type`→`Schema` codegen + the `OPTIONAL` import injection.
 - `tokenfor` STAYS in `@rhombus-std/primitives` — it is the one primitive called in RUNTIME source (`registerAugmentations(tokenfor<T>(), …)`), so every runtime package must import it. That runtime call-site is the discriminator between a universal primitive and an authoring-only one.
 
-Consequences: the inline BODIES and their `rhombus.inline` markers move to the transformer packages too — a runtime package cannot depend on its own transformer (the reverse of the real edge) — which deletes the old "inline.ts excluded from the runtime bundle" gymnastics; runtime packages stay clean. The Go inliner gate becomes a `knownPrimitives` name→home-module map (multi-package). This dissolves the prior schemaof blocker with no gate-widening and no hoisting of config's `Schema`/`OPTIONAL` into the zero-dependency leaf.
+Consequences: the inline BODIES and their `rhombus-std` `inline` markers move to the transformer packages too — a runtime package cannot depend on its own transformer (the reverse of the real edge) — which deletes the old "inline.ts excluded from the runtime bundle" gymnastics; runtime packages stay clean. The Go inliner gate becomes a `knownPrimitives` name→home-module map (multi-package). This dissolves the prior schemaof blocker with no gate-widening and no hoisting of config's `Schema`/`OPTIONAL` into the zero-dependency leaf.
 
 Implementation notes: a primitive cannot be self-imported by its own package name (bun's isolated linker makes no self-symlink → `tsc` fails), so an inline body imports its own package's primitive RELATIVELY (`./signatureof.js`); the gate scanner and the `inline-authoring` eslint rule accept the home-module specifier OR a package-relative one within the primitive's own package. A consumer or fixture of a moved primitive must depend on the transformer package (it peers on the runtime, so it isn't reachable from a runtime-only dep graph). Landed #246 (signatureof); schemaof → config.transformer is the follow-up. _Owner-directed 2026-07-18._
 
@@ -203,7 +203,7 @@ entry records only the ruling. _Owner-approved 2026-07-16._
 
 ## §91 — Inline-stage matching is by symbol identity, not a string key
 
-A `rhombus.inline` entry's `type`+`member` pair resolves through the checker to a symbol, once per
+A `rhombus-std` `inline` entry's `type`+`member` pair resolves through the checker to a symbol, once per
 program: the type reference resolves to a module symbol, then to the merged member symbol that
 TypeScript's declaration merging has already unified from every `declare module` augmentation of
 the interface. Each call site independently resolves its own signature → declaration → symbol, and
@@ -226,32 +226,16 @@ Full schema, the authoring lint, and the tripwires (rogue-duplicate, emit sweep)
 `docs/features/transformer-architecture.md`; this entry records only the identity-vs-string ruling.
 _Owner-approved 2026-07-17._
 
-## §94 — Resolve-family sugar inlines via type-predicate primitives
+## §94 — Resolution sugar always asks the container
 
-The tokenless resolve family (`resolve<T>()`, `resolveAsync<T>()`, `tryResolve<T>()`) lowers
-through the generic inline stage with plain certified bodies. Type-directed dispatch is expressed
-**inside** those bodies via compile-time predicate primitives, never via context-sensitive matching
-in the engine.
-
-Two authoring-only primitives live in `primitives.transformer` (per §92's homing rule), shipped as
-throwing stubs like `tokenfor`: `isSingular<T>(): boolean` and `singularValue<T>(): T` — "singular" is
-the token grammar's term for a type with exactly one value: a literal, `null`, `undefined`, or
-`void`. The canonical body is `isSingular<T>() ? singularValue<T>() : this.tryResolve(tokenfor<T>())`.
-Resolving a singular type IS its value: a hand-written `tryResolve(tokenfor<'dev'>())` folds
-identically, so the sugar and the explicit form share one semantics.
-
-The inline engine constant-folds after primitive lowering — boolean-ternary dead-branch pruning,
-run **before** the emit sweep so a pruned-branch primitive never trips it. A surviving unguarded
-`singularValue<T>()` over a non-singular type raises a targeted diagnostic. The factory form
-(`resolve<F>()` where `F` is a function type, lowering to `resolveFactory`) uses the same pattern
-plus signatureof-shaped extraction in the true arm.
-
-Implementation notes: the exact primitive names/signatures and the diagnostic wording are Claude's
-call, applying §92's homing rule to this family. _Owner-directed 2026-07-18._
+Every resolution sugar body is a bare container call — the `get*` family lowers to the
+token-explicit member with a derived `Type` argument. There is no compile-time singularity
+dispatch: a literal-typed request reaches the container like any other request.
+_Owner-directed 2026-08-12 (singular death)._
 
 ## §95 — `addOptions` sugar homes in its transformer satellite
 
-The phantom `addOptions<T>()` typing, its certified inline body, and the `rhombus.inline` marker all
+The phantom `addOptions<T>()` typing, its certified inline body, and the `rhombus-std` `inline` marker all
 live in `di.transformer.options` (per §92); `options.augmentations` keeps only the runtime explicit
 verbs. The compile-time guard stands: without the satellite in the program, the 0-arg form does not
 typecheck — no compiles-then-throws.
@@ -360,13 +344,13 @@ consumer regardless of whether it actually uses sugar. A dependency on a `*.tran
 a precise "I use this family's sugar" signal, since transformer packages peer on their cores and
 are otherwise unreachable from a plain runtime dependency graph.
 
-The same recursive scan that activates stages also collects certified bodies (the `rhombus.inline`
-markers, §91), including from the consumer package itself; a third-party sugar library's own
+The same recursive scan that activates stages also collects certified bodies (the `rhombus-std`
+`inline` markers, §91), including from the consumer package itself; a third-party sugar library's own
 consumers receive the needed stages transitively, through that library's `*.transformer`
 dependencies, with no action of their own. Explicit `tsconfig.ttsc.json` declaration (§90) remains
 the override and opt-out path.
 
-A plain consumer never authors a `rhombus.inline` marker. Authoring one makes a package a toolchain
+A plain consumer never authors a `rhombus-std` `inline` marker. Authoring one makes a package a toolchain
 participant, whose obligations arrive as a bundle: its inline bodies must be certified
 single-expression forms (§91), its body sources ship in the published files, it carries its own
 auto-discovery marker, and it builds through the same transform machinery as every other
@@ -467,7 +451,7 @@ mergesynth — are family-neutral machinery under `transforms/internal/*`, surfa
 `primitives.transformer` (its `ttsc.stages` set, plus the `./inline-ttsc` / `./signatureof-ttsc`
 single-stage override descriptors). A family's own `*.transformer` (di.transformer,
 di.transformer.options, config.transformer) owns only its per-family sugar: the phantom typings, the
-`rhombus.inline` BODIES (§91), and its own stage (`di` / `di_options` / `config`). This complements
+`rhombus-std` `inline` BODIES (§91), and its own stage (`di` / `di_options` / `config`). This complements
 §92's primitive-STUB homing — the stubs and their typings stay in their domain transformer; §104
 records where the STAGE machinery lives.
 
@@ -579,7 +563,7 @@ The plugin-less 2-arg `addClass(token, ctor)` / `addFactory(token, factory)` for
 
 ## §110 — Primitive naming: `-for` mints an identity, `-of` observes an existing one
 
-`nameof<T>()` is renamed `tokenfor<T>()` (it MINTS a token identity for `T`, never observed anywhere), and the two new derivation primitives introduced for the fluent signature builder follow the same rule: `signaturefor<T>()` (1-D, mints one overload's dependency slots) and `signaturesfor<T>()` (2-D, mints the whole signature set) mirror `withSignature` / `withSignatures`. `-of` stays for primitives that OBSERVE a property that already exists on the target: `signatureof(ctor)` (observes a constructor's own param types), `keyof<T>()` (observes a `Keyed<T,K>` brand), `valueof<T>()` (observes a literal type's value — the `.as<Scope>()` sugar's scope half). The pipeline STAGE id `nameof` is unchanged (the stage name, not the function — e.g. `primitives.transformer`'s `"stages": [..., "nameof", ...]`); only the authored function it lowers was renamed. Full mapping: `docs/features/transformer-architecture.md`. _Owner-directed (the -for/-of convention itself); the `tokenfor` rename and the two new primitives' placement are Claude's, done as a dedicated PR per the owner's "name them right the first time" direction._
+`nameof<T>()` is renamed `tokenfor<T>()` (it MINTS a token identity for `T`, never observed anywhere), and the two new derivation primitives introduced for the fluent signature builder follow the same rule: `signaturefor<T>()` (1-D, mints one overload's dependency slots) and `signaturesfor<T>()` (2-D, mints the whole signature set) mirror `withSignature` / `withSignatures`. `-of` stays for primitives that OBSERVE a property that already exists on the target: `signatureof(ctor)` (observes a constructor's own param types) and `keyof<T>()` (observes a `Keyed<T,K>` brand). The pipeline STAGE id `nameof` is unchanged (the stage name, not the function — e.g. `primitives.transformer`'s `"stages": [..., "nameof", ...]`); only the authored function it lowers was renamed. Full mapping: `docs/features/transformer-architecture.md`. _Owner-directed (the -for/-of convention itself); the `tokenfor` rename and the two new primitives' placement are Claude's, done as a dedicated PR per the owner's "name them right the first time" direction._
 
 ---
 
@@ -1392,3 +1376,41 @@ NAMES remain the discriminator; a member-plus-arity scheme was considered and re
 provider trio showed arity cannot discriminate.
 
 _Cleared at supervision level against the owner's authored shapes, 2026-08-11; his override stands._
+
+## §136 — Augmentation members are `this`-based methods, installed verbatim
+
+**An augmentation set member IS the prototype member.** Every set — `AugmentationSet<R>` and
+`AugmentationSet2<R, M>` alike — is an object literal of plain methods whose receiver is `this`,
+and installation assigns the authored function straight onto the receiver prototype:
+`proto[name] = set[name]`, no forwarding thunk, no adapter. Function identity therefore holds
+(`proto[name] === set[name]`), which makes two things meaningful that a wrapper made impossible:
+re-installing the very same function is a detectable silent no-op (the double-install shape a
+barrel + `./private/*` load produces), and an installed member can be recognized as its authored
+source.
+
+**Contextual `this` comes from explicit `this` parameters in the set types, not `ThisType<R>`.**
+`AugmentationSet<R>` is `Record<string, (this: R, ...args: any[]) => unknown>`;
+`AugmentationSet2<Rec, Impl>` maps each `Impl` member to `(this: Rec, ...args: Parameters<Impl[K]>) => any`.
+An `& ThisType<Rec>` intersection reads better and was rejected for a checkable reason: an
+intersection strips the implicit index signature of the mapped/`Record` type literal, and that
+index signature is exactly what lets a concrete set satisfy the erased `Record<PropertyKey, Func>`
+parameter the registry and the `registerAugmentations` sugar take. The explicit `this` parameter
+gives an object-literal method the same contextual receiver with zero per-member annotation.
+
+**Merge dispatchers take two `this`-based members.** A `MergeStrategy` receives `original` and
+`incoming` as ordinary methods and forwards both with `fn.call(this, ...args)`; the receiver-first
+`incoming(this, ...)` convention is gone everywhere, including the mergesynth-synthesized
+strategies (`extension.call(this, ...args)` / `original.call(this, ...args)`).
+
+**Standalone calling is `.call`.** A set stays exported, and a member is reachable without
+installation as `Set.member.call(receiver, ...args)` — an extracted method invoked on an explicit
+receiver. The deliberately-standalone receiver-first free functions (`logTrace(logger, ...)`,
+`beginScope(logger, ...)`) are unaffected: they are not set members.
+
+**The engine speaks only `this`.** The inline stage's receiver-as-leading-parameter machinery is
+deleted (`ResolvedBody.ReceiverParam`, the param split, the arg/param index offset); a member
+body's value parameters align 1:1 with its call's arguments, and `this`-substitution respects
+`this`-scope boundaries — it rewrites in the body and through nested arrows, never inside a nested
+`function`, method, accessor, constructor, class, or static block. mergesynth derives guards and
+arity bounds from the member's own parameters (`params[i]` guards `args[i]`), skipping only an
+explicit type-only `this` parameter.

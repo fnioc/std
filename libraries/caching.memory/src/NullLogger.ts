@@ -5,17 +5,17 @@
 
 import type { EventId, ILogger, LogLevel } from '@rhombus-std/logging.core';
 import { augment } from '@rhombus-std/primitives';
-import { tokenfor } from '@rhombus-std/primitives.extras';
+import { typefor } from '@rhombus-std/primitives.extras';
 import type { Func } from '@rhombus-toolkit/func';
 
 // Binds the `ILogger` interface symbol onto the class so the interface-merged
 // wrapper methods (logInformation/…) flow onto it. Not exported, matching the
-// class. `@augment(tokenfor<ILogger>())` installs the method form on the
+// class. `@augment(typefor<ILogger>())` installs the method form on the
 // prototype whenever the ILogger bag registers.
 interface NullLoggerImpl extends ILogger {}
 
 /** A logger that discards every message and reports every level disabled. */
-@augment(tokenfor<ILogger>())
+@augment(typefor<ILogger>())
 class NullLoggerImpl implements ILogger {
   public log<TState>(_logLevel: LogLevel, _eventId: EventId, _state: TState, _error: Error | undefined,
     _formatter: Func<[TState, Error | undefined], string>): void {

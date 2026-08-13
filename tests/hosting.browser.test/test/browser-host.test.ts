@@ -1,8 +1,9 @@
-import { HOST_LIFETIME_TOKEN } from '@rhombus-std/hosting';
-import { BROWSER_LIFETIME_OPTIONS_TOKEN, BrowserHost, BrowserLifetime, type BrowserLifetimeOptions,
-  createBrowserEnvironment, PAGE_LIFECYCLE_EVENTS_TOKEN, PageLifecycleEvents } from '@rhombus-std/hosting.browser';
+import { Type } from '@rhombus-std/di.core';
+import { HOST_LIFETIME_TYPE } from '@rhombus-std/hosting';
+import { BROWSER_LIFETIME_OPTIONS_TYPE, BrowserHost, BrowserLifetime, type BrowserLifetimeOptions,
+  createBrowserEnvironment, PAGE_LIFECYCLE_EVENTS_TYPE, PageLifecycleEvents } from '@rhombus-std/hosting.browser';
 import { Environments, type IHostLifetime } from '@rhombus-std/hosting.core';
-import { LOGGER_PROVIDER_TOKEN } from '@rhombus-std/logging';
+import { LOGGER_PROVIDER_TYPE } from '@rhombus-std/logging';
 import { BrowserConsoleLoggerProvider } from '@rhombus-std/logging.browserconsole';
 import type { ILoggerProvider } from '@rhombus-std/logging.core';
 import { expect, test } from 'bun:test';
@@ -40,20 +41,22 @@ test('the facade composes settings config, browser environment, console logging,
   const host = builder.build();
 
   // Logging: the browser console provider is registered.
-  const providers = host.services.resolve<ILoggerProvider[]>(`Array<${LOGGER_PROVIDER_TOKEN}>`);
+  const providers: ILoggerProvider[] = host.services.getRequiredService(
+    Type.named('Array', 'global', [LOGGER_PROVIDER_TYPE]),
+  );
   expect(providers.some((provider) => {
     return provider instanceof BrowserConsoleLoggerProvider;
   })).toBe(true);
 
   // Lifetime: the BrowserLifetime registration wins over the NullLifetime
   // default (last registration wins), with the configured options.
-  const lifetime = host.services.resolve<IHostLifetime>(HOST_LIFETIME_TOKEN);
+  const lifetime: IHostLifetime = host.services.getRequiredService(HOST_LIFETIME_TYPE);
   expect(lifetime).toBeInstanceOf(BrowserLifetime);
-  const options = host.services.resolve<BrowserLifetimeOptions>(BROWSER_LIFETIME_OPTIONS_TOKEN);
+  const options: BrowserLifetimeOptions = host.services.getRequiredService(BROWSER_LIFETIME_OPTIONS_TYPE);
   expect(options.stopOnPagehide).toBe(false);
 
   // The bridge: registered as a value, eagerly attached to the page context.
-  const bridge = host.services.resolve<PageLifecycleEvents>(PAGE_LIFECYCLE_EVENTS_TOKEN);
+  const bridge: PageLifecycleEvents = host.services.getRequiredService(PAGE_LIFECYCLE_EVENTS_TYPE);
   expect(bridge).toBeInstanceOf(PageLifecycleEvents);
   expect(page.document.registeredTypes).toContain('visibilitychange');
 
@@ -68,7 +71,7 @@ test('host stop disposes the single bridge listener set — no leak across host 
 
   // The bridge — the single DOM-listening component — attaches its five
   // listeners eagerly at composition.
-  const bridge = host.services.resolve<PageLifecycleEvents>(PAGE_LIFECYCLE_EVENTS_TOKEN);
+  const bridge: PageLifecycleEvents = host.services.getRequiredService(PAGE_LIFECYCLE_EVENTS_TYPE);
   expect(bridge).toBeInstanceOf(PageLifecycleEvents);
   expect(page.document.listenerCount + page.window.listenerCount).toBe(5);
 

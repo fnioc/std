@@ -6,9 +6,9 @@
 //   - The framework singletons (`ApplicationLifetime`, the `LoggerFactory`, the
 //     resolved `HostOptions`) are constructed eagerly and registered as VALUES,
 //     so `IHost.services` hands the SAME instance back to a consumer that
-//     resolves them (a `.as("singleton")` registration would resolve
-//     transiently off the frameless root). This is what keeps
-//     `waitForShutdownAsync`'s `resolve(HOST_APPLICATION_LIFETIME_TOKEN)`
+//     resolves them (a class or factory registration would build afresh off the
+//     frameless root). This is what keeps
+//     `waitForShutdownAsync`'s `HOST_APPLICATION_LIFETIME_TYPE` lookup
 //     returning the very lifetime the host drives.
 //   - Logging: the hosting layer OWNS one `LoggerFactory` and threads it,
 //     because a `LoggerFactory` built by `addLogging` does not yet inject the
@@ -17,16 +17,17 @@
 //     loggers -- and any composite logger already handed out -- light up.
 
 import type { IConfig } from '@rhombus-std/config.core';
-import type { IServiceManifest } from '@rhombus-std/di.core';
-import type { IServiceProvider, ServiceProviderOptions } from '@rhombus-std/di.core';
-import { Environments, HOST_APPLICATION_LIFETIME_TOKEN, type HostBuilderContext, HostDefaults, type IHost,
-  type IHostLifetime } from '@rhombus-std/hosting.core';
-import { LOGGER_FACTORY_TOKEN, LOGGER_PROVIDER_TOKEN, LoggerFactory } from '@rhombus-std/logging';
+import { ServiceProviderOptions } from '@rhombus-std/di';
+import type { Manifest } from '@rhombus-std/di.core';
+import { Environments, HOST_APPLICATION_LIFETIME_TYPE, type HostBuilderContext, HostDefaults,
+  type IHost } from '@rhombus-std/hosting.core';
+import { LOGGER_FACTORY_TYPE, LOGGER_PROVIDER_TYPE, LoggerFactory } from '@rhombus-std/logging';
 import type { ILoggerProvider } from '@rhombus-std/logging.core';
+import { Type } from '@rhombus-std/primitives';
 import { process } from '@rhombus-std/primitives';
 import type { Func } from '@rhombus-toolkit/func';
-import { CONFIG_TOKEN, HOST_BUILDER_CONTEXT_TOKEN, HOST_ENVIRONMENT_TOKEN, HOST_LIFETIME_TOKEN,
-  HOST_OPTIONS_CONFIGURE_TOKEN, HOST_OPTIONS_TOKEN } from './framework-tokens';
+import { CONFIG_TYPE, HOST_BUILDER_CONTEXT_TYPE, HOST_ENVIRONMENT_TYPE, HOST_LIFETIME_TYPE, HOST_OPTIONS_CONFIGURE_TYPE,
+  HOST_OPTIONS_TYPE } from './framework-types';
 import { HostOptions } from './HostOptions';
 import { ApplicationLifetime } from './internal/ApplicationLifetime';
 import { Host } from './internal/Host';
@@ -149,24 +150,24 @@ export function createFrameworkServices(): FrameworkServices {
 /**
  * Registers the framework services into `services`. Runs BEFORE the user's
  * configure-services delegates so a later `useConsoleLifetime` (which appends a
- * {@link HOST_LIFETIME_TOKEN} registration) wins last over the default
+ * {@link HOST_LIFETIME_TYPE} registration) wins last over the default
  * {@link NullLifetime} registered here. Returns the manifest produced by every
  * registration -- the chain is immutable, so the caller must thread this
  * result forward instead of reusing the `services` it passed in.
  */
-export function populateFrameworkServices(services: IServiceManifest, context: HostBuilderContext,
-  environment: HostingEnvironment, config: IConfig, framework: FrameworkServices): IServiceManifest {
-  let s = services.addValue(HOST_ENVIRONMENT_TOKEN, environment);
-  s = s.addValue(HOST_BUILDER_CONTEXT_TOKEN, context);
-  s = s.addValue(CONFIG_TOKEN, config);
-  s = s.addValue(HOST_APPLICATION_LIFETIME_TOKEN, framework.applicationLifetime);
-  s = s.addValue(HOST_OPTIONS_TOKEN, framework.hostOptions);
-  s = s.addValue(LOGGER_FACTORY_TOKEN, framework.loggerFactory);
+export function populateFrameworkServices(services: Manifest, context: HostBuilderContext,
+  environment: HostingEnvironment, config: IConfig, framework: FrameworkServices): Manifest {
+  let s = services.addValue(HOST_ENVIRONMENT_TYPE, environment);
+  s = s.addValue(HOST_BUILDER_CONTEXT_TYPE, context);
+  s = s.addValue(CONFIG_TYPE, config);
+  s = s.addValue(HOST_APPLICATION_LIFETIME_TYPE, framework.applicationLifetime);
+  s = s.addValue(HOST_OPTIONS_TYPE, framework.hostOptions);
+  s = s.addValue(LOGGER_FACTORY_TYPE, framework.loggerFactory);
 
   // The default host lifetime. `useConsoleLifetime` appends a ConsoleLifetime
   // registration under the same token; di.core is append-only last-wins, so the
   // console lifetime overrides this when requested.
-  return s.addClass(HOST_LIFETIME_TOKEN, NullLifetime, [[]]);
+  return s.addClass(HOST_LIFETIME_TYPE, NullLifetime, [[]]);
 }
 
 /**
@@ -176,7 +177,7 @@ export function populateFrameworkServices(services: IServiceManifest, context: H
  * hands the internal host its dependencies directly.
  *
  * `@rhombus-std/di` MUST be imported by the caller before this runs so
- * `IServiceManifest.build()` is patched on (di.core alone throws in `build()`).
+ * `Manifest.build()` is patched on (di.core alone throws in `build()`).
  *
  * `config` is the final application configuration folded into
  * {@link HostOptions} before the `configureHostOptions` mutations run.
@@ -184,26 +185,30 @@ export function populateFrameworkServices(services: IServiceManifest, context: H
  * `serviceProviderOptions` carries the `validateScopes` / `validateOnBuild`
  * toggles the builders resolved; omitted ⇒ an unvalidated build.
  */
-export function resolveHost(services: IServiceManifest, framework: FrameworkServices, config: IConfig,
+export function resolveHost(services: Manifest, framework: FrameworkServices, config: IConfig,
   serviceProviderOptions?: ServiceProviderOptions): IHost {
-  const provider: IServiceProvider = services.build(serviceProviderOptions);
+  const provider = services.build(serviceProviderOptions ?? ServiceProviderOptions.defaults);
 
-  const loggerProviders = provider.resolve<ILoggerProvider[]>(`Array<${LOGGER_PROVIDER_TOKEN}>`);
+  const loggerProviders: ILoggerProvider[] = provider.getRequiredService(
+    Type.named('Array', 'global', [LOGGER_PROVIDER_TYPE]),
+  );
   for (const loggerProvider of loggerProviders) {
     framework.loggerFactory.addProvider(loggerProvider);
   }
 
   // Fold the final configuration into HostOptions, then apply every
   // `configureHostOptions` mutation (registered as a value in
-  // `populateFrameworkServices`; the consumer resolving HOST_OPTIONS_TOKEN sees
+  // `populateFrameworkServices`; the consumer resolving HOST_OPTIONS_TYPE sees
   // the same mutated instance).
   framework.hostOptions.initialize(config);
-  const configureSteps = provider.resolve<Array<Func<[HostOptions], void>>>(`Array<${HOST_OPTIONS_CONFIGURE_TOKEN}>`);
+  const configureSteps: Func<[HostOptions], void>[] = provider.getRequiredService(
+    Type.named('Array', 'global', [HOST_OPTIONS_CONFIGURE_TYPE]),
+  );
   for (const configureStep of configureSteps) {
     configureStep(framework.hostOptions);
   }
 
-  const hostLifetime = provider.resolve<IHostLifetime>(HOST_LIFETIME_TOKEN);
+  const hostLifetime = provider.getRequiredService(HOST_LIFETIME_TYPE);
   const logger = framework.loggerFactory.createLogger(HOST_LOGGER_CATEGORY);
 
   return new Host(provider, framework.applicationLifetime, logger, hostLifetime, framework.hostOptions);

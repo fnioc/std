@@ -3,7 +3,8 @@
 // transformer-free form the `addOptions<T>()` sugar lowers to — exercised here
 // through the public authoring surface with hand-written tokens (no transformer).
 
-import { ServiceManifest } from '@rhombus-std/di';
+import '@rhombus-std/di';
+import { DefaultManifest, type Manifest, Type } from '@rhombus-std/di.core';
 import type { IOptions } from '@rhombus-std/options';
 import '@rhombus-std/options.augmentations';
 import { describe, expect, test } from 'bun:test';
@@ -17,14 +18,14 @@ const OPTIONS_TOKEN = '@rhombus-std/options:IOptions<test:Widget>';
 
 describe('addOptions(token, tToken) — wrap the bound T', () => {
   test('resolving the wrapper delivers an IOptions<T> over the bound T', () => {
-    let services = new ServiceManifest<'singleton'>();
+    let services: Manifest<'singleton'> = new DefaultManifest<'singleton'>();
     const widget: Widget = { name: 'gizmo' };
 
     services = services.addValue(WIDGET_TOKEN, widget);
-    services = services.addOptions(OPTIONS_TOKEN, WIDGET_TOKEN).as('singleton');
+    services = services.addOptions(OPTIONS_TOKEN, WIDGET_TOKEN);
 
     const provider = services.build().createScope('singleton');
-    const options = provider.resolve<IOptions<Widget>>(OPTIONS_TOKEN);
+    const options: IOptions<Widget> = provider.getRequiredService(Type.from(OPTIONS_TOKEN));
 
     // The wrapped value IS the instance bound at the element token.
     expect(options.value).toBe(widget);
@@ -39,14 +40,14 @@ describe('addOptions(token, tToken) — wrap the bound T', () => {
     const ENGINE_TOKEN = 'test:Engine';
     const ENGINE_OPTIONS = '@rhombus-std/options:IOptions<test:Engine>';
 
-    let services = new ServiceManifest<'singleton'>();
+    let services: Manifest<'singleton'> = new DefaultManifest<'singleton'>();
     // Explicit-token class registration (transformer-free): a zero-arg ctor.
     services = services.addClass(ENGINE_TOKEN, Engine, [[]], 'singleton');
-    services = services.addOptions(ENGINE_OPTIONS, ENGINE_TOKEN).as('singleton');
+    services = services.addOptions(ENGINE_OPTIONS, ENGINE_TOKEN);
 
     const provider = services.build().createScope('singleton');
-    const engine = provider.resolve<Engine>(ENGINE_TOKEN);
-    const options = provider.resolve<IOptions<Engine>>(ENGINE_OPTIONS);
+    const engine: Engine = provider.getRequiredService(Type.from(ENGINE_TOKEN));
+    const options: IOptions<Engine> = provider.getRequiredService(Type.from(ENGINE_OPTIONS));
 
     expect(options.value).toBe(engine);
     expect(options.value.kind).toBe('v8');

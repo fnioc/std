@@ -41,7 +41,7 @@ describe('DistributedCacheSugarAugmentations', () => {
     const cache = new FakeDistributedCache();
     const payload = new Uint8Array([1, 2, 3]);
 
-    await DistributedCacheSugarAugmentations.set(cache, 'key', payload);
+    await DistributedCacheSugarAugmentations.set.call(cache, 'key', payload);
 
     expect(cache.store.get('key')).toBe(payload);
     const options = cache.lastSetOptions!;
@@ -64,22 +64,22 @@ describe('DistributedCacheSugarAugmentations', () => {
   test('setString/getString round-trip UTF-8, including non-ASCII', async () => {
     const cache = new FakeDistributedCache();
 
-    await DistributedCacheSugarAugmentations.setString(cache, 'greeting', 'héllo ✓ caché');
+    await DistributedCacheSugarAugmentations.setString.call(cache, 'greeting', 'héllo ✓ caché');
 
     const stored = cache.store.get('greeting')!;
     expect(stored).toBeInstanceOf(Uint8Array);
     expect(stored.length).toBeGreaterThan('héllo ✓ caché'.length); // multi-byte
-    expect(await DistributedCacheSugarAugmentations.getString(cache, 'greeting')).toBe('héllo ✓ caché');
+    expect(await DistributedCacheSugarAugmentations.getString.call(cache, 'greeting')).toBe('héllo ✓ caché');
   });
 
   test('setString passes explicit options through; omitted options fall back to the frozen default', async () => {
     const cache = new FakeDistributedCache();
     const options = new DistributedCacheEntryOptions();
 
-    await DistributedCacheSugarAugmentations.setString(cache, 'a', 'x', options);
+    await DistributedCacheSugarAugmentations.setString.call(cache, 'a', 'x', options);
     expect(cache.lastSetOptions).toBe(options);
 
-    await DistributedCacheSugarAugmentations.setString(cache, 'b', 'y');
+    await DistributedCacheSugarAugmentations.setString.call(cache, 'b', 'y');
     expect(cache.lastSetOptions).not.toBe(options);
     expect(() => {
       cache.lastSetOptions!.slidingExpiration = 1_000;
@@ -88,7 +88,7 @@ describe('DistributedCacheSugarAugmentations', () => {
 
   test('getString on a missing key resolves undefined', async () => {
     const cache = new FakeDistributedCache();
-    expect(await DistributedCacheSugarAugmentations.getString(cache, 'absent')).toBeUndefined();
+    expect(await DistributedCacheSugarAugmentations.getString.call(cache, 'absent')).toBeUndefined();
   });
 
   test('standalone surface snapshot (member names)', () => {

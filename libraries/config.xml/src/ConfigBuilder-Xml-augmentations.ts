@@ -1,9 +1,9 @@
 // The `addXmlFile` / `addXmlStream` sugar on the configuration builder.
 
-import type { ConfigBuilder, StreamPayload } from '@rhombus-std/config';
+import type { StreamPayload } from '@rhombus-std/config';
 import type { IConfigBuilder, IndexedSection } from '@rhombus-std/config.core';
-import { type AugmentationSet2, type Flatten, registerAugmentations } from '@rhombus-std/primitives';
-import { tokenfor } from '@rhombus-std/primitives.extras';
+import type { AugmentationSet2, Flatten } from '@rhombus-std/primitives';
+import { registerAugmentations } from '@rhombus-std/primitives.extras';
 import { XmlConfigSource, type XmlConfigSourceOptions } from './XmlConfigSource';
 import { XmlStreamConfigSource } from './XmlStreamConfigSource';
 
@@ -29,12 +29,12 @@ declare module '@rhombus-std/config' {
 
 export const ConfigBuilderXmlAugmentations: AugmentationSet2<IConfigBuilder, Flatten<IConfigBuilderXmlAugmentations>> =
   {
-    addXmlFile(builder, path, opts) {
-      return builder.add(new XmlConfigSource(path, opts));
+    addXmlFile(path, opts) {
+      return this.add(new XmlConfigSource(path, opts));
     },
-    addXmlStream(builder, stream) {
-      return builder.add(new XmlStreamConfigSource(stream));
+    addXmlStream(stream) {
+      return this.add(new XmlStreamConfigSource(stream));
     },
   };
 
-registerAugmentations(tokenfor<IConfigBuilder>(), ConfigBuilderXmlAugmentations);
+registerAugmentations<IConfigBuilder>(ConfigBuilderXmlAugmentations);

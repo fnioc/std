@@ -1,17 +1,13 @@
-// The provider type travels as its derived token (`"<declaring-package>:<TypeName>"`,
-// e.g. `tokenfor<ConsoleLoggerProvider>()`) rather than a type argument, since
-// TS erases generics at runtime.
-
 import type { IConfig } from '@rhombus-std/config.core';
-import type { Token } from '@rhombus-std/di.core';
+import type { Type } from '@rhombus-std/primitives';
 
 /** Allows access to the configuration section associated with a logger provider. */
 export interface ILoggerProviderConfigFactory {
   /**
    * Returns the configuration section associated with the logger provider.
    *
-   * @param providerType The logger provider type's token
-   * (`tokenfor<TProvider>()`).
+   * @param providerType The logger provider type. A type token naming it is
+   * read into one.
    */
-  getConfig(providerType: Token): IConfig;
+  getConfig(providerType: Type | string): IConfig;
 }

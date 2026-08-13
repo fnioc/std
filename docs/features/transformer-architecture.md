@@ -30,54 +30,50 @@ mergesynth (one-shot pre-pass)
   ↓
 ┌─────────────────────────────────────────────────────────────┐
 │ loop until a pass changes nothing (max 16 passes):           │
-│   inline → nameof → signatureof → keyof → valueof →          │
-│   singular → factory → fold → schemaof                       │
+│   inline → nameof → signatureof → keyof → schemaof           │
 └─────────────────────────────────────────────────────────────┘
 ```
 
 Why a loop instead of one traversal: each transform matches only the **outermost** construct it
 recognizes and rewrites it, without descending into what it just produced. A chain like
-`addClass<I>(C).withSignature<T>().as<Scope>()` peels one call per pass — `addClass` lowers on
-pass 1, which exposes `.withSignature<T>()` for pass 2, which exposes `.as<Scope>()` for pass 3.
-Nobody had to write a receiver-recursive visitor for that; the loop supplies the recursion for
-free, and nothing is ever rewritten twice. What a lowered position is NOT is checker-bound — the
-node a stage mints is unknown to the binder — so a stage never asks the checker about the tree the
-loop hands it; it resolves back to the parse node first (see
-[Parse-anchoring](#parse-anchoring-the-checker-only-ever-sees-pass-0-syntax)).
+`addClass<I>(C).withSignature<T>()` peels one call per pass — `addClass` lowers on pass 1, which
+exposes `.withSignature<T>()` for pass 2. Nobody had to write a receiver-recursive visitor for
+that; the loop supplies the recursion for free, and nothing is ever rewritten twice. What a
+lowered position is NOT is checker-bound — the node a stage mints is unknown to the binder — so a
+stage never asks the checker about the tree the loop hands it; it resolves back to the parse node
+first (see [Parse-anchoring](#parse-anchoring-the-checker-only-ever-sees-pass-0-syntax)).
 
 ```ts
 // what you write
 class Startup {
   configure(m: IServiceManifest) {
-    return m.addClass<IUserRepo>(SqlUserRepo).withSignature<[IDb]>().as<'singleton'>();
+    return m.addClass<IUserRepo>(SqlUserRepo).withSignature<[IDb]>();
   }
 }
 ```
 
 ```ts
 // pass 1: addClass lowers (nameof + signatureof fire on its new arguments)
-m.addClass('app:IUserRepo', SqlUserRepo, [['app:IDb']], void 0, void 0).withSignature<[IDb]>().as<'singleton'>();
-// pass 2: withSignature lowers (signaturefor fires on its new arguments)
-m.addClass('app:IUserRepo', SqlUserRepo, [['app:IDb']], void 0, void 0).withSignature('app:IDb').as<'singleton'>();
-// pass 3: as lowers (valueof fires); pass 4 is a no-op — the loop settles
-m.addClass('app:IUserRepo', SqlUserRepo, [['app:IDb']], void 0, void 0).withSignature('app:IDb').as('singleton');
+m.addClass('app:IUserRepo', SqlUserRepo, [['app:IDb']], void 0, void 0).withSignature<[IDb]>();
+// pass 2: withSignature lowers (signaturefor fires on its new arguments); pass 3 is a no-op — the loop settles
+m.addClass('app:IUserRepo', SqlUserRepo, [['app:IDb']], void 0, void 0).withSignature('app:IDb');
 ```
 
 **The enabling invariant is disjoint match sets.** Every transform in the loop owns matches no
 other transform can claim: `inline` matches sugar declarations (a specific set of certified
 member/function shapes); each primitive stage matches its own callee symbol (`nameof` only ever
-matches `tokenfor`/`tokenof`/`keyedtokenfor` calls, `signatureof` only its own three names, and so
-on); `fold` only matches a boolean-literal-condition ternary. Nothing in the set can produce work
-for a stage that already ran this pass and claim it belongs to an earlier one — that's what makes
-"run the whole set repeatedly, no intrinsic order" both correct and terminating. A new stage
-added to the loop must be checked against this invariant before it's wired in.
+matches `tokenfor`/`tokenof` calls, `signatureof` only its own three names, and so on). Nothing in
+the set can produce work for a stage that already ran this pass and claim it belongs to an earlier
+one — that's what makes "run the whole set repeatedly, no intrinsic order" both correct and
+terminating. A new stage added to the loop must be checked against this invariant before it's
+wired in.
 
 **Order inside one pass is a reproducibility choice, not a correctness requirement.** The code
 runs the stages in the fixed sequence shown above so output is deterministic across runs, but no
 stage may ever depend on running before or after another one _within_ the same pass — if it did,
-the loop's "just run it again" termination story would break. `signatureof`, `keyof`, and
-`valueof` happen to sit after `nameof` because their call shapes are disjoint from `nameof`'s
-(type-argument primitives vs. value-argument primitives), not because anything requires it.
+the loop's "just run it again" termination story would break. `signatureof` and `keyof` happen to
+sit after `nameof` because their call shapes are disjoint from `nameof`'s (type-argument
+primitives vs. value-argument primitives), not because anything requires it.
 
 ### Termination: 16 passes, loud on exhaustion
 
@@ -292,17 +288,10 @@ module's actual name instead.
 | `tokenfor(value)`         | value-arg | the _produced_ token for a value — constructable → construct-sig return, callable → call-sig return, else the value's own type | `tokenfor(Foo)` (`class Foo {}`)                             | `"pkg:Foo"`                          | `primitives.extras` | `nameof`      |
 | `tokenof<T>()`            | type-arg  | the _raw_ token for `T` — never strips a `Keyed<T,K>` brand                                                                    | `tokenof<UserOptions>()`                                     | `"pkg:UserOptions"`                  | `primitives.extras` | `nameof`      |
 | `tokenof(value)`          | value-arg | the raw token for a value's _own_ type — never unwraps a constructor/factory                                                   | `tokenof(makeThing)` (`declare function makeThing(): Thing`) | `"pkg:makeThing"`                    | `primitives.extras` | `nameof`      |
-| `keyedtokenfor<T>()`      | type-arg  | the single _composed_ `base#key` token for a `Keyed<T,K>`, or the plain base for an unkeyed `T`                                | `keyedtokenfor<Keyed<ICache, "redis">>()`                    | `"pkg:ICache#redis"`                 | `di.extras`         | `nameof`      |
 | `keyof<T>()`              | type-arg  | the key literal of a `Keyed<T,K>`, or `void 0` when unkeyed                                                                    | `keyof<Keyed<ICache, "redis">>()`                            | `"redis"`                            | `di.extras`         | `keyof`       |
 | `signatureof(ctor \| fn)` | value-arg | the `[[...]]` dependency-signature array for a constructor or function value                                                   | `signatureof(Ctor)` (`Ctor: new (d: IDep) => IThing`)        | `[["pkg:IDep"]]`                     | `di.extras`         | `signatureof` |
 | `signaturefor<T>()`       | type-arg  | one overload's `DepSlot[]` minted from a tuple type `T`                                                                        | `...signaturefor<[IA, IB]>()`                                | `"pkg:IA", "pkg:IB"` (flattened in)  | `di.core`           | `signatureof` |
 | `signaturesfor<T>()`      | type-arg  | the whole overload set minted from a tuple-of-tuples `T`                                                                       | `...signaturesfor<[[IA], [IA, IB]]>()`                       | `["pkg:IA"], ["pkg:IA", "pkg:IB"]`   | `di.core`           | `signatureof` |
-| `valueof<T>()`            | type-arg  | a literal type's own value (the `.as<Scope>()` sugar's scope argument)                                                         | `valueof<'scoped'>()`                                        | `"scoped"`                           | `di.extras`         | `valueof`     |
-| `isSingular<T>()`         | type-arg  | `true`/`false` — is `T` a literal/null/undefined/void (Rule-2 singular)                                                        | `isSingular<'dev'>()`                                        | `true`                               | `primitives.extras` | `singular`    |
-| `singularValue<T>()`      | type-arg  | the literal value itself, for a singular `T`                                                                                   | `singularValue<'dev'>()`                                     | `"dev"`                              | `primitives.extras` | `singular`    |
-| `isFactory<T>()`          | type-arg  | `true`/`false` — does `T` carry a call signature                                                                               | `isFactory<(dep: IDep) => IThing>()`                         | `true`                               | `primitives.extras` | `factory`     |
-| `returntokenfor<T>()`     | type-arg  | the token of a factory type `T`'s _return_ type                                                                                | `returntokenfor<(dep: IDep) => IThing>()`                    | `"pkg:IThing"`                       | `primitives.extras` | `factory`     |
-| `paramtokensfor<T>()`     | type-arg  | the `[token, ...]` array of a factory type `T`'s parameter tokens (`Inject`-brand aware); elided when empty                    | `paramtokensfor<(dep: IDep) => IThing>()`                    | `["pkg:IDep"]`                       | `primitives.extras` | `factory`     |
 | `schemaof<T>()`           | type-arg  | the `{...}` runtime JSON-schema literal for a record type `T`                                                                  | `schemaof<{ ssl?: boolean }>()`                              | `{ ssl: { [OPTIONAL]: "boolean" } }` | `config.extras`     | `schemaof`    |
 
 `signaturefor`/`signaturesfor` sit in `di.core` rather than `di.extras` because they produce
@@ -325,24 +314,6 @@ coerces nothing, and the schema is not emitted. Two boundary cases follow from t
   error 992003. The same type would succeed as a guard target (its accessors are readable), but
   a schema for it would be `{}` — so the walk stops rather than emitting one.
 
-### Constant-folding dead branches: the `fold` stage
-
-A sugar body dispatches on a compile-time predicate with an ordinary ternary —
-`isSingular<T>() ? singularValue<T>() : this.resolve(tokenfor<T>(), keyof<T>())`. Once `singular`
-(or `factory`) lowers the predicate call to a boolean _literal_, the `fold` stage constant-folds
-the whole conditional: `true ? A : B → A`, `false ? A : B → B`, post-order so a nested ternary
-collapses in one pass. This runs **before the sweep**, so the primitive call sitting in the dead
-branch never has to lower at all — a `singularValue<T>()` under the pruned arm of a non-singular
-`T` simply disappears with its branch, rather than needing to derive a value for a type it can't
-represent one for. `fold` also drops the redundant parenthesis the inline stage's own precedence
-wrapper leaves around a folded ternary, so `(true ? resolve(t) : …)` collapses all the way to
-`resolve(t)` — byte-identical to what a by-hand author would have written, never a stray paren
-surviving into the emit.
-
-A `singularValue<T>()` (or `paramtokensfor<T>()`/`returntokenfor<T>()`) that survives the fold
-**unguarded** — i.e. genuinely reachable, not merely a dead branch — is a real authoring error and
-gets a targeted diagnostic naming the problem, never a silent empty emission.
-
 ## The generic inline stage
 
 Every primitive stage carries hand-written knowledge of exactly one call shape — `nameof` always
@@ -359,17 +330,18 @@ build time, in this repo, in this build. There is no published/carrier form of a
 function, no shipped src, no dist-JS resolution path for it — external consumption of the sugar
 forms stays a deliberately parked follow-up.
 
-### The publish list — `"rhombus.inline"`
+### The publish list — the `"rhombus-std"` marker's `"inline"` list
 
-A library declares its inlineable members in a `"rhombus.inline"` key in `package.json`:
+A library declares its inlineable members in a `"rhombus-std"` marker's `"inline"` list in
+`package.json`:
 
 ```jsonc
 {
-  "rhombus.inline": {
-    "entries": [
+  "rhombus-std": {
+    "inline": [
       {
         "type": "@rhombus-std/di.core:IServiceQuery",
-        "impl": "ServiceQueryInline",
+        "impl": "@rhombus-std/di.extras:ServiceQueryInline",
         "member": "isService",
       },
     ],
@@ -377,11 +349,27 @@ A library declares its inlineable members in a `"rhombus.inline"` key in `packag
 }
 ```
 
-The three fields map to TypeScript namespaces: `type` is a **type-namespace** export written as a
-tokenfor-shaped token (`<package>:<TypeName>`) — the match anchor; `impl` is a **value-namespace**
-export in the declaring package holding the body; `member` is the member name, shared by the
-interface side and the impl side. A free function (no interface receiver) declares `impl` only,
-with no `type`/`member`.
+Fields are partitioned by KIND, not just presence: `type` names a TYPE — a `TypeIdentifier`
+reference (`NamedType`; never a signature-shaped `Type` like `FunctionType`/`CtorType`), the
+interface an instance member is declared on; `impl` names a VALUE — a fully-qualified
+`<package>:<Name>` export; `member` is the member name, shared by both member shapes. Both `type`
+and `impl` deserialize through the same strict reference grammar (a Go mirror of the TS `Type`
+model's `NamedType` shape — `name`/`from`/generic `typeArgs`); a missing package qualifier or any
+other malformed reference is a loud load-time failure, never a silent skip.
+
+There are three shapes:
+
+- **Instance member** — `type` + `member`, with `impl` present when the member's declaration is
+  ambient (a bodyless interface member — the body lives on `impl`'s `member`-named property; this
+  is every member entry in the workspace today) or absent when the declaration IS its own body (a
+  class method).
+- **Static / namespace-const member** — `impl` + `member`, no `type` — the `impl` value is both the
+  call-base anchor and the body holder.
+- **Floater** — `impl` only, no `type`, no `member` — the `impl` function's own source is the body.
+  `impl` is fully qualified even though it always self-references the declaring package
+  (`"@rhombus-std/primitives.extras:registerAugmentations"` for the `registerAugmentations<R>()`
+  sugar) — the side-parser only ever reads files inside that package, and a foreign `impl` is
+  rejected at load time.
 
 ### How matching works
 
@@ -406,9 +394,9 @@ survives to the output un-lowered.
 An inlineable body (`libraries/*/src/inline.ts`) must be exactly one `return <expr>;`, where the
 expression is a single compile-time expression: no logical operators, assignments, comma
 sequences, `await`/`yield`/`new`/spread, or nested functions. A conditional expression (`?:`)
-**is** permitted, specifically so a body can dispatch
-on a compile-time boolean primitive the way the resolve family does. Each value parameter may
-appear at most once in a runtime position (unlimited inside a primitive call's arguments); type
+**is** permitted — it is still a single compile-time expression over otherwise-clean operands.
+Each value parameter may appear at most once in a runtime position (unlimited inside a primitive
+call's arguments); type
 parameters may appear only as the whole type argument of a primitive call; every other free
 identifier must be a parameter, `this`, a type parameter, or an unaliased primitive import. The
 `rhombus-inline` ESLint rule enforces all of this, including which package each primitive name is
@@ -421,9 +409,11 @@ imports `ManifestChainInline`, so nothing in the code says the object has a role
 therefore carries a marker beside its declaration, at module level:
 
 ```ts
-export const ManifestChainInline = { as<Scope extends string>(this: IInlineChainTarget): IServiceManifest {
-  return this.as(valueof<Scope>());
-} };
+export const ManifestChainInline = {
+  withSignature<T extends readonly any[]>(this: IInlineChainTarget): IServiceManifest {
+    return this.withSignature(...signaturefor<T>());
+  },
+};
 registerInlineBodies(ManifestChainInline);
 ```
 
@@ -491,9 +481,6 @@ export const ManifestChainInline = {
   withSignatures<T extends ReadonlyArray<readonly any[]>>(this: IInlineChainTarget): IServiceManifest {
     return this.withSignatures(...signaturesfor<T>());
   },
-  as<Scope extends string>(this: IInlineChainTarget): IServiceManifest {
-    return this.as(valueof<Scope>());
-  },
 };
 ```
 
@@ -502,39 +489,25 @@ registration's original arguments — `.addClass(...).withSignature<T>()` surviv
 independent, hand-writable continuation, matching what a by-hand author could have chained onto
 the same call.
 
-`isService<T>()` and the resolve family (`resolve`/`resolveAsync`/`tryResolve`) both compose the
-keyed lookup token with `keyedtokenfor<T>()` where the runtime member takes no separate key
-parameter, and with the split `tokenfor<T>() + keyof<T>()` pair where it does:
+`isService<T>()` and the resolve family (`resolve`/`resolveAsync`/`tryResolve`) each compose the
+keyed lookup token from the split `tokenfor<T>() + keyof<T>()` pair — the base token and the key
+(`void 0` when `T` is unkeyed). Sugar always asks the container: there is no compile-time
+short-circuit for a literal-typed request — the engine's own constant synthesis is what serves
+those at resolve time.
 
 ```ts
 export const ServiceQueryInline = { isService<T>(this: IServiceQuery): boolean {
-  return this.isService(keyedtokenfor<T>());
+  return this.isService(tokenfor<T>(), keyof<T>());
 } };
 
 export const ResolverInline = { resolve<T>(this: IInlineResolveTarget): T {
-  return isSingular<T>()
-    ? singularValue<T>()
-    : isFactory<T>()
-    ? this.resolveFactory(returntokenfor<T>(), paramtokensfor<T>())
-    : this.resolve(tokenfor<T>(), keyof<T>());
+  return this.resolve(tokenfor<T>(), keyof<T>());
 }, resolveAsync<T>(this: IInlineResolveTarget): Promise<T> | T {
-  return isSingular<T>()
-    ? singularValue<T>()
-    : isFactory<T>()
-    ? this.resolveFactory(returntokenfor<T>(), paramtokensfor<T>())
-    : this.resolveAsync(keyedtokenfor<T>());
+  return this.resolveAsync(tokenfor<T>(), keyof<T>());
 }, tryResolve<T>(this: IInlineResolveTarget): T | undefined {
-  return isSingular<T>() ? singularValue<T>() : this.tryResolve(tokenfor<T>(), keyof<T>());
+  return this.tryResolve(tokenfor<T>(), keyof<T>());
 } };
 ```
-
-Reading the nested ternary top to bottom: a **singular** `T` (a literal, `null`, `undefined`, or
-`void`) short-circuits to the literal value itself with no runtime lookup at all — the fold stage
-prunes the other two arms entirely once `isSingular<T>()` lowers to `true`. A **factory** `T` (a
-function type) renames the call to `resolveFactory` and derives its return-type token plus its
-parameter-token array. Everything else is the plain tokenful resolve. `resolveAsync` has no key
-parameter on the runtime side, so its keyed form composes the single `keyedtokenfor<T>()` token
-instead of the split pair — the same asymmetry `isService` has, for the same reason.
 
 ### Options (`di.extras.options`)
 
@@ -643,10 +616,9 @@ Anchoring costs nothing in expressiveness, because **every checker question this
 question about source-written syntax** — which primitive is this callee, which overload does this
 sugar call bind to, what type is this argument. None of those answers can change as the loop lowers
 the tree underneath them, so asking about the pass-0 node is the question the stage meant to ask.
-The stages that genuinely depend on rewritten state — `fold`'s boolean-literal ternaries,
-`flattenSignatureForSpreads`' minted arrays, the inline stage's `elideUnkeyedKeyArg` — use no
-checker at all. Repeat queries are cheap: the checker memoizes per node, and the anchor makes every
-pass ask about the same node.
+The stages that genuinely depend on rewritten state — `flattenSignatureForSpreads`' minted arrays,
+the inline stage's `elideUnkeyedKeyArg` — use no checker at all. Repeat queries are cheap: the
+checker memoizes per node, and the anchor makes every pass ask about the same node.
 
 `mergesynth` is exempt only because of **where** it runs — a one-shot pre-pass before the loop
 mutates anything, so its nodes are still pristine by placement. Its documented rejoin condition
@@ -730,7 +702,7 @@ it walks the freshly-spliced expression and records every primitive call it find
 identity** (not by name or position), against the checker-bound type or value from the _original_
 call site:
 
-- a **type-argument** primitive (`tokenfor<T>()`, `isSingular<T>()`, …) records the bound
+- a **type-argument** primitive (`tokenfor<T>()`, `keyof<T>()`, …) records the bound
   `*checker.Type` for each type parameter;
 - a **value-argument** primitive (`signatureof(ctor)`, `tokenfor(value)`) records the original,
   program-bound argument node itself, so the consuming stage can still query the checker through
@@ -740,8 +712,8 @@ call site:
   call-site-bound argument types — resolved against the _consumer's_ program later, in the
   lowering stage that owns the token-derivation context.
 
-A downstream stage (`nameof`, `signatureof`, `keyof`, `valueof`, `singular`, `factory`,
-`schemaof`) checks the artifacts map first for any call it visits; a hit means "this is my
+A downstream stage (`nameof`, `signatureof`, `keyof`, `schemaof`) checks the artifacts map first
+for any call it visits; a hit means "this is my
 substituted work from this run," a miss falls through to the ordinary checker-anchored
 source-written path. After the loop's final pass, an **emit sweep** walks the artifacts one more
 time and fails the build if anything registered there — or any listed sugar call — survived
@@ -755,14 +727,13 @@ with no export name, a type the checker can't resolve, a base type that isn't in
 never emits an empty string, `null`, or any other silent placeholder. It either:
 
 - leaves the call **un-lowered** with no diagnostic, if the failing use is a _synthetic_
-  (substituted) one that hasn't reached the sweep yet — because a dead ternary branch's primitive
-  call might still get pruned by `fold` before anyone needs its value, and erroring before that
-  prune would fail builds that are actually fine; or
+  (substituted) one that hasn't reached the sweep yet — a later pass may still resolve the state
+  it depends on, and erroring before the loop settles would fail builds that are actually fine; or
 - emits a **targeted diagnostic** naming the specific problem, if the failing use is
   _source-written_ (a human wrote `tokenfor<AnonymousType>()` directly) — where there's no later
-  pruning step that could still rescue it.
+  pass that could still rescue it.
 
-The sweep is the backstop for the first case: a synthetic use that never got pruned and never got
+The sweep is the backstop for the first case: a synthetic use that never settled and never got
 lowered is exactly what the sweep exists to catch. Nothing in the loop ever silently succeeds with
 a wrong or empty answer.
 
@@ -915,13 +886,12 @@ Each is recorded in `docs/decisions.v2.md` (§115–§123).
   primitive branch on which verb called it — keeping the domain-neutral primitive genuinely
   domain-neutral meant the _verb_ (registration-body-side knowledge) has to pick which primitive
   to call, not the primitive guessing at its caller.
-- **The keyed-semantics fix (§98)** — the resolve/isService/resolveAsync bodies originally derived
-  their single token with `tokenfor<T>()`, which strips a `Keyed<T,K>` brand — silently matching
-  the _wrong_ (unkeyed) registration, or matching nothing, for a keyed lookup. The fix routes the
-  single-token consumers through the raw-preserving `tokenof<T>()`/`keyedtokenfor<T>()` primitives
-  instead, so a keyed resolve actually round-trips a keyed registration; the registration bodies
-  themselves were already correct (they split base + `keyof` onto separate arguments) and were
-  untouched.
+- **The keyed-semantics fix (§98)** — a resolve body that derives its token with `tokenfor<T>()`
+  strips a `Keyed<T,K>` brand — silently matching the _wrong_ (unkeyed) registration, or matching
+  nothing, for a keyed lookup. The fix routes a keyed consumer through the raw-preserving
+  `tokenof<T>()` instead, so a keyed resolve actually round-trips a keyed registration; the
+  registration bodies themselves were already correct (they split base + `keyof` onto separate
+  arguments) and were untouched.
 - **The transitive-witness fix** — a consumer reaching a sugar-target module only _transitively_
   (importing `@rhombus-std/di` without importing `@rhombus-std/di.core` directly, even though
   `di`'s own bundle re-exports it) could make the inline stage's module-resolution check return

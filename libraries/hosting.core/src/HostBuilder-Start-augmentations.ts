@@ -1,5 +1,5 @@
-import { type AbortSignal, type AugmentationSet2, registerAugmentations } from '@rhombus-std/primitives';
-import { tokenfor } from '@rhombus-std/primitives.extras';
+import type { AbortSignal, AugmentationSet2 } from '@rhombus-std/primitives';
+import { registerAugmentations } from '@rhombus-std/primitives.extras';
 import type { IHost } from './IHost';
 import type { IHostBuilder } from './IHostBuilder';
 
@@ -22,11 +22,11 @@ declare module '@rhombus-std/hosting.core' {
 
 /** Augmentation set for {@link IHostBuilder}; the member is also directly callable. */
 export const HostBuilderStartAugmentations: AugmentationSet2<IHostBuilder, IHostBuilderStartAugmentations> = {
-  async startHost(hostBuilder, abortSignal) {
-    const host = hostBuilder.build();
+  async startHost(abortSignal) {
+    const host = this.build();
     await host.start(abortSignal);
     return host;
   },
 };
 
-registerAugmentations(tokenfor<IHostBuilder>(), HostBuilderStartAugmentations);
+registerAugmentations<IHostBuilder>(HostBuilderStartAugmentations);

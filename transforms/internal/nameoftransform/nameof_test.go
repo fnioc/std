@@ -302,9 +302,9 @@ export const e = tokenfor<IBar[]>();
 // whole internal-symbol family, yielding the empty token — matching how the di stage
 // already treats an anonymous type. Anonymous types are not legitimate tokenfor
 // targets, so no real call site regresses.
-// TestNameofAnonymousTypeReportsUnderivable pins the failure-semantics unification
-// (§94/Open issue 4): a SOURCE-WRITTEN `tokenfor<{anonymous}>()` whose type derives
-// no token is no longer silently lowered to the empty token `""` (which a downstream
+// TestNameofAnonymousTypeReportsUnderivable pins the failure semantics: a
+// SOURCE-WRITTEN `tokenfor<{anonymous}>()` whose type derives
+// no token is never silently lowered to the empty token `""` (which a downstream
 // reader could mistake for a real token) — it emits a targeted
 // TYPE_ARG_TOKEN_UNDERIVABLE diagnostic and is left UN-LOWERED, so the build fails
 // loud.

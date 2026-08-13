@@ -1,23 +1,21 @@
 // The INFRASTRUCTURE surface of `@rhombus-std/di.core` — the parts a LIBRARY
 // AUTHOR reaches for, rather than the registration/resolution verbs an
-// application composition root uses. Authored in the TOKENLESS dialect: types
-// drive the tokens and the dependency signatures, and the Go/ttsc engine lowers
-// them during this package's build.
+// application composition root uses. Authored in the TOKENLESS dialect: source
+// types drive the service Types and the dependency signatures, and the Go/ttsc
+// engine lowers them during this package's build.
 //
 // The mirror of this file is `../../examples.lib.without-transformer/src/
 // infrastructure-greeting-workshop.ts` — the same scenario, the same output,
-// hand-written tokens. Diff them and the difference is exactly two things:
+// hand-composed Types. Diff them and the difference is exactly two things:
 //
 //   - the workshop's own registration + lookup are TOKENLESS here
-//     (`addClass<GreetingWorkshop>(…)` / `resolve<GreetingWorkshop>()`), because
-//     both sides derive the same token from the same type; and
-//   - the dependency signatures are MINTED from type tuples —
-//     `signaturesfor<[[A, B]]>()` for the card's whole set, `withSignature<[A, B]>()`
-//     for the workshop's one appended overload, `signaturefor<[A]>()` for the
-//     locator's — instead of being written out as slot arrays.
+//     (`typefor<GreetingWorkshop>()` on both the registration and the lookup),
+//     because both sides derive the same Type from the same declaration; and
+//   - every dependency slot is named by its TYPE — `typefor<IGreeting>()` —
+//     instead of by a hand-composed `Type`.
 //
-// Everything else is identical, and deliberately so. Where a token names
-// something that has no type to derive from — a ctor arriving as a runtime
+// Everything else is identical, and deliberately so. Where a slot names a
+// service with no type to derive a `Type` from — a ctor arriving as a runtime
 // parameter, a slot the CALLER fills rather than the container — the explicit
 // form is the only form, in both dialects. That is the no-transformer-first
 // doctrine working as intended: the explicit form is the real API, and the sugar
@@ -37,27 +35,31 @@
 // constructors side by side. The comparison IS the lesson; neither class is
 // interesting without the other.
 
-import type { IResolver, IServiceManifest, IServiceManifestHolder } from '@rhombus-std/di.core';
-// The type-driven dependency-signature MINT primitives. They have no runtime
-// footprint: the build lowers `signaturefor<[A, B]>()` / `signaturesfor<[[A]]>()`
-// to the slot arrays a hand author would have written, and elides this import
-// along with them.
-import { signaturefor, signaturesfor } from '@rhombus-std/di.core';
+import { RESOLVER_TYPE, Type } from '@rhombus-std/di.core';
+import type { IServiceProvider, Manifest } from '@rhombus-std/di.core';
 import type { IGreeting } from '@rhombus-std/examples.contracts';
+// `typefor<T>()` folds to the very `Type` a hand author writes out, so a lookup
+// written from a type and a registration written from a type cannot drift. It
+// has no runtime footprint — every call is folded and this import elided with
+// them.
+import { typefor } from '@rhombus-std/primitives.extras';
 
-// ── tokens ───────────────────────────────────────────────────────────────────
+/** The mutable slot a builder exposes so siblings share one manifest. */
+interface ManifestSlot<S extends string> {
+  services: Manifest<S>;
+}
 
-// Spelled out because each names a slot with no type to derive from at the call
-// site (see the header). They are LOCAL to this demo — nothing outside it
-// registers or resolves them — and are written in the same
-// `<import-specifier>:<exported-name>` form the transformer derives, so a reader
-// can check them against what the sugar would produce.
+// ── types ────────────────────────────────────────────────────────────────────
 
-/** `token(IGreeting)` — the contract the workshop registers a greeting under. */
-const GREETING_TOKEN = '@rhombus-std/examples.contracts:IGreeting';
-
-/** The card stationery. Registered only when the consuming app chooses to override it. */
-const CARD_STATIONERY_TOKEN = '@rhombus-std/examples.lib.with-transformer:ICardStationery';
+/**
+ * The contract the workshop registers a greeting under.
+ *
+ * Composed by hand because the implementation arrives as a runtime parameter,
+ * so there is no type at the call site for `typefor` to derive from (see the
+ * header). It is composed exactly as `typefor<IGreeting>()` would derive it, so
+ * a reader can check it against what the sugar would produce.
+ */
+const GREETING_TYPE: Type = Type.named('IGreeting', '@rhombus-std/examples.contracts');
 
 // ── the domain ───────────────────────────────────────────────────────────────
 
@@ -113,40 +115,15 @@ export class GreetingCard {
 }
 
 /**
- * The card's dependency signatures, minted from its constructor's parameter
- * TYPES rather than written out as tokens.
+ * The card's dependency signature — one inner array per constructor overload,
+ * every slot named by its TYPE.
  *
- * `signaturesfor<[[A, B]]>()` is the tuple-OF-tuples form: one inner tuple per
- * OVERLOAD, so it returns the whole `DepSignatures` array and lowers to exactly
- * the `[["…:IGreeting", "…:ICardRecipient"]]` the manual dialect writes by hand.
- * The set has ONE member here, and choosing the bulk form anyway is the point:
- * `withSignatures` is once-only and STATES the whole set, so a later edit cannot
- * quietly append a second overload to a registration meant to have exactly one.
- *
- * Slot 0 derives `"@rhombus-std/examples.contracts:IGreeting"`, the same string
- * the workshop registers the greeting under. `ICardRecipient` derives a token
- * that is never registered anywhere; that is the point — it can only ever be
- * filled by the caller.
+ * Slot 0 derives `"@rhombus-std/examples.contracts:IGreeting"`, the same type the
+ * workshop registers the greeting under. `ICardRecipient` derives one that is
+ * never registered anywhere; that is the point — it can only ever be filled by
+ * the caller.
  */
-const CARD_SIGNATURES = signaturesfor<[[IGreeting, ICardRecipient]]>();
-
-/**
- * The locator twin's signature, minted with the SINGULAR `signaturefor<[…]>()` —
- * one type tuple in, one `DepSlot[]` out, appended by the REPEATABLE
- * `withSignature`. The two mint primitives say opposite things about a
- * registration's future: the bulk form above forbids further overloads, this one
- * invites them, which is how a library builds a set up conditionally.
- *
- * `IResolver` derives the intrinsic provider token, so even the "give me the
- * container" slot never has to be spelled — which is worth seeing precisely
- * because it is the slot this file argues against reaching for.
- *
- * Held as a const and SPREAD into the call, rather than written as the
- * `withSignature<T>()` sugar the workshop below uses: the two forms lower to the
- * same append, and having one of each keeps both the source-written primitive and
- * the sugar visible in one file.
- */
-const LOCATOR_SIGNATURE = signaturefor<[IResolver]>();
+const CARD_SIGNATURES = [[typefor<IGreeting>(), typefor<ICardRecipient>()]];
 
 /**
  * The library's one real service, and the model citizen of the package: it mints
@@ -242,35 +219,39 @@ export class GreetingWorkshop {
  * below has a parameter form sitting above it — which is what makes it the
  * counter-example.
  *
- * As a side effect it keeps `resolveFactory` / `tryResolve` / `isService` and the
+ * As a side effect it keeps `getRequiredService`, `getService`, and the
  * intrinsic provider slot demonstrated from inside a library, in the tokenless
  * dialect, which is where a reader is most likely to meet them.
  */
 export class LocatorGreetingWorkshop {
-  readonly #resolver: IResolver;
+  readonly #resolver: IServiceProvider;
 
   /** Built on FIRST USE — the provider offers no way to be handed one earlier. */
   #mintCard: ((recipient: ICardRecipient) => GreetingCard) | undefined;
 
   public readonly stationery: ICardStationery;
 
-  public constructor(resolver: IResolver) {
+  public constructor(resolver: IServiceProvider) {
     this.#resolver = resolver;
-    // Explicit-token: `ICardStationery` is registered under a token the app may
-    // or may not have written, and this class names it back — the same string
-    // the builder's `useStationery` registers it under.
-    this.stationery = resolver.tryResolve<ICardStationery>(CARD_STATIONERY_TOKEN) ?? new PlainStationery();
+    // `getService` is the verb whose miss is `undefined` rather than a
+    // throw, which is the whole "use the app's registration if there is one,
+    // otherwise build my default" idiom. The good class declares the same thing
+    // as an optional parameter.
+    this.stationery = (resolver.getService(typefor<ICardStationery>()) as ICardStationery | undefined)
+      ?? new PlainStationery();
   }
 
   /**
-   * In this dialect the whole caller/container partition rides on ONE function
-   * type: `resolve<(recipient: ICardRecipient) => GreetingCard>()` lowers to
-   * `resolveFactory("…:GreetingCard", ["…:ICardRecipient"])`. It is the SAME type
-   * {@link GreetingWorkshop} states as a constructor parameter — the only
-   * difference is whether the container is asked for it or hands it over.
+   * `Type.func(result, ...args)` IS the caller/container partition, spelled as a
+   * type: the listed arguments are the ones the CALLER supplies, and every other
+   * slot in the target's signature resolves from the container. It is the SAME
+   * partition {@link GreetingWorkshop} states as a constructor parameter — the
+   * only difference is whether the container is asked for it or hands it over.
    */
   public card(name: string): string {
-    this.#mintCard ??= this.#resolver.resolve<(recipient: ICardRecipient) => GreetingCard>();
+    this.#mintCard ??= this.#resolver.getRequiredService(
+      Type.func(typefor<GreetingCard>(), typefor<ICardRecipient>()),
+    ) as (recipient: ICardRecipient) => GreetingCard;
     return this.#mintCard({ name }).render(this.stationery.border);
   }
 
@@ -279,7 +260,7 @@ export class LocatorGreetingWorkshop {
    * know. The good class answers the same question from a field it was handed.
    */
   public get stationeryIsOverridden(): boolean {
-    return this.#resolver.isService(CARD_STATIONERY_TOKEN);
+    return this.#resolver.getService(typefor<ICardStationery>()) !== undefined;
   }
 }
 
@@ -288,8 +269,8 @@ export class LocatorGreetingWorkshop {
 /**
  * What a consuming application sees inside `addGreetingWorkshop(services, …)`.
  * A fluent, ORDINARY object — no manifest threading, no return value to
- * remember. That ergonomics is bought entirely by
- * {@link IServiceManifestHolder}; see {@link GreetingWorkshopBuilder}.
+ * remember. That ergonomics is bought entirely by the manifest slot; see
+ * {@link GreetingWorkshopBuilder}.
  */
 export interface IGreetingWorkshopBuilder {
   /** Chooses the greeting implementation every card is rendered with. */
@@ -299,43 +280,43 @@ export interface IGreetingWorkshopBuilder {
 }
 
 /**
- * The builder — and the reason `IServiceManifestHolder` exists.
+ * The builder — and the reason the manifest slot exists.
  *
- * A `ServiceManifest` is IMMUTABLE: every verb returns a NEW manifest and leaves
- * the receiver alone. So a builder cannot hold a manifest and register "into"
- * it; whatever it registers would be thrown away the moment its method returned.
+ * A manifest is IMMUTABLE: every verb returns a NEW manifest and leaves the
+ * receiver alone. So a builder cannot hold a manifest and register "into" it;
+ * whatever it registers would be thrown away the moment its method returned.
  * The alternatives are both bad: hand the consumer the manifest and make them
  * thread the result (`services = builder.useGreeting(...)`), which silently
  * registers NOTHING the one time they forget, or have every builder method
  * return the manifest and give up the fluent chain.
  *
- * `IServiceManifestHolder` is the third option: ONE mutable slot over the
- * immutable chain. The builder reassigns `holder.services` on each call, and the
- * function that owns the holder reads the final chain out at the end. That is
- * how `ILoggingBuilder`, `IMetricsBuilder` and `IHostApplicationBuilder` all
- * work, and handing the SAME holder to several builders is what keeps them on
- * one chain instead of silently dropping each other's registrations.
+ * `ManifestSlot` is the third option: ONE mutable slot over the immutable chain.
+ * The builder reassigns `holder.services` on each call, and the function that
+ * owns the holder reads the final chain out at the end. That is how
+ * `ILoggingBuilder`, `IMetricsBuilder` and `IHostApplicationBuilder` all work,
+ * and handing the SAME holder to several builders is what keeps them on one
+ * chain instead of silently dropping each other's registrations.
  */
 export class GreetingWorkshopBuilder<S extends string> implements IGreetingWorkshopBuilder {
-  readonly #holder: IServiceManifestHolder<S | 'singleton'>;
+  readonly #holder: ManifestSlot<S | 'singleton'>;
 
-  public constructor(holder: IServiceManifestHolder<S | 'singleton'>) {
+  public constructor(holder: ManifestSlot<S | 'singleton'>) {
     this.#holder = holder;
   }
 
   public useGreeting(greeting: new() => IGreeting): IGreetingWorkshopBuilder {
-    // Explicit-token in BOTH dialects: the ctor arrives as a runtime PARAMETER,
-    // so there is no class type for the transformer to derive a signature — or a
-    // token — from.
-    this.#holder.services = this.#holder.services.addClass(GREETING_TOKEN, greeting, [[]], 'singleton');
+    // Explicit in BOTH dialects: the ctor arrives as a runtime PARAMETER, so
+    // there is no class type for the transformer to derive a signature — or a
+    // service type — from.
+    this.#holder.services = this.#holder.services.addClass(GREETING_TYPE, greeting, [[]], 'singleton');
     return this;
   }
 
   public useStationery(stationery: ICardStationery): IGreetingWorkshopBuilder {
-    // Same story from the other side: the workshop's optional slot and the
-    // locator's `tryResolve` both name this token, so the registration has to
-    // agree with it by hand.
-    this.#holder.services = this.#holder.services.addValue(CARD_STATIONERY_TOKEN, stationery);
+    // Tokenless from the other side too: the workshop's optional slot and the
+    // locator's `getService` derive the same type this registration does, so the
+    // three cannot drift apart.
+    this.#holder.services = this.#holder.services.addValue(typefor<ICardStationery>(), stationery);
     return this;
   }
 }
@@ -354,53 +335,49 @@ export class GreetingWorkshopBuilder<S extends string> implements IGreetingWorks
  * @param services The application's registration builder.
  * @param configure Receives the builder; its return value is deliberately ignored.
  */
-export function addGreetingWorkshop<S extends string>(services: IServiceManifest<S | 'singleton'>,
-  configure: (builder: IGreetingWorkshopBuilder) => void): IServiceManifest<S | 'singleton'> {
-  const holder: IServiceManifestHolder<S | 'singleton'> = { services };
+export function addGreetingWorkshop<S extends string>(services: Manifest<S | 'singleton'>,
+  configure: (builder: IGreetingWorkshopBuilder) => void): Manifest<S | 'singleton'> {
+  const holder: ManifestSlot<S | 'singleton'> = { services };
   configure(new GreetingWorkshopBuilder<S>(holder));
 
-  // The card. Its TOKEN is derived (`addClass<GreetingCard>`), but its signature
-  // is supplied through the GATED form, because one of its slots — the recipient
-  // — is the caller's and has no registration behind it.
+  // The card. Its SERVICE TYPE is derived (`typefor<GreetingCard>()`) and so is
+  // its signature, because one of its slots — the recipient — is the caller's
+  // and has no registration behind it, which the derivation states rather than
+  // hides.
   //
   // No lifetime, so transient: the honest tag for something built fresh per
   // recipient.
-  holder.services = holder.services.addClass<GreetingCard>(GreetingCard).withSignatures(...CARD_SIGNATURES);
+  holder.services = holder.services.addClass(typefor<GreetingCard>(), GreetingCard, CARD_SIGNATURES);
 
   // The workshop itself goes on next so a consumer cannot forget it — and this
   // one is fully tokenless, right down to its dependency signature. The demo
-  // resolves it with `resolve<GreetingWorkshop>()`, which derives the same token
-  // from the same class type; `withSignature<[…]>()` PINS the overload from a type
-  // tuple, so neither the factory slot nor the optional stationery slot is ever
-  // named at a call site.
+  // resolves it with `getRequiredService(typefor<GreetingWorkshop>())`, which derives the
+  // same type from the same class declaration, so neither the callable slot nor
+  // the optional stationery slot is ever named at a call site.
   //
-  // Pinning is a deliberate choice, and this constructor is the case that earns
-  // the line: `addClass<T>(C)` DERIVES the signature from the ctor, and a derived
-  // signature TRACKS the ctor — so the day someone adds a third, defaulted
-  // parameter it silently becomes a third injected slot, and a new way for the
-  // registration to stop being satisfiable. Stating the two slots makes that an
-  // edit a reviewer sees. Both are worth reading, because neither is a plain
-  // token: `(recipient: ICardRecipient) => GreetingCard` lowers to the factory
-  // slot `{ type: "…:GreetingCard", params: ["…:ICardRecipient"] }` — return type
-  // names what gets built, parameter types name what the CALLER supplies — and
-  // `ICardStationery | undefined` lowers to the union slot
-  // `{ union: ["…:ICardStationery", { value: undefined }] }`, which is how an
-  // OPTIONAL dependency is DECLARED rather than probed for.
+  // Both slots are worth reading, because neither is a plain named type:
+  // `(recipient: ICardRecipient) => GreetingCard` derives a CALLABLE — return
+  // type names what gets built, parameter types name what the CALLER supplies —
+  // and `ICardStationery | undefined` derives a UNION with a literal, which is
+  // how an OPTIONAL dependency is DECLARED rather than probed for.
   //
   // Registration sugar lowers in any expression context, not only at a module's
   // top level, which is what lets a library function like this one be authored
   // tokenlessly at all.
-  holder.services = holder.services.addClass<GreetingWorkshop>(GreetingWorkshop).withSignature<
-    [(recipient: ICardRecipient) => GreetingCard, ICardStationery | undefined]
-  >().as<'singleton'>();
+  holder.services = holder.services.addClass(typefor<GreetingWorkshop>(), GreetingWorkshop, [[
+    Type.func(typefor<GreetingCard>(), typefor<ICardRecipient>()),
+    Type.union(typefor<ICardStationery>(), Type.typeLiteral(undefined)),
+  ]], 'singleton');
 
-  // The counter-example, at its own derived token so a caller can resolve both
-  // from one container and compare the cards. Its one slot is the intrinsic
-  // provider — spread in from `LOCATOR_SIGNATURE` rather than stated inline, so
-  // the file shows both ways of supplying a pinned overload.
-  holder.services = holder.services.addClass<LocatorGreetingWorkshop>(LocatorGreetingWorkshop).withSignature(
-    ...LOCATOR_SIGNATURE,
-  ).as<'singleton'>();
+  // The counter-example, at its own derived service type so a caller can resolve
+  // both from one container and compare the cards. Its one slot is the intrinsic
+  // provider, which `RESOLVER_TYPE` names without deriving anything — "I want the
+  // provider" is plain DI rather than a special slot kind, which is precisely why
+  // nothing stops a library doing it and why the comparison has to be made in
+  // prose.
+  holder.services = holder.services.addClass(typefor<LocatorGreetingWorkshop>(), LocatorGreetingWorkshop, [[
+    RESOLVER_TYPE,
+  ]], 'singleton');
 
   return holder.services;
 }

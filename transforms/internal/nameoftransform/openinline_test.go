@@ -2,7 +2,6 @@ package nameoftransform
 
 import (
 	"path/filepath"
-	"regexp"
 	"strings"
 	"testing"
 
@@ -17,7 +16,7 @@ import (
 )
 
 // buildInlinePresetWorkspace lays out the di.core inline PRESET workspace: a core
-// package literally named `@rhombus-std/di.core` carrying the `rhombus.inline`
+// package literally named `@rhombus-std/di.core` carrying the `rhombus-std` inline
 // `addClass` entry and the real ServiceManifestInline body
 // (`addClass<T>(ctor) => this.addClass(tokenfor<T>(), ctor, signatureof(ctor))`), so the SAME
 // open-template registration can be lowered two ways — through the INLINE pipeline
@@ -33,9 +32,7 @@ func buildInlinePresetWorkspace(t *testing.T, mainSrc string) (*driver.Program, 
   "name": "@rhombus-std/di.core",
   "version": "1.0.0",
   "exports": { ".": { "types": "./src/index.ts", "default": "./src/index.ts" } },
-  "rhombus.inline": {
-    "entries": [ { "type": "@rhombus-std/di.core:IServiceManifestBase", "impl": "ManifestInline", "member": "addClass" } ]
-  }
+  "rhombus-std": { "inline": [ { "type": "@rhombus-std/di.core:IServiceManifestBase", "impl": "@rhombus-std/di.core:ManifestInline", "member": "addClass" } ] }
 }`)
 	writeFile(t, filepath.Join(core, "src", "index.ts"), `export interface IServiceManifestBase {
   addClass(token: string, ctor: unknown, sig: unknown, scope?: string, key?: string): unknown;
@@ -311,59 +308,6 @@ services.addClass<Keyed<ICache, "redis">>(RedisCache);
 	// The two halves reunite onto the di direct token.
 	if inlineBase+"#redis" != diTok {
 		t.Fatalf("base + key must compose onto the di token: inline base %q + #redis != di %q", inlineBase, diTok)
-	}
-}
-
-// TestKeyedTokenforComposesSingleToken pins the keyedtokenfor primitive's
-// standalone lowering (§98, W6p2 item 4) — the COMPOSED keyed-lookup token the
-// key-less query/async verbs (`isService`, `resolveAsync`) need. A keyed T lowers
-// to the SINGLE `base#key` string di.core registers a keyed service under, and an
-// unkeyed T lowers to the plain base token — byte-identical to `tokenfor<T>()`,
-// which is what keeps unkeyed lowering unchanged. Unlike the split base + `keyof`
-// pair the registration/resolve verbs pass, this composes the whole token up front.
-func TestKeyedTokenforComposesSingleToken(t *testing.T) {
-	src := `import type { Keyed } from '@rhombus-std/di.core';
-declare function keyedtokenfor<T>(): string;
-declare function tokenfor<T>(): string;
-interface ICache {}
-export const keyed = keyedtokenfor<Keyed<ICache, "redis">>();
-export const plain = keyedtokenfor<ICache>();
-export const base = tokenfor<ICache>();
-`
-	prog, app := buildInlinePresetWorkspace(t, src)
-	defer func() { _ = prog.Close() }()
-
-	ctx := plugin.NewContext(prog, app)
-	nameofT := New(prog, ctx, nil, func(plugin.Diagnostic) {})
-	ec := shimprinter.NewEmitContext()
-	out := reprint(ec, nameofT(ec, mainSF(t, prog)))
-
-	if strings.Contains(out, "= keyedtokenfor") {
-		t.Fatalf("no keyedtokenfor call should survive lowering:\n%s", out)
-	}
-	litFor := func(name string) string {
-		re := regexp.MustCompile(name + ` = "([^"]*)"`)
-		m := re.FindStringSubmatch(out)
-		if m == nil {
-			t.Fatalf("no string-literal token for %q in:\n%s", name, out)
-		}
-		return m[1]
-	}
-	keyed, plain, base := litFor("keyed"), litFor("plain"), litFor("base")
-	if !strings.HasSuffix(keyed, "#redis") {
-		t.Fatalf("keyed keyedtokenfor must compose the single base#key token, got %q", keyed)
-	}
-	if strings.Contains(plain, "#") {
-		t.Fatalf("unkeyed keyedtokenfor must be the bare base (no key), got %q", plain)
-	}
-	// The composed token is exactly the base with `#redis` appended…
-	if keyed != plain+"#redis" {
-		t.Fatalf("keyed token %q is not base %q + #redis", keyed, plain)
-	}
-	// …and the unkeyed base is byte-identical to tokenfor<ICache>() — so unkeyed
-	// isService/resolveAsync output is unchanged from the pre-key form.
-	if plain != base {
-		t.Fatalf("unkeyed keyedtokenfor %q must equal tokenfor %q", plain, base)
 	}
 }
 

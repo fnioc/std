@@ -32,12 +32,9 @@ func TestBaseStagesCanonicalOrder(t *testing.T) {
 		stagePrefix + "inline",
 		stagePrefix + "mergesynth",
 		stagePrefix + "nameof",
+		stagePrefix + "typefor",
 		stagePrefix + "signatureof",
 		stagePrefix + "keyof",
-		stagePrefix + "valueof",
-		stagePrefix + "singular",
-		stagePrefix + "factory",
-		stagePrefix + "fold",
 		stagePrefix + "schemaof",
 	}
 	got := stageNames(BaseStages())

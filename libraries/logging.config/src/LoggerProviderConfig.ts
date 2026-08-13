@@ -1,7 +1,7 @@
-// `T` erases at runtime, so the constructor takes the provider token as a
-// `Typeof<T>`-branded parameter -- the di engine supplies it from the open
-// registration's `typeArg(1)` slot (see the no-arg `addConfig`), and a
-// direct construction passes `tokenfor<TProvider>()`.
+// `T` erases at runtime, so the constructor receives the provider type as a
+// witness -- the engine supplies it from the open registration's placeholder
+// slot (see the no-arg `addConfig`), and a direct construction passes
+// `typefor<TProvider>()`.
 
 import type { IConfig } from '@rhombus-std/config.core';
 import type { Typeof } from '@rhombus-std/di.core';

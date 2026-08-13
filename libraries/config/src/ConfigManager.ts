@@ -1,7 +1,7 @@
 import type { ConfigObject, IConfigBuilder, IConfigManager, IConfigProvider, IConfigRoot, IConfigSection,
   IConfigSource } from '@rhombus-std/config.core';
 import { augment, ChangeToken, type IChangeToken } from '@rhombus-std/primitives';
-import { tokenfor } from '@rhombus-std/primitives.extras';
+import { typefor } from '@rhombus-std/primitives.extras';
 import type { Func } from '@rhombus-toolkit/func';
 import { ConfigReloadToken } from './ConfigReloadToken';
 import { ConfigRoot } from './ConfigRoot';
@@ -22,7 +22,7 @@ import { MemoryConfigSource } from './memory/MemoryConfigSource';
  */
 export interface ConfigManager extends IConfigManager, IConfigRoot {}
 
-@augment(tokenfor<IConfigBuilder>())
+@augment(typefor<IConfigBuilder>())
 export class ConfigManager {
   readonly #sources: IConfigSource[] = [];
   readonly #properties = new Map<string, unknown>();
