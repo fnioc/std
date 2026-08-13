@@ -1405,15 +1405,6 @@ node's own published fields (`{ name, from?, genericArgs? }`, and so on), one vo
 every nesting level with defaults skippable independently; positional forms remain for flat use, and
 the homogeneous-list factories (`union` / `intersection` / `tuple`) stay positional-rest only.
 
-A signature carries its OWN quantifiers in `genericArgs` — the holes it binds, in declaration order,
-empty for a concrete one. The name is shared with a nominal type's constructed arguments but the
-meaning is not: these are what a request CLOSES, positionally, exactly as a nominal type's are.
-Identity includes them, so `<T>() => Whatever<T>` and a signature that merely mentions `%T` are
-different nodes — the first ranges over the hole, the second names one particular open type. The
-spec object is the door (a positional call spells a concrete signature), and the token grammar
-extends additively: a quantifier list is written in front of the signature it binds,
-`<%T>(%T) => app:Box<%T>`, so every token without one spells exactly as it always did.
-
 Registration never requires the impl instance's own type: a provided constructor's instance
 `NominalType` is data the container has no use for. The address is what consumers resolve by,
 assignability is compile-time-enforced by the sugar constraints (§143), and the composed
@@ -1466,11 +1457,6 @@ dispatches on kind. This dissolves the engine-side reserved-name list, the "a gl
 address-only except three names" asterisk, and the pairing-rule scoping clause that predated it —
 fewer distinct mechanisms, more uniform arms.
 
-Delivery is not a grammar kind. A value handed over later is `Promise<T>`, the ordinary global
-generic a `Promise<T>` reference already derives to, and `AsyncIterable<E>` is likewise an ordinary
-global generic naming a real TypeScript type. Neither carries collection-resolution semantics; only
-`Iterable` and `Array` do.
-
 Normalization lives in the `global` door, with no swap visitor: `global` given a reserved aggregate
 spelling (`'Iterable'` / `'Array'`, one argument) silently returns the corresponding kind node — the same canonicalization contract `union` already
 has. Every path that can spell an aggregate — the parser, derivation-emitted code, hand composition,
@@ -1521,3 +1507,98 @@ the Go `singular` / `valueof` / fold stages, and the short-circuit e2e all retir
 request is served by the describe door, the same as any other request.
 
 _Owner-directed 2026-08-13 (owner: "singular + the lookup thing are all dead")._
+
+## §148 — A type is named by where it is reached from: `Type.imported` for a package, `Type.global` for the ambient scope
+
+One factory named both, and a `from` of `'global'` was the sentinel that meant "no package at all".
+The two readings split into two doors. `Type.imported(name, from, typeArgs?)` names a type an import
+reaches and carries that specifier as its `from`; `Type.global(name, typeArgs?)` names one the
+ambient scope already declares and carries no `from` member, because there is nothing for it to
+hold. Their nodes are `ImportedType` (kind `'imported'`) and `GlobalType` (kind `'global'`), and
+`NominalType` unions them for the call sites that take either.
+
+The doors are strict about the boundary they draw. Handing `Type.imported` a `from` of `'global'`
+throws rather than quietly re-routing to the other door: the ambient scope is not a package, and a
+caller who spells it that way has the wrong door, not a normalizable argument.
+
+The factory is `imported` rather than `import` for one reason: `import` is a reserved word, so no
+namespace can export a member named for it. `Type` is a namespace — every factory a declaration
+carrying its own documentation — and the verb bends to keep it one.
+
+The wire format does not move. A global name is spelled bare and an imported one `from:name`, so
+every token, every derived address and every parity fixture reads byte-for-byte as before; the split
+changes what the TypeScript surface and the node shape say, not what a token says. The token grammar
+still accepts an explicit `global:` qualifier, which the reader hands to the global door, so a token
+round-trips to the node it always did.
+
+_Owner-directed 2026-08-13._
+
+## §149 — Node names are spelled out; a factory pairs with its node's name
+
+A node's type name is written in full: `FunctionType` and `ConstructorType`, never an abbreviation.
+A factory pairs with the node it mints — `global` with `GlobalType`, `imported` with `ImportedType`,
+`tag` with `TagType` — and a spec interface pairs with its factory, so `Type.imported` takes an
+`ImportedSpec`.
+
+The pairing bends only where the full word cannot be a member name. `Type.func` and `Type.ctor` keep
+their short spellings for that reason and no other, and their kind strings stay `'func'` and
+`'ctor'` to match the factories a reader calls. Nothing about being callable makes a factory short;
+the two that are short are the two whose full words are unavailable.
+
+_Owner-directed 2026-08-13._
+
+## §150 — A type wears at most one tag
+
+`TagType.type` is `Exclude<Type, TagType>` and so is the base parameter of `Type.tag`, so the type
+system refuses a tag over a tag wherever the base is statically known. The interning path refuses
+the rest: a tagged base arriving as a value throws, naming the type that already carries a tag, and
+the token reader reports a second `#` as a parse error rather than building a node no factory would.
+
+Re-keying is the alternative this rules out. A keyed registration composes its key into the type, so
+silently replacing or nesting a key would file the registration at an address neither the
+registering side nor the requesting side named, and the miss would surface far from its cause.
+
+One consequence reaches the registration verbs: a verb taking an optional key derives the address it
+files under through a single door, which is where the refusal lives — the check and its message
+exist once rather than beside every verb.
+
+_Owner-directed 2026-08-13._
+
+## §151 — Delivery is not a node kind: `Type.async` and the `asyncIterable` kind are cancelled
+
+Handing a value over later is a property of the call site, not of the type being named. "A `T`
+delivered later" is `Promise<T>` — the ordinary global generic that a `Promise<T>` reference already
+derives to — so `Type.async` and the `Async<E>` wire spelling are gone with nothing replacing them.
+
+`AsyncIterable<E>` factors the same way: an async sequence is a call site's iteration protocol over a
+collection, and `AsyncIterable` is a real TypeScript name that spells as an ordinary global generic.
+Its dedicated aggregate kind is gone too, and with no kind left to produce one, the engine's
+async-iterable call site and its realization go with it.
+
+`Type.iterable` and `Type.array` are the aggregates that remain, and they are the only addresses
+carrying collection-resolution semantics. What survives untouched on the derivation side: an
+`AsyncIterable<E>` reference derives exactly as it did, emitting the ordinary global generic and the
+same token, and the arity trim that keeps a lib-declared `AsyncIterable`'s defaulted tail parameters
+out of a derived address stays — that is derivation hygiene, not a kind.
+
+_Owner-directed 2026-08-13._
+
+## §152 — A signature carries its own quantifiers
+
+`FunctionType` and `ConstructorType` hold a `genericArgs` list: the holes the signature itself
+quantifies, in declaration order, empty for a concrete one. The name is shared with a nominal type's
+constructed arguments and so is the meaning — these are what a request CLOSES, positionally.
+
+Quantifying is part of the type. `<%T>() => app:Box<%T>` ranges over the hole; a signature that
+merely mentions `%T` names one particular open type. Identity includes the list, so those two intern
+as different nodes, and that distinction is the point of carrying it. Substituting a quantified hole
+discharges its quantifier, so closing an open signature lands on the requested node itself rather
+than on a look-alike.
+
+The spec object is the door — a positional `Type.func(returnType, ...args)` call spells a concrete
+signature — and the token grammar extends additively: a quantifier list is written in front of the
+signature it binds, `<%T>(%T) => app:Box<%T>`, reachable through the arrow, `new` and reserved
+`Func` / `Ctor` spellings alike. A token carrying no quantifiers spells exactly as it always did, so
+the parity invariant binds unchanged.
+
+_Owner-directed 2026-08-13._

@@ -71,8 +71,9 @@ export interface ConstructorType extends TypeBase<'ctor'> {
   readonly instanceType: Type;
   /**
    * The holes this signature quantifies, in declaration order — empty for a concrete one. A request
-   * closes them positionally, so `<%T>() => app:Box<%T>` serves `() => app:Box<string>`, while a
-   * signature that merely mentions `%T` without quantifying it is a different type that does not.
+   * closes them positionally, exactly as a nominal type's arguments close. Quantifying a hole is
+   * part of the type: `<%T>() => app:Box<%T>` and a signature that merely mentions `%T` are
+   * different types.
    */
   readonly genericArgs: readonly Type[];
 }
@@ -96,8 +97,9 @@ export interface FunctionType extends TypeBase<'func'> {
   readonly returnType: Type;
   /**
    * The holes this signature quantifies, in declaration order — empty for a concrete one. A request
-   * closes them positionally, so `<%T>() => app:Box<%T>` serves `() => app:Box<string>`, while a
-   * signature that merely mentions `%T` without quantifying it is a different type that does not.
+   * closes them positionally, exactly as a nominal type's arguments close. Quantifying a hole is
+   * part of the type: `<%T>() => app:Box<%T>` and a signature that merely mentions `%T` are
+   * different types.
    */
   readonly genericArgs: readonly Type[];
 }
