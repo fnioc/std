@@ -427,10 +427,15 @@ function retypecheck(source: string): { readonly status: number | null; readonly
   link(DI_CORE, join(nm, '@rhombus-std', 'di.core'));
   link(PRIMITIVES, join(nm, '@rhombus-std', 'primitives'));
   writeFileSync(join(dir, 'lowered.ts'), source);
+  // The lowered file reaches its derived types through the generated const
+  // module, so the program being checked is the emitted file AND that module —
+  // copied in as TypeScript, which the `./__typefor__.js` specifier resolves to
+  // under bundler resolution.
+  writeFileSync(join(dir, '__typefor__.ts'), readTypeModule(handProjDir, 'dist-inline'));
   writeFileSync(join(dir, 'tsconfig.json'), JSON.stringify({
     compilerOptions: { target: 'ES2022', module: 'ESNext', moduleResolution: 'Bundler', lib: ['ES2022'], strict: true,
       noEmit: true, skipLibCheck: true },
-    include: ['lowered.ts'],
+    include: ['lowered.ts', '__typefor__.ts'],
   }));
   const result = spawnSync('node', [join(TS7, 'bin', 'tsc'), '-p', 'tsconfig.json'], { cwd: dir, encoding: 'utf8' });
   return { status: result.status, output: result.stdout + result.stderr };
@@ -444,7 +449,13 @@ describe.skipIf(!toolchainReady)("signatureof primitive — a hand-writer's expl
     expect(handWithInline).not.toContain('typefor(');
     expect(handWithInline).toContain(`from "@rhombus-std/primitives"`);
 
-    const want = `.addClass(Type.imported("IWidget", "di-sig-hand/tokens/hand"), Widget, `
+    // The SERVICE type came from typefor, which hoists: the call site carries a
+    // reference and the module holds the spelling. The IMPL node came from
+    // signatureof, which spells its tree where it stands — so one call carries
+    // both forms, and both name the same runtime types.
+    const module = readTypeModule(handProjDir, 'dist-inline');
+    const widget = constFor(module, 'Type.imported("IWidget", "di-sig-hand/tokens/hand")');
+    const want = `.addClass(${widget}, Widget, `
       + `Type.ctor(Type.imported("Widget", "di-sig-hand/tokens/hand"), Type.imported("IClock", "di-sig-hand/tokens/hand")))`;
     expect(handWithInline).toContain(want);
   });
