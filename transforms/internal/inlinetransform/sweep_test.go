@@ -171,8 +171,8 @@ export const v = tokenOf(1);
 // a non-rest shape matches only its exact (type-arg, value-arg) counts; a
 // rest-parameter shape (as every di.extras Manifest sugar body is —
 // `<T>(this, ...rest: any[])`, recorded as ValueArgCount 1 for the rest slot
-// itself) matches any value-arg count at or above its leading-parameter count
-// and any type-arg count up to its certified one.
+// itself) matches any value-arg count at or above its leading-parameter count,
+// but keeps type-argument count exact on both branches.
 func TestSugarShapeMatches(t *testing.T) {
 	nonRest := MemberShape{TypeArgCount: 1, ValueArgCount: 0}
 	rest := MemberShape{TypeArgCount: 1, ValueArgCount: 1, HasRest: true}
@@ -191,10 +191,14 @@ func TestSugarShapeMatches(t *testing.T) {
 		// A rest body's ValueArgCount (1) counts the rest slot itself, so its
 		// leading-parameter floor is 0 — every value-arg count from 0 up matches.
 		{"rest at recorded arity", rest, 1, 1, true},
-		{"rest below recorded arity (addClass(Impl, sigs) shape)", rest, 1, 2, true},
+		{"rest below recorded arity (addClass<T>(Impl, sigs) shape)", rest, 1, 2, true},
 		{"rest well above recorded arity", rest, 1, 4, true},
 		{"rest at the floor (zero value args)", rest, 1, 0, true},
-		{"rest with inferred (omitted) type argument", rest, 0, 2, true},
+		// Zero type arguments is the SUBSTITUTION OUTPUT shape
+		// (`this.addClass(typefor<T>(), ...rest)` lowers its own explicit type
+		// argument away), not surviving sugar — must not match regardless of
+		// value-arg count.
+		{"rest with zero type args is the lowered form, not residue", rest, 0, 2, false},
 		{"rest with more type args than certified", rest, 2, 2, false},
 	}
 	for _, c := range cases {
@@ -212,16 +216,15 @@ func TestSugarShapeMatches(t *testing.T) {
 // certified rest-parameter sugar shape (the addClass/addFactory/... family,
 // recorded as TypeArgCount 1 / ValueArgCount 1 / HasRest true, since every
 // di.extras Manifest sugar body is `<T>(this, ...rest: any[])`) must be flagged
-// at a call arity the recorded shape never equals — both a 2-value-arg call
-// (the real addClass(ctor, signatures) shape a strict-equality check can never
-// reach, since the recorded count is 1) and one with its type argument omitted
-// (the checker-supported inferred form).
+// at a value-arg count the recorded shape never equals — the real
+// addClass<T>(ctor, signatures) call shape a strict-equality check can never
+// reach, since the recorded count is 1 — as long as it still spells its
+// explicit type argument.
 func TestSweepFlagsRestSugarAtAnyArity(t *testing.T) {
 	sf := parse(t, "/sweep/rest-residue.ts", `declare const m: any;
 declare const Impl: any;
 declare const sigs: any;
 const a = m.addClass<Impl>(Impl, sigs);
-const b = m.addClass(Impl, sigs);
 `)
 	shimast.SetParentInChildrenUnset(sf.AsNode())
 
@@ -230,13 +233,33 @@ const b = m.addClass(Impl, sigs);
 	a.SugarMembers["addClass"] = MemberShape{TypeArgCount: 1, ValueArgCount: 1, HasRest: true}
 
 	diags := Sweep(sf, a)
-	if len(diags) != 2 {
-		t.Fatalf("expected both the explicit- and inferred-type-argument 2-value-arg calls flagged, got %d: %+v", len(diags), diags)
+	if len(diags) != 1 || diags[0].Code != "INLINE_UNLOWERED_SUGAR" {
+		t.Fatalf("want exactly 1 INLINE_UNLOWERED_SUGAR for the 2-value-arg explicit-type-argument call, got %+v", diags)
 	}
-	for _, d := range diags {
-		if d.Code != "INLINE_UNLOWERED_SUGAR" {
-			t.Errorf("want INLINE_UNLOWERED_SUGAR, got %+v", d)
-		}
+}
+
+// TestSweepIgnoresLoweredRestSugarOutput is the regression the ttsc e2e gate
+// caught and the unit tests above missed: the inline stage's OWN substitution
+// output for a rest-parameter sugar body — a property-access call on the same
+// member name, its explicit type argument already consumed into a token
+// argument, several value arguments — must never be flagged. This is exactly
+// what a correctly lowered `addClass<ILogger>(ConsoleLogger, sigs)` call looks
+// like on disk: `services.addClass(Type.named(...), ConsoleLogger, sigs)`.
+func TestSweepIgnoresLoweredRestSugarOutput(t *testing.T) {
+	sf := parse(t, "/sweep/lowered-output.ts", `declare const services: any;
+declare const token: any;
+declare const ConsoleLogger: any;
+declare const sigs: any;
+export const closed = (services as any).addClass(token, ConsoleLogger, sigs, 'singleton');
+`)
+	shimast.SetParentInChildrenUnset(sf.AsNode())
+
+	a := NewArtifacts()
+	a.Active = true
+	a.SugarMembers["addClass"] = MemberShape{TypeArgCount: 1, ValueArgCount: 1, HasRest: true}
+
+	if diags := Sweep(sf, a); len(diags) != 0 {
+		t.Fatalf("a correctly lowered zero-type-arg call must not be flagged as residue, got %+v", diags)
 	}
 }
 
