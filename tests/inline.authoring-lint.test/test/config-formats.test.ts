@@ -43,7 +43,7 @@ describe('resolveConfig default probe', () => {
     expect((resolved.typefor as { emit: string; }).emit).toBe('inline');
   });
 
-  test('json wins a conflict among every sibling format', () => {
+  test('json — first in the probe order — is taken when every sibling format is present', () => {
     const dir = pkgNoMarker();
     writeFileSync(join(dir, 'rhombus-std.toml'), '[typefor]\nemit = "inline"\n');
     writeFileSync(join(dir, 'rhombus-std.yml'), 'typefor:\n  emit: inline\n');
@@ -51,6 +51,15 @@ describe('resolveConfig default probe', () => {
     writeFileSync(join(dir, 'rhombus-std.json'), JSON.stringify({ typefor: { emit: 'hoisted' } }));
     const resolved = resolveConfig(dir);
     expect((resolved.typefor as { emit: string; }).emit).toBe('hoisted');
+  });
+
+  test('the probe stops at the first match: json is taken, toml is never read', () => {
+    const dir = pkgNoMarker();
+    writeFileSync(join(dir, 'rhombus-std.json'), JSON.stringify({ typefor: { emit: 'hoisted' } }));
+    writeFileSync(join(dir, 'rhombus-std.toml'), 'typefor.emit = "inline"\n$schema = "toml-marker"\n');
+    const resolved = resolveConfig(dir);
+    expect((resolved.typefor as { emit: string; }).emit).toBe('hoisted');
+    expect(resolved.$schema).toBeUndefined();
   });
 });
 

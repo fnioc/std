@@ -118,16 +118,15 @@ const extendsKey = "extends"
 // field-by-field with another).
 //
 // A package.json with no "rhombus-std" key at all resolves as though it read
-// exactly
-//
-//	{"extends": ["./rhombus-std.toml", "./rhombus-std.yml", "./rhombus-std.yaml", "./rhombus-std.json"]}
-//
-// — the one default, each sibling tried in turn under the same blind
-// resolution and later-wins fold as any other "extends" array, so a missing
-// format contributes nothing and JSON, listed last, wins a conflict between
-// whichever siblings exist. A "rhombus-std" key present with ANY value,
-// including {}, is authoritative on its own; the default files never
-// participate once the key exists.
+// exactly {"extends": "<the first sibling default file that exists>"} —
+// FIRST-MATCH-STOP, not a fold: rhombus-std.json, then .yaml, then .yml,
+// then .toml, in that priority order, and the moment one is found the rest
+// are never even consulted, so two sibling defaults never cross-format
+// merge (defaultExtendsPath). A "rhombus-std" key present with ANY value,
+// including {}, is authoritative on its own; the default probe never runs
+// once the key exists. An explicit "extends" — written by hand, or reached
+// partway down an "extends" chain — keeps full fold semantics regardless;
+// first-match-stop is a property of the implicit default alone.
 //
 // Resolution is BLIND: an "extends" path that isn't a readable file
 // contributes nothing, silently, whether the directive was defaulted or
@@ -158,12 +157,7 @@ func ResolveConfig(packageDir string) (map[string]any, error) {
 	}
 	var raw map[string]any
 	if pkg.RhombusStd == nil {
-		raw = map[string]any{extendsKey: []any{
-			"./rhombus-std.toml",
-			"./rhombus-std.yml",
-			"./rhombus-std.yaml",
-			"./rhombus-std.json",
-		}}
+		raw = map[string]any{extendsKey: defaultExtendsPath(packageDir)}
 	} else if err := json.Unmarshal(pkg.RhombusStd, &raw); err != nil {
 		return nil, fmt.Errorf("INLINE_ENTRY_SHAPE: %s %q must be an object: %w", pkgPath, "rhombus-std", err)
 	}
@@ -175,6 +169,28 @@ func ResolveConfig(packageDir string) (map[string]any, error) {
 		return nil, err
 	}
 	return resolved, nil
+}
+
+// defaultExtendsPath returns the sibling default file a package.json with no
+// "rhombus-std" key implicitly extends: the first candidate that exists, in
+// priority order (JSON, then YAML, then .yml, then TOML) — a first-match-stop
+// probe, not a fold, so a later candidate is never even consulted once an
+// earlier one is found and two sibling defaults never cross-format merge.
+// When none exist, the name returned is still whichever the probe would have
+// preferred, and the ordinary blind "extends" resolution treats it exactly
+// like any other missing path: silently nothing.
+func defaultExtendsPath(packageDir string) string {
+	for _, name := range []string{
+		"rhombus-std.json",
+		"rhombus-std.yaml",
+		"rhombus-std.yml",
+		"rhombus-std.toml",
+	} {
+		if fileExists(filepath.Join(packageDir, name)) {
+			return "./" + name
+		}
+	}
+	return "./rhombus-std.json"
 }
 
 // resolveNode resolves node's "extends" (if present) against fromFile's own

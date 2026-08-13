@@ -7,10 +7,10 @@
 // build stage agree on which entries exist and which are well-formed.
 
 import Ajv from 'ajv';
-import { readFileSync } from 'node:fs';
+import yaml from 'js-yaml';
+import { existsSync, readFileSync } from 'node:fs';
 import { dirname, extname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import yaml from 'js-yaml';
 import * as TOML from 'smol-toml';
 
 /**
@@ -229,16 +229,15 @@ function normalizeParsed(/** @type {unknown} */ v) {
  * entry never merges field-by-field with another).
  *
  * A package.json with no "rhombus-std" key at all resolves as though it read
- * exactly
- *
- *   {"extends": ["./rhombus-std.toml", "./rhombus-std.yml", "./rhombus-std.yaml", "./rhombus-std.json"]}
- *
- * — the one default, each sibling tried in turn under the same blind
- * resolution and later-wins fold as any other "extends" array, so a missing
- * format contributes nothing and JSON, listed last, wins a conflict between
- * whichever siblings exist. A "rhombus-std" key present with ANY value,
- * including {}, is authoritative on its own; the default files never
- * participate once the key exists.
+ * exactly {"extends": "<the first sibling default file that exists>"} —
+ * FIRST-MATCH-STOP, not a fold: rhombus-std.json, then .yaml, then .yml, then
+ * .toml, in that priority order, and the moment one is found the rest are
+ * never even consulted, so two sibling defaults never cross-format merge
+ * (defaultExtendsPath). A "rhombus-std" key present with ANY value, including
+ * {}, is authoritative on its own; the default probe never runs once the key
+ * exists. An explicit "extends" — written by hand, or reached partway down an
+ * "extends" chain — keeps full fold semantics regardless; first-match-stop is
+ * a property of the implicit default alone.
  *
  * Resolution is BLIND: an "extends" path that isn't a readable file
  * contributes nothing, silently, whether the directive was defaulted or
@@ -260,22 +259,32 @@ export function resolveConfig(/** @type {string} */ packageDir) {
   const root = resolve(packageDir);
   const pkgPath = join(root, 'package.json');
   const pkg = JSON.parse(readFileSync(pkgPath, 'utf8'));
-  const raw = ('rhombus-std' in pkg)
-    ? pkg['rhombus-std']
-    : {
-      [EXTENDS_KEY]: [
-        './rhombus-std.toml',
-        './rhombus-std.yml',
-        './rhombus-std.yaml',
-        './rhombus-std.json',
-      ],
-    };
+  const raw = ('rhombus-std' in pkg) ? pkg['rhombus-std'] : { [EXTENDS_KEY]: defaultExtendsPath(root) };
   if (typeof raw !== 'object' || raw === null || Array.isArray(raw)) {
     throw new Error(`INLINE_ENTRY_SHAPE: ${pkgPath} "rhombus-std" must be an object`);
   }
   const resolved = resolveNode(raw, pkgPath, new Set([pkgPath]));
   validateConfigNode(resolved, `${pkgPath} (fully resolved)`);
   return resolved;
+}
+
+/**
+ * Returns the sibling default file a package.json with no "rhombus-std" key
+ * implicitly extends: the first candidate that exists, in priority order
+ * (JSON, then YAML, then .yml, then TOML) — a first-match-stop probe, not a
+ * fold, so a later candidate is never even consulted once an earlier one is
+ * found and two sibling defaults never cross-format merge. When none exist,
+ * the name returned is still whichever the probe would have preferred, and
+ * the ordinary blind "extends" resolution treats it exactly like any other
+ * missing path: silently nothing.
+ */
+function defaultExtendsPath(/** @type {string} */ packageDir) {
+  for (const name of ['rhombus-std.json', 'rhombus-std.yaml', 'rhombus-std.yml', 'rhombus-std.toml']) {
+    if (existsSync(join(packageDir, name))) {
+      return `./${name}`;
+    }
+  }
+  return './rhombus-std.json';
 }
 
 /**

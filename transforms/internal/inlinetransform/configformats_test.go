@@ -62,9 +62,9 @@ func TestResolveConfigDefaultProbeEachFormat(t *testing.T) {
 }
 
 // TestResolveConfigDefaultProbeJSONWinsConflict: with no "rhombus-std" key
-// and every sibling format present with a conflicting leaf, JSON — listed
-// last in the default probe array — wins, the same later-wins fold as any
-// other "extends" array.
+// and every sibling format present, JSON — first in the probe's priority
+// order — is the one taken; the probe stops there, so the other three are
+// never even read.
 func TestResolveConfigDefaultProbeJSONWinsConflict(t *testing.T) {
 	root := t.TempDir()
 	write(t, filepath.Join(root, "package.json"), `{ "name": "pkg" }`)
@@ -79,6 +79,28 @@ func TestResolveConfigDefaultProbeJSONWinsConflict(t *testing.T) {
 	typefor, ok := resolved["typefor"].(map[string]any)
 	if !ok || typefor["emit"] != "hoisted" {
 		t.Fatalf("expected rhombus-std.json to win the conflict, got %+v", resolved)
+	}
+}
+
+// TestResolveConfigDefaultProbeStopsAtFirstMatch: with rhombus-std.json AND
+// rhombus-std.toml both present (no yaml/yml), the probe takes json and
+// never reads toml at all — proven by a toml-only marker key that must be
+// absent from the result, not merely overridden.
+func TestResolveConfigDefaultProbeStopsAtFirstMatch(t *testing.T) {
+	root := t.TempDir()
+	write(t, filepath.Join(root, "package.json"), `{ "name": "pkg" }`)
+	write(t, filepath.Join(root, "rhombus-std.json"), `{ "typefor": { "emit": "hoisted" } }`)
+	write(t, filepath.Join(root, "rhombus-std.toml"), "typefor.emit = \"inline\"\n$schema = \"toml-marker\"\n")
+	resolved, err := ResolveConfig(root)
+	if err != nil {
+		t.Fatalf("ResolveConfig: %v", err)
+	}
+	typefor, ok := resolved["typefor"].(map[string]any)
+	if !ok || typefor["emit"] != "hoisted" {
+		t.Fatalf("expected rhombus-std.json to be taken, got %+v", resolved)
+	}
+	if _, ok := resolved["$schema"]; ok {
+		t.Fatalf("expected rhombus-std.toml to never be read (no cross-format merge), got %+v", resolved)
 	}
 }
 

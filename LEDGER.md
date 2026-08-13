@@ -2,6 +2,23 @@
 
 PR: https://github.com/fnioc/std/pull/339 (draft, against IServiceManifest-repair)
 
+## Default-probe ruling (owner, mid-flight)
+
+The absent-key default was originally built as an `extends` ARRAY of all four sibling names
+(`.toml`, `.yml`, `.yaml`, `.json`, JSON last so the array's own later-wins fold made it the
+winner on a leaf conflict) — a mechanism reuse of the array fold that already existed for explicit
+`extends`. The owner overrode this: the default probe is FIRST-MATCH-STOP, not a fold — probe
+order `rhombus-std.json`, `.yaml`, `.yml`, `.toml`; the first candidate that EXISTS on disk is
+taken as `{"extends": "<that one file>"}`, and the rest are never even read (no cross-format
+merging of a default's siblings — the cosmiconfig/rc-cascade convention, not the tsconfig one).
+Explicit `extends` — hand-written, or reached partway down a chain — is unaffected and keeps the
+full fold. Implemented as `defaultExtendsPath(packageDir)` in both loaders: an explicit filesystem
+probe (`fileExists`/`existsSync`) run once, ahead of ordinary resolution, rather than handing the
+resolver an array and letting existing fold/blind-resolution machinery sort it out. The four real
+packages that rely on the default (`di.extras`, `di.extras.options`, `config.extras`,
+`primitives.extras` — each ships only a bare `rhombus-std.json` sibling, no inline marker in
+`package.json`) are unaffected either way, since JSON is the only candidate any of them has.
+
 ## Dependencies added
 
 Go (`transforms/go.mod`):
@@ -32,13 +49,23 @@ consumed only by lint-time scripts.
 ## TOML datetime decision
 
 TOML's four temporal types (offset datetime, local datetime, local date, local time) have no JSON
-counterpart. Decided: normalize every one to its string form — `time.Time` (offset datetimes) via
-`Format(time.RFC3339)`, the three local/partial types via their own `String()` method (ISO 8601
-date/time-only text) — rather than rejecting a config that happens to contain one. Same choice
-mirrored exactly in the JS loader (smol-toml's local-date/time/datetime objects also stringify via
-their own `.toString()`/template literal path to the equivalent ISO 8601 text). TOML integers also
-widen to `float64`/JS `number`, matching JSON's single numeric type — this makes a TOML-sourced
-value validate and merge identically to a JSON- or YAML-sourced one from that point on.
+counterpart. Decided: normalize every one to its string form — Go's `time.Time` (offset datetimes)
+via `Format(time.RFC3339Nano)`, the three local/partial types via `pelletier/go-toml/v2`'s own
+`LocalDate`/`LocalTime`/`LocalDateTime.String()` — rather than rejecting a config that happens to
+contain one. `RFC3339Nano` (not plain `RFC3339`) matters: `RFC3339` unconditionally drops
+sub-second precision, silently truncating any TOML value that carried it; `RFC3339Nano` includes a
+fraction when one is present and omits it cleanly when it isn't.
+
+Mirrored exactly on the JS side by `smol-toml`'s `TomlDate.toISOString()` — a method it overrides
+specifically to reproduce the *authored* textual form (not `Date.prototype.toString()`, which
+renders the host's local timezone and would silently corrupt every value; verified this the hard
+way with a probe script before trusting it). Since JS `Date` only carries millisecond precision,
+`toISOString()` always emits a `.000` fraction for a zero-fraction value where Go's `RFC3339Nano`
+omits it entirely — normalized away with a trailing-`.000` strip so the two loaders produce
+byte-identical strings for the same input (verified: both render the same offset-datetime example
+as `1979-05-27T07:32:00Z`, no fraction). TOML integers also widen to `float64`/JS `number`, matching
+JSON's single numeric type — this makes a TOML-sourced value validate and merge identically to a
+JSON- or YAML-sourced one from that point on.
 
 ## Schema vocabulary: one gap closed
 
@@ -74,14 +101,14 @@ and the schema library's own JSON-pointer path.
 
 Schema validation runs at the top of every `resolveNode` call (covers the package.json marker, every
 `extends` target, recursively) plus once more on `ResolveConfig`'s final merged return (the "belt"
-check — provably redundant against the *current* schema, since every merge is either object
+check — provably redundant against the _current_ schema, since every merge is either object
 key-by-key or array concatenation of independently-valid values, but kept as the requested
 forward-compatible safety net for schema features that don't exist yet, e.g. cross-key
 `dependentRequired`).
 
 Since the (now four-branch) entry union in the schema is an exact mirror of `Kind()`'s own four
 grammar rows, a genuinely malformed inline entry (fits none of the four rows) is now always caught
-by the schema gate *before* `entriesFromResolved`'s hand-written `Kind()` check ever runs — the two
+by the schema gate _before_ `entriesFromResolved`'s hand-written `Kind()` check ever runs — the two
 existing tests exercising that path (`TestLoadInlineEntriesBadShape`, a type+impl-no-member entry;
 `TestLoadInlineEntriesNonStringExtends`, a numeric `extends` value) now expect `INLINE_CONFIG_SCHEMA`
 instead of `INLINE_ENTRY_SHAPE`/`INLINE_ENTRY_IMPORT`. `Kind()` itself is untouched and still load-
@@ -94,7 +121,7 @@ certification status, and the foreign-package `impl` cross-reference rule.
 
 - `entries.go`'s `Kind()`/`EntryKind`/`KindStatus` machinery — unchanged, still the semantic
   classifier the rest of the inline pipeline depends on.
-- The `INLINE_ENTRY_IMPORT` code — unchanged meaning (a present file that fails to *parse*, or an
+- The `INLINE_ENTRY_IMPORT` code — unchanged meaning (a present file that fails to _parse_, or an
   `extends` chain-cycle-adjacent shape issue the schema doesn't reach because the value never
   successfully parsed into something to validate).
 - `schema-drift.test.ts` (validates the four live `*.extras` markers against the schema) — untouched;
