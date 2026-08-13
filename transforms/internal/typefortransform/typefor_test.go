@@ -542,3 +542,33 @@ export const bad = typefor<IThing>().returnType;
 		t.Fatalf("expected one %s diagnostic, got %+v", accessorMismatchCode, diags)
 	}
 }
+
+// TestTypeforAggregateCarriesOnlyItsElement pins the arity an aggregate spelling
+// derives at. The lib declares `Iterable<T, TReturn = any, TNext = any>` and
+// `AsyncIterable` identically, and a bare `Iterable<E>` reference still resolves
+// all three arguments — so the derivation must keep only the element. The runtime
+// `named` door mints an aggregate kind from a SINGLE argument under `global`, so a
+// spelling that carried the defaulted tail would land as an ordinary named type
+// that no aggregate registration answers.
+func TestTypeforAggregateCarriesOnlyItsElement(t *testing.T) {
+	src := `import { typefor } from '@rhombus-std/primitives.extras';
+interface IThing {}
+export const arr = typefor<IThing[]>();
+export const iter = typefor<Iterable<IThing>>();
+export const aiter = typefor<AsyncIterable<IThing>>();
+`
+	prog, app := buildTypeforWorkspace(t, src)
+	defer func() { _ = prog.Close() }()
+
+	out := lowerTypefor(t, prog, app)
+	element := `Type.named("IThing", "@scope/app/main")`
+	for _, tc := range []struct{ name, want string }{
+		{"arr", `Type.named("Array", "global", [` + element + `])`},
+		{"iter", `Type.named("Iterable", "global", [` + element + `])`},
+		{"aiter", `Type.named("AsyncIterable", "global", [` + element + `])`},
+	} {
+		if got := exprFor(t, out, tc.name); got != tc.want {
+			t.Errorf("%s = %q, want %q\nfull output:\n%s", tc.name, got, tc.want, out)
+		}
+	}
+}

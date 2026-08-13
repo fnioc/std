@@ -292,28 +292,24 @@ with same-named source folders.
 
 _Owner-directed 2026-07-18._
 
-## §98 — Keyed sugar composes through `keyof` and a tail key parameter
+## §98 — A key composes into the type; a keyed address is a tagged one
 
-A single authoring-only primitive, `keyof<T>()`, lives in `di.transformer` (lowercase — reserved
-only in type positions, family-consistent with `tokenfor`/`signatureof`/`schemaof`, per §92's homing
-rule). It lowers to the key of a `Keyed<T, K>` type argument (`'audit'`) and to `undefined` for a
-non-keyed type. `tokenfor` over `Keyed<T, K>` derives the BASE token unchanged — base extraction, not
-key loss — so `keyof` and `tokenfor` are two independent readings of the same phantom brand.
+A keyed registration is not a separate argument travelling beside a type, and not a `base#key`
+string. The key composes INTO the type: `Type.tag(base, key)` is the address the registration lives
+under, and the same type under a different tag is a different type. One node, one address, one
+lookup — the container never has to know that "keyed" was a thing a caller said.
 
-The explicit registration verbs each carry ONE signature with an optional TAIL parameter —
-`add(token, impl, signatures, key?)`, `addFactory(token, fn, signatures, key?)`,
-`addValue(token, value, key?)` — never an overload pair. The runtime composes the full token as
-`[token, key].filter(Boolean).join('#')`, so any falsy key means "unkeyed" — unifying with
-`resolve`'s existing `key = ''` default (§85), which stays unchanged.
+The explicit registration verbs each carry ONE signature with an optional TAIL key parameter —
+`addClass(type, ctor, signatures, scope?, key?)`, `addFactory(type, factory, signatures, scope?,
+key?)`, `addValue(type, value, key?)` — never an overload pair. The verb composes the tag when a key
+is given and passes the bare type when one is not, so an unkeyed call and a keyed call reach the
+same code path with different addresses.
 
-A certified inline body passes `keyof<T>()` unconditionally in tail position; the emit drops a
-trailing argument that lowered to the literal `undefined` (defaulted parameters fire on
-`undefined`, and nothing reads `arguments.length`), so unkeyed lowered output stays byte-identical
-to the pre-key form. Keyed registrations therefore lower through the generic inline path (§91,
-§94) with no bespoke handler and no fence — `keyof` is just another primitive the same engine
-folds.
+`typefor` over a `Keyed<T, K>` brand derives the BASE type unchanged — base extraction, not key
+loss. The brand is a type-level marker a caller may carry; the address a registration answers under
+is the tag the verb composed.
 
-_Owner-directed 2026-07-19._
+_Owner-directed 2026-07-19; the tag-composed address is the owner's 2026-08-13 ruling._
 
 ## §99 — Registration overrides are sparse arrays merged at runtime
 
@@ -559,7 +555,17 @@ The plugin-less 2-arg `addClass(token, ctor)` / `addFactory(token, factory)` for
 
 ## §110 — Primitive naming: `-for` mints an identity, `-of` observes an existing one
 
-`nameof<T>()` is renamed `tokenfor<T>()` (it MINTS a token identity for `T`, never observed anywhere), and the two new derivation primitives introduced for the fluent signature builder follow the same rule: `signaturefor<T>()` (1-D, mints one overload's dependency slots) and `signaturesfor<T>()` (2-D, mints the whole signature set) mirror `withSignature` / `withSignatures`. `-of` stays for primitives that OBSERVE a property that already exists on the target: `signatureof(ctor)` (observes a constructor's own param types) and `keyof<T>()` (observes a `Keyed<T,K>` brand). The pipeline STAGE id `nameof` is unchanged (the stage name, not the function — e.g. `primitives.transformer`'s `"stages": [..., "nameof", ...]`); only the authored function it lowers was renamed. Full mapping: `docs/features/transformer-architecture.md`. _Owner-directed (the -for/-of convention itself); the `tokenfor` rename and the two new primitives' placement are Claude's, done as a dedicated PR per the owner's "name them right the first time" direction._
+A primitive's suffix says which half of the job it does. `-for` MINTS an identity for a type nothing
+has stated yet: `typefor<T>()` mints `T`'s address, `tokenfor<T>()` its string token. `-of` OBSERVES
+something the target already carries: `signatureof(ctor)` reads a constructor's own parameter types,
+`tokenof(value)` reads a value's own type, and `schemaof<T>()` reads out the members `T` already
+declares.
+
+The pipeline STAGE ids are independent of the function names — the `nameof` stage lowers
+`tokenfor`/`tokenof`, and nothing requires a stage to be named after the primitive it folds.
+
+_Owner-directed (the -for/-of convention itself); the naming of each primitive against it is
+Claude's, done as a dedicated PR per the owner's "name them right the first time" direction._
 
 ---
 
@@ -652,9 +658,8 @@ old domain stages' open-generic-registration completeness checks, formerly diagn
 990008/990009/990010). Runtime already enforces the equivalent invariants at
 registration/resolve time; duplicating that policing at compile time was never the transform
 layer's job. The one thing a transform DOES still report is its own inability to lower a specific
-call — an underivable token, a non-tuple `signaturefor<T>()`, an unsupported `schemaof<T>()` field
-shape — which is failure reporting about the transform's own mechanism, not validation of the
-user's design. _Owner ruling: "it's not transform's job to validate. don't do it. leave runtime
+call — an underivable token, a member `schemaof<T>()` has no `Type` spelling for — which is failure
+reporting about the transform's own mechanism, not validation of the user's design. _Owner ruling: "it's not transform's job to validate. don't do it. leave runtime
 as-is."_
 
 ---
@@ -1382,6 +1387,57 @@ body's value parameters align 1:1 with its call's arguments, and `this`-substitu
 `function`, method, accessor, constructor, class, or static block. mergesynth derives guards and
 arity bounds from the member's own parameters (`params[i]` guards `args[i]`), skipping only an
 explicit type-only `this` parameter.
+
+## §137 — The Type grammar is the only structural vocabulary; a primitive names, expands, or observes
+
+**`schemaof<T>()` yields a `Type` tree.** There is no second vocabulary for describing a shape at
+runtime. The config schema was the last holdout — kind-name strings (`"string"` / `"number"` /
+`"boolean"`), plain nested objects, and an `OPTIONAL`-symbol wrapper — and it is gone, along with
+`Schema`, `ObjectSchema`, `OptionalSchema`, `OPTIONAL` and `Infer`. A schema is now
+`Type.object({...})` at every level, a global `string` / `number` / `boolean` at each leaf, and a
+union with `undefined` for a member the configuration may leave out —
+`Type.union(inner, Type.typeLiteral(undefined))`, the one spelling the union canonicalizer keeps
+intact, since nothing subsumes a nullish member.
+
+**Three verbs, one vocabulary.** A type-argument primitive does exactly one of three things, and its
+name says which: `typefor<T>()` NAMES a type (a named type yields its interned `NamedType` address),
+`schemaof<T>()` EXPANDS one (the members of the type it was handed), `signatureof(ctor)` OBSERVES a
+runtime constructor. `tokenfor` / `tokenof` remain the string-token pair pending their own held
+retirement. That is the whole transformable roster.
+
+**Expansion stops at a name.** A member whose type has a name of its own keeps it, spelled exactly
+as `typefor` would have spelled it. Only what has no name — an inline structure, a tuple — is opened
+up in place. This is what the two verbs being distinct MEANS: the expansion adds the members of one
+type and names everything inside it, so a self-referential type terminates by construction rather
+than by a depth cap or a visited set. Its cost is real and accepted: a member naming an interface is
+an address, so a coercion driven by that schema has no structure to descend into and says so.
+
+**Structurally equal expansions are one node.** Two types that expand to the same tree intern to the
+same `ObjectType`. That is correct, not a collision: a structural description is not an address, and
+nothing downstream may read identity as provenance.
+
+**The static image is stated, not inferred.** `Type.object` and `Type.named` erase their arguments'
+literal types, so no type-level image can be recovered from a tree — `Infer<S>` was possible only
+because the retired grammar was made of string literals. `withSchema<U>(schema: ObjectType)` takes
+the shape as a type argument instead: the tree states the shape at runtime, the argument states the
+same shape to the compiler, and a hand-writer names it once at the call site. The sugar is
+unaffected — `withType<U>()` already carried `U` in its own signature.
+
+**`signaturefor`, `signaturesfor` and `keyof` are retired.** All three had zero declarations and
+zero call sites across `libraries/` — `keyof` not even a TypeScript stub to import, so the sugar
+was unreachable from authored code by construction. They survived only as engine stages,
+inline-stage support machinery, and authoring-lint entries. A primitive nothing authors is not a
+capability, so they are deleted rather than kept warm: the stage table, the `knownPrimitives`
+roster, and the lint's `PRIMITIVE_HOMES` all shrink to what authored code can reach.
+
+**An aggregate spelling derives with only its element.** `Iterable` and `AsyncIterable` are declared
+with two defaulted tail parameters, and a bare `Iterable<E>` reference resolves all three, so a
+derivation must trim to the element. The `named` door mints an aggregate kind from a SINGLE argument
+under `global`; a spelling that carried the defaulted tail would land as an ordinary named type that
+no aggregate registration answers, and a derived address would name a different type than the
+hand-written `Type.asyncIterable(E)`.
+
+_Owner-directed 2026-08-13._
 
 ## §138 — The inline marker grammar: three entry shapes, typed deserialization, loud on ambiguity
 

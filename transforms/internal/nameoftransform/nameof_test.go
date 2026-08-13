@@ -332,14 +332,12 @@ export const anon = tokenfor<{ readonly a: number }>();
 	}
 }
 
-// TestNameofDerivesKeyedBase is the keyed base-derivation invariant (§98): tokenfor
-// lowers a `Keyed<T, K>` service type to just the BASE token — the brand stripped,
-// with NO `#key` suffix and NOT the aliased `Keyed<...>` reference. The di direct
-// path composes the full `base#key`; the inline registration path splits that in
-// two — tokenfor gives the base, keyof<T>() gives the key — so the runtime `#`
-// composition of the two halves lands byte-for-byte on the di direct token. This
-// test pins that split: the tokenfor base is exactly the di token minus its `#key`
-// tail, so the halves compose rather than diverge (the old fence is gone).
+// TestNameofDerivesKeyedBase pins tokenfor's keyed base-derivation: for a
+// `Keyed<T, K>` service type, tokenfor lowers to just the BASE token — the brand
+// stripped, with NO `#key` suffix and NOT the aliased `Keyed<...>` reference. The
+// di-direct registration path composes the full `base#key` token directly, so this
+// test pins that the tokenfor base is exactly that composed token minus its
+// `#key` tail.
 func TestNameofDerivesKeyedBase(t *testing.T) {
 	src := `import { tokenfor, services, Keyed } from '@rhombus-std/di.core';
 interface ICache {}

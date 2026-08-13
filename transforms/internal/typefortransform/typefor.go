@@ -22,7 +22,7 @@
 // on its result is correct, just not the tidiest output.
 //
 // The single owner host (cmd/ttsc-std) composes it as the `rhombusstd_typefor`
-// stage, alongside — never replacing — nameof/keyof/factory: it derives the
+// stage, alongside — never replacing — nameof/factory: it derives the
 // structured `Type` a call site wants, they derive the flat string token a
 // registration wants.
 package typefortransform
@@ -36,6 +36,7 @@ import (
 	"github.com/fnioc/std/transforms/internal/inlinetransform"
 	"github.com/fnioc/std/transforms/internal/plugin"
 	"github.com/fnioc/std/transforms/internal/tokens"
+	"github.com/fnioc/std/transforms/internal/typeemit"
 	"github.com/fnioc/std/transforms/internal/valueimport"
 )
 
@@ -43,10 +44,6 @@ import (
 // matched on the resolved symbol so an aliased import (`import { typefor as t }`)
 // still lowers.
 const typeforName = "typefor"
-
-// typeRef identifies the runtime `Type` namespace object every lowered call
-// dot-calls a factory off.
-var typeRef = valueimport.Ref{Module: "@rhombus-std/primitives", Export: "Type"}
 
 // typeArgUnderivableCode is the diagnostic a TYPE-argument derivation raises when
 // the type argument yields no derivable `Type` — an anonymous / structural type
@@ -90,7 +87,7 @@ func New(prog *driver.Program, ctx *tokens.Context, artifacts *inlinetransform.A
 	checker := prog.Checker
 	return func(ec *shimprinter.EmitContext, sf *shimast.SourceFile) *shimast.SourceFile {
 		factory := ec.Factory.AsNodeFactory()
-		binding := valueimport.Resolve(sf, typeRef)
+		binding := valueimport.Resolve(sf, typeemit.Ref)
 		// Which primitive a callee is, and what its argument means, are facts about
 		// SOURCE-WRITTEN syntax: gathered off the parse node, never re-asked of a
 		// tree the loop has rewritten (plugin.CheckerAnchor).

@@ -1,10 +1,8 @@
 // Package signatures is the shared constructor/factory dependency-signature
 // extraction engine. It derives the `[[...]]` dependency-signature array a class
-// or factory VALUE lowers to — the value-inspection half of a registration —
-// over the ttsc-shipped typescript-go checker, and the type-argument minting
-// twins (`signaturefor<T>()` / `signaturesfor<T>()`) that observe an explicit
-// dependency tuple. The signatureof primitive stage drives it; the emitted
-// literal is byte-identical to the third argument a hand-written
+// or factory VALUE lowers to — the value-inspection half of a registration — over
+// the ttsc-shipped typescript-go checker. The signatureof primitive stage drives
+// it; the emitted literal is byte-identical to the third argument a hand-written
 // `addClass("token", ctor, [[...]])` registration carries.
 //
 // It carries no service-token / registration-verb knowledge (token derivation,

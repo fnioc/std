@@ -22,6 +22,7 @@ import { CommandLineConfigProvider, CommandLineConfigSource,
 import { defaultVariableNameTransformation, EnvironmentVariablesConfigProvider, EnvironmentVariablesConfigSource,
   type EnvironmentVariablesConfigSourceOptions } from '@rhombus-std/config.env';
 import { JsonConfigProvider, JsonConfigSource, type JsonConfigSourceOptions } from '@rhombus-std/config.json';
+import { Type } from '@rhombus-std/primitives';
 
 describe('cross-package public surface (built dist)', () => {
   test('each provider package exports its Source and Provider runtime bindings', () => {
@@ -45,7 +46,10 @@ describe('cross-package public surface (built dist)', () => {
     const config: { readonly Host: string; readonly Port: number; } = new ConfigBuilder().addCommandLine([
       '--Host=localhost',
       '--Port=8080',
-    ]).withSchema({ Host: 'string', Port: 'number' }).build();
+    ]).withSchema<{ Host: string; Port: number; }>(Type.object({
+      Host: Type.named('string', 'global'),
+      Port: Type.named('number', 'global'),
+    })).build();
 
     assert.deepEqual(config, { Host: 'localhost', Port: 8080 });
     // Compile-time: the builder threads the generic so `Port` is a `number`.

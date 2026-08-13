@@ -200,3 +200,28 @@ describe('async iterable aggregate', () => {
     expect(Type.asyncIterable(A)).not.toBe(Type.array(A));
   });
 });
+
+// The `named` door is the one a derived spelling arrives through: a compile-time
+// derivation emits `Type.named(name, from, [element])`, never the aggregate
+// factory directly. The two must land on the same object, or a derived
+// registration and a hand-written one address different types.
+describe('the named door mints an aggregate from its spelling', () => {
+  test('each reserved spelling under `global`, carrying one argument, is its own kind', () => {
+    expect(Type.named('Array', 'global', [A])).toBe(Type.array(A));
+    expect(Type.named('Iterable', 'global', [A])).toBe(Type.iterable(A));
+    expect(Type.named('AsyncIterable', 'global', [A])).toBe(Type.asyncIterable(A));
+    expect(Type.named('Async', 'global', [A])).toBe(Type.async(A));
+  });
+
+  test('a spelling carrying more than its element is an ordinary named type', () => {
+    // What a derivation must never emit: the lib declares `Iterable<T, TReturn,
+    // TNext>`, so an untrimmed spelling would land here instead of on the kind.
+    const overwide = Type.named('AsyncIterable', 'global', [A, B, C]);
+    expect(overwide.kind).toBe('named');
+    expect(overwide).not.toBe(Type.asyncIterable(A));
+  });
+
+  test('a qualified spelling names an ordinary type, aggregate word or not', () => {
+    expect(Type.named('AsyncIterable', 'app', [A]).kind).toBe('named');
+  });
+});

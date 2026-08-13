@@ -196,6 +196,7 @@
       "name": "@rhombus-std/config.extras",
       "version": "0.0.0",
       "dependencies": {
+        "@rhombus-std/primitives": "workspace:*",
         "@rhombus-std/primitives.extras": "workspace:*",
       },
       "peerDependencies": {
@@ -744,6 +745,7 @@
         "@rhombus-std/config.ini": "workspace:*",
         "@rhombus-std/config.json": "workspace:*",
         "@rhombus-std/config.xml": "workspace:*",
+        "@rhombus-std/primitives": "workspace:*",
         "@types/node": "^24.13.2",
       },
     },

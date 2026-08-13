@@ -2,7 +2,7 @@
 
 `@rhombus-std/di.extras`, `di.extras.options`, `config.extras`, and `primitives.extras`
 each rewrite TypeScript at compile time — `tokenfor<T>()`, `addClass<T>()`, `addOptions<T>()`,
-`withType<T>()`, `resolve<T>()`, and friends. What each rewrite actually _does_ is documented on
+`withType<T>()`, `getService<T>()`, and friends. What each rewrite actually _does_ is documented on
 its own package (see each package's README). This doc covers the machinery underneath all of
 them: how they run in your build, and how one small set of domain-agnostic primitives — run
 together, over and over, until nothing changes — replaces what used to be four separate
@@ -30,7 +30,7 @@ mergesynth (one-shot pre-pass)
   ↓
 ┌─────────────────────────────────────────────────────────────┐
 │ loop until a pass changes nothing (max 16 passes):           │
-│   inline → nameof → signatureof → keyof → schemaof           │
+│   inline → nameof → typefor → signatureof → schemaof         │
 └─────────────────────────────────────────────────────────────┘
 ```
 
@@ -46,17 +46,17 @@ first (see [Parse-anchoring](#parse-anchoring-the-checker-only-ever-sees-pass-0-
 ```ts
 // what you write
 class Startup {
-  configure(m: IServiceManifest) {
-    return m.addClass<IUserRepo>(SqlUserRepo).withSignature<[IDb]>();
+  configure(m: Manifest) {
+    return m.addClass<IUserRepo>(SqlUserRepo).addFactory<IThing>(makeThing);
   }
 }
 ```
 
 ```ts
 // pass 1: addClass lowers (nameof + signatureof fire on its new arguments)
-m.addClass('app:IUserRepo', SqlUserRepo, [['app:IDb']], void 0, void 0).withSignature<[IDb]>();
-// pass 2: withSignature lowers (signaturefor fires on its new arguments); pass 3 is a no-op — the loop settles
-m.addClass('app:IUserRepo', SqlUserRepo, [['app:IDb']], void 0, void 0).withSignature('app:IDb');
+m.addClass('app:IUserRepo', SqlUserRepo, [['app:IDb']]).addFactory<IThing>(makeThing);
+// pass 2: addFactory lowers (nameof + signatureof fire on its new arguments); pass 3 is a no-op — the loop settles
+m.addClass('app:IUserRepo', SqlUserRepo, [['app:IDb']]).addFactory('app:IThing', makeThing, [[]]);
 ```
 
 **The enabling invariant is disjoint match sets.** Every transform in the loop owns matches no
@@ -71,9 +71,9 @@ wired in.
 **Order inside one pass is a reproducibility choice, not a correctness requirement.** The code
 runs the stages in the fixed sequence shown above so output is deterministic across runs, but no
 stage may ever depend on running before or after another one _within_ the same pass — if it did,
-the loop's "just run it again" termination story would break. `signatureof` and `keyof` happen to
-sit after `nameof` because their call shapes are disjoint from `nameof`'s (type-argument
-primitives vs. value-argument primitives), not because anything requires it.
+the loop's "just run it again" termination story would break. `signatureof` happens to sit after
+`nameof` because its call shape is disjoint from `nameof`'s (a value-argument primitive vs.
+type-argument primitives), not because anything requires it.
 
 ### Termination: 16 passes, loud on exhaustion
 
@@ -240,15 +240,15 @@ one that understood `IOptions<T>`, one that understood config schemas — each h
 family's authoring sugar as compiler-plugin logic. All three are gone. In their place:
 
 - **One small set of domain-agnostic primitives**, each doing one mechanical thing over the
-  checker (derive a token from a type, derive a dependency-signature array from a constructor,
-  derive a literal value from a literal type, derive a JSON-schema literal from a record type
-  shape). None of them knows what `di` or `config` or "a registration" means.
+  checker (address a type, derive a dependency-signature array from a constructor, derive a
+  literal value from a literal type, expand a record type into the `Type` tree describing its
+  members). None of them knows what `di` or `config` or "a registration" means.
 - **Shipped TypeScript sugar bodies** — ordinary, typed, single-return-expression functions,
   authored in each family's own `*.extras` package — that compose those primitives the same way a
-  by-hand author would. `addClass<T>(ctor)` isn't a Go rule any more; it's a TypeScript function
-  whose body is `this.addClass(tokenfor<T>(), ctor, signatureof(ctor), void 0, keyof<T>())`, and
-  the generic **inline stage** substitutes that body's return expression at your call site before
-  the primitive stages ever see it.
+  by-hand author would. `addClass<T>(...)` isn't a Go rule any more; it's a TypeScript method whose
+  body is `(this as any).addClass(typefor<T>(), ...rest)`, and the generic **inline stage**
+  substitutes that body's return expression at your call site before the primitive stages ever see
+  it.
 
 This split is a hard rule, not a style preference: **no domain name may appear in Go transform
 source.** There is no `if calleeName == "addClass"` and no hardcoded `"@rhombus-std/di.core:..."`
@@ -256,18 +256,18 @@ string anywhere in the primitive stages. Domain knowledge is allowed to arrive a
 a side-parsed sugar body, a checker-resolved symbol, a structurally-detected brand shape — never
 as a name comparison baked into control flow. Two examples of the distinction:
 
-- `schemaof<T>()`'s handling of config's `OPTIONAL` marker: the marker's (module, export-name)
-  identity flows through the engine as a plain `valueimport.Ref` value — a piece of data threaded
-  through a generic "materialize this import once, honoring an existing binding" mechanism — never
-  as a branch that asks "is this config's OPTIONAL." The generalized mechanism (originally config's
-  own `inject.go`) doesn't know or care what it's injecting.
+- the runtime `Type` namespace object a lowered tree is spelled through: its (module, export-name)
+  identity flows to the engine as a plain `valueimport.Ref` value — a piece of data threaded through
+  a generic "materialize this import once, honoring an existing binding" mechanism — never as a
+  branch that asks which package it came from. The mechanism doesn't know or care what it's
+  injecting.
 - `mergesynth`'s per-member strategy guards are generated **in-process** by typia against the
   member's own parameter types, read straight off the checker — nothing about "which family" or
   "which augmentation" is ever named; the stage reacts to shape, not identity.
 
 The corollary: **transforms never validate.** A transform reports its own inability to lower a
-call (an underivable token, a non-tuple `signaturefor<T>()`, an unsupported `schemaof<T>()` field
-type) — that's failure reporting about the transform's own job, and it stays. But design-mistake
+call (an underivable token, an unsupported `schemaof<T>()` field type) — that's failure reporting
+about the transform's own job, and it stays. But design-mistake
 policing that used to live in the domain stages (open-generic registration completeness, the old
 990008/990009/990010 family) does not get re-implemented anywhere in the new engine; the runtime
 already enforces the equivalent invariants at registration/resolve time, and duplicating that
@@ -282,37 +282,39 @@ Example/Result columns below are each one real lowering pulled from the engine's
 `pkg:` stands in for whatever module the example type is declared in — a real token carries that
 module's actual name instead.
 
-| Primitive                 | Shape     | Lowers to                                                                                                                      | Example                                                      | Result                               | Home                | Stage         |
-| ------------------------- | --------- | ------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------ | ------------------------------------ | ------------------- | ------------- |
-| `tokenfor<T>()`           | type-arg  | the _service_ token for `T` — strips a `Keyed<T,K>` brand to the bare base                                                     | `tokenfor<IBar>()`                                           | `"pkg:IBar"`                         | `primitives.extras` | `nameof`      |
-| `tokenfor(value)`         | value-arg | the _produced_ token for a value — constructable → construct-sig return, callable → call-sig return, else the value's own type | `tokenfor(Foo)` (`class Foo {}`)                             | `"pkg:Foo"`                          | `primitives.extras` | `nameof`      |
-| `tokenof<T>()`            | type-arg  | the _raw_ token for `T` — never strips a `Keyed<T,K>` brand                                                                    | `tokenof<UserOptions>()`                                     | `"pkg:UserOptions"`                  | `primitives.extras` | `nameof`      |
-| `tokenof(value)`          | value-arg | the raw token for a value's _own_ type — never unwraps a constructor/factory                                                   | `tokenof(makeThing)` (`declare function makeThing(): Thing`) | `"pkg:makeThing"`                    | `primitives.extras` | `nameof`      |
-| `keyof<T>()`              | type-arg  | the key literal of a `Keyed<T,K>`, or `void 0` when unkeyed                                                                    | `keyof<Keyed<ICache, "redis">>()`                            | `"redis"`                            | `di.extras`         | `keyof`       |
-| `signatureof(ctor \| fn)` | value-arg | the `[[...]]` dependency-signature array for a constructor or function value                                                   | `signatureof(Ctor)` (`Ctor: new (d: IDep) => IThing`)        | `[["pkg:IDep"]]`                     | `di.extras`         | `signatureof` |
-| `signaturefor<T>()`       | type-arg  | one overload's `DepSlot[]` minted from a tuple type `T`                                                                        | `...signaturefor<[IA, IB]>()`                                | `"pkg:IA", "pkg:IB"` (flattened in)  | `di.core`           | `signatureof` |
-| `signaturesfor<T>()`      | type-arg  | the whole overload set minted from a tuple-of-tuples `T`                                                                       | `...signaturesfor<[[IA], [IA, IB]]>()`                       | `["pkg:IA"], ["pkg:IA", "pkg:IB"]`   | `di.core`           | `signatureof` |
-| `schemaof<T>()`           | type-arg  | the `{...}` runtime JSON-schema literal for a record type `T`                                                                  | `schemaof<{ ssl?: boolean }>()`                              | `{ ssl: { [OPTIONAL]: "boolean" } }` | `config.extras`     | `schemaof`    |
+| Primitive                 | Shape     | Lowers to                                                                                                                      | Example                                                      | Result                                                                                           | Home                | Stage         |
+| ------------------------- | --------- | ------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------ | ------------------------------------------------------------------------------------------------ | ------------------- | ------------- |
+| `tokenfor<T>()`           | type-arg  | the _service_ token for `T` — strips a `Keyed<T,K>` brand to the bare base                                                     | `tokenfor<IBar>()`                                           | `"pkg:IBar"`                                                                                     | `primitives.extras` | `nameof`      |
+| `tokenfor(value)`         | value-arg | the _produced_ token for a value — constructable → construct-sig return, callable → call-sig return, else the value's own type | `tokenfor(Foo)` (`class Foo {}`)                             | `"pkg:Foo"`                                                                                      | `primitives.extras` | `nameof`      |
+| `tokenof<T>()`            | type-arg  | the _raw_ token for `T` — never strips a `Keyed<T,K>` brand                                                                    | `tokenof<UserOptions>()`                                     | `"pkg:UserOptions"`                                                                              | `primitives.extras` | `nameof`      |
+| `tokenof(value)`          | value-arg | the raw token for a value's _own_ type — never unwraps a constructor/factory                                                   | `tokenof(makeThing)` (`declare function makeThing(): Thing`) | `"pkg:makeThing"`                                                                                | `primitives.extras` | `nameof`      |
+| `typefor<T>()`            | type-arg  | the runtime `Type` node addressing `T` — the structural sibling of `tokenfor`'s flat string                                    | `typefor<IBar>()`                                            | `Type.named("IBar", "pkg")`                                                                      | `primitives.extras` | `typefor`     |
+| `typefor(value)`          | value-arg | the `Type` node a value's own shape spells — a class as the constructor it is, parameters and all                              | `typefor(Foo)` (`class Foo { constructor(a: IA) {} }`)       | `Type.ctor(Type.named("Foo", "pkg"), Type.named("IA", "pkg"))`                                   | `primitives.extras` | `typefor`     |
+| `signatureof(ctor \| fn)` | value-arg | the `[[...]]` dependency-signature array for a constructor or function value                                                   | `signatureof(Ctor)` (`Ctor: new (d: IDep) => IThing`)        | `[["pkg:IDep"]]`                                                                                 | `di.extras`         | `signatureof` |
+| `schemaof<T>()`           | type-arg  | the `Type` tree describing a record type `T`'s members, stopping at every name                                                 | `schemaof<{ ssl?: boolean }>()`                              | `Type.object({ ssl: Type.union(Type.named("boolean", "global"), Type.typeLiteral(undefined)) })` | `config.extras`     | `schemaof`    |
 
-`signaturefor`/`signaturesfor` sit in `di.core` rather than `di.extras` because they produce
-`di.core`'s own `DepSlot` shape and are legitimately callable from hand-written runtime source
-too — a homing choice about the _value_, not about which stage lowers it. Every other primitive in
-the table is authoring-only: it throws unconditionally if it ever runs, so it never needs a
-runtime-shaped home.
+Every primitive in the table is authoring-only: it throws unconditionally if it ever runs, so
+none of them needs a runtime-shaped home.
 
-**`schemaof<T>()` / `.withType<T>()` surface constraints.** The schema walk uses the same
+**`schemaof<T>()` / `.withType<T>()` surface constraints.** The expansion uses the same
 `typesurface` enumeration as the guard walk, but reads the **writable** direction — coercion
 assigns into a field, so a `get`-only accessor is as unusable as a `#`-named field. A type
 whose entire declared surface is unwritable (every member is `#`-named, `private`/`protected`,
-symbol-keyed, or a `get`-only accessor) is hard error 992003: its schema would be `{}`, which
-coerces nothing, and the schema is not emitted. Two boundary cases follow from this:
+symbol-keyed, or a `get`-only accessor) is hard error 992003: its expansion would be an object type
+with no members, which describes nothing, and nothing is emitted. Two boundary cases follow:
 
-- `Partial<T>`, `Readonly<T>`, and `Pick<T, K>` produce a schema. These are mapped types, and
-  a mapped type's reminted symbols still carry the original accessor declarations — so the
-  writable surface is faithfully enumerated through any of them.
+- `Partial<T>`, `Readonly<T>`, and `Pick<T, K>` expand. These are mapped types, and a mapped
+  type's reminted symbols still carry the original accessor declarations — so the writable
+  surface is faithfully enumerated through any of them.
 - A type whose only members are `get`-only accessors (nothing writable) is refused with hard
-  error 992003. The same type would succeed as a guard target (its accessors are readable), but
-  a schema for it would be `{}` — so the walk stops rather than emitting one.
+  error 992003. The same type would succeed as a guard target (its accessors are readable).
+
+**Expansion stops at a name.** A member whose type has a name of its own is kept as that name —
+spelled exactly as `typefor` would have spelled it — and is never opened up. Only what has no name
+of its own (an inline structure, a tuple) is expanded in place. That is what makes the walk
+terminating without a depth cap or a visited set: a self-referential type reaches its own name and
+stops. It also means the refusal above only ever reaches a type the walk actually opens up; a member
+naming a class never has that class's surface consulted at all.
 
 ## The generic inline stage
 
@@ -340,9 +342,9 @@ A library declares its inlineable members in a `"rhombus-std"` marker's `"inline
   "rhombus-std": {
     "inline": [
       {
-        "type": "@rhombus-std/di.core:IServiceQuery",
-        "impl": "@rhombus-std/di.extras:ServiceQueryInline",
-        "member": "isService",
+        "type": "@rhombus-std/di.core:Manifest",
+        "impl": "@rhombus-std/di.extras:ManifestServiceAugmentations",
+        "member": "addClass",
       },
     ],
   },
@@ -404,23 +406,21 @@ allowed to be imported from (its one authoring home, per the table above).
 
 ### The body marker — `registerInlineBodies`
 
-The publish list above is the **only** thing that points at a body set: no TypeScript anywhere
-imports `ManifestChainInline`, so nothing in the code says the object has a role at all. Each set
-therefore carries a marker beside its declaration, at module level:
+The publish list above is the **only** thing that points at a body set: nothing else in the code
+says the object has a role at all, so an otherwise-unreferenced set reads as dead code. A body set
+carries a marker beside its declaration, at module level, to say so directly:
 
 ```ts
-export const ManifestChainInline = {
-  withSignature<T extends readonly any[]>(this: IInlineChainTarget): IServiceManifest {
-    return this.withSignature(...signaturefor<T>());
-  },
-};
-registerInlineBodies(ManifestChainInline);
+export const ConfigBuilderInline = { withType<T>(this: IWithSchemaTarget): unknown {
+  return this.withSchema(schemaof<T>());
+} };
+registerInlineBodies(ConfigBuilderInline);
 ```
 
 It is the inline-body sister of the augmentation registry's `registerAugmentations` — a statement
 next to the declaration that names its registered role — and it is a deliberate runtime **no-op**:
-the register it refers to is the `package.json` entry, and `src/inline.ts` is never bundled or
-executed. It is imported from `@rhombus-std/primitives.extras` (authoring-time-only, and the one
+the register it refers to is the `package.json` entry, and the file this lives in is never bundled
+or executed. It is imported from `@rhombus-std/primitives.extras` (authoring-time-only, and the one
 package every body-carrying package already depends on).
 
 **Two reasons, and the shape follows from having both.** One is readability, above. The other is
@@ -439,80 +439,63 @@ identifier inside a body that is not a parameter, type parameter, or known primi
 included. Both the ESLint rule and the Go extractor pin this: a module-level call is clean, a
 reference from inside a body is a free identifier.
 
+**A set that is already a named export of its package's barrel needs no marker of its own** — the
+export itself is the real reference the dead-code scan is looking for. `di.extras`'s augmentation
+sets (below) are exported by name from `src/index.ts` specifically so an `impl` entry can resolve
+to them by walking that re-export graph; the marker's whole job is already done.
+
 ## The sugar bodies, family by family
 
 Everything below is ordinary TypeScript, side-parsed by the inline stage out of each package's
-`src/inline.ts` and never bundled or shipped — the body is substitution source, not runtime code.
+source and never bundled or shipped — the body is substitution source, not runtime code.
 
 ### Registration (`di.extras`)
 
+`di.extras`'s sugar bodies live in `src/augmentations/`, one file per receiver, and each file's
+object literal does two jobs at once: the `declare module '@rhombus-std/di.core'` block above it
+merges the generic `<T>()` overload onto the receiver, and the object literal itself is the body
+the inline stage side-parses and substitutes at a matching call site. There is no separate
+authoring-only body file for this family. Every member is a `this`-based method with a trailing
+rest parameter that forwards its call verbatim to the same-named member on the real receiver — the
+only thing it mints is the leading type argument, via `typefor<T>()`:
+
 ```ts
-export const ServiceManifestInline = { addClass<T>(this: IInlineRegistrationTarget, ctor: Ctor): IServiceManifest {
-  return this.addClass(tokenfor<T>(), ctor, signatureof(ctor), void 0, keyof<T>());
-}, addFactory<T>(this: IInlineRegistrationTarget, factory: Factory): IServiceManifest {
-  return this.addFactory(tokenfor<T>(), factory, signatureof(factory), void 0, keyof<T>());
-}, addValue<I>(this: IInlineRegistrationTarget, value: unknown): IServiceManifest {
-  return this.addValue(tokenfor<I>(), value, keyof<I>());
-} };
+export const ManifestServiceAugmentations: AugmentationSet2<Manifest,
+  Flatten<IManifestServiceSugarAugmentations<string>>> = {
+    add<T>(this: Manifest, ...rest: any[]) {
+      return (this as any).add(typefor<T>(), ...rest);
+    },
+    addClass<T>(this: Manifest, ...rest: any[]) {
+      return (this as any).addClass(typefor<T>(), ...rest);
+    },
+    // addFactory / addValue follow the same shape
+  };
 ```
 
-`keyof<T>()` lowers to `undefined` for an unkeyed type, and the inline stage elides both that
-`undefined` argument **and** the `void 0` scope placeholder it strands behind it — so the emitted
-call for an unkeyed registration is the plain 3-argument form, byte-identical to what a by-hand
-author writes; a keyed one keeps the composed 5-argument call.
-
-A **separate, zero-type-parameter** object literal (`ServiceManifestSelfInline`) covers the
-no-type-arg self-registration forms (`addClass(ctor)`, `addFactory(fn)`, `addValue(value)`),
-discriminated from the generic forms purely by type-parameter count — same member names, same
-value-parameter names, no collision. Their token derivation is **value-derived, never
-TS-inferred**: `addClass`/`addFactory` use `tokenfor(value)` (the _produced_-type primitive — a
-constructable value tokenizes as the instance it builds), and `addValue` uses `tokenof(value)`
-(the _raw_-type twin — an already-built value registers under its own type, never unwrapped). A
-self-registration is unkeyed and lifetime-unchosen by construction, so these bodies never write a
-key or scope placeholder at all.
-
-The chain continuations follow the same shape:
+`ManifestDescriptorAugmentations`, in a sibling file, carries the identical shape for `tryAdd`,
+`tryAddClass`/`tryAddFactory`/`tryAddValue`, `replaceClass`/`replaceFactory`/`replaceValue`, and
+`removeAll`. `ServiceProviderServiceAugmentations` puts the same pattern on a different receiver,
+`IServiceProvider`, for members with nothing left to forward once the type argument is minted:
 
 ```ts
-export const ManifestChainInline = {
-  withSignature<T extends readonly any[]>(this: IInlineChainTarget): IServiceManifest {
-    return this.withSignature(...signaturefor<T>());
-  },
-  withSignatures<T extends ReadonlyArray<readonly any[]>>(this: IInlineChainTarget): IServiceManifest {
-    return this.withSignatures(...signaturesfor<T>());
-  },
-};
-```
-
-Each chain sugar lowers to its **own** value-arg call rather than folding back into the
-registration's original arguments — `.addClass(...).withSignature<T>()` survives lowering as an
-independent, hand-writable continuation, matching what a by-hand author could have chained onto
-the same call.
-
-`isService<T>()` and the resolve family (`resolve`/`resolveAsync`/`tryResolve`) each compose the
-keyed lookup token from the split `tokenfor<T>() + keyof<T>()` pair — the base token and the key
-(`void 0` when `T` is unkeyed). Sugar always asks the container: there is no compile-time
-short-circuit for a literal-typed request — the engine's own constant synthesis is what serves
-those at resolve time.
-
-```ts
-export const ServiceQueryInline = { isService<T>(this: IServiceQuery): boolean {
-  return this.isService(tokenfor<T>(), keyof<T>());
-} };
-
-export const ResolverInline = { resolve<T>(this: IInlineResolveTarget): T {
-  return this.resolve(tokenfor<T>(), keyof<T>());
-}, resolveAsync<T>(this: IInlineResolveTarget): Promise<T> | T {
-  return this.resolveAsync(tokenfor<T>(), keyof<T>());
-}, tryResolve<T>(this: IInlineResolveTarget): T | undefined {
-  return this.tryResolve(tokenfor<T>(), keyof<T>());
-} };
+export const ServiceProviderServiceAugmentations: AugmentationSet2<IServiceProvider,
+  IServiceProviderServiceSugarAugmentations> = {
+    getService<T>(this: IServiceProvider): T | undefined {
+      return this.getService(typefor<T>());
+    },
+    getRequiredService<T>(this: IServiceProvider): T {
+      return this.getRequiredService(typefor<T>());
+    },
+    getServices<T>(this: IServiceProvider): Iterable<T> {
+      return this.getServices(typefor<T>());
+    },
+  };
 ```
 
 ### Options (`di.extras.options`)
 
 ```ts
-export const ServiceOptionsInline = { addOptions<T>(this: IInlineOptionsTarget): IServiceManifest {
+export const ServiceOptionsInline = { addOptions<T>(this: IInlineOptionsTarget): Manifest {
   return this.addOptions(tokenfor<IOptions<T>>(), tokenof<T>());
 } };
 ```
@@ -541,13 +524,14 @@ export const ConfigBuilderInline = { withType<T>(this: IWithSchemaTarget): unkno
 } };
 ```
 
-`schemaof<T>()` walks `T`'s member shape (nested records, casing, optionality) into the same
-runtime schema-literal grammar `withSchema({...})` accepts by hand — the walk itself is a
-domain-free "type → structural literal" engine; the config-specific part is only the _identity_ of
-the `OPTIONAL` wrapper it emits for an optional field, threaded through as data (see [Domain lives in TypeScript, not in Go](#domain-lives-in-typescript-not-in-go)). An unsupported field shape
-(union, tuple, function, index signature, a non-object root) is a targeted diagnostic naming the
-unsupported construct, and leaves the `schemaof<T>()` call un-lowered rather than emitting a wrong
-schema.
+`schemaof<T>()` expands `T`'s member shape (casing, optionality, inline structures) into the same
+`Type` tree `withSchema(Type.object({...}))` accepts by hand. Nothing about the walk is
+config-specific: it is a domain-free "type → `Type` tree" engine, and the only identity it carries
+is the runtime `Type` namespace object it spells the tree through, threaded as data (see
+[Domain lives in TypeScript, not in Go](#domain-lives-in-typescript-not-in-go)). A member the Type
+grammar has no spelling for (a callable, an anonymous structure with no nameable shape, an index
+signature), or a non-object root, is a targeted diagnostic naming the construct, and leaves the
+`schemaof<T>()` call un-expanded rather than emitting a wrong tree.
 
 ## Parse-anchoring: the checker only ever sees pass-0 syntax
 
@@ -651,14 +635,14 @@ symbol. Then:
 
 ```ts
 // authored: Widget's second constructor parameter is optional
-manifest.addClass('pkg:Widget', Widget, signatureof(Widget)).as('singleton');
+manifest.addClass('pkg:Widget', Widget, signatureof(Widget)).addValue('pkg:IWidgetOptions', defaultOptions);
 ```
 
 Pass 1 lowers `signatureof(Widget)` into that minted object literal. Pass 2 reaches the trailing
-`.as('singleton')` and asks the checker to resolve it. Answering means typing the receiver, which
-means resolving the `addClass` overload, which means contextually typing the minted object literal,
-and `getContextualTypeForObjectLiteralElement` dereferences the symbol it assumes every element
-has:
+`.addValue(...)` call and asks the checker to resolve it. Answering means typing the receiver,
+which means resolving the `addClass` overload, which means contextually typing the minted object
+literal, and `getContextualTypeForObjectLiteralElement` dereferences the symbol it assumes every
+element has:
 
 ```go
 symbol := c.getSymbolOfDeclaration(element)                       // nil: the binder never saw it
@@ -702,7 +686,7 @@ it walks the freshly-spliced expression and records every primitive call it find
 identity** (not by name or position), against the checker-bound type or value from the _original_
 call site:
 
-- a **type-argument** primitive (`tokenfor<T>()`, `keyof<T>()`, …) records the bound
+- a **type-argument** primitive (`tokenfor<T>()`, `tokenof<T>()`, …) records the bound
   `*checker.Type` for each type parameter;
 - a **value-argument** primitive (`signatureof(ctor)`, `tokenfor(value)`) records the original,
   program-bound argument node itself, so the consuming stage can still query the checker through
@@ -712,7 +696,7 @@ call site:
   call-site-bound argument types — resolved against the _consumer's_ program later, in the
   lowering stage that owns the token-derivation context.
 
-A downstream stage (`nameof`, `signatureof`, `keyof`, `schemaof`) checks the artifacts map first
+A downstream stage (`nameof`, `typefor`, `signatureof`, `schemaof`) checks the artifacts map first
 for any call it visits; a hit means "this is my
 substituted work from this run," a miss falls through to the ordinary checker-anchored
 source-written path. After the loop's final pass, an **emit sweep** walks the artifacts one more
@@ -889,9 +873,7 @@ Each is recorded in `docs/decisions.v2.md` (§115–§123).
 - **The keyed-semantics fix (§98)** — a resolve body that derives its token with `tokenfor<T>()`
   strips a `Keyed<T,K>` brand — silently matching the _wrong_ (unkeyed) registration, or matching
   nothing, for a keyed lookup. The fix routes a keyed consumer through the raw-preserving
-  `tokenof<T>()` instead, so a keyed resolve actually round-trips a keyed registration; the
-  registration bodies themselves were already correct (they split base + `keyof` onto separate
-  arguments) and were untouched.
+  `tokenof<T>()` instead, so a keyed resolve actually round-trips a keyed registration.
 - **The transitive-witness fix** — a consumer reaching a sugar-target module only _transitively_
   (importing `@rhombus-std/di` without importing `@rhombus-std/di.core` directly, even though
   `di`'s own bundle re-exports it) could make the inline stage's module-resolution check return

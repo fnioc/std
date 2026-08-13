@@ -4,7 +4,6 @@ import (
 	"github.com/samchon/ttsc/packages/ttsc/driver"
 
 	"github.com/fnioc/std/transforms/internal/inlinetransform"
-	"github.com/fnioc/std/transforms/internal/keyoftransform"
 	"github.com/fnioc/std/transforms/internal/mergesynthtransform"
 	"github.com/fnioc/std/transforms/internal/nameoftransform"
 	"github.com/fnioc/std/transforms/internal/plugin"
@@ -39,12 +38,9 @@ const stagePrefix = "rhombusstd_"
 // nameof calls), then typefor (the structured `Type.*` lowering of
 // `typefor<T>()` / `typefor(value)` — the runtime-`Type` sibling of nameof's flat
 // string token, disjoint from it by callee), then signatureof (the
-// dependency-signature array lowering — the value-argument `signatureof(ctor)`
-// AND its type-argument minting siblings `signaturefor<T>()` /
-// `signaturesfor<T>()`, including the inline stage's synthetic calls), then keyof
-// (the keyed-registration KEY lowering, including the inline stage's synthetic
-// keyof calls), then schemaof (the config `.withType<T>()` sugar's
-// schema-literal lowering). All stages own DISJOINT match sets, so correctness
+// dependency-signature array lowering, including the inline stage's synthetic
+// calls), then schemaof (the structural expansion of `schemaof<T>()` into the
+// `Type` tree describing T). All stages own DISJOINT match sets, so correctness
 // never depends on this order — it is fixed only for reproducible output.
 //
 // Returned as a fresh slice each call so a caller can reorder or extend it
@@ -56,7 +52,6 @@ func BaseStages() []Stage {
 		{Name: stagePrefix + "nameof", Build: buildNameof},
 		{Name: stagePrefix + "typefor", Build: buildTypefor},
 		{Name: stagePrefix + "signatureof", Build: buildSignatureof},
-		{Name: stagePrefix + "keyof", Build: buildKeyof},
 		{Name: stagePrefix + "schemaof", Build: buildSchemaof},
 	}
 }
@@ -125,24 +120,13 @@ func buildSignatureof(prog *driver.Program, ctx *tokens.Context, env *Env, emit 
 	})
 }
 
-// buildKeyof activates the keyof primitive stage. It lowers each `keyof<T>()` —
-// the inline stage's synthetic keyed-registration KEY calls and any source-written
-// one — to the `Keyed<T, K>` key string (or `void 0` when unkeyed). It raises no
-// diagnostics of its own; any it did raise would be hard errors.
-func buildKeyof(prog *driver.Program, ctx *tokens.Context, env *Env, emit Sink) plugin.FileTransform {
-	return keyoftransform.New(prog, ctx, env.Artifacts, func(d plugin.Diagnostic) {
-		emit(DiagFromPlugin(d))
-	})
-}
-
-// buildSchemaof activates the generic `schemaof<T>()` primitive stage. It lowers
-// each schemaof call — the inline `.withType<T>()` body's synthetic schema call
-// and any source-written one — to T's runtime config-schema object literal,
-// materializing the OPTIONAL value-import a wrapped field needs. It runs the SAME
-// schema walk the config stage drives, so the inline path and the config-stage
-// oracle emit byte-identical literals. On an unsupported field type / non-object
-// root it reports the targeted 992001/992002 (a hard error) and leaves the call
-// un-lowered — the sweep defers the surviving-primitive diagnostic to it.
+// buildSchemaof activates the `schemaof<T>()` primitive stage. It expands each
+// schemaof call — the inline `.withType<T>()` body's synthetic call and any
+// source-written one — into the runtime `Type` tree describing T's structure,
+// materializing the `Type` value-import the tree is spelled through. On a member
+// the Type grammar cannot spell, or a non-object root, it reports the targeted
+// 992001/992002/992003 (a hard error) and leaves the call un-lowered — the sweep
+// defers the surviving-primitive diagnostic to it.
 func buildSchemaof(prog *driver.Program, ctx *tokens.Context, env *Env, emit Sink) plugin.FileTransform {
 	return schemaoftransform.New(prog, ctx, env.Artifacts, func(d plugin.Diagnostic) {
 		emit(DiagFromPlugin(d))

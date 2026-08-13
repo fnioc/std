@@ -5,7 +5,7 @@
 // table back-to-back over one loaded program in one shared EmitContext, in the
 // hardcoded canonical order
 //
-//	mergesynth (pre-pass) -> inline -> nameof -> typefor -> signatureof -> keyof
+//	mergesynth (pre-pass) -> inline -> nameof -> typefor -> signatureof
 //	-> schemaof
 //
 // A stage that matches nothing in the program is a cheap no-op (the stages own

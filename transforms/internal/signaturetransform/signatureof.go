@@ -44,7 +44,6 @@ const signatureofName = "signatureof"
 func New(prog *driver.Program, ctx *tokens.Context, artifacts *inlinetransform.Artifacts, emit func(signatures.Diagnostic)) plugin.FileTransform {
 	checker := prog.Checker
 	return func(ec *shimprinter.EmitContext, sf *shimast.SourceFile) *shimast.SourceFile {
-		factory := ec.Factory.AsNodeFactory()
 		// Which primitive a callee is, and what a registration's value argument is,
 		// are facts about SOURCE-WRITTEN syntax; they are resolved against the parse
 		// node so no checker query ever walks the tree this loop has rewritten (see
@@ -52,11 +51,6 @@ func New(prog *driver.Program, ctx *tokens.Context, artifacts *inlinetransform.A
 		// that nil-derefs the checker).
 		parseAnchor := plugin.NewCheckerAnchor(ec, sf)
 		extractor := signatures.NewExtractor(ctx, checker, ec, sf, emit)
-		// minted records the slot-array literals this stage produced from a
-		// signaturefor / signaturesfor lowering, so a spread of one inside a
-		// `withSignature` / `withSignatures` call is flattened positionally (and only
-		// those — an unrelated user spread over an array literal is left alone).
-		minted := map[*shimast.Node]bool{}
 		var visitor *shimast.NodeVisitor
 		visit := func(node *shimast.Node) *shimast.Node {
 			if node == nil {
@@ -68,19 +62,8 @@ func New(prog *driver.Program, ctx *tokens.Context, artifacts *inlinetransform.A
 						return lit
 					}
 				}
-				// The type-argument minting siblings: lower a signaturefor / signaturesfor
-				// call to its slot-array literal and record it, so the enclosing
-				// `withSignature(...)` / `withSignatures(...)` call flattens its spread below.
-				if lit, ok := lowerSignatureFor(extractor, checker, parseAnchor, artifacts, node); ok {
-					minted[lit] = true
-					return lit
-				}
 			}
-			visited := visitor.VisitEachChild(node)
-			if visited != nil && visited.Kind == shimast.KindCallExpression {
-				return flattenSignatureForSpreads(factory, visited, minted)
-			}
-			return visited
+			return visitor.VisitEachChild(node)
 		}
 		visitor = ec.NewNodeVisitor(visit)
 		output := visitor.VisitNode(sf.AsNode())

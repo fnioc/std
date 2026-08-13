@@ -139,6 +139,8 @@ interface LocalBase<S extends string> {}
 type Local<S extends string = "singleton"> = LocalBase<S>;
 export const appInternal = tokenfor<ILocal>();
 export const asyncToken = tokenfor<Promise<ILocal>>();
+export const iterableToken = tokenfor<Iterable<ILocal>>();
+export const asyncIterableToken = tokenfor<AsyncIterable<ILocal>>();
 export const packagePublic = tokenfor<IFoo>();
 export const bareReexport = tokenfor<Deep>();
 export const localDefaultAlias = tokenfor<Local>();
@@ -177,6 +179,17 @@ describe.skipIf(!toolchainReady)('ttsc/Go tokenfor lowering byte-parity', () => 
 
   test('Promise<T> → honest closed-generic token', () => {
     expect(app).toContain(`"Promise<./app:ILocal>"`);
+  });
+
+  test('an aggregate spelling carries only its element', () => {
+    // The lib declares `Iterable<T, TReturn = any, TNext = any>` and
+    // `AsyncIterable` identically, and a bare `Iterable<E>` reference resolves all
+    // three — so the token must be exactly what a hand-writer spells. Anything
+    // wider reads back as an ordinary named type rather than the aggregate kind,
+    // and no aggregate registration would answer it.
+    expect(app).toContain(`iterableToken = "Iterable<./app:ILocal>"`);
+    expect(app).toContain(`asyncIterableToken = "AsyncIterable<./app:ILocal>"`);
+    expect(app).not.toContain('any,any');
   });
 
   test('package-public barrel → importSpecifier:Symbol', () => {

@@ -4,8 +4,8 @@
 // helpers), the engine classes (ConfigBuilder / ConfigRoot /
 // ConfigSection / the abstract ConfigProvider base) +
 // compareConfigKeys, the bundled Memory provider + its
-// addInMemoryCollection augmentation, and the runtime schema surface
-// (Schema/Infer/OPTIONAL + the coercing build path). Provider packages
+// addInMemoryCollection augmentation, and the coercing build path a
+// `Type`-tree schema drives. Provider packages
 // (@rhombus-std/config.json/-env/-commandline) peer-depend on this package, extend
 // ConfigProvider, implement IConfigSource, and augment
 // ConfigBuilder with their own add* sugar.
@@ -42,10 +42,8 @@ export * from './chained';
 // provider packages (e.g. @rhombus-std/config.json's addJsonStream) extend.
 export * from './stream';
 
-// Runtime coercion + schema. `withType` (Tier 2) is intentionally NOT
-// re-exported here -- it's opt-in via `import "@rhombus-std/config/with-type-augment"`.
+// Runtime coercion. `withType` (Tier 2) is intentionally NOT re-exported here --
+// it's opt-in via `import "@rhombus-std/config/with-type-augment"`.
 export { SchemaCoercionError } from './coerce';
-export { OPTIONAL } from './schema';
-export type { Infer, ObjectSchema, OptionalSchema, Schema } from './schema';
 
 // ConfigObject + IndexedSection flow through `export * from "@rhombus-std/config.core"` above.
