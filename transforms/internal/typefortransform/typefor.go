@@ -22,7 +22,7 @@
 // on its result is correct, just not the tidiest output.
 //
 // The single owner host (cmd/ttsc-std) composes it as the `rhombusstd_typefor`
-// stage, alongside — never replacing — nameof/keyof/factory: it derives the
+// stage, alongside — never replacing — nameof/factory: it derives the
 // structured `Type` a call site wants, they derive the flat string token a
 // registration wants.
 package typefortransform

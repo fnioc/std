@@ -24,20 +24,10 @@ import (
 // `tokenof<T>()` / `tokenof(value)` from the raw type / the value's OWN type with
 // no unwrap (the `addValue` self form, which registers an already-built value
 // under its own type — matching the di engine's raw-type `addValue` derivation).
-// `signatureof(ctor)` binds a VALUE argument (a
-// class / factory) whose dependency signature the signatureof stage extracts, and
-// `keyof<T>()` binds a TYPE argument and lowers to a keyed service's registration
-// KEY; both are authoring-time-only constructs, so they live in
-// `@rhombus-std/di.extras` and a body imports them via a package-relative
+// `signatureof(ctor)` binds a VALUE argument (a class / factory) whose dependency
+// signature the signatureof stage extracts; it is authoring-time-only, so it
+// lives in `@rhombus-std/di.extras` and a body imports it via a package-relative
 // specifier from within that package (see primitiveImports).
-//
-// `signaturefor<T>()` / `signaturesfor<T>()` bind a TYPE argument (a dependency
-// tuple / tuple-of-tuples) and MINT one overload's / the whole set's `DepSlot`s
-// from it — the type-argument siblings of the value-argument `signatureof`. They
-// produce di.core's `DepSlot` shape and are called from runtime source too, so
-// they home in `@rhombus-std/di.core` and a body imports them by that package name
-// (the peered core). A hardcoded map suffices — the declare-by-marker
-// generalization is a future enhancement.
 // `schemaof<T>()` binds a TYPE argument and lowers to the config family's runtime
 // schema object literal — the engine half of the `.withType<T>()` sugar body
 // `this.withSchema(schemaof<T>())`. It is authoring-time-only, so it homes in the
@@ -49,14 +39,11 @@ import (
 // the flat string token. It homes beside `tokenfor` / `tokenof` in
 // `@rhombus-std/primitives.extras`.
 var knownPrimitives = map[string]string{
-	"tokenfor":      "@rhombus-std/primitives.extras",
-	"tokenof":       "@rhombus-std/primitives.extras",
-	"signatureof":   "@rhombus-std/di.extras",
-	"keyof":         "@rhombus-std/di.extras",
-	"signaturefor":  "@rhombus-std/di.core",
-	"signaturesfor": "@rhombus-std/di.core",
-	"schemaof":      "@rhombus-std/config.extras",
-	"typefor":       "@rhombus-std/primitives.extras",
+	"tokenfor":    "@rhombus-std/primitives.extras",
+	"tokenof":     "@rhombus-std/primitives.extras",
+	"signatureof": "@rhombus-std/di.extras",
+	"schemaof":    "@rhombus-std/config.extras",
+	"typefor":     "@rhombus-std/primitives.extras",
 }
 
 // knownAuthoringMarkers maps each MODULE-LEVEL authoring marker an impl file may

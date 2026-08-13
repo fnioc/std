@@ -4,7 +4,6 @@ import (
 	"github.com/samchon/ttsc/packages/ttsc/driver"
 
 	"github.com/fnioc/std/transforms/internal/inlinetransform"
-	"github.com/fnioc/std/transforms/internal/keyoftransform"
 	"github.com/fnioc/std/transforms/internal/mergesynthtransform"
 	"github.com/fnioc/std/transforms/internal/nameoftransform"
 	"github.com/fnioc/std/transforms/internal/plugin"
@@ -39,13 +38,10 @@ const stagePrefix = "rhombusstd_"
 // nameof calls), then typefor (the structured `Type.*` lowering of
 // `typefor<T>()` / `typefor(value)` — the runtime-`Type` sibling of nameof's flat
 // string token, disjoint from it by callee), then signatureof (the
-// dependency-signature array lowering — the value-argument `signatureof(ctor)`
-// AND its type-argument minting siblings `signaturefor<T>()` /
-// `signaturesfor<T>()`, including the inline stage's synthetic calls), then keyof
-// (the keyed-registration KEY lowering, including the inline stage's synthetic
-// keyof calls), then schemaof (the config `.withType<T>()` sugar's
-// schema-literal lowering). All stages own DISJOINT match sets, so correctness
-// never depends on this order — it is fixed only for reproducible output.
+// dependency-signature array lowering, including the inline stage's synthetic
+// calls), then schemaof (the config `.withType<T>()` sugar's schema-literal
+// lowering). All stages own DISJOINT match sets, so correctness never depends on
+// this order — it is fixed only for reproducible output.
 //
 // Returned as a fresh slice each call so a caller can reorder or extend it
 // without mutating shared state.
@@ -56,7 +52,6 @@ func BaseStages() []Stage {
 		{Name: stagePrefix + "nameof", Build: buildNameof},
 		{Name: stagePrefix + "typefor", Build: buildTypefor},
 		{Name: stagePrefix + "signatureof", Build: buildSignatureof},
-		{Name: stagePrefix + "keyof", Build: buildKeyof},
 		{Name: stagePrefix + "schemaof", Build: buildSchemaof},
 	}
 }
@@ -122,16 +117,6 @@ func buildTypefor(prog *driver.Program, ctx *tokens.Context, env *Env, emit Sink
 func buildSignatureof(prog *driver.Program, ctx *tokens.Context, env *Env, emit Sink) plugin.FileTransform {
 	return signaturetransform.New(prog, ctx, env.Artifacts, func(d signatures.Diagnostic) {
 		emit(DiagFromDi(d))
-	})
-}
-
-// buildKeyof activates the keyof primitive stage. It lowers each `keyof<T>()` —
-// the inline stage's synthetic keyed-registration KEY calls and any source-written
-// one — to the `Keyed<T, K>` key string (or `void 0` when unkeyed). It raises no
-// diagnostics of its own; any it did raise would be hard errors.
-func buildKeyof(prog *driver.Program, ctx *tokens.Context, env *Env, emit Sink) plugin.FileTransform {
-	return keyoftransform.New(prog, ctx, env.Artifacts, func(d plugin.Diagnostic) {
-		emit(DiagFromPlugin(d))
 	})
 }
 
