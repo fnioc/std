@@ -23,7 +23,7 @@ const CLOSERS = new Set([')', ']', '}', '>']);
  *
  * @throws TypeParseError when the token is malformed.
  */
-export function parseType(token: string): Type {
+export function parseTypeString(token: string): Type {
   return new TypeParser(token).parse();
 }
 
