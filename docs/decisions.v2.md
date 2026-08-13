@@ -1602,3 +1602,27 @@ signature it binds, `<%T>(%T) => app:Box<%T>`, reachable through the arrow, `new
 the parity invariant binds unchanged.
 
 _Owner-directed 2026-08-13._
+
+## §153 — `ServiceProviderOptions` stays immutable; `useDefaultServiceProvider` takes a returning delegate
+
+`ServiceProviderOptions` declares every property `readonly` — the container's build-time options are
+a value, not a bag a caller reaches into. `IHostBuilder.useDefaultServiceProvider`'s configure
+delegate matches that shape instead of fighting it: it receives `ServiceProviderOptions.defaults` and
+RETURNS the `ServiceProviderOptions` that `build()` threads into `ServiceManifest.build(options)` —
+the same returning-delegate shape `configureServices` already uses for the manifest. A caller composes
+the result with a spread (`(options) => ({ ...options, validateScopes: true })`); each
+`useDefaultServiceProvider` call replaces whatever an earlier `configureDefaults` or
+`useDefaultServiceProvider` set, so the last call wins.
+
+_Owner-directed 2026-08-13._
+
+## §154 — The config schema coercer covers literal-union members
+
+A schema member typed as a union of literal values coerces like any other leaf: a string member
+matches the raw configuration value by equality, a number/boolean/bigint member by parsing (via the
+same `parseNumber`/`parseBoolean`/`parseBigInt` the scalar leaves use) then equality. A miss reports
+the same path-naming `SchemaCoercionError` issue every other leaf uses, naming every value the union
+allows. Wider coercer growth — arrays, tuples, library globals beyond the four scalar leaves — stays
+undecided.
+
+_Owner-directed 2026-08-13._
