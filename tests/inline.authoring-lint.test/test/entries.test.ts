@@ -3,15 +3,15 @@ import { mkdirSync, mkdtempSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 // @ts-expect-error — untyped local ESM helper.
-import { entryKind, loadInlineEntries } from '../../../scripts/eslint/inline-entries.mjs';
+import { entryKind, loadInlineEntries, resolveConfig } from '../../../scripts/eslint/inline-entries.mjs';
 
 // The JS entries loader must stay byte-semantically identical to the Go twin
-// (entries.go / entries_test.go): the same shape inference and the same import
-// composition, cycle, and escape errors.
+// (entries.go / entries_test.go): the same shape inference and the same
+// "@imports" resolution, deep-merge, and error behavior.
 
-function pkg(inline: unknown): string {
+function pkg(rhombusStd: unknown): string {
   const dir = mkdtempSync(join(tmpdir(), 'inline-entries-'));
-  writeFileSync(join(dir, 'package.json'), JSON.stringify({ name: 'p', 'rhombus-std': inline }));
+  writeFileSync(join(dir, 'package.json'), JSON.stringify({ name: 'p', 'rhombus-std': rhombusStd }));
   return dir;
 }
 
@@ -54,15 +54,6 @@ describe('entryKind', () => {
 });
 
 describe('loadInlineEntries', () => {
-  test('composes imported files in order, both certified rows', () => {
-    const dir = pkg({ inline: { entries: [{ type: 'p:A', impl: 'p:A', member: 'm1' }] }, import: './more.json' });
-    writeFileSync(join(dir, 'more.json'),
-      JSON.stringify({ inline: { entries: [{ type: 'p:B', impl: 'p:B', member: 'm2' }, { impl: 'p:freeFn' }] } }));
-    const entries = loadInlineEntries(dir);
-    expect(entries.map((e: { member?: string; impl?: string; }) => e.member ?? e.impl)).toEqual(['m1', 'm2',
-      'p:freeFn']);
-  });
-
   test('malformed shape throws INLINE_ENTRY_SHAPE', () => {
     // type+impl with no member fits no row.
     const dir = pkg({ inline: { entries: [{ type: 'p:A', impl: 'p:AImpl' }] } });
@@ -81,49 +72,72 @@ describe('loadInlineEntries', () => {
     expect(() => loadInlineEntries(dir)).toThrow(/INLINE_ENTRY_IMPL_FOREIGN/);
   });
 
-  test('import cycle throws', () => {
-    const dir = pkg({ inline: { entries: [] }, import: './a.json' });
-    writeFileSync(join(dir, 'a.json'), JSON.stringify({ inline: { entries: [] }, import: './b.json' }));
-    writeFileSync(join(dir, 'b.json'), JSON.stringify({ inline: { entries: [] }, import: './a.json' }));
-    expect(() => loadInlineEntries(dir)).toThrow(/INLINE_ENTRY_IMPORT_CYCLE/);
+  test('malformed imported JSON throws INLINE_ENTRY_IMPORT (aligned with the Go twin)', () => {
+    const dir = pkg({ '@imports': './bad.json' });
+    writeFileSync(join(dir, 'bad.json'), '{ "inline": [ this is not json ');
+    expect(() => loadInlineEntries(dir)).toThrow(/INLINE_ENTRY_IMPORT/);
   });
 
-  test('import escape throws', () => {
-    const dir = pkg({ inline: { entries: [] }, import: '../escape.json' });
-    expect(() => loadInlineEntries(dir)).toThrow(/INLINE_ENTRY_IMPORT_ESCAPE/);
+  test('non-string @imports throws INLINE_ENTRY_IMPORT', () => {
+    const dir = pkg({ '@imports': 42 });
+    expect(() => loadInlineEntries(dir)).toThrow(/INLINE_ENTRY_IMPORT/);
   });
 
-  test('no key → empty', () => {
+  test('default with no rhombus-std key and no file: empty, silent', () => {
     const dir = mkdtempSync(join(tmpdir(), 'inline-entries-'));
     writeFileSync(join(dir, 'package.json'), JSON.stringify({ name: 'p' }));
     expect(loadInlineEntries(dir)).toEqual([]);
   });
 
-  test('import as an array composes each file', () => {
-    const dir = pkg({ inline: { entries: [] }, import: ['./a.json', './b.json'] });
-    writeFileSync(join(dir, 'a.json'), JSON.stringify({ inline: { entries: [{ impl: 'p:fromA' }] } }));
+  test('default with no rhombus-std key but a sibling rhombus-std.json: loaded', () => {
+    const dir = mkdtempSync(join(tmpdir(), 'inline-entries-'));
+    writeFileSync(join(dir, 'package.json'), JSON.stringify({ name: 'p' }));
+    writeFileSync(join(dir, 'rhombus-std.json'), JSON.stringify({ inline: { entries: [{ impl: 'p:fromDefault' }] } }));
+    const entries = loadInlineEntries(dir);
+    expect(entries.map((e: { impl?: string; }) => e.impl)).toEqual(['p:fromDefault']);
+  });
+
+  test('"rhombus-std": {} kills the default even with a file on disk', () => {
+    const dir = pkg({});
+    writeFileSync(join(dir, 'rhombus-std.json'), JSON.stringify({ inline: { entries: [{ impl: 'p:ignored' }] } }));
+    expect(loadInlineEntries(dir)).toEqual([]);
+  });
+
+  test('explicit @imports naming a missing file resolves silently to nothing', () => {
+    const dir = pkg({ '@imports': './missing.json', inline: { entries: [{ impl: 'p:local' }] } });
+    const entries = loadInlineEntries(dir);
+    expect(entries.map((e: { impl?: string; }) => e.impl)).toEqual(['p:local']);
+  });
+
+  test('a chain of two files resolves base-then-local at each hop', () => {
+    const dir = pkg({ '@imports': './a.json' });
+    writeFileSync(join(dir, 'a.json'),
+      JSON.stringify({ '@imports': './b.json', inline: { entries: [{ impl: 'p:fromA' }] } }));
     writeFileSync(join(dir, 'b.json'), JSON.stringify({ inline: { entries: [{ impl: 'p:fromB' }] } }));
     const entries = loadInlineEntries(dir);
-    expect(entries.map((e: { impl?: string; }) => e.impl)).toEqual(['p:fromA', 'p:fromB']);
+    expect(entries.map((e: { impl?: string; }) => e.impl)).toEqual(['p:fromB', 'p:fromA']);
   });
 
-  test('malformed imported JSON throws INLINE_ENTRY_IMPORT (aligned with the Go twin)', () => {
-    const dir = pkg({ inline: { entries: [] }, import: './bad.json' });
-    writeFileSync(join(dir, 'bad.json'), '{ "inline": [ this is not json ');
-    expect(() => loadInlineEntries(dir)).toThrow(/INLINE_ENTRY_IMPORT/);
+  test('a cycle resolves clean instead of looping', () => {
+    const dir = pkg({ '@imports': './a.json' });
+    writeFileSync(join(dir, 'a.json'),
+      JSON.stringify({ '@imports': './b.json', inline: { entries: [{ impl: 'p:fromA' }] } }));
+    writeFileSync(join(dir, 'b.json'),
+      JSON.stringify({ '@imports': './a.json', inline: { entries: [{ impl: 'p:fromB' }] } }));
+    const entries = loadInlineEntries(dir);
+    expect(entries.map((e: { impl?: string; }) => e.impl)).toEqual(['p:fromB', 'p:fromA']);
   });
 
-  test('non-string/array import throws INLINE_ENTRY_IMPORT', () => {
-    const dir = pkg({ inline: { entries: [] }, import: 42 });
-    expect(() => loadInlineEntries(dir)).toThrow(/INLINE_ENTRY_IMPORT/);
+  test('a local leaf wins over the same leaf in the imported base', () => {
+    const dir = pkg({ '@imports': './base.json', typefor: { emit: 'hoisted' } });
+    writeFileSync(join(dir, 'base.json'), JSON.stringify({ typefor: { emit: 'inline' } }));
+    const resolved = resolveConfig(dir);
+    expect(resolved.typefor).toEqual({ emit: 'hoisted' });
   });
 
-  test('duplicate entry across two imports is concatenated undeduped', () => {
-    // The chosen behavior mirrors the Go twin: both copies are returned;
-    // deduplication (where it matters) happens later at the decl-map level.
-    const dir = pkg({ inline: { entries: [] }, import: ['./a.json', './b.json'] });
-    writeFileSync(join(dir, 'a.json'), JSON.stringify({ inline: { entries: [{ impl: 'p:dup' }] } }));
-    writeFileSync(join(dir, 'b.json'), JSON.stringify({ inline: { entries: [{ impl: 'p:dup' }] } }));
+  test('entries concatenate imported-then-local, undeduped', () => {
+    const dir = pkg({ '@imports': './rhombus-std.json', inline: { entries: [{ impl: 'p:dup' }] } });
+    writeFileSync(join(dir, 'rhombus-std.json'), JSON.stringify({ inline: { entries: [{ impl: 'p:dup' }] } }));
     const entries = loadInlineEntries(dir);
     expect(entries.map((e: { impl?: string; }) => e.impl)).toEqual(['p:dup', 'p:dup']);
   });
