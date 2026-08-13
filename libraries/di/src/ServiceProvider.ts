@@ -41,22 +41,42 @@ export class ServiceProvider {
     }
   }
 
-  /** @throws always — see {@link notImplemented}. */
+  /**
+   * @remarks
+   * Declared ahead of implementation so callers can compile against it; the lifetime and
+   * disposal model this depends on is still undecided.
+   * @throws {NotImplementedError} always, until that model is decided.
+   */
   tryResolve(_type: Type | Token): any {
     return notImplemented('tryResolve');
   }
 
-  /** @throws always — see {@link notImplemented}. */
+  /**
+   * @remarks
+   * Declared ahead of implementation so callers can compile against it; the lifetime and
+   * disposal model this depends on is still undecided.
+   * @throws {NotImplementedError} always, until that model is decided.
+   */
   resolveAsync(_type: Type | Token): Promise<any> {
     return notImplemented('resolveAsync');
   }
 
-  /** @throws always — see {@link notImplemented}. */
+  /**
+   * @remarks
+   * Declared ahead of implementation so callers can compile against it; the disposal model this
+   * depends on is still undecided.
+   * @throws {NotImplementedError} always, until that model is decided.
+   */
   dispose(): void {
     return notImplemented('dispose');
   }
 
-  /** @throws always — see {@link notImplemented}. */
+  /**
+   * @remarks
+   * Declared ahead of implementation so callers can compile against it; the disposal model this
+   * depends on is still undecided.
+   * @throws {NotImplementedError} always, until that model is decided.
+   */
   disposeAsync(): Promise<void> {
     return notImplemented('disposeAsync');
   }

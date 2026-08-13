@@ -1,7 +1,7 @@
 {
   "name": "@rhombus-std/di.extras",
   "version": "10.1.0",
-  "description": "The ioc authoring surface: the build-time primitives a registration author writes against. A Go/ttsc descriptor package \u2014 the lowering runs in the shared owner binary.",
+  "description": "The ioc authoring surface: the build-time primitives a registration author writes against. A Go/ttsc descriptor package \u2014 the primitive-transform runs in the shared owner binary.",
   "keywords": [
     "dependency-injection",
     "di",

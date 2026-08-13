@@ -10,7 +10,7 @@ import type { CtorType, FunctionType, IntersectionType, NamedType, ObjectType, P
  *
  * @typeParam Return - what each handler produces.
  */
-export abstract class TypeVisitor<Return, Context = never> {
+export abstract class TypeVisitor<out Return, in Context = never> {
   public visit(type: Type): Return;
   public visit(type: Type, context: Context): Return;
   public visit(type: Type, context?: any): Return {
@@ -54,5 +54,6 @@ export abstract class TypeVisitor<Return, Context = never> {
 
 // Local copy — primitives stays free of @rhombus-toolkit/type-guards as a dependency.
 function assertNever(x: never): never {
-  throw new Error('Unexpected object: ' + x);
+  const kind = (x as { kind?: unknown; })?.kind;
+  throw new Error(`unknown Type kind ${JSON.stringify(kind)}`);
 }

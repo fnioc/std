@@ -34,6 +34,11 @@ export function substitute<Scopes extends string>(descriptor: ServiceDescriptor<
   }
 }
 
+/**
+ * Are the two descriptors interchangeable — same slot ({@link matches}) and the same
+ * implementation, scope, and signatures? Two descriptors can occupy the same slot without being
+ * equal (a replaced registration), so prefer {@link matches} for slot identity.
+ */
 export function equals(left: ServiceDescriptor<string>, right: ServiceDescriptor<string>): boolean {
   if (left === right) {
     return true;
