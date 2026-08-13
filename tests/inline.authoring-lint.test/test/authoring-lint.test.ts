@@ -155,9 +155,9 @@ describe('inline-authoring rule', () => {
     expect(lintInline(src)).toEqual([]);
   });
 
-  // One fixture per remaining banned construct (a conditional is now PERMITTED,
-  // §94, covered above). Each is a single return expression whose only issue is the
-  // banned form, so the rule reports bannedSyntax.
+  // One fixture per banned construct (a conditional is permitted — covered above).
+  // Each is a single return expression whose only issue is the banned form, so the
+  // rule reports bannedSyntax.
   const bannedFixtures: Array<{ name: string; member: string; }> = [{ name: 'logical',
     member: `bar<T>(this: any): boolean { return this.a && this.b; }` }, { name: 'assignment',
     member: `bar<T>(this: any): boolean { return this.x = true; }` }, { name: 'comma sequence',

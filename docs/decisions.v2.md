@@ -226,28 +226,12 @@ Full schema, the authoring lint, and the tripwires (rogue-duplicate, emit sweep)
 `docs/features/transformer-architecture.md`; this entry records only the identity-vs-string ruling.
 _Owner-approved 2026-07-17._
 
-## §94 — Resolve-family sugar inlines via type-predicate primitives
+## §94 — Resolution sugar always asks the container
 
-The tokenless resolve family (`resolve<T>()`, `resolveAsync<T>()`, `tryResolve<T>()`) lowers
-through the generic inline stage with plain certified bodies. Type-directed dispatch is expressed
-**inside** those bodies via compile-time predicate primitives, never via context-sensitive matching
-in the engine.
-
-Two authoring-only primitives live in `primitives.transformer` (per §92's homing rule), shipped as
-throwing stubs like `tokenfor`: `isSingular<T>(): boolean` and `singularValue<T>(): T` — "singular" is
-the token grammar's term for a type with exactly one value: a literal, `null`, `undefined`, or
-`void`. The canonical body is `isSingular<T>() ? singularValue<T>() : this.tryResolve(tokenfor<T>())`.
-Resolving a singular type IS its value: a hand-written `tryResolve(tokenfor<'dev'>())` folds
-identically, so the sugar and the explicit form share one semantics.
-
-The inline engine constant-folds after primitive lowering — boolean-ternary dead-branch pruning,
-run **before** the emit sweep so a pruned-branch primitive never trips it. A surviving unguarded
-`singularValue<T>()` over a non-singular type raises a targeted diagnostic. The factory form
-(`resolve<F>()` where `F` is a function type, lowering to `resolveFactory`) uses the same pattern
-plus signatureof-shaped extraction in the true arm.
-
-Implementation notes: the exact primitive names/signatures and the diagnostic wording are Claude's
-call, applying §92's homing rule to this family. _Owner-directed 2026-07-18._
+Every resolution sugar body is a bare container call — the `get*` family lowers to the
+token-explicit member with a derived `Type` argument. There is no compile-time singularity
+dispatch: a literal-typed request reaches the container like any other request.
+_Owner-directed 2026-08-12 (singular death)._
 
 ## §95 — `addOptions` sugar homes in its transformer satellite
 
@@ -579,7 +563,7 @@ The plugin-less 2-arg `addClass(token, ctor)` / `addFactory(token, factory)` for
 
 ## §110 — Primitive naming: `-for` mints an identity, `-of` observes an existing one
 
-`nameof<T>()` is renamed `tokenfor<T>()` (it MINTS a token identity for `T`, never observed anywhere), and the two new derivation primitives introduced for the fluent signature builder follow the same rule: `signaturefor<T>()` (1-D, mints one overload's dependency slots) and `signaturesfor<T>()` (2-D, mints the whole signature set) mirror `withSignature` / `withSignatures`. `-of` stays for primitives that OBSERVE a property that already exists on the target: `signatureof(ctor)` (observes a constructor's own param types), `keyof<T>()` (observes a `Keyed<T,K>` brand), `valueof<T>()` (observes a literal type's value — the `.as<Scope>()` sugar's scope half). The pipeline STAGE id `nameof` is unchanged (the stage name, not the function — e.g. `primitives.transformer`'s `"stages": [..., "nameof", ...]`); only the authored function it lowers was renamed. Full mapping: `docs/features/transformer-architecture.md`. _Owner-directed (the -for/-of convention itself); the `tokenfor` rename and the two new primitives' placement are Claude's, done as a dedicated PR per the owner's "name them right the first time" direction._
+`nameof<T>()` is renamed `tokenfor<T>()` (it MINTS a token identity for `T`, never observed anywhere), and the two new derivation primitives introduced for the fluent signature builder follow the same rule: `signaturefor<T>()` (1-D, mints one overload's dependency slots) and `signaturesfor<T>()` (2-D, mints the whole signature set) mirror `withSignature` / `withSignatures`. `-of` stays for primitives that OBSERVE a property that already exists on the target: `signatureof(ctor)` (observes a constructor's own param types) and `keyof<T>()` (observes a `Keyed<T,K>` brand). The pipeline STAGE id `nameof` is unchanged (the stage name, not the function — e.g. `primitives.transformer`'s `"stages": [..., "nameof", ...]`); only the authored function it lowers was renamed. Full mapping: `docs/features/transformer-architecture.md`. _Owner-directed (the -for/-of convention itself); the `tokenfor` rename and the two new primitives' placement are Claude's, done as a dedicated PR per the owner's "name them right the first time" direction._
 
 ---
 

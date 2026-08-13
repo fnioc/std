@@ -22,15 +22,14 @@ import { entryKind, loadInlineEntries, parseTypeRef } from './inline-entries.mjs
 // elides after lowering, so the runtime @rhombus-std/primitives leaf carries none
 // of them. `signaturefor` / `signaturesfor` produce di.core's `DepSlot` shape
 // and are called from runtime source too, so they live in @rhombus-std/di.core
-// (every caller already depends on it). `signatureof`, `keyof`, and `valueof` are
+// (every caller already depends on it). `signatureof` and `keyof` are
 // authoring-time-only and live in @rhombus-std/di.extras, imported by that
 // package's own bodies via a package-relative specifier. Mirrors the Go scanner's
 // knownPrimitives map.
 const PRIMITIVE_HOMES = { typefor: '@rhombus-std/primitives.extras', tokenfor: '@rhombus-std/primitives.extras',
   tokenof: '@rhombus-std/primitives.extras', signaturefor: '@rhombus-std/di.core',
   signaturesfor: '@rhombus-std/di.core', signatureof: '@rhombus-std/di.extras', keyof: '@rhombus-std/di.extras',
-  valueof: '@rhombus-std/di.extras', isSingular: '@rhombus-std/primitives.extras',
-  singularValue: '@rhombus-std/primitives.extras', schemaof: '@rhombus-std/config.extras' };
+  schemaof: '@rhombus-std/config.extras' };
 
 /** Walks up from a file to the nearest directory containing a package.json. */
 function findPackageDir(/** @type {string} */ file) {
@@ -203,10 +202,8 @@ const rule = {
 };
 
 const BANNED = {
-  // A conditional (?:) is PERMITTED (§94): the resolve-family sugar bodies branch
-  // `isSingular<T>() ? singularValue<T>() : this.resolve(tokenfor<T>())`, a single
-  // compile-time expression the engine constant-folds. The other control forms stay
-  // banned — a body is still one side-effect-free expression.
+  // A conditional (?:) is PERMITTED — still one side-effect-free expression. The
+  // control forms below are banned because each breaks that shape.
   LogicalExpression: 'a logical operator (&&/||/??)',
   AssignmentExpression: 'assignment',
   SequenceExpression: 'a comma sequence',
