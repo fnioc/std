@@ -35,6 +35,7 @@ declare module '@rhombus-std/config' {
 ConfigBuilder.prototype.withType = function(): never {
   throw new Error(
     "withType<T>() requires @rhombus-std/config.extras's compile-time transform to run. "
-      + 'It has not been applied. Use withSchema({...}) directly, or configure the transformer.',
+      + 'It has not been applied. Use withSchema(Type.object({...})) directly, or configure the '
+      + 'transformer.',
   );
 };
