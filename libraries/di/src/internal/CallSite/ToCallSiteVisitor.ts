@@ -1,8 +1,8 @@
-import { AmbiguousUnionError, CycleError, type ServiceDescriptor } from '@rhombus-std/di.core';
+import { AmbiguousUnionError, CycleError } from '@rhombus-std/di.core';
 import { type ArrayType, type ConstructorType, first, type FunctionType, type GenericType, type GlobalType,
   type ImportedType, type IntersectionType, isAllThere, type IterableType, type ObjectType, type TagType,
   type TupleType, Type, type TypeLiteralType, TypeVisitor, type UnionType } from '@rhombus-std/primitives';
-import type { Registry } from '../Registry.js';
+import type { Answer, Registry } from '../Registry.js';
 import { CallSite } from './CallSite.js';
 
 export interface CallSiteContext {
@@ -170,7 +170,7 @@ export class ToCallSiteVisitor extends TypeVisitor<CallSite | undefined> {
       return first(this.#candidates(type));
     }
     const answers = Iterator.from(this.#registry.answering(type))
-      .map(descriptor => [descriptor.serviceType, CallSite.fromDescriptor(descriptor, this)] as const)
+      .map(answer => [answer.serviceType, CallSite.fromAnswer(answer, this)] as const)
       .filter((answer): answer is [Type, CallSite] => answer[1] !== undefined)
       .toArray();
     const exact = answers.find(([serviceType]) => serviceType === type);
@@ -187,7 +187,7 @@ export class ToCallSiteVisitor extends TypeVisitor<CallSite | undefined> {
   /** Every registration answering {@link type} that actually builds, newest first. */
   #candidates(type: Type) {
     return Iterator.from(this.#registry.answering(type))
-      .map((descriptor: ServiceDescriptor<string>) => CallSite.fromDescriptor(descriptor, this))
+      .map((answer: Answer) => CallSite.fromAnswer(answer, this))
       .filter((site): site is CallSite => !!site);
   }
 
