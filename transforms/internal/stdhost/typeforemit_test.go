@@ -83,25 +83,46 @@ func TestEmissionReadsAnExtendedFile(t *testing.T) {
 	}
 }
 
-func TestEmissionRejectsAnUnknownValue(t *testing.T) {
-	dir := t.TempDir()
-	writeManifest(t, dir, `{ "name": "pkg", "rhombus-std": { "typefor": { "emit": "hoist" } } }`)
-	_, err := readEmission(dir)
-	if err == nil || !strings.Contains(err.Error(), `"hoist"`) {
-		t.Fatalf("an unrecognized emission is a hard error naming the value, got %v", err)
+// The config schema owns the grammar, so an ungrammatical emission never
+// reaches emissionFor: resolution rejects it first, naming the file and the
+// offending key. Each case pins that the read really does sit behind that
+// validation rather than re-implementing it.
+func TestSchemaRejectsAnUngrammaticalEmission(t *testing.T) {
+	for name, marker := range map[string]string{
+		"an unrecognized value": `{ "typefor": { "emit": "hoist" } }`,
+		"a non-object block":    `{ "typefor": "hoisted" }`,
+		"a non-string emission": `{ "typefor": { "emit": 1 } }`,
+	} {
+		t.Run(name, func(t *testing.T) {
+			dir := t.TempDir()
+			writeManifest(t, dir, `{ "name": "pkg", "rhombus-std": `+marker+` }`)
+			_, err := readEmission(dir)
+			if err == nil {
+				t.Fatal("want a hard error")
+			}
+			if !strings.Contains(err.Error(), "INLINE_CONFIG_SCHEMA") || !strings.Contains(err.Error(), "/typefor") {
+				t.Fatalf("want a schema rejection naming the key, got %v", err)
+			}
+		})
 	}
 }
 
-func TestEmissionRejectsAMalformedBlock(t *testing.T) {
-	dir := t.TempDir()
-	writeManifest(t, dir, `{ "name": "pkg", "rhombus-std": { "typefor": "hoisted" } }`)
-	if _, err := readEmission(dir); err == nil || !strings.Contains(err.Error(), "must be an object") {
-		t.Fatalf("a non-object typefor block is a hard error, got %v", err)
-	}
-	nonString := t.TempDir()
-	writeManifest(t, nonString, `{ "name": "pkg", "rhombus-std": { "typefor": { "emit": 1 } } }`)
-	if _, err := readEmission(nonString); err == nil || !strings.Contains(err.Error(), "it must be") {
-		t.Fatalf("a non-string emission is a hard error, got %v", err)
+// If the schema ever admits a value this reader does not, the disagreement is
+// loud rather than a silent fall back to the default — the two emissions are
+// not interchangeable output. Only a direct call can reach it, since resolution
+// rejects every such value today.
+func TestAReaderSchemaDisagreementIsLoud(t *testing.T) {
+	for name, resolved := range map[string]map[string]any{
+		"a value outside the enum": {"typefor": map[string]any{"emit": "hoist"}},
+		"a non-object block":       {"typefor": "hoisted"},
+		"a non-string emission":    {"typefor": map[string]any{"emit": 1.0}},
+	} {
+		t.Run(name, func(t *testing.T) {
+			_, err := emissionFor(resolved, "/pkg")
+			if err == nil || !strings.Contains(err.Error(), "TYPEFOR_EMISSION_UNGRAMMATICAL") {
+				t.Fatalf("want a named disagreement, got %v", err)
+			}
+		})
 	}
 }
 

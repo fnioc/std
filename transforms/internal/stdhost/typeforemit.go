@@ -40,11 +40,16 @@ const typeforKey = "typefor"
 const emitKey = "emit"
 
 // emissionFor classifies the typefor block of a project's RESOLVED rhombus-std
-// config. An absent block, or one naming no emission, is the default; a
-// malformed block and an unrecognized emission are hard errors rather than
-// silent fallbacks, since the two forms are not interchangeable output.
-// packageDir names the project the config resolved for, so an error points at
-// something a reader can open.
+// config. An absent block, or one naming no emission, is the default.
+//
+// SHAPE IS NOT THIS FUNCTION'S JOB: resolution validates the config against
+// schema/rhombus-std.schema.json, which already rejects a non-object block, a
+// non-string emission, and a value outside the enum — with a message naming the
+// file and the offending key. So a value here that is not what the schema
+// permits means the schema and this reader disagree about the grammar, which is
+// an engine bug and says so; it is never a silent fall back to the default,
+// since the two emissions are not interchangeable output. packageDir names the
+// project the config resolved for.
 func emissionFor(resolved map[string]any, packageDir string) (Emission, error) {
 	value, present := resolved[typeforKey]
 	if !present {
@@ -52,10 +57,7 @@ func emissionFor(resolved map[string]any, packageDir string) (Emission, error) {
 	}
 	block, ok := value.(map[string]any)
 	if !ok {
-		return "", fmt.Errorf(
-			`typefor emission: %s resolves "rhombus-std".%s to a %T — it must be an object`,
-			packageDir, typeforKey, value,
-		)
+		return "", disagreement(packageDir, typeforKey, value)
 	}
 	emit, present := block[emitKey]
 	if !present {
@@ -63,20 +65,24 @@ func emissionFor(resolved map[string]any, packageDir string) (Emission, error) {
 	}
 	name, ok := emit.(string)
 	if !ok {
-		return "", fmt.Errorf(
-			`typefor emission: %s resolves "rhombus-std".%s.%s to a %T — it must be %q or %q`,
-			packageDir, typeforKey, emitKey, emit, EmissionHoisted, EmissionInline,
-		)
+		return "", disagreement(packageDir, typeforKey+"."+emitKey, emit)
 	}
 	switch emission := Emission(name); emission {
 	case EmissionHoisted, EmissionInline:
 		return emission, nil
 	default:
-		return "", fmt.Errorf(
-			`typefor emission: %s resolves "rhombus-std".%s.%s to %q — it must be %q or %q`,
-			packageDir, typeforKey, emitKey, name, EmissionHoisted, EmissionInline,
-		)
+		return "", disagreement(packageDir, typeforKey+"."+emitKey, name)
 	}
+}
+
+// disagreement reports a resolved value the config schema should have rejected
+// before this reader ever saw it.
+func disagreement(packageDir, key string, value any) error {
+	return fmt.Errorf(
+		`TYPEFOR_EMISSION_UNGRAMMATICAL: %s resolves "rhombus-std".%s to %#v, which the config schema `+
+			`should have rejected — the schema and this reader disagree about the grammar (an engine bug)`,
+		packageDir, key, value,
+	)
 }
 
 // readEmission is emissionFor over cwd's resolved rhombus-std config — the one
