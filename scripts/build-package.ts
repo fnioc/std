@@ -57,7 +57,7 @@ export function readTsconfigTransforms(dir: string, tsconfigRel: string): string
  * cache) are redirected onto a shared, disk-backed home dir because a cold
  * typescript-go compile overruns the per-user-quota tmpfs `/tmp`.
  */
-export function ttscEnv(): NodeJS.ProcessEnv {
+function ttscEnv(): NodeJS.ProcessEnv {
   const env = { ...process.env } as NodeJS.ProcessEnv;
   env.GOTOOLCHAIN = 'local';
   // GOTMPDIR (Go build scratch) and TTSC_CACHE_DIR (the content-keyed

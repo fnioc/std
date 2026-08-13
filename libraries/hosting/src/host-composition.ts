@@ -35,10 +35,10 @@ import { HostingEnvironment } from './internal/HostingEnvironment';
 import { NullLifetime } from './internal/NullLifetime';
 
 /** The category the internal host writes its lifecycle log messages under. */
-export const HOST_LOGGER_CATEGORY = 'Rhombus.Hosting.Host';
+const HOST_LOGGER_CATEGORY = 'Rhombus.Hosting.Host';
 
 /** The category the {@link ApplicationLifetime} writes its callback-error messages under. */
-export const APPLICATION_LIFETIME_CATEGORY = 'Rhombus.Hosting.ApplicationLifetime';
+const APPLICATION_LIFETIME_CATEGORY = 'Rhombus.Hosting.ApplicationLifetime';
 
 /** The hosting-owned framework singletons threaded through the composition. */
 export interface FrameworkServices {
