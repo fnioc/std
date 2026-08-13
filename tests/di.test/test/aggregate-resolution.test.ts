@@ -69,3 +69,18 @@ describe('async iterable resolution', () => {
     expect(provider.getService(Type.asyncIterable(A))).toBe('exact-async-iter');
   });
 });
+
+describe('getServices', () => {
+  test('nothing registered is the empty sequence, not a failure', () => {
+    const provider = new ServiceProvider(DefaultManifest.empty<string>());
+    expect([...provider.getServices(A)]).toEqual([]);
+  });
+
+  test('reads the same aggregate the iterable address names', () => {
+    const manifest = DefaultManifest.empty<string>()
+      .add(ServiceDescriptor.value(A, 'first'))
+      .add(ServiceDescriptor.value(A, 'second'));
+    const provider = new ServiceProvider(manifest);
+    expect([...provider.getServices(A)]).toEqual([...provider.getService(Type.iterable(A))]);
+  });
+});

@@ -7,13 +7,13 @@ import { type Manifest } from '../Manifest';
 import { ServiceDescriptor, type Signatures, TypeSignatures } from '../ServiceDescriptor';
 interface IManifestDescriptorAugmentations<Scopes extends string> {
   add(descriptor: ServiceDescriptor<Scopes>): Manifest<Scopes>;
-  add(type: Type | string, configure: Func<[Unstarted<Scopes>], IComplete>): Manifest<Scopes>;
+  add<T = any>(type: Type | string, configure: Func<[Unstarted<T, Scopes>], IComplete>): Manifest<Scopes>;
   remove(descriptor: ServiceDescriptor<Scopes>): Manifest<Scopes>;
   replace(descriptor: ServiceDescriptor<Scopes>): Manifest<Scopes>;
   addMany(descriptors: Iterable<ServiceDescriptor<Scopes>>): Manifest<Scopes>;
   tryAdd(...descriptors: ReadonlyArray<ServiceDescriptor<Scopes>>): Manifest<Scopes>;
 
-  tryAdd(type: Type | string, configure: Func<[Unstarted<Scopes>], IComplete>): this;
+  tryAdd<T = any>(type: Type | string, configure: Func<[Unstarted<T, Scopes>], IComplete>): this;
 
   tryAddClass(token: Token | Type, ctor: Ctor, signatures: Signatures, scope?: Scopes, key?: string): Manifest<Scopes>;
   tryAddFactory(token: Token | Type, factory: Func<any[], unknown>, signatures: Signatures, scope?: Scopes,
@@ -37,7 +37,7 @@ export const ManifestDescriptorAugmentations: AugmentationSet2<Manifest,
   Flatten<IManifestDescriptorAugmentations<any>>> = {
     add(descriptorOrType: any, configure?: any) {
       return this._add(
-        configure === undefined ? descriptorOrType : describe<any>(descriptorOrType, configure),
+        configure === undefined ? descriptorOrType : describe<any, any>(descriptorOrType, configure),
       );
     },
     remove(descriptor) {
