@@ -54,10 +54,12 @@ describe('entryKind', () => {
 });
 
 describe('loadInlineEntries', () => {
-  test('malformed shape throws INLINE_ENTRY_SHAPE', () => {
-    // type+impl with no member fits no row.
+  test('malformed shape throws INLINE_CONFIG_SCHEMA', () => {
+    // type+impl with no member fits no row — the schema gate, which mirrors
+    // the same four rows, catches it before entriesFromResolved's own
+    // entryKind() check ever runs.
     const dir = pkg({ inline: { entries: [{ type: 'p:A', impl: 'p:AImpl' }] } });
-    expect(() => loadInlineEntries(dir)).toThrow(/INLINE_ENTRY_SHAPE/);
+    expect(() => loadInlineEntries(dir)).toThrow(/INLINE_CONFIG_SCHEMA/);
   });
 
   test('uncertified shape throws INLINE_KIND_UNCERTIFIED', () => {
@@ -78,9 +80,11 @@ describe('loadInlineEntries', () => {
     expect(() => loadInlineEntries(dir)).toThrow(/INLINE_ENTRY_IMPORT/);
   });
 
-  test('non-string extends throws INLINE_ENTRY_IMPORT', () => {
+  test('non-string extends throws INLINE_CONFIG_SCHEMA', () => {
+    // extends is typed oneOf: [string, array of strings] in the schema too —
+    // it catches a non-string value before resolveNode's own check runs.
     const dir = pkg({ extends: 42 });
-    expect(() => loadInlineEntries(dir)).toThrow(/INLINE_ENTRY_IMPORT/);
+    expect(() => loadInlineEntries(dir)).toThrow(/INLINE_CONFIG_SCHEMA/);
   });
 
   test('default with no rhombus-std key and no file: empty, silent', () => {
@@ -136,12 +140,12 @@ describe('loadInlineEntries', () => {
   });
 
   test('extends as an array: later wins over earlier, local wins over both', () => {
-    const dir = pkg({ extends: ['./a.json', './b.json'], fromLocal: 'local' });
-    writeFileSync(join(dir, 'a.json'), JSON.stringify({ shared: 'from-a', fromLocal: 'should-lose-to-local' }));
-    writeFileSync(join(dir, 'b.json'), JSON.stringify({ shared: 'from-b', fromLocal: 'should-also-lose-to-local' }));
+    const dir = pkg({ extends: ['./a.json', './b.json'], $schema: 'local' });
+    writeFileSync(join(dir, 'a.json'), JSON.stringify({ typefor: { emit: 'hoisted' }, $schema: 'from-a' }));
+    writeFileSync(join(dir, 'b.json'), JSON.stringify({ typefor: { emit: 'inline' }, $schema: 'from-b' }));
     const resolved = resolveConfig(dir);
-    expect(resolved.shared).toBe('from-b');
-    expect(resolved.fromLocal).toBe('local');
+    expect((resolved.typefor as { emit: string; }).emit).toBe('inline');
+    expect(resolved.$schema).toBe('local');
   });
 
   test('entries concatenate extended-then-local, undeduped', () => {

@@ -171,20 +171,21 @@ func TestResolveConfigExtendsArrayLaterWinsOverEarlier(t *testing.T) {
   "name": "pkg",
   "rhombus-std": {
     "extends": ["./a.json", "./b.json"],
-    "fromLocal": "local"
+    "$schema": "local"
   }
 }`)
-	write(t, filepath.Join(root, "a.json"), `{ "shared": "from-a", "fromLocal": "should-lose-to-local" }`)
-	write(t, filepath.Join(root, "b.json"), `{ "shared": "from-b", "fromLocal": "should-also-lose-to-local" }`)
+	write(t, filepath.Join(root, "a.json"), `{ "typefor": { "emit": "hoisted" }, "$schema": "from-a" }`)
+	write(t, filepath.Join(root, "b.json"), `{ "typefor": { "emit": "inline" }, "$schema": "from-b" }`)
 	resolved, err := ResolveConfig(root)
 	if err != nil {
 		t.Fatalf("ResolveConfig: %v", err)
 	}
-	if resolved["shared"] != "from-b" {
-		t.Fatalf("expected the later extends entry (b) to win over the earlier one (a) on \"shared\", got %+v", resolved)
+	typefor, ok := resolved["typefor"].(map[string]any)
+	if !ok || typefor["emit"] != "inline" {
+		t.Fatalf("expected the later extends entry (b) to win over the earlier one (a) on \"typefor.emit\", got %+v", resolved)
 	}
-	if resolved["fromLocal"] != "local" {
-		t.Fatalf("expected the local block to win over both extended files on \"fromLocal\", got %+v", resolved)
+	if resolved["$schema"] != "local" {
+		t.Fatalf("expected the local block to win over both extended files on \"$schema\", got %+v", resolved)
 	}
 }
 
@@ -254,19 +255,21 @@ func TestResolveConfigEntriesConcatUndeduped(t *testing.T) {
 	}
 }
 
+// TestLoadInlineEntriesBadShape: a type+impl, no-member entry fits no
+// grammar row, and the schema gate — which mirrors the same four rows — now
+// catches it before entriesFromResolved's own Kind() check ever runs.
 func TestLoadInlineEntriesBadShape(t *testing.T) {
 	root := t.TempDir()
-	// type+impl with no member fits no row.
 	write(t, filepath.Join(root, "package.json"), `{
   "name": "pkg",
   "rhombus-std": { "inline": { "entries": [ { "type": "p:A", "impl": "pkg:AImpl" } ] } }
 }`)
 	_, err := LoadInlineEntries(root)
 	if err == nil {
-		t.Fatal("expected INLINE_ENTRY_SHAPE error for a type+impl, no-member entry")
+		t.Fatal("expected INLINE_CONFIG_SCHEMA error for a type+impl, no-member entry")
 	}
-	if !strings.Contains(err.Error(), "INLINE_ENTRY_SHAPE") {
-		t.Fatalf("want INLINE_ENTRY_SHAPE, got %v", err)
+	if !strings.Contains(err.Error(), "INLINE_CONFIG_SCHEMA") {
+		t.Fatalf("want INLINE_CONFIG_SCHEMA, got %v", err)
 	}
 }
 
@@ -352,7 +355,9 @@ func TestLoadInlineEntriesMalformedExtendedJSON(t *testing.T) {
 }
 
 // TestLoadInlineEntriesNonStringExtends: an "extends" value that isn't a
-// string is INLINE_ENTRY_IMPORT.
+// string or array of strings fails the schema gate — extends is typed
+// `oneOf: [string, array of strings]` there too — before resolveNode's own
+// extends-shape check ever runs.
 func TestLoadInlineEntriesNonStringExtends(t *testing.T) {
 	root := t.TempDir()
 	write(t, filepath.Join(root, "package.json"), `{
@@ -361,9 +366,9 @@ func TestLoadInlineEntriesNonStringExtends(t *testing.T) {
 }`)
 	_, err := LoadInlineEntries(root)
 	if err == nil {
-		t.Fatal("expected INLINE_ENTRY_IMPORT error for a non-string extends")
+		t.Fatal("expected INLINE_CONFIG_SCHEMA error for a non-string extends")
 	}
-	if !strings.Contains(err.Error(), "INLINE_ENTRY_IMPORT") {
-		t.Fatalf("want INLINE_ENTRY_IMPORT, got %v", err)
+	if !strings.Contains(err.Error(), "INLINE_CONFIG_SCHEMA") {
+		t.Fatalf("want INLINE_CONFIG_SCHEMA, got %v", err)
 	}
 }

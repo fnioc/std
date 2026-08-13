@@ -380,12 +380,13 @@ There are three shapes:
 Every top-level key under a package's `"rhombus-std"` marker — `"inline"`, and any future feature
 block — reads through one shared resolution step before anything else touches it. A config may
 declare `"extends"` as a sibling of its other keys: one path, or an array of paths (each relative to
-the file that declares them), to another rhombus-std-shaped JSON file. An array applies left to
-right — each path's own resolved content deep-merges over everything accumulated from the paths
-before it, so a later path wins a leaf collision against an earlier one. The whole accumulated
-result is this config's BASE: the config's own keys deep-merge OVER it and win every remaining
-collision — a nested object recurses key-by-key, and an array concatenates (the base's elements
-first, the winning side's appended); an array's own elements are never merged into each other.
+the file that declares them), to another rhombus-std-shaped file — JSON, YAML (`.yaml`/`.yml`), or
+TOML (`.toml`), chosen by the target's extension. An array applies left to right — each path's own
+resolved content deep-merges over everything accumulated from the paths before it, so a later path
+wins a leaf collision against an earlier one. The whole accumulated result is this config's BASE:
+the config's own keys deep-merge OVER it and win every remaining collision — a nested object
+recurses key-by-key, and an array concatenates (the base's elements first, the winning side's
+appended); an array's own elements are never merged into each other.
 
 ```jsonc
 {
@@ -401,16 +402,28 @@ first, the winning side's appended); an array's own elements are never merged in
 `"extends"` resolves BLINDLY: a path that isn't a readable file contributes nothing, silently — no
 diagnostic, whether the directive was written by hand or supplied by the default below. A chain may
 be arbitrarily long (an extended file may itself carry `"extends"`); a cycle — a path already
-reached earlier in the same chain — also contributes nothing rather than looping. A file that DOES
-exist but holds malformed JSON is still a hard load-time failure — blindness covers absence, not
-corruption.
+reached earlier in the same chain — also contributes nothing rather than looping. A present file
+that fails to parse in its own format is a hard load-time failure — blindness covers absence, not
+corruption. A YAML or TOML value normalizes onto the same data model a JSON file already produces
+before anything downstream sees it: a YAML timestamp scalar or a TOML date/time value both render as
+an RFC3339 string (or the equivalent partial ISO 8601 text for a date-only or time-only TOML value)
+rather than a native date type, and a YAML mapping key that isn't already a plain string is forced to
+one.
 
 A `package.json` with no `"rhombus-std"` key at all resolves as though it had written exactly
-`{ "extends": "./rhombus-std.json" }` — a package with no marker of its own still picks up a sibling
-`rhombus-std.json` when one exists, and resolves to an empty config, silently, when one doesn't. The
-moment `"rhombus-std"` is present with ANY value, including `{}`, that default is out of the picture
-entirely: the package owns its whole config, and the sibling file participates only through an
-`"extends"` the package writes itself.
+`{ "extends": "<the first sibling default file that exists>" }` — a FIRST-MATCH-STOP probe, not a
+fold: `rhombus-std.json`, then `.yaml`, then `.yml`, then `.toml`, in that priority order, and the
+moment one is found the rest are never even consulted, so two sibling defaults never cross-format
+merge. A package with no marker of its own resolves to an empty config, silently, when none exist.
+The moment `"rhombus-std"` is present with ANY value, including `{}`, the default probe never runs
+at all: the package owns its whole config, and a sibling participates only through an `"extends"`
+the package writes itself. An _explicit_ `"extends"` — written by hand, or reached partway down an
+`"extends"` chain — keeps the full array fold described above regardless; first-match-stop is a
+property of the implicit default alone.
+
+Every resolved node — the `package.json` marker, each `"extends"` target, and the fully-merged
+result — validates against `schema/rhombus-std.schema.json`. A node that doesn't match the schema is
+a hard load-time failure naming the offending file and the JSON path the schema itself rejected.
 
 ### How matching works
 
