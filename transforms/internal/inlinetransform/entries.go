@@ -107,22 +107,22 @@ type rawInlineBlock struct {
 	Entries []Entry `json:"entries"`
 }
 
-// importsKey is the "rhombus-std" config's own file-composition directive.
-const importsKey = "@imports"
+// extendsKey is the "rhombus-std" config's own file-composition directive.
+const extendsKey = "extends"
 
 // ResolveConfig returns the fully-resolved "rhombus-std" config for
 // packageDir's package.json: local keys deep-merged OVER the (recursively
-// resolved) "@imports" chain — a local key wins any leaf collision against
-// the imported base, an object recurses key-by-key, and an array concatenates
-// as imported-then-local with each element left atomic (an inline entry never
-// merges field-by-field with another).
+// resolved) "extends" chain — a local key wins any leaf collision against the
+// extended base, an object recurses key-by-key, and an array concatenates as
+// base-then-local with each element left atomic (an inline entry never merges
+// field-by-field with another).
 //
 // A package.json with no "rhombus-std" key at all resolves as though it read
-// exactly {"@imports": "./rhombus-std.json"} — the one default. A
+// exactly {"extends": "./rhombus-std.json"} — the one default. A
 // "rhombus-std" key present with ANY value, including {}, is authoritative on
 // its own; the default file never participates once the key exists.
 //
-// Resolution is BLIND: an "@imports" path that isn't a readable file
+// Resolution is BLIND: an "extends" path that isn't a readable file
 // contributes nothing, silently, whether the directive was defaulted or
 // explicitly written. A chain may be arbitrarily long; a cycle (a path
 // already in the chain) also contributes nothing rather than looping. A
@@ -150,64 +150,88 @@ func ResolveConfig(packageDir string) (map[string]any, error) {
 	}
 	var raw map[string]any
 	if pkg.RhombusStd == nil {
-		raw = map[string]any{importsKey: "./rhombus-std.json"}
+		raw = map[string]any{extendsKey: "./rhombus-std.json"}
 	} else if err := json.Unmarshal(pkg.RhombusStd, &raw); err != nil {
 		return nil, fmt.Errorf("INLINE_ENTRY_SHAPE: %s %q must be an object: %w", pkgPath, "rhombus-std", err)
 	}
 	return resolveNode(raw, pkgPath, map[string]bool{pkgPath: true})
 }
 
-// resolveNode resolves node's "@imports" (if present) against fromFile's own
+// resolveNode resolves node's "extends" (if present) against fromFile's own
 // directory and deep-merges node's remaining keys (deepMerge) over the
-// recursively resolved imported base. visited is the set of absolute paths
-// already in this chain; a path already visited contributes nothing rather
-// than being re-read, so a cycle resolves clean instead of looping.
+// recursively resolved extended base. "extends" is a string or an array of
+// strings; an array applies LEFT TO RIGHT — each path's recursively resolved
+// content deep-merges over everything accumulated from the paths before it,
+// so a later path wins a leaf collision against an earlier one — and node's
+// own keys merge over that whole accumulated result last, winning every
+// collision against anything extended. visited is the set of absolute paths
+// already in the ANCESTOR chain reaching this node; a path already in it
+// contributes nothing rather than being re-read, so a cycle resolves clean
+// instead of looping. Two unrelated branches (e.g. two "extends" array
+// entries that happen to reach the same file by different routes) never
+// falsely collide: each path's recursive call starts from the ancestor set
+// at THIS node, never from a sibling's descendants.
 func resolveNode(node map[string]any, fromFile string, visited map[string]bool) (map[string]any, error) {
 	local := make(map[string]any, len(node))
-	var importPath string
-	hasImports := false
+	var paths []string
+	hasExtends := false
 	for k, v := range node {
-		if k != importsKey {
+		if k != extendsKey {
 			local[k] = v
 			continue
 		}
-		s, ok := v.(string)
-		if !ok {
-			return nil, fmt.Errorf("INLINE_ENTRY_IMPORT: %s %q must be a string", fromFile, importsKey)
+		hasExtends = true
+		switch val := v.(type) {
+		case string:
+			paths = []string{val}
+		case []any:
+			paths = make([]string, len(val))
+			for i, item := range val {
+				s, ok := item.(string)
+				if !ok {
+					return nil, fmt.Errorf("INLINE_ENTRY_IMPORT: %s %q array entry %d must be a string", fromFile, extendsKey, i)
+				}
+				paths[i] = s
+			}
+		default:
+			return nil, fmt.Errorf("INLINE_ENTRY_IMPORT: %s %q must be a string or array of strings", fromFile, extendsKey)
 		}
-		importPath, hasImports = s, true
 	}
-	if !hasImports {
+	if !hasExtends {
 		return local, nil
 	}
 
-	abs := filepath.Clean(filepath.Join(filepath.Dir(fromFile), importPath))
-	real, rerr := filepath.EvalSymlinks(abs)
-	if rerr != nil {
-		real = abs
-	}
-	if visited[real] {
-		return local, nil
-	}
-	data, err := os.ReadFile(abs)
-	if err != nil {
-		return local, nil
-	}
-	var imported map[string]any
-	if err := json.Unmarshal(data, &imported); err != nil {
-		return nil, fmt.Errorf("INLINE_ENTRY_IMPORT: malformed %s: %w", abs, err)
-	}
+	accumulated := map[string]any{}
+	for _, p := range paths {
+		abs := filepath.Clean(filepath.Join(filepath.Dir(fromFile), p))
+		real, rerr := filepath.EvalSymlinks(abs)
+		if rerr != nil {
+			real = abs
+		}
+		if visited[real] {
+			continue
+		}
+		data, err := os.ReadFile(abs)
+		if err != nil {
+			continue
+		}
+		var extended map[string]any
+		if err := json.Unmarshal(data, &extended); err != nil {
+			return nil, fmt.Errorf("INLINE_ENTRY_IMPORT: malformed %s: %w", abs, err)
+		}
 
-	nextVisited := make(map[string]bool, len(visited)+1)
-	for k := range visited {
-		nextVisited[k] = true
+		nextVisited := make(map[string]bool, len(visited)+1)
+		for k := range visited {
+			nextVisited[k] = true
+		}
+		nextVisited[real] = true
+		resolved, err := resolveNode(extended, abs, nextVisited)
+		if err != nil {
+			return nil, err
+		}
+		accumulated = deepMerge(accumulated, resolved)
 	}
-	nextVisited[real] = true
-	base, err := resolveNode(imported, abs, nextVisited)
-	if err != nil {
-		return nil, err
-	}
-	return deepMerge(base, local), nil
+	return deepMerge(accumulated, local), nil
 }
 
 // deepMerge merges local OVER base: an object recurses key-by-key (local
@@ -250,7 +274,7 @@ func deepMerge(base, local map[string]any) map[string]any {
 // and returns its "inline" object's "entries" list, validated entry by entry,
 // in resolved order. A resolved config with no "inline" key returns
 // (nil, nil) — absence is not an error. Malformed JSON reached through
-// "@imports", or a non-certified entry shape, are hard errors.
+// "extends", or a non-certified entry shape, are hard errors.
 func LoadInlineEntries(packageDir string) ([]Entry, error) {
 	packageDir = filepath.Clean(packageDir)
 	resolved, err := ResolveConfig(packageDir)
