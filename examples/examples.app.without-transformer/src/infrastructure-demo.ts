@@ -138,9 +138,10 @@ export function demonstrateInfrastructure(): readonly string[] {
   // something the taxonomy names.
   try {
     newWorkshopManifest()
-      .addClass(Type.from('@rhombus-std/examples.contracts:IHealthCheck'), GreetingWorkshop, [[Type.from(
-        '@rhombus-std/examples.contracts:IGreeting',
-      )]], 'singleton')
+      .addClass(Type.from('@rhombus-std/examples.contracts:IHealthCheck'), GreetingWorkshop, Type.ctor(
+        Type.from('@rhombus-std/examples.contracts:IHealthCheck'),
+        Type.from('@rhombus-std/examples.contracts:IGreeting'),
+      ), 'singleton')
       .build({ validateOnBuild: true });
   } catch (error) {
     lines.push(`building a graph with a hole in it: ${describeDiError(error)}`);

@@ -303,8 +303,10 @@ export class GreetingWorkshopBuilder<S extends string> implements IGreetingWorks
   public useGreeting(greeting: new() => IGreeting): IGreetingWorkshopBuilder {
     // The ctor arrives as a runtime PARAMETER, so there is no type argument for
     // a transformer to derive a Type from — this call is explicit in BOTH
-    // dialects. Zero-dep ctor, so the signature list is empty.
-    this.#holder.services = this.#holder.services.addClass(GREETING_TYPE, greeting, [[]], 'singleton');
+    // dialects. Zero-dep ctor, so the composed constructor type carries no
+    // argument types beyond the address.
+    this.#holder.services = this.#holder.services.addClass(GREETING_TYPE, greeting, Type.ctor(GREETING_TYPE),
+      'singleton');
     return this;
   }
 
@@ -331,29 +333,31 @@ export function addGreetingWorkshop<S extends string>(services: Manifest<S | 'si
   configure(new GreetingWorkshopBuilder<S>(holder));
 
   // The card, registered with NO lifetime — transient, the honest tag for
-  // something built fresh per recipient. Its second slot names a Type nothing
-  // ever registers; that slot is the caller's, and the factory slot below is
-  // what hands it over.
-  holder.services = holder.services.addClass(GREETING_CARD_TYPE, GreetingCard, [[GREETING_TYPE, CARD_RECIPIENT_TYPE]]);
+  // something built fresh per recipient. Its second argument type names a Type
+  // nothing ever registers; that slot is the caller's, and the factory
+  // parameter below is what hands it over.
+  holder.services = holder.services.addClass(GREETING_CARD_TYPE, GreetingCard,
+    Type.ctor(GREETING_CARD_TYPE, GREETING_TYPE, CARD_RECIPIENT_TYPE));
 
   // The workshop itself goes on last so a consumer cannot forget it. Its whole
-  // dependency plan is right here, in the signature, where the container can
-  // check it: a CALLABLE slot for the card (whose argument types are the
-  // caller's half) and an OPTIONAL stationery slot, spelled as the union of the
-  // stationery with a literal `undefined` that always resolves.
-  holder.services = holder.services.addClass(GREETING_WORKSHOP_TYPE, GreetingWorkshop, [[
+  // dependency plan is right here, in the composed constructor type, where the
+  // container can check it: a CALLABLE argument for the card (whose own
+  // argument types are the caller's half) and an OPTIONAL stationery argument,
+  // spelled as the union of the stationery with a literal `undefined` that
+  // always resolves.
+  holder.services = holder.services.addClass(GREETING_WORKSHOP_TYPE, GreetingWorkshop, Type.ctor(
+    GREETING_WORKSHOP_TYPE,
     Type.func(GREETING_CARD_TYPE, CARD_RECIPIENT_TYPE),
     Type.union(CARD_STATIONERY_TYPE, Type.typeLiteral(undefined)),
-  ]], 'singleton');
+  ), 'singleton');
 
   // The discouraged twin, registered beside it so a reader can resolve both and
   // watch them produce identical cards from very different constructors. The
-  // intrinsic RESOLVER_TYPE slot is how a plugin-less author asks for the live
-  // provider — "I want the provider" is plain DI, not a special slot kind, which
-  // is precisely why nothing stops a library doing it and why the comparison has
-  // to be made in prose.
-  holder.services = holder.services.addClass(LOCATOR_GREETING_WORKSHOP_TYPE, LocatorGreetingWorkshop, [[
-    RESOLVER_TYPE,
-  ]], 'singleton');
+  // intrinsic RESOLVER_TYPE argument is how a plugin-less author asks for the
+  // live provider — "I want the provider" is plain DI, not a special slot
+  // kind, which is precisely why nothing stops a library doing it and why the
+  // comparison has to be made in prose.
+  holder.services = holder.services.addClass(LOCATOR_GREETING_WORKSHOP_TYPE, LocatorGreetingWorkshop,
+    Type.ctor(LOCATOR_GREETING_WORKSHOP_TYPE, RESOLVER_TYPE), 'singleton');
   return holder.services;
 }

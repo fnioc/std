@@ -115,7 +115,7 @@ export class TotalWithinLimit implements IOrderValidator {
   }
 }
 
-/** The zero-dependency validator — its signature is the explicit "no deps" `[[]]`. */
+/** The zero-dependency validator — its composed constructor type carries no argument types. */
 export class AmountIsPositive implements IOrderValidator {
   public readonly name = 'amount-is-positive';
 
@@ -343,8 +343,8 @@ export function addCheckoutServices<S extends string>(
   // THREE registrations under ONE Type. Nothing about the individual calls says
   // "collection" — a collection is simply what you get when you ask for the
   // array wrapper over a Type that several registrations share.
-  services = services.addClass(t.validator, TotalWithinLimit, [[t.spendLimit]], 'singleton');
-  services = services.addClass(t.validator, AmountIsPositive, [[]], 'singleton');
+  services = services.addClass(t.validator, TotalWithinLimit, Type.ctor(t.validator, t.spendLimit), 'singleton');
+  services = services.addClass(t.validator, AmountIsPositive, Type.ctor(t.validator), 'singleton');
   // The gateway base type, registered as an ordinary value so the classes that
   // probe by key can be handed it.
   services = services.addValue(GATEWAY_WITNESS_TYPE, GATEWAY_TYPE);
@@ -352,7 +352,7 @@ export function addCheckoutServices<S extends string>(
   services = services.addClass(
     t.validator,
     MethodIsConfigured,
-    [[t.resolver, GATEWAY_WITNESS_TYPE]],
+    Type.ctor(t.validator, t.resolver, GATEWAY_WITNESS_TYPE),
     'singleton',
   );
 
@@ -360,32 +360,32 @@ export function addCheckoutServices<S extends string>(
   // effective Types are `IPaymentGateway#card`, `#wallet` and `#invoice`; the
   // bare base is left deliberately unregistered, so an unkeyed resolve of
   // `IPaymentGateway` correctly fails rather than silently picking a winner.
-  services = services.addClass(t.gateway, CardGateway, [[]], 'singleton', 'card');
-  services = services.addClass(t.gateway, WalletGateway, [[]], 'singleton', 'wallet');
-  services = services.addClass(t.gateway, InvoiceGateway, [[]], 'singleton', 'invoice');
+  services = services.addClass(t.gateway, CardGateway, Type.ctor(t.gateway), 'singleton', 'card');
+  services = services.addClass(t.gateway, WalletGateway, Type.ctor(t.gateway), 'singleton', 'wallet');
+  services = services.addClass(t.gateway, InvoiceGateway, Type.ctor(t.gateway), 'singleton', 'invoice');
 
   // The factory target only has to BE registered — `addClass` here, but a factory
   // or a value registration would serve just as well, since the callable runs the
   // registration's producer rather than `new`-ing the target itself.
   // `…:CheckoutOrder` stays unregistered on purpose: it is the caller-supplied
   // half of the partition.
-  services = services.addClass(t.numbering, ReceiptNumbering, [[]], 'singleton');
-  services = services.addClass(t.receipt, Receipt, [[t.order, t.numbering]], 'singleton');
+  services = services.addClass(t.numbering, ReceiptNumbering, Type.ctor(t.numbering), 'singleton');
+  services = services.addClass(t.receipt, Receipt, Type.ctor(t.receipt, t.order, t.numbering), 'singleton');
 
-  services = services.addClass(t.audit, AuditTrail, [[]], 'singleton');
+  services = services.addClass(t.audit, AuditTrail, Type.ctor(t.audit), 'singleton');
 
   // Registered under the PROMISE Type — the caller awaits what
   // `getRequiredService` hands back for it; the bare type has no registration.
-  services = services.addFactory(t.ratesPromise, fetchExchangeRates, [[]], 'singleton');
+  services = services.addFactory(t.ratesPromise, fetchExchangeRates, Type.func(t.ratesPromise), 'singleton');
 
   services = services.addClass(
     t.router,
     PaymentRouter,
-    // provider slot · witness slot · CALLABLE slot. `Type.func(result, ...args)`
-    // says "inject a callable producing `result`, whose own arguments are
-    // `args`"; every other slot in the target's signature is resolved from the
-    // container instead.
-    [[t.resolver, GATEWAY_WITNESS_TYPE, Type.func(t.receipt, t.order)]],
+    // provider argument · witness argument · CALLABLE argument. `Type.func(result,
+    // ...args)` says "inject a callable producing `result`, whose own arguments
+    // are `args`"; every other argument in the target's constructor is resolved
+    // from the container instead.
+    Type.ctor(t.router, t.resolver, GATEWAY_WITNESS_TYPE, Type.func(t.receipt, t.order)),
     'singleton',
   );
 

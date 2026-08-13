@@ -10,6 +10,7 @@ import type { Manifest } from '@rhombus-std/di.core';
 import { HOST_LIFETIME_TYPE } from '@rhombus-std/hosting';
 import { HOST_APPLICATION_LIFETIME_TYPE } from '@rhombus-std/hosting.core';
 import { LOGGER_FACTORY_TYPE } from '@rhombus-std/logging';
+import { Type } from '@rhombus-std/primitives';
 import { BrowserLifetime } from './BrowserLifetime';
 import type { BrowserLifetimeOptions } from './BrowserLifetimeOptions';
 import type { PageContext } from './page-context';
@@ -41,5 +42,5 @@ export function registerBrowserLifetime(services: Manifest, options: BrowserLife
     (resolver: IServiceProvider) =>
       new BrowserLifetime(resolver.getRequiredService(BROWSER_LIFETIME_OPTIONS_TYPE),
         resolver.getRequiredService(HOST_APPLICATION_LIFETIME_TYPE), resolver.getRequiredService(LOGGER_FACTORY_TYPE),
-        pageLifecycleEvents), [[RESOLVER_TYPE]]);
+        pageLifecycleEvents), Type.func(HOST_LIFETIME_TYPE, RESOLVER_TYPE));
 }

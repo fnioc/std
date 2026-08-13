@@ -22,7 +22,7 @@
 // nothing has to be lowered for it to run, so the raw source is already usable.
 // This is the manual dialect's producer half of the interop matrix.
 
-import type { Manifest } from '@rhombus-std/di.core';
+import { type Manifest, Type } from '@rhombus-std/di.core';
 
 import { CasualGreeting } from './casual-greeting.js';
 import { HealthCheck } from './health-check.js';
@@ -52,9 +52,9 @@ export function addWithoutTransformerExamples<S extends string>(
 ): Manifest<S | 'singleton'> {
   // Contributes a greeting to the shared IGreeting collection at the hand-written
   // Type — the same one the with-transformer side derives. Zero-dep ctor, so the
-  // signature list is empty.
-  services = services.addClass(GREETING_TYPE, CasualGreeting, [[]], 'singleton');
+  // composed constructor type carries no argument types beyond the address.
+  services = services.addClass(GREETING_TYPE, CasualGreeting, Type.ctor(GREETING_TYPE), 'singleton');
   // The optional health check — present only because this library was wired in.
-  services = services.addClass(HEALTH_CHECK_TYPE, HealthCheck, [[]], 'singleton');
+  services = services.addClass(HEALTH_CHECK_TYPE, HealthCheck, Type.ctor(HEALTH_CHECK_TYPE), 'singleton');
   return services;
 }

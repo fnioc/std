@@ -2,7 +2,7 @@ import { type ConstructorType, type FunctionType, type IntersectionType, Type } 
 import type { Ctor, Func } from '@rhombus-toolkit/func';
 import { assertNever } from '@rhombus-toolkit/type-guards';
 import { withKey } from './service-type';
-import { ServiceDescriptor, type TypeSignatures } from './ServiceDescriptor';
+import { ServiceDescriptor, TypeSignatures } from './ServiceDescriptor';
 
 /** A step the lambda has not spent yet. Each verb removes its own, so none can be taken twice. */
 type Slot = 'impl' | 'implType' | 'lifetime' | 'tag';
@@ -183,7 +183,7 @@ export class PendingRegistration<Scopes extends string> implements PendingState<
     if (shape.kind === 'signature') {
       return [shape.paramTypes.map(param => typeof param === 'string' ? Type.from(param) : param)];
     }
-    return [...callSignatures(shape.implType)];
+    return TypeSignatures.fromImplType(shape.implType as ConstructorType | FunctionType | IntersectionType);
   }
 }
 
@@ -255,27 +255,5 @@ function namesAConstructor(implType: Type): boolean {
   throw new Error(
     `${Type.stringify(implType)} describes nothing callable; name a constructor or function type, `
       + 'or an intersection of them for an overloaded implementation.',
-  );
-}
-
-/**
- * The argument lists a composed implementation type describes, one per call signature.
- *
- * @throws Error - when the type describes nothing callable.
- */
-function* callSignatures(implType: Type): Generator<readonly Type[]> {
-  if (implType.kind === 'ctor' || implType.kind === 'func') {
-    yield implType.args;
-    return;
-  }
-  if (implType.kind === 'intersection') {
-    for (const member of implType.members) {
-      yield* callSignatures(member);
-    }
-    return;
-  }
-  throw new Error(
-    `${Type.stringify(implType)} describes nothing callable; withType takes a constructor or `
-      + 'function type, or an intersection of them for an overloaded implementation.',
   );
 }
