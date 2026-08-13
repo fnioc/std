@@ -51,9 +51,8 @@ describe('addLogging', () => {
     const provider = new RecordingProvider();
     const services = new DefaultManifest().addLogging((builder) => builder.addProvider(provider));
 
-    const root = services.build().createScope('singleton');
     const iLoggerBase = Type.from(ILOGGER_TOKEN) as ImportedType;
-    const logger: ILogger = root.getRequiredService(
+    const logger: ILogger = services.build().getRequiredService(
       Type.imported(iLoggerBase.name, iLoggerBase.from, [Type.from('svc:PaymentService')]),
     );
     logError(logger, 'boom');

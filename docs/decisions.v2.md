@@ -1667,3 +1667,48 @@ still needs the old engine's special "inject a callable" slot form or collapses 
 `Type` node, which is the closing-type engine lane's (§21) territory to settle first.
 
 _Claude-directed 2026-08-13, executing the owner's §144 ruling._
+
+## §157 — A bare-hole signature slot delivers the closing type; an instance of it is inexpressible
+
+In an open registration, a signature slot that IS a generic-hole node receives the BOUND CLOSING
+TYPE NODE. It is never an instance of that type and never a registration lookup: an implementation
+whose type parameter erased at runtime has nothing else to work from, which is what lets `Logger<T>`
+name its category and `LoggerProviderConfig<T>` find its section.
+
+A hole standing INSIDE a larger slot keeps the ordinary reading — the slot is a type expression, the
+hole closes into it, and the closed expression names a service the engine resolves. So one signature
+can carry both readings, `[[$T, Holder<$T>]]` delivering the type for the first slot and a `Holder`
+instance for the second.
+
+The hole spells as `Type.generic(label)`, and it reaches a signature either written there directly
+or derived from the implementation type — `Type.ctor(ILogger<%T>, ILoggerFactory, %T)` yields a
+signature whose second slot is the bare hole — so the two surfaces agree on what a slot means.
+
+An instance of the BARE closing type is therefore deliberately inexpressible. The escape is to ask
+for `IServiceProvider` beside the delivered type and look the instance up with it. No new `Type`
+kind carries the distinction: the slot's own shape is the whole of it, read before substitution.
+
+That ordering is what the engine's shape follows from. The registry hands the lowering the
+registration as authored plus the bindings its match captured, rather than a descriptor already
+substituted — substituting first closes a bare hole into an ordinary type and erases the very
+distinction the rule turns on.
+
+_Owner-directed 2026-08-13._
+
+## §158 — A plan belongs to the manifest it was built from; a chosen answer that fails, fails the resolution
+
+Plans are cached against the manifest. A resolution carrying additional descriptors — a latebound
+call's arguments, entering as registrations for that walk alone — is resolving a DIFFERENT,
+ephemeral composed manifest: it never reuses a manifest-only cached plan, and its own plan never
+enters the shared cache. The additionals are the most recent registrations in that composed
+manifest, so they win the addresses they answer.
+
+Union member choice follows the same boundary. It is decided per-manifest, against the full
+descriptor universe of the resolving call, so a call argument supplying a second member makes a
+union ambiguous that the manifest alone settles cleanly.
+
+Choice is settled at plan time and never revisited: once a member is chosen, its RUNTIME failure
+fails the whole resolution. There is no fallthrough to another member — a union's self-supplying
+literal is the fallback for an ABSENT service, not for a broken one.
+
+_Owner-directed 2026-08-13._

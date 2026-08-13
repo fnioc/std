@@ -1,8 +1,8 @@
-import type { ServiceDescriptor } from '@rhombus-std/di.core';
-import { isAllThere } from '@rhombus-std/primitives';
-import type { Type, TypeVisitor } from '@rhombus-std/primitives';
+import { isAllThere, Type } from '@rhombus-std/primitives';
+import type { TypeVisitor } from '@rhombus-std/primitives';
 import { Ctor, Func } from '@rhombus-toolkit/func';
 import { assertNever } from '@rhombus-toolkit/type-guards';
+import type { Answer } from '../Registry.js';
 import { realizeCallSite } from './RealizeVisitor.js';
 import { type CallSiteContext, ToCallSiteVisitor } from './ToCallSiteVisitor.js';
 
@@ -86,23 +86,21 @@ export namespace CallSite {
   }
 
   /**
-   * Lowers an ALREADY-CLOSED descriptor — run it through {@link ServiceDescriptor.substitute}
-   * first if the match captured generics. `visitor` supplies the recursion that turns each
-   * signature parameter into the call site producing it. Undefined when no signature has every
-   * parameter satisfiable.
+   * Lowers a registration the registry matched to a request, closing it over whatever the match
+   * captured. `visitor` supplies the recursion that turns each signature parameter into the call
+   * site producing it. Undefined when no signature has every parameter satisfiable.
    */
-  export function fromDescriptor(descriptor: ServiceDescriptor<string>, visitor: TypeVisitor<CallSite | undefined>):
-    | CallSite
-    | undefined {
+  export function fromAnswer(answer: Answer, visitor: TypeVisitor<CallSite | undefined>): CallSite | undefined {
+    const { descriptor, generics } = answer;
     switch (descriptor.kind) {
       case 'value':
         return constant(descriptor.value);
       case 'ctor': {
-        const args = lowerSignature(descriptor.signatures, visitor);
+        const args = lowerSignature(descriptor.signatures, generics, visitor);
         return args && ctor(descriptor.ctor, args);
       }
       case 'factory': {
-        const args = lowerSignature(descriptor.signatures, visitor);
+        const args = lowerSignature(descriptor.signatures, generics, visitor);
         return args && factory(descriptor.factory, args);
       }
       default:
@@ -111,12 +109,28 @@ export namespace CallSite {
   }
 
   /** The first signature whose every parameter lowers to a call site, longest first. */
-  function lowerSignature(signatures: ReadonlyArray<readonly Type[]>, visitor: TypeVisitor<CallSite | undefined>):
-    | CallSite[]
-    | undefined {
+  function lowerSignature(signatures: ReadonlyArray<readonly Type[]>, generics: ReadonlyMap<string, Type>,
+    visitor: TypeVisitor<CallSite | undefined>): CallSite[] | undefined {
     return Iterator.from(signatures.toSorted((a, b) => b.length - a.length))
-      .map(signature => signature.map(param => visitor.visit(param)))
+      .map(signature => signature.map(parameter => lowerParameter(parameter, generics, visitor)))
       .find(isAllThere);
+  }
+
+  /**
+   * A parameter that IS a hole receives the type that closed it, since an implementation whose
+   * type parameter erased at runtime has nothing else to work from — which is why an instance of
+   * the closing type is deliberately not spellable, and a service wanting one takes an
+   * `IServiceProvider` beside the type it was handed. A hole standing INSIDE a larger parameter
+   * is part of a type expression rather than the whole of one: it closes into that expression,
+   * and the result resolves as any other dependency does.
+   */
+  function lowerParameter(parameter: Type, generics: ReadonlyMap<string, Type>,
+    visitor: TypeVisitor<CallSite | undefined>): CallSite | undefined {
+    if (parameter.kind === 'generic') {
+      const closing = generics.get(parameter.label);
+      return closing && constant(closing);
+    }
+    return visitor.visit(generics.size ? Type.substitute(parameter, generics) : parameter);
   }
 
   export const realize = realizeCallSite;
