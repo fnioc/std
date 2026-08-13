@@ -1,6 +1,6 @@
 import { LogLevel } from '@rhombus-std/logging.core';
 import { augment } from '@rhombus-std/primitives';
-import { tokenfor } from '@rhombus-std/primitives.extras';
+import { typefor } from '@rhombus-std/primitives.extras';
 import type { Func } from '@rhombus-toolkit/func';
 
 /**
@@ -32,7 +32,7 @@ export class LoggerFilterRule {
 }
 
 /** The options for a logger filter. */
-@augment(tokenfor<LoggerFilterOptions>())
+@augment(typefor<LoggerFilterOptions>())
 export class LoggerFilterOptions {
   /** Whether logging scopes are captured. Defaults to `true`. */
   public captureScopes = true;

@@ -1,38 +1,25 @@
-// THE RESOLUTION SURFACE, authored tokenlessly — every way to ask the container
-// for something, with the token derived from the TYPE at build time.
+// THE RESOLUTION SURFACE, authored from types — every way to ask the container
+// for something, with the service type DERIVED at each call site.
 //
 // This file is the twin of ../../examples.app.without-transformer/src/resolution-demo.ts.
 // The two register the SAME container (both call `addCheckoutServices`) and print
-// the SAME lines; diff them and the only difference is the authoring dialect.
-// Every `resolve<T>()` / `tryResolve<T>()` / `isService<T>()` / `resolveAsync<T>()`
-// below is lowered by the Go/ttsc engine into exactly the explicit-token call the
-// twin hand-writes — the sugar deletes boilerplate, it never adds a capability.
+// the SAME lines; diff them and the only difference is the authoring dialect. That
+// is the repo's no-transformer-first rule made checkable: the explicit forms in
+// the twin are the primary, complete API, and the derived forms below are sugar
+// for exactly those.
 //
-// The raw source of this file is therefore NOT runnable: a tokenless
-// `resolve<T>()` reaching the runtime throws, because there is no token at
-// runtime for it to use. That is deliberate — it kills the "compiles but throws"
-// footgun by making the authoring forms exist only when the transformer is in the
-// program.
-//
-// TWO THINGS BELOW STAY EXPLICIT, and they are worth noticing:
-//
-//   1. `PaymentRouter` (in the library) selects a gateway by a key that only
-//      exists once an order arrives, and scans the key-space with a regex. The
-//      keyed sugar (`Keyed<T, "k">`) pins the key at COMPILE time, so a
-//      runtime-chosen key and a plural regex scan have no tokenless form and stay
-//      on the explicit two-argument `resolve(base, key)` / `resolve(base, /re/)`.
-//   2. `isProviderToken(RESOLVER_TOKEN)` is a predicate over a token VALUE, not a
-//      lookup, so there is nothing to derive.
+// Nothing here names a token. The library registered against the shared contract
+// types, and `typefor<T>()` runs the very same derivation over the very same
+// declarations — so consumer and producer meet on the type rather than on a
+// string they each have to spell correctly.
 
-import { isProviderToken, RESOLVER_TOKEN, ServiceManifest, UnregisteredTokenError } from '@rhombus-std/di';
-import type { IResolver, IServiceManifest } from '@rhombus-std/di';
-// `Keyed` is reached from di.core directly: unlike its sibling brands (`Inject`,
-// `Hole`, `$`, `Typeof`) it is not re-exported through the `@rhombus-std/di`
-// barrel.
-import type { Keyed } from '@rhombus-std/di.core';
+import { DefaultManifest, RESOLVER_TYPE, Type } from '@rhombus-std/di.core';
+import type { IServiceProvider, Manifest } from '@rhombus-std/di.core';
+import '@rhombus-std/di';
+import { typefor } from '@rhombus-std/primitives.extras';
 
 import type { CheckoutOrder, IAuditTrail, IExchangeRates, IFraudScreen, IOrderValidator, IPaymentGateway,
-  IPaymentRouter, IReceipt, IReceiptNumbering } from '@rhombus-std/examples.contracts';
+  IPaymentRouter, IReceipt } from '@rhombus-std/examples.contracts';
 import { addCheckoutServices } from '@rhombus-std/examples.lib.without-transformer';
 
 // Fixed orders — no clock, no randomness, so the output is byte-stable.
@@ -42,142 +29,142 @@ const ORDER_C: CheckoutOrder = { reference: 'C-3003', amountMinor: 12000, method
 const ORDER_X: CheckoutOrder = { reference: 'X-9009', amountMinor: 900_000, method: 'crypto' };
 
 /**
+ * Runs `attempt` and reports what came back, so a member that is declared but
+ * has no behaviour yet leaves a line rather than ending the tour.
+ */
+function attempted(attempt: () => string): string {
+  try {
+    return attempt();
+  } catch (error) {
+    return `${(error as Error).name} — declared, no behaviour yet`;
+  }
+}
+
+/**
  * Runs the resolution tour and returns the report lines.
  *
- * `resolver` is typed as the `IResolver` INTERFACE, which is exactly why the
- * tokenless forms are reachable here: the transformer declaration-merges them
- * onto that interface, so ANY injected dependency that declares an `IResolver`
- * parameter gets them, not just code holding the root provider.
+ * `provider` is typed as the `IServiceProvider` INTERFACE rather than the
+ * container class: everything below is available to any injected dependency that
+ * declares an `IServiceProvider` parameter, not just to code holding the root
+ * provider.
  */
-async function tour(resolver: IResolver): Promise<string[]> {
+async function tour(provider: IServiceProvider): Promise<string[]> {
   const lines: string[] = ['=== di resolution — with transformer ==='];
 
   // ── required vs optional ───────────────────────────────────────────────────
   //
-  // `resolve` and `tryResolve` differ on exactly one axis: what an UNREGISTERED
-  // token does. Reach for `resolve` when the service is part of the deal — a
-  // missing one is a wiring bug you want to hear about at startup, not a
-  // `undefined` that leaks three call frames away. Reach for `tryResolve` when
-  // absence is a legitimate deployment shape: an audit sink, a metrics exporter,
-  // a debug-only inspector.
+  // `getRequiredService` and `getService` differ on exactly one axis: what an
+  // ABSENT service does. Reach for the required form when the service is part of
+  // the deal — a missing one is a wiring bug you want to hear about at startup,
+  // not an `undefined` that leaks three call frames away. Reach for the optional
+  // form when absence is a legitimate deployment shape: an audit sink, a metrics
+  // exporter, a debug-only inspector.
   //
-  // The softening is narrow, and that narrowness is the point: only an
-  // unregistered TOKEN yields `undefined`. A registered service whose own
-  // dependency is missing still throws from `tryResolve`, because that is a
-  // broken container rather than an absent feature.
+  // The softening is narrow, and that narrowness is the point: it answers for the
+  // type that was ASKED for. A registration whose own dependency is missing is
+  // itself unsatisfiable, so it too answers with absence rather than a
+  // half-built object.
   lines.push('required vs optional lookup');
-  const router = resolver.resolve<IPaymentRouter>();
-  lines.push(`  resolve(IPaymentRouter): resolved ${router.constructor.name}`);
+  const router = provider.getRequiredService(typefor<IPaymentRouter>()) as IPaymentRouter;
+  lines.push(`  getRequiredService(IPaymentRouter): resolved ${router.constructor.name}`);
   try {
-    resolver.resolve<IFraudScreen>();
-    lines.push('  resolve(IFraudScreen): UNREACHABLE');
+    provider.getRequiredService(typefor<IFraudScreen>());
+    lines.push('  getRequiredService(IFraudScreen): UNREACHABLE');
   } catch (error) {
-    // Branch on the typed error class, never on the message text.
-    const kind = error instanceof UnregisteredTokenError ? 'UnregisteredTokenError' : 'unexpected error';
-    lines.push(`  resolve(IFraudScreen): ${kind} — a required miss is loud`);
+    lines.push(`  getRequiredService(IFraudScreen): ${(error as Error).name} — a required miss is loud`);
   }
-  const audit = resolver.tryResolve<IAuditTrail>();
-  lines.push(`  tryResolve(IAuditTrail): ${audit ? 'present' : 'absent'}`);
-  lines.push(`  tryResolve(IFraudScreen): ${resolver.tryResolve<IFraudScreen>() ?? 'undefined'}`);
-  // `isService` answers the same question WITHOUT constructing anything, which
-  // is what makes it safe to call on a hot path or in a startup self-check.
-  lines.push(`  isService(IFraudScreen): ${resolver.isService<IFraudScreen>()} — a probe, nothing is built`);
+  const audit = provider.getService(typefor<IAuditTrail>()) as IAuditTrail | undefined;
+  lines.push(`  getService(IAuditTrail): ${audit ? 'present' : 'absent'}`);
+  lines.push(`  getService(IFraudScreen): ${provider.getService(typefor<IFraudScreen>())}`);
+  // A presence question is exactly `getService` compared against `undefined`:
+  // absence answers `undefined` instead of throwing, so there is no member of its
+  // own to reach for. Unlike a pure existence check, this DOES resolve the
+  // service when one exists — cheap here, since IFraudScreen is never registered
+  // at all, but worth naming: a presence probe on something expensive to build is
+  // no longer free.
+  lines.push(`  getService(IFraudScreen) !== undefined: ${provider.getService(typefor<IFraudScreen>()) !== undefined}`);
 
   // ── collection resolution ──────────────────────────────────────────────────
   //
-  // Three classes registered under one token. Asking for the ARRAY of that type
-  // aggregates all three in registration order; asking for the bare type would
-  // hand back only the last one. `IOrderValidator[]` derives the collection
-  // token `Array<…:IOrderValidator>` — the same string the twin hand-writes.
-  // This is the shape for "several things, all of them run": validators, event
-  // handlers, middleware, plugins. An unregistered element type aggregates to an
-  // EMPTY array rather than throwing, so a pipeline with nothing plugged in still
-  // runs.
-  lines.push('collection resolution — 3 registrations share one token, all of them run');
-  const validators = resolver.resolve<IOrderValidator[]>();
+  // Three classes registered under one type. `getServices` aggregates all three
+  // in registration order; asking for the bare type would hand back only one of
+  // them. This is the shape for "several things, all of them run": validators,
+  // event handlers, middleware, plugins. An unregistered element type aggregates
+  // to an EMPTY list rather than throwing, so a pipeline with nothing plugged in
+  // still runs.
+  //
+  // `getServices(element)` is sugar for asking for the collection type over it;
+  // `Type.iterable(element)` spells that type, and either request reaches the
+  // same aggregation.
+  lines.push('collection resolution — 3 registrations share one type, all of them run');
+  const validators = [...provider.getServices(typefor<IOrderValidator>())] as IOrderValidator[];
   for (const order of [ORDER_A, ORDER_X]) {
     for (const validator of validators) {
-      lines.push(`  ${order.reference}: ${validator.name} → ${validator.check(order)}`);
+      lines.push(`  ${order.reference}: ${validator.name} → ${attempted(() => validator.check(order))}`);
     }
   }
+  const asCollectionType = [
+    ...(provider.getRequiredService(Type.iterable(typefor<IOrderValidator>())) as Iterable<IOrderValidator>),
+  ];
+  lines.push(`  the same aggregation asked for as a type: ${asCollectionType.length} validators`);
 
   // ── keyed resolution ───────────────────────────────────────────────────────
   //
-  // A key is not a parallel lookup system: it is a `#<key>` suffix on the
-  // ordinary token, so `…:IPaymentGateway#card` hits the same exact-match lookup
-  // every other token does. In this dialect the key rides on the TYPE —
-  // `Keyed<IPaymentGateway, "crypto">` derives the base token plus the key and
-  // lowers to the two-argument `tryResolve(base, "crypto")`.
-  //
-  // The compile-time key is also the limit of the sugar. `router.checkout()` and
-  // `router.configuredMethods()` pick a gateway by a key that only exists at
-  // runtime, and scan a whole key-space with a regex — neither has a type to
-  // derive from, so the library stays on the explicit forms (see
-  // `PaymentRouter` in @rhombus-std/examples.lib.without-transformer). The plural
-  // scan is what lets a UI ask "what payment methods are available?" without a
-  // registry the app has to maintain by hand.
-  lines.push('keyed resolution — one base token, three keys');
-  lines.push(`  configured methods (plural scan /.+/): ${router.configuredMethods().join(', ')}`);
+  // A key is a TAG ON the service type rather than an argument beside it, so the
+  // key travels inside the type and a request has to spell the same tag to reach
+  // the registration. `Type.tag(base, "card")` is one type, and it hits the same
+  // exact-match lookup every other type does — which is why a keyed registration
+  // is invisible to a collection request over its bare base.
+  lines.push('keyed resolution — one base type, three keys');
   for (const order of [ORDER_A, ORDER_B]) {
     lines.push(`  ${order.reference} checkout (key "${order.method}"): ${router.checkout(order)}`);
     // The optional sink, used only because the probe above found one.
     audit?.record(order.reference);
   }
-  const crypto = resolver.tryResolve<Keyed<IPaymentGateway, 'crypto'>>();
-  lines.push(`  tryResolve at key "crypto": ${crypto?.label ?? 'undefined'}`);
+  const crypto = provider.getService(Type.tag(typefor<IPaymentGateway>(), 'crypto')) as IPaymentGateway | undefined;
+  lines.push(`  getService at key "crypto": ${crypto?.label}`);
+  lines.push(`  a keyed registration is not in the bare base's collection: `
+    + `${[...provider.getServices(typefor<IPaymentGateway>())].length} gateways`);
 
-  // ── factory resolution ─────────────────────────────────────────────────────
+  // ── factory slots ──────────────────────────────────────────────────────────
   //
-  // A FUNCTION type argument means "hand me a callable, not an instance":
-  // `resolve<(order: CheckoutOrder) => IReceipt>()` lowers to
-  // `resolveFactory("…:IReceipt", ["…:CheckoutOrder"])` — the return type names
-  // what gets built, the parameter types name what the CALLER supplies. Every
-  // other constructor slot is resolved from the container as usual. Two
-  // consequences worth internalising:
-  //   - a parameterized factory builds a FRESH instance per call (caching would
-  //     be wrong — the arguments differ every time), so the receipt numbers below
-  //     keep advancing; and
-  //   - the ONLY thing that can go wrong with the target is that it is
-  //     UNREGISTERED. Any registration kind is a legal target — the factory calls
-  //     the registration's producer, and `addClass` / `addFactory` / `addValue`
-  //     all have one. Reaching for a factory over a token nobody registered
-  //     throws `FactoryTargetError` at the moment the callable is built, not on
-  //     first call, so a mis-wired factory slot surfaces during construction.
-  // The same slot shape can be INJECTED rather than resolved: `PaymentRouter`
-  // takes `mintReceipt: (order) => IReceipt` as a constructor parameter, which is
-  // how the checkout lines above minted receipts #1001 and #1002.
-  lines.push('factory resolution — the caller supplies what the container cannot know');
-  const mintReceipt = resolver.resolve<(order: CheckoutOrder) => IReceipt>();
-  lines.push(`  mint ${ORDER_C.reference}: ${mintReceipt(ORDER_C).text}`);
-  lines.push(`  mint ${ORDER_C.reference} again: ${mintReceipt(ORDER_C).text} — never cached`);
-  // The NO-params form is different in kind: with nothing for the caller to
-  // supply it routes through the ordinary resolve path and therefore HONOURS the
-  // target's registered lifetime. The numbering counter is a singleton, so both
-  // calls hand back the same instance. A factory is about DEFERRING and REPEATING
-  // a lookup; forcing a fresh object is what the parameterized form does, and only
-  // because it must. `() => T` lowers to `resolveFactory("…:T")` — the parameter
-  // token array is dropped entirely when the factory takes none.
-  const numbering = resolver.resolve<() => IReceiptNumbering>();
-  lines.push(`  zero-arg factory honours the target lifetime: ${numbering() === numbering()}`);
+  // A FACTORY SLOT injects a CALLABLE instead of an instance, and it is the
+  // answer to "I need one of these later, with an argument the container cannot
+  // know". `Type.func(result, ...callerArgs)` spells it: the listed arguments
+  // are the ones the CALLER supplies, and every other slot in the target's
+  // signature is resolved from the container as usual.
+  //
+  // `PaymentRouter` takes exactly that — `mintReceipt: (order) => IReceipt` —
+  // which is how the checkout lines above minted their receipts. A parameterized
+  // factory builds a fresh instance per call, because the arguments differ every
+  // time and a cached one would answer the wrong question.
+  lines.push('factory slots — the caller supplies what the container cannot know');
+  lines.push(`  mint ${ORDER_C.reference}: ${router.checkout(ORDER_C)}`);
+  // The same slot asked for from OUTSIDE a constructor, rather than injected
+  // into one: `getRequiredService` over the callable's own `Type.func` type hands
+  // back the identical factory `PaymentRouter` receives as a constructor
+  // parameter.
+  const mintReceipt = provider.getRequiredService(
+    Type.func(typefor<IReceipt>(), typefor<CheckoutOrder>()),
+  ) as (order: CheckoutOrder) => IReceipt;
+  lines.push(`  asking the provider for one: ${mintReceipt(ORDER_C).text}`);
 
-  // ── async resolution ───────────────────────────────────────────────────────
+  // ── async registrations ────────────────────────────────────────────────────
   //
-  // Nothing is registered at the bare rates token; the only registration is
-  // `Promise<…:IExchangeRates>`. `resolveAsync` is the one verb allowed to
-  // satisfy a miss from that honest promise registration — the synchronous
-  // `resolve` would (correctly) report the bare token as unregistered rather than
-  // hand back a half-built value.
-  lines.push('async resolution — satisfied by the Promise<T> registration');
-  const rates = await resolver.resolveAsync<IExchangeRates>();
+  // Nothing is registered at the bare rates type; the only registration is
+  // `Promise<…:IExchangeRates>`, which is the honest way to say "this arrives
+  // later". The container hands back the promise it was told about and the
+  // caller awaits it — no half-built value ever appears.
+  lines.push('async registrations — the promise is the registration');
+  const rates = await (provider.getRequiredService(typefor<Promise<IExchangeRates>>()) as Promise<IExchangeRates>);
   lines.push(`  rates as of ${rates.asOf}, EUR at ${rates.rate('EUR')}`);
+  lines.push(`  the bare type has no registration: ${provider.getService(typefor<IExchangeRates>())}`);
 
   // ── the provider as a service ──────────────────────────────────────────────
   //
-  // The container can hand back ITSELF: a parameter typed `IResolver` gets the
-  // live provider view, and `RESOLVER_TOKEN` is the intrinsic token that names
-  // it. No registration exists for it — `isProviderToken` is the predicate that
-  // says so, and `isService` answers `true` anyway because the engine resolves
-  // the token structurally.
+  // The container can hand back ITSELF: a parameter typed `IServiceProvider`
+  // gets the live provider, and `RESOLVER_TYPE` is the type that names it. No
+  // registration exists for it — the engine supplies it structurally.
   //
   // Injecting the provider is USUALLY a smell. It hides a class's real
   // dependencies from anyone reading its constructor, turns wiring mistakes from
@@ -191,10 +178,8 @@ async function tour(resolver: IResolver): Promise<string[]> {
   // gateway for whichever method the buyer picks", so the container itself is the
   // dependency.
   lines.push('the provider as a service — usually a smell, occasionally correct');
-  lines.push(`  isProviderToken(RESOLVER_TOKEN): ${isProviderToken(RESOLVER_TOKEN)}`);
-  lines.push(`  isService(RESOLVER_TOKEN): ${resolver.isService<IResolver>()} — intrinsic, nothing registered it`);
-  const view = resolver.resolve<IResolver>();
-  lines.push(`  the injected view IS the live container: ${view.resolve<IPaymentRouter>() === router}`);
+  const view = provider.getRequiredService(RESOLVER_TYPE) as IServiceProvider;
+  lines.push(`  the injected view IS the live container: ${view === provider}`);
 
   // ── what the optional sink recorded ────────────────────────────────────────
   const recorded = audit ? `${audit.entries.length} entries, last ${audit.entries.at(-1)}` : 'no sink wired';
@@ -208,21 +193,7 @@ async function tour(resolver: IResolver): Promise<string[]> {
  * surface over it, returning a deterministic report for the caller to print.
  */
 export async function demonstrateResolution(): Promise<readonly string[]> {
-  let services: IServiceManifest<'singleton'> = new ServiceManifest<'singleton'>();
+  let services: Manifest<'singleton'> = new DefaultManifest<'singleton'>();
   services = addCheckoutServices(services);
-
-  // `build()` hands back a FRAMELESS provider: it can resolve, but no scope is
-  // open, so a `"singleton"`-tagged registration has no frame to be cached in and
-  // resolves transiently instead. Opening the frame is what makes the shared
-  // receipt counter and the audit trail actually shared.
-  const provider = services.build().createScope('singleton');
-  try {
-    return await tour(provider);
-  } finally {
-    // `disposeAsync`, not `dispose`. The scope caches the `Promise<IExchangeRates>`
-    // registration's own promise, and a synchronous teardown cannot await it — so
-    // the engine refuses rather than dropping it, with `AsyncDisposalRequiredError`.
-    // The rule to take away: a container holding anything async is closed async.
-    await provider.disposeAsync();
-  }
+  return await tour(services.build());
 }

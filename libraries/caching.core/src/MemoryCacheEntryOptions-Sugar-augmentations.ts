@@ -24,46 +24,45 @@ declare module '@rhombus-std/caching.core' {
 
 export const MemoryCacheEntryOptionsSugarAugmentations = {
   /** Sets the compaction {@link CacheItemPriority} the bag applies to an entry. */
-  setPriority(options: MemoryCacheEntryOptions, priority: CacheItemPriority): MemoryCacheEntryOptions {
-    options.priority = priority;
-    return options;
+  setPriority(priority: CacheItemPriority): MemoryCacheEntryOptions {
+    this.priority = priority;
+    return this;
   },
 
   /** Sets the entry-value size the bag applies. Throws if `size` is negative. */
-  setSize(options: MemoryCacheEntryOptions, size: number): MemoryCacheEntryOptions {
-    options.size = size;
-    return options;
+  setSize(size: number): MemoryCacheEntryOptions {
+    this.size = size;
+    return this;
   },
 
   /** Expires the entry the bag is applied to when `expirationToken` fires. */
-  addExpirationToken(options: MemoryCacheEntryOptions, expirationToken: IChangeToken): MemoryCacheEntryOptions {
-    options.expirationTokens.push(expirationToken);
-    return options;
+  addExpirationToken(expirationToken: IChangeToken): MemoryCacheEntryOptions {
+    this.expirationTokens.push(expirationToken);
+    return this;
   },
 
   /** Sets an absolute expiration -- a number of milliseconds from now, or an absolute `Date`. */
-  setAbsoluteExpiration(options: MemoryCacheEntryOptions, expiration: number | Date): MemoryCacheEntryOptions {
+  setAbsoluteExpiration(expiration: number | Date): MemoryCacheEntryOptions {
     if (expiration instanceof Date) {
-      options.absoluteExpiration = expiration;
+      this.absoluteExpiration = expiration;
     } else {
-      options.absoluteExpirationRelativeToNow = expiration;
+      this.absoluteExpirationRelativeToNow = expiration;
     }
-    return options;
+    return this;
   },
 
   /** Sets how long (in milliseconds) the entry may be inactive before removal. */
-  setSlidingExpiration(options: MemoryCacheEntryOptions, offsetMs: number): MemoryCacheEntryOptions {
-    options.slidingExpiration = offsetMs;
-    return options;
+  setSlidingExpiration(offsetMs: number): MemoryCacheEntryOptions {
+    this.slidingExpiration = offsetMs;
+    return this;
   },
 
   /** Registers a callback fired after the entry the bag is applied to is evicted. */
-  registerPostEvictionCallback(options: MemoryCacheEntryOptions, callback: PostEvictionDelegate,
-    state?: unknown): MemoryCacheEntryOptions {
+  registerPostEvictionCallback(callback: PostEvictionDelegate, state?: unknown): MemoryCacheEntryOptions {
     const registration = new PostEvictionCallbackRegistration();
     registration.evictionCallback = callback;
     registration.state = state;
-    options.postEvictionCallbacks.push(registration);
-    return options;
+    this.postEvictionCallbacks.push(registration);
+    return this;
   },
 } satisfies AugmentationSet<MemoryCacheEntryOptions>;

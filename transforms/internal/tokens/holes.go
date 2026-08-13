@@ -13,11 +13,11 @@ import (
 // This file extends the token-derivation core with the pieces the registration
 // transformer needs beyond bare name derivation: open-generic hole handling, the
 // Inject/Hole brand walks, the unbound-type-parameter failure channel, and the
-// literal/singleton classifiers. It reuses the in-package derivation leaves
-// (literalToken, intrinsicToken, baseTokenFor, genericTypeArguments,
-// primaryDeclaration, aliasOf) so there is a single source of truth for the base
-// token shape; only the recursion orchestration is restated so a hole reached at
-// any depth of a closed-generic argument renders as `$N`.
+// literal/singleton classifiers. The walk itself (DeriveTypeF, typenode.go)
+// reuses the in-package derivation leaves (intrinsicToken, baseTokenFor,
+// genericTypeArguments, primaryDeclaration, aliasOf) so there is a single source
+// of truth for the base token shape; DeriveTokenF here is a thin renderer over
+// that tree.
 
 // The unique-symbol brand property names. A branded type carries a
 // computed-symbol optional property whose declaring `const` is named exactly one
@@ -59,72 +59,16 @@ type Failure struct {
 // plain derivation the deleted di_options stage once used (its `DeriveToken`,
 // removed in W6p3). ok=false marks a nameless anonymous structure or an unbound
 // type parameter (the caller turns that into a hard diagnostic).
+//
+// It is a RENDERER over DeriveTypeF (typenode.go): the two can never drift
+// because there is only one walk, kept as a tree; this function just joins that
+// tree into the flat string every caller here still wants.
 func DeriveTokenF(ctx *Context, t *shimchecker.Type, failure *Failure) (string, bool) {
-	if t == nil {
+	node, ok := DeriveTypeF(ctx, t, failure)
+	if !ok {
 		return "", false
 	}
-	if lit, ok := literalToken(t); ok {
-		return lit, true
-	}
-	if name, ok := intrinsicToken(t); ok {
-		return name, true
-	}
-	// A Hole-branded placeholder tokenizes as `$N`, before the alias/symbol path:
-	// an aliased or constrained hole carries a symbol that would otherwise mint an
-	// alias token, and the bare `Hole<1>` is an anonymous `__type`.
-	if hole, ok := HoleNumberFor(t, ctx.Checker); ok {
-		return "$" + strconv.Itoa(hole), true
-	}
-	if t.Flags()&shimchecker.TypeFlagsTypeParameter != 0 {
-		if failure != nil {
-			failure.UnboundTypeParameter = t
-		}
-		return "", false
-	}
-
-	symbol := t.Symbol()
-	if alias := aliasOf(t); alias != nil && alias.symbol != nil {
-		symbol = alias.symbol
-	}
-	if symbol == nil {
-		return "", false
-	}
-	name := symbol.Name
-	// A nameless anonymous structure has no token. TypeScript rejects the display
-	// name `__type`; typescript-go stores internal symbol names behind a single
-	// prefix byte (0xFE, an invalid UTF-8 sequence that never occurs in a real
-	// identifier — the anonymous type literal is `"\xFEtype"`, an object literal
-	// `"\xFEobject"`, etc.), so the byte-identical equivalent is rejecting the
-	// whole internal-prefixed family, none of which is an importable export.
-	if name == "" || isInternalSymbolName(name) {
-		return "", false
-	}
-	decl := primaryDeclaration(symbol)
-	if decl == nil {
-		return "", false
-	}
-	sourceFile := shimast.GetSourceFileOfNode(decl)
-	if sourceFile == nil {
-		return "", false
-	}
-	base := baseTokenFor(ctx, symbol, sourceFile)
-
-	args := genericTypeArguments(ctx, t)
-	if len(args) == 0 {
-		return base, true
-	}
-	if collectionTokenBases[base] && len(args) > 1 {
-		args = args[:1]
-	}
-	parts := make([]string, 0, len(args))
-	for _, arg := range args {
-		token, ok := DeriveTokenF(ctx, arg, failure)
-		if !ok {
-			return "", false
-		}
-		parts = append(parts, token)
-	}
-	return base + "<" + strings.Join(parts, ",") + ">", true
+	return renderTypeNode(node), true
 }
 
 // internalSymbolNamePrefix is typescript-go's marker byte for a synthesized

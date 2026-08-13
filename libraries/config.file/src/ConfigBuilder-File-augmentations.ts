@@ -3,12 +3,11 @@
 // Both live in the builder's shared `properties` bag, so a source picks them up
 // through the plain IConfigBuilder it is handed at build time.
 
-import type { ConfigBuilder } from '@rhombus-std/config';
 import type { IConfigBuilder, IndexedSection } from '@rhombus-std/config.core';
 import type { IFileProvider } from '@rhombus-std/fileproviders.core';
 import { PhysicalFileProvider } from '@rhombus-std/fileproviders.physical';
-import { type AugmentationSet2, type Flatten, process, registerAugmentations } from '@rhombus-std/primitives';
-import { tokenfor } from '@rhombus-std/primitives.extras';
+import { type AugmentationSet2, type Flatten, process } from '@rhombus-std/primitives';
+import { registerAugmentations } from '@rhombus-std/primitives.extras';
 import type { Func } from '@rhombus-toolkit/func';
 import type { FileLoadErrorContext } from './FileLoadErrorContext';
 
@@ -51,28 +50,28 @@ declare module '@rhombus-std/config' {
 
 export const ConfigBuilderFileAugmentations: AugmentationSet2<IConfigBuilder,
   Flatten<IConfigBuilderFileAugmentations>> = {
-    setFileProvider(builder, fileProvider) {
-      builder.properties.set(FILE_PROVIDER_KEY, fileProvider);
-      return builder;
+    setFileProvider(fileProvider) {
+      this.properties.set(FILE_PROVIDER_KEY, fileProvider);
+      return this;
     },
-    getFileProvider(builder) {
-      const provider = builder.properties.get(FILE_PROVIDER_KEY);
+    getFileProvider() {
+      const provider = this.properties.get(FILE_PROVIDER_KEY);
       if (provider !== undefined) {
         return provider as IFileProvider;
       }
       // Falls back to a physical provider rooted at the current working directory.
       return new PhysicalFileProvider(process.cwd());
     },
-    setBasePath(builder, basePath) {
-      return ConfigBuilderFileAugmentations.setFileProvider(builder, new PhysicalFileProvider(basePath));
+    setBasePath(basePath) {
+      return ConfigBuilderFileAugmentations.setFileProvider.call(this, new PhysicalFileProvider(basePath));
     },
-    setFileLoadErrorHandler(builder, handler) {
-      builder.properties.set(FILE_LOAD_ERROR_HANDLER_KEY, handler);
-      return builder;
+    setFileLoadErrorHandler(handler) {
+      this.properties.set(FILE_LOAD_ERROR_HANDLER_KEY, handler);
+      return this;
     },
-    getFileLoadErrorHandler(builder) {
-      return builder.properties.get(FILE_LOAD_ERROR_HANDLER_KEY) as FileLoadErrorHandler | undefined;
+    getFileLoadErrorHandler() {
+      return this.properties.get(FILE_LOAD_ERROR_HANDLER_KEY) as FileLoadErrorHandler | undefined;
     },
   };
 
-registerAugmentations(tokenfor<IConfigBuilder>(), ConfigBuilderFileAugmentations);
+registerAugmentations<IConfigBuilder>(ConfigBuilderFileAugmentations);

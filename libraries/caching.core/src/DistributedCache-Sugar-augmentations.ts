@@ -1,5 +1,5 @@
 import { type AbortSignal, type AugmentationSet2, type Flatten, registerAugmentations } from '@rhombus-std/primitives';
-import { tokenfor } from '@rhombus-std/primitives.extras';
+import { typefor } from '@rhombus-std/primitives.extras';
 import type { Ctor } from '@rhombus-toolkit/func';
 import { DistributedCacheEntryOptions, freezeDistributedCacheEntryOptions } from './DistributedCacheEntryOptions';
 import type { IDistributedCache } from './IDistributedCache';
@@ -34,7 +34,7 @@ type IDistributedCacheSugarAugmentations = {
  * `set` is standalone-only. Its name IS `IDistributedCache`'s own primitive, so
  * it is kept out of both the interface merge and the prototype install below --
  * mounting it would displace the real implementation on every decorated class,
- * and the mounted thunk would then recurse into itself.
+ * and the mounted member would then recurse into itself.
  */
 type IDistributedCacheStandaloneWrites = {
   set(key: string, value: Uint8Array, abortSignal?: AbortSignal): Promise<void>;
@@ -47,21 +47,21 @@ declare module '@rhombus-std/caching.core' {
 export const DistributedCacheSugarAugmentations: AugmentationSet2<IDistributedCache,
   Flatten<IDistributedCacheSugarAugmentations & IDistributedCacheStandaloneWrites>> = {
     /** Sets a sequence of bytes in the cache with the specified key and default entry options. */
-    set(cache, key, value, abortSignal) {
-      return cache.set(key, value, defaultOptions, abortSignal);
+    set(key, value, abortSignal) {
+      return this.set(key, value, defaultOptions, abortSignal);
     },
 
     /**
      * Sets a string in the cache with the specified key, UTF-8 encoded, with
      * `options` (or the default entry options when omitted).
      */
-    setString(cache, key, value, options, abortSignal) {
-      return cache.set(key, utf8Encoder.encode(value), options ?? defaultOptions, abortSignal);
+    setString(key, value, options, abortSignal) {
+      return this.set(key, utf8Encoder.encode(value), options ?? defaultOptions, abortSignal);
     },
 
     /** Gets a string from the cache with the specified key, UTF-8 decoded, or `undefined` if not present. */
-    async getString(cache, key, abortSignal) {
-      const data = await cache.get(key, abortSignal);
+    async getString(key, abortSignal) {
+      const data = await this.get(key, abortSignal);
       return data === undefined ? undefined : utf8Decoder.decode(data);
     },
   };
@@ -73,6 +73,6 @@ export const DistributedCacheSugarAugmentations: AugmentationSet2<IDistributedCa
 const { set: _set, ...distributedCacheInstanceMethods } = DistributedCacheSugarAugmentations;
 
 registerAugmentations<IDistributedCache, Flatten<IDistributedCacheSugarAugmentations>>(
-  tokenfor<IDistributedCache>(),
+  typefor<IDistributedCache>(),
   distributedCacheInstanceMethods,
 );

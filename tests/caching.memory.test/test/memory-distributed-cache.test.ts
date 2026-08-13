@@ -87,10 +87,10 @@ describe('MemoryDistributedCache', () => {
     const { cache } = makeCache();
 
     await cache.setString('method', 'vía-method ✓');
-    await DistributedCacheSugarAugmentations.setString(cache, 'member', 'vía-member ✓');
+    await DistributedCacheSugarAugmentations.setString.call(cache, 'member', 'vía-member ✓');
 
     expect(await cache.getString('method')).toBe('vía-method ✓');
-    expect(await DistributedCacheSugarAugmentations.getString(cache, 'method')).toBe('vía-method ✓');
+    expect(await DistributedCacheSugarAugmentations.getString.call(cache, 'method')).toBe('vía-method ✓');
     expect(await cache.getString('member')).toBe('vía-member ✓');
   });
 });

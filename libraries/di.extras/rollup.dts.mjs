@@ -1,17 +1,7 @@
 // Rolls the public type surface of @rhombus-std/di.extras into a single
-// dist/bundle/index.d.ts. `typescript` stays external (a peer dep — consumers have it).
-// The transformer's own source carries no @rhombus-std/di.core runtime import; this guards
-// the type surface against one leaking in.
-//
-// @rhombus-std/di.core (a peer dep) is external too, and that is LOAD-BEARING, not
-// cosmetic. This package's whole job is a `declare module "@rhombus-std/di.core"`
-// augmentation whose members RETURN di.core types (`AddChain`, `IServiceManifest`).
-// Inlining di.core copies those types into this bundle, and the augmentation's return
-// types then bind to the COPIES: the members still merge onto the real interfaces, but
-// `add<I>(C)` hands back a forked `AddChain` that carries neither the descriptor verbs
-// nor this file's own `as<Scope>()` merge — so `services = services.add<I>(C)` fails to
-// assign and `.as<"singleton">()` reports "Expected 0 type arguments". Keep it external
-// (§106).
+// dist/bundle/index.d.ts. `typescript` stays external (a peer dep — consumers have it),
+// and so does @rhombus-std/di.core: the primitives here return its types, and an inlined
+// copy would bind them to a fork that no di.core value satisfies.
 
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';

@@ -7,16 +7,12 @@ import (
 	shimprinter "github.com/microsoft/typescript-go/shim/printer"
 	"github.com/samchon/ttsc/packages/ttsc/driver"
 
-	"github.com/fnioc/std/transforms/internal/factorytransform"
-	"github.com/fnioc/std/transforms/internal/foldtransform"
 	"github.com/fnioc/std/transforms/internal/inlinetransform"
 	"github.com/fnioc/std/transforms/internal/keyoftransform"
 	"github.com/fnioc/std/transforms/internal/plugin"
 	"github.com/fnioc/std/transforms/internal/schemaoftransform"
 	"github.com/fnioc/std/transforms/internal/signatures"
 	"github.com/fnioc/std/transforms/internal/signaturetransform"
-	"github.com/fnioc/std/transforms/internal/singulartransform"
-	"github.com/fnioc/std/transforms/internal/valueoftransform"
 )
 
 // loopMaxPasses mirrors stdhost.maxLoopPasses for the tests that drive
@@ -41,12 +37,8 @@ func buildLoopedStages(t *testing.T, prog *driver.Program, app string, artifacts
 	nameofT := New(prog, ctx, artifacts, func(plugin.Diagnostic) {})
 	sigT := signaturetransform.New(prog, ctx, artifacts, func(signatures.Diagnostic) {})
 	keyofT := keyoftransform.New(prog, ctx, artifacts, func(plugin.Diagnostic) {})
-	valueofT := valueoftransform.New(prog, ctx, artifacts, func(plugin.Diagnostic) {})
-	singularT := singulartransform.New(prog, ctx, artifacts, func(plugin.Diagnostic) {})
-	factoryT := factorytransform.New(prog, ctx, artifacts, func(plugin.Diagnostic) {})
-	foldT := foldtransform.New(prog, func(plugin.Diagnostic) {})
 	schemaofT := schemaoftransform.New(prog, ctx, artifacts, func(plugin.Diagnostic) {})
-	return []plugin.FileTransform{inlineT, nameofT, sigT, keyofT, valueofT, singularT, factoryT, foldT, schemaofT}
+	return []plugin.FileTransform{inlineT, nameofT, sigT, keyofT, schemaofT}
 }
 
 // TestLoopCanaryZeroMatchPreservesPointer is the CENTRAL identity canary: a file
@@ -67,7 +59,7 @@ func TestLoopCanaryZeroMatchPreservesPointer(t *testing.T) {
 
 	artifacts := inlinetransform.NewArtifacts()
 	stages := buildLoopedStages(t, prog, app, artifacts)
-	names := []string{"inline", "nameof", "signatureof", "keyof", "valueof", "singular", "factory", "fold", "schemaof"}
+	names := []string{"inline", "nameof", "signatureof", "keyof", "schemaof"}
 
 	ec := shimprinter.NewEmitContext()
 	sf := mainSF(t, prog)
@@ -101,14 +93,14 @@ func TestLoopNoOpIdentityTable(t *testing.T) {
 interface IFoo {}
 interface IDep {}
 class Foo implements IFoo {}
-services.addClass<IFoo>(Foo).withSignature<[IDep]>().as<'scoped'>();
+services.addClass<IFoo>(Foo).withSignature<[IDep]>();
 `
 	prog, app := buildWithSigChainWorkspace(t, src)
 	defer func() { _ = prog.Close() }()
 
 	artifacts := inlinetransform.NewArtifacts()
 	stages := buildLoopedStages(t, prog, app, artifacts)
-	names := []string{"inline", "nameof", "signatureof", "keyof", "valueof", "singular", "factory", "fold", "schemaof"}
+	names := []string{"inline", "nameof", "signatureof", "keyof", "schemaof"}
 
 	ec := shimprinter.NewEmitContext()
 	settled, _, exhausted := plugin.RunToFixedPoint(ec, stages, mainSF(t, prog), loopMaxPasses)
@@ -175,8 +167,8 @@ func TestRunToFixedPointExhaustsWhenNonSettling(t *testing.T) {
 }
 
 // buildSelfInlineLoop builds the inline + primitive stages (inline, nameof,
-// signatureof, keyof, valueof — NO di stage) over a self-inline workspace, sharing
-// ONE artifacts bag in canonical order. It is the inline-ISOLATION loop for the
+// signatureof, keyof — NO di stage) over a self-inline workspace, sharing ONE
+// artifacts bag in canonical order. It is the inline-ISOLATION loop for the
 // self-registration cases: excluding the di stage proves the inline path alone
 // settles, the same isolation TestChainSettlesThroughInlinePrimitivesOnly uses for
 // the chain.
@@ -192,7 +184,6 @@ func buildSelfInlineLoop(t *testing.T, prog *driver.Program, app string, artifac
 		New(prog, ctx, artifacts, func(plugin.Diagnostic) {}),
 		signaturetransform.New(prog, ctx, artifacts, func(signatures.Diagnostic) {}),
 		keyoftransform.New(prog, ctx, artifacts, func(plugin.Diagnostic) {}),
-		valueoftransform.New(prog, ctx, artifacts, func(plugin.Diagnostic) {}),
 	}
 }
 
@@ -274,19 +265,17 @@ services.addValue(makeThing);
 	}
 }
 
-// TestChainSettlesThroughInlinePrimitivesOnly is the W1 verification: a 3-deep
-// registration chain `addClass<I>(C).withSignature<T>().as<S>()` lowered through
-// inline + the primitive stages ONLY (no di stage) must SETTLE under the
-// fixed-point loop in a handful of passes — the inline visitor peels the outermost
-// layer per pass, so the loop is what makes the inner chain positions reachable at
-// all — and the settled output must equal the di stage's DIRECT lowering of the
-// same source (the byte-parity oracle, which lowers every layer in one deep walk).
+// TestChainSettlesThroughInlinePrimitivesOnly is the W1 verification: a 2-deep
+// registration chain `addClass<I>(C).withSignature<T>()` lowered through inline +
+// the primitive stages ONLY (no di stage) must SETTLE under the fixed-point loop
+// in a handful of passes — the inline visitor peels the outermost layer per pass,
+// so the loop is what makes the inner chain position reachable at all.
 func TestChainSettlesThroughInlinePrimitivesOnly(t *testing.T) {
 	src := `import { services } from '@rhombus-std/di.core';
 interface IFoo {}
 interface IDep {}
 class Foo implements IFoo {}
-services.addClass<IFoo>(Foo).withSignature<[IDep]>().as<'scoped'>();
+services.addClass<IFoo>(Foo).withSignature<[IDep]>();
 `
 	prog, app := buildWithSigChainWorkspace(t, src)
 	defer func() { _ = prog.Close() }()
@@ -302,11 +291,10 @@ services.addClass<IFoo>(Foo).withSignature<[IDep]>().as<'scoped'>();
 		New(prog, ctx, artifacts, func(plugin.Diagnostic) {}),
 		signaturetransform.New(prog, ctx, artifacts, func(signatures.Diagnostic) {}),
 		keyoftransform.New(prog, ctx, artifacts, func(plugin.Diagnostic) {}),
-		valueoftransform.New(prog, ctx, artifacts, func(plugin.Diagnostic) {}),
 	}
 
 	ec := shimprinter.NewEmitContext()
-	settled, passes, exhausted := plugin.RunToFixedPoint(ec, loop, mainSF(t, prog), loopMaxPasses)
+	_, passes, exhausted := plugin.RunToFixedPoint(ec, loop, mainSF(t, prog), loopMaxPasses)
 	if exhausted {
 		t.Fatalf("chain did not settle within %d passes", loopMaxPasses)
 	}
@@ -314,13 +302,6 @@ services.addClass<IFoo>(Foo).withSignature<[IDep]>().as<'scoped'>();
 		t.Fatal("inline artifacts not active — the chain entries did not resolve")
 	}
 	if passes > 4 {
-		t.Errorf("3-deep chain took %d passes to settle, want <= 4", passes)
-	}
-	shimast.SetParentInChildrenUnset(settled.AsNode())
-	inlineOut := reprint(ec, settled)
-
-	diOut := lowerDi(t, prog, app)
-	if inlineOut != diOut {
-		t.Fatalf("inline+primitives loop output diverged from the di-direct oracle:\n--- inline (loop, %d passes) ---\n%s\n--- di direct ---\n%s", passes, inlineOut, diOut)
+		t.Errorf("2-deep chain took %d passes to settle, want <= 4", passes)
 	}
 }

@@ -13,6 +13,7 @@ export type { IChangeToken } from './IChangeToken.js';
 export type { IServiceProvider } from './IServiceProvider.js';
 export type { IterableObject } from './IterableObject.js';
 export { Multimap } from './Multimap.js';
+export { NotImplementedError } from './NotImplementedError.js';
 export { process } from './process.js';
 export type { ProcessLike } from './process.js';
 export type { ReadableStream } from './ReadableStream.js';
@@ -21,7 +22,7 @@ export type { TimeoutHandle } from './TimeoutHandle.js';
 export type { Token } from './Token.js';
 export { TypeParseError } from './Type/internals/TypeParseError.js';
 export { Type } from './Type/Type.js';
-export type { ConstructableType, CtorType, FunctionType, IntersectionType, NamedType, ObjectType, PlaceholderType,
-  TagType, TokenType, TupleType, TypeLiteralType, UnionType } from './Type/Type.js';
+export type { CtorType, FunctionType, IntersectionType, NamedType, ObjectType, PlaceholderType, TagType, TupleType,
+  TypeIdentifier, TypeLiteralType, UnionType } from './Type/Type.js';
 export { TypeVisitor } from './Type/TypeVisitor.js';
-export type { Flatten } from './utils.js';
+export * from './utils/index.js';

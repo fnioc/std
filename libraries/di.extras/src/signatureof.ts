@@ -1,19 +1,19 @@
-// `signatureof(ctor)` binds a class constructor or factory function and, at
-// build time, becomes the positional `[[slot, ...], ...]` dependency-signature
-// array `addClass`/`addFactory` take as their third argument — one inner array
-// per constructor/call overload.
+// `signatureof(ctor)` binds a class constructor or factory function and, at build time, becomes
+// the positional `[[slot, ...], ...]` dependency-signature array `addClass`/`addFactory` take as
+// their third argument — one inner array per constructor/call overload.
 
-import type { DepSignatures, DepTarget } from '@rhombus-std/di.core';
+import type { Signatures } from '@rhombus-std/di.core';
+import type { Ctor, Func } from '@rhombus-toolkit/func';
 
 /**
  * Dependency signature for a class constructor or factory function.
  *
  * @example
  * ```ts
- * this.addClass(tokenfor<IFoo>(), Foo, signatureof(Foo)); // → addClass("pkg:IFoo", Foo, [["pkg:IDep"]])
+ * this.addClass(typefor<IFoo>(), Foo, signatureof(Foo));
  * ```
  */
-export function signatureof(target: DepTarget): DepSignatures {
+export function signatureof(target: Ctor | Func<never[], unknown>): Signatures {
   void target;
   throw new Error(
     'signatureof(ctor) requires the @rhombus-std/di.extras authoring transform. '

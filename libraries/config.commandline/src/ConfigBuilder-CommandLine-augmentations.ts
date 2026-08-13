@@ -1,9 +1,8 @@
 // The `addCommandLine` sugar on the configuration builder.
 
-import type { ConfigBuilder } from '@rhombus-std/config';
 import type { IConfigBuilder, IndexedSection } from '@rhombus-std/config.core';
-import { type AugmentationSet2, type Flatten, registerAugmentations } from '@rhombus-std/primitives';
-import { tokenfor } from '@rhombus-std/primitives.extras';
+import type { AugmentationSet2, Flatten } from '@rhombus-std/primitives';
+import { registerAugmentations } from '@rhombus-std/primitives.extras';
 import { CommandLineConfigSource, type CommandLineConfigSourceOptions } from './CommandLineConfigSource';
 
 interface IConfigBuilderCommandLineAugmentations {
@@ -30,9 +29,9 @@ declare module '@rhombus-std/config' {
 
 export const ConfigBuilderCommandLineAugmentations: AugmentationSet2<IConfigBuilder,
   Flatten<IConfigBuilderCommandLineAugmentations>> = {
-    addCommandLine(builder, args, switchMappings) {
-      return builder.add(new CommandLineConfigSource(args, { switchMappings }));
+    addCommandLine(args, switchMappings) {
+      return this.add(new CommandLineConfigSource(args, { switchMappings }));
     },
   };
 
-registerAugmentations(tokenfor<IConfigBuilder>(), ConfigBuilderCommandLineAugmentations);
+registerAugmentations<IConfigBuilder>(ConfigBuilderCommandLineAugmentations);

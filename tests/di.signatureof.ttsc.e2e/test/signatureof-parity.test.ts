@@ -11,7 +11,7 @@ import { basename, join, resolve } from 'node:path';
 // they emit byte-identical output:
 //
 //   The type-driven `addClass<I>(C)` / `addFactory<I>(fn)` sugar bodies
-//   (di.extras's rhombus.inline entries) substitute to
+//   (di.extras's rhombus-std inline entries) substitute to
 //   `this.addClass(tokenfor<I>(), C, signatureof(C))`; tokenfor lowers the token,
 //   signatureof lowers the dependency-signature array, leaving the resulting
 //   3-argument `addClass(...)` in place. `addValue<I>(value)` substitutes to
@@ -22,10 +22,9 @@ import { basename, join, resolve } from 'node:path';
 // The load-bearing guarantee is descriptor independence: the whole always-on stage
 // table runs regardless of which descriptor spawned the host, so the two lowerings
 // are byte-identical — the derived signatureof array, the bare addValue token, and
-// import elision all pinned. This mirrors the inline.ttsc.e2e isService pilot,
-// extended to the value-argument signatureof primitive and a non-trivial
-// (dependency-carrying) signature, plus the deps-free addValue form. The bespoke di
-// domain stage that once provided the comparison oracle is DELETED (W6p3).
+// import elision all pinned. The sibling inline.ttsc.e2e suite covers the token
+// derivation itself; this one covers the value-argument signatureof primitive over
+// a non-trivial (dependency-carrying) signature, plus the deps-free addValue form.
 //
 // Toolchain pinning, the single shared plugin cache, and the one-project-dir /
 // two-tsconfig layout all mirror the inline.ttsc.e2e harness; see its header.
@@ -93,16 +92,15 @@ function goEnv(): NodeJS.ProcessEnv {
   return env;
 }
 
-// The type-driven sugar overloads are hand-declared here (as the inline.ttsc.e2e
-// pilot hand-declares isService<T>) so the program carries them without wiring
-// the transformer's own types — the merge target is the real di.core
-// IServiceManifestBase, and the parameter NAMES (ctor / factory) match the inline
+// The type-driven sugar overloads are hand-declared here so the program carries
+// them without wiring the transformer's own types — the merge target is the real di.core
+// Manifest, and the parameter NAMES (ctor / factory) match the inline
 // bodies' so the structural overload discriminator resolves each call to the
 // sugar overload. A class with a real constructor dependency (IDep) and a factory
 // with a real parameter dependency give a NON-TRIVIAL signature array, so parity
 // pins the actual slot derivation, not just an empty `[[]]`.
 const APP_SOURCE = `
-import type { IAsBuilder, IServiceManifest } from "@rhombus-std/di.core";
+import type { Manifest } from "@rhombus-std/di.core";
 
 // Minimal local constructor / factory types, so the source is self-contained
 // (no @rhombus-toolkit/func resolution needed). The overload discriminator reads
@@ -111,9 +109,9 @@ type Ctor<A extends any[] = any[], R = unknown> = new (...args: A) => R;
 type Func<A extends any[] = any[], R = unknown> = (...args: A) => R;
 
 declare module "@rhombus-std/di.core" {
-  interface IServiceManifestBase<Scopes extends string = "singleton", Provider = unknown> {
-    addClass<I>(ctor: Ctor<any[], I>): IAsBuilder<Scopes>;
-    addFactory<I>(factory: Func<any[], I>): IAsBuilder<Scopes>;
+  interface Manifest<Scopes extends string = "singleton"> {
+    addClass<I>(ctor: Ctor<any[], I>): Manifest<Scopes>;
+    addFactory<I>(factory: Func<any[], I>): Manifest<Scopes>;
     addValue<I>(value: I): void;
   }
 }
@@ -130,7 +128,7 @@ class BarImpl implements IBar {
   constructor(dep: IDep) { void dep; }
 }
 
-declare const services: IServiceManifest<"singleton">;
+declare const services: Manifest<"singleton">;
 declare const bazValue: IBaz;
 
 // Top-level registration statements: the inline stage substitutes the sugar
@@ -166,7 +164,7 @@ function setupWorkspace(): void {
   link(PRIMITIVES_TRANSFORMER, join(nm, '@rhombus-std', 'primitives.extras'));
 
   // The consumer must depend on di.core (the type ANCHOR the inline entries name)
-  // AND di.extras (which now owns the rhombus.inline publish list + the
+  // AND di.extras (which now owns the rhombus-std inline publish list + the
   // signatureof primitive), so the inline collector walks to both.
   writeFileSync(
     join(projDir, 'package.json'),
@@ -215,17 +213,24 @@ beforeAll(() => {
 }, COLD_BUILD_MS);
 
 describe.skipIf(!toolchainReady)('signatureof primitive — addClass / addFactory / addValue sugar', () => {
-  test('the sugar is lowered: string token (+ signature array where deps exist), no generics or primitives survive', () => {
-    // addClass / addFactory lowered to a 3-arg call carrying a token and a signature
-    // array; addValue lowered to a bare 2-arg token + value call (no deps).
-    expect(withInline).toContain('.addClass("');
-    expect(withInline).toContain('.addFactory("');
-    expect(withInline).toContain('.addValue("');
+  test('the sugar is lowered to a Type the caller could have written by hand, with no generics or primitives left', () => {
+    // Each verb takes the service type as its first argument, built through the
+    // Type factories -- which is what a caller writing this without the transform
+    // would reach for, since `Type.from` parses a token string and hands back the
+    // whole union rather than the named type these read as.
+    expect(withInline).toContain('.addClass(Type.named(');
+    expect(withInline).toContain('.addFactory(Type.named(');
+    expect(withInline).toContain('.addValue(Type.named(');
+    // And the factories are reachable: a hand author importing Type needs this
+    // line too, so its absence would mean the emitted file does not stand alone.
+    expect(withInline).toContain(`from "@rhombus-std/primitives"`);
     expect(withInline).not.toContain('addClass<');
     expect(withInline).not.toContain('addFactory<');
     expect(withInline).not.toContain('addValue<');
     // No un-lowered primitive CALL survives (assert the call form, not a bare
     // substring, which could appear inside a derived token string).
+    expect(withInline).not.toContain('typefor<');
+    expect(withInline).not.toContain('typefor(');
     expect(withInline).not.toContain('tokenfor<');
     expect(withInline).not.toContain('tokenfor(');
     expect(withInline).not.toContain('signatureof(');

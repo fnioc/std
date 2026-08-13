@@ -1,9 +1,8 @@
 // The `addEnvironmentVariables` sugar on the configuration builder.
 
-import type { ConfigBuilder } from '@rhombus-std/config';
 import type { IConfigBuilder, IndexedSection } from '@rhombus-std/config.core';
-import { type AugmentationSet2, type Flatten, registerAugmentations } from '@rhombus-std/primitives';
-import { tokenfor } from '@rhombus-std/primitives.extras';
+import type { AugmentationSet2, Flatten } from '@rhombus-std/primitives';
+import { registerAugmentations } from '@rhombus-std/primitives.extras';
 import { EnvironmentVariablesConfigSource,
   type EnvironmentVariablesConfigSourceOptions } from './EnvironmentVariablesConfigSource';
 
@@ -31,9 +30,9 @@ declare module '@rhombus-std/config' {
 
 export const ConfigBuilderEnvAugmentations: AugmentationSet2<IConfigBuilder, Flatten<IConfigBuilderEnvAugmentations>> =
   {
-    addEnvironmentVariables(builder, options) {
-      return builder.add(new EnvironmentVariablesConfigSource(options));
+    addEnvironmentVariables(options) {
+      return this.add(new EnvironmentVariablesConfigSource(options));
     },
   };
 
-registerAugmentations(tokenfor<IConfigBuilder>(), ConfigBuilderEnvAugmentations);
+registerAugmentations<IConfigBuilder>(ConfigBuilderEnvAugmentations);

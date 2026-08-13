@@ -86,7 +86,7 @@ func runWith(t *testing.T, source string, extra map[string]string) (string, []Di
 func TestSynthesizesGuardedStrategyFromUnionParameter(t *testing.T) {
 	out, diags := run(t, `
 export const AlphaExtensions = {
-  describe(self: IAlpha, opts: { verbose: boolean } | number): string {
+  describe(opts: { verbose: boolean } | number): string {
     return String(opts);
   },
 };
@@ -112,7 +112,7 @@ registerAugmentations("t:IAlpha", AlphaExtensions);
 		}
 	}
 	// Dispatch shape: guard hit -> extension, miss -> original.
-	if !strings.Contains(out, "extension(this, ...args)") || !strings.Contains(out, "original.call(this, ...args)") {
+	if !strings.Contains(out, "extension.call(this, ...args)") || !strings.Contains(out, "original.call(this, ...args)") {
 		t.Fatalf("dispatcher does not route between extension and original:\n%s", out)
 	}
 }
@@ -120,8 +120,8 @@ registerAugmentations("t:IAlpha", AlphaExtensions);
 func TestHandAuthoredStrategyWinsAndIsNotSynthesized(t *testing.T) {
 	out, diags := run(t, `
 export const AlphaExtensions = {
-  describe(self: IAlpha, opts: number): string { return String(opts); },
-  tag(self: IAlpha, name: string): string { return name; },
+  describe(opts: number): string { return String(opts); },
+  tag(name: string): string { return name; },
 };
 const handMerge = {
   describe(original: (...a: unknown[]) => unknown, extension: (...a: unknown[]) => unknown) {
@@ -151,7 +151,7 @@ registerAugmentations("t:IAlpha", AlphaExtensions, handMerge);
 func TestFullyCoveredCallIsLeftUntouched(t *testing.T) {
 	source := `
 export const AlphaExtensions = {
-  describe(self: IAlpha, opts: number): string { return String(opts); },
+  describe(opts: number): string { return String(opts); },
 };
 const handMerge = {
   describe(original: (...a: unknown[]) => unknown, extension: (...a: unknown[]) => unknown) {
@@ -171,10 +171,10 @@ registerAugmentations("t:IAlpha", AlphaExtensions, handMerge);
 
 func TestUnDerivableMemberFallsBackToAlwaysPass(t *testing.T) {
 	for name, decl := range map[string]string{
-		"generic": `pick<T>(self: IAlpha, value: T): T { return value; }`,
-		"unknown": `pick(self: IAlpha, value: unknown): unknown { return value; }`,
-		"any":     `pick(self: IAlpha, value: any): unknown { return value; }`,
-		"untyped": `pick(self: IAlpha, value = 1): unknown { return value; }`,
+		"generic": `pick<T>(value: T): T { return value; }`,
+		"unknown": `pick(value: unknown): unknown { return value; }`,
+		"any":     `pick(value: any): unknown { return value; }`,
+		"untyped": `pick(value = 1): unknown { return value; }`,
 	} {
 		out, diags := run(t, `
 export const AlphaExtensions = { `+decl+` };
@@ -194,7 +194,7 @@ registerAugmentations("t:IAlpha", AlphaExtensions);
 		if strings.Contains(out, "original.call") {
 			t.Fatalf("%s: un-derivable member routes to original:\n%s", name, out)
 		}
-		if !strings.Contains(out, "extension(this, ...args)") {
+		if !strings.Contains(out, "extension.call(this, ...args)") {
 			t.Fatalf("%s: extension not invoked:\n%s", name, out)
 		}
 	}
@@ -203,7 +203,7 @@ registerAugmentations("t:IAlpha", AlphaExtensions);
 func TestOptionalParameterAndArityBounds(t *testing.T) {
 	out, diags := run(t, `
 export const AlphaExtensions = {
-  fmt(self: IAlpha, a: string, b?: number): string { return a + String(b); },
+  fmt(a: string, b?: number): string { return a + String(b); },
 };
 registerAugmentations("t:IAlpha", AlphaExtensions);
 `)
@@ -224,7 +224,7 @@ registerAugmentations("t:IAlpha", AlphaExtensions);
 func TestRestParameterGuardsTheSliceWithoutUpperBound(t *testing.T) {
 	out, diags := run(t, `
 export const AlphaExtensions = {
-  store(self: IAlpha, ...rest: [key: string] | [key: string, ttl: number]): void {},
+  store(...rest: [key: string] | [key: string, ttl: number]): void {},
 };
 registerAugmentations("t:IAlpha", AlphaExtensions);
 `)
@@ -243,7 +243,7 @@ func TestApplyAugmentationsIsRewrittenToo(t *testing.T) {
 	out, diags := run(t, `
 export class Alpha implements IAlpha { id = 1; }
 export const AlphaExtensions = {
-  describe(self: IAlpha, opts: number): string { return String(opts); },
+  describe(opts: number): string { return String(opts); },
 };
 applyAugmentations(Alpha, AlphaExtensions);
 `)
@@ -275,7 +275,7 @@ func TestGuardValidatesDeepObjectShape(t *testing.T) {
 	out, diags := run(t, `
 interface EntryOptions { size?: number; sliding?: number; tag: string; }
 export const AlphaExtensions = {
-  configure(self: IAlpha, options: EntryOptions): void {},
+  configure(options: EntryOptions): void {},
 };
 registerAugmentations("t:IAlpha", AlphaExtensions);
 `)
@@ -306,8 +306,8 @@ registerAugmentations("t:IAlpha", AlphaExtensions);
 func TestHandMergeReWrapsOnSecondPass(t *testing.T) {
 	prog, sf := loadFixture(t, `
 export const AlphaExtensions = {
-  describe(self: IAlpha, opts: number): string { return String(opts); },
-  tag(self: IAlpha, name: string): string { return name; },
+  describe(opts: number): string { return String(opts); },
+  tag(name: string): string { return name; },
 };
 const handMerge = {
   describe(original: (...a: unknown[]) => unknown, extension: (...a: unknown[]) => unknown) {

@@ -25,7 +25,7 @@ export default tseslint.config({
   rules: { 'rhombus-inline/inline-authoring': 'error' },
 }, {
   // Tests: not in any tsconfig → syntactic rules only (no type info, no parsing error)
-  files: ['libraries/*/test/**/*.ts', 'examples/*/test/**/*.ts', 'tests/*.test/test/**/*.ts'],
+  files: ['tests/*.test/test/**/*.ts'],
   extends: [tseslint.configs.base],
   rules: { curly: ['error', 'all'], '@typescript-eslint/array-type': ['warn', { default: 'array-simple' }] },
 });

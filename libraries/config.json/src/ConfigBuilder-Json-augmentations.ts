@@ -1,10 +1,9 @@
 // The `addJsonFile` / `addJsonStream` sugar on the configuration builder.
 
 import type { StreamPayload } from '@rhombus-std/config';
-import type { ConfigBuilder } from '@rhombus-std/config';
 import type { IConfigBuilder, IndexedSection } from '@rhombus-std/config.core';
-import { type AugmentationSet2, type Flatten, registerAugmentations } from '@rhombus-std/primitives';
-import { tokenfor } from '@rhombus-std/primitives.extras';
+import type { AugmentationSet2, Flatten } from '@rhombus-std/primitives';
+import { registerAugmentations } from '@rhombus-std/primitives.extras';
 import { JsonConfigSource, type JsonConfigSourceOptions } from './JsonConfigSource';
 import { JsonStreamConfigSource } from './JsonStreamConfigSource';
 
@@ -30,12 +29,12 @@ declare module '@rhombus-std/config' {
 
 export const ConfigBuilderJsonAugmentations: AugmentationSet2<IConfigBuilder,
   Flatten<IConfigBuilderJsonAugmentations>> = {
-    addJsonFile(builder, path, opts) {
-      return builder.add(new JsonConfigSource(path, opts));
+    addJsonFile(path, opts) {
+      return this.add(new JsonConfigSource(path, opts));
     },
-    addJsonStream(builder, stream) {
-      return builder.add(new JsonStreamConfigSource(stream));
+    addJsonStream(stream) {
+      return this.add(new JsonStreamConfigSource(stream));
     },
   };
 
-registerAugmentations(tokenfor<IConfigBuilder>(), ConfigBuilderJsonAugmentations);
+registerAugmentations<IConfigBuilder>(ConfigBuilderJsonAugmentations);

@@ -14,7 +14,7 @@ func implsOf(owned []OwnedEntry) map[string]bool {
 	return set
 }
 
-// TestCollectOwnEntries: a consumer package's OWN rhombus.inline entries are
+// TestCollectOwnEntries: a consumer package's OWN rhombus-std inline entries are
 // honored, tagged with the consumer's own directory.
 func TestCollectOwnEntries(t *testing.T) {
 	root := t.TempDir()
@@ -22,7 +22,7 @@ func TestCollectOwnEntries(t *testing.T) {
 	app := filepath.Join(root, "packages", "app")
 	write(t, filepath.Join(app, "package.json"), `{
   "name": "@scope/app",
-  "rhombus.inline": { "entries": [ { "impl": "own" } ] }
+  "rhombus-std": { "inline": [ { "impl": "@scope/app:own" } ] }
 }`)
 
 	owned, err := Collect(app)
@@ -32,8 +32,8 @@ func TestCollectOwnEntries(t *testing.T) {
 	if len(owned) != 1 {
 		t.Fatalf("expected 1 own entry, got %d: %+v", len(owned), owned)
 	}
-	if owned[0].Entry.Impl != "own" {
-		t.Fatalf("Impl = %q, want own", owned[0].Entry.Impl)
+	if owned[0].Entry.Impl != "@scope/app:own" {
+		t.Fatalf("Impl = %q, want @scope/app:own", owned[0].Entry.Impl)
 	}
 	if owned[0].PackageDir != filepath.Clean(app) {
 		t.Fatalf("PackageDir = %q, want %q", owned[0].PackageDir, filepath.Clean(app))
@@ -49,12 +49,12 @@ func TestCollectCyclicDeps(t *testing.T) {
 	write(t, filepath.Join(root, "packages", "a", "package.json"), `{
   "name": "@scope/a",
   "dependencies": { "@scope/b": "workspace:*" },
-  "rhombus.inline": { "entries": [ { "impl": "a" } ] }
+  "rhombus-std": { "inline": [ { "impl": "@scope/a:a" } ] }
 }`)
 	write(t, filepath.Join(root, "packages", "b", "package.json"), `{
   "name": "@scope/b",
   "dependencies": { "@scope/a": "workspace:*" },
-  "rhombus.inline": { "entries": [ { "impl": "b" } ] }
+  "rhombus-std": { "inline": [ { "impl": "@scope/b:b" } ] }
 }`)
 
 	owned, err := Collect(filepath.Join(root, "packages", "a"))
@@ -65,7 +65,7 @@ func TestCollectCyclicDeps(t *testing.T) {
 		t.Fatalf("a↔b cycle should yield exactly 2 entries, got %d: %+v", len(owned), owned)
 	}
 	impls := implsOf(owned)
-	if !impls["a"] || !impls["b"] {
+	if !impls["@scope/a:a"] || !impls["@scope/b:b"] {
 		t.Fatalf("expected both a and b collected once, got %v", impls)
 	}
 }
@@ -83,11 +83,11 @@ func TestCollectPeerAndDevDeps(t *testing.T) {
 }`)
 	write(t, filepath.Join(root, "packages", "peer", "package.json"), `{
   "name": "@scope/peer",
-  "rhombus.inline": { "entries": [ { "impl": "peer" } ] }
+  "rhombus-std": { "inline": [ { "impl": "@scope/peer:peer" } ] }
 }`)
 	write(t, filepath.Join(root, "packages", "dev", "package.json"), `{
   "name": "@scope/dev",
-  "rhombus.inline": { "entries": [ { "impl": "dev" } ] }
+  "rhombus-std": { "inline": [ { "impl": "@scope/dev:dev" } ] }
 }`)
 
 	owned, err := Collect(filepath.Join(root, "packages", "app"))
@@ -95,10 +95,10 @@ func TestCollectPeerAndDevDeps(t *testing.T) {
 		t.Fatalf("Collect: %v", err)
 	}
 	impls := implsOf(owned)
-	if !impls["peer"] {
+	if !impls["@scope/peer:peer"] {
 		t.Fatalf("peerDependencies entry not collected: %v", impls)
 	}
-	if !impls["dev"] {
+	if !impls["@scope/dev:dev"] {
 		t.Fatalf("devDependencies entry not collected: %v", impls)
 	}
 }
@@ -109,7 +109,7 @@ func TestCollectPeerAndDevDeps(t *testing.T) {
 // bodies are NOT — a core that devDeps its own authoring package must never drag
 // that package's sugar onto a consumer of the core. (Stage selection is retired,
 // W7 — the walk collects only bodies now, so root-only-devDeps is verified over
-// the rhombus.inline face.)
+// the rhombus-std inline face.)
 func TestCollectProjectBodiesRootOnlyDevDeps(t *testing.T) {
 	root := t.TempDir()
 	write(t, filepath.Join(root, "package.json"), `{ "name": "ws", "private": true, "workspaces": ["packages/*"] }`)
@@ -124,11 +124,11 @@ func TestCollectProjectBodiesRootOnlyDevDeps(t *testing.T) {
 	write(t, filepath.Join(root, "packages", "roottf", "package.json"), `{
   "name": "@scope/roottf",
   "dependencies": { "@scope/deptf": "workspace:*" },
-  "rhombus.inline": { "entries": [ { "impl": "roottf" } ] }
+  "rhombus-std": { "inline": [ { "impl": "@scope/roottf:roottf" } ] }
 }`)
 	write(t, filepath.Join(root, "packages", "deptf", "package.json"), `{
   "name": "@scope/deptf",
-  "rhombus.inline": { "entries": [ { "impl": "deptf" } ] }
+  "rhombus-std": { "inline": [ { "impl": "@scope/deptf:deptf" } ] }
 }`)
 	// core: no bodies, but devDeps an authoring package whose bodies must NOT leak —
 	// the core is not the root, so its devDeps are its own build tooling.
@@ -138,7 +138,7 @@ func TestCollectProjectBodiesRootOnlyDevDeps(t *testing.T) {
 }`)
 	write(t, filepath.Join(root, "packages", "leaktf", "package.json"), `{
   "name": "@scope/leaktf",
-  "rhombus.inline": { "entries": [ { "impl": "leaktf" } ] }
+  "rhombus-std": { "inline": [ { "impl": "@scope/leaktf:leaktf" } ] }
 }`)
 
 	scan, err := CollectProject(filepath.Join(root, "packages", "app"))
@@ -146,13 +146,13 @@ func TestCollectProjectBodiesRootOnlyDevDeps(t *testing.T) {
 		t.Fatalf("CollectProject: %v", err)
 	}
 	got := implsOf(scan.Bodies)
-	if !got["roottf"] {
+	if !got["@scope/roottf:roottf"] {
 		t.Errorf("root devDep body 'roottf' not collected: %v", got)
 	}
-	if !got["deptf"] {
+	if !got["@scope/deptf:deptf"] {
 		t.Errorf("transitive dep body 'deptf' not collected: %v", got)
 	}
-	if got["leaktf"] {
+	if got["@scope/leaktf:leaktf"] {
 		t.Errorf("transitive DEVDEP body 'leaktf' leaked (root-only devDeps violated): %v", got)
 	}
 }
@@ -183,7 +183,7 @@ func TestCollectProjectNoPackageJsonDegradesToEmpty(t *testing.T) {
 }`)
 	write(t, filepath.Join(root, "packages", "tf", "package.json"), `{
   "name": "@scope/tf",
-  "rhombus.inline": { "entries": [ { "impl": "tf" } ] }
+  "rhombus-std": { "inline": [ { "impl": "@scope/tf:tf" } ] }
 }`)
 	ws, err := CollectProject(filepath.Join(root, "packages", "app"))
 	if err != nil {
@@ -208,14 +208,14 @@ func TestWorkspaceObjectForm(t *testing.T) {
 }`)
 	write(t, filepath.Join(root, "packages", "lib", "package.json"), `{
   "name": "@scope/lib",
-  "rhombus.inline": { "entries": [ { "impl": "lib" } ] }
+  "rhombus-std": { "inline": [ { "impl": "@scope/lib:lib" } ] }
 }`)
 
 	owned, err := Collect(filepath.Join(root, "packages", "app"))
 	if err != nil {
 		t.Fatalf("Collect: %v", err)
 	}
-	if !implsOf(owned)["lib"] {
+	if !implsOf(owned)["@scope/lib:lib"] {
 		t.Fatalf("object-form workspaces did not resolve @scope/lib: %+v", owned)
 	}
 }

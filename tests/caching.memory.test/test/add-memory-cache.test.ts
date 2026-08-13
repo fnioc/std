@@ -3,10 +3,12 @@
 // reference AddOptions + Configure(setupAction) composition: `setup` runs
 // LAZILY when the options resolve), and the ILoggerFactory injection.
 
-import { MEMORY_CACHE_OPTIONS_TOKEN, MEMORY_CACHE_TOKEN, MemoryCache, MemoryCacheOptions,
+import { MEMORY_CACHE_OPTIONS_TYPE, MEMORY_CACHE_TYPE, MemoryCache, MemoryCacheOptions,
   ServiceManifestMemoryCacheAugmentations } from '@rhombus-std/caching.memory';
-import { type IServiceManifest, ServiceManifest, ServiceManifestClass } from '@rhombus-std/di';
-import { LOGGER_FACTORY_TOKEN, NullLogger } from '@rhombus-std/logging';
+// Side-effect: installs `build` onto di.core's Manifest.
+import '@rhombus-std/di';
+import { DefaultManifest, type Manifest } from '@rhombus-std/di.core';
+import { LOGGER_FACTORY_TYPE, NullLogger } from '@rhombus-std/logging';
 import type { ILogger, ILoggerFactory, ILoggerProvider } from '@rhombus-std/logging.core';
 import { describe, expect, test } from 'bun:test';
 
@@ -23,15 +25,16 @@ class RecordingLoggerFactory implements ILoggerFactory {
 
 describe('addMemoryCache', () => {
   test('method form registers a resolvable IMemoryCache singleton', () => {
-    let services = new ServiceManifest<'singleton'>();
+    let services: Manifest<'singleton'> = new DefaultManifest<'singleton'>();
 
     services = services.addMemoryCache();
 
     const scope = services.build().createScope('singleton');
-    const cache = scope.resolve<MemoryCache>(MEMORY_CACHE_TOKEN);
+    const cache: MemoryCache = scope.getRequiredService(MEMORY_CACHE_TYPE);
     expect(cache).toBeInstanceOf(MemoryCache);
     // Singleton: the same instance on every resolve.
-    expect(scope.resolve<MemoryCache>(MEMORY_CACHE_TOKEN)).toBe(cache);
+    const cacheAgain: MemoryCache = scope.getRequiredService(MEMORY_CACHE_TYPE);
+    expect(cacheAgain).toBe(cache);
 
     // The resolved cache actually works.
     cache.set('key', 'value');
@@ -39,14 +42,14 @@ describe('addMemoryCache', () => {
   });
 
   test('setup joins the options pipeline lazily and configures the cache', () => {
-    const services = new ServiceManifestClass<string>();
+    const services = new DefaultManifest<string>();
     let ran = 0;
 
     // The manifest is immutable, so `addMemoryCache` hands back a NEW manifest
     // carrying the registrations -- build from `returned`, not `services`.
     // Annotated: an AugmentationSet2-typed member's return widens to `any`, and a
     // resolve off `any` cannot take an explicit type argument.
-    const returned: IServiceManifest<string> = ServiceManifestMemoryCacheAugmentations.addMemoryCache(
+    const returned: Manifest<string> = ServiceManifestMemoryCacheAugmentations.addMemoryCache.call(
       services,
       (options) => {
         ran++;
@@ -59,7 +62,7 @@ describe('addMemoryCache', () => {
     // Lazy: the configure step has not run at registration/build time.
     expect(ran).toBe(0);
 
-    const cache = scope.resolve<MemoryCache>(MEMORY_CACHE_TOKEN);
+    const cache: MemoryCache = scope.getRequiredService(MEMORY_CACHE_TYPE);
     expect(ran).toBe(1);
     // The configured options reached the cache: statistics are tracked.
     cache.get('absent');
@@ -67,44 +70,45 @@ describe('addMemoryCache', () => {
   });
 
   test('the assembled IOptions<MemoryCacheOptions> is itself resolvable at its token', () => {
-    let services = new ServiceManifest<'singleton'>();
+    let services: Manifest<'singleton'> = new DefaultManifest<'singleton'>();
     services = services.addMemoryCache((options) => {
       options.name = 'configured';
     });
 
     const scope = services.build().createScope('singleton');
-    const options = scope.resolve<{ value: MemoryCacheOptions; }>(MEMORY_CACHE_OPTIONS_TOKEN);
+    const options: { value: MemoryCacheOptions; } = scope.getRequiredService(MEMORY_CACHE_OPTIONS_TYPE);
     expect(options.value).toBeInstanceOf(MemoryCacheOptions);
     expect(options.value.name).toBe('configured');
   });
 
   test('injects the registered ILoggerFactory into the cache', () => {
-    let services = new ServiceManifest<'singleton'>();
+    let services: Manifest<'singleton'> = new DefaultManifest<'singleton'>();
     const factory = new RecordingLoggerFactory();
-    services = services.addValue(LOGGER_FACTORY_TOKEN, factory);
+    services = services.addValue(LOGGER_FACTORY_TYPE, factory);
     services = services.addMemoryCache();
 
-    services.build().createScope('singleton').resolve<MemoryCache>(MEMORY_CACHE_TOKEN);
+    services.build().createScope('singleton').getRequiredService(MEMORY_CACHE_TYPE);
 
     expect(factory.categories).toEqual(['MemoryCache']);
   });
 
   test('resolves without a registered ILoggerFactory (null-logger fallback)', () => {
-    let services = new ServiceManifest<'singleton'>();
+    let services: Manifest<'singleton'> = new DefaultManifest<'singleton'>();
     services = services.addMemoryCache();
 
-    const cache = services.build().createScope('singleton').resolve<MemoryCache>(MEMORY_CACHE_TOKEN);
+    const cache: MemoryCache = services.build().createScope('singleton')
+      .getRequiredService(MEMORY_CACHE_TYPE);
     expect(cache).toBeInstanceOf(MemoryCache);
   });
 
   test('keeps an earlier IMemoryCache registration (the reference TryAdd semantics)', () => {
-    let services = new ServiceManifest<'singleton'>();
+    let services: Manifest<'singleton'> = new DefaultManifest<'singleton'>();
     const sentinel = { marker: 'pre-registered' };
-    services = services.addValue(MEMORY_CACHE_TOKEN, sentinel);
+    services = services.addValue(MEMORY_CACHE_TYPE, sentinel);
 
     services = services.addMemoryCache();
 
-    const resolved = services.build().createScope('singleton').resolve(MEMORY_CACHE_TOKEN);
+    const resolved = services.build().createScope('singleton').getRequiredService(MEMORY_CACHE_TYPE);
     expect(resolved).toBe(sentinel);
   });
 });

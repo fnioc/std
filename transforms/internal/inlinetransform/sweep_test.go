@@ -22,7 +22,7 @@ func activeResidueArtifacts() *Artifacts {
 	a := NewArtifacts()
 	a.Active = true
 	a.SugarMembers["isService"] = MemberShape{TypeArgCount: 1, ValueArgCount: 0}
-	a.SugarFunctions["tokenOf"] = "p"
+	a.FunctionSugars = append(a.FunctionSugars, &Resolved{Member: "tokenOf", Module: "p"})
 	return a
 }
 
@@ -112,31 +112,57 @@ const b = x.isService<Foo>('token');
 		shimast.SetParentInChildrenUnset(sf.AsNode())
 		a := NewArtifacts()
 		a.Active = true
-		a.SugarFunctions["tokenOf"] = "p"
+		a.FunctionSugars = append(a.FunctionSugars, &Resolved{Member: "tokenOf", Module: "p"})
 		if diags := Sweep(sf, a); len(diags) != 0 {
 			t.Fatalf("a free-function call whose import was elided must not be flagged, got %+v", diags)
 		}
 	})
 }
 
-// TestSweepFlagsSurvivingSingularValue covers the §94 targeted-diagnostic branch: a
-// registered `singularValue<T>()` that SURVIVED lowering (the singular stage left it
-// un-lowered over a non-singular type, and no fold pruned it) is flagged with the
-// specific SINGULAR_VALUE_NON_SINGULAR code — naming the failure — not the generic
-// INLINE_UNLOWERED_PRIMITIVE. A guarded singularValue is pruned before the sweep, so
-// one that reaches here is unguarded over a non-singular type.
-func TestSweepFlagsSurvivingSingularValue(t *testing.T) {
-	sf := parse(t, "/sweep/singular.ts", `const s = singularValue<Foo>();
+// TestSweepIgnoresSameNameFromAnotherModule: a free-function sugar is identified by
+// its declaring package, not by its spelling. A call to a same-named function
+// imported from somewhere else is a different function — the pairing a sugar body
+// that forwards to its own runtime namesake makes ordinary.
+func TestSweepIgnoresSameNameFromAnotherModule(t *testing.T) {
+	sf := parse(t, "/sweep/other-module.ts", `import { tokenOf } from 'q';
+export const v = tokenOf(1);
 `)
 	shimast.SetParentInChildrenUnset(sf.AsNode())
 
-	registered := callContaining(t, sf, "singularValue<")
-	artifacts := NewArtifacts()
-	artifacts.Active = true
-	artifacts.PrimitiveCalls[registered] = PrimitiveUse{Name: "singularValue"}
+	if diags := Sweep(sf, activeResidueArtifacts()); len(diags) != 0 {
+		t.Fatalf("a same-named function from another module is not the sugar, got %+v", diags)
+	}
+}
 
-	diags := Sweep(sf, artifacts)
-	if len(diags) != 1 || diags[0].Code != "SINGULAR_VALUE_NON_SINGULAR" {
-		t.Fatalf("expected 1 SINGULAR_VALUE_NON_SINGULAR from the surviving-singularValue branch, got %+v", diags)
+// TestSweepFlagsSugarFromItsDeclaringModule is the same shape from the package that
+// DOES declare the sugar: the call is the sugar, un-lowered, and must be flagged.
+func TestSweepFlagsSugarFromItsDeclaringModule(t *testing.T) {
+	sf := parse(t, "/sweep/own-module.ts", `import { tokenOf } from 'p';
+export const v = tokenOf(1);
+`)
+	shimast.SetParentInChildrenUnset(sf.AsNode())
+
+	diags := Sweep(sf, activeResidueArtifacts())
+	if len(diags) != 1 || diags[0].Code != "INLINE_UNLOWERED_SUGAR" {
+		t.Fatalf("want one INLINE_UNLOWERED_SUGAR, got %+v", diags)
+	}
+}
+
+// TestSweepIgnoresRuntimeForwardingTarget: a floater's body may forward its
+// calls to a same-named runtime function in another package (the substitution
+// mechanism materializes an import from that package). A surviving call to
+// THAT target is never mistaken for sugar residue — only a call importing the
+// name from the floater's OWN declaring package (Module) is.
+func TestSweepIgnoresRuntimeForwardingTarget(t *testing.T) {
+	sf := parse(t, "/sweep/forward-target.ts", `import { tokenOf } from 'runtime-pkg';
+export const v = tokenOf(1);
+`)
+	shimast.SetParentInChildrenUnset(sf.AsNode())
+
+	a := NewArtifacts()
+	a.Active = true
+	a.FunctionSugars = append(a.FunctionSugars, &Resolved{Member: "tokenOf", Module: "p"})
+	if diags := Sweep(sf, a); len(diags) != 0 {
+		t.Fatalf("a call to the runtime forwarding target must not be flagged, got %+v", diags)
 	}
 }

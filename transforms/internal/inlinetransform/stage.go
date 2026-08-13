@@ -8,6 +8,7 @@ package inlinetransform
 import (
 	"fmt"
 	"sort"
+	"strings"
 
 	shimast "github.com/microsoft/typescript-go/shim/ast"
 	shimchecker "github.com/microsoft/typescript-go/shim/checker"
@@ -53,10 +54,14 @@ func Build(prog *driver.Program, owned []OwnedEntry, artifacts *Artifacts, emit 
 		}
 		resolvedList = append(resolvedList, resolved)
 		for decl, body := range resolved.DeclMap {
+			if prev, taken := inlineByDecl[decl]; taken &&
+				!supersedes(declarationDiscriminator(decl), prev.body.Discriminator, body.Discriminator) {
+				continue
+			}
 			inlineByDecl[decl] = &matchTarget{resolved: resolved, body: body}
 		}
-		if resolved.Kind == KindFunction {
-			artifacts.SugarFunctions[resolved.Member] = resolved.Module
+		if resolved.Kind == KindFloater {
+			artifacts.FunctionSugars = append(artifacts.FunctionSugars, resolved)
 		} else {
 			artifacts.SugarMembers[resolved.Member] = MemberShape{
 				TypeArgCount:  resolved.Body.Discriminator.TypeParamCount,
@@ -73,7 +78,7 @@ func Build(prog *driver.Program, owned []OwnedEntry, artifacts *Artifacts, emit 
 	memberNames := map[string]bool{}
 	functionNames := map[string]bool{}
 	for _, r := range resolvedList {
-		if r.Kind == KindFunction {
+		if r.Kind == KindFloater {
 			functionNames[r.Member] = true
 		} else {
 			memberNames[r.Member] = true
@@ -116,15 +121,20 @@ type fileState struct {
 	emit          func(plugin.Diagnostic)
 	temps         []*shimast.Node // temps needing a hoisted `var` declaration
 	elideFns      map[string]bool // free-function local names now unreferenced
-	// runtimeCallees collects the (module, export) of every RUNTIME callee a
-	// substituted body referenced in this file (§99 `overrideSignatures`), so their
-	// imports are materialized once after the pass.
-	runtimeCallees map[valueimport.Ref]bool
+	// valueBindings holds, per (module, export) a substituted body referenced, how
+	// THIS file names that export — an existing import's local name, or the one the
+	// injected import will introduce. Resolved once per ref, so every call site in
+	// the file agrees and a single import materializes after the pass.
+	valueBindings map[valueimport.Ref]*valueimport.Binding
+	// file is the source file the current pass is rewriting, which value bindings
+	// resolve against.
+	file *shimast.SourceFile
 }
 
 func (st *fileState) run(sf *shimast.SourceFile) *shimast.SourceFile {
 	st.elideFns = map[string]bool{}
-	st.runtimeCallees = map[valueimport.Ref]bool{}
+	st.valueBindings = map[valueimport.Ref]*valueimport.Binding{}
+	st.file = sf
 	var visitor *shimast.NodeVisitor
 	visit := func(node *shimast.Node) *shimast.Node {
 		if node == nil {
@@ -145,21 +155,22 @@ func (st *fileState) run(sf *shimast.SourceFile) *shimast.SourceFile {
 	result := out.AsSourceFile()
 	result = st.hoistTemps(result)
 	result = st.elideFunctionImports(result)
-	result = st.materializeRuntimeCallees(result)
+	result = st.materializeValueImports(result)
 	return result
 }
 
-// materializeRuntimeCallees injects an import for every RUNTIME callee a
-// substituted body referenced in this file (§99 `overrideSignatures`), reusing an
-// existing binding when present. It returns sf unchanged when nothing was recorded
-// (or every callee was already imported), preserving the loop's pointer identity.
-// Refs are ordered deterministically so the injected import order is stable.
-func (st *fileState) materializeRuntimeCallees(sf *shimast.SourceFile) *shimast.SourceFile {
-	if len(st.runtimeCallees) == 0 {
+// materializeValueImports injects an import for every RUNTIME value a substituted
+// body referenced in this file, reusing an existing binding when present — the
+// body's own import declaration, carried across to the call site. It returns sf
+// unchanged when nothing was recorded (or every value was already imported),
+// preserving the loop's pointer identity. Refs are ordered deterministically so the
+// injected import order is stable.
+func (st *fileState) materializeValueImports(sf *shimast.SourceFile) *shimast.SourceFile {
+	if len(st.valueBindings) == 0 {
 		return sf
 	}
-	refs := make([]valueimport.Ref, 0, len(st.runtimeCallees))
-	for ref := range st.runtimeCallees {
+	refs := make([]valueimport.Ref, 0, len(st.valueBindings))
+	for ref := range st.valueBindings {
 		refs = append(refs, ref)
 	}
 	sort.Slice(refs, func(i, j int) bool {
@@ -168,14 +179,41 @@ func (st *fileState) materializeRuntimeCallees(sf *shimast.SourceFile) *shimast.
 		}
 		return refs[i].Export < refs[j].Export
 	})
-	factory := st.ec.Factory.AsNodeFactory()
 	bindings := make([]*valueimport.Binding, 0, len(refs))
 	for _, ref := range refs {
-		binding := valueimport.Resolve(sf, ref)
-		binding.Used = true
-		bindings = append(bindings, binding)
+		bindings = append(bindings, st.valueBindings[ref])
 	}
-	return valueimport.Ensure(factory, sf, bindings...)
+	return valueimport.Ensure(st.ec.Factory.AsNodeFactory(), sf, bindings...)
+}
+
+// importedValueBindings maps each value the body reaches through its own file's
+// import to the way THIS file names that same export. The two spellings differ
+// whenever the body aliases the import — the shape a sugar body takes when it
+// forwards to a runtime function of the same name — so the substituted expression
+// must carry the consumer's name, not the body's. Marking each binding used is what
+// makes materializeValueImports inject the import backing it.
+func (st *fileState) importedValueBindings(body *ResolvedBody) map[string]*shimast.Node {
+	if len(body.ValueImports) == 0 {
+		return nil
+	}
+	factory := st.ec.Factory.AsNodeFactory()
+	out := make(map[string]*shimast.Node, len(body.ValueImports))
+	for local, ref := range body.ValueImports {
+		binding := st.valueBinding(ref)
+		binding.Used = true
+		out[local] = binding.Expr(factory)
+	}
+	return out
+}
+
+// valueBinding resolves how this file names ref's export, once per ref.
+func (st *fileState) valueBinding(ref valueimport.Ref) *valueimport.Binding {
+	if binding, ok := st.valueBindings[ref]; ok {
+		return binding
+	}
+	binding := valueimport.Resolve(st.file, ref)
+	st.valueBindings[ref] = binding
+	return binding
 }
 
 // tryInline attempts to inline one call. It returns (replacement, true) when the
@@ -255,11 +293,6 @@ func (st *fileState) tryInline(node *shimast.Node) (*shimast.Node, bool) {
 	if !ok {
 		return nil, false
 	}
-	// A matched body always references its runtime callees (single-expression form),
-	// so record them for import materialization once the pass completes.
-	for _, ref := range target.body.RuntimeCallees {
-		st.runtimeCallees[ref] = true
-	}
 	return replacement, true
 }
 
@@ -300,10 +333,31 @@ func (st *fileState) inlineCall(node, anchored *shimast.Node, target *matchTarge
 		}
 	}
 
+	// A trailing rest parameter stands for every argument from its position on, so
+	// it is split off here: the leading parameters bind positionally as usual, and
+	// the rest is expanded where the body spreads it.
+	names := strippedParamNames(body.Params)
+	args := callArguments(call)
+	restParam := ""
+	var restArgs []*shimast.Node
+	if n := len(body.Params); n > 0 && strings.HasPrefix(body.Params[n-1], "...") {
+		restParam = names[n-1]
+		names = names[:n-1]
+		if len(args) > n-1 {
+			restArgs = args[n-1:]
+			args = args[:n-1]
+		} else {
+			args = args[:min(len(args), n-1)]
+		}
+	}
+
 	in := Inlining{
-		Body:   body.Body,
-		Params: strippedParamNames(body.Params),
-		Args:   callArguments(call),
+		Body:      body.Body,
+		Params:    names,
+		Args:      args,
+		RestParam: restParam,
+		RestArgs:  restArgs,
+		Bindings:  st.importedValueBindings(body),
 	}
 	// The arguments SPLICED into the body come from the CURRENT tree (above), so
 	// they carry whatever earlier passes lowered. The arguments the checker is
@@ -312,7 +366,7 @@ func (st *fileState) inlineCall(node, anchored *shimast.Node, target *matchTarge
 	// See anchorValueArg for why the pairing is positional rather than a walk back
 	// up the Original chain.
 	argAnchors := positionalArgAnchors(in.Args, callArguments(anchored.AsCallExpression()))
-	if target.resolved.Kind != KindFunction {
+	if target.resolved.Kind != KindFloater {
 		in.Receiver = call.Expression.AsPropertyAccessExpression().Expression
 	} else {
 		st.elideFns[target.resolved.Member] = true
@@ -430,20 +484,6 @@ const keyofPrimitiveName = "keyof"
 // Substitute returns the bare outer call; a non-call root (defensive) is left
 // untouched, keeping the keyof arg for the stage to lower to `void 0`.
 func (st *fileState) elideUnkeyedKeyArg(expr *shimast.Node, body *ResolvedBody, env map[string]*shimchecker.Type) *shimast.Node {
-	// The resolve-family bodies (§94) are a CONDITIONAL, not a bare call:
-	// `isSingular<T>() ? singularValue<T>() : this.resolve(tokenfor<T>(), keyof<T>())`.
-	// The keyof argument lives in the whenFalse branch (the token-resolve arm the
-	// fold keeps for a non-singular T), so descend there and elide from it. The
-	// singular whenTrue arm never carries a keyof, and the fold prunes it anyway.
-	if expr.Kind == shimast.KindConditionalExpression {
-		cond := expr.AsConditionalExpression()
-		newWhenFalse := st.elideUnkeyedKeyArg(cond.WhenFalse, body, env)
-		if newWhenFalse == cond.WhenFalse {
-			return expr
-		}
-		factory := st.ec.Factory.AsNodeFactory()
-		return factory.UpdateConditionalExpression(cond, cond.Condition, cond.QuestionToken, cond.WhenTrue, cond.ColonToken, newWhenFalse)
-	}
 	if expr.Kind != shimast.KindCallExpression {
 		return expr
 	}
@@ -704,6 +744,14 @@ func (st *fileState) isRogueDuplicate(decl *shimast.Node, calleeName string) boo
 		}
 	}
 	return false
+}
+
+// supersedes reports whether a candidate body should displace one already chosen
+// for the same declaration. A body that names the declaration's parameters
+// exactly beats one that only absorbed them into a rest; at equal specificity the
+// incumbent stays, so the owned-entry order decides and map iteration never does.
+func supersedes(decl, incumbent, candidate Discriminator) bool {
+	return decl.Equal(candidate) && !decl.Equal(incumbent)
 }
 
 // hoistTemps prepends a `var <temp>;` declaration for every single-eval temp the

@@ -361,13 +361,16 @@ type guardedParam struct {
 // the bare always-pass form (extension wins, chain order breaks ties).
 func (s *synthesizer) strategyFor(m member) *shimast.Node {
 	params := functionParameters(m.fn)
-	if len(params) < 1 {
-		return s.alwaysPassStrategy()
-	}
 	typeParams := typeParameterNames(m.fn)
 
-	// Non-receiver parameters, positionally: params[i+1] guards args[i].
-	guardable := params[1:]
+	// Parameters pair with the call positionally: params[i] guards args[i]. An
+	// explicit `this` parameter is type-only and never part of the call.
+	guardable := params
+	if len(guardable) > 0 {
+		if name := guardable[0].AsParameterDeclaration().Name(); name != nil && name.Kind == shimast.KindIdentifier && name.Text() == "this" {
+			guardable = guardable[1:]
+		}
+	}
 	guards := make([]guardedParam, 0, len(guardable))
 	minArity := 0
 	maxArity := 0
@@ -1465,11 +1468,11 @@ func typeNameOf(typeNode *shimast.Node) string {
 // alwaysPassStrategy emits the un-derivable-member fallback:
 //
 //	function (original, extension) {
-//	    return function (...args) { return extension(this, ...args); };
+//	    return function (...args) { return extension.call(this, ...args); };
 //	}
 func (s *synthesizer) alwaysPassStrategy() *shimast.Node {
 	f := s.factory()
-	inner := s.dispatcherFunction(callReceiverFirst(f, "extension"))
+	inner := s.dispatcherFunction(callBound(f, "extension"))
 	return strategyFunction(f, f.NewBlock(f.NewNodeList([]*shimast.Node{f.NewReturnStatement(inner)}), true))
 }
 
@@ -1558,9 +1561,9 @@ func (s *synthesizer) guardedStrategy(guards []guardedParam, minArity, maxArity 
 	dispatch := f.NewConditionalExpression(
 		condition,
 		f.NewToken(shimast.KindQuestionToken),
-		callReceiverFirst(f, "extension"),
+		callBound(f, "extension"),
 		f.NewToken(shimast.KindColonToken),
-		callOriginal(f),
+		callBound(f, "original"),
 	)
 	inner := s.dispatcherFunction(dispatch)
 
@@ -1592,26 +1595,11 @@ func strategyFunction(f *shimast.NodeFactory, body *shimast.Node) *shimast.Node 
 	return f.NewFunctionExpression(nil, nil, nil, nil, f.NewNodeList(parameters), nil, nil, body)
 }
 
-// callReceiverFirst emits `<name>(this, ...args)` — the receiver-first calling
-// convention of an augmentation function.
-func callReceiverFirst(f *shimast.NodeFactory, name string) *shimast.Node {
+// callBound emits `<name>.call(this, ...args)` — both dispatch arms are
+// `this`-based members, forwarded with the dispatcher's own receiver.
+func callBound(f *shimast.NodeFactory, name string) *shimast.Node {
 	return f.NewCallExpression(
-		f.NewIdentifier(name),
-		nil,
-		nil,
-		f.NewNodeList([]*shimast.Node{
-			f.NewKeywordExpression(shimast.KindThisKeyword),
-			f.NewSpreadElement(f.NewIdentifier("args")),
-		}),
-		shimast.NodeFlagsNone,
-	)
-}
-
-// callOriginal emits `original.call(this, ...args)` — the this-bound fall
-// through to whatever previously held the member slot.
-func callOriginal(f *shimast.NodeFactory) *shimast.Node {
-	return f.NewCallExpression(
-		f.NewPropertyAccessExpression(f.NewIdentifier("original"), nil, f.NewIdentifier("call"), shimast.NodeFlagsNone),
+		f.NewPropertyAccessExpression(f.NewIdentifier(name), nil, f.NewIdentifier("call"), shimast.NodeFlagsNone),
 		nil,
 		nil,
 		f.NewNodeList([]*shimast.Node{

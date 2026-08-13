@@ -23,11 +23,11 @@ describe('MemoryCacheEntryOptionsSugarAugmentations — standalone member form',
     const callback: PostEvictionDelegate = () => {};
     const state = { tag: 'state' };
 
-    const chained = MemoryCacheEntryOptionsSugarAugmentations.registerPostEvictionCallback(
-      MemoryCacheEntryOptionsSugarAugmentations.addExpirationToken(
-        MemoryCacheEntryOptionsSugarAugmentations.setSlidingExpiration(
-          MemoryCacheEntryOptionsSugarAugmentations.setSize(
-            MemoryCacheEntryOptionsSugarAugmentations.setPriority(options, CacheItemPriority.High),
+    const chained = MemoryCacheEntryOptionsSugarAugmentations.registerPostEvictionCallback.call(
+      MemoryCacheEntryOptionsSugarAugmentations.addExpirationToken.call(
+        MemoryCacheEntryOptionsSugarAugmentations.setSlidingExpiration.call(
+          MemoryCacheEntryOptionsSugarAugmentations.setSize.call(
+            MemoryCacheEntryOptionsSugarAugmentations.setPriority.call(options, CacheItemPriority.High),
             42,
           ),
           1_000,
@@ -49,25 +49,27 @@ describe('MemoryCacheEntryOptionsSugarAugmentations — standalone member form',
   });
 
   test('setAbsoluteExpiration discriminates ms-relative from absolute Date', () => {
-    const relative = MemoryCacheEntryOptionsSugarAugmentations.setAbsoluteExpiration(new MemoryCacheEntryOptions(),
+    const relative = MemoryCacheEntryOptionsSugarAugmentations.setAbsoluteExpiration.call(new MemoryCacheEntryOptions(),
       5_000);
     expect(relative.absoluteExpirationRelativeToNow).toBe(5_000);
     expect(relative.absoluteExpiration).toBeUndefined();
 
     const when = new Date(Date.now() + 60_000);
-    const absolute = MemoryCacheEntryOptionsSugarAugmentations.setAbsoluteExpiration(new MemoryCacheEntryOptions(),
+    const absolute = MemoryCacheEntryOptionsSugarAugmentations.setAbsoluteExpiration.call(new MemoryCacheEntryOptions(),
       when);
     expect(absolute.absoluteExpiration).toBe(when);
     expect(absolute.absoluteExpirationRelativeToNow).toBeUndefined();
   });
 
   test("invalid values throw the bag's own RangeErrors", () => {
-    expect(() => MemoryCacheEntryOptionsSugarAugmentations.setSize(new MemoryCacheEntryOptions(), -1)).toThrow(
+    expect(() => MemoryCacheEntryOptionsSugarAugmentations.setSize.call(new MemoryCacheEntryOptions(), -1)).toThrow(
       RangeError,
     );
-    expect(() => MemoryCacheEntryOptionsSugarAugmentations.setSlidingExpiration(new MemoryCacheEntryOptions(), 0))
+    expect(() => MemoryCacheEntryOptionsSugarAugmentations.setSlidingExpiration.call(new MemoryCacheEntryOptions(), 0))
       .toThrow(RangeError);
-    expect(() => MemoryCacheEntryOptionsSugarAugmentations.setAbsoluteExpiration(new MemoryCacheEntryOptions(), -5))
+    expect(() =>
+      MemoryCacheEntryOptionsSugarAugmentations.setAbsoluteExpiration.call(new MemoryCacheEntryOptions(), -5)
+    )
       .toThrow(
         RangeError,
       );
@@ -84,12 +86,12 @@ describe('MemoryCacheEntryOptionsSugarAugmentations — method form (CLOSED-set 
       2_000,
     ).setAbsoluteExpiration(when).addExpirationToken(token).registerPostEvictionCallback(callback);
 
-    const viaMember = MemoryCacheEntryOptionsSugarAugmentations.registerPostEvictionCallback(
-      MemoryCacheEntryOptionsSugarAugmentations.addExpirationToken(
-        MemoryCacheEntryOptionsSugarAugmentations.setAbsoluteExpiration(
-          MemoryCacheEntryOptionsSugarAugmentations.setSlidingExpiration(
-            MemoryCacheEntryOptionsSugarAugmentations.setSize(
-              MemoryCacheEntryOptionsSugarAugmentations.setPriority(new MemoryCacheEntryOptions(),
+    const viaMember = MemoryCacheEntryOptionsSugarAugmentations.registerPostEvictionCallback.call(
+      MemoryCacheEntryOptionsSugarAugmentations.addExpirationToken.call(
+        MemoryCacheEntryOptionsSugarAugmentations.setAbsoluteExpiration.call(
+          MemoryCacheEntryOptionsSugarAugmentations.setSlidingExpiration.call(
+            MemoryCacheEntryOptionsSugarAugmentations.setSize.call(
+              MemoryCacheEntryOptionsSugarAugmentations.setPriority.call(new MemoryCacheEntryOptions(),
                 CacheItemPriority.Low),
               7,
             ),

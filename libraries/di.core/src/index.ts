@@ -1,102 +1,13 @@
-/**
- * @rhombus-std/di.core — the ioc ABSTRACTIONS substrate.
- *
- * A LIBRARY AUTHOR depends on this package to author registrations and
- * dependency signatures WITHOUT pulling the `@rhombus-std/di` resolution engine.
- * It carries the dependency-signature data format, the slot/token type surface
- * and its grammar/guard/constructor helpers, the registration ABI, and the
- * concrete registration builder `ServiceManifestClass` (collects
- * `addClass`/`addFactory`/`addValue`; a working `build()` arrives with
- * `@rhombus-std/di`). Cross-package fluent-authoring augmentations prototype-patch
- * that class, and depend on di.core ALONE, never the runtime.
- *
- * Runtime footprint: the slot/token helpers, the registration builder, the
- * `EmptyServiceProvider` null-object singleton, and the whole error taxonomy —
- * registration-time AND resolution-time, so a library that references only the
- * abstractions can classify a container failure without pulling the engine. Only
- * the resolution engine itself (`ServiceProviderClass`) lives in
- * `@rhombus-std/di`.
- */
+export { Type, TypeVisitor } from '@rhombus-std/primitives';
+export type { CtorType, FunctionType, IntersectionType, IServiceProvider, NamedType, ObjectType, PlaceholderType,
+  TagType, TupleType, TypeIdentifier, TypeLiteralType, UnionType } from '@rhombus-std/primitives';
 
-export type { DepSignatures, DepSlot, DepTarget, FactoryRef, LiteralRef, ParsedToken, Token, TypeArgRef,
-  Union } from './types.js';
+export * from './brands';
+export * from './builder';
+export * from './Errors';
+export * from './Manifest';
+export * from './resolver';
+export * from './ServiceDescriptor';
+export * from './ServiceScope';
 
-// The compile-time authoring brands (`Inject`, `Hole`, `$`, `Keyed`, `Typeof`).
-// `$<N>` is the ONE spelling of a bare hole — `$1`…`$9` are the wire text of a
-// hole inside a token STRING, never a type.
-export type { $, Hole, Inject, Keyed, Typeof } from './brands.js';
-
-// The authoring surface: the collection interface plus the `AddChain` slot
-// algebra a registration call returns (`Slot` + the four modifier faces).
-export type { AddChain, IAsBuilder, IServiceManifestBase, IServiceManifestHolder, IWithKeyBuilder,
-  IWithSignatureBuilder, IWithSignaturesBuilder, Slot } from './authoring.js';
-
-// The concrete registration builder plus the public authoring interface it is
-// bound to. The class is a runtime value; augmentations prototype-patch it.
-export { ServiceManifestClass } from './IServiceManifest.js';
-export type { IServiceManifest } from './IServiceManifest.js';
-
-export type { Ctor, Factory, ManifestEntry, OpenRegistration, Producer, Registration } from './registrations.js';
-
-export type { IRequiredResolver, IResolver, IScopeFactory, IServiceProvider, IServiceQuery,
-  Lifetime } from './provider.js';
-
-// The pluggable provider-factory seam. A single-container no-op here, but named
-// so every hosting reference to it shares one type.
-export type { IServiceProviderFactory } from './IServiceProviderFactory.js';
-
-// The provider-construction options `build(options?)` accepts — pure data; the
-// engine reads the flags.
-export type { ServiceProviderOptions } from './ServiceProviderOptions.js';
-
-// The slot/token ABI runtime helpers. A di consumer reaches these through the
-// re-export in `@rhombus-std/di`; a core-only author authors the same shapes as
-// plain data literals.
-export { isFactoryRef, isLiteralRef, isTypeArgRef, isUnionSlot } from './guards.js';
-export { typeArg, union } from './slots.js';
-
-// The compile-time dependency-signature MINT primitives — derive a `DepSlot`
-// signature from an explicit type tuple (`signaturefor<[A, B]>()`) or the whole
-// overload set from a tuple-of-tuples (`signaturesfor<...>()`). They live here,
-// not in `@rhombus-std/primitives`, because they produce di.core's `DepSlot`
-// shape and every caller already depends on di.core.
-export { overrideSignatures } from './overrideSignatures.js';
-export { signaturefor, SIGNATUREFOR_NAME, signaturesfor, SIGNATURESFOR_NAME } from './signaturefor.js';
-
-// The unified token/slot expression tree — ONE plain-data `TokenNode` tree every
-// token op walks (`@rhombus-std/di` consumes it to close open registrations). A
-// token STRING is the wire identity; `TokenNode` is its transient parsed view.
-// The `TokenNode.*` companion carries the pure ops (parse / tryParse / toString /
-// canonicalise / baseKey / isOpen); the visitor CLASSES carry the mutating/query
-// ops. `closeToken`/`isOpenToken`/`parseToken`/`unkeyedToken` are the
-// classification/compose edge — `isOpenToken` off the typed tree, the other
-// three shallow string work.
-export type { ConcreteNode, FactoryNode, HoleNode, LiteralNode, ProviderNode, UnionNode } from './token/index.js';
-export { TokenNode } from './token/index.js';
-export { Matcher, Specificity, Substituter, TokenRewriter, TokenWalker, Validator } from './token/index.js';
-export { closeSignatures, parseSlot, serialiseSlot } from './token/index.js';
-export { closeToken, isOpenToken, parseToken, unkeyedToken } from './token/index.js';
-
-// The intrinsic provider token — a `IResolver`-typed parameter derives it, and
-// the engine resolves it to the live provider view (see `provider-token.ts`).
-export { isProviderToken, RESOLVER_TOKEN } from './provider-token.js';
-
-// The shared null-object provider singleton — a `IServiceProvider` with no
-// application services.
-export { EmptyServiceProvider } from './EmptyServiceProvider.js';
-
-// The WHOLE error taxonomy: the `DiError` root, the registration-time errors the
-// builder here raises, and the resolution-time errors the engine raises. It all
-// lives in the abstractions package so a di.core-only library can classify what
-// a caller's container threw — branch, add context, re-raise — without taking a
-// dependency on `@rhombus-std/di` (which re-exports these).
-export { AsyncDisposalRequiredError, AsyncResolutionRequiredError, CircularDependencyError, DiError, FactoryTargetError,
-  MissingMetadataError, NoSatisfiableSignatureError, NoSatisfiableUnionError, OpenTokenRegistrationError,
-  OpenTokenResolutionError, ProviderDisposedError, RegistrationValidationError, ScopeValidationError,
-  UnregisteredTokenError } from './errors.js';
-
-// The descriptor-level mutation augmentation (`removeAll`, `tryAdd*`, `replace*`).
-// A side-effect import: pulling the barrel registers it against the
-// `ServiceManifest` token, installing the verbs onto the collection prototype.
-// The const itself is the standalone call surface.
-export { ServiceManifestDescriptorAugmentations } from './augmentations/ServiceManifest-Descriptor-augmentations.js';
+import './augmentations';

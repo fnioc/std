@@ -8,9 +8,8 @@
 // own member names (`setWithOptions`, `getOrCreateWithOptions`,
 // `getOrCreateAsyncWithOptions`) rather than a further argument shape.
 
-import { type AugmentationSet2, type Flatten, type IChangeToken, type MergeStrategies,
-  registerAugmentations } from '@rhombus-std/primitives';
-import { tokenfor } from '@rhombus-std/primitives.extras';
+import type { AugmentationSet2, Flatten, IChangeToken, MergeStrategies } from '@rhombus-std/primitives';
+import { registerAugmentations } from '@rhombus-std/primitives.extras';
 import type { Func } from '@rhombus-toolkit/func';
 import { CacheEntrySugarAugmentations } from './CacheEntry-Sugar-augmentations';
 import type { ICacheEntry } from './ICacheEntry';
@@ -74,24 +73,24 @@ export const MemoryCacheSugarAugmentations: AugmentationSet2<IMemoryCache,
      * type parameter is an unchecked cast -- the stored value is not
      * runtime-verified against it.
      */
-    get(cache, key) {
-      const result = cache.tryGetValue(key);
+    get(key) {
+      const result = this.tryGetValue(key);
       return result[0] ? result[1] : undefined;
     },
 
     /** Tries to get the value associated with `key`: `[true, value]` on a hit, `[false]` on a miss. */
-    tryGetValue(cache, key) {
-      const result = cache.tryGetValue(key);
+    tryGetValue(key) {
+      const result = this.tryGetValue(key);
       return result[0] ? [true, result[1]] : [false];
     },
 
     /** Associates `value` with `key`, optionally expiring it per `expiration`. */
-    set(cache, key, value, expiration) {
+    set(key, value, expiration) {
       // Dispose in `finally`: a throw between creation and commit must still
       // dispose the entry -- an undisposed entry would wedge the linked-entry
       // tracking chain, and disposing without a value set abandons it without
       // committing.
-      const entry = cache.createEntry(key);
+      const entry = this.createEntry(key);
       try {
         applyExpiration(entry, expiration);
         entry.value = value;
@@ -106,13 +105,13 @@ export const MemoryCacheSugarAugmentations: AugmentationSet2<IMemoryCache,
      * one, stores it, and returns it. `factory` receives the fresh
      * {@link ICacheEntry} so it can set expiration/size before the value commits.
      */
-    getOrCreate(cache, key, factory) {
-      const result = cache.tryGetValue(key);
+    getOrCreate(key, factory) {
+      const result = this.tryGetValue(key);
       if (result[0]) {
         return result[1];
       }
       // Dispose in `finally` -- see `set`.
-      const entry = cache.createEntry(key);
+      const entry = this.createEntry(key);
       let value: unknown;
       try {
         value = factory(entry);
@@ -124,13 +123,13 @@ export const MemoryCacheSugarAugmentations: AugmentationSet2<IMemoryCache,
     },
 
     /** Async {@link MemoryCacheSugarAugmentations.getOrCreate}: awaits `factory` when the key is absent. */
-    async getOrCreateAsync(cache, key, factory) {
-      const result = cache.tryGetValue(key);
+    async getOrCreateAsync(key, factory) {
+      const result = this.tryGetValue(key);
       if (result[0]) {
         return result[1];
       }
       // Dispose in `finally` -- see `set`.
-      const entry = cache.createEntry(key);
+      const entry = this.createEntry(key);
       let value: unknown;
       try {
         value = await factory(entry);
@@ -142,12 +141,12 @@ export const MemoryCacheSugarAugmentations: AugmentationSet2<IMemoryCache,
     },
 
     /** Sets `value` at `key`, applying `options` to the entry. */
-    setWithOptions(cache, key, value, options) {
+    setWithOptions(key, value, options) {
       // Dispose in `finally` -- see `set`.
-      const entry = cache.createEntry(key);
+      const entry = this.createEntry(key);
       try {
         if (options !== undefined) {
-          CacheEntrySugarAugmentations.setOptions(entry, options);
+          CacheEntrySugarAugmentations.setOptions.call(entry, options);
         }
         entry.value = value;
       } finally {
@@ -160,17 +159,17 @@ export const MemoryCacheSugarAugmentations: AugmentationSet2<IMemoryCache,
      * {@link MemoryCacheSugarAugmentations.getOrCreate} with `createOptions` applied to the fresh
      * entry before the factory runs.
      */
-    getOrCreateWithOptions(cache, key, factory, createOptions) {
-      const result = cache.tryGetValue(key);
+    getOrCreateWithOptions(key, factory, createOptions) {
+      const result = this.tryGetValue(key);
       if (result[0]) {
         return result[1];
       }
       // Dispose in `finally` -- see `set`.
-      const entry = cache.createEntry(key);
+      const entry = this.createEntry(key);
       let value: unknown;
       try {
         if (createOptions !== undefined) {
-          CacheEntrySugarAugmentations.setOptions(entry, createOptions);
+          CacheEntrySugarAugmentations.setOptions.call(entry, createOptions);
         }
         value = factory(entry);
         entry.value = value;
@@ -181,17 +180,17 @@ export const MemoryCacheSugarAugmentations: AugmentationSet2<IMemoryCache,
     },
 
     /** Async {@link MemoryCacheSugarAugmentations.getOrCreateWithOptions}. */
-    async getOrCreateAsyncWithOptions(cache, key, factory, createOptions) {
-      const result = cache.tryGetValue(key);
+    async getOrCreateAsyncWithOptions(key, factory, createOptions) {
+      const result = this.tryGetValue(key);
       if (result[0]) {
         return result[1];
       }
       // Dispose in `finally` -- see `set`.
-      const entry = cache.createEntry(key);
+      const entry = this.createEntry(key);
       let value: unknown;
       try {
         if (createOptions !== undefined) {
-          CacheEntrySugarAugmentations.setOptions(entry, createOptions);
+          CacheEntrySugarAugmentations.setOptions.call(entry, createOptions);
         }
         value = await factory(entry);
         entry.value = value;
@@ -212,4 +211,4 @@ const cacheMerge = { tryGetValue(original, _incoming) {
   };
 } } satisfies MergeStrategies;
 
-registerAugmentations(tokenfor<IMemoryCache>(), MemoryCacheSugarAugmentations, cacheMerge);
+registerAugmentations<IMemoryCache>(MemoryCacheSugarAugmentations, cacheMerge);

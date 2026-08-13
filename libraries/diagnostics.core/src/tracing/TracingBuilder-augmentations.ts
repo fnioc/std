@@ -9,11 +9,11 @@
 // any consumer that enumerates the listener builders.
 
 import type { IConfigureOptions } from '@rhombus-std/options';
-import { type AugmentationSet2, type Flatten, registerAugmentations } from '@rhombus-std/primitives';
-import { tokenfor } from '@rhombus-std/primitives.extras';
+import type { AugmentationSet2, Flatten } from '@rhombus-std/primitives';
+import { registerAugmentations } from '@rhombus-std/primitives.extras';
 import type { Func } from '@rhombus-toolkit/func';
 
-import { TRACING_CONFIGURE_TOKEN, TRACING_LISTENER_TOKEN } from '../tokens';
+import { TRACING_CONFIGURE_TYPE, TRACING_LISTENER_TYPE } from '../types';
 import { ActivityListenerBuilder } from './ActivityListenerBuilder';
 import { ACTIVITY_SOURCE_SCOPES_ALL, ActivitySourceScopes } from './ActivitySourceScopes';
 import type { ITracingBuilder } from './ITracingBuilder';
@@ -50,37 +50,37 @@ function configureTracing(builder: ITracingBuilder, apply: Func<[options: Tracin
   const step: IConfigureOptions<TracingOptions> = { configure(options: TracingOptions): void {
     apply(options);
   } };
-  builder.services = builder.services.addValue(TRACING_CONFIGURE_TOKEN, step);
+  builder.services = builder.services.addValue(TRACING_CONFIGURE_TYPE, step);
   return builder;
 }
 
 export const TracingBuilderAugmentations: AugmentationSet2<ITracingBuilder, Flatten<ITracingBuilderAugmentations>> = {
-  addTracingListener(builder, name, configure) {
+  addTracingListener(name, configure) {
     if (!name) {
       throw new Error('A tracing listener name must be a non-empty string.');
     }
     const listenerBuilder = new ActivityListenerBuilder(name);
     configure(listenerBuilder);
-    builder.services = builder.services.addValue(TRACING_LISTENER_TOKEN, listenerBuilder);
-    return builder;
+    this.services = this.services.addValue(TRACING_LISTENER_TYPE, listenerBuilder);
+    return this;
   },
-  clearTracingListeners(builder) {
+  clearTracingListeners() {
     // See the sibling MetricsBuilder-augmentations.ts `clearMetricsListeners`
     // comment: the cast works around a TS structural-comparison depth limit on
-    // `IServiceManifestBase`'s large overload surface, not a real type error.
-    builder.services = builder.services.removeAll(TRACING_LISTENER_TOKEN) as typeof builder.services;
-    return builder;
+    // `Manifest`'s large overload surface, not a real type error.
+    this.services = this.services.removeAll(TRACING_LISTENER_TYPE) as typeof this.services;
+    return this;
   },
-  enableTracing(builder, sourceName, operationName, listenerName, scopes = ACTIVITY_SOURCE_SCOPES_ALL) {
-    return configureTracing(builder, (options) => {
-      TracingOptionsAugmentations.enableTracing(options, sourceName, operationName, listenerName, scopes);
+  enableTracing(sourceName, operationName, listenerName, scopes = ACTIVITY_SOURCE_SCOPES_ALL) {
+    return configureTracing(this, (options) => {
+      TracingOptionsAugmentations.enableTracing.call(options, sourceName, operationName, listenerName, scopes);
     });
   },
-  disableTracing(builder, sourceName, operationName, listenerName, scopes = ACTIVITY_SOURCE_SCOPES_ALL) {
-    return configureTracing(builder, (options) => {
-      TracingOptionsAugmentations.disableTracing(options, sourceName, operationName, listenerName, scopes);
+  disableTracing(sourceName, operationName, listenerName, scopes = ACTIVITY_SOURCE_SCOPES_ALL) {
+    return configureTracing(this, (options) => {
+      TracingOptionsAugmentations.disableTracing.call(options, sourceName, operationName, listenerName, scopes);
     });
   },
 };
 
-registerAugmentations(tokenfor<ITracingBuilder>(), TracingBuilderAugmentations);
+registerAugmentations<ITracingBuilder>(TracingBuilderAugmentations);

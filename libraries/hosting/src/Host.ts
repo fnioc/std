@@ -8,7 +8,7 @@ import { HostBuilderHostingAugmentations } from './HostBuilder-Hosting-augmentat
 export const Host = {
   /** A classic {@link HostBuilder} with the pre-configured defaults applied. */
   createDefaultBuilder(args?: readonly string[]): IHostBuilder {
-    return HostBuilderHostingAugmentations.configureDefaults(new HostBuilder(), args);
+    return HostBuilderHostingAugmentations.configureDefaults.call(new HostBuilder(), args);
   },
 
   /**

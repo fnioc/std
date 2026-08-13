@@ -2,9 +2,7 @@ package tokens
 
 import (
 	"fmt"
-	"sort"
 	"strconv"
-	"strings"
 
 	shimast "github.com/microsoft/typescript-go/shim/ast"
 	shimchecker "github.com/microsoft/typescript-go/shim/checker"
@@ -17,10 +15,9 @@ import (
 var collectionTokenBases = map[string]bool{"Array": true, "Iterable": true}
 
 // This file holds the shared token-derivation helpers (intrinsic / literal / base
-// / generic-argument rendering) that DeriveTokenF (holes.go) composes into the ONE
-// derivation the engine uses. The former plain, non-hole-aware DeriveToken was
-// removed in W6p3 with its last caller (the deleted di_options stage); DeriveTokenF
-// is byte-identical to it for a closed (hole-free) type and is now the sole entry.
+// / generic-argument rendering) that DeriveTypeF (typenode.go) composes into the
+// ONE derivation the engine uses; DeriveTokenF (holes.go) renders that tree into
+// the flat token string every string caller wants.
 
 // intrinsicToken returns the bare token for an intrinsic type (string / number /
 // boolean / symbol / bigint / any / unknown / void / never), or ok=false for a
@@ -43,37 +40,6 @@ func intrinsicToken(t *shimchecker.Type) (string, bool) {
 		return "", false
 	}
 	return name, true
-}
-
-// literalToken renders a single literal type or a pure-literal union as its
-// deterministic token, or ok=false for a non-literal type. Union members are
-// rendered as valid TS, sorted, and ` | `-joined. Wide boolean (the false | true
-// union) is excluded so it tokenizes as the bare scalar "boolean".
-func literalToken(t *shimchecker.Type) (string, bool) {
-	flags := t.Flags()
-	if flags&shimchecker.TypeFlagsBoolean != 0 && flags&shimchecker.TypeFlagsBooleanLiteral == 0 {
-		return "", false
-	}
-	if text, ok := literalText(t); ok {
-		return text, true
-	}
-	if flags&shimchecker.TypeFlagsUnion != 0 {
-		members := t.Types()
-		parts := make([]string, 0, len(members))
-		for _, member := range members {
-			text, ok := literalText(member)
-			if !ok {
-				return "", false
-			}
-			parts = append(parts, text)
-		}
-		if len(parts) == 0 {
-			return "", false
-		}
-		sort.Strings(parts)
-		return strings.Join(parts, " | "), true
-	}
-	return "", false
 }
 
 // literalText renders a single literal type as its valid-TS text (string
@@ -194,19 +160,28 @@ func primaryDeclaration(symbol *shimast.Symbol) *shimast.Node {
 // baseTokenFor renders the base token `<source>:<exportName>` for a named
 // symbol. A default-lib type tokenizes as its bare symbol name.
 func baseTokenFor(ctx *Context, symbol *shimast.Symbol, sourceFile *shimast.SourceFile) string {
+	from, name := baseTokenForPair(ctx, symbol, sourceFile)
+	return renderNamedBase(from, name)
+}
+
+// baseTokenForPair is baseTokenFor split into the FROM/NAME pair a structural
+// `Type.named(name, from)` call takes, rather than the flat token string. A
+// default-lib type's FROM is the "global" sentinel — the same value that means
+// "no qualifier" when renderNamedBase joins the pair back into a bare name.
+func baseTokenForPair(ctx *Context, symbol *shimast.Symbol, sourceFile *shimast.SourceFile) (from, name string) {
 	if ctx.IsDefaultLib != nil && ctx.IsDefaultLib(sourceFile) {
-		return symbol.Name
+		return "global", symbol.Name
 	}
 	exportName := qualifiedExportName(symbol)
 	declPath := sourceFile.FileName()
 	pkg := nearestPackage(ctx, declPath)
 	if pkg != nil {
 		if spec, ok := publicImportSpecifier(ctx, pkg, symbol, sourceFile); ok {
-			return spec + ":" + exportName
+			return spec, exportName
 		}
-		return tokentext.PackagePrivateToken(pkg.name, pkg.dir, declPath, exportName)
+		return tokentext.PackagePrivateTokenParts(pkg.name, pkg.dir, declPath, exportName)
 	}
-	return tokentext.RootlessToken(declPath, exportName, ctx.ProjectRoot)
+	return tokentext.RootlessTokenParts(declPath, exportName, ctx.ProjectRoot)
 }
 
 // qualifiedExportName is the module-qualified declared name of a symbol: bare for

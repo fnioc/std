@@ -1,9 +1,8 @@
-import { AbortController, type AbortSignal, type AugmentationSet2, clearTimeout, neverSignal, registerAugmentations,
+import { AbortController, type AbortSignal, type AugmentationSet2, clearTimeout, neverSignal,
   setTimeout } from '@rhombus-std/primitives';
-import { tokenfor } from '@rhombus-std/primitives.extras';
+import { registerAugmentations } from '@rhombus-std/primitives.extras';
 import type { IHost } from './IHost';
-import type { IHostApplicationLifetime } from './IHostApplicationLifetime';
-import { HOST_APPLICATION_LIFETIME_TOKEN } from './tokens';
+import { HOST_APPLICATION_LIFETIME_TYPE } from './types';
 
 type IHostLifecycleAugmentations = {
   /** Alias for {@link runAsync} — there is no separate synchronous entry point in JS. */
@@ -43,27 +42,27 @@ function whenAborted(signal: AbortSignal): Promise<void> {
 
 /** Augmentation set for {@link IHost}; each member is also directly callable. */
 export const HostLifecycleAugmentations: AugmentationSet2<IHost, IHostLifecycleAugmentations> = {
-  run(host, abortSignal) {
-    return HostLifecycleAugmentations.runAsync(host, abortSignal);
+  run(abortSignal) {
+    return HostLifecycleAugmentations.runAsync.call(this, abortSignal);
   },
 
-  async runAsync(host, abortSignal) {
+  async runAsync(abortSignal) {
     try {
-      await host.start(abortSignal);
-      await HostLifecycleAugmentations.waitForShutdownAsync(host, abortSignal);
+      await this.start(abortSignal);
+      await HostLifecycleAugmentations.waitForShutdownAsync.call(this, abortSignal);
     } finally {
-      const asyncDisposable = host as Partial<AsyncDisposable>;
+      const asyncDisposable = this as Partial<AsyncDisposable>;
       const disposeAsync = asyncDisposable[Symbol.asyncDispose];
       if (typeof disposeAsync === 'function') {
-        await disposeAsync.call(host);
+        await disposeAsync.call(this);
       } else {
-        host[Symbol.dispose]();
+        this[Symbol.dispose]();
       }
     }
   },
 
-  async waitForShutdownAsync(host, abortSignal) {
-    const lifetime = host.services.resolve<IHostApplicationLifetime>(HOST_APPLICATION_LIFETIME_TOKEN);
+  async waitForShutdownAsync(abortSignal) {
+    const lifetime = this.services.getRequiredService(HOST_APPLICATION_LIFETIME_TYPE);
 
     const requestStop = (): void => lifetime.stopApplication();
     if (abortSignal !== undefined) {
@@ -82,18 +81,18 @@ export const HostLifecycleAugmentations: AugmentationSet2<IHost, IHostLifecycleA
 
     // Don't forward the abort signal -- it may have been triggered only to
     // unblock the wait, and forwarding it would trigger an abortive shutdown.
-    await host.stop(neverSignal);
+    await this.stop(neverSignal);
   },
 
-  async stopWithTimeout(host, timeoutMs) {
+  async stopWithTimeout(timeoutMs) {
     const controller = new AbortController();
     const timer = setTimeout(() => controller.abort(), timeoutMs);
     try {
-      await host.stop(controller.signal);
+      await this.stop(controller.signal);
     } finally {
       clearTimeout(timer);
     }
   },
 };
 
-registerAugmentations(tokenfor<IHost>(), HostLifecycleAugmentations);
+registerAugmentations<IHost>(HostLifecycleAugmentations);

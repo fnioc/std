@@ -20,15 +20,15 @@ declare module '@rhombus-std/diagnostics.core' {
 
 export const MetricsOptionsAugmentations = {
   /** Appends an ENABLE {@link InstrumentRule} directly to a {@link MetricsOptions}. */
-  enableMetrics(options: MetricsOptions, meterName?: string, instrumentName?: string, listenerName?: string,
+  enableMetrics(meterName?: string, instrumentName?: string, listenerName?: string,
     scopes: MeterScope = METER_SCOPE_ALL): MetricsOptions {
-    options.rules.push(new InstrumentRule(meterName, instrumentName, listenerName, scopes, true));
-    return options;
+    this.rules.push(new InstrumentRule(meterName, instrumentName, listenerName, scopes, true));
+    return this;
   },
   /** Appends a DISABLE {@link InstrumentRule} directly to a {@link MetricsOptions}. */
-  disableMetrics(options: MetricsOptions, meterName?: string, instrumentName?: string, listenerName?: string,
+  disableMetrics(meterName?: string, instrumentName?: string, listenerName?: string,
     scopes: MeterScope = METER_SCOPE_ALL): MetricsOptions {
-    options.rules.push(new InstrumentRule(meterName, instrumentName, listenerName, scopes, false));
-    return options;
+    this.rules.push(new InstrumentRule(meterName, instrumentName, listenerName, scopes, false));
+    return this;
   },
 } satisfies AugmentationSet<MetricsOptions>;

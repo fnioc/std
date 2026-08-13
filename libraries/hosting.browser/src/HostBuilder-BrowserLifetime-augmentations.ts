@@ -3,7 +3,7 @@
 //
 // OPEN receiver: `IHostBuilder` is owned by hosting.core and extended across
 // packages, so this const registers into the augmentation registry under the
-// shared `tokenfor<IHostBuilder>()` token (alongside hosting.core's `startHost`
+// shared `typefor<IHostBuilder>()` token (alongside hosting.core's `startHost`
 // and hosting's runtime members); the `@augment`-decorated concrete
 // `HostBuilder` (in @rhombus-std/hosting) pulls it onto its prototype. The
 // interface-side merge for THIS const's member lives here beside it, targeting
@@ -15,8 +15,8 @@
 // merge in @rhombus-std/hosting — no class-side restatement is authored here.
 
 import type { IHostBuilder } from '@rhombus-std/hosting.core';
-import { type AugmentationSet2, type Flatten, registerAugmentations } from '@rhombus-std/primitives';
-import { tokenfor } from '@rhombus-std/primitives.extras';
+import type { AugmentationSet2, Flatten } from '@rhombus-std/primitives';
+import { registerAugmentations } from '@rhombus-std/primitives.extras';
 import type { Func } from '@rhombus-toolkit/func';
 import { BrowserLifetimeOptions } from './BrowserLifetimeOptions';
 import { registerBrowserLifetime } from './register-browser-lifetime';
@@ -43,11 +43,11 @@ declare module '@rhombus-std/hosting.core' {
  */
 export const HostBuilderBrowserLifetimeAugmentations: AugmentationSet2<IHostBuilder,
   Flatten<IHostBuilderBrowserLifetimeAugmentations>> = {
-    useBrowserLifetime(hostBuilder, configureOptions) {
+    useBrowserLifetime(configureOptions) {
       const options = new BrowserLifetimeOptions();
       configureOptions?.(options);
-      return hostBuilder.configureServices((_context, services) => registerBrowserLifetime(services, options));
+      return this.configureServices((_context, services) => registerBrowserLifetime(services, options));
     },
   };
 
-registerAugmentations(tokenfor<IHostBuilder>(), HostBuilderBrowserLifetimeAugmentations);
+registerAugmentations<IHostBuilder>(HostBuilderBrowserLifetimeAugmentations);

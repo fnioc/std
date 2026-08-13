@@ -1,7 +1,8 @@
-// Importing `@rhombus-std/di.extras` for its side effect (`./augment.ts`) brings
-// the type-argument overloads -- `addClass<I>(C)`, `.as<"x">()`, `resolve<T>()`
-// and the rest -- into scope on `@rhombus-std/di.core`'s public interfaces.
-import './augment.js';
+export { signatureof, SIGNATUREOF_NAME } from './signatureof.js';
 
-/** Re-exported so a consumer doesn't need a separate import from `@rhombus-std/di.core`. */
-export type { $, Hole, Inject, Typeof } from './augment.js';
+// Named rather than a side-effect import: a `rhombus-std` inline entry's `impl` is
+// resolved by walking this entry's re-export graph, so a set that is only
+// imported for its registration is never found.
+export { ManifestDescriptorAugmentations } from './augmentations/Manifest-Descriptor-augmentations.js';
+export { ManifestServiceAugmentations } from './augmentations/Manifest-service-augmentations.js';
+export { ServiceProviderServiceAugmentations } from './augmentations/ServiceProvider-service-augmentations.js';

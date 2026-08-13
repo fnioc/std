@@ -4,10 +4,9 @@
 // its sugar method is installed through the same augmentation path the external
 // provider packages use: ConfigBuilder itself carries no add* sugar of its own.
 
-import type { ConfigBuilder } from '@rhombus-std/config';
 import type { IConfigBuilder, IndexedSection } from '@rhombus-std/config.core';
-import { type AugmentationSet2, type Flatten, registerAugmentations } from '@rhombus-std/primitives';
-import { tokenfor } from '@rhombus-std/primitives.extras';
+import type { AugmentationSet2, Flatten } from '@rhombus-std/primitives';
+import { registerAugmentations } from '@rhombus-std/primitives.extras';
 import { type ConfigData, MemoryConfigSource } from './MemoryConfigSource';
 
 export { MemoryConfigProvider } from './MemoryConfigProvider';
@@ -33,9 +32,9 @@ declare module '@rhombus-std/config' {
 
 export const MemoryConfigBuilderAugmentations: AugmentationSet2<IConfigBuilder,
   Flatten<IConfigBuilderMemoryAugmentations>> = {
-    addInMemoryCollection(builder, initialData) {
-      return builder.add(new MemoryConfigSource({ initialData }));
+    addInMemoryCollection(initialData) {
+      return this.add(new MemoryConfigSource({ initialData }));
     },
   };
 
-registerAugmentations(tokenfor<IConfigBuilder>(), MemoryConfigBuilderAugmentations);
+registerAugmentations<IConfigBuilder>(MemoryConfigBuilderAugmentations);

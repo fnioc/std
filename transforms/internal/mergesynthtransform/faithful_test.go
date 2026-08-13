@@ -24,7 +24,7 @@ export class Inner {
 func setOptionsFixture(decls, paramType string) string {
 	return decls + `
 export const AlphaExtensions = {
-  setOptions(self: IAlpha, o: ` + paramType + `): void {},
+  setOptions(o: ` + paramType + `): void {},
 };
 registerAugmentations("t:IAlpha", AlphaExtensions);
 `
@@ -242,7 +242,7 @@ func TestTypeParameterInsideAContainerRefuses(t *testing.T) {
 	out, diags := run(t, `
 export interface Box<T> { item: T; }
 export const AlphaExtensions = {
-  setOptions(self: IAlpha, o: Box<Inner>): void {},
+  setOptions(o: Box<Inner>): void {},
 };
 export class Inner {
   #v: number = 0;

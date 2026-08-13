@@ -2,25 +2,24 @@
 // points route through: `useBrowserLifetime` (the classic-builder augmentation)
 // and `BrowserHost.createApplicationBuilder` (the modern-builder facade). The
 // options land as a value, and the lifetime lands as a factory under the
-// imported HOST_LIFETIME_TOKEN — di.core is append-only last-wins, so this
+// imported HOST_LIFETIME_TYPE — di.core is append-only last-wins, so this
 // overrides the default NullLifetime registered by the host composition.
 
-import { type IResolver, RESOLVER_TOKEN } from '@rhombus-std/di.core';
-import type { IServiceManifest } from '@rhombus-std/di.core';
-import { HOST_LIFETIME_TOKEN } from '@rhombus-std/hosting';
-import { HOST_APPLICATION_LIFETIME_TOKEN, type IHostApplicationLifetime } from '@rhombus-std/hosting.core';
-import { LOGGER_FACTORY_TOKEN } from '@rhombus-std/logging';
-import type { ILoggerFactory } from '@rhombus-std/logging.core';
+import { type IServiceProvider, RESOLVER_TYPE } from '@rhombus-std/di.core';
+import type { Manifest } from '@rhombus-std/di.core';
+import { HOST_LIFETIME_TYPE } from '@rhombus-std/hosting';
+import { HOST_APPLICATION_LIFETIME_TYPE } from '@rhombus-std/hosting.core';
+import { LOGGER_FACTORY_TYPE } from '@rhombus-std/logging';
 import { BrowserLifetime } from './BrowserLifetime';
 import type { BrowserLifetimeOptions } from './BrowserLifetimeOptions';
 import type { PageContext } from './page-context';
 import { PageLifecycleEvents } from './PageLifecycleEvents';
-import { BROWSER_LIFETIME_OPTIONS_TOKEN, PAGE_LIFECYCLE_EVENTS_TOKEN } from './tokens';
+import { BROWSER_LIFETIME_OPTIONS_TYPE, PAGE_LIFECYCLE_EVENTS_TYPE } from './types';
 
 /**
  * Registers `options`, the eagerly-attached {@link PageLifecycleEvents} bridge,
  * and a {@link BrowserLifetime} factory (under the imported
- * {@link HOST_LIFETIME_TOKEN} — last registration wins over the default
+ * {@link HOST_LIFETIME_TYPE} — last registration wins over the default
  * NullLifetime). Both the modern facade and the classic `useBrowserLifetime`
  * route through here, so the bridge is registered on BOTH paths. The bridge is
  * an unowned value the container never disposes, so it is handed to the
@@ -31,16 +30,16 @@ import { BROWSER_LIFETIME_OPTIONS_TOKEN, PAGE_LIFECYCLE_EVENTS_TOKEN } from './t
  * caller must thread this result forward instead of reusing the `services` it
  * passed in.
  */
-export function registerBrowserLifetime(services: IServiceManifest, options: BrowserLifetimeOptions,
-  context?: PageContext): IServiceManifest {
-  let s = services.addValue(BROWSER_LIFETIME_OPTIONS_TOKEN, options);
+export function registerBrowserLifetime(services: Manifest, options: BrowserLifetimeOptions,
+  context?: PageContext): Manifest {
+  let s = services.addValue(BROWSER_LIFETIME_OPTIONS_TYPE, options);
 
   const pageLifecycleEvents = new PageLifecycleEvents(context);
-  s = s.addValue(PAGE_LIFECYCLE_EVENTS_TOKEN, pageLifecycleEvents);
+  s = s.addValue(PAGE_LIFECYCLE_EVENTS_TYPE, pageLifecycleEvents);
 
-  return s.addFactory(HOST_LIFETIME_TOKEN,
-    (resolver: IResolver) =>
-      new BrowserLifetime(resolver.resolve<BrowserLifetimeOptions>(BROWSER_LIFETIME_OPTIONS_TOKEN),
-        resolver.resolve<IHostApplicationLifetime>(HOST_APPLICATION_LIFETIME_TOKEN),
-        resolver.resolve<ILoggerFactory>(LOGGER_FACTORY_TOKEN), pageLifecycleEvents), [[RESOLVER_TOKEN]]);
+  return s.addFactory(HOST_LIFETIME_TYPE,
+    (resolver: IServiceProvider) =>
+      new BrowserLifetime(resolver.getRequiredService(BROWSER_LIFETIME_OPTIONS_TYPE),
+        resolver.getRequiredService(HOST_APPLICATION_LIFETIME_TYPE), resolver.getRequiredService(LOGGER_FACTORY_TYPE),
+        pageLifecycleEvents), [[RESOLVER_TYPE]]);
 }

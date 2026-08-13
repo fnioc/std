@@ -5,8 +5,8 @@
 // table back-to-back over one loaded program in one shared EmitContext, in the
 // hardcoded canonical order
 //
-//	inline -> mergesynth -> nameof -> signatureof -> keyof -> valueof ->
-//	singular -> factory -> fold -> schemaof
+//	mergesynth (pre-pass) -> inline -> nameof -> typefor -> signatureof -> keyof
+//	-> schemaof
 //
 // A stage that matches nothing in the program is a cheap no-op (the stages own
 // disjoint match sets), so always-on is correct as well as simple. This replaces

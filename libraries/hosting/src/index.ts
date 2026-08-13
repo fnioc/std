@@ -24,13 +24,13 @@ export { MetricsBuilder } from './MetricsBuilder';
 
 export { HostBuilderHostingAugmentations } from './HostBuilder-Hosting-augmentations';
 
-// Re-exported from di.core, which owns it; this is the type
+// Re-exported from the engine, which owns it; this is the type
 // `useDefaultServiceProvider` configures.
-export type { ServiceProviderOptions } from '@rhombus-std/di.core';
+export type { ServiceProviderOptions } from '@rhombus-std/di';
 
 // The environment-variable prefix the default host configuration reads.
 export { HOST_ENVIRONMENT_VARIABLE_PREFIX } from './default-config';
 
 // The framework-service DI tokens (a consumer resolves these off `IHost.services`).
-export { CONFIG_TOKEN, CONSOLE_LIFETIME_OPTIONS_TOKEN, HOST_BUILDER_CONTEXT_TOKEN, HOST_ENVIRONMENT_TOKEN,
-  HOST_LIFETIME_TOKEN, HOST_OPTIONS_TOKEN } from './framework-tokens';
+export { CONFIG_TYPE, CONSOLE_LIFETIME_OPTIONS_TYPE, HOST_BUILDER_CONTEXT_TYPE, HOST_ENVIRONMENT_TYPE,
+  HOST_LIFETIME_TYPE, HOST_OPTIONS_TYPE } from './framework-types';

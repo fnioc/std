@@ -1,5 +1,5 @@
-import type { IServiceManifest, Token } from '@rhombus-std/di.core';
-import { LOGGER_PROVIDER_TOKEN, LoggingBuilder } from '@rhombus-std/logging';
+import type { Manifest, Token } from '@rhombus-std/di.core';
+import { LOGGER_PROVIDER_TYPE, LoggingBuilder } from '@rhombus-std/logging';
 import { BrowserConsoleLogger, BrowserConsoleLoggerAugmentations, BrowserConsoleLoggerProvider, type ConsoleLike,
   consoleMethodFor } from '@rhombus-std/logging.browserconsole';
 import { EventId, LogLevel } from '@rhombus-std/logging.core';
@@ -11,13 +11,13 @@ import { expect, test } from 'bun:test';
  * immutable chain — a double that returned itself would hide exactly the
  * silent-drop bug this shape exists to catch.
  */
-function fakeServices(): { services: IServiceManifest; values: Array<[Token, unknown]>; } {
+function fakeServices(): { services: Manifest; values: Array<[Token, unknown]>; } {
   const values: Array<[Token, unknown]> = [];
-  const make = (): IServiceManifest => {
-    return { addValue(token: Token, value: unknown): IServiceManifest {
+  const make = (): Manifest => {
+    return { addValue(token: Token, value: unknown): Manifest {
       values.push([token, value]);
       return make();
-    } } as unknown as IServiceManifest;
+    } } as unknown as Manifest;
   };
   return { services: make(), values };
 }
@@ -118,11 +118,11 @@ test('addBrowserConsole registers ONE provider per manifest, however many calls 
   const { services, values } = fakeServices();
   const builder = new LoggingBuilder(services);
 
-  BrowserConsoleLoggerAugmentations.addBrowserConsole(builder);
-  BrowserConsoleLoggerAugmentations.addBrowserConsole(builder);
+  BrowserConsoleLoggerAugmentations.addBrowserConsole.call(builder);
+  BrowserConsoleLoggerAugmentations.addBrowserConsole.call(builder);
 
   const providers = values.filter(([token]) => {
-    return token === LOGGER_PROVIDER_TOKEN;
+    return token === LOGGER_PROVIDER_TYPE;
   });
   expect(providers).toHaveLength(1);
   expect(providers[0]?.[1]).toBeInstanceOf(BrowserConsoleLoggerProvider);
@@ -134,12 +134,12 @@ test('the per-builder dedup is keyed by the builder, not effectively global', ()
   const first = fakeServices();
   const second = fakeServices();
 
-  BrowserConsoleLoggerAugmentations.addBrowserConsole(new LoggingBuilder(first.services));
-  BrowserConsoleLoggerAugmentations.addBrowserConsole(new LoggingBuilder(second.services));
+  BrowserConsoleLoggerAugmentations.addBrowserConsole.call(new LoggingBuilder(first.services));
+  BrowserConsoleLoggerAugmentations.addBrowserConsole.call(new LoggingBuilder(second.services));
 
   const providersFor = (values: Array<[Token, unknown]>) => {
     return values.filter(([token]) => {
-      return token === LOGGER_PROVIDER_TOKEN;
+      return token === LOGGER_PROVIDER_TYPE;
     });
   };
   expect(providersFor(first.values)).toHaveLength(1);

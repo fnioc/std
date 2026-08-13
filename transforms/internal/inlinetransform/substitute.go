@@ -28,6 +28,16 @@ type Inlining struct {
 	Receiver *shimast.Node
 	Params   []string
 	Args     []*shimast.Node
+	// RestParam is the body's trailing rest parameter, if it has one, and RestArgs
+	// are the call arguments it stands for. A rest binds to the argument LIST, so
+	// it is expanded where the body spreads it rather than substituted as a value.
+	RestParam string
+	RestArgs  []*shimast.Node
+	// Bindings rewrites body identifiers that are not parameters — a value the body
+	// reaches through its own file's import, mapped to the way the CONSUMER file
+	// names that same export. Keyed by name rather than position, since these bind
+	// to nothing in the call's argument list.
+	Bindings map[string]*shimast.Node
 }
 
 // Result is Substitute's output. Expr is the rewritten expression to splice in
@@ -69,26 +79,30 @@ func Substitute(ec *shimprinter.EmitContext, in Inlining) Result {
 	factory := ec.Factory.AsNodeFactory()
 	body := factory.DeepCloneNode(in.Body)
 
+	r := rest{name: in.RestParam, args: in.RestArgs}
 	params := map[string]*shimast.Node{}
 	for i, name := range in.Params {
 		if i < len(in.Args) {
 			params[name] = in.Args[i]
 		}
 	}
+	for name, node := range in.Bindings {
+		params[name] = node
+	}
 
 	if in.Receiver == nil {
 		// Free function: only value parameters are substituted.
-		return Result{Expr: substituteInto(ec, body, params, nil)}
+		return Result{Expr: substituteInto(ec, body, params, nil, r)}
 	}
 
-	thisCount := countThis(body)
+	receiverCount := countThis(body)
 	simple := isSimpleReceiver(in.Receiver)
 
-	if thisCount >= 2 && !simple {
+	if receiverCount >= 2 && !simple {
 		// Effectful receiver used more than once: bind it once to a temp in
 		// expression position and reference the temp at every `this` site.
 		temp := ec.Factory.NewTempVariable()
-		substituted := substituteInto(ec, body, params, temp)
+		substituted := substituteInto(ec, body, params, temp, r)
 		assign := factory.NewBinaryExpression(
 			nil,
 			temp,
@@ -110,10 +124,10 @@ func Substitute(ec *shimprinter.EmitContext, in Inlining) Result {
 		}
 	}
 
-	if thisCount == 0 && !simple {
+	if receiverCount == 0 && !simple {
 		// Receiver's value is never read, but its side effect must still run
 		// exactly once. Keep it as the left of a comma sequence.
-		substituted := substituteInto(ec, body, params, nil)
+		substituted := substituteInto(ec, body, params, nil, r)
 		sequence := factory.NewBinaryExpression(
 			nil,
 			factory.DeepCloneNode(in.Receiver),
@@ -124,18 +138,18 @@ func Substitute(ec *shimprinter.EmitContext, in Inlining) Result {
 		return Result{Expr: factory.NewParenthesizedExpression(sequence)}
 	}
 
-	// `this` used 0× (simple), 1× (any), or ≥2× (simple): inline a fresh clone
-	// of the receiver at each `this` site. thisRepl == nil below means "clone
-	// the receiver"; a non-nil node (the temp branch above) means "reference it".
-	return Result{Expr: substituteIntoReceiver(ec, body, params, in.Receiver)}
+	// Receiver read 0× (simple), 1× (any), or ≥2× (simple): inline a fresh clone
+	// of it at each site. thisRepl == nil below means "clone the receiver"; a
+	// non-nil node (the temp branch above) means "reference it".
+	return Result{Expr: substituteIntoReceiver(ec, body, params, in.Receiver, r)}
 }
 
 // substituteInto rewrites body in place of a clone: every `this` becomes temp
 // (when non-nil), every value-parameter identifier becomes its argument
 // expression. Property-access member names are left untouched so a body member
 // that happens to share a parameter's name is never rewritten.
-func substituteInto(ec *shimprinter.EmitContext, body *shimast.Node, params map[string]*shimast.Node, temp *shimast.Node) *shimast.Node {
-	return rewrite(ec, body, params, func() *shimast.Node { return temp })
+func substituteInto(ec *shimprinter.EmitContext, body *shimast.Node, params map[string]*shimast.Node, temp *shimast.Node, r rest) *shimast.Node {
+	return rewrite(ec, body, params, func() *shimast.Node { return temp }, r)
 }
 
 // substituteIntoReceiver is substituteInto with the ORIGINAL receiver node
@@ -144,7 +158,7 @@ func substituteInto(ec *shimprinter.EmitContext, body *shimast.Node, params map[
 // receiver get an answerable node; the extra clones are bare and nothing
 // downstream queries them (a duplicated `this` site only ever holds a simple,
 // side-effect-free receiver by the effectful ≥2× path being handled separately).
-func substituteIntoReceiver(ec *shimprinter.EmitContext, body *shimast.Node, params map[string]*shimast.Node, receiver *shimast.Node) *shimast.Node {
+func substituteIntoReceiver(ec *shimprinter.EmitContext, body *shimast.Node, params map[string]*shimast.Node, receiver *shimast.Node, r rest) *shimast.Node {
 	factory := ec.Factory.AsNodeFactory()
 	first := true
 	return rewrite(ec, body, params, func() *shimast.Node {
@@ -153,22 +167,65 @@ func substituteIntoReceiver(ec *shimprinter.EmitContext, body *shimast.Node, par
 			return receiver
 		}
 		return factory.DeepCloneNode(receiver)
-	})
+	}, r)
+}
+
+// rest carries a body's trailing rest parameter and the arguments it stands for.
+type rest struct {
+	name string
+	args []*shimast.Node
+}
+
+// expand replaces a spread of the rest parameter with the arguments it stands
+// for, leaving every other argument to the ordinary walk. It reports whether any
+// element changed, so an untouched list keeps its original node.
+func (r rest) expand(visitor *shimast.NodeVisitor, args []*shimast.Node) ([]*shimast.Node, bool) {
+	out := make([]*shimast.Node, 0, len(args))
+	changed := false
+	for _, arg := range args {
+		if r.name != "" && arg.Kind == shimast.KindSpreadElement {
+			inner := arg.AsSpreadElement().Expression
+			if inner != nil && inner.Kind == shimast.KindIdentifier && inner.Text() == r.name {
+				out = append(out, r.args...)
+				changed = true
+				continue
+			}
+		}
+		visited := visitor.VisitNode(arg)
+		if visited != arg {
+			changed = true
+		}
+		out = append(out, visited)
+	}
+	return out, changed
 }
 
 // rewrite walks body substituting `this` (via thisNode, called once per site so
 // each site can get its own clone) and value-parameter identifiers (via params).
 // It descends manually through property-access objects so the member name — an
-// identifier that is NOT a value reference — is preserved verbatim.
-func rewrite(ec *shimprinter.EmitContext, body *shimast.Node, params map[string]*shimast.Node, thisNode func() *shimast.Node) *shimast.Node {
+// identifier that is NOT a value reference — is preserved verbatim. A `this`
+// inside a nested non-arrow function or class is that scope's own receiver, so
+// substitution stops at those boundaries; value parameters are still rewritten
+// there, since a closure captures them like any other outer binding.
+func rewrite(ec *shimprinter.EmitContext, body *shimast.Node, params map[string]*shimast.Node, thisNode func() *shimast.Node, r rest) *shimast.Node {
 	factory := ec.Factory.AsNodeFactory()
 	var visitor *shimast.NodeVisitor
+	ownThisDepth := 0
 	visit := func(node *shimast.Node) *shimast.Node {
 		if node == nil {
 			return nil
 		}
+		if establishesThis(node) {
+			ownThisDepth++
+			result := visitor.VisitEachChild(node)
+			ownThisDepth--
+			return result
+		}
 		switch node.Kind {
 		case shimast.KindThisKeyword:
+			if ownThisDepth > 0 {
+				return node
+			}
 			if repl := thisNode(); repl != nil {
 				return repl
 			}
@@ -190,6 +247,17 @@ func rewrite(ec *shimprinter.EmitContext, body *shimast.Node, params map[string]
 				return node
 			}
 			return factory.NewPropertyAccessExpression(newObject, access.QuestionDotToken, access.Name(), 0)
+		case shimast.KindCallExpression:
+			call := node.AsCallExpression()
+			if call.Arguments == nil {
+				break
+			}
+			newCallee := visitor.VisitNode(call.Expression)
+			args, changed := r.expand(visitor, call.Arguments.Nodes)
+			if !changed && newCallee == call.Expression {
+				return node
+			}
+			return factory.NewCallExpression(newCallee, call.QuestionDotToken, nil, factory.NewNodeList(args), 0)
 		}
 		return visitor.VisitEachChild(node)
 	}
@@ -197,12 +265,15 @@ func rewrite(ec *shimprinter.EmitContext, body *shimast.Node, params map[string]
 	return visitor.VisitNode(body)
 }
 
-// countThis reports how many `this` keywords appear anywhere in node.
+// countThis reports how many substitutable `this` keywords appear in node —
+// the same sites rewrite replaces, so the two agree on the receiver's use
+// count. A `this` behind a nested non-arrow function or class boundary belongs
+// to that scope and is not counted.
 func countThis(node *shimast.Node) int {
 	count := 0
 	var walk func(n *shimast.Node)
 	walk = func(n *shimast.Node) {
-		if n == nil {
+		if n == nil || establishesThis(n) {
 			return
 		}
 		if n.Kind == shimast.KindThisKeyword {
@@ -215,6 +286,25 @@ func countThis(node *shimast.Node) int {
 	}
 	walk(node)
 	return count
+}
+
+// establishesThis reports whether node introduces its own `this` scope — a
+// non-arrow function, method, accessor, constructor, class, or class static
+// block. Arrows inherit the enclosing `this` and are never boundaries.
+func establishesThis(node *shimast.Node) bool {
+	switch node.Kind {
+	case shimast.KindFunctionExpression,
+		shimast.KindFunctionDeclaration,
+		shimast.KindMethodDeclaration,
+		shimast.KindGetAccessor,
+		shimast.KindSetAccessor,
+		shimast.KindConstructor,
+		shimast.KindClassDeclaration,
+		shimast.KindClassExpression,
+		shimast.KindClassStaticBlockDeclaration:
+		return true
+	}
+	return false
 }
 
 // isSimpleReceiver reports whether a receiver expression may be duplicated

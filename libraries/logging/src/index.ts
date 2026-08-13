@@ -14,7 +14,7 @@
 export * from '@rhombus-std/logging.core';
 
 // Registers the `addLogging` augmentation onto di.core's ServiceManifest.
-export { ServiceManifestLoggingAugmentations } from './ServiceManifest-Logging-augmentations';
+export { ServiceManifestLoggingAugmentations } from './DefaultManifest-Logging-augmentations';
 // Registers the ILoggingBuilder augmentations (addProvider/…).
 export { LoggingBuilderProviderAugmentations } from './LoggingBuilder-Provider-augmentations';
 // Installs LoggerFilterOptions's addFilter directly, and registers the
@@ -26,4 +26,4 @@ export { LoggerFactory } from './LoggerFactory';
 export { LoggerFilterOptions, LoggerFilterRule } from './LoggerFilterOptions';
 export { LoggingBuilder } from './LoggingBuilder';
 export { NullLogger, NullLoggerFactory, NullLoggerProvider } from './null-logger';
-export { LOGGER_FACTORY_TOKEN, LOGGER_FILTER_OPTIONS_TOKEN, LOGGER_PROVIDER_TOKEN } from './tokens';
+export { LOGGER_FACTORY_TYPE, LOGGER_FILTER_OPTIONS_TYPE, LOGGER_PROVIDER_TYPE } from './types';

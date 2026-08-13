@@ -150,7 +150,7 @@ func TestVendorTypeFromNodeModulesIsGuarded(t *testing.T) {
 	out, diags := runWith(t, `
 import type { VendorOptions } from "@vendor/opts";
 export const AlphaExtensions = {
-  setOptions(self: IAlpha, o: VendorOptions): void {},
+  setOptions(o: VendorOptions): void {},
 };
 registerAugmentations("t:IAlpha", AlphaExtensions);
 `, map[string]string{

@@ -7,7 +7,7 @@
 // Every @rhombus-std descriptor resolves to the SAME owner host under the SAME
 // name, so ttsc dedupes them to one cache key and one spawn. There is no stage
 // selection (W7): the host runs its whole stage table, and the addOptions<T>()
-// sugar body in play comes from this package's rhombus.inline entry via the
+// sugar body in play comes from this package's rhombus-std inline entry via the
 // dependency scan — not from the descriptor.
 //
 // This is the Go/ttsc emit path — the sole lowering engine — wired through the

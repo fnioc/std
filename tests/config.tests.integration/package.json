@@ -11,7 +11,6 @@
   },
   "devDependencies": {
     "@rhombus-std/config": "workspace:*",
-    "@rhombus-std/config.core": "workspace:*",
     "@rhombus-std/config.commandline": "workspace:*",
     "@rhombus-std/config.env": "workspace:*",
     "@rhombus-std/config.ini": "workspace:*",

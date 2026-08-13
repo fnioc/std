@@ -11,9 +11,9 @@
 
 import { ConfigManager } from '@rhombus-std/config';
 import type { IConfigManager } from '@rhombus-std/config.core';
-import { ServiceManifest } from '@rhombus-std/di';
-import type { IServiceManifest } from '@rhombus-std/di.core';
-import type { IServiceProviderFactory, ServiceProviderOptions } from '@rhombus-std/di.core';
+import type { ServiceProviderOptions } from '@rhombus-std/di';
+import { DefaultManifest } from '@rhombus-std/di.core';
+import type { Manifest } from '@rhombus-std/di.core';
 import type { IMetricsBuilder } from '@rhombus-std/diagnostics.core';
 import { type HostBuilderContext, HostDefaults, type IHost, type IHostApplicationBuilder, type IHostBuilder,
   type IHostEnvironment } from '@rhombus-std/hosting.core';
@@ -37,11 +37,11 @@ export class HostApplicationBuilder implements IHostApplicationBuilder {
   // every registration call site now uses.
   //
   // THIS FIELD IS THE ONE SLOT. `#logging`, `#metrics`, and the classic-builder
-  // adapter are all constructed over `this` as their `IServiceManifestHolder`,
+  // adapter are all constructed over `this` as their `ManifestSlot`,
   // so they read and write here rather than each carrying a fork of the chain.
   // Handing them a manifest VALUE instead would let `builder.logging.addConsole()`
   // build a chain that `build()` never sees.
-  #services: IServiceManifest = new ServiceManifest();
+  #services: Manifest = new DefaultManifest();
   readonly #environment: IHostEnvironment;
   readonly #context: HostBuilderContext;
   readonly #logging: LoggingBuilder;
@@ -141,7 +141,7 @@ export class HostApplicationBuilder implements IHostApplicationBuilder {
   }
 
   /** The collection of services for the application to compose. */
-  public get services(): IServiceManifest {
+  public get services(): Manifest {
     return this.#services;
   }
 
@@ -151,17 +151,16 @@ export class HostApplicationBuilder implements IHostApplicationBuilder {
    * caller registering something reassigns `builder.services =
    * builder.services.addClass(...)` rather than mutating in place.
    */
-  public set services(value: IServiceManifest) {
+  public set services(value: Manifest) {
     this.#services = value;
   }
 
   /**
-   * Registers a factory used to create the service provider. This repo has a
-   * SINGLE container type, so this is a minimal no-op single-container hook: the
-   * default `ServiceManifest` build path is always used.
+   * Configures the instantiated dependency container. This repo has a SINGLE
+   * container type, so this is a minimal no-op single-container hook: the
+   * default build path is always used.
    */
-  public configureContainer<TContainerBuilder>(_factory: IServiceProviderFactory<TContainerBuilder>,
-    _configure?: Action<[TContainerBuilder]>): void {}
+  public configureContainer<TContainerBuilder>(_configure?: Action<[TContainerBuilder]>): void {}
 
   /**
    * Returns a classic {@link IHostBuilder} view over this builder. Lazily

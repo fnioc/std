@@ -12,6 +12,7 @@
   "devDependencies": {
     "@rhombus-std/config": "workspace:*",
     "@rhombus-std/di": "workspace:*",
+    "@rhombus-std/di.core": "workspace:*",
     "@rhombus-std/logging": "workspace:*",
     "@rhombus-std/logging.config": "workspace:*",
     "@rhombus-std/logging.core": "workspace:*",
