@@ -1,4 +1,5 @@
-import { type CtorType, type FuncType, type IntersectionType, type Token, Type } from '@rhombus-std/primitives';
+import { type ConstructorType, type FunctionType, type IntersectionType, type Token,
+  Type } from '@rhombus-std/primitives';
 
 export type TypeSignatures = ReadonlyArray<readonly Type[]>;
 export namespace TypeSignatures {
@@ -13,7 +14,7 @@ export namespace TypeSignatures {
    *
    * @throws Error - when the type, or an intersection member, describes nothing callable.
    */
-  export function fromImplType(implType: CtorType | FuncType | IntersectionType): TypeSignatures {
+  export function fromImplType(implType: ConstructorType | FunctionType | IntersectionType): TypeSignatures {
     if (implType.kind === 'ctor' || implType.kind === 'func') {
       return [implType.args];
     }
