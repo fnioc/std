@@ -14,7 +14,7 @@
 // string they each have to spell correctly.
 
 import { DefaultManifest, RESOLVER_TYPE, Type } from '@rhombus-std/di.core';
-import type { ImportType, IServiceProvider, Manifest } from '@rhombus-std/di.core';
+import type { ImportedType, IServiceProvider, Manifest } from '@rhombus-std/di.core';
 import '@rhombus-std/di';
 import { typefor } from '@rhombus-std/primitives.extras';
 
@@ -121,7 +121,7 @@ async function tour(provider: IServiceProvider): Promise<string[]> {
     // The optional sink, used only because the probe above found one.
     audit?.record(order.reference);
   }
-  const crypto = provider.getService(Type.tag(typefor<IPaymentGateway>() as ImportType, 'crypto')) as
+  const crypto = provider.getService(Type.tag(typefor<IPaymentGateway>() as ImportedType, 'crypto')) as
     | IPaymentGateway
     | undefined;
   lines.push(`  getService at key "crypto": ${crypto?.label}`);

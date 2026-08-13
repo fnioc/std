@@ -1,7 +1,7 @@
 import { AmbiguousUnionError, CycleError, type ServiceDescriptor } from '@rhombus-std/di.core';
 import { type ArrayType, type ConstructorType, first, type FunctionType, type GenericType, type GlobalType,
-  type ImportType, type IntersectionType, isAllThere, type IterableType, type ObjectType, type TagType, type TupleType,
-  Type, type TypeLiteralType, TypeVisitor, type UnionType } from '@rhombus-std/primitives';
+  type ImportedType, type IntersectionType, isAllThere, type IterableType, type ObjectType, type TagType,
+  type TupleType, Type, type TypeLiteralType, TypeVisitor, type UnionType } from '@rhombus-std/primitives';
 import type { Registry } from '../Registry.js';
 import { CallSite } from './CallSite.js';
 
@@ -94,7 +94,7 @@ export class ToCallSiteVisitor extends TypeVisitor<CallSite | undefined> {
     return undefined;
   }
 
-  protected override visitImport(type: ImportType): CallSite | undefined {
+  protected override visitImported(type: ImportedType): CallSite | undefined {
     return isServiceProviderType(type) ? CallSite.serviceProvider() : undefined;
   }
 
@@ -239,7 +239,7 @@ function bySpelling(left: Type, right: Type): number {
   return Type.stringify(left).localeCompare(Type.stringify(right));
 }
 
-function isServiceProviderType(type: ImportType): boolean {
+function isServiceProviderType(type: ImportedType): boolean {
   return type.name === 'IServiceProvider' && SERVICE_PROVIDER_FROMS.includes(type.from)
     && !type.genericArgs.length;
 }

@@ -23,7 +23,7 @@
 // reaches per-entity data without ever naming an entity.
 //
 // These types are exported through this package's public barrel on purpose: the
-// Type a transformer derives is `Type.import(exportedName, importSpecifier)`, so
+// Type a transformer derives is `Type.imported(exportedName, importSpecifier)`, so
 // `IRepository<User>` derives
 // `@rhombus-std/examples.contracts:IRepository<@rhombus-std/examples.contracts:User>`
 // — exactly the Type the without-transformer app composes by hand. The two apps

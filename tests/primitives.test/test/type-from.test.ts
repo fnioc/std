@@ -5,13 +5,13 @@
 import { Type, TypeParseError, type UnionType } from '@rhombus-std/primitives';
 import { describe, expect, test } from 'bun:test';
 
-const A = Type.import('A', 'app');
-const B = Type.import('B', 'app');
-const C = Type.import('C', 'app');
+const A = Type.imported('A', 'app');
+const B = Type.imported('B', 'app');
+const C = Type.imported('C', 'app');
 
 describe('Type.from', () => {
   test('reads a qualified name', () => {
-    expect(Type.from('app:Foo')).toBe(Type.import('Foo', 'app'));
+    expect(Type.from('app:Foo')).toBe(Type.imported('Foo', 'app'));
   });
 
   test('an absent qualifier means the global namespace', () => {
@@ -25,7 +25,7 @@ describe('Type.from', () => {
   });
 
   test('reads nested generics', () => {
-    const nested = Type.import('Box', 'app', [Type.iterable(A)]);
+    const nested = Type.imported('Box', 'app', [Type.iterable(A)]);
     expect(Type.from('app:Box<Iterable<app:A>>')).toBe(nested);
   });
 
@@ -52,6 +52,18 @@ describe('Type.from', () => {
     expect(Type.from('undefined')).toBe(Type.typeLiteral(undefined));
   });
 
+  test('reads a quantified signature', () => {
+    const hole = Type.generic('T');
+    expect(Type.from('<%T>(%T) => app:A')).toBe(Type.func({ returnType: A, args: [hole], genericArgs: [hole] }));
+    expect(Type.from('<%T>new (%T) => app:A')).toBe(Type.ctor({ instanceType: A, args: [hole], genericArgs: [hole] }));
+    expect(Type.from('<%T>Func<app:A, %T>')).toBe(Type.from('<%T>(%T) => app:A'));
+  });
+
+  test('a quantifier list carries only generic holes, and only onto a signature', () => {
+    expect(() => Type.from('<app:A>(app:B) => app:A')).toThrow(TypeParseError);
+    expect(() => Type.from('<%T>app:A')).toThrow(TypeParseError);
+  });
+
   test('reads the arrow forms', () => {
     expect(Type.from('(app:B) => app:A')).toBe(Type.func(A, B));
     expect(Type.from('new (app:B) => app:A')).toBe(Type.ctor(A, B));
@@ -71,16 +83,16 @@ describe('reserved names', () => {
     expect(Type.from('Func<app:A, app:B>')).toBe(Type.func(A, B));
     expect(Type.from('Ctor<app:A, app:B>')).toBe(Type.ctor(A, B));
     expect(Type.from('ServiceProvider')).toMatchObject({
-      kind: 'import',
+      kind: 'imported',
       from: '@rhombus-std/primitives',
       name: 'IServiceProvider',
     });
   });
 
   test('a qualified reserved name is an ordinary named type', () => {
-    expect(Type.from('app:Func')).toBe(Type.import('Func', 'app'));
-    expect(Type.from('app:Ctor')).toBe(Type.import('Ctor', 'app'));
-    expect(Type.from('app:ServiceProvider')).toBe(Type.import('ServiceProvider', 'app'));
+    expect(Type.from('app:Func')).toBe(Type.imported('Func', 'app'));
+    expect(Type.from('app:Ctor')).toBe(Type.imported('Ctor', 'app'));
+    expect(Type.from('app:ServiceProvider')).toBe(Type.imported('ServiceProvider', 'app'));
   });
 
   test('an escaped reserved name is an ordinary named type', () => {
@@ -92,10 +104,10 @@ describe('reserved names', () => {
 describe('escaping', () => {
   test('an ordinary spelling is unescaped', () => {
     const plain: [Type, string][] = [
-      [Type.import('Foo', 'app'), 'app:Foo'],
+      [Type.imported('Foo', 'app'), 'app:Foo'],
       [Type.global('string'), 'string'],
-      [Type.import('IServiceProvider', '@rhombus-std/primitives'), '@rhombus-std/primitives:IServiceProvider'],
-      [Type.import('Box', 'app', [Type.import('Foo', 'app')]), 'app:Box<app:Foo>'],
+      [Type.imported('IServiceProvider', '@rhombus-std/primitives'), '@rhombus-std/primitives:IServiceProvider'],
+      [Type.imported('Box', 'app', [Type.imported('Foo', 'app')]), 'app:Box<app:Foo>'],
       [Type.object({ a: Type.global('string') }), '{ a: string }'],
       [Type.generic('T'), '%T'],
       [Type.tag(A, 'primary'), 'app:A#primary'],
@@ -116,7 +128,7 @@ describe('escaping', () => {
   });
 
   test('a name carrying grammar characters survives', () => {
-    const named = Type.import('has space<and>:colon', 'a|b', [A]);
+    const named = Type.imported('has space<and>:colon', 'a|b', [A]);
     expect(Type.from(Type.stringify(named))).toBe(named);
   });
 
@@ -234,7 +246,7 @@ function generate(random: () => number, depth: number): Type {
   const pick = <T>(choices: readonly T[]): T => choices[Math.floor(random() * choices.length)]!;
   const many = (most: number) => Math.floor(random() * (most + 1));
   if (depth <= 0) {
-    switch (pick(['global', 'import', 'literal', 'generic', 'tuple', 'object'])) {
+    switch (pick(['global', 'imported', 'literal', 'generic', 'tuple', 'object'])) {
       case 'literal': {
         return Type.typeLiteral(pick(LITERALS));
       }
@@ -251,13 +263,14 @@ function generate(random: () => number, depth: number): Type {
         return Type.global(pick(NAMES));
       }
       default: {
-        return Type.import(pick(NAMES), pick(FROMS));
+        return Type.imported(pick(NAMES), pick(FROMS));
       }
     }
   }
   const child = () => generate(random, depth - 1);
   const children = (most: number) => Array.from({ length: many(most) }, child);
-  const kinds = ['union', 'intersection', 'tuple', 'func', 'ctor', 'global', 'import', 'object', 'literal', 'generic',
+  const quantifiers = () => Array.from(new Set(Array.from({ length: many(2) }, () => pick(NAMES)))).map(Type.generic);
+  const kinds = ['union', 'intersection', 'tuple', 'func', 'ctor', 'global', 'imported', 'object', 'literal', 'generic',
     'tag'];
   switch (pick(kinds)) {
     case 'union': {
@@ -270,10 +283,10 @@ function generate(random: () => number, depth: number): Type {
       return Type.tuple(...children(3));
     }
     case 'func': {
-      return Type.func(child(), ...children(2));
+      return Type.func({ returnType: child(), args: children(2), genericArgs: quantifiers() });
     }
     case 'ctor': {
-      return Type.ctor(child(), ...children(2));
+      return Type.ctor({ instanceType: child(), args: children(2), genericArgs: quantifiers() });
     }
     case 'object': {
       return Type.object(Object.fromEntries(Array.from({ length: many(3) }, () => [pick(NAMES), child()])));
@@ -293,7 +306,7 @@ function generate(random: () => number, depth: number): Type {
       return Type.global(pick(NAMES), children(2));
     }
     default: {
-      return Type.import(pick(NAMES), pick(FROMS), children(2));
+      return Type.imported(pick(NAMES), pick(FROMS), children(2));
     }
   }
 }

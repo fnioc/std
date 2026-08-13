@@ -5,7 +5,7 @@
 // where `nameof<T>()` derives a flat string TOKEN, `typefor<T>()` derives the
 // STRUCTURED runtime `Type` value the same checker type spells, narrowed to
 // `Type.func` / `Type.ctor` for a function / constructor type, `Type.tag` for a
-// `Keyed<T, K>` brand, and `Type.global` / `Type.import` / `Type.typeLiteral` /
+// `Keyed<T, K>` brand, and `Type.global` / `Type.imported` / `Type.typeLiteral` /
 // `Type.union` / `Type.generic` for everything else (tokens.DeriveTypeF; see
 // derive.go).
 //

@@ -1,4 +1,4 @@
-import type { ArrayType, ConstructorType, FunctionType, GenericType, GlobalType, ImportType, IntersectionType,
+import type { ArrayType, ConstructorType, FunctionType, GenericType, GlobalType, ImportedType, IntersectionType,
   IterableType, ObjectType, TagType, TupleType, Type, TypeLiteralType, UnionType } from './Type.js';
 
 /**
@@ -25,8 +25,8 @@ export abstract class TypeVisitor<out Return, in Context = never> {
         return this.visitGeneric(type, context);
       case 'global':
         return this.visitGlobal(type, context);
-      case 'import':
-        return this.visitImport(type, context);
+      case 'imported':
+        return this.visitImported(type, context);
       case 'intersection':
         return this.visitIntersection(type, context);
       case 'iterable':
@@ -56,7 +56,7 @@ export abstract class TypeVisitor<out Return, in Context = never> {
 
   protected abstract visitGlobal(type: GlobalType, context: Context): Return;
 
-  protected abstract visitImport(type: ImportType, context: Context): Return;
+  protected abstract visitImported(type: ImportedType, context: Context): Return;
 
   protected abstract visitIntersection(type: IntersectionType, context: Context): Return;
 

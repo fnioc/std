@@ -9,4 +9,4 @@ import { Type } from '@rhombus-std/primitives';
  * registration time -- a value assembled from other registrations that are not
  * known until the graph is sealed.
  */
-export const RESOLVER_TYPE: Type = Type.import('IServiceProvider', '@rhombus-std/primitives');
+export const RESOLVER_TYPE: Type = Type.imported('IServiceProvider', '@rhombus-std/primitives');

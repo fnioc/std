@@ -1,5 +1,5 @@
 import { tag as tagType } from './internals/factories.js';
-import { type ArrayType, type ConstructorType, type FunctionType, type GenericType, type GlobalType, type ImportType,
+import { type ArrayType, type ConstructorType, type FunctionType, type GenericType, type GlobalType, type ImportedType,
   type IntersectionType, type IterableType, type ObjectType, type TagType, type TupleType, Type, type TypeLiteralType,
   type UnionType } from './Type.js';
 import { TypeVisitor } from './TypeVisitor.js';
@@ -22,8 +22,8 @@ class ExpandUnionsVisitor extends TypeVisitor<readonly Type[]> {
   protected override visitGlobal(type: GlobalType): readonly Type[] {
     return this.#product(type.genericArgs).map(args => Type.global(type.name, args));
   }
-  protected override visitImport(type: ImportType): readonly Type[] {
-    return this.#product(type.genericArgs).map(args => Type.import(type.name, type.from, args));
+  protected override visitImported(type: ImportedType): readonly Type[] {
+    return this.#product(type.genericArgs).map(args => Type.imported(type.name, type.from, args));
   }
   protected override visitIntersection(type: IntersectionType): readonly Type[] {
     return this.#product(type.members).map(types => Type.intersection(...types));
@@ -47,13 +47,21 @@ class ExpandUnionsVisitor extends TypeVisitor<readonly Type[]> {
 
   protected override visitCtor(type: ConstructorType): readonly Type[] {
     return this.#product([...type.args, type.instanceType]).map(parts =>
-      Type.ctor(parts[parts.length - 1]!, ...parts.slice(0, -1))
+      Type.ctor({
+        instanceType: parts[parts.length - 1]!,
+        args: parts.slice(0, -1),
+        genericArgs: type.genericArgs,
+      })
     );
   }
 
   protected override visitFunc(type: FunctionType): readonly Type[] {
     return this.#product([...type.args, type.returnType]).map(parts =>
-      Type.func(parts[parts.length - 1]!, ...parts.slice(0, -1))
+      Type.func({
+        returnType: parts[parts.length - 1]!,
+        args: parts.slice(0, -1),
+        genericArgs: type.genericArgs,
+      })
     );
   }
 

@@ -28,7 +28,7 @@ export type TypeFor<T> = [T] extends [abstract new(...args: never[]) => unknown]
  * @example
  * ```ts
  * services.addClass(typefor<ICache>(), RedisCache, [[]]);
- * // → services.addClass(Type.import('ICache', '@rhombus-std/caching.core'), RedisCache, [[]])
+ * // → services.addClass(Type.imported('ICache', '@rhombus-std/caching.core'), RedisCache, [[]])
  * ```
  */
 export function typefor<T>(): TypeFor<T>;
@@ -41,7 +41,7 @@ export function typefor<T>(): TypeFor<T>;
  *
  * @example
  * ```ts
- * const built = typefor(SqlUserRepo).instanceType; // → Type.import('SqlUserRepo', 'pkg')
+ * const built = typefor(SqlUserRepo).instanceType; // → Type.imported('SqlUserRepo', 'pkg')
  * ```
  */
 export function typefor<V>(value: V): TypeFor<V>;

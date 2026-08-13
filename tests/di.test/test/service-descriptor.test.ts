@@ -5,8 +5,8 @@ import { ServiceDescriptor } from '@rhombus-std/di.core';
 import { Type } from '@rhombus-std/primitives';
 import { describe, expect, test } from 'bun:test';
 
-const A = Type.import('A', 'app');
-const B = Type.import('B', 'app');
+const A = Type.imported('A', 'app');
+const B = Type.imported('B', 'app');
 
 class Impl {}
 
@@ -45,12 +45,12 @@ describe('equals', () => {
 describe('substitute', () => {
   test('closes an open registration onto the type the factories would have built', () => {
     const open = ServiceDescriptor.ctor(
-      Type.import('Box', 'app', [Type.generic('T')]),
+      Type.imported('Box', 'app', [Type.generic('T')]),
       Impl,
       [[Type.generic('T')]],
     );
     const closed = ServiceDescriptor.substitute(open, new Map([['T', A]]));
-    expect(closed.serviceType).toBe(Type.import('Box', 'app', [A]));
+    expect(closed.serviceType).toBe(Type.imported('Box', 'app', [A]));
     expect(closed.kind === 'ctor' && closed.signatures[0]![0]).toBe(A);
   });
 });

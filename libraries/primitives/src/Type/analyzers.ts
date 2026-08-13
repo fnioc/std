@@ -9,13 +9,13 @@
  */
 
 import { memo } from '../utils/map.js';
-import type { AggregateType, ArrayType, ConstructorType, FunctionType, GenericType, GlobalType, ImportType,
+import type { AggregateType, ArrayType, ConstructorType, FunctionType, GenericType, GlobalType, ImportedType,
   IntersectionType, IterableType, NominalType, ObjectType, TagType, TupleType, Type, TypeLiteralType,
   UnionType } from './Type.js';
 import { TypeVisitor } from './TypeVisitor.js';
 
 /** The kinds that name a type without describing one. */
-const IDENTIFIER_KINDS: ReadonlySet<Type['kind']> = new Set<Type['kind']>(['generic', 'global', 'import', 'tag']);
+const IDENTIFIER_KINDS: ReadonlySet<Type['kind']> = new Set<Type['kind']>(['generic', 'global', 'imported', 'tag']);
 
 /**
  * Is `type` address-only — a pure reference, with nothing of its own to build from?
@@ -39,10 +39,10 @@ export const isOpenType = (() => {
       return this.#element(type);
     }
     protected override visitCtor(type: ConstructorType): boolean {
-      return this.#any(type.args) || this.visit(type.instanceType);
+      return this.#any(type.genericArgs) || this.#any(type.args) || this.visit(type.instanceType);
     }
     protected override visitFunc(type: FunctionType): boolean {
-      return this.#any(type.args) || this.visit(type.returnType);
+      return this.#any(type.genericArgs) || this.#any(type.args) || this.visit(type.returnType);
     }
     protected override visitGeneric(_type: GenericType): boolean {
       return true;
@@ -50,7 +50,7 @@ export const isOpenType = (() => {
     protected override visitGlobal(type: GlobalType): boolean {
       return this.#arguments(type);
     }
-    protected override visitImport(type: ImportType): boolean {
+    protected override visitImported(type: ImportedType): boolean {
       return this.#arguments(type);
     }
     protected override visitIntersection(type: IntersectionType): boolean {

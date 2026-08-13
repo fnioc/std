@@ -124,7 +124,7 @@ func kindName(d *derived) string {
 			if d.leaf.From == typeemit.GlobalFrom {
 				return "global"
 			}
-			return "import"
+			return "imported"
 		}
 	default:
 		return ""

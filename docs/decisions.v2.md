@@ -1301,7 +1301,7 @@ _Owner-directed 2026-08-13._
 
 di2's `Type` is one flat node space with one public parent — no descriptor union, no overlapping
 door unions. `TypeIdentifier = NominalType | GenericType | TagType` names the ADDRESS-ONLY kinds:
-a pure reference can never self-construct. `NominalType = GlobalType | ImportType` is the pair a
+a pure reference can never self-construct. `NominalType = GlobalType | ImportedType` is the pair a
 name is reached by — the ambient scope, or an import from a package that the node carries as its
 `from`.
 
@@ -1397,13 +1397,22 @@ _Owner-directed 2026-08-13._
 
 ## §144 — di2's registration dialect: no TypeBuilder, renamed nodes, object-parameter overloads, a generic hand-usable builder
 
-di2 has no `TypeBuilder`, neither general-purpose nor as manifest stages. Two renames land
-(owner-worded): `placeholder` → `generic` (node `GenericType`, kind `'generic'`), and
-`FunctionType` → `FunctionType` (pairing with the `func` factory). The multi-field factories — `named`,
-`ctor`, `func`, `tag` — gain OBJECT-PARAMETER overloads whose keys are the node's own published
-fields (`{ name, from?, genericArgs? }`, and so on), one vocabulary labeled at every nesting level
-with defaults skippable independently; positional forms remain for flat use, and the
-homogeneous-list factories (`union` / `intersection` / `tuple`) stay positional-rest only.
+di2 has no `TypeBuilder`, neither general-purpose nor as manifest stages. A node's name is spelled
+out in full and its factory pairs with it: `GenericType` (kind `'generic'`, factory `generic`), and
+the callables `FunctionType` / `ConstructorType` behind `func` / `ctor`. The multi-field factories —
+`global`, `imported`, `ctor`, `func`, `tag` — gain OBJECT-PARAMETER overloads whose keys are the
+node's own published fields (`{ name, from?, genericArgs? }`, and so on), one vocabulary labeled at
+every nesting level with defaults skippable independently; positional forms remain for flat use, and
+the homogeneous-list factories (`union` / `intersection` / `tuple`) stay positional-rest only.
+
+A signature carries its OWN quantifiers in `genericArgs` — the holes it binds, in declaration order,
+empty for a concrete one. The name is shared with a nominal type's constructed arguments but the
+meaning is not: these are what a request CLOSES, positionally, exactly as a nominal type's are.
+Identity includes them, so `<T>() => Whatever<T>` and a signature that merely mentions `%T` are
+different nodes — the first ranges over the hole, the second names one particular open type. The
+spec object is the door (a positional call spells a concrete signature), and the token grammar
+extends additively: a quantifier list is written in front of the signature it binds,
+`<%T>(%T) => app:Box<%T>`, so every token without one spells exactly as it always did.
 
 Registration never requires the impl instance's own type: a provided constructor's instance
 `NominalType` is data the container has no use for. The address is what consumers resolve by,

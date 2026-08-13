@@ -166,7 +166,7 @@ export const s = schemaof<C>();
 	if len(codes) != 0 {
 		t.Fatalf("unexpected diagnostics %v", codes)
 	}
-	if !strings.Contains(tree, `inner: Type.import("Inner", "./main")`) {
+	if !strings.Contains(tree, `inner: Type.imported("Inner", "./main")`) {
 		t.Errorf("a named member must stay an address:\n%s", tree)
 	}
 }

@@ -59,13 +59,13 @@ func Leaf(f *shimast.NodeFactory, binding *valueimport.Binding, n *tokens.TypeNo
 }
 
 // Named builds the factory call a name-addressed type spells: `Type.global(name)`
-// when the ambient scope declares it, `Type.import(name, from)` when an import
+// when the ambient scope declares it, `Type.imported(name, from)` when an import
 // reaches it, each followed by its generic arguments as one array when it has any.
 func Named(f *shimast.NodeFactory, binding *valueimport.Binding, name, from string, args []*shimast.Node) *shimast.Node {
 	method := "global"
 	callArgs := []*shimast.Node{f.NewStringLiteral(name, shimast.TokenFlagsNone)}
 	if from != GlobalFrom {
-		method = "import"
+		method = "imported"
 		callArgs = append(callArgs, f.NewStringLiteral(from, shimast.TokenFlagsNone))
 	}
 	if len(args) != 0 {

@@ -221,13 +221,13 @@ export const s = schemaof<C>();
 		t.Fatalf("unexpected diagnostics: %v\n%s", diags, out)
 	}
 	tree := expressionAfter(t, out, "s = Type.object")
-	if !strings.Contains(tree, `inner: Type.import("Inner", "./main")`) {
+	if !strings.Contains(tree, `inner: Type.imported("Inner", "./main")`) {
 		t.Errorf("a named member must stay an address:\n%s", tree)
 	}
 	if strings.Contains(tree, "deep") {
 		t.Errorf("expansion ran past a name:\n%s", tree)
 	}
-	if !strings.Contains(tree, `Type.import("C", "./main")`) {
+	if !strings.Contains(tree, `Type.imported("C", "./main")`) {
 		t.Errorf("a self-reference must stay an address:\n%s", tree)
 	}
 }

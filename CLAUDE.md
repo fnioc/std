@@ -141,7 +141,7 @@ where that's cheap, and flag the intended divergence rather than pre-emptively t
   `typefor<T>()`); public parameters take `Type | string` and normalize through `Type.from`,
   everything internal is `Type` only. A keyed registration composes the key into the type —
   `Type.tag(base, key)`, never a separate argument or a `base#key` string — and an open template is
-  built structurally, `Type.import(name, from, [Type.generic(label)])`, the generic hole shared
+  built structurally, `Type.imported(name, from, [Type.generic(label)])`, the generic hole shared
   between the service type and the signature slot. The WHOLE error taxonomy ships here:
   `DiError` an abstract root, `UnsatisfiableError`/`CycleError`/`AmbiguousUnionError`/
   `ManifestValidationError` extending it so one `instanceof` classifies any container failure —

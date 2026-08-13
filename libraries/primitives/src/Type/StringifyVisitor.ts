@@ -1,6 +1,6 @@
 import { memo } from '../utils/map.js';
 import { escapeSegment } from './internals/grammar.js';
-import type { ArrayType, ConstructorType, FunctionType, GenericType, GlobalType, ImportType, IntersectionType,
+import type { ArrayType, ConstructorType, FunctionType, GenericType, GlobalType, ImportedType, IntersectionType,
   IterableType, ObjectType, TagType, TupleType, Type, TypeLiteralType, UnionType } from './Type.js';
 import { TypeVisitor } from './TypeVisitor.js';
 
@@ -26,14 +26,16 @@ class StringifyVisitor extends TypeVisitor<string, Precedence> {
   }
   protected override visitCtor(type: ConstructorType, minimum: Precedence): string {
     return this.#parenthesize(
-      `new (${this.#list(type.args)}) => ${this.visit(type.instanceType, Precedence.arrow)}`,
+      `${this.#quantifiers(type.genericArgs)}new (${this.#list(type.args)}) => `
+        + this.visit(type.instanceType, Precedence.arrow),
       Precedence.arrow,
       minimum,
     );
   }
   protected override visitFunc(type: FunctionType, minimum: Precedence): string {
     return this.#parenthesize(
-      `(${this.#list(type.args)}) => ${this.visit(type.returnType, Precedence.arrow)}`,
+      `${this.#quantifiers(type.genericArgs)}(${this.#list(type.args)}) => `
+        + this.visit(type.returnType, Precedence.arrow),
       Precedence.arrow,
       minimum,
     );
@@ -45,7 +47,7 @@ class StringifyVisitor extends TypeVisitor<string, Precedence> {
   protected override visitGlobal(type: GlobalType): string {
     return escapeSegment(type.name, true) + this.#genericTypes(type.genericArgs);
   }
-  protected override visitImport(type: ImportType): string {
+  protected override visitImported(type: ImportedType): string {
     return `${escapeSegment(type.from)}:${escapeSegment(type.name)}${this.#genericTypes(type.genericArgs)}`;
   }
   protected override visitIntersection(type: IntersectionType, minimum: Precedence): string {
@@ -85,6 +87,10 @@ class StringifyVisitor extends TypeVisitor<string, Precedence> {
   /** Comma-separated, in a position the surrounding brackets already delimit. */
   #list(types: readonly Type[]): string {
     return types.map(member => this.visit(member, Precedence.arrow)).join(', ');
+  }
+  /** The signature's own quantifiers, written in front of it; a concrete signature has none. */
+  #quantifiers(types: readonly Type[]): string {
+    return types.length ? `<${this.#list(types)}>` : '';
   }
   #genericTypes(types: readonly Type[]): string {
     return types.length ? `<${this.#list(types)}>` : '';

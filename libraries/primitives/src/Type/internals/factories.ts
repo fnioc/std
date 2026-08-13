@@ -6,7 +6,7 @@
 
 import type { Func } from '@rhombus-toolkit/func';
 import { stringifyType } from '../StringifyVisitor.js';
-import type { AggregateType, ArrayType, ConstructorType, FunctionType, GenericType, GlobalType, ImportType,
+import type { AggregateType, ArrayType, ConstructorType, FunctionType, GenericType, GlobalType, ImportedType,
   IntersectionType, IterableType, LiteralValue, ObjectType, TagType, TupleType, Type, TypeBrand, TypeLiteralType,
   UnionType } from '../Type.js';
 import { TypeVisitor } from '../TypeVisitor.js';
@@ -44,21 +44,23 @@ export function tuple(members: readonly Type[]): TupleType {
   return intern(`tuple\0${slots.map(id).join(',')}`, () => node<TupleType>({ kind: 'tuple', members: slots }));
 }
 
-export function func(returnType: Type, args: readonly Type[]): FunctionType {
+export function func(returnType: Type, args: readonly Type[], genericArgs: readonly Type[]): FunctionType {
   const result = adopt(returnType);
   const slots = args.map(adopt);
+  const quantifiers = genericArgs.map(adopt);
   return intern(
-    `func\0${id(result)}\0${slots.map(id).join(',')}`,
-    () => node<FunctionType>({ kind: 'func', args: slots, returnType: result }),
+    `func\0${quantifiers.map(id).join(',')}\0${id(result)}\0${slots.map(id).join(',')}`,
+    () => node<FunctionType>({ kind: 'func', args: slots, returnType: result, genericArgs: quantifiers }),
   );
 }
 
-export function ctor(instanceType: Type, args: readonly Type[]): ConstructorType {
+export function ctor(instanceType: Type, args: readonly Type[], genericArgs: readonly Type[]): ConstructorType {
   const instance = adopt(instanceType);
   const slots = args.map(adopt);
+  const quantifiers = genericArgs.map(adopt);
   return intern(
-    `ctor\0${id(instance)}\0${slots.map(id).join(',')}`,
-    () => node<ConstructorType>({ kind: 'ctor', args: slots, instanceType: instance }),
+    `ctor\0${quantifiers.map(id).join(',')}\0${id(instance)}\0${slots.map(id).join(',')}`,
+    () => node<ConstructorType>({ kind: 'ctor', args: slots, instanceType: instance, genericArgs: quantifiers }),
   );
 }
 
@@ -101,7 +103,7 @@ export function global(name: string, genericArgs: readonly Type[]): AggregateTyp
 /**
  * @throws TypeError - when `from` is the ambient scope, which no import reaches.
  */
-export function importType(name: string, from: string, genericArgs: readonly Type[]): ImportType {
+export function imported(name: string, from: string, genericArgs: readonly Type[]): ImportedType {
   if (from === GLOBAL_QUALIFIER) {
     throw new TypeError(
       `'${GLOBAL_QUALIFIER}' is the ambient scope, not a package — spell ${name} as a global type instead`,
@@ -109,8 +111,8 @@ export function importType(name: string, from: string, genericArgs: readonly Typ
   }
   const slots = genericArgs.map(adopt);
   return intern(
-    `import\0${JSON.stringify(from)}\0${JSON.stringify(name)}\0${slots.map(id).join(',')}`,
-    () => node<ImportType>({ kind: 'import', from, name, genericArgs: slots }),
+    `imported\0${JSON.stringify(from)}\0${JSON.stringify(name)}\0${slots.map(id).join(',')}`,
+    () => node<ImportedType>({ kind: 'imported', from, name, genericArgs: slots }),
   );
 }
 
@@ -239,10 +241,10 @@ class AdoptVisitor extends TypeVisitor<Type> {
     return array(type.element);
   }
   protected override visitCtor(type: ConstructorType): Type {
-    return ctor(type.instanceType, type.args);
+    return ctor(type.instanceType, type.args, type.genericArgs);
   }
   protected override visitFunc(type: FunctionType): Type {
-    return func(type.returnType, type.args);
+    return func(type.returnType, type.args, type.genericArgs);
   }
   protected override visitGeneric(type: GenericType): Type {
     return generic(type.label);
@@ -250,8 +252,8 @@ class AdoptVisitor extends TypeVisitor<Type> {
   protected override visitGlobal(type: GlobalType): Type {
     return global(type.name, type.genericArgs);
   }
-  protected override visitImport(type: ImportType): Type {
-    return importType(type.name, type.from, type.genericArgs);
+  protected override visitImported(type: ImportedType): Type {
+    return imported(type.name, type.from, type.genericArgs);
   }
   protected override visitIntersection(type: IntersectionType): Type {
     return intersection(type.members);

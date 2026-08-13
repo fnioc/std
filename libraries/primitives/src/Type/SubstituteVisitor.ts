@@ -1,5 +1,5 @@
 import { tag as tagType } from './internals/factories.js';
-import { type ArrayType, type ConstructorType, type FunctionType, type GenericType, type GlobalType, type ImportType,
+import { type ArrayType, type ConstructorType, type FunctionType, type GenericType, type GlobalType, type ImportedType,
   type IntersectionType, type IterableType, type ObjectType, type TagType, type TupleType, Type, type TypeLiteralType,
   type UnionType } from './Type.js';
 import { TypeVisitor } from './TypeVisitor.js';
@@ -25,11 +25,19 @@ class SubstituteVisitor extends TypeVisitor<Type> {
   }
 
   protected override visitCtor(type: ConstructorType): Type {
-    return Type.ctor(this.visit(type.instanceType), ...this.#all(type.args));
+    return Type.ctor({
+      instanceType: this.visit(type.instanceType),
+      args: this.#all(type.args),
+      genericArgs: this.#remainingQuantifiers(type.genericArgs),
+    });
   }
 
   protected override visitFunc(type: FunctionType): Type {
-    return Type.func(this.visit(type.returnType), ...this.#all(type.args));
+    return Type.func({
+      returnType: this.visit(type.returnType),
+      args: this.#all(type.args),
+      genericArgs: this.#remainingQuantifiers(type.genericArgs),
+    });
   }
 
   protected override visitGeneric(type: GenericType): Type {
@@ -40,8 +48,8 @@ class SubstituteVisitor extends TypeVisitor<Type> {
     return Type.global(type.name, this.#all(type.genericArgs));
   }
 
-  protected override visitImport(type: ImportType): Type {
-    return Type.import(type.name, type.from, this.#all(type.genericArgs));
+  protected override visitImported(type: ImportedType): Type {
+    return Type.imported(type.name, type.from, this.#all(type.genericArgs));
   }
 
   protected override visitIntersection(type: IntersectionType): Type {
@@ -77,6 +85,11 @@ class SubstituteVisitor extends TypeVisitor<Type> {
 
   #all(types: readonly Type[]): readonly Type[] {
     return types.map(type => this.visit(type));
+  }
+
+  /** A quantifier this pass binds is discharged by it; one left unbound still ranges over the result. */
+  #remainingQuantifiers(quantifiers: readonly Type[]): readonly Type[] {
+    return quantifiers.filter(hole => !(hole.kind === 'generic' && this.#substitutions.has(hole.label)));
   }
 }
 

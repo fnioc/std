@@ -2,7 +2,7 @@ import type { Func } from '@rhombus-toolkit/func';
 import { isOpenType } from './analyzers.js';
 import { LITERAL_BASE } from './internals/literal-base.js';
 import { stringifyType } from './StringifyVisitor.js';
-import type { AggregateType, ArrayType, ConstructorType, FunctionType, GenericType, GlobalType, ImportType,
+import type { AggregateType, ArrayType, ConstructorType, FunctionType, GenericType, GlobalType, ImportedType,
   IntersectionType, IterableType, ObjectType, TagType, TupleType, Type, TypeLiteralType, UnionType } from './Type.js';
 import { TypeVisitor } from './TypeVisitor.js';
 
@@ -72,9 +72,9 @@ class SatisfiesVisitor extends TypeVisitor<Predicate> {
     };
   }
 
-  protected override visitImport(type: ImportType): Predicate {
+  protected override visitImported(type: ImportedType): Predicate {
     return proposed =>
-      proposed.kind === 'import'
+      proposed.kind === 'imported'
       && proposed.from === type.from
       && proposed.name === type.name
       && this.#arguments(type.genericArgs, proposed.genericArgs);

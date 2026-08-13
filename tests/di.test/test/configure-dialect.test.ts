@@ -12,8 +12,8 @@ interface IClock {
   now(): string;
 }
 
-const CLOCK = Type.import('IClock', 'app');
-const SINK = Type.import('ISink', 'app');
+const CLOCK = Type.imported('IClock', 'app');
+const SINK = Type.imported('ISink', 'app');
 
 class FixedClock implements IClock {
   now(): string {
@@ -72,7 +72,7 @@ describe('withType', () => {
 
   test('an intersection describes an overloaded implementation, one call signature per member', () => {
     const overloaded = Type.intersection(
-      Type.ctor(SINK, Type.import('IMissing', 'app'), Type.typeLiteral('unreachable')),
+      Type.ctor(SINK, Type.imported('IMissing', 'app'), Type.typeLiteral('unreachable')),
       Type.ctor(SINK, CLOCK, Type.typeLiteral('fallback')),
     );
     // The first member asks for a type nothing registers, so the second is the one that lowers.

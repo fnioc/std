@@ -288,8 +288,8 @@ module's actual name instead.
 | `tokenfor(value)`         | value-arg | the _produced_ token for a value — constructable → construct-sig return, callable → call-sig return, else the value's own type | `tokenfor(Foo)` (`class Foo {}`)                             | `"pkg:Foo"`                                                                             | `primitives.extras` | `nameof`      |
 | `tokenof<T>()`            | type-arg  | the _raw_ token for `T` — never strips a `Keyed<T,K>` brand                                                                    | `tokenof<UserOptions>()`                                     | `"pkg:UserOptions"`                                                                     | `primitives.extras` | `nameof`      |
 | `tokenof(value)`          | value-arg | the raw token for a value's _own_ type — never unwraps a constructor/factory                                                   | `tokenof(makeThing)` (`declare function makeThing(): Thing`) | `"pkg:makeThing"`                                                                       | `primitives.extras` | `nameof`      |
-| `typefor<T>()`            | type-arg  | the runtime `Type` node addressing `T` — the structural sibling of `tokenfor`'s flat string                                    | `typefor<IBar>()`                                            | `Type.import("IBar", "pkg")`                                                            | `primitives.extras` | `typefor`     |
-| `typefor(value)`          | value-arg | the `Type` node a value's own shape spells — a class as the constructor it is, parameters and all                              | `typefor(Foo)` (`class Foo { constructor(a: IA) {} }`)       | `Type.ctor(Type.import("Foo", "pkg"), Type.import("IA", "pkg"))`                        | `primitives.extras` | `typefor`     |
+| `typefor<T>()`            | type-arg  | the runtime `Type` node addressing `T` — the structural sibling of `tokenfor`'s flat string                                    | `typefor<IBar>()`                                            | `Type.imported("IBar", "pkg")`                                                          | `primitives.extras` | `typefor`     |
+| `typefor(value)`          | value-arg | the `Type` node a value's own shape spells — a class as the constructor it is, parameters and all                              | `typefor(Foo)` (`class Foo { constructor(a: IA) {} }`)       | `Type.ctor(Type.imported("Foo", "pkg"), Type.imported("IA", "pkg"))`                    | `primitives.extras` | `typefor`     |
 | `signatureof(ctor \| fn)` | value-arg | the `[[...]]` dependency-signature array for a constructor or function value                                                   | `signatureof(Ctor)` (`Ctor: new (d: IDep) => IThing`)        | `[["pkg:IDep"]]`                                                                        | `di.extras`         | `signatureof` |
 | `schemaof<T>()`           | type-arg  | the `Type` tree describing a record type `T`'s members, stopping at every name                                                 | `schemaof<{ ssl?: boolean }>()`                              | `Type.object({ ssl: Type.union(Type.global("boolean"), Type.typeLiteral(undefined)) })` | `config.extras`     | `schemaof`    |
 
@@ -354,11 +354,11 @@ A library declares its inlineable members in the `"entries"` list of a `"rhombus
 ```
 
 Fields are partitioned by KIND, not just presence: `type` names a TYPE — a `TypeIdentifier`
-reference (`ImportType`; never a signature-shaped `Type` like `FunctionType`/`ConstructorType`), the
+reference (`ImportedType`; never a signature-shaped `Type` like `FunctionType`/`ConstructorType`), the
 interface an instance member is declared on; `impl` names a VALUE — a fully-qualified
 `<package>:<Name>` export; `member` is the member name, shared by both member shapes. Both `type`
 and `impl` deserialize through the same strict reference grammar (a Go mirror of the TS `Type`
-model's `ImportType` shape — `name`/`from`/generic `typeArgs`); a missing package qualifier or any
+model's `ImportedType` shape — `name`/`from`/generic `typeArgs`); a missing package qualifier or any
 other malformed reference is a loud load-time failure, never a silent skip.
 
 There are three shapes:

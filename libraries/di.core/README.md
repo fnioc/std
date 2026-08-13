@@ -22,7 +22,7 @@ import { DefaultManifest, Type } from '@rhombus-std/di.core';
 interface IGreeter {
   greet(name: string): string;
 }
-const IGreeter = Type.import('IGreeter', 'app');
+const IGreeter = Type.imported('IGreeter', 'app');
 
 class ConsoleGreeter implements IGreeter {
   greet(name: string) {
@@ -51,7 +51,7 @@ The same registration can also be stated in one call, with the implementation's 
 | `replaceClass` / `replaceFactory` / `replaceValue`          | Remove any existing registration under the address (and key), then add the new one.                                                                                   |
 | `remove` / `replace` / `removeAll` / `addMany`              | Lower-level descriptor operations: drop or swap one descriptor by identity, drop everything filed under an address, or add several descriptors at once.               |
 | `ServiceDescriptor`                                         | The registration primitive. `ServiceDescriptor.ctor` / `.factory` / `.value` construct one directly; `.matches` / `.equals` compare two.                              |
-| `Type` (re-exported from `primitives`)                      | The address every registration is filed under — `Type.import`, `Type.tag`, `Type.array`, and the rest of the factories.                                               |
+| `Type` (re-exported from `primitives`)                      | The address every registration is filed under — `Type.imported`, `Type.tag`, `Type.array`, and the rest of the factories.                                             |
 | `Inject<T, K>`                                              | Pins a constructor parameter's service type to a specific address, overriding what it would otherwise derive from the parameter's own declared type.                  |
 | `Hole<N, C>` / `$<N>`                                       | Marks an open-generic slot in a registration template, closed by whatever type the request supplies. `N` numbers the hole; `C` constrains what may close it.          |
 | `Keyed<T, K>`                                               | Tags a constructor parameter with a resolution key, distinguishing one registration of a type from another.                                                           |

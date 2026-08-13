@@ -59,7 +59,7 @@ interface ManifestSlot<S extends string> {
  * header). It is composed exactly as `typefor<IGreeting>()` would derive it, so
  * a reader can check it against what the sugar would produce.
  */
-const GREETING_TYPE: Type = Type.import('IGreeting', '@rhombus-std/examples.contracts');
+const GREETING_TYPE: Type = Type.imported('IGreeting', '@rhombus-std/examples.contracts');
 
 // ── the domain ───────────────────────────────────────────────────────────────
 

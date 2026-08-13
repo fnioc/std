@@ -2,16 +2,16 @@
 // structurally identical types are the SAME object, whatever route built them -- so `===` is the
 // equality operator and no separate comparison is needed.
 
-import { type ImportType, Type } from '@rhombus-std/primitives';
+import { type ImportedType, Type } from '@rhombus-std/primitives';
 import { describe, expect, test } from 'bun:test';
 
-const A = Type.import('A', 'app');
-const B = Type.import('B', 'app');
-const C = Type.import('C', 'app');
+const A = Type.imported('A', 'app');
+const B = Type.imported('B', 'app');
+const C = Type.imported('C', 'app');
 
 describe('one object per type', () => {
   test('a factory and a token agree, kind for kind', () => {
-    expect(Type.from('app:Foo')).toBe(Type.import('Foo', 'app'));
+    expect(Type.from('app:Foo')).toBe(Type.imported('Foo', 'app'));
     expect(Type.from('app:A | app:B')).toBe(Type.union(A, B));
     expect(Type.from('app:A & app:B')).toBe(Type.intersection(A, B));
     expect(Type.from('[app:A, app:B]')).toBe(Type.tuple(A, B));
@@ -26,21 +26,39 @@ describe('one object per type', () => {
   test('the spellings of one type are one object', () => {
     expect(Type.from('Func<app:A, app:B>')).toBe(Type.from('(app:B) => app:A'));
     expect(Type.from('Ctor<app:A, app:B>')).toBe(Type.from('new (app:B) => app:A'));
-    expect(Type.from('ServiceProvider')).toBe(Type.import('IServiceProvider', '@rhombus-std/primitives'));
+    expect(Type.from('ServiceProvider')).toBe(Type.imported('IServiceProvider', '@rhombus-std/primitives'));
     expect(Type.from('\\Func')).toBe(Type.global('Func'));
   });
 
   test('sharing reaches every subtree, not just the root', () => {
-    const built = Type.import('Box', 'app', [Type.tuple(A, B)]);
-    const read = Type.from('app:Box<[app:A, app:B]>') as ImportType;
+    const built = Type.imported('Box', 'app', [Type.tuple(A, B)]);
+    const read = Type.from('app:Box<[app:A, app:B]>') as ImportedType;
     expect(read).toBe(built);
     expect(read.genericArgs[0]).toBe(Type.tuple(A, B));
   });
 
   test('a foreign node is adopted rather than trusted', () => {
-    const forged = { kind: 'import', from: 'app', name: 'A', genericArgs: [] } as unknown as Type;
+    const forged = { kind: 'imported', from: 'app', name: 'A', genericArgs: [] } as unknown as Type;
     expect(forged).not.toBe(A);
     expect(Type.tuple(forged)).toBe(Type.tuple(A));
+  });
+});
+
+describe('a signature quantifying its own holes', () => {
+  const hole = Type.generic('T');
+  const open = Type.func({ returnType: Type.imported('Box', 'app', [hole]), genericArgs: [hole] });
+
+  test('spells its quantifiers in front of the signature', () => {
+    expect(Type.stringify(open)).toBe('<%T>() => app:Box<%T>');
+  });
+
+  test('a signature that only mentions the hole is a different node', () => {
+    expect(open).not.toBe(Type.func(Type.imported('Box', 'app', [hole])));
+  });
+
+  test('a concrete signature quantifies nothing', () => {
+    expect(Type.func(A).genericArgs).toEqual([]);
+    expect(Type.ctor(A).genericArgs).toEqual([]);
   });
 });
 
@@ -117,14 +135,14 @@ describe('interned nodes are sealed', () => {
 
 describe('substitution', () => {
   test('a substitution that changes nothing returns the same object', () => {
-    const open = Type.import('Box', 'app', [Type.generic('T')]);
+    const open = Type.imported('Box', 'app', [Type.generic('T')]);
     expect(Type.substitute(open, new Map())).toBe(open);
     expect(Type.substitute(open, new Map([['U', A]]))).toBe(open);
   });
 
   test('a closed type is the one the factory would have built', () => {
-    const open = Type.import('Box', 'app', [Type.generic('T')]);
-    expect(Type.substitute(open, new Map([['T', A]]))).toBe(Type.import('Box', 'app', [A]));
+    const open = Type.imported('Box', 'app', [Type.generic('T')]);
+    expect(Type.substitute(open, new Map([['T', A]]))).toBe(Type.imported('Box', 'app', [A]));
   });
 });
 
@@ -196,6 +214,6 @@ describe('the global door mints an aggregate from its spelling', () => {
   });
 
   test('an imported spelling names an ordinary type, aggregate word or not', () => {
-    expect(Type.import('Iterable', 'app', [A]).kind).toBe('import');
+    expect(Type.imported('Iterable', 'app', [A]).kind).toBe('imported');
   });
 });

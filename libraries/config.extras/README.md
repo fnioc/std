@@ -55,11 +55,11 @@ never a silent, un-coerced builder.
 | a tuple                              | `Type.tuple(...)`                                                            |
 | an array                             | `Type.global('Array', [<element schema>])`                                   |
 | nested object / inline interface     | a nested `Type.object({...})` (recurses)                                     |
-| a member whose type has its own name | kept as that name — `Type.import('Database', 'app')`, not expanded           |
+| a member whose type has its own name | kept as that name — `Type.imported('Database', 'app')`, not expanded         |
 | `foo?: T`                            | `T`'s schema unioned with `Type.typeLiteral(undefined)`                      |
 
 Expansion stops at a name: `interface App { db: Database }` lowers `db` to
-`Type.import('Database', ...)`, not an expanded `Database`. Only a callable
+`Type.imported('Database', ...)`, not an expanded `Database`. Only a callable
 member, an index signature, or an anonymous structure with nothing nameable
 about it is a **hard compile error**, and the whole `.withType` call is left
 un-rewritten (never a silent partial). Property-name casing is preserved exactly (`Host` stays

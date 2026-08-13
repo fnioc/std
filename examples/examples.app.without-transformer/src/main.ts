@@ -84,12 +84,12 @@ import { demonstrateResolution } from './resolution-demo.js';
 //
 // CONFIG_TYPE has no type-driven counterpart to match — it exists purely to
 // thread the manually-built `ConfigRoot` into the hosted worker.
-const POLICY_TYPE = Type.import('GreetingPolicy', '@rhombus-std/examples.contracts');
-const SERVER_OPTIONS_TYPE = Type.import('IOptions', '@rhombus-std/options', [
-  Type.import('ServerOptions', '@rhombus-std/examples.contracts'),
+const POLICY_TYPE = Type.imported('GreetingPolicy', '@rhombus-std/examples.contracts');
+const SERVER_OPTIONS_TYPE = Type.imported('IOptions', '@rhombus-std/options', [
+  Type.imported('ServerOptions', '@rhombus-std/examples.contracts'),
 ]);
-const POLICY_OPTIONS_TYPE = Type.import('IOptions', '@rhombus-std/options', [POLICY_TYPE]);
-const CONFIG_TYPE = Type.import('ConfigRoot', '@rhombus-std/config');
+const POLICY_OPTIONS_TYPE = Type.imported('IOptions', '@rhombus-std/options', [POLICY_TYPE]);
+const CONFIG_TYPE = Type.imported('ConfigRoot', '@rhombus-std/config');
 
 // ── config ───────────────────────────────────────────────────────────────────
 

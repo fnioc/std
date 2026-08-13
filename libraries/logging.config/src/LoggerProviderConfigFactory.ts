@@ -9,7 +9,7 @@ import type { LoggingConfig } from './LoggingConfig';
  * spelling can't serve as one, since `:` is the configuration path delimiter.
  */
 function sectionKeyFor(providerType: Type): string {
-  return providerType.kind === 'global' || providerType.kind === 'import'
+  return providerType.kind === 'global' || providerType.kind === 'imported'
     ? providerType.name
     : Type.stringify(providerType);
 }

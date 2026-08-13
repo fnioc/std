@@ -8,8 +8,8 @@ import (
 )
 
 // TypeRef is a marker reference deserialized through the SAME grammar the rest
-// of the engine spells types in — a Go mirror of the TS Type model's ImportType
-// shape (Type.import(name, from, genericArgs)), a type IDENTIFIER, never a
+// of the engine spells types in — a Go mirror of the TS Type model's ImportedType
+// shape (Type.imported(name, from, genericArgs)), a type IDENTIFIER, never a
 // signature-shaped Type (FunctionType, ConstructorType, …). A marker entry's
 // `type` or `impl` string always deserializes into exactly this: a name, the
 // module it comes from, and any generic type arguments — reusing
@@ -33,7 +33,7 @@ type TypeRef struct {
 // or malformed package/colon split, an unbalanced generic-argument list, or an
 // argument that itself fails to parse. There is no syntax in this grammar for
 // a signature-shaped Type (a function type, a union, …) — a reference that
-// parses at all is always an ImportType.
+// parses at all is always an ImportedType.
 func ParseTypeRef(raw string) (TypeRef, error) {
 	base := raw
 	var typeArgs []TypeRef
