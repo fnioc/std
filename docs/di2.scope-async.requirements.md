@@ -131,6 +131,13 @@
 - Per-scope registrations = a factory argument carrying descriptors — the `additionalServices`
   layering. Caveat riding with it: a plan memo keyed on the interned request alone is unsound under
   layered descriptors; the layer joins the memo key or the resolution bypasses the memo.
+- Measured engine-state inputs (team-lead, 2026-08-13 — priority weights, not requirements): scope
+  creation is the critical path (`createScope` throwing accounts for 56 of the 88 known-red tests;
+  those tests exercise the placeholder surface and rewrite to this design when it lands); the
+  dispose/disposeAsync stubs account for 23 more; singleton instance identity is not honored at all
+  today (two resolutions construct twice — the instance layer is entirely greenfield, nothing to
+  preserve). Downstream consumers gated only on this model: `validateOnStart` and the per-provider
+  logging-config reload test.
 
 ## Write-back and the race
 
