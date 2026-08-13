@@ -1,6 +1,7 @@
 import type { ILogger, ILoggerProvider } from '@rhombus-std/logging.core';
 import type { IExternalScopeProvider } from '@rhombus-std/logging.core';
 import { type IOptions, Options } from '@rhombus-std/options';
+import { getOrCreate } from '@rhombus-std/primitives';
 import { AnsiLogConsole } from './AnsiLogConsole';
 import { ConsoleFormatter } from './ConsoleFormatter';
 import { ConsoleFormatterNames } from './ConsoleFormatterNames';
@@ -102,12 +103,8 @@ export class ConsoleLoggerProvider implements ILoggerProvider {
     const current = this.#options.value;
     const logFormatter = this.#resolveFormatter(current);
 
-    let logger = this.#loggers.get(name);
-    if (logger === undefined) {
-      logger = new ConsoleLogger(name, this.#messageQueue, logFormatter, this.#scopeProvider, current);
-      this.#loggers.set(name, logger);
-    }
-    return logger;
+    return getOrCreate(this.#loggers, name,
+      (name) => new ConsoleLogger(name, this.#messageQueue, logFormatter, this.#scopeProvider, current));
   }
 
   /** Sets the scope provider all current and future loggers use. */

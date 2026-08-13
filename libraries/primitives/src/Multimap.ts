@@ -1,3 +1,5 @@
+import { getOrCreate } from './utils/map.js';
+
 /**
  * A collection mapping each key to an ordered list of values. A second
  * {@link add} under an existing key APPENDS: values are never de-duplicated and
@@ -11,12 +13,7 @@ export class Multimap<Key, Value> {
    * `this` so adds can chain.
    */
   public add(key: Key, value: Value): this {
-    const group = this.#groups.get(key);
-    if (group) {
-      group.push(value);
-    } else {
-      this.#groups.set(key, [value]);
-    }
+    getOrCreate(this.#groups, key, () => []).push(value);
     return this;
   }
 

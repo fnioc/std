@@ -22,6 +22,7 @@
 
 import { configPath } from '@rhombus-std/config';
 import { FormatError } from '@rhombus-std/config.file';
+import { getOrCreate } from '@rhombus-std/primitives';
 
 const NAME_ATTRIBUTE = 'Name';
 const PREDEFINED_ENTITIES: Record<string, string> = { lt: '<', gt: '>', amp: '&', quot: '"', apos: "'" };
@@ -289,12 +290,7 @@ function groupChildren(children: XmlElement[]): XmlElement[][] {
   const groups = new Map<string, XmlElement[]>();
   for (const child of children) {
     const key = child.siblingName.toLowerCase();
-    const existing = groups.get(key);
-    if (existing) {
-      existing.push(child);
-    } else {
-      groups.set(key, [child]);
-    }
+    getOrCreate(groups, key, () => []).push(child);
   }
   return [...groups.values()];
 }
