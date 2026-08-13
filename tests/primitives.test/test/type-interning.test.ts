@@ -137,19 +137,19 @@ describe('equals is retired', () => {
 
 describe('collection', () => {
   test('spells the aggregate of an element', () => {
-    expect(Type.stringify(Type.collection(A))).toBe('Iterable<app:A>');
+    expect(Type.stringify(Type.iterable(A))).toBe('Iterable<app:A>');
   });
 
   test('the composing and the reading side land on one object', () => {
-    expect(Type.collection(A)).toBe(Type.collection(A));
-    expect(Type.collection(A)).toBe(Type.from('Iterable<app:A>'));
+    expect(Type.iterable(A)).toBe(Type.iterable(A));
+    expect(Type.iterable(A)).toBe(Type.from('Iterable<app:A>'));
   });
 
   test('a different element is a different aggregate', () => {
-    expect(Type.collection(A)).not.toBe(Type.collection(B));
+    expect(Type.iterable(A)).not.toBe(Type.iterable(B));
   });
 
   test('nests, so an aggregate is itself collectable', () => {
-    expect(Type.collection(Type.collection(A))).toBe(Type.from('Iterable<Iterable<app:A>>'));
+    expect(Type.iterable(Type.iterable(A))).toBe(Type.from('Iterable<Iterable<app:A>>'));
   });
 });

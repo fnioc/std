@@ -95,7 +95,7 @@ async function tour(provider: IServiceProvider): Promise<string[]> {
   // still runs.
   //
   // `getServices(element)` is sugar for asking for the collection type over it;
-  // `Type.collection(element)` spells that type, and either request reaches the
+  // `Type.iterable(element)` spells that type, and either request reaches the
   // same aggregation.
   lines.push('collection resolution — 3 registrations share one type, all of them run');
   const validators = [...provider.getServices(t.validator)] as IOrderValidator[];
@@ -105,7 +105,7 @@ async function tour(provider: IServiceProvider): Promise<string[]> {
     }
   }
   const asCollectionType = [
-    ...(provider.getRequiredService(Type.collection(t.validator)) as Iterable<IOrderValidator>),
+    ...(provider.getRequiredService(Type.iterable(t.validator)) as Iterable<IOrderValidator>),
   ];
   lines.push(`  the same aggregation asked for as a type: ${asCollectionType.length} validators`);
 
