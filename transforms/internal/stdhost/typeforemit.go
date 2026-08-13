@@ -25,49 +25,60 @@ const (
 	EmissionInline Emission = "inline"
 )
 
-// projectManifest is the minimal package.json view carrying the emission choice:
+// markerSection is the `rhombus-std` marker's typefor member:
 //
 //	{ "rhombus-std": { "typefor": { "emit": "hoisted" } } }
 //
-// It rides the PROJECT, never the shared ttsc descriptor — the descriptor is
-// what every consumer dedupes to one spawn and one cache key, so nothing that
-// varies per consumer may live there.
-type projectManifest struct {
-	RhombusStd *struct {
-		Typefor *struct {
-			Emit string `json:"emit"`
-		} `json:"typefor"`
-	} `json:"rhombus-std"`
+// The choice rides the PROJECT, never the shared ttsc descriptor — the
+// descriptor is what every consumer dedupes to one spawn and one cache key, so
+// nothing that varies per consumer may live there.
+type markerSection struct {
+	Typefor *struct {
+		Emit string `json:"emit"`
+	} `json:"typefor"`
 }
 
-// readEmission reads cwd's package.json for the project's emission choice.
-// A missing package.json or a missing key is the default, hoisted; an
-// unrecognized value is a hard error rather than a silent fallback, since the
-// two forms are not interchangeable output.
-func readEmission(cwd string) (Emission, error) {
-	data, err := os.ReadFile(filepath.Join(cwd, "package.json"))
-	if err != nil {
-		if os.IsNotExist(err) {
-			return EmissionHoisted, nil
-		}
-		return "", fmt.Errorf("typefor emission: cannot read %s: %w", filepath.Join(cwd, "package.json"), err)
-	}
-	var manifest projectManifest
-	if err := json.Unmarshal(data, &manifest); err != nil {
-		return "", fmt.Errorf("typefor emission: malformed %s: %w", filepath.Join(cwd, "package.json"), err)
-	}
-	if manifest.RhombusStd == nil || manifest.RhombusStd.Typefor == nil || manifest.RhombusStd.Typefor.Emit == "" {
+// projectManifest is the minimal package.json view carrying the marker.
+type projectManifest struct {
+	RhombusStd *markerSection `json:"rhombus-std"`
+}
+
+// emissionFor classifies a project's marker section. A section that is absent,
+// or that names no emission, is the default; an unrecognized value is a hard
+// error rather than a silent fallback, since the two forms are not
+// interchangeable output. declaredIn names the file the section came from, for
+// that error.
+func emissionFor(marker *markerSection, declaredIn string) (Emission, error) {
+	if marker == nil || marker.Typefor == nil || marker.Typefor.Emit == "" {
 		return EmissionHoisted, nil
 	}
-	switch emission := Emission(manifest.RhombusStd.Typefor.Emit); emission {
+	switch emission := Emission(marker.Typefor.Emit); emission {
 	case EmissionHoisted, EmissionInline:
 		return emission, nil
 	default:
 		return "", fmt.Errorf(
 			`typefor emission: %s declares "rhombus-std".typefor.emit = %q — it must be %q or %q`,
-			filepath.Join(cwd, "package.json"), manifest.RhombusStd.Typefor.Emit, EmissionHoisted, EmissionInline,
+			declaredIn, marker.Typefor.Emit, EmissionHoisted, EmissionInline,
 		)
 	}
+}
+
+// readEmission is emissionFor over the marker cwd's package.json declares. A
+// project with no package.json at all takes the default.
+func readEmission(cwd string) (Emission, error) {
+	path := filepath.Join(cwd, "package.json")
+	data, err := os.ReadFile(path)
+	if err != nil {
+		if os.IsNotExist(err) {
+			return EmissionHoisted, nil
+		}
+		return "", fmt.Errorf("typefor emission: cannot read %s: %w", path, err)
+	}
+	var manifest projectManifest
+	if err := json.Unmarshal(data, &manifest); err != nil {
+		return "", fmt.Errorf("typefor emission: malformed %s: %w", path, err)
+	}
+	return emissionFor(manifest.RhombusStd, path)
 }
 
 // emitRoots are the two directories hoisted emission is anchored to: the root of
