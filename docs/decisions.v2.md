@@ -726,21 +726,14 @@ embeds home package specifiers) and was not required.
 
 ---
 
-## §122 — Keyed resolve/isService semantics complete the §98 design; `keyedtokenfor` is the composed-lookup primitive
+## §122 — Keyed addressing is the tag: a keyed request and its registration meet at one interned `TagType`
 
-Every single-token consumer of a possibly-keyed type (`resolveAsync<Keyed<T,K>>()`,
-`isService<Keyed<T,K>>()`) derives its token via `keyedtokenfor<T>()` — the composed-lookup
-primitive that emits the SINGLE `base#key` string for a `Keyed<T,K>`, or the plain base for an
-unkeyed `T` (unkeyed output stays byte-identical to the pre-existing form by construction). The
-split-argument consumers (`resolve`/`tryResolve`, which carry a runtime key parameter) instead
-derive `tokenfor<T>() + keyof<T>()` onto that existing parameter. This corrects a real gap: an
-earlier form derived the single-token consumers' key via the raw alias-preserving `tokenof<T>()`,
-which never matched a `base#key` registration — a keyed `isService`/`resolveAsync` silently
-answered false / threw for every keyed type. di-direct's own `lowerResolveCall`/
-`lowerIsServiceCall` carried the identical latent gap and are corrected by the same bodies. A
-runtime round-trip test (a keyed resolve actually matching a keyed registration) backs the fix,
-since the prior byte-parity-only nets couldn't have caught it — they proved inline matched
-di-direct's output, not that di-direct's output was itself correct.
+A keyed service's address is `Type.tag(type, key)` — an interned node, so the registering side
+and the requesting side hold the `===` same address or they hold different types; there is no
+derived-string keyed token and no composed-lookup primitive. The durable rule this entry
+carries: keyed addressing must be backed by a runtime round-trip test (a keyed request actually
+matching a keyed registration), because parity-style nets only prove two spellings agree — they
+cannot prove the agreed spelling matches anything.
 
 ---
 
