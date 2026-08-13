@@ -7,8 +7,8 @@ import { DefaultManifest } from '@rhombus-std/di.core';
 import { Type } from '@rhombus-std/primitives';
 import { describe, expect, test } from 'bun:test';
 
-const A = Type.named('A', 'app');
-const Missing = Type.named('Missing', 'app');
+const A = Type.import('A', 'app');
+const Missing = Type.import('Missing', 'app');
 
 function providerFor(value: unknown): ServiceProvider {
   return new ServiceProvider(DefaultManifest.empty<string>().addValue(A, value));

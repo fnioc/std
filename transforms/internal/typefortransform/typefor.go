@@ -5,11 +5,12 @@
 // where `nameof<T>()` derives a flat string TOKEN, `typefor<T>()` derives the
 // STRUCTURED runtime `Type` value the same checker type spells, narrowed to
 // `Type.func` / `Type.ctor` for a function / constructor type, `Type.tag` for a
-// `Keyed<T, K>` brand, and `Type.named` / `Type.typeLiteral` / `Type.union` /
-// `Type.generic` for everything else (tokens.DeriveTypeF; see derive.go).
+// `Keyed<T, K>` brand, and `Type.global` / `Type.import` / `Type.typeLiteral` /
+// `Type.union` / `Type.generic` for everything else (tokens.DeriveTypeF; see
+// derive.go).
 //
 // A value argument derives from the value's OWN type, never unwrapped: a class
-// arrives as the constructor it is (a CtorType), not the instance it builds — the
+// arrives as the constructor it is (a ConstructorType), not the instance it builds — the
 // `.instanceType` accessor reads that. This is `tokenof`'s raw semantics, not
 // `tokenfor`'s produced-type unwrap, matching typefor.ts's documented contract.
 //

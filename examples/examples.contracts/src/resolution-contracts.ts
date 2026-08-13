@@ -6,7 +6,7 @@
 // These types live in the shared contracts package for the same reason the
 // greeting contracts do: the transformer derives a `Type` from a type's
 // PACKAGE-PUBLIC path, so a contract exported from here derives
-// `Type.named('IPaymentGateway', '@rhombus-std/examples.contracts')` — a Type
+// `Type.import('IPaymentGateway', '@rhombus-std/examples.contracts')` — a Type
 // the manual dialect can compose verbatim. Declaring them inside an application
 // instead would derive an app-private Type, and the two dialects could no
 // longer be compared line for line.

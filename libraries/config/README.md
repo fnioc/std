@@ -176,9 +176,9 @@ interface ServerConfig {
 
 const config = new ConfigBuilder().addJsonFile('appsettings.json').withSchema<ServerConfig>(Type.object({
   Server: Type.object({
-    Host: Type.named('string', 'global'),
-    Port: Type.named('number', 'global'),
-    Ssl: Type.union(Type.named('boolean', 'global'), Type.typeLiteral(undefined)),
+    Host: Type.global('string'),
+    Port: Type.global('number'),
+    Ssl: Type.union(Type.global('boolean'), Type.typeLiteral(undefined)),
   }),
 })).build();
 
@@ -253,7 +253,7 @@ yourself.
 | `ConfigProvider`                                     | Abstract base a configuration source's provider extends.                                                 |
 | `addInMemoryCollection`                              | Bundled in-memory source — set config values directly, no file or env involved.                          |
 | `addConfig`                                          | Wraps an already-built `IConfig` as a source layer inside another builder.                               |
-| `Type` (from `@rhombus-std/primitives`)              | The schema vocabulary — `Type.object`/`Type.named`/`Type.union`/etc. build the tree `withSchema` takes.  |
+| `Type` (from `@rhombus-std/primitives`)              | The schema vocabulary — `Type.object`/`Type.global`/`Type.union`/etc. build the tree `withSchema` takes. |
 | `SchemaCoercionError`                                | Thrown by `build()` when a required key is missing or fails coercion; lists every offending key at once. |
 | `compareConfigKeys`                                  | The `:`-segment-aware comparer configuration keys sort by.                                               |
 | `exists`, `ConfigExtensions`, `ConfigRootExtensions` | Small convenience helpers over a built config (existence checks, debug views).                           |

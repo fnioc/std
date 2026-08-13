@@ -32,7 +32,7 @@ interface ServerConfig {
 
 const config = new ConfigBuilder().addInMemoryCollection({ host: 'example.com', port: '8443', ssl: 'true' }).withType<
   ServerConfig
->() // ← rewritten to .withSchema(Type.object({ host: Type.named('string', 'global'), … }))
+>() // ← rewritten to .withSchema(Type.object({ host: Type.global('string'), … }))
   .build();
 
 config.port; // number — coerced at runtime from "8443"
@@ -48,18 +48,18 @@ never a silent, un-coerced builder.
 
 ## What lowers
 
-| Field type                           | Emitted schema                                                                                          |
-| ------------------------------------ | ------------------------------------------------------------------------------------------------------- |
-| `string` / `number` / `boolean`      | `Type.named('string', 'global')` / `Type.named('number', 'global')` / `Type.named('boolean', 'global')` |
-| a literal or literal union           | `Type.typeLiteral(...)` / `Type.union(...)`                                                             |
-| a tuple                              | `Type.tuple(...)`                                                                                       |
-| an array                             | `Type.named('Array', 'global', [<element schema>])`                                                     |
-| nested object / inline interface     | a nested `Type.object({...})` (recurses)                                                                |
-| a member whose type has its own name | kept as that name — `Type.named('Database', 'app')`, not expanded                                       |
-| `foo?: T`                            | `T`'s schema unioned with `Type.typeLiteral(undefined)`                                                 |
+| Field type                           | Emitted schema                                                               |
+| ------------------------------------ | ---------------------------------------------------------------------------- |
+| `string` / `number` / `boolean`      | `Type.global('string')` / `Type.global('number')` / `Type.global('boolean')` |
+| a literal or literal union           | `Type.typeLiteral(...)` / `Type.union(...)`                                  |
+| a tuple                              | `Type.tuple(...)`                                                            |
+| an array                             | `Type.global('Array', [<element schema>])`                                   |
+| nested object / inline interface     | a nested `Type.object({...})` (recurses)                                     |
+| a member whose type has its own name | kept as that name — `Type.import('Database', 'app')`, not expanded           |
+| `foo?: T`                            | `T`'s schema unioned with `Type.typeLiteral(undefined)`                      |
 
 Expansion stops at a name: `interface App { db: Database }` lowers `db` to
-`Type.named('Database', ...)`, not an expanded `Database`. Only a callable
+`Type.import('Database', ...)`, not an expanded `Database`. Only a callable
 member, an index signature, or an anonymous structure with nothing nameable
 about it is a **hard compile error**, and the whole `.withType` call is left
 un-rewritten (never a silent partial). Property-name casing is preserved exactly (`Host` stays

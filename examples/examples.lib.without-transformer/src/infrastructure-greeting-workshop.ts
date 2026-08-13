@@ -39,7 +39,7 @@ interface ManifestSlot<S extends string> {
 
 // ── types ────────────────────────────────────────────────────────────────────
 
-// Hand-written with `Type.named(...)`, exactly as `./types.ts` does, because
+// Hand-written with `Type.global(...)`, exactly as `./types.ts` does, because
 // the slots below compose these Types — a union, a callable — rather than only
 // naming them. These are LOCAL to this demo, so they only have to agree with
 // each other. `GREETING_TYPE` is re-used from `./types.js` because the
@@ -51,20 +51,20 @@ interface ManifestSlot<S extends string> {
  * a service, and that is the whole point of the factory below — a slot the
  * container cannot fill has to come from the caller.
  */
-const CARD_RECIPIENT_TYPE = Type.named('ICardRecipient', '@rhombus-std/examples.lib.without-transformer');
+const CARD_RECIPIENT_TYPE = Type.import('ICardRecipient', '@rhombus-std/examples.lib.without-transformer');
 
 /** The card stationery. Registered only when the consuming app chooses to override it. */
-const CARD_STATIONERY_TYPE = Type.named('ICardStationery', '@rhombus-std/examples.lib.without-transformer');
+const CARD_STATIONERY_TYPE = Type.import('ICardStationery', '@rhombus-std/examples.lib.without-transformer');
 
 /** One rendered card. Registered, but never resolved directly — see {@link GreetingWorkshop}. */
-const GREETING_CARD_TYPE = Type.named('GreetingCard', '@rhombus-std/examples.lib.without-transformer');
+const GREETING_CARD_TYPE = Type.import('GreetingCard', '@rhombus-std/examples.lib.without-transformer');
 
 /** The workshop service itself — the one thing this library registers unconditionally. */
-export const GREETING_WORKSHOP_TYPE: Type = Type.named('GreetingWorkshop',
+export const GREETING_WORKSHOP_TYPE: Type = Type.import('GreetingWorkshop',
   '@rhombus-std/examples.lib.without-transformer');
 
 /** The discouraged twin, at its own Type so both can be resolved and compared. */
-export const LOCATOR_GREETING_WORKSHOP_TYPE: Type = Type.named('LocatorGreetingWorkshop',
+export const LOCATOR_GREETING_WORKSHOP_TYPE: Type = Type.import('LocatorGreetingWorkshop',
   '@rhombus-std/examples.lib.without-transformer');
 
 // ── the domain ───────────────────────────────────────────────────────────────

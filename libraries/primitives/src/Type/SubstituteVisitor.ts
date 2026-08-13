@@ -1,6 +1,7 @@
-import { type ArrayType, type AsyncIterableType, type AsyncType, type CtorType, type FuncType, type GenericType,
-  type IntersectionType, type IterableType, type NamedType, type ObjectType, type TagType, type TupleType, Type,
-  type TypeLiteralType, type UnionType } from './Type.js';
+import { tag as tagType } from './internals/factories.js';
+import { type ArrayType, type AsyncIterableType, type AsyncType, type ConstructorType, type FunctionType,
+  type GenericType, type GlobalType, type ImportType, type IntersectionType, type IterableType, type ObjectType,
+  type TagType, type TupleType, Type, type TypeLiteralType, type UnionType } from './Type.js';
 import { TypeVisitor } from './TypeVisitor.js';
 
 /**
@@ -31,16 +32,24 @@ class SubstituteVisitor extends TypeVisitor<Type> {
     return Type.asyncIterable(this.visit(type.element));
   }
 
-  protected override visitCtor(type: CtorType): Type {
+  protected override visitCtor(type: ConstructorType): Type {
     return Type.ctor(this.visit(type.instanceType), ...this.#all(type.args));
   }
 
-  protected override visitFunc(type: FuncType): Type {
+  protected override visitFunc(type: FunctionType): Type {
     return Type.func(this.visit(type.returnType), ...this.#all(type.args));
   }
 
   protected override visitGeneric(type: GenericType): Type {
     return this.#substitutions.get(type.label) ?? type;
+  }
+
+  protected override visitGlobal(type: GlobalType): Type {
+    return Type.global(type.name, this.#all(type.genericArgs));
+  }
+
+  protected override visitImport(type: ImportType): Type {
+    return Type.import(type.name, type.from, this.#all(type.genericArgs));
   }
 
   protected override visitIntersection(type: IntersectionType): Type {
@@ -51,18 +60,15 @@ class SubstituteVisitor extends TypeVisitor<Type> {
     return Type.iterable(this.visit(type.element));
   }
 
-  protected override visitNamed(type: NamedType): Type {
-    return Type.named(type.name, type.from, this.#all(type.genericArgs));
-  }
-
   protected override visitObject(type: ObjectType): Type {
     return Type.object(
       Object.fromEntries(Object.entries(type.members).map(([key, member]) => [key, this.visit(member)])),
     );
   }
 
+  /** A substitution can put a tagged type where the tag's own inner type stands, which is refused. */
   protected override visitTag(type: TagType): Type {
-    return Type.tag(this.visit(type.type), type.tag);
+    return tagType(this.visit(type.type), type.tag);
   }
 
   protected override visitTuple(type: TupleType): Type {

@@ -1,17 +1,18 @@
-import { AugmentationSet2, type CtorType, type Flatten, type FuncType, type IntersectionType, Token,
+import { AugmentationSet2, type ConstructorType, type Flatten, type FunctionType, type IntersectionType, Token,
   Type } from '@rhombus-std/primitives';
 import { registerAugmentations } from '@rhombus-std/primitives.extras';
 import type { Ctor, Func } from '@rhombus-toolkit/func';
 
 import { describe, type DescribeArgs, type IComplete, type Unstarted } from '../builder';
 import { type Manifest } from '../Manifest';
+import { withKey } from '../service-type';
 import { ServiceDescriptor, type Signatures, TypeSignatures } from '../ServiceDescriptor';
 interface IManifestDescriptorAugmentations<Scopes extends string> {
   add(descriptor: ServiceDescriptor<Scopes>): Manifest<Scopes>;
   add<T = any>(type: Type | string, configure: Func<[Unstarted<T, Scopes>], IComplete>): Manifest<Scopes>;
-  add<T = any>(type: Type | string, ctor: Ctor<any[], T>, implType: CtorType | IntersectionType, scope?: Scopes,
+  add<T = any>(type: Type | string, ctor: Ctor<any[], T>, implType: ConstructorType | IntersectionType, scope?: Scopes,
     key?: string): Manifest<Scopes>;
-  add<T = any>(type: Type | string, factory: Func<any[], T>, implType: FuncType | IntersectionType, scope?: Scopes,
+  add<T = any>(type: Type | string, factory: Func<any[], T>, implType: FunctionType | IntersectionType, scope?: Scopes,
     key?: string): Manifest<Scopes>;
   remove(descriptor: ServiceDescriptor<Scopes>): Manifest<Scopes>;
   replace(descriptor: ServiceDescriptor<Scopes>): Manifest<Scopes>;
@@ -19,10 +20,10 @@ interface IManifestDescriptorAugmentations<Scopes extends string> {
   tryAdd(...descriptors: ReadonlyArray<ServiceDescriptor<Scopes>>): Manifest<Scopes>;
 
   tryAdd<T = any>(type: Type | string, configure: Func<[Unstarted<T, Scopes>], IComplete>): this;
-  tryAdd<T = any>(type: Type | string, ctor: Ctor<any[], T>, implType: CtorType | IntersectionType, scope?: Scopes,
-    key?: string): this;
-  tryAdd<T = any>(type: Type | string, factory: Func<any[], T>, implType: FuncType | IntersectionType, scope?: Scopes,
-    key?: string): this;
+  tryAdd<T = any>(type: Type | string, ctor: Ctor<any[], T>, implType: ConstructorType | IntersectionType,
+    scope?: Scopes, key?: string): this;
+  tryAdd<T = any>(type: Type | string, factory: Func<any[], T>, implType: FunctionType | IntersectionType,
+    scope?: Scopes, key?: string): this;
 
   tryAddClass(token: Token | Type, ctor: Ctor, signatures: Signatures, scope?: Scopes, key?: string): Manifest<Scopes>;
   tryAddFactory(token: Token | Type, factory: Func<any[], unknown>, signatures: Signatures, scope?: Scopes,
@@ -90,46 +91,31 @@ export const ManifestDescriptorAugmentations: AugmentationSet2<Manifest,
       if (typeof token === 'string') {
         return this.tryAddClass(Type.from(token), ctor, signatures, scope, key);
       }
-      if (key !== undefined && token.kind === 'tag') {
-        throw new Error(`${Type.stringify(token)} already carries a tag; it cannot take the key ${key}.`);
-      }
       return this.tryAdd(
-        ServiceDescriptor.ctor(key === undefined ? token : Type.tag(token, key), ctor, TypeSignatures.from(signatures),
-          scope),
+        ServiceDescriptor.ctor(withKey(token, key), ctor, TypeSignatures.from(signatures), scope),
       );
     },
     tryAddFactory(token, factory, signatures, scope, key) {
       if (typeof token === 'string') {
         return this.tryAddFactory(Type.from(token), factory, signatures, scope, key);
       }
-      if (key !== undefined && token.kind === 'tag') {
-        throw new Error(`${Type.stringify(token)} already carries a tag; it cannot take the key ${key}.`);
-      }
       return this.tryAdd(
-        ServiceDescriptor.factory(key === undefined ? token : Type.tag(token, key), factory,
-          TypeSignatures.from(signatures), scope),
+        ServiceDescriptor.factory(withKey(token, key), factory, TypeSignatures.from(signatures), scope),
       );
     },
     tryAddValue(token, value, key) {
       if (typeof token === 'string') {
         return this.tryAddValue(Type.from(token), value, key);
       }
-      if (key !== undefined && token.kind === 'tag') {
-        throw new Error(`${Type.stringify(token)} already carries a tag; it cannot take the key ${key}.`);
-      }
-      return this.tryAdd(ServiceDescriptor.value(key === undefined ? token : Type.tag(token, key), value));
+      return this.tryAdd(ServiceDescriptor.value(withKey(token, key), value));
     },
 
     replaceClass(token, ctor, signatures, scope, key) {
       if (typeof token === 'string') {
         return this.replaceClass(Type.from(token), ctor, signatures, scope, key);
       }
-      if (key !== undefined && token.kind === 'tag') {
-        throw new Error(`${Type.stringify(token)} already carries a tag; it cannot take the key ${key}.`);
-      }
       return this._replace(
-        ServiceDescriptor.ctor(key === undefined ? token : Type.tag(token, key), ctor, TypeSignatures.from(signatures),
-          scope),
+        ServiceDescriptor.ctor(withKey(token, key), ctor, TypeSignatures.from(signatures), scope),
       );
     },
 
@@ -137,32 +123,22 @@ export const ManifestDescriptorAugmentations: AugmentationSet2<Manifest,
       if (typeof token === 'string') {
         return this.replaceFactory(Type.from(token), factory, signatures, scope, key);
       }
-      if (key !== undefined && token.kind === 'tag') {
-        throw new Error(`${Type.stringify(token)} already carries a tag; it cannot take the key ${key}.`);
-      }
       return this._replace(
-        ServiceDescriptor.factory(key === undefined ? token : Type.tag(token, key), factory,
-          TypeSignatures.from(signatures), scope),
+        ServiceDescriptor.factory(withKey(token, key), factory, TypeSignatures.from(signatures), scope),
       );
     },
     replaceValue(token, value, key) {
       if (typeof token === 'string') {
         return this.replaceValue(Type.from(token), value, key);
       }
-      if (key !== undefined && token.kind === 'tag') {
-        throw new Error(`${Type.stringify(token)} already carries a tag; it cannot take the key ${key}.`);
-      }
-      return this._replace(ServiceDescriptor.value(key === undefined ? token : Type.tag(token, key), value));
+      return this._replace(ServiceDescriptor.value(withKey(token, key), value));
     },
 
     removeAll(token, key) {
       if (typeof token === 'string') {
         return this.removeAll(Type.from(token), key);
       }
-      if (key !== undefined && token.kind === 'tag') {
-        throw new Error(`${Type.stringify(token)} already carries a tag; it cannot take the key ${key}.`);
-      }
-      const target = ServiceDescriptor.value(key === undefined ? token : Type.tag(token, key), undefined);
+      const target = ServiceDescriptor.value(withKey(token, key), undefined);
       return Iterator.from(this)
         .filter(descriptor => ServiceDescriptor.matches(descriptor, target))
         .reduce((man, descriptor) => man._remove(descriptor), this);

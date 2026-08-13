@@ -13,7 +13,7 @@
 // fourth entity later costs one `Seed<T>` value and nothing else.
 //
 // THE HOLE IS A PLACEHOLDER TYPE. `Type.generic(label)` composes one, and
-// `Type.named(base, from, [hole])` puts it where a type argument goes. Where the
+// `Type.import(base, from, [hole])` puts it where a type argument goes. Where the
 // type-driven dialect writes the compile-time brands `$<1>` / `Hole<1, Entity>`,
 // this file composes the same value directly — the brands exist so a transformer
 // can derive it, and with no transformer there is nothing to derive.
@@ -43,7 +43,7 @@ import type { AuditEvent, Entity, IJoin, IRepository, ITable, Order, Seed,
 
 // ── the service types, composed as the transformer derives them ─────────────
 //
-// `Type.named(name, from, args)` renders `<import-specifier>:<exported-name>`
+// `Type.import(name, from, args)` renders `<import-specifier>:<exported-name>`
 // for a package-public type and `base<arg>` for a closing. Composing them the
 // same way is what lets this app behave identically to the type-driven one —
 // and, more usefully, what lets a manual consumer interoperate with a library
@@ -51,28 +51,28 @@ import type { AuditEvent, Entity, IJoin, IRepository, ITable, Order, Seed,
 
 const CONTRACTS = '@rhombus-std/examples.contracts';
 
-const USER_TYPE = Type.named('User', CONTRACTS);
-const ORDER_TYPE = Type.named('Order', CONTRACTS);
-const AUDIT_EVENT_TYPE = Type.named('AuditEvent', CONTRACTS);
+const USER_TYPE = Type.import('User', CONTRACTS);
+const ORDER_TYPE = Type.import('Order', CONTRACTS);
+const AUDIT_EVENT_TYPE = Type.import('AuditEvent', CONTRACTS);
 
 /** `Seed<T>` — the closed value each closing bottoms out at. */
 function seedOf(entity: Type): Type {
-  return Type.named('Seed', CONTRACTS, [entity]);
+  return Type.import('Seed', CONTRACTS, [entity]);
 }
 
 /** `ITable<T>` — the middle link. */
 function tableOf(entity: Type): Type {
-  return Type.named('ITable', CONTRACTS, [entity]);
+  return Type.import('ITable', CONTRACTS, [entity]);
 }
 
 /** `IRepository<T>` — the type a consumer actually asks for. */
 function repositoryOf(entity: Type): Type {
-  return Type.named('IRepository', CONTRACTS, [entity]);
+  return Type.import('IRepository', CONTRACTS, [entity]);
 }
 
 /** `IJoin<L,R>` — the arity-2 type the two-hole template serves. */
 function joinOf(left: Type, right: Type): Type {
-  return Type.named('IJoin', CONTRACTS, [left, right]);
+  return Type.import('IJoin', CONTRACTS, [left, right]);
 }
 
 /**
@@ -82,7 +82,7 @@ function joinOf(left: Type, right: Type): Type {
  * `Typeof<$1>` and have the hole substituted per closing.
  */
 function witnessOf(entity: Type): Type {
-  return Type.named('Typeof', '@rhombus-std/di.core', [entity]);
+  return Type.import('Typeof', '@rhombus-std/di.core', [entity]);
 }
 
 // The open TEMPLATES. A hole is a placeholder type, and it is matched

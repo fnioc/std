@@ -1,6 +1,7 @@
-import type { CtorType, FuncType, ObjectType, Type } from '../Type.js';
-import { ctor, func, generic, intersection, literal, named, object, tag, tuple, union } from './factories.js';
-import { KEYWORD_LITERALS, SERVICE_PROVIDER_FROM } from './grammar.js';
+import type { ConstructorType, FunctionType, ObjectType, Type } from '../Type.js';
+import { ctor, func, generic, global, importType, intersection, literal, object, tag, tuple,
+  union } from './factories.js';
+import { GLOBAL_QUALIFIER, KEYWORD_LITERALS, SERVICE_PROVIDER_FROM } from './grammar.js';
 import { lex, type LexToken } from './lexer.js';
 import { TypeParseError } from './TypeParseError.js';
 
@@ -76,6 +77,9 @@ class TypeParser {
   #tagged(): Type {
     let type = this.#primary();
     while (this.#take('#')) {
+      if (type.kind === 'tag') {
+        throw this.#error(this.#lexed[this.#index - 1]!.position, 'no second tag — a type wears at most one');
+      }
       type = tag(type, this.#segment());
     }
     return type;
@@ -118,10 +122,13 @@ class TypeParser {
     }
   }
 
+  /** An unqualified name is a global one, as is the `global` qualifier written out. */
   #named(): Type {
     const first = this.#next();
     if (this.#take(':')) {
-      return named(this.#segment(), first.text, this.#genericTypes());
+      const name = this.#segment();
+      const genericArgs = this.#genericTypes();
+      return first.text === GLOBAL_QUALIFIER ? global(name, genericArgs) : importType(name, first.text, genericArgs);
     }
     if (!first.escaped) {
       const reserved = this.#reserved(first);
@@ -129,13 +136,13 @@ class TypeParser {
         return reserved;
       }
     }
-    return named(first.text, 'global', this.#genericTypes());
+    return global(first.text, this.#genericTypes());
   }
 
   /**
    * The readings an unescaped, unqualified name carries instead of naming a type. `string`,
    * `number` and the other value types are deliberately absent — they name types like any other.
-   * The aggregate spellings are absent too: the `named` door canonicalizes them, so parsing one
+   * The aggregate spellings are absent too: the global door canonicalizes them, so parsing one
    * as an ordinary name already lands on its kind node.
    */
   #reserved(name: LexToken): Type | undefined {
@@ -158,7 +165,7 @@ class TypeParser {
         if (this.#at('<')) {
           throw this.#error(this.#peek()!.position, 'no type arguments — `ServiceProvider` names the provider itself');
         }
-        return named('IServiceProvider', SERVICE_PROVIDER_FROM, []);
+        return importType('IServiceProvider', SERVICE_PROVIDER_FROM, []);
       }
       default: {
         return undefined;
@@ -248,14 +255,14 @@ class TypeParser {
     return false;
   }
 
-  #function(): FuncType {
+  #function(): FunctionType {
     this.#expect('(');
     const args = this.#typeList(')');
     this.#expect('=>');
     return func(this.#type(), args);
   }
 
-  #ctor(): CtorType {
+  #ctor(): ConstructorType {
     this.#index++;
     this.#expect('(');
     const args = this.#typeList(')');

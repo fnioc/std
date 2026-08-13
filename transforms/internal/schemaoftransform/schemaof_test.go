@@ -150,17 +150,17 @@ func TestSchemaofExpansion(t *testing.T) {
 		{
 			name:  "flat-leaves",
 			iface: `s: string; n: number; b: boolean`,
-			want:  `({ s: Type.named("string", "global"), n: Type.named("number", "global"), b: Type.named("boolean", "global") })`,
+			want:  `({ s: Type.global("string"), n: Type.global("number"), b: Type.global("boolean") })`,
 		},
 		{
 			name:  "nested-casing",
 			iface: `Server: { Host: string; Port: number }`,
-			want:  `({ Server: Type.object({ Host: Type.named("string", "global"), Port: Type.named("number", "global") }) })`,
+			want:  `({ Server: Type.object({ Host: Type.global("string"), Port: Type.global("number") }) })`,
 		},
 		{
 			name:  "optional-boolean",
 			iface: `ssl?: boolean`,
-			want:  `({ ssl: Type.union(Type.named("boolean", "global"), Type.typeLiteral(undefined)) })`,
+			want:  `({ ssl: Type.union(Type.global("boolean"), Type.typeLiteral(undefined)) })`,
 		},
 		{
 			name:  "literal-union",
@@ -170,17 +170,17 @@ func TestSchemaofExpansion(t *testing.T) {
 		{
 			name:  "array",
 			iface: `tags: string[]`,
-			want:  `({ tags: Type.named("Array", "global", [Type.named("string", "global")]) })`,
+			want:  `({ tags: Type.global("Array", [Type.global("string")]) })`,
 		},
 		{
 			name:  "tuple",
 			iface: `pair: [string, number]`,
-			want:  `({ pair: Type.tuple(Type.named("string", "global"), Type.named("number", "global")) })`,
+			want:  `({ pair: Type.tuple(Type.global("string"), Type.global("number")) })`,
 		},
 		{
 			name:  "non-identifier-key",
 			iface: `"content-root": string`,
-			want:  `({ "content-root": Type.named("string", "global") })`,
+			want:  `({ "content-root": Type.global("string") })`,
 		},
 	}
 	for _, tc := range cases {
@@ -221,13 +221,13 @@ export const s = schemaof<C>();
 		t.Fatalf("unexpected diagnostics: %v\n%s", diags, out)
 	}
 	tree := expressionAfter(t, out, "s = Type.object")
-	if !strings.Contains(tree, `inner: Type.named("Inner", "./main")`) {
+	if !strings.Contains(tree, `inner: Type.import("Inner", "./main")`) {
 		t.Errorf("a named member must stay an address:\n%s", tree)
 	}
 	if strings.Contains(tree, "deep") {
 		t.Errorf("expansion ran past a name:\n%s", tree)
 	}
-	if !strings.Contains(tree, `Type.named("C", "./main")`) {
+	if !strings.Contains(tree, `Type.import("C", "./main")`) {
 		t.Errorf("a self-reference must stay an address:\n%s", tree)
 	}
 }

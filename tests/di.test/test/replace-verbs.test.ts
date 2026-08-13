@@ -6,8 +6,8 @@ import { DefaultManifest, type Manifest, ServiceDescriptor } from '@rhombus-std/
 import { Type } from '@rhombus-std/primitives';
 import { describe, expect, test } from 'bun:test';
 
-const A = Type.named('A', 'app');
-const B = Type.named('B', 'app');
+const A = Type.import('A', 'app');
+const B = Type.import('B', 'app');
 
 class Impl {}
 class Other {}

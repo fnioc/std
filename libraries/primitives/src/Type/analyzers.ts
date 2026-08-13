@@ -9,12 +9,13 @@
  */
 
 import { memo } from '../utils/map.js';
-import type { AggregateType, ArrayType, AsyncIterableType, AsyncType, CtorType, FuncType, GenericType, IntersectionType,
-  IterableType, NamedType, ObjectType, TagType, TupleType, Type, TypeLiteralType, UnionType } from './Type.js';
+import type { AggregateType, ArrayType, AsyncIterableType, AsyncType, ConstructorType, FunctionType, GenericType,
+  GlobalType, ImportType, IntersectionType, IterableType, NominalType, ObjectType, TagType, TupleType, Type,
+  TypeLiteralType, UnionType } from './Type.js';
 import { TypeVisitor } from './TypeVisitor.js';
 
 /** The kinds that name a type without describing one. */
-const IDENTIFIER_KINDS: ReadonlySet<Type['kind']> = new Set<Type['kind']>(['generic', 'named', 'tag']);
+const IDENTIFIER_KINDS: ReadonlySet<Type['kind']> = new Set<Type['kind']>(['generic', 'global', 'import', 'tag']);
 
 /**
  * Is `type` address-only — a pure reference, with nothing of its own to build from?
@@ -43,23 +44,26 @@ export const isOpenType = (() => {
     protected override visitAsyncIterable(type: AsyncIterableType): boolean {
       return this.#element(type);
     }
-    protected override visitCtor(type: CtorType): boolean {
+    protected override visitCtor(type: ConstructorType): boolean {
       return this.#any(type.args) || this.visit(type.instanceType);
     }
-    protected override visitFunc(type: FuncType): boolean {
+    protected override visitFunc(type: FunctionType): boolean {
       return this.#any(type.args) || this.visit(type.returnType);
     }
     protected override visitGeneric(_type: GenericType): boolean {
       return true;
+    }
+    protected override visitGlobal(type: GlobalType): boolean {
+      return this.#arguments(type);
+    }
+    protected override visitImport(type: ImportType): boolean {
+      return this.#arguments(type);
     }
     protected override visitIntersection(type: IntersectionType): boolean {
       return this.#any(type.members);
     }
     protected override visitIterable(type: IterableType): boolean {
       return this.#element(type);
-    }
-    protected override visitNamed(type: NamedType): boolean {
-      return this.#any(type.genericArgs);
     }
     protected override visitObject(type: ObjectType): boolean {
       return this.#any(Object.values(type.members));
@@ -79,6 +83,9 @@ export const isOpenType = (() => {
 
     #any(types: readonly Type[]): boolean {
       return types.some(type => this.visit(type));
+    }
+    #arguments(type: NominalType): boolean {
+      return this.#any(type.genericArgs);
     }
     #element(type: AggregateType): boolean {
       return this.visit(type.element);

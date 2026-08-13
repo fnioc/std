@@ -2,16 +2,16 @@
 // structurally identical types are the SAME object, whatever route built them -- so `===` is the
 // equality operator and no separate comparison is needed.
 
-import { type NamedType, Type } from '@rhombus-std/primitives';
+import { type ImportType, Type } from '@rhombus-std/primitives';
 import { describe, expect, test } from 'bun:test';
 
-const A = Type.named('A', 'app');
-const B = Type.named('B', 'app');
-const C = Type.named('C', 'app');
+const A = Type.import('A', 'app');
+const B = Type.import('B', 'app');
+const C = Type.import('C', 'app');
 
 describe('one object per type', () => {
   test('a factory and a token agree, kind for kind', () => {
-    expect(Type.from('app:Foo')).toBe(Type.named('Foo', 'app'));
+    expect(Type.from('app:Foo')).toBe(Type.import('Foo', 'app'));
     expect(Type.from('app:A | app:B')).toBe(Type.union(A, B));
     expect(Type.from('app:A & app:B')).toBe(Type.intersection(A, B));
     expect(Type.from('[app:A, app:B]')).toBe(Type.tuple(A, B));
@@ -26,19 +26,19 @@ describe('one object per type', () => {
   test('the spellings of one type are one object', () => {
     expect(Type.from('Func<app:A, app:B>')).toBe(Type.from('(app:B) => app:A'));
     expect(Type.from('Ctor<app:A, app:B>')).toBe(Type.from('new (app:B) => app:A'));
-    expect(Type.from('ServiceProvider')).toBe(Type.named('IServiceProvider', '@rhombus-std/primitives'));
-    expect(Type.from('\\Func')).toBe(Type.named('Func'));
+    expect(Type.from('ServiceProvider')).toBe(Type.import('IServiceProvider', '@rhombus-std/primitives'));
+    expect(Type.from('\\Func')).toBe(Type.global('Func'));
   });
 
   test('sharing reaches every subtree, not just the root', () => {
-    const built = Type.named('Box', 'app', [Type.tuple(A, B)]);
-    const read = Type.from('app:Box<[app:A, app:B]>') as NamedType;
+    const built = Type.import('Box', 'app', [Type.tuple(A, B)]);
+    const read = Type.from('app:Box<[app:A, app:B]>') as ImportType;
     expect(read).toBe(built);
     expect(read.genericArgs[0]).toBe(Type.tuple(A, B));
   });
 
   test('a foreign node is adopted rather than trusted', () => {
-    const forged = { kind: 'named', from: 'app', name: 'A', genericArgs: [] } as unknown as Type;
+    const forged = { kind: 'import', from: 'app', name: 'A', genericArgs: [] } as unknown as Type;
     expect(forged).not.toBe(A);
     expect(Type.tuple(forged)).toBe(Type.tuple(A));
   });
@@ -69,9 +69,9 @@ describe('canonical form', () => {
   });
 
   test('a literal beside its primitive base is subsumed', () => {
-    expect(Type.union(Type.named('string'), Type.typeLiteral('fast'))).toBe(Type.named('string'));
-    expect(Type.union(Type.named('number'), Type.typeLiteral(42))).toBe(Type.named('number'));
-    expect(Type.union(Type.named('boolean'), Type.typeLiteral(true))).toBe(Type.named('boolean'));
+    expect(Type.union(Type.global('string'), Type.typeLiteral('fast'))).toBe(Type.global('string'));
+    expect(Type.union(Type.global('number'), Type.typeLiteral(42))).toBe(Type.global('number'));
+    expect(Type.union(Type.global('boolean'), Type.typeLiteral(true))).toBe(Type.global('boolean'));
   });
 
   test('nothing subsumes a nullish member, so an optional keeps its fallback', () => {
@@ -117,14 +117,14 @@ describe('interned nodes are sealed', () => {
 
 describe('substitution', () => {
   test('a substitution that changes nothing returns the same object', () => {
-    const open = Type.named('Box', 'app', [Type.generic('T')]);
+    const open = Type.import('Box', 'app', [Type.generic('T')]);
     expect(Type.substitute(open, new Map())).toBe(open);
     expect(Type.substitute(open, new Map([['U', A]]))).toBe(open);
   });
 
   test('a closed type is the one the factory would have built', () => {
-    const open = Type.named('Box', 'app', [Type.generic('T')]);
-    expect(Type.substitute(open, new Map([['T', A]]))).toBe(Type.named('Box', 'app', [A]));
+    const open = Type.import('Box', 'app', [Type.generic('T')]);
+    expect(Type.substitute(open, new Map([['T', A]]))).toBe(Type.import('Box', 'app', [A]));
   });
 });
 
@@ -202,26 +202,26 @@ describe('async iterable aggregate', () => {
 });
 
 // The `named` door is the one a derived spelling arrives through: a compile-time
-// derivation emits `Type.named(name, from, [element])`, never the aggregate
+// derivation emits `Type.import(name, from, [element])`, never the aggregate
 // factory directly. The two must land on the same object, or a derived
 // registration and a hand-written one address different types.
-describe('the named door mints an aggregate from its spelling', () => {
-  test('each reserved spelling under `global`, carrying one argument, is its own kind', () => {
-    expect(Type.named('Array', 'global', [A])).toBe(Type.array(A));
-    expect(Type.named('Iterable', 'global', [A])).toBe(Type.iterable(A));
-    expect(Type.named('AsyncIterable', 'global', [A])).toBe(Type.asyncIterable(A));
-    expect(Type.named('Async', 'global', [A])).toBe(Type.async(A));
+describe('the global door mints an aggregate from its spelling', () => {
+  test('each reserved spelling carrying one argument is its own kind', () => {
+    expect(Type.global('Array', [A])).toBe(Type.array(A));
+    expect(Type.global('Iterable', [A])).toBe(Type.iterable(A));
+    expect(Type.global('AsyncIterable', [A])).toBe(Type.asyncIterable(A));
+    expect(Type.global('Async', [A])).toBe(Type.async(A));
   });
 
-  test('a spelling carrying more than its element is an ordinary named type', () => {
+  test('a spelling carrying more than its element is an ordinary global type', () => {
     // What a derivation must never emit: the lib declares `Iterable<T, TReturn,
     // TNext>`, so an untrimmed spelling would land here instead of on the kind.
-    const overwide = Type.named('AsyncIterable', 'global', [A, B, C]);
-    expect(overwide.kind).toBe('named');
+    const overwide = Type.global('AsyncIterable', [A, B, C]);
+    expect(overwide.kind).toBe('global');
     expect(overwide).not.toBe(Type.asyncIterable(A));
   });
 
-  test('a qualified spelling names an ordinary type, aggregate word or not', () => {
-    expect(Type.named('AsyncIterable', 'app', [A]).kind).toBe('named');
+  test('an imported spelling names an ordinary type, aggregate word or not', () => {
+    expect(Type.import('AsyncIterable', 'app', [A]).kind).toBe('import');
   });
 });

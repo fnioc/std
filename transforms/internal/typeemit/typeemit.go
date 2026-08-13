@@ -4,10 +4,10 @@
 //
 // Every primitive that emits a Type tree shares this vocabulary, so a leaf spells
 // the same whichever primitive produced it: `string` is always
-// `Type.named("string", "global")`, an `Array<T>` always carries its element as a
-// single generic argument, a literal always its own scalar expression.
+// `Type.global("string")`, an `Array<T>` always carries its element as a single
+// generic argument, a literal always its own scalar expression.
 //
-// The `Type` namespace object is referenced through a valueimport.Binding, so an
+// The `Type` object is referenced through a valueimport.Binding, so an
 // existing (possibly aliased) import in the consuming file is honored and a fresh
 // one is injected only when at least one call was emitted.
 package typeemit
@@ -19,9 +19,13 @@ import (
 	"github.com/fnioc/std/transforms/internal/valueimport"
 )
 
-// Ref identifies the runtime `Type` namespace object every emitted factory call
+// Ref identifies the runtime `Type` object every emitted factory call
 // reaches through.
 var Ref = valueimport.Ref{Module: "@rhombus-std/primitives", Export: "Type"}
+
+// GlobalFrom is the FROM a derived name carries when the ambient scope declares
+// it. Such a type is reached by no import, so it spells as `Type.global`.
+const GlobalFrom = "global"
 
 // Call builds `<Type>.<method>(...args)`, marking binding as referenced so the
 // caller knows to materialize its import.
@@ -50,15 +54,24 @@ func Leaf(f *shimast.NodeFactory, binding *valueimport.Binding, n *tokens.TypeNo
 		for _, a := range n.Args {
 			args = append(args, Leaf(f, binding, a))
 		}
-		callArgs := []*shimast.Node{
-			f.NewStringLiteral(n.Name, shimast.TokenFlagsNone),
-			f.NewStringLiteral(n.From, shimast.TokenFlagsNone),
-		}
-		if len(args) != 0 {
-			callArgs = append(callArgs, f.NewArrayLiteralExpression(f.NewNodeList(args), false))
-		}
-		return Call(f, binding, "named", callArgs)
+		return Named(f, binding, n.Name, n.From, args)
 	}
+}
+
+// Named builds the factory call a name-addressed type spells: `Type.global(name)`
+// when the ambient scope declares it, `Type.import(name, from)` when an import
+// reaches it, each followed by its generic arguments as one array when it has any.
+func Named(f *shimast.NodeFactory, binding *valueimport.Binding, name, from string, args []*shimast.Node) *shimast.Node {
+	method := "global"
+	callArgs := []*shimast.Node{f.NewStringLiteral(name, shimast.TokenFlagsNone)}
+	if from != GlobalFrom {
+		method = "import"
+		callArgs = append(callArgs, f.NewStringLiteral(from, shimast.TokenFlagsNone))
+	}
+	if len(args) != 0 {
+		callArgs = append(callArgs, f.NewArrayLiteralExpression(f.NewNodeList(args), false))
+	}
+	return Call(f, binding, method, callArgs)
 }
 
 // Literal renders a literal value as its TS literal expression — a string /

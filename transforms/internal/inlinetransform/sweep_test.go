@@ -244,7 +244,7 @@ const a = m.addClass<Impl>(Impl, sigs);
 // member name, its explicit type argument already consumed into a token
 // argument, several value arguments — must never be flagged. This is exactly
 // what a correctly lowered `addClass<ILogger>(ConsoleLogger, sigs)` call looks
-// like on disk: `services.addClass(Type.named(...), ConsoleLogger, sigs)`.
+// like on disk: `services.addClass(Type.global(...), ConsoleLogger, sigs)`.
 func TestSweepIgnoresLoweredRestSugarOutput(t *testing.T) {
 	sf := parse(t, "/sweep/lowered-output.ts", `declare const services: any;
 declare const token: any;

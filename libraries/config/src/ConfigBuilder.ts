@@ -87,9 +87,9 @@ export class ConfigBuilder<T = IndexedSection> {
    *
    * const server = builder
    *   .withSchema<ServerConfig>(Type.object({
-   *     Host: Type.named('string', 'global'),
-   *     Port: Type.named('number', 'global'),
-   *     Ssl: Type.union(Type.named('boolean', 'global'), Type.typeLiteral(undefined)),
+   *     Host: Type.global('string'),
+   *     Port: Type.global('number'),
+   *     Ssl: Type.union(Type.global('boolean'), Type.typeLiteral(undefined)),
    *   }))
    *   .build();
    * ```

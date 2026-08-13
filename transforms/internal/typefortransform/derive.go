@@ -40,9 +40,9 @@ type derived struct {
 
 // deriveTyped classifies a checker type into typefor's own tree: a `Keyed<T, K>`
 // brand first (so a keyed factory or class still classifies its stripped base as
-// Func/Ctor beneath the tag), then a construct signature (CtorType — checked
-// before call, matching TypeFor<T>'s own conditional order), then a call
-// signature (FuncType), and otherwise the plain tokens.DeriveTypeF leaf. Each
+// Func/Ctor beneath the tag), then a construct signature (ConstructorType —
+// checked before call, matching TypeFor<T>'s own conditional order), then a call
+// signature (FunctionType), and otherwise the plain tokens.DeriveTypeF leaf. Each
 // recursion point — a signature's return/instance type, its parameters, a tag's
 // inner type — reclassifies from scratch, so a factory that itself returns a
 // factory nests `Type.func(Type.func(...))` the way a hand-writer would spell it.
@@ -121,7 +121,10 @@ func kindName(d *derived) string {
 		case tokens.TypeNodePlaceholder:
 			return "generic"
 		default:
-			return "named"
+			if d.leaf.From == typeemit.GlobalFrom {
+				return "global"
+			}
+			return "import"
 		}
 	default:
 		return ""

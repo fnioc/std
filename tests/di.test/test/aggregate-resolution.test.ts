@@ -7,7 +7,7 @@ import { DefaultManifest, ServiceDescriptor } from '@rhombus-std/di.core';
 import { Type } from '@rhombus-std/primitives';
 import { describe, expect, test } from 'bun:test';
 
-const A = Type.named('A', 'app');
+const A = Type.import('A', 'app');
 
 describe('async iterable resolution', () => {
   test('nothing registered is an empty async iterable', async () => {

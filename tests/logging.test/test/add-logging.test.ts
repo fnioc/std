@@ -4,7 +4,7 @@
 
 // Side-effect: installs `build` onto di.core's Manifest.
 import '@rhombus-std/di';
-import { DefaultManifest, type NamedType, Type } from '@rhombus-std/di.core';
+import { DefaultManifest, type ImportType, Type } from '@rhombus-std/di.core';
 import { LOGGER_FACTORY_TYPE, LoggerFactory } from '@rhombus-std/logging';
 import type { ILogger, ILoggerFactory } from '@rhombus-std/logging.core';
 import { logError, LogLevel, logTrace, logWarning } from '@rhombus-std/logging.core';
@@ -52,9 +52,9 @@ describe('addLogging', () => {
     const services = new DefaultManifest().addLogging((builder) => builder.addProvider(provider));
 
     const root = services.build().createScope('singleton');
-    const iLoggerBase = Type.from(ILOGGER_TOKEN) as NamedType;
+    const iLoggerBase = Type.from(ILOGGER_TOKEN) as ImportType;
     const logger: ILogger = root.getRequiredService(
-      Type.named(iLoggerBase.name, iLoggerBase.from, [Type.from('svc:PaymentService')]),
+      Type.import(iLoggerBase.name, iLoggerBase.from, [Type.from('svc:PaymentService')]),
     );
     logError(logger, 'boom');
 

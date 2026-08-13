@@ -15,7 +15,7 @@
 // THE HOLE IS A PLACEHOLDER TYPE, and it is the one thing here with no type to
 // derive it from: a hole stands for a type argument that has not been chosen, so
 // there is no declaration to point `typefor` at. `Type.generic(label)`
-// composes one and `Type.named(base, from, [hole])` puts it where a type
+// composes one and `Type.import(base, from, [hole])` puts it where a type
 // argument goes — written out identically in both dialects, because sugar
 // removes boilerplate only where there is a type to remove it from.
 //
@@ -58,22 +58,22 @@ const AUDIT_EVENT_TYPE = typefor<AuditEvent>();
 
 /** `Seed<T>` — the closed value each closing bottoms out at. */
 function seedOf(entity: Type): Type {
-  return Type.named('Seed', CONTRACTS, [entity]);
+  return Type.import('Seed', CONTRACTS, [entity]);
 }
 
 /** `ITable<T>` — the middle link. */
 function tableOf(entity: Type): Type {
-  return Type.named('ITable', CONTRACTS, [entity]);
+  return Type.import('ITable', CONTRACTS, [entity]);
 }
 
 /** `IRepository<T>` — the type a consumer actually asks for. */
 function repositoryOf(entity: Type): Type {
-  return Type.named('IRepository', CONTRACTS, [entity]);
+  return Type.import('IRepository', CONTRACTS, [entity]);
 }
 
 /** `IJoin<L,R>` — the arity-2 type the two-hole template serves. */
 function joinOf(left: Type, right: Type): Type {
-  return Type.named('IJoin', CONTRACTS, [left, right]);
+  return Type.import('IJoin', CONTRACTS, [left, right]);
 }
 
 /**
@@ -83,7 +83,7 @@ function joinOf(left: Type, right: Type): Type {
  * `Typeof<$1>` and have the hole substituted per closing.
  */
 function witnessOf(entity: Type): Type {
-  return Type.named('Typeof', '@rhombus-std/di.core', [entity]);
+  return Type.import('Typeof', '@rhombus-std/di.core', [entity]);
 }
 
 // The open TEMPLATES. A hole is a placeholder type, and it is matched

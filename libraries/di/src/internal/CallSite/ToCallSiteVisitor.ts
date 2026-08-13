@@ -1,7 +1,8 @@
 import { AmbiguousUnionError, CycleError, type ServiceDescriptor } from '@rhombus-std/di.core';
-import { type ArrayType, type AsyncIterableType, type AsyncType, type CtorType, first, type FuncType, type GenericType,
-  type IntersectionType, isAllThere, type IterableType, type NamedType, type ObjectType, type TagType, type TupleType,
-  Type, type TypeLiteralType, TypeVisitor, type UnionType } from '@rhombus-std/primitives';
+import { type ArrayType, type AsyncIterableType, type AsyncType, type ConstructorType, first, type FunctionType,
+  type GenericType, type GlobalType, type ImportType, type IntersectionType, isAllThere, type IterableType,
+  type ObjectType, type TagType, type TupleType, Type, type TypeLiteralType, TypeVisitor,
+  type UnionType } from '@rhombus-std/primitives';
 import type { Registry } from '../Registry.js';
 import { CallSite } from './CallSite.js';
 
@@ -75,11 +76,11 @@ export class ToCallSiteVisitor extends TypeVisitor<CallSite | undefined> {
   }
 
   /** Parked: composing one from its parameter types on a miss awaits its design ruling. */
-  protected override visitCtor(_type: CtorType): CallSite | undefined {
+  protected override visitCtor(_type: ConstructorType): CallSite | undefined {
     return undefined;
   }
 
-  protected override visitFunc(type: FuncType): CallSite | undefined {
+  protected override visitFunc(type: FunctionType): CallSite | undefined {
     return CallSite.latebound(type.returnType, type.args);
   }
 
@@ -98,7 +99,12 @@ export class ToCallSiteVisitor extends TypeVisitor<CallSite | undefined> {
     return CallSite.iterable(this.#collection(type.element));
   }
 
-  protected override visitNamed(type: NamedType): CallSite | undefined {
+  /** Nothing global is synthesizable: a global name describes none of itself to build from. */
+  protected override visitGlobal(_type: GlobalType): CallSite | undefined {
+    return undefined;
+  }
+
+  protected override visitImport(type: ImportType): CallSite | undefined {
     return isServiceProviderType(type) ? CallSite.serviceProvider() : undefined;
   }
 
@@ -243,7 +249,7 @@ function bySpelling(left: Type, right: Type): number {
   return Type.stringify(left).localeCompare(Type.stringify(right));
 }
 
-function isServiceProviderType(type: NamedType): boolean {
+function isServiceProviderType(type: ImportType): boolean {
   return type.name === 'IServiceProvider' && SERVICE_PROVIDER_FROMS.includes(type.from)
     && !type.genericArgs.length;
 }

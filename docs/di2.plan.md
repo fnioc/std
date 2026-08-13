@@ -29,7 +29,7 @@ shown to the owner and not overruled; everything untagged is owner-set.
 
 - `FunctionType` (kind `'function'`) is the shape; late binding is a callsite strategy (CallSite
   keeps `latebound`). Done.
-- `Type.parse` performs structural upgrades only (`Func`→FunctionType, `Ctor`→CtorType). Strategy
+- `Type.parse` performs structural upgrades only (`Func`→FunctionType, `Ctor`→ConstructorType). Strategy
   recognition happens at lowering: `IServiceProvider`→ServiceProviderCallSite,
   iterable→IterableCallSite, promise fallback→async placeholder. No ServiceProviderType kind.
   Value-type-as-service (`string`, `number`, …) errors at the resolve entrypoint, not in parse.

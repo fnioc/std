@@ -1,4 +1,4 @@
-import type { CtorType, FuncType, Type } from '@rhombus-std/primitives';
+import type { ConstructorType, FunctionType, Type } from '@rhombus-std/primitives';
 import type { Func } from '@rhombus-toolkit/func';
 
 /**
@@ -10,8 +10,8 @@ import type { Func } from '@rhombus-toolkit/func';
  * unsound in the case that matters — `[T] extends [string]` holds for the wide `string` as readily
  * as for `"dev"` — so a literal keeps the whole union.
  */
-export type TypeFor<T> = [T] extends [abstract new(...args: never[]) => unknown] ? CtorType
-  : [T] extends [Func<never[], unknown>] ? FuncType
+export type TypeFor<T> = [T] extends [abstract new(...args: never[]) => unknown] ? ConstructorType
+  : [T] extends [Func<never[], unknown>] ? FunctionType
   : Type;
 
 /**
@@ -28,7 +28,7 @@ export type TypeFor<T> = [T] extends [abstract new(...args: never[]) => unknown]
  * @example
  * ```ts
  * services.addClass(typefor<ICache>(), RedisCache, [[]]);
- * // → services.addClass(Type.named('ICache', '@rhombus-std/caching.core'), RedisCache, [[]])
+ * // → services.addClass(Type.import('ICache', '@rhombus-std/caching.core'), RedisCache, [[]])
  * ```
  */
 export function typefor<T>(): TypeFor<T>;
@@ -41,7 +41,7 @@ export function typefor<T>(): TypeFor<T>;
  *
  * @example
  * ```ts
- * const built = typefor(SqlUserRepo).instanceType; // → Type.named('SqlUserRepo', 'pkg')
+ * const built = typefor(SqlUserRepo).instanceType; // → Type.import('SqlUserRepo', 'pkg')
  * ```
  */
 export function typefor<V>(value: V): TypeFor<V>;

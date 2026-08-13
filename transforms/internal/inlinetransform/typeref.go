@@ -8,14 +8,14 @@ import (
 )
 
 // TypeRef is a marker reference deserialized through the SAME grammar the rest
-// of the engine spells types in — a Go mirror of the TS Type model's NamedType
-// shape (Type.named(name, from, genericArgs)), one of the three TypeIdentifier
-// kinds (NamedType | GenericType | TagType): a type IDENTIFIER, never a
-// signature-shaped Type (FuncType, CtorType, …). A marker entry's `type` or
-// `impl` string always deserializes into exactly this: a name, the module it
-// comes from, and any generic type arguments — reusing tokentext.ParseToken
-// for the "<...>" layer, so there is one grammar for a closed-generic token
-// everywhere in this engine, not a second parser for the marker.
+// of the engine spells types in — a Go mirror of the TS Type model's ImportType
+// shape (Type.import(name, from, genericArgs)), a type IDENTIFIER, never a
+// signature-shaped Type (FunctionType, ConstructorType, …). A marker entry's
+// `type` or `impl` string always deserializes into exactly this: a name, the
+// module it comes from, and any generic type arguments — reusing
+// tokentext.ParseToken for the "<...>" layer, so there is one grammar for a
+// closed-generic token everywhere in this engine, not a second parser for the
+// marker.
 type TypeRef struct {
 	// Name is the exported identifier — a type name for a `type` reference, an
 	// export name for an `impl` reference.
@@ -33,7 +33,7 @@ type TypeRef struct {
 // or malformed package/colon split, an unbalanced generic-argument list, or an
 // argument that itself fails to parse. There is no syntax in this grammar for
 // a signature-shaped Type (a function type, a union, …) — a reference that
-// parses at all is always a NamedType.
+// parses at all is always an ImportType.
 func ParseTypeRef(raw string) (TypeRef, error) {
 	base := raw
 	var typeArgs []TypeRef

@@ -141,7 +141,7 @@ where that's cheap, and flag the intended divergence rather than pre-emptively t
   `typefor<T>()`); public parameters take `Type | string` and normalize through `Type.from`,
   everything internal is `Type` only. A keyed registration composes the key into the type —
   `Type.tag(base, key)`, never a separate argument or a `base#key` string — and an open template is
-  built structurally, `Type.named(name, from, [Type.generic(label)])`, the generic hole shared
+  built structurally, `Type.import(name, from, [Type.generic(label)])`, the generic hole shared
   between the service type and the signature slot. The WHOLE error taxonomy ships here:
   `DiError` an abstract root, `UnsatisfiableError`/`CycleError`/`AmbiguousUnionError`/
   `ManifestValidationError` extending it so one `instanceof` classifies any container failure —
@@ -511,7 +511,7 @@ system-wide — `mise.toml` declares it, but as `latest`, not a pinned version. 
 `docs/features/transformer-architecture.md`.
 
 **The primitive roster is three verbs over one vocabulary (§137)**: `typefor<T>()` NAMES a type (a
-named type yields its interned `NamedType` address), `schemaof<T>()` EXPANDS one into the `Type`
+named type yields its interned `NominalType` address), `schemaof<T>()` EXPANDS one into the `Type`
 tree describing its members — stopping at every name, so recursion terminates by construction —
 and `signatureof(ctor)` OBSERVES a runtime constructor. `tokenfor`/`tokenof` are the string-token
 pair, pending their own held retirement. There is no second structural vocabulary: the bespoke

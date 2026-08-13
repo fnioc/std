@@ -25,4 +25,4 @@ export const CONSOLE_LIFETIME_OPTIONS_TYPE: Type = typefor<ConsoleLifetimeOption
  * composition resolves the whole set after `build()` and applies each to the
  * shared {@link import("./HostOptions").HostOptions} instance.
  */
-export const HOST_OPTIONS_CONFIGURE_TYPE: Type = Type.named('@rhombus-std/hosting/ConfigureHostOptions');
+export const HOST_OPTIONS_CONFIGURE_TYPE: Type = Type.global('@rhombus-std/hosting/ConfigureHostOptions');

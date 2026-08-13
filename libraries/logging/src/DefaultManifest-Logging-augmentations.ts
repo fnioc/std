@@ -86,7 +86,7 @@ export const ServiceManifestLoggingAugmentations: AugmentationSet2<DefaultManife
       // explicit `typefor<ILogger<Foo>>()` derives off this same base, so the
       // template matches.
       const hole = Type.generic('$1');
-      m = m.addClass(Type.named('ILogger', '@rhombus-std/logging.core', [hole]), LoggerOfT, [[LOGGER_FACTORY_TYPE,
+      m = m.addClass(Type.import('ILogger', '@rhombus-std/logging.core', [hole]), LoggerOfT, [[LOGGER_FACTORY_TYPE,
         hole]], 'singleton');
 
       // `m` is the widened Manifest<string>, whereas
