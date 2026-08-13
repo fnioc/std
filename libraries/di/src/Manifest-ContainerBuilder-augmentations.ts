@@ -9,9 +9,10 @@ declare module '@rhombus-std/di.core' {
 }
 
 /** Sealing a manifest into the provider that resolves against it. */
-export type IManifestContainerBuilderAugmentations<Scopes extends string> = {
+type IManifestContainerBuilderAugmentations<Scopes extends string> = {
   /** Builds a provider over these registrations, with every {@link ServiceProviderOptions} default. */
   build(): ServiceProvider;
+  /** Builds a provider over these registrations, using `options` in place of the defaults. */
   build(options: ServiceProviderOptions): ServiceProvider;
 };
 
@@ -19,6 +20,7 @@ type IManifestContainerBuilderAugmentationsImpl = {
   build(options?: ServiceProviderOptions): ServiceProvider;
 };
 
+/** Installs {@link IManifestContainerBuilderAugmentations.build} onto every {@link Manifest}. */
 export const ManifestContainerBuilderAugmentations: AugmentationSet2<
   Manifest,
   IManifestContainerBuilderAugmentationsImpl
