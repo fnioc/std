@@ -167,14 +167,13 @@ free-function-only surface to route around it, and no receiver skips the OPEN/CL
 mirror the reference implementation's own static-extension-class placement and dependencies
 exactly (§0) — never a shortcut taken to save porting effort. _Owner-approved._
 
-## §90 — One owner `ttsc` binary, runtime stage selection from a per-consumer declared list
+## §90 — One owner `ttsc` binary; every consumer runs its full, always-on stage table
 
 The Go/`ttsc` build engine (§41) ships as **one owner binary**, `transforms/cmd/ttsc-std`, linking
-every transform stage. A consumer's `tsconfig.ttsc.json` declares which stages it wants; the
-binary parses that declared list at runtime and activates only those stages, always executing in
-the hardcoded canonical order (nameof → di → di-options → config) — declaration order is
-irrelevant. Every consumer's `ttsc` descriptor resolves to this same source dir, so `ttsc` dedupes
-every consumer to one cache key and one spawn.
+every transform stage in one fixed canonical order. Every consumer's `ttsc` descriptor resolves to
+this same source dir, so `ttsc` dedupes every consumer to one cache key and one spawn — whichever
+descriptor triggers the spawn, the host always runs its full stage table; there is no second layer
+deciding which stages apply (§119).
 
 Rejected alternatives:
 
@@ -189,13 +188,13 @@ Rejected alternatives:
 - **Build-time generated hosts** — whole-module cache-key poisoning plus `v0.0.0` resolve
   mechanics.
 
-Declare-by-depending (a marker that lets `ttsc` auto-discover a consumer's declared stages from its
-dependency graph rather than a hand-authored list) is a supported nice-to-have, not a requirement
-of this decision.
+Declare-by-depending — a dependency on any `*.extras` package's auto-discovery marker spawns the
+shared host — is the mechanism (§100): what a dependency governs is spawning the host and which
+certified bodies are in play, never which stages run.
 
-Mechanics — descriptor/source dedup, `--plugins-json` shape, the stage-selection error contract,
-the publish story — live in `docs/features/transformer-architecture.md`, the canonical reference; this
-entry records only the ruling. _Owner-approved 2026-07-16._
+Mechanics — descriptor/source dedup, the publish story — live in
+`docs/features/transformer-architecture.md`, the canonical reference; this entry records only the
+ruling. _Owner-approved 2026-07-16._
 
 ## §91 — Inline-stage matching is by symbol identity, not a string key
 
@@ -1335,8 +1334,9 @@ interned; `===` is equality; `Type.from` runs only at data-input boundaries (ext
 `Type | string` public door) — internal code spells a `Type` via a factory or `typefor`, never
 `Type.from`.
 
-di2 decisions stay distinct from di's own `TokenNode` model (§106/§111/§122/§129); this entry
-describes di2's `Type` layer, not a replacement for the shipped di token grammar.
+This `Type` taxonomy is the one node space `di`/`di.core`'s engine resolves over — §106 walks the
+matching it enables, §142 the resolution walk that calls it — and there is no separate token model
+anywhere in the engine to keep in step with it.
 
 _Owner-directed 2026-08-13._
 
