@@ -15,6 +15,7 @@ export type CallSite =
   | ConstantCallSite
   | ServiceProviderCallSite
   | IterableCallSite
+  | AsyncIterableCallSite
   | ArrayCallSite;
 
 export interface CtorCallSite {
@@ -52,6 +53,11 @@ export interface IterableCallSite {
   readonly kind: 'iterable';
   readonly types: readonly CallSite[];
 }
+/** The same members as {@link IterableCallSite}, realized through the async iteration protocol. */
+export interface AsyncIterableCallSite {
+  readonly kind: 'async-iterable';
+  readonly types: readonly CallSite[];
+}
 /** The same members as {@link IterableCallSite}, realized eagerly into a fresh array per request. */
 export interface ArrayCallSite {
   readonly kind: 'array';
@@ -76,6 +82,9 @@ export namespace CallSite {
   }
   export function iterable(types: readonly CallSite[]): IterableCallSite {
     return { kind: 'iterable', types };
+  }
+  export function asyncIterable(types: readonly CallSite[]): AsyncIterableCallSite {
+    return { kind: 'async-iterable', types };
   }
   export function array(types: readonly CallSite[]): ArrayCallSite {
     return { kind: 'array', types };

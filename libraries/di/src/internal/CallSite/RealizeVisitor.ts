@@ -2,8 +2,8 @@ import { ServiceDescriptor } from '@rhombus-std/di.core';
 import type { IServiceProvider } from '@rhombus-std/primitives';
 import { assertNever } from '@rhombus-toolkit/type-guards';
 import type { Engine } from '../Engine.js';
-import type { ArrayCallSite, CallSite, ConstantCallSite, CtorCallSite, FactoryCallSite, IterableCallSite,
-  LateBoundCallSite, ServiceProviderCallSite } from './CallSite.js';
+import type { ArrayCallSite, AsyncIterableCallSite, CallSite, ConstantCallSite, CtorCallSite, FactoryCallSite,
+  IterableCallSite, LateBoundCallSite, ServiceProviderCallSite } from './CallSite.js';
 
 export interface RealizeContext {
   readonly engine: Engine;
@@ -42,6 +42,8 @@ class RealizeVisitor {
         return this.visitServiceProvider(site);
       case 'iterable':
         return this.visitIterable(site);
+      case 'async-iterable':
+        return this.visitAsyncIterable(site);
       case 'array':
         return this.visitArray(site);
       default:
@@ -83,6 +85,22 @@ class RealizeVisitor {
     const realize = (inner: CallSite) => this.visit(inner);
     return {
       *[Symbol.iterator]() {
+        for (const inner of site.types) {
+          yield realize(inner);
+        }
+      },
+    };
+  }
+
+  /**
+   * @remarks
+   * Re-iterable rather than a one-shot iterator, same as {@link visitIterable}, over the async
+   * protocol: each element resolves as the async iteration reaches it, not up front.
+   */
+  protected visitAsyncIterable(site: AsyncIterableCallSite): any {
+    const realize = (inner: CallSite) => this.visit(inner);
+    return {
+      [Symbol.asyncIterator]: async function*() {
         for (const inner of site.types) {
           yield realize(inner);
         }
