@@ -1,10 +1,16 @@
 import { Type } from '@rhombus-std/primitives';
 import { Ctor, Func } from '@rhombus-toolkit/func';
 
-export type ServiceDescriptor<Scopes extends string> = CtorServiceDescriptor<Scopes> | FactoryServiceDescriptor<Scopes>
+/**
+ * One registration: what a manifest resolves `serviceType` to, discriminated by {@link kind} —
+ * a constructor, a factory function, or a fixed value.
+ */
+export type ServiceDescriptor<Scopes extends string> =
+  | CtorServiceDescriptor<Scopes>
+  | FactoryServiceDescriptor<Scopes>
   | ValuedServiceDescriptor<Scopes>;
 
-export interface CtorServiceDescriptor<Scopes extends string> {
+export interface CtorServiceDescriptor<out Scopes extends string> {
   readonly kind: 'ctor';
   readonly serviceType: Type;
   readonly ctor: Ctor;
@@ -12,7 +18,7 @@ export interface CtorServiceDescriptor<Scopes extends string> {
   readonly scope?: Scopes;
 }
 
-export interface FactoryServiceDescriptor<Scopes extends string> {
+export interface FactoryServiceDescriptor<out Scopes extends string> {
   readonly kind: 'factory';
   readonly serviceType: Type;
   readonly factory: Func;
@@ -20,7 +26,7 @@ export interface FactoryServiceDescriptor<Scopes extends string> {
   readonly scope?: Scopes;
 }
 
-export interface ValuedServiceDescriptor<Scopes extends string> {
+export interface ValuedServiceDescriptor<out Scopes extends string> {
   readonly kind: 'value';
   readonly serviceType: Type;
   readonly value: any;

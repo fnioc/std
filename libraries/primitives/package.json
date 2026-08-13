@@ -1,7 +1,7 @@
 {
   "name": "@rhombus-std/primitives",
   "version": "0.0.0",
-  "description": "The change-token primitives ported from ME.Primitives: IChangeToken, ChangeToken.onChange, CancellationChangeToken, CompositeChangeToken. A leaf package -- zero dependencies.",
+  "description": "Change-token primitives (IChangeToken, ChangeToken.onChange, CancellationChangeToken, CompositeChangeToken), the augmentation registry, and the Type system every other family builds on. A leaf package -- zero dependencies.",
   "keywords": [
     "primitives",
     "change-token",

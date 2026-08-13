@@ -1,4 +1,5 @@
 import { LITERAL_BASE } from './internals/literal-base.js';
+import { stringifyType } from './StringifyVisitor.js';
 import type { CtorType, FunctionType, IntersectionType, NamedType, ObjectType, PlaceholderType, TagType, TupleType,
   Type, TypeLiteralType, UnionType } from './Type.js';
 import { TypeVisitor } from './TypeVisitor.js';
@@ -189,7 +190,7 @@ class PatternMatchVisitor extends SatisfiesVisitor {
 export function satisfiesType(proposed: Type, condition: Type): [satisfied: false] | [satisfied: true,
   placeholders: Map<string, Type>] {
   if (placeholderScanner.visit(proposed)) {
-    throw new Error('satisfies: the proposed type may not contain placeholders');
+    throw new Error(`satisfies: the proposed type may not contain placeholders — got ${stringifyType(proposed)}`);
   }
   const visitor = new SatisfiesVisitor();
   return visitor.match(proposed, condition) ? [true, visitor.captures] : [false];
@@ -202,7 +203,7 @@ export function satisfiesType(proposed: Type, condition: Type): [satisfied: fals
 export function matchType(pattern: Type, subject: Type): [matched: false] | [matched: true,
   placeholders: Map<string, Type>] {
   if (placeholderScanner.visit(subject)) {
-    throw new Error('match: the subject type may not contain placeholders');
+    throw new Error(`match: the subject type may not contain placeholders — got ${stringifyType(subject)}`);
   }
   const visitor = new PatternMatchVisitor();
   return visitor.match(pattern, subject) ? [true, visitor.captures] : [false];
