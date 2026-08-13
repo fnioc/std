@@ -30,7 +30,7 @@ mergesynth (one-shot pre-pass)
   ↓
 ┌─────────────────────────────────────────────────────────────┐
 │ loop until a pass changes nothing (max 16 passes):           │
-│   inline → nameof → signatureof → keyof → schemaof           │
+│   inline → nameof → signatureof → schemaof                   │
 └─────────────────────────────────────────────────────────────┘
 ```
 
@@ -47,16 +47,16 @@ first (see [Parse-anchoring](#parse-anchoring-the-checker-only-ever-sees-pass-0-
 // what you write
 class Startup {
   configure(m: IServiceManifest) {
-    return m.addClass<IUserRepo>(SqlUserRepo).withSignature<[IDb]>();
+    return m.addClass<IUserRepo>(SqlUserRepo).addFactory<IThing>(makeThing);
   }
 }
 ```
 
 ```ts
 // pass 1: addClass lowers (nameof + signatureof fire on its new arguments)
-m.addClass('app:IUserRepo', SqlUserRepo, [['app:IDb']], void 0, void 0).withSignature<[IDb]>();
-// pass 2: withSignature lowers (signaturefor fires on its new arguments); pass 3 is a no-op — the loop settles
-m.addClass('app:IUserRepo', SqlUserRepo, [['app:IDb']], void 0, void 0).withSignature('app:IDb');
+m.addClass('app:IUserRepo', SqlUserRepo, [['app:IDb']]).addFactory<IThing>(makeThing);
+// pass 2: addFactory lowers (nameof + signatureof fire on its new arguments); pass 3 is a no-op — the loop settles
+m.addClass('app:IUserRepo', SqlUserRepo, [['app:IDb']]).addFactory('app:IThing', makeThing, [[]]);
 ```
 
 **The enabling invariant is disjoint match sets.** Every transform in the loop owns matches no
@@ -71,9 +71,9 @@ wired in.
 **Order inside one pass is a reproducibility choice, not a correctness requirement.** The code
 runs the stages in the fixed sequence shown above so output is deterministic across runs, but no
 stage may ever depend on running before or after another one _within_ the same pass — if it did,
-the loop's "just run it again" termination story would break. `signatureof` and `keyof` happen to
-sit after `nameof` because their call shapes are disjoint from `nameof`'s (type-argument
-primitives vs. value-argument primitives), not because anything requires it.
+the loop's "just run it again" termination story would break. `signatureof` happens to sit after
+`nameof` because its call shape is disjoint from `nameof`'s (a value-argument primitive vs.
+type-argument primitives), not because anything requires it.
 
 ### Termination: 16 passes, loud on exhaustion
 
@@ -246,9 +246,9 @@ family's authoring sugar as compiler-plugin logic. All three are gone. In their 
 - **Shipped TypeScript sugar bodies** — ordinary, typed, single-return-expression functions,
   authored in each family's own `*.extras` package — that compose those primitives the same way a
   by-hand author would. `addClass<T>(ctor)` isn't a Go rule any more; it's a TypeScript function
-  whose body is `this.addClass(tokenfor<T>(), ctor, signatureof(ctor), void 0, keyof<T>())`, and
-  the generic **inline stage** substitutes that body's return expression at your call site before
-  the primitive stages ever see it.
+  whose body is `this.addClass(tokenfor<T>(), ctor, signatureof(ctor))`, and the generic **inline
+  stage** substitutes that body's return expression at your call site before the primitive stages
+  ever see it.
 
 This split is a hard rule, not a style preference: **no domain name may appear in Go transform
 source.** There is no `if calleeName == "addClass"` and no hardcoded `"@rhombus-std/di.core:..."`
@@ -266,8 +266,8 @@ as a name comparison baked into control flow. Two examples of the distinction:
   "which augmentation" is ever named; the stage reacts to shape, not identity.
 
 The corollary: **transforms never validate.** A transform reports its own inability to lower a
-call (an underivable token, a non-tuple `signaturefor<T>()`, an unsupported `schemaof<T>()` field
-type) — that's failure reporting about the transform's own job, and it stays. But design-mistake
+call (an underivable token, an unsupported `schemaof<T>()` field type) — that's failure reporting
+about the transform's own job, and it stays. But design-mistake
 policing that used to live in the domain stages (open-generic registration completeness, the old
 990008/990009/990010 family) does not get re-implemented anywhere in the new engine; the runtime
 already enforces the equivalent invariants at registration/resolve time, and duplicating that
@@ -288,17 +288,11 @@ module's actual name instead.
 | `tokenfor(value)`         | value-arg | the _produced_ token for a value — constructable → construct-sig return, callable → call-sig return, else the value's own type | `tokenfor(Foo)` (`class Foo {}`)                             | `"pkg:Foo"`                          | `primitives.extras` | `nameof`      |
 | `tokenof<T>()`            | type-arg  | the _raw_ token for `T` — never strips a `Keyed<T,K>` brand                                                                    | `tokenof<UserOptions>()`                                     | `"pkg:UserOptions"`                  | `primitives.extras` | `nameof`      |
 | `tokenof(value)`          | value-arg | the raw token for a value's _own_ type — never unwraps a constructor/factory                                                   | `tokenof(makeThing)` (`declare function makeThing(): Thing`) | `"pkg:makeThing"`                    | `primitives.extras` | `nameof`      |
-| `keyof<T>()`              | type-arg  | the key literal of a `Keyed<T,K>`, or `void 0` when unkeyed                                                                    | `keyof<Keyed<ICache, "redis">>()`                            | `"redis"`                            | `di.extras`         | `keyof`       |
 | `signatureof(ctor \| fn)` | value-arg | the `[[...]]` dependency-signature array for a constructor or function value                                                   | `signatureof(Ctor)` (`Ctor: new (d: IDep) => IThing`)        | `[["pkg:IDep"]]`                     | `di.extras`         | `signatureof` |
-| `signaturefor<T>()`       | type-arg  | one overload's `DepSlot[]` minted from a tuple type `T`                                                                        | `...signaturefor<[IA, IB]>()`                                | `"pkg:IA", "pkg:IB"` (flattened in)  | `di.core`           | `signatureof` |
-| `signaturesfor<T>()`      | type-arg  | the whole overload set minted from a tuple-of-tuples `T`                                                                       | `...signaturesfor<[[IA], [IA, IB]]>()`                       | `["pkg:IA"], ["pkg:IA", "pkg:IB"]`   | `di.core`           | `signatureof` |
 | `schemaof<T>()`           | type-arg  | the `{...}` runtime JSON-schema literal for a record type `T`                                                                  | `schemaof<{ ssl?: boolean }>()`                              | `{ ssl: { [OPTIONAL]: "boolean" } }` | `config.extras`     | `schemaof`    |
 
-`signaturefor`/`signaturesfor` sit in `di.core` rather than `di.extras` because they produce
-`di.core`'s own `DepSlot` shape and are legitimately callable from hand-written runtime source
-too — a homing choice about the _value_, not about which stage lowers it. Every other primitive in
-the table is authoring-only: it throws unconditionally if it ever runs, so it never needs a
-runtime-shaped home.
+Every primitive in the table is authoring-only: it throws unconditionally if it ever runs, so
+none of them needs a runtime-shaped home.
 
 **`schemaof<T>()` / `.withType<T>()` surface constraints.** The schema walk uses the same
 `typesurface` enumeration as the guard walk, but reads the **writable** direction — coercion
@@ -409,12 +403,12 @@ imports `ManifestChainInline`, so nothing in the code says the object has a role
 therefore carries a marker beside its declaration, at module level:
 
 ```ts
-export const ManifestChainInline = {
-  withSignature<T extends readonly any[]>(this: IInlineChainTarget): IServiceManifest {
-    return this.withSignature(...signaturefor<T>());
+export const ServiceManifestInline = {
+  addClass<T>(this: IInlineRegistrationTarget, ctor: Ctor): IServiceManifest {
+    return this.addClass(tokenfor<T>(), ctor, signatureof(ctor));
   },
 };
-registerInlineBodies(ManifestChainInline);
+registerInlineBodies(ServiceManifestInline);
 ```
 
 It is the inline-body sister of the augmentation registry's `registerAugmentations` — a statement
@@ -448,18 +442,13 @@ Everything below is ordinary TypeScript, side-parsed by the inline stage out of 
 
 ```ts
 export const ServiceManifestInline = { addClass<T>(this: IInlineRegistrationTarget, ctor: Ctor): IServiceManifest {
-  return this.addClass(tokenfor<T>(), ctor, signatureof(ctor), void 0, keyof<T>());
+  return this.addClass(tokenfor<T>(), ctor, signatureof(ctor));
 }, addFactory<T>(this: IInlineRegistrationTarget, factory: Factory): IServiceManifest {
-  return this.addFactory(tokenfor<T>(), factory, signatureof(factory), void 0, keyof<T>());
+  return this.addFactory(tokenfor<T>(), factory, signatureof(factory));
 }, addValue<I>(this: IInlineRegistrationTarget, value: unknown): IServiceManifest {
-  return this.addValue(tokenfor<I>(), value, keyof<I>());
+  return this.addValue(tokenfor<I>(), value);
 } };
 ```
-
-`keyof<T>()` lowers to `undefined` for an unkeyed type, and the inline stage elides both that
-`undefined` argument **and** the `void 0` scope placeholder it strands behind it — so the emitted
-call for an unkeyed registration is the plain 3-argument form, byte-identical to what a by-hand
-author writes; a keyed one keeps the composed 5-argument call.
 
 A **separate, zero-type-parameter** object literal (`ServiceManifestSelfInline`) covers the
 no-type-arg self-registration forms (`addClass(ctor)`, `addFactory(fn)`, `addValue(value)`),
@@ -467,45 +456,24 @@ discriminated from the generic forms purely by type-parameter count — same mem
 value-parameter names, no collision. Their token derivation is **value-derived, never
 TS-inferred**: `addClass`/`addFactory` use `tokenfor(value)` (the _produced_-type primitive — a
 constructable value tokenizes as the instance it builds), and `addValue` uses `tokenof(value)`
-(the _raw_-type twin — an already-built value registers under its own type, never unwrapped). A
-self-registration is unkeyed and lifetime-unchosen by construction, so these bodies never write a
-key or scope placeholder at all.
+(the _raw_-type twin — an already-built value registers under its own type, never unwrapped).
 
-The chain continuations follow the same shape:
-
-```ts
-export const ManifestChainInline = {
-  withSignature<T extends readonly any[]>(this: IInlineChainTarget): IServiceManifest {
-    return this.withSignature(...signaturefor<T>());
-  },
-  withSignatures<T extends ReadonlyArray<readonly any[]>>(this: IInlineChainTarget): IServiceManifest {
-    return this.withSignatures(...signaturesfor<T>());
-  },
-};
-```
-
-Each chain sugar lowers to its **own** value-arg call rather than folding back into the
-registration's original arguments — `.addClass(...).withSignature<T>()` survives lowering as an
-independent, hand-writable continuation, matching what a by-hand author could have chained onto
-the same call.
-
-`isService<T>()` and the resolve family (`resolve`/`resolveAsync`/`tryResolve`) each compose the
-keyed lookup token from the split `tokenfor<T>() + keyof<T>()` pair — the base token and the key
-(`void 0` when `T` is unkeyed). Sugar always asks the container: there is no compile-time
+`isService<T>()` and the resolve family (`resolve`/`resolveAsync`/`tryResolve`) each derive their
+lookup token from `tokenfor<T>()`. Sugar always asks the container: there is no compile-time
 short-circuit for a literal-typed request — the engine's own constant synthesis is what serves
 those at resolve time.
 
 ```ts
 export const ServiceQueryInline = { isService<T>(this: IServiceQuery): boolean {
-  return this.isService(tokenfor<T>(), keyof<T>());
+  return this.isService(tokenfor<T>());
 } };
 
 export const ResolverInline = { resolve<T>(this: IInlineResolveTarget): T {
-  return this.resolve(tokenfor<T>(), keyof<T>());
+  return this.resolve(tokenfor<T>());
 }, resolveAsync<T>(this: IInlineResolveTarget): Promise<T> | T {
-  return this.resolveAsync(tokenfor<T>(), keyof<T>());
+  return this.resolveAsync(tokenfor<T>());
 }, tryResolve<T>(this: IInlineResolveTarget): T | undefined {
-  return this.tryResolve(tokenfor<T>(), keyof<T>());
+  return this.tryResolve(tokenfor<T>());
 } };
 ```
 
@@ -702,7 +670,7 @@ it walks the freshly-spliced expression and records every primitive call it find
 identity** (not by name or position), against the checker-bound type or value from the _original_
 call site:
 
-- a **type-argument** primitive (`tokenfor<T>()`, `keyof<T>()`, …) records the bound
+- a **type-argument** primitive (`tokenfor<T>()`, `tokenof<T>()`, …) records the bound
   `*checker.Type` for each type parameter;
 - a **value-argument** primitive (`signatureof(ctor)`, `tokenfor(value)`) records the original,
   program-bound argument node itself, so the consuming stage can still query the checker through
@@ -712,7 +680,7 @@ call site:
   call-site-bound argument types — resolved against the _consumer's_ program later, in the
   lowering stage that owns the token-derivation context.
 
-A downstream stage (`nameof`, `signatureof`, `keyof`, `schemaof`) checks the artifacts map first
+A downstream stage (`nameof`, `signatureof`, `schemaof`) checks the artifacts map first
 for any call it visits; a hit means "this is my
 substituted work from this run," a miss falls through to the ordinary checker-anchored
 source-written path. After the loop's final pass, an **emit sweep** walks the artifacts one more
@@ -889,9 +857,7 @@ Each is recorded in `docs/decisions.v2.md` (§115–§123).
 - **The keyed-semantics fix (§98)** — a resolve body that derives its token with `tokenfor<T>()`
   strips a `Keyed<T,K>` brand — silently matching the _wrong_ (unkeyed) registration, or matching
   nothing, for a keyed lookup. The fix routes a keyed consumer through the raw-preserving
-  `tokenof<T>()` instead, so a keyed resolve actually round-trips a keyed registration; the
-  registration bodies themselves were already correct (they split base + `keyof` onto separate
-  arguments) and were untouched.
+  `tokenof<T>()` instead, so a keyed resolve actually round-trips a keyed registration.
 - **The transitive-witness fix** — a consumer reaching a sugar-target module only _transitively_
   (importing `@rhombus-std/di` without importing `@rhombus-std/di.core` directly, even though
   `di`'s own bundle re-exports it) could make the inline stage's module-resolution check return
