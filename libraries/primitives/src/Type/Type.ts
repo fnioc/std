@@ -273,6 +273,8 @@ export namespace Type {
   /**
    * Does some instantiation of `pattern` extend `subject`? Success carries the instantiation —
    * one binding per placeholder label in the pattern.
+   *
+   * @throws Error - when `subject` itself contains a placeholder.
    */
   export function match(pattern: Type, subject: Type) {
     return matchType(pattern, subject);
@@ -281,6 +283,8 @@ export namespace Type {
   /**
    * Does `proposed` satisfy `condition`? Success carries one binding per placeholder label in
    * the condition.
+   *
+   * @throws Error - when `proposed` itself contains a placeholder.
    */
   export function satisfies(proposed: Type, condition: Type) {
     return satisfiesType(proposed, condition);

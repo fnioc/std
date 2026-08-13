@@ -11,7 +11,6 @@ export type { ChangeTokenConsumer, ChangeTokenProducer } from './ChangeToken.js'
 export { CompositeChangeToken } from './CompositeChangeToken.js';
 export type { IChangeToken } from './IChangeToken.js';
 export type { IServiceProvider } from './IServiceProvider.js';
-export type { IterableObject } from './IterableObject.js';
 export { Multimap } from './Multimap.js';
 export { NotImplementedError } from './NotImplementedError.js';
 export { process } from './process.js';
@@ -22,7 +21,7 @@ export type { TimeoutHandle } from './TimeoutHandle.js';
 export type { Token } from './Token.js';
 export { TypeParseError } from './Type/internals/TypeParseError.js';
 export { Type } from './Type/Type.js';
-export type { CtorType, FunctionType, IntersectionType, NamedType, ObjectType, PlaceholderType, TagType, TupleType,
-  TypeIdentifier, TypeLiteralType, UnionType } from './Type/Type.js';
+export type { CtorType, FunctionType, IntersectionType, LiteralValue, NamedType, ObjectType, PlaceholderType, TagType,
+  TupleType, TypeIdentifier, TypeLiteralType, UnionType } from './Type/Type.js';
 export { TypeVisitor } from './Type/TypeVisitor.js';
 export * from './utils/index.js';

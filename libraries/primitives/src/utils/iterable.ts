@@ -1,5 +1,6 @@
 import { Func } from '@rhombus-toolkit/func';
 
+/** Yields every element of `source`, substituting `replacement` for each one `match` selects — an exact value or a predicate. */
 export function* replace<T>(source: Iterable<T>, match: T | Func<[T], boolean>, replacement: T): Generator<T> {
   const predicate = isFunc(match) ? match : (item: T) => item === match;
   for (const item of source) {
@@ -18,10 +19,8 @@ export function first<T>(source: Iterable<T>): T | undefined {
   return undefined;
 }
 
+/** Type guard: true when every element of `items` is present — none are `undefined`. */
 export function isAllThere<T>(items: Array<T | undefined>): items is T[];
-// export function isAllThere<T>(items: IteratorObject<T | undefined>): items is IteratorObject<T>;
-// export function isAllThere<T>(items: IterableIterator<T | undefined>): items is IterableIterator<T>;
-// export function isAllThere<T>(items: Iterable<T | undefined>): items is Iterable<T>;
 export function isAllThere<T>(items: Iterable<T | undefined>): items is Iterable<T> {
   return Iterator.from(items).every(Boolean);
 }

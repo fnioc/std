@@ -23,8 +23,8 @@ import type { Ctor, Func } from '@rhombus-toolkit/func';
 // `Record`-typed parameters below.
 
 /** An object literal of `this`-based augmentation methods all sharing receiver type R. */
-export type AugmentationSet<R> = Record<string, (this: R, ...args: any[]) => unknown>;
-export type AugmentationSet2<Rec, Impl extends Record<PropertyKey, Func>> = {
+export type AugmentationSet<in R> = Record<string, (this: R, ...args: any[]) => unknown>;
+export type AugmentationSet2<in Rec, Impl extends Record<PropertyKey, Func>> = {
   [K in keyof Impl]: (this: Rec, ...args: Parameters<Impl[K]>) => any;
 };
 /**
