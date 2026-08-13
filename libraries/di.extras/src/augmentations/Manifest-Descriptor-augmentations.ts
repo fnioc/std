@@ -1,10 +1,10 @@
 import type { IComplete, Manifest, ServiceDescriptor, Signatures, Unstarted } from '@rhombus-std/di.core';
 import { AugmentationSet2, type CtorType, type Flatten, type FuncType, type IntersectionType, Token,
   Type } from '@rhombus-std/primitives';
-import { registerAugmentations, typefor } from '@rhombus-std/primitives.extras';
+import { typefor } from '@rhombus-std/primitives.extras';
 import type { Ctor, Func } from '@rhombus-toolkit/func';
 
-interface IManifestDescriptorAugmentations<Scopes extends string> {
+interface IManifestDescriptorSugarAugmentations<Scopes extends string> {
   tryAdd<T>(configure: Func<[Unstarted<T, Scopes>], IComplete>): Manifest<Scopes>;
   tryAdd<T>(ctor: Ctor<any[], T>, implType: CtorType | IntersectionType, scope?: Scopes,
     key?: string): Manifest<Scopes>;
@@ -25,11 +25,11 @@ interface IManifestDescriptorAugmentations<Scopes extends string> {
 }
 
 declare module '@rhombus-std/di.core' {
-  interface Manifest<Scopes extends string> extends IManifestDescriptorAugmentations<Scopes> {}
+  interface Manifest<Scopes extends string> extends IManifestDescriptorSugarAugmentations<Scopes> {}
 }
 
 export const ManifestDescriptorAugmentations: AugmentationSet2<Manifest,
-  Flatten<IManifestDescriptorAugmentations<any>>> = {
+  Flatten<IManifestDescriptorSugarAugmentations<any>>> = {
     tryAdd<T>(this: Manifest, ...rest: any[]) {
       return (this as any).tryAdd(typefor<T>(), ...rest);
     },
@@ -58,5 +58,3 @@ export const ManifestDescriptorAugmentations: AugmentationSet2<Manifest,
       return (this as any).removeAll(typefor<T>(), ...rest);
     },
   };
-
-registerAugmentations<Manifest>(ManifestDescriptorAugmentations);
