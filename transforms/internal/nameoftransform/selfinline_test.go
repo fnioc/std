@@ -167,13 +167,12 @@ services.addClass(SqlUserRepo);
 	if !strings.HasSuffix(inlineTok, ":SqlUserRepo") {
 		t.Fatalf("expected the ctor's instance token (…:SqlUserRepo), got %q", inlineTok)
 	}
-	inlineDeps := depArrayFrom(t, inlineOut)
-	diDeps := depArrayFrom(t, diOut)
-	if inlineDeps != diDeps {
-		t.Fatalf("addClass dependency-array divergence:\n inline = %s\n di     = %s", inlineDeps, diDeps)
-	}
-	if !strings.Contains(inlineDeps, "IDb") {
-		t.Fatalf("expected the ctor dependency IDb in the array, got %s", inlineDeps)
+	// The dependency node — di-direct's frozen golden still carries the retired
+	// `[[...]]` array format (§155/§157 supersede it), so this pins the current
+	// Type.ctor(...) shape directly rather than comparing against that golden.
+	wantDeps := `Type.ctor(Type.imported("SqlUserRepo", "@scope/app/main"), Type.imported("IDb", "@scope/app/main"))`
+	if inlineDeps := typeNodeArgFrom(t, inlineOut); inlineDeps != wantDeps {
+		t.Fatalf("addClass dependency node mismatch:\n got  = %s\n want = %s", inlineDeps, wantDeps)
 	}
 }
 
@@ -203,10 +202,11 @@ services.addFactory(makeThing);
 	if !strings.HasSuffix(inlineTok, ":Thing") {
 		t.Fatalf("expected the factory's return-type token (…:Thing), got %q", inlineTok)
 	}
-	inlineDeps := depArrayFrom(t, inlineOut)
-	diDeps := depArrayFrom(t, diOut)
-	if inlineDeps != diDeps {
-		t.Fatalf("addFactory dependency-array divergence:\n inline = %s\n di     = %s", inlineDeps, diDeps)
+	// See TestSelfInlineAddClassMatchesDiDirect: pinned directly rather than
+	// against di-direct's frozen (retired-format) golden.
+	wantDeps := `Type.func(Type.imported("Thing", "@scope/app/main"), Type.imported("IDb", "@scope/app/main"))`
+	if inlineDeps := typeNodeArgFrom(t, inlineOut); inlineDeps != wantDeps {
+		t.Fatalf("addFactory dependency node mismatch:\n got  = %s\n want = %s", inlineDeps, wantDeps)
 	}
 }
 

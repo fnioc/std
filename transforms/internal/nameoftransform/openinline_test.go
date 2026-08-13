@@ -115,27 +115,32 @@ func lowerInlinePipeline(t *testing.T, prog *driver.Program, app string) string 
 	return reprint(ec, sigT(ec, nameofT(ec, inlineT(ec, sf))))
 }
 
-// depArrayFrom returns the `[[...]]` dependency-signature array literal of the sole
-// lowered `services.addClass(...)` call — the balanced substring from the first `[[`.
-func depArrayFrom(t *testing.T, out string) string {
+// typeNodeArgFrom returns the `Type.ctor(...)` / `Type.func(...)` node text of
+// the sole lowered `services.<verb>(...)` call — the balanced substring
+// starting at the first `Type.ctor(` or `Type.func(`.
+func typeNodeArgFrom(t *testing.T, out string) string {
 	t.Helper()
-	start := strings.Index(out, "[[")
+	start := strings.Index(out, "Type.ctor(")
 	if start < 0 {
-		t.Fatalf("no `[[...]]` dependency array in:\n%s", out)
+		start = strings.Index(out, "Type.func(")
 	}
+	if start < 0 {
+		t.Fatalf("no Type.ctor(...)/Type.func(...) node in:\n%s", out)
+	}
+	open := strings.Index(out[start:], "(") + start
 	depth := 0
-	for i := start; i < len(out); i++ {
+	for i := open; i < len(out); i++ {
 		switch out[i] {
-		case '[':
+		case '(':
 			depth++
-		case ']':
+		case ')':
 			depth--
 			if depth == 0 {
 				return out[start : i+1]
 			}
 		}
 	}
-	t.Fatalf("unterminated dependency array at %d in:\n%s", start, out)
+	t.Fatalf("unterminated Type node at %d in:\n%s", start, out)
 	return ""
 }
 
@@ -181,20 +186,26 @@ services.addClass<IRepo<$<1>>>(SqlRepo<$<1>>);
 		t.Fatalf("expected an open-generic service token, got %q", inlineTok)
 	}
 
-	inlineDeps := depArrayFrom(t, inlineOut)
-	diDeps := depArrayFrom(t, diOut)
-	if inlineDeps != diDeps {
-		t.Fatalf("dependency-array divergence:\n inline pipeline = %s\n di direct       = %s", inlineDeps, diDeps)
-	}
-	if !strings.Contains(inlineDeps, "IStore<$1>") {
-		t.Fatalf("expected the hole-carrying dependency IStore<$1>, got %s", inlineDeps)
+	// The dependency node derives Type.ctor(instanceType, paramType) — the hole
+	// closing into the instance type's own generic argument, and again into the
+	// dependency's, matching §157's bare-hole-slot reading.
+	wantDeps := `Type.ctor(Type.imported("SqlRepo", "@scope/app/main", [Type.generic("1")]), ` +
+		`Type.imported("IStore", "@scope/app/main", [Type.generic("1")]))`
+	if inlineDeps := typeNodeArgFrom(t, inlineOut); inlineDeps != wantDeps {
+		t.Fatalf("dependency node mismatch:\n got  = %s\n want = %s", inlineDeps, wantDeps)
 	}
 
-	// Value-arg (arg1) parity: the whole addClass call now matches, since
-	// normalizeInstantiationArgs strips the substituted `SqlRepo<$<1>>` to the bare
-	// `SqlRepo` like di-direct (isolated in TestOpenTemplateInstantiationValueStripped).
-	if inlineCall, diCall := addClassCallText(t, inlineOut), addClassCallText(t, diOut); inlineCall != diCall {
-		t.Fatalf("addClass call divergence:\n inline = %s\n di     = %s", inlineCall, diCall)
+	// Value-arg (arg1) parity: the token and the stripped value argument still
+	// match di-direct byte-for-byte, since normalizeInstantiationArgs strips the
+	// substituted `SqlRepo<$<1>>` to the bare `SqlRepo` like di-direct (isolated
+	// in TestOpenTemplateInstantiationValueStripped) — only the third argument's
+	// FORMAT diverges by design (a Type.ctor(...) node, not a `[[...]]` array).
+	wantPrefix := `addClass("@scope/app/main:IRepo<$1>", SqlRepo, `
+	if inlineCall := addClassCallText(t, inlineOut); !strings.HasPrefix(inlineCall, wantPrefix) {
+		t.Fatalf("addClass call's token/value-arg prefix mismatch:\n got  = %s\n want prefix = %s", inlineCall, wantPrefix)
+	}
+	if diCall := addClassCallText(t, diOut); !strings.HasPrefix(diCall, wantPrefix) {
+		t.Fatalf("di-direct addClass call's token/value-arg prefix mismatch:\n got  = %s\n want prefix = %s", diCall, wantPrefix)
 	}
 }
 
@@ -204,8 +215,10 @@ services.addClass<IRepo<$<1>>>(SqlRepo<$<1>>);
 // strips its type arguments to the bare constructor `SqlRepo` — an instantiation
 // expression carries no runtime value in its type arguments, so di-direct registers
 // the bare `arg.AsExpressionWithTypeArguments().Expression` and the inline path must
-// match at the TS level, not only after a downstream TS->JS type-strip. The whole
-// `addClass(...)` call is compared BEFORE type-stripping.
+// match at the TS level, not only after a downstream TS->JS type-strip. The token and
+// the stripped value argument are compared BEFORE type-stripping; the third
+// (dependency) argument is excluded — its FORMAT diverges by design between the two
+// stages, covered instead by TestOpenTemplateInlinePipelineMatchesDiDirect.
 func TestOpenTemplateInstantiationValueStripped(t *testing.T) {
 	src := `import { services } from '@rhombus-std/di.core';
 import type { $ } from '@rhombus-std/di.core';
@@ -229,8 +242,12 @@ services.addClass<IRepo<$<1>>>(SqlRepo<$<1>>);
 	if !strings.Contains(inlineCall, "SqlRepo") {
 		t.Fatalf("inline value arg lost the bare ctor:\n%s", inlineCall)
 	}
-	if inlineCall != diCall {
-		t.Fatalf("addClass call divergence (value arg not stripped byte-identically):\n inline = %s\n di     = %s", inlineCall, diCall)
+	wantPrefix := `addClass("@scope/app/main:IRepo<$1>", SqlRepo, `
+	if !strings.HasPrefix(inlineCall, wantPrefix) {
+		t.Fatalf("inline addClass call's token/value-arg prefix mismatch:\n got  = %s\n want prefix = %s", inlineCall, wantPrefix)
+	}
+	if !strings.HasPrefix(diCall, wantPrefix) {
+		t.Fatalf("di-direct addClass call's token/value-arg prefix mismatch:\n got  = %s\n want prefix = %s", diCall, wantPrefix)
 	}
 }
 

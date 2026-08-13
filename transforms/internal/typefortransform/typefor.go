@@ -154,7 +154,7 @@ func lowerTyped(
 	t *shimchecker.Type,
 	sourceWritten bool,
 ) *shimast.Node {
-	d, ok := deriveTyped(ctx, checker, t, nil)
+	d, ok := tokens.DeriveTyped(ctx, checker, t, nil)
 	if !ok {
 		if sourceWritten {
 			emit(plugin.Diagnostic{
@@ -166,7 +166,7 @@ func lowerTyped(
 		}
 		return node
 	}
-	return emitDerived(factory, binding, d)
+	return typeemit.EmitDerived(factory, binding, d)
 }
 
 // lowerValueArg derives the `Type.*` tree for a VALUE-argument typefor call from
@@ -183,7 +183,7 @@ func lowerValueArg(
 	emit func(plugin.Diagnostic),
 	call, arg *shimast.Node,
 ) *shimast.Node {
-	d, ok := deriveTyped(ctx, checker, checker.GetTypeAtLocation(arg), nil)
+	d, ok := tokens.DeriveTyped(ctx, checker, checker.GetTypeAtLocation(arg), nil)
 	if !ok {
 		emit(plugin.Diagnostic{
 			Code:    valueArgUnderivableCode,
@@ -193,7 +193,7 @@ func lowerValueArg(
 		})
 		return call
 	}
-	return emitDerived(factory, binding, d)
+	return typeemit.EmitDerived(factory, binding, d)
 }
 
 // tryFoldAccessor handles a property access whose name is a known TypeBase
@@ -237,7 +237,7 @@ func tryFoldAccessor(
 		return nil, false
 	}
 
-	d, ok := deriveTyped(ctx, checker, base, nil)
+	d, ok := tokens.DeriveTyped(ctx, checker, base, nil)
 	if !ok {
 		// The base type itself is underivable — leave the whole expression for the
 		// bare call's own visit to report the targeted diagnostic.
@@ -249,7 +249,7 @@ func tryFoldAccessor(
 			Code:    accessorMismatchCode,
 			File:    anchorFile(node),
 			Start:   node.Pos(),
-			Message: "`." + accessorName + "` does not apply to this typefor<T>() derivation — its kind is `" + kindName(d) + "`",
+			Message: "`." + accessorName + "` does not apply to this typefor<T>() derivation — its kind is `" + tokens.KindName(d) + "`",
 		})
 		return node, true
 	}
