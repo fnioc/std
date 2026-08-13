@@ -37,7 +37,7 @@
 //   | package            | field                                  | why                                              |
 //   |--------------------|----------------------------------------|--------------------------------------------------|
 //   | config.core        | typesOnly: true                        | pure-types package -- no JS bundle, asserted (§40) |
-//   | di.extras     | typesOnly: true | authoring-only package -- its members are substituted at a consumer's call site by the inline stage, never value-imported, so it ships no runtime bundle |
+//   | di.extras     | inline: [primitives.extras, func] | dist-parity carve-out -- its bespoke build inlined these; aligning to the rule is a follow-up |
 //   | config.extras | forbidImports: ["@rhombus-std/config"] | its bundle must be @rhombus-std-free -- the only "@rhombus-std/config" occurrence is the codegen'd import-specifier string |
 
 import { spawnSync } from 'node:child_process';
