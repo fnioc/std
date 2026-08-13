@@ -198,24 +198,23 @@ ruling. _Owner-approved 2026-07-16._
 
 ## §91 — Inline-stage matching is by symbol identity, not a string key
 
-A `rhombus-std` `inline` entry's `type`+`member` pair resolves through the checker to a symbol, once per
-program: the type reference resolves to a module symbol, then to the merged member symbol that
-TypeScript's declaration merging has already unified from every `declare module` augmentation of
-the interface. Each call site independently resolves its own signature → declaration → symbol, and
-the two sides match by that resolved symbol identity — never by a string key, canonical name, or
-reconstructed token.
-
-Four canonical-string-key designs were tried and rejected before landing here. A string key has to
-be derived from some one declaration site, but the whole point of `declare module` augmentation is
-that N separately-authored declarations of "the same" member collapse onto a single symbol — a
-string reconstructed from any one of those sites can't know about the others, and drifts the moment
-an augmentation changes shape. Symbol identity is what actually exploits the collapse; a string key
-can only approximate it.
+A `rhombus-std` `inline` entry's `type`+`member` pair resolves through the checker to declaration
+sites, once per program: the type reference resolves to a module symbol, then to the exported type,
+and every type on that surface is asked for its own member of the entry's name (§148 states which
+sites those are and why the surface is walked rather than queried for a property). A call site
+matches by node identity against that set, or — when its binding falls outside it — by the marker's
+own name/shape/receiver triple. Never by a string key, canonical name, or reconstructed token.
 
 Scope stays workspace-only — never a published manifest, never a dist/JS resolution path
 (consistent with §87) — and the certified grammar is narrow: interface member (`type`+`impl`+
 `member`) and free function (`impl` only) are certified; class member and object-literal member are
 specced but flagged uncertified. Matching goes one level deep, no recursion.
+
+Four canonical-string-key designs were tried and rejected before landing here. A string key has to
+be derived from some one declaration site, but N separately-authored declarations of "the same"
+member are what `declare module` augmentation exists to produce — a string reconstructed from any
+one of those sites cannot know about the others, and drifts the moment an augmentation changes
+shape.
 
 Full schema, the authoring lint, and the tripwires (rogue-duplicate, emit sweep) live in
 `docs/features/transformer-architecture.md`; this entry records only the identity-vs-string ruling.
