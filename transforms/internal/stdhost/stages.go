@@ -106,7 +106,7 @@ func buildNameof(prog *driver.Program, ctx *tokens.Context, env *Env, emit Sink)
 // (Env.Hoist): in one generated module of named consts the call site references,
 // or at the call site itself. Its own diagnostics are hard errors.
 func buildTypefor(prog *driver.Program, ctx *tokens.Context, env *Env, emit Sink) plugin.FileTransform {
-	return typefortransform.New(prog, ctx, env.Artifacts, nil, func(d plugin.Diagnostic) {
+	return typefortransform.New(prog, ctx, env.Artifacts, env.Hoist, func(d plugin.Diagnostic) {
 		emit(DiagFromPlugin(d))
 	})
 }
