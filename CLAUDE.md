@@ -151,23 +151,28 @@ where that's cheap, and flag the intended divergence rather than pre-emptively t
   registered, `getService(type)` returns `undefined`, `getServices(type)` yields the collection; it
   re-exports the taxonomy, so both imports name the same class and `instanceof` holds either way —
   di.core stays external in di's bundle so the `Manifest` cross-package augmentations install onto
-  is the same object everywhere). Several members are declared and throw `NotImplementedError`, so
-  a caller compiles and fails at the point of use, gated on the still-undecided lifetime and
-  disposal model: on the provider `tryResolve`/`resolveAsync`/`resolveFactory`/`isService`/
-  `dispose`/`disposeAsync`/`createAsyncScope`, on the manifest `as(scope)`/`withSignature(...types)`
-  — `createScope(name?)` itself is real and takes an optional name, `IServiceScope` declares
-  `getRequiredService`/`isService`, and `ServiceProviderOptions.validateScopes` is declared and read
-  by nothing. A builder that wraps a manifest holds it in a local structural `ManifestSlot`, and an
-  all-in-one verb returns the manifest itself rather than a fluent tail. `NotImplementedError` lives
-  in `primitives` and extends `Error` directly, since not-implemented is not a container concept.
+  is the same object everywhere). Several provider members are declared and throw
+  `NotImplementedError`, so a caller compiles and fails at the point of use, gated on the
+  still-undecided lifetime and disposal model: `tryResolve`/`resolveAsync`/`dispose`/`disposeAsync`
+  on `IServiceProvider`, plus `createAsyncScope` on both `IServiceProvider` and
+  `IServiceScopeFactory` — `createScope(name?)` itself is real and takes an optional name,
+  `IServiceScope` declares `getRequiredService`/`isService`, and
+  `ServiceProviderOptions.validateScopes` is declared and read by nothing. The registration builder
+  is real end to end: `add(type, configure)` hands the configure lambda a fluent chain —
+  `asClass`/`asFactory`/`asValue` choose the implementation, `withSignature`/`withType` name its
+  call shape (exactly one of the two, ever), and `withLifetime`/`taggedAs` set the scope and key. A
+  builder that wraps a manifest holds it in a local structural `ManifestSlot`, and an all-in-one
+  verb returns the manifest itself rather than a fluent tail. `NotImplementedError` lives in
+  `primitives` and extends `Error` directly, since not-implemented is not a container concept.
   `di.extras` (the Go/ttsc authoring surface, depending on **`di.core` types only, never the `di`
   runtime** — hard invariant) carries `rhombus-std` marker `inline` entries for the twelve manifest verbs
   (`add`/`addClass`/`addFactory`/`addValue`, `tryAdd`/`tryAddClass`/`tryAddFactory`/`tryAddValue`,
   `replaceClass`/`replaceFactory`/`replaceValue`, `removeAll`) plus the three `get*` provider
   members (`getService`/`getRequiredService`/`getServices`) — fifteen entries total, each entry's
-  `impl` resolved by walking `src/index.ts`'s re-export graph. Whether `as`, `withSignature`,
-  `isService`, `resolveFactory`, and the value-derived self-registration forms get tokenless sugar
-  is undecided and gated. `di.extras.options` is a satellite lowering the `addOptions<T>()` sugar.
+  `impl` resolved by walking `src/index.ts`'s re-export graph. The builder chain's own members
+  (`asClass`/`asFactory`/`asValue`/`withSignature`/`withType`/`withLifetime`/`taggedAs`) carry no
+  inline marker entries yet, so `add(type, configure)` has no type-driven `add<T>(configure)`
+  counterpart. `di.extras.options` is a satellite lowering the `addOptions<T>()` sugar.
   The live parity suites under `tests/*.ttsc.e2e` are the test oracle, each asserting the emission
   an author would have written by hand.
 - **`options`** — the collapsed `IOptions<T>` accessor + the configure / post-configure / validate
