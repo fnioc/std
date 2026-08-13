@@ -35,30 +35,30 @@ export const QueryInline = {
 };
 `
 
-// TestResolveMemberInertNoWitness: the entry's module is never witnessed by the
+// TestResolveMemberAbsentNoWitness: the entry's module is never witnessed by the
 // program (main.ts neither imports @scope/core nor carries the declare-module),
-// so resolution is inert — skip silently, never an error.
-func TestResolveMemberInertNoWitness(t *testing.T) {
+// so the entry contributes nothing — skip silently, never an error.
+func TestResolveMemberAbsentNoWitness(t *testing.T) {
 	prog, app := buildWorkspace(t, pilotCoreIndex, pilotInlineBody, `export {};
 `, `export const x = 1;
 `)
 	defer func() { _ = prog.Close() }()
 
-	_, inert, err := Resolve(prog, prog.Checker, newBodyExtractor(), pilotMemberEntry(app))
+	_, outcome, err := Resolve(prog, prog.Checker, newBodyExtractor(), pilotMemberEntry(app))
 	if err != nil {
 		t.Fatalf("Resolve: %v", err)
 	}
-	if !inert {
-		t.Fatal("expected inert — @scope/core is not witnessed by the program")
+	if outcome != OutcomeAbsent {
+		t.Fatalf("outcome = %v, want OutcomeAbsent — @scope/core is not witnessed by the program", outcome)
 	}
 }
 
-// TestResolveMemberInertNoSugarOverload: the module IS witnessed but the sugar
+// TestResolveMemberUnmatchedPublishesShape: the module IS witnessed but the sugar
 // overload (`isService<T>()`) is not loaded — only the primitive `isService(token)`
-// exists — so the member symbol resolves yet no declaration matches the impl
-// discriminator. That is inert (declMap empty), never an error, and Build over
-// the workspace leaves artifacts inactive.
-func TestResolveMemberInertNoSugarOverload(t *testing.T) {
+// exists — so no declaration matches the impl discriminator. Nothing can inline,
+// yet the entry still publishes its call shape: a call written in that shape has
+// no way to lower and must reach the sweep rather than pass through.
+func TestResolveMemberUnmatchedPublishesShape(t *testing.T) {
 	mainSrc := `import { provider } from '@scope/core';
 export const y = provider.isService('x');
 `
@@ -66,23 +66,29 @@ export const y = provider.isService('x');
 `, mainSrc)
 	defer func() { _ = prog.Close() }()
 
-	_, inert, err := Resolve(prog, prog.Checker, newBodyExtractor(), pilotMemberEntry(app))
+	_, outcome, err := Resolve(prog, prog.Checker, newBodyExtractor(), pilotMemberEntry(app))
 	if err != nil {
 		t.Fatalf("Resolve: %v", err)
 	}
-	if !inert {
-		t.Fatal("expected inert — the sugar overload is not present, only the primitive")
+	if outcome != OutcomeUnmatched {
+		t.Fatalf("outcome = %v, want OutcomeUnmatched — the sugar overload is not present, only the primitive", outcome)
 	}
 
-	// Build must reflect the same: no entry resolves active → inactive artifacts.
 	artifacts := NewArtifacts()
 	var diags []plugin.Diagnostic
 	Build(prog, bodiesFor(t, app), artifacts, func(d plugin.Diagnostic) { diags = append(diags, d) })
 	if len(diags) != 0 {
 		t.Fatalf("Build raised diagnostics: %+v", diags)
 	}
-	if artifacts.Active {
-		t.Fatal("artifacts.Active should be false when every entry is inert")
+	if !artifacts.Active {
+		t.Fatal("artifacts.Active should be true — the marker's surface is in this program")
+	}
+	shape, published := artifacts.SugarMembers["isService"]
+	if !published {
+		t.Fatal("the unmatched member published no shape, so the sweep cannot see a call to it")
+	}
+	if shape.TypeArgCount != 1 {
+		t.Fatalf("published shape = %+v, want the body's one type parameter", shape)
 	}
 }
 
@@ -116,10 +122,7 @@ export const known = provider.isService<Foo>();
 
 	t.Run("unresolved type", func(t *testing.T) {
 		e := OwnedEntry{Entry: Entry{Type: "@scope/core:Missing", Impl: "@scope/core:QueryInline", Member: "isService"}, PackageDir: core}
-		_, inert, err := Resolve(prog, prog.Checker, newBodyExtractor(), e)
-		if inert {
-			t.Fatal("a misspelled type must be a hard error, not inert")
-		}
+		_, _, err := Resolve(prog, prog.Checker, newBodyExtractor(), e)
 		if err == nil || !strings.Contains(err.Error(), "INLINE_UNRESOLVED_TYPE") {
 			t.Fatalf("want INLINE_UNRESOLVED_TYPE, got %v", err)
 		}
@@ -127,10 +130,7 @@ export const known = provider.isService<Foo>();
 
 	t.Run("unresolved member", func(t *testing.T) {
 		e := OwnedEntry{Entry: Entry{Type: "@scope/core:IQuery", Impl: "@scope/core:QueryInline", Member: "missing"}, PackageDir: core}
-		_, inert, err := Resolve(prog, prog.Checker, newBodyExtractor(), e)
-		if inert {
-			t.Fatal("a member absent from the interface must be a hard error, not inert")
-		}
+		_, _, err := Resolve(prog, prog.Checker, newBodyExtractor(), e)
 		if err == nil || !strings.Contains(err.Error(), "INLINE_UNRESOLVED_MEMBER") {
 			t.Fatalf("want INLINE_UNRESOLVED_MEMBER, got %v", err)
 		}
@@ -199,10 +199,7 @@ func TestResolveFreeFunctionOverloadedRejected(t *testing.T) {
 	defer func() { _ = prog.Close() }()
 
 	e := collectFreeFunction(t, app)
-	_, inert, err := Resolve(prog, prog.Checker, newBodyExtractor(), e)
-	if inert {
-		t.Fatal("an overloaded floater must be a hard error, not inert")
-	}
+	_, _, err := Resolve(prog, prog.Checker, newBodyExtractor(), e)
 	if err == nil || !strings.Contains(err.Error(), "INLINE_BODY_SHAPE") {
 		t.Fatalf("want INLINE_BODY_SHAPE (Extract sees the bodyless overload signature first), got %v", err)
 	}
@@ -296,12 +293,12 @@ func TestResolveFreeFunctionAgainstOwningPackage(t *testing.T) {
 	defer func() { _ = prog.Close() }()
 
 	fnEntry := collectFreeFunction(t, app)
-	resolved, inert, rerr := Resolve(prog, prog.Checker, newBodyExtractor(), fnEntry)
+	resolved, outcome, rerr := Resolve(prog, prog.Checker, newBodyExtractor(), fnEntry)
 	if rerr != nil {
 		t.Fatalf("Resolve: %v", rerr)
 	}
-	if inert {
-		t.Fatal("floater entry resolved inert — the owning package name did not anchor a witness")
+	if outcome != OutcomeActive {
+		t.Fatalf("outcome = %v, want OutcomeActive — the owning package name did not anchor a witness", outcome)
 	}
 	if resolved.Kind != KindFloater {
 		t.Fatalf("Kind = %v, want KindFloater", resolved.Kind)
@@ -314,20 +311,20 @@ func TestResolveFreeFunctionAgainstOwningPackage(t *testing.T) {
 	}
 }
 
-// TestResolveFreeFunctionInert asserts the witness rule for the impl-only row:
-// when the owning package's module is not touched by the program, the entry is
-// inert (skip silently), never an error.
-func TestResolveFreeFunctionInert(t *testing.T) {
+// TestResolveFreeFunctionAbsent asserts the witness rule for the impl-only row:
+// when the owning package's module is not touched by the program, the entry
+// contributes nothing (skip silently), never an error.
+func TestResolveFreeFunctionAbsent(t *testing.T) {
 	prog, app := setupFunctionWorkspace(t, false)
 	defer func() { _ = prog.Close() }()
 
 	fnEntry := collectFreeFunction(t, app)
-	resolved, inert, rerr := Resolve(prog, prog.Checker, newBodyExtractor(), fnEntry)
+	resolved, outcome, rerr := Resolve(prog, prog.Checker, newBodyExtractor(), fnEntry)
 	if rerr != nil {
 		t.Fatalf("Resolve: %v", rerr)
 	}
-	if !inert {
-		t.Fatalf("expected inert (no witness for @scope/prims), got resolved=%+v", resolved)
+	if outcome != OutcomeAbsent {
+		t.Fatalf("expected OutcomeAbsent (no witness for @scope/prims), got %v resolved=%+v", outcome, resolved)
 	}
 }
 

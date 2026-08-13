@@ -149,8 +149,9 @@ const inferredDir = join(CHAIN_ROOT, 'inferred');
 // The type-driven authoring overloads, hand-declared as a di.core module
 // augmentation so the program carries the sugar surface without pulling
 // di.extras's rolled declare-module types. The signatures are the faces di.extras
-// publishes, so the merged member symbols the stages anchor on are the ones a
-// consumer call actually resolves to.
+// publishes, so the declarations the stages anchor on are the ones a consumer call
+// actually resolves to. The consumer-merge suite covers the other assembly — the
+// member-map `extends` shape a real dependency graph produces.
 const AUTHORING_SOURCE = `
 import type { Manifest, Signatures } from '@rhombus-std/di.core';
 
@@ -233,8 +234,8 @@ import type { IServiceProvider } from '@rhombus-std/primitives';
 // The tokenless get* overloads di.extras declaration-merges onto IServiceProvider,
 // hand-declared here so the sandbox program carries them without wiring that
 // package's types. The matcher anchors on the sugar overload at its declaration
-// site, so a program holding only di.core's Type-taking base member has nothing to
-// match and the call passes through with its type argument merely erased.
+// site, so a program holding only the Type-taking base member has nothing to match
+// and the emit sweep reports every call it could not lower.
 declare module '@rhombus-std/primitives' {
   interface IServiceProvider {
     getService<T>(): T | undefined;
@@ -604,8 +605,8 @@ const OPTIONS_DIR = join(homedir(), '.cache', 'fnioc-ttsc', 'sandboxes', basenam
 // as a di.core module augmentation (like the chain's AUTHORING_SOURCE), so the
 // program carries the sugar surface without pulling di.extras.options's rolled
 // declare-module types. The generic signatures mirror di.extras.options's
-// src/augment.ts + options.augmentations so the merged member symbol the inline
-// resolver anchors on is the real face.
+// src/augment.ts + options.augmentations so the declaration the inline resolver
+// anchors on is the real face.
 const OPTIONS_AUTHORING = `
 import type { Manifest, Type } from '@rhombus-std/di.core';
 
