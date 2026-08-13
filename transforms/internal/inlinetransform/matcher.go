@@ -107,7 +107,7 @@ func surfaceTypes(checker *shimchecker.Checker, typeSym *shimast.Symbol) []*shim
 			visit(base)
 		}
 	}
-	visit(declaredTypeOf(checker, typeSym))
+	visit(checker.GetDeclaredTypeOfSymbol(typeSym))
 	return out
 }
 
@@ -155,10 +155,12 @@ func baseTypesOf(checker *shimchecker.Checker, t *shimchecker.Type) []*shimcheck
 	return shimchecker.Checker_getBaseTypes(checker, t)
 }
 
-// declaredTypeOf returns the instance type a class or interface symbol declares,
-// or nil for a symbol that declares no such type.
+// declaredTypeOf returns the type a class, interface or alias symbol declares, or
+// nil for a symbol that declares no type at all — the shape a base's symbol takes
+// when it is not itself a named type.
 func declaredTypeOf(checker *shimchecker.Checker, sym *shimast.Symbol) *shimchecker.Type {
-	if sym == nil || sym.Flags&(shimast.SymbolFlagsClass|shimast.SymbolFlagsInterface) == 0 {
+	const declaresAType = shimast.SymbolFlagsClass | shimast.SymbolFlagsInterface | shimast.SymbolFlagsTypeAlias
+	if sym == nil || sym.Flags&declaresAType == 0 {
 		return nil
 	}
 	return checker.GetDeclaredTypeOfSymbol(sym)
