@@ -8,12 +8,11 @@ import (
 	"github.com/fnioc/std/transforms/internal/plugin"
 )
 
-// schemaofPrimitive is the config-schema primitive whose OWN stage reports its
-// lowering failures (the targeted 992001/992002) and leaves the call un-lowered.
-// A surviving `schemaof<T>()` is therefore already accompanied by that precise
-// diagnostic, so the sweep defers to it rather than adding the generic
-// "primitive survived" error — the owner ruling that a schemaof failure surfaces
-// the targeted schema diagnostic, not the generic sweep one.
+// schemaofPrimitive is the type-expansion primitive whose OWN stage reports its
+// failures (the targeted 992001/992002/992003) and leaves the call un-expanded. A
+// surviving `schemaof<T>()` is therefore already accompanied by that precise
+// diagnostic, so the sweep defers to it rather than adding the generic "primitive
+// survived" error on top.
 const schemaofPrimitive = "schemaof"
 
 // Sweep is emit tripwire 2: a syntactic walk of a fully-lowered output file that
@@ -41,10 +40,10 @@ func Sweep(sf *shimast.SourceFile, artifacts *Artifacts) []plugin.Diagnostic {
 		// (1) surviving primitive: a nameof call with type args, or a node still
 		// carrying a registered PrimitiveUse.
 		if use, registered := artifacts.PrimitiveCalls[n]; registered {
-			// A surviving `schemaof<T>()` is an un-lowerable schema (unsupported field
-			// type / non-object root); its own stage already reported the targeted
-			// 992001/992002 and left the call in place. Defer to that — don't add the
-			// generic "primitive survived" error on top.
+			// A surviving `schemaof<T>()` is a type the Type grammar cannot spell; its
+			// own stage already reported the targeted 992001/992002/992003 and left the
+			// call in place. Defer to that — don't add the generic "primitive survived"
+			// error on top.
 			if use.Name == schemaofPrimitive {
 				return false
 			}

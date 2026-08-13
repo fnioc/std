@@ -43,8 +43,8 @@ const stagePrefix = "rhombusstd_"
 // AND its type-argument minting siblings `signaturefor<T>()` /
 // `signaturesfor<T>()`, including the inline stage's synthetic calls), then keyof
 // (the keyed-registration KEY lowering, including the inline stage's synthetic
-// keyof calls), then schemaof (the config `.withType<T>()` sugar's
-// schema-literal lowering). All stages own DISJOINT match sets, so correctness
+// keyof calls), then schemaof (the structural expansion of `schemaof<T>()` into
+// the `Type` tree describing T). All stages own DISJOINT match sets, so correctness
 // never depends on this order — it is fixed only for reproducible output.
 //
 // Returned as a fresh slice each call so a caller can reorder or extend it
@@ -135,14 +135,13 @@ func buildKeyof(prog *driver.Program, ctx *tokens.Context, env *Env, emit Sink) 
 	})
 }
 
-// buildSchemaof activates the generic `schemaof<T>()` primitive stage. It lowers
-// each schemaof call — the inline `.withType<T>()` body's synthetic schema call
-// and any source-written one — to T's runtime config-schema object literal,
-// materializing the OPTIONAL value-import a wrapped field needs. It runs the SAME
-// schema walk the config stage drives, so the inline path and the config-stage
-// oracle emit byte-identical literals. On an unsupported field type / non-object
-// root it reports the targeted 992001/992002 (a hard error) and leaves the call
-// un-lowered — the sweep defers the surviving-primitive diagnostic to it.
+// buildSchemaof activates the `schemaof<T>()` primitive stage. It expands each
+// schemaof call — the inline `.withType<T>()` body's synthetic call and any
+// source-written one — into the runtime `Type` tree describing T's structure,
+// materializing the `Type` value-import the tree is spelled through. On a member
+// the Type grammar cannot spell, or a non-object root, it reports the targeted
+// 992001/992002/992003 (a hard error) and leaves the call un-lowered — the sweep
+// defers the surviving-primitive diagnostic to it.
 func buildSchemaof(prog *driver.Program, ctx *tokens.Context, env *Env, emit Sink) plugin.FileTransform {
 	return schemaoftransform.New(prog, ctx, env.Artifacts, func(d plugin.Diagnostic) {
 		emit(DiagFromPlugin(d))
