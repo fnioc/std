@@ -70,11 +70,9 @@ describe('inline-authoring rule', () => {
     expect(lintInline(src)).toContain('singleReturn');
   });
 
-  test('conditional (?:) is PERMITTED — the §94 resolve-family shape', () => {
-    // The resolve-family sugar branches `isSingular<T>() ? singularValue<T>() :
-    // this.resolve(typefor<T>())`, a single compile-time expression the engine
-    // constant-folds. A conditional over otherwise-clean operands is no longer a
-    // bannedSyntax violation.
+  test('conditional (?:) is PERMITTED', () => {
+    // A ternary is still a single compile-time expression, so a conditional over
+    // otherwise-clean operands is not a bannedSyntax violation.
     const src = PRIMITIVE_IMPORT
       + `export const Foo = {\n  bar<T>(this: any): boolean { return this.a ? this.b(typefor<T>()) : false; },\n};\n`;
     expect(lintInline(src)).toEqual([]);

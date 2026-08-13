@@ -134,9 +134,9 @@ function goEnv(): NodeJS.ProcessEnv {
 // packages, and names ONE spawn descriptor. The always-on host runs its whole
 // stage table: the inline stage substitutes the sugar body, which puts a
 // `typefor<T>()` in front of the token-taking member, and the primitive stages
-// (nameof / signatureof / keyof / valueof) lower the calls it mints. Every
-// argument the author wrote after the ctor is carried through untouched — the
-// sugar adds the token and nothing else.
+// (nameof / signatureof / keyof) lower the calls it mints. Every argument the
+// author wrote after the ctor is carried through untouched — the sugar adds the
+// token and nothing else.
 //
 // The sandbox points at the one shared TTSC_CACHE_DIR, so a sidecar built cold by
 // any suite is reused warm here. di.core resolves to its dist/bundle types, so
@@ -334,11 +334,10 @@ function setupChainWorkspaces(): void {
   rmSync(join(chainInlineDir, 'dist'), { recursive: true, force: true });
 
   // Inline path: di.extras IN deps → the host scan activates the full stage
-  // set (inline + nameof + signatureof + keyof + valueof + the resolve-family
-  // primitives). The tsconfig spells the primitives descriptors explicitly so ttsc
-  // has direct-discovery entries to spawn the host with; the rest arrive through
-  // the scan. There is no longer a semantic (di-direct) sandbox — that stage was
-  // deleted (W6p3); its output is the frozen `*.di-direct.js` golden.
+  // set (inline + nameof + signatureof + keyof). The tsconfig spells the
+  // primitives descriptors explicitly so ttsc has direct-discovery entries to
+  // spawn the host with; the rest arrive through the scan. There is no semantic
+  // (di-direct) sandbox — its output is the frozen `*.di-direct.js` golden.
   linkChainDeps(chainInlineDir);
   writeFileSync(join(chainInlineDir, 'package.json'),
     JSON.stringify({ name: 'chain-app', version: '0.0.0',
@@ -412,10 +411,7 @@ function assertNoAuthoringSurvivors(out: string): void {
   expect(out).not.toContain('tokenof');
   expect(out).not.toContain('signatureof');
   expect(out).not.toContain('signaturefor');
-  expect(out).not.toContain('valueof');
   expect(out).not.toContain('keyof');
-  expect(out).not.toContain('isSingular');
-  expect(out).not.toContain('singularValue');
 }
 
 function lineWith(src: string, needle: string): string | undefined {
@@ -598,8 +594,8 @@ describe.skipIf(!toolchainReady)('generic inline stage — lookup parity (W5)', 
 // Single sandbox (no split dep graphs): with no oracle path there is nothing to
 // keep the inline stage out of, so the one dir wires the primitives descriptors
 // to spawn the host and lists di.extras + di.extras.options in deps —
-// the host's own scan activates inline + nameof + di + valueof and collects the
-// addOptions body, and @rhombus-std/options is loaded so the wrapper base resolves.
+// the host's own scan activates inline + nameof and collects the addOptions body,
+// and @rhombus-std/options is loaded so the wrapper base resolves.
 
 const DI_OPTIONS = join(REPO_ROOT, 'libraries', 'di.extras.options');
 const OPTIONS = join(REPO_ROOT, 'libraries', 'options');
