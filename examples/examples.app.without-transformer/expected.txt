@@ -30,7 +30,6 @@ info: Rhombus.Examples.InteropWorker[0]
       stopped
 dbug: Rhombus.Hosting.Host[4]
       Hosting stopped
-host shutdown: NotImplementedError — declared, no behaviour yet
 
 === di registration — without transformer ===
 immutability: the discarded call registered 0, the threaded one registered 1
