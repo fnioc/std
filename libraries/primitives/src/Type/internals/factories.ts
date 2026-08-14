@@ -44,23 +44,21 @@ export function tuple(members: readonly Type[]): TupleType {
   return intern(`tuple\0${slots.map(id).join(',')}`, () => node<TupleType>({ kind: 'tuple', members: slots }));
 }
 
-export function func(returnType: Type, args: TypeSignatures, genericArgs: readonly Type[] = []): FunctionType {
+export function func(returnType: Type, args: TypeSignatures): FunctionType {
   const result = adopt(returnType);
   const rows = adoptRows(args);
-  const quantifiers = genericArgs.map(adopt);
   return intern(
-    `func\0${quantifiers.map(id).join(',')}\0${id(result)}\0${rowsKey(rows)}`,
-    () => node<FunctionType>({ kind: 'func', args: rows, returnType: result, genericArgs: quantifiers }),
+    `func\0${id(result)}\0${rowsKey(rows)}`,
+    () => node<FunctionType>({ kind: 'func', args: rows, returnType: result }),
   );
 }
 
-export function ctor(instanceType: Type, args: TypeSignatures, genericArgs: readonly Type[] = []): ConstructorType {
+export function ctor(instanceType: Type, args: TypeSignatures): ConstructorType {
   const instance = adopt(instanceType);
   const rows = adoptRows(args);
-  const quantifiers = genericArgs.map(adopt);
   return intern(
-    `ctor\0${quantifiers.map(id).join(',')}\0${id(instance)}\0${rowsKey(rows)}`,
-    () => node<ConstructorType>({ kind: 'ctor', args: rows, instanceType: instance, genericArgs: quantifiers }),
+    `ctor\0${id(instance)}\0${rowsKey(rows)}`,
+    () => node<ConstructorType>({ kind: 'ctor', args: rows, instanceType: instance }),
   );
 }
 
@@ -264,8 +262,8 @@ export function adopt(type: Type): Type {
 /** The fields each kind's factory reads, so a literal missing one is named rather than followed. */
 const REQUIRED: Readonly<Record<Type['kind'], readonly string[]>> = {
   array: ['element'],
-  ctor: ['instanceType', 'args', 'genericArgs'],
-  func: ['returnType', 'args', 'genericArgs'],
+  ctor: ['instanceType', 'args'],
+  func: ['returnType', 'args'],
   generic: ['label'],
   global: ['name', 'genericArgs'],
   imported: ['name', 'from', 'genericArgs'],
@@ -304,10 +302,10 @@ class AdoptVisitor extends TypeVisitor<Type> {
     return array(type.element);
   }
   protected override visitCtor(type: ConstructorType): Type {
-    return ctor(type.instanceType, type.args, type.genericArgs);
+    return ctor(type.instanceType, type.args);
   }
   protected override visitFunc(type: FunctionType): Type {
-    return func(type.returnType, type.args, type.genericArgs);
+    return func(type.returnType, type.args);
   }
   protected override visitGeneric(type: GenericType): Type {
     return generic(type.label);

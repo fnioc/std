@@ -74,7 +74,7 @@ describe('withType', () => {
     const overloaded = Type.ctor({ instanceType: SINK, args: [
       [Type.imported('IMissing', 'app'), Type.typeLiteral('unreachable')],
       [CLOCK, Type.typeLiteral('fallback')],
-    ], genericArgs: [] });
+    ] });
     // The first row asks for a type nothing registers, so the second is the one the engine takes.
     const services = withClock().add<Sink>(SINK, sink => sink.asClass(Sink).withType(overloaded));
 

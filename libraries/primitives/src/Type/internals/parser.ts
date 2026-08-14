@@ -41,9 +41,6 @@ class TypeParser {
   }
 
   #type(): Type {
-    if (this.#at('<')) {
-      return this.#quantified();
-    }
     if (this.#atCtor()) {
       return this.#ctor();
     }
@@ -51,36 +48,6 @@ class TypeParser {
       return this.#function();
     }
     return this.#union();
-  }
-
-  /**
-   * A quantifier list in front of a signature — `<%T>(%T) => app:Box<%T>`. Only a signature can
-   * carry one, so anything else after the list is refused where the list was opened.
-   */
-  #quantified(): Type {
-    const opened = this.#peek()!.position;
-    const quantifiers = this.#genericTypes();
-    for (const quantifier of quantifiers) {
-      if (quantifier.kind !== 'generic') {
-        throw this.#error(opened, 'generic holes in the quantifier list');
-      }
-    }
-    if (this.#atCtor()) {
-      const signature = this.#ctor();
-      return ctor(signature.instanceType, signature.args, quantifiers);
-    }
-    if (this.#atArrow()) {
-      const signature = this.#function();
-      return func(signature.returnType, signature.args, quantifiers);
-    }
-    const reserved = this.#union();
-    if (reserved.kind === 'ctor') {
-      return ctor(reserved.instanceType, reserved.args, quantifiers);
-    }
-    if (reserved.kind === 'func') {
-      return func(reserved.returnType, reserved.args, quantifiers);
-    }
-    throw this.#error(opened, 'a signature to carry the quantifier list');
   }
 
   #union(): Type {
@@ -188,11 +155,11 @@ class TypeParser {
     switch (name.text) {
       case 'Func': {
         const [returnType, rows] = this.#reservedSignature(name, 'Func<Return, ...Args>');
-        return func(returnType, rows, []);
+        return func(returnType, rows);
       }
       case 'Ctor': {
         const [instanceType, rows] = this.#reservedSignature(name, 'Ctor<Instance, ...Args>');
-        return ctor(instanceType, rows, []);
+        return ctor(instanceType, rows);
       }
       case 'ServiceProvider': {
         if (this.#at('<')) {
@@ -338,7 +305,7 @@ class TypeParser {
     this.#expect('(');
     const rows = this.#rowList(')');
     this.#expect('=>');
-    return func(this.#type(), rows, []);
+    return func(this.#type(), rows);
   }
 
   #ctor(): ConstructorType {
@@ -346,7 +313,7 @@ class TypeParser {
     this.#expect('(');
     const rows = this.#rowList(')');
     this.#expect('=>');
-    return ctor(this.#type(), rows, []);
+    return ctor(this.#type(), rows);
   }
 
   #peek(): LexToken | undefined {

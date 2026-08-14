@@ -26,16 +26,14 @@ class StringifyVisitor extends TypeVisitor<string, Precedence> {
   }
   protected override visitCtor(type: ConstructorType, minimum: Precedence): string {
     return this.#parenthesize(
-      `${this.#quantifiers(type.genericArgs)}new (${this.#rows(type.args)}) => `
-        + this.visit(type.instanceType, Precedence.arrow),
+      `new (${this.#rows(type.args)}) => ` + this.visit(type.instanceType, Precedence.arrow),
       Precedence.arrow,
       minimum,
     );
   }
   protected override visitFunc(type: FunctionType, minimum: Precedence): string {
     return this.#parenthesize(
-      `${this.#quantifiers(type.genericArgs)}(${this.#rows(type.args)}) => `
-        + this.visit(type.returnType, Precedence.arrow),
+      `(${this.#rows(type.args)}) => ` + this.visit(type.returnType, Precedence.arrow),
       Precedence.arrow,
       minimum,
     );
@@ -94,10 +92,6 @@ class StringifyVisitor extends TypeVisitor<string, Precedence> {
    */
   #rows(rows: TypeSignatures): string {
     return rows.map(row => this.#list(row)).join('; ');
-  }
-  /** The signature's own quantifiers, written in front of it; a concrete signature has none. */
-  #quantifiers(types: readonly Type[]): string {
-    return types.length ? `<${this.#list(types)}>` : '';
   }
   #genericTypes(types: readonly Type[]): string {
     return types.length ? `<${this.#list(types)}>` : '';
