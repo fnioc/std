@@ -20,7 +20,7 @@ import { basename, join, resolve } from 'node:path';
 //      strategy wins over synthesis, an un-derivable member falls back to
 //      extension-wins, and — the headline — a strategy-less collision that
 //      throws under the no-transformer runtime no longer throws;
-//   3. the tokenfor stage still lowers byte-identical tokens (same stage code, now
+//   3. the typefor stage still lowers byte-identical types (same stage code, now
 //      the one owner binary rather than a full-host sibling).
 //
 // The throwaway project lives OUTSIDE the repo tree, per-worktree, at
@@ -65,7 +65,7 @@ function link(target: string, linkPath: string): void {
   }
 }
 
-/** A build env with a single self-consistent Go toolchain (see the tokenfor e2e). */
+/** A build env with a single self-consistent Go toolchain (see the typefor e2e). */
 function goEnv(): NodeJS.ProcessEnv {
   const env = { ...process.env } as NodeJS.ProcessEnv;
   delete env.GOROOT;
@@ -91,13 +91,13 @@ function goEnv(): NodeJS.ProcessEnv {
   return env;
 }
 
-// The collision fixture: one token, four registrations exercising each
-// synthesis contract. Tokens are inline tokenfor calls (lowered by the full
-// host's tokenfor stage); the registry and installer are the REAL
+// The collision fixture: one interface, four registrations exercising each
+// synthesis contract. The tokens are inline typefor calls (lowered by the full
+// host's typefor stage); the registry and installer are the REAL
 // @rhombus-std/primitives runtime.
 const APP_SOURCE = `
 import { augment, registerAugmentations, type MergeStrategies } from "@rhombus-std/primitives";
-import { tokenfor } from "./tokenfor";
+import { typefor } from "./typefor";
 
 export interface IAlpha {}
 
@@ -231,23 +231,23 @@ export const XiExtensions = {
   },
 };
 
-registerAugmentations(tokenfor<IAlpha>(), AlphaExtensions);
-registerAugmentations(tokenfor<IAlpha>(), BetaExtensions);
-registerAugmentations(tokenfor<IAlpha>(), DeltaExtensions);
-registerAugmentations(tokenfor<IAlpha>(), GammaExtensions, gammaMerge);
-registerAugmentations(tokenfor<IAlpha>(), EpsilonExtensions);
-registerAugmentations(tokenfor<IAlpha>(), ZetaExtensions);
-registerAugmentations(tokenfor<IAlpha>(), EtaExtensions);
-registerAugmentations(tokenfor<IAlpha>(), ThetaExtensions);
-registerAugmentations(tokenfor<IAlpha>(), IotaExtensions);
-registerAugmentations(tokenfor<IAlpha>(), KappaExtensions);
-registerAugmentations(tokenfor<IAlpha>(), LambdaExtensions);
-registerAugmentations(tokenfor<IAlpha>(), MuExtensions);
-registerAugmentations(tokenfor<IAlpha>(), NuExtensions);
-registerAugmentations(tokenfor<IAlpha>(), XiExtensions);
+registerAugmentations(typefor<IAlpha>(), AlphaExtensions);
+registerAugmentations(typefor<IAlpha>(), BetaExtensions);
+registerAugmentations(typefor<IAlpha>(), DeltaExtensions);
+registerAugmentations(typefor<IAlpha>(), GammaExtensions, gammaMerge);
+registerAugmentations(typefor<IAlpha>(), EpsilonExtensions);
+registerAugmentations(typefor<IAlpha>(), ZetaExtensions);
+registerAugmentations(typefor<IAlpha>(), EtaExtensions);
+registerAugmentations(typefor<IAlpha>(), ThetaExtensions);
+registerAugmentations(typefor<IAlpha>(), IotaExtensions);
+registerAugmentations(typefor<IAlpha>(), KappaExtensions);
+registerAugmentations(typefor<IAlpha>(), LambdaExtensions);
+registerAugmentations(typefor<IAlpha>(), MuExtensions);
+registerAugmentations(typefor<IAlpha>(), NuExtensions);
+registerAugmentations(typefor<IAlpha>(), XiExtensions);
 
 export class Alpha implements IAlpha {}
-augment(tokenfor<IAlpha>())(Alpha);
+augment(typefor<IAlpha>())(Alpha);
 `;
 
 let app = '';
@@ -280,17 +280,23 @@ beforeAll(async () => {
   link(PRIM_TRANSFORMER, join(nm, '@rhombus-std', 'primitives.extras'));
   link(PRIMITIVES, join(nm, '@rhombus-std', 'primitives'));
 
-  writeFileSync(join(projDir, 'src', 'tokenfor.ts'), `export declare function tokenfor<T>(): string;\n`);
+  // Untyped `any` return (rather than `unknown`, which the other typefor e2e
+  // stubs use) — here the call feeds registerAugmentations/augment's
+  // `string | Type` parameter directly, and the stage matches by callee symbol
+  // name alone, so the stub's declared type only needs to satisfy the checker.
+  writeFileSync(join(projDir, 'src', 'typefor.ts'), `export declare function typefor<T>(): any;\n`);
   writeFileSync(join(projDir, 'src', 'app.ts'), APP_SOURCE);
   // A fixture package.json declaring the primitives.extras devDep: ttsc's
   // auto-discovery reads it, finds the ttsc.plugin marker, and spawns the one
   // owner host. The host runs its whole always-on stage table (W7 — no selection),
   // mergesynth included, exactly as a real augmentation package's build does. No
   // tsconfig `plugins` array (an explicit list would suppress discovery and never
-  // spawn the host).
+  // spawn the host). Inline emission is pinned so every call site is a
+  // self-contained assertion rather than a reference into a generated module.
   writeFileSync(join(projDir, 'package.json'),
     JSON.stringify({ name: '@fixture/mergesynth-consumer', private: true,
-      devDependencies: { '@rhombus-std/primitives.extras': '*', '@rhombus-std/primitives': '*' } }));
+      devDependencies: { '@rhombus-std/primitives.extras': '*', '@rhombus-std/primitives': '*' },
+      'rhombus-std': { typefor: { emit: 'inline' } } }));
   writeFileSync(join(projDir, 'tsconfig.json'), JSON.stringify({
     compilerOptions: { target: 'ES2022', module: 'ESNext', moduleResolution: 'Bundler', lib: ['ES2022'], strict: true,
       outDir: 'dist', rootDir: 'src', skipLibCheck: true, noEmitOnError: false },
@@ -371,9 +377,9 @@ describe.skipIf(!toolchainReady)('mergesynth on the collapsed host — emitted J
     expect(app).toContain('Object.values(');
   });
 
-  test('tokenfor lowering is byte-identical on the collapsed host', () => {
-    expect(app).toContain('"@fixture/mergesynth-consumer/tokens/app:IAlpha"');
-    expect(app).not.toContain('tokenfor');
+  test('typefor lowering is byte-identical on the collapsed host', () => {
+    expect(app).toContain('Type.imported("IAlpha", "@fixture/mergesynth-consumer/tokens/app")');
+    expect(app).not.toContain('typefor');
   });
 });
 
