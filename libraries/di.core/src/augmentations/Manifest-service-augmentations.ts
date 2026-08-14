@@ -36,7 +36,15 @@ interface IManifestServiceAugmentations<Scopes extends string> {
 }
 
 declare module '@rhombus-std/di.core' {
-  interface Manifest<Scopes extends string> extends IManifestServiceAugmentations<Scopes> {}
+  interface Manifest<Scopes extends string> extends IManifestServiceAugmentations<Scopes> {
+    addClass(type: Token | Type, ctor: Ctor, implType: ConstructorType | IntersectionType, scope?: Scopes,
+      key?: string): this;
+
+    addFactory(type: Token | Type, factory: Func<any[], unknown>, implType: FunctionType | IntersectionType,
+      scope?: Scopes, key?: string): this;
+
+    addValue(type: Token | Type, value: unknown, key?: string): this;
+  }
 }
 
 export const ManifestServiceAugmentations: AugmentationSet2<Manifest, Flatten<IManifestServiceAugmentations<string>>> =

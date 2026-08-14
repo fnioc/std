@@ -18,6 +18,7 @@
     "@rhombus-std/config.json": "workspace:*",
     "@rhombus-std/di": "workspace:*",
     "@rhombus-std/di.core": "workspace:*",
+    "@rhombus-std/di.extras": "workspace:*",
     "@rhombus-std/diagnostics": "workspace:*",
     "@rhombus-std/diagnostics.core": "workspace:*",
     "@rhombus-std/hosting": "workspace:*",

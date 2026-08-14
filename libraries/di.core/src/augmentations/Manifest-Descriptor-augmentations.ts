@@ -103,7 +103,39 @@ interface IManifestDescriptorAugmentations<Scopes extends string> {
 }
 
 declare module '@rhombus-std/di.core' {
-  interface Manifest<Scopes extends string> extends IManifestDescriptorAugmentations<Scopes> {}
+  interface Manifest<Scopes extends string> extends IManifestDescriptorAugmentations<Scopes> {
+    add(descriptor: ServiceDescriptor<Scopes>): Manifest<Scopes>;
+    add<T = any>(type: Type | string, configure: Func<[Unstarted<T, Scopes>], IComplete>): Manifest<Scopes>;
+    add<T = any>(type: Type | string, ctor: Ctor<any[], T>, implType: ConstructorType | IntersectionType,
+      scope?: Scopes, key?: string): Manifest<Scopes>;
+    add<T = any>(type: Type | string, factory: Func<any[], T>, implType: FunctionType | IntersectionType,
+      scope?: Scopes, key?: string): Manifest<Scopes>;
+
+    tryAdd(...descriptors: ReadonlyArray<ServiceDescriptor<Scopes>>): Manifest<Scopes>;
+    tryAdd<T = any>(type: Type | string, configure: Func<[Unstarted<T, Scopes>], IComplete>): this;
+    tryAdd<T = any>(type: Type | string, ctor: Ctor<any[], T>, implType: ConstructorType | IntersectionType,
+      scope?: Scopes, key?: string): this;
+    tryAdd<T = any>(type: Type | string, factory: Func<any[], T>, implType: FunctionType | IntersectionType,
+      scope?: Scopes, key?: string): this;
+
+    tryAddClass(token: Token | Type, ctor: Ctor, implType: ConstructorType | IntersectionType, scope?: Scopes,
+      key?: string): Manifest<Scopes>;
+
+    tryAddFactory(token: Token | Type, factory: Func<any[], unknown>, implType: FunctionType | IntersectionType,
+      scope?: Scopes, key?: string): Manifest<Scopes>;
+
+    tryAddValue(token: Token | Type, value: unknown, key?: string): Manifest<Scopes>;
+
+    replaceClass(token: Token | Type, ctor: Ctor, implType: ConstructorType | IntersectionType,
+      scope: Scopes | undefined, key?: string): Manifest<Scopes>;
+
+    replaceFactory(token: Token | Type, factory: Func<any[], unknown>, implType: FunctionType | IntersectionType,
+      scope: Scopes | undefined, key?: string): Manifest<Scopes>;
+
+    replaceValue(token: Token | Type, value: unknown, key?: string): Manifest<Scopes>;
+
+    removeAll(token: Token | Type, key?: string): Manifest<Scopes>;
+  }
 }
 
 export const ManifestDescriptorAugmentations: AugmentationSet2<Manifest,

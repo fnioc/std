@@ -45,7 +45,29 @@ interface IManifestDescriptorAugmentations<Scopes extends string> {
 }
 
 declare module '@rhombus-std/di.core' {
-  interface Manifest<Scopes extends string> extends IManifestDescriptorAugmentations<Scopes> {}
+  interface Manifest<Scopes extends string> extends IManifestDescriptorAugmentations<Scopes> {
+    tryAdd<T>(configure: Func<[Unstarted<T, Scopes>], IComplete>): Manifest<Scopes>;
+    tryAdd<T>(ctor: Ctor<any[], T>, implType: ConstructorType | IntersectionType, scope?: Scopes,
+      key?: string): Manifest<Scopes>;
+    tryAdd<T>(factory: Func<any[], T>, implType: FunctionType | IntersectionType, scope?: Scopes,
+      key?: string): Manifest<Scopes>;
+
+    tryAddClass<T>(ctor: Ctor<any[], T>, signatures: Signatures, scope?: Scopes, key?: string): Manifest<Scopes>;
+
+    tryAddFactory<T>(factory: Func<any[], T>, signatures: Signatures, scope?: Scopes, key?: string): Manifest<Scopes>;
+
+    tryAddValue<T>(value: T, key?: string): Manifest<Scopes>;
+
+    replaceClass<T>(ctor: Ctor<any[], T>, signatures: Signatures, scope: Scopes | undefined,
+      key?: string): Manifest<Scopes>;
+
+    replaceFactory<T>(factory: Func<any[], T>, signatures: Signatures, scope: Scopes | undefined,
+      key?: string): Manifest<Scopes>;
+
+    replaceValue<T>(value: T, key?: string): Manifest<Scopes>;
+
+    removeAll<T>(key?: string): Manifest<Scopes>;
+  }
 }
 
 export const ManifestDescriptorAugmentations: AugmentationSet2<Manifest,
