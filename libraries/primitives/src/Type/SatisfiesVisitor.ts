@@ -144,11 +144,11 @@ class SatisfiesVisitor extends TypeVisitor<Predicate> {
   }
 
   /**
-   * One call they agree on is enough: some proposed row serves some condition row. An overloaded
-   * value is usable where an overload is required as soon as one of its calls fits.
+   * Every condition row needs an answer: each one must be served by some proposed row. Surplus
+   * proposed rows are extra capability and never count against the match.
    */
   #rows(proposed: TypeSignatures, condition: TypeSignatures): boolean {
-    return condition.some(row => proposed.some(candidate => this.#attemptRow(candidate, row)));
+    return condition.every(row => proposed.some(candidate => this.#attemptRow(candidate, row)));
   }
 
   /** One row against one: same arity, each parameter contravariant. */

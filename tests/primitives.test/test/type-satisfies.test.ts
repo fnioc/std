@@ -85,10 +85,11 @@ describe('Type.satisfies on parameter rows', () => {
     expect(satisfies(overloaded, Type.func(C, [[]]))).toBe(false);
   });
 
-  test('one call they agree on is enough, whichever rows carry it', () => {
+  test('every condition row needs an answer — a shared call is not enough on its own', () => {
     const condition = Type.ctor({ instanceType: C, args: [[A], [A, B]] });
     expect(satisfies(Type.ctor({ instanceType: C, args: [[A], [A, B]] }), condition)).toBe(true);
-    expect(satisfies(Type.ctor(C, [[A]]), condition)).toBe(true);
+    // Serving only the [A] row leaves [A, B] unanswered — surplus rows are fine, missing ones are not.
+    expect(satisfies(Type.ctor(C, [[A]]), condition)).toBe(false);
     expect(satisfies(Type.ctor(C, [[B]]), condition)).toBe(false);
   });
 
