@@ -1,25 +1,20 @@
-import { Manifest, RESOLVER_TYPE, ServiceDescriptor, type TypeSignatures,
-  UnsatisfiableError } from '@rhombus-std/di.core';
-import { augment, type IServiceProvider, NotImplementedError, type Token, Type } from '@rhombus-std/primitives';
+import { Manifest, ServiceDescriptor, TypeSignatures, UnsatisfiableError } from '@rhombus-std/di.core';
+import { augment, type ConstructorType, type FunctionType, type IServiceProvider, NotImplementedError, type Token,
+  Type } from '@rhombus-std/primitives';
 import { typefor } from '@rhombus-std/primitives.extras';
 import type { Ctor, Func } from '@rhombus-toolkit/func';
 import { Engine } from './internal/Engine.js';
 import { ServiceProviderOptions } from './ServiceProviderOptions.js';
 
-// The synthetic address a value-driven `getService` call resolves under. Never persisted —
-// it exists only for the one `additionalServices` entry that call synthesizes, then discards.
-const VALUE_SERVICE_TYPE = Type.imported('GetServiceValue', '@rhombus-std/di');
-
-// The one seam a value-driven call's dependency contract runs through — every synthesized
-// descriptor below takes its signature from here, so the contract is a one-line swap.
-const VALUE_SERVICE_SIGNATURE: TypeSignatures = [[RESOLVER_TYPE]];
-
-// `ServiceProvider` implements the value-driven `getService` overloads directly below — reaching
-// this provider's own resolution engine to realize a caller-supplied `ctor`/`fn` is only possible
-// from inside the class. This merge is what lets an `IServiceProvider`-typed caller see them too.
+// `ServiceProvider` implements the two-argument `getService` overloads directly below — reaching
+// this provider's own resolution engine to realize a caller-supplied `ctor`/`func` is only
+// possible from inside the class. This merge is what lets an `IServiceProvider`-typed caller see
+// them too — though, like `getService<T>()`'s existing zero-argument sugar, TS does not merge an
+// overload contributed through `extends` against a member already declared directly on the
+// target interface, so an interface-typed caller does not actually see the extra overloads today.
 type IServiceProviderValueAugmentations = {
-  getService<T>(ctor: new(...args: never[]) => T): T;
-  getService<T>(fn: (...args: never[]) => T): T;
+  getService<R>(type: ConstructorType, ctor: Ctor<any[], R>): R;
+  getService<R>(type: FunctionType, func: Func<any[], R>): R;
 };
 declare module '@rhombus-std/primitives' {
   interface IServiceProvider extends IServiceProviderValueAugmentations {}
@@ -52,49 +47,34 @@ export class ServiceProvider {
    */
   getService(type: Type | Token): any;
   /**
-   * Constructs `ctor` fresh, handing it this provider as its one argument so it can pull
-   * whatever it depends on from `getRequiredService`/`getService` itself.
+   * Constructs `ctor` fresh, its dependencies resolved from `type` — `ctor`'s own parameter
+   * types, in order.
    *
    * @remarks
-   * Nothing is registered by this call and nothing it builds is cached — two calls for the same
-   * `ctor` never share a result, even for a `ctor` that is separately registered elsewhere.
+   * Nothing here is registered or cached: two calls build two instances, even for a `ctor`
+   * separately registered elsewhere under its own address.
    */
-  getService<T>(ctor: new(...args: never[]) => T): T;
+  getService<R>(type: ConstructorType, ctor: Ctor<any[], R>): R;
   /**
-   * Calls `fn`, handing it this provider as its one argument so it can pull whatever it depends
-   * on from `getRequiredService`/`getService` itself.
+   * Calls `func`, its dependencies resolved from `type` — `func`'s own parameter types, in order.
    *
    * @remarks
-   * Nothing is registered by this call and nothing it builds is cached — two calls for the same
-   * `fn` never share a result. A `fn` actually written as a `new.target`-guarded constructor is
-   * rescued: a `TypeError` naming "constructor" from the call retries once through construction
-   * instead. The retry re-executes `fn` — a non-idempotent `fn` that throws that shape of error
-   * partway through its body runs twice. The rescue is best-effort, not a contract: an engine is
-   * free to word its guard's message however it likes.
+   * Nothing here is registered or cached: two calls build two results, even for a `func`
+   * separately registered elsewhere under its own address.
    */
-  getService<T>(fn: (...args: never[]) => T): T;
-  getService(target: Type | Token | Function): any {
-    if (typeof target === 'function') {
-      return this.#getServiceFromValue(target);
+  getService<R>(type: FunctionType, func: Func<any[], R>): R;
+  getService(
+    ...args: [type: Type | Token] | [type: ConstructorType, ctor: Ctor] | [type: FunctionType, func: Func]
+  ): any {
+    const [type, value] = args;
+    if (value !== undefined) {
+      return this.#getServiceFromValue(type as ConstructorType | FunctionType, value);
     }
-    if (typeof target === 'string') {
-      return this.#resolveType(Type.from(target));
-    }
-    if (typeof target === 'object' && target !== null) {
-      return this.#resolveType(target);
-    }
-    throw new TypeError(
-      `getService needs a Type, a token string, a constructor, or a function; got ${
-        target === null ? 'null' : typeof target
-      }.`,
-    );
-  }
-
-  #resolveType(type: Type): any {
+    const target = typeof type === 'string' ? Type.from(type) : type;
     try {
-      return this.#engine.resolve(type, { serviceProvider: this });
+      return this.#engine.resolve(target, { serviceProvider: this });
     } catch (error) {
-      if (error instanceof UnsatisfiableError && error.type === type) {
+      if (error instanceof UnsatisfiableError && error.type === target) {
         return undefined;
       }
       throw error;
@@ -102,32 +82,17 @@ export class ServiceProvider {
   }
 
   /**
-   * Classifies `value` as construct-only or callable and invokes it with the
-   * {@link VALUE_SERVICE_SIGNATURE} dependency resolved, synthesizing a throwaway
-   * {@link ServiceDescriptor} and resolving it through the engine's `additionalServices` channel
-   * rather than invoking `value` directly — so a caller-supplied `value` is realized exactly like
-   * a registered one, just against a manifest composed for this one call and discarded after.
+   * Synthesizes a throwaway {@link ServiceDescriptor} for `value` under the address `type`
+   * itself, its signature `type`'s own parameter types, and resolves it through the engine's
+   * `additionalServices` channel — so `value` is realized exactly like a registered constructor
+   * or factory, just against a manifest composed for this one call and discarded after.
    */
-  #getServiceFromValue(value: Function): any {
-    if (isConstructOnly(value)) {
-      return this.#resolveValue(ServiceDescriptor.ctor(VALUE_SERVICE_TYPE, value as Ctor, VALUE_SERVICE_SIGNATURE));
-    }
-    try {
-      return this.#resolveValue(
-        ServiceDescriptor.factory(VALUE_SERVICE_TYPE, value as Func, VALUE_SERVICE_SIGNATURE),
-      );
-    } catch (error) {
-      if (error instanceof TypeError && error.message.includes('constructor')) {
-        return this.#resolveValue(
-          ServiceDescriptor.ctor(VALUE_SERVICE_TYPE, value as Ctor, VALUE_SERVICE_SIGNATURE),
-        );
-      }
-      throw error;
-    }
-  }
-
-  #resolveValue(descriptor: ServiceDescriptor<string>): any {
-    return this.#engine.resolve(VALUE_SERVICE_TYPE, { serviceProvider: this, additionalServices: [descriptor] });
+  #getServiceFromValue(type: ConstructorType | FunctionType, value: Ctor | Func): any {
+    const signature = TypeSignatures.fromImplType(type);
+    const descriptor = type.kind === 'ctor'
+      ? ServiceDescriptor.ctor(type, value as Ctor, signature)
+      : ServiceDescriptor.factory(type, value as Func, signature);
+    return this.#engine.resolve(type, { serviceProvider: this, additionalServices: [descriptor] });
   }
 
   /**
@@ -178,17 +143,4 @@ export class ServiceProvider {
  */
 function notImplemented(member: string): never {
   throw new NotImplementedError(`ServiceProvider.${member}`);
-}
-
-/**
- * Class syntax and construct-only natives (a `WeakMap`, a `Proxy`) both refuse to be called
- * without `new`; ordinary functions — including one written as a `new.target`-guarded
- * constructor — don't carry either tell, so they fall through to being called first.
- */
-function isConstructOnly(value: Function): boolean {
-  if (Function.prototype.toString.call(value).startsWith('class ')) {
-    return true;
-  }
-  const prototype = Object.getOwnPropertyDescriptor(value, 'prototype');
-  return prototype !== undefined && prototype.writable === false;
 }

@@ -1,61 +1,61 @@
 # Ledger — value-driven getService overload
 
-Owner ruling (2026-08-13): two new `getService` overloads taking the value itself —
-`getService<T>(ctor: new (...args: never[]) => T): T` and
-`getService<T>(fn: (...args: never[]) => T): T`.
+Owner re-ruled the contract 2026-08-13 (supersedes the earlier RESOLVER_TYPE-provider-arg
+version entirely): `getService(type: ConstructorType, ctor: Ctor): R` and
+`getService(type: FunctionType, func: Func): R` — the node the value's own signature derives
+to, alongside the value. No runtime discriminant, no rescue: the node's kind says
+construct-or-call. Dependencies come from `TypeSignatures.fromImplType(type)` — the node's own
+real parameter types, resolved via the engine's `additionalServices` channel. Full ruling
+record: `docs/decisions.v2.md` §167.
 
-## Status: implemented, gated, PR #342 open as draft
+## Status: runtime slice shipping now; sugar slice held
 
-Mechanism confirmed against direct precedent in
-`libraries/hosting.core/src/DefaultManifest-HostedService-augmentations.ts`'s `addHostedService`
-factory form, which already solves the same "give a value-driven registration its deps without
-reflection" problem via `RESOLVER_TYPE` (`libraries/di.core/src/resolver.ts`). See
-`docs/decisions.v2.md` §153 for the full ruling record.
+Team-lead amendment 2026-08-13: HOLD the authoring-sugar slice (di.extras) pending the
+callable-signatures milestone lane settling the inline body's spelling
+(`typefor<typeof x>()` replacing `signatureof`). PROCEED with the runtime slice only. This
+worktree currently carries ONLY the runtime slice.
+
+## Declaration-home blocker (found, worked around)
+
+Team-lead's instruction was to declare the two overloads directly on `IServiceProvider`
+(`libraries/primitives/src/IServiceProvider.ts`), to fix the interface-typed-caller
+visibility gap. Confirmed by isolation (di.extras reverted to its exact committed original,
+zero diff) that this breaks di.extras' pre-existing, unrelated zero-argument `getService<T>()`
+sugar: the Go inline-transform's declaration-discovery walk (`markerMemberDeclarations` in
+`transforms/internal/inlinetransform/matcher.go`) stops finding that sugar's own declaration
+once `IServiceProvider` carries three direct `getService` signatures instead of one, and any
+build pulling in di.extras fails with `INLINE_DISCRIMINATOR_MISMATCH`. Reproduced in
+`tests/di.signatureof.ttsc.e2e`, a suite whose own fixture never references `getService` at
+all — confirming this is intrinsic to the direct-declaration shape on `IServiceProvider`, not
+sandbox-specific.
+
+Fallback (team-lead confirmed via time-pressure call, proceeding unless overridden): declare
+the two overloads on the concrete `ServiceProvider` class (`libraries/di/src/ServiceProvider.ts`)
+instead, with a `declare module` extension onto `IServiceProvider` alongside them — same
+posture the discarded RESOLVER_TYPE draft had. Interface-typed callers still don't see the
+extra overloads (the same known extends-merge limitation `getService<T>()`'s own zero-arg
+sugar already carries), but nothing pre-existing breaks. Root cause of the Go-checker
+collision itself is unresolved — flagged for whoever owns that transform territory, not
+something I fixed.
 
 ## Implementation
 
-- `libraries/di/src/ServiceProvider.ts` — the two new overload signatures plus dispatch, added
-  directly on `getService` (the base `Type | Token` form is a primitive class member, not
-  augmentation-registry material, and neither are these — `#engine` is a true `#`-private field
-  no augmentation closure can reach). A `declare module` extension onto `IServiceProvider`
-  accompanies them for type visibility, though see the known limitation below. No separate
-  augmentations file exists in `di` for this — an earlier attempt at one (a near-empty file with
-  a `declare module` block and no runtime content) broke the ttsc lowering stage's per-file
-  bundling for unrelated sibling files in the same package; folded into `ServiceProvider.ts`
-  instead once that reproduced twice. `VALUE_SERVICE_SIGNATURE` is the single seam every
-  synthesized descriptor's dependency contract draws from — a one-line swap if the owner rules
-  the zero-arg contract instead of the `RESOLVER_TYPE` one.
-- `docs/decisions.v2.md` §153 — the ruling record.
-- `tests/di.test/test/get-service-value.test.ts` / `.types.ts` — behavior and inference coverage.
+- `libraries/di/src/ServiceProvider.ts` — the two overload signatures + arity dispatch,
+  `TypeSignatures.fromImplType`-based dependency resolution, the `declare module` extension.
+  The discriminant (`isConstructOnly`), the call-then-rescue retry, and `RESOLVER_TYPE` are
+  all gone — deleted, not kept dormant.
+- `docs/decisions.v2.md` §167 — the ruling record, including the declaration-home finding.
+- `tests/di.test/test/get-service-value.test.ts` / `.types.ts` — behavior and inference
+  coverage for the two-argument node+value contract.
 
-## Observation for whoever next touches CLAUDE.md's hosting section (not actioned here)
-
-CLAUDE.md describes `useDefaultServiceProvider` as threading `ServiceProviderOptions` through
-`build()` "via a `WeakMap` side channel on the classic builder". That's stale: the real mechanism
-today (`libraries/hosting/src/ServiceProviderOptionsFactory.ts`) is a module-private `Symbol` key
-in the builder's own `properties` Map, no `WeakMap` anywhere in `libraries/hosting/src`. Left
-alone per instruction — audit-autofix owns hosting territory this cycle.
-
-## Known limitation (pre-existing, not introduced by this change)
-
-An `IServiceProvider`-typed caller does not see the two new overloads today — confirmed the same
-gap already affects `getService<T>()`'s existing zero-argument sugar (di.extras) and `Manifest`'s
-tokenless `addClass<T>()`. TS does not merge an overload contributed through `extends` against a
-member already declared directly on the target interface. The `declare module` block stays as the
-correct shape for when that gap closes; it is currently inert for interface-typed callers.
-
-## Gates (all green except the documented pre-existing red)
+## Gates (all green)
 
 - `bun run build`: 0.
-- `bun run test`: known-red baseline unrelated to this change (11 packages, all pre-existing —
-  `ServiceProvider.dispose`/`disposeAsync` NotImplementedError, caching's
-  `MemoryCacheEntryOptions`/`DistributedCacheEntryOptions` setter stubs, diagnostics
-  `enableMetrics`/`enableTracing` stubs, a `primitives.test` fuzz-test timeout). `di.test` itself:
-  68/68 green, 0 new failures anywhere.
-- `bun run test:e2e` (the six `tests/*.ttsc.e2e` suites, run directly since the root `test` script
-  chains `&&` after the unit-test phase and never reaches e2e while any package is red): all 6
-  green.
-- `bun run lint`: 0.
-- `bun run format:check`: clean.
+- `tests/di.test`: 84/84 green (`bun test` from the package dir), 0 lint errors
+  (`bun run lint`).
+- `bun run test:e2e` (the six `tests/*.ttsc.e2e` suites, run directly since the root `test`
+  script chains `&&` after the unit-test phase and never reaches e2e while any package is
+  red on the pre-existing baseline): all 6 green.
+- `bun run lint` (repo-wide): 0. `bun run format:check`: clean.
 
-PR kept in draft per instructions — not marked ready.
+PR stays draft, team-lead's merge gate. Sugar slice gets its own go-signal.
