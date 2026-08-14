@@ -542,9 +542,9 @@ Every other registration verb — `add`, `addClass`, `addFactory`, `addValue`, `
 
 ## §109 — The per-registration builder gates completion on the type system: an impl door, then exactly one call-shape door, then optional lifetime/tag doors
 
-The two-argument `add(type, configure: Func<[Unstarted<T, Scopes>], IComplete>)` form hands the configure lambda a `PendingRegistration` typed as `Unstarted` — every step door still open, no `IComplete` in the intersection — and walks it through `libraries/di.core/src/builder.ts`'s `Pending<T, ImplNode, Scopes, Slots, Ready>` type: each slot still open (`'impl' | 'implementerType' | 'lifetime' | 'tag'`) contributes one interface to an intersection, so only the doors for open slots are callable. `asClass`/`asFactory`/`asValue` spend the `impl` slot and open `implementerType` (skipped by `asValue`, already complete once tagged); `withSignature(...paramTypes)` or `withType(implementerType)` spend `implementerType` — exactly one of the two, since taking either removes the slot the other also targets — and only this step flips `Ready` to `true`, adding `IComplete` to the intersection. `withLifetime`/`taggedAs` remain independently callable afterward without gating completion further. A lambda that never opens a call-shape door never reaches a value `add`'s overload accepts, so the gate is enforced by the type checker, not a runtime check.
+The two-argument `add(type, configure: Func<[Unstarted<T, Scopes>], IComplete>)` form hands the configure lambda a `PendingRegistration` typed as `Unstarted` — every step door still open, no `IComplete` in the intersection — and walks it through `libraries/di.core/src/builder.ts`'s `Pending<T, ImplementerNode, Scopes, Slots, Ready>` type: each slot still open (`'implementer' | 'implementerType' | 'lifetime' | 'tag'`) contributes one interface to an intersection, so only the doors for open slots are callable. `asClass`/`asFactory`/`asValue` spend the `implementer` slot and open `implementerType` (skipped by `asValue`, already complete once tagged); `withSignature(...paramTypes)`, `withSignatures(...rows)` or `withType(implementerType)` spend `implementerType` — exactly one of the three, since taking any removes the slot the other two also target — and only this step flips `Ready` to `true`, adding `IComplete` to the intersection. `withLifetime`/`taggedAs` remain independently callable afterward without gating completion further. A lambda that never opens a call-shape door never reaches a value `add`'s overload accepts, so the gate is enforced by the type checker, not a runtime check.
 
-`withSignature` is singular and variadic (`...paramTypes: Array<Type | string>`), taken at most once — there is no separate bulk-replace verb. A registration's whole call shape can also be named positionally, without the builder: `add(type, ctor, implementerType, scope?, key?)`, where `implementerType` is one composed constructable or function type — an intersection of them describes an overloaded implementation, one member per call signature (`callSignatures` in `builder.ts` reads them back apart). Sugar (`addClass<T>`, `addFactory<T>`, `add<T>`) derives `T` and, where relevant, `implementerType`, so the same builder ergonomics are available to a hand-writer and a transformer-driven caller alike.
+`withSignature` is variadic (`...paramTypes: Array<Type | string>`) and spends `implementerType` naming one parameter row; `withSignatures(...rows: ReadonlyArray<ReadonlyArray<Type | string>>)` spends the same slot naming several, one per call the implementation answers to. A registration's whole call shape can also be named positionally, without the builder: `add(type, ctor, implementerType, scope?, key?)`, where `implementerType` is one composed `ConstructorType` or `FunctionType` — its own `args` field is a `TypeSignatures`, one row per call, so an overloaded implementation is one node carrying several rows rather than several nodes joined. Sugar (`addClass<T>`, `addFactory<T>`, `add<T>`) derives `T` and, where relevant, `implementerType`, so the same builder ergonomics are available to a hand-writer and a transformer-driven caller alike.
 
 _Owner-directed (the gated-completion, single-call-shape-door direction); the current slot/intersection mechanics are Claude's._
 
@@ -1412,19 +1412,23 @@ assignability is compile-time-enforced by the sugar constraints (§143), and the
 described-constructable carries the address in its instance slot — users supply argument types
 only.
 
-The signature verb is `withSignature` (the owner delegated the naming choice; `using-` was the one
-odd prefix and dies with it), SINGULAR and variadic: `withSignature(...paramTypes)`, exactly once
-per chain. A multi-signature (overloaded) impl is expressed through `withType` with an intersection
-of constructables — plurality lives in the composed node, not in the verb. Verb naming beyond this
-is case-by-case; prefix uniformity is not itself a goal, and `taggedAs` — the one address-rewriting
-verb — stands, since it looks different because it is different.
+The signature verbs are `withSignature` and `withSignatures` (the owner delegated the naming choice;
+`using-` was the one odd prefix and dies with it): `withSignature(...paramTypes)` names one parameter
+row, `withSignatures(...rows)` names several, and `withType(implementerType)` names the whole
+composed node. A callable node carries its own parameter rows natively — `ConstructorType.args` /
+`FunctionType.args` is a `TypeSignatures`, one row per call it answers to, a no-parameter callable
+carrying one empty row (`[[]]`) — so an overloaded implementation is rows on the one node rather than
+a separate node shape; exactly one of the three verbs is ever called per chain, since each spends the
+same slot. Verb naming beyond this is case-by-case; prefix uniformity is not itself a goal, and
+`taggedAs` — the one address-rewriting verb — stands, since it looks different because it is
+different.
 
 Every builder-carrying API also offers a positional overload taking everything at once: an
-`implementerType` argument (one composed constructable node), never naked signatures — the
-signatures-as-arrays spelling lives only in the builder's `withSignature`. A hand-composer of a
-positional `implementerType` puts the address in the instance slot, the same documented convention as
-above; sugar derives the precise node. Builders read as fluent English, and the positional twin is
-the terse complete form.
+`implementerType` argument (one composed constructable/function node, its parameter rows already
+inside it), never a bare row array — the row-array spelling lives only in the builder's
+`withSignature`/`withSignatures`. A hand-composer of a positional `implementerType` puts the address
+in the instance slot, the same documented convention as above; sugar derives the precise node.
+Builders read as fluent English, and the positional twin is the terse complete form.
 
 The builder form is HAND-USABLE: `add(type, configure)` takes the address as the first positional
 argument and the builder lambda second. The sugar form `add<T>(configure)` is exactly that overload
@@ -1438,13 +1442,14 @@ to `any`: `add<T = any>(type, configure)`. Sugar derives `T` precisely; a hand-r
 (`add<IRepo>(…)`) for full enforcement, or omit it for `<any>` and no enforcement — opt-in safety,
 consequences owned, no `Type`-surface change, no phantom.
 
-The configure dialect offers `withType` AND `withSignature` after the `as`-verb, EXACTLY ONE of
-which must be used — stage types make the completion state reachable only through one of them,
-once, with a runtime guard backing the untyped caller. `withSignature(args)` supplies argument types
-only, composing internally with the address in the instance slot; `withType(node)` supplies the
-whole composed constructable, typed per the `as`-verb (`ConstructorType` for `asClass`, `FunctionType` for
-`asFactory`) — sugar substitutes `withType` with the transform-derived precise node, and a
-hand-writer reaches for `withSignature`. Deep signatures remain irreducibly deep; the object-overload
+The configure dialect offers `withType`, `withSignature` AND `withSignatures` after the `as`-verb,
+EXACTLY ONE of which must be used — stage types make the completion state reachable only through one
+of them, once, with a runtime guard backing the untyped caller. `withSignature(...paramTypes)`
+supplies one parameter row and `withSignatures(...rows)` supplies several, each composing internally
+with the address in the instance slot; `withType(node)` supplies the whole composed constructable,
+typed per the `as`-verb (`ConstructorType` for `asClass`, `FunctionType` for `asFactory`) — sugar
+substitutes `withType` with the transform-derived precise node, and a hand-writer reaches for
+`withSignature`/`withSignatures`. Deep signatures remain irreducibly deep; the object-overload
 factories and named intermediate consts are the spelling relief, not the dialect.
 
 _Owner-directed 2026-08-13._
@@ -1596,8 +1601,9 @@ as different nodes, and that distinction is the point of carrying it. Substituti
 discharges its quantifier, so closing an open signature lands on the requested node itself rather
 than on a look-alike.
 
-The spec object is the door — a positional `Type.func(returnType, ...args)` call spells a concrete
-signature — and the token grammar extends additively: a quantifier list is written in front of the
+The spec object is the door — a positional `Type.func(returnType, [[A]], [hole])` call spells a
+concrete signature, its second argument the parameter rows and its optional third the quantifier
+list — and the token grammar extends additively: a quantifier list is written in front of the
 signature it binds, `<%T>(%T) => app:Box<%T>`, reachable through the arrow, `new` and reserved
 `Func` / `Ctor` spellings alike. A token carrying no quantifiers spells exactly as it always did, so
 the parity invariant binds unchanged.
@@ -1702,7 +1708,7 @@ can carry both readings, `[[$T, Holder<$T>]]` delivering the type for the first 
 instance for the second.
 
 The hole spells as `Type.generic(label)`, and it reaches a signature either written there directly
-or derived from the implementation type — `Type.ctor(ILogger<%T>, ILoggerFactory, %T)` yields a
+or derived from the implementation type — `Type.ctor(ILogger<%T>, [[ILoggerFactory, %T]])` yields a
 signature whose second slot is the bare hole — so the two surfaces agree on what a slot means.
 
 An instance of the BARE closing type is therefore deliberately inexpressible. The escape is to ask
