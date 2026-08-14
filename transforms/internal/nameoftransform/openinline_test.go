@@ -103,7 +103,7 @@ func lowerInlinePipeline(t *testing.T, prog *driver.Program, app string) string 
 	}
 	inlineT := inlinetransform.Build(prog, inlineBodies, artifacts, func(plugin.Diagnostic) {})
 	nameofT := New(prog, ctx, artifacts, func(plugin.Diagnostic) {})
-	typeforT := typefortransform.New(prog, ctx, artifacts, func(plugin.Diagnostic) {})
+	typeforT := typefortransform.New(prog, ctx, artifacts, nil, func(plugin.Diagnostic) {})
 	if !artifacts.Active {
 		t.Fatal("inline artifacts not active — the add preset entry did not resolve")
 	}

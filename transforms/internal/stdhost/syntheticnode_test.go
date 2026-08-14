@@ -40,8 +40,11 @@ import (
 
 // syntheticFixturePkg is the consumer manifest for the fixture below — a
 // dependency-free root, so CollectProject resolves nothing and the run needs no
-// built dist, no inline bodies, and no ttsc spawn.
-const syntheticFixturePkg = `{"name":"@rhombus-std/synthetic-fixture","version":"0.0.0","private":true}`
+// built dist, no inline bodies, and no ttsc spawn. It asks for inline emission
+// so each assertion reads the derived tree at the call site it was derived at,
+// which is what makes a rebuilt chain's own derivation legible in a failure.
+const syntheticFixturePkg = `{"name":"@rhombus-std/synthetic-fixture","version":"0.0.0","private":true,` +
+	`"rhombus-std":{"typefor":{"emit":"inline"}}}`
 
 // syntheticDiStub is a local stand-in for the registration surface: the slot
 // grammar (a union slot is an object literal), the `typefor(ctor)` primitive
@@ -145,7 +148,7 @@ func TestChainedRegistrationOverMintedLiteralLowers(t *testing.T) {
 			if !strings.Contains(lowered, tc.want) {
 				t.Fatalf("lowered registration mismatch.\nwant to contain:\n%s\ngot:\n%s", tc.want, lowered)
 			}
-			if strings.Contains(lowered, "typefor") {
+			if strings.Contains(lowered, "typefor(") {
 				t.Fatalf("typefor survived lowering:\n%s", lowered)
 			}
 		})
@@ -167,7 +170,7 @@ func TestUnchainedRegistrationLowersIdentically(t *testing.T) {
 	if !strings.Contains(lowered, "Type.union(") {
 		t.Fatalf("the fixture did not mint the union node the chained cases depend on — the pins above would be vacuous:\n%s", lowered)
 	}
-	if strings.Contains(lowered, "typefor") {
+	if strings.Contains(lowered, "typefor(") {
 		t.Fatalf("typefor survived lowering:\n%s", lowered)
 	}
 }
@@ -205,7 +208,7 @@ export const m = manifest.addClass("pkg:Widget", Widget, typefor(Widget)).as("si
 	if strings.Contains(lowered, "Type.union(") {
 		t.Fatalf("an all-required constructor must derive plain Type nodes, no union:\n%s", lowered)
 	}
-	if strings.Contains(lowered, "typefor") {
+	if strings.Contains(lowered, "typefor(") {
 		t.Fatalf("typefor survived lowering:\n%s", lowered)
 	}
 }

@@ -142,7 +142,13 @@ func buildSugarWorkspace(t *testing.T, mainSrc string) string {
 	writeFixtureFile(t, core, "src/inline.ts", sugarCoreInline)
 
 	app := filepath.Join(root, "packages", "app")
-	writeFixtureFile(t, app, "package.json", `{"name":"@scope/app","version":"1.0.0","dependencies":{"@scope/core":"workspace:*"}}`)
+	// Inline emission, so an assertion below reads the derived tree where it was
+	// derived. What these fixtures pin is the inline STAGE's fixed-point behaviour
+	// over a rewritten value argument, which is the same either way; spelling the
+	// tree at the call site is simply what makes the pin legible.
+	writeFixtureFile(t, app, "package.json", `{"name":"@scope/app","version":"1.0.0",`+
+		`"dependencies":{"@scope/core":"workspace:*"},`+
+		`"rhombus-std":{"typefor":{"emit":"inline"}}}`)
 	writeFixtureFile(t, app, "sugar.d.ts", sugarAppSugarDts)
 	writeFixtureFile(t, app, "prim.ts", sugarAppPrim)
 	writeFixtureFile(t, app, "main.ts", mainSrc)

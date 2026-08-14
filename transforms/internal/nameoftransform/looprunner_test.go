@@ -120,7 +120,7 @@ func buildLoopedStages(t *testing.T, prog *driver.Program, app string, artifacts
 	}
 	inlineT := inlinetransform.Build(prog, bodies, artifacts, func(plugin.Diagnostic) {})
 	nameofT := New(prog, ctx, artifacts, func(plugin.Diagnostic) {})
-	typeforT := typefortransform.New(prog, ctx, artifacts, func(plugin.Diagnostic) {})
+	typeforT := typefortransform.New(prog, ctx, artifacts, nil, func(plugin.Diagnostic) {})
 	schemaofT := schemaoftransform.New(prog, ctx, artifacts, func(plugin.Diagnostic) {})
 	return []plugin.FileTransform{inlineT, nameofT, typeforT, schemaofT}
 }
@@ -266,7 +266,7 @@ func buildSelfInlineLoop(t *testing.T, prog *driver.Program, app string, artifac
 	return []plugin.FileTransform{
 		inlinetransform.Build(prog, bodies, artifacts, func(plugin.Diagnostic) {}),
 		New(prog, ctx, artifacts, func(plugin.Diagnostic) {}),
-		typefortransform.New(prog, ctx, artifacts, func(plugin.Diagnostic) {}),
+		typefortransform.New(prog, ctx, artifacts, nil, func(plugin.Diagnostic) {}),
 	}
 }
 
@@ -372,7 +372,7 @@ services.addClass<IFoo>(Foo).withSignature<IDep>();
 	loop := []plugin.FileTransform{
 		inlinetransform.Build(prog, bodies, artifacts, func(plugin.Diagnostic) {}),
 		New(prog, ctx, artifacts, func(plugin.Diagnostic) {}),
-		typefortransform.New(prog, ctx, artifacts, func(plugin.Diagnostic) {}),
+		typefortransform.New(prog, ctx, artifacts, nil, func(plugin.Diagnostic) {}),
 	}
 
 	ec := shimprinter.NewEmitContext()

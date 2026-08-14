@@ -126,9 +126,9 @@ function goEnv(): NodeJS.ProcessEnv {
 //
 // Three shapes of service type reach the same verb:
 //
-//   1. closed        services.addClass<ILogger>(ConsoleLogger, [['app:IClock']], 'singleton')
-//   2. open template services.addClass<IRepo<$<1>>>(ThingRepo, [[]])  (hole-carrying dep)
-//   3. keyed         services.addClass<Keyed<ICache, 'redis'>>(RedisCache, [[]])
+//   1. closed        services.addClass<ILogger>(ConsoleLogger, loggerImpl, 'singleton')
+//   2. open template services.addClass<IRepo<$<1>>>(ThingRepo, repoImpl)  (hole-carrying dep)
+//   3. keyed         services.addClass<Keyed<ICache, 'redis'>>(RedisCache, cacheImpl)
 //
 // WIRING. The chain sandbox deps {di.core, di.extras}, symlinks the authoring
 // packages, and names ONE spawn descriptor. The always-on host runs its whole
@@ -172,7 +172,7 @@ export {};
 // The closed and open service types, kept in one file so a whole-file compare
 // pins import elision and surrounding text alongside the per-line tokens.
 const CHAIN_SOURCE = `
-import type { $, Manifest } from '@rhombus-std/di.core';
+import type { $, ConstructorType, Manifest } from '@rhombus-std/di.core';
 
 interface ILogger {}
 interface IClock {}
@@ -187,26 +187,30 @@ class ThingRepo {
 }
 
 declare const services: Manifest<'singleton'>;
+declare const loggerImpl: ConstructorType;
+declare const noDepsImpl: ConstructorType;
+declare const repoImpl: ConstructorType;
 
-export const closed = services.addClass<ILogger>(ConsoleLogger, [['app:IClock']], 'singleton');
+export const closed = services.addClass<ILogger>(ConsoleLogger, loggerImpl, 'singleton');
 
-export const emptySig = services.addClass<ILogger>(ConsoleLogger, [[]], 'singleton');
+export const emptySig = services.addClass<ILogger>(ConsoleLogger, noDepsImpl, 'singleton');
 
-export const open = services.addClass<IRepo<$<1>>>(ThingRepo, [[]]);
+export const open = services.addClass<IRepo<$<1>>>(ThingRepo, repoImpl);
 `;
 
 // A KEYED service type. Base and key compose into ONE tag token, and the lookup
 // side mints the identical token — that identity is what makes a keyed
 // registration and a keyed lookup meet. Own file so the compare is isolated.
 const KEYED_SOURCE = `
-import type { Keyed, Manifest } from '@rhombus-std/di.core';
+import type { ConstructorType, Keyed, Manifest } from '@rhombus-std/di.core';
 
 interface ICache {}
 class RedisCache implements ICache {}
 
 declare const services: Manifest<'singleton'>;
+declare const cacheImpl: ConstructorType;
 
-export const keyed = services.addClass<Keyed<ICache, 'redis'>>(RedisCache, [[]]);
+export const keyed = services.addClass<Keyed<ICache, 'redis'>>(RedisCache, cacheImpl);
 `;
 
 // A sugar call with NO type argument. The service type is the sugar's type
@@ -453,7 +457,10 @@ function assertNoAuthoringSurvivors(out: string): void {
   expect(out).not.toContain('addClass<');
   expect(out).not.toContain('tokenfor');
   expect(out).not.toContain('tokenof');
-  expect(out).not.toContain('typefor');
+  // The CALL form, not the bare name: a hoisted emission's own module specifier
+  // and const names carry the primitive's name as a substring.
+  expect(out).not.toContain('typefor(');
+  expect(out).not.toContain('typefor<');
 }
 
 function lineWith(src: string, needle: string): string | undefined {
@@ -468,17 +475,18 @@ describe.skipIf(!toolchainReady)('generic inline stage — registration parity (
     const line = lineWith(chainInline, 'closed =');
     expect(line).toBeDefined();
     const logger = constFor(chainModule, 'Type.imported("ILogger", "chain-app/tokens/chain")');
-    expect(line).toContain(`addClass(${logger}, ConsoleLogger, [["app:IClock"]], "singleton")`);
+    expect(line).toContain(`addClass(${logger}, ConsoleLogger, loggerImpl, "singleton")`);
     assertNoAuthoringSurvivors(chainInline);
   });
 
-  test('an empty signature list survives the fixed-point loop unchanged', () => {
-    // `[[]]` is a value argument the sugar never reads, so every pass of the loop
-    // must leave it alone; a pass that re-visited its own output would mangle it.
+  test('a second call at the same address survives the fixed-point loop unchanged', () => {
+    // The implementation type is a value argument the sugar never reads, so every
+    // pass of the loop must leave it alone; a pass that re-visited its own output
+    // would mangle it.
     const line = lineWith(chainInline, 'emptySig =');
     expect(line).toBeDefined();
     const logger = constFor(chainModule, 'Type.imported("ILogger", "chain-app/tokens/chain")');
-    expect(line).toContain(`addClass(${logger}, ConsoleLogger, [[]], "singleton")`);
+    expect(line).toContain(`addClass(${logger}, ConsoleLogger, noDepsImpl, "singleton")`);
     assertNoAuthoringSurvivors(chainInline);
   });
 
@@ -490,7 +498,7 @@ describe.skipIf(!toolchainReady)('generic inline stage — registration parity (
     // references it by name.
     const hole = constFor(chainModule, 'Type.generic("1")');
     const openType = constFor(chainModule, `Type.imported("IRepo", "chain-app/tokens/chain", [${hole}])`);
-    expect(line).toContain(`addClass(${openType}, ThingRepo, [[]])`);
+    expect(line).toContain(`addClass(${openType}, ThingRepo, repoImpl)`);
     assertNoAuthoringSurvivors(chainInline);
   });
 
@@ -526,7 +534,7 @@ describe.skipIf(!toolchainReady)('generic inline stage — registration parity (
     // and it composes the base's own const rather than re-spelling it.
     const cache = constFor(chainModule, 'Type.imported("ICache", "chain-app/tokens/keyed")');
     const keyedCache = constFor(chainModule, `Type.tag(${cache}, "redis")`);
-    expect(line).toContain(`addClass(${keyedCache}, RedisCache, [[]])`);
+    expect(line).toContain(`addClass(${keyedCache}, RedisCache, cacheImpl)`);
   });
 
   test('the implementation type reaches the member exactly as written', () => {
