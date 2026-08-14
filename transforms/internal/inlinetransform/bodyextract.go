@@ -85,9 +85,12 @@ func (d Discriminator) Equal(o Discriminator) bool {
 // and value-parameter names in order, its structural discriminator, and the impl
 // file's primitive-import map (local name -> canonical primitive name).
 type ResolvedBody struct {
-	Body             *shimast.Node
-	TypeParams       []string
-	Params           []string
+	Body       *shimast.Node
+	TypeParams []string
+	Params     []string
+	// RequiredParams counts the leading value parameters a call must supply an
+	// argument for; the rest of Params are the optional tail it may stop short of.
+	RequiredParams   int
 	Discriminator    Discriminator
 	PrimitiveImports map[string]string
 	// ValueImports maps each body-local name of a RUNTIME value the body references
@@ -164,12 +167,20 @@ func (b *bodyExtractor) Extract(packageDir string, e Entry) (*ResolvedBody, erro
 
 	typeParams := typeParamNames(memberNode)
 	params, disc := valueParamsAndDiscriminator(memberNode, typeParams)
+	if bodyHasRestParam(disc.Params) {
+		return nil, fmt.Errorf(
+			"INLINE_REST_BODY: %s impl %q member %q takes a rest parameter; the implementation is the "+
+				"declared face, so every parameter it takes must be named — declare one overload per "+
+				"shape and give the implementation named parameters covering them",
+			implFile, e.Impl, e.Member)
+	}
 	primImports := primitiveImports(implSF, packageName(packageDir))
 
 	rb := &ResolvedBody{
 		Body:             expr,
 		TypeParams:       typeParams,
 		Params:           params,
+		RequiredParams:   requiredParamCount(memberNode),
 		Discriminator:    disc,
 		PrimitiveImports: primImports,
 		ValueImports:     map[string]valueimport.Ref{},
@@ -340,6 +351,15 @@ func findMemberDeclaration(impl *shimast.Node, memberName string) *shimast.Node 
 				found = node
 				return true
 			}
+		case shimast.KindFunctionDeclaration:
+			// An overloaded namespace function declares each shape as a bodiless
+			// signature ahead of the one implementation; the implementation is the
+			// declaration this reads, so a signature-only node is passed over.
+			if name := node.Name(); name != nil && name.Text() == memberName &&
+				node.AsFunctionDeclaration().Body != nil {
+				found = node
+				return true
+			}
 		}
 		return false
 	})
@@ -410,34 +430,43 @@ func valueParamsAndDiscriminator(node *shimast.Node, typeParams []string) ([]str
 	return names, Discriminator{TypeParamCount: len(typeParams), Params: encoded}
 }
 
+// bodyHasRestParam reports whether a body's last value parameter is a rest
+// parameter, per the "..." encoding valueParamsAndDiscriminator applies.
+func bodyHasRestParam(params []string) bool {
+	return len(params) > 0 && strings.HasPrefix(params[len(params)-1], "...")
+}
+
+// requiredParamCount counts the leading value parameters (a `this` parameter
+// excluded) that a call must supply an argument for — those declared before the
+// first one carrying `?` or a default.
+func requiredParamCount(node *shimast.Node) int {
+	required := 0
+	for _, p := range functionLikeParams(node) {
+		decl := p.AsParameterDeclaration()
+		name := decl.Name()
+		if name != nil && name.Kind == shimast.KindIdentifier && name.Text() == "this" {
+			continue
+		}
+		if decl.QuestionToken != nil || decl.Initializer != nil {
+			break
+		}
+		required++
+	}
+	return required
+}
+
 // Matches reports whether a body's discriminator can serve the declaration's.
 //
-// An exact match is the ordinary case. A body whose last value parameter is a
-// REST parameter forwards whatever follows it verbatim, so it is overload-
-// agnostic by construction: it also serves any declaration whose leading
-// parameters agree by name and which carries at least as many. Where both a rest
-// body and an exactly-named one could serve the same declaration, the caller
-// prefers the exact one — the rest body is the fallback, never the winner.
+// The implementation IS the declared face — one node carries both — so serving
+// is exact: same type-parameter count, same value parameters by name and order.
+// Nothing is relaxed. A body that named its parameters only as a rest could
+// serve any declaration of equal type-parameter count, including one it has
+// nothing to do with, and no property of the call, the declaration or the body
+// distinguishes a coincidental collision from the genuine target; the authoring
+// invariant removes the ambiguity at the source instead, and Extract refuses a
+// rest-shaped body outright.
 func (d Discriminator) Matches(decl Discriminator) bool {
-	if d.TypeParamCount != decl.TypeParamCount {
-		return false
-	}
-	if d.Equal(decl) {
-		return true
-	}
-	lead := len(d.Params) - 1
-	if lead < 0 || !strings.HasPrefix(d.Params[lead], "...") {
-		return false
-	}
-	if len(decl.Params) < lead {
-		return false
-	}
-	for i := 0; i < lead; i++ {
-		if decl.Params[i] != d.Params[i] {
-			return false
-		}
-	}
-	return true
+	return d.Equal(decl)
 }
 
 // declarationDiscriminator computes the structural discriminator of a merged

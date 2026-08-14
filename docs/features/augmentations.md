@@ -42,162 +42,237 @@ boundary, not a temporary gap.
 Steps, for a receiver interface `IConfigBuilder`:
 
 **1. Decide OPEN or CLOSED.** A receiver is **OPEN** if it's extended by downstream packages that
-load after its concrete class already exists (`ServiceManifest`, `IConfigBuilder`,
-`ILoggingBuilder`, `IMetricsBuilder`, `ITracingBuilder`, `IHost`, `IHostBuilder`,
-`IHostEnvironment`) — these need the token registry (see below). A receiver is **CLOSED** if the
-interface and every one of its augmentations live inside one family's own package (`IMemoryCache`,
+load after its concrete class already exists (`Manifest`, `IConfigBuilder`, `ILoggingBuilder`,
+`IMetricsBuilder`, `ITracingBuilder`, `IHost`, `IHostBuilder`, `IHostEnvironment`) — these need the
+token registry (see below). A receiver is **CLOSED** if the interface (or concrete class) and every
+one of its augmentations live inside one family's own package (`MemoryCacheEntryOptions`,
 `MetricsOptions`, `LoggerFilterOptions`) — these install directly, no token needed.
 
-**2. Name the file `<Receiver>-<Topic>-augmentations.ts`**, where `Receiver` is the receiver
-interface's name with its leading `I` dropped and `Topic` is a short word for the member group
-(`Json`, `Descriptor`, `Service`). Declare the member map as its own named type — the signatures a
-caller sees on the receiver, with the receiver itself omitted:
+**2. Name the file `<Receiver>-<Topic>-augmentations.ts`**, where `Receiver` is the receiver's name
+with a leading `I` dropped and `Topic` is a short word for the member group (`Json`, `Descriptor`,
+`Service`, `Sugar`).
+
+**3. Write the implementation as a namespace of exported function declarations.** This namespace is
+the one place a member's shape is written — its parameters, its generics, its documentation — and
+every other surface an augmentation touches derives from it.
+
+The simplest shape is a receiver with no type parameter and no chaining:
 
 ```ts
-type IConfigBuilderJsonAugmentations = {
-  addJsonFile(path: string, optional?: boolean): IConfigBuilder;
-};
+export namespace ServiceScopeFactoryServiceAugmentations {
+  export function createAsyncScope(this: IServiceScopeFactory): AsyncServiceScope {
+    /* ... */
+  }
+}
 ```
 
-This type is the one place the member signatures are written — everything else below either
-`extends` it or derives from it.
+Each function takes the receiver as an explicit `this` parameter, with real, named parameters and a
+real return type. The namespace is exported, which is what makes each member reachable standalone;
+there is no separate member-map type declaring the same signature a second time.
 
-Write the member map as a `type` literal by default — a type literal carries the implicit index
-signature that `AugmentationSet2`'s `Record<PropertyKey, Func>` constraint needs, so it plugs in
-directly. The one reason to use an `interface` instead is `this`-polymorphic returns
-(`addFilter(...): this`), which are only legal inside an interface; an interface has no implicit
-index signature, so wrap it as `Flatten<IMemberMap>` wherever the constraint is applied (the
-`AugmentationSet2` const annotation), while the `extends` merge in step 3 uses the raw interface so
-`this` keeps meaning the receiver.
+**A receiver with its own type parameter can't be mirrored by a generic namespace** — namespaces
+don't take type parameters. A function that needs the receiver's exact type argument declares its
+own generic parameter, constrained the same way the receiver's is, and recovers the argument
+through `this`. `this` is also not a legal return type outside a class or interface member body
+(TS2526), so a function returning the receiver — chaining or not — needs a generic to name that
+return with:
 
-**3. Merge the member map onto the receiver interface with `extends`**, in the same file as the
-receiver's own declaring module (this placement matters — see Gotchas):
+```ts
+export namespace ManifestServiceAugmentations {
+  export function addValue<Self extends Manifest<S>, S extends string = string>(this: Self, type: string | Type,
+    value: unknown, key?: string): Self {
+    return this._add(ServiceDescriptor.value(withKey(type, key), value)) as Self;
+  }
+}
+```
+
+Calling `.addValue(...)` on a manifest whose static type is more specific than `Manifest<S>` — a
+subclass, or a scope union narrower than `string` — returns that same more specific type:
+genuinely polymorphic, bound by matching the `this` parameter against the call's actual receiver,
+never by widening.
+
+**The same per-function generic covers a receiver with no type parameter of its own.** Where one
+member map merges into two receivers that aren't assignable to one another — `IConfigBuilder` and
+`config`'s own `ConfigBuilder<T>`, neither a subtype of the other — `Self` is constrained to a small
+NAMED structural type declared in the same file, spelling exactly the members the bodies touch:
+
+```ts
+/** The subset of {@link IConfigBuilder} and `config`'s `ConfigBuilder<T>` this sugar's `add` calls touch. */
+interface ConfigSourceBuilder {
+  add(source: IConfigSource): unknown;
+}
+
+export namespace ConfigBuilderJsonAugmentations {
+  export function addJsonFile<Self extends ConfigSourceBuilder>(this: Self, path: string,
+    opts?: JsonConfigSourceOptions): Self {
+    return this.add(new JsonConfigSource(path, opts)) as Self;
+  }
+}
+```
+
+**No rest parameters, anywhere, in a namespace function's implementation.** A member with several
+call shapes declares several real overloads, each with its own named parameters — `Manifest`'s
+`add` is four shapes (a descriptor, a configure lambda, a constructor, a factory), never one
+signature padded with `...args: any[]`. A genuinely variadic member still can't end its
+_implementation_ in a bare rest: it keeps a leading named parameter and only then a trailing rest.
+`tryAdd`'s overload declarations can spell `...descriptors: ReadonlyArray<ServiceDescriptor<S>>` on
+their own, because a declared overload is just a call shape — but the implementation underneath
+every overload reads:
+
+```ts
+export function tryAdd<S extends string = string>(this: Manifest<S>, first: ServiceDescriptor<S> | Type | string,
+  ...rest: readonly any[]): Manifest<S> {
+  /* ... */
+}
+```
+
+`first` is named; only what follows it is a rest. The inline stage reads a namespace function's
+_implementation_ as the exact declared face it serves a call against — same type-parameter count,
+same value parameters by name and order — so a bare rest there would let the implementation serve
+any declaration of matching type-parameter count, including an unrelated one it was never meant to
+answer for. Authoring one is a loud, load-time `INLINE_REST_BODY` error naming the file and member,
+not a silent widening. A call that stops short of the implementation's own optional tail simply
+omits those trailing arguments from the emitted call — it isn't padded with `undefined`.
+
+**4. Merge the namespace onto the receiver interface with `Flatten<typeof TheNamespace>`,** in the
+same file as the receiver's own declaring module:
 
 ```ts
 declare module '@rhombus-std/config.core' {
-  interface IConfigBuilder extends IConfigBuilderJsonAugmentations {}
+  interface IConfigBuilder extends Flatten<typeof ConfigBuilderJsonAugmentations> {}
 }
 ```
 
-The `declare module` target is always the receiver's **package specifier** — never a relative
-path. A relative target (`declare module './configuration-builder.js'`) merges onto one internal
-module instance: consumers resolving the receiver through the package barrel never see the merge,
-and the rolled `.d.ts` cannot represent it. The bare specifier merges onto the package's public
-surface, survives file moves, and rolls correctly. A receiver in your own package is no exception —
-target your own package's name.
+`Flatten` restates the namespace's member types as a plain object type, which is what an `extends`
+clause needs; the namespace's own generics and parameter names pass through unchanged. The `declare
+module` target is always the receiver's **package specifier** — never a relative path. A relative
+target (`declare module './configuration-builder.js'`) merges onto one internal module instance:
+consumers resolving the receiver through the package barrel never see the merge, and the rolled
+`.d.ts` cannot represent it. The bare specifier merges onto the package's public surface, survives
+file moves, and rolls correctly. A receiver in your own package is no exception — target your own
+package's name.
 
-A receiver with its own generic parameter threads it through both the member map and this merge:
-`IManifestServiceAugmentations<Scopes extends string>` merges onto
-`interface IManifest<Scopes extends string> extends IManifestServiceAugmentations<Scopes> {}`.
+A receiver with its own generic parameter threads it through the merge the same way its native
+members do:
+
+```ts
+declare module '@rhombus-std/di.core' {
+  interface Manifest<Scopes extends string> extends Flatten<typeof ManifestServiceAugmentations> {}
+}
+```
 
 **A member name that another package also contributes to the same receiver duplicates its
-signature directly in the `declare module` body, beside the `extends` clause.** Two `extends`
-clauses supplying one name do not fold into overloads: TypeScript's declaration merging treats a
-directly-declared member as shadowing one reached only through `extends`, so when neither side
-declares the colliding name directly, only one of them survives on the interface-typed receiver —
-the other, though still installed at runtime, is invisible to a caller holding the interface type.
-The same shadowing hits a member whose other side is the receiver's own primary declaration.
+signature directly in the `declare module` body, beside the `extends` clause — its own type
+parameters and its `this` parameter included, verbatim.** TypeScript's declaration merging treats a
+directly-declared member as shadowing one reached only through `extends`, so when a name is reached
+only through `extends` on one side, it's invisible to a caller holding the interface type even
+though it's genuinely there. Two `extends` clauses supplying the same name never fold into an
+overload set on their own — naming it directly, on each side, is what does. `di.core` and
+`di.extras` both contribute `addClass` to `Manifest`, with genuinely different shapes (`di.core`'s
+takes an explicit `Type`; `di.extras`' tokenless sugar derives it from `T`), and each duplicates its
+own signature in its own file:
 
 ```ts
-// package-a's Receiver-Greet-augmentations.ts
-type IReceiverGreetAugmentations = { hello(world: number): void; };
-declare module 'receiver-package' {
-  interface Receiver extends IReceiverGreetAugmentations {}
-}
-```
-
-```ts
-// package-b's Receiver-Farewell-augmentations.ts, contributing the SAME name
-type IReceiverFarewellAugmentations = { hello(farewell: string): void; };
-declare module 'receiver-package' {
-  interface Receiver extends IReceiverFarewellAugmentations {}
-}
-```
-
-Only one `hello` overload is visible on an interface-typed `Receiver` here. Each side names its
-own duplicate, verbatim and undocumented (the member map keeps the documented declaration), inside
-its own block:
-
-```ts
-declare module 'receiver-package' {
-  interface Receiver extends IReceiverGreetAugmentations {
-    hello(world: number): void;
+// di.core's Manifest-service-augmentations.ts
+declare module '@rhombus-std/di.core' {
+  interface Manifest<Scopes extends string> extends Flatten<typeof ManifestServiceAugmentations> {
+    addClass<Self extends Manifest<S>, S extends string = string>(this: Self, type: string | Type, ctor: Ctor,
+      implementerType: ConstructorType, scope?: NoInfer<S>, key?: string): Self;
   }
 }
 ```
 
 ```ts
-declare module 'receiver-package' {
-  interface Receiver extends IReceiverFarewellAugmentations {
-    hello(farewell: string): void;
+// di.extras' Manifest-service-augmentations.ts
+declare module '@rhombus-std/di.core' {
+  interface Manifest<Scopes extends string> extends Flatten<typeof ManifestServiceAugmentations> {
+    addClass<T>(this: Manifest, ctor: Ctor<any[], T>, implementerType: ConstructorType, scope?: string,
+      key?: string): Manifest;
   }
 }
 ```
 
 With both sides declaring their own signature directly, TypeScript's ordinary same-name-across-
-partial-declarations merge — the same one that already applies between a receiver's primary
-declaration and its augmentations — folds them into one overload list, and the interface-typed
-receiver sees every form. A member whose name never collides keeps its `extends`-only empty body.
+partial-declarations merge folds them into one overload list, and `Manifest` sees both forms. A
+member whose name never collides keeps its `extends`-only empty body. Re-scoping a duplicated
+signature to the receiver's own type parameters instead of repeating the contributing function's
+own is TS2430 — the point of the duplicate is to restate the contributor's face exactly, not to
+rewrite it.
 
-**4. Write the exported const and install it:**
+**A colliding member sometimes stays out of the `declare module` block entirely, reachable only at
+runtime.** Where the collision is with the receiver's own hand-written primitive and the two call
+shapes are genuinely incompatible, TypeScript refuses to unify them into overloads at all (TS2430),
+so there's no signature to duplicate. `ILogger.log`/`beginScope` and `ILoggerFactory.createLogger`
+are dot-callable at runtime through a merge strategy (installed in step 5) — a decorated logger
+answers `logger.log(level, message, ...args)` correctly — but the typed call path for the
+convenience shape stays the plain function, `log(logger, level, message, ...args)`, since TS can't
+type it as an overload of `ILogger`'s own `log`.
 
-- **OPEN receiver** — type the const `AugmentationSet2<Receiver, MemberMap>`. `AugmentationSet2` is
-  a mapped type over the member map from step 2: it types `this` as the receiver in every member
-  and carries every parameter and return type along, so the object literal itself needs no type
-  annotations at all — each member is written as a plain method whose `this` is the receiver:
+A member can also be excluded because mounting it at all would recurse into itself — the wrapper
+calls the receiver's own primitive in primitive shape, so installing it over that primitive would
+have it call itself. `IDistributedCache.set` is this case: it's dropped from both the interface
+merge and the install, reachable only standalone as
+`DistributedCacheSugarAugmentations.set.call(cache, key, value, signal)`.
+
+**5. Register the namespace — it is what gets installed, with nothing further to write:**
+
+- **OPEN receiver** — pass the namespace straight to `registerAugmentations`, naming the receiver
+  as an explicit type argument:
 
   ```ts
-  import { type AugmentationSet2, registerAugmentations } from '@rhombus-std/primitives';
-  import { tokenfor } from '@rhombus-std/primitives.extras';
+  import { registerAugmentations } from '@rhombus-std/primitives.extras';
 
-  export const ConfigBuilderJsonAugmentations: AugmentationSet2<IConfigBuilder, IConfigBuilderJsonAugmentations> = {
-    addJsonFile(path, optional) {
-      return this.add(new JsonConfigSource(path, optional));
-    },
-  };
-
-  registerAugmentations(tokenfor<IConfigBuilder>(), ConfigBuilderJsonAugmentations);
+  registerAugmentations<IConfigBuilder>(ConfigBuilderJsonAugmentations);
   ```
 
   Any class decorated `@augment(tokenfor<IConfigBuilder>())` — anywhere, imported in any order,
-  defined before or after this call runs — picks the new member up automatically.
-
-- **CLOSED receiver** — call `applyAugmentations(ConcreteClass, TheConst)` directly, wherever the
-  concrete class is defined. `applyAugmentations` still takes a plain object literal `satisfies
-  AugmentationSet<Receiver>` rather than an `AugmentationSet2`-typed one, so its members keep their
-  hand-written parameter types (`this` is contextually the receiver in both forms); only the
-  interface merge in step 3 is shared with the OPEN case:
+  defined before or after this call runs — picks the new member up automatically. A member that
+  collides with the receiver's own primitive registers with a second argument, one merge strategy
+  per colliding name:
 
   ```ts
-  export const MemoryCacheSugarAugmentations = {
-    getOrCreate(key: string, factory: () => unknown) {
-      return this.tryGetValue(key) ?? factory();
+  registerAugmentations<ILogger>(LoggerAugmentations, {
+    log(original, incoming) {
+      return function(this: ILogger, logLevel: LogLevel, second: unknown, ...rest: unknown[]) {
+        return second instanceof EventId
+          ? original.call(this, logLevel, second, ...rest)
+          : incoming.call(this, logLevel, second, ...rest);
+      };
     },
-  } satisfies AugmentationSet<IMemoryCache>;
-
-  applyAugmentations(MemoryCache, MemoryCacheSugarAugmentations);
+  });
   ```
 
-This const **is** the callable surface either way — with no installation step,
-`ConfigBuilderJsonAugmentations.addJsonFile.call(builder, path)` already works, the way any
-extracted method is called on an explicit receiver. Installation is what additionally makes
+- **CLOSED receiver** — call `applyAugmentations(ConcreteClass, TheNamespace)` directly, wherever
+  the concrete class is defined:
+
+  ```ts
+  applyAugmentations(MemoryCacheEntryOptions, MemoryCacheEntryOptionsSugarAugmentations);
+  ```
+
+  Only the install call differs from the OPEN case; the namespace and its `declare module` merge
+  are identical either way.
+
+The namespace **is** the callable surface either way, with no installation step —
+`ConfigBuilderJsonAugmentations.addJsonFile.call(builder, path)` already works, the way any plain
+function is called on an explicit receiver. Installation is what additionally makes
 `builder.addJsonFile(path)` work.
 
-**Naming at a glance** — the file, the member-map type, and the const all share the same
-`Receiver`/`Topic` pair:
+**Naming at a glance** — the file and the implementation namespace share the same `Receiver`/`Topic`
+pair:
 
-|                 | pattern                               | example                               |
-| --------------- | ------------------------------------- | ------------------------------------- |
-| file            | `<Receiver>-<Topic>-augmentations.ts` | `ConfigBuilder-Json-augmentations.ts` |
-| member-map type | `I<Receiver><Topic>Augmentations`     | `IConfigBuilderJsonAugmentations`     |
-| const           | `<Receiver><Topic>Augmentations`      | `ConfigBuilderJsonAugmentations`      |
+|                          | pattern                               | example                               |
+| ------------------------ | ------------------------------------- | ------------------------------------- |
+| file                     | `<Receiver>-<Topic>-augmentations.ts` | `ConfigBuilder-Json-augmentations.ts` |
+| implementation namespace | `<Receiver><Topic>Augmentations`      | `ConfigBuilderJsonAugmentations`      |
 
-**Legacy shape.** Some augmentation files still declare their members inline inside the `declare
-module` block and type the const `satisfies AugmentationSet<Receiver>` with no separate member-map
-type at all, with a run-on PascalCase file name instead of the hyphenated `Receiver-Topic` form —
-for example `libraries/di.core/src/augmentations/ServiceManifestDescriptorAugmentations.ts`. That's
-the pre-member-map shape; every new augmentation uses the steps above, and existing files migrate to
-it opportunistically rather than through a dedicated rewrite pass.
+**The shape has one known boundary: a per-function `Self`/`S` pair only binds from the receiver when
+a call writes no explicit type argument.** TypeScript fills the remaining type parameters from
+their _defaults_, not by inference, once a call writes a partial type-argument list. `di.extras`'
+tokenless sugar always writes `<T>` explicitly, so its `addClass<T>(this: Manifest, ...)` can't
+carry `Manifest`'s own `Scopes` through the call the way `di.core`'s `Self extends Manifest<S>`
+form does: its `scope` parameter is a bare `string`, and its return type is the un-parameterized
+`Manifest`, not the caller's own scope union. This is the shape's real limit, not an oversight — a
+tokenless call has already spent its one type argument on `T`.
 
 ## Implementing an augmented interface (the supported consumer feature)
 
@@ -222,7 +297,7 @@ class declaring them. This is the difference that matters: the merge **grants** 
 type; `implements` **demands** them statically, and fails (TS2416) in any program where the
 interface has augmented members, because those members only exist after the registry installs
 them at runtime. A class that `implements` an augmentable interface is wrong by construction.
-(`Manifest` in di2.core is the canonical in-repo example of this shape.)
+(`Manifest` in di.core is the canonical in-repo example of this shape.)
 
 **2. Decorate the class with `@augment`, using the same token the augmentations were registered
 under** — this is what actually installs the members at runtime:
@@ -246,10 +321,13 @@ universal zero-dep leaf every family can already reach), keyed by the token stri
 `Multimap<string, [fn, mergeStrategy?]>` — a per-member-name list of contributions, each pairing its
 function with its own collision strategy.
 
-**Registering.** `registerAugmentations(token, set, merge?)` appends `set`'s members into the
-token's bag, then synchronously drives just those new members onto every class already subscribed
-to that token. A second registration of the same member name under a different set does not throw
-here — it just accumulates; the throw (if any) happens at install time, per class.
+**Registering.** `registerAugmentations(receiver, set, merge?)` appends `set`'s members into the
+receiver's bag, then synchronously drives just those new members onto every class already
+subscribed to that receiver. `set` is the implementation namespace itself — at runtime a namespace
+of only function exports compiles to a plain object mapping each name to its function, so it needs
+no adapter to satisfy the same shape the registry has always taken. A second registration of the
+same member name under a different namespace does not throw here — it just accumulates; the throw
+(if any) happens at install time, per class.
 
 **Decorating.** `@augment(token)` is a plain TC39 class decorator. The first time it's applied to a
 class, it installs the token's _entire_ accumulated bag once (catch-up). It then subscribes that
@@ -265,8 +343,9 @@ straight back to whoever called `registerAugmentations`.
 **Collision resolution is blind.** Installing member `n` onto a prototype asks exactly one
 question: is `n` already there?
 
-- **No** → assign the authored method itself (`proto[n] = fn`) — the installed member IS the set's
-  member, so function identity holds, and re-installing the very same function is a silent no-op.
+- **No** → assign the authored function itself (`proto[n] = fn`) — the installed member IS the
+  namespace's own function, so function identity holds, and re-installing the very same function is
+  a silent no-op.
 - **Yes, and a merge strategy was supplied for `n`** → mount a dispatcher that chains the new
   implementation over whatever was already there (both arms are `this`-based; the dispatcher
   forwards with `fn.call(this, ...args)`).
@@ -275,28 +354,17 @@ question: is `n` already there?
 
 No token, receiver, or "where did this come from" identity is ever consulted — purely "is this slot
 taken." That's what lets an augmentation share a name with a class's own hand-written primitive
-(`ILogger.log`/`beginScope`, `IMemoryCache.tryGetValue`, `di`'s `build`) via an explicit merge
-strategy, while two unrelated augmentations that happen to collide by name fail loud instead of one
-quietly overwriting the other.
+(`ILogger.log`/`beginScope`, `IMemoryCache.tryGetValue`, `ILoggerFactory.createLogger` — dot-callable
+at runtime; not statically typed, TS2430) via an explicit merge strategy, while two unrelated
+augmentations that happen to collide by name fail loud instead of one quietly overwriting the other.
 
 **Tokens are values, not names.** A token is a plain string, derived inline at every call site via
-`tokenfor<Receiver>()` — there are no exported token constants and no dedicated token type. A
-transformer lowers `tokenfor<IConfigBuilder>()` to the literal string
-`"@rhombus-std/config:IConfigBuilder"`; a hand-written, no-transformer caller just writes
-that string directly. Two calls naming the same interface always produce the same token, regardless
-of which package or file they're in.
-
-**The transformer closes the sugar-forms gap.** Convenience forms like `add<T>()` or
-`addOptions<T>()` need to know, at compile time, which receiver interface a call target belongs to
-— exactly the question C#'s compiler answers by resolving overload sets against declared interface
-membership. Our transformer answers it the same way: it resolves the called member's **symbol**
-back to its declaration, and accepts the call only if that declaration sits on the receiver
-interface, inside that interface's own `declare module` block — never by matching the receiver's
-type _name_, and never by call _shape_ alone. This is what makes a concrete implementer, a
-subinterface, an interface-typed reference, and a generic constrained to the interface **all**
-resolve correctly (matching C#'s dispatch surface exactly), while a structurally-identical-but-
-unrelated type (say, a class that happens to also have an `add` method) never false-positives — it
-was never a declaration on that interface, so it was never a candidate.
+`tokenfor<Receiver>()` — there are no exported token constants and no dedicated token type. The
+nameof stage resolves `tokenfor<IConfigBuilder>()` to the literal string
+`"@rhombus-std/config:IConfigBuilder"`; a hand-written, no-transformer caller just writes that
+string directly. Two calls naming the same interface always produce the same token, regardless of
+which package or file they're in. `registerAugmentations<IConfigBuilder>(TheNamespace)` reads the
+same way — the receiver's type argument is what the nameof stage resolves into that token.
 
 **Runtime identity is load-bearing.** Every package that bundles must keep `@rhombus-std/primitives`
 **external**. An inlined copy of `primitives` forks the registry's `Map` and subscriber list into
@@ -309,26 +377,45 @@ registry never receives augmentations registered against the other.
   either build registry plumbing a receiver never needed, or — the bug that motivated the registry
   in the first place — a legitimate downstream extender has no path to reach a concrete class it's
   never heard of (an independent builder never receiving an augmentation meant for it).
+- **A namespace's functions are the entire contract — no rest parameters in an implementation,
+  ever.** A member with several call shapes is several real overloads with named parameters; a
+  genuinely variadic one leads with a named parameter before its trailing rest. The inline stage
+  refuses a bare-rest implementation at load time (`INLINE_REST_BODY`) — a rest there could serve
+  any declaration of matching type-parameter count, not just the one it was written for.
+- **A receiver's own generic parameter has no counterpart on the namespace, and `this` can't be a
+  return type.** Every function that returns the receiver — chaining or not — declares its own
+  `Self` generic, bound through `this`, and returns `Self` by name (TS2526 rules out writing `this`
+  directly). Where a receiver has its own type parameter too, `Self` is bound through a second
+  generic mirroring it (`Self extends Manifest<S>, S extends string = string`); where two
+  non-assignable receivers share one namespace, `Self` is bound to a small named structural type
+  declared alongside the namespace instead.
+- **`Self`/`S` inference has a hard boundary: it only binds from the receiver when a call writes no
+  explicit type argument.** A caller that writes a partial type-argument list — `di.extras`'
+  tokenless sugar always does — gets the remaining type parameters from their _defaults_, not
+  inference, so a chaining form reached through tokenless sugar returns the bare receiver type, not
+  the caller's own narrowed one.
 - **Merge-identity rule.** Every interface-side `declare module` merge for _one_ interface must
   resolve to the interface's own declaring module — same file, any specifier. Mixing a
   package-barrel specifier with a relative/declaring-module specifier for the _same_ interface
-  makes TS treat the accumulated `this`-returning members as having unrelated `this` types, and
-  the class-side interface merges silently inherit those unrelated `this` types.
+  makes TS treat the accumulated `this`-typed members as having unrelated `this` types, and the
+  class-side interface merges silently inherit those unrelated `this` types.
 - **First-party-only is permanent, not provisional.** Consumers get to implement receivers and
   inherit every augmentation automatically; they don't get to mint new ones. Don't build tooling
   that assumes this opens up later.
-- **A few members stay standalone-only, forever.** Where an augmentation's natural name collides
-  with a primitive the interface already defines with a genuinely different calling convention
-  (`log`/`beginScope` on `ILogger`, `tryGetValue` on `IMemoryCache`, `createLogger` on
-  `ILoggerFactory`, `build` on `di`), the augmented form is dot-callable at runtime via a merge
-  strategy but isn't a typed overload (TS can't unify the two call shapes). The _typed_ call path
-  for these stays the plain standalone function, not the method form.
-- **A merge strategy and a duplicated signature answer two different questions.** A merge strategy
-  (above) is for a name that's already taken by the receiver's own hand-written primitive, with a
-  genuinely incompatible call shape — the runtime dispatcher picks which implementation a call
-  reaches. A duplicated signature (step 3) is for a name two `extends`-only augmentations both
-  contribute — the runtime side already works via the registry; only the interface-typed _type_
-  needs the duplicate to see every overload.
+- **A few members stay standalone-only, forever, and for two different reasons.** Where an
+  augmentation's natural name collides with a primitive the interface already defines with a
+  genuinely different calling convention (`log`/`beginScope` on `ILogger`, `createLogger` on
+  `ILoggerFactory`), the augmented form is still dot-callable at runtime via a merge strategy, just
+  not a typed overload — the typed call path stays the plain namespace function. Where mounting the
+  member would make it recurse into itself (`set` on `IDistributedCache`, whose wrapper re-enters
+  the receiver's own `set` in primitive shape), it's excluded from the install entirely and reached
+  only as `Namespace.member.call(receiver, ...)`.
+- **A duplicated signature and a merge strategy answer two different questions.** A duplicated
+  signature (step 4) is for a name two contributors both declare where the shapes DO unify into
+  overloads — the runtime side already works via the registry; only the interface-typed _type_
+  needs the duplicate to see every overload. A merge strategy is for a name that's already taken by
+  the receiver's own hand-written primitive with a genuinely incompatible call shape — the runtime
+  dispatcher decides which implementation a given call reaches.
 - **The extends-merge (`export interface X extends I {}`) is per-class, not automatic.** Forget it
   on a concrete implementer and instances still get every augmentation at runtime — they're just
   invisible on that class's own type until you widen to the interface.

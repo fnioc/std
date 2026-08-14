@@ -11,8 +11,7 @@
 
 import type { Ctor, Func } from '@rhombus-toolkit/func';
 
-import { type AugmentationSet, AugmentationSet2, installSet, type MergeStrategies,
-  type MergeStrategy } from './augmentations.js';
+import { type AugmentationSet, installSet, type MergeStrategies, type MergeStrategy } from './augmentations.js';
 import { Multimap } from './Multimap.js';
 import { Type } from './Type/Type.js';
 import { getOrCreate } from './utils/map.js';
@@ -55,8 +54,6 @@ const subscribers = new Map<Type, DeltaInstaller[]>();
  * @throws TypeParseError - when a string receiver does not spell a type.
  * @throws TypeError - when the receiver names a shape rather than a declaration.
  */
-export function registerAugmentations<R, I extends Record<PropertyKey, Func>>(receiver: Type | string,
-  set: AugmentationSet2<R, I>, merge?: MergeStrategies): void;
 export function registerAugmentations<R>(receiver: Type | string, set: AugmentationSet<R>,
   merge?: MergeStrategies): void {
   const type = receiverType(receiver);

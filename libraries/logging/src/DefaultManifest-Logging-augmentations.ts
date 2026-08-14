@@ -31,7 +31,7 @@ import '@rhombus-std/options.augmentations';
 import type { DefaultManifest, Manifest } from '@rhombus-std/di.core';
 import { type ILoggingBuilder, Logger as LoggerOfT, LogLevel } from '@rhombus-std/logging.core';
 import { configureStepType } from '@rhombus-std/options.augmentations';
-import { type AugmentationSet2, registerAugmentations, Type } from '@rhombus-std/primitives';
+import { type Flatten, registerAugmentations, Type } from '@rhombus-std/primitives';
 import { typefor } from '@rhombus-std/primitives.extras';
 import type { Func } from '@rhombus-toolkit/func';
 import { DefaultLoggerLevelConfigureOptions } from './DefaultLoggerLevelConfigureOptions';
@@ -41,71 +41,67 @@ import { LoggingBuilder } from './LoggingBuilder';
 import { LOGGER_FACTORY_TYPE, LOGGER_FILTER_OPTIONS_ACCESSOR_TYPE, LOGGER_FILTER_OPTIONS_TYPE,
   LOGGER_PROVIDER_TYPE } from './types';
 
-type IManifestLoggingAugmentations<Scopes extends string> = {
+// Registered against the `ServiceManifest` augmentation token — the concrete
+// `DefaultManifest`, decorated with `@augment(typefor<Manifest>())`
+// in di.core, pulls the member onto its prototype — and exported so the member
+// is also the standalone call form.
+export namespace ServiceManifestLoggingAugmentations {
   /**
    * Registers the logging services and runs the optional {@link ILoggingBuilder}
    * configuration delegate. Returns the manifest produced by every
    * registration -- its own AND whatever the delegate added through the
    * builder's `.services` (the manifest chain is immutable -- never `this`).
    */
-  addLogging(configure?: Func<[ILoggingBuilder], void>): Manifest<Scopes>;
-};
+  export function addLogging<S extends string = string>(this: Manifest<S>,
+    configure?: Func<[ILoggingBuilder], void>): Manifest<S> {
+    // The LoggerFilterOptions assembly + its default (Information) min level.
+    let m: Manifest<string> = this.addOptions<LoggerFilterOptions>(LOGGER_FILTER_OPTIONS_TYPE,
+      () => new LoggerFilterOptions());
+    m = m.addValue(configureStepType(LOGGER_FILTER_OPTIONS_TYPE),
+      new DefaultLoggerLevelConfigureOptions(LogLevel.Information));
 
-// `Provider` is defaulted so the merge's type-parameter list matches the
-// target's (TS2428 requires identical parameters), even though the member does
-// not name it.
-declare module '@rhombus-std/di.core' {
-  interface Manifest<Scopes extends string = any> extends IManifestLoggingAugmentations<Scopes> {}
+    // ILoggerFactory, injected with the enumerable provider set and the
+    // assembled IOptions<LoggerFilterOptions>.
+    m = m.addClass(LOGGER_FACTORY_TYPE, LoggerFactory,
+      Type.ctor(LOGGER_FACTORY_TYPE, [[Type.array(LOGGER_PROVIDER_TYPE), LOGGER_FILTER_OPTIONS_ACCESSOR_TYPE]]),
+      'singleton');
+
+    // The open ILogger<$1> -> Logger<$1> registration: the closing type flows
+    // in through the `$1` placeholder, from which Logger<T> derives its category.
+    //
+    // The base is written out rather than derived, because `ILogger` is a
+    // defaulted generic: a bare `typefor<ILogger>()` records the default type
+    // argument and yields `ILogger<unknown>`, not the clean open base. An
+    // explicit `typefor<ILogger<Foo>>()` derives off this same base, so the
+    // template matches.
+    const hole = Type.generic('$1');
+    const openLoggerType = Type.imported('ILogger', '@rhombus-std/logging.core', [hole]);
+    m = m.addClass(openLoggerType, LoggerOfT, Type.ctor(openLoggerType, [[LOGGER_FACTORY_TYPE, hole]]), 'singleton');
+
+    // `m` is the widened Manifest<string>, whereas
+    // ILoggingBuilder.services is the singleton-default `ServiceManifest` --
+    // logging services are singleton-only. Narrow the scope phantom here:
+    // LoggingBuilder merely stores the manifest and never calls the
+    // scope-sensitive `build()`, so the phantom is inert.
+    //
+    // `builder.services` is a MUTABLE field (LoggingBuilder, this package): the
+    // `configure` delegate mutates the builder in place
+    // (`builder.addProvider(...).setMinimumLevel(...)` or unchained
+    // statement-by-statement), and every builder augmentation reassigns
+    // `builder.services` to the manifest its own registration produced -- so
+    // reading `builder.services` back out AFTER the delegate runs picks up
+    // everything it registered.
+    const builder = new LoggingBuilder(m as unknown as Manifest);
+    configure?.(builder);
+    return builder.services as unknown as Manifest<S>;
+  }
 }
 
-// Registered against the `ServiceManifest` augmentation token — the concrete
-// `DefaultManifest`, decorated with `@augment(typefor<Manifest>())`
-// in di.core, pulls the member onto its prototype — and exported so the member
-// is also the standalone call form.
-export const ServiceManifestLoggingAugmentations: AugmentationSet2<DefaultManifest<string>,
-  IManifestLoggingAugmentations<string>> = {
-    addLogging(configure) {
-      // The LoggerFilterOptions assembly + its default (Information) min level.
-      let m: Manifest<string> = this.addOptions<LoggerFilterOptions>(LOGGER_FILTER_OPTIONS_TYPE,
-        () => new LoggerFilterOptions());
-      m = m.addValue(configureStepType(LOGGER_FILTER_OPTIONS_TYPE),
-        new DefaultLoggerLevelConfigureOptions(LogLevel.Information));
-
-      // ILoggerFactory, injected with the enumerable provider set and the
-      // assembled IOptions<LoggerFilterOptions>.
-      m = m.addClass(LOGGER_FACTORY_TYPE, LoggerFactory,
-        Type.ctor(LOGGER_FACTORY_TYPE, [[Type.array(LOGGER_PROVIDER_TYPE), LOGGER_FILTER_OPTIONS_ACCESSOR_TYPE]]),
-        'singleton');
-
-      // The open ILogger<$1> -> Logger<$1> registration: the closing type flows
-      // in through the `$1` placeholder, from which Logger<T> derives its category.
-      //
-      // The base is written out rather than derived, because `ILogger` is a
-      // defaulted generic: a bare `typefor<ILogger>()` records the default type
-      // argument and yields `ILogger<unknown>`, not the clean open base. An
-      // explicit `typefor<ILogger<Foo>>()` derives off this same base, so the
-      // template matches.
-      const hole = Type.generic('$1');
-      const openLoggerType = Type.imported('ILogger', '@rhombus-std/logging.core', [hole]);
-      m = m.addClass(openLoggerType, LoggerOfT, Type.ctor(openLoggerType, [[LOGGER_FACTORY_TYPE, hole]]), 'singleton');
-
-      // `m` is the widened Manifest<string>, whereas
-      // ILoggingBuilder.services is the singleton-default `ServiceManifest` --
-      // logging services are singleton-only. Narrow the scope phantom here:
-      // LoggingBuilder merely stores the manifest and never calls the
-      // scope-sensitive `build()`, so the phantom is inert.
-      //
-      // `builder.services` is a MUTABLE field (LoggingBuilder, this package): the
-      // `configure` delegate mutates the builder in place
-      // (`builder.addProvider(...).setMinimumLevel(...)` or unchained
-      // statement-by-statement), and every builder augmentation reassigns
-      // `builder.services` to the manifest its own registration produced -- so
-      // reading `builder.services` back out AFTER the delegate runs picks up
-      // everything it registered.
-      const builder = new LoggingBuilder(m as unknown as Manifest);
-      configure?.(builder);
-      return builder.services as unknown as Manifest<string>;
-    },
-  };
+// `Scopes` is defaulted so the merge's type-parameter list matches every other
+// partial declaration of `Manifest` (TS2428 requires identical parameters),
+// even though the member does not name it.
+declare module '@rhombus-std/di.core' {
+  interface Manifest<Scopes extends string = any> extends Flatten<typeof ServiceManifestLoggingAugmentations> {}
+}
 
 registerAugmentations(typefor<Manifest>(), ServiceManifestLoggingAugmentations);

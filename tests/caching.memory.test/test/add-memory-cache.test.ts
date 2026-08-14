@@ -47,8 +47,8 @@ describe('addMemoryCache', () => {
 
     // The manifest is immutable, so `addMemoryCache` hands back a NEW manifest
     // carrying the registrations -- build from `returned`, not `services`.
-    // Annotated: an AugmentationSet2-typed member's return widens to `any`, and a
-    // resolve off `any` cannot take an explicit type argument.
+    // The annotation pins what the standalone form gives back: the manifest the
+    // verb produced, which the resolve below reads an explicit type argument off.
     const returned: Manifest<string> = ServiceManifestMemoryCacheAugmentations.addMemoryCache.call(
       services,
       (options) => {

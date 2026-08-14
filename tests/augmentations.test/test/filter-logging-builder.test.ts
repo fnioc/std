@@ -59,10 +59,9 @@ describe('builder-level addFilter — configure-step bridge into IOptions<Logger
     expect(options.rules[0]!.categoryName).toBeUndefined();
   });
 
-  // The predicate arm, not the (category, level) one: an AugmentationSet2-typed
-  // const collapses an overloaded member to its LAST overload, so the standalone
-  // surface only carries the predicate signature. The method form (which comes
-  // from the interface merge) keeps both.
+  // The predicate arm of the overload set. Both routes to it are exercised: the
+  // method the prototype install put on the receiver, and the namespace member
+  // called standalone against the same receiver.
   test('method form and standalone member form register the same rule', () => {
     const filter = (): boolean => true;
 

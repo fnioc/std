@@ -1,40 +1,41 @@
 // The `addIniFile` / `addIniStream` sugar on the configuration builder.
 
 import type { StreamPayload } from '@rhombus-std/config';
-import type { IConfigBuilder, IndexedSection } from '@rhombus-std/config.core';
-import type { AugmentationSet2, Flatten } from '@rhombus-std/primitives';
+import type { IConfigBuilder, IConfigSource, IndexedSection } from '@rhombus-std/config.core';
+import { type Flatten } from '@rhombus-std/primitives';
 import { registerAugmentations } from '@rhombus-std/primitives.extras';
 import { IniConfigSource, type IniConfigSourceOptions } from './IniConfigSource';
 import { IniStreamConfigSource } from './IniStreamConfigSource';
 
-interface IConfigBuilderIniAugmentations {
+/** The subset of {@link IConfigBuilder} and `config`'s `ConfigBuilder<T>` this sugar's `add` calls touch. */
+interface ConfigSourceBuilder {
+  add(source: IConfigSource): unknown;
+}
+
+export namespace ConfigBuilderIniAugmentations {
   /** Registers an {@link IniConfigSource} reading `path`. */
-  addIniFile(path: string, opts?: IniConfigSourceOptions): this;
+  export function addIniFile<Self extends ConfigSourceBuilder>(this: Self, path: string,
+    opts?: IniConfigSourceOptions): Self {
+    return this.add(new IniConfigSource(path, opts)) as Self;
+  }
+
   /** Registers an {@link IniStreamConfigSource} reading the in-memory `stream`. */
-  addIniStream(stream: StreamPayload): this;
+  export function addIniStream<Self extends ConfigSourceBuilder>(this: Self, stream: StreamPayload): Self {
+    return this.add(new IniStreamConfigSource(stream)) as Self;
+  }
 }
 
 declare module '@rhombus-std/config.core' {
-  interface IConfigBuilder extends IConfigBuilderIniAugmentations {}
+  interface IConfigBuilder extends Flatten<typeof ConfigBuilderIniAugmentations> {}
 }
 
 // ConfigBuilder<T> cannot extend IConfigBuilder -- its `build()` returns the
-// schema-typed T, not an IConfigRoot -- so it merges the same member map
+// schema-typed T, not an IConfigRoot -- so it merges the same namespace
 // directly. Its generic arity and default MUST match the class declaration or
 // the merge fails (TS2428). ConfigManager needs no block of its own: it reaches
 // the members through IConfigManager, which does extend IConfigBuilder.
 declare module '@rhombus-std/config' {
-  interface ConfigBuilder<T = IndexedSection> extends IConfigBuilderIniAugmentations {}
+  interface ConfigBuilder<T = IndexedSection> extends Flatten<typeof ConfigBuilderIniAugmentations> {}
 }
-
-export const ConfigBuilderIniAugmentations: AugmentationSet2<IConfigBuilder, Flatten<IConfigBuilderIniAugmentations>> =
-  {
-    addIniFile(path, opts) {
-      return this.add(new IniConfigSource(path, opts));
-    },
-    addIniStream(stream) {
-      return this.add(new IniStreamConfigSource(stream));
-    },
-  };
 
 registerAugmentations<IConfigBuilder>(ConfigBuilderIniAugmentations);

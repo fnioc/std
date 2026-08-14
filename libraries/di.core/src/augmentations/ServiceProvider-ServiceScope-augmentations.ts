@@ -1,10 +1,13 @@
-import { type AugmentationSet2, type IServiceProvider, NotImplementedError, Type } from '@rhombus-std/primitives';
+import { type Flatten, type IServiceProvider, NotImplementedError } from '@rhombus-std/primitives';
 import { registerAugmentations, typefor } from '@rhombus-std/primitives.extras';
 import { AsyncServiceScope, type IServiceScope, type IServiceScopeFactory } from '../ServiceScope';
 
-type IServiceProviderServiceScopeAugmentations = {
+export namespace ServiceProviderServiceScopeAugmentations {
   /** The child {@link IServiceScope} `name` creates, through the registered {@link IServiceScopeFactory}. */
-  createScope(name?: string): IServiceScope;
+  export function createScope(this: IServiceProvider, name?: string): IServiceScope {
+    return (this.getRequiredService(typefor<IServiceScopeFactory>()) as IServiceScopeFactory)
+      .createScope(name);
+  }
 
   /**
    * @remarks
@@ -12,20 +15,13 @@ type IServiceProviderServiceScopeAugmentations = {
    * disposal model this depends on is still undecided.
    * @throws {NotImplementedError} always, until that model is decided.
    */
-  createAsyncScope(): AsyncServiceScope;
-};
-declare module '@rhombus-std/primitives' {
-  interface IServiceProvider extends IServiceProviderServiceScopeAugmentations {}
+  export function createAsyncScope(this: IServiceProvider): AsyncServiceScope {
+    throw new NotImplementedError('IServiceProvider.createAsyncScope');
+  }
 }
-export const ServiceProviderServiceScopeAugmentations: AugmentationSet2<IServiceProvider,
-  IServiceProviderServiceScopeAugmentations> = {
-    createScope(name?: string): IServiceScope {
-      return (this.getRequiredService(typefor<IServiceScopeFactory>()) as IServiceScopeFactory)
-        .createScope(name);
-    },
-    createAsyncScope(): AsyncServiceScope {
-      throw new NotImplementedError('IServiceProvider.createAsyncScope');
-    },
-  };
+
+declare module '@rhombus-std/primitives' {
+  interface IServiceProvider extends Flatten<typeof ServiceProviderServiceScopeAugmentations> {}
+}
 
 registerAugmentations<IServiceProvider>(ServiceProviderServiceScopeAugmentations);

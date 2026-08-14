@@ -30,17 +30,15 @@ type PrimitiveUse struct {
 	ValueArg *shimast.Node
 }
 
-// MemberShape is a certified member-sugar call shape (type-arg count, value-arg
-// count) the sweep matches a surviving call against. HasRest marks a body whose
-// last value parameter is a rest parameter: such a body absorbs any number of
-// trailing arguments and lets its type parameter bind by inference, so
-// ValueArgCount is the body's OWN parameter count (rest slot included) rather
-// than a call's required argument count — the sweep treats it as a floor, not an
-// exact count, and TypeArgCount as a ceiling.
+// MemberShape is a certified member-sugar call shape the sweep matches a
+// surviving call against. The implementation's parameters ARE the declared
+// face's, so a call carries the type arguments exactly and a value-argument
+// count anywhere from the required parameters up to the whole list — the span
+// between the two is the optional tail a call may stop short of.
 type MemberShape struct {
-	TypeArgCount  int
-	ValueArgCount int
-	HasRest       bool
+	TypeArgCount     int
+	MinValueArgCount int
+	MaxValueArgCount int
 }
 
 // Artifacts is the per-run state the inline stage hands to downstream stages and

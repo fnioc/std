@@ -360,17 +360,20 @@ const after = 2;
 	}
 }
 
-// A rest parameter stands for every argument from its position on, so it binds
-// to the argument LIST and is spliced where the body spreads it — never bound as
-// a single value with the spread left behind. Driven at all three arities,
-// because the interesting boundaries are "one" and "none".
-func TestSubstituteRestParameterSplices(t *testing.T) {
+// Every parameter is named, so a call that stops short has omitted the optional
+// tail: those names reach Substitute as unbound and their argument-position
+// references drop out, leaving exactly the call a hand author would have
+// written. Driven at all arities, because the interesting boundaries are "one"
+// and "none".
+func TestSubstituteOmittedArgumentsDropOut(t *testing.T) {
+	params := []string{"ctor", "signatures", "scope"}
 	cases := []struct {
 		name string
 		call string
 		want string
 	}{
-		{"multiple arguments", `reg.addClass(Foo, sigs, scope);`, `reg.register(tok, Foo, sigs, scope)`},
+		{"every argument supplied", `reg.addClass(Foo, sigs, scope);`, `reg.register(tok, Foo, sigs, scope)`},
+		{"the optional tail omitted", `reg.addClass(Foo, sigs);`, `reg.register(tok, Foo, sigs)`},
 		{"a single argument", `reg.addClass(Foo);`, `reg.register(tok, Foo)`},
 		{"no arguments at all", `reg.addClass();`, `reg.register(tok)`},
 	}
@@ -379,8 +382,8 @@ func TestSubstituteRestParameterSplices(t *testing.T) {
 			ec := shimprinter.NewEmitContext()
 
 			decl := parse(t, "declaring.ts", `
-export function addClass(...rest) {
-	return this.register(tok, ...rest);
+export function addClass(ctor, signatures, scope) {
+	return this.register(tok, ctor, signatures, scope);
 }
 `)
 			body := returnExpr(t, decl)
@@ -389,22 +392,49 @@ export function addClass(...rest) {
 			call, receiver, args := findCall(t, consumer, "addClass")
 
 			res := Substitute(ec, Inlining{
-				Body:      body,
-				Receiver:  receiver,
-				Params:    nil,
-				Args:      nil,
-				RestParam: "rest",
-				RestArgs:  args,
+				Body:     body,
+				Receiver: receiver,
+				Params:   params,
+				Args:     args,
+				Unbound:  params[len(args):],
 			})
 
 			out := reprint(ec, splice(ec, consumer, call, res.Expr))
 			if !strings.Contains(out, c.want) {
 				t.Errorf("expected %q, got:\n%s", c.want, out)
 			}
-			if strings.Contains(out, "...") {
-				t.Errorf("the spread must not survive substitution, got:\n%s", out)
+			for _, name := range params[len(args):] {
+				if strings.Contains(out, name) {
+					t.Errorf("the omitted parameter %q must not survive substitution, got:\n%s", name, out)
+				}
 			}
 		})
+	}
+}
+
+// An omission can only be honored at the tail. A body that reads an omitted
+// parameter ahead of one the call did supply leaves the name standing, and
+// danglingParam is what turns that into a loud diagnostic rather than emitted
+// code referencing a binding that does not exist.
+func TestDanglingParamFindsANonTrailingOmission(t *testing.T) {
+	ec := shimprinter.NewEmitContext()
+
+	decl := parse(t, "declaring.ts", `
+export function addClass(scope, ctor) {
+	return this.register(ctor, scope);
+}
+`)
+	body := returnExpr(t, decl)
+
+	consumer := parse(t, "consumer.ts", "const answer = reg.addClass(here);\n")
+	_, receiver, args := findCall(t, consumer, "addClass")
+
+	params := []string{"scope", "ctor"}
+	in := Inlining{Body: body, Receiver: receiver, Params: params, Args: args, Unbound: params[len(args):]}
+	res := Substitute(ec, in)
+
+	if got := danglingParam(res.Expr, in.unbound()); got != "ctor" {
+		t.Errorf("danglingParam = %q, want %q", got, "ctor")
 	}
 }
 

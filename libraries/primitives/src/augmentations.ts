@@ -1,5 +1,5 @@
 // Installs augmentation sets onto a receiver class's prototype. A set is a named
-// object literal of `this`-based methods; mounting assigns each onto the
+// namespace of `this`-based function declarations; mounting assigns each onto the
 // prototype VERBATIM, so the installed member IS the authored function
 // (`proto[name] === set[name]`) and callers reach it as an ordinary instance
 // method. `applyAugmentations` is the direct path for a receiver whose set is
@@ -15,18 +15,16 @@
 
 import type { Ctor, Func } from '@rhombus-toolkit/func';
 
-// Both set types spell their members' receiver as a `this` parameter — the one
-// function-type position `Func` cannot express — so an authored object literal
-// method gets `this: R` contextually, with no per-member annotation. A ThisType
-// intersection would read better but is ruled out: intersecting strips the
-// implicit index signature that lets a concrete set satisfy the erased
-// `Record`-typed parameters below.
-
-/** An object literal of `this`-based augmentation methods all sharing receiver type R. */
+/**
+ * A namespace of `this`-based augmentation functions all sharing receiver type R.
+ *
+ * @remarks
+ * The receiver is spelled as each member's `this` parameter — the one
+ * function-type position `Func` cannot express. A ThisType intersection would
+ * read better but is ruled out: intersecting strips the implicit index signature
+ * that lets a concrete set satisfy this erased `Record`.
+ */
 export type AugmentationSet<in R> = Record<string, (this: R, ...args: any[]) => unknown>;
-export type AugmentationSet2<in Rec, Impl extends Record<PropertyKey, Func>> = {
-  [K in keyof Impl]: (this: Rec, ...args: Parameters<Impl[K]>) => any;
-};
 /**
  * A collision resolver for a single augmented member whose name is already
  * taken on the receiver prototype -- the class's own primitive, or a member an

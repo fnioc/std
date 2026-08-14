@@ -86,10 +86,9 @@ describe('reverse direction — MetricsBuilder (.core interface, downstream conc
 });
 
 describe('reverse direction, value-object receiver — LoggerFilterOptions.addFilter', () => {
-  // The predicate arm, not the (category, level) one: an AugmentationSet2-typed
-  // const collapses an overloaded member to its LAST overload, so the standalone
-  // surface only carries the predicate signature. The method form (which comes
-  // from the interface merge) keeps both.
+  // The predicate arm of the overload set. Both routes to it are exercised: the
+  // method the prototype install put on the receiver, and the namespace member
+  // called standalone against the same receiver.
   test('addFilter method form equals the object-literal member form', () => {
     const filter = (): boolean => true;
 

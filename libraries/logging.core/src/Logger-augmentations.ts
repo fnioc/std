@@ -12,7 +12,7 @@
 // event-id overload: a caller that needs one calls
 // `logger.log(level, EventId.from(n), …)` directly.
 
-import type { AugmentationSet2, Flatten, MergeStrategies } from '@rhombus-std/primitives';
+import type { Flatten, MergeStrategies } from '@rhombus-std/primitives';
 import { registerAugmentations } from '@rhombus-std/primitives.extras';
 import { EventId } from './EventId';
 import { formatLogValues, FormattedLogValues } from './formatted-log-values';
@@ -87,72 +87,77 @@ export function beginScope(logger: ILogger, messageFormat: string, ...args: unkn
   return logger.beginScope(new FormattedLogValues(messageFormat, args));
 }
 
-interface ILoggerAugmentations {
-  logTrace(message: string, ...args: unknown[]): void;
-  logTrace(error: Error, message: string, ...args: unknown[]): void;
-  logDebug(message: string, ...args: unknown[]): void;
-  logDebug(error: Error, message: string, ...args: unknown[]): void;
-  logInformation(message: string, ...args: unknown[]): void;
-  logInformation(error: Error, message: string, ...args: unknown[]): void;
-  logWarning(message: string, ...args: unknown[]): void;
-  logWarning(error: Error, message: string, ...args: unknown[]): void;
-  logError(message: string, ...args: unknown[]): void;
-  logError(error: Error, message: string, ...args: unknown[]): void;
-  logCritical(message: string, ...args: unknown[]): void;
-  logCritical(error: Error, message: string, ...args: unknown[]): void;
-}
-
-/**
- * `log` and `beginScope` are kept out of the merge below: their names ARE
- * `ILogger`'s own primitives, and TS refuses to merge an incompatible overload
- * onto a body-declared method (TS2430). They are not excluded at RUNTIME -- the
- * registration installs them with a merge strategy that dispatches the
- * primitive-shaped call to the primitive and the convenience-shaped call to the
- * wrapper, so the convenience form stays dot-callable. Their typed path is the
- * standalone `log(logger, ...)` / `beginScope(logger, ...)` function.
- */
-interface ILoggerStandaloneWrappers {
-  log(logLevel: LogLevel, message: string, ...args: unknown[]): void;
-  log(logLevel: LogLevel, error: Error, message: string, ...args: unknown[]): void;
-  beginScope(messageFormat: string, ...args: unknown[]): Disposable | undefined;
-}
-
-declare module '@rhombus-std/logging.core' {
-  interface ILogger<TCategoryName = unknown> extends ILoggerAugmentations {}
-}
-
 /**
  * Registered against the `ILogger` token below and reachable standalone as
  * `LoggerAugmentations.logInformation.call(logger, ...)`; a concrete logger class
  * decorated with `@augment(typefor<ILogger>())` gains the members as methods.
  */
-export const LoggerAugmentations: AugmentationSet2<ILogger, Flatten<ILoggerAugmentations & ILoggerStandaloneWrappers>> =
-  {
-    log(logLevel: LogLevel, first: string | Error, ...rest: unknown[]): void {
-      emit(this, logLevel, first, rest);
-    },
-    beginScope(messageFormat: string, ...args: unknown[]): Disposable | undefined {
-      return this.beginScope(new FormattedLogValues(messageFormat, args));
-    },
-    logTrace(first: string | Error, ...rest: unknown[]): void {
-      emit(this, LogLevel.Trace, first, rest);
-    },
-    logDebug(first: string | Error, ...rest: unknown[]): void {
-      emit(this, LogLevel.Debug, first, rest);
-    },
-    logInformation(first: string | Error, ...rest: unknown[]): void {
-      emit(this, LogLevel.Information, first, rest);
-    },
-    logWarning(first: string | Error, ...rest: unknown[]): void {
-      emit(this, LogLevel.Warning, first, rest);
-    },
-    logError(first: string | Error, ...rest: unknown[]): void {
-      emit(this, LogLevel.Error, first, rest);
-    },
-    logCritical(first: string | Error, ...rest: unknown[]): void {
-      emit(this, LogLevel.Critical, first, rest);
-    },
-  };
+export namespace LoggerAugmentations {
+  /**
+   * `log` and `beginScope` are kept out of the `ILogger` interface merge below:
+   * their names ARE `ILogger`'s own primitives, and TS refuses to merge an
+   * incompatible overload onto a body-declared method (TS2430). They are not
+   * excluded at RUNTIME -- the registration installs them with a merge
+   * strategy that dispatches the primitive-shaped call to the primitive and
+   * the convenience-shaped call to the wrapper, so the convenience form stays
+   * dot-callable. Their typed path is the standalone `log(logger, ...)` /
+   * `beginScope(logger, ...)` function.
+   */
+  export function log(this: ILogger, logLevel: LogLevel, message: string, ...args: unknown[]): void;
+  export function log(this: ILogger, logLevel: LogLevel, error: Error, message: string, ...args: unknown[]): void;
+  export function log(this: ILogger, logLevel: LogLevel, first: string | Error, ...rest: unknown[]): void {
+    emit(this, logLevel, first, rest);
+  }
+
+  export function beginScope(this: ILogger, messageFormat: string, ...args: unknown[]): Disposable | undefined {
+    return this.beginScope(new FormattedLogValues(messageFormat, args));
+  }
+
+  export function logTrace(this: ILogger, message: string, ...args: unknown[]): void;
+  export function logTrace(this: ILogger, error: Error, message: string, ...args: unknown[]): void;
+  export function logTrace(this: ILogger, first: string | Error, ...rest: unknown[]): void {
+    emit(this, LogLevel.Trace, first, rest);
+  }
+
+  export function logDebug(this: ILogger, message: string, ...args: unknown[]): void;
+  export function logDebug(this: ILogger, error: Error, message: string, ...args: unknown[]): void;
+  export function logDebug(this: ILogger, first: string | Error, ...rest: unknown[]): void {
+    emit(this, LogLevel.Debug, first, rest);
+  }
+
+  export function logInformation(this: ILogger, message: string, ...args: unknown[]): void;
+  export function logInformation(this: ILogger, error: Error, message: string, ...args: unknown[]): void;
+  export function logInformation(this: ILogger, first: string | Error, ...rest: unknown[]): void {
+    emit(this, LogLevel.Information, first, rest);
+  }
+
+  export function logWarning(this: ILogger, message: string, ...args: unknown[]): void;
+  export function logWarning(this: ILogger, error: Error, message: string, ...args: unknown[]): void;
+  export function logWarning(this: ILogger, first: string | Error, ...rest: unknown[]): void {
+    emit(this, LogLevel.Warning, first, rest);
+  }
+
+  export function logError(this: ILogger, message: string, ...args: unknown[]): void;
+  export function logError(this: ILogger, error: Error, message: string, ...args: unknown[]): void;
+  export function logError(this: ILogger, first: string | Error, ...rest: unknown[]): void {
+    emit(this, LogLevel.Error, first, rest);
+  }
+
+  export function logCritical(this: ILogger, message: string, ...args: unknown[]): void;
+  export function logCritical(this: ILogger, error: Error, message: string, ...args: unknown[]): void;
+  export function logCritical(this: ILogger, first: string | Error, ...rest: unknown[]): void {
+    emit(this, LogLevel.Critical, first, rest);
+  }
+}
+
+// `log` and `beginScope` are ILogger's own primitives, so they are picked out of
+// the merge here — see the doc comment on `LoggerAugmentations.log` above.
+declare module '@rhombus-std/logging.core' {
+  interface ILogger<TCategoryName = unknown> extends Flatten<
+    Pick<typeof LoggerAugmentations,
+      'logTrace' | 'logDebug' | 'logInformation' | 'logWarning' | 'logError' | 'logCritical'>
+  > {}
+}
 
 // `log` and `beginScope` share names with `ILogger`'s own primitives, so each
 // is installed with a merge strategy (below) that routes a primitive-shaped

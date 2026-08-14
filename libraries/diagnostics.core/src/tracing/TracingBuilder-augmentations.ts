@@ -9,7 +9,7 @@
 // any consumer that enumerates the listener builders.
 
 import type { IConfigureOptions } from '@rhombus-std/options';
-import type { AugmentationSet2, Flatten } from '@rhombus-std/primitives';
+import type { Flatten } from '@rhombus-std/primitives';
 import { registerAugmentations } from '@rhombus-std/primitives.extras';
 import type { Func } from '@rhombus-toolkit/func';
 
@@ -20,31 +20,6 @@ import type { ITracingBuilder } from './ITracingBuilder';
 import { TracingOptions } from './TracingOptions';
 import { TracingOptionsAugmentations } from './TracingOptions-augmentations';
 
-interface ITracingBuilderAugmentations {
-  /**
-   * Registers a tracing listener identified by `name` and described by `configure`.
-   * @throws {@link Error} if `name` is empty.
-   */
-  addTracingListener(name: string, configure: Func<[ActivityListenerBuilder], void>): this;
-  /** Removes all {@link ActivityListenerBuilder} registrations from the builder. */
-  clearTracingListeners(): this;
-  /** Enables activities via a deferred rule. */
-  enableTracing(sourceName?: string, operationName?: string, listenerName?: string,
-    scopes?: ActivitySourceScopes): this;
-  /** Disables activities via a deferred rule. */
-  disableTracing(sourceName?: string, operationName?: string, listenerName?: string,
-    scopes?: ActivitySourceScopes): this;
-}
-
-// The merge targets the package BARREL, not the relative declaring module: the
-// downstream config-binding member merges the same interface from
-// `@rhombus-std/diagnostics`, and a cross-package merge only reaches a published
-// consumer if its specifier survives publish. The barrel is the one
-// publish-resolvable specifier both sites can share.
-declare module '@rhombus-std/diagnostics.core' {
-  interface ITracingBuilder extends ITracingBuilderAugmentations {}
-}
-
 /** Registers a `IConfigureOptions<TracingOptions>` step that runs `apply`. */
 function configureTracing(builder: ITracingBuilder, apply: Func<[options: TracingOptions], void>): ITracingBuilder {
   const step: IConfigureOptions<TracingOptions> = { configure(options: TracingOptions): void {
@@ -54,8 +29,13 @@ function configureTracing(builder: ITracingBuilder, apply: Func<[options: Tracin
   return builder;
 }
 
-export const TracingBuilderAugmentations: AugmentationSet2<ITracingBuilder, Flatten<ITracingBuilderAugmentations>> = {
-  addTracingListener(name, configure) {
+export namespace TracingBuilderAugmentations {
+  /**
+   * Registers a tracing listener identified by `name` and described by `configure`.
+   * @throws {@link Error} if `name` is empty.
+   */
+  export function addTracingListener<Self extends ITracingBuilder>(this: Self, name: string,
+    configure: Func<[ActivityListenerBuilder], void>): Self {
     if (!name) {
       throw new Error('A tracing listener name must be a non-empty string.');
     }
@@ -63,24 +43,41 @@ export const TracingBuilderAugmentations: AugmentationSet2<ITracingBuilder, Flat
     configure(listenerBuilder);
     this.services = this.services.addValue(TRACING_LISTENER_TYPE, listenerBuilder);
     return this;
-  },
-  clearTracingListeners() {
+  }
+
+  /** Removes all {@link ActivityListenerBuilder} registrations from the builder. */
+  export function clearTracingListeners<Self extends ITracingBuilder>(this: Self): Self {
     // See the sibling MetricsBuilder-augmentations.ts `clearMetricsListeners`
     // comment: the cast works around a TS structural-comparison depth limit on
     // `Manifest`'s large overload surface, not a real type error.
     this.services = this.services.removeAll(TRACING_LISTENER_TYPE) as typeof this.services;
     return this;
-  },
-  enableTracing(sourceName, operationName, listenerName, scopes = ACTIVITY_SOURCE_SCOPES_ALL) {
+  }
+
+  /** Enables activities via a deferred rule. */
+  export function enableTracing<Self extends ITracingBuilder>(this: Self, sourceName?: string, operationName?: string,
+    listenerName?: string, scopes: ActivitySourceScopes = ACTIVITY_SOURCE_SCOPES_ALL): Self {
     return configureTracing(this, (options) => {
       TracingOptionsAugmentations.enableTracing.call(options, sourceName, operationName, listenerName, scopes);
-    });
-  },
-  disableTracing(sourceName, operationName, listenerName, scopes = ACTIVITY_SOURCE_SCOPES_ALL) {
+    }) as Self;
+  }
+
+  /** Disables activities via a deferred rule. */
+  export function disableTracing<Self extends ITracingBuilder>(this: Self, sourceName?: string, operationName?: string,
+    listenerName?: string, scopes: ActivitySourceScopes = ACTIVITY_SOURCE_SCOPES_ALL): Self {
     return configureTracing(this, (options) => {
       TracingOptionsAugmentations.disableTracing.call(options, sourceName, operationName, listenerName, scopes);
-    });
-  },
-};
+    }) as Self;
+  }
+}
+
+// The merge targets the package BARREL, not the relative declaring module: the
+// downstream config-binding member merges the same interface from
+// `@rhombus-std/diagnostics`, and a cross-package merge only reaches a published
+// consumer if its specifier survives publish. The barrel is the one
+// publish-resolvable specifier both sites can share.
+declare module '@rhombus-std/diagnostics.core' {
+  interface ITracingBuilder extends Flatten<typeof TracingBuilderAugmentations> {}
+}
 
 registerAugmentations<ITracingBuilder>(TracingBuilderAugmentations);

@@ -14,7 +14,7 @@
 
 import { LoggingBuilderProviderAugmentations } from '@rhombus-std/logging';
 import type { ILoggingBuilder } from '@rhombus-std/logging.core';
-import { type AugmentationSet2, type Flatten, getOrCreate } from '@rhombus-std/primitives';
+import { type Flatten, getOrCreate } from '@rhombus-std/primitives';
 import { registerAugmentations } from '@rhombus-std/primitives.extras';
 import { BrowserConsoleLoggerProvider } from './BrowserConsoleLoggerProvider';
 
@@ -27,9 +27,20 @@ const registrations = new WeakMap<ILoggingBuilder, BrowserConsoleLoggerProvider>
  * Registered against `typefor<ILoggingBuilder>()` below and reachable as
  * the standalone `BrowserConsoleLoggerAugmentations.addBrowserConsole.call(builder)`.
  */
-interface ILoggingBuilderBrowserConsoleAugmentations {
-  /** Adds a browser-console logger provider to the builder. */
-  addBrowserConsole(): this;
+export namespace BrowserConsoleLoggerAugmentations {
+  /**
+   * Adds a browser console logger to the builder — one
+   * {@link BrowserConsoleLoggerProvider} per builder, writing through the
+   * platform console global.
+   */
+  export function addBrowserConsole<Self extends ILoggingBuilder>(this: Self): Self {
+    getOrCreate(registrations, this, (builder) => {
+      const provider = new BrowserConsoleLoggerProvider();
+      LoggingBuilderProviderAugmentations.addProvider.call(builder, provider);
+      return provider;
+    });
+    return this;
+  }
 }
 
 // Merges the method onto the owning ILoggingBuilder interface so a consumer
@@ -37,24 +48,7 @@ interface ILoggingBuilderBrowserConsoleAugmentations {
 // inherit it through their `interface ... extends ILoggingBuilder` merge, so no
 // class-side restatement is needed here.
 declare module '@rhombus-std/logging.core' {
-  interface ILoggingBuilder extends ILoggingBuilderBrowserConsoleAugmentations {}
+  interface ILoggingBuilder extends Flatten<typeof BrowserConsoleLoggerAugmentations> {}
 }
-
-export const BrowserConsoleLoggerAugmentations: AugmentationSet2<ILoggingBuilder,
-  Flatten<ILoggingBuilderBrowserConsoleAugmentations>> = {
-    /**
-     * Adds a browser console logger to the builder — one
-     * {@link BrowserConsoleLoggerProvider} per builder, writing through the
-     * platform console global.
-     */
-    addBrowserConsole(): ILoggingBuilder {
-      getOrCreate(registrations, this, (builder) => {
-        const provider = new BrowserConsoleLoggerProvider();
-        LoggingBuilderProviderAugmentations.addProvider.call(builder, provider);
-        return provider;
-      });
-      return this;
-    },
-  };
 
 registerAugmentations<ILoggingBuilder>(BrowserConsoleLoggerAugmentations);

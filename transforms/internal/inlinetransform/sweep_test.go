@@ -21,7 +21,7 @@ const c = tokenOf(1);
 func activeResidueArtifacts() *Artifacts {
 	a := NewArtifacts()
 	a.Active = true
-	a.SugarMembers["isService"] = MemberShape{TypeArgCount: 1, ValueArgCount: 0}
+	a.SugarMembers["isService"] = MemberShape{TypeArgCount: 1, MinValueArgCount: 0, MaxValueArgCount: 0}
 	a.FunctionSugars = append(a.FunctionSugars, &Resolved{Member: "tokenOf", Module: "p"})
 	return a
 }
@@ -97,7 +97,7 @@ const b = x.isService<Foo>('token');
 		shimast.SetParentInChildrenUnset(sf.AsNode())
 		a := NewArtifacts()
 		a.Active = true
-		a.SugarMembers["isService"] = MemberShape{TypeArgCount: 1, ValueArgCount: 0}
+		a.SugarMembers["isService"] = MemberShape{TypeArgCount: 1, MinValueArgCount: 0, MaxValueArgCount: 0}
 		if diags := Sweep(sf, a); len(diags) != 0 {
 			t.Fatalf("a shape-mismatched member call must not be flagged, got %+v", diags)
 		}
@@ -167,15 +167,14 @@ export const v = tokenOf(1);
 	}
 }
 
-// TestSugarShapeMatches is a table test of the arity-matching rule itself:
-// a non-rest shape matches only its exact (type-arg, value-arg) counts; a
-// rest-parameter shape (as every di.extras Manifest sugar body is —
-// `<T>(this, ...rest: any[])`, recorded as ValueArgCount 1 for the rest slot
-// itself) matches any value-arg count at or above its leading-parameter count,
-// but keeps type-argument count exact on both branches.
+// TestSugarShapeMatches is a table test of the arity-matching rule itself: the
+// type-argument count is exact, and the value-argument count spans the required
+// parameters up to the whole list — the optional tail a call may stop short of.
 func TestSugarShapeMatches(t *testing.T) {
-	nonRest := MemberShape{TypeArgCount: 1, ValueArgCount: 0}
-	rest := MemberShape{TypeArgCount: 1, ValueArgCount: 1, HasRest: true}
+	// `getService<T>()`: no parameters at all.
+	nullary := MemberShape{TypeArgCount: 1, MinValueArgCount: 0, MaxValueArgCount: 0}
+	// `addClass<T>(ctor, implementerType, scope?, key?)`: two required, two optional.
+	optionalTail := MemberShape{TypeArgCount: 1, MinValueArgCount: 2, MaxValueArgCount: 4}
 
 	cases := []struct {
 		name      string
@@ -184,22 +183,20 @@ func TestSugarShapeMatches(t *testing.T) {
 		valueArgs int
 		want      bool
 	}{
-		{"non-rest exact match", nonRest, 1, 0, true},
-		{"non-rest wrong value-arg count", nonRest, 1, 1, false},
-		{"non-rest wrong type-arg count", nonRest, 0, 0, false},
+		{"nullary exact match", nullary, 1, 0, true},
+		{"nullary with an argument", nullary, 1, 1, false},
+		{"nullary wrong type-arg count", nullary, 0, 0, false},
 
-		// A rest body's ValueArgCount (1) counts the rest slot itself, so its
-		// leading-parameter floor is 0 — every value-arg count from 0 up matches.
-		{"rest at recorded arity", rest, 1, 1, true},
-		{"rest below recorded arity (addClass<T>(Impl, sigs) shape)", rest, 1, 2, true},
-		{"rest well above recorded arity", rest, 1, 4, true},
-		{"rest at the floor (zero value args)", rest, 1, 0, true},
+		{"required parameters only", optionalTail, 1, 2, true},
+		{"part of the optional tail supplied", optionalTail, 1, 3, true},
+		{"whole parameter list supplied", optionalTail, 1, 4, true},
+		{"short of the required parameters", optionalTail, 1, 1, false},
+		{"past the parameter list", optionalTail, 1, 5, false},
 		// Zero type arguments is the SUBSTITUTION OUTPUT shape
-		// (`this.addClass(typefor<T>(), ...rest)` lowers its own explicit type
-		// argument away), not surviving sugar — must not match regardless of
-		// value-arg count.
-		{"rest with zero type args is the lowered form, not residue", rest, 0, 2, false},
-		{"rest with more type args than certified", rest, 2, 2, false},
+		// (`this.addClass(typefor<T>(), ctor, ...)` lowers its own explicit type
+		// argument away), not surviving sugar — must not match at any arity.
+		{"zero type args is the lowered form, not residue", optionalTail, 0, 3, false},
+		{"more type args than certified", optionalTail, 2, 3, false},
 	}
 	for _, c := range cases {
 		t.Run(c.name, func(t *testing.T) {
@@ -212,16 +209,13 @@ func TestSugarShapeMatches(t *testing.T) {
 	}
 }
 
-// TestSweepFlagsRestSugarAtAnyArity is the sweep-level proof of the fix: a
-// certified rest-parameter sugar shape (the addClass/addFactory/... family,
-// recorded as TypeArgCount 1 / ValueArgCount 1 / HasRest true, since every
-// di.extras Manifest sugar body is `<T>(this, ...rest: any[])`) must be flagged
-// at a value-arg count the recorded shape never equals — the real
-// addClass<T>(ctor, signatures) call shape a strict-equality check can never
-// reach, since the recorded count is 1 — as long as it still spells its
-// explicit type argument.
-func TestSweepFlagsRestSugarAtAnyArity(t *testing.T) {
-	sf := parse(t, "/sweep/rest-residue.ts", `declare const m: any;
+// TestSweepFlagsSugarShortOfTheOptionalTail: a call that supplies the required
+// parameters and stops short of the optional ones is still that sugar, so an
+// unlowered one is flagged — the arity span, not an exact count, is what the
+// sweep tests, and only the explicit type argument keeps it distinguishable
+// from lowered output.
+func TestSweepFlagsSugarShortOfTheOptionalTail(t *testing.T) {
+	sf := parse(t, "/sweep/short-tail-residue.ts", `declare const m: any;
 declare const Impl: any;
 declare const sigs: any;
 const a = m.addClass<Impl>(Impl, sigs);
@@ -230,7 +224,7 @@ const a = m.addClass<Impl>(Impl, sigs);
 
 	a := NewArtifacts()
 	a.Active = true
-	a.SugarMembers["addClass"] = MemberShape{TypeArgCount: 1, ValueArgCount: 1, HasRest: true}
+	a.SugarMembers["addClass"] = MemberShape{TypeArgCount: 1, MinValueArgCount: 2, MaxValueArgCount: 4}
 
 	diags := Sweep(sf, a)
 	if len(diags) != 1 || diags[0].Code != "INLINE_UNLOWERED_SUGAR" {
@@ -238,14 +232,13 @@ const a = m.addClass<Impl>(Impl, sigs);
 	}
 }
 
-// TestSweepIgnoresLoweredRestSugarOutput is the regression the ttsc e2e gate
-// caught and the unit tests above missed: the inline stage's OWN substitution
-// output for a rest-parameter sugar body — a property-access call on the same
-// member name, its explicit type argument already consumed into a token
-// argument, several value arguments — must never be flagged. This is exactly
-// what a correctly lowered `addClass<ILogger>(ConsoleLogger, sigs)` call looks
-// like on disk: `services.addClass(Type.global(...), ConsoleLogger, sigs)`.
-func TestSweepIgnoresLoweredRestSugarOutput(t *testing.T) {
+// TestSweepIgnoresLoweredSugarOutput: the inline stage's OWN substitution output
+// — a property-access call on the same member name, its explicit type argument
+// already consumed into a token argument, several value arguments — must never
+// be flagged. This is exactly what a correctly lowered
+// `addClass<ILogger>(ConsoleLogger, sigs)` call looks like on disk:
+// `services.addClass(Type.global(...), ConsoleLogger, sigs)`.
+func TestSweepIgnoresLoweredSugarOutput(t *testing.T) {
 	sf := parse(t, "/sweep/lowered-output.ts", `declare const services: any;
 declare const token: any;
 declare const ConsoleLogger: any;
@@ -256,20 +249,19 @@ export const closed = (services as any).addClass(token, ConsoleLogger, sigs, 'si
 
 	a := NewArtifacts()
 	a.Active = true
-	a.SugarMembers["addClass"] = MemberShape{TypeArgCount: 1, ValueArgCount: 1, HasRest: true}
+	a.SugarMembers["addClass"] = MemberShape{TypeArgCount: 1, MinValueArgCount: 2, MaxValueArgCount: 4}
 
 	if diags := Sweep(sf, a); len(diags) != 0 {
 		t.Fatalf("a correctly lowered zero-type-arg call must not be flagged as residue, got %+v", diags)
 	}
 }
 
-// TestSweepFlagsCoveredNonRestShapeUnchanged is the regression guard for the
-// existing exact-arity cases: a non-rest shape (the ServiceProvider
-// getService/getRequiredService/getServices family, recorded with HasRest
-// false) keeps flagging only its exact recorded shape after the arity-matching
-// rule changed, and keeps ignoring a different arity.
-func TestSweepFlagsCoveredNonRestShapeUnchanged(t *testing.T) {
-	sf := parse(t, "/sweep/non-rest.ts", `declare const x: any;
+// TestSweepFlagsNullaryShapeExactly: a member taking no parameters at all (the
+// ServiceProvider getService/getRequiredService/getServices family) has a
+// zero-width arity span, so a call carrying an argument is a different member
+// and is left alone.
+func TestSweepFlagsNullaryShapeExactly(t *testing.T) {
+	sf := parse(t, "/sweep/nullary.ts", `declare const x: any;
 const matches = x.isService<Foo>();
 const mismatches = x.isService<Foo>('token');
 `)
@@ -277,7 +269,7 @@ const mismatches = x.isService<Foo>('token');
 
 	a := NewArtifacts()
 	a.Active = true
-	a.SugarMembers["isService"] = MemberShape{TypeArgCount: 1, ValueArgCount: 0}
+	a.SugarMembers["isService"] = MemberShape{TypeArgCount: 1, MinValueArgCount: 0, MaxValueArgCount: 0}
 
 	diags := Sweep(sf, a)
 	if len(diags) != 1 || diags[0].Code != "INLINE_UNLOWERED_SUGAR" {
@@ -287,8 +279,8 @@ const mismatches = x.isService<Foo>('token');
 
 // TestSweepIgnoresUnregisteredSameNameMember: a call whose callee name does not
 // resolve to any registered sugar member at all (no entry in SugarMembers) is
-// left alone regardless of its arity — the widened arity rule only relaxes
-// matching for a CERTIFIED shape, it never starts matching on name alone.
+// left alone regardless of its arity — the arity span is consulted only for a
+// CERTIFIED shape, and matching never runs on name alone.
 func TestSweepIgnoresUnregisteredSameNameMember(t *testing.T) {
 	sf := parse(t, "/sweep/unregistered.ts", `declare const m: any;
 declare const Impl: any;
