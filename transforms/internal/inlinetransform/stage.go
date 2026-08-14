@@ -74,12 +74,12 @@ func Build(prog *driver.Program, owned []OwnedEntry, artifacts *Artifacts, emit 
 		if resolved.Kind == KindFloater {
 			artifacts.FunctionSugars = append(artifacts.FunctionSugars, resolved)
 		} else {
-			artifacts.SugarMembers[resolved.Member] = resolved.Shape()
+			artifacts.SugarMembers[resolved.Member] = append(artifacts.SugarMembers[resolved.Member], resolved.Shape())
 		}
 	}
 	for member, shape := range unmatchedShapes {
-		if _, claimed := artifacts.SugarMembers[member]; !claimed {
-			artifacts.SugarMembers[member] = shape
+		if len(artifacts.SugarMembers[member]) == 0 {
+			artifacts.SugarMembers[member] = []MemberShape{shape}
 		}
 	}
 

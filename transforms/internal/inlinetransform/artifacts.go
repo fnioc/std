@@ -46,12 +46,14 @@ type MemberShape struct {
 type Artifacts struct {
 	// PrimitiveCalls maps a substituted primitive call node to its resolved use.
 	PrimitiveCalls map[*shimast.Node]PrimitiveUse
-	// SugarMembers maps a certified member name to its sugar call shape, for the
-	// emit sweep's member-sugar residue check. It is keyed off the MARKER, not off
-	// what resolved: a member whose sugar declarations turned out to be absent
-	// still publishes its shape, so a call written in that shape is reported
-	// rather than passed through.
-	SugarMembers map[string]MemberShape
+	// SugarMembers maps a certified member name to every sugar call shape declared
+	// for it, for the emit sweep's member-sugar residue check. It is keyed off the
+	// MARKER, not off what resolved: a member whose sugar declarations turned out
+	// to be absent still publishes its shape, so a call written in that shape is
+	// reported rather than passed through. One name carries several shapes when
+	// several entries contribute to it, each with its own arity — a call matching
+	// ANY of them is residue.
+	SugarMembers map[string][]MemberShape
 	// FunctionSugars holds every certified, active free-function entry resolved
 	// against this program, for the emit sweep's free-function residue check —
 	// the entry's own resolution (Module/Member) IS the check's data, so no
@@ -67,6 +69,6 @@ type Artifacts struct {
 func NewArtifacts() *Artifacts {
 	return &Artifacts{
 		PrimitiveCalls: map[*shimast.Node]PrimitiveUse{},
-		SugarMembers:   map[string]MemberShape{},
+		SugarMembers:   map[string][]MemberShape{},
 	}
 }
