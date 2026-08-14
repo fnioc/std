@@ -54,9 +54,29 @@ describe('Type.from', () => {
 
   test('reads a quantified signature', () => {
     const hole = Type.generic('T');
-    expect(Type.from('<%T>(%T) => app:A')).toBe(Type.func({ returnType: A, args: [hole], genericArgs: [hole] }));
-    expect(Type.from('<%T>new (%T) => app:A')).toBe(Type.ctor({ instanceType: A, args: [hole], genericArgs: [hole] }));
+    expect(Type.from('<%T>(%T) => app:A')).toBe(Type.func({ returnType: A, args: [[hole]], genericArgs: [hole] }));
+    expect(Type.from('<%T>new (%T) => app:A')).toBe(
+      Type.ctor({ instanceType: A, args: [[hole]], genericArgs: [hole] }),
+    );
     expect(Type.from('<%T>Func<app:A, %T>')).toBe(Type.from('<%T>(%T) => app:A'));
+  });
+
+  test('reads a callable answering to several calls, semicolons between its rows', () => {
+    expect(Type.from('(app:A; ) => app:B')).toBe(Type.func({ returnType: B, args: [[A], []], genericArgs: [] }));
+    expect(Type.from('new (app:A; app:B, app:A) => app:B')).toBe(
+      Type.ctor({ instanceType: B, args: [[A], [B, A]], genericArgs: [] }),
+    );
+    // A leading empty row is the call taking nothing, written first.
+    expect(Type.from('(; app:A) => app:B')).toBe(Type.func({ returnType: B, args: [[], [A]], genericArgs: [] }));
+    // The reserved spellings carry rows too, the head separated by its own comma.
+    expect(Type.from('Func<app:B, app:A; >')).toBe(Type.from('(app:A; ) => app:B'));
+    expect(Type.from('Ctor<app:B; app:A>')).toBe(Type.from('new (; app:A) => app:B'));
+  });
+
+  test('a callable with one row spells exactly as it always has', () => {
+    expect(Type.stringify(Type.func(B, [[A]]))).toBe('(app:A) => app:B');
+    expect(Type.stringify(Type.ctor(B, [[]]))).toBe('new () => app:B');
+    expect(Type.stringify(Type.func({ returnType: B, args: [[A], []], genericArgs: [] }))).toBe('(app:A; ) => app:B');
   });
 
   test('a quantifier list carries only generic holes, and only onto a signature', () => {
@@ -65,10 +85,10 @@ describe('Type.from', () => {
   });
 
   test('reads the arrow forms', () => {
-    expect(Type.from('(app:B) => app:A')).toBe(Type.func(A, B));
-    expect(Type.from('new (app:B) => app:A')).toBe(Type.ctor(A, B));
-    expect(Type.from('() => app:A | app:B')).toBe(Type.func(Type.union(A, B)));
-    expect(Type.from('(() => app:A) | app:B')).toBe(Type.union(Type.func(A), B));
+    expect(Type.from('(app:B) => app:A')).toBe(Type.func(A, [[B]]));
+    expect(Type.from('new (app:B) => app:A')).toBe(Type.ctor(A, [[B]]));
+    expect(Type.from('() => app:A | app:B')).toBe(Type.func(Type.union(A, B), [[]]));
+    expect(Type.from('(() => app:A) | app:B')).toBe(Type.union(Type.func(A, [[]]), B));
   });
 
   test('whitespace is not part of what a token spells', () => {
@@ -80,8 +100,8 @@ describe('Type.from', () => {
 
 describe('reserved names', () => {
   test('Func, Ctor and ServiceProvider name their own kinds', () => {
-    expect(Type.from('Func<app:A, app:B>')).toBe(Type.func(A, B));
-    expect(Type.from('Ctor<app:A, app:B>')).toBe(Type.ctor(A, B));
+    expect(Type.from('Func<app:A, app:B>')).toBe(Type.func(A, [[B]]));
+    expect(Type.from('Ctor<app:A, app:B>')).toBe(Type.ctor(A, [[B]]));
     expect(Type.from('ServiceProvider')).toMatchObject({
       kind: 'imported',
       from: '@rhombus-std/primitives',
@@ -111,8 +131,8 @@ describe('escaping', () => {
       [Type.object({ a: Type.global('string') }), '{ a: string }'],
       [Type.generic('T'), '%T'],
       [Type.tag(A, 'primary'), 'app:A#primary'],
-      [Type.func(A, B), '(app:B) => app:A'],
-      [Type.ctor(A, B), 'new (app:B) => app:A'],
+      [Type.func(A, [[B]]), '(app:B) => app:A'],
+      [Type.ctor(A, [[B]]), 'new (app:B) => app:A'],
       [Type.tuple(A, Type.typeLiteral(5)), '[app:A, 5]'],
       [Type.union(A, B), 'app:A | app:B'],
     ];
@@ -270,6 +290,8 @@ function generate(random: () => number, depth: number): Type {
   const child = () => generate(random, depth - 1);
   const children = (most: number) => Array.from({ length: many(most) }, child);
   const quantifiers = () => Array.from(new Set(Array.from({ length: many(2) }, () => pick(NAMES)))).map(Type.generic);
+  // At least one row, since a callable answers to at least one call.
+  const rows = () => Array.from({ length: 1 + many(2) }, () => children(2));
   const kinds = ['union', 'intersection', 'tuple', 'func', 'ctor', 'global', 'imported', 'object', 'literal', 'generic',
     'tag'];
   switch (pick(kinds)) {
@@ -283,10 +305,10 @@ function generate(random: () => number, depth: number): Type {
       return Type.tuple(...children(3));
     }
     case 'func': {
-      return Type.func({ returnType: child(), args: children(2), genericArgs: quantifiers() });
+      return Type.func({ returnType: child(), args: rows(), genericArgs: quantifiers() });
     }
     case 'ctor': {
-      return Type.ctor({ instanceType: child(), args: children(2), genericArgs: quantifiers() });
+      return Type.ctor({ instanceType: child(), args: rows(), genericArgs: quantifiers() });
     }
     case 'object': {
       return Type.object(Object.fromEntries(Array.from({ length: many(3) }, () => [pick(NAMES), child()])));

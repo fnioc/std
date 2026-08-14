@@ -19,7 +19,7 @@
 //    below shows the failure mode on purpose.
 // 2. A CONSTRUCTOR TYPE IS ALWAYS STATED, never inferred. Without the
 //    transformer there is nothing to derive one from, so "this class takes no
-//    dependencies" is written `Type.ctor(theServiceType)` — one overload,
+//    dependencies" is written `Type.ctor(theServiceType, [[]])` — one overload,
 //    taking nothing beyond the address.
 
 import { DefaultManifest, Type } from '@rhombus-std/di.core';
@@ -260,10 +260,10 @@ function demonstrateDiscardTrap(): string {
 
   // WRONG — the new manifest is built and immediately dropped on the floor.
   // `empty` is exactly as empty as it was. This compiles, and it is silent.
-  empty.addClass(FLAGS_TYPE, FeatureFlags, Type.ctor(FLAGS_TYPE), 'singleton');
+  empty.addClass(FLAGS_TYPE, FeatureFlags, Type.ctor(FLAGS_TYPE, [[]]), 'singleton');
 
   // RIGHT — thread the result back in.
-  const threaded = empty.addClass(FLAGS_TYPE, FeatureFlags, Type.ctor(FLAGS_TYPE), 'singleton');
+  const threaded = empty.addClass(FLAGS_TYPE, FeatureFlags, Type.ctor(FLAGS_TYPE, [[]]), 'singleton');
 
   return `immutability: the discarded call registered ${countRegistrations(empty, FLAGS_TYPE)}, `
     + `the threaded one registered ${countRegistrations(threaded, FLAGS_TYPE)}`;
@@ -291,10 +291,10 @@ function addOrderDefaults<S extends string>(
   services = services.tryAddValue(DEFAULT_CLOCK_TYPE, new FixedClock());
   // A default CLASS.
   services = services.tryAddClass(DEFAULT_SINK_TYPE, PlainTextSink,
-    Type.ctor(DEFAULT_SINK_TYPE, DEFAULT_CLOCK_TYPE, Type.typeLiteral('production')), 'singleton');
+    Type.ctor(DEFAULT_SINK_TYPE, [[DEFAULT_CLOCK_TYPE, Type.typeLiteral('production')]]), 'singleton');
   // A default FACTORY.
   services = services.tryAddFactory(DEFAULT_NOTIFIER_TYPE, makeOrderNotifier,
-    Type.func(DEFAULT_NOTIFIER_TYPE, DEFAULT_SINK_TYPE), 'singleton');
+    Type.func(DEFAULT_NOTIFIER_TYPE, [[DEFAULT_SINK_TYPE]]), 'singleton');
   return services;
 }
 
@@ -328,7 +328,7 @@ function demonstrateDescriptorVerbs(): string[] {
 
   // An application that already wired its own sink keeps it.
   let application: Manifest<'singleton'> = new DefaultManifest<'singleton'>();
-  application = application.addClass(DEFAULT_SINK_TYPE, RecordingSink, Type.ctor(DEFAULT_SINK_TYPE), 'singleton');
+  application = application.addClass(DEFAULT_SINK_TYPE, RecordingSink, Type.ctor(DEFAULT_SINK_TYPE, [[]]), 'singleton');
   application = addOrderDefaults(application);
   const kept = application.build().getRequiredService(DEFAULT_SINK_TYPE) as IMessageSink;
   lines.push(`defaults: an application that registered its own sink keeps it (${kept.name})`);
@@ -336,9 +336,9 @@ function demonstrateDescriptorVerbs(): string[] {
   // The host overrides all three defaults outright.
   let host = addOrderDefaults(new DefaultManifest<'singleton'>());
   host = host.replaceValue(DEFAULT_CLOCK_TYPE, new FixedClock());
-  host = host.replaceClass(DEFAULT_SINK_TYPE, RecordingSink, Type.ctor(DEFAULT_SINK_TYPE), 'singleton');
+  host = host.replaceClass(DEFAULT_SINK_TYPE, RecordingSink, Type.ctor(DEFAULT_SINK_TYPE, [[]]), 'singleton');
   host = host.replaceFactory(DEFAULT_NOTIFIER_TYPE, makeOrderNotifier,
-    Type.func(DEFAULT_NOTIFIER_TYPE, DEFAULT_SINK_TYPE), 'singleton');
+    Type.func(DEFAULT_NOTIFIER_TYPE, [[DEFAULT_SINK_TYPE]]), 'singleton');
   const hostProvider = host.build();
   const recorder = hostProvider.getRequiredService(DEFAULT_SINK_TYPE) as RecordingSink;
   lines.push(
@@ -380,9 +380,9 @@ function buildOrderContainer(): Manifest<'singleton'> {
   // A third-party class adapted onto our own clock: its constructor names the
   // vendor's `ILegacyClock`, but the composed constructor type is ours to
   // write, so the argument simply names the keyed clock registered above.
-  services = services.addClass(SINK_TYPE, VendorSink, Type.ctor(SINK_TYPE, VENDOR_CLOCK_TYPE), 'singleton');
+  services = services.addClass(SINK_TYPE, VendorSink, Type.ctor(SINK_TYPE, [[VENDOR_CLOCK_TYPE]]), 'singleton');
 
-  // addClass, 4-argument form: type, ctor, implType, scope. The second
+  // addClass, 4-argument form: type, ctor, implementerType, scope. The second
   // argument is a LITERAL — its value is injected verbatim, with no container
   // lookup. (The 5-argument form takes a key after the scope.)
   //
@@ -391,15 +391,15 @@ function buildOrderContainer(): Manifest<'singleton'> {
   // request takes the MOST RECENTLY registered one, so this is the sink the rest
   // of the scenario gets.
   services = services.addClass(SINK_TYPE, PlainTextSink,
-    Type.ctor(SINK_TYPE, CLOCK_TYPE, Type.typeLiteral('production')), 'singleton');
+    Type.ctor(SINK_TYPE, [[CLOCK_TYPE, Type.typeLiteral('production')]]), 'singleton');
 
-  // TWO OVERLOADS for one class, and a KEY. Each intersection member is one
-  // constructor overload, and the engine takes the first whose every argument
-  // it can supply: `Type.ctor(SINK_TYPE, CLOCK_TYPE, EMAIL_OPTIONS_TYPE)` needs
-  // `IEmailOptions`, which nothing registers, so the single-argument overload
-  // wins and the sink falls back to its built-in address.
+  // TWO OVERLOADS for one class, and a KEY. Each parameter row is one
+  // constructor overload, and the engine takes the first whose every argument it
+  // can supply, longest row first: the two-argument row needs `IEmailOptions`,
+  // which nothing registers, so the single-argument row wins and the sink falls
+  // back to its built-in address.
   services = services.addClass(SINK_TYPE, EmailSink,
-    Type.intersection(Type.ctor(SINK_TYPE, CLOCK_TYPE, EMAIL_OPTIONS_TYPE), Type.ctor(SINK_TYPE, CLOCK_TYPE)),
+    Type.ctor({ instanceType: SINK_TYPE, args: [[CLOCK_TYPE, EMAIL_OPTIONS_TYPE], [CLOCK_TYPE]], genericArgs: [] }),
     'singleton', 'email');
 
   // An OPTIONAL dependency, spelled honestly: a union whose other member is the
@@ -407,19 +407,19 @@ function buildOrderContainer(): Manifest<'singleton'> {
   // for the argument, so this yields the sink when one is registered and
   // `undefined` when none is — and the argument is never unsatisfiable.
   services = services.addClass(AUDIT_TYPE, AuditLog,
-    Type.ctor(AUDIT_TYPE, CLOCK_TYPE, Type.union(SINK_TYPE, Type.typeLiteral(undefined))), 'singleton');
+    Type.ctor(AUDIT_TYPE, [[CLOCK_TYPE, Type.union(SINK_TYPE, Type.typeLiteral(undefined))]]), 'singleton');
 
   // The same shape on a FACTORY, whose second argument is a union of two
   // SERVICES plus the literal `undefined`. Only the audit log is registered, so
   // exactly one member can be supplied and the argument settles on it without
   // ambiguity.
   services = services.addFactory(NOTIFIER_TYPE, makeOrderNotifier,
-    Type.func(NOTIFIER_TYPE, SINK_TYPE, Type.union(METRICS_TYPE, AUDIT_TYPE, Type.typeLiteral(undefined))),
+    Type.func(NOTIFIER_TYPE, [[SINK_TYPE, Type.union(METRICS_TYPE, AUDIT_TYPE, Type.typeLiteral(undefined))]]),
     'singleton');
 
   // A zero-dependency class: a composed constructor type that carries no
   // argument types beyond the address.
-  services = services.addClass(FLAGS_TYPE, FeatureFlags, Type.ctor(FLAGS_TYPE), 'singleton');
+  services = services.addClass(FLAGS_TYPE, FeatureFlags, Type.ctor(FLAGS_TYPE, [[]]), 'singleton');
 
   return services;
 }

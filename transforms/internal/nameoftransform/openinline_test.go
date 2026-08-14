@@ -10,16 +10,15 @@ import (
 
 	"github.com/fnioc/std/transforms/internal/inlinetransform"
 	"github.com/fnioc/std/transforms/internal/plugin"
-	"github.com/fnioc/std/transforms/internal/signatures"
-	"github.com/fnioc/std/transforms/internal/signaturetransform"
+	"github.com/fnioc/std/transforms/internal/typefortransform"
 )
 
 // buildInlinePresetWorkspace lays out the di.core inline PRESET workspace: a core
 // package literally named `@rhombus-std/di.core` carrying the `rhombus-std` inline
 // `addClass` entry and the real ServiceManifestInline body
-// (`addClass<T>(ctor) => this.addClass(tokenfor<T>(), ctor, signatureof(ctor))`), so the SAME
+// (`addClass<T>(ctor) => this.addClass(tokenfor<T>(), ctor, typefor(ctor))`), so the SAME
 // open-template registration can be lowered two ways — through the INLINE pipeline
-// (inline -> tokenfor -> signatureof) and through the di DIRECT stage. It is the
+// (inline -> tokenfor -> typefor) and through the di DIRECT stage. It is the
 // fixture the open-template inline-vs-direct parity test drives.
 func buildInlinePresetWorkspace(t *testing.T, mainSrc string) (*driver.Program, string) {
 	t.Helper()
@@ -43,15 +42,13 @@ export type $<N extends number> = Hole<N>;
 declare const ARG: unique symbol;
 export type Typeof<T> = { readonly [ARG]?: T };
 `)
-	// The real add-sugar body, authored over the two compile-time primitives, each
-	// imported from its home module (tokenfor from primitives, signatureof from
-	// di.extras).
-	writeFile(t, filepath.Join(core, "src", "inline.ts"), `import { tokenfor } from '@rhombus-std/primitives.extras';
-import { signatureof } from '@rhombus-std/di.extras';
+	// The real add-sugar body, authored over the two compile-time primitives,
+	// both imported from their home module (@rhombus-std/primitives.extras).
+	writeFile(t, filepath.Join(core, "src", "inline.ts"), `import { tokenfor, typefor } from '@rhombus-std/primitives.extras';
 import type { IServiceManifestBase } from './index';
 export const ManifestInline = {
   addClass<T>(this: IServiceManifestBase, ctor: unknown): unknown {
-    return this.addClass(tokenfor<T>(), ctor, signatureof(ctor));
+    return this.addClass(tokenfor<T>(), ctor, typefor(ctor));
   },
 };
 `)
@@ -93,7 +90,7 @@ export {};
 }
 
 // lowerInlinePipeline runs the full inline PRESET pipeline over main.ts — inline
-// substitution, then tokenfor token lowering, then signatureof dependency-array
+// substitution, then tokenfor token lowering, then typefor dependency-node
 // lowering, sharing one artifacts bag exactly as the owner host composes them —
 // and returns the reprinted output.
 func lowerInlinePipeline(t *testing.T, prog *driver.Program, app string) string {
@@ -106,13 +103,13 @@ func lowerInlinePipeline(t *testing.T, prog *driver.Program, app string) string 
 	}
 	inlineT := inlinetransform.Build(prog, inlineBodies, artifacts, func(plugin.Diagnostic) {})
 	nameofT := New(prog, ctx, artifacts, func(plugin.Diagnostic) {})
-	sigT := signaturetransform.New(prog, ctx, artifacts, func(signatures.Diagnostic) {})
+	typeforT := typefortransform.New(prog, ctx, artifacts, nil, func(plugin.Diagnostic) {})
 	if !artifacts.Active {
 		t.Fatal("inline artifacts not active — the add preset entry did not resolve")
 	}
 	ec := shimprinter.NewEmitContext()
 	sf := mainSF(t, prog)
-	return reprint(ec, sigT(ec, nameofT(ec, inlineT(ec, sf))))
+	return reprint(ec, typeforT(ec, nameofT(ec, inlineT(ec, sf))))
 }
 
 // typeNodeArgFrom returns the `Type.ctor(...)` / `Type.func(...)` node text of
@@ -147,7 +144,7 @@ func typeNodeArgFrom(t *testing.T, out string) string {
 // TestOpenTemplateInlinePipelineMatchesDiDirect is the open-template inline-vs-direct
 // fixture #241 deferred: an open-generic template registration
 // `addClass<IRepo<$<1>>>(SqlRepo<$<1>>)` lowered through the INLINE pipeline
-// (inline -> tokenfor -> signatureof) must carry the same service token AND the same
+// (inline -> tokenfor -> typefor) must carry the same service token AND the same
 // dependency-signature array as the di DIRECT stage's lowering of the identical
 // registration. The tokenfor hole fix is what unblocks it (a non-hole-aware tokenfor
 // derived `IRepo<@rhombus-std/di.core:$<1>>` for the service token and diverged).
@@ -186,11 +183,11 @@ services.addClass<IRepo<$<1>>>(SqlRepo<$<1>>);
 		t.Fatalf("expected an open-generic service token, got %q", inlineTok)
 	}
 
-	// The dependency node derives Type.ctor(instanceType, paramType) — the hole
-	// closing into the instance type's own generic argument, and again into the
-	// dependency's, matching §157's bare-hole-slot reading.
+	// The dependency node derives Type.ctor(instanceType, [[paramType]]) — the hole
+	// closes into the instance type's own generic argument, and again into the
+	// dependency's.
 	wantDeps := `Type.ctor(Type.imported("SqlRepo", "@scope/app/main", [Type.generic("1")]), ` +
-		`Type.imported("IStore", "@scope/app/main", [Type.generic("1")]))`
+		`[[Type.imported("IStore", "@scope/app/main", [Type.generic("1")])]])`
 	if inlineDeps := typeNodeArgFrom(t, inlineOut); inlineDeps != wantDeps {
 		t.Fatalf("dependency node mismatch:\n got  = %s\n want = %s", inlineDeps, wantDeps)
 	}

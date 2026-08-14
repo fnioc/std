@@ -24,18 +24,19 @@ const (
 
 // Derived is the structural classification DeriveTyped narrows a checker type
 // into. A Leaf wraps a TypeNode unchanged (DeriveTypeF never classifies a
-// function, a constructor, or a Keyed brand). Func's Ret is the call
-// signature's return type; Ctor's Ret is the construct signature's instance
-// type; both share Args, the signature's parameter types, each independently
-// reclassified. Tag's Inner is the Keyed brand's stripped base. Union's
-// Members are its alternatives, each independently reclassified — so a member
-// that is itself a function, a constructor, or another union nests correctly.
+// function, a constructor, or a Keyed brand). Func's Ret is the FIRST call
+// signature's return type; Ctor's Ret is the FIRST construct signature's
+// instance type; both share Args, one ROW of parameter types per signature in
+// declaration order, each parameter independently reclassified. Tag's Inner is
+// the Keyed brand's stripped base. Union's Members are its alternatives, each
+// independently reclassified — so a member that is itself a function, a
+// constructor, or another union nests correctly.
 type Derived struct {
 	Kind DerivedKind
 	Leaf *TypeNode
 
 	Ret  *Derived
-	Args []*Derived
+	Args [][]*Derived
 
 	Tag   string
 	Inner *Derived
@@ -45,14 +46,14 @@ type Derived struct {
 
 // DeriveTyped classifies a checker type: a `Keyed<T, K>` brand first (so a
 // keyed factory or class still classifies its stripped base as Func/Ctor
-// beneath the tag), then a construct signature (checked before call, matching
-// TypeFor<T>'s own conditional order — only the FIRST construct/call signature
-// is read, so an overloaded declaration narrows to its first overload), then a
-// call signature, then the nullish singletons and a general union (an
-// optional parameter's implicit `| undefined` reaches here), and otherwise the
-// plain DeriveTypeF leaf. Each recursion point — a signature's return/instance
-// type, its parameters, a tag's inner type, a union's members — reclassifies
-// from scratch, so a factory that itself returns a factory nests
+// beneath the tag), then the construct signatures (checked before call,
+// matching TypeFor<T>'s own conditional order — EVERY signature is read, so an
+// overloaded declaration carries one parameter row per overload), then the call
+// signatures, then the nullish singletons and a general union (an optional
+// parameter's implicit `| undefined` reaches here), and otherwise the plain
+// DeriveTypeF leaf. Each recursion point — a signature's return/instance type,
+// its parameters, a tag's inner type, a union's members — reclassifies from
+// scratch, so a factory that itself returns a factory nests
 // `Type.func(Type.func(...))` the way a hand-writer would spell it.
 func DeriveTyped(ctx *Context, checker *shimchecker.Checker, t *shimchecker.Type, failure *Failure) (*Derived, bool) {
 	if t == nil {
@@ -67,10 +68,10 @@ func DeriveTyped(ctx *Context, checker *shimchecker.Checker, t *shimchecker.Type
 		return &Derived{Kind: DerivedTag, Tag: key, Inner: inner}, true
 	}
 	if ctorSigs := shimchecker.Checker_getSignaturesOfType(checker, t, shimchecker.SignatureKindConstruct); len(ctorSigs) != 0 {
-		return deriveSignatureShaped(ctx, checker, ctorSigs[0], failure, DerivedCtor)
+		return deriveSignatureShaped(ctx, checker, ctorSigs, failure, DerivedCtor)
 	}
 	if callSigs := shimchecker.Checker_getSignaturesOfType(checker, t, shimchecker.SignatureKindCall); len(callSigs) != 0 {
-		return deriveSignatureShaped(ctx, checker, callSigs[0], failure, DerivedFunc)
+		return deriveSignatureShaped(ctx, checker, callSigs, failure, DerivedFunc)
 	}
 	if t.Flags()&shimchecker.TypeFlagsUndefined != 0 {
 		return &Derived{Kind: DerivedUndefined}, true
@@ -147,34 +148,40 @@ func deriveUnion(ctx *Context, checker *shimchecker.Checker, t *shimchecker.Type
 	return &Derived{Kind: DerivedUnion, Members: members}, true
 }
 
-// deriveSignatureShaped derives a Func/Ctor node from one signature: its
-// return type (the function's product, or the constructor's instance) and its
-// parameter types, each independently reclassified via DeriveTyped.
+// deriveSignatureShaped derives a Func/Ctor node from a whole signature list:
+// one parameter row per signature, in declaration order, each parameter
+// independently reclassified via DeriveTyped. The node carries ONE head — the
+// function's product, or the constructor's instance — read off the first
+// signature, since that is the type the value is named by.
 func deriveSignatureShaped(
 	ctx *Context,
 	checker *shimchecker.Checker,
-	sig *shimchecker.Signature,
+	sigs []*shimchecker.Signature,
 	failure *Failure,
 	kind DerivedKind,
 ) (*Derived, bool) {
-	ret, ok := DeriveTyped(ctx, checker, checker.GetReturnTypeOfSignature(sig), failure)
+	ret, ok := DeriveTyped(ctx, checker, checker.GetReturnTypeOfSignature(sigs[0]), failure)
 	if !ok {
 		return nil, false
 	}
-	params := shimchecker.Signature_parameters(sig)
-	args := make([]*Derived, 0, len(params))
-	for _, param := range params {
-		paramType := checker.GetTypeOfSymbol(param)
-		if paramType == nil {
-			return nil, false
+	rows := make([][]*Derived, 0, len(sigs))
+	for _, sig := range sigs {
+		params := shimchecker.Signature_parameters(sig)
+		row := make([]*Derived, 0, len(params))
+		for _, param := range params {
+			paramType := checker.GetTypeOfSymbol(param)
+			if paramType == nil {
+				return nil, false
+			}
+			argNode, ok := DeriveTyped(ctx, checker, paramType, failure)
+			if !ok {
+				return nil, false
+			}
+			row = append(row, argNode)
 		}
-		argNode, ok := DeriveTyped(ctx, checker, paramType, failure)
-		if !ok {
-			return nil, false
-		}
-		args = append(args, argNode)
+		rows = append(rows, row)
 	}
-	return &Derived{Kind: kind, Ret: ret, Args: args}, true
+	return &Derived{Kind: kind, Ret: ret, Args: rows}, true
 }
 
 // KindName is the TypeBase<Kind> discriminant string a derivation's `.kind`

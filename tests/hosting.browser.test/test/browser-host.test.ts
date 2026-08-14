@@ -98,7 +98,7 @@ test('BrowserHost.run() starts, ignores a bfcache pagehide, and stops on a termi
       public async stop(): Promise<void> {
         events.push('stop');
       }
-    }, Type.ctor(HOSTED_SERVICE_TYPE));
+    }, Type.ctor(HOSTED_SERVICE_TYPE, [[]]));
   });
 
   // Wait until the host has started (the lifetime subscribes before hosted

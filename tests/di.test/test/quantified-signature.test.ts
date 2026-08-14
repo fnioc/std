@@ -11,9 +11,9 @@ const STRING = Type.global('string');
 const whatever = (argument: Type) => Type.imported('Whatever', 'app', [argument]);
 
 /** `<T>() => Whatever<T>` — the open callable a request closes. */
-const OPEN = Type.func({ returnType: whatever(T), genericArgs: [T] });
+const OPEN = Type.func({ returnType: whatever(T), args: [[]], genericArgs: [T] });
 /** `() => Whatever<string>` — the shape a caller asks for. */
-const CLOSED = Type.func({ returnType: whatever(STRING) });
+const CLOSED = Type.func({ returnType: whatever(STRING), args: [[]], genericArgs: [] });
 
 describe('a quantified signature as a service type', () => {
   test('a request for the instantiated shape resolves the open registration', () => {
@@ -24,7 +24,7 @@ describe('a quantified signature as a service type', () => {
   });
 
   test('quantifying a hole names a different type than merely mentioning one', () => {
-    const mentions = Type.func({ returnType: whatever(T) });
+    const mentions = Type.func({ returnType: whatever(T), args: [[]], genericArgs: [] });
     expect(mentions).not.toBe(OPEN);
     expect(Type.stringify(mentions)).toBe('() => app:Whatever<%T>');
     expect(Type.stringify(OPEN)).toBe('<%T>() => app:Whatever<%T>');

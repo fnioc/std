@@ -26,7 +26,7 @@ import (
 // query nil-derefs and takes the process down.
 //
 // The concrete shape: a class with an OPTIONAL constructor parameter derives a
-// union slot, so the signatureof stage mints `{ union: [token, { value: void 0 }] }`
+// union slot, so the typefor stage mints `{ union: [token, { value: void 0 }] }`
 // into the registration's third argument. One trailing chain call
 // (`.as("singleton")`) is then enough — on a later pass a matcher asks about that
 // source-written callee, and answering walks into the minted literal.

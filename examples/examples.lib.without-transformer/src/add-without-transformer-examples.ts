@@ -53,8 +53,8 @@ export function addWithoutTransformerExamples<S extends string>(
   // Contributes a greeting to the shared IGreeting collection at the hand-written
   // Type — the same one the with-transformer side derives. Zero-dep ctor, so the
   // composed constructor type carries no argument types beyond the address.
-  services = services.addClass(GREETING_TYPE, CasualGreeting, Type.ctor(GREETING_TYPE), 'singleton');
+  services = services.addClass(GREETING_TYPE, CasualGreeting, Type.ctor(GREETING_TYPE, [[]]), 'singleton');
   // The optional health check — present only because this library was wired in.
-  services = services.addClass(HEALTH_CHECK_TYPE, HealthCheck, Type.ctor(HEALTH_CHECK_TYPE), 'singleton');
+  services = services.addClass(HEALTH_CHECK_TYPE, HealthCheck, Type.ctor(HEALTH_CHECK_TYPE, [[]]), 'singleton');
   return services;
 }

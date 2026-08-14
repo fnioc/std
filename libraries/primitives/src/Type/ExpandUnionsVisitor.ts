@@ -1,7 +1,7 @@
 import { tag as tagType } from './internals/factories.js';
 import { type ArrayType, type ConstructorType, type FunctionType, type GenericType, type GlobalType, type ImportedType,
   type IntersectionType, type IterableType, type ObjectType, type TagType, type TupleType, Type, type TypeLiteralType,
-  type UnionType } from './Type.js';
+  type TypeSignatures, type UnionType } from './Type.js';
 import { TypeVisitor } from './TypeVisitor.js';
 
 /**
@@ -46,22 +46,14 @@ class ExpandUnionsVisitor extends TypeVisitor<readonly Type[]> {
   }
 
   protected override visitCtor(type: ConstructorType): readonly Type[] {
-    return this.#product([...type.args, type.instanceType]).map(parts =>
-      Type.ctor({
-        instanceType: parts[parts.length - 1]!,
-        args: parts.slice(0, -1),
-        genericArgs: type.genericArgs,
-      })
+    return this.#signature(type.args, type.instanceType).map(([args, instanceType]) =>
+      Type.ctor({ instanceType, args, genericArgs: type.genericArgs })
     );
   }
 
   protected override visitFunc(type: FunctionType): readonly Type[] {
-    return this.#product([...type.args, type.returnType]).map(parts =>
-      Type.func({
-        returnType: parts[parts.length - 1]!,
-        args: parts.slice(0, -1),
-        genericArgs: type.genericArgs,
-      })
+    return this.#signature(type.args, type.returnType).map(([args, returnType]) =>
+      Type.func({ returnType, args, genericArgs: type.genericArgs })
     );
   }
 
@@ -70,6 +62,27 @@ class ExpandUnionsVisitor extends TypeVisitor<readonly Type[]> {
     return this.#product(keys.map(key => type.members[key]!)).map(values =>
       Type.object(Object.fromEntries(keys.map((key, index) => [key, values[index]!])))
     );
+  }
+
+  /**
+   * A callable's alternatives, each carrying its parameter rows beside the head those rows produce
+   * — the instance type of a constructor, the return type of a function.
+   *
+   * @remarks
+   * The product is taken over every parameter of every row and the head at once, so one alternative
+   * chooses one reading of the WHOLE signature; slicing the result back into rows restores the
+   * shape the callable was written with.
+   */
+  #signature(rows: TypeSignatures, head: Type): ReadonlyArray<[TypeSignatures, Type]> {
+    return this.#product([...rows.flat(), head]).map(parts => {
+      const expanded: Array<readonly Type[]> = [];
+      let taken = 0;
+      for (const row of rows) {
+        expanded.push(parts.slice(taken, taken + row.length));
+        taken += row.length;
+      }
+      return [expanded, parts[parts.length - 1]!];
+    });
   }
 
   /** Cartesian product of each slot's own expansion, rightmost slot varying fastest. */

@@ -14,13 +14,12 @@ terse on purpose — this doc is primarily for Claude's use.
 
 An inline-stage primitive that is ONLY ever called inside inline bodies (never in runtime source) is an authoring-time construct: it lives in its domain's `*.transformer` package, not `@rhombus-std/primitives`, and never as a structural mirror of the type it returns.
 
-- `signatureof` (DI dependency-signature extraction) → `di.transformer`, which peers on `di.core`, so it returns di.core's real `DepSignatures` / `DepSlot` directly. The former primitives-side mirror (`DepSlotLike` / `FactoryRefLike` / `UnionLike` / `LiteralRefLike` / `TypeArgRefLike`) is deleted.
 - `schemaof` (config `Schema` from a type) → `config.transformer`, which peers on `config` and already owns the `ts.Type`→`Schema` codegen + the `OPTIONAL` import injection.
 - `tokenfor` STAYS in `@rhombus-std/primitives` — it is the one primitive called in RUNTIME source (`registerAugmentations(tokenfor<T>(), …)`), so every runtime package must import it. That runtime call-site is the discriminator between a universal primitive and an authoring-only one.
 
 Consequences: the inline BODIES and their `rhombus-std` `inline` markers move to the transformer packages too — a runtime package cannot depend on its own transformer (the reverse of the real edge) — which deletes the old "inline.ts excluded from the runtime bundle" gymnastics; runtime packages stay clean. The Go inliner gate becomes a `knownPrimitives` name→home-module map (multi-package). This dissolves the prior schemaof blocker with no gate-widening and no hoisting of config's `Schema`/`OPTIONAL` into the zero-dependency leaf.
 
-Implementation notes: a primitive cannot be self-imported by its own package name (bun's isolated linker makes no self-symlink → `tsc` fails), so an inline body imports its own package's primitive RELATIVELY (`./signatureof.js`); the gate scanner and the `inline-authoring` eslint rule accept the home-module specifier OR a package-relative one within the primitive's own package. A consumer or fixture of a moved primitive must depend on the transformer package (it peers on the runtime, so it isn't reachable from a runtime-only dep graph). Landed #246 (signatureof); schemaof → config.transformer is the follow-up. _Owner-directed 2026-07-18._
+Implementation notes: a primitive cannot be self-imported by its own package name (bun's isolated linker makes no self-symlink → `tsc` fails), so an inline body imports its own package's primitive RELATIVELY (`./schemaof.js`); the gate scanner and the `inline-authoring` eslint rule accept the home-module specifier OR a package-relative one within the primitive's own package. A consumer or fixture of a moved primitive must depend on the transformer package (it peers on the runtime, so it isn't reachable from a runtime-only dep graph). _Owner-directed 2026-07-18._
 
 ---
 
@@ -436,9 +435,9 @@ _Collapse and mergesynth-gating owner-directed 2026-07-19; the host-side one-sca
 
 ## §104 — Family-neutral primitive stages vs per-family sugar bodies
 
-The primitive STAGES a family's sugar leans on — inline and signatureof, alongside nameof and
+The primitive STAGES a family's sugar leans on — inline and typefor, alongside nameof and
 mergesynth — are family-neutral machinery under `transforms/internal/*`, surfaced through
-`primitives.transformer` (its `ttsc.stages` set, plus the `./inline-ttsc` / `./signatureof-ttsc`
+`primitives.transformer` (its `ttsc.stages` set, plus the `./inline-ttsc` / `./typefor-ttsc`
 single-stage override descriptors). A family's own `*.transformer` (di.transformer,
 di.transformer.options, config.transformer) owns only its per-family sugar: the phantom typings, the
 `rhombus-std` `inline` BODIES (§91), and its own stage (`di` / `di_options` / `config`). This complements
@@ -446,11 +445,11 @@ di.transformer.options, config.transformer) owns only its per-family sugar: the 
 records where the STAGE machinery lives.
 
 The honest dep edge falls out: because a family transformer's inline bodies call the neutral
-primitives (`tokenfor`/`signatureof`), that transformer genuinely requires the primitive stages, so
+primitives (`tokenfor`/`typefor`), that transformer genuinely requires the primitive stages, so
 di.transformer, di.transformer.options, and config.transformer each declare
 `@rhombus-std/primitives.transformer` as a `dependency`. That edge is what lets §103's host scan
 reach the primitive stages for a family-sugar consumer: a library depending on di.transformer's
-sugar gets inline+nameof+signatureof activated with no action of its own. The edge is build-graph
+sugar gets inline+nameof+typefor activated with no action of its own. The edge is build-graph
 only — `primitives.transformer` ships no runtime JS, so it never enters a bundle.
 
 _Owner-directed 2026-07-19 (the family-neutral-stage placement); the dependency-edge mechanics are
@@ -537,15 +536,15 @@ _Owner-directed (the mutable-slot seam, forced by the immutable-manifest design)
 
 `Manifest<Scopes>` (`libraries/di.core/src/Manifest.ts`) is an interface extending `Iterable<ServiceDescriptor<Scopes>>`, and its own body declares exactly three members — `_add`, `_remove`, `_replace` — each returning a NEW manifest rather than mutating the receiver, so a call whose result is discarded registers nothing. `DefaultManifest` is the concrete, `@augment`-decorated class: an immutable decorator chain where `_add` prepends one descriptor via a generator that yields the new descriptor then delegates to the rest, so iteration order is newest-registration-first.
 
-Every other registration verb — `add`, `addClass`, `addFactory`, `addValue`, `tryAdd` and its typed siblings, `replaceClass`/`replaceFactory`/`replaceValue`, `removeAll` — arrives through augmentation onto `Manifest`, in `libraries/di.core/src/augmentations/`. `add` is not replaced by the typed verbs; it coexists with them as a dispatching entry point taking a bare descriptor, a lambda that walks the per-registration builder (§109), or an implementation plus its composed call-shape type positionally. `addClass`/`addFactory`/`addValue` are separate convenience verbs that compose a `ServiceDescriptor` from a type, an implementation, and a `Signatures` array (`libraries/di.core/src/ServiceDescriptor/Signature.ts`), then forward to `add`. Builders that wrap a manifest and are configured by a caller delegate keep mutation-shaped ergonomics on top via a mutable-slot seam (§114). _Owner-directed (the immutable-chain, verb-carried-by-augmentation direction); the builder's slot mechanics (§109) are Claude's._
+Every other registration verb — `add`, `addClass`, `addFactory`, `addValue`, `tryAdd` and its typed siblings, `replaceClass`/`replaceFactory`/`replaceValue`, `removeAll` — arrives through augmentation onto `Manifest`, in `libraries/di.core/src/augmentations/`. `add` is not replaced by the typed verbs; it coexists with them as a dispatching entry point taking a bare descriptor, a lambda that walks the per-registration builder (§109), or an implementation plus its composed call-shape type positionally. `addClass`/`addFactory`/`addValue` are separate convenience verbs that compose a `ServiceDescriptor` from a type, an implementation, and the implementation's own composed `Type` (`libraries/di.core/src/ServiceDescriptor/ServiceDescriptor.ts`), then forward to `add`. Builders that wrap a manifest and are configured by a caller delegate keep mutation-shaped ergonomics on top via a mutable-slot seam (§114). _Owner-directed (the immutable-chain, verb-carried-by-augmentation direction); the builder's slot mechanics (§109) are Claude's._
 
 ---
 
 ## §109 — The per-registration builder gates completion on the type system: an impl door, then exactly one call-shape door, then optional lifetime/tag doors
 
-The two-argument `add(type, configure: Func<[Unstarted<T, Scopes>], IComplete>)` form hands the configure lambda a `PendingRegistration` typed as `Unstarted` — every step door still open, no `IComplete` in the intersection — and walks it through `libraries/di.core/src/builder.ts`'s `Pending<T, ImplNode, Scopes, Slots, Ready>` type: each slot still open (`'impl' | 'implType' | 'lifetime' | 'tag'`) contributes one interface to an intersection, so only the doors for open slots are callable. `asClass`/`asFactory`/`asValue` spend the `impl` slot and open `implType` (skipped by `asValue`, already complete once tagged); `withSignature(...paramTypes)` or `withType(implType)` spend `implType` — exactly one of the two, since taking either removes the slot the other also targets — and only this step flips `Ready` to `true`, adding `IComplete` to the intersection. `withLifetime`/`taggedAs` remain independently callable afterward without gating completion further. A lambda that never opens a call-shape door never reaches a value `add`'s overload accepts, so the gate is enforced by the type checker, not a runtime check.
+The two-argument `add(type, configure: Func<[Unstarted<T, Scopes>], IComplete>)` form hands the configure lambda a `PendingRegistration` typed as `Unstarted` — every step door still open, no `IComplete` in the intersection — and walks it through `libraries/di.core/src/builder.ts`'s `Pending<T, ImplementerNode, Scopes, Slots, Ready>` type: each slot still open (`'implementer' | 'implementerType' | 'lifetime' | 'tag'`) contributes one interface to an intersection, so only the doors for open slots are callable. `asClass`/`asFactory`/`asValue` spend the `implementer` slot and open `implementerType` (skipped by `asValue`, already complete once tagged); `withSignature(...paramTypes)`, `withSignatures(...rows)` or `withType(implementerType)` spend `implementerType` — exactly one of the three, since taking any removes the slot the other two also target — and only this step flips `Ready` to `true`, adding `IComplete` to the intersection. `withLifetime`/`taggedAs` remain independently callable afterward without gating completion further. A lambda that never opens a call-shape door never reaches a value `add`'s overload accepts, so the gate is enforced by the type checker, not a runtime check.
 
-`withSignature` is singular and variadic (`...paramTypes: Array<Type | string>`), taken at most once — there is no separate bulk-replace verb. A registration's whole call shape can also be named positionally, without the builder: `add(type, ctor, implType, scope?, key?)`, where `implType` is one composed constructable or function type — an intersection of them describes an overloaded implementation, one member per call signature (`callSignatures` in `builder.ts` reads them back apart). Sugar (`addClass<T>`, `addFactory<T>`, `add<T>`) derives `T` and, where relevant, `implType`, so the same builder ergonomics are available to a hand-writer and a transformer-driven caller alike.
+`withSignature` is variadic (`...paramTypes: Array<Type | string>`) and spends `implementerType` naming one parameter row; `withSignatures(...rows: ReadonlyArray<ReadonlyArray<Type | string>>)` spends the same slot naming several, one per call the implementation answers to. A registration's whole call shape can also be named positionally, without the builder: `add(type, ctor, implementerType, scope?, key?)`, where `implementerType` is one composed `ConstructorType` or `FunctionType` — its own `args` field is a `TypeSignatures`, one row per call, so an overloaded implementation is one node carrying several rows rather than several nodes joined. Sugar (`addClass<T>`, `addFactory<T>`, `add<T>`) derives `T` and, where relevant, `implementerType`, so the same builder ergonomics are available to a hand-writer and a transformer-driven caller alike.
 
 _Owner-directed (the gated-completion, single-call-shape-door direction); the current slot/intersection mechanics are Claude's._
 
@@ -555,9 +554,11 @@ _Owner-directed (the gated-completion, single-call-shape-door direction); the cu
 
 A primitive's suffix says which half of the job it does. `-for` MINTS an identity for a type nothing
 has stated yet: `typefor<T>()` mints `T`'s address, `tokenfor<T>()` its string token. `-of` OBSERVES
-something the target already carries: `signatureof(ctor)` reads a constructor's own parameter types,
-`tokenof(value)` reads a value's own type, and `schemaof<T>()` reads out the members `T` already
-declares.
+something the target already carries: `tokenof(value)` reads a value's own type, and `schemaof<T>()`
+reads out the members `T` already declares. `typefor` alone crosses both halves: its value-argument
+overload, `typefor(ctor)` / `typefor(factory)` / `typefor<typeof C>()`, OBSERVES a runtime
+constructor or factory's own construct or call signatures, deriving the callable `Type` they
+describe the same way any `-of` primitive observes its target.
 
 The pipeline STAGE ids are independent of the function names — the `nameof` stage lowers
 `tokenfor`/`tokenof`, and nothing requires a stage to be named after the primitive it folds.
@@ -569,7 +570,7 @@ Claude's, done as a dedicated PR per the owner's "name them right the first time
 
 ## §111 — One `Type` tree serves both the resolve side and the signature side
 
-A resolve request and a dependency-signature slot are the SAME `Type` expression — there is no separate tree for one and not the other. `Type` (`libraries/primitives/src/Type/Type.ts`) is a single plain-data discriminated union, minted through interning factories (`libraries/primitives/src/Type/internals/factories.ts`), and every operation over it — `match`, `satisfies`, `substitute`, `stringify`, `validate` — is written once, as a dedicated `TypeVisitor<T>` subclass (`SatisfiesVisitor`, `SubstituteVisitor`, `StringifyVisitor`, `TypeValidatorVisitor`) dispatching one `switch (kind)`, not `accept`-on-node. Nodes stay plain data, so the immutable-update idiom keeps working, and a `ServiceDescriptor`'s dependency signatures (`TypeSignatures`, `libraries/di.core/src/ServiceDescriptor/Signature.ts`) are literally `ReadonlyArray<readonly Type[]>` — the same `Type` nodes a request is built from, closed over an open registration's captured bindings by `TypeSignatures.substituteSignatures`, which applies `Type.substitute` per parameter.
+A resolve request and a dependency-signature slot are the SAME `Type` expression — there is no separate tree for one and not the other. `Type` (`libraries/primitives/src/Type/Type.ts`) is a single plain-data discriminated union, minted through interning factories (`libraries/primitives/src/Type/internals/factories.ts`), and every operation over it — `match`, `satisfies`, `substitute`, `stringify`, `validate` — is written once, as a dedicated `TypeVisitor<T>` subclass (`SatisfiesVisitor`, `SubstituteVisitor`, `StringifyVisitor`, `TypeValidatorVisitor`) dispatching one `switch (kind)`, not `accept`-on-node. Nodes stay plain data, so the immutable-update idiom keeps working, and a `ServiceDescriptor`'s dependency signatures (`TypeSignatures`, `libraries/primitives/src/Type/Type.ts`) are literally `ReadonlyArray<readonly Type[]>` — the same `Type` nodes a request is built from, closed over an open registration's captured bindings by substituting the descriptor's whole `implementerType` (`ServiceDescriptor/op.ts`'s `substitute`, which applies `Type.substitute` to it directly).
 
 The wire format is the one grammar `Type.from`/`Type.stringify` run at the data-input/output boundary (§106) — there is no separate parse step for a signature versus a resolve target. _Owner-directed (the one-tree, parse-at-the-boundary direction); the visitor shape and node-as-plain-data reasoning are Claude's._
 
@@ -1187,11 +1188,12 @@ union with `undefined` for a member the configuration may leave out —
 `Type.union(inner, Type.typeLiteral(undefined))`, the one spelling the union canonicalizer keeps
 intact, since nothing subsumes a nullish member.
 
-**Three verbs, one vocabulary.** A type-argument primitive does exactly one of three things, and its
-name says which: `typefor<T>()` NAMES a type (a named type yields its interned `NominalType` address),
-`schemaof<T>()` EXPANDS one (the members of the type it was handed), `signatureof(ctor)` OBSERVES a
-runtime constructor. `tokenfor` / `tokenof` remain the string-token pair pending their own held
-retirement. That is the whole transformable roster.
+**Two verbs, one vocabulary.** A type-argument primitive does one of two things, and its name says
+which: `typefor<T>()` NAMES a type (a named type yields its interned `NominalType` address) and,
+given a runtime constructor or factory value in place of a type argument, OBSERVES it instead —
+deriving the whole callable `Type` its construct or call signatures describe; `schemaof<T>()`
+EXPANDS one (the members of the type it was handed). `tokenfor` / `tokenof` remain the string-token
+pair pending their own held retirement. That is the whole transformable roster.
 
 **Expansion stops at a name.** A member whose type has a name of its own keeps it, spelled exactly
 as `typefor` would have spelled it. Only what has no name — an inline structure, a tuple — is opened
@@ -1410,19 +1412,23 @@ assignability is compile-time-enforced by the sugar constraints (§143), and the
 described-constructable carries the address in its instance slot — users supply argument types
 only.
 
-The signature verb is `withSignature` (the owner delegated the naming choice; `using-` was the one
-odd prefix and dies with it), SINGULAR and variadic: `withSignature(...paramTypes)`, exactly once
-per chain. A multi-signature (overloaded) impl is expressed through `withType` with an intersection
-of constructables — plurality lives in the composed node, not in the verb. Verb naming beyond this
-is case-by-case; prefix uniformity is not itself a goal, and `taggedAs` — the one address-rewriting
-verb — stands, since it looks different because it is different.
+The signature verbs are `withSignature` and `withSignatures` (the owner delegated the naming choice;
+`using-` was the one odd prefix and dies with it): `withSignature(...paramTypes)` names one parameter
+row, `withSignatures(...rows)` names several, and `withType(implementerType)` names the whole
+composed node. A callable node carries its own parameter rows natively — `ConstructorType.args` /
+`FunctionType.args` is a `TypeSignatures`, one row per call it answers to, a no-parameter callable
+carrying one empty row (`[[]]`) — so an overloaded implementation is rows on the one node rather than
+a separate node shape; exactly one of the three verbs is ever called per chain, since each spends the
+same slot. Verb naming beyond this is case-by-case; prefix uniformity is not itself a goal, and
+`taggedAs` — the one address-rewriting verb — stands, since it looks different because it is
+different.
 
 Every builder-carrying API also offers a positional overload taking everything at once: an
-`implType` argument (one composed constructable node), never naked signatures — the
-signatures-as-arrays spelling lives only in the builder's `withSignature`. A hand-composer of a
-positional `implType` puts the address in the instance slot, the same documented convention as
-above; sugar derives the precise node. Builders read as fluent English, and the positional twin is
-the terse complete form.
+`implementerType` argument (one composed constructable/function node, its parameter rows already
+inside it), never a bare row array — the row-array spelling lives only in the builder's
+`withSignature`/`withSignatures`. A hand-composer of a positional `implementerType` puts the address
+in the instance slot, the same documented convention as above; sugar derives the precise node.
+Builders read as fluent English, and the positional twin is the terse complete form.
 
 The builder form is HAND-USABLE: `add(type, configure)` takes the address as the first positional
 argument and the builder lambda second. The sugar form `add<T>(configure)` is exactly that overload
@@ -1436,13 +1442,14 @@ to `any`: `add<T = any>(type, configure)`. Sugar derives `T` precisely; a hand-r
 (`add<IRepo>(…)`) for full enforcement, or omit it for `<any>` and no enforcement — opt-in safety,
 consequences owned, no `Type`-surface change, no phantom.
 
-The configure dialect offers `withType` AND `withSignature` after the `as`-verb, EXACTLY ONE of
-which must be used — stage types make the completion state reachable only through one of them,
-once, with a runtime guard backing the untyped caller. `withSignature(args)` supplies argument types
-only, composing internally with the address in the instance slot; `withType(node)` supplies the
-whole composed constructable, typed per the `as`-verb (`ConstructorType` for `asClass`, `FunctionType` for
-`asFactory`) — sugar substitutes `withType` with the transform-derived precise node, and a
-hand-writer reaches for `withSignature`. Deep signatures remain irreducibly deep; the object-overload
+The configure dialect offers `withType`, `withSignature` AND `withSignatures` after the `as`-verb,
+EXACTLY ONE of which must be used — stage types make the completion state reachable only through one
+of them, once, with a runtime guard backing the untyped caller. `withSignature(...paramTypes)`
+supplies one parameter row and `withSignatures(...rows)` supplies several, each composing internally
+with the address in the instance slot; `withType(node)` supplies the whole composed constructable,
+typed per the `as`-verb (`ConstructorType` for `asClass`, `FunctionType` for `asFactory`) — sugar
+substitutes `withType` with the transform-derived precise node, and a hand-writer reaches for
+`withSignature`/`withSignatures`. Deep signatures remain irreducibly deep; the object-overload
 factories and named intermediate consts are the spelling relief, not the dialect.
 
 _Owner-directed 2026-08-13._
@@ -1536,8 +1543,8 @@ _Owner-directed 2026-08-13._
 
 A node's type name is written in full: `FunctionType` and `ConstructorType`, never an abbreviation.
 A factory pairs with the node it mints — `global` with `GlobalType`, `imported` with `ImportedType`,
-`tag` with `TagType` — and a spec interface pairs with its factory, so `Type.imported` takes an
-`ImportedSpec`.
+`tag` with `TagType` — and its object door takes a literal shaped like that node's own fields, so
+`Type.imported`'s object door takes an `ImportedType`-shaped literal.
 
 The pairing bends only where the full word cannot be a member name. `Type.func` and `Type.ctor` keep
 their short spellings for that reason and no other, and their kind strings stay `'func'` and
@@ -1594,8 +1601,9 @@ as different nodes, and that distinction is the point of carrying it. Substituti
 discharges its quantifier, so closing an open signature lands on the requested node itself rather
 than on a look-alike.
 
-The spec object is the door — a positional `Type.func(returnType, ...args)` call spells a concrete
-signature — and the token grammar extends additively: a quantifier list is written in front of the
+The spec object is the door — a positional `Type.func(returnType, [[A]], [hole])` call spells a
+concrete signature, its second argument the parameter rows and its optional third the quantifier
+list — and the token grammar extends additively: a quantifier list is written in front of the
 signature it binds, `<%T>(%T) => app:Box<%T>`, reachable through the arrow, `new` and reserved
 `Func` / `Ctor` spellings alike. A token carrying no quantifiers spells exactly as it always did, so
 the parity invariant binds unchanged.
@@ -1628,42 +1636,31 @@ _Owner-directed 2026-08-13._
 
 ## §155 — The manifest verbs' long overload is Type-only; naked signature arrays survive only in the builder
 
-Every manifest verb whose long overload used to take a naked `Signatures` array (`ReadonlyArray<
-ReadonlyArray<Type | string>>`) as its dependency-signature argument now takes the composed impl
-type instead — `ConstructorType | IntersectionType` for `addClass`/`tryAddClass`/`replaceClass`,
-`FunctionType | IntersectionType` for `addFactory`/`tryAddFactory`/`replaceFactory`,
-`ConstructorType | IntersectionType | undefined` for `addHostedService`'s ctor overload. `add`/
-`tryAdd` already took `implType` this way — the array-taking verbs were the residue. Each verb
-derives its stored `TypeSignatures` from the composed type via `TypeSignatures.fromImplType`
-(`libraries/di.core/src/ServiceDescriptor/Signature.ts`): a `ctor`/`func` node yields its own `args`
-directly, an intersection flattens one signature per member, and anything else throws — the same
-"describes nothing callable" error the builder's `withType` has always raised.
+Every manifest verb whose long overload takes a dependency-signature argument takes the composed
+implementation type directly — `ConstructorType` for `addClass`/`tryAddClass`/`replaceClass`,
+`FunctionType` for `addFactory`/`tryAddFactory`/`replaceFactory`, `ConstructorType | undefined` for
+`addHostedService`'s ctor overload. `add`/`tryAdd` already took `implementerType` this way — the
+array-taking verbs were the residue. Each verb stores the node it is handed, verbatim, as `implementerType`
+(`libraries/di.core/src/ServiceDescriptor/ServiceDescriptor.ts`) — there is no derivation step and no
+separate stored-signatures member; a reader wanting a registration's parameter rows reads
+`implementerType.args` directly (§170).
 
-The builder chain (`withSignature(...paramTypes)`, `Signatures.overrideSignatures`) is the ONE place
-a naked signature array stays first-class — it is the hand-roller's door, unaffected. Descriptor
-storage (`ServiceDescriptor.ctor`/`factory`, `TypeSignatures`) is unchanged; this is a verb-surface
-spelling change, not a resolution-semantics one.
+The builder chain (`withSignature(...paramTypes)`, `withSignatures(...rows)`,
+`libraries/di.core/src/builder.ts`) is the ONE place a naked array of `Type | string` stays
+first-class, as an authoring convenience — it mints the anonymous callable those rows describe,
+filed under the type being registered (`PendingRegistration.#constructorType`/`#functionType`), and
+that minted node becomes the stored `implementerType` exactly like a hand-supplied one.
 
 **Convention, not enforcement**: the composed type's own instance/return slot carries the SERVICE
 address (the same type the verb's first argument names), never the implementation's own concrete
 type — the container reads nothing from that slot, so this is a spelling convention every call site
 in this repo now follows, not a checked invariant.
 
-**Left open**: the `signatureof(ctor)` primitive (`di.extras`) still lowers, on the Go side
-(`transforms/internal/signatures`, `transforms/internal/signaturetransform`), to the RETIRED
-`[[...]]` array form — a pre-Type-native token-string derivation engine that predates this ruling
-and was never updated for it. No current call path actually exercises it: the real `addClass<T>`/
-`addFactory<T>` di.extras sugar (`ManifestServiceAugmentations`) only elides the TOKEN argument
-(`typefor<T>()`) and forwards the rest positionally — it never calls `signatureof` — so
-`tests/di.signatureof.ttsc.e2e`'s fixture (which hand-declares a bare one-argument `addClass<I>
-(ctor)` override matching that forwarding body) never reaches the signatureof stage at all, and
-passes without asserting anything about a third argument. Migrating `signatureof` to emit
-`Type.ctor(...)`/`Type.func(...)` (reusing the value's own construct/call signature the way
-`typefor(value)` already narrows it, `transforms/internal/typefortransform/derive.go`) is real,
-scoped, remaining work — its two open questions are whether a factory-typed dependency argument
-still needs the old engine's special "inject a callable" slot form or collapses to a plain
-`FunctionType` argument, and how an open-template hole (`Typeof<T>`/`typeArgSlot`) spells as a
-`Type` node, which is the closing-type engine lane's (§21) territory to settle first.
+`typefor<T>()`'s value-argument overload derives a registration's whole implementation type
+directly from the class or factory value being registered — `typefor<typeof Widget>()` is how an
+author spells `addClass`'s third argument by hand, deriving through the same shared layer every
+value-observing call reuses (§171). There is no separate primitive and no retired `[[...]]` array
+form left to migrate.
 
 _Claude-directed 2026-08-13, executing the owner's §144 ruling._
 
@@ -1707,11 +1704,11 @@ name its category and `LoggerProviderConfig<T>` find its section.
 
 A hole standing INSIDE a larger slot keeps the ordinary reading — the slot is a type expression, the
 hole closes into it, and the closed expression names a service the engine resolves. So one signature
-can carry both readings, `[[$T, Holder<$T>]]` delivering the type for the first slot and a `Holder`
+can carry both readings, `[[%T, Holder<%T>]]` delivering the type for the first slot and a `Holder`
 instance for the second.
 
 The hole spells as `Type.generic(label)`, and it reaches a signature either written there directly
-or derived from the implementation type — `Type.ctor(ILogger<%T>, ILoggerFactory, %T)` yields a
+or derived from the implementation type — `Type.ctor(ILogger<%T>, [[ILoggerFactory, %T]])` yields a
 signature whose second slot is the bare hole — so the two surfaces agree on what a slot means.
 
 An instance of the BARE closing type is therefore deliberately inexpressible. The escape is to ask
@@ -1842,30 +1839,24 @@ looks complete on read-through — the missing line has no compile-time signal.
 
 _Claude-directed 2026-08-13._
 
-## §163 — `signatureof` emits a Type node; the derivation engine is shared, not typefor-owned
+## §163 — The derivation layer is shared vocabulary, not owned by any one primitive
 
-`signatureof(ctor)` / `signatureof(factory)` now lower to a `Type.ctor(...)` / `Type.func(...)`
-node — the instance/return type followed by each dependency's own type, in order — matching
-`TypeSignatures.fromImplType`'s reading (§155) and superseding the retired `[[...]]`
-dependency-signature array the old token-string engine emitted.
+`typefor`'s value-argument overload (`typefor(ctor)` / `typefor(factory)`) derives a
+`Type.ctor(...)` / `Type.func(...)` node from a runtime constructor or factory's own construct or
+call signatures — the instance/return type followed by each parameter's own type, one row per
+signature the declaration carries. The classification and emission that derivation runs on are
+their own shared layer, not folded into `typefortransform`: `tokens.DeriveTyped` (classification)
+and `typeemit.EmitDerived` (emission) live under `transforms/internal/tokens` and
+`transforms/internal/typeemit`, over the same Func/Ctor/Tag layer that sits above `DeriveTypeF`'s
+named/literal/placeholder tree. `typefortransform` keeps only its own accessor-folding peephole
+(`.returnType`/`.args`/etc.), built on the shared functions rather than owning the classification
+itself.
 
-The derivation reuses typefor's own type-classification narrowing exactly, because it now IS
-typefor's narrowing: `deriveTyped`/`emitDerived` moved out of `typefortransform` into
-`tokens.DeriveTyped` (classification) and `typeemit.EmitDerived` (emission), since a second
-primitive now needs the same Func/Ctor/Tag layer over `DeriveTypeF`'s named/literal/placeholder
-tree — the comment that once justified keeping it typefor-local ("only typefor does this
-classification") stopped being true the moment signatureof needed it too. `typefortransform` keeps
-only its own accessor-folding peephole (`.returnType`/`.args`/etc.), now built on the shared
-functions. Both primitives derive an identically-shaped value identically: `signatureof(Foo)` and
-`typefor(Foo)` produce the same node for the same `Foo`.
-
-The signatureof stage's own remaining code is a thin caller: a construct/call-signature presence
-check (mirroring the primitive's long-standing "not a constructable or callable value" gate,
-silent — the emit sweep's concern) ahead of the shared derivation, and a kind check rejecting a
-derivation that lands on Tag/Leaf instead of Ctor/Func. The whole array/slot machinery
-(`Signal`/`tokenSlot`/`factorySlot`/`unionSlot`/`literalSlot`/`typeArgSlot` and their per-parameter
-classification) is retired along with it — every one of those forms is now just an ordinary `Type`
-node, resolved generically by the engine rather than pre-digested into a flat runtime shape.
+The old array/slot machinery this replaced — `Signal`/`tokenSlot`/`factorySlot`/`unionSlot`/
+`literalSlot`/`typeArgSlot` and their per-parameter classification — has no equivalent in the
+current engine: every one of those forms is now just an ordinary `Type` node, resolved generically
+wherever a `Type` is resolved, rather than pre-digested into a flat runtime shape a bespoke consumer
+had to know how to read.
 
 _Claude-directed 2026-08-13, executing the owner's §155/§157 direction._
 
@@ -1887,9 +1878,9 @@ union); a lone boolean literal elsewhere is unaffected.
 
 A REST parameter (`...deps: [A, B]`) is deliberately NOT covered: its own type is the tuple/array
 itself, and `DeriveTyped` has no tuple-expansion case — a rest-parameter constructor reports
-`codeUnderivableToken` rather than misrepresent the signature's arity. This is a shared, pre-existing
-gap (typefor's own value-argument derivation has never expanded a rest parameter either), not
-something new to signatureof; closing it is a separate, larger derivation-engine question.
+`codeUnderivableToken` rather than misrepresent the signature's arity. This is a pre-existing gap in
+`typefor`'s own value-argument derivation, not something this classification introduced; closing it
+is a separate, larger derivation-engine question.
 
 _Claude-directed 2026-08-13, executing the owner's §155/§157 direction._
 
@@ -1917,9 +1908,9 @@ constraint (`codeFactorySignatureMismatch`, 990003) is retired alongside the slo
 _Claude-directed 2026-08-13, executing the owner's §155/§157 direction; the resolution-model
 reasoning traces to the landed engine, not a fresh ruling._
 
-## §166 — A factory value's OWN directly-holed parameter is a known signatureof gap, not a crash risk
+## §166 — A factory value's OWN directly-holed parameter is a known derivation gap, not a crash risk
 
-`signatureof(factory)` where `factory`'s own parameter directly names an open-template hole
+`typefor(factory)` where `factory`'s own parameter directly names an open-template hole
 (`(store: IStore<$<1>>) => ...`, the hole written straight into the parameter's annotation rather
 than arriving through a class's own generic instantiation) fails to derive: the checker resolves
 that parameter's type differently for an arrow-function-literal parameter than for an
@@ -1930,7 +1921,7 @@ partial tree and never a crash.
 
 This is narrow: a factory registered under an OPEN service token is a class-only-registration error
 on the (retired) di-direct path, so a hole surfacing through a factory's own parameter was already
-documented as reachable only via a standalone `signatureof` call, never through an actual open
+documented as reachable only via a standalone `typefor` call, never through an actual open
 registration. Closing it is future work, not blocking — the ctor path (a hole arriving via a class's
 own generic instantiation, `Repo<$<1>>`) derives correctly today.
 
@@ -1950,9 +1941,9 @@ class-syntax/prototype-descriptor sniff, the call-then-rescue retry, and the `RE
 dependency shim an earlier draft of this door carried — the node already says which one applies
 and already carries the real parameter types, so there is nothing left to sniff or rescue.
 
-**Dependencies resolve from the node's own parameter types, not a fixed one-entry signature.** The
+**Dependencies resolve from the node's own parameter rows, not a fixed one-entry signature.** The
 node and value are wrapped in a throwaway `ServiceDescriptor` (`ctor` or `factory`, matching the
-node's kind) whose signature is `TypeSignatures.fromImplType(type)` — the SAME reading `addClass`/
+node's kind) carrying the node itself as its `implementerType` — the SAME reading `addClass`/
 `addFactory`'s long overload already gives a composed impl type (§155) — resolved via the engine's
 `additionalServices` channel against a manifest composed for that one call, under the node itself
 as its own address, and discarded after. This is real dependency resolution, not reflection: the
@@ -1987,11 +1978,129 @@ for a sugar overload and an explicit-node one alike). A Go regression test
 before the fix, green after.
 
 **The authoring sugar this door was meant to pair with is held**, pending a settled spelling for
-its inline body once the callable-signatures milestone (2D per-overload `TypeSignatures` on
-`ConstructorType`/`FunctionType`, `signatureof` retiring in favor of `typefor<typeof x>()`) lands —
-its shape depends on both. Nothing in this entry describes that door; it ships separately.
+its inline body. Nothing in this entry describes that door; it ships separately.
 
 _Owner-directed 2026-08-13._
+
+## §168 — Callable nodes carry their overloads as parameter rows
+
+`ConstructorType.args` and `FunctionType.args` (`libraries/primitives/src/Type/Type.ts`) are typed
+`TypeSignatures = ReadonlyArray<readonly Type[]>` — one ROW per overload, each row that overload's
+parameter types in declaration order. A callable that is not overloaded carries exactly one row;
+one taking no parameters carries one EMPTY row (`[[]]`, never `[]`). `Type.ctor`/`Type.func` refuse
+an empty `args` array outright — a callable answering to no call has no spelling, so the factory
+throws rather than mint one, catching the `[[]]`-vs-`[]` slip directly at the authoring boundary.
+The alias lives in `primitives` beside the node interfaces it types and `di.core` re-exports it, so
+every consumer names the same shape.
+
+Every callable factory opens through two doors. The POSITIONAL door takes the whole row array as
+its second argument, quantifiers optional as its third: `Type.ctor(instanceType, args:
+TypeSignatures, genericArgs?)` and the `Type.func` sibling over `returnType` — `Type.ctor(box,
+[[string]])` for one row, `Type.ctor(box, [[]])` for a constructor taking nothing, `Type.ctor(box,
+[[string], []])` for two. The OBJECT door takes one literal naming every field at once
+(`Type.ctor({ instanceType, args: [[A, B], [A]], genericArgs })`); its `genericArgs` is required,
+since the object door names exactly the node's own fields. A file-internal, unexported alias in
+`Type.ts` — `type Spec<T extends Type> = Omit<T, 'kind' | TypeBrand>` — names that shape once and
+derives it from the node itself, so the object door and the node can never drift apart and the
+exported roster carries no per-factory spec interface.
+
+`Type.adopt` is the door underneath every other one: handed a node written out as plain data —
+every field it publishes, `kind` included, minus the intern-table brand (`RawType<T>`) — it
+canonicalizes, freezes and interns it, and hands back the canonical instance, so `===` decides its
+equality exactly as any other factory's result does. It's the door a tree arriving from outside
+takes — a value revived from JSON, one a cast produced — and the mechanism every other factory
+already shared; `adopt` names and publishes it rather than adding a second one.
+
+Interning identity includes the rows: the intern key brackets each row separately, which is what
+keeps a callable's one-empty-row shape distinct from every other row shape it could carry.
+
+_Claude-directed 2026-08-13, executing the owner's 2D-overloads ruling._
+
+## §169 — The token grammar spells overload rows with semicolons, inside the one parameter position
+
+`Type.from`/`Type.stringify`'s wire grammar (`libraries/primitives/src/Type/internals/parser.ts`,
+`StringifyVisitor.ts`) mirrors the flat/structured door pair: a callable's parameter rows occupy
+the SAME parenthesized position a single signature always used, separated by `;` — `(A, B) => R` is
+one row, `(A, B; A) => R` is two. `new (A; ) => I` is a constructor answering to a one-argument call
+and a no-argument one. A leading `;` spells a leading empty row: `(; A) => R` is a no-argument row
+followed by a one-argument row.
+
+Because the separator sits INSIDE the existing parenthesized position rather than opening a new
+one, every single-row token is byte-identical to what it always spelled — `Type.from`/
+`Type.stringify` round-trip a one-row callable exactly as before, and only a genuinely overloaded
+callable's token grows the `;`. `Type.stringify` always emits the arrow form (`(...) => R` / `new
+(...) => I`), never the reserved `Func<...>`/`Ctor<...>` spelling, so a round-trip through
+stringify never has to choose between the two.
+
+The reserved spellings carry rows the same way, the head separated from the first row by its own
+comma: `Func<R, A, B; C>` names return type `R` over two rows (`[A, B]` then `[C]`), and `Ctor<I, A;
+B>` names instance type `I` over two one-argument rows. `Ctor<I; A>` is the leading-empty-row
+spelling — no comma between the head and the `;`, so the constructor's first row is empty (its own
+no-argument overload) and its second is `[A]`.
+
+_Claude-directed 2026-08-13, executing the owner's 2D-overloads ruling._
+
+## §170 — The descriptor carries the implementer's whole type; an intersection means an intersection
+
+A file-internal generic base (`libraries/di.core/src/ServiceDescriptor/ServiceDescriptor.ts`)
+carries what every registration has: `interface Descriptor<Kind, Implementer, ImplementerType
+extends Type> { kind; serviceType; implementer; implementerType }` — the address a registration
+answers to keeps the name `serviceType`. Only three aliases reach the public surface:
+`CtorDescriptor<Scopes>` is the base at `'ctor'` / `Ctor` / `ConstructorType`, intersected with a
+scope member; `FactoryDescriptor<Scopes>` is the same shape at `'factory'` / `Func` /
+`FunctionType`; `ValueDescriptor` is the base at `'value'` / `unknown` / `Type`, carrying no scope
+member at all — a value IS its own instance, so there is no construction for a lifetime to govern.
+Both intersections are wrapped in `Flatten` so a hover reads one member list rather than an `A & B`
+expression.
+
+The payload member is `implementer` on all three kinds, and `implementerType` is its type —
+`ConstructorType`, `FunctionType`, and the value's own `Type` respectively — with no separate
+stored-signatures member; every reader wanting a registration's parameter rows reads
+`implementerType.args`. The three static factories `ServiceDescriptor.ctor` / `.factory` / `.value`
+stay distinct rather than collapsing to one dispatcher, because how the container reaches a service
+is the CALLER'S INTENT and is not derivable from the implementer's own type — a function registered
+as a value must be handed back, never called. `op.ts`'s `equals` compares `implementerType` by
+`===`, since the intern table already decides `Type` equality — two descriptors naming the same
+callable node ARE the same descriptor, structurally. The registration verbs' public parameter is
+named `implementerType` throughout; no public API spells the abbreviation "impl".
+
+The builder's hand-roller door (`libraries/di.core/src/builder.ts`) mints the anonymous callable its
+rows describe, filed under the type being registered: `withSignature(...paramTypes)` gives one row,
+`withSignatures(...rows)` gives several — both spend the SAME `implementerType` slot `withType(implementerType)`
+spends, so a `Pending` registration takes exactly one of the three doors onto it.
+
+Native rows are the only encoding of an overload set now, so `IntersectionType` no longer stands in
+for one anywhere on the registration surface: every registration verb, `withType`, and
+`addHostedService`/`addMetricsListenerType` take a constructor or function type outright rather than
+a union with `IntersectionType` — an intersection means an intersection (`A & B`, both required at
+once), never an overload set spelled the wrong way.
+
+The resolution engine reads `implementerType.args` the same way: `CallSite.ts`'s row choice is
+longest-row-first, first-fully-resolvable-wins — the first parameter row, walked longest to
+shortest, whose every parameter resolves to a call site is the one the engine builds, so an
+overloaded registration prefers its most-specific answerable row over a shorter one that also
+resolves.
+
+_Claude-directed 2026-08-13, executing the owner's 2D-overloads ruling._
+
+## §171 — `typefor` is the single value-observing derivation door
+
+`typefor<T>()` / `typefor(value)` / `typefor<typeof C>()` all derive a `Type` tree through the ONE
+shared derivation layer (`transforms/internal/tokens.DeriveTyped`, `transforms/internal/
+typeemit.EmitDerived`) — observing a class or factory value's own callable shape is `typefor`'s
+value-argument overload, not a separate primitive. `DeriveTyped` walks EVERY construct or call
+signature a declaration carries, not just the first, so an overloaded declaration derives one
+parameter row per overload — `typefor<typeof Widget>()` is how an author spells a class or factory's
+whole implementation type as `addClass`/`addFactory`'s third argument, standing in for a hand-rolled
+`Type.ctor(...)`/`Type.func(...)`.
+
+The emitted text is rows-always, matching the factory's positional door (§168):
+`typeemit.EmitDerived`'s `signatureShaped` helper always emits `Type.ctor(instanceType, [[...]])` /
+`Type.func(returnType, [[...]])`, one row per overload the declaration answers to, whether the
+declaration carries one call signature or several — the same call a hand-writer would compose,
+spelled automatically.
+
+_Claude-directed 2026-08-13, executing the owner's 2D-overloads ruling._
 
 ## §172 — A member name contributed by two `extends`-only `declare module` blocks needs a direct duplicate on each side
 

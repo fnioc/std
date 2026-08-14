@@ -196,7 +196,7 @@ export const HostBuilderHostingAugmentations: AugmentationSet2<IHostBuilder,
             new ConsoleLifetime(resolver.getRequiredService(CONSOLE_LIFETIME_OPTIONS_TYPE),
               resolver.getRequiredService(HOST_ENVIRONMENT_TYPE),
               resolver.getRequiredService(HOST_APPLICATION_LIFETIME_TYPE),
-              resolver.getRequiredService(LOGGER_FACTORY_TYPE)), Type.func(HOST_LIFETIME_TYPE, RESOLVER_TYPE));
+              resolver.getRequiredService(LOGGER_FACTORY_TYPE)), Type.func(HOST_LIFETIME_TYPE, [[RESOLVER_TYPE]]));
       });
     },
 

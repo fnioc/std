@@ -557,7 +557,7 @@ func (st *fileState) registerPrimitives(
 			}
 		}
 		use := PrimitiveUse{Name: prim, TypeArgs: bound, Composed: composed}
-		// A VALUE-argument primitive (signatureof(ctor), tokenof(value)) records the
+		// A VALUE-argument primitive (typefor(ctor), tokenof(value)) records the
 		// PARSE node behind its spliced argument, because the consuming stage's only
 		// use for it is a checker query. A TYPE-argument primitive (nameof<T>()) has
 		// no value argument and leaves this nil.
@@ -580,7 +580,7 @@ func (st *fileState) registerPrimitives(
 // substitutes, `callArguments(call)` can hand back an argument earlier passes
 // rebuilt or replaced. Recording that node made `ValueArg` a rewritten node, and
 // its two consumers — the nameof stage's tokenfor/tokenof value branches and the
-// signatureof stage's artifacts branch — feed it straight to the checker. Typing
+// typefor stage's artifacts branch — feed it straight to the checker. Typing
 // it resolves the enclosing call's overloads, which contextually types the minted,
 // symbol-less literals downstream stages produced, and the checker nil-derefs
 // (plugin.CheckerAnchor). Concretely:

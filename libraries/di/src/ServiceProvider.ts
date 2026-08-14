@@ -1,4 +1,4 @@
-import { Manifest, ServiceDescriptor, TypeSignatures, UnsatisfiableError } from '@rhombus-std/di.core';
+import { Manifest, ServiceDescriptor, UnsatisfiableError } from '@rhombus-std/di.core';
 import { augment, type ConstructorType, type FunctionType, type IServiceProvider, NotImplementedError,
   Type } from '@rhombus-std/primitives';
 import { typefor } from '@rhombus-std/primitives.extras';
@@ -69,15 +69,15 @@ export class ServiceProvider {
 
   /**
    * Synthesizes a throwaway {@link ServiceDescriptor} for `value` under the address `type`
-   * itself, its signature `type`'s own parameter types, and resolves it through the engine's
+   * itself, `type` standing as its own implementer type, and resolves it through the engine's
    * `additionalServices` channel — so `value` is realized exactly like a registered constructor
-   * or factory, just against a manifest composed for this one call and discarded after.
+   * or factory, just against a manifest composed for this one call and discarded after. The
+   * node's own parameter rows are therefore the calls the engine may build it through.
    */
   #getServiceFromValue(type: ConstructorType | FunctionType, value: Ctor | Func): any {
-    const signature = TypeSignatures.fromImplType(type);
     const descriptor = type.kind === 'ctor'
-      ? ServiceDescriptor.ctor(type, value as Ctor, signature)
-      : ServiceDescriptor.factory(type, value as Func, signature);
+      ? ServiceDescriptor.ctor(type, value as Ctor, type)
+      : ServiceDescriptor.factory(type, value as Func, type);
     return this.#engine.resolve(type, { serviceProvider: this, additionalServices: [descriptor] });
   }
 

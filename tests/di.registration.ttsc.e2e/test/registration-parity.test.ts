@@ -4,26 +4,24 @@ import { mkdirSync, readFileSync, rmSync, symlinkSync, writeFileSync } from 'nod
 import { homedir } from 'node:os';
 import { basename, join, resolve } from 'node:path';
 
-// Production-path e2e for the signatureof primitive, plus the deps-free
-// `addValue<I>(value)` sugar riding the same inline path. It drives the REAL
-// ttsc over a temp project TWICE over the IDENTICAL source — through two
-// DIFFERENT spawn descriptors for the SAME always-on host (W7) — then asserts
-// they emit byte-identical output:
+// Production-path e2e for the registration authoring surface. It drives the
+// REAL ttsc over a temp project TWICE over the IDENTICAL source — through two
+// DIFFERENT spawn descriptors for the SAME always-on host — then asserts they
+// emit byte-identical output:
 //
 //   The type-driven `addClass<I>(C)` / `addFactory<I>(fn)` sugar bodies
-//   (di.extras's rhombus-std inline entries) substitute their token argument
-//   via tokenfor, forwarding the rest positionally — no signatureof call is
-//   inserted by that sugar today, so `services.addClass<IFoo>(Foo)` alone
-//   never reaches the signatureof stage. That gap is covered separately below
-//   by a genuine SOURCE-WRITTEN signatureof(ctor) call, the shape a
-//   hand-writer reaches for directly.
+//   (di.extras's rhombus-std inline entries) substitute their address argument
+//   via typefor, forwarding the rest positionally, so the sugar half never
+//   spells an implementation type of its own. That half is covered separately
+//   below by a genuine SOURCE-WRITTEN `typefor<typeof C>()` third argument, the
+//   shape a hand-writer reaches for directly.
 //
 // The load-bearing guarantee for the sugar half is descriptor independence:
 // the whole always-on stage table runs regardless of which descriptor spawned
-// the host, so the two lowerings are byte-identical. The sibling
-// inline.ttsc.e2e suite covers the token derivation itself; this one covers
+// the host, so the two emissions are byte-identical. The sibling
+// inline.ttsc.e2e suite covers the address derivation itself; this one covers
 // the deps-free addValue form plus, in the second describe block below, the
-// signatureof primitive itself over a non-trivial (dependency-carrying) value.
+// implementation-type derivation over a dependency-carrying value.
 //
 // Toolchain pinning, the single shared plugin cache, and the one-project-dir /
 // two-tsconfig layout all mirror the inline.ttsc.e2e harness; see its header.
@@ -44,7 +42,7 @@ const PRIMITIVES_TRANSFORMER = join(REPO_ROOT, 'libraries', 'primitives.extras')
 // Outside the repo tree — the sandbox must sit outside any enclosing package.json
 // or ttsc re-roots its token derivation to that package; keyed by the worktree dir
 // name so concurrent sessions don't collide (see the inline.ttsc.e2e header).
-const projDir = join(homedir(), '.cache', 'fnioc-ttsc', 'sandboxes', basename(REPO_ROOT), 'signatureof');
+const projDir = join(homedir(), '.cache', 'fnioc-ttsc', 'sandboxes', basename(REPO_ROOT), 'registration');
 const COLD_BUILD_MS = 600_000;
 
 function link(target: string, linkPath: string): void {
@@ -138,17 +136,14 @@ services.addFactory<IBar>((dep: IDep) => new BarImpl(dep));
 services.addValue<IBaz>(bazValue);
 `;
 
-// HAND_SOURCE is the genuine hand-writer's path: an EXPLICIT `signatureof(ctor)`
-// third argument to the REAL (unmodified) di.core Manifest.addClass overload — no
-// sugar, no inline substitution, no local declare-module override. This is the
-// shape §155's own worked example spells (`this.addClass(typefor<IFoo>(), Foo,
-// signatureof(Foo))`), and the one this suite was missing: the addClass<T>() sugar
-// above never calls signatureof at all (its body forwards its own arguments
-// positionally after the token), so APP_SOURCE alone never reaches this stage.
+// HAND_SOURCE is the genuine hand-writer's path: an EXPLICIT implementation type
+// as the third argument to the REAL (unmodified) di.core Manifest.addClass verb —
+// no sugar, no inline substitution, no local declare-module override. The
+// addClass<T>() sugar above forwards its own arguments positionally after the
+// address, so APP_SOURCE alone never derives an implementation type.
 const HAND_SOURCE = `
 import type { Manifest } from "@rhombus-std/di.core";
 import { typefor } from "@rhombus-std/primitives.extras";
-import { signatureof } from "@rhombus-std/di.extras";
 
 interface IClock {}
 interface IWidget {}
@@ -159,7 +154,7 @@ class Widget implements IWidget {
 
 declare const services: Manifest<"singleton">;
 
-export const registered = services.addClass(typefor<IWidget>(), Widget, signatureof(Widget));
+export const registered = services.addClass(typefor<IWidget>(), Widget, typefor<typeof Widget>());
 `;
 
 function writeTsconfig(dir: string, name: string, outDir: string, plugins: Array<{ transform: string; }>): void {
@@ -191,14 +186,14 @@ function setupWorkspace(): void {
   link(PRIMITIVES_TRANSFORMER, join(nm, '@rhombus-std', 'primitives.extras'));
 
   // The consumer must depend on di.core (the type ANCHOR the inline entries name)
-  // AND di.extras (which now owns the rhombus-std inline publish list + the
-  // signatureof primitive), so the inline collector walks to both.
+  // AND di.extras (which owns the rhombus-std inline publish list), so the inline
+  // collector walks to both.
   writeFileSync(
     join(projDir, 'package.json'),
-    // A package name WITHOUT "tokenfor"/"signatureof" substrings so the derived
+    // A package name carrying no primitive's name as a substring, so the derived
     // tokens (which embed the package name) don't collide with the primitive-call
     // survival assertions below.
-    JSON.stringify({ name: 'di-sig-app', version: '0.0.0',
+    JSON.stringify({ name: 'di-reg-app', version: '0.0.0',
       dependencies: { '@rhombus-std/di.core': 'workspace:*', '@rhombus-std/di.extras': 'workspace:*' } }),
   );
   writeFileSync(join(projDir, 'src', 'app.ts'), APP_SOURCE);
@@ -214,12 +209,12 @@ function setupWorkspace(): void {
   }]);
 }
 
-// The hand-written signatureof fixture gets its OWN, fully isolated project —
-// sharing app.ts's project confused the inline collector (a source-written
-// signatureof(Widget) call alongside app.ts's addClass<T>() sugar produced
-// spurious INLINE_INFERRED_TYPE_ARGUMENT diagnostics against app.ts's OWN
-// calls), so it is driven independently rather than folded into setupWorkspace.
-const handProjDir = join(homedir(), '.cache', 'fnioc-ttsc', 'sandboxes', basename(REPO_ROOT), 'signatureof-hand');
+// The hand-written fixture gets its OWN, fully isolated project — a
+// source-written primitive call alongside app.ts's addClass<T>() sugar confuses
+// the inline collector into spurious INLINE_INFERRED_TYPE_ARGUMENT diagnostics
+// against app.ts's OWN calls, so it is driven independently rather than folded
+// into setupWorkspace.
+const handProjDir = join(homedir(), '.cache', 'fnioc-ttsc', 'sandboxes', basename(REPO_ROOT), 'registration-hand');
 
 function setupHandWorkspace(): void {
   const nm = join(handProjDir, 'node_modules');
@@ -239,7 +234,7 @@ function setupHandWorkspace(): void {
 
   writeFileSync(
     join(handProjDir, 'package.json'),
-    JSON.stringify({ name: 'di-sig-hand', version: '0.0.0',
+    JSON.stringify({ name: 'di-reg-hand', version: '0.0.0',
       dependencies: { '@rhombus-std/di.core': 'workspace:*', '@rhombus-std/di.extras': 'workspace:*' } }),
   );
   writeFileSync(join(handProjDir, 'src', 'hand.ts'), HAND_SOURCE);
@@ -249,7 +244,7 @@ function setupHandWorkspace(): void {
 // A LowerResult exposes both the JS a caller would run (types stripped, the
 // existing app.ts / descriptor-independence assertions read this) and the
 // still-typed TypeScript ttsc lowered a source file to — the form
-// TestSignatureofHandWrittenRetypechecks below re-typechecks, since the JS
+// the hand-written re-typecheck below reads, since the JS
 // form has no types left to check.
 interface LowerResult {
   js(file: string): string;
@@ -317,15 +312,15 @@ beforeAll(() => {
   handTypedWithInline = handResult.ts('hand');
 }, COLD_BUILD_MS);
 
-describe.skipIf(!toolchainReady)('signatureof primitive — addClass / addFactory / addValue sugar', () => {
+describe.skipIf(!toolchainReady)('registration sugar — addClass / addFactory / addValue', () => {
   test('the sugar is lowered to a Type the caller could have written by hand, with no generics or primitives left', () => {
     const typeModule = readTypeModule(projDir, 'dist-inline');
     // Each verb takes the service type as its first argument, resolved from the
     // generated const module — the same Type factories a caller writing this
     // without the transform would reach for.
-    const fooType = constFor(typeModule, 'Type.imported("IFoo", "di-sig-app/tokens/app")');
-    const barType = constFor(typeModule, 'Type.imported("IBar", "di-sig-app/tokens/app")');
-    const bazType = constFor(typeModule, 'Type.imported("IBaz", "di-sig-app/tokens/app")');
+    const fooType = constFor(typeModule, 'Type.imported("IFoo", "di-reg-app/tokens/app")');
+    const barType = constFor(typeModule, 'Type.imported("IBar", "di-reg-app/tokens/app")');
+    const bazType = constFor(typeModule, 'Type.imported("IBaz", "di-reg-app/tokens/app")');
     expect(withInline).toContain(`.addClass(${fooType}`);
     expect(withInline).toContain(`.addFactory(${barType}`);
     expect(withInline).toContain(`.addValue(${bazType}`);
@@ -340,7 +335,6 @@ describe.skipIf(!toolchainReady)('signatureof primitive — addClass / addFactor
     expect(withInline).not.toContain('typefor(');
     expect(withInline).not.toContain('tokenfor<');
     expect(withInline).not.toContain('tokenfor(');
-    expect(withInline).not.toContain('signatureof(');
     // No Type factory of ANY name is spelled at the call site — the whole tree
     // lives in the generated module.
     expect(withInline).not.toContain('Type.');
@@ -355,11 +349,11 @@ describe.skipIf(!toolchainReady)('signatureof primitive — addClass / addFactor
   });
 
   test('descriptor independence: two different spawn descriptors emit the identical output', () => {
-    // Both tsconfigs compile the IDENTICAL source through the SAME always-on host
-    // (W7), differing only in which descriptor spawned it. Since the host performs
-    // no stage selection, the emitted bytes must be identical — whole-output
-    // equality also pins import elision, the derived signature array, and
-    // surrounding whitespace.
+    // Both tsconfigs compile the IDENTICAL source through the SAME always-on host,
+    // differing only in which descriptor spawned it. Since the host performs no
+    // stage selection, the emitted bytes must be identical — whole-output equality
+    // also pins import elision, the derived implementation type, and surrounding
+    // whitespace.
     const addLine = (src: string) => src.split('\n').find((l) => l.includes('.addClass('))?.trim();
     const addValueLine = (src: string) => src.split('\n').find((l) => l.includes('.addValue('))?.trim();
     expect(addLine(withInline)).toBeDefined();
@@ -372,7 +366,7 @@ describe.skipIf(!toolchainReady)('signatureof primitive — addClass / addFactor
 
 // balancedCall returns the argument-list text of the call opening at marker
 // (the substring from marker's matching `(` to its balanced `)`, exclusive of
-// both parens) — used below to isolate the Type.ctor(...) node's own arguments
+// both parens) — used below to isolate the Type.ctor(..., [[]]) node's own arguments
 // from the surrounding addClass(...) call.
 function balancedCall(src: string, marker: string): string {
   const start = src.indexOf(marker);
@@ -415,9 +409,9 @@ function topLevelArgCount(argsText: string): number {
 // retypecheck runs a plain (plugin-less) tsc over already-lowered source —
 // text with every primitive already substituted, so no ttsc host is needed —
 // against the REAL di.core / primitives packages, asserting it type-checks
-// clean. This is what proves the emitted Type.ctor(...) node is genuinely
-// assignable to addClass's real `implType: ConstructorType | IntersectionType`
-// parameter, not merely a string a hand-writer COULD have typed.
+// clean. This is what proves the emitted Type.ctor(..., [[]]) node is genuinely
+// assignable to addClass's real `implementerType: ConstructorType` parameter, not
+// merely a string a hand-writer COULD have typed.
 function retypecheck(source: string): { readonly status: number | null; readonly output: string; } {
   const dir = join(handProjDir, 'retypecheck');
   rmSync(dir, { recursive: true, force: true });
@@ -441,44 +435,47 @@ function retypecheck(source: string): { readonly status: number | null; readonly
   return { status: result.status, output: result.stdout + result.stderr };
 }
 
-describe.skipIf(!toolchainReady)("signatureof primitive — a hand-writer's explicit third argument", () => {
-  test('signatureof(ctor) lowers to the Type.ctor(...) node a hand-writer would spell', () => {
-    // The primitive is fully lowered: no signatureof/typefor call, no Type import
-    // missing.
-    expect(handWithInline).not.toContain('signatureof(');
+describe.skipIf(!toolchainReady)("implementation type — a hand-writer's explicit third argument", () => {
+  test('typefor<typeof C>() derives the Type.ctor(..., [[]]) node a hand-writer would spell', () => {
+    // The primitive is fully substituted: no typefor call left, and the generated
+    // module the emitted consts are read from is imported.
     expect(handWithInline).not.toContain('typefor(');
-    expect(handWithInline).toContain(`from "@rhombus-std/primitives"`);
+    expect(handWithInline).not.toContain('typefor<');
+    expect(handWithInline).toContain(`from "./__typefor__.js"`);
 
-    // The SERVICE type came from typefor, which hoists: the call site carries a
-    // reference and the module holds the spelling. The IMPL node came from
-    // signatureof, which spells its tree where it stands — so one call carries
-    // both forms, and both name the same runtime types.
+    // Both arguments came from typefor, so both hoist: the call site carries two
+    // const references and the module holds the spellings. The implementation
+    // const answers to one call, so it spells flat — the instance type followed
+    // by that one dependency, each itself a const.
     const module = readTypeModule(handProjDir, 'dist-inline');
-    const widget = constFor(module, 'Type.imported("IWidget", "di-sig-hand/tokens/hand")');
-    const want = `.addClass(${widget}, Widget, `
-      + `Type.ctor(Type.imported("Widget", "di-sig-hand/tokens/hand"), Type.imported("IClock", "di-sig-hand/tokens/hand")))`;
+    const widget = constFor(module, 'Type.imported("IWidget", "di-reg-hand/tokens/hand")');
+    const widgetClass = constFor(module, 'Type.imported("Widget", "di-reg-hand/tokens/hand")');
+    const clock = constFor(module, 'Type.imported("IClock", "di-reg-hand/tokens/hand")');
+    const implementerType = constFor(module, `Type.ctor(${widgetClass}, [[${clock}]])`);
+    const want = `.addClass(${widget}, Widget, ${implementerType})`;
     expect(handWithInline).toContain(want);
   });
 
-  test('the Type.ctor(...) node carries one argument per real dependency (the arity blind spot)', () => {
-    // Widget's constructor takes exactly one dependency (clock: IClock), so its
-    // derived node must carry exactly two positional arguments: the instance type
-    // FOLLOWED BY that one dependency — never a bare instance type (an arity that
-    // would silently drop the dependency) and never more than two (a duplicated or
-    // phantom slot).
-    const ctorArgs = balancedCall(handWithInline, 'Type.ctor(');
+  test('the Type.ctor(..., [[]]) node carries one argument per real dependency (the arity blind spot)', () => {
+    // Widget's constructor takes exactly one dependency (clock: IClock) and answers
+    // to one call, so its derived node spells flat and carries exactly two
+    // positional arguments: the instance type FOLLOWED BY that one dependency —
+    // never a bare instance type (an arity that would silently drop the dependency)
+    // and never more than two (a duplicated or phantom slot). The const holding
+    // it is where that spelling lives.
+    const ctorArgs = balancedCall(readTypeModule(handProjDir, 'dist-inline'), 'Type.ctor(');
     expect(topLevelArgCount(ctorArgs)).toBe(2);
   });
 
   test('the lowered registration re-typechecks against the REAL di.core Manifest.addClass', () => {
-    // handTypedWithInline is the lowered file BEFORE tsc's own type-stripping
-    // emit — signatureof(Widget) already substituted to Type.ctor(...), every
-    // other primitive gone, but the surrounding TS (the interfaces, the class,
-    // the import statements) still intact. Feeding it back through a plain,
-    // plugin-less tsc against the real di.core/primitives packages is the proof
-    // that addClass's real `implType: ConstructorType | IntersectionType`
-    // parameter accepts the derived node — not just that the string LOOKS right.
-    expect(handTypedWithInline).not.toContain('signatureof(');
+    // handTypedWithInline is the emitted file BEFORE tsc's own type-stripping —
+    // every primitive already substituted to its Type tree, but the surrounding
+    // TS (the interfaces, the class, the import statements) still intact. Feeding
+    // it back through a plain, plugin-less tsc against the real
+    // di.core/primitives packages is the proof that addClass's real
+    // `implementerType: ConstructorType` parameter accepts the derived node — not just
+    // that the string LOOKS right.
+    expect(handTypedWithInline).not.toContain('typefor(');
     const { status, output } = retypecheck(handTypedWithInline);
     expect(status).toBe(0);
     expect(output.trim()).toBe('');

@@ -8,12 +8,12 @@ import (
 	"github.com/samchon/ttsc/packages/ttsc/driver"
 )
 
-// buildSelfInlineWorkspace lays out the W3 self-registration workspace: a core
+// buildSelfInlineWorkspace lays out the self-registration workspace: a core
 // package literally named `@rhombus-std/di.core` carrying BOTH the generic
 // (`addClass<T>(ctor)`) and the no-type-arg self (`addClass(ctor)`) sugar entries
 // with their real bodies, so the SAME no-type-arg registration
 // `services.addClass(SqlUserRepo)` can be lowered two ways — through the INLINE
-// pipeline (inline -> tokenfor value-arg -> signatureof) and through the di DIRECT
+// pipeline (inline -> tokenfor value-arg -> typefor) and through the di DIRECT
 // stage's inferred lowering. It is the fixture the self-registration parity tests
 // drive.
 //
@@ -57,27 +57,26 @@ declare const HOLE: unique symbol;
 export type Hole<N extends number, C = unknown> = C & { readonly [HOLE]?: N };
 export type $<N extends number> = Hole<N>;
 `)
-	// The real sugar bodies, authored over the compile-time primitives (tokenfor /
-	// tokenof from primitives, signatureof from di.extras). The self bodies omit
-	// the scope/key slots entirely and derive the token from the VALUE — addClass /
+	// The real sugar bodies, authored over the compile-time primitives — tokenfor,
+	// tokenof, and typefor, all from primitives.extras. The self bodies omit the
+	// scope/key slots entirely and derive the token from the VALUE — addClass /
 	// addFactory via the produced-type `tokenfor(value)`, addValue via the raw-type
 	// `tokenof(value)` (an already-built value registers under its own type, matching
 	// the di engine's raw-type addValue path); the generic body is present only so a
 	// no-type-arg call has an alternative overload to (correctly) NOT bind to.
-	writeFile(t, filepath.Join(core, "src", "inline.ts"), `import { tokenfor, tokenof } from '@rhombus-std/primitives.extras';
-import { signatureof } from '@rhombus-std/di.extras';
+	writeFile(t, filepath.Join(core, "src", "inline.ts"), `import { tokenfor, tokenof, typefor } from '@rhombus-std/primitives.extras';
 import type { IServiceManifestBase } from './index';
 export const ManifestInline = {
   addClass<T>(this: IServiceManifestBase, ctor: unknown): unknown {
-    return this.addClass(tokenfor<T>(), ctor, signatureof(ctor));
+    return this.addClass(tokenfor<T>(), ctor, typefor(ctor));
   },
 };
 export const ManifestSelfInline = {
   addClass(this: IServiceManifestBase, ctor: unknown): unknown {
-    return this.addClass(tokenfor(ctor), ctor, signatureof(ctor));
+    return this.addClass(tokenfor(ctor), ctor, typefor(ctor));
   },
   addFactory(this: IServiceManifestBase, factory: unknown): unknown {
-    return this.addFactory(tokenfor(factory), factory, signatureof(factory));
+    return this.addFactory(tokenfor(factory), factory, typefor(factory));
   },
   addValue(this: IServiceManifestBase, value: unknown): unknown {
     return this.addValue(tokenof(value), value);
@@ -139,12 +138,11 @@ func diCallToken(t *testing.T, out, verb string) string {
 // TestSelfInlineAddClassMatchesDiDirect is the load-bearing W3 parity proof for
 // addClass: the no-type-arg self-registration `services.addClass(SqlUserRepo)`
 // lowered through the INLINE pipeline (inline self body -> value-arg tokenfor ->
-// signatureof) carries the SAME service token AND the same dependency-signature
-// array as the di DIRECT stage's inferred lowering of the identical call. The token
-// derives from the ctor's construct-signature return type (the instance it builds),
-// the deps from its constructor parameters — both shared through
-// tokens.ProducedTypeOf / the signatureof extractor, so parity holds by
-// construction.
+// typefor) carries the SAME service token AND the same dependency node as the di
+// DIRECT stage's inferred lowering of the identical call. The token derives from
+// the ctor's construct-signature return type (the instance it builds), the deps
+// from its constructor parameters — both shared through tokens.ProducedTypeOf /
+// typefor's own value-argument derivation, so parity holds by construction.
 func TestSelfInlineAddClassMatchesDiDirect(t *testing.T) {
 	src := `import { services } from '@rhombus-std/di.core';
 interface IDb {}
@@ -170,7 +168,7 @@ services.addClass(SqlUserRepo);
 	// The dependency node — di-direct's frozen golden still carries the retired
 	// `[[...]]` array format (§155/§157 supersede it), so this pins the current
 	// Type.ctor(...) shape directly rather than comparing against that golden.
-	wantDeps := `Type.ctor(Type.imported("SqlUserRepo", "@scope/app/main"), Type.imported("IDb", "@scope/app/main"))`
+	wantDeps := `Type.ctor(Type.imported("SqlUserRepo", "@scope/app/main"), [[Type.imported("IDb", "@scope/app/main")]])`
 	if inlineDeps := typeNodeArgFrom(t, inlineOut); inlineDeps != wantDeps {
 		t.Fatalf("addClass dependency node mismatch:\n got  = %s\n want = %s", inlineDeps, wantDeps)
 	}
@@ -178,7 +176,7 @@ services.addClass(SqlUserRepo);
 
 // TestSelfInlineAddFactoryMatchesDiDirect is the W3 parity proof for addFactory:
 // `services.addFactory(makeThing)` lowered through the inline self body's
-// value-arg tokenfor + signatureof matches the di direct stage's inferred lowering.
+// value-arg tokenfor + typefor matches the di direct stage's inferred lowering.
 // The token derives from the factory's CALL-signature return type; the deps from
 // its call parameters.
 func TestSelfInlineAddFactoryMatchesDiDirect(t *testing.T) {
@@ -204,7 +202,7 @@ services.addFactory(makeThing);
 	}
 	// See TestSelfInlineAddClassMatchesDiDirect: pinned directly rather than
 	// against di-direct's frozen (retired-format) golden.
-	wantDeps := `Type.func(Type.imported("Thing", "@scope/app/main"), Type.imported("IDb", "@scope/app/main"))`
+	wantDeps := `Type.func(Type.imported("Thing", "@scope/app/main"), [[Type.imported("IDb", "@scope/app/main")]])`
 	if inlineDeps := typeNodeArgFrom(t, inlineOut); inlineDeps != wantDeps {
 		t.Fatalf("addFactory dependency node mismatch:\n got  = %s\n want = %s", inlineDeps, wantDeps)
 	}

@@ -93,7 +93,7 @@ export const ServiceManifestMemoryCacheAugmentations: AugmentationSet2<DefaultMa
       m = m.tryAddFactory(MEMORY_CACHE_TYPE,
         (resolver: IServiceProvider) =>
           new MemoryCache(resolver.getRequiredService(MEMORY_CACHE_OPTIONS_ACCESSOR_TYPE),
-            resolver.getService(LOGGER_FACTORY_TYPE)), Type.func(MEMORY_CACHE_TYPE, RESOLVER_TYPE),
+            resolver.getService(LOGGER_FACTORY_TYPE)), Type.func(MEMORY_CACHE_TYPE, [[RESOLVER_TYPE]]),
         'singleton') as Manifest<
           string
         >;
@@ -114,7 +114,7 @@ export const ServiceManifestMemoryCacheAugmentations: AugmentationSet2<DefaultMa
         new MemoryDistributedCache(
           resolver.getRequiredService(MEMORY_DISTRIBUTED_CACHE_OPTIONS_ACCESSOR_TYPE),
           resolver.getService(LOGGER_FACTORY_TYPE),
-        ), Type.func(DISTRIBUTED_CACHE_TYPE, RESOLVER_TYPE), 'singleton') as Manifest<string>;
+        ), Type.func(DISTRIBUTED_CACHE_TYPE, [[RESOLVER_TYPE]]), 'singleton') as Manifest<string>;
       return m;
     },
   };

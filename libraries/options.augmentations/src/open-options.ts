@@ -34,6 +34,6 @@ export function ensureOpenOptions(manifest: Manifest<string>): Manifest<string> 
     openOptionsType,
     (resolver: IServiceProvider, optionsType: Type, makeBase: Func<[], unknown>): IOptions<unknown> =>
       assembleOptions(resolver, optionsType, makeBase),
-    Type.func(openOptionsType, RESOLVER_TYPE, hole, baseFactoryType(hole)),
+    Type.func(openOptionsType, [[RESOLVER_TYPE, hole, baseFactoryType(hole)]]),
   );
 }

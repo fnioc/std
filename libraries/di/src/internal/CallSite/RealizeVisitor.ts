@@ -59,11 +59,13 @@ class RealizeVisitor {
 
   protected visitLateBound(site: LateBoundCallSite): any {
     const context = this.#context;
-    return (...args: any[]) =>
-      context.engine.resolve(site.result, {
+    return (...args: any[]) => {
+      const bound = site.lateBoundArgs.find(row => row.length === args.length) ?? site.lateBoundArgs[0] ?? [];
+      return context.engine.resolve(site.result, {
         serviceProvider: context.serviceProvider,
-        additionalServices: site.lateBoundArgs.map((serviceType, i) => ServiceDescriptor.value(serviceType, args[i])),
+        additionalServices: bound.map((serviceType, i) => ServiceDescriptor.value(serviceType, args[i])),
       });
+    };
   }
 
   protected visitConstant(site: ConstantCallSite): any {

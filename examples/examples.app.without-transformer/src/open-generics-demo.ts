@@ -261,24 +261,24 @@ manifest = manifest.addValue(seedOf(AUDIT_EVENT_TYPE), AUDIT_SEED);
 // first slot is a type CONTAINING `$1`, the second is the `Typeof<$1>` witness.
 // Both are rewritten per closing before the class is constructed.
 manifest = manifest.addClass(TABLE_TEMPLATE, InMemoryTable,
-  Type.ctor(TABLE_TEMPLATE, seedOf(HOLE_1), witnessOf(HOLE_1)), 'singleton');
+  Type.ctor(TABLE_TEMPLATE, [[seedOf(HOLE_1), witnessOf(HOLE_1)]]), 'singleton');
 
 // Template 2 — `IRepository<$1>`, the one a consumer asks for. Its dependency is
 // itself a template closing, so resolving `IRepository<User>` closes
 // `ITable<$1>` to `ITable<User>` on the way down.
 manifest = manifest.addClass(REPOSITORY_TEMPLATE, InMemoryRepository,
-  Type.ctor(REPOSITORY_TEMPLATE, tableOf(HOLE_1), witnessOf(HOLE_1)), 'singleton');
+  Type.ctor(REPOSITORY_TEMPLATE, [[tableOf(HOLE_1), witnessOf(HOLE_1)]]), 'singleton');
 
 // The one exact override, registered AFTER the template it overrides. It is
 // filed at a fully CLOSED type, so it can only ever match `AuditEvent` — the
 // template still serves every other entity.
 manifest = manifest.addClass(repositoryOf(AUDIT_EVENT_TYPE), AuditRepository,
-  Type.ctor(repositoryOf(AUDIT_EVENT_TYPE), tableOf(AUDIT_EVENT_TYPE)), 'singleton');
+  Type.ctor(repositoryOf(AUDIT_EVENT_TYPE), [[tableOf(AUDIT_EVENT_TYPE)]]), 'singleton');
 
 // Template 3 — fully open, arity 2. Each dependency names a DIFFERENT hole, so
 // the two sides close independently.
 manifest = manifest.addClass(JOIN_TEMPLATE, RepositoryJoin,
-  Type.ctor(JOIN_TEMPLATE, repositoryOf(HOLE_1), repositoryOf(HOLE_2)), 'singleton');
+  Type.ctor(JOIN_TEMPLATE, [[repositoryOf(HOLE_1), repositoryOf(HOLE_2)]]), 'singleton');
 
 // Template 4 — PARTIALLY OPEN, and registered after the general one on purpose.
 // The service type pins the left argument (`IJoin<Order,$2>`) and so does the
@@ -286,7 +286,7 @@ manifest = manifest.addClass(JOIN_TEMPLATE, RepositoryJoin,
 // match a join whose left side is an order, and the later registration is the
 // one that takes it.
 manifest = manifest.addClass(ORDER_JOIN_TEMPLATE, OrderJoin,
-  Type.ctor(ORDER_JOIN_TEMPLATE, repositoryOf(ORDER_TYPE), repositoryOf(HOLE_2)), 'singleton');
+  Type.ctor(ORDER_JOIN_TEMPLATE, [[repositoryOf(ORDER_TYPE), repositoryOf(HOLE_2)]]), 'singleton');
 
 // ── the demonstration ───────────────────────────────────────────────────────
 

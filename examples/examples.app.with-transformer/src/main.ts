@@ -257,8 +257,8 @@ services = services.addValue(typefor<ConfigRoot>(), config);
 // slot over an immutable chain, so everything registered into the local
 // `services` above is invisible to `build()` until it is handed back here.
 builder.services = services.addHostedService(InteropWorker,
-  Type.ctor(HOSTED_SERVICE_TYPE, RESOLVER_TYPE, typefor<IHostApplicationLifetime>(), typefor<ILoggerFactory>(),
-    typefor<ConfigRoot>()));
+  Type.ctor(HOSTED_SERVICE_TYPE, [[RESOLVER_TYPE, typefor<IHostApplicationLifetime>(), typefor<ILoggerFactory>(),
+    typefor<ConfigRoot>()]]));
 
 // ── run the scenario ──────────────────────────────────────────────────────────
 

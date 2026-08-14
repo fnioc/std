@@ -174,8 +174,9 @@ where that's cheap, and flag the intended divergence rather than pre-emptively t
   `IServiceScope` declares `getRequiredService`/`isService`, and
   `ServiceProviderOptions.validateScopes` is declared and read by nothing. The registration builder
   is real end to end: `add(type, configure)` hands the configure lambda a fluent chain —
-  `asClass`/`asFactory`/`asValue` choose the implementation, `withSignature`/`withType` name its
-  call shape (exactly one of the two, ever), and `withLifetime`/`taggedAs` set the scope and key. A
+  `asClass`/`asFactory`/`asValue` choose the implementation, `withSignature`/`withSignatures`/
+  `withType` name its call shape as one or more parameter rows (exactly one of the three doors,
+  ever), and `withLifetime`/`taggedAs` set the scope and key. A
   builder that wraps a manifest holds it in a local structural `ManifestSlot`, and an all-in-one
   verb returns the manifest itself rather than a fluent tail. `NotImplementedError` lives in
   `primitives` and extends `Error` directly, since not-implemented is not a container concept.
@@ -185,7 +186,8 @@ where that's cheap, and flag the intended divergence rather than pre-emptively t
   `replaceClass`/`replaceFactory`/`replaceValue`, `removeAll`) plus the three `get*` provider
   members (`getService`/`getRequiredService`/`getServices`) — fifteen entries total, each entry's
   `impl` resolved by walking `src/index.ts`'s re-export graph. The builder chain's own members
-  (`asClass`/`asFactory`/`asValue`/`withSignature`/`withType`/`withLifetime`/`taggedAs`) carry no
+  (`asClass`/`asFactory`/`asValue`/`withSignature`/`withSignatures`/`withType`/`withLifetime`/
+  `taggedAs`) carry no
   inline marker entries yet, so `add(type, configure)` has no type-driven `add<T>(configure)`
   counterpart. `di.extras.options` is a satellite lowering the `addOptions<T>()` sugar.
   The live parity suites under `tests/*.ttsc.e2e` are the test oracle, each asserting the emission
@@ -358,10 +360,13 @@ before touching):
 - **The manifest is IMMUTABLE** — `Manifest` is an iterable decorator chain: every verb
   (`add`/`addFactory`/`addValue`, the descriptor verbs, every augmentation) returns a NEW manifest
   and leaves the receiver alone, so a discarded result registers NOTHING. A verb's long overload
-  takes the impl's composed TYPE NODE (`implType`, a `ConstructorType`/`FunctionType` or an
-  `IntersectionType` of them for an overloaded implementation) as a required arg 3, from which the
-  verb derives the stored dependency signatures; `scope` is arg 4 and `key` arg 5. Naked signature
-  arrays survive only on the builder chain's `withSignature`. A builder that wraps a manifest
+  takes the implementer's whole `Type` node as a required arg 3 — `implementerType`, a
+  `ConstructorType`/`FunctionType` carrying one parameter ROW per overload; an intersection means an
+  intersection — and the descriptor stores that node beside the `implementer` itself, so rows are
+  read through `implementerType.args` and live in one place. `scope` is arg 4 and `key` arg 5. A
+  naked array of parameter types survives only on the builder chain's
+  `withSignature`/`withSignatures`, which mint the anonymous callable those rows describe. A builder
+  that wraps a manifest
   (`ILoggingBuilder`, `IMetricsBuilder`, `IHostApplicationBuilder`) exposes it as a WRITABLE slot
   (a local structural `ManifestSlot`) and siblings over one manifest share ONE holder;
   `IHostBuilder.configureServices` takes a RETURNING delegate (§114).
@@ -552,19 +557,20 @@ tag `pre-tspatch-removal`); lint/typecheck is plain `tsc`. Go comes from **mise 
 system-wide — `mise.toml` declares it, but as `latest`, not a pinned version. Full mechanics:
 `docs/features/transformer-architecture.md`.
 
-**The primitive roster is three verbs over one vocabulary (§137)**: `typefor<T>()` NAMES a type (a
-named type yields its interned `NominalType` address), `schemaof<T>()` EXPANDS one into the `Type`
-tree describing its members — stopping at every name, so recursion terminates by construction —
-and `signatureof(ctor)` OBSERVES a runtime constructor. `tokenfor`/`tokenof` are the string-token
-pair, pending their own held retirement. There is no second structural vocabulary: the bespoke
-config schema grammar (`Schema`/`Infer`/`OPTIONAL`) and the `signaturefor`/`signaturesfor`/`keyof`
-primitives are all retired.
+**The primitive roster is two verbs over one vocabulary (§137)**: `typefor<T>()` NAMES a type (a
+named type yields its interned `NominalType` address) and, given a runtime class or factory value in
+place of a type argument, OBSERVES it instead — deriving the whole callable `Type` its construct or
+call signatures describe; `schemaof<T>()` EXPANDS one into the `Type` tree describing its members —
+stopping at every name, so recursion terminates by construction. `tokenfor`/`tokenof` are the
+string-token pair, pending their own held retirement. There is no second structural vocabulary: the
+bespoke config schema grammar (`Schema`/`Infer`/`OPTIONAL`) and the `signaturefor`/`signaturesfor`/
+`keyof` primitives are all retired.
 
 - **Descriptor wiring — one always-on stage table, NO selection (§119).** Every `*.extras` package's
   `./ttsc` descriptor resolves to the SAME `cmd/ttsc-std` source dir under the SAME name, so `ttsc`
   dedupes every consumer to one cache key and one spawn. There is no stage selection: once spawned,
   the host runs its WHOLE stage table on every file: `mergesynth` first, once, as a pre-pass, then
-  the rest in a fixed canonical order (inline → nameof → typefor → signatureof → schemaof) looped to
+  the rest in a fixed canonical order (inline → nameof → typefor → schemaof) looped to
   a fixed point; a stage that matches nothing is a cheap no-op
   (disjoint match sets). The bespoke di /
   di-options / config domain stages, the `ttsc.stages` markers, `selectStages`/`BaseBundles`, and
@@ -580,7 +586,7 @@ primitives are all retired.
   barrel). `primitives.extras` carries a barrel (the token primitives `tokenfor`/`tokenof`) plus
   its `./ttsc` descriptor. `di.extras` keeps a barrel shipping the `declare module` authoring
   augmentations; its fifteen `rhombus-std` `inline` marker bodies live directly in those
-  augmentation files (no separate `inline.ts`), alongside the `signatureof` throwing stub.
+  augmentation files (no separate `inline.ts`).
   `di.extras.options` keeps a barrel plus its own single-expression `inline.ts` sugar body (the
   `addOptions<T>()` marker, side-parsed from src, never bundled).
 - **Emit mechanism** — `ttsc -p` returns a stdout envelope, not files, so the build runs the Go

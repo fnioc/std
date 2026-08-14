@@ -30,7 +30,7 @@ mergesynth (one-shot pre-pass)
   ↓
 ┌─────────────────────────────────────────────────────────────┐
 │ loop until a pass changes nothing (max 16 passes):           │
-│   inline → nameof → typefor → signatureof → schemaof         │
+│   inline → nameof → typefor → schemaof                       │
 └─────────────────────────────────────────────────────────────┘
 ```
 
@@ -53,16 +53,20 @@ class Startup {
 ```
 
 ```ts
-// pass 1: addClass lowers (nameof + signatureof fire on its new arguments)
-m.addClass('app:IUserRepo', SqlUserRepo, [['app:IDb']]).addFactory<IThing>(makeThing);
-// pass 2: addFactory lowers (nameof + signatureof fire on its new arguments); pass 3 is a no-op — the loop settles
-m.addClass('app:IUserRepo', SqlUserRepo, [['app:IDb']]).addFactory('app:IThing', makeThing, [[]]);
+// pass 1: addClass lowers (nameof + typefor fire on its new arguments)
+m.addClass('app:IUserRepo', SqlUserRepo,
+  Type.ctor(Type.imported('SqlUserRepo', 'app'), [[Type.imported('IDb', 'app')]]))
+  .addFactory<IThing>(makeThing);
+// pass 2: addFactory lowers (nameof + typefor fire on its new arguments); pass 3 is a no-op — the loop settles
+m.addClass('app:IUserRepo', SqlUserRepo,
+  Type.ctor(Type.imported('SqlUserRepo', 'app'), [[Type.imported('IDb', 'app')]]))
+  .addFactory('app:IThing', makeThing, Type.func(Type.imported('IThing', 'app'), [[]]));
 ```
 
 **The enabling invariant is disjoint match sets.** Every transform in the loop owns matches no
 other transform can claim: `inline` matches sugar declarations (a specific set of certified
 member/function shapes); each primitive stage matches its own callee symbol (`nameof` only ever
-matches `tokenfor`/`tokenof` calls, `signatureof` only its own three names, and so on). Nothing in
+matches `tokenfor`/`tokenof` calls, `typefor` only its own name, and so on). Nothing in
 the set can produce work for a stage that already ran this pass and claim it belongs to an earlier
 one — that's what makes "run the whole set repeatedly, no intrinsic order" both correct and
 terminating. A new stage added to the loop must be checked against this invariant before it's
@@ -71,9 +75,9 @@ wired in.
 **Order inside one pass is a reproducibility choice, not a correctness requirement.** The code
 runs the stages in the fixed sequence shown above so output is deterministic across runs, but no
 stage may ever depend on running before or after another one _within_ the same pass — if it did,
-the loop's "just run it again" termination story would break. `signatureof` happens to sit after
-`nameof` because its call shape is disjoint from `nameof`'s (a value-argument primitive vs.
-type-argument primitives), not because anything requires it.
+the loop's "just run it again" termination story would break. `typefor` happens to sit after
+`nameof` because its call shape is disjoint from `nameof`'s (a distinct callee name, whether
+`typefor`'s type-argument or value-argument overload fires), not because anything requires it.
 
 ### Termination: 16 passes, loud on exhaustion
 
@@ -282,16 +286,15 @@ Example/Result columns below are each one real lowering pulled from the engine's
 `pkg:` stands in for whatever module the example type is declared in — a real token carries that
 module's actual name instead.
 
-| Primitive                 | Shape     | Lowers to                                                                                                                      | Example                                                      | Result                                                                                  | Home                | Stage         |
-| ------------------------- | --------- | ------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------ | --------------------------------------------------------------------------------------- | ------------------- | ------------- |
-| `tokenfor<T>()`           | type-arg  | the _service_ token for `T` — strips a `Keyed<T,K>` brand to the bare base                                                     | `tokenfor<IBar>()`                                           | `"pkg:IBar"`                                                                            | `primitives.extras` | `nameof`      |
-| `tokenfor(value)`         | value-arg | the _produced_ token for a value — constructable → construct-sig return, callable → call-sig return, else the value's own type | `tokenfor(Foo)` (`class Foo {}`)                             | `"pkg:Foo"`                                                                             | `primitives.extras` | `nameof`      |
-| `tokenof<T>()`            | type-arg  | the _raw_ token for `T` — never strips a `Keyed<T,K>` brand                                                                    | `tokenof<UserOptions>()`                                     | `"pkg:UserOptions"`                                                                     | `primitives.extras` | `nameof`      |
-| `tokenof(value)`          | value-arg | the raw token for a value's _own_ type — never unwraps a constructor/factory                                                   | `tokenof(makeThing)` (`declare function makeThing(): Thing`) | `"pkg:makeThing"`                                                                       | `primitives.extras` | `nameof`      |
-| `typefor<T>()`            | type-arg  | the runtime `Type` node addressing `T` — the structural sibling of `tokenfor`'s flat string                                    | `typefor<IBar>()`                                            | `Type.imported("IBar", "pkg")`                                                          | `primitives.extras` | `typefor`     |
-| `typefor(value)`          | value-arg | the `Type` node a value's own shape spells — a class as the constructor it is, parameters and all                              | `typefor(Foo)` (`class Foo { constructor(a: IA) {} }`)       | `Type.ctor(Type.imported("Foo", "pkg"), Type.imported("IA", "pkg"))`                    | `primitives.extras` | `typefor`     |
-| `signatureof(ctor \| fn)` | value-arg | the `[[...]]` dependency-signature array for a constructor or function value                                                   | `signatureof(Ctor)` (`Ctor: new (d: IDep) => IThing`)        | `[["pkg:IDep"]]`                                                                        | `di.extras`         | `signatureof` |
-| `schemaof<T>()`           | type-arg  | the `Type` tree describing a record type `T`'s members, stopping at every name                                                 | `schemaof<{ ssl?: boolean }>()`                              | `Type.object({ ssl: Type.union(Type.global("boolean"), Type.typeLiteral(undefined)) })` | `config.extras`     | `schemaof`    |
+| Primitive         | Shape     | Lowers to                                                                                                                                                                                    | Example                                                      | Result                                                                                  | Home                | Stage      |
+| ----------------- | --------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------ | --------------------------------------------------------------------------------------- | ------------------- | ---------- |
+| `tokenfor<T>()`   | type-arg  | the _service_ token for `T` — strips a `Keyed<T,K>` brand to the bare base                                                                                                                   | `tokenfor<IBar>()`                                           | `"pkg:IBar"`                                                                            | `primitives.extras` | `nameof`   |
+| `tokenfor(value)` | value-arg | the _produced_ token for a value — constructable → construct-sig return, callable → call-sig return, else the value's own type                                                               | `tokenfor(Foo)` (`class Foo {}`)                             | `"pkg:Foo"`                                                                             | `primitives.extras` | `nameof`   |
+| `tokenof<T>()`    | type-arg  | the _raw_ token for `T` — never strips a `Keyed<T,K>` brand                                                                                                                                  | `tokenof<UserOptions>()`                                     | `"pkg:UserOptions"`                                                                     | `primitives.extras` | `nameof`   |
+| `tokenof(value)`  | value-arg | the raw token for a value's _own_ type — never unwraps a constructor/factory                                                                                                                 | `tokenof(makeThing)` (`declare function makeThing(): Thing`) | `"pkg:makeThing"`                                                                       | `primitives.extras` | `nameof`   |
+| `typefor<T>()`    | type-arg  | the runtime `Type` node addressing `T` — the structural sibling of `tokenfor`'s flat string                                                                                                  | `typefor<IBar>()`                                            | `Type.imported("IBar", "pkg")`                                                          | `primitives.extras` | `typefor`  |
+| `typefor(value)`  | value-arg | the whole callable `Type` a value's own construct or call signature spells — a class as the constructor type its parameters describe, a factory as the function type its parameters describe | `typefor(Foo)` (`class Foo { constructor(a: IA) {} }`)       | `Type.ctor(Type.imported("Foo", "pkg"), [[Type.imported("IA", "pkg")]])`                | `primitives.extras` | `typefor`  |
+| `schemaof<T>()`   | type-arg  | the `Type` tree describing a record type `T`'s members, stopping at every name                                                                                                               | `schemaof<{ ssl?: boolean }>()`                              | `Type.object({ ssl: Type.union(Type.global("boolean"), Type.typeLiteral(undefined)) })` | `config.extras`     | `schemaof` |
 
 Every primitive in the table is authoring-only: it throws unconditionally if it ever runs, so
 none of them needs a runtime-shaped home.
@@ -354,7 +357,7 @@ naming a class never has that class's surface consulted at all.
 ## The generic inline stage
 
 Every primitive stage carries hand-written knowledge of exactly one call shape — `nameof` always
-lowers to a token, `signatureof` always lowers to a slot array. The **inline stage** is different:
+lowers to a token, `typefor` always lowers to a `Type` node. The **inline stage** is different:
 it is a generic single-expression function-inliner that learns what to substitute from a
 hand-authored publish list, not from compiled-in per-family rules. A library authors its sugar as
 an ordinary typed TypeScript function whose single-return-expression body is written _over_ the
@@ -739,10 +742,10 @@ symbol. Then:
 
 ```ts
 // authored: Widget's second constructor parameter is optional
-manifest.addClass('pkg:Widget', Widget, signatureof(Widget)).addValue('pkg:IWidgetOptions', defaultOptions);
+manifest.addClass('pkg:Widget', Widget, typefor(Widget)).addValue('pkg:IWidgetOptions', defaultOptions);
 ```
 
-Pass 1 lowers `signatureof(Widget)` into that minted object literal. Pass 2 reaches the trailing
+Pass 1 lowers `typefor(Widget)` into that minted object literal. Pass 2 reaches the trailing
 `.addValue(...)` call and asks the checker to resolve it. Answering means typing the receiver,
 which means resolving the `addClass` overload, which means contextually typing the minted object
 literal, and `getContextualTypeForObjectLiteralElement` dereferences the symbol it assumes every
@@ -792,7 +795,7 @@ call site:
 
 - a **type-argument** primitive (`tokenfor<T>()`, `tokenof<T>()`, …) records the bound
   `*checker.Type` for each type parameter;
-- a **value-argument** primitive (`signatureof(ctor)`, `tokenfor(value)`) records the original,
+- a **value-argument** primitive (`typefor(value)`, `tokenfor(value)`) records the original,
   program-bound argument node itself, so the consuming stage can still query the checker through
   it even though the primitive's own callee is synthetic;
 - a **composed-generic** use (`tokenfor<IOptions<T>>()`, where `IOptions` is a type external to
@@ -800,7 +803,7 @@ call site:
   call-site-bound argument types — resolved against the _consumer's_ program later, in the
   lowering stage that owns the token-derivation context.
 
-A downstream stage (`nameof`, `typefor`, `signatureof`, `schemaof`) checks the artifacts map first
+A downstream stage (`nameof`, `typefor`, `schemaof`) checks the artifacts map first
 for any call it visits; a hit means "this is my
 substituted work from this run," a miss falls through to the ordinary checker-anchored
 source-written path. After the loop's final pass, an **emit sweep** walks the artifacts one more

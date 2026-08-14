@@ -203,7 +203,7 @@ jobs:
           - name: e2e-config
             suites: config.extras.ttsc.e2e declare-by-depending.ttsc.e2e typefor.ttsc.e2e
           - name: e2e-derive
-            suites: primitives.extras.ttsc.e2e di.signatureof.ttsc.e2e
+            suites: primitives.extras.ttsc.e2e di.registration.ttsc.e2e
           - name: go-gates
             suites: ""
             go: true

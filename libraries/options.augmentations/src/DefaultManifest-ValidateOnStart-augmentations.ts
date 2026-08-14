@@ -57,7 +57,7 @@ export const ServiceManifestValidateOnStartAugmentations: AugmentationSet2<Defau
       m = m.addFactory(typefor<IStartupValidator>(),
         (resolver: IServiceProvider): IStartupValidator =>
           new StartupValidator(resolver, resolver.getService(collectionType(startupValidationTargetType()))),
-        Type.func(typefor<IStartupValidator>(), RESOLVER_TYPE));
+        Type.func(typefor<IStartupValidator>(), [[RESOLVER_TYPE]]));
       return m;
     },
   };

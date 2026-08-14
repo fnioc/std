@@ -1,7 +1,7 @@
 import { tag as tagType } from './internals/factories.js';
 import { type ArrayType, type ConstructorType, type FunctionType, type GenericType, type GlobalType, type ImportedType,
   type IntersectionType, type IterableType, type ObjectType, type TagType, type TupleType, Type, type TypeLiteralType,
-  type UnionType } from './Type.js';
+  type TypeSignatures, type UnionType } from './Type.js';
 import { TypeVisitor } from './TypeVisitor.js';
 
 /**
@@ -27,7 +27,7 @@ class SubstituteVisitor extends TypeVisitor<Type> {
   protected override visitCtor(type: ConstructorType): Type {
     return Type.ctor({
       instanceType: this.visit(type.instanceType),
-      args: this.#all(type.args),
+      args: this.#allRows(type.args),
       genericArgs: this.#remainingQuantifiers(type.genericArgs),
     });
   }
@@ -35,7 +35,7 @@ class SubstituteVisitor extends TypeVisitor<Type> {
   protected override visitFunc(type: FunctionType): Type {
     return Type.func({
       returnType: this.visit(type.returnType),
-      args: this.#all(type.args),
+      args: this.#allRows(type.args),
       genericArgs: this.#remainingQuantifiers(type.genericArgs),
     });
   }
@@ -85,6 +85,10 @@ class SubstituteVisitor extends TypeVisitor<Type> {
 
   #all(types: readonly Type[]): readonly Type[] {
     return types.map(type => this.visit(type));
+  }
+
+  #allRows(rows: TypeSignatures): TypeSignatures {
+    return rows.map(row => this.#all(row));
   }
 
   /** A quantifier this pass binds is discharged by it; one left unbound still ranges over the result. */

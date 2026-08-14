@@ -42,5 +42,5 @@ export function registerBrowserLifetime(services: Manifest, options: BrowserLife
     (resolver: IServiceProvider) =>
       new BrowserLifetime(resolver.getRequiredService(BROWSER_LIFETIME_OPTIONS_TYPE),
         resolver.getRequiredService(HOST_APPLICATION_LIFETIME_TYPE), resolver.getRequiredService(LOGGER_FACTORY_TYPE),
-        pageLifecycleEvents), Type.func(HOST_LIFETIME_TYPE, RESOLVER_TYPE));
+        pageLifecycleEvents), Type.func(HOST_LIFETIME_TYPE, [[RESOLVER_TYPE]]));
 }

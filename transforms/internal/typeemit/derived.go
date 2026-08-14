@@ -8,14 +8,14 @@ import (
 )
 
 // EmitDerived builds the `Type.*` factory-call expression a tokens.Derived node
-// spells, recursing into a Func/Ctor's return and parameters and a Tag's inner
+// spells, recursing into a Func/Ctor's head and parameter rows and a Tag's inner
 // type.
 func EmitDerived(f *shimast.NodeFactory, binding *valueimport.Binding, d *tokens.Derived) *shimast.Node {
 	switch d.Kind {
 	case tokens.DerivedFunc:
-		return Call(f, binding, "func", signatureShapedArgs(f, binding, d))
+		return signatureShaped(f, binding, d, "func")
 	case tokens.DerivedCtor:
-		return Call(f, binding, "ctor", signatureShapedArgs(f, binding, d))
+		return signatureShaped(f, binding, d, "ctor")
 	case tokens.DerivedTag:
 		return Call(f, binding, "tag", []*shimast.Node{
 			EmitDerived(f, binding, d.Inner),
@@ -36,14 +36,33 @@ func EmitDerived(f *shimast.NodeFactory, binding *valueimport.Binding, d *tokens
 	}
 }
 
-// signatureShapedArgs builds a Func/Ctor call's argument list: the return /
-// instance type first, then each parameter type in order — `func(returnType,
-// ...args)` and `ctor(instanceType, ...args)` share this exact shape.
-func signatureShapedArgs(f *shimast.NodeFactory, binding *valueimport.Binding, d *tokens.Derived) []*shimast.Node {
-	out := make([]*shimast.Node, 0, len(d.Args)+1)
-	out = append(out, EmitDerived(f, binding, d.Ret))
-	for _, a := range d.Args {
+// signatureShaped builds a callable's factory call — the return/instance type
+// followed by its parameter rows as one array of arrays, `func(returnType, [[…], […]])`
+// / `ctor(instanceType, [[…], […]])` — whether the callable answers to one row or several.
+func signatureShaped(f *shimast.NodeFactory, binding *valueimport.Binding, d *tokens.Derived,
+	method string) *shimast.Node {
+	return Call(f, binding, method, []*shimast.Node{
+		EmitDerived(f, binding, d.Ret),
+		EmitRows(f, binding, d.Args),
+	})
+}
+
+// EmitRow builds the factory call for each parameter in one row, in order.
+func EmitRow(f *shimast.NodeFactory, binding *valueimport.Binding, row []*tokens.Derived) []*shimast.Node {
+	out := make([]*shimast.Node, 0, len(row))
+	for _, a := range row {
 		out = append(out, EmitDerived(f, binding, a))
 	}
 	return out
+}
+
+// EmitRows builds a callable's parameter rows as one array literal of arrays —
+// the shape a `Type.func` / `Type.ctor` factory call's rows argument takes, and
+// the shape a `.args` accessor fold produces directly.
+func EmitRows(f *shimast.NodeFactory, binding *valueimport.Binding, rows [][]*tokens.Derived) *shimast.Node {
+	items := make([]*shimast.Node, 0, len(rows))
+	for _, row := range rows {
+		items = append(items, f.NewArrayLiteralExpression(f.NewNodeList(EmitRow(f, binding, row)), false))
+	}
+	return f.NewArrayLiteralExpression(f.NewNodeList(items), false)
 }

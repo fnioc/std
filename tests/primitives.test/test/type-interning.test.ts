@@ -19,8 +19,8 @@ describe('one object per type', () => {
     expect(Type.from('app:A#primary')).toBe(Type.tag(A, 'primary'));
     expect(Type.from('%T')).toBe(Type.generic('T'));
     expect(Type.from('5')).toBe(Type.typeLiteral(5));
-    expect(Type.from('(app:B) => app:A')).toBe(Type.func(A, B));
-    expect(Type.from('new (app:B) => app:A')).toBe(Type.ctor(A, B));
+    expect(Type.from('(app:B) => app:A')).toBe(Type.func(A, [[B]]));
+    expect(Type.from('new (app:B) => app:A')).toBe(Type.ctor(A, [[B]]));
   });
 
   test('the spellings of one type are one object', () => {
@@ -46,19 +46,19 @@ describe('one object per type', () => {
 
 describe('a signature quantifying its own holes', () => {
   const hole = Type.generic('T');
-  const open = Type.func({ returnType: Type.imported('Box', 'app', [hole]), genericArgs: [hole] });
+  const open = Type.func({ returnType: Type.imported('Box', 'app', [hole]), args: [[]], genericArgs: [hole] });
 
   test('spells its quantifiers in front of the signature', () => {
     expect(Type.stringify(open)).toBe('<%T>() => app:Box<%T>');
   });
 
   test('a signature that only mentions the hole is a different node', () => {
-    expect(open).not.toBe(Type.func(Type.imported('Box', 'app', [hole])));
+    expect(open).not.toBe(Type.func(Type.imported('Box', 'app', [hole]), [[]]));
   });
 
   test('a concrete signature quantifies nothing', () => {
-    expect(Type.func(A).genericArgs).toEqual([]);
-    expect(Type.ctor(A).genericArgs).toEqual([]);
+    expect(Type.func(A, [[]]).genericArgs).toEqual([]);
+    expect(Type.ctor(A, [[]]).genericArgs).toEqual([]);
   });
 });
 
@@ -215,5 +215,64 @@ describe('the global door mints an aggregate from its spelling', () => {
 
   test('an imported spelling names an ordinary type, aggregate word or not', () => {
     expect(Type.imported('Iterable', 'app', [A]).kind).toBe('imported');
+  });
+});
+
+describe('Type.adopt', () => {
+  test('a node written out as plain data interns to the node a factory returns', () => {
+    expect(Type.adopt({ kind: 'imported', name: 'A', from: 'app', genericArgs: [] })).toBe(A);
+    expect(Type.adopt({ kind: 'generic', label: 'T' })).toBe(Type.generic('T'));
+  });
+
+  test('the kind written decides the node handed back, so its own members read without a cast', () => {
+    const adopted = Type.adopt({ kind: 'ctor', instanceType: A, args: [[B]], genericArgs: [] });
+    expect(adopted.instanceType).toBe(A);
+    expect(adopted).toBe(Type.ctor(A, [[B]]));
+  });
+
+  test('the walk reaches a literal nested inside a literal', () => {
+    const adopted = Type.adopt({
+      kind: 'array',
+      element: { kind: 'imported', name: 'A', from: 'app', genericArgs: [] } as never,
+    });
+    expect(adopted).toBe(Type.array(A));
+  });
+
+  test('an already-interned node adopts to itself', () => {
+    expect(Type.adopt(A)).toBe(A);
+  });
+});
+
+describe('a callable factory takes its parameter rows whole', () => {
+  test('the positional form spells every row', () => {
+    expect(Type.stringify(Type.ctor(A, [[B]]))).toBe('new (app:B) => app:A');
+    expect(Type.stringify(Type.ctor(A, [[]]))).toBe('new () => app:A');
+    expect(Type.stringify(Type.func(A, [[B], []]))).toBe('(app:B; ) => app:A');
+  });
+
+  test("the object form names the node's own fields, and lands on the same node", () => {
+    expect(Type.ctor({ instanceType: A, args: [[B]], genericArgs: [] })).toBe(Type.ctor(A, [[B]]));
+    expect(Type.func({ returnType: A, args: [[B]], genericArgs: [] })).toBe(Type.func(A, [[B]]));
+  });
+
+  test('quantifiers ride the optional third argument', () => {
+    const hole = Type.generic('T');
+    expect(Type.func(A, [[hole]], [hole])).toBe(Type.func({ returnType: A, args: [[hole]], genericArgs: [hole] }));
+    expect(Type.func(A, [[hole]])).not.toBe(Type.func(A, [[hole]], [hole]));
+  });
+});
+
+describe('Type.adopt names a malformed literal', () => {
+  test('an unknown kind is refused', () => {
+    expect(() => Type.adopt({ kind: 'callable' } as never)).toThrow(/names no kind of type/);
+  });
+
+  test('a missing field is named, along with the ones its kind carries', () => {
+    expect(() => Type.adopt({ kind: 'ctor', instanceType: A, genericArgs: [] } as never))
+      .toThrow(/a ctor type carries instanceType, args, genericArgs — args is missing/);
+  });
+
+  test("a literal's own undefined value is a value, not an absence", () => {
+    expect(Type.adopt({ kind: 'literal', value: undefined })).toBe(Type.typeLiteral(undefined));
   });
 });
