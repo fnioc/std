@@ -2166,25 +2166,24 @@ program's TS errors in the same array with `category: "error"` was the whole fix
 
 _Owner-ruled ("fix it"), Claude-executed 2026-08-14._
 
-## §180 — Matching: structural assignability to the edge of knowledge, identity past it
+## §180 — Matching: same kind always; assignability within a kind; identity at identifiers
 
-A request matches a candidate by assignability computed over the node trees, bottoming out in
-interned identity wherever the tree's knowledge ends. An identifier is an opaque address — its
-members are not in the node and the compile-time subtype facts are erased — so
-identifier↔identifier comparison is `===` (tags and generic holes keep their own rules; a hole
-binds positionally where it sits in the tree). Structural kinds carry their whole contract, so
-they compare structurally: a callable candidate serves a requested callable when EVERY requested
-signature row is served by SOME candidate row — surplus candidate rows are extra capability,
-harmless. That is the type-level relation only; which row the engine CONSTRUCTS through is a
+A request matches a candidate only WITHIN a kind — there is no cross-kind assignability: a ctor
+never answers a func, and an `Array<T>` registration never answers an `Iterable<T>` request (one
+registration must not silently rewrite every collection injection site — the aggregation fallback
+serves those). Within a structural kind the comparison is assignability over the node trees,
+recursing into child positions; at the identifier kinds the tree's knowledge ends and the
+comparison is interned identity (`===`; tags keep their own rules). A generic hole is the one
+deliberate exception to the kind discipline: a hole BINDS whatever sits at its position —
+binding, not assignability. A callable candidate serves a requested callable when EVERY requested
+signature row is served by SOME candidate row — surplus candidate rows are harmless extra
+capability. That is the type-level relation only; which row the engine CONSTRUCTS through is a
 separate value-level choice (rows sorted longest-first, first row whose looked-up values are all
 present wins).
 
-Precedence at lookup: an exact-identity hit wins outright; the aggregate doors come next —
-`Iterable<T>` invokes descriptor aggregation, and only an exact registration of the door's own
-type preempts it. An `Array<T>` registration never answers an `Iterable<T>` request: one
-registration must not silently rewrite every collection injection site from "all of them" to
-"that one array". Merely-assignable candidates rank below both and never reach a door address.
-Among plural assignable candidates the most recent registration wins, consistent with recency
-everywhere else.
+Precedence at lookup: an exact-identity hit wins outright; the `Iterable<T>` aggregation fallback
+answers collection requests otherwise, and only an exact registration of that same type preempts
+it. Among plural within-kind-assignable candidates the most recent registration wins, consistent
+with recency everywhere else.
 
 _Owner-ruled 2026-08-14, Claude-recorded._
