@@ -1637,7 +1637,7 @@ implementation type directly — `ConstructorType` for `addClass`/`tryAddClass`/
 array-taking verbs were the residue. Each verb stores the node it is handed, verbatim, as `implType`
 (`libraries/di.core/src/ServiceDescriptor/expressions.ts`) — there is no derivation step and no
 separate stored-signatures member; a reader wanting a registration's parameter rows reads
-`implType.args` directly (§169).
+`implType.args` directly (§170).
 
 The builder chain (`withSignature(...paramTypes)`, `withSignatures(...rows)`,
 `libraries/di.core/src/builder.ts`) is the ONE place a naked array of `Type | string` stays
@@ -1653,7 +1653,7 @@ in this repo now follows, not a checked invariant.
 `typefor<T>()`'s value-argument overload derives a registration's whole implementation type
 directly from the class or factory value being registered — `typefor<typeof Widget>()` is how an
 author spells `addClass`'s third argument by hand, deriving through the same shared layer every
-value-observing call reuses (§170). There is no separate primitive and no retired `[[...]]` array
+value-observing call reuses (§171). There is no separate primitive and no retired `[[...]]` array
 form left to migrate.
 
 _Claude-directed 2026-08-13, executing the owner's §144 ruling._
@@ -1921,7 +1921,64 @@ own generic instantiation, `Repo<$<1>>`) derives correctly today.
 
 _Claude-directed 2026-08-13, executing the owner's §155/§157 direction._
 
-## §167 — Callable nodes carry their overloads as parameter rows
+## §167 — Value-driven `getService`: hand it a `ConstructorType`/`FunctionType` node and the value it describes
+
+Two overloads on `getService` take the node the value's own signature would derive to, alongside
+the value itself: `getService<R>(type: ConstructorType, ctor: Ctor<any[], R>): R` and
+`getService<R>(type: FunctionType, func: Func<any[], R>): R`. `R` is inferred from the value's own
+signature. Neither registers anything; every call builds fresh, so two calls for the same value
+never share a result even when that value is separately registered elsewhere.
+
+**The node's kind dictates construction versus a call — there is no runtime discriminant.** A
+`ConstructorType` node constructs; a `FunctionType` node calls. This retires the layered
+class-syntax/prototype-descriptor sniff, the call-then-rescue retry, and the `RESOLVER_TYPE`
+dependency shim an earlier draft of this door carried — the node already says which one applies
+and already carries the real parameter types, so there is nothing left to sniff or rescue.
+
+**Dependencies resolve from the node's own parameter types, not a fixed one-entry signature.** The
+node and value are wrapped in a throwaway `ServiceDescriptor` (`ctor` or `factory`, matching the
+node's kind) whose signature is `TypeSignatures.fromImplType(type)` — the SAME reading `addClass`/
+`addFactory`'s long overload already gives a composed impl type (§155) — resolved via the engine's
+`additionalServices` channel against a manifest composed for that one call, under the node itself
+as its own address, and discarded after. This is real dependency resolution, not reflection: the
+node's parameter types are what the caller wrote (or derived) them to be, never inspected from the
+value at runtime.
+
+**The two overloads are declared directly on `IServiceProvider` (`@rhombus-std/primitives`)**,
+alongside its base `getService(type: Type): any` member — one interface, three signatures, one
+ordinary TypeScript overload merge, so an interface-typed caller sees all three exactly like a
+concrete-`ServiceProvider`-typed one does. `libraries/di/src/ServiceProvider.ts` repeats the same
+signatures on the class itself for the implementation (matching how it already widens the base
+form to accept a token string too), but nothing there merges them onto the interface — that
+already happened where they're declared.
+
+**Reaching that declaration home required a real fix in the Go inline transform, not a workaround.**
+A first attempt at the direct-on-`IServiceProvider` shape broke di.extras' pre-existing, unrelated
+zero-argument `getService<T>()` sugar outright — any build pulling in di.extras failed with
+`INLINE_DISCRIMINATOR_MISMATCH`, reproduced with di.extras completely unmodified. The actual cause
+(`transforms/internal/inlinetransform/resolve.go`'s `anyDeclarationTakes`) had nothing to do with
+declaration merging: it decides whether a sugar overload's declaration is merely absent from a
+program (silent) or present-but-mismatched (a hard authoring-fault error) by comparing ONLY
+type-parameter count between the sugar body and every declaration reachable from the marker's
+surface. `getService<R>(type: ConstructorType, ctor: Ctor<any[], R>): R` carries one type parameter
+— the same count as di.extras' own `getService<T>(): T | undefined` — so once `IServiceProvider`
+carried it, the check saw "a declaration with the sugar's type-parameter count exists" and
+concluded the sugar itself must be present and merely misspelled, even in a program where
+di.extras' own declaration was never loaded at all. The fix compares value-parameter count
+alongside type-parameter count: an unrelated overload essentially never shares BOTH by accident,
+where sharing only type-parameter count is common (a lone generic parameter is the ordinary shape
+for a sugar overload and an explicit-node one alike). A Go regression test
+(`TestResolveMemberUnmatchedDespiteArityCollidingOverload`, `resolve_test.go`) pins the shape red
+before the fix, green after.
+
+**The authoring sugar this door was meant to pair with is held**, pending a settled spelling for
+its inline body once the callable-signatures milestone (2D per-overload `TypeSignatures` on
+`ConstructorType`/`FunctionType`, `signatureof` retiring in favor of `typefor<typeof x>()`) lands —
+its shape depends on both. Nothing in this entry describes that door; it ships separately.
+
+_Owner-directed 2026-08-13._
+
+## §168 — Callable nodes carry their overloads as parameter rows
 
 `ConstructorType.args` and `FunctionType.args` (`libraries/primitives/src/Type/Type.ts`) are typed
 `TypeSignatures = ReadonlyArray<readonly Type[]>` — one ROW per overload, each row that overload's
@@ -1943,7 +2000,7 @@ keeps a callable's one-empty-row shape distinct from every other row shape it co
 
 _Claude-directed 2026-08-13, executing the owner's 2D-overloads ruling._
 
-## §168 — The token grammar spells overload rows with semicolons, inside the one parameter position
+## §169 — The token grammar spells overload rows with semicolons, inside the one parameter position
 
 `Type.from`/`Type.stringify`'s wire grammar (`libraries/primitives/src/Type/internals/parser.ts`,
 `StringifyVisitor.ts`) mirrors the flat/structured door pair: a callable's parameter rows occupy
@@ -1967,7 +2024,7 @@ no-argument overload) and its second is `[A]`.
 
 _Claude-directed 2026-08-13, executing the owner's 2D-overloads ruling._
 
-## §169 — The descriptor carries the implementation type; an intersection means an intersection
+## §170 — The descriptor carries the implementation type; an intersection means an intersection
 
 `ServiceDescriptor`'s ctor and factory shapes (`libraries/di.core/src/ServiceDescriptor/
 expressions.ts`) store `implType: ConstructorType` / `implType: FunctionType` outright — there is no
@@ -1997,7 +2054,7 @@ resolves.
 
 _Claude-directed 2026-08-13, executing the owner's 2D-overloads ruling._
 
-## §170 — `typefor` is the single value-observing derivation door
+## §171 — `typefor` is the single value-observing derivation door
 
 `typefor<T>()` / `typefor(value)` / `typefor<typeof C>()` all derive a `Type` tree through the ONE
 shared derivation layer (`transforms/internal/tokens.DeriveTyped`, `transforms/internal/
@@ -2008,7 +2065,7 @@ parameter row per overload — `typefor<typeof Widget>()` is how an author spell
 whole implementation type as `addClass`/`addFactory`'s third argument, standing in for a hand-rolled
 `Type.ctor(...)`/`Type.func(...)`.
 
-The emitted text is byte-stable with the flat/structured door pair (§167): `typeemit.EmitDerived`'s
+The emitted text is byte-stable with the flat/structured door pair (§168): `typeemit.EmitDerived`'s
 `signatureShaped` helper emits the flat `Type.ctor(instanceType, ...args)` / `Type.func(returnType,
 ...args)` call when a declaration answers to exactly one row, and only a genuinely overloaded
 declaration reaches for the spec-object form — the same choice a hand-writer would make, spelled

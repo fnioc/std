@@ -1,6 +1,8 @@
-import { Manifest, UnsatisfiableError } from '@rhombus-std/di.core';
-import { augment, type IServiceProvider, NotImplementedError, type Token, Type } from '@rhombus-std/primitives';
+import { Manifest, ServiceDescriptor, TypeSignatures, UnsatisfiableError } from '@rhombus-std/di.core';
+import { augment, type ConstructorType, type FunctionType, type IServiceProvider, NotImplementedError, type Token,
+  Type } from '@rhombus-std/primitives';
 import { typefor } from '@rhombus-std/primitives.extras';
+import type { Ctor, Func } from '@rhombus-toolkit/func';
 import { Engine } from './internal/Engine.js';
 import { ServiceProviderOptions } from './ServiceProviderOptions.js';
 
@@ -29,7 +31,31 @@ export class ServiceProvider {
    * when a dependency may legitimately not be there. A registration that exists but cannot be
    * built still throws — that is a broken graph, not an absent service.
    */
-  getService(type: Type | Token): any {
+  getService(type: Type | Token): any;
+  /**
+   * Constructs `ctor` fresh, its dependencies resolved from `type` — `ctor`'s own parameter
+   * types, in order.
+   *
+   * @remarks
+   * Nothing here is registered or cached: two calls build two instances, even for a `ctor`
+   * separately registered elsewhere under its own address.
+   */
+  getService<R>(type: ConstructorType, ctor: Ctor<any[], R>): R;
+  /**
+   * Calls `func`, its dependencies resolved from `type` — `func`'s own parameter types, in order.
+   *
+   * @remarks
+   * Nothing here is registered or cached: two calls build two results, even for a `func`
+   * separately registered elsewhere under its own address.
+   */
+  getService<R>(type: FunctionType, func: Func<any[], R>): R;
+  getService(
+    ...args: [type: Type | Token] | [type: ConstructorType, ctor: Ctor] | [type: FunctionType, func: Func]
+  ): any {
+    const [type, value] = args;
+    if (value !== undefined) {
+      return this.#getServiceFromValue(type as ConstructorType | FunctionType, value);
+    }
     const target = typeof type === 'string' ? Type.from(type) : type;
     try {
       return this.#engine.resolve(target, { serviceProvider: this });
@@ -39,6 +65,20 @@ export class ServiceProvider {
       }
       throw error;
     }
+  }
+
+  /**
+   * Synthesizes a throwaway {@link ServiceDescriptor} for `value` under the address `type`
+   * itself, its signature `type`'s own parameter types, and resolves it through the engine's
+   * `additionalServices` channel — so `value` is realized exactly like a registered constructor
+   * or factory, just against a manifest composed for this one call and discarded after.
+   */
+  #getServiceFromValue(type: ConstructorType | FunctionType, value: Ctor | Func): any {
+    const signature = TypeSignatures.fromImplType(type);
+    const descriptor = type.kind === 'ctor'
+      ? ServiceDescriptor.ctor(type, value as Ctor, signature)
+      : ServiceDescriptor.factory(type, value as Func, signature);
+    return this.#engine.resolve(type, { serviceProvider: this, additionalServices: [descriptor] });
   }
 
   /**
