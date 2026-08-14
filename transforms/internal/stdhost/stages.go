@@ -5,14 +5,13 @@ import (
 
 	"github.com/fnioc/std/transforms/internal/inlinetransform"
 	"github.com/fnioc/std/transforms/internal/mergesynthtransform"
-	"github.com/fnioc/std/transforms/internal/nameoftransform"
 	"github.com/fnioc/std/transforms/internal/plugin"
 	"github.com/fnioc/std/transforms/internal/schemaoftransform"
 	"github.com/fnioc/std/transforms/internal/tokens"
 	"github.com/fnioc/std/transforms/internal/typefortransform"
 )
 
-// stagePrefix namespaces each stage's internal name (e.g. "rhombusstd_nameof").
+// stagePrefix namespaces each stage's internal name (e.g. "rhombusstd_typefor").
 // The names are host-internal identifiers — used to single out mergesynth for the
 // pre-pass split (partitionStages) and to label diagnostics — not selectors: the
 // whole stage table always runs.
@@ -29,16 +28,14 @@ const stagePrefix = "rhombusstd_"
 // primitive stage runs), then mergesynth (it reads the ORIGINAL augmentation
 // member declarations through the checker and threads a plain-JS merge-strategies
 // object as the third argument of each registerAugmentations/applyAugmentations
-// call — it runs before nameof so nameof still lowers the call's token argument,
-// and later stages leave the synthesized object untouched), then nameof (its
-// token lowering and import elision, including the inline stage's synthetic
-// nameof calls), then typefor (the structured `Type.*` lowering of
-// `typefor<T>()` / `typefor(value)` — the runtime-`Type` sibling of nameof's flat
-// string token, disjoint from it by callee, including a constructor's or
-// factory's dependency-signature derivation), then schemaof (the structural
-// expansion of `schemaof<T>()` into the `Type` tree describing T). All stages own
-// DISJOINT match sets, so correctness never depends on this order — it is fixed
-// only for reproducible output.
+// call — it runs before typefor so typefor still lowers the call's type argument,
+// and later stages leave the synthesized object untouched), then typefor (the
+// structured `Type.*` lowering of `typefor<T>()` / `typefor(value)`, including
+// the inline stage's synthetic typefor calls and a constructor's or factory's
+// dependency-signature derivation), then schemaof (the structural expansion of
+// `schemaof<T>()` into the `Type` tree describing T). All stages own DISJOINT
+// match sets, so correctness never depends on this order — it is fixed only for
+// reproducible output.
 //
 // Returned as a fresh slice each call so a caller can reorder or extend it
 // without mutating shared state.
@@ -46,7 +43,6 @@ func BaseStages() []Stage {
 	return []Stage{
 		{Name: stagePrefix + "inline", Build: buildInline},
 		{Name: stagePrefix + "mergesynth", Build: buildMergesynth},
-		{Name: stagePrefix + "nameof", Build: buildNameof},
 		{Name: stagePrefix + "typefor", Build: buildTypefor},
 		{Name: stagePrefix + "schemaof", Build: buildSchemaof},
 	}
@@ -54,27 +50,27 @@ func BaseStages() []Stage {
 
 // buildInline activates the generic single-expression inline stage. It collects
 // the workspace publish list, substitutes matched sugar bodies, and registers
-// the synthetic primitive calls the nameof stage lowers. Every diagnostic it
-// raises is a hard error.
+// the synthetic primitive calls a downstream primitive stage lowers. Every
+// diagnostic it raises is a hard error.
 func buildInline(prog *driver.Program, _ *tokens.Context, env *Env, emit Sink) plugin.FileTransform {
 	return inlinetransform.Build(prog, env.Bodies, env.Artifacts, func(d plugin.Diagnostic) {
 		emit(DiagFromPlugin(d))
 	})
 }
 
-// buildMergesynth activates the merge-strategy synthesizer (#213). The host runs
-// it as a ONE-SHOT PRE-PASS, once per file BEFORE the fixed-point loop (Open issue
-// 2, see transformFileToTypeScript): it is augmentation-side and its matches are
-// only ever source-written installs, so the loop can never mint fresh work for it.
-// It stays ahead of the loop's nameof pass, so nameof still lowers each install
-// call's token argument. It reads the ORIGINAL augmentation member
+// buildMergesynth activates the merge-strategy synthesizer. The host runs it as a
+// ONE-SHOT PRE-PASS, once per file BEFORE the fixed-point loop (see
+// transformFileToTypeScript): it is augmentation-side and its matches are only
+// ever source-written installs, so the loop can never mint fresh work for it. It
+// stays ahead of the loop's typefor pass, so typefor still lowers each install
+// call's type argument. It reads the ORIGINAL augmentation member
 // declarations through the checker and threads a plain-JS strategies object as
 // the third argument of each registerAugmentations/applyAugmentations call, so a
 // member-name collision dispatches by argument shape instead of throwing. The
 // synthesized guards are inlined plain JS (the typia embed is fully lowered at
-// build time — no typia runtime import survives). It is category-aware like the
-// di stage: an advisory warning (a dropped guard that would have needed a typia
-// runtime helper) never fails the emit.
+// build time — no typia runtime import survives). It is category-aware: an
+// advisory warning (a dropped guard that would have needed a typia runtime
+// helper) never fails the emit.
 func buildMergesynth(prog *driver.Program, _ *tokens.Context, _ *Env, emit Sink) plugin.FileTransform {
 	return mergesynthtransform.New(prog, func(d mergesynthtransform.Diagnostic) {
 		emit(Diag{
@@ -83,14 +79,6 @@ func buildMergesynth(prog *driver.Program, _ *tokens.Context, _ *Env, emit Sink)
 			Code:    d.Code,
 			Message: d.Message,
 		})
-	})
-}
-
-// buildNameof activates the nameof lowering stage. It raises no diagnostics of
-// its own today; any it did raise would be hard errors.
-func buildNameof(prog *driver.Program, ctx *tokens.Context, env *Env, emit Sink) plugin.FileTransform {
-	return nameoftransform.New(prog, ctx, env.Artifacts, func(d plugin.Diagnostic) {
-		emit(DiagFromPlugin(d))
 	})
 }
 

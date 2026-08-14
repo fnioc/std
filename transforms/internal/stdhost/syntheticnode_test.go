@@ -14,11 +14,11 @@ import (
 // lowers to a `Type.union(...)` node — minted through the emit factory. A
 // minted node was never seen by the binder, so it carries no symbol. On the
 // NEXT pass of the fixed-point loop a stage asked the checker about the
-// enclosing call chain (nameof resolved the callee's symbol, typefor
-// resolved its own, the inline stage resolved the callee's signature);
-// resolving that reached the receiver's overload resolution, which
-// contextually typed the minted argument, and a checker query that assumes
-// every node has a symbol dereferenced the nil one a minted node carries:
+// enclosing call chain (typefor resolved the callee's symbol, the inline stage
+// resolved the callee's signature); resolving that reached the receiver's
+// overload resolution, which contextually typed the minted argument, and a
+// checker query that assumes every node has a symbol dereferenced the nil one a
+// minted node carries:
 //
 //	symbol := c.getSymbolOfDeclaration(element)          // nil for a minted node
 //	return c.getTypeOfPropertyOfContextualTypeEx(t, symbol.Name, …)  // nil deref

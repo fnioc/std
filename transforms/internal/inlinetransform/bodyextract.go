@@ -14,16 +14,15 @@ import (
 
 // knownPrimitives maps each compile-time primitive an inlineable body may call to
 // its HOME module — the module an inline body is allowed to import it from.
-// The token-derivation pair binds a TYPE or VALUE argument and homes in the
-// authoring package `@rhombus-std/primitives.extras` (constraint 11: pure
-// transformables, moved out of the runtime `@rhombus-std/primitives` leaf — every
-// call is elided from the shipped output after lowering, so nothing ships a
-// reference and a consumer deps the authoring package build-time only).
 // `tokenfor<T>()` / `tokenfor(value)` derives from a TYPE or the value's PRODUCED
 // type (construct/call-sig return; the `addClass` / `addFactory` self forms), and
 // `tokenof<T>()` / `tokenof(value)` from the raw type / the value's OWN type with
 // no unwrap (the `addValue` self form, which registers an already-built value
 // under its own type — matching the di engine's raw-type `addValue` derivation).
+// Both home in the authoring package `@rhombus-std/primitives.extras` (constraint
+// 11: pure transformables, moved out of the runtime `@rhombus-std/primitives`
+// leaf — every call is elided from the shipped output after lowering, so nothing
+// ships a reference and a consumer deps the authoring package build-time only).
 // `schemaof<T>()` binds a TYPE argument and lowers to the config family's runtime
 // schema object literal — the engine half of the `.withType<T>()` sugar body
 // `this.withSchema(schemaof<T>())`. It is authoring-time-only, so it homes in the
@@ -31,10 +30,9 @@ import (
 // package-relative specifier from within that package).
 // `typefor<T>()` / `typefor(value)` bind a TYPE or VALUE argument and lower to a
 // structured runtime `Type` value (the `Type.*` factory tree the argument
-// spells) — the sibling of `tokenfor` that derives the runtime shape instead of
-// the flat string token; a VALUE argument also carries a constructor's or
-// factory's dependency-signature derivation. It homes beside `tokenfor` /
-// `tokenof` in `@rhombus-std/primitives.extras`.
+// spells); a VALUE argument also carries a constructor's or factory's
+// dependency-signature derivation. It homes beside `tokenfor` / `tokenof` in
+// `@rhombus-std/primitives.extras`.
 var knownPrimitives = map[string]string{
 	"tokenfor": "@rhombus-std/primitives.extras",
 	"tokenof":  "@rhombus-std/primitives.extras",
@@ -50,11 +48,10 @@ var knownPrimitives = map[string]string{
 // relationship a reader would otherwise have to open the manifest to discover.
 //
 // It is named here for one reason: a marker is a VALUE import, so without this
-// exclusion bodyTypeImports would record it in the body-external TYPE-import map
-// as a phantom composed-generic base. Nothing else in the extractor consults it —
-// a marker call is a top-level statement, invisible to the declaration lookup, and
-// a body that references one is rejected by checkFreeIdentifiers like any other
-// unknown identifier.
+// exclusion valueImports would record it as a phantom body reference. A marker
+// call is a top-level statement, invisible to the declaration lookup, and a body
+// that references one is rejected by checkFreeIdentifiers like any other unknown
+// identifier.
 var knownAuthoringMarkers = map[string]string{
 	"registerInlineBodies": "@rhombus-std/primitives.extras",
 }
@@ -85,36 +82,20 @@ func (d Discriminator) Equal(o Discriminator) bool {
 
 // ResolvedBody is the side-parsed impl body plus the metadata substitution and
 // classification need: the single return expression, the impl's type-parameter
-// and value-parameter names in order, its structural discriminator, the impl
-// file's primitive-import map (local name -> canonical primitive name), and its
-// body-external TYPE-import map (local name -> imported reference) for
-// composed-generic derivation.
+// and value-parameter names in order, its structural discriminator, and the impl
+// file's primitive-import map (local name -> canonical primitive name).
 type ResolvedBody struct {
 	Body             *shimast.Node
 	TypeParams       []string
 	Params           []string
 	Discriminator    Discriminator
 	PrimitiveImports map[string]string
-	TypeImports      map[string]TypeImportRef
 	// ValueImports maps each body-local name of a RUNTIME value the body references
 	// to the (module, export) its import materializes to. These survive lowering as
 	// ordinary references, and the inline stage injects the same imports into the
 	// consumer file so each one resolves there as it does here.
 	ValueImports map[string]valueimport.Ref
 	File         string
-}
-
-// TypeImportRef is a body-external TYPE import a sugar body references in a
-// type-argument position (`import type { IOptions } from '@rhombus-std/options'`,
-// used as the base of `tokenfor<IOptions<T>>()`). The inline stage records it on
-// the composed-generic use so the lowering stage can resolve the base symbol
-// against the consumer program (side-parsed bodies carry no checker).
-type TypeImportRef struct {
-	// Module is the bare package specifier the type is imported from.
-	Module string
-	// Export is the imported type's exported name (its property name when the
-	// specifier is aliased).
-	Export string
 }
 
 // bodyExtractor side-parses declaring packages, caching each parsed file by its
@@ -184,7 +165,6 @@ func (b *bodyExtractor) Extract(packageDir string, e Entry) (*ResolvedBody, erro
 	typeParams := typeParamNames(memberNode)
 	params, disc := valueParamsAndDiscriminator(memberNode, typeParams)
 	primImports := primitiveImports(implSF, packageName(packageDir))
-	typeImports := bodyTypeImports(implSF)
 
 	rb := &ResolvedBody{
 		Body:             expr,
@@ -192,7 +172,6 @@ func (b *bodyExtractor) Extract(packageDir string, e Entry) (*ResolvedBody, erro
 		Params:           params,
 		Discriminator:    disc,
 		PrimitiveImports: primImports,
-		TypeImports:      typeImports,
 		ValueImports:     map[string]valueimport.Ref{},
 		File:             implFile,
 	}
@@ -240,7 +219,7 @@ func (b *bodyExtractor) locateImpl(packageDir, implName string) (string, *shimas
 	}
 
 	// Fallback: the conventional src/inline.ts, kept out of the barrel so its
-	// unbound nameof<T>() is never lowered inside the declaring package's own dist.
+	// unbound typefor<T>() is never lowered inside the declaring package's own dist.
 	fallback := filepath.Join(packageDir, "src", "inline.ts")
 	if fileExists(fallback) {
 		sf, perr := b.parseFile(fallback)
@@ -282,7 +261,7 @@ func (b *bodyExtractor) checkFreeIdentifiers(rb *ResolvedBody, e Entry, fileValu
 	// short-circuit skipped. Two identifier positions are deliberately NOT value
 	// references and are never checked:
 	//   - a property access's member NAME (`a.b`: the `b`); and
-	//   - a TYPE ARGUMENT (`nameof<Marker>()`: `Marker` — a type the consumer's
+	//   - a TYPE ARGUMENT (`typefor<Marker>()`: `Marker` — a type the consumer's
 	//     checker resolves, not a value). Skipping the whole TypeArguments list of
 	//     a call/new covers any type shape inside it (unions, nested refs, …).
 	var bad string
@@ -487,8 +466,8 @@ func functionLikeParams(node *shimast.Node) []*shimast.Node {
 // primitive-name map, keeping only known primitives imported from their HOME
 // module and only unaliased bindings (the authoring lint forbids aliasing).
 //
-// A primitive is accepted from its home module directly (`nameof` from
-// `@rhombus-std/primitives`), OR — when the primitive's home IS the declaring
+// A primitive is accepted from its home module directly (`typefor` from
+// `@rhombus-std/primitives.extras`), OR — when the primitive's home IS the declaring
 // package — via a package-relative specifier (`schemaof` from `./schemaof`,
 // authored inside `@rhombus-std/config.extras`), so a same-package authoring
 // primitive need not be self-imported by package name. A primitive imported from
@@ -528,55 +507,6 @@ func primitiveImports(sf *shimast.SourceFile, declaringPkg string) map[string]st
 			if fromHome || fromOwnPackage {
 				out[local] = exported
 			}
-		}
-	}
-	return out
-}
-
-// bodyTypeImports reads sf's top-level named imports from BARE package specifiers
-// and returns a local-name -> imported-reference map for every binding that is NOT
-// a known primitive — the body-external TYPE imports a sugar body may reference in
-// a type-argument position (`import type { IOptions } from '@rhombus-std/options'`,
-// used as `tokenfor<IOptions<T>>()`). Primitives are excluded (they are recorded
-// separately by primitiveImports as CALLEES, never composed-generic bases), as are
-// the module-level authoring markers, and relative specifiers are excluded (a
-// body-external base is always a package the consumer program can resolve by name).
-// Aliasing is honored: the recorded Export is the specifier's property name.
-func bodyTypeImports(sf *shimast.SourceFile) map[string]TypeImportRef {
-	out := map[string]TypeImportRef{}
-	if sf == nil {
-		return out
-	}
-	for _, stmt := range sf.Statements.Nodes {
-		if stmt.Kind != shimast.KindImportDeclaration {
-			continue
-		}
-		decl := stmt.AsImportDeclaration()
-		spec := decl.ModuleSpecifier
-		if spec == nil || spec.Kind != shimast.KindStringLiteral {
-			continue
-		}
-		module := spec.Text()
-		if isRelativeSpecifier(module) {
-			continue
-		}
-		clause := decl.ImportClause
-		if clause == nil {
-			continue
-		}
-		bindings := clause.AsImportClause().NamedBindings
-		if bindings == nil || bindings.Kind != shimast.KindNamedImports {
-			continue
-		}
-		for _, el := range bindings.AsNamedImports().Elements.Nodes {
-			exported := importSpecifierExportedName(el)
-			if _, isPrimitive := knownPrimitives[exported]; isPrimitive {
-				continue
-			}
-			if _, isMarker := knownAuthoringMarkers[exported]; isMarker {
-				continue
-			}
-			out[el.Name().Text()] = TypeImportRef{Module: module, Export: exported}
 		}
 	}
 	return out
@@ -660,7 +590,7 @@ func isRelativeSpecifier(module string) bool {
 }
 
 // importSpecifierExportedName returns a named import specifier's exported name —
-// its property name when aliased (`nameof as k`), else its local name.
+// its property name when aliased (`typefor as t`), else its local name.
 func importSpecifierExportedName(element *shimast.Node) string {
 	spec := element.AsImportSpecifier()
 	if spec.PropertyName != nil {

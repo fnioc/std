@@ -1,18 +1,17 @@
 // Package typefortransform is the Go port of the typefor primitive: it lowers
 // each `typefor<T>()` / `typefor(value)` call to a tree of `Type.*` factory calls
 // over the ttsc-shipped typescript-go checker, then elides the now-unreferenced
-// `typefor` import. It is a TYPE/VALUE-argument primitive, sibling to nameof —
-// where `nameof<T>()` derives a flat string TOKEN, `typefor<T>()` derives the
-// STRUCTURED runtime `Type` value the same checker type spells, narrowed to
+// `typefor` import. It is a TYPE/VALUE-argument primitive that derives the
+// STRUCTURED runtime `Type` value a checker type spells, narrowed to
 // `Type.func` / `Type.ctor` for a function / constructor type, `Type.tag` for a
 // `Keyed<T, K>` brand, and `Type.global` / `Type.imported` / `Type.typeLiteral` /
 // `Type.union` / `Type.generic` for everything else (tokens.DeriveTypeF; see
 // derive.go).
 //
 // A value argument derives from the value's OWN type, never unwrapped: a class
-// arrives as the constructor it is (a ConstructorType), not the instance it builds — the
-// `.instance` accessor reads that. This is `tokenof`'s raw semantics, not
-// `tokenfor`'s produced-type unwrap, matching typefor.ts's documented contract.
+// arrives as the constructor it is (a ConstructorType), not the instance it
+// builds — the `.instance` accessor reads that, matching typefor.ts's
+// documented contract.
 //
 // An immediate `.instance` / `.return` / `.args` / `.value` / `.tag` /
 // `.type` / `.kind` property access on a matched call folds through to the
@@ -23,9 +22,7 @@
 // on its result is correct, just not the tidiest output.
 //
 // The single owner host (cmd/ttsc-std) composes it as the `rhombusstd_typefor`
-// stage, alongside — never replacing — nameof/factory: it derives the
-// structured `Type` a call site wants, they derive the flat string token a
-// registration wants.
+// stage.
 package typefortransform
 
 import (
@@ -158,10 +155,10 @@ func New(
 // lowerTyped derives the `Type.*` tree for a TYPE-argument typefor call and
 // returns its replacement, or leaves the ORIGINAL node un-lowered when
 // derivation fails — never a malformed partial tree. A source-written failure
-// reports the targeted diagnostic; a synthetic one stays silent (mirrors
-// nameof's lowerTypeArgToken: a mid-loop diagnostic would tie failure reporting
-// to stage order within a pass, and the emit sweep already flags every
-// surviving primitive exactly once after the loop settles).
+// reports the targeted diagnostic; a synthetic one stays silent — a mid-loop
+// diagnostic would tie failure reporting to stage order within a pass, and the
+// emit sweep already flags every surviving primitive exactly once after the loop
+// settles.
 func lowerTyped(
 	checker *shimchecker.Checker,
 	ctx *tokens.Context,

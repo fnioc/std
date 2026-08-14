@@ -2,8 +2,8 @@
 // stage: at a consumer call site it substitutes an inlineable declaration's
 // single-return-expression body in place of the call, binding `this` to the
 // call's receiver and each value parameter to its argument expression. The
-// downstream primitive stages (nameof, di, di-options, config) then lower the
-// substituted result. It runs FIRST in ttsc-std's canonical stage order.
+// downstream primitive stages (typefor, schemaof) then lower the substituted
+// result. It runs FIRST in ttsc-std's canonical stage order.
 //
 // This file owns the substitution mechanism only — turning a (body, receiver,
 // args) triple into one rewritten expression node, with single-evaluation of an

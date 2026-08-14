@@ -16,8 +16,8 @@ import (
 // buildTypeforWorkspace lays out a three-package workspace mirroring the real
 // shape: `@rhombus-std/primitives` (the runtime `Type` namespace) and
 // `@rhombus-std/primitives.extras` (the `typefor` primitive plus a
-// self-contained Hole/Keyed brand block — copied from nameoftransform's fixture
-// so no real di.core/primitives dependency is pulled in), consumed by `app`.
+// self-contained Hole/Keyed brand block, so no real di.core/primitives
+// dependency is pulled in), consumed by `app`.
 func buildTypeforWorkspace(t *testing.T, mainSrc string) (*driver.Program, string) {
 	t.Helper()
 	root := t.TempDir()
