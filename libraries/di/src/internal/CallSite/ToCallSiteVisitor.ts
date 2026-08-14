@@ -20,6 +20,9 @@ interface Suppliable {
 /** The spellings under which a dependency on the provider itself is recognized. */
 const SERVICE_PROVIDER_FROMS: readonly string[] = ['@rhombus-std/primitives', '@rhombus-std/di.core'];
 
+/** The module `IServiceScopeFactory` is declared in. */
+const SERVICE_SCOPE_FACTORY_FROM = '@rhombus-std/di.core';
+
 /**
  * Turns a type expression into the {@link CallSite} that constructs a value for it.
  *
@@ -95,7 +98,13 @@ export class ToCallSiteVisitor extends TypeVisitor<CallSite | undefined> {
   }
 
   protected override visitImported(type: ImportedType): CallSite | undefined {
-    return isServiceProviderType(type) ? CallSite.serviceProvider() : undefined;
+    if (isServiceProviderType(type)) {
+      return CallSite.serviceProvider();
+    }
+    if (isServiceScopeFactoryType(type)) {
+      return CallSite.serviceScopeFactory();
+    }
+    return undefined;
   }
 
   /** Parked: composing one from its property types on a miss awaits its design ruling. */
@@ -241,5 +250,10 @@ function bySpelling(left: Type, right: Type): number {
 
 function isServiceProviderType(type: ImportedType): boolean {
   return type.name === 'IServiceProvider' && SERVICE_PROVIDER_FROMS.includes(type.from)
+    && !type.genericArgs.length;
+}
+
+function isServiceScopeFactoryType(type: ImportedType): boolean {
+  return type.name === 'IServiceScopeFactory' && type.from === SERVICE_SCOPE_FACTORY_FROM
     && !type.genericArgs.length;
 }
