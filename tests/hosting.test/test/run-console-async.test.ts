@@ -21,7 +21,9 @@ test('runConsoleAsync (signal-only form) starts the host and shuts down when the
   }
 
   const builder = new HostBuilder();
-  builder.configureServices((_context, services) => services.addHostedService(Worker, Type.ctor(HOSTED_SERVICE_TYPE)));
+  builder.configureServices((_context, services) =>
+    services.addHostedService(Worker, Type.ctor(HOSTED_SERVICE_TYPE, [[]]))
+  );
 
   const controller = new AbortController();
   const run = builder.runConsoleAsync(controller.signal);
@@ -113,7 +115,9 @@ test('runConsoleAsync stays pending until the abort signal fires, then resolves'
   }
 
   const builder = new HostBuilder();
-  builder.configureServices((_context, services) => services.addHostedService(Worker, Type.ctor(HOSTED_SERVICE_TYPE)));
+  builder.configureServices((_context, services) =>
+    services.addHostedService(Worker, Type.ctor(HOSTED_SERVICE_TYPE, [[]]))
+  );
 
   const controller = new AbortController();
   const run = builder.runConsoleAsync(controller.signal);

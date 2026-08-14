@@ -259,7 +259,7 @@ export const tok = typefor(Foo);
 	defer func() { _ = prog.Close() }()
 
 	out := lowerTypefor(t, prog, app)
-	want := `Type.ctor(Type.imported("Foo", "@scope/app/main"))`
+	want := `Type.ctor(Type.imported("Foo", "@scope/app/main"), [[]])`
 	if got := exprFor(t, out, "tok"); got != want {
 		t.Fatalf("typefor(Foo) = %q, want %q\nfull output:\n%s", got, want, out)
 	}
@@ -278,7 +278,7 @@ export const tok = typefor(Foo);
 	defer func() { _ = prog.Close() }()
 
 	out := lowerTypefor(t, prog, app)
-	want := `Type.ctor(Type.imported("Foo", "@scope/app/main"), Type.imported("IA", "@scope/app/main"), Type.imported("IB", "@scope/app/main"))`
+	want := `Type.ctor(Type.imported("Foo", "@scope/app/main"), [[Type.imported("IA", "@scope/app/main"), Type.imported("IB", "@scope/app/main")]])`
 	if got := exprFor(t, out, "tok"); got != want {
 		t.Fatalf("typefor(Foo) = %q, want %q\nfull output:\n%s", got, want, out)
 	}
@@ -293,7 +293,7 @@ export const tok = typefor<() => IThing>();
 	defer func() { _ = prog.Close() }()
 
 	out := lowerTypefor(t, prog, app)
-	want := `Type.func(Type.imported("IThing", "@scope/app/main"))`
+	want := `Type.func(Type.imported("IThing", "@scope/app/main"), [[]])`
 	if got := exprFor(t, out, "tok"); got != want {
 		t.Fatalf("typefor<() => IThing>() = %q, want %q\nfull output:\n%s", got, want, out)
 	}
@@ -319,6 +319,9 @@ export const tok = typefor<(a: IA, b: IB) => IThing>().returnType;
 	}
 }
 
+// TestTypeforAccessorArgs: `.args` is a callable's parameter ROWS, so the fold
+// emits an array of arrays — one row per call the declaration answers to, each
+// holding that call's parameter types in order.
 func TestTypeforAccessorArgs(t *testing.T) {
 	src := `import { typefor } from '@rhombus-std/primitives.extras';
 interface IA {}
@@ -330,7 +333,29 @@ export const tok = typefor<(a: IA, b: IB) => IThing>().args;
 	defer func() { _ = prog.Close() }()
 
 	out := lowerTypefor(t, prog, app)
-	want := `[Type.imported("IA", "@scope/app/main"), Type.imported("IB", "@scope/app/main")]`
+	want := `[[Type.imported("IA", "@scope/app/main"), Type.imported("IB", "@scope/app/main")]]`
+	if got := exprFor(t, out, "tok"); got != want {
+		t.Fatalf(".args fold = %q, want %q\nfull output:\n%s", got, want, out)
+	}
+}
+
+// TestTypeforAccessorArgsOverloaded: an overloaded declaration carries one row
+// per overload, in declaration order.
+func TestTypeforAccessorArgsOverloaded(t *testing.T) {
+	src := `import { typefor } from '@rhombus-std/primitives.extras';
+interface IA {}
+interface IB {}
+interface IThing {}
+declare function make(a: IA): IThing;
+declare function make(a: IA, b: IB): IThing;
+export const tok = typefor<typeof make>().args;
+`
+	prog, app := buildTypeforWorkspace(t, src)
+	defer func() { _ = prog.Close() }()
+
+	out := lowerTypefor(t, prog, app)
+	want := `[[Type.imported("IA", "@scope/app/main")], ` +
+		`[Type.imported("IA", "@scope/app/main"), Type.imported("IB", "@scope/app/main")]]`
 	if got := exprFor(t, out, "tok"); got != want {
 		t.Fatalf(".args fold = %q, want %q\nfull output:\n%s", got, want, out)
 	}
@@ -479,7 +504,7 @@ export const rt = t.returnType;
 	defer func() { _ = prog.Close() }()
 
 	out := lowerTypefor(t, prog, app)
-	wantT := `Type.func(Type.imported("IThing", "@scope/app/main"))`
+	wantT := `Type.func(Type.imported("IThing", "@scope/app/main"), [[]])`
 	if got := exprFor(t, out, "t"); got != wantT {
 		t.Fatalf("bare typefor call = %q, want %q\nfull output:\n%s", got, wantT, out)
 	}

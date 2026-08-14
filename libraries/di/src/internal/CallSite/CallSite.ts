@@ -1,5 +1,5 @@
 import { isAllThere, Type } from '@rhombus-std/primitives';
-import type { TypeVisitor } from '@rhombus-std/primitives';
+import type { TypeSignatures, TypeVisitor } from '@rhombus-std/primitives';
 import { Ctor, Func } from '@rhombus-toolkit/func';
 import { assertNever } from '@rhombus-toolkit/type-guards';
 import type { Answer } from '../Registry.js';
@@ -31,11 +31,13 @@ export interface FactoryCallSite {
 /**
  * A function value handed back to the caller; each invocation re-enters the engine to resolve
  * {@link result}, the call's arguments registered as values for {@link lateBoundArgs}, in order.
+ * The row named is the one whose length the call's own argument count matches, so a function
+ * answering to several calls binds each of them under its own parameter types.
  */
 export interface LateBoundCallSite {
   readonly kind: 'latebound';
   readonly result: Type;
-  readonly lateBoundArgs: readonly Type[];
+  readonly lateBoundArgs: TypeSignatures;
 }
 export interface ConstantCallSite {
   readonly kind: 'constant';
@@ -65,7 +67,7 @@ export namespace CallSite {
   export function factory(factory: Func, args: CallSite[]): FactoryCallSite {
     return { kind: 'factory', factory, args };
   }
-  export function latebound(result: Type, lateBoundArgs: readonly Type[]): LateBoundCallSite {
+  export function latebound(result: Type, lateBoundArgs: TypeSignatures): LateBoundCallSite {
     return { kind: 'latebound', result, lateBoundArgs };
   }
   export function constant(value: any): ConstantCallSite {
@@ -94,22 +96,22 @@ export namespace CallSite {
     const { descriptor, generics } = answer;
     switch (descriptor.kind) {
       case 'value':
-        return constant(descriptor.value);
+        return constant(descriptor.implementer);
       case 'ctor': {
-        const args = lowerSignature(descriptor.signatures, generics, visitor);
-        return args && ctor(descriptor.ctor, args);
+        const args = lowerSignature(descriptor.implementerType.args, generics, visitor);
+        return args && ctor(descriptor.implementer, args);
       }
       case 'factory': {
-        const args = lowerSignature(descriptor.signatures, generics, visitor);
-        return args && factory(descriptor.factory, args);
+        const args = lowerSignature(descriptor.implementerType.args, generics, visitor);
+        return args && factory(descriptor.implementer, args);
       }
       default:
         return assertNever(descriptor);
     }
   }
 
-  /** The first signature whose every parameter lowers to a call site, longest first. */
-  function lowerSignature(signatures: ReadonlyArray<readonly Type[]>, generics: ReadonlyMap<string, Type>,
+  /** The first parameter row whose every parameter lowers to a call site, longest first. */
+  function lowerSignature(signatures: TypeSignatures, generics: ReadonlyMap<string, Type>,
     visitor: TypeVisitor<CallSite | undefined>): CallSite[] | undefined {
     return Iterator.from(signatures.toSorted((a, b) => b.length - a.length))
       .map(signature => signature.map(parameter => lowerParameter(parameter, generics, visitor)))

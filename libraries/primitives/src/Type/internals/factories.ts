@@ -8,7 +8,7 @@ import type { Func } from '@rhombus-toolkit/func';
 import { stringifyType } from '../StringifyVisitor.js';
 import type { AggregateType, ArrayType, ConstructorType, FunctionType, GenericType, GlobalType, ImportedType,
   IntersectionType, IterableType, LiteralValue, ObjectType, TagType, TupleType, Type, TypeBrand, TypeLiteralType,
-  UnionType } from '../Type.js';
+  TypeSignatures, UnionType } from '../Type.js';
 import { TypeVisitor } from '../TypeVisitor.js';
 import { type AggregateName, GLOBAL_QUALIFIER, isAggregateName } from './grammar.js';
 import { id, intern, isInterned } from './intern.js';
@@ -44,24 +44,44 @@ export function tuple(members: readonly Type[]): TupleType {
   return intern(`tuple\0${slots.map(id).join(',')}`, () => node<TupleType>({ kind: 'tuple', members: slots }));
 }
 
-export function func(returnType: Type, args: readonly Type[], genericArgs: readonly Type[]): FunctionType {
+export function func(returnType: Type, args: TypeSignatures, genericArgs: readonly Type[] = []): FunctionType {
   const result = adopt(returnType);
-  const slots = args.map(adopt);
+  const rows = adoptRows(args);
   const quantifiers = genericArgs.map(adopt);
   return intern(
-    `func\0${quantifiers.map(id).join(',')}\0${id(result)}\0${slots.map(id).join(',')}`,
-    () => node<FunctionType>({ kind: 'func', args: slots, returnType: result, genericArgs: quantifiers }),
+    `func\0${quantifiers.map(id).join(',')}\0${id(result)}\0${rowsKey(rows)}`,
+    () => node<FunctionType>({ kind: 'func', args: rows, returnType: result, genericArgs: quantifiers }),
   );
 }
 
-export function ctor(instanceType: Type, args: readonly Type[], genericArgs: readonly Type[]): ConstructorType {
+export function ctor(instanceType: Type, args: TypeSignatures, genericArgs: readonly Type[] = []): ConstructorType {
   const instance = adopt(instanceType);
-  const slots = args.map(adopt);
+  const rows = adoptRows(args);
   const quantifiers = genericArgs.map(adopt);
   return intern(
-    `ctor\0${quantifiers.map(id).join(',')}\0${id(instance)}\0${slots.map(id).join(',')}`,
-    () => node<ConstructorType>({ kind: 'ctor', args: slots, instanceType: instance, genericArgs: quantifiers }),
+    `ctor\0${quantifiers.map(id).join(',')}\0${id(instance)}\0${rowsKey(rows)}`,
+    () => node<ConstructorType>({ kind: 'ctor', args: rows, instanceType: instance, genericArgs: quantifiers }),
   );
+}
+
+/**
+ * @throws TypeError - when no row survives; a callable answering to no call has no spelling, and
+ * `[]` is the shape an author reaches for meaning the one call that takes nothing.
+ */
+function adoptRows(args: TypeSignatures): TypeSignatures {
+  if (!args.length) {
+    throw new TypeError('a callable answers to at least one call — write `[[]]` for one taking no parameters');
+  }
+  return args.map(row => row.map(adopt));
+}
+
+/**
+ * The parameter rows as one key fragment. Each row is delimited by its own brackets rather than
+ * joined with a separator, so a callable answering to one empty call and one answering to no call
+ * at all are told apart.
+ */
+function rowsKey(rows: TypeSignatures): string {
+  return rows.map(row => `(${row.map(id).join(',')})`).join('');
 }
 
 export function array(element: Type): ArrayType {
@@ -228,12 +248,55 @@ function compare(left: string, right: string): number {
 }
 
 /**
- * Rebuilds a node the table did not mint, so anything arriving from outside — a cast, an untyped
- * caller, a tree revived from JSON — joins the interned graph before its identity is read. Each
- * factory adopts its own slots, so the walk reaches the whole subtree.
+ * The canonical node for `type`, minting one when the table has not seen it: anything arriving
+ * from outside — a cast, an untyped caller, a tree revived from JSON — joins the interned graph
+ * before its identity is read. Each factory adopts its own slots, so the walk reaches the whole
+ * subtree.
  */
-function adopt(type: Type): Type {
-  return isInterned(type) ? type : adoptVisitor.visit(type);
+export function adopt(type: Type): Type {
+  if (isInterned(type)) {
+    return type;
+  }
+  validate(type);
+  return adoptVisitor.visit(type);
+}
+
+/** The fields each kind's factory reads, so a literal missing one is named rather than followed. */
+const REQUIRED: Readonly<Record<Type['kind'], readonly string[]>> = {
+  array: ['element'],
+  ctor: ['instanceType', 'args', 'genericArgs'],
+  func: ['returnType', 'args', 'genericArgs'],
+  generic: ['label'],
+  global: ['name', 'genericArgs'],
+  imported: ['name', 'from', 'genericArgs'],
+  intersection: ['members'],
+  iterable: ['element'],
+  literal: ['value'],
+  object: ['members'],
+  tag: ['tag', 'type'],
+  tuple: ['members'],
+  union: ['members'],
+};
+
+/**
+ * Checks a literal names a kind and carries that kind's fields, before the walk reads any of them.
+ * Presence alone — a field's own contents are checked by the factory that adopts it, one level down.
+ *
+ * @throws TypeError - when the kind is unknown, or a field the kind needs is absent.
+ */
+function validate(type: Type): void {
+  if (typeof type !== 'object' || type === null) {
+    throw new TypeError(`a type is written as an object naming its kind — got ${typeof type}`);
+  }
+  const required = REQUIRED[type.kind];
+  if (required === undefined) {
+    throw new TypeError(`${JSON.stringify(type.kind)} names no kind of type`);
+  }
+  for (const field of required) {
+    if (!(field in type)) {
+      throw new TypeError(`a ${type.kind} type carries ${required.join(', ')} — ${field} is missing`);
+    }
+  }
 }
 
 class AdoptVisitor extends TypeVisitor<Type> {

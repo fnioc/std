@@ -25,11 +25,11 @@ class Loop {
 /** A manifest registering `Report` over `Cache | Redis`, plus whichever caches are named. */
 function manifestWith(...caches: readonly ('memory' | 'redis')[]) {
   let manifest = DefaultManifest.empty<string>()
-    .add(ServiceDescriptor.ctor(REPORT, Report, [[Type.union(CACHE, REDIS)]]));
+    .add(ServiceDescriptor.ctor(REPORT, Report, Type.ctor(REPORT, [[Type.union(CACHE, REDIS)]])));
   for (const cache of caches) {
     manifest = cache === 'memory'
-      ? manifest.add(ServiceDescriptor.ctor(CACHE, MemoryCache, [[]]))
-      : manifest.add(ServiceDescriptor.ctor(REDIS, RedisCache, [[]]));
+      ? manifest.add(ServiceDescriptor.ctor(CACHE, MemoryCache, Type.ctor(CACHE, [[]])))
+      : manifest.add(ServiceDescriptor.ctor(REDIS, RedisCache, Type.ctor(REDIS, [[]])));
   }
   return manifest;
 }
@@ -79,8 +79,8 @@ describe('a self-supplying member is the fallback', () => {
 
   function optionalManifest(registerCache: boolean) {
     const manifest = DefaultManifest.empty<string>()
-      .add(ServiceDescriptor.ctor(REPORT, Report, [[OPTIONAL]]));
-    return registerCache ? manifest.add(ServiceDescriptor.ctor(CACHE, MemoryCache, [[]])) : manifest;
+      .add(ServiceDescriptor.ctor(REPORT, Report, Type.ctor(REPORT, [[OPTIONAL]])));
+    return registerCache ? manifest.add(ServiceDescriptor.ctor(CACHE, MemoryCache, Type.ctor(CACHE, [[]]))) : manifest;
   }
 
   test('yields the service when one is registered', () => {
@@ -102,7 +102,7 @@ describe('a self-supplying member is the fallback', () => {
 
 describe('the cycle guard', () => {
   test('still closes a loop after the move to identity comparison', () => {
-    const manifest = DefaultManifest.empty<string>().add(ServiceDescriptor.ctor(LOOP, Loop, [[LOOP]]));
+    const manifest = DefaultManifest.empty<string>().add(ServiceDescriptor.ctor(LOOP, Loop, Type.ctor(LOOP, [[LOOP]])));
     expect(() => new ServiceProvider(manifest).getService(LOOP)).toThrow(CycleError);
   });
 });

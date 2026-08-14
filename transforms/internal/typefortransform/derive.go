@@ -51,15 +51,19 @@ func emitAccessor(f *shimast.NodeFactory, e emitter, d *tokens.Derived, accessor
 		if d.Kind != tokens.DerivedFunc && d.Kind != tokens.DerivedCtor {
 			return nil, false
 		}
-		items := make([]*shimast.Node, 0, len(d.Args))
-		for _, a := range d.Args {
-			item := e.node(a)
-			if item == nil {
-				return nil, true
+		rows := make([]*shimast.Node, 0, len(d.Args))
+		for _, row := range d.Args {
+			items := make([]*shimast.Node, 0, len(row))
+			for _, a := range row {
+				item := e.node(a)
+				if item == nil {
+					return nil, true
+				}
+				items = append(items, item)
 			}
-			items = append(items, item)
+			rows = append(rows, f.NewArrayLiteralExpression(f.NewNodeList(items), false))
 		}
-		return f.NewArrayLiteralExpression(f.NewNodeList(items), false), true
+		return f.NewArrayLiteralExpression(f.NewNodeList(rows), false), true
 	case "tag":
 		if d.Kind != tokens.DerivedTag {
 			return nil, false

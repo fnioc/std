@@ -8,10 +8,10 @@ class TypeValidatorVisitor extends TypeVisitor<readonly string[]> {
     return this.#element(type);
   }
   protected override visitCtor(type: ConstructorType): readonly string[] {
-    return [...this.#quantifiers(type.genericArgs), ...this.#all(type.args), ...this.visit(type.instanceType)];
+    return [...this.#quantifiers(type.genericArgs), ...this.#all(type.args.flat()), ...this.visit(type.instanceType)];
   }
   protected override visitFunc(type: FunctionType): readonly string[] {
-    return [...this.#quantifiers(type.genericArgs), ...this.#all(type.args), ...this.visit(type.returnType)];
+    return [...this.#quantifiers(type.genericArgs), ...this.#all(type.args.flat()), ...this.visit(type.returnType)];
   }
   protected override visitGeneric(_type: GenericType): readonly string[] {
     return [];

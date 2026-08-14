@@ -1,9 +1,8 @@
-import type { ServiceDescriptor as Descriptor } from './expressions';
 import * as factories from './factories';
 import * as op from './op';
+import type { ServiceDescriptor as Descriptor } from './ServiceDescriptor';
 
-export type { CtorServiceDescriptor, FactoryServiceDescriptor, ValuedServiceDescriptor } from './expressions';
-export * from './Signature';
+export type { CtorDescriptor, FactoryDescriptor, ValueDescriptor } from './ServiceDescriptor';
 
 export type ServiceDescriptor<Scopes extends string> = Descriptor<Scopes>;
 

@@ -1,7 +1,7 @@
 import { memo } from '../utils/map.js';
 import { escapeSegment } from './internals/grammar.js';
 import type { ArrayType, ConstructorType, FunctionType, GenericType, GlobalType, ImportedType, IntersectionType,
-  IterableType, ObjectType, TagType, TupleType, Type, TypeLiteralType, UnionType } from './Type.js';
+  IterableType, ObjectType, TagType, TupleType, Type, TypeLiteralType, TypeSignatures, UnionType } from './Type.js';
 import { TypeVisitor } from './TypeVisitor.js';
 
 /**
@@ -26,7 +26,7 @@ class StringifyVisitor extends TypeVisitor<string, Precedence> {
   }
   protected override visitCtor(type: ConstructorType, minimum: Precedence): string {
     return this.#parenthesize(
-      `${this.#quantifiers(type.genericArgs)}new (${this.#list(type.args)}) => `
+      `${this.#quantifiers(type.genericArgs)}new (${this.#rows(type.args)}) => `
         + this.visit(type.instanceType, Precedence.arrow),
       Precedence.arrow,
       minimum,
@@ -34,7 +34,7 @@ class StringifyVisitor extends TypeVisitor<string, Precedence> {
   }
   protected override visitFunc(type: FunctionType, minimum: Precedence): string {
     return this.#parenthesize(
-      `${this.#quantifiers(type.genericArgs)}(${this.#list(type.args)}) => `
+      `${this.#quantifiers(type.genericArgs)}(${this.#rows(type.args)}) => `
         + this.visit(type.returnType, Precedence.arrow),
       Precedence.arrow,
       minimum,
@@ -87,6 +87,13 @@ class StringifyVisitor extends TypeVisitor<string, Precedence> {
   /** Comma-separated, in a position the surrounding brackets already delimit. */
   #list(types: readonly Type[]): string {
     return types.map(member => this.visit(member, Precedence.arrow)).join(', ');
+  }
+  /**
+   * A callable's parameter rows, semicolons between them — the same separator an overload set is
+   * written with. One row therefore spells as its parameters alone.
+   */
+  #rows(rows: TypeSignatures): string {
+    return rows.map(row => this.#list(row)).join('; ');
   }
   /** The signature's own quantifiers, written in front of it; a concrete signature has none. */
   #quantifiers(types: readonly Type[]): string {

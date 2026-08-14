@@ -64,9 +64,11 @@ const (
 	KindUnion
 	// KindGeneric is `Type.generic(label)` — an open-generic hole.
 	KindGeneric
-	// KindFunc is `Type.func(returnType, ...args)`.
+	// KindFunc is `Type.func(returnType, rows)`, rows the return type's parameter
+	// rows as an array of arrays.
 	KindFunc
-	// KindCtor is `Type.ctor(instanceType, ...args)`.
+	// KindCtor is `Type.ctor(instanceType, rows)`, rows the instance type's
+	// parameter rows as an array of arrays.
 	KindCtor
 	// KindTag is `Type.tag(inner, key)`.
 	KindTag
@@ -86,11 +88,14 @@ type Node struct {
 	kind Kind
 	key  string
 
-	// name/from spell a KindNamed node; args are its closed generic arguments,
-	// and double as a KindFunc / KindCtor signature's parameters.
+	// name/from spell a KindNamed node; args are its closed generic arguments.
 	name string
 	from string
 	args []*Node
+
+	// rows are a KindFunc / KindCtor signature's parameter rows — one row per
+	// call it answers to, each holding that call's parameter types in order.
+	rows [][]*Node
 
 	// literal is a KindLiteral node's value as its TypeScript expression text.
 	literal string
@@ -152,15 +157,15 @@ func Generic(label string) *Node {
 	return &Node{kind: KindGeneric, key: "$" + label, label: label}
 }
 
-// Func builds a call-signature node from its return type and parameter types.
-func Func(ret *Node, args []*Node) *Node {
-	return &Node{kind: KindFunc, key: signatureKey("func", ret, args), ret: ret, args: args}
+// Func builds a call-signature node from its return type and parameter rows.
+func Func(ret *Node, rows [][]*Node) *Node {
+	return &Node{kind: KindFunc, key: signatureKey("func", ret, rows), ret: ret, rows: rows}
 }
 
 // Ctor builds a construct-signature node from its instance type and parameter
-// types.
-func Ctor(instance *Node, args []*Node) *Node {
-	return &Node{kind: KindCtor, key: signatureKey("ctor", instance, args), ret: instance, args: args}
+// rows.
+func Ctor(instance *Node, rows [][]*Node) *Node {
+	return &Node{kind: KindCtor, key: signatureKey("ctor", instance, rows), ret: instance, rows: rows}
 }
 
 // Tag builds a keyed node — the branded base with the key composed into it.
@@ -178,14 +183,28 @@ func Null() *Node {
 	return &Node{kind: KindNull, key: "#null"}
 }
 
-// signatureKey spells a Func / Ctor key. The leading `#` can only ever start a
-// composite: a leaf's key starts with a quote (a string literal), a digit or
-// sign (a number), or an identifier character.
-func signatureKey(method string, ret *Node, args []*Node) string {
-	parts := make([]*Node, 0, len(args)+1)
-	parts = append(parts, ret)
-	parts = append(parts, args...)
-	return "#" + method + "(" + joinKeys(parts, ",") + ")"
+// signatureKey spells a Func / Ctor key. Each parameter row is delimited by its
+// own parentheses, so a callable answering to one empty call and one answering
+// to no call at all key differently — the same identity the runtime intern
+// table gives them. The leading `#` can only ever start a composite: a leaf's
+// key starts with a quote (a string literal), a digit or sign (a number), or an
+// identifier character.
+func signatureKey(method string, ret *Node, rows [][]*Node) string {
+	spelled := "#" + method + "(" + ret.key
+	for _, row := range rows {
+		spelled += "(" + joinKeys(row, ",") + ")"
+	}
+	return spelled + ")"
+}
+
+// flatRows is every parameter of every row, in order — the walk order a node's
+// children are interned and rendered in.
+func flatRows(rows [][]*Node) []*Node {
+	out := make([]*Node, 0, len(rows))
+	for _, row := range rows {
+		out = append(out, row...)
+	}
+	return out
 }
 
 func joinKeys(nodes []*Node, sep string) string {
@@ -278,9 +297,9 @@ func (n *Node) children() []*Node {
 	case KindUnion:
 		return n.members
 	case KindFunc, KindCtor:
-		out := make([]*Node, 0, len(n.args)+1)
+		out := make([]*Node, 0, len(n.rows)+1)
 		out = append(out, n.ret)
-		return append(out, n.args...)
+		return append(out, flatRows(n.rows)...)
 	case KindTag:
 		return []*Node{n.inner}
 	default:
@@ -331,9 +350,9 @@ func (r *Registry) expr(n *Node) string {
 	case KindGeneric:
 		return r.typeRef.Export + ".generic(\"" + n.label + "\")"
 	case KindFunc:
-		return r.typeRef.Export + ".func(" + r.joinNames(append([]*Node{n.ret}, n.args...)) + ")"
+		return r.signature(n, "func")
 	case KindCtor:
-		return r.typeRef.Export + ".ctor(" + r.joinNames(append([]*Node{n.ret}, n.args...)) + ")"
+		return r.signature(n, "ctor")
 	case KindTag:
 		return r.typeRef.Export + ".tag(" + r.names[n.inner.key] + ", \"" + n.tag + "\")"
 	case KindUndefined:
@@ -352,6 +371,17 @@ func (r *Registry) expr(n *Node) string {
 		}
 		return call + ")"
 	}
+}
+
+// signature renders a KindFunc / KindCtor const — the return / instance type
+// followed by its parameter rows as one array of arrays, whether the callable
+// answers to one row or several.
+func (r *Registry) signature(n *Node, method string) string {
+	rows := make([]string, len(n.rows))
+	for i, row := range n.rows {
+		rows[i] = "[" + r.joinNames(row) + "]"
+	}
+	return r.typeRef.Export + "." + method + "(" + r.names[n.ret.key] + ", [" + strings.Join(rows, ", ") + "])"
 }
 
 func (r *Registry) joinNames(nodes []*Node) string {

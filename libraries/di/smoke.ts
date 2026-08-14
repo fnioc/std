@@ -36,12 +36,15 @@ class Holder {
 const manifest = DefaultManifest.empty<string>()
   .addValue(CONFIG, { env: 'dev' })
   // .add(ServiceDescriptor.value(CONFIG, { env: 'dev' }))
-  .addClass(Type.stringify(Type.imported('Foo', 'app')), Foo, Type.ctor(FOO))
-  // .add(ServiceDescriptor.ctor(FOO, Foo, [[]]))
-  .add(ServiceDescriptor.ctor(BAR, Bar, [[FOO, Type.typeLiteral('fast')]]))
-  .add(ServiceDescriptor.ctor(WIDGET, Widget, [[CONN, FOO]]))
-  .add(ServiceDescriptor.ctor(Type.imported('Box', 'app', [Type.generic('T')]), Box, [[Type.generic('T')]]))
-  .add(ServiceDescriptor.ctor(HOLDER, Holder, [[SP_TYPE]]));
+  .addClass(Type.stringify(Type.imported('Foo', 'app')), Foo, Type.ctor(FOO, [[]]))
+  // .add(ServiceDescriptor.ctor(FOO, Foo, Type.ctor(FOO, [[]])))
+  .add(ServiceDescriptor.ctor(BAR, Bar, Type.ctor(BAR, [[FOO, Type.typeLiteral('fast')]])))
+  .add(ServiceDescriptor.ctor(WIDGET, Widget, Type.ctor(WIDGET, [[CONN, FOO]])))
+  .add(
+    ServiceDescriptor.ctor(Type.imported('Box', 'app', [Type.generic('T')]), Box,
+      Type.ctor(Type.imported('Box', 'app', [Type.generic('T')]), [[Type.generic('T')]])),
+  )
+  .add(ServiceDescriptor.ctor(HOLDER, Holder, Type.ctor(HOLDER, [[SP_TYPE]])));
 
 const sp = new ServiceProvider(manifest);
 
@@ -67,7 +70,7 @@ check('open generic closes against the request', boxed.inner instanceof Foo);
 const holder = sp.resolve(HOLDER) as Holder;
 check('IServiceProvider injection hands back the resolving provider', holder.sp === sp);
 
-const makeWidget = sp.resolve(Type.func(WIDGET, CONN)) as (conn: Conn) => Widget;
+const makeWidget = sp.resolve(Type.func(WIDGET, [[CONN]])) as (conn: Conn) => Widget;
 const myConn = new Conn();
 const widget = makeWidget(myConn);
 check('latebound closure re-enters with call args as values',
@@ -84,7 +87,10 @@ check('unsatisfiable request throws UnsatisfiableError', threw);
 
 const pairFactory = (foo: Foo, bar: Bar) => [foo, bar] as const;
 const spF = new ServiceProvider(
-  manifest.add(ServiceDescriptor.factory(Type.imported('Pair', 'app'), pairFactory, [[FOO, BAR]])),
+  manifest.add(
+    ServiceDescriptor.factory(Type.imported('Pair', 'app'), pairFactory,
+      Type.func(Type.imported('Pair', 'app'), [[FOO, BAR]])),
+  ),
 );
 const made = spF.resolve(Type.imported('Pair', 'app')) as readonly [Foo, Bar];
 check('factory registration with deps', made[0] instanceof Foo && made[1] instanceof Bar);
@@ -108,11 +114,11 @@ try {
 check('union registration cannot serve a lone member', unionRejected);
 check('union registration serves the exact union request', spUnion.resolve(Type.union(A, B)) === 'either');
 
-const echoType = Type.func(Type.generic('T'), Type.generic('T'));
+const echoType = Type.func(Type.generic('T'), [[Type.generic('T')]]);
 const spEcho = new ServiceProvider(
   DefaultManifest.empty<string>().add(ServiceDescriptor.value(echoType, (x: unknown) => x)),
 );
-const echo = spEcho.resolve(Type.func(FOO, FOO)) as (x: number) => number;
+const echo = spEcho.resolve(Type.func(FOO, [[FOO]])) as (x: number) => number;
 check('open function registration captures through contravariant position', echo(42) === 42);
 
 const spLitOverride = new ServiceProvider(

@@ -5,7 +5,7 @@
 // the sibling ./MetricsOptions-augmentations set.
 
 import type { IConfigureOptions } from '@rhombus-std/options';
-import type { AugmentationSet2, ConstructorType, Flatten, IntersectionType } from '@rhombus-std/primitives';
+import type { AugmentationSet2, ConstructorType, Flatten } from '@rhombus-std/primitives';
 import { registerAugmentations } from '@rhombus-std/primitives.extras';
 import type { Ctor, Func } from '@rhombus-toolkit/func';
 
@@ -21,11 +21,11 @@ interface IMetricsBuilderAugmentations {
   addMetricsListener(listener: IMetricsListener): this;
   /**
    * Registers an {@link IMetricsListener} by its implementation constructor (its
-   * dependencies are injected). `implType` is the composed constructor type,
+   * dependencies are injected). `implementerType` is the composed constructor type,
    * like every di.core `addClass` -- a dependency-free ctor names one with no
    * argument types.
    */
-  addMetricsListenerType(ctor: Ctor, implType: ConstructorType | IntersectionType): this;
+  addMetricsListenerType(ctor: Ctor, implementerType: ConstructorType): this;
   /** Removes all {@link IMetricsListener} registrations from the builder. */
   clearMetricsListeners(): this;
   /**
@@ -60,8 +60,8 @@ export const MetricsBuilderAugmentations: AugmentationSet2<IMetricsBuilder, Flat
     this.services = this.services.addValue(METRICS_LISTENER_TYPE, listener);
     return this;
   },
-  addMetricsListenerType(ctor, implType) {
-    this.services = this.services.addClass(METRICS_LISTENER_TYPE, ctor, implType);
+  addMetricsListenerType(ctor, implementerType) {
+    this.services = this.services.addClass(METRICS_LISTENER_TYPE, ctor, implementerType);
     return this;
   },
   clearMetricsListeners() {

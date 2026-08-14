@@ -71,9 +71,9 @@ func newHoistEmitter(
 func hoistNode(d *tokens.Derived) *typeforhoist.Node {
 	switch d.Kind {
 	case tokens.DerivedFunc:
-		return typeforhoist.Func(hoistNode(d.Ret), hoistNodes(d.Args))
+		return typeforhoist.Func(hoistNode(d.Ret), hoistRows(d.Args))
 	case tokens.DerivedCtor:
-		return typeforhoist.Ctor(hoistNode(d.Ret), hoistNodes(d.Args))
+		return typeforhoist.Ctor(hoistNode(d.Ret), hoistRows(d.Args))
 	case tokens.DerivedTag:
 		return typeforhoist.Tag(hoistNode(d.Inner), d.Tag)
 	case tokens.DerivedUnion:
@@ -91,6 +91,15 @@ func hoistNodes(ds []*tokens.Derived) []*typeforhoist.Node {
 	out := make([]*typeforhoist.Node, 0, len(ds))
 	for _, d := range ds {
 		out = append(out, hoistNode(d))
+	}
+	return out
+}
+
+// hoistRows mirrors a callable's parameter rows, one row per call it answers to.
+func hoistRows(rows [][]*tokens.Derived) [][]*typeforhoist.Node {
+	out := make([][]*typeforhoist.Node, 0, len(rows))
+	for _, row := range rows {
+		out = append(out, hoistNodes(row))
 	}
 	return out
 }

@@ -25,8 +25,8 @@ function makeGadget(bar: unknown): { readonly bar: unknown; } {
   return { bar };
 }
 
-const widgetNode = Type.ctor(Type.imported('Widget', 'app'), Type.imported('Bar', 'app'));
-const gadgetNode = Type.func(Type.imported('Gadget', 'app'), Type.imported('Bar', 'app'));
+const widgetNode = Type.ctor(Type.imported('Widget', 'app'), [[Type.imported('Bar', 'app')]]);
+const gadgetNode = Type.func(Type.imported('Gadget', 'app'), [[Type.imported('Bar', 'app')]]);
 
 declare const widget: Widget;
 declare const gadget: { readonly bar: unknown; };

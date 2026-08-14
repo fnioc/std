@@ -144,7 +144,7 @@ export function demonstrateInfrastructure(): readonly string[] {
   // something the taxonomy names.
   try {
     newWorkshopManifest()
-      .addClass(typefor<IHealthCheck>(), GreetingWorkshop, Type.ctor(typefor<IHealthCheck>(), typefor<IGreeting>()),
+      .addClass(typefor<IHealthCheck>(), GreetingWorkshop, Type.ctor(typefor<IHealthCheck>(), [[typefor<IGreeting>()]]),
         'singleton')
       .build({ validateOnBuild: true });
   } catch (error) {

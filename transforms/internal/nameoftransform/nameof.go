@@ -298,7 +298,7 @@ func composedDiag(composed *inlinetransform.ComposedTypeArg, message string) plu
 // ORIGINAL, program-bound call-site argument (ValueArg) and NO type argument; the
 // caller derives the token from that argument's type (produced for tokenfor, raw
 // for tokenof). It is the value-arg twin of registeredNameof, mirroring how the
-// signatureof stage reads a substituted value argument.
+// typefor stage reads a substituted value argument.
 func registeredValueArg(artifacts *inlinetransform.Artifacts, node *shimast.Node, primName string) (*shimast.Node, bool) {
 	if artifacts == nil {
 		return nil, false

@@ -12,7 +12,7 @@ import (
 // (the callee clone has no symbol).
 //
 // TypeArgs carries a TYPE-argument primitive's bound arguments (nameof<T>()).
-// ValueArg carries a VALUE-argument primitive's argument (signatureof(ctor),
+// ValueArg carries a VALUE-argument primitive's argument (typefor(ctor),
 // tokenof(value)) as the PARSE node behind it, so the consuming stage can
 // checker-query it even though the primitive's own callee is synthetic.
 //

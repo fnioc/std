@@ -10,7 +10,7 @@
 
 import { memo } from '../utils/map.js';
 import type { AggregateType, ArrayType, ConstructorType, FunctionType, GenericType, GlobalType, ImportedType,
-  IntersectionType, IterableType, NominalType, ObjectType, TagType, TupleType, Type, TypeLiteralType,
+  IntersectionType, IterableType, NominalType, ObjectType, TagType, TupleType, Type, TypeLiteralType, TypeSignatures,
   UnionType } from './Type.js';
 import { TypeVisitor } from './TypeVisitor.js';
 
@@ -39,10 +39,10 @@ export const isOpenType = (() => {
       return this.#element(type);
     }
     protected override visitCtor(type: ConstructorType): boolean {
-      return this.#any(type.genericArgs) || this.#any(type.args) || this.visit(type.instanceType);
+      return this.#any(type.genericArgs) || this.#anyRow(type.args) || this.visit(type.instanceType);
     }
     protected override visitFunc(type: FunctionType): boolean {
-      return this.#any(type.genericArgs) || this.#any(type.args) || this.visit(type.returnType);
+      return this.#any(type.genericArgs) || this.#anyRow(type.args) || this.visit(type.returnType);
     }
     protected override visitGeneric(_type: GenericType): boolean {
       return true;
@@ -77,6 +77,9 @@ export const isOpenType = (() => {
 
     #any(types: readonly Type[]): boolean {
       return types.some(type => this.visit(type));
+    }
+    #anyRow(rows: TypeSignatures): boolean {
+      return rows.some(row => this.#any(row));
     }
     #arguments(type: NominalType): boolean {
       return this.#any(type.genericArgs);

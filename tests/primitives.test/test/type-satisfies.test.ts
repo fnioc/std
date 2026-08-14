@@ -69,3 +69,47 @@ describe('Type.match on tags', () => {
     expect(satisfies(Type.from(Type.stringify(tagged)), tagged)).toBe(true);
   });
 });
+
+describe('Type.satisfies on parameter rows', () => {
+  const C = Type.imported('C', 'app');
+
+  test('an overloaded proposal serves a condition any one of its rows serves', () => {
+    const overloaded = Type.func({ returnType: C, args: [[A, B], [A]], genericArgs: [] });
+    expect(satisfies(overloaded, Type.func(C, [[A]]))).toBe(true);
+    expect(satisfies(overloaded, Type.func(C, [[A, B]]))).toBe(true);
+  });
+
+  test('and refuses one no row serves', () => {
+    const overloaded = Type.func({ returnType: C, args: [[A, B], [A]], genericArgs: [] });
+    expect(satisfies(overloaded, Type.func(C, [[B]]))).toBe(false);
+    expect(satisfies(overloaded, Type.func(C, [[]]))).toBe(false);
+  });
+
+  test('one call they agree on is enough, whichever rows carry it', () => {
+    const condition = Type.ctor({ instanceType: C, args: [[A], [A, B]], genericArgs: [] });
+    expect(satisfies(Type.ctor({ instanceType: C, args: [[A], [A, B]], genericArgs: [] }), condition)).toBe(true);
+    expect(satisfies(Type.ctor(C, [[A]]), condition)).toBe(true);
+    expect(satisfies(Type.ctor(C, [[B]]), condition)).toBe(false);
+  });
+
+  test('a row that fails leaves no capture behind for the next one to read', () => {
+    const [satisfied, generics] = Type.satisfies(
+      Type.func({ returnType: C, args: [[A], [B]], genericArgs: [] }),
+      Type.func(C, [[B]]),
+    );
+    expect(satisfied).toBe(true);
+    expect(generics!.size).toBe(0);
+  });
+});
+
+describe('a callable answers to at least one call', () => {
+  test('no row at all is refused, since it has no spelling', () => {
+    expect(() => Type.func({ returnType: A, args: [], genericArgs: [] })).toThrow(TypeError);
+    expect(() => Type.ctor({ instanceType: A, args: [], genericArgs: [] })).toThrow(/at least one call/);
+  });
+
+  test('one empty row is a callable taking nothing', () => {
+    expect(Type.func({ returnType: A, args: [[]], genericArgs: [] })).toBe(Type.func(A, [[]]));
+    expect(Type.stringify(Type.func(A, [[]]))).toBe('() => app:A');
+  });
+});

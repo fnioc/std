@@ -105,14 +105,85 @@ func TestKeyMirrorsTheFlatTokenSpelling(t *testing.T) {
 		"$1":                           Generic("1"),
 		`"a" | "b"`:                    Union([]*Node{Literal(`"a"`), Literal(`"b"`)}),
 		`#tag(orders:IClock,"vendor")`: Tag(Named("IClock", "orders", nil), "vendor"),
-		"#func(IClock)":                Func(Named("IClock", "global", nil), nil),
-		"#ctor(IClock,orders:IClock)":  Ctor(Named("IClock", "global", nil), []*Node{Named("IClock", "orders", nil)}),
+		"#func(IClock())":              Func(Named("IClock", "global", nil), [][]*Node{nil}),
+		"#ctor(IClock(orders:IClock))": Ctor(Named("IClock", "global", nil), [][]*Node{{Named("IClock", "orders", nil)}}),
 	}
 	for want, node := range cases {
 		if node.Key() != want {
 			t.Errorf("want key %q, got %q", want, node.Key())
 		}
 	}
+}
+
+// TestACallableAlwaysSpellsItsRowsArray: a const holding a callable renders its
+// parameter rows as one array of arrays, whether it answers to one row or
+// several.
+func TestACallableAlwaysSpellsItsRowsArray(t *testing.T) {
+	registry := NewRegistry(TypeRef{Module: "@rhombus-std/primitives", Export: "Type"})
+	widget := Named("IWidget", "orders", nil)
+	clock := Named("IClock", "orders", nil)
+	options := Named("IOptions", "orders", nil)
+
+	oneRow := Ctor(widget, [][]*Node{{clock}})
+	several := Ctor(widget, [][]*Node{{clock}, {clock, options}})
+	for _, node := range []*Node{oneRow, several} {
+		if _, err := registry.Ref(node); err != nil {
+			t.Fatal(err)
+		}
+	}
+
+	widgetName := refOf(t, registry, widget)
+	clockName := refOf(t, registry, clock)
+	optionsName := refOf(t, registry, options)
+	module := registry.Module()
+	wantOneRow := "export const " + refOf(t, registry, oneRow) + " = Type.ctor(" + widgetName + ", [[" + clockName + "]]);"
+	if !strings.Contains(module, wantOneRow) {
+		t.Errorf("want %q in:\n%s", wantOneRow, module)
+	}
+	wantSeveral := "export const " + refOf(t, registry, several) + " = Type.ctor(" + widgetName +
+		", [[" + clockName + "], [" + clockName + ", " + optionsName + "]]);"
+	if !strings.Contains(module, wantSeveral) {
+		t.Errorf("want %q in:\n%s", wantSeveral, module)
+	}
+}
+
+// TestARowShapeIsPartOfIdentity: two callables over the same head and the same
+// parameters, grouped into different rows, are different types and so different
+// consts — the empty call among them, which is not the same as answering to no
+// call at all.
+func TestARowShapeIsPartOfIdentity(t *testing.T) {
+	registry := NewRegistry(TypeRef{Module: "@rhombus-std/primitives", Export: "Type"})
+	head := Named("IWidget", "orders", nil)
+	clock := Named("IClock", "orders", nil)
+	options := Named("IOptions", "orders", nil)
+
+	together := Func(head, [][]*Node{{clock, options}})
+	apart := Func(head, [][]*Node{{clock}, {options}})
+	takesNothing := Func(head, [][]*Node{nil})
+	if together.Key() == apart.Key() {
+		t.Errorf("one row of two parameters keys the same as two rows of one: %s", together.Key())
+	}
+	if takesNothing.Key() == together.Key() {
+		t.Errorf("an empty row keys the same as a populated one: %s", takesNothing.Key())
+	}
+	for _, node := range []*Node{together, apart, takesNothing} {
+		if _, err := registry.Ref(node); err != nil {
+			t.Fatal(err)
+		}
+	}
+	// The three callables plus the three names they are built over.
+	if registry.Len() != 6 {
+		t.Fatalf("want 6 distinct nodes, got %d:\n%s", registry.Len(), registry.Module())
+	}
+}
+
+func refOf(t *testing.T, registry *Registry, node *Node) string {
+	t.Helper()
+	name, err := registry.Ref(node)
+	if err != nil {
+		t.Fatal(err)
+	}
+	return name
 }
 
 func TestAnAlphanumericKeyNamesItself(t *testing.T) {

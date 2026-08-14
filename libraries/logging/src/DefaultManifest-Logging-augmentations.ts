@@ -74,7 +74,7 @@ export const ServiceManifestLoggingAugmentations: AugmentationSet2<DefaultManife
       // ILoggerFactory, injected with the enumerable provider set and the
       // assembled IOptions<LoggerFilterOptions>.
       m = m.addClass(LOGGER_FACTORY_TYPE, LoggerFactory,
-        Type.ctor(LOGGER_FACTORY_TYPE, Type.array(LOGGER_PROVIDER_TYPE), LOGGER_FILTER_OPTIONS_ACCESSOR_TYPE),
+        Type.ctor(LOGGER_FACTORY_TYPE, [[Type.array(LOGGER_PROVIDER_TYPE), LOGGER_FILTER_OPTIONS_ACCESSOR_TYPE]]),
         'singleton');
 
       // The open ILogger<$1> -> Logger<$1> registration: the closing type flows
@@ -87,7 +87,7 @@ export const ServiceManifestLoggingAugmentations: AugmentationSet2<DefaultManife
       // template matches.
       const hole = Type.generic('$1');
       const openLoggerType = Type.imported('ILogger', '@rhombus-std/logging.core', [hole]);
-      m = m.addClass(openLoggerType, LoggerOfT, Type.ctor(openLoggerType, LOGGER_FACTORY_TYPE, hole), 'singleton');
+      m = m.addClass(openLoggerType, LoggerOfT, Type.ctor(openLoggerType, [[LOGGER_FACTORY_TYPE, hole]]), 'singleton');
 
       // `m` is the widened Manifest<string>, whereas
       // ILoggingBuilder.services is the singleton-default `ServiceManifest` --

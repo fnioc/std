@@ -126,15 +126,15 @@ function goEnv(): NodeJS.ProcessEnv {
 //
 // Three shapes of service type reach the same verb:
 //
-//   1. closed        services.addClass<ILogger>(ConsoleLogger, [['app:IClock']], 'singleton')
-//   2. open template services.addClass<IRepo<$<1>>>(ThingRepo, [[]])  (hole-carrying dep)
-//   3. keyed         services.addClass<Keyed<ICache, 'redis'>>(RedisCache, [[]])
+//   1. closed        services.addClass<ILogger>(ConsoleLogger, loggerImpl, 'singleton')
+//   2. open template services.addClass<IRepo<$<1>>>(ThingRepo, repoImpl)  (hole-carrying dep)
+//   3. keyed         services.addClass<Keyed<ICache, 'redis'>>(RedisCache, cacheImpl)
 //
 // WIRING. The chain sandbox deps {di.core, di.extras}, symlinks the authoring
 // packages, and names ONE spawn descriptor. The always-on host runs its whole
 // stage table: the inline stage substitutes the sugar body, which puts a
 // `typefor<T>()` in front of the token-taking member, and the primitive stages
-// (nameof / typefor / signatureof) lower the calls it mints. Every argument the
+// (nameof / typefor) lower the calls it mints. Every argument the
 // author wrote after the ctor is carried through untouched — the sugar adds the
 // token and nothing else.
 //
@@ -153,7 +153,7 @@ const inferredDir = join(CHAIN_ROOT, 'inferred');
 // actually resolves to. The consumer-merge suite covers the other assembly — the
 // member-map `extends` shape a real dependency graph produces.
 const AUTHORING_SOURCE = `
-import type { Manifest, Signatures } from '@rhombus-std/di.core';
+import type { ConstructorType, Manifest } from '@rhombus-std/di.core';
 
 interface Ctor<in Args extends readonly any[] = any[], out Instance = any> {
   new(...args: Args): Instance;
@@ -161,7 +161,7 @@ interface Ctor<in Args extends readonly any[] = any[], out Instance = any> {
 
 declare module '@rhombus-std/di.core' {
   interface Manifest<Scopes extends string> {
-    addClass<T>(ctor: Ctor, signatures: Signatures, scope?: Scopes, key?: string): Manifest<Scopes>;
+    addClass<T>(ctor: Ctor, implementerType: ConstructorType, scope?: Scopes, key?: string): Manifest<Scopes>;
     addValue<T>(value: unknown, key?: string): Manifest<Scopes>;
   }
 }
@@ -172,7 +172,7 @@ export {};
 // The closed and open service types, kept in one file so a whole-file compare
 // pins import elision and surrounding text alongside the per-line tokens.
 const CHAIN_SOURCE = `
-import type { $, Manifest } from '@rhombus-std/di.core';
+import type { $, ConstructorType, Manifest } from '@rhombus-std/di.core';
 
 interface ILogger {}
 interface IClock {}
@@ -187,26 +187,30 @@ class ThingRepo {
 }
 
 declare const services: Manifest<'singleton'>;
+declare const loggerImpl: ConstructorType;
+declare const noDepsImpl: ConstructorType;
+declare const repoImpl: ConstructorType;
 
-export const closed = services.addClass<ILogger>(ConsoleLogger, [['app:IClock']], 'singleton');
+export const closed = services.addClass<ILogger>(ConsoleLogger, loggerImpl, 'singleton');
 
-export const emptySig = services.addClass<ILogger>(ConsoleLogger, [[]], 'singleton');
+export const emptySig = services.addClass<ILogger>(ConsoleLogger, noDepsImpl, 'singleton');
 
-export const open = services.addClass<IRepo<$<1>>>(ThingRepo, [[]]);
+export const open = services.addClass<IRepo<$<1>>>(ThingRepo, repoImpl);
 `;
 
 // A KEYED service type. Base and key compose into ONE tag token, and the lookup
 // side mints the identical token — that identity is what makes a keyed
 // registration and a keyed lookup meet. Own file so the compare is isolated.
 const KEYED_SOURCE = `
-import type { Keyed, Manifest } from '@rhombus-std/di.core';
+import type { ConstructorType, Keyed, Manifest } from '@rhombus-std/di.core';
 
 interface ICache {}
 class RedisCache implements ICache {}
 
 declare const services: Manifest<'singleton'>;
+declare const cacheImpl: ConstructorType;
 
-export const keyed = services.addClass<Keyed<ICache, 'redis'>>(RedisCache, [[]]);
+export const keyed = services.addClass<Keyed<ICache, 'redis'>>(RedisCache, cacheImpl);
 `;
 
 // A sugar call with NO type argument. The service type is the sugar's type
@@ -214,13 +218,14 @@ export const keyed = services.addClass<Keyed<ICache, 'redis'>>(RedisCache, [[]])
 // infer it from. The stage refuses with a named diagnostic rather than deriving a
 // token for `unknown` — compiled on its own, since the refusal fails the build.
 const INFERRED_SOURCE = `
-import type { Manifest } from '@rhombus-std/di.core';
+import type { ConstructorType, Manifest } from '@rhombus-std/di.core';
 
 class SelfRepo {}
 
 declare const services: Manifest<'singleton'>;
+declare const selfImpl: ConstructorType;
 
-export const self = services.addClass(SelfRepo, [[]]);
+export const self = services.addClass(SelfRepo, selfImpl);
 `;
 
 // Lookup-family source (W5). The type-driven get* forms lower through the inline
@@ -261,11 +266,12 @@ export const keyedTok = provider.getService<Keyed<ICache, 'redis'>>();
 export const keyedKnown = provider.getRequiredService<Keyed<ICache, 'redis'>>();
 `;
 
-// The signatures argument. Everything the author writes after the ctor reaches the
-// token-taking member unchanged: the sugar's only job is to put the derived token
-// in front of it. Own file so the pass-through is compared in isolation.
+// The implementation-type argument. Everything the author writes after the ctor
+// reaches the token-taking member unchanged: the sugar's only job is to put the
+// derived token in front of it. Own file so the pass-through is compared in
+// isolation.
 const OVERRIDE_SOURCE = `
-import type { Manifest } from '@rhombus-std/di.core';
+import type { ConstructorType, Manifest } from '@rhombus-std/di.core';
 
 interface IReq {}
 interface ILog {}
@@ -278,8 +284,9 @@ class Handler implements IHandler {
 }
 
 declare const services: Manifest<'singleton'>;
+declare const handlerType: ConstructorType;
 
-export const overridden = services.addClass<IHandler>(Handler, [['pkg:IReqAlt', 'pkg:ILog']]);
+export const overridden = services.addClass<IHandler>(Handler, handlerType);
 `;
 
 function writeChainSrc(dir: string): void {
@@ -335,7 +342,7 @@ function setupChainWorkspaces(): void {
   rmSync(join(chainInlineDir, 'dist'), { recursive: true, force: true });
 
   // Inline path: di.extras IN deps → the host scan activates the full stage
-  // set (inline + nameof + typefor + signatureof). The tsconfig spells the
+  // set (inline + nameof + typefor). The tsconfig spells the
   // primitives descriptors explicitly so ttsc has direct-discovery entries to
   // spawn the host with; the rest arrive through the scan. There is no semantic
   // (di-direct) sandbox — its output is the frozen `*.di-direct.js` golden.
@@ -451,7 +458,10 @@ function assertNoAuthoringSurvivors(out: string): void {
   expect(out).not.toContain('addClass<');
   expect(out).not.toContain('tokenfor');
   expect(out).not.toContain('tokenof');
-  expect(out).not.toContain('signatureof');
+  // The CALL form, not the bare name: a hoisted emission's own module specifier
+  // and const names carry the primitive's name as a substring.
+  expect(out).not.toContain('typefor(');
+  expect(out).not.toContain('typefor<');
 }
 
 function lineWith(src: string, needle: string): string | undefined {
@@ -466,17 +476,18 @@ describe.skipIf(!toolchainReady)('generic inline stage — registration parity (
     const line = lineWith(chainInline, 'closed =');
     expect(line).toBeDefined();
     const logger = constFor(chainModule, 'Type.imported("ILogger", "chain-app/tokens/chain")');
-    expect(line).toContain(`addClass(${logger}, ConsoleLogger, [["app:IClock"]], "singleton")`);
+    expect(line).toContain(`addClass(${logger}, ConsoleLogger, loggerImpl, "singleton")`);
     assertNoAuthoringSurvivors(chainInline);
   });
 
-  test('an empty signature list survives the fixed-point loop unchanged', () => {
-    // `[[]]` is a value argument the sugar never reads, so every pass of the loop
-    // must leave it alone; a pass that re-visited its own output would mangle it.
+  test('a second call at the same address survives the fixed-point loop unchanged', () => {
+    // The implementation type is a value argument the sugar never reads, so every
+    // pass of the loop must leave it alone; a pass that re-visited its own output
+    // would mangle it.
     const line = lineWith(chainInline, 'emptySig =');
     expect(line).toBeDefined();
     const logger = constFor(chainModule, 'Type.imported("ILogger", "chain-app/tokens/chain")');
-    expect(line).toContain(`addClass(${logger}, ConsoleLogger, [[]], "singleton")`);
+    expect(line).toContain(`addClass(${logger}, ConsoleLogger, noDepsImpl, "singleton")`);
     assertNoAuthoringSurvivors(chainInline);
   });
 
@@ -488,7 +499,7 @@ describe.skipIf(!toolchainReady)('generic inline stage — registration parity (
     // references it by name.
     const hole = constFor(chainModule, 'Type.generic("1")');
     const openType = constFor(chainModule, `Type.imported("IRepo", "chain-app/tokens/chain", [${hole}])`);
-    expect(line).toContain(`addClass(${openType}, ThingRepo, [[]])`);
+    expect(line).toContain(`addClass(${openType}, ThingRepo, repoImpl)`);
     assertNoAuthoringSurvivors(chainInline);
   });
 
@@ -524,14 +535,14 @@ describe.skipIf(!toolchainReady)('generic inline stage — registration parity (
     // and it composes the base's own const rather than re-spelling it.
     const cache = constFor(chainModule, 'Type.imported("ICache", "chain-app/tokens/keyed")');
     const keyedCache = constFor(chainModule, `Type.tag(${cache}, "redis")`);
-    expect(line).toContain(`addClass(${keyedCache}, RedisCache, [[]])`);
+    expect(line).toContain(`addClass(${keyedCache}, RedisCache, cacheImpl)`);
   });
 
-  test('the signatures argument reaches the member exactly as written', () => {
+  test('the implementation type reaches the member exactly as written', () => {
     const line = lineWith(overrideInline, 'overridden =');
     expect(line).toBeDefined();
     const handler = constFor(chainModule, 'Type.imported("IHandler", "chain-app/tokens/override")');
-    expect(line).toContain(`addClass(${handler}, Handler, [["pkg:IReqAlt", "pkg:ILog"]])`);
+    expect(line).toContain(`addClass(${handler}, Handler, handlerType)`);
     assertNoAuthoringSurvivors(overrideInline);
   });
 

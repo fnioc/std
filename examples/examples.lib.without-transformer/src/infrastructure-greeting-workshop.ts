@@ -131,7 +131,7 @@ export class GreetingCard {
  * THE CALLABLE. Both dependencies come in as ordinary parameters —
  *
  *   - `mintCard` is an ad-hoc FACTORY. The registration's slot is a CALLABLE
- *     type, `Type.func(GREETING_CARD_TYPE, CARD_RECIPIENT_TYPE)`: the return
+ *     type, `Type.func(GREETING_CARD_TYPE, [[CARD_RECIPIENT_TYPE]])`: the return
  *     type is what the callable produces, and its argument types are the ones
  *     the CALLER supplies, so every other slot in the target's signature is
  *     resolved from the container as usual. The container hands over a
@@ -218,7 +218,7 @@ export class LocatorGreetingWorkshop {
 
   /**
    * The card factory, built on FIRST USE and then reused. Resolving
-   * `Type.func(GREETING_CARD_TYPE, CARD_RECIPIENT_TYPE)` works the slot plan out
+   * `Type.func(GREETING_CARD_TYPE, [[CARD_RECIPIENT_TYPE]])` works the slot plan out
    * once — which slot the caller fills, which the container resolves — so paying
    * for that per card would be waste. The memo is pure overhead the
    * injected-callable version does not have: the container already did this work.
@@ -240,16 +240,16 @@ export class LocatorGreetingWorkshop {
   }
 
   /**
-   * `Type.func(result, ...args)` IS the partition, spelled as a type: the listed
+   * `Type.func(result, [[...args]])` IS the partition, spelled as a type: the listed
    * arguments are the ones the CALLER supplies, and every other slot in the
-   * target's signature resolves from the container. `Type.func(GREETING_CARD_TYPE,
-   * CARD_RECIPIENT_TYPE)` means "a callable producing a card, whose one argument
+   * target's signature resolves from the container.
+   * `Type.func(GREETING_CARD_TYPE, [[CARD_RECIPIENT_TYPE]])` means "a callable producing a card, whose one argument
    * is the recipient" — the same plan the good class receives as a constructor
    * parameter, except asked for here in a method body where nothing can check it.
    */
   public card(name: string): string {
     this.#mintCard ??= this.#resolver.getRequiredService(
-      Type.func(GREETING_CARD_TYPE, CARD_RECIPIENT_TYPE),
+      Type.func(GREETING_CARD_TYPE, [[CARD_RECIPIENT_TYPE]]),
     ) as (recipient: ICardRecipient) => GreetingCard;
     return this.#mintCard({ name }).render(this.stationery.border);
   }
@@ -305,7 +305,7 @@ export class GreetingWorkshopBuilder<S extends string> implements IGreetingWorks
     // a transformer to derive a Type from — this call is explicit in BOTH
     // dialects. Zero-dep ctor, so the composed constructor type carries no
     // argument types beyond the address.
-    this.#holder.services = this.#holder.services.addClass(GREETING_TYPE, greeting, Type.ctor(GREETING_TYPE),
+    this.#holder.services = this.#holder.services.addClass(GREETING_TYPE, greeting, Type.ctor(GREETING_TYPE, [[]]),
       'singleton');
     return this;
   }
@@ -337,7 +337,7 @@ export function addGreetingWorkshop<S extends string>(services: Manifest<S | 'si
   // nothing ever registers; that slot is the caller's, and the factory
   // parameter below is what hands it over.
   holder.services = holder.services.addClass(GREETING_CARD_TYPE, GreetingCard,
-    Type.ctor(GREETING_CARD_TYPE, GREETING_TYPE, CARD_RECIPIENT_TYPE));
+    Type.ctor(GREETING_CARD_TYPE, [[GREETING_TYPE, CARD_RECIPIENT_TYPE]]));
 
   // The workshop itself goes on last so a consumer cannot forget it. Its whole
   // dependency plan is right here, in the composed constructor type, where the
@@ -345,11 +345,9 @@ export function addGreetingWorkshop<S extends string>(services: Manifest<S | 'si
   // argument types are the caller's half) and an OPTIONAL stationery argument,
   // spelled as the union of the stationery with a literal `undefined` that
   // always resolves.
-  holder.services = holder.services.addClass(GREETING_WORKSHOP_TYPE, GreetingWorkshop, Type.ctor(
-    GREETING_WORKSHOP_TYPE,
-    Type.func(GREETING_CARD_TYPE, CARD_RECIPIENT_TYPE),
-    Type.union(CARD_STATIONERY_TYPE, Type.typeLiteral(undefined)),
-  ), 'singleton');
+  holder.services = holder.services.addClass(GREETING_WORKSHOP_TYPE, GreetingWorkshop,
+    Type.ctor(GREETING_WORKSHOP_TYPE, [[Type.func(GREETING_CARD_TYPE, [[CARD_RECIPIENT_TYPE]]),
+      Type.union(CARD_STATIONERY_TYPE, Type.typeLiteral(undefined))]]), 'singleton');
 
   // The discouraged twin, registered beside it so a reader can resolve both and
   // watch them produce identical cards from very different constructors. The
@@ -358,6 +356,6 @@ export function addGreetingWorkshop<S extends string>(services: Manifest<S | 'si
   // kind, which is precisely why nothing stops a library doing it and why the
   // comparison has to be made in prose.
   holder.services = holder.services.addClass(LOCATOR_GREETING_WORKSHOP_TYPE, LocatorGreetingWorkshop,
-    Type.ctor(LOCATOR_GREETING_WORKSHOP_TYPE, RESOLVER_TYPE), 'singleton');
+    Type.ctor(LOCATOR_GREETING_WORKSHOP_TYPE, [[RESOLVER_TYPE]]), 'singleton');
   return holder.services;
 }
