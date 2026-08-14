@@ -16,7 +16,7 @@ import { DefaultManifest, type Manifest, Type } from '@rhombus-std/di.core';
 import { LoggingBuilder } from '@rhombus-std/logging';
 import { LoggerProviderOptions } from '@rhombus-std/logging.config';
 import type { IOptions } from '@rhombus-std/options';
-import '@rhombus-std/options.augmentations';
+import { optionsAddressType } from '@rhombus-std/options.augmentations';
 import { describe, expect, test } from 'bun:test';
 
 interface FakeProviderOptions {
@@ -26,6 +26,7 @@ interface FakeProviderOptions {
 
 const OPTIONS_TOKEN = 'test:FakeProviderOptions';
 const FAKE_PROVIDER_TOKEN = 'test:FakeProvider';
+const OPTIONS_ACCESSOR_TYPE = optionsAddressType(Type.from(OPTIONS_TOKEN));
 
 function rootWith(data: Record<string, string>): IConfigRoot {
   return new ConfigBuilder().addInMemoryCollection(data).build() as unknown as IConfigRoot;
@@ -44,7 +45,7 @@ describe('LoggerProviderOptions.registerProviderOptions', () => {
     services = LoggerProviderOptions.registerProviderOptions(services, OPTIONS_TOKEN, FAKE_PROVIDER_TOKEN);
 
     const provider = services.build().createScope('singleton');
-    const options: IOptions<FakeProviderOptions> = provider.getRequiredService(Type.from(OPTIONS_TOKEN));
+    const options: IOptions<FakeProviderOptions> = provider.getRequiredService(OPTIONS_ACCESSOR_TYPE);
 
     // Only FakeProvider's section binds; the configure step deep-merges onto
     // the makeBase value.
@@ -62,7 +63,7 @@ describe('LoggerProviderOptions.registerProviderOptions', () => {
     services = LoggerProviderOptions.registerProviderOptions(services, OPTIONS_TOKEN, FAKE_PROVIDER_TOKEN);
 
     const provider = services.build().createScope('singleton');
-    const options: IOptions<FakeProviderOptions> = provider.getRequiredService(Type.from(OPTIONS_TOKEN));
+    const options: IOptions<FakeProviderOptions> = provider.getRequiredService(OPTIONS_ACCESSOR_TYPE);
     expect(options.value.Format).toBe('json');
 
     const seen: FakeProviderOptions[] = [];
@@ -93,7 +94,7 @@ describe('LoggerProviderOptions.registerProviderOptions', () => {
     });
 
     const provider = services.build().createScope('singleton');
-    const options: IOptions<FakeProviderOptions> = provider.getRequiredService(Type.from(OPTIONS_TOKEN));
+    const options: IOptions<FakeProviderOptions> = provider.getRequiredService(OPTIONS_ACCESSOR_TYPE);
 
     expect(options.value).toEqual({ Format: 'json', MaxDepth: '9' });
   });

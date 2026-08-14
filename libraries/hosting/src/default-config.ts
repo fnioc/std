@@ -78,5 +78,5 @@ export function addDefaultServices(services: Manifest): Manifest {
  */
 export function createDefaultServiceProviderOptions(environment: IHostEnvironment): ServiceProviderOptions {
   const isDevelopment = HostEnvironmentEnvAugmentations.isDevelopment.call(environment);
-  return { validateOnBuild: isDevelopment };
+  return { validateScopes: isDevelopment, validateOnBuild: isDevelopment };
 }

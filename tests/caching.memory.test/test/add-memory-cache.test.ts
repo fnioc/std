@@ -3,7 +3,7 @@
 // reference AddOptions + Configure(setupAction) composition: `setup` runs
 // LAZILY when the options resolve), and the ILoggerFactory injection.
 
-import { MEMORY_CACHE_OPTIONS_TYPE, MEMORY_CACHE_TYPE, MemoryCache, MemoryCacheOptions,
+import { MEMORY_CACHE_OPTIONS_ACCESSOR_TYPE, MEMORY_CACHE_TYPE, MemoryCache, MemoryCacheOptions,
   ServiceManifestMemoryCacheAugmentations } from '@rhombus-std/caching.memory';
 // Side-effect: installs `build` onto di.core's Manifest.
 import '@rhombus-std/di';
@@ -76,7 +76,7 @@ describe('addMemoryCache', () => {
     });
 
     const scope = services.build().createScope('singleton');
-    const options: { value: MemoryCacheOptions; } = scope.getRequiredService(MEMORY_CACHE_OPTIONS_TYPE);
+    const options: { value: MemoryCacheOptions; } = scope.getRequiredService(MEMORY_CACHE_OPTIONS_ACCESSOR_TYPE);
     expect(options.value).toBeInstanceOf(MemoryCacheOptions);
     expect(options.value.name).toBe('configured');
   });
