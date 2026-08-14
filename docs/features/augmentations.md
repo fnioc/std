@@ -90,6 +90,55 @@ A receiver with its own generic parameter threads it through both the member map
 `IManifestServiceAugmentations<Scopes extends string>` merges onto
 `interface IManifest<Scopes extends string> extends IManifestServiceAugmentations<Scopes> {}`.
 
+**A member name that another package also contributes to the same receiver duplicates its
+signature directly in the `declare module` body, beside the `extends` clause.** Two `extends`
+clauses supplying one name do not fold into overloads: TypeScript's declaration merging treats a
+directly-declared member as shadowing one reached only through `extends`, so when neither side
+declares the colliding name directly, only one of them survives on the interface-typed receiver —
+the other, though still installed at runtime, is invisible to a caller holding the interface type.
+The same shadowing hits a member whose other side is the receiver's own primary declaration.
+
+```ts
+// package-a's Receiver-Greet-augmentations.ts
+type IReceiverGreetAugmentations = { hello(world: number): void; };
+declare module 'receiver-package' {
+  interface Receiver extends IReceiverGreetAugmentations {}
+}
+```
+
+```ts
+// package-b's Receiver-Farewell-augmentations.ts, contributing the SAME name
+type IReceiverFarewellAugmentations = { hello(farewell: string): void; };
+declare module 'receiver-package' {
+  interface Receiver extends IReceiverFarewellAugmentations {}
+}
+```
+
+Only one `hello` overload is visible on an interface-typed `Receiver` here. Each side names its
+own duplicate, verbatim and undocumented (the member map keeps the documented declaration), inside
+its own block:
+
+```ts
+declare module 'receiver-package' {
+  interface Receiver extends IReceiverGreetAugmentations {
+    hello(world: number): void;
+  }
+}
+```
+
+```ts
+declare module 'receiver-package' {
+  interface Receiver extends IReceiverFarewellAugmentations {
+    hello(farewell: string): void;
+  }
+}
+```
+
+With both sides declaring their own signature directly, TypeScript's ordinary same-name-across-
+partial-declarations merge — the same one that already applies between a receiver's primary
+declaration and its augmentations — folds them into one overload list, and the interface-typed
+receiver sees every form. A member whose name never collides keeps its `extends`-only empty body.
+
 **4. Write the exported const and install it:**
 
 - **OPEN receiver** — type the const `AugmentationSet2<Receiver, MemberMap>`. `AugmentationSet2` is
@@ -274,6 +323,12 @@ registry never receives augmentations registered against the other.
   `ILoggerFactory`, `build` on `di`), the augmented form is dot-callable at runtime via a merge
   strategy but isn't a typed overload (TS can't unify the two call shapes). The _typed_ call path
   for these stays the plain standalone function, not the method form.
+- **A merge strategy and a duplicated signature answer two different questions.** A merge strategy
+  (above) is for a name that's already taken by the receiver's own hand-written primitive, with a
+  genuinely incompatible call shape — the runtime dispatcher picks which implementation a call
+  reaches. A duplicated signature (step 3) is for a name two `extends`-only augmentations both
+  contribute — the runtime side already works via the registry; only the interface-typed _type_
+  needs the duplicate to see every overload.
 - **The extends-merge (`export interface X extends I {}`) is per-class, not automatic.** Forget it
   on a concrete implementer and instances still get every augmentation at runtime — they're just
   invisible on that class's own type until you widen to the interface.
