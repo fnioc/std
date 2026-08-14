@@ -21,7 +21,7 @@
 // and asserts no runtime .js slips into dist/bundle.
 
 import { spawnSync } from 'node:child_process';
-import { existsSync, mkdirSync, renameSync, rmSync } from 'node:fs';
+import { existsSync, mkdirSync, readdirSync, readFileSync, renameSync, rmSync, writeFileSync } from 'node:fs';
 import { homedir } from 'node:os';
 import { join } from 'node:path';
 
@@ -255,6 +255,36 @@ export interface BuildPackageOptions {
   readonly ttscTransforms?: readonly string[];
 }
 
+/**
+ * A rolled `.d.ts` whose only surviving content is a `declare module '…' { … }`
+ * augmentation block loses module-hood the moment rollup-plugin-dts drops the
+ * now-unused imports around it: a file with no top-level `import`/`export`
+ * statement is a GLOBAL SCRIPT to TypeScript, so its `declare module` block is
+ * read as a fresh module declaration rather than an augmentation of the named
+ * module wherever a consuming program also sees that module's real exports —
+ * corrupting the whole program. This is common for an augmentation whose
+ * members return the receiver type they augment (a chaining verb): the only
+ * import that referenced the receiver becomes dead, since the identifier
+ * inside `declare module` resolves to the block's own reopened interface, not
+ * the import.
+ *
+ * Appends a bare `export {};` to any rolled `.d.ts` under `bundleDir` that has
+ * no top-level `import`/`export` line, restoring module-hood without changing
+ * the augmentation's meaning.
+ */
+export function ensureDtsModuleHood(bundleDir: string): void {
+  for (const entry of readdirSync(bundleDir)) {
+    if (!entry.endsWith('.d.ts')) {
+      continue;
+    }
+    const path = join(bundleDir, entry);
+    const content = readFileSync(path, 'utf8');
+    if (!/^(import|export)\b/m.test(content)) {
+      writeFileSync(path, `${content.trimEnd()}\nexport {};\n`);
+    }
+  }
+}
+
 /** Builds one package's dist artifacts (JS bundle + rolled .d.ts). */
 export async function buildPackage(options: BuildPackageOptions): Promise<void> {
   const { dir, name, entrypoints = ['src/index.ts'], external = [], emitJs = true, dtsConfigs = ['rollup.dts.mjs'],
@@ -301,6 +331,7 @@ export async function buildPackage(options: BuildPackageOptions): Promise<void> 
       throw new Error(`${name}: rollup d.ts bundling failed (${config})`);
     }
   }
+  ensureDtsModuleHood(bundleDir);
 
   if (assertNoJs && existsSync(join(bundleDir, 'index.js'))) {
     throw new Error(`${name}: unexpected runtime artifact dist/bundle/index.js -- this package is types-only`);
