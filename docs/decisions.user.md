@@ -67,3 +67,17 @@ collects its own placeholders; the bindings it captures are the placeholder inve
 step consumes.
 
 _Owner-ruled and signed off 2026-08-12._
+
+## U5 — Matching: same kind always; assignability within a kind; identity at identifiers
+
+A request matches a candidate only within a kind — never across kinds: a ctor never answers a
+func, and an `Array<T>` registration never answers an `Iterable<T>` request (the aggregation
+fallback serves collection requests; only an exact registration of that same type preempts it).
+Within a structural kind the comparison is assignability over the node trees, recursing into
+child positions — a callable serves a request when every requested signature row is served by
+some candidate row, surplus candidate rows harmless. At the identifier kinds the comparison is
+interned identity (`===`). A generic hole binds whatever sits at its position — binding, not
+assignability. Which row the engine constructs through is a separate value-level choice: rows
+sorted longest-first, first row whose looked-up values are all present.
+
+_Owner-ruled and signed off 2026-08-14._
