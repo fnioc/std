@@ -11,8 +11,7 @@ import (
 	"github.com/fnioc/std/transforms/internal/inlinetransform"
 	"github.com/fnioc/std/transforms/internal/plugin"
 	"github.com/fnioc/std/transforms/internal/schemaoftransform"
-	"github.com/fnioc/std/transforms/internal/signatures"
-	"github.com/fnioc/std/transforms/internal/signaturetransform"
+	"github.com/fnioc/std/transforms/internal/typefortransform"
 )
 
 // loopMaxPasses mirrors stdhost.maxLoopPasses for the tests that drive
@@ -52,14 +51,13 @@ export interface IServiceManifestBase {
 }
 export declare const services: IServiceManifestBase;
 `)
-	// The inline bodies: addClass derives token + dep-array, withSignature appends a
-	// second type-driven token onto the chain.
-	writeFile(t, filepath.Join(core, "src", "inline.ts"), `import { tokenfor } from '@rhombus-std/primitives.extras';
-import { signatureof } from '@rhombus-std/di.extras';
+	// The inline bodies: addClass derives token + the dependency node, withSignature
+	// appends a second type-driven token onto the chain.
+	writeFile(t, filepath.Join(core, "src", "inline.ts"), `import { tokenfor, typefor } from '@rhombus-std/primitives.extras';
 import type { IChain, IServiceManifestBase, IWithSignatureBuilder } from './index';
 export const ChainInline = {
   addClass<T>(this: IServiceManifestBase, ctor: unknown): IChain {
-    return this.addClass(tokenfor<T>(), ctor, signatureof(ctor));
+    return this.addClass(tokenfor<T>(), ctor, typefor(ctor));
   },
   withSignature<T>(this: IWithSignatureBuilder): IChain {
     return this.withSignature(tokenfor<T>());
@@ -122,9 +120,9 @@ func buildLoopedStages(t *testing.T, prog *driver.Program, app string, artifacts
 	}
 	inlineT := inlinetransform.Build(prog, bodies, artifacts, func(plugin.Diagnostic) {})
 	nameofT := New(prog, ctx, artifacts, func(plugin.Diagnostic) {})
-	sigT := signaturetransform.New(prog, ctx, artifacts, func(signatures.Diagnostic) {})
+	typeforT := typefortransform.New(prog, ctx, artifacts, func(plugin.Diagnostic) {})
 	schemaofT := schemaoftransform.New(prog, ctx, artifacts, func(plugin.Diagnostic) {})
-	return []plugin.FileTransform{inlineT, nameofT, sigT, schemaofT}
+	return []plugin.FileTransform{inlineT, nameofT, typeforT, schemaofT}
 }
 
 // TestLoopCanaryZeroMatchPreservesPointer is the CENTRAL identity canary: a file
@@ -145,7 +143,7 @@ func TestLoopCanaryZeroMatchPreservesPointer(t *testing.T) {
 
 	artifacts := inlinetransform.NewArtifacts()
 	stages := buildLoopedStages(t, prog, app, artifacts)
-	names := []string{"inline", "nameof", "signatureof", "schemaof"}
+	names := []string{"inline", "nameof", "typefor", "schemaof"}
 
 	ec := shimprinter.NewEmitContext()
 	sf := mainSF(t, prog)
@@ -186,7 +184,7 @@ services.addClass<IFoo>(Foo).withSignature<IDep>();
 
 	artifacts := inlinetransform.NewArtifacts()
 	stages := buildLoopedStages(t, prog, app, artifacts)
-	names := []string{"inline", "nameof", "signatureof", "schemaof"}
+	names := []string{"inline", "nameof", "typefor", "schemaof"}
 
 	ec := shimprinter.NewEmitContext()
 	settled, _, exhausted := plugin.RunToFixedPoint(ec, stages, mainSF(t, prog), loopMaxPasses)
@@ -253,7 +251,7 @@ func TestRunToFixedPointExhaustsWhenNonSettling(t *testing.T) {
 }
 
 // buildSelfInlineLoop builds the inline + primitive stages (inline, nameof,
-// signatureof — NO di stage) over a self-inline workspace, sharing ONE artifacts
+// typefor — NO di stage) over a self-inline workspace, sharing ONE artifacts
 // bag in canonical order. It is the inline-ISOLATION loop for the
 // self-registration cases: excluding the di stage proves the inline path alone
 // settles, the same isolation TestChainSettlesThroughInlinePrimitivesOnly uses for
@@ -268,7 +266,7 @@ func buildSelfInlineLoop(t *testing.T, prog *driver.Program, app string, artifac
 	return []plugin.FileTransform{
 		inlinetransform.Build(prog, bodies, artifacts, func(plugin.Diagnostic) {}),
 		New(prog, ctx, artifacts, func(plugin.Diagnostic) {}),
-		signaturetransform.New(prog, ctx, artifacts, func(signatures.Diagnostic) {}),
+		typefortransform.New(prog, ctx, artifacts, func(plugin.Diagnostic) {}),
 	}
 }
 
@@ -374,7 +372,7 @@ services.addClass<IFoo>(Foo).withSignature<IDep>();
 	loop := []plugin.FileTransform{
 		inlinetransform.Build(prog, bodies, artifacts, func(plugin.Diagnostic) {}),
 		New(prog, ctx, artifacts, func(plugin.Diagnostic) {}),
-		signaturetransform.New(prog, ctx, artifacts, func(signatures.Diagnostic) {}),
+		typefortransform.New(prog, ctx, artifacts, func(plugin.Diagnostic) {}),
 	}
 
 	ec := shimprinter.NewEmitContext()

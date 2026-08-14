@@ -24,10 +24,6 @@ import (
 // `tokenof<T>()` / `tokenof(value)` from the raw type / the value's OWN type with
 // no unwrap (the `addValue` self form, which registers an already-built value
 // under its own type — matching the di engine's raw-type `addValue` derivation).
-// `signatureof(ctor)` binds a VALUE argument (a class / factory) whose dependency
-// signature the signatureof stage extracts; it is authoring-time-only, so it
-// lives in `@rhombus-std/di.extras` and a body imports it via a package-relative
-// specifier from within that package (see primitiveImports).
 // `schemaof<T>()` binds a TYPE argument and lowers to the config family's runtime
 // schema object literal — the engine half of the `.withType<T>()` sugar body
 // `this.withSchema(schemaof<T>())`. It is authoring-time-only, so it homes in the
@@ -36,14 +32,14 @@ import (
 // `typefor<T>()` / `typefor(value)` bind a TYPE or VALUE argument and lower to a
 // structured runtime `Type` value (the `Type.*` factory tree the argument
 // spells) — the sibling of `tokenfor` that derives the runtime shape instead of
-// the flat string token. It homes beside `tokenfor` / `tokenof` in
-// `@rhombus-std/primitives.extras`.
+// the flat string token; a VALUE argument also carries a constructor's or
+// factory's dependency-signature derivation. It homes beside `tokenfor` /
+// `tokenof` in `@rhombus-std/primitives.extras`.
 var knownPrimitives = map[string]string{
-	"tokenfor":    "@rhombus-std/primitives.extras",
-	"tokenof":     "@rhombus-std/primitives.extras",
-	"signatureof": "@rhombus-std/di.extras",
-	"schemaof":    "@rhombus-std/config.extras",
-	"typefor":     "@rhombus-std/primitives.extras",
+	"tokenfor": "@rhombus-std/primitives.extras",
+	"tokenof":  "@rhombus-std/primitives.extras",
+	"schemaof": "@rhombus-std/config.extras",
+	"typefor":  "@rhombus-std/primitives.extras",
 }
 
 // knownAuthoringMarkers maps each MODULE-LEVEL authoring marker an impl file may
@@ -493,10 +489,10 @@ func functionLikeParams(node *shimast.Node) []*shimast.Node {
 //
 // A primitive is accepted from its home module directly (`nameof` from
 // `@rhombus-std/primitives`), OR — when the primitive's home IS the declaring
-// package — via a package-relative specifier (`signatureof` from `./signatureof`,
-// authored inside `@rhombus-std/di.extras`), so a same-package authoring
+// package — via a package-relative specifier (`schemaof` from `./schemaof`,
+// authored inside `@rhombus-std/config.extras`), so a same-package authoring
 // primitive need not be self-imported by package name. A primitive imported from
-// any OTHER module (e.g. a stale `signatureof` from primitives) is rejected.
+// any OTHER module (e.g. a stale `schemaof` from primitives) is rejected.
 func primitiveImports(sf *shimast.SourceFile, declaringPkg string) map[string]string {
 	out := map[string]string{}
 	if sf == nil {

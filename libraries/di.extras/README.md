@@ -14,31 +14,32 @@ Add it as a **devDependency**, alongside `@rhombus-std/di.core` as a regular dep
 
 ## Usage
 
-With `di.extras` installed, both of these typecheck and, when built through the repo's Go/ttsc transform, lower to the explicit calls beneath them:
+With `di.extras` installed, this typechecks and, when built through the repo's Go/ttsc transform, substitutes to the explicit call beneath it:
 
 ```ts
-import { signatureof } from '@rhombus-std/di.extras';
-
-manifest.addClass<IGreeter>(ConsoleGreeter, signatureof(ConsoleGreeter));
-```
-
-```ts
-// what the above lowers to, and what a no-transformer author writes by hand instead
 import { typefor } from '@rhombus-std/primitives.extras';
 
-manifest.addClass(typefor<IGreeter>(), ConsoleGreeter, [[]]);
+manifest.addClass<IGreeter>(ConsoleGreeter, typefor<typeof ConsoleGreeter>());
 ```
 
-`addClass<T>(...)` derives the registration address from `T` instead of an explicit `Type` argument. `signatureof(ctor)` derives the dependency-signature array from the constructor's own parameter types instead of you writing `[[]]` / `[[TypeA, TypeB]]` by hand. Both throw if called without the transform having run — they exist to be substituted, not executed.
+```ts
+// what the above substitutes to, and what a no-transformer author writes by hand instead
+import { Type } from '@rhombus-std/di.core';
+
+manifest.addClass(Type.imported('IGreeter', 'app'), ConsoleGreeter, Type.ctor(Type.imported('ConsoleGreeter', 'app')));
+```
+
+`addClass<T>(...)` derives the registration address from `T` instead of an explicit `Type` argument — the sugar elides only that one argument, forwarding everything after it positionally. The implementation type stays a call you write either way: `typefor<typeof ConsoleGreeter>()` derives the `Type.ctor(...)` node a hand-writer would compose, straight from `ConsoleGreeter`'s own construct signature. Both throw if called without the transform having run — they exist to be substituted, not executed.
 
 ## Key exports
 
 | Export                                | What it is                                                                                                                                       |
 | ------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------ |
-| `signatureof(ctor)`                   | Derives a class or factory's dependency-signature array from its own parameter types, for use as the third argument to `addClass`/`addFactory`.  |
 | `ManifestDescriptorAugmentations`     | The tokenless bodies for `tryAdd`, `tryAddClass`/`tryAddFactory`/`tryAddValue`, `replaceClass`/`replaceFactory`/`replaceValue`, and `removeAll`. |
 | `ManifestServiceAugmentations`        | The tokenless bodies for `add`, `addClass`, `addFactory`, and `addValue`.                                                                        |
 | `ServiceProviderServiceAugmentations` | The tokenless body backing `getService`/`getRequiredService`/`getServices` on `IServiceProvider`.                                                |
+
+`di.extras` carries no primitive of its own: every body above imports `typefor<T>()` from [`@rhombus-std/primitives.extras`](../primitives.extras/README.md) to derive the address `T` names, then forwards its remaining arguments untouched.
 
 These three augmentation sets aren't meant to be called directly — they're what the transform's marker roster (`package.json`'s `"rhombus-std": { "inline": { "entries": [...] } }`) points at as each tokenless verb's source body.
 
@@ -51,4 +52,4 @@ These three augmentation sets aren't meant to be called directly — they're wha
 ## Notes
 
 - Every substitution is byte-for-byte what a no-transformer author would have written by hand — the transform deletes boilerplate, never adds a capability or changes behavior.
-- `signatureof`/`typefor` throw at runtime if the transform never ran — a program that has `di.extras` as a devDependency but doesn't build through the repo's Go/ttsc transform will typecheck cleanly and then fail the first time one of these calls executes.
+- `typefor` throws at runtime if the transform never ran — a program that has `di.extras` as a devDependency but doesn't build through the repo's Go/ttsc transform will typecheck cleanly and then fail the first time one of these calls executes.

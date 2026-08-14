@@ -8,8 +8,6 @@ import (
 	"github.com/fnioc/std/transforms/internal/nameoftransform"
 	"github.com/fnioc/std/transforms/internal/plugin"
 	"github.com/fnioc/std/transforms/internal/schemaoftransform"
-	"github.com/fnioc/std/transforms/internal/signatures"
-	"github.com/fnioc/std/transforms/internal/signaturetransform"
 	"github.com/fnioc/std/transforms/internal/tokens"
 	"github.com/fnioc/std/transforms/internal/typefortransform"
 )
@@ -37,11 +35,11 @@ const stagePrefix = "rhombusstd_"
 // token lowering and import elision, including the inline stage's synthetic
 // nameof calls), then typefor (the structured `Type.*` lowering of
 // `typefor<T>()` / `typefor(value)` — the runtime-`Type` sibling of nameof's flat
-// string token, disjoint from it by callee), then signatureof (the
-// dependency-signature array lowering, including the inline stage's synthetic
-// calls), then schemaof (the structural expansion of `schemaof<T>()` into the
-// `Type` tree describing T). All stages own DISJOINT match sets, so correctness
-// never depends on this order — it is fixed only for reproducible output.
+// string token, disjoint from it by callee, including a constructor's or
+// factory's dependency-signature derivation), then schemaof (the structural
+// expansion of `schemaof<T>()` into the `Type` tree describing T). All stages own
+// DISJOINT match sets, so correctness never depends on this order — it is fixed
+// only for reproducible output.
 //
 // Returned as a fresh slice each call so a caller can reorder or extend it
 // without mutating shared state.
@@ -51,7 +49,6 @@ func BaseStages() []Stage {
 		{Name: stagePrefix + "mergesynth", Build: buildMergesynth},
 		{Name: stagePrefix + "nameof", Build: buildNameof},
 		{Name: stagePrefix + "typefor", Build: buildTypefor},
-		{Name: stagePrefix + "signatureof", Build: buildSignatureof},
 		{Name: stagePrefix + "schemaof", Build: buildSchemaof},
 	}
 }
@@ -107,16 +104,6 @@ func buildNameof(prog *driver.Program, ctx *tokens.Context, env *Env, emit Sink)
 func buildTypefor(prog *driver.Program, ctx *tokens.Context, env *Env, emit Sink) plugin.FileTransform {
 	return typefortransform.New(prog, ctx, env.Artifacts, func(d plugin.Diagnostic) {
 		emit(DiagFromPlugin(d))
-	})
-}
-
-// buildSignatureof activates the signatureof primitive stage. It drives the
-// shared signatures extraction engine, so it is category-aware: a §4.5 advisory
-// Warning is reported without failing emit (only hard errors gate the build),
-// matching what a hand-written registration would carry for the same value.
-func buildSignatureof(prog *driver.Program, ctx *tokens.Context, env *Env, emit Sink) plugin.FileTransform {
-	return signaturetransform.New(prog, ctx, env.Artifacts, func(d signatures.Diagnostic) {
-		emit(DiagFromDi(d))
 	})
 }
 

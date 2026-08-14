@@ -1,4 +1,4 @@
-package signaturetransform
+package typefortransform
 
 import (
 	"strings"
@@ -10,10 +10,10 @@ import (
 	"github.com/fnioc/std/transforms/internal/inlinetransform"
 )
 
-// parseTS side-parses standalone TS source into a SourceFile AST — no program, no
-// checker — for the pure-AST import-elision and synthetic-node cases. It routes
+// parseImportFixture side-parses standalone TS source into a SourceFile AST — no
+// program, no checker — for the pure-AST import-elision cases below. It routes
 // through an absolute filename (shim derives a canonical Path from it).
-func parseTS(t *testing.T, text string) *shimast.SourceFile {
+func parseImportFixture(t *testing.T, text string) *shimast.SourceFile {
 	t.Helper()
 	sf := inlinetransform.SideParse("/elide.ts", text)
 	if sf == nil {
@@ -32,12 +32,12 @@ func reprintSF(ec *shimprinter.EmitContext, sf *shimast.SourceFile) string {
 	return writer.String()
 }
 
-// TestElideSignatureofImports covers the whole-file elision pass over each import
-// shape: a value `signatureof` binding is dropped (whole decl when sole, the
-// specifier alone otherwise, aliased or not), while a type-position binding — a
-// `type` specifier modifier or an `import type` phase modifier — is preserved
-// (it has no runtime reference to strip).
-func TestElideSignatureofImports(t *testing.T) {
+// TestElideTypeforImports covers the whole-file elision pass over each import
+// shape: a `typefor` binding is dropped (whole decl when sole, the specifier
+// alone otherwise, aliased or not), while a type-position binding — a `type`
+// specifier modifier or an `import type` phase modifier — is preserved (it has
+// no runtime reference to strip).
+func TestElideTypeforImports(t *testing.T) {
 	cases := []struct {
 		name    string
 		src     string
@@ -46,46 +46,46 @@ func TestElideSignatureofImports(t *testing.T) {
 	}{
 		{
 			name:    "sole-binding-drops-whole-decl",
-			src:     "import { signatureof } from '@rhombus-std/primitives';\nexport const x = 1;\n",
-			absent:  []string{"signatureof", "@rhombus-std/primitives"},
+			src:     "import { typefor } from '@rhombus-std/primitives.extras';\nexport const x = 1;\n",
+			absent:  []string{"typefor", "@rhombus-std/primitives.extras"},
 			present: []string{"export const x = 1"},
 		},
 		{
 			name:    "partial-keeps-sibling",
-			src:     "import { signatureof, tokenfor } from '@rhombus-std/primitives';\nexport const x = 1;\n",
-			absent:  []string{"signatureof"},
-			present: []string{"tokenfor", "@rhombus-std/primitives"},
+			src:     "import { typefor, tokenfor } from '@rhombus-std/primitives.extras';\nexport const x = 1;\n",
+			absent:  []string{"typefor"},
+			present: []string{"tokenfor", "@rhombus-std/primitives.extras"},
 		},
 		{
 			name:    "aliased-exported-name-drops",
-			src:     "import { signatureof as sig } from '@rhombus-std/primitives';\nexport const x = 1;\n",
-			absent:  []string{"signatureof", "sig"},
+			src:     "import { typefor as tf } from '@rhombus-std/primitives.extras';\nexport const x = 1;\n",
+			absent:  []string{"typefor", "tf"},
 			present: []string{"export const x = 1"},
 		},
 		{
 			name:    "type-only-specifier-kept",
-			src:     "import { type signatureof } from '@rhombus-std/primitives';\nexport const x = 1;\n",
+			src:     "import { type typefor } from '@rhombus-std/primitives.extras';\nexport const x = 1;\n",
 			absent:  []string{},
-			present: []string{"signatureof"},
+			present: []string{"typefor"},
 		},
 		{
 			name:    "import-type-phase-modifier-kept",
-			src:     "import type { signatureof } from '@rhombus-std/primitives';\nexport const x = 1;\n",
+			src:     "import type { typefor } from '@rhombus-std/primitives.extras';\nexport const x = 1;\n",
 			absent:  []string{},
-			present: []string{"signatureof"},
+			present: []string{"typefor"},
 		},
 		{
 			name:    "default-plus-named-drops-named-keeps-default",
-			src:     "import def, { signatureof } from '@rhombus-std/primitives';\nexport const x = 1;\n",
-			absent:  []string{"signatureof"},
-			present: []string{"def", "@rhombus-std/primitives"},
+			src:     "import def, { typefor } from '@rhombus-std/primitives.extras';\nexport const x = 1;\n",
+			absent:  []string{"typefor"},
+			present: []string{"def", "@rhombus-std/primitives.extras"},
 		},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
 			ec := shimprinter.NewEmitContext()
-			sf := parseTS(t, tc.src)
-			out := elideSignatureofImports(ec.Factory.AsNodeFactory(), sf)
+			sf := parseImportFixture(t, tc.src)
+			out := elideTypeforImports(ec.Factory.AsNodeFactory(), sf)
 			got := reprintSF(ec, out)
 			for _, s := range tc.absent {
 				if strings.Contains(got, s) {
@@ -101,15 +101,15 @@ func TestElideSignatureofImports(t *testing.T) {
 	}
 }
 
-// TestElideSignatureofImportsPassthrough: a file with no `signatureof` value
-// binding is returned UNCHANGED — same source-file pointer (changed==false),
-// covering both a non-import statement and an import without the binding.
-func TestElideSignatureofImportsPassthrough(t *testing.T) {
+// TestElideTypeforImportsPassthrough: a file with no `typefor` value binding is
+// returned UNCHANGED — same source-file pointer (changed==false), covering both
+// a non-import statement and an import without the binding.
+func TestElideTypeforImportsPassthrough(t *testing.T) {
 	ec := shimprinter.NewEmitContext()
-	sf := parseTS(t, "import { tokenfor } from '@rhombus-std/primitives';\nexport const x = 1;\n")
-	out := elideSignatureofImports(ec.Factory.AsNodeFactory(), sf)
+	sf := parseImportFixture(t, "import { tokenfor } from '@rhombus-std/primitives.extras';\nexport const x = 1;\n")
+	out := elideTypeforImports(ec.Factory.AsNodeFactory(), sf)
 	if out != sf {
-		t.Fatal("a file with no signatureof binding must be returned unchanged (same pointer)")
+		t.Fatal("a file with no typefor binding must be returned unchanged (same pointer)")
 	}
 }
 
@@ -136,15 +136,15 @@ func firstNamedImportSpecifiers(t *testing.T, sf *shimast.SourceFile) []*shimast
 }
 
 // TestExportedName: the exported name of a specifier is its PROPERTY name when
-// aliased (`signatureof as sig` -> "signatureof"), else its local name.
+// aliased (`typefor as tf` -> "typefor"), else its local name.
 func TestExportedName(t *testing.T) {
-	sf := parseTS(t, "import { signatureof as sig, tokenfor } from '@rhombus-std/primitives';\n")
+	sf := parseImportFixture(t, "import { typefor as tf, tokenfor } from '@rhombus-std/primitives.extras';\n")
 	specs := firstNamedImportSpecifiers(t, sf)
 	if len(specs) != 2 {
 		t.Fatalf("expected 2 specifiers, got %d", len(specs))
 	}
-	if got := exportedName(specs[0]); got != "signatureof" {
-		t.Errorf("aliased specifier exportedName = %q, want signatureof", got)
+	if got := exportedName(specs[0]); got != "typefor" {
+		t.Errorf("aliased specifier exportedName = %q, want typefor", got)
 	}
 	if got := exportedName(specs[1]); got != "tokenfor" {
 		t.Errorf("plain specifier exportedName = %q, want tokenfor", got)

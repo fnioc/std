@@ -86,7 +86,7 @@ design — it's a pure Go/`ttsc` engine descriptor with nothing beyond the
 TypeScript compiler API underneath it.
 
 Downstream, `di.extras` and `di.extras.options` declare it as a
-dependency so `ttsc` activates its `nameof`/`inline`/`signatureof` stages
+dependency so `ttsc` activates its `inline`/`nameof`/`typefor` stages
 alongside their own; a dependency-injection consumer usually doesn't need to
 reference this package directly. A library author minting their own
 augmentation tokens, outside dependency injection entirely, can depend on it

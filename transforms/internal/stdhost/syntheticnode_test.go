@@ -14,7 +14,7 @@ import (
 // lowers to a `Type.union(...)` node — minted through the emit factory. A
 // minted node was never seen by the binder, so it carries no symbol. On the
 // NEXT pass of the fixed-point loop a stage asked the checker about the
-// enclosing call chain (nameof resolved the callee's symbol, signatureof
+// enclosing call chain (nameof resolved the callee's symbol, typefor
 // resolved its own, the inline stage resolved the callee's signature);
 // resolving that reached the receiver's overload resolution, which
 // contextually typed the minted argument, and a checker query that assumes
@@ -44,7 +44,7 @@ import (
 const syntheticFixturePkg = `{"name":"@rhombus-std/synthetic-fixture","version":"0.0.0","private":true}`
 
 // syntheticDiStub is a local stand-in for the registration surface: the slot
-// grammar (a union slot is an object literal), the `signatureof(ctor)` primitive
+// grammar (a union slot is an object literal), the `typefor(ctor)` primitive
 // the stage anchors on by symbol name, and a chain whose members take VALUE
 // arguments. Nothing here resolves off disk.
 const syntheticDiStub = `export type Token = string;
@@ -53,7 +53,7 @@ export interface LiteralRef { readonly value: unknown }
 export type DepSlot = Token | Union | LiteralRef;
 export type DepSignatures = ReadonlyArray<readonly DepSlot[]>;
 export type Ctor = new (...args: never[]) => object;
-export declare function signatureof(value: unknown): DepSignatures;
+export declare function typefor(value: unknown): DepSignatures;
 export interface IChain {
   withSignature(...slots: readonly DepSlot[]): IChain;
   withSignatures(...signatures: ReadonlyArray<readonly DepSlot[]>): IChain;
@@ -70,7 +70,7 @@ export declare const manifest: IManifest;
 // parameter is what makes the derived signature carry a union slot — and so an
 // object literal — at all. With both parameters required the derived signature is
 // two bare token strings and there is no object literal to contextually type.
-const syntheticPrelude = `import { manifest, signatureof } from "./di";
+const syntheticPrelude = `import { manifest, typefor } from "./di";
 
 export interface IClock {}
 export interface IOptions {}
@@ -88,7 +88,7 @@ export class Widget {
 // to, byte for byte: the derived token, the constructor, and the Type.ctor(...)
 // node whose optional parameter became the minted union node. Asserting the
 // full text (not just "it didn't crash") is what keeps a fix that lowers LESS from
-// passing — a matcher that skipped a rebuilt chain would leave `signatureof(...)`
+// passing — a matcher that skipped a rebuilt chain would leave `typefor(...)`
 // standing here.
 const syntheticLoweredRegistration = `manifest.addClass("pkg:Widget", Widget, Type.ctor(` +
 	`Type.imported("Widget", "@rhombus-std/synthetic-fixture/tokens/app"), ` +
@@ -130,12 +130,12 @@ func TestChainedRegistrationOverMintedLiteralLowers(t *testing.T) {
 	cases := map[string]struct{ registration, want string }{
 		// The smallest shape there is: one trailing scope call.
 		"trailing as": {
-			registration: `export const m = manifest.addClass("pkg:Widget", Widget, signatureof(Widget)).as("singleton");`,
+			registration: `export const m = manifest.addClass("pkg:Widget", Widget, typefor(Widget)).as("singleton");`,
 			want:         syntheticLoweredRegistration + `.as("singleton")`,
 		},
 		// A trailing single-slot append reaches it the same way.
 		"trailing withSignature": {
-			registration: `export const m = manifest.addClass("pkg:Widget", Widget, signatureof(Widget)).withSignature("pkg:IClock");`,
+			registration: `export const m = manifest.addClass("pkg:Widget", Widget, typefor(Widget)).withSignature("pkg:IClock");`,
 			want:         syntheticLoweredRegistration + `.withSignature("pkg:IClock")`,
 		},
 	}
@@ -145,8 +145,8 @@ func TestChainedRegistrationOverMintedLiteralLowers(t *testing.T) {
 			if !strings.Contains(lowered, tc.want) {
 				t.Fatalf("lowered registration mismatch.\nwant to contain:\n%s\ngot:\n%s", tc.want, lowered)
 			}
-			if strings.Contains(lowered, "signatureof") {
-				t.Fatalf("signatureof survived lowering:\n%s", lowered)
+			if strings.Contains(lowered, "typefor") {
+				t.Fatalf("typefor survived lowering:\n%s", lowered)
 			}
 		})
 	}
@@ -159,7 +159,7 @@ func TestChainedRegistrationOverMintedLiteralLowers(t *testing.T) {
 // their trailing call, not to something the repair quietly changed.
 func TestUnchainedRegistrationLowersIdentically(t *testing.T) {
 	lowered := lowerSyntheticFixture(t,
-		`export const m = manifest.addClass("pkg:Widget", Widget, signatureof(Widget));`,
+		`export const m = manifest.addClass("pkg:Widget", Widget, typefor(Widget));`,
 	)
 	if !strings.Contains(lowered, syntheticLoweredRegistration) {
 		t.Fatalf("the control registration did not lower as expected.\nwant to contain:\n%s\ngot:\n%s", syntheticLoweredRegistration, lowered)
@@ -167,8 +167,8 @@ func TestUnchainedRegistrationLowersIdentically(t *testing.T) {
 	if !strings.Contains(lowered, "Type.union(") {
 		t.Fatalf("the fixture did not mint the union node the chained cases depend on — the pins above would be vacuous:\n%s", lowered)
 	}
-	if strings.Contains(lowered, "signatureof") {
-		t.Fatalf("signatureof survived lowering:\n%s", lowered)
+	if strings.Contains(lowered, "typefor") {
+		t.Fatalf("typefor survived lowering:\n%s", lowered)
 	}
 }
 
@@ -181,7 +181,7 @@ func TestAllRequiredParamsMintNoObjectLiteral(t *testing.T) {
 	dir := t.TempDir()
 	writeFixture(t, dir, syntheticFixturePkg, map[string]string{
 		"src/di.ts": syntheticDiStub,
-		"src/app.ts": `import { manifest, signatureof } from "./di";
+		"src/app.ts": `import { manifest, typefor } from "./di";
 
 export interface IClock {}
 export interface IOptions {}
@@ -193,7 +193,7 @@ export class Widget {
   }
 }
 
-export const m = manifest.addClass("pkg:Widget", Widget, signatureof(Widget)).as("singleton");
+export const m = manifest.addClass("pkg:Widget", Widget, typefor(Widget)).as("singleton");
 `,
 	})
 
@@ -205,7 +205,7 @@ export const m = manifest.addClass("pkg:Widget", Widget, signatureof(Widget)).as
 	if strings.Contains(lowered, "Type.union(") {
 		t.Fatalf("an all-required constructor must derive plain Type nodes, no union:\n%s", lowered)
 	}
-	if strings.Contains(lowered, "signatureof") {
-		t.Fatalf("signatureof survived lowering:\n%s", lowered)
+	if strings.Contains(lowered, "typefor") {
+		t.Fatalf("typefor survived lowering:\n%s", lowered)
 	}
 }

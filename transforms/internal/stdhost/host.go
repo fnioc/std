@@ -36,7 +36,6 @@ import (
 
 	"github.com/fnioc/std/transforms/internal/inlinetransform"
 	"github.com/fnioc/std/transforms/internal/plugin"
-	"github.com/fnioc/std/transforms/internal/signatures"
 	"github.com/fnioc/std/transforms/internal/tokens"
 )
 
@@ -109,18 +108,6 @@ type Builder func(prog *driver.Program, ctx *tokens.Context, env *Env, emit Sink
 func DiagFromPlugin(d plugin.Diagnostic) Diag {
 	return Diag{
 		File:    d.File,
-		Code:    d.Code,
-		Message: d.Message,
-	}
-}
-
-// DiagFromDi converts a signatures.Diagnostic, honoring its advisory Warning
-// vs hard Error category so a warning does not fail emit. It carries the shared
-// signature-extraction engine's §4.5 advisory the signatureof stage surfaces.
-func DiagFromDi(d signatures.Diagnostic) Diag {
-	return Diag{
-		File:    d.File,
-		Warning: d.Category == signatures.Warning,
 		Code:    d.Code,
 		Message: d.Message,
 	}

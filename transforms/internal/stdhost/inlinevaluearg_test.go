@@ -20,7 +20,7 @@ import (
 // pass that finally reaches it, `callArguments(call)` hands back those REBUILT
 // nodes, and registerPrimitives recorded one as the value-argument primitive's
 // `ValueArg`. Both consumers of that field — the nameof stage's tokenfor/tokenof
-// value branches and the signatureof stage's artifacts branch — hand it straight to
+// value branches and the typefor stage's own artifacts branch — hand it straight to
 // the checker, which resolves the enclosing call's overloads, contextually types the
 // rebuilt (symbol-less) property assignment, and nil-derefs in
 // getContextualTypeForObjectLiteralElement. The whole file is then lost: the panic
@@ -44,7 +44,7 @@ const sugarWorkspaceRootPkg = `{ "name": "ws", "private": true, "workspaces": ["
 
 // sugarCorePkg is the sugar-owning package: it declares two inline entries whose
 // bodies live out of barrel in src/inline.ts, mirroring the real di.extras shapes
-// (`addClass<T>(ctor)` carries a VALUE-argument signatureof, `addValue(value)` a
+// (`addClass<T>(ctor)` carries a VALUE-argument typefor, `addValue(value)` a
 // VALUE-argument tokenof).
 const sugarCorePkg = `{
   "name": "@scope/core",
@@ -77,12 +77,11 @@ export declare const services: IManifest;
 // sugarCoreInline holds the single-expression sugar bodies. Both pass their own
 // parameter straight into a value-argument primitive — the shape whose recorded
 // argument this file is about.
-const sugarCoreInline = `import { tokenfor, tokenof } from '@rhombus-std/primitives.extras';
-import { signatureof } from '@rhombus-std/di.extras';
+const sugarCoreInline = `import { tokenfor, tokenof, typefor } from '@rhombus-std/primitives.extras';
 import type { IChain, IManifest } from './index';
 export const ManifestInline = {
   addClass<T>(this: IManifest, ctor: unknown): IChain {
-    return this.addClass(tokenfor<T>(), ctor, signatureof(ctor));
+    return this.addClass(tokenfor<T>(), ctor, typefor(ctor));
   },
   addValue(this: IManifest, value: unknown): IManifest {
     return this.addValue(tokenof(value), value);
@@ -258,7 +257,7 @@ export const b = services.addClass<IWidget>(Widget);
 		if !strings.Contains(out, wantClass) {
 			t.Fatalf("the %s registration did not mint the optional parameter's union slot.\nwant to contain:\n%s\ngot:\n%s", name, wantClass, out)
 		}
-		if strings.Contains(out, "tokenfor") || strings.Contains(out, "tokenof") || strings.Contains(out, "signatureof") {
+		if strings.Contains(out, "tokenfor") || strings.Contains(out, "tokenof") || strings.Contains(out, "typefor") {
 			t.Fatalf("a primitive survived the %s lowering:\n%s", name, out)
 		}
 	}
@@ -295,7 +294,7 @@ export class Widget {
 	if !strings.Contains(chained, wantRegistration+`.as("singleton")`) {
 		t.Fatalf("the chained shape did not lower to the control plus its trailing call.\nwant to contain:\n%s\ngot:\n%s", wantRegistration+`.as("singleton")`, chained)
 	}
-	if strings.Contains(chained, "signatureof") || strings.Contains(chained, "addClass<") {
+	if strings.Contains(chained, "typefor") || strings.Contains(chained, "addClass<") {
 		t.Fatalf("authoring surface survived the chained lowering:\n%s", chained)
 	}
 }
