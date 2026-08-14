@@ -32,7 +32,7 @@ function baseOptions(): WidgetOptions {
 
 describe('configure — DI-injected', () => {
   test('resolves a class dep and passes it after the options value', () => {
-    let services: Manifest<'singleton'> = new DefaultManifest<'singleton'>();
+    let services: Manifest<string> = new DefaultManifest<string>();
     services = services.addClass(URL_PROVIDER_TOKEN, UrlProvider, Type.ctor(Type.from(URL_PROVIDER_TOKEN), [[]]),
       'singleton');
     services = services.addOptions<WidgetOptions>(OPTIONS_TOKEN, baseOptions);
@@ -48,7 +48,7 @@ describe('configure — DI-injected', () => {
   });
 
   test('resolves several deps, injected positionally in token order', () => {
-    let services: Manifest<'singleton'> = new DefaultManifest<'singleton'>();
+    let services: Manifest<string> = new DefaultManifest<string>();
     services = services.addClass(URL_PROVIDER_TOKEN, UrlProvider, Type.ctor(Type.from(URL_PROVIDER_TOKEN), [[]]),
       'singleton');
     services = services.addValue(RETRY_POLICY_TOKEN, { attempts: 4 });
@@ -68,7 +68,7 @@ describe('configure — DI-injected', () => {
   });
 
   test('a DI configure composes with a plain configure delegate', () => {
-    let services: Manifest<'singleton'> = new DefaultManifest<'singleton'>();
+    let services: Manifest<string> = new DefaultManifest<string>();
     services = services.addClass(URL_PROVIDER_TOKEN, UrlProvider, Type.ctor(Type.from(URL_PROVIDER_TOKEN), [[]]),
       'singleton');
     services = services.addOptions<WidgetOptions>(OPTIONS_TOKEN, baseOptions);
@@ -90,7 +90,7 @@ describe('configure — DI-injected', () => {
 
 describe('postConfigure — DI-injected', () => {
   test('runs after configure with a resolved dep', () => {
-    let services: Manifest<'singleton'> = new DefaultManifest<'singleton'>();
+    let services: Manifest<string> = new DefaultManifest<string>();
     services = services.addValue(SUFFIX_TOKEN, { text: '!' });
     services = services.addOptions<WidgetOptions>(OPTIONS_TOKEN, baseOptions);
     services = services.configure<WidgetOptions>(OPTIONS_TOKEN, (options) => {
@@ -111,8 +111,8 @@ describe('postConfigure — DI-injected', () => {
 describe('validate — DI-injected', () => {
   const LIMIT_TOKEN = 'test:Limit';
 
-  function servicesWithLimit(size: number, max: number): Manifest<'singleton'> {
-    let services: Manifest<'singleton'> = new DefaultManifest<'singleton'>();
+  function servicesWithLimit(size: number, max: number): Manifest<string> {
+    let services: Manifest<string> = new DefaultManifest<string>();
     services = services.addValue(LIMIT_TOKEN, { max });
     services = services.addOptions<WidgetOptions>(OPTIONS_TOKEN, () => ({ ...baseOptions(), retries: size }));
     return services;

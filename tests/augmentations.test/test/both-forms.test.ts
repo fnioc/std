@@ -12,6 +12,7 @@
 //     LoggerFilterOptions, and enableMetrics/enableTracing on
 //     MetricsOptions/TracingOptions -- installed onto the concrete option class.
 
+import type { IMemoryCache } from '@rhombus-std/caching.core';
 import { CacheEntrySugarAugmentations, CacheItemPriority,
   MemoryCacheSugarAugmentations } from '@rhombus-std/caching.core';
 import { MemoryCache, MemoryCacheOptions } from '@rhombus-std/caching.memory';
@@ -27,8 +28,10 @@ import { describe, expect, test } from 'bun:test';
 describe('foreign-class direction — addInMemoryCollection', () => {
   test('method form and standalone form yield the same configuration', () => {
     const viaMethod = new ConfigBuilder().addInMemoryCollection({ Key: 'value' }).build();
-    const viaMember = MemoryConfigBuilderAugmentations.addInMemoryCollection.call(new ConfigBuilder(), { Key: 'value' })
-      .build();
+    // The standalone form's `Self` collapses to its structural constraint through
+    // `.call`, so the receiver type is reasserted to reach `build()`.
+    const viaMember = (MemoryConfigBuilderAugmentations.addInMemoryCollection
+      .call(new ConfigBuilder(), { Key: 'value' }) as ConfigBuilder).build();
 
     expect(viaMethod.get('Key')).toBe('value');
     expect(viaMethod.get('Key')).toBe(viaMember.get('Key'));
@@ -40,12 +43,16 @@ describe('reverse direction — MemoryCache / ICacheEntry', () => {
     const cache = new MemoryCache(new MemoryCacheOptions());
 
     cache.set('a', 1); // method form
-    MemoryCacheSugarAugmentations.set.call(cache, 'b', 2); // standalone member form
+    MemoryCacheSugarAugmentations.set.call<IMemoryCache, [unknown, number], number>(
+      cache as IMemoryCache,
+      'b',
+      2,
+    ); // standalone member form
 
     expect(cache.get<number>('a')).toBe(1);
     expect(MemoryCacheSugarAugmentations.get.call(cache, 'b')).toBe(2);
     // cross-check: the two read forms agree on the same key.
-    expect(cache.get('b')).toBe(MemoryCacheSugarAugmentations.get.call(cache, 'b'));
+    expect(cache.get<number>('b')).toBe(MemoryCacheSugarAugmentations.get.call(cache, 'b') as number);
   });
 
   test('entry setPriority method form equals the object-literal member form', () => {

@@ -33,8 +33,8 @@ export namespace ServiceProviderServiceAugmentations {
 
 declare module '@rhombus-std/primitives' {
   interface IServiceProvider extends Flatten<typeof ServiceProviderServiceAugmentations> {
-    getRequiredService(this: IServiceProvider, serviceType: Type): any;
-    getServices(this: IServiceProvider, serviceType: Type): Iterable<any>;
+    getRequiredService(serviceType: Type): any;
+    getServices(serviceType: Type): Iterable<any>;
   }
 }
 

@@ -45,7 +45,7 @@ describe('the public slot-type grammar', () => {
     const config = new ConfigBuilder().addInMemoryCollection({ 'Widget:Url': 'http://first' })
       .build() as unknown as IConfigRoot;
 
-    let services: Manifest<'singleton'> = new DefaultManifest<'singleton'>();
+    let services: Manifest<string> = new DefaultManifest<string>();
     services = services.addOptions<WidgetOptions>(WIDGET_OPTIONS_TYPE, () => ({ Url: '' }));
     // What `configure(WIDGET_OPTIONS_TYPE, section)` does internally, spelled
     // through the public grammar: a custom configure step plus a bare
