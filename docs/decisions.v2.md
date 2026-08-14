@@ -1959,19 +1959,32 @@ as its own address, and discarded after. This is real dependency resolution, not
 node's parameter types are what the caller wrote (or derived) them to be, never inspected from the
 value at runtime.
 
-**The two overloads are declared on the concrete `ServiceProvider` (`@rhombus-std/di`), not on
-`IServiceProvider` (`@rhombus-std/primitives`).** Declaring them directly on `IServiceProvider`
-looked like the fix for the interface-typed-caller visibility gap the first draft of this door
-carried, since same-interface direct members ordinarily merge into overloads cleanly. It instead
-broke di.extras' pre-existing, unrelated zero-argument `getService<T>()` sugar outright: the Go
-inline-transform's own declaration-discovery walk stops finding that sugar's declaration once
-`IServiceProvider` carries three direct `getService` signatures instead of one, failing any build
-that pulls in di.extras with `INLINE_DISCRIMINATOR_MISMATCH` — reproduced with di.extras completely
-unmodified, so the collision is intrinsic to the direct-declaration shape, not to anything this
-door itself adds. The `declare module` extension onto `IServiceProvider` accompanies the two
-overloads from `ServiceProvider` instead, same as the interface-typed-caller intent always was —
-and, like `getService<T>()`'s own zero-argument sugar, an interface-typed caller does not actually
-see the extra overloads today, the same known extends-merge limitation both doors already carried.
+**The two overloads are declared directly on `IServiceProvider` (`@rhombus-std/primitives`)**,
+alongside its base `getService(type: Type): any` member — one interface, three signatures, one
+ordinary TypeScript overload merge, so an interface-typed caller sees all three exactly like a
+concrete-`ServiceProvider`-typed one does. `libraries/di/src/ServiceProvider.ts` repeats the same
+signatures on the class itself for the implementation (matching how it already widens the base
+form to accept a token string too), but nothing there merges them onto the interface — that
+already happened where they're declared.
+
+**Reaching that declaration home required a real fix in the Go inline transform, not a workaround.**
+A first attempt at the direct-on-`IServiceProvider` shape broke di.extras' pre-existing, unrelated
+zero-argument `getService<T>()` sugar outright — any build pulling in di.extras failed with
+`INLINE_DISCRIMINATOR_MISMATCH`, reproduced with di.extras completely unmodified. The actual cause
+(`transforms/internal/inlinetransform/resolve.go`'s `anyDeclarationTakes`) had nothing to do with
+declaration merging: it decides whether a sugar overload's declaration is merely absent from a
+program (silent) or present-but-mismatched (a hard authoring-fault error) by comparing ONLY
+type-parameter count between the sugar body and every declaration reachable from the marker's
+surface. `getService<R>(type: ConstructorType, ctor: Ctor<any[], R>): R` carries one type parameter
+— the same count as di.extras' own `getService<T>(): T | undefined` — so once `IServiceProvider`
+carried it, the check saw "a declaration with the sugar's type-parameter count exists" and
+concluded the sugar itself must be present and merely misspelled, even in a program where
+di.extras' own declaration was never loaded at all. The fix compares value-parameter count
+alongside type-parameter count: an unrelated overload essentially never shares BOTH by accident,
+where sharing only type-parameter count is common (a lone generic parameter is the ordinary shape
+for a sugar overload and an explicit-node one alike). A Go regression test
+(`TestResolveMemberUnmatchedDespiteArityCollidingOverload`, `resolve_test.go`) pins the shape red
+before the fix, green after.
 
 **The authoring sugar this door was meant to pair with is held**, pending a settled spelling for
 its inline body once the callable-signatures milestone (2D per-overload `TypeSignatures` on

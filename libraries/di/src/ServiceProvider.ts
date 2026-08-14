@@ -6,20 +6,6 @@ import type { Ctor, Func } from '@rhombus-toolkit/func';
 import { Engine } from './internal/Engine.js';
 import { ServiceProviderOptions } from './ServiceProviderOptions.js';
 
-// `ServiceProvider` implements the two-argument `getService` overloads directly below — reaching
-// this provider's own resolution engine to realize a caller-supplied `ctor`/`func` is only
-// possible from inside the class. This merge is what lets an `IServiceProvider`-typed caller see
-// them too — though, like `getService<T>()`'s existing zero-argument sugar, TS does not merge an
-// overload contributed through `extends` against a member already declared directly on the
-// target interface, so an interface-typed caller does not actually see the extra overloads today.
-type IServiceProviderValueAugmentations = {
-  getService<R>(type: ConstructorType, ctor: Ctor<any[], R>): R;
-  getService<R>(type: FunctionType, func: Func<any[], R>): R;
-};
-declare module '@rhombus-std/primitives' {
-  interface IServiceProvider extends IServiceProviderValueAugmentations {}
-}
-
 // Merged rather than `implements`: the receiver carries augmented members that the registry
 // installs at runtime, which `implements` would demand statically.
 export interface ServiceProvider extends IServiceProvider {}

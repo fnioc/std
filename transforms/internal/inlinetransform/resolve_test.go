@@ -92,6 +92,51 @@ export const y = provider.isService('x');
 	}
 }
 
+// coreIndexWithArityCollidingOverload is TestResolveMemberUnmatchedPublishesShape's
+// fixture plus ONE further declaration: a second, wholly unrelated overload of
+// isService that happens to share the sugar body's type-parameter count (one) but
+// takes two value parameters where the sugar body takes none — the exact shape
+// IServiceProvider.getService gained once it carried the two-argument
+// ConstructorType/FunctionType overloads alongside its base form.
+const coreIndexWithArityCollidingOverload = `export interface IQuery {
+  isService(token: string): boolean;
+  isService<T>(node: string, value: string): boolean;
+}
+export declare const provider: IQuery;
+`
+
+// TestResolveMemberUnmatchedDespiteArityCollidingOverload is the regression for
+// the type-parameter-count-only signal anyDeclarationTakes used to decide between
+// a silent OutcomeUnmatched and a hard INLINE_DISCRIMINATOR_MISMATCH. The sugar
+// overload itself (isService<T>(): boolean, zero value parameters) is genuinely
+// NOT loaded here — only the primitive and the arity-colliding overload above
+// are — so this must still resolve as unmatched, not error: type-parameter count
+// alone cannot tell "the sugar's own declaration" apart from "a same-arity-count
+// coincidence with something else entirely". Before the fix, the colliding
+// overload's shared type-parameter count made anyDeclarationTakes report the
+// sugar as present, turning this into a hard error over a program that never
+// loaded the sugar at all — exactly what broke di.extras' pre-existing
+// zero-argument getService<T>() sugar the moment IServiceProvider gained direct
+// getService overloads of its own carrying one type parameter each.
+func TestResolveMemberUnmatchedDespiteArityCollidingOverload(t *testing.T) {
+	mainSrc := `import { provider } from '@scope/core';
+export const y = provider.isService('x');
+`
+	prog, app := buildWorkspace(t, coreIndexWithArityCollidingOverload, pilotInlineBody, `export {};
+`, mainSrc)
+	defer func() { _ = prog.Close() }()
+
+	_, outcome, err := Resolve(prog, prog.Checker, newBodyExtractor(), pilotMemberEntry(app))
+	if err != nil {
+		t.Fatalf("Resolve: %v — the arity-colliding overload's shared type-parameter count must not "+
+			"turn a genuinely-absent sugar overload into a hard error", err)
+	}
+	if outcome != OutcomeUnmatched {
+		t.Fatalf("outcome = %v, want OutcomeUnmatched — the sugar overload is not present, "+
+			"only the primitive and an unrelated same-type-parameter-count overload", outcome)
+	}
+}
+
 // TestResolveUnresolvedTypeAndMember: the two loud-failure guarantees. A type
 // token naming a member the module does not export → INLINE_UNRESOLVED_TYPE; an
 // interface member the type does not carry (but the impl does, so Extract passes)

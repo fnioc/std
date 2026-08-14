@@ -8,9 +8,12 @@
 // an expected-error that stops erroring reveals it.
 
 import type { ServiceProvider } from '@rhombus-std/di';
-import { Type } from '@rhombus-std/primitives';
+import { type IServiceProvider, Type } from '@rhombus-std/primitives';
 
 declare const provider: ServiceProvider;
+// The overloads are declared directly on IServiceProvider (libraries/primitives), so an
+// interface-typed caller sees them too — unlike a member reached only through `extends`.
+declare const providerInterface: IServiceProvider;
 
 /** Asserts `U` is assignable to `T` — as a value beside a real one. */
 declare function testit<T, U extends T>(expected: T, actual: U): void;
@@ -38,6 +41,10 @@ testit(wrongShape, provider.getService(widgetNode, Widget));
 testit(gadget, provider.getService(gadgetNode, makeGadget));
 // @ts-expect-error
 testit(wrongShape, provider.getService(gadgetNode, makeGadget));
+
+// Both overloads reach an IServiceProvider-typed caller, not only the concrete ServiceProvider.
+testit(widget, providerInterface.getService(widgetNode, Widget));
+testit(gadget, providerInterface.getService(gadgetNode, makeGadget));
 
 // The original `Type`/token overload is untouched by the new ones.
 declare const token: string;
