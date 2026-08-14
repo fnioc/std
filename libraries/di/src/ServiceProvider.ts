@@ -1,5 +1,5 @@
 import { Manifest, ServiceDescriptor, UnsatisfiableError } from '@rhombus-std/di.core';
-import { augment, type ConstructorType, type FunctionType, type IServiceProvider, NotImplementedError, type Token,
+import { augment, type ConstructorType, type FunctionType, type IServiceProvider, NotImplementedError,
   Type } from '@rhombus-std/primitives';
 import { typefor } from '@rhombus-std/primitives.extras';
 import type { Ctor, Func } from '@rhombus-toolkit/func';
@@ -31,7 +31,7 @@ export class ServiceProvider {
    * when a dependency may legitimately not be there. A registration that exists but cannot be
    * built still throws — that is a broken graph, not an absent service.
    */
-  getService(type: Type | Token): any;
+  getService(type: Type | string): any;
   /**
    * Constructs `ctor` fresh, its dependencies resolved from `type` — `ctor`'s own parameter
    * types, in order.
@@ -50,7 +50,7 @@ export class ServiceProvider {
    */
   getService<R>(type: FunctionType, func: Func<any[], R>): R;
   getService(
-    ...args: [type: Type | Token] | [type: ConstructorType, ctor: Ctor] | [type: FunctionType, func: Func]
+    ...args: [type: Type | string] | [type: ConstructorType, ctor: Ctor] | [type: FunctionType, func: Func]
   ): any {
     const [type, value] = args;
     if (value !== undefined) {
@@ -87,7 +87,7 @@ export class ServiceProvider {
    * disposal model this depends on is still undecided.
    * @throws {NotImplementedError} always, until that model is decided.
    */
-  tryResolve(_type: Type | Token): any {
+  tryResolve(_type: Type | string): any {
     return notImplemented('tryResolve');
   }
 
@@ -97,7 +97,7 @@ export class ServiceProvider {
    * disposal model this depends on is still undecided.
    * @throws {NotImplementedError} always, until that model is decided.
    */
-  resolveAsync(_type: Type | Token): Promise<any> {
+  resolveAsync(_type: Type | string): Promise<any> {
     return notImplemented('resolveAsync');
   }
 

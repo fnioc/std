@@ -1,6 +1,5 @@
 import type { IComplete, Manifest, ServiceDescriptor, Unstarted } from '@rhombus-std/di.core';
-import { AugmentationSet2, type ConstructorType, type Flatten, type FunctionType, Token,
-  Type } from '@rhombus-std/primitives';
+import { AugmentationSet2, type ConstructorType, type Flatten, type FunctionType, Type } from '@rhombus-std/primitives';
 import { registerAugmentations, typefor } from '@rhombus-std/primitives.extras';
 import { Ctor, Func } from '@rhombus-toolkit/func';
 
@@ -25,7 +24,17 @@ interface IManifestServiceAugmentations<Scopes extends string> {
 }
 
 declare module '@rhombus-std/di.core' {
-  interface Manifest<Scopes extends string> extends IManifestServiceAugmentations<Scopes> {}
+  interface Manifest<Scopes extends string> extends IManifestServiceAugmentations<Scopes> {
+    add<T>(configure: Func<[Unstarted<T, Scopes>], IComplete>): Manifest<Scopes>;
+    add<T>(ctor: Ctor<any[], T>, implementerType: ConstructorType, scope?: Scopes, key?: string): Manifest<Scopes>;
+    add<T>(factory: Func<any[], T>, implementerType: FunctionType, scope?: Scopes, key?: string): Manifest<Scopes>;
+
+    addClass<T>(ctor: Ctor<any[], T>, implementerType: ConstructorType, scope?: Scopes, key?: string): this;
+
+    addFactory<T>(factory: Func<any[], T>, implementerType: FunctionType, scope?: Scopes, key?: string): this;
+
+    addValue<T>(value: T, key?: string): this;
+  }
 }
 
 export const ManifestServiceAugmentations: AugmentationSet2<Manifest, Flatten<IManifestServiceAugmentations<string>>> =

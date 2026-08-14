@@ -1,6 +1,6 @@
 export { Type, TypeVisitor } from '@rhombus-std/primitives';
 export type { AggregateType, ArrayType, ConstructorType, FunctionType, GenericType, GlobalType, ImportedType,
-  IntersectionType, IServiceProvider, IterableType, NominalType, ObjectType, RawType, TagType, Token, TupleType,
+  IntersectionType, IServiceProvider, IterableType, NominalType, ObjectType, RawType, TagType, TupleType,
   TypeIdentifier, TypeLiteralType, TypeSignatures, UnionType } from '@rhombus-std/primitives';
 
 export * from './brands';

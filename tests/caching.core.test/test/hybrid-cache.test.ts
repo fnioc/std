@@ -6,7 +6,7 @@
 
 import { HybridCache, HybridCacheEntryFlags, HybridCacheEntryOptions, type IHybridCacheSerializer,
   type IHybridCacheSerializerFactory } from '@rhombus-std/caching.core';
-import type { AbortSignal } from '@rhombus-std/primitives';
+import { type AbortSignal, Type } from '@rhombus-std/primitives';
 import { describe, expect, test } from 'bun:test';
 
 describe('HybridCacheEntryFlags', () => {
@@ -144,10 +144,13 @@ describe('IHybridCacheSerializer / IHybridCacheSerializerFactory', () => {
     return new TextEncoder().encode(value);
   } };
 
-  /** A hand-written factory: supports only the string token (literal, docs §40). */
+  const STRING_TYPE = Type.from('string');
+  const NUMBER_TYPE = Type.from('number');
+
+  /** A hand-written factory: supports only the `string` type. */
   const factory: IHybridCacheSerializerFactory = {
-    tryCreateSerializer<T>(type: string): IHybridCacheSerializer<T> | undefined {
-      return type === 'typescript:string'
+    tryCreateSerializer<T>(type: Type): IHybridCacheSerializer<T> | undefined {
+      return type === STRING_TYPE
         ? (stringSerializer as IHybridCacheSerializer<unknown> as IHybridCacheSerializer<T>)
         : undefined;
     },
@@ -159,9 +162,9 @@ describe('IHybridCacheSerializer / IHybridCacheSerializerFactory', () => {
     expect(stringSerializer.deserialize(payload)).toBe('héllo hybrid ✓');
   });
 
-  test('a factory returns a serializer for a supported type token and undefined otherwise', () => {
-    const created = factory.tryCreateSerializer<string>('typescript:string');
+  test('a factory returns a serializer for a supported type and undefined otherwise', () => {
+    const created = factory.tryCreateSerializer<string>(STRING_TYPE);
     expect(created).toBe(stringSerializer);
-    expect(factory.tryCreateSerializer<number>('typescript:number')).toBeUndefined();
+    expect(factory.tryCreateSerializer<number>(NUMBER_TYPE)).toBeUndefined();
   });
 });

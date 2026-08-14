@@ -21,7 +21,10 @@ type IServiceProviderServiceAugmentations = {
   getServices(serviceType: Type): Iterable<any>;
 };
 declare module '@rhombus-std/primitives' {
-  interface IServiceProvider extends IServiceProviderServiceAugmentations {}
+  interface IServiceProvider extends IServiceProviderServiceAugmentations {
+    getRequiredService(serviceType: Type): any;
+    getServices(serviceType: Type): Iterable<any>;
+  }
 }
 export const ServiceProviderServiceAugmentations: AugmentationSet2<IServiceProvider,
   IServiceProviderServiceAugmentations> = {

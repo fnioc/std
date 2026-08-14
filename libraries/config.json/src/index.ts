@@ -6,9 +6,8 @@
 // This package must NOT set `"sideEffects": false` in package.json -- that would
 // let a bundler tree-shake the augmentation away.
 
-export { ConfigBuilderJsonAugmentations } from './ConfigBuilder-Json-augmentations';
-export { JsonConfigProvider } from './JsonConfigProvider';
-export { JsonConfigSource } from './JsonConfigSource';
-export type { JsonConfigSourceOptions } from './JsonConfigSource';
-export { JsonStreamConfigProvider } from './JsonStreamConfigProvider';
-export { JsonStreamConfigSource } from './JsonStreamConfigSource';
+export * from './ConfigBuilder-Json-augmentations';
+export * from './JsonConfigProvider';
+export * from './JsonConfigSource';
+export * from './JsonStreamConfigProvider';
+export * from './JsonStreamConfigSource';
