@@ -39,10 +39,10 @@ export const isOpenType = (() => {
       return this.#element(type);
     }
     protected override visitCtor(type: ConstructorType): boolean {
-      return this.#anyRow(type.args) || this.visit(type.instanceType);
+      return this.#anyRow(type.args) || this.visit(type.instance);
     }
     protected override visitFunc(type: FunctionType): boolean {
-      return this.#anyRow(type.args) || this.visit(type.returnType);
+      return this.#anyRow(type.args) || this.visit(type.return);
     }
     protected override visitGeneric(_type: GenericType): boolean {
       return true;

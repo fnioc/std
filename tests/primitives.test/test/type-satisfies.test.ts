@@ -74,20 +74,20 @@ describe('Type.satisfies on parameter rows', () => {
   const C = Type.imported('C', 'app');
 
   test('an overloaded proposal serves a condition any one of its rows serves', () => {
-    const overloaded = Type.func({ returnType: C, args: [[A, B], [A]] });
+    const overloaded = Type.func({ return: C, args: [[A, B], [A]] });
     expect(satisfies(overloaded, Type.func(C, [[A]]))).toBe(true);
     expect(satisfies(overloaded, Type.func(C, [[A, B]]))).toBe(true);
   });
 
   test('and refuses one no row serves', () => {
-    const overloaded = Type.func({ returnType: C, args: [[A, B], [A]] });
+    const overloaded = Type.func({ return: C, args: [[A, B], [A]] });
     expect(satisfies(overloaded, Type.func(C, [[B]]))).toBe(false);
     expect(satisfies(overloaded, Type.func(C, [[]]))).toBe(false);
   });
 
   test('every condition row needs an answer — a shared call is not enough on its own', () => {
-    const condition = Type.ctor({ instanceType: C, args: [[A], [A, B]] });
-    expect(satisfies(Type.ctor({ instanceType: C, args: [[A], [A, B]] }), condition)).toBe(true);
+    const condition = Type.ctor({ instance: C, args: [[A], [A, B]] });
+    expect(satisfies(Type.ctor({ instance: C, args: [[A], [A, B]] }), condition)).toBe(true);
     // Serving only the [A] row leaves [A, B] unanswered — surplus rows are fine, missing ones are not.
     expect(satisfies(Type.ctor(C, [[A]]), condition)).toBe(false);
     expect(satisfies(Type.ctor(C, [[B]]), condition)).toBe(false);
@@ -95,7 +95,7 @@ describe('Type.satisfies on parameter rows', () => {
 
   test('a row that fails leaves no capture behind for the next one to read', () => {
     const [satisfied, generics] = Type.satisfies(
-      Type.func({ returnType: C, args: [[A], [B]] }),
+      Type.func({ return: C, args: [[A], [B]] }),
       Type.func(C, [[B]]),
     );
     expect(satisfied).toBe(true);
@@ -105,12 +105,12 @@ describe('Type.satisfies on parameter rows', () => {
 
 describe('a callable answers to at least one call', () => {
   test('no row at all is refused, since it has no spelling', () => {
-    expect(() => Type.func({ returnType: A, args: [] })).toThrow(TypeError);
-    expect(() => Type.ctor({ instanceType: A, args: [] })).toThrow(/at least one call/);
+    expect(() => Type.func({ return: A, args: [] })).toThrow(TypeError);
+    expect(() => Type.ctor({ instance: A, args: [] })).toThrow(/at least one call/);
   });
 
   test('one empty row is a callable taking nothing', () => {
-    expect(Type.func({ returnType: A, args: [[]] })).toBe(Type.func(A, [[]]));
+    expect(Type.func({ return: A, args: [[]] })).toBe(Type.func(A, [[]]));
     expect(Type.stringify(Type.func(A, [[]]))).toBe('() => app:A');
   });
 });

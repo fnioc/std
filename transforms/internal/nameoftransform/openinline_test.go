@@ -183,7 +183,7 @@ services.addClass<IRepo<$<1>>>(SqlRepo<$<1>>);
 		t.Fatalf("expected an open-generic service token, got %q", inlineTok)
 	}
 
-	// The dependency node derives Type.ctor(instanceType, [[paramType]]) — the hole
+	// The dependency node derives Type.ctor(instance, [[paramType]]) — the hole
 	// closes into the instance type's own generic argument, and again into the
 	// dependency's.
 	wantDeps := `Type.ctor(Type.imported("SqlRepo", "@scope/app/main", [Type.generic("1")]), ` +

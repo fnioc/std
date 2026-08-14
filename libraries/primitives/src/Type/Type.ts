@@ -90,12 +90,12 @@ export interface ArrayType extends AggregateBase<'array'> {}
 
 export interface ConstructorType extends TypeBase<'ctor'> {
   readonly args: TypeSignatures;
-  readonly instanceType: Type;
+  readonly instance: Type;
 }
 
 export interface FunctionType extends TypeBase<'func'> {
   readonly args: TypeSignatures;
-  readonly returnType: Type;
+  readonly return: Type;
 }
 
 /** An open generic argument — a labeled hole standing for a type bound later. */
@@ -195,7 +195,7 @@ export namespace Type {
   }
 
   /**
-   * A constructor signature — `new (...args) => instanceType`, instance type first.
+   * A constructor signature — `new (...args) => instance`, instance type first.
    *
    * @remarks
    * `args` is one ROW per call the constructor answers to, so a constructor taking one dependency
@@ -205,10 +205,10 @@ export namespace Type {
    * ```ts
    * Type.ctor(box, [[string]]);                               // new (string) => box
    * Type.ctor(box, [[string], []]);                           // new (string; ) => box
-   * Type.ctor({ instanceType: box, args: [[]] });
+   * Type.ctor({ instance: box, args: [[]] });
    * ```
    */
-  export function ctor(instanceType: Type, args: TypeSignatures): ConstructorType;
+  export function ctor(instance: Type, args: TypeSignatures): ConstructorType;
   export function ctor(spec: Spec<ConstructorType>): ConstructorType;
   export function ctor(...args: any[]): ConstructorType {
     return args.length > 1
@@ -241,7 +241,7 @@ export namespace Type {
   })();
 
   /**
-   * A function signature — `(...args) => returnType`, return type first.
+   * A function signature — `(...args) => return`, return type first.
    *
    * @remarks
    * Identity is the shape alone: two signatures with the same return type and parameter rows are
@@ -254,10 +254,10 @@ export namespace Type {
    * ```ts
    * Type.func(box, [[string]]);                             // (string) => box
    * Type.func(box, [[string], []]);                         // (string; ) => box
-   * Type.func({ returnType: box, args: [[]] });
+   * Type.func({ return: box, args: [[]] });
    * ```
    */
-  export function func(returnType: Type, args: TypeSignatures): FunctionType;
+  export function func(returns: Type, args: TypeSignatures): FunctionType;
   export function func(spec: Spec<FunctionType>): FunctionType;
   export function func(...args: any[]): FunctionType {
     return args.length > 1

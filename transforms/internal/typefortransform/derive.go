@@ -37,12 +37,12 @@ func emitAccessor(f *shimast.NodeFactory, e emitter, d *tokens.Derived, accessor
 	switch accessor {
 	case "kind":
 		return f.NewStringLiteral(tokens.KindName(d), shimast.TokenFlagsNone), true
-	case "returnType":
+	case "return":
 		if d.Kind != tokens.DerivedFunc {
 			return nil, false
 		}
 		return e.node(d.Ret), true
-	case "instanceType":
+	case "instance":
 		if d.Kind != tokens.DerivedCtor {
 			return nil, false
 		}

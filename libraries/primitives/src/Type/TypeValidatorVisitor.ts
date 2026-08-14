@@ -7,10 +7,10 @@ class TypeValidatorVisitor extends TypeVisitor<readonly string[]> {
     return this.#element(type);
   }
   protected override visitCtor(type: ConstructorType): readonly string[] {
-    return [...this.#all(type.args.flat()), ...this.visit(type.instanceType)];
+    return [...this.#all(type.args.flat()), ...this.visit(type.instance)];
   }
   protected override visitFunc(type: FunctionType): readonly string[] {
-    return [...this.#all(type.args.flat()), ...this.visit(type.returnType)];
+    return [...this.#all(type.args.flat()), ...this.visit(type.return)];
   }
   protected override visitGeneric(_type: GenericType): readonly string[] {
     return [];

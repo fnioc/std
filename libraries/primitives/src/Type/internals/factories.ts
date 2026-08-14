@@ -44,21 +44,21 @@ export function tuple(members: readonly Type[]): TupleType {
   return intern(`tuple\0${slots.map(id).join(',')}`, () => node<TupleType>({ kind: 'tuple', members: slots }));
 }
 
-export function func(returnType: Type, args: TypeSignatures): FunctionType {
-  const result = adopt(returnType);
+export function func(returns: Type, args: TypeSignatures): FunctionType {
+  const result = adopt(returns);
   const rows = adoptRows(args);
   return intern(
     `func\0${id(result)}\0${rowsKey(rows)}`,
-    () => node<FunctionType>({ kind: 'func', args: rows, returnType: result }),
+    () => node<FunctionType>({ kind: 'func', args: rows, return: result }),
   );
 }
 
-export function ctor(instanceType: Type, args: TypeSignatures): ConstructorType {
-  const instance = adopt(instanceType);
+export function ctor(instance: Type, args: TypeSignatures): ConstructorType {
+  const slot = adopt(instance);
   const rows = adoptRows(args);
   return intern(
-    `ctor\0${id(instance)}\0${rowsKey(rows)}`,
-    () => node<ConstructorType>({ kind: 'ctor', args: rows, instanceType: instance }),
+    `ctor\0${id(slot)}\0${rowsKey(rows)}`,
+    () => node<ConstructorType>({ kind: 'ctor', args: rows, instance: slot }),
   );
 }
 
@@ -262,8 +262,8 @@ export function adopt(type: Type): Type {
 /** The fields each kind's factory reads, so a literal missing one is named rather than followed. */
 const REQUIRED: Readonly<Record<Type['kind'], readonly string[]>> = {
   array: ['element'],
-  ctor: ['instanceType', 'args'],
-  func: ['returnType', 'args'],
+  ctor: ['instance', 'args'],
+  func: ['return', 'args'],
   generic: ['label'],
   global: ['name', 'genericArgs'],
   imported: ['name', 'from', 'genericArgs'],
@@ -302,10 +302,10 @@ class AdoptVisitor extends TypeVisitor<Type> {
     return array(type.element);
   }
   protected override visitCtor(type: ConstructorType): Type {
-    return ctor(type.instanceType, type.args);
+    return ctor(type.instance, type.args);
   }
   protected override visitFunc(type: FunctionType): Type {
-    return func(type.returnType, type.args);
+    return func(type.return, type.args);
   }
   protected override visitGeneric(type: GenericType): Type {
     return generic(type.label);

@@ -154,12 +154,12 @@ class TypeParser {
     }
     switch (name.text) {
       case 'Func': {
-        const [returnType, rows] = this.#reservedSignature(name, 'Func<Return, ...Args>');
-        return func(returnType, rows);
+        const [returns, rows] = this.#reservedSignature(name, 'Func<Return, ...Args>');
+        return func(returns, rows);
       }
       case 'Ctor': {
-        const [instanceType, rows] = this.#reservedSignature(name, 'Ctor<Instance, ...Args>');
-        return ctor(instanceType, rows);
+        const [instance, rows] = this.#reservedSignature(name, 'Ctor<Instance, ...Args>');
+        return ctor(instance, rows);
       }
       case 'ServiceProvider': {
         if (this.#at('<')) {

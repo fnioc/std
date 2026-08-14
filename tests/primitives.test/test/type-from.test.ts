@@ -53,12 +53,12 @@ describe('Type.from', () => {
   });
 
   test('reads a callable answering to several calls, semicolons between its rows', () => {
-    expect(Type.from('(app:A; ) => app:B')).toBe(Type.func({ returnType: B, args: [[A], []] }));
+    expect(Type.from('(app:A; ) => app:B')).toBe(Type.func({ return: B, args: [[A], []] }));
     expect(Type.from('new (app:A; app:B, app:A) => app:B')).toBe(
-      Type.ctor({ instanceType: B, args: [[A], [B, A]] }),
+      Type.ctor({ instance: B, args: [[A], [B, A]] }),
     );
     // A leading empty row is the call taking nothing, written first.
-    expect(Type.from('(; app:A) => app:B')).toBe(Type.func({ returnType: B, args: [[], [A]] }));
+    expect(Type.from('(; app:A) => app:B')).toBe(Type.func({ return: B, args: [[], [A]] }));
     // The reserved spellings carry rows too, the head separated by its own comma.
     expect(Type.from('Func<app:B, app:A; >')).toBe(Type.from('(app:A; ) => app:B'));
     expect(Type.from('Ctor<app:B; app:A>')).toBe(Type.from('new (; app:A) => app:B'));
@@ -67,7 +67,7 @@ describe('Type.from', () => {
   test('a callable with one row spells exactly as it always has', () => {
     expect(Type.stringify(Type.func(B, [[A]]))).toBe('(app:A) => app:B');
     expect(Type.stringify(Type.ctor(B, [[]]))).toBe('new () => app:B');
-    expect(Type.stringify(Type.func({ returnType: B, args: [[A], []] }))).toBe('(app:A; ) => app:B');
+    expect(Type.stringify(Type.func({ return: B, args: [[A], []] }))).toBe('(app:A; ) => app:B');
   });
 
   test('reads the arrow forms', () => {
@@ -290,10 +290,10 @@ function generate(random: () => number, depth: number): Type {
       return Type.tuple(...children(3));
     }
     case 'func': {
-      return Type.func({ returnType: child(), args: rows() });
+      return Type.func({ return: child(), args: rows() });
     }
     case 'ctor': {
-      return Type.ctor({ instanceType: child(), args: rows() });
+      return Type.ctor({ instance: child(), args: rows() });
     }
     case 'object': {
       return Type.object(Object.fromEntries(Array.from({ length: many(3) }, () => [pick(NAMES), child()])));

@@ -47,14 +47,14 @@ class SatisfiesVisitor extends TypeVisitor<Predicate> {
     return proposed =>
       proposed.kind === 'ctor'
       && this.#rows(proposed.args, type.args)
-      && this.match(proposed.instanceType, type.instanceType);
+      && this.match(proposed.instance, type.instance);
   }
 
   protected override visitFunc(type: FunctionType): Predicate {
     return proposed =>
       proposed.kind === 'func'
       && this.#rows(proposed.args, type.args)
-      && this.match(proposed.returnType, type.returnType);
+      && this.match(proposed.return, type.return);
   }
 
   protected override visitGeneric(type: GenericType): Predicate {

@@ -127,7 +127,7 @@ func TestHoistedAccessorFoldsToTheMemberConst(t *testing.T) {
 import { typefor } from "@rhombus-std/primitives.extras";
 interface IClock {}
 declare class Clock implements IClock {}
-export const instance = typefor<typeof Clock>().instanceType;
+export const instance = typefor<typeof Clock>().instance;
 export const kind = typefor<IClock>().kind;
 `)
 	defer prog.Close()

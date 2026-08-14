@@ -11,9 +11,9 @@ const STRING = Type.global('string');
 const whatever = (argument: Type) => Type.imported('Whatever', 'app', [argument]);
 
 /** `() => app:Whatever<%T>` — the open callable a request closes. */
-const OPEN = Type.func({ returnType: whatever(T), args: [[]] });
+const OPEN = Type.func({ return: whatever(T), args: [[]] });
 /** `() => app:Whatever<string>` — the shape a caller asks for. */
-const CLOSED = Type.func({ returnType: whatever(STRING), args: [[]] });
+const CLOSED = Type.func({ return: whatever(STRING), args: [[]] });
 
 describe('an open signature as a service type', () => {
   test('a request for the instantiated shape resolves the open registration', () => {

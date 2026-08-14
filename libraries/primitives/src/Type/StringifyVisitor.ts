@@ -26,14 +26,14 @@ class StringifyVisitor extends TypeVisitor<string, Precedence> {
   }
   protected override visitCtor(type: ConstructorType, minimum: Precedence): string {
     return this.#parenthesize(
-      `new (${this.#rows(type.args)}) => ` + this.visit(type.instanceType, Precedence.arrow),
+      `new (${this.#rows(type.args)}) => ` + this.visit(type.instance, Precedence.arrow),
       Precedence.arrow,
       minimum,
     );
   }
   protected override visitFunc(type: FunctionType, minimum: Precedence): string {
     return this.#parenthesize(
-      `(${this.#rows(type.args)}) => ` + this.visit(type.returnType, Precedence.arrow),
+      `(${this.#rows(type.args)}) => ` + this.visit(type.return, Precedence.arrow),
       Precedence.arrow,
       minimum,
     );

@@ -71,7 +71,7 @@ describe('withType', () => {
   });
 
   test('parameter rows describe an overloaded implementation, one row per call signature', () => {
-    const overloaded = Type.ctor({ instanceType: SINK, args: [
+    const overloaded = Type.ctor({ instance: SINK, args: [
       [Type.imported('IMissing', 'app'), Type.typeLiteral('unreachable')],
       [CLOCK, Type.typeLiteral('fallback')],
     ] });
