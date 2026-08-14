@@ -70,20 +70,23 @@ describe('withType', () => {
     expect((services.build().getRequiredService(SINK) as Sink).environment).toBe('composed');
   });
 
-  test('an intersection describes an overloaded implementation, one call signature per member', () => {
-    const overloaded = Type.intersection(
-      Type.ctor(SINK, Type.imported('IMissing', 'app'), Type.typeLiteral('unreachable')),
-      Type.ctor(SINK, CLOCK, Type.typeLiteral('fallback')),
-    );
-    // The first member asks for a type nothing registers, so the second is the one that lowers.
+  test('parameter rows describe an overloaded implementation, one row per call signature', () => {
+    const overloaded = Type.ctor({
+      instanceType: SINK,
+      args: [
+        [Type.imported('IMissing', 'app'), Type.typeLiteral('unreachable')],
+        [CLOCK, Type.typeLiteral('fallback')],
+      ],
+    });
+    // The first row asks for a type nothing registers, so the second is the one the engine takes.
     const services = withClock().add<Sink>(SINK, sink => sink.asClass(Sink).withType(overloaded));
 
     expect((services.build().getRequiredService(SINK) as Sink).environment).toBe('fallback');
   });
 
-  test('refuses a type that describes nothing callable', () => {
+  test('refuses a type that is not a constructor type', () => {
     expect(() => withClock().add<Sink>(SINK, sink => (sink.asClass(Sink) as any).withType(CLOCK)))
-      .toThrow(/describes nothing callable/);
+      .toThrow(/is not a constructor type/);
   });
 });
 
@@ -121,13 +124,7 @@ describe('the terse form', () => {
   });
 
   test('refuses a node that describes nothing callable', () => {
-    expect(() => withClock().add<Sink>(SINK, Sink, CLOCK as any)).toThrow(/describes nothing callable/);
-  });
-
-  test('refuses an overload set that is called both ways at once', () => {
-    const mixed = Type.intersection(Type.ctor(SINK, CLOCK), Type.func(SINK, CLOCK));
-
-    expect(() => withClock().add<Sink>(SINK, Sink, mixed)).toThrow(/mixes constructor and function signatures/);
+    expect(() => withClock().add<Sink>(SINK, Sink, CLOCK as any)).toThrow(/is not a function type/);
   });
 });
 
@@ -137,7 +134,7 @@ describe('the shape slot is spent once', () => {
       withClock().add<Sink>(SINK, sink =>
         (sink.asClass(Sink).withType(Type.ctor(SINK, CLOCK, Type.typeLiteral('first'))) as any)
           .withSignature(CLOCK, Type.typeLiteral('second')))
-    ).toThrow(/already named by withType/);
+    ).toThrow(/call shape is already named/);
   });
 
   test('withSignature twice is refused', () => {
@@ -145,7 +142,17 @@ describe('the shape slot is spent once', () => {
       withClock().add<Sink>(SINK, sink =>
         (sink.asClass(Sink).withSignature(CLOCK, Type.typeLiteral('first')) as any)
           .withSignature(CLOCK, Type.typeLiteral('second')))
-    ).toThrow(/already named by withSignature/);
+    ).toThrow(/call shape is already named/);
+  });
+
+  test('withSignatures spells an overloaded implementation as its rows', () => {
+    const services = withClock().add<Sink>(SINK, sink =>
+      sink.asClass(Sink).withSignatures(
+        [Type.imported('IMissing', 'app'), Type.typeLiteral('unreachable')],
+        [CLOCK, Type.typeLiteral('rows')],
+      ));
+
+    expect((services.build().getRequiredService(SINK) as Sink).environment).toBe('rows');
   });
 });
 

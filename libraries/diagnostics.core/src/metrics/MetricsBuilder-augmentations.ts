@@ -5,7 +5,7 @@
 // the sibling ./MetricsOptions-augmentations set.
 
 import type { IConfigureOptions } from '@rhombus-std/options';
-import type { AugmentationSet2, ConstructorType, Flatten, IntersectionType } from '@rhombus-std/primitives';
+import type { AugmentationSet2, ConstructorType, Flatten } from '@rhombus-std/primitives';
 import { registerAugmentations } from '@rhombus-std/primitives.extras';
 import type { Ctor, Func } from '@rhombus-toolkit/func';
 
@@ -25,7 +25,7 @@ interface IMetricsBuilderAugmentations {
    * like every di.core `addClass` -- a dependency-free ctor names one with no
    * argument types.
    */
-  addMetricsListenerType(ctor: Ctor, implType: ConstructorType | IntersectionType): this;
+  addMetricsListenerType(ctor: Ctor, implType: ConstructorType): this;
   /** Removes all {@link IMetricsListener} registrations from the builder. */
   clearMetricsListeners(): this;
   /**

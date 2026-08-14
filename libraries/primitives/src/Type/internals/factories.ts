@@ -64,7 +64,14 @@ export function ctor(instanceType: Type, args: TypeSignatures, genericArgs: read
   );
 }
 
+/**
+ * @throws TypeError - when no row survives; a callable answering to no call has no spelling, and
+ * `[]` is the shape an author reaches for meaning the one call that takes nothing.
+ */
 function adoptRows(args: TypeSignatures): TypeSignatures {
+  if (!args.length) {
+    throw new TypeError('a callable answers to at least one call — write `[[]]` for one taking no parameters');
+  }
   return args.map(row => row.map(adopt));
 }
 

@@ -37,11 +37,14 @@ const manifest = DefaultManifest.empty<string>()
   .addValue(CONFIG, { env: 'dev' })
   // .add(ServiceDescriptor.value(CONFIG, { env: 'dev' }))
   .addClass(Type.stringify(Type.imported('Foo', 'app')), Foo, Type.ctor(FOO))
-  // .add(ServiceDescriptor.ctor(FOO, Foo, [[]]))
-  .add(ServiceDescriptor.ctor(BAR, Bar, [[FOO, Type.typeLiteral('fast')]]))
-  .add(ServiceDescriptor.ctor(WIDGET, Widget, [[CONN, FOO]]))
-  .add(ServiceDescriptor.ctor(Type.imported('Box', 'app', [Type.generic('T')]), Box, [[Type.generic('T')]]))
-  .add(ServiceDescriptor.ctor(HOLDER, Holder, [[SP_TYPE]]));
+  // .add(ServiceDescriptor.ctor(FOO, Foo, Type.ctor(FOO)))
+  .add(ServiceDescriptor.ctor(BAR, Bar, Type.ctor(BAR, FOO, Type.typeLiteral('fast'))))
+  .add(ServiceDescriptor.ctor(WIDGET, Widget, Type.ctor(WIDGET, CONN, FOO)))
+  .add(
+    ServiceDescriptor.ctor(Type.imported('Box', 'app', [Type.generic('T')]), Box,
+      Type.ctor(Type.imported('Box', 'app', [Type.generic('T')]), Type.generic('T'))),
+  )
+  .add(ServiceDescriptor.ctor(HOLDER, Holder, Type.ctor(HOLDER, SP_TYPE)));
 
 const sp = new ServiceProvider(manifest);
 
@@ -84,7 +87,10 @@ check('unsatisfiable request throws UnsatisfiableError', threw);
 
 const pairFactory = (foo: Foo, bar: Bar) => [foo, bar] as const;
 const spF = new ServiceProvider(
-  manifest.add(ServiceDescriptor.factory(Type.imported('Pair', 'app'), pairFactory, [[FOO, BAR]])),
+  manifest.add(
+    ServiceDescriptor.factory(Type.imported('Pair', 'app'), pairFactory,
+      Type.func(Type.imported('Pair', 'app'), FOO, BAR)),
+  ),
 );
 const made = spF.resolve(Type.imported('Pair', 'app')) as readonly [Foo, Bar];
 check('factory registration with deps', made[0] instanceof Foo && made[1] instanceof Bar);

@@ -94,10 +94,10 @@ const GATEWAY_WITNESS_TYPE = Type.imported('Typeof', '@rhombus-std/di.core', [GA
  * A bare `number` would derive the Type `number` — every numeric dependency in
  * the process would collide on it — so `Inject` PINS the Type the parameter
  * resolves against, overriding what the type alone would produce. Without a
- * transformer the brand is documentation: the signature below composes the same
- * Type by hand. With one, `signatureof(TotalWithinLimit)` reads the brand and
- * emits byte-identical output. That agreement is the whole reason the brand
- * exists.
+ * transformer the brand is documentation: the implementation type below composes
+ * the same Type by hand. With one, `typefor<typeof TotalWithinLimit>()` reads the
+ * brand and emits byte-identical output. That agreement is the whole reason the
+ * brand exists.
  */
 export class TotalWithinLimit implements IOrderValidator {
   public readonly name = 'total-within-limit';

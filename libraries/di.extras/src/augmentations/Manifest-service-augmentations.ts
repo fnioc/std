@@ -1,5 +1,5 @@
-import type { IComplete, Manifest, ServiceDescriptor, Signatures, Unstarted } from '@rhombus-std/di.core';
-import { AugmentationSet2, type ConstructorType, type Flatten, type FunctionType, type IntersectionType, Token,
+import type { IComplete, Manifest, ServiceDescriptor, Unstarted } from '@rhombus-std/di.core';
+import { AugmentationSet2, type ConstructorType, type Flatten, type FunctionType, Token,
   Type } from '@rhombus-std/primitives';
 import { registerAugmentations, typefor } from '@rhombus-std/primitives.extras';
 import { Ctor, Func } from '@rhombus-toolkit/func';
@@ -8,18 +8,16 @@ interface IManifestServiceAugmentations<Scopes extends string> {
   /** The tokenless form of {@link Manifest.add}'s configure, constructor and factory shapes:
    * `type` is derived from `T` instead of taken explicitly. */
   add<T>(configure: Func<[Unstarted<T, Scopes>], IComplete>): Manifest<Scopes>;
-  add<T>(ctor: Ctor<any[], T>, implType: ConstructorType | IntersectionType, scope?: Scopes,
-    key?: string): Manifest<Scopes>;
-  add<T>(factory: Func<any[], T>, implType: FunctionType | IntersectionType, scope?: Scopes,
-    key?: string): Manifest<Scopes>;
+  add<T>(ctor: Ctor<any[], T>, implType: ConstructorType, scope?: Scopes, key?: string): Manifest<Scopes>;
+  add<T>(factory: Func<any[], T>, implType: FunctionType, scope?: Scopes, key?: string): Manifest<Scopes>;
 
   /** The tokenless form of {@link Manifest.addClass}: `type` is derived from `T` instead of taken
    * explicitly. */
-  addClass<T>(ctor: Ctor<any[], T>, signatures: Signatures, scope?: Scopes, key?: string): this;
+  addClass<T>(ctor: Ctor<any[], T>, implType: ConstructorType, scope?: Scopes, key?: string): this;
 
   /** The tokenless form of {@link Manifest.addFactory}: `type` is derived from `T` instead of
    * taken explicitly. */
-  addFactory<T>(factory: Func<any[], T>, signatures: Signatures, scope?: Scopes, key?: string): this;
+  addFactory<T>(factory: Func<any[], T>, implType: FunctionType, scope?: Scopes, key?: string): this;
 
   /** The tokenless form of {@link Manifest.addValue}: `type` is derived from `T` instead of taken
    * explicitly. */

@@ -12,8 +12,7 @@
 // Named imports: unqualified names in a `declare module` body resolve in THIS
 // file's scope, so `Manifest`/`DefaultManifest` must be importable here.
 import { type DefaultManifest, type IServiceProvider, type Manifest, RESOLVER_TYPE } from '@rhombus-std/di.core';
-import { type AugmentationSet2, type ConstructorType, type IntersectionType, registerAugmentations,
-  Type } from '@rhombus-std/primitives';
+import { type AugmentationSet2, type ConstructorType, registerAugmentations, Type } from '@rhombus-std/primitives';
 import { typefor } from '@rhombus-std/primitives.extras';
 import type { Ctor, Func } from '@rhombus-toolkit/func';
 import type { IHostedService } from './IHostedService';
@@ -36,7 +35,7 @@ type IManifestHostedServiceAugmentations<Scopes extends string> = {
    * stop alongside its lifetime. `implType` is the ctor's composed
    * constructor type; omitted, a dependency-free ctor is assumed.
    */
-  addHostedService(ctor: Ctor, implType?: ConstructorType | IntersectionType): Manifest<Scopes>;
+  addHostedService(ctor: Ctor, implType?: ConstructorType): Manifest<Scopes>;
 };
 
 // `Provider` is defaulted so the merge's type-parameter list matches the
@@ -57,7 +56,7 @@ export const ServiceManifestHostedServiceAugmentations: AugmentationSet2<Default
     // The ctor form carries an optional composed constructor type; the factory
     // form is a lone provider-taking function. A class value matches the
     // construct-signature arm, an arrow/function the call-signature arm.
-    ...rest: [ctor: Ctor, implType?: ConstructorType | IntersectionType] | [
+    ...rest: [ctor: Ctor, implType?: ConstructorType] | [
       implementationFactory: Func<[IServiceProvider], IHostedService>,
     ]
   ): Manifest<string> {

@@ -134,7 +134,7 @@ function goEnv(): NodeJS.ProcessEnv {
 // packages, and names ONE spawn descriptor. The always-on host runs its whole
 // stage table: the inline stage substitutes the sugar body, which puts a
 // `typefor<T>()` in front of the token-taking member, and the primitive stages
-// (nameof / typefor / signatureof) lower the calls it mints. Every argument the
+// (nameof / typefor) lower the calls it mints. Every argument the
 // author wrote after the ctor is carried through untouched — the sugar adds the
 // token and nothing else.
 //
@@ -153,7 +153,7 @@ const inferredDir = join(CHAIN_ROOT, 'inferred');
 // actually resolves to. The consumer-merge suite covers the other assembly — the
 // member-map `extends` shape a real dependency graph produces.
 const AUTHORING_SOURCE = `
-import type { Manifest, Signatures } from '@rhombus-std/di.core';
+import type { ConstructorType, Manifest } from '@rhombus-std/di.core';
 
 interface Ctor<in Args extends readonly any[] = any[], out Instance = any> {
   new(...args: Args): Instance;
@@ -161,7 +161,7 @@ interface Ctor<in Args extends readonly any[] = any[], out Instance = any> {
 
 declare module '@rhombus-std/di.core' {
   interface Manifest<Scopes extends string = 'singleton'> {
-    addClass<T>(ctor: Ctor, signatures: Signatures, scope?: Scopes, key?: string): Manifest<Scopes>;
+    addClass<T>(ctor: Ctor, implType: ConstructorType, scope?: Scopes, key?: string): Manifest<Scopes>;
     addValue<T>(value: unknown, key?: string): Manifest<Scopes>;
   }
 }
@@ -261,11 +261,12 @@ export const keyedTok = provider.getService<Keyed<ICache, 'redis'>>();
 export const keyedKnown = provider.getRequiredService<Keyed<ICache, 'redis'>>();
 `;
 
-// The signatures argument. Everything the author writes after the ctor reaches the
-// token-taking member unchanged: the sugar's only job is to put the derived token
-// in front of it. Own file so the pass-through is compared in isolation.
+// The implementation-type argument. Everything the author writes after the ctor
+// reaches the token-taking member unchanged: the sugar's only job is to put the
+// derived token in front of it. Own file so the pass-through is compared in
+// isolation.
 const OVERRIDE_SOURCE = `
-import type { Manifest } from '@rhombus-std/di.core';
+import type { ConstructorType, Manifest } from '@rhombus-std/di.core';
 
 interface IReq {}
 interface ILog {}
@@ -278,8 +279,9 @@ class Handler implements IHandler {
 }
 
 declare const services: Manifest<'singleton'>;
+declare const handlerType: ConstructorType;
 
-export const overridden = services.addClass<IHandler>(Handler, [['pkg:IReqAlt', 'pkg:ILog']]);
+export const overridden = services.addClass<IHandler>(Handler, handlerType);
 `;
 
 function writeChainSrc(dir: string): void {
@@ -335,7 +337,7 @@ function setupChainWorkspaces(): void {
   rmSync(join(chainInlineDir, 'dist'), { recursive: true, force: true });
 
   // Inline path: di.extras IN deps → the host scan activates the full stage
-  // set (inline + nameof + typefor + signatureof). The tsconfig spells the
+  // set (inline + nameof + typefor). The tsconfig spells the
   // primitives descriptors explicitly so ttsc has direct-discovery entries to
   // spawn the host with; the rest arrive through the scan. There is no semantic
   // (di-direct) sandbox — its output is the frozen `*.di-direct.js` golden.
@@ -410,7 +412,7 @@ function assertNoAuthoringSurvivors(out: string): void {
   expect(out).not.toContain('addClass<');
   expect(out).not.toContain('tokenfor');
   expect(out).not.toContain('tokenof');
-  expect(out).not.toContain('signatureof');
+  expect(out).not.toContain('typefor');
 }
 
 function lineWith(src: string, needle: string): string | undefined {
@@ -485,11 +487,11 @@ describe.skipIf(!toolchainReady)('generic inline stage — registration parity (
     );
   });
 
-  test('the signatures argument reaches the member exactly as written', () => {
+  test('the implementation type reaches the member exactly as written', () => {
     const line = lineWith(overrideInline, 'overridden =');
     expect(line).toBeDefined();
     expect(line).toContain(
-      'addClass(Type.imported("IHandler", "chain-app/tokens/override"), Handler, [["pkg:IReqAlt", "pkg:ILog"]])',
+      'addClass(Type.imported("IHandler", "chain-app/tokens/override"), Handler, handlerType)',
     );
     assertNoAuthoringSurvivors(overrideInline);
   });

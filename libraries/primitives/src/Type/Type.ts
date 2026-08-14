@@ -42,7 +42,7 @@ export type TypeIdentifier =
  *
  * @remarks
  * A callable that is not overloaded carries exactly one row, and one taking no parameters carries
- * one EMPTY row: a callable with no rows at all answers to no call.
+ * one EMPTY row — `[[]]`, never `[]`, which names no call at all and so has no spelling.
  */
 export type TypeSignatures = ReadonlyArray<readonly Type[]>;
 

@@ -403,14 +403,14 @@ function buildOrderContainer(): Manifest<'singleton'> {
   services = services.addClass(SINK_TYPE, PlainTextSink,
     Type.ctor(SINK_TYPE, CLOCK_TYPE, Type.typeLiteral('production')), 'singleton');
 
-  // TWO OVERLOADS for one class, and a KEY. Each intersection member is one
-  // constructor overload, and the engine takes the first whose every argument
-  // it can supply: `Type.ctor(SINK_TYPE, CLOCK_TYPE, EMAIL_OPTIONS_TYPE)` needs
-  // `IEmailOptions`, which nothing registers, so the single-argument overload
-  // wins and the sink falls back to its built-in address.
+  // TWO OVERLOADS for one class, and a KEY. Each parameter row is one
+  // constructor overload, and the engine takes the first whose every argument it
+  // can supply, longest row first: the two-argument row needs `IEmailOptions`,
+  // which nothing registers, so the single-argument row wins and the sink falls
+  // back to its built-in address.
   services = services.addClass(SINK_TYPE, EmailSink,
-    Type.intersection(Type.ctor(SINK_TYPE, CLOCK_TYPE, EMAIL_OPTIONS_TYPE), Type.ctor(SINK_TYPE, CLOCK_TYPE)),
-    'singleton', 'email');
+    Type.ctor({ instanceType: SINK_TYPE, args: [[CLOCK_TYPE, EMAIL_OPTIONS_TYPE], [CLOCK_TYPE]] }), 'singleton',
+    'email');
 
   // An OPTIONAL dependency, spelled honestly: a union whose other member is the
   // literal `undefined`. A literal member supplies ITSELF rather than competing
