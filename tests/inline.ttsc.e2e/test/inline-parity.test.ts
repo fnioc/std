@@ -160,7 +160,7 @@ interface Ctor<in Args extends readonly any[] = any[], out Instance = any> {
 }
 
 declare module '@rhombus-std/di.core' {
-  interface Manifest<Scopes extends string = 'singleton'> {
+  interface Manifest<Scopes extends string> {
     addClass<T>(ctor: Ctor, signatures: Signatures, scope?: Scopes, key?: string): Manifest<Scopes>;
     addValue<T>(value: unknown, key?: string): Manifest<Scopes>;
   }
@@ -670,7 +670,7 @@ const OPTIONS_AUTHORING = `
 import type { Manifest, Type } from '@rhombus-std/di.core';
 
 declare module '@rhombus-std/di.core' {
-  interface Manifest<Scopes extends string = 'singleton'> {
+  interface Manifest<Scopes extends string> {
     addOptions<T>(): Manifest<Scopes>;
     addOptions(tType: Type | string): Manifest<Scopes>;
   }
