@@ -160,7 +160,7 @@ interface Ctor<in Args extends readonly any[] = any[], out Instance = any> {
 }
 
 declare module '@rhombus-std/di.core' {
-  interface Manifest<Scopes extends string = 'singleton'> {
+  interface Manifest<Scopes extends string> {
     addClass<T>(ctor: Ctor, implementerType: ConstructorType, scope?: Scopes, key?: string): Manifest<Scopes>;
     addValue<T>(value: unknown, key?: string): Manifest<Scopes>;
   }
@@ -218,13 +218,14 @@ export const keyed = services.addClass<Keyed<ICache, 'redis'>>(RedisCache, cache
 // infer it from. The stage refuses with a named diagnostic rather than deriving a
 // token for `unknown` — compiled on its own, since the refusal fails the build.
 const INFERRED_SOURCE = `
-import type { Manifest } from '@rhombus-std/di.core';
+import type { ConstructorType, Manifest } from '@rhombus-std/di.core';
 
 class SelfRepo {}
 
 declare const services: Manifest<'singleton'>;
+declare const selfImpl: ConstructorType;
 
-export const self = services.addClass(SelfRepo, [[]]);
+export const self = services.addClass(SelfRepo, selfImpl);
 `;
 
 // Lookup-family source (W5). The type-driven get* forms lower through the inline
@@ -680,7 +681,7 @@ const OPTIONS_AUTHORING = `
 import type { Manifest, Type } from '@rhombus-std/di.core';
 
 declare module '@rhombus-std/di.core' {
-  interface Manifest<Scopes extends string = 'singleton'> {
+  interface Manifest<Scopes extends string> {
     addOptions<T>(): Manifest<Scopes>;
     addOptions(tType: Type | string): Manifest<Scopes>;
   }

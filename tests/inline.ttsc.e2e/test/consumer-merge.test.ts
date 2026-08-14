@@ -77,14 +77,15 @@ function goEnv(): NodeJS.ProcessEnv {
 // one a build actually compiles.
 const MERGED_SOURCE = `
 import '@rhombus-std/di.extras';
-import type { Manifest } from '@rhombus-std/di.core';
+import type { ConstructorType, Manifest } from '@rhombus-std/di.core';
 
 interface ILogger {}
 class ConsoleLogger implements ILogger {}
 
 declare const services: Manifest<'singleton'>;
+declare const loggerImpl: ConstructorType;
 
-export const registered = services.addClass<ILogger>(ConsoleLogger, [[]], 'singleton');
+export const registered = services.addClass<ILogger>(ConsoleLogger, loggerImpl, 'singleton');
 `;
 
 // The same call with the authoring surface absent: the package declaring the sugar
