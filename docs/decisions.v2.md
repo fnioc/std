@@ -2252,9 +2252,9 @@ constructor descriptor around a type nothing can `new` would build a registratio
 actually construct, so the mistake is caught at registration rather than surfacing later as a runtime
 construction failure with no clue where it came from.
 
-Deriving the flag automatically from a TS `abstract class` declaration is not wired up: the vendored
-ttsc checker shim exposes no abstract-modifier accessor today, so a hand-written `Type.ctor(..., true)`
-(or the object door's `abstract: true`) is the only way to spell one; typefor's derivation always emits
-false until the shim grows that accessor.
+Deriving the flag from a TS `abstract class` declaration is not wired up: the vendored ttsc checker
+shim exposes no abstract-modifier accessor, so `typefor`'s Go derivation mints every `ConstructorType`
+with `abstract: false`, whatever the source class actually declares. A hand-written `Type.ctor(...,
+true)` (or the object door's `abstract: true`) is the only way to spell an abstract one today.
 
 _Owner-ruled, Claude-executed 2026-08-14._
