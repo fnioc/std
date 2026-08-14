@@ -9,8 +9,8 @@
 
 import '@rhombus-std/di';
 import { DefaultManifest } from '@rhombus-std/di.core';
-import { FilterLoggingBuilderExtensions, LOGGER_FILTER_OPTIONS_TYPE, LoggerFilterOptions,
-  LoggingBuilder } from '@rhombus-std/logging';
+import { FilterLoggingBuilderExtensions, LOGGER_FILTER_OPTIONS_ACCESSOR_TYPE, LOGGER_FILTER_OPTIONS_TYPE,
+  LoggerFilterOptions, LoggingBuilder } from '@rhombus-std/logging';
 import type { ILoggingBuilder } from '@rhombus-std/logging.core';
 import { LogLevel } from '@rhombus-std/logging.core';
 import type { IOptions } from '@rhombus-std/options';
@@ -29,7 +29,7 @@ import { describe, expect, test } from 'bun:test';
 function resolveFilterOptions(builder: ILoggingBuilder): LoggerFilterOptions {
   const services = builder.services.addOptions(LOGGER_FILTER_OPTIONS_TYPE, () => new LoggerFilterOptions());
   const provider = services.build().createScope('singleton');
-  const options: IOptions<LoggerFilterOptions> = provider.getRequiredService(LOGGER_FILTER_OPTIONS_TYPE);
+  const options: IOptions<LoggerFilterOptions> = provider.getRequiredService(LOGGER_FILTER_OPTIONS_ACCESSOR_TYPE);
   return options.value;
 }
 

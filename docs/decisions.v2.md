@@ -2322,6 +2322,30 @@ _Claude-authored under the owner's least-code directive (task #46), 2026-08-14 �
 placeholders taken to get something running, not design rulings; task #5 remains the authority on
 the scope model itself._
 
+## §185 — The nine baseline reds resolved at the wrong address; the open `IOptions<$T>` design (§160) stands
+
+The `caching.memory`, `logging.config`, and `augmentations` suites (eight tests) all failed the same
+way: `UnsatisfiableError: cannot satisfy <pkg>:<BareOptionsType>`. Every one of them called
+`getRequiredService`/`getService` on the BARE options type — `MEMORY_CACHE_OPTIONS_TYPE`,
+`Type.from('test:FakeProviderOptions')`, `LOGGER_FILTER_OPTIONS_TYPE` — and expected an
+`IOptions<T>`-shaped `{ value }` back.
+
+§160 already settled the addressing: `addOptions(tType, …)` OFFERS `IOptions<T>` by filling `T`'s
+base-factory slot, but the bare `T` itself is never registered as a resolvable address — only the
+one open `IOptions<$T>` registration is, and it answers `IOptions<T>` requests by their closing type.
+Resolving the bare type was therefore never going to work; nothing registers it. The registration
+shape and the engine's open-template resolution both match the design as recorded — this was a test
+defect, not a production one. Each failing assertion now resolves at the composed `IOptions<T>`
+address instead: the packages that mint one already export an accessor constant
+(`MEMORY_CACHE_OPTIONS_ACCESSOR_TYPE`, `LOGGER_FILTER_OPTIONS_ACCESSOR_TYPE`) built the same way
+`caching.memory`'s own factories resolve their options, and the ad hoc `FakeProviderOptions` test
+composes its address with `options.augmentations`'s exported `optionsAddressType`.
+
+The ninth red, `hosting.test`'s `createDefaultServiceProviderOptions` unit, was unrelated: the
+function's own doc comment says scope AND build-time validation are Development-only, but the
+implementation only ever set `validateOnBuild`. `validateScopes` now follows the same
+`isDevelopment` value.
+
 ## §186 — Async resolution is call-site behavior
 
 The container has no async type kind and no async resolution machinery of its own: asynchrony is
