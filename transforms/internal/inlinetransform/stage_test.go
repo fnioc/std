@@ -656,7 +656,7 @@ func TestStageInlinesMemberSugar(t *testing.T) {
 			t.Fatalf("registered primitive type arg = %q, want Foo", typeName(prog.Checker, use.TypeArgs[0]))
 		}
 	}
-	if artifacts.SugarMembers["isService"].TypeArgCount != 1 {
+	if shapes := artifacts.SugarMembers["isService"]; len(shapes) != 1 || shapes[0].TypeArgCount != 1 {
 		t.Fatalf("sugar member shape not recorded: %+v", artifacts.SugarMembers)
 	}
 }

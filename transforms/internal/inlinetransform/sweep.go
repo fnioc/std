@@ -71,7 +71,7 @@ func Sweep(sf *shimast.SourceFile, artifacts *Artifacts) []plugin.Diagnostic {
 		// with the sugar's shape.
 		if call.Expression.Kind == shimast.KindPropertyAccessExpression {
 			name := call.Expression.AsPropertyAccessExpression().Name().Text()
-			if shape, ok := artifacts.SugarMembers[name]; ok && sugarShapeMatches(shape, typeArgs, valueArgs) {
+			if anySugarShapeMatches(artifacts.SugarMembers[name], typeArgs, valueArgs) {
 				diags = append(diags, sweepDiag("INLINE_UNLOWERED_SUGAR", n,
 					fmt.Sprintf("member sugar %q survived lowering", name)))
 			}
@@ -117,6 +117,18 @@ func Sweep(sf *shimast.SourceFile, artifacts *Artifacts) []plugin.Diagnostic {
 func sugarShapeMatches(shape MemberShape, typeArgs, valueArgs int) bool {
 	return typeArgs == shape.TypeArgCount &&
 		valueArgs >= shape.MinValueArgCount && valueArgs <= shape.MaxValueArgCount
+}
+
+// anySugarShapeMatches reports whether a call's arity fits any of a member's
+// declared shapes. A member several entries contribute to answers to each of
+// their arities, so residue in any one of them is still residue.
+func anySugarShapeMatches(shapes []MemberShape, typeArgs, valueArgs int) bool {
+	for _, shape := range shapes {
+		if sugarShapeMatches(shape, typeArgs, valueArgs) {
+			return true
+		}
+	}
+	return false
 }
 
 // callArity returns a call's type-argument and value-argument counts.

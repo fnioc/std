@@ -246,11 +246,29 @@ declare module '@rhombus-std/primitives' {
     getService<T>(): T | undefined;
     getRequiredService<T>(): T;
     getServices<T>(): Iterable<T>;
+    // The value-driven faces. Spelled structurally because the sandbox links no
+    // Ctor/Func package; only the parameter name and the type-parameter count
+    // reach the body matcher.
+    getService<T extends abstract new(...args: any[]) => any>(value: T): InstanceType<T>;
+    getService<T extends { (...args: any[]): any; }>(value: T): ReturnType<T>;
   }
 }
 
 interface IThing {}
 interface ICache {}
+interface IBar {}
+interface IGadget {}
+
+class Widget {
+  constructor(bar: IBar) {
+    void bar;
+  }
+}
+
+function makeGadget(bar: IBar): IGadget {
+  void bar;
+  return {};
+}
 
 declare const provider: IServiceProvider;
 
@@ -264,6 +282,12 @@ export const singular = provider.getRequiredService<'dev'>();
 // the keyed registration mints, which is what makes the two meet at runtime.
 export const keyedTok = provider.getService<Keyed<ICache, 'redis'>>();
 export const keyedKnown = provider.getRequiredService<Keyed<ICache, 'redis'>>();
+// The value door: the callable's OWN node is derived and paired with the value,
+// so the engine builds it through the node's parameter rows. The type argument is
+// written out — the stage binds a sugar's type parameter from what the call spells,
+// and refuses one it would have to infer.
+export const built = provider.getService<typeof Widget>(Widget);
+export const called = provider.getService<typeof makeGadget>(makeGadget);
 `;
 
 // The implementation-type argument. Everything the author writes after the ctor
@@ -622,6 +646,29 @@ describe.skipIf(!toolchainReady)('generic inline stage — lookup parity (W5)', 
     const requiredLine = lineWith(resolveInline, 'keyedKnown =');
     expect(requiredLine).toBeDefined();
     expect(requiredLine).toContain(`.getRequiredService(${composed})`);
+    assertNoAuthoringSurvivors(resolveInline);
+  });
+
+  test('getService(SomeClass) pairs the class its own node with the class itself', () => {
+    // The value door lowers to the two-argument member: the node the class derives
+    // — carrying its constructor's parameter row — in front of the class, which is
+    // exactly the pair a hand-writer would have spelled.
+    const widget = constFor(chainModule, 'Type.imported("Widget", "chain-app/tokens/resolve")');
+    const bar = constFor(chainModule, 'Type.imported("IBar", "chain-app/tokens/resolve")');
+    const node = constFor(chainModule, `Type.ctor(${widget}, [[${bar}]])`);
+    const line = lineWith(resolveInline, 'built =');
+    expect(line).toBeDefined();
+    expect(line).toContain(`.getService(${node}, Widget)`);
+    assertNoAuthoringSurvivors(resolveInline);
+  });
+
+  test('getService(someFunction) derives a func node keyed on what the function returns', () => {
+    const gadget = constFor(chainModule, 'Type.imported("IGadget", "chain-app/tokens/resolve")');
+    const bar = constFor(chainModule, 'Type.imported("IBar", "chain-app/tokens/resolve")');
+    const node = constFor(chainModule, `Type.func(${gadget}, [[${bar}]])`);
+    const line = lineWith(resolveInline, 'called =');
+    expect(line).toBeDefined();
+    expect(line).toContain(`.getService(${node}, makeGadget)`);
     assertNoAuthoringSurvivors(resolveInline);
   });
 
