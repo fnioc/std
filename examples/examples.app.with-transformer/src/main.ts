@@ -267,16 +267,9 @@ const host = builder.build();
 // STEP 5 — the one top-level resolve. `runAsync` resolves the registered
 // `IHostedService` collection and drives it through its lifecycle; every other
 // object in the application is constructed because something above it declared a
-// dependency on it. That single entry is what a container is FOR.
-//
-// Shutdown ends by asking the provider to release what it built. That teardown
-// is declared but has no behaviour yet, so the run reports what it reached and
-// carries on into the tour rather than ending on it.
-try {
-  await host.runAsync();
-} catch (error) {
-  console.log(`host shutdown: ${(error as Error).name} — declared, no behaviour yet`);
-}
+// dependency on it. That single entry is what a container is FOR. Shutdown ends
+// by asking the provider to release what it built.
+await host.runAsync();
 
 // ── the di tour ───────────────────────────────────────────────────────────────
 //

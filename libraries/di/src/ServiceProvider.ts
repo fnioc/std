@@ -101,24 +101,14 @@ export class ServiceProvider {
     return notImplemented('resolveAsync');
   }
 
-  /**
-   * @remarks
-   * Declared ahead of implementation so callers can compile against it; the disposal model this
-   * depends on is still undecided.
-   * @throws {NotImplementedError} always, until that model is decided.
-   */
+  /** Disposes every scope opened from this provider, most recently opened first. */
   dispose(): void {
-    return notImplemented('dispose');
+    this.#engine.dispose();
   }
 
-  /**
-   * @remarks
-   * Declared ahead of implementation so callers can compile against it; the disposal model this
-   * depends on is still undecided.
-   * @throws {NotImplementedError} always, until that model is decided.
-   */
+  /** Disposes every scope opened from this provider, most recently opened first. */
   disposeAsync(): Promise<void> {
-    return notImplemented('disposeAsync');
+    return this.#engine.disposeAsync();
   }
 }
 

@@ -2,13 +2,17 @@ import { ServiceDescriptor } from '@rhombus-std/di.core';
 import type { IServiceProvider } from '@rhombus-std/primitives';
 import { assertNever } from '@rhombus-toolkit/type-guards';
 import type { Engine } from '../Engine.js';
+import { ServiceScopeFactory } from '../ServiceScope.js';
+import type { ServiceScope } from '../ServiceScope.js';
 import type { ArrayCallSite, CallSite, ConstantCallSite, CtorCallSite, FactoryCallSite, IterableCallSite,
-  LateBoundCallSite, ServiceProviderCallSite } from './CallSite.js';
+  LateBoundCallSite, ServiceProviderCallSite, ServiceScopeFactoryCallSite } from './CallSite.js';
 
 export interface RealizeContext {
   readonly engine: Engine;
   /** What a service asking for the provider receives — the walk's originating facade. */
   readonly serviceProvider: IServiceProvider;
+  /** The scope a scoped-lifetime site caches into; absent when the walk is not scoped. */
+  readonly scope?: ServiceScope;
 }
 
 /**
@@ -40,6 +44,8 @@ class RealizeVisitor {
         return this.visitConstant(site);
       case 'service-provider':
         return this.visitServiceProvider(site);
+      case 'service-scope-factory':
+        return this.visitServiceScopeFactory(site);
       case 'iterable':
         return this.visitIterable(site);
       case 'array':
@@ -50,11 +56,26 @@ class RealizeVisitor {
   }
 
   protected visitCtor(site: CtorCallSite): any {
-    return new site.ctor(...site.args.map(arg => this.visit(arg)));
+    return this.#cached(site, () => new site.ctor(...site.args.map(arg => this.visit(arg))));
   }
 
   protected visitFactory(site: FactoryCallSite): any {
-    return site.factory(...site.args.map(arg => this.visit(arg)));
+    return this.#cached(site, () => site.factory(...site.args.map(arg => this.visit(arg))));
+  }
+
+  /**
+   * Realizes `build` once per scope for a lifetime-tagged site, caching the awaited value under
+   * the site's own registration — a cache hit skips `build` entirely, and the registration
+   * itself (not the address it answers) is the key, so several registrations sharing one
+   * address never collapse into a single cached instance. A site with no lifetime, or a walk
+   * with no asking scope, realizes fresh every time: caching needs both.
+   */
+  #cached(site: { readonly descriptor?: ServiceDescriptor<string>; }, build: () => any): any {
+    const scope = this.#context.scope;
+    if (site.descriptor === undefined || scope === undefined) {
+      return build();
+    }
+    return scope.cache.getOrAdd(site.descriptor, build);
   }
 
   protected visitLateBound(site: LateBoundCallSite): any {
@@ -74,6 +95,10 @@ class RealizeVisitor {
 
   protected visitServiceProvider(_site: ServiceProviderCallSite): any {
     return this.#context.serviceProvider;
+  }
+
+  protected visitServiceScopeFactory(_site: ServiceScopeFactoryCallSite): any {
+    return new ServiceScopeFactory(this.#context.engine, this.#context.serviceProvider);
   }
 
   /**
