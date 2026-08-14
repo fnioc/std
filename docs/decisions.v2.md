@@ -1704,7 +1704,7 @@ name its category and `LoggerProviderConfig<T>` find its section.
 
 A hole standing INSIDE a larger slot keeps the ordinary reading — the slot is a type expression, the
 hole closes into it, and the closed expression names a service the engine resolves. So one signature
-can carry both readings, `[[$T, Holder<$T>]]` delivering the type for the first slot and a `Holder`
+can carry both readings, `[[%T, Holder<%T>]]` delivering the type for the first slot and a `Holder`
 instance for the second.
 
 The hole spells as `Type.generic(label)`, and it reaches a signature either written there directly
