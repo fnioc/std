@@ -2,7 +2,7 @@
 // (`root.getDebugView()`) or standalone as
 // (`ConfigRootAugmentations.getDebugView.call(root)`).
 
-import type { AugmentationSet } from '@rhombus-std/primitives';
+import { type Flatten } from '@rhombus-std/primitives';
 import type { Func } from '@rhombus-toolkit/func';
 import type { IConfigProvider } from './IConfigProvider';
 import type { IConfigRoot } from './IConfigRoot';
@@ -23,14 +23,6 @@ export type ConfigDebugViewContext = {
   readonly provider: IConfigProvider;
 };
 
-type IConfigRootAugmentations = {
-  getDebugView(processValue?: Func<[ConfigDebugViewContext], string>): string;
-};
-
-declare module '@rhombus-std/config.core' {
-  interface IConfigRoot extends IConfigRootAugmentations {}
-}
-
 /** The value/provider that last defined `key`, scanning providers in reverse. */
 function getValueAndProvider(root: IConfigRoot, key: string):
   | [value: string | undefined, provider: IConfigProvider]
@@ -46,7 +38,7 @@ function getValueAndProvider(root: IConfigRoot, key: string):
 }
 
 /** Convenience member over {@link IConfigRoot}. */
-export const ConfigRootAugmentations = {
+export namespace ConfigRootAugmentations {
   /**
    * A human-readable view of the configuration showing where each value came
    * from. Each leaf is rendered `key=value (provider)`; an intermediate node
@@ -57,7 +49,7 @@ export const ConfigRootAugmentations = {
    * The `(provider)` label is `String(provider)` — a provider's `toString`
    * override supplies any distinguishing detail (e.g. a file path).
    */
-  getDebugView(processValue?: Func<[ConfigDebugViewContext], string>): string {
+  export function getDebugView(this: IConfigRoot, processValue?: Func<[ConfigDebugViewContext], string>): string {
     const parts: string[] = [];
 
     const recurse = (children: Iterable<IConfigSection>, indent: string): void => {
@@ -76,5 +68,9 @@ export const ConfigRootAugmentations = {
 
     recurse(this.getChildren(), '');
     return parts.join('');
-  },
-} satisfies AugmentationSet<IConfigRoot>;
+  }
+}
+
+declare module '@rhombus-std/config.core' {
+  interface IConfigRoot extends Flatten<typeof ConfigRootAugmentations> {}
+}

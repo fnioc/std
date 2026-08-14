@@ -3,7 +3,7 @@
 export * from './abort.js';
 export * from './augmentation-registry.js';
 export { applyAugmentations } from './augmentations.js';
-export type { AugmentationSet, AugmentationSet2, MergeStrategies, MergeStrategy } from './augmentations.js';
+export type { AugmentationSet, MergeStrategies, MergeStrategy } from './augmentations.js';
 export * from './CancellationChangeToken.js';
 export * from './ChangeToken.js';
 export * from './CompositeChangeToken.js';

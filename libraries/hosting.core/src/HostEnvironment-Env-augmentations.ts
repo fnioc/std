@@ -1,37 +1,29 @@
-import type { AugmentationSet2 } from '@rhombus-std/primitives';
+import { type Flatten } from '@rhombus-std/primitives';
 import { registerAugmentations } from '@rhombus-std/primitives.extras';
 import { Environments } from './Environments';
 import type { IHostEnvironment } from './IHostEnvironment';
 
-type IHostEnvironmentEnvAugmentations = {
+export namespace HostEnvironmentEnvAugmentations {
   /** Compares the current host environment name against `environmentName` (case-insensitive). */
-  isEnvironment(environmentName: string): boolean;
+  export function isEnvironment(this: IHostEnvironment, environmentName: string): boolean {
+    return this.environmentName.toLowerCase() === environmentName.toLowerCase();
+  }
   /** Checks whether the current host environment name is {@link Environments.Development}. */
-  isDevelopment(): boolean;
+  export function isDevelopment(this: IHostEnvironment): boolean {
+    return HostEnvironmentEnvAugmentations.isEnvironment.call(this, Environments.Development);
+  }
   /** Checks whether the current host environment name is {@link Environments.Staging}. */
-  isStaging(): boolean;
+  export function isStaging(this: IHostEnvironment): boolean {
+    return HostEnvironmentEnvAugmentations.isEnvironment.call(this, Environments.Staging);
+  }
   /** Checks whether the current host environment name is {@link Environments.Production}. */
-  isProduction(): boolean;
-};
-
-declare module '@rhombus-std/hosting.core' {
-  interface IHostEnvironment extends IHostEnvironmentEnvAugmentations {}
+  export function isProduction(this: IHostEnvironment): boolean {
+    return HostEnvironmentEnvAugmentations.isEnvironment.call(this, Environments.Production);
+  }
 }
 
-/** Augmentation set for {@link IHostEnvironment}; each member is also directly callable. */
-export const HostEnvironmentEnvAugmentations: AugmentationSet2<IHostEnvironment, IHostEnvironmentEnvAugmentations> = {
-  isEnvironment(environmentName) {
-    return this.environmentName.toLowerCase() === environmentName.toLowerCase();
-  },
-  isDevelopment() {
-    return HostEnvironmentEnvAugmentations.isEnvironment.call(this, Environments.Development);
-  },
-  isStaging() {
-    return HostEnvironmentEnvAugmentations.isEnvironment.call(this, Environments.Staging);
-  },
-  isProduction() {
-    return HostEnvironmentEnvAugmentations.isEnvironment.call(this, Environments.Production);
-  },
-};
+declare module '@rhombus-std/hosting.core' {
+  interface IHostEnvironment extends Flatten<typeof HostEnvironmentEnvAugmentations> {}
+}
 
 registerAugmentations<IHostEnvironment>(HostEnvironmentEnvAugmentations);

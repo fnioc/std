@@ -6,7 +6,7 @@
 import type { IConfigBuilder, IndexedSection } from '@rhombus-std/config.core';
 import type { IFileProvider } from '@rhombus-std/fileproviders.core';
 import { PhysicalFileProvider } from '@rhombus-std/fileproviders.physical';
-import { type AugmentationSet2, type Flatten, process } from '@rhombus-std/primitives';
+import { type Flatten, process } from '@rhombus-std/primitives';
 import { registerAugmentations } from '@rhombus-std/primitives.extras';
 import type { Func } from '@rhombus-toolkit/func';
 import type { FileLoadErrorContext } from './FileLoadErrorContext';
@@ -22,56 +22,57 @@ const FILE_LOAD_ERROR_HANDLER_KEY = 'FileLoadExceptionHandler';
 /** The load-error-handler callback stashed on the builder. */
 type FileLoadErrorHandler = Func<[FileLoadErrorContext], void>;
 
-interface IConfigBuilderFileAugmentations {
+/** The subset of {@link IConfigBuilder} and `config`'s `ConfigBuilder<T>` this sugar's bodies touch. */
+interface ConfigBuilderProperties {
+  get properties(): Map<string, unknown>;
+}
+
+export namespace ConfigBuilderFileAugmentations {
   /** Sets the default file provider for file-based sources. */
-  setFileProvider(fileProvider: IFileProvider): this;
+  export function setFileProvider<Self extends ConfigBuilderProperties>(this: Self, fileProvider: IFileProvider): Self {
+    this.properties.set(FILE_PROVIDER_KEY, fileProvider);
+    return this;
+  }
+
   /** Gets the default file provider (a cwd-rooted PhysicalFileProvider when unset). */
-  getFileProvider(): IFileProvider;
+  export function getFileProvider(this: ConfigBuilderProperties): IFileProvider {
+    const provider = this.properties.get(FILE_PROVIDER_KEY);
+    if (provider !== undefined) {
+      return provider as IFileProvider;
+    }
+    // Falls back to a physical provider rooted at the current working directory.
+    return new PhysicalFileProvider(process.cwd());
+  }
+
   /** Roots the default file provider at `basePath`. */
-  setBasePath(basePath: string): this;
+  export function setBasePath<Self extends ConfigBuilderProperties>(this: Self, basePath: string): Self {
+    return ConfigBuilderFileAugmentations.setFileProvider.call(this, new PhysicalFileProvider(basePath)) as Self;
+  }
+
   /** Sets the default action invoked when a file-based source's load throws. */
-  setFileLoadErrorHandler(handler: FileLoadErrorHandler): this;
+  export function setFileLoadErrorHandler<Self extends ConfigBuilderProperties>(this: Self,
+    handler: FileLoadErrorHandler): Self {
+    this.properties.set(FILE_LOAD_ERROR_HANDLER_KEY, handler);
+    return this;
+  }
+
   /** Gets the default file-load-error handler, if any. */
-  getFileLoadErrorHandler(): FileLoadErrorHandler | undefined;
+  export function getFileLoadErrorHandler(this: ConfigBuilderProperties): FileLoadErrorHandler | undefined {
+    return this.properties.get(FILE_LOAD_ERROR_HANDLER_KEY) as FileLoadErrorHandler | undefined;
+  }
 }
 
 declare module '@rhombus-std/config.core' {
-  interface IConfigBuilder extends IConfigBuilderFileAugmentations {}
+  interface IConfigBuilder extends Flatten<typeof ConfigBuilderFileAugmentations> {}
 }
 
 // ConfigBuilder<T> cannot extend IConfigBuilder -- its `build()` returns the
-// schema-typed T, not an IConfigRoot -- so it merges the same member map
+// schema-typed T, not an IConfigRoot -- so it merges the same namespace
 // directly. Its generic arity and default MUST match the class declaration or
 // the merge fails (TS2428). ConfigManager needs no block of its own: it reaches
 // the members through IConfigManager, which does extend IConfigBuilder.
 declare module '@rhombus-std/config' {
-  interface ConfigBuilder<T = IndexedSection> extends IConfigBuilderFileAugmentations {}
+  interface ConfigBuilder<T = IndexedSection> extends Flatten<typeof ConfigBuilderFileAugmentations> {}
 }
-
-export const ConfigBuilderFileAugmentations: AugmentationSet2<IConfigBuilder,
-  Flatten<IConfigBuilderFileAugmentations>> = {
-    setFileProvider(fileProvider) {
-      this.properties.set(FILE_PROVIDER_KEY, fileProvider);
-      return this;
-    },
-    getFileProvider() {
-      const provider = this.properties.get(FILE_PROVIDER_KEY);
-      if (provider !== undefined) {
-        return provider as IFileProvider;
-      }
-      // Falls back to a physical provider rooted at the current working directory.
-      return new PhysicalFileProvider(process.cwd());
-    },
-    setBasePath(basePath) {
-      return ConfigBuilderFileAugmentations.setFileProvider.call(this, new PhysicalFileProvider(basePath));
-    },
-    setFileLoadErrorHandler(handler) {
-      this.properties.set(FILE_LOAD_ERROR_HANDLER_KEY, handler);
-      return this;
-    },
-    getFileLoadErrorHandler() {
-      return this.properties.get(FILE_LOAD_ERROR_HANDLER_KEY) as FileLoadErrorHandler | undefined;
-    },
-  };
 
 registerAugmentations<IConfigBuilder>(ConfigBuilderFileAugmentations);

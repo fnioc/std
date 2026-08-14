@@ -4,34 +4,29 @@ import type { IConfig } from '@rhombus-std/config.core';
 import { type ITracingBuilder, TRACING_CHANGE_TOKEN_SOURCE_TYPE, TRACING_CONFIGURATION_TYPE,
   TRACING_CONFIGURE_TYPE } from '@rhombus-std/diagnostics.core';
 import { ConfigChangeTokenSource } from '@rhombus-std/options.augmentations';
-import type { AugmentationSet2, Flatten } from '@rhombus-std/primitives';
+import type { Flatten } from '@rhombus-std/primitives';
 import { registerAugmentations } from '@rhombus-std/primitives.extras';
 
 import { TracingConfig } from './TracingConfig';
 import { TracingConfigureOptions } from './TracingConfigureOptions';
 
-interface ITracingBuilderConfigAugmentations {
+/** The config-binding member of {@link ITracingBuilder}. */
+export namespace TracingBuilderConfigAugmentations {
   /** Reads tracing enablement rules from `config` and configures which activity sources and activities are enabled. */
-  addTracingConfig(config: IConfig): this;
+  export function addTracingConfig<Self extends ITracingBuilder>(this: Self, config: IConfig): Self {
+    this.services = this.services.addValue(TRACING_CONFIGURE_TYPE, new TracingConfigureOptions(config));
+    this.services = this.services.addValue(TRACING_CHANGE_TOKEN_SOURCE_TYPE, new ConfigChangeTokenSource(config));
+    this.services = this.services.addValue(TRACING_CONFIGURATION_TYPE, new TracingConfig(config));
+    return this;
+  }
 }
 
 // The merge targets the package BARREL (`@rhombus-std/diagnostics.core`),
 // matching diagnostics.core's own listener/rule merge -- so every merge site for
 // this interface names one publish-resolvable specifier.
 declare module '@rhombus-std/diagnostics.core' {
-  interface ITracingBuilder extends ITracingBuilderConfigAugmentations {}
+  interface ITracingBuilder extends Flatten<typeof TracingBuilderConfigAugmentations> {}
 }
-
-/** The config-binding member of {@link ITracingBuilder}. */
-export const TracingBuilderConfigAugmentations: AugmentationSet2<ITracingBuilder,
-  Flatten<ITracingBuilderConfigAugmentations>> = {
-    addTracingConfig(config) {
-      this.services = this.services.addValue(TRACING_CONFIGURE_TYPE, new TracingConfigureOptions(config));
-      this.services = this.services.addValue(TRACING_CHANGE_TOKEN_SOURCE_TYPE, new ConfigChangeTokenSource(config));
-      this.services = this.services.addValue(TRACING_CONFIGURATION_TYPE, new TracingConfig(config));
-      return this;
-    },
-  };
 
 // Registered against the same OPEN token diagnostics.core's listener/rule
 // members use; this member lives downstream because its `IConfig` dependency

@@ -99,17 +99,22 @@ function goEnv(): NodeJS.ProcessEnv {
 const APP_SOURCE = `
 import type { Manifest } from "@rhombus-std/di.core";
 
-// Minimal local constructor / factory types, so the source is self-contained
-// (no @rhombus-toolkit/func resolution needed). The overload discriminator reads
-// parameter NAMES, not types, so these stand in for the real ones.
+// Minimal local constructor / factory / implementation types, so the source is
+// self-contained (no @rhombus-toolkit/func or primitives resolution needed). The
+// overload discriminator reads parameter NAMES, not types, so these stand in for
+// the real ones.
 type Ctor<A extends any[] = any[], R = unknown> = new (...args: A) => R;
 type Func<A extends any[] = any[], R = unknown> = (...args: A) => R;
+type ConstructorType = unknown;
+type FunctionType = unknown;
 
 declare module "@rhombus-std/di.core" {
   interface Manifest<Scopes extends string> {
-    addClass<I>(ctor: Ctor<any[], I>): Manifest<Scopes>;
-    addFactory<I>(factory: Func<any[], I>): Manifest<Scopes>;
-    addValue<I>(value: I): void;
+    addClass<I>(ctor: Ctor<any[], I>, implementerType: ConstructorType, scope?: string,
+      key?: string): Manifest<Scopes>;
+    addFactory<I>(factory: Func<any[], I>, implementerType: FunctionType, scope?: string,
+      key?: string): Manifest<Scopes>;
+    addValue<I>(value: I, key?: string): Manifest<Scopes>;
   }
 }
 
@@ -127,12 +132,15 @@ class BarImpl implements IBar {
 
 declare const services: Manifest<"singleton">;
 declare const bazValue: IBaz;
+declare const fooImplementer: ConstructorType;
+declare const barImplementer: FunctionType;
 
 // Top-level registration statements: the inline stage substitutes the sugar
 // bodies for registrations that appear as top-level expression statements, so both
-// spawn-descriptor lowerings exercise the same shape.
-services.addClass<IFoo>(Foo);
-services.addFactory<IBar>((dep: IDep) => new BarImpl(dep));
+// spawn-descriptor lowerings exercise the same shape. Each call stops short of the
+// optional \`scope\` / \`key\` tail, which is what a hand author would have written.
+services.addClass<IFoo>(Foo, fooImplementer);
+services.addFactory<IBar>((dep: IDep) => new BarImpl(dep), barImplementer);
 services.addValue<IBaz>(bazValue);
 `;
 

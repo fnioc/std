@@ -26,7 +26,7 @@
 
 import { LoggingBuilderProviderAugmentations } from '@rhombus-std/logging';
 import type { ILoggingBuilder } from '@rhombus-std/logging.core';
-import { type AugmentationSet2, type Flatten, getOrCreate } from '@rhombus-std/primitives';
+import { type Flatten, getOrCreate } from '@rhombus-std/primitives';
 import { registerAugmentations } from '@rhombus-std/primitives.extras';
 import type { Func } from '@rhombus-toolkit/func';
 import type { ConsoleFormatter } from './ConsoleFormatter';
@@ -76,7 +76,11 @@ function addFormatterWithName(builder: ILoggingBuilder, name: string): ILoggingB
   });
 }
 
-interface ILoggingBuilderConsoleAugmentations {
+/**
+ * Registered against `typefor<ILoggingBuilder>()` below and reachable as the
+ * standalone `ConsoleLoggerAugmentations.addConsole.call(builder)`.
+ */
+export namespace ConsoleLoggerAugmentations {
   /**
    * Adds a console logger to the builder — one {@link ConsoleLoggerProvider}
    * per builder, seeded with the three built-in formatters (plus any custom
@@ -84,11 +88,79 @@ interface ILoggingBuilderConsoleAugmentations {
    * applies to the shared {@link ConsoleLoggerOptions} and re-runs the
    * provider's option-reload path.
    */
-  addConsole(configure?: Func<[ConsoleLoggerOptions], void>): this;
-  addSimpleConsole(configure?: Func<[SimpleConsoleFormatterOptions], void>): this;
-  addJsonConsole(configure?: Func<[JsonConsoleFormatterOptions], void>): this;
-  addSystemdConsole(configure?: Func<[ConsoleFormatterOptions], void>): this;
-  addConsoleFormatter(formatter: ConsoleFormatter): this;
+  export function addConsole<Self extends ILoggingBuilder>(this: Self,
+    configure?: Func<[ConsoleLoggerOptions], void>): Self {
+    const registration = getRegistration(this);
+    if (registration.provider === undefined) {
+      registration.provider = new ConsoleLoggerProvider(registration.loggerOptions, [
+        ...registration.pendingFormatters,
+        new JsonConsoleFormatter(registration.jsonOptions),
+        new SystemdConsoleFormatter(registration.systemdOptions),
+        new SimpleConsoleFormatter(registration.simpleOptions),
+      ]);
+      registration.pendingFormatters.length = 0;
+      LoggingBuilderProviderAugmentations.addProvider.call(this, registration.provider);
+    }
+    if (configure !== undefined) {
+      registration.loggerOptions.reload(configure);
+    }
+    return this;
+  }
+
+  /**
+   * Adds the default console log formatter named `"simple"` — optionally
+   * configuring its {@link SimpleConsoleFormatterOptions}.
+   */
+  export function addSimpleConsole<Self extends ILoggingBuilder>(this: Self,
+    configure?: Func<[SimpleConsoleFormatterOptions], void>): Self {
+    addFormatterWithName(this, ConsoleFormatterNames.simple);
+    if (configure !== undefined) {
+      getRegistration(this).simpleOptions.reload(configure);
+    }
+    return this;
+  }
+
+  /**
+   * Adds the console log formatter named `"json"` — optionally configuring
+   * its {@link JsonConsoleFormatterOptions}.
+   */
+  export function addJsonConsole<Self extends ILoggingBuilder>(this: Self,
+    configure?: Func<[JsonConsoleFormatterOptions], void>): Self {
+    addFormatterWithName(this, ConsoleFormatterNames.json);
+    if (configure !== undefined) {
+      getRegistration(this).jsonOptions.reload(configure);
+    }
+    return this;
+  }
+
+  /**
+   * Adds the console log formatter named `"systemd"` — optionally configuring
+   * its {@link ConsoleFormatterOptions}.
+   */
+  export function addSystemdConsole<Self extends ILoggingBuilder>(this: Self,
+    configure?: Func<[ConsoleFormatterOptions], void>): Self {
+    addFormatterWithName(this, ConsoleFormatterNames.systemd);
+    if (configure !== undefined) {
+      getRegistration(this).systemdOptions.reload(configure);
+    }
+    return this;
+  }
+
+  /**
+   * Adds a custom console formatter, selectable by its name through
+   * {@link ConsoleLoggerOptions.formatterName}. Takes the constructed
+   * instance — the caller owns the formatter's options, so configuring it
+   * happens at construction.
+   */
+  export function addConsoleFormatter<Self extends ILoggingBuilder>(this: Self, formatter: ConsoleFormatter): Self {
+    const registration = getRegistration(this);
+    if (registration.provider === undefined) {
+      registration.pendingFormatters.push(formatter);
+    } else {
+      registration.provider.addFormatter(formatter);
+    }
+    return this;
+  }
 }
 
 // Merges onto the owning ILoggingBuilder interface so a consumer holding it
@@ -96,84 +168,7 @@ interface ILoggingBuilderConsoleAugmentations {
 // these through their `interface ... extends ILoggingBuilder` merge, so no
 // class-side restatement is needed here.
 declare module '@rhombus-std/logging.core' {
-  interface ILoggingBuilder extends ILoggingBuilderConsoleAugmentations {}
+  interface ILoggingBuilder extends Flatten<typeof ConsoleLoggerAugmentations> {}
 }
-
-/**
- * Registered against `typefor<ILoggingBuilder>()` below and reachable as the
- * standalone `ConsoleLoggerAugmentations.addConsole.call(builder)`.
- */
-export const ConsoleLoggerAugmentations: AugmentationSet2<ILoggingBuilder,
-  Flatten<ILoggingBuilderConsoleAugmentations>> = {
-    addConsole(configure) {
-      const registration = getRegistration(this);
-      if (registration.provider === undefined) {
-        registration.provider = new ConsoleLoggerProvider(registration.loggerOptions, [
-          ...registration.pendingFormatters,
-          new JsonConsoleFormatter(registration.jsonOptions),
-          new SystemdConsoleFormatter(registration.systemdOptions),
-          new SimpleConsoleFormatter(registration.simpleOptions),
-        ]);
-        registration.pendingFormatters.length = 0;
-        LoggingBuilderProviderAugmentations.addProvider.call(this, registration.provider);
-      }
-      if (configure !== undefined) {
-        registration.loggerOptions.reload(configure);
-      }
-      return this;
-    },
-
-    /**
-     * Adds the default console log formatter named `"simple"` — optionally
-     * configuring its {@link SimpleConsoleFormatterOptions}.
-     */
-    addSimpleConsole(configure) {
-      addFormatterWithName(this, ConsoleFormatterNames.simple);
-      if (configure !== undefined) {
-        getRegistration(this).simpleOptions.reload(configure);
-      }
-      return this;
-    },
-
-    /**
-     * Adds the console log formatter named `"json"` — optionally configuring
-     * its {@link JsonConsoleFormatterOptions}.
-     */
-    addJsonConsole(configure) {
-      addFormatterWithName(this, ConsoleFormatterNames.json);
-      if (configure !== undefined) {
-        getRegistration(this).jsonOptions.reload(configure);
-      }
-      return this;
-    },
-
-    /**
-     * Adds the console log formatter named `"systemd"` — optionally configuring
-     * its {@link ConsoleFormatterOptions}.
-     */
-    addSystemdConsole(configure) {
-      addFormatterWithName(this, ConsoleFormatterNames.systemd);
-      if (configure !== undefined) {
-        getRegistration(this).systemdOptions.reload(configure);
-      }
-      return this;
-    },
-
-    /**
-     * Adds a custom console formatter, selectable by its name through
-     * {@link ConsoleLoggerOptions.formatterName}. Takes the constructed
-     * instance — the caller owns the formatter's options, so configuring it
-     * happens at construction.
-     */
-    addConsoleFormatter(formatter) {
-      const registration = getRegistration(this);
-      if (registration.provider === undefined) {
-        registration.pendingFormatters.push(formatter);
-      } else {
-        registration.provider.addFormatter(formatter);
-      }
-      return this;
-    },
-  };
 
 registerAugmentations<ILoggingBuilder>(ConsoleLoggerAugmentations);

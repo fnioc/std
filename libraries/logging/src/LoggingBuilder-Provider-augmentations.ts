@@ -9,12 +9,12 @@
 
 import type { ILoggerProvider, ILoggingBuilder, LogLevel } from '@rhombus-std/logging.core';
 import { configureStepType } from '@rhombus-std/options.augmentations';
-import type { AugmentationSet2, Flatten } from '@rhombus-std/primitives';
+import type { Flatten } from '@rhombus-std/primitives';
 import { registerAugmentations } from '@rhombus-std/primitives.extras';
 import { DefaultLoggerLevelConfigureOptions } from './DefaultLoggerLevelConfigureOptions';
 import { LOGGER_FILTER_OPTIONS_TYPE, LOGGER_PROVIDER_TYPE } from './types';
 
-interface ILoggingBuilderProviderAugmentations {
+export namespace LoggingBuilderProviderAugmentations {
   /**
    * Adds an {@link ILoggerProvider} to the builder, registered under the
    * enumerable {@link LOGGER_PROVIDER_TYPE}.
@@ -23,39 +23,34 @@ interface ILoggingBuilderProviderAugmentations {
    * `Array<ILoggerProvider>` collection, so every provider added here receives
    * log output — no manual `new LoggerFactory([...providers])` needed.
    */
-  addProvider(provider: ILoggerProvider): this;
+  export function addProvider<Self extends ILoggingBuilder>(this: Self, provider: ILoggerProvider): Self {
+    this.services = this.services.addValue(LOGGER_PROVIDER_TYPE, provider);
+    return this;
+  }
+
   /**
    * Sets a minimum {@link LogLevel} for log messages — appends a
    * {@link DefaultLoggerLevelConfigureOptions} configure step to the
    * `IOptions<LoggerFilterOptions>` pipeline.
    */
-  setMinimumLevel(level: LogLevel): this;
+  export function setMinimumLevel<Self extends ILoggingBuilder>(this: Self, level: LogLevel): Self {
+    this.services = this.services.addValue(configureStepType(LOGGER_FILTER_OPTIONS_TYPE),
+      new DefaultLoggerLevelConfigureOptions(level));
+    return this;
+  }
+
   /** Removes all {@link ILoggerProvider}s from the builder, via di.core's `removeAll` manifest verb. */
-  clearProviders(): this;
+  export function clearProviders<Self extends ILoggingBuilder>(this: Self): Self {
+    this.services = this.services.removeAll(LOGGER_PROVIDER_TYPE);
+    return this;
+  }
 }
 
 // Merges onto the ILoggingBuilder interface so a consumer holding it sees the
 // methods; the concrete LoggingBuilder inherits them through its own
 // `interface LoggingBuilder extends ILoggingBuilder` merge.
 declare module '@rhombus-std/logging.core' {
-  interface ILoggingBuilder extends ILoggingBuilderProviderAugmentations {}
+  interface ILoggingBuilder extends Flatten<typeof LoggingBuilderProviderAugmentations> {}
 }
-
-export const LoggingBuilderProviderAugmentations: AugmentationSet2<ILoggingBuilder,
-  Flatten<ILoggingBuilderProviderAugmentations>> = {
-    addProvider(provider) {
-      this.services = this.services.addValue(LOGGER_PROVIDER_TYPE, provider);
-      return this;
-    },
-    setMinimumLevel(level) {
-      this.services = this.services.addValue(configureStepType(LOGGER_FILTER_OPTIONS_TYPE),
-        new DefaultLoggerLevelConfigureOptions(level));
-      return this;
-    },
-    clearProviders() {
-      this.services = this.services.removeAll(LOGGER_PROVIDER_TYPE);
-      return this;
-    },
-  };
 
 registerAugmentations<ILoggingBuilder>(LoggingBuilderProviderAugmentations);

@@ -8,19 +8,11 @@
 // overload (TS2430) -- hence no interface-side merge -- and the typed path is
 // the standalone `LoggerFactoryAugmentations.createLogger.call(factory, MyService)`.
 
-import type { AugmentationSet2, Flatten, MergeStrategies } from '@rhombus-std/primitives';
+import type { MergeStrategies } from '@rhombus-std/primitives';
 import { registerAugmentations } from '@rhombus-std/primitives.extras';
 import type { AbstractCtor } from '@rhombus-toolkit/func';
 import type { ILogger } from './ILogger';
 import type { ILoggerFactory } from './logger-factory';
-
-interface ILoggerFactoryAugmentations {
-  /**
-   * Creates a new {@link ILogger} whose category is the given constructor's
-   * `name`. Accepts abstract constructors — only the name is read.
-   */
-  createLogger(type: AbstractCtor): ILogger;
-}
 
 /**
  * The `createLogger` wrapper as an augmentation set for {@link ILoggerFactory}:
@@ -28,11 +20,15 @@ interface ILoggerFactoryAugmentations {
  * and dot-callable at runtime on a decorated factory as
  * `factory.createLogger(MyService)`.
  */
-export const LoggerFactoryAugmentations: AugmentationSet2<ILoggerFactory, Flatten<ILoggerFactoryAugmentations>> = {
-  createLogger(type) {
+export namespace LoggerFactoryAugmentations {
+  /**
+   * Creates a new {@link ILogger} whose category is the given constructor's
+   * `name`. Accepts abstract constructors — only the name is read.
+   */
+  export function createLogger(this: ILoggerFactory, type: AbstractCtor): ILogger {
     return this.createLogger(type.name);
-  },
-};
+  }
+}
 
 // The `createLogger` merge strategy: the convenience form takes a type
 // (constructor); the primitive takes a category-name string.

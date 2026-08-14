@@ -28,11 +28,11 @@ type Inlining struct {
 	Receiver *shimast.Node
 	Params   []string
 	Args     []*shimast.Node
-	// RestParam is the body's trailing rest parameter, if it has one, and RestArgs
-	// are the call arguments it stands for. A rest binds to the argument LIST, so
-	// it is expanded where the body spreads it rather than substituted as a value.
-	RestParam string
-	RestArgs  []*shimast.Node
+	// Unbound names the implementation's value parameters the call supplied no
+	// argument for. Each stands for an argument that was never written, so an
+	// argument-position reference to one is dropped rather than emitted as a
+	// dangling identifier.
+	Unbound []string
 	// Bindings rewrites body identifiers that are not parameters — a value the body
 	// reaches through its own file's import, mapped to the way the CONSUMER file
 	// names that same export. Keyed by name rather than position, since these bind
@@ -79,7 +79,7 @@ func Substitute(ec *shimprinter.EmitContext, in Inlining) Result {
 	factory := ec.Factory.AsNodeFactory()
 	body := factory.DeepCloneNode(in.Body)
 
-	r := rest{name: in.RestParam, args: in.RestArgs}
+	u := in.unbound()
 	params := map[string]*shimast.Node{}
 	for i, name := range in.Params {
 		if i < len(in.Args) {
@@ -92,7 +92,7 @@ func Substitute(ec *shimprinter.EmitContext, in Inlining) Result {
 
 	if in.Receiver == nil {
 		// Free function: only value parameters are substituted.
-		return Result{Expr: substituteInto(ec, body, params, nil, r)}
+		return Result{Expr: substituteInto(ec, body, params, nil, u)}
 	}
 
 	receiverCount := countThis(body)
@@ -102,7 +102,7 @@ func Substitute(ec *shimprinter.EmitContext, in Inlining) Result {
 		// Effectful receiver used more than once: bind it once to a temp in
 		// expression position and reference the temp at every `this` site.
 		temp := ec.Factory.NewTempVariable()
-		substituted := substituteInto(ec, body, params, temp, r)
+		substituted := substituteInto(ec, body, params, temp, u)
 		assign := factory.NewBinaryExpression(
 			nil,
 			temp,
@@ -127,7 +127,7 @@ func Substitute(ec *shimprinter.EmitContext, in Inlining) Result {
 	if receiverCount == 0 && !simple {
 		// Receiver's value is never read, but its side effect must still run
 		// exactly once. Keep it as the left of a comma sequence.
-		substituted := substituteInto(ec, body, params, nil, r)
+		substituted := substituteInto(ec, body, params, nil, u)
 		sequence := factory.NewBinaryExpression(
 			nil,
 			factory.DeepCloneNode(in.Receiver),
@@ -141,15 +141,15 @@ func Substitute(ec *shimprinter.EmitContext, in Inlining) Result {
 	// Receiver read 0× (simple), 1× (any), or ≥2× (simple): inline a fresh clone
 	// of it at each site. thisRepl == nil below means "clone the receiver"; a
 	// non-nil node (the temp branch above) means "reference it".
-	return Result{Expr: substituteIntoReceiver(ec, body, params, in.Receiver, r)}
+	return Result{Expr: substituteIntoReceiver(ec, body, params, in.Receiver, u)}
 }
 
 // substituteInto rewrites body in place of a clone: every `this` becomes temp
 // (when non-nil), every value-parameter identifier becomes its argument
 // expression. Property-access member names are left untouched so a body member
 // that happens to share a parameter's name is never rewritten.
-func substituteInto(ec *shimprinter.EmitContext, body *shimast.Node, params map[string]*shimast.Node, temp *shimast.Node, r rest) *shimast.Node {
-	return rewrite(ec, body, params, func() *shimast.Node { return temp }, r)
+func substituteInto(ec *shimprinter.EmitContext, body *shimast.Node, params map[string]*shimast.Node, temp *shimast.Node, u unbound) *shimast.Node {
+	return rewrite(ec, body, params, func() *shimast.Node { return temp }, u)
 }
 
 // substituteIntoReceiver is substituteInto with the ORIGINAL receiver node
@@ -158,7 +158,7 @@ func substituteInto(ec *shimprinter.EmitContext, body *shimast.Node, params map[
 // receiver get an answerable node; the extra clones are bare and nothing
 // downstream queries them (a duplicated `this` site only ever holds a simple,
 // side-effect-free receiver by the effectful ≥2× path being handled separately).
-func substituteIntoReceiver(ec *shimprinter.EmitContext, body *shimast.Node, params map[string]*shimast.Node, receiver *shimast.Node, r rest) *shimast.Node {
+func substituteIntoReceiver(ec *shimprinter.EmitContext, body *shimast.Node, params map[string]*shimast.Node, receiver *shimast.Node, u unbound) *shimast.Node {
 	factory := ec.Factory.AsNodeFactory()
 	first := true
 	return rewrite(ec, body, params, func() *shimast.Node {
@@ -167,37 +167,74 @@ func substituteIntoReceiver(ec *shimprinter.EmitContext, body *shimast.Node, par
 			return receiver
 		}
 		return factory.DeepCloneNode(receiver)
-	}, r)
+	}, u)
 }
 
-// rest carries a body's trailing rest parameter and the arguments it stands for.
-type rest struct {
-	name string
-	args []*shimast.Node
+// unbound is the set of value parameters the call supplied no argument for.
+type unbound map[string]bool
+
+// unbound reads Unbound as a set.
+func (in Inlining) unbound() unbound {
+	u := unbound{}
+	for _, name := range in.Unbound {
+		u[name] = true
+	}
+	return u
 }
 
-// expand replaces a spread of the rest parameter with the arguments it stands
-// for, leaving every other argument to the ordinary walk. It reports whether any
-// element changed, so an untouched list keeps its original node.
-func (r rest) expand(visitor *shimast.NodeVisitor, args []*shimast.Node) ([]*shimast.Node, bool) {
+// visitArguments walks an argument list, then drops the trailing run of
+// arguments that are bare references to unbound parameters: an optional
+// parameter the call omitted contributes no argument to the emitted call, which
+// is what a hand author would have written. Only a TRAILING run can go — a gap
+// ahead of a supplied argument would shift every later argument's position, so a
+// reference left standing after the trim is reported by danglingParam instead.
+// It reports whether any element changed, so an untouched list keeps its
+// original node.
+func (u unbound) visitArguments(visitor *shimast.NodeVisitor, args []*shimast.Node) ([]*shimast.Node, bool) {
 	out := make([]*shimast.Node, 0, len(args))
 	changed := false
 	for _, arg := range args {
-		if r.name != "" && arg.Kind == shimast.KindSpreadElement {
-			inner := arg.AsSpreadElement().Expression
-			if inner != nil && inner.Kind == shimast.KindIdentifier && inner.Text() == r.name {
-				out = append(out, r.args...)
-				changed = true
-				continue
-			}
-		}
 		visited := visitor.VisitNode(arg)
 		if visited != arg {
 			changed = true
 		}
 		out = append(out, visited)
 	}
+	for len(out) > 0 && u.names(out[len(out)-1]) {
+		out = out[:len(out)-1]
+		changed = true
+	}
 	return out, changed
+}
+
+// names reports whether node is a bare reference to an unbound parameter.
+func (u unbound) names(node *shimast.Node) bool {
+	return node != nil && node.Kind == shimast.KindIdentifier && u[node.Text()]
+}
+
+// danglingParam returns the name of an unbound parameter still referenced in a
+// substituted expression, or "". One surviving the trim means the body used it
+// somewhere the omission cannot be honored — ahead of an argument the call did
+// supply, or outside an argument list altogether — and the emitted code would
+// reference a binding that does not exist.
+func danglingParam(node *shimast.Node, u unbound) string {
+	found := ""
+	var walkNode func(n *shimast.Node)
+	walkNode = func(n *shimast.Node) {
+		if n == nil || found != "" {
+			return
+		}
+		if u.names(n) {
+			found = n.Text()
+			return
+		}
+		n.ForEachChild(func(child *shimast.Node) bool {
+			walkNode(child)
+			return false
+		})
+	}
+	walkNode(node)
+	return found
 }
 
 // rewrite walks body substituting `this` (via thisNode, called once per site so
@@ -207,7 +244,7 @@ func (r rest) expand(visitor *shimast.NodeVisitor, args []*shimast.Node) ([]*shi
 // inside a nested non-arrow function or class is that scope's own receiver, so
 // substitution stops at those boundaries; value parameters are still rewritten
 // there, since a closure captures them like any other outer binding.
-func rewrite(ec *shimprinter.EmitContext, body *shimast.Node, params map[string]*shimast.Node, thisNode func() *shimast.Node, r rest) *shimast.Node {
+func rewrite(ec *shimprinter.EmitContext, body *shimast.Node, params map[string]*shimast.Node, thisNode func() *shimast.Node, u unbound) *shimast.Node {
 	factory := ec.Factory.AsNodeFactory()
 	var visitor *shimast.NodeVisitor
 	ownThisDepth := 0
@@ -253,7 +290,7 @@ func rewrite(ec *shimprinter.EmitContext, body *shimast.Node, params map[string]
 				break
 			}
 			newCallee := visitor.VisitNode(call.Expression)
-			args, changed := r.expand(visitor, call.Arguments.Nodes)
+			args, changed := u.visitArguments(visitor, call.Arguments.Nodes)
 			if !changed && newCallee == call.Expression {
 				return node
 			}
