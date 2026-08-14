@@ -1589,26 +1589,19 @@ out of a derived address stays — that is derivation hygiene, not a kind.
 
 _Owner-directed 2026-08-13._
 
-## §152 — A signature carries its own quantifiers
+## §152 — A callable signature's holes live in its own tree, not a separate list
 
-`FunctionType` and `ConstructorType` hold a `genericArgs` list: the holes the signature itself
-quantifies, in declaration order, empty for a concrete one. The name is shared with a nominal type's
-constructed arguments and so is the meaning — these are what a request CLOSES, positionally.
+`FunctionType` and `ConstructorType` carry no quantifier list of their own. An open signature is
+spelled by an ordinary generic hole sitting inside its `args`/`returnType`/`instanceType` —
+`() => app:Box<%T>` is already open, the same tree shape a closed `() => app:Box<app:String>` is a
+concrete instance of. Closing one against a request is tree-position unification against the holes
+themselves, the mechanism every other node already uses (§180); a signature needs nothing extra to
+participate.
 
-Quantifying is part of the type. `<%T>() => app:Box<%T>` ranges over the hole; a signature that
-merely mentions `%T` names one particular open type. Identity includes the list, so those two intern
-as different nodes, and that distinction is the point of carrying it. Substituting a quantified hole
-discharges its quantifier, so closing an open signature lands on the requested node itself rather
-than on a look-alike.
+The token grammar carries no quantifier prefix: a signature spells exactly its `args`/return/instance
+shape, holes and all, reachable through the arrow, `new`, and reserved `Func`/`Ctor` spellings alike.
 
-The spec object is the door — a positional `Type.func(returnType, [[A]], [hole])` call spells a
-concrete signature, its second argument the parameter rows and its optional third the quantifier
-list — and the token grammar extends additively: a quantifier list is written in front of the
-signature it binds, `<%T>(%T) => app:Box<%T>`, reachable through the arrow, `new` and reserved
-`Func` / `Ctor` spellings alike. A token carrying no quantifiers spells exactly as it always did, so
-the parity invariant binds unchanged.
-
-_Owner-directed 2026-08-13._
+_Owner-directed 2026-08-13, Claude-corrected 2026-08-14._
 
 ## §153 — `ServiceProviderOptions` stays immutable; `useDefaultServiceProvider` takes a returning delegate
 
@@ -2208,3 +2201,20 @@ without the default declares.
 _Owner-directed via task #40 (the hoisting guarantee — one const per distinct interned node
 referenced anywhere in the project's lowered output — reads across every primitive that derives a
 `Type.*` tree, not typefor alone), Claude-executed 2026-08-14._
+
+## §179 — Row matching implements §180's every/some doctrine; callable nodes drop their dead quantifier list
+
+`SatisfiesVisitor`'s row comparison reads exactly as §180 states it: every condition row must be
+served by some proposed row, surplus proposed rows harmless. `ConstructorType` and `FunctionType` no
+longer carry a `genericArgs` member — nothing at a structural callable's request site can spell
+"populate these holes ahead of matching", since generic binding already happens by tree-position
+unification against the holes themselves, and substitution into an implementer is referential through
+the interned `GenericType` nodes. The member survives only on the identifier kinds (`GlobalType`/
+`ImportedType`), where it is the positional constructed-argument list a request actually supplies.
+
+The factories, the stringify/parse token grammar, and every derived-openness/derived-string walk over
+a callable drop the field and its quantifier-prefix spelling together, keeping the round trip intact.
+The value-level construction-row selection (longest-satisfiable row wins, a separate layer from
+this type-level relation) is untouched by either change.
+
+_Owner-ruled, Claude-executed 2026-08-14._
