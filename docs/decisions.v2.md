@@ -2405,32 +2405,27 @@ none of them changes the call-site principle.
 
 _Owner-ruled (pre-compact session record), Claude-recorded 2026-08-14._
 
-## §183 — Abstract-class derivation needed no shim extension; the hoist table's own Node mirror was the actual bug
+## §183 — The signature-level abstract flag sits inside `ttsc`'s own repository, not a consumer hook; the hoist table's Node mirror dropped the flag entirely
 
-`typefor<typeof SomeAbstractClass>()` derives `ConstructorType.abstract` automatically: `DeriveTyped`
-resolves the construct signature's declaring class off `Type.Symbol()`, walks to its primary
-declaration, and reads `ModifierFlagsAbstract` through `GetCombinedModifierFlags` — surface the
-vendored ttsc shim already exposed. Nothing needed adding to reach it.
+The residual gap §181 names — a bare abstract-constructor type literal with no backing class
+declaration — needs the checker's own general notion of abstractness,
+`checker.Signature.Flags() & SignatureFlagsAbstract`. `SignatureFlags` isn't aliased anywhere in the
+ttsc shim, and the two tools that would add it — `tools/gen_shims` (extends per-package coverage
+through `extra-shim.json`, for symbols already reachable off an aliased type) and
+`tools/shim_audit -fix` (completes an enum family once its type alias exists) — both live inside
+`ttsc`'s own source repository and run against `ttsc`'s own checkout to produce what ships in the npm
+package. Neither is a hook this repo's build invokes, so closing this gap needs an upstream `ttsc`
+contribution or a standing Go-module fork of the shim package, not something addable from the
+consuming side.
 
-What the shim genuinely doesn't reach is the checker's own general notion of abstractness —
-`checker.Signature.Flags() & SignatureFlagsAbstract` — which also covers a bare abstract-constructor
-type literal with no backing class declaration. `SignatureFlags` isn't aliased anywhere in the shim,
-and the two tools that would add it — `tools/gen_shims` (extends per-package coverage through
-`extra-shim.json`, for symbols already reachable off an aliased type) and `tools/shim_audit -fix`
-(completes an enum family once its type alias exists) — both live inside `ttsc`'s own source
-repository and run against `ttsc`'s own checkout to produce what ships in the npm package. Neither is
-a hook this repo's build invokes, so closing this residual gap needs an upstream `ttsc` contribution
-or a standing Go-module fork of the shim package, not something addable from the consuming side.
-`typefor<typeof AbstractClass>()`, the form every current call site uses, is unaffected.
-
-A second, unrelated gap surfaced alongside it: `typeforhoist.Node`, the const table's own mirror of a
-derived tree, had no `abstract` field — `hoistNode`'s `DerivedCtor` case built a `typeforhoist.Ctor`
-carrying only the instance type and rows, so every HOISTED-mode ctor const rendered as concrete
-regardless of what `DeriveTyped` had derived. INLINE mode was unaffected, since it emits straight off
-the `Derived` tree `typeemit.EmitDerived` walks; HOISTED is the project default (§28), so this was the
-path every real build actually takes. `Node` and `Ctor` now carry `abstract`, folded into the
-canonical key so a concrete and an abstract constructor over the same instance type and rows still
-intern to two distinct consts, and the rendered `Type.ctor(...)` call carries the trailing `true` only
-for the abstract one — the parity invariant §181 already commits to.
+`typeforhoist.Node`, the const table's own mirror of a derived tree, had no `abstract` field —
+`hoistNode`'s `DerivedCtor` case built a `typeforhoist.Ctor` carrying only the instance type and rows,
+so every HOISTED-mode ctor const rendered as concrete regardless of what `DeriveTyped` had derived.
+INLINE mode was unaffected, since it emits straight off the `Derived` tree `typeemit.EmitDerived`
+walks; HOISTED is the project default (§28), so this was the path every real build actually takes.
+`Node` and `Ctor` now carry `abstract`, folded into the canonical key so a concrete and an abstract
+constructor over the same instance type and rows still intern to two distinct consts, and the
+rendered `Type.ctor(...)` call carries the trailing `true` only for the abstract one — the parity
+invariant §181 already commits to.
 
 _Owner-directed via task #48, Claude-executed 2026-08-14._
