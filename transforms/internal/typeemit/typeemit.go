@@ -16,6 +16,7 @@ import (
 	shimast "github.com/microsoft/typescript-go/shim/ast"
 
 	"github.com/fnioc/std/transforms/internal/tokens"
+	"github.com/fnioc/std/transforms/internal/typeforhoist"
 	"github.com/fnioc/std/transforms/internal/valueimport"
 )
 
@@ -26,6 +27,12 @@ var Ref = valueimport.Ref{Module: "@rhombus-std/primitives", Export: "Type"}
 // GlobalFrom is the FROM a derived name carries when the ambient scope declares
 // it. Such a type is reached by no import, so it spells as `Type.global`.
 const GlobalFrom = "global"
+
+// HoistRef is Ref in the const table's own reference form, so a table of hoisted
+// consts and the call sites referencing them name one `Type`.
+func HoistRef() typeforhoist.TypeRef {
+	return typeforhoist.TypeRef{Module: Ref.Module, Export: Ref.Export}
+}
 
 // Call builds `<Type>.<method>(...args)`, marking binding as referenced so the
 // caller knows to materialize its import.

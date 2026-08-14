@@ -201,7 +201,7 @@ jobs:
           - name: e2e-inline
             suites: inline.ttsc.e2e mergesynth.ttsc.e2e
           - name: e2e-config
-            suites: config.extras.ttsc.e2e declare-by-depending.ttsc.e2e
+            suites: config.extras.ttsc.e2e declare-by-depending.ttsc.e2e typefor.ttsc.e2e
           - name: e2e-derive
             suites: primitives.extras.ttsc.e2e di.signatureof.ttsc.e2e
           - name: go-gates
