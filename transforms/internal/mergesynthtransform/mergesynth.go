@@ -97,8 +97,8 @@ type Diagnostic struct {
 }
 
 // The install functions this stage rewrites, matched on the callee's resolved
-// symbol name (following import aliases) — the same looseness as the nameof
-// stage's matcher, and unambiguous for these two first-party names.
+// symbol name (following import aliases) — unambiguous for these two first-party
+// names.
 const (
 	registerName = "registerAugmentations"
 	applyName    = "applyAugmentations"
@@ -125,7 +125,7 @@ func New(prog *driver.Program, addDiagnostic func(Diagnostic)) plugin.FileTransf
 			if node.Kind == shimast.KindCallExpression {
 				if next := s.maybeRewrite(node.AsCallExpression()); next != nil {
 					// No recursion into the rewritten call: its original
-					// argument nodes (the nameof token derivation among them)
+					// argument nodes (the typefor token derivation among them)
 					// are preserved as-is for the later primitive stages'
 					// own full-file visits.
 					return next

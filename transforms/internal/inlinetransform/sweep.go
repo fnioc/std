@@ -42,8 +42,7 @@ func Sweep(sf *shimast.SourceFile, artifacts *Artifacts) []plugin.Diagnostic {
 		}
 		call := n.AsCallExpression()
 
-		// (1) surviving primitive: a nameof call with type args, or a node still
-		// carrying a registered PrimitiveUse.
+		// (1) surviving primitive: a node still carrying a registered PrimitiveUse.
 		if use, registered := artifacts.PrimitiveCalls[n]; registered {
 			// A surviving `schemaof<T>()` is a type the Type grammar cannot spell; its
 			// own stage already reported the targeted 992001/992002/992003 and left the

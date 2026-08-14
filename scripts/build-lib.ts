@@ -22,7 +22,7 @@
 //     rollup.<entry>.dts.mjs per extra entrypoint) -- the one-rolled-d.ts-per-
 //     entry invariant, asserted by existence.
 //   - lowering engine: tsconfig.ttsc.json present -> the Go/ttsc engine lowers
-//     `nameof<T>()` (and the registration/options/config sugar) in a per-file
+//     `typefor<T>()` (and the registration/options/config sugar) in a per-file
 //     stage before the bundle. Absent -> no lowering stage. WHICH stages run is
 //     declare-by-depending, resolved HOST-SIDE (§100): ttsc auto-discovery spawns
 //     the one owner host from the package's direct `*.extras` dep, and the

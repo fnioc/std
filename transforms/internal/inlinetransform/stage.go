@@ -1,7 +1,7 @@
 // Package inlinetransform's stage.go wires the resolved entries into a per-file
 // FileTransform: it collects the workspace's publish-list entries, resolves each
 // against the consumer program, and at every matching call site substitutes the
-// sugar body, registering the synthetic primitive calls the downstream nameof
+// sugar body, registering the synthetic primitive calls a downstream primitive
 // stage lowers. It runs FIRST in ttsc-std's canonical order.
 package inlinetransform
 
@@ -508,7 +508,8 @@ func (st *fileState) normalizeInstantiationArgs(expr *shimast.Node) *shimast.Nod
 // registerPrimitives walks a substituted expression and records every primitive
 // call (a call whose identifier callee is one of the body's primitive imports)
 // in artifacts, binding its type arguments to the checker types captured at the
-// original call. The nameof stage reads these to lower a call it cannot anchor.
+// original call. A downstream primitive stage reads these to lower a call it
+// cannot anchor.
 //
 // argAnchors pairs each spliced argument with its pass-0 counterpart, so a
 // VALUE-argument primitive records a node the checker may safely be asked about
@@ -533,7 +534,6 @@ func (st *fileState) registerPrimitives(
 		}
 		typeArgs := n.AsCallExpression().TypeArguments
 		bound := []*shimchecker.Type{}
-		var composed *ComposedTypeArg
 		if typeArgs != nil {
 			for _, ta := range typeArgs.Nodes {
 				if ta.Kind != shimast.KindTypeReference {
@@ -544,22 +544,16 @@ func (st *fileState) registerPrimitives(
 					continue
 				}
 				if t, has := env[name.Text()]; has {
-					// A bare type-parameter reference (`tokenfor<T>()`): the env
+					// A bare type-parameter reference (`typefor<T>()`): the env
 					// binding IS the token source.
 					bound = append(bound, t)
-					continue
-				}
-				if ref, ok := body.TypeImports[name.Text()]; ok {
-					// A body-external composed generic (`tokenfor<IOptions<T>>()`):
-					// the base names an imported type, and its leaves bind from env.
-					composed = composedTypeArg(ta, ref, env)
 				}
 			}
 		}
-		use := PrimitiveUse{Name: prim, TypeArgs: bound, Composed: composed}
+		use := PrimitiveUse{Name: prim, TypeArgs: bound}
 		// A VALUE-argument primitive (typefor(ctor), tokenof(value)) records the
 		// PARSE node behind its spliced argument, because the consuming stage's only
-		// use for it is a checker query. A TYPE-argument primitive (nameof<T>()) has
+		// use for it is a checker query. A TYPE-argument primitive (typefor<T>()) has
 		// no value argument and leaves this nil.
 		if args := n.AsCallExpression().Arguments; args != nil && len(args.Nodes) == 1 {
 			use.ValueArg = st.anchorValueArg(argAnchors, args.Nodes[0])
@@ -579,22 +573,21 @@ func (st *fileState) registerPrimitives(
 // primitive stages lower whatever is inside its arguments. By the time it
 // substitutes, `callArguments(call)` can hand back an argument earlier passes
 // rebuilt or replaced. Recording that node made `ValueArg` a rewritten node, and
-// its two consumers — the nameof stage's tokenfor/tokenof value branches and the
-// typefor stage's artifacts branch — feed it straight to the checker. Typing
-// it resolves the enclosing call's overloads, which contextually types the minted,
-// symbol-less literals downstream stages produced, and the checker nil-derefs
-// (plugin.CheckerAnchor). Concretely:
+// its consumer — the typefor stage's artifacts branch — feeds it straight to the
+// checker. Typing it resolves the enclosing call's overloads, which contextually
+// types the minted, symbol-less literals downstream stages produced, and the
+// checker nil-derefs (plugin.CheckerAnchor). Concretely:
 //
-//	services.addValue({ tok: tokenfor<IClock>(), retries: 3 }).addClass<IWidget>(W)
+//	services.addValue({ tok: typefor<IClock>(), retries: 3 }).addClass<IWidget>(W)
 //
-// pass 0 inlines the OUTER addClass and leaves the receiver alone, nameof rebuilds
-// that object literal to lower the tokenfor inside it, and pass 1 inlines
-// `addValue` over the REBUILT literal.
+// pass 0 inlines the OUTER addClass and leaves the receiver alone, typefor
+// rebuilds that object literal to lower the typefor call inside it, and pass 1
+// inlines `addValue` over the REBUILT literal.
 //
 // WHY POSITIONAL FIRST, PARSE-ANCHOR SECOND. The positional pairing is exact and
 // total: it answers even when an earlier pass replaced the whole argument with a
-// MINTED node (`addValue(tokenfor<IClock>())` lowers its argument to a fresh string
-// literal), which has no Original link and so no parse anchor at all. The
+// MINTED node (`addValue(typefor<IClock>())` lowers its argument to a fresh
+// `Type.*` tree), which has no Original link and so no parse anchor at all. The
 // Original-chain anchor then covers the residue the pairing cannot see — an
 // argument a body nested inside another expression rather than passing straight
 // through, whose enclosing node is not itself one of the call's arguments.
@@ -607,37 +600,6 @@ func (st *fileState) anchorValueArg(argAnchors map[*shimast.Node]*shimast.Node, 
 		return anchored
 	}
 	return st.parseAnchor(arg)
-}
-
-// composedTypeArg builds a composed-generic descriptor for a spelled type node
-// (`IOptions<T>`) whose base is a body-external import: it carries the import's
-// module + export (resolved late, in the lowering stage) and its argument types
-// bound from the inline env. An argument that is not a bare env-bound type
-// parameter records nil, so the lowering reports an underivable-token diagnostic
-// for it — the composed generic is only as derivable as its leaves.
-func composedTypeArg(node *shimast.Node, ref TypeImportRef, env map[string]*shimchecker.Type) *ComposedTypeArg {
-	c := &ComposedTypeArg{Module: ref.Module, Export: ref.Export, ArgNode: node}
-	if argList := node.AsTypeReferenceNode().TypeArguments; argList != nil {
-		for _, arg := range argList.Nodes {
-			c.Args = append(c.Args, composedLeafType(arg, env))
-		}
-	}
-	return c
-}
-
-// composedLeafType resolves one composed-generic argument node to its bound
-// checker type, or nil when it is not a bare env-bound type-parameter reference
-// (the only leaf shape the addOptions family spells; a richer nesting would need
-// recursion, deliberately out of scope until a body requires it).
-func composedLeafType(node *shimast.Node, env map[string]*shimchecker.Type) *shimchecker.Type {
-	if node.Kind != shimast.KindTypeReference {
-		return nil
-	}
-	name := node.AsTypeReferenceNode().TypeName
-	if name == nil || name.Kind != shimast.KindIdentifier {
-		return nil
-	}
-	return env[name.Text()]
 }
 
 // isRogueDuplicate reports whether decl is provably the same logical member as an

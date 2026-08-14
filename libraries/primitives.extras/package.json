@@ -1,13 +1,13 @@
 {
   "name": "@rhombus-std/primitives.extras",
   "version": "10.1.0",
-  "description": "The standalone type-derivation authoring transformer: the typefor<T>() compile-time Type mechanism plus the inline and nameof primitive stages. A Go/ttsc descriptor package \u2014 the derivation runs in the shared owner binary, di-independent so any family can mint augmentation tokens from types.",
+  "description": "The standalone type-derivation authoring transformer: the typefor<T>() compile-time Type mechanism plus the inline primitive stage. A Go/ttsc descriptor package \u2014 the derivation runs in the shared owner binary, di-independent so any family can mint augmentation tokens from types.",
   "keywords": [
     "primitives",
     "typescript",
     "transformer",
     "compiler",
-    "nameof"
+    "typefor"
   ],
   "license": "MIT",
   "repository": {

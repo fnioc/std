@@ -16,9 +16,8 @@ import (
 // walk, the Inject/Hole/Keyed brand reads, the unbound-type-parameter failure
 // channel, and the literal / singleton classifiers. Each behavior is probed off a
 // real `driver.LoadProgram` fixture — the module's standard way to unit-test
-// checker-dependent code (mirrors inlinetransform/matcher_test.go's loadFixture
-// and nameoftransform/nameof_test.go), NOT a ttsc host. The brand types are
-// self-contained in the fixture (copied from nameof_test.go's brand block), so no
+// checker-dependent code (mirrors inlinetransform/matcher_test.go's loadFixture),
+// NOT a ttsc host. The brand types are self-contained in the fixture, so no
 // primitives dependency is pulled in.
 //
 // The thin alias-reader passthroughs (AliasSymbolName / AliasTypeArguments /

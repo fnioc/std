@@ -20,8 +20,8 @@ import (
 // CollectProject dependency scan -> driver.LoadProgram -> the per-file transform
 // loop -> the JSON envelope. No ttsc, no node, no network.
 //
-// The fixtures compile only LOCAL source — a tokenfor<T>() over a local interface,
-// imported from a local ./tokenfor stub — so driver.LoadProgram resolves nothing
+// The fixtures compile only LOCAL source — a typefor<T>() over a local interface,
+// imported from a local ./typefor stub — so driver.LoadProgram resolves nothing
 // off disk and the tier needs no built dist. That is the deliberate scope line:
 // the semantic di/isService lowerings require di.core to actually RESOLVE (their
 // e2e symlinks and builds it), which couples a lowering to a JS build a Go test
@@ -61,18 +61,18 @@ const fixtureTsconfig = `{
 }
 `
 
-// nameofAppSrc is the shared fixture source: a lone tokenfor<T>() over a local
-// interface, imported from a local ./tokenfor stub. The stage matches any call
-// whose callee symbol is named `tokenfor`, so the local stub is enough; when the
-// tokenfor stage is active the call lowers to the package-qualified token and the
-// now-dead import elides.
-var nameofAppSrc = map[string]string{
-	"src/tokenfor.ts": "export declare function tokenfor<T>(): string;\n",
-	"src/app.ts": `import { tokenfor } from "./tokenfor";
+// typeforAppSrc is the shared fixture source: a lone typefor<T>() over a local
+// interface, imported from a local ./typefor stub. The stage matches any call
+// whose callee symbol is named `typefor`, so the local stub is enough; when the
+// typefor stage is active the call lowers to the derived `Type.imported` tree and
+// the now-dead import elides.
+var typeforAppSrc = map[string]string{
+	"src/typefor.ts": "export declare function typefor<T>(): unknown;\n",
+	"src/app.ts": `import { typefor } from "./typefor";
 
 export interface IWidget {}
 
-export const widgetToken = tokenfor<IWidget>();
+export const widgetToken = typefor<IWidget>();
 `,
 }
 
@@ -137,9 +137,15 @@ func driveHostWith(t *testing.T, host Host, dir, manifest string) (decodedEnvelo
 
 // selfFixturePkg is a dependency-free consumer manifest. CollectProject finds it
 // as the root, resolves no dependencies, and returns an empty body scan — the
-// whole stage table still runs (W7: always-on), so the local tokenfor call lowers
+// whole stage table still runs (W7: always-on), so the local typefor call lowers
 // with no plugin manifest at all.
 const selfFixturePkg = `{"name":"@rhombus-std/a2-fixture","version":"0.0.0","private":true}`
+
+// selfFixtureTypeforPkg is selfFixturePkg's shape plus an inline typefor-emission
+// pin, so a lowered call site is a single self-contained assertion rather than a
+// reference into a second generated-module envelope entry.
+const selfFixtureTypeforPkg = `{"name":"@rhombus-std/a2-fixture","version":"0.0.0","private":true,` +
+	`"rhombus-std":{"typefor":{"emit":"inline"}}}`
 
 // loweredApp pulls the emitted src/app.ts out of the envelope, failing loudly
 // (with the available keys) when it is absent.
@@ -157,34 +163,34 @@ func loweredApp(t *testing.T, env decodedEnvelope) string {
 	return lowered
 }
 
-// assertNameofLowered checks the emitted app carries a derived IWidget token and
-// no surviving `tokenfor` (neither the call nor its now-dead import). The token
-// tail is asserted rather than the whole string so the check does not pin the
-// package name or path derivation, only that a token for IWidget was minted.
-func assertNameofLowered(t *testing.T, lowered string) {
+// assertTypeforLowered checks the emitted app carries a derived IWidget import and
+// no surviving `typefor` (neither the call nor its now-dead import). The name is
+// asserted rather than the whole call so the check does not pin the package name
+// or path derivation, only that a Type was minted for IWidget.
+func assertTypeforLowered(t *testing.T, lowered string) {
 	t.Helper()
-	if !strings.Contains(lowered, `:IWidget"`) {
-		t.Fatalf("expected a derived token ending in :IWidget\", got:\n%s", lowered)
+	if !strings.Contains(lowered, `Type.imported("IWidget"`) {
+		t.Fatalf("expected a derived Type.imported(\"IWidget\", ...) call, got:\n%s", lowered)
 	}
-	if strings.Contains(lowered, "tokenfor") {
-		t.Fatalf("tokenfor survived lowering (call or import not elided):\n%s", lowered)
+	if strings.Contains(lowered, "typefor") {
+		t.Fatalf("typefor survived lowering (call or import not elided):\n%s", lowered)
 	}
 }
 
-// TestRunLowersSourceNameofAlwaysOnInProcess drives the full host over a
+// TestRunLowersSourceTypeforAlwaysOnInProcess drives the full host over a
 // self-contained fixture with an EMPTY plugin manifest and proves the whole
 // always-on path end-to-end in one process (W7: no selection): a real
 // driver.LoadProgram over a real (if tiny) project, the always-on stage table run
 // over every source file, and the lowered result read back off the envelope. The
-// tokenfor stage lowering the local call with no manifest entry IS the always-on
+// typefor stage lowering the local call with no manifest entry IS the always-on
 // proof — the old design would have emitted NO_STAGES here.
-func TestRunLowersSourceNameofAlwaysOnInProcess(t *testing.T) {
+func TestRunLowersSourceTypeforAlwaysOnInProcess(t *testing.T) {
 	dir := t.TempDir()
-	writeFixture(t, dir, selfFixturePkg, nameofAppSrc)
+	writeFixture(t, dir, selfFixtureTypeforPkg, typeforAppSrc)
 
 	env, stderr, code := driveHost(t, dir, `[]`)
 	if code != 0 {
 		t.Fatalf("host exit = %d, want 0\nstderr: %s", code, stderr)
 	}
-	assertNameofLowered(t, loweredApp(t, env))
+	assertTypeforLowered(t, loweredApp(t, env))
 }

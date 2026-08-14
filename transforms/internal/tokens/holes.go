@@ -232,12 +232,12 @@ func KeyedTokenFor(ctx *Context, t *shimchecker.Type) (string, bool) {
 	return base + "#" + key, true
 }
 
-// ServiceBaseTokenFor derives the token the nameof stage lowers a service TYPE
-// to. For an ordinary type it is DeriveTokenF. For a `Keyed<T, K>` type it is
-// just the BASE (keyedBaseTokenFor) — the brand stripped, NO `#key` suffix, so it
+// ServiceBaseTokenFor derives the flat string token a service TYPE lowers to.
+// For an ordinary type it is DeriveTokenF. For a `Keyed<T, K>` type it is just
+// the BASE (keyedBaseTokenFor) — the brand stripped, NO `#key` suffix, so it
 // lands on the SAME base a `base#key` token composes over via KeyedTokenFor.
-// Without it a keyed nameof would tokenize the whole aliased `Keyed<...>`
-// reference — a nonsense token diverging from the composed one.
+// Without it a keyed reference would tokenize the whole aliased `Keyed<...>`
+// type — a nonsense token diverging from the composed one.
 func ServiceBaseTokenFor(ctx *Context, t *shimchecker.Type) (string, bool) {
 	if _, keyed := KeyLiteralFor(t, ctx.Checker); keyed {
 		return keyedBaseTokenFor(ctx, t)

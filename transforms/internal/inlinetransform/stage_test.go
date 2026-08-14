@@ -240,29 +240,29 @@ export const bad = provider.isService();
 	}
 }
 
-// TestBodyWithConcreteNameofTypeArg PINS the current emergent behavior for an
-// impl body that calls a primitive over a CONCRETE type (`tokenfor<Marker>()`)
+// TestBodyWithConcreteTypeforTypeArg PINS the current emergent behavior for an
+// impl body that calls a primitive over a CONCRETE type (`typefor<Marker>()`)
 // rather than the impl's own type parameter (gap 19). Today: the body passes the
 // Go extract (checkFreeIdentifiers does not descend into primitive type-args), it
-// is inlined, the synthetic `tokenfor<Marker>()` registers with ZERO bound type
-// args (Marker is not in the impl's type-param env), the tokenfor stage cannot
-// lower a zero-arg registration, so it survives — and the emit sweep hard-fails
-// it as INLINE_UNLOWERED_PRIMITIVE. This is a late, confusing failure for a
+// is inlined, the synthetic `typefor<Marker>()` registers with ZERO bound type
+// args (Marker is not in the impl's type-param env), no primitive stage can lower
+// a zero-arg registration, so it survives — and the emit sweep hard-fails it as
+// INLINE_UNLOWERED_PRIMITIVE. This is a late, confusing failure for a
 // plausibly-legitimate authoring choice; the behavior is characterized here and
-// FLAGGED FOR AN OWNER DESIGN DECISION (lower the concrete token, or reject early
+// FLAGGED FOR AN OWNER DESIGN DECISION (lower the concrete type, or reject early
 // at extract/lint). This test locks the status quo until that decision lands.
-func TestBodyWithConcreteNameofTypeArg(t *testing.T) {
+func TestBodyWithConcreteTypeforTypeArg(t *testing.T) {
 	coreIndex := `export interface IQuery {
   isService(token: string): boolean;
 }
 export interface Marker { readonly m: 'marker'; }
 export declare const provider: IQuery;
 `
-	inlineBody := `import { tokenfor } from '@rhombus-std/primitives.extras';
+	inlineBody := `import { typefor } from '@rhombus-std/primitives.extras';
 import type { IQuery, Marker } from './index';
 export const QueryInline = {
   isService<T>(this: IQuery): boolean {
-    return this.isService(tokenfor<Marker>());
+    return this.isService(typefor<Marker>());
   },
 };
 `
@@ -278,10 +278,10 @@ export const known = provider.isService<Foo>();
 	var diags []plugin.Diagnostic
 	transform := Build(prog, bodiesFor(t, app), artifacts, func(d plugin.Diagnostic) { diags = append(diags, d) })
 	if len(diags) != 0 {
-		t.Fatalf("Build raised diagnostics (the concrete-tokenfor body currently passes extract): %+v", diags)
+		t.Fatalf("Build raised diagnostics (the concrete-typefor body currently passes extract): %+v", diags)
 	}
 	if !artifacts.Active {
-		t.Fatal("artifacts not active — the concrete-tokenfor entry did not resolve/inline")
+		t.Fatal("artifacts not active — the concrete-typefor entry did not resolve/inline")
 	}
 
 	ec := shimprinter.NewEmitContext()
@@ -290,8 +290,8 @@ export const known = provider.isService<Foo>();
 
 	// The concrete-type primitive survives the inline stage unlowered.
 	out := reprint(ec, result)
-	if !strings.Contains(out, "tokenfor<Marker>") {
-		t.Fatalf("expected the concrete-type tokenfor<Marker>() to survive the inline stage, got:\n%s", out)
+	if !strings.Contains(out, "typefor<Marker>") {
+		t.Fatalf("expected the concrete-type typefor<Marker>() to survive the inline stage, got:\n%s", out)
 	}
 
 	// The sweep is the backstop that turns the silent survival into a hard error.

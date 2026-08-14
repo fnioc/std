@@ -164,9 +164,9 @@ func schemaofType(
 // sourceWrittenType returns the single type argument of a source-written
 // `schemaof<T>()` — a one-type-argument call whose callee resolves (following an
 // import alias) to the schemaof symbol. Callee and type argument are read off the
-// PARSE node, mirroring nameof, so no checker query walks a tree the loop has
-// rewritten (plugin.CheckerAnchor). A substituted call has no anchor in this file
-// and is handled via artifacts above.
+// PARSE node, so no checker query walks a tree the loop has rewritten
+// (plugin.CheckerAnchor). A substituted call has no anchor in this file and is
+// handled via artifacts above.
 func sourceWrittenType(
 	checker *shimchecker.Checker,
 	parseAnchor plugin.CheckerAnchor,
@@ -195,10 +195,9 @@ func sourceWrittenType(
 }
 
 // elideSchemaofImports drops the now-unreferenced `schemaof` binding from the
-// file's top-level imports, mirroring nameof's import elision. The primary
-// (inline) path never imports schemaof into the consumer (the substitution splices
-// only the body's return expression), so this is a defensive no-op there; it fires
-// for a source-written schemaof import.
+// file's top-level imports. The primary (inline) path never imports schemaof into
+// the consumer (the substitution splices only the body's return expression), so
+// this is a defensive no-op there; it fires for a source-written schemaof import.
 func elideSchemaofImports(factory *shimast.NodeFactory, sf *shimast.SourceFile) *shimast.SourceFile {
 	statements := sf.Statements.Nodes
 	kept := make([]*shimast.Node, 0, len(statements))
