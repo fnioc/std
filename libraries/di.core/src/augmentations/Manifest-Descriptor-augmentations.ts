@@ -1,4 +1,4 @@
-import { AugmentationSet2, type ConstructorType, type Flatten, type FunctionType, type IntersectionType, Token,
+import { AugmentationSet2, type ConstructorType, type Flatten, type FunctionType, type IntersectionType,
   Type } from '@rhombus-std/primitives';
 import { registerAugmentations } from '@rhombus-std/primitives.extras';
 import type { Ctor, Func } from '@rhombus-toolkit/func';
@@ -54,7 +54,7 @@ interface IManifestDescriptorAugmentations<Scopes extends string> {
    *
    * @throws Error - when `key` is given and `token` already carries a tag.
    */
-  tryAddClass(token: Token | Type, ctor: Ctor, implType: ConstructorType | IntersectionType, scope?: Scopes,
+  tryAddClass(token: string | Type, ctor: Ctor, implType: ConstructorType | IntersectionType, scope?: Scopes,
     key?: string): Manifest<Scopes>;
 
   /**
@@ -63,7 +63,7 @@ interface IManifestDescriptorAugmentations<Scopes extends string> {
    *
    * @throws Error - when `key` is given and `token` already carries a tag.
    */
-  tryAddFactory(token: Token | Type, factory: Func<any[], unknown>, implType: FunctionType | IntersectionType,
+  tryAddFactory(token: string | Type, factory: Func<any[], unknown>, implType: FunctionType | IntersectionType,
     scope?: Scopes, key?: string): Manifest<Scopes>;
 
   /**
@@ -72,22 +72,22 @@ interface IManifestDescriptorAugmentations<Scopes extends string> {
    *
    * @throws Error - when `key` is given and `token` already carries a tag.
    */
-  tryAddValue(token: Token | Type, value: unknown, key?: string): Manifest<Scopes>;
+  tryAddValue(token: string | Type, value: unknown, key?: string): Manifest<Scopes>;
 
   /**
    * Swaps the first registration of `token` for a constructor registration, at the position the
    * old one held. Nothing registered for `token` means nothing to replace, so the manifest comes
    * back unchanged — reach for `addClass` to register regardless.
    */
-  replaceClass(token: Token | Type, ctor: Ctor, implType: ConstructorType | IntersectionType, scope: Scopes | undefined,
-    key?: string): Manifest<Scopes>;
+  replaceClass(token: string | Type, ctor: Ctor, implType: ConstructorType | IntersectionType,
+    scope: Scopes | undefined, key?: string): Manifest<Scopes>;
 
   /**
    * Swaps the first registration of `token` for a factory registration, at the position the old
    * one held. Nothing registered for `token` means nothing to replace, so the manifest comes back
    * unchanged — reach for `addFactory` to register regardless.
    */
-  replaceFactory(token: Token | Type, factory: Func<any[], unknown>, implType: FunctionType | IntersectionType,
+  replaceFactory(token: string | Type, factory: Func<any[], unknown>, implType: FunctionType | IntersectionType,
     scope: Scopes | undefined, key?: string): Manifest<Scopes>;
 
   /**
@@ -95,15 +95,47 @@ interface IManifestDescriptorAugmentations<Scopes extends string> {
    * registered for `token` means nothing to replace, so the manifest comes back unchanged — reach
    * for `addValue` to register regardless.
    */
-  replaceValue(token: Token | Type, value: unknown, key?: string): Manifest<Scopes>;
+  replaceValue(token: string | Type, value: unknown, key?: string): Manifest<Scopes>;
 
   /** Drops every descriptor registered for `token` (narrowed by `key`, if given), leaving every
    * other entry untouched. */
-  removeAll(token: Token | Type, key?: string): Manifest<Scopes>;
+  removeAll(token: string | Type, key?: string): Manifest<Scopes>;
 }
 
 declare module '@rhombus-std/di.core' {
-  interface Manifest<Scopes extends string> extends IManifestDescriptorAugmentations<Scopes> {}
+  interface Manifest<Scopes extends string> extends IManifestDescriptorAugmentations<Scopes> {
+    add(descriptor: ServiceDescriptor<Scopes>): Manifest<Scopes>;
+    add<T = any>(type: Type | string, configure: Func<[Unstarted<T, Scopes>], IComplete>): Manifest<Scopes>;
+    add<T = any>(type: Type | string, ctor: Ctor<any[], T>, implType: ConstructorType | IntersectionType,
+      scope?: Scopes, key?: string): Manifest<Scopes>;
+    add<T = any>(type: Type | string, factory: Func<any[], T>, implType: FunctionType | IntersectionType,
+      scope?: Scopes, key?: string): Manifest<Scopes>;
+
+    tryAdd(...descriptors: ReadonlyArray<ServiceDescriptor<Scopes>>): Manifest<Scopes>;
+    tryAdd<T = any>(type: Type | string, configure: Func<[Unstarted<T, Scopes>], IComplete>): this;
+    tryAdd<T = any>(type: Type | string, ctor: Ctor<any[], T>, implType: ConstructorType | IntersectionType,
+      scope?: Scopes, key?: string): this;
+    tryAdd<T = any>(type: Type | string, factory: Func<any[], T>, implType: FunctionType | IntersectionType,
+      scope?: Scopes, key?: string): this;
+
+    tryAddClass(token: string | Type, ctor: Ctor, implType: ConstructorType | IntersectionType, scope?: Scopes,
+      key?: string): Manifest<Scopes>;
+
+    tryAddFactory(token: string | Type, factory: Func<any[], unknown>, implType: FunctionType | IntersectionType,
+      scope?: Scopes, key?: string): Manifest<Scopes>;
+
+    tryAddValue(token: string | Type, value: unknown, key?: string): Manifest<Scopes>;
+
+    replaceClass(token: string | Type, ctor: Ctor, implType: ConstructorType | IntersectionType,
+      scope: Scopes | undefined, key?: string): Manifest<Scopes>;
+
+    replaceFactory(token: string | Type, factory: Func<any[], unknown>, implType: FunctionType | IntersectionType,
+      scope: Scopes | undefined, key?: string): Manifest<Scopes>;
+
+    replaceValue(token: string | Type, value: unknown, key?: string): Manifest<Scopes>;
+
+    removeAll(token: string | Type, key?: string): Manifest<Scopes>;
+  }
 }
 
 export const ManifestDescriptorAugmentations: AugmentationSet2<Manifest,

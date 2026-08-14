@@ -1,4 +1,4 @@
-import { AugmentationSet2, type ConstructorType, type Flatten, type FunctionType, type IntersectionType, Token,
+import { AugmentationSet2, type ConstructorType, type Flatten, type FunctionType, type IntersectionType,
   Type } from '@rhombus-std/primitives';
 import { registerAugmentations } from '@rhombus-std/primitives.extras';
 import { Ctor, Func } from '@rhombus-toolkit/func';
@@ -14,7 +14,7 @@ interface IManifestServiceAugmentations<Scopes extends string> {
    *
    * @throws Error - when `key` is given and `type` already carries a tag.
    */
-  addClass(type: Token | Type, ctor: Ctor, implType: ConstructorType | IntersectionType, scope?: Scopes,
+  addClass(type: string | Type, ctor: Ctor, implType: ConstructorType | IntersectionType, scope?: Scopes,
     key?: string): this;
 
   /**
@@ -23,7 +23,7 @@ interface IManifestServiceAugmentations<Scopes extends string> {
    *
    * @throws Error - when `key` is given and `type` already carries a tag.
    */
-  addFactory(type: Token | Type, factory: Func<any[], unknown>, implType: FunctionType | IntersectionType,
+  addFactory(type: string | Type, factory: Func<any[], unknown>, implType: FunctionType | IntersectionType,
     scope?: Scopes, key?: string): this;
 
   /**
@@ -32,11 +32,19 @@ interface IManifestServiceAugmentations<Scopes extends string> {
    *
    * @throws Error - when `key` is given and `type` already carries a tag.
    */
-  addValue(type: Token | Type, value: unknown, key?: string): this;
+  addValue(type: string | Type, value: unknown, key?: string): this;
 }
 
 declare module '@rhombus-std/di.core' {
-  interface Manifest<Scopes extends string> extends IManifestServiceAugmentations<Scopes> {}
+  interface Manifest<Scopes extends string> extends IManifestServiceAugmentations<Scopes> {
+    addClass(type: string | Type, ctor: Ctor, implType: ConstructorType | IntersectionType, scope?: Scopes,
+      key?: string): this;
+
+    addFactory(type: string | Type, factory: Func<any[], unknown>, implType: FunctionType | IntersectionType,
+      scope?: Scopes, key?: string): this;
+
+    addValue(type: string | Type, value: unknown, key?: string): this;
+  }
 }
 
 export const ManifestServiceAugmentations: AugmentationSet2<Manifest, Flatten<IManifestServiceAugmentations<string>>> =

@@ -84,8 +84,8 @@ onto it, or you just prefer calling a function over a method.
 
 `caching.core` depends only on
 [`@rhombus-std/primitives`](../primitives/README.md) for change tokens and
-platform typings (`AbortSignal`, `Token`) — it has no dependency on
-dependency injection or configuration.
+platform typings (`AbortSignal`) — it has no dependency on dependency
+injection or configuration.
 
 It's an abstractions package: nothing here actually stores a value.
 [`@rhombus-std/caching.memory`](../caching.memory/README.md) is the concrete

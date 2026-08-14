@@ -1992,3 +1992,40 @@ its inline body once the callable-signatures milestone (2D per-overload `TypeSig
 its shape depends on both. Nothing in this entry describes that door; it ships separately.
 
 _Owner-directed 2026-08-13._
+
+## §172 — A member name contributed by two `extends`-only `declare module` blocks needs a direct duplicate on each side
+
+A member name that two packages both contribute to the same receiver, each through its own
+`extends`-only `declare module` block, does not overload-merge: TypeScript's own-member-shadows-
+inherited-member rule leaves only one side's signature visible on the interface-typed receiver — the
+other, though still installed at runtime by the augmentation registry, is unreachable from a caller
+holding the interface type. The same shadowing applies when the colliding member's other side is the
+receiver's own primary (non-`declare module`) declaration, not another augmentation.
+
+For every member name that collides this way, each contributing `declare module` block duplicates
+that member's signature(s) — copied verbatim from its member-map interface, no doc comment on the
+duplicate — directly in its body, beside the `extends` clause. A block whose contributed member never
+collides keeps its `extends`-only empty body. With every colliding side declaring its own signature
+directly, TypeScript's same-name-across-partial-declarations merge (the same mechanism that already
+applies to the receiver's own primary declaration plus its augmentations) folds them into one overload
+list, and the interface-typed receiver sees every form.
+
+Landed for the di.core ↔ di.extras collision set on `Manifest` (`add`/`addClass`/`addFactory`/
+`addValue`/`tryAdd`/`tryAddClass`/`tryAddFactory`/`tryAddValue`/`replaceClass`/`replaceFactory`/
+`replaceValue`/`removeAll`, both sides duplicated) and on `IServiceProvider`
+(`getRequiredService`/`getServices`, both sides; `getService`, extras side only — the base forms are
+primitives' own primary declaration, never a `declare module` block) — plus the options.augmentations
+↔ di.extras.options `addOptions` collision (options.augmentations side only: di.extras.options'
+`addOptions<T>()` block was already a direct declaration, not `extends`-only, so it needed no change).
+Every other `extends`-only augmentation in the repo was checked and found non-colliding — disjoint
+member names on a shared receiver merge via `extends` as written.
+
+Found as a side effect, left untouched: `@rhombus-std/di.extras.options`'s rolled
+`dist/bundle/index.d.ts` carries no top-level import or export statement — only its `declare module`
+block — which makes the file a global script rather than a module in TypeScript's eyes, so the block
+declares a fresh `@rhombus-std/di.core` module instead of augmenting the real one, once another file
+in the same program also needs di.core's real exports. A `rollup-plugin-dts` output defect, separate
+from the overload-collision shape this entry addresses.
+
+_Owner-directed mechanics ("duplicate their signature into the interface in 'declare module'"),
+Claude-executed 2026-08-13._

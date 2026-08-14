@@ -63,7 +63,10 @@ type IManifestOptionsAugmentations<Scopes extends string> = {
 // `Provider` is defaulted so the merge matches its target's type-parameter list
 // (TS2428 requires identical parameters), even though the members do not name it.
 declare module '@rhombus-std/di.core' {
-  interface Manifest<Scopes extends string = any> extends IManifestOptionsAugmentations<Scopes> {}
+  interface Manifest<Scopes extends string = any> extends IManifestOptionsAugmentations<Scopes> {
+    addOptions(tType: Type | string): Manifest<Scopes>;
+    addOptions<T>(tType: Type | string, makeBase: Func<[], T>): Manifest<Scopes>;
+  }
 }
 
 // The overloads live on the member map above -- the signature's source of truth;
