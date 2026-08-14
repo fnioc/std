@@ -4,7 +4,7 @@
 // builds fresh.
 
 import { ServiceProvider } from '@rhombus-std/di';
-import { DefaultManifest } from '@rhombus-std/di.core';
+import { DefaultManifest, UnsatisfiableError } from '@rhombus-std/di.core';
 import { Type } from '@rhombus-std/primitives';
 import { describe, expect, test } from 'bun:test';
 
@@ -53,5 +53,26 @@ describe('calling from a FunctionType node', () => {
     const provider = providerWithBar('from an arrow');
     const arrow = (bar: unknown) => ({ bar });
     expect(provider.getService(Type.func(Gadget, [[Bar]]), arrow)).toEqual({ bar: 'from an arrow' });
+  });
+});
+
+describe('what the door does not do', () => {
+  class Widget {
+    constructor(readonly bar: unknown) {}
+  }
+
+  test('a dependency nothing registers throws rather than arriving undefined', () => {
+    // Absence answers the one-argument lookup, which is a question about a
+    // registration. Here the caller has already said what to build, so a
+    // dependency it cannot reach is a broken graph.
+    const provider = new ServiceProvider(DefaultManifest.empty<string>());
+    expect(() => provider.getService(Type.ctor(Foo, [[Bar]]), Widget)).toThrow(UnsatisfiableError);
+  });
+
+  test('the node stays unregistered — a later lookup of it still finds nothing', () => {
+    const provider = providerWithBar('a bar');
+    const node = Type.ctor(Foo, [[Bar]]);
+    provider.getService(node, Widget);
+    expect(provider.getService(node)).toBeUndefined();
   });
 });
