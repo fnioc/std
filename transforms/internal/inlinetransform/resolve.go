@@ -129,13 +129,19 @@ func resolveMember(prog *driver.Program, checker *shimchecker.Checker, ex *bodyE
 	}
 	if len(declMap) == 0 {
 		// Two very different situations reach here. If no declaration even carries
-		// the body's type-parameter count, the sugar overload is not loaded in this
-		// program — a consumer that never pulls in the augmentation — and there is
-		// nothing to inline; the entry still registers its shape so a call written
-		// in it cannot pass the sweep unnoticed. If one does, the sugar overload IS
-		// present and only its value parameters disagree with the body's: an
-		// authoring fault, never a configuration.
-		if !anyDeclarationTakes(declarations, body.Discriminator.TypeParamCount) {
+		// the body's type-parameter count AND value-parameter count, the sugar
+		// overload is not loaded in this program — a consumer that never pulls in
+		// the augmentation, or a receiver carrying an unrelated overload that
+		// happens to share the body's type-parameter count but not its arity — and
+		// there is nothing to inline; the entry still registers its shape so a call
+		// written in it cannot pass the sweep unnoticed. If one does, the sugar
+		// overload IS present and only its value parameter NAMES disagree with the
+		// body's: an authoring fault, never a configuration. Arity is what tells
+		// these apart — an unrelated overload's own value-parameter count is
+		// essentially never the sugar body's by coincidence, where its
+		// type-parameter count alone often is (both commonly single-type-parameter
+		// generics, for instance).
+		if !anyDeclarationTakes(declarations, body.Discriminator) {
 			return resolved, OutcomeUnmatched, nil
 		}
 		return nil, OutcomeAbsent, fmt.Errorf(
@@ -147,12 +153,19 @@ func resolveMember(prog *driver.Program, checker *shimchecker.Checker, ex *bodyE
 	return resolved, OutcomeActive, nil
 }
 
-// anyDeclarationTakes reports whether any declaration carries exactly count type
-// parameters — the signal that the sugar overload is loaded, whatever its value
-// parameters turn out to be.
-func anyDeclarationTakes(decls []*shimast.Node, count int) bool {
+// anyDeclarationTakes reports whether any declaration carries the same
+// type-parameter count AND value-parameter count as want — the signal that the
+// sugar overload is loaded, whatever its value parameter NAMES turn out to be.
+// Value-parameter count is load-bearing here, not just type-parameter count: two
+// otherwise-unrelated overloads of one member commonly share a type-parameter
+// count (a single generic parameter is the ordinary shape for both a sugar
+// overload and a runtime one taking an explicit node), so type-parameter count
+// alone cannot tell "the sugar's own declaration, renamed" apart from "a
+// different overload entirely".
+func anyDeclarationTakes(decls []*shimast.Node, want Discriminator) bool {
 	for _, d := range decls {
-		if len(typeParamNames(d)) == count {
+		disc := declarationDiscriminator(d)
+		if disc.TypeParamCount == want.TypeParamCount && len(disc.Params) == len(want.Params) {
 			return true
 		}
 	}
