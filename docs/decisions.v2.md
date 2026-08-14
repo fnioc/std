@@ -2187,3 +2187,24 @@ it. Among plural within-kind-assignable candidates the most recent registration 
 with recency everywhere else.
 
 _Owner-ruled 2026-08-14, Claude-recorded._
+
+## §178 — `schemaof`'s leaf members share typefor's hoist const table; its own structure stays inline
+
+A `schemaof<T>()` expansion member that stops at a name, literal, or nullish singleton — the same
+leaf shapes `typefor<T>()` derives — is spelled through the project's shared const table when the
+project hoists, rather than always writing its `Type.*` factory call at the call site: the two
+primitives pass the SAME `*Hoist` to their stage constructors, so a type either one reaches interns
+to one const regardless of which primitive reached it first. The object/tuple/union structure
+`schemaof` composes AROUND such a member stays inline unconditionally — that structure is this
+stage's own, not a type a hand-writer would address by name, so it carries no const of its own even
+when every leaf inside it does.
+
+`typefortransform`'s per-file `hoistEmitter` — previously typefor-private — is exported as
+`HoistEmitter`, with a `NewHoistEmitter` constructor and `Node`/`Imports` methods, so a sibling
+primitive's own leaf emission can share the registry through the identical handle typefor uses; a
+`nil *Hoist` still selects INLINE emission for both primitives, matching the emission a project
+without the default declares.
+
+_Owner-directed via task #40 (the hoisting guarantee — one const per distinct interned node
+referenced anywhere in the project's lowered output — reads across every primitive that derives a
+`Type.*` tree, not typefor alone), Claude-executed 2026-08-14._
