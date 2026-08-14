@@ -52,7 +52,8 @@ export namespace ServiceManifestLoggingAugmentations {
    * registration -- its own AND whatever the delegate added through the
    * builder's `.services` (the manifest chain is immutable -- never `this`).
    */
-  export function addLogging(this: Manifest<string>, configure?: Func<[ILoggingBuilder], void>): Manifest<string> {
+  export function addLogging<S extends string = string>(this: Manifest<S>,
+    configure?: Func<[ILoggingBuilder], void>): Manifest<S> {
     // The LoggerFilterOptions assembly + its default (Information) min level.
     let m: Manifest<string> = this.addOptions<LoggerFilterOptions>(LOGGER_FILTER_OPTIONS_TYPE,
       () => new LoggerFilterOptions());
@@ -92,7 +93,7 @@ export namespace ServiceManifestLoggingAugmentations {
     // everything it registered.
     const builder = new LoggingBuilder(m as unknown as Manifest);
     configure?.(builder);
-    return builder.services as unknown as Manifest<string>;
+    return builder.services as unknown as Manifest<S>;
   }
 }
 

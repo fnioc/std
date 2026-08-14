@@ -27,27 +27,30 @@ export namespace ServiceManifestOptionsAugmentations {
    * every `IOptions<…>` request, and this call is what makes it answer for this
    * type. Distinct from the pipeline overload below by its arity.
    */
-  export function addOptions(this: Manifest<string>, tType: Type | string): Manifest<string>;
+  export function addOptions<S extends string = string>(this: Manifest<S>, tType: Type | string): Manifest<S>;
   /**
    * Offers `IOptions<T>` for the options type `tType`, building its value
    * through the pipeline: `makeBase` produces the instance each run starts from,
    * and every configure / post-configure / validate step and change-token source
    * registered for `tType` then applies to it.
    */
-  export function addOptions<T>(this: Manifest<string>, tType: Type | string, makeBase: Func<[], T>): Manifest<string>;
-  export function addOptions<T>(this: Manifest<string>, tType: Type | string,
-    makeBase?: Func<[], T>): Manifest<string> {
+  export function addOptions<T, S extends string = string>(this: Manifest<S>, tType: Type | string,
+    makeBase: Func<[], T>): Manifest<S>;
+  export function addOptions<T, S extends string = string>(this: Manifest<S>, tType: Type | string,
+    makeBase?: Func<[], T>): Manifest<S> {
     const type = typeof tType === 'string' ? Type.from(tType) : tType;
+    // `ensureOpenOptions` is typed over the scope-erased `Manifest<string>`, so
+    // its result is cast back to the caller's own scope below.
     const m = ensureOpenOptions(this);
     // Both forms fill the same base slot, which is what offers this type; they
     // differ only in where the base value comes from. Given a factory it is
     // that factory; given nothing, the base is whatever `T` itself resolves
     // to, injected here so the resolution is the container's, not ours.
     if (makeBase) {
-      return m.addValue(baseFactoryType(type), makeBase);
+      return m.addValue(baseFactoryType(type), makeBase) as Manifest<S>;
     }
     return m.addFactory(baseFactoryType(type), (value: T): Func<[], T> => () => value,
-      Type.func(baseFactoryType(type), [[type]]));
+      Type.func(baseFactoryType(type), [[type]])) as Manifest<S>;
   }
 
   /**
@@ -55,22 +58,22 @@ export namespace ServiceManifestOptionsAugmentations {
    * configure step. Accepts a {@link IPostConfigureOptions} or a bare
    * `(options) => void` delegate.
    */
-  export function postConfigure<T>(this: Manifest<string>, tType: Type | string,
-    step: IPostConfigureOptions<T> | Func<[T], void>): Manifest<string>;
+  export function postConfigure<T, S extends string = string>(this: Manifest<S>, tType: Type | string,
+    step: IPostConfigureOptions<T> | Func<[T], void>): Manifest<S>;
   /**
    * The DI-injected post-configure step: resolves each token in `depTokens`
    * and passes the instances to `configureOptions` after the options value
    * — collapsed the same way as the dependency form of {@link configure}
    * above.
    */
-  export function postConfigure<T, Deps extends readonly unknown[]>(this: Manifest<string>, tType: Type | string,
-    depTokens: DepTokens<Deps>, configureOptions: (options: T, ...deps: Deps) => void
+  export function postConfigure<T, Deps extends readonly unknown[], S extends string = string>(this: Manifest<S>,
+    tType: Type | string, depTokens: DepTokens<Deps>, configureOptions: (options: T, ...deps: Deps) => void
   ): Manifest<
-    string
+    S
   >;
-  export function postConfigure<T, Deps extends readonly unknown[]>(this: Manifest<string>, tType: Type | string,
-    step: IPostConfigureOptions<T> | Func<[T], void> | DepTokens<Deps>,
-    configureWithDeps?: (options: T, ...deps: Deps) => void): Manifest<string> {
+  export function postConfigure<T, Deps extends readonly unknown[], S extends string = string>(this: Manifest<S>,
+    tType: Type | string, step: IPostConfigureOptions<T> | Func<[T], void> | DepTokens<Deps>,
+    configureWithDeps?: (options: T, ...deps: Deps) => void): Manifest<S> {
     const type = typeof tType === 'string' ? Type.from(tType) : tType;
     // DI-injected form: `step` is the dep-token tuple and `configureWithDeps`
     // the callback. Registers a factory for the post-configure slot whose
@@ -98,21 +101,21 @@ export namespace ServiceManifestOptionsAugmentations {
    * fully-configured value; a `false` result fails validation with
    * `failureMessage`.
    */
-  export function validate<T>(this: Manifest<string>, tType: Type | string, validate: Func<[T], boolean>,
-    failureMessage?: string): Manifest<string>;
+  export function validate<T, S extends string = string>(this: Manifest<S>, tType: Type | string,
+    validate: Func<[T], boolean>, failureMessage?: string): Manifest<S>;
   /**
    * The DI-injected validate step: resolves each token in `depTokens` and
    * passes the instances to `validate` after the options value; a `false`
    * result fails with `failureMessage` — collapsed the same way as the
    * dependency form of {@link configure} above.
    */
-  export function validate<T, Deps extends readonly unknown[]>(this: Manifest<string>, tType: Type | string,
-    depTokens: DepTokens<Deps>, validate: (options: T, ...deps: Deps) => boolean,
-    failureMessage?: string): Manifest<string>;
-  export function validate<T, Deps extends readonly unknown[]>(this: Manifest<string>, tType: Type | string,
-    validateOrDeps: Func<[T], boolean> | DepTokens<Deps>,
+  export function validate<T, Deps extends readonly unknown[], S extends string = string>(this: Manifest<S>,
+    tType: Type | string, depTokens: DepTokens<Deps>, validate: (options: T, ...deps: Deps) => boolean,
+    failureMessage?: string): Manifest<S>;
+  export function validate<T, Deps extends readonly unknown[], S extends string = string>(this: Manifest<S>,
+    tType: Type | string, validateOrDeps: Func<[T], boolean> | DepTokens<Deps>,
     failureMessageOrValidate?: string | ((options: T, ...deps: Deps) => boolean),
-    failureMessage?: string): Manifest<string> {
+    failureMessage?: string): Manifest<S> {
     const type = typeof tType === 'string' ? Type.from(tType) : tType;
     // DI-injected form: `validateOrDeps` is the dep-token tuple,
     // `failureMessageOrValidate` the predicate, `failureMessage` its message.

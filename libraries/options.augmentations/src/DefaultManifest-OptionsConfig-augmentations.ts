@@ -25,26 +25,28 @@ export namespace ServiceManifestOptionsConfigAugmentations {
    * token, which is what makes the resulting `IOptions<T>` reload-capable.
    * Requires a prior {@link addOptions} for the same `tType`.
    */
-  export function configure(this: Manifest<string>, tType: Type | string, section: IConfig): Manifest<string>;
+  export function configure<S extends string = string>(this: Manifest<S>, tType: Type | string,
+    section: IConfig): Manifest<S>;
   /**
    * Registers a code configure step for `tType`: `configureOptions`
    * runs against the value as one configure source among several (no config
    * section, so no change-token source). Distinguished from the
    * config-section overload of {@link configure} by its function argument.
    */
-  export function configure<T>(this: Manifest<string>, tType: Type | string,
-    configureOptions: Func<[T], void>): Manifest<string>;
+  export function configure<T, S extends string = string>(this: Manifest<S>, tType: Type | string,
+    configureOptions: Func<[T], void>): Manifest<S>;
   /**
    * The DI-injected configure step: resolves each token in `depTokens` from
    * the provider at materialization time and passes the instances to
    * `configureOptions` after the options value. A typed caller writes each
    * token as `typefor<Dep>()`.
    */
-  export function configure<T, Deps extends readonly unknown[]>(this: Manifest<string>, tType: Type | string,
-    depTokens: DepTokens<Deps>, configureOptions: (options: T, ...deps: Deps) => void): Manifest<string>;
-  export function configure<T, Deps extends readonly unknown[]>(this: Manifest<string>, tType: Type | string,
-    source: IConfig | Func<[T], void> | DepTokens<Deps>,
-    configureWithDeps?: (options: T, ...deps: Deps) => void): Manifest<string> {
+  export function configure<T, Deps extends readonly unknown[], S extends string = string>(this: Manifest<S>,
+    tType: Type | string, depTokens: DepTokens<Deps>,
+    configureOptions: (options: T, ...deps: Deps) => void): Manifest<S>;
+  export function configure<T, Deps extends readonly unknown[], S extends string = string>(this: Manifest<S>,
+    tType: Type | string, source: IConfig | Func<[T], void> | DepTokens<Deps>,
+    configureWithDeps?: (options: T, ...deps: Deps) => void): Manifest<S> {
     const type = typeof tType === 'string' ? Type.from(tType) : tType;
     // DI-injected form: `source` is the dep-token tuple and
     // `configureWithDeps` the callback. Registers a factory for the configure
@@ -70,7 +72,7 @@ export namespace ServiceManifestOptionsConfigAugmentations {
     if (typeof configSource === 'function') {
       return this.addValue(configureStepType(type), { configure: configSource });
     }
-    let m: Manifest<string> = this.addValue(configureStepType(type), new ConfigConfigureOptions(configSource));
+    let m: Manifest<S> = this.addValue(configureStepType(type), new ConfigConfigureOptions(configSource));
     m = m.addValue(changeTokenSourceType(type), new ConfigChangeTokenSource(configSource));
     return m;
   }

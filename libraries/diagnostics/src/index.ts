@@ -57,14 +57,16 @@ export namespace ServiceManifestMetricsAugmentations {
    * from every rule / config-bind step registered through the builder, reactive
    * to configuration reloads.
    */
-  export function addMetrics(this: Manifest<string>, configure?: Func<[IMetricsBuilder], void>): Manifest<
-    string
+  export function addMetrics<S extends string = string>(this: Manifest<S>,
+    configure?: Func<[IMetricsBuilder], void>
+  ): Manifest<
+    S
   > {
     // Register the resolvable `IOptions<MetricsOptions>` assembly at singleton
     // scope. Calling addMetrics twice re-registers the (identical) factory --
     // last-wins bare-token resolution keeps that correct. The factory takes the
     // live provider view via a RESOLVER_TYPE slot, exactly like assembleOptions.
-    let m: Manifest<string> = this.addFactory(METRICS_OPTIONS_TYPE,
+    let m: Manifest<S> = this.addFactory(METRICS_OPTIONS_TYPE,
       (resolver) =>
         assembleDiagnosticsOptions(resolver, METRICS_CONFIGURE_TYPE, METRICS_CHANGE_TOKEN_SOURCE_TYPE, () =>
           new MetricsOptions()), Type.func(METRICS_OPTIONS_TYPE, [[RESOLVER_TYPE]]), 'singleton');
@@ -84,7 +86,7 @@ export namespace ServiceManifestMetricsAugmentations {
       configure(builder);
       // The chain is immutable: everything `configure` registered lives on the
       // manifest the BUILDER now holds, not on `m`.
-      m = builder.services as Manifest<string>;
+      m = builder.services as Manifest<S>;
     }
     return m;
   }
@@ -98,10 +100,12 @@ export namespace ServiceManifestTracingAugmentations {
    * from every rule / config-bind step registered through the builder, reactive
    * to configuration reloads.
    */
-  export function addTracing(this: Manifest<string>, configure?: Func<[ITracingBuilder], void>): Manifest<
-    string
+  export function addTracing<S extends string = string>(this: Manifest<S>,
+    configure?: Func<[ITracingBuilder], void>
+  ): Manifest<
+    S
   > {
-    let m: Manifest<string> = this.addFactory(TRACING_OPTIONS_TYPE,
+    let m: Manifest<S> = this.addFactory(TRACING_OPTIONS_TYPE,
       (resolver) =>
         assembleDiagnosticsOptions(resolver, TRACING_CONFIGURE_TYPE, TRACING_CHANGE_TOKEN_SOURCE_TYPE, () =>
           new TracingOptions()), Type.func(TRACING_OPTIONS_TYPE, [[RESOLVER_TYPE]]), 'singleton');
@@ -115,7 +119,7 @@ export namespace ServiceManifestTracingAugmentations {
       const builder = new TracingBuilder(m as Manifest);
       configure(builder);
       // Immutable chain -- read back what the builder registered (see addMetrics).
-      m = builder.services as Manifest<string>;
+      m = builder.services as Manifest<S>;
     }
     return m;
   }

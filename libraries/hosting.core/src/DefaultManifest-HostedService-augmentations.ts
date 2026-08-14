@@ -35,20 +35,20 @@ export namespace ServiceManifestHostedServiceAugmentations {
    * its resolver parameter; a class value is disambiguated by type (not
    * arity) and still resolves to the ctor overload below.
    */
-  export function addHostedService(this: Manifest<string>,
-    implementationFactory: Func<[IServiceProvider], IHostedService>): Manifest<string>;
+  export function addHostedService<S extends string = string>(this: Manifest<S>,
+    implementationFactory: Func<[IServiceProvider], IHostedService>): Manifest<S>;
   /**
    * Registers `ctor` as an {@link IHostedService} the host will start and
    * stop alongside its lifetime. `implementerType` is the ctor's composed
    * constructor type; omitted, a dependency-free ctor is assumed.
    */
-  export function addHostedService(this: Manifest<string>, ctor: Ctor,
-    implementerType?: ConstructorType): Manifest<string>;
+  export function addHostedService<S extends string = string>(this: Manifest<S>, ctor: Ctor,
+    implementerType?: ConstructorType): Manifest<S>;
   // A class value matches the construct-signature arm, an arrow or function the
   // call-signature arm; only the ctor form carries a composed constructor type.
-  export function addHostedService(this: Manifest<string>,
+  export function addHostedService<S extends string = string>(this: Manifest<S>,
     ctorOrImplementationFactory: Ctor | Func<[IServiceProvider], IHostedService>,
-    implementerType?: ConstructorType): Manifest<string> {
+    implementerType?: ConstructorType): Manifest<S> {
     // The factory form injects the live resolver (via the `Type.func(..., [[RESOLVER_TYPE]])`
     // composed type) so the delegate receives it. A ctor form
     // with no `implementerType` is a dependency-free ctor, stated explicitly as one

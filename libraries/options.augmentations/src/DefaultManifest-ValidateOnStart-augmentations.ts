@@ -30,13 +30,13 @@ export namespace ServiceManifestValidateOnStartAugmentations {
    * the built-in `IStartupValidator`. Returns the manifest produced by its
    * registrations (the manifest chain is immutable -- never `this`).
    */
-  export function validateOnStart(this: Manifest<string>, tType: Type | string): Manifest<string> {
+  export function validateOnStart<S extends string = string>(this: Manifest<S>, tType: Type | string): Manifest<S> {
     const type = typeof tType === 'string' ? Type.from(tType) : tType;
     // Accumulate the target in the flat startup-validation slot. This is the
     // one slot holding the composed `IOptions<T>` address rather than the bare
     // `T` every other verb keys on, because StartupValidator resolves each
     // target and reads `.value` off it -- so the target has to be resolvable.
-    let m: Manifest<string> = this.addValue(startupValidationTargetType(), optionsAddressType(type));
+    let m: Manifest<S> = this.addValue(startupValidationTargetType(), optionsAddressType(type));
     // Registers the built-in validator under `IStartupValidator`. di.core has
     // no TryAdd surface (registrations are append-only, last-wins), so a
     // repeated `validateOnStart` appends an equivalent transient registration
