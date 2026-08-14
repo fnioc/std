@@ -8,5 +8,5 @@
 // stays a superset of its core's.
 export * from '@rhombus-std/fileproviders.core';
 
-export { CompositeDirectoryContents } from './CompositeDirectoryContents.js';
-export { CompositeFileProvider } from './CompositeFileProvider.js';
+export * from './CompositeDirectoryContents.js';
+export * from './CompositeFileProvider.js';

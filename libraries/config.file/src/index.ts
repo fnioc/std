@@ -10,8 +10,8 @@
 // `import "@rhombus-std/config.file";`. `sideEffects: true` in package.json
 // keeps a bundler from tree-shaking the registration away.
 
-export { ConfigBuilderFileAugmentations } from './ConfigBuilder-File-augmentations';
-export { FormatError, InvalidDataError } from './errors';
-export { FileConfigProvider } from './FileConfigProvider';
-export { FileConfigSource } from './FileConfigSource';
-export type { FileLoadErrorContext } from './FileLoadErrorContext';
+export * from './ConfigBuilder-File-augmentations';
+export * from './errors';
+export * from './FileConfigProvider';
+export * from './FileConfigSource';
+export type * from './FileLoadErrorContext';

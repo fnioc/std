@@ -10,7 +10,6 @@
 // builder classes and fork the registry's Map, so the sugar would never reach
 // the classes the consumer's own imports resolve to.
 
-export { CommandLineConfigProvider } from './CommandLineConfigProvider';
-export { CommandLineConfigSource } from './CommandLineConfigSource';
-export type { CommandLineConfigSourceOptions } from './CommandLineConfigSource';
-export { ConfigBuilderCommandLineAugmentations } from './ConfigBuilder-CommandLine-augmentations';
+export * from './CommandLineConfigProvider';
+export * from './CommandLineConfigSource';
+export * from './ConfigBuilder-CommandLine-augmentations';

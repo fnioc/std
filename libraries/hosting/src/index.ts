@@ -10,19 +10,19 @@ export * from '@rhombus-std/hosting.core';
 // Side-effect import: registers HostBuilderHostingAugmentations.
 import './HostBuilder-Hosting-augmentations';
 
-export { Host } from './Host';
-export { HostApplicationBuilder } from './HostApplicationBuilder';
-export { HostApplicationBuilderSettings } from './HostApplicationBuilderSettings';
-export { HostBuilder } from './HostBuilder';
+export * from './Host';
+export * from './HostApplicationBuilder';
+export * from './HostApplicationBuilderSettings';
+export * from './HostBuilder';
 
-export { BackgroundServiceErrorBehavior } from './BackgroundServiceErrorBehavior';
-export { ConsoleLifetimeOptions } from './ConsoleLifetimeOptions';
-export { HostOptions } from './HostOptions';
-export { ConsoleLifetime, HOSTING_LIFETIME_CATEGORY } from './internal/ConsoleLifetime';
-export { NullLifetime } from './internal/NullLifetime';
+export * from './BackgroundServiceErrorBehavior';
+export * from './ConsoleLifetimeOptions';
+export * from './HostOptions';
+export * from './internal/ConsoleLifetime';
+export * from './internal/NullLifetime';
 export { MetricsBuilder } from './MetricsBuilder';
 
-export { HostBuilderHostingAugmentations } from './HostBuilder-Hosting-augmentations';
+export * from './HostBuilder-Hosting-augmentations';
 
 // Re-exported from the engine, which owns it; this is the type
 // `useDefaultServiceProvider` configures.

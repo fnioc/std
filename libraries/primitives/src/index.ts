@@ -1,28 +1,24 @@
 // Public entry point for @rhombus-std/primitives.
 
-export { AbortController, neverSignal } from './abort.js';
-export type { AbortControllerConstructor, AbortSignal } from './abort.js';
-export { augment, registerAugmentations } from './augmentation-registry.js';
+export * from './abort.js';
+export * from './augmentation-registry.js';
 export { applyAugmentations } from './augmentations.js';
 export type { AugmentationSet, AugmentationSet2, MergeStrategies, MergeStrategy } from './augmentations.js';
-export { CancellationChangeToken } from './CancellationChangeToken.js';
-export { ChangeToken } from './ChangeToken.js';
-export type { ChangeTokenConsumer, ChangeTokenProducer } from './ChangeToken.js';
-export { CompositeChangeToken } from './CompositeChangeToken.js';
-export type { IChangeToken } from './IChangeToken.js';
-export type { IServiceProvider } from './IServiceProvider.js';
-export { Multimap } from './Multimap.js';
-export { NotImplementedError } from './NotImplementedError.js';
-export { process } from './process.js';
-export type { ProcessLike } from './process.js';
-export type { ReadableStream } from './ReadableStream.js';
-export { clearTimeout, setTimeout } from './TimeoutHandle.js';
-export type { TimeoutHandle } from './TimeoutHandle.js';
-export type { Token } from './Token.js';
-export { TypeParseError } from './Type/internals/TypeParseError.js';
+export * from './CancellationChangeToken.js';
+export * from './ChangeToken.js';
+export * from './CompositeChangeToken.js';
+export type * from './IChangeToken.js';
+export type * from './IServiceProvider.js';
+export * from './Multimap.js';
+export * from './NotImplementedError.js';
+export * from './process.js';
+export type * from './ReadableStream.js';
+export * from './TimeoutHandle.js';
+export type * from './Token.js';
+export * from './Type/internals/TypeParseError.js';
 export { Type } from './Type/Type.js';
 export type { AggregateType, ArrayType, ConstructorType, CtorSpec, FuncSpec, FunctionType, GenericType, GlobalSpec,
   GlobalType, ImportedSpec, ImportedType, IntersectionType, IterableType, LiteralValue, NominalType, ObjectType,
   TagSpec, TagType, TupleType, TypeIdentifier, TypeLiteralType, UnionType } from './Type/Type.js';
-export { TypeVisitor } from './Type/TypeVisitor.js';
+export * from './Type/TypeVisitor.js';
 export * from './utils/index.js';

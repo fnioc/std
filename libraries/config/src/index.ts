@@ -20,12 +20,12 @@
 export * from '@rhombus-std/config.core';
 
 // Engine.
-export { compareConfigKeys } from './config-key-comparer';
-export { ConfigBuilder } from './ConfigBuilder';
-export { ConfigManager } from './ConfigManager';
-export { ConfigProvider } from './ConfigProvider';
-export { ConfigReloadToken } from './ConfigReloadToken';
-export { ConfigRoot } from './ConfigRoot';
+export * from './config-key-comparer';
+export * from './ConfigBuilder';
+export * from './ConfigManager';
+export * from './ConfigProvider';
+export * from './ConfigReloadToken';
+export * from './ConfigRoot';
 export { ConfigSection } from './ConfigSection';
 
 // Memory provider. The re-export is side-effectful: importing this module

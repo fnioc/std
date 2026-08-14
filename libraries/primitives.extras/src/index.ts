@@ -7,6 +7,6 @@
 // state, in code, that the set is published in its package's `package.json`
 // "rhombus-std" marker "inline" list.
 
-export { REGISTER_AUGMENTATIONS_NAME, registerAugmentations } from './registerAugmentations.js';
-export { type InlineBody, type InlineBodySet, registerInlineBodies } from './registerInlineBodies.js';
-export { type TypeFor, typefor, TYPEFOR_NAME } from './typefor.js';
+export * from './registerAugmentations.js';
+export * from './registerInlineBodies.js';
+export * from './typefor.js';

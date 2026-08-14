@@ -5,9 +5,8 @@
 // `import "@rhombus-std/config.ini";`. `sideEffects: true` in package.json
 // keeps a bundler from tree-shaking the registration away.
 
-export { ConfigBuilderIniAugmentations } from './ConfigBuilder-Ini-augmentations';
-export { IniConfigProvider } from './IniConfigProvider';
-export { IniConfigSource } from './IniConfigSource';
-export type { IniConfigSourceOptions } from './IniConfigSource';
-export { IniStreamConfigProvider } from './IniStreamConfigProvider';
-export { IniStreamConfigSource } from './IniStreamConfigSource';
+export * from './ConfigBuilder-Ini-augmentations';
+export * from './IniConfigProvider';
+export * from './IniConfigSource';
+export * from './IniStreamConfigProvider';
+export * from './IniStreamConfigSource';

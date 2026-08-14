@@ -146,8 +146,8 @@ export * from '@rhombus-std/diagnostics.core';
 
 // The concrete builders, exported here so a no-augmentation consumer can
 // construct one directly.
-export { MetricsBuilder } from './metrics/MetricsBuilder';
-export { TracingBuilder } from './tracing/TracingBuilder';
+export * from './metrics/MetricsBuilder';
+export * from './tracing/TracingBuilder';
 
 // The config-binding augmentation sets. Their receiver is the family's OWN
 // builder interface; each self-registers against the builder token so the
@@ -155,13 +155,13 @@ export { TracingBuilder } from './tracing/TracingBuilder';
 // so both `MetricsBuilderConfigAugmentations.addMetricsConfig(builder, cfg)`
 // and `builder.addMetricsConfig(cfg)` work. The method form is primary.
 // Re-exporting the consts also runs each module's registerAugmentations side effect.
-export { MetricsBuilderConfigAugmentations } from './metrics/config/MetricsBuilder-Config-augmentations';
-export { TracingBuilderConfigAugmentations } from './tracing/config/TracingBuilder-Config-augmentations';
+export * from './metrics/config/MetricsBuilder-Config-augmentations';
+export * from './tracing/config/TracingBuilder-Config-augmentations';
 
 // The config-bind IConfigureOptions steps, exposed so a plugin-less consumer
 // can bind a configuration section without the addMetricsConfig wrapper.
-export { MetricsConfigureOptions } from './metrics/config/MetricsConfigureOptions';
-export { TracingConfigureOptions } from './tracing/config/TracingConfigureOptions';
+export * from './metrics/config/MetricsConfigureOptions';
+export * from './tracing/config/TracingConfigureOptions';
 
 // The per-listener configuration factories. `addMetrics`/`addTracing` register
 // the concrete factory at METRICS/TRACING_LISTENER_CONFIGURATION_FACTORY_TYPE;
@@ -170,9 +170,9 @@ export { TracingConfigureOptions } from './tracing/config/TracingConfigureOption
 // The concrete factories and the Metrics/TracingConfig markers are exposed here
 // (like the IConfigureOptions steps above) so a plugin-less consumer can wire
 // the same path by hand.
-export type { IMetricListenerConfigFactory } from './metrics/config/IMetricListenerConfigFactory';
-export { MetricListenerConfigFactory } from './metrics/config/MetricListenerConfigFactory';
-export { MetricsConfig } from './metrics/config/MetricsConfig';
-export { ActivityListenerConfigFactory } from './tracing/config/ActivityListenerConfigFactory';
-export { DefaultActivityListenerConfigFactory } from './tracing/config/DefaultActivityListenerConfigFactory';
-export { TracingConfig } from './tracing/config/TracingConfig';
+export type * from './metrics/config/IMetricListenerConfigFactory';
+export * from './metrics/config/MetricListenerConfigFactory';
+export * from './metrics/config/MetricsConfig';
+export * from './tracing/config/ActivityListenerConfigFactory';
+export * from './tracing/config/DefaultActivityListenerConfigFactory';
+export * from './tracing/config/TracingConfig';
