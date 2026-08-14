@@ -2321,3 +2321,16 @@ difference.
 _Claude-authored under the owner's least-code directive (task #46), 2026-08-14 — minimal
 placeholders taken to get something running, not design rulings; task #5 remains the authority on
 the scope model itself._
+
+## §186 — Async resolution is call-site behavior
+
+The container has no async type kind and no async resolution machinery of its own: asynchrony is
+call-site behavior. `getServiceAsync` wraps the synchronous resolution in a `Promise` and
+forwards; everything reachable asynchronously is reachable through `getService`. A dependency on
+`Promise<T>` or `AsyncIterable<T>` is spelled with the ordinary global generics — there is no
+dedicated node kind for either. The parts that interact with scope — the hoist walk consulting
+the scope cache per async site, per-occurrence placeholder labels, and the concurrent-miss
+double-instantiation question — are held in docs/di2.scope-notes.md for the scope design session;
+none of them changes the call-site principle.
+
+_Owner-ruled (pre-compact session record), Claude-recorded 2026-08-14._
