@@ -25,8 +25,9 @@ class StringifyVisitor extends TypeVisitor<string, Precedence> {
     return this.#aggregate('Array', type);
   }
   protected override visitCtor(type: ConstructorType, minimum: Precedence): string {
+    const prefix = type.abstract ? 'abstract ' : '';
     return this.#parenthesize(
-      `new (${this.#rows(type.args)}) => ` + this.visit(type.instance, Precedence.arrow),
+      `${prefix}new (${this.#rows(type.args)}) => ` + this.visit(type.instance, Precedence.arrow),
       Precedence.arrow,
       minimum,
     );

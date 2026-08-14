@@ -272,10 +272,12 @@ class TypeParser {
     return this.#next().text;
   }
 
+  /** True at `new (` or the abstract-constructor spelling `abstract new (`. */
   #atCtor(): boolean {
-    const token = this.#peek();
-    return token?.kind === 'name' && !token.escaped && token.text === 'new'
-      && this.#lexed[this.#index + 1]?.text === '(';
+    const offset = this.#atName('abstract') ? 1 : 0;
+    const marker = this.#lexed[this.#index + offset];
+    return marker?.kind === 'name' && !marker.escaped && marker.text === 'new'
+      && this.#lexed[this.#index + offset + 1]?.text === '(';
   }
 
   /** An open paren begins a function type only when the group it opens is followed by `=>`. */
@@ -309,11 +311,12 @@ class TypeParser {
   }
 
   #ctor(): ConstructorType {
+    const abstract = this.#takeName('abstract');
     this.#index++;
     this.#expect('(');
     const rows = this.#rowList(')');
     this.#expect('=>');
-    return ctor(this.#type(), rows);
+    return ctor(this.#type(), rows, abstract);
   }
 
   #peek(): LexToken | undefined {
@@ -330,6 +333,20 @@ class TypeParser {
     }
     this.#index++;
     return token;
+  }
+
+  /** True at an unescaped name reading exactly `text` — a contextual keyword check. */
+  #atName(text: string): boolean {
+    const token = this.#peek();
+    return token?.kind === 'name' && !token.escaped && token.text === text;
+  }
+
+  #takeName(text: string): boolean {
+    if (!this.#atName(text)) {
+      return false;
+    }
+    this.#index++;
+    return true;
   }
 
   #at(punctuation: string): boolean {

@@ -43,9 +43,14 @@ class SatisfiesVisitor extends TypeVisitor<Predicate> {
     return this.#aggregate(type);
   }
 
+  /**
+   * An abstract candidate serves only an abstract request — an implementer nothing can `new`
+   * cannot answer a request for one that can. A concrete candidate serves either.
+   */
   protected override visitCtor(type: ConstructorType): Predicate {
     return proposed =>
       proposed.kind === 'ctor'
+      && (!proposed.abstract || type.abstract)
       && this.#rows(proposed.args, type.args)
       && this.match(proposed.instance, type.instance);
   }

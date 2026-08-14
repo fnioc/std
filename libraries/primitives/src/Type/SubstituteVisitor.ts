@@ -28,6 +28,7 @@ class SubstituteVisitor extends TypeVisitor<Type> {
     return Type.ctor({
       instance: this.visit(type.instance),
       args: this.#allRows(type.args),
+      abstract: type.abstract,
     });
   }
 

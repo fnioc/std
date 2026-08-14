@@ -409,7 +409,8 @@ function buildOrderContainer(): Manifest<'singleton'> {
   // which nothing registers, so the single-argument row wins and the sink falls
   // back to its built-in address.
   services = services.addClass(SINK_TYPE, EmailSink,
-    Type.ctor({ instance: SINK_TYPE, args: [[CLOCK_TYPE, EMAIL_OPTIONS_TYPE], [CLOCK_TYPE]] }), 'singleton', 'email');
+    Type.ctor({ instance: SINK_TYPE, args: [[CLOCK_TYPE, EMAIL_OPTIONS_TYPE], [CLOCK_TYPE]], abstract: false }),
+    'singleton', 'email');
 
   // An OPTIONAL dependency, spelled honestly: a union whose other member is the
   // literal `undefined`. A literal member supplies ITSELF rather than competing

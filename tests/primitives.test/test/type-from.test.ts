@@ -55,7 +55,7 @@ describe('Type.from', () => {
   test('reads a callable answering to several calls, semicolons between its rows', () => {
     expect(Type.from('(app:A; ) => app:B')).toBe(Type.func({ return: B, args: [[A], []] }));
     expect(Type.from('new (app:A; app:B, app:A) => app:B')).toBe(
-      Type.ctor({ instance: B, args: [[A], [B, A]] }),
+      Type.ctor({ instance: B, args: [[A], [B, A]], abstract: false }),
     );
     // A leading empty row is the call taking nothing, written first.
     expect(Type.from('(; app:A) => app:B')).toBe(Type.func({ return: B, args: [[], [A]] }));
@@ -68,6 +68,15 @@ describe('Type.from', () => {
     expect(Type.stringify(Type.func(B, [[A]]))).toBe('(app:A) => app:B');
     expect(Type.stringify(Type.ctor(B, [[]]))).toBe('new () => app:B');
     expect(Type.stringify(Type.func({ return: B, args: [[A], []] }))).toBe('(app:A; ) => app:B');
+  });
+
+  test('an abstract constructor carries the prefix, round-tripping both directions', () => {
+    const value = Type.ctor(B, [[A]]);
+    const built = Type.ctor(B, [[A]], true);
+    expect(Type.stringify(value)).toBe('new (app:A) => app:B');
+    expect(Type.stringify(built)).toBe('abstract new (app:A) => app:B');
+    expect(built).not.toBe(value);
+    expect(Type.from('abstract new (app:A) => app:B')).toBe(built);
   });
 
   test('reads the arrow forms', () => {
@@ -293,7 +302,7 @@ function generate(random: () => number, depth: number): Type {
       return Type.func({ return: child(), args: rows() });
     }
     case 'ctor': {
-      return Type.ctor({ instance: child(), args: rows() });
+      return Type.ctor({ instance: child(), args: rows(), abstract: pick([true, false]) });
     }
     case 'object': {
       return Type.object(Object.fromEntries(Array.from({ length: many(3) }, () => [pick(NAMES), child()])));

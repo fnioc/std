@@ -91,6 +91,8 @@ export interface ArrayType extends AggregateBase<'array'> {}
 export interface ConstructorType extends TypeBase<'ctor'> {
   readonly args: TypeSignatures;
   readonly instance: Type;
+  /** Does this constructor build an abstract class — one `new` never targets directly? */
+  readonly abstract: boolean;
 }
 
 export interface FunctionType extends TypeBase<'func'> {
@@ -199,20 +201,23 @@ export namespace Type {
    *
    * @remarks
    * `args` is one ROW per call the constructor answers to, so a constructor taking one dependency
-   * is `[[dep]]` and one taking nothing is `[[]]`. The object form names the node's own fields.
+   * is `[[dep]]` and one taking nothing is `[[]]`. `abstract` names a constructor that builds an
+   * abstract class — one nothing constructs with `new` directly — and defaults to `false` when
+   * omitted. The object form names the node's own fields.
    *
    * @example
    * ```ts
    * Type.ctor(box, [[string]]);                               // new (string) => box
    * Type.ctor(box, [[string], []]);                           // new (string; ) => box
-   * Type.ctor({ instance: box, args: [[]] });
+   * Type.ctor(box, [[]], true);                                // abstract new () => box
+   * Type.ctor({ instance: box, args: [[]], abstract: false });
    * ```
    */
-  export function ctor(instance: Type, args: TypeSignatures): ConstructorType;
+  export function ctor(instance: Type, args: TypeSignatures, abstract?: boolean): ConstructorType;
   export function ctor(spec: Spec<ConstructorType>): ConstructorType;
   export function ctor(...args: any[]): ConstructorType {
     return args.length > 1
-      ? factory.ctor(args[0], args[1])
+      ? factory.ctor(args[0], args[1], args[2])
       : adopt({ ...args[0] as Spec<ConstructorType>, kind: 'ctor' });
   }
 

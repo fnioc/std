@@ -86,8 +86,8 @@ describe('Type.satisfies on parameter rows', () => {
   });
 
   test('every condition row needs an answer — a shared call is not enough on its own', () => {
-    const condition = Type.ctor({ instance: C, args: [[A], [A, B]] });
-    expect(satisfies(Type.ctor({ instance: C, args: [[A], [A, B]] }), condition)).toBe(true);
+    const condition = Type.ctor({ instance: C, args: [[A], [A, B]], abstract: false });
+    expect(satisfies(Type.ctor({ instance: C, args: [[A], [A, B]], abstract: false }), condition)).toBe(true);
     // Serving only the [A] row leaves [A, B] unanswered — surplus rows are fine, missing ones are not.
     expect(satisfies(Type.ctor(C, [[A]]), condition)).toBe(false);
     expect(satisfies(Type.ctor(C, [[B]]), condition)).toBe(false);
@@ -103,10 +103,26 @@ describe('Type.satisfies on parameter rows', () => {
   });
 });
 
+describe('Type.satisfies on an abstract constructor', () => {
+  const C = Type.imported('C', 'app');
+  const concrete = () => Type.ctor(C, [[]]);
+  const abstractCtor = () => Type.ctor(C, [[]], true);
+
+  test('a concrete candidate serves both a concrete and an abstract request', () => {
+    expect(satisfies(concrete(), concrete())).toBe(true);
+    expect(satisfies(concrete(), abstractCtor())).toBe(true);
+  });
+
+  test('an abstract candidate serves only an abstract request', () => {
+    expect(satisfies(abstractCtor(), abstractCtor())).toBe(true);
+    expect(satisfies(abstractCtor(), concrete())).toBe(false);
+  });
+});
+
 describe('a callable answers to at least one call', () => {
   test('no row at all is refused, since it has no spelling', () => {
     expect(() => Type.func({ return: A, args: [] })).toThrow(TypeError);
-    expect(() => Type.ctor({ instance: A, args: [] })).toThrow(/at least one call/);
+    expect(() => Type.ctor({ instance: A, args: [], abstract: false })).toThrow(/at least one call/);
   });
 
   test('one empty row is a callable taking nothing', () => {

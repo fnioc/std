@@ -200,7 +200,7 @@ export class PendingRegistration<Scopes extends string> implements PendingState<
   #constructorType(type: Type): ConstructorType {
     const shape = this.#shape(type);
     if (shape.kind === 'signatures') {
-      return Type.ctor({ instance: type, args: rows(shape.signatures) });
+      return Type.ctor({ instance: type, args: rows(shape.signatures), abstract: false });
     }
     if (shape.implementerType.kind !== 'ctor') {
       throw new Error(

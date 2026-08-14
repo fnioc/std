@@ -53,12 +53,12 @@ export function func(returns: Type, args: TypeSignatures): FunctionType {
   );
 }
 
-export function ctor(instance: Type, args: TypeSignatures): ConstructorType {
+export function ctor(instance: Type, args: TypeSignatures, abstract = false): ConstructorType {
   const slot = adopt(instance);
   const rows = adoptRows(args);
   return intern(
-    `ctor\0${id(slot)}\0${rowsKey(rows)}`,
-    () => node<ConstructorType>({ kind: 'ctor', args: rows, instance: slot }),
+    `ctor\0${abstract ? 1 : 0}\0${id(slot)}\0${rowsKey(rows)}`,
+    () => node<ConstructorType>({ kind: 'ctor', args: rows, instance: slot, abstract }),
   );
 }
 
@@ -262,7 +262,7 @@ export function adopt(type: Type): Type {
 /** The fields each kind's factory reads, so a literal missing one is named rather than followed. */
 const REQUIRED: Readonly<Record<Type['kind'], readonly string[]>> = {
   array: ['element'],
-  ctor: ['instance', 'args'],
+  ctor: ['instance', 'args', 'abstract'],
   func: ['return', 'args'],
   generic: ['label'],
   global: ['name', 'genericArgs'],
@@ -302,7 +302,7 @@ class AdoptVisitor extends TypeVisitor<Type> {
     return array(type.element);
   }
   protected override visitCtor(type: ConstructorType): Type {
-    return ctor(type.instance, type.args);
+    return ctor(type.instance, type.args, type.abstract);
   }
   protected override visitFunc(type: FunctionType): Type {
     return func(type.return, type.args);
