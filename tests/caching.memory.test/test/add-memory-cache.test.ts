@@ -25,7 +25,7 @@ class RecordingLoggerFactory implements ILoggerFactory {
 
 describe('addMemoryCache', () => {
   test('method form registers a resolvable IMemoryCache singleton', () => {
-    let services: Manifest<'singleton'> = new DefaultManifest<'singleton'>();
+    let services: Manifest<string> = new DefaultManifest<string>();
 
     services = services.addMemoryCache();
 
@@ -70,7 +70,7 @@ describe('addMemoryCache', () => {
   });
 
   test('the assembled IOptions<MemoryCacheOptions> is itself resolvable at its token', () => {
-    let services: Manifest<'singleton'> = new DefaultManifest<'singleton'>();
+    let services: Manifest<string> = new DefaultManifest<string>();
     services = services.addMemoryCache((options) => {
       options.name = 'configured';
     });
@@ -82,7 +82,7 @@ describe('addMemoryCache', () => {
   });
 
   test('injects the registered ILoggerFactory into the cache', () => {
-    let services: Manifest<'singleton'> = new DefaultManifest<'singleton'>();
+    let services: Manifest<string> = new DefaultManifest<string>();
     const factory = new RecordingLoggerFactory();
     services = services.addValue(LOGGER_FACTORY_TYPE, factory);
     services = services.addMemoryCache();
@@ -93,7 +93,7 @@ describe('addMemoryCache', () => {
   });
 
   test('resolves without a registered ILoggerFactory (null-logger fallback)', () => {
-    let services: Manifest<'singleton'> = new DefaultManifest<'singleton'>();
+    let services: Manifest<string> = new DefaultManifest<string>();
     services = services.addMemoryCache();
 
     const cache: MemoryCache = services.build().createScope('singleton')
@@ -102,7 +102,7 @@ describe('addMemoryCache', () => {
   });
 
   test('keeps an earlier IMemoryCache registration (the reference TryAdd semantics)', () => {
-    let services: Manifest<'singleton'> = new DefaultManifest<'singleton'>();
+    let services: Manifest<string> = new DefaultManifest<string>();
     const sentinel = { marker: 'pre-registered' };
     services = services.addValue(MEMORY_CACHE_TYPE, sentinel);
 
