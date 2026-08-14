@@ -13,18 +13,17 @@ import (
 )
 
 // stagePrefix namespaces each stage's internal name (e.g. "rhombusstd_nameof").
-// The names are host-internal identifiers now — used to single out mergesynth for
-// the pre-pass split (partitionStages) and to label diagnostics — not selectors:
-// the whole stage table always runs (W7).
+// The names are host-internal identifiers — used to single out mergesynth for the
+// pre-pass split (partitionStages) and to label diagnostics — not selectors: the
+// whole stage table always runs.
 const stagePrefix = "rhombusstd_"
 
 // BaseStages is the fixed execution order every base stage runs in. There is no
-// selection — the host runs this whole table on every file (W7); a stage that
-// matches nothing is a cheap no-op (disjoint match sets).
-// Every stage is now a DOMAIN-AGNOSTIC primitive: the bespoke di / di_options /
-// config registration stages were deleted (W6p3), their authoring forms
-// re-expressed as inline sugar bodies the primitives lower under the fixed-point
-// loop. Order:
+// selection — the host runs this whole table on every file; a stage that matches
+// nothing is a cheap no-op (disjoint match sets).
+// Every stage is a DOMAIN-AGNOSTIC primitive: a family's own authoring forms are
+// inline sugar bodies the inline stage substitutes, and the primitives transform
+// what those bodies leave behind under the fixed-point loop. Order:
 //
 // inline first (so single-expression sugar bodies are substituted before any
 // primitive stage runs), then mergesynth (it reads the ORIGINAL augmentation
