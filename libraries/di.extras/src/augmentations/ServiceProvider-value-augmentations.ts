@@ -28,9 +28,9 @@ export namespace ServiceProviderValueAugmentations {
 
 declare module '@rhombus-std/primitives' {
   interface IServiceProvider extends Flatten<typeof ServiceProviderValueAugmentations> {
-    getService<T extends Ctor>(this: IServiceProvider, value: T): InstanceType<T>;
+    getService<T extends Ctor>(value: T): InstanceType<T>;
 
-    getService<T extends Func>(this: IServiceProvider, value: T): ReturnType<T>;
+    getService<T extends Func>(value: T): ReturnType<T>;
   }
 }
 
