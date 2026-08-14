@@ -2029,3 +2029,30 @@ from the overload-collision shape this entry addresses.
 
 _Owner-directed mechanics ("duplicate their signature into the interface in 'declare module'"),
 Claude-executed 2026-08-13._
+
+## §173 — The envelope carries the consumer program's own TypeScript diagnostics, collected once
+
+The Go host type-checks the whole consumer program to run its stages — the checker runs regardless —
+but `noEmitOnError` is left off (the host always force-emits), so a type-broken program built "green":
+the program's real bind/syntactic/semantic diagnostics were computed and then dropped, and any visible
+symptom was whichever spurious stage diagnostic happened to fire on the malformed AST instead of the
+actual error.
+
+`driver.Program.Diagnostics()` (bind + syntactic + semantic, `NoEmit`-declaration filtering and
+sort-and-dedup already applied by the vendored driver package) is called exactly ONCE, program-wide,
+right after `ApplyLinkedPlugins` and before the per-file stage loop — not from inside that loop, so the
+same program-level error is never repeated once per file. Each diagnostic is filtered to `IsError()`
+(skipping suggestions/messages) and converted with a `"TS" + numeric code` code, matching `tsc`'s own
+display convention (`TS2322`, `TS2554`, …) and staying disjoint from every stage's own string codes
+(`STAGE_PANIC`, `FIXED_POINT_EXHAUSTED`, …).
+
+The envelope diagnostic shape gained optional `line`/`character` fields, matching the `ttsc` package's
+own public `ITtscCompilerDiagnostic` contract byte-for-byte in field name — no plugin diagnostic
+populates them today (none carry a computed line/column), but a diagnostic that does now flows its
+position through unchanged. No change was needed on the `@ttsc/unplugin`/`ttsc` npm side: its
+`TtscCompiler.transform()` already flips a result to `"failure"` — and `selectTransformedSource` already
+throws, and `bun.mjs`'s `onLoad` already propagates that throw as a build error — driven purely by
+`diagnostics[].category === "error"` in the parsed envelope, with no per-code special-casing. Putting a
+program's TS errors in the same array with `category: "error"` was the whole fix on that side.
+
+_Owner-ruled ("fix it"), Claude-executed 2026-08-14._
