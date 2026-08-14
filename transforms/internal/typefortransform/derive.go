@@ -30,11 +30,7 @@ func emitAccessor(f *shimast.NodeFactory, binding *valueimport.Binding, d *token
 		if d.Kind != tokens.DerivedFunc && d.Kind != tokens.DerivedCtor {
 			return nil, false
 		}
-		items := make([]*shimast.Node, 0, len(d.Args))
-		for _, a := range d.Args {
-			items = append(items, typeemit.EmitDerived(f, binding, a))
-		}
-		return f.NewArrayLiteralExpression(f.NewNodeList(items), false), true
+		return typeemit.EmitRows(f, binding, d.Args), true
 	case "tag":
 		if d.Kind != tokens.DerivedTag {
 			return nil, false

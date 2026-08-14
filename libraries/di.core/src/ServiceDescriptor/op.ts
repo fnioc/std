@@ -2,11 +2,10 @@ import { Type } from '@rhombus-std/primitives';
 import { assertNever } from '@rhombus-toolkit/type-guards';
 import type { CtorServiceDescriptor, FactoryServiceDescriptor, ServiceDescriptor,
   ValuedServiceDescriptor } from './expressions';
-import { TypeSignatures } from './Signature';
 
 /**
  * Closes an open registration against the generics a `Type.satisfies` match captured,
- * rewriting `serviceType` and every signature parameter so the result stands on its own.
+ * rewriting `serviceType` and the implementation type so the result stands on its own.
  */
 export function substitute<Scopes extends string>(descriptor: ServiceDescriptor<Scopes>,
   generics: ReadonlyMap<string, Type>): ServiceDescriptor<Scopes> {
@@ -18,17 +17,9 @@ export function substitute<Scopes extends string>(descriptor: ServiceDescriptor<
     case 'value':
       return { ...descriptor, serviceType };
     case 'ctor':
-      return {
-        ...descriptor,
-        serviceType,
-        signatures: TypeSignatures.substituteSignatures(descriptor.signatures, generics),
-      };
+      return { ...descriptor, serviceType, implType: Type.substitute(descriptor.implType, generics) };
     case 'factory':
-      return {
-        ...descriptor,
-        serviceType,
-        signatures: TypeSignatures.substituteSignatures(descriptor.signatures, generics),
-      };
+      return { ...descriptor, serviceType, implType: Type.substitute(descriptor.implType, generics) };
     default:
       return assertNever(descriptor);
   }
@@ -36,8 +27,8 @@ export function substitute<Scopes extends string>(descriptor: ServiceDescriptor<
 
 /**
  * Are the two descriptors interchangeable — same slot ({@link matches}) and the same
- * implementation, scope, and signatures? Two descriptors can occupy the same slot without being
- * equal (a replaced registration), so prefer {@link matches} for slot identity.
+ * implementation, scope, and implementation type? Two descriptors can occupy the same slot without
+ * being equal (a replaced registration), so prefer {@link matches} for slot identity.
  */
 export function equals(left: ServiceDescriptor<string>, right: ServiceDescriptor<string>): boolean {
   if (left === right) {
@@ -49,13 +40,11 @@ export function equals(left: ServiceDescriptor<string>, right: ServiceDescriptor
   switch (left.kind) {
     case 'ctor': {
       const other = right as CtorServiceDescriptor<string>;
-      return left.ctor === other.ctor && left.scope === other.scope
-        && TypeSignatures.signaturesEqual(left.signatures, other.signatures);
+      return left.ctor === other.ctor && left.scope === other.scope && left.implType === other.implType;
     }
     case 'factory': {
       const other = right as FactoryServiceDescriptor<string>;
-      return left.factory === other.factory && left.scope === other.scope
-        && TypeSignatures.signaturesEqual(left.signatures, other.signatures);
+      return left.factory === other.factory && left.scope === other.scope && left.implType === other.implType;
     }
     case 'value':
       return left.value === (right as ValuedServiceDescriptor<string>).value;

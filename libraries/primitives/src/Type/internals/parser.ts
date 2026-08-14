@@ -1,4 +1,4 @@
-import type { ConstructorType, FunctionType, ObjectType, Type } from '../Type.js';
+import type { ConstructorType, FunctionType, ObjectType, Type, TypeSignatures } from '../Type.js';
 import { ctor, func, generic, global, imported, intersection, literal, object, tag, tuple,
   union } from './factories.js';
 import { GLOBAL_QUALIFIER, KEYWORD_LITERALS, SERVICE_PROVIDER_FROM } from './grammar.js';
@@ -187,12 +187,12 @@ class TypeParser {
     }
     switch (name.text) {
       case 'Func': {
-        const [returnType, ...args] = this.#reservedArguments(name, 'Func<Return, ...Args>');
-        return func(returnType!, args, []);
+        const [returnType, rows] = this.#reservedSignature(name, 'Func<Return, ...Args>');
+        return func(returnType, rows, []);
       }
       case 'Ctor': {
-        const [instanceType, ...args] = this.#reservedArguments(name, 'Ctor<Instance, ...Args>');
-        return ctor(instanceType!, args, []);
+        const [instanceType, rows] = this.#reservedSignature(name, 'Ctor<Instance, ...Args>');
+        return ctor(instanceType, rows, []);
       }
       case 'ServiceProvider': {
         if (this.#at('<')) {
@@ -206,12 +206,27 @@ class TypeParser {
     }
   }
 
-  #reservedArguments(name: LexToken, spelling: string): readonly Type[] {
-    const types = this.#genericTypes();
-    if (!types.length) {
+  /**
+   * A reserved signature spelling's arguments: the return or instance type, then the parameter
+   * rows — `Ctor<Instance, A, B; C>`. The head is separated from the first row by the same comma
+   * every other argument uses, so a one-row spelling reads as one flat list.
+   */
+  #reservedSignature(name: LexToken, spelling: string): [head: Type, rows: TypeSignatures] {
+    if (!this.#take('<')) {
       throw this.#error(name.position, `\`${spelling}\``);
     }
-    return types;
+    if (this.#take('>')) {
+      throw this.#error(this.#lexed[this.#index - 1]!.position, 'at least one type argument');
+    }
+    const head = this.#type();
+    if (this.#take('>')) {
+      return [head, [[]]];
+    }
+    if (this.#take(';')) {
+      return [head, [[], ...this.#rowList('>')]];
+    }
+    this.#expect(',');
+    return [head, this.#rowList('>')];
   }
 
   #genericTypes(): readonly Type[] {
@@ -223,6 +238,37 @@ class TypeParser {
       throw this.#error(this.#lexed[this.#index - 1]!.position, 'at least one type argument');
     }
     return types;
+  }
+
+  /**
+   * A callable's parameter rows up to `closer`: semicolon-separated rows, each a comma-separated
+   * list of types. An empty list is ONE empty row — a callable taking no parameters, rather than
+   * one answering to no call.
+   */
+  #rowList(closer: string): TypeSignatures {
+    const rows: Array<readonly Type[]> = [];
+    for (;;) {
+      rows.push(this.#row(closer));
+      if (this.#take(closer)) {
+        return rows;
+      }
+      this.#expect(';');
+    }
+  }
+
+  /** One row's parameter types, stopping at its `;` or at `closer` without consuming either. */
+  #row(closer: string): readonly Type[] {
+    const types: Type[] = [];
+    if (this.#at(closer) || this.#at(';')) {
+      return types;
+    }
+    for (;;) {
+      types.push(this.#type());
+      if (this.#at(closer) || this.#at(';')) {
+        return types;
+      }
+      this.#expect(',');
+    }
   }
 
   #typeList(closer: string): readonly Type[] {
@@ -290,17 +336,17 @@ class TypeParser {
 
   #function(): FunctionType {
     this.#expect('(');
-    const args = this.#typeList(')');
+    const rows = this.#rowList(')');
     this.#expect('=>');
-    return func(this.#type(), args, []);
+    return func(this.#type(), rows, []);
   }
 
   #ctor(): ConstructorType {
     this.#index++;
     this.#expect('(');
-    const args = this.#typeList(')');
+    const rows = this.#rowList(')');
     this.#expect('=>');
-    return ctor(this.#type(), args, []);
+    return ctor(this.#type(), rows, []);
   }
 
   #peek(): LexToken | undefined {

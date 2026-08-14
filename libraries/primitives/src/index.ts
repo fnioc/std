@@ -23,6 +23,6 @@ export { TypeParseError } from './Type/internals/TypeParseError.js';
 export { Type } from './Type/Type.js';
 export type { AggregateType, ArrayType, ConstructorType, CtorSpec, FuncSpec, FunctionType, GenericType, GlobalSpec,
   GlobalType, ImportedSpec, ImportedType, IntersectionType, IterableType, LiteralValue, NominalType, ObjectType,
-  TagSpec, TagType, TupleType, TypeIdentifier, TypeLiteralType, UnionType } from './Type/Type.js';
+  TagSpec, TagType, TupleType, TypeIdentifier, TypeLiteralType, TypeSignatures, UnionType } from './Type/Type.js';
 export { TypeVisitor } from './Type/TypeVisitor.js';
 export * from './utils/index.js';

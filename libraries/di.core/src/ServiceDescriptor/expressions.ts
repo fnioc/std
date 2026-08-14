@@ -1,4 +1,4 @@
-import { Type } from '@rhombus-std/primitives';
+import { ConstructorType, FunctionType, Type } from '@rhombus-std/primitives';
 import { Ctor, Func } from '@rhombus-toolkit/func';
 
 /**
@@ -10,19 +10,27 @@ export type ServiceDescriptor<Scopes extends string> =
   | FactoryServiceDescriptor<Scopes>
   | ValuedServiceDescriptor<Scopes>;
 
+/**
+ * A constructor-built registration. {@link implType} is the constructor's whole type, so its
+ * `args` are the parameter rows the container may build the instance through.
+ */
 export interface CtorServiceDescriptor<out Scopes extends string> {
   readonly kind: 'ctor';
   readonly serviceType: Type;
   readonly ctor: Ctor;
-  readonly signatures: ReadonlyArray<readonly Type[]>;
+  readonly implType: ConstructorType;
   readonly scope?: Scopes;
 }
 
+/**
+ * A factory-built registration. {@link implType} is the factory's whole type, so its `args` are
+ * the parameter rows the container may call it through.
+ */
 export interface FactoryServiceDescriptor<out Scopes extends string> {
   readonly kind: 'factory';
   readonly serviceType: Type;
   readonly factory: Func;
-  readonly signatures: ReadonlyArray<readonly Type[]>;
+  readonly implType: FunctionType;
   readonly scope?: Scopes;
 }
 

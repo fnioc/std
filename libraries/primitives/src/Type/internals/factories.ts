@@ -8,7 +8,7 @@ import type { Func } from '@rhombus-toolkit/func';
 import { stringifyType } from '../StringifyVisitor.js';
 import type { AggregateType, ArrayType, ConstructorType, FunctionType, GenericType, GlobalType, ImportedType,
   IntersectionType, IterableType, LiteralValue, ObjectType, TagType, TupleType, Type, TypeBrand, TypeLiteralType,
-  UnionType } from '../Type.js';
+  TypeSignatures, UnionType } from '../Type.js';
 import { TypeVisitor } from '../TypeVisitor.js';
 import { type AggregateName, GLOBAL_QUALIFIER, isAggregateName } from './grammar.js';
 import { id, intern, isInterned } from './intern.js';
@@ -44,24 +44,37 @@ export function tuple(members: readonly Type[]): TupleType {
   return intern(`tuple\0${slots.map(id).join(',')}`, () => node<TupleType>({ kind: 'tuple', members: slots }));
 }
 
-export function func(returnType: Type, args: readonly Type[], genericArgs: readonly Type[]): FunctionType {
+export function func(returnType: Type, args: TypeSignatures, genericArgs: readonly Type[]): FunctionType {
   const result = adopt(returnType);
-  const slots = args.map(adopt);
+  const rows = adoptRows(args);
   const quantifiers = genericArgs.map(adopt);
   return intern(
-    `func\0${quantifiers.map(id).join(',')}\0${id(result)}\0${slots.map(id).join(',')}`,
-    () => node<FunctionType>({ kind: 'func', args: slots, returnType: result, genericArgs: quantifiers }),
+    `func\0${quantifiers.map(id).join(',')}\0${id(result)}\0${rowsKey(rows)}`,
+    () => node<FunctionType>({ kind: 'func', args: rows, returnType: result, genericArgs: quantifiers }),
   );
 }
 
-export function ctor(instanceType: Type, args: readonly Type[], genericArgs: readonly Type[]): ConstructorType {
+export function ctor(instanceType: Type, args: TypeSignatures, genericArgs: readonly Type[]): ConstructorType {
   const instance = adopt(instanceType);
-  const slots = args.map(adopt);
+  const rows = adoptRows(args);
   const quantifiers = genericArgs.map(adopt);
   return intern(
-    `ctor\0${quantifiers.map(id).join(',')}\0${id(instance)}\0${slots.map(id).join(',')}`,
-    () => node<ConstructorType>({ kind: 'ctor', args: slots, instanceType: instance, genericArgs: quantifiers }),
+    `ctor\0${quantifiers.map(id).join(',')}\0${id(instance)}\0${rowsKey(rows)}`,
+    () => node<ConstructorType>({ kind: 'ctor', args: rows, instanceType: instance, genericArgs: quantifiers }),
   );
+}
+
+function adoptRows(args: TypeSignatures): TypeSignatures {
+  return args.map(row => row.map(adopt));
+}
+
+/**
+ * The parameter rows as one key fragment. Each row is delimited by its own brackets rather than
+ * joined with a separator, so a callable answering to one empty call and one answering to no call
+ * at all are told apart.
+ */
+function rowsKey(rows: TypeSignatures): string {
+  return rows.map(row => `(${row.map(id).join(',')})`).join('');
 }
 
 export function array(element: Type): ArrayType {

@@ -8,10 +8,10 @@ class TypeValidatorVisitor extends TypeVisitor<readonly string[]> {
     return this.#element(type);
   }
   protected override visitCtor(type: ConstructorType): readonly string[] {
-    return [...this.#quantifiers(type.genericArgs), ...this.#all(type.args), ...this.visit(type.instanceType)];
+    return [...this.#quantifiers(type.genericArgs), ...this.#rows(type), ...this.visit(type.instanceType)];
   }
   protected override visitFunc(type: FunctionType): readonly string[] {
-    return [...this.#quantifiers(type.genericArgs), ...this.#all(type.args), ...this.visit(type.returnType)];
+    return [...this.#quantifiers(type.genericArgs), ...this.#rows(type), ...this.visit(type.returnType)];
   }
   protected override visitGeneric(_type: GenericType): readonly string[] {
     return [];
@@ -45,6 +45,17 @@ class TypeValidatorVisitor extends TypeVisitor<readonly string[]> {
   }
   protected override visitUnion(type: UnionType): readonly string[] {
     return this.#all(type.members);
+  }
+
+  /**
+   * A callable answers to at least one call, so it carries at least one parameter row — a callable
+   * with none can never be reached, since no argument list matches nothing.
+   */
+  #rows(type: ConstructorType | FunctionType): readonly string[] {
+    const own = type.args.length
+      ? []
+      : [`${stringifyType(type)} answers to no call — a callable names at least one parameter row`];
+    return [...own, ...this.#all(type.args.flat())];
   }
 
   /** A signature quantifies holes; anything else in the list names nothing a request could close. */

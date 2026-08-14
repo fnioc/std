@@ -36,6 +36,16 @@ export type TypeIdentifier =
   | NominalType
   | TagType;
 
+/**
+ * The parameter lists a callable answers to — one row per overload, in declaration order, each row
+ * holding that overload's parameter types in order.
+ *
+ * @remarks
+ * A callable that is not overloaded carries exactly one row, and one taking no parameters carries
+ * one EMPTY row: a callable with no rows at all answers to no call.
+ */
+export type TypeSignatures = ReadonlyArray<readonly Type[]>;
+
 /** Marks a node as one the intern table minted. Declared only — nothing carries it at runtime. */
 declare const TYPE_BRAND: unique symbol;
 
@@ -67,7 +77,7 @@ interface NominalBase<Kind extends string> extends TypeBase<Kind> {
 export interface ArrayType extends AggregateBase<'array'> {}
 
 export interface ConstructorType extends TypeBase<'ctor'> {
-  readonly args: readonly Type[];
+  readonly args: TypeSignatures;
   readonly instanceType: Type;
   /**
    * The holes this signature quantifies, in declaration order — empty for a concrete one. A request
@@ -78,22 +88,34 @@ export interface ConstructorType extends TypeBase<'ctor'> {
   readonly genericArgs: readonly Type[];
 }
 
-/** The fields a {@link Type.ctor} call names, whether it passes them positionally or as one object. */
+/**
+ * The fields a {@link Type.ctor} call names, whether it passes them positionally or as one object.
+ *
+ * @remarks
+ * `args` is the overload-shaped door: the object form spells every row, where the positional form
+ * spells the one row its rest arguments make up.
+ */
 export interface CtorSpec {
   readonly instanceType: Type;
-  readonly args?: readonly Type[];
+  readonly args?: TypeSignatures;
   readonly genericArgs?: readonly Type[];
 }
 
-/** The fields a {@link Type.func} call names, whether it passes them positionally or as one object. */
+/**
+ * The fields a {@link Type.func} call names, whether it passes them positionally or as one object.
+ *
+ * @remarks
+ * `args` is the overload-shaped door: the object form spells every row, where the positional form
+ * spells the one row its rest arguments make up.
+ */
 export interface FuncSpec {
   readonly returnType: Type;
-  readonly args?: readonly Type[];
+  readonly args?: TypeSignatures;
   readonly genericArgs?: readonly Type[];
 }
 
 export interface FunctionType extends TypeBase<'func'> {
-  readonly args: readonly Type[];
+  readonly args: TypeSignatures;
   readonly returnType: Type;
   /**
    * The holes this signature quantifies, in declaration order — empty for a concrete one. A request
@@ -203,15 +225,22 @@ export namespace Type {
    * A constructor signature — `new (...args) => instanceType`, instance type first.
    *
    * @remarks
-   * The positional form spells a concrete signature; one that quantifies holes of its own passes
-   * them as the spec's `genericArgs`.
+   * The positional form spells ONE parameter row, which is every non-overloaded constructor; a
+   * constructor answering to several calls passes its rows as the spec's `args`, and one that
+   * quantifies holes of its own passes them as the spec's `genericArgs`.
+   *
+   * @example
+   * ```ts
+   * Type.ctor(box, string);                                 // new (string) => box
+   * Type.ctor({ instanceType: box, args: [[string], []] }); // new (string; ) => box
+   * ```
    */
   export function ctor(instanceType: Type, ...args: readonly Type[]): ConstructorType;
   export function ctor(spec: CtorSpec): ConstructorType;
   export function ctor(first: Type | CtorSpec, ...args: readonly Type[]): ConstructorType {
     return isNode(first)
-      ? factory.ctor(first, args, [])
-      : factory.ctor(first.instanceType, first.args ?? [], first.genericArgs ?? []);
+      ? factory.ctor(first, [args], [])
+      : factory.ctor(first.instanceType, first.args ?? [[]], first.genericArgs ?? []);
   }
 
   /**
@@ -225,6 +254,8 @@ export namespace Type {
    * the rest. An unqualified name is a global one.
    *
    * A callable carrying its own quantifiers is written with them in front: `<%T>(%T) => app:Box<%T>`.
+   * One answering to several calls writes its parameter rows semicolon-separated, in the one
+   * parameter position — `(string; ) => app:Box` takes a string or nothing.
    *
    * @throws TypeParseError - when the token is malformed.
    */
@@ -241,18 +272,25 @@ export namespace Type {
    * A function signature — `(...args) => returnType`, return type first.
    *
    * @remarks
-   * Identity is the shape alone: two signatures with the same return type, argument types and
+   * Identity is the shape alone: two signatures with the same return type, parameter rows and
    * quantifiers are the same type, whichever functions they were read from.
    *
-   * The positional form spells a concrete signature; one that quantifies holes of its own passes
-   * them as the spec's `genericArgs`.
+   * The positional form spells ONE parameter row, which is every non-overloaded function; a
+   * function answering to several calls passes its rows as the spec's `args`, and one that
+   * quantifies holes of its own passes them as the spec's `genericArgs`.
+   *
+   * @example
+   * ```ts
+   * Type.func(box, string);                                // (string) => box
+   * Type.func({ returnType: box, args: [[string], []] });  // (string; ) => box
+   * ```
    */
   export function func(returnType: Type, ...args: readonly Type[]): FunctionType;
   export function func(spec: FuncSpec): FunctionType;
   export function func(first: Type | FuncSpec, ...args: readonly Type[]): FunctionType {
     return isNode(first)
-      ? factory.func(first, args, [])
-      : factory.func(first.returnType, first.args ?? [], first.genericArgs ?? []);
+      ? factory.func(first, [args], [])
+      : factory.func(first.returnType, first.args ?? [[]], first.genericArgs ?? []);
   }
 
   /**
@@ -459,7 +497,17 @@ export namespace Type {
     return stringifyType(type);
   }
 
-  /** Replaces each generic hole whose label the map names; other holes stay. */
+  /**
+   * Replaces each generic hole whose label the map names; other holes stay.
+   *
+   * @remarks
+   * A callable comes back a callable of the same kind — substitution reaches into its return or
+   * instance type, its parameter rows and its quantifiers, none of which can change what it is —
+   * so a caller holding one keeps its narrower type across the call.
+   */
+  export function substitute(type: ConstructorType, substitutions: ReadonlyMap<string, Type>): ConstructorType;
+  export function substitute(type: FunctionType, substitutions: ReadonlyMap<string, Type>): FunctionType;
+  export function substitute(type: Type, substitutions: ReadonlyMap<string, Type>): Type;
   export function substitute(type: Type, substitutions: ReadonlyMap<string, Type>): Type {
     return substituteType(type, substitutions);
   }

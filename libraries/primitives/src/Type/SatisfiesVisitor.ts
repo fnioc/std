@@ -3,7 +3,8 @@ import { isOpenType } from './analyzers.js';
 import { LITERAL_BASE } from './internals/literal-base.js';
 import { stringifyType } from './StringifyVisitor.js';
 import type { AggregateType, ArrayType, ConstructorType, FunctionType, GenericType, GlobalType, ImportedType,
-  IntersectionType, IterableType, ObjectType, TagType, TupleType, Type, TypeLiteralType, UnionType } from './Type.js';
+  IntersectionType, IterableType, ObjectType, TagType, TupleType, Type, TypeLiteralType, TypeSignatures,
+  UnionType } from './Type.js';
 import { TypeVisitor } from './TypeVisitor.js';
 
 type Predicate = Func<[proposed: Type], boolean>;
@@ -44,15 +45,15 @@ class SatisfiesVisitor extends TypeVisitor<Predicate> {
 
   protected override visitCtor(type: ConstructorType): Predicate {
     return proposed =>
-      proposed.kind === 'ctor' && proposed.args.length === type.args.length // Parameters are contravariant: the condition's parameter must fit the proposed one.
-      && type.args.every((arg, index) => this.match(arg, proposed.args[index]!))
+      proposed.kind === 'ctor'
+      && this.#rows(proposed.args, type.args)
       && this.match(proposed.instanceType, type.instanceType);
   }
 
   protected override visitFunc(type: FunctionType): Predicate {
     return proposed =>
-      proposed.kind === 'func' && proposed.args.length === type.args.length // Parameters are contravariant: the condition's parameter must fit the proposed one.
-      && type.args.every((arg, index) => this.match(arg, proposed.args[index]!))
+      proposed.kind === 'func'
+      && this.#rows(proposed.args, type.args)
       && this.match(proposed.returnType, type.returnType);
   }
 
@@ -142,17 +143,45 @@ class SatisfiesVisitor extends TypeVisitor<Predicate> {
     return condition.length === proposed.length && condition.every((arg, index) => this.match(proposed[index]!, arg));
   }
 
+  /**
+   * Every call the condition answers to, the proposed callable answers to as well: each condition
+   * row is served by SOME proposed row — the reading an overloaded value has where an overload set
+   * is required.
+   */
+  #rows(proposed: TypeSignatures, condition: TypeSignatures): boolean {
+    return condition.every(row => proposed.some(candidate => this.#attemptRow(candidate, row)));
+  }
+
+  /** One row against one: same arity, each parameter contravariant. */
+  #attemptRow(proposed: readonly Type[], condition: readonly Type[]): boolean {
+    if (proposed.length !== condition.length) {
+      return false;
+    }
+    const snapshot = new Map(this.captures);
+    // Parameters are contravariant: the condition's parameter must fit the proposed one.
+    if (condition.every((arg, index) => this.match(arg, proposed[index]!))) {
+      return true;
+    }
+    this.#restore(snapshot);
+    return false;
+  }
+
   /** Tries one branch of a condition union, rolling captures back when it fails. */
   #attempt(proposed: Type, condition: Type): boolean {
     const snapshot = new Map(this.captures);
     if (this.match(proposed, condition)) {
       return true;
     }
+    this.#restore(snapshot);
+    return false;
+  }
+
+  /** Puts the capture map back the way `snapshot` left it, so a failed trial binds nothing. */
+  #restore(snapshot: ReadonlyMap<string, Type>): void {
     this.captures.clear();
     for (const [label, type] of snapshot) {
       this.captures.set(label, type);
     }
-    return false;
   }
 }
 

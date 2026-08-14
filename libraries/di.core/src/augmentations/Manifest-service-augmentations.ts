@@ -1,11 +1,11 @@
-import { AugmentationSet2, type ConstructorType, type Flatten, type FunctionType, type IntersectionType, Token,
+import { AugmentationSet2, type ConstructorType, type Flatten, type FunctionType, Token,
   Type } from '@rhombus-std/primitives';
 import { registerAugmentations } from '@rhombus-std/primitives.extras';
 import { Ctor, Func } from '@rhombus-toolkit/func';
 import { describe, type IComplete, type Unstarted } from '../builder';
 import { Manifest } from '../Manifest';
 import { withKey } from '../service-type';
-import { ServiceDescriptor, TypeSignatures } from '../ServiceDescriptor';
+import { ServiceDescriptor } from '../ServiceDescriptor';
 
 interface IManifestServiceAugmentations<Scopes extends string> {
   /**
@@ -14,8 +14,7 @@ interface IManifestServiceAugmentations<Scopes extends string> {
    *
    * @throws Error - when `key` is given and `type` already carries a tag.
    */
-  addClass(type: Token | Type, ctor: Ctor, implType: ConstructorType | IntersectionType, scope?: Scopes,
-    key?: string): this;
+  addClass(type: Token | Type, ctor: Ctor, implType: ConstructorType, scope?: Scopes, key?: string): this;
 
   /**
    * Registers `factory` under `type` as a factory-built service, always — even when the manifest
@@ -23,8 +22,8 @@ interface IManifestServiceAugmentations<Scopes extends string> {
    *
    * @throws Error - when `key` is given and `type` already carries a tag.
    */
-  addFactory(type: Token | Type, factory: Func<any[], unknown>, implType: FunctionType | IntersectionType,
-    scope?: Scopes, key?: string): this;
+  addFactory(type: Token | Type, factory: Func<any[], unknown>, implType: FunctionType, scope?: Scopes,
+    key?: string): this;
 
   /**
    * Registers `value` under `type` directly, with no construction step, always — even when the
@@ -45,17 +44,13 @@ export const ManifestServiceAugmentations: AugmentationSet2<Manifest, Flatten<IM
       if (typeof type === 'string') {
         return this.addClass(Type.from(type), ctor, implType, scope, key);
       }
-      return this.add(
-        ServiceDescriptor.ctor(withKey(type, key), ctor, TypeSignatures.fromImplType(implType), scope),
-      );
+      return this.add(ServiceDescriptor.ctor(withKey(type, key), ctor, implType, scope));
     },
     addFactory(type, factory, implType, scope, key) {
       if (typeof type === 'string') {
         return this.addFactory(Type.from(type), factory, implType, scope, key);
       }
-      return this.add(
-        ServiceDescriptor.factory(withKey(type, key), factory, TypeSignatures.fromImplType(implType), scope),
-      );
+      return this.add(ServiceDescriptor.factory(withKey(type, key), factory, implType, scope));
     },
     addValue(type, value, key) {
       if (typeof type === 'string') {
