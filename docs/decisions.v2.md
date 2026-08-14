@@ -2524,3 +2524,46 @@ rendered `Type.ctor(...)` call carries the trailing `true` only for the abstract
 invariant §181 already commits to.
 
 _Owner-directed via task #48, Claude-executed 2026-08-14._
+
+## §187 — The value door for resolution is the two-argument `getService(node, value)`
+
+A caller who already holds the constructor or factory it wants built asks for it directly:
+`getService(type, value)` takes the callable's own node alongside the callable itself and hands back
+what it builds. The one-argument `getService(type)` stays what it is — a question about a
+registration, which absence answers with `undefined`.
+
+The node dictates construction. A `ConstructorType` is `new`ed, a `FunctionType` is called, and
+nothing else decides: no runtime discriminant, no class-sniffing, no attempt-then-retry. The two
+faces are declared directly on `IServiceProvider` rather than only on the concrete provider, so a
+caller holding the interface reaches them — a member reached only through an `extends` clause is
+invisible to that caller even though it is genuinely there.
+
+Dependencies resolve for real. The node carries the parameter rows the callable takes, so the
+provider synthesizes a `ServiceDescriptor` for `value` under the node — the node standing as its own
+implementer type — and resolves it through the engine's `additionalServices` channel. `value` is
+realized exactly as a registered constructor or factory is, against a manifest composed for this one
+call and discarded after; the row-selection doctrine picks the construction row. What follows is that
+the result is caller-owned: the call registers nothing, caches nothing, and a later lookup of that
+same node still finds nothing. Two calls build two results. A dependency the manifest cannot reach
+throws rather than arriving `undefined` — the caller has already said what to build, so an
+unreachable dependency is a broken graph, not an absent service. An abstract implementer type is
+refused by the descriptor factory's own guard, which this door inherits rather than bypasses.
+
+The authoring face is `getService(SomeClass)` / `getService(someFunction)`: `typefor`'s value form
+derives the callable's own node — a class arrives as the `ConstructorType` it is — and the sugar
+lowers to the two-argument member, byte-for-byte what a hand-writer would have spelled. It lives in
+its own namespace beside the tokenless `getService<T>()` rather than joining it, because an inline
+body serves exactly the declarations whose parameters it names: the tokenless face takes none and the
+value face takes one, so a single implementation cannot answer for both. Two `inline` entries
+therefore share the member name, which is also why the emit sweep tracks every declared shape of a
+member rather than a single one — residue in either arity is residue.
+
+**Open: the call site spells the type argument.** The inline stage binds a sugar's type parameter
+from what the call writes and refuses one it would have to infer, so the authoring form is
+`getService<typeof Widget>(Widget)`. Closing that is a real change to type-argument recovery: on this
+surface the parameter's type-parameter identity does not match the resolved signature's own
+type-parameter list, and keying the lookup by name instead makes the value face lower at the cost of
+breaking the tokenless one. The alternative is faces carrying no type parameter at all, which lower
+today and return `any`. Which of the three the authoring surface should be is the owner's call.
+
+_Owner-ruled via task #19, Claude-executed 2026-08-14._
