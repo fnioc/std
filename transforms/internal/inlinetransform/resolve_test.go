@@ -83,12 +83,12 @@ export const y = provider.isService('x');
 	if !artifacts.Active {
 		t.Fatal("artifacts.Active should be true — the marker's surface is in this program")
 	}
-	shape, published := artifacts.SugarMembers["isService"]
-	if !published {
+	shapes := artifacts.SugarMembers["isService"]
+	if len(shapes) != 1 {
 		t.Fatal("the unmatched member published no shape, so the sweep cannot see a call to it")
 	}
-	if shape.TypeArgCount != 1 {
-		t.Fatalf("published shape = %+v, want the body's one type parameter", shape)
+	if shapes[0].TypeArgCount != 1 {
+		t.Fatalf("published shape = %+v, want the body's one type parameter", shapes[0])
 	}
 }
 

@@ -21,7 +21,7 @@ const c = tokenOf(1);
 func activeResidueArtifacts() *Artifacts {
 	a := NewArtifacts()
 	a.Active = true
-	a.SugarMembers["isService"] = MemberShape{TypeArgCount: 1, MinValueArgCount: 0, MaxValueArgCount: 0}
+	a.SugarMembers["isService"] = []MemberShape{{TypeArgCount: 1, MinValueArgCount: 0, MaxValueArgCount: 0}}
 	a.FunctionSugars = append(a.FunctionSugars, &Resolved{Member: "tokenOf", Module: "p"})
 	return a
 }
@@ -48,6 +48,36 @@ func TestSweepFlagsResidue(t *testing.T) {
 	}
 	if codes["INLINE_UNLOWERED_SUGAR"] != 2 {
 		t.Errorf("want 2 INLINE_UNLOWERED_SUGAR (isService member + tokenOf free-fn), got %d: %+v", codes["INLINE_UNLOWERED_SUGAR"], diags)
+	}
+}
+
+// TestSweepFlagsEveryShapeOfOneMember covers a member several entries contribute
+// to, each with its own arity: getService answers both a 0-value-arg tokenless
+// call and a 1-value-arg value-driven one. Residue in EITHER arity is residue, so
+// one entry's shape must not stand in for the whole name.
+func TestSweepFlagsEveryShapeOfOneMember(t *testing.T) {
+	sf := parse(t, "/sweep/shapes.ts", `declare const x: any;
+declare const V: any;
+const a = x.getService<Foo>();
+const b = x.getService<Foo>(V);
+`)
+	shimast.SetParentInChildrenUnset(sf.AsNode())
+
+	a := NewArtifacts()
+	a.Active = true
+	a.SugarMembers["getService"] = []MemberShape{
+		{TypeArgCount: 1, MinValueArgCount: 0, MaxValueArgCount: 0},
+		{TypeArgCount: 1, MinValueArgCount: 1, MaxValueArgCount: 1},
+	}
+
+	diags := Sweep(sf, a)
+	if len(diags) != 2 {
+		t.Fatalf("want one diagnostic per surviving arity, got %d: %+v", len(diags), diags)
+	}
+	for _, d := range diags {
+		if d.Code != "INLINE_UNLOWERED_SUGAR" {
+			t.Errorf("diagnostic code = %q, want INLINE_UNLOWERED_SUGAR: %+v", d.Code, d)
+		}
 	}
 }
 
@@ -97,7 +127,7 @@ const b = x.isService<Foo>('token');
 		shimast.SetParentInChildrenUnset(sf.AsNode())
 		a := NewArtifacts()
 		a.Active = true
-		a.SugarMembers["isService"] = MemberShape{TypeArgCount: 1, MinValueArgCount: 0, MaxValueArgCount: 0}
+		a.SugarMembers["isService"] = []MemberShape{{TypeArgCount: 1, MinValueArgCount: 0, MaxValueArgCount: 0}}
 		if diags := Sweep(sf, a); len(diags) != 0 {
 			t.Fatalf("a shape-mismatched member call must not be flagged, got %+v", diags)
 		}
@@ -224,7 +254,7 @@ const a = m.addClass<Impl>(Impl, sigs);
 
 	a := NewArtifacts()
 	a.Active = true
-	a.SugarMembers["addClass"] = MemberShape{TypeArgCount: 1, MinValueArgCount: 2, MaxValueArgCount: 4}
+	a.SugarMembers["addClass"] = []MemberShape{{TypeArgCount: 1, MinValueArgCount: 2, MaxValueArgCount: 4}}
 
 	diags := Sweep(sf, a)
 	if len(diags) != 1 || diags[0].Code != "INLINE_UNLOWERED_SUGAR" {
@@ -249,7 +279,7 @@ export const closed = (services as any).addClass(token, ConsoleLogger, sigs, 'si
 
 	a := NewArtifacts()
 	a.Active = true
-	a.SugarMembers["addClass"] = MemberShape{TypeArgCount: 1, MinValueArgCount: 2, MaxValueArgCount: 4}
+	a.SugarMembers["addClass"] = []MemberShape{{TypeArgCount: 1, MinValueArgCount: 2, MaxValueArgCount: 4}}
 
 	if diags := Sweep(sf, a); len(diags) != 0 {
 		t.Fatalf("a correctly lowered zero-type-arg call must not be flagged as residue, got %+v", diags)
@@ -269,7 +299,7 @@ const mismatches = x.isService<Foo>('token');
 
 	a := NewArtifacts()
 	a.Active = true
-	a.SugarMembers["isService"] = MemberShape{TypeArgCount: 1, MinValueArgCount: 0, MaxValueArgCount: 0}
+	a.SugarMembers["isService"] = []MemberShape{{TypeArgCount: 1, MinValueArgCount: 0, MaxValueArgCount: 0}}
 
 	diags := Sweep(sf, a)
 	if len(diags) != 1 || diags[0].Code != "INLINE_UNLOWERED_SUGAR" {
