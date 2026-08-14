@@ -1,5 +1,8 @@
 {
-  "//": "The ttsc/Go lowering config read by @ttsc/unplugin/bun during the Bun.build JS emit (build.ts). There is no `plugins` array, so ttsc auto-discovery spawns the one owner host from this app's direct *.extras devDeps and the host runs its whole always-on stage table on every file; `typefor<T>()` is folded by the primitive stages under the fixed-point loop. `types` is left unset: the authoring surface is an ordinary generic function rather than a `declare module` augmentation, so nothing has to be forced into the Go program. Extends the base tsconfig; lint stays on plain tsc via tsconfig.json.",
+  "//": "The ttsc/Go lowering config read by @ttsc/unplugin/bun during the per-file stage of the build (build.ts). There is no `plugins` array, so ttsc auto-discovery spawns the one owner host from this app's direct *.extras devDeps and the host runs its whole always-on stage table on every file; `typefor<T>()` is folded by the primitive stages under the fixed-point loop. rootDir/outDir name the stage's own emit root: the engine writes the generated `Type` consts a hoisted call site references into outDir, so the bundle pass resolves them beside the lowered files. `types` is left unset: the authoring surface is an ordinary generic function rather than a `declare module` augmentation, so nothing has to be forced into the Go program. Extends the base tsconfig; lint stays on plain tsc via tsconfig.json.",
   "extends": "./tsconfig.json",
-  "compilerOptions": {}
+  "compilerOptions": {
+    "rootDir": "./src",
+    "outDir": ".ttsc-out"
+  }
 }

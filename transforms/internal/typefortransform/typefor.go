@@ -84,11 +84,26 @@ var accessorNames = map[string]bool{
 // substituted call carries no checker symbol (its callee is a side-parsed
 // clone), so it is anchored via inlinetransform.Artifacts; a source-written call
 // is anchored by resolving its callee to the typefor symbol.
-func New(prog *driver.Program, ctx *tokens.Context, artifacts *inlinetransform.Artifacts, emit func(plugin.Diagnostic)) plugin.FileTransform {
+func New(
+	prog *driver.Program,
+	ctx *tokens.Context,
+	artifacts *inlinetransform.Artifacts,
+	hoist *Hoist,
+	emit func(plugin.Diagnostic),
+) plugin.FileTransform {
 	checker := prog.Checker
 	return func(ec *shimprinter.EmitContext, sf *shimast.SourceFile) *shimast.SourceFile {
 		factory := ec.Factory.AsNodeFactory()
+		// The `Type` binding is only ever USED by inline emission; a hoisted file
+		// names no factory of its own, so the binding stays unreferenced and Ensure
+		// injects nothing for it.
 		binding := valueimport.Resolve(sf, typeemit.Ref)
+		var hoisted *hoistEmitter
+		var e emitter = &inlineEmitter{factory: factory, binding: binding}
+		if hoist != nil {
+			hoisted = newHoistEmitter(factory, hoist, sf, emit)
+			e = hoisted
+		}
 		// Which primitive a callee is, and what its argument means, are facts about
 		// SOURCE-WRITTEN syntax: gathered off the parse node, never re-asked of a
 		// tree the loop has rewritten (plugin.CheckerAnchor).
@@ -103,26 +118,26 @@ func New(prog *driver.Program, ctx *tokens.Context, artifacts *inlinetransform.A
 			// fold it replaces the WHOLE property access, so the inner call is never
 			// independently visited on this pass.
 			if node.Kind == shimast.KindPropertyAccessExpression {
-				if lowered, ok := tryFoldAccessor(checker, parseAnchor, artifacts, ctx, factory, binding, emit, node); ok {
+				if lowered, ok := tryFoldAccessor(checker, parseAnchor, artifacts, ctx, factory, e, emit, node); ok {
 					return lowered
 				}
 			}
 			if node.Kind == shimast.KindCallExpression {
 				// TYPE-argument typefor<T>() — source-written.
 				if t, ok := typeArgCall(checker, parseAnchor, node); ok {
-					return lowerTyped(checker, ctx, factory, binding, emit, node, t, true)
+					return lowerTyped(checker, ctx, e, emit, node, t, true)
 				}
 				// TYPE-argument typefor<T>() — synthetic (inline-substituted).
 				if use, ok := registeredTypefor(artifacts, node); ok {
-					return lowerTyped(checker, ctx, factory, binding, emit, node, use.TypeArgs[0], false)
+					return lowerTyped(checker, ctx, e, emit, node, use.TypeArgs[0], false)
 				}
 				// VALUE-argument typefor(value) — source-written.
 				if arg, ok := valueArgCall(checker, parseAnchor, node); ok {
-					return lowerValueArg(checker, ctx, factory, binding, emit, node, arg)
+					return lowerValueArg(checker, ctx, e, emit, node, arg)
 				}
 				// VALUE-argument typefor(value) — synthetic (inline-substituted).
 				if arg, ok := registeredValueArg(artifacts, node); ok {
-					return lowerValueArg(checker, ctx, factory, binding, emit, node, arg)
+					return lowerValueArg(checker, ctx, e, emit, node, arg)
 				}
 			}
 			return visitor.VisitEachChild(node)
@@ -133,6 +148,9 @@ func New(prog *driver.Program, ctx *tokens.Context, artifacts *inlinetransform.A
 			return sf
 		}
 		result := elideTypeforImports(factory, output.AsSourceFile())
+		if hoisted != nil {
+			return valueimport.Ensure(factory, result, hoisted.imports()...)
+		}
 		return valueimport.Ensure(factory, result, binding)
 	}
 }
@@ -147,8 +165,7 @@ func New(prog *driver.Program, ctx *tokens.Context, artifacts *inlinetransform.A
 func lowerTyped(
 	checker *shimchecker.Checker,
 	ctx *tokens.Context,
-	factory *shimast.NodeFactory,
-	binding *valueimport.Binding,
+	e emitter,
 	emit func(plugin.Diagnostic),
 	node *shimast.Node,
 	t *shimchecker.Type,
@@ -166,7 +183,10 @@ func lowerTyped(
 		}
 		return node
 	}
-	return typeemit.EmitDerived(factory, binding, d)
+	if replacement := e.node(d); replacement != nil {
+		return replacement
+	}
+	return node
 }
 
 // lowerValueArg derives the `Type.*` tree for a VALUE-argument typefor call from
@@ -178,8 +198,7 @@ func lowerTyped(
 func lowerValueArg(
 	checker *shimchecker.Checker,
 	ctx *tokens.Context,
-	factory *shimast.NodeFactory,
-	binding *valueimport.Binding,
+	e emitter,
 	emit func(plugin.Diagnostic),
 	call, arg *shimast.Node,
 ) *shimast.Node {
@@ -193,7 +212,10 @@ func lowerValueArg(
 		})
 		return call
 	}
-	return typeemit.EmitDerived(factory, binding, d)
+	if replacement := e.node(d); replacement != nil {
+		return replacement
+	}
+	return call
 }
 
 // tryFoldAccessor handles a property access whose name is a known TypeBase
@@ -213,7 +235,7 @@ func tryFoldAccessor(
 	artifacts *inlinetransform.Artifacts,
 	ctx *tokens.Context,
 	factory *shimast.NodeFactory,
-	binding *valueimport.Binding,
+	e emitter,
 	emit func(plugin.Diagnostic),
 	node *shimast.Node,
 ) (*shimast.Node, bool) {
@@ -243,7 +265,7 @@ func tryFoldAccessor(
 		// bare call's own visit to report the targeted diagnostic.
 		return nil, false
 	}
-	result, applies := emitAccessor(factory, binding, d, accessorName)
+	result, applies := emitAccessor(factory, e, d, accessorName)
 	if !applies {
 		emit(plugin.Diagnostic{
 			Code:    accessorMismatchCode,
@@ -251,6 +273,9 @@ func tryFoldAccessor(
 			Start:   node.Pos(),
 			Message: "`." + accessorName + "` does not apply to this typefor<T>() derivation — its kind is `" + tokens.KindName(d) + "`",
 		})
+		return node, true
+	}
+	if result == nil {
 		return node, true
 	}
 	return result, true

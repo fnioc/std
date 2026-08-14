@@ -297,6 +297,41 @@ module's actual name instead.
 Every primitive in the table is authoring-only: it throws unconditionally if it ever runs, so
 none of them needs a runtime-shaped home.
 
+**Where a `typefor` result is written.** The `Result` column above is the tree the type spells; a
+project chooses where that tree LANDS with
+`"rhombus-std": { "typefor": { "emit": "hoisted" | "inline" } }`. It is read through the same
+resolution every rhombus-std config reader shares, so it may sit in the package.json marker or in
+any file that marker `extends` — including the `rhombus-std.json` a markerless package.json reaches
+by default.
+
+- **`hoisted`** (the default) collects every derived type into one generated module,
+  `__typefor__.js`, written at the program's `outDir` — which for a lowering-enabled package is the
+  per-file stage directory the plugin-free bundle pass consumes. Each call site carries a reference
+  to a named const, and the file imports the consts it reached.
+- **`inline`** writes each tree out at the call site it was derived for, exactly as the column
+  shows.
+
+The table is a DAG: a node interns under its canonical token spelling (the same spelling the
+`nameof` stage renders flat), children intern before parents, and a composite const references its
+member consts by name — so the module holds one const per DISTINCT type and no subtree is spelled
+twice. A name is `$` plus the sanitized spelling plus, for any spelling that was not already
+entirely alphanumeric, a short hash of it; it is a pure function of the spelling, so it is stable
+across builds and independent of which file reached the type first.
+
+```js
+// __typefor__.js
+import { Type } from '@rhombus-std/primitives';
+
+export const $orders_IClock_3f9a2b1c8d = Type.imported('IClock', 'orders');
+export const $Promise_orders_IClock_c07e41a95b = Type.global('Promise', [$orders_IClock_3f9a2b1c8d]);
+```
+
+The mode rides the PROJECT, never the shared `./ttsc` descriptor: the descriptor is what every
+consumer dedupes to one spawn and one cache key, so nothing that varies per consumer can live there.
+Emission never changes what a tree evaluates to — the runtime interns structurally identical types
+to one object — and `tests/typefor.ttsc.e2e` pins that by expanding every const back into its call
+sites and comparing against the inline emission byte for byte.
+
 **`schemaof<T>()` / `.withType<T>()` surface constraints.** The expansion uses the same
 `typesurface` enumeration as the guard walk, but reads the **writable** direction — coercion
 assigns into a field, so a `get`-only accessor is as unusable as a `#`-named field. A type

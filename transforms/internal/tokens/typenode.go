@@ -202,6 +202,12 @@ func renderLiteral(v LiteralValue) string {
 	}
 }
 
+// RenderTypeNode is the flat token string a TypeNode spells — the canonical
+// spelling of a derived type, and so the identity a caller keys one on.
+func RenderTypeNode(n *TypeNode) string {
+	return renderTypeNode(n)
+}
+
 // renderTypeNode renders a TypeNode back into DeriveTokenF's flat token string —
 // byte-identical to what the pre-split walk produced for the same input, since
 // this is that walk's join step read off the tree instead of built inline.

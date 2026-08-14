@@ -2,10 +2,12 @@
 //
 // The with-transformer composition root: its src is authored in the type-driven
 // dialect, where every service Type — registered, looked up, or published — is
-// minted by `typefor<T>()`. It is a primitive the Go engine folds at build time
-// — `@ttsc/unplugin/bun` runs it as an onLoad transform while Bun.build emits
-// dist/main.js — so what ships is exactly what the without-transformer twin
-// wrote out by hand.
+// minted by `typefor<T>()`. It is a primitive the Go engine folds at build time,
+// in two passes: a per-file STAGE lowers each src file in isolation (and the
+// engine writes the generated `Type` consts a call site references into the same
+// stage directory), then a plugin-free BUNDLE pass folds that emit into
+// dist/main.js. So what ships is exactly what the without-transformer twin wrote
+// out by hand.
 //
 // Every workspace dependency stays EXTERNAL so main.js imports the SAME
 // @rhombus-std/* runtime a published consumer would — the augmentation registry
@@ -14,7 +16,7 @@
 
 import { rmSync } from 'node:fs';
 import { join } from 'node:path';
-import { readTsconfigTransforms, ttscBunPlugin } from '../../scripts/build-package';
+import { readTsconfigTransforms, stagedEntrypoint, stageLowering } from '../../scripts/build-package';
 
 const dir = import.meta.dir;
 const dist = join(dir, 'dist');
@@ -29,8 +31,11 @@ rmSync(dist, { recursive: true, force: true });
 const manual = readTsconfigTransforms(dir, 'tsconfig.ttsc.json');
 const ttscTransforms = manual.length > 0 ? manual : undefined;
 
+const stageDir = await stageLowering({ dir, name: 'examples.app.with-transformer', ttscProject: 'tsconfig.ttsc.json',
+  ttscTransforms });
+
 const js = await Bun.build({
-  entrypoints: [join(dir, 'src/main.ts')],
+  entrypoints: [stagedEntrypoint(stageDir, 'src/main.ts')],
   outdir: dist,
   target: 'node',
   format: 'esm',
@@ -54,7 +59,6 @@ const js = await Bun.build({
     // same object.
     '@rhombus-std/primitives',
   ],
-  plugins: [await ttscBunPlugin(dir, 'tsconfig.ttsc.json', ttscTransforms)],
 });
 if (!js.success) {
   for (const log of js.logs) {

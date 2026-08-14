@@ -510,13 +510,23 @@ One further deviation, because a **transformer** is in play — now a single **G
   how the `declare module` augmentation reaches the program). `rollup` + `rollup-plugin-dts` live at
   the repo root.
 - **The lowering stage (§40, stage-then-bundle).** Any library whose src calls `tokenfor<T>()` (etc.)
-  ships it LOWERED: `buildPackage` runs a per-file `Bun.build` with the `@ttsc/unplugin/bun` adapter
-  active — every `src/**/*.ts` its own entrypoint, all imports external — so each file is lowered
-  into a stage dir; the main bundle then consumes that emit with no plugin (lowering commutes with
-  bundling). The per-file emit is KEPT as `dist/stage/` (reached through the `./private/*` export's
-  `bun` condition — white-box tests execute the lowered JS, since un-lowered `tokenfor` throws at
-  import time; publish-excluded via `"!dist/stage"` in `files`), and the `.` export's `bun`
-  condition points at `dist/bundle/index.js`.
+  ships it LOWERED: the shared `stageLowering` runs a per-file `Bun.build` with the
+  `@ttsc/unplugin/bun` adapter active — every `src/**/*.ts` its own entrypoint, all imports external
+  — so each file is lowered into `.ttsc-out/`; the main bundle then consumes that emit with no
+  plugin (lowering commutes with bundling). **Every ttsc consumer stages, including the two
+  `examples/*.with-transformer`**, whose `tsconfig.ttsc.json` names the same `rootDir: ./src` /
+  `outDir: .ttsc-out` pair the libraries do. The per-file emit is KEPT as `dist/stage/` (reached
+  through the `./private/*` export's `bun` condition — white-box tests execute the lowered JS, since
+  un-lowered `tokenfor` throws at import time; publish-excluded via `"!dist/stage"` in `files`), and
+  the `.` export's `bun` condition points at `dist/bundle/index.js`.
+- **The generated `Type` const module (§148).** `typefor<T>()` emits a reference to a named const,
+  not the `Type.*` tree it derives; the engine writes one `__typefor__.js` per project into the
+  program's `outDir` (so, the stage dir) holding one const per distinct derived type, composites
+  referencing their members by name. `"rhombus-std": { "typefor": { "emit": "hoisted" | "inline" } }`
+  picks the form — **`hoisted` is the default**, and it rides the PROJECT because the shared
+  `./ttsc` descriptor is the one-spawn/one-cache-key dedup point. It is read through
+  `inlinetransform.ResolveConfig`, the one entry point every rhombus-std config reader shares, so
+  the emission may be declared in the package.json marker or in any file that marker `extends`.
 
 Published `dist` is **bundled** (`bun build` for JS, `rollup-plugin-dts` for one rolled `.d.ts`),
 never raw `tsc` output — extensionless bundler-style imports don't resolve under plain Node ESM
