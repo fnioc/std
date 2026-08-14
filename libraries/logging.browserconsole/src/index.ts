@@ -7,9 +7,9 @@
 // logging.core's ILoggingBuilder augmentation token, so the @augment-decorated
 // concrete LoggingBuilder gains the fluent `addBrowserConsole()` method form.
 
-export { BrowserConsoleLogger, type ConsoleMethod, consoleMethodFor } from './BrowserConsoleLogger';
-export { BrowserConsoleLoggerProvider } from './BrowserConsoleLoggerProvider';
+export * from './BrowserConsoleLogger';
+export * from './BrowserConsoleLoggerProvider';
 export type { ConsoleLike } from './ConsoleLike';
 
 // The ILoggingBuilder augmentation set (+ its side-effect registration).
-export { BrowserConsoleLoggerAugmentations } from './LoggingBuilder-BrowserConsole-augmentations';
+export * from './LoggingBuilder-BrowserConsole-augmentations';

@@ -20,9 +20,9 @@
 //
 // di and config stay mutually unaware -- the bridge code lives ONLY here.
 
-export { ConfigChangeTokenSource } from './ConfigChangeTokenSource.js';
-export { ConfigConfigureOptions } from './ConfigConfigureOptions.js';
-export type { IOptionsChangeTokenSource } from './IOptionsChangeTokenSource.js';
+export * from './ConfigChangeTokenSource.js';
+export * from './ConfigConfigureOptions.js';
+export type * from './IOptionsChangeTokenSource.js';
 // The slot-token grammar is public surface: the per-options configure /
 // post-configure / validate steps and change-token sources are ordinary OPEN
 // service contracts — any downstream package may register an implementation
@@ -37,6 +37,6 @@ export { baseFactoryType, changeTokenSourceType, configureStepType, optionsAddre
 
 // Each re-export executes its module, so the `registerAugmentations` side effect
 // installs the verbs onto the manifest.
-export { ServiceManifestOptionsAugmentations } from './DefaultManifest-Options-augmentations.js';
-export { ServiceManifestOptionsConfigAugmentations } from './DefaultManifest-OptionsConfig-augmentations.js';
-export { ServiceManifestValidateOnStartAugmentations } from './DefaultManifest-ValidateOnStart-augmentations.js';
+export * from './DefaultManifest-Options-augmentations.js';
+export * from './DefaultManifest-OptionsConfig-augmentations.js';
+export * from './DefaultManifest-ValidateOnStart-augmentations.js';

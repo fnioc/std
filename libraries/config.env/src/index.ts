@@ -4,8 +4,6 @@
 // A consumer who only wants the sugar (never naming a runtime symbol from this
 // package) needs a bare side-effect import: `import "@rhombus-std/config.env";`.
 
-export { ConfigBuilderEnvAugmentations } from './ConfigBuilder-Env-augmentations';
-export { EnvironmentVariablesConfigProvider } from './EnvironmentVariablesConfigProvider';
-export { colonAndDotVariableNameTransformation, defaultVariableNameTransformation,
-  EnvironmentVariablesConfigSource } from './EnvironmentVariablesConfigSource';
-export type { EnvironmentVariablesConfigSourceOptions } from './EnvironmentVariablesConfigSource';
+export * from './ConfigBuilder-Env-augmentations';
+export * from './EnvironmentVariablesConfigProvider';
+export * from './EnvironmentVariablesConfigSource';

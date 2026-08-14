@@ -11,17 +11,15 @@
 // `"sideEffects": true` so a bundler cannot tree-shake that registration away.
 
 export type { LogEntry } from '@rhombus-std/logging.core';
-export { ConsoleFormatter } from './ConsoleFormatter';
-export { ConsoleFormatterNames } from './ConsoleFormatterNames';
-export { ConsoleFormatterOptions } from './ConsoleFormatterOptions';
-export { ConsoleLogger } from './ConsoleLogger';
-export { ConsoleLoggerOptions, DEFAULT_MAX_QUEUE_LENGTH } from './ConsoleLoggerOptions';
-export { ConsoleLoggerProvider } from './ConsoleLoggerProvider';
-export { ConsoleLoggerQueueFullMode } from './ConsoleLoggerQueueFullMode';
-export { JsonConsoleFormatterOptions } from './JsonConsoleFormatterOptions';
-export type { JsonWriterOptions } from './JsonConsoleFormatterOptions';
-export { LoggerColorBehavior } from './LoggerColorBehavior';
-export { ConsoleLoggerAugmentations } from './LoggingBuilder-Console-augmentations';
-export { SimpleConsoleFormatterOptions } from './SimpleConsoleFormatterOptions';
-export { StringWriter } from './text-writer';
-export type { TextWriter } from './text-writer';
+export * from './ConsoleFormatter';
+export * from './ConsoleFormatterNames';
+export * from './ConsoleFormatterOptions';
+export * from './ConsoleLogger';
+export * from './ConsoleLoggerOptions';
+export * from './ConsoleLoggerProvider';
+export * from './ConsoleLoggerQueueFullMode';
+export * from './JsonConsoleFormatterOptions';
+export * from './LoggerColorBehavior';
+export * from './LoggingBuilder-Console-augmentations';
+export * from './SimpleConsoleFormatterOptions';
+export * from './text-writer';

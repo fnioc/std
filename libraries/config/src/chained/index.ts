@@ -5,8 +5,8 @@ import type { AugmentationSet2, Flatten } from '@rhombus-std/primitives';
 import { registerAugmentations } from '@rhombus-std/primitives.extras';
 import { ChainedConfigSource } from './ChainedConfigSource';
 
-export { ChainedConfigProvider } from './ChainedConfigProvider';
-export { ChainedConfigSource } from './ChainedConfigSource';
+export * from './ChainedConfigProvider';
+export * from './ChainedConfigSource';
 
 interface IConfigBuilderChainedAugmentations {
   /** Adds `config` as a chained configuration source. */

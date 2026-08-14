@@ -5,20 +5,18 @@
 // Importing this package registers the `useBrowserLifetime` augmentation as a
 // side effect, giving the concrete HostBuilder a `useBrowserLifetime()` method.
 
-export { BROWSER_LIFETIME_CATEGORY, BrowserLifetime } from './BrowserLifetime';
-export { BrowserLifetimeOptions } from './BrowserLifetimeOptions';
-export { registerBrowserLifetime } from './register-browser-lifetime';
+export * from './BrowserLifetime';
+export * from './BrowserLifetimeOptions';
+export * from './register-browser-lifetime';
 
-export { PageLifecycleEvents, type PageLifecyclePhase } from './PageLifecycleEvents';
+export * from './PageLifecycleEvents';
 
-export { type BrowserEnvironmentSettings, createBrowserEnvironment } from './browser-environment';
+export * from './browser-environment';
 
-export { BrowserHost, type BrowserHostApplicationBuilderSettings } from './BrowserHost';
+export * from './BrowserHost';
 
-export type { DocumentLifecycleEventType, DocumentLike, DocumentVisibilityState, PageContext, PageTransitionEventLike,
-  WindowLifecycleEventType, WindowLike } from './page-context';
-export { defaultPageContext } from './page-context';
+export * from './page-context';
 
-export { BROWSER_LIFETIME_OPTIONS_TYPE, PAGE_LIFECYCLE_EVENTS_TYPE } from './types';
+export * from './types';
 
-export { HostBuilderBrowserLifetimeAugmentations } from './HostBuilder-BrowserLifetime-augmentations';
+export * from './HostBuilder-BrowserLifetime-augmentations';

@@ -5,9 +5,8 @@
 // `import "@rhombus-std/config.xml";`. `sideEffects: true` in package.json keeps
 // a bundler from tree-shaking the registration away.
 
-export { ConfigBuilderXmlAugmentations } from './ConfigBuilder-Xml-augmentations';
-export { XmlConfigProvider } from './XmlConfigProvider';
-export { XmlConfigSource } from './XmlConfigSource';
-export type { XmlConfigSourceOptions } from './XmlConfigSource';
-export { XmlStreamConfigProvider } from './XmlStreamConfigProvider';
-export { XmlStreamConfigSource } from './XmlStreamConfigSource';
+export * from './ConfigBuilder-Xml-augmentations';
+export * from './XmlConfigProvider';
+export * from './XmlConfigSource';
+export * from './XmlStreamConfigProvider';
+export * from './XmlStreamConfigSource';
