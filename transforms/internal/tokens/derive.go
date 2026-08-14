@@ -164,6 +164,23 @@ func primaryDeclaration(symbol *shimast.Symbol) *shimast.Node {
 	return decls[0]
 }
 
+// isAbstractConstructor reports whether a construct-signature-bearing type
+// comes from an `abstract class` declaration. A bare abstract-constructor
+// type literal with no backing class declaration reads as false — the
+// checker's own signature-level abstract flag isn't reachable through the
+// current ttsc shim, so this only covers the declaration-bearing case.
+func isAbstractConstructor(t *shimchecker.Type) bool {
+	symbol := t.Symbol()
+	if symbol == nil {
+		return false
+	}
+	decl := primaryDeclaration(symbol)
+	if decl == nil || decl.Kind != shimast.KindClassDeclaration {
+		return false
+	}
+	return shimast.GetCombinedModifierFlags(decl)&shimast.ModifierFlagsAbstract != 0
+}
+
 // baseTokenFor renders the base token `<source>:<exportName>` for a named
 // symbol. A default-lib type tokenizes as its bare symbol name.
 func baseTokenFor(ctx *Context, symbol *shimast.Symbol, sourceFile *shimast.SourceFile) string {

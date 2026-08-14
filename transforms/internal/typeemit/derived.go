@@ -15,7 +15,7 @@ func EmitDerived(f *shimast.NodeFactory, binding *valueimport.Binding, d *tokens
 	case tokens.DerivedFunc:
 		return signatureShaped(f, binding, d, "func")
 	case tokens.DerivedCtor:
-		return signatureShaped(f, binding, d, "ctor")
+		return ctorShaped(f, binding, d)
 	case tokens.DerivedTag:
 		return Call(f, binding, "tag", []*shimast.Node{
 			EmitDerived(f, binding, d.Inner),
@@ -45,6 +45,21 @@ func signatureShaped(f *shimast.NodeFactory, binding *valueimport.Binding, d *to
 		EmitDerived(f, binding, d.Ret),
 		EmitRows(f, binding, d.Args),
 	})
+}
+
+// ctorShaped builds `Type.ctor`'s factory call: the instance type followed by
+// its parameter rows, with a trailing `true` literal only when d marks an
+// abstract class — the same call a hand-writer registering a concrete class
+// would spell with two arguments.
+func ctorShaped(f *shimast.NodeFactory, binding *valueimport.Binding, d *tokens.Derived) *shimast.Node {
+	args := []*shimast.Node{
+		EmitDerived(f, binding, d.Ret),
+		EmitRows(f, binding, d.Args),
+	}
+	if d.Abstract {
+		args = append(args, f.NewKeywordExpression(shimast.KindTrueKeyword))
+	}
+	return Call(f, binding, "ctor", args)
 }
 
 // EmitRow builds the factory call for each parameter in one row, in order.
