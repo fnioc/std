@@ -4,3 +4,4 @@
 export * from './augmentations/Manifest-Descriptor-augmentations.js';
 export * from './augmentations/Manifest-service-augmentations.js';
 export * from './augmentations/ServiceProvider-service-augmentations.js';
+export * from './augmentations/ServiceProvider-value-augmentations.js';

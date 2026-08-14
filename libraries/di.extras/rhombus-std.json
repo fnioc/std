@@ -76,6 +76,11 @@
         "type": "@rhombus-std/primitives:IServiceProvider",
         "impl": "@rhombus-std/di.extras:ServiceProviderServiceAugmentations",
         "member": "getServices"
+      },
+      {
+        "type": "@rhombus-std/primitives:IServiceProvider",
+        "impl": "@rhombus-std/di.extras:ServiceProviderValueAugmentations",
+        "member": "getService"
       }
     ]
   }
