@@ -1935,9 +1935,9 @@ class-syntax/prototype-descriptor sniff, the call-then-rescue retry, and the `RE
 dependency shim an earlier draft of this door carried — the node already says which one applies
 and already carries the real parameter types, so there is nothing left to sniff or rescue.
 
-**Dependencies resolve from the node's own parameter types, not a fixed one-entry signature.** The
+**Dependencies resolve from the node's own parameter rows, not a fixed one-entry signature.** The
 node and value are wrapped in a throwaway `ServiceDescriptor` (`ctor` or `factory`, matching the
-node's kind) whose signature is `TypeSignatures.fromImplType(type)` — the SAME reading `addClass`/
+node's kind) carrying the node itself as its `implType` — the SAME reading `addClass`/
 `addFactory`'s long overload already gives a composed impl type (§155) — resolved via the engine's
 `additionalServices` channel against a manifest composed for that one call, under the node itself
 as its own address, and discarded after. This is real dependency resolution, not reflection: the
@@ -1972,9 +1972,7 @@ for a sugar overload and an explicit-node one alike). A Go regression test
 before the fix, green after.
 
 **The authoring sugar this door was meant to pair with is held**, pending a settled spelling for
-its inline body once the callable-signatures milestone (2D per-overload `TypeSignatures` on
-`ConstructorType`/`FunctionType`, `signatureof` retiring in favor of `typefor<typeof x>()`) lands —
-its shape depends on both. Nothing in this entry describes that door; it ships separately.
+its inline body. Nothing in this entry describes that door; it ships separately.
 
 _Owner-directed 2026-08-13._
 
