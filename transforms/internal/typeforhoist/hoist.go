@@ -109,6 +109,10 @@ type Node struct {
 	// ret is a KindFunc's return type or a KindCtor's instance type.
 	ret *Node
 
+	// abstract marks a KindCtor node built from an abstract class — always false
+	// for KindFunc, which carries no such flag.
+	abstract bool
+
 	// inner and tag spell a KindTag: the branded base and the key branded onto it.
 	inner *Node
 	tag   string
@@ -159,13 +163,18 @@ func Generic(label string) *Node {
 
 // Func builds a call-signature node from its return type and parameter rows.
 func Func(ret *Node, rows [][]*Node) *Node {
-	return &Node{kind: KindFunc, key: signatureKey("func", ret, rows), ret: ret, rows: rows}
+	return &Node{kind: KindFunc, key: signatureKey("func", ret, rows, false), ret: ret, rows: rows}
 }
 
-// Ctor builds a construct-signature node from its instance type and parameter
-// rows.
-func Ctor(instance *Node, rows [][]*Node) *Node {
-	return &Node{kind: KindCtor, key: signatureKey("ctor", instance, rows), ret: instance, rows: rows}
+// Ctor builds a construct-signature node from its instance type, parameter
+// rows, and whether it comes from an abstract class. abstract folds into the
+// key, so a concrete and an abstract constructor sharing every other field
+// still intern to two distinct consts.
+func Ctor(instance *Node, rows [][]*Node, abstract bool) *Node {
+	return &Node{
+		kind: KindCtor, key: signatureKey("ctor", instance, rows, abstract),
+		ret: instance, rows: rows, abstract: abstract,
+	}
 }
 
 // Tag builds a keyed node — the branded base with the key composed into it.
@@ -188,11 +197,15 @@ func Null() *Node {
 // to no call at all key differently — the same identity the runtime intern
 // table gives them. The leading `#` can only ever start a composite: a leaf's
 // key starts with a quote (a string literal), a digit or sign (a number), or an
-// identifier character.
-func signatureKey(method string, ret *Node, rows [][]*Node) string {
+// identifier character. abstract appends a marker no ordinary row can spell, so
+// an abstract constructor never shares a concrete one's key.
+func signatureKey(method string, ret *Node, rows [][]*Node, abstract bool) string {
 	spelled := "#" + method + "(" + ret.key
 	for _, row := range rows {
 		spelled += "(" + joinKeys(row, ",") + ")"
+	}
+	if abstract {
+		spelled += "!abstract"
 	}
 	return spelled + ")"
 }
@@ -375,13 +388,18 @@ func (r *Registry) expr(n *Node) string {
 
 // signature renders a KindFunc / KindCtor const — the return / instance type
 // followed by its parameter rows as one array of arrays, whether the callable
-// answers to one row or several.
+// answers to one row or several, with a trailing `true` only when the node
+// marks an abstract constructor.
 func (r *Registry) signature(n *Node, method string) string {
 	rows := make([]string, len(n.rows))
 	for i, row := range n.rows {
 		rows[i] = "[" + r.joinNames(row) + "]"
 	}
-	return r.typeRef.Export + "." + method + "(" + r.names[n.ret.key] + ", [" + strings.Join(rows, ", ") + "])"
+	call := r.typeRef.Export + "." + method + "(" + r.names[n.ret.key] + ", [" + strings.Join(rows, ", ") + "]"
+	if n.abstract {
+		call += ", true"
+	}
+	return call + ")"
 }
 
 func (r *Registry) joinNames(nodes []*Node) string {

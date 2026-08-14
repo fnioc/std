@@ -107,6 +107,10 @@ export declare class SystemClock implements IClock {
   constructor(log: IAuditLog);
   now(): string;
 }
+export declare abstract class AbstractClock implements IClock {
+  constructor(log: IAuditLog);
+  now(): string;
+}
 export declare function makeClock(log: IAuditLog): IClock;
 
 export const clock = typefor<IClock>();
@@ -114,6 +118,7 @@ export const alsoClock = typefor<IClock>();
 export const promisedClock = typefor<Promise<IClock>>();
 export const level = typefor<Level>();
 export const clockCtor = typefor<typeof SystemClock>();
+export const abstractClockCtor = typefor<typeof AbstractClock>();
 export const clockFactory = typefor<typeof makeClock>();
 `;
 
@@ -300,6 +305,11 @@ describe('typefor emission modes', () => {
     expect(declared.get(nameOf(`Type.global("Promise", [${clock}])`))).toBeDefined();
     expect([...declared.values()]).toContain(`Type.ctor(${systemClock}, [[${log}]])`);
     expect([...declared.values()]).toContain(`Type.func(${clock}, [[${log}]])`);
+
+    // An `abstract class` constructor carries the same shape plus a trailing
+    // `true` — the flag defaults to false and stays unspelled everywhere else.
+    const abstractClock = nameOf('Type.imported("AbstractClock", "typefor-emit-app/tokens/app")');
+    expect([...declared.values()]).toContain(`Type.ctor(${abstractClock}, [[${log}]], true)`);
     for (const spelling of declared.values()) {
       if (spelling.startsWith('Type.ctor(') || spelling.startsWith('Type.func(')) {
         expect(spelling).not.toContain('Type.imported(');

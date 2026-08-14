@@ -284,6 +284,24 @@ export const tok = typefor(Foo);
 	}
 }
 
+func TestTypeforValueArgAbstractCtor(t *testing.T) {
+	src := `import { typefor } from '@rhombus-std/primitives.extras';
+interface IA {}
+abstract class Foo {
+  constructor(a: IA) { void a; }
+}
+export const tok = typefor(Foo);
+`
+	prog, app := buildTypeforWorkspace(t, src)
+	defer func() { _ = prog.Close() }()
+
+	out := lowerTypefor(t, prog, app)
+	want := `Type.ctor(Type.imported("Foo", "@scope/app/main"), [[Type.imported("IA", "@scope/app/main")]], true)`
+	if got := exprFor(t, out, "tok"); got != want {
+		t.Fatalf("typefor(Foo) = %q, want %q\nfull output:\n%s", got, want, out)
+	}
+}
+
 func TestTypeforFunctionTypeArg(t *testing.T) {
 	src := `import { typefor } from '@rhombus-std/primitives.extras';
 interface IThing {}

@@ -106,7 +106,7 @@ func TestKeyMirrorsTheFlatTokenSpelling(t *testing.T) {
 		`"a" | "b"`:                    Union([]*Node{Literal(`"a"`), Literal(`"b"`)}),
 		`#tag(orders:IClock,"vendor")`: Tag(Named("IClock", "orders", nil), "vendor"),
 		"#func(IClock())":              Func(Named("IClock", "global", nil), [][]*Node{nil}),
-		"#ctor(IClock(orders:IClock))": Ctor(Named("IClock", "global", nil), [][]*Node{{Named("IClock", "orders", nil)}}),
+		"#ctor(IClock(orders:IClock))": Ctor(Named("IClock", "global", nil), [][]*Node{{Named("IClock", "orders", nil)}}, false),
 	}
 	for want, node := range cases {
 		if node.Key() != want {
@@ -124,8 +124,8 @@ func TestACallableAlwaysSpellsItsRowsArray(t *testing.T) {
 	clock := Named("IClock", "orders", nil)
 	options := Named("IOptions", "orders", nil)
 
-	oneRow := Ctor(widget, [][]*Node{{clock}})
-	several := Ctor(widget, [][]*Node{{clock}, {clock, options}})
+	oneRow := Ctor(widget, [][]*Node{{clock}}, false)
+	several := Ctor(widget, [][]*Node{{clock}, {clock, options}}, false)
 	for _, node := range []*Node{oneRow, several} {
 		if _, err := registry.Ref(node); err != nil {
 			t.Fatal(err)
@@ -174,6 +174,42 @@ func TestARowShapeIsPartOfIdentity(t *testing.T) {
 	// The three callables plus the three names they are built over.
 	if registry.Len() != 6 {
 		t.Fatalf("want 6 distinct nodes, got %d:\n%s", registry.Len(), registry.Module())
+	}
+}
+
+// TestAbstractIsPartOfCtorIdentity: a concrete and an abstract constructor
+// over the same instance type and rows key — and so intern — differently, and
+// only the abstract one's rendered const carries the trailing `true`.
+func TestAbstractIsPartOfCtorIdentity(t *testing.T) {
+	registry := NewRegistry(TypeRef{Module: "@rhombus-std/primitives", Export: "Type"})
+	instance := Named("IWidget", "orders", nil)
+	clock := Named("IClock", "orders", nil)
+
+	concrete := Ctor(instance, [][]*Node{{clock}}, false)
+	abstract := Ctor(instance, [][]*Node{{clock}}, true)
+	if concrete.Key() == abstract.Key() {
+		t.Errorf("a concrete and an abstract constructor over the same shape key the same: %s", concrete.Key())
+	}
+	for _, node := range []*Node{concrete, abstract} {
+		if _, err := registry.Ref(node); err != nil {
+			t.Fatal(err)
+		}
+	}
+	// The two constructors plus the two names they are built over.
+	if registry.Len() != 4 {
+		t.Fatalf("want 4 distinct nodes, got %d:\n%s", registry.Len(), registry.Module())
+	}
+
+	instanceName := refOf(t, registry, instance)
+	clockName := refOf(t, registry, clock)
+	module := registry.Module()
+	wantConcrete := "export const " + refOf(t, registry, concrete) + " = Type.ctor(" + instanceName + ", [[" + clockName + "]]);"
+	if !strings.Contains(module, wantConcrete) {
+		t.Errorf("want %q in:\n%s", wantConcrete, module)
+	}
+	wantAbstract := "export const " + refOf(t, registry, abstract) + " = Type.ctor(" + instanceName + ", [[" + clockName + "]], true);"
+	if !strings.Contains(module, wantAbstract) {
+		t.Errorf("want %q in:\n%s", wantAbstract, module)
 	}
 }
 
