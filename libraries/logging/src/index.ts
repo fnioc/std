@@ -20,7 +20,7 @@ export * from './LoggingBuilder-Provider-augmentations';
 // Installs LoggerFilterOptions's addFilter directly, and registers the
 // ILoggingBuilder half that routes through the options-configure pipeline.
 export * from './filter-augmentations';
-export * from './Logger';
+export { Logger } from './Logger';
 export * from './LoggerExternalScopeProvider';
 export * from './LoggerFactory';
 export * from './LoggerFilterOptions';
