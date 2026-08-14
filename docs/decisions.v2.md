@@ -1589,26 +1589,19 @@ out of a derived address stays — that is derivation hygiene, not a kind.
 
 _Owner-directed 2026-08-13._
 
-## §152 — A signature carries its own quantifiers
+## §152 — A callable signature's holes live in its own tree, not a separate list
 
-`FunctionType` and `ConstructorType` hold a `genericArgs` list: the holes the signature itself
-quantifies, in declaration order, empty for a concrete one. The name is shared with a nominal type's
-constructed arguments and so is the meaning — these are what a request CLOSES, positionally.
+`FunctionType` and `ConstructorType` carry no quantifier list of their own. An open signature is
+spelled by an ordinary generic hole sitting inside its `args`/`return`/`instance` —
+`() => app:Box<%T>` is already open, the same tree shape a closed `() => app:Box<app:String>` is a
+concrete instance of. Closing one against a request is tree-position unification against the holes
+themselves, the mechanism every other node already uses (§180); a signature needs nothing extra to
+participate.
 
-Quantifying is part of the type. `<%T>() => app:Box<%T>` ranges over the hole; a signature that
-merely mentions `%T` names one particular open type. Identity includes the list, so those two intern
-as different nodes, and that distinction is the point of carrying it. Substituting a quantified hole
-discharges its quantifier, so closing an open signature lands on the requested node itself rather
-than on a look-alike.
+The token grammar carries no quantifier prefix: a signature spells exactly its `args`/return/instance
+shape, holes and all, reachable through the arrow, `new`, and reserved `Func`/`Ctor` spellings alike.
 
-The spec object is the door — a positional `Type.func(returnType, [[A]], [hole])` call spells a
-concrete signature, its second argument the parameter rows and its optional third the quantifier
-list — and the token grammar extends additively: a quantifier list is written in front of the
-signature it binds, `<%T>(%T) => app:Box<%T>`, reachable through the arrow, `new` and reserved
-`Func` / `Ctor` spellings alike. A token carrying no quantifiers spells exactly as it always did, so
-the parity invariant binds unchanged.
-
-_Owner-directed 2026-08-13._
+_Owner-directed 2026-08-13, Claude-corrected 2026-08-14._
 
 ## §153 — `ServiceProviderOptions` stays immutable; `useDefaultServiceProvider` takes a returning delegate
 
@@ -1849,7 +1842,7 @@ their own shared layer, not folded into `typefortransform`: `tokens.DeriveTyped`
 and `typeemit.EmitDerived` (emission) live under `transforms/internal/tokens` and
 `transforms/internal/typeemit`, over the same Func/Ctor/Tag layer that sits above `DeriveTypeF`'s
 named/literal/placeholder tree. `typefortransform` keeps only its own accessor-folding peephole
-(`.returnType`/`.args`/etc.), built on the shared functions rather than owning the classification
+(`.return`/`.args`/etc.), built on the shared functions rather than owning the classification
 itself.
 
 The old array/slot machinery this replaced — `Signal`/`tokenSlot`/`factorySlot`/`unionSlot`/
@@ -1887,7 +1880,7 @@ _Claude-directed 2026-08-13, executing the owner's §155/§157 direction._
 ## §165 — A factory-typed dependency is a plain `FunctionType` argument; no special injected-callable slot
 
 A constructor parameter whose type is a plain function type (`(dep: IDep) => IThing`) derives as an
-ordinary nested `Type.func(returnType, ...argTypes)` node — the SAME derivation any function-typed
+ordinary nested `Type.func(returns, ...argTypes)` node — the SAME derivation any function-typed
 value gets, nothing signature-position-specific. The landed resolution engine (`ToCallSiteVisitor`,
 `libraries/di/src/internal/CallSite/`) already handles this generically as a synthesis fallback:
 `visitFunc` builds a `LateBoundCallSite` whose invocation re-enters the engine to resolve the
@@ -1993,13 +1986,12 @@ throws rather than mint one, catching the `[[]]`-vs-`[]` slip directly at the au
 The alias lives in `primitives` beside the node interfaces it types and `di.core` re-exports it, so
 every consumer names the same shape.
 
-Every callable factory opens through two doors. The POSITIONAL door takes the whole row array as
-its second argument, quantifiers optional as its third: `Type.ctor(instanceType, args:
-TypeSignatures, genericArgs?)` and the `Type.func` sibling over `returnType` — `Type.ctor(box,
-[[string]])` for one row, `Type.ctor(box, [[]])` for a constructor taking nothing, `Type.ctor(box,
-[[string], []])` for two. The OBJECT door takes one literal naming every field at once
-(`Type.ctor({ instanceType, args: [[A, B], [A]], genericArgs })`); its `genericArgs` is required,
-since the object door names exactly the node's own fields. A file-internal, unexported alias in
+Every callable factory opens through two doors. The POSITIONAL door takes the instance/return type
+first and the whole row array second: `Type.ctor(instance, args: TypeSignatures)` and the `Type.func`
+sibling over `returns` — `Type.ctor(box, [[string]])` for one row, `Type.ctor(box, [[]])` for a
+constructor taking nothing, `Type.ctor(box, [[string], []])` for two. The OBJECT door takes one
+literal naming every field at once (`Type.ctor({ instance: box, args: [[A, B], [A]] })`), since the
+object door names exactly the node's own fields. A file-internal, unexported alias in
 `Type.ts` — `type Spec<T extends Type> = Omit<T, 'kind' | TypeBrand>` — names that shape once and
 derives it from the node itself, so the object door and the node can never drift apart and the
 exported roster carries no per-factory spec interface.
@@ -2095,8 +2087,8 @@ whole implementation type as `addClass`/`addFactory`'s third argument, standing 
 `Type.ctor(...)`/`Type.func(...)`.
 
 The emitted text is rows-always, matching the factory's positional door (§168):
-`typeemit.EmitDerived`'s `signatureShaped` helper always emits `Type.ctor(instanceType, [[...]])` /
-`Type.func(returnType, [[...]])`, one row per overload the declaration answers to, whether the
+`typeemit.EmitDerived`'s `signatureShaped` helper always emits `Type.ctor(instance, [[...]])` /
+`Type.func(returns, [[...]])`, one row per overload the declaration answers to, whether the
 declaration carries one call signature or several — the same call a hand-writer would compose,
 spelled automatically.
 
@@ -2208,3 +2200,61 @@ without the default declares.
 _Owner-directed via task #40 (the hoisting guarantee — one const per distinct interned node
 referenced anywhere in the project's lowered output — reads across every primitive that derives a
 `Type.*` tree, not typefor alone), Claude-executed 2026-08-14._
+
+## §179 — Row matching implements §180's every/some doctrine; callable nodes drop their dead quantifier list and the `Type` suffix
+
+`SatisfiesVisitor`'s row comparison reads exactly as §180 states it: every condition row must be
+served by some proposed row, surplus proposed rows harmless. `ConstructorType` and `FunctionType` no
+longer carry a `genericArgs` member — nothing at a structural callable's request site can spell
+"populate these holes ahead of matching", since generic binding already happens by tree-position
+unification against the holes themselves, and substitution into an implementer is referential through
+the interned `GenericType` nodes. The member survives only on the identifier kinds (`GlobalType`/
+`ImportedType`), where it is the positional constructed-argument list a request actually supplies.
+
+The factories, the stringify/parse token grammar, and every derived-openness/derived-string walk over
+a callable drop the field and its quantifier-prefix spelling together, keeping the round trip intact.
+The value-level construction-row selection (longest-satisfiable row wins, a separate layer from
+this type-level relation) is untouched by either change.
+
+`ConstructorType.instanceType` and `FunctionType.returnType` rename to `instance` and `return`, so
+every `Type` kind's member names agree in dropping the redundant `Type` suffix — a node's own `kind`
+already says what it is. `return` is a legal PROPERTY name (`{ return: x }`, `node.return` both
+compile) but not a legal bare identifier, so the positional `Type.func` factory's first parameter —
+and any local binding that would otherwise destructure or hold the return type on its own — spells
+`returns` instead; `instance` needs no such dodge and renames cleanly everywhere, parameter included.
+The typefor accessor-folding peephole (`transforms/internal/typefortransform`) recognizes the new
+property names in place of the old ones — an author who writes `typefor(C).instance` or
+`typefor<F>().return` gets the same compile-time fold as before, under the new spelling.
+
+_Owner-ruled, Claude-executed 2026-08-14._
+
+## §181 — A constructor's abstractness is a flag, not a kind; an abstract implementer can never register as a constructor
+
+`ConstructorType` carries a boolean `abstract` member — false for the ordinary case, true for a
+constructor that builds an abstract class, one nothing constructs with `new` directly. `FunctionType`
+carries no such flag; a function value is never abstract. Interning treats the two values as distinct
+nodes: `Type.ctor(box, rows)` and `Type.ctor(box, rows, true)` are different types. The positional
+door's third argument is optional, defaulting to false; the object door names it like every other
+field, required.
+
+The token grammar mirrors TypeScript's own spelling: `abstract new (rows) => instance`, the keyword an
+ordinary contextual name recognized only immediately before `new (` — everywhere else `abstract` reads
+as an ordinary global type name, exactly as `new` itself already does. Stringify emits the prefix only
+when the flag is set; the parser accepts it symmetrically, so the round trip holds both directions.
+
+Matching (`SatisfiesVisitor`, within the ctor kind): a concrete candidate serves both a concrete and an
+abstract request, since a value that CAN be constructed answers either address; an abstract candidate
+serves only an abstract request — nothing about a candidate nothing can construct satisfies a request
+for something that can be. `proposed.abstract` implies `type.abstract` is the whole rule.
+
+`ServiceDescriptor.ctor` throws when handed an abstract implementer type, naming it: registering a
+constructor descriptor around a type nothing can `new` would build a registration the engine can never
+actually construct, so the mistake is caught at registration rather than surfacing later as a runtime
+construction failure with no clue where it came from.
+
+Deriving the flag automatically from a TS `abstract class` declaration is not wired up: the vendored
+ttsc checker shim exposes no abstract-modifier accessor today, so a hand-written `Type.ctor(..., true)`
+(or the object door's `abstract: true`) is the only way to spell one; typefor's derivation always emits
+false until the shim grows that accessor.
+
+_Owner-ruled, Claude-executed 2026-08-14._

@@ -51,3 +51,10 @@ describe('substitute', () => {
     expect(closed.kind === 'ctor' && closed.implementerType.args[0]![0]).toBe(A);
   });
 });
+
+describe('ctor', () => {
+  test('refuses an abstract implementer type — nothing can `new` it directly', () => {
+    expect(() => ServiceDescriptor.ctor(A, Impl, Type.ctor(A, [[]], true)))
+      .toThrow(/is abstract — nothing can `new` it directly/);
+  });
+});

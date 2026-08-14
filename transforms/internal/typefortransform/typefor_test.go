@@ -32,8 +32,8 @@ func buildTypeforWorkspace(t *testing.T, mainSrc string) (*driver.Program, strin
 	writeFile(t, filepath.Join(primitives, "src", "index.ts"), `export declare namespace Type {
   export function global(name: string, genericTypes?: unknown[]): unknown;
   export function imported(name: string, from: string, genericTypes?: unknown[]): unknown;
-  export function func(returnType: unknown, ...args: unknown[]): unknown;
-  export function ctor(instanceType: unknown, ...args: unknown[]): unknown;
+  export function func(returns: unknown, ...args: unknown[]): unknown;
+  export function ctor(instance: unknown, ...args: unknown[]): unknown;
   export function tag(type: unknown, tag: string): unknown;
   export function typeLiteral(value: unknown): unknown;
   export function generic(label: string): unknown;
@@ -299,12 +299,12 @@ export const tok = typefor<() => IThing>();
 	}
 }
 
-func TestTypeforAccessorReturnType(t *testing.T) {
+func TestTypeforAccessorReturn(t *testing.T) {
 	src := `import { typefor } from '@rhombus-std/primitives.extras';
 interface IA {}
 interface IB {}
 interface IThing {}
-export const tok = typefor<(a: IA, b: IB) => IThing>().returnType;
+export const tok = typefor<(a: IA, b: IB) => IThing>().return;
 `
 	prog, app := buildTypeforWorkspace(t, src)
 	defer func() { _ = prog.Close() }()
@@ -312,10 +312,10 @@ export const tok = typefor<(a: IA, b: IB) => IThing>().returnType;
 	out := lowerTypefor(t, prog, app)
 	want := `Type.imported("IThing", "@scope/app/main")`
 	if got := exprFor(t, out, "tok"); got != want {
-		t.Fatalf(".returnType fold = %q, want %q\nfull output:\n%s", got, want, out)
+		t.Fatalf(".return fold = %q, want %q\nfull output:\n%s", got, want, out)
 	}
 	if strings.Contains(out, "Type.func(") {
-		t.Fatalf(".returnType should fold away the Type.func wrapper entirely:\n%s", out)
+		t.Fatalf(".return should fold away the Type.func wrapper entirely:\n%s", out)
 	}
 }
 
@@ -361,10 +361,10 @@ export const tok = typefor<typeof make>().args;
 	}
 }
 
-func TestTypeforAccessorInstanceType(t *testing.T) {
+func TestTypeforAccessorInstance(t *testing.T) {
 	src := `import { typefor } from '@rhombus-std/primitives.extras';
 class Foo {}
-export const tok = typefor(Foo).instanceType;
+export const tok = typefor(Foo).instance;
 `
 	prog, app := buildTypeforWorkspace(t, src)
 	defer func() { _ = prog.Close() }()
@@ -372,7 +372,7 @@ export const tok = typefor(Foo).instanceType;
 	out := lowerTypefor(t, prog, app)
 	want := `Type.imported("Foo", "@scope/app/main")`
 	if got := exprFor(t, out, "tok"); got != want {
-		t.Fatalf(".instanceType fold = %q, want %q\nfull output:\n%s", got, want, out)
+		t.Fatalf(".instance fold = %q, want %q\nfull output:\n%s", got, want, out)
 	}
 }
 
@@ -498,7 +498,7 @@ func TestTypeforUnfoldableFallback(t *testing.T) {
 interface IThing {}
 declare function factory(): IThing;
 const t = typefor<typeof factory>();
-export const rt = t.returnType;
+export const rt = t.return;
 `
 	prog, app := buildTypeforWorkspace(t, src)
 	defer func() { _ = prog.Close() }()
@@ -508,7 +508,7 @@ export const rt = t.returnType;
 	if got := exprFor(t, out, "t"); got != wantT {
 		t.Fatalf("bare typefor call = %q, want %q\nfull output:\n%s", got, wantT, out)
 	}
-	wantRt := `t.returnType`
+	wantRt := `t.return`
 	if got := exprFor(t, out, "rt"); got != wantRt {
 		t.Fatalf("unfoldable use should be left unchanged: got %q, want %q\nfull output:\n%s", got, wantRt, out)
 	}
@@ -555,12 +555,12 @@ export const anon = typefor<{ readonly a: number }>();
 }
 
 // TestTypeforAccessorMismatchReportsDiagnostic covers the peephole's own failure
-// mode: `.returnType` on a NAMED (non-function) type is a known accessor name
+// mode: `.return` on a NAMED (non-function) type is a known accessor name
 // applied to a derivation whose kind doesn't carry it.
 func TestTypeforAccessorMismatchReportsDiagnostic(t *testing.T) {
 	src := `import { typefor } from '@rhombus-std/primitives.extras';
 interface IThing {}
-export const bad = typefor<IThing>().returnType;
+export const bad = typefor<IThing>().return;
 `
 	prog, app := buildTypeforWorkspace(t, src)
 	defer func() { _ = prog.Close() }()

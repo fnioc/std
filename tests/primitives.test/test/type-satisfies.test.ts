@@ -74,27 +74,28 @@ describe('Type.satisfies on parameter rows', () => {
   const C = Type.imported('C', 'app');
 
   test('an overloaded proposal serves a condition any one of its rows serves', () => {
-    const overloaded = Type.func({ returnType: C, args: [[A, B], [A]], genericArgs: [] });
+    const overloaded = Type.func({ return: C, args: [[A, B], [A]] });
     expect(satisfies(overloaded, Type.func(C, [[A]]))).toBe(true);
     expect(satisfies(overloaded, Type.func(C, [[A, B]]))).toBe(true);
   });
 
   test('and refuses one no row serves', () => {
-    const overloaded = Type.func({ returnType: C, args: [[A, B], [A]], genericArgs: [] });
+    const overloaded = Type.func({ return: C, args: [[A, B], [A]] });
     expect(satisfies(overloaded, Type.func(C, [[B]]))).toBe(false);
     expect(satisfies(overloaded, Type.func(C, [[]]))).toBe(false);
   });
 
-  test('one call they agree on is enough, whichever rows carry it', () => {
-    const condition = Type.ctor({ instanceType: C, args: [[A], [A, B]], genericArgs: [] });
-    expect(satisfies(Type.ctor({ instanceType: C, args: [[A], [A, B]], genericArgs: [] }), condition)).toBe(true);
-    expect(satisfies(Type.ctor(C, [[A]]), condition)).toBe(true);
+  test('every condition row needs an answer — a shared call is not enough on its own', () => {
+    const condition = Type.ctor({ instance: C, args: [[A], [A, B]], abstract: false });
+    expect(satisfies(Type.ctor({ instance: C, args: [[A], [A, B]], abstract: false }), condition)).toBe(true);
+    // Serving only the [A] row leaves [A, B] unanswered — surplus rows are fine, missing ones are not.
+    expect(satisfies(Type.ctor(C, [[A]]), condition)).toBe(false);
     expect(satisfies(Type.ctor(C, [[B]]), condition)).toBe(false);
   });
 
   test('a row that fails leaves no capture behind for the next one to read', () => {
     const [satisfied, generics] = Type.satisfies(
-      Type.func({ returnType: C, args: [[A], [B]], genericArgs: [] }),
+      Type.func({ return: C, args: [[A], [B]] }),
       Type.func(C, [[B]]),
     );
     expect(satisfied).toBe(true);
@@ -102,14 +103,30 @@ describe('Type.satisfies on parameter rows', () => {
   });
 });
 
+describe('Type.satisfies on an abstract constructor', () => {
+  const C = Type.imported('C', 'app');
+  const concrete = () => Type.ctor(C, [[]]);
+  const abstractCtor = () => Type.ctor(C, [[]], true);
+
+  test('a concrete candidate serves both a concrete and an abstract request', () => {
+    expect(satisfies(concrete(), concrete())).toBe(true);
+    expect(satisfies(concrete(), abstractCtor())).toBe(true);
+  });
+
+  test('an abstract candidate serves only an abstract request', () => {
+    expect(satisfies(abstractCtor(), abstractCtor())).toBe(true);
+    expect(satisfies(abstractCtor(), concrete())).toBe(false);
+  });
+});
+
 describe('a callable answers to at least one call', () => {
   test('no row at all is refused, since it has no spelling', () => {
-    expect(() => Type.func({ returnType: A, args: [], genericArgs: [] })).toThrow(TypeError);
-    expect(() => Type.ctor({ instanceType: A, args: [], genericArgs: [] })).toThrow(/at least one call/);
+    expect(() => Type.func({ return: A, args: [] })).toThrow(TypeError);
+    expect(() => Type.ctor({ instance: A, args: [], abstract: false })).toThrow(/at least one call/);
   });
 
   test('one empty row is a callable taking nothing', () => {
-    expect(Type.func({ returnType: A, args: [[]], genericArgs: [] })).toBe(Type.func(A, [[]]));
+    expect(Type.func({ return: A, args: [[]] })).toBe(Type.func(A, [[]]));
     expect(Type.stringify(Type.func(A, [[]]))).toBe('() => app:A');
   });
 });

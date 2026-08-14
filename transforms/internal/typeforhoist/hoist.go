@@ -64,10 +64,10 @@ const (
 	KindUnion
 	// KindGeneric is `Type.generic(label)` — an open-generic hole.
 	KindGeneric
-	// KindFunc is `Type.func(returnType, rows)`, rows the return type's parameter
+	// KindFunc is `Type.func(returns, rows)`, rows the return type's parameter
 	// rows as an array of arrays.
 	KindFunc
-	// KindCtor is `Type.ctor(instanceType, rows)`, rows the instance type's
+	// KindCtor is `Type.ctor(instance, rows)`, rows the instance type's
 	// parameter rows as an array of arrays.
 	KindCtor
 	// KindTag is `Type.tag(inner, key)`.

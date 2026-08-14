@@ -43,18 +43,23 @@ class SatisfiesVisitor extends TypeVisitor<Predicate> {
     return this.#aggregate(type);
   }
 
+  /**
+   * An abstract candidate serves only an abstract request — an implementer nothing can `new`
+   * cannot answer a request for one that can. A concrete candidate serves either.
+   */
   protected override visitCtor(type: ConstructorType): Predicate {
     return proposed =>
       proposed.kind === 'ctor'
+      && (!proposed.abstract || type.abstract)
       && this.#rows(proposed.args, type.args)
-      && this.match(proposed.instanceType, type.instanceType);
+      && this.match(proposed.instance, type.instance);
   }
 
   protected override visitFunc(type: FunctionType): Predicate {
     return proposed =>
       proposed.kind === 'func'
       && this.#rows(proposed.args, type.args)
-      && this.match(proposed.returnType, type.returnType);
+      && this.match(proposed.return, type.return);
   }
 
   protected override visitGeneric(type: GenericType): Predicate {
@@ -144,11 +149,11 @@ class SatisfiesVisitor extends TypeVisitor<Predicate> {
   }
 
   /**
-   * One call they agree on is enough: some proposed row serves some condition row. An overloaded
-   * value is usable where an overload is required as soon as one of its calls fits.
+   * Every condition row needs an answer: each one must be served by some proposed row. Surplus
+   * proposed rows are extra capability and never count against the match.
    */
   #rows(proposed: TypeSignatures, condition: TypeSignatures): boolean {
-    return condition.some(row => proposed.some(candidate => this.#attemptRow(candidate, row)));
+    return condition.every(row => proposed.some(candidate => this.#attemptRow(candidate, row)));
   }
 
   /** One row against one: same arity, each parameter contravariant. */

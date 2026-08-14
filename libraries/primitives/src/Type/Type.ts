@@ -90,26 +90,14 @@ export interface ArrayType extends AggregateBase<'array'> {}
 
 export interface ConstructorType extends TypeBase<'ctor'> {
   readonly args: TypeSignatures;
-  readonly instanceType: Type;
-  /**
-   * The holes this signature quantifies, in declaration order — empty for a concrete one. A request
-   * closes them positionally, exactly as a nominal type's arguments close. Quantifying a hole is
-   * part of the type: `<%T>() => app:Box<%T>` and a signature that merely mentions `%T` are
-   * different types.
-   */
-  readonly genericArgs: readonly Type[];
+  readonly instance: Type;
+  /** Does this constructor build an abstract class — one `new` never targets directly? */
+  readonly abstract: boolean;
 }
 
 export interface FunctionType extends TypeBase<'func'> {
   readonly args: TypeSignatures;
-  readonly returnType: Type;
-  /**
-   * The holes this signature quantifies, in declaration order — empty for a concrete one. A request
-   * closes them positionally, exactly as a nominal type's arguments close. Quantifying a hole is
-   * part of the type: `<%T>() => app:Box<%T>` and a signature that merely mentions `%T` are
-   * different types.
-   */
-  readonly genericArgs: readonly Type[];
+  readonly return: Type;
 }
 
 /** An open generic argument — a labeled hole standing for a type bound later. */
@@ -209,20 +197,23 @@ export namespace Type {
   }
 
   /**
-   * A constructor signature — `new (...args) => instanceType`, instance type first.
+   * A constructor signature — `new (...args) => instance`, instance type first.
    *
    * @remarks
    * `args` is one ROW per call the constructor answers to, so a constructor taking one dependency
-   * is `[[dep]]` and one taking nothing is `[[]]`. The object form names the node's own fields.
+   * is `[[dep]]` and one taking nothing is `[[]]`. `abstract` names a constructor that builds an
+   * abstract class — one nothing constructs with `new` directly — and defaults to `false` when
+   * omitted. The object form names the node's own fields.
    *
    * @example
    * ```ts
    * Type.ctor(box, [[string]]);                               // new (string) => box
    * Type.ctor(box, [[string], []]);                           // new (string; ) => box
-   * Type.ctor({ instanceType: box, args: [[]], genericArgs: [hole] });
+   * Type.ctor(box, [[]], true);                                // abstract new () => box
+   * Type.ctor({ instance: box, args: [[]], abstract: false });
    * ```
    */
-  export function ctor(instanceType: Type, args: TypeSignatures, genericArgs?: readonly Type[]): ConstructorType;
+  export function ctor(instance: Type, args: TypeSignatures, abstract?: boolean): ConstructorType;
   export function ctor(spec: Spec<ConstructorType>): ConstructorType;
   export function ctor(...args: any[]): ConstructorType {
     return args.length > 1
@@ -240,8 +231,7 @@ export namespace Type {
    * `app:Func` — and it names an ordinary type, as do the value-type names `string`, `number` and
    * the rest. An unqualified name is a global one.
    *
-   * A callable carrying its own quantifiers is written with them in front: `<%T>(%T) => app:Box<%T>`.
-   * One answering to several calls writes its parameter rows semicolon-separated, in the one
+   * A callable answering to several calls writes its parameter rows semicolon-separated, in the one
    * parameter position — `(string; ) => app:Box` takes a string or nothing.
    *
    * @throws TypeParseError - when the token is malformed.
@@ -256,11 +246,11 @@ export namespace Type {
   })();
 
   /**
-   * A function signature — `(...args) => returnType`, return type first.
+   * A function signature — `(...args) => return`, return type first.
    *
    * @remarks
-   * Identity is the shape alone: two signatures with the same return type, parameter rows and
-   * quantifiers are the same type, whichever functions they were read from.
+   * Identity is the shape alone: two signatures with the same return type and parameter rows are
+   * the same type, whichever functions they were read from.
    *
    * `args` is one ROW per call the function answers to, so a function taking one dependency is
    * `[[dep]]` and one taking nothing is `[[]]`. The object form names the node's own fields.
@@ -269,14 +259,14 @@ export namespace Type {
    * ```ts
    * Type.func(box, [[string]]);                             // (string) => box
    * Type.func(box, [[string], []]);                         // (string; ) => box
-   * Type.func({ returnType: box, args: [[]], genericArgs: [hole] });
+   * Type.func({ return: box, args: [[]] });
    * ```
    */
-  export function func(returnType: Type, args: TypeSignatures, genericArgs?: readonly Type[]): FunctionType;
+  export function func(returns: Type, args: TypeSignatures): FunctionType;
   export function func(spec: Spec<FunctionType>): FunctionType;
   export function func(...args: any[]): FunctionType {
     return args.length > 1
-      ? factory.func(args[0], args[1], args[2])
+      ? factory.func(args[0], args[1])
       : adopt({ ...args[0] as Spec<FunctionType>, kind: 'func' });
   }
 
@@ -489,8 +479,8 @@ export namespace Type {
    *
    * @remarks
    * A callable comes back a callable of the same kind — substitution reaches into its return or
-   * instance type, its parameter rows and its quantifiers, none of which can change what it is —
-   * so a caller holding one keeps its narrower type across the call.
+   * instance type and its parameter rows, neither of which can change what it is — so a caller
+   * holding one keeps its narrower type across the call.
    */
   export function substitute(type: ConstructorType, substitutions: ReadonlyMap<string, Type>): ConstructorType;
   export function substitute(type: FunctionType, substitutions: ReadonlyMap<string, Type>): FunctionType;

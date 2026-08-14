@@ -41,9 +41,6 @@ class TypeParser {
   }
 
   #type(): Type {
-    if (this.#at('<')) {
-      return this.#quantified();
-    }
     if (this.#atCtor()) {
       return this.#ctor();
     }
@@ -51,36 +48,6 @@ class TypeParser {
       return this.#function();
     }
     return this.#union();
-  }
-
-  /**
-   * A quantifier list in front of a signature — `<%T>(%T) => app:Box<%T>`. Only a signature can
-   * carry one, so anything else after the list is refused where the list was opened.
-   */
-  #quantified(): Type {
-    const opened = this.#peek()!.position;
-    const quantifiers = this.#genericTypes();
-    for (const quantifier of quantifiers) {
-      if (quantifier.kind !== 'generic') {
-        throw this.#error(opened, 'generic holes in the quantifier list');
-      }
-    }
-    if (this.#atCtor()) {
-      const signature = this.#ctor();
-      return ctor(signature.instanceType, signature.args, quantifiers);
-    }
-    if (this.#atArrow()) {
-      const signature = this.#function();
-      return func(signature.returnType, signature.args, quantifiers);
-    }
-    const reserved = this.#union();
-    if (reserved.kind === 'ctor') {
-      return ctor(reserved.instanceType, reserved.args, quantifiers);
-    }
-    if (reserved.kind === 'func') {
-      return func(reserved.returnType, reserved.args, quantifiers);
-    }
-    throw this.#error(opened, 'a signature to carry the quantifier list');
   }
 
   #union(): Type {
@@ -187,12 +154,12 @@ class TypeParser {
     }
     switch (name.text) {
       case 'Func': {
-        const [returnType, rows] = this.#reservedSignature(name, 'Func<Return, ...Args>');
-        return func(returnType, rows, []);
+        const [returns, rows] = this.#reservedSignature(name, 'Func<Return, ...Args>');
+        return func(returns, rows);
       }
       case 'Ctor': {
-        const [instanceType, rows] = this.#reservedSignature(name, 'Ctor<Instance, ...Args>');
-        return ctor(instanceType, rows, []);
+        const [instance, rows] = this.#reservedSignature(name, 'Ctor<Instance, ...Args>');
+        return ctor(instance, rows);
       }
       case 'ServiceProvider': {
         if (this.#at('<')) {
@@ -305,10 +272,12 @@ class TypeParser {
     return this.#next().text;
   }
 
+  /** True at `new (` or the abstract-constructor spelling `abstract new (`. */
   #atCtor(): boolean {
-    const token = this.#peek();
-    return token?.kind === 'name' && !token.escaped && token.text === 'new'
-      && this.#lexed[this.#index + 1]?.text === '(';
+    const offset = this.#atName('abstract') ? 1 : 0;
+    const marker = this.#lexed[this.#index + offset];
+    return marker?.kind === 'name' && !marker.escaped && marker.text === 'new'
+      && this.#lexed[this.#index + offset + 1]?.text === '(';
   }
 
   /** An open paren begins a function type only when the group it opens is followed by `=>`. */
@@ -338,15 +307,16 @@ class TypeParser {
     this.#expect('(');
     const rows = this.#rowList(')');
     this.#expect('=>');
-    return func(this.#type(), rows, []);
+    return func(this.#type(), rows);
   }
 
   #ctor(): ConstructorType {
+    const abstract = this.#takeName('abstract');
     this.#index++;
     this.#expect('(');
     const rows = this.#rowList(')');
     this.#expect('=>');
-    return ctor(this.#type(), rows, []);
+    return ctor(this.#type(), rows, abstract);
   }
 
   #peek(): LexToken | undefined {
@@ -363,6 +333,20 @@ class TypeParser {
     }
     this.#index++;
     return token;
+  }
+
+  /** True at an unescaped name reading exactly `text` — a contextual keyword check. */
+  #atName(text: string): boolean {
+    const token = this.#peek();
+    return token?.kind === 'name' && !token.escaped && token.text === text;
+  }
+
+  #takeName(text: string): boolean {
+    if (!this.#atName(text)) {
+      return false;
+    }
+    this.#index++;
+    return true;
   }
 
   #at(punctuation: string): boolean {

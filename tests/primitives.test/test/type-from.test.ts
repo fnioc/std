@@ -52,22 +52,13 @@ describe('Type.from', () => {
     expect(Type.from('undefined')).toBe(Type.typeLiteral(undefined));
   });
 
-  test('reads a quantified signature', () => {
-    const hole = Type.generic('T');
-    expect(Type.from('<%T>(%T) => app:A')).toBe(Type.func({ returnType: A, args: [[hole]], genericArgs: [hole] }));
-    expect(Type.from('<%T>new (%T) => app:A')).toBe(
-      Type.ctor({ instanceType: A, args: [[hole]], genericArgs: [hole] }),
-    );
-    expect(Type.from('<%T>Func<app:A, %T>')).toBe(Type.from('<%T>(%T) => app:A'));
-  });
-
   test('reads a callable answering to several calls, semicolons between its rows', () => {
-    expect(Type.from('(app:A; ) => app:B')).toBe(Type.func({ returnType: B, args: [[A], []], genericArgs: [] }));
+    expect(Type.from('(app:A; ) => app:B')).toBe(Type.func({ return: B, args: [[A], []] }));
     expect(Type.from('new (app:A; app:B, app:A) => app:B')).toBe(
-      Type.ctor({ instanceType: B, args: [[A], [B, A]], genericArgs: [] }),
+      Type.ctor({ instance: B, args: [[A], [B, A]], abstract: false }),
     );
     // A leading empty row is the call taking nothing, written first.
-    expect(Type.from('(; app:A) => app:B')).toBe(Type.func({ returnType: B, args: [[], [A]], genericArgs: [] }));
+    expect(Type.from('(; app:A) => app:B')).toBe(Type.func({ return: B, args: [[], [A]] }));
     // The reserved spellings carry rows too, the head separated by its own comma.
     expect(Type.from('Func<app:B, app:A; >')).toBe(Type.from('(app:A; ) => app:B'));
     expect(Type.from('Ctor<app:B; app:A>')).toBe(Type.from('new (; app:A) => app:B'));
@@ -76,12 +67,16 @@ describe('Type.from', () => {
   test('a callable with one row spells exactly as it always has', () => {
     expect(Type.stringify(Type.func(B, [[A]]))).toBe('(app:A) => app:B');
     expect(Type.stringify(Type.ctor(B, [[]]))).toBe('new () => app:B');
-    expect(Type.stringify(Type.func({ returnType: B, args: [[A], []], genericArgs: [] }))).toBe('(app:A; ) => app:B');
+    expect(Type.stringify(Type.func({ return: B, args: [[A], []] }))).toBe('(app:A; ) => app:B');
   });
 
-  test('a quantifier list carries only generic holes, and only onto a signature', () => {
-    expect(() => Type.from('<app:A>(app:B) => app:A')).toThrow(TypeParseError);
-    expect(() => Type.from('<%T>app:A')).toThrow(TypeParseError);
+  test('an abstract constructor carries the prefix, round-tripping both directions', () => {
+    const value = Type.ctor(B, [[A]]);
+    const built = Type.ctor(B, [[A]], true);
+    expect(Type.stringify(value)).toBe('new (app:A) => app:B');
+    expect(Type.stringify(built)).toBe('abstract new (app:A) => app:B');
+    expect(built).not.toBe(value);
+    expect(Type.from('abstract new (app:A) => app:B')).toBe(built);
   });
 
   test('reads the arrow forms', () => {
@@ -289,7 +284,6 @@ function generate(random: () => number, depth: number): Type {
   }
   const child = () => generate(random, depth - 1);
   const children = (most: number) => Array.from({ length: many(most) }, child);
-  const quantifiers = () => Array.from(new Set(Array.from({ length: many(2) }, () => pick(NAMES)))).map(Type.generic);
   // At least one row, since a callable answers to at least one call.
   const rows = () => Array.from({ length: 1 + many(2) }, () => children(2));
   const kinds = ['union', 'intersection', 'tuple', 'func', 'ctor', 'global', 'imported', 'object', 'literal', 'generic',
@@ -305,10 +299,10 @@ function generate(random: () => number, depth: number): Type {
       return Type.tuple(...children(3));
     }
     case 'func': {
-      return Type.func({ returnType: child(), args: rows(), genericArgs: quantifiers() });
+      return Type.func({ return: child(), args: rows() });
     }
     case 'ctor': {
-      return Type.ctor({ instanceType: child(), args: rows(), genericArgs: quantifiers() });
+      return Type.ctor({ instance: child(), args: rows(), abstract: pick([true, false]) });
     }
     case 'object': {
       return Type.object(Object.fromEntries(Array.from({ length: many(3) }, () => [pick(NAMES), child()])));
