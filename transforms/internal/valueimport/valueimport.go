@@ -111,21 +111,33 @@ func Resolve(sourceFile *shimast.SourceFile, ref Ref) *Binding {
 	return &Binding{localName: ref.Export, injectNamed: true, ref: ref}
 }
 
-// Ensure prepends a named import for each binding that was Used && injectNamed,
-// in the given order, each at most once. A binding with an existing reference
-// (namespace / named) or no emitted use injects nothing. Returns sourceFile
-// unchanged (same pointer) when no binding needs an import — the identity contract
-// the fixed-point loop's change detection relies on.
+// Ensure prepends the named imports the Used && injectNamed bindings need, in
+// the given order. Bindings naming the SAME module share one import declaration
+// carrying every specifier, the way a hand-writer would spell it; the
+// declaration takes the position of its first binding. A binding with an
+// existing reference (namespace / named) or no emitted use injects nothing.
+// Returns sourceFile unchanged (same pointer) when no binding needs an import —
+// the identity contract the fixed-point loop's change detection relies on.
 func Ensure(f *shimast.NodeFactory, sourceFile *shimast.SourceFile, bindings ...*Binding) *shimast.SourceFile {
-	var injected []*shimast.Node
+	var modules []string
+	specifiers := map[string][]*shimast.Node{}
 	for _, b := range bindings {
 		if b == nil || !b.Used || !b.injectNamed {
 			continue
 		}
-		importSpecifier := f.NewImportSpecifier(false, nil, f.NewIdentifier(b.ref.Export))
-		named := f.NewNamedImports(f.NewNodeList([]*shimast.Node{importSpecifier}))
+		if _, seen := specifiers[b.ref.Module]; !seen {
+			modules = append(modules, b.ref.Module)
+		}
+		specifiers[b.ref.Module] = append(
+			specifiers[b.ref.Module],
+			f.NewImportSpecifier(false, nil, f.NewIdentifier(b.ref.Export)),
+		)
+	}
+	var injected []*shimast.Node
+	for _, module := range modules {
+		named := f.NewNamedImports(f.NewNodeList(specifiers[module]))
 		clause := f.NewImportClause(0, nil, named)
-		moduleSpecifier := f.NewStringLiteral(b.ref.Module, shimast.TokenFlagsNone)
+		moduleSpecifier := f.NewStringLiteral(module, shimast.TokenFlagsNone)
 		injected = append(injected, f.NewImportDeclaration(nil, clause, moduleSpecifier, nil))
 	}
 	if len(injected) == 0 {

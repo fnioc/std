@@ -136,6 +136,58 @@ export async function ttscBunPlugin(dir: string, ttscProject: string,
   return ttscBun(options);
 }
 
+export interface StageLoweringOptions {
+  /** The package root. */
+  readonly dir: string;
+  /** The package name, for error messages. */
+  readonly name: string;
+  /** The tsconfig (relative to `dir`) the Go/ttsc engine reads. */
+  readonly ttscProject: string;
+  /** An explicit plugin list; omit to let ttsc auto-discovery run. */
+  readonly ttscTransforms?: readonly string[];
+}
+
+/**
+ * Compile every `src/**\/*.ts` as its own entrypoint with ALL imports external
+ * and the `@ttsc/unplugin/bun` adapter active, so each file is lowered but
+ * nothing is bundled, and return the stage directory the emit landed in.
+ *
+ * The stage directory is `<dir>/.ttsc-out`, which every `tsconfig.ttsc.json`
+ * also names as its `outDir` -- so the engine writes its own generated modules
+ * (the hoisted `Type` consts a `typefor<T>()` call site references) into the
+ * same directory, and the bundle pass that consumes this emit resolves them
+ * alongside the lowered files. The directory is emptied first, so a build never
+ * inherits a file the current sources no longer produce.
+ *
+ * Shared by {@link buildPackage} and the example build scripts: both stage, then
+ * bundle the stage with no plugin. Lowering commutes with bundling, so the
+ * bundle is what a no-transformer author would have hand-written.
+ */
+export async function stageLowering(options: StageLoweringOptions): Promise<string> {
+  const { dir, name, ttscProject, ttscTransforms } = options;
+  const stageDir = join(dir, '.ttsc-out');
+  rmSync(stageDir, { recursive: true, force: true });
+  const srcDir = join(dir, 'src');
+  // Declaration files carry no runtime and are skipped, matching a `tsc` emit.
+  const entrypoints = [...new Bun.Glob('**/*.ts').scanSync({ cwd: srcDir, absolute: true })].filter((path) =>
+    !path.endsWith('.d.ts')
+  );
+  const staged = await Bun.build({ entrypoints, outdir: stageDir, root: srcDir, target: 'node', format: 'esm',
+    external: ['*'], plugins: [await ttscBunPlugin(dir, ttscProject, ttscTransforms)] });
+  if (!staged.success) {
+    for (const log of staged.logs) {
+      console.error(log);
+    }
+    throw new Error(`${name}: ttsc lowering stage failed (${ttscProject})`);
+  }
+  return stageDir;
+}
+
+/** The stage file a `src`-relative entrypoint was lowered into. */
+export function stagedEntrypoint(stageDir: string, entry: string): string {
+  return join(stageDir, entry.replace(/^src\//, '').replace(/\.ts$/, '.js'));
+}
+
 export interface BuildPackageOptions {
   /** The package root (pass `import.meta.dir`). */
   readonly dir: string;
@@ -166,10 +218,11 @@ export interface BuildPackageOptions {
    * inline-substituted registration / options / config forms). When
    * set, the JS pipeline gains a lowering STAGE that runs before the bundle:
    *
-   *   1. STAGE — a per-file `Bun.build` compiles every `src/**\/*.ts` as its own
+   *   1. STAGE — {@link stageLowering} compiles every `src/**\/*.ts` as its own
    *      entrypoint with ALL imports external and the `@ttsc/unplugin/bun` adapter
    *      active, so each file is lowered (its `nameof`/`add`/… rewritten) but not
-   *      bundled. The lowered per-file JS lands in a stage dir (`.ttsc-out/`).
+   *      bundled. The lowered per-file JS lands in a stage dir (`.ttsc-out/`),
+   *      beside the modules the engine generates for itself.
    *   2. BUNDLE — the existing `bun build` pass then bundles the STAGE emit (NOT
    *      raw src) with no plugin, resolving the extensionless relative imports the
    *      stage preserved. Lowering commutes with bundling, so the shipped
@@ -221,26 +274,8 @@ export async function buildPackage(options: BuildPackageOptions): Promise<void> 
   let stageDir: string | undefined;
   let jsEntrypoints = entrypoints.map((entry) => join(dir, entry));
   if (emitJs && ttscProject) {
-    stageDir = join(dir, '.ttsc-out');
-    rmSync(stageDir, { recursive: true, force: true });
-    const srcDir = join(dir, 'src');
-    // Every src module as its own entrypoint (declaration files carry no runtime
-    // and are skipped, matching a `tsc` emit). ALL imports external so the stage
-    // is a pure per-file transform — nothing is bundled here, the specifiers are
-    // preserved for the bundle pass to resolve.
-    const stageEntrypoints = [...new Bun.Glob('**/*.ts').scanSync({ cwd: srcDir, absolute: true })].filter((path) =>
-      !path.endsWith('.d.ts')
-    );
-    const staged = await Bun.build({ entrypoints: stageEntrypoints, outdir: stageDir, root: srcDir, target: 'node',
-      format: 'esm', external: ['*'], plugins: [await ttscBunPlugin(dir, ttscProject, ttscTransforms)] });
-    if (!staged.success) {
-      for (const log of staged.logs) {
-        console.error(log);
-      }
-      throw new Error(`${name}: ttsc lowering stage failed (${ttscProject})`);
-    }
-    // Map each src entrypoint onto its emitted stage file (src/x.ts -> .ttsc-out/x.js).
-    jsEntrypoints = entrypoints.map((entry) => join(stageDir!, entry.replace(/^src\//, '').replace(/\.ts$/, '.js')));
+    stageDir = await stageLowering({ dir, name, ttscProject, ttscTransforms });
+    jsEntrypoints = entrypoints.map((entry) => stagedEntrypoint(stageDir!, entry));
   }
 
   if (emitJs) {

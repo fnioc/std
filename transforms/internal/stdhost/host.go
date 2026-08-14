@@ -38,6 +38,9 @@ import (
 	"github.com/fnioc/std/transforms/internal/plugin"
 	"github.com/fnioc/std/transforms/internal/signatures"
 	"github.com/fnioc/std/transforms/internal/tokens"
+	"github.com/fnioc/std/transforms/internal/typeemit"
+	"github.com/fnioc/std/transforms/internal/typeforhoist"
+	"github.com/fnioc/std/transforms/internal/typefortransform"
 )
 
 const (
@@ -80,12 +83,15 @@ type Stage struct {
 
 // Env carries the cross-stage state a builder may need: the project working
 // directory, the per-run inline artifacts (populated by the inline stage, read by
-// nameof and the emit sweep), and the inline BODIES the host pre-collected in its
-// single §100 dependency scan (threaded to the inline stage so the walk runs once).
+// nameof and the emit sweep), the inline BODIES the host pre-collected in its
+// single §100 dependency scan (threaded to the inline stage so the walk runs
+// once), and the project's typefor const table (nil when the project spells its
+// derived types inline).
 type Env struct {
 	Cwd       string
 	Artifacts *inlinetransform.Artifacts
 	Bodies    []inlinetransform.OwnedEntry
+	Hoist     *typefortransform.Hoist
 }
 
 // Sink receives one diagnostic from a stage's transform.
@@ -212,6 +218,15 @@ func runTransform(host Host, args []string) int {
 		return 2
 	}
 
+	// How this project spells the types typefor derives. It rides the project's
+	// own package.json, never the shared descriptor every consumer dedupes to one
+	// spawn — so two consumers of the same host can disagree.
+	emission, emissionErr := readEmission(cwd)
+	if emissionErr != nil {
+		fmt.Fprintf(stderr, "%s: %v\n", host.Name, emissionErr)
+		return 2
+	}
+
 	// No selection: the whole stage table runs on every file. A stage that matches
 	// nothing in this program is a cheap no-op (disjoint match sets), and a program
 	// with no sugar and no matching source simply emits unchanged — a legitimate
@@ -259,6 +274,11 @@ func runTransform(host Host, args []string) int {
 
 	artifacts := inlinetransform.NewArtifacts()
 	env := &Env{Cwd: cwd, Artifacts: artifacts, Bodies: scan.Bodies}
+	var roots emitRoots
+	if emission == EmissionHoisted {
+		roots = resolveEmitRoots(prog, cwd)
+		env.Hoist = &typefortransform.Hoist{Registry: typeforhoist.NewRegistry(typeemit.HoistRef()), SourceRoot: roots.source}
+	}
 
 	// Split the selected stages into the one-shot PRE-PASS (mergesynth) and the
 	// LOOPED set (everything else), then build each into its FileTransform — see
@@ -302,6 +322,17 @@ func runTransform(host Host, args []string) int {
 			break
 		}
 		out.TypeScript[key] = lowered
+	}
+
+	// The const table is complete only once every file has contributed, so the
+	// generated module is written after the loop — and never when a stage already
+	// failed, since a half-derived table would describe a program that was not
+	// emitted.
+	if env.Hoist != nil && !hasError {
+		if err := writeHoistedModule(env.Hoist.Registry, roots); err != nil {
+			fmt.Fprintf(stderr, "%s: %v\n", host.Name, err)
+			return 3
+		}
 	}
 
 	if err := json.NewEncoder(stdout).Encode(out); err != nil {
