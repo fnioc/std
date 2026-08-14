@@ -69,8 +69,8 @@ func inDeclareModuleFor(decl *shimast.Node, module string) bool {
 }
 
 // elideNamedImport drops any named-import specifier whose local name is in
-// elide, mirroring the nameof stage's import elision (drop specifier / drop
-// declaration / keep). Returns nil when the whole declaration is dropped.
+// elide (drop specifier / drop declaration / keep). Returns nil when the whole
+// declaration is dropped.
 func elideNamedImport(factory *shimast.NodeFactory, statement *shimast.Node, elide map[string]bool) *shimast.Node {
 	if statement.Kind != shimast.KindImportDeclaration {
 		return statement

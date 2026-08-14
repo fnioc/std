@@ -1,7 +1,7 @@
 # Transformer architecture
 
 `@rhombus-std/di.extras`, `di.extras.options`, `config.extras`, and `primitives.extras`
-each rewrite TypeScript at compile time — `tokenfor<T>()`, `addClass<T>()`, `addOptions<T>()`,
+each rewrite TypeScript at compile time — `typefor<T>()`, `addClass<T>()`, `addOptions<T>()`,
 `withType<T>()`, `getService<T>()`, and friends. What each rewrite actually _does_ is documented on
 its own package (see each package's README). This doc covers the machinery underneath all of
 them: how they run in your build, and how one small set of domain-agnostic primitives — run
@@ -30,7 +30,7 @@ mergesynth (one-shot pre-pass)
   ↓
 ┌─────────────────────────────────────────────────────────────┐
 │ loop until a pass changes nothing (max 16 passes):           │
-│   inline → nameof → typefor → schemaof                       │
+│   inline → typefor → schemaof                                │
 └─────────────────────────────────────────────────────────────┘
 ```
 
@@ -53,31 +53,30 @@ class Startup {
 ```
 
 ```ts
-// pass 1: addClass lowers (nameof + typefor fire on its new arguments)
-m.addClass('app:IUserRepo', SqlUserRepo,
+// pass 1: addClass lowers (typefor fires on its new arguments)
+m.addClass(Type.imported('IUserRepo', 'app'), SqlUserRepo,
   Type.ctor(Type.imported('SqlUserRepo', 'app'), [[Type.imported('IDb', 'app')]]))
   .addFactory<IThing>(makeThing);
-// pass 2: addFactory lowers (nameof + typefor fire on its new arguments); pass 3 is a no-op — the loop settles
-m.addClass('app:IUserRepo', SqlUserRepo,
+// pass 2: addFactory lowers (typefor fires on its new arguments); pass 3 is a no-op — the loop settles
+m.addClass(Type.imported('IUserRepo', 'app'), SqlUserRepo,
   Type.ctor(Type.imported('SqlUserRepo', 'app'), [[Type.imported('IDb', 'app')]]))
-  .addFactory('app:IThing', makeThing, Type.func(Type.imported('IThing', 'app'), [[]]));
+  .addFactory(Type.imported('IThing', 'app'), makeThing, Type.func(Type.imported('IThing', 'app'), [[]]));
 ```
 
 **The enabling invariant is disjoint match sets.** Every transform in the loop owns matches no
 other transform can claim: `inline` matches sugar declarations (a specific set of certified
-member/function shapes); each primitive stage matches its own callee symbol (`nameof` only ever
-matches `tokenfor`/`tokenof` calls, `typefor` only its own name, and so on). Nothing in
-the set can produce work for a stage that already ran this pass and claim it belongs to an earlier
-one — that's what makes "run the whole set repeatedly, no intrinsic order" both correct and
-terminating. A new stage added to the loop must be checked against this invariant before it's
-wired in.
+member/function shapes); each primitive stage matches its own callee symbol (`typefor` only its
+own name, `schemaof` only its own). Nothing in the set can produce work for a stage that already
+ran this pass and claim it belongs to an earlier one — that's what makes "run the whole set
+repeatedly, no intrinsic order" both correct and terminating. A new stage added to the loop must
+be checked against this invariant before it's wired in.
 
 **Order inside one pass is a reproducibility choice, not a correctness requirement.** The code
 runs the stages in the fixed sequence shown above so output is deterministic across runs, but no
 stage may ever depend on running before or after another one _within_ the same pass — if it did,
-the loop's "just run it again" termination story would break. `typefor` happens to sit after
-`nameof` because its call shape is disjoint from `nameof`'s (a distinct callee name, whether
-`typefor`'s type-argument or value-argument overload fires), not because anything requires it.
+the loop's "just run it again" termination story would break. `schemaof` happens to sit after
+`typefor` because its call shape is disjoint from `typefor`'s (a distinct callee name), not because
+anything requires it.
 
 ### Termination: 16 passes, loud on exhaustion
 
@@ -90,7 +89,7 @@ node it was given when nothing under it changed (the shim's `VisitEachChild`/fac
 contract already guarantees this when used correctly), so "did this pass change anything" is one
 pointer comparison on the whole file, and a stage that always rebuilds its output — even when
 nothing moved — would break the loop's termination signal. Every looped stage's tail helpers
-(`elideNameofImports`, `elideFunctionImports`, `ensureOptionalImport`, and their siblings) return
+(`elideTypeforImports`, `elideSchemaofImports`, `ensureOptionalImport`, and their siblings) return
 the input unchanged when they had nothing to do, specifically to hold this contract.
 
 ### Mergesynth: a one-shot pre-pass, not a loop member
@@ -286,15 +285,11 @@ Example/Result columns below are each one real lowering pulled from the engine's
 `pkg:` stands in for whatever module the example type is declared in — a real token carries that
 module's actual name instead.
 
-| Primitive         | Shape     | Lowers to                                                                                                                                                                                    | Example                                                      | Result                                                                                  | Home                | Stage      |
-| ----------------- | --------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------ | --------------------------------------------------------------------------------------- | ------------------- | ---------- |
-| `tokenfor<T>()`   | type-arg  | the _service_ token for `T` — strips a `Keyed<T,K>` brand to the bare base                                                                                                                   | `tokenfor<IBar>()`                                           | `"pkg:IBar"`                                                                            | `primitives.extras` | `nameof`   |
-| `tokenfor(value)` | value-arg | the _produced_ token for a value — constructable → construct-sig return, callable → call-sig return, else the value's own type                                                               | `tokenfor(Foo)` (`class Foo {}`)                             | `"pkg:Foo"`                                                                             | `primitives.extras` | `nameof`   |
-| `tokenof<T>()`    | type-arg  | the _raw_ token for `T` — never strips a `Keyed<T,K>` brand                                                                                                                                  | `tokenof<UserOptions>()`                                     | `"pkg:UserOptions"`                                                                     | `primitives.extras` | `nameof`   |
-| `tokenof(value)`  | value-arg | the raw token for a value's _own_ type — never unwraps a constructor/factory                                                                                                                 | `tokenof(makeThing)` (`declare function makeThing(): Thing`) | `"pkg:makeThing"`                                                                       | `primitives.extras` | `nameof`   |
-| `typefor<T>()`    | type-arg  | the runtime `Type` node addressing `T` — the structural sibling of `tokenfor`'s flat string                                                                                                  | `typefor<IBar>()`                                            | `Type.imported("IBar", "pkg")`                                                          | `primitives.extras` | `typefor`  |
-| `typefor(value)`  | value-arg | the whole callable `Type` a value's own construct or call signature spells — a class as the constructor type its parameters describe, a factory as the function type its parameters describe | `typefor(Foo)` (`class Foo { constructor(a: IA) {} }`)       | `Type.ctor(Type.imported("Foo", "pkg"), [[Type.imported("IA", "pkg")]])`                | `primitives.extras` | `typefor`  |
-| `schemaof<T>()`   | type-arg  | the `Type` tree describing a record type `T`'s members, stopping at every name                                                                                                               | `schemaof<{ ssl?: boolean }>()`                              | `Type.object({ ssl: Type.union(Type.global("boolean"), Type.typeLiteral(undefined)) })` | `config.extras`     | `schemaof` |
+| Primitive        | Shape     | Lowers to                                                                                        | Example                                                | Result                                                                                  | Home                | Stage      |
+| ---------------- | --------- | ------------------------------------------------------------------------------------------------ | ------------------------------------------------------ | --------------------------------------------------------------------------------------- | ------------------- | ---------- |
+| `typefor<T>()`   | type-arg  | the runtime `Type` node addressing `T`, narrowed to `ConstructorType`/`FunctionType`/`Type`      | `typefor<IBar>()`                                      | `Type.imported("IBar", "pkg")`                                                          | `primitives.extras` | `typefor`  |
+| `typefor(value)` | value-arg | the `Type` a value's OWN type spells, never unwrapped — a class arrives as the constructor it is | `typefor(Foo)` (`class Foo { constructor(a: IA) {} }`) | `Type.ctor(Type.imported("Foo", "pkg"), [[Type.imported("IA", "pkg")]])`                | `primitives.extras` | `typefor`  |
+| `schemaof<T>()`  | type-arg  | the `Type` tree describing a record type `T`'s members, stopping at every name                   | `schemaof<{ ssl?: boolean }>()`                        | `Type.object({ ssl: Type.union(Type.global("boolean"), Type.typeLiteral(undefined)) })` | `config.extras`     | `schemaof` |
 
 Every primitive in the table is authoring-only: it throws unconditionally if it ever runs, so
 none of them needs a runtime-shaped home.
@@ -313,10 +308,9 @@ by default.
 - **`inline`** writes each tree out at the call site it was derived for, exactly as the column
   shows.
 
-The table is a DAG: a node interns under its canonical token spelling (the same spelling the
-`nameof` stage renders flat), children intern before parents, and a composite const references its
-member consts by name — so the module holds one const per DISTINCT type and no subtree is spelled
-twice. A name is `$` plus the sanitized spelling plus, for any spelling that was not already
+The table is a DAG: a node interns under its own canonical spelling, children intern before
+parents, and a composite const references its member consts by name — so the module holds one
+const per DISTINCT type and no subtree is spelled twice. A name is `$` plus the sanitized spelling plus, for any spelling that was not already
 entirely alphanumeric, a short hash of it; it is a pure function of the spelling, so it is stable
 across builds and independent of which file reached the type first.
 
@@ -356,8 +350,9 @@ naming a class never has that class's surface consulted at all.
 
 ## The generic inline stage
 
-Every primitive stage carries hand-written knowledge of exactly one call shape — `nameof` always
-lowers to a token, `typefor` always lowers to a `Type` node. The **inline stage** is different:
+Every primitive stage carries hand-written knowledge of exactly one call shape — `typefor` always
+lowers to a `Type` node, `schemaof` always lowers to the `Type` tree describing a record's members.
+The **inline stage** is different:
 it is a generic single-expression function-inliner that learns what to substitute from a
 hand-authored publish list, not from compiled-in per-family rules. A library authors its sugar as
 an ordinary typed TypeScript function whose single-return-expression body is written _over_ the
@@ -603,25 +598,14 @@ export const ServiceProviderServiceAugmentations: AugmentationSet2<IServiceProvi
 
 ```ts
 export const ServiceOptionsInline = { addOptions<T>(this: IInlineOptionsTarget): Manifest {
-  return this.addOptions(tokenfor<IOptions<T>>(), tokenof<T>());
+  return this.addOptions(typefor<T>());
 } };
 ```
 
-The two tokens are relationally locked: the wrapper (`IOptions<T>`) is a **composed generic**
-whose base type — `IOptions`, imported from `@rhombus-std/options` — is a type external to this
-body's own package. The inline stage captures that composed use (base module + export name + the
-call-site-bound argument types) and a downstream `nameof` handler resolves the base symbol against
-the _consumer's_ program before deriving the wrapper token — the body-external-type-reference
-capability that made this sugar possible without a bespoke options stage. The element half uses
-`tokenof<T>()` (the raw, alias-preserving primitive), not `tokenfor<T>()`, specifically so a
-`Keyed<T,K>`-branded `T` derives the _same_ raw reference both inside the wrapper's inner leaf and
-as the standalone element token — a mismatch here would silently register the options value under
-a token that never matches what the wrapper token composes.
-
-This works for _any_ type a consumer's program can resolve, by construction: the sugar call only
-typechecks because `di.extras.options`'s `declare module` augmentation is in the program, and that
-package peers `@rhombus-std/options` — so `IOptions` is always resolvable wherever `addOptions<T>()`
-compiles at all.
+The verb takes the bare `T` — `IOptions<T>` is never spelled here, because one open registration
+answers every `IOptions<…>` request, so the sugar has only its own type argument to derive. That
+keeps `addOptions<T>()` an ordinary single-type-argument `typefor` call, no different from
+`addClass<T>()` or `add<T>()`.
 
 ### Config (`config.extras`)
 
@@ -643,7 +627,7 @@ signature), or a non-object root, is a targeted diagnostic naming the construct,
 ## Parse-anchoring: the checker only ever sees pass-0 syntax
 
 A primitive stage anchors a call two different ways depending on where the call came from: a
-**source-written** call (`tokenfor<IWidget>()`, typed by hand) resolves its callee symbol through
+**source-written** call (`typefor<IWidget>()`, typed by hand) resolves its callee symbol through
 the checker directly; a **substituted** call (the same expression, freshly spliced in by the
 inline stage from a sugar body) has no checker symbol of its own — its callee is a cloned node
 from the body's source file, and the stage instead reads the type/value the inline stage already
@@ -682,26 +666,26 @@ sugar call, and the visitor does not descend past a match — so a registration 
 what is inside its arguments while it waits:
 
 ```ts
-services.addValue({ clockToken: tokenfor<IClock>(), retries: 3 }) // waits: it is the receiver
+services.addValue({ clockToken: typefor<IClock>(), retries: 3 }) // waits: it is the receiver
   .addClass<IWidget>(Widget); // inlines on pass 0
 ```
 
 On pass 0 the outer `addClass` substitutes and the receiver is spliced verbatim; also on pass 0
-the token stage lowers the `tokenfor<IClock>()` inside that object literal, rebuilding the literal
+the typefor stage lowers the `typefor<IClock>()` inside that object literal, rebuilding the literal
 through `factory.Update*`. Only on pass 1 does `addValue` substitute — and `callArguments(call)`
 now hands back the **rebuilt** literal.
 
 That matters for any artifacts field holding a **node** rather than a resolved type.
-`PrimitiveUse.ValueArg` is the only one, and its two consumers (the token stage's
-`tokenfor(value)` / `tokenof(value)` branches and the signature stage's artifacts branch) hand it
-straight to the checker. Typing a rebuilt node resolves the enclosing call's overloads, which
-contextually types the minted symbol-less literals downstream stages produced, and
-`getContextualTypeForObjectLiteralElement` nil-derefs — the same crash parse-anchoring exists to
-prevent, arriving by a route no matcher guard can see. So the rule extends: **anchor the node you
-RECORD, not only the node you match.** `fileState.anchorValueArg` does that, pairing each spliced
-argument with the pass-0 argument at the same index and falling back to the Original chain;
-a shape with no parse node behind it records `nil`, every consumer reads that as "not a registered
-value argument", and the emit sweep names the surviving primitive instead of the process dying.
+`PrimitiveUse.ValueArg` is the only one, and its consumer — the typefor stage's own value-argument
+branch — hands it straight to the checker. Typing a rebuilt node resolves the enclosing call's
+overloads, which contextually types the minted symbol-less literals downstream stages produced,
+and `getContextualTypeForObjectLiteralElement` nil-derefs — the same crash parse-anchoring exists
+to prevent, arriving by a route no matcher guard can see. So the rule extends: **anchor the node
+you RECORD, not only the node you match.** `fileState.anchorValueArg` does that, pairing each
+spliced argument with the pass-0 argument at the same index and falling back to the Original
+chain; a shape with no parse node behind it records `nil`, every consumer reads that as "not a
+registered value argument", and the emit sweep names the surviving primitive instead of the
+process dying.
 
 Anchoring costs nothing in expressiveness, because **every checker question this engine asks is a
 question about source-written syntax** — which primitive is this callee, which overload does this
@@ -742,7 +726,8 @@ symbol. Then:
 
 ```ts
 // authored: Widget's second constructor parameter is optional
-manifest.addClass('pkg:Widget', Widget, typefor(Widget)).addValue('pkg:IWidgetOptions', defaultOptions);
+manifest.addClass(Type.imported('Widget', 'pkg'), Widget, typefor(Widget))
+  .addValue(Type.imported('IWidgetOptions', 'pkg'), defaultOptions);
 ```
 
 Pass 1 lowers `typefor(Widget)` into that minted object literal. Pass 2 reaches the trailing
@@ -793,17 +778,13 @@ it walks the freshly-spliced expression and records every primitive call it find
 identity** (not by name or position), against the checker-bound type or value from the _original_
 call site:
 
-- a **type-argument** primitive (`tokenfor<T>()`, `tokenof<T>()`, …) records the bound
+- a **type-argument** primitive (`typefor<T>()`, `schemaof<T>()`) records the bound
   `*checker.Type` for each type parameter;
-- a **value-argument** primitive (`typefor(value)`, `tokenfor(value)`) records the original,
-  program-bound argument node itself, so the consuming stage can still query the checker through
-  it even though the primitive's own callee is synthetic;
-- a **composed-generic** use (`tokenfor<IOptions<T>>()`, where `IOptions` is a type external to
-  the sugar body's own package) records the base type's module + export name as data, plus the
-  call-site-bound argument types — resolved against the _consumer's_ program later, in the
-  lowering stage that owns the token-derivation context.
+- a **value-argument** primitive (`typefor(value)`) records the original, program-bound argument
+  node itself, so the consuming stage can still query the checker through it even though the
+  primitive's own callee is synthetic.
 
-A downstream stage (`nameof`, `typefor`, `schemaof`) checks the artifacts map first
+A downstream stage (`typefor`, `schemaof`) checks the artifacts map first
 for any call it visits; a hit means "this is my
 substituted work from this run," a miss falls through to the ordinary checker-anchored
 source-written path. After the loop's final pass, an **emit sweep** walks the artifacts one more
@@ -811,9 +792,9 @@ time and fails the build if anything registered there — or any listed sugar ca
 un-lowered into the output. That sweep is the tripwire that would catch a stage silently failing
 to claim work it should have.
 
-## Failure semantics: a diagnostic, never a silent empty token
+## Failure semantics: a diagnostic, never a silent empty tree
 
-Every token-shaped primitive follows one rule: an **underivable** derivation (an anonymous type
+Every type-shaped primitive follows one rule: an **underivable** derivation (an anonymous type
 with no export name, a type the checker can't resolve, a base type that isn't in the program)
 never emits an empty string, `null`, or any other silent placeholder. It either:
 
@@ -821,7 +802,7 @@ never emits an empty string, `null`, or any other silent placeholder. It either:
   (substituted) one that hasn't reached the sweep yet — a later pass may still resolve the state
   it depends on, and erroring before the loop settles would fail builds that are actually fine; or
 - emits a **targeted diagnostic** naming the specific problem, if the failing use is
-  _source-written_ (a human wrote `tokenfor<AnonymousType>()` directly) — where there's no later
+  _source-written_ (a human wrote `typefor<AnonymousType>()` directly) — where there's no later
   pass that could still rescue it.
 
 The sweep is the backstop for the first case: a synthetic use that never settled and never got

@@ -2158,6 +2158,51 @@ program's TS errors in the same array with `category: "error"` was the whole fix
 
 _Owner-ruled ("fix it"), Claude-executed 2026-08-14._
 
+## §177 — The Go nameof stage retires; typefor is the sole primitive lowering stage
+
+`tokenfor`/`tokenof` were already gone from the TS authoring surface (§171: `typefor` is the single
+value-observing derivation door) — `@rhombus-std/primitives.extras` exports only `typefor`, and no
+library source anywhere in the repo still imports the retired pair. What survived was the Go engine
+side: `transforms/internal/nameoftransform` (the flat-string token lowering stage, ~2700 lines),
+`tokens/composed.go` and `tokens/produced.go` (its composed-generic and produced-type derivation
+helpers), and the `ComposedTypeArg`/`Composed` machinery in `inlinetransform` that fed a composed
+generic use to it — kept alive only by test fixtures that hand-declared local `tokenfor`/`tokenof`
+stubs to exercise the stage, since no real consumer minted one anymore. All of it is now deleted, and
+the canonical stage table drops to `mergesynth (pre-pass) → inline → typefor → schemaof`.
+
+Three probes depended on the stage and were rehomed onto `typefor` rather than deleted outright:
+`tests/declare-by-depending.ttsc.e2e` (the host-spawn observable), `tests/mergesynth.ttsc.e2e` (the
+merge-strategy synthesis witness, whose `IAlpha` registration fixture used `tokenfor`/`tokenof` as its
+real augmentation-token argument), and `transforms/internal/stdhost/inlinevaluearg_test.go` (the
+waiting-sugar / rebuilt-value-argument crash pin, previously exercising both `tokenfor` and `tokenof`
+as its two `ValueArg` consumers — now a single typefor-only scenario, since there is only one consumer
+left). `tests/primitives.extras.ttsc.e2e/nameof-parity.test.ts` — the stage's own byte-parity oracle
+over ten type shapes — was NOT a clean delete: a coverage comparison found three shapes (package-public
+barrel resolution, a root re-export of a deeply-declared type, and defaulted-generic-alias handling)
+that no typefor suite exercised, because `tokens/packages.go`'s membership/alias logic is checker-level
+and rides `*.ttsc.e2e` parity suites against real packages rather than unit tests. Those three shapes
+were ported into a new `tests/typefor.ttsc.e2e/test/package-shapes.test.ts`, asserting `Type.imported`
+trees instead of flat tokens, and the now-redundant suite (and its dedicated CI shard) was deleted.
+
+`ServiceBaseTokenFor`/`KeyedTokenFor` in `tokens/holes.go`, and the `tokenfor`/`tokenof` entries in
+`inlinetransform`'s `knownPrimitives` map (and its ESLint mirror, `PRIMITIVE_HOMES`), were left in
+place: they compile, they're covered by their own existing unit tests, and removing them meant
+rewriting ~48 occurrences across six Go test files that use `tokenfor`/`tokenof` purely as example
+primitive names for exercising the inline stage's matching/registration mechanism in isolation, never
+its lowering. A source-written `tokenfor`/`tokenof` call still inlines and registers today; nothing
+lowers it, so it now always survives to the emit sweep as `INLINE_UNLOWERED_PRIMITIVE` rather than
+silently doing nothing — flagged rather than fixed, since closing it is a bounded but separate cleanup.
+
+Documentation was corrected where it directly described deleted machinery or non-existent primitives
+as current: `docs/features/transformer-architecture.md`'s pipeline diagram, primitive table, and
+several worked examples; `libraries/primitives.extras`'s README and `package.json` (the package that
+used to house `tokenfor`/`tokenof`, rewritten around `typefor`'s actual `Type`-returning contract); and
+this file's own digest. `CLAUDE.md`'s and `docs/libraries/*.md`'s scattered older `tokenfor`/`tokenof`
+mentions were left as a separate, pre-existing documentation-currency gap from the earlier TS-surface
+retirement (§171) — out of scope for this entry, flagged for its own audit pass.
+
+_Owner-directed (task-tracked, "Go nameof stage retirement"), Claude-executed 2026-08-14._
+
 ## §180 — Matching: same kind always; assignability within a kind; identity at identifiers
 
 A request matches a candidate only WITHIN a kind — there is no cross-kind assignability: a ctor

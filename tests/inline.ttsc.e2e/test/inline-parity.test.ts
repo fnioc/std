@@ -133,8 +133,8 @@ function goEnv(): NodeJS.ProcessEnv {
 // WIRING. The chain sandbox deps {di.core, di.extras}, symlinks the authoring
 // packages, and names ONE spawn descriptor. The always-on host runs its whole
 // stage table: the inline stage substitutes the sugar body, which puts a
-// `typefor<T>()` in front of the token-taking member, and the primitive stages
-// (nameof / typefor) lower the calls it mints. Every argument the
+// `typefor<T>()` in front of the token-taking member, and the typefor primitive
+// stage lowers the calls it mints. Every argument the
 // author wrote after the ctor is carried through untouched — the sugar adds the
 // token and nothing else.
 //
@@ -230,7 +230,7 @@ export const self = services.addClass(SelfRepo, selfImpl);
 
 // Lookup-family source (W5). The type-driven get* forms lower through the inline
 // bodies to the Type-taking member: `provider.getService(typefor<T>())` and its
-// two siblings, the token minted by the nameof stage. Own file so the lookup
+// two siblings, the type minted by the typefor stage. Own file so the lookup
 // compare is isolated from the registration whole-file compare.
 const RESOLVE_SOURCE = `
 import type { Keyed } from '@rhombus-std/di.core';
@@ -342,7 +342,7 @@ function setupChainWorkspaces(): void {
   rmSync(join(chainInlineDir, 'dist'), { recursive: true, force: true });
 
   // Inline path: di.extras IN deps → the host scan activates the full stage
-  // set (inline + nameof + typefor). The tsconfig spells the
+  // set (inline + typefor). The tsconfig spells the
   // primitives descriptors explicitly so ttsc has direct-discovery entries to
   // spawn the host with; the rest arrive through the scan. There is no semantic
   // (di-direct) sandbox — its output is the frozen `*.di-direct.js` golden.
@@ -648,23 +648,19 @@ describe.skipIf(!toolchainReady)('generic inline stage — lookup parity (W5)', 
 // W4 — addOptions<T>() options witness.
 //
 // The addOptions<T>() sugar is no longer a bespoke stage: it is a
-// di.extras.options rhombus-std inline body substituted by the inline stage, its
-// composed `IOptions<T>` wrapper token + bare `T` element token lowered by the
-// tokenfor (nameof) stage's composed-generic derivation. This witness compiles a
-// lone `addOptions<UserOptions>()` through the REAL ttsc and asserts the two-token
-// verb: the wrapper is `@rhombus-std/options:IOptions<element>` over the SAME
-// element token the second argument carries (relationally locked), byte-identical
-// to the retired dioptionstransform stage's lowering (whose idempotence test
-// pinned exactly this shape before it was deleted). There is no di-direct oracle
-// to compare against — that stage is gone — so the witness pins the canonical
-// two-token SHAPE, which is also the form the runtime addOptions augmentation
-// (installed by @rhombus-std/options.augmentations) dispatches on.
+// di.extras.options rhombus-std inline body substituted by the inline stage,
+// putting a single `typefor<T>()` in front of the verb — the bare element type,
+// never a composed `IOptions<T>` wrapper: one open registration answers every
+// `IOptions<…>` request, so the sugar has only its own type argument to derive.
+// This witness compiles a lone `addOptions<UserOptions>()` through the REAL ttsc
+// and asserts the one-argument verb over the bare options type, which is also the
+// form the runtime addOptions augmentation (installed by
+// @rhombus-std/options.augmentations) dispatches on.
 //
-// Single sandbox (no split dep graphs): with no oracle path there is nothing to
-// keep the inline stage out of, so the one dir wires the primitives descriptors
-// to spawn the host and lists di.extras + di.extras.options in deps —
-// the host's own scan activates inline + nameof and collects the addOptions body,
-// and @rhombus-std/options is loaded so the wrapper base resolves.
+// Single sandbox (no split dep graphs): the one dir wires the primitives
+// descriptors to spawn the host and lists di.extras + di.extras.options in
+// deps — the host's own scan activates inline + typefor and collects the
+// addOptions body, and @rhombus-std/options is loaded so `IOptions` resolves.
 
 const DI_OPTIONS = join(REPO_ROOT, 'libraries', 'di.extras.options');
 const OPTIONS = join(REPO_ROOT, 'libraries', 'options');
@@ -693,9 +689,8 @@ const OPTIONS_SOURCE = `
 import type { Manifest } from '@rhombus-std/di.core';
 import type { IOptions } from '@rhombus-std/options';
 
-// Force @rhombus-std/options into the program so the composed wrapper base
-// (@rhombus-std/options:IOptions) resolves — the tokenfor stage scans the loaded
-// source files for it, and an unimported peer would not be loaded.
+// Force @rhombus-std/options into the program: an unimported peer would not be
+// loaded, and the runtime-dispatch test below needs IOptions available.
 export type __KeepOptions<T> = IOptions<T>;
 
 interface UserOptions {

@@ -183,9 +183,10 @@ export const QueryInline = {
 // TestExtractIgnoresAuthoringMarker: an impl file carrying the module-level
 // `registerInlineBodies(QueryInline)` marker (the in-code statement of the
 // package.json "rhombus-std" inline registration) extracts exactly as it would without
-// it. The extra import must not land in the body-external TYPE-import map — it is a
-// VALUE — and the extra top-level statement must not disturb the declaration lookup
-// or the free-identifier walk, which read only the impl's own declaration.
+// it. The extra import must not land in the body-external VALUE-import map — the
+// marker is never referenced from inside a body — and the extra top-level
+// statement must not disturb the declaration lookup or the free-identifier walk,
+// which read only the impl's own declaration.
 func TestExtractIgnoresAuthoringMarker(t *testing.T) {
 	inline := `import { registerInlineBodies, tokenfor } from '@rhombus-std/primitives.extras';
 export const QueryInline = {
@@ -202,8 +203,8 @@ registerInlineBodies(QueryInline);
 	if rb.PrimitiveImports["tokenfor"] != "tokenfor" {
 		t.Fatalf("tokenfor should still be a recorded primitive import, got %+v", rb.PrimitiveImports)
 	}
-	if ref, recorded := rb.TypeImports["registerInlineBodies"]; recorded {
-		t.Fatalf("the authoring marker must not be recorded as a type import, got %+v", ref)
+	if ref, recorded := rb.ValueImports["registerInlineBodies"]; recorded {
+		t.Fatalf("the authoring marker must not be recorded as a value import, got %+v", ref)
 	}
 }
 

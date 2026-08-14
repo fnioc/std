@@ -220,7 +220,7 @@ export interface BuildPackageOptions {
    *
    *   1. STAGE — {@link stageLowering} compiles every `src/**\/*.ts` as its own
    *      entrypoint with ALL imports external and the `@ttsc/unplugin/bun` adapter
-   *      active, so each file is lowered (its `nameof`/`add`/… rewritten) but not
+   *      active, so each file is lowered (its `typefor`/`add`/… rewritten) but not
    *      bundled. The lowered per-file JS lands in a stage dir (`.ttsc-out/`),
    *      beside the modules the engine generates for itself.
    *   2. BUNDLE — the existing `bun build` pass then bundles the STAGE emit (NOT
@@ -228,12 +228,12 @@ export interface BuildPackageOptions {
    *      stage preserved. Lowering commutes with bundling, so the shipped
    *      `dist/*.js` is what a no-transformer author would have hand-written.
    *
-   * The d.ts pipeline is unaffected (`nameof` and friends have no type-level
+   * The d.ts pipeline is unaffected (`typefor` and friends have no type-level
    * footprint). After bundling, the per-file lowered emit is KEPT at `dist/stage/`
    * — named for its build role — and the package's `./private/*` export alias
    * points its `bun` condition there (alias and disk path are independent): so
    * white-box consumers (sibling test packages) execute the same lowered JS a
-   * published consumer would, instead of raw src whose un-lowered `nameof<T>()`
+   * published consumer would, instead of raw src whose un-lowered `typefor<T>()`
    * throws at import time. `dist/stage` is publish-excluded via a `"!dist/stage"`
    * entry in the package's `files`.
    *

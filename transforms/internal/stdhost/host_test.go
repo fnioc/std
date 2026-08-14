@@ -31,7 +31,6 @@ func TestBaseStagesCanonicalOrder(t *testing.T) {
 	want := []string{
 		stagePrefix + "inline",
 		stagePrefix + "mergesynth",
-		stagePrefix + "nameof",
 		stagePrefix + "typefor",
 		stagePrefix + "schemaof",
 	}

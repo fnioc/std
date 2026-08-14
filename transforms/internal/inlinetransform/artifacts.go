@@ -6,12 +6,12 @@ import (
 )
 
 // PrimitiveUse records a primitive call the inline stage minted by substitution:
-// a side-parsed callee (e.g. `nameof<T>()`) whose type arguments were bound to
+// a side-parsed callee (e.g. `typefor<T>()`) whose type arguments were bound to
 // checker-valid types captured at the ORIGINAL call site. A downstream primitive
 // stage reads these to lower a synthetic call it could never anchor on its own
 // (the callee clone has no symbol).
 //
-// TypeArgs carries a TYPE-argument primitive's bound arguments (nameof<T>()).
+// TypeArgs carries a TYPE-argument primitive's bound arguments (typefor<T>()).
 // ValueArg carries a VALUE-argument primitive's argument (typefor(ctor),
 // tokenof(value)) as the PARSE node behind it, so the consuming stage can
 // checker-query it even though the primitive's own callee is synthetic.
@@ -24,38 +24,10 @@ import (
 // (plugin.CheckerAnchor). fileState.anchorValueArg resolves the parse node at
 // record time and records nil when there is none; every consumer treats nil as
 // "not a registered value argument".
-//
-// Composed carries a COMPOSED-GENERIC type argument (`tokenfor<IOptions<T>>()`)
-// whose base names a body-external imported type and whose leaves bind from the
-// call-site env — the shape the addOptions sugar body mints. It is disjoint from
-// TypeArgs: a plain `tokenfor<T>()` records the bound type in TypeArgs and leaves
-// Composed nil; a composed generic records Composed and leaves TypeArgs empty.
 type PrimitiveUse struct {
 	Name     string
 	TypeArgs []*shimchecker.Type
 	ValueArg *shimast.Node
-	Composed *ComposedTypeArg
-}
-
-// ComposedTypeArg describes a spelled generic type argument a sugar body wrote
-// over a body-EXTERNAL imported base (`IOptions<T>`), captured by the inline stage
-// for a downstream primitive stage to lower. The base symbol is resolved late (in
-// the lowering stage, which owns the token Context) from Module + Export against
-// the consumer program; Args are the env-bound argument types, in order. ArgNode
-// is the spelled type node, kept for diagnostic anchoring.
-type ComposedTypeArg struct {
-	// Module is the bare package specifier the base type is imported from
-	// (`@rhombus-std/options`), read off the body's import map — DATA, never a
-	// Go-source constant.
-	Module string
-	// Export is the imported base type's exported name (`IOptions`).
-	Export string
-	// Args are the composed generic's argument types, bound from the inline env;
-	// a nil entry marks an argument that did not bind (the lowering reports an
-	// underivable-token diagnostic for it).
-	Args []*shimchecker.Type
-	// ArgNode is the spelled composed type node, for diagnostic anchoring.
-	ArgNode *shimast.Node
 }
 
 // MemberShape is a certified member-sugar call shape (type-arg count, value-arg
@@ -89,7 +61,7 @@ type Artifacts struct {
 	FunctionSugars []*Resolved
 	// Active is set once the inline stage is selected AND at least one entry's
 	// surface is present in this program — whether or not anything inlined. The
-	// sweep and the nameof handoff key off it.
+	// emit sweep keys off it.
 	Active bool
 }
 

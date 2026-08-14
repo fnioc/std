@@ -574,7 +574,7 @@ bespoke config schema grammar (`Schema`/`Infer`/`OPTIONAL`) and the `signaturefo
   `./ttsc` descriptor resolves to the SAME `cmd/ttsc-std` source dir under the SAME name, so `ttsc`
   dedupes every consumer to one cache key and one spawn. There is no stage selection: once spawned,
   the host runs its WHOLE stage table on every file: `mergesynth` first, once, as a pre-pass, then
-  the rest in a fixed canonical order (inline → nameof → typefor → schemaof) looped to
+  the rest in a fixed canonical order (inline → typefor → schemaof) looped to
   a fixed point; a stage that matches nothing is a cheap no-op
   (disjoint match sets). The bespoke di /
   di-options / config domain stages, the `ttsc.stages` markers, `selectStages`/`BaseBundles`, and

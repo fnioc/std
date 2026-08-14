@@ -82,10 +82,10 @@ type Stage struct {
 
 // Env carries the cross-stage state a builder may need: the project working
 // directory, the per-run inline artifacts (populated by the inline stage, read by
-// nameof and the emit sweep), the inline BODIES the host pre-collected in its
-// single §100 dependency scan (threaded to the inline stage so the walk runs
-// once), and the project's typefor const table (nil when the project spells its
-// derived types inline).
+// typefor and the emit sweep), the inline BODIES the host pre-collected in its
+// single dependency scan (threaded to the inline stage so the walk runs once),
+// and the project's typefor const table (nil when the project spells its derived
+// types inline).
 type Env struct {
 	Cwd       string
 	Artifacts *inlinetransform.Artifacts

@@ -5,21 +5,17 @@
 // table back-to-back over one loaded program in one shared EmitContext, in the
 // hardcoded canonical order
 //
-//	mergesynth (pre-pass) -> inline -> nameof -> typefor -> schemaof
+//	mergesynth (pre-pass) -> inline -> typefor -> schemaof
 //
 // A stage that matches nothing in the program is a cheap no-op (the stages own
-// disjoint match sets), so always-on is correct as well as simple. This replaces
-// the former per-combination sidecars (ttsc-nameof / ttsc-di / ttsc-di-options /
-// ttsc-di-app / ttsc-config) AND the interim single-binary-with-selection design:
-// one binary, one always-on set.
+// disjoint match sets), so always-on is correct as well as simple: one binary,
+// one always-on set.
 //
 // The scaffolding lives in internal/stdhost. This is the ONE host: it links
-// typia through the merge-synthesis stage (#213), which the base stage table
-// carries — the former in-repo-only cmd/ttsc-std-full sibling is retired. typia
-// is fully lowered at build time (the stage embeds its guards as inlined plain
-// JS) and rides in no shipped artifact or npm manifest, so this stays a
-// build-time-only plugin binary; the measured cost of linking it is +4.4 MB /
-// +17.6% on the compiled sidecar, accepted for the one-host simplification.
+// typia through the merge-synthesis stage, which the base stage table carries.
+// typia is fully lowered at build time (the stage embeds its guards as inlined
+// plain JS) and rides in no shipped artifact or npm manifest, so this stays a
+// build-time-only plugin binary.
 package main
 
 import (
