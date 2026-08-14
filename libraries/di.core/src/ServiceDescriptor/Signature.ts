@@ -1,5 +1,4 @@
-import { type ConstructorType, type FunctionType, type IntersectionType, type Token,
-  Type } from '@rhombus-std/primitives';
+import { type ConstructorType, type FunctionType, type IntersectionType, Type } from '@rhombus-std/primitives';
 
 export type TypeSignatures = ReadonlyArray<readonly Type[]>;
 export namespace TypeSignatures {
@@ -47,8 +46,8 @@ export namespace TypeSignatures {
   }
 }
 
-/** A signatures array whose entries may be a mix of resolved `Type`s and unnormalized `Token` strings. */
-export type Signatures = ReadonlyArray<ReadonlyArray<Type | Token>>;
+/** A signatures array whose entries may be a mix of resolved `Type`s and unnormalized token strings. */
+export type Signatures = ReadonlyArray<ReadonlyArray<Type | string>>;
 export namespace Signatures {
   /**
    * Overlays a sparse positional `overrides` array onto each derived dependency signature, so a

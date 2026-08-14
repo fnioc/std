@@ -241,10 +241,10 @@ method on instances, with zero further action on your part.
 
 ## How we pulled it off
 
-**The registry.** A module-level `Map<Token, Bag>` lives in `@rhombus-std/primitives` (the
-universal zero-dep leaf every family can already reach). `Bag` is a `Multimap<string, [fn,
-mergeStrategy?]>` — a per-member-name list of contributions, each pairing its function with its own
-collision strategy.
+**The registry.** A module-level `Map<string, Bag>` lives in `@rhombus-std/primitives` (the
+universal zero-dep leaf every family can already reach), keyed by the token string. `Bag` is a
+`Multimap<string, [fn, mergeStrategy?]>` — a per-member-name list of contributions, each pairing its
+function with its own collision strategy.
 
 **Registering.** `registerAugmentations(token, set, merge?)` appends `set`'s members into the
 token's bag, then synchronously drives just those new members onto every class already subscribed
@@ -279,9 +279,9 @@ taken." That's what lets an augmentation share a name with a class's own hand-wr
 strategy, while two unrelated augmentations that happen to collide by name fail loud instead of one
 quietly overwriting the other.
 
-**Tokens are values, not names.** `Token` (defined in `primitives`, re-exported by `di.core`) is
-derived inline at every call site via `tokenfor<Receiver>()` — there are no exported token constants.
-A transformer lowers `tokenfor<IConfigBuilder>()` to the literal string
+**Tokens are values, not names.** A token is a plain string, derived inline at every call site via
+`tokenfor<Receiver>()` — there are no exported token constants and no dedicated token type. A
+transformer lowers `tokenfor<IConfigBuilder>()` to the literal string
 `"@rhombus-std/config:IConfigBuilder"`; a hand-written, no-transformer caller just writes
 that string directly. Two calls naming the same interface always produce the same token, regardless
 of which package or file they're in.

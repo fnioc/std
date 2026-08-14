@@ -1,4 +1,4 @@
-import type { Manifest, Token, Type } from '@rhombus-std/di.core';
+import type { Manifest, Type } from '@rhombus-std/di.core';
 import { LOGGER_PROVIDER_TYPE, LoggingBuilder } from '@rhombus-std/logging';
 import { BrowserConsoleLogger, BrowserConsoleLoggerAugmentations, BrowserConsoleLoggerProvider, type ConsoleLike,
   consoleMethodFor } from '@rhombus-std/logging.browserconsole';
@@ -11,10 +11,10 @@ import { expect, test } from 'bun:test';
  * immutable chain — a double that returned itself would hide exactly the
  * silent-drop bug this shape exists to catch.
  */
-function fakeServices(): { services: Manifest; values: Array<[Token | Type, unknown]>; } {
-  const values: Array<[Token | Type, unknown]> = [];
+function fakeServices(): { services: Manifest; values: Array<[string | Type, unknown]>; } {
+  const values: Array<[string | Type, unknown]> = [];
   const make = (): Manifest => {
-    return { addValue(token: Token | Type, value: unknown): Manifest {
+    return { addValue(token: string | Type, value: unknown): Manifest {
       values.push([token, value]);
       return make();
     } } as unknown as Manifest;
@@ -137,7 +137,7 @@ test('the per-builder dedup is keyed by the builder, not effectively global', ()
   BrowserConsoleLoggerAugmentations.addBrowserConsole.call(new LoggingBuilder(first.services));
   BrowserConsoleLoggerAugmentations.addBrowserConsole.call(new LoggingBuilder(second.services));
 
-  const providersFor = (values: Array<[Token | Type, unknown]>) => {
+  const providersFor = (values: Array<[string | Type, unknown]>) => {
     return values.filter(([token]) => {
       return token === LOGGER_PROVIDER_TYPE;
     });

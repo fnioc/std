@@ -1,5 +1,5 @@
 import type { IComplete, Manifest, ServiceDescriptor, Signatures, Unstarted } from '@rhombus-std/di.core';
-import { AugmentationSet2, type ConstructorType, type Flatten, type FunctionType, type IntersectionType, Token,
+import { AugmentationSet2, type ConstructorType, type Flatten, type FunctionType, type IntersectionType,
   Type } from '@rhombus-std/primitives';
 import { registerAugmentations, typefor } from '@rhombus-std/primitives.extras';
 import { Ctor, Func } from '@rhombus-toolkit/func';

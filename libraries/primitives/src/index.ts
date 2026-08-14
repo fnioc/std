@@ -14,7 +14,6 @@ export * from './NotImplementedError.js';
 export * from './process.js';
 export type * from './ReadableStream.js';
 export * from './TimeoutHandle.js';
-export type * from './Token.js';
 export * from './Type/internals/TypeParseError.js';
 export { Type } from './Type/Type.js';
 export type { AggregateType, ArrayType, ConstructorType, CtorSpec, FuncSpec, FunctionType, GenericType, GlobalSpec,
