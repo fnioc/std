@@ -96,8 +96,8 @@ func buildNameof(prog *driver.Program, ctx *tokens.Context, env *Env, emit Sink)
 
 // buildTypefor activates the typefor primitive stage. It lowers each
 // `typefor<T>()` / `typefor(value)` to the `Type.*` factory tree its argument
-// derives, folding an immediate known-accessor property access (`.instanceType`,
-// `.returnType`, `.args`, `.value`, `.tag`, `.type`, `.kind`) through to the
+// derives, folding an immediate known-accessor property access (`.instance`,
+// `.return`, `.args`, `.value`, `.tag`, `.type`, `.kind`) through to the
 // surviving sub-tree. Where that tree LANDS is the project's choice
 // (Env.Hoist): in one generated module of named consts the call site references,
 // or at the call site itself. Its own diagnostics are hard errors.

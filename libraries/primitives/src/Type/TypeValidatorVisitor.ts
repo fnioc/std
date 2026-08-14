@@ -1,4 +1,3 @@
-import { stringifyType } from './StringifyVisitor.js';
 import type { AggregateType, ArrayType, ConstructorType, FunctionType, GenericType, GlobalType, ImportedType,
   IntersectionType, IterableType, ObjectType, TagType, TupleType, Type, TypeLiteralType, UnionType } from './Type.js';
 import { TypeVisitor } from './TypeVisitor.js';
@@ -8,10 +7,10 @@ class TypeValidatorVisitor extends TypeVisitor<readonly string[]> {
     return this.#element(type);
   }
   protected override visitCtor(type: ConstructorType): readonly string[] {
-    return [...this.#quantifiers(type.genericArgs), ...this.#all(type.args.flat()), ...this.visit(type.instanceType)];
+    return [...this.#all(type.args.flat()), ...this.visit(type.instance)];
   }
   protected override visitFunc(type: FunctionType): readonly string[] {
-    return [...this.#quantifiers(type.genericArgs), ...this.#all(type.args.flat()), ...this.visit(type.returnType)];
+    return [...this.#all(type.args.flat()), ...this.visit(type.return)];
   }
   protected override visitGeneric(_type: GenericType): readonly string[] {
     return [];
@@ -45,13 +44,6 @@ class TypeValidatorVisitor extends TypeVisitor<readonly string[]> {
   }
   protected override visitUnion(type: UnionType): readonly string[] {
     return this.#all(type.members);
-  }
-
-  /** A signature quantifies holes; anything else in the list names nothing a request could close. */
-  #quantifiers(quantifiers: readonly Type[]): readonly string[] {
-    return quantifiers
-      .filter(quantifier => quantifier.kind !== 'generic')
-      .map(quantifier => `a signature quantifies generic holes, but ${stringifyType(quantifier)} is not one`);
   }
 
   #all(types: readonly Type[]): readonly string[] {

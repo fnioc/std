@@ -71,7 +71,7 @@ export class ToCallSiteVisitor extends TypeVisitor<CallSite | undefined> {
   }
 
   protected override visitFunc(type: FunctionType): CallSite | undefined {
-    return CallSite.latebound(type.returnType, type.args);
+    return CallSite.latebound(type.return, type.args);
   }
 
   protected override visitGeneric(_type: GenericType): CallSite | undefined {

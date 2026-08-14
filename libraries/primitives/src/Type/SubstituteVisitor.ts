@@ -26,17 +26,16 @@ class SubstituteVisitor extends TypeVisitor<Type> {
 
   protected override visitCtor(type: ConstructorType): Type {
     return Type.ctor({
-      instanceType: this.visit(type.instanceType),
+      instance: this.visit(type.instance),
       args: this.#allRows(type.args),
-      genericArgs: this.#remainingQuantifiers(type.genericArgs),
+      abstract: type.abstract,
     });
   }
 
   protected override visitFunc(type: FunctionType): Type {
     return Type.func({
-      returnType: this.visit(type.returnType),
+      return: this.visit(type.return),
       args: this.#allRows(type.args),
-      genericArgs: this.#remainingQuantifiers(type.genericArgs),
     });
   }
 
@@ -89,11 +88,6 @@ class SubstituteVisitor extends TypeVisitor<Type> {
 
   #allRows(rows: TypeSignatures): TypeSignatures {
     return rows.map(row => this.#all(row));
-  }
-
-  /** A quantifier this pass binds is discharged by it; one left unbound still ranges over the result. */
-  #remainingQuantifiers(quantifiers: readonly Type[]): readonly Type[] {
-    return quantifiers.filter(hole => !(hole.kind === 'generic' && this.#substitutions.has(hole.label)));
   }
 }
 

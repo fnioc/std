@@ -46,15 +46,13 @@ class ExpandUnionsVisitor extends TypeVisitor<readonly Type[]> {
   }
 
   protected override visitCtor(type: ConstructorType): readonly Type[] {
-    return this.#signature(type.args, type.instanceType).map(([args, instanceType]) =>
-      Type.ctor({ instanceType, args, genericArgs: type.genericArgs })
+    return this.#signature(type.args, type.instance).map(([args, instance]) =>
+      Type.ctor({ instance, args, abstract: type.abstract })
     );
   }
 
   protected override visitFunc(type: FunctionType): readonly Type[] {
-    return this.#signature(type.args, type.returnType).map(([args, returnType]) =>
-      Type.func({ returnType, args, genericArgs: type.genericArgs })
-    );
+    return this.#signature(type.args, type.return).map(([args, returns]) => Type.func({ return: returns, args }));
   }
 
   protected override visitObject(type: ObjectType): readonly Type[] {

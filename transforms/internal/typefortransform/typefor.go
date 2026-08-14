@@ -11,10 +11,10 @@
 //
 // A value argument derives from the value's OWN type, never unwrapped: a class
 // arrives as the constructor it is (a ConstructorType), not the instance it builds — the
-// `.instanceType` accessor reads that. This is `tokenof`'s raw semantics, not
+// `.instance` accessor reads that. This is `tokenof`'s raw semantics, not
 // `tokenfor`'s produced-type unwrap, matching typefor.ts's documented contract.
 //
-// An immediate `.instanceType` / `.returnType` / `.args` / `.value` / `.tag` /
+// An immediate `.instance` / `.return` / `.args` / `.value` / `.tag` /
 // `.type` / `.kind` property access on a matched call folds through to the
 // surviving sub-tree instead of building the whole wrapper only to read one field
 // back off it at runtime (tryFoldAccessor). A property access on anything else —
@@ -57,7 +57,7 @@ const valueArgUnderivableCode = "VALUE_ARG_TYPE_UNDERIVABLE"
 
 // accessorMismatchCode is the diagnostic the accessor peephole raises when a
 // matched property name is a real TypeBase member but the call's derived kind
-// does not carry it (`.returnType` on a named type) — distinct from the base type
+// does not carry it (`.return` on a named type) — distinct from the base type
 // itself being underivable.
 const accessorMismatchCode = "TYPEFOR_ACCESSOR_MISMATCH"
 
@@ -65,13 +65,13 @@ const accessorMismatchCode = "TYPEFOR_ACCESSOR_MISMATCH"
 // property Type.ts's kind-specific interfaces expose, plus the `kind`
 // discriminant every one of them shares.
 var accessorNames = map[string]bool{
-	"instanceType": true,
-	"returnType":   true,
-	"args":         true,
-	"value":        true,
-	"tag":          true,
-	"type":         true,
-	"kind":         true,
+	"instance": true,
+	"return":   true,
+	"args":     true,
+	"value":    true,
+	"tag":      true,
+	"type":     true,
+	"kind":     true,
 }
 
 // New builds the per-file transform: it visits every call expression, replacing

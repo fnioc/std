@@ -71,10 +71,14 @@ describe('withType', () => {
   });
 
   test('parameter rows describe an overloaded implementation, one row per call signature', () => {
-    const overloaded = Type.ctor({ instanceType: SINK, args: [
-      [Type.imported('IMissing', 'app'), Type.typeLiteral('unreachable')],
-      [CLOCK, Type.typeLiteral('fallback')],
-    ], genericArgs: [] });
+    const overloaded = Type.ctor({
+      instance: SINK,
+      args: [
+        [Type.imported('IMissing', 'app'), Type.typeLiteral('unreachable')],
+        [CLOCK, Type.typeLiteral('fallback')],
+      ],
+      abstract: false,
+    });
     // The first row asks for a type nothing registers, so the second is the one the engine takes.
     const services = withClock().add<Sink>(SINK, sink => sink.asClass(Sink).withType(overloaded));
 
