@@ -12,6 +12,7 @@
 //     reaches every subscribed prototype -- the decorator's listener stays
 //     subscribed, so the bag re-installs on each later registerAugmentations.
 
+import type { IServiceProvider } from '@rhombus-std/primitives';
 import '@rhombus-std/di';
 import { DefaultManifest, Type } from '@rhombus-std/di.core';
 import { MetricsBuilder as DiagnosticsMetricsBuilder } from '@rhombus-std/diagnostics';
@@ -35,7 +36,7 @@ describe("hosting's MetricsBuilder receives the diagnostics-family augmentations
     // The call registered a IConfigureOptions<MetricsOptions> step on the
     // builder's manifest, proving the member is diagnostics' real
     // implementation, not a lookalike.
-    const configureSteps: unknown[] = builder.services.build().getRequiredService(
+    const configureSteps: unknown[] = (builder.services.build() as unknown as IServiceProvider).getRequiredService(
       Type.array(METRICS_CONFIGURE_TYPE),
     );
     expect(configureSteps).toHaveLength(1);

@@ -26,7 +26,7 @@ describe('configure — section-to-options binding', () => {
   test("resolving IOptions<T> binds the section's values into the base", () => {
     const config = rootWith({ 'Widget:Url': 'http://first', 'Widget:Retries': '3' });
 
-    let services: Manifest<'singleton'> = new DefaultManifest<'singleton'>();
+    let services: Manifest<string> = new DefaultManifest<string>();
     services = services.addOptions<WidgetOptions>(TOKEN, () => ({ Url: '' }));
     services = services.configure(TOKEN, config.getSection('Widget'));
 
@@ -39,7 +39,7 @@ describe('configure — section-to-options binding', () => {
   test('a reload delivers a fresh value and fires subscribe with it', () => {
     const config = rootWith({ 'Widget:Url': 'http://first' });
 
-    let services: Manifest<'singleton'> = new DefaultManifest<'singleton'>();
+    let services: Manifest<string> = new DefaultManifest<string>();
     services = services.addOptions<WidgetOptions>(TOKEN, () => ({ Url: '' }));
     services = services.configure(TOKEN, config.getSection('Widget'));
 
@@ -69,7 +69,7 @@ describe('configure — section-to-options binding', () => {
   test('two configure calls deep-merge their sections into one value', () => {
     const config = rootWith({ 'Widget:Url': 'http://a', 'Extra:Retries': '5' });
 
-    let services: Manifest<'singleton'> = new DefaultManifest<'singleton'>();
+    let services: Manifest<string> = new DefaultManifest<string>();
     services = services.addOptions<WidgetOptions>(TOKEN, () => ({ Url: '' }));
     services = services.configure(TOKEN, config.getSection('Widget'));
     services = services.configure(TOKEN, config.getSection('Extra'));
@@ -83,7 +83,7 @@ describe('configure — section-to-options binding', () => {
 
 describe('addOptions — no configured source', () => {
   test('delivers a static snapshot (value from makeBase, no subscribe)', () => {
-    let services: Manifest<'singleton'> = new DefaultManifest<'singleton'>();
+    let services: Manifest<string> = new DefaultManifest<string>();
     services = services.addOptions<WidgetOptions>(TOKEN, () => ({ Url: 'default' }));
 
     const provider = services.build();

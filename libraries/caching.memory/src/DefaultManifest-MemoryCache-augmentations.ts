@@ -50,9 +50,8 @@ export namespace ServiceManifestMemoryCacheAugmentations {
    * step, so it runs LAZILY when the options first resolve. Returns the
    * manifest for chaining.
    */
-  export function addMemoryCache<S extends string = string>(this: Manifest<S>,
-    setup?: Func<[MemoryCacheOptions], void>): Manifest<S> {
-    let m: Manifest<S> = this.addOptions(MEMORY_CACHE_OPTIONS_TYPE, () => new MemoryCacheOptions());
+  export function addMemoryCache(this: Manifest<string>, setup?: Func<[MemoryCacheOptions], void>): Manifest<string> {
+    let m: Manifest<string> = this.addOptions(MEMORY_CACHE_OPTIONS_TYPE, () => new MemoryCacheOptions());
     if (setup !== undefined) {
       // `setup` joins the options pipeline as a configure step: it runs
       // lazily, when the options first resolve, not at registration.
@@ -71,7 +70,7 @@ export namespace ServiceManifestMemoryCacheAugmentations {
       (resolver: IServiceProvider) =>
         new MemoryCache(resolver.getRequiredService(MEMORY_CACHE_OPTIONS_ACCESSOR_TYPE),
           resolver.getService(LOGGER_FACTORY_TYPE)), Type.func(MEMORY_CACHE_TYPE, [[RESOLVER_TYPE]]),
-      'singleton') as Manifest<S>;
+      'singleton') as Manifest<string>;
     return m;
   }
 
@@ -85,12 +84,12 @@ export namespace ServiceManifestMemoryCacheAugmentations {
    * {@link MEMORY_DISTRIBUTED_CACHE_OPTIONS_TYPE}) as a lazy configure
    * step. Returns the manifest for chaining.
    */
-  export function addDistributedMemoryCache<S extends string = string>(this: Manifest<S>,
-    setup?: Func<[MemoryDistributedCacheOptions], void>): Manifest<S> {
+  export function addDistributedMemoryCache(this: Manifest<string>,
+    setup?: Func<[MemoryDistributedCacheOptions], void>): Manifest<string> {
     // Same shape as addMemoryCache, over the distributed options token. The
     // cache is REGISTERED here but built lazily on first resolve, over its
     // own private MemoryCache.
-    let m: Manifest<S> = this.addOptions(MEMORY_DISTRIBUTED_CACHE_OPTIONS_TYPE,
+    let m: Manifest<string> = this.addOptions(MEMORY_DISTRIBUTED_CACHE_OPTIONS_TYPE,
       () => new MemoryDistributedCacheOptions());
     if (setup !== undefined) {
       m = m.configure(MEMORY_DISTRIBUTED_CACHE_OPTIONS_TYPE, setup);
@@ -100,7 +99,7 @@ export namespace ServiceManifestMemoryCacheAugmentations {
       new MemoryDistributedCache(
         resolver.getRequiredService(MEMORY_DISTRIBUTED_CACHE_OPTIONS_ACCESSOR_TYPE),
         resolver.getService(LOGGER_FACTORY_TYPE),
-      ), Type.func(DISTRIBUTED_CACHE_TYPE, [[RESOLVER_TYPE]]), 'singleton') as Manifest<S>;
+      ), Type.func(DISTRIBUTED_CACHE_TYPE, [[RESOLVER_TYPE]]), 'singleton') as Manifest<string>;
     return m;
   }
 }

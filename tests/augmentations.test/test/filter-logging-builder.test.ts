@@ -7,6 +7,7 @@
 // and resolves it. Covers both dual-export forms, both overload shapes, rule
 // accumulation across calls, and chaining.
 
+import type { IServiceProvider } from '@rhombus-std/primitives';
 import '@rhombus-std/di';
 import { DefaultManifest } from '@rhombus-std/di.core';
 import { FilterLoggingBuilderExtensions, LOGGER_FILTER_OPTIONS_ACCESSOR_TYPE, LOGGER_FILTER_OPTIONS_TYPE,
@@ -28,7 +29,9 @@ import { describe, expect, test } from 'bun:test';
  */
 function resolveFilterOptions(builder: ILoggingBuilder): LoggerFilterOptions {
   const services = builder.services.addOptions(LOGGER_FILTER_OPTIONS_TYPE, () => new LoggerFilterOptions());
-  const provider = services.build().createScope('singleton');
+  // The concrete provider's own `getService` shadows the sugar faces this
+  // program merges in, so the interface view is reasserted before the call.
+  const provider = (services.build() as unknown as IServiceProvider).createScope('singleton');
   const options: IOptions<LoggerFilterOptions> = provider.getRequiredService(LOGGER_FILTER_OPTIONS_ACCESSOR_TYPE);
   return options.value;
 }
