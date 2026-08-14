@@ -217,3 +217,47 @@ describe('the global door mints an aggregate from its spelling', () => {
     expect(Type.imported('Iterable', 'app', [A]).kind).toBe('imported');
   });
 });
+
+describe('Type.adopt', () => {
+  test('a node written out as plain data interns to the node a factory returns', () => {
+    expect(Type.adopt({ kind: 'imported', name: 'A', from: 'app', genericArgs: [] })).toBe(A);
+    expect(Type.adopt({ kind: 'generic', label: 'T' })).toBe(Type.generic('T'));
+  });
+
+  test('the kind written decides the node handed back, so its own members read without a cast', () => {
+    const adopted = Type.adopt({ kind: 'ctor', instanceType: A, args: [[B]], genericArgs: [] });
+    expect(adopted.instanceType).toBe(A);
+    expect(adopted).toBe(Type.ctor(A, [[B]]));
+  });
+
+  test('the walk reaches a literal nested inside a literal', () => {
+    const adopted = Type.adopt({
+      kind: 'array',
+      element: { kind: 'imported', name: 'A', from: 'app', genericArgs: [] } as never,
+    });
+    expect(adopted).toBe(Type.array(A));
+  });
+
+  test('an already-interned node adopts to itself', () => {
+    expect(Type.adopt(A)).toBe(A);
+  });
+});
+
+describe('a callable factory takes its parameter rows whole', () => {
+  test('the positional form spells every row', () => {
+    expect(Type.stringify(Type.ctor(A, [[B]]))).toBe('new (app:B) => app:A');
+    expect(Type.stringify(Type.ctor(A, [[]]))).toBe('new () => app:A');
+    expect(Type.stringify(Type.func(A, [[B], []]))).toBe('(app:B; ) => app:A');
+  });
+
+  test("the object form names the node's own fields, and lands on the same node", () => {
+    expect(Type.ctor({ instanceType: A, args: [[B]], genericArgs: [] })).toBe(Type.ctor(A, [[B]]));
+    expect(Type.func({ returnType: A, args: [[B]], genericArgs: [] })).toBe(Type.func(A, [[B]]));
+  });
+
+  test('quantifiers ride the optional third argument', () => {
+    const hole = Type.generic('T');
+    expect(Type.func(A, [[hole]], [hole])).toBe(Type.func({ returnType: A, args: [[hole]], genericArgs: [hole] }));
+    expect(Type.func(A, [[hole]])).not.toBe(Type.func(A, [[hole]], [hole]));
+  });
+});
