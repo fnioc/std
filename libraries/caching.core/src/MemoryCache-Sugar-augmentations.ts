@@ -183,7 +183,7 @@ export namespace MemoryCacheSugarAugmentations {
 
 declare module '@rhombus-std/caching.core' {
   interface IMemoryCache extends Flatten<Omit<typeof MemoryCacheSugarAugmentations, 'tryGetValue'>> {
-    tryGetValue<T = unknown>(this: IMemoryCache, key: unknown): [found: false] | [found: true, value: T | undefined];
+    tryGetValue<T = unknown>(key: unknown): [found: false] | [found: true, value: T | undefined];
   }
 }
 

@@ -23,9 +23,9 @@ export namespace ServiceProviderServiceAugmentations {
 
 declare module '@rhombus-std/primitives' {
   interface IServiceProvider extends Flatten<typeof ServiceProviderServiceAugmentations> {
-    getService<T>(this: IServiceProvider): T | undefined;
-    getRequiredService<T>(this: IServiceProvider): T;
-    getServices<T>(this: IServiceProvider): Iterable<T>;
+    getService<T>(): T | undefined;
+    getRequiredService<T>(): T;
+    getServices<T>(): Iterable<T>;
   }
 }
 
