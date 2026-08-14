@@ -34,9 +34,9 @@ const manifest = new DefaultManifest()
   .add(IGreeter, register => register.asClass(ConsoleGreeter).withSignature());
 ```
 
-The builder lambda (`register => register.asClass(...).withSignature(...)`) chooses an implementation (`asClass`/`asFactory`/`asValue`), then names its call shape (`withSignature(...paramTypes)` for the argument types, or `withType(implementerType)` for the whole composed constructor/function type — exactly one of the two, ever), and optionally sets a lifetime scope (`withLifetime`) or a resolution key (`taggedAs`).
+The builder lambda (`register => register.asClass(...).withSignature(...)`) chooses an implementation (`asClass`/`asFactory`/`asValue`), then names its call shape — `withSignature(...paramTypes)` for one row of argument types, `withSignatures(...rows)` for several, or `withType(implementerType)` for the whole composed constructor/function type — exactly one of the three, ever — and optionally sets a lifetime scope (`withLifetime`) or a resolution key (`taggedAs`).
 
-The same registration can also be stated in one call, with the implementation's composed type given directly: `manifest.addClass(IGreeter, ConsoleGreeter, signatures)` — `addClass`/`addFactory`/`addValue` take the argument types as a plain array of overloads (`[[]]` for a no-argument constructor, `[[TypeA, TypeB]]` for one two-argument overload) instead of a builder lambda.
+The same registration can also be stated in one call, with the implementer's whole composed type given directly: `manifest.addClass(IGreeter, ConsoleGreeter, Type.ctor(IGreeter, [[]]))` — `addClass`/`addFactory`/`addValue` take the implementer's whole composed `Type` as `implementerType` (`Type.ctor(IGreeter, [[]])` for a no-argument constructor, `Type.ctor(IGreeter, [[TypeA, TypeB]])` for one two-argument overload) instead of a builder lambda.
 
 `di.core` alone can declare and inspect a manifest, but has nothing that resolves against one — that's [`@rhombus-std/di`](../di/README.md)'s `build()`.
 

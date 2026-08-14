@@ -186,7 +186,8 @@ where that's cheap, and flag the intended divergence rather than pre-emptively t
   `replaceClass`/`replaceFactory`/`replaceValue`, `removeAll`) plus the three `get*` provider
   members (`getService`/`getRequiredService`/`getServices`) — fifteen entries total, each entry's
   `impl` resolved by walking `src/index.ts`'s re-export graph. The builder chain's own members
-  (`asClass`/`asFactory`/`asValue`/`withSignature`/`withType`/`withLifetime`/`taggedAs`) carry no
+  (`asClass`/`asFactory`/`asValue`/`withSignature`/`withSignatures`/`withType`/`withLifetime`/
+  `taggedAs`) carry no
   inline marker entries yet, so `add(type, configure)` has no type-driven `add<T>(configure)`
   counterpart. `di.extras.options` is a satellite lowering the `addOptions<T>()` sugar.
   The live parity suites under `tests/*.ttsc.e2e` are the test oracle, each asserting the emission
@@ -359,10 +360,11 @@ before touching):
 - **The manifest is IMMUTABLE** — `Manifest` is an iterable decorator chain: every verb
   (`add`/`addFactory`/`addValue`, the descriptor verbs, every augmentation) returns a NEW manifest
   and leaves the receiver alone, so a discarded result registers NOTHING. A verb's long overload
-  takes the impl's whole `Type` node (`implementerType`, a `ConstructorType`/`FunctionType` carrying one
-  parameter ROW per overload — an intersection no longer stands in for one) as a required arg 3, and
-  the descriptor stores that node itself, with no separate signatures member; `scope` is arg 4 and
-  `key` arg 5. A naked array of parameter types survives only on the builder chain's
+  takes the implementer's whole `Type` node as a required arg 3 — `implementerType`, a
+  `ConstructorType`/`FunctionType` carrying one parameter ROW per overload; an intersection means an
+  intersection — and the descriptor stores that node beside the `implementer` itself, so rows are
+  read through `implementerType.args` and live in one place. `scope` is arg 4 and `key` arg 5. A
+  naked array of parameter types survives only on the builder chain's
   `withSignature`/`withSignatures`, which mint the anonymous callable those rows describe. A builder
   that wraps a manifest
   (`ILoggingBuilder`, `IMetricsBuilder`, `IHostApplicationBuilder`) exposes it as a WRITABLE slot

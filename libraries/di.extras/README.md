@@ -26,7 +26,8 @@ manifest.addClass<IGreeter>(ConsoleGreeter, typefor<typeof ConsoleGreeter>());
 // what the above substitutes to, and what a no-transformer author writes by hand instead
 import { Type } from '@rhombus-std/di.core';
 
-manifest.addClass(Type.imported('IGreeter', 'app'), ConsoleGreeter, Type.ctor(Type.imported('ConsoleGreeter', 'app')));
+manifest.addClass(Type.imported('IGreeter', 'app'), ConsoleGreeter,
+  Type.ctor(Type.imported('ConsoleGreeter', 'app'), [[]]));
 ```
 
 `addClass<T>(...)` derives the registration address from `T` instead of an explicit `Type` argument — the sugar elides only that one argument, forwarding everything after it positionally. The implementation type stays a call you write either way: `typefor<typeof ConsoleGreeter>()` derives the `Type.ctor(...)` node a hand-writer would compose, straight from `ConsoleGreeter`'s own construct signature. Both throw if called without the transform having run — they exist to be substituted, not executed.

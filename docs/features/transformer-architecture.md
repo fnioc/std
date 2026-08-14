@@ -54,11 +54,13 @@ class Startup {
 
 ```ts
 // pass 1: addClass lowers (nameof + typefor fire on its new arguments)
-m.addClass('app:IUserRepo', SqlUserRepo, Type.ctor(Type.imported('SqlUserRepo', 'app'), Type.imported('IDb', 'app')))
+m.addClass('app:IUserRepo', SqlUserRepo,
+  Type.ctor(Type.imported('SqlUserRepo', 'app'), [[Type.imported('IDb', 'app')]]))
   .addFactory<IThing>(makeThing);
 // pass 2: addFactory lowers (nameof + typefor fire on its new arguments); pass 3 is a no-op — the loop settles
-m.addClass('app:IUserRepo', SqlUserRepo, Type.ctor(Type.imported('SqlUserRepo', 'app'), Type.imported('IDb', 'app')))
-  .addFactory('app:IThing', makeThing, Type.func(Type.imported('IThing', 'app')));
+m.addClass('app:IUserRepo', SqlUserRepo,
+  Type.ctor(Type.imported('SqlUserRepo', 'app'), [[Type.imported('IDb', 'app')]]))
+  .addFactory('app:IThing', makeThing, Type.func(Type.imported('IThing', 'app'), [[]]));
 ```
 
 **The enabling invariant is disjoint match sets.** Every transform in the loop owns matches no
@@ -291,7 +293,7 @@ module's actual name instead.
 | `tokenof<T>()`    | type-arg  | the _raw_ token for `T` — never strips a `Keyed<T,K>` brand                                                                                                                                  | `tokenof<UserOptions>()`                                     | `"pkg:UserOptions"`                                                                     | `primitives.extras` | `nameof`   |
 | `tokenof(value)`  | value-arg | the raw token for a value's _own_ type — never unwraps a constructor/factory                                                                                                                 | `tokenof(makeThing)` (`declare function makeThing(): Thing`) | `"pkg:makeThing"`                                                                       | `primitives.extras` | `nameof`   |
 | `typefor<T>()`    | type-arg  | the runtime `Type` node addressing `T` — the structural sibling of `tokenfor`'s flat string                                                                                                  | `typefor<IBar>()`                                            | `Type.imported("IBar", "pkg")`                                                          | `primitives.extras` | `typefor`  |
-| `typefor(value)`  | value-arg | the whole callable `Type` a value's own construct or call signature spells — a class as the constructor type its parameters describe, a factory as the function type its parameters describe | `typefor(Foo)` (`class Foo { constructor(a: IA) {} }`)       | `Type.ctor(Type.imported("Foo", "pkg"), Type.imported("IA", "pkg"))`                    | `primitives.extras` | `typefor`  |
+| `typefor(value)`  | value-arg | the whole callable `Type` a value's own construct or call signature spells — a class as the constructor type its parameters describe, a factory as the function type its parameters describe | `typefor(Foo)` (`class Foo { constructor(a: IA) {} }`)       | `Type.ctor(Type.imported("Foo", "pkg"), [[Type.imported("IA", "pkg")]])`                | `primitives.extras` | `typefor`  |
 | `schemaof<T>()`   | type-arg  | the `Type` tree describing a record type `T`'s members, stopping at every name                                                                                                               | `schemaof<{ ssl?: boolean }>()`                              | `Type.object({ ssl: Type.union(Type.global("boolean"), Type.typeLiteral(undefined)) })` | `config.extras`     | `schemaof` |
 
 Every primitive in the table is authoring-only: it throws unconditionally if it ever runs, so

@@ -536,7 +536,7 @@ _Owner-directed (the mutable-slot seam, forced by the immutable-manifest design)
 
 `Manifest<Scopes>` (`libraries/di.core/src/Manifest.ts`) is an interface extending `Iterable<ServiceDescriptor<Scopes>>`, and its own body declares exactly three members — `_add`, `_remove`, `_replace` — each returning a NEW manifest rather than mutating the receiver, so a call whose result is discarded registers nothing. `DefaultManifest` is the concrete, `@augment`-decorated class: an immutable decorator chain where `_add` prepends one descriptor via a generator that yields the new descriptor then delegates to the rest, so iteration order is newest-registration-first.
 
-Every other registration verb — `add`, `addClass`, `addFactory`, `addValue`, `tryAdd` and its typed siblings, `replaceClass`/`replaceFactory`/`replaceValue`, `removeAll` — arrives through augmentation onto `Manifest`, in `libraries/di.core/src/augmentations/`. `add` is not replaced by the typed verbs; it coexists with them as a dispatching entry point taking a bare descriptor, a lambda that walks the per-registration builder (§109), or an implementation plus its composed call-shape type positionally. `addClass`/`addFactory`/`addValue` are separate convenience verbs that compose a `ServiceDescriptor` from a type, an implementation, and the implementation's own composed `Type` (`libraries/di.core/src/ServiceDescriptor/expressions.ts`), then forward to `add`. Builders that wrap a manifest and are configured by a caller delegate keep mutation-shaped ergonomics on top via a mutable-slot seam (§114). _Owner-directed (the immutable-chain, verb-carried-by-augmentation direction); the builder's slot mechanics (§109) are Claude's._
+Every other registration verb — `add`, `addClass`, `addFactory`, `addValue`, `tryAdd` and its typed siblings, `replaceClass`/`replaceFactory`/`replaceValue`, `removeAll` — arrives through augmentation onto `Manifest`, in `libraries/di.core/src/augmentations/`. `add` is not replaced by the typed verbs; it coexists with them as a dispatching entry point taking a bare descriptor, a lambda that walks the per-registration builder (§109), or an implementation plus its composed call-shape type positionally. `addClass`/`addFactory`/`addValue` are separate convenience verbs that compose a `ServiceDescriptor` from a type, an implementation, and the implementation's own composed `Type` (`libraries/di.core/src/ServiceDescriptor/ServiceDescriptor.ts`), then forward to `add`. Builders that wrap a manifest and are configured by a caller delegate keep mutation-shaped ergonomics on top via a mutable-slot seam (§114). _Owner-directed (the immutable-chain, verb-carried-by-augmentation direction); the builder's slot mechanics (§109) are Claude's._
 
 ---
 
@@ -1538,8 +1538,8 @@ _Owner-directed 2026-08-13._
 
 A node's type name is written in full: `FunctionType` and `ConstructorType`, never an abbreviation.
 A factory pairs with the node it mints — `global` with `GlobalType`, `imported` with `ImportedType`,
-`tag` with `TagType` — and a spec interface pairs with its factory, so `Type.imported` takes an
-`ImportedSpec`.
+`tag` with `TagType` — and its object door takes a literal shaped like that node's own fields, so
+`Type.imported`'s object door takes an `ImportedType`-shaped literal.
 
 The pairing bends only where the full word cannot be a member name. `Type.func` and `Type.ctor` keep
 their short spellings for that reason and no other, and their kind strings stay `'func'` and
@@ -1635,7 +1635,7 @@ implementation type directly — `ConstructorType` for `addClass`/`tryAddClass`/
 `FunctionType` for `addFactory`/`tryAddFactory`/`replaceFactory`, `ConstructorType | undefined` for
 `addHostedService`'s ctor overload. `add`/`tryAdd` already took `implementerType` this way — the
 array-taking verbs were the residue. Each verb stores the node it is handed, verbatim, as `implementerType`
-(`libraries/di.core/src/ServiceDescriptor/expressions.ts`) — there is no derivation step and no
+(`libraries/di.core/src/ServiceDescriptor/ServiceDescriptor.ts`) — there is no derivation step and no
 separate stored-signatures member; a reader wanting a registration's parameter rows reads
 `implementerType.args` directly (§170).
 
@@ -1981,17 +1981,29 @@ _Owner-directed 2026-08-13._
 `ConstructorType.args` and `FunctionType.args` (`libraries/primitives/src/Type/Type.ts`) are typed
 `TypeSignatures = ReadonlyArray<readonly Type[]>` — one ROW per overload, each row that overload's
 parameter types in declaration order. A callable that is not overloaded carries exactly one row;
-one taking no parameters carries one EMPTY row (`[[]]`, never `[]`). `Type.ctor`/`Type.func`'s
-spec-object door refuses an empty `args` array outright — a callable answering to no call has no
-spelling, so the factory throws rather than mint one, catching the `[[]]`-vs-`[]` slip directly at
-the authoring boundary. The alias lives in `primitives` beside the node interfaces it types and
-`di.core` re-exports it, so every consumer names the same shape.
+one taking no parameters carries one EMPTY row (`[[]]`, never `[]`). `Type.ctor`/`Type.func` refuse
+an empty `args` array outright — a callable answering to no call has no spelling, so the factory
+throws rather than mint one, catching the `[[]]`-vs-`[]` slip directly at the authoring boundary.
+The alias lives in `primitives` beside the node interfaces it types and `di.core` re-exports it, so
+every consumer names the same shape.
 
-Every spelling of a callable node opens through two doors. `Type.ctor(instanceType, ...args)` /
-`Type.func(returnType, ...args)` is single-row sugar — the positional form spells exactly the one
-row its rest arguments make up. The spec-object form (`Type.ctor({ instanceType, args: [[A, B],
-[A]] })`, and the `Type.func` sibling over `returnType`) is the N-row door, spelling every row at
-once; `CtorSpec`/`FuncSpec` (`Type.ts`) name the fields either call takes.
+Every callable factory opens through two doors. The POSITIONAL door takes the whole row array as
+its second argument, quantifiers optional as its third: `Type.ctor(instanceType, args:
+TypeSignatures, genericArgs?)` and the `Type.func` sibling over `returnType` — `Type.ctor(box,
+[[string]])` for one row, `Type.ctor(box, [[]])` for a constructor taking nothing, `Type.ctor(box,
+[[string], []])` for two. The OBJECT door takes one literal naming every field at once
+(`Type.ctor({ instanceType, args: [[A, B], [A]], genericArgs })`); its `genericArgs` is required,
+since the object door names exactly the node's own fields. A file-internal, unexported alias in
+`Type.ts` — `type Spec<T extends Type> = Omit<T, 'kind' | TypeBrand>` — names that shape once and
+derives it from the node itself, so the object door and the node can never drift apart and the
+exported roster carries no per-factory spec interface.
+
+`Type.adopt` is the door underneath every other one: handed a node written out as plain data —
+every field it publishes, `kind` included, minus the intern-table brand (`RawType<T>`) — it
+canonicalizes, freezes and interns it, and hands back the canonical instance, so `===` decides its
+equality exactly as any other factory's result does. It's the door a tree arriving from outside
+takes — a value revived from JSON, one a cast produced — and the mechanism every other factory
+already shared; `adopt` names and publishes it rather than adding a second one.
 
 Interning identity includes the rows: the intern key brackets each row separately, which is what
 keeps a callable's one-empty-row shape distinct from every other row shape it could carry.
@@ -2022,16 +2034,29 @@ no-argument overload) and its second is `[A]`.
 
 _Claude-directed 2026-08-13, executing the owner's 2D-overloads ruling._
 
-## §170 — The descriptor carries the implementation type; an intersection means an intersection
+## §170 — The descriptor carries the implementer's whole type; an intersection means an intersection
 
-`ServiceDescriptor`'s ctor and factory shapes (`libraries/di.core/src/ServiceDescriptor/
-expressions.ts`) store `implementerType: ConstructorType` / `implementerType: FunctionType` outright — there is no
-separate stored-signatures member, and every reader wanting a registration's parameter rows reads
-`implementerType.args`. The verbs (`ServiceDescriptor.ctor`/`.factory`,
-`libraries/di.core/src/ServiceDescriptor/factories.ts`) store the node they are handed with no
-lift; `op.ts`'s `equals` compares `implementerType` by `===`, since the intern table already decides
-`Type` equality — two descriptors naming the same callable node ARE the same descriptor,
-structurally.
+A file-internal generic base (`libraries/di.core/src/ServiceDescriptor/ServiceDescriptor.ts`)
+carries what every registration has: `interface Descriptor<Kind, Implementer, ImplementerType
+extends Type> { kind; serviceType; implementer; implementerType }` — the address a registration
+answers to keeps the name `serviceType`. Only three aliases reach the public surface:
+`CtorDescriptor<Scopes>` is the base at `'ctor'` / `Ctor` / `ConstructorType`, intersected with a
+scope member; `FactoryDescriptor<Scopes>` is the same shape at `'factory'` / `Func` /
+`FunctionType`; `ValueDescriptor` is the base at `'value'` / `unknown` / `Type`, carrying no scope
+member at all — a value IS its own instance, so there is no construction for a lifetime to govern.
+Both intersections are wrapped in `Flatten` so a hover reads one member list rather than an `A & B`
+expression.
+
+The payload member is `implementer` on all three kinds, and `implementerType` is its type —
+`ConstructorType`, `FunctionType`, and the value's own `Type` respectively — with no separate
+stored-signatures member; every reader wanting a registration's parameter rows reads
+`implementerType.args`. The three static factories `ServiceDescriptor.ctor` / `.factory` / `.value`
+stay distinct rather than collapsing to one dispatcher, because how the container reaches a service
+is the CALLER'S INTENT and is not derivable from the implementer's own type — a function registered
+as a value must be handed back, never called. `op.ts`'s `equals` compares `implementerType` by
+`===`, since the intern table already decides `Type` equality — two descriptors naming the same
+callable node ARE the same descriptor, structurally. The registration verbs' public parameter is
+named `implementerType` throughout; no public API spells the abbreviation "impl".
 
 The builder's hand-roller door (`libraries/di.core/src/builder.ts`) mints the anonymous callable its
 rows describe, filed under the type being registered: `withSignature(...paramTypes)` gives one row,
@@ -2063,10 +2088,10 @@ parameter row per overload — `typefor<typeof Widget>()` is how an author spell
 whole implementation type as `addClass`/`addFactory`'s third argument, standing in for a hand-rolled
 `Type.ctor(...)`/`Type.func(...)`.
 
-The emitted text is byte-stable with the flat/structured door pair (§168): `typeemit.EmitDerived`'s
-`signatureShaped` helper emits the flat `Type.ctor(instanceType, ...args)` / `Type.func(returnType,
-...args)` call when a declaration answers to exactly one row, and only a genuinely overloaded
-declaration reaches for the spec-object form — the same choice a hand-writer would make, spelled
-automatically.
+The emitted text is rows-always, matching the factory's positional door (§168):
+`typeemit.EmitDerived`'s `signatureShaped` helper always emits `Type.ctor(instanceType, [[...]])` /
+`Type.func(returnType, [[...]])`, one row per overload the declaration answers to, whether the
+declaration carries one call signature or several — the same call a hand-writer would compose,
+spelled automatically.
 
 _Claude-directed 2026-08-13, executing the owner's 2D-overloads ruling._
