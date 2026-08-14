@@ -33,7 +33,7 @@ interface IAsImplementer<T, Scopes extends string, Slots extends Slot, Ready ext
 }
 
 /**
- * Naming the implementation's call shape — the one step that completes a constructed registration,
+ * Naming the implementer's call shape — the one step that completes a constructed registration,
  * and the only place a signature is spelled.
  *
  * @remarks
@@ -41,7 +41,7 @@ interface IAsImplementer<T, Scopes extends string, Slots extends Slot, Ready ext
  * once and the two spellings can never disagree.
  */
 interface IWithImplementerType<T, ImplementerNode extends Type, Scopes extends string, Slots extends Slot> {
-  /** The parameter types the implementation is handed, in order — the address supplies the rest. */
+  /** The parameter types the implementer is handed, in order — the address supplies the rest. */
   withSignature(
     ...paramTypes: Array<Type | string>
   ): Pending<T, ImplementerNode, Scopes, Exclude<Slots, 'implementerType'>, true>;
@@ -55,7 +55,7 @@ interface IWithImplementerType<T, ImplementerNode extends Type, Scopes extends s
   ): Pending<T, ImplementerNode, Scopes, Exclude<Slots, 'implementerType'>, true>;
 
   /**
-   * The implementation's whole type — a constructor type after {@link IAsImplementer.asClass}, a function
+   * The implementer's whole type — a constructor type after {@link IAsImplementer.asClass}, a function
    * type after {@link IAsImplementer.asFactory}. Its parameter rows are the calls the container may build
    * the service through.
    */
@@ -92,7 +92,7 @@ export type Unstarted<T = any, Scopes extends string = any> = Pending<
   false
 >;
 
-/** How the implementation's call shape was named — through one door or the other, never both. */
+/** How the implementer's call shape was named — through one door or the other, never both. */
 export type ImplementerShape =
   | { readonly kind: 'signatures'; readonly signatures: ReadonlyArray<ReadonlyArray<Type | string>>; }
   | { readonly kind: 'type'; readonly implementerType: Type; };
@@ -131,7 +131,7 @@ export class PendingRegistration<Scopes extends string> implements PendingState<
   #withShape(implementerShape: ImplementerShape): PendingRegistration<Scopes> {
     if (this.implementerShape !== undefined) {
       throw new Error(
-        "the implementation's call shape is already named; withType and withSignature/withSignatures "
+        "the implementer's call shape is already named; withType and withSignature/withSignatures "
           + 'are one choice, taken once.',
       );
     }
@@ -236,7 +236,7 @@ export class PendingRegistration<Scopes extends string> implements PendingState<
     const shape = this.implementerShape;
     if (shape === undefined) {
       throw new Error(
-        `no call shape was named for ${Type.stringify(type)}; give the implementation's parameter `
+        `no call shape was named for ${Type.stringify(type)}; give the implementer's parameter `
           + 'types to withSignature, or its whole type to withType.',
       );
     }
@@ -254,7 +254,7 @@ function rows(signatures: ReadonlyArray<ReadonlyArray<Type | string>>): TypeSign
  * whole registration stated at once.
  *
  * @remarks
- * The terse form names the implementation's composed type rather than a bare parameter list, so a
+ * The terse form names the implementer's composed type rather than a bare parameter list, so a
  * signature is spelled in one place and one place only. Compose it with the ADDRESS in the instance
  * slot — "a constructable producing the addressed type" is the strongest claim the container holds
  * for an explicit registration, and the instance slot is read by nothing else.
@@ -282,7 +282,7 @@ function walkSteps<Scopes extends string>(
 
 /**
  * The same node, reached in one statement rather than a walk. The composed type's own kind is what
- * says whether the implementation is called with `new`, which is all the terse form needs it for
+ * says whether the implementer is called with `new`, which is all the terse form needs it for
  * beyond its parameter rows.
  */
 function stateSteps<Scopes extends string>(implementer: Ctor | Func, implementerType: ConstructorType | FunctionType,

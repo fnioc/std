@@ -85,10 +85,11 @@ describe('Type.satisfies on parameter rows', () => {
     expect(satisfies(overloaded, Type.func(C, [[]]))).toBe(false);
   });
 
-  test('a condition answering to several calls needs every one of them served', () => {
+  test('one call they agree on is enough, whichever rows carry it', () => {
     const condition = Type.ctor({ instanceType: C, args: [[A], [A, B]], genericArgs: [] });
     expect(satisfies(Type.ctor({ instanceType: C, args: [[A], [A, B]], genericArgs: [] }), condition)).toBe(true);
-    expect(satisfies(Type.ctor(C, [[A]]), condition)).toBe(false);
+    expect(satisfies(Type.ctor(C, [[A]]), condition)).toBe(true);
+    expect(satisfies(Type.ctor(C, [[B]]), condition)).toBe(false);
   });
 
   test('a row that fails leaves no capture behind for the next one to read', () => {

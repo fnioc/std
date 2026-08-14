@@ -11,7 +11,7 @@ interface IManifestDescriptorAugmentations<Scopes extends string> {
   /**
    * Adds a service registration to the manifest: a {@link ServiceDescriptor} directly, `type`
    * paired with a configure lambda run against the fluent builder, or `type` paired with a
-   * constructor or factory and its implementation type. Always registers, even when the manifest
+   * constructor or factory and its implementer type. Always registers, even when the manifest
    * already holds an entry for the same address.
    */
   add(descriptor: ServiceDescriptor<Scopes>): Manifest<Scopes>;

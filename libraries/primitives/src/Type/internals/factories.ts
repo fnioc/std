@@ -254,7 +254,49 @@ function compare(left: string, right: string): number {
  * subtree.
  */
 export function adopt(type: Type): Type {
-  return isInterned(type) ? type : adoptVisitor.visit(type);
+  if (isInterned(type)) {
+    return type;
+  }
+  validate(type);
+  return adoptVisitor.visit(type);
+}
+
+/** The fields each kind's factory reads, so a literal missing one is named rather than followed. */
+const REQUIRED: Readonly<Record<Type['kind'], readonly string[]>> = {
+  array: ['element'],
+  ctor: ['instanceType', 'args', 'genericArgs'],
+  func: ['returnType', 'args', 'genericArgs'],
+  generic: ['label'],
+  global: ['name', 'genericArgs'],
+  imported: ['name', 'from', 'genericArgs'],
+  intersection: ['members'],
+  iterable: ['element'],
+  literal: ['value'],
+  object: ['members'],
+  tag: ['tag', 'type'],
+  tuple: ['members'],
+  union: ['members'],
+};
+
+/**
+ * Checks a literal names a kind and carries that kind's fields, before the walk reads any of them.
+ * Presence alone — a field's own contents are checked by the factory that adopts it, one level down.
+ *
+ * @throws TypeError - when the kind is unknown, or a field the kind needs is absent.
+ */
+function validate(type: Type): void {
+  if (typeof type !== 'object' || type === null) {
+    throw new TypeError(`a type is written as an object naming its kind — got ${typeof type}`);
+  }
+  const required = REQUIRED[type.kind];
+  if (required === undefined) {
+    throw new TypeError(`${JSON.stringify(type.kind)} names no kind of type`);
+  }
+  for (const field of required) {
+    if (!(field in type)) {
+      throw new TypeError(`a ${type.kind} type carries ${required.join(', ')} — ${field} is missing`);
+    }
+  }
 }
 
 class AdoptVisitor extends TypeVisitor<Type> {

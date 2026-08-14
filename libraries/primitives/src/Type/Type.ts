@@ -31,7 +31,7 @@ export type Type =
   | TypeLiteralType
   | UnionType;
 /** Types that are only useful as identifiers */
-export type TypeIdentifier =
+type TypeIdentifier =
   | GenericType
   | NominalType
   | TagType;
@@ -225,10 +225,9 @@ export namespace Type {
   export function ctor(instanceType: Type, args: TypeSignatures, genericArgs?: readonly Type[]): ConstructorType;
   export function ctor(spec: Spec<ConstructorType>): ConstructorType;
   export function ctor(...args: any[]): ConstructorType {
-    const spec: Spec<ConstructorType> = args.length > 1
-      ? { instanceType: args[0], args: args[1], genericArgs: args[2] ?? [] }
-      : args[0];
-    return adopt({ ...spec, kind: 'ctor' });
+    return args.length > 1
+      ? factory.ctor(args[0], args[1], args[2])
+      : adopt({ ...args[0] as Spec<ConstructorType>, kind: 'ctor' });
   }
 
   /**
@@ -276,10 +275,9 @@ export namespace Type {
   export function func(returnType: Type, args: TypeSignatures, genericArgs?: readonly Type[]): FunctionType;
   export function func(spec: Spec<FunctionType>): FunctionType;
   export function func(...args: any[]): FunctionType {
-    const spec: Spec<FunctionType> = args.length > 1
-      ? { returnType: args[0], args: args[1], genericArgs: args[2] ?? [] }
-      : args[0];
-    return adopt({ ...spec, kind: 'func' });
+    return args.length > 1
+      ? factory.func(args[0], args[1], args[2])
+      : adopt({ ...args[0] as Spec<FunctionType>, kind: 'func' });
   }
 
   /**

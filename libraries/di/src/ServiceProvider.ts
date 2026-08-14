@@ -69,7 +69,7 @@ export class ServiceProvider {
 
   /**
    * Synthesizes a throwaway {@link ServiceDescriptor} for `value` under the address `type`
-   * itself, `type` standing as its own implementation type, and resolves it through the engine's
+   * itself, `type` standing as its own implementer type, and resolves it through the engine's
    * `additionalServices` channel — so `value` is realized exactly like a registered constructor
    * or factory, just against a manifest composed for this one call and discarded after. The
    * node's own parameter rows are therefore the calls the engine may build it through.

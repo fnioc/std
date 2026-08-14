@@ -261,3 +261,18 @@ describe('a callable factory takes its parameter rows whole', () => {
     expect(Type.func(A, [[hole]])).not.toBe(Type.func(A, [[hole]], [hole]));
   });
 });
+
+describe('Type.adopt names a malformed literal', () => {
+  test('an unknown kind is refused', () => {
+    expect(() => Type.adopt({ kind: 'callable' } as never)).toThrow(/names no kind of type/);
+  });
+
+  test('a missing field is named, along with the ones its kind carries', () => {
+    expect(() => Type.adopt({ kind: 'ctor', instanceType: A, genericArgs: [] } as never))
+      .toThrow(/a ctor type carries instanceType, args, genericArgs — args is missing/);
+  });
+
+  test("a literal's own undefined value is a value, not an absence", () => {
+    expect(Type.adopt({ kind: 'literal', value: undefined })).toBe(Type.typeLiteral(undefined));
+  });
+});
