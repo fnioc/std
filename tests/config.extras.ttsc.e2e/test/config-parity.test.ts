@@ -1,6 +1,6 @@
 import { beforeAll, describe, expect, test } from 'bun:test';
 import { spawnSync } from 'node:child_process';
-import { mkdirSync, readdirSync, rmSync, symlinkSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, readdirSync, readFileSync, rmSync, symlinkSync, writeFileSync } from 'node:fs';
 import { homedir } from 'node:os';
 import { basename, join, resolve } from 'node:path';
 
@@ -73,6 +73,9 @@ function resolveGo(): string {
 
 const goBin = resolveGo();
 const toolchainReady = goBin.length > 0;
+
+/** The generated hoist module's name, fixed by the engine. */
+const TYPE_MODULE = '__typefor__.js';
 
 const PKG_ROOT = resolve(import.meta.dir, '..');
 const REPO_ROOT = resolve(PKG_ROOT, '..', '..');
@@ -192,6 +195,30 @@ type Envelope = { diagnostics?: Array<{ code: string; messageText: string; file:
 
 let inlineEnv: Envelope = { typescript: {} };
 
+/** Every `export const <name> = <expression>;` the generated hoist module declares. */
+function constants(module: string): Map<string, string> {
+  const found = new Map<string, string>();
+  for (const line of module.split('\n')) {
+    const match = /^export const (\$\w+) = (.+);$/.exec(line);
+    if (match !== null) {
+      found.set(match[1]!, match[2]!);
+    }
+  }
+  return found;
+}
+
+let declared = new Map<string, string>();
+
+/** The hoisted const name whose expression is exactly `spelling`. */
+function nameOf(spelling: string): string {
+  for (const [name, held] of declared) {
+    if (held === spelling) {
+      return name;
+    }
+  }
+  throw new Error(`no hoisted const holds ${spelling}; declared: ${[...declared.entries()]}`);
+}
+
 beforeAll(() => {
   if (!toolchainReady) {
     return;
@@ -258,6 +285,12 @@ export function useGeneric<B extends ConfigBuilder>(b: B) {
   } catch {
     throw new Error(`inline ttsc host envelope parse failed:\n${inlineHost.stdout}\n${inlineHost.stderr}`);
   }
+
+  // The project declares no emission, so it takes the default (hoisted): schemaof's
+  // leaf members reference this shared const table instead of spelling their factory
+  // call at each call site.
+  const modulePath = join(projInline, 'dist', TYPE_MODULE);
+  declared = existsSync(modulePath) ? constants(readFileSync(modulePath, 'utf8')) : new Map();
 }, COLD_BUILD_MS);
 
 function inlined(name: string): string {
@@ -273,14 +306,22 @@ function flat(name: string): string {
 describe.skipIf(!toolchainReady)('ttsc/Go config withType->withSchema byte-parity', () => {
   // The scan activates inline + schemaof; the config.extras body substitutes
   // `.withType<T>()` -> `this.withSchema(schemaof<T>())` and the schemaof stage
-  // expands it into the Type tree. Each expectation below is exactly what an
-  // author would have written by hand with the Type factories. No `schemaof(`
-  // survives the emit (the sweep would fail the build otherwise).
+  // expands it into the Type tree. This project declares no emission, so it
+  // takes the default (hoisted): a member that stops at a name, literal, or
+  // nullish singleton references the project's shared const table (`declared`)
+  // instead of spelling its factory call at the call site, while the
+  // object/union structure schemaof composes around such a member stays
+  // inline. No `schemaof(` survives the emit (the sweep would fail the build
+  // otherwise).
   test('inline: a flat interface expands to the Type tree, optional member unioned with undefined', () => {
+    const string_ = nameOf('Type.global("string")');
+    const number_ = nameOf('Type.global("number")');
+    const boolean_ = nameOf('Type.global("boolean")');
+    const undefined_ = nameOf('Type.typeLiteral(undefined)');
     expect(flat('server')).toContain(
-      '.withSchema(Type.object({ host: Type.global("string"), '
-        + 'port: Type.global("number"), '
-        + 'ssl: Type.union(Type.global("boolean"), Type.typeLiteral(undefined)) }))',
+      `.withSchema(Type.object({ host: ${string_}, `
+        + `port: ${number_}, `
+        + `ssl: Type.union(${boolean_}, ${undefined_}) }))`,
     );
     expect(inlined('server')).not.toContain('.withType');
     expect(inlined('server')).not.toContain('schemaof');
@@ -291,27 +332,32 @@ describe.skipIf(!toolchainReady)('ttsc/Go config withType->withSchema byte-parit
   });
 
   test('inline: an inline structural member expands in place, casing preserved', () => {
+    const string_ = nameOf('Type.global("string")');
+    const number_ = nameOf('Type.global("number")');
     expect(flat('nested')).toContain(
-      '.withSchema(Type.object({ Server: Type.object({ Host: Type.global("string"), '
-        + 'Port: Type.global("number") }), '
-        + 'Database: Type.object({ Primary: Type.object({ Host: Type.global("string"), '
-        + 'PoolSize: Type.global("number") }) }) }))',
+      `.withSchema(Type.object({ Server: Type.object({ Host: ${string_}, `
+        + `Port: ${number_} }), `
+        + `Database: Type.object({ Primary: Type.object({ Host: ${string_}, `
+        + `PoolSize: ${number_} }) }) }))`,
     );
     expect(inlined('nested')).not.toContain('schemaof');
   });
 
-  test('inline: a required boolean is the boolean address, never its two literals', () => {
+  test('inline: a required boolean is the hoisted boolean address, never its two literals', () => {
+    const boolean_ = nameOf('Type.global("boolean")');
     const flags = inlined('flags');
-    expect(flat('flags')).toContain('.withSchema(Type.object({ flag: Type.global("boolean") }))');
+    expect(flat('flags')).toContain(`.withSchema(Type.object({ flag: ${boolean_} }))`);
     expect(flags).not.toContain('typeLiteral(true)');
     expect(flags).not.toContain('schemaof');
   });
 
   test('inline: builder chain preserved, add(src) kept, type argument dropped', () => {
+    const string_ = nameOf('Type.global("string")');
+    const number_ = nameOf('Type.global("number")');
     const chain = inlined('chain');
     expect(chain).toMatch(/\.add\(src\)\s*\.withSchema\(/);
     expect(flat('chain')).toContain(
-      'Type.object({ Host: Type.global("string"), Port: Type.global("number") })',
+      `Type.object({ Host: ${string_}, Port: ${number_} })`,
     );
     expect(chain).not.toContain('withSchema<');
     expect(chain).not.toContain('.withType');
@@ -328,9 +374,17 @@ describe.skipIf(!toolchainReady)('ttsc/Go config withType->withSchema byte-parit
 
   test('inline: a member naming another interface stays that name, un-expanded', () => {
     // `Inner` keeps its address; its own member never enters the tree.
+    const inner = nameOf('Type.imported("Inner", "config-inline-consumer/tokens/named-member")');
     expect(flat('named-member')).toContain(
-      '.withSchema(Type.object({ inner: Type.imported("Inner", "config-inline-consumer/tokens/named-member") }))',
+      `.withSchema(Type.object({ inner: ${inner} }))`,
     );
     expect(inlined('named-member')).not.toContain('schemaof');
+  });
+
+  test('a leaf schemaof derives across several files shares one const with the others', () => {
+    // string/number/boolean each recur across server, nested, and chain; each name
+    // still earns exactly one entry in the shared table.
+    expect(new Set(declared.values()).size).toBe(declared.size);
+    expect(declared.size).toBe(5);
   });
 });

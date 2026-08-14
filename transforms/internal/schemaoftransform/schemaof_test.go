@@ -103,7 +103,7 @@ func tokenContext(prog *driver.Program, sf *shimast.SourceFile) *tokens.Context 
 func lowerSchemaof(t *testing.T, prog *driver.Program, sf *shimast.SourceFile) (string, []plugin.Diagnostic) {
 	t.Helper()
 	var diags []plugin.Diagnostic
-	transform := New(prog, tokenContext(prog, sf), nil, func(d plugin.Diagnostic) { diags = append(diags, d) })
+	transform := New(prog, tokenContext(prog, sf), nil, nil, func(d plugin.Diagnostic) { diags = append(diags, d) })
 	ec := shimprinter.NewEmitContext()
 	return reprint(ec, transform(ec, sf)), diags
 }
@@ -326,7 +326,7 @@ export const s = schemaof<C>();
 	defer func() { _ = prog.Close() }()
 
 	var diags []plugin.Diagnostic
-	transform := New(prog, tokenContext(prog, sf), nil, func(d plugin.Diagnostic) { diags = append(diags, d) })
+	transform := New(prog, tokenContext(prog, sf), nil, nil, func(d plugin.Diagnostic) { diags = append(diags, d) })
 	ec := shimprinter.NewEmitContext()
 
 	first := transform(ec, sf)
@@ -354,7 +354,7 @@ export const s = schemaof<C>();
 	defer func() { _ = prog.Close() }()
 
 	ec := shimprinter.NewEmitContext()
-	stage := New(prog, tokenContext(prog, sf), nil, func(plugin.Diagnostic) {})
+	stage := New(prog, tokenContext(prog, sf), nil, nil, func(plugin.Diagnostic) {})
 	settled, passes, exhausted := plugin.RunToFixedPoint(ec, []plugin.FileTransform{stage}, sf, 16)
 	if exhausted {
 		t.Fatal("schemaof stage exhausted maxPasses — not identity-preserving on a no-op")
@@ -409,7 +409,7 @@ export const s = schemaof<C>();
 	}
 
 	var diags []plugin.Diagnostic
-	transform := New(prog2, tokenContext(prog2, sf2), artifacts, func(d plugin.Diagnostic) { diags = append(diags, d) })
+	transform := New(prog2, tokenContext(prog2, sf2), artifacts, nil, func(d plugin.Diagnostic) { diags = append(diags, d) })
 	ec := shimprinter.NewEmitContext()
 	artifactsOut := reprint(ec, transform(ec, sf2))
 	if len(diags) != 0 {

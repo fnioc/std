@@ -31,6 +31,7 @@ import (
 	"github.com/fnioc/std/transforms/internal/plugin"
 	"github.com/fnioc/std/transforms/internal/tokens"
 	"github.com/fnioc/std/transforms/internal/typeemit"
+	"github.com/fnioc/std/transforms/internal/typefortransform"
 	"github.com/fnioc/std/transforms/internal/valueimport"
 )
 
@@ -46,20 +47,36 @@ const schemaofName = "schemaof"
 // with a targeted diagnostic, then elides the now-unreferenced `schemaof` import.
 //
 // artifacts is the inline stage's per-run state (nil when the inline stage did not
-// run). emitted dedupes the failure diagnostic across the fixed-point loop's
-// repeated passes: a failing call node survives identity between passes, so a set
-// keyed on it emits exactly once.
-func New(prog *driver.Program, types *tokens.Context, artifacts *inlinetransform.Artifacts, emit func(plugin.Diagnostic)) plugin.FileTransform {
+// run). hoist is nil for INLINE emission; when set, a member that stops at a
+// name, literal, or nullish singleton is spelled through the same shared const
+// table a typefor<T>() call site of that same type references — the object,
+// tuple, and union shapes this stage composes around such a member stay inline
+// regardless, since they are this stage's own structure rather than a type a
+// hand-writer would address by name. emitted dedupes the failure diagnostic
+// across the fixed-point loop's repeated passes: a failing call node survives
+// identity between passes, so a set keyed on it emits exactly once.
+func New(
+	prog *driver.Program,
+	types *tokens.Context,
+	artifacts *inlinetransform.Artifacts,
+	hoist *typefortransform.Hoist,
+	emit func(plugin.Diagnostic),
+) plugin.FileTransform {
 	checker := prog.Checker
 	emitted := map[*shimast.Node]bool{}
 	return func(ec *shimprinter.EmitContext, sf *shimast.SourceFile) *shimast.SourceFile {
 		factory := ec.Factory.AsNodeFactory()
 		binding := valueimport.Resolve(sf, typeemit.Ref)
+		var hoisted *typefortransform.HoistEmitter
+		if hoist != nil {
+			hoisted = typefortransform.NewHoistEmitter(factory, hoist, sf, emit)
+		}
 		ex := &expansion{
 			checker: checker,
 			types:   types,
 			factory: factory,
 			binding: binding,
+			hoisted: hoisted,
 			addDiagnostic: func(code, message string, anchor *shimast.Node) {
 				emit(plugin.Diagnostic{
 					File:    sf.FileName(),
@@ -106,7 +123,11 @@ func New(prog *driver.Program, types *tokens.Context, artifacts *inlinetransform
 			return sf
 		}
 		result := elideSchemaofImports(factory, output.AsSourceFile())
-		return valueimport.Ensure(factory, result, binding)
+		imports := []*valueimport.Binding{binding}
+		if hoisted != nil {
+			imports = append(imports, hoisted.Imports()...)
+		}
+		return valueimport.Ensure(factory, result, imports...)
 	}
 }
 
