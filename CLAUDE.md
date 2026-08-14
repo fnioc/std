@@ -107,7 +107,7 @@ where that's cheap, and flag the intended divergence rather than pre-emptively t
   factory pairs with its node — `func`/`ctor` are short only because `function`/`constructor` are
   unavailable as member names, not because they are callables (§149). A signature carries no
   quantifier list of its own — an open one is spelled by a generic hole sitting inside its
-  `args`/`returnType`/`instanceType`, closed the same way any other hole is: by tree-position
+  `args`/`return`/`instance`, closed the same way any other hole is: by tree-position
   unification against the request (§152, §179, §180). `Iterable`/`Array` are the only
   aggregate kinds — delivery is call-site behavior, so `Type.async` and the dedicated `asyncIterable`
   kind are cancelled (`Promise<T>` and an ordinary global `AsyncIterable<E>` cover them, §151).
