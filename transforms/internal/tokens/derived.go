@@ -27,16 +27,18 @@ const (
 // function, a constructor, or a Keyed brand). Func's Ret is the FIRST call
 // signature's return type; Ctor's Ret is the FIRST construct signature's
 // instance type; both share Args, one ROW of parameter types per signature in
-// declaration order, each parameter independently reclassified. Tag's Inner is
-// the Keyed brand's stripped base. Union's Members are its alternatives, each
-// independently reclassified — so a member that is itself a function, a
-// constructor, or another union nests correctly.
+// declaration order, each parameter independently reclassified. Abstract is
+// set only on a Ctor node whose type comes from an `abstract class`
+// declaration. Tag's Inner is the Keyed brand's stripped base. Union's Members
+// are its alternatives, each independently reclassified — so a member that is
+// itself a function, a constructor, or another union nests correctly.
 type Derived struct {
 	Kind DerivedKind
 	Leaf *TypeNode
 
-	Ret  *Derived
-	Args [][]*Derived
+	Ret      *Derived
+	Args     [][]*Derived
+	Abstract bool
 
 	Tag   string
 	Inner *Derived
@@ -68,7 +70,12 @@ func DeriveTyped(ctx *Context, checker *shimchecker.Checker, t *shimchecker.Type
 		return &Derived{Kind: DerivedTag, Tag: key, Inner: inner}, true
 	}
 	if ctorSigs := shimchecker.Checker_getSignaturesOfType(checker, t, shimchecker.SignatureKindConstruct); len(ctorSigs) != 0 {
-		return deriveSignatureShaped(ctx, checker, ctorSigs, failure, DerivedCtor)
+		derived, ok := deriveSignatureShaped(ctx, checker, ctorSigs, failure, DerivedCtor)
+		if !ok {
+			return nil, false
+		}
+		derived.Abstract = isAbstractConstructor(t)
+		return derived, true
 	}
 	if callSigs := shimchecker.Checker_getSignaturesOfType(checker, t, shimchecker.SignatureKindCall); len(callSigs) != 0 {
 		return deriveSignatureShaped(ctx, checker, callSigs, failure, DerivedFunc)

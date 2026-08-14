@@ -2297,10 +2297,11 @@ constructor descriptor around a type nothing can `new` would build a registratio
 actually construct, so the mistake is caught at registration rather than surfacing later as a runtime
 construction failure with no clue where it came from.
 
-Deriving the flag from a TS `abstract class` declaration is not wired up: the vendored ttsc checker
-shim exposes no abstract-modifier accessor, so `typefor`'s Go derivation mints every `ConstructorType`
-with `abstract: false`, whatever the source class actually declares. A hand-written `Type.ctor(...,
-true)` (or the object door's `abstract: true`) is the only way to spell an abstract one today.
+Deriving the flag from a TS `abstract class` declaration is wired up: `typefor`'s Go derivation reads
+a construct signature's declaring class off its symbol and checks the `abstract` modifier through the
+ttsc ast shim's `GetCombinedModifierFlags`/`ModifierFlagsAbstract` — both already exposed there, the
+same accessor `typesurface`'s private/protected detection already uses. A bare abstract-constructor
+type literal with no backing class declaration still derives `abstract: false` — see §183.
 
 _Owner-ruled, Claude-executed 2026-08-14._
 
@@ -2403,3 +2404,28 @@ double-instantiation question — are held in docs/di2.scope-notes.md for the sc
 none of them changes the call-site principle.
 
 _Owner-ruled (pre-compact session record), Claude-recorded 2026-08-14._
+
+## §183 — The signature-level abstract flag sits inside `ttsc`'s own repository, not a consumer hook; the hoist table's Node mirror dropped the flag entirely
+
+The residual gap §181 names — a bare abstract-constructor type literal with no backing class
+declaration — needs the checker's own general notion of abstractness,
+`checker.Signature.Flags() & SignatureFlagsAbstract`. `SignatureFlags` isn't aliased anywhere in the
+ttsc shim, and the two tools that would add it — `tools/gen_shims` (extends per-package coverage
+through `extra-shim.json`, for symbols already reachable off an aliased type) and
+`tools/shim_audit -fix` (completes an enum family once its type alias exists) — both live inside
+`ttsc`'s own source repository and run against `ttsc`'s own checkout to produce what ships in the npm
+package. Neither is a hook this repo's build invokes, so closing this gap needs an upstream `ttsc`
+contribution or a standing Go-module fork of the shim package, not something addable from the
+consuming side.
+
+`typeforhoist.Node`, the const table's own mirror of a derived tree, had no `abstract` field —
+`hoistNode`'s `DerivedCtor` case built a `typeforhoist.Ctor` carrying only the instance type and rows,
+so every HOISTED-mode ctor const rendered as concrete regardless of what `DeriveTyped` had derived.
+INLINE mode was unaffected, since it emits straight off the `Derived` tree `typeemit.EmitDerived`
+walks; HOISTED is the project default (§28), so this was the path every real build actually takes.
+`Node` and `Ctor` now carry `abstract`, folded into the canonical key so a concrete and an abstract
+constructor over the same instance type and rows still intern to two distinct consts, and the
+rendered `Type.ctor(...)` call carries the trailing `true` only for the abstract one — the parity
+invariant §181 already commits to.
+
+_Owner-directed via task #48, Claude-executed 2026-08-14._
