@@ -108,7 +108,7 @@ type Ctor<A extends any[] = any[], R = unknown> = new (...args: A) => R;
 type Func<A extends any[] = any[], R = unknown> = (...args: A) => R;
 
 declare module "@rhombus-std/di.core" {
-  interface Manifest<Scopes extends string = "singleton"> {
+  interface Manifest<Scopes extends string> {
     addClass<I>(ctor: Ctor<any[], I>): Manifest<Scopes>;
     addFactory<I>(factory: Func<any[], I>): Manifest<Scopes>;
     addValue<I>(value: I): void;
