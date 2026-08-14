@@ -1,34 +1,8 @@
-import { AbortController, type AbortSignal, type AugmentationSet2, clearTimeout, neverSignal,
+import { AbortController, type AbortSignal, clearTimeout, type Flatten, neverSignal,
   setTimeout } from '@rhombus-std/primitives';
 import { registerAugmentations } from '@rhombus-std/primitives.extras';
 import type { IHost } from './IHost';
 import { HOST_APPLICATION_LIFETIME_TYPE } from './types';
-
-type IHostLifecycleAugmentations = {
-  /** Alias for {@link runAsync} — there is no separate synchronous entry point in JS. */
-  run(abortSignal?: AbortSignal): Promise<void>;
-  /**
-   * Runs an application: starts the host, waits for shutdown, then disposes the
-   * host (async disposal preferred when available). Completes only once shutdown
-   * is triggered.
-   */
-  runAsync(abortSignal?: AbortSignal): Promise<void>;
-  /**
-   * Returns a promise that completes when shutdown is triggered via
-   * `applicationStopping` (or via `abortSignal`, which requests a stop),
-   * then gracefully stops the host.
-   */
-  waitForShutdownAsync(abortSignal?: AbortSignal): Promise<void>;
-  /**
-   * Attempts to gracefully stop the host, escalating to a non-graceful stop once
-   * `timeoutMs` elapses.
-   */
-  stopWithTimeout(timeoutMs: number): Promise<void>;
-};
-
-declare module '@rhombus-std/hosting.core' {
-  interface IHost extends IHostLifecycleAugmentations {}
-}
 
 /** A promise that settles when `signal` aborts (or immediately, if already aborted). */
 function whenAborted(signal: AbortSignal): Promise<void> {
@@ -40,13 +14,18 @@ function whenAborted(signal: AbortSignal): Promise<void> {
   });
 }
 
-/** Augmentation set for {@link IHost}; each member is also directly callable. */
-export const HostLifecycleAugmentations: AugmentationSet2<IHost, IHostLifecycleAugmentations> = {
-  run(abortSignal) {
+export namespace HostLifecycleAugmentations {
+  /** Alias for {@link runAsync} — there is no separate synchronous entry point in JS. */
+  export function run(this: IHost, abortSignal?: AbortSignal): Promise<void> {
     return HostLifecycleAugmentations.runAsync.call(this, abortSignal);
-  },
+  }
 
-  async runAsync(abortSignal) {
+  /**
+   * Runs an application: starts the host, waits for shutdown, then disposes the
+   * host (async disposal preferred when available). Completes only once shutdown
+   * is triggered.
+   */
+  export async function runAsync(this: IHost, abortSignal?: AbortSignal): Promise<void> {
     try {
       await this.start(abortSignal);
       await HostLifecycleAugmentations.waitForShutdownAsync.call(this, abortSignal);
@@ -59,9 +38,14 @@ export const HostLifecycleAugmentations: AugmentationSet2<IHost, IHostLifecycleA
         this[Symbol.dispose]();
       }
     }
-  },
+  }
 
-  async waitForShutdownAsync(abortSignal) {
+  /**
+   * Returns a promise that completes when shutdown is triggered via
+   * `applicationStopping` (or via `abortSignal`, which requests a stop),
+   * then gracefully stops the host.
+   */
+  export async function waitForShutdownAsync(this: IHost, abortSignal?: AbortSignal): Promise<void> {
     const lifetime = this.services.getRequiredService(HOST_APPLICATION_LIFETIME_TYPE);
 
     const requestStop = (): void => lifetime.stopApplication();
@@ -82,9 +66,13 @@ export const HostLifecycleAugmentations: AugmentationSet2<IHost, IHostLifecycleA
     // Don't forward the abort signal -- it may have been triggered only to
     // unblock the wait, and forwarding it would trigger an abortive shutdown.
     await this.stop(neverSignal);
-  },
+  }
 
-  async stopWithTimeout(timeoutMs) {
+  /**
+   * Attempts to gracefully stop the host, escalating to a non-graceful stop once
+   * `timeoutMs` elapses.
+   */
+  export async function stopWithTimeout(this: IHost, timeoutMs: number): Promise<void> {
     const controller = new AbortController();
     const timer = setTimeout(() => controller.abort(), timeoutMs);
     try {
@@ -92,7 +80,11 @@ export const HostLifecycleAugmentations: AugmentationSet2<IHost, IHostLifecycleA
     } finally {
       clearTimeout(timer);
     }
-  },
-};
+  }
+}
+
+declare module '@rhombus-std/hosting.core' {
+  interface IHost extends Flatten<typeof HostLifecycleAugmentations> {}
+}
 
 registerAugmentations<IHost>(HostLifecycleAugmentations);

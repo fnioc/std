@@ -2,8 +2,8 @@
 
 Universal, zero-dependency leaf every family can depend on: the change-token trio
 (`IChangeToken`, `ChangeToken.onChange`, `CompositeChangeToken`) underpinning live-reload,
-the augmentation infrastructure (the registry, `@augment`, `AugmentationSet<R>`, `AugmentationSet2`
-— see `docs/features/augmentations.md`), `primitives.extras`'s `tokenfor<T>()`/token-derivation
+the augmentation infrastructure (the registry, `@augment`, `AugmentationSet<R>` — see
+`docs/features/augmentations.md`), `primitives.extras`'s `tokenfor<T>()`/token-derivation
 machinery, and the structural platform typings (`AbortSignal`, `ProcessLike`, `TimeoutHandle`,
 `ReadableStream<R>`) that keep the library tier free of `lib.dom`/`@types/node`/bun-types.
 

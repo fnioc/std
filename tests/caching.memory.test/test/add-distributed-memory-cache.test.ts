@@ -39,8 +39,8 @@ describe('addDistributedMemoryCache', () => {
     const services = new DefaultManifest<string>();
     let seen: MemoryDistributedCacheOptions | undefined;
 
-    // Annotated: an AugmentationSet2-typed member's return widens to `any`, and a
-    // resolve off `any` cannot take an explicit type argument.
+    // The annotation pins what the standalone form gives back: the manifest the
+    // verb produced, which the resolve below reads an explicit type argument off.
     const returned: Manifest<string> = ServiceManifestMemoryCacheAugmentations
       .addDistributedMemoryCache.call(services, (options) => {
         seen = options;

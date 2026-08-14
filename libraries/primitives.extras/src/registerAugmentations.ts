@@ -1,6 +1,4 @@
-import { type AugmentationSet2, type MergeStrategies,
-  registerAugmentations as register } from '@rhombus-std/primitives';
-import type { Func } from '@rhombus-toolkit/func';
+import { type AugmentationSet, type MergeStrategies, registerAugmentations as register } from '@rhombus-std/primitives';
 
 import { typefor } from './typefor.js';
 
@@ -22,9 +20,8 @@ import { typefor } from './typefor.js';
  * // → registerAugmentations(Type.imported('IConfigBuilder', '@rhombus-std/config.core'), ConfigBuilderJsonAugmentations)
  * ```
  */
-export function registerAugmentations<R>(set: AugmentationSet2<R, Record<PropertyKey, Func>>,
-  ...rest: [merge?: MergeStrategies]): void {
-  return register<R, Record<PropertyKey, Func>>(typefor<R>(), set, ...rest);
+export function registerAugmentations<R>(set: AugmentationSet<R>, merge?: MergeStrategies): void {
+  return register<R>(typefor<R>(), set, merge);
 }
 
 export const REGISTER_AUGMENTATIONS_NAME = 'registerAugmentations';

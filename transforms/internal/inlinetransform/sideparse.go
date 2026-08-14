@@ -77,8 +77,10 @@ func FindMemberBody(sf *shimast.SourceFile, implName, memberName string) *shimas
 	return body
 }
 
-// findTopLevelDeclaration returns the first class / function / variable
-// declaration in sf that introduces the name implName, or nil.
+// findTopLevelDeclaration returns the first class / function / variable /
+// namespace declaration in sf that introduces the name implName, or nil. A
+// namespace is matched by its identifier name, so a `declare module '<specifier>'`
+// block — string-named — is never a candidate.
 func findTopLevelDeclaration(sf *shimast.SourceFile, implName string) *shimast.Node {
 	var found *shimast.Node
 	walk(sf.AsNode(), func(node *shimast.Node) bool {
@@ -88,7 +90,7 @@ func findTopLevelDeclaration(sf *shimast.SourceFile, implName string) *shimast.N
 				found = node
 				return true
 			}
-		case shimast.KindVariableDeclaration:
+		case shimast.KindVariableDeclaration, shimast.KindModuleDeclaration:
 			if name := node.Name(); name != nil && name.Kind == shimast.KindIdentifier && name.Text() == implName {
 				found = node
 				return true

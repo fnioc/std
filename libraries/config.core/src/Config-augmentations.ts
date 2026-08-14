@@ -2,20 +2,10 @@
 // (`config.getConnectionString(name)`) or standalone as
 // (`ConfigAugmentations.getConnectionString.call(config, name)`).
 
-import type { AugmentationSet } from '@rhombus-std/primitives';
+import { type Flatten } from '@rhombus-std/primitives';
 import { isConfigSection } from './config-section-guard';
 import type { IConfig } from './IConfig';
 import type { IConfigSection } from './IConfigSection';
-
-type IConfigAugmentations = {
-  getConnectionString(name: string): string | undefined;
-  getRequiredSection(key: string): IConfigSection;
-  asIterable(makePathsRelative?: boolean): Generator<[key: string, value: string | undefined], void, unknown>;
-};
-
-declare module '@rhombus-std/config.core' {
-  interface IConfig extends IConfigAugmentations {}
-}
 
 /**
  * Whether `section` has a {@link IConfigSection.value} or at least one child;
@@ -39,27 +29,27 @@ export function exists(section: IConfigSection | undefined): boolean {
 }
 
 /** Convenience members over {@link IConfig}. */
-export const ConfigAugmentations = {
+export namespace ConfigAugmentations {
   /**
    * The specified connection string from `config`. Shorthand for
    * `config.getSection("ConnectionStrings").get(name)`.
    */
-  getConnectionString(name: string): string | undefined {
+  export function getConnectionString(this: IConfig, name: string): string | undefined {
     return this.getSection('ConnectionStrings').get(name);
-  },
+  }
 
   /**
    * The configuration subsection with the specified `key`. Unlike
    * {@link IConfig.getSection} -- which always returns a (possibly
    * empty) section -- this throws when no matching section {@link exists}.
    */
-  getRequiredSection(key: string): IConfigSection {
+  export function getRequiredSection(this: IConfig, key: string): IConfigSection {
     const section = this.getSection(key);
     if (exists(section)) {
       return section;
     }
     throw new Error(`There is no configuration section with key "${key}".`);
-  },
+  }
 
   /**
    * Enumerates `config`'s key/value pairs as a depth-first walk of the section
@@ -70,9 +60,8 @@ export const ConfigAugmentations = {
    * The enumeration root is yielded only when it is itself a section; a bare
    * {@link IConfig} root (empty `path`, not a section) contributes no entry.
    */
-  *asIterable(
-    makePathsRelative: boolean = false,
-  ): Generator<[key: string, value: string | undefined], void, unknown> {
+  export function* asIterable(this: IConfig,
+    makePathsRelative: boolean = false): Generator<[key: string, value: string | undefined], void, unknown> {
     const rootIsSection = isConfigSection(this);
     const prefixLength = makePathsRelative && rootIsSection ? this.path.length + 1 : 0;
 
@@ -88,5 +77,9 @@ export const ConfigAugmentations = {
         stack.push(child);
       }
     }
-  },
-} satisfies AugmentationSet<IConfig>;
+  }
+}
+
+declare module '@rhombus-std/config.core' {
+  interface IConfig extends Flatten<typeof ConfigAugmentations> {}
+}

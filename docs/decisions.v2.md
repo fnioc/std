@@ -1139,25 +1139,24 @@ provider trio showed arity cannot discriminate.
 
 _Cleared at supervision level against the owner's authored shapes, 2026-08-11; his override stands._
 
-## §136 — Augmentation members are `this`-based methods, installed verbatim
+## §136 — Augmentation members are `this`-based functions, installed verbatim
 
-**An augmentation set member IS the prototype member.** Every set — `AugmentationSet<R>` and
-`AugmentationSet2<R, M>` alike — is an object literal of plain methods whose receiver is `this`,
-and installation assigns the authored function straight onto the receiver prototype:
+**An augmentation set member IS the prototype member.** A set is a namespace of exported function
+declarations whose receiver is a `this` parameter, and installation assigns the authored function
+straight onto the receiver prototype:
 `proto[name] = set[name]`, no forwarding thunk, no adapter. Function identity therefore holds
 (`proto[name] === set[name]`), which makes two things meaningful that a wrapper made impossible:
 re-installing the very same function is a detectable silent no-op (the double-install shape a
 barrel + `./private/*` load produces), and an installed member can be recognized as its authored
 source.
 
-**Contextual `this` comes from explicit `this` parameters in the set types, not `ThisType<R>`.**
-`AugmentationSet<R>` is `Record<string, (this: R, ...args: any[]) => unknown>`;
-`AugmentationSet2<Rec, Impl>` maps each `Impl` member to `(this: Rec, ...args: Parameters<Impl[K]>) => any`.
-An `& ThisType<Rec>` intersection reads better and was rejected for a checkable reason: an
-intersection strips the implicit index signature of the mapped/`Record` type literal, and that
-index signature is exactly what lets a concrete set satisfy the erased `Record<PropertyKey, Func>`
-parameter the registry and the `registerAugmentations` sugar take. The explicit `this` parameter
-gives an object-literal method the same contextual receiver with zero per-member annotation.
+**The receiver is written, per member, as an explicit `this` parameter — never `ThisType<R>`.**
+`AugmentationSet<R>` is `Record<string, (this: R, ...args: any[]) => unknown>`, the erased shape the
+registry and the `registerAugmentations` sugar accept. An `& ThisType<R>` intersection reads better
+and is ruled out for a checkable reason: an intersection strips the implicit index signature of the
+`Record` type literal, and that index signature is exactly what lets a concrete set satisfy that
+erased parameter. Writing `this` on each function is also what a namespace requires — a namespace
+member has no contextual type to inherit one from.
 
 **Merge dispatchers take two `this`-based members.** A `MergeStrategy` receives `original` and
 `incoming` as ordinary methods and forwards both with `fn.call(this, ...args)`; the receiver-first
@@ -1287,14 +1286,11 @@ _Owner-directed 2026-08-13._
 
 Two refinements on the `this`-based augmentation model settled at §79/§136:
 
-- Contextual `this` typing on a set's members needs no per-member annotation, with one exception:
-  contextual `this` does not propagate through a member's OWN generic type parameters, so such a
-  member carries an explicit `this:` parameter instead of relying on the set type's contextual
-  inference.
+- Every member of a set writes its receiver as an explicit `this:` parameter.
 - The augmentation inventory — the roster a tool (a lint rule, a scan, mergesynth) needs to
   enumerate — is discovered from TWO sources, both counted as augmentations: `registerAugmentations`
-  call sites, and any set typed against the augmentation-set types (`AugmentationSet` /
-  `AugmentationSet2`) with no accompanying register call.
+  call sites, and any namespace a `declare module` block derives a receiver's members from
+  (`extends Flatten<typeof Ns>`) with no accompanying register call.
 
 _Owner-directed 2026-08-13._
 
@@ -2157,6 +2153,105 @@ throws, and `bun.mjs`'s `onLoad` already propagates that throw as a build error 
 program's TS errors in the same array with `category: "error"` was the whole fix on that side.
 
 _Owner-ruled ("fix it"), Claude-executed 2026-08-14._
+
+## §174 — An augmentation's implementation namespace is the one place its shape is written
+
+An augmentation is a namespace of exported function declarations. That namespace carries the real
+parameters, generics, declared overloads and docs, and the receiver's members DERIVE from it:
+
+```ts
+export namespace ServiceScopeFactoryServiceAugmentations {
+  export function createAsyncScope(this: IServiceScopeFactory): AsyncServiceScope {
+    throw new NotImplementedError('IServiceScopeFactory.createAsyncScope');
+  }
+}
+
+declare module '@rhombus-std/di.core' {
+  interface IServiceScopeFactory extends Flatten<typeof ServiceScopeFactoryServiceAugmentations> {}
+}
+```
+
+There is no hand-authored member-map interface and no `AugmentationSet2`: with the implementation
+serving as the declaration, a type pairing the two has nothing left to check. `AugmentationSet<R>`,
+`MergeStrategy` and `MergeStrategies` stay — they type the erased registry surface and the
+collision resolvers, neither of which the namespace subsumes. The runtime is untouched, because a
+namespace of function exports compiles to a plain object and `installSet`'s `Object.entries` loop
+cannot tell the two apart.
+
+**A chaining verb names its own `Self`.** A namespace function may not spell `this` as a return type
+(TS2526), so it takes `<Self extends Receiver>(this: Self, …): Self` and returns that — genuinely
+polymorphic, and not special to a generic receiver. Where a generic receiver's own type argument
+must also travel, the function carries it too: `<Self extends Manifest<S>, S extends string =
+string>(this: Self, …): Self`.
+
+**Where one namespace serves two unrelated receivers, `Self`'s constraint is structural.**
+`IConfigBuilder` and `config`'s `ConfigBuilder<T>` are not assignable to one another — the latter's
+`build()` returns `T` — so a member map merged onto both constrains `Self` to a small named
+structural type declared beside it, spelling exactly the members the bodies touch.
+
+**A colliding member duplicates its signature in the `declare module` block, verbatim.** Two
+`extends` clauses never merge into an overload set (§172), so a name arriving from another
+contributor or from the receiver's own primitive is declared directly as well — a character-for-
+character copy of the namespace function's signature, its own type parameters and its `this`
+parameter included. Re-scoping that copy to the receiver's type parameters is TS2430.
+
+One consequence worth recording: `AugmentationSet2` mapped every member's return to `unknown`, so
+no augmentation body was ever return-checked. Deriving from the implementation turns that checking
+on, and it found real gaps — a `tryGetValue(key)[1]` read returned as a generic `T`, untyped
+rest-spread dispatch in `addFilter`, a two-type-argument call to a one-parameter
+`registerAugmentations`. It also exposed five verbs declaring `this: DefaultManifest<string>`, which
+put a concrete class in the public `Manifest` surface and broke any caller holding the interface;
+they take `this: Manifest<string>` now, which is all their bodies ever used.
+
+_Owner-delivered MO, Claude-executed 2026-08-14._
+
+## §175 — The implementation IS the declared face the inline stage matches against
+
+Face and body are one node, so serving is EXACT: same type-parameter count, same value parameters
+by name and order. Nothing is relaxed.
+
+A body that absorbed its parameters into a rest has no face to compare against — it would serve any
+declaration of equal type-parameter count, including one it has nothing to do with. Neither the
+call, the declaration, nor the body distinguishes a coincidental collision from the genuine target;
+only authorial intent does, and that is not in the data. So the ambiguity is removed at the source:
+**no implementation takes a bare rest**, and a rest-shaped one is refused where it is read
+(`INLINE_REST_BODY`), naming the member. A genuinely variadic member keeps a leading NAMED parameter
+and only then a trailing rest, which serves nothing but an identically-spelled declaration.
+
+**An omitted optional tail is omitted in the emit.** A call that stops short of the implementation's
+optional parameters leaves them unbound, and an argument-position reference to an unbound parameter
+in the trailing run drops out — `services.addClass<ILogger>(ConsoleLogger, impl)` emits
+`services.addClass(TYPE, ConsoleLogger, impl)`, not three trailing `undefined`s, which is the parity
+invariant doing its job. A reference that survives the trim (ahead of a supplied argument, or
+outside an argument list) would emit a dangling identifier and is reported instead
+(`INLINE_UNBOUND_PARAMETER`). For the same reason the emit sweep matches an arity SPAN — required
+parameters through whole list — rather than an exact count.
+
+_Claude-decided 2026-08-14, executing the owner's MO ruling._
+
+## §176 — Receiver-driven inference stops where an explicit type argument starts
+
+The `<Self extends R>(this: Self, …): Self` shape binds `Self` — and any receiver type argument
+riding with it — from the receiver, but ONLY when the call site writes no type argument of its own.
+TypeScript fills the remaining type parameters from their DEFAULTS rather than inferring them once a
+call supplies a partial type-argument list.
+
+`di.extras`' tokenless sugar is the case where that bites: its whole point is that the caller writes
+`<T>`, so nothing else in the list can be inferred. Its members therefore cannot carry the
+receiver's `Scopes` — `scope` is `string` and the return is `Manifest`, where the token-taking verbs
+on `di.core` keep `Manifest<S>`:
+
+```ts
+export function addClass<T>(this: Manifest, ctor: Ctor<any[], T>, implementerType: ConstructorType, scope?: string,
+  key?: string): Manifest {
+  return (this as any).addClass(typefor<T>(), ctor, implementerType, scope, key);
+}
+```
+
+This is the boundary of the shape, not a defect in it: any augmentation whose caller writes an
+explicit type argument gives up receiver-driven inference for the rest of the list.
+
+_Claude-decided 2026-08-14; flagged to the owner as an authoring-surface consequence._
 
 ## §177 — The Go nameof stage retires; typefor is the sole primitive lowering stage
 

@@ -248,8 +248,8 @@ family's authoring sugar as compiler-plugin logic. All three are gone. In their 
   members). None of them knows what `di` or `config` or "a registration" means.
 - **Shipped TypeScript sugar bodies** — ordinary, typed, single-return-expression functions,
   authored in each family's own `*.extras` package — that compose those primitives the same way a
-  by-hand author would. `addClass<T>(...)` isn't a Go rule any more; it's a TypeScript method whose
-  body is `(this as any).addClass(typefor<T>(), ...rest)`, and the generic **inline stage**
+  by-hand author would. `addClass<T>(...)` is not a Go rule; it is a TypeScript function whose
+  body is `(this as any).addClass(typefor<T>(), ctor, implementerType, scope, key)`, and the generic **inline stage**
   substitutes that body's return expression at your call site before the primitive stages ever see
   it.
 
@@ -554,25 +554,27 @@ source and never bundled or shipped — the body is substitution source, not run
 ### Registration (`di.extras`)
 
 `di.extras`'s sugar bodies live in `src/augmentations/`, one file per receiver, and each file's
-object literal does two jobs at once: the `declare module '@rhombus-std/di.core'` block above it
-merges the generic `<T>()` overload onto the receiver, and the object literal itself is the body
-the inline stage side-parses and substitutes at a matching call site. There is no separate
-authoring-only body file for this family. Every member is a `this`-based method with a trailing
-rest parameter that forwards its call verbatim to the same-named member on the real receiver — the
-only thing it mints is the leading type argument, via `typefor<T>()`:
+namespace does two jobs at once: the `declare module '@rhombus-std/di.core'` block below it merges
+the generic `<T>()` signature onto the receiver, and the namespace's function declarations are the
+bodies the inline stage side-parses and substitutes at a matching call site. There is no separate
+authoring-only body file for this family. Every member is a `this`-based function that forwards its
+arguments positionally to the same-named member on the real receiver — the only thing it mints is
+the leading type argument, via `typefor<T>()`. Its parameters are all NAMED, because the
+implementation is the declared face the stage matches a call against:
 
 ```ts
-export const ManifestServiceAugmentations: AugmentationSet2<Manifest,
-  Flatten<IManifestServiceSugarAugmentations<string>>> = {
-    add<T>(this: Manifest, ...rest: any[]) {
-      return (this as any).add(typefor<T>(), ...rest);
-    },
-    addClass<T>(this: Manifest, ...rest: any[]) {
-      return (this as any).addClass(typefor<T>(), ...rest);
-    },
-    // addFactory / addValue follow the same shape
-  };
+export namespace ManifestServiceAugmentations {
+  export function addClass<T>(this: Manifest, ctor: Ctor<any[], T>, implementerType: ConstructorType, scope?: string,
+    key?: string): Manifest {
+    return (this as any).addClass(typefor<T>(), ctor, implementerType, scope, key);
+  }
+  // add / addFactory / addValue follow the same shape
+}
 ```
+
+A call that stops short of the optional tail — `services.addClass<ILogger>(ConsoleLogger, impl)` —
+emits `services.addClass(TYPE, ConsoleLogger, impl)`: the arguments the call never wrote are
+omitted rather than passed as `undefined`, which is what a hand author would have written.
 
 `ManifestDescriptorAugmentations`, in a sibling file, carries the identical shape for `tryAdd`,
 `tryAddClass`/`tryAddFactory`/`tryAddValue`, `replaceClass`/`replaceFactory`/`replaceValue`, and
@@ -580,18 +582,17 @@ export const ManifestServiceAugmentations: AugmentationSet2<Manifest,
 `IServiceProvider`, for members with nothing left to forward once the type argument is minted:
 
 ```ts
-export const ServiceProviderServiceAugmentations: AugmentationSet2<IServiceProvider,
-  IServiceProviderServiceSugarAugmentations> = {
-    getService<T>(this: IServiceProvider): T | undefined {
-      return this.getService(typefor<T>());
-    },
-    getRequiredService<T>(this: IServiceProvider): T {
-      return this.getRequiredService(typefor<T>());
-    },
-    getServices<T>(this: IServiceProvider): Iterable<T> {
-      return this.getServices(typefor<T>());
-    },
-  };
+export namespace ServiceProviderServiceAugmentations {
+  export function getService<T>(this: IServiceProvider): T | undefined {
+    return this.getService(typefor<T>());
+  }
+  export function getRequiredService<T>(this: IServiceProvider): T {
+    return this.getRequiredService(typefor<T>());
+  }
+  export function getServices<T>(this: IServiceProvider): Iterable<T> {
+    return this.getServices(typefor<T>());
+  }
+}
 ```
 
 ### Options (`di.extras.options`)

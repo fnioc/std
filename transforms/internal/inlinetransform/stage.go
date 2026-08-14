@@ -8,7 +8,6 @@ package inlinetransform
 import (
 	"fmt"
 	"sort"
-	"strings"
 
 	shimast "github.com/microsoft/typescript-go/shim/ast"
 	shimchecker "github.com/microsoft/typescript-go/shim/checker"
@@ -64,8 +63,10 @@ func Build(prog *driver.Program, owned []OwnedEntry, artifacts *Artifacts, emit 
 		}
 		resolvedList = append(resolvedList, resolved)
 		for decl, body := range resolved.DeclMap {
-			if prev, taken := inlineByDecl[decl]; taken &&
-				!supersedes(declarationDiscriminator(decl), prev.body.Discriminator, body.Discriminator) {
+			// Serving is exact, so two bodies reaching one declaration name its
+			// parameters identically: the first claim stands and the owned-entry order
+			// decides, never map iteration.
+			if _, taken := inlineByDecl[decl]; taken {
 				continue
 			}
 			inlineByDecl[decl] = &matchTarget{resolved: resolved, body: body}
@@ -334,7 +335,6 @@ func (st *fileState) markerAnchored(anchored *shimast.Node, calleeName string) *
 	typeArgs, valueArgs := callArity(anchored.AsCallExpression())
 	var receiverType *shimchecker.Type
 	typed := false
-	var restBodied *matchTarget
 	for _, r := range st.resolvedList {
 		if r.Kind == KindFloater || r.Member != calleeName {
 			continue
@@ -352,17 +352,9 @@ func (st *fileState) markerAnchored(anchored *shimast.Node, calleeName string) *
 		if !carriesSurface(st.checker, receiverType, r.TypeSymbol) {
 			continue
 		}
-		// A body naming the declaration's parameters exactly beats one that only
-		// absorbed them into a rest — the preference supersedes applies when two
-		// entries map one declaration.
-		if !shape.HasRest {
-			return &matchTarget{resolved: r, body: r.Body}
-		}
-		if restBodied == nil {
-			restBodied = &matchTarget{resolved: r, body: r.Body}
-		}
+		return &matchTarget{resolved: r, body: r.Body}
 	}
-	return restBodied
+	return nil
 }
 
 // inlineCall performs the substitution for a matched call. node is the CURRENT
@@ -395,31 +387,23 @@ func (st *fileState) inlineCall(node, anchored *shimast.Node, target *matchTarge
 		}
 	}
 
-	// A trailing rest parameter stands for every argument from its position on, so
-	// it is split off here: the leading parameters bind positionally as usual, and
-	// the rest is expanded where the body spreads it.
-	names := strippedParamNames(body.Params)
+	// Parameters bind positionally. The implementation's parameters ARE the
+	// declared face's, so a call that stops short has simply omitted the optional
+	// tail; those names are handed over as unbound and their argument-position
+	// references drop out of the emitted call.
+	names := body.Params
 	args := callArguments(call)
-	restParam := ""
-	var restArgs []*shimast.Node
-	if n := len(body.Params); n > 0 && strings.HasPrefix(body.Params[n-1], "...") {
-		restParam = names[n-1]
-		names = names[:n-1]
-		if len(args) > n-1 {
-			restArgs = args[n-1:]
-			args = args[:n-1]
-		} else {
-			args = args[:min(len(args), n-1)]
-		}
+	var unboundNames []string
+	if len(args) < len(names) {
+		unboundNames = names[len(args):]
 	}
 
 	in := Inlining{
-		Body:      body.Body,
-		Params:    names,
-		Args:      args,
-		RestParam: restParam,
-		RestArgs:  restArgs,
-		Bindings:  st.importedValueBindings(body),
+		Body:     body.Body,
+		Params:   names,
+		Args:     args,
+		Unbound:  unboundNames,
+		Bindings: st.importedValueBindings(body),
 	}
 	// The arguments SPLICED into the body come from the CURRENT tree (above), so
 	// they carry whatever earlier passes lowered. The arguments the checker is
@@ -435,6 +419,17 @@ func (st *fileState) inlineCall(node, anchored *shimast.Node, target *matchTarge
 	}
 
 	res := Substitute(st.ec, in)
+	if name := danglingParam(res.Expr, in.unbound()); name != "" {
+		st.emit(plugin.Diagnostic{
+			Code:  "INLINE_UNBOUND_PARAMETER",
+			File:  nodeFile(node),
+			Start: node.Pos(),
+			Message: fmt.Sprintf("the call supplies no argument for %q, and the implementation body uses it "+
+				"somewhere the omission cannot be honored — pass it explicitly, or move it to the end of the "+
+				"parameter list", name),
+		})
+		return nil, false
+	}
 	if res.NeedsTempHoist && res.Temp != nil {
 		st.temps = append(st.temps, res.Temp)
 	}
@@ -635,14 +630,6 @@ func (st *fileState) isRogueDuplicate(decl *shimast.Node, calleeName string) boo
 	return false
 }
 
-// supersedes reports whether a candidate body should displace one already chosen
-// for the same declaration. A body that names the declaration's parameters
-// exactly beats one that only absorbed them into a rest; at equal specificity the
-// incumbent stays, so the owned-entry order decides and map iteration never does.
-func supersedes(decl, incumbent, candidate Discriminator) bool {
-	return decl.Equal(candidate) && !decl.Equal(incumbent)
-}
-
 // hoistTemps prepends a `var <temp>;` declaration for every single-eval temp the
 // pass minted. Spec §6d wants enclosing-function scope; this pass hoists to file
 // scope (a module-level `var` — correct for the non-reentrant expression-temp
@@ -685,26 +672,6 @@ func (st *fileState) elideFunctionImports(sf *shimast.SourceFile) *shimast.Sourc
 		return sf
 	}
 	return factory.UpdateSourceFile(sf, factory.NewNodeList(kept), sf.EndOfFileToken).AsSourceFile()
-}
-
-// bodyHasRestParam reports whether a body's last value parameter is a rest
-// parameter, per the "..." encoding valueParamsAndDiscriminator applies.
-func bodyHasRestParam(params []string) bool {
-	return len(params) > 0 && strings.HasPrefix(params[len(params)-1], "...")
-}
-
-// strippedParamNames removes the rest-parameter "..." encoding prefix so the
-// substitution matches identifiers by their bare name.
-func strippedParamNames(params []string) []string {
-	out := make([]string, len(params))
-	for i, p := range params {
-		if len(p) > 3 && p[:3] == "..." {
-			out[i] = p[3:]
-		} else {
-			out[i] = p
-		}
-	}
-	return out
 }
 
 // callArguments returns a call's argument expression nodes.

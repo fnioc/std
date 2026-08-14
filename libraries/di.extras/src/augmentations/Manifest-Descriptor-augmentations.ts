@@ -1,103 +1,94 @@
-import type { IComplete, Manifest, ServiceDescriptor, Unstarted } from '@rhombus-std/di.core';
-import { AugmentationSet2, type ConstructorType, type Flatten, type FunctionType, Type } from '@rhombus-std/primitives';
+import type { IComplete, Manifest, Unstarted } from '@rhombus-std/di.core';
+import type { ConstructorType, Flatten, FunctionType } from '@rhombus-std/primitives';
 import { registerAugmentations, typefor } from '@rhombus-std/primitives.extras';
 import type { Ctor, Func } from '@rhombus-toolkit/func';
 
-interface IManifestDescriptorAugmentations<Scopes extends string> {
-  /** The tokenless form of {@link Manifest.tryAdd}'s configure, constructor and factory shapes:
-   * `type` is derived from `T` instead of taken explicitly. */
-  tryAdd<T>(configure: Func<[Unstarted<T, Scopes>], IComplete>): Manifest<Scopes>;
-  tryAdd<T>(ctor: Ctor<any[], T>, implementerType: ConstructorType, scope?: Scopes, key?: string): Manifest<Scopes>;
-  tryAdd<T>(factory: Func<any[], T>, implementerType: FunctionType, scope?: Scopes, key?: string): Manifest<Scopes>;
+export namespace ManifestDescriptorAugmentations {
+  /**
+   * The tokenless form of {@link Manifest.tryAdd}'s configure, constructor and factory shapes:
+   * `type` is derived from `T` instead of taken explicitly.
+   *
+   * @param configureOrImplementer - a lambda run against the fluent builder, a constructor, or a
+   * factory. A constructor or factory pairs with `implementerType`; a lambda takes no further
+   * arguments.
+   */
+  export function tryAdd<T>(this: Manifest,
+    configureOrImplementer: Func<[Unstarted<T, string>], IComplete> | Ctor<any[], T> | Func<any[], T>,
+    implementerType?: ConstructorType | FunctionType, scope?: string, key?: string): Manifest {
+    return (this as any).tryAdd(typefor<T>(), configureOrImplementer, implementerType, scope, key);
+  }
 
   /** The tokenless form of {@link Manifest.tryAddClass}: `token` is derived from `T` instead of
    * taken explicitly. */
-  tryAddClass<T>(ctor: Ctor<any[], T>, implementerType: ConstructorType, scope?: Scopes,
-    key?: string): Manifest<Scopes>;
+  export function tryAddClass<T>(this: Manifest, ctor: Ctor<any[], T>, implementerType: ConstructorType, scope?: string,
+    key?: string): Manifest {
+    return (this as any).tryAddClass(typefor<T>(), ctor, implementerType, scope, key);
+  }
 
   /** The tokenless form of {@link Manifest.tryAddFactory}: `token` is derived from `T` instead of
    * taken explicitly. */
-  tryAddFactory<T>(factory: Func<any[], T>, implementerType: FunctionType, scope?: Scopes,
-    key?: string): Manifest<Scopes>;
+  export function tryAddFactory<T>(this: Manifest, factory: Func<any[], T>, implementerType: FunctionType,
+    scope?: string, key?: string): Manifest {
+    return (this as any).tryAddFactory(typefor<T>(), factory, implementerType, scope, key);
+  }
 
   /** The tokenless form of {@link Manifest.tryAddValue}: `token` is derived from `T` instead of
    * taken explicitly. */
-  tryAddValue<T>(value: T, key?: string): Manifest<Scopes>;
+  export function tryAddValue<T>(this: Manifest, value: T, key?: string): Manifest {
+    return (this as any).tryAddValue(typefor<T>(), value, key);
+  }
 
   /** The tokenless form of {@link Manifest.replaceClass}: `token` is derived from `T` instead of
    * taken explicitly. */
-  replaceClass<T>(ctor: Ctor<any[], T>, implementerType: ConstructorType, scope: Scopes | undefined,
-    key?: string): Manifest<Scopes>;
+  export function replaceClass<T>(this: Manifest, ctor: Ctor<any[], T>, implementerType: ConstructorType,
+    scope: string | undefined, key?: string): Manifest {
+    return (this as any).replaceClass(typefor<T>(), ctor, implementerType, scope, key);
+  }
 
   /** The tokenless form of {@link Manifest.replaceFactory}: `token` is derived from `T` instead of
    * taken explicitly. */
-  replaceFactory<T>(factory: Func<any[], T>, implementerType: FunctionType, scope: Scopes | undefined,
-    key?: string): Manifest<Scopes>;
+  export function replaceFactory<T>(this: Manifest, factory: Func<any[], T>, implementerType: FunctionType,
+    scope: string | undefined, key?: string): Manifest {
+    return (this as any).replaceFactory(typefor<T>(), factory, implementerType, scope, key);
+  }
 
   /** The tokenless form of {@link Manifest.replaceValue}: `token` is derived from `T` instead of
    * taken explicitly. */
-  replaceValue<T>(value: T, key?: string): Manifest<Scopes>;
+  export function replaceValue<T>(this: Manifest, value: T, key?: string): Manifest {
+    return (this as any).replaceValue(typefor<T>(), value, key);
+  }
 
   /** The tokenless form of {@link Manifest.removeAll}: `token` is derived from `T` instead of
    * taken explicitly. */
-  removeAll<T>(key?: string): Manifest<Scopes>;
-}
-
-declare module '@rhombus-std/di.core' {
-  interface Manifest<Scopes extends string> extends IManifestDescriptorAugmentations<Scopes> {
-    tryAdd<T>(configure: Func<[Unstarted<T, Scopes>], IComplete>): Manifest<Scopes>;
-    tryAdd<T>(ctor: Ctor<any[], T>, implementerType: ConstructorType, scope?: Scopes, key?: string): Manifest<Scopes>;
-    tryAdd<T>(factory: Func<any[], T>, implementerType: FunctionType, scope?: Scopes, key?: string): Manifest<Scopes>;
-
-    tryAddClass<T>(ctor: Ctor<any[], T>, implementerType: ConstructorType, scope?: Scopes,
-      key?: string): Manifest<Scopes>;
-
-    tryAddFactory<T>(factory: Func<any[], T>, implementerType: FunctionType, scope?: Scopes,
-      key?: string): Manifest<Scopes>;
-
-    tryAddValue<T>(value: T, key?: string): Manifest<Scopes>;
-
-    replaceClass<T>(ctor: Ctor<any[], T>, implementerType: ConstructorType, scope: Scopes | undefined,
-      key?: string): Manifest<Scopes>;
-
-    replaceFactory<T>(factory: Func<any[], T>, implementerType: FunctionType, scope: Scopes | undefined,
-      key?: string): Manifest<Scopes>;
-
-    replaceValue<T>(value: T, key?: string): Manifest<Scopes>;
-
-    removeAll<T>(key?: string): Manifest<Scopes>;
+  export function removeAll<T>(this: Manifest, key?: string): Manifest {
+    return (this as any).removeAll(typefor<T>(), key);
   }
 }
 
-export const ManifestDescriptorAugmentations: AugmentationSet2<Manifest,
-  Flatten<IManifestDescriptorAugmentations<any>>> = {
-    tryAdd<T>(this: Manifest, ...rest: any[]) {
-      return (this as any).tryAdd(typefor<T>(), ...rest);
-    },
-    tryAddClass<T>(this: Manifest, ...rest: any[]) {
-      return (this as any).tryAddClass(typefor<T>(), ...rest);
-    },
-    tryAddFactory<T>(this: Manifest, ...rest: any[]) {
-      return (this as any).tryAddFactory(typefor<T>(), ...rest);
-    },
-    tryAddValue<T>(this: Manifest, ...rest: any[]) {
-      return (this as any).tryAddValue(typefor<T>(), ...rest);
-    },
+declare module '@rhombus-std/di.core' {
+  interface Manifest<Scopes extends string> extends Flatten<typeof ManifestDescriptorAugmentations> {
+    tryAdd<T>(this: Manifest,
+      configureOrImplementer: Func<[Unstarted<T, string>], IComplete> | Ctor<any[], T> | Func<any[], T>,
+      implementerType?: ConstructorType | FunctionType, scope?: string, key?: string): Manifest;
 
-    replaceClass<T>(this: Manifest, ...rest: any[]) {
-      return (this as any).replaceClass(typefor<T>(), ...rest);
-    },
+    tryAddClass<T>(this: Manifest, ctor: Ctor<any[], T>, implementerType: ConstructorType, scope?: string,
+      key?: string): Manifest;
 
-    replaceFactory<T>(this: Manifest, ...rest: any[]) {
-      return (this as any).replaceFactory(typefor<T>(), ...rest);
-    },
-    replaceValue<T>(this: Manifest, ...rest: any[]) {
-      return (this as any).replaceValue(typefor<T>(), ...rest);
-    },
+    tryAddFactory<T>(this: Manifest, factory: Func<any[], T>, implementerType: FunctionType, scope?: string,
+      key?: string): Manifest;
 
-    removeAll<T>(this: Manifest, ...rest: any[]) {
-      return (this as any).removeAll(typefor<T>(), ...rest);
-    },
-  };
+    tryAddValue<T>(this: Manifest, value: T, key?: string): Manifest;
+
+    replaceClass<T>(this: Manifest, ctor: Ctor<any[], T>, implementerType: ConstructorType, scope: string | undefined,
+      key?: string): Manifest;
+
+    replaceFactory<T>(this: Manifest, factory: Func<any[], T>, implementerType: FunctionType, scope: string | undefined,
+      key?: string): Manifest;
+
+    replaceValue<T>(this: Manifest, value: T, key?: string): Manifest;
+
+    removeAll<T>(this: Manifest, key?: string): Manifest;
+  }
+}
 
 registerAugmentations<Manifest>(ManifestDescriptorAugmentations);

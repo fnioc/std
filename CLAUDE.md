@@ -119,9 +119,9 @@ where that's cheap, and flag the intended divergence rather than pre-emptively t
   `ChangeToken.onChange` — the async-consumer forms real, via a runtime thenable check, §58 — plus
   `CompositeChangeToken` merging N tokens into one, §58) that underpins live-reload (§8), the
   `IServiceProvider` interface every resolution consumer holds, **and** the augmentation infra:
-  one named exported object literal per ME static extension class — `satisfies AugmentationSet<R>`
-  for a CLOSED receiver, or typed `AugmentationSet2<R, MemberMap>` against a named member-map type
-  for OPEN (§28) — installed either directly via `applyAugmentations` (CLOSED receivers) or through the
+  one named exported NAMESPACE of function declarations per ME static extension class, the single
+  source its receiver's members derive from (`interface R extends Flatten<typeof Ns>`, §28) —
+  installed either directly via `applyAugmentations` (CLOSED receivers) or through the
   **augmentation registry** (§38) for OPEN receivers — `Token` (native to `primitives`),
   `registerAugmentations(token, set, merge?)` (per-token bag = a
   `Multimap<string, [fn, merge?]>` holding a per-name LIST of contributions, each pairing the fn
@@ -396,13 +396,18 @@ before touching):
   holds for the rolled `.d.ts`: a package that inlines di.core's types forks
   `Manifest`, so every di.core dependent keeps it external in `rollup.dts.mjs` (§114).
 - **Augmentations** — file `<Receiver>-<Topic>-augmentations.ts` (receiver's leading `I` dropped); a
-  named member-map type `I<Receiver><Topic>Augmentations` merges onto the receiver via `declare
-  module … extends`, and the exported const `<Receiver><Topic>Augmentations` is typed
-  `AugmentationSet2<Receiver, MemberMap>`, installed via the token registry + `@augment` decorator
-  for OPEN receivers (the common case); a CLOSED receiver keeps `satisfies
-  AugmentationSet<Receiver>` + direct `applyAugmentations`. Authored first-party-only; the
-  transformer matches sugar calls at the receiver's declaration site, never by type name or call
-  shape. Full mechanics, authoring steps, and gotchas: `docs/features/augmentations.md` (§89).
+  namespace of exported function declarations is the one place a member's shape is written, merged
+  onto the receiver via `interface R extends Flatten<typeof TheNamespace> {}` in a `declare module`
+  targeting the receiver's package specifier. `registerAugmentations<Receiver>(Ns, merge?)` installs
+  it via the token registry + `@augment` decorator for OPEN receivers (the common case);
+  `applyAugmentations(ClassCtor, Ns)` installs directly for a CLOSED receiver. `AugmentationSet2` and
+  hand-authored member-map types don't exist — a colliding member (another contributor, or the
+  receiver's own primitive) duplicates its full signature verbatim in the `declare module` block, or,
+  where the shapes can't unify into overloads, stays out of it and is reached only at runtime
+  (a merge strategy) or standalone. A namespace function returning the receiver names its own `Self
+  extends Receiver` generic (TS2526 bars `this` as a return type) and never ends its implementation
+  in a bare rest parameter. Authored first-party-only. Full mechanics, authoring steps, and gotchas:
+  `docs/features/augmentations.md`.
 
 **Keep this digest in step with `docs/decisions.v2.md`.** When a decision lands there that adds or
 changes a family, a package boundary/edge, or a cross-cutting invariant, mirror it into the

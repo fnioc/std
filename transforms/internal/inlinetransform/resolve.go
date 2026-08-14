@@ -30,9 +30,9 @@ type Resolved struct {
 // is exactly the call the sweep reports when nothing claimed it.
 func (r *Resolved) Shape() MemberShape {
 	return MemberShape{
-		TypeArgCount:  r.Body.Discriminator.TypeParamCount,
-		ValueArgCount: len(r.Body.Params),
-		HasRest:       bodyHasRestParam(r.Body.Params),
+		TypeArgCount:     r.Body.Discriminator.TypeParamCount,
+		MinValueArgCount: r.Body.RequiredParams,
+		MaxValueArgCount: len(r.Body.Params),
 	}
 }
 

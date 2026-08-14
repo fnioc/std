@@ -1,5 +1,5 @@
-import { type AbortSignal, type AugmentationSet2, type Flatten, registerAugmentations } from '@rhombus-std/primitives';
-import { typefor } from '@rhombus-std/primitives.extras';
+import { type AbortSignal, type Flatten } from '@rhombus-std/primitives';
+import { registerAugmentations } from '@rhombus-std/primitives.extras';
 import type { Ctor } from '@rhombus-toolkit/func';
 import { DistributedCacheEntryOptions, freezeDistributedCacheEntryOptions } from './DistributedCacheEntryOptions';
 import type { IDistributedCache } from './IDistributedCache';
@@ -24,55 +24,41 @@ const utf8Decoder = new TextDecoder();
 // One shared, frozen, everything-unset options bag for the option-less set forms.
 const defaultOptions = freezeDistributedCacheEntryOptions(new DistributedCacheEntryOptions());
 
-type IDistributedCacheSugarAugmentations = {
-  setString(key: string, value: string, options?: DistributedCacheEntryOptions,
-    abortSignal?: AbortSignal): Promise<void>;
-  getString(key: string, abortSignal?: AbortSignal): Promise<string | undefined>;
-};
+export namespace DistributedCacheSugarAugmentations {
+  /**
+   * `set` is standalone-only. Its name IS `IDistributedCache`'s own primitive, so
+   * it is kept out of both the interface merge and the prototype install below --
+   * mounting it would displace the real implementation on every decorated class,
+   * and the mounted member would then recurse into itself.
+   */
+  export function set(this: IDistributedCache, key: string, value: Uint8Array,
+    abortSignal?: AbortSignal): Promise<void> {
+    return this.set(key, value, defaultOptions, abortSignal);
+  }
 
-/**
- * `set` is standalone-only. Its name IS `IDistributedCache`'s own primitive, so
- * it is kept out of both the interface merge and the prototype install below --
- * mounting it would displace the real implementation on every decorated class,
- * and the mounted member would then recurse into itself.
- */
-type IDistributedCacheStandaloneWrites = {
-  set(key: string, value: Uint8Array, abortSignal?: AbortSignal): Promise<void>;
-};
+  /**
+   * Sets a string in the cache with the specified key, UTF-8 encoded, with
+   * `options` (or the default entry options when omitted).
+   */
+  export function setString(this: IDistributedCache, key: string, value: string, options?: DistributedCacheEntryOptions,
+    abortSignal?: AbortSignal): Promise<void> {
+    return this.set(key, utf8Encoder.encode(value), options ?? defaultOptions, abortSignal);
+  }
 
-declare module '@rhombus-std/caching.core' {
-  interface IDistributedCache extends IDistributedCacheSugarAugmentations {}
+  /** Gets a string from the cache with the specified key, UTF-8 decoded, or `undefined` if not present. */
+  export async function getString(this: IDistributedCache, key: string,
+    abortSignal?: AbortSignal): Promise<string | undefined> {
+    const data = await this.get(key, abortSignal);
+    return data === undefined ? undefined : utf8Decoder.decode(data);
+  }
 }
 
-export const DistributedCacheSugarAugmentations: AugmentationSet2<IDistributedCache,
-  Flatten<IDistributedCacheSugarAugmentations & IDistributedCacheStandaloneWrites>> = {
-    /** Sets a sequence of bytes in the cache with the specified key and default entry options. */
-    set(key, value, abortSignal) {
-      return this.set(key, value, defaultOptions, abortSignal);
-    },
-
-    /**
-     * Sets a string in the cache with the specified key, UTF-8 encoded, with
-     * `options` (or the default entry options when omitted).
-     */
-    setString(key, value, options, abortSignal) {
-      return this.set(key, utf8Encoder.encode(value), options ?? defaultOptions, abortSignal);
-    },
-
-    /** Gets a string from the cache with the specified key, UTF-8 decoded, or `undefined` if not present. */
-    async getString(key, abortSignal) {
-      const data = await this.get(key, abortSignal);
-      return data === undefined ? undefined : utf8Decoder.decode(data);
-    },
-  };
+declare module '@rhombus-std/caching.core' {
+  interface IDistributedCache extends Flatten<Omit<typeof DistributedCacheSugarAugmentations, 'set'>> {}
+}
 
 // Omit the standalone-only `set` from the install via a rest destructure (TS
-// exempts the rest-sibling from unused checks). The rest object is a plain
-// object type rather than a mapped one, so the set's shape is named explicitly
-// instead of inferred.
+// exempts the rest-sibling from unused checks).
 const { set: _set, ...distributedCacheInstanceMethods } = DistributedCacheSugarAugmentations;
 
-registerAugmentations<IDistributedCache, Flatten<IDistributedCacheSugarAugmentations>>(
-  typefor<IDistributedCache>(),
-  distributedCacheInstanceMethods,
-);
+registerAugmentations<IDistributedCache>(distributedCacheInstanceMethods);

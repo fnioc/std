@@ -1,37 +1,32 @@
-import { type AugmentationSet2, type IServiceProvider, Type } from '@rhombus-std/primitives';
+import type { Flatten, IServiceProvider } from '@rhombus-std/primitives';
 import { registerAugmentations, typefor } from '@rhombus-std/primitives.extras';
 
-type IServiceProviderServiceAugmentations = {
+export namespace ServiceProviderServiceAugmentations {
   /** The tokenless form of {@link IServiceProvider.getService}: `type` is derived from `T` instead
    * of taken explicitly. */
-  getService<T>(): T | undefined;
+  export function getService<T>(this: IServiceProvider): T | undefined {
+    return this.getService(typefor<T>());
+  }
 
   /** The tokenless form of {@link IServiceProvider.getRequiredService}: `serviceType` is derived
    * from `T` instead of taken explicitly. */
-  getRequiredService<T>(): T;
+  export function getRequiredService<T>(this: IServiceProvider): T {
+    return this.getRequiredService(typefor<T>());
+  }
 
   /** The tokenless form of {@link IServiceProvider.getServices}: `serviceType` is derived from
    * `T` instead of taken explicitly. */
-  getServices<T>(): Iterable<T>;
-};
-declare module '@rhombus-std/primitives' {
-  interface IServiceProvider extends IServiceProviderServiceAugmentations {
-    getService<T>(): T | undefined;
-    getRequiredService<T>(): T;
-    getServices<T>(): Iterable<T>;
+  export function getServices<T>(this: IServiceProvider): Iterable<T> {
+    return this.getServices(typefor<T>());
   }
 }
-export const ServiceProviderServiceAugmentations: AugmentationSet2<IServiceProvider,
-  IServiceProviderServiceAugmentations> = {
-    getService<T>(this: IServiceProvider): T | undefined {
-      return this.getService(typefor<T>());
-    },
-    getRequiredService<T>(this: IServiceProvider): T {
-      return this.getRequiredService(typefor<T>());
-    },
-    getServices<T>(this: IServiceProvider): Iterable<T> {
-      return this.getServices(typefor<T>());
-    },
-  };
+
+declare module '@rhombus-std/primitives' {
+  interface IServiceProvider extends Flatten<typeof ServiceProviderServiceAugmentations> {
+    getService<T>(this: IServiceProvider): T | undefined;
+    getRequiredService<T>(this: IServiceProvider): T;
+    getServices<T>(this: IServiceProvider): Iterable<T>;
+  }
+}
 
 registerAugmentations<IServiceProvider>(ServiceProviderServiceAugmentations);

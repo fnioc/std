@@ -10,34 +10,29 @@ import type { IConfig } from '@rhombus-std/config.core';
 import { type IMetricsBuilder, METRICS_CHANGE_TOKEN_SOURCE_TYPE, METRICS_CONFIGURATION_TYPE,
   METRICS_CONFIGURE_TYPE } from '@rhombus-std/diagnostics.core';
 import { ConfigChangeTokenSource } from '@rhombus-std/options.augmentations';
-import type { AugmentationSet2, Flatten } from '@rhombus-std/primitives';
+import type { Flatten } from '@rhombus-std/primitives';
 import { registerAugmentations } from '@rhombus-std/primitives.extras';
 
 import { MetricsConfig } from './MetricsConfig';
 import { MetricsConfigureOptions } from './MetricsConfigureOptions';
 
-interface IMetricsBuilderConfigAugmentations {
+/** The config-binding member of {@link IMetricsBuilder}. */
+export namespace MetricsBuilderConfigAugmentations {
   /** Reads metrics enablement rules from `config` and configures which meters, instruments, and listeners are enabled. */
-  addMetricsConfig(config: IConfig): this;
+  export function addMetricsConfig<Self extends IMetricsBuilder>(this: Self, config: IConfig): Self {
+    this.services = this.services.addValue(METRICS_CONFIGURE_TYPE, new MetricsConfigureOptions(config));
+    this.services = this.services.addValue(METRICS_CHANGE_TOKEN_SOURCE_TYPE, new ConfigChangeTokenSource(config));
+    this.services = this.services.addValue(METRICS_CONFIGURATION_TYPE, new MetricsConfig(config));
+    return this;
+  }
 }
 
 // The merge targets the package BARREL (`@rhombus-std/diagnostics.core`),
 // matching diagnostics.core's own listener/rule merge -- so every merge site for
 // this interface names one publish-resolvable specifier.
 declare module '@rhombus-std/diagnostics.core' {
-  interface IMetricsBuilder extends IMetricsBuilderConfigAugmentations {}
+  interface IMetricsBuilder extends Flatten<typeof MetricsBuilderConfigAugmentations> {}
 }
-
-/** The config-binding member of {@link IMetricsBuilder}. */
-export const MetricsBuilderConfigAugmentations: AugmentationSet2<IMetricsBuilder,
-  Flatten<IMetricsBuilderConfigAugmentations>> = {
-    addMetricsConfig(config) {
-      this.services = this.services.addValue(METRICS_CONFIGURE_TYPE, new MetricsConfigureOptions(config));
-      this.services = this.services.addValue(METRICS_CHANGE_TOKEN_SOURCE_TYPE, new ConfigChangeTokenSource(config));
-      this.services = this.services.addValue(METRICS_CONFIGURATION_TYPE, new MetricsConfig(config));
-      return this;
-    },
-  };
 
 // Registered against the same OPEN token diagnostics.core's listener/rule
 // members use; this member lives downstream because its `IConfig` dependency
