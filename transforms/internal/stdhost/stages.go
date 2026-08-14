@@ -110,12 +110,16 @@ func buildTypefor(prog *driver.Program, ctx *tokens.Context, env *Env, emit Sink
 // buildSchemaof activates the `schemaof<T>()` primitive stage. It expands each
 // schemaof call — the inline `.withType<T>()` body's synthetic call and any
 // source-written one — into the runtime `Type` tree describing T's structure,
-// materializing the `Type` value-import the tree is spelled through. On a member
-// the Type grammar cannot spell, or a non-object root, it reports the targeted
+// materializing the `Type` value-import the tree is spelled through. A member
+// that stops at a name, literal, or nullish singleton lands where typefor's own
+// derivations do (Env.Hoist): in the project's shared const table, or at the
+// call site itself; the object/tuple/union structure this stage composes around
+// such a member is always spelled at the call site. On a member the Type grammar
+// cannot spell, or a non-object root, it reports the targeted
 // 992001/992002/992003 (a hard error) and leaves the call un-lowered — the sweep
 // defers the surviving-primitive diagnostic to it.
 func buildSchemaof(prog *driver.Program, ctx *tokens.Context, env *Env, emit Sink) plugin.FileTransform {
-	return schemaoftransform.New(prog, ctx, env.Artifacts, func(d plugin.Diagnostic) {
+	return schemaoftransform.New(prog, ctx, env.Artifacts, env.Hoist, func(d plugin.Diagnostic) {
 		emit(DiagFromPlugin(d))
 	})
 }

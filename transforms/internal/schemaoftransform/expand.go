@@ -8,6 +8,7 @@ import (
 
 	"github.com/fnioc/std/transforms/internal/tokens"
 	"github.com/fnioc/std/transforms/internal/typeemit"
+	"github.com/fnioc/std/transforms/internal/typefortransform"
 	"github.com/fnioc/std/transforms/internal/typesurface"
 	"github.com/fnioc/std/transforms/internal/valueimport"
 )
@@ -51,13 +52,29 @@ const (
 // member has no spelling. Binding is the resolved value-import for the runtime
 // `Type` object; the walk sets its Used flag as it emits factory calls,
 // and the caller materializes the import via valueimport.Ensure afterward.
+// hoisted is nil for INLINE emission; when set, a member that stops at a name,
+// literal, or nullish singleton is spelled through it instead of inline — the
+// same const a typefor<T>() call site of that same type would reference.
 type expansion struct {
 	checker       *shimchecker.Checker
 	types         *tokens.Context
 	factory       *shimast.NodeFactory
 	binding       *valueimport.Binding
+	hoisted       *typefortransform.HoistEmitter
 	addDiagnostic func(code, message string, anchor *shimast.Node)
 	failed        bool
+}
+
+// emitLeaf spells a member's derived leaf — a name, a literal, or a nullish
+// singleton — through the shared const table when the project hoists, else
+// inline at the call site. The object/tuple/union shapes schemaof composes
+// AROUND a leaf are always inline: they are this expansion's own structure, not
+// a type a hand-writer would address by name.
+func emitLeaf(ex *expansion, d *tokens.Derived) *shimast.Node {
+	if ex.hoisted != nil {
+		return ex.hoisted.Node(d)
+	}
+	return typeemit.EmitDerived(ex.factory, ex.binding, d)
 }
 
 // expandRoot builds the `Type.object({...})` tree for a root type t (anchor is the
@@ -112,7 +129,7 @@ func memberFor(ex *expansion, t *shimchecker.Type, optional bool, anchor *shimas
 	}
 	nodes := alternativeNodes(ex, alternatives, anchor)
 	if optional {
-		nodes = append(nodes, typeemit.Undefined(ex.factory, ex.binding))
+		nodes = append(nodes, emitLeaf(ex, &tokens.Derived{Kind: tokens.DerivedUndefined}))
 	}
 	if len(nodes) == 1 {
 		return nodes[0]
@@ -161,7 +178,10 @@ func hasBothBooleanLiterals(types []*shimchecker.Type) bool {
 
 // booleanNode is the intrinsic `boolean` spelled as its own address.
 func booleanNode(ex *expansion) *shimast.Node {
-	return typeemit.Named(ex.factory, ex.binding, "boolean", typeemit.GlobalFrom, nil)
+	return emitLeaf(ex, &tokens.Derived{
+		Kind: tokens.DerivedLeaf,
+		Leaf: &tokens.TypeNode{Kind: tokens.TypeNodeNamed, Name: "boolean", From: typeemit.GlobalFrom},
+	})
 }
 
 // singleFor spells one union-free type.
@@ -189,13 +209,13 @@ func singleFor(ex *expansion, t *shimchecker.Type, anchor *shimast.Node) *shimas
 	// The nullish singletons are literal values with no token spelling of their
 	// own, so they never reach the address deriver below.
 	if t.Flags()&shimchecker.TypeFlagsUndefined != 0 {
-		return typeemit.Undefined(f, ex.binding)
+		return emitLeaf(ex, &tokens.Derived{Kind: tokens.DerivedUndefined})
 	}
 	if t.Flags()&shimchecker.TypeFlagsNull != 0 {
-		return typeemit.Call(f, ex.binding, "typeLiteral", []*shimast.Node{f.NewKeywordExpression(shimast.KindNullKeyword)})
+		return emitLeaf(ex, &tokens.Derived{Kind: tokens.DerivedNull})
 	}
 	if node, ok := tokens.DeriveTypeF(ex.types, t, nil); ok {
-		return typeemit.Leaf(f, ex.binding, node)
+		return emitLeaf(ex, &tokens.Derived{Kind: tokens.DerivedLeaf, Leaf: node})
 	}
 	if isRecord(ex, t) {
 		return objectFor(ex, t, anchor)

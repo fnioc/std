@@ -15,7 +15,10 @@ import (
 // Hoist is the project state HOISTED emission needs: the shared const table
 // every file contributes to, and the source root the generated module sits at,
 // so each file can spell its own relative specifier. A nil *Hoist selects INLINE
-// emission — the `Type.*` tree written out at the call site.
+// emission — the `Type.*` tree written out at the call site. It is shared by
+// every primitive that derives a `Type.*` tree, not just typefor's own — a
+// consumer passes the SAME *Hoist to each stage's constructor so a type reached
+// through more than one primitive interns to one const.
 type Hoist struct {
 	// Registry is the one table for the whole project. Its entries outlive any
 	// single file, which is what lets two files share a const.
@@ -163,6 +166,37 @@ func (e *hoistEmitter) imports() []*valueimport.Binding {
 		out = append(out, e.bindings[name])
 	}
 	return out
+}
+
+// HoistEmitter is hoistEmitter under the name a sibling package names it by — a
+// per-file handle on the project's shared const table. Build one with
+// NewHoistEmitter.
+type HoistEmitter = hoistEmitter
+
+// NewHoistEmitter builds a per-file handle on hoist's shared const table: every
+// Node call this file makes interns into the SAME registry a typefor stage
+// sharing the same *Hoist also references, so a type either primitive derives
+// spells through one const.
+func NewHoistEmitter(
+	factory *shimast.NodeFactory,
+	hoist *Hoist,
+	sourceFile *shimast.SourceFile,
+	emit func(plugin.Diagnostic),
+) *HoistEmitter {
+	return newHoistEmitter(factory, hoist, sourceFile, emit)
+}
+
+// Node interns d in the shared const table and returns the reference to its
+// const, or nil when naming failed (reported through emit) — the entry point a
+// sibling primitive's own leaf emission shares with typefor's.
+func (e *hoistEmitter) Node(d *tokens.Derived) *shimast.Node {
+	return e.node(d)
+}
+
+// Imports are the file's hoisted-const bindings, in a stable order — what a
+// caller passes to valueimport.Ensure once the file settles.
+func (e *hoistEmitter) Imports() []*valueimport.Binding {
+	return e.imports()
 }
 
 // moduleSpecifier is the relative specifier a file in sourceRoot's tree reaches
