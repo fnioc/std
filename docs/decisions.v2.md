@@ -2227,3 +2227,34 @@ property names in place of the old ones — an author who writes `typefor(C).ins
 `typefor<F>().return` gets the same compile-time fold as before, under the new spelling.
 
 _Owner-ruled, Claude-executed 2026-08-14._
+
+## §181 — A constructor's abstractness is a flag, not a kind; an abstract implementer can never register as a constructor
+
+`ConstructorType` carries a boolean `abstract` member — false for the ordinary case, true for a
+constructor that builds an abstract class, one nothing constructs with `new` directly. `FunctionType`
+carries no such flag; a function value is never abstract. Interning treats the two values as distinct
+nodes: `Type.ctor(box, rows)` and `Type.ctor(box, rows, true)` are different types. The positional
+door's third argument is optional, defaulting to false; the object door names it like every other
+field, required.
+
+The token grammar mirrors TypeScript's own spelling: `abstract new (rows) => instance`, the keyword an
+ordinary contextual name recognized only immediately before `new (` — everywhere else `abstract` reads
+as an ordinary global type name, exactly as `new` itself already does. Stringify emits the prefix only
+when the flag is set; the parser accepts it symmetrically, so the round trip holds both directions.
+
+Matching (`SatisfiesVisitor`, within the ctor kind): a concrete candidate serves both a concrete and an
+abstract request, since a value that CAN be constructed answers either address; an abstract candidate
+serves only an abstract request — nothing about a candidate nothing can construct satisfies a request
+for something that can be. `proposed.abstract` implies `type.abstract` is the whole rule.
+
+`ServiceDescriptor.ctor` throws when handed an abstract implementer type, naming it: registering a
+constructor descriptor around a type nothing can `new` would build a registration the engine can never
+actually construct, so the mistake is caught at registration rather than surfacing later as a runtime
+construction failure with no clue where it came from.
+
+Deriving the flag automatically from a TS `abstract class` declaration is not wired up: the vendored
+ttsc checker shim exposes no abstract-modifier accessor today, so a hand-written `Type.ctor(..., true)`
+(or the object door's `abstract: true`) is the only way to spell one; typefor's derivation always emits
+false until the shim grows that accessor.
+
+_Owner-ruled, Claude-executed 2026-08-14._

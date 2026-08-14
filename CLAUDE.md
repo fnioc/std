@@ -108,7 +108,10 @@ where that's cheap, and flag the intended divergence rather than pre-emptively t
   unavailable as member names, not because they are callables (§149). A signature carries no
   quantifier list of its own — an open one is spelled by a generic hole sitting inside its
   `args`/`return`/`instance`, closed the same way any other hole is: by tree-position
-  unification against the request (§152, §179, §180). `Iterable`/`Array` are the only
+  unification against the request (§152, §179, §180). `ConstructorType` carries a boolean
+  `abstract` member — a flag, not a kind — matching TypeScript's own `abstract new (...) =>` spelling;
+  an abstract candidate satisfies only an abstract request, and `ServiceDescriptor.ctor` throws on an
+  abstract implementer (§181). `Iterable`/`Array` are the only
   aggregate kinds — delivery is call-site behavior, so `Type.async` and the dedicated `asyncIterable`
   kind are cancelled (`Promise<T>` and an ordinary global `AsyncIterable<E>` cover them, §151).
   **The wire format is fixed**: token strings never move for a TS-surface change. Also the
