@@ -2258,3 +2258,66 @@ with `abstract: false`, whatever the source class actually declares. A hand-writ
 true)` (or the object door's `abstract: true`) is the only way to spell an abstract one today.
 
 _Owner-ruled, Claude-executed 2026-08-14._
+
+## §182 — Minimal scope/dispose placeholder: least-code choices, not design rulings
+
+Per the owner's least-code directive (task #46): implement the NotImplementedError-stubbed
+scope/dispose surface just enough to make the examples run and flip the scope-intrinsic baseline
+red tests green, taking whichever side of any genuinely open fork costs the least code, and
+recording every such choice here rather than treating it as settled. The real scope design belongs
+to the parked session (task #5, `docs/di2.scope-notes.md`); nothing below should be read as
+answering the forks that session lists.
+
+**What moved off NotImplementedError.** `ServiceProvider.dispose`/`disposeAsync`; `IServiceScope`/
+`IServiceScopeFactory` gained a real implementation (`libraries/di/src/internal/ServiceScope.ts`);
+`IServiceScope.isService`. `IServiceProvider.createScope` needed no change — its existing
+implementation already delegated to `getRequiredService(IServiceScopeFactory)`, which now succeeds.
+Left alone, still throwing: `ServiceProvider.tryResolve`/`resolveAsync`,
+`IServiceScopeFactory.createAsyncScope`/`IServiceProvider.createAsyncScope` — no red test or example
+reaches them, so nothing was built for them.
+
+**`IServiceScopeFactory` is recognized structurally, not registered.** `ToCallSiteVisitor` answers a
+request for it the same way it already answered `IServiceProvider` — by name and declaring module,
+with no manifest entry required — and `RealizeVisitor` hands back a `ServiceScopeFactory` bound to
+the walk's own engine and provider. This is the existing pattern for `IServiceProvider`, reused
+rather than invented, and it is what let `createScope`'s current implementation start working
+without being touched.
+
+**A lifetime tag gates caching; its VALUE is ignored.** A ctor/factory site whose descriptor carries
+any lifetime caches into whichever scope is asking, keyed by that descriptor; a site with none
+realizes fresh every time. There is no matching-scope-by-tag search, no ancestor lookup, and no
+distinction between different tag strings — every registration in the repo today tags `'singleton'`
+and nothing else, so this is the cheapest gate that already satisfies all of them. Multiple named
+scope kinds, tag-mismatch handling, and nested/ancestor scope chains are all untouched.
+
+**The cache key is the answering descriptor, not the bare requested type.** A single address can
+carry several registrations — many hosted services under one token is the case the baseline tests
+exercise — and each needs its own cache slot; keying purely by the requested `Type` (the literal
+reading of the parked notes' "keyed by the requested type") collapsed them into one. A
+`ServiceDescriptor` object is stable across every separate plan build that reaches it (the engine
+holds one `Registry` over one set of descriptor objects for its whole life), so keying on it instead
+satisfies §142's resolve-one/resolve-all sharing invariant while still giving every registration its
+own slot. `ScopeCache`'s key parameter widened from `Type` to `unknown` in
+`libraries/di.core/src/ServiceScope.ts` to carry it — the interface's shape, not its behavior; no
+existing caller took a dependency on the narrower type.
+
+**Disposal cascades from the provider through its opened scopes to their cached values.**
+`ServiceProvider.dispose`/`disposeAsync` walk every scope the provider's engine ever opened, most
+recently opened first; each scope disposes its own cached values the same way, calling whichever of
+`Symbol.dispose`/`Symbol.asyncDispose` a value carries and skipping a value with neither. A direct,
+unscoped `getService`/`getRequiredService` call never caches anything, so it leaves nothing behind
+for this walk to reach — consistent with the "frameless provider" the hosting package's own `Host`
+already documents. Per-scope registrations, scope-level `Symbol.dispose` reachable from the public
+`IServiceScope` surface, and disposal ordering guarantees beyond most-recent-first are all
+untouched.
+
+**The provider a scoped dependency receives is the root provider.** Resolving through a scope hands
+an `IServiceProvider`-typed dependency the same provider the scope itself was opened from, not a
+view bound to that scope — a nested resolution reached through it does not share the outer scope's
+cache. The "SP = (engine, scope) binding minted at the callsite" idea the parked notes lean toward
+is the more complete answer; this is the cheaper one, taken because no red test exercises the
+difference.
+
+_Claude-authored under the owner's least-code directive (task #46), 2026-08-14 — minimal
+placeholders taken to get something running, not design rulings; task #5 remains the authority on
+the scope model itself._
