@@ -183,18 +183,16 @@ export namespace HostBuilderHostingAugmentations {
   export function runConsoleAsync(this: IHostBuilder, abortSignal?: AbortSignal): Promise<void>;
   export function runConsoleAsync(this: IHostBuilder, configureOptions: Func<[ConsoleLifetimeOptions], void>,
     abortSignal?: AbortSignal): Promise<void>;
-  export function runConsoleAsync(
-    this: IHostBuilder,
-    ...args: [abortSignal?: AbortSignal] | [configureOptions: Func<[ConsoleLifetimeOptions], void>,
-      abortSignal?: AbortSignal]
-  ): Promise<void> {
+  export function runConsoleAsync(this: IHostBuilder,
+    configureOptionsOrAbortSignal?: Func<[ConsoleLifetimeOptions], void> | AbortSignal,
+    maybeAbortSignal?: AbortSignal): Promise<void> {
     let configureOptions: Func<[ConsoleLifetimeOptions], void> | undefined;
     let abortSignal: AbortSignal | undefined;
-    if (typeof args[0] === 'function') {
-      configureOptions = args[0];
-      abortSignal = args[1];
+    if (typeof configureOptionsOrAbortSignal === 'function') {
+      configureOptions = configureOptionsOrAbortSignal;
+      abortSignal = maybeAbortSignal;
     } else {
-      abortSignal = args[0];
+      abortSignal = configureOptionsOrAbortSignal;
     }
     return HostLifecycleAugmentations.runAsync.call(
       HostBuilderHostingAugmentations.useConsoleLifetime.call(this, configureOptions).build(),
