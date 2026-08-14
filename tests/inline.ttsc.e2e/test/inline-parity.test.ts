@@ -161,7 +161,7 @@ interface Ctor<in Args extends readonly any[] = any[], out Instance = any> {
 
 declare module '@rhombus-std/di.core' {
   interface Manifest<Scopes extends string = 'singleton'> {
-    addClass<T>(ctor: Ctor, implType: ConstructorType, scope?: Scopes, key?: string): Manifest<Scopes>;
+    addClass<T>(ctor: Ctor, implementerType: ConstructorType, scope?: Scopes, key?: string): Manifest<Scopes>;
     addValue<T>(value: unknown, key?: string): Manifest<Scopes>;
   }
 }

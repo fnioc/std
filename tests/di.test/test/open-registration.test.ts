@@ -32,7 +32,7 @@ class Resolving {
 
 /** `Box<%T> -> Box`, its lone parameter the bare hole. */
 const openBox = DefaultManifest.empty<string>()
-  .add(ServiceDescriptor.ctor(box(T), Box, Type.ctor(box(T), T)));
+  .add(ServiceDescriptor.ctor(box(T), Box, Type.ctor(box(T), [[T]])));
 
 describe('a slot that is the hole', () => {
   test('receives the type that closed the registration', () => {
@@ -47,7 +47,7 @@ describe('a slot that is the hole', () => {
   });
 
   test('receives it even where the closing type IS registered', () => {
-    const manifest = openBox.add(ServiceDescriptor.ctor(FOO, Foo, Type.ctor(FOO)));
+    const manifest = openBox.add(ServiceDescriptor.ctor(FOO, Foo, Type.ctor(FOO, [[]])));
     const built = new ServiceProvider(manifest).getService(box(FOO)) as Box;
     expect(built.closing).toBe(FOO);
     expect(built.closing).not.toBeInstanceOf(Foo);
@@ -61,20 +61,20 @@ describe('a slot that is the hole', () => {
 
   test('feeds a factory registration the same way', () => {
     const manifest = DefaultManifest.empty<string>()
-      .add(ServiceDescriptor.factory(box(T), (closing: unknown) => ({ closing }), Type.func(box(T), T)));
+      .add(ServiceDescriptor.factory(box(T), (closing: unknown) => ({ closing }), Type.func(box(T), [[T]])));
     expect((new ServiceProvider(manifest).getService(box(FOO)) as Box).closing).toBe(FOO);
   });
 
   test('is unsatisfiable on a CLOSED registration, where nothing binds it', () => {
-    const manifest = DefaultManifest.empty<string>().add(ServiceDescriptor.ctor(FOO, Box, Type.ctor(FOO, T)));
+    const manifest = DefaultManifest.empty<string>().add(ServiceDescriptor.ctor(FOO, Box, Type.ctor(FOO, [[T]])));
     expect(new ServiceProvider(manifest).getService(FOO)).toBeUndefined();
   });
 });
 
 describe('a hole inside a bigger slot', () => {
   const openCrate = DefaultManifest.empty<string>()
-    .add(ServiceDescriptor.ctor(crate(T), Crate, Type.ctor(crate(T), T, holder(T))))
-    .add(ServiceDescriptor.ctor(holder(FOO), Holder, Type.ctor(holder(FOO))));
+    .add(ServiceDescriptor.ctor(crate(T), Crate, Type.ctor(crate(T), [[T, holder(T)]])))
+    .add(ServiceDescriptor.ctor(holder(FOO), Holder, Type.ctor(holder(FOO), [[]])));
 
   test('closes into a type expression, which resolves as a service', () => {
     const built = new ServiceProvider(openCrate).getService(crate(FOO)) as Crate;
@@ -97,8 +97,8 @@ describe('reaching an instance of the closing type', () => {
     // An instance of the bare closing type has no spelling of its own; a service that wants one
     // asks for the provider too and looks it up with the type it was handed.
     const manifest = DefaultManifest.empty<string>()
-      .add(ServiceDescriptor.ctor(box(T), Resolving, Type.ctor(box(T), T, SERVICE_PROVIDER)))
-      .add(ServiceDescriptor.ctor(FOO, Foo, Type.ctor(FOO)));
+      .add(ServiceDescriptor.ctor(box(T), Resolving, Type.ctor(box(T), [[T, SERVICE_PROVIDER]])))
+      .add(ServiceDescriptor.ctor(FOO, Foo, Type.ctor(FOO, [[]])));
     const built = new ServiceProvider(manifest).getService(box(FOO)) as Resolving;
     expect(built.provider.getService(built.closing)).toBeInstanceOf(Foo);
   });
@@ -106,10 +106,10 @@ describe('reaching an instance of the closing type', () => {
 
 describe('an open registration with no signature at all', () => {
   test('still serves through what its holes capture', () => {
-    const echo = Type.func(T, T);
+    const echo = Type.func(T, [[T]]);
     const manifest = DefaultManifest.empty<string>()
       .add(ServiceDescriptor.value(echo, (value: unknown) => value));
-    const resolved = new ServiceProvider(manifest).getService(Type.func(FOO, FOO)) as (value: number) => number;
+    const resolved = new ServiceProvider(manifest).getService(Type.func(FOO, [[FOO]])) as (value: number) => number;
     expect(resolved(42)).toBe(42);
   });
 });

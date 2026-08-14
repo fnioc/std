@@ -359,7 +359,7 @@ before touching):
 - **The manifest is IMMUTABLE** — `Manifest` is an iterable decorator chain: every verb
   (`add`/`addFactory`/`addValue`, the descriptor verbs, every augmentation) returns a NEW manifest
   and leaves the receiver alone, so a discarded result registers NOTHING. A verb's long overload
-  takes the impl's whole `Type` node (`implType`, a `ConstructorType`/`FunctionType` carrying one
+  takes the impl's whole `Type` node (`implementerType`, a `ConstructorType`/`FunctionType` carrying one
   parameter ROW per overload — an intersection no longer stands in for one) as a required arg 3, and
   the descriptor stores that node itself, with no separate signatures member; `scope` is arg 4 and
   `key` arg 5. A naked array of parameter types survives only on the builder chain's

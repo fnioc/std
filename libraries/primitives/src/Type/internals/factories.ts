@@ -44,7 +44,7 @@ export function tuple(members: readonly Type[]): TupleType {
   return intern(`tuple\0${slots.map(id).join(',')}`, () => node<TupleType>({ kind: 'tuple', members: slots }));
 }
 
-export function func(returnType: Type, args: TypeSignatures, genericArgs: readonly Type[]): FunctionType {
+export function func(returnType: Type, args: TypeSignatures, genericArgs: readonly Type[] = []): FunctionType {
   const result = adopt(returnType);
   const rows = adoptRows(args);
   const quantifiers = genericArgs.map(adopt);
@@ -54,7 +54,7 @@ export function func(returnType: Type, args: TypeSignatures, genericArgs: readon
   );
 }
 
-export function ctor(instanceType: Type, args: TypeSignatures, genericArgs: readonly Type[]): ConstructorType {
+export function ctor(instanceType: Type, args: TypeSignatures, genericArgs: readonly Type[] = []): ConstructorType {
   const instance = adopt(instanceType);
   const rows = adoptRows(args);
   const quantifiers = genericArgs.map(adopt);
@@ -248,11 +248,12 @@ function compare(left: string, right: string): number {
 }
 
 /**
- * Rebuilds a node the table did not mint, so anything arriving from outside — a cast, an untyped
- * caller, a tree revived from JSON — joins the interned graph before its identity is read. Each
- * factory adopts its own slots, so the walk reaches the whole subtree.
+ * The canonical node for `type`, minting one when the table has not seen it: anything arriving
+ * from outside — a cast, an untyped caller, a tree revived from JSON — joins the interned graph
+ * before its identity is read. Each factory adopts its own slots, so the walk reaches the whole
+ * subtree.
  */
-function adopt(type: Type): Type {
+export function adopt(type: Type): Type {
   return isInterned(type) ? type : adoptVisitor.visit(type);
 }
 

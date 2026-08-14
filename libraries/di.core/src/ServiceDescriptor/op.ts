@@ -1,11 +1,10 @@
 import { Type } from '@rhombus-std/primitives';
 import { assertNever } from '@rhombus-toolkit/type-guards';
-import type { CtorServiceDescriptor, FactoryServiceDescriptor, ServiceDescriptor,
-  ValuedServiceDescriptor } from './expressions';
+import type { CtorDescriptor, FactoryDescriptor, ServiceDescriptor, ValueDescriptor } from './ServiceDescriptor';
 
 /**
  * Closes an open registration against the generics a `Type.satisfies` match captured,
- * rewriting `serviceType` and the implementation type so the result stands on its own.
+ * rewriting `serviceType` and the implementer's type so the result stands on its own.
  */
 export function substitute<Scopes extends string>(descriptor: ServiceDescriptor<Scopes>,
   generics: ReadonlyMap<string, Type>): ServiceDescriptor<Scopes> {
@@ -15,20 +14,20 @@ export function substitute<Scopes extends string>(descriptor: ServiceDescriptor<
   const serviceType = Type.substitute(descriptor.serviceType, generics);
   switch (descriptor.kind) {
     case 'value':
-      return { ...descriptor, serviceType };
+      return { ...descriptor, serviceType, implementerType: Type.substitute(descriptor.implementerType, generics) };
     case 'ctor':
-      return { ...descriptor, serviceType, implType: Type.substitute(descriptor.implType, generics) };
+      return { ...descriptor, serviceType, implementerType: Type.substitute(descriptor.implementerType, generics) };
     case 'factory':
-      return { ...descriptor, serviceType, implType: Type.substitute(descriptor.implType, generics) };
+      return { ...descriptor, serviceType, implementerType: Type.substitute(descriptor.implementerType, generics) };
     default:
       return assertNever(descriptor);
   }
 }
 
 /**
- * Are the two descriptors interchangeable — same slot ({@link matches}) and the same
- * implementation, scope, and implementation type? Two descriptors can occupy the same slot without
- * being equal (a replaced registration), so prefer {@link matches} for slot identity.
+ * Are the two descriptors interchangeable — same slot ({@link matches}) and the same implementer,
+ * scope, and implementer type? Two descriptors can occupy the same slot without being equal (a
+ * replaced registration), so prefer {@link matches} for slot identity.
  */
 export function equals(left: ServiceDescriptor<string>, right: ServiceDescriptor<string>): boolean {
   if (left === right) {
@@ -39,15 +38,17 @@ export function equals(left: ServiceDescriptor<string>, right: ServiceDescriptor
   }
   switch (left.kind) {
     case 'ctor': {
-      const other = right as CtorServiceDescriptor<string>;
-      return left.ctor === other.ctor && left.scope === other.scope && left.implType === other.implType;
+      const other = right as CtorDescriptor<string>;
+      return left.implementer === other.implementer && left.scope === other.scope
+        && left.implementerType === other.implementerType;
     }
     case 'factory': {
-      const other = right as FactoryServiceDescriptor<string>;
-      return left.factory === other.factory && left.scope === other.scope && left.implType === other.implType;
+      const other = right as FactoryDescriptor<string>;
+      return left.implementer === other.implementer && left.scope === other.scope
+        && left.implementerType === other.implementerType;
     }
     case 'value':
-      return left.value === (right as ValuedServiceDescriptor<string>).value;
+      return left.implementer === (right as ValueDescriptor).implementer;
     default:
       return assertNever(left);
   }

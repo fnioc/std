@@ -32,10 +32,10 @@ type IManifestHostedServiceAugmentations<Scopes extends string> = {
   addHostedService(implementationFactory: Func<[IServiceProvider], IHostedService>): Manifest<Scopes>;
   /**
    * Registers `ctor` as an {@link IHostedService} the host will start and
-   * stop alongside its lifetime. `implType` is the ctor's composed
+   * stop alongside its lifetime. `implementerType` is the ctor's composed
    * constructor type; omitted, a dependency-free ctor is assumed.
    */
-  addHostedService(ctor: Ctor, implType?: ConstructorType): Manifest<Scopes>;
+  addHostedService(ctor: Ctor, implementerType?: ConstructorType): Manifest<Scopes>;
 };
 
 // `Provider` is defaulted so the merge's type-parameter list matches the
@@ -56,18 +56,18 @@ export const ServiceManifestHostedServiceAugmentations: AugmentationSet2<Default
     // The ctor form carries an optional composed constructor type; the factory
     // form is a lone provider-taking function. A class value matches the
     // construct-signature arm, an arrow/function the call-signature arm.
-    ...rest: [ctor: Ctor, implType?: ConstructorType] | [
+    ...rest: [ctor: Ctor, implementerType?: ConstructorType] | [
       implementationFactory: Func<[IServiceProvider], IHostedService>,
     ]
   ): Manifest<string> {
-    const [target, implType] = rest;
-    // The factory form injects the live resolver (via the `Type.func(...,
-    // RESOLVER_TYPE)` composed type) so the delegate receives it. A ctor form
-    // with no `implType` is a dependency-free ctor, stated explicitly as one
+    const [target, implementerType] = rest;
+    // The factory form injects the live resolver (via the `Type.func(..., [[RESOLVER_TYPE]])`
+    // composed type) so the delegate receives it. A ctor form
+    // with no `implementerType` is a dependency-free ctor, stated explicitly as one
     // that carries no argument types (`addClass` has no overload that omits it).
     return isConstructor(target)
-      ? this.addClass(HOSTED_SERVICE_TYPE, target, implType ?? Type.ctor(HOSTED_SERVICE_TYPE), 'singleton')
-      : this.addFactory(HOSTED_SERVICE_TYPE, target, Type.func(HOSTED_SERVICE_TYPE, RESOLVER_TYPE), 'singleton');
+      ? this.addClass(HOSTED_SERVICE_TYPE, target, implementerType ?? Type.ctor(HOSTED_SERVICE_TYPE, [[]]), 'singleton')
+      : this.addFactory(HOSTED_SERVICE_TYPE, target, Type.func(HOSTED_SERVICE_TYPE, [[RESOLVER_TYPE]]), 'singleton');
   } };
 
 registerAugmentations(typefor<Manifest>(), ServiceManifestHostedServiceAugmentations);

@@ -132,7 +132,7 @@ async function tour(provider: IServiceProvider): Promise<string[]> {
   //
   // A FACTORY SLOT injects a CALLABLE instead of an instance, and it is the
   // answer to "I need one of these later, with an argument the container cannot
-  // know". `Type.func(result, ...callerArgs)` spells it: the listed arguments
+  // know". `Type.func(result, [[...callerArgs]])` spells it: the listed arguments
   // are the ones the CALLER supplies, and every other slot in the target's
   // signature is resolved from the container as usual.
   //
@@ -147,7 +147,7 @@ async function tour(provider: IServiceProvider): Promise<string[]> {
   // back the identical factory `PaymentRouter` receives as a constructor
   // parameter.
   const mintReceipt = provider.getRequiredService(
-    Type.func(typefor<IReceipt>(), typefor<CheckoutOrder>()),
+    Type.func(typefor<IReceipt>(), [[typefor<CheckoutOrder>()]]),
   ) as (order: CheckoutOrder) => IReceipt;
   lines.push(`  asking the provider for one: ${mintReceipt(ORDER_C).text}`);
 

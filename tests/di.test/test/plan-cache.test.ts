@@ -25,29 +25,29 @@ class Report {
 
 /** `Widget(Conn)`, with a Conn of its own — so the manifest alone already answers `Widget`. */
 const widgets = DefaultManifest.empty<string>()
-  .add(ServiceDescriptor.ctor(WIDGET, Widget, Type.ctor(WIDGET, CONN)))
-  .add(ServiceDescriptor.ctor(CONN, ManifestConn, Type.ctor(CONN)));
+  .add(ServiceDescriptor.ctor(WIDGET, Widget, Type.ctor(WIDGET, [[CONN]])))
+  .add(ServiceDescriptor.ctor(CONN, ManifestConn, Type.ctor(CONN, [[]])));
 
 describe('a latebound call resolves against its own registrations', () => {
   test('the call argument outranks the manifest, even after the plain plan is cached', () => {
     const provider = new ServiceProvider(widgets);
     expect((provider.getService(WIDGET) as Widget).conn).toBeInstanceOf(ManifestConn);
 
-    const make = provider.getService(Type.func(WIDGET, CONN)) as (conn: unknown) => Widget;
+    const make = provider.getService(Type.func(WIDGET, [[CONN]])) as (conn: unknown) => Widget;
     const passed = new CallConn();
     expect(make(passed).conn).toBe(passed);
   });
 
   test('and leaves the manifest plan alone for the next plain resolution', () => {
     const provider = new ServiceProvider(widgets);
-    const make = provider.getService(Type.func(WIDGET, CONN)) as (conn: unknown) => Widget;
+    const make = provider.getService(Type.func(WIDGET, [[CONN]])) as (conn: unknown) => Widget;
     make(new CallConn());
 
     expect((provider.getService(WIDGET) as Widget).conn).toBeInstanceOf(ManifestConn);
   });
 
   test('each call is planned afresh, so one call never answers the next', () => {
-    const make = new ServiceProvider(widgets).getService(Type.func(WIDGET, CONN)) as (conn: unknown) => Widget;
+    const make = new ServiceProvider(widgets).getService(Type.func(WIDGET, [[CONN]])) as (conn: unknown) => Widget;
     const first = new CallConn();
     const second = new CallConn();
     expect(make(first).conn).toBe(first);
@@ -58,8 +58,8 @@ describe('a latebound call resolves against its own registrations', () => {
 describe('a union is settled against the resolving call', () => {
   // `Report` wants `Cache | Redis`; the manifest supplies only the Cache half.
   const reports = DefaultManifest.empty<string>()
-    .add(ServiceDescriptor.ctor(REPORT, Report, Type.ctor(REPORT, Type.union(CACHE, REDIS))))
-    .add(ServiceDescriptor.ctor(CACHE, MemoryCache, Type.ctor(CACHE)));
+    .add(ServiceDescriptor.ctor(REPORT, Report, Type.ctor(REPORT, [[Type.union(CACHE, REDIS)]])))
+    .add(ServiceDescriptor.ctor(CACHE, MemoryCache, Type.ctor(CACHE, [[]])));
 
   test('one member answers when the manifest is the whole universe', () => {
     expect((new ServiceProvider(reports).getService(REPORT) as Report).cache).toBeInstanceOf(MemoryCache);
@@ -69,7 +69,7 @@ describe('a union is settled against the resolving call', () => {
     const provider = new ServiceProvider(reports);
     expect((provider.getService(REPORT) as Report).cache).toBeInstanceOf(MemoryCache);
 
-    const make = provider.getService(Type.func(REPORT, REDIS)) as (redis: unknown) => Report;
+    const make = provider.getService(Type.func(REPORT, [[REDIS]])) as (redis: unknown) => Report;
     expect(() => make({})).toThrow(AmbiguousUnionError);
   });
 });
@@ -82,8 +82,10 @@ describe('a chosen member that fails while being built', () => {
       }
     }
     const manifest = DefaultManifest.empty<string>()
-      .add(ServiceDescriptor.ctor(REPORT, Report, Type.ctor(REPORT, Type.union(CACHE, Type.typeLiteral(undefined)))))
-      .add(ServiceDescriptor.ctor(CACHE, Exploding, Type.ctor(CACHE)));
+      .add(
+        ServiceDescriptor.ctor(REPORT, Report, Type.ctor(REPORT, [[Type.union(CACHE, Type.typeLiteral(undefined))]])),
+      )
+      .add(ServiceDescriptor.ctor(CACHE, Exploding, Type.ctor(CACHE, [[]])));
 
     // The literal is the union's fallback for an ABSENT service, never for a broken one.
     expect(() => new ServiceProvider(manifest).getService(REPORT)).toThrow('boom');
@@ -92,11 +94,11 @@ describe('a chosen member that fails while being built', () => {
   test('fails it again on the next ask, with the plan unchanged', () => {
     let attempts = 0;
     const manifest = DefaultManifest.empty<string>()
-      .add(ServiceDescriptor.ctor(WIDGET, Widget, Type.ctor(WIDGET, CONN)))
+      .add(ServiceDescriptor.ctor(WIDGET, Widget, Type.ctor(WIDGET, [[CONN]])))
       .add(ServiceDescriptor.factory(CONN, () => {
         attempts++;
         throw new Error('boom');
-      }, Type.func(CONN)));
+      }, Type.func(CONN, [[]])));
     const provider = new ServiceProvider(manifest);
 
     expect(() => provider.getService(WIDGET)).toThrow('boom');

@@ -65,19 +65,16 @@ describe('the impl doors', () => {
 describe('withType', () => {
   test('takes the whole composed type in place of a bare argument list', () => {
     const services = withClock()
-      .add<Sink>(SINK, sink => sink.asClass(Sink).withType(Type.ctor(SINK, CLOCK, Type.typeLiteral('composed'))));
+      .add<Sink>(SINK, sink => sink.asClass(Sink).withType(Type.ctor(SINK, [[CLOCK, Type.typeLiteral('composed')]])));
 
     expect((services.build().getRequiredService(SINK) as Sink).environment).toBe('composed');
   });
 
   test('parameter rows describe an overloaded implementation, one row per call signature', () => {
-    const overloaded = Type.ctor({
-      instanceType: SINK,
-      args: [
-        [Type.imported('IMissing', 'app'), Type.typeLiteral('unreachable')],
-        [CLOCK, Type.typeLiteral('fallback')],
-      ],
-    });
+    const overloaded = Type.ctor({ instanceType: SINK, args: [
+      [Type.imported('IMissing', 'app'), Type.typeLiteral('unreachable')],
+      [CLOCK, Type.typeLiteral('fallback')],
+    ], genericArgs: [] });
     // The first row asks for a type nothing registers, so the second is the one the engine takes.
     const services = withClock().add<Sink>(SINK, sink => sink.asClass(Sink).withType(overloaded));
 
@@ -93,20 +90,20 @@ describe('withType', () => {
 describe('the terse form', () => {
   test('states a constructed registration in one call, the node saying it is constructed', () => {
     const services = withClock()
-      .add<Sink>(SINK, Sink, Type.ctor(SINK, CLOCK, Type.typeLiteral('terse')), 'singleton');
+      .add<Sink>(SINK, Sink, Type.ctor(SINK, [[CLOCK, Type.typeLiteral('terse')]]), 'singleton');
 
     expect((services.build().getRequiredService(SINK) as Sink).environment).toBe('terse');
   });
 
   test('a function type names a factory instead, from the same argument position', () => {
-    const services = withClock().add<Sink>(SINK, makeSink, Type.func(SINK, CLOCK));
+    const services = withClock().add<Sink>(SINK, makeSink, Type.func(SINK, [[CLOCK]]));
 
     expect((services.build().getRequiredService(SINK) as Sink).environment).toBe('from-factory');
   });
 
   test('carries the tag through, so a keyed registration is one call too', () => {
     const services = withClock()
-      .add<Sink>(SINK, Sink, Type.ctor(SINK, CLOCK, Type.typeLiteral('keyed')), 'singleton', 'primary');
+      .add<Sink>(SINK, Sink, Type.ctor(SINK, [[CLOCK, Type.typeLiteral('keyed')]]), 'singleton', 'primary');
     const [filed] = [...services];
 
     expect(filed!.serviceType).toBe(Type.tag(SINK, 'primary'));
@@ -115,10 +112,10 @@ describe('the terse form', () => {
   test('files the same descriptor the walk does', () => {
     const walked = withClock().add<Sink>(SINK,
       sink =>
-        sink.asClass(Sink).withType(Type.ctor(SINK, CLOCK, Type.typeLiteral('same')))
+        sink.asClass(Sink).withType(Type.ctor(SINK, [[CLOCK, Type.typeLiteral('same')]]))
           .withLifetime('singleton').taggedAs('primary'));
     const stated = withClock()
-      .add<Sink>(SINK, Sink, Type.ctor(SINK, CLOCK, Type.typeLiteral('same')), 'singleton', 'primary');
+      .add<Sink>(SINK, Sink, Type.ctor(SINK, [[CLOCK, Type.typeLiteral('same')]]), 'singleton', 'primary');
 
     expect(ServiceDescriptor.equals([...stated][0]!, [...walked][0]!)).toBe(true);
   });
@@ -132,7 +129,7 @@ describe('the shape slot is spent once', () => {
   test('withSignature after withType is refused', () => {
     expect(() =>
       withClock().add<Sink>(SINK, sink =>
-        (sink.asClass(Sink).withType(Type.ctor(SINK, CLOCK, Type.typeLiteral('first'))) as any)
+        (sink.asClass(Sink).withType(Type.ctor(SINK, [[CLOCK, Type.typeLiteral('first')]])) as any)
           .withSignature(CLOCK, Type.typeLiteral('second')))
     ).toThrow(/call shape is already named/);
   });
@@ -184,9 +181,9 @@ describe('lifetime and tag', () => {
 });
 
 describe('an incomplete walk', () => {
-  test('is refused when no implementation was chosen', () => {
+  test('is refused when no implementer was chosen', () => {
     expect(() => withClock().add<Sink>(SINK, sink => (sink as any).withLifetime('singleton')))
-      .toThrow(/no implementation was chosen/);
+      .toThrow(/no implementer was chosen/);
   });
 
   test('is refused when no call shape was named', () => {

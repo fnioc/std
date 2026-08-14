@@ -542,9 +542,9 @@ Every other registration verb — `add`, `addClass`, `addFactory`, `addValue`, `
 
 ## §109 — The per-registration builder gates completion on the type system: an impl door, then exactly one call-shape door, then optional lifetime/tag doors
 
-The two-argument `add(type, configure: Func<[Unstarted<T, Scopes>], IComplete>)` form hands the configure lambda a `PendingRegistration` typed as `Unstarted` — every step door still open, no `IComplete` in the intersection — and walks it through `libraries/di.core/src/builder.ts`'s `Pending<T, ImplNode, Scopes, Slots, Ready>` type: each slot still open (`'impl' | 'implType' | 'lifetime' | 'tag'`) contributes one interface to an intersection, so only the doors for open slots are callable. `asClass`/`asFactory`/`asValue` spend the `impl` slot and open `implType` (skipped by `asValue`, already complete once tagged); `withSignature(...paramTypes)` or `withType(implType)` spend `implType` — exactly one of the two, since taking either removes the slot the other also targets — and only this step flips `Ready` to `true`, adding `IComplete` to the intersection. `withLifetime`/`taggedAs` remain independently callable afterward without gating completion further. A lambda that never opens a call-shape door never reaches a value `add`'s overload accepts, so the gate is enforced by the type checker, not a runtime check.
+The two-argument `add(type, configure: Func<[Unstarted<T, Scopes>], IComplete>)` form hands the configure lambda a `PendingRegistration` typed as `Unstarted` — every step door still open, no `IComplete` in the intersection — and walks it through `libraries/di.core/src/builder.ts`'s `Pending<T, ImplNode, Scopes, Slots, Ready>` type: each slot still open (`'impl' | 'implementerType' | 'lifetime' | 'tag'`) contributes one interface to an intersection, so only the doors for open slots are callable. `asClass`/`asFactory`/`asValue` spend the `impl` slot and open `implementerType` (skipped by `asValue`, already complete once tagged); `withSignature(...paramTypes)` or `withType(implementerType)` spend `implementerType` — exactly one of the two, since taking either removes the slot the other also targets — and only this step flips `Ready` to `true`, adding `IComplete` to the intersection. `withLifetime`/`taggedAs` remain independently callable afterward without gating completion further. A lambda that never opens a call-shape door never reaches a value `add`'s overload accepts, so the gate is enforced by the type checker, not a runtime check.
 
-`withSignature` is singular and variadic (`...paramTypes: Array<Type | string>`), taken at most once — there is no separate bulk-replace verb. A registration's whole call shape can also be named positionally, without the builder: `add(type, ctor, implType, scope?, key?)`, where `implType` is one composed constructable or function type — an intersection of them describes an overloaded implementation, one member per call signature (`callSignatures` in `builder.ts` reads them back apart). Sugar (`addClass<T>`, `addFactory<T>`, `add<T>`) derives `T` and, where relevant, `implType`, so the same builder ergonomics are available to a hand-writer and a transformer-driven caller alike.
+`withSignature` is singular and variadic (`...paramTypes: Array<Type | string>`), taken at most once — there is no separate bulk-replace verb. A registration's whole call shape can also be named positionally, without the builder: `add(type, ctor, implementerType, scope?, key?)`, where `implementerType` is one composed constructable or function type — an intersection of them describes an overloaded implementation, one member per call signature (`callSignatures` in `builder.ts` reads them back apart). Sugar (`addClass<T>`, `addFactory<T>`, `add<T>`) derives `T` and, where relevant, `implementerType`, so the same builder ergonomics are available to a hand-writer and a transformer-driven caller alike.
 
 _Owner-directed (the gated-completion, single-call-shape-door direction); the current slot/intersection mechanics are Claude's._
 
@@ -570,7 +570,7 @@ Claude's, done as a dedicated PR per the owner's "name them right the first time
 
 ## §111 — One `Type` tree serves both the resolve side and the signature side
 
-A resolve request and a dependency-signature slot are the SAME `Type` expression — there is no separate tree for one and not the other. `Type` (`libraries/primitives/src/Type/Type.ts`) is a single plain-data discriminated union, minted through interning factories (`libraries/primitives/src/Type/internals/factories.ts`), and every operation over it — `match`, `satisfies`, `substitute`, `stringify`, `validate` — is written once, as a dedicated `TypeVisitor<T>` subclass (`SatisfiesVisitor`, `SubstituteVisitor`, `StringifyVisitor`, `TypeValidatorVisitor`) dispatching one `switch (kind)`, not `accept`-on-node. Nodes stay plain data, so the immutable-update idiom keeps working, and a `ServiceDescriptor`'s dependency signatures (`TypeSignatures`, `libraries/primitives/src/Type/Type.ts`) are literally `ReadonlyArray<readonly Type[]>` — the same `Type` nodes a request is built from, closed over an open registration's captured bindings by substituting the descriptor's whole `implType` (`ServiceDescriptor/op.ts`'s `substitute`, which applies `Type.substitute` to it directly).
+A resolve request and a dependency-signature slot are the SAME `Type` expression — there is no separate tree for one and not the other. `Type` (`libraries/primitives/src/Type/Type.ts`) is a single plain-data discriminated union, minted through interning factories (`libraries/primitives/src/Type/internals/factories.ts`), and every operation over it — `match`, `satisfies`, `substitute`, `stringify`, `validate` — is written once, as a dedicated `TypeVisitor<T>` subclass (`SatisfiesVisitor`, `SubstituteVisitor`, `StringifyVisitor`, `TypeValidatorVisitor`) dispatching one `switch (kind)`, not `accept`-on-node. Nodes stay plain data, so the immutable-update idiom keeps working, and a `ServiceDescriptor`'s dependency signatures (`TypeSignatures`, `libraries/primitives/src/Type/Type.ts`) are literally `ReadonlyArray<readonly Type[]>` — the same `Type` nodes a request is built from, closed over an open registration's captured bindings by substituting the descriptor's whole `implementerType` (`ServiceDescriptor/op.ts`'s `substitute`, which applies `Type.substitute` to it directly).
 
 The wire format is the one grammar `Type.from`/`Type.stringify` run at the data-input/output boundary (§106) — there is no separate parse step for a signature versus a resolve target. _Owner-directed (the one-tree, parse-at-the-boundary direction); the visitor shape and node-as-plain-data reasoning are Claude's._
 
@@ -1420,9 +1420,9 @@ is case-by-case; prefix uniformity is not itself a goal, and `taggedAs` — the 
 verb — stands, since it looks different because it is different.
 
 Every builder-carrying API also offers a positional overload taking everything at once: an
-`implType` argument (one composed constructable node), never naked signatures — the
+`implementerType` argument (one composed constructable node), never naked signatures — the
 signatures-as-arrays spelling lives only in the builder's `withSignature`. A hand-composer of a
-positional `implType` puts the address in the instance slot, the same documented convention as
+positional `implementerType` puts the address in the instance slot, the same documented convention as
 above; sugar derives the precise node. Builders read as fluent English, and the positional twin is
 the terse complete form.
 
@@ -1633,17 +1633,17 @@ _Owner-directed 2026-08-13._
 Every manifest verb whose long overload takes a dependency-signature argument takes the composed
 implementation type directly — `ConstructorType` for `addClass`/`tryAddClass`/`replaceClass`,
 `FunctionType` for `addFactory`/`tryAddFactory`/`replaceFactory`, `ConstructorType | undefined` for
-`addHostedService`'s ctor overload. `add`/`tryAdd` already took `implType` this way — the
-array-taking verbs were the residue. Each verb stores the node it is handed, verbatim, as `implType`
+`addHostedService`'s ctor overload. `add`/`tryAdd` already took `implementerType` this way — the
+array-taking verbs were the residue. Each verb stores the node it is handed, verbatim, as `implementerType`
 (`libraries/di.core/src/ServiceDescriptor/expressions.ts`) — there is no derivation step and no
 separate stored-signatures member; a reader wanting a registration's parameter rows reads
-`implType.args` directly (§170).
+`implementerType.args` directly (§170).
 
 The builder chain (`withSignature(...paramTypes)`, `withSignatures(...rows)`,
 `libraries/di.core/src/builder.ts`) is the ONE place a naked array of `Type | string` stays
 first-class, as an authoring convenience — it mints the anonymous callable those rows describe,
 filed under the type being registered (`PendingRegistration.#constructorType`/`#functionType`), and
-that minted node becomes the stored `implType` exactly like a hand-supplied one.
+that minted node becomes the stored `implementerType` exactly like a hand-supplied one.
 
 **Convention, not enforcement**: the composed type's own instance/return slot carries the SERVICE
 address (the same type the verb's first argument names), never the implementation's own concrete
@@ -1937,7 +1937,7 @@ and already carries the real parameter types, so there is nothing left to sniff 
 
 **Dependencies resolve from the node's own parameter rows, not a fixed one-entry signature.** The
 node and value are wrapped in a throwaway `ServiceDescriptor` (`ctor` or `factory`, matching the
-node's kind) carrying the node itself as its `implType` — the SAME reading `addClass`/
+node's kind) carrying the node itself as its `implementerType` — the SAME reading `addClass`/
 `addFactory`'s long overload already gives a composed impl type (§155) — resolved via the engine's
 `additionalServices` channel against a manifest composed for that one call, under the node itself
 as its own address, and discarded after. This is real dependency resolution, not reflection: the
@@ -2025,17 +2025,17 @@ _Claude-directed 2026-08-13, executing the owner's 2D-overloads ruling._
 ## §170 — The descriptor carries the implementation type; an intersection means an intersection
 
 `ServiceDescriptor`'s ctor and factory shapes (`libraries/di.core/src/ServiceDescriptor/
-expressions.ts`) store `implType: ConstructorType` / `implType: FunctionType` outright — there is no
+expressions.ts`) store `implementerType: ConstructorType` / `implementerType: FunctionType` outright — there is no
 separate stored-signatures member, and every reader wanting a registration's parameter rows reads
-`implType.args`. The verbs (`ServiceDescriptor.ctor`/`.factory`,
+`implementerType.args`. The verbs (`ServiceDescriptor.ctor`/`.factory`,
 `libraries/di.core/src/ServiceDescriptor/factories.ts`) store the node they are handed with no
-lift; `op.ts`'s `equals` compares `implType` by `===`, since the intern table already decides
+lift; `op.ts`'s `equals` compares `implementerType` by `===`, since the intern table already decides
 `Type` equality — two descriptors naming the same callable node ARE the same descriptor,
 structurally.
 
 The builder's hand-roller door (`libraries/di.core/src/builder.ts`) mints the anonymous callable its
 rows describe, filed under the type being registered: `withSignature(...paramTypes)` gives one row,
-`withSignatures(...rows)` gives several — both spend the SAME `implType` slot `withType(implType)`
+`withSignatures(...rows)` gives several — both spend the SAME `implementerType` slot `withType(implementerType)`
 spends, so a `Pending` registration takes exactly one of the three doors onto it.
 
 Native rows are the only encoding of an overload set now, so `IntersectionType` no longer stands in
@@ -2044,7 +2044,7 @@ for one anywhere on the registration surface: every registration verb, `withType
 a union with `IntersectionType` — an intersection means an intersection (`A & B`, both required at
 once), never an overload set spelled the wrong way.
 
-The resolution engine reads `implType.args` the same way: `CallSite.ts`'s row choice is
+The resolution engine reads `implementerType.args` the same way: `CallSite.ts`'s row choice is
 longest-row-first, first-fully-resolvable-wins — the first parameter row, walked longest to
 shortest, whose every parameter resolves to a call site is the one the engine builds, so an
 overloaded registration prefers its most-specific answerable row over a shorter one that also

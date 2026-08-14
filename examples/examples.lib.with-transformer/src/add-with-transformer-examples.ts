@@ -71,26 +71,24 @@ export function addWithTransformerExamples<S extends string>(
   // `IGreeting` — the same string the manual library writes out — so both
   // libraries' greetings land on one element type and a consumer asking for the
   // collection gets both.
-  services = services.addClass(typefor<IGreeting>(), FormalGreeting, Type.ctor(typefor<IGreeting>()), 'singleton');
+  services = services.addClass(typefor<IGreeting>(), FormalGreeting, Type.ctor(typefor<IGreeting>(), [[]]),
+    'singleton');
 
   // The banner, registered ONLY in its `Promise<…>` wrapper. Registering the
   // honest promise (rather than pretending an async fetch is a synchronous value)
   // is what makes an awaited resolution work and a plain one fail loudly — the
   // container never silently hands back an unsettled value.
-  services = services.addFactory(typefor<Promise<IBanner>>(), fetchBanner, Type.func(typefor<Promise<IBanner>>()),
+  services = services.addFactory(typefor<Promise<IBanner>>(), fetchBanner, Type.func(typefor<Promise<IBanner>>(), [[]]),
     'singleton');
 
   // The report factory, and the densest argument list anywhere in these examples:
   // a collection, two closed generics and an optional union. Every one is named
   // by its TYPE rather than by a string — read it against `./server-report.ts`'s
   // parameter list and the two line up one for one.
-  services = services.addFactory(typefor<IServerReport>(), makeServerReport, Type.func(
-    typefor<IServerReport>(),
-    typefor<IGreeting[]>(),
-    typefor<IOptions<ServerOptions>>(),
-    typefor<IOptions<GreetingPolicy>>(),
-    Type.union(typefor<IHealthCheck>(), Type.typeLiteral(undefined)),
-  ), 'singleton');
+  services = services.addFactory(typefor<IServerReport>(), makeServerReport,
+    Type.func(typefor<IServerReport>(), [[typefor<IGreeting[]>(), typefor<IOptions<ServerOptions>>(),
+      typefor<IOptions<GreetingPolicy>>(), Type.union(typefor<IHealthCheck>(), Type.typeLiteral(undefined))]]),
+    'singleton');
 
   return services;
 }

@@ -17,9 +17,9 @@ interface IManifestDescriptorAugmentations<Scopes extends string> {
    */
   add(descriptor: ServiceDescriptor<Scopes>): Manifest<Scopes>;
   add<T = any>(type: Type | string, configure: Func<[Unstarted<T, Scopes>], IComplete>): Manifest<Scopes>;
-  add<T = any>(type: Type | string, ctor: Ctor<any[], T>, implType: ConstructorType, scope?: Scopes,
+  add<T = any>(type: Type | string, ctor: Ctor<any[], T>, implementerType: ConstructorType, scope?: Scopes,
     key?: string): Manifest<Scopes>;
-  add<T = any>(type: Type | string, factory: Func<any[], T>, implType: FunctionType, scope?: Scopes,
+  add<T = any>(type: Type | string, factory: Func<any[], T>, implementerType: FunctionType, scope?: Scopes,
     key?: string): Manifest<Scopes>;
 
   /** Drops the descriptor equal to `descriptor`, if the manifest holds one; otherwise unchanged. */
@@ -43,9 +43,9 @@ interface IManifestDescriptorAugmentations<Scopes extends string> {
   tryAdd(...descriptors: ReadonlyArray<ServiceDescriptor<Scopes>>): Manifest<Scopes>;
 
   tryAdd<T = any>(type: Type | string, configure: Func<[Unstarted<T, Scopes>], IComplete>): this;
-  tryAdd<T = any>(type: Type | string, ctor: Ctor<any[], T>, implType: ConstructorType, scope?: Scopes,
+  tryAdd<T = any>(type: Type | string, ctor: Ctor<any[], T>, implementerType: ConstructorType, scope?: Scopes,
     key?: string): this;
-  tryAdd<T = any>(type: Type | string, factory: Func<any[], T>, implType: FunctionType, scope?: Scopes,
+  tryAdd<T = any>(type: Type | string, factory: Func<any[], T>, implementerType: FunctionType, scope?: Scopes,
     key?: string): this;
 
   /**
@@ -54,7 +54,7 @@ interface IManifestDescriptorAugmentations<Scopes extends string> {
    *
    * @throws Error - when `key` is given and `token` already carries a tag.
    */
-  tryAddClass(token: Token | Type, ctor: Ctor, implType: ConstructorType, scope?: Scopes,
+  tryAddClass(token: Token | Type, ctor: Ctor, implementerType: ConstructorType, scope?: Scopes,
     key?: string): Manifest<Scopes>;
 
   /**
@@ -63,7 +63,7 @@ interface IManifestDescriptorAugmentations<Scopes extends string> {
    *
    * @throws Error - when `key` is given and `token` already carries a tag.
    */
-  tryAddFactory(token: Token | Type, factory: Func<any[], unknown>, implType: FunctionType, scope?: Scopes,
+  tryAddFactory(token: Token | Type, factory: Func<any[], unknown>, implementerType: FunctionType, scope?: Scopes,
     key?: string): Manifest<Scopes>;
 
   /**
@@ -79,7 +79,7 @@ interface IManifestDescriptorAugmentations<Scopes extends string> {
    * old one held. Nothing registered for `token` means nothing to replace, so the manifest comes
    * back unchanged — reach for `addClass` to register regardless.
    */
-  replaceClass(token: Token | Type, ctor: Ctor, implType: ConstructorType, scope: Scopes | undefined,
+  replaceClass(token: Token | Type, ctor: Ctor, implementerType: ConstructorType, scope: Scopes | undefined,
     key?: string): Manifest<Scopes>;
 
   /**
@@ -87,8 +87,8 @@ interface IManifestDescriptorAugmentations<Scopes extends string> {
    * one held. Nothing registered for `token` means nothing to replace, so the manifest comes back
    * unchanged — reach for `addFactory` to register regardless.
    */
-  replaceFactory(token: Token | Type, factory: Func<any[], unknown>, implType: FunctionType, scope: Scopes | undefined,
-    key?: string): Manifest<Scopes>;
+  replaceFactory(token: Token | Type, factory: Func<any[], unknown>, implementerType: FunctionType,
+    scope: Scopes | undefined, key?: string): Manifest<Scopes>;
 
   /**
    * Swaps the first registration of `token` for `value`, at the position the old one held. Nothing
@@ -133,17 +133,17 @@ export const ManifestDescriptorAugmentations: AugmentationSet2<Manifest,
         .filter(newDesc => !Iterator.from(this).some(existingDesc => ServiceDescriptor.matches(newDesc, existingDesc)))
         .reduce((man, descriptor) => man._add(descriptor), this);
     },
-    tryAddClass(token, ctor, implType, scope, key) {
+    tryAddClass(token, ctor, implementerType, scope, key) {
       if (typeof token === 'string') {
-        return this.tryAddClass(Type.from(token), ctor, implType, scope, key);
+        return this.tryAddClass(Type.from(token), ctor, implementerType, scope, key);
       }
-      return this.tryAdd(ServiceDescriptor.ctor(withKey(token, key), ctor, implType, scope));
+      return this.tryAdd(ServiceDescriptor.ctor(withKey(token, key), ctor, implementerType, scope));
     },
-    tryAddFactory(token, factory, implType, scope, key) {
+    tryAddFactory(token, factory, implementerType, scope, key) {
       if (typeof token === 'string') {
-        return this.tryAddFactory(Type.from(token), factory, implType, scope, key);
+        return this.tryAddFactory(Type.from(token), factory, implementerType, scope, key);
       }
-      return this.tryAdd(ServiceDescriptor.factory(withKey(token, key), factory, implType, scope));
+      return this.tryAdd(ServiceDescriptor.factory(withKey(token, key), factory, implementerType, scope));
     },
     tryAddValue(token, value, key) {
       if (typeof token === 'string') {
@@ -152,18 +152,18 @@ export const ManifestDescriptorAugmentations: AugmentationSet2<Manifest,
       return this.tryAdd(ServiceDescriptor.value(withKey(token, key), value));
     },
 
-    replaceClass(token, ctor, implType, scope, key) {
+    replaceClass(token, ctor, implementerType, scope, key) {
       if (typeof token === 'string') {
-        return this.replaceClass(Type.from(token), ctor, implType, scope, key);
+        return this.replaceClass(Type.from(token), ctor, implementerType, scope, key);
       }
-      return this._replace(ServiceDescriptor.ctor(withKey(token, key), ctor, implType, scope));
+      return this._replace(ServiceDescriptor.ctor(withKey(token, key), ctor, implementerType, scope));
     },
 
-    replaceFactory(token, factory, implType, scope, key) {
+    replaceFactory(token, factory, implementerType, scope, key) {
       if (typeof token === 'string') {
-        return this.replaceFactory(Type.from(token), factory, implType, scope, key);
+        return this.replaceFactory(Type.from(token), factory, implementerType, scope, key);
       }
-      return this._replace(ServiceDescriptor.factory(withKey(token, key), factory, implType, scope));
+      return this._replace(ServiceDescriptor.factory(withKey(token, key), factory, implementerType, scope));
     },
     replaceValue(token, value, key) {
       if (typeof token === 'string') {

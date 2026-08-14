@@ -119,8 +119,8 @@ test('addHostedService registers many under one token; the collection resolves a
   }
 
   let manifest: Manifest<string> = new DefaultManifest();
-  manifest = manifest.addHostedService(A, Type.ctor(HOSTED_SERVICE_TYPE));
-  manifest = manifest.addHostedService(B, Type.ctor(HOSTED_SERVICE_TYPE));
+  manifest = manifest.addHostedService(A, Type.ctor(HOSTED_SERVICE_TYPE, [[]]));
+  manifest = manifest.addHostedService(B, Type.ctor(HOSTED_SERVICE_TYPE, [[]]));
 
   const provider = manifest.build();
   const scope = provider.createScope('singleton');

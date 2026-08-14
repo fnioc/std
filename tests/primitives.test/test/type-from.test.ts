@@ -62,21 +62,21 @@ describe('Type.from', () => {
   });
 
   test('reads a callable answering to several calls, semicolons between its rows', () => {
-    expect(Type.from('(app:A; ) => app:B')).toBe(Type.func({ returnType: B, args: [[A], []] }));
+    expect(Type.from('(app:A; ) => app:B')).toBe(Type.func({ returnType: B, args: [[A], []], genericArgs: [] }));
     expect(Type.from('new (app:A; app:B, app:A) => app:B')).toBe(
-      Type.ctor({ instanceType: B, args: [[A], [B, A]] }),
+      Type.ctor({ instanceType: B, args: [[A], [B, A]], genericArgs: [] }),
     );
     // A leading empty row is the call taking nothing, written first.
-    expect(Type.from('(; app:A) => app:B')).toBe(Type.func({ returnType: B, args: [[], [A]] }));
+    expect(Type.from('(; app:A) => app:B')).toBe(Type.func({ returnType: B, args: [[], [A]], genericArgs: [] }));
     // The reserved spellings carry rows too, the head separated by its own comma.
     expect(Type.from('Func<app:B, app:A; >')).toBe(Type.from('(app:A; ) => app:B'));
     expect(Type.from('Ctor<app:B; app:A>')).toBe(Type.from('new (; app:A) => app:B'));
   });
 
   test('a callable with one row spells exactly as it always has', () => {
-    expect(Type.stringify(Type.func(B, A))).toBe('(app:A) => app:B');
-    expect(Type.stringify(Type.ctor(B))).toBe('new () => app:B');
-    expect(Type.stringify(Type.func({ returnType: B, args: [[A], []] }))).toBe('(app:A; ) => app:B');
+    expect(Type.stringify(Type.func(B, [[A]]))).toBe('(app:A) => app:B');
+    expect(Type.stringify(Type.ctor(B, [[]]))).toBe('new () => app:B');
+    expect(Type.stringify(Type.func({ returnType: B, args: [[A], []], genericArgs: [] }))).toBe('(app:A; ) => app:B');
   });
 
   test('a quantifier list carries only generic holes, and only onto a signature', () => {
@@ -85,10 +85,10 @@ describe('Type.from', () => {
   });
 
   test('reads the arrow forms', () => {
-    expect(Type.from('(app:B) => app:A')).toBe(Type.func(A, B));
-    expect(Type.from('new (app:B) => app:A')).toBe(Type.ctor(A, B));
-    expect(Type.from('() => app:A | app:B')).toBe(Type.func(Type.union(A, B)));
-    expect(Type.from('(() => app:A) | app:B')).toBe(Type.union(Type.func(A), B));
+    expect(Type.from('(app:B) => app:A')).toBe(Type.func(A, [[B]]));
+    expect(Type.from('new (app:B) => app:A')).toBe(Type.ctor(A, [[B]]));
+    expect(Type.from('() => app:A | app:B')).toBe(Type.func(Type.union(A, B), [[]]));
+    expect(Type.from('(() => app:A) | app:B')).toBe(Type.union(Type.func(A, [[]]), B));
   });
 
   test('whitespace is not part of what a token spells', () => {
@@ -100,8 +100,8 @@ describe('Type.from', () => {
 
 describe('reserved names', () => {
   test('Func, Ctor and ServiceProvider name their own kinds', () => {
-    expect(Type.from('Func<app:A, app:B>')).toBe(Type.func(A, B));
-    expect(Type.from('Ctor<app:A, app:B>')).toBe(Type.ctor(A, B));
+    expect(Type.from('Func<app:A, app:B>')).toBe(Type.func(A, [[B]]));
+    expect(Type.from('Ctor<app:A, app:B>')).toBe(Type.ctor(A, [[B]]));
     expect(Type.from('ServiceProvider')).toMatchObject({
       kind: 'imported',
       from: '@rhombus-std/primitives',
@@ -131,8 +131,8 @@ describe('escaping', () => {
       [Type.object({ a: Type.global('string') }), '{ a: string }'],
       [Type.generic('T'), '%T'],
       [Type.tag(A, 'primary'), 'app:A#primary'],
-      [Type.func(A, B), '(app:B) => app:A'],
-      [Type.ctor(A, B), 'new (app:B) => app:A'],
+      [Type.func(A, [[B]]), '(app:B) => app:A'],
+      [Type.ctor(A, [[B]]), 'new (app:B) => app:A'],
       [Type.tuple(A, Type.typeLiteral(5)), '[app:A, 5]'],
       [Type.union(A, B), 'app:A | app:B'],
     ];

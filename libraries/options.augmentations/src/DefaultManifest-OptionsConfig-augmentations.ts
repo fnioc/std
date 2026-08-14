@@ -66,7 +66,7 @@ export const ServiceManifestOptionsConfigAugmentations: AugmentationSet2<Default
         return this.addFactory(configureStepType(type),
           (...deps: Deps): IConfigureOptions<T> => ({ configure(options: T): void {
             callback(options, ...deps);
-          } }), Type.func(configureStepType(type), ...depTypes));
+          } }), Type.func(configureStepType(type), [[...depTypes]]));
       }
       // A bare delegate is a pure code configure step: registers only the
       // configure slot, no change-token source. The registry's flat bag

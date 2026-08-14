@@ -24,7 +24,7 @@ describe('constructing from a ConstructorType node', () => {
 
   test('the node names the class its own dependencies resolve from', () => {
     const provider = providerWithBar('a bar');
-    const widget = provider.getService(Type.ctor(Foo, Bar), Widget);
+    const widget = provider.getService(Type.ctor(Foo, [[Bar]]), Widget);
     expect(widget).toBeInstanceOf(Widget);
     expect(widget.bar).toBe('a bar');
   });
@@ -33,7 +33,7 @@ describe('constructing from a ConstructorType node', () => {
 
   test('two calls never share a result, even for the same node and class', () => {
     const provider = providerWithBar('unused');
-    const node = Type.ctor(Empty);
+    const node = Type.ctor(Empty, [[]]);
     expect(provider.getService(node, EmptyCtor)).not.toBe(provider.getService(node, EmptyCtor));
   });
 });
@@ -45,13 +45,13 @@ describe('calling from a FunctionType node', () => {
 
   test('the node names the function its own dependencies resolve from', () => {
     const provider = providerWithBar('from a function');
-    const result = provider.getService(Type.func(Gadget, Bar), makeGadget);
+    const result = provider.getService(Type.func(Gadget, [[Bar]]), makeGadget);
     expect(result).toEqual({ bar: 'from a function' });
   });
 
   test('an arrow function works the same way', () => {
     const provider = providerWithBar('from an arrow');
     const arrow = (bar: unknown) => ({ bar });
-    expect(provider.getService(Type.func(Gadget, Bar), arrow)).toEqual({ bar: 'from an arrow' });
+    expect(provider.getService(Type.func(Gadget, [[Bar]]), arrow)).toEqual({ bar: 'from an arrow' });
   });
 });

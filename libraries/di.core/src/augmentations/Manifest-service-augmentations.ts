@@ -14,7 +14,7 @@ interface IManifestServiceAugmentations<Scopes extends string> {
    *
    * @throws Error - when `key` is given and `type` already carries a tag.
    */
-  addClass(type: Token | Type, ctor: Ctor, implType: ConstructorType, scope?: Scopes, key?: string): this;
+  addClass(type: Token | Type, ctor: Ctor, implementerType: ConstructorType, scope?: Scopes, key?: string): this;
 
   /**
    * Registers `factory` under `type` as a factory-built service, always — even when the manifest
@@ -22,7 +22,7 @@ interface IManifestServiceAugmentations<Scopes extends string> {
    *
    * @throws Error - when `key` is given and `type` already carries a tag.
    */
-  addFactory(type: Token | Type, factory: Func<any[], unknown>, implType: FunctionType, scope?: Scopes,
+  addFactory(type: Token | Type, factory: Func<any[], unknown>, implementerType: FunctionType, scope?: Scopes,
     key?: string): this;
 
   /**
@@ -40,17 +40,17 @@ declare module '@rhombus-std/di.core' {
 
 export const ManifestServiceAugmentations: AugmentationSet2<Manifest, Flatten<IManifestServiceAugmentations<string>>> =
   {
-    addClass(type, ctor, implType, scope, key) {
+    addClass(type, ctor, implementerType, scope, key) {
       if (typeof type === 'string') {
-        return this.addClass(Type.from(type), ctor, implType, scope, key);
+        return this.addClass(Type.from(type), ctor, implementerType, scope, key);
       }
-      return this.add(ServiceDescriptor.ctor(withKey(type, key), ctor, implType, scope));
+      return this.add(ServiceDescriptor.ctor(withKey(type, key), ctor, implementerType, scope));
     },
-    addFactory(type, factory, implType, scope, key) {
+    addFactory(type, factory, implementerType, scope, key) {
       if (typeof type === 'string') {
-        return this.addFactory(Type.from(type), factory, implType, scope, key);
+        return this.addFactory(Type.from(type), factory, implementerType, scope, key);
       }
-      return this.add(ServiceDescriptor.factory(withKey(type, key), factory, implType, scope));
+      return this.add(ServiceDescriptor.factory(withKey(type, key), factory, implementerType, scope));
     },
     addValue(type, value, key) {
       if (typeof type === 'string') {

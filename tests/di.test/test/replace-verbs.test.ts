@@ -14,7 +14,7 @@ class Other {}
 
 /** The registered values, newest first — the order iterating a manifest yields. */
 function values(manifest: Manifest<string>): unknown[] {
-  return [...manifest].map(descriptor => descriptor.kind === 'value' ? descriptor.value : descriptor.kind);
+  return [...manifest].map(descriptor => descriptor.kind === 'value' ? descriptor.implementer : descriptor.kind);
 }
 
 describe('a no-match registers nothing', () => {
@@ -23,11 +23,11 @@ describe('a no-match registers nothing', () => {
   });
 
   test('replaceClass on an empty manifest', () => {
-    expect([...DefaultManifest.empty<string>().replaceClass(A, Impl, Type.ctor(A), undefined)]).toHaveLength(0);
+    expect([...DefaultManifest.empty<string>().replaceClass(A, Impl, Type.ctor(A, [[]]), undefined)]).toHaveLength(0);
   });
 
   test('replaceFactory on an empty manifest', () => {
-    expect([...DefaultManifest.empty<string>().replaceFactory(A, () => 'a', Type.func(A), undefined)])
+    expect([...DefaultManifest.empty<string>().replaceFactory(A, () => 'a', Type.func(A, [[]]), undefined)])
       .toHaveLength(0);
   });
 
@@ -60,20 +60,20 @@ describe('a match is swapped in place', () => {
 
   test('replaceClass swaps the constructor a registration builds through', () => {
     const manifest = DefaultManifest.empty<string>()
-      .addClass(A, Impl, Type.ctor(A))
+      .addClass(A, Impl, Type.ctor(A, [[]]))
       .addValue(B, 'b');
-    const replaced = [...manifest.replaceClass(A, Other, Type.ctor(A), undefined)];
+    const replaced = [...manifest.replaceClass(A, Other, Type.ctor(A, [[]]), undefined)];
     expect(replaced).toHaveLength(2);
-    expect(replaced[1]!.kind === 'ctor' && replaced[1]!.ctor).toBe(Other);
+    expect(replaced[1]!.kind === 'ctor' && replaced[1]!.implementer).toBe(Other);
   });
 
   test('replaceFactory swaps the factory a registration builds through', () => {
     const manifest = DefaultManifest.empty<string>()
-      .addFactory(A, () => 'old', Type.func(A))
+      .addFactory(A, () => 'old', Type.func(A, [[]]))
       .addValue(B, 'b');
-    const replaced = [...manifest.replaceFactory(A, () => 'new', Type.func(A), undefined)];
+    const replaced = [...manifest.replaceFactory(A, () => 'new', Type.func(A, [[]]), undefined)];
     expect(replaced).toHaveLength(2);
-    expect(replaced[1]!.kind === 'factory' && replaced[1]!.factory()).toBe('new');
+    expect(replaced[1]!.kind === 'factory' && replaced[1]!.implementer()).toBe('new');
   });
 
   test('a keyed replace reaches the tagged slot without disturbing the bare one', () => {

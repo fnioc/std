@@ -21,11 +21,11 @@ interface IMetricsBuilderAugmentations {
   addMetricsListener(listener: IMetricsListener): this;
   /**
    * Registers an {@link IMetricsListener} by its implementation constructor (its
-   * dependencies are injected). `implType` is the composed constructor type,
+   * dependencies are injected). `implementerType` is the composed constructor type,
    * like every di.core `addClass` -- a dependency-free ctor names one with no
    * argument types.
    */
-  addMetricsListenerType(ctor: Ctor, implType: ConstructorType): this;
+  addMetricsListenerType(ctor: Ctor, implementerType: ConstructorType): this;
   /** Removes all {@link IMetricsListener} registrations from the builder. */
   clearMetricsListeners(): this;
   /**
@@ -60,8 +60,8 @@ export const MetricsBuilderAugmentations: AugmentationSet2<IMetricsBuilder, Flat
     this.services = this.services.addValue(METRICS_LISTENER_TYPE, listener);
     return this;
   },
-  addMetricsListenerType(ctor, implType) {
-    this.services = this.services.addClass(METRICS_LISTENER_TYPE, ctor, implType);
+  addMetricsListenerType(ctor, implementerType) {
+    this.services = this.services.addClass(METRICS_LISTENER_TYPE, ctor, implementerType);
     return this;
   },
   clearMetricsListeners() {

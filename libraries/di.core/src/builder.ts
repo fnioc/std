@@ -5,26 +5,30 @@ import { withKey } from './service-type';
 import { ServiceDescriptor } from './ServiceDescriptor';
 
 /** A step the lambda has not spent yet. Each verb removes its own, so none can be taken twice. */
-type Slot = 'impl' | 'implType' | 'lifetime' | 'tag';
+type Slot = 'implementer' | 'implementerType' | 'lifetime' | 'tag';
 
 /**
  * The steps still open, as one type: an intersection of the interfaces whose slots survive, plus
  * {@link IComplete} once the registration is whole.
  */
-type Pending<T, ImplNode extends Type, Scopes extends string, Slots extends Slot, Ready extends boolean> =
+type Pending<T, ImplementerNode extends Type, Scopes extends string, Slots extends Slot, Ready extends boolean> =
   & (Ready extends true ? IComplete : unknown)
-  & ('impl' extends Slots ? IAsImpl<T, Scopes, Slots, Ready> : unknown)
-  & ('implType' extends Slots ? IWithImplType<T, ImplNode, Scopes, Slots> : unknown)
-  & ('lifetime' extends Slots ? IWithLifetime<T, ImplNode, Scopes, Slots, Ready> : unknown)
-  & ('tag' extends Slots ? ITaggedAs<T, ImplNode, Scopes, Slots, Ready> : unknown);
+  & ('implementer' extends Slots ? IAsImplementer<T, Scopes, Slots, Ready> : unknown)
+  & ('implementerType' extends Slots ? IWithImplementerType<T, ImplementerNode, Scopes, Slots> : unknown)
+  & ('lifetime' extends Slots ? IWithLifetime<T, ImplementerNode, Scopes, Slots, Ready> : unknown)
+  & ('tag' extends Slots ? ITaggedAs<T, ImplementerNode, Scopes, Slots, Ready> : unknown);
 
 /**
  * Choosing what produces the service. Each door takes only implementations that produce `T`, so a
  * registration that could not satisfy its own address is refused where it is written.
  */
-interface IAsImpl<T, Scopes extends string, Slots extends Slot, Ready extends boolean> {
-  asClass(ctor: Ctor<any[], T>): Pending<T, ConstructorType, Scopes, Exclude<Slots, 'impl'> | 'implType', Ready>;
-  asFactory(fn: Func<any[], T>): Pending<T, FunctionType, Scopes, Exclude<Slots, 'impl'> | 'implType', Ready>;
+interface IAsImplementer<T, Scopes extends string, Slots extends Slot, Ready extends boolean> {
+  asClass(
+    ctor: Ctor<any[], T>,
+  ): Pending<T, ConstructorType, Scopes, Exclude<Slots, 'implementer'> | 'implementerType', Ready>;
+  asFactory(
+    fn: Func<any[], T>,
+  ): Pending<T, FunctionType, Scopes, Exclude<Slots, 'implementer'> | 'implementerType', Ready>;
   asValue(value: T): Pending<T, never, Scopes, Extract<Slots, 'tag'>, true>;
 }
 
@@ -36,9 +40,11 @@ interface IAsImpl<T, Scopes extends string, Slots extends Slot, Ready extends bo
  * Two doors onto one slot: taking either spends it, so a registration names its call shape exactly
  * once and the two spellings can never disagree.
  */
-interface IWithImplType<T, ImplNode extends Type, Scopes extends string, Slots extends Slot> {
+interface IWithImplementerType<T, ImplementerNode extends Type, Scopes extends string, Slots extends Slot> {
   /** The parameter types the implementation is handed, in order — the address supplies the rest. */
-  withSignature(...paramTypes: Array<Type | string>): Pending<T, ImplNode, Scopes, Exclude<Slots, 'implType'>, true>;
+  withSignature(
+    ...paramTypes: Array<Type | string>
+  ): Pending<T, ImplementerNode, Scopes, Exclude<Slots, 'implementerType'>, true>;
 
   /**
    * The parameter rows an overloaded implementation is handed — one row per call it accepts, each
@@ -46,32 +52,35 @@ interface IWithImplType<T, ImplNode extends Type, Scopes extends string, Slots e
    */
   withSignatures(
     ...signatures: ReadonlyArray<ReadonlyArray<Type | string>>
-  ): Pending<T, ImplNode, Scopes, Exclude<Slots, 'implType'>, true>;
+  ): Pending<T, ImplementerNode, Scopes, Exclude<Slots, 'implementerType'>, true>;
 
   /**
-   * The implementation's whole type — a constructor type after {@link IAsImpl.asClass}, a function
-   * type after {@link IAsImpl.asFactory}. Its parameter rows are the calls the container may build
+   * The implementation's whole type — a constructor type after {@link IAsImplementer.asClass}, a function
+   * type after {@link IAsImplementer.asFactory}. Its parameter rows are the calls the container may build
    * the service through.
    */
-  withType(implType: ImplNode): Pending<T, ImplNode, Scopes, Exclude<Slots, 'implType'>, true>;
+  withType(
+    implementerType: ImplementerNode,
+  ): Pending<T, ImplementerNode, Scopes, Exclude<Slots, 'implementerType'>, true>;
 }
 
-interface IWithLifetime<T, ImplNode extends Type, Scopes extends string, Slots extends Slot, Ready extends boolean> {
-  withLifetime(scope: Scopes): Pending<T, ImplNode, Scopes, Exclude<Slots, 'lifetime'>, Ready>;
+interface IWithLifetime<T, ImplementerNode extends Type, Scopes extends string, Slots extends Slot,
+  Ready extends boolean> {
+  withLifetime(scope: Scopes): Pending<T, ImplementerNode, Scopes, Exclude<Slots, 'lifetime'>, Ready>;
 }
 
-interface ITaggedAs<T, ImplNode extends Type, Scopes extends string, Slots extends Slot, Ready extends boolean> {
-  taggedAs(key: string): Pending<T, ImplNode, Scopes, Exclude<Slots, 'tag'>, Ready>;
+interface ITaggedAs<T, ImplementerNode extends Type, Scopes extends string, Slots extends Slot, Ready extends boolean> {
+  taggedAs(key: string): Pending<T, ImplementerNode, Scopes, Exclude<Slots, 'tag'>, Ready>;
 }
 
-declare const implTypeSupplied: unique symbol;
+declare const implementerTypeSupplied: unique symbol;
 
 /**
  * A registration the lambda may hand back: an implementation is chosen and its call shape named.
  * The brand is unexported, so only this module's own steps can produce one.
  */
 export interface IComplete {
-  readonly [implTypeSupplied]: void;
+  readonly [implementerTypeSupplied]: void;
 }
 
 /** A registration with nothing chosen yet — what the configure lambda is handed. */
@@ -79,20 +88,20 @@ export type Unstarted<T = any, Scopes extends string = any> = Pending<
   T,
   never,
   Scopes,
-  'impl' | 'lifetime' | 'tag',
+  'implementer' | 'lifetime' | 'tag',
   false
 >;
 
 /** How the implementation's call shape was named — through one door or the other, never both. */
-export type ImplShape =
+export type ImplementerShape =
   | { readonly kind: 'signatures'; readonly signatures: ReadonlyArray<ReadonlyArray<Type | string>>; }
-  | { readonly kind: 'type'; readonly implType: Type; };
+  | { readonly kind: 'type'; readonly implementerType: Type; };
 
 /** What a configured lambda leaves behind, ready to become a descriptor. */
 export interface PendingState<Scopes extends string> {
-  readonly impl: { kind: 'ctor'; ctor: Ctor; } | { kind: 'factory'; fn: Func; } | { kind: 'value'; value: unknown; }
-    | undefined;
-  readonly implShape: ImplShape | undefined;
+  readonly implementer: { kind: 'ctor'; ctor: Ctor; } | { kind: 'factory'; fn: Func; } | { kind: 'value';
+    value: unknown; } | undefined;
+  readonly implementerShape: ImplementerShape | undefined;
   readonly scope: Scopes | undefined;
   readonly tag: string | undefined;
 }
@@ -102,14 +111,14 @@ export interface PendingState<Scopes extends string> {
  * intermediate configures nothing — the same rule the manifest itself follows.
  */
 export class PendingRegistration<Scopes extends string> implements PendingState<Scopes> {
-  readonly impl: PendingState<Scopes>['impl'];
-  readonly implShape: ImplShape | undefined;
+  readonly implementer: PendingState<Scopes>['implementer'];
+  readonly implementerShape: ImplementerShape | undefined;
   readonly scope: Scopes | undefined;
   readonly tag: string | undefined;
 
   constructor(state?: Partial<PendingState<Scopes>>) {
-    this.impl = state?.impl;
-    this.implShape = state?.implShape;
+    this.implementer = state?.implementer;
+    this.implementerShape = state?.implementerShape;
     this.scope = state?.scope;
     this.tag = state?.tag;
   }
@@ -119,26 +128,26 @@ export class PendingRegistration<Scopes extends string> implements PendingState<
   }
 
   /** @throws Error - when a call shape was already named. */
-  #withShape(implShape: ImplShape): PendingRegistration<Scopes> {
-    if (this.implShape !== undefined) {
+  #withShape(implementerShape: ImplementerShape): PendingRegistration<Scopes> {
+    if (this.implementerShape !== undefined) {
       throw new Error(
         "the implementation's call shape is already named; withType and withSignature/withSignatures "
           + 'are one choice, taken once.',
       );
     }
-    return this.#with({ implShape });
+    return this.#with({ implementerShape });
   }
 
   asClass(ctor: Ctor) {
-    return this.#with({ impl: { kind: 'ctor', ctor } });
+    return this.#with({ implementer: { kind: 'ctor', ctor } });
   }
 
   asFactory(fn: Func) {
-    return this.#with({ impl: { kind: 'factory', fn } });
+    return this.#with({ implementer: { kind: 'factory', fn } });
   }
 
   asValue(value: unknown) {
-    return this.#with({ impl: { kind: 'value', value } });
+    return this.#with({ implementer: { kind: 'value', value } });
   }
 
   withSignature(...paramTypes: Array<Type | string>) {
@@ -149,8 +158,8 @@ export class PendingRegistration<Scopes extends string> implements PendingState<
     return this.#withShape({ kind: 'signatures', signatures });
   }
 
-  withType(implType: Type) {
-    return this.#withShape({ kind: 'type', implType });
+  withType(implementerType: Type) {
+    return this.#withShape({ kind: 'type', implementerType });
   }
 
   withLifetime(scope: Scopes) {
@@ -164,20 +173,20 @@ export class PendingRegistration<Scopes extends string> implements PendingState<
   /** The descriptor this node describes, filed under `type` and whatever tag it carries. */
   toDescriptor(type: Type): ServiceDescriptor<Scopes> {
     const serviceType = withKey(type, this.tag);
-    const impl = this.impl;
-    if (impl === undefined) {
-      throw new Error(`no implementation was chosen for ${Type.stringify(type)}.`);
+    const implementer = this.implementer;
+    if (implementer === undefined) {
+      throw new Error(`no implementer was chosen for ${Type.stringify(type)}.`);
     }
-    if (impl.kind === 'value') {
-      return ServiceDescriptor.value(serviceType, impl.value);
+    if (implementer.kind === 'value') {
+      return ServiceDescriptor.value(serviceType, implementer.value);
     }
-    switch (impl.kind) {
+    switch (implementer.kind) {
       case 'ctor':
-        return ServiceDescriptor.ctor(serviceType, impl.ctor, this.#constructorType(type), this.scope);
+        return ServiceDescriptor.ctor(serviceType, implementer.ctor, this.#constructorType(type), this.scope);
       case 'factory':
-        return ServiceDescriptor.factory(serviceType, impl.fn, this.#functionType(type), this.scope);
+        return ServiceDescriptor.factory(serviceType, implementer.fn, this.#functionType(type), this.scope);
       default:
-        return assertNever(impl);
+        return assertNever(implementer);
     }
   }
 
@@ -191,15 +200,15 @@ export class PendingRegistration<Scopes extends string> implements PendingState<
   #constructorType(type: Type): ConstructorType {
     const shape = this.#shape(type);
     if (shape.kind === 'signatures') {
-      return Type.ctor({ instanceType: type, args: rows(shape.signatures) });
+      return Type.ctor({ instanceType: type, args: rows(shape.signatures), genericArgs: [] });
     }
-    if (shape.implType.kind !== 'ctor') {
+    if (shape.implementerType.kind !== 'ctor') {
       throw new Error(
-        `${Type.stringify(shape.implType)} is not a constructor type; a class registration names `
+        `${Type.stringify(shape.implementerType)} is not a constructor type; a class registration names `
           + "one with withType, or the constructor's parameters with withSignature.",
       );
     }
-    return shape.implType;
+    return shape.implementerType;
   }
 
   /**
@@ -211,20 +220,20 @@ export class PendingRegistration<Scopes extends string> implements PendingState<
   #functionType(type: Type): FunctionType {
     const shape = this.#shape(type);
     if (shape.kind === 'signatures') {
-      return Type.func({ returnType: type, args: rows(shape.signatures) });
+      return Type.func({ returnType: type, args: rows(shape.signatures), genericArgs: [] });
     }
-    if (shape.implType.kind !== 'func') {
+    if (shape.implementerType.kind !== 'func') {
       throw new Error(
-        `${Type.stringify(shape.implType)} is not a function type; a factory registration names one `
+        `${Type.stringify(shape.implementerType)} is not a function type; a factory registration names one `
           + "with withType, or the factory's parameters with withSignature.",
       );
     }
-    return shape.implType;
+    return shape.implementerType;
   }
 
   /** @throws Error - when no call shape was named. */
-  #shape(type: Type): ImplShape {
-    const shape = this.implShape;
+  #shape(type: Type): ImplementerShape {
+    const shape = this.implementerShape;
     if (shape === undefined) {
       throw new Error(
         `no call shape was named for ${Type.stringify(type)}; give the implementation's parameter `
@@ -252,7 +261,7 @@ function rows(signatures: ReadonlyArray<ReadonlyArray<Type | string>>): TypeSign
  */
 export type DescribeArgs<Scopes extends string> =
   | [configure: Func<[Unstarted<any, Scopes>], IComplete>]
-  | [impl: Ctor | Func, implType: ConstructorType | FunctionType, scope?: Scopes, key?: string];
+  | [implementer: Ctor | Func, implementerType: ConstructorType | FunctionType, scope?: Scopes, key?: string];
 
 /** The descriptor these arguments describe, whichever of the two forms they take. */
 export function describe<Scopes extends string>(type: Type | string,
@@ -276,11 +285,13 @@ function walkSteps<Scopes extends string>(
  * says whether the implementation is called with `new`, which is all the terse form needs it for
  * beyond its parameter rows.
  */
-function stateSteps<Scopes extends string>(impl: Ctor | Func, implType: ConstructorType | FunctionType,
+function stateSteps<Scopes extends string>(implementer: Ctor | Func, implementerType: ConstructorType | FunctionType,
   scope: Scopes | undefined, key: string | undefined): PendingRegistration<Scopes> {
   const start = new PendingRegistration<Scopes>();
-  const chosen = implType.kind === 'ctor' ? start.asClass(impl as Ctor) : start.asFactory(impl as Func);
-  const shaped = chosen.withType(implType);
+  const chosen = implementerType.kind === 'ctor'
+    ? start.asClass(implementer as Ctor)
+    : start.asFactory(implementer as Func);
+  const shaped = chosen.withType(implementerType);
   const scoped = scope === undefined ? shaped : shaped.withLifetime(scope);
   return key === undefined ? scoped : scoped.taggedAs(key);
 }

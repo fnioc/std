@@ -81,7 +81,7 @@ export const ServiceManifestOptionsAugmentations: AugmentationSet2<DefaultManife
         return m.addValue(baseFactoryType(type), makeBase);
       }
       return m.addFactory(baseFactoryType(type), (value: T): Func<[], T> => () => value,
-        Type.func(baseFactoryType(type), type));
+        Type.func(baseFactoryType(type), [[type]]));
     },
     postConfigure<T, Deps extends readonly unknown[]>(this: DefaultManifest<string>, tType: Type | string,
       step: IPostConfigureOptions<T> | Func<[T], void> | DepTokens<Deps>,
@@ -100,7 +100,7 @@ export const ServiceManifestOptionsAugmentations: AugmentationSet2<DefaultManife
         return this.addFactory(postConfigureStepType(type),
           (...deps: Deps): IPostConfigureOptions<T> => ({ postConfigure(options: T): void {
             callback(options, ...deps);
-          } }), Type.func(postConfigureStepType(type), ...depTypes));
+          } }), Type.func(postConfigureStepType(type), [[...depTypes]]));
       }
       // A bare delegate is wrapped into an IPostConfigureOptions<T>; both append
       // to the type's post-configure slot, which `assembleOptions` reads and
@@ -127,7 +127,7 @@ export const ServiceManifestOptionsAugmentations: AugmentationSet2<DefaultManife
         return this.addFactory(validateStepType(type),
           (...deps: Deps): IValidateOptions<T> => ({ validate(options: T): ValidateOptionsResult {
             return predicate(options, ...deps) ? ValidateOptionsResult.success : ValidateOptionsResult.fail(message);
-          } }), Type.func(validateStepType(type), ...depTypes));
+          } }), Type.func(validateStepType(type), [[...depTypes]]));
       }
       // Wraps the predicate into an IValidateOptions<T> step appended to the
       // type's validate slot.

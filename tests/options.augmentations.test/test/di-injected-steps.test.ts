@@ -33,7 +33,7 @@ function baseOptions(): WidgetOptions {
 describe('configure — DI-injected', () => {
   test('resolves a class dep and passes it after the options value', () => {
     let services: Manifest<'singleton'> = new DefaultManifest<'singleton'>();
-    services = services.addClass(URL_PROVIDER_TOKEN, UrlProvider, Type.ctor(Type.from(URL_PROVIDER_TOKEN)),
+    services = services.addClass(URL_PROVIDER_TOKEN, UrlProvider, Type.ctor(Type.from(URL_PROVIDER_TOKEN), [[]]),
       'singleton');
     services = services.addOptions<WidgetOptions>(OPTIONS_TOKEN, baseOptions);
     services = services.configure<WidgetOptions, [UrlProvider]>(OPTIONS_TOKEN, [URL_PROVIDER_TOKEN],
@@ -49,7 +49,7 @@ describe('configure — DI-injected', () => {
 
   test('resolves several deps, injected positionally in token order', () => {
     let services: Manifest<'singleton'> = new DefaultManifest<'singleton'>();
-    services = services.addClass(URL_PROVIDER_TOKEN, UrlProvider, Type.ctor(Type.from(URL_PROVIDER_TOKEN)),
+    services = services.addClass(URL_PROVIDER_TOKEN, UrlProvider, Type.ctor(Type.from(URL_PROVIDER_TOKEN), [[]]),
       'singleton');
     services = services.addValue(RETRY_POLICY_TOKEN, { attempts: 4 });
     services = services.addOptions<WidgetOptions>(OPTIONS_TOKEN, baseOptions);
@@ -69,7 +69,7 @@ describe('configure — DI-injected', () => {
 
   test('a DI configure composes with a plain configure delegate', () => {
     let services: Manifest<'singleton'> = new DefaultManifest<'singleton'>();
-    services = services.addClass(URL_PROVIDER_TOKEN, UrlProvider, Type.ctor(Type.from(URL_PROVIDER_TOKEN)),
+    services = services.addClass(URL_PROVIDER_TOKEN, UrlProvider, Type.ctor(Type.from(URL_PROVIDER_TOKEN), [[]]),
       'singleton');
     services = services.addOptions<WidgetOptions>(OPTIONS_TOKEN, baseOptions);
     services = services.configure<WidgetOptions>(OPTIONS_TOKEN, (options) => {

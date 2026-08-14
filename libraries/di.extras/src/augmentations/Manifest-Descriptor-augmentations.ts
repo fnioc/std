@@ -8,16 +8,18 @@ interface IManifestDescriptorAugmentations<Scopes extends string> {
   /** The tokenless form of {@link Manifest.tryAdd}'s configure, constructor and factory shapes:
    * `type` is derived from `T` instead of taken explicitly. */
   tryAdd<T>(configure: Func<[Unstarted<T, Scopes>], IComplete>): Manifest<Scopes>;
-  tryAdd<T>(ctor: Ctor<any[], T>, implType: ConstructorType, scope?: Scopes, key?: string): Manifest<Scopes>;
-  tryAdd<T>(factory: Func<any[], T>, implType: FunctionType, scope?: Scopes, key?: string): Manifest<Scopes>;
+  tryAdd<T>(ctor: Ctor<any[], T>, implementerType: ConstructorType, scope?: Scopes, key?: string): Manifest<Scopes>;
+  tryAdd<T>(factory: Func<any[], T>, implementerType: FunctionType, scope?: Scopes, key?: string): Manifest<Scopes>;
 
   /** The tokenless form of {@link Manifest.tryAddClass}: `token` is derived from `T` instead of
    * taken explicitly. */
-  tryAddClass<T>(ctor: Ctor<any[], T>, implType: ConstructorType, scope?: Scopes, key?: string): Manifest<Scopes>;
+  tryAddClass<T>(ctor: Ctor<any[], T>, implementerType: ConstructorType, scope?: Scopes,
+    key?: string): Manifest<Scopes>;
 
   /** The tokenless form of {@link Manifest.tryAddFactory}: `token` is derived from `T` instead of
    * taken explicitly. */
-  tryAddFactory<T>(factory: Func<any[], T>, implType: FunctionType, scope?: Scopes, key?: string): Manifest<Scopes>;
+  tryAddFactory<T>(factory: Func<any[], T>, implementerType: FunctionType, scope?: Scopes,
+    key?: string): Manifest<Scopes>;
 
   /** The tokenless form of {@link Manifest.tryAddValue}: `token` is derived from `T` instead of
    * taken explicitly. */
@@ -25,12 +27,12 @@ interface IManifestDescriptorAugmentations<Scopes extends string> {
 
   /** The tokenless form of {@link Manifest.replaceClass}: `token` is derived from `T` instead of
    * taken explicitly. */
-  replaceClass<T>(ctor: Ctor<any[], T>, implType: ConstructorType, scope: Scopes | undefined,
+  replaceClass<T>(ctor: Ctor<any[], T>, implementerType: ConstructorType, scope: Scopes | undefined,
     key?: string): Manifest<Scopes>;
 
   /** The tokenless form of {@link Manifest.replaceFactory}: `token` is derived from `T` instead of
    * taken explicitly. */
-  replaceFactory<T>(factory: Func<any[], T>, implType: FunctionType, scope: Scopes | undefined,
+  replaceFactory<T>(factory: Func<any[], T>, implementerType: FunctionType, scope: Scopes | undefined,
     key?: string): Manifest<Scopes>;
 
   /** The tokenless form of {@link Manifest.replaceValue}: `token` is derived from `T` instead of

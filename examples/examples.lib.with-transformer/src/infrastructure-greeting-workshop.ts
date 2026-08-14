@@ -122,7 +122,7 @@ export class GreetingCard {
  * one that is never registered anywhere; that is the point — it can only ever be
  * filled by the caller.
  */
-const CARD_IMPL_TYPE = Type.ctor(typefor<GreetingCard>(), typefor<IGreeting>(), typefor<ICardRecipient>());
+const CARD_IMPL_TYPE = Type.ctor(typefor<GreetingCard>(), [[typefor<IGreeting>(), typefor<ICardRecipient>()]]);
 
 /**
  * The library's one real service, and the model citizen of the package: it mints
@@ -241,7 +241,7 @@ export class LocatorGreetingWorkshop {
   }
 
   /**
-   * `Type.func(result, ...args)` IS the caller/container partition, spelled as a
+   * `Type.func(result, [[...args]])` IS the caller/container partition, spelled as a
    * type: the listed arguments are the ones the CALLER supplies, and every other
    * slot in the target's signature resolves from the container. It is the SAME
    * partition {@link GreetingWorkshop} states as a constructor parameter — the
@@ -249,7 +249,7 @@ export class LocatorGreetingWorkshop {
    */
   public card(name: string): string {
     this.#mintCard ??= this.#resolver.getRequiredService(
-      Type.func(typefor<GreetingCard>(), typefor<ICardRecipient>()),
+      Type.func(typefor<GreetingCard>(), [[typefor<ICardRecipient>()]]),
     ) as (recipient: ICardRecipient) => GreetingCard;
     return this.#mintCard({ name }).render(this.stationery.border);
   }
@@ -307,7 +307,7 @@ export class GreetingWorkshopBuilder<S extends string> implements IGreetingWorks
     // Explicit in BOTH dialects: the ctor arrives as a runtime PARAMETER, so
     // there is no class type for the transformer to derive a constructor type —
     // or a service type — from.
-    this.#holder.services = this.#holder.services.addClass(GREETING_TYPE, greeting, Type.ctor(GREETING_TYPE),
+    this.#holder.services = this.#holder.services.addClass(GREETING_TYPE, greeting, Type.ctor(GREETING_TYPE, [[]]),
       'singleton');
     return this;
   }
@@ -365,11 +365,9 @@ export function addGreetingWorkshop<S extends string>(services: Manifest<S | 'si
   // Registration sugar lowers in any expression context, not only at a module's
   // top level, which is what lets a library function like this one be authored
   // tokenlessly at all.
-  holder.services = holder.services.addClass(typefor<GreetingWorkshop>(), GreetingWorkshop, Type.ctor(
-    typefor<GreetingWorkshop>(),
-    Type.func(typefor<GreetingCard>(), typefor<ICardRecipient>()),
-    Type.union(typefor<ICardStationery>(), Type.typeLiteral(undefined)),
-  ), 'singleton');
+  holder.services = holder.services.addClass(typefor<GreetingWorkshop>(), GreetingWorkshop,
+    Type.ctor(typefor<GreetingWorkshop>(), [[Type.func(typefor<GreetingCard>(), [[typefor<ICardRecipient>()]]),
+      Type.union(typefor<ICardStationery>(), Type.typeLiteral(undefined))]]), 'singleton');
 
   // The counter-example, at its own derived service type so a caller can resolve
   // both from one container and compare the cards. Its one argument is the
@@ -378,7 +376,7 @@ export function addGreetingWorkshop<S extends string>(services: Manifest<S | 'si
   // is precisely why nothing stops a library doing it and why the comparison has
   // to be made in prose.
   holder.services = holder.services.addClass(typefor<LocatorGreetingWorkshop>(), LocatorGreetingWorkshop,
-    Type.ctor(typefor<LocatorGreetingWorkshop>(), RESOLVER_TYPE), 'singleton');
+    Type.ctor(typefor<LocatorGreetingWorkshop>(), [[RESOLVER_TYPE]]), 'singleton');
 
   return holder.services;
 }

@@ -86,11 +86,11 @@ export const ServiceManifestMetricsAugmentations: AugmentationSet2<DefaultManife
       let m: Manifest<string> = this.addFactory(METRICS_OPTIONS_TYPE,
         (resolver) =>
           assembleDiagnosticsOptions(resolver, METRICS_CONFIGURE_TYPE, METRICS_CHANGE_TOKEN_SOURCE_TYPE, () =>
-            new MetricsOptions()), Type.func(METRICS_OPTIONS_TYPE, RESOLVER_TYPE), 'singleton');
+            new MetricsOptions()), Type.func(METRICS_OPTIONS_TYPE, [[RESOLVER_TYPE]]), 'singleton');
       // The per-listener configuration factory, ctor-injected with the collection
       // of every MetricsConfig marker addMetricsConfig registered.
       m = m.addClass(METRICS_LISTENER_CONFIGURATION_FACTORY_TYPE, MetricListenerConfigFactory,
-        Type.ctor(METRICS_LISTENER_CONFIGURATION_FACTORY_TYPE, collectionType(METRICS_CONFIGURATION_TYPE)),
+        Type.ctor(METRICS_LISTENER_CONFIGURATION_FACTORY_TYPE, [[collectionType(METRICS_CONFIGURATION_TYPE)]]),
         'singleton');
       if (configure) {
         // The cast works around a TS structural-comparison depth limit -- see
@@ -115,11 +115,11 @@ export const ServiceManifestTracingAugmentations: AugmentationSet2<DefaultManife
       let m: Manifest<string> = this.addFactory(TRACING_OPTIONS_TYPE,
         (resolver) =>
           assembleDiagnosticsOptions(resolver, TRACING_CONFIGURE_TYPE, TRACING_CHANGE_TOKEN_SOURCE_TYPE, () =>
-            new TracingOptions()), Type.func(TRACING_OPTIONS_TYPE, RESOLVER_TYPE), 'singleton');
+            new TracingOptions()), Type.func(TRACING_OPTIONS_TYPE, [[RESOLVER_TYPE]]), 'singleton');
       // The per-listener configuration factory, ctor-injected with the collection
       // of every TracingConfig marker addTracingConfig registered.
       m = m.addClass(TRACING_LISTENER_CONFIGURATION_FACTORY_TYPE, DefaultActivityListenerConfigFactory,
-        Type.ctor(TRACING_LISTENER_CONFIGURATION_FACTORY_TYPE, collectionType(TRACING_CONFIGURATION_TYPE)),
+        Type.ctor(TRACING_LISTENER_CONFIGURATION_FACTORY_TYPE, [[collectionType(TRACING_CONFIGURATION_TYPE)]]),
         'singleton');
       if (configure) {
         // See the addMetrics cast above for why this is needed.

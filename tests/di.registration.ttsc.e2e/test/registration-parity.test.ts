@@ -366,7 +366,7 @@ describe.skipIf(!toolchainReady)('registration sugar — addClass / addFactory /
 
 // balancedCall returns the argument-list text of the call opening at marker
 // (the substring from marker's matching `(` to its balanced `)`, exclusive of
-// both parens) — used below to isolate the Type.ctor(...) node's own arguments
+// both parens) — used below to isolate the Type.ctor(..., [[]]) node's own arguments
 // from the surrounding addClass(...) call.
 function balancedCall(src: string, marker: string): string {
   const start = src.indexOf(marker);
@@ -409,8 +409,8 @@ function topLevelArgCount(argsText: string): number {
 // retypecheck runs a plain (plugin-less) tsc over already-lowered source —
 // text with every primitive already substituted, so no ttsc host is needed —
 // against the REAL di.core / primitives packages, asserting it type-checks
-// clean. This is what proves the emitted Type.ctor(...) node is genuinely
-// assignable to addClass's real `implType: ConstructorType` parameter, not
+// clean. This is what proves the emitted Type.ctor(..., [[]]) node is genuinely
+// assignable to addClass's real `implementerType: ConstructorType` parameter, not
 // merely a string a hand-writer COULD have typed.
 function retypecheck(source: string): { readonly status: number | null; readonly output: string; } {
   const dir = join(handProjDir, 'retypecheck');
@@ -436,7 +436,7 @@ function retypecheck(source: string): { readonly status: number | null; readonly
 }
 
 describe.skipIf(!toolchainReady)("implementation type — a hand-writer's explicit third argument", () => {
-  test('typefor<typeof C>() derives the Type.ctor(...) node a hand-writer would spell', () => {
+  test('typefor<typeof C>() derives the Type.ctor(..., [[]]) node a hand-writer would spell', () => {
     // The primitive is fully substituted: no typefor call left, and the generated
     // module the emitted consts are read from is imported.
     expect(handWithInline).not.toContain('typefor(');
@@ -451,12 +451,12 @@ describe.skipIf(!toolchainReady)("implementation type — a hand-writer's explic
     const widget = constFor(module, 'Type.imported("IWidget", "di-reg-hand/tokens/hand")');
     const widgetClass = constFor(module, 'Type.imported("Widget", "di-reg-hand/tokens/hand")');
     const clock = constFor(module, 'Type.imported("IClock", "di-reg-hand/tokens/hand")');
-    const implType = constFor(module, `Type.ctor(${widgetClass}, ${clock})`);
-    const want = `.addClass(${widget}, Widget, ${implType})`;
+    const implementerType = constFor(module, `Type.ctor(${widgetClass}, [[${clock}]])`);
+    const want = `.addClass(${widget}, Widget, ${implementerType})`;
     expect(handWithInline).toContain(want);
   });
 
-  test('the Type.ctor(...) node carries one argument per real dependency (the arity blind spot)', () => {
+  test('the Type.ctor(..., [[]]) node carries one argument per real dependency (the arity blind spot)', () => {
     // Widget's constructor takes exactly one dependency (clock: IClock) and answers
     // to one call, so its derived node spells flat and carries exactly two
     // positional arguments: the instance type FOLLOWED BY that one dependency —
@@ -473,7 +473,7 @@ describe.skipIf(!toolchainReady)("implementation type — a hand-writer's explic
     // TS (the interfaces, the class, the import statements) still intact. Feeding
     // it back through a plain, plugin-less tsc against the real
     // di.core/primitives packages is the proof that addClass's real
-    // `implType: ConstructorType` parameter accepts the derived node — not just
+    // `implementerType: ConstructorType` parameter accepts the derived node — not just
     // that the string LOOKS right.
     expect(handTypedWithInline).not.toContain('typefor(');
     const { status, output } = retypecheck(handTypedWithInline);

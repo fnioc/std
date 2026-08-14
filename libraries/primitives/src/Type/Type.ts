@@ -55,6 +55,18 @@ declare const TYPE_BRAND: unique symbol;
  */
 export type TypeBrand = typeof TYPE_BRAND;
 
+/**
+ * A node as pure data — every field it publishes, and the mark only the intern table can supply
+ * left off. This is the shape {@link Type.adopt} takes.
+ */
+export type RawType<T extends Type = Type> = T extends Type ? Omit<T, TypeBrand> : never;
+
+/**
+ * What a factory's object form names: the node's own fields minus its kind, which the factory
+ * being called already decides. Derived from the node, so the two can never drift apart.
+ */
+type Spec<T extends Type> = Omit<T, 'kind' | TypeBrand>;
+
 interface TypeBase<Kind extends string> {
   readonly kind: Kind;
   readonly [TYPE_BRAND]: void;
@@ -88,32 +100,6 @@ export interface ConstructorType extends TypeBase<'ctor'> {
   readonly genericArgs: readonly Type[];
 }
 
-/**
- * The fields a {@link Type.ctor} call names, whether it passes them positionally or as one object.
- *
- * @remarks
- * `args` is the overload-shaped door: the object form spells every row, where the positional form
- * spells the one row its rest arguments make up.
- */
-export interface CtorSpec {
-  readonly instanceType: Type;
-  readonly args?: TypeSignatures;
-  readonly genericArgs?: readonly Type[];
-}
-
-/**
- * The fields a {@link Type.func} call names, whether it passes them positionally or as one object.
- *
- * @remarks
- * `args` is the overload-shaped door: the object form spells every row, where the positional form
- * spells the one row its rest arguments make up.
- */
-export interface FuncSpec {
-  readonly returnType: Type;
-  readonly args?: TypeSignatures;
-  readonly genericArgs?: readonly Type[];
-}
-
 export interface FunctionType extends TypeBase<'func'> {
   readonly args: TypeSignatures;
   readonly returnType: Type;
@@ -131,21 +117,8 @@ export interface GenericType extends TypeBase<'generic'> {
   readonly label: string;
 }
 
-/** The fields a {@link Type.global} call names, whether it passes them positionally or as one object. */
-export interface GlobalSpec {
-  readonly name: string;
-  readonly genericArgs?: readonly Type[];
-}
-
 /** A type the ambient scope already carries — `string`, `Date`, `Promise<T>`; no import reaches it. */
 export interface GlobalType extends NominalBase<'global'> {}
-
-/** The fields a {@link Type.imported} call names, whether it passes them positionally or as one object. */
-export interface ImportedSpec {
-  readonly name: string;
-  readonly from: string;
-  readonly genericArgs?: readonly Type[];
-}
 
 /** parallel to `import { ${name} } from "${from}";` */
 export interface ImportedType extends NominalBase<'imported'> {
@@ -165,12 +138,6 @@ export type LiteralValue = string | number | bigint | boolean | null | undefined
 
 export interface ObjectType extends TypeBase<'object'> {
   readonly members: Readonly<Record<string, Type>>;
-}
-
-/** The fields a {@link Type.tag} call names, whether it passes them positionally or as one object. */
-export interface TagSpec {
-  readonly type: Exclude<Type, TagType>;
-  readonly tag: string;
 }
 
 export interface TagType extends TypeBase<'tag'> {
@@ -206,6 +173,26 @@ export namespace Type {
   // #region factories
 
   /**
+   * The canonical node for a type written out as plain data — every field the node publishes, its
+   * `kind` included. Two literals describing one type adopt to the SAME object, so `===` decides
+   * their equality exactly as it does for a node any other factory returned.
+   *
+   * @remarks
+   * This is the door every other factory ends at, and the one a tree arriving from outside takes:
+   * a value revived from JSON, or one a cast produced. The walk reaches the whole subtree, so a
+   * literal nested inside a literal is adopted too.
+   *
+   * @example
+   * ```ts
+   * Type.adopt({ kind: 'imported', name: 'IClock', from: 'app', genericArgs: [] });
+   * ```
+   */
+  export function adopt<const Node extends RawType>(node: Node): Extract<Type, { kind: Node['kind']; }>;
+  export function adopt(node: RawType): Type {
+    return factory.adopt(node as Type);
+  }
+
+  /**
    * Names the aggregate of every registration of `element` as one indexable array.
    *
    * @remarks
@@ -225,22 +212,23 @@ export namespace Type {
    * A constructor signature — `new (...args) => instanceType`, instance type first.
    *
    * @remarks
-   * The positional form spells ONE parameter row, which is every non-overloaded constructor; a
-   * constructor answering to several calls passes its rows as the spec's `args`, and one that
-   * quantifies holes of its own passes them as the spec's `genericArgs`.
+   * `args` is one ROW per call the constructor answers to, so a constructor taking one dependency
+   * is `[[dep]]` and one taking nothing is `[[]]`. The object form names the node's own fields.
    *
    * @example
    * ```ts
-   * Type.ctor(box, string);                                 // new (string) => box
-   * Type.ctor({ instanceType: box, args: [[string], []] }); // new (string; ) => box
+   * Type.ctor(box, [[string]]);                               // new (string) => box
+   * Type.ctor(box, [[string], []]);                           // new (string; ) => box
+   * Type.ctor({ instanceType: box, args: [[]], genericArgs: [hole] });
    * ```
    */
-  export function ctor(instanceType: Type, ...args: readonly Type[]): ConstructorType;
-  export function ctor(spec: CtorSpec): ConstructorType;
-  export function ctor(first: Type | CtorSpec, ...args: readonly Type[]): ConstructorType {
-    return isNode(first)
-      ? factory.ctor(first, [args], [])
-      : factory.ctor(first.instanceType, first.args ?? [[]], first.genericArgs ?? []);
+  export function ctor(instanceType: Type, args: TypeSignatures, genericArgs?: readonly Type[]): ConstructorType;
+  export function ctor(spec: Spec<ConstructorType>): ConstructorType;
+  export function ctor(...args: any[]): ConstructorType {
+    const spec: Spec<ConstructorType> = args.length > 1
+      ? { instanceType: args[0], args: args[1], genericArgs: args[2] ?? [] }
+      : args[0];
+    return adopt({ ...spec, kind: 'ctor' });
   }
 
   /**
@@ -275,22 +263,23 @@ export namespace Type {
    * Identity is the shape alone: two signatures with the same return type, parameter rows and
    * quantifiers are the same type, whichever functions they were read from.
    *
-   * The positional form spells ONE parameter row, which is every non-overloaded function; a
-   * function answering to several calls passes its rows as the spec's `args`, and one that
-   * quantifies holes of its own passes them as the spec's `genericArgs`.
+   * `args` is one ROW per call the function answers to, so a function taking one dependency is
+   * `[[dep]]` and one taking nothing is `[[]]`. The object form names the node's own fields.
    *
    * @example
    * ```ts
-   * Type.func(box, string);                                // (string) => box
-   * Type.func({ returnType: box, args: [[string], []] });  // (string; ) => box
+   * Type.func(box, [[string]]);                             // (string) => box
+   * Type.func(box, [[string], []]);                         // (string; ) => box
+   * Type.func({ returnType: box, args: [[]], genericArgs: [hole] });
    * ```
    */
-  export function func(returnType: Type, ...args: readonly Type[]): FunctionType;
-  export function func(spec: FuncSpec): FunctionType;
-  export function func(first: Type | FuncSpec, ...args: readonly Type[]): FunctionType {
-    return isNode(first)
-      ? factory.func(first, [args], [])
-      : factory.func(first.returnType, first.args ?? [[]], first.genericArgs ?? []);
+  export function func(returnType: Type, args: TypeSignatures, genericArgs?: readonly Type[]): FunctionType;
+  export function func(spec: Spec<FunctionType>): FunctionType;
+  export function func(...args: any[]): FunctionType {
+    const spec: Spec<FunctionType> = args.length > 1
+      ? { returnType: args[0], args: args[1], genericArgs: args[2] ?? [] }
+      : args[0];
+    return adopt({ ...spec, kind: 'func' });
   }
 
   /**
@@ -316,10 +305,6 @@ export namespace Type {
       : GlobalType
     : GlobalType;
 
-  /** The generic arguments a {@link GlobalSpec} names, or none when it leaves them out. */
-  type SpecArgs<Spec extends GlobalSpec> = Spec extends { genericArgs: infer Args extends readonly Type[]; } ? Args
-    : readonly [];
-
   /**
    * A type the ambient scope already carries, referenced by name. Generic arguments name the
    * constructed type `Name<Args>`; leave one open with {@link generic} to describe the generic type
@@ -333,11 +318,15 @@ export namespace Type {
     const Name extends string,
     const Args extends readonly Type[] = readonly [],
   >(name: Name, genericArgs?: Args): Global<Name, Args>;
-  export function global<const Spec extends GlobalSpec>(spec: Spec): Global<Spec['name'], SpecArgs<Spec>>;
-  export function global(first: string | GlobalSpec, genericArgs: readonly Type[] = []): AggregateType | GlobalType {
+  export function global<const Named extends Spec<GlobalType>>(
+    spec: Named,
+  ): Global<Named['name'], Named['genericArgs']>;
+  export function global(first: string | Spec<GlobalType>, genericArgs: readonly Type[] = []):
+    | AggregateType
+    | GlobalType {
     return typeof first === 'string'
       ? factory.global(first, genericArgs)
-      : factory.global(first.name, first.genericArgs ?? []);
+      : factory.global(first.name, first.genericArgs);
   }
 
   /**
@@ -348,12 +337,12 @@ export namespace Type {
    * @throws TypeError - when `from` names the ambient scope rather than a package.
    */
   export function imported(name: string, from: string, genericArgs?: readonly Type[]): ImportedType;
-  export function imported(spec: ImportedSpec): ImportedType;
-  export function imported(first: string | ImportedSpec, from?: string,
+  export function imported(spec: Spec<ImportedType>): ImportedType;
+  export function imported(first: string | Spec<ImportedType>, from?: string,
     genericArgs: readonly Type[] = []): ImportedType {
     return typeof first === 'string'
       ? factory.imported(first, from!, genericArgs)
-      : factory.imported(first.name, first.from, first.genericArgs ?? []);
+      : factory.imported(first.name, first.from, first.genericArgs);
   }
 
   /**
@@ -411,8 +400,8 @@ export namespace Type {
    * @throws TypeError - when the type is already tagged; a type wears at most one tag.
    */
   export function tag(type: Exclude<Type, TagType>, tag: string): TagType;
-  export function tag(spec: TagSpec): TagType;
-  export function tag(first: Type | TagSpec, tag?: string): TagType {
+  export function tag(spec: Spec<TagType>): TagType;
+  export function tag(first: Type | Spec<TagType>, tag?: string): TagType {
     return isNode(first) ? factory.tag(first, tag!) : factory.tag(first.type, first.tag);
   }
 

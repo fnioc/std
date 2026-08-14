@@ -19,8 +19,8 @@ describe('one object per type', () => {
     expect(Type.from('app:A#primary')).toBe(Type.tag(A, 'primary'));
     expect(Type.from('%T')).toBe(Type.generic('T'));
     expect(Type.from('5')).toBe(Type.typeLiteral(5));
-    expect(Type.from('(app:B) => app:A')).toBe(Type.func(A, B));
-    expect(Type.from('new (app:B) => app:A')).toBe(Type.ctor(A, B));
+    expect(Type.from('(app:B) => app:A')).toBe(Type.func(A, [[B]]));
+    expect(Type.from('new (app:B) => app:A')).toBe(Type.ctor(A, [[B]]));
   });
 
   test('the spellings of one type are one object', () => {
@@ -46,19 +46,19 @@ describe('one object per type', () => {
 
 describe('a signature quantifying its own holes', () => {
   const hole = Type.generic('T');
-  const open = Type.func({ returnType: Type.imported('Box', 'app', [hole]), genericArgs: [hole] });
+  const open = Type.func({ returnType: Type.imported('Box', 'app', [hole]), args: [[]], genericArgs: [hole] });
 
   test('spells its quantifiers in front of the signature', () => {
     expect(Type.stringify(open)).toBe('<%T>() => app:Box<%T>');
   });
 
   test('a signature that only mentions the hole is a different node', () => {
-    expect(open).not.toBe(Type.func(Type.imported('Box', 'app', [hole])));
+    expect(open).not.toBe(Type.func(Type.imported('Box', 'app', [hole]), [[]]));
   });
 
   test('a concrete signature quantifies nothing', () => {
-    expect(Type.func(A).genericArgs).toEqual([]);
-    expect(Type.ctor(A).genericArgs).toEqual([]);
+    expect(Type.func(A, [[]]).genericArgs).toEqual([]);
+    expect(Type.ctor(A, [[]]).genericArgs).toEqual([]);
   });
 });
 

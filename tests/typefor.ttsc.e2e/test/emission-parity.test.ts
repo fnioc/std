@@ -298,8 +298,8 @@ describe('typefor emission modes', () => {
     // Promise is declared by the ambient scope, so it is addressed as a global
     // and carries no specifier — only its argument, by name.
     expect(declared.get(nameOf(`Type.global("Promise", [${clock}])`))).toBeDefined();
-    expect([...declared.values()]).toContain(`Type.ctor(${systemClock}, ${log})`);
-    expect([...declared.values()]).toContain(`Type.func(${clock}, ${log})`);
+    expect([...declared.values()]).toContain(`Type.ctor(${systemClock}, [[${log}]])`);
+    expect([...declared.values()]).toContain(`Type.func(${clock}, [[${log}]])`);
     for (const spelling of declared.values()) {
       if (spelling.startsWith('Type.ctor(') || spelling.startsWith('Type.func(')) {
         expect(spelling).not.toContain('Type.imported(');

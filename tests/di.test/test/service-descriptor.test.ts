@@ -29,15 +29,15 @@ describe('matches', () => {
 describe('equals', () => {
   test('holds when the signatures agree however they were spelled', () => {
     expect(ServiceDescriptor.equals(
-      ServiceDescriptor.ctor(A, Impl, Type.ctor(A, Type.from('app:B'))),
-      ServiceDescriptor.ctor(A, Impl, Type.ctor(A, B)),
+      ServiceDescriptor.ctor(A, Impl, Type.ctor(A, [[Type.from('app:B')]])),
+      ServiceDescriptor.ctor(A, Impl, Type.ctor(A, [[B]])),
     )).toBe(true);
   });
 
   test('separates descriptors whose signatures differ', () => {
     expect(ServiceDescriptor.equals(
-      ServiceDescriptor.ctor(A, Impl, Type.ctor(A, B)),
-      ServiceDescriptor.ctor(A, Impl, Type.ctor(A, A)),
+      ServiceDescriptor.ctor(A, Impl, Type.ctor(A, [[B]])),
+      ServiceDescriptor.ctor(A, Impl, Type.ctor(A, [[A]])),
     )).toBe(false);
   });
 });
@@ -45,9 +45,9 @@ describe('equals', () => {
 describe('substitute', () => {
   test('closes an open registration onto the type the factories would have built', () => {
     const openBox = Type.imported('Box', 'app', [Type.generic('T')]);
-    const open = ServiceDescriptor.ctor(openBox, Impl, Type.ctor(openBox, Type.generic('T')));
+    const open = ServiceDescriptor.ctor(openBox, Impl, Type.ctor(openBox, [[Type.generic('T')]]));
     const closed = ServiceDescriptor.substitute(open, new Map([['T', A]]));
     expect(closed.serviceType).toBe(Type.imported('Box', 'app', [A]));
-    expect(closed.kind === 'ctor' && closed.implType.args[0]![0]).toBe(A);
+    expect(closed.kind === 'ctor' && closed.implementerType.args[0]![0]).toBe(A);
   });
 });

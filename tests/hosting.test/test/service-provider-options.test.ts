@@ -23,7 +23,7 @@ test('useDefaultServiceProvider threads validateOnBuild into the provider build'
   function addBrokenService(builder: HostBuilder): void {
     builder.configureServices((_context, services) => {
       return services.addClass('test:Broken', class Broken {},
-        Type.ctor(Type.from('test:Broken'), Type.from('test:Missing')));
+        Type.ctor(Type.from('test:Broken'), [[Type.from('test:Missing')]]));
     });
   }
 
@@ -49,7 +49,7 @@ test('the last useDefaultServiceProvider call wins', () => {
   const builder = new HostBuilder();
   builder.configureServices((_context, services) => {
     return services.addClass('test:Broken', class Broken {},
-      Type.ctor(Type.from('test:Broken'), Type.from('test:Missing')));
+      Type.ctor(Type.from('test:Broken'), [[Type.from('test:Missing')]]));
   });
   // The first call would validate the (broken) graph; the second replaces it with
   // a no-validation options object, so the build stays lazy and does not throw.

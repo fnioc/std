@@ -34,7 +34,7 @@ const manifest = new DefaultManifest()
   .add(IGreeter, register => register.asClass(ConsoleGreeter).withSignature());
 ```
 
-The builder lambda (`register => register.asClass(...).withSignature(...)`) chooses an implementation (`asClass`/`asFactory`/`asValue`), then names its call shape (`withSignature(...paramTypes)` for the argument types, or `withType(implType)` for the whole composed constructor/function type — exactly one of the two, ever), and optionally sets a lifetime scope (`withLifetime`) or a resolution key (`taggedAs`).
+The builder lambda (`register => register.asClass(...).withSignature(...)`) chooses an implementation (`asClass`/`asFactory`/`asValue`), then names its call shape (`withSignature(...paramTypes)` for the argument types, or `withType(implementerType)` for the whole composed constructor/function type — exactly one of the two, ever), and optionally sets a lifetime scope (`withLifetime`) or a resolution key (`taggedAs`).
 
 The same registration can also be stated in one call, with the implementation's composed type given directly: `manifest.addClass(IGreeter, ConsoleGreeter, signatures)` — `addClass`/`addFactory`/`addValue` take the argument types as a plain array of overloads (`[[]]` for a no-argument constructor, `[[TypeA, TypeB]]` for one two-argument overload) instead of a builder lambda.
 

@@ -96,14 +96,14 @@ export namespace CallSite {
     const { descriptor, generics } = answer;
     switch (descriptor.kind) {
       case 'value':
-        return constant(descriptor.value);
+        return constant(descriptor.implementer);
       case 'ctor': {
-        const args = lowerSignature(descriptor.implType.args, generics, visitor);
-        return args && ctor(descriptor.ctor, args);
+        const args = lowerSignature(descriptor.implementerType.args, generics, visitor);
+        return args && ctor(descriptor.implementer, args);
       }
       case 'factory': {
-        const args = lowerSignature(descriptor.implType.args, generics, visitor);
-        return args && factory(descriptor.factory, args);
+        const args = lowerSignature(descriptor.implementerType.args, generics, visitor);
+        return args && factory(descriptor.implementer, args);
       }
       default:
         return assertNever(descriptor);

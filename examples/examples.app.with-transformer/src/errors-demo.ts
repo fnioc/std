@@ -71,8 +71,8 @@ const METRICS_TYPE = Type.from('selfcheck:IMetricsRecorder');
 
 /** A container whose one registration names a dependency nobody supplies. */
 function withUnsatisfiableStore(): Manifest<'singleton'> {
-  return new DefaultManifest<'singleton'>().addClass(STORE_TYPE, BrokenStore, Type.ctor(STORE_TYPE, CONNECTION_TYPE),
-    'singleton');
+  return new DefaultManifest<'singleton'>().addClass(STORE_TYPE, BrokenStore,
+    Type.ctor(STORE_TYPE, [[CONNECTION_TYPE]]), 'singleton');
 }
 
 /**
@@ -132,8 +132,8 @@ export function demonstrateErrors(): readonly string[] {
   // reader to find the other half.
   lines.push(stagedFailure('a dependency cycle', () => {
     let services = new DefaultManifest<'singleton'>();
-    services = services.addClass(LEDGER_TYPE, Ledger, Type.ctor(LEDGER_TYPE, AUDIT_TYPE), 'singleton');
-    services = services.addClass(AUDIT_TYPE, AuditLog, Type.ctor(AUDIT_TYPE, LEDGER_TYPE), 'singleton');
+    services = services.addClass(LEDGER_TYPE, Ledger, Type.ctor(LEDGER_TYPE, [[AUDIT_TYPE]]), 'singleton');
+    services = services.addClass(AUDIT_TYPE, AuditLog, Type.ctor(AUDIT_TYPE, [[LEDGER_TYPE]]), 'singleton');
     return services.build().getRequiredService(LEDGER_TYPE);
   }));
 
@@ -170,8 +170,8 @@ function ambiguous(): Manifest<'singleton'> {
   let services = new DefaultManifest<'singleton'>();
   services = services.addValue(AUDIT_TYPE, { kind: 'audit' });
   services = services.addValue(METRICS_TYPE, { kind: 'metrics' });
-  services = services.addClass(REPORT_TYPE, ReportService, Type.ctor(REPORT_TYPE, Type.union(METRICS_TYPE, AUDIT_TYPE)),
-    'singleton');
+  services = services.addClass(REPORT_TYPE, ReportService,
+    Type.ctor(REPORT_TYPE, [[Type.union(METRICS_TYPE, AUDIT_TYPE)]]), 'singleton');
   return services;
 }
 
