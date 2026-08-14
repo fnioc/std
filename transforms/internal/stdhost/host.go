@@ -99,11 +99,15 @@ type Sink func(Diag)
 
 // Diag is a stage diagnostic destined for the envelope. Warning diagnostics
 // are reported without failing the emit; everything else is a hard error.
+// Line and Character are 1-based source positions, populated when the
+// diagnostic anchors to a known location; nil when it does not.
 type Diag struct {
-	File    string
-	Warning bool
-	Code    string
-	Message string
+	File      string
+	Warning   bool
+	Code      string
+	Message   string
+	Line      *int
+	Character *int
 }
 
 // Builder adapts a stage's native transform factory (each with its own
@@ -130,6 +134,26 @@ func DiagFromDi(d signatures.Diagnostic) Diag {
 		Code:    d.Code,
 		Message: d.Message,
 	}
+}
+
+// DiagFromTypeScript converts one of the consumer program's own ordinary
+// TypeScript diagnostics (a real TS2xxx/TS1xxx error the checker or parser
+// raised against the author's source, as opposed to a diagnostic one of this
+// host's own stages emitted) into a hard-error Diag, carrying its source
+// position when the diagnostic has one.
+func DiagFromTypeScript(d driver.Diagnostic) Diag {
+	diag := Diag{
+		File:    d.File,
+		Code:    fmt.Sprintf("TS%d", d.Code),
+		Message: d.Message,
+	}
+	if d.Line > 0 {
+		line := d.Line
+		character := d.Column
+		diag.Line = &line
+		diag.Character = &character
+	}
+	return diag
 }
 
 // Run dispatches the host command line: the transform-stage contract the ttsc
@@ -270,6 +294,20 @@ func runTransform(host Host, args []string) int {
 	// through a non-barrel, non-tokens export subpath) into the envelope as errors.
 	ctx.Diag = func(file string, start int, code, message string) {
 		emit(DiagFromPlugin(plugin.Diagnostic{File: file, Start: start, Code: code, Message: message}))
+	}
+
+	// The Go host type-checks the whole consumer program to run its stages —
+	// tsgo's checker runs regardless — but with noEmitOnError left off (the host
+	// always emits, see ForceEmit above) those diagnostics were never carried
+	// into the envelope. Collecting them once, program-wide, here surfaces the
+	// program's own ordinary TypeScript errors (a broken declare-module merge,
+	// a bad call, …) alongside this host's stage diagnostics, rather than
+	// silently dropping them while the program still "builds".
+	for _, d := range prog.Diagnostics() {
+		if !d.IsError() {
+			continue
+		}
+		emit(DiagFromTypeScript(d))
 	}
 
 	artifacts := inlinetransform.NewArtifacts()
@@ -563,6 +601,8 @@ type envelopeDiagnostic struct {
 	File        *string `json:"file"`
 	Category    string  `json:"category"`
 	Code        string  `json:"code"`
+	Line        *int    `json:"line,omitempty"`
+	Character   *int    `json:"character,omitempty"`
 	MessageText string  `json:"messageText"`
 }
 
@@ -576,6 +616,8 @@ func envelopeFromDiag(d Diag) envelopeDiagnostic {
 		File:        filePointer(d.File),
 		Category:    category,
 		Code:        d.Code,
+		Line:        d.Line,
+		Character:   d.Character,
 		MessageText: d.Message,
 	}
 }
