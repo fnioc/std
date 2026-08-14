@@ -168,7 +168,7 @@ services.addClass(SqlUserRepo);
 	// The dependency node — di-direct's frozen golden still carries the retired
 	// `[[...]]` array format (§155/§157 supersede it), so this pins the current
 	// Type.ctor(...) shape directly rather than comparing against that golden.
-	wantDeps := `Type.ctor(Type.imported("SqlUserRepo", "@scope/app/main"), Type.imported("IDb", "@scope/app/main"))`
+	wantDeps := `Type.ctor(Type.imported("SqlUserRepo", "@scope/app/main"), [[Type.imported("IDb", "@scope/app/main")]])`
 	if inlineDeps := typeNodeArgFrom(t, inlineOut); inlineDeps != wantDeps {
 		t.Fatalf("addClass dependency node mismatch:\n got  = %s\n want = %s", inlineDeps, wantDeps)
 	}
@@ -202,7 +202,7 @@ services.addFactory(makeThing);
 	}
 	// See TestSelfInlineAddClassMatchesDiDirect: pinned directly rather than
 	// against di-direct's frozen (retired-format) golden.
-	wantDeps := `Type.func(Type.imported("Thing", "@scope/app/main"), Type.imported("IDb", "@scope/app/main"))`
+	wantDeps := `Type.func(Type.imported("Thing", "@scope/app/main"), [[Type.imported("IDb", "@scope/app/main")]])`
 	if inlineDeps := typeNodeArgFrom(t, inlineOut); inlineDeps != wantDeps {
 		t.Fatalf("addFactory dependency node mismatch:\n got  = %s\n want = %s", inlineDeps, wantDeps)
 	}

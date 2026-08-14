@@ -259,7 +259,7 @@ export const tok = typefor(Foo);
 	defer func() { _ = prog.Close() }()
 
 	out := lowerTypefor(t, prog, app)
-	want := `Type.ctor(Type.imported("Foo", "@scope/app/main"))`
+	want := `Type.ctor(Type.imported("Foo", "@scope/app/main"), [[]])`
 	if got := exprFor(t, out, "tok"); got != want {
 		t.Fatalf("typefor(Foo) = %q, want %q\nfull output:\n%s", got, want, out)
 	}
@@ -278,7 +278,7 @@ export const tok = typefor(Foo);
 	defer func() { _ = prog.Close() }()
 
 	out := lowerTypefor(t, prog, app)
-	want := `Type.ctor(Type.imported("Foo", "@scope/app/main"), Type.imported("IA", "@scope/app/main"), Type.imported("IB", "@scope/app/main"))`
+	want := `Type.ctor(Type.imported("Foo", "@scope/app/main"), [[Type.imported("IA", "@scope/app/main"), Type.imported("IB", "@scope/app/main")]])`
 	if got := exprFor(t, out, "tok"); got != want {
 		t.Fatalf("typefor(Foo) = %q, want %q\nfull output:\n%s", got, want, out)
 	}
@@ -293,7 +293,7 @@ export const tok = typefor<() => IThing>();
 	defer func() { _ = prog.Close() }()
 
 	out := lowerTypefor(t, prog, app)
-	want := `Type.func(Type.imported("IThing", "@scope/app/main"))`
+	want := `Type.func(Type.imported("IThing", "@scope/app/main"), [[]])`
 	if got := exprFor(t, out, "tok"); got != want {
 		t.Fatalf("typefor<() => IThing>() = %q, want %q\nfull output:\n%s", got, want, out)
 	}
@@ -504,7 +504,7 @@ export const rt = t.returnType;
 	defer func() { _ = prog.Close() }()
 
 	out := lowerTypefor(t, prog, app)
-	wantT := `Type.func(Type.imported("IThing", "@scope/app/main"))`
+	wantT := `Type.func(Type.imported("IThing", "@scope/app/main"), [[]])`
 	if got := exprFor(t, out, "t"); got != wantT {
 		t.Fatalf("bare typefor call = %q, want %q\nfull output:\n%s", got, wantT, out)
 	}

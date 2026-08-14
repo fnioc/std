@@ -64,11 +64,11 @@ const (
 	KindUnion
 	// KindGeneric is `Type.generic(label)` — an open-generic hole.
 	KindGeneric
-	// KindFunc is `Type.func(returnType, ...args)` for one parameter row, and
-	// `Type.func({ returnType, args })` for a callable answering to several.
+	// KindFunc is `Type.func(returnType, rows)`, rows the return type's parameter
+	// rows as an array of arrays.
 	KindFunc
-	// KindCtor is `Type.ctor(instanceType, ...args)` for one parameter row, and
-	// `Type.ctor({ instanceType, args })` for a callable answering to several.
+	// KindCtor is `Type.ctor(instanceType, rows)`, rows the instance type's
+	// parameter rows as an array of arrays.
 	KindCtor
 	// KindTag is `Type.tag(inner, key)`.
 	KindTag
@@ -350,9 +350,9 @@ func (r *Registry) expr(n *Node) string {
 	case KindGeneric:
 		return r.typeRef.Export + ".generic(\"" + n.label + "\")"
 	case KindFunc:
-		return r.signature(n, "func", "returnType")
+		return r.signature(n, "func")
 	case KindCtor:
-		return r.signature(n, "ctor", "instanceType")
+		return r.signature(n, "ctor")
 	case KindTag:
 		return r.typeRef.Export + ".tag(" + r.names[n.inner.key] + ", \"" + n.tag + "\")"
 	case KindUndefined:
@@ -373,21 +373,15 @@ func (r *Registry) expr(n *Node) string {
 	}
 }
 
-// signature renders a KindFunc / KindCtor const. A callable answering to ONE
-// call spells flat — the head followed by that row's parameters, the shape a
-// hand-writer reaches for — and one answering to several spells through the
-// object door, which is where every row is nameable. head is the field the
-// object door files the return / instance type under.
-func (r *Registry) signature(n *Node, method, head string) string {
-	call := r.typeRef.Export + "." + method + "("
-	if len(n.rows) == 1 {
-		return call + r.joinNames(append([]*Node{n.ret}, n.rows[0]...)) + ")"
-	}
+// signature renders a KindFunc / KindCtor const — the return / instance type
+// followed by its parameter rows as one array of arrays, whether the callable
+// answers to one row or several.
+func (r *Registry) signature(n *Node, method string) string {
 	rows := make([]string, len(n.rows))
 	for i, row := range n.rows {
 		rows[i] = "[" + r.joinNames(row) + "]"
 	}
-	return call + "{ " + head + ": " + r.names[n.ret.key] + ", args: [" + strings.Join(rows, ", ") + "] })"
+	return r.typeRef.Export + "." + method + "(" + r.names[n.ret.key] + ", [" + strings.Join(rows, ", ") + "])"
 }
 
 func (r *Registry) joinNames(nodes []*Node) string {

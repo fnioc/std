@@ -204,7 +204,7 @@ export const registered = services
 	// The registration that DID inline on pass 0 must be fully lowered — a repair
 	// that stopped the crash by lowering less would leave the sugar standing.
 	if !strings.Contains(lowered, `.addClass("@scope/app/main:IWidget", Widget, `+
-		`Type.ctor(Type.imported("Widget", "@scope/app/main"), Type.imported("IClock", "@scope/app/main")))`) {
+		`Type.ctor(Type.imported("Widget", "@scope/app/main"), [[Type.imported("IClock", "@scope/app/main")]]))`) {
 		t.Fatalf("the pass-0 registration did not lower:\n%s", lowered)
 	}
 	// The source-written primitive inside the waiting call's argument lowered too.
@@ -257,8 +257,8 @@ export const b = services.addClass<IWidget>(Widget);
 	// optional parameter reached through `addClass<T>()` rather than a hand-written
 	// registration.
 	const wantClass = `.addClass("@scope/app/main:IWidget", Widget, Type.ctor(` +
-		`Type.imported("Widget", "@scope/app/main"), Type.imported("IClock", "@scope/app/main"), ` +
-		`Type.union(Type.imported("IAppSettings", "@scope/app/main"), Type.typeLiteral(undefined))))`
+		`Type.imported("Widget", "@scope/app/main"), [[Type.imported("IClock", "@scope/app/main"), ` +
+		`Type.union(Type.imported("IAppSettings", "@scope/app/main"), Type.typeLiteral(undefined))]]))`
 	for name, out := range map[string]string{"waiting": waiting, "immediate": immediate} {
 		if !strings.Contains(out, wantClass) {
 			t.Fatalf("the %s registration did not mint the optional parameter's union slot.\nwant to contain:\n%s\ngot:\n%s", name, wantClass, out)
@@ -288,8 +288,8 @@ export class Widget {
 
 `
 	const wantRegistration = `services.addClass("@scope/app/main:IWidget", Widget, Type.ctor(` +
-		`Type.imported("Widget", "@scope/app/main"), Type.imported("IClock", "@scope/app/main"), ` +
-		`Type.union(Type.imported("IOptions", "@scope/app/main"), Type.typeLiteral(undefined))))`
+		`Type.imported("Widget", "@scope/app/main"), [[Type.imported("IClock", "@scope/app/main"), ` +
+		`Type.union(Type.imported("IOptions", "@scope/app/main"), Type.typeLiteral(undefined))]]))`
 
 	control, _ := lowerSugarApp(t, prelude+"export const m = services.addClass<IWidget>(Widget);\n")
 	if !strings.Contains(control, wantRegistration) {

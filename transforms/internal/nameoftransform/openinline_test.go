@@ -183,11 +183,11 @@ services.addClass<IRepo<$<1>>>(SqlRepo<$<1>>);
 		t.Fatalf("expected an open-generic service token, got %q", inlineTok)
 	}
 
-	// The dependency node derives Type.ctor(instanceType, paramType) — the hole
-	// closing into the instance type's own generic argument, and again into the
-	// dependency's, matching §157's bare-hole-slot reading.
+	// The dependency node derives Type.ctor(instanceType, [[paramType]]) — the hole
+	// closes into the instance type's own generic argument, and again into the
+	// dependency's.
 	wantDeps := `Type.ctor(Type.imported("SqlRepo", "@scope/app/main", [Type.generic("1")]), ` +
-		`Type.imported("IStore", "@scope/app/main", [Type.generic("1")]))`
+		`[[Type.imported("IStore", "@scope/app/main", [Type.generic("1")])]])`
 	if inlineDeps := typeNodeArgFrom(t, inlineOut); inlineDeps != wantDeps {
 		t.Fatalf("dependency node mismatch:\n got  = %s\n want = %s", inlineDeps, wantDeps)
 	}

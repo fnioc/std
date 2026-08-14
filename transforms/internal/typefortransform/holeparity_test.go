@@ -28,7 +28,7 @@ type Typeof<T> = { readonly [ARG]?: T };
 class TokenDep { constructor(tok: Typeof<$<1>>) { void tok; } }`,
 			val: `TokenDep`,
 			want: `Type.ctor(Type.imported("TokenDep", "@scope/app/main"), ` +
-				`Type.imported("Typeof", "@scope/app/main", [Type.generic("1")]))`,
+				`[[Type.imported("Typeof", "@scope/app/main", [Type.generic("1")])]])`,
 		},
 		{
 			// A hole nested inside a generic dependency (`IStore<T>`, T bound to $<1>
@@ -40,7 +40,7 @@ interface IStore<T> {}
 class Repo<T> implements IRepo<$<1>> { constructor(store: IStore<T>) { void store; } }`,
 			val: `Repo<$<1>>`,
 			want: `Type.ctor(Type.imported("Repo", "@scope/app/main", [Type.generic("1")]), ` +
-				`Type.imported("IStore", "@scope/app/main", [Type.generic("1")]))`,
+				`[[Type.imported("IStore", "@scope/app/main", [Type.generic("1")])]])`,
 		},
 		{
 			// A multi-arg constructor mixing a holed dependency with a concrete one:
@@ -53,7 +53,7 @@ interface ILogger {}
 class Svc<T> implements ISvc<$<1>> { constructor(store: IStore<T>, logger: ILogger) { void store; void logger; } }`,
 			val: `Svc<$<1>>`,
 			want: `Type.ctor(Type.imported("Svc", "@scope/app/main", [Type.generic("1")]), ` +
-				`Type.imported("IStore", "@scope/app/main", [Type.generic("1")]), Type.imported("ILogger", "@scope/app/main"))`,
+				`[[Type.imported("IStore", "@scope/app/main", [Type.generic("1")]), Type.imported("ILogger", "@scope/app/main")]])`,
 		},
 	}
 	for _, tc := range cases {

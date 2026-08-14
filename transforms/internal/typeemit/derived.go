@@ -13,9 +13,9 @@ import (
 func EmitDerived(f *shimast.NodeFactory, binding *valueimport.Binding, d *tokens.Derived) *shimast.Node {
 	switch d.Kind {
 	case tokens.DerivedFunc:
-		return signatureShaped(f, binding, d, "func", "returnType")
+		return signatureShaped(f, binding, d, "func")
 	case tokens.DerivedCtor:
-		return signatureShaped(f, binding, d, "ctor", "instanceType")
+		return signatureShaped(f, binding, d, "ctor")
 	case tokens.DerivedTag:
 		return Call(f, binding, "tag", []*shimast.Node{
 			EmitDerived(f, binding, d.Inner),
@@ -36,25 +36,15 @@ func EmitDerived(f *shimast.NodeFactory, binding *valueimport.Binding, d *tokens
 	}
 }
 
-// signatureShaped builds a callable's factory call. A callable answering to ONE
-// call spells flat — `func(returnType, ...args)` / `ctor(instanceType, ...args)`,
-// the shape a hand-writer reaches for. One answering to several spells through
-// the object door — `func({ returnType, args: [[…], […]] })` — which is the only
-// one that names every parameter row. head is the field the object door files the
-// return / instance type under.
+// signatureShaped builds a callable's factory call — the return/instance type
+// followed by its parameter rows as one array of arrays, `func(returnType, [[…], […]])`
+// / `ctor(instanceType, [[…], […]])` — whether the callable answers to one row or several.
 func signatureShaped(f *shimast.NodeFactory, binding *valueimport.Binding, d *tokens.Derived,
-	method, head string) *shimast.Node {
-	if len(d.Args) == 1 {
-		flat := make([]*shimast.Node, 0, len(d.Args[0])+1)
-		flat = append(flat, EmitDerived(f, binding, d.Ret))
-		flat = append(flat, EmitRow(f, binding, d.Args[0])...)
-		return Call(f, binding, method, flat)
-	}
-	spec := f.NewObjectLiteralExpression(f.NewNodeList([]*shimast.Node{
-		f.NewPropertyAssignment(nil, f.NewIdentifier(head), nil, nil, EmitDerived(f, binding, d.Ret)),
-		f.NewPropertyAssignment(nil, f.NewIdentifier("args"), nil, nil, EmitRows(f, binding, d.Args)),
-	}), false)
-	return Call(f, binding, method, []*shimast.Node{spec})
+	method string) *shimast.Node {
+	return Call(f, binding, method, []*shimast.Node{
+		EmitDerived(f, binding, d.Ret),
+		EmitRows(f, binding, d.Args),
+	})
 }
 
 // EmitRow builds the factory call for each parameter in one row, in order.
@@ -67,7 +57,8 @@ func EmitRow(f *shimast.NodeFactory, binding *valueimport.Binding, row []*tokens
 }
 
 // EmitRows builds a callable's parameter rows as one array literal of arrays —
-// the shape the `args` field of a `Type.func` / `Type.ctor` spec takes.
+// the shape a `Type.func` / `Type.ctor` factory call's rows argument takes, and
+// the shape a `.args` accessor fold produces directly.
 func EmitRows(f *shimast.NodeFactory, binding *valueimport.Binding, rows [][]*tokens.Derived) *shimast.Node {
 	items := make([]*shimast.Node, 0, len(rows))
 	for _, row := range rows {

@@ -115,11 +115,10 @@ func TestKeyMirrorsTheFlatTokenSpelling(t *testing.T) {
 	}
 }
 
-// TestOneRowSpellsFlatAndSeveralSpellThroughTheSpecObject: a const holding a
-// callable spells the way a hand-writer would — the flat positional call when it
-// answers to one call, and the object door when it answers to several, which is
-// the only spelling that names every row.
-func TestOneRowSpellsFlatAndSeveralSpellThroughTheSpecObject(t *testing.T) {
+// TestACallableAlwaysSpellsItsRowsArray: a const holding a callable renders its
+// parameter rows as one array of arrays, whether it answers to one row or
+// several.
+func TestACallableAlwaysSpellsItsRowsArray(t *testing.T) {
 	registry := NewRegistry(TypeRef{Module: "@rhombus-std/primitives", Export: "Type"})
 	widget := Named("IWidget", "orders", nil)
 	clock := Named("IClock", "orders", nil)
@@ -137,14 +136,14 @@ func TestOneRowSpellsFlatAndSeveralSpellThroughTheSpecObject(t *testing.T) {
 	clockName := refOf(t, registry, clock)
 	optionsName := refOf(t, registry, options)
 	module := registry.Module()
-	wantFlat := "export const " + refOf(t, registry, oneRow) + " = Type.ctor(" + widgetName + ", " + clockName + ");"
-	if !strings.Contains(module, wantFlat) {
-		t.Errorf("want %q in:\n%s", wantFlat, module)
+	wantOneRow := "export const " + refOf(t, registry, oneRow) + " = Type.ctor(" + widgetName + ", [[" + clockName + "]]);"
+	if !strings.Contains(module, wantOneRow) {
+		t.Errorf("want %q in:\n%s", wantOneRow, module)
 	}
-	wantSpec := "export const " + refOf(t, registry, several) + " = Type.ctor({ instanceType: " + widgetName +
-		", args: [[" + clockName + "], [" + clockName + ", " + optionsName + "]] });"
-	if !strings.Contains(module, wantSpec) {
-		t.Errorf("want %q in:\n%s", wantSpec, module)
+	wantSeveral := "export const " + refOf(t, registry, several) + " = Type.ctor(" + widgetName +
+		", [[" + clockName + "], [" + clockName + ", " + optionsName + "]]);"
+	if !strings.Contains(module, wantSeveral) {
+		t.Errorf("want %q in:\n%s", wantSeveral, module)
 	}
 }
 
