@@ -1935,3 +1935,60 @@ registration. Closing it is future work, not blocking — the ctor path (a hole 
 own generic instantiation, `Repo<$<1>>`) derives correctly today.
 
 _Claude-directed 2026-08-13, executing the owner's §155/§157 direction._
+
+## §167 — Value-driven `getService`: hand it a `ConstructorType`/`FunctionType` node and the value it describes
+
+Two overloads on `getService` take the node the value's own signature would derive to, alongside
+the value itself: `getService<R>(type: ConstructorType, ctor: Ctor<any[], R>): R` and
+`getService<R>(type: FunctionType, func: Func<any[], R>): R`. `R` is inferred from the value's own
+signature. Neither registers anything; every call builds fresh, so two calls for the same value
+never share a result even when that value is separately registered elsewhere.
+
+**The node's kind dictates construction versus a call — there is no runtime discriminant.** A
+`ConstructorType` node constructs; a `FunctionType` node calls. This retires the layered
+class-syntax/prototype-descriptor sniff, the call-then-rescue retry, and the `RESOLVER_TYPE`
+dependency shim an earlier draft of this door carried — the node already says which one applies
+and already carries the real parameter types, so there is nothing left to sniff or rescue.
+
+**Dependencies resolve from the node's own parameter types, not a fixed one-entry signature.** The
+node and value are wrapped in a throwaway `ServiceDescriptor` (`ctor` or `factory`, matching the
+node's kind) whose signature is `TypeSignatures.fromImplType(type)` — the SAME reading `addClass`/
+`addFactory`'s long overload already gives a composed impl type (§155) — resolved via the engine's
+`additionalServices` channel against a manifest composed for that one call, under the node itself
+as its own address, and discarded after. This is real dependency resolution, not reflection: the
+node's parameter types are what the caller wrote (or derived) them to be, never inspected from the
+value at runtime.
+
+**The two overloads are declared directly on `IServiceProvider` (`@rhombus-std/primitives`)**,
+alongside its base `getService(type: Type): any` member — one interface, three signatures, one
+ordinary TypeScript overload merge, so an interface-typed caller sees all three exactly like a
+concrete-`ServiceProvider`-typed one does. `libraries/di/src/ServiceProvider.ts` repeats the same
+signatures on the class itself for the implementation (matching how it already widens the base
+form to accept a token string too), but nothing there merges them onto the interface — that
+already happened where they're declared.
+
+**Reaching that declaration home required a real fix in the Go inline transform, not a workaround.**
+A first attempt at the direct-on-`IServiceProvider` shape broke di.extras' pre-existing, unrelated
+zero-argument `getService<T>()` sugar outright — any build pulling in di.extras failed with
+`INLINE_DISCRIMINATOR_MISMATCH`, reproduced with di.extras completely unmodified. The actual cause
+(`transforms/internal/inlinetransform/resolve.go`'s `anyDeclarationTakes`) had nothing to do with
+declaration merging: it decides whether a sugar overload's declaration is merely absent from a
+program (silent) or present-but-mismatched (a hard authoring-fault error) by comparing ONLY
+type-parameter count between the sugar body and every declaration reachable from the marker's
+surface. `getService<R>(type: ConstructorType, ctor: Ctor<any[], R>): R` carries one type parameter
+— the same count as di.extras' own `getService<T>(): T | undefined` — so once `IServiceProvider`
+carried it, the check saw "a declaration with the sugar's type-parameter count exists" and
+concluded the sugar itself must be present and merely misspelled, even in a program where
+di.extras' own declaration was never loaded at all. The fix compares value-parameter count
+alongside type-parameter count: an unrelated overload essentially never shares BOTH by accident,
+where sharing only type-parameter count is common (a lone generic parameter is the ordinary shape
+for a sugar overload and an explicit-node one alike). A Go regression test
+(`TestResolveMemberUnmatchedDespiteArityCollidingOverload`, `resolve_test.go`) pins the shape red
+before the fix, green after.
+
+**The authoring sugar this door was meant to pair with is held**, pending a settled spelling for
+its inline body once the callable-signatures milestone (2D per-overload `TypeSignatures` on
+`ConstructorType`/`FunctionType`, `signatureof` retiring in favor of `typefor<typeof x>()`) lands —
+its shape depends on both. Nothing in this entry describes that door; it ships separately.
+
+_Owner-directed 2026-08-13._
