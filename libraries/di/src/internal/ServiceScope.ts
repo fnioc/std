@@ -5,32 +5,32 @@ import type { Func } from '@rhombus-toolkit/func';
 import type { Engine } from './Engine.js';
 
 /**
- * A {@link ScopeCache} backed by a `Map`, keyed on the interned requested type. Disposal walks
- * every value it ever stored in reverse insertion order — the usual last-constructed-first-
- * disposed convention — calling whichever of {@link Symbol.dispose}/{@link Symbol.asyncDispose}
- * the value carries; a value with neither is skipped.
+ * A {@link ScopeCache} backed by a `Map`, keyed on whatever the engine identifies a resolution
+ * with. Disposal walks every value it ever stored in reverse insertion order — the usual
+ * last-constructed-first-disposed convention — calling whichever of {@link Symbol.dispose}/
+ * {@link Symbol.asyncDispose} the value carries; a value with neither is skipped.
  */
 class MapScopeCache implements ScopeCache {
-  readonly #values = new Map<Type, unknown>();
+  readonly #values = new Map<unknown, unknown>();
 
-  has(type: Type): boolean {
-    return this.#values.has(type);
+  has(key: unknown): boolean {
+    return this.#values.has(key);
   }
 
-  get<T = any>(type: Type): T {
-    return this.#values.get(type) as T;
+  get<T = any>(key: unknown): T {
+    return this.#values.get(key) as T;
   }
 
-  set<T>(type: Type, value: T): T {
-    this.#values.set(type, value);
+  set<T>(key: unknown, value: T): T {
+    this.#values.set(key, value);
     return value;
   }
 
-  getOrAdd<T>(type: Type, factory: Func<[Type], T>): T {
-    if (this.#values.has(type)) {
-      return this.#values.get(type) as T;
+  getOrAdd<T>(key: unknown, factory: Func<[unknown], T>): T {
+    if (this.#values.has(key)) {
+      return this.#values.get(key) as T;
     }
-    return this.set(type, factory(type));
+    return this.set(key, factory(key));
   }
 
   [Symbol.dispose](): void {

@@ -2259,7 +2259,7 @@ true)` (or the object door's `abstract: true`) is the only way to spell an abstr
 
 _Owner-ruled, Claude-executed 2026-08-14._
 
-## §184 — Minimal scope/dispose placeholder: least-code choices, not design rulings
+## §182 — Minimal scope/dispose placeholder: least-code choices, not design rulings
 
 Per the owner's least-code directive (task #46): implement the NotImplementedError-stubbed
 scope/dispose surface just enough to make the examples run and flip the scope-intrinsic baseline
