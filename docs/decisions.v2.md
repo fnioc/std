@@ -2400,7 +2400,7 @@ type literal with no backing class declaration still derives `abstract: false` �
 
 _Owner-ruled, Claude-executed 2026-08-14._
 
-## §182 — Minimal scope/dispose placeholder: least-code choices, not design rulings
+## §184 — Minimal scope/dispose placeholder: least-code choices, not design rulings
 
 Per the owner's least-code directive (task #46): implement the NotImplementedError-stubbed
 scope/dispose surface just enough to make the examples run and flip the scope-intrinsic baseline
