@@ -49,7 +49,7 @@ _Owner-ruled and signed off 2026-08-12._
 
 ## U4 — One flat `Type`; identifiers are the address-only kinds; resolution is lookup, then construct on a miss
 
-`Type` is one flat node space. `TypeIdentifier = NamedType | GenericType | TagType` names
+`Type` is one flat node space. `TypeIdentifier = GenericType | NominalType | TagType` names
 the address-only kinds: a pure reference has nothing to build from. Every `Type` can be an
 address — interning makes any node registrable and resolvable by `===`, and a
 `ServiceDescriptor` may link absolutely any `Type` to an implementation. Every non-identifier
