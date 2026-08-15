@@ -39,6 +39,6 @@ const factoryMerge = { createLogger(original, incoming) {
     }
     return original.call(this, first, ...rest);
   };
-} } satisfies MergeStrategies;
+} } satisfies MergeStrategies<ILoggerFactory>;
 
 registerAugmentations<ILoggerFactory>(LoggerFactoryAugmentations, factoryMerge);

@@ -11,10 +11,11 @@
 
 import type { Ctor, Func } from '@rhombus-toolkit/func';
 
-import { type AugmentationSet, installSet, type MergeStrategies, type MergeStrategy } from './augmentations.js';
-import { Multimap } from './Multimap.js';
-import { Type } from './Type/Type.js';
-import { getOrCreate } from './utils/map.js';
+import { Multimap } from '../Multimap.js';
+import { Type } from '../Type/Type.js';
+import { getOrCreate } from '../utils/map.js';
+import { applyAugmentations, type AugmentationSet, type MergeStrategies,
+  type MergeStrategy } from './apply-augmentations.js';
 
 /** A `this`-based augmentation method whose receiver type is erased in the bag. */
 type AugmentationFn = Func<never[], unknown>;
@@ -23,7 +24,7 @@ type AugmentationFn = Func<never[], unknown>;
  * A member contribution: its augmentation function paired with the collision
  * strategy the same registration supplied for that name (if any).
  */
-type Contribution = readonly [fn: AugmentationFn, merge?: MergeStrategy];
+type Contribution = readonly [fn: AugmentationFn, merge?: MergeStrategy<any>];
 
 /**
  * A receiver's bag: a per-name list of contributions, so a name registered by two
@@ -32,7 +33,7 @@ type Contribution = readonly [fn: AugmentationFn, merge?: MergeStrategy];
 type Bag = Multimap<string, Contribution>;
 
 /** A subscribed class's installer for ONE registration's set. */
-type DeltaInstaller = (set: AugmentationSet<any>, merge: MergeStrategies | undefined) => void;
+type DeltaInstaller = (set: AugmentationSet<any>, merge: MergeStrategies<any> | undefined) => void;
 
 const bags = new Map<Type, Bag>();
 
@@ -55,7 +56,7 @@ const subscribers = new Map<Type, DeltaInstaller[]>();
  * @throws TypeError - when the receiver names a shape rather than a declaration.
  */
 export function registerAugmentations<R>(receiver: Type | string, set: AugmentationSet<R>,
-  merge?: MergeStrategies): void {
+  merge?: MergeStrategies<R>): void {
   const type = receiverType(receiver);
   const bag = getOrCreate(bags, type, () => new Multimap());
   for (const [name, fn] of Object.entries(set as Record<string, AugmentationFn>)) {
@@ -90,8 +91,8 @@ export function augment(receiver: Type | string) {
     const target = Ctor as unknown as Ctor<any[], any>;
 
     const installers = getOrCreate(subscribers, type, () => []);
-    installers.push(function(set: AugmentationSet<any>, merge: MergeStrategies | undefined) {
-      installSet(target, set, merge);
+    installers.push(function(set: AugmentationSet<any>, merge: MergeStrategies<any> | undefined) {
+      applyAugmentations(target, set, merge);
     });
 
     // Catch-up replays each name's contributions in registration order, so an
@@ -100,7 +101,7 @@ export function augment(receiver: Type | string) {
     if (bag !== undefined) {
       for (const [name, [fn, strategy]] of bag) {
         const merge = strategy !== undefined ? { [name]: strategy } : undefined;
-        installSet(target, { [name]: fn } as AugmentationSet<any>, merge);
+        applyAugmentations(target, { [name]: fn } as AugmentationSet<any>, merge);
       }
     }
   };

@@ -147,7 +147,7 @@ const gammaMerge = {
       return \`HAND:\${String(original.call(this, ...args))}\`;
     };
   },
-} satisfies MergeStrategies;
+} satisfies MergeStrategies<IAlpha>;
 
 // Arity discrimination: same leading parameter type, different arity.
 export const EpsilonExtensions = {

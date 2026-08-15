@@ -195,6 +195,6 @@ const cacheMerge = { tryGetValue(original, _incoming) {
   return function(this: IMemoryCache, ...args: unknown[]) {
     return original.call(this, ...args);
   };
-} } satisfies MergeStrategies;
+} } satisfies MergeStrategies<IMemoryCache>;
 
 registerAugmentations<IMemoryCache>(MemoryCacheSugarAugmentations, cacheMerge);

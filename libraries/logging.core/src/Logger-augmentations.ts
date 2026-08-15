@@ -189,6 +189,6 @@ const loggerMerge = {
       return original.call(this, first, ...rest);
     };
   },
-} satisfies MergeStrategies;
+} satisfies MergeStrategies<ILogger>;
 
 registerAugmentations<ILogger>(LoggerAugmentations, loggerMerge);
