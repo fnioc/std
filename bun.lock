@@ -799,6 +799,7 @@
         "@rhombus-std/di": "workspace:*",
         "@rhombus-std/di.core": "workspace:*",
         "@rhombus-std/primitives": "workspace:*",
+        "@rhombus-toolkit/type-helpers": "^2.0.0",
       },
     },
     "tests/diagnostics.core.test": {
