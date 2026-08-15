@@ -2,7 +2,8 @@
 // is checked against the registry first; the per-kind visit methods are the fallback decomposition
 // or synthesis a whole-type miss falls back to.
 
-import { AmbiguousUnionError, CycleError, DefaultManifest, ServiceDescriptor } from '@rhombus-std/di.core';
+import { AmbiguousUnionError, CycleError, DefaultManifest, type Manifest,
+  ServiceDescriptor } from '@rhombus-std/di.core';
 import { CallSite } from '@rhombus-std/di/private/internal/CallSite/CallSite';
 import { ToCallSiteVisitor } from '@rhombus-std/di/private/internal/CallSite/ToCallSiteVisitor';
 import { Registry } from '@rhombus-std/di/private/internal/Registry';
@@ -38,7 +39,7 @@ class Loop {
   constructor(readonly self: unknown) {}
 }
 
-function visitorFor(manifest: DefaultManifest<string>, unionAmbiguity?: 'error' | 'newest') {
+function visitorFor(manifest: Manifest<string>, unionAmbiguity?: 'error' | 'newest') {
   return new ToCallSiteVisitor({ registry: new Registry(manifest), unionAmbiguity });
 }
 
