@@ -152,9 +152,9 @@ where that's cheap, and flag the intended divergence rather than pre-emptively t
   pinned by `types: []` in `/tsconfig.lib.json`; `node:fs`/`node:path` imports get per-package
   compile-scope `node-builtins.d.ts` files (§44).
 - **`di`** — `di.core` (the abstractions: `Manifest<Scopes>` the interface, `DefaultManifest<Scopes>`
-  its concrete class — an iterable decorator chain whose own body declares only `_add`/`_remove`/
-  `_replace`; every public verb arrives through augmentation sets, so a discarded verb result
-  registers NOTHING. A service is named by a `Type` (re-exported from `primitives`, authored via
+  its concrete class — an iterable decorator chain whose own body declares only the public
+  descriptor-taking primitives `add`/`remove`/`replace` (§188); every other verb, and `add`'s own
+  sugared shapes, arrive through augmentation sets, so a discarded verb result registers NOTHING. A service is named by a `Type` (re-exported from `primitives`, authored via
   `typefor<T>()`); public parameters take `Type | string` and normalize through `Type.from`,
   everything internal is `Type` only. A keyed registration composes the key into the type —
   `Type.tag(base, key)`, never a separate argument or a `base#key` string, and a type wears AT MOST
@@ -402,11 +402,15 @@ before touching):
   it via the token registry + `@augment` decorator for OPEN receivers (the common case);
   `applyAugmentations(ClassCtor, Ns)` installs directly for a CLOSED receiver. `AugmentationSet2` and
   hand-authored member-map types don't exist — a colliding member (another contributor, or the
-  receiver's own primitive) duplicates its full signature verbatim in the `declare module` block, or,
+  receiver's own primitive) duplicates its signature in the `declare module` block, or,
   where the shapes can't unify into overloads, stays out of it and is reached only at runtime
-  (a merge strategy) or standalone. A namespace function returning the receiver names its own `Self
-  extends Receiver` generic (TS2526 bars `this` as a return type) and never ends its implementation
-  in a bare rest parameter. Authored first-party-only. Full mechanics, authoring steps, and gotchas:
+  (a merge strategy) or standalone. The namespace is IMPLEMENTATION, written against the receiver at
+  its widest (`this: Manifest<string>`, plain `string` scopes); the block is the caller-facing FACE
+  and is RECEIVER-SPELLED — the interface's own generics in parameter positions, `Manifest<Scopes>`
+  returns, never `this` and no this-param, and the `extends Flatten<…>` clause drops once every
+  member is declared there (§188). A per-function `Self extends Receiver` generic survives only where
+  one namespace serves two non-assignable receivers. A namespace function never ends its
+  implementation in a bare rest parameter. Authored first-party-only. Full mechanics, authoring steps, and gotchas:
   `docs/features/augmentations.md`.
 
 **Keep this digest in step with `docs/decisions.v2.md`.** When a decision lands there that adds or
