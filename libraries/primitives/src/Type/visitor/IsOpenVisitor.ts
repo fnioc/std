@@ -1,4 +1,4 @@
-import { memo } from '../../utils/map.js';
+import { memo } from '../../utils/memo.js';
 import type { AggregateType, ArrayType, ConstructorType, FunctionType, GenericType, GlobalType, ImportedType,
   IntersectionType, IterableType, NominalType, ObjectType, TagType, TupleType, Type, TypeLiteralType, TypeSignatures,
   UnionType } from '../Type.js';
