@@ -29,7 +29,7 @@ import { collectionType, type IMetricsBuilder, type ITracingBuilder, METRICS_CHA
   MetricsOptions, TRACING_CHANGE_TOKEN_SOURCE_TYPE, TRACING_CONFIGURATION_TYPE, TRACING_CONFIGURE_TYPE,
   TRACING_LISTENER_CONFIGURATION_FACTORY_TYPE, TRACING_OPTIONS_TYPE,
   TracingOptions } from '@rhombus-std/diagnostics.core';
-import { type Flatten, registerAugmentations, Type } from '@rhombus-std/primitives';
+import { registerAugmentations, Type } from '@rhombus-std/primitives';
 import { typefor } from '@rhombus-std/primitives.extras';
 import type { Func } from '@rhombus-toolkit/func';
 
@@ -57,16 +57,12 @@ export namespace ServiceManifestMetricsAugmentations {
    * from every rule / config-bind step registered through the builder, reactive
    * to configuration reloads.
    */
-  export function addMetrics<S extends string = string>(this: Manifest<S>,
-    configure?: Func<[IMetricsBuilder], void>
-  ): Manifest<
-    S
-  > {
+  export function addMetrics(this: Manifest<string>, configure?: Func<[IMetricsBuilder], void>): Manifest<string> {
     // Register the resolvable `IOptions<MetricsOptions>` assembly at singleton
     // scope. Calling addMetrics twice re-registers the (identical) factory --
     // last-wins bare-token resolution keeps that correct. The factory takes the
     // live provider view via a RESOLVER_TYPE slot, exactly like assembleOptions.
-    let m: Manifest<S> = this.addFactory(METRICS_OPTIONS_TYPE,
+    let m: Manifest<string> = this.addFactory(METRICS_OPTIONS_TYPE,
       (resolver) =>
         assembleDiagnosticsOptions(resolver, METRICS_CONFIGURE_TYPE, METRICS_CHANGE_TOKEN_SOURCE_TYPE, () =>
           new MetricsOptions()), Type.func(METRICS_OPTIONS_TYPE, [[RESOLVER_TYPE]]), 'singleton');
@@ -86,7 +82,7 @@ export namespace ServiceManifestMetricsAugmentations {
       configure(builder);
       // The chain is immutable: everything `configure` registered lives on the
       // manifest the BUILDER now holds, not on `m`.
-      m = builder.services as Manifest<S>;
+      m = builder.services as Manifest<string>;
     }
     return m;
   }
@@ -100,12 +96,8 @@ export namespace ServiceManifestTracingAugmentations {
    * from every rule / config-bind step registered through the builder, reactive
    * to configuration reloads.
    */
-  export function addTracing<S extends string = string>(this: Manifest<S>,
-    configure?: Func<[ITracingBuilder], void>
-  ): Manifest<
-    S
-  > {
-    let m: Manifest<S> = this.addFactory(TRACING_OPTIONS_TYPE,
+  export function addTracing(this: Manifest<string>, configure?: Func<[ITracingBuilder], void>): Manifest<string> {
+    let m: Manifest<string> = this.addFactory(TRACING_OPTIONS_TYPE,
       (resolver) =>
         assembleDiagnosticsOptions(resolver, TRACING_CONFIGURE_TYPE, TRACING_CHANGE_TOKEN_SOURCE_TYPE, () =>
           new TracingOptions()), Type.func(TRACING_OPTIONS_TYPE, [[RESOLVER_TYPE]]), 'singleton');
@@ -119,21 +111,24 @@ export namespace ServiceManifestTracingAugmentations {
       const builder = new TracingBuilder(m as Manifest);
       configure(builder);
       // Immutable chain -- read back what the builder registered (see addMetrics).
-      m = builder.services as Manifest<S>;
+      m = builder.services as Manifest<string>;
     }
     return m;
   }
 }
 
-// `Provider`/`Scopes` are defaulted so the merge matches its target's
-// type-parameter list (TS2428 requires identical parameters), even though the
-// members do not name `Provider`.
+// `Scopes` is defaulted so the merge matches its target's type-parameter list
+// (TS2428 requires identical parameters).
 declare module '@rhombus-std/di.core' {
-  interface Manifest<Scopes extends string = any> extends Flatten<typeof ServiceManifestMetricsAugmentations> {}
+  interface Manifest<Scopes extends string = any> {
+    addMetrics(configure?: Func<[IMetricsBuilder], void>): Manifest<Scopes>;
+  }
 }
 
 declare module '@rhombus-std/di.core' {
-  interface Manifest<Scopes extends string = any> extends Flatten<typeof ServiceManifestTracingAugmentations> {}
+  interface Manifest<Scopes extends string = any> {
+    addTracing(configure?: Func<[ITracingBuilder], void>): Manifest<Scopes>;
+  }
 }
 
 // OPEN receiver: register both sets against di.core's `Manifest` type. The

@@ -1,4 +1,4 @@
-import { type ConstructorType, type Flatten, type FunctionType, Type } from '@rhombus-std/primitives';
+import { type ConstructorType, type FunctionType, Type } from '@rhombus-std/primitives';
 import { registerAugmentations } from '@rhombus-std/primitives.extras';
 import type { Ctor, Func } from '@rhombus-toolkit/func';
 
@@ -14,33 +14,32 @@ export namespace ManifestDescriptorAugmentations {
    * constructor or factory and its implementer type. Always registers, even when the manifest
    * already holds an entry for the same address.
    */
-  export function add<S extends string = string>(this: Manifest<S>, descriptor: ServiceDescriptor<S>): Manifest<S>;
-  export function add<T = any, S extends string = string>(this: Manifest<S>, type: Type | string,
-    configure: Func<[Unstarted<T, S>], IComplete>): Manifest<S>;
-  export function add<T = any, S extends string = string>(this: Manifest<S>, type: Type | string, ctor: Ctor<any[], T>,
-    implementerType: ConstructorType, scope?: S, key?: string): Manifest<S>;
-  export function add<T = any, S extends string = string>(this: Manifest<S>, type: Type | string,
-    factory: Func<any[], T>, implementerType: FunctionType, scope?: S, key?: string): Manifest<S>;
-  export function add<T = any, S extends string = string>(this: Manifest<S>,
-    descriptorOrType: ServiceDescriptor<S> | Type | string,
-    configureOrImplementer?: Func<[Unstarted<T, S>], IComplete> | Ctor<any[], T> | Func<any[], T>,
-    implementerType?: ConstructorType | FunctionType, scope?: S, key?: string): Manifest<S> {
+  export function add(this: Manifest<string>, descriptor: ServiceDescriptor<string>): Manifest<string>;
+  export function add<T = any>(this: Manifest<string>, type: Type | string,
+    configure: Func<[Unstarted<T, string>], IComplete>): Manifest<string>;
+  export function add<T = any>(this: Manifest<string>, type: Type | string, ctor: Ctor<any[], T>,
+    implementerType: ConstructorType, scope?: string, key?: string): Manifest<string>;
+  export function add<T = any>(this: Manifest<string>, type: Type | string, factory: Func<any[], T>,
+    implementerType: FunctionType, scope?: string, key?: string): Manifest<string>;
+  export function add<T = any>(this: Manifest<string>, descriptorOrType: ServiceDescriptor<string> | Type | string,
+    configureOrImplementer?: Func<[Unstarted<T, string>], IComplete> | Ctor<any[], T> | Func<any[], T>,
+    implementerType?: ConstructorType | FunctionType, scope?: string, key?: string): Manifest<string> {
     if (configureOrImplementer === undefined) {
-      return this._add(descriptorOrType as ServiceDescriptor<S>);
+      return this._add(descriptorOrType as ServiceDescriptor<string>);
     }
     const type = descriptorOrType as Type | string;
     // `describe` reads its argument COUNT to tell the configure form from the terse one, so the
     // two shapes reach it as separate calls rather than one call padded with `undefined`.
     if (implementerType === undefined) {
-      return this._add(describe<S>(type, configureOrImplementer as Func<[Unstarted<any, S>], IComplete>));
+      return this._add(describe<string>(type, configureOrImplementer as Func<[Unstarted<any, string>], IComplete>));
     }
     return this._add(
-      describe<S>(type, configureOrImplementer as Ctor | Func, implementerType, scope, key),
+      describe<string>(type, configureOrImplementer as Ctor | Func, implementerType, scope, key),
     );
   }
 
   /** Drops the descriptor equal to `descriptor`, if the manifest holds one; otherwise unchanged. */
-  export function remove<S extends string = string>(this: Manifest<S>, descriptor: ServiceDescriptor<S>): Manifest<S> {
+  export function remove(this: Manifest<string>, descriptor: ServiceDescriptor<string>): Manifest<string> {
     return this._remove(descriptor);
   }
 
@@ -49,13 +48,12 @@ export namespace ManifestDescriptorAugmentations {
    * {@link ServiceDescriptor.matches} — leaving every other descriptor untouched. Nothing
    * occupying that slot means the manifest comes back unchanged.
    */
-  export function replace<S extends string = string>(this: Manifest<S>, descriptor: ServiceDescriptor<S>): Manifest<S> {
+  export function replace(this: Manifest<string>, descriptor: ServiceDescriptor<string>): Manifest<string> {
     return this._replace(descriptor);
   }
 
   /** Adds every descriptor in `descriptors` to the manifest, in order — the last one ends up newest. */
-  export function addMany<S extends string = string>(this: Manifest<S>,
-    descriptors: Iterable<ServiceDescriptor<S>>): Manifest<S> {
+  export function addMany(this: Manifest<string>, descriptors: Iterable<ServiceDescriptor<string>>): Manifest<string> {
     return Iterator.from(descriptors).reduce((man, descriptor) => man._add(descriptor), this);
   }
 
@@ -64,21 +62,21 @@ export namespace ManifestDescriptorAugmentations {
    * constructor, or a factory, the single descriptor that shape describes — skipping any whose
    * address already {@link ServiceDescriptor.matches} an existing entry.
    */
-  export function tryAdd<S extends string = string>(this: Manifest<S>,
-    ...descriptors: ReadonlyArray<ServiceDescriptor<S>>): Manifest<S>;
-  export function tryAdd<T = any, S extends string = string, Self extends Manifest<S> = Manifest<S>>(this: Self,
-    type: Type | string, configure: Func<[Unstarted<T, S>], IComplete>): Self;
-  export function tryAdd<T = any, S extends string = string, Self extends Manifest<S> = Manifest<S>>(this: Self,
-    type: Type | string, ctor: Ctor<any[], T>, implementerType: ConstructorType, scope?: S, key?: string): Self;
-  export function tryAdd<T = any, S extends string = string, Self extends Manifest<S> = Manifest<S>>(this: Self,
-    type: Type | string, factory: Func<any[], T>, implementerType: FunctionType, scope?: S, key?: string): Self;
-  export function tryAdd<S extends string = string>(this: Manifest<S>, first: ServiceDescriptor<S> | Type | string,
-    ...rest: readonly any[]): Manifest<S> {
+  export function tryAdd(this: Manifest<string>,
+    ...descriptors: ReadonlyArray<ServiceDescriptor<string>>): Manifest<string>;
+  export function tryAdd<T = any>(this: Manifest<string>, type: Type | string,
+    configure: Func<[Unstarted<T, string>], IComplete>): Manifest<string>;
+  export function tryAdd<T = any>(this: Manifest<string>, type: Type | string, ctor: Ctor<any[], T>,
+    implementerType: ConstructorType, scope?: string, key?: string): Manifest<string>;
+  export function tryAdd<T = any>(this: Manifest<string>, type: Type | string, factory: Func<any[], T>,
+    implementerType: FunctionType, scope?: string, key?: string): Manifest<string>;
+  export function tryAdd(this: Manifest<string>, first: ServiceDescriptor<string> | Type | string,
+    ...rest: readonly any[]): Manifest<string> {
     // A descriptor never reaches the second slot as a function, so that is what separates the
     // two type-first forms from the rest-of-descriptors one.
-    const descriptors: ReadonlyArray<ServiceDescriptor<S>> = typeof rest[0] === 'function'
-      ? [describe<S>(first as Type | string, ...rest as DescribeArgs<S>)]
-      : [first as ServiceDescriptor<S>, ...rest as ReadonlyArray<ServiceDescriptor<S>>];
+    const descriptors: ReadonlyArray<ServiceDescriptor<string>> = typeof rest[0] === 'function'
+      ? [describe<string>(first as Type | string, ...rest as DescribeArgs<string>)]
+      : [first as ServiceDescriptor<string>, ...rest as ReadonlyArray<ServiceDescriptor<string>>];
     return Iterator.from(descriptors)
       .filter(newDesc => !Iterator.from(this).some(existingDesc => ServiceDescriptor.matches(newDesc, existingDesc)))
       .reduce((man, descriptor) => man._add(descriptor), this);
@@ -90,8 +88,8 @@ export namespace ManifestDescriptorAugmentations {
    *
    * @throws Error - when `key` is given and `token` already carries a tag.
    */
-  export function tryAddClass<S extends string = string>(this: Manifest<S>, token: string | Type, ctor: Ctor,
-    implementerType: ConstructorType, scope?: S, key?: string): Manifest<S> {
+  export function tryAddClass(this: Manifest<string>, token: string | Type, ctor: Ctor,
+    implementerType: ConstructorType, scope?: string, key?: string): Manifest<string> {
     if (typeof token === 'string') {
       return this.tryAddClass(Type.from(token), ctor, implementerType, scope, key);
     }
@@ -104,8 +102,8 @@ export namespace ManifestDescriptorAugmentations {
    *
    * @throws Error - when `key` is given and `token` already carries a tag.
    */
-  export function tryAddFactory<S extends string = string>(this: Manifest<S>, token: string | Type,
-    factory: Func<any[], unknown>, implementerType: FunctionType, scope?: S, key?: string): Manifest<S> {
+  export function tryAddFactory(this: Manifest<string>, token: string | Type, factory: Func<any[], unknown>,
+    implementerType: FunctionType, scope?: string, key?: string): Manifest<string> {
     if (typeof token === 'string') {
       return this.tryAddFactory(Type.from(token), factory, implementerType, scope, key);
     }
@@ -118,8 +116,8 @@ export namespace ManifestDescriptorAugmentations {
    *
    * @throws Error - when `key` is given and `token` already carries a tag.
    */
-  export function tryAddValue<S extends string = string>(this: Manifest<S>, token: string | Type, value: unknown,
-    key?: string): Manifest<S> {
+  export function tryAddValue(this: Manifest<string>, token: string | Type, value: unknown,
+    key?: string): Manifest<string> {
     if (typeof token === 'string') {
       return this.tryAddValue(Type.from(token), value, key);
     }
@@ -131,8 +129,8 @@ export namespace ManifestDescriptorAugmentations {
    * old one held. Nothing registered for `token` means nothing to replace, so the manifest comes
    * back unchanged — reach for `addClass` to register regardless.
    */
-  export function replaceClass<S extends string = string>(this: Manifest<S>, token: string | Type, ctor: Ctor,
-    implementerType: ConstructorType, scope: S | undefined, key?: string): Manifest<S> {
+  export function replaceClass(this: Manifest<string>, token: string | Type, ctor: Ctor,
+    implementerType: ConstructorType, scope: string | undefined, key?: string): Manifest<string> {
     if (typeof token === 'string') {
       return this.replaceClass(Type.from(token), ctor, implementerType, scope, key);
     }
@@ -144,8 +142,8 @@ export namespace ManifestDescriptorAugmentations {
    * one held. Nothing registered for `token` means nothing to replace, so the manifest comes back
    * unchanged — reach for `addFactory` to register regardless.
    */
-  export function replaceFactory<S extends string = string>(this: Manifest<S>, token: string | Type,
-    factory: Func<any[], unknown>, implementerType: FunctionType, scope: S | undefined, key?: string): Manifest<S> {
+  export function replaceFactory(this: Manifest<string>, token: string | Type, factory: Func<any[], unknown>,
+    implementerType: FunctionType, scope: string | undefined, key?: string): Manifest<string> {
     if (typeof token === 'string') {
       return this.replaceFactory(Type.from(token), factory, implementerType, scope, key);
     }
@@ -157,8 +155,8 @@ export namespace ManifestDescriptorAugmentations {
    * registered for `token` means nothing to replace, so the manifest comes back unchanged — reach
    * for `addValue` to register regardless.
    */
-  export function replaceValue<S extends string = string>(this: Manifest<S>, token: string | Type, value: unknown,
-    key?: string): Manifest<S> {
+  export function replaceValue(this: Manifest<string>, token: string | Type, value: unknown,
+    key?: string): Manifest<string> {
     if (typeof token === 'string') {
       return this.replaceValue(Type.from(token), value, key);
     }
@@ -167,8 +165,7 @@ export namespace ManifestDescriptorAugmentations {
 
   /** Drops every descriptor registered for `token` (narrowed by `key`, if given), leaving every
    * other entry untouched. */
-  export function removeAll<S extends string = string>(this: Manifest<S>, token: string | Type,
-    key?: string): Manifest<S> {
+  export function removeAll(this: Manifest<string>, token: string | Type, key?: string): Manifest<string> {
     if (typeof token === 'string') {
       return this.removeAll(Type.from(token), key);
     }
@@ -180,43 +177,44 @@ export namespace ManifestDescriptorAugmentations {
 }
 
 declare module '@rhombus-std/di.core' {
-  interface Manifest<Scopes extends string> extends Flatten<typeof ManifestDescriptorAugmentations> {
-    add<S extends string = string>(this: Manifest<S>, descriptor: ServiceDescriptor<S>): Manifest<S>;
-    add<T = any, S extends string = string>(this: Manifest<S>, type: Type | string,
-      configure: Func<[Unstarted<T, S>], IComplete>): Manifest<S>;
-    add<T = any, S extends string = string>(this: Manifest<S>, type: Type | string, ctor: Ctor<any[], T>,
-      implementerType: ConstructorType, scope?: S, key?: string): Manifest<S>;
-    add<T = any, S extends string = string>(this: Manifest<S>, type: Type | string, factory: Func<any[], T>,
-      implementerType: FunctionType, scope?: S, key?: string): Manifest<S>;
+  interface Manifest<Scopes extends string> {
+    add(descriptor: ServiceDescriptor<Scopes>): Manifest<Scopes>;
+    add<T = any>(type: Type | string, configure: Func<[Unstarted<T, Scopes>], IComplete>): Manifest<Scopes>;
+    add<T = any>(type: Type | string, ctor: Ctor<any[], T>, implementerType: ConstructorType, scope?: Scopes,
+      key?: string): Manifest<Scopes>;
+    add<T = any>(type: Type | string, factory: Func<any[], T>, implementerType: FunctionType, scope?: Scopes,
+      key?: string): Manifest<Scopes>;
 
-    tryAdd<S extends string = string>(this: Manifest<S>,
-      ...descriptors: ReadonlyArray<ServiceDescriptor<S>>): Manifest<S>;
-    tryAdd<T = any, S extends string = string, Self extends Manifest<S> = Manifest<S>>(this: Self, type: Type | string,
-      configure: Func<[Unstarted<T, S>], IComplete>): Self;
-    tryAdd<T = any, S extends string = string, Self extends Manifest<S> = Manifest<S>>(this: Self, type: Type | string,
-      ctor: Ctor<any[], T>, implementerType: ConstructorType, scope?: S, key?: string): Self;
-    tryAdd<T = any, S extends string = string, Self extends Manifest<S> = Manifest<S>>(this: Self, type: Type | string,
-      factory: Func<any[], T>, implementerType: FunctionType, scope?: S, key?: string): Self;
+    remove(descriptor: ServiceDescriptor<Scopes>): Manifest<Scopes>;
 
-    tryAddClass<S extends string = string>(this: Manifest<S>, token: string | Type, ctor: Ctor,
-      implementerType: ConstructorType, scope?: S, key?: string): Manifest<S>;
+    replace(descriptor: ServiceDescriptor<Scopes>): Manifest<Scopes>;
 
-    tryAddFactory<S extends string = string>(this: Manifest<S>, token: string | Type, factory: Func<any[], unknown>,
-      implementerType: FunctionType, scope?: S, key?: string): Manifest<S>;
+    addMany(descriptors: Iterable<ServiceDescriptor<Scopes>>): Manifest<Scopes>;
 
-    tryAddValue<S extends string = string>(this: Manifest<S>, token: string | Type, value: unknown,
-      key?: string): Manifest<S>;
+    tryAdd(...descriptors: ReadonlyArray<ServiceDescriptor<Scopes>>): Manifest<Scopes>;
+    tryAdd<T = any>(type: Type | string, configure: Func<[Unstarted<T, Scopes>], IComplete>): Manifest<Scopes>;
+    tryAdd<T = any>(type: Type | string, ctor: Ctor<any[], T>, implementerType: ConstructorType, scope?: Scopes,
+      key?: string): Manifest<Scopes>;
+    tryAdd<T = any>(type: Type | string, factory: Func<any[], T>, implementerType: FunctionType, scope?: Scopes,
+      key?: string): Manifest<Scopes>;
 
-    replaceClass<S extends string = string>(this: Manifest<S>, token: string | Type, ctor: Ctor,
-      implementerType: ConstructorType, scope: S | undefined, key?: string): Manifest<S>;
+    tryAddClass(token: string | Type, ctor: Ctor, implementerType: ConstructorType, scope?: Scopes,
+      key?: string): Manifest<Scopes>;
 
-    replaceFactory<S extends string = string>(this: Manifest<S>, token: string | Type, factory: Func<any[], unknown>,
-      implementerType: FunctionType, scope: S | undefined, key?: string): Manifest<S>;
+    tryAddFactory(token: string | Type, factory: Func<any[], unknown>, implementerType: FunctionType, scope?: Scopes,
+      key?: string): Manifest<Scopes>;
 
-    replaceValue<S extends string = string>(this: Manifest<S>, token: string | Type, value: unknown,
-      key?: string): Manifest<S>;
+    tryAddValue(token: string | Type, value: unknown, key?: string): Manifest<Scopes>;
 
-    removeAll<S extends string = string>(this: Manifest<S>, token: string | Type, key?: string): Manifest<S>;
+    replaceClass(token: string | Type, ctor: Ctor, implementerType: ConstructorType, scope: Scopes | undefined,
+      key?: string): Manifest<Scopes>;
+
+    replaceFactory(token: string | Type, factory: Func<any[], unknown>, implementerType: FunctionType,
+      scope: Scopes | undefined, key?: string): Manifest<Scopes>;
+
+    replaceValue(token: string | Type, value: unknown, key?: string): Manifest<Scopes>;
+
+    removeAll(token: string | Type, key?: string): Manifest<Scopes>;
   }
 }
 

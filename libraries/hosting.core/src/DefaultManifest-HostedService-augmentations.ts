@@ -12,7 +12,7 @@
 // Named imports: unqualified names in a `declare module` body resolve in THIS
 // file's scope, so `Manifest` must be importable here.
 import { type IServiceProvider, type Manifest, RESOLVER_TYPE } from '@rhombus-std/di.core';
-import { type ConstructorType, type Flatten, registerAugmentations, Type } from '@rhombus-std/primitives';
+import { type ConstructorType, registerAugmentations, Type } from '@rhombus-std/primitives';
 import { typefor } from '@rhombus-std/primitives.extras';
 import type { Ctor, Func } from '@rhombus-toolkit/func';
 import type { IHostedService } from './IHostedService';
@@ -35,20 +35,20 @@ export namespace ServiceManifestHostedServiceAugmentations {
    * its resolver parameter; a class value is disambiguated by type (not
    * arity) and still resolves to the ctor overload below.
    */
-  export function addHostedService<S extends string = string>(this: Manifest<S>,
-    implementationFactory: Func<[IServiceProvider], IHostedService>): Manifest<S>;
+  export function addHostedService(this: Manifest<string>,
+    implementationFactory: Func<[IServiceProvider], IHostedService>): Manifest<string>;
   /**
    * Registers `ctor` as an {@link IHostedService} the host will start and
    * stop alongside its lifetime. `implementerType` is the ctor's composed
    * constructor type; omitted, a dependency-free ctor is assumed.
    */
-  export function addHostedService<S extends string = string>(this: Manifest<S>, ctor: Ctor,
-    implementerType?: ConstructorType): Manifest<S>;
+  export function addHostedService(this: Manifest<string>, ctor: Ctor,
+    implementerType?: ConstructorType): Manifest<string>;
   // A class value matches the construct-signature arm, an arrow or function the
   // call-signature arm; only the ctor form carries a composed constructor type.
-  export function addHostedService<S extends string = string>(this: Manifest<S>,
+  export function addHostedService(this: Manifest<string>,
     ctorOrImplementationFactory: Ctor | Func<[IServiceProvider], IHostedService>,
-    implementerType?: ConstructorType): Manifest<S> {
+    implementerType?: ConstructorType): Manifest<string> {
     // The factory form injects the live resolver (via the `Type.func(..., [[RESOLVER_TYPE]])`
     // composed type) so the delegate receives it. A ctor form
     // with no `implementerType` is a dependency-free ctor, stated explicitly as one
@@ -61,11 +61,13 @@ export namespace ServiceManifestHostedServiceAugmentations {
   }
 }
 
-// `Provider` is defaulted so the merge's type-parameter list matches the
-// target's (TS2428 requires identical parameters), even though the member does
-// not name it.
+// `Scopes` is defaulted so the merge's type-parameter list matches the target's
+// (TS2428 requires identical parameters).
 declare module '@rhombus-std/di.core' {
-  interface Manifest<Scopes extends string = any> extends Flatten<typeof ServiceManifestHostedServiceAugmentations> {}
+  interface Manifest<Scopes extends string = any> {
+    addHostedService(implementationFactory: Func<[IServiceProvider], IHostedService>): Manifest<Scopes>;
+    addHostedService(ctor: Ctor, implementerType?: ConstructorType): Manifest<Scopes>;
+  }
 }
 
 registerAugmentations(typefor<Manifest>(), ServiceManifestHostedServiceAugmentations);
