@@ -18,12 +18,18 @@
     "editor.defaultFormatter": "dprint.dprint"
   },
   "files.exclude": {
+    "**/.git": true,
+    "**/.svn": true,
+    "**/.hg": true,
+    "**/.DS_Store": true,
+    "**/Thumbs.db": true,
     "**/rollup.dts.mjs": true,
-    "**/dist":true,
+    "**/dist": true,
     "**/node_modules": true
   },
   "explorer.fileNesting.patterns": {
-    "tsconfig.ci.json": "tsconfig.ttsc.json",
+    "tsconfig.ci.json": "tsconfig.ttsc.json"
     // "package.json":"tsconfig.json"
-  }
+  },
+  "explorerExclude.backup": {}
 }
