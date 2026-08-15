@@ -2604,3 +2604,22 @@ shape alone is not a `Manifest`, so the class declares an open second signature 
 primitive's. The precise sugared faces are readable on `Manifest`, which is the type callers hold.
 
 _Owner-ruled 2026-08-15, Claude-executed._
+
+---
+
+## §189 — The compile-time type machinery is the toolkit's; `obj` carries the `Object.*` precision
+
+`@rhombus-std/primitives` carries no type-level module of its own. `Flatten` reaches consumers as a
+re-export of `@rhombus-toolkit/type-helpers`, and the precise `Object.keys`/`values`/`entries`/
+`assign`/`fromEntries` result types live on that package's `obj` module as WRAPPER FUNCTIONS —
+`obj.keys(x)` at exactly the call sites that want the precision — with no `ObjectConstructor`
+augmentation anywhere: a global augmentation imposes the sharpened signatures on every file of every
+consuming program, where the wrapper is opt-in per call. Call sites that never needed the precision
+keep the stock `Object.*` statics. The supporting machinery (`UnionToTuple`, the counters, the
+index-wise array merge) serves those types inside `type-helpers` and is not part of primitives'
+surface.
+
+`Multimap` stays in primitives: it is the augmentation registry's per-token contribution bag, so its
+removal is blocked by live use.
+
+_Owner-ruled 2026-08-15, Claude-executed._

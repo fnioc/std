@@ -98,7 +98,9 @@ the plan is to complete the port faithfully, _then_ refactor away from `ME.*` sh
 idiomatic for TS, prefer correctness and say so; hold the `ME.*` shape during the faithful pass only
 where that's cheap, and flag the intended divergence rather than pre-emptively taking it.
 
-- **`primitives`** — universal leaf, zero deps. The **`Type` node space** (namespace `Type`, one
+- **`primitives`** — universal leaf: no `@rhombus-std` deps; its only dependencies are the
+  `@rhombus-toolkit` type packages (`func`, and `type-helpers`, which supplies `Flatten` and the
+  `obj.*` precision types, §189). The **`Type` node space** (namespace `Type`, one
   factory per kind): a type is named by where it is reached from — `Type.imported(name, from,
   typeArgs?)` (`ImportedType`, kind `'imported'`) for a package, `Type.global(name, typeArgs?)`
   (`GlobalType`) for the ambient scope, no `from` member and `NominalType` unioning the two (§148);
