@@ -28,11 +28,6 @@
       "import": "./dist/bundle/index.js",
       "default": "./dist/bundle/index.js"
     },
-    "./tokens/*": {
-      "source": "./src/*.ts",
-      "bun": "./src/*.ts",
-      "types": "./src/*.ts"
-    },
     "./private/*": {
       "types": "./src/*.ts",
       "bun": "./dist/stage/*.js"
