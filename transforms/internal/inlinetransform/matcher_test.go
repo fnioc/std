@@ -174,7 +174,7 @@ func TestResolvedSignatureToDeclarationForExplicitCall(t *testing.T) {
 	if !named[resolvedDeclaration(checker, primitive)] {
 		t.Fatal("primitive isService('literal') bound outside the marker's declaration set")
 	}
-	if _, ok := RecoverTypeArguments(checker, primitive); ok {
+	if _, ok := RecoverTypeArguments(checker, primitive, nil); ok {
 		t.Fatal("primitive isService('literal') must yield no type arguments (the inlining gate)")
 	}
 }
@@ -188,7 +188,7 @@ func TestRecoverTypeArgumentsExplicitAndInferred(t *testing.T) {
 	defer func() { _ = prog.Close() }()
 
 	explicit := callContaining(t, main, "isService<Foo>")
-	args, ok := RecoverTypeArguments(checker, explicit)
+	args, ok := RecoverTypeArguments(checker, explicit, nil)
 	if !ok {
 		t.Fatal("RecoverTypeArguments failed for explicit isService<Foo>()")
 	}
@@ -197,7 +197,7 @@ func TestRecoverTypeArgumentsExplicitAndInferred(t *testing.T) {
 	}
 
 	inferred := callContaining(t, main, "pick(theFoo)")
-	iargs, ok := RecoverTypeArguments(checker, inferred)
+	iargs, ok := RecoverTypeArguments(checker, inferred, nil)
 	if !ok {
 		t.Fatal("RecoverTypeArguments failed for INFERRED pick(theFoo) — kill signal")
 	}

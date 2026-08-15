@@ -293,6 +293,66 @@ export const QueryInline = {
 	}
 }
 
+// TestExtractConsumedTypeParams: a body's ConsumedTypeParams names exactly the
+// type parameters its own primitive calls spell as a type argument
+// (`typefor<T>()`) — never one fed only as a value argument (`typefor(value)`),
+// and never a concrete type unrelated to the body's own declared parameters.
+func TestExtractConsumedTypeParams(t *testing.T) {
+	cases := []struct {
+		name   string
+		inline string
+		want   map[string]bool
+	}{
+		{
+			name: "a type-argument use consumes its type parameter",
+			inline: `import { typefor } from '@rhombus-std/primitives.extras';
+export const QueryInline = {
+  bar<T>(this: any): boolean { return this.isService(typefor<T>()); },
+};
+`,
+			want: map[string]bool{"T": true},
+		},
+		{
+			name: "a value-argument use consumes nothing",
+			inline: `import { typefor } from '@rhombus-std/primitives.extras';
+export const QueryInline = {
+  bar<T>(this: any, value: T): boolean { return this.isService(typefor(value)); },
+};
+`,
+			want: map[string]bool{},
+		},
+		{
+			name: "a mixed body consumes only the type-argument parameter",
+			inline: `import { typefor } from '@rhombus-std/primitives.extras';
+export const QueryInline = {
+  bar<T, U>(this: any, value: U): boolean {
+    return this.isService(typefor<T>(), typefor(value));
+  },
+};
+`,
+			want: map[string]bool{"T": true},
+		},
+	}
+
+	for _, c := range cases {
+		t.Run(c.name, func(t *testing.T) {
+			dir := oneImplPackage(t, indexStub, c.inline)
+			rb, err := newBodyExtractor().Extract(dir, Entry{Type: "p:Foo", Impl: "@scope/pkg:QueryInline", Member: "bar"})
+			if err != nil {
+				t.Fatalf("Extract: %v", err)
+			}
+			if len(rb.ConsumedTypeParams) != len(c.want) {
+				t.Fatalf("ConsumedTypeParams = %+v, want %+v", rb.ConsumedTypeParams, c.want)
+			}
+			for name := range c.want {
+				if !rb.ConsumedTypeParams[name] {
+					t.Fatalf("ConsumedTypeParams = %+v, want %q consumed", rb.ConsumedTypeParams, name)
+				}
+			}
+		})
+	}
+}
+
 // TestExtractRejectsUnresolvableValues pins the boundary of "the file's imports are
 // the declarations": every shape that does NOT put a resolvable bare value in the
 // body's scope stays the free-identifier authoring error.
