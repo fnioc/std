@@ -21,7 +21,7 @@ const STARTUP_VALIDATOR_TYPE: Type = Type.from('@rhombus-std/options:IStartupVal
 
 describe('validateOnStart', () => {
   test('registers a resolvable IStartupValidator', () => {
-    let services: Manifest<string> = new DefaultManifest<string>();
+    let services: Manifest<'singleton'> = new DefaultManifest<'singleton'>();
     services = services.addOptions<ServerOptions>(OPTIONS_TOKEN, () => ({ port: 8080 }));
     services = services.validateOnStart(OPTIONS_TOKEN);
 
@@ -32,7 +32,7 @@ describe('validateOnStart', () => {
   });
 
   test('valid options -> validate() does not throw', () => {
-    let services: Manifest<string> = new DefaultManifest<string>();
+    let services: Manifest<'singleton'> = new DefaultManifest<'singleton'>();
     services = services.addOptions<ServerOptions>(OPTIONS_TOKEN, () => ({ port: 8080 }));
     services = services.validate<ServerOptions>(OPTIONS_TOKEN, (o) => o.port > 0, 'port must be positive');
     services = services.validateOnStart(OPTIONS_TOKEN);
@@ -44,7 +44,7 @@ describe('validateOnStart', () => {
   });
 
   test('a failing validate step surfaces as OptionsValidationError', () => {
-    let services: Manifest<string> = new DefaultManifest<string>();
+    let services: Manifest<'singleton'> = new DefaultManifest<'singleton'>();
     services = services.addOptions<ServerOptions>(OPTIONS_TOKEN, () => ({ port: 0 }));
     services = services.validate<ServerOptions>(OPTIONS_TOKEN, (o) => o.port > 0, 'port must be positive');
     services = services.validateOnStart(OPTIONS_TOKEN);
@@ -57,7 +57,7 @@ describe('validateOnStart', () => {
   });
 
   test('two failing registrations aggregate into one AggregateError', () => {
-    let services: Manifest<string> = new DefaultManifest<string>();
+    let services: Manifest<'singleton'> = new DefaultManifest<'singleton'>();
     services = services.addOptions<ServerOptions>(OPTIONS_TOKEN, () => ({ port: 0 }));
     services = services.validate<ServerOptions>(OPTIONS_TOKEN, (o) => o.port > 0, 'first bad');
     services = services.validateOnStart(OPTIONS_TOKEN);
