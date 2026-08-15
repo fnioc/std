@@ -207,6 +207,6 @@ const descriptorMerge = { add(original, incoming) {
   return function(this: Manifest<string>, ...args: unknown[]) {
     return isDescriptor(args[0]) ? original.call(this, ...args) : incoming.call(this, ...args);
   };
-} } satisfies MergeStrategies;
+} } satisfies MergeStrategies<Manifest>;
 
 registerAugmentations<Manifest>(ManifestDescriptorAugmentations, descriptorMerge);
