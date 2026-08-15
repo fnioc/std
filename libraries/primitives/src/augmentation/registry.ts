@@ -12,7 +12,7 @@
 import type { Ctor, Func } from '@rhombus-toolkit/func';
 
 import { Multimap } from '../Multimap.js';
-import { Type } from '../Type/Type.js';
+import { Type } from '../Type/index.js';
 import { getOrCreate } from '../utils/map.js';
 import { applyAugmentations, type AugmentationSet, type MergeStrategies,
   type MergeStrategy } from './apply-augmentations.js';

@@ -1,7 +1,7 @@
-import { memo } from '../utils/map.js';
-import { escapeSegment } from './internals/grammar.js';
+import { memo } from '../../utils/map.js';
+import { escapeSegment } from '../grammar.js';
 import type { ArrayType, ConstructorType, FunctionType, GenericType, GlobalType, ImportedType, IntersectionType,
-  IterableType, ObjectType, TagType, TupleType, Type, TypeLiteralType, TypeSignatures, UnionType } from './Type.js';
+  IterableType, ObjectType, TagType, TupleType, Type, TypeLiteralType, TypeSignatures, UnionType } from '../Type.js';
 import { TypeVisitor } from './TypeVisitor.js';
 
 /**

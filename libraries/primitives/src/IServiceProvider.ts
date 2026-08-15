@@ -1,5 +1,5 @@
 import { type Ctor, type Func } from '@rhombus-toolkit/func';
-import { type ConstructorType, type FunctionType, type Type } from './Type/Type.js';
+import { type ConstructorType, type FunctionType, type Type } from './Type/index.js';
 
 /** Resolves service instances by {@link Type}. The abstraction every resolution consumer holds. */
 export interface IServiceProvider {

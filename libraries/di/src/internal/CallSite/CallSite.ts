@@ -1,6 +1,6 @@
 import type { ServiceDescriptor } from '@rhombus-std/di.core';
 import { isAllThere, Type } from '@rhombus-std/primitives';
-import type { TypeSignatures, TypeVisitor } from '@rhombus-std/primitives';
+import type { TypeSignatures } from '@rhombus-std/primitives';
 import { Ctor, Func } from '@rhombus-toolkit/func';
 import { assertNever } from '@rhombus-toolkit/type-guards';
 import type { Answer } from '../Registry.js';
@@ -111,7 +111,7 @@ export namespace CallSite {
    * captured. `visitor` supplies the recursion that turns each signature parameter into the call
    * site producing it. Undefined when no signature has every parameter satisfiable.
    */
-  export function fromAnswer(answer: Answer, visitor: TypeVisitor<CallSite | undefined>): CallSite | undefined {
+  export function fromAnswer(answer: Answer, visitor: Type.Visitor<CallSite | undefined>): CallSite | undefined {
     const { descriptor, generics } = answer;
     switch (descriptor.kind) {
       case 'value':
@@ -131,7 +131,7 @@ export namespace CallSite {
 
   /** The first parameter row whose every parameter lowers to a call site, longest first. */
   function lowerSignature(signatures: TypeSignatures, generics: ReadonlyMap<string, Type>,
-    visitor: TypeVisitor<CallSite | undefined>): CallSite[] | undefined {
+    visitor: Type.Visitor<CallSite | undefined>): CallSite[] | undefined {
     return Iterator.from(signatures.toSorted((a, b) => b.length - a.length))
       .map(signature => signature.map(parameter => lowerParameter(parameter, generics, visitor)))
       .find(isAllThere);
@@ -146,7 +146,7 @@ export namespace CallSite {
    * and the result resolves as any other dependency does.
    */
   function lowerParameter(parameter: Type, generics: ReadonlyMap<string, Type>,
-    visitor: TypeVisitor<CallSite | undefined>): CallSite | undefined {
+    visitor: Type.Visitor<CallSite | undefined>): CallSite | undefined {
     if (parameter.kind === 'generic') {
       const closing = generics.get(parameter.label);
       return closing && constant(closing);

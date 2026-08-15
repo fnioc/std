@@ -5,12 +5,12 @@
  */
 
 import type { Func } from '@rhombus-toolkit/func';
-import { stringifyType } from '../StringifyVisitor.js';
+import { type AggregateName, GLOBAL_QUALIFIER, isAggregateName } from '../grammar.js';
 import type { AggregateType, ArrayType, ConstructorType, FunctionType, GenericType, GlobalType, ImportedType,
   IntersectionType, IterableType, LiteralValue, ObjectType, TagType, TupleType, Type, TypeBrand, TypeLiteralType,
   TypeSignatures, UnionType } from '../Type.js';
-import { TypeVisitor } from '../TypeVisitor.js';
-import { type AggregateName, GLOBAL_QUALIFIER, isAggregateName } from './grammar.js';
+import { stringifyType } from '../visitor/StringifyVisitor.js';
+import { TypeVisitor } from '../visitor/TypeVisitor.js';
 import { id, intern, isInterned } from './intern.js';
 import { LITERAL_BASE } from './literal-base.js';
 

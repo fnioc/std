@@ -5,7 +5,7 @@
  * its escaping in the same edit.
  */
 
-import type { LiteralValue } from '../Type.js';
+import type { LiteralValue } from './Type.js';
 
 /** Characters legal inside an unescaped segment. */
 const SAFE = /[A-Za-z0-9_$@/.-]/;

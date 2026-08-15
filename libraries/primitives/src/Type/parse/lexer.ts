@@ -1,6 +1,6 @@
+import { TypeParseError } from '../../TypeParseError.js';
+import { isSafeChar, isSegmentStart } from '../grammar.js';
 import type { LiteralValue } from '../Type.js';
-import { isSafeChar, isSegmentStart } from './grammar.js';
-import { TypeParseError } from './TypeParseError.js';
 
 export interface LexToken {
   readonly kind: 'punct' | 'name' | 'literal';

@@ -1,9 +1,9 @@
-import type { ConstructorType, FunctionType, ObjectType, Type, TypeSignatures } from '../Type.js';
+import { TypeParseError } from '../../TypeParseError.js';
 import { ctor, func, generic, global, imported, intersection, literal, object, tag, tuple,
-  union } from './factories.js';
-import { GLOBAL_QUALIFIER, KEYWORD_LITERALS, SERVICE_PROVIDER_FROM } from './grammar.js';
+  union } from '../factory/factories.js';
+import { GLOBAL_QUALIFIER, KEYWORD_LITERALS, SERVICE_PROVIDER_FROM } from '../grammar.js';
+import type { ConstructorType, FunctionType, ObjectType, Type, TypeSignatures } from '../Type.js';
 import { lex, type LexToken } from './lexer.js';
-import { TypeParseError } from './TypeParseError.js';
 
 const OPENERS = new Set(['(', '[', '{', '<']);
 const CLOSERS = new Set([')', ']', '}', '>']);

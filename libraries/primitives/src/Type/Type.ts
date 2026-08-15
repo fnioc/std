@@ -1,13 +1,14 @@
 import { getOrCreate } from '../utils/map.js';
-import { expandUnionsVisitor } from './ExpandUnionsVisitor.js';
-import * as factory from './internals/factories.js';
-import type { AGGREGATE_KINDS, AggregateName } from './internals/grammar.js';
-import { parseTypeString } from './internals/parser.js';
-import { isOpenType } from './IsOpenVisitor.js';
-import { matchType, satisfiesType } from './SatisfiesVisitor.js';
-import { stringifyType } from './StringifyVisitor.js';
-import { substituteType } from './SubstituteVisitor.js';
-import { typeValidatorVisitor } from './TypeValidatorVisitor.js';
+import * as factory from './factory/factories.js';
+import type { AGGREGATE_KINDS, AggregateName } from './grammar.js';
+import { parseTypeString } from './parse/parser.js';
+import { expandUnionsVisitor } from './visitor/ExpandUnionsVisitor.js';
+import { isOpenType } from './visitor/IsOpenVisitor.js';
+import { matchType, satisfiesType } from './visitor/SatisfiesVisitor.js';
+import { stringifyType } from './visitor/StringifyVisitor.js';
+import { substituteType } from './visitor/SubstituteVisitor.js';
+import { typeValidatorVisitor } from './visitor/TypeValidatorVisitor.js';
+import { TypeVisitor } from './visitor/TypeVisitor.js';
 
 // #region types
 
@@ -158,6 +159,23 @@ export interface UnionType extends TypeBase<'union'> {
  * with each default skippable on its own.
  */
 export namespace Type {
+  /**
+   * The dispatch surface over the node kinds — subclass it and implement the `visit*` member for
+   * each kind the walk cares about.
+   *
+   * @remarks
+   * `Return` is what a walk produces and `Context` what it threads through, defaulting to nothing.
+   *
+   * @example
+   * ```ts
+   * class Depth extends Type.Visitor<number> {
+   *   protected override visitUnion(type: UnionType): number { … }
+   * }
+   * ```
+   */
+  export const Visitor = TypeVisitor;
+  export type Visitor<Return, Context = never> = TypeVisitor<Return, Context>;
+
   // #region factories
 
   /**

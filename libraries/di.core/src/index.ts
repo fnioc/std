@@ -1,4 +1,4 @@
-export { Type, TypeVisitor } from '@rhombus-std/primitives';
+export { Type } from '@rhombus-std/primitives';
 export type { AggregateType, ArrayType, ConstructorType, FunctionType, GenericType, GlobalType, ImportedType,
   IntersectionType, IServiceProvider, IterableType, NominalType, ObjectType, RawType, TagType, TupleType,
   TypeLiteralType, TypeSignatures, UnionType } from '@rhombus-std/primitives';

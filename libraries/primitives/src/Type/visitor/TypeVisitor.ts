@@ -1,5 +1,5 @@
 import type { ArrayType, ConstructorType, FunctionType, GenericType, GlobalType, ImportedType, IntersectionType,
-  IterableType, ObjectType, TagType, TupleType, Type, TypeLiteralType, UnionType } from './Type.js';
+  IterableType, ObjectType, TagType, TupleType, Type, TypeLiteralType, UnionType } from '../Type.js';
 
 /**
  * Dispatches a {@link Type} to the handler for its `kind`.

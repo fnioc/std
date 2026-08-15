@@ -1,7 +1,7 @@
-import { tag as tagType } from './internals/factories.js';
+import { tag as tagType } from '../factory/factories.js';
 import { type ArrayType, type ConstructorType, type FunctionType, type GenericType, type GlobalType, type ImportedType,
   type IntersectionType, type IterableType, type ObjectType, type TagType, type TupleType, Type, type TypeLiteralType,
-  type TypeSignatures, type UnionType } from './Type.js';
+  type TypeSignatures, type UnionType } from '../Type.js';
 import { TypeVisitor } from './TypeVisitor.js';
 
 /**

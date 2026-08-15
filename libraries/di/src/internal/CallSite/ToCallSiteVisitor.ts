@@ -1,7 +1,7 @@
 import { AmbiguousUnionError, CycleError } from '@rhombus-std/di.core';
 import { type ArrayType, type ConstructorType, first, type FunctionType, type GenericType, type GlobalType,
   type ImportedType, type IntersectionType, isAllThere, type IterableType, type ObjectType, type TagType,
-  type TupleType, Type, type TypeLiteralType, TypeVisitor, type UnionType } from '@rhombus-std/primitives';
+  type TupleType, Type, type TypeLiteralType, type UnionType } from '@rhombus-std/primitives';
 import type { Answer, Registry } from '../Registry.js';
 import { CallSite } from './CallSite.js';
 
@@ -35,7 +35,7 @@ const SERVICE_SCOPE_FACTORY_FROM = '@rhombus-std/di.core';
  * building throws {@link CycleError} instead, which ends the walk outright rather than falling
  * back: no later member or signature can undo a loop.
  */
-export class ToCallSiteVisitor extends TypeVisitor<CallSite | undefined> {
+export class ToCallSiteVisitor extends Type.Visitor<CallSite | undefined> {
   readonly #registry: Registry;
   readonly #unionAmbiguity: NonNullable<CallSiteContext['unionAmbiguity']>;
   /** The types this walk has entered and not yet finished, outermost first. */

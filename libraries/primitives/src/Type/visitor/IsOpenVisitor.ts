@@ -1,7 +1,7 @@
-import { memo } from '../utils/map.js';
+import { memo } from '../../utils/map.js';
 import type { AggregateType, ArrayType, ConstructorType, FunctionType, GenericType, GlobalType, ImportedType,
   IntersectionType, IterableType, NominalType, ObjectType, TagType, TupleType, Type, TypeLiteralType, TypeSignatures,
-  UnionType } from './Type.js';
+  UnionType } from '../Type.js';
 import { TypeVisitor } from './TypeVisitor.js';
 
 /** Reaches every position a generic hole can sit in, and stops at the first one it finds. */
