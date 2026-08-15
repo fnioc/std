@@ -283,11 +283,11 @@ export const singular = provider.getRequiredService<'dev'>();
 export const keyedTok = provider.getService<Keyed<ICache, 'redis'>>();
 export const keyedKnown = provider.getRequiredService<Keyed<ICache, 'redis'>>();
 // The value door: the callable's OWN node is derived and paired with the value,
-// so the engine builds it through the node's parameter rows. The type argument is
-// written out — the stage binds a sugar's type parameter from what the call spells,
-// and refuses one it would have to infer.
-export const built = provider.getService<typeof Widget>(Widget);
-export const called = provider.getService<typeof makeGadget>(makeGadget);
+// so the engine builds it through the node's parameter rows. No type argument is
+// written — the body's type parameter feeds only a value-argument primitive call
+// (typefor(value)), so the inline stage never has to recover it.
+export const built = provider.getService(Widget);
+export const called = provider.getService(makeGadget);
 `;
 
 // The implementation-type argument. Everything the author writes after the ctor

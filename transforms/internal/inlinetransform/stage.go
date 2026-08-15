@@ -369,10 +369,30 @@ func (st *fileState) inlineCall(node, anchored *shimast.Node, target *matchTarge
 	// explicit type argument is source-written, and an inferred one is recovered
 	// from the resolved signature — both are properties of the pass-0 call, and
 	// asking the rewritten one would drag the checker back through the chain.
+	//
+	// Only a CONSUMED type parameter needs a binding — one the body's own
+	// primitive calls actually spell as a type argument (typefor<T>()). A type
+	// parameter the body carries only to feed a value argument (typefor(value))
+	// is free to go unwritten at the call site: it is never recovered and never
+	// raises the error below.
 	var env map[string]*shimchecker.Type
-	if len(body.TypeParams) > 0 {
-		types, ok := RecoverTypeArguments(st.checker, anchored)
-		if !ok || len(types) < len(body.TypeParams) {
+	if required, any := body.consumedPositions(); any {
+		types, ok := RecoverTypeArguments(st.checker, anchored, required)
+		bound := ok
+		if bound {
+			env = map[string]*shimchecker.Type{}
+			for i, tp := range body.TypeParams {
+				if !required[i] {
+					continue
+				}
+				if i >= len(types) || types[i] == nil {
+					bound = false
+					break
+				}
+				env[tp] = types[i]
+			}
+		}
+		if !bound {
 			st.emit(plugin.Diagnostic{
 				Code:    "INLINE_INFERRED_TYPE_ARGUMENT",
 				File:    nodeFile(node),
@@ -380,10 +400,6 @@ func (st *fileState) inlineCall(node, anchored *shimast.Node, target *matchTarge
 				Message: "cannot bind the sugar's type argument — write the type argument explicitly",
 			})
 			return nil, false
-		}
-		env = map[string]*shimchecker.Type{}
-		for i, tp := range body.TypeParams {
-			env[tp] = types[i]
 		}
 	}
 
