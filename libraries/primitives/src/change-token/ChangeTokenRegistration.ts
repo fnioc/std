@@ -1,31 +1,15 @@
-import type { Func } from '@rhombus-toolkit/func';
-
-import type { IChangeToken } from './IChangeToken.js';
-
-/**
- * Produces an {@link IChangeToken}. `null`/`undefined` means "no token to
- * subscribe to right now" -- `onChange` skips registration until a
- * subsequent call returns one.
- */
-export type ChangeTokenProducer = Func<[], IChangeToken | null | undefined>;
-
-/**
- * A change-token consumer. Returning a thenable opts into the async
- * consumer contract: the token is only re-registered once the returned
- * promise settles (see {@link ChangeToken.onChange}).
- *
- * A union of the sync and async function shapes rather than one signature
- * returning `void | PromiseLike<void>`: TS's "anything is assignable to a
- * void return" rule only applies to a bare `void` return type, so the union
- * keeps terse sync consumers like `() => count++` assignable.
- */
-export type ChangeTokenConsumer<TState> = Func<[state: TState], void> | Func<[state: TState], PromiseLike<void>>;
+import type { ChangeTokenConsumer, ChangeTokenProducer, IChangeToken } from './IChangeToken.js';
 
 function isThenable(value: void | PromiseLike<void>): value is PromiseLike<void> {
   return typeof (value as PromiseLike<void> | undefined)?.then === 'function';
 }
 
-class ChangeTokenRegistration<TState> {
+/**
+ * One live subscription: holds the consumer against whatever token the producer
+ * currently hands back, and re-registers onto the next token after each fire.
+ * Disposing it ends the subscription for good.
+ */
+export class ChangeTokenRegistration<TState> {
   #disposable: Disposable | undefined;
   #disposed = false;
 
@@ -116,31 +100,3 @@ class ChangeTokenRegistration<TState> {
     this.#disposable = undefined;
   }
 }
-
-/**
- * Propagates notifications that a change has occurred.
- */
-export const ChangeToken = {
-  /**
-   * Registers `consumeToken` to be called whenever the token `produceToken`
-   * returns changes.
-   *
-   * A consumer may be synchronous or asynchronous. When it returns a
-   * thenable, the token is only re-registered once the returned promise
-   * settles; synchronous throws (from either kind of consumer) propagate to
-   * the code that triggers the change token, while rejections of the
-   * returned promise are left unobserved -- a consumer that needs its async
-   * failures seen must handle them itself.
-   *
-   * @param produceToken Produces the change token.
-   * @param consumeToken Called when the token changes. The token is
-   * re-registered once this returns (or, for an async consumer, once the
-   * returned promise settles).
-   * @param state State passed through to `consumeToken`.
-   * @returns A {@link Disposable} that, when disposed, unregisters the consumer.
-   */
-  onChange<TState = undefined>(produceToken: ChangeTokenProducer, consumeToken: ChangeTokenConsumer<TState>,
-    state?: TState): Disposable {
-    return new ChangeTokenRegistration(produceToken, consumeToken, state as TState);
-  },
-};

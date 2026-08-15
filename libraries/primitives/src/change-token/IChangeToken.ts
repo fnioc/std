@@ -30,3 +30,21 @@ export interface IChangeToken {
    */
   registerChangeCallback(callback: Func<[state: unknown], void>, state?: unknown): Disposable;
 }
+
+/**
+ * Produces an {@link IChangeToken}. `null`/`undefined` means "no token to
+ * subscribe to right now" -- registration is skipped until a subsequent call
+ * returns one.
+ */
+export type ChangeTokenProducer = Func<[], IChangeToken | null | undefined>;
+
+/**
+ * A change-token consumer. Returning a thenable opts into the async consumer
+ * contract: the token is only re-registered once the returned promise settles.
+ *
+ * A union of the sync and async function shapes rather than one signature
+ * returning `void | PromiseLike<void>`: TS's "anything is assignable to a void
+ * return" rule only applies to a bare `void` return type, so the union keeps
+ * terse sync consumers like `() => count++` assignable.
+ */
+export type ChangeTokenConsumer<TState> = Func<[state: TState], void> | Func<[state: TState], PromiseLike<void>>;
