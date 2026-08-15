@@ -1,9 +1,9 @@
 import { getOrCreate } from '../utils/map.js';
-import { isIdentifierType, isOpenType } from './analyzers.js';
 import { expandUnionsVisitor } from './ExpandUnionsVisitor.js';
 import * as factory from './internals/factories.js';
 import type { AGGREGATE_KINDS, AggregateName } from './internals/grammar.js';
 import { parseTypeString } from './internals/parser.js';
+import { isOpenType } from './IsOpenVisitor.js';
 import { matchType, satisfiesType } from './SatisfiesVisitor.js';
 import { stringifyType } from './StringifyVisitor.js';
 import { substituteType } from './SubstituteVisitor.js';
@@ -31,7 +31,7 @@ export type Type =
   | TypeLiteralType
   | UnionType;
 /** Types that are only useful as identifiers */
-type TypeIdentifier =
+export type TypeIdentifier =
   | GenericType
   | NominalType
   | TagType;
@@ -435,11 +435,29 @@ export namespace Type {
    * @remarks
    * An identifier can be registered and resolved like any other type, and misses when no
    * registration answers. Every other kind describes enough of itself to be composed from its
-   * resolved parts instead.
+   * resolved parts instead. A tag is address-only whatever it wraps: keying is registration
+   * intent, so an unregistered keyed request fails rather than constructs.
+   *
+   * The answer is the node's own discriminant, so there is nothing to walk and nothing to
+   * remember.
    */
-  export function isIdentifier(type: Type): boolean {
-    return isIdentifierType(type);
-  }
+  export const isIdentifier = (() => {
+    /**
+     * The kinds that name a type without describing one, keyed by {@link TypeIdentifier}'s own
+     * discriminants: a member added to that union without a key here fails to compile, as does a
+     * key naming a kind the union does not carry. The two cannot drift.
+     */
+    const IDENTIFIER_KINDS = {
+      generic: true,
+      global: true,
+      imported: true,
+      tag: true,
+    } satisfies Record<TypeIdentifier['kind'], true>;
+
+    return function isIdentifier(type: Type): type is TypeIdentifier {
+      return Object.hasOwn(IDENTIFIER_KINDS, type.kind);
+    };
+  })();
 
   /**
    * Does `type` still hold a generic hole anywhere — an open registration, which serves a request

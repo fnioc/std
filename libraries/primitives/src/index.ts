@@ -10,7 +10,7 @@ export * from './type-level';
 export * from './Type/internals/TypeParseError';
 export { Type } from './Type/Type';
 export type { AggregateType, ArrayType, ConstructorType, FunctionType, GenericType, GlobalType, ImportedType,
-  IntersectionType, IterableType, LiteralValue, NominalType, ObjectType, RawType, TagType, TupleType, TypeLiteralType,
-  TypeSignatures, UnionType } from './Type/Type';
+  IntersectionType, IterableType, LiteralValue, NominalType, ObjectType, RawType, TagType, TupleType, TypeIdentifier,
+  TypeLiteralType, TypeSignatures, UnionType } from './Type/Type';
 export * from './Type/TypeVisitor';
 export * from './utils/index';

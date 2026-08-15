@@ -1,6 +1,6 @@
 import type { Func } from '@rhombus-toolkit/func';
-import { isOpenType } from './analyzers.js';
 import { LITERAL_BASE } from './internals/literal-base.js';
+import { isOpenType } from './IsOpenVisitor.js';
 import { stringifyType } from './StringifyVisitor.js';
 import type { AggregateType, ArrayType, ConstructorType, FunctionType, GenericType, GlobalType, ImportedType,
   IntersectionType, IterableType, ObjectType, TagType, TupleType, Type, TypeLiteralType, TypeSignatures,
