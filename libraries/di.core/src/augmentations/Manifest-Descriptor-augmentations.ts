@@ -1,6 +1,6 @@
 import { type ConstructorType, type FunctionType, type MergeStrategies, Type } from '@rhombus-std/primitives';
 import { registerAugmentations } from '@rhombus-std/primitives.extras';
-import type { Ctor, Func } from '@rhombus-toolkit/func';
+import type { AbstractCtor, Ctor, Func } from '@rhombus-toolkit/func';
 
 import { describe, type DescribeArgs, type IComplete, type Unstarted } from '../builder';
 import { type Manifest } from '../Manifest';
@@ -15,7 +15,7 @@ export namespace ManifestDescriptorAugmentations {
    */
   export function add<T = any>(this: Manifest<string>, type: Type | string,
     configure: Func<[Unstarted<T, string>], IComplete>): Manifest<string>;
-  export function add<T = any>(this: Manifest<string>, type: Type | string, ctor: Ctor<any[], T>,
+  export function add<T = any>(this: Manifest<string>, type: Type | string, ctor: AbstractCtor<any[], T> & Ctor,
     implementerType: ConstructorType, scope?: string, key?: string): Manifest<string>;
   export function add<T = any>(this: Manifest<string>, type: Type | string, factory: Func<any[], T>,
     implementerType: FunctionType, scope?: string, key?: string): Manifest<string>;
@@ -46,7 +46,7 @@ export namespace ManifestDescriptorAugmentations {
     ...descriptors: ReadonlyArray<ServiceDescriptor<string>>): Manifest<string>;
   export function tryAdd<T = any>(this: Manifest<string>, type: Type | string,
     configure: Func<[Unstarted<T, string>], IComplete>): Manifest<string>;
-  export function tryAdd<T = any>(this: Manifest<string>, type: Type | string, ctor: Ctor<any[], T>,
+  export function tryAdd<T = any>(this: Manifest<string>, type: Type | string, ctor: AbstractCtor<any[], T> & Ctor,
     implementerType: ConstructorType, scope?: string, key?: string): Manifest<string>;
   export function tryAdd<T = any>(this: Manifest<string>, type: Type | string, factory: Func<any[], T>,
     implementerType: FunctionType, scope?: string, key?: string): Manifest<string>;
@@ -68,7 +68,7 @@ export namespace ManifestDescriptorAugmentations {
    *
    * @throws Error - when `key` is given and `token` already carries a tag.
    */
-  export function tryAddClass(this: Manifest<string>, token: string | Type, ctor: Ctor,
+  export function tryAddClass<T extends AbstractCtor>(this: Manifest<string>, token: string | Type, ctor: T & Ctor,
     implementerType: ConstructorType, scope?: string, key?: string): Manifest<string> {
     if (typeof token === 'string') {
       return this.tryAddClass(Type.from(token), ctor, implementerType, scope, key);
@@ -109,7 +109,7 @@ export namespace ManifestDescriptorAugmentations {
    * old one held. Nothing registered for `token` means nothing to replace, so the manifest comes
    * back unchanged — reach for `addClass` to register regardless.
    */
-  export function replaceClass(this: Manifest<string>, token: string | Type, ctor: Ctor,
+  export function replaceClass<T extends AbstractCtor>(this: Manifest<string>, token: string | Type, ctor: T & Ctor,
     implementerType: ConstructorType, scope: string | undefined, key?: string): Manifest<string> {
     if (typeof token === 'string') {
       return this.replaceClass(Type.from(token), ctor, implementerType, scope, key);
@@ -159,8 +159,8 @@ export namespace ManifestDescriptorAugmentations {
 declare module '@rhombus-std/di.core' {
   interface Manifest<Scopes extends string> {
     add<T = any>(type: Type | string, configure: Func<[Unstarted<T, Scopes>], IComplete>): Manifest<Scopes>;
-    add<T = any>(type: Type | string, ctor: Ctor<any[], T>, implementerType: ConstructorType, scope?: Scopes,
-      key?: string): Manifest<Scopes>;
+    add<T = any>(type: Type | string, ctor: AbstractCtor<any[], T> & Ctor, implementerType: ConstructorType,
+      scope?: Scopes, key?: string): Manifest<Scopes>;
     add<T = any>(type: Type | string, factory: Func<any[], T>, implementerType: FunctionType, scope?: Scopes,
       key?: string): Manifest<Scopes>;
 
@@ -168,21 +168,21 @@ declare module '@rhombus-std/di.core' {
 
     tryAdd(...descriptors: ReadonlyArray<ServiceDescriptor<Scopes>>): Manifest<Scopes>;
     tryAdd<T = any>(type: Type | string, configure: Func<[Unstarted<T, Scopes>], IComplete>): Manifest<Scopes>;
-    tryAdd<T = any>(type: Type | string, ctor: Ctor<any[], T>, implementerType: ConstructorType, scope?: Scopes,
-      key?: string): Manifest<Scopes>;
+    tryAdd<T = any>(type: Type | string, ctor: AbstractCtor<any[], T> & Ctor, implementerType: ConstructorType,
+      scope?: Scopes, key?: string): Manifest<Scopes>;
     tryAdd<T = any>(type: Type | string, factory: Func<any[], T>, implementerType: FunctionType, scope?: Scopes,
       key?: string): Manifest<Scopes>;
 
-    tryAddClass(token: string | Type, ctor: Ctor, implementerType: ConstructorType, scope?: Scopes,
-      key?: string): Manifest<Scopes>;
+    tryAddClass<T extends AbstractCtor>(token: string | Type, ctor: T & Ctor, implementerType: ConstructorType,
+      scope?: Scopes, key?: string): Manifest<Scopes>;
 
     tryAddFactory(token: string | Type, factory: Func<any[], unknown>, implementerType: FunctionType, scope?: Scopes,
       key?: string): Manifest<Scopes>;
 
     tryAddValue(token: string | Type, value: unknown, key?: string): Manifest<Scopes>;
 
-    replaceClass(token: string | Type, ctor: Ctor, implementerType: ConstructorType, scope: Scopes | undefined,
-      key?: string): Manifest<Scopes>;
+    replaceClass<T extends AbstractCtor>(token: string | Type, ctor: T & Ctor, implementerType: ConstructorType,
+      scope: Scopes | undefined, key?: string): Manifest<Scopes>;
 
     replaceFactory(token: string | Type, factory: Func<any[], unknown>, implementerType: FunctionType,
       scope: Scopes | undefined, key?: string): Manifest<Scopes>;

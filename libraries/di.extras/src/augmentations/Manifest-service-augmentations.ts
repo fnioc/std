@@ -1,7 +1,7 @@
 import type { IComplete, Manifest, Unstarted } from '@rhombus-std/di.core';
 import type { ConstructorType, FunctionType } from '@rhombus-std/primitives';
 import { registerAugmentations, typefor } from '@rhombus-std/primitives.extras';
-import type { Ctor, Func } from '@rhombus-toolkit/func';
+import type { AbstractCtor, Ctor, Func } from '@rhombus-toolkit/func';
 import type { Flatten } from '@rhombus-toolkit/type-helpers';
 
 export namespace ManifestServiceAugmentations {
@@ -14,15 +14,15 @@ export namespace ManifestServiceAugmentations {
    * arguments.
    */
   export function add<T>(this: Manifest,
-    configureOrImplementer: Func<[Unstarted<T, string>], IComplete> | Ctor<any[], T> | Func<any[], T>,
+    configureOrImplementer: Func<[Unstarted<T, string>], IComplete> | (AbstractCtor<any[], T> & Ctor) | Func<any[], T>,
     implementerType?: ConstructorType | FunctionType, scope?: string, key?: string): Manifest {
     return (this as any).add(typefor<T>(), configureOrImplementer, implementerType, scope, key);
   }
 
   /** The tokenless form of {@link Manifest.addClass}: `type` is derived from `T` instead of taken
    * explicitly. */
-  export function addClass<T>(this: Manifest, ctor: Ctor<any[], T>, implementerType: ConstructorType, scope?: string,
-    key?: string): Manifest {
+  export function addClass<T>(this: Manifest, ctor: AbstractCtor<any[], T> & Ctor, implementerType: ConstructorType,
+    scope?: string, key?: string): Manifest {
     return (this as any).addClass(typefor<T>(), ctor, implementerType, scope, key);
   }
 
@@ -43,10 +43,10 @@ export namespace ManifestServiceAugmentations {
 declare module '@rhombus-std/di.core' {
   interface Manifest<Scopes extends string> extends Flatten<typeof ManifestServiceAugmentations> {
     add<T>(this: Manifest,
-      configureOrImplementer: Func<[Unstarted<T, string>], IComplete> | Ctor<any[], T> | Func<any[], T>,
-      implementerType?: ConstructorType | FunctionType, scope?: string, key?: string): Manifest;
+      configureOrImplementer: Func<[Unstarted<T, string>], IComplete> | (AbstractCtor<any[], T> & Ctor) | Func<any[],
+        T>, implementerType?: ConstructorType | FunctionType, scope?: string, key?: string): Manifest;
 
-    addClass<T>(this: Manifest, ctor: Ctor<any[], T>, implementerType: ConstructorType, scope?: string,
+    addClass<T>(this: Manifest, ctor: AbstractCtor<any[], T> & Ctor, implementerType: ConstructorType, scope?: string,
       key?: string): Manifest;
 
     addFactory<T>(this: Manifest, factory: Func<any[], T>, implementerType: FunctionType, scope?: string,

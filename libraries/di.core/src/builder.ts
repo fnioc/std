@@ -1,5 +1,5 @@
 import { type ConstructorType, type FunctionType, Type, type TypeSignatures } from '@rhombus-std/primitives';
-import type { Ctor, Func } from '@rhombus-toolkit/func';
+import type { AbstractCtor, Ctor, Func } from '@rhombus-toolkit/func';
 import { assertNever } from '@rhombus-toolkit/type-guards';
 import { withKey } from './service-type';
 import { ServiceDescriptor } from './ServiceDescriptor';
@@ -24,7 +24,7 @@ type Pending<T, ImplementerNode extends Type, Scopes extends string, Slots exten
  */
 interface IAsImplementer<T, Scopes extends string, Slots extends Slot, Ready extends boolean> {
   asClass(
-    ctor: Ctor<any[], T>,
+    ctor: AbstractCtor<any[], T> & Ctor,
   ): Pending<T, ConstructorType, Scopes, Exclude<Slots, 'implementer'> | 'implementerType', Ready>;
   asFactory(
     fn: Func<any[], T>,
