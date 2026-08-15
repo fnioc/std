@@ -68,7 +68,8 @@
     "@rhombus-std/fileproviders.core": "workspace:*",
     "@rhombus-std/logging.core": "workspace:*",
     "@rhombus-std/primitives": "workspace:*",
-    "@rhombus-toolkit/func": "^3.6.0"
+    "@rhombus-toolkit/func": "^3.6.0",
+    "@rhombus-toolkit/type-helpers": "^2.0.0"
   },
   "devDependencies": {
     "@rhombus-std/primitives.extras": "workspace:*",

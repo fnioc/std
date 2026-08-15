@@ -49,7 +49,8 @@
   "dependencies": {
     "@rhombus-std/logging": "workspace:*",
     "@rhombus-std/logging.core": "workspace:*",
-    "@rhombus-std/primitives": "workspace:*"
+    "@rhombus-std/primitives": "workspace:*",
+    "@rhombus-toolkit/type-helpers": "^2.0.0"
   },
   "devDependencies": {
     "@rhombus-std/primitives.extras": "workspace:*",

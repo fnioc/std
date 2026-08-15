@@ -10,8 +10,8 @@ import type { IConfig } from '@rhombus-std/config.core';
 import { type IMetricsBuilder, METRICS_CHANGE_TOKEN_SOURCE_TYPE, METRICS_CONFIGURATION_TYPE,
   METRICS_CONFIGURE_TYPE } from '@rhombus-std/diagnostics.core';
 import { ConfigChangeTokenSource } from '@rhombus-std/options.augmentations';
-import type { Flatten } from '@rhombus-std/primitives';
 import { registerAugmentations } from '@rhombus-std/primitives.extras';
+import type { Flatten } from '@rhombus-toolkit/type-helpers';
 
 import { MetricsConfig } from './MetricsConfig';
 import { MetricsConfigureOptions } from './MetricsConfigureOptions';

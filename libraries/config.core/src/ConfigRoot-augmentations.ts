@@ -2,8 +2,8 @@
 // (`root.getDebugView()`) or standalone as
 // (`ConfigRootAugmentations.getDebugView.call(root)`).
 
-import { type Flatten } from '@rhombus-std/primitives';
 import type { Func } from '@rhombus-toolkit/func';
+import type { Flatten } from '@rhombus-toolkit/type-helpers';
 import type { IConfigProvider } from './IConfigProvider';
 import type { IConfigRoot } from './IConfigRoot';
 import type { IConfigSection } from './IConfigSection';

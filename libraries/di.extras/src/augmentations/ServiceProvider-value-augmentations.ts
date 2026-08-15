@@ -1,6 +1,7 @@
-import type { Flatten, IServiceProvider } from '@rhombus-std/primitives';
+import type { IServiceProvider } from '@rhombus-std/primitives';
 import { registerAugmentations, typefor } from '@rhombus-std/primitives.extras';
 import type { Ctor, Func } from '@rhombus-toolkit/func';
+import type { Flatten } from '@rhombus-toolkit/type-helpers';
 
 export namespace ServiceProviderValueAugmentations {
   /**

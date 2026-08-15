@@ -5,9 +5,10 @@
 // the sibling ./MetricsOptions-augmentations set.
 
 import type { IConfigureOptions } from '@rhombus-std/options';
-import type { ConstructorType, Flatten } from '@rhombus-std/primitives';
+import type { ConstructorType } from '@rhombus-std/primitives';
 import { registerAugmentations } from '@rhombus-std/primitives.extras';
 import type { Ctor, Func } from '@rhombus-toolkit/func';
+import type { Flatten } from '@rhombus-toolkit/type-helpers';
 
 import { METRICS_CONFIGURE_TYPE, METRICS_LISTENER_TYPE } from '../types';
 import type { IMetricsBuilder } from './IMetricsBuilder';

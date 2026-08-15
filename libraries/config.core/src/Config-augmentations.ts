@@ -2,7 +2,7 @@
 // (`config.getConnectionString(name)`) or standalone as
 // (`ConfigAugmentations.getConnectionString.call(config, name)`).
 
-import { type Flatten } from '@rhombus-std/primitives';
+import type { Flatten } from '@rhombus-toolkit/type-helpers';
 import { isConfigSection } from './config-section-guard';
 import type { IConfig } from './IConfig';
 import type { IConfigSection } from './IConfigSection';

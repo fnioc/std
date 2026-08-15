@@ -1,7 +1,8 @@
 // The TracingOptions-targeted rule mutators: the value-object counterparts of
 // the same-named ITracingBuilder methods, distinguished only by receiver.
 
-import { applyAugmentations, type Flatten } from '@rhombus-std/primitives';
+import { applyAugmentations } from '@rhombus-std/primitives';
+import type { Flatten } from '@rhombus-toolkit/type-helpers';
 
 import { ACTIVITY_SOURCE_SCOPES_ALL, ActivitySourceScopes } from './ActivitySourceScopes';
 import { TracingOptions } from './TracingOptions';

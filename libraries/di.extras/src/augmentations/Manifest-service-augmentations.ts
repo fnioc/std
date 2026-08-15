@@ -1,7 +1,8 @@
 import type { IComplete, Manifest, Unstarted } from '@rhombus-std/di.core';
-import type { ConstructorType, Flatten, FunctionType } from '@rhombus-std/primitives';
+import type { ConstructorType, FunctionType } from '@rhombus-std/primitives';
 import { registerAugmentations, typefor } from '@rhombus-std/primitives.extras';
 import type { Ctor, Func } from '@rhombus-toolkit/func';
+import type { Flatten } from '@rhombus-toolkit/type-helpers';
 
 export namespace ManifestServiceAugmentations {
   /**

@@ -15,9 +15,9 @@
 // merge in @rhombus-std/hosting — no class-side restatement is authored here.
 
 import type { IHostBuilder } from '@rhombus-std/hosting.core';
-import type { Flatten } from '@rhombus-std/primitives';
 import { registerAugmentations } from '@rhombus-std/primitives.extras';
 import type { Func } from '@rhombus-toolkit/func';
+import type { Flatten } from '@rhombus-toolkit/type-helpers';
 import { BrowserLifetimeOptions } from './BrowserLifetimeOptions';
 import { registerBrowserLifetime } from './register-browser-lifetime';
 

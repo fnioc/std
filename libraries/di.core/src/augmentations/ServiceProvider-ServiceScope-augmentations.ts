@@ -1,5 +1,6 @@
-import { type Flatten, type IServiceProvider, NotImplementedError } from '@rhombus-std/primitives';
+import { type IServiceProvider, NotImplementedError } from '@rhombus-std/primitives';
 import { registerAugmentations, typefor } from '@rhombus-std/primitives.extras';
+import type { Flatten } from '@rhombus-toolkit/type-helpers';
 import { AsyncServiceScope, type IServiceScope, type IServiceScopeFactory } from '../ServiceScope';
 
 export namespace ServiceProviderServiceScopeAugmentations {

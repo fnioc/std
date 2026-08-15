@@ -53,7 +53,8 @@
     "@rhombus-std/options": "workspace:*",
     "@rhombus-std/options.augmentations": "workspace:*",
     "@rhombus-std/primitives": "workspace:*",
-    "@rhombus-toolkit/func": "^3.6.0"
+    "@rhombus-toolkit/func": "^3.6.0",
+    "@rhombus-toolkit/type-helpers": "^2.0.0"
   },
   "peerDependencies": {
     "@rhombus-std/di.core": "workspace:^"

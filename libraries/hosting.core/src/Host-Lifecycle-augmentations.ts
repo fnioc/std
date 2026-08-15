@@ -1,6 +1,6 @@
-import { AbortController, type AbortSignal, clearTimeout, type Flatten, neverSignal,
-  setTimeout } from '@rhombus-std/primitives';
+import { AbortController, type AbortSignal, clearTimeout, neverSignal, setTimeout } from '@rhombus-std/primitives';
 import { registerAugmentations } from '@rhombus-std/primitives.extras';
+import type { Flatten } from '@rhombus-toolkit/type-helpers';
 import type { IHost } from './IHost';
 import { HOST_APPLICATION_LIFETIME_TYPE } from './types';
 

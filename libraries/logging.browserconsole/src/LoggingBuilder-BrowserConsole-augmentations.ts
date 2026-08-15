@@ -14,8 +14,9 @@
 
 import { LoggingBuilderProviderAugmentations } from '@rhombus-std/logging';
 import type { ILoggingBuilder } from '@rhombus-std/logging.core';
-import { type Flatten, getOrCreate } from '@rhombus-std/primitives';
+import { getOrCreate } from '@rhombus-std/primitives';
 import { registerAugmentations } from '@rhombus-std/primitives.extras';
+import type { Flatten } from '@rhombus-toolkit/type-helpers';
 import { BrowserConsoleLoggerProvider } from './BrowserConsoleLoggerProvider';
 
 // Keyed by the BUILDER, not by `builder.services`: the manifest chain is

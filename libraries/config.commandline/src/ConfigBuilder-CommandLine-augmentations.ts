@@ -1,8 +1,8 @@
 // The `addCommandLine` sugar on the configuration builder.
 
 import type { IConfigBuilder, IConfigSource, IndexedSection } from '@rhombus-std/config.core';
-import { type Flatten } from '@rhombus-std/primitives';
 import { registerAugmentations } from '@rhombus-std/primitives.extras';
+import type { Flatten } from '@rhombus-toolkit/type-helpers';
 import { CommandLineConfigSource, type CommandLineConfigSourceOptions } from './CommandLineConfigSource';
 
 /** The subset of {@link IConfigBuilder} and `config`'s `ConfigBuilder<T>` this sugar's `add` call touches. */

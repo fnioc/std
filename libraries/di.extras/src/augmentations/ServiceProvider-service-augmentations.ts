@@ -1,5 +1,6 @@
-import type { Flatten, IServiceProvider } from '@rhombus-std/primitives';
+import type { IServiceProvider } from '@rhombus-std/primitives';
 import { registerAugmentations, typefor } from '@rhombus-std/primitives.extras';
+import type { Flatten } from '@rhombus-toolkit/type-helpers';
 
 export namespace ServiceProviderServiceAugmentations {
   /** The tokenless form of {@link IServiceProvider.getService}: `type` is derived from `T` instead

@@ -1,8 +1,8 @@
 // Chained provider barrel + the addConfig augmentation.
 
 import type { IConfig, IConfigBuilder, IConfigSource, IndexedSection } from '@rhombus-std/config.core';
-import type { Flatten } from '@rhombus-std/primitives';
 import { registerAugmentations } from '@rhombus-std/primitives.extras';
+import type { Flatten } from '@rhombus-toolkit/type-helpers';
 import { ChainedConfigSource } from './ChainedConfigSource';
 
 export * from './ChainedConfigProvider';

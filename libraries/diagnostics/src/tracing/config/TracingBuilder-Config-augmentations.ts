@@ -4,8 +4,8 @@ import type { IConfig } from '@rhombus-std/config.core';
 import { type ITracingBuilder, TRACING_CHANGE_TOKEN_SOURCE_TYPE, TRACING_CONFIGURATION_TYPE,
   TRACING_CONFIGURE_TYPE } from '@rhombus-std/diagnostics.core';
 import { ConfigChangeTokenSource } from '@rhombus-std/options.augmentations';
-import type { Flatten } from '@rhombus-std/primitives';
 import { registerAugmentations } from '@rhombus-std/primitives.extras';
+import type { Flatten } from '@rhombus-toolkit/type-helpers';
 
 import { TracingConfig } from './TracingConfig';
 import { TracingConfigureOptions } from './TracingConfigureOptions';

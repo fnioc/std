@@ -9,9 +9,9 @@
 // any consumer that enumerates the listener builders.
 
 import type { IConfigureOptions } from '@rhombus-std/options';
-import type { Flatten } from '@rhombus-std/primitives';
 import { registerAugmentations } from '@rhombus-std/primitives.extras';
 import type { Func } from '@rhombus-toolkit/func';
+import type { Flatten } from '@rhombus-toolkit/type-helpers';
 
 import { TRACING_CONFIGURE_TYPE, TRACING_LISTENER_TYPE } from '../types';
 import { ActivityListenerBuilder } from './ActivityListenerBuilder';

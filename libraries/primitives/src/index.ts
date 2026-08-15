@@ -1,6 +1,5 @@
 // Public entry point for @rhombus-std/primitives.
 
-export type { Flatten } from '@rhombus-toolkit/type-helpers';
 export * from './augmentation';
 export * from './change-token';
 export type * from './IServiceProvider';

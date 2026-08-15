@@ -1,5 +1,6 @@
-import { type Flatten, type IServiceProvider, Type } from '@rhombus-std/primitives';
+import { type IServiceProvider, Type } from '@rhombus-std/primitives';
 import { registerAugmentations } from '@rhombus-std/primitives.extras';
+import type { Flatten } from '@rhombus-toolkit/type-helpers';
 
 export namespace ServiceProviderServiceAugmentations {
   /**

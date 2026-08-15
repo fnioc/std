@@ -8,9 +8,10 @@
 // own member names (`setWithOptions`, `getOrCreateWithOptions`,
 // `getOrCreateAsyncWithOptions`) rather than a further argument shape.
 
-import { type Flatten, type IChangeToken, type MergeStrategies } from '@rhombus-std/primitives';
+import { type IChangeToken, type MergeStrategies } from '@rhombus-std/primitives';
 import { registerAugmentations } from '@rhombus-std/primitives.extras';
 import type { Func } from '@rhombus-toolkit/func';
+import type { Flatten } from '@rhombus-toolkit/type-helpers';
 import { CacheEntrySugarAugmentations } from './CacheEntry-Sugar-augmentations';
 import type { ICacheEntry } from './ICacheEntry';
 import type { IMemoryCache } from './IMemoryCache';

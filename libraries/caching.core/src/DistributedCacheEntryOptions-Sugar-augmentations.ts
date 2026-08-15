@@ -1,7 +1,8 @@
 // Convenience methods on DistributedCacheEntryOptions -- set absolute/sliding
 // expiration -- dot-callable on any options bag. Each returns it for chaining.
 
-import { applyAugmentations, type Flatten } from '@rhombus-std/primitives';
+import { applyAugmentations } from '@rhombus-std/primitives';
+import type { Flatten } from '@rhombus-toolkit/type-helpers';
 import { DistributedCacheEntryOptions } from './DistributedCacheEntryOptions';
 
 export namespace DistributedCacheEntryOptionsSugarAugmentations {

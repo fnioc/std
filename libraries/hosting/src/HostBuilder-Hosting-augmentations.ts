@@ -17,9 +17,10 @@ import { HOST_APPLICATION_LIFETIME_TYPE, type HostBuilderContext, HostDefaults, 
   type IHostBuilder } from '@rhombus-std/hosting.core';
 import { LOGGER_FACTORY_TYPE, LoggingBuilder } from '@rhombus-std/logging';
 import type { ILoggingBuilder } from '@rhombus-std/logging.core';
-import { type AbortSignal, type Flatten, Type } from '@rhombus-std/primitives';
+import { type AbortSignal, Type } from '@rhombus-std/primitives';
 import { registerAugmentations } from '@rhombus-std/primitives.extras';
 import type { Func } from '@rhombus-toolkit/func';
+import type { Flatten } from '@rhombus-toolkit/type-helpers';
 import { ConsoleLifetimeOptions } from './ConsoleLifetimeOptions';
 import { addDefaultServices, applyDefaultAppConfig, applyDefaultHostConfig,
   createDefaultServiceProviderOptions } from './default-config';

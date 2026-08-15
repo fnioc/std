@@ -1,5 +1,6 @@
-import { type Flatten, type IChangeToken } from '@rhombus-std/primitives';
+import { type IChangeToken } from '@rhombus-std/primitives';
 import { registerAugmentations } from '@rhombus-std/primitives.extras';
+import type { Flatten } from '@rhombus-toolkit/type-helpers';
 import type { CacheItemPriority } from './CacheItemPriority';
 import type { ICacheEntry } from './ICacheEntry';
 import type { MemoryCacheEntryOptions } from './MemoryCacheEntryOptions';
