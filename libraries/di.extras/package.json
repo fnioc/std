@@ -50,7 +50,7 @@
   "dependencies": {
     "@rhombus-std/primitives": "workspace:*",
     "@rhombus-std/primitives.extras": "workspace:*",
-    "@rhombus-toolkit/func": "3.5.3"
+    "@rhombus-toolkit/func": "3.6.0"
   },
   "peerDependencies": {
     "@rhombus-std/di.core": "workspace:^",

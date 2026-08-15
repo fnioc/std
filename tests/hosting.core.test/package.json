@@ -14,6 +14,6 @@
     "@rhombus-std/di.core": "workspace:*",
     "@rhombus-std/fileproviders.core": "workspace:*",
     "@rhombus-std/hosting.core": "workspace:*",
-    "@rhombus-toolkit/func": "^3.5.3"
+    "@rhombus-toolkit/func": "^3.6.0"
   }
 }

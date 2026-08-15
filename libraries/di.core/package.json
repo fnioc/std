@@ -55,7 +55,7 @@
   },
   "devDependencies": {
     "@rhombus-std/primitives.extras": "workspace:*",
-    "@rhombus-toolkit/func": "3.5.3",
+    "@rhombus-toolkit/func": "3.6.0",
     "@ttsc/unplugin": "^0.18.1",
     "ttsc": "^0.18.1",
     "typescript": "^5.9.0"
