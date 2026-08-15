@@ -17,7 +17,7 @@
 //     rejects; bundling resolves them).
 //   - `entrypoints` = src/index.ts plus, for every exports subpath whose
 //     `import` condition points at a non-index dist/*.js, the matching
-//     src/*.ts (today: config's ./with-type-augment side-effect seam).
+//     src/*.ts. No package carries such a subpath today.
 //   - `dtsConfigs` = one rollup config per JS entrypoint (rollup.dts.mjs, plus
 //     rollup.<entry>.dts.mjs per extra entrypoint) -- the one-rolled-d.ts-per-
 //     entry invariant, asserted by existence.

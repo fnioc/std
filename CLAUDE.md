@@ -243,8 +243,10 @@ where that's cheap, and flag the intended divergence rather than pre-emptively t
   A schema is a **`Type` tree** — `Type.object({...})` at every level, a global `string`/`number`/
   `boolean` at each leaf, a union with `undefined` for an omittable member (§137); `withSchema<U>`
   takes the shape as a type argument, since a `Type` tree carries no type-level image.
-  `config.extras` rewrites `.withType<T>()` via the `schemaof<T>()` expansion primitive and is
-  standalone — di-independent (§15).
+  `config.extras` both TYPES `.withType<T>()` onto `ConfigBuilder` and rewrites it via the
+  `schemaof<T>()` expansion primitive: depending on the package is what puts the member in scope
+  AND spawns the transform, so without it `withType` is a compile error rather than a runtime
+  stub. di-independent (§15).
 - **`hosting`** — `hosting.core` (`IHost`/`IHostedService`/`IHostedLifecycleService`/
   `BackgroundService`/`IHostApplicationLifetime`/`IHostLifetime`/`IHostBuilder`/
   `HostBuilderContext`/`IHostEnvironment`/`IHostApplicationBuilder` + the `addHostedService`
@@ -509,11 +511,13 @@ Uniformly: a `.`-export's type-facing conditions (and, for runtime-emitting libs
 `dist/bundle`, as do root `main`/`types`.
 
 **A package that `declare module`s its own public receiver carries a package-unique `<pkg>-source`
-condition** — `di-core-source`, `diagnostics-core-source`, `hosting-core-source`, `config-source` —
-listed first in the `.` export ahead of `types`, so that package's OWN program resolves back to its
+condition** — `di-core-source`, `diagnostics-core-source`, `caching-core-source`,
+`config-core-source`, `hosting-core-source`, `logging-core-source`, `config-source` — listed first
+in the `.` export ahead of `types`, so that package's OWN program resolves back to its
 not-yet-built src (the §72 TS2664 self-typecheck fix) while every external consumer resolves the
-built dist. `config`'s routes its `with-type-augment.ts` self-`declare module`; `hosting.core.test`'s
-white-box program needs `hosting-core-source` in its own tsconfig, since it pulls hosting.core's src
+built dist. `config`'s routes the self-`declare module`s in `memory/` and `chained/`;
+`hosting.core.test`'s white-box program needs `hosting-core-source` in its own tsconfig, since it
+pulls hosting.core's src
 through `./private/*`. **There is no `built` custom condition** (§78): neither di.core/di's `.` export nor any consumer
 tsconfig's `customConditions` carries one — the per-package `-source` conditions above are what
 force dist-resolution where it is wanted.
@@ -595,13 +599,18 @@ bespoke config schema grammar (`Schema`/`Infer`/`OPTIONAL`) and the `signaturefo
   the transitive graph (§100). `build-lib.ts` passes no explicit plugin list; an explicit
   `tsconfig.ttsc.json` `plugins` array is the only override. The one binary links typia to run
   `mergesynth` (§103) as a one-shot pre-pass ahead of the loop.
-- **`*.extras` package shapes** — `config.extras` collapses to its single `./ttsc` descriptor (no
-  barrel). `primitives.extras` carries a barrel (the token primitives `tokenfor`/`tokenof`) plus
+- **`*.extras` package shapes** — every one carries a barrel re-exporting its marker bodies BY
+  NAME, since an inline entry's `impl` is resolved by walking the barrel's re-export graph: a set
+  only side-effect-imported is never found. `config.extras` pairs that barrel with its `./ttsc`
+  descriptor. `primitives.extras` carries a barrel (the token primitives `tokenfor`/`tokenof`) plus
   its `./ttsc` descriptor. `di.extras` keeps a barrel shipping the `declare module` authoring
   augmentations; its fifteen `rhombus-std` `inline` marker bodies live directly in those
   augmentation files (no separate `inline.ts`).
-  `di.extras.options` keeps a barrel plus its own single-expression `inline.ts` sugar body (the
-  `addOptions<T>()` marker, side-parsed from src, never bundled).
+  `di.extras.options` and `config.extras` follow the same shape at one file each —
+  `augmentations/Manifest-options-augmentations.ts` and
+  `augmentations/ConfigBuilder-schema-augmentations.ts`, each holding its `declare module` beside
+  its marker body. Keeping bodies under `augmentations/` is also what puts them inside the eslint
+  `inline-authoring` glob.
 - **Emit mechanism** — `ttsc -p` returns a stdout envelope, not files, so the build runs the Go
   plugin as a `@ttsc/unplugin/bun` onLoad transform inside the per-file `Bun.build` stage
   (`buildPackage`'s `ttscProject` via `ttscBunPlugin`). Toolchain pinned by `ttscEnv`

@@ -42,8 +42,9 @@ export * from './chained';
 // provider packages (e.g. @rhombus-std/config.json's addJsonStream) extend.
 export * from './stream';
 
-// Runtime coercion. `withType` (Tier 2) is intentionally NOT re-exported here --
-// it's opt-in via `import "@rhombus-std/config/with-type-augment"`.
+// Runtime coercion. `withType` is not here: it is typed and lowered by
+// @rhombus-std/config.extras, so depending on that package is what puts the
+// member on `ConfigBuilder`.
 export { SchemaCoercionError } from './coerce';
 
 // ConfigObject + IndexedSection flow through `export * from "@rhombus-std/config.core"` above.

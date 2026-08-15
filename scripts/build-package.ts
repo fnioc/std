@@ -206,10 +206,9 @@ export interface BuildPackageOptions {
   /**
    * Code-split shared modules into chunks instead of inlining a private copy
    * into each entrypoint. Required when multiple entrypoints must share
-   * runtime identity -- e.g. @rhombus-std/config's barrel and its
-   * with-type-augment side-effect module both patch the SAME
-   * ConfigurationBuilder.prototype. Defaults to `true` when there is more than
-   * one entrypoint.
+   * runtime identity -- two entrypoints that patch the SAME prototype must
+   * see one copy of it. Defaults to `true` when there is more than one
+   * entrypoint.
    */
   readonly splitting?: boolean;
   /**

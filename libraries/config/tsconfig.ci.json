@@ -2,7 +2,7 @@
   "extends": "../../tsconfig.lib.json",
   "compilerOptions": {
     // §78 self-reference shim (the config analog of di.core's `di-core-source`,
-    // §72/§74): config self-augments -- memory/chained/with-type-augment.ts all
+    // §72/§74): config self-augments -- memory/chained both
     // `declare module "@rhombus-std/config"` and import the class from it -- so
     // config's own program must resolve its OWN package name, which otherwise
     // points `types` at the not-yet-built rolled dist `.d.ts` (TS2664/TS2307

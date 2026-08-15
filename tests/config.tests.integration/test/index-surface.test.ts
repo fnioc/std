@@ -8,10 +8,7 @@
 //   2. the three external-provider add* augmentations are actually installed on
 //      the SAME ConfigBuilder the consumer imports (they survived
 //      bundling with @rhombus-std/config kept external, and the `declare module`
-//      survived rollup-plugin-dts), and
-//   3. the Tier 2 with-type-augment subpath ships its throwing stub in dist and
-//      throws under node -- the published-mode behavior a source-mode bun test
-//      can't observe.
+//      survived rollup-plugin-dts).
 
 import assert from 'node:assert/strict';
 import { describe, test } from 'node:test';
@@ -65,13 +62,6 @@ describe('cross-package public surface (built dist)', () => {
     })).build();
 
     assert.deepEqual(config, { Mode: 'fast' });
-  });
-
-  test('the with-type-augment subpath ships its throwing stub in dist and throws under node', async () => {
-    await import('@rhombus-std/config/with-type-augment');
-    const builder = new ConfigBuilder();
-    assert.equal(typeof builder.withType, 'function');
-    assert.throws(() => builder.withType(), /@rhombus-std\/config.extras/);
   });
 
   test('provider option types are usable in a type position', () => {

@@ -201,8 +201,13 @@
         "@rhombus-std/primitives": "workspace:*",
         "@rhombus-std/primitives.extras": "workspace:*",
       },
+      "devDependencies": {
+        "@rhombus-std/config": "workspace:*",
+        "@rhombus-std/config.core": "workspace:*",
+      },
       "peerDependencies": {
         "@rhombus-std/config": "workspace:^",
+        "@rhombus-std/config.core": "workspace:^",
       },
     },
     "libraries/config.file": {
