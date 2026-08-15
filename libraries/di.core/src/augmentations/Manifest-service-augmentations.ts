@@ -44,7 +44,7 @@ export namespace ManifestServiceAugmentations {
     if (typeof type === 'string') {
       return this.addValue(Type.from(type), value, key);
     }
-    return this._add(ServiceDescriptor.value(withKey(type, key), value));
+    return this.add(ServiceDescriptor.value(withKey(type, key), value));
   }
 }
 
