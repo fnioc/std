@@ -2,7 +2,7 @@ import { type Manifest, ManifestValidationError, type ServiceDescriptor, Unsatis
   type ValidationFailure } from '@rhombus-std/di.core';
 import { type IServiceProvider, memo, type Type } from '@rhombus-std/primitives';
 import { ServiceProviderOptions } from '../ServiceProviderOptions.js';
-import { CallSite } from './CallSite/CallSite.js';
+import { CallSite } from './CallSite/index.js';
 import { Registry } from './Registry.js';
 import { ServiceScope } from './ServiceScope.js';
 
