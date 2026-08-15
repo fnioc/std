@@ -328,7 +328,7 @@ method on instances, with zero further action on your part.
 
 **The registry.** A module-level `Map<string, Bag>` lives in `@rhombus-std/primitives` (the
 universal zero-dep leaf every family can already reach), keyed by the token string. `Bag` is a
-`Multimap<string, [fn, mergeStrategy?]>` — a per-member-name list of contributions, each pairing its
+`Map<string, [fn, mergeStrategy?][]>` — a per-member-name list of contributions, each pairing its
 function with its own collision strategy.
 
 **Registering.** `registerAugmentations(receiver, set, merge?)` appends `set`'s members into the

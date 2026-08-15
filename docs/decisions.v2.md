@@ -43,7 +43,7 @@ collision. Three parts make it correct-by-construction:
    mount it. Present → real collision → mount a dispatcher if a `merge` strategy was supplied,
    else **throw** (`augmentation "n" collides on <Class> — supply a merge strategy`). No token /
    receiver / member-identity inspection.
-3. **Bag = `Multimap<string, [fn, merge?]>`** per token: each contribution pairs its fn with its
+3. **Bag = `Map<string, [fn, merge?][]>`** per token: each contribution pairs its fn with its
    own strategy; a second same-name registration just appends (the throw lives at install, not
    registration).
 
@@ -2609,8 +2609,7 @@ _Owner-ruled 2026-08-15, Claude-executed._
 
 ## §189 — The compile-time type machinery is the toolkit's; `obj` carries the `Object.*` precision
 
-`@rhombus-std/primitives` carries no type-level module of its own. `Flatten` reaches consumers as a
-re-export of `@rhombus-toolkit/type-helpers`, and the precise `Object.keys`/`values`/`entries`/
+`@rhombus-std/primitives` carries no type-level module of its own. `Flatten` is imported by every consumer straight from `@rhombus-toolkit/type-helpers`, and the precise `Object.keys`/`values`/`entries`/
 `assign`/`fromEntries` result types live on that package's `obj` module as WRAPPER FUNCTIONS —
 `obj.keys(x)` at exactly the call sites that want the precision — with no `ObjectConstructor`
 augmentation anywhere: a global augmentation imposes the sharpened signatures on every file of every
@@ -2619,7 +2618,7 @@ keep the stock `Object.*` statics. The supporting machinery (`UnionToTuple`, the
 index-wise array merge) serves those types inside `type-helpers` and is not part of primitives'
 surface.
 
-`Multimap` stays in primitives: it is the augmentation registry's per-token contribution bag, so its
-removal is blocked by live use.
+The registry keys its per-token bags as plain `Map<string, Contribution[]>` — no dedicated
+multimap class exists in primitives.
 
 _Owner-ruled 2026-08-15, Claude-executed._

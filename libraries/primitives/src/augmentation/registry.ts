@@ -11,7 +11,6 @@
 
 import type { Ctor, Func } from '@rhombus-toolkit/func';
 
-import { Multimap } from '../Multimap.js';
 import { Type } from '../Type/index.js';
 import { getOrCreate } from '../utils/map.js';
 import { applyAugmentations, type AugmentationSet, type MergeStrategies,
@@ -30,7 +29,7 @@ type Contribution = readonly [fn: AugmentationFn, merge?: MergeStrategy<any>];
  * A receiver's bag: a per-name list of contributions, so a name registered by two
  * sets accumulates both (replayed in registration order at a late class's catch-up).
  */
-type Bag = Multimap<string, Contribution>;
+type Bag = Map<string, Contribution[]>;
 
 /** A subscribed class's installer for ONE registration's set. */
 type DeltaInstaller = (set: AugmentationSet<any>, merge: MergeStrategies<any> | undefined) => void;
@@ -58,9 +57,9 @@ const subscribers = new Map<Type, DeltaInstaller[]>();
 export function registerAugmentations<R>(receiver: Type | string, set: AugmentationSet<R>,
   merge?: MergeStrategies<R>): void {
   const type = receiverType(receiver);
-  const bag = getOrCreate(bags, type, () => new Multimap());
+  const bag = getOrCreate(bags, type, (): Bag => new Map());
   for (const [name, fn] of Object.entries(set as Record<string, AugmentationFn>)) {
-    bag.add(name, [fn, merge?.[name]]);
+    getOrCreate(bag, name, (): Contribution[] => []).push([fn, merge?.[name]]);
   }
 
   const installers = subscribers.get(type);
@@ -99,9 +98,11 @@ export function augment(receiver: Type | string) {
     // accumulated same-name pair collides here exactly as it would at dispatch.
     const bag = bags.get(type);
     if (bag !== undefined) {
-      for (const [name, [fn, strategy]] of bag) {
-        const merge = strategy !== undefined ? { [name]: strategy } : undefined;
-        applyAugmentations(target, { [name]: fn } as AugmentationSet<any>, merge);
+      for (const [name, contributions] of bag) {
+        for (const [fn, strategy] of contributions) {
+          const merge = strategy !== undefined ? { [name]: strategy } : undefined;
+          applyAugmentations(target, { [name]: fn } as AugmentationSet<any>, merge);
+        }
       }
     }
   };
