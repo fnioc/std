@@ -1,6 +1,7 @@
 package inlinetransform
 
 import (
+	"fmt"
 	"os"
 	"path/filepath"
 	"strings"
@@ -21,16 +22,26 @@ import (
 // their own setup.
 func buildWorkspace(t *testing.T, coreIndex, inlineBody, sugarDTS, mainSrc string) (*driver.Program, string) {
 	t.Helper()
+	return buildWorkspaceWithEntries(t, coreIndex, inlineBody, sugarDTS, mainSrc, pilotEntries)
+}
+
+// pilotEntries is the standard workspace's one inline entry: the isService
+// member sugar. A test needing a second entry on the same interface builds its
+// own entries array and calls buildWorkspaceWithEntries directly.
+const pilotEntries = `[ { "type": "@scope/core:IQuery", "impl": "@scope/core:QueryInline", "member": "isService" } ]`
+
+func buildWorkspaceWithEntries(t *testing.T, coreIndex, inlineBody, sugarDTS, mainSrc, entries string) (*driver.Program, string) {
+	t.Helper()
 	root := t.TempDir()
 	write(t, filepath.Join(root, "package.json"), `{ "name": "ws", "private": true, "workspaces": ["packages/*"] }`)
 
 	core := filepath.Join(root, "packages", "core")
-	write(t, filepath.Join(core, "package.json"), `{
+	write(t, filepath.Join(core, "package.json"), fmt.Sprintf(`{
   "name": "@scope/core",
   "version": "1.0.0",
   "exports": { ".": { "types": "./src/index.ts", "default": "./src/index.ts" } },
-  "rhombus-std": { "inline": { "entries": [ { "type": "@scope/core:IQuery", "impl": "@scope/core:QueryInline", "member": "isService" } ] } }
-}`)
+  "rhombus-std": { "inline": { "entries": %s } }
+}`, entries))
 	write(t, filepath.Join(core, "src", "index.ts"), coreIndex)
 	write(t, filepath.Join(core, "src", "inline.ts"), inlineBody)
 
@@ -190,6 +201,13 @@ export const known = makeProvider().isService<Foo>();
 // argument cannot be recovered (`provider.isService()` binds T to unknown) must
 // fail loud with INLINE_INFERRED_TYPE_ARGUMENT and be left un-inlined, not ship a
 // tokenless call. The sibling explicit call still inlines.
+//
+// A second entry on the same interface, `pick<T>(value)`, carries a declared
+// type parameter its body never spells as a type argument — it feeds T only to
+// a VALUE-argument primitive call, so T is unconsumed. An inferred call to it
+// (no written type argument, same shape as the hard-error case above) must
+// inline without complaint: an unconsumed type parameter is never recovered
+// and so never raises INLINE_INFERRED_TYPE_ARGUMENT.
 func TestStageUnrecoverableTypeArgIsHardError(t *testing.T) {
 	coreIndex := `export interface IQuery {
   isService(token: string): boolean;
@@ -202,15 +220,32 @@ export const QueryInline = {
   isService<T>(this: IQuery): boolean {
     return this.isService(tokenfor<T>());
   },
+  pick<T>(this: IQuery, value: T): boolean {
+    return this.isService(tokenfor(value));
+  },
 };
 `
+	sugarDTS := `declare module '@scope/core' {
+  interface IQuery {
+    isService<T>(): boolean;
+    pick<T>(value: T): boolean;
+  }
+}
+export {};
+`
+	entries := `[
+  { "type": "@scope/core:IQuery", "impl": "@scope/core:QueryInline", "member": "isService" },
+  { "type": "@scope/core:IQuery", "impl": "@scope/core:QueryInline", "member": "pick" }
+]`
 	mainSrc := `/// <reference path="./sugar.d.ts" />
 import { provider } from '@scope/core';
 interface Foo { readonly brand: 'foo'; }
+declare const theFoo: Foo;
 export const known = provider.isService<Foo>();
 export const bad = provider.isService();
+export const picked = provider.pick(theFoo);
 `
-	prog, app := buildWorkspace(t, coreIndex, inlineBody, pilotSugarDTS, mainSrc)
+	prog, app := buildWorkspaceWithEntries(t, coreIndex, inlineBody, sugarDTS, mainSrc, entries)
 	defer func() { _ = prog.Close() }()
 
 	artifacts := NewArtifacts()
@@ -233,6 +268,14 @@ export const bad = provider.isService();
 	}
 	if inferred != 1 {
 		t.Fatalf("expected exactly 1 INLINE_INFERRED_TYPE_ARGUMENT, got %d: %+v", inferred, diags)
+	}
+	// The unconsumed-type-parameter call inlines despite writing no type
+	// argument: its body is spliced in, `pick(` is gone.
+	if strings.Contains(out, "provider.pick(") {
+		t.Errorf("provider.pick(theFoo) should have inlined despite the unwritten type argument, got:\n%s", out)
+	}
+	if !strings.Contains(out, "isService(tokenfor(theFoo))") {
+		t.Errorf("expected the pick body spliced in as isService(tokenfor(theFoo)), got:\n%s", out)
 	}
 	// The unrecoverable call is left untouched in the output.
 	if !strings.Contains(out, "provider.isService()") {

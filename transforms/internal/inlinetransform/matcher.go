@@ -197,9 +197,17 @@ func resolvedDeclaration(checker *shimchecker.Checker, call *shimast.Node) *shim
 //     parameter that appears in a parameter position, so this recovers every
 //     inferred argument the checker bound.
 //
-// ok is false when the call binds no type arguments (non-generic) or an inferred
-// binding cannot be recovered for every parameter.
-func RecoverTypeArguments(checker *shimchecker.Checker, call *shimast.Node) ([]*shimchecker.Type, bool) {
+// required marks, by type-parameter POSITION, which bindings the caller
+// actually needs; a nil required treats every position as needed. A position
+// beyond required's length is treated as needed too, so a length mismatch
+// fails safe rather than silently skipping a check.
+//
+// On the INFERRED path, a position the caller does not need is free to go
+// unbound — nothing in the call's arguments has to determine it — and its slot
+// in the returned slice is left nil rather than sinking the whole recovery. ok
+// is false when the call binds no type arguments (non-generic) or a NEEDED
+// position's binding cannot be recovered.
+func RecoverTypeArguments(checker *shimchecker.Checker, call *shimast.Node, required []bool) ([]*shimchecker.Type, bool) {
 	callExpr := call.AsCallExpression()
 	if callExpr == nil {
 		return nil, false
@@ -257,8 +265,9 @@ func RecoverTypeArguments(checker *shimchecker.Checker, call *shimast.Node) ([]*
 		bindings[idx] = checker.GetTypeOfSymbol(instParams[i])
 	}
 
-	for _, b := range bindings {
-		if b == nil {
+	for i, b := range bindings {
+		needed := required == nil || i >= len(required) || required[i]
+		if needed && b == nil {
 			return nil, false
 		}
 	}

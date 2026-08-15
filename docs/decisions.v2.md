@@ -2558,12 +2558,14 @@ value face takes one, so a single implementation cannot answer for both. Two `in
 therefore share the member name, which is also why the emit sweep tracks every declared shape of a
 member rather than a single one — residue in either arity is residue.
 
-**Open: the call site spells the type argument.** The inline stage binds a sugar's type parameter
-from what the call writes and refuses one it would have to infer, so the authoring form is
-`getService<typeof Widget>(Widget)`. Closing that is a real change to type-argument recovery: on this
-surface the parameter's type-parameter identity does not match the resolved signature's own
-type-parameter list, and keying the lookup by name instead makes the value face lower at the cost of
-breaking the tokenless one. The alternative is faces carrying no type parameter at all, which lower
-today and return `any`. Which of the three the authoring surface should be is the owner's call.
+The call site writes a type argument only where the body consumes one. The inline stage recovers a
+type-argument binding — written explicitly or inferred from a value parameter — for exactly the type
+parameters a body's own primitive calls spell as a type argument (`typefor<T>()` consumes `T`); a type
+parameter a body feeds only to a value-argument primitive (`typefor(value)`) consumes nothing and is
+never recovered, so the call site need not write one either. The value door's body passes its own
+parameter through `typefor(value)`, consuming nothing, so `getService(SomeClass)` and
+`getService(someFunction)` lower with no type argument written — exactly the pair a hand-writer would
+have spelled. The tokenless `getService<T>()` consumes `T` through `typefor<T>()` and keeps requiring
+a type argument the call site can supply.
 
 _Owner-ruled via task #19, Claude-executed 2026-08-14._

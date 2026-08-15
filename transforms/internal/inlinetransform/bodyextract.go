@@ -67,6 +67,21 @@ type Discriminator struct {
 	Params         []string
 }
 
+// consumedPositions returns a mask over rb.TypeParams marking which positions
+// rb.ConsumedTypeParams names, and whether any position is consumed at all —
+// the shape RecoverTypeArguments' required parameter takes.
+func (rb *ResolvedBody) consumedPositions() ([]bool, bool) {
+	mask := make([]bool, len(rb.TypeParams))
+	any := false
+	for i, tp := range rb.TypeParams {
+		if rb.ConsumedTypeParams[tp] {
+			mask[i] = true
+			any = true
+		}
+	}
+	return mask, any
+}
+
 // Equal reports structural equality of two discriminators.
 func (d Discriminator) Equal(o Discriminator) bool {
 	if d.TypeParamCount != o.TypeParamCount || len(d.Params) != len(o.Params) {
@@ -90,9 +105,14 @@ type ResolvedBody struct {
 	Params     []string
 	// RequiredParams counts the leading value parameters a call must supply an
 	// argument for; the rest of Params are the optional tail it may stop short of.
-	RequiredParams   int
-	Discriminator    Discriminator
-	PrimitiveImports map[string]string
+	RequiredParams int
+	Discriminator  Discriminator
+	// ConsumedTypeParams is the subset of TypeParams the body's own primitive
+	// calls bind by name — `typefor<T>()` consumes T, `typefor(value)` consumes
+	// nothing. Only a consumed type parameter needs a type argument at the call
+	// site; the rest are free to go unwritten and are never recovered.
+	ConsumedTypeParams map[string]bool
+	PrimitiveImports   map[string]string
 	// ValueImports maps each body-local name of a RUNTIME value the body references
 	// to the (module, export) its import materializes to. These survive lowering as
 	// ordinary references, and the inline stage injects the same imports into the
@@ -177,14 +197,15 @@ func (b *bodyExtractor) Extract(packageDir string, e Entry) (*ResolvedBody, erro
 	primImports := primitiveImports(implSF, packageName(packageDir))
 
 	rb := &ResolvedBody{
-		Body:             expr,
-		TypeParams:       typeParams,
-		Params:           params,
-		RequiredParams:   requiredParamCount(memberNode),
-		Discriminator:    disc,
-		PrimitiveImports: primImports,
-		ValueImports:     map[string]valueimport.Ref{},
-		File:             implFile,
+		Body:               expr,
+		TypeParams:         typeParams,
+		Params:             params,
+		RequiredParams:     requiredParamCount(memberNode),
+		Discriminator:      disc,
+		ConsumedTypeParams: consumedTypeParams(expr, typeParams, primImports),
+		PrimitiveImports:   primImports,
+		ValueImports:       map[string]valueimport.Ref{},
+		File:               implFile,
 	}
 	// The impl file's value imports are file-wide (every body in inline.ts shares
 	// them), so the walk below records only the ones THIS body references — a body
@@ -489,6 +510,51 @@ func functionLikeParams(node *shimast.Node) []*shimast.Node {
 		return nil
 	}
 	return list.Nodes
+}
+
+// consumedTypeParams walks body for calls to one of primImports whose written
+// type-argument nodes are bare identifier references to one of typeParams, and
+// returns the set of names so referenced. `typefor<T>()` consumes T;
+// `typefor(value)` — a value-argument call with no type-argument list at all —
+// consumes nothing; `typefor<Marker>()` over some other, concrete type consumes
+// nothing either, since the reference is not to one of the body's own type
+// parameters.
+func consumedTypeParams(body *shimast.Node, typeParams []string, primImports map[string]string) map[string]bool {
+	declared := make(map[string]bool, len(typeParams))
+	for _, tp := range typeParams {
+		declared[tp] = true
+	}
+	consumed := map[string]bool{}
+	walk(body, func(n *shimast.Node) bool {
+		if n.Kind != shimast.KindCallExpression {
+			return false
+		}
+		callee := n.AsCallExpression().Expression
+		if callee.Kind != shimast.KindIdentifier {
+			return false
+		}
+		if _, ok := primImports[callee.Text()]; !ok {
+			return false
+		}
+		typeArgs := n.AsCallExpression().TypeArguments
+		if typeArgs == nil {
+			return false
+		}
+		for _, ta := range typeArgs.Nodes {
+			if ta.Kind != shimast.KindTypeReference {
+				continue
+			}
+			name := ta.AsTypeReferenceNode().TypeName
+			if name == nil || name.Kind != shimast.KindIdentifier {
+				continue
+			}
+			if declared[name.Text()] {
+				consumed[name.Text()] = true
+			}
+		}
+		return false
+	})
+	return consumed
 }
 
 // primitiveImports reads sf's top-level named imports and returns a local-name ->
