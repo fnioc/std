@@ -51,6 +51,7 @@
     }
   },
   "dependencies": {
-    "@rhombus-toolkit/func": "^3.6.0"
+    "@rhombus-toolkit/func": "^3.6.0",
+    "@rhombus-toolkit/type-helpers": "^2.0.0"
   }
 }
