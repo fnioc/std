@@ -22,9 +22,10 @@ export default tseslint.config({
   // type-aware block's parser settings; the rule itself uses none. A marker
   // body lives wherever its declaring package puts it — the rule locates it by
   // walking that package's own `rhombus-std` inline publish list, not by file
-  // name — so the glob only needs to reach every candidate file; `inline.ts`
-  // and a package's `augmentations/*.ts` are the two shapes in use today.
-  files: ['libraries/*/src/inline.ts', 'libraries/*/src/augmentations/*.ts'],
+  // name — so the glob only needs to reach every candidate file; a package's
+  // barrel, its `inline.ts`, and its `augmentations/*.ts` are the shapes in use
+  // today.
+  files: ['libraries/*/src/index.ts', 'libraries/*/src/inline.ts', 'libraries/*/src/augmentations/*.ts'],
   plugins: { 'rhombus-inline': rhombusInline },
   rules: { 'rhombus-inline/inline-authoring': 'error' },
 }, {
