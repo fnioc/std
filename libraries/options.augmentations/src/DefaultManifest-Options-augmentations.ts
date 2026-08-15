@@ -6,8 +6,8 @@
 
 import type { Manifest } from '@rhombus-std/di.core';
 import { type IPostConfigureOptions, type IValidateOptions, ValidateOptionsResult } from '@rhombus-std/options';
-import { registerAugmentations, Type } from '@rhombus-std/primitives';
-import { typefor } from '@rhombus-std/primitives.extras';
+import { Type } from '@rhombus-std/primitives';
+import { registerAugmentations } from '@rhombus-std/primitives.extras';
 import type { Func } from '@rhombus-toolkit/func';
 
 import type { DepTokens } from './dep-tokens.js';
@@ -154,4 +154,4 @@ declare module '@rhombus-std/di.core' {
   }
 }
 
-registerAugmentations(typefor<Manifest>(), ServiceManifestOptionsAugmentations);
+registerAugmentations<Manifest>(ServiceManifestOptionsAugmentations);

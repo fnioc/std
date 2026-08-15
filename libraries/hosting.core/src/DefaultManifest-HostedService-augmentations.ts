@@ -12,8 +12,8 @@
 // Named imports: unqualified names in a `declare module` body resolve in THIS
 // file's scope, so `Manifest` must be importable here.
 import { type IServiceProvider, type Manifest, RESOLVER_TYPE } from '@rhombus-std/di.core';
-import { type ConstructorType, registerAugmentations, Type } from '@rhombus-std/primitives';
-import { typefor } from '@rhombus-std/primitives.extras';
+import { type ConstructorType, Type } from '@rhombus-std/primitives';
+import { registerAugmentations } from '@rhombus-std/primitives.extras';
 import type { Ctor, Func } from '@rhombus-toolkit/func';
 import type { IHostedService } from './IHostedService';
 import { HOSTED_SERVICE_TYPE } from './types';
@@ -70,4 +70,4 @@ declare module '@rhombus-std/di.core' {
   }
 }
 
-registerAugmentations(typefor<Manifest>(), ServiceManifestHostedServiceAugmentations);
+registerAugmentations<Manifest>(ServiceManifestHostedServiceAugmentations);

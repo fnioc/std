@@ -8,8 +8,8 @@
 import type { IConfig } from '@rhombus-std/config.core';
 import type { Manifest } from '@rhombus-std/di.core';
 import type { IConfigureOptions } from '@rhombus-std/options';
-import { registerAugmentations, Type } from '@rhombus-std/primitives';
-import { typefor } from '@rhombus-std/primitives.extras';
+import { Type } from '@rhombus-std/primitives';
+import { registerAugmentations } from '@rhombus-std/primitives.extras';
 import type { Func } from '@rhombus-toolkit/func';
 
 import { ConfigChangeTokenSource } from './ConfigChangeTokenSource.js';
@@ -87,4 +87,4 @@ declare module '@rhombus-std/di.core' {
   }
 }
 
-registerAugmentations(typefor<Manifest>(), ServiceManifestOptionsConfigAugmentations);
+registerAugmentations<Manifest>(ServiceManifestOptionsConfigAugmentations);

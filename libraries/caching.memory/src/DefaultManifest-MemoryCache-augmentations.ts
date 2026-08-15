@@ -20,8 +20,8 @@ import '@rhombus-std/options.augmentations';
 import type { DefaultManifest, IServiceProvider, Manifest } from '@rhombus-std/di.core';
 import { RESOLVER_TYPE } from '@rhombus-std/di.core';
 import type { ILoggerFactory } from '@rhombus-std/logging.core';
-import { registerAugmentations, Type } from '@rhombus-std/primitives';
-import { typefor } from '@rhombus-std/primitives.extras';
+import { Type } from '@rhombus-std/primitives';
+import { registerAugmentations, typefor } from '@rhombus-std/primitives.extras';
 import type { Func } from '@rhombus-toolkit/func';
 import { DISTRIBUTED_CACHE_TYPE } from './distributed-cache-type';
 import { MEMORY_CACHE_OPTIONS_ACCESSOR_TYPE, MEMORY_CACHE_OPTIONS_TYPE, MEMORY_DISTRIBUTED_CACHE_OPTIONS_ACCESSOR_TYPE,
@@ -107,4 +107,4 @@ declare module '@rhombus-std/di.core' {
   }
 }
 
-registerAugmentations(typefor<Manifest>(), ServiceManifestMemoryCacheAugmentations);
+registerAugmentations<Manifest>(ServiceManifestMemoryCacheAugmentations);

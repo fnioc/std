@@ -31,8 +31,8 @@ import '@rhombus-std/options.augmentations';
 import type { DefaultManifest, Manifest } from '@rhombus-std/di.core';
 import { type ILoggingBuilder, Logger as LoggerOfT, LogLevel } from '@rhombus-std/logging.core';
 import { configureStepType } from '@rhombus-std/options.augmentations';
-import { registerAugmentations, Type } from '@rhombus-std/primitives';
-import { typefor } from '@rhombus-std/primitives.extras';
+import { Type } from '@rhombus-std/primitives';
+import { registerAugmentations } from '@rhombus-std/primitives.extras';
 import type { Func } from '@rhombus-toolkit/func';
 import { DefaultLoggerLevelConfigureOptions } from './DefaultLoggerLevelConfigureOptions';
 import { LoggerFactory } from './LoggerFactory';
@@ -98,4 +98,4 @@ declare module '@rhombus-std/di.core' {
   }
 }
 
-registerAugmentations(typefor<Manifest>(), ServiceManifestLoggingAugmentations);
+registerAugmentations<Manifest>(ServiceManifestLoggingAugmentations);

@@ -11,8 +11,8 @@
 import { type Manifest, RESOLVER_TYPE } from '@rhombus-std/di.core';
 import { type IStartupValidator, StartupValidator } from '@rhombus-std/options';
 import type { IServiceProvider } from '@rhombus-std/primitives';
-import { registerAugmentations, Type } from '@rhombus-std/primitives';
-import { typefor } from '@rhombus-std/primitives.extras';
+import { Type } from '@rhombus-std/primitives';
+import { registerAugmentations, typefor } from '@rhombus-std/primitives.extras';
 
 import { collectionType, optionsAddressType, startupValidationTargetType } from './option-types.js';
 
@@ -59,4 +59,4 @@ declare module '@rhombus-std/di.core' {
   }
 }
 
-registerAugmentations(typefor<Manifest>(), ServiceManifestValidateOnStartAugmentations);
+registerAugmentations<Manifest>(ServiceManifestValidateOnStartAugmentations);

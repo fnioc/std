@@ -29,8 +29,8 @@ import { collectionType, type IMetricsBuilder, type ITracingBuilder, METRICS_CHA
   MetricsOptions, TRACING_CHANGE_TOKEN_SOURCE_TYPE, TRACING_CONFIGURATION_TYPE, TRACING_CONFIGURE_TYPE,
   TRACING_LISTENER_CONFIGURATION_FACTORY_TYPE, TRACING_OPTIONS_TYPE,
   TracingOptions } from '@rhombus-std/diagnostics.core';
-import { registerAugmentations, Type } from '@rhombus-std/primitives';
-import { typefor } from '@rhombus-std/primitives.extras';
+import { Type } from '@rhombus-std/primitives';
+import { registerAugmentations } from '@rhombus-std/primitives.extras';
 import type { Func } from '@rhombus-toolkit/func';
 
 import { assembleDiagnosticsOptions } from './assemble-diagnostics-options';
@@ -134,8 +134,8 @@ declare module '@rhombus-std/di.core' {
 // OPEN receiver: register both sets against di.core's `Manifest` type. The
 // `DefaultManifest` decorated `@augment(typefor<Manifest>())` in di.core pulls
 // `addMetrics`/`addTracing` onto its prototype.
-registerAugmentations(typefor<Manifest>(), ServiceManifestMetricsAugmentations);
-registerAugmentations(typefor<Manifest>(), ServiceManifestTracingAugmentations);
+registerAugmentations<Manifest>(ServiceManifestMetricsAugmentations);
+registerAugmentations<Manifest>(ServiceManifestTracingAugmentations);
 
 // Wholesale re-export of this family's own core (the IMetricsBuilder/
 // ITracingBuilder abstractions, the rule/options data model, and the tokens),
