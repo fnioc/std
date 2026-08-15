@@ -487,7 +487,7 @@ good error message replaces a comment; a trivially-simple function gets none. Fi
 not automatically wrong — keep a trimmed orienting one, cut it when it merely restates the type's
 own docs below it.
 
-`libraries/primitives/src/augmentation-registry.ts` is the canonical swept file — match it. Never
+`libraries/primitives/src/augmentation/registry.ts` is the canonical swept file — match it. Never
 delete a comment when doing so loses the answer to "why does this exist at all"; rewrite it instead.
 
 ## Build layout — dist-referencing (§72)
