@@ -1,9 +1,9 @@
 {
   // The config authoring package's own program: the `declare module` that puts
-  // `withType<T>()` on `ConfigBuilder`, the inline sugar body beside it, and the
-  // `schemaof<T>()` primitive stub (src/schemaof.ts). The body and the stub are
-  // authoring-only substitution source, never executed, but the phantom-typing
-  // guard still typechecks them here so the sugar's shape stays honest.
+  // `withType<T>()` on `ConfigBuilder`, and the inline sugar body beside it. The
+  // body is authoring-only substitution source, never executed, but the
+  // phantom-typing guard still typechecks it here so the sugar's shape stays
+  // honest.
   "extends": "../../tsconfig.lib.json",
   "include": ["src/**/*"]
 }

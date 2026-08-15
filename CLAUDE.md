@@ -77,8 +77,8 @@ is not reproducible across time or across machines by toolchain version alone.
 - **Lint** is `tsc --noEmit` for almost every package (29 of 32 libraries; `-p tsconfig.ci.json`).
   Typechecking suffices because the authored tokenless forms type-check against the sugar package's
   `declare module` augmentation — pulled in by a `types` array in the consuming package's
-  `tsconfig.json` / `tsconfig.ttsc.json` — with no plugin, since `tokenfor` and the sugar forms have
-  no type-level footprint. Only `di`, `di.core` and `hosting.core` run `eslint .`
+  `tsconfig.json` / `tsconfig.ttsc.json` — with no plugin, since the primitives and the sugar forms
+  have no type-level footprint. Only `di`, `di.core` and `hosting.core` run `eslint .`
   (typescript-eslint, type-aware). Formatting is **dprint** (`useBraces: always`).
 - **Go gates** (the ttsc engine's own): `node scripts/gen-go-work.mjs` then, from `transforms/`,
   `go build ./... && go vet ./... && go test ./... && gofmt -l .` (needs mise Go on PATH; the
@@ -139,11 +139,11 @@ where that's cheap, and flag the intended divergence rather than pre-emptively t
   (`ILogger.log`/`beginScope`, `IMemoryCache.tryGetValue`, `ILoggerFactory.createLogger` — dot-callable
   at runtime; not statically typed, TS2430). It lives here
   (not `di.core`) because di ⊥ config forces the shared home onto the zero-dep leaf.
-  `primitives.extras` (the sugar-only authoring package, née `primitives.transformer`) hosts the
-  `tokenfor<T>()`/`tokenof()` token primitives — moved here out of this runtime leaf (§121:
-  pure transformables, elided after lowering) — plus `typefor<T>()`, the `Type`-based authoring
-  primitive `di` draws its tokenless sugar from, and the token-derivation machinery,
-  di-independent so any family can mint augmentation tokens from types. The runtime leaf itself owns
+  `primitives.extras` (the sugar-only authoring package) is the single home for the primitive
+  vocabulary: BOTH verbs — `typefor<T>()`, which names a type, and `schemaof<T>()`, which expands
+  one — plus `registerAugmentations`/`registerInlineBodies` and the derivation machinery. Each is a
+  pure transformable, elided after lowering (§121), and the package is di-independent so any family
+  can draw on them. The runtime leaf itself owns
   the structural
   platform typings (§39/§44): `AbortSignal`/`AbortController` (+ the inert `neverSignal`
   singleton), `ProcessLike`/`process`, `TimeoutHandle`/`setTimeout`/`clearTimeout`, and
@@ -432,9 +432,8 @@ Architecture section above. The decisions docs are the full record; this file is
   - `.extras` — a sugar-only authoring package for a family (declare-module typings +
     `rhombus-std` marker `inline` bodies + one ttsc spawn descriptor). The old `.transformer` qualifier
     was renamed to `.extras` (§121): `primitives.extras`, `di.extras`,
-    `di.extras.options`, `config.extras`. `primitives.extras` also homes the shared
-    authoring-time token primitives (`tokenfor`/`tokenof` moved out of the runtime
-    `primitives` leaf).
+    `di.extras.options`, `config.extras`. `primitives.extras` homes the primitive vocabulary
+    every other `.extras` package's sugar bodies are written against.
   - Config providers keep their own name instead of a generic qualifier — `config.json`,
     `config.env`, `config.commandline`, plus the file sub-family `config.file`/`config.ini`/
     `config.xml` (the Architecture section above is the authoritative roster). Concrete providers in other families
@@ -528,7 +527,7 @@ One further deviation, because a **transformer** is in play — now a single **G
 - **Lint/typecheck is plain `tsc`** — no plugin (see the Lint bullet under [Commands](#commands) for
   how the `declare module` augmentation reaches the program). `rollup` + `rollup-plugin-dts` live at
   the repo root.
-- **The lowering stage (§40, stage-then-bundle).** Any library whose src calls `tokenfor<T>()` (etc.)
+- **The lowering stage (§40, stage-then-bundle).** Any library whose src calls `typefor<T>()` (etc.)
   ships it LOWERED: the shared `stageLowering` runs a per-file `Bun.build` with the
   `@ttsc/unplugin/bun` adapter active — every `src/**/*.ts` its own entrypoint, all imports external
   — so each file is lowered into `.ttsc-out/`; the main bundle then consumes that emit with no
@@ -536,7 +535,7 @@ One further deviation, because a **transformer** is in play — now a single **G
   `examples/*.with-transformer`**, whose `tsconfig.ttsc.json` names the same `rootDir: ./src` /
   `outDir: .ttsc-out` pair the libraries do. The per-file emit is KEPT as `dist/stage/` (reached
   through the `./private/*` export's `bun` condition — white-box tests execute the lowered JS, since
-  un-lowered `tokenfor` throws at import time; publish-excluded via `"!dist/stage"` in `files`), and
+  an un-lowered primitive throws at import time; publish-excluded via `"!dist/stage"` in `files`), and
   the `.` export's `bun` condition points at `dist/bundle/index.js`.
 - **The generated `Type` const module (§148).** `typefor<T>()` emits a reference to a named const,
   not the `Type.*` tree it derives; the engine writes one `__typefor__.js` per project into the
@@ -578,8 +577,8 @@ system-wide — `mise.toml` declares it, but as `latest`, not a pinned version. 
 named type yields its interned `NominalType` address) and, given a runtime class or factory value in
 place of a type argument, OBSERVES it instead — deriving the whole callable `Type` its construct or
 call signatures describe; `schemaof<T>()` EXPANDS one into the `Type` tree describing its members —
-stopping at every name, so recursion terminates by construction. `tokenfor`/`tokenof` are the
-string-token pair, pending their own held retirement. There is no second structural vocabulary: the
+stopping at every name, so recursion terminates by construction. Both live in `primitives.extras`;
+the `tokenfor`/`tokenof` string-token pair is retired. There is no second structural vocabulary: the
 bespoke config schema grammar (`Schema`/`Infer`/`OPTIONAL`) and the `signaturefor`/`signaturesfor`/
 `keyof` primitives are all retired.
 
@@ -602,7 +601,7 @@ bespoke config schema grammar (`Schema`/`Infer`/`OPTIONAL`) and the `signaturefo
 - **`*.extras` package shapes** — every one carries a barrel re-exporting its marker bodies BY
   NAME, since an inline entry's `impl` is resolved by walking the barrel's re-export graph: a set
   only side-effect-imported is never found. `config.extras` pairs that barrel with its `./ttsc`
-  descriptor. `primitives.extras` carries a barrel (the token primitives `tokenfor`/`tokenof`) plus
+  descriptor. `primitives.extras` carries a barrel (both primitives, `typefor` and `schemaof`) plus
   its `./ttsc` descriptor. `di.extras` keeps a barrel shipping the `declare module` authoring
   augmentations; its fifteen `rhombus-std` `inline` marker bodies live directly in those
   augmentation files (no separate `inline.ts`).

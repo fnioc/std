@@ -5,9 +5,7 @@
 
 import type { ConfigBuilder } from '@rhombus-std/config';
 import type { IndexedSection } from '@rhombus-std/config.core';
-import { registerInlineBodies } from '@rhombus-std/primitives.extras';
-
-import { schemaof } from '../schemaof.js';
+import { registerInlineBodies, schemaof } from '@rhombus-std/primitives.extras';
 
 // The declaration targets the package barrel `@rhombus-std/config` — the same
 // specifier every other `ConfigBuilder` augmenter uses, so they all merge onto
