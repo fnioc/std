@@ -25,9 +25,8 @@ import (
 // ships a reference and a consumer deps the authoring package build-time only).
 // `schemaof<T>()` binds a TYPE argument and lowers to the config family's runtime
 // schema object literal — the engine half of the `.withType<T>()` sugar body
-// `this.withSchema(schemaof<T>())`. It is authoring-time-only, so it homes in the
-// family's `@rhombus-std/config.extras` (a body imports it via a
-// package-relative specifier from within that package).
+// `this.withSchema(schemaof<T>())`. It is authoring-time-only and homes beside
+// the other primitive verbs in `@rhombus-std/primitives.extras`.
 // `typefor<T>()` / `typefor(value)` bind a TYPE or VALUE argument and lower to a
 // structured runtime `Type` value (the `Type.*` factory tree the argument
 // spells); a VALUE argument also carries a constructor's or factory's
@@ -36,7 +35,7 @@ import (
 var knownPrimitives = map[string]string{
 	"tokenfor": "@rhombus-std/primitives.extras",
 	"tokenof":  "@rhombus-std/primitives.extras",
-	"schemaof": "@rhombus-std/config.extras",
+	"schemaof": "@rhombus-std/primitives.extras",
 	"typefor":  "@rhombus-std/primitives.extras",
 }
 
@@ -564,9 +563,9 @@ func consumedTypeParams(body *shimast.Node, typeParams []string, primImports map
 // A primitive is accepted from its home module directly (`typefor` from
 // `@rhombus-std/primitives.extras`), OR — when the primitive's home IS the declaring
 // package — via a package-relative specifier (`schemaof` from `./schemaof`,
-// authored inside `@rhombus-std/config.extras`), so a same-package authoring
+// authored inside `@rhombus-std/primitives.extras`), so a same-package authoring
 // primitive need not be self-imported by package name. A primitive imported from
-// any OTHER module (e.g. a stale `schemaof` from primitives) is rejected.
+// any OTHER module is rejected.
 func primitiveImports(sf *shimast.SourceFile, declaringPkg string) map[string]string {
 	out := map[string]string{}
 	if sf == nil {
