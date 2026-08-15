@@ -10,19 +10,20 @@ import { ServiceDescriptor } from './ServiceDescriptor';
  * result registers nothing.
  *
  * @remarks
- * `_add`/`_remove`/`_replace` are the substrate the registration verbs compose from; iterating a
- * manifest yields its descriptors newest-registration-first.
+ * `add`/`remove`/`replace` are the substrate every other registration verb composes from; each
+ * also carries sugared shapes contributed by augmentation. Iterating a manifest yields its
+ * descriptors newest-registration-first.
  */
 export interface Manifest<Scopes extends string = any> extends Iterable<ServiceDescriptor<Scopes>> {
   /** Prepends `descriptor`, ahead of every descriptor already in the chain. */
-  _add(descriptor: ServiceDescriptor<Scopes>): Manifest<Scopes>;
+  add(descriptor: ServiceDescriptor<Scopes>): Manifest<Scopes>;
   /** Drops the descriptor that is {@link ServiceDescriptor.equals} to `descriptor`, if one is present. */
-  _remove(descriptor: ServiceDescriptor<Scopes>): Manifest<Scopes>;
+  remove(descriptor: ServiceDescriptor<Scopes>): Manifest<Scopes>;
   /**
    * Swaps in `descriptor` for the first descriptor that occupies the same registration slot —
    * see {@link ServiceDescriptor.matches} — leaving every other descriptor untouched.
    */
-  _replace(descriptor: ServiceDescriptor<Scopes>): Manifest<Scopes>;
+  replace(descriptor: ServiceDescriptor<Scopes>): Manifest<Scopes>;
 }
 
 export interface DefaultManifest<Scopes extends string> extends Manifest<Scopes> {}
@@ -33,7 +34,14 @@ export class DefaultManifest<Scopes extends string> {
   constructor(descriptors?: Iterable<ServiceDescriptor<Scopes>>) {
     this.#descriptors = descriptors ?? [];
   }
-  _add(descriptor: ServiceDescriptor<Scopes>) {
+  // Augmentation mounts further registration shapes onto this same name, and a class narrowing
+  // `add` to the descriptor shape alone is no longer a manifest — hence the open second signature.
+  // Only a descriptor reaches the body: the dispatcher installed over this method routes every
+  // other shape to the augmentation that owns it. Read the precise shapes off `Manifest`.
+  add(descriptor: ServiceDescriptor<Scopes>): Manifest<Scopes>;
+  add(...args: any[]): Manifest<Scopes>;
+  add(...args: readonly unknown[]): Manifest<Scopes> {
+    const [descriptor] = args as readonly [ServiceDescriptor<Scopes>];
     return new DefaultManifest<Scopes>({
       [Symbol.iterator]: function* added(this: DefaultManifest<Scopes>) {
         // INTENTIONAL: newest first.
@@ -43,7 +51,7 @@ export class DefaultManifest<Scopes extends string> {
     });
   }
 
-  _remove(descriptor: ServiceDescriptor<Scopes>) {
+  remove(descriptor: ServiceDescriptor<Scopes>) {
     return new DefaultManifest<Scopes>({
       [Symbol.iterator]: function* removed(this: DefaultManifest<Scopes>) {
         const it = Iterator.from(this.#descriptors);
@@ -58,7 +66,7 @@ export class DefaultManifest<Scopes extends string> {
     });
   }
 
-  _replace(descriptor: ServiceDescriptor<Scopes>) {
+  replace(descriptor: ServiceDescriptor<Scopes>) {
     return new DefaultManifest<Scopes>({
       [Symbol.iterator]: function* replaced(this: DefaultManifest<Scopes>) {
         const it = Iterator.from(this.#descriptors);

@@ -27,8 +27,7 @@
 // this file is identical to it. The header line names neither dialect for the
 // same reason.
 
-import { DefaultManifest, DiError, ManifestValidationError, Type } from '@rhombus-std/di.core';
-import type { Manifest } from '@rhombus-std/di.core';
+import { DefaultManifest, DiError, type Manifest, ManifestValidationError, Type } from '@rhombus-std/di.core';
 import '@rhombus-std/di';
 import { demonstrateRegistrationErrors, diagnose, stagedFailure } from '@rhombus-std/examples.lib.without-transformer';
 
@@ -131,7 +130,7 @@ export function demonstrateErrors(): readonly string[] {
   // as the loop it makes — naming just the type that closed it would leave the
   // reader to find the other half.
   lines.push(stagedFailure('a dependency cycle', () => {
-    let services = new DefaultManifest<'singleton'>();
+    let services: Manifest<'singleton'> = new DefaultManifest<'singleton'>();
     services = services.addClass(LEDGER_TYPE, Ledger, Type.ctor(LEDGER_TYPE, [[AUDIT_TYPE]]), 'singleton');
     services = services.addClass(AUDIT_TYPE, AuditLog, Type.ctor(AUDIT_TYPE, [[LEDGER_TYPE]]), 'singleton');
     return services.build().getRequiredService(LEDGER_TYPE);
@@ -167,7 +166,7 @@ export function demonstrateErrors(): readonly string[] {
 
 /** The graph whose union slot two registrations compete to fill. */
 function ambiguous(): Manifest<'singleton'> {
-  let services = new DefaultManifest<'singleton'>();
+  let services: Manifest<'singleton'> = new DefaultManifest<'singleton'>();
   services = services.addValue(AUDIT_TYPE, { kind: 'audit' });
   services = services.addValue(METRICS_TYPE, { kind: 'metrics' });
   services = services.addClass(REPORT_TYPE, ReportService,

@@ -35,7 +35,7 @@
 // independently; the same label appearing twice in one registration binds to one
 // captured type wherever it appears.
 
-import { DefaultManifest, Type } from '@rhombus-std/di.core';
+import { DefaultManifest, type Manifest, Type } from '@rhombus-std/di.core';
 import '@rhombus-std/di';
 
 import type { AuditEvent, Entity, IJoin, IRepository, ITable, Order, Seed,
@@ -246,7 +246,7 @@ function shortName(token: string): string {
 // into `manifest`; a bare `manifest.addClass(...)` statement would register
 // nothing.
 
-let manifest = new DefaultManifest<'singleton'>();
+let manifest: Manifest<'singleton'> = new DefaultManifest<'singleton'>();
 
 // The closed value registrations the templates bottom out at: one seed and one
 // type witness per entity. Nothing generic about them — they are the floor.

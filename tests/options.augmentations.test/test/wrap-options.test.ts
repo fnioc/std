@@ -17,7 +17,7 @@ const WIDGET_TOKEN = 'test:Widget';
 
 describe('addOptions(tType) — wrap the bound T', () => {
   test('resolving IOptions<T> delivers the bound T', () => {
-    let services: Manifest<string> = new DefaultManifest<string>();
+    let services: Manifest<'singleton'> = new DefaultManifest<'singleton'>();
     const widget: Widget = { name: 'gizmo' };
 
     services = services.addValue(WIDGET_TOKEN, widget);
@@ -38,7 +38,7 @@ describe('addOptions(tType) — wrap the bound T', () => {
     }
     const ENGINE_TOKEN = 'test:Engine';
 
-    let services: Manifest<string> = new DefaultManifest<string>();
+    let services: Manifest<'singleton'> = new DefaultManifest<'singleton'>();
     // Explicit-token class registration (transformer-free): a zero-arg ctor.
     services = services.addClass(ENGINE_TOKEN, Engine, Type.ctor(Type.from(ENGINE_TOKEN), [[]]), 'singleton');
     services = services.addOptions(ENGINE_TOKEN);
@@ -57,7 +57,7 @@ describe('addOptions(tType) — wrap the bound T', () => {
     const A_TOKEN = 'test:AOptions';
     const B_TOKEN = 'test:BOptions';
 
-    let services: Manifest<string> = new DefaultManifest<string>();
+    let services: Manifest<'singleton'> = new DefaultManifest<'singleton'>();
     services = services.addOptions(A_TOKEN, () => ({ which: 'a' }));
     services = services.addOptions(B_TOKEN, () => ({ which: 'b' }));
 
@@ -68,7 +68,7 @@ describe('addOptions(tType) — wrap the bound T', () => {
   });
 
   test('a type nobody offered is not answered', () => {
-    const services: Manifest<string> = new DefaultManifest<string>();
+    const services: Manifest<'singleton'> = new DefaultManifest<'singleton'>();
     const provider = services.build();
 
     // The open registration takes the base slot as a dependency, so a type with

@@ -534,9 +534,9 @@ _Owner-directed (the mutable-slot seam, forced by the immutable-manifest design)
 
 ## §108 — `Manifest` is an interface; its own body carries three primitives, every registration verb arrives through augmentation
 
-`Manifest<Scopes>` (`libraries/di.core/src/Manifest.ts`) is an interface extending `Iterable<ServiceDescriptor<Scopes>>`, and its own body declares exactly three members — `_add`, `_remove`, `_replace` — each returning a NEW manifest rather than mutating the receiver, so a call whose result is discarded registers nothing. `DefaultManifest` is the concrete, `@augment`-decorated class: an immutable decorator chain where `_add` prepends one descriptor via a generator that yields the new descriptor then delegates to the rest, so iteration order is newest-registration-first.
+`Manifest<Scopes>` (`libraries/di.core/src/Manifest.ts`) is an interface extending `Iterable<ServiceDescriptor<Scopes>>`, and its own body declares exactly three members — `add`, `remove`, `replace`, each taking one descriptor — each returning a NEW manifest rather than mutating the receiver, so a call whose result is discarded registers nothing. `DefaultManifest` is the concrete, `@augment`-decorated class: an immutable decorator chain where `add` prepends one descriptor via a generator that yields the new descriptor then delegates to the rest, so iteration order is newest-registration-first.
 
-Every other registration verb — `add`, `addClass`, `addFactory`, `addValue`, `tryAdd` and its typed siblings, `replaceClass`/`replaceFactory`/`replaceValue`, `removeAll` — arrives through augmentation onto `Manifest`, in `libraries/di.core/src/augmentations/`. `add` is not replaced by the typed verbs; it coexists with them as a dispatching entry point taking a bare descriptor, a lambda that walks the per-registration builder (§109), or an implementation plus its composed call-shape type positionally. `addClass`/`addFactory`/`addValue` are separate convenience verbs that compose a `ServiceDescriptor` from a type, an implementation, and the implementation's own composed `Type` (`libraries/di.core/src/ServiceDescriptor/ServiceDescriptor.ts`), then forward to `add`. Builders that wrap a manifest and are configured by a caller delegate keep mutation-shaped ergonomics on top via a mutable-slot seam (§114). _Owner-directed (the immutable-chain, verb-carried-by-augmentation direction); the builder's slot mechanics (§109) are Claude's._
+Every other registration verb — `addMany`, `addClass`, `addFactory`, `addValue`, `tryAdd` and its typed siblings, `replaceClass`/`replaceFactory`/`replaceValue`, `removeAll` — arrives through augmentation onto `Manifest`, in `libraries/di.core/src/augmentations/`. Augmentation also contributes further `add` shapes on the primitive's own name: a lambda that walks the per-registration builder (§109), or an implementation plus its composed call-shape type positionally (§188). `addClass`/`addFactory`/`addValue` are separate convenience verbs that compose a `ServiceDescriptor` from a type, an implementation, and the implementation's own composed `Type` (`libraries/di.core/src/ServiceDescriptor/ServiceDescriptor.ts`), then forward to `add`. Builders that wrap a manifest and are configured by a caller delegate keep mutation-shaped ergonomics on top via a mutable-slot seam (§114). _Owner-directed (the immutable-chain, verb-carried-by-augmentation direction); the builder's slot mechanics (§109) are Claude's._
 
 ---
 
@@ -766,7 +766,7 @@ records the current matching mechanism; §141 records the `Type` taxonomy it wal
 `Registry#answering` (`libraries/di/src/internal/Registry.ts`) collects every open registration
 whose service type `Type.match`es the request, and orders every answer — closed and open together —
 by `rank`, the registration's position in manifest iteration order (newest first, since
-`Manifest#_add` prepends). There is no specificity measure: two open registrations both matching one
+`Manifest#add` prepends). There is no specificity measure: two open registrations both matching one
 request (`IRepo<User,%A>` and `IRepo<%A,%B>` against `IRepo<User,Foo>`) are resolved by which was
 registered more recently, not by which binds fewer holes.
 
@@ -2569,3 +2569,38 @@ have spelled. The tokenless `getService<T>()` consumes `T` through `typefor<T>()
 a type argument the call site can supply.
 
 _Owner-ruled via task #19, Claude-executed 2026-08-14._
+
+---
+
+## §188 — The manifest primitives are public `add`/`remove`/`replace`; an augmentation's block face is receiver-spelled and its namespace is plain implementation
+
+`Manifest<Scopes>`'s own body declares three primitives — `add(descriptor)`, `remove(descriptor)`,
+`replace(descriptor)` — and `DefaultManifest` implements them under those names. They are the
+substrate every registration verb composes from and carry no marker of privacy, because a caller
+holding a `ServiceDescriptor` has a legitimate reason to reach each of them.
+
+An augmentation set contributing chaining members to that receiver splits the two jobs. The
+NAMESPACE is implementation: it writes the receiver at its widest (`this: Manifest<string>`, plain
+`string` scope parameters, `Manifest<string>` returns) and carries no `Self`/`S` type parameters.
+The `declare module` BLOCK is the caller-facing face and is RECEIVER-SPELLED: the interface's own
+type parameters occupy parameter positions (`scope?: Scopes`), the return is `Manifest<Scopes>`, and
+there is no `this` parameter. A `this` return is wrong on this receiver whatever the mechanism: the
+chain is immutable, so every verb yields a fresh node rather than the object called. A member with a
+leading explicit type parameter keeps it (`addOptions<T>`, `configure<T, Deps>`) and loses nothing
+else — with the return naming `Scopes` rather than an inferred `S`, an explicitly written type
+argument no longer costs the caller its scope union. Where the block declares every member of its
+namespace, `extends Flatten<typeof TheNamespace>` has nothing left to derive and goes.
+
+A sugared shape whose entire body forwards to a primitive is not written: the primitive's own
+declaration is the whole story for it. What remains of `add` — the configure lambda, the
+constructor, the factory — shares a name with the primitive on `DefaultManifest`'s prototype, so the
+registration supplies a merge strategy: a lone `ServiceDescriptor` routes to the primitive, and every
+other shape to the sugar, which is also what keeps the sugar's own closing `this.add(descriptor)`
+from re-entering itself. The strategy is hand-written rather than left to merge synthesis, because a
+package's authored source must install correctly with no transformer in play.
+
+The concrete class pays for the shared name: a `DefaultManifest` narrowing `add` to the descriptor
+shape alone is not a `Manifest`, so the class declares an open second signature beside the
+primitive's. The precise sugared faces are readable on `Manifest`, which is the type callers hold.
+
+_Owner-ruled 2026-08-15, Claude-executed._

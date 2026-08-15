@@ -20,7 +20,7 @@ import '@rhombus-std/options.augmentations';
 import type { DefaultManifest, IServiceProvider, Manifest } from '@rhombus-std/di.core';
 import { RESOLVER_TYPE } from '@rhombus-std/di.core';
 import type { ILoggerFactory } from '@rhombus-std/logging.core';
-import { type Flatten, registerAugmentations, Type } from '@rhombus-std/primitives';
+import { registerAugmentations, Type } from '@rhombus-std/primitives';
 import { typefor } from '@rhombus-std/primitives.extras';
 import type { Func } from '@rhombus-toolkit/func';
 import { DISTRIBUTED_CACHE_TYPE } from './distributed-cache-type';
@@ -61,16 +61,10 @@ export namespace ServiceManifestMemoryCacheAugmentations {
     // earlier registration. `getService` returns `undefined` when no
     // `ILoggerFactory` is registered, so the factory falls to a logger-less
     // construction.
-    // The cast works around a TS structural-comparison depth limit: the
-    // `Manifest` overload surface (di.core's descriptor augmentation merge) is
-    // large enough that TS's relationship check bails out on this
-    // self-assignment even though the two sides are the same type (see
-    // diagnostics.core's `clearMetricsListeners` for the full explanation).
     m = m.tryAddFactory(MEMORY_CACHE_TYPE,
       (resolver: IServiceProvider) =>
         new MemoryCache(resolver.getRequiredService(MEMORY_CACHE_OPTIONS_ACCESSOR_TYPE),
-          resolver.getService(LOGGER_FACTORY_TYPE)), Type.func(MEMORY_CACHE_TYPE, [[RESOLVER_TYPE]]),
-      'singleton') as Manifest<string>;
+          resolver.getService(LOGGER_FACTORY_TYPE)), Type.func(MEMORY_CACHE_TYPE, [[RESOLVER_TYPE]]), 'singleton');
     return m;
   }
 
@@ -94,21 +88,23 @@ export namespace ServiceManifestMemoryCacheAugmentations {
     if (setup !== undefined) {
       m = m.configure(MEMORY_DISTRIBUTED_CACHE_OPTIONS_TYPE, setup);
     }
-    // See addMemoryCache's cast above for why this is needed.
     m = m.tryAddFactory(DISTRIBUTED_CACHE_TYPE, (resolver: IServiceProvider) =>
       new MemoryDistributedCache(
         resolver.getRequiredService(MEMORY_DISTRIBUTED_CACHE_OPTIONS_ACCESSOR_TYPE),
         resolver.getService(LOGGER_FACTORY_TYPE),
-      ), Type.func(DISTRIBUTED_CACHE_TYPE, [[RESOLVER_TYPE]]), 'singleton') as Manifest<string>;
+      ), Type.func(DISTRIBUTED_CACHE_TYPE, [[RESOLVER_TYPE]]), 'singleton');
     return m;
   }
 }
 
 // `Scopes` is defaulted so the merge's type-parameter list matches every other
-// partial declaration of `Manifest` (TS2428 requires identical parameters),
-// even though the members do not name it.
+// partial declaration of `Manifest` (TS2428 requires identical parameters).
 declare module '@rhombus-std/di.core' {
-  interface Manifest<Scopes extends string = any> extends Flatten<typeof ServiceManifestMemoryCacheAugmentations> {}
+  interface Manifest<Scopes extends string = any> {
+    addMemoryCache(setup?: Func<[MemoryCacheOptions], void>): Manifest<Scopes>;
+
+    addDistributedMemoryCache(setup?: Func<[MemoryDistributedCacheOptions], void>): Manifest<Scopes>;
+  }
 }
 
 registerAugmentations(typefor<Manifest>(), ServiceManifestMemoryCacheAugmentations);

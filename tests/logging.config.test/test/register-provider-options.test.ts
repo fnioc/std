@@ -37,7 +37,7 @@ describe('LoggerProviderOptions.registerProviderOptions', () => {
     const config = rootWith({ 'FakeProvider:Format': 'json', 'FakeProvider:MaxDepth': '3',
       'OtherProvider:Format': 'xml' });
 
-    let services: Manifest<string> = new DefaultManifest<string>();
+    let services: Manifest<'singleton'> = new DefaultManifest<'singleton'>();
     const logging = new LoggingBuilder(services);
     logging.addConfig(config);
     services = logging.services;
@@ -55,7 +55,7 @@ describe('LoggerProviderOptions.registerProviderOptions', () => {
   test('a reload re-binds and notifies subscribers (the change-token source)', () => {
     const config = rootWith({ 'FakeProvider:Format': 'json' });
 
-    let services: Manifest<string> = new DefaultManifest<string>();
+    let services: Manifest<'singleton'> = new DefaultManifest<'singleton'>();
     const logging = new LoggingBuilder(services);
     logging.addConfig(config);
     services = logging.services;
@@ -81,7 +81,7 @@ describe('LoggerProviderOptions.registerProviderOptions', () => {
   test("composes with a consumer's own configure step for the same token", () => {
     const config = rootWith({ 'FakeProvider:Format': 'json' });
 
-    let services: Manifest<string> = new DefaultManifest<string>();
+    let services: Manifest<'singleton'> = new DefaultManifest<'singleton'>();
     const logging = new LoggingBuilder(services);
     logging.addConfig(config);
     services = logging.services;
