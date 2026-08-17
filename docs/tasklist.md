@@ -8,8 +8,16 @@ Architectural rulings belong in `decisions.user.md` (gospel) or `decisions.v2.md
 This doc is executed on that date. Everything needed to run it unattended is written here; nothing depends on a
 conversation the session cannot read.
 
-**Entry point: `/go`.** All coding work starts through it — not a bare dispatch. The orchestrator runs on Fable at
-`xhigh` effort.
+**Entry point: `/go`.** All coding work starts through it — not a bare dispatch. The orchestrator runs LOCALLY, on
+Fable at `xhigh` effort, launched by the `std-tasklist-run.timer` user unit into a detached tmux session named
+`std-tasklist` (attach with `tmux attach -t std-tasklist` to watch or intervene).
+
+**Compile-heavy work goes to cloud workers.** Parallel builds and gate runs are what hurt on this machine, so
+dispatch them as agents with `isolation: "remote"` rather than running them all locally. A remote worker checks
+out from GitHub and cannot see the local tree, so the orchestrator COMMITS AND PUSHES to
+`IServiceManifest-repair` before dispatching one, and the worker's work is against that pushed commit. Committing
+and pushing freely to enable this is authorized. If remote isolation is unavailable at run time, fall back to
+local workers rather than skipping the verification.
 
 **Order.** Apply every requirement in this doc, then work through whatever build errors remain.
 
@@ -31,8 +39,10 @@ definition one of the two forbidden kinds.
 #274). A change the run is fairly confident about but cannot guarantee against those rules stays in an UNMERGED
 worktree, one per such change, reported by branch name at the end.
 
-**Milestone.** The work in this doc ends at a clean milestone — gates green, nothing half-applied — BEFORE any
-async/scope work begins.
+**Milestone.** There must EXIST a revision on `IServiceManifest-repair` with every item in this doc done, nothing
+half-applied, and the gates green — reached before the first async/scope commit, so it stays reachable afterwards.
+It is a commit to produce, not a checkpoint to stop at: nothing waits for review there, and the run continues
+straight through it.
 
 **The async/scope gate.** `docs/async-scope.md` is expected to exist by the run. Implementation of anything in it
 is released by ONE thing: the document saying, in those letters, that it has been **blessed** by the owner. No
