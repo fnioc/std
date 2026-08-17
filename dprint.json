@@ -6,7 +6,7 @@
     "https://plugins.dprint.dev/markdown-0.22.1.wasm"
   ],
   "typescript": {
-    "lineWidth": 120,
+    "lineWidth": 200,
     "useBraces": "always",
     "bracePosition": "sameLine",
     "quoteStyle": "preferSingle",

@@ -34,5 +34,7 @@
     "tsconfig.ci.json": "tsconfig.ttsc.json"
     // "package.json":"tsconfig.json"
   },
-  "explorerExclude.backup": {}
+  "explorerExclude.backup": {},
+  "typescript.tsserver.experimental.enableProjectDiagnostics": true,
+  "explorerExcludeManager.backup": {}
 }

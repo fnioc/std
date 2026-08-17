@@ -25,10 +25,10 @@ export interface TracingBuilder extends ITracingBuilder {}
 export class TracingBuilder implements ITracingBuilder {
   // Writable (not `readonly`): registering something reassigns `services` to
   // the new manifest the immutable chain returns (see ITracingBuilder).
-  services: Manifest;
+  services: Manifest<any>;
 
   /** @param services The registration surface augmentation functions register against. */
-  public constructor(services: Manifest) {
+  public constructor(services: Manifest<any>) {
     this.services = services;
   }
 }

@@ -35,8 +35,7 @@ import { typefor } from '@rhombus-std/primitives.extras';
 // `describeDiError` is the LIBRARY's — classifying what a container threw needs
 // di.core and nothing more. Building the container is this root's, because that
 // is the one thing the engine is for.
-import { addGreetingWorkshop, GreetingWorkshop, LocatorGreetingWorkshop,
-  WorkshopGreeting } from '@rhombus-std/examples.lib.with-transformer';
+import { addGreetingWorkshop, GreetingWorkshop, LocatorGreetingWorkshop, WorkshopGreeting } from '@rhombus-std/examples.lib.with-transformer';
 import { describeDiError } from '@rhombus-std/examples.lib.without-transformer';
 
 /** A fresh, empty manifest for one of this chapter's own containers. */
@@ -144,8 +143,7 @@ export function demonstrateInfrastructure(): readonly string[] {
   // something the taxonomy names.
   try {
     newWorkshopManifest()
-      .addClass(typefor<IHealthCheck>(), GreetingWorkshop, Type.ctor(typefor<IHealthCheck>(), [[typefor<IGreeting>()]]),
-        'singleton')
+      .add(typefor<IHealthCheck>(), GreetingWorkshop, Type.ctor(typefor<IHealthCheck>(), [[typefor<IGreeting>()]]), 'singleton')
       .build({ validateOnBuild: true });
   } catch (error) {
     lines.push(`building a graph with a hole in it: ${describeDiError(error)}`);

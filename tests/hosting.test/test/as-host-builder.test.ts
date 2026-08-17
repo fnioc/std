@@ -20,7 +20,7 @@ test('asHostBuilder replays accumulated configureServices onto the application b
   let replayed = false;
   hostBuilder.configureServices((_context, services) => {
     replayed = true;
-    return services.addValue('test:Marker', 'present');
+    return services.add('test:Marker', 'present');
   });
 
   // Not applied until the application builder is built.

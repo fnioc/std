@@ -81,3 +81,14 @@ assignability. Which row the engine constructs through is a separate value-level
 sorted longest-first, first row whose looked-up values are all present.
 
 _Owner-ruled and signed off 2026-08-14._
+
+## U6 — A parameter takes `Type`, never `Type | string`
+
+No signature anywhere accepts `Type | string`. A parameter that names a type takes a `Type` and
+nothing else, public surface included; there is no boundary at which the string spelling is
+admitted and normalized. A consumer holding a string writes `Type.from(...)` at the call, which is
+trivial enough to ask for and puts the parse where the string actually is. Accepting the union
+instead spreads normalization across every entry point, makes each one restate it, and leaves the
+parsed and unparsed forms indistinguishable in the types one layer in.
+
+_Owner-ruled and signed off 2026-08-16._

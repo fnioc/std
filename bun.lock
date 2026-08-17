@@ -340,6 +340,7 @@
         "@rhombus-std/primitives": "workspace:*",
         "@rhombus-std/primitives.extras": "workspace:*",
         "@rhombus-toolkit/func": "3.6.0",
+        "@rhombus-toolkit/type-guards": "*",
         "@rhombus-toolkit/type-helpers": "^2.0.0",
       },
       "devDependencies": {
@@ -458,6 +459,7 @@
         "@rhombus-toolkit/type-helpers": "^2.0.0",
       },
       "devDependencies": {
+        "@rhombus-std/di.extras": "workspace:*",
         "@rhombus-std/primitives.extras": "workspace:*",
         "@ttsc/unplugin": "^0.18.1",
         "rollup": "^4.61.0",

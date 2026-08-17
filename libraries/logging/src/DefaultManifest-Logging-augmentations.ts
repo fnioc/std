@@ -38,8 +38,7 @@ import { DefaultLoggerLevelConfigureOptions } from './DefaultLoggerLevelConfigur
 import { LoggerFactory } from './LoggerFactory';
 import { LoggerFilterOptions } from './LoggerFilterOptions';
 import { LoggingBuilder } from './LoggingBuilder';
-import { LOGGER_FACTORY_TYPE, LOGGER_FILTER_OPTIONS_ACCESSOR_TYPE, LOGGER_FILTER_OPTIONS_TYPE,
-  LOGGER_PROVIDER_TYPE } from './types';
+import { LOGGER_FACTORY_TYPE, LOGGER_FILTER_OPTIONS_ACCESSOR_TYPE, LOGGER_FILTER_OPTIONS_TYPE, LOGGER_PROVIDER_TYPE } from './types';
 
 // Registered against the `ServiceManifest` augmentation token — the concrete
 // `DefaultManifest`, decorated with `@augment(typefor<Manifest>())`
@@ -54,16 +53,12 @@ export namespace ServiceManifestLoggingAugmentations {
    */
   export function addLogging(this: Manifest<string>, configure?: Func<[ILoggingBuilder], void>): Manifest<string> {
     // The LoggerFilterOptions assembly + its default (Information) min level.
-    let m: Manifest<string> = this.addOptions<LoggerFilterOptions>(LOGGER_FILTER_OPTIONS_TYPE,
-      () => new LoggerFilterOptions());
-    m = m.addValue(configureStepType(LOGGER_FILTER_OPTIONS_TYPE),
-      new DefaultLoggerLevelConfigureOptions(LogLevel.Information));
+    let m: Manifest<string> = this.addOptions<LoggerFilterOptions>(LOGGER_FILTER_OPTIONS_TYPE, () => new LoggerFilterOptions());
+    m = m.add(configureStepType(LOGGER_FILTER_OPTIONS_TYPE), new DefaultLoggerLevelConfigureOptions(LogLevel.Information));
 
     // ILoggerFactory, injected with the enumerable provider set and the
     // assembled IOptions<LoggerFilterOptions>.
-    m = m.addClass(LOGGER_FACTORY_TYPE, LoggerFactory,
-      Type.ctor(LOGGER_FACTORY_TYPE, [[Type.array(LOGGER_PROVIDER_TYPE), LOGGER_FILTER_OPTIONS_ACCESSOR_TYPE]]),
-      'singleton');
+    m = m.add(LOGGER_FACTORY_TYPE, LoggerFactory, Type.ctor(LOGGER_FACTORY_TYPE, [[Type.array(LOGGER_PROVIDER_TYPE), LOGGER_FILTER_OPTIONS_ACCESSOR_TYPE]]), 'singleton');
 
     // The open ILogger<$1> -> Logger<$1> registration: the closing type flows
     // in through the `$1` placeholder, from which Logger<T> derives its category.
@@ -75,7 +70,7 @@ export namespace ServiceManifestLoggingAugmentations {
     // template matches.
     const hole = Type.generic('$1');
     const openLoggerType = Type.imported('ILogger', '@rhombus-std/logging.core', [hole]);
-    m = m.addClass(openLoggerType, LoggerOfT, Type.ctor(openLoggerType, [[LOGGER_FACTORY_TYPE, hole]]), 'singleton');
+    m = m.add(openLoggerType, LoggerOfT, Type.ctor(openLoggerType, [[LOGGER_FACTORY_TYPE, hole]]), 'singleton');
 
     // `builder.services` is a MUTABLE field (LoggingBuilder, this package): the
     // `configure` delegate mutates the builder in place
@@ -93,9 +88,9 @@ export namespace ServiceManifestLoggingAugmentations {
 // `Scopes` is defaulted so the merge's type-parameter list matches every other
 // partial declaration of `Manifest` (TS2428 requires identical parameters).
 declare module '@rhombus-std/di.core' {
-  interface Manifest<Scopes extends string = any> {
+  interface Manifest<Scopes extends string> {
     addLogging(configure?: Func<[ILoggingBuilder], void>): Manifest<Scopes>;
   }
 }
 
-registerAugmentations<Manifest>(ServiceManifestLoggingAugmentations);
+registerAugmentations<Manifest<any>>(ServiceManifestLoggingAugmentations);

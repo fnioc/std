@@ -14,21 +14,21 @@ import { ServiceDescriptor } from './ServiceDescriptor';
  * also carries sugared shapes contributed by augmentation. Iterating a manifest yields its
  * descriptors newest-registration-first.
  */
-export interface Manifest<Scopes extends string = any> extends Iterable<ServiceDescriptor<Scopes>> {
+export interface Manifest<Scopes extends string> extends Iterable<ServiceDescriptor<Scopes>> {
   /** Prepends `descriptor`, ahead of every descriptor already in the chain. */
   add(descriptor: ServiceDescriptor<Scopes>): Manifest<Scopes>;
-  /** Drops the descriptor that is {@link ServiceDescriptor.equals} to `descriptor`, if one is present. */
-  remove(descriptor: ServiceDescriptor<Scopes>): Manifest<Scopes>;
   /**
    * Swaps in `descriptor` for the first descriptor that occupies the same registration slot —
    * see {@link ServiceDescriptor.matches} — leaving every other descriptor untouched.
    */
-  replace(descriptor: ServiceDescriptor<Scopes>): Manifest<Scopes>;
+  replaceSingle(descriptor: ServiceDescriptor<Scopes>): Manifest<Scopes>;
+  /** Drops the descriptor that is {@link ServiceDescriptor.equals} to `descriptor`, if one is present. */
+  remove(descriptor: ServiceDescriptor<Scopes>): Manifest<Scopes>;
 }
 
 export interface DefaultManifest<Scopes extends string> extends Manifest<Scopes> {}
 
-@augment(typefor<Manifest>())
+@augment(typefor<Manifest<any>>())
 export class DefaultManifest<Scopes extends string> {
   #descriptors: Iterable<ServiceDescriptor<Scopes>>;
   constructor(descriptors?: Iterable<ServiceDescriptor<Scopes>>) {
@@ -66,7 +66,7 @@ export class DefaultManifest<Scopes extends string> {
     });
   }
 
-  replace(descriptor: ServiceDescriptor<Scopes>) {
+  replaceSingle(descriptor: ServiceDescriptor<Scopes>) {
     return new DefaultManifest<Scopes>({
       [Symbol.iterator]: function* replaced(this: DefaultManifest<Scopes>) {
         const it = Iterator.from(this.#descriptors);

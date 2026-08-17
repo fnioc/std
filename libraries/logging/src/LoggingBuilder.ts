@@ -6,7 +6,7 @@
 // builder can be pointed at a slot that something ELSE also writes. `addLogging`
 // hands it a private slot (nobody else is looking at that chain); a host
 // application builder hands it ITSELF, so `builder.logging.addProvider(...)` and
-// `builder.services = builder.services.addClass(...)` stay on one chain instead of
+// `builder.services = builder.services.add(...)` stay on one chain instead of
 // forking into two and dropping whichever one `build()` did not read.
 
 import type { Manifest } from '@rhombus-std/di.core';
@@ -32,12 +32,12 @@ export class LoggingBuilder implements ILoggingBuilder {
    * Wraps either a bare manifest (a private slot is allocated for it) or an
    * existing {@link ManifestSlot} this builder then SHARES.
    */
-  public constructor(services: Manifest | ManifestSlot) {
+  public constructor(services: Manifest<any> | ManifestSlot) {
     this.#slot = isSlot(services) ? services : { services };
   }
 
   /** The current manifest — read through the shared slot. */
-  public get services(): Manifest {
+  public get services(): Manifest<any> {
     return this.#slot.services;
   }
 
@@ -47,15 +47,15 @@ export class LoggingBuilder implements ILoggingBuilder {
    * downstream `addConfig`/`addConsole`) threads by assigning here and handing
    * the same builder back.
    */
-  public set services(value: Manifest) {
+  public set services(value: Manifest<any>) {
     this.#slot.services = value;
   }
 }
 
 /** A writable manifest slot two builders can share, so both write one chain. */
-export type ManifestSlot = { services: Manifest; };
+export type ManifestSlot = { services: Manifest<any>; };
 
 /** A manifest is never itself a slot: only a slot carries a `services` member. */
-function isSlot(value: Manifest | ManifestSlot): value is ManifestSlot {
+function isSlot(value: Manifest<any> | ManifestSlot): value is ManifestSlot {
   return 'services' in value;
 }

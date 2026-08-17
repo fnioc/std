@@ -1,6 +1,5 @@
 import { DefaultManifest, type Manifest, Type } from '@rhombus-std/di.core';
-import { HOSTED_SERVICE_TYPE, hostedServiceCollectionType,
-  type IHostedService } from '@rhombus-std/hosting.core/private/index';
+import { HOSTED_SERVICE_TYPE, hostedServiceCollectionType, type IHostedService } from '@rhombus-std/hosting.core/private/index';
 // Side-effect: installs `addHostedService` onto di.core's Manifest.
 import '@rhombus-std/hosting.core/private/index';
 // Side-effect: installs `build` onto di.core's Manifest.
@@ -40,7 +39,7 @@ test('addHostedService(factory) injects the live resolver so the factory can pul
   }
 
   let manifest: Manifest<string> = new DefaultManifest();
-  manifest = manifest.addClass('test:Dependency', Dependency, Type.ctor(Type.from('test:Dependency'), [[]]));
+  manifest = manifest.add('test:Dependency', Dependency, Type.ctor(Type.from('test:Dependency'), [[]]));
   // The factory receives the resolver -- the reference `Func<IServiceProvider, T>`
   // form used to promote a separately-registered service to a hosted service.
   manifest = manifest.addHostedService((resolver) => {

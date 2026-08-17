@@ -1,8 +1,7 @@
 // The tracing analog of MetricsBuilder-Config-augmentations.
 
 import type { IConfig } from '@rhombus-std/config.core';
-import { type ITracingBuilder, TRACING_CHANGE_TOKEN_SOURCE_TYPE, TRACING_CONFIGURATION_TYPE,
-  TRACING_CONFIGURE_TYPE } from '@rhombus-std/diagnostics.core';
+import { type ITracingBuilder, TRACING_CHANGE_TOKEN_SOURCE_TYPE, TRACING_CONFIGURATION_TYPE, TRACING_CONFIGURE_TYPE } from '@rhombus-std/diagnostics.core';
 import { ConfigChangeTokenSource } from '@rhombus-std/options.augmentations';
 import { registerAugmentations } from '@rhombus-std/primitives.extras';
 import type { Flatten } from '@rhombus-toolkit/type-helpers';
@@ -14,9 +13,9 @@ import { TracingConfigureOptions } from './TracingConfigureOptions';
 export namespace TracingBuilderConfigAugmentations {
   /** Reads tracing enablement rules from `config` and configures which activity sources and activities are enabled. */
   export function addTracingConfig<Self extends ITracingBuilder>(this: Self, config: IConfig): Self {
-    this.services = this.services.addValue(TRACING_CONFIGURE_TYPE, new TracingConfigureOptions(config));
-    this.services = this.services.addValue(TRACING_CHANGE_TOKEN_SOURCE_TYPE, new ConfigChangeTokenSource(config));
-    this.services = this.services.addValue(TRACING_CONFIGURATION_TYPE, new TracingConfig(config));
+    this.services = this.services.add(TRACING_CONFIGURE_TYPE, new TracingConfigureOptions(config));
+    this.services = this.services.add(TRACING_CHANGE_TOKEN_SOURCE_TYPE, new ConfigChangeTokenSource(config));
+    this.services = this.services.add(TRACING_CONFIGURATION_TYPE, new TracingConfig(config));
     return this;
   }
 }

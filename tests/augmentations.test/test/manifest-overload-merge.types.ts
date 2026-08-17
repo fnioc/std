@@ -32,32 +32,32 @@ manifest.add(ServiceDescriptor.value(WIDGET, new Widget()));
 manifest.add<IWidget>(Widget, Type.ctor(WIDGET, [[]]), 'singleton');
 
 // addClass / addClass<T>
-manifest.addClass(WIDGET, Widget, Type.ctor(WIDGET, [[]]), 'singleton');
+manifest.add(WIDGET, Widget, Type.ctor(WIDGET, [[]]), 'singleton');
 manifest.addClass<IWidget>(Widget, Type.ctor(WIDGET, [[]]), 'singleton');
 
 // addFactory / addFactory<T>
-manifest.addFactory(WIDGET, () => new Widget(), Type.func(WIDGET, [[]]), 'singleton');
+manifest.add(WIDGET, () => new Widget(), Type.func(WIDGET, [[]]), 'singleton');
 manifest.addFactory<IWidget>(() => new Widget(), Type.func(WIDGET, [[]]), 'singleton');
 
 // addValue / addValue<T>
-manifest.addValue(WIDGET, new Widget());
+manifest.add(WIDGET, new Widget());
 manifest.addValue<IWidget>(new Widget());
 
 // tryAdd / tryAdd<T>
 manifest.tryAdd(ServiceDescriptor.value(WIDGET, new Widget()));
 manifest.tryAdd<IWidget>(Widget, Type.ctor(WIDGET, [[]]), 'singleton');
 
-// tryAddClass / tryAddClass<T>
-manifest.tryAddClass(WIDGET, Widget, Type.ctor(WIDGET, [[]]), 'singleton');
-manifest.tryAddClass<IWidget>(Widget, Type.ctor(WIDGET, [[]]), 'singleton');
+// tryAdd / tryAdd<T>
+manifest.tryAdd(WIDGET, Widget, Type.ctor(WIDGET, [[]]), 'singleton');
+manifest.tryAdd<IWidget>(Widget, Type.ctor(WIDGET, [[]]), 'singleton');
 
-// tryAddFactory / tryAddFactory<T>
-manifest.tryAddFactory(WIDGET, () => new Widget(), Type.func(WIDGET, [[]]), 'singleton');
-manifest.tryAddFactory<IWidget>(() => new Widget(), Type.func(WIDGET, [[]]), 'singleton');
+// tryAdd / tryAdd<T>
+manifest.tryAdd(WIDGET, () => new Widget(), Type.func(WIDGET, [[]]), 'singleton');
+manifest.tryAdd<IWidget>(() => new Widget(), Type.func(WIDGET, [[]]), 'singleton');
 
-// tryAddValue / tryAddValue<T>
-manifest.tryAddValue(WIDGET, new Widget());
-manifest.tryAddValue<IWidget>(new Widget());
+// tryAdd / tryAdd<T>
+manifest.tryAdd(WIDGET, new Widget());
+manifest.tryAdd<IWidget>(new Widget());
 
 // replaceClass / replaceClass<T>
 manifest.replaceClass(WIDGET, Widget, Type.ctor(WIDGET, [[]]), 'singleton');

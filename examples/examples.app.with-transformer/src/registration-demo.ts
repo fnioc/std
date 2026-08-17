@@ -16,7 +16,7 @@
 //
 // 1. THE MANIFEST IS IMMUTABLE. Every verb returns a NEW manifest and leaves
 //    the receiver alone, so a call whose result is discarded registers NOTHING.
-//    Thread it: `services = services.addClass(...)`. `demonstrateDiscardTrap`
+//    Thread it: `services = services.add(...)`. `demonstrateDiscardTrap`
 //    below shows the failure mode on purpose.
 // 2. A CONSTRUCTOR TYPE IS ALWAYS STATED, never inferred. `typefor<T>()`
 //    derives the TYPE an argument names; it does not read a constructor and
@@ -270,10 +270,10 @@ function demonstrateDiscardTrap(): string {
 
   // WRONG — the new manifest is built and immediately dropped on the floor.
   // `empty` is exactly as empty as it was. This compiles, and it is silent.
-  empty.addClass(FLAGS_TYPE, FeatureFlags, Type.ctor(FLAGS_TYPE, [[]]), 'singleton');
+  empty.add(FLAGS_TYPE, FeatureFlags, Type.ctor(FLAGS_TYPE, [[]]), 'singleton');
 
   // RIGHT — thread the result back in.
-  const threaded = empty.addClass(FLAGS_TYPE, FeatureFlags, Type.ctor(FLAGS_TYPE, [[]]), 'singleton');
+  const threaded = empty.add(FLAGS_TYPE, FeatureFlags, Type.ctor(FLAGS_TYPE, [[]]), 'singleton');
 
   return `immutability: the discarded call registered ${countRegistrations(empty, FLAGS_TYPE)}, `
     + `the threaded one registered ${countRegistrations(threaded, FLAGS_TYPE)}`;
@@ -298,13 +298,11 @@ function addOrderDefaults<S extends string>(
   services: Manifest<S | 'singleton'>,
 ): Manifest<S | 'singleton'> {
   // A default VALUE — the clock every other default depends on.
-  services = services.tryAddValue(DEFAULT_CLOCK_TYPE, new FixedClock());
+  services = services.tryAdd(DEFAULT_CLOCK_TYPE, new FixedClock());
   // A default CLASS.
-  services = services.tryAddClass(DEFAULT_SINK_TYPE, PlainTextSink,
-    Type.ctor(DEFAULT_SINK_TYPE, [[DEFAULT_CLOCK_TYPE, Type.typeLiteral('production')]]), 'singleton');
+  services = services.tryAdd(DEFAULT_SINK_TYPE, PlainTextSink, Type.ctor(DEFAULT_SINK_TYPE, [[DEFAULT_CLOCK_TYPE, Type.typeLiteral('production')]]), 'singleton');
   // A default FACTORY.
-  services = services.tryAddFactory(DEFAULT_NOTIFIER_TYPE, makeOrderNotifier,
-    Type.func(DEFAULT_NOTIFIER_TYPE, [[DEFAULT_SINK_TYPE]]), 'singleton');
+  services = services.tryAdd(DEFAULT_NOTIFIER_TYPE, makeOrderNotifier, Type.func(DEFAULT_NOTIFIER_TYPE, [[DEFAULT_SINK_TYPE]]), 'singleton');
   return services;
 }
 
@@ -338,7 +336,7 @@ function demonstrateDescriptorVerbs(): string[] {
 
   // An application that already wired its own sink keeps it.
   let application: Manifest<'singleton'> = new DefaultManifest<'singleton'>();
-  application = application.addClass(DEFAULT_SINK_TYPE, RecordingSink, Type.ctor(DEFAULT_SINK_TYPE, [[]]), 'singleton');
+  application = application.add(DEFAULT_SINK_TYPE, RecordingSink, Type.ctor(DEFAULT_SINK_TYPE, [[]]), 'singleton');
   application = addOrderDefaults(application);
   const kept = application.build().getRequiredService(DEFAULT_SINK_TYPE) as IMessageSink;
   lines.push(`defaults: an application that registered its own sink keeps it (${kept.name})`);
@@ -347,8 +345,7 @@ function demonstrateDescriptorVerbs(): string[] {
   let host = addOrderDefaults(new DefaultManifest<'singleton'>());
   host = host.replaceValue(DEFAULT_CLOCK_TYPE, new FixedClock());
   host = host.replaceClass(DEFAULT_SINK_TYPE, RecordingSink, Type.ctor(DEFAULT_SINK_TYPE, [[]]), 'singleton');
-  host = host.replaceFactory(DEFAULT_NOTIFIER_TYPE, makeOrderNotifier,
-    Type.func(DEFAULT_NOTIFIER_TYPE, [[DEFAULT_SINK_TYPE]]), 'singleton');
+  host = host.replaceFactory(DEFAULT_NOTIFIER_TYPE, makeOrderNotifier, Type.func(DEFAULT_NOTIFIER_TYPE, [[DEFAULT_SINK_TYPE]]), 'singleton');
   const hostProvider = host.build();
   const recorder = hostProvider.getRequiredService(DEFAULT_SINK_TYPE) as RecordingSink;
   lines.push(
@@ -380,17 +377,17 @@ function buildOrderContainer(): Manifest<'singleton'> {
 
   // addValue — an already-built instance. No signature (there is nothing to
   // construct) and no scope (a value IS its instance, so caching is moot).
-  services = services.addValue(CLOCK_TYPE, clock);
+  services = services.add(CLOCK_TYPE, clock);
 
   // The SAME instance again under a KEYED type. Argument 3 is the key, and it is
   // shorthand for tagging the type: passing `'vendor'` here registers at exactly
   // the `VENDOR_CLOCK_TYPE` composed above.
-  services = services.addValue(CLOCK_TYPE, clock, 'vendor');
+  services = services.add(CLOCK_TYPE, clock, 'vendor');
 
   // A third-party class adapted onto our own clock: its constructor names the
   // vendor's `ILegacyClock`, but the composed constructor type is ours to
   // write, so the argument simply names the keyed clock registered above.
-  services = services.addClass(SINK_TYPE, VendorSink, Type.ctor(SINK_TYPE, [[VENDOR_CLOCK_TYPE]]), 'singleton');
+  services = services.add(SINK_TYPE, VendorSink, Type.ctor(SINK_TYPE, [[VENDOR_CLOCK_TYPE]]), 'singleton');
 
   // addClass, 4-argument form: type, ctor, implementerType, scope. The second
   // argument is a LITERAL — its value is injected verbatim, with no container
@@ -400,36 +397,30 @@ function buildOrderContainer(): Manifest<'singleton'> {
   // one type is legal and useful — a collection request sees both — and a single
   // request takes the MOST RECENTLY registered one, so this is the sink the rest
   // of the scenario gets.
-  services = services.addClass(SINK_TYPE, PlainTextSink,
-    Type.ctor(SINK_TYPE, [[CLOCK_TYPE, Type.typeLiteral('production')]]), 'singleton');
+  services = services.add(SINK_TYPE, PlainTextSink, Type.ctor(SINK_TYPE, [[CLOCK_TYPE, Type.typeLiteral('production')]]), 'singleton');
 
   // TWO OVERLOADS for one class, and a KEY. Each parameter row is one
   // constructor overload, and the engine takes the first whose every argument it
   // can supply, longest row first: the two-argument row needs `IEmailOptions`,
   // which nothing registers, so the single-argument row wins and the sink falls
   // back to its built-in address.
-  services = services.addClass(SINK_TYPE, EmailSink,
-    Type.ctor({ instance: SINK_TYPE, args: [[CLOCK_TYPE, EMAIL_OPTIONS_TYPE], [CLOCK_TYPE]], abstract: false }),
-    'singleton', 'email');
+  services = services.add(SINK_TYPE, EmailSink, Type.ctor({ instance: SINK_TYPE, args: [[CLOCK_TYPE, EMAIL_OPTIONS_TYPE], [CLOCK_TYPE]], abstract: false }), 'singleton', 'email');
 
   // An OPTIONAL dependency, spelled honestly: a union whose other member is the
   // literal `undefined`. A literal member supplies ITSELF rather than competing
   // for the argument, so this yields the sink when one is registered and
   // `undefined` when none is — and the argument is never unsatisfiable.
-  services = services.addClass(AUDIT_TYPE, AuditLog,
-    Type.ctor(AUDIT_TYPE, [[CLOCK_TYPE, Type.union(SINK_TYPE, Type.typeLiteral(undefined))]]), 'singleton');
+  services = services.add(AUDIT_TYPE, AuditLog, Type.ctor(AUDIT_TYPE, [[CLOCK_TYPE, Type.union(SINK_TYPE, Type.typeLiteral(undefined))]]), 'singleton');
 
   // The same shape on a FACTORY, whose second argument is a union of two
   // SERVICES plus the literal `undefined`. Only the audit log is registered, so
   // exactly one member can be supplied and the argument settles on it without
   // ambiguity.
-  services = services.addFactory(NOTIFIER_TYPE, makeOrderNotifier,
-    Type.func(NOTIFIER_TYPE, [[SINK_TYPE, Type.union(METRICS_TYPE, AUDIT_TYPE, Type.typeLiteral(undefined))]]),
-    'singleton');
+  services = services.add(NOTIFIER_TYPE, makeOrderNotifier, Type.func(NOTIFIER_TYPE, [[SINK_TYPE, Type.union(METRICS_TYPE, AUDIT_TYPE, Type.typeLiteral(undefined))]]), 'singleton');
 
   // A zero-dependency class: a composed constructor type that carries no
   // argument types beyond the address.
-  services = services.addClass(FLAGS_TYPE, FeatureFlags, Type.ctor(FLAGS_TYPE, [[]]), 'singleton');
+  services = services.add(FLAGS_TYPE, FeatureFlags, Type.ctor(FLAGS_TYPE, [[]]), 'singleton');
 
   return services;
 }
@@ -445,7 +436,7 @@ function buildOrderContainer(): Manifest<'singleton'> {
  * It has no type-driven form, so this function too is identical in the twin.
  */
 function demonstrateConfiguredRegistration(): string {
-  const withClock: Manifest<'singleton'> = new DefaultManifest<'singleton'>().addValue(CLOCK_TYPE, new FixedClock());
+  const withClock: Manifest<'singleton'> = new DefaultManifest<'singleton'>().add(CLOCK_TYPE, new FixedClock());
   const services = withClock
     .add(SINK_TYPE, sink =>
       sink.asClass(PlainTextSink)
@@ -470,10 +461,8 @@ function describeOrderContainer(services: Manifest<'singleton'>): string[] {
   // echoed to it as well as kept.
   audit.record('order-42 shipped');
 
-  return [`notify: ${notifier.notify('order-42')}`,
-    `audit: ${audit.entries.length} entry, sink echo enabled=${flags.echoToSink}`,
-    `keyed sink (key "email"): ${email.send('welcome')}`, `keyed value (key "vendor"): ${vendorClock.now()}`,
-    `${countRegistrations(services, SINK_TYPE)} sinks share the IMessageSink type; the most recently `
+  return [`notify: ${notifier.notify('order-42')}`, `audit: ${audit.entries.length} entry, sink echo enabled=${flags.echoToSink}`, `keyed sink (key "email"): ${email.send('welcome')}`,
+    `keyed value (key "vendor"): ${vendorClock.now()}`, `${countRegistrations(services, SINK_TYPE)} sinks share the IMessageSink type; the most recently `
     + `registered one wins a single request, and all of them answer a collection request `
     + `(${[...app.getServices(SINK_TYPE)].length})`];
 }
@@ -503,6 +492,6 @@ function describeSinklessFork(services: Manifest<'singleton'>): string {
 export function demonstrateRegistration(): readonly string[] {
   const services = buildOrderContainer();
 
-  return ['=== di registration — with transformer ===', demonstrateDiscardTrap(), ...demonstrateDescriptorVerbs(),
-    ...describeOrderContainer(services), demonstrateConfiguredRegistration(), describeSinklessFork(services)];
+  return ['=== di registration — with transformer ===', demonstrateDiscardTrap(), ...demonstrateDescriptorVerbs(), ...describeOrderContainer(services), demonstrateConfiguredRegistration(),
+    describeSinklessFork(services)];
 }

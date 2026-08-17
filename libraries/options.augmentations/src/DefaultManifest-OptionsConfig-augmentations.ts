@@ -17,74 +17,66 @@ import { ConfigConfigureOptions } from './ConfigConfigureOptions.js';
 import type { DepTokens } from './dep-tokens.js';
 import { changeTokenSourceType, configureStepType } from './option-types.js';
 
+// `Scopes` is defaulted so the merge matches its target's type-parameter list
+// (TS2428 requires identical parameters).
+declare module '@rhombus-std/di.core' {
+  interface Manifest<Scopes extends string> {
+    /**
+     * Registers a configuration `section` to bind against the options type
+     * `type` — the BARE `T`, as every pipeline verb takes: adds a config-bind
+     * configure step and a change-token source wired to the section's reload
+     * token, which is what makes the resulting `IOptions<T>` reload-capable.
+     * Requires a prior {@link addOptions} for the same `type`.
+     */
+    configure(type: Type, section: IConfig): Manifest<Scopes>;
+    /**
+     * Registers a code configure step for `type`: `configureOptions`
+     * runs against the value as one configure source among several (no config
+     * section, so no change-token source). Distinguished from the
+     * config-section overload of {@link configure} by its function argument.
+     */
+    configure(type: Type, configureOptions: Func<[any], void>): Manifest<Scopes>;
+    /**
+     * The DI-injected configure step: resolves each token in `depTokens` from
+     * the provider at materialization time and passes the instances to
+     * `configureOptions` after the options value. A typed caller writes each
+     * token as `typefor<Dep>()`.
+     */
+    configure<Deps extends readonly unknown[]>(type: Type, depTokens: DepTokens<Deps>, configureOptions: (options: any, ...deps: Deps) => void): Manifest<Scopes>;
+  }
+}
+
 export namespace ServiceManifestOptionsConfigAugmentations {
-  /**
-   * Registers a configuration `section` to bind against the options type
-   * `tType` — the BARE `T`, as every pipeline verb takes: adds a config-bind
-   * configure step and a change-token source wired to the section's reload
-   * token, which is what makes the resulting `IOptions<T>` reload-capable.
-   * Requires a prior {@link addOptions} for the same `tType`.
-   */
-  export function configure(this: Manifest<string>, tType: Type | string, section: IConfig): Manifest<string>;
-  /**
-   * Registers a code configure step for `tType`: `configureOptions`
-   * runs against the value as one configure source among several (no config
-   * section, so no change-token source). Distinguished from the
-   * config-section overload of {@link configure} by its function argument.
-   */
-  export function configure<T>(this: Manifest<string>, tType: Type | string,
-    configureOptions: Func<[T], void>): Manifest<string>;
-  /**
-   * The DI-injected configure step: resolves each token in `depTokens` from
-   * the provider at materialization time and passes the instances to
-   * `configureOptions` after the options value. A typed caller writes each
-   * token as `typefor<Dep>()`.
-   */
-  export function configure<T, Deps extends readonly unknown[]>(this: Manifest<string>, tType: Type | string,
-    depTokens: DepTokens<Deps>, configureOptions: (options: T, ...deps: Deps) => void): Manifest<string>;
-  export function configure<T, Deps extends readonly unknown[]>(this: Manifest<string>, tType: Type | string,
-    source: IConfig | Func<[T], void> | DepTokens<Deps>,
-    configureWithDeps?: (options: T, ...deps: Deps) => void): Manifest<string> {
-    const type = typeof tType === 'string' ? Type.from(tType) : tType;
+  export function configure(this: Manifest<string>, type: Type, section: IConfig): Manifest<string>;
+  export function configure(this: Manifest<string>, type: Type, configureOptions: Func<[any], void>): Manifest<string>;
+  export function configure<Deps extends readonly unknown[]>(this: Manifest<string>, type: Type, depTokens: DepTokens<Deps>, configureOptions: (options: any, ...deps: Deps) => void): Manifest<string>;
+  export function configure<Deps extends readonly unknown[]>(this: Manifest<string>, type: Type, source: IConfig | Func<[any], void> | DepTokens<Deps>,
+    configureWithDeps?: (options: any, ...deps: Deps) => void): Manifest<string> {
     // DI-injected form: `source` is the dep-token tuple and
     // `configureWithDeps` the callback. Registers a factory for the configure
     // slot whose injected params are the resolved deps; it produces an
     // IConfigureOptions that forwards them after the options value. The deps
     // resolve once, when the assembly reads the slot.
     if (Array.isArray(source)) {
-      const callback = configureWithDeps as (options: T, ...deps: Deps) => void;
-      const depTypes = (source as readonly (Type | string)[]).map(dep =>
-        typeof dep === 'string' ? Type.from(dep) : dep
-      );
-      return this.addFactory(configureStepType(type),
-        (...deps: Deps): IConfigureOptions<T> => ({ configure(options: T): void {
-          callback(options, ...deps);
-        } }), Type.func(configureStepType(type), [[...depTypes]]));
+      const callback = configureWithDeps as (options: any, ...deps: Deps) => void;
+
+      return this.add(configureStepType(type), (...deps: Deps): IConfigureOptions<any> => ({ configure(options: any): void {
+        callback(options, ...deps);
+      } }), Type.func(configureStepType(type), [[...source]]));
     }
     // A bare delegate is a pure code configure step: registers only the
     // configure slot, no change-token source. The registry's flat bag
     // namespace forbids a second `configure` member on the type, so the
     // config-section member absorbs the delegate by arg type — the same
     // disambiguation `addOptions` uses.
-    const configSource = source as IConfig | Func<[T], void>;
+    const configSource = source as IConfig | Func<[any], void>;
     if (typeof configSource === 'function') {
-      return this.addValue(configureStepType(type), { configure: configSource });
+      return this.add(configureStepType(type), { configure: configSource });
     }
-    let m: Manifest<string> = this.addValue(configureStepType(type), new ConfigConfigureOptions(configSource));
-    m = m.addValue(changeTokenSourceType(type), new ConfigChangeTokenSource(configSource));
+    let m: Manifest<string> = this.add(configureStepType(type), new ConfigConfigureOptions(configSource));
+    m = m.add(changeTokenSourceType(type), new ConfigChangeTokenSource(configSource));
     return m;
   }
 }
 
-// `Scopes` is defaulted so the merge matches its target's type-parameter list
-// (TS2428 requires identical parameters).
-declare module '@rhombus-std/di.core' {
-  interface Manifest<Scopes extends string = any> {
-    configure(tType: Type | string, section: IConfig): Manifest<Scopes>;
-    configure<T>(tType: Type | string, configureOptions: Func<[T], void>): Manifest<Scopes>;
-    configure<T, Deps extends readonly unknown[]>(tType: Type | string, depTokens: DepTokens<Deps>,
-      configureOptions: (options: T, ...deps: Deps) => void): Manifest<Scopes>;
-  }
-}
-
-registerAugmentations<Manifest>(ServiceManifestOptionsConfigAugmentations);
+registerAugmentations<Manifest<any>>(ServiceManifestOptionsConfigAugmentations);

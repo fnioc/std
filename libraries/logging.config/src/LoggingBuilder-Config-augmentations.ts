@@ -47,11 +47,10 @@ export namespace LoggingBuilderConfigAugmentations {
     // is immutable: each step below reassigns it to the manifest its own
     // registration produced, so the final value is what the caller reads
     // back through `builder.services`.
-    this.services = this.services.addClass(typefor<ILoggerProviderConfigFactory>(), LoggerProviderConfigFactory,
+    this.services = this.services.add(typefor<ILoggerProviderConfigFactory>(), LoggerProviderConfigFactory,
       Type.ctor(typefor<ILoggerProviderConfigFactory>(), [[Type.array(typefor<LoggingConfig>())]]), 'singleton');
     const hole = Type.generic('$1');
-    this.services = this.services.addClass(loggerProviderConfigType(hole), LoggerProviderConfig,
-      Type.ctor(loggerProviderConfigType(hole), [[typefor<ILoggerProviderConfigFactory>(), hole]]), 'singleton');
+    this.services = this.services.add(loggerProviderConfigType(hole), LoggerProviderConfig, Type.ctor(loggerProviderConfigType(hole), [[typefor<ILoggerProviderConfigFactory>(), hole]]), 'singleton');
 
     if (config === undefined) {
       return this;
@@ -61,10 +60,10 @@ export namespace LoggingBuilderConfigAugmentations {
     // the reload change-token source.
     const optionsType = typefor<LoggerFilterOptions>();
     this.services = this.services.addOptions<LoggerFilterOptions>(optionsType, () => new LoggerFilterOptions());
-    this.services = this.services.addValue(configureStepType(optionsType), new LoggerFilterConfigureOptions(config));
-    this.services = this.services.addValue(changeTokenSourceType(optionsType), new ConfigChangeTokenSource(config));
+    this.services = this.services.add(configureStepType(optionsType), new LoggerFilterConfigureOptions(config));
+    this.services = this.services.add(changeTokenSourceType(optionsType), new ConfigChangeTokenSource(config));
 
-    this.services = this.services.addValue(typefor<LoggingConfig>(), new LoggingConfig(config));
+    this.services = this.services.add(typefor<LoggingConfig>(), new LoggingConfig(config));
     return this;
   }
 }

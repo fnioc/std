@@ -25,8 +25,7 @@
 
 import { RESOLVER_TYPE, Type } from '@rhombus-std/di.core';
 import type { Inject, IServiceProvider, Manifest, Typeof } from '@rhombus-std/di.core';
-import type { CheckoutOrder, IAuditTrail, IExchangeRates, IOrderValidator, IPaymentGateway, IPaymentRouter, IReceipt,
-  IReceiptNumbering } from '@rhombus-std/examples.contracts';
+import type { CheckoutOrder, IAuditTrail, IExchangeRates, IOrderValidator, IPaymentGateway, IPaymentRouter, IReceipt, IReceiptNumbering } from '@rhombus-std/examples.contracts';
 
 // ── types ────────────────────────────────────────────────────────────────────
 
@@ -295,8 +294,7 @@ export class PaymentRouter implements IPaymentRouter {
   readonly #gatewayType: Typeof<IPaymentGateway>;
   readonly #mintReceipt: (order: CheckoutOrder) => IReceipt;
 
-  public constructor(resolver: IServiceProvider, gatewayType: Typeof<IPaymentGateway>,
-    mintReceipt: (order: CheckoutOrder) => IReceipt) {
+  public constructor(resolver: IServiceProvider, gatewayType: Typeof<IPaymentGateway>, mintReceipt: (order: CheckoutOrder) => IReceipt) {
     this.#resolver = resolver;
     this.#gatewayType = gatewayType;
     this.#mintReceipt = mintReceipt;
@@ -338,18 +336,18 @@ export function addCheckoutServices<S extends string>(
   const t = CHECKOUT_TYPES;
 
   // The pinned spend limit `TotalWithinLimit` brands its parameter with.
-  services = services.addValue(t.spendLimit, 250_000);
+  services = services.add(t.spendLimit, 250_000);
 
   // THREE registrations under ONE Type. Nothing about the individual calls says
   // "collection" — a collection is simply what you get when you ask for the
   // array wrapper over a Type that several registrations share.
-  services = services.addClass(t.validator, TotalWithinLimit, Type.ctor(t.validator, [[t.spendLimit]]), 'singleton');
-  services = services.addClass(t.validator, AmountIsPositive, Type.ctor(t.validator, [[]]), 'singleton');
+  services = services.add(t.validator, TotalWithinLimit, Type.ctor(t.validator, [[t.spendLimit]]), 'singleton');
+  services = services.add(t.validator, AmountIsPositive, Type.ctor(t.validator, [[]]), 'singleton');
   // The gateway base type, registered as an ordinary value so the classes that
   // probe by key can be handed it.
-  services = services.addValue(GATEWAY_WITNESS_TYPE, GATEWAY_TYPE);
+  services = services.add(GATEWAY_WITNESS_TYPE, GATEWAY_TYPE);
 
-  services = services.addClass(
+  services = services.add(
     t.validator,
     MethodIsConfigured,
     Type.ctor(t.validator, [[t.resolver, GATEWAY_WITNESS_TYPE]]),
@@ -360,25 +358,25 @@ export function addCheckoutServices<S extends string>(
   // effective Types are `IPaymentGateway#card`, `#wallet` and `#invoice`; the
   // bare base is left deliberately unregistered, so an unkeyed resolve of
   // `IPaymentGateway` correctly fails rather than silently picking a winner.
-  services = services.addClass(t.gateway, CardGateway, Type.ctor(t.gateway, [[]]), 'singleton', 'card');
-  services = services.addClass(t.gateway, WalletGateway, Type.ctor(t.gateway, [[]]), 'singleton', 'wallet');
-  services = services.addClass(t.gateway, InvoiceGateway, Type.ctor(t.gateway, [[]]), 'singleton', 'invoice');
+  services = services.add(Type.tag(t.gateway, 'card'), CardGateway, Type.ctor(t.gateway, [[]]), 'singleton');
+  services = services.add(Type.tag(t.gateway, 'wallet'), WalletGateway, Type.ctor(t.gateway, [[]]), 'singleton');
+  services = services.add(Type.tag(t.gateway, 'invoice'), InvoiceGateway, Type.ctor(t.gateway, [[]]), 'singleton');
 
-  // The factory target only has to BE registered — `addClass` here, but a factory
+  // The factory target only has to BE registered — `add` here, but a factory
   // or a value registration would serve just as well, since the callable runs the
   // registration's producer rather than `new`-ing the target itself.
   // `…:CheckoutOrder` stays unregistered on purpose: it is the caller-supplied
   // half of the partition.
-  services = services.addClass(t.numbering, ReceiptNumbering, Type.ctor(t.numbering, [[]]), 'singleton');
-  services = services.addClass(t.receipt, Receipt, Type.ctor(t.receipt, [[t.order, t.numbering]]), 'singleton');
+  services = services.add(t.numbering, ReceiptNumbering, Type.ctor(t.numbering, [[]]), 'singleton');
+  services = services.add(t.receipt, Receipt, Type.ctor(t.receipt, [[t.order, t.numbering]]), 'singleton');
 
-  services = services.addClass(t.audit, AuditTrail, Type.ctor(t.audit, [[]]), 'singleton');
+  services = services.add(t.audit, AuditTrail, Type.ctor(t.audit, [[]]), 'singleton');
 
   // Registered under the PROMISE Type — the caller awaits what
   // `getRequiredService` hands back for it; the bare type has no registration.
-  services = services.addFactory(t.ratesPromise, fetchExchangeRates, Type.func(t.ratesPromise, [[]]), 'singleton');
+  services = services.add(t.ratesPromise, fetchExchangeRates, Type.func(t.ratesPromise, [[]]), 'singleton');
 
-  services = services.addClass(
+  services = services.add(
     t.router,
     PaymentRouter,
     // provider argument · witness argument · CALLABLE argument.

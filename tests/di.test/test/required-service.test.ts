@@ -11,7 +11,7 @@ const A = Type.imported('A', 'app');
 const Missing = Type.imported('Missing', 'app');
 
 function providerFor(value: unknown): ServiceProvider {
-  return new ServiceProvider(DefaultManifest.empty<string>().addValue(A, value));
+  return new ServiceProvider(DefaultManifest.empty<string>().add(A, value));
 }
 
 describe('a falsy registration is an answer, not an absence', () => {

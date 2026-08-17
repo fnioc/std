@@ -1,7 +1,6 @@
 import { tag as tagType } from '../factory/factories.js';
-import { type ArrayType, type ConstructorType, type FunctionType, type GenericType, type GlobalType, type ImportedType,
-  type IntersectionType, type IterableType, type ObjectType, type TagType, type TupleType, Type, type TypeLiteralType,
-  type TypeSignatures, type UnionType } from '../Type.js';
+import { type ArrayType, type ConstructorType, type FunctionType, type GenericType, type GlobalType, type ImportedType, type IntersectionType, type IterableType, type ObjectType, type TagType,
+  type TupleType, Type, type TypeLiteralType, type UnionType } from '../Type.js';
 import { TypeVisitor } from './TypeVisitor.js';
 
 /**
@@ -86,7 +85,7 @@ class SubstituteVisitor extends TypeVisitor<Type> {
     return types.map(type => this.visit(type));
   }
 
-  #allRows(rows: TypeSignatures): TypeSignatures {
+  #allRows(rows: Type.Signatures): Type.Signatures {
     return rows.map(row => this.#all(row));
   }
 }

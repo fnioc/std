@@ -37,16 +37,6 @@ export type TypeIdentifier =
   | NominalType
   | TagType;
 
-/**
- * The parameter lists a callable answers to — one row per overload, in declaration order, each row
- * holding that overload's parameter types in order.
- *
- * @remarks
- * A callable that is not overloaded carries exactly one row, and one taking no parameters carries
- * one EMPTY row — `[[]]`, never `[]`, which names no call at all and so has no spelling.
- */
-export type TypeSignatures = ReadonlyArray<readonly Type[]>;
-
 /** Marks a node as one the intern table minted. Declared only — nothing carries it at runtime. */
 declare const TYPE_BRAND: unique symbol;
 
@@ -90,14 +80,14 @@ interface NominalBase<Kind extends string> extends TypeBase<Kind> {
 export interface ArrayType extends AggregateBase<'array'> {}
 
 export interface ConstructorType extends TypeBase<'ctor'> {
-  readonly args: TypeSignatures;
+  readonly args: Type.Signatures;
   readonly instance: Type;
   /** Does this constructor build an abstract class — one `new` never targets directly? */
   readonly abstract: boolean;
 }
 
 export interface FunctionType extends TypeBase<'func'> {
-  readonly args: TypeSignatures;
+  readonly args: Type.Signatures;
   readonly return: Type;
 }
 
@@ -159,6 +149,21 @@ export interface UnionType extends TypeBase<'union'> {
  * with each default skippable on its own.
  */
 export namespace Type {
+  /**
+   * The parameter lists a callable answers to — one row per overload, in declaration order, each row
+   * holding that overload's parameter types in order.
+   *
+   * @remarks
+   * A callable that is not overloaded carries exactly one row, and one taking no parameters carries
+   * one EMPTY row — `[[]]`, never `[]`, which names no call at all and so has no spelling.
+   */
+  export type Signatures = ReadonlyArray<readonly Type[]>;
+  export namespace Signatures {
+    /** Parameter rows as the node takes them, each token read into the type it spells. */
+    export function from(signatures: ReadonlyArray<ReadonlyArray<Type | string>>): Signatures {
+      return signatures.map(row => row.map(param => typeof param === 'string' ? Type.from(param) : param));
+    }
+  }
   /**
    * The dispatch surface over the node kinds — subclass it and implement the `visit*` member for
    * each kind the walk cares about.
@@ -231,7 +236,7 @@ export namespace Type {
    * Type.ctor({ instance: box, args: [[]], abstract: false });
    * ```
    */
-  export function ctor(instance: Type, args: TypeSignatures, abstract?: boolean): ConstructorType;
+  export function ctor(instance: Type, args: Type.Signatures, abstract?: boolean): ConstructorType;
   export function ctor(spec: Spec<ConstructorType>): ConstructorType;
   export function ctor(...args: any[]): ConstructorType {
     return args.length > 1
@@ -280,7 +285,7 @@ export namespace Type {
    * Type.func({ return: box, args: [[]] });
    * ```
    */
-  export function func(returns: Type, args: TypeSignatures): FunctionType;
+  export function func(returns: Type, args: Type.Signatures): FunctionType;
   export function func(spec: Spec<FunctionType>): FunctionType;
   export function func(...args: any[]): FunctionType {
     return args.length > 1
@@ -344,8 +349,7 @@ export namespace Type {
    */
   export function imported(name: string, from: string, genericArgs?: readonly Type[]): ImportedType;
   export function imported(spec: Spec<ImportedType>): ImportedType;
-  export function imported(first: string | Spec<ImportedType>, from?: string,
-    genericArgs: readonly Type[] = []): ImportedType {
+  export function imported(first: string | Spec<ImportedType>, from?: string, genericArgs: readonly Type[] = []): ImportedType {
     return typeof first === 'string'
       ? factory.imported(first, from!, genericArgs)
       : factory.imported(first.name, first.from, first.genericArgs);
@@ -405,11 +409,18 @@ export namespace Type {
    *
    * @throws TypeError - when the type is already tagged; a type wears at most one tag.
    */
-  export function tag(type: Exclude<Type, TagType>, tag: string): TagType;
-  export function tag(spec: Spec<TagType>): TagType;
-  export function tag(first: Type | Spec<TagType>, tag?: string): TagType {
-    return isNode(first) ? factory.tag(first, tag!) : factory.tag(first.type, first.tag);
-  }
+  export const tag = (() => {
+    /** Tells a node from a spec object: every node carries a `kind`, no spec does. */
+    function isNode(value: Type | object): value is Type {
+      return 'kind' in value;
+    }
+    function tag(type: Exclude<Type, TagType>, tag: string): TagType;
+    function tag(spec: Spec<TagType>): TagType;
+    function tag(first: Type | Spec<TagType>, tag?: string): TagType {
+      return isNode(first) ? factory.tag(first, tag!) : factory.tag(first.type, first.tag);
+    }
+    return tag;
+  })();
 
   /** A fixed-length, ordered list of member types — `[A, B, C]`. */
   export function tuple(...types: readonly Type[]): TupleType {
@@ -531,9 +542,4 @@ export namespace Type {
   }
 
   // #endregion
-}
-
-/** Tells a node from a spec object: every node carries a `kind`, no spec does. */
-function isNode(value: Type | object): value is Type {
-  return 'kind' in value;
 }

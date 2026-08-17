@@ -31,16 +31,14 @@ import { BROWSER_LIFETIME_OPTIONS_TYPE, PAGE_LIFECYCLE_EVENTS_TYPE } from './typ
  * caller must thread this result forward instead of reusing the `services` it
  * passed in.
  */
-export function registerBrowserLifetime(services: Manifest, options: BrowserLifetimeOptions,
-  context?: PageContext): Manifest {
-  let s = services.addValue(BROWSER_LIFETIME_OPTIONS_TYPE, options);
+export function registerBrowserLifetime(services: Manifest<any>, options: BrowserLifetimeOptions, context?: PageContext): Manifest<any> {
+  let s = services.add(BROWSER_LIFETIME_OPTIONS_TYPE, options);
 
   const pageLifecycleEvents = new PageLifecycleEvents(context);
-  s = s.addValue(PAGE_LIFECYCLE_EVENTS_TYPE, pageLifecycleEvents);
+  s = s.add(PAGE_LIFECYCLE_EVENTS_TYPE, pageLifecycleEvents);
 
-  return s.addFactory(HOST_LIFETIME_TYPE,
+  return s.add(HOST_LIFETIME_TYPE,
     (resolver: IServiceProvider) =>
-      new BrowserLifetime(resolver.getRequiredService(BROWSER_LIFETIME_OPTIONS_TYPE),
-        resolver.getRequiredService(HOST_APPLICATION_LIFETIME_TYPE), resolver.getRequiredService(LOGGER_FACTORY_TYPE),
+      new BrowserLifetime(resolver.getRequiredService(BROWSER_LIFETIME_OPTIONS_TYPE), resolver.getRequiredService(HOST_APPLICATION_LIFETIME_TYPE), resolver.getRequiredService(LOGGER_FACTORY_TYPE),
         pageLifecycleEvents), Type.func(HOST_LIFETIME_TYPE, [[RESOLVER_TYPE]]));
 }

@@ -35,39 +35,34 @@ export namespace ServiceManifestHostedServiceAugmentations {
    * its resolver parameter; a class value is disambiguated by type (not
    * arity) and still resolves to the ctor overload below.
    */
-  export function addHostedService(this: Manifest<string>,
-    implementationFactory: Func<[IServiceProvider], IHostedService>): Manifest<string>;
+  export function addHostedService(this: Manifest<string>, implementationFactory: Func<[IServiceProvider], IHostedService>): Manifest<string>;
   /**
    * Registers `ctor` as an {@link IHostedService} the host will start and
    * stop alongside its lifetime. `implementerType` is the ctor's composed
    * constructor type; omitted, a dependency-free ctor is assumed.
    */
-  export function addHostedService(this: Manifest<string>, ctor: Ctor,
-    implementerType?: ConstructorType): Manifest<string>;
+  export function addHostedService(this: Manifest<string>, ctor: Ctor, implementerType?: ConstructorType): Manifest<string>;
   // A class value matches the construct-signature arm, an arrow or function the
   // call-signature arm; only the ctor form carries a composed constructor type.
-  export function addHostedService(this: Manifest<string>,
-    ctorOrImplementationFactory: Ctor | Func<[IServiceProvider], IHostedService>,
-    implementerType?: ConstructorType): Manifest<string> {
+  export function addHostedService(this: Manifest<string>, ctorOrImplementationFactory: Ctor | Func<[IServiceProvider], IHostedService>, implementerType?: ConstructorType): Manifest<string> {
     // The factory form injects the live resolver (via the `Type.func(..., [[RESOLVER_TYPE]])`
     // composed type) so the delegate receives it. A ctor form
     // with no `implementerType` is a dependency-free ctor, stated explicitly as one
     // that carries no argument types (`addClass` has no overload that omits it).
-    return isConstructor(ctorOrImplementationFactory)
-      ? this.addClass(HOSTED_SERVICE_TYPE, ctorOrImplementationFactory,
-        implementerType ?? Type.ctor(HOSTED_SERVICE_TYPE, [[]]), 'singleton')
-      : this.addFactory(HOSTED_SERVICE_TYPE, ctorOrImplementationFactory,
-        Type.func(HOSTED_SERVICE_TYPE, [[RESOLVER_TYPE]]), 'singleton');
+    if (isConstructor(ctorOrImplementationFactory)) {
+      return this.add(HOSTED_SERVICE_TYPE, ctorOrImplementationFactory, implementerType ?? Type.ctor(HOSTED_SERVICE_TYPE, [[]]), 'singleton');
+    }
+    return this.add(HOSTED_SERVICE_TYPE, ctorOrImplementationFactory as Func, Type.func(HOSTED_SERVICE_TYPE, [[RESOLVER_TYPE]]), 'singleton');
   }
 }
 
 // `Scopes` is defaulted so the merge's type-parameter list matches the target's
 // (TS2428 requires identical parameters).
 declare module '@rhombus-std/di.core' {
-  interface Manifest<Scopes extends string = any> {
+  interface Manifest<Scopes extends string> {
     addHostedService(implementationFactory: Func<[IServiceProvider], IHostedService>): Manifest<Scopes>;
     addHostedService(ctor: Ctor, implementerType?: ConstructorType): Manifest<Scopes>;
   }
 }
 
-registerAugmentations<Manifest>(ServiceManifestHostedServiceAugmentations);
+registerAugmentations<Manifest<any>>(ServiceManifestHostedServiceAugmentations);

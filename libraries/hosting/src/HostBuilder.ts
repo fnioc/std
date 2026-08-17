@@ -16,8 +16,7 @@ import type { HostBuilderContext, IHost, IHostBuilder } from '@rhombus-std/hosti
 import { augment } from '@rhombus-std/primitives';
 import { typefor } from '@rhombus-std/primitives.extras';
 import type { Action, Func } from '@rhombus-toolkit/func';
-import { createFrameworkServices, createHostingEnvironment, populateFrameworkServices,
-  resolveHost } from './host-composition';
+import { createFrameworkServices, createHostingEnvironment, populateFrameworkServices, resolveHost } from './host-composition';
 import { resolveServiceProviderOptions } from './ServiceProviderOptionsFactory';
 
 // Interface-extends merge (augmentation doctrine): binding the IHostBuilder SYMBOL
@@ -37,8 +36,8 @@ export class HostBuilder implements IHostBuilder {
   // Both hold RETURNING delegates: the manifest chain is immutable, so `build()`
   // threads each delegate's return into the next instead of letting them all
   // register into one shared mutable collection.
-  readonly #configureServicesActions: Array<Func<[HostBuilderContext, Manifest], Manifest>> = [];
-  readonly #configureContainerActions: Array<Func<[HostBuilderContext, unknown], unknown>> = [];
+  readonly #configureServicesActions: Array<Func<[HostBuilderContext, Manifest<any>], Manifest<any>>> = [];
+  readonly #configureContainerActions: Array<Func<[HostBuilderContext, Manifest<any>], Manifest<any>>> = [];
 
   #hostBuilt = false;
 
@@ -55,16 +54,14 @@ export class HostBuilder implements IHostBuilder {
   }
 
   /** Adds services to the container. Additive across calls; the delegate RETURNS the manifest. */
-  public configureServices(configureDelegate: Func<[HostBuilderContext, Manifest], Manifest>): this {
+  public configureServices(configureDelegate: Func<[HostBuilderContext, Manifest<any>], Manifest<any>>): this {
     this.#configureServicesActions.push(configureDelegate);
     return this;
   }
 
   /** Enables configuring the instantiated dependency container. Additive across calls. */
-  public configureContainer<TContainerBuilder>(
-    configureDelegate: Func<[HostBuilderContext, TContainerBuilder], TContainerBuilder>,
-  ): this {
-    this.#configureContainerActions.push(configureDelegate as Func<[HostBuilderContext, unknown], unknown>);
+  public configureContainer(configureDelegate: Func<[HostBuilderContext, Manifest<any>], Manifest<any>>): this {
+    this.#configureContainerActions.push(configureDelegate);
     return this;
   }
 
@@ -88,8 +85,7 @@ export class HostBuilder implements IHostBuilder {
     const hostingEnvironment = createHostingEnvironment(hostConfig);
 
     // 3. Host-builder context.
-    const hostBuilderContext: HostBuilderContext = { hostingEnvironment, config: hostConfig,
-      properties: this.properties };
+    const hostBuilderContext: HostBuilderContext = { hostingEnvironment, config: hostConfig, properties: this.properties };
 
     // 4. Application configuration (host configuration chained in first --
     // a live read-through, not a snapshot, so a later host-configuration
@@ -103,16 +99,11 @@ export class HostBuilder implements IHostBuilder {
     hostBuilderContext.config = appConfig;
 
     // 5. Framework services + the user's configure-services delegates.
-    let services: Manifest = new DefaultManifest();
+    let services: Manifest<any> = new DefaultManifest();
     const framework = createFrameworkServices();
     services = populateFrameworkServices(services, hostBuilderContext, hostingEnvironment, appConfig, framework);
 
-    for (const action of this.#configureServicesActions) {
-      services = action(hostBuilderContext, services);
-    }
-    for (const action of this.#configureContainerActions) {
-      services = action(hostBuilderContext, services) as Manifest;
-    }
+    services = this.#configureServicesActions.concat(this.#configureContainerActions).reduce((services, action) => action(hostBuilderContext, services), services);
 
     // 6. Build the provider and construct the internal host. The service-provider
     // options (from `useDefaultServiceProvider` / `configureDefaults`) are

@@ -33,13 +33,11 @@ function baseOptions(): WidgetOptions {
 describe('configure — DI-injected', () => {
   test('resolves a class dep and passes it after the options value', () => {
     let services: Manifest<'singleton'> = new DefaultManifest<'singleton'>();
-    services = services.addClass(URL_PROVIDER_TOKEN, UrlProvider, Type.ctor(Type.from(URL_PROVIDER_TOKEN), [[]]),
-      'singleton');
+    services = services.add(URL_PROVIDER_TOKEN, UrlProvider, Type.ctor(Type.from(URL_PROVIDER_TOKEN), [[]]), 'singleton');
     services = services.addOptions<WidgetOptions>(OPTIONS_TOKEN, baseOptions);
-    services = services.configure<WidgetOptions, [UrlProvider]>(OPTIONS_TOKEN, [URL_PROVIDER_TOKEN],
-      (options, urls) => {
-        options.url = urls.base;
-      });
+    services = services.configure<WidgetOptions, [UrlProvider]>(OPTIONS_TOKEN, [URL_PROVIDER_TOKEN], (options, urls) => {
+      options.url = urls.base;
+    });
 
     const provider = services.build();
     const options: IOptions<WidgetOptions> = provider.getRequiredService(optionsAddressType(Type.from(OPTIONS_TOKEN)));
@@ -49,9 +47,8 @@ describe('configure — DI-injected', () => {
 
   test('resolves several deps, injected positionally in token order', () => {
     let services: Manifest<'singleton'> = new DefaultManifest<'singleton'>();
-    services = services.addClass(URL_PROVIDER_TOKEN, UrlProvider, Type.ctor(Type.from(URL_PROVIDER_TOKEN), [[]]),
-      'singleton');
-    services = services.addValue(RETRY_POLICY_TOKEN, { attempts: 4 });
+    services = services.add(URL_PROVIDER_TOKEN, UrlProvider, Type.ctor(Type.from(URL_PROVIDER_TOKEN), [[]]), 'singleton');
+    services = services.add(RETRY_POLICY_TOKEN, { attempts: 4 });
     services = services.addOptions<WidgetOptions>(OPTIONS_TOKEN, baseOptions);
     services = services.configure<WidgetOptions, [UrlProvider, { attempts: number; }]>(OPTIONS_TOKEN, [
       URL_PROVIDER_TOKEN,
@@ -69,16 +66,14 @@ describe('configure — DI-injected', () => {
 
   test('a DI configure composes with a plain configure delegate', () => {
     let services: Manifest<'singleton'> = new DefaultManifest<'singleton'>();
-    services = services.addClass(URL_PROVIDER_TOKEN, UrlProvider, Type.ctor(Type.from(URL_PROVIDER_TOKEN), [[]]),
-      'singleton');
+    services = services.add(URL_PROVIDER_TOKEN, UrlProvider, Type.ctor(Type.from(URL_PROVIDER_TOKEN), [[]]), 'singleton');
     services = services.addOptions<WidgetOptions>(OPTIONS_TOKEN, baseOptions);
     services = services.configure<WidgetOptions>(OPTIONS_TOKEN, (options) => {
       options.note = 'plain';
     });
-    services = services.configure<WidgetOptions, [UrlProvider]>(OPTIONS_TOKEN, [URL_PROVIDER_TOKEN],
-      (options, urls) => {
-        options.url = urls.base;
-      });
+    services = services.configure<WidgetOptions, [UrlProvider]>(OPTIONS_TOKEN, [URL_PROVIDER_TOKEN], (options, urls) => {
+      options.url = urls.base;
+    });
 
     const provider = services.build();
     const options: IOptions<WidgetOptions> = provider.getRequiredService(optionsAddressType(Type.from(OPTIONS_TOKEN)));
@@ -91,15 +86,14 @@ describe('configure — DI-injected', () => {
 describe('postConfigure — DI-injected', () => {
   test('runs after configure with a resolved dep', () => {
     let services: Manifest<'singleton'> = new DefaultManifest<'singleton'>();
-    services = services.addValue(SUFFIX_TOKEN, { text: '!' });
+    services = services.add(SUFFIX_TOKEN, { text: '!' });
     services = services.addOptions<WidgetOptions>(OPTIONS_TOKEN, baseOptions);
     services = services.configure<WidgetOptions>(OPTIONS_TOKEN, (options) => {
       options.note = 'base';
     });
-    services = services.postConfigure<WidgetOptions, [{ text: string; }]>(OPTIONS_TOKEN, [SUFFIX_TOKEN],
-      (options, suffix) => {
-        options.note += suffix.text;
-      });
+    services = services.postConfigure<WidgetOptions, [{ text: string; }]>(OPTIONS_TOKEN, [SUFFIX_TOKEN], (options, suffix) => {
+      options.note += suffix.text;
+    });
 
     const provider = services.build();
     const options: IOptions<WidgetOptions> = provider.getRequiredService(optionsAddressType(Type.from(OPTIONS_TOKEN)));
@@ -113,15 +107,14 @@ describe('validate — DI-injected', () => {
 
   function servicesWithLimit(size: number, max: number): Manifest<string> {
     let services: Manifest<'singleton'> = new DefaultManifest<'singleton'>();
-    services = services.addValue(LIMIT_TOKEN, { max });
+    services = services.add(LIMIT_TOKEN, { max });
     services = services.addOptions<WidgetOptions>(OPTIONS_TOKEN, () => ({ ...baseOptions(), retries: size }));
     return services;
   }
 
   test('a passing predicate resolves the options without throwing', () => {
     let services = servicesWithLimit(3, 10);
-    services = services.validate<WidgetOptions, [{ max: number; }]>(OPTIONS_TOKEN, [LIMIT_TOKEN],
-      (options, limit) => options.retries <= limit.max, 'retries over limit');
+    services = services.validate<WidgetOptions, [{ max: number; }]>(OPTIONS_TOKEN, [LIMIT_TOKEN], (options, limit) => options.retries <= limit.max, 'retries over limit');
 
     const provider = services.build();
 
@@ -135,8 +128,7 @@ describe('validate — DI-injected', () => {
 
   test('a failing predicate surfaces the failure message', () => {
     let services = servicesWithLimit(50, 10);
-    services = services.validate<WidgetOptions, [{ max: number; }]>(OPTIONS_TOKEN, [LIMIT_TOKEN],
-      (options, limit) => options.retries <= limit.max, 'retries over limit');
+    services = services.validate<WidgetOptions, [{ max: number; }]>(OPTIONS_TOKEN, [LIMIT_TOKEN], (options, limit) => options.retries <= limit.max, 'retries over limit');
 
     const provider = services.build();
 
@@ -156,8 +148,7 @@ describe('validate — DI-injected', () => {
 
   test('a failing predicate with no message uses the default', () => {
     let services = servicesWithLimit(50, 10);
-    services = services.validate<WidgetOptions, [{ max: number; }]>(OPTIONS_TOKEN, [LIMIT_TOKEN],
-      (options, limit) => options.retries <= limit.max);
+    services = services.validate<WidgetOptions, [{ max: number; }]>(OPTIONS_TOKEN, [LIMIT_TOKEN], (options, limit) => options.retries <= limit.max);
 
     const provider = services.build();
 

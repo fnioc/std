@@ -12,7 +12,7 @@ import { registerInlineBodies, typefor } from '@rhombus-std/primitives.extras';
 // A named import (not a member reference inside the augmentation block) because
 // unqualified names in a `declare module` body resolve in THIS file's scope.
 declare module '@rhombus-std/di.core' {
-  interface Manifest<Scopes extends string = any> {
+  interface Manifest<Scopes extends string> {
     /**
      * Offers `IOptions<T>`, taking its base value from whatever `T` itself
      * resolves to. Returns a NEW manifest carrying the registration — the
@@ -20,11 +20,6 @@ declare module '@rhombus-std/di.core' {
      */
     addOptions<T>(): Manifest<Scopes>;
   }
-}
-
-/** Receiver shape the sugar body is compiled against. */
-interface IInlineOptionsTarget {
-  addOptions(tType: Type | string): Manifest;
 }
 
 /**
@@ -36,8 +31,8 @@ interface IInlineOptionsTarget {
  * its own type argument to derive.
  */
 export const ServiceOptionsInline = {
-  addOptions<T>(this: IInlineOptionsTarget): Manifest {
+  addOptions<T>(this: Manifest<any>): Manifest<any> {
     return this.addOptions(typefor<T>());
   },
 };
-registerInlineBodies(ServiceOptionsInline);
+registerInlineBodies<Manifest<any>>(ServiceOptionsInline);

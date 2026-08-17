@@ -39,7 +39,7 @@ export class Registry {
   readonly #closed = new Map<Type, Entry[]>();
   readonly #open: Entry[] = [];
 
-  constructor(manifest: Manifest) {
+  constructor(manifest: Manifest<any>) {
     let rank = 0;
     for (const descriptor of manifest) {
       const entry: Entry = { descriptor, rank: rank++ };

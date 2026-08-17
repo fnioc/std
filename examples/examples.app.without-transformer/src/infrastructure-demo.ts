@@ -32,8 +32,8 @@ import '@rhombus-std/di';
 // `describeDiError` is the LIBRARY's — classifying what a container threw needs
 // di.core and nothing more. Building the container is this root's, because that
 // is the one thing the engine is for.
-import { addGreetingWorkshop, describeDiError, GREETING_WORKSHOP_TYPE, GreetingWorkshop, LOCATOR_GREETING_WORKSHOP_TYPE,
-  LocatorGreetingWorkshop, WorkshopGreeting } from '@rhombus-std/examples.lib.without-transformer';
+import { addGreetingWorkshop, describeDiError, GREETING_WORKSHOP_TYPE, GreetingWorkshop, LOCATOR_GREETING_WORKSHOP_TYPE, LocatorGreetingWorkshop,
+  WorkshopGreeting } from '@rhombus-std/examples.lib.without-transformer';
 
 /** A fresh, empty manifest for one of this chapter's own containers. */
 function newWorkshopManifest(): Manifest<'singleton'> {
@@ -138,10 +138,9 @@ export function demonstrateInfrastructure(): readonly string[] {
   // something the taxonomy names.
   try {
     newWorkshopManifest()
-      .addClass(Type.from('@rhombus-std/examples.contracts:IHealthCheck'), GreetingWorkshop,
-        Type.ctor(Type.from('@rhombus-std/examples.contracts:IHealthCheck'), [[
-          Type.from('@rhombus-std/examples.contracts:IGreeting'),
-        ]]), 'singleton')
+      .add(Type.from('@rhombus-std/examples.contracts:IHealthCheck'), GreetingWorkshop, Type.ctor(Type.from('@rhombus-std/examples.contracts:IHealthCheck'), [[
+        Type.from('@rhombus-std/examples.contracts:IGreeting'),
+      ]]), 'singleton')
       .build({ validateOnBuild: true });
   } catch (error) {
     lines.push(`building a graph with a hole in it: ${describeDiError(error)}`);

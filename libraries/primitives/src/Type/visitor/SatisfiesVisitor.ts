@@ -1,7 +1,6 @@
 import type { Func } from '@rhombus-toolkit/func';
 import { LITERAL_BASE } from '../factory/literal-base.js';
-import type { AggregateType, ArrayType, ConstructorType, FunctionType, GenericType, GlobalType, ImportedType,
-  IntersectionType, IterableType, ObjectType, TagType, TupleType, Type, TypeLiteralType, TypeSignatures,
+import type { AggregateType, ArrayType, ConstructorType, FunctionType, GenericType, GlobalType, ImportedType, IntersectionType, IterableType, ObjectType, TagType, TupleType, Type, TypeLiteralType,
   UnionType } from '../Type.js';
 import { isOpenType } from './IsOpenVisitor.js';
 import { stringifyType } from './StringifyVisitor.js';
@@ -98,9 +97,7 @@ class SatisfiesVisitor extends TypeVisitor<Predicate> {
     // Width subtyping: the proposed object may carry members the condition does not name.
     return proposed =>
       proposed.kind === 'object'
-      && Object.entries(type.members).every(([key, member]) =>
-        key in proposed.members && this.match(proposed.members[key]!, member)
-      );
+      && Object.entries(type.members).every(([key, member]) => key in proposed.members && this.match(proposed.members[key]!, member));
   }
 
   /**
@@ -152,7 +149,7 @@ class SatisfiesVisitor extends TypeVisitor<Predicate> {
    * Every condition row needs an answer: each one must be served by some proposed row. Surplus
    * proposed rows are extra capability and never count against the match.
    */
-  #rows(proposed: TypeSignatures, condition: TypeSignatures): boolean {
+  #rows(proposed: Type.Signatures, condition: Type.Signatures): boolean {
     return condition.every(row => proposed.some(candidate => this.#attemptRow(candidate, row)));
   }
 
@@ -209,8 +206,7 @@ class PatternMatchVisitor extends SatisfiesVisitor {
   }
 }
 
-export function satisfiesType(proposed: Type, condition: Type): [satisfied: false] | [satisfied: true,
-  generics: Map<string, Type>] {
+export function satisfiesType(proposed: Type, condition: Type): [satisfied: false] | [satisfied: true, generics: Map<string, Type>] {
   if (isOpenType(proposed)) {
     throw new Error(`satisfies: the proposed type may not contain generic holes — got ${stringifyType(proposed)}`);
   }
@@ -222,8 +218,7 @@ export function satisfiesType(proposed: Type, condition: Type): [satisfied: fals
  * Does some instantiation of {@link pattern} extend {@link subject}? Success carries the
  * instantiation: one entry per generic label in the pattern.
  */
-export function matchType(pattern: Type, subject: Type): [matched: false] | [matched: true,
-  generics: Map<string, Type>] {
+export function matchType(pattern: Type, subject: Type): [matched: false] | [matched: true, generics: Map<string, Type>] {
   if (isOpenType(subject)) {
     throw new Error(`match: the subject type may not contain generic holes — got ${stringifyType(subject)}`);
   }

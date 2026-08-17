@@ -27,8 +27,8 @@ export type TypeFor<T> = [T] extends [abstract new(...args: never[]) => unknown]
  *
  * @example
  * ```ts
- * services.addClass(typefor<ICache>(), RedisCache, Type.ctor(typefor<ICache>()));
- * // → services.addClass(Type.imported('ICache', '@rhombus-std/caching.core'), RedisCache,
+ * services.add(typefor<ICache>(), RedisCache, Type.ctor(typefor<ICache>()));
+ * // → services.add(Type.imported('ICache', '@rhombus-std/caching.core'), RedisCache,
  * //     Type.ctor(Type.imported('ICache', '@rhombus-std/caching.core')))
  * ```
  */

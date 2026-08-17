@@ -1,4 +1,7 @@
 {
   "extends": "../../tsconfig.lib.json",
-  "include": ["src/**/*"]
+  "include": ["src/**/*"],
+  "compilerOptions": {
+    "types": ["@rhombus-std/di.extras"]
+  }
 }

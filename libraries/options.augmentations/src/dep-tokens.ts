@@ -6,4 +6,4 @@ import type { Type } from '@rhombus-std/primitives';
  * `validate` dependency forms) resolves from the provider before invoking its
  * callback. A typed caller writes `[typefor<Dep1>(), typefor<Dep2>()]`.
  */
-export type DepTokens<Deps extends readonly unknown[]> = { [K in keyof Deps]: Type | string; };
+export type DepTokens<Deps extends readonly unknown[]> = { [K in keyof Deps]: Type; } & Type[];

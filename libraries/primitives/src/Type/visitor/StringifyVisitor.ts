@@ -1,7 +1,7 @@
 import { memo } from '../../utils/memo.js';
 import { escapeSegment } from '../grammar.js';
-import type { ArrayType, ConstructorType, FunctionType, GenericType, GlobalType, ImportedType, IntersectionType,
-  IterableType, ObjectType, TagType, TupleType, Type, TypeLiteralType, TypeSignatures, UnionType } from '../Type.js';
+import type { ArrayType, ConstructorType, FunctionType, GenericType, GlobalType, ImportedType, IntersectionType, IterableType, ObjectType, TagType, TupleType, Type, TypeLiteralType,
+  UnionType } from '../Type.js';
 import { TypeVisitor } from './TypeVisitor.js';
 
 /**
@@ -91,7 +91,7 @@ class StringifyVisitor extends TypeVisitor<string, Precedence> {
    * A callable's parameter rows, semicolons between them — the same separator an overload set is
    * written with. One row therefore spells as its parameters alone.
    */
-  #rows(rows: TypeSignatures): string {
+  #rows(rows: Type.Signatures): string {
     return rows.map(row => this.#list(row)).join('; ');
   }
   #genericTypes(types: readonly Type[]): string {

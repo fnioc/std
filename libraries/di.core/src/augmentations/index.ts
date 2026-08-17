@@ -1,5 +1,4 @@
-import './Manifest-Descriptor-augmentations';
-import './Manifest-service-augmentations';
-import './ServiceProvider-service-augmentations';
-import './ServiceProvider-ServiceScope-augmentations';
-import './ServiceScopeFactory-ServiceScope-augmentations';
+export * from './Manifest-Descriptor-augmentations';
+export * from './ServiceProvider-service-augmentations';
+export * from './ServiceProvider-ServiceScope-augmentations';
+export * from './ServiceScopeFactory-ServiceScope-augmentations';

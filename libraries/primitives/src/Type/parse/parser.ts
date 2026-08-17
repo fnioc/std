@@ -1,8 +1,7 @@
 import { TypeParseError } from '../../TypeParseError.js';
-import { ctor, func, generic, global, imported, intersection, literal, object, tag, tuple,
-  union } from '../factory/factories.js';
+import { ctor, func, generic, global, imported, intersection, literal, object, tag, tuple, union } from '../factory/factories.js';
 import { GLOBAL_QUALIFIER, KEYWORD_LITERALS, SERVICE_PROVIDER_FROM } from '../grammar.js';
-import type { ConstructorType, FunctionType, ObjectType, Type, TypeSignatures } from '../Type.js';
+import type { ConstructorType, FunctionType, ObjectType, Type } from '../Type.js';
 import { lex, type LexToken } from './lexer.js';
 
 const OPENERS = new Set(['(', '[', '{', '<']);
@@ -178,7 +177,7 @@ class TypeParser {
    * rows — `Ctor<Instance, A, B; C>`. The head is separated from the first row by the same comma
    * every other argument uses, so a one-row spelling reads as one flat list.
    */
-  #reservedSignature(name: LexToken, spelling: string): [head: Type, rows: TypeSignatures] {
+  #reservedSignature(name: LexToken, spelling: string): [head: Type, rows: Type.Signatures] {
     if (!this.#take('<')) {
       throw this.#error(name.position, `\`${spelling}\``);
     }
@@ -212,7 +211,7 @@ class TypeParser {
    * list of types. An empty list is ONE empty row — a callable taking no parameters, rather than
    * one answering to no call.
    */
-  #rowList(closer: string): TypeSignatures {
+  #rowList(closer: string): Type.Signatures {
     const rows: Array<readonly Type[]> = [];
     for (;;) {
       rows.push(this.#row(closer));
@@ -253,7 +252,7 @@ class TypeParser {
   }
 
   #members(): ObjectType['members'] {
-    const entries: [string, Type][] = [];
+    const entries: Array<[string, Type]> = [];
     if (this.#take('}')) {
       return Object.fromEntries(entries);
     }

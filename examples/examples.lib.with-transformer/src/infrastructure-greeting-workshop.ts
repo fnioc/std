@@ -307,8 +307,7 @@ export class GreetingWorkshopBuilder<S extends string> implements IGreetingWorks
     // Explicit in BOTH dialects: the ctor arrives as a runtime PARAMETER, so
     // there is no class type for the transformer to derive a constructor type —
     // or a service type — from.
-    this.#holder.services = this.#holder.services.addClass(GREETING_TYPE, greeting, Type.ctor(GREETING_TYPE, [[]]),
-      'singleton');
+    this.#holder.services = this.#holder.services.add(GREETING_TYPE, greeting, Type.ctor(GREETING_TYPE, [[]]), 'singleton');
     return this;
   }
 
@@ -316,7 +315,7 @@ export class GreetingWorkshopBuilder<S extends string> implements IGreetingWorks
     // Tokenless from the other side too: the workshop's optional slot and the
     // locator's `getService` derive the same type this registration does, so the
     // three cannot drift apart.
-    this.#holder.services = this.#holder.services.addValue(typefor<ICardStationery>(), stationery);
+    this.#holder.services = this.#holder.services.add(typefor<ICardStationery>(), stationery);
     return this;
   }
 }
@@ -335,8 +334,7 @@ export class GreetingWorkshopBuilder<S extends string> implements IGreetingWorks
  * @param services The application's registration builder.
  * @param configure Receives the builder; its return value is deliberately ignored.
  */
-export function addGreetingWorkshop<S extends string>(services: Manifest<S | 'singleton'>,
-  configure: (builder: IGreetingWorkshopBuilder) => void): Manifest<S | 'singleton'> {
+export function addGreetingWorkshop<S extends string>(services: Manifest<S | 'singleton'>, configure: (builder: IGreetingWorkshopBuilder) => void): Manifest<S | 'singleton'> {
   const holder: ManifestSlot<S | 'singleton'> = { services };
   configure(new GreetingWorkshopBuilder<S>(holder));
 
@@ -347,7 +345,7 @@ export function addGreetingWorkshop<S extends string>(services: Manifest<S | 'si
   //
   // No lifetime, so transient: the honest tag for something built fresh per
   // recipient.
-  holder.services = holder.services.addClass(typefor<GreetingCard>(), GreetingCard, CARD_IMPL_TYPE);
+  holder.services = holder.services.add(typefor<GreetingCard>(), GreetingCard, CARD_IMPL_TYPE);
 
   // The workshop itself goes on next so a consumer cannot forget it — and this
   // one is fully tokenless, right down to its composed constructor type. The
@@ -365,9 +363,8 @@ export function addGreetingWorkshop<S extends string>(services: Manifest<S | 'si
   // Registration sugar lowers in any expression context, not only at a module's
   // top level, which is what lets a library function like this one be authored
   // tokenlessly at all.
-  holder.services = holder.services.addClass(typefor<GreetingWorkshop>(), GreetingWorkshop,
-    Type.ctor(typefor<GreetingWorkshop>(), [[Type.func(typefor<GreetingCard>(), [[typefor<ICardRecipient>()]]),
-      Type.union(typefor<ICardStationery>(), Type.typeLiteral(undefined))]]), 'singleton');
+  holder.services = holder.services.add(typefor<GreetingWorkshop>(), GreetingWorkshop,
+    Type.ctor(typefor<GreetingWorkshop>(), [[Type.func(typefor<GreetingCard>(), [[typefor<ICardRecipient>()]]), Type.union(typefor<ICardStationery>(), Type.typeLiteral(undefined))]]), 'singleton');
 
   // The counter-example, at its own derived service type so a caller can resolve
   // both from one container and compare the cards. Its one argument is the
@@ -375,8 +372,7 @@ export function addGreetingWorkshop<S extends string>(services: Manifest<S | 'si
   // "I want the provider" is plain DI rather than a special argument kind, which
   // is precisely why nothing stops a library doing it and why the comparison has
   // to be made in prose.
-  holder.services = holder.services.addClass(typefor<LocatorGreetingWorkshop>(), LocatorGreetingWorkshop,
-    Type.ctor(typefor<LocatorGreetingWorkshop>(), [[RESOLVER_TYPE]]), 'singleton');
+  holder.services = holder.services.add(typefor<LocatorGreetingWorkshop>(), LocatorGreetingWorkshop, Type.ctor(typefor<LocatorGreetingWorkshop>(), [[RESOLVER_TYPE]]), 'singleton');
 
   return holder.services;
 }

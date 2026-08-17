@@ -13,14 +13,13 @@
 //     MetricsOptions/TracingOptions -- installed onto the concrete option class.
 
 import type { IMemoryCache } from '@rhombus-std/caching.core';
-import { CacheEntrySugarAugmentations, CacheItemPriority,
-  MemoryCacheSugarAugmentations } from '@rhombus-std/caching.core';
+import { CacheEntrySugarAugmentations, CacheItemPriority, MemoryCacheSugarAugmentations } from '@rhombus-std/caching.core';
 import { MemoryCache, MemoryCacheOptions } from '@rhombus-std/caching.memory';
 import { ConfigBuilder, MemoryConfigBuilderAugmentations } from '@rhombus-std/config';
 import type { Manifest } from '@rhombus-std/di.core';
 import { MetricsBuilder } from '@rhombus-std/diagnostics';
-import { type IMetricsListener, METRICS_LISTENER_TYPE, MetricsBuilderAugmentations, MetricsOptions,
-  MetricsOptionsAugmentations, TracingOptions, TracingOptionsAugmentations } from '@rhombus-std/diagnostics.core';
+import { type IMetricsListener, METRICS_LISTENER_TYPE, MetricsBuilderAugmentations, MetricsOptions, MetricsOptionsAugmentations, TracingOptions,
+  TracingOptionsAugmentations } from '@rhombus-std/diagnostics.core';
 import { LoggerFilterOptions, LoggerFilterOptionsExtensions } from '@rhombus-std/logging';
 import { LogLevel } from '@rhombus-std/logging.core';
 import { describe, expect, test } from 'bun:test';
@@ -75,11 +74,11 @@ describe('reverse direction — MetricsBuilder (.core interface, downstream conc
     // the real immutable chain does — a double that returned `undefined` (or
     // itself) would hide the threading the augmentation now has to do.
     const recorded: Array<[unknown, unknown]> = [];
-    const make = (): Manifest => {
+    const make = (): Manifest<any> => {
       return { add: () => make(), addFactory: () => make(), addValue: (token: unknown, value: unknown) => {
         recorded.push([token, value]);
         return make();
-      }, build: () => undefined } as unknown as Manifest;
+      }, build: () => undefined } as unknown as Manifest<any>;
     };
 
     const builder = new MetricsBuilder(make());

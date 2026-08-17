@@ -85,8 +85,7 @@ import { demonstrateResolution } from './resolution-demo.js';
 
 /** The layered configuration root — an in-memory source seeds the server keys. */
 function buildConfig(): ConfigRoot {
-  return new ConfigBuilder().addInMemoryCollection({ 'Server:Host': '0.0.0.0', 'Server:Port': '8080',
-    'Server:MaxConnections': '100' }).build() as unknown as ConfigRoot;
+  return new ConfigBuilder().addInMemoryCollection({ 'Server:Host': '0.0.0.0', 'Server:Port': '8080', 'Server:MaxConnections': '100' }).build() as unknown as ConfigRoot;
 }
 
 /**
@@ -138,8 +137,7 @@ class InteropWorker implements IHostedLifecycleService {
   readonly #logger: ILogger;
   readonly #config: ConfigRoot;
 
-  public constructor(provider: IServiceProvider, lifetime: IHostApplicationLifetime, loggerFactory: ILoggerFactory,
-    config: ConfigRoot) {
+  public constructor(provider: IServiceProvider, lifetime: IHostApplicationLifetime, loggerFactory: ILoggerFactory, config: ConfigRoot) {
     this.#provider = provider;
     this.#lifetime = lifetime;
     this.#logger = loggerFactory.createLogger('Rhombus.Examples.InteropWorker');
@@ -174,9 +172,8 @@ class InteropWorker implements IHostedLifecycleService {
     const after = optionsView.value.MaxConnections;
     subscription[Symbol.dispose]();
 
-    const lines = ['=== @rhombus-std interop — with transformer ===', `async banner: ${banner.text}`, ...report.lines,
-      'live reload (config → reactive Options):', `  MaxConnections before reload: ${before}`, ...updates,
-      `  MaxConnections after reload: ${after}`];
+    const lines = ['=== @rhombus-std interop — with transformer ===', `async banner: ${banner.text}`, ...report.lines, 'live reload (config → reactive Options):',
+      `  MaxConnections before reload: ${before}`, ...updates, `  MaxConnections after reload: ${after}`];
 
     for (const line of lines) {
       console.log(line);
@@ -239,16 +236,16 @@ services = addWithoutTransformerExamples(services);
 // be deciding for every consumer it will ever have.
 
 // The reactive server options — one shared live instance.
-services = services.addValue(typefor<IOptions<ServerOptions>>(), serverOptions);
+services = services.add(typefor<IOptions<ServerOptions>>(), serverOptions);
 
 // A config-independent policy, offered as IOptions<GreetingPolicy> via the
 // augmentation's addOptions verb. The verb names the BARE type — the value is
 // whatever GreetingPolicy itself resolves to.
-services = services.addValue(typefor<GreetingPolicy>(), { excitement: '!' } satisfies GreetingPolicy);
+services = services.add(typefor<GreetingPolicy>(), { excitement: '!' } satisfies GreetingPolicy);
 services = services.addOptions(typefor<GreetingPolicy>());
 
 // The live config root, so the hosted worker can drive the reload demo.
-services = services.addValue(typefor<ConfigRoot>(), config);
+services = services.add(typefor<ConfigRoot>(), config);
 
 // The hosted worker. Its four slots are derived from the very parameter types
 // its constructor declares, one for one.
@@ -256,9 +253,7 @@ services = services.addValue(typefor<ConfigRoot>(), config);
 // The composed chain goes BACK onto the builder. `builder.services` is a live
 // slot over an immutable chain, so everything registered into the local
 // `services` above is invisible to `build()` until it is handed back here.
-builder.services = services.addHostedService(InteropWorker,
-  Type.ctor(HOSTED_SERVICE_TYPE, [[RESOLVER_TYPE, typefor<IHostApplicationLifetime>(), typefor<ILoggerFactory>(),
-    typefor<ConfigRoot>()]]));
+builder.services = services.addHostedService(InteropWorker, Type.ctor(HOSTED_SERVICE_TYPE, [[RESOLVER_TYPE, typefor<IHostApplicationLifetime>(), typefor<ILoggerFactory>(), typefor<ConfigRoot>()]]));
 
 // ── run the scenario ──────────────────────────────────────────────────────────
 

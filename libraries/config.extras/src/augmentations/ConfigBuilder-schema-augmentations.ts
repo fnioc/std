@@ -34,4 +34,4 @@ export const ConfigBuilderInline = {
     return this.withSchema(schemaof<T>());
   },
 };
-registerInlineBodies(ConfigBuilderInline);
+registerInlineBodies<ConfigBuilder>(ConfigBuilderInline);

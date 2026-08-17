@@ -162,13 +162,13 @@ class Widget implements IWidget {
 
 declare const services: Manifest<"singleton">;
 
-export const registered = services.addClass(typefor<IWidget>(), Widget, typefor<typeof Widget>());
+export const registered = services.add(typefor<IWidget>(), Widget, typefor<typeof Widget>());
 `;
 
 function writeTsconfig(dir: string, name: string, outDir: string, plugins: Array<{ transform: string; }>): void {
   writeFileSync(join(dir, name), JSON.stringify({
-    compilerOptions: { target: 'ES2022', module: 'ESNext', moduleResolution: 'Bundler', lib: ['ES2022'], strict: true,
-      outDir: outDir, rootDir: 'src', skipLibCheck: true, noEmitOnError: false, plugins },
+    compilerOptions: { target: 'ES2022', module: 'ESNext', moduleResolution: 'Bundler', lib: ['ES2022'], strict: true, outDir: outDir, rootDir: 'src', skipLibCheck: true, noEmitOnError: false,
+      plugins },
     include: ['src/**/*'],
   }));
 }
@@ -201,8 +201,7 @@ function setupWorkspace(): void {
     // A package name carrying no primitive's name as a substring, so the derived
     // tokens (which embed the package name) don't collide with the primitive-call
     // survival assertions below.
-    JSON.stringify({ name: 'di-reg-app', version: '0.0.0',
-      dependencies: { '@rhombus-std/di.core': 'workspace:*', '@rhombus-std/di.extras': 'workspace:*' } }),
+    JSON.stringify({ name: 'di-reg-app', version: '0.0.0', dependencies: { '@rhombus-std/di.core': 'workspace:*', '@rhombus-std/di.extras': 'workspace:*' } }),
   );
   writeFileSync(join(projDir, 'src', 'app.ts'), APP_SOURCE);
 
@@ -242,8 +241,7 @@ function setupHandWorkspace(): void {
 
   writeFileSync(
     join(handProjDir, 'package.json'),
-    JSON.stringify({ name: 'di-reg-hand', version: '0.0.0',
-      dependencies: { '@rhombus-std/di.core': 'workspace:*', '@rhombus-std/di.extras': 'workspace:*' } }),
+    JSON.stringify({ name: 'di-reg-hand', version: '0.0.0', dependencies: { '@rhombus-std/di.core': 'workspace:*', '@rhombus-std/di.extras': 'workspace:*' } }),
   );
   writeFileSync(join(handProjDir, 'src', 'hand.ts'), HAND_SOURCE);
   writeTsconfig(handProjDir, 'tsconfig.inline.json', 'dist-inline', [{ transform: '@rhombus-std/di.extras/ttsc' }]);
@@ -329,9 +327,9 @@ describe.skipIf(!toolchainReady)('registration sugar — addClass / addFactory /
     const fooType = constFor(typeModule, 'Type.imported("IFoo", "di-reg-app/tokens/app")');
     const barType = constFor(typeModule, 'Type.imported("IBar", "di-reg-app/tokens/app")');
     const bazType = constFor(typeModule, 'Type.imported("IBaz", "di-reg-app/tokens/app")');
-    expect(withInline).toContain(`.addClass(${fooType}`);
-    expect(withInline).toContain(`.addFactory(${barType}`);
-    expect(withInline).toContain(`.addValue(${bazType}`);
+    expect(withInline).toContain(`.add(${fooType}`);
+    expect(withInline).toContain(`.add(${barType}`);
+    expect(withInline).toContain(`.add(${bazType}`);
     // The consts are imported, not re-derived at the call site.
     expect(withInline).toContain(`from "./__typefor__.js"`);
     expect(withInline).not.toContain('addClass<');
@@ -362,8 +360,8 @@ describe.skipIf(!toolchainReady)('registration sugar — addClass / addFactory /
     // stage selection, the emitted bytes must be identical — whole-output equality
     // also pins import elision, the derived implementation type, and surrounding
     // whitespace.
-    const addLine = (src: string) => src.split('\n').find((l) => l.includes('.addClass('))?.trim();
-    const addValueLine = (src: string) => src.split('\n').find((l) => l.includes('.addValue('))?.trim();
+    const addLine = (src: string) => src.split('\n').find((l) => l.includes('.add('))?.trim();
+    const addValueLine = (src: string) => src.split('\n').find((l) => l.includes('.add('))?.trim();
     expect(addLine(withInline)).toBeDefined();
     expect(addLine(withInline)).toEqual(addLine(withoutInline));
     expect(addValueLine(withInline)).toBeDefined();
@@ -435,8 +433,7 @@ function retypecheck(source: string): { readonly status: number | null; readonly
   // under bundler resolution.
   writeFileSync(join(dir, '__typefor__.ts'), readTypeModule(handProjDir, 'dist-inline'));
   writeFileSync(join(dir, 'tsconfig.json'), JSON.stringify({
-    compilerOptions: { target: 'ES2022', module: 'ESNext', moduleResolution: 'Bundler', lib: ['ES2022'], strict: true,
-      noEmit: true, skipLibCheck: true },
+    compilerOptions: { target: 'ES2022', module: 'ESNext', moduleResolution: 'Bundler', lib: ['ES2022'], strict: true, noEmit: true, skipLibCheck: true },
     include: ['lowered.ts', '__typefor__.ts'],
   }));
   const result = spawnSync('node', [join(TS7, 'bin', 'tsc'), '-p', 'tsconfig.json'], { cwd: dir, encoding: 'utf8' });
@@ -460,7 +457,7 @@ describe.skipIf(!toolchainReady)("implementation type — a hand-writer's explic
     const widgetClass = constFor(module, 'Type.imported("Widget", "di-reg-hand/tokens/hand")');
     const clock = constFor(module, 'Type.imported("IClock", "di-reg-hand/tokens/hand")');
     const implementerType = constFor(module, `Type.ctor(${widgetClass}, [[${clock}]])`);
-    const want = `.addClass(${widget}, Widget, ${implementerType})`;
+    const want = `.add(${widget}, Widget, ${implementerType})`;
     expect(handWithInline).toContain(want);
   });
 

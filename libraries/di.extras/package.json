@@ -51,7 +51,8 @@
     "@rhombus-std/primitives": "workspace:*",
     "@rhombus-std/primitives.extras": "workspace:*",
     "@rhombus-toolkit/func": "3.6.0",
-    "@rhombus-toolkit/type-helpers": "^2.0.0"
+    "@rhombus-toolkit/type-helpers": "^2.0.0",
+    "@rhombus-toolkit/type-guards": "*"
   },
   "peerDependencies": {
     "@rhombus-std/di.core": "workspace:^",

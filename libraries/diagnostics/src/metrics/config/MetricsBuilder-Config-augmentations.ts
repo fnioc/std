@@ -7,8 +7,7 @@
 // listener's merged configuration view.
 
 import type { IConfig } from '@rhombus-std/config.core';
-import { type IMetricsBuilder, METRICS_CHANGE_TOKEN_SOURCE_TYPE, METRICS_CONFIGURATION_TYPE,
-  METRICS_CONFIGURE_TYPE } from '@rhombus-std/diagnostics.core';
+import { type IMetricsBuilder, METRICS_CHANGE_TOKEN_SOURCE_TYPE, METRICS_CONFIGURATION_TYPE, METRICS_CONFIGURE_TYPE } from '@rhombus-std/diagnostics.core';
 import { ConfigChangeTokenSource } from '@rhombus-std/options.augmentations';
 import { registerAugmentations } from '@rhombus-std/primitives.extras';
 import type { Flatten } from '@rhombus-toolkit/type-helpers';
@@ -20,9 +19,9 @@ import { MetricsConfigureOptions } from './MetricsConfigureOptions';
 export namespace MetricsBuilderConfigAugmentations {
   /** Reads metrics enablement rules from `config` and configures which meters, instruments, and listeners are enabled. */
   export function addMetricsConfig<Self extends IMetricsBuilder>(this: Self, config: IConfig): Self {
-    this.services = this.services.addValue(METRICS_CONFIGURE_TYPE, new MetricsConfigureOptions(config));
-    this.services = this.services.addValue(METRICS_CHANGE_TOKEN_SOURCE_TYPE, new ConfigChangeTokenSource(config));
-    this.services = this.services.addValue(METRICS_CONFIGURATION_TYPE, new MetricsConfig(config));
+    this.services = this.services.add(METRICS_CONFIGURE_TYPE, new MetricsConfigureOptions(config));
+    this.services = this.services.add(METRICS_CHANGE_TOKEN_SOURCE_TYPE, new ConfigChangeTokenSource(config));
+    this.services = this.services.add(METRICS_CONFIGURATION_TYPE, new MetricsConfig(config));
     return this;
   }
 }

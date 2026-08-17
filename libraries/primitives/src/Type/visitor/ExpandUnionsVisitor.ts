@@ -1,7 +1,6 @@
 import { tag as tagType } from '../factory/factories.js';
-import { type ArrayType, type ConstructorType, type FunctionType, type GenericType, type GlobalType, type ImportedType,
-  type IntersectionType, type IterableType, type ObjectType, type TagType, type TupleType, Type, type TypeLiteralType,
-  type TypeSignatures, type UnionType } from '../Type.js';
+import { type ArrayType, type ConstructorType, type FunctionType, type GenericType, type GlobalType, type ImportedType, type IntersectionType, type IterableType, type ObjectType, type TagType,
+  type TupleType, Type, type TypeLiteralType, type UnionType } from '../Type.js';
 import { TypeVisitor } from './TypeVisitor.js';
 
 /**
@@ -46,9 +45,7 @@ class ExpandUnionsVisitor extends TypeVisitor<readonly Type[]> {
   }
 
   protected override visitCtor(type: ConstructorType): readonly Type[] {
-    return this.#signature(type.args, type.instance).map(([args, instance]) =>
-      Type.ctor({ instance, args, abstract: type.abstract })
-    );
+    return this.#signature(type.args, type.instance).map(([args, instance]) => Type.ctor({ instance, args, abstract: type.abstract }));
   }
 
   protected override visitFunc(type: FunctionType): readonly Type[] {
@@ -57,9 +54,7 @@ class ExpandUnionsVisitor extends TypeVisitor<readonly Type[]> {
 
   protected override visitObject(type: ObjectType): readonly Type[] {
     const keys = Object.keys(type.members);
-    return this.#product(keys.map(key => type.members[key]!)).map(values =>
-      Type.object(Object.fromEntries(keys.map((key, index) => [key, values[index]!])))
-    );
+    return this.#product(keys.map(key => type.members[key]!)).map(values => Type.object(Object.fromEntries(keys.map((key, index) => [key, values[index]!]))));
   }
 
   /**
@@ -71,7 +66,7 @@ class ExpandUnionsVisitor extends TypeVisitor<readonly Type[]> {
    * chooses one reading of the WHOLE signature; slicing the result back into rows restores the
    * shape the callable was written with.
    */
-  #signature(rows: TypeSignatures, head: Type): ReadonlyArray<[TypeSignatures, Type]> {
+  #signature(rows: Type.Signatures, head: Type): ReadonlyArray<[Type.Signatures, Type]> {
     return this.#product([...rows.flat(), head]).map(parts => {
       const expanded: Array<readonly Type[]> = [];
       let taken = 0;

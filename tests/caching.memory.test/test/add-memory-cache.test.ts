@@ -3,8 +3,7 @@
 // reference AddOptions + Configure(setupAction) composition: `setup` runs
 // LAZILY when the options resolve), and the ILoggerFactory injection.
 
-import { MEMORY_CACHE_OPTIONS_ACCESSOR_TYPE, MEMORY_CACHE_TYPE, MemoryCache, MemoryCacheOptions,
-  ServiceManifestMemoryCacheAugmentations } from '@rhombus-std/caching.memory';
+import { MEMORY_CACHE_OPTIONS_ACCESSOR_TYPE, MEMORY_CACHE_TYPE, MemoryCache, MemoryCacheOptions, ServiceManifestMemoryCacheAugmentations } from '@rhombus-std/caching.memory';
 // Side-effect: installs `build` onto di.core's Manifest.
 import '@rhombus-std/di';
 import { DefaultManifest, type Manifest } from '@rhombus-std/di.core';
@@ -84,7 +83,7 @@ describe('addMemoryCache', () => {
   test('injects the registered ILoggerFactory into the cache', () => {
     let services: Manifest<'singleton'> = new DefaultManifest<'singleton'>();
     const factory = new RecordingLoggerFactory();
-    services = services.addValue(LOGGER_FACTORY_TYPE, factory);
+    services = services.add(LOGGER_FACTORY_TYPE, factory);
     services = services.addMemoryCache();
 
     services.build().createScope('singleton').getRequiredService(MEMORY_CACHE_TYPE);
@@ -104,7 +103,7 @@ describe('addMemoryCache', () => {
   test('keeps an earlier IMemoryCache registration (the reference TryAdd semantics)', () => {
     let services: Manifest<'singleton'> = new DefaultManifest<'singleton'>();
     const sentinel = { marker: 'pre-registered' };
-    services = services.addValue(MEMORY_CACHE_TYPE, sentinel);
+    services = services.add(MEMORY_CACHE_TYPE, sentinel);
 
     services = services.addMemoryCache();
 

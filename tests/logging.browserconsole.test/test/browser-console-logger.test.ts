@@ -1,7 +1,6 @@
 import type { Manifest, Type } from '@rhombus-std/di.core';
 import { LOGGER_PROVIDER_TYPE, LoggingBuilder } from '@rhombus-std/logging';
-import { BrowserConsoleLogger, BrowserConsoleLoggerAugmentations, BrowserConsoleLoggerProvider, type ConsoleLike,
-  consoleMethodFor } from '@rhombus-std/logging.browserconsole';
+import { BrowserConsoleLogger, BrowserConsoleLoggerAugmentations, BrowserConsoleLoggerProvider, type ConsoleLike, consoleMethodFor } from '@rhombus-std/logging.browserconsole';
 import { EventId, LogLevel } from '@rhombus-std/logging.core';
 import { expect, test } from 'bun:test';
 
@@ -11,13 +10,13 @@ import { expect, test } from 'bun:test';
  * immutable chain — a double that returned itself would hide exactly the
  * silent-drop bug this shape exists to catch.
  */
-function fakeServices(): { services: Manifest; values: Array<[string | Type, unknown]>; } {
+function fakeServices(): { services: Manifest<any>; values: Array<[string | Type, unknown]>; } {
   const values: Array<[string | Type, unknown]> = [];
-  const make = (): Manifest => {
-    return { addValue(token: string | Type, value: unknown): Manifest {
+  const make = (): Manifest<any> => {
+    return { addValue(token: string | Type, value: unknown): Manifest<any> {
       values.push([token, value]);
       return make();
-    } } as unknown as Manifest;
+    } } as unknown as Manifest<any>;
   };
   return { services: make(), values };
 }
@@ -30,8 +29,7 @@ function makeConsoleSpy(): { console: ConsoleLike; calls: Array<[string, unknown
       calls.push([method, args]);
     };
   };
-  return { console: { error: record('error'), warn: record('warn'), info: record('info'), debug: record('debug') },
-    calls };
+  return { console: { error: record('error'), warn: record('warn'), info: record('info'), debug: record('debug') }, calls };
 }
 
 function write(logger: BrowserConsoleLogger, level: LogLevel, message: string, error?: Error): void {

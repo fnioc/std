@@ -49,6 +49,6 @@ export interface InlineBodySet {
  * registerInlineBodies(ConfigBuilderInline);
  * ```
  */
-export function registerInlineBodies(_bodies: InlineBodySet): void {
+export function registerInlineBodies<Receiver>(_bodies: InlineBodySet): void {
   // Intentionally empty -- see the file header.
 }

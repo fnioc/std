@@ -13,8 +13,7 @@
 import '@rhombus-std/di';
 import { DefaultManifest, type Manifest, Type } from '@rhombus-std/di.core';
 import { MetricsBuilder, TracingBuilder } from '@rhombus-std/diagnostics';
-import { type IMetricsBuilder, type IMetricsListener, type ITracingBuilder, METRICS_CONFIGURE_TYPE,
-  METRICS_LISTENER_TYPE, MetricsBuilderAugmentations, TRACING_CONFIGURE_TYPE, TRACING_LISTENER_TYPE,
+import { type IMetricsBuilder, type IMetricsListener, type ITracingBuilder, METRICS_CONFIGURE_TYPE, METRICS_LISTENER_TYPE, MetricsBuilderAugmentations, TRACING_CONFIGURE_TYPE, TRACING_LISTENER_TYPE,
   TracingBuilderAugmentations } from '@rhombus-std/diagnostics.core';
 import { describe, expect, test } from 'bun:test';
 
@@ -30,7 +29,7 @@ function listener(name: string): IMetricsListener {
  * immutable, so the manifest each builder was constructed with never sees a
  * single one of these registrations — only the one the builder now holds does.
  */
-function registered(builder: { services: Manifest; }, type: Type): unknown[] {
+function registered(builder: { services: Manifest<any>; }, type: Type): unknown[] {
   const results: unknown[] = builder.services.build().getRequiredService(Type.array(type));
   return results;
 }

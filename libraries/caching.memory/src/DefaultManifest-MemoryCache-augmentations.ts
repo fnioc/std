@@ -7,7 +7,7 @@
 // options plus -- when logging is registered -- the `ILoggerFactory`, falling
 // back to a logger-less construction when no logger factory is available.
 //
-// The cache registrations go through di.core's `tryAddFactory`, so an earlier
+// The cache registrations go through di.core's `tryAdd`, so an earlier
 // registration for the same token is kept while `configure` steps still
 // accumulate. (The options ASSEMBLY registration stays plain `addOptions`;
 // re-registering the identical assembly is last-wins and observably
@@ -24,8 +24,7 @@ import { Type } from '@rhombus-std/primitives';
 import { registerAugmentations, typefor } from '@rhombus-std/primitives.extras';
 import type { Func } from '@rhombus-toolkit/func';
 import { DISTRIBUTED_CACHE_TYPE } from './distributed-cache-type';
-import { MEMORY_CACHE_OPTIONS_ACCESSOR_TYPE, MEMORY_CACHE_OPTIONS_TYPE, MEMORY_DISTRIBUTED_CACHE_OPTIONS_ACCESSOR_TYPE,
-  MEMORY_DISTRIBUTED_CACHE_OPTIONS_TYPE } from './memory-cache-options-type';
+import { MEMORY_CACHE_OPTIONS_ACCESSOR_TYPE, MEMORY_CACHE_OPTIONS_TYPE, MEMORY_DISTRIBUTED_CACHE_OPTIONS_ACCESSOR_TYPE, MEMORY_DISTRIBUTED_CACHE_OPTIONS_TYPE } from './memory-cache-options-type';
 import { MEMORY_CACHE_TYPE } from './memory-cache-type';
 import { MemoryCache } from './MemoryCache';
 import { MemoryCacheOptions } from './MemoryCacheOptions';
@@ -57,14 +56,12 @@ export namespace ServiceManifestMemoryCacheAugmentations {
       // lazily, when the options first resolve, not at registration.
       m = m.configure(MEMORY_CACHE_OPTIONS_TYPE, setup);
     }
-    // `tryAddFactory` only registers if the token is still free, keeping any
+    // `tryAdd` only registers if the token is still free, keeping any
     // earlier registration. `getService` returns `undefined` when no
     // `ILoggerFactory` is registered, so the factory falls to a logger-less
     // construction.
-    m = m.tryAddFactory(MEMORY_CACHE_TYPE,
-      (resolver: IServiceProvider) =>
-        new MemoryCache(resolver.getRequiredService(MEMORY_CACHE_OPTIONS_ACCESSOR_TYPE),
-          resolver.getService(LOGGER_FACTORY_TYPE)), Type.func(MEMORY_CACHE_TYPE, [[RESOLVER_TYPE]]), 'singleton');
+    m = m.tryAdd(MEMORY_CACHE_TYPE, (resolver: IServiceProvider) => new MemoryCache(resolver.getRequiredService(MEMORY_CACHE_OPTIONS_ACCESSOR_TYPE), resolver.getService(LOGGER_FACTORY_TYPE)),
+      Type.func(MEMORY_CACHE_TYPE, [[RESOLVER_TYPE]]), 'singleton');
     return m;
   }
 
@@ -78,17 +75,15 @@ export namespace ServiceManifestMemoryCacheAugmentations {
    * {@link MEMORY_DISTRIBUTED_CACHE_OPTIONS_TYPE}) as a lazy configure
    * step. Returns the manifest for chaining.
    */
-  export function addDistributedMemoryCache(this: Manifest<string>,
-    setup?: Func<[MemoryDistributedCacheOptions], void>): Manifest<string> {
+  export function addDistributedMemoryCache(this: Manifest<string>, setup?: Func<[MemoryDistributedCacheOptions], void>): Manifest<string> {
     // Same shape as addMemoryCache, over the distributed options token. The
     // cache is REGISTERED here but built lazily on first resolve, over its
     // own private MemoryCache.
-    let m: Manifest<string> = this.addOptions(MEMORY_DISTRIBUTED_CACHE_OPTIONS_TYPE,
-      () => new MemoryDistributedCacheOptions());
+    let m: Manifest<string> = this.addOptions(MEMORY_DISTRIBUTED_CACHE_OPTIONS_TYPE, () => new MemoryDistributedCacheOptions());
     if (setup !== undefined) {
       m = m.configure(MEMORY_DISTRIBUTED_CACHE_OPTIONS_TYPE, setup);
     }
-    m = m.tryAddFactory(DISTRIBUTED_CACHE_TYPE, (resolver: IServiceProvider) =>
+    m = m.tryAdd(DISTRIBUTED_CACHE_TYPE, (resolver: IServiceProvider) =>
       new MemoryDistributedCache(
         resolver.getRequiredService(MEMORY_DISTRIBUTED_CACHE_OPTIONS_ACCESSOR_TYPE),
         resolver.getService(LOGGER_FACTORY_TYPE),
@@ -100,11 +95,11 @@ export namespace ServiceManifestMemoryCacheAugmentations {
 // `Scopes` is defaulted so the merge's type-parameter list matches every other
 // partial declaration of `Manifest` (TS2428 requires identical parameters).
 declare module '@rhombus-std/di.core' {
-  interface Manifest<Scopes extends string = any> {
+  interface Manifest<Scopes extends string> {
     addMemoryCache(setup?: Func<[MemoryCacheOptions], void>): Manifest<Scopes>;
 
     addDistributedMemoryCache(setup?: Func<[MemoryDistributedCacheOptions], void>): Manifest<Scopes>;
   }
 }
 
-registerAugmentations<Manifest>(ServiceManifestMemoryCacheAugmentations);
+registerAugmentations<Manifest<any>>(ServiceManifestMemoryCacheAugmentations);

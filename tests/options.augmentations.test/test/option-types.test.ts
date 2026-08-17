@@ -8,8 +8,7 @@ import { ConfigBuilder, type IConfigRoot } from '@rhombus-std/config';
 import '@rhombus-std/di';
 import { DefaultManifest, type Manifest, Type } from '@rhombus-std/di.core';
 import type { IOptions } from '@rhombus-std/options';
-import { changeTokenSourceType, ConfigChangeTokenSource, configureStepType, optionsAddressType, postConfigureStepType,
-  validateStepType } from '@rhombus-std/options.augmentations';
+import { changeTokenSourceType, ConfigChangeTokenSource, configureStepType, optionsAddressType, postConfigureStepType, validateStepType } from '@rhombus-std/options.augmentations';
 import { describe, expect, test } from 'bun:test';
 
 interface WidgetOptions {
@@ -50,10 +49,10 @@ describe('the public slot-type grammar', () => {
     // What `configure(WIDGET_OPTIONS_TYPE, section)` does internally, spelled
     // through the public grammar: a custom configure step plus a bare
     // change-token source.
-    services = services.addValue(configureStepType(WIDGET_OPTIONS_TYPE), { configure(options: WidgetOptions): void {
+    services = services.add(configureStepType(WIDGET_OPTIONS_TYPE), { configure(options: WidgetOptions): void {
       options.Url = config.get('Widget:Url') ?? '';
     } });
-    services = services.addValue(changeTokenSourceType(WIDGET_OPTIONS_TYPE), new ConfigChangeTokenSource(config));
+    services = services.add(changeTokenSourceType(WIDGET_OPTIONS_TYPE), new ConfigChangeTokenSource(config));
 
     const provider = services.build();
     const options: IOptions<WidgetOptions> = provider.getRequiredService(optionsAddressType(WIDGET_OPTIONS_TYPE));

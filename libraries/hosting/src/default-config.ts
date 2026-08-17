@@ -54,8 +54,7 @@ export function applyDefaultHostConfig(builder: IConfigBuilder, args?: readonly 
  * `appsettings.{environment}.json` (both optional), then the environment
  * variables, then the command-line args.
  */
-export function applyDefaultAppConfig(builder: IConfigBuilder, environment: IHostEnvironment,
-  args?: readonly string[]): void {
+export function applyDefaultAppConfig(builder: IConfigBuilder, environment: IHostEnvironment, args?: readonly string[]): void {
   builder.add(new JsonConfigSource('appsettings.json', { optional: true }));
   builder.add(new JsonConfigSource(`appsettings.${environment.environmentName}.json`, { optional: true }));
   builder.add(new EnvironmentVariablesConfigSource());
@@ -63,7 +62,7 @@ export function applyDefaultAppConfig(builder: IConfigBuilder, environment: IHos
 }
 
 /** Registers the default framework services: currently just the console logging provider. */
-export function addDefaultServices(services: Manifest): Manifest {
+export function addDefaultServices(services: Manifest<any>): Manifest<any> {
   const builder = new LoggingBuilder(services);
   LoggingBuilderProviderAugmentations.addProvider.call(builder, new ConsoleLoggerProvider());
   // The chain is immutable, so the registration lives on the manifest the

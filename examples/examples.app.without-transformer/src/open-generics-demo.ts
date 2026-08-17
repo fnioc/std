@@ -38,8 +38,7 @@
 import { DefaultManifest, type Manifest, Type } from '@rhombus-std/di.core';
 import '@rhombus-std/di';
 
-import type { AuditEvent, Entity, IJoin, IRepository, ITable, Order, Seed,
-  User } from '@rhombus-std/examples.contracts';
+import type { AuditEvent, Entity, IJoin, IRepository, ITable, Order, Seed, User } from '@rhombus-std/examples.contracts';
 
 // ── the service types, composed as the transformer derives them ─────────────
 //
@@ -243,7 +242,7 @@ function shortName(token: string): string {
 //
 // Kept at module top level, the shape a composition root has. The manifest is
 // IMMUTABLE — every verb returns a NEW manifest — so each call is threaded back
-// into `manifest`; a bare `manifest.addClass(...)` statement would register
+// into `manifest`; a bare `manifest.add(...)` statement would register
 // nothing.
 
 let manifest: Manifest<'singleton'> = new DefaultManifest<'singleton'>();
@@ -251,42 +250,37 @@ let manifest: Manifest<'singleton'> = new DefaultManifest<'singleton'>();
 // The closed value registrations the templates bottom out at: one seed and one
 // type witness per entity. Nothing generic about them — they are the floor.
 for (const entity of [USER_TYPE, ORDER_TYPE, AUDIT_EVENT_TYPE]) {
-  manifest = manifest.addValue(witnessOf(entity), entity);
+  manifest = manifest.add(witnessOf(entity), entity);
 }
-manifest = manifest.addValue(seedOf(USER_TYPE), USER_SEED);
-manifest = manifest.addValue(seedOf(ORDER_TYPE), ORDER_SEED);
-manifest = manifest.addValue(seedOf(AUDIT_EVENT_TYPE), AUDIT_SEED);
+manifest = manifest.add(seedOf(USER_TYPE), USER_SEED);
+manifest = manifest.add(seedOf(ORDER_TYPE), ORDER_SEED);
+manifest = manifest.add(seedOf(AUDIT_EVENT_TYPE), AUDIT_SEED);
 
 // Template 1 — `ITable<$1>`. Its signature is where the hole propagates: the
 // first slot is a type CONTAINING `$1`, the second is the `Typeof<$1>` witness.
 // Both are rewritten per closing before the class is constructed.
-manifest = manifest.addClass(TABLE_TEMPLATE, InMemoryTable,
-  Type.ctor(TABLE_TEMPLATE, [[seedOf(HOLE_1), witnessOf(HOLE_1)]]), 'singleton');
+manifest = manifest.add(TABLE_TEMPLATE, InMemoryTable, Type.ctor(TABLE_TEMPLATE, [[seedOf(HOLE_1), witnessOf(HOLE_1)]]), 'singleton');
 
 // Template 2 — `IRepository<$1>`, the one a consumer asks for. Its dependency is
 // itself a template closing, so resolving `IRepository<User>` closes
 // `ITable<$1>` to `ITable<User>` on the way down.
-manifest = manifest.addClass(REPOSITORY_TEMPLATE, InMemoryRepository,
-  Type.ctor(REPOSITORY_TEMPLATE, [[tableOf(HOLE_1), witnessOf(HOLE_1)]]), 'singleton');
+manifest = manifest.add(REPOSITORY_TEMPLATE, InMemoryRepository, Type.ctor(REPOSITORY_TEMPLATE, [[tableOf(HOLE_1), witnessOf(HOLE_1)]]), 'singleton');
 
 // The one exact override, registered AFTER the template it overrides. It is
 // filed at a fully CLOSED type, so it can only ever match `AuditEvent` — the
 // template still serves every other entity.
-manifest = manifest.addClass(repositoryOf(AUDIT_EVENT_TYPE), AuditRepository,
-  Type.ctor(repositoryOf(AUDIT_EVENT_TYPE), [[tableOf(AUDIT_EVENT_TYPE)]]), 'singleton');
+manifest = manifest.add(repositoryOf(AUDIT_EVENT_TYPE), AuditRepository, Type.ctor(repositoryOf(AUDIT_EVENT_TYPE), [[tableOf(AUDIT_EVENT_TYPE)]]), 'singleton');
 
 // Template 3 — fully open, arity 2. Each dependency names a DIFFERENT hole, so
 // the two sides close independently.
-manifest = manifest.addClass(JOIN_TEMPLATE, RepositoryJoin,
-  Type.ctor(JOIN_TEMPLATE, [[repositoryOf(HOLE_1), repositoryOf(HOLE_2)]]), 'singleton');
+manifest = manifest.add(JOIN_TEMPLATE, RepositoryJoin, Type.ctor(JOIN_TEMPLATE, [[repositoryOf(HOLE_1), repositoryOf(HOLE_2)]]), 'singleton');
 
 // Template 4 — PARTIALLY OPEN, and registered after the general one on purpose.
 // The service type pins the left argument (`IJoin<Order,$2>`) and so does the
 // left dependency argument; only the right one carries a hole. Both templates
 // match a join whose left side is an order, and the later registration is the
 // one that takes it.
-manifest = manifest.addClass(ORDER_JOIN_TEMPLATE, OrderJoin,
-  Type.ctor(ORDER_JOIN_TEMPLATE, [[repositoryOf(ORDER_TYPE), repositoryOf(HOLE_2)]]), 'singleton');
+manifest = manifest.add(ORDER_JOIN_TEMPLATE, OrderJoin, Type.ctor(ORDER_JOIN_TEMPLATE, [[repositoryOf(ORDER_TYPE), repositoryOf(HOLE_2)]]), 'singleton');
 
 // ── the demonstration ───────────────────────────────────────────────────────
 
@@ -332,18 +326,12 @@ export function demonstrateOpenGenerics(): readonly string[] {
     templateOutcome = `was refused (${(error as Error).name})`;
   }
 
-  return ['=== di open generics — without transformer ===',
-    'IRepository<$1> is registered ONCE; every closing below is minted from it:',
-    `  IRepository<User>: ${users.describe()}`, `  IRepository<Order>: ${orders.describe()}`,
-    'the closing propagates down the graph — IRepository<T> -> ITable<T> -> Seed<T>:',
+  return ['=== di open generics — without transformer ===', 'IRepository<$1> is registered ONCE; every closing below is minted from it:', `  IRepository<User>: ${users.describe()}`,
+    `  IRepository<Order>: ${orders.describe()}`, 'the closing propagates down the graph — IRepository<T> -> ITable<T> -> Seed<T>:',
     `  ITable<User> reports the closing it was minted for: ${shortName(userTable.entityToken)}`,
-    `  IRepository<User>.all() is the array registered as Seed<User>: ${Object.is(users.all(), USER_SEED.rows)}`,
-    'a CLOSED registration serves the one closing it names:', `  IRepository<AuditEvent>: ${audit.describe()}`,
-    'arity 2 — $1 and $2 close independently, each side keeping its own precedence:',
-    `  IJoin<User,AuditEvent>: ${join.describe()}`,
-    'a template may pin some arguments; where two overlap, the later registration wins:',
-    `  IJoin<Order,User> goes to the pinned IJoin<Order,$2>: ${pinnedJoin.describe()}`,
-    `  IJoin<AuditEvent,User> goes to the general IJoin<$1,$2>: ${generalJoin.describe()}`,
-    'the template itself is NOT resolvable — a hole is not a service:',
+    `  IRepository<User>.all() is the array registered as Seed<User>: ${Object.is(users.all(), USER_SEED.rows)}`, 'a CLOSED registration serves the one closing it names:',
+    `  IRepository<AuditEvent>: ${audit.describe()}`, 'arity 2 — $1 and $2 close independently, each side keeping its own precedence:', `  IJoin<User,AuditEvent>: ${join.describe()}`,
+    'a template may pin some arguments; where two overlap, the later registration wins:', `  IJoin<Order,User> goes to the pinned IJoin<Order,$2>: ${pinnedJoin.describe()}`,
+    `  IJoin<AuditEvent,User> goes to the general IJoin<$1,$2>: ${generalJoin.describe()}`, 'the template itself is NOT resolvable — a hole is not a service:',
     `  asking for IRepository<$1> ${templateOutcome}`];
 }

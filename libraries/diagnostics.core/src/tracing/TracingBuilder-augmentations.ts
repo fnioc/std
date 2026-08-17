@@ -25,7 +25,7 @@ function configureTracing(builder: ITracingBuilder, apply: Func<[options: Tracin
   const step: IConfigureOptions<TracingOptions> = { configure(options: TracingOptions): void {
     apply(options);
   } };
-  builder.services = builder.services.addValue(TRACING_CONFIGURE_TYPE, step);
+  builder.services = builder.services.add(TRACING_CONFIGURE_TYPE, step);
   return builder;
 }
 
@@ -34,14 +34,13 @@ export namespace TracingBuilderAugmentations {
    * Registers a tracing listener identified by `name` and described by `configure`.
    * @throws {@link Error} if `name` is empty.
    */
-  export function addTracingListener<Self extends ITracingBuilder>(this: Self, name: string,
-    configure: Func<[ActivityListenerBuilder], void>): Self {
+  export function addTracingListener<Self extends ITracingBuilder>(this: Self, name: string, configure: Func<[ActivityListenerBuilder], void>): Self {
     if (!name) {
       throw new Error('A tracing listener name must be a non-empty string.');
     }
     const listenerBuilder = new ActivityListenerBuilder(name);
     configure(listenerBuilder);
-    this.services = this.services.addValue(TRACING_LISTENER_TYPE, listenerBuilder);
+    this.services = this.services.add(TRACING_LISTENER_TYPE, listenerBuilder);
     return this;
   }
 
@@ -55,16 +54,16 @@ export namespace TracingBuilderAugmentations {
   }
 
   /** Enables activities via a deferred rule. */
-  export function enableTracing<Self extends ITracingBuilder>(this: Self, sourceName?: string, operationName?: string,
-    listenerName?: string, scopes: ActivitySourceScopes = ACTIVITY_SOURCE_SCOPES_ALL): Self {
+  export function enableTracing<Self extends ITracingBuilder>(this: Self, sourceName?: string, operationName?: string, listenerName?: string,
+    scopes: ActivitySourceScopes = ACTIVITY_SOURCE_SCOPES_ALL): Self {
     return configureTracing(this, (options) => {
       TracingOptionsAugmentations.enableTracing.call(options, sourceName, operationName, listenerName, scopes);
     }) as Self;
   }
 
   /** Disables activities via a deferred rule. */
-  export function disableTracing<Self extends ITracingBuilder>(this: Self, sourceName?: string, operationName?: string,
-    listenerName?: string, scopes: ActivitySourceScopes = ACTIVITY_SOURCE_SCOPES_ALL): Self {
+  export function disableTracing<Self extends ITracingBuilder>(this: Self, sourceName?: string, operationName?: string, listenerName?: string,
+    scopes: ActivitySourceScopes = ACTIVITY_SOURCE_SCOPES_ALL): Self {
     return configureTracing(this, (options) => {
       TracingOptionsAugmentations.disableTracing.call(options, sourceName, operationName, listenerName, scopes);
     }) as Self;

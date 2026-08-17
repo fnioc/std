@@ -28,10 +28,10 @@ export interface MetricsBuilder extends IMetricsBuilder {}
 export class MetricsBuilder implements IMetricsBuilder {
   // Writable (not `readonly`): registering something reassigns `services` to
   // the new manifest the immutable chain returns (see IMetricsBuilder).
-  services: Manifest;
+  services: Manifest<any>;
 
   /** @param services The registration surface augmentation functions register against. */
-  public constructor(services: Manifest) {
+  public constructor(services: Manifest<any>) {
     this.services = services;
   }
 }

@@ -225,7 +225,7 @@ class SelfRepo {}
 declare const services: Manifest<'singleton'>;
 declare const selfImpl: ConstructorType;
 
-export const self = services.addClass(SelfRepo, selfImpl);
+export const self = services.add(SelfRepo, selfImpl);
 `;
 
 // Lookup-family source (W5). The type-driven get* forms lower through the inline
@@ -328,8 +328,8 @@ function writeChainSrc(dir: string): void {
 
 function writeChainTsconfig(dir: string, plugins: Array<{ transform: string; }>): void {
   writeFileSync(join(dir, 'tsconfig.json'), JSON.stringify({
-    compilerOptions: { target: 'ES2022', module: 'ESNext', moduleResolution: 'Bundler', lib: ['ES2022'], strict: true,
-      outDir: 'dist', rootDir: 'src', skipLibCheck: true, noEmitOnError: false, plugins },
+    compilerOptions: { target: 'ES2022', module: 'ESNext', moduleResolution: 'Bundler', lib: ['ES2022'], strict: true, outDir: 'dist', rootDir: 'src', skipLibCheck: true, noEmitOnError: false,
+      plugins },
     include: ['src/**/*'],
   }));
 }
@@ -355,8 +355,7 @@ function setupInferredWorkspace(): void {
   linkChainDeps(inferredDir);
   mkdirSync(join(inferredDir, 'src'), { recursive: true });
   writeFileSync(join(inferredDir, 'package.json'),
-    JSON.stringify({ name: 'inferred-app', version: '0.0.0',
-      dependencies: { '@rhombus-std/di.core': 'workspace:*', '@rhombus-std/di.extras': 'workspace:*' } }));
+    JSON.stringify({ name: 'inferred-app', version: '0.0.0', dependencies: { '@rhombus-std/di.core': 'workspace:*', '@rhombus-std/di.extras': 'workspace:*' } }));
   writeFileSync(join(inferredDir, 'src', 'authoring.ts'), AUTHORING_SOURCE);
   writeFileSync(join(inferredDir, 'src', 'inferred.ts'), INFERRED_SOURCE);
   writeChainTsconfig(inferredDir, [{ transform: '@rhombus-std/di.extras/ttsc' }]);
@@ -372,8 +371,7 @@ function setupChainWorkspaces(): void {
   // (di-direct) sandbox — its output is the frozen `*.di-direct.js` golden.
   linkChainDeps(chainInlineDir);
   writeFileSync(join(chainInlineDir, 'package.json'),
-    JSON.stringify({ name: 'chain-app', version: '0.0.0',
-      dependencies: { '@rhombus-std/di.core': 'workspace:*', '@rhombus-std/di.extras': 'workspace:*' } }));
+    JSON.stringify({ name: 'chain-app', version: '0.0.0', dependencies: { '@rhombus-std/di.core': 'workspace:*', '@rhombus-std/di.extras': 'workspace:*' } }));
   writeChainSrc(chainInlineDir);
   // One descriptor spawns the always-on host; the full stage table runs (W7).
   writeChainTsconfig(chainInlineDir, [{ transform: '@rhombus-std/di.extras/ttsc' }]);
@@ -681,12 +679,12 @@ describe.skipIf(!toolchainReady)('generic inline stage — lookup parity (W5)', 
     const composed = Type.tag(base, 'redis');
 
     let keyed: Manifest<'singleton'> = new DefaultManifest<'singleton'>();
-    keyed = keyed.addValue(composed, marker);
+    keyed = keyed.add(composed, marker);
     expect(keyed.build().getService(composed)).toBe(marker);
 
     // An unkeyed registration of the same base does not answer the keyed lookup.
     let unkeyed: Manifest<'singleton'> = new DefaultManifest<'singleton'>();
-    unkeyed = unkeyed.addValue(base, marker);
+    unkeyed = unkeyed.add(base, marker);
     expect(unkeyed.build().getService(composed)).toBeUndefined();
   });
 });
@@ -769,8 +767,7 @@ function setupOptionsWorkspace(): void {
   linkOptionsDeps(OPTIONS_DIR);
   writeFileSync(join(OPTIONS_DIR, 'package.json'),
     JSON.stringify({ name: 'options-app', version: '0.0.0',
-      dependencies: { '@rhombus-std/di.core': 'workspace:*', '@rhombus-std/di.extras': 'workspace:*',
-        '@rhombus-std/di.extras.options': 'workspace:*' } }));
+      dependencies: { '@rhombus-std/di.core': 'workspace:*', '@rhombus-std/di.extras': 'workspace:*', '@rhombus-std/di.extras.options': 'workspace:*' } }));
   const src = join(OPTIONS_DIR, 'src');
   mkdirSync(src, { recursive: true });
   writeFileSync(join(src, 'authoring.ts'), OPTIONS_AUTHORING);
@@ -836,7 +833,7 @@ describe.skipIf(!toolchainReady)('generic inline stage — addOptions options wi
     const value: UserOptions = { name: 'ada' };
 
     let services: Manifest<'singleton'> = new DefaultManifest<'singleton'>();
-    services = services.addValue(optionsType, value);
+    services = services.add(optionsType, value);
     services = services.addOptions(optionsType);
 
     const options = services.build().getRequiredService(optionsAddressType(optionsType)) as IOptions<UserOptions>;

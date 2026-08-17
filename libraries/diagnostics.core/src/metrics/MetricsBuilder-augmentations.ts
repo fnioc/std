@@ -22,14 +22,14 @@ function configureMetrics(builder: IMetricsBuilder, apply: Func<[options: Metric
   const step: IConfigureOptions<MetricsOptions> = { configure(options: MetricsOptions): void {
     apply(options);
   } };
-  builder.services = builder.services.addValue(METRICS_CONFIGURE_TYPE, step);
+  builder.services = builder.services.add(METRICS_CONFIGURE_TYPE, step);
   return builder;
 }
 
 export namespace MetricsBuilderAugmentations {
   /** Registers an already-built {@link IMetricsListener} instance. */
   export function addMetricsListener<Self extends IMetricsBuilder>(this: Self, listener: IMetricsListener): Self {
-    this.services = this.services.addValue(METRICS_LISTENER_TYPE, listener);
+    this.services = this.services.add(METRICS_LISTENER_TYPE, listener);
     return this;
   }
 
@@ -39,9 +39,8 @@ export namespace MetricsBuilderAugmentations {
    * like every di.core `addClass` -- a dependency-free ctor names one with no
    * argument types.
    */
-  export function addMetricsListenerType<Self extends IMetricsBuilder>(this: Self, ctor: Ctor,
-    implementerType: ConstructorType): Self {
-    this.services = this.services.addClass(METRICS_LISTENER_TYPE, ctor, implementerType);
+  export function addMetricsListenerType<Self extends IMetricsBuilder>(this: Self, ctor: Ctor, implementerType: ConstructorType): Self {
+    this.services = this.services.add(METRICS_LISTENER_TYPE, ctor, implementerType);
     return this;
   }
 
@@ -63,16 +62,14 @@ export namespace MetricsBuilderAugmentations {
    * Enables instruments via a deferred rule -- registers a configure step that
    * appends an ENABLE rule to the bound {@link MetricsOptions}.
    */
-  export function enableMetrics<Self extends IMetricsBuilder>(this: Self, meterName?: string, instrumentName?: string,
-    listenerName?: string, scopes: MeterScope = METER_SCOPE_ALL): Self {
+  export function enableMetrics<Self extends IMetricsBuilder>(this: Self, meterName?: string, instrumentName?: string, listenerName?: string, scopes: MeterScope = METER_SCOPE_ALL): Self {
     return configureMetrics(this, (options) => {
       MetricsOptionsAugmentations.enableMetrics.call(options, meterName, instrumentName, listenerName, scopes);
     }) as Self;
   }
 
   /** Disables instruments via a deferred rule. */
-  export function disableMetrics<Self extends IMetricsBuilder>(this: Self, meterName?: string, instrumentName?: string,
-    listenerName?: string, scopes: MeterScope = METER_SCOPE_ALL): Self {
+  export function disableMetrics<Self extends IMetricsBuilder>(this: Self, meterName?: string, instrumentName?: string, listenerName?: string, scopes: MeterScope = METER_SCOPE_ALL): Self {
     return configureMetrics(this, (options) => {
       MetricsOptionsAugmentations.disableMetrics.call(options, meterName, instrumentName, listenerName, scopes);
     }) as Self;

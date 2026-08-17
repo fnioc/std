@@ -1,4 +1,4 @@
-import { type ConstructorType, type FunctionType, Type, type TypeSignatures } from '@rhombus-std/primitives';
+import { type ConstructorType, type FunctionType, Type } from '@rhombus-std/primitives';
 import type { AbstractCtor, Ctor, Func } from '@rhombus-toolkit/func';
 import { assertNever } from '@rhombus-toolkit/type-guards';
 import { withKey } from './service-type';
@@ -11,7 +11,7 @@ type Slot = 'implementer' | 'implementerType' | 'lifetime' | 'tag';
  * The steps still open, as one type: an intersection of the interfaces whose slots survive, plus
  * {@link IComplete} once the registration is whole.
  */
-type Pending<T, ImplementerNode extends Type, Scopes extends string, Slots extends Slot, Ready extends boolean> =
+type ServiceDescriptorBuilder<T, ImplementerNode extends Type, Scopes extends string, Slots extends Slot, Ready extends boolean> =
   & (Ready extends true ? IComplete : unknown)
   & ('implementer' extends Slots ? IAsImplementer<T, Scopes, Slots, Ready> : unknown)
   & ('implementerType' extends Slots ? IWithImplementerType<T, ImplementerNode, Scopes, Slots> : unknown)
@@ -25,11 +25,11 @@ type Pending<T, ImplementerNode extends Type, Scopes extends string, Slots exten
 interface IAsImplementer<T, Scopes extends string, Slots extends Slot, Ready extends boolean> {
   asClass(
     ctor: AbstractCtor<any[], T> & Ctor,
-  ): Pending<T, ConstructorType, Scopes, Exclude<Slots, 'implementer'> | 'implementerType', Ready>;
+  ): ServiceDescriptorBuilder<T, ConstructorType, Scopes, Exclude<Slots, 'implementer'> | 'implementerType', Ready>;
   asFactory(
     fn: Func<any[], T>,
-  ): Pending<T, FunctionType, Scopes, Exclude<Slots, 'implementer'> | 'implementerType', Ready>;
-  asValue(value: T): Pending<T, never, Scopes, Extract<Slots, 'tag'>, true>;
+  ): ServiceDescriptorBuilder<T, FunctionType, Scopes, Exclude<Slots, 'implementer'> | 'implementerType', Ready>;
+  asValue(value: T): ServiceDescriptorBuilder<T, never, Scopes, Extract<Slots, 'tag'>, true>;
 }
 
 /**
@@ -44,7 +44,7 @@ interface IWithImplementerType<T, ImplementerNode extends Type, Scopes extends s
   /** The parameter types the implementer is handed, in order — the address supplies the rest. */
   withSignature(
     ...paramTypes: Array<Type | string>
-  ): Pending<T, ImplementerNode, Scopes, Exclude<Slots, 'implementerType'>, true>;
+  ): ServiceDescriptorBuilder<T, ImplementerNode, Scopes, Exclude<Slots, 'implementerType'>, true>;
 
   /**
    * The parameter rows an overloaded implementation is handed — one row per call it accepts, each
@@ -52,7 +52,7 @@ interface IWithImplementerType<T, ImplementerNode extends Type, Scopes extends s
    */
   withSignatures(
     ...signatures: ReadonlyArray<ReadonlyArray<Type | string>>
-  ): Pending<T, ImplementerNode, Scopes, Exclude<Slots, 'implementerType'>, true>;
+  ): ServiceDescriptorBuilder<T, ImplementerNode, Scopes, Exclude<Slots, 'implementerType'>, true>;
 
   /**
    * The implementer's whole type — a constructor type after {@link IAsImplementer.asClass}, a function
@@ -61,16 +61,15 @@ interface IWithImplementerType<T, ImplementerNode extends Type, Scopes extends s
    */
   withType(
     implementerType: ImplementerNode,
-  ): Pending<T, ImplementerNode, Scopes, Exclude<Slots, 'implementerType'>, true>;
+  ): ServiceDescriptorBuilder<T, ImplementerNode, Scopes, Exclude<Slots, 'implementerType'>, true>;
 }
 
-interface IWithLifetime<T, ImplementerNode extends Type, Scopes extends string, Slots extends Slot,
-  Ready extends boolean> {
-  withLifetime(scope: Scopes): Pending<T, ImplementerNode, Scopes, Exclude<Slots, 'lifetime'>, Ready>;
+interface IWithLifetime<T, ImplementerNode extends Type, Scopes extends string, Slots extends Slot, Ready extends boolean> {
+  withLifetime(scope: Scopes): ServiceDescriptorBuilder<T, ImplementerNode, Scopes, Exclude<Slots, 'lifetime'>, Ready>;
 }
 
 interface ITaggedAs<T, ImplementerNode extends Type, Scopes extends string, Slots extends Slot, Ready extends boolean> {
-  taggedAs(key: string): Pending<T, ImplementerNode, Scopes, Exclude<Slots, 'tag'>, Ready>;
+  taggedAs(key: string): ServiceDescriptorBuilder<T, ImplementerNode, Scopes, Exclude<Slots, 'tag'>, Ready>;
 }
 
 declare const implementerTypeSupplied: unique symbol;
@@ -84,13 +83,7 @@ export interface IComplete {
 }
 
 /** A registration with nothing chosen yet — what the configure lambda is handed. */
-export type Unstarted<T = any, Scopes extends string = any> = Pending<
-  T,
-  never,
-  Scopes,
-  'implementer' | 'lifetime' | 'tag',
-  false
->;
+export type ServiceDescriptorBuilderFor<T, Scopes extends string> = ServiceDescriptorBuilder<T, never, Scopes, 'implementer' | 'lifetime' | 'tag', false>;
 
 /** How the implementer's call shape was named — through one door or the other, never both. */
 export type ImplementerShape =
@@ -98,9 +91,8 @@ export type ImplementerShape =
   | { readonly kind: 'type'; readonly implementerType: Type; };
 
 /** What a configured lambda leaves behind, ready to become a descriptor. */
-export interface PendingState<Scopes extends string> {
-  readonly implementer: { kind: 'ctor'; ctor: Ctor; } | { kind: 'factory'; fn: Func; } | { kind: 'value';
-    value: unknown; } | undefined;
+export interface BuilderState<Scopes extends string> {
+  readonly implementer: { kind: 'ctor'; ctor: Ctor; } | { kind: 'factory'; fn: Func; } | { kind: 'value'; value: unknown; } | undefined;
   readonly implementerShape: ImplementerShape | undefined;
   readonly scope: Scopes | undefined;
   readonly tag: string | undefined;
@@ -110,20 +102,20 @@ export interface PendingState<Scopes extends string> {
  * The node the configure lambda walks. Every step hands back a new node, so a discarded
  * intermediate configures nothing — the same rule the manifest itself follows.
  */
-export class PendingRegistration<Scopes extends string> implements PendingState<Scopes> {
-  readonly implementer: PendingState<Scopes>['implementer'];
+class PendingRegistration<Scopes extends string> implements BuilderState<Scopes> {
+  readonly implementer: BuilderState<Scopes>['implementer'];
   readonly implementerShape: ImplementerShape | undefined;
   readonly scope: Scopes | undefined;
   readonly tag: string | undefined;
 
-  constructor(state?: Partial<PendingState<Scopes>>) {
+  constructor(state?: Partial<BuilderState<Scopes>>) {
     this.implementer = state?.implementer;
     this.implementerShape = state?.implementerShape;
     this.scope = state?.scope;
     this.tag = state?.tag;
   }
 
-  #with(change: Partial<PendingState<Scopes>>): PendingRegistration<Scopes> {
+  #with(change: Partial<BuilderState<Scopes>>): PendingRegistration<Scopes> {
     return new PendingRegistration<Scopes>({ ...this, ...change });
   }
 
@@ -200,7 +192,7 @@ export class PendingRegistration<Scopes extends string> implements PendingState<
   #constructorType(type: Type): ConstructorType {
     const shape = this.#shape(type);
     if (shape.kind === 'signatures') {
-      return Type.ctor({ instance: type, args: rows(shape.signatures), abstract: false });
+      return Type.ctor({ instance: type, args: Type.Signatures.from(shape.signatures), abstract: false });
     }
     if (shape.implementerType.kind !== 'ctor') {
       throw new Error(
@@ -220,7 +212,7 @@ export class PendingRegistration<Scopes extends string> implements PendingState<
   #functionType(type: Type): FunctionType {
     const shape = this.#shape(type);
     if (shape.kind === 'signatures') {
-      return Type.func({ return: type, args: rows(shape.signatures) });
+      return Type.func({ return: type, args: Type.Signatures.from(shape.signatures) });
     }
     if (shape.implementerType.kind !== 'func') {
       throw new Error(
@@ -244,11 +236,6 @@ export class PendingRegistration<Scopes extends string> implements PendingState<
   }
 }
 
-/** Parameter rows as the node takes them, each token read into the type it spells. */
-function rows(signatures: ReadonlyArray<ReadonlyArray<Type | string>>): TypeSignatures {
-  return signatures.map(row => row.map(param => typeof param === 'string' ? Type.from(param) : param));
-}
-
 /**
  * What a registration verb takes after its service type: the lambda that walks the steps, or the
  * whole registration stated at once.
@@ -259,25 +246,22 @@ function rows(signatures: ReadonlyArray<ReadonlyArray<Type | string>>): TypeSign
  * slot — "a constructable producing the addressed type" is the strongest claim the container holds
  * for an explicit registration, and the instance slot is read by nothing else.
  */
-export type DescribeArgs<Scopes extends string> =
-  | [configure: Func<[Unstarted<any, Scopes>], IComplete>]
-  | [implementer: Ctor | Func, implementerType: ConstructorType | FunctionType, scope?: Scopes, key?: string];
+export type DescribeArgs<Scopes extends string> = [configure: Func<[ServiceDescriptorBuilderFor<any, Scopes>], IComplete>];
+// | [implementer: Ctor | Func, implementerType: ConstructorType | FunctionType, scope?: Scopes, key?: string];
 
 /** The descriptor these arguments describe, whichever of the two forms they take. */
-export function describe<Scopes extends string>(type: Type | string,
-  ...args: DescribeArgs<Scopes>): ServiceDescriptor<Scopes> {
-  const configured = args.length === 1
-    ? walkSteps<Scopes>(args[0])
-    : stateSteps<Scopes>(args[0], args[1], args[2], args[3]);
-  return configured.toDescriptor(typeof type === 'string' ? Type.from(type) : type);
-}
+// export function describe<Scopes extends string>(type: Type | string, ...args: DescribeArgs<Scopes>): ServiceDescriptor<Scopes> {
+//   const configured = args.length === 1
+//     ? runBilder<Scopes>(args[0])
+//    : stateSteps<Scopes>(args[0], args[1], args[2], args[3]);
+//   return configured.toDescriptor(typeof type === 'string' ? Type.from(type) : type);
+// }
 
 /** The node a configure lambda leaves behind. */
-function walkSteps<Scopes extends string>(
-  configure: Func<[Unstarted<any, Scopes>], IComplete>,
-): PendingRegistration<Scopes> {
+export function runBuilder<Scopes extends string>(serviceType: Type, configure: Func<[ServiceDescriptorBuilderFor<any, Scopes>], IComplete>) {
   const start = new PendingRegistration<Scopes>();
-  return configure(start as unknown as Unstarted<any, Scopes>) as unknown as PendingRegistration<Scopes>;
+  const result = configure(start as unknown as ServiceDescriptorBuilderFor<any, Scopes>) as unknown as PendingRegistration<Scopes>;
+  return result.toDescriptor(serviceType);
 }
 
 /**
@@ -285,8 +269,7 @@ function walkSteps<Scopes extends string>(
  * says whether the implementer is called with `new`, which is all the terse form needs it for
  * beyond its parameter rows.
  */
-function stateSteps<Scopes extends string>(implementer: Ctor | Func, implementerType: ConstructorType | FunctionType,
-  scope: Scopes | undefined, key: string | undefined): PendingRegistration<Scopes> {
+function stateSteps<Scopes extends string>(implementer: Ctor | Func, implementerType: ConstructorType | FunctionType, scope: Scopes | undefined, key: string | undefined): PendingRegistration<Scopes> {
   const start = new PendingRegistration<Scopes>();
   const chosen = implementerType.kind === 'ctor'
     ? start.asClass(implementer as Ctor)

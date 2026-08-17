@@ -14,7 +14,7 @@ const Empty = Type.imported('Empty', 'app');
 const Gadget = Type.imported('Gadget', 'app');
 
 function providerWithBar(bar: unknown): ServiceProvider {
-  return new ServiceProvider(DefaultManifest.empty<string>().addValue(Bar, bar));
+  return new ServiceProvider(DefaultManifest.empty<string>().add(Bar, bar));
 }
 
 describe('constructing from a ConstructorType node', () => {

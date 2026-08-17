@@ -13,8 +13,7 @@ import { MemoryConfigSource } from '@rhombus-std/config';
 import { ServiceProviderOptions } from '@rhombus-std/di';
 import { type IServiceProvider, RESOLVER_TYPE } from '@rhombus-std/di.core';
 import type { IMetricsBuilder } from '@rhombus-std/diagnostics.core';
-import { HOST_APPLICATION_LIFETIME_TYPE, type HostBuilderContext, HostDefaults, HostLifecycleAugmentations,
-  type IHostBuilder } from '@rhombus-std/hosting.core';
+import { HOST_APPLICATION_LIFETIME_TYPE, type HostBuilderContext, HostDefaults, HostLifecycleAugmentations, type IHostBuilder } from '@rhombus-std/hosting.core';
 import { LOGGER_FACTORY_TYPE, LoggingBuilder } from '@rhombus-std/logging';
 import type { ILoggingBuilder } from '@rhombus-std/logging.core';
 import { type AbortSignal, Type } from '@rhombus-std/primitives';
@@ -22,10 +21,8 @@ import { registerAugmentations } from '@rhombus-std/primitives.extras';
 import type { Func } from '@rhombus-toolkit/func';
 import type { Flatten } from '@rhombus-toolkit/type-helpers';
 import { ConsoleLifetimeOptions } from './ConsoleLifetimeOptions';
-import { addDefaultServices, applyDefaultAppConfig, applyDefaultHostConfig,
-  createDefaultServiceProviderOptions } from './default-config';
-import { CONSOLE_LIFETIME_OPTIONS_TYPE, HOST_ENVIRONMENT_TYPE, HOST_LIFETIME_TYPE,
-  HOST_OPTIONS_CONFIGURE_TYPE } from './framework-types';
+import { addDefaultServices, applyDefaultAppConfig, applyDefaultHostConfig, createDefaultServiceProviderOptions } from './default-config';
+import { CONSOLE_LIFETIME_OPTIONS_TYPE, HOST_ENVIRONMENT_TYPE, HOST_LIFETIME_TYPE, HOST_OPTIONS_CONFIGURE_TYPE } from './framework-types';
 import type { HostOptions } from './HostOptions';
 import { ConsoleLifetime } from './internal/ConsoleLifetime';
 import { MetricsBuilder } from './MetricsBuilder';
@@ -44,15 +41,12 @@ export namespace HostBuilderHostingAugmentations {
    */
   export function configureDefaults<Self extends IHostBuilder>(this: Self, args?: readonly string[]): Self {
     this.configureHostConfig((configBuilder) => applyDefaultHostConfig(configBuilder, args));
-    this.configureAppConfig((context, configBuilder) =>
-      applyDefaultAppConfig(configBuilder, context.hostingEnvironment, args)
-    );
+    this.configureAppConfig((context, configBuilder) => applyDefaultAppConfig(configBuilder, context.hostingEnvironment, args));
     this.configureServices((_context, services) => addDefaultServices(services));
     // The single-container `build()` reads the service-provider options from a
     // side channel; the factory computes them at build time, once the hosting
     // environment is resolved.
-    setServiceProviderOptionsFactory(this,
-      (context) => createDefaultServiceProviderOptions(context.hostingEnvironment));
+    setServiceProviderOptionsFactory(this, (context) => createDefaultServiceProviderOptions(context.hostingEnvironment));
     return this;
   }
 
@@ -75,14 +69,11 @@ export namespace HostBuilderHostingAugmentations {
    * across calls. The no-context form (a one-parameter delegate) is a
    * convenience overload; the two are told apart by declared arity.
    */
-  export function configureHostOptions<Self extends IHostBuilder>(this: Self,
-    configureOptions: Func<[HostOptions], void>): Self;
-  export function configureHostOptions<Self extends IHostBuilder>(this: Self,
-    configureOptions: Func<[HostBuilderContext, HostOptions], void>): Self;
-  export function configureHostOptions<Self extends IHostBuilder>(this: Self,
-    configureOptions: Func<[HostBuilderContext, HostOptions], void> | Func<[HostOptions], void>): Self {
+  export function configureHostOptions<Self extends IHostBuilder>(this: Self, configureOptions: Func<[HostOptions], void>): Self;
+  export function configureHostOptions<Self extends IHostBuilder>(this: Self, configureOptions: Func<[HostBuilderContext, HostOptions], void>): Self;
+  export function configureHostOptions<Self extends IHostBuilder>(this: Self, configureOptions: Func<[HostBuilderContext, HostOptions], void> | Func<[HostOptions], void>): Self {
     return this.configureServices((context, services) =>
-      services.addValue(HOST_OPTIONS_CONFIGURE_TYPE, (options: HostOptions) => {
+      services.add(HOST_OPTIONS_CONFIGURE_TYPE, (options: HostOptions) => {
         if (configureOptions.length >= 2) {
           (configureOptions as Func<[HostBuilderContext, HostOptions], void>)(context, options);
         } else {
@@ -97,12 +88,9 @@ export namespace HostBuilderHostingAugmentations {
    * calls. The one-parameter no-context form is a convenience overload,
    * distinguished by declared arity.
    */
-  export function configureLogging<Self extends IHostBuilder>(this: Self,
-    configureLoggingDelegate: Func<[ILoggingBuilder], void>): Self;
-  export function configureLogging<Self extends IHostBuilder>(this: Self,
-    configureLoggingDelegate: Func<[HostBuilderContext, ILoggingBuilder], void>): Self;
-  export function configureLogging<Self extends IHostBuilder>(this: Self,
-    configureLoggingDelegate: Func<[HostBuilderContext, ILoggingBuilder], void> | Func<[ILoggingBuilder], void>): Self {
+  export function configureLogging<Self extends IHostBuilder>(this: Self, configureLoggingDelegate: Func<[ILoggingBuilder], void>): Self;
+  export function configureLogging<Self extends IHostBuilder>(this: Self, configureLoggingDelegate: Func<[HostBuilderContext, ILoggingBuilder], void>): Self;
+  export function configureLogging<Self extends IHostBuilder>(this: Self, configureLoggingDelegate: Func<[HostBuilderContext, ILoggingBuilder], void> | Func<[ILoggingBuilder], void>): Self {
     return this.configureServices((context, services) => {
       const builder = new LoggingBuilder(services);
       if (configureLoggingDelegate.length >= 2) {
@@ -121,12 +109,9 @@ export namespace HostBuilderHostingAugmentations {
    * calls. The one-parameter no-context form is a convenience overload,
    * distinguished by declared arity.
    */
-  export function configureMetrics<Self extends IHostBuilder>(this: Self,
-    configureMetricsDelegate: Func<[IMetricsBuilder], void>): Self;
-  export function configureMetrics<Self extends IHostBuilder>(this: Self,
-    configureMetricsDelegate: Func<[HostBuilderContext, IMetricsBuilder], void>): Self;
-  export function configureMetrics<Self extends IHostBuilder>(this: Self,
-    configureMetricsDelegate: Func<[HostBuilderContext, IMetricsBuilder], void> | Func<[IMetricsBuilder], void>): Self {
+  export function configureMetrics<Self extends IHostBuilder>(this: Self, configureMetricsDelegate: Func<[IMetricsBuilder], void>): Self;
+  export function configureMetrics<Self extends IHostBuilder>(this: Self, configureMetricsDelegate: Func<[HostBuilderContext, IMetricsBuilder], void>): Self;
+  export function configureMetrics<Self extends IHostBuilder>(this: Self, configureMetricsDelegate: Func<[HostBuilderContext, IMetricsBuilder], void> | Func<[IMetricsBuilder], void>): Self {
     return this.configureServices((context, services) => {
       const builder = new MetricsBuilder(services);
       if (configureMetricsDelegate.length >= 2) {
@@ -148,8 +133,7 @@ export namespace HostBuilderHostingAugmentations {
    * `ServiceManifest.build(options)`. Overrides any options set by an earlier
    * `configureDefaults`.
    */
-  export function useDefaultServiceProvider<Self extends IHostBuilder>(this: Self,
-    configure: Func<[ServiceProviderOptions], ServiceProviderOptions>): Self {
+  export function useDefaultServiceProvider<Self extends IHostBuilder>(this: Self, configure: Func<[ServiceProviderOptions], ServiceProviderOptions>): Self {
     const options = configure(ServiceProviderOptions.defaults);
     setServiceProviderOptionsFactory(this, () => options);
     return this;
@@ -160,18 +144,15 @@ export namespace HostBuilderHostingAugmentations {
    * registering the {@link ConsoleLifetime} as the host lifetime (overriding the
    * default {@link import("./internal/NullLifetime").NullLifetime}).
    */
-  export function useConsoleLifetime<Self extends IHostBuilder>(this: Self,
-    configureOptions?: Func<[ConsoleLifetimeOptions], void>): Self {
+  export function useConsoleLifetime<Self extends IHostBuilder>(this: Self, configureOptions?: Func<[ConsoleLifetimeOptions], void>): Self {
     const options = new ConsoleLifetimeOptions();
     configureOptions?.(options);
     return this.configureServices((_context, services) => {
-      const withOptions = services.addValue(CONSOLE_LIFETIME_OPTIONS_TYPE, options);
-      return withOptions.addFactory(HOST_LIFETIME_TYPE,
+      const withOptions = services.add(CONSOLE_LIFETIME_OPTIONS_TYPE, options);
+      return withOptions.add(HOST_LIFETIME_TYPE,
         (resolver: IServiceProvider) =>
-          new ConsoleLifetime(resolver.getRequiredService(CONSOLE_LIFETIME_OPTIONS_TYPE),
-            resolver.getRequiredService(HOST_ENVIRONMENT_TYPE),
-            resolver.getRequiredService(HOST_APPLICATION_LIFETIME_TYPE),
-            resolver.getRequiredService(LOGGER_FACTORY_TYPE)), Type.func(HOST_LIFETIME_TYPE, [[RESOLVER_TYPE]]));
+          new ConsoleLifetime(resolver.getRequiredService(CONSOLE_LIFETIME_OPTIONS_TYPE), resolver.getRequiredService(HOST_ENVIRONMENT_TYPE),
+            resolver.getRequiredService(HOST_APPLICATION_LIFETIME_TYPE), resolver.getRequiredService(LOGGER_FACTORY_TYPE)), Type.func(HOST_LIFETIME_TYPE, [[RESOLVER_TYPE]]));
     });
   }
 
@@ -182,11 +163,8 @@ export namespace HostBuilderHostingAugmentations {
    * the two forms are told apart by whether the first argument is a function.
    */
   export function runConsoleAsync(this: IHostBuilder, abortSignal?: AbortSignal): Promise<void>;
-  export function runConsoleAsync(this: IHostBuilder, configureOptions: Func<[ConsoleLifetimeOptions], void>,
-    abortSignal?: AbortSignal): Promise<void>;
-  export function runConsoleAsync(this: IHostBuilder,
-    configureOptionsOrAbortSignal?: Func<[ConsoleLifetimeOptions], void> | AbortSignal,
-    maybeAbortSignal?: AbortSignal): Promise<void> {
+  export function runConsoleAsync(this: IHostBuilder, configureOptions: Func<[ConsoleLifetimeOptions], void>, abortSignal?: AbortSignal): Promise<void>;
+  export function runConsoleAsync(this: IHostBuilder, configureOptionsOrAbortSignal?: Func<[ConsoleLifetimeOptions], void> | AbortSignal, maybeAbortSignal?: AbortSignal): Promise<void> {
     let configureOptions: Func<[ConsoleLifetimeOptions], void> | undefined;
     let abortSignal: AbortSignal | undefined;
     if (typeof configureOptionsOrAbortSignal === 'function') {

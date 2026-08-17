@@ -37,7 +37,7 @@ function makeSink(clock: IClock): Sink {
 
 /** A manifest holding nothing but the clock every case below leans on. */
 function withClock(): Manifest<'singleton'> {
-  return new DefaultManifest<'singleton'>().addValue(CLOCK, new FixedClock());
+  return new DefaultManifest<'singleton'>().add(CLOCK, new FixedClock());
 }
 
 describe('the impl doors', () => {
@@ -114,10 +114,9 @@ describe('the terse form', () => {
   });
 
   test('files the same descriptor the walk does', () => {
-    const walked = withClock().add<Sink>(SINK,
-      sink =>
-        sink.asClass(Sink).withType(Type.ctor(SINK, [[CLOCK, Type.typeLiteral('same')]]))
-          .withLifetime('singleton').taggedAs('primary'));
+    const walked = withClock().add<Sink>(SINK, sink =>
+      sink.asClass(Sink).withType(Type.ctor(SINK, [[CLOCK, Type.typeLiteral('same')]]))
+        .withLifetime('singleton').taggedAs('primary'));
     const stated = withClock()
       .add<Sink>(SINK, Sink, Type.ctor(SINK, [[CLOCK, Type.typeLiteral('same')]]), 'singleton', 'primary');
 
@@ -177,10 +176,7 @@ describe('lifetime and tag', () => {
   });
 
   test('a tag on a type that already carries one is refused', () => {
-    expect(() =>
-      withClock().add<Sink>(Type.tag(SINK, 'primary'), sink =>
-        sink.taggedAs('secondary').asClass(Sink).withSignature(CLOCK, Type.typeLiteral('staging')))
-    ).toThrow(/already carries a tag/);
+    expect(() => withClock().add<Sink>(Type.tag(SINK, 'primary'), sink => sink.taggedAs('secondary').asClass(Sink).withSignature(CLOCK, Type.typeLiteral('staging')))).toThrow(/already carries a tag/);
   });
 });
 

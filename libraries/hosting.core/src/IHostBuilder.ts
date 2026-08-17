@@ -48,7 +48,7 @@ export interface IHostBuilder {
    * delegate that registers something and returns the manifest it was given
    * would silently drop that registration.
    */
-  configureServices(configureDelegate: Func<[HostBuilderContext, Manifest], Manifest>): this;
+  configureServices(configureDelegate: Func<[HostBuilderContext, Manifest<any>], Manifest<any>>): this;
 
   /**
    * Enables configuring the instantiated dependency container. Additive
@@ -57,9 +57,7 @@ export interface IHostBuilder {
    * host builds, so the delegate returns it for the same immutability reason
    * {@link configureServices} does.
    */
-  configureContainer<TContainerBuilder>(
-    configureDelegate: Func<[HostBuilderContext, TContainerBuilder], TContainerBuilder>,
-  ): this;
+  configureContainer(configureDelegate: Func<[HostBuilderContext, Manifest<any>], Manifest<any>>): this;
 
   /** Runs the configuration actions and produces an initialized {@link IHost}. */
   build(): IHost;

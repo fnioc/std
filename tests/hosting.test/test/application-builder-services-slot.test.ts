@@ -44,9 +44,9 @@ test('builder.services and builder.logging registrations both survive into the h
   const marker = new MarkerLoggerProvider();
 
   // Interleaved on purpose: a fork would drop whichever route build() did not read.
-  builder.services = builder.services.addValue('test:First', 'first');
+  builder.services = builder.services.add('test:First', 'first');
   builder.logging.addProvider(marker);
-  builder.services = builder.services.addValue('test:Second', 'second');
+  builder.services = builder.services.add('test:Second', 'second');
 
   const host = builder.build();
   expect(host.services.getRequiredService(Type.from('test:First'))).toBe('first');
@@ -60,7 +60,7 @@ test('builder.metrics shares the same slot as builder.services', () => {
   const builder = Host.createEmptyApplicationBuilder();
 
   const before = builder.services;
-  builder.metrics.services = builder.metrics.services.addValue('test:ViaMetrics', 'yes');
+  builder.metrics.services = builder.metrics.services.add('test:ViaMetrics', 'yes');
 
   expect(builder.services).not.toBe(before);
   expect(builder.services.build().getRequiredService(Type.from('test:ViaMetrics'))).toBe('yes');
@@ -70,10 +70,10 @@ test('asHostBuilder() replays its delegates into the live slot, not a snapshot',
   const builder = Host.createEmptyApplicationBuilder();
   const adapter = builder.asHostBuilder();
 
-  adapter.configureServices((_context, services) => services.addValue('test:Late', 'late'));
+  adapter.configureServices((_context, services) => services.add('test:Late', 'late'));
   // Registered AFTER the adapter captured the builder: a captured manifest
   // would have replayed the delegate onto a chain nobody builds from.
-  builder.services = builder.services.addValue('test:Early', 'early');
+  builder.services = builder.services.add('test:Early', 'early');
 
   const host = builder.build();
   expect(host.services.getRequiredService(Type.from('test:Early'))).toBe('early');

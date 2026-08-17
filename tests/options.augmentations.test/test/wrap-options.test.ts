@@ -20,7 +20,7 @@ describe('addOptions(tType) — wrap the bound T', () => {
     let services: Manifest<'singleton'> = new DefaultManifest<'singleton'>();
     const widget: Widget = { name: 'gizmo' };
 
-    services = services.addValue(WIDGET_TOKEN, widget);
+    services = services.add(WIDGET_TOKEN, widget);
     services = services.addOptions(WIDGET_TOKEN);
 
     const provider = services.build();
@@ -40,7 +40,7 @@ describe('addOptions(tType) — wrap the bound T', () => {
 
     let services: Manifest<'singleton'> = new DefaultManifest<'singleton'>();
     // Explicit-token class registration (transformer-free): a zero-arg ctor.
-    services = services.addClass(ENGINE_TOKEN, Engine, Type.ctor(Type.from(ENGINE_TOKEN), [[]]), 'singleton');
+    services = services.add(ENGINE_TOKEN, Engine, Type.ctor(Type.from(ENGINE_TOKEN), [[]]), 'singleton');
     services = services.addOptions(ENGINE_TOKEN);
 
     const provider = services.build();

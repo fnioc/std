@@ -24,7 +24,7 @@ export namespace LoggingBuilderProviderAugmentations {
    * log output — no manual `new LoggerFactory([...providers])` needed.
    */
   export function addProvider<Self extends ILoggingBuilder>(this: Self, provider: ILoggerProvider): Self {
-    this.services = this.services.addValue(LOGGER_PROVIDER_TYPE, provider);
+    this.services = this.services.add(LOGGER_PROVIDER_TYPE, provider);
     return this;
   }
 
@@ -34,8 +34,7 @@ export namespace LoggingBuilderProviderAugmentations {
    * `IOptions<LoggerFilterOptions>` pipeline.
    */
   export function setMinimumLevel<Self extends ILoggingBuilder>(this: Self, level: LogLevel): Self {
-    this.services = this.services.addValue(configureStepType(LOGGER_FILTER_OPTIONS_TYPE),
-      new DefaultLoggerLevelConfigureOptions(level));
+    this.services = this.services.add(configureStepType(LOGGER_FILTER_OPTIONS_TYPE), new DefaultLoggerLevelConfigureOptions(level));
     return this;
   }
 

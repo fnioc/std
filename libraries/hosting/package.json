@@ -80,6 +80,7 @@
   },
   "devDependencies": {
     "@rhombus-std/primitives.extras": "workspace:*",
+    "@rhombus-std/di.extras": "workspace:*",
     "@ttsc/unplugin": "^0.18.1",
     "rollup": "^4.61.0",
     "rollup-plugin-dts": "^6.4.1",

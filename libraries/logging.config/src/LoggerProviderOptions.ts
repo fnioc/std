@@ -40,15 +40,12 @@ export const LoggerProviderOptions = {
    * .registerProviderOptions(services, …)`) — the `services` passed in is
    * unchanged.
    */
-  registerProviderOptions<TOptions, TProvider>(services: Manifest, optionsType: Type | string,
-    providerType: Type | string): Manifest {
+  registerProviderOptions<TOptions, TProvider>(services: Manifest<any>, optionsType: Type | string, providerType: Type | string): Manifest<any> {
     const options = typeof optionsType === 'string' ? Type.from(optionsType) : optionsType;
     const providerConfig = loggerProviderConfigType(
       typeof providerType === 'string' ? Type.from(providerType) : providerType,
     );
-    return services.addClass(configureStepType(options), LoggerProviderConfigureOptions,
-      Type.ctor(configureStepType(options), [[providerConfig]]), 'singleton')
-      .addClass(changeTokenSourceType(options), LoggerProviderOptionsChangeTokenSource,
-        Type.ctor(changeTokenSourceType(options), [[providerConfig]]), 'singleton');
+    return services.add(configureStepType(options), LoggerProviderConfigureOptions, Type.ctor(configureStepType(options), [[providerConfig]]), 'singleton')
+      .add(changeTokenSourceType(options), LoggerProviderOptionsChangeTokenSource, Type.ctor(changeTokenSourceType(options), [[providerConfig]]), 'singleton');
   },
 };

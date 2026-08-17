@@ -11,10 +11,8 @@ function fakeEnvironment(environmentName: string): IHostEnvironment {
 }
 
 test('createDefaultServiceProviderOptions enables validation only in Development', () => {
-  expect(createDefaultServiceProviderOptions(fakeEnvironment('Development'))).toEqual({ validateScopes: true,
-    validateOnBuild: true });
-  expect(createDefaultServiceProviderOptions(fakeEnvironment('Production'))).toEqual({ validateScopes: false,
-    validateOnBuild: false });
+  expect(createDefaultServiceProviderOptions(fakeEnvironment('Development'))).toEqual({ validateScopes: true, validateOnBuild: true });
+  expect(createDefaultServiceProviderOptions(fakeEnvironment('Production'))).toEqual({ validateScopes: false, validateOnBuild: false });
 });
 
 test('useDefaultServiceProvider threads validateOnBuild into the provider build', () => {
@@ -22,8 +20,7 @@ test('useDefaultServiceProvider threads validateOnBuild into the provider build'
   // an eager validate-on-build fails the whole build.
   function addBrokenService(builder: HostBuilder): void {
     builder.configureServices((_context, services) => {
-      return services.addClass('test:Broken', class Broken {},
-        Type.ctor(Type.from('test:Broken'), [[Type.from('test:Missing')]]));
+      return services.add('test:Broken', class Broken {}, Type.ctor(Type.from('test:Broken'), [[Type.from('test:Missing')]]));
     });
   }
 
@@ -48,8 +45,7 @@ test('useDefaultServiceProvider validate-on-build accepts a sound host graph (fr
 test('the last useDefaultServiceProvider call wins', () => {
   const builder = new HostBuilder();
   builder.configureServices((_context, services) => {
-    return services.addClass('test:Broken', class Broken {},
-      Type.ctor(Type.from('test:Broken'), [[Type.from('test:Missing')]]));
+    return services.add('test:Broken', class Broken {}, Type.ctor(Type.from('test:Broken'), [[Type.from('test:Missing')]]));
   });
   // The first call would validate the (broken) graph; the second replaces it with
   // a no-validation options object, so the build stays lazy and does not throw.

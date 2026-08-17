@@ -6,9 +6,8 @@
 
 import type { Func } from '@rhombus-toolkit/func';
 import { type AggregateName, GLOBAL_QUALIFIER, isAggregateName } from '../grammar.js';
-import type { AggregateType, ArrayType, ConstructorType, FunctionType, GenericType, GlobalType, ImportedType,
-  IntersectionType, IterableType, LiteralValue, ObjectType, TagType, TupleType, Type, TypeBrand, TypeLiteralType,
-  TypeSignatures, UnionType } from '../Type.js';
+import type { AggregateType, ArrayType, ConstructorType, FunctionType, GenericType, GlobalType, ImportedType, IntersectionType, IterableType, LiteralValue, ObjectType, TagType, TupleType, Type,
+  TypeBrand, TypeLiteralType, UnionType } from '../Type.js';
 import { stringifyType } from '../visitor/StringifyVisitor.js';
 import { TypeVisitor } from '../visitor/TypeVisitor.js';
 import { id, intern, isInterned } from './intern.js';
@@ -44,7 +43,7 @@ export function tuple(members: readonly Type[]): TupleType {
   return intern(`tuple\0${slots.map(id).join(',')}`, () => node<TupleType>({ kind: 'tuple', members: slots }));
 }
 
-export function func(returns: Type, args: TypeSignatures): FunctionType {
+export function func(returns: Type, args: Type.Signatures): FunctionType {
   const result = adopt(returns);
   const rows = adoptRows(args);
   return intern(
@@ -53,7 +52,7 @@ export function func(returns: Type, args: TypeSignatures): FunctionType {
   );
 }
 
-export function ctor(instance: Type, args: TypeSignatures, abstract = false): ConstructorType {
+export function ctor(instance: Type, args: Type.Signatures, abstract = false): ConstructorType {
   const slot = adopt(instance);
   const rows = adoptRows(args);
   return intern(
@@ -66,7 +65,7 @@ export function ctor(instance: Type, args: TypeSignatures, abstract = false): Co
  * @throws TypeError - when no row survives; a callable answering to no call has no spelling, and
  * `[]` is the shape an author reaches for meaning the one call that takes nothing.
  */
-function adoptRows(args: TypeSignatures): TypeSignatures {
+function adoptRows(args: Type.Signatures): Type.Signatures {
   if (!args.length) {
     throw new TypeError('a callable answers to at least one call — write `[[]]` for one taking no parameters');
   }
@@ -78,7 +77,7 @@ function adoptRows(args: TypeSignatures): TypeSignatures {
  * joined with a separator, so a callable answering to one empty call and one answering to no call
  * at all are told apart.
  */
-function rowsKey(rows: TypeSignatures): string {
+function rowsKey(rows: Type.Signatures): string {
   return rows.map(row => `(${row.map(id).join(',')})`).join('');
 }
 
@@ -219,6 +218,7 @@ function withoutSubsumedLiterals(members: readonly Type[]): readonly Type[] {
 }
 
 function literalKey(value: LiteralValue): string {
+  // eslint-disable-next-line @typescript-eslint/switch-exhaustiveness-check
   switch (typeof value) {
     case 'string': {
       return `literal\0s${JSON.stringify(value)}`;

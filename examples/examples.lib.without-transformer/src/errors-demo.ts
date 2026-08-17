@@ -37,8 +37,7 @@
 // then either app's `errors-demo.ts`; the line between the two files is the line
 // between the abstractions and the engine.
 
-import { AmbiguousUnionError, CycleError, DiError, ManifestValidationError, Type,
-  UnsatisfiableError } from '@rhombus-std/di.core';
+import { AmbiguousUnionError, CycleError, DiError, ManifestValidationError, Type, UnsatisfiableError } from '@rhombus-std/di.core';
 import type { Manifest } from '@rhombus-std/di.core';
 
 // ── types ────────────────────────────────────────────────────────────────────
@@ -149,33 +148,4 @@ export function stagedFailure(what: string, attempt: () => unknown): string {
   } catch (error) {
     return `${what}: ${diagnose(error)}`;
   }
-}
-
-/**
- * Provokes the manifest's own refusal against the manifest it was handed, and
- * returns the report line.
- *
- * Staging against the CALLER's manifest is safe, and worth understanding rather
- * than taking on trust: a verb materialises its registration inside the NEW
- * node, so a refused registration throws from the call that made it and no
- * half-built node ever escapes. `services` is exactly what it was before — the
- * same immutability the whole surface rests on, seen from the other side. A
- * discarded result registers nothing; a rejected one leaves nothing behind.
- *
- * The refusal itself is the edge of the taxonomy rather than a member of it: a
- * key is a tag ON the service type, so a type that already carries one has
- * nowhere to put a second, and saying so is argument checking rather than a
- * container failure. `diagnose` reports it as such.
- *
- * @param services The application's registration builder, left untouched.
- * @returns One line, and the chapter header belongs to the caller, who stages
- *   the rest of the taxonomy after it.
- */
-export function demonstrateRegistrationErrors(services: Manifest<'singleton'>): readonly string[] {
-  return [
-    stagedFailure(
-      'keying a service type that already carries a key',
-      () => services.addValue(Type.tag(STORE_TYPE, 'primary'), { rows: [] }, 'replica'),
-    ),
-  ];
 }

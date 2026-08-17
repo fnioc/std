@@ -3,7 +3,7 @@
 // against these types) and @rhombus-std/diagnostics's assembly (which resolves
 // them). Kept in core so both sides agree.
 //
-// Every "collection" slot is registered with `services.addValue(<type>, x)` and
+// Every "collection" slot is registered with `services.add(<type>, x)` and
 // read back with `resolver.resolve(collectionType(<type>))` -- the same
 // wrapper convention @rhombus-std/options.augmentations uses to aggregate every
 // registration of a slot.

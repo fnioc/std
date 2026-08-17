@@ -43,7 +43,7 @@ export class HostBuilderAdapter implements IHostBuilder {
 
   readonly #configureHostConfigActions: Array<Action<[IConfigBuilder]>> = [];
   readonly #configureAppConfigActions: Array<Action<[HostBuilderContext, IConfigBuilder]>> = [];
-  readonly #configureServicesActions: Array<Func<[HostBuilderContext, Manifest], Manifest>> = [];
+  readonly #configureServicesActions: Array<Func<[HostBuilderContext, Manifest<any>], Manifest<any>>> = [];
 
   public constructor(config: IConfigManager, holder: ManifestSlot, context: HostBuilderContext) {
     this.#config = config;
@@ -66,7 +66,7 @@ export class HostBuilderAdapter implements IHostBuilder {
     return this;
   }
 
-  public configureServices(configureDelegate: Func<[HostBuilderContext, Manifest], Manifest>): this {
+  public configureServices(configureDelegate: Func<[HostBuilderContext, Manifest<any>], Manifest<any>>): this {
     this.#configureServicesActions.push(configureDelegate);
     return this;
   }
@@ -120,8 +120,7 @@ export class HostBuilderAdapter implements IHostBuilder {
       // path the environment was built with; anything else is unsupported.
       const currentContentRootConfig = config.get(HostDefaults.contentRootKey);
       if (!equalsIgnoreCase(previousContentRootConfig, currentContentRootConfig)
-        && !equalsIgnoreCase(previousContentRootPath,
-          resolveContentRootPath(currentContentRootConfig, process.cwd()))) {
+        && !equalsIgnoreCase(previousContentRootPath, resolveContentRootPath(currentContentRootConfig, process.cwd()))) {
         throw new Error(
           `The content root changed from "${previousContentRootConfig}" to `
             + `"${currentContentRootConfig}". Changing host settings after the host builder `

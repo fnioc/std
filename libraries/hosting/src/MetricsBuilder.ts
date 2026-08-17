@@ -34,12 +34,12 @@ export class MetricsBuilder implements IMetricsBuilder {
    * -- the host application builder passes ITSELF, so `builder.metrics`
    * registrations and `builder.services` registrations stay on one chain.
    */
-  public constructor(services: Manifest | ManifestSlot) {
+  public constructor(services: Manifest<any> | ManifestSlot) {
     this.#holder = isHolder(services) ? services : { services };
   }
 
   /** The current manifest -- read through the shared holder. */
-  public get services(): Manifest {
+  public get services(): Manifest<any> {
     return this.#holder.services;
   }
 
@@ -47,15 +47,15 @@ export class MetricsBuilder implements IMetricsBuilder {
    * Rebinds the shared holder's manifest. The chain is immutable, so every
    * metrics augmentation threads by assigning here.
    */
-  public set services(value: Manifest) {
+  public set services(value: Manifest<any>) {
     this.#holder.services = value;
   }
 }
 
 /** A manifest is never itself a holder: only a holder carries a `services` slot. */
-function isHolder(value: Manifest | ManifestSlot): value is ManifestSlot {
+function isHolder(value: Manifest<any> | ManifestSlot): value is ManifestSlot {
   return 'services' in value;
 }
 
 /** A writable manifest slot two builders can share, so both write one chain. */
-export type ManifestSlot = { services: Manifest; };
+export type ManifestSlot = { services: Manifest<any>; };

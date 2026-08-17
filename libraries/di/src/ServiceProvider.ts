@@ -1,6 +1,5 @@
 import { Manifest, ServiceDescriptor, UnsatisfiableError } from '@rhombus-std/di.core';
-import { augment, type ConstructorType, type FunctionType, type IServiceProvider, NotImplementedError,
-  Type } from '@rhombus-std/primitives';
+import { augment, type ConstructorType, type FunctionType, type IServiceProvider, NotImplementedError, Type } from '@rhombus-std/primitives';
 import { typefor } from '@rhombus-std/primitives.extras';
 import type { Ctor, Func } from '@rhombus-toolkit/func';
 import { Engine } from './internal/Engine.js';
@@ -16,7 +15,7 @@ export class ServiceProvider {
   readonly #engine: Engine;
 
   /** @throws {ManifestValidationError} when `options.validateOnBuild` finds an unsatisfiable graph. */
-  constructor(manifest: Manifest, options: ServiceProviderOptions = ServiceProviderOptions.defaults) {
+  constructor(manifest: Manifest<any>, options: ServiceProviderOptions = ServiceProviderOptions.defaults) {
     this.#engine = new Engine(manifest, options);
     if (options.validateOnBuild) {
       this.#engine.validate();
@@ -24,7 +23,7 @@ export class ServiceProvider {
   }
 
   /**
-   * The value registered for `type`, or `undefined` when nothing is registered for it.
+   * The value registered for `type`, or `undefined` when nothing is registereyou d for it.
    *
    * @remarks
    * Absence is an answer here, which is what makes this the optional lookup a caller reaches for

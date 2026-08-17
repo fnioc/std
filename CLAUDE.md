@@ -157,8 +157,7 @@ where that's cheap, and flag the intended divergence rather than pre-emptively t
   its concrete class — an iterable decorator chain whose own body declares only the public
   descriptor-taking primitives `add`/`remove`/`replace` (§188); every other verb, and `add`'s own
   sugared shapes, arrive through augmentation sets, so a discarded verb result registers NOTHING. A service is named by a `Type` (re-exported from `primitives`, authored via
-  `typefor<T>()`); public parameters take `Type | string` and normalize through `Type.from`,
-  everything internal is `Type` only. A keyed registration composes the key into the type —
+  `typefor<T>()`). A keyed registration composes the key into the type —
   `Type.tag(base, key)`, never a separate argument or a `base#key` string, and a type wears AT MOST
   ONE tag (`TagType.type` and the `tag` base are `Exclude<Type, TagType>`; a tagged base arriving as
   a value throws rather than re-keying, §150) — and an open template is built structurally,

@@ -4,23 +4,22 @@
 
 import type { Manifest, Type } from '@rhombus-std/di.core';
 import { LOGGER_PROVIDER_TYPE, LoggingBuilder } from '@rhombus-std/logging';
-import { ConsoleFormatter, ConsoleFormatterNames, ConsoleLoggerAugmentations, ConsoleLoggerOptions,
-  ConsoleLoggerProvider, ConsoleLoggerQueueFullMode, type LogEntry, StringWriter,
+import { ConsoleFormatter, ConsoleFormatterNames, ConsoleLoggerAugmentations, ConsoleLoggerOptions, ConsoleLoggerProvider, ConsoleLoggerQueueFullMode, type LogEntry, StringWriter,
   type TextWriter } from '@rhombus-std/logging.console';
 import { EventId, type IExternalScopeProvider, type ILoggingBuilder, LogLevel } from '@rhombus-std/logging.core';
 import { Options } from '@rhombus-std/options';
 import { expect, test } from 'bun:test';
 
 /** A recording stand-in for the di.core registration builder. */
-function fakeServices(): { services: Manifest; values: Array<[string | Type, unknown]>; } {
+function fakeServices(): { services: Manifest<any>; values: Array<[string | Type, unknown]>; } {
   const values: Array<[string | Type, unknown]> = [];
   const services = { addValue(token: string | Type, value: unknown): void {
     values.push([token, value]);
-  } } as unknown as Manifest;
+  } } as unknown as Manifest<any>;
   return { services, values };
 }
 
-function builderOver(services: Manifest): ILoggingBuilder {
+function builderOver(services: Manifest<any>): ILoggingBuilder {
   return new LoggingBuilder(services);
 }
 
@@ -30,8 +29,7 @@ class UpperFormatter extends ConsoleFormatter {
     super('upper');
   }
 
-  public override write<TState>(logEntry: LogEntry<TState>, _scopeProvider: IExternalScopeProvider | undefined,
-    textWriter: TextWriter): void {
+  public override write<TState>(logEntry: LogEntry<TState>, _scopeProvider: IExternalScopeProvider | undefined, textWriter: TextWriter): void {
     textWriter.write(`${logEntry.formatter(logEntry.state, logEntry.error).toUpperCase()}\n`);
   }
 }

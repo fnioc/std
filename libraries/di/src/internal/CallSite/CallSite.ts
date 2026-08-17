@@ -1,6 +1,5 @@
 import type { ServiceDescriptor } from '@rhombus-std/di.core';
 import { isAllThere, Type } from '@rhombus-std/primitives';
-import type { TypeSignatures } from '@rhombus-std/primitives';
 import { Ctor, Func } from '@rhombus-toolkit/func';
 import { assertNever } from '@rhombus-toolkit/type-guards';
 import type { Answer } from '../Registry.js';
@@ -49,7 +48,7 @@ export interface FactoryCallSite {
 export interface LateBoundCallSite {
   readonly kind: 'latebound';
   readonly result: Type;
-  readonly lateBoundArgs: TypeSignatures;
+  readonly lateBoundArgs: Type.Signatures;
 }
 export interface ConstantCallSite {
   readonly kind: 'constant';
@@ -83,7 +82,7 @@ export namespace CallSite {
   export function factory(factory: Func, args: CallSite[], descriptor?: ServiceDescriptor<string>): FactoryCallSite {
     return { kind: 'factory', factory, args, descriptor };
   }
-  export function latebound(result: Type, lateBoundArgs: TypeSignatures): LateBoundCallSite {
+  export function latebound(result: Type, lateBoundArgs: Type.Signatures): LateBoundCallSite {
     return { kind: 'latebound', result, lateBoundArgs };
   }
   export function constant(value: any): ConstantCallSite {
@@ -130,8 +129,7 @@ export namespace CallSite {
   }
 
   /** The first parameter row whose every parameter lowers to a call site, longest first. */
-  function lowerSignature(signatures: TypeSignatures, generics: ReadonlyMap<string, Type>,
-    visitor: Type.Visitor<CallSite | undefined>): CallSite[] | undefined {
+  function lowerSignature(signatures: Type.Signatures, generics: ReadonlyMap<string, Type>, visitor: Type.Visitor<CallSite | undefined>): CallSite[] | undefined {
     return Iterator.from(signatures.toSorted((a, b) => b.length - a.length))
       .map(signature => signature.map(parameter => lowerParameter(parameter, generics, visitor)))
       .find(isAllThere);
@@ -145,8 +143,7 @@ export namespace CallSite {
    * is part of a type expression rather than the whole of one: it closes into that expression,
    * and the result resolves as any other dependency does.
    */
-  function lowerParameter(parameter: Type, generics: ReadonlyMap<string, Type>,
-    visitor: Type.Visitor<CallSite | undefined>): CallSite | undefined {
+  function lowerParameter(parameter: Type, generics: ReadonlyMap<string, Type>, visitor: Type.Visitor<CallSite | undefined>): CallSite | undefined {
     if (parameter.kind === 'generic') {
       const closing = generics.get(parameter.label);
       return closing && constant(closing);

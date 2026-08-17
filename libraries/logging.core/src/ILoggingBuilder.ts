@@ -11,5 +11,5 @@ import type { Manifest } from '@rhombus-std/di.core';
  */
 export interface ILoggingBuilder {
   /** The current manifest. Reassigned by every registration made through the builder. */
-  services: Manifest;
+  services: Manifest<any>;
 }

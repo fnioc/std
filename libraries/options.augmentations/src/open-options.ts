@@ -30,10 +30,9 @@ const openOptionsType = Type.imported('IOptions', '@rhombus-std/options', [hole]
  * `undefined`.
  */
 export function ensureOpenOptions(manifest: Manifest<string>): Manifest<string> {
-  return manifest.tryAddFactory(
+  return manifest.tryAdd(
     openOptionsType,
-    (resolver: IServiceProvider, optionsType: Type, makeBase: Func<[], unknown>): IOptions<unknown> =>
-      assembleOptions(resolver, optionsType, makeBase),
+    (resolver: IServiceProvider, optionsType: Type, makeBase: Func<[], unknown>): IOptions<unknown> => assembleOptions(resolver, optionsType, makeBase),
     Type.func(openOptionsType, [[RESOLVER_TYPE, hole, baseFactoryType(hole)]]),
   );
 }

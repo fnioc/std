@@ -15,15 +15,12 @@ import type { ServiceProviderOptions } from '@rhombus-std/di';
 import { DefaultManifest } from '@rhombus-std/di.core';
 import type { Manifest } from '@rhombus-std/di.core';
 import type { IMetricsBuilder } from '@rhombus-std/diagnostics.core';
-import { type HostBuilderContext, HostDefaults, type IHost, type IHostApplicationBuilder, type IHostBuilder,
-  type IHostEnvironment } from '@rhombus-std/hosting.core';
+import { type HostBuilderContext, HostDefaults, type IHost, type IHostApplicationBuilder, type IHostBuilder, type IHostEnvironment } from '@rhombus-std/hosting.core';
 import { LoggingBuilder } from '@rhombus-std/logging';
 import type { ILoggingBuilder } from '@rhombus-std/logging.core';
 import type { Action } from '@rhombus-toolkit/func';
-import { addCommandLineConfig, addDefaultServices, applyDefaultAppConfig, createDefaultServiceProviderOptions,
-  HOST_ENVIRONMENT_VARIABLE_PREFIX, setDefaultContentRoot } from './default-config';
-import { createFrameworkServices, createHostingEnvironment, type FrameworkServices, populateFrameworkServices,
-  resolveHost } from './host-composition';
+import { addCommandLineConfig, addDefaultServices, applyDefaultAppConfig, createDefaultServiceProviderOptions, HOST_ENVIRONMENT_VARIABLE_PREFIX, setDefaultContentRoot } from './default-config';
+import { createFrameworkServices, createHostingEnvironment, type FrameworkServices, populateFrameworkServices, resolveHost } from './host-composition';
 import { HostApplicationBuilderSettings } from './HostApplicationBuilderSettings';
 import { HostBuilderAdapter } from './internal/HostBuilderAdapter';
 import { MetricsBuilder } from './MetricsBuilder';
@@ -41,7 +38,7 @@ export class HostApplicationBuilder implements IHostApplicationBuilder {
   // so they read and write here rather than each carrying a fork of the chain.
   // Handing them a manifest VALUE instead would let `builder.logging.addConsole()`
   // build a chain that `build()` never sees.
-  #services: Manifest = new DefaultManifest();
+  #services: Manifest<any> = new DefaultManifest();
   readonly #environment: IHostEnvironment;
   readonly #context: HostBuilderContext;
   readonly #logging: LoggingBuilder;
@@ -92,11 +89,9 @@ export class HostApplicationBuilder implements IHostApplicationBuilder {
     }
 
     this.#environment = createHostingEnvironment(this.#config);
-    this.#context = { hostingEnvironment: this.#environment, config: this.#config,
-      properties: new Map<string | symbol, unknown>() };
+    this.#context = { hostingEnvironment: this.#environment, config: this.#config, properties: new Map<string | symbol, unknown>() };
 
-    this.#services = populateFrameworkServices(this.#services, this.#context, this.#environment, this.#config,
-      this.#framework);
+    this.#services = populateFrameworkServices(this.#services, this.#context, this.#environment, this.#config, this.#framework);
 
     if (!resolved.disableDefaults) {
       applyDefaultAppConfig(this.#config, this.#environment, resolved.args);
@@ -141,7 +136,7 @@ export class HostApplicationBuilder implements IHostApplicationBuilder {
   }
 
   /** The collection of services for the application to compose. */
-  public get services(): Manifest {
+  public get services(): Manifest<any> {
     return this.#services;
   }
 
@@ -149,9 +144,9 @@ export class HostApplicationBuilder implements IHostApplicationBuilder {
    * Rebinds the live services manifest. di.core's `ServiceManifest` chain is
    * immutable -- every registration verb returns a NEW manifest -- so a
    * caller registering something reassigns `builder.services =
-   * builder.services.addClass(...)` rather than mutating in place.
+   * builder.services.add(...)` rather than mutating in place.
    */
-  public set services(value: Manifest) {
+  public set services(value: Manifest<any>) {
     this.#services = value;
   }
 
