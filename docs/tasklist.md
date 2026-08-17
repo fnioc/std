@@ -287,10 +287,15 @@ whole set is decided fresh when the slots above are rewritten, so this is a demo
 Two things about it survive that rewrite either way:
 
 - [ ] `Keyed` is imported as a value there; it is a type alias, so under `isolatedModules` that is a build error.
-- [ ] `Type` as a `Keyed` base is unverified. `Type` is an alias to a union
-      (`libraries/primitives/src/Type/Type.ts:38`), so the derivation may expand it rather than keep the name.
-      Registration and injection derive from the same alias so they agree either way, but a union service type has
-      its own resolution semantics.
+- [ ] **An aliased union must derive to its NAME, not its members.** `DeriveTyped`
+      (`transforms/internal/tokens/derived.go:60`) tests `isGeneralUnion` and hands off to `deriveUnion` with no
+      check for an alias first, so `Keyed<Type, K>` yields
+      `tag(union(AggregateType, ConstructorType, FunctionType, …), key)` instead of
+      `tag(imported('Type', '@rhombus-std/primitives'), key)`. Naming is what `typefor` does — `schemaof` is the
+      verb that expands — and the expansion makes the address depend on the union's membership, so adding a kind
+      to `Type` silently moves every token derived from it. The wide `boolean` intrinsic is already excluded from
+      decomposition; an alias name is the same kind of exclusion. Fixing this is what makes the `Keyed<Type, K>`
+      spelling below sound.
 
 ## Inline discovery
 
