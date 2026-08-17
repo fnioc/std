@@ -9,8 +9,14 @@ This doc is executed on that date. Everything needed to run it unattended is wri
 conversation the session cannot read.
 
 **Entry point: `/go`.** All coding work starts through it — not a bare dispatch. The orchestrator runs LOCALLY, on
-Fable at `xhigh` effort, launched by the `std-tasklist-run.timer` user unit into a detached tmux session named
-`std-tasklist` (attach with `tmux attach -t std-tasklist` to watch or intervene).
+Fable at `xhigh` effort, started with `fnc` by the `std-tasklist-run.timer` user unit into a detached tmux session
+named `std-tasklist` (attach with `tmux attach -t std-tasklist` to watch or intervene), with
+`--dangerously-skip-permissions` since nobody is at the keyboard.
+
+**When `/go`'s `/ready` gate reports gaps, fix and retry — indefinitely.** A gap that is OBVIOUS is auto-fixed on
+the spot and `/go` re-run; there is no retry ceiling and no need to ask. A gap that is genuinely nuanced — a
+decision, a reading of intent, anything where being wrong would cost real work — halts the run. Halting is the
+correct outcome there, not a failure: report and stop.
 
 **Compile-heavy work goes to cloud workers.** Parallel builds and gate runs are what hurt on this machine, so
 dispatch them as agents with `isolation: "remote"` rather than running them all locally. A remote worker checks
@@ -33,6 +39,9 @@ whole as a savepoint at **`3a958efa`** (parent **`6351145f`**, the last docs-onl
    commit rewrites the old state; the branch's history simply no longer contains it. `origin/IServiceManifest-repair`
    is at `6351145f` today, so this needs no force-push — unless someone pushed past it in the interim, in which
    case force-push.
+
+Pushing is authorized throughout — the worktree branch as work lands on it (which is also what feeds the cloud
+workers), and `IServiceManifest-repair` after the reset, force-pushed if the remote has moved past the floor.
 
 The run then works IN that worktree. The savepoint's work and the run's own work return together as a PR into
 `IServiceManifest-repair`, which is how "merge into #274" happens — through the PR, not a direct merge. Changes
@@ -350,6 +359,19 @@ Known sites:
 - [ ] `libraries/di.extras/src/augmentations/` — both faces carry no docs at all. The member documentation went out
       with the namespaces when the bodies merged, and the face is where it belongs.
 
+## Sweep the by-hand work for small errors
+
+The savepoint is a large by-hand change set written across a working session, and it does not build. Go through
+all of it — not only the files this doc names — and fix the small stuff: typos, a member renamed in one place and
+not the other, a face and its body disagreeing, an import left behind or never added, a call site never converted
+to the pattern its callee now has. That class is auto-fixed with no discussion, and
+`tests/diagnostics.test/test/listener-config-factory.test.ts:75` is the archetype.
+
+Where something does not merely have a typo but FUNDAMENTALLY does not work, or reads as a misunderstanding of how
+the piece it touches behaves: do not rewrite it to what it "should" have been. Dance around it — take the smallest
+path that gets the tree building and leaves the intent recoverable, and say so in the report. Where there is no
+such path, halt and report. Guessing at intended semantics is the one thing worse than stopping.
+
 ## Housekeeping
 
 - [ ] **`libraries/hosting/tsconfig.ci.json` names a package that does not exist** —
@@ -357,10 +379,13 @@ Known sites:
       `@rhombus-std/di.extras`. That config is what `build` and `lint` run and what `tsconfig.ttsc.json` extends,
       so it fails with TS2688 before the augmentation is ever consulted. `libraries/hosting/tsconfig.json` has the
       name right.
-- [ ] **OWNER-GATED — do not decide in the run.** `libraries/hosting.core/src/IHostApplicationBuilder.ts:51` still
-      declares `configureContainer<TContainerBuilder>(configure?: Action<[TContainerBuilder]>): void` after the
-      same parameter was dropped from `IHostBuilder`. Its shape differs (an `Action`, returning `void`), so whether
-      it follows is a design question, not a consistency sweep. Leave it alone and report it.
+- [ ] **Degeneralize `IHostApplicationBuilder.configureContainer` too.**
+      `libraries/hosting.core/src/IHostApplicationBuilder.ts:51` still declares
+      `configureContainer<TContainerBuilder>(configure?: Action<[TContainerBuilder]>): void` after the parameter
+      was dropped from `IHostBuilder`. Its own doc at `:49` says what makes this mechanical: `TContainerBuilder` is
+      always the `Manifest` this host builds. Nothing infers it, so it names the manifest directly. Its shape
+      differs from `IHostBuilder`'s — an `Action` returning `void` rather than a returning delegate — and that
+      difference is preserved, not reconciled.
 
 - [ ] **`libraries/di/smoke.ts` leaves the package.** It is a hand-run script (`bun smoke.ts`, "not part of any
       gate") sitting at a library's root, so nothing runs it and nothing notices when it rots. Its checks are not
