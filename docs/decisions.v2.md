@@ -2622,3 +2622,51 @@ The registry keys its per-token bags as plain `Map<string, Contribution[]>` — 
 multimap class exists in primitives.
 
 _Owner-ruled 2026-08-15, Claude-executed._
+
+---
+
+## §190 — A declaration-site tag would replace the `*.extras` forwarding bodies; the bodies stand
+
+Every type-driven sugar member in a `*.extras` package is an authored body whose whole content is
+"derive the type, put it first, forward the rest" — four in di.extras' manifest set, three in its
+provider set. They are near-identical by construction. That is a property of the shape, not a
+defect: one body per member name serves all of that name's overloads, and the roster only grows when
+a verb does.
+
+The alternative is a JSDoc tag on the `declare module` face, replacing the namespace, the
+`registerInlineBodies` call and the marker entry with one line:
+
+```ts
+declare module '@rhombus-std/di.core' {
+  /** @rhombus-std/move-type-arg-to-first-position-call-of @rhombus-std/primitives.extras:typefor */
+  interface Manifest<Scopes extends string> {
+    add<T>(ctor: Ctor<any[], T>, ctorType: ConstructorType, scope?: string): Manifest<Scopes>;
+    tryAdd<T>(ctor: Ctor<any[], T>, ctorType: ConstructorType, scope?: string): Manifest<Scopes>;
+  }
+}
+```
+
+It is domain-agnostic: the engine learns "call the named function on the type argument and place the
+result first", while the function and its module are author-written text — nothing in the mechanism
+knows a `Type` comes back. With no body anywhere it is a call-shape rewrite rather than an inlining,
+so it belongs in the always-on primitive table beside `typefor`/`schemaof`, and termination rests on
+the emitted call binding an untagged overload rather than on a substituted body being gone.
+
+Two properties are worth keeping if it is ever built. The tag names no type parameter: "exactly one
+type parameter" is its precondition, so binding is positional and a member declaring zero or two is
+an error rather than a silent skip — which is also what lets one tag sit on a whole interface whose
+members spell that parameter differently. And because the face declares the arity, the rewrite emits
+a fixed-arity forward; every value-level scheme instead needs a variadic tail, which the substituter
+has no binding for.
+
+Three things stand against it. The tag's expression is a string, so a wrong one is caught by the
+parity e2es and a lint rule rather than by `tsc`. `config.extras`'s `withType` forwards to a
+DIFFERENTLY-named primitive (`withSchema`), so it needs a target-member component or keeps an
+authored body. And the value-observing `getService<T extends Ctor>(value: T)` overload is a
+different rewrite — argument, not type argument — needing a sibling tag; it is the one case where
+per-overload tagging, which no value-level scheme can express, earns itself.
+
+Nothing is planned against this. It is recorded because the reasoning is cheaper to keep than to
+rebuild, not because the current bodies need replacing.
+
+_Claude-recorded 2026-08-16; considered, not adopted._
