@@ -13,10 +13,15 @@ Fable at `xhigh` effort, started with `fnc` by the `std-tasklist-run.timer` user
 named `std-tasklist` (attach with `tmux attach -t std-tasklist` to watch or intervene), with
 `--dangerously-skip-permissions` since nobody is at the keyboard.
 
-**When `/go`'s `/ready` gate reports gaps, fix and retry — indefinitely.** A gap that is OBVIOUS is auto-fixed on
-the spot and `/go` re-run; there is no retry ceiling and no need to ask. A gap that is genuinely nuanced — a
-decision, a reading of intent, anything where being wrong would cost real work — halts the run. Halting is the
-correct outcome there, not a failure: report and stop.
+**When `/go`'s `/ready` gate reports gaps, fix and retry — under two limits.** A gap that is OBVIOUS is auto-fixed
+on the spot and `/go` re-run, no asking. Retry ONLY when something concretely changed since the previous attempt:
+a file written, a task added, a fix applied. Re-running against an unchanged board is not a retry, and the second
+identical verdict is not new information. Five sequential failures halt the run regardless of how much changed
+between them.
+
+A gap that is genuinely nuanced — a decision, a reading of intent, anything where being wrong would cost real
+work — halts immediately, without spending a retry. Halting is the correct outcome there, not a failure: report
+and stop.
 
 **Compile-heavy work goes to cloud workers.** Parallel builds and gate runs are what hurt on this machine, so
 dispatch them as agents with `isolation: "remote"` rather than running them all locally. A remote worker checks
