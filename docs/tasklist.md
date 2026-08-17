@@ -85,12 +85,18 @@ half-applied, and the gates green — reached before the first async/scope commi
 It is a commit to produce, not a checkpoint to stop at: nothing waits for review there, and the run continues
 straight through it.
 
-**The async/scope gate.** `docs/async-scope.md` is expected to exist by the run. Implementation of anything in it
-is released by ONE thing: the document saying, in those letters, that it has been **blessed** by the owner. No
-synonym releases it — "signed off", "these requirements are finished and ready", "approved", "final" and every
-other phrasing leave it unimplementable. Read closely for WHAT was blessed: the blessing may cover only a portion
-of the document, and only that portion is released. If the word is absent, stop and report; do not implement, do
-not infer, do not ask a subagent to decide.
+**The async/scope gate — and its total independence from everything above.** `docs/async-scope.md` is expected to
+exist by the run. Whether it exists, what it says, and whether it is blessed change NOTHING about how this doc is
+executed: the work above runs to completion either way, in the same order, to the same standard. Do not check for
+the file first, do not let its absence shorten the run, do not let its presence pull work forward. Look at it only
+once everything above is done.
+
+Implementation of anything in it is then released by ONE thing: the document saying, in those letters, that it has
+been **blessed** by the owner. No synonym releases it — "signed off", "these requirements are finished and ready",
+"approved", "final" and every other phrasing leave it unimplementable. Read closely for WHAT was blessed: the
+blessing may cover only a portion of the document, and only that portion is released. Absent the word, the run
+simply ends where the tasklist ended — report that async/scope was not released, and stop. That is a normal
+ending, not a failure, and it takes nothing away from the work above.
 
 ## Descriptor validity
 
