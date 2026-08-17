@@ -3,6 +3,44 @@
 Open work items. An item lands here when it is decided but not yet done; it leaves when the change is in.
 Architectural rulings belong in `decisions.user.md` (gospel) or `decisions.v2.md` — this file tracks execution only.
 
+## Execution run — 2026-08-19, 22:05
+
+This doc is executed on that date. Everything needed to run it unattended is written here; nothing depends on a
+conversation the session cannot read.
+
+**Entry point: `/go`.** All coding work starts through it — not a bare dispatch. The orchestrator runs on Fable at
+`xhigh` effort.
+
+**Order.** Apply every requirement in this doc, then work through whatever build errors remain.
+
+Permitted with no discussion:
+
+- typos;
+- code that was never converted to the patterns this doc describes.
+
+Not permitted:
+
+- design decisions;
+- code that does not comply with a pattern already established here or in the codebase.
+
+Those two lists are the INTENT, not an exhaustive catalogue of what will come up. Where a situation is not covered,
+read for the intent — the owner is not available to arbitrate mid-run, and a change that needs arbitration is by
+definition one of the two forbidden kinds.
+
+**Where the work lands.** Everything that satisfies the rules above merges into `IServiceManifest-repair` (PR
+#274). A change the run is fairly confident about but cannot guarantee against those rules stays in an UNMERGED
+worktree, one per such change, reported by branch name at the end.
+
+**Milestone.** The work in this doc ends at a clean milestone — gates green, nothing half-applied — BEFORE any
+async/scope work begins.
+
+**The async/scope gate.** `docs/async-scope.md` is expected to exist by the run. Implementation of anything in it
+is released by ONE thing: the document saying, in those letters, that it has been **blessed** by the owner. No
+synonym releases it — "signed off", "these requirements are finished and ready", "approved", "final" and every
+other phrasing leave it unimplementable. Read closely for WHAT was blessed: the blessing may cover only a portion
+of the document, and only that portion is released. If the word is absent, stop and report; do not implement, do
+not infer, do not ask a subagent to decide.
+
 ## Descriptor validity
 
 - [ ] **Make implementer/serviceType assignability gospel.** Author the entry in `decisions.user.md`:
@@ -274,3 +312,14 @@ Known sites:
       moved to the face correctly; the `Flatten` import at `:3` it left behind is dead.
 - [ ] `libraries/di.extras/src/augmentations/` — both faces carry no docs at all. The member documentation went out
       with the namespaces when the bodies merged, and the face is where it belongs.
+
+## Housekeeping
+
+- [ ] **`libraries/di/smoke.ts` leaves the package.** It is a hand-run script (`bun smoke.ts`, "not part of any
+      gate") sitting at a library's root, so nothing runs it and nothing notices when it rots. Its checks are not
+      throwaway, though — tuple resolution, union member-vs-whole matching, open-generic closing, latebound
+      closures re-entering with call arguments, literal self-satisfaction, iterable collection vs. exact-iterable
+      registration, intersection satisfaction. Audit each against `tests/di.test/test/`, port whatever has no
+      counterpart there, then delete the file. Registrations get rewritten into the current authoring shape on the
+      way over — the script still calls `add(Type.stringify(...), ...)` with a string type and a commented-out
+      descriptor form beside it.
