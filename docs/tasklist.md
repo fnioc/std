@@ -113,13 +113,21 @@ chain step 2 exposes.
       implementer, so `typefor(value)` would observe the CALLBACK and derive a factory type for it — the single
       thing preventing a uniform body. `IComplete` stops being a marker on a callback's return and becomes
       ordinary assignability at the argument position.
-- [ ] **Export the descriptor builder as a value producer.** Its terminal is a `ServiceDescriptor`, handed to the
-      descriptor-taking primitive that already exists. Descriptors become first-class: built in a helper, held in
-      a variable, iterated. Undecided — the builder factory takes the manifest, the manifest hands out the
-      builder, or (no threading) the descriptor carries its scope as `ServiceDescriptor<S>` and
-      `Manifest<Scopes>.add` accepts only `ServiceDescriptor<Scopes>`, with an unscoped descriptor's `never`
-      making the plain case fall out. The third is the only one under which a library can author a descriptor at
-      module scope without a manifest in hand.
+- [ ] **The builder opens at `manifest.describe<TService>()`.** Its terminal is a `ServiceDescriptor`, handed to
+      the descriptor-taking primitive that already exists, so descriptors are first-class: built in a helper, held
+      in a variable, iterated. Coming off the manifest, the chain stays `ServiceDescriptorBuilderFor<T, Scopes>`
+      and scope names keep their checking with nothing threaded. The commented-out free `describe` at
+      `libraries/di.core/src/builder.ts:255`-`:261` is this member — moved onto the receiver, opening a chain
+      rather than taking a configure callback, and taking a `Type` rather than `Type | string`.
+
+      The cost, accepted: a library cannot author a descriptor at module scope, because it has no manifest in
+      hand. A library exports a function taking the manifest instead, which is the existing convention anyway.
+
+- [ ] **Make `describe` an inlinable over a `describe(type: Type)` primitive.** It splits like every other verb —
+      the token-taking primitive on `di.core`, the type-argument form as a `rhombus-std` marker `inline` entry in
+      `di.extras` lowering `describe<T>()` to `describe(typefor<T>())`. It is the first marker entry the builder
+      chain carries: the chain's other members (`asClass`/`asFactory`/`asValue`/`withLifetime`/`taggedAs`) have
+      none today, so the entry list and the barrel's re-export graph both grow a first builder-side member.
 - [ ] **Collapse the faces to `add<T>(implementer, scope?)`.** With the implementer type observed, no caller
       writes `ctorType`/`factoryType`. `libraries/di.extras/src/augmentations/Manifest-Descriptor-augmentations.ts`
       has this done for `add` (`:8`-`:10`) and not for `tryAdd`/`replace` (`:14`, `:15`, `:18`, `:19`), whose faces
