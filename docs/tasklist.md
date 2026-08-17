@@ -200,3 +200,28 @@ either way until one of them happens.
       written, `this: Manifest` pins the receiver at `Manifest<any>` and the bare `Manifest` returns drop `Scopes`,
       which also costs scope-name checking: `scope?: string` accepts any string where `scope?: Scopes` accepts only
       the manifest's declared scopes. The namespace bodies keep their `this:` — that is where it is load-bearing.
+
+## Comment sweep over the hand edits
+
+The working tree carries a large by-hand change set (108 files). Comments were not moved with the code they
+describe, so the sweep is over the whole diff, not the sites listed below — those are the ones already seen.
+
+Two rules the sweep applies:
+
+- **In an augmentation, the doc comment goes on the `declare module` face, never on the namespace or body.** The
+  face is what a caller reads and what the emitted `.d.ts` carries; the implementation is not. Where both carry
+  one, the body's goes. This belongs in `docs/features/augmentations.md`, which does not state it yet.
+- The comment bar in `CLAUDE.md` — a comment explains the code in front of the reader, never how it got there.
+
+Known sites:
+
+- [ ] `libraries/hosting.core/src/IHostBuilder.ts:55` — the doc explains `TContainerBuilder`, dropped from the
+      signature at `:60`. The sentence it justified ("so the delegate returns it") now points at
+      `configureServices` alone.
+- [ ] `libraries/hosting/src/HostBuilder.ts:62` — the implementation carries its own one-line doc duplicating the
+      interface's, and is still `configureContainer<TContainerBuilder>` with the `as` cast at `:66` after the field
+      at `:40` stopped being `unknown`.
+- [ ] `libraries/di.core/src/augmentations/ServiceScopeFactory-ServiceScope-augmentations.ts` — the member's doc
+      moved to the face correctly; the `Flatten` import at `:3` it left behind is dead.
+- [ ] `libraries/di.extras/src/augmentations/` — both faces carry no docs at all. The member documentation went out
+      with the namespaces when the bodies merged, and the face is where it belongs.
