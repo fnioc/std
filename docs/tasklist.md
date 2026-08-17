@@ -193,7 +193,7 @@ argument.
       ```
 
       This is what lets the flat verbs derive the implementer type without the author writing it, and it keeps one
-      body per member name per package. The argument is always the same constant for a value — see the `ValueType`
+      body per member name per package. The argument is always the same constant for a value — see the `ConstantType`
       item below, which is what makes the three-argument shape total rather than lossy for callables.
 
 ### Land the uniform `add` — descriptors as values, implementer type observed
@@ -227,24 +227,24 @@ chain step 2 exposes.
       writes `ctorType`/`factoryType`. `libraries/di.extras/src/augmentations/Manifest-Descriptor-augmentations.ts`
       has this done for `add` (`:8`-`:10`) and not for `tryAdd`/`replace` (`:14`, `:15`, `:18`, `:19`), whose faces
       still take the type argument their bodies never pass.
-- [ ] **The value door is `addValue`, and its implementer type is a bare `ValueType` marker.** A callable
+- [ ] **The value door is `addValue`, and its implementer type is a bare `ConstantType` marker.** A callable
       registered AS a value derives a `FunctionType` exactly like a factory does, so the kind is not recoverable
       from the node — and comparing the service type against the implementer's return does not rescue it: a
       factory returning a concrete (`makeHuzza(): Huzza` under `add<IHuzza>`) fails the equality, and a named
       callable alias fails the other branch, since `typefor<Comparator>()` NAMES while `typefor(value)` OBSERVES.
       Something has to carry the kind, and the call site is what knows it.
 
-      `ValueType` wraps nothing: a value registration has no signature to read, no injection list, and nothing to
+      `ConstantType` wraps nothing: a value registration has no signature to read, no injection list, and nothing to
       call, and the `value: T` face already checked assignability where nodes could not. It is a marker with only
       its kind, and the implementer slot becomes a three-way union in `di.core` —
-      `ConstructorType | FunctionType | ValueType` — so kind selection is a total switch with no equality tests.
+      `ConstructorType | FunctionType | ConstantType` — so kind selection is a total switch with no equality tests.
 
       ```ts
-      addValue<T>(v)  →  add(typefor<T>(), v, ValueType)      // one derived node, one constant
+      addValue<T>(v)  →  add(typefor<T>(), v, ConstantType)      // one derived node, one constant
       add<T>(ctor)    →  add(typefor<T>(), ctor, typefor(ctor))
       ```
 
-      `ValueType` lives in `di.core`, not the `Type` node space: every kind there answers WHAT TYPE THIS IS, and
+      `ConstantType` lives in `di.core`, not the `Type` node space: every kind there answers WHAT TYPE THIS IS, and
       this one answers how the implementer is used. A steering argument on `typefor` is not the answer either —
       the registration kind is a di concept and the primitive is domain-agnostic.
 - [ ] **Document the cast as the impl-type steering mechanism**, and its boundary. A cast changes the observed
@@ -260,10 +260,14 @@ chain step 2 exposes.
 
 - [ ] **`typefor<T>()` on a named type must type as the node it yields.** `TypeFor<T>` narrows only the two
       callable kinds and drops everything else to the full `Type` union, so `typefor<Type>()` types as `Type` when
-      the value is an `ImportedType`. A named type argument should type as its `ImportedType` (an ambient one as
-      its `GlobalType`), which means the fallback branch narrows to `NominalType`. Settle what `typefor` yields
-      for an unnamed type argument first: if naming is total the narrowing is unconditional, and if an anonymous
-      shape yields a structural node the fallback needs a branch for it.
+      the value is an `ImportedType`. A named type argument types as its `ImportedType` (an ambient one as its
+      `GlobalType`) — the fallback narrows to `NominalType`.
+
+      An unnamed type argument is not an error: `typefor<{ host: string }>()` yields an `ObjectType`, the same
+      structural node `schemaof` would build. So the narrowing needs a second branch for the structural kinds. A
+      sub-union over them (object/tuple/union/…) is available if it makes the conditional readable — narrow only
+      as far as a call site actually demands, and widen it later when one does. There is no demand today beyond
+      the named case.
 
 A `Keyed<Type, K>` sketch demonstrating the shape — a real service type carrying a key, with a value genuinely
 assignable to it, and the factory's own signature supplying its injection list:
