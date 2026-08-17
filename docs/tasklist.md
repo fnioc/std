@@ -193,8 +193,8 @@ argument.
       ```
 
       This is what lets the flat verbs derive the implementer type without the author writing it, and it keeps one
-      body per member name per package. A value that is itself a function reads as a factory under kind selection;
-      the builder's `asValue` door is the explicit spelling for that case.
+      body per member name per package. The argument is always the same constant for a value — see the `ValueType`
+      item below, which is what makes the three-argument shape total rather than lossy for callables.
 
 ### Land the uniform `add` — descriptors as values, implementer type observed
 
@@ -227,13 +227,26 @@ chain step 2 exposes.
       writes `ctorType`/`factoryType`. `libraries/di.extras/src/augmentations/Manifest-Descriptor-augmentations.ts`
       has this done for `add` (`:8`-`:10`) and not for `tryAdd`/`replace` (`:14`, `:15`, `:18`, `:19`), whose faces
       still take the type argument their bodies never pass.
-- [ ] **Decide how the value door is spelled, and make the emit follow the resolved overload.** The face already
-      separates them — `add<T>(factory: Func<any[], T>)` is a function RETURNING T, `add<T>(value: T)` is a
-      function that IS T — and TypeScript binds them correctly. The shared body then discards that: `typefor`
-      sees call signatures and emits a `FunctionType`, so the face says value and the emit says factory. Either
-      the emit varies by the overload the checker resolved (which #365's claiming already computes) or `addValue`
-      stays a verb of its own. A steering argument on `typefor` is not the answer — the registration kind is a di
-      concept and the primitive is domain-agnostic.
+- [ ] **The value door is `addValue`, and its implementer type is a bare `ValueType` marker.** A callable
+      registered AS a value derives a `FunctionType` exactly like a factory does, so the kind is not recoverable
+      from the node — and comparing the service type against the implementer's return does not rescue it: a
+      factory returning a concrete (`makeHuzza(): Huzza` under `add<IHuzza>`) fails the equality, and a named
+      callable alias fails the other branch, since `typefor<Comparator>()` NAMES while `typefor(value)` OBSERVES.
+      Something has to carry the kind, and the call site is what knows it.
+
+      `ValueType` wraps nothing: a value registration has no signature to read, no injection list, and nothing to
+      call, and the `value: T` face already checked assignability where nodes could not. It is a marker with only
+      its kind, and the implementer slot becomes a three-way union in `di.core` —
+      `ConstructorType | FunctionType | ValueType` — so kind selection is a total switch with no equality tests.
+
+      ```ts
+      addValue<T>(v)  →  add(typefor<T>(), v, ValueType)      // one derived node, one constant
+      add<T>(ctor)    →  add(typefor<T>(), ctor, typefor(ctor))
+      ```
+
+      `ValueType` lives in `di.core`, not the `Type` node space: every kind there answers WHAT TYPE THIS IS, and
+      this one answers how the implementer is used. A steering argument on `typefor` is not the answer either —
+      the registration kind is a di concept and the primitive is domain-agnostic.
 - [ ] **Document the cast as the impl-type steering mechanism**, and its boundary. A cast changes the observed
       signature's SHAPE — parameter rows, return, an overload row, a `Keyed<T, K>` slot naming a keyed
       registration the function's own parameters cannot — because derivation reads the checker's type for the
