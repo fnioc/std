@@ -264,10 +264,8 @@ chain step 2 exposes.
       `GlobalType`) — the fallback narrows to `NominalType`.
 
       An unnamed type argument is not an error: `typefor<{ host: string }>()` yields an `ObjectType`, the same
-      structural node `schemaof` would build. So the narrowing needs a second branch for the structural kinds. A
-      sub-union over them (object/tuple/union/…) is available if it makes the conditional readable — narrow only
-      as far as a call site actually demands, and widen it later when one does. There is no demand today beyond
-      the named case.
+      structural node `schemaof` would build. Narrow no further than that — the named case is the only one a call
+      site demands today, so everything else keeps falling back to `Type`.
 
 A `Keyed<Type, K>` sketch demonstrating the shape — a real service type carrying a key, with a value genuinely
 assignable to it, and the factory's own signature supplying its injection list:
