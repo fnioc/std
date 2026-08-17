@@ -98,18 +98,6 @@ blessing may cover only a portion of the document, and only that portion is rele
 simply ends where the tasklist ended — report that async/scope was not released, and stop. That is a normal
 ending, not a failure, and it takes nothing away from the work above.
 
-## Descriptor validity
-
-- [ ] **Make implementer/serviceType assignability gospel.** Author the entry in `decisions.user.md`:
-
-  > A descriptor's implementer must produce a value assignable to its `serviceType` — the value itself for a
-  > value registration, the construct result for a ctor, the call result for a factory. A registration whose
-  > declared type no value of it satisfies is invalid, not merely unusual. This is what makes validation
-  > possible at all: without it the descriptor graph carries no checkable claim.
-
-- [ ] **Audit existing registrations against the rule** once it is gospel. The sentinel slots below are the known
-      violations; there may be others.
-
 ## Finish converting `Type | string` away (U6)
 
 A parameter that names a type takes a `Type` and nothing else; a consumer holding a string writes `Type.from(...)`
