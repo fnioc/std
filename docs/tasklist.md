@@ -349,6 +349,16 @@ Known sites:
 
 ## Housekeeping
 
+- [ ] **`libraries/hosting/tsconfig.ci.json` names a package that does not exist** —
+      `"types": ["@rhombus-std/di.core.extras"]`, where the package (and the devDependency beside it) is
+      `@rhombus-std/di.extras`. That config is what `build` and `lint` run and what `tsconfig.ttsc.json` extends,
+      so it fails with TS2688 before the augmentation is ever consulted. `libraries/hosting/tsconfig.json` has the
+      name right.
+- [ ] **OWNER-GATED — do not decide in the run.** `libraries/hosting.core/src/IHostApplicationBuilder.ts:51` still
+      declares `configureContainer<TContainerBuilder>(configure?: Action<[TContainerBuilder]>): void` after the
+      same parameter was dropped from `IHostBuilder`. Its shape differs (an `Action`, returning `void`), so whether
+      it follows is a design question, not a consistency sweep. Leave it alone and report it.
+
 - [ ] **`libraries/di/smoke.ts` leaves the package.** It is a hand-run script (`bun smoke.ts`, "not part of any
       gate") sitting at a library's root, so nothing runs it and nothing notices when it rots. Its checks are not
       throwaway, though — tuple resolution, union member-vs-whole matching, open-generic closing, latebound
