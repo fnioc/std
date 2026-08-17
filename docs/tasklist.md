@@ -101,6 +101,47 @@ argument.
       body per member name per package. A value that is itself a function reads as a factory under kind selection;
       the builder's `asValue` door is the explicit spelling for that case.
 
+### Land the uniform `add` — descriptors as values, implementer type observed
+
+The verbs converge on one shape: the author names the SERVICE type and hands over the implementer; the implementer
+TYPE is observed from it. Every `add` door then shares one sugar body, and the only thing choosing ctor vs factory
+vs value is the kind of the observed type. Sequence this after the two items above — the value descriptor's
+implementer-type argument is what makes the three doors uniform, and the type-door collapse reshapes the very
+chain step 2 exposes.
+
+- [ ] **Drop the `add(configure)` lambda overload.** It is the one `add` shape whose second argument is not an
+      implementer, so `typefor(value)` would observe the CALLBACK and derive a factory type for it — the single
+      thing preventing a uniform body. `IComplete` stops being a marker on a callback's return and becomes
+      ordinary assignability at the argument position.
+- [ ] **Export the descriptor builder as a value producer.** Its terminal is a `ServiceDescriptor`, handed to the
+      descriptor-taking primitive that already exists. Descriptors become first-class: built in a helper, held in
+      a variable, iterated. Undecided — the builder factory takes the manifest, the manifest hands out the
+      builder, or (no threading) the descriptor carries its scope as `ServiceDescriptor<S>` and
+      `Manifest<Scopes>.add` accepts only `ServiceDescriptor<Scopes>`, with an unscoped descriptor's `never`
+      making the plain case fall out. The third is the only one under which a library can author a descriptor at
+      module scope without a manifest in hand.
+- [ ] **Collapse the faces to `add<T>(implementer, scope?)`.** With the implementer type observed, no caller
+      writes `ctorType`/`factoryType`. `libraries/di.extras/src/augmentations/Manifest-Descriptor-augmentations.ts`
+      has this done for `add` (`:8`-`:10`) and not for `tryAdd`/`replace` (`:14`, `:15`, `:18`, `:19`), whose faces
+      still take the type argument their bodies never pass.
+- [ ] **Decide how the value door is spelled, and make the emit follow the resolved overload.** The face already
+      separates them — `add<T>(factory: Func<any[], T>)` is a function RETURNING T, `add<T>(value: T)` is a
+      function that IS T — and TypeScript binds them correctly. The shared body then discards that: `typefor`
+      sees call signatures and emits a `FunctionType`, so the face says value and the emit says factory. Either
+      the emit varies by the overload the checker resolved (which #365's claiming already computes) or `addValue`
+      stays a verb of its own. A steering argument on `typefor` is not the answer — the registration kind is a di
+      concept and the primitive is domain-agnostic.
+- [ ] **Document the cast as the impl-type steering mechanism**, and its boundary. A cast changes the observed
+      signature's SHAPE — parameter rows, return, an overload row, a `Keyed<T, K>` slot naming a keyed
+      registration the function's own parameters cannot — because derivation reads the checker's type for the
+      argument expression. It cannot change the KIND: every type a callable is assignable to still carries call
+      signatures, so crossing the value/factory line needs a double assertion that misdescribes the value. Kind
+      is chosen by the door, shape by the cast. A stale cast silently rewrites the injection list, which is the
+      failure worth calling out at the call site.
+- [ ] **Restate the termination rule.** The sugar is now TWO arguments shorter than the primitive, not one — type
+      and implementer type are both derived. Termination still holds because the emitted call binds a different
+      overload; the wording above ("exactly one argument shorter") describes a shape this supersedes.
+
 - [ ] **`typefor<T>()` on a named type must type as the node it yields.** `TypeFor<T>` narrows only the two
       callable kinds and drops everything else to the full `Type` union, so `typefor<Type>()` types as `Type` when
       the value is an `ImportedType`. A named type argument should type as its `ImportedType` (an ambient one as
