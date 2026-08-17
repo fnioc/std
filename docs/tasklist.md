@@ -23,8 +23,11 @@ local workers rather than skipping the verification.
 whole as a savepoint at **`3a958efa`** (parent **`6351145f`**, the last docs-only revision; also on origin as
 `wip-274-savepoint`, so the work survives the rollback no matter what). Before anything else:
 
+0. **If the working tree is dirty, commit it first** — another `--no-verify` savepoint on top of the tip. Step 2
+   is a `--hard` reset and would destroy anything uncommitted. Nothing is triaged, reviewed, or discarded here;
+   whatever is in the tree at 22:05 is part of the work being lifted.
 1. `git worktree add ../std@fnioc+<name> -b <feat-branch> <current tip of IServiceManifest-repair>` — the tip, not
-   `3a958efa` literally, so anything committed between 2026-08-16 and the run comes along. Branch named for the
+   `3a958efa` literally, so everything committed between 2026-08-16 and the run comes along. Branch named for the
    work (`feat-…`/`fix-…`), never `agent-<id>`.
 2. `git reset --hard 6351145f` on `IServiceManifest-repair` — UNDO the commits, do not `git revert` them. No new
    commit rewrites the old state; the branch's history simply no longer contains it. `origin/IServiceManifest-repair`
