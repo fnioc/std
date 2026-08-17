@@ -19,6 +19,30 @@ out from GitHub and cannot see the local tree, so the orchestrator COMMITS AND P
 and pushing freely to enable this is authorized. If remote isolation is unavailable at run time, fall back to
 local workers rather than skipping the verification.
 
+**First action of the run — lift the in-flight work off this branch.** The uncommitted repattern was committed
+whole as a savepoint at **`3a958efa`** (parent **`6351145f`**, the last docs-only revision; also on origin as
+`wip-274-savepoint`, so the work survives the rollback no matter what). Before anything else:
+
+1. `git worktree add ../std@fnioc+<name> -b <feat-branch> <current tip of IServiceManifest-repair>` — the tip, not
+   `3a958efa` literally, so anything committed between 2026-08-16 and the run comes along. Branch named for the
+   work (`feat-…`/`fix-…`), never `agent-<id>`.
+2. `git reset --hard 6351145f` on `IServiceManifest-repair` — UNDO the commits, do not `git revert` them. No new
+   commit rewrites the old state; the branch's history simply no longer contains it. `origin/IServiceManifest-repair`
+   is at `6351145f` today, so this needs no force-push — unless someone pushed past it in the interim, in which
+   case force-push.
+
+The run then works IN that worktree. The savepoint's work and the run's own work return together as a PR into
+`IServiceManifest-repair`, which is how "merge into #274" happens — through the PR, not a direct merge. Changes
+the run is unsure about still go to their OWN separate worktrees, unmerged and un-PR'd, reported by branch name.
+
+This procedure was written ABOVE the savepoint, so `6351145f` carries an older copy of this file. After the reset,
+the authoritative tasklist is the WORKTREE's — do not re-read the main checkout's copy and conclude anything went
+missing.
+
+The savepoint does not build or even format — it was committed with `--no-verify`. One known break:
+`tests/diagnostics.test/test/listener-config-factory.test.ts:75` has a stray `Manifest<any>` pasted ahead of a
+`let manifest: Manifest = new DefaultManifest();`. Others are expected; finding and fixing them is the job.
+
 **Order.** Apply every requirement in this doc, then work through whatever build errors remain.
 
 Permitted with no discussion:
