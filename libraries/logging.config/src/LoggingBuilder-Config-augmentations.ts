@@ -59,7 +59,7 @@ export namespace LoggingBuilderConfigAugmentations {
     // The LoggerFilterOptions pipeline: the offer + a custom configure step +
     // the reload change-token source.
     const optionsType = typefor<LoggerFilterOptions>();
-    this.services = this.services.addOptions<LoggerFilterOptions>(optionsType, () => new LoggerFilterOptions());
+    this.services = this.services.addOptions(optionsType, () => new LoggerFilterOptions());
     this.services = this.services.add(configureStepType(optionsType), new LoggerFilterConfigureOptions(config));
     this.services = this.services.add(changeTokenSourceType(optionsType), new ConfigChangeTokenSource(config));
 
