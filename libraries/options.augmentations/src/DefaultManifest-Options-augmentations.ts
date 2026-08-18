@@ -73,15 +73,19 @@ const DEFAULT_VALIDATION_FAILURE_MESSAGE = 'A validation error has occurred.';
 export namespace ServiceManifestOptionsAugmentations {
   export function addOptions(this: Manifest<string>, type: Type): Manifest<string>;
   export function addOptions(this: Manifest<string>, type: Type, makeBase?: Func<[], any>): Manifest<string> {
-    const m = ensureOpenOptions(this);
+    const manifest = ensureOpenOptions(this);
     // Both forms fill the same base slot, which is what offers this type; they
     // differ only in where the base value comes from. Given a factory it is
     // that factory; given nothing, the base is whatever `any` itself resolves
     // to, injected here so the resolution is the container's, not ours.
     if (makeBase) {
-      return m.add(baseFactoryType(type), makeBase);
+      return manifest.add(baseFactoryType(type), makeBase);
     }
-    return m.add(baseFactoryType(type), (value: any): Func<[], any> => () => value, Type.func(baseFactoryType(type), [[type]]));
+    return manifest.add(
+      baseFactoryType(type),
+      (value: any) => () => value,
+      Type.func({ return: baseFactoryType(type), args: [[type]] }),
+    );
   }
 
   export function postConfigure(this: Manifest<string>, type: Type, step: IPostConfigureOptions<any> | Func<[any], void>): Manifest<string>;
