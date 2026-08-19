@@ -42,6 +42,15 @@
       "command": "git pull && bun install",
       "runOptions": { "runOn": "folderOpen" },
       "problemMatcher": []
+    },
+    {
+      "label": "install watch",
+      "type": "shell",
+      "command": "bun scripts/install-watch.ts",
+      "isBackground": true,
+      "runOptions": { "runOn": "folderOpen" },
+      "presentation": { "reveal": "silent", "panel": "dedicated" },
+      "problemMatcher": []
     }
   ]
 }
