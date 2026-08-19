@@ -119,10 +119,15 @@
   direction (manifest off scope engine) is prescribed.
 - If `undefined` is NOT in the engine's lifetime union, leaving a registration's scope unset is a
   COMPILE ERROR — optionality of the lifetime argument follows `undefined ∈ TLifetime` exactly.
-  **OPEN fork:** rely on undefined-in-union alone, vs a `transientWithoutScope` option existing
-  independently of the model's union. Interaction to resolve with it: the invocation lane requires
-  a user-facing always-create escape in EVERY model — under a union without `undefined` and no
-  independent option, per-call freshness would be inexpressible.
+- **OPEN — the `transientWithoutScope` proposal (owner idea):** an option that flips OWNERSHIP of
+  `undefined`. Without it, `undefined` is model territory: in the union ⇒ omission legal, and the
+  model's door defines what undefined means. With it, `undefined` is ENGINE-owned: it means
+  transient-without-scope, the door is never consulted for such sites, and scope engines are
+  relieved of specifying `undefined` in their unions to keep transient expressible. The proposal
+  is also the model-independent always-create guarantee the invocation lane requires (frames
+  consume it as the general mechanism). Residual nuance for the ruling: the option's default —
+  under option-off with a union lacking `undefined`, per-call freshness has no user-facing
+  spelling.
 - The default model's vocabulary: a small interned kind-tagged union — `undefined` (transient) |
   `singleton` | `scoped` | `matching(tag)` — strategy and parameter as separate fields, so the tag
   namespace holds only user tags, no reserved values. **(proposed)**
@@ -281,8 +286,8 @@ first client:
    (per-item streaming over the sync path's iterable resolution, outside the gather); per-boundary
    gather islands' interaction with the hoist's scope-cache checks; whether the visitor-context
    `async` flag (owner's candidate) is the fallback-gating mechanism.
-6. The undefined-in-union vs `transientWithoutScope` fork, and its interaction with the
-   invocation lane's required always-create escape.
+6. The `transientWithoutScope` ruling: whether the option exists, and its default/engagement rule
+   (the invocation lane's always-create requirement rides on it when a union lacks `undefined`).
 7. Captive-dependency validation: the lifetime-ordering declaration hook in the scope contract.
 8. Disposal design proper (contract + default model), including `using`-protocol support.
 9. ManifestScope dialect (spelling of private registration; deep-override verb naming) and the
