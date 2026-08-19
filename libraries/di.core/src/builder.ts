@@ -43,7 +43,7 @@ interface IAsImplementer<T, Scopes extends string, Slots extends Slot, Ready ext
 interface IWithImplementerType<T, ImplementerNode extends Type, Scopes extends string, Slots extends Slot> {
   /** The parameter types the implementer is handed, in order — the address supplies the rest. */
   withSignature(
-    ...paramTypes: Array<Type | string>
+    ...paramTypes: readonly Type[]
   ): ServiceDescriptorBuilder<T, ImplementerNode, Scopes, Exclude<Slots, 'implementerType'>, true>;
 
   /**
@@ -51,7 +51,7 @@ interface IWithImplementerType<T, ImplementerNode extends Type, Scopes extends s
    * a list of parameter types in order.
    */
   withSignatures(
-    ...signatures: ReadonlyArray<ReadonlyArray<Type | string>>
+    ...signatures: ReadonlyArray<readonly Type[]>
   ): ServiceDescriptorBuilder<T, ImplementerNode, Scopes, Exclude<Slots, 'implementerType'>, true>;
 
   /**
@@ -87,7 +87,7 @@ export type ServiceDescriptorBuilderFor<T, Scopes extends string> = ServiceDescr
 
 /** How the implementer's call shape was named — through one door or the other, never both. */
 export type ImplementerShape =
-  | { readonly kind: 'signatures'; readonly signatures: ReadonlyArray<ReadonlyArray<Type | string>>; }
+  | { readonly kind: 'signatures'; readonly signatures: ReadonlyArray<readonly Type[]>; }
   | { readonly kind: 'type'; readonly implementerType: Type; };
 
 /** What a configured lambda leaves behind, ready to become a descriptor. */
@@ -142,11 +142,11 @@ class PendingRegistration<Scopes extends string> implements BuilderState<Scopes>
     return this.#with({ implementer: { kind: 'value', value } });
   }
 
-  withSignature(...paramTypes: Array<Type | string>) {
+  withSignature(...paramTypes: readonly Type[]) {
     return this.#withShape({ kind: 'signatures', signatures: [paramTypes] });
   }
 
-  withSignatures(...signatures: ReadonlyArray<ReadonlyArray<Type | string>>) {
+  withSignatures(...signatures: ReadonlyArray<readonly Type[]>) {
     return this.#withShape({ kind: 'signatures', signatures });
   }
 
@@ -250,7 +250,7 @@ export type DescribeArgs<Scopes extends string> = [configure: Func<[ServiceDescr
 // | [implementer: Ctor | Func, implementerType: ConstructorType | FunctionType, scope?: Scopes, key?: string];
 
 /** The descriptor these arguments describe, whichever of the two forms they take. */
-// export function describe<Scopes extends string>(type: Type | string, ...args: DescribeArgs<Scopes>): ServiceDescriptor<Scopes> {
+// export function describe<Scopes extends string>(type: Type, ...args: DescribeArgs<Scopes>): ServiceDescriptor<Scopes> {
 //   const configured = args.length === 1
 //     ? runBilder<Scopes>(args[0])
 //    : stateSteps<Scopes>(args[0], args[1], args[2], args[3]);

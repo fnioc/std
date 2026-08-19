@@ -13,8 +13,7 @@ import type { Ctor, Func } from '@rhombus-toolkit/func';
 
 import { Type } from '../Type/index.js';
 import { getOrCreate } from '../utils/map.js';
-import { applyAugmentations, type AugmentationSet, type MergeStrategies,
-  type MergeStrategy } from './apply-augmentations.js';
+import { applyAugmentations, type AugmentationSet, type MergeStrategies, type MergeStrategy } from './apply-augmentations.js';
 
 /** A `this`-based augmentation method whose receiver type is erased in the bag. */
 type AugmentationFn = Func<never[], unknown>;
@@ -54,15 +53,16 @@ const subscribers = new Map<Type, DeltaInstaller[]>();
  * @throws TypeParseError - when a string receiver does not spell a type.
  * @throws TypeError - when the receiver names a shape rather than a declaration.
  */
-export function registerAugmentations<R>(receiver: Type | string, set: AugmentationSet<R>,
-  merge?: MergeStrategies<R>): void {
-  const type = receiverType(receiver);
-  const bag = getOrCreate(bags, type, (): Bag => new Map());
+export function registerAugmentations<R>(receiver: Type, set: AugmentationSet<R>, merge?: MergeStrategies<R>): void {
+  if (!Type.isIdentifier(receiver)) {
+    throw new TypeError(`an augmentation receiver names a declaration, and \`${Type.stringify(receiver)}\` names a shape`);
+  }
+  const bag = getOrCreate(bags, receiver, (): Bag => new Map());
   for (const [name, fn] of Object.entries(set as Record<string, AugmentationFn>)) {
-    getOrCreate(bag, name, (): Contribution[] => []).push([fn, merge?.[name]]);
+    getOrCreate(bag, name, () => []).push([fn, merge?.[name]]);
   }
 
-  const installers = subscribers.get(type);
+  const installers = subscribers.get(receiver);
   if (installers !== undefined) {
     for (const install of installers) {
       install(set as AugmentationSet<any>, merge);
@@ -84,19 +84,21 @@ export function registerAugmentations<R>(receiver: Type | string, set: Augmentat
  * @throws TypeParseError - when a string receiver does not spell a type.
  * @throws TypeError - when the receiver names a shape rather than a declaration.
  */
-export function augment(receiver: Type | string) {
-  const type = receiverType(receiver);
+export function augment(receiver: Type) {
+  if (!Type.isIdentifier(receiver)) {
+    throw new TypeError(`an augmentation receiver names a declaration, and \`${Type.stringify(receiver)}\` names a shape`);
+  }
   return function installOnClass<C extends { readonly prototype: object; }>(Ctor: C, _context?: unknown): void {
     const target = Ctor as unknown as Ctor<any[], any>;
 
-    const installers = getOrCreate(subscribers, type, () => []);
+    const installers = getOrCreate(subscribers, receiver, () => []);
     installers.push(function(set: AugmentationSet<any>, merge: MergeStrategies<any> | undefined) {
       applyAugmentations(target, set, merge);
     });
 
     // Catch-up replays each name's contributions in registration order, so an
     // accumulated same-name pair collides here exactly as it would at dispatch.
-    const bag = bags.get(type);
+    const bag = bags.get(receiver);
     if (bag !== undefined) {
       for (const [name, contributions] of bag) {
         for (const [fn, strategy] of contributions) {
@@ -116,12 +118,11 @@ export function augment(receiver: Type | string) {
  * members land on; a union, a signature or an aggregate describes a shape instead, and there is no
  * declaration behind it to install onto — a bag under one could only ever sit empty.
  */
-function receiverType(receiver: Type | string): Type {
-  const type = typeof receiver === 'string' ? Type.from(receiver) : receiver;
-  if (!Type.isIdentifier(type)) {
+function receiverType(receiver: Type): Type {
+  if (!Type.isIdentifier(receiver)) {
     throw new TypeError(
-      `an augmentation receiver names a declaration, and \`${Type.stringify(type)}\` names a shape`,
+      `an augmentation receiver names a declaration, and \`${Type.stringify(receiver)}\` names a shape`,
     );
   }
-  return type;
+  return receiver;
 }

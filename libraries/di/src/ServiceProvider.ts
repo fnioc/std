@@ -30,7 +30,7 @@ export class ServiceProvider {
    * when a dependency may legitimately not be there. A registration that exists but cannot be
    * built still throws — that is a broken graph, not an absent service.
    */
-  getService(type: Type | string): any;
+  getService(type: Type): any;
   /**
    * Constructs `ctor` fresh, its dependencies resolved from `type` — `ctor`'s own parameter
    * types, in order.
@@ -49,17 +49,17 @@ export class ServiceProvider {
    */
   getService<R>(type: FunctionType, func: Func<any[], R>): R;
   getService(
-    ...args: [type: Type | string] | [type: ConstructorType, ctor: Ctor] | [type: FunctionType, func: Func]
+    ...args: [type: Type] | [type: ConstructorType, ctor: Ctor] | [type: FunctionType, func: Func]
   ): any {
     const [type, value] = args;
     if (value !== undefined) {
       return this.#getServiceFromValue(type as ConstructorType | FunctionType, value);
     }
-    const target = typeof type === 'string' ? Type.from(type) : type;
+
     try {
-      return this.#engine.resolve(target, { serviceProvider: this });
+      return this.#engine.resolve(type, { serviceProvider: this });
     } catch (error) {
-      if (error instanceof UnsatisfiableError && error.type === target) {
+      if (error instanceof UnsatisfiableError && error.type === type) {
         return undefined;
       }
       throw error;
@@ -86,7 +86,7 @@ export class ServiceProvider {
    * disposal model this depends on is still undecided.
    * @throws {NotImplementedError} always, until that model is decided.
    */
-  tryResolve(_type: Type | string): any {
+  tryResolve(_type: Type): any {
     return notImplemented('tryResolve');
   }
 
@@ -96,7 +96,7 @@ export class ServiceProvider {
    * disposal model this depends on is still undecided.
    * @throws {NotImplementedError} always, until that model is decided.
    */
-  resolveAsync(_type: Type | string): Promise<any> {
+  resolveAsync(_type: Type): Promise<any> {
     return notImplemented('resolveAsync');
   }
 

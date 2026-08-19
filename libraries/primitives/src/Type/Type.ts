@@ -161,7 +161,7 @@ export namespace Type {
   export namespace Signatures {
     /** Parameter rows as the node takes them, each token read into the type it spells. */
     export function from(signatures: ReadonlyArray<ReadonlyArray<Type | string>>): Signatures {
-      return signatures.map(row => row.map(param => typeof param === 'string' ? Type.from(param) : param));
+      return signatures.map(row => row.map(param => typeof param === 'string' ? Type.from(param) : adopt(param)));
     }
   }
   /**
@@ -263,8 +263,8 @@ export namespace Type {
     /** Every token that has already been read, so a repeated request skips the lexer. */
     const parsed = new Map<string, Type>();
 
-    return function from(token: string): Type {
-      return getOrCreate(parsed, token, parseTypeString);
+    return function from(type: string | Type): Type {
+      return typeof type === 'string' ? getOrCreate(parsed, type, parseTypeString) : adopt(type);
     };
   })();
 
