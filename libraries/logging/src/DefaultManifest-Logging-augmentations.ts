@@ -11,7 +11,7 @@
 // `import "@rhombus-std/logging";`.
 //
 // What it registers:
-//   - the LoggerFilterOptions pipeline, offered at LOGGER_FILTER_OPTIONS_TYPE;
+//   - the LoggerFilterOptions pipeline, offered at typefor<LoggerFilterOptions>();
 //   - a default configure step pinning the min level to `Information`;
 //   - the singleton `ILoggerFactory -> LoggerFactory`, injected with the
 //     enumerable provider set and the assembled `IOptions<LoggerFilterOptions>`;
@@ -29,16 +29,17 @@
 import '@rhombus-std/options.augmentations';
 
 import type { DefaultManifest, Manifest } from '@rhombus-std/di.core';
-import { type ILoggingBuilder, Logger as LoggerOfT, LogLevel } from '@rhombus-std/logging.core';
+import { ILoggerFactory, ILoggerProvider, type ILoggingBuilder, Logger as LoggerOfT, LogLevel } from '@rhombus-std/logging.core';
+import { IOptions } from '@rhombus-std/options';
 import { configureStepType } from '@rhombus-std/options.augmentations';
 import { Type } from '@rhombus-std/primitives';
-import { registerAugmentations } from '@rhombus-std/primitives.extras';
+import { registerAugmentations, typefor } from '@rhombus-std/primitives.extras';
 import type { Func } from '@rhombus-toolkit/func';
 import { DefaultLoggerLevelConfigureOptions } from './DefaultLoggerLevelConfigureOptions';
 import { LoggerFactory } from './LoggerFactory';
 import { LoggerFilterOptions } from './LoggerFilterOptions';
 import { LoggingBuilder } from './LoggingBuilder';
-import { LOGGER_FACTORY_TYPE, LOGGER_FILTER_OPTIONS_ACCESSOR_TYPE, LOGGER_FILTER_OPTIONS_TYPE, LOGGER_PROVIDER_TYPE } from './types';
+// import type { ILoggerFactory, ILoggerProvider } from '@rhombus-std/logging.core';
 
 // Registered against the `ServiceManifest` augmentation token — the concrete
 // `DefaultManifest`, decorated with `@augment(typefor<Manifest>())`
@@ -53,12 +54,12 @@ export namespace ServiceManifestLoggingAugmentations {
    */
   export function addLogging(this: Manifest<string>, configure?: Func<[ILoggingBuilder], void>): Manifest<string> {
     // The LoggerFilterOptions assembly + its default (Information) min level.
-    let m: Manifest<string> = this.addOptions<LoggerFilterOptions>(LOGGER_FILTER_OPTIONS_TYPE, () => new LoggerFilterOptions());
-    m = m.add(configureStepType(LOGGER_FILTER_OPTIONS_TYPE), new DefaultLoggerLevelConfigureOptions(LogLevel.Information));
+    let m: Manifest<string> = this.addOptions(typefor<LoggerFilterOptions>(), () => new LoggerFilterOptions());
+    m = m.add(configureStepType(typefor<LoggerFilterOptions>()), new DefaultLoggerLevelConfigureOptions(LogLevel.Information));
 
     // ILoggerFactory, injected with the enumerable provider set and the
     // assembled IOptions<LoggerFilterOptions>.
-    m = m.add(LOGGER_FACTORY_TYPE, LoggerFactory, Type.ctor(LOGGER_FACTORY_TYPE, [[Type.array(LOGGER_PROVIDER_TYPE), LOGGER_FILTER_OPTIONS_ACCESSOR_TYPE]]), 'singleton');
+    m = m.add(typefor<ILoggerFactory>(), LoggerFactory, Type.ctor(typefor<ILoggerFactory>(), [[Type.array(typefor<ILoggerProvider>()), typefor<IOptions<LoggerFilterOptions>>()]]), 'singleton');
 
     // The open ILogger<$1> -> Logger<$1> registration: the closing type flows
     // in through the `$1` placeholder, from which Logger<T> derives its category.
@@ -70,7 +71,7 @@ export namespace ServiceManifestLoggingAugmentations {
     // template matches.
     const hole = Type.generic('$1');
     const openLoggerType = Type.imported('ILogger', '@rhombus-std/logging.core', [hole]);
-    m = m.add(openLoggerType, LoggerOfT, Type.ctor(openLoggerType, [[LOGGER_FACTORY_TYPE, hole]]), 'singleton');
+    m = m.add(openLoggerType, LoggerOfT, Type.ctor(openLoggerType, [[typefor<ILoggerFactory>(), hole]]), 'singleton');
 
     // `builder.services` is a MUTABLE field (LoggingBuilder, this package): the
     // `configure` delegate mutates the builder in place
