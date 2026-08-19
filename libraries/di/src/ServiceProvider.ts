@@ -2,6 +2,7 @@ import { Manifest, ServiceDescriptor, UnsatisfiableError } from '@rhombus-std/di
 import { augment, type ConstructorType, type FunctionType, type IServiceProvider, NotImplementedError, Type } from '@rhombus-std/primitives';
 import { typefor } from '@rhombus-std/primitives.extras';
 import type { Ctor, Func } from '@rhombus-toolkit/func';
+import { assertNever } from '@rhombus-toolkit/type-guards';
 import { Engine } from './internal/Engine.js';
 import { ServiceProviderOptions } from './ServiceProviderOptions.js';
 
@@ -80,9 +81,16 @@ export class ServiceProvider {
    * node's own parameter rows are therefore the calls the engine may build it through.
    */
   #getServiceFromValue(type: ConstructorType | FunctionType, value: Ctor | Func): any {
-    const descriptor = type.kind === 'ctor'
-      ? ServiceDescriptor.ctor(type, value as Ctor, type)
-      : ServiceDescriptor.factory(type, value as Func, type);
+    const descriptor = (() => {
+      switch (type.kind) {
+        case 'ctor':
+          return ServiceDescriptor.ctor(type, value as Ctor, type);
+        case 'func':
+          return ServiceDescriptor.factory(type, value as Func, type);
+        default:
+          return assertNever(type);
+      }
+    })();
     return this.#engine.resolve(type, { serviceProvider: this, additionalServices: [descriptor] });
   }
 
@@ -93,7 +101,7 @@ export class ServiceProvider {
    * @throws {NotImplementedError} always, until that model is decided.
    */
   tryResolve(_type: Type): any {
-    return notImplemented('tryResolve');
+    throw new NotImplementedError(`ServiceProvider.tryResolve`);
   }
 
   /**
@@ -103,7 +111,7 @@ export class ServiceProvider {
    * @throws {NotImplementedError} always, until that model is decided.
    */
   resolveAsync(_type: Type): Promise<any> {
-    return notImplemented('resolveAsync');
+    throw new NotImplementedError(`ServiceProvider.resolveAsync`);
   }
 
   /** Disposes every scope opened from this provider, most recently opened first. */
@@ -115,13 +123,4 @@ export class ServiceProvider {
   disposeAsync(): Promise<void> {
     return this.#engine.disposeAsync();
   }
-}
-
-/**
- * Stands in for a member that is declared so callers can be written against it, but has no
- * behaviour yet. Reaching one is a fault in the caller's expectations, not a resolution failure,
- * so it is a plain error rather than anything the container taxonomy would invite you to catch.
- */
-function notImplemented(member: string): never {
-  throw new NotImplementedError(`ServiceProvider.${member}`);
 }

@@ -1,8 +1,8 @@
 import { type Manifest } from '@rhombus-std/di.core';
 import { registerAugmentations } from '@rhombus-std/primitives.extras';
 import type { Flatten } from '@rhombus-toolkit/type-helpers';
-import { ServiceProvider } from './ServiceProvider.js';
-import { ServiceProviderOptions } from './ServiceProviderOptions.js';
+import { ServiceProvider } from '../ServiceProvider.js';
+import { ServiceProviderOptions } from '../ServiceProviderOptions.js';
 
 /** Sealing a manifest into the provider that resolves against it. */
 export namespace ManifestContainerBuilderAugmentations {
