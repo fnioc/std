@@ -30,6 +30,7 @@ export class ServiceProvider {
    * when a dependency may legitimately not be there. A registration that exists but cannot be
    * built still throws — that is a broken graph, not an absent service.
    */
+  getService(): any;
   getService(type: Type): any;
   /**
    * Constructs `ctor` fresh, its dependencies resolved from `type` — `ctor`'s own parameter
@@ -49,13 +50,18 @@ export class ServiceProvider {
    */
   getService<R>(type: FunctionType, func: Func<any[], R>): R;
   getService(
-    ...args: [type: Type] | [type: ConstructorType, ctor: Ctor] | [type: FunctionType, func: Func]
+    ...args: [] | [type: Type] | [type: ConstructorType, ctor: Ctor] | [type: FunctionType, func: Func]
   ): any {
+    if (!arguments.length) {
+      throw "illegal invocation. this no arg, no generic signature is present just to make ts happy. consumes should be viewing this type through the IServiceProvider interface and therefor shouldn't have been able to call it";
+    }
     const [type, value] = args;
     if (value !== undefined) {
       return this.#getServiceFromValue(type as ConstructorType | FunctionType, value);
     }
-
+    if (!type) {
+      throw 'null argument';
+    }
     try {
       return this.#engine.resolve(type, { serviceProvider: this });
     } catch (error) {
