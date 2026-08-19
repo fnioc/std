@@ -41,13 +41,23 @@
   Promise node and forwards through the one door — NOTHING ELSE; all machinery lives in the
   promise-call-site handling. The async call-site node's shape is this session's design
   deliverable.
-- Candidate mechanism (owner IDEA — "I'm thinking", not ruled; the ancestor-boundary rule above is
-  the requirement, this is one implementation of it): the plan-construction visitor context
-  carries an `async` boolean — set under a promise ancestor; only while it is true does a miss on
-  `T` fall back to a `Promise<T>` lookup (minting the async site). Outside any boundary the
-  fallback never fires, which is what makes the sync door's failure honest. Caveat riding with it:
-  if sub-plans are ever memoized per type, the flag joins that memo key (the same subtree plans
-  differently inside vs outside a boundary); per-root plans need only the visitor state.
+- Mechanism (owner-designed): the plan-construction visitor context carries a COLLECTION of async
+  sites. Every call site minted on a promise fallback is collected into the current collection; a
+  node that is a new async boundary walks its descendants with a CLEAN collection and, when that
+  walk returns, owns its island's inventory — assigned once, so nodes stay immutable after
+  construction. Collection-presence is the fallback gate (a miss on `T` falls back to a
+  `Promise<T>` lookup iff a collection exists); an empty collection marks a fully-sync island and
+  skips the async machinery outright. The collection is the plan-time island inventory; the
+  identity-keyed per-resolution map is unchanged at resolve time — static inventory per island,
+  per-resolution values. Caveat: if sub-plans are ever memoized per type, boundary context joins
+  that memo key; per-root plans need only the walk state.
+- THE SYNC DOOR HAS NO ASYNC FAILURE MODE (owner-ruled): outside a boundary the fallback never
+  fires, so a graph needing it just MISSES like any other unregistered dependency — an ordinary
+  `UnsatisfiableError`, no async-specific taxonomy member, no "surviving async site" concept.
+  Consequence, struck knowingly: the former "a fully-cached async graph resolves through the sync
+  entrypoint" corollary is dead — plans are pure and cache-independent, so the sync plan for such
+  a graph does not exist regardless of cache warmth. Hit-skips survives fully WITHIN islands (a
+  cache hit still skips the factory and its await).
 - The compositions stay distinct and both remain expressible: `Promise<Iterable<E>>` = the whole
   collection delivered later, then sync iteration; `AsyncIterable<E>` = per-item streaming, each
   element resolving at iteration time.
@@ -61,9 +71,10 @@
   the inventory. An ancestor hit prunes its descendant async sites (their values live inside the
   cached instance); an ancestor miss shifts their context. The flat inventory survives only as an
   upper-bound index ("does this plan contain async at all" — the cheap skip for fully-sync graphs).
-- Static inventory vs dynamic effective set: each resolution filters the plan's inventory through
-  the asking scope; the sync entrypoint is the case where the effective set filters to empty. A
-  fully-cached async graph resolves through the sync door.
+- Static inventory vs dynamic effective set: each resolution filters an island's inventory through
+  the asking scope — hits satisfy sites synchronously within the island, misses become in-flight
+  entries. A sync walk contains no async sites at all (the fallback is boundary-gated at plan
+  time), so the sync/async distinction is decided by plan structure, never by cache state.
 - Plan memoization records instructions only — the callee reference and the argument wiring, never
   a return value. Plans hold no instances; results live only behind the scope door.
 
@@ -94,8 +105,8 @@
 - Mechanism/policy line: the blackbox decides WHETHER each site produces work and WHERE results
   land; the engine decides how outstanding work is scheduled, awaited, and aggregated. Gather
   semantics are container-level and uniform across every scope model: awaits live only in the
-  gather, `allSettled`-shaped, failures thrown as one `AggregateError` deduped by reason identity,
-  sync-door-throws rule. **(proposed)**
+  gather, `allSettled`-shaped, failures thrown as one `AggregateError` deduped by reason identity.
+  **(proposed)**
 - Latebound re-entry binding is DELEGATED to the blackbox: a mint-time arm
   (`bindLatebound(site, ctx) → () => ScopeCtx`); the closure stores the thunk, the call re-enters
   with whatever it yields. Captured vs reset-to-root vs ambient becomes default-model policy, not
@@ -119,15 +130,18 @@
   direction (manifest off scope engine) is prescribed.
 - If `undefined` is NOT in the engine's lifetime union, leaving a registration's scope unset is a
   COMPILE ERROR — optionality of the lifetime argument follows `undefined ∈ TLifetime` exactly.
-- **OPEN — the `transientWithoutScope` proposal (owner idea):** an option that flips OWNERSHIP of
-  `undefined`. Without it, `undefined` is model territory: in the union ⇒ omission legal, and the
-  model's door defines what undefined means. With it, `undefined` is ENGINE-owned: it means
-  transient-without-scope, the door is never consulted for such sites, and scope engines are
-  relieved of specifying `undefined` in their unions to keep transient expressible. The proposal
-  is also the model-independent always-create guarantee the invocation lane requires (frames
-  consume it as the general mechanism). Residual nuance for the ruling: the option's default —
-  under option-off with a union lacking `undefined`, per-call freshness has no user-facing
-  spelling.
+- `undefined` IS RESOLUTION-ENGINE-OWNED, UNCONDITIONALLY (owner-ruled): it means
+  transient-without-scope; the door is never consulted for such a site; no scope model ever
+  defines what omission means. The model's union controls only WHETHER omission is legal — the
+  strictness dial of the rule above — never what it means. Scope engines are thereby relieved of
+  including `undefined` just to keep transient expressible. This is also the invocation lane's
+  always-create guarantee: frames are engine-synthesized descriptors carrying `undefined` (not
+  bound by the user-facing union); users get the escape wherever their union admits `undefined`,
+  and a strict union foreclosing it is that composition's deliberate choice.
+- Nobody but the door interprets a DEFINED datum: the resolution engine tests exactly
+  `datum === undefined` and nothing else; captive validation relays the datum to a MODEL-supplied
+  ordering interpreter (a model that declines — e.g. any lambda-datum model — opts out of captive
+  checks); diagnostics prints without interpreting.
 - The default model's vocabulary: a small interned kind-tagged union — `undefined` (transient) |
   `singleton` | `scoped` | `matching(tag)` — strategy and parameter as separate fields, so the tag
   namespace holds only user tags, no reserved values. **(proposed)**
@@ -281,16 +295,13 @@ first client:
 1. Door shape: two-step probe vs single-step `getOrCreate`.
 2. The concurrent-miss race: outstanding-make arm / in-flight registry / explicit "accepted".
 3. Scope-creation args: per-model `Func` types vs uniform `ScopeFactory` + merged options type.
-4. Which taxonomy error the sync door throws on a surviving async site.
-5. Async call-site design residue: the async call-site node's shape; the AsyncIterable arm
+4. Async call-site design residue: the async call-site node's shape; the AsyncIterable arm
    (per-item streaming over the sync path's iterable resolution, outside the gather); per-boundary
-   gather islands' interaction with the hoist's scope-cache checks; whether the visitor-context
-   `async` flag (owner's candidate) is the fallback-gating mechanism.
-6. The `transientWithoutScope` ruling: whether the option exists, and its default/engagement rule
-   (the invocation lane's always-create requirement rides on it when a union lacks `undefined`).
-7. Captive-dependency validation: the lifetime-ordering declaration hook in the scope contract.
-8. Disposal design proper (contract + default model), including `using`-protocol support.
-9. ManifestScope dialect (spelling of private registration; deep-override verb naming) and the
+   gather islands' interaction with the hoist's scope-cache checks.
+5. Captive-dependency validation: the lifetime-ordering declaration hook in the scope contract.
+6. Disposal design proper (contract + default model), including `using`-protocol support.
+7. ManifestScope dialect (spelling of private registration; deep-override verb naming) and the
    root-authority override surface.
-10. The user-facing memoization opt-out surface for invocation (per-call freshness selection —
-    this session's design deliverable per the invoke lane).
+8. Library portability under model-typed manifests: what lifetime vocabulary an oblivious
+   `(m) => m` configure function targets (default-model lingua franca vs a capability-constraint
+   story).
