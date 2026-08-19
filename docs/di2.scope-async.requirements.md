@@ -41,12 +41,13 @@
   Promise node and forwards through the one door — NOTHING ELSE; all machinery lives in the
   promise-call-site handling. The async call-site node's shape is this session's design
   deliverable.
-- Mechanism sketch (owner): the plan-construction visitor context carries an `async` boolean — set
-  under a promise ancestor; only while it is true does a miss on `T` fall back to a `Promise<T>`
-  lookup (minting the async site). Outside any boundary the fallback never fires, which is what
-  makes the sync door's failure honest. Caveat riding with it: if sub-plans are ever memoized per
-  type, the flag joins that memo key (the same subtree plans differently inside vs outside a
-  boundary); per-root plans need only the visitor state.
+- Candidate mechanism (owner IDEA — "I'm thinking", not ruled; the ancestor-boundary rule above is
+  the requirement, this is one implementation of it): the plan-construction visitor context
+  carries an `async` boolean — set under a promise ancestor; only while it is true does a miss on
+  `T` fall back to a `Promise<T>` lookup (minting the async site). Outside any boundary the
+  fallback never fires, which is what makes the sync door's failure honest. Caveat riding with it:
+  if sub-plans are ever memoized per type, the flag joins that memo key (the same subtree plans
+  differently inside vs outside a boundary); per-root plans need only the visitor state.
 - The compositions stay distinct and both remain expressible: `Promise<Iterable<E>>` = the whole
   collection delivered later, then sync iteration; `AsyncIterable<E>` = per-item streaming, each
   element resolving at iteration time.
@@ -110,11 +111,12 @@
   TRULY ANYTHING — a string union, a structured node type, even a lambda type for per-registration
   custom behavior (a function-valued datum is behavior-as-data, same precedent as factory impls on
   descriptors; the door calls it).
-- BECAUSE the scope blackbox dictates that generic, manifest factories come OFF THE SCOPE ENGINE:
-  composition chooses its scope engine FIRST and that choice dictates how the manifest is made
-  (e.g. a di-builder fluent API — pick the engine, receive the correspondingly-typed manifest
-  surface). No ad-hoc `Scopes extends string` threading; the parameter flows from the one engine
-  choice.
+- BECAUSE the scope blackbox dictates that generic, manifest factories come OFF THE SCOPE ENGINE —
+  the engine choice therefore precedes manifest creation and dictates how the manifest is made. No
+  ad-hoc `Scopes extends string` threading; the parameter flows from the one engine choice. The
+  specific entry-point shape — e.g. a di-builder fluent API where you pick the engine and receive
+  the correspondingly-typed manifest surface — is an owner IDEA, not ruled; only the dependency
+  direction (manifest off scope engine) is prescribed.
 - If `undefined` is NOT in the engine's lifetime union, leaving a registration's scope unset is a
   COMPILE ERROR — optionality of the lifetime argument follows `undefined ∈ TLifetime` exactly.
   **OPEN fork:** rely on undefined-in-union alone, vs a `transientWithoutScope` option existing
@@ -277,8 +279,8 @@ first client:
 4. Which taxonomy error the sync door throws on a surviving async site.
 5. Async call-site design residue: the async call-site node's shape; the AsyncIterable arm
    (per-item streaming over the sync path's iterable resolution, outside the gather); per-boundary
-   gather islands' interaction with the hoist's scope-cache checks. (Fallback placement is
-   owner-sketched: the visitor-context `async` flag gates the `Promise<T>` fallback.)
+   gather islands' interaction with the hoist's scope-cache checks; whether the visitor-context
+   `async` flag (owner's candidate) is the fallback-gating mechanism.
 6. The undefined-in-union vs `transientWithoutScope` fork, and its interaction with the
    invocation lane's required always-create escape.
 7. Captive-dependency validation: the lifetime-ordering declaration hook in the scope contract.
