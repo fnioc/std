@@ -32,12 +32,21 @@
   day to AsyncIterable): "T delivered later" is spelled by the ordinary global generic `Promise`
   node, and AsyncIterable factors into async delivery (call-site) × iterable resolution (grammar —
   `Type.iterable`/`Type.array` remain the collection doors, unchanged). Async is PURELY CALL-SITE
-  behavior: async resolution rules activate on the TOP-LEVEL requested shape, and the async
-  call-site recognizes TWO of them — `Type.global('Promise', [X])` (X delivered later, single) and
-  `Type.global('AsyncIterable', [E])` (the E collection streamed per-item over the SAME iterable
-  resolution the sync path uses). `getServiceAsync(t)` is terseness only — it wraps the request in
-  a Promise node and forwards through the one door (the `getServices` forwarding pattern). The
-  async call-site node's shape is this session's design deliverable.
+  behavior: async resolution rules activate whenever an ANCESTOR CALL SITE is a promise — the
+  nearest enclosing promise call site is the async boundary, and the awaiting happens WITHIN that
+  promise. A top-level `Promise` request is just the root case of the same rule; the async
+  call-site recognizes two requested shapes — `Type.global('Promise', [X])` (X delivered later,
+  single) and `Type.global('AsyncIterable', [E])` (the E collection streamed per-item over the
+  SAME iterable resolution the sync path uses). `getServiceAsync(t)` wraps the requested type in a
+  Promise node and forwards through the one door — NOTHING ELSE; all machinery lives in the
+  promise-call-site handling. The async call-site node's shape is this session's design
+  deliverable.
+- Mechanism sketch (owner): the plan-construction visitor context carries an `async` boolean — set
+  under a promise ancestor; only while it is true does a miss on `T` fall back to a `Promise<T>`
+  lookup (minting the async site). Outside any boundary the fallback never fires, which is what
+  makes the sync door's failure honest. Caveat riding with it: if sub-plans are ever memoized per
+  type, the flag joins that memo key (the same subtree plans differently inside vs outside a
+  boundary); per-root plans need only the visitor state.
 - The compositions stay distinct and both remain expressible: `Promise<Iterable<E>>` = the whole
   collection delivered later, then sync iteration; `AsyncIterable<E>` = per-item streaming, each
   element resolving at iteration time.
@@ -94,12 +103,24 @@
 
 ## Lifetime data
 
-- The lifetime datum on a descriptor is OPAQUE to the engine — pure data riding descriptor and
-  plan, interpreted only by the installed scope model's door. Forced by the models below
-  coexisting: one model's datum is a meaning-free user string, another's a structured node; the
-  engine cannot fix either.
-- No `Scopes extends string` generic threading through the manifest surface — typo-safety comes
-  from the model's own factories, not a viral type parameter.
+- The lifetime datum on a descriptor is OPAQUE to the engine at runtime — pure data riding
+  descriptor and plan, interpreted only by the installed scope model's door. Forced by the models
+  below coexisting: one model's datum is a meaning-free user string, another's a structured node.
+- At the TYPE level the datum is the scope engine's declaration: the scope generic argument can be
+  TRULY ANYTHING — a string union, a structured node type, even a lambda type for per-registration
+  custom behavior (a function-valued datum is behavior-as-data, same precedent as factory impls on
+  descriptors; the door calls it).
+- BECAUSE the scope blackbox dictates that generic, manifest factories come OFF THE SCOPE ENGINE:
+  composition chooses its scope engine FIRST and that choice dictates how the manifest is made
+  (e.g. a di-builder fluent API — pick the engine, receive the correspondingly-typed manifest
+  surface). No ad-hoc `Scopes extends string` threading; the parameter flows from the one engine
+  choice.
+- If `undefined` is NOT in the engine's lifetime union, leaving a registration's scope unset is a
+  COMPILE ERROR — optionality of the lifetime argument follows `undefined ∈ TLifetime` exactly.
+  **OPEN fork:** rely on undefined-in-union alone, vs a `transientWithoutScope` option existing
+  independently of the model's union. Interaction to resolve with it: the invocation lane requires
+  a user-facing always-create escape in EVERY model — under a union without `undefined` and no
+  independent option, per-call freshness would be inexpressible.
 - The default model's vocabulary: a small interned kind-tagged union — `undefined` (transient) |
   `singleton` | `scoped` | `matching(tag)` — strategy and parameter as separate fields, so the tag
   namespace holds only user tags, no reserved values. **(proposed)**
@@ -254,13 +275,15 @@ first client:
 2. The concurrent-miss race: outstanding-make arm / in-flight registry / explicit "accepted".
 3. Scope-creation args: per-model `Func` types vs uniform `ScopeFactory` + merged options type.
 4. Which taxonomy error the sync door throws on a surviving async site.
-5. Async fallback-chain details: dep wants `E` with only `Promise<E>` registered (the plan-time
-   promise-fallback arm's exact placement); the AsyncIterable call-site arm (per-item streaming
-   over the sync path's iterable resolution, outside the gather); the async call-site node's
-   designed shape.
-6. Captive-dependency validation: the lifetime-ordering declaration hook in the scope contract.
-7. Disposal design proper (contract + default model), including `using`-protocol support.
-8. ManifestScope dialect (spelling of private registration; deep-override verb naming) and the
+5. Async call-site design residue: the async call-site node's shape; the AsyncIterable arm
+   (per-item streaming over the sync path's iterable resolution, outside the gather); per-boundary
+   gather islands' interaction with the hoist's scope-cache checks. (Fallback placement is
+   owner-sketched: the visitor-context `async` flag gates the `Promise<T>` fallback.)
+6. The undefined-in-union vs `transientWithoutScope` fork, and its interaction with the
+   invocation lane's required always-create escape.
+7. Captive-dependency validation: the lifetime-ordering declaration hook in the scope contract.
+8. Disposal design proper (contract + default model), including `using`-protocol support.
+9. ManifestScope dialect (spelling of private registration; deep-override verb naming) and the
    root-authority override surface.
-9. The user-facing memoization opt-out surface for invocation (per-call freshness selection —
-   this session's design deliverable per the invoke lane).
+10. The user-facing memoization opt-out surface for invocation (per-call freshness selection —
+    this session's design deliverable per the invoke lane).
