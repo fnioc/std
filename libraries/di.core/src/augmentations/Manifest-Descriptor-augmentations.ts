@@ -94,6 +94,12 @@ registerAugmentations<Manifest<any>>({
       .filter(descriptor => descriptor.serviceType === serviceType)
       .reduce((man, descriptor) => man.remove(descriptor), this);
   },
+}, {
+  // `remove(descriptor)` above shares the name: route by which the argument is.
+  remove: (original, incoming) =>
+    function(this: Manifest<any>, ...args: any[]): unknown {
+      return (isDescriptorArg(args) ? original : incoming).apply(this, args as never[]);
+    },
 });
 
 registerAugmentations<Manifest<any>>({
@@ -106,6 +112,21 @@ registerAugmentations<Manifest<any>>({
   replace(this: Manifest<any>, serviceType: Type, implementer: unknown, implementerType: ConstructorType | FunctionType | ConstantType, scope?: any): Manifest<any> {
     return this.replace(toDescriptor(serviceType, implementer, implementerType, scope));
   },
+}, {
+  // Each shares its name with a descriptor-taking form above: route by which
+  // the first argument is.
+  add: (original, incoming) =>
+    function(this: Manifest<any>, ...args: any[]): unknown {
+      return (isDescriptorArg(args) ? original : incoming).apply(this, args as never[]);
+    },
+  tryAdd: (original, incoming) =>
+    function(this: Manifest<any>, ...args: any[]): unknown {
+      return (isDescriptorArg(args) ? original : incoming).apply(this, args as never[]);
+    },
+  replace: (original, incoming) =>
+    function(this: Manifest<any>, ...args: any[]): unknown {
+      return (isDescriptorArg(args) ? original : incoming).apply(this, args as never[]);
+    },
 });
 
 registerAugmentations<Manifest<any>>({
@@ -113,6 +134,16 @@ registerAugmentations<Manifest<any>>({
     return openDescription(serviceType);
   },
 });
+
+/**
+ * Does a shared-name verb call carry descriptors rather than a service type?
+ * Only a descriptor has a `serviceType` member; a `Type` node never does. A
+ * zero-argument call is the empty descriptor spread.
+ */
+function isDescriptorArg(args: readonly unknown[]): boolean {
+  const [first] = args;
+  return first === undefined || (typeof first === 'object' && first !== null && 'serviceType' in first);
+}
 
 /** The descriptor the uniform three-argument shape describes, its door chosen by the implementer type's kind. */
 function toDescriptor(serviceType: Type, implementer: unknown, implementerType: ConstructorType | FunctionType | ConstantType, scope?: string): ServiceDescriptor<string> {
