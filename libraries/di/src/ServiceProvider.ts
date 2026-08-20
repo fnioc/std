@@ -24,7 +24,7 @@ export class ServiceProvider {
   }
 
   /**
-   * The value registered for `type`, or `undefined` when nothing is registereyou d for it.
+   * The value registered for `serviceType`, or `undefined` when nothing is registered for it.
    *
    * @remarks
    * Absence is an answer here, which is what makes this the optional lookup a caller reaches for
@@ -32,41 +32,43 @@ export class ServiceProvider {
    * built still throws — that is a broken graph, not an absent service.
    */
   getService(): any;
-  getService(type: Type): any;
+  getService(serviceType: Type): any;
   /**
-   * Constructs `ctor` fresh, its dependencies resolved from `type` — `ctor`'s own parameter
+   * Constructs `ctor` fresh, its dependencies resolved from `ctorType` — `ctor`'s own parameter
    * types, in order.
    *
    * @remarks
    * Nothing here is registered or cached: two calls build two instances, even for a `ctor`
    * separately registered elsewhere under its own address.
    */
-  getService<R>(type: ConstructorType, ctor: Ctor<any[], R>): R;
+  getService<R>(ctorType: ConstructorType, ctor: Ctor<any[], R>): R;
   /**
-   * Calls `func`, its dependencies resolved from `type` — `func`'s own parameter types, in order.
+   * Calls `func`, its dependencies resolved from `funcType` — `func`'s own parameter types, in order.
    *
    * @remarks
    * Nothing here is registered or cached: two calls build two results, even for a `func`
    * separately registered elsewhere under its own address.
    */
-  getService<R>(type: FunctionType, func: Func<any[], R>): R;
+  getService<R>(funcType: FunctionType, func: Func<any[], R>): R;
   getService(
-    ...args: [] | [type: Type] | [type: ConstructorType, ctor: Ctor] | [type: FunctionType, func: Func]
+    ...args: [] | [serviceType: Type] | [ctorType: ConstructorType, ctor: Ctor] | [funcType: FunctionType, func: Func]
   ): any {
     if (!arguments.length) {
-      throw "illegal invocation. this no arg, no generic signature is present just to make ts happy. consumes should be viewing this type through the IServiceProvider interface and therefor shouldn't have been able to call it";
+      // The zero-argument row exists only so the class satisfies the augmented type-argument
+      // face, which the transform rewrites before it can ever reach this body.
+      throw new TypeError('getService needs a service type; the zero-argument form exists only pre-transform.');
     }
-    const [type, value] = args;
+    const [serviceType, value] = args;
     if (value !== undefined) {
-      return this.#getServiceFromValue(type as ConstructorType | FunctionType, value);
+      return this.#getServiceFromValue(serviceType as ConstructorType | FunctionType, value);
     }
-    if (!type) {
-      throw 'null argument';
+    if (!serviceType) {
+      throw new TypeError('getService was handed a nullish service type.');
     }
     try {
-      return this.#engine.resolve(type, { serviceProvider: this });
+      return this.#engine.resolve(serviceType, { serviceProvider: this });
     } catch (error) {
-      if (error instanceof UnsatisfiableError && error.type === type) {
+      if (error instanceof UnsatisfiableError && error.type === serviceType) {
         return undefined;
       }
       throw error;
@@ -74,24 +76,25 @@ export class ServiceProvider {
   }
 
   /**
-   * Synthesizes a throwaway {@link ServiceDescriptor} for `value` under the address `type`
-   * itself, `type` standing as its own implementer type, and resolves it through the engine's
+   * Synthesizes a throwaway {@link ServiceDescriptor} for `value` under the address
+   * `callableType` itself, the node standing as its own implementer type, and resolves it
+   * through the engine's
    * `additionalServices` channel — so `value` is realized exactly like a registered constructor
    * or factory, just against a manifest composed for this one call and discarded after. The
    * node's own parameter rows are therefore the calls the engine may build it through.
    */
-  #getServiceFromValue(type: ConstructorType | FunctionType, value: Ctor | Func): any {
+  #getServiceFromValue(callableType: ConstructorType | FunctionType, value: Ctor | Func): any {
     const descriptor = (() => {
-      switch (type.kind) {
+      switch (callableType.kind) {
         case 'ctor':
-          return ServiceDescriptor.ctor(type, value as Ctor, type);
+          return ServiceDescriptor.ctor(callableType, value as Ctor, callableType);
         case 'func':
-          return ServiceDescriptor.factory(type, value as Func, type);
+          return ServiceDescriptor.factory(callableType, value as Func, callableType);
         default:
-          return assertNever(type);
+          return assertNever(callableType);
       }
     })();
-    return this.#engine.resolve(type, { serviceProvider: this, additionalServices: [descriptor] });
+    return this.#engine.resolve(callableType, { serviceProvider: this, additionalServices: [descriptor] });
   }
 
   /**

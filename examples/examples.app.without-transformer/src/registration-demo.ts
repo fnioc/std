@@ -22,7 +22,7 @@
 //    dependencies" is written `Type.ctor(theServiceType, [[]])` — one overload,
 //    taking nothing beyond the address.
 
-import { DefaultManifest, Type } from '@rhombus-std/di.core';
+import { ConstantType, DefaultManifest, Type } from '@rhombus-std/di.core';
 import type { Manifest, ServiceDescriptor } from '@rhombus-std/di.core';
 import '@rhombus-std/di';
 
@@ -273,7 +273,7 @@ function demonstrateDiscardTrap(): string {
 
 /**
  * What a library ships: registrations an application gets for free. Every verb
- * here is a `tryAdd*` — "register this only if nobody already has" — which is
+ * here is a `tryAdd` — "register this only if nobody already has" — which is
  * what makes calling it twice, or calling it after the application wired its
  * own implementation, harmless. Under an immutable manifest the
  * already-registered branch simply hands the receiver back, so the caller
@@ -288,7 +288,7 @@ function addOrderDefaults<S extends string>(
   services: Manifest<S | 'singleton'>,
 ): Manifest<S | 'singleton'> {
   // A default VALUE — the clock every other default depends on.
-  services = services.tryAdd(DEFAULT_CLOCK_TYPE, new FixedClock());
+  services = services.tryAdd(DEFAULT_CLOCK_TYPE, new FixedClock(), ConstantType);
   // A default CLASS.
   services = services.tryAdd(DEFAULT_SINK_TYPE, PlainTextSink, Type.ctor(DEFAULT_SINK_TYPE, [[DEFAULT_CLOCK_TYPE, Type.typeLiteral('production')]]), 'singleton');
   // A default FACTORY.
@@ -299,12 +299,12 @@ function addOrderDefaults<S extends string>(
 /**
  * The descriptor verbs, in the order a real application meets them:
  *
- *   - `tryAdd*`  — IDEMPOTENT DEFAULTS. A library registers only what is
+ *   - `tryAdd`   — IDEMPOTENT DEFAULTS. A library registers only what is
  *                  missing, so applying its defaults twice, or applying them
  *                  after the application registered its own, changes nothing.
- *   - `replace*` — HOST OVERRIDE. The application wants ITS implementation to
+ *   - `replace`  — HOST OVERRIDE. The application wants ITS implementation to
  *                  be the only one at that type: drop what is there, register
- *                  anew. (Plain `addClass` would leave both, and collection
+ *                  anew. (A plain `add` would leave both, and collection
  *                  resolution would see the loser too.)
  *   - `removeAll`— TEARDOWN. Strip a type back to nothing, which is what a
  *                  test host or a "no default providers" switch needs.
@@ -321,7 +321,7 @@ function demonstrateDescriptorVerbs(): string[] {
   library = addOrderDefaults(library);
   lines.push(
     `defaults: applying them twice leaves ${countRegistrations(library, DEFAULT_SINK_TYPE)} sink `
-      + `(tryAdd* only registers what is missing)`,
+      + `(tryAdd only registers what is missing)`,
   );
 
   // An application that already wired its own sink keeps it.
@@ -333,13 +333,13 @@ function demonstrateDescriptorVerbs(): string[] {
 
   // The host overrides all three defaults outright.
   let host = addOrderDefaults(new DefaultManifest<'singleton'>());
-  host = host.replaceValue(DEFAULT_CLOCK_TYPE, new FixedClock());
-  host = host.replaceClass(DEFAULT_SINK_TYPE, RecordingSink, Type.ctor(DEFAULT_SINK_TYPE, [[]]), 'singleton');
-  host = host.replaceFactory(DEFAULT_NOTIFIER_TYPE, makeOrderNotifier, Type.func(DEFAULT_NOTIFIER_TYPE, [[DEFAULT_SINK_TYPE]]), 'singleton');
+  host = host.replace(DEFAULT_CLOCK_TYPE, new FixedClock(), ConstantType);
+  host = host.replace(DEFAULT_SINK_TYPE, RecordingSink, Type.ctor(DEFAULT_SINK_TYPE, [[]]), 'singleton');
+  host = host.replace(DEFAULT_NOTIFIER_TYPE, makeOrderNotifier, Type.func(DEFAULT_NOTIFIER_TYPE, [[DEFAULT_SINK_TYPE]]), 'singleton');
   const hostProvider = host.build();
   const recorder = hostProvider.getRequiredService(DEFAULT_SINK_TYPE) as RecordingSink;
   lines.push(
-    `override: replace* swapped all three defaults; the host sink is ${recorder.name}, and `
+    `override: replace swapped all three defaults; the host sink is ${recorder.name}, and `
       + `${countRegistrations(host, DEFAULT_SINK_TYPE)} registration is left at its type`,
   );
 
@@ -365,23 +365,25 @@ function buildOrderContainer(): Manifest<'singleton'> {
   let services: Manifest<'singleton'> = new DefaultManifest<'singleton'>();
   const clock = new FixedClock();
 
-  // addValue — an already-built instance. No signature (there is nothing to
-  // construct) and no scope (a value IS its instance, so caching is moot).
-  services = services.add(CLOCK_TYPE, clock);
+  // A value — an already-built instance. No signature (there is nothing to
+  // construct) and no scope (a value IS its instance, so caching is moot). The
+  // ConstantType marker is what says the instance is handed back rather than
+  // called — a callable's own type could not.
+  services = services.add(CLOCK_TYPE, clock, ConstantType);
 
-  // The SAME instance again under a KEYED type. Argument 3 is the key, and it is
-  // shorthand for tagging the type: passing `'vendor'` here registers at exactly
-  // the `VENDOR_CLOCK_TYPE` composed above.
-  services = services.add(CLOCK_TYPE, clock, 'vendor');
+  // The SAME instance again under a KEYED type. The key rides the type itself:
+  // registering at the tagged `VENDOR_CLOCK_TYPE` composed above is all a keyed
+  // registration is.
+  services = services.add(VENDOR_CLOCK_TYPE, clock, ConstantType);
 
   // A third-party class adapted onto our own clock: its constructor names the
   // vendor's `ILegacyClock`, but the composed constructor type is ours to
   // write, so the argument simply names the keyed clock registered above.
   services = services.add(SINK_TYPE, VendorSink, Type.ctor(SINK_TYPE, [[VENDOR_CLOCK_TYPE]]), 'singleton');
 
-  // addClass, 4-argument form: type, ctor, implementerType, scope. The second
+  // The 4-argument constructor form: serviceType, ctor, implementerType, scope. The second
   // argument is a LITERAL — its value is injected verbatim, with no container
-  // lookup. (The 5-argument form takes a key after the scope.)
+  // lookup.
   //
   // This lands at the SAME type as the vendor sink above. Registering twice at
   // one type is legal and useful — a collection request sees both — and a single
@@ -389,12 +391,12 @@ function buildOrderContainer(): Manifest<'singleton'> {
   // of the scenario gets.
   services = services.add(SINK_TYPE, PlainTextSink, Type.ctor(SINK_TYPE, [[CLOCK_TYPE, Type.typeLiteral('production')]]), 'singleton');
 
-  // TWO OVERLOADS for one class, and a KEY. Each parameter row is one
+  // TWO OVERLOADS for one class, and a KEY — the tagged address. Each parameter row is one
   // constructor overload, and the engine takes the first whose every argument it
   // can supply, longest row first: the two-argument row needs `IEmailOptions`,
   // which nothing registers, so the single-argument row wins and the sink falls
   // back to its built-in address.
-  services = services.add(SINK_TYPE, EmailSink, Type.ctor({ instance: SINK_TYPE, args: [[CLOCK_TYPE, EMAIL_OPTIONS_TYPE], [CLOCK_TYPE]], abstract: false }), 'singleton', 'email');
+  services = services.add(Type.tag(SINK_TYPE, 'email'), EmailSink, Type.ctor({ instance: SINK_TYPE, args: [[CLOCK_TYPE, EMAIL_OPTIONS_TYPE], [CLOCK_TYPE]], abstract: false }), 'singleton');
 
   // An OPTIONAL dependency, spelled honestly: a union whose other member is the
   // literal `undefined`. A literal member supplies ITSELF rather than competing
@@ -416,25 +418,22 @@ function buildOrderContainer(): Manifest<'singleton'> {
 }
 
 /**
- * The other way to spell a registration: instead of positional arguments, a
- * lambda walks the slots by name and hands back what it configured. Each step
- * returns a NEW node — the same rule the manifest itself follows — and the
- * manifest verb is withheld until an implementation and a signature have both
- * been chosen, so an incomplete registration is refused where it is written
- * rather than at build time.
- *
- * It has no type-driven form, so this function too is identical in the twin.
+ * The other way to spell a registration: a chain opened at `describe`, walked
+ * step by step. Each step returns a NEW node — the same rule the manifest
+ * itself follows — and once an implementer door is taken the node IS a
+ * ServiceDescriptor, so the finished chain hands straight to the
+ * descriptor-taking `add`, sits in a variable, or travels between helpers.
  */
-function demonstrateConfiguredRegistration(): string {
-  const withClock: Manifest<'singleton'> = new DefaultManifest<'singleton'>().add(CLOCK_TYPE, new FixedClock());
-  const services = withClock
-    .add(SINK_TYPE, sink =>
-      sink.asClass(PlainTextSink)
-        .withSignature(CLOCK_TYPE, Type.typeLiteral('staging'))
-        .withLifetime('singleton'));
+function demonstrateDescribedRegistration(): string {
+  const withClock: Manifest<'singleton'> = new DefaultManifest<'singleton'>().add(CLOCK_TYPE, new FixedClock(), ConstantType);
+  const services = withClock.add(
+    withClock.describe(SINK_TYPE)
+      .asClass(PlainTextSink, Type.ctor(SINK_TYPE, [[CLOCK_TYPE, Type.typeLiteral('staging')]]))
+      .withLifetime('singleton'),
+  );
 
   const sink = services.build().getRequiredService(SINK_TYPE) as IMessageSink;
-  return `configured by lambda: ${sink.send('order-99 shipped')}`;
+  return `described by chain: ${sink.send('order-99 shipped')}`;
 }
 
 /** Exercises the container and reports what each registration produced. */
@@ -482,6 +481,6 @@ function describeSinklessFork(services: Manifest<'singleton'>): string {
 export function demonstrateRegistration(): readonly string[] {
   const services = buildOrderContainer();
 
-  return ['=== di registration — without transformer ===', demonstrateDiscardTrap(), ...demonstrateDescriptorVerbs(), ...describeOrderContainer(services), demonstrateConfiguredRegistration(),
+  return ['=== di registration — without transformer ===', demonstrateDiscardTrap(), ...demonstrateDescriptorVerbs(), ...describeOrderContainer(services), demonstrateDescribedRegistration(),
     describeSinklessFork(services)];
 }

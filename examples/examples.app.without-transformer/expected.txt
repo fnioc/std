@@ -33,16 +33,16 @@ dbug: Rhombus.Hosting.Host[4]
 
 === di registration — without transformer ===
 immutability: the discarded call registered 0, the threaded one registered 1
-defaults: applying them twice leaves 1 sink (tryAdd* only registers what is missing)
+defaults: applying them twice leaves 1 sink (tryAdd only registers what is missing)
 defaults: an application that registered its own sink keeps it (recording)
-override: replace* swapped all three defaults; the host sink is recording, and 1 registration is left at its type
+override: replace swapped all three defaults; the host sink is recording, and 1 registration is left at its type
 teardown: removeAll left 0 sinks on the new manifest, and 1 on the original (nothing mutates)
 notify: [production] 2024-05-01T09:00:00Z order-42 shipped
 audit: 1 entry, sink echo enabled=true
 keyed sink (key "email"): to:orders@example.test 2024-05-01T09:00:00Z welcome
 keyed value (key "vendor"): 2024-05-01T09:00:00Z
 2 sinks share the IMessageSink type; the most recently registered one wins a single request, and all of them answer a collection request (2)
-configured by lambda: [staging] 2024-05-01T09:00:00Z order-99 shipped
+described by chain: [staging] 2024-05-01T09:00:00Z order-99 shipped
 fork: removeAll left 0 sinks (the original still has 2), so the audit log's optional sink slot resolved to undefined and it recorded 1 entry anyway
 
 === di resolution — without transformer ===

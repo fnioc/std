@@ -3,7 +3,7 @@
 // that name to the same instance: a descriptor reaches the primitive, and a service type paired
 // with an implementer reaches the sugar.
 
-import { DefaultManifest, type Manifest, ServiceDescriptor } from '@rhombus-std/di.core';
+import { ConstantType, DefaultManifest, type Manifest, ServiceDescriptor } from '@rhombus-std/di.core';
 import { Type } from '@rhombus-std/primitives';
 import { describe, expect, test } from 'bun:test';
 
@@ -37,8 +37,8 @@ describe('add answers to both the primitive and the sugared shapes', () => {
     expect(values(manifest)).toEqual(['factory']);
   });
 
-  test('a service type paired with a configure lambda reaches the sugar', () => {
-    expect(values(blank().add(A, (registration) => registration.asValue('a')))).toEqual(['a']);
+  test('a service type paired with the constant marker reaches the value door', () => {
+    expect(values(blank().add(A, 'a', ConstantType))).toEqual(['a']);
   });
 
   test('the two shapes chain into one manifest, newest first', () => {

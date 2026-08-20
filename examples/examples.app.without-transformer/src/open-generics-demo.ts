@@ -35,7 +35,7 @@
 // independently; the same label appearing twice in one registration binds to one
 // captured type wherever it appears.
 
-import { DefaultManifest, type Manifest, Type } from '@rhombus-std/di.core';
+import { ConstantType, DefaultManifest, type Manifest, Type } from '@rhombus-std/di.core';
 import '@rhombus-std/di';
 
 import type { AuditEvent, Entity, IJoin, IRepository, ITable, Order, Seed, User } from '@rhombus-std/examples.contracts';
@@ -250,11 +250,11 @@ let manifest: Manifest<'singleton'> = new DefaultManifest<'singleton'>();
 // The closed value registrations the templates bottom out at: one seed and one
 // type witness per entity. Nothing generic about them — they are the floor.
 for (const entity of [USER_TYPE, ORDER_TYPE, AUDIT_EVENT_TYPE]) {
-  manifest = manifest.add(witnessOf(entity), entity);
+  manifest = manifest.add(witnessOf(entity), entity, ConstantType);
 }
-manifest = manifest.add(seedOf(USER_TYPE), USER_SEED);
-manifest = manifest.add(seedOf(ORDER_TYPE), ORDER_SEED);
-manifest = manifest.add(seedOf(AUDIT_EVENT_TYPE), AUDIT_SEED);
+manifest = manifest.add(seedOf(USER_TYPE), USER_SEED, ConstantType);
+manifest = manifest.add(seedOf(ORDER_TYPE), ORDER_SEED, ConstantType);
+manifest = manifest.add(seedOf(AUDIT_EVENT_TYPE), AUDIT_SEED, ConstantType);
 
 // Template 1 — `ITable<$1>`. Its signature is where the hole propagates: the
 // first slot is a type CONTAINING `$1`, the second is the `Typeof<$1>` witness.
