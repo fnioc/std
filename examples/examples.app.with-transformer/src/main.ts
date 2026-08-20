@@ -239,14 +239,17 @@ services = addWithoutTransformerExamples(services);
 // library asks questions about. A library that registered its own config would
 // be deciding for every consumer it will ever have.
 
-// The reactive server options — one shared live instance.
-services = services.addValue<IOptions<ServerOptions>>(serverOptions);
-
 // A config-independent policy, offered as IOptions<GreetingPolicy> via the
 // augmentation's addOptions verb. The verb names the BARE type — the value is
 // whatever GreetingPolicy itself resolves to.
 services = services.addValue<GreetingPolicy>({ excitement: '!' } satisfies GreetingPolicy);
 services = services.addOptions(typefor<GreetingPolicy>());
+
+// The reactive server options — one shared live instance. Registered AFTER the
+// options pipeline above: addOptions installs the open IOptions template, a
+// single request takes the most recently registered answer, and this closed
+// value is the deployment's override of that template for ServerOptions.
+services = services.addValue<IOptions<ServerOptions>>(serverOptions);
 
 // The live config root, so the hosted worker can drive the reload demo.
 services = services.addValue<ConfigRoot>(config);

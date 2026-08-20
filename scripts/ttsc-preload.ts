@@ -129,6 +129,14 @@ function loaderFor(pkg: LoweringPackage): Promise<Bun.OnLoadCallback> {
   return pending;
 }
 
+/** Rewrites a module's bare import specifiers to the absolute files they resolve to from `fromDir`. */
+function absolutizeImports(contents: string, fromDir: string): string {
+  return contents.replace(/(from\s*")([^"]+)(")/g, (whole, pre: string, spec: string, post: string) =>
+    spec.startsWith('./') || spec.startsWith('../') || spec.startsWith('/')
+      ? whole
+      : pre + Bun.resolveSync(spec, fromDir) + post);
+}
+
 function install(): void {
   Object.assign(process.env, ttscEnv());
   const packages = discoverLoweringPackages();
@@ -144,7 +152,11 @@ function install(): void {
       for (const pkg of packages) {
         build.module(`${TYPEFOR_NAMESPACE}:${pkg.dir}`, async () => {
           await loaderFor(pkg);
-          return { contents: await Bun.file(join(pkg.emitDir, TYPEFOR_MODULE)).text(), loader: 'js' };
+          const contents = await Bun.file(join(pkg.emitDir, TYPEFOR_MODULE)).text();
+          // A virtual module id carries no directory bun could walk
+          // node_modules from, so its bare specifiers resolve here, against
+          // the OWNING package -- the same context the built emit resolves in.
+          return { contents: absolutizeImports(contents, pkg.dir), loader: 'js' };
         });
       }
       build.onResolve({ filter: /__typefor__\.js$/ }, (args) => {
