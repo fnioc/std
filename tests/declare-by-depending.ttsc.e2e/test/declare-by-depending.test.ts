@@ -103,7 +103,7 @@ function writeProject(projDir: string): void {
   writeFileSync(join(projDir, 'src', 'typefor.ts'), `export declare function typefor<T>(): unknown;\n`);
   writeFileSync(join(projDir, 'src', 'app.ts'), APP_SOURCE);
   writeFileSync(join(projDir, 'tsconfig.json'), JSON.stringify({
-    compilerOptions: { target: 'ES2022', module: 'ESNext', moduleResolution: 'Bundler', lib: ['ES2022'], strict: true,
+    compilerOptions: { target: 'ES2022', module: 'ESNext', moduleResolution: 'Bundler', lib: ['ESNext'], strict: true,
       outDir: 'dist', rootDir: 'src', skipLibCheck: true, noEmitOnError: false },
     include: ['src/**/*'],
   }));

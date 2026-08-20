@@ -1,6 +1,6 @@
 // Side-effect: installs `build` onto di.core's Manifest.
 import '@rhombus-std/di';
-import { DefaultManifest, type Manifest, Type } from '@rhombus-std/di.core';
+import { ConstantType, DefaultManifest, type Manifest, Type } from '@rhombus-std/di.core';
 import type { IOptions } from '@rhombus-std/options';
 import { beforeAll, describe, expect, test } from 'bun:test';
 import { spawnSync } from 'node:child_process';
@@ -126,9 +126,9 @@ function goEnv(): NodeJS.ProcessEnv {
 //
 // Three shapes of service type reach the same verb:
 //
-//   1. closed        services.addClass<ILogger>(ConsoleLogger, loggerImpl, 'singleton')
-//   2. open template services.addClass<IRepo<$<1>>>(ThingRepo, repoImpl)  (hole-carrying dep)
-//   3. keyed         services.addClass<Keyed<ICache, 'redis'>>(RedisCache, cacheImpl)
+//   1. closed        services.add<ILogger>(ConsoleLogger, 'singleton')
+//   2. open template services.add<IRepo<$<1>>>(ThingRepo)  (hole-carrying dep)
+//   3. keyed         services.add<Keyed<ICache, 'redis'>>(RedisCache)
 //
 // WIRING. The chain sandbox deps {di.core, di.extras}, symlinks the authoring
 // packages, and names ONE spawn descriptor. The always-on host runs its whole
@@ -154,16 +154,22 @@ const inferredDir = join(CHAIN_ROOT, 'inferred');
 // actually resolves to. The consumer-merge suite covers the other assembly — the
 // member-map `extends` shape a real dependency graph produces.
 const AUTHORING_SOURCE = `
-import type { ConstructorType, Manifest } from '@rhombus-std/di.core';
+import type { Manifest } from '@rhombus-std/di.core';
 
 interface Ctor<in Args extends readonly any[] = any[], out Instance = any> {
   new(...args: Args): Instance;
 }
+type Func<in Args extends readonly any[] = any[], out R = any> = (...args: Args) => R;
 
 declare module '@rhombus-std/di.core' {
   interface Manifest<Scopes extends string> {
-    addClass<T>(ctor: Ctor, implementerType: ConstructorType, scope?: Scopes, key?: string): Manifest<Scopes>;
-    addValue<T>(value: unknown, key?: string): Manifest<Scopes>;
+    add<ServiceType>(implementer: Ctor<any[], ServiceType>, scope?: Scopes): Manifest<Scopes>;
+    add<ServiceType>(implementer: Func<any[], ServiceType>, scope?: Scopes): Manifest<Scopes>;
+    addValue<ServiceType>(value: ServiceType): Manifest<Scopes>;
+    tryAdd<ServiceType>(implementer: Ctor<any[], ServiceType>, scope?: Scopes): Manifest<Scopes>;
+    tryAddValue<ServiceType>(value: ServiceType): Manifest<Scopes>;
+    replace<ServiceType>(implementer: Ctor<any[], ServiceType>, scope?: Scopes): Manifest<Scopes>;
+    replaceValue<ServiceType>(value: ServiceType): Manifest<Scopes>;
   }
 }
 
@@ -173,14 +179,19 @@ export {};
 // The closed and open service types, kept in one file so a whole-file compare
 // pins import elision and surrounding text alongside the per-line tokens.
 const CHAIN_SOURCE = `
-import type { $, ConstructorType, Manifest } from '@rhombus-std/di.core';
+import type { $, Manifest } from '@rhombus-std/di.core';
 
 interface ILogger {}
 interface IClock {}
 interface IRepo<T> {}
 interface IStore<T> {}
 
-class ConsoleLogger implements ILogger {}
+class ConsoleLogger implements ILogger {
+  constructor(clock: IClock) {
+    void clock;
+  }
+}
+class NoDepsLogger implements ILogger {}
 class ThingRepo {
   constructor(store: IStore<$<1>>) {
     void store;
@@ -188,30 +199,26 @@ class ThingRepo {
 }
 
 declare const services: Manifest<'singleton'>;
-declare const loggerImpl: ConstructorType;
-declare const noDepsImpl: ConstructorType;
-declare const repoImpl: ConstructorType;
 
-export const closed = services.addClass<ILogger>(ConsoleLogger, loggerImpl, 'singleton');
+export const closed = services.add<ILogger>(ConsoleLogger, 'singleton');
 
-export const emptySig = services.addClass<ILogger>(ConsoleLogger, noDepsImpl, 'singleton');
+export const emptySig = services.add<ILogger>(NoDepsLogger, 'singleton');
 
-export const open = services.addClass<IRepo<$<1>>>(ThingRepo, repoImpl);
+export const open = services.add<IRepo<$<1>>>(ThingRepo);
 `;
 
 // A KEYED service type. Base and key compose into ONE tag token, and the lookup
 // side mints the identical token — that identity is what makes a keyed
 // registration and a keyed lookup meet. Own file so the compare is isolated.
 const KEYED_SOURCE = `
-import type { ConstructorType, Keyed, Manifest } from '@rhombus-std/di.core';
+import type { Keyed, Manifest } from '@rhombus-std/di.core';
 
 interface ICache {}
 class RedisCache implements ICache {}
 
 declare const services: Manifest<'singleton'>;
-declare const cacheImpl: ConstructorType;
 
-export const keyed = services.addClass<Keyed<ICache, 'redis'>>(RedisCache, cacheImpl);
+export const keyed = services.add<Keyed<ICache, 'redis'>>(RedisCache);
 `;
 
 // A sugar call with NO type argument. The service type is the sugar's type
@@ -219,14 +226,13 @@ export const keyed = services.addClass<Keyed<ICache, 'redis'>>(RedisCache, cache
 // infer it from. The stage refuses with a named diagnostic rather than deriving a
 // token for `unknown` — compiled on its own, since the refusal fails the build.
 const INFERRED_SOURCE = `
-import type { ConstructorType, Manifest } from '@rhombus-std/di.core';
+import type { Manifest } from '@rhombus-std/di.core';
 
 class SelfRepo {}
 
 declare const services: Manifest<'singleton'>;
-declare const selfImpl: ConstructorType;
 
-export const self = services.add(SelfRepo, selfImpl);
+export const self = services.add(SelfRepo);
 `;
 
 // Lookup-family source (W5). The type-driven get* forms lower through the inline
@@ -283,20 +289,15 @@ export const singular = provider.getRequiredService<'dev'>();
 // the keyed registration mints, which is what makes the two meet at runtime.
 export const keyedTok = provider.getService<Keyed<ICache, 'redis'>>();
 export const keyedKnown = provider.getRequiredService<Keyed<ICache, 'redis'>>();
-// The value door: the callable's OWN node is derived and paired with the value,
-// so the engine builds it through the node's parameter rows. No type argument is
-// written — the body's type parameter feeds only a value-argument primitive call
-// (typefor(value)), so the inline stage never has to recover it.
-export const built = provider.getService(Widget);
-export const called = provider.getService(makeGadget);
 `;
 
-// The implementation-type argument. Everything the author writes after the ctor
-// reaches the token-taking member unchanged: the sugar's only job is to put the
-// derived token in front of it. Own file so the pass-through is compared in
+// Steering the observed implementer type with a cast. The derivation reads the
+// checker's type for the argument expression, so a cast at the call site
+// rewrites the observed SHAPE — here narrowing Handler's two-parameter
+// constructor to a one-parameter row. Own file so the steering is compared in
 // isolation.
 const OVERRIDE_SOURCE = `
-import type { ConstructorType, Manifest } from '@rhombus-std/di.core';
+import type { Manifest } from '@rhombus-std/di.core';
 
 interface IReq {}
 interface ILog {}
@@ -309,9 +310,8 @@ class Handler implements IHandler {
 }
 
 declare const services: Manifest<'singleton'>;
-declare const handlerType: ConstructorType;
 
-export const overridden = services.addClass<IHandler>(Handler, handlerType);
+export const overridden = services.add<IHandler>(Handler as unknown as new(req: IReq) => IHandler);
 `;
 
 function writeChainSrc(dir: string): void {
@@ -329,7 +329,7 @@ function writeChainSrc(dir: string): void {
 
 function writeChainTsconfig(dir: string, plugins: Array<{ transform: string; }>): void {
   writeFileSync(join(dir, 'tsconfig.json'), JSON.stringify({
-    compilerOptions: { target: 'ES2022', module: 'ESNext', moduleResolution: 'Bundler', lib: ['ES2022'], strict: true, outDir: 'dist', rootDir: 'src', skipLibCheck: true, noEmitOnError: false,
+    compilerOptions: { target: 'ES2022', module: 'ESNext', moduleResolution: 'Bundler', lib: ['ESNext'], strict: true, outDir: 'dist', rootDir: 'src', skipLibCheck: true, noEmitOnError: false,
       plugins },
     include: ['src/**/*'],
   }));
@@ -478,7 +478,8 @@ beforeAll(() => {
 // The authoring-time survivors that must NEVER reach emitted JS — sugar generics
 // and every derivation primitive. A survivor means the loop under-lowered.
 function assertNoAuthoringSurvivors(out: string): void {
-  expect(out).not.toContain('addClass<');
+  expect(out).not.toContain('add<');
+  expect(out).not.toContain('addValue<');
   expect(out).not.toContain('tokenfor');
   expect(out).not.toContain('tokenof');
   // The CALL form, not the bare name: a hoisted emission's own module specifier
@@ -492,25 +493,27 @@ function lineWith(src: string, needle: string): string | undefined {
 }
 
 describe.skipIf(!toolchainReady)('generic inline stage — registration parity (W2)', () => {
-  test('a closed service type mints its token and carries signature + lifetime through', () => {
-    // The sugar's whole contribution is the leading token. Everything the author
-    // wrote after the ctor — the signature list, the lifetime — reaches the
-    // Type-taking member byte-for-byte, in the same order.
+  test('a closed service type mints its token and observes the implementer beside it', () => {
+    // The sugar contributes the leading service type AND the observed implementer
+    // node; the lifetime the author wrote reaches the Type-taking member after
+    // them, in the same order.
     const line = lineWith(chainInline, 'closed =');
     expect(line).toBeDefined();
     const logger = constFor(chainModule, 'Type.imported("ILogger", "chain-app/tokens/chain")');
-    expect(line).toContain(`addClass(${logger}, ConsoleLogger, loggerImpl, "singleton")`);
+    const consoleClass = constFor(chainModule, 'Type.imported("ConsoleLogger", "chain-app/tokens/chain")');
+    const clock = constFor(chainModule, 'Type.imported("IClock", "chain-app/tokens/chain")');
+    const consoleCtor = constFor(chainModule, `Type.ctor(${consoleClass}, [[${clock}]])`);
+    expect(line).toContain(`add(${logger}, ConsoleLogger, ${consoleCtor}, "singleton")`);
     assertNoAuthoringSurvivors(chainInline);
   });
 
-  test('a second call at the same address survives the fixed-point loop unchanged', () => {
-    // The implementation type is a value argument the sugar never reads, so every
-    // pass of the loop must leave it alone; a pass that re-visited its own output
-    // would mangle it.
+  test('a second call at the same address observes ITS implementer, not the first one', () => {
     const line = lineWith(chainInline, 'emptySig =');
     expect(line).toBeDefined();
     const logger = constFor(chainModule, 'Type.imported("ILogger", "chain-app/tokens/chain")');
-    expect(line).toContain(`addClass(${logger}, ConsoleLogger, noDepsImpl, "singleton")`);
+    const noDepsClass = constFor(chainModule, 'Type.imported("NoDepsLogger", "chain-app/tokens/chain")');
+    const noDepsCtor = constFor(chainModule, `Type.ctor(${noDepsClass}, [[]])`);
+    expect(line).toContain(`add(${logger}, NoDepsLogger, ${noDepsCtor}, "singleton")`);
     assertNoAuthoringSurvivors(chainInline);
   });
 
@@ -519,10 +522,14 @@ describe.skipIf(!toolchainReady)('generic inline stage — registration parity (
     expect(line).toBeDefined();
     // The service type is the template IRepo<$1>, its hole minted as its own
     // const — a placeholder rather than a named type — and the composite
-    // references it by name.
+    // references it by name. The OBSERVED implementer node carries the same hole
+    // inside its dependency row.
     const hole = constFor(chainModule, 'Type.generic("1")');
     const openType = constFor(chainModule, `Type.imported("IRepo", "chain-app/tokens/chain", [${hole}])`);
-    expect(line).toContain(`addClass(${openType}, ThingRepo, repoImpl)`);
+    const repoClass = constFor(chainModule, 'Type.imported("ThingRepo", "chain-app/tokens/chain")');
+    const storeDep = constFor(chainModule, `Type.imported("IStore", "chain-app/tokens/chain", [${hole}])`);
+    const repoCtor = constFor(chainModule, `Type.ctor(${repoClass}, [[${storeDep}]])`);
+    expect(line).toContain(`add(${openType}, ThingRepo, ${repoCtor})`);
     assertNoAuthoringSurvivors(chainInline);
   });
 
@@ -547,14 +554,22 @@ describe.skipIf(!toolchainReady)('generic inline stage — registration parity (
     // and it composes the base's own const rather than re-spelling it.
     const cache = constFor(chainModule, 'Type.imported("ICache", "chain-app/tokens/keyed")');
     const keyedCache = constFor(chainModule, `Type.tag(${cache}, "redis")`);
-    expect(line).toContain(`addClass(${keyedCache}, RedisCache, cacheImpl)`);
+    const redisClass = constFor(chainModule, 'Type.imported("RedisCache", "chain-app/tokens/keyed")');
+    const redisCtor = constFor(chainModule, `Type.ctor(${redisClass}, [[]])`);
+    expect(line).toContain(`add(${keyedCache}, RedisCache, ${redisCtor})`);
   });
 
-  test('the implementation type reaches the member exactly as written', () => {
+  test('a cast steers the observed implementer SHAPE', () => {
+    // Derivation reads the checker's type for the argument expression, so the
+    // cast's one-parameter constructor row is what the node carries — not the
+    // class's own two-parameter row. Kind stays chosen by the door; only the
+    // shape moved.
     const line = lineWith(overrideInline, 'overridden =');
     expect(line).toBeDefined();
     const handler = constFor(chainModule, 'Type.imported("IHandler", "chain-app/tokens/override")');
-    expect(line).toContain(`addClass(${handler}, Handler, handlerType)`);
+    const req = constFor(chainModule, 'Type.imported("IReq", "chain-app/tokens/override")');
+    const steered = constFor(chainModule, `Type.ctor(${handler}, [[${req}]])`);
+    expect(line).toContain(`add(${handler}, Handler, ${steered})`);
     assertNoAuthoringSurvivors(overrideInline);
   });
 
@@ -637,29 +652,6 @@ describe.skipIf(!toolchainReady)('generic inline stage — lookup parity (W5)', 
     assertNoAuthoringSurvivors(resolveInline);
   });
 
-  test('getService(SomeClass) pairs the class its own node with the class itself', () => {
-    // The value door lowers to the two-argument member: the node the class derives
-    // — carrying its constructor's parameter row — in front of the class, which is
-    // exactly the pair a hand-writer would have spelled.
-    const widget = constFor(chainModule, 'Type.imported("Widget", "chain-app/tokens/resolve")');
-    const bar = constFor(chainModule, 'Type.imported("IBar", "chain-app/tokens/resolve")');
-    const node = constFor(chainModule, `Type.ctor(${widget}, [[${bar}]])`);
-    const line = lineWith(resolveInline, 'built =');
-    expect(line).toBeDefined();
-    expect(line).toContain(`.getService(${node}, Widget)`);
-    assertNoAuthoringSurvivors(resolveInline);
-  });
-
-  test('getService(someFunction) derives a func node keyed on what the function returns', () => {
-    const gadget = constFor(chainModule, 'Type.imported("IGadget", "chain-app/tokens/resolve")');
-    const bar = constFor(chainModule, 'Type.imported("IBar", "chain-app/tokens/resolve")');
-    const node = constFor(chainModule, `Type.func(${gadget}, [[${bar}]])`);
-    const line = lineWith(resolveInline, 'called =');
-    expect(line).toBeDefined();
-    expect(line).toContain(`.getService(${node}, makeGadget)`);
-    assertNoAuthoringSurvivors(resolveInline);
-  });
-
   test('runtime round-trip: the emitted keyed token hits a keyed registration and misses an unkeyed one', () => {
     // The text compares above prove the emitted bytes; this EXECUTES against the
     // real container, using the tag the transformer actually minted, so a keyed
@@ -669,12 +661,12 @@ describe.skipIf(!toolchainReady)('generic inline stage — lookup parity (W5)', 
     const composed = Type.tag(base, 'redis');
 
     let keyed: Manifest<'singleton'> = new DefaultManifest<'singleton'>();
-    keyed = keyed.add(composed, marker);
+    keyed = keyed.add(composed, marker, ConstantType);
     expect(keyed.build().getService(composed)).toBe(marker);
 
     // An unkeyed registration of the same base does not answer the keyed lookup.
     let unkeyed: Manifest<'singleton'> = new DefaultManifest<'singleton'>();
-    unkeyed = unkeyed.add(base, marker);
+    unkeyed = unkeyed.add(base, marker, ConstantType);
     expect(unkeyed.build().getService(composed)).toBeUndefined();
   });
 });
@@ -715,6 +707,15 @@ declare module '@rhombus-std/di.core' {
   interface Manifest<Scopes extends string> {
     addOptions<T>(): Manifest<Scopes>;
     addOptions(optionsType: Type): Manifest<Scopes>;
+    // The di.extras sugar names, declared so every published inline entry
+    // resolves in this program (an entry naming a member the program lacks is
+    // a load-time failure by design).
+    add<ServiceType>(implementer: unknown, scope?: Scopes): Manifest<Scopes>;
+    addValue<ServiceType>(value: ServiceType): Manifest<Scopes>;
+    tryAdd<ServiceType>(implementer: unknown, scope?: Scopes): Manifest<Scopes>;
+    tryAddValue<ServiceType>(value: ServiceType): Manifest<Scopes>;
+    replace<ServiceType>(implementer: unknown, scope?: Scopes): Manifest<Scopes>;
+    replaceValue<ServiceType>(value: ServiceType): Manifest<Scopes>;
   }
 }
 export {};
@@ -823,7 +824,7 @@ describe.skipIf(!toolchainReady)('generic inline stage — addOptions options wi
     const value: UserOptions = { name: 'ada' };
 
     let services: Manifest<'singleton'> = new DefaultManifest<'singleton'>();
-    services = services.add(optionsType, value);
+    services = services.add(optionsType, value, ConstantType);
     services = services.addOptions(optionsType);
 
     const options = services.build().getRequiredService(optionsAddressType(optionsType)) as IOptions<UserOptions>;

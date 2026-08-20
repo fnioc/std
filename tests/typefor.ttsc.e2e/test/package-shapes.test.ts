@@ -130,7 +130,7 @@ export const publicExplicitAlias = typefor<Scoped<"request">>();
     'rhombus-std': { typefor: { emit: 'inline' } },
   }));
   writeFileSync(join(projDir, 'tsconfig.json'), JSON.stringify({
-    compilerOptions: { target: 'ES2022', module: 'ESNext', moduleResolution: 'Bundler', lib: ['ES2022'], strict: true,
+    compilerOptions: { target: 'ES2022', module: 'ESNext', moduleResolution: 'Bundler', lib: ['ESNext'], strict: true,
       outDir: 'dist', rootDir: 'src', skipLibCheck: true, noEmitOnError: false,
       plugins: [{ transform: '@rhombus-std/primitives.extras/ttsc' }] },
     include: ['src/**/*'],

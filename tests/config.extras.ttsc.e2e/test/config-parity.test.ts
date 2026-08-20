@@ -183,7 +183,7 @@ function setupInlineProject(dir: string): void {
 
 function tsconfig(withPlugin: boolean): string {
   return JSON.stringify({
-    compilerOptions: { target: 'ES2022', module: 'ESNext', moduleResolution: 'Bundler', lib: ['ES2022'], strict: true,
+    compilerOptions: { target: 'ES2022', module: 'ESNext', moduleResolution: 'Bundler', lib: ['ESNext'], strict: true,
       outDir: 'dist', rootDir: 'src', skipLibCheck: true, noEmitOnError: false,
       ...(withPlugin ? { plugins: [{ transform: '@rhombus-std/config.extras/ttsc' }] } : {}) },
     include: ['src/**/*'],

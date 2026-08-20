@@ -298,7 +298,7 @@ beforeAll(async () => {
       devDependencies: { '@rhombus-std/primitives.extras': '*', '@rhombus-std/primitives': '*' },
       'rhombus-std': { typefor: { emit: 'inline' } } }));
   writeFileSync(join(projDir, 'tsconfig.json'), JSON.stringify({
-    compilerOptions: { target: 'ES2022', module: 'ESNext', moduleResolution: 'Bundler', lib: ['ES2022'], strict: true,
+    compilerOptions: { target: 'ES2022', module: 'ESNext', moduleResolution: 'Bundler', lib: ['ESNext'], strict: true,
       outDir: 'dist', rootDir: 'src', skipLibCheck: true, noEmitOnError: false },
     include: ['src/**/*'],
   }));

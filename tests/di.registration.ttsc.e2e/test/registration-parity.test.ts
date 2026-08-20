@@ -161,7 +161,7 @@ export const registered = services.add(typefor<IWidget>(), Widget, typefor<typeo
 
 function writeTsconfig(dir: string, name: string, outDir: string, plugins: Array<{ transform: string; }>): void {
   writeFileSync(join(dir, name), JSON.stringify({
-    compilerOptions: { target: 'ES2022', module: 'ESNext', moduleResolution: 'Bundler', lib: ['ES2022'], strict: true, outDir: outDir, rootDir: 'src', skipLibCheck: true, noEmitOnError: false,
+    compilerOptions: { target: 'ES2022', module: 'ESNext', moduleResolution: 'Bundler', lib: ['ESNext'], strict: true, outDir: outDir, rootDir: 'src', skipLibCheck: true, noEmitOnError: false,
       plugins },
     include: ['src/**/*'],
   }));
@@ -441,7 +441,7 @@ function retypecheck(source: string): { readonly status: number | null; readonly
   // under bundler resolution.
   writeFileSync(join(dir, '__typefor__.ts'), readTypeModule(handProjDir, 'dist-inline'));
   writeFileSync(join(dir, 'tsconfig.json'), JSON.stringify({
-    compilerOptions: { target: 'ES2022', module: 'ESNext', moduleResolution: 'Bundler', lib: ['ES2022'], strict: true, noEmit: true, skipLibCheck: true },
+    compilerOptions: { target: 'ES2022', module: 'ESNext', moduleResolution: 'Bundler', lib: ['ESNext'], strict: true, noEmit: true, skipLibCheck: true },
     include: ['lowered.ts', '__typefor__.ts'],
   }));
   const result = spawnSync('node', [join(TS7, 'bin', 'tsc'), '-p', 'tsconfig.json'], { cwd: dir, encoding: 'utf8' });
