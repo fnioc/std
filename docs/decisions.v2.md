@@ -2751,8 +2751,7 @@ build has not produced yet). Two white-box seams ride beside it: `./tokens/*` (s
 and, on lowering packages, `./private/*` (`types` → src, `bun` → `dist/stage` per-file lowered
 emit), with a documented double-instance hazard (one suite loading a package through both the
 barrel and `./private/*` forks its module identity — exactly what requirement 2 outlaws).
-`publishConfig.exports` (pnpm-only publish) scrubs the seams and dev conditions; `
-scripts/derive-publish-config.ts` derives it mechanically. The ttsc token derivation reads the
+`publishConfig.exports` (pnpm-only publish) scrubs the seams and dev conditions; `scripts/derive-publish-config.ts` derives it mechanically. The ttsc token derivation reads the
 exports map itself: a public entry (bare string or `default`-reachable) is a tier-1 token source
 with dist targets twinned back to their `src/` stems (`EntrySourceStems`), `./tokens/*` is the
 sanctioned non-public reach whose files mint `pkg/tokens/<path>` tokens, and any OTHER non-public
