@@ -98,6 +98,43 @@ blessing may cover only a portion of the document, and only that portion is rele
 simply ends where the tasklist ended — report that async/scope was not released, and stop. That is a normal
 ending, not a failure, and it takes nothing away from the work above.
 
+## Execution plan — optimize HARD for ASAP
+
+Parallel lanes from t=0. Merge conflicts are NOT globally avoided: a conflict that is mechanically easy to
+resolve (rename-vs-rewrite on different lines, package.json/tsconfig JSON maps, disjoint-file churn) is CHEAPER
+than the serialization that would prevent it — let it happen and resolve at integration. Serialize only where
+edits are design-coupled (two lanes rewriting the same member's shape). Every lane commits early and often to
+its own branch; the integrator merges each lane the moment it lands, not in one big-bang at the end.
+
+- **L1 — critical path (ONE agent, serial internally).** The di.core/di repattern core, in this order:
+  (1) the #365 back-out in di.extras (restores builds — everything else profits immediately);
+  (2) the type-door collapse into asClass/asFactory; (3) ConstantType + addValue + the uniform `add`;
+  (4) the `describe` chain + its inline entry; (5) U6's builder.ts + ServiceProvider.ts legs (they land last
+  because the door collapse deletes most of them). L1 authors all new code ALREADY in the target naming
+  (`serviceType`, `ServiceType`, no "token") so the L4 rename sweep never has to touch its output.
+- **L2 — Go engine (parallel).** transforms/: aliased-union naming with the exportedness gate, AliasType
+  derivation + node + factory (the primitives/Type.ts edits ride here — different files from L1),
+  `Hole`→`Generic` rename, mergesynth ctor/func split. Parity e2es updated per change. Touches L1 only at the
+  parity suites — integrate freely.
+- **L3 — options family (prep now, core gated).** Immediately: the extras dep edges, the addOptions face fix,
+  hosting's tsconfig.ci.json fix. The sentinel-slot rewrite + Keyed acceptance start the moment L1(3) and L2's
+  Keyed derivation land — do not wait for L1 to finish entirely.
+- **L4 — mechanical sweeps (parallel, file-scoped agents).** getOrInsert swap, groupBy, lazy-thrown strings,
+  assertNever style, iterable `replace` overloads, smoke.ts audit/port, `configureContainer` degeneralization,
+  errors-demo reimplementation, and the token→type + serviceType renames over every file OUTSIDE L1's blast
+  radius (di.core/src/builder.ts, ServiceProvider.ts, the descriptor augmentation files). After L1 lands, one
+  cheap re-sweep over its files for any straggler naming.
+- **L5 — exports rework (parallel worktree).** The conventional-exports overhaul + the feat-src-first-exports
+  salvage-check-and-delete. Its conflicts with other lanes are package.json/tsconfig JSON — easy merges,
+  tolerated. Integrates LAST before the final gate so resolution-behavior changes are verified once, not per
+  lane.
+- **L6 — integrate & finish (serial tail).** Merge lanes as they complete; full gate; the comment sweep over
+  the final diff (pure churn — never runs concurrently with code lanes); commit relabeling; milestone commit;
+  PR into `IServiceManifest-repair`; only then the async/scope gate check.
+
+Cloud workers carry gate runs and any lane whose file set is disjoint from the local tree state, per the
+remote-worker rules above.
+
 ## Finish converting `Type | string` away (U6)
 
 A parameter that names a type takes a `Type` and nothing else; a consumer holding a string writes `Type.from(...)`
@@ -109,10 +146,25 @@ at the call. Most sites are already converted by hand. What remains:
 - [ ] `libraries/di/src/ServiceProvider.ts` — `getService` and the resolve family (`:34`, `:53`, `:90`, `:100`).
 - [ ] `libraries/primitives/src/augmentation/registry.ts` — `registerAugmentations`, `augment`, and the
       `receiverType` normalizer they share (`:57`, `:87`, `:119`); the normalizer goes with them.
-- [ ] `libraries/primitives/src/Type/Type.ts` — `Signatures.from` (`:163`).
 - [ ] `libraries/logging.config/` — `ILoggerProviderConfigFactory.getConfig`, `LoggerProviderConfigFactory`
       `getConfig`, and `registerProviderOptions`'s two parameters.
 - [ ] Re-sweep for `Type | string` and `string | Type` afterwards.
+- [ ] **Rename the "token" word away wherever the thing is a `Type`.** `token: Type` → `type: Type`,
+      `huzzaToken` → `huzzaType`, and every other identifier/parameter spelled `*token*` whose value is a `Type`
+      node — in names, and in the doc comments that call it a token. Sweep repo-wide alongside the union sweep.
+- [ ] **A parameter naming the SERVICE type is spelled `serviceType`, not `type`.** Owner exemplar: every
+      registration-verb face in `libraries/di.core/src/augmentations/Manifest-Descriptor-augmentations.ts:20`-`:36`
+      (`add`/`tryAdd`/`replace`/`removeAll`) renames its first parameter `type: Type` → `serviceType: Type`.
+      Take the intent project-wide — di, di.core, di.extras, and anywhere else a parameter holds the service's
+      type: faces, namespace bodies, and the doc comments that call it "type". Parameters naming something else
+      (an implementer's type, a constraint) keep their own descriptive names. Same intent at the type level: a
+      GENERIC parameter that is precisely the service type is named `ServiceType`, not `T` — e.g.
+      `add<ServiceType>(…)` lowering to `add(typefor<ServiceType>(), …)`; a type parameter meaning something
+      else keeps its own name.
+
+**Exempt — leave alone:** `libraries/primitives/src/Type/Type.ts` `:163` (`Signatures.from`) and `:266`. These
+are the `from`-family boundary converters — the data-input surfaces where a string is legitimately accepted and
+turned into a node — so they keep their string legs. The re-sweep must not flag them.
 
 ## Kill the sentinel slots
 
@@ -127,7 +179,20 @@ argument.
 - [ ] `postConfigureStepType` → `IPostConfigureOptions<T>`, same shape.
 - [ ] `validateStepType` → `IValidateOptions<T>`, same shape.
 - [ ] `changeTokenSourceType` → the change-token source type, same shape.
-- [ ] `baseFactoryType` → a `Type.func` — it holds a `() => T`.
+- [ ] `baseFactoryType` → a `Type.func` — it holds a `() => T`. While there:
+      `libraries/options.augmentations/src/DefaultManifest-Options-augmentations.ts:82` registers `makeBase`
+      through the two-argument `add(type, value)` — a VALUE descriptor holding the function, not a factory
+      descriptor — while the no-`makeBase` branch right below registers a factory. Ensure the value-vs-factory
+      choice at `:82` is intentional; if not, fix it to match the intended descriptor kind. Related call site:
+      `libraries/logging.config/src/LoggingBuilder-Config-augmentations.ts:62` wants to call
+      `addOptions(optionsType, () => new LoggerFilterOptions())` — the two-argument `makeBase` form — but the
+      declared `addOptions` surface only admits it with a redundant explicit type argument. Either a sugar/face
+      for the two-argument token form is missing, or the `makeBase` path was intended to register a FACTORY and
+      is missing its implementer-`Type` argument. Resolve consistently with the `:82` decision. And question the
+      slot's whole shape while rewriting it: a call site handing over `() => new LoggerFilterOptions()` is a
+      class registration wearing a lambda — the base slot forcing a `() => T` where an ordinary class
+      registration of the options type would do is part of the bizarro shape this rewrite should dissolve, not
+      preserve.
 - [ ] `startupValidationTargetType` → the genuine keyed case: a flat list of `Type` values with no per-element type
       to key on. Spell it `Keyed<Type, K>` rather than a fabricated global.
 - [ ] **Any package-qualified name that survives moves from `Type.global` to `Type.imported`.** A global names the
@@ -137,6 +202,26 @@ argument.
       only place it lives.
 
 ## Authoring surface
+
+- [ ] **Prefer inline `typefor<T>()` calls over `COMMON_EXPORTED_TYPES`-style shared Type consts.** With the
+      hoisted `typefor` emit (the default), every inline call renders as a reference to the one hoisted const
+      anyway, so pre-hoisting types into an exported const bag buys nothing — it only adds an indirection the
+      reader has to chase. Refactor all such sites to spell `typefor<T>()` inline.
+
+- [ ] **Prefer the type-argument sugar over the explicit token form wherever a sugar exists.** `add<T>(impl)`
+      over `add(typefor<T>(), impl)`, `addOptions<T>()` over `addOptions(typefor<T>())`, and the same for every
+      other member carrying an inline entry (`tryAdd`/`replace` family, `getService` family, etc.). Refactor all
+      first-party call sites. The token form stays the primitive the sugar lowers to — this is a call-site style
+      rule, not a surface change. Owner ruling 2026-08-19, the general form: **within the repo, prefer sugar
+      usage wherever possible AND clean** — where a library's src wants a sugar face, taking the `*.extras`
+      dependency that puts it in scope (and makes the package ttsc-lowered) is authorized and preferred over
+      spelling token forms. Specifically authorized dep edges, partially done by the owner already:
+      `options.augmentations` → `di.extras`, and `di.extras.options` → `options.augmentations` (for the
+      `addOptions(type)` token face its inline body calls). Both are acyclic; the config.extras precedent is the
+      mechanism. "Clean" is the limit: where sugar would contort a site (or the dep would create a cycle), the
+      token form stays. Acceptance bar for each new edge: the package stages through ttsc so its dist ships
+      lowered, and the extras' `declare module` faces stay OUT of its rolled `.d.ts` (extras external in the dts
+      roll) — a no-transform consumer must never see sugar it can't run.
 
 - [ ] **Accept `Keyed<T, K>` in the pipeline verbs' `type` position.** The derivation already supports it:
       `DeriveTyped` checks the `Keyed` brand ahead of construct/call signatures and emits a `tag` node over the
@@ -297,6 +382,25 @@ Two things about it survive that rewrite either way:
       decomposition; an alias name is the same kind of exclusion. Fixing this is what makes the `Keyed<Type, K>`
       spelling below sound.
 
+      **Gate the naming on addressability (owner refinement, 2026-08-19): only an EXPORTED alias derives to its
+      name.** An address must be reconstructible by the counterparty, and a local (non-exported) alias cannot be
+      spelled from anywhere else — so a local alias derives structurally, as the union itself; that is the only
+      choice, not a fallback. The spelling site is also the control surface: writing the exported alias name gets
+      the named address, spelling the members raw gets the structural one — one node, one reading, no node shape
+      carrying both.
+
+## Transforms engine
+
+- [ ] **Teach mergesynth to distinguish a constructor from a plain function.** Today its one callable test,
+      `isCallable` (`transforms/internal/mergesynthtransform/mergesynth.go:1405`-`:1411`), deliberately lumps
+      them — true on a call OR construct signature, and nothing downstream asks which. Split it: the checker shim
+      already exposes `SignatureKindCall` and `SignatureKindConstruct` as separate queries (the same split the
+      `typefor` derivation uses to mint `ConstructorType` vs `FunctionType`), so recognize the two kinds
+      distinctly and carry the distinction through to the synthesized guards. The runtime half of a guard is the
+      delicate part — both kinds are `typeof === 'function'`, so the construct case needs an actual
+      discrimination; pick the soundest available check and, if nothing non-heuristic exists for a case, say so
+      in the report rather than silently shipping a guess.
+
 ## Inline discovery
 
 - [ ] Issue #365 — discovery from `registerInlineBodies` marker calls instead of the JSON publish list, claim by
@@ -339,6 +443,17 @@ either way until one of them happens.
 - [ ] **`.apply(this, [...])` breaks the parity invariant.** The emit has to read
       `this.getService(Type.imported('IFoo', '@scope/pkg'))` — what a hand author writes — so the body forwards its
       arguments as a plain call, whatever the merge ends up being.
+- [ ] **A concrete extending an augmented abstraction inherits, never redeclares.** The pattern, applied by the
+      owner on disk and working for every other extended type: the concrete class pairs with an EMPTY merged
+      interface — `export interface ServiceProvider extends IServiceProvider {}` — so the augmentation's overloads
+      arrive by inheritance and no local redeclaration can fall out of step (the intermittent TS2430 this killed).
+      Keep it, and apply it wherever a concrete's declaration still redeclares members its abstraction is
+      augmented with. The pattern's one boundary: bivariant method checking lets a class member satisfy augmented
+      faces with MORE parameters (why `DefaultManifest.add(descriptor)` passes every `add` sugar face), but a
+      member with a required parameter can never satisfy a ZERO-argument face — `getService<T>(): T | undefined`
+      is the one such face, and it is why `ServiceProvider` alone still fails TS2430. Fix at the class: declare
+      the parameter optional (`getService(type?: Type)`) with a runtime throw for the absent-argument case, which
+      only exists pre-transform — or carry the full overload set.
 
 ### The same conversion in `di.core`
 
@@ -353,6 +468,34 @@ either way until one of them happens.
       which also costs scope-name checking: `scope?: string` accepts any string where `scope?: Scopes` accepts only
       the manifest's declared scopes. The namespace bodies keep their `this:` — that is where it is load-bearing.
 
+## Exports system — make it conventional
+
+Background, so the intent is readable: the owner once used "src-ref" for a narrow thing — a referenced project
+with NO build and NO dist, whose source files are duplicated into each calling library's build. Somewhere along
+the way that got misread as licensing "source" usage ANYWHERE in `package.json` `exports`, and the exports system
+grew complicated and weird on the back of that miscommunication. The custom conditions, seams, and per-package
+special cases are symptoms of it, not requirements.
+
+The task: **make it not-weird — do exports the conventional way.** The owner's requirements, which are the whole
+design space:
+
+1. The editor experience must be FLAWLESS regardless of build state — clean IDE resolution, rename, find-refs,
+   with nothing depending on `dist` being built.
+2. It is CRITICAL that type AND value identity hold throughout the dep graph — NO DUPLICATES. One `Manifest`, one
+   augmentation registry, one module instance per package, everywhere.
+
+The run decides HOW to get there; it may NOT make design decisions beyond those requirements. If the requirements
+plus conventional practice do not pin down one and only one architecture — if a genuine design fork appears — do
+NOT guess and do NOT pick: halt that section and report the fork, per this doc's standing rule. The owner expects
+the requirements to admit exactly one clear answer; discovering otherwise is itself the finding to report.
+
+- [ ] Rework the `exports` maps (and whatever build/tsconfig plumbing they drag along) to the conventional shape
+      satisfying the two requirements above, repo-wide.
+- [ ] **`feat-src-first-exports`** is a prior crack at this that became orphaned. Before deleting it: verify it
+      holds no other code useful to this branch and its direction (the exports rework itself is being redone
+      fresh, not merged). Then DELETE the branch. If something useful IS found, lift it first and say so in the
+      report.
+
 ## Comment sweep over the hand edits
 
 The working tree carries a large by-hand change set (108 files). Comments were not moved with the code they
@@ -362,7 +505,11 @@ Two rules the sweep applies:
 
 - **In an augmentation, the doc comment goes on the `declare module` face, never on the namespace or body.** The
   face is what a caller reads and what the emitted `.d.ts` carries; the implementation is not. Where both carry
-  one, the body's goes. This belongs in `docs/features/augmentations.md`, which does not state it yet.
+  one, the body's goes.
+- [ ] **Write the face-docs rule into `docs/features/augmentations.md`** — it does not state it yet. Also add it
+      to the project `CLAUDE.md` unless CLAUDE.md's augmentations coverage already sends an augmentation author
+      to that doc (its Augmentations bullet ends with a "full mechanics" pointer — judge whether that suffices
+      to put the rule in the author's path; if yes, the doc alone is enough).
 - The comment bar in `CLAUDE.md` — a comment explains the code in front of the reader, never how it got there.
 
 Known sites:
@@ -386,12 +533,82 @@ not the other, a face and its body disagreeing, an import left behind or never a
 to the pattern its callee now has. That class is auto-fixed with no discussion, and
 `tests/diagnostics.test/test/listener-config-factory.test.ts:75` is the archetype.
 
+Known site: `libraries/di.core/src/augmentations/Manifest-Descriptor-augmentations.ts:114` calls a one-arg
+descriptor-taking `replace(...)` that no longer exists under that name — the owner renamed the descriptor
+primitives to `_add`/`_replace`/`_remove` (committed 2026-08-19; the underscore prefix is what keeps the
+class's own members out of collision with the augmented un-prefixed faces). The call becomes
+`this._replace(runBuilder(type, configure))`, and the sweep should convert any other site still calling a
+primitive by its old un-prefixed name. Watch the editor's whole-repo program masking these: di.extras'
+one-arg `replace<T>(value: T)` face makes the stale call typecheck when the file is open.
+
 Where something does not merely have a typo but FUNDAMENTALLY does not work, or reads as a misunderstanding of how
 the piece it touches behaves: do not rewrite it to what it "should" have been. Dance around it — take the smallest
 path that gets the tree building and leaves the intent recoverable, and say so in the report. Where there is no
 such path, halt and report. Guessing at intended semantics is the one thing worse than stopping.
 
 ## Housekeeping
+
+- [ ] **Audit every package's dependency categories.** For all `libraries/*` (and the test/e2e packages), check
+      each entry sits in the right field — `dependencies` vs `devDependencies` vs `peerDependencies` — and that
+      the options are right (`peerDependenciesMeta.optional`, version ranges, `workspace:*` vs `workspace:^`).
+      The governing rules: identity-load-bearing shared packages (di.core, config providers, primitives) are
+      peers of their dependents per the §9/§38 invariant; a `*.extras` dep is what puts sugar in scope and spawns
+      the transform; build-time-only tooling is dev. Fix miscategorizations; report anything where the correct
+      category is genuinely undecidable. The devDependency duplicates of peer deps STAY (owner ruling
+      2026-08-19): bun auto-installs peers, but this repo must work under other tools' semantics too — the
+      duplicate is the installer-agnostic spelling, not redundancy to clean.
+- [ ] **Swap every `getOrCreate` call for `Map.prototype.getOrInsert` / `getOrInsertComputed`** (whichever fits
+      the site — a ready value takes `getOrInsert`, a lazily-built one `getOrInsertComputed`), then drop the
+      `getOrCreate` definition entirely. TS 6's `esnext.collection` types both. A trivially-cheap default drops
+      its lambda and takes the plain form — the owner's exemplar:
+      `getOrCreate(this.#closed, descriptor.serviceType, () => [])` →
+      `this.#closed.getOrInsert(descriptor.serviceType, [])`; reserve `getOrInsertComputed` for defaults that
+      are genuinely expensive or side-effectful to build.
+- [ ] **Sweep for sites where `Object.groupBy` / `Map.groupBy` reads cleaner and convert them** — hand-rolled
+      accumulate-into-buckets loops are the tell.
+- [ ] **Complete `replace` in `libraries/primitives/src/utils/iterable.ts` for all four declared overloads.**
+      The owner specified the faces (value → `Generator<T>`, value `U` → `Generator<T | U>`, mapper
+      `Func<[T], T>`, mapper `Func<[T], U>`) and committed them COMMENTED OUT in the file — uncomment them; they
+      are wanted, not rejected. The body only handles the value form. Widen it to
+      `replacement: U | Func<[T], U>` and apply the same function-vs-value discrimination already used for
+      `match` — a matched item yields `isFunc(replacement) ? replacement(item) : replacement`. The declared
+      overloads accept that a function-typed replacement VALUE is unspellable (a `Func` replacement always means
+      the mapper); that ambiguity is by design, same as `match`'s.
+- [ ] **Adopt the exhaustive-switch style for kind selection — `assertNever` in the default.** The exemplar is
+      the owner's edit to `libraries/di/src/ServiceProvider.ts` `#getServiceFromValue`: selecting on a
+      discriminated union's `kind` is a `switch` over every kind with
+      `default: return assertNever(x)` (`@rhombus-toolkit/type-guards`) — never a ternary or if/else whose last
+      branch silently assumes the one remaining kind. Where an expression is needed, wrap the switch in an
+      immediately-invoked arrow, as the exemplar does. The same edit also sets the not-implemented style: a stub
+      member throws `new NotImplementedError('Receiver.member')` inline — no shared `notImplemented` helper.
+      Apply both repo-wide.
+- [ ] **Author every NEW augmentation file in the owner's canonical shape** — the exemplar is
+      `libraries/di.core/src/augmentations/Manifest-Descriptor-augmentations.ts` as committed by the owner
+      2026-08-19: ONE `declare module` block up top carrying all faces, grouped by overload shape; then one
+      `registerAugmentations` call PER overload group, each an object literal whose bodies carry only that
+      group's narrow signature. The same member name registered across several calls is the point — mergesynth
+      synthesizes the argument-shape dispatch, so no body ever hand-discriminates overloads (the commented-out
+      `descriptorMerge` in that file is the hand-rolled version this retires). Reformat EXISTING augmentation
+      files opportunistically as editing brings you to them — the reformatting is not its own task and no sweep
+      is scheduled for it.
+- [ ] **Reimplement `demonstrateRegistrationErrors` in
+      `examples/examples.lib.without-transformer/src/errors-demo.ts`.** The owner stubbed its body to
+      `throw 'not implemented'` purely to unblock the build — the fix is a REAL demonstration body (recover the
+      pre-stub implementation from git history and convert it to the current authoring patterns), not an error
+      cleanup. The lazily-thrown-strings sweep below must not "fix" this site by swapping the throw for a
+      `NotImplementedError` and moving on.
+- [ ] **Replace lazily-thrown strings with real Errors.** Sweep production code for `throw '<string>'` sites the
+      owner left while moving fast. At each: choose the thrown Error type wisely (the `DiError` taxonomy where a
+      container failure, `NotImplementedError` where that's what it is, plain `Error` otherwise), and adjust the
+      message as needed — first checking the message's PREMISE still holds; a wrong premise gets a corrected
+      message, not a reworded one. ONE exception: somewhere (a visitor implementation, most likely) a thrown
+      string is VERY intentional — string-throw as control flow, identifiable by a matching `catch` clause
+      nearby that expects it. Leave that one exactly as it is.
+- [ ] **Conventional-commit labels on the owner's commits.** Some commits the owner made by hand on this line of
+      work lack a Conventional Commits prefix. On the worktree branch (after the lift), reword every unprefixed
+      commit not yet on `main` to carry the right `feat`/`fix`/`docs`/`refactor`/`chore`/`test` prefix — judged
+      from the diff, not guessed. History rewriting is confined to commits that exist only on branches this run
+      owns; anything already merged to `main` stays as it is.
 
 - [ ] **`libraries/hosting/tsconfig.ci.json` names a package that does not exist** —
       `"types": ["@rhombus-std/di.core.extras"]`, where the package (and the devDependency beside it) is

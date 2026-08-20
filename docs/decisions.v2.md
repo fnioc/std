@@ -2670,3 +2670,54 @@ Nothing is planned against this. It is recorded because the reasoning is cheaper
 rebuild, not because the current bodies need replacing.
 
 _Claude-recorded 2026-08-16; considered, not adopted._
+
+## §191 — Matching stays exact-match-only; the assignability designs are parked, recorded here
+
+Owner ruling 2026-08-19: for every use case, Type-node matching stays EXACT — no heritage walking, no
+variance, no structural comparison, no constrained-hole enforcement. `AliasType` (an exported alias as a
+name carrying its aliased node, the two readings chosen at the call site) was judged justified on its own,
+then held with the rest of the rework — nothing from this thread is scheduled. The designs below were
+worked out in full during that discussion and are parked behind consumers, not rejected; recorded so
+the reasoning is cheaper to keep than to rebuild.
+
+**The axis discipline that survived every round.** A node's identity is a reached-from NAME
+(`name`/`from`/`typeArgs`), and nothing else ever enters it: not a union's membership (§ the
+aliased-union tasklist item), not declared ancestry, not declaration form (interface vs class vs
+alias — re-kinding names by declaration syntax was considered and rejected: it makes addresses
+refactor-sensitive and demands knowledge a `Type.from` boundary caller cannot have). Descriptions
+ride BESIDE identity, off-token, never consulted by interning or matching.
+
+**Heritage (nominal ancestry) — parked behind a dynamic-registration consumer.** Shape: an optional
+`heritage` description on named nodes — `{ extends: NominalType[] }` flattening inherits+implements
+(a `form: 'interface' | 'class'` tag was considered and dropped: the satisfaction walk never reads
+it). Deposited by derivation into the intern pool; a boundary `Type.from` string resolves into the
+pool and picks up whatever description a `typefor` already deposited — the only way the dynamic path
+ever sees ancestry. Merge rule: described and bare mints of one token unify; description is
+additive. Validation scope: dynamic paths only, under a declare-to-be-validated contract (statically
+authored registrations are already fully checked by tsc at the sugar faces — a nominal walk adds
+nothing there and TS's optional `implements` under-reports conformance, so enforcement outside the
+contract false-rejects).
+
+**Variance — parked with it; it is a modifier on a relation, not a relation.** With exact-match the
+flip collapses to equality, so variance only pays once heritage exists. Then: callables and
+aggregates flip STRUCTURALLY (Function/Constructor args contravariant, returns covariant;
+Array/Iterable elements covariant) — no schema; arbitrary named generics stay invariant unless a
+declaration-side description supplies per-parameter variance as
+`typeParams: { param: GenericType, variance?: 'in' | 'out' }[]` — the hole NODES themselves in the
+row, shared referentially with every mention in the description, so existing label unification
+binds them. Variance rides the pairing record, never the `GenericType`: the space is deliberately
+quantifier-free (§152), a registration hole is self-declaring, and a decl/ref node split
+(`GenericTypeRef`) was considered and rejected — it re-imports quantifier lists, needs scoping
+rules, and the self-declaring DI hole forces the ref to carry its constraint anyway.
+
+**Constrained holes** — `GenericType.extends?: Type`, token-rendered (differently-constrained holes
+are different addresses). The `Hole` brand's constraint argument stays compile-time-only today;
+the node field and its unifier check ride behind the same parking.
+
+**Duck typing — considered, bounded, not planned.** A named member MAP (optionality spelled as
+`| undefined`, no readonly — a registration is a handover, not a write contract) plus instantiation
+substitution plus a coinductive seen-pairs cache yields a sound structural core; the honest label is
+"TS-like over the described subset", never checker parity (mapped/conditional/template-literal/
+indexed-access/`this`/unique-symbol stay out).
+
+_Claude-recorded 2026-08-19; the whole rework is held — AliasType included — nothing scheduled._
