@@ -9,8 +9,8 @@
 import type { IConfig } from '@rhombus-std/config.core';
 import { LoggerFilterOptions } from '@rhombus-std/logging';
 import type { ILoggingBuilder } from '@rhombus-std/logging.core';
-import type { IOptions } from '@rhombus-std/options';
-import { changeTokenSourceType, ConfigChangeTokenSource, configureStepType } from '@rhombus-std/options.augmentations';
+import type { IConfigureOptions, IOptions } from '@rhombus-std/options';
+import { ConfigChangeTokenSource, type IOptionsChangeTokenSource } from '@rhombus-std/options.augmentations';
 import { Type } from '@rhombus-std/primitives';
 import { registerAugmentations, typefor } from '@rhombus-std/primitives.extras';
 import type { Flatten } from '@rhombus-toolkit/type-helpers';
@@ -40,7 +40,7 @@ export namespace LoggingBuilderConfigAugmentations {
     // The no-arg provider-configuration services are always registered. The
     // factory injects the accumulated LoggingConfig collection; the open
     // ILoggerProviderConfig<$1> template closes per provider, its
-    // typeArg(1) slot reifying the closing token as the constructor's
+    // typeArg(1) slot reifying the closing type as the constructor's
     // provider-type argument.
     //
     // `this.services` is a mutable field, but the manifest chain itself
@@ -58,12 +58,11 @@ export namespace LoggingBuilderConfigAugmentations {
 
     // The LoggerFilterOptions pipeline: the offer + a custom configure step +
     // the reload change-token source.
-    const optionsType = typefor<LoggerFilterOptions>();
-    this.services = this.services.addOptions(optionsType, () => new LoggerFilterOptions());
-    this.services = this.services.add(configureStepType(optionsType), new LoggerFilterConfigureOptions(config));
-    this.services = this.services.add(changeTokenSourceType(optionsType), new ConfigChangeTokenSource(config));
+    this.services = this.services.addOptions(typefor<LoggerFilterOptions>(), () => new LoggerFilterOptions());
+    this.services = this.services.addValue<IConfigureOptions<LoggerFilterOptions>>(new LoggerFilterConfigureOptions(config));
+    this.services = this.services.addValue<IOptionsChangeTokenSource<LoggerFilterOptions>>(new ConfigChangeTokenSource(config));
 
-    this.services = this.services.add(typefor<LoggingConfig>(), new LoggingConfig(config));
+    this.services = this.services.addValue<LoggingConfig>(new LoggingConfig(config));
     return this;
   }
 }

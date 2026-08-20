@@ -25,14 +25,14 @@ export class LoggerProviderConfigFactory implements ILoggerProviderConfigFactory
 
   /**
    * @param configs Every {@link LoggingConfig} registered by
-   * `addConfig` (injected as the di collection of that token).
+   * `addConfig` (injected as the di collection of that type).
    */
   public constructor(configs: readonly LoggingConfig[]) {
     this.#configs = configs;
   }
 
-  public getConfig(providerType: Type | string): IConfig {
-    const sectionKey = sectionKeyFor(typeof providerType === 'string' ? Type.from(providerType) : providerType);
+  public getConfig(providerType: Type): IConfig {
+    const sectionKey = sectionKeyFor(providerType);
     const builder = new ConfigBuilder();
     for (const config of this.#configs) {
       builder.addConfig(config.config.getSection(sectionKey));

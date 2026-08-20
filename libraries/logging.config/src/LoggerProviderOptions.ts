@@ -2,12 +2,12 @@
 // -- no registry install, no `declare module` merge. The call surface is
 // `LoggerProviderOptions.registerProviderOptions(services, …)`.
 //
-// `registerProviderOptions` registers a CLASS at the options token's derived
-// pipeline slots (`configureStepType`/`changeTokenSourceType`), with the
-// closed `ILoggerProviderConfig<TProvider>` token as its dep slot -- resolved
-// through the open template the no-arg `addConfig` registers, so the whole
-// chain stays lazy: nothing touches configuration until the
-// `IOptions<TOptions>` assembly materializes.
+// `registerProviderOptions` registers a CLASS at the options type's pipeline
+// slots (`configureStepType`/`changeTokenSourceType`), with the closed
+// `ILoggerProviderConfig<TProvider>` type as its dep slot -- resolved through
+// the open template the no-arg `addConfig` registers, so the whole chain stays
+// lazy: nothing touches configuration until the `IOptions<TOptions>` assembly
+// materializes.
 //
 // `TOptions`/`TProvider` reify as runtime types (`optionsType`,
 // `providerType`), since type arguments erase here. Calling this twice for
@@ -33,19 +33,15 @@ export const LoggerProviderOptions = {
    * @param services The registration builder to register on.
    * @param optionsType The BARE `TOptions` type the steps attach to — the same
    * type the `addOptions`/`configure` pipeline uses.
-   * @param providerType The provider type. A type token naming it is read
-   * into one.
+   * @param providerType The provider type.
    * @returns The manifest carrying both registrations. The chain is immutable,
    * so the caller MUST keep it (`services = LoggerProviderOptions
    * .registerProviderOptions(services, …)`) — the `services` passed in is
    * unchanged.
    */
-  registerProviderOptions<TOptions, TProvider>(services: Manifest<any>, optionsType: Type | string, providerType: Type | string): Manifest<any> {
-    const options = typeof optionsType === 'string' ? Type.from(optionsType) : optionsType;
-    const providerConfig = loggerProviderConfigType(
-      typeof providerType === 'string' ? Type.from(providerType) : providerType,
-    );
-    return services.add(configureStepType(options), LoggerProviderConfigureOptions, Type.ctor(configureStepType(options), [[providerConfig]]), 'singleton')
-      .add(changeTokenSourceType(options), LoggerProviderOptionsChangeTokenSource, Type.ctor(changeTokenSourceType(options), [[providerConfig]]), 'singleton');
+  registerProviderOptions<TOptions, TProvider>(services: Manifest<any>, optionsType: Type, providerType: Type): Manifest<any> {
+    const providerConfig = loggerProviderConfigType(providerType);
+    return services.add(configureStepType(optionsType), LoggerProviderConfigureOptions, Type.ctor(configureStepType(optionsType), [[providerConfig]]), 'singleton')
+      .add(changeTokenSourceType(optionsType), LoggerProviderOptionsChangeTokenSource, Type.ctor(changeTokenSourceType(optionsType), [[providerConfig]]), 'singleton');
   },
 };

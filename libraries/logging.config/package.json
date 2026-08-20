@@ -69,6 +69,7 @@
     }
   },
   "devDependencies": {
+    "@rhombus-std/di.extras": "workspace:*",
     "@rhombus-std/primitives.extras": "workspace:*",
     "@ttsc/unplugin": "^0.18.1",
     "ttsc": "^0.18.1",
