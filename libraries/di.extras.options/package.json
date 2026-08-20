@@ -18,20 +18,14 @@
     "directory": "libraries/di.extras.options"
   },
   "type": "module",
-  "main": "./dist/bundle/index.js",
-  "types": "./dist/bundle/index.d.ts",
+  "main": "./src/index.ts",
+  "types": "./src/index.ts",
   "exports": {
-    ".": {
-      "source": "./src/index.ts",
-      "types": "./dist/bundle/index.d.ts",
-      "import": "./dist/bundle/index.js",
-      "default": "./dist/bundle/index.js"
-    },
+    ".": "./src/index.ts",
     "./ttsc": "./ttsc.mjs",
     "./tokens/*": {
-      "source": "./src/*.ts",
-      "bun": "./src/*.ts",
-      "types": "./src/*.ts"
+      "types": "./src/*.ts",
+      "bun": "./src/*.ts"
     }
   },
   "ttsc": {

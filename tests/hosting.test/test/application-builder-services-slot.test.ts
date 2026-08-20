@@ -9,7 +9,7 @@ import { ConstantType, Type } from '@rhombus-std/di.core';
 // of the manifest instead of a shared slot and everything still typechecks and
 // runs — the registrations simply never reach the container.
 
-import { Host } from '@rhombus-std/hosting/private/index';
+import { Host } from '@rhombus-std/hosting/tokens/index';
 import type { ILogger, ILoggerProvider } from '@rhombus-std/logging.core';
 import { expect, test } from 'bun:test';
 

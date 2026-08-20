@@ -241,8 +241,8 @@ jobs:
       - name: Install dependencies
         run: bun install
 
-      # The e2e suites lower runtime packages resolved through their rolled dist
-      # (some assert dist/index.js exists), so the topological build must run first.
+      # Some e2e suites build a library on demand when its dist is absent;
+      # running the topological build first keeps that path warm and ordered.
       - name: Build
         if: matrix.suites != ''
         run: bun run build

@@ -61,9 +61,13 @@ Within a package, internal imports are relative by default. Reach for the fully-
 
 ---
 
-## §72 — Every runtime library is dist-referenced
+## §72 — In-repo resolution is source-first; dist is the published surface only
 
-A library's `.` export resolves its type-facing conditions and `bun` to the rolled `./dist`; none resolve to `./src`. A self-augmenting core resolves its **own** compile back to source through a package-unique `<pkg>-source` custom condition listed first on the `.` export (so it can `declare module` its own barrel before its dist exists). The `./_/*` subpath is the only src-resolving export (§83). _Owner-approved._
+A library's dev `.` export resolves `./src/index.ts` for every consumer and every condition;
+`publishConfig.exports` carries the `./dist/bundle/*` surface a published consumer gets. No custom
+conditions exist: a self-augmenting package's own `declare module` resolves its own specifier to
+the very source being compiled, so the self-typecheck needs no special casing. Full rationale and
+mechanics: §192. _Owner-directed via the exports-rework charter (tasklist, 2026-08-19)._
 
 ---
 
@@ -73,9 +77,12 @@ A library's `.` export resolves its type-facing conditions and `bun` to the roll
 
 ---
 
-## §83 — The `_` export is for tests and `tokenfor` only
+## §83 — The white-box subpath is for tests and token derivation only
 
-Each library's `./_/*` subpath maps to `./src/*` and is publish-scrubbed, so it is reachable by exactly two things: that library's own white-box tests (which import through it), and `tokenfor`'s token form for a type reachable only through it (`pkg/_/file:Type`, §74). Nothing in shipped code imports through `_`. _Owner-approved._
+Each library's white-box subpath (today `./tokens/*`, §97) maps to `./src/*` and is
+publish-scrubbed, so it is reachable by exactly two things: test suites (which deep-import through
+it), and token derivation's non-public token form for a type reachable only through it
+(`pkg/tokens/<path>:Type`). Nothing in shipped code imports through it. _Owner-approved._
 
 ## §24 — No pluggable containers
 
@@ -263,18 +270,14 @@ divergent lowering.
 
 _Owner-directed 2026-07-18._
 
-## §97 — White-box surfaces: `tokens` and `private`; strict token derivation
+## §97 — White-box surface: `./tokens/*`; strict token derivation
 
-Every library exposes `./tokens/*` as the token/type surface, and each surface's condition set is
-**minimal and role-encoding**: `./tokens/*` carries only `types` → `./src/*.ts` — no `source`, no
-`bun` — so the surface is mechanically unimportable at runtime, enforcing compile-time-only use by
-construction. Lowering packages additionally expose `./private/*` as the typed runnable-internals
-surface: `types` → `./src/*.ts`, `bun` → the package's per-file lowered stage emit — a build
-implementation detail, not part of the rule; the alias and the disk path are independent. The root
-`.` export carries `types` + `default` (plus a self-augmenting core's `<pkg>-source` condition
-first, §72) — no redundant `bun`/`import` keys. `./tokens/*` and `./private/*` are both in-repo
-only: `publishConfig` rewrites `exports` down to `.` alone, and `files` excludes the stage emit
-directory.
+Every library exposes `./tokens/*` as its one white-box seam: `types`/`bun` → `./src/*.ts`,
+deliberately carrying no `default` so the subpath stays NON-PUBLIC to token derivation. It serves
+both typing and execution — a deep-imported source file lands on the same module instance the
+barrel resolves (source-first, §72/§192), lowered at load time where the package lowers. The root
+`.` export is the bare-string source barrel (§72). `./tokens/*` is in-repo only: `publishConfig`
+rewrites `exports` without it, and `files` excludes the stage emit directory.
 
 Token derivation for an exports-mapped file matches the **shortest** subpath among export entries
 carrying a `default` condition — public, where a bare-string target counts as carrying one — with
@@ -457,15 +460,21 @@ the implementation._
 
 ---
 
-## §105 — Editor navigation resolves `@rhombus-std/*` to source via a `source` condition; runtime stays dist-ref
+## §105 — Editor navigation is a whole-repo program over source
 
-Cross-package IDE rename / find-references needs the editor's TypeScript program to see one unified symbol identity across packages, which means resolving `@rhombus-std/*` to **source** — dist-ref (§72) resolves the rolled `.d.ts`, dead-ending navigation at each package boundary. This is served without disturbing the runtime. Each package's `tsconfig.json` becomes an editor-only whole-repo program (`include: ["../*/src/**/*"]`, `customConditions: ["source"]`); the strict CI/build config moves verbatim to `tsconfig.ci.json`, and `tsconfig.ttsc.json`, the per-package `lint` scripts, and `build-lib.ts`'s typecheck repoint to it.
+Cross-package IDE rename / find-references needs the editor's TypeScript program to see one unified
+symbol identity across packages, AND to contain every consumer — resolution alone cannot make a
+rename reach a package nothing currently open imports. So each package's `tsconfig.json` is an
+editor-only whole-repo program (`include: ["../*/src/**/*"]`, extending `/tsconfig.editor.json`);
+the strict CI/build config is `tsconfig.ci.json`, which `tsconfig.ttsc.json`, the per-package
+`lint` scripts, and `build-lib.ts`'s typecheck read. Module resolution needs no editor-special
+help: in-repo exports resolve `@rhombus-std/*` to source for every program (§72/§192), so the
+editor works identically on a cold clone and after a build. `paths`-based src-refs were tried and
+rejected back when runtime resolved dist: bun honors tsconfig `paths` at runtime, which would have
+poisoned module resolution; source-first resolution with load-time lowering (§192) is what made
+the whole condition apparatus unnecessary.
 
-Each package's `.` export gains a `source` condition → `./src/index.ts` (first key), scrubbed from `publishConfig` so it never ships. Only tsserver activates it (via the editor `customConditions`); **bun ignores tsconfig `customConditions`** — it resolves the `bun` condition → dist — so the build and every `bun test` run the distributable byte-for-byte as before. `paths`-based src-refs were tried and rejected: bun DOES honor tsconfig `paths` at runtime, poisoning module resolution so library source executes with an un-lowered `tokenfor`.
-
-This is a SHARED `source` condition, which §78 (v1) considered and rejected — but §78's concern was a downstream consumer's BUILD/GATE co-compiling a core's src; here `source` is set ONLY by the editor program, and neither the build nor the gate sets `customConditions`, so that harm cannot arise, and the whole-repo over-pull §78 avoided is precisely what the editor wants. src-refs stay internal-only (this editor program, the `<pkg>-source` self-compile condition, and the `./_/*` white-box subpath); dist-ref remains the sole runtime and publish primary.
-
-_Direction owner-directed (export conditions; src-refs internal-only). The shared-`source` mechanism is an implementation call — pending owner confirm of shared `source` vs per-package `<pkg>-source`._
+_Direction owner-directed._
 
 ---
 
@@ -1146,8 +1155,8 @@ declarations whose receiver is a `this` parameter, and installation assigns the 
 straight onto the receiver prototype:
 `proto[name] = set[name]`, no forwarding thunk, no adapter. Function identity therefore holds
 (`proto[name] === set[name]`), which makes two things meaningful that a wrapper made impossible:
-re-installing the very same function is a detectable silent no-op (the double-install shape a
-barrel + `./private/*` load produces), and an installed member can be recognized as its authored
+re-installing the very same function is a detectable silent no-op (the double-install shape two
+loads of one module used to produce), and an installed member can be recognized as its authored
 source.
 
 **The receiver is written, per member, as an explicit `this` parameter — never `ThisType<R>`.**
@@ -2721,3 +2730,94 @@ substitution plus a coinductive seen-pairs cache yields a sound structural core;
 indexed-access/`this`/unique-symbol stay out).
 
 _Claude-recorded 2026-08-19; the whole rework is held — AliasType included — nothing scheduled._
+
+---
+
+## §192 — Exports go src-first in-repo; dist is the published surface only
+
+The owner's charter for the exports rework names two requirements as the whole design space: the
+editor experience is flawless regardless of build state (resolution, rename, find-refs — nothing
+depends on `dist` existing), and type AND value identity hold throughout the dep graph — one
+`Manifest`, one augmentation registry, one module instance per package, everywhere. "src-ref"
+originally meant a package consumed AS SOURCE, with no build and no dist of its own; the export
+system's custom conditions grew from a misreading of that term, and are symptoms, not requirements.
+
+**The survey.** Every library's dev `.` export resolves dist for all runtime/type-facing conditions
+plus a `source` condition (editor-only, activated by `tsconfig.editor.json`'s
+`customConditions: ["source"]`) and — on the seven self-`declare module`-ing packages — a
+package-unique `<pkg>-source` condition activated by that package's own `tsconfig.ci.json`, fixing
+the TS2664 self-typecheck (a package cannot resolve its own public specifier to a dist that its own
+build has not produced yet). Two white-box seams ride beside it: `./tokens/*` (src, all conditions)
+and, on lowering packages, `./private/*` (`types` → src, `bun` → `dist/stage` per-file lowered
+emit), with a documented double-instance hazard (one suite loading a package through both the
+barrel and `./private/*` forks its module identity — exactly what requirement 2 outlaws).
+`publishConfig.exports` (pnpm-only publish) scrubs the seams and dev conditions; `scripts/derive-publish-config.ts` derives it mechanically. The ttsc token derivation reads the
+exports map itself: a public entry (bare string or `default`-reachable) is a tier-1 token source
+with dist targets twinned back to their `src/` stems (`EntrySourceStems`), `./tokens/*` is the
+sanctioned non-public reach whose files mint `pkg/tokens/<path>` tokens, and any OTHER non-public
+subpath reaching a file is a hard diagnostic.
+
+**The decision: the conventional shape is src-first in-repo.** Every library's dev exports resolve
+`./src/index.ts` for every consumer and every condition (`.` as a bare-string target); `main`/
+`types` point at src; `publishConfig` carries the dist surface unchanged. All custom conditions —
+the shared `source` and all seven `<pkg>-source` — are deleted: with src the uniform in-repo
+resolution there is nothing left for them to disambiguate, and the TS2664 self-augmentation fix
+falls out for free (a package's own `declare module` now resolves its own specifier to the same
+source files its program is compiling). This is the pattern the requirements + convention pin:
+
+- Requirement 1 is satisfied by construction — no program, editor or gate, resolves dist in-repo.
+- Requirement 2 is satisfied more strongly than dist-referencing can: with exactly one in-repo
+  resolution plane (src), the barrel and any deep import land on the same files and bun's module
+  cache yields one instance per file. The bundle-vs-stage dual plane, and its double-instance
+  hazard, cease to exist.
+- The historical blocker is gone by architecture: augmented-receiver typing no longer needs a
+  sealed rolled `.d.ts`, because a concrete class merges with an `interface X extends Manifest`
+  declaration instead of an `implements` clause (§188-era shape), so a program seeing both a
+  receiver's source and a `declare module` face over it stays clean.
+
+**What the flip drags along, and how each lands:**
+
+- **In-repo execution must lower at load time.** About two-thirds of the libraries call
+  `typefor<T>()` at module top level; raw src throws un-lowered. A preload
+  (`scripts/ttsc-preload.ts`) registers ONE bun plugin that dispatches each loaded file to its
+  owning library's `tsconfig.ttsc.json` ttsc project (instances lazy, memoized) and passes every
+  other file through. Generated per-package `bunfig.toml`s (`scripts/derive-preload-bunfig.ts`)
+  carry it into `bun run` and `bun test`, since bun's config discovery is cwd-only. The publish
+  build is untouched: stage-then-bundle stays, and the parity invariant (lowered == hand-written)
+  is what makes running lowered-on-load src equivalent to running `dist`.
+- **The wire format does not move.** `.` stays public (its src stem is the same stem the build
+  program compiles); `./tokens/*` stays, non-public (`types`/`bun` → src, no `default`), so
+  internal types keep minting `pkg/tokens/<path>` tokens; `./private/*` is deleted, which only
+  removes a tier-3 diagnosis candidate. No transforms/ change.
+- **`./private/*` consumers move to `./tokens/*`.** The seam's reason to exist — executing the
+  lowered stage emit — is served by load-time lowering now; white-box suites import src through
+  `./tokens/*` and the preload lowers it. `dist/stage` remains a build intermediate only.
+- **Compile-scope typings travel with the source that needs them.** A consumer program compiling a
+  dependency's src must see its `node:*` shims, so each src file importing a node builtin carries
+  `/// <reference path="./node-builtins.d.ts" />`.
+- **Authoring faces travel the same way.** A package whose src uses another package's `declare
+  module` faces (`types: ["@rhombus-std/di.extras"]`) imposes that entry on any program compiling
+  its src — consumers' gates add the same `types` entry.
+- **The example apps run under bun.** Their built `dist/main.js` keeps workspace deps external;
+  in-repo those now resolve src, which plain node cannot execute (decorators, un-lowered
+  primitives). The e2e's build half still exercises the real stage-then-bundle pipeline; the run
+  half switches `node` → `bun` with the preload. The plain-node published-consumer proof belongs
+  to a packed-artifact gate (out of scope here; noted as the conventional home).
+- **`derive-publish-config.ts`** learns the bare-string dev form (string entry on a publishable
+  subpath → dist-swapped conditions object), keeping the scrub mechanical.
+
+**Accepted costs.** Any suite that touches a lowering library now needs the Go sidecar (previously
+only the ttsc e2es did); the shared content-keyed cache keeps that a once-per-machine cost. A
+package's gate compiles its transitive dependency src, so an upstream break surfaces in downstream
+gates — the live-types property, working as intended. `build-all`'s tiering is no longer
+load-bearing for typecheck correctness (nothing in-repo resolves upstream dist anymore); it stays
+as-is to keep publish builds ordered and the change surface small.
+
+**Held, deliberately.** Renaming `./tokens/*` to `./src/*` would be marginally more conventional
+naming but moves the engine's tier rules and the token namespace for zero requirement gain — not
+taken. The editor whole-repo program (`tsconfig.json` per package, `include: ["../*/src/**/*"]`)
+stays: src-first exports make resolution build-independent, but only a whole-repo program makes
+rename/find-refs COMPLETE across packages that nothing currently open imports.
+
+_Claude-recorded 2026-08-20; implements the owner's exports-rework charter (tasklist, "Exports
+system — make it conventional")._

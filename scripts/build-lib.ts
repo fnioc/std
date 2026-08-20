@@ -30,15 +30,9 @@
 //     scan. So this script passes NO explicit plugin list (a non-empty manual
 //     `tsconfig.ttsc.json` `plugins` array is the only override). See below.
 //
-// The optional `rhombusBuild` manifest field carries the few per-package
-// overrides (each override package documents its why in a `//rhombusBuild`
-// neighbor key):
-//
-//   | package            | field                                  | why                                              |
-//   |--------------------|----------------------------------------|--------------------------------------------------|
-//   | config.core        | typesOnly: true                        | pure-types package -- no JS bundle, asserted (§40) |
-//   | di.extras     | inline: [primitives.extras, func] | dist-parity carve-out -- its bespoke build inlined these; aligning to the rule is a follow-up |
-//   | config.extras | forbidImports: ["@rhombus-std/config"] | its bundle must be @rhombus-std-free -- the only "@rhombus-std/config" occurrence is the codegen'd import-specifier string |
+// The optional `rhombusBuild` manifest field carries per-package overrides
+// (each override package documents its why in a `//rhombusBuild` neighbor
+// key). No package carries one today.
 
 import { spawnSync } from 'node:child_process';
 import { existsSync, readFileSync } from 'node:fs';
@@ -129,8 +123,7 @@ if (ttscProject) {
   ttscTransforms = manual.length > 0 ? manual : undefined;
 }
 
-await buildPackage({ dir, name: manifest.name, entrypoints, external, dtsConfigs,
-  emitJs: !(overrides.typesOnly ?? false), assertNoJs: overrides.typesOnly ?? false, ttscProject, ttscTransforms });
+await buildPackage({ dir, name: manifest.name, entrypoints, external, dtsConfigs, emitJs: !(overrides.typesOnly ?? false), assertNoJs: overrides.typesOnly ?? false, ttscProject, ttscTransforms });
 
 // Guard: the emitted bundle must carry no real ESM import from the forbidden
 // specifiers. A literal occurrence as a STRING (e.g. a transformer's codegen'd

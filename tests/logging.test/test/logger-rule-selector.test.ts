@@ -3,7 +3,7 @@
 
 import { LoggerFilterOptions, LoggerFilterRule } from '@rhombus-std/logging';
 import { LogLevel } from '@rhombus-std/logging.core';
-import { LoggerRuleSelector } from '@rhombus-std/logging/private/LoggerRuleSelector';
+import { LoggerRuleSelector } from '@rhombus-std/logging/tokens/LoggerRuleSelector';
 import { describe, expect, test } from 'bun:test';
 
 function optionsWith(rules: LoggerFilterRule[], minLevel: LogLevel = LogLevel.Information): LoggerFilterOptions {

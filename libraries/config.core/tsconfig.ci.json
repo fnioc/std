@@ -1,15 +1,6 @@
 {
   "extends": "../../tsconfig.lib.json",
-  "compilerOptions": {
-    // config.core augments its own receivers (IConfig, IConfigRoot), and a
-    // `declare module` must name the package specifier. The `.` export's `types`
-    // points at the dist `.d.ts` that this very program produces, so a
-    // self-directed merge would resolve to a missing file (TS2664). The
-    // package-unique `config-core-source` condition -- listed ahead of `types` in
-    // the `.` export -- routes only this package's own program back to src;
-    // external consumers do not set it and resolve the built dist. Dev-only:
-    // absent from publishConfig.
-    "customConditions": ["config-core-source"]
-  },
-  "include": ["src/**/*"]
+  "include": [
+    "src/**/*"
+  ]
 }

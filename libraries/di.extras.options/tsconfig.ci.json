@@ -1,8 +1,7 @@
 {
   // The satellite's own program: `augment.ts` declaration-merges `addOptions<T>()`
-  // onto di.core's `Manifest`. di.core is dist-referenced (§72), so its
-  // `types` condition resolves the built, skip-lib-checked `.d.ts` and the merge
-  // binds without a `built` custom condition.
+  // onto di.core's `Manifest`, resolved to its source barrel like every in-repo
+  // consumer.
   "extends": "../../tsconfig.lib.json",
   "compilerOptions": {
     "types": ["@rhombus-std/options.augmentations"]

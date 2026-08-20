@@ -1,3 +1,4 @@
+/// <reference path="./node-builtins.d.ts" />
 // Serves IFileInfo/IDirectoryContents off the on-disk file system rooted at
 // an absolute directory, and watches exact files / directory prefixes for
 // changes via a lazily-created PhysicalFilesWatcher. Every lookup is guarded

@@ -1,15 +1,6 @@
 {
   "extends": "../../tsconfig.lib.json",
-  "compilerOptions": {
-    // logging.core augments its own ILogger receiver, and a `declare module`
-    // must name the package specifier. The `.` export's `types` points at the
-    // dist `.d.ts` that this very program produces, so a self-directed merge
-    // would resolve to a missing file (TS2664). The package-unique
-    // `logging-core-source` condition -- listed ahead of `types` in the `.`
-    // export -- routes only this package's own program back to src; external
-    // consumers do not set it and resolve the built dist. Dev-only: absent from
-    // publishConfig.
-    "customConditions": ["logging-core-source"]
-  },
-  "include": ["src/**/*"]
+  "include": [
+    "src/**/*"
+  ]
 }

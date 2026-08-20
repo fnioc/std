@@ -4,7 +4,7 @@ import { DefaultManifest, type Manifest, Type } from '@rhombus-std/di.core';
 import type { IOptions } from '@rhombus-std/options';
 import { beforeAll, describe, expect, test } from 'bun:test';
 import { spawnSync } from 'node:child_process';
-import { existsSync, mkdirSync, readFileSync, rmSync, symlinkSync, writeFileSync } from 'node:fs';
+import { mkdirSync, readFileSync, rmSync, symlinkSync, writeFileSync } from 'node:fs';
 import { homedir } from 'node:os';
 import { basename, join, resolve } from 'node:path';
 // Importing this package also installs the addOptions augmentation onto Manifest
@@ -139,8 +139,9 @@ function goEnv(): NodeJS.ProcessEnv {
 // token and nothing else.
 //
 // The sandbox points at the one shared TTSC_CACHE_DIR, so a sidecar built cold by
-// any suite is reused warm here. di.core resolves to its dist/bundle types, so
-// inline substitution is exercised against a dist-referenced receiver.
+// any suite is reused warm here. di.core resolves to its source barrel, so
+// inline substitution is exercised against the same source-first receiver every
+// in-repo consumer sees.
 
 const CHAIN_ROOT = join(homedir(), '.cache', 'fnioc-ttsc', 'sandboxes', basename(REPO_ROOT), 'chain');
 const chainInlineDir = join(CHAIN_ROOT, 'inline');
@@ -525,28 +526,17 @@ describe.skipIf(!toolchainReady)('generic inline stage — registration parity (
     assertNoAuthoringSurvivors(chainInline);
   });
 
-  test('Open issue 1: the sandbox resolves di.core to its dist/bundle types (dist-referenced)', () => {
+  test('Open issue 1: the sandbox resolves di.core to its source barrel (source-first)', () => {
     // The load-bearing empirical answer is the byte-parity above: the inline stage
     // substituted the sugar bodies (anchored on di.core's MERGED member symbol)
-    // while di.core resolved to its ROLLED d.ts, disproving anchor.go:26's claim
-    // that inline substitution goes inert against an external/dist di.core. This
-    // pins the resolution shape that makes it so.
-    const distDts = join(DI_CORE, 'dist', 'bundle', 'index.d.ts');
-    expect(existsSync(distDts)).toBe(true);
+    // while di.core resolved as an external package, disproving anchor.go:26's
+    // claim that inline substitution goes inert against an external di.core. This
+    // pins the resolution shape it ran under: every consumer and every condition
+    // resolves the source barrel — dist exists only behind publishConfig.
     const pkg = JSON.parse(readFileSync(join(DI_CORE, 'package.json'), 'utf8')) as {
-      exports: Record<string, Record<string, string>>;
+      exports: Record<string, unknown>;
     };
-    const dot = pkg.exports['.'];
-    // A plain Bundler-resolution consumer takes the `types` condition → dist/bundle.
-    expect(dot.types).toContain('dist/bundle');
-    // The only src-routing conditions are di.core's OWN self-compile hooks
-    // (`source` needs an opt-in customCondition; `di-core-source` is package-unique),
-    // never a path a consumer program without those conditions would take.
-    for (const [cond, target] of Object.entries(dot)) {
-      if (target.includes('/src/')) {
-        expect(['source', 'di-core-source']).toContain(cond);
-      }
-    }
+    expect(pkg.exports['.']).toBe('./src/index.ts');
   });
 
   test('a keyed service type composes base and key into one tag token', () => {

@@ -1,8 +1,8 @@
 // White-box tests for the internal `hostingLog` set (the host
 // runtime's structured log messages) via the `internal/*` seam.
 
-import { hostingLog } from '@rhombus-std/hosting/private/internal/hosting-log';
-import { LoggerEventIds } from '@rhombus-std/hosting/private/internal/LoggerEventIds';
+import { hostingLog } from '@rhombus-std/hosting/tokens/internal/hosting-log';
+import { LoggerEventIds } from '@rhombus-std/hosting/tokens/internal/LoggerEventIds';
 import { type EventId, type ILogger, LogLevel } from '@rhombus-std/logging.core';
 import { expect, test } from 'bun:test';
 

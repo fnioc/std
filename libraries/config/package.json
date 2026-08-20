@@ -16,27 +16,14 @@
     "directory": "libraries/config"
   },
   "type": "module",
-  "main": "./dist/bundle/index.js",
-  "types": "./dist/bundle/index.d.ts",
+  "main": "./src/index.ts",
+  "types": "./src/index.ts",
   "sideEffects": true,
-  "//config-source": "config self-augments: memory/chained both `declare module \"@rhombus-std/config\"` (the barrel) and import ConfigBuilder from it, so every one of config's own ConfigBuilder augmenters merges onto ONE type -- mixing the barrel with a relative `../ConfigBuilder` phantom-splits the class and `return this` fails. But config's own compile has no built dist to resolve its own name against (TS2664/TS2307 the moment dist is absent). The package-unique `config-source` condition, listed FIRST on the `.` export (ahead of `types`), routes config's OWN program back to ./src/index.ts so the self-`declare module` and self-imports resolve during the not-yet-built compile; every external consumer (which never sets this condition) resolves `types` -> the rolled ./dist/bundle/index.d.ts. This is di.core's `di-core-source` self-source pattern (§72/§74). Dev-only: absent from publishConfig, where `.` collapses onto ./dist/bundle/index.* like the reference. No merge-anchor subpaths remain.",
   "exports": {
-    ".": {
-      "source": "./src/index.ts",
-      "config-source": "./src/index.ts",
-      "bun": "./dist/bundle/index.js",
-      "types": "./dist/bundle/index.d.ts",
-      "import": "./dist/bundle/index.js",
-      "default": "./dist/bundle/index.js"
-    },
+    ".": "./src/index.ts",
     "./tokens/*": {
-      "source": "./src/*.ts",
-      "bun": "./src/*.ts",
-      "types": "./src/*.ts"
-    },
-    "./private/*": {
       "types": "./src/*.ts",
-      "bun": "./dist/stage/*.js"
+      "bun": "./src/*.ts"
     }
   },
   "files": [

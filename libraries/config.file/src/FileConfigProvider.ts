@@ -1,3 +1,4 @@
+/// <reference path="./node-builtins.d.ts" />
 // FileConfigProvider -- the abstract base for every file-backed
 // configuration provider.
 //

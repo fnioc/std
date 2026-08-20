@@ -7,8 +7,8 @@
   "type": "module",
   "scripts": {
     "build": "bun x tsc -p tsconfig.json",
-    "start": "bun run build && node dist/main.js",
-    "test": "bun run build && node dist/main.js > /tmp/rhombus-std-app-without-transformer.out && diff -u expected.txt /tmp/rhombus-std-app-without-transformer.out",
+    "start": "bun run build && bun dist/main.js",
+    "test": "bun run build && bun dist/main.js > /tmp/rhombus-std-app-without-transformer.out && diff -u expected.txt /tmp/rhombus-std-app-without-transformer.out",
     "lint": "bun x tsc --noEmit -p tsconfig.json"
   },
   "dependencies": {

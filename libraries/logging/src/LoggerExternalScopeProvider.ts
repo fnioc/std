@@ -1,3 +1,4 @@
+/// <reference path="./node-builtins.d.ts" />
 // The default IExternalScopeProvider. Keeps the current scope in an
 // `AsyncLocalStorage` (node:async_hooks), so pushing a scope threads a new node
 // onto the ambient stack and it stays isolated across concurrent async flows;

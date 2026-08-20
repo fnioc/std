@@ -3,10 +3,10 @@
 // would have produced, so each node kind is exercised on its own terms.
 
 import { DefaultManifest, ServiceDescriptor } from '@rhombus-std/di.core';
-import { CallSite } from '@rhombus-std/di/private/internal/CallSite/CallSite';
-import { realizeCallSite } from '@rhombus-std/di/private/internal/CallSite/RealizeVisitor';
-import { Engine } from '@rhombus-std/di/private/internal/Engine';
-import { ServiceScope, ServiceScopeFactory } from '@rhombus-std/di/private/internal/ServiceScope';
+import { CallSite } from '@rhombus-std/di/tokens/internal/CallSite/CallSite';
+import { realizeCallSite } from '@rhombus-std/di/tokens/internal/CallSite/RealizeVisitor';
+import { Engine } from '@rhombus-std/di/tokens/internal/Engine';
+import { ServiceScope, ServiceScopeFactory } from '@rhombus-std/di/tokens/internal/ServiceScope';
 import { type IServiceProvider, Type } from '@rhombus-std/primitives';
 import { describe, expect, test } from 'bun:test';
 

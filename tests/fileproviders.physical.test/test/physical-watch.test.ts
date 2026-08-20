@@ -154,9 +154,8 @@ describe('PhysicalFileProvider.watch active mode (best-effort)', () => {
     expect(() => provider[Symbol.dispose]()).not.toThrow();
   });
 
-  // White-box against PhysicalFilesWatcher: the `.` export is dist-referenced,
-  // so exercising the shared-timer statics (src copies) through the built
-  // provider bundle can't reach them -- the watcher is driven directly, the
+  // White-box against PhysicalFilesWatcher: the shared-timer statics are
+  // exercised on the class directly rather than through a provider -- the
   // same seam PollingFileChangeToken's own unit tests use.
   test('disposal does NOT fire outstanding active tokens', () => {
     writeFileSync(join(root, 'a.txt'), 'v1');
