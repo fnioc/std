@@ -1,6 +1,6 @@
 // Compile-time phantom brands, read off a constructor or factory parameter's TYPE
 // to decide what fills its dependency slot: a pinned token (`Inject`), an
-// open-generic hole (`Hole` / `$`), a resolution key (`Keyed`), and a
+// open-generic hole (`Generic` / `$`), a resolution key (`Keyed`), and a
 // type-argument witness (`Typeof`). All of them erase — zero runtime footprint.
 
 import type { NominalType } from '@rhombus-std/primitives';
@@ -33,7 +33,7 @@ declare const TOKEN: unique symbol;
  */
 export type Inject<T, K extends string> = T & { readonly [TOKEN]?: K; };
 
-// ── Hole ──────────────────────────────────────────────────────────────────────
+// ── Generic ───────────────────────────────────────────────────────────────────
 
 declare const HOLE: unique symbol;
 
@@ -45,10 +45,10 @@ declare const HOLE: unique symbol;
  * `N` numbers the hole so several can be told apart and a repeated one binds
  * consistently. `C` constrains what may close it, and defaults to anything.
  */
-export type Hole<N extends number, C = unknown> = C & { readonly [HOLE]?: N; };
+export type Generic<N extends number, C = unknown> = C & { readonly [HOLE]?: N; };
 
-/** {@link Hole} without a constraint — the spelling an open template usually wants. */
-export type $<N extends number> = Hole<N>;
+/** {@link Generic} without a constraint — the spelling an open template usually wants. */
+export type $<N extends number> = Generic<N>;
 
 // ── Keyed ─────────────────────────────────────────────────────────────────────
 
