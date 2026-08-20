@@ -1,2 +1,2 @@
-import './Manifest-Descriptor-augmentations';
-import './ServiceProvider-service-augmentations';
+export * from './Manifest-Descriptor-augmentations';
+export * from './ServiceProvider-service-augmentations';

@@ -4,22 +4,12 @@
     "entries": [
       {
         "type": "@rhombus-std/di.core:Manifest",
-        "impl": "@rhombus-std/di.extras:ManifestServiceAugmentations",
+        "impl": "@rhombus-std/di.extras:ManifestDescriptorAugmentations",
         "member": "add"
       },
       {
         "type": "@rhombus-std/di.core:Manifest",
-        "impl": "@rhombus-std/di.extras:ManifestServiceAugmentations",
-        "member": "addClass"
-      },
-      {
-        "type": "@rhombus-std/di.core:Manifest",
-        "impl": "@rhombus-std/di.extras:ManifestServiceAugmentations",
-        "member": "addFactory"
-      },
-      {
-        "type": "@rhombus-std/di.core:Manifest",
-        "impl": "@rhombus-std/di.extras:ManifestServiceAugmentations",
+        "impl": "@rhombus-std/di.extras:ManifestDescriptorAugmentations",
         "member": "addValue"
       },
       {
@@ -30,27 +20,12 @@
       {
         "type": "@rhombus-std/di.core:Manifest",
         "impl": "@rhombus-std/di.extras:ManifestDescriptorAugmentations",
-        "member": "tryAddClass"
-      },
-      {
-        "type": "@rhombus-std/di.core:Manifest",
-        "impl": "@rhombus-std/di.extras:ManifestDescriptorAugmentations",
-        "member": "tryAddFactory"
-      },
-      {
-        "type": "@rhombus-std/di.core:Manifest",
-        "impl": "@rhombus-std/di.extras:ManifestDescriptorAugmentations",
         "member": "tryAddValue"
       },
       {
         "type": "@rhombus-std/di.core:Manifest",
         "impl": "@rhombus-std/di.extras:ManifestDescriptorAugmentations",
-        "member": "replaceClass"
-      },
-      {
-        "type": "@rhombus-std/di.core:Manifest",
-        "impl": "@rhombus-std/di.extras:ManifestDescriptorAugmentations",
-        "member": "replaceFactory"
+        "member": "replace"
       },
       {
         "type": "@rhombus-std/di.core:Manifest",
@@ -76,11 +51,6 @@
         "type": "@rhombus-std/primitives:IServiceProvider",
         "impl": "@rhombus-std/di.extras:ServiceProviderServiceAugmentations",
         "member": "getServices"
-      },
-      {
-        "type": "@rhombus-std/primitives:IServiceProvider",
-        "impl": "@rhombus-std/di.extras:ServiceProviderValueAugmentations",
-        "member": "getService"
       }
     ]
   }

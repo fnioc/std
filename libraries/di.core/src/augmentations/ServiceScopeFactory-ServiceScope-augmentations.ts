@@ -1,6 +1,5 @@
 import { NotImplementedError } from '@rhombus-std/primitives';
 import { registerAugmentations } from '@rhombus-std/primitives.extras';
-import type { Flatten } from '@rhombus-toolkit/type-helpers';
 import { AsyncServiceScope, type IServiceScopeFactory } from '../ServiceScope';
 
 declare module '@rhombus-std/di.core' {
@@ -11,7 +10,7 @@ declare module '@rhombus-std/di.core' {
      * disposal model this depends on is still undecided.
      * @throws {NotImplementedError} always, until that model is decided.
      */
-    createAsyncScope(this: IServiceScopeFactory): AsyncServiceScope;
+    createAsyncScope(): AsyncServiceScope;
   }
 }
 registerAugmentations<IServiceScopeFactory>({
