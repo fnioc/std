@@ -56,6 +56,11 @@ func Leaf(f *shimast.NodeFactory, binding *valueimport.Binding, n *tokens.TypeNo
 		return Call(f, binding, "union", members)
 	case tokens.TypeNodePlaceholder:
 		return Call(f, binding, "generic", []*shimast.Node{f.NewStringLiteral(n.Label, shimast.TokenFlagsNone)})
+	case tokens.TypeNodeTag:
+		return Call(f, binding, "tag", []*shimast.Node{
+			Leaf(f, binding, n.Inner),
+			f.NewStringLiteral(n.Tag, shimast.TokenFlagsNone),
+		})
 	default: // tokens.TypeNodeNamed
 		args := make([]*shimast.Node, 0, len(n.Args))
 		for _, a := range n.Args {

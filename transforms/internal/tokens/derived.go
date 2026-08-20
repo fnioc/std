@@ -237,6 +237,8 @@ func KindName(d *Derived) string {
 			return "union"
 		case TypeNodePlaceholder:
 			return "generic"
+		case TypeNodeTag:
+			return "tag"
 		default:
 			if d.Leaf.From == "global" {
 				return "global"
