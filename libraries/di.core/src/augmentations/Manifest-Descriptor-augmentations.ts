@@ -24,30 +24,30 @@ declare module '@rhombus-std/di.core' {
     /** Adds each descriptor whose registration slot no existing descriptor occupies. */
     tryAdd(...descriptors: ReadonlyArray<ServiceDescriptor<Scopes>>): Manifest<Scopes>;
 
-    /** Registers `implementer` — constructed with `new` — as the implementation of `serviceType`. */
-    add(serviceType: Type, implementer: Ctor, implementerType: ConstructorType, scope?: Scopes): Manifest<Scopes>;
+    /** Registers `ctor` — constructed with `new` — as the implementation of `serviceType`. */
+    add(serviceType: Type, ctor: Ctor, ctorType: ConstructorType, scope?: Scopes): Manifest<Scopes>;
     /** {@link Manifest.add}'s constructor shape, registering only when the slot is unclaimed. */
-    tryAdd(serviceType: Type, implementer: Ctor, implementerType: ConstructorType, scope?: Scopes): Manifest<Scopes>;
+    tryAdd(serviceType: Type, ctor: Ctor, ctorType: ConstructorType, scope?: Scopes): Manifest<Scopes>;
     /** {@link Manifest.add}'s constructor shape, swapping in for the registration already in the slot. */
-    replace(serviceType: Type, implementer: Ctor, implementerType: ConstructorType, scope?: Scopes): Manifest<Scopes>;
+    replace(serviceType: Type, ctor: Ctor, ctorType: ConstructorType, scope?: Scopes): Manifest<Scopes>;
 
-    /** Registers `implementer` — called, never `new`ed — as the producer of `serviceType`. */
-    add(serviceType: Type, implementer: Func, implementerType: FunctionType, scope?: Scopes): Manifest<Scopes>;
+    /** Registers `factory` — called, never `new`ed — as the producer of `serviceType`. */
+    add(serviceType: Type, factory: Func, factoryType: FunctionType, scope?: Scopes): Manifest<Scopes>;
     /** {@link Manifest.add}'s factory shape, registering only when the slot is unclaimed. */
-    tryAdd(serviceType: Type, implementer: Func, implementerType: FunctionType, scope?: Scopes): Manifest<Scopes>;
+    tryAdd(serviceType: Type, factory: Func, factoryType: FunctionType, scope?: Scopes): Manifest<Scopes>;
     /** {@link Manifest.add}'s factory shape, swapping in for the registration already in the slot. */
-    replace(serviceType: Type, implementer: Func, implementerType: FunctionType, scope?: Scopes): Manifest<Scopes>;
+    replace(serviceType: Type, factory: Func, factoryType: FunctionType, scope?: Scopes): Manifest<Scopes>;
 
     /**
-     * Registers `implementer` under `serviceType` as it stands: it is handed back on resolution,
-     * never constructed or called. The {@link ConstantType} marker is what says so — a callable's
-     * own type cannot, so the call site carries the choice.
+     * Registers `value` under `serviceType` as it stands: it is handed back on resolution, never
+     * constructed or called. The {@link ConstantType} marker is what says so — a callable's own
+     * type cannot, so the call site carries the choice.
      */
-    add(serviceType: Type, implementer: unknown, implementerType: ConstantType): Manifest<Scopes>;
+    add(serviceType: Type, value: unknown, valueType: ConstantType): Manifest<Scopes>;
     /** {@link Manifest.add}'s value shape, registering only when the slot is unclaimed. */
-    tryAdd(serviceType: Type, implementer: unknown, implementerType: ConstantType): Manifest<Scopes>;
+    tryAdd(serviceType: Type, value: unknown, valueType: ConstantType): Manifest<Scopes>;
     /** {@link Manifest.add}'s value shape, swapping in for the registration already in the slot. */
-    replace(serviceType: Type, implementer: unknown, implementerType: ConstantType): Manifest<Scopes>;
+    replace(serviceType: Type, value: unknown, valueType: ConstantType): Manifest<Scopes>;
 
     /**
      * Opens a registration chain for `serviceType`: choose the implementer through one of the
@@ -66,6 +66,11 @@ declare module '@rhombus-std/di.core' {
 
 registerAugmentations<Manifest<any>>({
   add(this: Manifest<any>, descriptor: ServiceDescriptor<any>): Manifest<any> {
+    // The factory throws at the earliest point that can see an abstract constructor; this is the
+    // door a hand-written descriptor literal enters by, so the same refusal stands here too.
+    if ('ctor' in descriptor && descriptor.ctorType.abstract) {
+      throw new TypeError(`${Type.stringify(descriptor.ctorType)} is abstract — nothing can \`new\` it directly`);
+    }
     return this._add(descriptor);
   },
   replace(this: Manifest<any>, descriptor: ServiceDescriptor<any>): Manifest<any> {
