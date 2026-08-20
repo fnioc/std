@@ -3,7 +3,7 @@ export type { AggregateType, ArrayType, ConstructorType, FunctionType, GenericTy
   TagType, TupleType, TypeLiteralType, UnionType } from '@rhombus-std/primitives';
 
 export * from './brands';
-export * from './builder';
+export type { ServiceDescriptorBuilderFor } from './builder';
 export * from './Errors';
 export * from './Manifest';
 export * from './resolver';

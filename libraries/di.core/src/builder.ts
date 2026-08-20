@@ -1,280 +1,111 @@
-import { type ConstructorType, type FunctionType, Type } from '@rhombus-std/primitives';
+import type { ConstructorType, FunctionType, Type } from '@rhombus-std/primitives';
 import type { AbstractCtor, Ctor, Func } from '@rhombus-toolkit/func';
-import { assertNever } from '@rhombus-toolkit/type-guards';
 import { withKey } from './service-type';
-import { ServiceDescriptor } from './ServiceDescriptor';
+import { type CtorDescriptor, type FactoryDescriptor, ServiceDescriptor, type ValueDescriptor } from './ServiceDescriptor';
 
-/** A step the lambda has not spent yet. Each verb removes its own, so none can be taken twice. */
-type Slot = 'implementer' | 'implementerType' | 'lifetime' | 'tag';
-
-/**
- * The steps still open, as one type: an intersection of the interfaces whose slots survive, plus
- * {@link IComplete} once the registration is whole.
- */
-type ServiceDescriptorBuilder<T, ImplementerNode extends Type, Scopes extends string, Slots extends Slot, Ready extends boolean> =
-  & (Ready extends true ? IComplete : unknown)
-  & ('implementer' extends Slots ? IAsImplementer<T, Scopes, Slots, Ready> : unknown)
-  & ('implementerType' extends Slots ? IWithImplementerType<T, ImplementerNode, Scopes, Slots> : unknown)
-  & ('lifetime' extends Slots ? IWithLifetime<T, ImplementerNode, Scopes, Slots, Ready> : unknown)
-  & ('tag' extends Slots ? ITaggedAs<T, ImplementerNode, Scopes, Slots, Ready> : unknown);
+/** A step the chain has not spent yet. Each verb removes its own, so none can be taken twice. */
+type Slot = 'implementer' | 'lifetime' | 'tag';
 
 /**
- * Choosing what produces the service. Each door takes only implementations that produce `T`, so a
- * registration that could not satisfy its own address is refused where it is written.
+ * The steps still open, as one type: an intersection of the interfaces whose slots survive.
+ * `Described` is `unknown` until an implementer is chosen; from then on the node IS that
+ * descriptor, refined by whatever steps remain.
  */
-interface IAsImplementer<T, Scopes extends string, Slots extends Slot, Ready extends boolean> {
+type ServiceDescriptorBuilder<T, Scopes extends string, Slots extends Slot, Described> =
+  & Described
+  & ('implementer' extends Slots ? IAsImplementer<T, Scopes, Slots> : unknown)
+  & ('lifetime' extends Slots ? IWithLifetime<T, Scopes, Slots, Described> : unknown)
+  & ('tag' extends Slots ? ITaggedAs<T, Scopes, Slots, Described> : unknown);
+
+/**
+ * Choosing what produces the service. Each door takes the implementation together with its own
+ * type — the node carrying its parameter rows — and takes only implementations that produce `T`,
+ * so a registration that could not satisfy its own address is refused where it is written. Taking
+ * a door completes the registration: the result is a {@link ServiceDescriptor}.
+ */
+interface IAsImplementer<T, Scopes extends string, Slots extends Slot> {
   asClass(
     ctor: AbstractCtor<any[], T> & Ctor,
-  ): ServiceDescriptorBuilder<T, ConstructorType, Scopes, Exclude<Slots, 'implementer'> | 'implementerType', Ready>;
+    ctorType: ConstructorType,
+  ): ServiceDescriptorBuilder<T, Scopes, Exclude<Slots, 'implementer'>, CtorDescriptor<Scopes>>;
   asFactory(
     fn: Func<any[], T>,
-  ): ServiceDescriptorBuilder<T, FunctionType, Scopes, Exclude<Slots, 'implementer'> | 'implementerType', Ready>;
-  asValue(value: T): ServiceDescriptorBuilder<T, never, Scopes, Extract<Slots, 'tag'>, true>;
+    fnType: FunctionType,
+  ): ServiceDescriptorBuilder<T, Scopes, Exclude<Slots, 'implementer'>, FactoryDescriptor<Scopes>>;
+  asValue(value: T): ServiceDescriptorBuilder<T, Scopes, Extract<Slots, 'tag'>, ValueDescriptor>;
 }
+
+interface IWithLifetime<T, Scopes extends string, Slots extends Slot, Described> {
+  withLifetime(scope: Scopes): ServiceDescriptorBuilder<T, Scopes, Exclude<Slots, 'lifetime'>, Described>;
+}
+
+interface ITaggedAs<T, Scopes extends string, Slots extends Slot, Described> {
+  taggedAs(key: string): ServiceDescriptorBuilder<T, Scopes, Exclude<Slots, 'tag'>, Described>;
+}
+
+/** A registration with nothing chosen yet — what {@link Manifest.describe} opens. */
+export type ServiceDescriptorBuilderFor<T, Scopes extends string> = ServiceDescriptorBuilder<T, Scopes, 'implementer' | 'lifetime' | 'tag', unknown>;
 
 /**
- * Naming the implementer's call shape — the one step that completes a constructed registration,
- * and the only place a signature is spelled.
- *
- * @remarks
- * Two doors onto one slot: taking either spends it, so a registration names its call shape exactly
- * once and the two spellings can never disagree.
+ * The chain `describe` opens. Every step hands back a new node, so a discarded intermediate
+ * configures nothing — the same rule the manifest itself follows.
  */
-interface IWithImplementerType<T, ImplementerNode extends Type, Scopes extends string, Slots extends Slot> {
-  /** The parameter types the implementer is handed, in order — the address supplies the rest. */
-  withSignature(
-    ...paramTypes: readonly Type[]
-  ): ServiceDescriptorBuilder<T, ImplementerNode, Scopes, Exclude<Slots, 'implementerType'>, true>;
-
-  /**
-   * The parameter rows an overloaded implementation is handed — one row per call it accepts, each
-   * a list of parameter types in order.
-   */
-  withSignatures(
-    ...signatures: ReadonlyArray<readonly Type[]>
-  ): ServiceDescriptorBuilder<T, ImplementerNode, Scopes, Exclude<Slots, 'implementerType'>, true>;
-
-  /**
-   * The implementer's whole type — a constructor type after {@link IAsImplementer.asClass}, a function
-   * type after {@link IAsImplementer.asFactory}. Its parameter rows are the calls the container may build
-   * the service through.
-   */
-  withType(
-    implementerType: ImplementerNode,
-  ): ServiceDescriptorBuilder<T, ImplementerNode, Scopes, Exclude<Slots, 'implementerType'>, true>;
+export function openDescription<Scopes extends string>(serviceType: Type): ServiceDescriptorBuilderFor<any, Scopes> {
+  return new PendingRegistration<Scopes>(serviceType) as unknown as ServiceDescriptorBuilderFor<any, Scopes>;
 }
 
-interface IWithLifetime<T, ImplementerNode extends Type, Scopes extends string, Slots extends Slot, Ready extends boolean> {
-  withLifetime(scope: Scopes): ServiceDescriptorBuilder<T, ImplementerNode, Scopes, Exclude<Slots, 'lifetime'>, Ready>;
-}
+/** The node the chain walks before an implementer is chosen. */
+class PendingRegistration<Scopes extends string> {
+  readonly #serviceType: Type;
+  readonly #scope: Scopes | undefined;
+  readonly #tag: string | undefined;
 
-interface ITaggedAs<T, ImplementerNode extends Type, Scopes extends string, Slots extends Slot, Ready extends boolean> {
-  taggedAs(key: string): ServiceDescriptorBuilder<T, ImplementerNode, Scopes, Exclude<Slots, 'tag'>, Ready>;
-}
-
-declare const implementerTypeSupplied: unique symbol;
-
-/**
- * A registration the lambda may hand back: an implementation is chosen and its call shape named.
- * The brand is unexported, so only this module's own steps can produce one.
- */
-export interface IComplete {
-  readonly [implementerTypeSupplied]: void;
-}
-
-/** A registration with nothing chosen yet — what the configure lambda is handed. */
-export type ServiceDescriptorBuilderFor<T, Scopes extends string> = ServiceDescriptorBuilder<T, never, Scopes, 'implementer' | 'lifetime' | 'tag', false>;
-
-/** How the implementer's call shape was named — through one door or the other, never both. */
-export type ImplementerShape =
-  | { readonly kind: 'signatures'; readonly signatures: ReadonlyArray<readonly Type[]>; }
-  | { readonly kind: 'type'; readonly implementerType: Type; };
-
-/** What a configured lambda leaves behind, ready to become a descriptor. */
-export interface BuilderState<Scopes extends string> {
-  readonly implementer: { kind: 'ctor'; ctor: Ctor; } | { kind: 'factory'; fn: Func; } | { kind: 'value'; value: unknown; } | undefined;
-  readonly implementerShape: ImplementerShape | undefined;
-  readonly scope: Scopes | undefined;
-  readonly tag: string | undefined;
-}
-
-/**
- * The node the configure lambda walks. Every step hands back a new node, so a discarded
- * intermediate configures nothing — the same rule the manifest itself follows.
- */
-class PendingRegistration<Scopes extends string> implements BuilderState<Scopes> {
-  readonly implementer: BuilderState<Scopes>['implementer'];
-  readonly implementerShape: ImplementerShape | undefined;
-  readonly scope: Scopes | undefined;
-  readonly tag: string | undefined;
-
-  constructor(state?: Partial<BuilderState<Scopes>>) {
-    this.implementer = state?.implementer;
-    this.implementerShape = state?.implementerShape;
-    this.scope = state?.scope;
-    this.tag = state?.tag;
+  constructor(serviceType: Type, scope?: Scopes, tag?: string) {
+    this.#serviceType = serviceType;
+    this.#scope = scope;
+    this.#tag = tag;
   }
 
-  #with(change: Partial<BuilderState<Scopes>>): PendingRegistration<Scopes> {
-    return new PendingRegistration<Scopes>({ ...this, ...change });
+  asClass(ctor: Ctor, ctorType: ConstructorType) {
+    return described(ServiceDescriptor.ctor(this.#address(), ctor, ctorType, this.#scope));
   }
 
-  /** @throws Error - when a call shape was already named. */
-  #withShape(implementerShape: ImplementerShape): PendingRegistration<Scopes> {
-    if (this.implementerShape !== undefined) {
-      throw new Error(
-        "the implementer's call shape is already named; withType and withSignature/withSignatures "
-          + 'are one choice, taken once.',
-      );
-    }
-    return this.#with({ implementerShape });
-  }
-
-  asClass(ctor: Ctor) {
-    return this.#with({ implementer: { kind: 'ctor', ctor } });
-  }
-
-  asFactory(fn: Func) {
-    return this.#with({ implementer: { kind: 'factory', fn } });
+  asFactory(fn: Func, fnType: FunctionType) {
+    return described(ServiceDescriptor.factory(this.#address(), fn, fnType, this.#scope));
   }
 
   asValue(value: unknown) {
-    return this.#with({ implementer: { kind: 'value', value } });
-  }
-
-  withSignature(...paramTypes: readonly Type[]) {
-    return this.#withShape({ kind: 'signatures', signatures: [paramTypes] });
-  }
-
-  withSignatures(...signatures: ReadonlyArray<readonly Type[]>) {
-    return this.#withShape({ kind: 'signatures', signatures });
-  }
-
-  withType(implementerType: Type) {
-    return this.#withShape({ kind: 'type', implementerType });
+    return described(ServiceDescriptor.value(this.#address(), value));
   }
 
   withLifetime(scope: Scopes) {
-    return this.#with({ scope });
+    return new PendingRegistration<Scopes>(this.#serviceType, scope, this.#tag);
   }
 
   taggedAs(key: string) {
-    return this.#with({ tag: key });
+    return new PendingRegistration<Scopes>(this.#serviceType, this.#scope, key);
   }
 
-  /** The descriptor this node describes, filed under `type` and whatever tag it carries. */
-  toDescriptor(type: Type): ServiceDescriptor<Scopes> {
-    const serviceType = withKey(type, this.tag);
-    const implementer = this.implementer;
-    if (implementer === undefined) {
-      throw new Error(`no implementer was chosen for ${Type.stringify(type)}.`);
-    }
-    if (implementer.kind === 'value') {
-      return ServiceDescriptor.value(serviceType, implementer.value);
-    }
-    switch (implementer.kind) {
-      case 'ctor':
-        return ServiceDescriptor.ctor(serviceType, implementer.ctor, this.#constructorType(type), this.scope);
-      case 'factory':
-        return ServiceDescriptor.factory(serviceType, implementer.fn, this.#functionType(type), this.scope);
-      default:
-        return assertNever(implementer);
-    }
-  }
-
-  /**
-   * The constructor type this registration named: the node handed to `withType`, or the anonymous
-   * one its parameter rows describe — a constructor building the very type it is registered under,
-   * which is the strongest claim a row-only registration makes.
-   *
-   * @throws Error - when no call shape was named, or the one named is not a constructor type.
-   */
-  #constructorType(type: Type): ConstructorType {
-    const shape = this.#shape(type);
-    if (shape.kind === 'signatures') {
-      return Type.ctor({ instance: type, args: Type.Signatures.from(shape.signatures), abstract: false });
-    }
-    if (shape.implementerType.kind !== 'ctor') {
-      throw new Error(
-        `${Type.stringify(shape.implementerType)} is not a constructor type; a class registration names `
-          + "one with withType, or the constructor's parameters with withSignature.",
-      );
-    }
-    return shape.implementerType;
-  }
-
-  /**
-   * The function type this registration named: the node handed to `withType`, or the anonymous one
-   * its parameter rows describe — a function producing the very type it is registered under.
-   *
-   * @throws Error - when no call shape was named, or the one named is not a function type.
-   */
-  #functionType(type: Type): FunctionType {
-    const shape = this.#shape(type);
-    if (shape.kind === 'signatures') {
-      return Type.func({ return: type, args: Type.Signatures.from(shape.signatures) });
-    }
-    if (shape.implementerType.kind !== 'func') {
-      throw new Error(
-        `${Type.stringify(shape.implementerType)} is not a function type; a factory registration names one `
-          + "with withType, or the factory's parameters with withSignature.",
-      );
-    }
-    return shape.implementerType;
-  }
-
-  /** @throws Error - when no call shape was named. */
-  #shape(type: Type): ImplementerShape {
-    const shape = this.implementerShape;
-    if (shape === undefined) {
-      throw new Error(
-        `no call shape was named for ${Type.stringify(type)}; give the implementer's parameter `
-          + 'types to withSignature, or its whole type to withType.',
-      );
-    }
-    return shape;
+  #address(): Type {
+    return withKey(this.#serviceType, this.#tag);
   }
 }
 
 /**
- * What a registration verb takes after its service type: the lambda that walks the steps, or the
- * whole registration stated at once.
- *
- * @remarks
- * The terse form names the implementer's composed type rather than a bare parameter list, so a
- * signature is spelled in one place and one place only. Compose it with the ADDRESS in the instance
- * slot — "a constructable producing the addressed type" is the strongest claim the container holds
- * for an explicit registration, and the instance slot is read by nothing else.
+ * A descriptor wearing the chain's remaining steps. The steps are installed non-enumerably, so
+ * the node spreads, compares, and registers as the plain descriptor it is.
  */
-export type DescribeArgs<Scopes extends string> = [configure: Func<[ServiceDescriptorBuilderFor<any, Scopes>], IComplete>];
-// | [implementer: Ctor | Func, implementerType: ConstructorType | FunctionType, scope?: Scopes, key?: string];
-
-/** The descriptor these arguments describe, whichever of the two forms they take. */
-// export function describe<Scopes extends string>(type: Type, ...args: DescribeArgs<Scopes>): ServiceDescriptor<Scopes> {
-//   const configured = args.length === 1
-//     ? runBilder<Scopes>(args[0])
-//    : stateSteps<Scopes>(args[0], args[1], args[2], args[3]);
-//   return configured.toDescriptor(typeof type === 'string' ? Type.from(type) : type);
-// }
-
-/** The node a configure lambda leaves behind. */
-export function runBuilder<Scopes extends string>(serviceType: Type, configure: Func<[ServiceDescriptorBuilderFor<any, Scopes>], IComplete>) {
-  const start = new PendingRegistration<Scopes>();
-  const result = configure(start as unknown as ServiceDescriptorBuilderFor<any, Scopes>) as unknown as PendingRegistration<Scopes>;
-  return result.toDescriptor(serviceType);
-}
-
-/**
- * The same node, reached in one statement rather than a walk. The composed type's own kind is what
- * says whether the implementer is called with `new`, which is all the terse form needs it for
- * beyond its parameter rows.
- */
-function stateSteps<Scopes extends string>(implementer: Ctor | Func, implementerType: ConstructorType | FunctionType, scope: Scopes | undefined, key: string | undefined): PendingRegistration<Scopes> {
-  const start = new PendingRegistration<Scopes>();
-  const chosen = implementerType.kind === 'ctor'
-    ? start.asClass(implementer as Ctor)
-    : start.asFactory(implementer as Func);
-  const shaped = chosen.withType(implementerType);
-  const scoped = scope === undefined ? shaped : shaped.withLifetime(scope);
-  return key === undefined ? scoped : scoped.taggedAs(key);
+function described<Scopes extends string, D extends ServiceDescriptor<Scopes>>(descriptor: D): D {
+  return Object.defineProperties({ ...descriptor }, {
+    withLifetime: {
+      value: function(this: D, scope: Scopes) {
+        return described<Scopes, D>({ ...this, scope });
+      },
+    },
+    taggedAs: {
+      value: function(this: D, key: string) {
+        return described<Scopes, D>({ ...this, serviceType: withKey(this.serviceType, key) });
+      },
+    },
+  }) as D;
 }

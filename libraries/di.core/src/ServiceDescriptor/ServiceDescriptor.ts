@@ -1,6 +1,7 @@
 import { ConstructorType, FunctionType, Type } from '@rhombus-std/primitives';
 import { Ctor, Func } from '@rhombus-toolkit/func';
 import type { Flatten } from '@rhombus-toolkit/type-helpers';
+import type { ConstantType } from './ConstantType';
 
 /**
  * One registration: what a manifest resolves `serviceType` to, discriminated by {@link kind} —
@@ -19,7 +20,7 @@ export type ServiceDescriptor<Scopes extends string> =
  * `implementerType` is where a constructed registration's parameter rows live, so `implementer`
  * and the calls it answers to are read from one place and cannot disagree.
  */
-interface Descriptor<Kind extends string, Implementer, ImplementerType extends Type> {
+interface Descriptor<Kind extends string, Implementer, ImplementerType extends Type | ConstantType> {
   readonly kind: Kind;
   readonly serviceType: Type;
   readonly implementer: Implementer;
@@ -46,6 +47,7 @@ export type FactoryDescriptor<Scopes extends string> = Flatten<
  *
  * @remarks
  * It carries no scope: a value IS its instance, so there is no construction for a lifetime to
- * govern and nothing a scope could mean.
+ * govern and nothing a scope could mean. Its implementer type is the bare {@link ConstantType}
+ * marker — a value has no shape for the slot to carry.
  */
-export type ValueDescriptor = Descriptor<'value', unknown, Type>;
+export type ValueDescriptor = Descriptor<'value', unknown, ConstantType>;

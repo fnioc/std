@@ -23,7 +23,7 @@
 // one — an ad-hoc FACTORY parameter — so the comparison is readable in one
 // constructor.
 
-import { RESOLVER_TYPE, Type } from '@rhombus-std/di.core';
+import { ConstantType, RESOLVER_TYPE, Type } from '@rhombus-std/di.core';
 import type { Inject, IServiceProvider, Manifest, Typeof } from '@rhombus-std/di.core';
 import type { CheckoutOrder, IAuditTrail, IExchangeRates, IOrderValidator, IPaymentGateway, IPaymentRouter, IReceipt, IReceiptNumbering } from '@rhombus-std/examples.contracts';
 
@@ -336,7 +336,7 @@ export function addCheckoutServices<S extends string>(
   const t = CHECKOUT_TYPES;
 
   // The pinned spend limit `TotalWithinLimit` brands its parameter with.
-  services = services.add(t.spendLimit, 250_000);
+  services = services.add(t.spendLimit, 250_000, ConstantType);
 
   // THREE registrations under ONE Type. Nothing about the individual calls says
   // "collection" — a collection is simply what you get when you ask for the
@@ -345,7 +345,7 @@ export function addCheckoutServices<S extends string>(
   services = services.add(t.validator, AmountIsPositive, Type.ctor(t.validator, [[]]), 'singleton');
   // The gateway base type, registered as an ordinary value so the classes that
   // probe by key can be handed it.
-  services = services.add(GATEWAY_WITNESS_TYPE, GATEWAY_TYPE);
+  services = services.add(GATEWAY_WITNESS_TYPE, GATEWAY_TYPE, ConstantType);
 
   services = services.add(
     t.validator,

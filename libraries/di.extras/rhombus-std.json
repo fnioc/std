@@ -38,6 +38,11 @@
         "member": "removeAll"
       },
       {
+        "type": "@rhombus-std/di.core:Manifest",
+        "impl": "@rhombus-std/di.extras:ManifestDescriptorAugmentations",
+        "member": "describe"
+      },
+      {
         "type": "@rhombus-std/primitives:IServiceProvider",
         "impl": "@rhombus-std/di.extras:ServiceProviderServiceAugmentations",
         "member": "getService"

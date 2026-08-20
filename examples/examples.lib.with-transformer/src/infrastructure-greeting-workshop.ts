@@ -315,7 +315,7 @@ export class GreetingWorkshopBuilder<S extends string> implements IGreetingWorks
     // Tokenless from the other side too: the workshop's optional slot and the
     // locator's `getService` derive the same type this registration does, so the
     // three cannot drift apart.
-    this.#holder.services = this.#holder.services.add(typefor<ICardStationery>(), stationery);
+    this.#holder.services = this.#holder.services.addValue<ICardStationery>(stationery);
     return this;
   }
 }

@@ -1,40 +1,66 @@
-import { type ConstructorType, type FunctionType, type MergeStrategies, Type } from '@rhombus-std/primitives';
+import { type ConstructorType, type FunctionType, Type } from '@rhombus-std/primitives';
 import { registerAugmentations } from '@rhombus-std/primitives.extras';
-import type { AbstractCtor, Ctor, Func } from '@rhombus-toolkit/func';
+import type { Ctor, Func } from '@rhombus-toolkit/func';
 
 import { assertNever } from '@rhombus-toolkit/type-guards';
-import { type DescribeArgs, type IComplete, runBuilder, type ServiceDescriptorBuilderFor } from '../builder';
+import { openDescription, type ServiceDescriptorBuilderFor } from '../builder';
 import { type Manifest } from '../Manifest';
-import { withKey } from '../service-type';
-import { ServiceDescriptor } from '../ServiceDescriptor';
+import { ConstantType, ServiceDescriptor } from '../ServiceDescriptor';
 
 declare module '@rhombus-std/di.core' {
   interface Manifest<Scopes extends string> {
+    /** Prepends `descriptor`, ahead of every descriptor already in the chain. */
     add(descriptor: ServiceDescriptor<Scopes>): Manifest<Scopes>;
+    /**
+     * Swaps in `descriptor` for the first descriptor occupying the same registration slot —
+     * see {@link ServiceDescriptor.matches} — leaving every other descriptor untouched.
+     */
     replace(descriptor: ServiceDescriptor<Scopes>): Manifest<Scopes>;
+    /** Drops the descriptor that is {@link ServiceDescriptor.equals} to `descriptor`, if one is present. */
     remove(descriptor: ServiceDescriptor<Scopes>): Manifest<Scopes>;
 
+    /** Adds every descriptor in `descriptors`, in order — the last one ends up newest. */
     addMany(descriptors: Iterable<ServiceDescriptor<Scopes>>): Manifest<Scopes>;
+    /** Adds each descriptor whose registration slot no existing descriptor occupies. */
     tryAdd(...descriptors: ReadonlyArray<ServiceDescriptor<Scopes>>): Manifest<Scopes>;
 
-    add(type: Type, ctor: Ctor, ctorType: ConstructorType, scope?: Scopes): Manifest<Scopes>;
-    tryAdd(type: Type, ctor: Ctor, ctorType: ConstructorType, scope?: Scopes): Manifest<Scopes>;
-    replace(type: Type, ctor: Ctor, ctorType: ConstructorType, scope?: Scopes): Manifest<Scopes>;
+    /** Registers `implementer` — constructed with `new` — as the implementation of `serviceType`. */
+    add(serviceType: Type, implementer: Ctor, implementerType: ConstructorType, scope?: Scopes): Manifest<Scopes>;
+    /** {@link Manifest.add}'s constructor shape, registering only when the slot is unclaimed. */
+    tryAdd(serviceType: Type, implementer: Ctor, implementerType: ConstructorType, scope?: Scopes): Manifest<Scopes>;
+    /** {@link Manifest.add}'s constructor shape, swapping in for the registration already in the slot. */
+    replace(serviceType: Type, implementer: Ctor, implementerType: ConstructorType, scope?: Scopes): Manifest<Scopes>;
 
-    add(type: Type, factory: Func, factoryType: FunctionType, scope?: Scopes): Manifest<Scopes>;
-    tryAdd(type: Type, factory: Func, factoryType: FunctionType, scope?: Scopes): Manifest<Scopes>;
-    replace(type: Type, factory: Func, factoryType: FunctionType, scope?: Scopes): Manifest<Scopes>;
+    /** Registers `implementer` — called, never `new`ed — as the producer of `serviceType`. */
+    add(serviceType: Type, implementer: Func, implementerType: FunctionType, scope?: Scopes): Manifest<Scopes>;
+    /** {@link Manifest.add}'s factory shape, registering only when the slot is unclaimed. */
+    tryAdd(serviceType: Type, implementer: Func, implementerType: FunctionType, scope?: Scopes): Manifest<Scopes>;
+    /** {@link Manifest.add}'s factory shape, swapping in for the registration already in the slot. */
+    replace(serviceType: Type, implementer: Func, implementerType: FunctionType, scope?: Scopes): Manifest<Scopes>;
 
-    add(type: Type, value: unknown): Manifest<Scopes>;
-    tryAdd(type: Type, value: unknown): Manifest<Scopes>;
-    replace(type: Type, value: unknown): Manifest<Scopes>;
+    /**
+     * Registers `implementer` under `serviceType` as it stands: it is handed back on resolution,
+     * never constructed or called. The {@link ConstantType} marker is what says so — a callable's
+     * own type cannot, so the call site carries the choice.
+     */
+    add(serviceType: Type, implementer: unknown, implementerType: ConstantType): Manifest<Scopes>;
+    /** {@link Manifest.add}'s value shape, registering only when the slot is unclaimed. */
+    tryAdd(serviceType: Type, implementer: unknown, implementerType: ConstantType): Manifest<Scopes>;
+    /** {@link Manifest.add}'s value shape, swapping in for the registration already in the slot. */
+    replace(serviceType: Type, implementer: unknown, implementerType: ConstantType): Manifest<Scopes>;
 
-    add(type: Type, configure: Func<[ServiceDescriptorBuilderFor<any, Scopes>], IComplete>): Manifest<Scopes>;
-    tryAdd(type: Type, configure: Func<[ServiceDescriptorBuilderFor<any, Scopes>], IComplete>): Manifest<Scopes>;
-    replace(type: Type, configure: Func<[ServiceDescriptorBuilderFor<any, Scopes>], IComplete>): Manifest<Scopes>;
+    /**
+     * Opens a registration chain for `serviceType`: choose the implementer through one of the
+     * `as*` doors, refined by `withLifetime`/`taggedAs`. Once a door is taken the node IS a
+     * {@link ServiceDescriptor} — hand it to the descriptor-taking verbs, hold it in a variable,
+     * or build several in a helper and register them together.
+     */
+    describe(serviceType: Type): ServiceDescriptorBuilderFor<any, Scopes>;
 
+    /** Drops the first descriptor registered for `serviceType`, if one is present. */
     remove(serviceType: Type): Manifest<Scopes>;
-    removeAll(type: Type): Manifest<Scopes>;
+    /** Drops every descriptor registered for `serviceType`, leaving every other entry untouched. */
+    removeAll(serviceType: Type): Manifest<Scopes>;
   }
 }
 
@@ -51,8 +77,7 @@ registerAugmentations<Manifest<any>>({
 });
 
 registerAugmentations<Manifest<any>>({
-  /** Adds every descriptor in `descriptors` to the manifest, in order — the last one ends up newest. */
-  add(this: Manifest<string>, descriptors: Iterable<ServiceDescriptor<string>>): Manifest<string> {
+  addMany(this: Manifest<string>, descriptors: Iterable<ServiceDescriptor<string>>): Manifest<string> {
     return Iterator.from(descriptors).reduce((man, descriptor) => man.add(descriptor), this);
   },
   tryAdd(this: Manifest<string>, ...descriptors: ReadonlyArray<ServiceDescriptor<string>>): Manifest<string> {
@@ -64,75 +89,41 @@ registerAugmentations<Manifest<any>>({
     const found = Iterator.from(this).find(descriptor => descriptor.serviceType === serviceType);
     return found ? this.remove(found) : this;
   },
-  /** Drops every descriptor registered for `type` (narrowed by `key`, if given), leaving every
-   * other entry untouched. */
-  removeAll(this: Manifest<string>, type: Type): Manifest<string> {
+  removeAll(this: Manifest<string>, serviceType: Type): Manifest<string> {
     return Iterator.from(this)
-      .filter(({ serviceType }) => serviceType === type)
+      .filter(descriptor => descriptor.serviceType === serviceType)
       .reduce((man, descriptor) => man.remove(descriptor), this);
   },
 });
 
 registerAugmentations<Manifest<any>>({
-  add(this: Manifest<any>, type: Type, ctor: Ctor, ctorType: ConstructorType, scope?: any): Manifest<any> {
-    return this.add(ServiceDescriptor.ctor(type, ctor, ctorType, scope));
+  add(this: Manifest<any>, serviceType: Type, implementer: unknown, implementerType: ConstructorType | FunctionType | ConstantType, scope?: any): Manifest<any> {
+    return this.add(toDescriptor(serviceType, implementer, implementerType, scope));
   },
-  tryAdd(this: Manifest<any>, type: Type, ctor: Ctor, ctorType: ConstructorType, scope?: any): Manifest<any> {
-    return this.tryAdd(ServiceDescriptor.ctor(type, ctor, ctorType, scope));
+  tryAdd(this: Manifest<any>, serviceType: Type, implementer: unknown, implementerType: ConstructorType | FunctionType | ConstantType, scope?: any): Manifest<any> {
+    return this.tryAdd(toDescriptor(serviceType, implementer, implementerType, scope));
   },
-  replace(this: Manifest<any>, type: Type, ctor: Ctor, ctorType: ConstructorType, scope?: any): Manifest<any> {
-    return this.replace(ServiceDescriptor.ctor(type, ctor, ctorType, scope));
-  },
-});
-
-registerAugmentations<Manifest<any>>({
-  add(this: Manifest<any>, type: Type, factory: Func, factoryType: FunctionType, scope?: any): Manifest<any> {
-    return this.add(ServiceDescriptor.factory(type, factory, factoryType, scope));
-  },
-  tryAdd(this: Manifest<any>, type: Type, factory: Func, factoryType: FunctionType, scope?: any): Manifest<any> {
-    return this.tryAdd(ServiceDescriptor.factory(type, factory, factoryType, scope));
-  },
-  replace(this: Manifest<any>, type: Type, factory: Func, factoryType: FunctionType, scope?: any): Manifest<any> {
-    return this.replace(ServiceDescriptor.factory(type, factory, factoryType, scope));
+  replace(this: Manifest<any>, serviceType: Type, implementer: unknown, implementerType: ConstructorType | FunctionType | ConstantType, scope?: any): Manifest<any> {
+    return this.replace(toDescriptor(serviceType, implementer, implementerType, scope));
   },
 });
 
 registerAugmentations<Manifest<any>>({
-  add(this: Manifest<any>, type: Type, value: unknown): Manifest<any> {
-    return this.add(ServiceDescriptor.value(type, value));
-  },
-  tryAdd(this: Manifest<any>, type: Type, value: unknown): Manifest<any> {
-    return this.tryAdd(ServiceDescriptor.value(type, value));
-  },
-  replace(this: Manifest<any>, type: Type, value: unknown): Manifest<any> {
-    return this.replace(ServiceDescriptor.value(type, value));
+  describe(this: Manifest<string>, serviceType: Type): ServiceDescriptorBuilderFor<any, string> {
+    return openDescription(serviceType);
   },
 });
 
-registerAugmentations<Manifest<any>>({
-  add(this: Manifest<any>, type: Type, configure: Func<[ServiceDescriptorBuilderFor<any, any>], IComplete>): Manifest<any> {
-    return this.add(runBuilder(type, configure));
-  },
-  tryAdd(this: Manifest<any>, type: Type, configure: Func<[ServiceDescriptorBuilderFor<any, any>], IComplete>): Manifest<any> {
-    return this.tryAdd(runBuilder(type, configure));
-  },
-  replace(this: Manifest<any>, type: Type, configure: Func<[ServiceDescriptorBuilderFor<any, any>], IComplete>): Manifest<any> {
-    return this.replace(runBuilder(type, configure));
-  },
-});
-
-// function isDescriptor(value: unknown): value is ServiceDescriptor<any> {
-//   return typeof value === 'object' && value !== null && 'type' in value;
-// }
-
-// // `add`'s sugared shapes land on a name the receiver's own primitive already holds. Routing a lone
-// // descriptor to the primitive is both halves of the job: it keeps the primitive reachable through
-// // the mounted method, and it keeps the sugar — which finishes by handing the descriptor it just
-// // built back to `add` — from re-entering itself.
-// const descriptorMerge = {
-//   add(original, incoming) {
-//     return function(this: Manifest<string>, ...args: unknown[]) {
-//       return isDescriptor(args[0]) ? original.call(this, ...args) : incoming.call(this, ...args);
-//     };
-//   },
-// } satisfies MergeStrategies<Manifest>;
+/** The descriptor the uniform three-argument shape describes, its door chosen by the implementer type's kind. */
+function toDescriptor(serviceType: Type, implementer: unknown, implementerType: ConstructorType | FunctionType | ConstantType, scope?: string): ServiceDescriptor<string> {
+  switch (implementerType.kind) {
+    case 'ctor':
+      return ServiceDescriptor.ctor(serviceType, implementer as Ctor, implementerType, scope);
+    case 'func':
+      return ServiceDescriptor.factory(serviceType, implementer as Func, implementerType, scope);
+    case 'constant':
+      return ServiceDescriptor.value(serviceType, implementer);
+    default:
+      return assertNever(implementerType);
+  }
+}

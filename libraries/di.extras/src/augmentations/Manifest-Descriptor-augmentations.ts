@@ -1,4 +1,4 @@
-import type { Manifest } from '@rhombus-std/di.core';
+import { ConstantType, type Manifest, type ServiceDescriptorBuilderFor } from '@rhombus-std/di.core';
 import { registerInlineBodies, typefor } from '@rhombus-std/primitives.extras';
 import type { Ctor, Func } from '@rhombus-toolkit/func';
 
@@ -39,6 +39,12 @@ declare module '@rhombus-std/di.core' {
      * instead of taken explicitly.
      */
     removeAll<ServiceType>(): Manifest<Scopes>;
+
+    /**
+     * {@link Manifest.describe} with `ServiceType` derived from the type argument instead of
+     * taken explicitly.
+     */
+    describe<ServiceType>(): ServiceDescriptorBuilderFor<ServiceType, Scopes>;
   }
 }
 
@@ -47,22 +53,25 @@ export const ManifestDescriptorAugmentations = {
     return this.add(typefor<ServiceType>(), implementer, typefor(implementer), scope);
   },
   addValue<ServiceType>(this: Manifest<string>, value: ServiceType): Manifest<string> {
-    return this.add(typefor<ServiceType>(), value);
+    return this.add(typefor<ServiceType>(), value, ConstantType);
   },
   tryAdd<ServiceType>(this: Manifest<string>, implementer: any, scope?: string): Manifest<string> {
     return this.tryAdd(typefor<ServiceType>(), implementer, typefor(implementer), scope);
   },
   tryAddValue<ServiceType>(this: Manifest<string>, value: ServiceType): Manifest<string> {
-    return this.tryAdd(typefor<ServiceType>(), value);
+    return this.tryAdd(typefor<ServiceType>(), value, ConstantType);
   },
   replace<ServiceType>(this: Manifest<string>, implementer: any, scope?: string): Manifest<string> {
     return this.replace(typefor<ServiceType>(), implementer, typefor(implementer), scope);
   },
   replaceValue<ServiceType>(this: Manifest<string>, value: ServiceType): Manifest<string> {
-    return this.replace(typefor<ServiceType>(), value);
+    return this.replace(typefor<ServiceType>(), value, ConstantType);
   },
   removeAll<ServiceType>(this: Manifest<string>): Manifest<string> {
     return this.removeAll(typefor<ServiceType>());
+  },
+  describe<ServiceType>(this: Manifest<string>) {
+    return this.describe(typefor<ServiceType>());
   },
 };
 registerInlineBodies<Manifest<string>>(ManifestDescriptorAugmentations);

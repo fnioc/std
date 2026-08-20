@@ -26,7 +26,7 @@
 // infrastructure-greeting-workshop.ts`: the same scenario, the same output, the
 // type-driven dialect. Diff them to see exactly what the transformer removes.
 
-import { RESOLVER_TYPE, Type } from '@rhombus-std/di.core';
+import { ConstantType, RESOLVER_TYPE, Type } from '@rhombus-std/di.core';
 import type { IServiceProvider, Manifest } from '@rhombus-std/di.core';
 import type { IGreeting } from '@rhombus-std/examples.contracts';
 
@@ -308,7 +308,7 @@ export class GreetingWorkshopBuilder<S extends string> implements IGreetingWorks
   }
 
   public useStationery(stationery: ICardStationery): IGreetingWorkshopBuilder {
-    this.#holder.services = this.#holder.services.add(CARD_STATIONERY_TYPE, stationery);
+    this.#holder.services = this.#holder.services.add(CARD_STATIONERY_TYPE, stationery, ConstantType);
     return this;
   }
 }

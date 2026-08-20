@@ -4,6 +4,7 @@
 // the same token). The MetricsOptions-targeted mutators of the same names are
 // the sibling ./MetricsOptions-augmentations set.
 
+import { ConstantType } from '@rhombus-std/di.core';
 import type { IConfigureOptions } from '@rhombus-std/options';
 import type { ConstructorType } from '@rhombus-std/primitives';
 import { registerAugmentations } from '@rhombus-std/primitives.extras';
@@ -22,14 +23,14 @@ function configureMetrics(builder: IMetricsBuilder, apply: Func<[options: Metric
   const step: IConfigureOptions<MetricsOptions> = { configure(options: MetricsOptions): void {
     apply(options);
   } };
-  builder.services = builder.services.add(METRICS_CONFIGURE_TYPE, step);
+  builder.services = builder.services.add(METRICS_CONFIGURE_TYPE, step, ConstantType);
   return builder;
 }
 
 export namespace MetricsBuilderAugmentations {
   /** Registers an already-built {@link IMetricsListener} instance. */
   export function addMetricsListener<Self extends IMetricsBuilder>(this: Self, listener: IMetricsListener): Self {
-    this.services = this.services.add(METRICS_LISTENER_TYPE, listener);
+    this.services = this.services.add(METRICS_LISTENER_TYPE, listener, ConstantType);
     return this;
   }
 

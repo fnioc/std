@@ -8,6 +8,7 @@
 // to lazily resolve against, but the resulting registration is identical for
 // any consumer that enumerates the listener builders.
 
+import { ConstantType } from '@rhombus-std/di.core';
 import type { IConfigureOptions } from '@rhombus-std/options';
 import { registerAugmentations } from '@rhombus-std/primitives.extras';
 import type { Func } from '@rhombus-toolkit/func';
@@ -25,7 +26,7 @@ function configureTracing(builder: ITracingBuilder, apply: Func<[options: Tracin
   const step: IConfigureOptions<TracingOptions> = { configure(options: TracingOptions): void {
     apply(options);
   } };
-  builder.services = builder.services.add(TRACING_CONFIGURE_TYPE, step);
+  builder.services = builder.services.add(TRACING_CONFIGURE_TYPE, step, ConstantType);
   return builder;
 }
 
@@ -40,7 +41,7 @@ export namespace TracingBuilderAugmentations {
     }
     const listenerBuilder = new ActivityListenerBuilder(name);
     configure(listenerBuilder);
-    this.services = this.services.add(TRACING_LISTENER_TYPE, listenerBuilder);
+    this.services = this.services.add(TRACING_LISTENER_TYPE, listenerBuilder, ConstantType);
     return this;
   }
 

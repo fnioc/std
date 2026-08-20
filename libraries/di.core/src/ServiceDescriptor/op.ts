@@ -14,7 +14,7 @@ export function substitute<Scopes extends string>(descriptor: ServiceDescriptor<
   const serviceType = Type.substitute(descriptor.serviceType, generics);
   switch (descriptor.kind) {
     case 'value':
-      return { ...descriptor, serviceType, implementerType: Type.substitute(descriptor.implementerType, generics) };
+      return { ...descriptor, serviceType };
     case 'ctor':
       return { ...descriptor, serviceType, implementerType: Type.substitute(descriptor.implementerType, generics) };
     case 'factory':
