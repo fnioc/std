@@ -148,7 +148,7 @@ export namespace HostBuilderHostingAugmentations {
     const options = new ConsoleLifetimeOptions();
     configureOptions?.(options);
     return this.configureServices((_context, services) => {
-      const withOptions = services.add(CONSOLE_LIFETIME_OPTIONS_TYPE, options);
+      const withOptions = services.add(CONSOLE_LIFETIME_OPTIONS_TYPE, options, ConstantType);
       return withOptions.add(HOST_LIFETIME_TYPE,
         (resolver: IServiceProvider) =>
           new ConsoleLifetime(resolver.getRequiredService(CONSOLE_LIFETIME_OPTIONS_TYPE), resolver.getRequiredService(HOST_ENVIRONMENT_TYPE),
