@@ -30,33 +30,21 @@ out from GitHub and cannot see the local tree, so the orchestrator COMMITS AND P
 and pushing freely to enable this is authorized. If remote isolation is unavailable at run time, fall back to
 local workers rather than skipping the verification.
 
-**First action of the run — lift the in-flight work off this branch.** The uncommitted repattern was committed
-whole as a savepoint at **`3a958efa`** (parent **`6351145f`**, the last docs-only revision; also on origin as
-`wip-274-savepoint`, so the work survives the rollback no matter what). Before anything else:
+**Where the work happens (owner ruling 2026-08-19: directly in #274).** The run works FORWARD on
+`IServiceManifest-repair` in the main checkout — no lift, no reset, no PR-back ceremony. First action: if the
+working tree is dirty, commit it as-is (`--no-verify` savepoint); then fix forward. Worktrees are used ONLY
+where they buy something concrete — a lane running concurrently with another (two agents cannot share one
+working tree) or a change kept apart because integrating it early would cost more conflict-resolution than it
+saves. A worktree lane merges back into `IServiceManifest-repair` the moment it lands; pushing the branch (and
+lane branches, which is what feeds the cloud workers) is authorized throughout.
 
-0. **If the working tree is dirty, commit it first** — another `--no-verify` savepoint on top of the tip. Step 2
-   is a `--hard` reset and would destroy anything uncommitted. Nothing is triaged, reviewed, or discarded here;
-   whatever is in the tree at 22:05 is part of the work being lifted.
-1. `git worktree add ../std@fnioc+<name> -b <feat-branch> <current tip of IServiceManifest-repair>` — the tip, not
-   `3a958efa` literally, so everything committed between 2026-08-16 and the run comes along. Branch named for the
-   work (`feat-…`/`fix-…`), never `agent-<id>`.
-2. `git reset --hard 6351145f` on `IServiceManifest-repair` — UNDO the commits, do not `git revert` them. No new
-   commit rewrites the old state; the branch's history simply no longer contains it. `origin/IServiceManifest-repair`
-   is at `6351145f` today, so this needs no force-push — unless someone pushed past it in the interim, in which
-   case force-push.
+Changes the run is unsure about still go to their OWN separate worktrees, unmerged, reported by branch name.
 
-Pushing is authorized throughout — the worktree branch as work lands on it (which is also what feeds the cloud
-workers), and `IServiceManifest-repair` after the reset, force-pushed if the remote has moved past the floor.
+**Out of scope: `refactor-toolkit-platform`** (owner ruling 2026-08-20). The toolkit-reorg branch stays held —
+its npm packages are unpublished placeholders, publishing is the owner's job, and the run neither merges nor
+deletes it. Leave the branch and its worktree alone.
 
-The run then works IN that worktree. The savepoint's work and the run's own work return together as a PR into
-`IServiceManifest-repair`, which is how "merge into #274" happens — through the PR, not a direct merge. Changes
-the run is unsure about still go to their OWN separate worktrees, unmerged and un-PR'd, reported by branch name.
-
-This procedure was written ABOVE the savepoint, so `6351145f` carries an older copy of this file. After the reset,
-the authoritative tasklist is the WORKTREE's — do not re-read the main checkout's copy and conclude anything went
-missing.
-
-The savepoint does not build or even format — it was committed with `--no-verify`. One known break:
+The tree does not build or even format — much of it landed with `--no-verify`. One known break:
 `tests/diagnostics.test/test/listener-config-factory.test.ts:75` has a stray `Manifest<any>` pasted ahead of a
 `let manifest: Manifest = new DefaultManifest();`. Others are expected; finding and fixing them is the job.
 
@@ -72,12 +60,19 @@ Not permitted:
 - design decisions;
 - code that does not comply with a pattern already established here or in the codebase.
 
+**Vestigial code: delete aggressively — JUST DON'T BE WRONG** (owner order 2026-08-19). Dead helpers, orphaned
+imports, retired mechanisms, commented-out corpses: remove on sight, no hedging, no "kept for reference".
+The bar for "vestigial" is PROOF, not vibes — verify nothing reaches it (references, re-exports, white-box
+seams, rhombus-std.json entries, tests) before the delete; a wrong delete costs more than ten kept corpses.
+Where reachability is genuinely uncertain, that's a not-vestigial verdict, not a smaller delete.
+
 Those two lists are the INTENT, not an exhaustive catalogue of what will come up. Where a situation is not covered,
 read for the intent — the owner is not available to arbitrate mid-run, and a change that needs arbitration is by
 definition one of the two forbidden kinds.
 
-**Where the work lands.** Everything that satisfies the rules above merges into `IServiceManifest-repair` (PR
-#274). A change the run is fairly confident about but cannot guarantee against those rules stays in an UNMERGED
+**Where the work lands.** Everything that satisfies the rules above is committed directly to
+`IServiceManifest-repair` (#274) — serial work in the main checkout, worktree lanes merged in as they land. A
+change the run is fairly confident about but cannot guarantee against those rules stays in an UNMERGED
 worktree, one per such change, reported by branch name at the end.
 
 **Milestone.** There must EXIST a revision on `IServiceManifest-repair` with every item in this doc done, nothing
@@ -129,8 +124,9 @@ its own branch; the integrator merges each lane the moment it lands, not in one 
   tolerated. Integrates LAST before the final gate so resolution-behavior changes are verified once, not per
   lane.
 - **L6 — integrate & finish (serial tail).** Merge lanes as they complete; full gate; the comment sweep over
-  the final diff (pure churn — never runs concurrently with code lanes); commit relabeling; milestone commit;
-  PR into `IServiceManifest-repair`; only then the async/scope gate check.
+  the final diff (pure churn — never runs concurrently with code lanes); commit relabeling; milestone commit
+  directly on `IServiceManifest-repair`; only then the async/scope gate check. L1 and this tail run in the main
+  checkout on the branch itself; only the concurrent lanes (L2/L4/L5) take worktrees, per the ruling above.
 
 Cloud workers carry gate runs and any lane whose file set is disjoint from the local tree state, per the
 remote-worker rules above.
@@ -140,12 +136,9 @@ remote-worker rules above.
 A parameter that names a type takes a `Type` and nothing else; a consumer holding a string writes `Type.from(...)`
 at the call. Most sites are already converted by hand. What remains:
 
-- [ ] `libraries/di.core/src/builder.ts` — `withSignature` / `withSignatures` parameter rows and the `signatures`
-      state member (`:46`, `:54`, `:90`, `:145`, `:149`), plus the commented `describe` at `:256`. These disappear
-      entirely if the door-collapse item below lands first, so sequence that one ahead of this.
-- [ ] `libraries/di/src/ServiceProvider.ts` — `getService` and the resolve family (`:34`, `:53`, `:90`, `:100`).
-- [ ] `libraries/primitives/src/augmentation/registry.ts` — `registerAugmentations`, `augment`, and the
-      `receiverType` normalizer they share (`:57`, `:87`, `:119`); the normalizer goes with them.
+- [ ] `libraries/primitives/src/augmentation/registry.ts` — the conversion itself is done, but the old
+      `receiverType()` normalizer is now DEAD CODE (`registerAugmentations`/`augment` each inline their own
+      check); delete it.
 - [ ] `libraries/logging.config/` — `ILoggerProviderConfigFactory.getConfig`, `LoggerProviderConfigFactory`
       `getConfig`, and `registerProviderOptions`'s two parameters.
 - [ ] Re-sweep for `Type | string` and `string | Type` afterwards.
@@ -153,8 +146,9 @@ at the call. Most sites are already converted by hand. What remains:
       `huzzaToken` → `huzzaType`, and every other identifier/parameter spelled `*token*` whose value is a `Type`
       node — in names, and in the doc comments that call it a token. Sweep repo-wide alongside the union sweep.
 - [ ] **A parameter naming the SERVICE type is spelled `serviceType`, not `type`.** Owner exemplar: every
-      registration-verb face in `libraries/di.core/src/augmentations/Manifest-Descriptor-augmentations.ts:20`-`:36`
-      (`add`/`tryAdd`/`replace`/`removeAll`) renames its first parameter `type: Type` → `serviceType: Type`.
+      registration-verb face in `libraries/di.core/src/augmentations/Manifest-Descriptor-augmentations.ts`'s
+      `declare module` block (`add`/`tryAdd`/`replace`/`removeAll`; only `remove` has it already) renames its
+      first parameter `type: Type` → `serviceType: Type`.
       Take the intent project-wide — di, di.core, di.extras, and anywhere else a parameter holds the service's
       type: faces, namespace bodies, and the doc comments that call it "type". Parameters naming something else
       (an implementer's type, a constraint) keep their own descriptive names. Same intent at the type level: a
@@ -533,13 +527,11 @@ not the other, a face and its body disagreeing, an import left behind or never a
 to the pattern its callee now has. That class is auto-fixed with no discussion, and
 `tests/diagnostics.test/test/listener-config-factory.test.ts:75` is the archetype.
 
-Known site: `libraries/di.core/src/augmentations/Manifest-Descriptor-augmentations.ts:114` calls a one-arg
-descriptor-taking `replace(...)` that no longer exists under that name — the owner renamed the descriptor
-primitives to `_add`/`_replace`/`_remove` (committed 2026-08-19; the underscore prefix is what keeps the
-class's own members out of collision with the augmented un-prefixed faces). The call becomes
-`this._replace(runBuilder(type, configure))`, and the sweep should convert any other site still calling a
-primitive by its old un-prefixed name. Watch the editor's whole-repo program masking these: di.extras'
-one-arg `replace<T>(value: T)` face makes the stale call typecheck when the file is open.
+Sweep note: the descriptor primitives are `_add`/`_replace`/`_remove` (the underscore prefix keeps the class's
+own members out of collision with the augmented un-prefixed faces) — convert any site still calling a primitive
+by an old un-prefixed name. Watch the editor's whole-repo program masking these: di.extras' one-arg
+`replace<T>(value: T)` face can make a stale call typecheck when the file is open; the per-package CI program
+is the authority.
 
 Where something does not merely have a typo but FUNDAMENTALLY does not work, or reads as a misunderstanding of how
 the piece it touches behaves: do not rewrite it to what it "should" have been. Dance around it — take the smallest
@@ -610,11 +602,6 @@ such path, halt and report. Guessing at intended semantics is the one thing wors
       from the diff, not guessed. History rewriting is confined to commits that exist only on branches this run
       owns; anything already merged to `main` stays as it is.
 
-- [ ] **`libraries/hosting/tsconfig.ci.json` names a package that does not exist** —
-      `"types": ["@rhombus-std/di.core.extras"]`, where the package (and the devDependency beside it) is
-      `@rhombus-std/di.extras`. That config is what `build` and `lint` run and what `tsconfig.ttsc.json` extends,
-      so it fails with TS2688 before the augmentation is ever consulted. `libraries/hosting/tsconfig.json` has the
-      name right.
 - [ ] **Degeneralize `IHostApplicationBuilder.configureContainer` too.**
       `libraries/hosting.core/src/IHostApplicationBuilder.ts:51` still declares
       `configureContainer<TContainerBuilder>(configure?: Action<[TContainerBuilder]>): void` after the parameter
