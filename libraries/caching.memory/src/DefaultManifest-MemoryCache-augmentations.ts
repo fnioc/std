@@ -17,27 +17,24 @@
 // Manifest and brings their interface merges into the program.
 import '@rhombus-std/options.augmentations';
 
+// Type-only: puts di.extras' declare-module sugar faces in the program with
+// no runtime import of the authoring package.
+import type {} from '@rhombus-std/di.extras';
+
 import type { DefaultManifest, IServiceProvider, Manifest } from '@rhombus-std/di.core';
 import { RESOLVER_TYPE } from '@rhombus-std/di.core';
 import type { ILoggerFactory } from '@rhombus-std/logging.core';
+import type { IOptions } from '@rhombus-std/options';
 import { Type } from '@rhombus-std/primitives';
-import { registerAugmentations, typefor } from '@rhombus-std/primitives.extras';
+import { registerAugmentations } from '@rhombus-std/primitives.extras';
 import type { Func } from '@rhombus-toolkit/func';
 import { DISTRIBUTED_CACHE_TYPE } from './distributed-cache-type';
-import { MEMORY_CACHE_OPTIONS_ACCESSOR_TYPE, MEMORY_CACHE_OPTIONS_TYPE, MEMORY_DISTRIBUTED_CACHE_OPTIONS_ACCESSOR_TYPE, MEMORY_DISTRIBUTED_CACHE_OPTIONS_TYPE } from './memory-cache-options-type';
+import { MEMORY_CACHE_OPTIONS_TYPE, MEMORY_DISTRIBUTED_CACHE_OPTIONS_TYPE } from './memory-cache-options-type';
 import { MEMORY_CACHE_TYPE } from './memory-cache-type';
 import { MemoryCache } from './MemoryCache';
 import { MemoryCacheOptions } from './MemoryCacheOptions';
 import { MemoryDistributedCache } from './MemoryDistributedCache';
 import { MemoryDistributedCacheOptions } from './MemoryDistributedCacheOptions';
-
-// The type `@rhombus-std/logging`'s `addLogging` binds `ILoggerFactory` at --
-// derived here via `typefor<ILoggerFactory>()` rather than importing
-// logging's const, so the dependency on `ILoggerFactory` stays type-only and
-// this package never drags in logging's side-effect registrations. Deriving
-// off the same type keeps this byte-identical to logging's own, so the
-// two never desync.
-const LOGGER_FACTORY_TYPE = typefor<ILoggerFactory>();
 
 export namespace ServiceManifestMemoryCacheAugmentations {
   /**
@@ -60,7 +57,7 @@ export namespace ServiceManifestMemoryCacheAugmentations {
     // earlier registration. `getService` returns `undefined` when no
     // `ILoggerFactory` is registered, so the factory falls to a logger-less
     // construction.
-    m = m.tryAdd(MEMORY_CACHE_TYPE, (resolver: IServiceProvider) => new MemoryCache(resolver.getRequiredService(MEMORY_CACHE_OPTIONS_ACCESSOR_TYPE), resolver.getService(LOGGER_FACTORY_TYPE)),
+    m = m.tryAdd(MEMORY_CACHE_TYPE, (resolver: IServiceProvider) => new MemoryCache(resolver.getRequiredService<IOptions<MemoryCacheOptions>>(), resolver.getService<ILoggerFactory>()),
       Type.func(MEMORY_CACHE_TYPE, [[RESOLVER_TYPE]]), 'singleton');
     return m;
   }
@@ -85,8 +82,8 @@ export namespace ServiceManifestMemoryCacheAugmentations {
     }
     m = m.tryAdd(DISTRIBUTED_CACHE_TYPE, (resolver: IServiceProvider) =>
       new MemoryDistributedCache(
-        resolver.getRequiredService(MEMORY_DISTRIBUTED_CACHE_OPTIONS_ACCESSOR_TYPE),
-        resolver.getService(LOGGER_FACTORY_TYPE),
+        resolver.getRequiredService<IOptions<MemoryDistributedCacheOptions>>(),
+        resolver.getService<ILoggerFactory>(),
       ), Type.func(DISTRIBUTED_CACHE_TYPE, [[RESOLVER_TYPE]]), 'singleton');
     return m;
   }

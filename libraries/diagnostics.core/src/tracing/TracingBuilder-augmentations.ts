@@ -8,13 +8,15 @@
 // to lazily resolve against, but the resulting registration is identical for
 // any consumer that enumerates the listener builders.
 
-import { ConstantType } from '@rhombus-std/di.core';
+// Type-only: puts di.extras' declare-module sugar faces in the program with
+// no runtime import of the authoring package.
+import type {} from '@rhombus-std/di.extras';
+
 import type { IConfigureOptions } from '@rhombus-std/options';
 import { registerAugmentations } from '@rhombus-std/primitives.extras';
 import type { Func } from '@rhombus-toolkit/func';
 import type { Flatten } from '@rhombus-toolkit/type-helpers';
 
-import { TRACING_CONFIGURE_TYPE, TRACING_LISTENER_TYPE } from '../types';
 import { ActivityListenerBuilder } from './ActivityListenerBuilder';
 import { ACTIVITY_SOURCE_SCOPES_ALL, ActivitySourceScopes } from './ActivitySourceScopes';
 import type { ITracingBuilder } from './ITracingBuilder';
@@ -26,7 +28,7 @@ function configureTracing(builder: ITracingBuilder, apply: Func<[options: Tracin
   const step: IConfigureOptions<TracingOptions> = { configure(options: TracingOptions): void {
     apply(options);
   } };
-  builder.services = builder.services.add(TRACING_CONFIGURE_TYPE, step, ConstantType);
+  builder.services = builder.services.addValue<IConfigureOptions<TracingOptions>>(step);
   return builder;
 }
 
@@ -41,7 +43,7 @@ export namespace TracingBuilderAugmentations {
     }
     const listenerBuilder = new ActivityListenerBuilder(name);
     configure(listenerBuilder);
-    this.services = this.services.add(TRACING_LISTENER_TYPE, listenerBuilder, ConstantType);
+    this.services = this.services.addValue<ActivityListenerBuilder>(listenerBuilder);
     return this;
   }
 
@@ -50,7 +52,7 @@ export namespace TracingBuilderAugmentations {
     // See the sibling MetricsBuilder-augmentations.ts `clearMetricsListeners`
     // comment: the cast works around a TS structural-comparison depth limit on
     // `Manifest`'s large overload surface, not a real type error.
-    this.services = this.services.removeAll(TRACING_LISTENER_TYPE) as typeof this.services;
+    this.services = this.services.removeAll<ActivityListenerBuilder>() as typeof this.services;
     return this;
   }
 

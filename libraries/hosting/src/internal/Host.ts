@@ -10,9 +10,12 @@
 // THAT scope, and `stop` disposes it -- that scope is what gives singleton
 // semantics and deterministic disposal.
 
+// Type-only: puts di.extras' declare-module sugar faces in the program with
+// no runtime import of the authoring package.
+import type {} from '@rhombus-std/di.extras';
+
 import type { ServiceProvider } from '@rhombus-std/di';
-import { BackgroundService, hostedServiceCollectionType, type IHost, type IHostApplicationLifetime, type IHostedLifecycleService, type IHostedService,
-  type IHostLifetime } from '@rhombus-std/hosting.core';
+import { BackgroundService, type IHost, type IHostApplicationLifetime, type IHostedLifecycleService, type IHostedService, type IHostLifetime } from '@rhombus-std/hosting.core';
 import type { ILogger } from '@rhombus-std/logging.core';
 import type { IStartupValidator } from '@rhombus-std/options';
 import { type AbortSignal, augment } from '@rhombus-std/primitives';
@@ -154,9 +157,7 @@ export class Host implements IHost, AsyncDisposable {
         throw error;
       };
 
-      const hostedServices: IHostedService[] = this.#services.getRequiredService(
-        hostedServiceCollectionType(),
-      );
+      const hostedServices: IHostedService[] = this.#services.getRequiredService<IHostedService[]>();
       this.#hostedServices = hostedServices;
       this.#hostedLifecycleServices = getHostLifecycles(hostedServices);
 

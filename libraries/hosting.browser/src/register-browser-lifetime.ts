@@ -5,17 +5,20 @@
 // imported HOST_LIFETIME_TYPE — di.core is append-only last-wins, so this
 // overrides the default NullLifetime registered by the host composition.
 
-import { ConstantType, type IServiceProvider, RESOLVER_TYPE } from '@rhombus-std/di.core';
+// Type-only: puts di.extras' declare-module sugar faces in the program with
+// no runtime import of the authoring package.
+import type {} from '@rhombus-std/di.extras';
+
+import { type IServiceProvider, RESOLVER_TYPE } from '@rhombus-std/di.core';
 import type { Manifest } from '@rhombus-std/di.core';
 import { HOST_LIFETIME_TYPE } from '@rhombus-std/hosting';
-import { HOST_APPLICATION_LIFETIME_TYPE } from '@rhombus-std/hosting.core';
-import { LOGGER_FACTORY_TYPE } from '@rhombus-std/logging';
+import type { IHostApplicationLifetime } from '@rhombus-std/hosting.core';
+import type { ILoggerFactory } from '@rhombus-std/logging.core';
 import { Type } from '@rhombus-std/primitives';
 import { BrowserLifetime } from './BrowserLifetime';
 import type { BrowserLifetimeOptions } from './BrowserLifetimeOptions';
 import type { PageContext } from './page-context';
 import { PageLifecycleEvents } from './PageLifecycleEvents';
-import { BROWSER_LIFETIME_OPTIONS_TYPE, PAGE_LIFECYCLE_EVENTS_TYPE } from './types';
 
 /**
  * Registers `options`, the eagerly-attached {@link PageLifecycleEvents} bridge,
@@ -32,13 +35,13 @@ import { BROWSER_LIFETIME_OPTIONS_TYPE, PAGE_LIFECYCLE_EVENTS_TYPE } from './typ
  * passed in.
  */
 export function registerBrowserLifetime(services: Manifest<any>, options: BrowserLifetimeOptions, context?: PageContext): Manifest<any> {
-  let s = services.add(BROWSER_LIFETIME_OPTIONS_TYPE, options, ConstantType);
+  let s = services.addValue<BrowserLifetimeOptions>(options);
 
   const pageLifecycleEvents = new PageLifecycleEvents(context);
-  s = s.add(PAGE_LIFECYCLE_EVENTS_TYPE, pageLifecycleEvents, ConstantType);
+  s = s.addValue<PageLifecycleEvents>(pageLifecycleEvents);
 
   return s.add(HOST_LIFETIME_TYPE,
     (resolver: IServiceProvider) =>
-      new BrowserLifetime(resolver.getRequiredService(BROWSER_LIFETIME_OPTIONS_TYPE), resolver.getRequiredService(HOST_APPLICATION_LIFETIME_TYPE), resolver.getRequiredService(LOGGER_FACTORY_TYPE),
+      new BrowserLifetime(resolver.getRequiredService<BrowserLifetimeOptions>(), resolver.getRequiredService<IHostApplicationLifetime>(), resolver.getRequiredService<ILoggerFactory>(),
         pageLifecycleEvents), Type.func(HOST_LIFETIME_TYPE, [[RESOLVER_TYPE]]));
 }

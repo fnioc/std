@@ -9,6 +9,10 @@
 // it is reactive, the factory re-runs `applyFilters` for every existing logger
 // on each change, so a configuration reload re-filters live loggers.
 
+// Type-only: puts di.extras' declare-module sugar faces in the program with
+// no runtime import of the authoring package.
+import type {} from '@rhombus-std/di.extras';
+
 import type { ServiceProvider } from '@rhombus-std/di';
 import { DefaultManifest } from '@rhombus-std/di.core';
 import { type IExternalScopeProvider, type ILogger, type ILoggerFactory, type ILoggerProvider, type ILoggingBuilder, LogLevel } from '@rhombus-std/logging.core';
@@ -23,7 +27,6 @@ import { LoggerInformation, MessageLogger, ScopeLogger } from './LoggerInformati
 import { LoggerRuleSelector } from './LoggerRuleSelector';
 import { NullLogger } from './null-logger';
 import { isSupportExternalScope } from './support-external-scope-guard';
-import { LOGGER_FACTORY_TYPE } from './types';
 
 /** A provider plus whether the factory owns its disposal. */
 interface ProviderRegistration {
@@ -172,7 +175,7 @@ export class LoggerFactory implements ILoggerFactory {
   public static create(configure: Func<[ILoggingBuilder], void>): ILoggerFactory {
     const services = new DefaultManifest().addLogging(configure);
     const provider = services.build();
-    const factory = provider.getRequiredService(LOGGER_FACTORY_TYPE);
+    const factory = provider.getRequiredService<ILoggerFactory>();
     return new DisposingLoggerFactory(factory, provider);
   }
 }

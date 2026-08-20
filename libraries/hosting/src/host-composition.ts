@@ -16,16 +16,20 @@
 //     built container and folded into the owned factory, so the host's own
 //     loggers -- and any composite logger already handed out -- light up.
 
+// Type-only: puts di.extras' declare-module sugar faces in the program with
+// no runtime import of the authoring package.
+import type {} from '@rhombus-std/di.extras';
+
 import type { IConfig } from '@rhombus-std/config.core';
 import { ServiceProviderOptions } from '@rhombus-std/di';
-import { ConstantType, type Manifest } from '@rhombus-std/di.core';
-import { Environments, HOST_APPLICATION_LIFETIME_TYPE, type HostBuilderContext, HostDefaults, type IHost } from '@rhombus-std/hosting.core';
-import { LOGGER_FACTORY_TYPE, LOGGER_PROVIDER_TYPE, LoggerFactory } from '@rhombus-std/logging';
-import type { ILoggerProvider } from '@rhombus-std/logging.core';
+import type { Manifest } from '@rhombus-std/di.core';
+import { Environments, type HostBuilderContext, HostDefaults, type IHost, type IHostApplicationLifetime, type IHostEnvironment, type IHostLifetime } from '@rhombus-std/hosting.core';
+import { LoggerFactory } from '@rhombus-std/logging';
+import type { ILoggerFactory, ILoggerProvider } from '@rhombus-std/logging.core';
 import { Type } from '@rhombus-std/primitives';
 import { process } from '@rhombus-std/primitives';
 import type { Func } from '@rhombus-toolkit/func';
-import { CONFIG_TYPE, HOST_BUILDER_CONTEXT_TYPE, HOST_ENVIRONMENT_TYPE, HOST_LIFETIME_TYPE, HOST_OPTIONS_CONFIGURE_TYPE, HOST_OPTIONS_TYPE } from './framework-types';
+import { HOST_LIFETIME_TYPE, HOST_OPTIONS_CONFIGURE_TYPE } from './framework-types';
 import { HostOptions } from './HostOptions';
 import { ApplicationLifetime } from './internal/ApplicationLifetime';
 import { Host } from './internal/Host';
@@ -154,12 +158,12 @@ export function createFrameworkServices(): FrameworkServices {
  * result forward instead of reusing the `services` it passed in.
  */
 export function populateFrameworkServices(services: Manifest<any>, context: HostBuilderContext, environment: HostingEnvironment, config: IConfig, framework: FrameworkServices): Manifest<any> {
-  let s = services.add(HOST_ENVIRONMENT_TYPE, environment, ConstantType);
-  s = s.add(HOST_BUILDER_CONTEXT_TYPE, context, ConstantType);
-  s = s.add(CONFIG_TYPE, config, ConstantType);
-  s = s.add(HOST_APPLICATION_LIFETIME_TYPE, framework.applicationLifetime, ConstantType);
-  s = s.add(HOST_OPTIONS_TYPE, framework.hostOptions, ConstantType);
-  s = s.add(LOGGER_FACTORY_TYPE, framework.loggerFactory, ConstantType);
+  let s = services.addValue<IHostEnvironment>(environment);
+  s = s.addValue<HostBuilderContext>(context);
+  s = s.addValue<IConfig>(config);
+  s = s.addValue<IHostApplicationLifetime>(framework.applicationLifetime);
+  s = s.addValue<HostOptions>(framework.hostOptions);
+  s = s.addValue<ILoggerFactory>(framework.loggerFactory);
 
   // The default host lifetime. `useConsoleLifetime` appends a ConsoleLifetime
   // registration under the same type; di.core is append-only last-wins, so the
@@ -185,7 +189,7 @@ export function populateFrameworkServices(services: Manifest<any>, context: Host
 export function resolveHost(services: Manifest<any>, framework: FrameworkServices, config: IConfig, serviceProviderOptions?: ServiceProviderOptions): IHost {
   const provider = services.build(serviceProviderOptions ?? ServiceProviderOptions.defaults);
 
-  const loggerProviders: ILoggerProvider[] = provider.getRequiredService(Type.array(LOGGER_PROVIDER_TYPE));
+  const loggerProviders: ILoggerProvider[] = provider.getRequiredService<ILoggerProvider[]>();
   for (const loggerProvider of loggerProviders) {
     framework.loggerFactory.addProvider(loggerProvider);
   }
@@ -202,7 +206,7 @@ export function resolveHost(services: Manifest<any>, framework: FrameworkService
     configureStep(framework.hostOptions);
   }
 
-  const hostLifetime = provider.getRequiredService(HOST_LIFETIME_TYPE);
+  const hostLifetime = provider.getRequiredService<IHostLifetime>();
   const logger = framework.loggerFactory.createLogger(HOST_LOGGER_CATEGORY);
 
   return new Host(provider, framework.applicationLifetime, logger, hostLifetime, framework.hostOptions);
