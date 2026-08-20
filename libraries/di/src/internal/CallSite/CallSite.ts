@@ -112,20 +112,18 @@ export namespace CallSite {
    */
   export function fromAnswer(answer: Answer, visitor: Type.Visitor<CallSite | undefined>): CallSite | undefined {
     const { descriptor, generics } = answer;
-    switch (descriptor.kind) {
-      case 'value':
-        return constant(descriptor.implementer);
-      case 'ctor': {
-        const args = lowerSignature(descriptor.implementerType.args, generics, visitor);
-        return args && ctor(descriptor.implementer, args, descriptor.scope !== undefined ? descriptor : undefined);
-      }
-      case 'factory': {
-        const args = lowerSignature(descriptor.implementerType.args, generics, visitor);
-        return args && factory(descriptor.implementer, args, descriptor.scope !== undefined ? descriptor : undefined);
-      }
-      default:
-        return assertNever(descriptor);
+    if ('ctor' in descriptor) {
+      const args = lowerSignature(descriptor.ctorType.args, generics, visitor);
+      return args && ctor(descriptor.ctor, args, descriptor.scope !== undefined ? descriptor : undefined);
     }
+    if ('factory' in descriptor) {
+      const args = lowerSignature(descriptor.factoryType.args, generics, visitor);
+      return args && factory(descriptor.factory, args, descriptor.scope !== undefined ? descriptor : undefined);
+    }
+    if ('value' in descriptor) {
+      return constant(descriptor.value);
+    }
+    return assertNever(descriptor);
   }
 
   /** The first parameter row whose every parameter lowers to a call site, longest first. */
