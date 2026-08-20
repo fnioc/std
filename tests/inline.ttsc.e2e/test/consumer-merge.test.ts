@@ -72,20 +72,19 @@ function goEnv(): NodeJS.ProcessEnv {
 
 // The consumer installs the authoring surface the production way: a side-effect
 // import of the augmentation package, which is also what mounts its runtime
-// members. The receiver reaches BOTH the sugar `addClass<T>` and the token-taking
-// `addClass` through a member-map `extends` clause, so the call site here is the
-// one a build actually compiles.
+// members. The receiver reaches BOTH the sugar `add<ServiceType>` and the
+// token-taking `add` through the merged declarations, so the call site here is
+// the one a build actually compiles.
 const MERGED_SOURCE = `
 import '@rhombus-std/di.extras';
-import type { ConstructorType, Manifest } from '@rhombus-std/di.core';
+import type { Manifest } from '@rhombus-std/di.core';
 
 interface ILogger {}
 class ConsoleLogger implements ILogger {}
 
 declare const services: Manifest<'singleton'>;
-declare const loggerImpl: ConstructorType;
 
-export const registered = services.addClass<ILogger>(ConsoleLogger, loggerImpl, 'singleton');
+export const registered = services.add<ILogger>(ConsoleLogger, 'singleton');
 `;
 
 // The same call with the authoring surface absent: the package declaring the sugar
@@ -100,7 +99,7 @@ class ConsoleLogger implements ILogger {}
 
 declare const services: Manifest<'singleton'>;
 
-export const registered = (services as any).addClass<ILogger>(ConsoleLogger, [[]], 'singleton');
+export const registered = (services as any).addValue<ILogger>(new ConsoleLogger());
 `;
 
 function setupSandbox(dir: string, name: string, file: string, source: string): void {
@@ -194,9 +193,11 @@ describe.skipIf(!toolchainReady)('inline stage — consumer merge shapes', () =>
     // The derived token leads, and everything the author wrote after the ctor
     // reaches the token-taking member in order.
     const logger = constFor(MERGED_DIR, 'Type.imported("ILogger", "merged-app/tokens/merged")');
-    expect(line).toMatch(new RegExp(`addClass\\(\\s*${logger.replace('$', '\\$')}\\b`));
-    expect(line).toContain('ConsoleLogger');
-    expect(line).not.toContain('addClass<');
+    const loggerClass = constFor(MERGED_DIR, 'Type.imported("ConsoleLogger", "merged-app/tokens/merged")');
+    const loggerCtorType = constFor(MERGED_DIR, `Type.ctor(${loggerClass}, [[]])`);
+    expect(line).toMatch(new RegExp(`\\.add\\(\\s*${logger.replace('$', '\\$')}\\b`));
+    expect(line).toContain(`ConsoleLogger, ${loggerCtorType}, 'singleton'`);
+    expect(line).not.toContain('add<');
   });
 
   test('a token-less registration never ships: the ctor is never the first argument', () => {
@@ -206,18 +207,21 @@ describe.skipIf(!toolchainReady)('inline stage — consumer merge shapes', () =>
     // is erased anyway — emitting a registration whose token slot holds a class.
     const line = merged.emitted.split('\n').find((l) => l.includes('registered'))?.trim();
     expect(line).toBeDefined();
-    expect(line).not.toMatch(/addClass\(\s*ConsoleLogger/);
+    expect(line).not.toMatch(/\.add\(\s*ConsoleLogger/);
   });
 
-  test('the sugar call fails the build by name when the authoring surface is absent', () => {
-    // Nothing can lower here, and passing the call through would emit a call whose
-    // arguments are shifted by one. The build has to stop and say which call.
+  test('the sugar fails the build by name when the authoring surface is absent', () => {
+    // Nothing can lower here, and passing the call through would emit a call
+    // whose arguments are shifted. The build stops at entry resolution: a
+    // sugar-only member name (addValue) exists nowhere on the program's
+    // Manifest surface, and an entry naming a declaration the program lacks is
+    // a load-time failure that says which member.
     expect(unwired.status).not.toBe(0);
-    const named = unwired.diagnostics.filter((d) => d.code === 'INLINE_UNLOWERED_SUGAR');
+    const named = unwired.diagnostics.filter((d) => d.code === 'INLINE_RESOLVE');
     expect(named.length).toBeGreaterThan(0);
     for (const diagnostic of named) {
       expect(diagnostic.category).toBe('error');
-      expect(diagnostic.messageText).toContain('addClass');
+      expect(diagnostic.messageText).toContain('addValue');
     }
   });
 });
