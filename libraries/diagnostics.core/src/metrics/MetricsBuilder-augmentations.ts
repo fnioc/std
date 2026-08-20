@@ -4,14 +4,17 @@
 // the same type). The MetricsOptions-targeted mutators of the same names are
 // the sibling ./MetricsOptions-augmentations set.
 
-import { ConstantType } from '@rhombus-std/di.core';
+// Type-only: puts di.extras' declare-module sugar faces in the program with
+// no runtime import of the authoring package.
+import type {} from '@rhombus-std/di.extras';
+
 import type { IConfigureOptions } from '@rhombus-std/options';
 import type { ConstructorType } from '@rhombus-std/primitives';
 import { registerAugmentations } from '@rhombus-std/primitives.extras';
 import type { Ctor, Func } from '@rhombus-toolkit/func';
 import type { Flatten } from '@rhombus-toolkit/type-helpers';
 
-import { METRICS_CONFIGURE_TYPE, METRICS_LISTENER_TYPE } from '../types';
+import { METRICS_LISTENER_TYPE } from '../types';
 import type { IMetricsBuilder } from './IMetricsBuilder';
 import { METER_SCOPE_ALL, MeterScope } from './MeterScope';
 import type { IMetricsListener } from './metrics-listener';
@@ -23,14 +26,14 @@ function configureMetrics(builder: IMetricsBuilder, apply: Func<[options: Metric
   const step: IConfigureOptions<MetricsOptions> = { configure(options: MetricsOptions): void {
     apply(options);
   } };
-  builder.services = builder.services.add(METRICS_CONFIGURE_TYPE, step, ConstantType);
+  builder.services = builder.services.addValue<IConfigureOptions<MetricsOptions>>(step);
   return builder;
 }
 
 export namespace MetricsBuilderAugmentations {
   /** Registers an already-built {@link IMetricsListener} instance. */
   export function addMetricsListener<Self extends IMetricsBuilder>(this: Self, listener: IMetricsListener): Self {
-    this.services = this.services.add(METRICS_LISTENER_TYPE, listener, ConstantType);
+    this.services = this.services.addValue<IMetricsListener>(listener);
     return this;
   }
 
@@ -55,7 +58,7 @@ export namespace MetricsBuilderAugmentations {
     // overload surface `Manifest` carries pushes TS's relationship
     // check past its recursion budget, which it resolves as "not assignable"
     // rather than re-deriving the true relationship.
-    this.services = this.services.removeAll(METRICS_LISTENER_TYPE) as typeof this.services;
+    this.services = this.services.removeAll<IMetricsListener>() as typeof this.services;
     return this;
   }
 

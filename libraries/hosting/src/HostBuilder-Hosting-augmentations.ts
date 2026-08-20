@@ -9,20 +9,24 @@
 // fully-merged interface) stays in `./host-augmentations`, and the `HostBuilder`
 // class itself is decorated with `@augment(typefor<IHostBuilder>())`.
 
+// Type-only: puts di.extras' declare-module sugar faces in the program with
+// no runtime import of the authoring package.
+import type {} from '@rhombus-std/di.extras';
+
 import { MemoryConfigSource } from '@rhombus-std/config';
 import { ServiceProviderOptions } from '@rhombus-std/di';
 import { ConstantType, type IServiceProvider, RESOLVER_TYPE } from '@rhombus-std/di.core';
 import type { IMetricsBuilder } from '@rhombus-std/diagnostics.core';
-import { HOST_APPLICATION_LIFETIME_TYPE, type HostBuilderContext, HostDefaults, HostLifecycleAugmentations, type IHostBuilder } from '@rhombus-std/hosting.core';
-import { LOGGER_FACTORY_TYPE, LoggingBuilder } from '@rhombus-std/logging';
-import type { ILoggingBuilder } from '@rhombus-std/logging.core';
+import { type HostBuilderContext, HostDefaults, HostLifecycleAugmentations, type IHostApplicationLifetime, type IHostBuilder, type IHostEnvironment } from '@rhombus-std/hosting.core';
+import { LoggingBuilder } from '@rhombus-std/logging';
+import type { ILoggerFactory, ILoggingBuilder } from '@rhombus-std/logging.core';
 import { type AbortSignal, Type } from '@rhombus-std/primitives';
 import { registerAugmentations } from '@rhombus-std/primitives.extras';
 import type { Func } from '@rhombus-toolkit/func';
 import type { Flatten } from '@rhombus-toolkit/type-helpers';
 import { ConsoleLifetimeOptions } from './ConsoleLifetimeOptions';
 import { addDefaultServices, applyDefaultAppConfig, applyDefaultHostConfig, createDefaultServiceProviderOptions } from './default-config';
-import { CONSOLE_LIFETIME_OPTIONS_TYPE, HOST_ENVIRONMENT_TYPE, HOST_LIFETIME_TYPE, HOST_OPTIONS_CONFIGURE_TYPE } from './framework-types';
+import { HOST_LIFETIME_TYPE, HOST_OPTIONS_CONFIGURE_TYPE } from './framework-types';
 import type { HostOptions } from './HostOptions';
 import { ConsoleLifetime } from './internal/ConsoleLifetime';
 import { MetricsBuilder } from './MetricsBuilder';
@@ -148,11 +152,11 @@ export namespace HostBuilderHostingAugmentations {
     const options = new ConsoleLifetimeOptions();
     configureOptions?.(options);
     return this.configureServices((_context, services) => {
-      const withOptions = services.add(CONSOLE_LIFETIME_OPTIONS_TYPE, options, ConstantType);
+      const withOptions = services.addValue<ConsoleLifetimeOptions>(options);
       return withOptions.add(HOST_LIFETIME_TYPE,
         (resolver: IServiceProvider) =>
-          new ConsoleLifetime(resolver.getRequiredService(CONSOLE_LIFETIME_OPTIONS_TYPE), resolver.getRequiredService(HOST_ENVIRONMENT_TYPE),
-            resolver.getRequiredService(HOST_APPLICATION_LIFETIME_TYPE), resolver.getRequiredService(LOGGER_FACTORY_TYPE)), Type.func(HOST_LIFETIME_TYPE, [[RESOLVER_TYPE]]));
+          new ConsoleLifetime(resolver.getRequiredService<ConsoleLifetimeOptions>(), resolver.getRequiredService<IHostEnvironment>(), resolver.getRequiredService<IHostApplicationLifetime>(),
+            resolver.getRequiredService<ILoggerFactory>()), Type.func(HOST_LIFETIME_TYPE, [[RESOLVER_TYPE]]));
     });
   }
 

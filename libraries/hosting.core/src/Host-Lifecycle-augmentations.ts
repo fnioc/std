@@ -1,8 +1,12 @@
+// Type-only: puts di.extras' declare-module sugar faces in the program with
+// no runtime import of the authoring package.
+import type {} from '@rhombus-std/di.extras';
+
 import { AbortController, type AbortSignal, clearTimeout, neverSignal, setTimeout } from '@rhombus-std/primitives';
 import { registerAugmentations } from '@rhombus-std/primitives.extras';
 import type { Flatten } from '@rhombus-toolkit/type-helpers';
 import type { IHost } from './IHost';
-import { HOST_APPLICATION_LIFETIME_TYPE } from './types';
+import type { IHostApplicationLifetime } from './IHostApplicationLifetime';
 
 /** A promise that settles when `signal` aborts (or immediately, if already aborted). */
 function whenAborted(signal: AbortSignal): Promise<void> {
@@ -46,7 +50,7 @@ export namespace HostLifecycleAugmentations {
    * then gracefully stops the host.
    */
   export async function waitForShutdownAsync(this: IHost, abortSignal?: AbortSignal): Promise<void> {
-    const lifetime = this.services.getRequiredService(HOST_APPLICATION_LIFETIME_TYPE);
+    const lifetime = this.services.getRequiredService<IHostApplicationLifetime>();
 
     const requestStop = (): void => lifetime.stopApplication();
     if (abortSignal !== undefined) {
