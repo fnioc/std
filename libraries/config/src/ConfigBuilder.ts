@@ -4,7 +4,7 @@
 // addJsonFile/addEnvironmentVariables/etc. baked in. Each provider package (and
 // the in-package Memory/Chained providers) bolts its own add* sugar on via TS
 // declaration merging + an augmentation registered against the shared
-// IConfigBuilder token; this class is decorated for that token at the
+// IConfigBuilder type; this class is decorated for that type at the
 // bottom of the file. add* return `this` so those
 // augmentations type-check without a cast and preserve `T` through the fluent
 // chain.

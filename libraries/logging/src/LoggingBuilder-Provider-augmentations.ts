@@ -2,7 +2,7 @@
 //
 // `ILoggingBuilder` is extended by downstream packages (logging.config's
 // addConfig, logging.console's addConsole), so installation goes through the
-// augmentation registry: register the set against the `ILoggingBuilder` token,
+// augmentation registry: register the set against the `ILoggingBuilder` type,
 // and the `@augment`-decorated `LoggingBuilder` pulls it (plus every later
 // registrant) onto its prototype. The exported const is also the standalone
 // call surface.

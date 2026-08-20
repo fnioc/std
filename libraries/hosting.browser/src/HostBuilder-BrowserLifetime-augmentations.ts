@@ -3,7 +3,7 @@
 //
 // OPEN receiver: `IHostBuilder` is owned by hosting.core and extended across
 // packages, so this namespace registers into the augmentation registry under the
-// shared `typefor<IHostBuilder>()` token (alongside hosting.core's `startHost`
+// shared `typefor<IHostBuilder>()` type (alongside hosting.core's `startHost`
 // and hosting's runtime members); the `@augment`-decorated concrete
 // `HostBuilder` (in @rhombus-std/hosting) pulls it onto its prototype. The
 // interface-side merge for THIS namespace's member lives here beside it, targeting
@@ -22,7 +22,7 @@ import { BrowserLifetimeOptions } from './BrowserLifetimeOptions';
 import { registerBrowserLifetime } from './register-browser-lifetime';
 
 /**
- * Registered under the `IHostBuilder` token below; the member is also the
+ * Registered under the `IHostBuilder` type below; the member is also the
  * standalone call surface.
  */
 export namespace HostBuilderBrowserLifetimeAugmentations {

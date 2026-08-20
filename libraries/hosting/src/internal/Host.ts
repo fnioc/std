@@ -24,8 +24,8 @@ import { linkSignals, whenAborted } from '../signal-linking';
 import { ApplicationLifetime } from './ApplicationLifetime';
 import { hostingLog } from './hosting-log';
 
-// Re-export the shared hosted-service token so a white-box consumer can reach it
-// alongside the host. The value is hosting.core's token (the one
+// Re-export the shared hosted-service type so a white-box consumer can reach it
+// alongside the host. The value is hosting.core's type (the one
 // `addHostedService` registers under) so registration and resolution agree.
 export { HOSTED_SERVICE_TYPE } from '@rhombus-std/hosting.core';
 

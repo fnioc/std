@@ -162,7 +162,7 @@ export function populateFrameworkServices(services: Manifest<any>, context: Host
   s = s.add(LOGGER_FACTORY_TYPE, framework.loggerFactory);
 
   // The default host lifetime. `useConsoleLifetime` appends a ConsoleLifetime
-  // registration under the same token; di.core is append-only last-wins, so the
+  // registration under the same type; di.core is append-only last-wins, so the
   // console lifetime overrides this when requested.
   return s.add(HOST_LIFETIME_TYPE, NullLifetime, Type.ctor(HOST_LIFETIME_TYPE, [[]]));
 }

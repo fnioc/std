@@ -3,7 +3,7 @@
 // `ConsoleLoggerAugmentations.addConsole` shape.
 //
 // This downstream sink registers its augmentation set against the shared
-// `typefor<ILoggingBuilder>()` token: the @augment-decorated concrete
+// `typefor<ILoggingBuilder>()` type: the @augment-decorated concrete
 // LoggingBuilder pulls the method onto its prototype. The exported const IS
 // the standalone call surface.
 //

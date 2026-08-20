@@ -30,11 +30,11 @@ export { ConfigSection } from './ConfigSection';
 
 // Memory provider. The re-export is side-effectful: importing this module
 // registers the `addInMemoryCollection` augmentation against the shared
-// IConfigBuilder token, reaching both decorated builders.
+// IConfigBuilder type, reaching both decorated builders.
 export * from './memory';
 
 // Chained provider. Side-effectful re-export: registers the `addConfig`
-// augmentation against the same IConfigBuilder token, wrapping an
+// augmentation against the same IConfigBuilder type, wrapping an
 // already-built IConfig as a live source.
 export * from './chained';
 

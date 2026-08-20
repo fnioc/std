@@ -2,7 +2,7 @@
 //
 // OPEN receiver: `IHostBuilder` is owned by hosting.core and extended across
 // packages, so this namespace registers into the augmentation registry under
-// the `IHostBuilder` token (alongside hosting.core's
+// the `IHostBuilder` type (alongside hosting.core's
 // `HostBuilderStartAugmentations`, which contributes `startHost`). The
 // interface-side merge for THIS namespace's members lives here beside it; the
 // class-side merge onto the concrete `HostBuilder` (so it SATISFIES the
@@ -29,7 +29,7 @@ import { MetricsBuilder } from './MetricsBuilder';
 import { setServiceProviderOptionsFactory } from './ServiceProviderOptionsFactory';
 
 /**
- * Registered under the `IHostBuilder` token; the concrete `HostBuilder` pulls it
+ * Registered under the `IHostBuilder` type; the concrete `HostBuilder` pulls it
  * (and hosting.core's `startHost`) via `@augment`. The members here are also the
  * standalone call surface.
  */

@@ -20,7 +20,7 @@ import { typefor } from '@rhombus-std/primitives.extras';
 // satisfies `implements ILoggingBuilder` without any class-side restatement.
 export interface LoggingBuilder extends ILoggingBuilder {}
 
-// Decorating the concrete builder with the ILoggingBuilder token means every
+// Decorating the concrete builder with the ILoggingBuilder type means every
 // set registered against it — this package's `LoggingBuilderProviderAugmentations`, plus
 // downstream `addConfig`/`addConsole` — is (re)installed onto the prototype,
 // whatever the import order.

@@ -1,14 +1,14 @@
 // `addMemoryCache` / `addDistributedMemoryCache` on di.core's registration
 // builder.
 //
-// `addOptions` registers the `IOptions<T>` assembly for the options token;
+// `addOptions` registers the `IOptions<T>` assembly for the options type;
 // `setup` becomes a LAZY code configure step (it runs when the options first
 // resolve, not at registration); the cache factory then resolves the assembled
 // options plus -- when logging is registered -- the `ILoggerFactory`, falling
 // back to a logger-less construction when no logger factory is available.
 //
 // The cache registrations go through di.core's `tryAdd`, so an earlier
-// registration for the same token is kept while `configure` steps still
+// registration for the same type is kept while `configure` steps still
 // accumulate. (The options ASSEMBLY registration stays plain `addOptions`;
 // re-registering the identical assembly is last-wins and observably
 // equivalent.)
@@ -31,11 +31,11 @@ import { MemoryCacheOptions } from './MemoryCacheOptions';
 import { MemoryDistributedCache } from './MemoryDistributedCache';
 import { MemoryDistributedCacheOptions } from './MemoryDistributedCacheOptions';
 
-// The token `@rhombus-std/logging`'s `addLogging` binds `ILoggerFactory` at --
+// The type `@rhombus-std/logging`'s `addLogging` binds `ILoggerFactory` at --
 // derived here via `typefor<ILoggerFactory>()` rather than importing
 // logging's const, so the dependency on `ILoggerFactory` stays type-only and
 // this package never drags in logging's side-effect registrations. Deriving
-// off the same type keeps the token byte-identical to logging's own, so the
+// off the same type keeps this byte-identical to logging's own, so the
 // two never desync.
 const LOGGER_FACTORY_TYPE = typefor<ILoggerFactory>();
 
@@ -56,7 +56,7 @@ export namespace ServiceManifestMemoryCacheAugmentations {
       // lazily, when the options first resolve, not at registration.
       m = m.configure(MEMORY_CACHE_OPTIONS_TYPE, setup);
     }
-    // `tryAdd` only registers if the token is still free, keeping any
+    // `tryAdd` only registers if the type is still free, keeping any
     // earlier registration. `getService` returns `undefined` when no
     // `ILoggerFactory` is registered, so the factory falls to a logger-less
     // construction.
@@ -76,7 +76,7 @@ export namespace ServiceManifestMemoryCacheAugmentations {
    * step. Returns the manifest for chaining.
    */
   export function addDistributedMemoryCache(this: Manifest<string>, setup?: Func<[MemoryDistributedCacheOptions], void>): Manifest<string> {
-    // Same shape as addMemoryCache, over the distributed options token. The
+    // Same shape as addMemoryCache, over the distributed options type. The
     // cache is REGISTERED here but built lazily on first resolve, over its
     // own private MemoryCache.
     let m: Manifest<string> = this.addOptions(MEMORY_DISTRIBUTED_CACHE_OPTIONS_TYPE, () => new MemoryDistributedCacheOptions());

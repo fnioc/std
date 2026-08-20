@@ -3,7 +3,7 @@
 //
 // ILoggingBuilder is @rhombus-std/logging.core's own interface (an OPEN
 // receiver extended across the family), so this downstream sink registers its
-// augmentation set against the shared `typefor<ILoggingBuilder>()` token: the
+// augmentation set against the shared `typefor<ILoggingBuilder>()` type: the
 // @augment-decorated concrete LoggingBuilder pulls the methods onto its
 // prototype. The exported const IS the standalone call surface.
 //
