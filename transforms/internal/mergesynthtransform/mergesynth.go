@@ -570,7 +570,7 @@ func (s *synthesizer) guardForType(
 	case s.arrayElementType(t) != nil:
 		return s.arrayGuard(context, t, seen)
 	case s.isCallable(t):
-		return guard{node: typeofGuard(s.factory(), "function")}
+		return s.callableGuard(t)
 	case s.nominalGlobalOf(t) != "":
 		return s.nominalGuard(context, t, seen)
 	case s.stringIndexValueType(t) != nil:
@@ -1400,14 +1400,94 @@ func typeSymbolName(t *shimchecker.Type) string {
 	return ""
 }
 
-// isCallable reports whether values of t are functions — an object type with a
-// call or construct signature.
-func (s *synthesizer) isCallable(t *shimchecker.Type) bool {
+// callableKinds reports which callable signature kinds t carries, each read as
+// its own query so a constructor type is recognized distinctly from a plain
+// function type.
+func (s *synthesizer) callableKinds(t *shimchecker.Type) (call, construct bool) {
 	if t == nil || t.Flags()&shimchecker.TypeFlagsObject == 0 {
-		return false
+		return false, false
 	}
-	return len(shimchecker.Checker_getSignaturesOfType(s.checker, t, shimchecker.SignatureKindCall)) > 0 ||
-		len(shimchecker.Checker_getSignaturesOfType(s.checker, t, shimchecker.SignatureKindConstruct)) > 0
+	call = len(shimchecker.Checker_getSignaturesOfType(s.checker, t, shimchecker.SignatureKindCall)) > 0
+	construct = len(shimchecker.Checker_getSignaturesOfType(s.checker, t, shimchecker.SignatureKindConstruct)) > 0
+	return call, construct
+}
+
+// isCallable reports whether values of t are functions — an object type with a
+// call or construct signature, either kind.
+func (s *synthesizer) isCallable(t *shimchecker.Type) bool {
+	call, construct := s.callableKinds(t)
+	return call || construct
+}
+
+// callableGuard is the guard for a callable type. Every callable is
+// `typeof === "function"`; a type carrying ONLY construct signatures is
+// further discriminated as a constructor (constructorCondition). A type with
+// call signatures keeps the bare typeof check even when construct signatures
+// sit beside them: an ordinary function declaration is itself constructible,
+// so no runtime read separates "callable" from "also constructible" without
+// rejecting genuine values.
+func (s *synthesizer) callableGuard(t *shimchecker.Type) guard {
+	f := s.factory()
+	call, construct := s.callableKinds(t)
+	if construct && !call {
+		condition := f.NewBinaryExpression(
+			nil,
+			f.NewParenthesizedExpression(f.NewBinaryExpression(
+				nil,
+				f.NewTypeOfExpression(f.NewIdentifier("input")),
+				nil,
+				f.NewToken(shimast.KindEqualsEqualsEqualsToken),
+				f.NewStringLiteral("function", shimast.TokenFlagsNone),
+			)),
+			nil,
+			f.NewToken(shimast.KindAmpersandAmpersandToken),
+			f.NewCallExpression(constructorCondition(f), nil, nil,
+				f.NewNodeList([]*shimast.Node{f.NewIdentifier("input")}), shimast.NodeFlagsNone),
+		)
+		return guard{node: guardClosure(f, nil, condition)}
+	}
+	return guard{node: typeofGuard(f, "function")}
+}
+
+// constructorCondition emits the constructor discrimination a construct-only
+// type adds over the typeof check:
+//
+//	(input) => { try { Reflect.construct(Boolean, [], input); return true; }
+//	             catch { return false; } }
+//
+// Reflect.construct with input as the newTarget is the language's own
+// IsConstructor test and runs none of input's code — Boolean's construction
+// runs, input only supplies the prototype — so an arrow function or a method,
+// callable but never constructible, fails the guard the way it fails the type.
+func constructorCondition(f *shimast.NodeFactory) *shimast.Node {
+	probe := f.NewCallExpression(
+		f.NewPropertyAccessExpression(f.NewIdentifier("Reflect"), nil, f.NewIdentifier("construct"), shimast.NodeFlagsNone),
+		nil, nil,
+		f.NewNodeList([]*shimast.Node{
+			f.NewIdentifier("Boolean"),
+			f.NewArrayLiteralExpression(f.NewNodeList(nil), false),
+			f.NewIdentifier("input"),
+		}),
+		shimast.NodeFlagsNone,
+	)
+	tryBlock := f.NewBlock(f.NewNodeList([]*shimast.Node{
+		f.NewExpressionStatement(probe),
+		f.NewReturnStatement(f.NewKeywordExpression(shimast.KindTrueKeyword)),
+	}), false)
+	catchBlock := f.NewBlock(f.NewNodeList([]*shimast.Node{
+		f.NewReturnStatement(f.NewKeywordExpression(shimast.KindFalseKeyword)),
+	}), false)
+	body := f.NewBlock(f.NewNodeList([]*shimast.Node{
+		f.NewTryStatement(tryBlock, f.NewCatchClause(nil, catchBlock), nil),
+	}), false)
+	arrow := f.NewArrowFunction(
+		nil, nil,
+		f.NewNodeList([]*shimast.Node{f.NewParameterDeclaration(nil, nil, f.NewIdentifier("input"), nil, nil, nil)}),
+		nil, nil,
+		f.NewToken(shimast.KindEqualsGreaterThanToken),
+		body,
+	)
+	return f.NewParenthesizedExpression(arrow)
 }
 
 // stringIndexValueType returns the value type of a composable record — an object
