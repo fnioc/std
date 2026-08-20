@@ -30,8 +30,7 @@ import '@rhombus-std/options.augmentations';
 
 import type { DefaultManifest, Manifest } from '@rhombus-std/di.core';
 import { ILoggerFactory, ILoggerProvider, type ILoggingBuilder, Logger as LoggerOfT, LogLevel } from '@rhombus-std/logging.core';
-import { IOptions } from '@rhombus-std/options';
-import { configureStepType } from '@rhombus-std/options.augmentations';
+import { type IConfigureOptions, IOptions } from '@rhombus-std/options';
 import { Type } from '@rhombus-std/primitives';
 import { registerAugmentations, typefor } from '@rhombus-std/primitives.extras';
 import type { Func } from '@rhombus-toolkit/func';
@@ -55,7 +54,7 @@ export namespace ServiceManifestLoggingAugmentations {
   export function addLogging(this: Manifest<string>, configure?: Func<[ILoggingBuilder], void>): Manifest<string> {
     // The LoggerFilterOptions assembly + its default (Information) min level.
     let m: Manifest<string> = this.addOptions(typefor<LoggerFilterOptions>(), () => new LoggerFilterOptions());
-    m = m.add(configureStepType(typefor<LoggerFilterOptions>()), new DefaultLoggerLevelConfigureOptions(LogLevel.Information));
+    m = m.addValue<IConfigureOptions<LoggerFilterOptions>>(new DefaultLoggerLevelConfigureOptions(LogLevel.Information));
 
     // ILoggerFactory, injected with the enumerable provider set and the
     // assembled IOptions<LoggerFilterOptions>.

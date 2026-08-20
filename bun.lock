@@ -528,6 +528,7 @@
       },
       "devDependencies": {
         "@rhombus-std/di.core": "workspace:*",
+        "@rhombus-std/di.extras": "workspace:*",
         "@rhombus-std/primitives.extras": "workspace:*",
         "@rhombus-toolkit/func": "3.6.0",
         "@ttsc/unplugin": "^0.18.1",
@@ -570,6 +571,7 @@
         "@rhombus-toolkit/type-helpers": "^2.0.0",
       },
       "devDependencies": {
+        "@rhombus-std/di.extras": "workspace:*",
         "@rhombus-std/primitives.extras": "workspace:*",
         "@ttsc/unplugin": "^0.18.1",
         "ttsc": "^0.18.1",

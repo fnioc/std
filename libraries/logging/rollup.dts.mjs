@@ -11,5 +11,5 @@ const PKG_ROOT = dirname(fileURLToPath(import.meta.url));
 
 export default { input: join(PKG_ROOT, 'src', 'index.ts'),
   output: { file: join(PKG_ROOT, 'dist', 'bundle', 'index.d.ts'), format: 'es' },
-  external: [/^@rhombus-std\/di\.core$/, /^@rhombus-std\/logging\.core$/, /^@rhombus-std\/primitives$/],
+  external: [/^@rhombus-std\/di\.core$/, /^@rhombus-std\/di\.extras$/, /^@rhombus-std\/logging\.core$/, /^@rhombus-std\/options$/, /^@rhombus-std\/options\.augmentations$/, /^@rhombus-std\/primitives$/],
   plugins: [dts({ tsconfig: join(PKG_ROOT, 'tsconfig.json'), respectExternal: true })] };
