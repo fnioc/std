@@ -3,7 +3,6 @@
 // category-keyed logger cache over one ConsoleLike.
 
 import type { ILogger, ILoggerProvider } from '@rhombus-std/logging.core';
-import { getOrCreate } from '@rhombus-std/primitives';
 import { BrowserConsoleLogger } from './BrowserConsoleLogger';
 import { console as globalConsole, type ConsoleLike } from './ConsoleLike';
 
@@ -18,7 +17,7 @@ export class BrowserConsoleLoggerProvider implements ILoggerProvider {
 
   /** Creates (or returns the cached) {@link BrowserConsoleLogger} for `name`. */
   public createLogger(name: string): ILogger {
-    return getOrCreate(this.#loggers, name, (name) => new BrowserConsoleLogger(name, this.#console));
+    return this.#loggers.getOrInsertComputed(name, (name) => new BrowserConsoleLogger(name, this.#console));
   }
 
   /** Nothing to release: the console is a borrowed global. */

@@ -1,4 +1,3 @@
-import { getOrCreate } from '@rhombus-std/primitives';
 import { DistributedCacheEntryOptions } from '../DistributedCacheEntryOptions';
 import type { HybridCacheEntryFlags } from './HybridCacheEntryFlags';
 
@@ -48,7 +47,7 @@ export function toDistributedCacheEntryOptions(
   if (options.expiration === undefined) {
     return undefined;
   }
-  return getOrCreate(memoizedDistributedOptions, options, () => {
+  return memoizedDistributedOptions.getOrInsertComputed(options, () => {
     const distributed = new DistributedCacheEntryOptions();
     distributed.absoluteExpirationRelativeToNow = options.expiration;
     return distributed;

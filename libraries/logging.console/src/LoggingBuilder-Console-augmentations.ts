@@ -26,7 +26,6 @@
 
 import { LoggingBuilderProviderAugmentations } from '@rhombus-std/logging';
 import type { ILoggingBuilder } from '@rhombus-std/logging.core';
-import { getOrCreate } from '@rhombus-std/primitives';
 import { registerAugmentations } from '@rhombus-std/primitives.extras';
 import type { Func } from '@rhombus-toolkit/func';
 import type { Flatten } from '@rhombus-toolkit/type-helpers';
@@ -60,7 +59,7 @@ interface ConsoleRegistration {
 const registrations = new WeakMap<ILoggingBuilder, ConsoleRegistration>();
 
 function getRegistration(builder: ILoggingBuilder): ConsoleRegistration {
-  return getOrCreate(registrations, builder, () => ({
+  return registrations.getOrInsertComputed(builder, () => ({
     loggerOptions: new ReloadableOptions(new ConsoleLoggerOptions()),
     simpleOptions: new ReloadableOptions(new SimpleConsoleFormatterOptions()),
     systemdOptions: new ReloadableOptions(new ConsoleFormatterOptions()),

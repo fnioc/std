@@ -14,7 +14,6 @@
 
 import { LoggingBuilderProviderAugmentations } from '@rhombus-std/logging';
 import type { ILoggingBuilder } from '@rhombus-std/logging.core';
-import { getOrCreate } from '@rhombus-std/primitives';
 import { registerAugmentations } from '@rhombus-std/primitives.extras';
 import type { Flatten } from '@rhombus-toolkit/type-helpers';
 import { BrowserConsoleLoggerProvider } from './BrowserConsoleLoggerProvider';
@@ -35,7 +34,7 @@ export namespace BrowserConsoleLoggerAugmentations {
    * platform console global.
    */
   export function addBrowserConsole<Self extends ILoggingBuilder>(this: Self): Self {
-    getOrCreate(registrations, this, (builder) => {
+    registrations.getOrInsertComputed(this, (builder) => {
       const provider = new BrowserConsoleLoggerProvider();
       LoggingBuilderProviderAugmentations.addProvider.call(builder, provider);
       return provider;
