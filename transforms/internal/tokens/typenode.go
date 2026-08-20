@@ -82,6 +82,13 @@ func DeriveTypeF(ctx *Context, t *shimchecker.Type, failure *Failure) (*TypeNode
 	if symbol == nil {
 		return nil, false
 	}
+	return deriveNamedNode(ctx, t, symbol, failure)
+}
+
+// deriveNamedNode builds the Named node a symbol-bearing type spells: the
+// FROM/NAME pair off the symbol's primary declaration, plus the closed generic
+// type arguments, each recursively derived.
+func deriveNamedNode(ctx *Context, t *shimchecker.Type, symbol *shimast.Symbol, failure *Failure) (*TypeNode, bool) {
 	name := symbol.Name
 	if name == "" || isInternalSymbolName(name) {
 		return nil, false
@@ -111,15 +118,23 @@ func DeriveTypeF(ctx *Context, t *shimchecker.Type, failure *Failure) (*TypeNode
 	return &TypeNode{Kind: TypeNodeNamed, Name: baseName, From: from, Args: argNodes}, true
 }
 
-// KeyedBaseType returns the underlying T of a `Keyed<T, K>` brand — the
-// phantom-brand intersection member(s) stripped — for a caller that already
-// confirmed t is keyed via KeyLiteralFor. It is the structural counterpart of
-// keyedBaseTokenFor's stripBrandMembers path; the Inject-pinned-base branch has
-// no structural equivalent (an Inject brand pins an arbitrary token STRING with
-// no corresponding TS type), so a caller wanting that string still goes through
-// KeyedTokenFor.
+// KeyedBaseType returns the underlying T of a `Keyed<T, K>` brand, for a
+// caller that already confirmed t is keyed via KeyLiteralFor: the
+// phantom-brand intersection member(s) stripped, or — when the checker
+// distributed the brand intersection over a union T's members — the spelled T
+// recovered from the alias record. Returns t UNCHANGED when no single base is
+// recoverable; a caller must treat that as "no base", never re-derive t
+// itself. The Inject-pinned-base branch has no structural equivalent (an
+// Inject brand pins an arbitrary token STRING with no corresponding TS type),
+// so a caller wanting that string still goes through KeyedTokenFor.
 func KeyedBaseType(t *shimchecker.Type, checker *shimchecker.Checker) *shimchecker.Type {
-	return stripBrandMembers(t, checker)
+	if base := stripBrandMembers(t, checker); base != t {
+		return base
+	}
+	if base := distributedAliasBase(t, checker); base != nil {
+		return base
+	}
+	return t
 }
 
 // renderNamedBase joins a Named node's From/Name pair into the flat base token:

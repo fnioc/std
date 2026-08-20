@@ -197,8 +197,9 @@ func KeyLiteralFor(t *shimchecker.Type, checker *shimchecker.Checker) (string, b
 //  1. An `Inject<T, "tok">` brand under the Keyed pins the base explicitly
 //     (`Keyed<Inject<T, "tok">, "k">` → base `tok`) — InjectTokenFor reads [TOK]
 //     off the same flattened intersection.
-//  2. Otherwise the base derives structurally from T with the phantom-brand
-//     members stripped off the intersection (stripBrandMembers), since the raw
+//  2. Otherwise the base derives structurally from T recovered via
+//     KeyedBaseType (brand members stripped off the intersection, or the
+//     spelled union recovered from a distributed brand), since the raw
 //     `T & { [KEY]?: K }` intersection has no symbol of its own. Hole-aware
 //     derivation (DeriveTokenF's `$N` render): a keyed base that itself
 //     contains an open-generic hole (`Keyed<IThing<Hole<1>>, "k">`) must render
@@ -209,7 +210,11 @@ func keyedBaseTokenFor(ctx *Context, t *shimchecker.Type) (string, bool) {
 	if base, ok := InjectTokenFor(t, ctx.Checker); ok {
 		return base, true
 	}
-	return DeriveTokenF(ctx, stripBrandMembers(t, ctx.Checker), nil)
+	base := KeyedBaseType(t, ctx.Checker)
+	if base == t {
+		return "", false
+	}
+	return DeriveTokenF(ctx, base, nil)
 }
 
 // KeyedTokenFor returns the composed keyed token `<base>#<key>` when t carries

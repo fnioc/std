@@ -52,8 +52,9 @@ type Derived struct {
 // matching TypeFor<T>'s own conditional order — EVERY signature is read, so an
 // overloaded declaration carries one parameter row per overload), then the call
 // signatures, then the nullish singletons and a general union (an optional
-// parameter's implicit `| undefined` reaches here), and otherwise the plain
-// DeriveTypeF leaf. Each recursion point — a signature's return/instance type,
+// parameter's implicit `| undefined` reaches here; one spelled through an
+// exported alias derives as that name instead of decomposing), and otherwise
+// the plain DeriveTypeF leaf. Each recursion point — a signature's return/instance type,
 // its parameters, a tag's inner type, a union's members — reclassifies from
 // scratch, so a factory that itself returns a factory nests
 // `Type.func(Type.func(...))` the way a hand-writer would spell it.
@@ -62,12 +63,22 @@ func DeriveTyped(ctx *Context, checker *shimchecker.Checker, t *shimchecker.Type
 		return nil, false
 	}
 	if key, ok := KeyLiteralFor(t, checker); ok {
-		base := KeyedBaseType(t, checker)
-		inner, ok := DeriveTyped(ctx, checker, base, failure)
-		if !ok {
-			return nil, false
+		if base := KeyedBaseType(t, checker); base != t {
+			inner, ok := DeriveTyped(ctx, checker, base, failure)
+			if !ok {
+				return nil, false
+			}
+			return &Derived{Kind: DerivedTag, Tag: key, Inner: inner}, true
 		}
-		return &Derived{Kind: DerivedTag, Tag: key, Inner: inner}, true
+		// No single recoverable base: the brand rode in through union members
+		// (an optional keyed slot's `| undefined`, or a keyed union spelled
+		// member by member), so derive the union itself and let each member's
+		// own brand read fire. Anything else carrying an unstrippable brand is
+		// underivable — re-deriving t here would recurse forever.
+		if isGeneralUnion(t) {
+			return deriveUnion(ctx, checker, t, failure)
+		}
+		return nil, false
 	}
 	if ctorSigs := shimchecker.Checker_getSignaturesOfType(checker, t, shimchecker.SignatureKindConstruct); len(ctorSigs) != 0 {
 		derived, ok := deriveSignatureShaped(ctx, checker, ctorSigs, failure, DerivedCtor)
@@ -87,6 +98,18 @@ func DeriveTyped(ctx *Context, checker *shimchecker.Checker, t *shimchecker.Type
 		return &Derived{Kind: DerivedNull}, true
 	}
 	if isGeneralUnion(t) {
+		// A union spelled through an addressable alias derives as the NAME it
+		// was spelled through — the same kind of decomposition exclusion as the
+		// wide `boolean` intrinsic — so its address cannot shift with the
+		// union's membership. A local alias has no spellable address, so its
+		// union derives structurally, like one spelled member by member.
+		if symbol := addressableAliasSymbol(ctx, t); symbol != nil {
+			node, ok := deriveNamedNode(ctx, t, symbol, failure)
+			if !ok {
+				return nil, false
+			}
+			return &Derived{Kind: DerivedLeaf, Leaf: node}, true
+		}
 		return deriveUnion(ctx, checker, t, failure)
 	}
 	node, ok := DeriveTypeF(ctx, t, failure)
