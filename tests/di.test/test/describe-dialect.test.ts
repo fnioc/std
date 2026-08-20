@@ -137,7 +137,7 @@ describe('the chain terminal is a descriptor', () => {
     const descriptor = manifest.describe(SINK)
       .asClass(Sink, Type.ctor(SINK, [[CLOCK, Type.typeLiteral('held')]]));
 
-    expect(descriptor.kind).toBe('ctor');
+    expect(ServiceDescriptor.kind(descriptor)).toBe('ctor');
     expect(descriptor.serviceType).toBe(SINK);
 
     const services = manifest.add(descriptor);
@@ -169,8 +169,8 @@ describe('lifetime and tag', () => {
     const other = [...lifetimeFirst][0]!;
     expect(tagged.serviceType).toBe(Type.tag(SINK, 'primary'));
     expect(other.serviceType).toBe(tagged.serviceType);
-    expect(tagged.kind === 'ctor' && tagged.scope).toBe('singleton');
-    expect(other.kind === 'ctor' && other.scope).toBe('singleton');
+    expect('ctor' in tagged && tagged.scope).toBe('singleton');
+    expect('ctor' in other && other.scope).toBe('singleton');
   });
 
   test('refine after the door too — the descriptor rebuilds instead of mutating', () => {

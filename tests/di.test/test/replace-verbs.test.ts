@@ -14,7 +14,7 @@ class Other {}
 
 /** The registered values, newest first — the order iterating a manifest yields. */
 function values(manifest: Manifest<string>): unknown[] {
-  return [...manifest].map(descriptor => descriptor.kind === 'value' ? descriptor.implementer : descriptor.kind);
+  return [...manifest].map(descriptor => 'value' in descriptor ? descriptor.value : ServiceDescriptor.kind(descriptor));
 }
 
 describe('a no-match registers nothing', () => {
@@ -64,7 +64,8 @@ describe('a match is swapped in place', () => {
       .add(B, 'b', ConstantType);
     const replaced = [...manifest.replace(A, Other, Type.ctor(A, [[]]))];
     expect(replaced).toHaveLength(2);
-    expect(replaced[1]!.kind === 'ctor' && replaced[1]!.implementer).toBe(Other);
+    const swapped = replaced[1]!;
+    expect('ctor' in swapped && swapped.ctor).toBe(Other);
   });
 
   test('a factory replace swaps the factory a registration builds through', () => {
@@ -73,7 +74,8 @@ describe('a match is swapped in place', () => {
       .add(B, 'b', ConstantType);
     const replaced = [...manifest.replace(A, () => 'new', Type.func(A, [[]]))];
     expect(replaced).toHaveLength(2);
-    expect(replaced[1]!.kind === 'factory' && (replaced[1]!.implementer as () => string)()).toBe('new');
+    const swapped = replaced[1]!;
+    expect('factory' in swapped && (swapped.factory as () => string)()).toBe('new');
   });
 
   test('a tagged replace reaches the tagged slot without disturbing the bare one', () => {

@@ -1,7 +1,7 @@
 // Behaviour tests for descriptor identity. Interned types make `===` the whole of type equality,
 // so a registration written as a token and one written through the factories occupy one slot.
 
-import { ServiceDescriptor } from '@rhombus-std/di.core';
+import { DefaultManifest, ServiceDescriptor } from '@rhombus-std/di.core';
 import { Type } from '@rhombus-std/primitives';
 import { describe, expect, test } from 'bun:test';
 
@@ -48,13 +48,19 @@ describe('substitute', () => {
     const open = ServiceDescriptor.ctor(openBox, Impl, Type.ctor(openBox, [[Type.generic('T')]]));
     const closed = ServiceDescriptor.substitute(open, new Map([['T', A]]));
     expect(closed.serviceType).toBe(Type.imported('Box', 'app', [A]));
-    expect(closed.kind === 'ctor' && closed.implementerType.args[0]![0]).toBe(A);
+    expect('ctor' in closed && closed.ctorType.args[0]![0]).toBe(A);
   });
 });
 
 describe('ctor', () => {
   test('refuses an abstract implementer type — nothing can `new` it directly', () => {
     expect(() => ServiceDescriptor.ctor(A, Impl, Type.ctor(A, [[]], true)))
+      .toThrow(/is abstract — nothing can `new` it directly/);
+  });
+
+  test('a literal-built descriptor meets the same refusal where it enters a manifest', () => {
+    const literal = { serviceType: A, ctor: Impl, ctorType: Type.ctor(A, [[]], true) };
+    expect(() => DefaultManifest.empty<string>().add(literal))
       .toThrow(/is abstract — nothing can `new` it directly/);
   });
 });
