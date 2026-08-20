@@ -217,9 +217,18 @@
   continuation, no coordination state needed. First store wins; a losing walk RELEASES its own
   instance through the disposal vocabulary and adopts the winner. Contract delta: write-back
   RETURNS the canonical value and the engine uses the returned value, never its locally-awaited
-  one. Resulting guarantee, stated honestly: at most one instance ever OBSERVED; under concurrent
-  first-resolution, extra instances may be transiently constructed and are immediately released.
-  Promise-holding caches stay overruled; no in-flight registry exists.
+  one. IDENTITY NO-OP PIN: `existing === value` returns existing and releases NOTHING — a factory
+  sharing its in-flight promise delivers the same instance to every walk, and releasing it would
+  destroy the canonical. Resulting guarantee, stated honestly: at most one instance ever
+  OBSERVED; under concurrent first-resolution, extra instances may be transiently constructed and
+  are immediately released — and effects that disposal cannot reverse are the FACTORY's to guard
+  (owner-flagged). The effectful-factory ladder: reversible effects are covered by
+  release-on-adopt; irreversible + singleton — the factory single-flights itself by sharing its
+  in-flight promise (one line, respected by the identity no-op); irreversible + scoped — closure
+  state is per-descriptor (shared across scopes/providers), so userland single-flight is WRONG
+  there: that case is the named demand condition for the additive `outstanding` arm, deferred
+  until such a consumer exists. Promise-holding caches stay overruled; no in-flight registry
+  exists today.
 
 ## Disposal
 
