@@ -1,18 +1,15 @@
 // Topological build runner for the @rhombus-std workspace.
 //
-// `bun --filter '*' build` runs every package's build in PARALLEL with no
-// ordering. That is fine for packages that consume their siblings from SOURCE
-// (the `source`/`bun`/`types` export conditions point at `.ts`, always present),
-// but WRONG for the transformer-active packages and the with-transformer example
-// builds: they resolve their upstream through its rolled `.d.ts`, not source
-// (docs/decisions.md §1/§9). If that upstream dist is missing or being rewritten
-// while they compile, the type-facing condition silently falls back to source,
-// and the augmented core class fails its own augmented interface (TS2416/TS2420)
-// -- the order-dependent, stale-dist failure this runner exists to remove.
+// In-repo resolution is source-first, so no package's typecheck or lowering
+// stage reads a sibling's dist -- correctness no longer depends on build
+// order. The tiers are kept for determinism: every package's publish
+// artifacts are produced against a workspace whose upstream dists are
+// complete rather than mid-rewrite, and a failure surfaces at the shallowest
+// package that owns it instead of at whichever downstream build happened to
+// race past it.
 //
 // It topologically orders the per-package `build` scripts by their workspace
-// dependency graph and runs each tier to completion before the next begins, so
-// every `built`-condition consumer sees a complete, stable upstream dist. A
+// dependency graph and runs each tier to completion before the next begins. A
 // tier's packages have no ordering between them and build in parallel (one
 // `bun --filter` invocation per tier).
 

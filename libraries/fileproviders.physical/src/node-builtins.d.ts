@@ -1,8 +1,8 @@
 // Compile-scope typings for the two `node:` modules this package imports,
 // declared with exactly the signatures the call sites use (no @types/node
-// dependency). Nothing imports this file, so it's never shipped; if a
-// consumer's own program has @types/node, these merely merge in as extra
-// overloads.
+// dependency). Each importing file pulls this in by triple-slash reference,
+// so the typings travel into any program that compiles this source; if that
+// program has @types/node, these merely merge in as extra overloads.
 
 declare module 'node:fs' {
   export interface Stats {
