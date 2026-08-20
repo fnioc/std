@@ -22,7 +22,6 @@
 
 import { configPath } from '@rhombus-std/config';
 import { FormatError } from '@rhombus-std/config.file';
-import { getOrCreate } from '@rhombus-std/primitives';
 
 const NAME_ATTRIBUTE = 'Name';
 const PREDEFINED_ENTITIES: Record<string, string> = { lt: '<', gt: '>', amp: '&', quot: '"', apos: "'" };
@@ -287,12 +286,7 @@ function processChild(prefix: Prefix, child: XmlElement, index: number | undefin
 
 /** Groups children by their (case-insensitive) sibling name, preserving first-seen order. */
 function groupChildren(children: XmlElement[]): XmlElement[][] {
-  const groups = new Map<string, XmlElement[]>();
-  for (const child of children) {
-    const key = child.siblingName.toLowerCase();
-    getOrCreate(groups, key, () => []).push(child);
-  }
-  return [...groups.values()];
+  return [...Map.groupBy(children, (child) => child.siblingName.toLowerCase()).values()];
 }
 
 function addPair(key: string, value: string, pairs: Array<[key: string, value: string]>, seen: Set<string>): void {
