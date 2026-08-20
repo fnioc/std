@@ -77,6 +77,16 @@
   time), so the sync/async distinction is decided by plan structure, never by cache state.
 - Plan memoization records instructions only — the callee reference and the argument wiring, never
   a return value. Plans hold no instances; results live only behind the scope door.
+- NEAR-MISS DIAGNOSTICS (owner proposal, endorsed; details **(proposed)**): a sync-mode
+  unsatisfiable failure additionally reports whether the request is satisfiable ASYNCHRONOUSLY —
+  implemented exactly, by re-running plan construction in async mode on the failure path (machinery
+  reused, failures never cached, zero false positives) — so the message can assert "satisfiable via
+  an async request" rather than guess. The near-miss facts ride the error as machine-readable data
+  (message text derived from it; feeds the diagnostics surface). The pattern generalizes:
+  keyed-under-a-tag and, once ManifestScope lands, private-in-scope join as further near-miss
+  kinds. One-directional by construction — async lookup is a superset of sync, so no mirrored
+  hint exists. Accepted micro-cost: the failure-path re-plan interns a `Promise<root>` node per
+  failed request type.
 
 ## The scope door
 
