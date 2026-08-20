@@ -9,12 +9,12 @@ import { basename, join, resolve } from 'node:path';
 // DIFFERENT spawn descriptors for the SAME always-on host — then asserts they
 // emit byte-identical output:
 //
-//   The type-driven `addClass<I>(C)` / `addFactory<I>(fn)` sugar bodies
-//   (di.extras's rhombus-std inline entries) substitute their address argument
-//   via typefor, forwarding the rest positionally, so the sugar half never
-//   spells an implementation type of its own. That half is covered separately
-//   below by a genuine SOURCE-WRITTEN `typefor<typeof C>()` third argument, the
-//   shape a hand-writer reaches for directly.
+//   The type-driven `add<ServiceType>(implementer)` / `addValue<ServiceType>(v)`
+//   sugar bodies (di.extras's rhombus-std inline entries) substitute the service
+//   type AND the observed implementer type via typefor, so no call spells
+//   either. The explicit spelling is covered separately below by a genuine
+//   SOURCE-WRITTEN `typefor<typeof C>()` third argument, the shape a
+//   hand-writer reaches for directly.
 //
 // The load-bearing guarantee for the sugar half is descriptor independence:
 // the whole always-on stage table runs regardless of which descriptor spawned
@@ -91,30 +91,27 @@ function goEnv(): NodeJS.ProcessEnv {
 
 // The type-driven sugar overloads are hand-declared here so the program carries
 // them without wiring the transformer's own types — the merge target is the real di.core
-// Manifest, and the parameter NAMES (ctor / factory) match the inline
+// Manifest, and the parameter NAMES (implementer / value) match the inline
 // bodies' so the structural overload discriminator resolves each call to the
 // sugar overload. A class with a real constructor dependency (IDep) and a factory
 // with a real parameter dependency give a NON-TRIVIAL signature array, so parity
-// pins the actual slot derivation, not just an empty `[[]]`.
+// pins the actual implementer-type derivation, not just an empty `[[]]`.
 const APP_SOURCE = `
 import type { Manifest } from "@rhombus-std/di.core";
 
-// Minimal local constructor / factory / implementation types, so the source is
-// self-contained (no @rhombus-toolkit/func or primitives resolution needed). The
-// overload discriminator reads parameter NAMES, not types, so these stand in for
-// the real ones.
+// Minimal local constructor / factory shapes, so the source is self-contained
+// (no @rhombus-toolkit/func resolution needed). The overload discriminator
+// reads parameter NAMES, not types, so these stand in for the real ones.
 type Ctor<A extends any[] = any[], R = unknown> = new (...args: A) => R;
 type Func<A extends any[] = any[], R = unknown> = (...args: A) => R;
-type ConstructorType = unknown;
-type FunctionType = unknown;
 
 declare module "@rhombus-std/di.core" {
   interface Manifest<Scopes extends string> {
-    addClass<I>(ctor: Ctor<any[], I>, implementerType: ConstructorType, scope?: string,
-      key?: string): Manifest<Scopes>;
-    addFactory<I>(factory: Func<any[], I>, implementerType: FunctionType, scope?: string,
-      key?: string): Manifest<Scopes>;
-    addValue<I>(value: I, key?: string): Manifest<Scopes>;
+    add<ServiceType>(implementer: Ctor<any[], ServiceType>, scope?: string): Manifest<Scopes>;
+    add<ServiceType>(implementer: Func<any[], ServiceType>, scope?: string): Manifest<Scopes>;
+    addValue<ServiceType>(value: ServiceType): Manifest<Scopes>;
+    tryAddValue<ServiceType>(value: ServiceType): Manifest<Scopes>;
+    replaceValue<ServiceType>(value: ServiceType): Manifest<Scopes>;
   }
 }
 
@@ -132,23 +129,20 @@ class BarImpl implements IBar {
 
 declare const services: Manifest<"singleton">;
 declare const bazValue: IBaz;
-declare const fooImplementer: ConstructorType;
-declare const barImplementer: FunctionType;
 
 // Top-level registration statements: the inline stage substitutes the sugar
 // bodies for registrations that appear as top-level expression statements, so both
 // spawn-descriptor lowerings exercise the same shape. Each call stops short of the
-// optional \`scope\` / \`key\` tail, which is what a hand author would have written.
-services.addClass<IFoo>(Foo, fooImplementer);
-services.addFactory<IBar>((dep: IDep) => new BarImpl(dep), barImplementer);
+// optional \`scope\` tail, which is what a hand author would have written; the
+// implementer type is OBSERVED from the argument, so no call spells one.
+services.add<IFoo>(Foo);
+services.add<IBar>((dep: IDep) => new BarImpl(dep));
 services.addValue<IBaz>(bazValue);
 `;
 
-// HAND_SOURCE is the genuine hand-writer's path: an EXPLICIT implementation type
-// as the third argument to the REAL (unmodified) di.core Manifest.addClass verb —
-// no sugar, no inline substitution, no local declare-module override. The
-// addClass<T>() sugar above forwards its own arguments positionally after the
-// address, so APP_SOURCE alone never derives an implementation type.
+// HAND_SOURCE is the genuine hand-writer's path: an EXPLICIT implementer type
+// as the third argument to the REAL (unmodified) di.core Manifest.add verb —
+// no sugar, no inline substitution, no local declare-module override.
 const HAND_SOURCE = `
 import type { Manifest } from "@rhombus-std/di.core";
 import { typefor } from "@rhombus-std/primitives.extras";
@@ -239,12 +233,16 @@ function setupHandWorkspace(): void {
   link(PRIMITIVES, join(nm, '@rhombus-std', 'primitives'));
   link(PRIMITIVES_TRANSFORMER, join(nm, '@rhombus-std', 'primitives.extras'));
 
+  // di.core only: the hand path is the plugin-less author's spelling, so the
+  // project must not carry di.extras' inline publish list — its sugar faces are
+  // deliberately absent from this program, and an entry naming a face the
+  // program lacks is a load-time failure by design.
   writeFileSync(
     join(handProjDir, 'package.json'),
-    JSON.stringify({ name: 'di-reg-hand', version: '0.0.0', dependencies: { '@rhombus-std/di.core': 'workspace:*', '@rhombus-std/di.extras': 'workspace:*' } }),
+    JSON.stringify({ name: 'di-reg-hand', version: '0.0.0', dependencies: { '@rhombus-std/di.core': 'workspace:*', '@rhombus-std/primitives.extras': 'workspace:*' } }),
   );
   writeFileSync(join(handProjDir, 'src', 'hand.ts'), HAND_SOURCE);
-  writeTsconfig(handProjDir, 'tsconfig.inline.json', 'dist-inline', [{ transform: '@rhombus-std/di.extras/ttsc' }]);
+  writeTsconfig(handProjDir, 'tsconfig.inline.json', 'dist-inline', [{ transform: '@rhombus-std/primitives.extras/ttsc' }]);
 }
 
 // A LowerResult exposes both the JS a caller would run (types stripped, the
@@ -325,15 +323,25 @@ describe.skipIf(!toolchainReady)('registration sugar — addClass / addFactory /
     // generated const module — the same Type factories a caller writing this
     // without the transform would reach for.
     const fooType = constFor(typeModule, 'Type.imported("IFoo", "di-reg-app/tokens/app")');
+    const fooClass = constFor(typeModule, 'Type.imported("Foo", "di-reg-app/tokens/app")');
+    const dep = constFor(typeModule, 'Type.imported("IDep", "di-reg-app/tokens/app")');
     const barType = constFor(typeModule, 'Type.imported("IBar", "di-reg-app/tokens/app")');
+    const barImpl = constFor(typeModule, 'Type.imported("BarImpl", "di-reg-app/tokens/app")');
     const bazType = constFor(typeModule, 'Type.imported("IBaz", "di-reg-app/tokens/app")');
-    expect(withInline).toContain(`.add(${fooType}`);
-    expect(withInline).toContain(`.add(${barType}`);
-    expect(withInline).toContain(`.add(${bazType}`);
+    // The implementer type is OBSERVED from the argument — the emitted call
+    // carries the very node a hand author would spell as the third argument.
+    const fooCtorType = constFor(typeModule, `Type.ctor(${fooClass}, [[${dep}]])`);
+    const barFnType = constFor(typeModule, `Type.func(${barImpl}, [[${dep}]])`);
+    expect(withInline).toContain(`.add(${fooType}, Foo, ${fooCtorType})`);
+    expect(withInline).toContain(`${barFnType})`);
+    expect(withInline).toContain(`.add(${barType}, `);
+    // The value door passes the ConstantType marker, imported from di.core the
+    // way a hand author would.
+    expect(withInline).toContain(`.add(${bazType}, bazValue, ConstantType)`);
+    expect(withInline).toMatch(/import\s*\{\s*ConstantType\s*\}\s*from\s*"@rhombus-std\/di\.core"/);
     // The consts are imported, not re-derived at the call site.
     expect(withInline).toContain(`from "./__typefor__.js"`);
-    expect(withInline).not.toContain('addClass<');
-    expect(withInline).not.toContain('addFactory<');
+    expect(withInline).not.toContain('add<');
     expect(withInline).not.toContain('addValue<');
     // No un-lowered primitive CALL survives (assert the call form, not a bare
     // substring, which could appear inside a derived token string).
