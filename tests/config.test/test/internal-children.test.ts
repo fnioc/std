@@ -3,7 +3,7 @@
 // deliberately NOT re-exported from the barrel.
 
 import * as configBarrel from '@rhombus-std/config';
-import { getChildrenImplementation } from '@rhombus-std/config/private/internal-children';
+import { getChildrenImplementation } from '@rhombus-std/config/tokens/internal-children';
 import { describe, expect, test } from 'bun:test';
 import { rootOf } from './support';
 

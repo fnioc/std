@@ -5,24 +5,20 @@
 // The §7 derivation rule (confirmed against the hand-authored pairs):
 //
 //   publishConfig.exports = exports, with two transforms:
-//     1. SCRUB   -- every white-box subpath (`./tokens/*` and `./private/*`) is
-//                   dropped, so a published consumer can't reach the seam even
-//                   though src/ still ships in the tarball (§7). This is the whole
-//                   point: pnpm honours publishConfig.exports, and omitting the
-//                   key makes it non-importable.
-//     2. DIST-SWAP -- each surviving subpath collapses its dev-resolution
-//                   conditions to the published trio, in canonical order:
-//                     types   <- swap the src `.ts` type entry to the rolled
-//                                `./dist/bundle/*.d.ts`
-//                     import  <- present iff the dev entry has an `import`
-//                                condition (a runtime lib); the `./dist/bundle/*.js`
-//                                bundle
+//     1. SCRUB   -- the white-box `./tokens/*` subpath is dropped, so a
+//                   published consumer can't reach the seam even though src/
+//                   still ships in the tarball (§7). This is the whole point:
+//                   pnpm honours publishConfig.exports, and omitting the key
+//                   makes it non-importable.
+//     2. DIST-SWAP -- each surviving subpath swaps its in-repo `./src/*.ts`
+//                   target for the published trio, in canonical order:
+//                     types   <- the rolled `./dist/bundle/*.d.ts`
+//                     import  <- the `./dist/bundle/*.js` bundle
 //                     default <- the `./dist/bundle/*.js` bundle (or, for a
 //                                types-only package, the `./dist/bundle/*.d.ts` --
 //                                there is no JS)
-//                   The dev-only conditions (`source`, `bun`, and di's `built`)
-//                   are dropped -- published consumers resolve through
-//                   import/default/types only.
+//                   A string target OUTSIDE `./src/` (the `./ttsc` descriptor)
+//                   passes through verbatim.
 //
 //   Top-level publishConfig.main/module/types are the same dist-swap of the
 //   top-level fields, emitted only for the fields the package actually declares
@@ -46,12 +42,9 @@ const ROOT = join(import.meta.dir, '..');
 const LIBS = join(ROOT, 'libraries');
 
 // Packages whose publishConfig is a deliberate semantic reshape of `exports`,
-// not a mechanical dist-swap -- kept hand-authored, never rewritten here:
-//   @rhombus-std/config -- its `./configuration-builder` / `./configuration-manager`
-//     alias subpaths COLLAPSE onto the rolled `./dist/bundle/index.*` bundle at publish
-//     (they exist so a consumer can deep-import a barrel re-export), which no
-//     path-swap of their dev `src`/`internal` targets can reproduce.
-const NON_DERIVABLE = new Set(['@rhombus-std/config']);
+// not a mechanical dist-swap -- kept hand-authored, never rewritten here.
+// Currently none.
+const NON_DERIVABLE = new Set<string>([]);
 
 interface Conditions {
   readonly [condition: string]: string;
@@ -69,11 +62,9 @@ interface Manifest {
   readonly rhombusBuild?: { readonly typesOnly?: boolean; };
 }
 
-/** True for a white-box seam subpath dropped from the published surface (§7).
- * Both halves of the seam are dev-only: `./tokens/*` (the source token surface)
- * and `./private/*` (the built lowered runtime). */
+/** True for the white-box seam subpath dropped from the published surface (§7). */
 function isInternal(subpath: string): boolean {
-  return subpath.startsWith('./tokens/') || subpath.startsWith('./private/');
+  return subpath.startsWith('./tokens/');
 }
 
 /**
@@ -129,7 +120,11 @@ function derivePublishExports(manifest: Manifest): Record<string, ExportEntry> {
       continue;
     }
     if (typeof entry === 'string') {
-      out[subpath] = entry;
+      // An in-repo `./src/*.ts` target publishes as the dist trio; any other
+      // string target (the `./ttsc` descriptor) is already publish-shaped.
+      out[subpath] = entry.startsWith('./src/')
+        ? derivePublishedConditions({ types: entry, import: entry, default: entry }, typesOnly)
+        : entry;
       continue;
     }
     out[subpath] = derivePublishedConditions(entry, typesOnly);
