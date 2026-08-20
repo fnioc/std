@@ -149,3 +149,7 @@ export function stagedFailure(what: string, attempt: () => unknown): string {
     return `${what}: ${diagnose(error)}`;
   }
 }
+
+export function demonstrateRegistrationErrors(manifest: Manifest<any>): string {
+  throw 'not implemented';
+}
