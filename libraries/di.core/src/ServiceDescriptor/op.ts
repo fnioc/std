@@ -17,8 +17,7 @@ export function kind(descriptor: ServiceDescriptor<string>): 'ctor' | 'factory' 
  * Closes an open registration against the generics a `Type.satisfies` match captured,
  * rewriting `serviceType` and the implementer's type so the result stands on its own.
  */
-export function substitute<Scopes extends string>(descriptor: ServiceDescriptor<Scopes>,
-  generics: ReadonlyMap<string, Type>): ServiceDescriptor<Scopes> {
+export function substitute<Scopes extends string>(descriptor: ServiceDescriptor<Scopes>, generics: ReadonlyMap<string, Type>): ServiceDescriptor<Scopes> {
   if (!generics.size) {
     return descriptor;
   }
