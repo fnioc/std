@@ -484,12 +484,17 @@ plus conventional practice do not pin down one and only one architecture — if 
 NOT guess and do NOT pick: halt that section and report the fork, per this doc's standing rule. The owner expects
 the requirements to admit exactly one clear answer; discovering otherwise is itself the finding to report.
 
-- [ ] Rework the `exports` maps (and whatever build/tsconfig plumbing they drag along) to the conventional shape
-      satisfying the two requirements above, repo-wide.
+- [x] Rework the `exports` maps (and whatever build/tsconfig plumbing they drag along) to the conventional shape
+      satisfying the two requirements above, repo-wide. Done (lane/l5-exports, §192): source-first in-repo
+      exports, publishConfig unchanged, all custom conditions and the `./private/*` seam deleted, load-time
+      lowering preload + generated bunfigs, node-builtins references travel with source.
 - [ ] **`feat-src-first-exports`** is a prior crack at this that became orphaned. Before deleting it: verify it
       holds no other code useful to this branch and its direction (the exports rework itself is being redone
       fresh, not merged). Then DELETE the branch. If something useful IS found, lift it first and say so in the
-      report.
+      report. Verified by lane/l5-exports: safe to delete — the di2 work and misc fixes are already absorbed in
+      this branch, the exports mechanisms were re-authored fresh (preload, bunfig generator, typings-travel
+      pattern), and the one unabsorbed concept (the packed-artifact publish gate, cfc8d3a) is recorded in §192
+      and would need re-authoring against the current API anyway. Deletion itself is the orchestrator's.
 
 ## Comment sweep over the hand edits
 
