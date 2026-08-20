@@ -154,6 +154,10 @@ export type Type = ImportedType | GlobalType | AggregateType | ConstructorType |
 
 declare const keyedType: Keyed<Type, "startup-validation-target">;
 declare const optKeyed: Keyed<ImportedType, "k"> | undefined;
+
+export interface IStartupValidator { validate(): void; }
+export interface IResolver { get(t: Type): unknown; }
+declare const factory: (resolver: IResolver, targets: Array<Keyed<Type, "startup-validation-target">>) => IStartupValidator;
 `
 
 func TestDeriveTypedKeyedOverRecursiveExportedUnion(t *testing.T) {
@@ -175,6 +179,57 @@ func TestDeriveTypedKeyedOverRecursiveExportedUnion(t *testing.T) {
 	inner := requireNamedLeaf(t, d.Inner)
 	if inner.Name != "Type" {
 		t.Fatalf("tag inner derived %+v, want the name Type", inner)
+	}
+}
+
+// TestDeriveTypedKeyedElementMatchesTheKeyedRoot pins the READ side of a keyed
+// slot against its WRITE side: a factory parameter typed
+// `Array<Keyed<Type, K>>` re-enters derivation in a nested (type-argument)
+// position, where the Keyed brand must be read BEFORE alias naming — the
+// element derives as the tag over the spelled base, byte-identical to what the
+// keyed type derives at the root, never as a named `Keyed` node. The two
+// spellings are one address, which is what lets a reader find what a writer
+// registered.
+func TestDeriveTypedKeyedElementMatchesTheKeyedRoot(t *testing.T) {
+	prog, main := loadFixtureProgram(t, recursiveUnionFixtureSrc, false)
+	defer func() { _ = prog.Close() }()
+	ctx := &Context{
+		Checker:      prog.Checker,
+		ProjectRoot:  filepath.Dir(main.FileName()),
+		IsDefaultLib: func(*shimast.SourceFile) bool { return true },
+	}
+
+	// The write side: the keyed type derived at the root.
+	written, ok := DeriveTyped(ctx, ctx.Checker, typeOfDecl(t, ctx.Checker, main, "keyedType"), nil)
+	if !ok || written.Kind != DerivedTag {
+		t.Fatalf("keyedType did not derive a tag: %+v", written)
+	}
+
+	// The read side: the factory's second parameter slot.
+	d, ok := DeriveTyped(ctx, ctx.Checker, typeOfDecl(t, ctx.Checker, main, "factory"), nil)
+	if !ok {
+		t.Fatal("factory did not derive")
+	}
+	if d.Kind != DerivedFunc || len(d.Args) != 1 || len(d.Args[0]) != 2 {
+		t.Fatalf("factory derived %+v, want one two-parameter row", d)
+	}
+	slot := d.Args[0][1]
+	array := requireNamedLeaf(t, slot)
+	if array.Name != "Array" || array.From != "global" || len(array.Args) != 1 {
+		t.Fatalf("targets slot derived %+v, want Array with one element", array)
+	}
+	element := array.Args[0]
+	if element.Kind != TypeNodeTag {
+		t.Fatalf("element derived %+v, want a tag node — the Keyed alias must not be named", element)
+	}
+	if element.Tag != written.Tag {
+		t.Fatalf("element key %q, want the written key %q", element.Tag, written.Tag)
+	}
+	if got, want := RenderTypeNode(element.Inner), RenderTypeNode(written.Inner.Leaf); got != want {
+		t.Fatalf("element base spells %q, the written base %q — the two sides must share one address", got, want)
+	}
+	if got := RenderTypeNode(element); got != "Type#startup-validation-target" {
+		t.Fatalf("element spells %q, want the composed keyed token", got)
 	}
 }
 
@@ -206,6 +261,35 @@ func TestDeriveTypedOptionalKeyedDerivesMemberwise(t *testing.T) {
 	}
 	if d.Members[1].Kind != DerivedUndefined {
 		t.Fatalf("second member derived %+v, want the undefined singleton", d.Members[1])
+	}
+}
+
+// An alias exported through an export list — `type U = …; export { U }`, the
+// shape a rolled declaration bundle spells — is as addressable as one carrying
+// the modifier, so it names its union too.
+func TestDeriveTypedExportListAliasUnionNames(t *testing.T) {
+	src := `interface IThing { readonly thing: number; }
+interface IOther { readonly other: number; }
+type ListedUnion = IThing | IOther;
+export { ListedUnion };
+declare const lu: ListedUnion;
+export const anchor = 1;
+`
+	prog, main := loadFixtureProgram(t, src, false)
+	defer func() { _ = prog.Close() }()
+	ctx := &Context{
+		Checker:      prog.Checker,
+		ProjectRoot:  filepath.Dir(main.FileName()),
+		IsDefaultLib: func(*shimast.SourceFile) bool { return true },
+	}
+
+	d, ok := DeriveTyped(ctx, ctx.Checker, typeOfDecl(t, ctx.Checker, main, "lu"), nil)
+	if !ok {
+		t.Fatal("lu did not derive")
+	}
+	node := requireNamedLeaf(t, d)
+	if node.Name != "ListedUnion" {
+		t.Fatalf("export-list alias union derived %+v, want the name ListedUnion", node)
 	}
 }
 

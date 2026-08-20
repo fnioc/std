@@ -12,8 +12,9 @@ import (
 // TypeNode is the STRUCTURED form of a derived token — the same derivation
 // DeriveTokenF walks, kept as a small tree instead of being joined into a flat
 // string. It carries exactly the kinds the flat walk ever produced: a named type
-// (with its generic arguments), a literal value, a literal union, and an
-// open-generic hole placeholder.
+// (with its generic arguments), a literal value, a literal union, an
+// open-generic hole placeholder, and a keyed type (the `Keyed<T, K>` brand read
+// in a nested position — an aggregate element, a generic argument).
 type TypeNode struct {
 	Kind TypeNodeKind
 
@@ -34,6 +35,10 @@ type TypeNode struct {
 
 	// Placeholder: the hole number's decimal text ("1" for $1).
 	Label string
+
+	// Tag: the branded base and the key composed onto it.
+	Inner *TypeNode
+	Tag   string
 }
 
 // TypeNodeKind discriminates a TypeNode's populated fields.
@@ -44,6 +49,7 @@ const (
 	TypeNodeLiteral
 	TypeNodeUnion
 	TypeNodePlaceholder
+	TypeNodeTag
 )
 
 // DeriveTypeF is DeriveTokenF's own walk, kept as a tree instead of joined into a
@@ -73,6 +79,26 @@ func DeriveTypeF(ctx *Context, t *shimchecker.Type, failure *Failure) (*TypeNode
 			failure.UnboundTypeParameter = t
 		}
 		return nil, false
+	}
+	// The Keyed brand is read BEFORE alias naming, exactly as the top-level
+	// classification does: the brand alias carries a symbol that would otherwise
+	// mint a named node for `Keyed` itself, when the type it spells is the base
+	// wearing a key. An Inject pin under the key names an arbitrary token string
+	// with no node spelling, and a base this walk cannot recover has nothing to
+	// wrap — both are underivable here rather than misnamed.
+	if key, ok := KeyLiteralFor(t, ctx.Checker); ok {
+		if _, pinned := InjectTokenFor(t, ctx.Checker); pinned {
+			return nil, false
+		}
+		base := KeyedBaseType(t, ctx.Checker)
+		if base == t {
+			return nil, false
+		}
+		inner, ok := DeriveTypeF(ctx, base, failure)
+		if !ok {
+			return nil, false
+		}
+		return &TypeNode{Kind: TypeNodeTag, Inner: inner, Tag: key}, true
 	}
 
 	symbol := t.Symbol()
@@ -239,6 +265,8 @@ func renderTypeNode(n *TypeNode) string {
 		return strings.Join(parts, " | ")
 	case TypeNodePlaceholder:
 		return "$" + n.Label
+	case TypeNodeTag:
+		return renderTypeNode(n.Inner) + "#" + n.Tag
 	case TypeNodeNamed:
 		base := renderNamedBase(n.From, n.Name)
 		if len(n.Args) == 0 {

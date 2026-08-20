@@ -108,10 +108,11 @@ func matchesMemberSet(candidate *shimchecker.Type, stripped map[*shimchecker.Typ
 }
 
 // addressableAliasSymbol returns the alias symbol a type's reference was spelled
-// through, provided the alias is addressable from another module: an `export`ed
-// declaration, or a top-level declaration in a global (non-module) file. A local
-// alias returns nil — no other module can spell its name, so no derived address
-// may carry it.
+// through, provided the alias is addressable from another module: an exported
+// declaration (the `export` modifier, or an export list — a rolled declaration
+// bundle spells `type X = …; export { X }`), or a top-level declaration in a
+// global (non-module) file. A local alias returns nil — no other module can
+// spell its name, so no derived address may carry it.
 func addressableAliasSymbol(ctx *Context, t *shimchecker.Type) *shimast.Symbol {
 	alias := aliasOf(t)
 	if alias == nil || alias.symbol == nil {
@@ -137,7 +138,15 @@ func addressableAliasSymbol(ctx *Context, t *shimchecker.Type) *shimast.Symbol {
 	// A non-module file's top-level declarations are ambient: spellable from
 	// anywhere with no import, so no export modifier is needed. A module file
 	// carries a module symbol; a global script does not.
-	if ctx.Checker.GetSymbolAtLocation(parent) == nil {
+	moduleSym := ctx.Checker.GetSymbolAtLocation(parent)
+	if moduleSym == nil {
+		return alias.symbol
+	}
+	targetDecls := map[*shimast.Node]bool{}
+	for _, d := range alias.symbol.Declarations {
+		targetDecls[d] = true
+	}
+	if moduleReExports(ctx, moduleSym, targetDecls) {
 		return alias.symbol
 	}
 	return nil

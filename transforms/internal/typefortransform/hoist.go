@@ -123,6 +123,8 @@ func hoistLeaf(n *tokens.TypeNode) *typeforhoist.Node {
 		return typeforhoist.Union(members)
 	case tokens.TypeNodePlaceholder:
 		return typeforhoist.Generic(n.Label)
+	case tokens.TypeNodeTag:
+		return typeforhoist.Tag(hoistLeaf(n.Inner), n.Tag)
 	default: // tokens.TypeNodeNamed
 		args := make([]*typeforhoist.Node, 0, len(n.Args))
 		for _, a := range n.Args {
