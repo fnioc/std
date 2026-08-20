@@ -3,8 +3,7 @@
 // supplies itself is the fallback rather than a competitor.
 
 import { ServiceProvider } from '@rhombus-std/di';
-import { AmbiguousUnionError, ConstantType, CycleError, DefaultManifest, ManifestValidationError,
-  ServiceDescriptor } from '@rhombus-std/di.core';
+import { AmbiguousUnionError, ConstantType, CycleError, DefaultManifest, ManifestValidationError, ServiceDescriptor } from '@rhombus-std/di.core';
 import { Type } from '@rhombus-std/primitives';
 import { describe, expect, test } from 'bun:test';
 
