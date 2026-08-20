@@ -32,16 +32,13 @@ import { join } from 'node:path';
  * an extended base is still seen.
  */
 export function readTsconfigTransforms(dir: string, tsconfigRel: string): string[] {
-  const res = spawnSync('bun', ['x', 'tsc', '--showConfig', '-p', join(dir, tsconfigRel)], { cwd: dir,
-    encoding: 'utf8' });
+  const res = spawnSync('bun', ['x', 'tsc', '--showConfig', '-p', join(dir, tsconfigRel)], { cwd: dir, encoding: 'utf8' });
   if (res.status !== 0) {
     throw new Error(`${tsconfigRel}: tsc --showConfig failed:\n${res.stderr}`);
   }
   const config = JSON.parse(res.stdout) as { compilerOptions?: { plugins?: readonly { transform?: unknown; }[]; }; };
   const plugins = config.compilerOptions?.plugins ?? [];
-  return plugins.map((plugin) => plugin.transform).filter((transform): transform is string =>
-    typeof transform === 'string'
-  );
+  return plugins.map((plugin) => plugin.transform).filter((transform): transform is string => typeof transform === 'string');
 }
 
 /**
@@ -120,8 +117,7 @@ export function ttscEnv(): NodeJS.ProcessEnv {
  * aggregate host: ttsc rejects multiple native backends in one pass, so such a
  * consumer passes the one aggregate specifier here.
  */
-export async function ttscBunPlugin(dir: string, ttscProject: string, transforms?: readonly string[],
-  compilerOptions?: Readonly<Record<string, unknown>>): Promise<Bun.BunPlugin> {
+export async function ttscBunPlugin(dir: string, ttscProject: string, transforms?: readonly string[], compilerOptions?: Readonly<Record<string, unknown>>): Promise<Bun.BunPlugin> {
   Object.assign(process.env, ttscEnv());
   const adapter = Bun.resolveSync('@ttsc/unplugin/bun', dir);
   interface AdapterOptions {
@@ -173,11 +169,8 @@ export async function stageLowering(options: StageLoweringOptions): Promise<stri
   rmSync(stageDir, { recursive: true, force: true });
   const srcDir = join(dir, 'src');
   // Declaration files carry no runtime and are skipped, matching a `tsc` emit.
-  const entrypoints = [...new Bun.Glob('**/*.ts').scanSync({ cwd: srcDir, absolute: true })].filter((path) =>
-    !path.endsWith('.d.ts')
-  );
-  const staged = await Bun.build({ entrypoints, outdir: stageDir, root: srcDir, target: 'node', format: 'esm',
-    external: ['*'], plugins: [await ttscBunPlugin(dir, ttscProject, ttscTransforms)] });
+  const entrypoints = [...new Bun.Glob('**/*.ts').scanSync({ cwd: srcDir, absolute: true })].filter((path) => !path.endsWith('.d.ts'));
+  const staged = await Bun.build({ entrypoints, outdir: stageDir, root: srcDir, target: 'node', format: 'esm', external: ['*'], plugins: [await ttscBunPlugin(dir, ttscProject, ttscTransforms)] });
   if (!staged.success) {
     for (const log of staged.logs) {
       console.error(log);
@@ -288,8 +281,8 @@ export function ensureDtsModuleHood(bundleDir: string): void {
 
 /** Builds one package's dist artifacts (JS bundle + rolled .d.ts). */
 export async function buildPackage(options: BuildPackageOptions): Promise<void> {
-  const { dir, name, entrypoints = ['src/index.ts'], external = [], emitJs = true, dtsConfigs = ['rollup.dts.mjs'],
-    assertNoJs = false, splitting = entrypoints.length > 1, ttscProject, ttscTransforms } = options;
+  const { dir, name, entrypoints = ['src/index.ts'], external = [], emitJs = true, dtsConfigs = ['rollup.dts.mjs'], assertNoJs = false, splitting = entrypoints.length > 1, ttscProject,
+    ttscTransforms } = options;
 
   const dist = join(dir, 'dist');
   const bundleDir = join(dist, 'bundle');
@@ -309,8 +302,7 @@ export async function buildPackage(options: BuildPackageOptions): Promise<void> 
   }
 
   if (emitJs) {
-    const js = await Bun.build({ entrypoints: jsEntrypoints, outdir: bundleDir, target: 'node', format: 'esm',
-      external: [...external], splitting });
+    const js = await Bun.build({ entrypoints: jsEntrypoints, outdir: bundleDir, target: 'node', format: 'esm', external: [...external], splitting });
     if (!js.success) {
       for (const log of js.logs) {
         console.error(log);

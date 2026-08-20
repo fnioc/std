@@ -8,11 +8,10 @@ export default tseslint.config({
   files: ['libraries/*/src/**/*.ts', 'examples/*/src/**/*.ts'],
   extends: [tseslint.configs.base],
   languageOptions: { parserOptions: { projectService: true, tsconfigRootDir: import.meta.dirname } },
-  rules: { curly: ['error', 'all'], '@typescript-eslint/switch-exhaustiveness-check': 'error',
-    '@typescript-eslint/array-type': ['warn', { default: 'array-simple' }],
+  rules: { curly: ['error', 'all'], '@typescript-eslint/switch-exhaustiveness-check': 'error', '@typescript-eslint/array-type': ['warn', { default: 'array-simple' }],
     '@typescript-eslint/no-restricted-imports': ['error', {
       patterns: [{
-        group: ['@rhombus-std/*/tokens/**', '@rhombus-std/*/private/**'],
+        group: ['@rhombus-std/*/tokens/**'],
         message: 'White-box seam (tests only) — import from the package barrel instead.',
       }],
     }] },

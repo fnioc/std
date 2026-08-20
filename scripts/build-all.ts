@@ -68,8 +68,7 @@ function discoverPackages(): Map<string, Package> {
       } catch {
         continue;
       }
-      packages.set(manifest.name, { name: manifest.name, hasBuild: Boolean(manifest.scripts?.build),
-        dir: `${group}/${entry}`, deps: [...new Set(workspaceDeps(manifest))] });
+      packages.set(manifest.name, { name: manifest.name, hasBuild: Boolean(manifest.scripts?.build), dir: `${group}/${entry}`, deps: [...new Set(workspaceDeps(manifest))] });
     }
   }
   return packages;

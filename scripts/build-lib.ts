@@ -123,8 +123,7 @@ if (ttscProject) {
   ttscTransforms = manual.length > 0 ? manual : undefined;
 }
 
-await buildPackage({ dir, name: manifest.name, entrypoints, external, dtsConfigs,
-  emitJs: !(overrides.typesOnly ?? false), assertNoJs: overrides.typesOnly ?? false, ttscProject, ttscTransforms });
+await buildPackage({ dir, name: manifest.name, entrypoints, external, dtsConfigs, emitJs: !(overrides.typesOnly ?? false), assertNoJs: overrides.typesOnly ?? false, ttscProject, ttscTransforms });
 
 // Guard: the emitted bundle must carry no real ESM import from the forbidden
 // specifiers. A literal occurrence as a STRING (e.g. a transformer's codegen'd

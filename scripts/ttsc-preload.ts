@@ -48,11 +48,9 @@ const TS_FILE_PATTERN = /\.[cm]?tsx?$/;
 // whole-project recompile per loaded file. A fresh per-process temp dir keeps
 // the emit out of the hash walk and cannot collide with a concurrent test
 // process writing the same module. And the RELATIVE SPECIFIER DANGLES: the
-// importer executes from `src/`, so the reference is remapped onto the owning
-// package's out dir by the onResolve hook below. The module is on disk before
-// any lowered file is returned -- the engine writes it before it emits its
-// result envelope -- so the remapped path always exists by the time it is
-// imported.
+// importer executes from `src/`, so the reference is remapped by the
+// onResolve hook below onto a virtual module serving the owning package's
+// emitted copy (see install()).
 const TYPEFOR_MODULE = '__typefor__.js';
 const TYPEFOR_NAMESPACE = 'rhombus-typefor';
 const EMIT_ROOT = mkdtempSync(join(tmpdir(), 'rhombus-ttsc-preload-'));
@@ -100,8 +98,7 @@ interface CaptureBuild {
 
 async function buildLoader(pkg: LoweringPackage): Promise<Bun.OnLoadCallback> {
   const manualTransforms = readTsconfigTransforms(pkg.dir, TTSC_PROJECT);
-  const plugin = await ttscBunPlugin(pkg.dir, TTSC_PROJECT,
-    manualTransforms.length > 0 ? manualTransforms : undefined, { outDir: pkg.emitDir });
+  const plugin = await ttscBunPlugin(pkg.dir, TTSC_PROJECT, manualTransforms.length > 0 ? manualTransforms : undefined, { outDir: pkg.emitDir });
   let captured: Bun.OnLoadCallback | undefined;
   const capture: CaptureBuild = {
     onLoad(_constraints, callback) {
