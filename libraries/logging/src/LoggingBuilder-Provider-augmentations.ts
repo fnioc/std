@@ -8,11 +8,12 @@
 // call surface.
 
 import type { ILoggerProvider, ILoggingBuilder, LogLevel } from '@rhombus-std/logging.core';
-import { configureStepType } from '@rhombus-std/options.augmentations';
+import type { IConfigureOptions } from '@rhombus-std/options';
 import { registerAugmentations } from '@rhombus-std/primitives.extras';
 import type { Flatten } from '@rhombus-toolkit/type-helpers';
 import { DefaultLoggerLevelConfigureOptions } from './DefaultLoggerLevelConfigureOptions';
-import { LOGGER_FILTER_OPTIONS_TYPE, LOGGER_PROVIDER_TYPE } from './types';
+import type { LoggerFilterOptions } from './LoggerFilterOptions';
+import { LOGGER_PROVIDER_TYPE } from './types';
 
 export namespace LoggingBuilderProviderAugmentations {
   /**
@@ -24,7 +25,7 @@ export namespace LoggingBuilderProviderAugmentations {
    * log output — no manual `new LoggerFactory([...providers])` needed.
    */
   export function addProvider<Self extends ILoggingBuilder>(this: Self, provider: ILoggerProvider): Self {
-    this.services = this.services.add(LOGGER_PROVIDER_TYPE, provider);
+    this.services = this.services.addValue<ILoggerProvider>(provider);
     return this;
   }
 
@@ -34,7 +35,7 @@ export namespace LoggingBuilderProviderAugmentations {
    * `IOptions<LoggerFilterOptions>` pipeline.
    */
   export function setMinimumLevel<Self extends ILoggingBuilder>(this: Self, level: LogLevel): Self {
-    this.services = this.services.add(configureStepType(LOGGER_FILTER_OPTIONS_TYPE), new DefaultLoggerLevelConfigureOptions(level));
+    this.services = this.services.addValue<IConfigureOptions<LoggerFilterOptions>>(new DefaultLoggerLevelConfigureOptions(level));
     return this;
   }
 

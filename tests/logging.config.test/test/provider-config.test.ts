@@ -11,12 +11,11 @@ import { ConfigBuilder, type IConfigRoot } from '@rhombus-std/config';
 import '@rhombus-std/di';
 import { DefaultManifest, Type } from '@rhombus-std/di.core';
 import { LoggingBuilder } from '@rhombus-std/logging';
-import { type ILoggerProviderConfig, type ILoggerProviderConfigFactory,
-  loggerProviderConfigType } from '@rhombus-std/logging.config';
+import { type ILoggerProviderConfig, type ILoggerProviderConfigFactory, loggerProviderConfigType } from '@rhombus-std/logging.config';
 import { describe, expect, test } from 'bun:test';
 
 const FACTORY_TYPE: Type = Type.from('@rhombus-std/logging.config:ILoggerProviderConfigFactory');
-const FAKE_PROVIDER_TOKEN = 'test:FakeProvider';
+const FAKE_PROVIDER_TYPE: Type = Type.from('test:FakeProvider');
 
 function rootWith(data: Record<string, string>): IConfigRoot {
   return new ConfigBuilder().addInMemoryCollection(data).build() as unknown as IConfigRoot;
@@ -24,7 +23,7 @@ function rootWith(data: Record<string, string>): IConfigRoot {
 
 describe('addConfig() — provider-configuration services', () => {
   test('loggerProviderConfigType derives the closed-generic type', () => {
-    expect(Type.stringify(loggerProviderConfigType(Type.from(FAKE_PROVIDER_TOKEN)))).toBe(
+    expect(Type.stringify(loggerProviderConfigType(FAKE_PROVIDER_TYPE))).toBe(
       '@rhombus-std/logging.config:ILoggerProviderConfig<test:FakeProvider>',
     );
   });
@@ -41,12 +40,12 @@ describe('addConfig() — provider-configuration services', () => {
 
     const provider = builder.services.build().createScope('singleton');
     const factory: ILoggerProviderConfigFactory = provider.getRequiredService(FACTORY_TYPE);
-    const config = factory.getConfig(FAKE_PROVIDER_TOKEN);
+    const config = factory.getConfig(FAKE_PROVIDER_TYPE);
 
     expect(config.get('Format')).toBe('text');
     expect(config.get('MaxDepth')).toBe('3');
 
-    const other = factory.getConfig('test:MissingProvider');
+    const other = factory.getConfig(Type.from('test:MissingProvider'));
     expect(other.get('Format')).toBeUndefined();
   });
 
@@ -57,7 +56,7 @@ describe('addConfig() — provider-configuration services', () => {
 
     const provider = builder.services.build().createScope('singleton');
     const factory: ILoggerProviderConfigFactory = provider.getRequiredService(FACTORY_TYPE);
-    const providerConfig = factory.getConfig(FAKE_PROVIDER_TOKEN);
+    const providerConfig = factory.getConfig(FAKE_PROVIDER_TYPE);
     expect(providerConfig.get('Format')).toBe('json');
 
     let fired = false;
@@ -76,7 +75,7 @@ describe('addConfig() — provider-configuration services', () => {
     builder.addConfig(rootWith({ 'FakeProvider:Format': 'json' }));
 
     const provider = builder.services.build().createScope('singleton');
-    const providerConfigType = loggerProviderConfigType(Type.from(FAKE_PROVIDER_TOKEN));
+    const providerConfigType = loggerProviderConfigType(FAKE_PROVIDER_TYPE);
     const providerConfig: ILoggerProviderConfig<unknown> = provider.getRequiredService(providerConfigType);
 
     expect(providerConfig.config.get('Format')).toBe('json');
@@ -92,6 +91,6 @@ describe('addConfig() — provider-configuration services', () => {
     const provider = builder.services.build().createScope('singleton');
     const factory: ILoggerProviderConfigFactory = provider.getRequiredService(FACTORY_TYPE);
     // No LoggingConfig registered yet: every provider section is empty.
-    expect(factory.getConfig(FAKE_PROVIDER_TOKEN).get('Format')).toBeUndefined();
+    expect(factory.getConfig(FAKE_PROVIDER_TYPE).get('Format')).toBeUndefined();
   });
 });

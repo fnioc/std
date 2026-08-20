@@ -18,7 +18,7 @@
 
 import type { IConfig } from '@rhombus-std/config.core';
 import { ServiceProviderOptions } from '@rhombus-std/di';
-import type { Manifest } from '@rhombus-std/di.core';
+import { ConstantType, type Manifest } from '@rhombus-std/di.core';
 import { Environments, HOST_APPLICATION_LIFETIME_TYPE, type HostBuilderContext, HostDefaults, type IHost } from '@rhombus-std/hosting.core';
 import { LOGGER_FACTORY_TYPE, LOGGER_PROVIDER_TYPE, LoggerFactory } from '@rhombus-std/logging';
 import type { ILoggerProvider } from '@rhombus-std/logging.core';
@@ -154,12 +154,12 @@ export function createFrameworkServices(): FrameworkServices {
  * result forward instead of reusing the `services` it passed in.
  */
 export function populateFrameworkServices(services: Manifest<any>, context: HostBuilderContext, environment: HostingEnvironment, config: IConfig, framework: FrameworkServices): Manifest<any> {
-  let s = services.add(HOST_ENVIRONMENT_TYPE, environment);
-  s = s.add(HOST_BUILDER_CONTEXT_TYPE, context);
-  s = s.add(CONFIG_TYPE, config);
-  s = s.add(HOST_APPLICATION_LIFETIME_TYPE, framework.applicationLifetime);
-  s = s.add(HOST_OPTIONS_TYPE, framework.hostOptions);
-  s = s.add(LOGGER_FACTORY_TYPE, framework.loggerFactory);
+  let s = services.add(HOST_ENVIRONMENT_TYPE, environment, ConstantType);
+  s = s.add(HOST_BUILDER_CONTEXT_TYPE, context, ConstantType);
+  s = s.add(CONFIG_TYPE, config, ConstantType);
+  s = s.add(HOST_APPLICATION_LIFETIME_TYPE, framework.applicationLifetime, ConstantType);
+  s = s.add(HOST_OPTIONS_TYPE, framework.hostOptions, ConstantType);
+  s = s.add(LOGGER_FACTORY_TYPE, framework.loggerFactory, ConstantType);
 
   // The default host lifetime. `useConsoleLifetime` appends a ConsoleLifetime
   // registration under the same type; di.core is append-only last-wins, so the

@@ -1,4 +1,8 @@
 {
+  "//": "The @rhombus-std/di.extras declare-module augmentation enters the program via `types` (a compile-time inclusion, never a runtime import), so the authored add<T>()/addValue<T>() forms type-check without any transformer plugin.",
   "extends": "../../tsconfig.lib.json",
+  "compilerOptions": {
+    "types": ["@rhombus-std/di.extras"]
+  },
   "include": ["src/**/*"]
 }

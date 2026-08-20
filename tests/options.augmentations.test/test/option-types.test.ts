@@ -1,12 +1,12 @@
 // The public slot-type grammar: the derived slot type IS the open service
-// contract for a type's pipeline (the `IConfigureOptions<T>` /
-// `IOptionsChangeTokenSource<T>` service-type analog), so a downstream package
-// can append a step or source directly — no `configure(...)` call — and the
+// contract for a type's pipeline — `IConfigureOptions<T>`,
+// `IOptionsChangeTokenSource<T>` and friends — so a downstream package can
+// append a step or source directly — no `configure(...)` call — and the
 // assembly picks it up like any other.
 
 import { ConfigBuilder, type IConfigRoot } from '@rhombus-std/config';
 import '@rhombus-std/di';
-import { DefaultManifest, type Manifest, Type } from '@rhombus-std/di.core';
+import { ConstantType, DefaultManifest, type Manifest, Type } from '@rhombus-std/di.core';
 import type { IOptions } from '@rhombus-std/options';
 import { changeTokenSourceType, ConfigChangeTokenSource, configureStepType, optionsAddressType, postConfigureStepType, validateStepType } from '@rhombus-std/options.augmentations';
 import { describe, expect, test } from 'bun:test';
@@ -18,25 +18,24 @@ interface WidgetOptions {
 const WIDGET_OPTIONS_TYPE: Type = Type.from('test:WidgetOptions');
 
 describe('the public slot-type grammar', () => {
-  test('each helper derives the namespaced slot type for the options type', () => {
-    const namespace = '@rhombus-std/options.augmentations';
+  test('each helper composes the real contract type over the options type', () => {
     expect(configureStepType(WIDGET_OPTIONS_TYPE)).toBe(
-      Type.global(`${namespace}/configure`, [WIDGET_OPTIONS_TYPE]),
+      Type.imported('IConfigureOptions', '@rhombus-std/options', [WIDGET_OPTIONS_TYPE]),
     );
     expect(postConfigureStepType(WIDGET_OPTIONS_TYPE)).toBe(
-      Type.global(`${namespace}/post-configure`, [WIDGET_OPTIONS_TYPE]),
+      Type.imported('IPostConfigureOptions', '@rhombus-std/options', [WIDGET_OPTIONS_TYPE]),
     );
     expect(validateStepType(WIDGET_OPTIONS_TYPE)).toBe(
-      Type.global(`${namespace}/validate`, [WIDGET_OPTIONS_TYPE]),
+      Type.imported('IValidateOptions', '@rhombus-std/options', [WIDGET_OPTIONS_TYPE]),
     );
     expect(changeTokenSourceType(WIDGET_OPTIONS_TYPE)).toBe(
-      Type.global(`${namespace}/change-token-source`, [WIDGET_OPTIONS_TYPE]),
+      Type.imported('IOptionsChangeTokenSource', '@rhombus-std/options.augmentations', [WIDGET_OPTIONS_TYPE]),
     );
 
-    // The structural composition stringifies as a generic application, not a
-    // path — a `<`-delimited nesting a plain string could never round-trip.
+    // The composition stringifies as a generic application over the imported
+    // contract, so both sides of the slot round-trip through one spelling.
     expect(Type.stringify(configureStepType(WIDGET_OPTIONS_TYPE))).toBe(
-      `${namespace}/configure<test:WidgetOptions>`,
+      '@rhombus-std/options:IConfigureOptions<test:WidgetOptions>',
     );
   });
 
@@ -45,14 +44,14 @@ describe('the public slot-type grammar', () => {
       .build() as unknown as IConfigRoot;
 
     let services: Manifest<'singleton'> = new DefaultManifest<'singleton'>();
-    services = services.addOptions<WidgetOptions>(WIDGET_OPTIONS_TYPE, () => ({ Url: '' }));
+    services = services.addOptions(WIDGET_OPTIONS_TYPE, () => ({ Url: '' }));
     // What `configure(WIDGET_OPTIONS_TYPE, section)` does internally, spelled
     // through the public grammar: a custom configure step plus a bare
     // change-token source.
     services = services.add(configureStepType(WIDGET_OPTIONS_TYPE), { configure(options: WidgetOptions): void {
       options.Url = config.get('Widget:Url') ?? '';
-    } });
-    services = services.add(changeTokenSourceType(WIDGET_OPTIONS_TYPE), new ConfigChangeTokenSource(config));
+    } }, ConstantType);
+    services = services.add(changeTokenSourceType(WIDGET_OPTIONS_TYPE), new ConfigChangeTokenSource(config), ConstantType);
 
     const provider = services.build();
     const options: IOptions<WidgetOptions> = provider.getRequiredService(optionsAddressType(WIDGET_OPTIONS_TYPE));

@@ -11,18 +11,16 @@
 import { ConfigBuilder, type IConfig } from '@rhombus-std/config';
 import '@rhombus-std/di';
 import { DefaultManifest, type Manifest } from '@rhombus-std/di.core';
-import { ActivityListenerConfigFactory, DefaultActivityListenerConfigFactory, type IMetricListenerConfigFactory,
-  MetricListenerConfigFactory, MetricsConfig, TracingConfig } from '@rhombus-std/diagnostics';
-import { METRICS_LISTENER_CONFIGURATION_FACTORY_TYPE,
-  TRACING_LISTENER_CONFIGURATION_FACTORY_TYPE } from '@rhombus-std/diagnostics.core';
+import { ActivityListenerConfigFactory, DefaultActivityListenerConfigFactory, type IMetricListenerConfigFactory, MetricListenerConfigFactory, MetricsConfig,
+  TracingConfig } from '@rhombus-std/diagnostics';
+import { METRICS_LISTENER_CONFIGURATION_FACTORY_TYPE, TRACING_LISTENER_CONFIGURATION_FACTORY_TYPE } from '@rhombus-std/diagnostics.core';
 import { describe, expect, test } from 'bun:test';
 
 function configWith(data: Record<string, string>): IConfig {
   return new ConfigBuilder().addInMemoryCollection(data).build();
 }
 
-const first = () =>
-  configWith({ 'MyListener:Key': 'first', 'MyListener:OnlyFirst': 'yes', 'OtherListener:Key': 'elsewhere' });
+const first = () => configWith({ 'MyListener:Key': 'first', 'MyListener:OnlyFirst': 'yes', 'OtherListener:Key': 'elsewhere' });
 const second = () => configWith({ 'MyListener:Key': 'second', 'MyListener:OnlySecond': 'also' });
 
 describe('MetricListenerConfigFactory', () => {
@@ -72,7 +70,7 @@ describe('DefaultActivityListenerConfigFactory', () => {
 
 describe('addMetrics registers the metrics factory', () => {
   test('resolves as a singleton fed by every addMetricsConfig call', () => {
-    let manifest: Manifest = new DefaultManifest();
+    let manifest: Manifest<any> = new DefaultManifest();
     manifest = manifest.addMetrics((metrics) => {
       metrics.addMetricsConfig(first()).addMetricsConfig(second());
     });
@@ -94,7 +92,7 @@ describe('addMetrics registers the metrics factory', () => {
   });
 
   test('with no bound configuration the factory yields empty views', () => {
-    let manifest: Manifest = new DefaultManifest();
+    let manifest: Manifest<any> = new DefaultManifest();
     manifest = manifest.addMetrics();
 
     const factory: IMetricListenerConfigFactory = manifest.build().createScope('singleton').getRequiredService(
@@ -106,7 +104,7 @@ describe('addMetrics registers the metrics factory', () => {
 
 describe('addTracing registers the tracing factory', () => {
   test('resolves as a singleton fed by every addTracingConfig call', () => {
-    let manifest: Manifest = new DefaultManifest();
+    let manifest: Manifest<any> = new DefaultManifest();
     manifest = manifest.addTracing((tracing) => {
       tracing.addTracingConfig(first()).addTracingConfig(second());
     });

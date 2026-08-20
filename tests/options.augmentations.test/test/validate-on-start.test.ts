@@ -1,7 +1,7 @@
 // validateOnStart (black-box, public surface): mark an options registration for
 // startup validation, then resolve the built-in IStartupValidator and force it.
-// Exercised through the authoring surface with hand-written tokens (no
-// transformer), the way the host resolves the validator at boot.
+// Exercised through the authoring surface with hand-written type nodes,
+// the way the host resolves the validator at boot.
 
 import '@rhombus-std/di';
 import { DefaultManifest, type Manifest, Type } from '@rhombus-std/di.core';
@@ -13,8 +13,8 @@ interface ServerOptions {
   port: number;
 }
 
-const OPTIONS_TOKEN = 'test:ServerOptions';
-const OTHER_TOKEN = 'test:OtherOptions';
+const OPTIONS_TYPE: Type = Type.from('test:ServerOptions');
+const OTHER_TYPE: Type = Type.from('test:OtherOptions');
 // The typefor-derived type the host resolves the validator under. A
 // no-transformer consumer writes the literal string.
 const STARTUP_VALIDATOR_TYPE: Type = Type.from('@rhombus-std/options:IStartupValidator');
@@ -22,8 +22,8 @@ const STARTUP_VALIDATOR_TYPE: Type = Type.from('@rhombus-std/options:IStartupVal
 describe('validateOnStart', () => {
   test('registers a resolvable IStartupValidator', () => {
     let services: Manifest<'singleton'> = new DefaultManifest<'singleton'>();
-    services = services.addOptions<ServerOptions>(OPTIONS_TOKEN, () => ({ port: 8080 }));
-    services = services.validateOnStart(OPTIONS_TOKEN);
+    services = services.addOptions(OPTIONS_TYPE, () => ({ port: 8080 }));
+    services = services.validateOnStart(OPTIONS_TYPE);
 
     const provider = services.build();
     const validator: IStartupValidator = provider.getRequiredService(STARTUP_VALIDATOR_TYPE);
@@ -33,9 +33,9 @@ describe('validateOnStart', () => {
 
   test('valid options -> validate() does not throw', () => {
     let services: Manifest<'singleton'> = new DefaultManifest<'singleton'>();
-    services = services.addOptions<ServerOptions>(OPTIONS_TOKEN, () => ({ port: 8080 }));
-    services = services.validate<ServerOptions>(OPTIONS_TOKEN, (o) => o.port > 0, 'port must be positive');
-    services = services.validateOnStart(OPTIONS_TOKEN);
+    services = services.addOptions(OPTIONS_TYPE, () => ({ port: 8080 }));
+    services = services.validate(OPTIONS_TYPE, (o: ServerOptions) => o.port > 0, 'port must be positive');
+    services = services.validateOnStart(OPTIONS_TYPE);
 
     const provider = services.build();
     const validator: IStartupValidator = provider.getRequiredService(STARTUP_VALIDATOR_TYPE);
@@ -45,9 +45,9 @@ describe('validateOnStart', () => {
 
   test('a failing validate step surfaces as OptionsValidationError', () => {
     let services: Manifest<'singleton'> = new DefaultManifest<'singleton'>();
-    services = services.addOptions<ServerOptions>(OPTIONS_TOKEN, () => ({ port: 0 }));
-    services = services.validate<ServerOptions>(OPTIONS_TOKEN, (o) => o.port > 0, 'port must be positive');
-    services = services.validateOnStart(OPTIONS_TOKEN);
+    services = services.addOptions(OPTIONS_TYPE, () => ({ port: 0 }));
+    services = services.validate(OPTIONS_TYPE, (o: ServerOptions) => o.port > 0, 'port must be positive');
+    services = services.validateOnStart(OPTIONS_TYPE);
 
     const provider = services.build();
     const validator: IStartupValidator = provider.getRequiredService(STARTUP_VALIDATOR_TYPE);
@@ -58,13 +58,13 @@ describe('validateOnStart', () => {
 
   test('two failing registrations aggregate into one AggregateError', () => {
     let services: Manifest<'singleton'> = new DefaultManifest<'singleton'>();
-    services = services.addOptions<ServerOptions>(OPTIONS_TOKEN, () => ({ port: 0 }));
-    services = services.validate<ServerOptions>(OPTIONS_TOKEN, (o) => o.port > 0, 'first bad');
-    services = services.validateOnStart(OPTIONS_TOKEN);
+    services = services.addOptions(OPTIONS_TYPE, () => ({ port: 0 }));
+    services = services.validate(OPTIONS_TYPE, (o: ServerOptions) => o.port > 0, 'first bad');
+    services = services.validateOnStart(OPTIONS_TYPE);
 
-    services = services.addOptions<ServerOptions>(OTHER_TOKEN, () => ({ port: -1 }));
-    services = services.validate<ServerOptions>(OTHER_TOKEN, (o) => o.port > 0, 'second bad');
-    services = services.validateOnStart(OTHER_TOKEN);
+    services = services.addOptions(OTHER_TYPE, () => ({ port: -1 }));
+    services = services.validate(OTHER_TYPE, (o: ServerOptions) => o.port > 0, 'second bad');
+    services = services.validateOnStart(OTHER_TYPE);
 
     const provider = services.build();
     const validator: IStartupValidator = provider.getRequiredService(STARTUP_VALIDATOR_TYPE);

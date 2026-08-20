@@ -6,8 +6,7 @@ export interface ILoggerProviderConfigFactory {
   /**
    * Returns the configuration section associated with the logger provider.
    *
-   * @param providerType The logger provider type. A type token naming it is
-   * read into one.
+   * @param providerType The logger provider type.
    */
-  getConfig(providerType: Type | string): IConfig;
+  getConfig(providerType: Type): IConfig;
 }

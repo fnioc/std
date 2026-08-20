@@ -2,9 +2,9 @@
 // package's options type binds from ITS configuration section (chained across
 // every `addConfig`'d configuration by the provider-configuration
 // factory), lazily and reload-reactively, through the standard
-// `addOptions(token, makeBase)` assembly.
+// `addOptions(optionsType, makeBase)` assembly.
 //
-// The whole chain the reference wires through DI is exercised: the step
+// The whole chain is exercised through DI: the step
 // classes are constructed lazily by the container (their dep is the CLOSED
 // `ILoggerProviderConfig<TProvider>` resolved through the open
 // template), so nothing touches configuration until `IOptions<T>` materializes.
@@ -24,25 +24,24 @@ interface FakeProviderOptions {
   MaxDepth?: string;
 }
 
-const OPTIONS_TOKEN = 'test:FakeProviderOptions';
-const FAKE_PROVIDER_TOKEN = 'test:FakeProvider';
-const OPTIONS_ACCESSOR_TYPE = optionsAddressType(Type.from(OPTIONS_TOKEN));
+const OPTIONS_TYPE: Type = Type.from('test:FakeProviderOptions');
+const FAKE_PROVIDER_TYPE: Type = Type.from('test:FakeProvider');
+const OPTIONS_ACCESSOR_TYPE = optionsAddressType(OPTIONS_TYPE);
 
 function rootWith(data: Record<string, string>): IConfigRoot {
   return new ConfigBuilder().addInMemoryCollection(data).build() as unknown as IConfigRoot;
 }
 
 describe('LoggerProviderOptions.registerProviderOptions', () => {
-  test("binds the provider's section into the options assembly for the token", () => {
-    const config = rootWith({ 'FakeProvider:Format': 'json', 'FakeProvider:MaxDepth': '3',
-      'OtherProvider:Format': 'xml' });
+  test("binds the provider's section into the options assembly for the type", () => {
+    const config = rootWith({ 'FakeProvider:Format': 'json', 'FakeProvider:MaxDepth': '3', 'OtherProvider:Format': 'xml' });
 
     let services: Manifest<'singleton'> = new DefaultManifest<'singleton'>();
     const logging = new LoggingBuilder(services);
     logging.addConfig(config);
     services = logging.services;
-    services = services.addOptions<FakeProviderOptions>(OPTIONS_TOKEN, () => ({ Format: 'text' }));
-    services = LoggerProviderOptions.registerProviderOptions(services, OPTIONS_TOKEN, FAKE_PROVIDER_TOKEN);
+    services = services.addOptions(OPTIONS_TYPE, () => ({ Format: 'text' }));
+    services = LoggerProviderOptions.registerProviderOptions(services, OPTIONS_TYPE, FAKE_PROVIDER_TYPE);
 
     const provider = services.build().createScope('singleton');
     const options: IOptions<FakeProviderOptions> = provider.getRequiredService(OPTIONS_ACCESSOR_TYPE);
@@ -59,8 +58,8 @@ describe('LoggerProviderOptions.registerProviderOptions', () => {
     const logging = new LoggingBuilder(services);
     logging.addConfig(config);
     services = logging.services;
-    services = services.addOptions<FakeProviderOptions>(OPTIONS_TOKEN, () => ({ Format: 'text' }));
-    services = LoggerProviderOptions.registerProviderOptions(services, OPTIONS_TOKEN, FAKE_PROVIDER_TOKEN);
+    services = services.addOptions(OPTIONS_TYPE, () => ({ Format: 'text' }));
+    services = LoggerProviderOptions.registerProviderOptions(services, OPTIONS_TYPE, FAKE_PROVIDER_TYPE);
 
     const provider = services.build().createScope('singleton');
     const options: IOptions<FakeProviderOptions> = provider.getRequiredService(OPTIONS_ACCESSOR_TYPE);
@@ -85,11 +84,11 @@ describe('LoggerProviderOptions.registerProviderOptions', () => {
     const logging = new LoggingBuilder(services);
     logging.addConfig(config);
     services = logging.services;
-    services = services.addOptions<FakeProviderOptions>(OPTIONS_TOKEN, () => ({ Format: 'text' }));
-    services = LoggerProviderOptions.registerProviderOptions(services, OPTIONS_TOKEN, FAKE_PROVIDER_TOKEN);
+    services = services.addOptions(OPTIONS_TYPE, () => ({ Format: 'text' }));
+    services = LoggerProviderOptions.registerProviderOptions(services, OPTIONS_TYPE, FAKE_PROVIDER_TYPE);
     // The reference's services.Configure<TOptions>(delegate) analog: one more
     // configure source in the SAME pipeline, running after the provider bind.
-    services = services.configure<FakeProviderOptions>(OPTIONS_TOKEN, (value) => {
+    services = services.configure(OPTIONS_TYPE, (value: FakeProviderOptions) => {
       value.MaxDepth = '9';
     });
 

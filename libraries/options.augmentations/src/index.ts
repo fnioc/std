@@ -23,16 +23,17 @@
 export * from './ConfigChangeTokenSource.js';
 export * from './ConfigConfigureOptions.js';
 export type * from './IOptionsChangeTokenSource.js';
-// The slot-token grammar is public surface: the per-options configure /
+// The slot-type grammar is public surface: the per-options configure /
 // post-configure / validate steps and change-token sources are ordinary OPEN
 // service contracts — any downstream package may register an implementation
 // for a TOptions it doesn't own (logging.config registers both a custom
-// configure step and a change-token source that way). The derived slot token
+// configure step and a change-token source that way). The derived slot type
 // IS that contract, so the derivation functions are exported: a downstream
-// package appends a step with `services.add(configureStepType(token),
-// step)` (or `add`/`addFactory` for a lazily-constructed step), and the
-// assembly for `token` picks it up like any `configure(...)`-registered one.
-export { baseFactoryType, changeTokenSourceType, configureStepType, optionsAddressType, postConfigureStepType, startupValidationTargetType, validateStepType } from './option-types.js';
+// package appends a step with `services.add(configureStepType(optionsType),
+// step, ConstantType)` (or the class/factory forms for a lazily-constructed
+// step), and the assembly for `optionsType` picks it up like any
+// `configure(...)`-registered one.
+export { baseFactoryType, changeTokenSourceType, configureStepType, optionsAddressType, postConfigureStepType, validateStepType } from './option-types.js';
 
 // Each re-export executes its module, so the `registerAugmentations` side effect
 // installs the verbs onto the manifest.

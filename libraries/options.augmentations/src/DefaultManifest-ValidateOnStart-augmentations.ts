@@ -3,16 +3,17 @@
 // (running the validate steps) before it starts its hosted services, so
 // misconfiguration fails at boot.
 //
-// `validateOnStart(type)` appends that type's `IOptions<T>` address to the
-// startup-validation target slot and registers the built-in
-// {@link StartupValidator} under `typefor<IStartupValidator>()`. The host
-// resolves that (optionally) and calls `validate()`.
+// `validateOnStart(optionsType)` appends that type's `IOptions<T>` address to
+// the keyed startup-validation target list and registers the built-in
+// {@link StartupValidator} as the `IStartupValidator`. The host resolves that
+// (optionally) and calls `validate()`.
 
 import type { Keyed, Manifest } from '@rhombus-std/di.core';
 import { type IStartupValidator, StartupValidator } from '@rhombus-std/options';
-import type { IServiceProvider } from '@rhombus-std/primitives';
-import { Type } from '@rhombus-std/primitives';
-import { registerAugmentations, typefor } from '@rhombus-std/primitives.extras';
+import type { IServiceProvider, Type } from '@rhombus-std/primitives';
+import { registerAugmentations } from '@rhombus-std/primitives.extras';
+
+import { optionsAddressType } from './option-types.js';
 
 // `Scopes` is defaulted so the merge matches its target's type-parameter list
 // (TS2428 requires identical parameters).
@@ -43,7 +44,7 @@ registerAugmentations<Manifest<any>>({
         // one slot holding the composed `IOptions<T>` address rather than the bare
         // `T` every other verb keys on, because StartupValidator resolves each
         // target and reads `.value` off it -- so the target has to be resolvable.
-        .addValue<Keyed<Type, typeof valKey>>(Type.imported('IOptions', '@rhombus-std/options', [optionsType]))
+        .addValue<Keyed<Type, typeof valKey>>(optionsAddressType(optionsType))
         // One validator serves every target: its factory reads the whole target
         // list off the resolver at start time, not at registration.
         .tryAdd<IStartupValidator>(factory);
