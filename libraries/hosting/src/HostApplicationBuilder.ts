@@ -155,7 +155,7 @@ export class HostApplicationBuilder implements IHostApplicationBuilder {
    * container type, so this is a minimal no-op single-container hook: the
    * default build path is always used.
    */
-  public configureContainer<TContainerBuilder>(_configure?: Action<[TContainerBuilder]>): void {}
+  public configureContainer(_configure?: Action<[Manifest<any>]>): void {}
 
   /**
    * Returns a classic {@link IHostBuilder} view over this builder. Lazily

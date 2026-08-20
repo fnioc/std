@@ -59,7 +59,6 @@ export class HostBuilder implements IHostBuilder {
     return this;
   }
 
-  /** Enables configuring the instantiated dependency container. Additive across calls. */
   public configureContainer(configureDelegate: Func<[HostBuilderContext, Manifest<any>], Manifest<any>>): this {
     this.#configureContainerActions.push(configureDelegate);
     return this;
