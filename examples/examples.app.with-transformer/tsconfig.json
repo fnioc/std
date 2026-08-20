@@ -7,6 +7,7 @@
     "rootDir": "src",
     "outDir": "dist",
     "lib": ["ES2022", "ESNext.Disposable", "DOM"],
+    "types": ["@rhombus-std/di.extras"],
     "declaration": false,
     "declarationMap": false,
     "sourceMap": false,

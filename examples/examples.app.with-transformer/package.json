@@ -2,7 +2,7 @@
   "name": "@rhombus-std/examples.app.with-transformer",
   "private": true,
   "version": "0.0.0",
-  "description": "The with-transformer composition root: one integrated scenario (config → reactive options pipeline, di across both example libraries, collection aggregation, async resolution, live reload) authored in the tokenless dialect and built via the Go/ttsc engine.",
+  "description": "The with-transformer composition root: one integrated scenario (config \u2192 reactive options pipeline, di across both example libraries, collection aggregation, async resolution, live reload) authored in the tokenless dialect and built via the Go/ttsc engine.",
   "license": "MIT",
   "type": "module",
   "scripts": {
@@ -24,6 +24,7 @@
     "@rhombus-std/primitives": "workspace:*"
   },
   "devDependencies": {
+    "@rhombus-std/di.extras": "workspace:*",
     "@rhombus-std/examples.contracts": "workspace:*",
     "@rhombus-std/primitives.extras": "workspace:*",
     "@ttsc/unplugin": "^0.18.1",

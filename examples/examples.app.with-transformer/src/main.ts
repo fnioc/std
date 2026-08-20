@@ -236,16 +236,16 @@ services = addWithoutTransformerExamples(services);
 // be deciding for every consumer it will ever have.
 
 // The reactive server options — one shared live instance.
-services = services.add(typefor<IOptions<ServerOptions>>(), serverOptions);
+services = services.addValue<IOptions<ServerOptions>>(serverOptions);
 
 // A config-independent policy, offered as IOptions<GreetingPolicy> via the
 // augmentation's addOptions verb. The verb names the BARE type — the value is
 // whatever GreetingPolicy itself resolves to.
-services = services.add(typefor<GreetingPolicy>(), { excitement: '!' } satisfies GreetingPolicy);
+services = services.addValue<GreetingPolicy>({ excitement: '!' } satisfies GreetingPolicy);
 services = services.addOptions(typefor<GreetingPolicy>());
 
 // The live config root, so the hosted worker can drive the reload demo.
-services = services.add(typefor<ConfigRoot>(), config);
+services = services.addValue<ConfigRoot>(config);
 
 // The hosted worker. Its four slots are derived from the very parameter types
 // its constructor declares, one for one.

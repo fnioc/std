@@ -27,7 +27,7 @@
 // this file is identical to it. The header line names neither dialect for the
 // same reason.
 
-import { DefaultManifest, DiError, type Manifest, ManifestValidationError, Type } from '@rhombus-std/di.core';
+import { ConstantType, DefaultManifest, DiError, type Manifest, ManifestValidationError, Type } from '@rhombus-std/di.core';
 import '@rhombus-std/di';
 import { demonstrateRegistrationErrors, diagnose, stagedFailure } from '@rhombus-std/examples.lib.without-transformer';
 
@@ -166,8 +166,8 @@ export function demonstrateErrors(): readonly string[] {
 /** The graph whose union slot two registrations compete to fill. */
 function ambiguous(): Manifest<'singleton'> {
   let services: Manifest<'singleton'> = new DefaultManifest<'singleton'>();
-  services = services.add(AUDIT_TYPE, { kind: 'audit' });
-  services = services.add(METRICS_TYPE, { kind: 'metrics' });
+  services = services.add(AUDIT_TYPE, { kind: 'audit' }, ConstantType);
+  services = services.add(METRICS_TYPE, { kind: 'metrics' }, ConstantType);
   services = services.add(REPORT_TYPE, ReportService, Type.ctor(REPORT_TYPE, [[Type.union(METRICS_TYPE, AUDIT_TYPE)]]), 'singleton');
   return services;
 }
