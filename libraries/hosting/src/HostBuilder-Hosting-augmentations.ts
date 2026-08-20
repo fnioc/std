@@ -11,7 +11,7 @@
 
 import { MemoryConfigSource } from '@rhombus-std/config';
 import { ServiceProviderOptions } from '@rhombus-std/di';
-import { type IServiceProvider, RESOLVER_TYPE } from '@rhombus-std/di.core';
+import { ConstantType, type IServiceProvider, RESOLVER_TYPE } from '@rhombus-std/di.core';
 import type { IMetricsBuilder } from '@rhombus-std/diagnostics.core';
 import { HOST_APPLICATION_LIFETIME_TYPE, type HostBuilderContext, HostDefaults, HostLifecycleAugmentations, type IHostBuilder } from '@rhombus-std/hosting.core';
 import { LOGGER_FACTORY_TYPE, LoggingBuilder } from '@rhombus-std/logging';
@@ -79,7 +79,7 @@ export namespace HostBuilderHostingAugmentations {
         } else {
           (configureOptions as Func<[HostOptions], void>)(options);
         }
-      })
+      }, ConstantType)
     );
   }
 

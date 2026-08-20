@@ -21,8 +21,9 @@ export const HOST_OPTIONS_TYPE: Type = typefor<HostOptions>();
 export const CONSOLE_LIFETIME_OPTIONS_TYPE: Type = typefor<ConsoleLifetimeOptions>();
 
 /**
- * Collection type each `configureHostOptions` mutation registers under. The
- * composition resolves the whole set after `build()` and applies each to the
- * shared {@link import("./HostOptions").HostOptions} instance.
+ * The `(options: HostOptions) => void` delegate type each `configureHostOptions`
+ * mutation registers under. The composition resolves the whole set after
+ * `build()` and applies each to the shared
+ * {@link import("./HostOptions").HostOptions} instance.
  */
-export const HOST_OPTIONS_CONFIGURE_TYPE: Type = Type.global('@rhombus-std/hosting/ConfigureHostOptions');
+export const HOST_OPTIONS_CONFIGURE_TYPE: Type = Type.func(Type.typeLiteral(undefined), [[HOST_OPTIONS_TYPE]]);
