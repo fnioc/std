@@ -16,14 +16,14 @@ import { ServiceDescriptor } from './ServiceDescriptor';
  */
 export interface Manifest<Scopes extends string> extends Iterable<ServiceDescriptor<Scopes>> {
   /** Prepends `descriptor`, ahead of every descriptor already in the chain. */
-  add(descriptor: ServiceDescriptor<Scopes>): Manifest<Scopes>;
+  _add(descriptor: ServiceDescriptor<Scopes>): Manifest<Scopes>;
   /**
    * Swaps in `descriptor` for the first descriptor that occupies the same registration slot —
    * see {@link ServiceDescriptor.matches} — leaving every other descriptor untouched.
    */
-  replaceSingle(descriptor: ServiceDescriptor<Scopes>): Manifest<Scopes>;
+  _replace(descriptor: ServiceDescriptor<Scopes>): Manifest<Scopes>;
   /** Drops the descriptor that is {@link ServiceDescriptor.equals} to `descriptor`, if one is present. */
-  remove(descriptor: ServiceDescriptor<Scopes>): Manifest<Scopes>;
+  _remove(descriptor: ServiceDescriptor<Scopes>): Manifest<Scopes>;
 }
 
 export interface DefaultManifest<Scopes extends string> extends Manifest<Scopes> {}
@@ -34,14 +34,8 @@ export class DefaultManifest<Scopes extends string> {
   constructor(descriptors?: Iterable<ServiceDescriptor<Scopes>>) {
     this.#descriptors = descriptors ?? [];
   }
-  // Augmentation mounts further registration shapes onto this same name, and a class narrowing
-  // `add` to the descriptor shape alone is no longer a manifest — hence the open second signature.
-  // Only a descriptor reaches the body: the dispatcher installed over this method routes every
-  // other shape to the augmentation that owns it. Read the precise shapes off `Manifest`.
-  add(descriptor: ServiceDescriptor<Scopes>): Manifest<Scopes>;
-  add(...args: any[]): Manifest<Scopes>;
-  add(...args: readonly unknown[]): Manifest<Scopes> {
-    const [descriptor] = args as readonly [ServiceDescriptor<Scopes>];
+
+  _add(descriptor: ServiceDescriptor<Scopes>): Manifest<Scopes> {
     return new DefaultManifest<Scopes>({
       [Symbol.iterator]: function* added(this: DefaultManifest<Scopes>) {
         // INTENTIONAL: newest first.
@@ -51,7 +45,7 @@ export class DefaultManifest<Scopes extends string> {
     });
   }
 
-  remove(descriptor: ServiceDescriptor<Scopes>) {
+  _remove(descriptor: ServiceDescriptor<Scopes>): Manifest<Scopes> {
     return new DefaultManifest<Scopes>({
       [Symbol.iterator]: function* removed(this: DefaultManifest<Scopes>) {
         const it = Iterator.from(this.#descriptors);
@@ -66,7 +60,7 @@ export class DefaultManifest<Scopes extends string> {
     });
   }
 
-  replaceSingle(descriptor: ServiceDescriptor<Scopes>) {
+  _replace(descriptor: ServiceDescriptor<Scopes>) {
     return new DefaultManifest<Scopes>({
       [Symbol.iterator]: function* replaced(this: DefaultManifest<Scopes>) {
         const it = Iterator.from(this.#descriptors);
