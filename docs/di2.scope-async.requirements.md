@@ -113,10 +113,9 @@
   governing lifetime comes from the ANSWERING descriptor while the cache key is the as-requested
   type — that join happens at plan time, so the door never sees the promise-typed address. The
   blackbox is async-blind by construction: it stores and returns awaited values only.
-- Answer vocabulary: `hit(value)` | `miss(forward: ScopeCtx)`. A hit carries no ctx — nothing
-  beneath it ever runs. A candidate third arm — an outstanding-make handle ("a make for this key is
-  in progress under this scope") — is the race question's home; its vocabulary stays
-  async-agnostic. **OPEN** (arm's existence = the race ruling).
+- Answer vocabulary: `hit(value)` | `miss(forward: ScopeCtx)` — final; no third arm. A hit carries
+  no ctx — nothing beneath it ever runs. (A construction-economy single-flight arm remains an
+  ADDITIVE vocabulary extension if a model ever names the demand.)
 - Door shape — two-step probe vs single-step `getOrCreate(key, lifetime, ctx, factory)` — is
   **OPEN**; both shapes must deliver the forward ctx on the miss arm (as the factory's argument in
   the single-step form).
@@ -213,11 +212,14 @@
   hit-skips + values-as-requested + the sync-door corollary: hits can only exist if async-created
   values were stored earlier. Caches store awaited VALUES, as-requested, never promises; a hit
   skips the factory and the await entirely.
-- The concurrent-miss race (check → await → store is not atomic; two concurrent walks both miss the
-  same cacheable async site and double-instantiate) needs an ANSWER or an explicit "accepted" —
-  **OPEN**. Promise-holding CACHES are overruled; an ephemeral scope-internal in-flight registry
-  (dies on settle, distinct from the value cache) is not, and the door's outstanding-make arm is
-  its natural surface.
+- THE RACE IS DISSOLVED BY ADOPT-OR-STORE (owner-ruled): the write-back re-checks the cache after
+  promise resolution — atomic because the post-await re-check-and-store runs synchronously in one
+  continuation, no coordination state needed. First store wins; a losing walk RELEASES its own
+  instance through the disposal vocabulary and adopts the winner. Contract delta: write-back
+  RETURNS the canonical value and the engine uses the returned value, never its locally-awaited
+  one. Resulting guarantee, stated honestly: at most one instance ever OBSERVED; under concurrent
+  first-resolution, extra instances may be transiently constructed and are immediately released.
+  Promise-holding caches stay overruled; no in-flight registry exists.
 
 ## Disposal
 
@@ -318,16 +320,16 @@ first client:
 
 ## Open ledger
 
-1. Door shape: two-step probe vs single-step `getOrCreate`.
-2. The concurrent-miss race: outstanding-make arm / in-flight registry / explicit "accepted".
-3. Scope-creation args: per-model `Func` types vs uniform `ScopeFactory` + merged options type.
-4. Async call-site design residue: the async call-site node's shape; the AsyncIterable arm
+1. Door shape: two-step probe vs single-step `getOrCreate` — pure ergonomics now that adopt-or-
+   store removed the single-flight pressure.
+2. Scope-creation args: per-model `Func` types vs uniform `ScopeFactory` + merged options type.
+3. Async call-site design residue: the async call-site node's shape; the AsyncIterable arm
    (per-item streaming over the sync path's iterable resolution, outside the gather); per-boundary
    gather islands' interaction with the hoist's scope-cache checks.
-5. Captive-dependency validation: the lifetime-ordering declaration hook in the scope contract.
-6. Disposal design proper (contract + default model), including `using`-protocol support.
-7. ManifestScope dialect (spelling of private registration; deep-override verb naming) and the
+4. Captive-dependency validation: the lifetime-ordering declaration hook in the scope contract.
+5. Disposal design proper (contract + default model), including `using`-protocol support.
+6. ManifestScope dialect (spelling of private registration; deep-override verb naming) and the
    root-authority override surface.
-8. Library portability under model-typed manifests: what lifetime vocabulary an oblivious
+7. Library portability under model-typed manifests: what lifetime vocabulary an oblivious
    `(m) => m` configure function targets (default-model lingua franca vs a capability-constraint
    story).
