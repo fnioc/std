@@ -1,3 +1,4 @@
+/// <reference path="./node-builtins.d.ts" />
 // Wraps an on-disk path and reads its metadata lazily via a single `statSync`.
 // `createReadStream` returns a `ReadableStream<Uint8Array>` that reads
 // fixed-size chunks off the file descriptor on demand and closes it once

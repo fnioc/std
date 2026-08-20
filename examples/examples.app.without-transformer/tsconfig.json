@@ -6,11 +6,16 @@
     "moduleResolution": "Bundler",
     "rootDir": "src",
     "outDir": "dist",
-    "lib": ["ES2022", "ESNext.Disposable", "DOM"],
+    "lib": [
+      "ESNext",
+      "DOM"
+    ],
     "declaration": false,
     "declarationMap": false,
     "sourceMap": true,
     "composite": false
   },
-  "include": ["src/**/*"]
+  "include": [
+    "src/**/*"
+  ]
 }

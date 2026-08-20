@@ -120,18 +120,22 @@ export function ttscEnv(): NodeJS.ProcessEnv {
  * aggregate host: ttsc rejects multiple native backends in one pass, so such a
  * consumer passes the one aggregate specifier here.
  */
-export async function ttscBunPlugin(dir: string, ttscProject: string,
-  transforms?: readonly string[]): Promise<Bun.BunPlugin> {
+export async function ttscBunPlugin(dir: string, ttscProject: string, transforms?: readonly string[],
+  compilerOptions?: Readonly<Record<string, unknown>>): Promise<Bun.BunPlugin> {
   Object.assign(process.env, ttscEnv());
   const adapter = Bun.resolveSync('@ttsc/unplugin/bun', dir);
-  const ttscBun = (await import(adapter)).default as (
-    options: { project: string; plugins?: readonly { transform: string; }[]; },
-  ) => Bun.BunPlugin;
-  const options: { project: string; plugins?: readonly { transform: string; }[]; } = {
-    project: join(dir, ttscProject),
-  };
+  interface AdapterOptions {
+    project: string;
+    plugins?: readonly { transform: string; }[];
+    compilerOptions?: Readonly<Record<string, unknown>>;
+  }
+  const ttscBun = (await import(adapter)).default as (options: AdapterOptions) => Bun.BunPlugin;
+  const options: AdapterOptions = { project: join(dir, ttscProject) };
   if (transforms) {
     options.plugins = transforms.map((transform) => ({ transform }));
+  }
+  if (compilerOptions) {
+    options.compilerOptions = compilerOptions;
   }
   return ttscBun(options);
 }

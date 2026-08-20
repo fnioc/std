@@ -1,3 +1,4 @@
+/// <reference path="./node-builtins.d.ts" />
 // Hands out an IChangeToken for a watched target and fires it once the target
 // changes. Two modes, selected per provider:
 //

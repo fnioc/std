@@ -1,3 +1,4 @@
+/// <reference path="./node-builtins.d.ts" />
 // FileConfigSource -- the abstract base for every file-backed
 // configuration source (JSON, INI, XML). Holds the file provider + path +
 // optionality + reload settings a concrete source's `build` turns into a

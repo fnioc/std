@@ -22,7 +22,9 @@
 // top-level one). scripts/derive-preload-bunfig.ts writes both into every
 // workspace package.
 
-import { dirname, join, sep } from 'node:path';
+import { mkdtempSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { basename, dirname, join, sep } from 'node:path';
 import { readTsconfigTransforms, ttscBunPlugin, ttscEnv } from './build-package';
 
 const ROOT = join(import.meta.dir, '..');
@@ -37,10 +39,30 @@ const GROUPS = ['libraries', 'examples'];
 // on its own.
 const TS_FILE_PATTERN = /\.[cm]?tsx?$/;
 
+// Under hoisted typefor emission the engine collects every derived `Type` into
+// one generated const module it writes into the project's outDir, and each
+// lowered call site references it by a relative specifier. Two load-time facts
+// follow. The OUT DIR MUST SIT OUTSIDE THE PACKAGE: the adapter validates its
+// per-project result cache by hashing every file under the package dir, so an
+// in-package emit would invalidate the cache it itself belongs to and force a
+// whole-project recompile per loaded file. A fresh per-process temp dir keeps
+// the emit out of the hash walk and cannot collide with a concurrent test
+// process writing the same module. And the RELATIVE SPECIFIER DANGLES: the
+// importer executes from `src/`, so the reference is remapped onto the owning
+// package's out dir by the onResolve hook below. The module is on disk before
+// any lowered file is returned -- the engine writes it before it emits its
+// result envelope -- so the remapped path always exists by the time it is
+// imported.
+const TYPEFOR_MODULE = '__typefor__.js';
+const TYPEFOR_NAMESPACE = 'rhombus-typefor';
+const EMIT_ROOT = mkdtempSync(join(tmpdir(), 'rhombus-ttsc-preload-'));
+
 interface LoweringPackage {
   readonly dir: string;
   /** `dir`'s `src/`, with a trailing separator so e.g. `di.core` can't prefix-match a hypothetical `di.core-extra`. */
   readonly srcPrefix: string;
+  /** The per-process directory this package's generated modules are emitted into. */
+  readonly emitDir: string;
 }
 
 function discoverLoweringPackages(): readonly LoweringPackage[] {
@@ -48,7 +70,7 @@ function discoverLoweringPackages(): readonly LoweringPackage[] {
   for (const group of GROUPS) {
     for (const match of new Bun.Glob(`*/${TTSC_PROJECT}`).scanSync({ cwd: join(ROOT, group) })) {
       const dir = dirname(join(ROOT, group, match));
-      packages.push({ dir, srcPrefix: join(dir, 'src') + sep });
+      packages.push({ dir, srcPrefix: join(dir, 'src') + sep, emitDir: join(EMIT_ROOT, group, basename(dir)) });
     }
   }
   return packages;
@@ -79,7 +101,7 @@ interface CaptureBuild {
 async function buildLoader(pkg: LoweringPackage): Promise<Bun.OnLoadCallback> {
   const manualTransforms = readTsconfigTransforms(pkg.dir, TTSC_PROJECT);
   const plugin = await ttscBunPlugin(pkg.dir, TTSC_PROJECT,
-    manualTransforms.length > 0 ? manualTransforms : undefined);
+    manualTransforms.length > 0 ? manualTransforms : undefined, { outDir: pkg.emitDir });
   let captured: Bun.OnLoadCallback | undefined;
   const capture: CaptureBuild = {
     onLoad(_constraints, callback) {
@@ -116,6 +138,25 @@ function install(): void {
   Bun.plugin({
     name: 'rhombus-ttsc-dispatch',
     setup(build) {
+      // The generated module rides a VIRTUAL module (`build.module`), never a
+      // plain file path: bun can begin resolving a lowered file's imports
+      // before the owning package's whole-project compile has flushed the
+      // module to disk, and a direct path read races that write. The virtual
+      // module's callback awaits the compile (loaderFor triggers it if nothing
+      // else has), by which point the engine has written the module.
+      for (const pkg of packages) {
+        build.module(`${TYPEFOR_NAMESPACE}:${pkg.dir}`, async () => {
+          await loaderFor(pkg);
+          return { contents: await Bun.file(join(pkg.emitDir, TYPEFOR_MODULE)).text(), loader: 'js' };
+        });
+      }
+      build.onResolve({ filter: /__typefor__\.js$/ }, (args) => {
+        const pkg = ownerOf(args.importer, packages);
+        if (!pkg) {
+          return undefined;
+        }
+        return { path: `${TYPEFOR_NAMESPACE}:${pkg.dir}` };
+      });
       build.onLoad({ filter: TS_FILE_PATTERN }, async (args) => {
         const pkg = ownerOf(args.path, packages);
         if (!pkg) {
