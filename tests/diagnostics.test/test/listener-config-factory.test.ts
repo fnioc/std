@@ -72,7 +72,7 @@ describe('DefaultActivityListenerConfigFactory', () => {
 
 describe('addMetrics registers the metrics factory', () => {
   test('resolves as a singleton fed by every addMetricsConfig call', () => {
-Manifest<any>   let manifest: Manifest = new DefaultManifest();
+    let manifest: Manifest<any> = new DefaultManifest();
     manifest = manifest.addMetrics((metrics) => {
       metrics.addMetricsConfig(first()).addMetricsConfig(second());
     });
@@ -94,7 +94,7 @@ Manifest<any>   let manifest: Manifest = new DefaultManifest();
   });
 
   test('with no bound configuration the factory yields empty views', () => {
-Manifest<any>   let manifest: Manifest = new DefaultManifest();
+    let manifest: Manifest<any> = new DefaultManifest();
     manifest = manifest.addMetrics();
 
     const factory: IMetricListenerConfigFactory = manifest.build().createScope('singleton').getRequiredService(
@@ -106,7 +106,7 @@ Manifest<any>   let manifest: Manifest = new DefaultManifest();
 
 describe('addTracing registers the tracing factory', () => {
   test('resolves as a singleton fed by every addTracingConfig call', () => {
-Manifest<any>   let manifest: Manifest = new DefaultManifest();
+    let manifest: Manifest<any> = new DefaultManifest();
     manifest = manifest.addTracing((tracing) => {
       tracing.addTracingConfig(first()).addTracingConfig(second());
     });

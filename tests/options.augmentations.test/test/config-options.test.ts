@@ -14,7 +14,7 @@ interface WidgetOptions {
   Retries?: string;
 }
 
-const TOKEN = 'test:WidgetOptions';
+const WIDGET_OPTIONS_TYPE: Type = Type.from('test:WidgetOptions');
 
 function rootWith(data: Record<string, string>): IConfigRoot {
   // build() is typed to the index-navigable Section (the coercion seam); the
@@ -27,11 +27,11 @@ describe('configure — section-to-options binding', () => {
     const config = rootWith({ 'Widget:Url': 'http://first', 'Widget:Retries': '3' });
 
     let services: Manifest<'singleton'> = new DefaultManifest<'singleton'>();
-    services = services.addOptions<WidgetOptions>(TOKEN, () => ({ Url: '' }));
-    services = services.configure(TOKEN, config.getSection('Widget'));
+    services = services.addOptions(WIDGET_OPTIONS_TYPE, () => ({ Url: '' }));
+    services = services.configure(WIDGET_OPTIONS_TYPE, config.getSection('Widget'));
 
     const provider = services.build();
-    const options: IOptions<WidgetOptions> = provider.getRequiredService(optionsAddressType(Type.from(TOKEN)));
+    const options: IOptions<WidgetOptions> = provider.getRequiredService(optionsAddressType(WIDGET_OPTIONS_TYPE));
 
     expect(options.value).toEqual({ Url: 'http://first', Retries: '3' });
   });
@@ -40,11 +40,11 @@ describe('configure — section-to-options binding', () => {
     const config = rootWith({ 'Widget:Url': 'http://first' });
 
     let services: Manifest<'singleton'> = new DefaultManifest<'singleton'>();
-    services = services.addOptions<WidgetOptions>(TOKEN, () => ({ Url: '' }));
-    services = services.configure(TOKEN, config.getSection('Widget'));
+    services = services.addOptions(WIDGET_OPTIONS_TYPE, () => ({ Url: '' }));
+    services = services.configure(WIDGET_OPTIONS_TYPE, config.getSection('Widget'));
 
     const provider = services.build();
-    const options: IOptions<WidgetOptions> = provider.getRequiredService(optionsAddressType(Type.from(TOKEN)));
+    const options: IOptions<WidgetOptions> = provider.getRequiredService(optionsAddressType(WIDGET_OPTIONS_TYPE));
 
     const seen: WidgetOptions[] = [];
     const registration = options.subscribe!((value) => seen.push(value));
@@ -70,12 +70,12 @@ describe('configure — section-to-options binding', () => {
     const config = rootWith({ 'Widget:Url': 'http://a', 'Extra:Retries': '5' });
 
     let services: Manifest<'singleton'> = new DefaultManifest<'singleton'>();
-    services = services.addOptions<WidgetOptions>(TOKEN, () => ({ Url: '' }));
-    services = services.configure(TOKEN, config.getSection('Widget'));
-    services = services.configure(TOKEN, config.getSection('Extra'));
+    services = services.addOptions(WIDGET_OPTIONS_TYPE, () => ({ Url: '' }));
+    services = services.configure(WIDGET_OPTIONS_TYPE, config.getSection('Widget'));
+    services = services.configure(WIDGET_OPTIONS_TYPE, config.getSection('Extra'));
 
     const provider = services.build();
-    const options: IOptions<WidgetOptions> = provider.getRequiredService(optionsAddressType(Type.from(TOKEN)));
+    const options: IOptions<WidgetOptions> = provider.getRequiredService(optionsAddressType(WIDGET_OPTIONS_TYPE));
 
     expect(options.value).toEqual({ Url: 'http://a', Retries: '5' });
   });
@@ -84,10 +84,10 @@ describe('configure — section-to-options binding', () => {
 describe('addOptions — no configured source', () => {
   test('delivers a static snapshot (value from makeBase, no subscribe)', () => {
     let services: Manifest<'singleton'> = new DefaultManifest<'singleton'>();
-    services = services.addOptions<WidgetOptions>(TOKEN, () => ({ Url: 'default' }));
+    services = services.addOptions(WIDGET_OPTIONS_TYPE, () => ({ Url: 'default' }));
 
     const provider = services.build();
-    const options: IOptions<WidgetOptions> = provider.getRequiredService(optionsAddressType(Type.from(TOKEN)));
+    const options: IOptions<WidgetOptions> = provider.getRequiredService(optionsAddressType(WIDGET_OPTIONS_TYPE));
 
     expect(options.value).toEqual({ Url: 'default' });
     expect(options.subscribe).toBeUndefined();

@@ -1,10 +1,10 @@
-// The one-argument `addOptions(tType)` verb: offer `IOptions<T>` whose value is
-// whatever `T` itself resolves to. This is the complete, transformer-free form
+// The one-argument `addOptions(optionsType)` verb: offer `IOptions<T>` whose
+// value is whatever `T` itself resolves to. This is the complete, explicit form
 // the `addOptions<T>()` sugar lowers to — exercised here through the public
-// authoring surface with hand-written tokens (no transformer).
+// authoring surface with hand-written type nodes.
 
 import '@rhombus-std/di';
-import { DefaultManifest, type Manifest, Type } from '@rhombus-std/di.core';
+import { ConstantType, DefaultManifest, type Manifest, Type } from '@rhombus-std/di.core';
 import type { IOptions } from '@rhombus-std/options';
 import { optionsAddressType } from '@rhombus-std/options.augmentations';
 import { describe, expect, test } from 'bun:test';
@@ -13,18 +13,18 @@ interface Widget {
   name: string;
 }
 
-const WIDGET_TOKEN = 'test:Widget';
+const WIDGET_TYPE: Type = Type.from('test:Widget');
 
-describe('addOptions(tType) — wrap the bound T', () => {
+describe('addOptions(optionsType) — wrap the bound T', () => {
   test('resolving IOptions<T> delivers the bound T', () => {
     let services: Manifest<'singleton'> = new DefaultManifest<'singleton'>();
     const widget: Widget = { name: 'gizmo' };
 
-    services = services.add(WIDGET_TOKEN, widget);
-    services = services.addOptions(WIDGET_TOKEN);
+    services = services.add(WIDGET_TYPE, widget, ConstantType);
+    services = services.addOptions(WIDGET_TYPE);
 
     const provider = services.build();
-    const options: IOptions<Widget> = provider.getRequiredService(optionsAddressType(Type.from(WIDGET_TOKEN)));
+    const options: IOptions<Widget> = provider.getRequiredService(optionsAddressType(WIDGET_TYPE));
 
     // The value IS the instance bound at the options type.
     expect(options.value).toBe(widget);
@@ -36,15 +36,15 @@ describe('addOptions(tType) — wrap the bound T', () => {
     class Engine {
       readonly kind = 'v8';
     }
-    const ENGINE_TOKEN = 'test:Engine';
+    const ENGINE_TYPE: Type = Type.from('test:Engine');
 
     let services: Manifest<'singleton'> = new DefaultManifest<'singleton'>();
-    // Explicit-token class registration (transformer-free): a zero-arg ctor.
-    services = services.add(ENGINE_TOKEN, Engine, Type.ctor(Type.from(ENGINE_TOKEN), [[]]), 'singleton');
-    services = services.addOptions(ENGINE_TOKEN);
+    // Explicit-type class registration: a zero-arg ctor.
+    services = services.add(ENGINE_TYPE, Engine, Type.ctor(ENGINE_TYPE, [[]]), 'singleton');
+    services = services.addOptions(ENGINE_TYPE);
 
     const provider = services.build();
-    const options: IOptions<Engine> = provider.getRequiredService(optionsAddressType(Type.from(ENGINE_TOKEN)));
+    const options: IOptions<Engine> = provider.getRequiredService(optionsAddressType(ENGINE_TYPE));
 
     // The value is what the container built for the options type -- asserted by
     // construction rather than by instance identity, which belongs to the
@@ -54,17 +54,17 @@ describe('addOptions(tType) — wrap the bound T', () => {
   });
 
   test('one open registration serves every options type independently', () => {
-    const A_TOKEN = 'test:AOptions';
-    const B_TOKEN = 'test:BOptions';
+    const A_TYPE: Type = Type.from('test:AOptions');
+    const B_TYPE: Type = Type.from('test:BOptions');
 
     let services: Manifest<'singleton'> = new DefaultManifest<'singleton'>();
-    services = services.addOptions(A_TOKEN, () => ({ which: 'a' }));
-    services = services.addOptions(B_TOKEN, () => ({ which: 'b' }));
+    services = services.addOptions(A_TYPE, () => ({ which: 'a' }));
+    services = services.addOptions(B_TYPE, () => ({ which: 'b' }));
 
     const provider = services.build();
 
-    expect(provider.getRequiredService(optionsAddressType(Type.from(A_TOKEN))).value).toEqual({ which: 'a' });
-    expect(provider.getRequiredService(optionsAddressType(Type.from(B_TOKEN))).value).toEqual({ which: 'b' });
+    expect(provider.getRequiredService(optionsAddressType(A_TYPE)).value).toEqual({ which: 'a' });
+    expect(provider.getRequiredService(optionsAddressType(B_TYPE)).value).toEqual({ which: 'b' });
   });
 
   test('a type nobody offered is not answered', () => {
