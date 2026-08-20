@@ -1,6 +1,10 @@
 import { Func } from '@rhombus-toolkit/func';
 
 /** Yields every element of `source`, substituting `replacement` for each one `match` selects — an exact value or a predicate. */
+// export function* replace<T>(source: Iterable<T>, match: T | Func<[T], boolean>, replacement: T): Generator<T>;
+// export function* replace<T, U>(source: Iterable<T>, match: T | Func<[T], boolean>, replacement: U): Generator<T|U>;
+// export function* replace<T>(source: Iterable<T>, match: T | Func<[T], boolean>, replacement: Func<[T], T>): Generator<T>;
+//   export function* replace<T, U>(source: Iterable<T>, match: T | Func<[T], boolean>, replacement: Func<[T], U>): Generator<T|U>;
 export function* replace<T>(source: Iterable<T>, match: T | Func<[T], boolean>, replacement: T): Generator<T> {
   const predicate = isFunc(match) ? match : (item: T) => item === match;
   for (const item of source) {
