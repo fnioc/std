@@ -1,0 +1,82 @@
+// Behaviour tests for what the engine synthesizes on a whole-type miss, and for the rule that a
+// registration for the whole type always outranks that synthesis. Literals, tuples, iterables and
+// intersections each meet the rule their own way.
+
+import { ServiceProvider } from '@rhombus-std/di';
+import { ConstantType, DefaultManifest } from '@rhombus-std/di.core';
+import { Type } from '@rhombus-std/primitives';
+import { describe, expect, test } from 'bun:test';
+
+const A = Type.imported('A', 'app');
+const B = Type.imported('B', 'app');
+const FOO = Type.imported('Foo', 'app');
+const STR = Type.global('string');
+
+class Foo {}
+
+describe('a type literal', () => {
+  test('self-satisfies when nothing is registered for it', () => {
+    const provider = new ServiceProvider(DefaultManifest.empty<string>());
+    expect(provider.getRequiredService(Type.typeLiteral('prod'))).toBe('prod');
+  });
+
+  test('is answered by its own registration ahead of self-satisfaction', () => {
+    const manifest = DefaultManifest.empty<string>()
+      .add(Type.typeLiteral('dev'), 'override', ConstantType);
+    expect(new ServiceProvider(manifest).getRequiredService(Type.typeLiteral('dev'))).toBe('override');
+  });
+});
+
+describe('a tuple', () => {
+  test('synthesizes from its members, a literal member supplying itself', () => {
+    const manifest = DefaultManifest.empty<string>()
+      .add(FOO, Foo, Type.ctor(FOO, [[]]));
+    const pair = new ServiceProvider(manifest)
+      .getRequiredService(Type.tuple(FOO, Type.typeLiteral(5))) as [Foo, number];
+    expect(Array.isArray(pair)).toBe(true);
+    expect(pair[0]).toBeInstanceOf(Foo);
+    expect(pair[1]).toBe(5);
+  });
+
+  test('is answered by its own registration ahead of a viable synthesis', () => {
+    const manifest = DefaultManifest.empty<string>()
+      .add(A, 'a-val', ConstantType)
+      .add(B, 'b-val', ConstantType)
+      .add(Type.tuple(A, B), 'pre-made', ConstantType);
+    expect(new ServiceProvider(manifest).getRequiredService(Type.tuple(A, B))).toBe('pre-made');
+  });
+});
+
+describe('an iterable address', () => {
+  test('collects each registration satisfying a union element exactly once', () => {
+    const manifest = DefaultManifest.empty<string>()
+      .add(A, 'a-val', ConstantType)
+      .add(Type.union(A, B), 'either', ConstantType);
+    const gathered = [...new ServiceProvider(manifest).getRequiredService(Type.iterable(Type.union(A, B)))];
+    expect(gathered).toHaveLength(2);
+    expect(gathered).toContain('a-val');
+    expect(gathered).toContain('either');
+  });
+
+  test('registered for exactly, wins outright — never combined with per-element answers', () => {
+    const manifest = DefaultManifest.empty<string>()
+      .add(A, 'a-val', ConstantType)
+      .add(Type.iterable(A), 'exact-iter', ConstantType);
+    expect(new ServiceProvider(manifest).getRequiredService(Type.iterable(A))).toBe('exact-iter');
+  });
+});
+
+describe('an intersection', () => {
+  const BOTH = Type.intersection(Type.object({ a: STR }), Type.object({ b: STR }));
+
+  test('is answered by a registration for the intersection itself', () => {
+    const manifest = DefaultManifest.empty<string>().add(BOTH, 'both', ConstantType);
+    expect(new ServiceProvider(manifest).getRequiredService(BOTH)).toBe('both');
+  });
+
+  test('is never assembled from registrations covering its parts', () => {
+    const manifest = DefaultManifest.empty<string>()
+      .add(Type.object({ a: STR, b: STR }), 'both', ConstantType);
+    expect(new ServiceProvider(manifest).getService(BOTH)).toBeUndefined();
+  });
+});

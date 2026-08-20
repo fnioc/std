@@ -3,7 +3,7 @@
 // falsy ones a truthiness guard would mistake for nothing being registered.
 
 import { ServiceProvider } from '@rhombus-std/di';
-import { DefaultManifest } from '@rhombus-std/di.core';
+import { ConstantType, DefaultManifest } from '@rhombus-std/di.core';
 import { Type } from '@rhombus-std/primitives';
 import { describe, expect, test } from 'bun:test';
 
@@ -11,7 +11,7 @@ const A = Type.imported('A', 'app');
 const Missing = Type.imported('Missing', 'app');
 
 function providerFor(value: unknown): ServiceProvider {
-  return new ServiceProvider(DefaultManifest.empty<string>().add(A, value));
+  return new ServiceProvider(DefaultManifest.empty<string>().add(A, value, ConstantType));
 }
 
 describe('a falsy registration is an answer, not an absence', () => {

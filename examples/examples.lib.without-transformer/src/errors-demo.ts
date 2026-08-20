@@ -150,6 +150,30 @@ export function stagedFailure(what: string, attempt: () => unknown): string {
   }
 }
 
-export function demonstrateRegistrationErrors(manifest: Manifest<any>): string {
-  throw 'not implemented';
+/**
+ * Provokes the registration surface's own refusal and returns the report line.
+ *
+ * Staging this against the CALLER's manifest is safe, and worth understanding
+ * rather than taking on trust: `describe` opens a chain of freestanding nodes,
+ * and nothing reaches the manifest until a finished descriptor is handed to a
+ * verb — so a step that refuses throws from the chain and `services` is exactly
+ * what it was before. A discarded chain registers nothing; a rejected one
+ * leaves nothing behind.
+ *
+ * The refusal itself is the edge of the taxonomy rather than a member of it: a
+ * key is a tag ON the service type, so a type that already carries one has
+ * nowhere to put a second, and saying so is argument checking rather than a
+ * container failure. `diagnose` reports it as such.
+ *
+ * @param services The application's registration builder, left untouched.
+ * @returns One line, and the chapter header belongs to the caller, who stages
+ *   the rest of the taxonomy after it.
+ */
+export function demonstrateRegistrationErrors(services: Manifest<'singleton'>): readonly string[] {
+  return [
+    stagedFailure(
+      'keying a service type that already carries a key',
+      () => services.describe(Type.tag(STORE_TYPE, 'primary')).asValue({ rows: [] }).taggedAs('replica'),
+    ),
+  ];
 }
