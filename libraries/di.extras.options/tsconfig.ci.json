@@ -3,8 +3,5 @@
   // onto di.core's `Manifest`, resolved to its source barrel like every in-repo
   // consumer.
   "extends": "../../tsconfig.lib.json",
-  "compilerOptions": {
-    "types": ["@rhombus-std/options.augmentations"]
-  },
   "include": ["src/**/*"]
 }

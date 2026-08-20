@@ -7,6 +7,9 @@
 // registrant) onto its prototype. The exported const is also the standalone
 // call surface.
 
+// Type-only: puts the sugar's declare-module faces in every program that
+// compiles this source, with no runtime import of the authoring package.
+import type {} from '@rhombus-std/di.extras';
 import type { ILoggerProvider, ILoggingBuilder, LogLevel } from '@rhombus-std/logging.core';
 import type { IConfigureOptions } from '@rhombus-std/options';
 import { registerAugmentations } from '@rhombus-std/primitives.extras';

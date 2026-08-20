@@ -6,6 +6,9 @@
 // IOptions<LoggerFilterOptions> assembly materializes, and a configuration
 // reload re-runs the bind.
 
+// Type-only: puts the sugar's declare-module faces in every program that
+// compiles this source, with no runtime import of the authoring package.
+import type {} from '@rhombus-std/di.extras';
 import type { IConfig } from '@rhombus-std/config.core';
 import { LoggerFilterOptions } from '@rhombus-std/logging';
 import type { ILoggingBuilder } from '@rhombus-std/logging.core';

@@ -8,6 +8,9 @@
 // {@link StartupValidator} as the `IStartupValidator`. The host resolves that
 // (optionally) and calls `validate()`.
 
+// Type-only: puts the sugar's declare-module faces in every program that
+// compiles this source, with no runtime import of the authoring package.
+import type {} from '@rhombus-std/di.extras';
 import type { Keyed, Manifest } from '@rhombus-std/di.core';
 import { type IStartupValidator, StartupValidator } from '@rhombus-std/options';
 import type { IServiceProvider, Type } from '@rhombus-std/primitives';

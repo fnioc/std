@@ -5,6 +5,9 @@
 // A consumer listing this package in its tsconfig `types` gets the overload;
 // the body below never runs, so nothing here is reachable at runtime.
 
+// Type-only: puts the sugar's declare-module faces in every program that
+// compiles this source, with no runtime import of the authoring package.
+import type {} from '@rhombus-std/options.augmentations';
 import type { Manifest } from '@rhombus-std/di.core';
 import type { Type } from '@rhombus-std/primitives';
 import { registerInlineBodies, typefor } from '@rhombus-std/primitives.extras';
