@@ -72,8 +72,8 @@ export class HostBuilderAdapter implements IHostBuilder {
   }
 
   /** No-op single-container hook, mirroring the application builder. */
-  public configureContainer<TContainerBuilder>(
-    _configureDelegate: Func<[HostBuilderContext, TContainerBuilder], TContainerBuilder>,
+  public configureContainer(
+    _configureDelegate: Func<[HostBuilderContext, Manifest<any>], Manifest<any>>,
   ): this {
     return this;
   }

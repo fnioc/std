@@ -53,9 +53,8 @@ export interface IHostBuilder {
   /**
    * Enables configuring the instantiated dependency container. Additive
    * across calls. (Context form; see {@link configureAppConfig} for the
-   * no-context remark.) `TContainerBuilder` is always the {@link Manifest} this
-   * host builds, so the delegate returns it for the same immutability reason
-   * {@link configureServices} does.
+   * no-context remark.) The delegate returns the {@link Manifest} for the
+   * same immutability reason {@link configureServices} does.
    */
   configureContainer(configureDelegate: Func<[HostBuilderContext, Manifest<any>], Manifest<any>>): this;
 

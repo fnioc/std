@@ -1,4 +1,3 @@
-import { getOrCreate } from '../utils/map.js';
 import * as factory from './factory/factories.js';
 import type { AGGREGATE_KINDS, AggregateName } from './grammar.js';
 import { parseTypeString } from './parse/parser.js';
@@ -264,7 +263,7 @@ export namespace Type {
     const parsed = new Map<string, Type>();
 
     return function from(type: string | Type): Type {
-      return typeof type === 'string' ? getOrCreate(parsed, type, parseTypeString) : adopt(type);
+      return typeof type === 'string' ? parsed.getOrInsertComputed(type, parseTypeString) : adopt(type);
     };
   })();
 

@@ -10,8 +10,8 @@ export type * from './ILogger';
 export type * from './ILoggingBuilder';
 export type * from './ISupportExternalScope';
 export type * from './logger-factory';
-// The generic-category logger; its category comes from the closing type's di
-// token at registration. `ILogger<T>` is the same `ILogger` interface above.
+// The generic-category logger; its category comes from the closing type at
+// registration. `ILogger<T>` is the same `ILogger` interface above.
 export * from './logger-of-t';
 
 // The log-entry record a provider-side sink receives.

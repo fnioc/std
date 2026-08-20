@@ -44,9 +44,6 @@ export interface IHostApplicationBuilder {
    * Configures the instantiated dependency container. The `configure` delegate
    * runs after all other services have been registered. Multiple calls replace
    * the previously stored delegate.
-   *
-   * @remarks
-   * `TContainerBuilder` is always the {@link Manifest} this host builds.
    */
-  configureContainer<TContainerBuilder>(configure?: Action<[TContainerBuilder]>): void;
+  configureContainer(configure?: Action<[Manifest<any>]>): void;
 }

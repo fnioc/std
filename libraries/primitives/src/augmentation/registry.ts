@@ -12,7 +12,6 @@
 import type { Ctor, Func } from '@rhombus-toolkit/func';
 
 import { Type } from '../Type/index.js';
-import { getOrCreate } from '../utils/map.js';
 import { applyAugmentations, type AugmentationSet, type MergeStrategies, type MergeStrategy } from './apply-augmentations.js';
 
 /** A `this`-based augmentation method whose receiver type is erased in the bag. */
@@ -57,9 +56,9 @@ export function registerAugmentations<R>(receiver: Type, set: AugmentationSet<R>
   if (!Type.isIdentifier(receiver)) {
     throw new TypeError(`an augmentation receiver names a declaration, and \`${Type.stringify(receiver)}\` names a shape`);
   }
-  const bag = getOrCreate(bags, receiver, (): Bag => new Map());
+  const bag = bags.getOrInsert(receiver, new Map());
   for (const [name, fn] of Object.entries(set as Record<string, AugmentationFn>)) {
-    getOrCreate(bag, name, () => []).push([fn, merge?.[name]]);
+    bag.getOrInsert(name, []).push([fn, merge?.[name]]);
   }
 
   const installers = subscribers.get(receiver);
@@ -91,7 +90,7 @@ export function augment(receiver: Type) {
   return function installOnClass<C extends { readonly prototype: object; }>(Ctor: C, _context?: unknown): void {
     const target = Ctor as unknown as Ctor<any[], any>;
 
-    const installers = getOrCreate(subscribers, receiver, () => []);
+    const installers = subscribers.getOrInsert(receiver, []);
     installers.push(function(set: AugmentationSet<any>, merge: MergeStrategies<any> | undefined) {
       applyAugmentations(target, set, merge);
     });
@@ -108,21 +107,4 @@ export function augment(receiver: Type) {
       }
     }
   };
-}
-
-/**
- * The bag key both doors index by.
- *
- * @remarks
- * A receiver has to be a type IDENTIFIER. Augmenting names the declaration whose prototype the
- * members land on; a union, a signature or an aggregate describes a shape instead, and there is no
- * declaration behind it to install onto — a bag under one could only ever sit empty.
- */
-function receiverType(receiver: Type): Type {
-  if (!Type.isIdentifier(receiver)) {
-    throw new TypeError(
-      `an augmentation receiver names a declaration, and \`${Type.stringify(receiver)}\` names a shape`,
-    );
-  }
-  return receiver;
 }

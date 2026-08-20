@@ -4,7 +4,7 @@
 // Its target, `IServiceCollection`, is @rhombus-std/di.core's `ServiceManifest`
 // — a class this package does NOT own — so it follows the augmentation-registry
 // path: register the set against the shared `typefor<Manifest>()`
-// token and declaration-merge the method onto di.core's `Manifest`
+// type and declaration-merge the method onto di.core's `Manifest`
 // interface; the `@augment`-decorated `DefaultManifest` (in di.core) pulls
 // the member onto its prototype. This is why the package sets
 // `"sideEffects": true` — a consumer who only wants the sugar writes a bare
@@ -15,8 +15,8 @@
 //   - a default configure step pinning the min level to `Information`;
 //   - the singleton `ILoggerFactory -> LoggerFactory`, injected with the
 //     enumerable provider set and the assembled `IOptions<LoggerFilterOptions>`;
-//   - the open `ILogger<$1> -> Logger<$1>` registration, the closing type's
-//     token flowing in through `typeArg(1)`;
+//   - the open `ILogger<$1> -> Logger<$1>` registration, the closing type
+//     flowing in through `typeArg(1)`;
 //   - `configure(new LoggingBuilder(manifest))`.
 //
 // `addClass`, not TryAdd: di.core registrations are append-only last-wins; there
@@ -41,7 +41,7 @@ import { LoggerFilterOptions } from './LoggerFilterOptions';
 import { LoggingBuilder } from './LoggingBuilder';
 // import type { ILoggerFactory, ILoggerProvider } from '@rhombus-std/logging.core';
 
-// Registered against the `ServiceManifest` augmentation token — the concrete
+// Registered against the `ServiceManifest` augmentation type — the concrete
 // `DefaultManifest`, decorated with `@augment(typefor<Manifest>())`
 // in di.core, pulls the member onto its prototype — and exported so the member
 // is also the standalone call form.

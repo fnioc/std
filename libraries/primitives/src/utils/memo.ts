@@ -1,7 +1,5 @@
 import type { Func } from '@rhombus-toolkit/func';
 
-import { getOrCreate } from './map.js';
-
 /**
  * `compute` with its answers remembered — one call per distinct key, every later ask served from
  * the cache.
@@ -16,6 +14,6 @@ export function memo<Key extends WeakKey, Value>(compute: Func<[key: Key], Value
   const answers = new WeakMap<Key, Value>();
 
   return function memoized(key: Key): Value {
-    return getOrCreate(answers, key, compute);
+    return answers.getOrInsertComputed(key, compute);
   };
 }

@@ -3,7 +3,7 @@
 //
 // Dual export: the receiver-first functions are exported plain as the
 // standalone surface, and equivalent `this`-based methods are registered
-// against the `ILogger` token as one set, so every concrete logger decorated
+// against the `ILogger` type as one set, so every concrete logger decorated
 // with `@augment(typefor<ILogger>())` gains them as methods.
 //
 // Each level collapses to two call forms — `(logger, message, ...args)` and
@@ -89,7 +89,7 @@ export function beginScope(logger: ILogger, messageFormat: string, ...args: unkn
 }
 
 /**
- * Registered against the `ILogger` token below and reachable standalone as
+ * Registered against the `ILogger` type below and reachable standalone as
  * `LoggerAugmentations.logInformation.call(logger, ...)`; a concrete logger class
  * decorated with `@augment(typefor<ILogger>())` gains the members as methods.
  */

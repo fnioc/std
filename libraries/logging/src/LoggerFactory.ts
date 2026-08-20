@@ -14,7 +14,7 @@ import { DefaultManifest } from '@rhombus-std/di.core';
 import { type IExternalScopeProvider, type ILogger, type ILoggerFactory, type ILoggerProvider, type ILoggingBuilder,
   LogLevel } from '@rhombus-std/logging.core';
 import { type IOptions, Options } from '@rhombus-std/options';
-import { augment, getOrCreate } from '@rhombus-std/primitives';
+import { augment } from '@rhombus-std/primitives';
 import { typefor } from '@rhombus-std/primitives.extras';
 import type { Func } from '@rhombus-toolkit/func';
 import { Logger } from './Logger';
@@ -65,7 +65,7 @@ export class LoggerFactory implements ILoggerFactory {
   public createLogger(categoryName: string): ILogger {
     this.#throwIfDisposed();
 
-    return getOrCreate(this.#loggers, categoryName, (categoryName) => {
+    return this.#loggers.getOrInsertComputed(categoryName, (categoryName) => {
       const logger = new Logger(categoryName, this.#createLoggers(categoryName));
       this.#applyFiltersTo(logger);
       return logger;

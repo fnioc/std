@@ -4,7 +4,7 @@
 //
 // IMPORTING THIS PACKAGE HAS A SIDE EFFECT: it registers the
 // `BrowserConsoleLoggerAugmentations` set (the `addBrowserConsole` member) against
-// logging.core's ILoggingBuilder augmentation token, so the @augment-decorated
+// logging.core's ILoggingBuilder augmentation type, so the @augment-decorated
 // concrete LoggingBuilder gains the fluent `addBrowserConsole()` method form.
 
 export * from './BrowserConsoleLogger';

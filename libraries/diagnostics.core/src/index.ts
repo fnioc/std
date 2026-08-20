@@ -26,6 +26,6 @@ export * from './tracing/TracingOptions';
 export * from './tracing/TracingOptions-augmentations';
 export * from './tracing/TracingRule';
 
-// The DI-slot token ABI shared with @rhombus-std/diagnostics, plus the tokens
+// The DI-slot type ABI shared with @rhombus-std/diagnostics, plus the types
 // the metrics/tracing builder augmentations register against.
 export * from './types';

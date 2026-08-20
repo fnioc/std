@@ -1,7 +1,7 @@
 // The builder-targeted listener/rule methods for IMetricsBuilder, an OPEN
 // receiver whose concrete classes live downstream (@rhombus-std/diagnostics'
 // MetricsBuilder and @rhombus-std/hosting's independent one, both decorated with
-// the same token). The MetricsOptions-targeted mutators of the same names are
+// the same type). The MetricsOptions-targeted mutators of the same names are
 // the sibling ./MetricsOptions-augmentations set.
 
 import { ConstantType } from '@rhombus-std/di.core';
