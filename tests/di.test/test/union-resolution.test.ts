@@ -3,7 +3,7 @@
 // supplies itself is the fallback rather than a competitor.
 
 import { ServiceProvider } from '@rhombus-std/di';
-import { AmbiguousUnionError, CycleError, DefaultManifest, ManifestValidationError,
+import { AmbiguousUnionError, ConstantType, CycleError, DefaultManifest, ManifestValidationError,
   ServiceDescriptor } from '@rhombus-std/di.core';
 import { Type } from '@rhombus-std/primitives';
 import { describe, expect, test } from 'bun:test';
@@ -97,6 +97,21 @@ describe('a self-supplying member is the fallback', () => {
     const report = new ServiceProvider(optionalManifest(true), { validateOnBuild: true })
       .getService(REPORT) as Report;
     expect(report.cache).toBeInstanceOf(MemoryCache);
+  });
+});
+
+describe('a union-typed registration', () => {
+  const EITHER = Type.union(CACHE, REDIS);
+
+  test('serves the exact union request', () => {
+    const manifest = DefaultManifest.empty<string>().add(EITHER, 'either', ConstantType);
+    expect(new ServiceProvider(manifest).getRequiredService(EITHER)).toBe('either');
+  });
+
+  test('cannot serve a lone member — the union says which types will do, not what it holds', () => {
+    const provider = new ServiceProvider(DefaultManifest.empty<string>().add(EITHER, 'either', ConstantType));
+    expect(provider.getService(CACHE)).toBeUndefined();
+    expect(() => provider.getRequiredService(CACHE)).toThrow('nothing is registered for app:Cache.');
   });
 });
 
