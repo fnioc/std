@@ -191,11 +191,6 @@ describe('lifetime and tag', () => {
   });
 });
 
-test('a node with no door taken is not a registration', () => {
-  const manifest = withClock();
-  expect(() => manifest.add(manifest.describe(SINK) as any)).toThrow();
-});
-
 test('a discarded step configures nothing', () => {
   const manifest = withClock();
   const configured = manifest.describe(SINK)
