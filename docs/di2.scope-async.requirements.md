@@ -89,6 +89,20 @@
   a deeper async failure surfaces iteratively. The pattern generalizes as further near-miss data
   kinds on the same error: keyed-under-a-tag, and private-in-scope once ManifestScope lands.
   One-directional by construction — async lookup is a superset of sync.
+- PROMISE-HEADED GUARD (owner-ruled): a final miss on a promise-headed type never runs the
+  fallback probe — nested promise delivery is not a thing reality distinguishes — in both modes
+  the failure is plain unresolvable. (Flagged sibling, not decided: whether a missed
+  promise-typed slot synthesizes from a registered `X` — resolve sync, deliver wrapped.)
+- THENABLE REALITY (owner-ruled goal; mechanisms **(proposed)**): (1) element-settled invariant —
+  the promise spelling normalizes a promise-headed element at mint (`Promise<Promise<X>>` mints
+  the interned `Promise<X>`; the `named`-door canonicalization contract), so a nested promise
+  node cannot exist; (2) assimilation is `await`'s job — awaited values are settled by JS
+  semantics, so the values-never-promises cache rule is enforced by reality, the engine writes no
+  unwrap of its own, gather entries await unconditionally, and no `instanceof Promise` exists
+  anywhere (runtime branches use thenable-protocol checks — callable `.then` — the
+  `ChangeToken.onChange` posture); (3) the grammar stays nominal — `PromiseLike<X>`/custom
+  thenable types are ordinary named types, assimilated by the gather when awaited, but excluded
+  from the promise fallback probe (`Promise`-headed only).
 
 ## The scope door
 
