@@ -2821,3 +2821,45 @@ rename/find-refs COMPLETE across packages that nothing currently open imports.
 
 _Claude-recorded 2026-08-20; implements the owner's exports-rework charter (tasklist, "Exports
 system — make it conventional")._
+
+## §193 — The registration surface as landed: uniform three-argument verbs, the describe chain, ConstantType
+
+The 2026-08-20 tasklist run landed the repattern the tasklist specified; this entry records the
+landed shape and the two interpretive calls the run made where sources disagreed.
+
+**The landed shape.** The flat verbs converge on `add/tryAdd/replace(serviceType, implementer,
+implementerType, scope?)`, with kind selection a total switch over
+`ConstructorType | FunctionType | ConstantType`. `ConstantType` is a di.core value — a marker
+carrying only its kind — because a callable registered AS a value derives a `FunctionType` exactly
+like a factory does, so the call site is the only place the value/factory distinction exists. The
+configure-lambda overloads, `withType`/`withSignature`/`withSignatures`, the one-of-three-doors
+invariant and its runtime guard, and `IComplete` are gone. The chain opens at
+`manifest.describe(serviceType)`; a taken door yields a real `ServiceDescriptor` whose remaining
+steps (`withLifetime`/`taggedAs`) are installed non-enumerably, so the node spreads, compares, and
+registers as plain data. A keyed registration is a tagged ADDRESS; no verb takes a key argument.
+di.extras carries eleven inline entries (flat verbs + value doors + `removeAll` + `describe` +
+the three `get*` members); each sugar derives the service type AND observes the implementer type,
+and termination rests on the emitted call binding a different overload than the face. The
+value-driven `getService(value)` door (§167) is deliberately un-shipped with the back-out; it
+ships separately.
+
+**Interpretive call 1 — aliased unions derive to a plain named node.** The tasklist's execution
+plan summarized the L2 lane as "AliasType derivation + node + factory", while the body item
+specifies the emission as `tag(imported('Type', '@rhombus-std/primitives'), key)` and rules "one
+node, one reading, no node shape carrying both" — and §191 records the carrying-`AliasType` node
+as judged-then-HELD. The run treated the body item as the specification and the lane summary as a
+loose pointer: an EXPORTED alias derives to its name as the plain `ImportedType`/`GlobalType`
+(export-list exports included), a local alias derives structurally, and no new node kind exists.
+
+**Interpretive call 2 — the value doors are named, not observed.** The uniform-`add` sketch's
+single rest body (`.apply`-based) is superseded by the ConstantType ruling: `addValue`/
+`tryAddValue`/`replaceValue` are their own sugar members lowering to the three-argument form with
+the marker, because one body per member name cannot discriminate a callable value from a factory.
+
+**Un-landed, recorded:** the `TypeFor<T>` named-type narrowing item halted — TypeScript offers no
+type-level named-vs-structural discriminator, so "a named type argument types as its
+`ImportedType` … everything else keeps falling back to `Type`" is unimplementable as specified;
+any approximation mistypes tags, aggregates, unions, or literals. Needs an owner ruling on which
+lie (if any) to accept.
+
+_Claude-recorded 2026-08-20; the digest above (CLAUDE.md) was synced the same day._

@@ -179,24 +179,32 @@ where that's cheap, and flag the intended divergence rather than pre-emptively t
   on `IServiceProvider`, plus `createAsyncScope` on both `IServiceProvider` and
   `IServiceScopeFactory` — `createScope(name?)` itself is real and takes an optional name,
   `IServiceScope` declares `getRequiredService`/`isService`, and
-  `ServiceProviderOptions.validateScopes` is declared and read by nothing. The registration builder
-  is real end to end: `add(type, configure)` hands the configure lambda a fluent chain —
-  `asClass`/`asFactory`/`asValue` choose the implementation, `withSignature`/`withSignatures`/
-  `withType` name its call shape as one or more parameter rows (exactly one of the three doors,
-  ever), and `withLifetime`/`taggedAs` set the scope and key. A
+  `ServiceProviderOptions.validateScopes` is declared and read by nothing. The registration chain
+  opens at `manifest.describe(serviceType)`: the doors `asClass(ctor, ctorType)`/
+  `asFactory(fn, fnType)` take the implementer together with its own type, `asValue(value)` takes
+  only the value, and once a door is taken the node IS a `ServiceDescriptor` — refined by
+  `withLifetime`/`taggedAs`, handed to the descriptor-taking verbs, held in a variable, or built in
+  a helper. The flat verbs share one uniform shape,
+  `add/tryAdd/replace(serviceType, implementer, implementerType, scope?)`, the value door passing
+  the bare `ConstantType` marker (a di.core value, not a `Type` node kind — a callable registered
+  AS a value is indistinguishable from a factory by its own type, so the call site carries the
+  choice) and kind selection a total switch over
+  `ConstructorType | FunctionType | ConstantType`. A keyed registration is a TAGGED ADDRESS —
+  there is no key argument anywhere. A
   builder that wraps a manifest holds it in a local structural `ManifestSlot`, and an all-in-one
   verb returns the manifest itself rather than a fluent tail. `NotImplementedError` lives in
   `primitives` and extends `Error` directly, since not-implemented is not a container concept.
   `di.extras` (the Go/ttsc authoring surface, depending on **`di.core` types only, never the `di`
-  runtime** — hard invariant) carries `rhombus-std` marker `inline` entries for the twelve manifest verbs
-  (`add`/`addClass`/`addFactory`/`addValue`, `tryAdd`/`tryAddClass`/`tryAddFactory`/`tryAddValue`,
-  `replaceClass`/`replaceFactory`/`replaceValue`, `removeAll`) plus the three `get*` provider
-  members (`getService`/`getRequiredService`/`getServices`) — fifteen entries total, each entry's
-  `impl` resolved by walking `src/index.ts`'s re-export graph. The builder chain's own members
-  (`asClass`/`asFactory`/`asValue`/`withSignature`/`withSignatures`/`withType`/`withLifetime`/
-  `taggedAs`) carry no
-  inline marker entries yet, so `add(type, configure)` has no type-driven `add<T>(configure)`
-  counterpart. `di.extras.options` is a satellite lowering the `addOptions<T>()` sugar.
+  runtime** — hard invariant) carries `rhombus-std` marker `inline` entries for the flat verbs and
+  value doors (`add`/`addValue`, `tryAdd`/`tryAddValue`, `replace`/`replaceValue`, `removeAll`,
+  `describe`) plus the three `get*` provider
+  members (`getService`/`getRequiredService`/`getServices`) — eleven entries total, each entry's
+  `impl` resolved by walking `src/index.ts`'s re-export graph. Each sugar derives BOTH the service
+  type and the observed implementer type (`add<ServiceType>(implementer, scope?)` lowers to
+  `add(typefor<ServiceType>(), implementer, typefor(implementer), scope)`; a cast at the call site
+  steers the observed SHAPE, never the kind), and the emitted call binds a different overload than
+  the face, which is what terminates the lowering loop.
+  `di.extras.options` is a satellite lowering the `addOptions<T>()` sugar.
   The live parity suites under `tests/*.ttsc.e2e` are the test oracle, each asserting the emission
   an author would have written by hand.
 - **`options`** — the collapsed `IOptions<T>` accessor + the configure / post-configure / validate
@@ -370,11 +378,11 @@ before touching):
   (`add`/`addFactory`/`addValue`, the descriptor verbs, every augmentation) returns a NEW manifest
   and leaves the receiver alone, so a discarded result registers NOTHING. A verb's long overload
   takes the implementer's whole `Type` node as a required arg 3 — `implementerType`, a
-  `ConstructorType`/`FunctionType` carrying one parameter ROW per overload; an intersection means an
+  `ConstructorType`/`FunctionType` carrying one parameter ROW per overload (the bare `ConstantType`
+  marker for a value); an intersection means an
   intersection — and the descriptor stores that node beside the `implementer` itself, so rows are
-  read through `implementerType.args` and live in one place. `scope` is arg 4 and `key` arg 5. A
-  naked array of parameter types survives only on the builder chain's
-  `withSignature`/`withSignatures`, which mint the anonymous callable those rows describe. A builder
+  read through `implementerType.args` and live in one place. `scope` is arg 4; a keyed registration
+  spells its key inside the address (`Type.tag`), never as an argument. A builder
   that wraps a manifest
   (`ILoggingBuilder`, `IMetricsBuilder`, `IHostApplicationBuilder`) exposes it as a WRITABLE slot
   (a local structural `ManifestSlot`) and siblings over one manifest share ONE holder;
@@ -586,9 +594,9 @@ bespoke config schema grammar (`Schema`/`Infer`/`OPTIONAL`) and the `signaturefo
 - **Descriptor wiring — one always-on stage table, NO selection (§119).** Every `*.extras` package's
   `./ttsc` descriptor resolves to the SAME `cmd/ttsc-std` source dir under the SAME name, so `ttsc`
   dedupes every consumer to one cache key and one spawn. There is no stage selection: once spawned,
-  the host runs its WHOLE stage table on every file: `mergesynth` first, once, as a pre-pass, then
-  the rest in a fixed canonical order (inline → typefor → schemaof) looped to
-  a fixed point; a stage that matches nothing is a cheap no-op
+  the host runs its WHOLE stage table on every file in a fixed canonical order
+  (mergesynth → inline → typefor → schemaof) looped to a fixed point — mergesynth rides the loop,
+  since the inline stage is what mints the receiver-taking install calls it rewrites; a stage that matches nothing is a cheap no-op
   (disjoint match sets). The bespoke di /
   di-options / config domain stages, the `ttsc.stages` markers, `selectStages`/`BaseBundles`, and
   di.core's preset `./ttsc` descriptor are all GONE — the authoring forms (`add`/`addOptions`/
@@ -598,13 +606,13 @@ bespoke config schema grammar (`Schema`/`Infer`/`OPTIONAL`) and the `signaturefo
   `ttsc.plugin` marker), and the host's single `CollectProject` scan gathers the inline BODIES from
   the transitive graph (§100). `build-lib.ts` passes no explicit plugin list; an explicit
   `tsconfig.ttsc.json` `plugins` array is the only override. The one binary links typia to run
-  `mergesynth` (§103) as a one-shot pre-pass ahead of the loop.
+  `mergesynth` (§103) inside the loop.
 - **`*.extras` package shapes** — every one carries a barrel re-exporting its marker bodies BY
   NAME, since an inline entry's `impl` is resolved by walking the barrel's re-export graph: a set
   only side-effect-imported is never found. `config.extras` pairs that barrel with its `./ttsc`
   descriptor. `primitives.extras` carries a barrel (both primitives, `typefor` and `schemaof`) plus
   its `./ttsc` descriptor. `di.extras` keeps a barrel shipping the `declare module` authoring
-  augmentations; its fifteen `rhombus-std` `inline` marker bodies live directly in those
+  augmentations; its eleven `rhombus-std` `inline` marker bodies live directly in those
   augmentation files (no separate `inline.ts`).
   `di.extras.options` and `config.extras` follow the same shape at one file each —
   `augmentations/Manifest-options-augmentations.ts` and
