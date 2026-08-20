@@ -11,7 +11,7 @@
 //      survived rollup-plugin-dts).
 
 import assert from 'node:assert/strict';
-import { describe, test } from 'node:test';
+import { describe, test } from 'bun:test';
 
 import { ConfigBuilder } from '@rhombus-std/config';
 import { CommandLineConfigProvider, CommandLineConfigSource,

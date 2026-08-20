@@ -9,13 +9,13 @@
 
 import { NullLogger } from '@rhombus-std/logging';
 import { EventId, FormattedLogValues, type ILogger, LoggerAugmentations, LogLevel } from '@rhombus-std/logging.core';
-import { augment } from '@rhombus-std/primitives';
+import { augment, Type } from '@rhombus-std/primitives';
 import { describe, expect, test } from 'bun:test';
 
 // The `typefor<ILogger>()`-derived augmentation token (a no-transformer test uses
 // the derived literal directly). `ILogger`'s defaulted `TCategoryName` parameter
 // lowers into the token as `<unknown>`.
-const ILOGGER_TOKEN = '@rhombus-std/logging.core:ILogger<unknown>';
+const ILOGGER_RECEIVER = Type.from('@rhombus-std/logging.core:ILogger<unknown>');
 
 /** A logger that records the state handed to `beginScope` and returns a token. */
 function recordingLogger(): { logger: ILogger; scopes: unknown[]; } {
@@ -51,7 +51,7 @@ class DecoratedRecordingLogger implements ILogger {
 // `implements ILogger` now requires them on the class — the empty extends-merge
 // binds them body-free (§71/§80), exactly as the concrete loggers do.
 interface DecoratedRecordingLogger extends ILogger {}
-augment(ILOGGER_TOKEN)(DecoratedRecordingLogger);
+augment(ILOGGER_RECEIVER)(DecoratedRecordingLogger);
 
 // The convenience method forms `@augment` installs at runtime — not statically
 // typed onto the class (TS2430: `log`/`beginScope` share their names with

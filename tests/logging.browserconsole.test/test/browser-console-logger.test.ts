@@ -10,11 +10,11 @@ import { expect, test } from 'bun:test';
  * immutable chain — a double that returned itself would hide exactly the
  * silent-drop bug this shape exists to catch.
  */
-function fakeServices(): { services: Manifest<any>; values: Array<[string | Type, unknown]>; } {
-  const values: Array<[string | Type, unknown]> = [];
+function fakeServices(): { services: Manifest<any>; values: Array<[Type, unknown]>; } {
+  const values: Array<[Type, unknown]> = [];
   const make = (): Manifest<any> => {
-    return { addValue(token: string | Type, value: unknown): Manifest<any> {
-      values.push([token, value]);
+    return { add(serviceType: Type, value: unknown): Manifest<any> {
+      values.push([serviceType, value]);
       return make();
     } } as unknown as Manifest<any>;
   };
@@ -119,8 +119,8 @@ test('addBrowserConsole registers ONE provider per manifest, however many calls 
   BrowserConsoleLoggerAugmentations.addBrowserConsole.call(builder);
   BrowserConsoleLoggerAugmentations.addBrowserConsole.call(builder);
 
-  const providers = values.filter(([token]) => {
-    return token === LOGGER_PROVIDER_TYPE;
+  const providers = values.filter(([serviceType]) => {
+    return serviceType === LOGGER_PROVIDER_TYPE;
   });
   expect(providers).toHaveLength(1);
   expect(providers[0]?.[1]).toBeInstanceOf(BrowserConsoleLoggerProvider);
@@ -135,9 +135,9 @@ test('the per-builder dedup is keyed by the builder, not effectively global', ()
   BrowserConsoleLoggerAugmentations.addBrowserConsole.call(new LoggingBuilder(first.services));
   BrowserConsoleLoggerAugmentations.addBrowserConsole.call(new LoggingBuilder(second.services));
 
-  const providersFor = (values: Array<[string | Type, unknown]>) => {
-    return values.filter(([token]) => {
-      return token === LOGGER_PROVIDER_TYPE;
+  const providersFor = (values: Array<[Type, unknown]>) => {
+    return values.filter(([serviceType]) => {
+      return serviceType === LOGGER_PROVIDER_TYPE;
     });
   };
   expect(providersFor(first.values)).toHaveLength(1);

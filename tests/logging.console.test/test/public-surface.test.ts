@@ -11,12 +11,14 @@ import { Options } from '@rhombus-std/options';
 import { expect, test } from 'bun:test';
 
 /** A recording stand-in for the di.core registration builder. */
-function fakeServices(): { services: Manifest<any>; values: Array<[string | Type, unknown]>; } {
-  const values: Array<[string | Type, unknown]> = [];
-  const services = { addValue(token: string | Type, value: unknown): void {
-    values.push([token, value]);
-  } } as unknown as Manifest<any>;
-  return { services, values };
+function fakeServices(): { services: Manifest<any>; values: Array<[Type, unknown]>; } {
+  const values: Array<[Type, unknown]> = [];
+  const make = (): Manifest<any> =>
+    ({ add(serviceType: Type, value: unknown): Manifest<any> {
+      values.push([serviceType, value]);
+      return make();
+    } }) as unknown as Manifest<any>;
+  return { services: make(), values };
 }
 
 function builderOver(services: Manifest<any>): ILoggingBuilder {
@@ -155,7 +157,7 @@ test('addConsole registers exactly one provider per manifest', () => {
   });
   ConsoleLoggerAugmentations.addSimpleConsole.call(builder);
 
-  const providers = values.filter(([token]) => token === LOGGER_PROVIDER_TYPE);
+  const providers = values.filter(([serviceType]) => serviceType === LOGGER_PROVIDER_TYPE);
   expect(providers).toHaveLength(1);
   expect(providers[0]?.[1]).toBeInstanceOf(ConsoleLoggerProvider);
 });

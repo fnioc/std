@@ -19,7 +19,7 @@ import { MetricsBuilder as DiagnosticsMetricsBuilder } from '@rhombus-std/diagno
 import { METRICS_CONFIGURE_TYPE } from '@rhombus-std/diagnostics.core';
 // The IMetricsBuilder augmentation-registry token is derived by `typefor<IMetricsBuilder>()`
 // at each library's build time; this test (no transformer) uses the derived literal directly.
-const METRICS_BUILDER_AUGMENTATION_TOKEN = '@rhombus-std/diagnostics.core:IMetricsBuilder';
+const METRICS_BUILDER_RECEIVER = Type.from('@rhombus-std/diagnostics.core:IMetricsBuilder');
 import { HostApplicationBuilder, MetricsBuilder as HostingMetricsBuilder } from '@rhombus-std/hosting';
 import { registerAugmentations } from '@rhombus-std/primitives';
 import { describe, expect, test } from 'bun:test';
@@ -52,7 +52,7 @@ describe('late registration reaches every decorated class sharing the token', ()
   test("a set registered NOW installs onto both families' MetricsBuilders", () => {
     // Both concrete classes were decorated at module load, long before this
     // registration. The decorator's listener must still pull the new member.
-    registerAugmentations(METRICS_BUILDER_AUGMENTATION_TOKEN, { lateRegisteredProbe(this: unknown): unknown {
+    registerAugmentations(METRICS_BUILDER_RECEIVER, { lateRegisteredProbe(this: unknown): unknown {
       return this;
     } });
 

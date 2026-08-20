@@ -13,7 +13,7 @@
 
 import assert from 'node:assert/strict';
 import { join } from 'node:path';
-import { describe, test } from 'node:test';
+import { describe, test } from 'bun:test';
 
 import { ConfigBuilder } from '@rhombus-std/config';
 import { Type } from '@rhombus-std/primitives';
