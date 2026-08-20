@@ -108,20 +108,3 @@ export function augment(receiver: Type) {
     }
   };
 }
-
-/**
- * The bag key both doors index by.
- *
- * @remarks
- * A receiver has to be a type IDENTIFIER. Augmenting names the declaration whose prototype the
- * members land on; a union, a signature or an aggregate describes a shape instead, and there is no
- * declaration behind it to install onto — a bag under one could only ever sit empty.
- */
-function receiverType(receiver: Type): Type {
-  if (!Type.isIdentifier(receiver)) {
-    throw new TypeError(
-      `an augmentation receiver names a declaration, and \`${Type.stringify(receiver)}\` names a shape`,
-    );
-  }
-  return receiver;
-}
