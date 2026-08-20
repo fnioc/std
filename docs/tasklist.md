@@ -8,12 +8,13 @@ Architectural rulings belong in `decisions.user.md` (gospel) or `decisions.v2.md
 This doc is executed on that date. Everything needed to run it unattended is written here; nothing depends on a
 conversation the session cannot read.
 
-**Entry point: `/go`.** All coding work starts through it — not a bare dispatch. The orchestrator runs LOCALLY, on
-Fable at `xhigh` effort, started with `fnc` by the `std-tasklist-run.timer` user unit into a detached tmux session
-named `std-tasklist` (attach with `tmux attach -t std-tasklist` to watch or intervene), with
-`--dangerously-skip-permissions` since nobody is at the keyboard.
+**The orchestrator is a CLOUD agent** (owner order 2026-08-20; the local timer launch is deleted). It is
+dispatched from the owner's session, runs on Fable, checks this branch out from GitHub, and executes this doc
+directly — the `/go`//`/ready` skills do not exist in its environment, so it applies this doc's own gap-handling
+rules in their place. It pushes to `IServiceManifest-repair` as work lands (authorized), which is also how the
+owner's machine sees progress.
 
-**When `/go`'s `/ready` gate reports gaps, fix and retry — under two limits.** A gap that is OBVIOUS is auto-fixed
+**When the readiness check reports gaps, fix and retry — under two limits.** A gap that is OBVIOUS is auto-fixed
 on the spot and `/go` re-run, no asking. Retry ONLY when something concretely changed since the previous attempt:
 a file written, a task added, a fix applied. Re-running against an unchanged board is not a retry, and the second
 identical verdict is not new information. Five sequential failures halt the run regardless of how much changed
