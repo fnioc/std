@@ -35,6 +35,9 @@
 // constructors side by side. The comparison IS the lesson; neither class is
 // interesting without the other.
 
+// Type-only: puts the sugar's declare-module faces in every program that
+// compiles this source, with no runtime import of the authoring package.
+import type {} from '@rhombus-std/di.extras';
 import { RESOLVER_TYPE, Type } from '@rhombus-std/di.core';
 import type { IServiceProvider, Manifest } from '@rhombus-std/di.core';
 import type { IGreeting } from '@rhombus-std/examples.contracts';
