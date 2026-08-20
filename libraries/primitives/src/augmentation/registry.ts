@@ -37,25 +37,38 @@ const bags = new Map<Type, Bag>();
 /** Decorated-class installers per receiver type, in decoration order. */
 const subscribers = new Map<Type, DeltaInstaller[]>();
 
+/** @throws TypeError - when `receiver` names a shape rather than a declaration. */
+function requireIdentifier(receiver: Type): void {
+  if (Type.isIdentifier(receiver)) {
+    return;
+  }
+  // Render whatever arrived without trusting it to be an interned node — the
+  // message must survive the very input it is rejecting.
+  let spelled: string;
+  try {
+    spelled = Type.stringify(receiver);
+  } catch {
+    spelled = String(receiver);
+  }
+  throw new TypeError(`an augmentation receiver names a declaration, and \`${spelled}\` names a shape`);
+}
+
 /**
  * Append `set`'s members into `receiver`'s bag, then install just those members onto
  * every class already decorated with `@augment(receiver)`.
  *
- * The receiver is a type. A token string names one too and is read into it, so a
- * caller spelling either reaches the same bag.
- *
  * @remarks
+ * Types intern, so every spelling of the receiver — `typefor<R>()`, a factory
+ * composition, `Type.from` over a token string — reaches the same bag.
+ *
  * A member name a prior set already contributed accumulates rather than throwing;
  * the collision is resolved (by a supplied `merge` strategy) or refused at install
  * time. Subscribers are invoked synchronously, so that refusal reaches this caller.
  *
- * @throws TypeParseError - when a string receiver does not spell a type.
  * @throws TypeError - when the receiver names a shape rather than a declaration.
  */
 export function registerAugmentations<R>(receiver: Type, set: AugmentationSet<R>, merge?: MergeStrategies<R>): void {
-  if (!Type.isIdentifier(receiver)) {
-    throw new TypeError(`an augmentation receiver names a declaration, and \`${Type.stringify(receiver)}\` names a shape`);
-  }
+  requireIdentifier(receiver);
   const bag = bags.getOrInsert(receiver, new Map());
   for (const [name, fn] of Object.entries(set as Record<string, AugmentationFn>)) {
     bag.getOrInsert(name, []).push([fn, merge?.[name]]);
@@ -80,13 +93,10 @@ export function registerAugmentations<R>(receiver: Type, set: AugmentationSet<R>
  * class with a private constructor (a singleton) — assignable to no
  * `new (...) => ...` type — can still be a receiver; only its prototype is touched.
  *
- * @throws TypeParseError - when a string receiver does not spell a type.
  * @throws TypeError - when the receiver names a shape rather than a declaration.
  */
 export function augment(receiver: Type) {
-  if (!Type.isIdentifier(receiver)) {
-    throw new TypeError(`an augmentation receiver names a declaration, and \`${Type.stringify(receiver)}\` names a shape`);
-  }
+  requireIdentifier(receiver);
   return function installOnClass<C extends { readonly prototype: object; }>(Ctor: C, _context?: unknown): void {
     const target = Ctor as unknown as Ctor<any[], any>;
 
