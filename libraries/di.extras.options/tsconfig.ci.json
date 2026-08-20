@@ -4,5 +4,8 @@
   // `types` condition resolves the built, skip-lib-checked `.d.ts` and the merge
   // binds without a `built` custom condition.
   "extends": "../../tsconfig.lib.json",
+  "compilerOptions": {
+    "types": ["@rhombus-std/options.augmentations"]
+  },
   "include": ["src/**/*"]
 }
