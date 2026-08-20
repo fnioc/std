@@ -154,8 +154,7 @@ describe('CommandLineConfigProvider -- bare key=value tokens', () => {
 
 describe('CommandLineConfigProvider -- mixed', () => {
   test('combines long form, mapped short form, and ignored positionals', () => {
-    expect(load(['deploy', '--Env=prod', '-p', '8080', 'extra'], { '-p': 'Server:Port' })).toEqual({ Env: 'prod',
-      'Server:Port': '8080' });
+    expect(load(['deploy', '--Env=prod', '-p', '8080', 'extra'], { '-p': 'Server:Port' })).toEqual({ Env: 'prod', 'Server:Port': '8080' });
   });
 });
 

@@ -3,8 +3,7 @@
 
 import { ConsoleLogger } from '@rhombus-std/logging.console/tokens/ConsoleLogger';
 import { ConsoleLoggerOptions } from '@rhombus-std/logging.console/tokens/ConsoleLoggerOptions';
-import { ConsoleLoggerProcessor,
-  droppedMessagesWarning } from '@rhombus-std/logging.console/tokens/ConsoleLoggerProcessor';
+import { ConsoleLoggerProcessor, droppedMessagesWarning } from '@rhombus-std/logging.console/tokens/ConsoleLoggerProcessor';
 import { ConsoleLoggerQueueFullMode } from '@rhombus-std/logging.console/tokens/ConsoleLoggerQueueFullMode';
 import type { IConsole } from '@rhombus-std/logging.console/tokens/IConsole';
 import { SimpleConsoleFormatter } from '@rhombus-std/logging.console/tokens/SimpleConsoleFormatter';
@@ -25,8 +24,7 @@ class FakeConsole implements IConsole {
   }
 }
 
-function processor(fullMode = ConsoleLoggerQueueFullMode.Wait,
-  maxQueueLength = 1024): { processor: ConsoleLoggerProcessor; out: FakeConsole; err: FakeConsole; } {
+function processor(fullMode = ConsoleLoggerQueueFullMode.Wait, maxQueueLength = 1024): { processor: ConsoleLoggerProcessor; out: FakeConsole; err: FakeConsole; } {
   const out = new FakeConsole();
   const err = new FakeConsole();
   return { processor: new ConsoleLoggerProcessor(out, err, fullMode, maxQueueLength), out, err };

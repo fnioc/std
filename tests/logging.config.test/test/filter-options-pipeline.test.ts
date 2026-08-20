@@ -42,8 +42,7 @@ function filterOptionsFor(config: IConfigRoot): IOptions<LoggerFilterOptions> {
 describe('addConfig — the LoggerFilterOptions pipeline', () => {
   test('binds global, per-provider, and Default-category rules plus captureScopes', () => {
     const options = filterOptionsFor(
-      rootWith({ CaptureScopes: 'false', 'LogLevel:Default': 'Information', 'LogLevel:MyApp': 'Debug',
-        'Console:LogLevel:Default': 'Warning' }),
+      rootWith({ CaptureScopes: 'false', 'LogLevel:Default': 'Information', 'LogLevel:MyApp': 'Debug', 'Console:LogLevel:Default': 'Warning' }),
     );
 
     const value = options.value;
@@ -53,9 +52,7 @@ describe('addConfig — the LoggerFilterOptions pipeline', () => {
 
     // The walk visits sections in the configuration's key order, so assert by
     // rule shape rather than position.
-    const globalDefault = value.rules.find((rule) =>
-      rule.providerName === undefined && rule.categoryName === undefined
-    );
+    const globalDefault = value.rules.find((rule) => rule.providerName === undefined && rule.categoryName === undefined);
     const globalMyApp = value.rules.find((rule) => rule.categoryName === 'MyApp');
     const consoleDefault = value.rules.find((rule) => rule.providerName === 'Console');
     expect(globalDefault!.logLevel).toBe(LogLevel.Information);

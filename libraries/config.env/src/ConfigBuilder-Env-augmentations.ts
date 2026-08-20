@@ -3,8 +3,7 @@
 import type { IConfigBuilder, IConfigSource, IndexedSection } from '@rhombus-std/config.core';
 import { registerAugmentations } from '@rhombus-std/primitives.extras';
 import type { Flatten } from '@rhombus-toolkit/type-helpers';
-import { EnvironmentVariablesConfigSource,
-  type EnvironmentVariablesConfigSourceOptions } from './EnvironmentVariablesConfigSource';
+import { EnvironmentVariablesConfigSource, type EnvironmentVariablesConfigSourceOptions } from './EnvironmentVariablesConfigSource';
 
 /** The subset of {@link IConfigBuilder} and `config`'s `ConfigBuilder<T>` this sugar's `add` call touches. */
 interface ConfigSourceBuilder {
@@ -17,8 +16,7 @@ export namespace ConfigBuilderEnvAugmentations {
    * `process.env`, per an optional `options.prefix` and
    * `options.variableNameTransformation`.
    */
-  export function addEnvironmentVariables<Self extends ConfigSourceBuilder>(this: Self,
-    options?: EnvironmentVariablesConfigSourceOptions): Self {
+  export function addEnvironmentVariables<Self extends ConfigSourceBuilder>(this: Self, options?: EnvironmentVariablesConfigSourceOptions): Self {
     return this.add(new EnvironmentVariablesConfigSource(options)) as Self;
   }
 }

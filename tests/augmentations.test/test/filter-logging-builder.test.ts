@@ -10,8 +10,7 @@
 import type { IServiceProvider } from '@rhombus-std/primitives';
 import '@rhombus-std/di';
 import { DefaultManifest } from '@rhombus-std/di.core';
-import { FilterLoggingBuilderExtensions, LOGGER_FILTER_OPTIONS_ACCESSOR_TYPE, LOGGER_FILTER_OPTIONS_TYPE,
-  LoggerFilterOptions, LoggingBuilder } from '@rhombus-std/logging';
+import { FilterLoggingBuilderExtensions, LOGGER_FILTER_OPTIONS_ACCESSOR_TYPE, LOGGER_FILTER_OPTIONS_TYPE, LoggerFilterOptions, LoggingBuilder } from '@rhombus-std/logging';
 import type { ILoggingBuilder } from '@rhombus-std/logging.core';
 import { LogLevel } from '@rhombus-std/logging.core';
 import type { IOptions } from '@rhombus-std/options';
@@ -51,8 +50,7 @@ describe('builder-level addFilter — configure-step bridge into IOptions<Logger
 
   test('a raw (provider, category, level) => boolean filter flows through as a filter rule', () => {
     const builder = new LoggingBuilder(new DefaultManifest<'singleton'>());
-    const filter = (_provider: string | undefined, _category: string | undefined, level: LogLevel): boolean =>
-      level >= LogLevel.Error;
+    const filter = (_provider: string | undefined, _category: string | undefined, level: LogLevel): boolean => level >= LogLevel.Error;
     builder.addFilter(filter);
 
     const options = resolveFilterOptions(builder);

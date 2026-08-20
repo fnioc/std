@@ -1,7 +1,6 @@
 // Internal: not exported from the package barrel.
 
-import { type ConsoleColor, DEFAULT_BACKGROUND_COLOR, DEFAULT_FOREGROUND_COLOR, getBackgroundColorEscapeCode,
-  getForegroundColorEscapeCode } from './ConsoleColor';
+import { type ConsoleColor, DEFAULT_BACKGROUND_COLOR, DEFAULT_FOREGROUND_COLOR, getBackgroundColorEscapeCode, getForegroundColorEscapeCode } from './ConsoleColor';
 import type { TextWriter } from './text-writer';
 
 /**
@@ -9,8 +8,7 @@ import type { TextWriter } from './text-writer';
  * background code, foreground code, message, foreground reset, background
  * reset — omitting each pair when its color is `undefined`.
  */
-export function writeColoredMessage(textWriter: TextWriter, message: string, background: ConsoleColor | undefined,
-  foreground: ConsoleColor | undefined): void {
+export function writeColoredMessage(textWriter: TextWriter, message: string, background: ConsoleColor | undefined, foreground: ConsoleColor | undefined): void {
   if (background !== undefined) {
     textWriter.write(getBackgroundColorEscapeCode(background));
   }

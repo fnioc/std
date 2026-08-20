@@ -17,8 +17,7 @@ interface NullLoggerImpl extends ILogger {}
 /** A logger that discards every message and reports every level disabled. */
 @augment(typefor<ILogger>())
 class NullLoggerImpl implements ILogger {
-  public log<TState>(_logLevel: LogLevel, _eventId: EventId, _state: TState, _error: Error | undefined,
-    _formatter: Func<[TState, Error | undefined], string>): void {
+  public log<TState>(_logLevel: LogLevel, _eventId: EventId, _state: TState, _error: Error | undefined, _formatter: Func<[TState, Error | undefined], string>): void {
     // discard
   }
 

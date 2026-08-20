@@ -128,8 +128,7 @@ function setupSandbox(dir: string, name: string, file: string, source: string): 
   writeFileSync(
     join(dir, 'tsconfig.json'),
     JSON.stringify({
-      compilerOptions: { target: 'ES2022', module: 'ESNext', moduleResolution: 'Bundler', lib: ['ESNext'], strict: true,
-        outDir: 'dist', rootDir: 'src', skipLibCheck: true, noEmitOnError: false,
+      compilerOptions: { target: 'ES2022', module: 'ESNext', moduleResolution: 'Bundler', lib: ['ESNext'], strict: true, outDir: 'dist', rootDir: 'src', skipLibCheck: true, noEmitOnError: false,
         plugins: [{ transform: '@rhombus-std/di.extras/ttsc' }] },
       include: ['src/**/*'],
     }),

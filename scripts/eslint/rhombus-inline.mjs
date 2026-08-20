@@ -21,8 +21,7 @@ import { entryKind, loadInlineEntries, parseTypeRef } from './inline-entries.mjs
 // that home in the authoring package @rhombus-std/primitives.extras — every call
 // is substituted, so the runtime @rhombus-std/primitives leaf carries none of
 // them. Mirrors the Go scanner's knownPrimitives map.
-const PRIMITIVE_HOMES = { typefor: '@rhombus-std/primitives.extras', tokenfor: '@rhombus-std/primitives.extras',
-  tokenof: '@rhombus-std/primitives.extras', schemaof: '@rhombus-std/config.extras' };
+const PRIMITIVE_HOMES = { typefor: '@rhombus-std/primitives.extras', tokenfor: '@rhombus-std/primitives.extras', tokenof: '@rhombus-std/primitives.extras', schemaof: '@rhombus-std/config.extras' };
 
 /** Walks up from a file to the nearest directory containing a package.json. */
 function findPackageDir(/** @type {string} */ file) {
@@ -50,19 +49,14 @@ function readPackageName(/** @type {string} */ packageDir) {
 
 /** @type {import('eslint').Rule.RuleModule} */
 const rule = {
-  meta: { type: 'problem',
-    docs: { description: 'Enforce inlineable sugar-body hygiene for the rhombus-std inline stage.' }, schema: [],
-    messages: { entryShape: 'rhombus-std inline publish list is malformed: {{detail}}',
-      singleReturn: 'An inlineable sugar body must be exactly one `return <expr>;`.',
+  meta: { type: 'problem', docs: { description: 'Enforce inlineable sugar-body hygiene for the rhombus-std inline stage.' }, schema: [],
+    messages: { entryShape: 'rhombus-std inline publish list is malformed: {{detail}}', singleReturn: 'An inlineable sugar body must be exactly one `return <expr>;`.',
       bannedSyntax: "A sugar body's returned expression may not use {{syntax}} (single compile-time expression only).",
-      paramReuse:
-        'Value parameter {{name}} appears in more than one runtime position; each may appear at most once outside a primitive call.',
+      paramReuse: 'Value parameter {{name}} appears in more than one runtime position; each may appear at most once outside a primitive call.',
       typeParamPosition: 'Type parameter {{name}} may appear only as the whole type argument of a primitive call.',
-      freeIdentifier:
-        'Identifier {{name}} is not a parameter, `this`, a type parameter, a known primitive import, or a value the file imports.',
+      freeIdentifier: 'Identifier {{name}} is not a parameter, `this`, a type parameter, a known primitive import, or a value the file imports.',
       noAlias: 'Primitive import {{name}} must be a direct unaliased named import.',
-      noNesting:
-        'A sugar body may not reference another inlineable declaration ({{name}}); nesting is not yet supported.' } },
+      noNesting: 'A sugar body may not reference another inlineable declaration ({{name}}); nesting is not yet supported.' } },
 
   create(context) {
     const filename = context.filename ?? context.getFilename();
@@ -78,8 +72,7 @@ const rule = {
       entries = loadInlineEntries(pkgDir);
     } catch (err) {
       return { Program(node) {
-        context.report({ node, messageId: 'entryShape',
-          data: { detail: String(err instanceof Error ? err.message : err) } });
+        context.report({ node, messageId: 'entryShape', data: { detail: String(err instanceof Error ? err.message : err) } });
       } };
     }
 

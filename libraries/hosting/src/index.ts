@@ -32,5 +32,4 @@ export type { ServiceProviderOptions } from '@rhombus-std/di';
 export { HOST_ENVIRONMENT_VARIABLE_PREFIX } from './default-config';
 
 // The framework-service DI tokens (a consumer resolves these off `IHost.services`).
-export { CONFIG_TYPE, CONSOLE_LIFETIME_OPTIONS_TYPE, HOST_BUILDER_CONTEXT_TYPE, HOST_ENVIRONMENT_TYPE,
-  HOST_LIFETIME_TYPE, HOST_OPTIONS_TYPE } from './framework-types';
+export { CONFIG_TYPE, CONSOLE_LIFETIME_OPTIONS_TYPE, HOST_BUILDER_CONTEXT_TYPE, HOST_ENVIRONMENT_TYPE, HOST_LIFETIME_TYPE, HOST_OPTIONS_TYPE } from './framework-types';

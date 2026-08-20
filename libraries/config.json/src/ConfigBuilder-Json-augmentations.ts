@@ -14,8 +14,7 @@ interface ConfigSourceBuilder {
 
 export namespace ConfigBuilderJsonAugmentations {
   /** Registers a {@link JsonConfigSource} reading `path` (resolved against `process.cwd()`). */
-  export function addJsonFile<Self extends ConfigSourceBuilder>(this: Self, path: string,
-    opts?: JsonConfigSourceOptions): Self {
+  export function addJsonFile<Self extends ConfigSourceBuilder>(this: Self, path: string, opts?: JsonConfigSourceOptions): Self {
     return this.add(new JsonConfigSource(path, opts)) as Self;
   }
 

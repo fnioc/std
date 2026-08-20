@@ -11,8 +11,7 @@
 // interleaved from another async flow, while a tracking entry is pending across an
 // `await`, sees (and propagates to) that pending entry.
 
-import { CacheItemPriority, EvictionReason, type ICacheEntry,
-  type PostEvictionCallbackRegistration } from '@rhombus-std/caching.core';
+import { CacheItemPriority, EvictionReason, type ICacheEntry, type PostEvictionCallbackRegistration } from '@rhombus-std/caching.core';
 import { type ILogger, logError } from '@rhombus-std/logging.core';
 import { augment, type IChangeToken } from '@rhombus-std/primitives';
 import { typefor } from '@rhombus-std/primitives.extras';
@@ -343,8 +342,7 @@ export class CacheEntry implements ICacheEntry {
       try {
         registration.evictionCallback?.(this.#key, this.#value, this.#evictionReason, registration.state);
       } catch (error) {
-        logError(this.#host.logger, error instanceof Error ? error : new Error(String(error)),
-          'EvictionCallback invoked failed');
+        logError(this.#host.logger, error instanceof Error ? error : new Error(String(error)), 'EvictionCallback invoked failed');
       }
     }
   }

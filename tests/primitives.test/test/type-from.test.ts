@@ -286,8 +286,7 @@ function generate(random: () => number, depth: number): Type {
   const children = (most: number) => Array.from({ length: many(most) }, child);
   // At least one row, since a callable answers to at least one call.
   const rows = () => Array.from({ length: 1 + many(2) }, () => children(2));
-  const kinds = ['union', 'intersection', 'tuple', 'func', 'ctor', 'global', 'imported', 'object', 'literal', 'generic',
-    'tag'];
+  const kinds = ['union', 'intersection', 'tuple', 'func', 'ctor', 'global', 'imported', 'object', 'literal', 'generic', 'tag'];
   switch (pick(kinds)) {
     case 'union': {
       return Type.union(...Array.from({ length: 2 + many(2) }, child));

@@ -3,8 +3,7 @@
 // processValue override. Black-box through the public @rhombus-std/config
 // surface via the standalone member form.
 
-import { ConfigBuilder, type ConfigDebugViewContext, ConfigRootAugmentations,
-  type IConfigRoot } from '@rhombus-std/config';
+import { ConfigBuilder, type ConfigDebugViewContext, ConfigRootAugmentations, type IConfigRoot } from '@rhombus-std/config';
 import { describe, expect, test } from 'bun:test';
 import { rootOf } from './support';
 
@@ -12,8 +11,7 @@ const { getDebugView } = ConfigRootAugmentations;
 
 describe('getDebugView', () => {
   function tree(): IConfigRoot {
-    return rootOf({ 'Server:Host': 'localhost', 'Server:Port': '8080',
-      'ConnectionStrings:Default': 'secret-value' }) as IConfigRoot;
+    return rootOf({ 'Server:Host': 'localhost', 'Server:Port': '8080', 'ConnectionStrings:Default': 'secret-value' }) as IConfigRoot;
   }
 
   test('renders leaves as key=value (provider) and intermediate nodes as key:', () => {

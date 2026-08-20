@@ -24,15 +24,13 @@ export namespace MemoryCacheEntryOptionsSugarAugmentations {
   }
 
   /** Expires the entry the bag is applied to when `expirationToken` fires. */
-  export function addExpirationToken(this: MemoryCacheEntryOptions,
-    expirationToken: IChangeToken): MemoryCacheEntryOptions {
+  export function addExpirationToken(this: MemoryCacheEntryOptions, expirationToken: IChangeToken): MemoryCacheEntryOptions {
     this.expirationTokens.push(expirationToken);
     return this;
   }
 
   /** Sets an absolute expiration -- a number of milliseconds from now, or an absolute `Date`. */
-  export function setAbsoluteExpiration(this: MemoryCacheEntryOptions,
-    expiration: number | Date): MemoryCacheEntryOptions {
+  export function setAbsoluteExpiration(this: MemoryCacheEntryOptions, expiration: number | Date): MemoryCacheEntryOptions {
     if (expiration instanceof Date) {
       this.absoluteExpiration = expiration;
     } else {
@@ -48,8 +46,7 @@ export namespace MemoryCacheEntryOptionsSugarAugmentations {
   }
 
   /** Registers a callback fired after the entry the bag is applied to is evicted. */
-  export function registerPostEvictionCallback(this: MemoryCacheEntryOptions, callback: PostEvictionDelegate,
-    state?: unknown): MemoryCacheEntryOptions {
+  export function registerPostEvictionCallback(this: MemoryCacheEntryOptions, callback: PostEvictionDelegate, state?: unknown): MemoryCacheEntryOptions {
     const registration = new PostEvictionCallbackRegistration();
     registration.evictionCallback = callback;
     registration.state = state;

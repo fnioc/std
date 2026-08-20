@@ -96,8 +96,7 @@ export interface IServerReport {
 // line for line.
 
 // The checkout pipeline the RESOLUTION demonstration is built on.
-export type { CheckoutOrder, IAuditTrail, IExchangeRates, IFraudScreen, IOrderValidator, IPaymentGateway,
-  IPaymentRouter, IReceipt, IReceiptNumbering } from './resolution-contracts.js';
+export type { CheckoutOrder, IAuditTrail, IExchangeRates, IFraudScreen, IOrderValidator, IPaymentGateway, IPaymentRouter, IReceipt, IReceiptNumbering } from './resolution-contracts.js';
 
 // The three-deep entity/table/repository chain the OPEN-GENERICS demonstration
 // closes one hole at a time.

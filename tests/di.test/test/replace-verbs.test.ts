@@ -107,7 +107,9 @@ describe('the string boundary', () => {
   });
 
   test('tagging a type that already carries a tag is a contradiction', () => {
-    expect(() => Type.tag(Type.tag(A, 'primary'), 'secondary')).toThrow();
+    // Statically refused (a tagged base is not a legal tag base); the cast
+    // reaches the runtime guard a checker-less caller would hit.
+    expect(() => Type.tag(Type.tag(A, 'primary') as any, 'secondary')).toThrow();
   });
 });
 

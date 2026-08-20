@@ -88,8 +88,7 @@ export namespace ConsoleLoggerAugmentations {
    * applies to the shared {@link ConsoleLoggerOptions} and re-runs the
    * provider's option-reload path.
    */
-  export function addConsole<Self extends ILoggingBuilder>(this: Self,
-    configure?: Func<[ConsoleLoggerOptions], void>): Self {
+  export function addConsole<Self extends ILoggingBuilder>(this: Self, configure?: Func<[ConsoleLoggerOptions], void>): Self {
     const registration = getRegistration(this);
     if (registration.provider === undefined) {
       registration.provider = new ConsoleLoggerProvider(registration.loggerOptions, [
@@ -111,8 +110,7 @@ export namespace ConsoleLoggerAugmentations {
    * Adds the default console log formatter named `"simple"` — optionally
    * configuring its {@link SimpleConsoleFormatterOptions}.
    */
-  export function addSimpleConsole<Self extends ILoggingBuilder>(this: Self,
-    configure?: Func<[SimpleConsoleFormatterOptions], void>): Self {
+  export function addSimpleConsole<Self extends ILoggingBuilder>(this: Self, configure?: Func<[SimpleConsoleFormatterOptions], void>): Self {
     addFormatterWithName(this, ConsoleFormatterNames.simple);
     if (configure !== undefined) {
       getRegistration(this).simpleOptions.reload(configure);
@@ -124,8 +122,7 @@ export namespace ConsoleLoggerAugmentations {
    * Adds the console log formatter named `"json"` — optionally configuring
    * its {@link JsonConsoleFormatterOptions}.
    */
-  export function addJsonConsole<Self extends ILoggingBuilder>(this: Self,
-    configure?: Func<[JsonConsoleFormatterOptions], void>): Self {
+  export function addJsonConsole<Self extends ILoggingBuilder>(this: Self, configure?: Func<[JsonConsoleFormatterOptions], void>): Self {
     addFormatterWithName(this, ConsoleFormatterNames.json);
     if (configure !== undefined) {
       getRegistration(this).jsonOptions.reload(configure);
@@ -137,8 +134,7 @@ export namespace ConsoleLoggerAugmentations {
    * Adds the console log formatter named `"systemd"` — optionally configuring
    * its {@link ConsoleFormatterOptions}.
    */
-  export function addSystemdConsole<Self extends ILoggingBuilder>(this: Self,
-    configure?: Func<[ConsoleFormatterOptions], void>): Self {
+  export function addSystemdConsole<Self extends ILoggingBuilder>(this: Self, configure?: Func<[ConsoleFormatterOptions], void>): Self {
     addFormatterWithName(this, ConsoleFormatterNames.systemd);
     if (configure !== undefined) {
       getRegistration(this).systemdOptions.reload(configure);

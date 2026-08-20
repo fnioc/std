@@ -25,8 +25,7 @@ export class MemoryCacheStatistics {
   public readonly totalEvictions: number;
 
   public constructor(
-    init: { currentEntryCount?: number; currentEstimatedSize?: number; totalMisses?: number; totalHits?: number;
-      totalEvictions?: number; } = {},
+    init: { currentEntryCount?: number; currentEstimatedSize?: number; totalMisses?: number; totalHits?: number; totalEvictions?: number; } = {},
   ) {
     this.currentEntryCount = init.currentEntryCount ?? 0;
     this.currentEstimatedSize = init.currentEstimatedSize;

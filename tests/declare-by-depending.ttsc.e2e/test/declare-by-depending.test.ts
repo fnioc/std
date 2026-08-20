@@ -103,8 +103,7 @@ function writeProject(projDir: string): void {
   writeFileSync(join(projDir, 'src', 'typefor.ts'), `export declare function typefor<T>(): unknown;\n`);
   writeFileSync(join(projDir, 'src', 'app.ts'), APP_SOURCE);
   writeFileSync(join(projDir, 'tsconfig.json'), JSON.stringify({
-    compilerOptions: { target: 'ES2022', module: 'ESNext', moduleResolution: 'Bundler', lib: ['ESNext'], strict: true,
-      outDir: 'dist', rootDir: 'src', skipLibCheck: true, noEmitOnError: false },
+    compilerOptions: { target: 'ES2022', module: 'ESNext', moduleResolution: 'Bundler', lib: ['ESNext'], strict: true, outDir: 'dist', rootDir: 'src', skipLibCheck: true, noEmitOnError: false },
     include: ['src/**/*'],
   }));
 }
@@ -150,8 +149,7 @@ beforeAll(async () => {
   // host reaches it through the scan. The transitive @rhombus-std packages are
   // linked so the host's walk resolves them from the fixture's node_modules.
   writeFileSync(join(CONSUMER, 'package.json'),
-    JSON.stringify({ name: '@fixture/consumer', private: true, devDependencies: { '@rhombus-std/di.extras': '*' },
-      'rhombus-std': { typefor: { emit: 'inline' } } }));
+    JSON.stringify({ name: '@fixture/consumer', private: true, devDependencies: { '@rhombus-std/di.extras': '*' }, 'rhombus-std': { typefor: { emit: 'inline' } } }));
   linkToolchain(CONSUMER);
   const cScoped = join(CONSUMER, 'node_modules', '@rhombus-std');
   link(lib('di.extras'), join(cScoped, 'di.extras'));
@@ -164,8 +162,7 @@ beforeAll(async () => {
   // auto-discovery spawns no host — even though di.core devDeps
   // primitives.extras to lower its OWN source (a transitive devDep that must
   // not leak).
-  writeFileSync(join(CORE_ONLY, 'package.json'),
-    JSON.stringify({ name: '@fixture/core-only', private: true, dependencies: { '@rhombus-std/di.core': '*' } }));
+  writeFileSync(join(CORE_ONLY, 'package.json'), JSON.stringify({ name: '@fixture/core-only', private: true, dependencies: { '@rhombus-std/di.core': '*' } }));
   linkToolchain(CORE_ONLY);
   link(lib('di.core'), join(CORE_ONLY, 'node_modules', '@rhombus-std', 'di.core'));
   writeProject(CORE_ONLY);

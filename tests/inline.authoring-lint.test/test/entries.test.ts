@@ -47,8 +47,7 @@ describe('entryKind', () => {
   });
 
   test('empty-string fields count as absent', () => {
-    expect(entryKind({ type: '', impl: 'p:fn', member: 'm' })).toEqual({ kind: 'static-member',
-      status: 'uncertified' });
+    expect(entryKind({ type: '', impl: 'p:fn', member: 'm' })).toEqual({ kind: 'static-member', status: 'uncertified' });
     expect(entryKind({ impl: 'p:fn', member: '' })).toEqual({ kind: 'floater', status: 'certified' });
   });
 });
@@ -115,8 +114,7 @@ describe('loadInlineEntries', () => {
 
   test('a chain of two files resolves base-then-local at each hop', () => {
     const dir = pkg({ extends: './a.json' });
-    writeFileSync(join(dir, 'a.json'),
-      JSON.stringify({ extends: './b.json', inline: { entries: [{ impl: 'p:fromA' }] } }));
+    writeFileSync(join(dir, 'a.json'), JSON.stringify({ extends: './b.json', inline: { entries: [{ impl: 'p:fromA' }] } }));
     writeFileSync(join(dir, 'b.json'), JSON.stringify({ inline: { entries: [{ impl: 'p:fromB' }] } }));
     const entries = loadInlineEntries(dir);
     expect(entries.map((e: { impl?: string; }) => e.impl)).toEqual(['p:fromB', 'p:fromA']);
@@ -124,10 +122,8 @@ describe('loadInlineEntries', () => {
 
   test('a cycle resolves clean instead of looping', () => {
     const dir = pkg({ extends: './a.json' });
-    writeFileSync(join(dir, 'a.json'),
-      JSON.stringify({ extends: './b.json', inline: { entries: [{ impl: 'p:fromA' }] } }));
-    writeFileSync(join(dir, 'b.json'),
-      JSON.stringify({ extends: './a.json', inline: { entries: [{ impl: 'p:fromB' }] } }));
+    writeFileSync(join(dir, 'a.json'), JSON.stringify({ extends: './b.json', inline: { entries: [{ impl: 'p:fromA' }] } }));
+    writeFileSync(join(dir, 'b.json'), JSON.stringify({ extends: './a.json', inline: { entries: [{ impl: 'p:fromB' }] } }));
     const entries = loadInlineEntries(dir);
     expect(entries.map((e: { impl?: string; }) => e.impl)).toEqual(['p:fromB', 'p:fromA']);
   });

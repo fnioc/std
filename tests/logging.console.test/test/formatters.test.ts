@@ -18,8 +18,7 @@ import { Options } from '@rhombus-std/options';
 import { expect, test } from 'bun:test';
 
 function entry(overrides?: Partial<LogEntry<string>>): LogEntry<string> {
-  return { logLevel: LogLevel.Information, category: 'Test.Category', eventId: new EventId(10),
-    state: 'Request received', error: undefined, formatter: (state) => state, ...overrides };
+  return { logLevel: LogLevel.Information, category: 'Test.Category', eventId: new EventId(10), state: 'Request received', error: undefined, formatter: (state) => state, ...overrides };
 }
 
 /** A minimal scope stack implementing IExternalScopeProvider. */
@@ -46,8 +45,10 @@ test('simple: default multi-line format', () => {
 
 test('simple: level strings cover every writable level', () => {
   const formatter = new SimpleConsoleFormatter(Options.of(new SimpleConsoleFormatterOptions()));
-  const cases: Array<[LogLevel, string]> = [[LogLevel.Trace, 'trce'], [LogLevel.Debug, 'dbug'], [LogLevel.Information,
-    'info'], [LogLevel.Warning, 'warn'], [LogLevel.Error, 'fail'], [LogLevel.Critical, 'crit']];
+  const cases: Array<[LogLevel, string]> = [[LogLevel.Trace, 'trce'], [LogLevel.Debug, 'dbug'], [LogLevel.Information, 'info'], [LogLevel.Warning, 'warn'], [LogLevel.Error, 'fail'], [
+    LogLevel.Critical,
+    'crit',
+  ]];
   for (const [logLevel, label] of cases) {
     const writer = new StringWriter();
     formatter.write(entry({ logLevel }), undefined, writer);
@@ -165,8 +166,8 @@ test('systemd: single-line <pri> format', () => {
 
 test('systemd: syslog severities per level', () => {
   const formatter = new SystemdConsoleFormatter(Options.of(new ConsoleFormatterOptions()));
-  const cases: Array<[LogLevel, string]> = [[LogLevel.Trace, '<7>'], [LogLevel.Debug, '<7>'], [LogLevel.Information,
-    '<6>'], [LogLevel.Warning, '<4>'], [LogLevel.Error, '<3>'], [LogLevel.Critical, '<2>']];
+  const cases: Array<[LogLevel, string]> = [[LogLevel.Trace, '<7>'], [LogLevel.Debug, '<7>'], [LogLevel.Information, '<6>'], [LogLevel.Warning, '<4>'], [LogLevel.Error, '<3>'], [LogLevel.Critical,
+    '<2>']];
   for (const [logLevel, priority] of cases) {
     const writer = new StringWriter();
     formatter.write(entry({ logLevel }), undefined, writer);
@@ -197,10 +198,8 @@ test('json: compact single-line JSON with the reference property order', () => {
 
   const output = writer.toString();
   expect(output.endsWith('\n')).toBeTrue();
-  expect(JSON.parse(output)).toEqual({ EventId: 10, LogLevel: 'Information', Category: 'Test.Category',
-    Message: 'Request received', State: {} });
-  const parsed = JSON.parse(output) as { EventId: number; LogLevel: string; Category: string; Message: string;
-    State: unknown; };
+  expect(JSON.parse(output)).toEqual({ EventId: 10, LogLevel: 'Information', Category: 'Test.Category', Message: 'Request received', State: {} });
+  const parsed = JSON.parse(output) as { EventId: number; LogLevel: string; Category: string; Message: string; State: unknown; };
   expect(Object.keys(parsed)).toEqual(['EventId', 'LogLevel', 'Category', 'Message', 'State']);
 });
 

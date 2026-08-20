@@ -1,7 +1,6 @@
 import { AmbiguousUnionError, CycleError } from '@rhombus-std/di.core';
-import { type ArrayType, type ConstructorType, first, type FunctionType, type GenericType, type GlobalType,
-  type ImportedType, type IntersectionType, isAllThere, type IterableType, type ObjectType, type TagType,
-  type TupleType, Type, type TypeLiteralType, type UnionType } from '@rhombus-std/primitives';
+import { type ArrayType, type ConstructorType, first, type FunctionType, type GenericType, type GlobalType, type ImportedType, type IntersectionType, isAllThere, type IterableType, type ObjectType,
+  type TagType, type TupleType, Type, type TypeLiteralType, type UnionType } from '@rhombus-std/primitives';
 import type { Answer, Registry } from '../Registry.js';
 import { CallSite } from './CallSite.js';
 

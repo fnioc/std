@@ -53,8 +53,7 @@ export interface PageContext {
  * `undefined` deeper inside a lifetime/bridge.
  */
 export function defaultPageContext(): PageContext {
-  const { document, window } = globalThis as unknown as { document: DocumentLike | undefined;
-    window: WindowLike | undefined; };
+  const { document, window } = globalThis as unknown as { document: DocumentLike | undefined; window: WindowLike | undefined; };
   if (document === undefined || window === undefined) {
     throw new Error(
       '@rhombus-std/hosting.browser requires a browser page context (document/window); '

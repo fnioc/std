@@ -51,8 +51,7 @@ export namespace ConfigBuilderFileAugmentations {
   }
 
   /** Sets the default action invoked when a file-based source's load throws. */
-  export function setFileLoadErrorHandler<Self extends ConfigBuilderProperties>(this: Self,
-    handler: FileLoadErrorHandler): Self {
+  export function setFileLoadErrorHandler<Self extends ConfigBuilderProperties>(this: Self, handler: FileLoadErrorHandler): Self {
     this.properties.set(FILE_LOAD_ERROR_HANDLER_KEY, handler);
     return this;
   }

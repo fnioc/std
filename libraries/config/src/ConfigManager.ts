@@ -1,5 +1,4 @@
-import type { ConfigObject, IConfigBuilder, IConfigManager, IConfigProvider, IConfigRoot, IConfigSection,
-  IConfigSource } from '@rhombus-std/config.core';
+import type { ConfigObject, IConfigBuilder, IConfigManager, IConfigProvider, IConfigRoot, IConfigSection, IConfigSource } from '@rhombus-std/config.core';
 import { augment, ChangeToken, type IChangeToken } from '@rhombus-std/primitives';
 import { typefor } from '@rhombus-std/primitives.extras';
 import type { Func } from '@rhombus-toolkit/func';

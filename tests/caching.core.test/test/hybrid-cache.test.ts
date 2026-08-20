@@ -4,8 +4,7 @@
 // recording subclass, and a hand-written IHybridCacheSerializer /
 // IHybridCacheSerializerFactory pair (the compile-time contract guard).
 
-import { HybridCache, HybridCacheEntryFlags, HybridCacheEntryOptions, type IHybridCacheSerializer,
-  type IHybridCacheSerializerFactory } from '@rhombus-std/caching.core';
+import { HybridCache, HybridCacheEntryFlags, HybridCacheEntryOptions, type IHybridCacheSerializer, type IHybridCacheSerializerFactory } from '@rhombus-std/caching.core';
 import { type AbortSignal, Type } from '@rhombus-std/primitives';
 import { describe, expect, test } from 'bun:test';
 
@@ -39,8 +38,7 @@ describe('HybridCacheEntryOptions', () => {
   });
 
   test('stores the init-bag values readonly', () => {
-    const options = new HybridCacheEntryOptions({ expiration: 60_000, localCacheExpiration: 5_000,
-      flags: HybridCacheEntryFlags.DisableCompression });
+    const options = new HybridCacheEntryOptions({ expiration: 60_000, localCacheExpiration: 5_000, flags: HybridCacheEntryFlags.DisableCompression });
     expect(options.expiration).toBe(60_000);
     expect(options.localCacheExpiration).toBe(5_000);
     expect(options.flags).toBe(HybridCacheEntryFlags.DisableCompression);
@@ -93,8 +91,7 @@ describe('HybridCache', () => {
 
     await cache.removeKeys(['a', 'b', 'c'], signal);
 
-    expect(cache.calls).toEqual([{ member: 'remove', arg: 'a', abortSignal: signal }, { member: 'remove', arg: 'b',
-      abortSignal: signal }, { member: 'remove', arg: 'c', abortSignal: signal }]);
+    expect(cache.calls).toEqual([{ member: 'remove', arg: 'a', abortSignal: signal }, { member: 'remove', arg: 'b', abortSignal: signal }, { member: 'remove', arg: 'c', abortSignal: signal }]);
   });
 
   test('removeKeys over an empty iterable removes nothing', async () => {
@@ -115,8 +112,7 @@ describe('HybridCache', () => {
 
     await cache.removeByTags(['t1', 't2'], signal);
 
-    expect(cache.calls).toEqual([{ member: 'removeByTag', arg: 't1', abortSignal: signal }, { member: 'removeByTag',
-      arg: 't2', abortSignal: signal }]);
+    expect(cache.calls).toEqual([{ member: 'removeByTag', arg: 't1', abortSignal: signal }, { member: 'removeByTag', arg: 't2', abortSignal: signal }]);
   });
 
   test('the batch defaults are independently overridable', async () => {
@@ -131,8 +127,7 @@ describe('HybridCache', () => {
     await cache.removeKeys(['a', 'b']);
     await cache.removeByTags(['t']);
 
-    expect(cache.calls).toEqual([{ member: 'removeKeys', arg: 'a,b', abortSignal: undefined }, { member: 'removeByTag',
-      arg: 't', abortSignal: undefined }]);
+    expect(cache.calls).toEqual([{ member: 'removeKeys', arg: 'a,b', abortSignal: undefined }, { member: 'removeByTag', arg: 't', abortSignal: undefined }]);
   });
 });
 

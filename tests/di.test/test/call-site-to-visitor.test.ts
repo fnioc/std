@@ -2,8 +2,7 @@
 // is checked against the registry first; the per-kind visit methods are the fallback decomposition
 // or synthesis a whole-type miss falls back to.
 
-import { AmbiguousUnionError, CycleError, DefaultManifest, type Manifest,
-  ServiceDescriptor } from '@rhombus-std/di.core';
+import { AmbiguousUnionError, CycleError, DefaultManifest, type Manifest, ServiceDescriptor } from '@rhombus-std/di.core';
 import { CallSite } from '@rhombus-std/di/tokens/internal/CallSite/CallSite';
 import { ToCallSiteVisitor } from '@rhombus-std/di/tokens/internal/CallSite/ToCallSiteVisitor';
 import { Registry } from '@rhombus-std/di/tokens/internal/Registry';

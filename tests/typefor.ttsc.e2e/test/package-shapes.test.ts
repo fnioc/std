@@ -96,13 +96,10 @@ beforeAll(() => {
   const lib = join(nm, 'your-lib');
   mkdirSync(join(lib, 'contracts'), { recursive: true });
   mkdirSync(join(lib, 'internal'), { recursive: true });
-  writeFileSync(join(lib, 'package.json'),
-    JSON.stringify({ name: 'your-lib', version: '3.4.5',
-      exports: { '.': './index.js', './contracts': './contracts/index.js' } }));
+  writeFileSync(join(lib, 'package.json'), JSON.stringify({ name: 'your-lib', version: '3.4.5', exports: { '.': './index.js', './contracts': './contracts/index.js' } }));
   // Everything a call site derives for is barrel-reachable: the strict derivation
   // rejects a type reachable only through a non-barrel, non-`./tokens/*` subpath.
-  writeFileSync(join(lib, 'index.d.ts'),
-    `export { Deep } from "./internal/deep";\nexport { IFoo, Scoped } from "./contracts/index.js";\n`);
+  writeFileSync(join(lib, 'index.d.ts'), `export { Deep } from "./internal/deep";\nexport { IFoo, Scoped } from "./contracts/index.js";\n`);
   writeFileSync(join(lib, 'internal', 'deep.d.ts'), `export interface Deep {}\n`);
   writeFileSync(join(lib, 'contracts', 'index.d.ts'),
     `export interface IFoo {}\nexport interface ScopedBase<S extends string> {}\nexport type Scoped<S extends string = "singleton"> = ScopedBase<S>;\n`);
@@ -130,8 +127,7 @@ export const publicExplicitAlias = typefor<Scoped<"request">>();
     'rhombus-std': { typefor: { emit: 'inline' } },
   }));
   writeFileSync(join(projDir, 'tsconfig.json'), JSON.stringify({
-    compilerOptions: { target: 'ES2022', module: 'ESNext', moduleResolution: 'Bundler', lib: ['ESNext'], strict: true,
-      outDir: 'dist', rootDir: 'src', skipLibCheck: true, noEmitOnError: false,
+    compilerOptions: { target: 'ES2022', module: 'ESNext', moduleResolution: 'Bundler', lib: ['ESNext'], strict: true, outDir: 'dist', rootDir: 'src', skipLibCheck: true, noEmitOnError: false,
       plugins: [{ transform: '@rhombus-std/primitives.extras/ttsc' }] },
     include: ['src/**/*'],
   }));

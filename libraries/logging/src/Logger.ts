@@ -37,8 +37,7 @@ export class Logger implements ILogger {
     this.loggers = loggers;
   }
 
-  public log<TState>(logLevel: LogLevel, eventId: EventId, state: TState, error: Error | undefined,
-    formatter: Func<[TState, Error | undefined], string>): void {
+  public log<TState>(logLevel: LogLevel, eventId: EventId, state: TState, error: Error | undefined, formatter: Func<[TState, Error | undefined], string>): void {
     const loggers = this.messageLoggers;
     if (loggers === undefined) {
       return;

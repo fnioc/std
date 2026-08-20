@@ -16,12 +16,9 @@ import { LOGGER_FILTER_OPTIONS_TYPE } from './types';
 
 export namespace LoggerFilterOptionsExtensions {
   /** Adds a `(category, level)` rule, or a raw `(providerName, categoryName, level) => boolean` filter. */
-  export function addFilter<Self extends LoggerFilterOptions>(this: Self, category: string | undefined,
-    level: LogLevel): Self;
-  export function addFilter<Self extends LoggerFilterOptions>(this: Self,
-    filter: Func<[string | undefined, string | undefined, LogLevel], boolean>): Self;
-  export function addFilter<Self extends LoggerFilterOptions>(this: Self,
-    first: string | undefined | Func<[string | undefined, string | undefined, LogLevel], boolean>,
+  export function addFilter<Self extends LoggerFilterOptions>(this: Self, category: string | undefined, level: LogLevel): Self;
+  export function addFilter<Self extends LoggerFilterOptions>(this: Self, filter: Func<[string | undefined, string | undefined, LogLevel], boolean>): Self;
+  export function addFilter<Self extends LoggerFilterOptions>(this: Self, first: string | undefined | Func<[string | undefined, string | undefined, LogLevel], boolean>,
     ...rest: readonly any[]): Self {
     if (typeof first === 'function') {
       this.rules.push(new LoggerFilterRule(undefined, undefined, undefined, first));
@@ -40,13 +37,9 @@ registerAugmentations<LoggerFilterOptions>(LoggerFilterOptionsExtensions);
 
 export namespace FilterLoggingBuilderExtensions {
   /** Adds a `(category, level)` rule, or a raw `(providerName, categoryName, level) => boolean` filter. */
-  export function addFilter<Self extends ILoggingBuilder>(this: Self, category: string | undefined,
-    level: LogLevel): Self;
-  export function addFilter<Self extends ILoggingBuilder>(this: Self,
-    filter: Func<[string | undefined, string | undefined, LogLevel], boolean>): Self;
-  export function addFilter<Self extends ILoggingBuilder>(this: Self,
-    first: string | undefined | Func<[string | undefined, string | undefined, LogLevel], boolean>,
-    ...rest: readonly any[]): Self {
+  export function addFilter<Self extends ILoggingBuilder>(this: Self, category: string | undefined, level: LogLevel): Self;
+  export function addFilter<Self extends ILoggingBuilder>(this: Self, filter: Func<[string | undefined, string | undefined, LogLevel], boolean>): Self;
+  export function addFilter<Self extends ILoggingBuilder>(this: Self, first: string | undefined | Func<[string | undefined, string | undefined, LogLevel], boolean>, ...rest: readonly any[]): Self {
     return configureFilter(this, (options) => {
       if (typeof first === 'function') {
         options.addFilter(first);
@@ -62,8 +55,7 @@ declare module '@rhombus-std/logging.core' {
 }
 
 /** Registers `configureOptions` as a configure step for the {@link LOGGER_FILTER_OPTIONS_TYPE} pipeline. */
-function configureFilter(builder: ILoggingBuilder,
-  configureOptions: Func<[LoggerFilterOptions], void>): ILoggingBuilder {
+function configureFilter(builder: ILoggingBuilder, configureOptions: Func<[LoggerFilterOptions], void>): ILoggingBuilder {
   // The chain is immutable: `configure` hands back a NEW manifest, so it must be
   // written into the builder's slot -- a bare call would register nothing.
   builder.services = builder.services.configure(LOGGER_FILTER_OPTIONS_TYPE, configureOptions);

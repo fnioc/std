@@ -31,8 +31,7 @@ export class Logger<T> implements ILogger<T> {
     this.#logger = factory.createLogger(categoryType.name);
   }
 
-  public log<TState>(logLevel: LogLevel, eventId: EventId, state: TState, error: Error | undefined,
-    formatter: Func<[TState, Error | undefined], string>): void {
+  public log<TState>(logLevel: LogLevel, eventId: EventId, state: TState, error: Error | undefined, formatter: Func<[TState, Error | undefined], string>): void {
     this.#logger.log(logLevel, eventId, state, error, formatter);
   }
 

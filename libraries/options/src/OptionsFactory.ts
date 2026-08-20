@@ -23,8 +23,7 @@ export class OptionsFactory<T> {
    * @param validates The validate steps, run last against the post-configured
    * value.
    */
-  constructor(makeBase: Func<[], T>, configures: Iterable<IConfigureOptions<T>>,
-    postConfigures: Iterable<IPostConfigureOptions<T>>, validates: Iterable<IValidateOptions<T>> = []) {
+  constructor(makeBase: Func<[], T>, configures: Iterable<IConfigureOptions<T>>, postConfigures: Iterable<IPostConfigureOptions<T>>, validates: Iterable<IValidateOptions<T>> = []) {
     this.#makeBase = makeBase;
     this.#configures = [...configures];
     this.#postConfigures = [...postConfigures];

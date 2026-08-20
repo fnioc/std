@@ -4,10 +4,8 @@
 // ConfigProvider base is subclassable, and that a root builds and coerces
 // end-to-end through the public entry point alone.
 
-import { compareConfigKeys, ConfigBuilder, type ConfigObject, configPath, ConfigProvider, ConfigRoot, ConfigSection,
-  type IConfig, type IConfigBuilder, type IConfigProvider, type IConfigRoot, type IConfigSection, type IConfigSource,
-  type IndexedSection, type ITryGetResult, MemoryConfigProvider, MemoryConfigSource,
-  SchemaCoercionError } from '@rhombus-std/config';
+import { compareConfigKeys, ConfigBuilder, type ConfigObject, configPath, ConfigProvider, ConfigRoot, ConfigSection, type IConfig, type IConfigBuilder, type IConfigProvider, type IConfigRoot,
+  type IConfigSection, type IConfigSource, type IndexedSection, type ITryGetResult, MemoryConfigProvider, MemoryConfigSource, SchemaCoercionError } from '@rhombus-std/config';
 import { Type } from '@rhombus-std/primitives';
 import { describe, expect, test } from 'bun:test';
 

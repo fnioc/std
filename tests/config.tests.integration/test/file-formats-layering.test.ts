@@ -6,8 +6,8 @@
 //
 // In-memory stream payloads are used so the test needs no fixture files.
 
-import assert from 'node:assert/strict';
 import { describe, test } from 'bun:test';
+import assert from 'node:assert/strict';
 
 import { ConfigBuilder } from '@rhombus-std/config';
 // Bare side-effect imports: install addJsonStream / addIniStream / addXmlStream

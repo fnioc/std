@@ -21,8 +21,7 @@ class RecordingLogger implements ILogger {
   public readonly entries: Entry[] = [];
   public enabled = true;
 
-  public log<TState>(logLevel: LogLevel, eventId: EventId, state: TState, error: Error | undefined,
-    formatter: (state: TState, error: Error | undefined) => string): void {
+  public log<TState>(logLevel: LogLevel, eventId: EventId, state: TState, error: Error | undefined, formatter: (state: TState, error: Error | undefined) => string): void {
     this.entries.push({ level: logLevel, eventId, message: formatter(state, error), error });
   }
 
@@ -61,8 +60,7 @@ test('each member writes its fixed message at the reference level and event id',
     LoggerEventIds.backgroundServiceFaulted,
     'BackgroundService failed',
     error,
-  ], [(l) => hostingLog.backgroundServiceStoppingHost(l, error), LogLevel.Critical,
-    LoggerEventIds.backgroundServiceStoppingHost,
+  ], [(l) => hostingLog.backgroundServiceStoppingHost(l, error), LogLevel.Critical, LoggerEventIds.backgroundServiceStoppingHost,
     'A BackgroundService has thrown an unhandled error, and the host is stopping.', error], [
     (l) => hostingLog.hostedServiceStartupFaulted(l, error),
     LogLevel.Error,
@@ -104,8 +102,7 @@ test("applicationError writes at critical severity with the caller's event id", 
   const logger = new RecordingLogger();
   const error = new Error('listener failed');
 
-  hostingLog.applicationError(logger, LoggerEventIds.applicationStoppingError,
-    'An error occurred stopping the application', error);
+  hostingLog.applicationError(logger, LoggerEventIds.applicationStoppingError, 'An error occurred stopping the application', error);
 
   expect(logger.entries).toHaveLength(1);
   const entry = logger.entries[0]!;

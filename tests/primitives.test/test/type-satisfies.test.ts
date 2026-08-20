@@ -50,16 +50,14 @@ describe('Type.satisfies on tags', () => {
 
 describe('Type.match on tags', () => {
   test('an open tagged pattern closes over the request it matched', () => {
-    const [matched, generics] = Type.match(Type.tag(Type.imported('Box', 'app', [Type.generic('T')]), 'primary'),
-      Type.tag(Type.imported('Box', 'app', [A]), 'primary'));
+    const [matched, generics] = Type.match(Type.tag(Type.imported('Box', 'app', [Type.generic('T')]), 'primary'), Type.tag(Type.imported('Box', 'app', [A]), 'primary'));
     expect(matched).toBe(true);
     expect(generics!.get('T')!).toBe(A);
   });
 
   test('an untagged pattern does not match a tagged subject', () => {
     expect(
-      Type.match(Type.imported('Box', 'app', [Type.generic('T')]),
-        Type.tag(Type.imported('Box', 'app', [A]), 'primary'))[0],
+      Type.match(Type.imported('Box', 'app', [Type.generic('T')]), Type.tag(Type.imported('Box', 'app', [A]), 'primary'))[0],
     ).toBe(false);
   });
 

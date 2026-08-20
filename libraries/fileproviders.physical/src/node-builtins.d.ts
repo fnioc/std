@@ -23,11 +23,9 @@ declare module 'node:fs' {
   export function statSync(path: string, options: { throwIfNoEntry: false; }): Stats | undefined;
   export function readdirSync(path: string, options: { withFileTypes: true; }): Dirent[];
   export function openSync(path: string, flags: string): number;
-  export function readSync(fd: number, buffer: Uint8Array, offset: number, length: number,
-    position: number | null): number;
+  export function readSync(fd: number, buffer: Uint8Array, offset: number, length: number, position: number | null): number;
   export function closeSync(fd: number): void;
-  export function watch(path: string, options: { recursive?: boolean; },
-    listener: (eventType: string, filename: string | null) => void): FSWatcher;
+  export function watch(path: string, options: { recursive?: boolean; }, listener: (eventType: string, filename: string | null) => void): FSWatcher;
 }
 declare module 'node:path' {
   export function resolve(...paths: string[]): string;

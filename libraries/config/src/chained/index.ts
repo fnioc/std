@@ -15,8 +15,7 @@ interface ConfigSourceBuilder {
 
 export namespace ChainedBuilderAugmentations {
   /** Adds `config` as a chained configuration source. */
-  export function addConfig<Self extends ConfigSourceBuilder>(this: Self, config: IConfig,
-    shouldDisposeConfig = false): Self {
+  export function addConfig<Self extends ConfigSourceBuilder>(this: Self, config: IConfig, shouldDisposeConfig = false): Self {
     return this.add(new ChainedConfigSource({ config, shouldDisposeConfig })) as Self;
   }
 }

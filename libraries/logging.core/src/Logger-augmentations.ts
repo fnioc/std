@@ -155,8 +155,7 @@ export namespace LoggerAugmentations {
 // the merge here — see the doc comment on `LoggerAugmentations.log` above.
 declare module '@rhombus-std/logging.core' {
   interface ILogger<TCategoryName = unknown> extends Flatten<
-    Pick<typeof LoggerAugmentations,
-      'logTrace' | 'logDebug' | 'logInformation' | 'logWarning' | 'logError' | 'logCritical'>
+    Pick<typeof LoggerAugmentations, 'logTrace' | 'logDebug' | 'logInformation' | 'logWarning' | 'logError' | 'logCritical'>
   > {}
 }
 

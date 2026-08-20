@@ -28,8 +28,7 @@ const dir = import.meta.dir;
 const dist = join(dir, 'dist');
 rmSync(dist, { recursive: true, force: true });
 
-const dts = spawnSync('bun', ['x', 'tsc', '-p', 'tsconfig.json', '--emitDeclarationOnly', '--declaration', '--outDir',
-  'dist'], { cwd: dir, stdio: 'inherit' });
+const dts = spawnSync('bun', ['x', 'tsc', '-p', 'tsconfig.json', '--emitDeclarationOnly', '--declaration', '--outDir', 'dist'], { cwd: dir, stdio: 'inherit' });
 if (dts.status !== 0) {
   throw new Error('examples.lib.with-transformer: d.ts emit failed');
 }
@@ -46,16 +45,14 @@ const ttscTransforms = manual.length > 0 ? manual : undefined;
 
 // ttscTransforms is undefined, so @ttsc/unplugin/bun runs auto-discovery (the
 // one owner host, deduped to a single spawn); the host self-selects the stages.
-const stageDir = await stageLowering({ dir, name: 'examples.lib.with-transformer', ttscProject: 'tsconfig.ttsc.json',
-  ttscTransforms });
+const stageDir = await stageLowering({ dir, name: 'examples.lib.with-transformer', ttscProject: 'tsconfig.ttsc.json', ttscTransforms });
 
 const js = await Bun.build({
   entrypoints: [stagedEntrypoint(stageDir, 'src/index.ts')],
   outdir: dist,
   target: 'node',
   format: 'esm',
-  external: ['@rhombus-std/di.core', '@rhombus-std/options', '@rhombus-std/examples.contracts',
-    '@rhombus-std/primitives'],
+  external: ['@rhombus-std/di.core', '@rhombus-std/options', '@rhombus-std/examples.contracts', '@rhombus-std/primitives'],
 });
 if (!js.success) {
   for (const log of js.logs) {

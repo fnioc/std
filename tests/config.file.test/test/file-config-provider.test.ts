@@ -57,11 +57,9 @@ class FakeFileProvider implements IFileProvider {
     const provider = this;
     return { get exists() {
       return provider.exists;
-    }, length: -1, physicalPath: provider.physicalPath,
-      name: provider.physicalPath ? basename(provider.physicalPath) : '', lastModified: new Date(0), isDirectory: false,
-      createReadStream(): never {
-        throw new Error('not used in these tests');
-      } };
+    }, length: -1, physicalPath: provider.physicalPath, name: provider.physicalPath ? basename(provider.physicalPath) : '', lastModified: new Date(0), isDirectory: false, createReadStream(): never {
+      throw new Error('not used in these tests');
+    } };
   }
 
   public getDirectoryContents(): IDirectoryContents {

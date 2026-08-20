@@ -1,7 +1,6 @@
 import { MemoryConfigSource } from '@rhombus-std/config';
 import { Type } from '@rhombus-std/di.core';
-import { BackgroundService, Host, HOST_APPLICATION_LIFETIME_TYPE, HOST_ENVIRONMENT_TYPE, HostBuilder,
-  type IHostApplicationLifetime, type IHostedLifecycleService,
+import { BackgroundService, Host, HOST_APPLICATION_LIFETIME_TYPE, HOST_ENVIRONMENT_TYPE, HostBuilder, type IHostApplicationLifetime, type IHostedLifecycleService,
   type IHostEnvironment } from '@rhombus-std/hosting/tokens/index';
 import { HOSTED_SERVICE_TYPE } from '@rhombus-std/hosting/tokens/internal/Host';
 import type { Func } from '@rhombus-toolkit/func';
@@ -36,9 +35,7 @@ test('HostBuilder.build runs and stops its hosted services', async () => {
   }
 
   const builder = new HostBuilder();
-  builder.configureServices((_context, services) =>
-    services.addHostedService(Worker, Type.ctor(HOSTED_SERVICE_TYPE, [[]]))
-  );
+  builder.configureServices((_context, services) => services.addHostedService(Worker, Type.ctor(HOSTED_SERVICE_TYPE, [[]])));
 
   const host = builder.build();
   expect(host.services).toBeDefined();
@@ -77,9 +74,7 @@ test('lifecycle ordering: starting -> start -> started -> applicationStarted -> 
   }
 
   const builder = new HostBuilder();
-  builder.configureServices((_context, services) =>
-    services.addHostedService(Recorder, Type.ctor(HOSTED_SERVICE_TYPE, [[]]))
-  );
+  builder.configureServices((_context, services) => services.addHostedService(Recorder, Type.ctor(HOSTED_SERVICE_TYPE, [[]])));
 
   const host = builder.build();
   const lifetime: IHostApplicationLifetime = host.services.getRequiredService(
@@ -92,8 +87,7 @@ test('lifecycle ordering: starting -> start -> started -> applicationStarted -> 
   await host.start();
   await host.stop();
 
-  expect(events).toEqual(['starting', 'start', 'started', 'applicationStarted', 'stopping', 'applicationStopping',
-    'stop', 'stopped', 'applicationStopped']);
+  expect(events).toEqual(['starting', 'start', 'started', 'applicationStarted', 'stopping', 'applicationStopping', 'stop', 'stopped', 'applicationStopped']);
 
   host[Symbol.dispose]();
 });
@@ -133,9 +127,7 @@ test('BackgroundService: execute runs on start; stop aborts its stopping signal'
   }
 
   const builder = new HostBuilder();
-  builder.configureServices((_context, services) =>
-    services.addHostedService(Worker, Type.ctor(HOSTED_SERVICE_TYPE, [[]]))
-  );
+  builder.configureServices((_context, services) => services.addHostedService(Worker, Type.ctor(HOSTED_SERVICE_TYPE, [[]])));
 
   const host = builder.build();
   await host.start();

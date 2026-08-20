@@ -44,8 +44,7 @@ function select(options: LoggerFilterOptions, providerType: string, category: st
 const WILDCARD_CHAR = '*';
 
 /** Whether `rule` is a strictly better match than `current` for `logger`/`category`. */
-function isBetter(rule: LoggerFilterRule, current: LoggerFilterRule | undefined, logger: string,
-  category: string): boolean {
+function isBetter(rule: LoggerFilterRule, current: LoggerFilterRule | undefined, logger: string, category: string): boolean {
   if (rule.providerName !== undefined && rule.providerName !== logger) {
     return false;
   }

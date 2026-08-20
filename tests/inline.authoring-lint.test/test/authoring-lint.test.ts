@@ -158,16 +158,11 @@ describe('inline-authoring rule', () => {
   // One fixture per banned construct (a conditional is permitted — covered above).
   // Each is a single return expression whose only issue is the banned form, so the
   // rule reports bannedSyntax.
-  const bannedFixtures: Array<{ name: string; member: string; }> = [{ name: 'logical',
-    member: `bar<T>(this: any): boolean { return this.a && this.b; }` }, { name: 'assignment',
-    member: `bar<T>(this: any): boolean { return this.x = true; }` }, { name: 'comma sequence',
-    member: `bar<T>(this: any): boolean { return (this.a, this.b); }` }, { name: 'await',
-    member: `async bar<T>(this: any): Promise<boolean> { return await this.p(); }` }, { name: 'yield',
-    member: `*bar<T>(this: any): any { return yield this.g(); }` }, { name: 'new',
-    member: `bar<T>(this: any): unknown { return new this.C(); }` }, { name: 'nested arrow',
-    member: `bar<T>(this: any): unknown { return () => this.x; }` }, { name: 'nested function',
-    member: `bar<T>(this: any): unknown { return function () { return 1; }; }` }, { name: 'spread',
-    member: `bar<T>(this: any): unknown { return [...this.items]; }` }];
+  const bannedFixtures: Array<{ name: string; member: string; }> = [{ name: 'logical', member: `bar<T>(this: any): boolean { return this.a && this.b; }` }, { name: 'assignment',
+    member: `bar<T>(this: any): boolean { return this.x = true; }` }, { name: 'comma sequence', member: `bar<T>(this: any): boolean { return (this.a, this.b); }` }, { name: 'await',
+    member: `async bar<T>(this: any): Promise<boolean> { return await this.p(); }` }, { name: 'yield', member: `*bar<T>(this: any): any { return yield this.g(); }` }, { name: 'new',
+    member: `bar<T>(this: any): unknown { return new this.C(); }` }, { name: 'nested arrow', member: `bar<T>(this: any): unknown { return () => this.x; }` }, { name: 'nested function',
+    member: `bar<T>(this: any): unknown { return function () { return 1; }; }` }, { name: 'spread', member: `bar<T>(this: any): unknown { return [...this.items]; }` }];
   for (const { name, member } of bannedFixtures) {
     test(`banned ${name} → bannedSyntax`, () => {
       const src = `export const Foo = {\n  ${member},\n};\n`;

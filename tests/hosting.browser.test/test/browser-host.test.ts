@@ -1,7 +1,7 @@
 import { Type } from '@rhombus-std/di.core';
 import { HOST_LIFETIME_TYPE } from '@rhombus-std/hosting';
-import { BROWSER_LIFETIME_OPTIONS_TYPE, BrowserHost, BrowserLifetime, type BrowserLifetimeOptions,
-  createBrowserEnvironment, PAGE_LIFECYCLE_EVENTS_TYPE, PageLifecycleEvents } from '@rhombus-std/hosting.browser';
+import { BROWSER_LIFETIME_OPTIONS_TYPE, BrowserHost, BrowserLifetime, type BrowserLifetimeOptions, createBrowserEnvironment, PAGE_LIFECYCLE_EVENTS_TYPE,
+  PageLifecycleEvents } from '@rhombus-std/hosting.browser';
 import { Environments, HOSTED_SERVICE_TYPE, type IHostLifetime } from '@rhombus-std/hosting.core';
 import { LOGGER_PROVIDER_TYPE } from '@rhombus-std/logging';
 import { BrowserConsoleLoggerProvider } from '@rhombus-std/logging.browserconsole';
@@ -24,10 +24,9 @@ test("createBrowserEnvironment: names from settings, content root '/', null file
 test('the facade composes settings config, browser environment, console logging, lifetime, and the bridge', () => {
   const page = makeFakePage();
 
-  const builder = BrowserHost.createApplicationBuilder({ environmentName: Environments.Development,
-    applicationName: 'spa', initialData: { 'feature:flag': 'on' }, configureLifetime: (options) => {
-      options.stopOnPagehide = false;
-    }, pageContext: page.context });
+  const builder = BrowserHost.createApplicationBuilder({ environmentName: Environments.Development, applicationName: 'spa', initialData: { 'feature:flag': 'on' }, configureLifetime: (options) => {
+    options.stopOnPagehide = false;
+  }, pageContext: page.context });
 
   // Environment: browser-shaped through the ordinary builder settings.
   expect(builder.environment.environmentName).toBe('Development');

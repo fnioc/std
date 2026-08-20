@@ -12,15 +12,13 @@ import { MetricsOptions } from './MetricsOptions';
 
 export namespace MetricsOptionsAugmentations {
   /** Appends an ENABLE {@link InstrumentRule} directly to a {@link MetricsOptions}. */
-  export function enableMetrics<Self extends MetricsOptions>(this: Self, meterName?: string, instrumentName?: string,
-    listenerName?: string, scopes: MeterScope = METER_SCOPE_ALL): Self {
+  export function enableMetrics<Self extends MetricsOptions>(this: Self, meterName?: string, instrumentName?: string, listenerName?: string, scopes: MeterScope = METER_SCOPE_ALL): Self {
     this.rules.push(new InstrumentRule(meterName, instrumentName, listenerName, scopes, true));
     return this;
   }
 
   /** Appends a DISABLE {@link InstrumentRule} directly to a {@link MetricsOptions}. */
-  export function disableMetrics<Self extends MetricsOptions>(this: Self, meterName?: string, instrumentName?: string,
-    listenerName?: string, scopes: MeterScope = METER_SCOPE_ALL): Self {
+  export function disableMetrics<Self extends MetricsOptions>(this: Self, meterName?: string, instrumentName?: string, listenerName?: string, scopes: MeterScope = METER_SCOPE_ALL): Self {
     this.rules.push(new InstrumentRule(meterName, instrumentName, listenerName, scopes, false));
     return this;
   }

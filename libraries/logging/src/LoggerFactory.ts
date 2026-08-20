@@ -11,8 +11,7 @@
 
 import type { ServiceProvider } from '@rhombus-std/di';
 import { DefaultManifest } from '@rhombus-std/di.core';
-import { type IExternalScopeProvider, type ILogger, type ILoggerFactory, type ILoggerProvider, type ILoggingBuilder,
-  LogLevel } from '@rhombus-std/logging.core';
+import { type IExternalScopeProvider, type ILogger, type ILoggerFactory, type ILoggerProvider, type ILoggingBuilder, LogLevel } from '@rhombus-std/logging.core';
 import { type IOptions, Options } from '@rhombus-std/options';
 import { augment } from '@rhombus-std/primitives';
 import { typefor } from '@rhombus-std/primitives.extras';
@@ -44,8 +43,7 @@ export class LoggerFactory implements ILoggerFactory {
   #changeSubscription: Disposable | undefined;
   #disposed = false;
 
-  public constructor(providers: Iterable<ILoggerProvider> = [],
-    filterOptions?: LoggerFilterOptions | IOptions<LoggerFilterOptions>, scopeProvider?: IExternalScopeProvider) {
+  public constructor(providers: Iterable<ILoggerProvider> = [], filterOptions?: LoggerFilterOptions | IOptions<LoggerFilterOptions>, scopeProvider?: IExternalScopeProvider) {
     this.#scopeProvider = scopeProvider;
 
     const source: IOptions<LoggerFilterOptions> = filterOptions === undefined
@@ -139,8 +137,7 @@ export class LoggerFactory implements ILoggerFactory {
     const scopeLoggers: ScopeLogger[] | undefined = this.#filterOptions.captureScopes ? [] : undefined;
 
     for (const information of logger.loggers) {
-      const { minLevel, filter } = LoggerRuleSelector.select(this.#filterOptions, information.providerType,
-        information.category);
+      const { minLevel, filter } = LoggerRuleSelector.select(this.#filterOptions, information.providerType, information.category);
 
       // A rule selecting a level above Critical (i.e. None) disables the sink
       // entirely — skip it rather than adding a never-enabled message logger.

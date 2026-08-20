@@ -42,8 +42,7 @@ export class ApplicationLifetime implements IHostApplicationLifetime {
     try {
       this.#stoppingController.abort();
     } catch (error) {
-      hostingLog.applicationError(this.#logger, LoggerEventIds.applicationStoppingError,
-        'An error occurred stopping the application', error);
+      hostingLog.applicationError(this.#logger, LoggerEventIds.applicationStoppingError, 'An error occurred stopping the application', error);
     }
   }
 
@@ -52,8 +51,7 @@ export class ApplicationLifetime implements IHostApplicationLifetime {
     try {
       this.#startedController.abort();
     } catch (error) {
-      hostingLog.applicationError(this.#logger, LoggerEventIds.applicationStartupError,
-        'An error occurred starting the application', error);
+      hostingLog.applicationError(this.#logger, LoggerEventIds.applicationStartupError, 'An error occurred starting the application', error);
     }
   }
 
@@ -62,8 +60,7 @@ export class ApplicationLifetime implements IHostApplicationLifetime {
     try {
       this.#stoppedController.abort();
     } catch (error) {
-      hostingLog.applicationError(this.#logger, LoggerEventIds.applicationStoppedError,
-        'An error occurred stopping the application', error);
+      hostingLog.applicationError(this.#logger, LoggerEventIds.applicationStoppedError, 'An error occurred stopping the application', error);
     }
   }
 }

@@ -14,8 +14,7 @@
 // Each test mints a UNIQUE receiver type so the module-level bag/bus (a process
 // singleton) does not leak state between cases.
 
-import { augment, type AugmentationSet, type MergeStrategies, registerAugmentations,
-  Type } from '@rhombus-std/primitives';
+import { augment, type AugmentationSet, type MergeStrategies, registerAugmentations, Type } from '@rhombus-std/primitives';
 import { describe, expect, test } from 'bun:test';
 
 let counter = 0;
@@ -119,8 +118,7 @@ describe('the 8x config-provider reality (the killer regression, §73/1)', () =>
     augment(RECEIVER)(ConfigBuilder);
     augment(RECEIVER)(ConfigManager);
 
-    const names = ['addJsonFile', 'addEnvironmentVariables', 'addCommandLine', 'addIniFile', 'addXmlFile', 'addFile',
-      'addMemory', 'addConfig'] as const;
+    const names = ['addJsonFile', 'addEnvironmentVariables', 'addCommandLine', 'addIniFile', 'addXmlFile', 'addFile', 'addMemory', 'addConfig'] as const;
 
     // Each provider registers its ONE differently-named member in a SEPARATE
     // `registerAugmentations` call -- eight dispatches over the shared token.

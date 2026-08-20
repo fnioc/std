@@ -17,8 +17,7 @@ interface Utf8Encoder {
 interface Utf8Decoder {
   decode(input: Uint8Array): string;
 }
-const { TextEncoder, TextDecoder } = globalThis as unknown as { TextEncoder: Ctor<[], Utf8Encoder>;
-  TextDecoder: Ctor<[], Utf8Decoder>; };
+const { TextEncoder, TextDecoder } = globalThis as unknown as { TextEncoder: Ctor<[], Utf8Encoder>; TextDecoder: Ctor<[], Utf8Decoder>; };
 const utf8Encoder = new TextEncoder();
 const utf8Decoder = new TextDecoder();
 
@@ -32,8 +31,7 @@ export namespace DistributedCacheSugarAugmentations {
    * mounting it would displace the real implementation on every decorated class,
    * and the mounted member would then recurse into itself.
    */
-  export function set(this: IDistributedCache, key: string, value: Uint8Array,
-    abortSignal?: AbortSignal): Promise<void> {
+  export function set(this: IDistributedCache, key: string, value: Uint8Array, abortSignal?: AbortSignal): Promise<void> {
     return this.set(key, value, defaultOptions, abortSignal);
   }
 
@@ -41,14 +39,12 @@ export namespace DistributedCacheSugarAugmentations {
    * Sets a string in the cache with the specified key, UTF-8 encoded, with
    * `options` (or the default entry options when omitted).
    */
-  export function setString(this: IDistributedCache, key: string, value: string, options?: DistributedCacheEntryOptions,
-    abortSignal?: AbortSignal): Promise<void> {
+  export function setString(this: IDistributedCache, key: string, value: string, options?: DistributedCacheEntryOptions, abortSignal?: AbortSignal): Promise<void> {
     return this.set(key, utf8Encoder.encode(value), options ?? defaultOptions, abortSignal);
   }
 
   /** Gets a string from the cache with the specified key, UTF-8 decoded, or `undefined` if not present. */
-  export async function getString(this: IDistributedCache, key: string,
-    abortSignal?: AbortSignal): Promise<string | undefined> {
+  export async function getString(this: IDistributedCache, key: string, abortSignal?: AbortSignal): Promise<string | undefined> {
     const data = await this.get(key, abortSignal);
     return data === undefined ? undefined : utf8Decoder.decode(data);
   }

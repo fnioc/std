@@ -4,19 +4,11 @@
 // sugar form (di.extras), never just one shadowing the other. Never executed
 // -- `lint` (`tsc --noEmit`) is what catches a regression here, as a compile
 // error naming the missing overload.
-//
-// `@rhombus-std/di.extras.options` is deliberately NOT exercised here: its
-// rolled `dist/bundle/index.d.ts` carries no top-level import/export
-// statement (the `declare module` block is its only content), which makes
-// TypeScript treat the block as a fresh global module declaration rather
-// than an augmentation once this file's program also needs di.core's real
-// exports -- a separate, pre-existing packaging defect, not an overload-merge
-// one. `addOptions`'s base-form overloads are still proven below.
 
 import '@rhombus-std/di.extras';
 import '@rhombus-std/options.augmentations';
 
-import { type Manifest, ServiceDescriptor } from '@rhombus-std/di.core';
+import { ConstantType, type Manifest, ServiceDescriptor } from '@rhombus-std/di.core';
 import { type IServiceProvider, Type } from '@rhombus-std/primitives';
 
 interface IWidget {}
@@ -27,56 +19,43 @@ const WIDGET = Type.imported('Widget', 'test');
 declare const manifest: Manifest<'singleton'>;
 declare const provider: IServiceProvider;
 
-// add / add<T>
+// add: descriptor / token constructor / token factory / token value / sugar
 manifest.add(ServiceDescriptor.value(WIDGET, new Widget()));
-manifest.add<IWidget>(Widget, Type.ctor(WIDGET, [[]]), 'singleton');
-
-// addClass / addClass<T>
 manifest.add(WIDGET, Widget, Type.ctor(WIDGET, [[]]), 'singleton');
-manifest.addClass<IWidget>(Widget, Type.ctor(WIDGET, [[]]), 'singleton');
-
-// addFactory / addFactory<T>
 manifest.add(WIDGET, () => new Widget(), Type.func(WIDGET, [[]]), 'singleton');
-manifest.addFactory<IWidget>(() => new Widget(), Type.func(WIDGET, [[]]), 'singleton');
+manifest.add(WIDGET, new Widget(), ConstantType);
+manifest.add<IWidget>(Widget, 'singleton');
+manifest.add<IWidget>(() => new Widget(), 'singleton');
 
 // addValue / addValue<T>
-manifest.add(WIDGET, new Widget());
 manifest.addValue<IWidget>(new Widget());
 
-// tryAdd / tryAdd<T>
+// tryAdd: descriptor / token forms / sugar
 manifest.tryAdd(ServiceDescriptor.value(WIDGET, new Widget()));
-manifest.tryAdd<IWidget>(Widget, Type.ctor(WIDGET, [[]]), 'singleton');
-
-// tryAdd / tryAdd<T>
 manifest.tryAdd(WIDGET, Widget, Type.ctor(WIDGET, [[]]), 'singleton');
-manifest.tryAdd<IWidget>(Widget, Type.ctor(WIDGET, [[]]), 'singleton');
-
-// tryAdd / tryAdd<T>
 manifest.tryAdd(WIDGET, () => new Widget(), Type.func(WIDGET, [[]]), 'singleton');
-manifest.tryAdd<IWidget>(() => new Widget(), Type.func(WIDGET, [[]]), 'singleton');
+manifest.tryAdd(WIDGET, new Widget(), ConstantType);
+manifest.tryAdd<IWidget>(Widget, 'singleton');
+manifest.tryAddValue<IWidget>(new Widget());
 
-// tryAdd / tryAdd<T>
-manifest.tryAdd(WIDGET, new Widget());
-manifest.tryAdd<IWidget>(new Widget());
-
-// replaceClass / replaceClass<T>
-manifest.replaceClass(WIDGET, Widget, Type.ctor(WIDGET, [[]]), 'singleton');
-manifest.replaceClass<IWidget>(Widget, Type.ctor(WIDGET, [[]]), 'singleton');
-
-// replaceFactory / replaceFactory<T>
-manifest.replaceFactory(WIDGET, () => new Widget(), Type.func(WIDGET, [[]]), 'singleton');
-manifest.replaceFactory<IWidget>(() => new Widget(), Type.func(WIDGET, [[]]), 'singleton');
-
-// replaceValue / replaceValue<T>
-manifest.replaceValue(WIDGET, new Widget());
+// replace: descriptor / token forms / sugar
+manifest.replace(ServiceDescriptor.value(WIDGET, new Widget()));
+manifest.replace(WIDGET, Widget, Type.ctor(WIDGET, [[]]), 'singleton');
+manifest.replace(WIDGET, () => new Widget(), Type.func(WIDGET, [[]]), 'singleton');
+manifest.replace(WIDGET, new Widget(), ConstantType);
+manifest.replace<IWidget>(Widget, 'singleton');
 manifest.replaceValue<IWidget>(new Widget());
+
+// describe / describe<T>
+manifest.add(manifest.describe(WIDGET).asClass(Widget, Type.ctor(WIDGET, [[]])));
+manifest.add(manifest.describe<IWidget>().asValue(new Widget()));
 
 // removeAll / removeAll<T>
 manifest.removeAll(WIDGET);
 manifest.removeAll<IWidget>();
 
 // addOptions, both base-form overloads (the tokenless addOptions<T>() sugar
-// lives in di.extras.options -- excluded above, see the file header)
+// lives in di.extras.options; its face rides that package's program)
 manifest.addOptions(WIDGET);
 manifest.addOptions(WIDGET, () => new Widget());
 

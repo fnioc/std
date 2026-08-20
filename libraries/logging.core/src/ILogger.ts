@@ -26,8 +26,7 @@ export interface ILogger<TCategoryName = unknown> {
    * may read it instead of rendering.
    * @param formatter - Renders `state` (and `error`) into the message string.
    */
-  log<TState>(logLevel: LogLevel, eventId: EventId, state: TState, error: Error | undefined,
-    formatter: Func<[TState, Error | undefined], string>): void;
+  log<TState>(logLevel: LogLevel, eventId: EventId, state: TState, error: Error | undefined, formatter: Func<[TState, Error | undefined], string>): void;
 
   isEnabled(logLevel: LogLevel): boolean;
 

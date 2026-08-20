@@ -11,9 +11,9 @@
 // Environment variables are supplied through the injected `env` map (#16), so
 // these tests never touch the ambient `process.env`.
 
+import { describe, test } from 'bun:test';
 import assert from 'node:assert/strict';
 import { join } from 'node:path';
-import { describe, test } from 'bun:test';
 
 import { ConfigBuilder } from '@rhombus-std/config';
 import { Type } from '@rhombus-std/primitives';
@@ -71,8 +71,7 @@ describe('layering: addJsonFile / addEnvironmentVariables / addCommandLine (buil
 
   test('command line overrides both JSON and environment variables', () => {
     const config = new ConfigBuilder().addJsonFile(`${FIXTURES}/base.json`).addJsonFile(`${FIXTURES}/overlay.json`)
-      .addEnvironmentVariables({ prefix: 'APP_', env: { APP_Server__Port: '7070' } }).addCommandLine(['--Server:Port',
-        '6060']).build();
+      .addEnvironmentVariables({ prefix: 'APP_', env: { APP_Server__Port: '7070' } }).addCommandLine(['--Server:Port', '6060']).build();
 
     assert.equal(config.get('Server:Port'), '6060');
     assert.equal(config.get('Server:Host'), 'localhost');

@@ -40,16 +40,14 @@ export { GREETING_TYPE, HEALTH_CHECK_TYPE } from './types.js';
 // implementations and their `add*` function live here, in one place, so the two
 // apps' resolution demonstrations differ only in how they ASK — which is what
 // makes them diffable line for line.
-export { addCheckoutServices, AmountIsPositive, AuditTrail, CardGateway, CHECKOUT_TYPES, fetchExchangeRates,
-  InvoiceGateway, MethodIsConfigured, PaymentRouter, Receipt, ReceiptNumbering, TotalWithinLimit,
-  WalletGateway } from './resolution-checkout-services.js';
+export { addCheckoutServices, AmountIsPositive, AuditTrail, CardGateway, CHECKOUT_TYPES, fetchExchangeRates, InvoiceGateway, MethodIsConfigured, PaymentRouter, Receipt, ReceiptNumbering,
+  TotalWithinLimit, WalletGateway } from './resolution-checkout-services.js';
 
 // The library-author infrastructure surface: the manifest-slot
 // configure-callback seam, the AD-HOC FACTORY PARAMETER that is why a library
 // never needs the provider, and the discouraged locator twin it is compared
 // against.
-export { addGreetingWorkshop, GREETING_WORKSHOP_TYPE, GreetingCard, GreetingWorkshop, GreetingWorkshopBuilder,
-  LOCATOR_GREETING_WORKSHOP_TYPE, LocatorGreetingWorkshop, PlainStationery,
+export { addGreetingWorkshop, GREETING_WORKSHOP_TYPE, GreetingCard, GreetingWorkshop, GreetingWorkshopBuilder, LOCATOR_GREETING_WORKSHOP_TYPE, LocatorGreetingWorkshop, PlainStationery,
   WorkshopGreeting } from './infrastructure-greeting-workshop.js';
 export type { ICardRecipient, ICardStationery, IGreetingWorkshopBuilder } from './infrastructure-greeting-workshop.js';
 

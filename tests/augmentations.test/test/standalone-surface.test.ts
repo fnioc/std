@@ -12,8 +12,7 @@ import { ConfigBuilderJsonAugmentations } from '@rhombus-std/config.json';
 import { ServiceManifestMetricsAugmentations, ServiceManifestTracingAugmentations } from '@rhombus-std/diagnostics';
 import { MetricsOptionsAugmentations, TracingOptionsAugmentations } from '@rhombus-std/diagnostics.core';
 import { LoggerFilterOptionsExtensions, ServiceManifestLoggingAugmentations } from '@rhombus-std/logging';
-import { ServiceManifestOptionsAugmentations,
-  ServiceManifestOptionsConfigAugmentations } from '@rhombus-std/options.augmentations';
+import { ServiceManifestOptionsAugmentations, ServiceManifestOptionsConfigAugmentations } from '@rhombus-std/options.augmentations';
 import { describe, expect, test } from 'bun:test';
 
 const keys = (set: object): string[] => Object.keys(set).sort();
@@ -42,11 +41,9 @@ describe('standalone augmentation surface (member-name snapshots)', () => {
   });
 
   test('every member is a receiver-first function', () => {
-    for (const set of [ConfigBuilderJsonAugmentations, ConfigBuilderEnvAugmentations,
-      ConfigBuilderCommandLineAugmentations, MemoryConfigBuilderAugmentations, ServiceManifestMetricsAugmentations,
-      ServiceManifestTracingAugmentations, ServiceManifestLoggingAugmentations, ServiceManifestMemoryCacheAugmentations,
-      ServiceManifestOptionsAugmentations, ServiceManifestOptionsConfigAugmentations, LoggerFilterOptionsExtensions,
-      MetricsOptionsAugmentations, TracingOptionsAugmentations]) {
+    for (const set of [ConfigBuilderJsonAugmentations, ConfigBuilderEnvAugmentations, ConfigBuilderCommandLineAugmentations, MemoryConfigBuilderAugmentations, ServiceManifestMetricsAugmentations,
+      ServiceManifestTracingAugmentations, ServiceManifestLoggingAugmentations, ServiceManifestMemoryCacheAugmentations, ServiceManifestOptionsAugmentations, ServiceManifestOptionsConfigAugmentations,
+      LoggerFilterOptionsExtensions, MetricsOptionsAugmentations, TracingOptionsAugmentations]) {
       for (const name of Object.keys(set)) {
         expect((set as Record<string, unknown>)[name]).toBeInstanceOf(Function);
       }

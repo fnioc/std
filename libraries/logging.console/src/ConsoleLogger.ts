@@ -36,8 +36,7 @@ export class ConsoleLogger implements ILogger {
   /** The current options; reassigned when options reload. */
   public options: ConsoleLoggerOptions;
 
-  public constructor(name: string, loggerProcessor: ConsoleLoggerProcessor, formatter: ConsoleFormatter,
-    scopeProvider: IExternalScopeProvider | undefined, options: ConsoleLoggerOptions) {
+  public constructor(name: string, loggerProcessor: ConsoleLoggerProcessor, formatter: ConsoleFormatter, scopeProvider: IExternalScopeProvider | undefined, options: ConsoleLoggerOptions) {
     this.#name = name;
     this.#queueProcessor = loggerProcessor;
     this.formatter = formatter;
@@ -45,8 +44,7 @@ export class ConsoleLogger implements ILogger {
     this.options = options;
   }
 
-  public log<TState>(logLevel: LogLevel, eventId: EventId, state: TState, error: Error | undefined,
-    formatter: Func<[TState, Error | undefined], string>): void {
+  public log<TState>(logLevel: LogLevel, eventId: EventId, state: TState, error: Error | undefined, formatter: Func<[TState, Error | undefined], string>): void {
     if (!this.isEnabled(logLevel)) {
       return;
     }
@@ -59,8 +57,7 @@ export class ConsoleLogger implements ILogger {
     }
     const computedAnsiString = sharedStringWriter.toString();
     sharedStringWriter.clear();
-    this.#queueProcessor.enqueueMessage({ message: computedAnsiString,
-      logAsError: logLevel >= this.options.logToStandardErrorThreshold });
+    this.#queueProcessor.enqueueMessage({ message: computedAnsiString, logAsError: logLevel >= this.options.logToStandardErrorThreshold });
   }
 
   /** Every level is enabled except {@link LogLevel.None}; filtering belongs to the factory. */

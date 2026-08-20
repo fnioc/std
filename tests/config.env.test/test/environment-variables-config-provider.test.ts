@@ -11,8 +11,7 @@ import type { Func } from '@rhombus-toolkit/func';
 import { describe, expect, test } from 'bun:test';
 import '@rhombus-std/config.env/tokens/index';
 import { EnvironmentVariablesConfigProvider } from '@rhombus-std/config.env/tokens/EnvironmentVariablesConfigProvider';
-import { colonAndDotVariableNameTransformation,
-  EnvironmentVariablesConfigSource } from '@rhombus-std/config.env/tokens/EnvironmentVariablesConfigSource';
+import { colonAndDotVariableNameTransformation, EnvironmentVariablesConfigSource } from '@rhombus-std/config.env/tokens/EnvironmentVariablesConfigSource';
 
 type EnvMap = Record<string, string | undefined>;
 
@@ -63,8 +62,7 @@ describe('EnvironmentVariablesConfigProvider transform-before-filter order', () 
   });
 
   test('a custom variableNameTransformation runs before prefix matching too', () => {
-    const provider = providerOf({ 'custom-app-foo': 'custom' }, { prefix: 'CUSTOM:APP:',
-      variableNameTransformation: (name) => name.replaceAll('-', ':') });
+    const provider = providerOf({ 'custom-app-foo': 'custom' }, { prefix: 'CUSTOM:APP:', variableNameTransformation: (name) => name.replaceAll('-', ':') });
     expect(provider.tryGet('foo')).toEqual([true, 'custom']);
   });
 });
@@ -154,8 +152,8 @@ describe('connection-string prefixes', () => {
   });
 
   test('recognizes all of the conventional connection-string prefixes', () => {
-    const provider = providerOf({ MYSQLCONNSTR_A: '1', SQLAZURECONNSTR_B: '2', APIHUBCONNSTR_C: '3',
-      DOCDBCONNSTR_D: '4', EVENTHUBCONNSTR_E: '5', NOTIFICATIONHUBCONNSTR_F: '6', SERVICEBUSCONNSTR_G: '7' });
+    const provider = providerOf({ MYSQLCONNSTR_A: '1', SQLAZURECONNSTR_B: '2', APIHUBCONNSTR_C: '3', DOCDBCONNSTR_D: '4', EVENTHUBCONNSTR_E: '5', NOTIFICATIONHUBCONNSTR_F: '6',
+      SERVICEBUSCONNSTR_G: '7' });
 
     expect(provider.tryGet('ConnectionStrings:A')).toEqual([true, '1']);
     expect(provider.tryGet('ConnectionStrings:B')).toEqual([true, '2']);

@@ -19,5 +19,4 @@ interface ClearTimeoutLike {
 export const setTimeout: SetTimeoutLike = (globalThis as unknown as { setTimeout: SetTimeoutLike; }).setTimeout;
 
 /** The platform `clearTimeout`, accepting {@link TimeoutHandle}. */
-export const clearTimeout: ClearTimeoutLike =
-  (globalThis as unknown as { clearTimeout: ClearTimeoutLike; }).clearTimeout;
+export const clearTimeout: ClearTimeoutLike = (globalThis as unknown as { clearTimeout: ClearTimeoutLike; }).clearTimeout;

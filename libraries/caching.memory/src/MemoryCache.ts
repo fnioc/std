@@ -5,8 +5,7 @@
 // eviction callbacks on remove/replace/expire/capacity; and opt-in statistics
 // and linked-entry tracking (both captured once at construction).
 
-import { CacheItemPriority, type CacheTryGetResult, EvictionReason, type ICacheEntry, type IMemoryCache,
-  MemoryCacheStatistics } from '@rhombus-std/caching.core';
+import { CacheItemPriority, type CacheTryGetResult, EvictionReason, type ICacheEntry, type IMemoryCache, MemoryCacheStatistics } from '@rhombus-std/caching.core';
 import type { ILogger, ILoggerFactory } from '@rhombus-std/logging.core';
 import type { IOptions } from '@rhombus-std/options';
 import { augment } from '@rhombus-std/primitives';
@@ -160,8 +159,8 @@ export class MemoryCache implements IMemoryCache, IMemoryCacheHost {
     if (!this.#trackStatistics) {
       return undefined;
     }
-    return new MemoryCacheStatistics({ totalMisses: this.#misses, totalHits: this.#hits, currentEntryCount: this.count,
-      currentEstimatedSize: this.#hasSizeLimit ? this.#cacheSize : undefined, totalEvictions: this.#evictions });
+    return new MemoryCacheStatistics({ totalMisses: this.#misses, totalHits: this.#hits, currentEntryCount: this.count, currentEstimatedSize: this.#hasSizeLimit ? this.#cacheSize : undefined,
+      totalEvictions: this.#evictions });
   }
 
   public [Symbol.dispose](): void {

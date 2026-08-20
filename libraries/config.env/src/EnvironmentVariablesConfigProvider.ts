@@ -27,9 +27,8 @@ import type { EnvironmentVariablesConfigSource } from './EnvironmentVariablesCon
  * platforms inject connection strings. A matching variable is re-keyed into
  * the `ConnectionStrings` section (the prefix stripped).
  */
-const CONNECTION_STRING_PREFIXES: readonly string[] = ['MYSQLCONNSTR_', 'SQLAZURECONNSTR_', 'SQLCONNSTR_',
-  'POSTGRESQLCONNSTR_', 'CUSTOMCONNSTR_', 'APIHUBCONNSTR_', 'DOCDBCONNSTR_', 'EVENTHUBCONNSTR_',
-  'NOTIFICATIONHUBCONNSTR_', 'REDISCACHECONNSTR_', 'SERVICEBUSCONNSTR_'];
+const CONNECTION_STRING_PREFIXES: readonly string[] = ['MYSQLCONNSTR_', 'SQLAZURECONNSTR_', 'SQLCONNSTR_', 'POSTGRESQLCONNSTR_', 'CUSTOMCONNSTR_', 'APIHUBCONNSTR_', 'DOCDBCONNSTR_',
+  'EVENTHUBCONNSTR_', 'NOTIFICATIONHUBCONNSTR_', 'REDISCACHECONNSTR_', 'SERVICEBUSCONNSTR_'];
 
 export class EnvironmentVariablesConfigProvider extends ConfigProvider {
   readonly #source: EnvironmentVariablesConfigSource;

@@ -14,8 +14,7 @@ interface ConfigSourceBuilder {
 
 export namespace ConfigBuilderXmlAugmentations {
   /** Registers an {@link XmlConfigSource} reading `path`. */
-  export function addXmlFile<Self extends ConfigSourceBuilder>(this: Self, path: string,
-    opts?: XmlConfigSourceOptions): Self {
+  export function addXmlFile<Self extends ConfigSourceBuilder>(this: Self, path: string, opts?: XmlConfigSourceOptions): Self {
     return this.add(new XmlConfigSource(path, opts)) as Self;
   }
 

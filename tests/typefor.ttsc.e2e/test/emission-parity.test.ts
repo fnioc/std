@@ -187,8 +187,7 @@ function setupProject(mode: Mode): void {
   writeFileSync(
     join(dir, 'tsconfig.json'),
     JSON.stringify({
-      compilerOptions: { target: 'ES2022', module: 'ESNext', moduleResolution: 'Bundler', lib: ['ESNext'], strict: true,
-        outDir: 'dist', rootDir: 'src', skipLibCheck: true, noEmitOnError: false,
+      compilerOptions: { target: 'ES2022', module: 'ESNext', moduleResolution: 'Bundler', lib: ['ESNext'], strict: true, outDir: 'dist', rootDir: 'src', skipLibCheck: true, noEmitOnError: false,
         plugins: [{ transform: '@rhombus-std/primitives.extras/ttsc' }] },
       include: ['src/**/*'],
     }),
@@ -352,16 +351,15 @@ describe('typefor emission modes', () => {
     expect(modules.get('default')).not.toBe('');
   });
 
-  test.skipIf(!toolchainReady)('the mode reads through the resolved config, and the marker wins what it extends',
-    () => {
-      // `hoisted` and `inline` state their mode ONLY in rhombus-std.json, reached
-      // through the directive a markerless package.json defaults to — so the two
-      // differing outputs above are themselves the evidence that an extended file
-      // is read at all.
-      expect(lowered.get('inline')).not.toBe(lowered.get('hoisted'));
-      // `override` extends a sidecar asking for inline and declares hoisted over
-      // it: the marker's own key wins the collision.
-      expect(lowered.get('override')).toBe(lowered.get('hoisted'));
-      expect(modules.get('override')).toBe(modules.get('hoisted'));
-    });
+  test.skipIf(!toolchainReady)('the mode reads through the resolved config, and the marker wins what it extends', () => {
+    // `hoisted` and `inline` state their mode ONLY in rhombus-std.json, reached
+    // through the directive a markerless package.json defaults to — so the two
+    // differing outputs above are themselves the evidence that an extended file
+    // is read at all.
+    expect(lowered.get('inline')).not.toBe(lowered.get('hoisted'));
+    // `override` extends a sidecar asking for inline and declares hoisted over
+    // it: the marker's own key wins the collision.
+    expect(lowered.get('override')).toBe(lowered.get('hoisted'));
+    expect(modules.get('override')).toBe(modules.get('hoisted'));
+  });
 });

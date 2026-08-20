@@ -56,8 +56,7 @@ export namespace MemoryCacheSugarAugmentations {
    * strategy that always routes to the primitive: the two are runtime-identical,
    * and this wrapper only re-casts the value type.
    */
-  export function tryGetValue<T = unknown>(this: IMemoryCache, key: unknown): [found: false] | [found: true,
-    value: T | undefined] {
+  export function tryGetValue<T = unknown>(this: IMemoryCache, key: unknown): [found: false] | [found: true, value: T | undefined] {
     const result = this.tryGetValue(key);
     return result[0] ? [true, result[1] as T | undefined] : [false];
   }
@@ -101,8 +100,7 @@ export namespace MemoryCacheSugarAugmentations {
   }
 
   /** Async {@link MemoryCacheSugarAugmentations.getOrCreate}: awaits `factory` when the key is absent. */
-  export async function getOrCreateAsync<T>(this: IMemoryCache, key: unknown,
-    factory: Func<[ICacheEntry], Promise<T>>): Promise<T | undefined> {
+  export async function getOrCreateAsync<T>(this: IMemoryCache, key: unknown, factory: Func<[ICacheEntry], Promise<T>>): Promise<T | undefined> {
     const result = this.tryGetValue(key);
     if (result[0]) {
       return result[1] as T | undefined;
@@ -138,8 +136,7 @@ export namespace MemoryCacheSugarAugmentations {
    * {@link MemoryCacheSugarAugmentations.getOrCreate} with `createOptions` applied to the fresh
    * entry before the factory runs.
    */
-  export function getOrCreateWithOptions<T>(this: IMemoryCache, key: unknown, factory: Func<[ICacheEntry], T>,
-    createOptions?: MemoryCacheEntryOptions): T | undefined {
+  export function getOrCreateWithOptions<T>(this: IMemoryCache, key: unknown, factory: Func<[ICacheEntry], T>, createOptions?: MemoryCacheEntryOptions): T | undefined {
     const result = this.tryGetValue(key);
     if (result[0]) {
       return result[1] as T | undefined;
@@ -160,8 +157,7 @@ export namespace MemoryCacheSugarAugmentations {
   }
 
   /** Async {@link MemoryCacheSugarAugmentations.getOrCreateWithOptions}. */
-  export async function getOrCreateAsyncWithOptions<T>(this: IMemoryCache, key: unknown,
-    factory: Func<[ICacheEntry], Promise<T>>, createOptions?: MemoryCacheEntryOptions): Promise<T | undefined> {
+  export async function getOrCreateAsyncWithOptions<T>(this: IMemoryCache, key: unknown, factory: Func<[ICacheEntry], Promise<T>>, createOptions?: MemoryCacheEntryOptions): Promise<T | undefined> {
     const result = this.tryGetValue(key);
     if (result[0]) {
       return result[1] as T | undefined;

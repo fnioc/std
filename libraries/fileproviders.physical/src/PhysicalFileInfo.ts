@@ -26,8 +26,7 @@ type ReadableStreamConstructor = new(source: UnderlyingByteSource) => ReadableSt
 // The platform `ReadableStream` constructor, re-typed against this package's
 // structural `ReadableStream<R>`. No runtime fallback -- native in Node >=18,
 // Bun, Deno, and browsers.
-const ReadableStreamConstructor: ReadableStreamConstructor =
-  (globalThis as unknown as { ReadableStream: ReadableStreamConstructor; }).ReadableStream;
+const ReadableStreamConstructor: ReadableStreamConstructor = (globalThis as unknown as { ReadableStream: ReadableStreamConstructor; }).ReadableStream;
 
 /**
  * Represents a file on the physical file system.

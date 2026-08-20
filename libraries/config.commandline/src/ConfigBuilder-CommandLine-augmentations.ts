@@ -16,8 +16,7 @@ export namespace ConfigBuilderCommandLineAugmentations {
    * `process.argv.slice(2)`), optionally with `switchMappings` for
    * short-switch (`-x`) support.
    */
-  export function addCommandLine<Self extends ConfigSourceBuilder>(this: Self, args: readonly string[],
-    switchMappings?: CommandLineConfigSourceOptions['switchMappings']): Self {
+  export function addCommandLine<Self extends ConfigSourceBuilder>(this: Self, args: readonly string[], switchMappings?: CommandLineConfigSourceOptions['switchMappings']): Self {
     return this.add(new CommandLineConfigSource(args, { switchMappings })) as Self;
   }
 }

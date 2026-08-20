@@ -6,8 +6,7 @@
 // singleton -- these tests exercise the public barrel, not the `private/*`
 // white-box seam.
 
-import { DistributedCacheEntryOptions,
-  DistributedCacheEntryOptionsSugarAugmentations } from '@rhombus-std/caching.core';
+import { DistributedCacheEntryOptions, DistributedCacheEntryOptionsSugarAugmentations } from '@rhombus-std/caching.core';
 import { describe, expect, test } from 'bun:test';
 
 describe('DistributedCacheEntryOptions', () => {
@@ -68,8 +67,7 @@ describe('DistributedCacheEntryOptionsSugarAugmentations — both forms', () => 
 
   test('standalone member form matches the method form', () => {
     const viaMember = DistributedCacheEntryOptionsSugarAugmentations.setSlidingExpiration.call(
-      DistributedCacheEntryOptionsSugarAugmentations.setAbsoluteExpiration.call(new DistributedCacheEntryOptions(),
-        3_000),
+      DistributedCacheEntryOptionsSugarAugmentations.setAbsoluteExpiration.call(new DistributedCacheEntryOptions(), 3_000),
       2_000,
     );
     expect(viaMember.absoluteExpirationRelativeToNow).toBe(3_000);

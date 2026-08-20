@@ -46,9 +46,10 @@ testit(wrongShape, provider.getService(gadgetNode, makeGadget));
 testit(widget, providerInterface.getService(widgetNode, Widget));
 testit(gadget, providerInterface.getService(gadgetNode, makeGadget));
 
-// The original `Type`/token overload is untouched by the new ones.
-declare const token: string;
-provider.getService(token);
+// A string is not an address: the boundary converter is the only string door.
+declare const spelled: string;
+// @ts-expect-error
+provider.getService(spelled);
 
 // A bare constructor with no node still fails: nothing derives its signature without one.
 // @ts-expect-error

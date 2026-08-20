@@ -25,8 +25,7 @@ export class ConsoleLoggerProcessor implements Disposable {
   /** The console error-routed messages ({@link LogMessageEntry.logAsError}) are written to. */
   public readonly errorConsole: IConsole;
 
-  public constructor(console: IConsole, errorConsole: IConsole, fullMode: ConsoleLoggerQueueFullMode,
-    maxQueueLength: number) {
+  public constructor(console: IConsole, errorConsole: IConsole, fullMode: ConsoleLoggerQueueFullMode, maxQueueLength: number) {
     this.console = console;
     this.errorConsole = errorConsole;
     this.#fullMode = ConsoleLoggerProcessor.#validateFullMode(fullMode);

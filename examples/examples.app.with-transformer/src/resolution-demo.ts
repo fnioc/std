@@ -18,8 +18,7 @@ import type { ImportedType, IServiceProvider, Manifest } from '@rhombus-std/di.c
 import '@rhombus-std/di';
 import { typefor } from '@rhombus-std/primitives.extras';
 
-import type { CheckoutOrder, IAuditTrail, IExchangeRates, IFraudScreen, IOrderValidator, IPaymentGateway,
-  IPaymentRouter, IReceipt } from '@rhombus-std/examples.contracts';
+import type { CheckoutOrder, IAuditTrail, IExchangeRates, IFraudScreen, IOrderValidator, IPaymentGateway, IPaymentRouter, IReceipt } from '@rhombus-std/examples.contracts';
 import { addCheckoutServices } from '@rhombus-std/examples.lib.without-transformer';
 
 // Fixed orders — no clock, no randomness, so the output is byte-stable.

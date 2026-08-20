@@ -93,8 +93,7 @@ export const BrowserHost = {
    * {@link import("./PageLifecycleEvents").PageLifecycleEvents.onFlush}
    * (synchronous), not a hosted service's `stop()`.
    */
-  run(settings?: BrowserHostApplicationBuilderSettings,
-    configureApp?: Action<[HostApplicationBuilder]>): Promise<void> {
+  run(settings?: BrowserHostApplicationBuilderSettings, configureApp?: Action<[HostApplicationBuilder]>): Promise<void> {
     const builder = BrowserHost.createApplicationBuilder(settings);
     configureApp?.(builder);
     return builder.build().runAsync();

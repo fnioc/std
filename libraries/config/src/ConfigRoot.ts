@@ -2,8 +2,7 @@
 // at the top of the tree. Reads resolve last-registered-wins (providers are
 // checked in reverse per lookup); writes fan out to every provider.
 
-import type { ConfigObject, IConfigProvider, IConfigRoot, IConfigSection,
-  IndexedSection } from '@rhombus-std/config.core';
+import type { ConfigObject, IConfigProvider, IConfigRoot, IConfigSection, IndexedSection } from '@rhombus-std/config.core';
 import { ChangeToken, type IChangeToken } from '@rhombus-std/primitives';
 import type { Func } from '@rhombus-toolkit/func';
 import { IndexAccessed } from '@rhombus-toolkit/proxy-base';

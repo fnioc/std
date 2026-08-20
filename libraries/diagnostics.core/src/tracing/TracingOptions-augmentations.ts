@@ -10,15 +10,15 @@ import { TracingRule } from './TracingRule';
 
 export namespace TracingOptionsAugmentations {
   /** Appends an ENABLE {@link TracingRule} directly to a {@link TracingOptions}. */
-  export function enableTracing<Self extends TracingOptions>(this: Self, sourceName?: string, operationName?: string,
-    listenerName?: string, scopes: ActivitySourceScopes = ACTIVITY_SOURCE_SCOPES_ALL): Self {
+  export function enableTracing<Self extends TracingOptions>(this: Self, sourceName?: string, operationName?: string, listenerName?: string,
+    scopes: ActivitySourceScopes = ACTIVITY_SOURCE_SCOPES_ALL): Self {
     this.rules.push(new TracingRule(sourceName, operationName, listenerName, scopes, true));
     return this;
   }
 
   /** Appends a DISABLE {@link TracingRule} directly to a {@link TracingOptions}. */
-  export function disableTracing<Self extends TracingOptions>(this: Self, sourceName?: string, operationName?: string,
-    listenerName?: string, scopes: ActivitySourceScopes = ACTIVITY_SOURCE_SCOPES_ALL): Self {
+  export function disableTracing<Self extends TracingOptions>(this: Self, sourceName?: string, operationName?: string, listenerName?: string,
+    scopes: ActivitySourceScopes = ACTIVITY_SOURCE_SCOPES_ALL): Self {
     this.rules.push(new TracingRule(sourceName, operationName, listenerName, scopes, false));
     return this;
   }

@@ -35,8 +35,7 @@ describe('the leaf kinds', () => {
   test('service-scope-factory realizes to a working scope opener', () => {
     const manifest = DefaultManifest.empty<string>().add(ServiceDescriptor.ctor(CONN, Conn, Type.ctor(CONN, [[]])));
     const scopedEngine = new Engine(manifest);
-    const factory = realizeCallSite(CallSite.serviceScopeFactory(), { engine: scopedEngine,
-      serviceProvider: provider });
+    const factory = realizeCallSite(CallSite.serviceScopeFactory(), { engine: scopedEngine, serviceProvider: provider });
     expect(factory).toBeInstanceOf(ServiceScopeFactory);
     const scope = (factory as ServiceScopeFactory).createScope();
     expect(scope.getRequiredService(CONN)).toBeInstanceOf(Conn);

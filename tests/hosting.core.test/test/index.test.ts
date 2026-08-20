@@ -1,6 +1,5 @@
 import { DefaultManifest, type Manifest, Type } from '@rhombus-std/di.core';
-import { BackgroundService, Environments, HostAbortedError, HostDefaults, HOSTED_SERVICE_TYPE,
-  hostedServiceCollectionType, HostEnvironmentEnvAugmentations, type IHostedService,
+import { BackgroundService, Environments, HostAbortedError, HostDefaults, HOSTED_SERVICE_TYPE, hostedServiceCollectionType, HostEnvironmentEnvAugmentations, type IHostedService,
   type IHostEnvironment } from '@rhombus-std/hosting.core/tokens/index';
 // Side-effect: installs `addHostedService` onto di.core's Manifest.
 import '@rhombus-std/hosting.core/tokens/index';
@@ -35,8 +34,7 @@ test('environment predicates compare case-insensitively', () => {
   // downstream concrete HostingEnvironment, which this package doesn't ship --
   // hence the cast. The standalone member form under test needs no methods on
   // its receiver.
-  const env = { environmentName: 'development', applicationName: 'app', contentRootPath: '/',
-    contentRootFileProvider: new NullFileProvider() } as IHostEnvironment;
+  const env = { environmentName: 'development', applicationName: 'app', contentRootPath: '/', contentRootFileProvider: new NullFileProvider() } as IHostEnvironment;
   expect(HostEnvironmentEnvAugmentations.isEnvironment.call(env, 'Development')).toBe(true);
   expect(HostEnvironmentEnvAugmentations.isDevelopment.call(env)).toBe(true);
   expect(HostEnvironmentEnvAugmentations.isProduction.call(env)).toBe(false);

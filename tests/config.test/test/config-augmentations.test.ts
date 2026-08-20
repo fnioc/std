@@ -69,8 +69,7 @@ describe('getRequiredSection', () => {
 describe('asIterable', () => {
   // A small nested tree: two leaves under Server, one two levels deep.
   function tree(): IConfigRoot {
-    return rootOf({ 'Server:Host': 'localhost', 'Server:Port': '8080',
-      'Logging:Level:Default': 'Info' }) as IConfigRoot;
+    return rootOf({ 'Server:Host': 'localhost', 'Server:Port': '8080', 'Logging:Level:Default': 'Info' }) as IConfigRoot;
   }
 
   test("from a root, yields every section's full path (root itself excluded)", () => {

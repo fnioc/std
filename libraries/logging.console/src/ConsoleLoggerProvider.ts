@@ -40,8 +40,7 @@ export class ConsoleLoggerProvider implements ILoggerProvider {
     this.#setFormatters(formatters);
 
     const current = this.#options.value;
-    this.#messageQueue = new ConsoleLoggerProcessor(new AnsiLogConsole(), new AnsiLogConsole(true),
-      current.queueFullMode, current.maxQueueLength);
+    this.#messageQueue = new ConsoleLoggerProcessor(new AnsiLogConsole(), new AnsiLogConsole(true), current.queueFullMode, current.maxQueueLength);
 
     this.#reloadLoggerOptions(current);
     this.#optionsReloadToken = this.#options.subscribe?.((reloaded) => {
@@ -102,8 +101,7 @@ export class ConsoleLoggerProvider implements ILoggerProvider {
     const current = this.#options.value;
     const logFormatter = this.#resolveFormatter(current);
 
-    return this.#loggers.getOrInsertComputed(name,
-      (name) => new ConsoleLogger(name, this.#messageQueue, logFormatter, this.#scopeProvider, current));
+    return this.#loggers.getOrInsertComputed(name, (name) => new ConsoleLogger(name, this.#messageQueue, logFormatter, this.#scopeProvider, current));
   }
 
   /** Sets the scope provider all current and future loggers use. */

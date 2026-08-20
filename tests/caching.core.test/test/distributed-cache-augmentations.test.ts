@@ -4,8 +4,7 @@
 // `extends IDistributedCache` beside its four primitive members; this test
 // exercises the STANDALONE member surface.
 
-import { DistributedCacheEntryOptions, DistributedCacheSugarAugmentations,
-  type IDistributedCache } from '@rhombus-std/caching.core';
+import { DistributedCacheEntryOptions, DistributedCacheSugarAugmentations, type IDistributedCache } from '@rhombus-std/caching.core';
 import { describe, expect, test } from 'bun:test';
 
 /** A minimal in-process IDistributedCache: a Map of payloads, options recorded per set. */

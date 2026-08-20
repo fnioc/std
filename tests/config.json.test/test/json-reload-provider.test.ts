@@ -67,8 +67,7 @@ class FakeFileProvider implements IFileProvider {
 
   public getFileInfo(): IFileInfo {
     const path = this.#physicalPath;
-    return { exists: true, length: -1, physicalPath: path, name: basename(path), lastModified: new Date(0),
-      isDirectory: false, createReadStream(): never {
+    return { exists: true, length: -1, physicalPath: path, name: basename(path), lastModified: new Date(0), isDirectory: false, createReadStream(): never {
       throw new Error('unused');
     } };
   }

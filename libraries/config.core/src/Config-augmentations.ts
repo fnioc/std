@@ -60,8 +60,7 @@ export namespace ConfigAugmentations {
    * The enumeration root is yielded only when it is itself a section; a bare
    * {@link IConfig} root (empty `path`, not a section) contributes no entry.
    */
-  export function* asIterable(this: IConfig,
-    makePathsRelative: boolean = false): Generator<[key: string, value: string | undefined], void, unknown> {
+  export function* asIterable(this: IConfig, makePathsRelative: boolean = false): Generator<[key: string, value: string | undefined], void, unknown> {
     const rootIsSection = isConfigSection(this);
     const prefixLength = makePathsRelative && rootIsSection ? this.path.length + 1 : 0;
 

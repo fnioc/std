@@ -30,8 +30,7 @@ export class BrowserLifetime implements IHostLifetime, Disposable {
    *   disposes it on `stop`/dispose, preventing a listener leak across host
    *   cycles over a shared document.
    */
-  public constructor(options: BrowserLifetimeOptions, applicationLifetime: IHostApplicationLifetime,
-    loggerFactory: ILoggerFactory, pageLifecycleEvents: PageLifecycleEvents) {
+  public constructor(options: BrowserLifetimeOptions, applicationLifetime: IHostApplicationLifetime, loggerFactory: ILoggerFactory, pageLifecycleEvents: PageLifecycleEvents) {
     this.#options = options;
     this.#applicationLifetime = applicationLifetime;
     this.#logger = loggerFactory.createLogger(BROWSER_LIFETIME_CATEGORY);

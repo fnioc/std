@@ -4,8 +4,8 @@ import { assertNever } from '@rhombus-toolkit/type-guards';
 import type { Engine } from '../Engine.js';
 import { ServiceScopeFactory } from '../ServiceScope.js';
 import type { ServiceScope } from '../ServiceScope.js';
-import type { ArrayCallSite, CallSite, ConstantCallSite, CtorCallSite, FactoryCallSite, IterableCallSite,
-  LateBoundCallSite, ServiceProviderCallSite, ServiceScopeFactoryCallSite } from './CallSite.js';
+import type { ArrayCallSite, CallSite, ConstantCallSite, CtorCallSite, FactoryCallSite, IterableCallSite, LateBoundCallSite, ServiceProviderCallSite,
+  ServiceScopeFactoryCallSite } from './CallSite.js';
 
 export interface RealizeContext {
   readonly engine: Engine;

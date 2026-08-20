@@ -14,8 +14,7 @@ export type LoggerFilterDelegate = Func<[string | undefined, string | undefined,
  * category. `isEnabled` gates a write before the sink is asked to log.
  */
 export class MessageLogger {
-  public constructor(public readonly logger: ILogger, public readonly category: string,
-    public readonly providerTypeFullName: string | undefined, public readonly minLevel: LogLevel | undefined,
+  public constructor(public readonly logger: ILogger, public readonly category: string, public readonly providerTypeFullName: string | undefined, public readonly minLevel: LogLevel | undefined,
     public readonly filter: LoggerFilterDelegate | undefined) {}
 
   public isEnabled(level: LogLevel): boolean {
@@ -35,8 +34,7 @@ export class MessageLogger {
  * `externalScopeProvider` is set.
  */
 export class ScopeLogger {
-  public constructor(public readonly logger: ILogger | undefined,
-    public readonly externalScopeProvider: IExternalScopeProvider | undefined) {}
+  public constructor(public readonly logger: ILogger | undefined, public readonly externalScopeProvider: IExternalScopeProvider | undefined) {}
 
   public createScope<TState>(state: TState): Disposable | undefined {
     if (this.externalScopeProvider !== undefined) {

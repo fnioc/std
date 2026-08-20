@@ -22,9 +22,8 @@ import type { IConfigureOptions } from '@rhombus-std/options';
 const LOG_LEVEL_KEY = 'loglevel';
 const DEFAULT_CATEGORY = 'default';
 
-const LEVEL_BY_NAME: Record<string, LogLevel> = { trace: LogLevel.Trace, debug: LogLevel.Debug,
-  information: LogLevel.Information, warning: LogLevel.Warning, error: LogLevel.Error, critical: LogLevel.Critical,
-  none: LogLevel.None };
+const LEVEL_BY_NAME: Record<string, LogLevel> = { trace: LogLevel.Trace, debug: LogLevel.Debug, information: LogLevel.Information, warning: LogLevel.Warning, error: LogLevel.Error,
+  critical: LogLevel.Critical, none: LogLevel.None };
 
 /**
  * Parses a configured level value (a level name, case-insensitive, or its

@@ -68,8 +68,7 @@ describe('StartupValidator.validate', () => {
   test('multiple failures throw one AggregateError carrying each', () => {
     const first = new OptionsValidationError(['first bad']);
     const second = new OptionsValidationError(['second bad']);
-    const validator = new StartupValidator(resolverOf({ a: failing(first), b: failing(second) }), [Type.from('a'),
-      Type.from('b')]);
+    const validator = new StartupValidator(resolverOf({ a: failing(first), b: failing(second) }), [Type.from('a'), Type.from('b')]);
 
     try {
       validator.validate();
@@ -100,8 +99,7 @@ describe('StartupValidator.validate', () => {
       reads += 1;
       return 1;
     } };
-    const validator = new StartupValidator(resolverOf({ a: counted }), [Type.from('a'), Type.from('a'),
-      Type.from('a')]);
+    const validator = new StartupValidator(resolverOf({ a: counted }), [Type.from('a'), Type.from('a'), Type.from('a')]);
 
     validator.validate();
     expect(reads).toBe(1);

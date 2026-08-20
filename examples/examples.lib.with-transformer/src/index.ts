@@ -51,6 +51,5 @@ export { makeServerReport } from './server-report.js';
 // The chapter's container-building half lives in each app's own
 // `src/infrastructure-demo.ts`; what this package exports is the pieces it
 // registers.
-export { addGreetingWorkshop, GreetingCard, GreetingWorkshop, GreetingWorkshopBuilder, LocatorGreetingWorkshop,
-  PlainStationery, WorkshopGreeting } from './infrastructure-greeting-workshop.js';
+export { addGreetingWorkshop, GreetingCard, GreetingWorkshop, GreetingWorkshopBuilder, LocatorGreetingWorkshop, PlainStationery, WorkshopGreeting } from './infrastructure-greeting-workshop.js';
 export type { ICardRecipient, ICardStationery, IGreetingWorkshopBuilder } from './infrastructure-greeting-workshop.js';

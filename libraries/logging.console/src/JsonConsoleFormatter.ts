@@ -100,8 +100,7 @@ export class JsonConsoleFormatter extends ConsoleFormatter implements Disposable
     this.#optionsReloadToken?.[Symbol.dispose]();
   }
 
-  public override write<TState>(logEntry: LogEntry<TState>, scopeProvider: IExternalScopeProvider | undefined,
-    textWriter: TextWriter): void {
+  public override write<TState>(logEntry: LogEntry<TState>, scopeProvider: IExternalScopeProvider | undefined, textWriter: TextWriter): void {
     const message = logEntry.formatter(logEntry.state, logEntry.error);
 
     const entry: { [key: string]: JsonValue; } = {};

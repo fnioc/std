@@ -64,8 +64,7 @@ export const hostingLog = {
     write(logger, LogLevel.Error, LoggerEventIds.backgroundServiceFaulted, 'BackgroundService failed', error);
   },
   backgroundServiceStoppingHost(logger: ILogger, error: unknown): void {
-    write(logger, LogLevel.Critical, LoggerEventIds.backgroundServiceStoppingHost,
-      'A BackgroundService has thrown an unhandled error, and the host is stopping.', error);
+    write(logger, LogLevel.Critical, LoggerEventIds.backgroundServiceStoppingHost, 'A BackgroundService has thrown an unhandled error, and the host is stopping.', error);
   },
   hostedServiceStartupFaulted(logger: ILogger, error: unknown): void {
     write(logger, LogLevel.Error, LoggerEventIds.hostedServiceStartupFaulted, 'Hosting failed to start', error);

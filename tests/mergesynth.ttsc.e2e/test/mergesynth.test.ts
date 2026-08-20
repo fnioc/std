@@ -294,12 +294,10 @@ beforeAll(async () => {
   // spawn the host). Inline emission is pinned so every call site is a
   // self-contained assertion rather than a reference into a generated module.
   writeFileSync(join(projDir, 'package.json'),
-    JSON.stringify({ name: '@fixture/mergesynth-consumer', private: true,
-      devDependencies: { '@rhombus-std/primitives.extras': '*', '@rhombus-std/primitives': '*' },
+    JSON.stringify({ name: '@fixture/mergesynth-consumer', private: true, devDependencies: { '@rhombus-std/primitives.extras': '*', '@rhombus-std/primitives': '*' },
       'rhombus-std': { typefor: { emit: 'inline' } } }));
   writeFileSync(join(projDir, 'tsconfig.json'), JSON.stringify({
-    compilerOptions: { target: 'ES2022', module: 'ESNext', moduleResolution: 'Bundler', lib: ['ESNext'], strict: true,
-      outDir: 'dist', rootDir: 'src', skipLibCheck: true, noEmitOnError: false },
+    compilerOptions: { target: 'ES2022', module: 'ESNext', moduleResolution: 'Bundler', lib: ['ESNext'], strict: true, outDir: 'dist', rootDir: 'src', skipLibCheck: true, noEmitOnError: false },
     include: ['src/**/*'],
   }));
 

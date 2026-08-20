@@ -2,9 +2,8 @@
 // handler matching its own kind, a context value threads through recursive calls, and a node
 // carrying no recognized kind fails loudly rather than being silently skipped.
 
-import { type ArrayType, type ConstructorType, type FunctionType, type GenericType, type GlobalType, type ImportedType,
-  type IntersectionType, type IterableType, type ObjectType, type TagType, type TupleType, Type, type TypeLiteralType,
-  type UnionType } from '@rhombus-std/primitives';
+import { type ArrayType, type ConstructorType, type FunctionType, type GenericType, type GlobalType, type ImportedType, type IntersectionType, type IterableType, type ObjectType, type TagType,
+  type TupleType, Type, type TypeLiteralType, type UnionType } from '@rhombus-std/primitives';
 import { describe, expect, test } from 'bun:test';
 
 const A = Type.imported('A', 'app');

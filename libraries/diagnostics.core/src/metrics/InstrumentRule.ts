@@ -23,8 +23,7 @@ export class InstrumentRule {
    * @param scopes The scope(s) to consider. Throws {@link RangeError} if {@link MeterScope.None}.
    * @param enable `true` to enable the matched instrument for the listener; otherwise `false`.
    */
-  public constructor(meterName: string | undefined, instrumentName: string | undefined,
-    listenerName: string | undefined, scopes: MeterScope, enable: boolean) {
+  public constructor(meterName: string | undefined, instrumentName: string | undefined, listenerName: string | undefined, scopes: MeterScope, enable: boolean) {
     if (scopes === MeterScope.None) {
       throw new RangeError('The MeterScope must be Global, Local, or both.');
     }

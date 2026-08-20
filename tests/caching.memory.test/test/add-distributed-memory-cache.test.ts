@@ -3,8 +3,7 @@
 // the registry-installed method form (docs §38), and the resolved singleton's
 // end-to-end behavior.
 
-import { DISTRIBUTED_CACHE_TYPE, MemoryDistributedCache, MemoryDistributedCacheOptions,
-  ServiceManifestMemoryCacheAugmentations } from '@rhombus-std/caching.memory';
+import { DISTRIBUTED_CACHE_TYPE, MemoryDistributedCache, MemoryDistributedCacheOptions, ServiceManifestMemoryCacheAugmentations } from '@rhombus-std/caching.memory';
 // Side-effect: installs `build` onto di.core's Manifest.
 import '@rhombus-std/di';
 import { DefaultManifest, type Manifest } from '@rhombus-std/di.core';

@@ -34,8 +34,7 @@ export namespace HostBuilderBrowserLifetimeAugmentations {
    * never stops the host. See the browser-lifetime module documentation for
    * the main.ts stop wiring.
    */
-  export function useBrowserLifetime<Self extends IHostBuilder>(this: Self,
-    configureOptions?: Func<[BrowserLifetimeOptions], void>): Self {
+  export function useBrowserLifetime<Self extends IHostBuilder>(this: Self, configureOptions?: Func<[BrowserLifetimeOptions], void>): Self {
     const options = new BrowserLifetimeOptions();
     configureOptions?.(options);
     return this.configureServices((_context, services) => registerBrowserLifetime(services, options));

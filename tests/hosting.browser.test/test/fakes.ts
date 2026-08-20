@@ -3,8 +3,7 @@
 // type (including ones outside the production unions) so the tests can assert
 // that unload/beforeunload are never registered.
 
-import type { DocumentLike, DocumentVisibilityState, PageContext, PageTransitionEventLike,
-  WindowLike } from '@rhombus-std/hosting.browser';
+import type { DocumentLike, DocumentVisibilityState, PageContext, PageTransitionEventLike, WindowLike } from '@rhombus-std/hosting.browser';
 import type { IHostApplicationLifetime } from '@rhombus-std/hosting.core';
 import { AbortController, type AbortSignal } from '@rhombus-std/primitives';
 
@@ -68,12 +67,10 @@ export function makeFakePage(): FakePage {
   const transition = (persisted: boolean): PageTransitionEventLike => {
     return { persisted };
   };
-  return { document, window,
-    context: { document: document as unknown as DocumentLike, window: window as unknown as WindowLike },
-    changeVisibility(state) {
-      document.visibilityState = state;
-      document.dispatch('visibilitychange');
-    }, pageHide(persisted) {
+  return { document, window, context: { document: document as unknown as DocumentLike, window: window as unknown as WindowLike }, changeVisibility(state) {
+    document.visibilityState = state;
+    document.dispatch('visibilitychange');
+  }, pageHide(persisted) {
     window.dispatch('pagehide', transition(persisted));
   }, pageShow(persisted) {
     window.dispatch('pageshow', transition(persisted));

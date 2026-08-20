@@ -23,8 +23,7 @@ export const ChangeToken = {
    * @param state State passed through to `consumeToken`.
    * @returns A {@link Disposable} that, when disposed, unregisters the consumer.
    */
-  onChange<TState = undefined>(produceToken: ChangeTokenProducer, consumeToken: ChangeTokenConsumer<TState>,
-    state?: TState): Disposable {
+  onChange<TState = undefined>(produceToken: ChangeTokenProducer, consumeToken: ChangeTokenConsumer<TState>, state?: TState): Disposable {
     return new ChangeTokenRegistration(produceToken, consumeToken, state as TState);
   },
 };

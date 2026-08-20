@@ -4,8 +4,7 @@
 // CLOSED-set install merges onto MemoryCacheEntryOptions, plus the end-to-end
 // path: build a bag fluently, apply it to a live entry via `setOptions`.
 
-import { CacheItemPriority, type ICacheEntry, MemoryCacheEntryOptions, MemoryCacheEntryOptionsSugarAugmentations,
-  type PostEvictionDelegate } from '@rhombus-std/caching.core';
+import { CacheItemPriority, type ICacheEntry, MemoryCacheEntryOptions, MemoryCacheEntryOptionsSugarAugmentations, type PostEvictionDelegate } from '@rhombus-std/caching.core';
 import { MemoryCache, MemoryCacheOptions } from '@rhombus-std/caching.memory';
 import type { IChangeToken } from '@rhombus-std/primitives';
 import { describe, expect, test } from 'bun:test';
@@ -49,14 +48,12 @@ describe('MemoryCacheEntryOptionsSugarAugmentations — standalone member form',
   });
 
   test('setAbsoluteExpiration discriminates ms-relative from absolute Date', () => {
-    const relative = MemoryCacheEntryOptionsSugarAugmentations.setAbsoluteExpiration.call(new MemoryCacheEntryOptions(),
-      5_000);
+    const relative = MemoryCacheEntryOptionsSugarAugmentations.setAbsoluteExpiration.call(new MemoryCacheEntryOptions(), 5_000);
     expect(relative.absoluteExpirationRelativeToNow).toBe(5_000);
     expect(relative.absoluteExpiration).toBeUndefined();
 
     const when = new Date(Date.now() + 60_000);
-    const absolute = MemoryCacheEntryOptionsSugarAugmentations.setAbsoluteExpiration.call(new MemoryCacheEntryOptions(),
-      when);
+    const absolute = MemoryCacheEntryOptionsSugarAugmentations.setAbsoluteExpiration.call(new MemoryCacheEntryOptions(), when);
     expect(absolute.absoluteExpiration).toBe(when);
     expect(absolute.absoluteExpirationRelativeToNow).toBeUndefined();
   });
@@ -67,9 +64,7 @@ describe('MemoryCacheEntryOptionsSugarAugmentations — standalone member form',
     );
     expect(() => MemoryCacheEntryOptionsSugarAugmentations.setSlidingExpiration.call(new MemoryCacheEntryOptions(), 0))
       .toThrow(RangeError);
-    expect(() =>
-      MemoryCacheEntryOptionsSugarAugmentations.setAbsoluteExpiration.call(new MemoryCacheEntryOptions(), -5)
-    )
+    expect(() => MemoryCacheEntryOptionsSugarAugmentations.setAbsoluteExpiration.call(new MemoryCacheEntryOptions(), -5))
       .toThrow(
         RangeError,
       );
@@ -91,8 +86,7 @@ describe('MemoryCacheEntryOptionsSugarAugmentations — method form (CLOSED-set 
         MemoryCacheEntryOptionsSugarAugmentations.setAbsoluteExpiration.call(
           MemoryCacheEntryOptionsSugarAugmentations.setSlidingExpiration.call(
             MemoryCacheEntryOptionsSugarAugmentations.setSize.call(
-              MemoryCacheEntryOptionsSugarAugmentations.setPriority.call(new MemoryCacheEntryOptions(),
-                CacheItemPriority.Low),
+              MemoryCacheEntryOptionsSugarAugmentations.setPriority.call(new MemoryCacheEntryOptions(), CacheItemPriority.Low),
               7,
             ),
             2_000,

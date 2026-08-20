@@ -94,7 +94,7 @@ describe('PhysicalFileProvider.watch polling (exact file)', () => {
     expect(token.hasChanged).toBe(true);
 
     // Reverting the mtime must not clear the latched change.
-    const original = statSync(join(root, 'a.txt')).mtime;
+    const original = statSync(join(root, 'a.txt'), { throwIfNoEntry: false })!.mtime;
     utimesSync(join(root, 'a.txt'), original, original);
     expect(token.hasChanged).toBe(true);
   });

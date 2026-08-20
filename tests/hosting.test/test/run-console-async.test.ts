@@ -1,6 +1,6 @@
 import { Type } from '@rhombus-std/di.core';
-import { CONSOLE_LIFETIME_OPTIONS_TYPE, ConsoleLifetime, type ConsoleLifetimeOptions, HOST_LIFETIME_TYPE, HostBuilder,
-  HOSTED_SERVICE_TYPE, type IHostLifetime } from '@rhombus-std/hosting/tokens/index';
+import { CONSOLE_LIFETIME_OPTIONS_TYPE, ConsoleLifetime, type ConsoleLifetimeOptions, HOST_LIFETIME_TYPE, HostBuilder, HOSTED_SERVICE_TYPE,
+  type IHostLifetime } from '@rhombus-std/hosting/tokens/index';
 import { expect, test } from 'bun:test';
 
 // runConsoleAsync builds and starts the host internally, then blocks until
@@ -21,9 +21,7 @@ test('runConsoleAsync (signal-only form) starts the host and shuts down when the
   }
 
   const builder = new HostBuilder();
-  builder.configureServices((_context, services) =>
-    services.addHostedService(Worker, Type.ctor(HOSTED_SERVICE_TYPE, [[]]))
-  );
+  builder.configureServices((_context, services) => services.addHostedService(Worker, Type.ctor(HOSTED_SERVICE_TYPE, [[]])));
 
   const controller = new AbortController();
   const run = builder.runConsoleAsync(controller.signal);
@@ -115,9 +113,7 @@ test('runConsoleAsync stays pending until the abort signal fires, then resolves'
   }
 
   const builder = new HostBuilder();
-  builder.configureServices((_context, services) =>
-    services.addHostedService(Worker, Type.ctor(HOSTED_SERVICE_TYPE, [[]]))
-  );
+  builder.configureServices((_context, services) => services.addHostedService(Worker, Type.ctor(HOSTED_SERVICE_TYPE, [[]])));
 
   const controller = new AbortController();
   const run = builder.runConsoleAsync(controller.signal);

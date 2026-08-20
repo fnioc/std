@@ -59,8 +59,7 @@ export class BrowserConsoleLogger implements ILogger {
     this.#console = console;
   }
 
-  public log<TState>(logLevel: LogLevel, eventId: EventId, state: TState, error: Error | undefined,
-    formatter: Func<[TState, Error | undefined], string>): void {
+  public log<TState>(logLevel: LogLevel, eventId: EventId, state: TState, error: Error | undefined, formatter: Func<[TState, Error | undefined], string>): void {
     if (!this.isEnabled(logLevel)) {
       return;
     }

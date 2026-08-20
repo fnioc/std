@@ -37,8 +37,7 @@ export namespace CacheEntrySugarAugmentations {
   }
 
   /** Registers a callback fired after the entry is evicted. */
-  export function registerPostEvictionCallback<Self extends ICacheEntry>(this: Self, callback: PostEvictionDelegate,
-    state?: unknown): Self {
+  export function registerPostEvictionCallback<Self extends ICacheEntry>(this: Self, callback: PostEvictionDelegate, state?: unknown): Self {
     const registration = new PostEvictionCallbackRegistration();
     registration.evictionCallback = callback;
     registration.state = state;

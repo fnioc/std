@@ -15,8 +15,7 @@ export interface AbortSignal {
   readonly reason: any;
   onabort: any; // loose: plumbing we never touch
   throwIfAborted(): void;
-  addEventListener(type: 'abort', listener: (this: AbortSignal, event: any) => void,
-    options?: boolean | { once?: boolean; }): void;
+  addEventListener(type: 'abort', listener: (this: AbortSignal, event: any) => void, options?: boolean | { once?: boolean; }): void;
   removeEventListener(type: 'abort', listener: (this: AbortSignal, event: any) => void): void;
   dispatchEvent(event: any): boolean;
 }
@@ -43,7 +42,6 @@ export const AbortController: AbortControllerConstructor =
  * {@link AbortSignal} is required but cancellation is genuinely not-applicable;
  * every member is a no-op.
  */
-export const neverSignal: AbortSignal = { aborted: false, reason: undefined, onabort: null, throwIfAborted() {},
-  addEventListener() {}, removeEventListener() {}, dispatchEvent() {
+export const neverSignal: AbortSignal = { aborted: false, reason: undefined, onabort: null, throwIfAborted() {}, addEventListener() {}, removeEventListener() {}, dispatchEvent() {
   return false;
 } };

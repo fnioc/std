@@ -114,8 +114,7 @@ export function tracingRuleMatches(rule: TracingRule, query: TracingRuleQuery): 
  * narrower scope flag set is the more specific. Returns `true` on a full tie,
  * so a fold over a rule list keeps the LAST of equally specific rules.
  */
-export function isMoreSpecificTracingRule(rule: TracingRule, best: TracingRule | undefined,
-  isLocalScope: boolean): boolean {
+export function isMoreSpecificTracingRule(rule: TracingRule, best: TracingRule | undefined, isLocalScope: boolean): boolean {
   if (best === undefined) {
     return true;
   }

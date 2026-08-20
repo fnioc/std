@@ -80,8 +80,7 @@ export class ChangeTokenRegistration<TState> {
     }
   }
 
-  async #awaitConsumerThenRegisterCallback(consumerResult: PromiseLike<void>,
-    token: IChangeToken | null | undefined): Promise<void> {
+  async #awaitConsumerThenRegisterCallback(consumerResult: PromiseLike<void>, token: IChangeToken | null | undefined): Promise<void> {
     try {
       await consumerResult;
     } catch {

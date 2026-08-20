@@ -16,8 +16,7 @@
 import { exists, type IConfig } from '@rhombus-std/config.core';
 import { type LiteralValue, type ObjectType, Type } from '@rhombus-std/primitives';
 
-export type ParseResult<T> = { readonly ok: true; readonly value: T; } | { readonly ok: false;
-  readonly reason: string; };
+export type ParseResult<T> = { readonly ok: true; readonly value: T; } | { readonly ok: false; readonly reason: string; };
 
 /**
  * Coerces `raw` to a finite number. Rejects blank explicitly (`Number("")` and
@@ -214,8 +213,7 @@ function walkRequired(node: IConfig, type: Type, key: string, path: readonly str
   return undefined;
 }
 
-function walkObject(node: IConfig, schema: ObjectType, path: readonly string[],
-  issues: string[]): Record<string, unknown> {
+function walkObject(node: IConfig, schema: ObjectType, path: readonly string[], issues: string[]): Record<string, unknown> {
   const result: Record<string, unknown> = {};
   for (const [key, member] of Object.entries(schema.members)) {
     const slot = slotFor(member);

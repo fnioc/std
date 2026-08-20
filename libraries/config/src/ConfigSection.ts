@@ -13,8 +13,7 @@
 // or any Object.prototype name) is UNREACHABLE via `config.X` -- reach it with
 // `config.getSection("X")` instead.
 
-import { type ConfigObject, configPath, configSectionBrand, type IConfig, type IConfigSection,
-  type IndexedSection } from '@rhombus-std/config.core';
+import { type ConfigObject, configPath, configSectionBrand, type IConfig, type IConfigSection, type IndexedSection } from '@rhombus-std/config.core';
 import type { IChangeToken } from '@rhombus-std/primitives';
 import type { Func } from '@rhombus-toolkit/func';
 import { IndexAccessed } from '@rhombus-toolkit/proxy-base';

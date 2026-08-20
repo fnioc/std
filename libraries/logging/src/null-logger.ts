@@ -33,8 +33,7 @@ export class NullLogger<T = unknown> implements ILogger<T> {
 
   public constructor() {}
 
-  public log<TState>(_logLevel: LogLevel, _eventId: EventId, _state: TState, _error: Error | undefined,
-    _formatter: Func<[TState, Error | undefined], string>): void {}
+  public log<TState>(_logLevel: LogLevel, _eventId: EventId, _state: TState, _error: Error | undefined, _formatter: Func<[TState, Error | undefined], string>): void {}
 
   public isEnabled(_logLevel: LogLevel): boolean {
     return false;

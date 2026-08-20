@@ -16,8 +16,7 @@ import { AsyncLocalStorage } from 'node:async_hooks';
 class Scope implements Disposable {
   #isDisposed = false;
 
-  public constructor(public readonly state: unknown, public readonly parent: Scope | undefined,
-    private readonly restore: Func<[Scope | undefined], void>) {}
+  public constructor(public readonly state: unknown, public readonly parent: Scope | undefined, private readonly restore: Func<[Scope | undefined], void>) {}
 
   public toString(): string {
     return this.state === undefined || this.state === null ? '' : String(this.state);

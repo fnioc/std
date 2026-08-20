@@ -25,10 +25,9 @@ interface ServerSection {
 
 describe('withSchema(...).build()', () => {
   test('coerces leaves and threads the named type', () => {
-    const config = new ConfigBuilder().addInMemoryCollection({ 'Server:Host': 'h', 'Server:Port': '8080',
-      'Server:Ssl': 'on' }).withSchema<ServerSection>(
-        Type.object({ Server: Type.object({ Host: str, Port: num, Ssl: optional(bool) }) }),
-      ).build();
+    const config = new ConfigBuilder().addInMemoryCollection({ 'Server:Host': 'h', 'Server:Port': '8080', 'Server:Ssl': 'on' }).withSchema<ServerSection>(
+      Type.object({ Server: Type.object({ Host: str, Port: num, Ssl: optional(bool) }) }),
+    ).build();
 
     expect(config).toEqual({ Server: { Host: 'h', Port: 8080, Ssl: true } });
     // Static: Port is a number, Ssl is boolean | undefined.
@@ -73,10 +72,11 @@ describe('withSchema(...).build()', () => {
   });
 
   test('coerces nested objects', () => {
-    const config = new ConfigBuilder().addInMemoryCollection({ 'Database:Primary:Host': 'db',
-      'Database:Primary:PoolSize': '10' }).withSchema<{ Database: { Primary: { Host: string; PoolSize: number; }; }; }>(
-        Type.object({ Database: Type.object({ Primary: Type.object({ Host: str, PoolSize: num }) }) }),
-      ).build();
+    const config = new ConfigBuilder().addInMemoryCollection({ 'Database:Primary:Host': 'db', 'Database:Primary:PoolSize': '10' }).withSchema<
+      { Database: { Primary: { Host: string; PoolSize: number; }; }; }
+    >(
+      Type.object({ Database: Type.object({ Primary: Type.object({ Host: str, PoolSize: num }) }) }),
+    ).build();
 
     expect(config.Database.Primary.PoolSize).toBe(10);
   });

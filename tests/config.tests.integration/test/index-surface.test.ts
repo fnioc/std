@@ -10,14 +10,12 @@
 //      bundling with @rhombus-std/config kept external, and the `declare module`
 //      survived rollup-plugin-dts).
 
-import assert from 'node:assert/strict';
 import { describe, test } from 'bun:test';
+import assert from 'node:assert/strict';
 
 import { ConfigBuilder } from '@rhombus-std/config';
-import { CommandLineConfigProvider, CommandLineConfigSource,
-  type CommandLineConfigSourceOptions } from '@rhombus-std/config.commandline';
-import { defaultVariableNameTransformation, EnvironmentVariablesConfigProvider, EnvironmentVariablesConfigSource,
-  type EnvironmentVariablesConfigSourceOptions } from '@rhombus-std/config.env';
+import { CommandLineConfigProvider, CommandLineConfigSource, type CommandLineConfigSourceOptions } from '@rhombus-std/config.commandline';
+import { defaultVariableNameTransformation, EnvironmentVariablesConfigProvider, EnvironmentVariablesConfigSource, type EnvironmentVariablesConfigSourceOptions } from '@rhombus-std/config.env';
 import { JsonConfigProvider, JsonConfigSource, type JsonConfigSourceOptions } from '@rhombus-std/config.json';
 import { Type } from '@rhombus-std/primitives';
 

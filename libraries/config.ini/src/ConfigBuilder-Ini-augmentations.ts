@@ -14,8 +14,7 @@ interface ConfigSourceBuilder {
 
 export namespace ConfigBuilderIniAugmentations {
   /** Registers an {@link IniConfigSource} reading `path`. */
-  export function addIniFile<Self extends ConfigSourceBuilder>(this: Self, path: string,
-    opts?: IniConfigSourceOptions): Self {
+  export function addIniFile<Self extends ConfigSourceBuilder>(this: Self, path: string, opts?: IniConfigSourceOptions): Self {
     return this.add(new IniConfigSource(path, opts)) as Self;
   }
 

@@ -304,8 +304,7 @@ function defaultExtendsPath(/** @type {string} */ packageDir) {
  * never from a sibling's descendants.
  * @returns {Record<string, unknown>}
  */
-function resolveNode(/** @type {Record<string, unknown>} */ node, /** @type {string} */ fromFile,
-  /** @type {Set<string>} */ visited) {
+function resolveNode(/** @type {Record<string, unknown>} */ node, /** @type {string} */ fromFile, /** @type {Set<string>} */ visited) {
   validateConfigNode(node, fromFile);
   const local = { ...node };
   const rawExtends = local[EXTENDS_KEY];
@@ -401,8 +400,7 @@ export function loadInlineEntries(/** @type {string} */ packageDir) {
  * than as a confusing not-found later.
  * @returns {InlineEntry[]}
  */
-function entriesFromResolved(/** @type {Record<string, unknown>} */ resolved, /** @type {string} */ packageDir,
-  /** @type {string} */ from) {
+function entriesFromResolved(/** @type {Record<string, unknown>} */ resolved, /** @type {string} */ packageDir, /** @type {string} */ from) {
   const inlineVal = resolved.inline;
   if (inlineVal === undefined) {
     return [];

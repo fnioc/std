@@ -19,12 +19,9 @@ const REPO_ROOT = resolve(import.meta.dir, '..', '..', '..');
 const CONFIG = join(REPO_ROOT, 'eslint.config.mjs');
 
 const DI_EXTRAS_BODY_FILES: Array<{ file: string; implName: string; member: string; }> = [
-  { file: join(REPO_ROOT, 'libraries', 'di.extras', 'src', 'augmentations', 'Manifest-Descriptor-augmentations.ts'),
-    implName: 'ManifestDescriptorAugmentations', member: 'add' },
-  { file: join(REPO_ROOT, 'libraries', 'di.extras', 'src', 'augmentations', 'Manifest-Descriptor-augmentations.ts'),
-    implName: 'ManifestDescriptorAugmentations', member: 'tryAdd' },
-  { file: join(REPO_ROOT, 'libraries', 'di.extras', 'src', 'augmentations', 'ServiceProvider-service-augmentations.ts'),
-    implName: 'ServiceProviderServiceAugmentations', member: 'getService' },
+  { file: join(REPO_ROOT, 'libraries', 'di.extras', 'src', 'augmentations', 'Manifest-Descriptor-augmentations.ts'), implName: 'ManifestDescriptorAugmentations', member: 'add' },
+  { file: join(REPO_ROOT, 'libraries', 'di.extras', 'src', 'augmentations', 'Manifest-Descriptor-augmentations.ts'), implName: 'ManifestDescriptorAugmentations', member: 'tryAdd' },
+  { file: join(REPO_ROOT, 'libraries', 'di.extras', 'src', 'augmentations', 'ServiceProvider-service-augmentations.ts'), implName: 'ServiceProviderServiceAugmentations', member: 'getService' },
 ];
 
 describe('repo eslint config wires the inline-authoring rule over di.extras', () => {

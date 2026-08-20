@@ -11,8 +11,8 @@
 // semantics and deterministic disposal.
 
 import type { ServiceProvider } from '@rhombus-std/di';
-import { BackgroundService, hostedServiceCollectionType, type IHost, type IHostApplicationLifetime,
-  type IHostedLifecycleService, type IHostedService, type IHostLifetime } from '@rhombus-std/hosting.core';
+import { BackgroundService, hostedServiceCollectionType, type IHost, type IHostApplicationLifetime, type IHostedLifecycleService, type IHostedService,
+  type IHostLifetime } from '@rhombus-std/hosting.core';
 import type { ILogger } from '@rhombus-std/logging.core';
 import type { IStartupValidator } from '@rhombus-std/options';
 import { type AbortSignal, augment } from '@rhombus-std/primitives';
@@ -56,8 +56,8 @@ function getHostLifecycles(hostedServices: readonly IHostedService[]): IHostedLi
  * `abortOnFirstError`, stop after the first failure. Every failure is
  * collected into `errors` rather than thrown.
  */
-async function foreachService<T>(services: readonly T[], signal: AbortSignal, concurrent: boolean,
-  abortOnFirstError: boolean, errors: unknown[], operation: Func<[T, AbortSignal], Promise<void>>): Promise<void> {
+async function foreachService<T>(services: readonly T[], signal: AbortSignal, concurrent: boolean, abortOnFirstError: boolean, errors: unknown[],
+  operation: Func<[T, AbortSignal], Promise<void>>): Promise<void> {
   if (concurrent) {
     const results = await Promise.allSettled(services.map((service) => operation(service, signal)));
     for (const result of results) {
@@ -106,8 +106,7 @@ export class Host implements IHost, AsyncDisposable {
   #backgroundServiceTasks?: Array<Promise<void>>;
   #backgroundServiceErrors?: unknown[];
 
-  public constructor(services: ServiceProvider, applicationLifetime: IHostApplicationLifetime, logger: ILogger,
-    hostLifetime: IHostLifetime, options: HostOptions) {
+  public constructor(services: ServiceProvider, applicationLifetime: IHostApplicationLifetime, logger: ILogger, hostLifetime: IHostLifetime, options: HostOptions) {
     if (!(applicationLifetime instanceof ApplicationLifetime)) {
       throw new Error('Replacing IHostApplicationLifetime is not supported.');
     }
@@ -172,26 +171,23 @@ export class Host implements IHost, AsyncDisposable {
 
       // starting()
       if (this.#hostedLifecycleServices) {
-        await foreachService(this.#hostedLifecycleServices, signal, concurrent, abortOnFirstError, errors,
-          (service, innerSignal) => service.starting(innerSignal));
+        await foreachService(this.#hostedLifecycleServices, signal, concurrent, abortOnFirstError, errors, (service, innerSignal) => service.starting(innerSignal));
         logAndRethrow();
       }
 
       // start()
-      await foreachService(hostedServices, signal, concurrent, abortOnFirstError, errors,
-        async (service, innerSignal) => {
-          await service.start(innerSignal);
-          if (service instanceof BackgroundService) {
-            const monitor = this.#tryExecuteBackgroundService(service);
-            (this.#backgroundServiceTasks ??= []).push(monitor);
-          }
-        });
+      await foreachService(hostedServices, signal, concurrent, abortOnFirstError, errors, async (service, innerSignal) => {
+        await service.start(innerSignal);
+        if (service instanceof BackgroundService) {
+          const monitor = this.#tryExecuteBackgroundService(service);
+          (this.#backgroundServiceTasks ??= []).push(monitor);
+        }
+      });
       logAndRethrow();
 
       // started()
       if (this.#hostedLifecycleServices) {
-        await foreachService(this.#hostedLifecycleServices, signal, concurrent, abortOnFirstError, errors,
-          (service, innerSignal) => service.started(innerSignal));
+        await foreachService(this.#hostedLifecycleServices, signal, concurrent, abortOnFirstError, errors, (service, innerSignal) => service.started(innerSignal));
       }
       logAndRethrow();
 
@@ -231,21 +227,18 @@ export class Host implements IHost, AsyncDisposable {
 
         // stopping()
         if (reversedLifecycleServices) {
-          await foreachService(reversedLifecycleServices, signal, concurrent, false, errors, (service, innerSignal) =>
-            service.stopping(innerSignal));
+          await foreachService(reversedLifecycleServices, signal, concurrent, false, errors, (service, innerSignal) => service.stopping(innerSignal));
         }
 
         // Fire applicationStopping.
         this.#applicationLifetime.stopApplication();
 
         // stop()
-        await foreachService(reversedServices, signal, concurrent, false, errors, (service, innerSignal) =>
-          service.stop(innerSignal));
+        await foreachService(reversedServices, signal, concurrent, false, errors, (service, innerSignal) => service.stop(innerSignal));
 
         // stopped()
         if (reversedLifecycleServices) {
-          await foreachService(reversedLifecycleServices, signal, concurrent, false, errors, (service, innerSignal) =>
-            service.stopped(innerSignal));
+          await foreachService(reversedLifecycleServices, signal, concurrent, false, errors, (service, innerSignal) => service.stopped(innerSignal));
         }
       }
 
@@ -267,8 +260,7 @@ export class Host implements IHost, AsyncDisposable {
       }
 
       if (errors.length) {
-        const error = aggregate(errors,
-          'One or more hosted services failed to stop, or a background service threw an error.');
+        const error = aggregate(errors, 'One or more hosted services failed to stop, or a background service threw an error.');
         hostingLog.stoppedWithError(this.#logger, error);
         throw error;
       }

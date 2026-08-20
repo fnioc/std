@@ -31,8 +31,7 @@ rmSync(dist, { recursive: true, force: true });
 const manual = readTsconfigTransforms(dir, 'tsconfig.ttsc.json');
 const ttscTransforms = manual.length > 0 ? manual : undefined;
 
-const stageDir = await stageLowering({ dir, name: 'examples.app.with-transformer', ttscProject: 'tsconfig.ttsc.json',
-  ttscTransforms });
+const stageDir = await stageLowering({ dir, name: 'examples.app.with-transformer', ttscProject: 'tsconfig.ttsc.json', ttscTransforms });
 
 const js = await Bun.build({
   entrypoints: [stagedEntrypoint(stageDir, 'src/main.ts')],
