@@ -77,16 +77,18 @@
   time), so the sync/async distinction is decided by plan structure, never by cache state.
 - Plan memoization records instructions only — the callee reference and the argument wiring, never
   a return value. Plans hold no instances; results live only behind the scope door.
-- NEAR-MISS DIAGNOSTICS (owner proposal, endorsed; details **(proposed)**): a sync-mode
-  unsatisfiable failure additionally reports whether the request is satisfiable ASYNCHRONOUSLY —
-  implemented exactly, by re-running plan construction in async mode on the failure path (machinery
-  reused, failures never cached, zero false positives) — so the message can assert "satisfiable via
-  an async request" rather than guess. The near-miss facts ride the error as machine-readable data
-  (message text derived from it; feeds the diagnostics surface). The pattern generalizes:
-  keyed-under-a-tag and, once ManifestScope lands, private-in-scope join as further near-miss
-  kinds. One-directional by construction — async lookup is a superset of sync, so no mirrored
-  hint exists. Accepted micro-cost: the failure-path re-plan interns a `Promise<root>` node per
-  failed request type.
+- NEAR-MISS DIAGNOSTICS (owner-designed): the promise fallback LOOKUP is ungated — on a final
+  miss it runs in both modes, and only the consequence is mode-dependent: under a boundary a hit
+  mints the async site (the normal fallback); outside one a hit throws the ordinary
+  `UnsatisfiableError` CARRYING async-hint data ("a `Promise<T>` registration exists — did you
+  mean an async request?"). One mechanism, two consumers; the throw happens at the exact failing
+  dependency, so the hint names it. Two pins: the hint is data on the existing error — no new
+  taxonomy member, the no-async-failure ruling stands; and the probe sits exactly where
+  unresolvable would throw — last resort only, after construct-on-miss/union/other candidates are
+  exhausted, never preempting a viable satisfier. The hint is a pointer, not a success guarantee —
+  a deeper async failure surfaces iteratively. The pattern generalizes as further near-miss data
+  kinds on the same error: keyed-under-a-tag, and private-in-scope once ManifestScope lands.
+  One-directional by construction — async lookup is a superset of sync.
 
 ## The scope door
 
