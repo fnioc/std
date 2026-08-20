@@ -53,8 +53,12 @@ with a leading `I` dropped and `Topic` is a short word for the member group (`Js
 `Service`, `Sugar`).
 
 **3. Write the implementation as a namespace of exported function declarations.** This namespace is
-the one place a member's shape is written — its parameters, its generics, its documentation — and
+the one place a member's implementation shape is written — its parameters and its generics — and
 every other surface an augmentation touches derives from it.
+
+**The doc comment goes on the `declare module` face, never on the namespace or body.** The face is
+what a caller reads on hover and what the emitted `.d.ts` carries; the implementation is neither.
+Where both carry one, the body's goes.
 
 The simplest shape is a receiver with no type parameter and no chaining:
 

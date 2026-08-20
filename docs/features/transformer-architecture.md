@@ -506,6 +506,31 @@ identifier must be a parameter, `this`, a type parameter, or an unaliased primit
 `rhombus-inline` ESLint rule enforces all of this, including which package each primitive name is
 allowed to be imported from (its one authoring home, per the table above).
 
+### Termination: the emitted call binds a different overload
+
+A sugar body ends in a call to the same member name it sugars, so what stops the fixed-point loop
+from lowering its own output forever is stated, not incidental: **the emitted call must bind a
+different overload than the sugar face** — the loop's matcher resolves the emitted call, finds it
+bound to a token-taking runtime overload no entry claims, and leaves it alone. The derived
+arguments are what move the binding: `describe<T>()` emits `describe(typefor<T>())`, one argument
+longer than its face; the uniform `add<T>(implementer)` emits
+`add(typefor<T>(), implementer, typefor(implementer))`, two arguments longer — the service type
+and the implementer type are both derived. Adopt this as the rule for any new type-taking
+primitive: give the sugar a face whose lowering binds an overload the sugar's own face can never
+re-match, and termination needs no further argument.
+
+### Steering the observed implementer type with a cast
+
+`typefor(value)` observes the checker's type for the **argument expression**, so a cast at the
+call site is the supported way to steer the observed SHAPE: parameter rows, the return, an
+overload row, a `Keyed<T, K>` slot naming a keyed registration the function's own parameters
+cannot. What a cast can never change is the KIND — every type a callable is assignable to still
+carries call signatures, so crossing the value/factory line would need a double assertion that
+misdescribes the value. Kind is chosen by the door (`add` vs `addValue`, or the `ConstantType`
+marker on the token form); shape is chosen by the cast. The cost to know at the call site: a
+stale cast silently rewrites the injection list, because the derivation reads the cast, not the
+callable.
+
 ### The body marker — `registerInlineBodies`
 
 The publish list above is the **only** thing that points at a body set: nothing else in the code
