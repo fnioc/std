@@ -60,7 +60,7 @@
   },
   "devDependencies": {
     "@rhombus-std/di.core": "workspace:*",
-    "typescript": "^5.9.0"
+    "typescript": "^6.0.3"
   },
   "publishConfig": {
     "access": "public",

@@ -85,6 +85,6 @@
     "rollup": "^4.61.0",
     "rollup-plugin-dts": "^6.4.1",
     "ttsc": "^0.18.1",
-    "typescript": "^5.9.0"
+    "typescript": "^6.0.3"
   }
 }

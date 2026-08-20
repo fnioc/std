@@ -36,5 +36,6 @@
   },
   "explorerExclude.backup": {},
   "typescript.tsserver.experimental.enableProjectDiagnostics": true,
-  "explorerExcludeManager.backup": {}
+  "explorerExcludeManager.backup": {},
+  "js/ts.tsdk.path": "node_modules/typescript/lib"
 }

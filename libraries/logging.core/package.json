@@ -54,7 +54,7 @@
     "@rhombus-toolkit/func": "3.6.0",
     "@ttsc/unplugin": "^0.18.1",
     "ttsc": "^0.18.1",
-    "typescript": "^5.9.0"
+    "typescript": "^6.0.3"
   },
   "publishConfig": {
     "access": "public",
