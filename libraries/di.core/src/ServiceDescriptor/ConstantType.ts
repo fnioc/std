@@ -1,12 +1,12 @@
 /**
- * The implementer type of a value registration: a marker carrying only its kind.
+ * The positional value-door marker: a marker carrying only its kind.
  *
  * @remarks
- * A value registration has no signature to read, no injection list, and nothing to call, so its
- * implementer slot carries no shape — only the kind saying the implementer is handed back as it
- * stands. The call site is what knows a callable is meant as a value rather than a factory (the
- * callable's own type cannot say), so the value door passes this marker where the other doors
- * pass the implementer's derived type.
+ * In the positional registration overload — `add(serviceType, v, ConstantType)` — no member name
+ * can state which door the implementer came in by, and a callable registered AS a value is
+ * indistinguishable from a factory by its own type, so the call site passes this marker where the
+ * other doors pass the implementer's derived type. It is consumed at the verb and stored nowhere:
+ * a value descriptor names its door by its `value` member.
  */
 export interface ConstantType {
   readonly kind: 'constant';

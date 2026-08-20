@@ -2,25 +2,37 @@ import { Type } from '@rhombus-std/primitives';
 import { assertNever } from '@rhombus-toolkit/type-guards';
 import type { CtorDescriptor, FactoryDescriptor, ServiceDescriptor, ValueDescriptor } from './ServiceDescriptor';
 
+/** Which door the registration came in by, read from the member the descriptor carries. */
+export function kind(descriptor: ServiceDescriptor<string>): 'ctor' | 'factory' | 'value' {
+  if ('ctor' in descriptor) {
+    return 'ctor';
+  }
+  if ('factory' in descriptor) {
+    return 'factory';
+  }
+  return 'value';
+}
+
 /**
  * Closes an open registration against the generics a `Type.satisfies` match captured,
  * rewriting `serviceType` and the implementer's type so the result stands on its own.
  */
-export function substitute<Scopes extends string>(descriptor: ServiceDescriptor<Scopes>, generics: ReadonlyMap<string, Type>): ServiceDescriptor<Scopes> {
+export function substitute<Scopes extends string>(descriptor: ServiceDescriptor<Scopes>,
+  generics: ReadonlyMap<string, Type>): ServiceDescriptor<Scopes> {
   if (!generics.size) {
     return descriptor;
   }
   const serviceType = Type.substitute(descriptor.serviceType, generics);
-  switch (descriptor.kind) {
-    case 'value':
-      return { ...descriptor, serviceType };
-    case 'ctor':
-      return { ...descriptor, serviceType, implementerType: Type.substitute(descriptor.implementerType, generics) };
-    case 'factory':
-      return { ...descriptor, serviceType, implementerType: Type.substitute(descriptor.implementerType, generics) };
-    default:
-      return assertNever(descriptor);
+  if ('ctor' in descriptor) {
+    return { ...descriptor, serviceType, ctorType: Type.substitute(descriptor.ctorType, generics) };
   }
+  if ('factory' in descriptor) {
+    return { ...descriptor, serviceType, factoryType: Type.substitute(descriptor.factoryType, generics) };
+  }
+  if ('value' in descriptor) {
+    return { ...descriptor, serviceType };
+  }
+  return assertNever(descriptor);
 }
 
 /**
@@ -32,25 +44,23 @@ export function equals(left: ServiceDescriptor<string>, right: ServiceDescriptor
   if (left === right) {
     return true;
   }
-  if (left.kind !== right.kind || !matches(left, right)) {
+  if (kind(left) !== kind(right) || !matches(left, right)) {
     return false;
   }
-  switch (left.kind) {
-    case 'ctor': {
-      const other = right as CtorDescriptor<string>;
-      return left.implementer === other.implementer && left.scope === other.scope
-        && left.implementerType === other.implementerType;
-    }
-    case 'factory': {
-      const other = right as FactoryDescriptor<string>;
-      return left.implementer === other.implementer && left.scope === other.scope
-        && left.implementerType === other.implementerType;
-    }
-    case 'value':
-      return left.implementer === (right as ValueDescriptor).implementer;
-    default:
-      return assertNever(left);
+  if ('ctor' in left) {
+    const other = right as CtorDescriptor<string>;
+    return left.ctor === other.ctor && left.scope === other.scope
+      && left.ctorType === other.ctorType;
   }
+  if ('factory' in left) {
+    const other = right as FactoryDescriptor<string>;
+    return left.factory === other.factory && left.scope === other.scope
+      && left.factoryType === other.factoryType;
+  }
+  if ('value' in left) {
+    return left.value === (right as ValueDescriptor).value;
+  }
+  return assertNever(left);
 }
 
 /**
