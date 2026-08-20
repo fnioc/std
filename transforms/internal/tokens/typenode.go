@@ -65,8 +65,8 @@ func DeriveTypeF(ctx *Context, t *shimchecker.Type, failure *Failure) (*TypeNode
 	// A Hole-branded placeholder is `$N`, read before the alias/symbol path: an
 	// aliased or constrained hole carries a symbol that would otherwise mint an
 	// alias node, and the bare `Hole<1>` is an anonymous `__type`.
-	if hole, ok := HoleNumberFor(t, ctx.Checker); ok {
-		return &TypeNode{Kind: TypeNodePlaceholder, Label: strconv.Itoa(hole)}, true
+	if generic, ok := GenericNumberFor(t, ctx.Checker); ok {
+		return &TypeNode{Kind: TypeNodePlaceholder, Label: strconv.Itoa(generic)}, true
 	}
 	if t.Flags()&shimchecker.TypeFlagsTypeParameter != 0 {
 		if failure != nil {

@@ -206,7 +206,7 @@ export const tok = typefor<IThing<IOther>>();
 	}
 }
 
-func TestTypeforPlaceholderHole(t *testing.T) {
+func TestTypeforGenericPlaceholder(t *testing.T) {
 	src := `import { typefor, $ } from '@rhombus-std/primitives.extras';
 interface IThing<T> {}
 export const tok = typefor<IThing<$<1>>>();
