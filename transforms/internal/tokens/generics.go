@@ -3,7 +3,6 @@ package tokens
 import (
 	"fmt"
 	"sort"
-	"strconv"
 	"strings"
 
 	shimast "github.com/microsoft/typescript-go/shim/ast"
@@ -146,10 +145,10 @@ func AliasSymbol(t *shimchecker.Type) *shimast.Symbol {
 	return nil
 }
 
-// GenericNumberFor returns the hole number N of a `Hole<N, C>`-branded type, or
+// GenericLabelFor returns the hole label L of a `Hole<L, C>`-branded type, or
 // ok=false when the type is not a hole.
-func GenericNumberFor(t *shimchecker.Type, checker *shimchecker.Checker) (int, bool) {
-	return brandLiteralFor(t, checker, genericBrandProperty, extractNumberLiteral)
+func GenericLabelFor(t *shimchecker.Type, checker *shimchecker.Checker) (string, bool) {
+	return brandLiteralFor(t, checker, genericBrandProperty, extractStringLiteral)
 }
 
 // InjectTokenFor returns the literal token K of an `Inject<T, K>`-branded type,
@@ -202,7 +201,7 @@ func KeyLiteralFor(t *shimchecker.Type, checker *shimchecker.Checker) (string, b
 //     spelled union recovered from a distributed brand), since the raw
 //     `T & { [KEY]?: K }` intersection has no symbol of its own. Hole-aware
 //     derivation (DeriveTokenF's `$N` render): a keyed base that itself
-//     contains an open-generic hole (`Keyed<IThing<Hole<1>>, "k">`) must render
+//     contains an open-generic hole (`Keyed<IThing<Hole<"1">>, "k">`) must render
 //     `IThing<$1>` — a derivation without the hole branch would bail here.
 //
 // Returns ok=false when no base is derivable.
@@ -316,7 +315,7 @@ func isAnyBrandProperty(prop *shimast.Symbol) bool {
 // brandLiteralFor walks a type's properties for one declared as a
 // computed-symbol optional property whose declaring const is named propName,
 // then extracts the literal payload from that property's type. The checker
-// flattens intersections, so a constrained brand (`Entity & { [HOLE]?: 2 }`)
+// flattens intersections, so a constrained brand (`Entity & { [HOLE]?: "2" }`)
 // works. The first property whose payload extracts wins.
 func brandLiteralFor[T any](
 	t *shimchecker.Type,
@@ -379,22 +378,6 @@ func extractStringLiteral(propType *shimchecker.Type) (string, bool) {
 	return "", false
 }
 
-// extractNumberLiteral pulls the number-literal payload N out of a brand
-// property's type (`N` or `N | undefined`).
-func extractNumberLiteral(propType *shimchecker.Type) (int, bool) {
-	if n, ok := numberLiteralValue(propType); ok {
-		return n, true
-	}
-	if propType.Flags()&shimchecker.TypeFlagsUnion != 0 {
-		for _, member := range propType.Types() {
-			if n, ok := numberLiteralValue(member); ok {
-				return n, true
-			}
-		}
-	}
-	return 0, false
-}
-
 func stringLiteralValue(t *shimchecker.Type) (string, bool) {
 	if t.Flags()&shimchecker.TypeFlagsStringLiteral == 0 {
 		return "", false
@@ -403,21 +386,6 @@ func stringLiteralValue(t *shimchecker.Type) (string, bool) {
 		return s, true
 	}
 	return "", false
-}
-
-// numberLiteralValue reads a number literal's integer value without importing
-// the internal jsnum type: its String()/%v render is JS-canonical, so a
-// hole/index literal (`1`, `2`, …) round-trips through strconv.
-func numberLiteralValue(t *shimchecker.Type) (int, bool) {
-	if t.Flags()&shimchecker.TypeFlagsNumberLiteral == 0 {
-		return 0, false
-	}
-	text := fmt.Sprintf("%v", t.AsLiteralType().Value())
-	n, err := strconv.Atoi(text)
-	if err != nil {
-		return 0, false
-	}
-	return n, true
 }
 
 // LiteralKind tags a Rule-2 singular value.

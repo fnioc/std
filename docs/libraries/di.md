@@ -131,7 +131,7 @@ positionally with `{ typeArg: n }`.
 class Repository<T> {
   constructor(public readonly entityToken: Typeof<T>) {}
 }
-services = services.addClass<IRepository<$<1>>>(Repository<$<1>>).as<'request'>();
+services = services.addClass<IRepository<$<'1'>>>(Repository<$<'1'>>).as<'request'>();
 
 // closing IRepository<User> builds a Repository whose entityToken is the
 // literal string "pkg:User" — no reflection, no MakeGenericType

@@ -1909,7 +1909,7 @@ reasoning traces to the landed engine, not a fresh ruling._
 ## §166 — A factory value's OWN directly-holed parameter is a known derivation gap, not a crash risk
 
 `typefor(factory)` where `factory`'s own parameter directly names an open-template hole
-(`(store: IStore<$<1>>) => ...`, the hole written straight into the parameter's annotation rather
+(`(store: IStore<$<'1'>>) => ...`, the hole written straight into the parameter's annotation rather
 than arriving through a class's own generic instantiation) fails to derive: the checker resolves
 that parameter's type differently for an arrow-function-literal parameter than for an
 otherwise-identical constructor parameter of a class, and `tokens.DeriveTyped` reports it
@@ -1921,7 +1921,7 @@ This is narrow: a factory registered under an OPEN service token is a class-only
 on the (retired) di-direct path, so a hole surfacing through a factory's own parameter was already
 documented as reachable only via a standalone `typefor` call, never through an actual open
 registration. Closing it is future work, not blocking — the ctor path (a hole arriving via a class's
-own generic instantiation, `Repo<$<1>>`) derives correctly today.
+own generic instantiation, `Repo<$<'1'>>`) derives correctly today.
 
 _Claude-directed 2026-08-13, executing the owner's §155/§157 direction._
 

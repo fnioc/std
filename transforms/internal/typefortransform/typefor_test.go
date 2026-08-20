@@ -51,8 +51,8 @@ func buildTypeforWorkspace(t *testing.T, mainSrc string) (*driver.Program, strin
 export declare function typefor<V>(value: V): any;
 
 declare const HOLE: unique symbol;
-export type Hole<N extends number, C = unknown> = C & { readonly [HOLE]?: N };
-export type $<N extends number> = Hole<N>;
+export type Hole<L extends string, C = unknown> = C & { readonly [HOLE]?: L };
+export type $<L extends string> = Hole<L>;
 declare const KEY: unique symbol;
 export type Keyed<T, K extends string> = T & { readonly [KEY]?: K };
 `)
@@ -209,15 +209,15 @@ export const tok = typefor<IThing<IOther>>();
 func TestTypeforGenericPlaceholder(t *testing.T) {
 	src := `import { typefor, $ } from '@rhombus-std/primitives.extras';
 interface IThing<T> {}
-export const tok = typefor<IThing<$<1>>>();
+export const tok = typefor<IThing<$<'TEntity'>>>();
 `
 	prog, app := buildTypeforWorkspace(t, src)
 	defer func() { _ = prog.Close() }()
 
 	out := lowerTypefor(t, prog, app)
-	want := `Type.imported("IThing", "@scope/app/main", [Type.generic("1")])`
+	want := `Type.imported("IThing", "@scope/app/main", [Type.generic("TEntity")])`
 	if got := exprFor(t, out, "tok"); got != want {
-		t.Fatalf("typefor<IThing<$<1>>>() = %q, want %q\nfull output:\n%s", got, want, out)
+		t.Fatalf("typefor<IThing<$<'TEntity'>>>() = %q, want %q\nfull output:\n%s", got, want, out)
 	}
 }
 

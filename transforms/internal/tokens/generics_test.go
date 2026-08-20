@@ -30,7 +30,7 @@ import (
 // token renders bare because the test Context reports every file as a default lib
 // (so the assertions pin the hole / key / literal grammar, not the package tier).
 const fixtureSrc = `declare const HOLE: unique symbol;
-type Hole<N extends number, C = unknown> = C & { readonly [HOLE]?: N };
+type Hole<L extends string, C = unknown> = C & { readonly [HOLE]?: L };
 declare const KEY: unique symbol;
 type Keyed<T, K extends string> = T & { readonly [KEY]?: K };
 declare const TOK: unique symbol;
@@ -43,12 +43,12 @@ interface Box<T> { readonly value: T; }
 
 declare const litStr: "lit";
 declare const intr: number;
-declare const holeInThing: IThing<Hole<1>>;
+declare const holeInThing: IThing<Hole<"1">>;
 declare const anon: { readonly a: number };
 declare const nestedAnon: IThing<{ readonly a: number }>;
 declare const plain: IThing;
 
-declare const hole3: Hole<3>;
+declare const hole3: Hole<"3">;
 declare const inj: Inject<IThing, "tok">;
 declare const injOpt: Inject<IThing, "tok"> | undefined;
 declare const key: Keyed<ICache, "redis">;
@@ -56,7 +56,7 @@ declare const keyOpt: Keyed<ICache, "redis"> | undefined;
 
 declare const kInject: Keyed<Inject<IThing, "tok">, "k">;
 declare const kCache: Keyed<ICache, "redis">;
-declare const kHole: Keyed<IThing<Hole<1>>, "k">;
+declare const kHole: Keyed<IThing<Hole<"1">>, "k">;
 declare const kAnon: Keyed<{ readonly a: number }, "k">;
 
 declare const stripOne: Keyed<IThing, "k">;
@@ -299,16 +299,16 @@ func unboundTypeParam(t *testing.T, checker *shimchecker.Checker, sf *shimast.So
 	return nil
 }
 
-func TestGenericNumberFor(t *testing.T) {
+func TestGenericLabelFor(t *testing.T) {
 	prog, ctx, main := loadGenerics(t)
 	defer func() { _ = prog.Close() }()
 
-	n, ok := GenericNumberFor(typeOfDecl(t, ctx.Checker, main, "hole3"), ctx.Checker)
-	if !ok || n != 3 {
-		t.Fatalf("GenericNumberFor(Hole<3>) = %d ok=%v, want 3 true", n, ok)
+	label, ok := GenericLabelFor(typeOfDecl(t, ctx.Checker, main, "hole3"), ctx.Checker)
+	if !ok || label != "3" {
+		t.Fatalf("GenericLabelFor(Hole<\"3\">) = %q ok=%v, want \"3\" true", label, ok)
 	}
-	if _, ok := GenericNumberFor(typeOfDecl(t, ctx.Checker, main, "plain"), ctx.Checker); ok {
-		t.Fatal("GenericNumberFor(non-hole) should be ok=false")
+	if _, ok := GenericLabelFor(typeOfDecl(t, ctx.Checker, main, "plain"), ctx.Checker); ok {
+		t.Fatal("GenericLabelFor(non-hole) should be ok=false")
 	}
 }
 

@@ -14,7 +14,7 @@
 //
 // THE HOLE IS A PLACEHOLDER TYPE. `Type.generic(label)` composes one, and
 // `Type.imported(base, from, [hole])` puts it where a type argument goes. Where the
-// type-driven dialect writes the compile-time brands `$<1>` / `Generic<1, Entity>`,
+// type-driven dialect writes the compile-time brands `$<'1'>` / `Generic<'1', Entity>`,
 // this file composes the same value directly — the brands exist so a transformer
 // can derive it, and with no transformer there is nothing to derive.
 //
@@ -139,7 +139,7 @@ class InMemoryTable<TEntity> implements ITable<TEntity> {
 
 /**
  * The template a consumer actually asks for. `TEntity extends Entity` is the
- * bound that the type-driven dialect spells `Generic<1, Entity>`; composing a
+ * bound that the type-driven dialect spells `Generic<'1', Entity>`; composing a
  * placeholder by hand carries no type-level constraint at all, so the bound is
  * simply the class's own business.
  */

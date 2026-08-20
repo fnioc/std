@@ -33,7 +33,7 @@ type TypeNode struct {
 	// spelling sorts at render time).
 	Members []*TypeNode
 
-	// Placeholder: the hole number's decimal text ("1" for $1).
+	// Placeholder: the hole's label.
 	Label string
 
 	// Tag: the branded base and the key composed onto it.
@@ -68,11 +68,11 @@ func DeriveTypeF(ctx *Context, t *shimchecker.Type, failure *Failure) (*TypeNode
 	if name, ok := intrinsicToken(t); ok {
 		return &TypeNode{Kind: TypeNodeNamed, Name: name, From: "global"}, true
 	}
-	// A Hole-branded placeholder is `$N`, read before the alias/symbol path: an
+	// A Hole-branded placeholder is read before the alias/symbol path: an
 	// aliased or constrained hole carries a symbol that would otherwise mint an
-	// alias node, and the bare `Hole<1>` is an anonymous `__type`.
-	if generic, ok := GenericNumberFor(t, ctx.Checker); ok {
-		return &TypeNode{Kind: TypeNodePlaceholder, Label: strconv.Itoa(generic)}, true
+	// alias node, and the bare `Hole<"1">` is an anonymous `__type`.
+	if label, ok := GenericLabelFor(t, ctx.Checker); ok {
+		return &TypeNode{Kind: TypeNodePlaceholder, Label: label}, true
 	}
 	if t.Flags()&shimchecker.TypeFlagsTypeParameter != 0 {
 		if failure != nil {

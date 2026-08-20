@@ -32,7 +32,7 @@
 /**
  * The shared shape every stored entity has. It exists so an implementation can
  * be written against `TEntity extends Entity` — which is what makes the
- * CONSTRAINED hole `Generic<1, Entity>` necessary rather than decorative: a bare
+ * CONSTRAINED hole `Generic<'1', Entity>` necessary rather than decorative: a bare
  * `$1` is unconstrained and would not satisfy that bound.
  */
 export interface Entity {

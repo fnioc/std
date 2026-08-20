@@ -127,7 +127,7 @@ function goEnv(): NodeJS.ProcessEnv {
 // Three shapes of service type reach the same verb:
 //
 //   1. closed        services.add<ILogger>(ConsoleLogger, 'singleton')
-//   2. open template services.add<IRepo<$<1>>>(ThingRepo)  (hole-carrying dep)
+//   2. open template services.add<IRepo<$<'1'>>>(ThingRepo)  (hole-carrying dep)
 //   3. keyed         services.add<Keyed<ICache, 'redis'>>(RedisCache)
 //
 // WIRING. The chain sandbox deps {di.core, di.extras}, symlinks the authoring
@@ -193,7 +193,7 @@ class ConsoleLogger implements ILogger {
 }
 class NoDepsLogger implements ILogger {}
 class ThingRepo {
-  constructor(store: IStore<$<1>>) {
+  constructor(store: IStore<$<'1'>>) {
     void store;
   }
 }
@@ -204,7 +204,7 @@ export const closed = services.add<ILogger>(ConsoleLogger, 'singleton');
 
 export const emptySig = services.add<ILogger>(NoDepsLogger, 'singleton');
 
-export const open = services.add<IRepo<$<1>>>(ThingRepo);
+export const open = services.add<IRepo<$<'1'>>>(ThingRepo);
 `;
 
 // A KEYED service type. Base and key compose into ONE tag token, and the lookup

@@ -42,13 +42,15 @@ declare const HOLE: unique symbol;
  * yet — the parameter's slot is filled by whatever the request closes it to.
  *
  * @remarks
- * `N` numbers the hole so several can be told apart and a repeated one binds
- * consistently. `C` constrains what may close it, and defaults to anything.
+ * `L` labels the hole so several can be told apart and a repeated one binds
+ * consistently; any string serves, so a label may read as a name (`'TEntity'`)
+ * rather than a position. `C` constrains what may close it, and defaults to
+ * anything.
  */
-export type Generic<N extends number, C = unknown> = C & { readonly [HOLE]?: N; };
+export type Generic<L extends string, C = unknown> = C & { readonly [HOLE]?: L; };
 
 /** {@link Generic} without a constraint — the spelling an open template usually wants. */
-export type $<N extends number> = Generic<N>;
+export type $<L extends string> = Generic<L>;
 
 // ── Keyed ─────────────────────────────────────────────────────────────────────
 
