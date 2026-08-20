@@ -50,7 +50,8 @@ declare module '@rhombus-std/di.core' {
 export namespace ServiceManifestOptionsConfigAugmentations {
   export function configure(this: Manifest<string>, optionsType: Type, section: IConfig): Manifest<string>;
   export function configure(this: Manifest<string>, optionsType: Type, configureOptions: Func<[any], void>): Manifest<string>;
-  export function configure<Deps extends readonly unknown[]>(this: Manifest<string>, optionsType: Type, depTypes: DepTypes<Deps>, configureOptions: (options: any, ...deps: Deps) => void): Manifest<string>;
+  export function configure<Deps extends readonly unknown[]>(this: Manifest<string>, optionsType: Type, depTypes: DepTypes<Deps>,
+    configureOptions: (options: any, ...deps: Deps) => void): Manifest<string>;
   export function configure<Deps extends readonly unknown[]>(this: Manifest<string>, optionsType: Type, source: IConfig | Func<[any], void> | DepTypes<Deps>,
     configureWithDeps?: (options: any, ...deps: Deps) => void): Manifest<string> {
     // DI-injected form: `source` is the dep-type tuple and

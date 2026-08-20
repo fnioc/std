@@ -11,18 +11,16 @@
 import { ConfigBuilder, type IConfig } from '@rhombus-std/config';
 import '@rhombus-std/di';
 import { DefaultManifest, type Manifest } from '@rhombus-std/di.core';
-import { ActivityListenerConfigFactory, DefaultActivityListenerConfigFactory, type IMetricListenerConfigFactory,
-  MetricListenerConfigFactory, MetricsConfig, TracingConfig } from '@rhombus-std/diagnostics';
-import { METRICS_LISTENER_CONFIGURATION_FACTORY_TYPE,
-  TRACING_LISTENER_CONFIGURATION_FACTORY_TYPE } from '@rhombus-std/diagnostics.core';
+import { ActivityListenerConfigFactory, DefaultActivityListenerConfigFactory, type IMetricListenerConfigFactory, MetricListenerConfigFactory, MetricsConfig,
+  TracingConfig } from '@rhombus-std/diagnostics';
+import { METRICS_LISTENER_CONFIGURATION_FACTORY_TYPE, TRACING_LISTENER_CONFIGURATION_FACTORY_TYPE } from '@rhombus-std/diagnostics.core';
 import { describe, expect, test } from 'bun:test';
 
 function configWith(data: Record<string, string>): IConfig {
   return new ConfigBuilder().addInMemoryCollection(data).build();
 }
 
-const first = () =>
-  configWith({ 'MyListener:Key': 'first', 'MyListener:OnlyFirst': 'yes', 'OtherListener:Key': 'elsewhere' });
+const first = () => configWith({ 'MyListener:Key': 'first', 'MyListener:OnlyFirst': 'yes', 'OtherListener:Key': 'elsewhere' });
 const second = () => configWith({ 'MyListener:Key': 'second', 'MyListener:OnlySecond': 'also' });
 
 describe('MetricListenerConfigFactory', () => {

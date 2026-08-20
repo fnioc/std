@@ -1,5 +1,4 @@
-import { type IConfigureOptions, type IOptions, type IPostConfigureOptions, type IValidateOptions, Options,
-  OptionsFactory } from '@rhombus-std/options';
+import { type IConfigureOptions, type IOptions, type IPostConfigureOptions, type IValidateOptions, Options, OptionsFactory } from '@rhombus-std/options';
 import { type IServiceProvider, Type } from '@rhombus-std/primitives';
 import type { Func } from '@rhombus-toolkit/func';
 

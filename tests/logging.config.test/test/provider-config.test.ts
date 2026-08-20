@@ -11,8 +11,7 @@ import { ConfigBuilder, type IConfigRoot } from '@rhombus-std/config';
 import '@rhombus-std/di';
 import { DefaultManifest, Type } from '@rhombus-std/di.core';
 import { LoggingBuilder } from '@rhombus-std/logging';
-import { type ILoggerProviderConfig, type ILoggerProviderConfigFactory,
-  loggerProviderConfigType } from '@rhombus-std/logging.config';
+import { type ILoggerProviderConfig, type ILoggerProviderConfigFactory, loggerProviderConfigType } from '@rhombus-std/logging.config';
 import { describe, expect, test } from 'bun:test';
 
 const FACTORY_TYPE: Type = Type.from('@rhombus-std/logging.config:ILoggerProviderConfigFactory');
