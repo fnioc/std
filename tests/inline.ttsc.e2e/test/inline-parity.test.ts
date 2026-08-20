@@ -724,7 +724,7 @@ import type { Manifest, Type } from '@rhombus-std/di.core';
 declare module '@rhombus-std/di.core' {
   interface Manifest<Scopes extends string> {
     addOptions<T>(): Manifest<Scopes>;
-    addOptions(tType: Type | string): Manifest<Scopes>;
+    addOptions(optionsType: Type): Manifest<Scopes>;
   }
 }
 export {};
