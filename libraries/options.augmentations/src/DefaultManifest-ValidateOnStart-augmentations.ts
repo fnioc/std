@@ -8,7 +8,7 @@
 // {@link StartupValidator} under `typefor<IStartupValidator>()`. The host
 // resolves that (optionally) and calls `validate()`.
 
-import { type Manifest, RESOLVER_TYPE } from '@rhombus-std/di.core';
+import { Hole, type Manifest, RESOLVER_TYPE } from '@rhombus-std/di.core';
 import { type IStartupValidator, StartupValidator } from '@rhombus-std/options';
 import type { IServiceProvider } from '@rhombus-std/primitives';
 import { Type } from '@rhombus-std/primitives';
@@ -34,21 +34,22 @@ declare module '@rhombus-std/di.core' {
   }
 }
 
-export namespace ServiceManifestValidateOnStartAugmentations {
-  const valKey = `@rhombus-std/options.augmentations/startup-validation-target`;
-  export function validateOnStart(this: Manifest<string>, type: Type): Manifest<string> {
-    return this
-      // Accumulate the target in the flat startup-validation slot. This is the
-      // one slot holding the composed `IOptions<T>` address rather than the bare
-      // `T` every other verb keys on, because StartupValidator resolves each
-      // target and reads `.value` off it -- so the target has to be resolvable.
-      .add<Keyed<Type, typeof valKey>>(Type.imported('IOptions', '@rhombus-std/options', [type]))
-      // One validator serves every target: its factory reads the whole target
-      // list off the resolver at start time, not at registration.
-      .tryAdd<IStartupValidator>(factory, typefor(factory));
-  }
-  function factory(resolver: IServiceProvider, startupType: Array<Keyed<Type, typeof valKey>>): IStartupValidator {
-    return new StartupValidator(resolver, startupType);
-  }
-}
-registerAugmentations<Manifest<any>>(ServiceManifestValidateOnStartAugmentations);
+registerAugmentations<Manifest<any>>({
+  validateOnStart: (() => {
+    const valKey = `@rhombus-std/options.augmentations/startup-validation-target`;
+    function factory(resolver: IServiceProvider, startupType: Array<Keyed<Type, typeof valKey>>): IStartupValidator {
+      return new StartupValidator(resolver, startupType);
+    }
+    return function validateOnStart(this: Manifest<string>, type: Type): Manifest<string> {
+      return this
+        // Accumulate the target in the flat startup-validation slot. This is the
+        // one slot holding the composed `IOptions<T>` address rather than the bare
+        // `T` every other verb keys on, because StartupValidator resolves each
+        // target and reads `.value` off it -- so the target has to be resolvable.
+        .add<Keyed<Type, typeof valKey>>(Type.imported('IOptions', '@rhombus-std/options', [type]))
+        // One validator serves every target: its factory reads the whole target
+        // list off the resolver at start time, not at registration.
+        .tryAdd<IStartupValidator>(factory, typefor(factory));
+    };
+  })(),
+});

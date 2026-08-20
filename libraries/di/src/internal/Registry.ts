@@ -1,5 +1,5 @@
 import { type Manifest, type ServiceDescriptor } from '@rhombus-std/di.core';
-import { getOrCreate, Type } from '@rhombus-std/primitives';
+import { Type } from '@rhombus-std/primitives';
 
 /** A registration paired with its place in the manifest's newest-first order. */
 interface Entry {
@@ -46,7 +46,7 @@ export class Registry {
       if (Type.isOpen(descriptor.serviceType)) {
         this.#open.push(entry);
       } else {
-        getOrCreate(this.#closed, descriptor.serviceType, () => []).push(entry);
+        this.#closed.getOrInsert(descriptor.serviceType, []).push(entry);
       }
     }
   }
