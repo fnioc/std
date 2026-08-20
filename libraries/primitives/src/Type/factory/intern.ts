@@ -32,14 +32,11 @@ let nextId = 0;
  * for a node the table already holds.
  */
 export function intern<T extends Type>(key: string, build: Func<[], T>): T {
-  const found = table.get(key);
-  if (found !== undefined) {
-    return found as T;
-  }
-  const minted = freeze(build());
-  ids.set(minted, nextId++);
-  table.set(key, minted);
-  return minted;
+  return table.getOrInsertComputed(key, () => {
+    const minted = freeze(build());
+    ids.set(minted, nextId++);
+    return minted;
+  }) as T;
 }
 
 /**
