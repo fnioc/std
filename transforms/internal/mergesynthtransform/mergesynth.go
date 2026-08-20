@@ -107,7 +107,10 @@ const (
 // New builds the per-file transform: every 2-argument (or gap-carrying
 // 3-argument) `registerAugmentations` / `applyAugmentations` call whose set
 // argument resolves to a statically-known object literal gains a synthesized
-// per-member merge-strategy map as its third argument.
+// per-member merge-strategy map as its third argument. It runs inside the
+// fixed-point loop, so it re-sees a call it already rewrote (fully covered —
+// the identical node comes back) and picks up an install call another stage
+// minted mid-loop.
 func New(prog *driver.Program, addDiagnostic func(Diagnostic)) plugin.FileTransform {
 	return func(ec *shimprinter.EmitContext, sf *shimast.SourceFile) *shimast.SourceFile {
 		s := &synthesizer{
@@ -115,6 +118,7 @@ func New(prog *driver.Program, addDiagnostic func(Diagnostic)) plugin.FileTransf
 			checker:       prog.Checker,
 			ec:            ec,
 			file:          sf,
+			anchor:        plugin.NewCheckerAnchor(ec, sf),
 			addDiagnostic: addDiagnostic,
 		}
 		var visitor *shimast.NodeVisitor
@@ -147,6 +151,7 @@ type synthesizer struct {
 	checker       *shimchecker.Checker
 	ec            *shimprinter.EmitContext
 	file          *shimast.SourceFile
+	anchor        plugin.CheckerAnchor
 	addDiagnostic func(Diagnostic)
 }
 
@@ -213,33 +218,60 @@ func (s *synthesizer) maybeRewrite(call *shimast.CallExpression) *shimast.Node {
 	)
 }
 
-// isInstallCall reports whether call's callee resolves (through import
-// aliases) to `registerAugmentations` or `applyAugmentations`. The checker
-// panics on a synthetic callee, so a position-less node is a clean skip.
-//
-// THIS STAGE NEEDS NO PARSE ANCHOR, because of WHERE it runs, not what it does.
-// It is a one-shot PRE-PASS (stdhost.partitionStages) executed before the
-// fixed-point loop mutates anything, so every node it queries is still the node
-// the binder saw — there is no rewritten tree to be walked into, which is the
-// hazard plugin.CheckerAnchor exists for. If mergesynth ever REJOINS the loop
-// (the documented rejoin condition: a sugar body starts emitting install calls),
-// it must take the anchor at the same time, or it inherits the crash: this
-// predicate and resolveObjectLiteral below are exactly the syntax-driven
-// GetSymbolAtLocation queries the anchor governs everywhere else.
+// isInstallCall reports whether call is a receiver-taking install call —
+// `registerAugmentations(receiver, set, merge?)` / `applyAugmentations(Class,
+// set, merge?)`. This stage runs inside the fixed-point loop, so the checker is
+// only ever asked about parse-tree nodes (plugin.CheckerAnchor): a
+// source-written call resolves its callee through the anchor; a call with no
+// same-file anchor is engine-minted — an inline-substituted install whose
+// callee identifier is the value-import binding for the runtime install
+// function — and is matched by that identifier's text, the checker having no
+// location to resolve a minted node from.
 func (s *synthesizer) isInstallCall(call *shimast.CallExpression) bool {
-	if call.Expression.Pos() < 0 {
-		return false
-	}
-	symbol := s.checker.GetSymbolAtLocation(call.Expression)
-	if symbol == nil {
-		return false
-	}
-	if symbol.Flags&shimast.SymbolFlagsAlias != 0 {
-		if aliased := s.checker.GetAliasedSymbol(symbol); aliased != nil {
-			symbol = aliased
+	if anchored := s.anchor.AnchoredCall(call.AsNode()); anchored != nil {
+		symbol := s.checker.GetSymbolAtLocation(anchored.Expression)
+		if symbol == nil {
+			return false
 		}
+		if symbol.Flags&shimast.SymbolFlagsAlias != 0 {
+			if aliased := s.checker.GetAliasedSymbol(symbol); aliased != nil {
+				symbol = aliased
+			}
+		}
+		if symbol.Name != registerName && symbol.Name != applyName {
+			return false
+		}
+		return installTakesReceiver(symbol)
 	}
-	return symbol.Name == registerName || symbol.Name == applyName
+	callee := call.Expression
+	if callee == nil || callee.Kind != shimast.KindIdentifier {
+		return false
+	}
+	return callee.Text() == registerName || callee.Text() == applyName
+}
+
+// installTakesReceiver reports whether the resolved install function's own
+// declaration takes the receiver as its first PARAMETER (three parameters:
+// receiver, set, merge?). The authoring sugar shares the install's name but
+// takes the receiver as a TYPE argument, so its two-parameter call carries the
+// set in first position — rewriting that call would guard the merge map's own
+// entries as if they were the set. The sugar lowers into the receiver-taking
+// form, which this stage matches on a later pass. An unreadable declaration
+// counts as receiver-taking, keeping the plain name match for a fixture-local
+// declare.
+func installTakesReceiver(symbol *shimast.Symbol) bool {
+	decl := symbol.ValueDeclaration
+	if decl == nil && len(symbol.Declarations) > 0 {
+		decl = symbol.Declarations[0]
+	}
+	if decl == nil {
+		return true
+	}
+	params := functionParameters(decl)
+	if params == nil {
+		return true
+	}
+	return len(params) != 2
 }
 
 // setMembers enumerates the augmentation set's members in declaration order:
@@ -275,15 +307,24 @@ func (s *synthesizer) setMembers(setArg *shimast.Node) []member {
 	return members
 }
 
-// strategyNames enumerates the statically-known member names of a hand-authored
-// merge expression. Unresolvable shapes yield an empty set — synthesis then
-// covers every member and the runtime spread keeps the hand-authored entries
-// winning.
+// strategyNames enumerates the statically-known member names of a merge
+// expression, recursing through spread assignments whose expression resolves
+// to an object literal — the shape this stage's own rewrite emits (synthesized
+// entries with the hand-authored merge spread last), so a call already rewritten
+// reads as fully covered and the loop settles. Unresolvable shapes yield an
+// empty set — synthesis then covers every member and the runtime spread keeps
+// the hand-authored entries winning.
 func (s *synthesizer) strategyNames(mergeArg *shimast.Node) map[string]bool {
 	names := map[string]bool{}
-	literal := s.resolveObjectLiteral(mergeArg)
+	s.collectStrategyNames(s.resolveObjectLiteral(mergeArg), names)
+	return names
+}
+
+// collectStrategyNames accumulates literal's statically-known member names into
+// names, following resolvable spreads.
+func (s *synthesizer) collectStrategyNames(literal *shimast.ObjectLiteralExpression, names map[string]bool) {
 	if literal == nil {
-		return names
+		return
 	}
 	for _, prop := range literal.Properties.Nodes {
 		switch prop.Kind {
@@ -299,15 +340,18 @@ func (s *synthesizer) strategyNames(mergeArg *shimast.Node) map[string]bool {
 			if name := staticName(prop.Name()); name != "" {
 				names[name] = true
 			}
+		case shimast.KindSpreadAssignment:
+			s.collectStrategyNames(s.resolveObjectLiteral(prop.AsSpreadAssignment().Expression), names)
 		}
 	}
-	return names
 }
 
 // resolveObjectLiteral resolves an expression to the object literal it
 // statically denotes: the expression itself, or the initializer of the const
 // variable its identifier resolves to, in both cases unwrapping
-// `satisfies`/`as`/parenthesized wrappers.
+// `satisfies`/`as`/parenthesized wrappers. The checker is only ever asked
+// about the identifier's parse anchor — a minted identifier has none and is a
+// clean skip.
 func (s *synthesizer) resolveObjectLiteral(expr *shimast.Node) *shimast.ObjectLiteralExpression {
 	unwrapped := skipWrappers(expr)
 	if unwrapped == nil {
@@ -316,10 +360,14 @@ func (s *synthesizer) resolveObjectLiteral(expr *shimast.Node) *shimast.ObjectLi
 	if unwrapped.Kind == shimast.KindObjectLiteralExpression {
 		return unwrapped.AsObjectLiteralExpression()
 	}
-	if unwrapped.Kind != shimast.KindIdentifier || unwrapped.Pos() < 0 {
+	if unwrapped.Kind != shimast.KindIdentifier {
 		return nil
 	}
-	symbol := s.checker.GetSymbolAtLocation(unwrapped)
+	anchored := s.anchor(unwrapped)
+	if anchored == nil {
+		return nil
+	}
+	symbol := s.checker.GetSymbolAtLocation(anchored)
 	if symbol == nil {
 		return nil
 	}

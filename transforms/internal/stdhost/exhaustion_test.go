@@ -69,7 +69,7 @@ func TestTransformFileEmitsFixedPointExhaustedDiag(t *testing.T) {
 	var diags []Diag
 	emit := func(d Diag) { diags = append(diags, d) }
 
-	out, survived := transformFileToTypeScript(prog, nil, []plugin.FileTransform{flip}, a, nil, emit, &phaseTracker{})
+	out, survived := transformFileToTypeScript(prog, []plugin.FileTransform{flip}, a, nil, emit, &phaseTracker{})
 	if !survived {
 		t.Fatal("exhaustion is a reported diagnostic, not a panic — the file must survive")
 	}
@@ -114,7 +114,7 @@ func TestTransformFileSettlesWithoutExhaustionDiag(t *testing.T) {
 	var diags []Diag
 	emit := func(d Diag) { diags = append(diags, d) }
 
-	transformFileToTypeScript(prog, nil, []plugin.FileTransform{noop}, sf, nil, emit, &phaseTracker{})
+	transformFileToTypeScript(prog, []plugin.FileTransform{noop}, sf, nil, emit, &phaseTracker{})
 
 	for _, d := range diags {
 		if d.Code == "FIXED_POINT_EXHAUSTED" {

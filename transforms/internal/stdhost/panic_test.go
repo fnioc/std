@@ -142,7 +142,7 @@ func TestPrintPhasePanicNamesThePrint(t *testing.T) {
 	defer func() { _ = prog.Close() }()
 
 	var diags []Diag
-	_, survived := transformFileToTypeScript(prog, nil, []plugin.FileTransform{transform}, sf, nil, func(d Diag) { diags = append(diags, d) }, tracker)
+	_, survived := transformFileToTypeScript(prog, []plugin.FileTransform{transform}, sf, nil, func(d Diag) { diags = append(diags, d) }, tracker)
 	if !survived {
 		t.Fatalf("a non-panicking run must survive; diags = %+v", diags)
 	}

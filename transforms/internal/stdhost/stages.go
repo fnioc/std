@@ -12,9 +12,8 @@ import (
 )
 
 // stagePrefix namespaces each stage's internal name (e.g. "rhombusstd_typefor").
-// The names are host-internal identifiers — used to single out mergesynth for the
-// pre-pass split (partitionStages) and to label diagnostics — not selectors: the
-// whole stage table always runs.
+// The names are host-internal identifiers used to label diagnostics — not
+// selectors: the whole stage table always runs.
 const stagePrefix = "rhombusstd_"
 
 // BaseStages is the fixed execution order every base stage runs in. There is no
@@ -58,19 +57,20 @@ func buildInline(prog *driver.Program, _ *tokens.Context, env *Env, emit Sink) p
 	})
 }
 
-// buildMergesynth activates the merge-strategy synthesizer. The host runs it as a
-// ONE-SHOT PRE-PASS, once per file BEFORE the fixed-point loop (see
-// transformFileToTypeScript): it is augmentation-side and its matches are only
-// ever source-written installs, so the loop can never mint fresh work for it. It
-// stays ahead of the loop's typefor pass, so typefor still lowers each install
-// call's type argument. It reads the ORIGINAL augmentation member
-// declarations through the checker and threads a plain-JS strategies object as
-// the third argument of each registerAugmentations/applyAugmentations call, so a
-// member-name collision dispatches by argument shape instead of throwing. The
-// synthesized guards are inlined plain JS (the typia embed is fully lowered at
-// build time — no typia runtime import survives). It is category-aware: an
-// advisory warning (a dropped guard that would have needed a typia runtime
-// helper) never fails the emit.
+// buildMergesynth activates the merge-strategy synthesizer. It runs in the
+// fixed-point loop like every other stage: the registerAugmentations authoring
+// sugar's inline body EMITS the install call it rewrites, so its work can be
+// minted mid-loop, and a call it already rewrote comes back untouched (the
+// settle condition). It sits ahead of the loop's typefor pass, so typefor
+// still lowers each install call's type argument. It reads the ORIGINAL
+// augmentation member declarations through the checker and threads a plain-JS
+// strategies object as the third argument of each
+// registerAugmentations/applyAugmentations call, so a member-name collision
+// dispatches by argument shape instead of throwing. The synthesized guards are
+// inlined plain JS (the typia embed is fully lowered at build time — no typia
+// runtime import survives). It is category-aware: an advisory warning (a
+// dropped guard that would have needed a typia runtime helper) never fails the
+// emit.
 func buildMergesynth(prog *driver.Program, _ *tokens.Context, _ *Env, emit Sink) plugin.FileTransform {
 	return mergesynthtransform.New(prog, func(d mergesynthtransform.Diagnostic) {
 		emit(Diag{
