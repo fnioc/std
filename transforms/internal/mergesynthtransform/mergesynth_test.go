@@ -289,21 +289,14 @@ registerAugmentations("t:IAlpha", AlphaExtensions);
 	}
 }
 
-// TestHandMergeReWrapsOnSecondPass reproduces the concrete defect that bans
-// mergesynth from the fixed-point loop and motivates its ONE-SHOT PRE-PASS
-// placement (host.go / Open issue 2): the stage is NOT idempotent on its own
-// output. strategyNames has no spread-assignment case, so when the first pass
-// spreads the hand-merge object into the synthesized third argument, a second pass
-// cannot see the names that spread already covers and re-synthesizes them, wrapping
-// the call again — inside the loop it would never reach a fixed point. Running it
-// exactly once before the loop sidesteps this entirely (its matches are only ever
-// the source-written installs; no sugar body mints one).
-//
-// The fixture hand-authors a `describe` strategy. Pass 1 therefore synthesizes only
-// the uncovered `tag`, leaving `describe` alone (hand-authored wins). Pass 2, blind
-// to the `...handMerge` spread, treats `describe` as uncovered and re-synthesizes
-// it — the appearance of a synthesized `describe` strategy is the re-wrap.
-func TestHandMergeReWrapsOnSecondPass(t *testing.T) {
+// TestRewrittenInstallSettlesOnSecondPass pins the settle condition that lets
+// mergesynth run inside the fixed-point loop: a second pass over a call the
+// first pass rewrote is a POINTER-IDENTITY no-op. The delicate shape is the
+// hand-merge install — the first pass emits the synthesized entries with the
+// hand-authored object spread LAST, and strategyNames recurses through that
+// spread, so the second pass reads every member as covered instead of
+// re-wrapping the call forever.
+func TestRewrittenInstallSettlesOnSecondPass(t *testing.T) {
 	prog, sf := loadFixture(t, `
 export const AlphaExtensions = {
   describe(opts: number): string { return String(opts); },
@@ -331,12 +324,35 @@ registerAugmentations("t:IAlpha", AlphaExtensions, handMerge);
 	}
 
 	second := transform(ec, first)
-	if second == nil || second == first {
-		t.Fatal("second pass was a no-op — mergesynth would be safe inside the loop, contradicting the pre-pass rationale")
+	if second != first {
+		t.Fatalf("second pass rewrote an already-covered install — the loop would never settle:\n%s", reprintMerge(ec, second))
 	}
-	shimast.SetParentInChildrenUnset(second.AsNode())
-	if !strings.Contains(reprintMerge(ec, second), "describe: function (original, extension)") {
-		t.Fatalf("second pass did not re-synthesize the hand-covered describe — the non-idempotence this test guards did not reproduce:\n%s", reprintMerge(ec, second))
+}
+
+// The plain no-hand-merge install settles the same way: the first pass's fully
+// synthesized map covers every member, so the second pass changes nothing.
+func TestPlainRewrittenInstallSettlesOnSecondPass(t *testing.T) {
+	prog, sf := loadFixture(t, `
+export const AlphaExtensions = {
+  describe(opts: number): string { return String(opts); },
+  tag(name: string): string { return name; },
+};
+registerAugmentations("t:IAlpha", AlphaExtensions);
+`)
+	defer func() { _ = prog.Close() }()
+
+	transform := New(prog, func(Diagnostic) {})
+	ec := shimprinter.NewEmitContext()
+
+	first := transform(ec, sf)
+	if first == nil || first == sf {
+		t.Fatal("first pass did not rewrite the install")
+	}
+	shimast.SetParentInChildrenUnset(first.AsNode())
+
+	second := transform(ec, first)
+	if second != first {
+		t.Fatalf("second pass rewrote an already-covered install — the loop would never settle:\n%s", reprintMerge(ec, second))
 	}
 }
 

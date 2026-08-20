@@ -326,7 +326,10 @@ describe('typefor emission modes', () => {
     expect(app).toContain(
       'Type.global("Promise", [Type.imported("IClock", "typefor-emit-app/tokens/app")])',
     );
-    expect(app).toContain('Type.union(Type.typeLiteral("debug"), Type.typeLiteral("info"))');
+    // An exported union alias derives to its NAME, never its members — the
+    // address must not shift with the union's membership.
+    expect(app).toContain('Type.imported("Level", "typefor-emit-app/tokens/app")');
+    expect(app).not.toContain('Type.union(');
   });
 
   test.skipIf(!toolchainReady)('each mode materializes only the import it needs', () => {

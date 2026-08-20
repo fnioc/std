@@ -5,11 +5,11 @@ import (
 	"testing"
 )
 
-// TestTypeforValueArgHoleRendering is the load-bearing proof of the value-argument
+// TestTypeforValueArgGenericRendering is the load-bearing proof of the value-argument
 // hole contract: an open-template value `C<$<N>>`'s bare-hole slot spells as
 // `Type.generic(label)`, and a hole standing INSIDE a larger slot closes into
 // that slot's own type expression.
-func TestTypeforValueArgHoleRendering(t *testing.T) {
+func TestTypeforValueArgGenericRendering(t *testing.T) {
 	cases := []struct {
 		name string
 		// decl declares the interfaces + class/value the case derives from.
@@ -74,7 +74,7 @@ class Svc<T> implements ISvc<$<1>> { constructor(store: IStore<T>, logger: ILogg
 	}
 }
 
-// TestTypeforValueArgFactoryParamHoleIsAKnownGap pins a scope limitation
+// TestTypeforValueArgFactoryParamGenericIsAKnownGap pins a scope limitation
 // adjacent to the ctor cases above: a FACTORY value whose OWN parameter
 // directly names an open-template hole (`(store: IStore<$<1>>) => ...`, not
 // through a class's own generic instantiation) fails to derive — the checker
@@ -83,7 +83,7 @@ class Svc<T> implements ISvc<$<1>> { constructor(store: IStore<T>, logger: ILogg
 // tokens.DeriveTyped reports it underivable rather than guess at a node. The
 // call is left un-lowered, matching every other underivable shape's
 // degradation.
-func TestTypeforValueArgFactoryParamHoleIsAKnownGap(t *testing.T) {
+func TestTypeforValueArgFactoryParamGenericIsAKnownGap(t *testing.T) {
 	src := `import { typefor, $ } from '@rhombus-std/primitives.extras';
 interface IStore<T> {}
 interface ILogger {}

@@ -12,7 +12,7 @@ import (
 	"github.com/samchon/ttsc/packages/ttsc/driver"
 )
 
-// These are the checker-backed unit tests for holes.go: the open-generic hole
+// These are the checker-backed unit tests for generics.go: the open-generic hole
 // walk, the Inject/Hole/Keyed brand reads, the unbound-type-parameter failure
 // channel, and the literal / singleton classifiers. Each behavior is probed off a
 // real `driver.LoadProgram` fixture — the module's standard way to unit-test
@@ -25,7 +25,7 @@ import (
 // logic of their own; they ride the *.ttsc.e2e parity suites and are not probed as
 // isolated fixtures here.
 
-// fixtureSrc declares every type the checker-backed holes tests read, one per
+// fixtureSrc declares every type the checker-backed generics tests read, one per
 // `declare const`, plus the self-contained Hole / Inject / Keyed brands. Every base
 // token renders bare because the test Context reports every file as a default lib
 // (so the assertions pin the hole / key / literal grammar, not the package tier).
@@ -83,10 +83,10 @@ declare const optBool: true | false | undefined;
 declare const optNonUnion: "a";
 `
 
-// loadHoles writes fixtureSrc into a temp program and returns it with a Context
+// loadGenerics writes fixtureSrc into a temp program and returns it with a Context
 // whose IsDefaultLib always fires, so every derived base token is the bare symbol
 // name and the assertions pin only the hole / key / literal grammar.
-func loadHoles(t *testing.T) (*driver.Program, *Context, *shimast.SourceFile) {
+func loadGenerics(t *testing.T) (*driver.Program, *Context, *shimast.SourceFile) {
 	t.Helper()
 	prog, main := loadFixtureProgram(t, fixtureSrc, false)
 	ctx := &Context{
@@ -191,7 +191,7 @@ func walkNode(node *shimast.Node, visit func(*shimast.Node) bool) {
 }
 
 func TestDeriveTokenF(t *testing.T) {
-	prog, ctx, main := loadHoles(t)
+	prog, ctx, main := loadGenerics(t)
 	defer func() { _ = prog.Close() }()
 
 	t.Run("literal short-circuits", func(t *testing.T) {
@@ -299,21 +299,21 @@ func unboundTypeParam(t *testing.T, checker *shimchecker.Checker, sf *shimast.So
 	return nil
 }
 
-func TestHoleNumberFor(t *testing.T) {
-	prog, ctx, main := loadHoles(t)
+func TestGenericNumberFor(t *testing.T) {
+	prog, ctx, main := loadGenerics(t)
 	defer func() { _ = prog.Close() }()
 
-	n, ok := HoleNumberFor(typeOfDecl(t, ctx.Checker, main, "hole3"), ctx.Checker)
+	n, ok := GenericNumberFor(typeOfDecl(t, ctx.Checker, main, "hole3"), ctx.Checker)
 	if !ok || n != 3 {
-		t.Fatalf("HoleNumberFor(Hole<3>) = %d ok=%v, want 3 true", n, ok)
+		t.Fatalf("GenericNumberFor(Hole<3>) = %d ok=%v, want 3 true", n, ok)
 	}
-	if _, ok := HoleNumberFor(typeOfDecl(t, ctx.Checker, main, "plain"), ctx.Checker); ok {
-		t.Fatal("HoleNumberFor(non-hole) should be ok=false")
+	if _, ok := GenericNumberFor(typeOfDecl(t, ctx.Checker, main, "plain"), ctx.Checker); ok {
+		t.Fatal("GenericNumberFor(non-hole) should be ok=false")
 	}
 }
 
 func TestInjectTokenFor(t *testing.T) {
-	prog, ctx, main := loadHoles(t)
+	prog, ctx, main := loadGenerics(t)
 	defer func() { _ = prog.Close() }()
 
 	if tok, ok := InjectTokenFor(typeOfDecl(t, ctx.Checker, main, "inj"), ctx.Checker); !ok || tok != "tok" {
@@ -328,7 +328,7 @@ func TestInjectTokenFor(t *testing.T) {
 }
 
 func TestKeyLiteralFor(t *testing.T) {
-	prog, ctx, main := loadHoles(t)
+	prog, ctx, main := loadGenerics(t)
 	defer func() { _ = prog.Close() }()
 
 	if k, ok := KeyLiteralFor(typeOfDecl(t, ctx.Checker, main, "key"), ctx.Checker); !ok || k != "redis" {
@@ -343,7 +343,7 @@ func TestKeyLiteralFor(t *testing.T) {
 }
 
 func TestKeyedTokenFor(t *testing.T) {
-	prog, ctx, main := loadHoles(t)
+	prog, ctx, main := loadGenerics(t)
 	defer func() { _ = prog.Close() }()
 
 	cases := []struct {
@@ -371,7 +371,7 @@ func TestKeyedTokenFor(t *testing.T) {
 }
 
 func TestStripBrandMembers(t *testing.T) {
-	prog, ctx, main := loadHoles(t)
+	prog, ctx, main := loadGenerics(t)
 	defer func() { _ = prog.Close() }()
 
 	t.Run("one non-brand constituent is returned", func(t *testing.T) {
@@ -397,7 +397,7 @@ func TestStripBrandMembers(t *testing.T) {
 }
 
 func TestSingletonValue(t *testing.T) {
-	prog, ctx, main := loadHoles(t)
+	prog, ctx, main := loadGenerics(t)
 	defer func() { _ = prog.Close() }()
 
 	get := func(name string) *shimchecker.Type { return typeOfDecl(t, ctx.Checker, main, name) }
@@ -456,7 +456,7 @@ func TestSingletonValue(t *testing.T) {
 }
 
 func TestIsPureLiteralUnion(t *testing.T) {
-	prog, ctx, main := loadHoles(t)
+	prog, ctx, main := loadGenerics(t)
 	defer func() { _ = prog.Close() }()
 
 	cases := []struct {
@@ -478,7 +478,7 @@ func TestIsPureLiteralUnion(t *testing.T) {
 }
 
 func TestLiteralUnionTokenForOptional(t *testing.T) {
-	prog, ctx, main := loadHoles(t)
+	prog, ctx, main := loadGenerics(t)
 	defer func() { _ = prog.Close() }()
 
 	t.Run("optional literal union renders sorted over non-nullish members", func(t *testing.T) {

@@ -305,18 +305,12 @@ func runTransform(host Host, args []string) int {
 		env.Hoist = &typefortransform.Hoist{Registry: typeforhoist.NewRegistry(typeemit.HoistRef()), SourceRoot: roots.source}
 	}
 
-	// Split the selected stages into the one-shot PRE-PASS (mergesynth) and the
-	// LOOPED set (everything else), then build each into its FileTransform — see
-	// partitionStages for the why. The prePass runs once before the loop; the loop
-	// runs the rest to a fixed point.
-	prePassStages, loopStages := partitionStages(selected)
+	// Build every selected stage into its FileTransform. The WHOLE table runs
+	// under the fixed-point loop — mergesynth included, since the inline stage
+	// mints install calls mid-loop that mergesynth must re-see.
 	tracker := &phaseTracker{}
-	prePass := make([]plugin.FileTransform, 0, len(prePassStages))
-	for _, stage := range prePassStages {
-		prePass = append(prePass, tracker.watch(stage.Name, stage.Build(prog, ctx, env, emit)))
-	}
-	loop := make([]plugin.FileTransform, 0, len(loopStages))
-	for _, stage := range loopStages {
+	loop := make([]plugin.FileTransform, 0, len(selected))
+	for _, stage := range selected {
 		loop = append(loop, tracker.watch(stage.Name, stage.Build(prog, ctx, env, emit)))
 	}
 
@@ -328,7 +322,7 @@ func runTransform(host Host, args []string) int {
 		if filepath.IsAbs(key) || key == ".." || strings.HasPrefix(key, "../") {
 			continue
 		}
-		lowered, survived := transformFileToTypeScript(prog, prePass, loop, sf, artifacts, emit, tracker)
+		lowered, survived := transformFileToTypeScript(prog, loop, sf, artifacts, emit, tracker)
 		if !survived {
 			// ABORT THE WHOLE RUN on the first panicking file rather than
 			// reporting it and lowering the rest.
@@ -368,26 +362,6 @@ func runTransform(host Host, args []string) int {
 		return 3
 	}
 	return 0
-}
-
-// partitionStages splits the selected stages into the one-shot PRE-PASS
-// (mergesynth) and the LOOPED set (everything else). Mergesynth is
-// augmentation-side: its matches are source-written
-// registerAugmentations/applyAugmentations installs, and NO sugar body mints one,
-// so the loop can never produce fresh work for it — running it exactly once before
-// the loop keeps termination trivially explainable (Open issue 2). The rest run
-// repeatedly to a fixed point, since each sugar chain peels one layer per pass. The
-// relative order within each group is preserved from selection; the loop's
-// correctness does not depend on it (disjoint match sets).
-func partitionStages(selected []Stage) (prePass, loop []Stage) {
-	for _, stage := range selected {
-		if stage.Name == stagePrefix+"mergesynth" {
-			prePass = append(prePass, stage)
-		} else {
-			loop = append(loop, stage)
-		}
-	}
-	return prePass, loop
 }
 
 // knownValueFlags names the flags this host reads, each of which takes a value.
@@ -490,25 +464,19 @@ func (t *phaseTracker) watch(name string, transform plugin.FileTransform) plugin
 // fails cleanly through the envelope instead of dying. It is an engine bug every
 // time, never a user error, but the user is the one who has to report it.
 //
-// Mergesynth is a ONE-SHOT PRE-PASS, run once before the loop (Open issue 2): it
-// is augmentation-side, its matches are only ever the SOURCE-WRITTEN
-// registerAugmentations/applyAugmentations installs, and no sugar body mints one,
-// so the loop can never create fresh work for it — and one-shot placement makes
-// termination trivially explainable. (In the loop it also misbehaves: its
-// strategyNames has no spread-assignment case, so it re-wraps a hand-merge install
-// every pass and never settles — mergesynth.go.) REJOIN CONDITION, if a future
-// sugar body ever EMITS an install call: mergesynth must move back INTO the loop
-// AND gain a spread-recursing strategyNames (recurse through resolveObjectLiteral)
-// so the loop's newly-minted installs are re-seen.
-//
-// The remaining stages run under RunToFixedPoint — the whole set, back to back,
-// until a full pass changes nothing. Change detection is pointer identity (every
+// Every stage — mergesynth included — runs under RunToFixedPoint: the whole
+// set, back to back, until a full pass changes nothing. Mergesynth sits in the
+// loop because the registerAugmentations authoring sugar's inline body EMITS
+// the install call it must rewrite, so the install's final shape is minted
+// mid-loop; it settles because a call it already rewrote reads as fully
+// covered (its strategyNames recurses through the spread its own rewrite
+// emits) and comes back untouched. Change detection is pointer identity (every
 // stage returns the identical *SourceFile on a no-op). Only after the loop settles
 // does the emit sweep run (tripwire 2) — once, over the fully-lowered, fully-
 // parented output — so a synthetic node can walk to a positioned ancestor.
 func transformFileToTypeScript(
 	prog *driver.Program,
-	prePass, loop []plugin.FileTransform,
+	loop []plugin.FileTransform,
 	sf *shimast.SourceFile,
 	artifacts *inlinetransform.Artifacts,
 	emit Sink,
@@ -544,17 +512,6 @@ func transformFileToTypeScript(
 	options := prog.TSProgram.Options()
 	ec := shimprinter.NewEmitContext()
 	result := sf
-
-	prePassChanged := false
-	for _, transform := range prePass {
-		if next := transform(ec, result); next != nil && next != result {
-			result = next
-			prePassChanged = true
-		}
-	}
-	if prePassChanged {
-		shimast.SetParentInChildrenUnset(result.AsNode())
-	}
 
 	var exhausted bool
 	result, _, exhausted = plugin.RunToFixedPoint(ec, loop, result, maxLoopPasses)

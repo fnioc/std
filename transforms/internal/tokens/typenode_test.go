@@ -11,7 +11,7 @@ import (
 // of independent behavior.
 
 func TestDeriveTokenFMatchesRendererOverDeriveTypeF(t *testing.T) {
-	prog, ctx, main := loadHoles(t)
+	prog, ctx, main := loadGenerics(t)
 	defer func() { _ = prog.Close() }()
 
 	names := []string{
@@ -37,12 +37,12 @@ func TestDeriveTokenFMatchesRendererOverDeriveTypeF(t *testing.T) {
 	}
 }
 
-// TestDeriveTypeFHoleInGenericShape pins the actual TREE shape for a nested hole
+// TestDeriveTypeFNestedGenericShape pins the actual TREE shape for a nested hole
 // inside a closed generic — not just its rendered string — so a change that
 // happens to render the same string but restructures the tree (e.g. flattening
 // the hole into the base name) is still caught.
-func TestDeriveTypeFHoleInGenericShape(t *testing.T) {
-	prog, ctx, main := loadHoles(t)
+func TestDeriveTypeFNestedGenericShape(t *testing.T) {
+	prog, ctx, main := loadGenerics(t)
 	defer func() { _ = prog.Close() }()
 
 	node, ok := DeriveTypeF(ctx, typeOfDecl(t, ctx.Checker, main, "holeInThing"), nil)
@@ -65,7 +65,7 @@ func TestDeriveTypeFHoleInGenericShape(t *testing.T) {
 // a TypeNodeUnion of TypeNodeLiteral members, one per union member, in checker
 // order (unsorted — the sort is a rendering concern).
 func TestDeriveTypeFLiteralUnionShape(t *testing.T) {
-	prog, ctx, main := loadHoles(t)
+	prog, ctx, main := loadGenerics(t)
 	defer func() { _ = prog.Close() }()
 
 	node, ok := DeriveTypeF(ctx, typeOfDecl(t, ctx.Checker, main, "puA"), nil)

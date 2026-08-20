@@ -23,8 +23,8 @@ import (
 // computed-symbol optional property whose declaring `const` is named exactly one
 // of these; the literal type of that property is the extracted payload.
 const (
-	injectBrandProperty = "TOK"
-	holeBrandProperty   = "HOLE"
+	injectBrandProperty  = "TOK"
+	genericBrandProperty = "HOLE"
 	// keyBrandProperty is the Keyed<T, K> brand — detected exactly like the Inject
 	// brand, except the extracted literal is the KEY string K that composes onto
 	// the derived base token as a `#K` suffix:
@@ -38,10 +38,10 @@ const (
 // carries ONLY such a property; a real user type never does. Used by
 // stripBrandMembers to recover the underlying T from a Keyed<T, K> intersection.
 var brandPropertyNames = map[string]bool{
-	injectBrandProperty: true,
-	holeBrandProperty:   true,
-	keyBrandProperty:    true,
-	"ARG":               true,
+	injectBrandProperty:  true,
+	genericBrandProperty: true,
+	keyBrandProperty:     true,
+	"ARG":                true,
 }
 
 // Failure is the channel through which DeriveTokenF reports that derivation hit
@@ -146,10 +146,10 @@ func AliasSymbol(t *shimchecker.Type) *shimast.Symbol {
 	return nil
 }
 
-// HoleNumberFor returns the hole number N of a `Hole<N, C>`-branded type, or
+// GenericNumberFor returns the hole number N of a `Hole<N, C>`-branded type, or
 // ok=false when the type is not a hole.
-func HoleNumberFor(t *shimchecker.Type, checker *shimchecker.Checker) (int, bool) {
-	return brandLiteralFor(t, checker, holeBrandProperty, extractNumberLiteral)
+func GenericNumberFor(t *shimchecker.Type, checker *shimchecker.Checker) (int, bool) {
+	return brandLiteralFor(t, checker, genericBrandProperty, extractNumberLiteral)
 }
 
 // InjectTokenFor returns the literal token K of an `Inject<T, K>`-branded type,
@@ -197,8 +197,9 @@ func KeyLiteralFor(t *shimchecker.Type, checker *shimchecker.Checker) (string, b
 //  1. An `Inject<T, "tok">` brand under the Keyed pins the base explicitly
 //     (`Keyed<Inject<T, "tok">, "k">` → base `tok`) — InjectTokenFor reads [TOK]
 //     off the same flattened intersection.
-//  2. Otherwise the base derives structurally from T with the phantom-brand
-//     members stripped off the intersection (stripBrandMembers), since the raw
+//  2. Otherwise the base derives structurally from T recovered via
+//     KeyedBaseType (brand members stripped off the intersection, or the
+//     spelled union recovered from a distributed brand), since the raw
 //     `T & { [KEY]?: K }` intersection has no symbol of its own. Hole-aware
 //     derivation (DeriveTokenF's `$N` render): a keyed base that itself
 //     contains an open-generic hole (`Keyed<IThing<Hole<1>>, "k">`) must render
@@ -209,7 +210,11 @@ func keyedBaseTokenFor(ctx *Context, t *shimchecker.Type) (string, bool) {
 	if base, ok := InjectTokenFor(t, ctx.Checker); ok {
 		return base, true
 	}
-	return DeriveTokenF(ctx, stripBrandMembers(t, ctx.Checker), nil)
+	base := KeyedBaseType(t, ctx.Checker)
+	if base == t {
+		return "", false
+	}
+	return DeriveTokenF(ctx, base, nil)
 }
 
 // KeyedTokenFor returns the composed keyed token `<base>#<key>` when t carries
