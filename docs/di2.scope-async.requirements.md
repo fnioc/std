@@ -197,7 +197,9 @@ Weigh EVERY design decision in this document against this split.
   delivered with the factory invocation (descendants realize DURING the factory call, so it
   cannot arrive by return); the former `ScopeCtx` token is gone — THE BLACKBOX IS THE CONTEXT.
   Everything beyond this call surface plus the createScope requirement below is blackbox-impl
-  detail of particular models.
+  detail of particular models. The FLAT call is final (owner-ruled): a curried
+  install-then-per-site-closure staging was considered and rejected — imperceptible performance
+  gain, real comprehension cost for model authors.
 - The PLAN memo keys on the interned request node ALONE — multi-registrations are disambiguated
   inside plan trees at construction, never by the plan key. How a blackbox keys its INSTANCE
   storage is its own business (the call hands it the as-requested type and the answering
