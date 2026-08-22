@@ -91,15 +91,15 @@ ABSOLUTE MINIMUM to keep the build green; a dedicated session owns the scope/lif
 Verified outstanding by a four-agent audit 2026-08-21; line numbers may drift — several of these
 files carry YOUR in-flight edits, so re-verify each site before editing.
 
-- [ ] `serviceType` naming in di/di.core INTERNALS (the public faces are done): parameters/members
+- [x] `serviceType` naming in di/di.core INTERNALS (the public faces are done): parameters/members
       holding the SERVICE type say `serviceType`, never `type` — di.core `ServiceScope.ts:21,23`;
       `Errors.ts:44,46,86,90,105` (the readonly `type` member); `service-type.ts:10` (withKey);
       di `internal/Engine.ts:37,46,63,105,114`; `internal/CallSite/CallSite.ts:114`;
       `internal/CallSite/ToCallSiteVisitor.ts:40,71,191,211,246`; `internal/ServiceScope.ts:69,73`.
-- [ ] Inline `typefor<T>()` over shared Type-const bags: di.core `resolver.ts:12` (`RESOLVER_TYPE`,
+- [x] Inline `typefor<T>()` over shared Type-const bags: di.core `resolver.ts:12` (`RESOLVER_TYPE`,
       ~10 consumers) and diagnostics.core `types.ts:22-51` (8 exported `*_TYPE` consts) — spell
       `typefor<T>()` at the use sites, delete the consts. Both packages already stage through ttsc.
-- [ ] diagnostics.core fabricated globals (`types.ts:28,:44` — `METRICS_OPTIONS_TYPE`/
+- [x] diagnostics.core fabricated globals (`types.ts:28,:44` — `METRICS_OPTIONS_TYPE`/
       `TRACING_OPTIONS_TYPE`, `Type.global('@rhombus-std/diagnostics/...')`): a package specifier
       hand-concatenated into a global name — convert to the real composed address
       `Type.imported('IOptions', '@rhombus-std/options', [optionsType])`, the shape the options
@@ -107,21 +107,33 @@ files carry YOUR in-flight edits, so re-verify each site before editing.
 - [ ] Missing di.extras sugar: one-argument `asClass(ctor)` / `asFactory(fn)` builder sugars
       (lowering to the two-arg primitives with `typefor(x)` as the second argument) — add them
       beside the existing di.extras inline entries.
+      **HALTED 2026-08-22:** the sugar face must reach the chain via a di.extras `declare module`
+      merge, but `asClass`/`asFactory` live on `IAsImplementer`, which di.core does NOT export
+      (nor its `Slot` / `ServiceDescriptorBuilder` carriers, which the merged overloads' returns
+      need) — TS merges only exported declarations, so landing this REQUIRES exporting those
+      three internal types from di.core: a new-public-API fork the standing "no new exported
+      types" order forbids and this plan does not rule. Needs an owner ruling on exporting the
+      builder-chain interfaces (or an alternative merge target).
 - [ ] `TypeFor<T>` narrowing (primitives.extras `typefor.ts:13-15`): narrows only
       ConstructorType/FunctionType today; a NAMED type argument should type as its ImportedType
       (ambient → GlobalType), with NominalType as the named fallback; unnamed arguments keep
       falling back to `Type`.
-- [ ] options.augmentations `rollup.dts.mjs:14` — add di.extras to the dts externals.
-- [ ] The disposal-order string throw in di's cycle-guard disposer (was `ToCallSiteVisitor.ts:36`,
+      **HALTED 2026-08-22:** this is the item §193 already records as halted-unimplementable —
+      TypeScript has no type-level named-vs-structural discriminator, so every approximation
+      mistypes tags, aggregates, unions, or literals. §193's required owner ruling ("which lie,
+      if any, to accept") has not been given; re-verified and left standing rather than
+      inventing one.
+- [x] options.augmentations `rollup.dts.mjs:14` — add di.extras to the dts externals.
+- [x] The disposal-order string throw in di's cycle-guard disposer (was `ToCallSiteVisitor.ts:36`,
       possibly already reshaped by your rewrite): wherever it lives now, make it a real Error whose
       message names the disposal-order violation. It is NOT the exempt intentional string throw.
-- [ ] di `src/augmentations/` new-file cleanups: `Manifest-ContainerBuilder-augmentations.ts` uses
+- [x] di `src/augmentations/` new-file cleanups: `Manifest-ContainerBuilder-augmentations.ts` uses
       the retired shape (`extends Flatten<typeof Ns>`, docs on the namespace) — convert to the
       canonical shape (one declare-module block carrying the docs, registerAugmentations calls
       grouped by overload shape, no Flatten clause). `ServiceProvider-resolution-augmentations.ts`
       is an empty stub (empty face + `registerAugmentations({})` + 4 unused imports) — delete it if
       nothing references it (verify first), else fill it.
-- [ ] Stale comment: tests/mergesynth.ttsc.e2e `test/mergesynth.test.ts:285` still describes
+- [x] Stale comment: tests/mergesynth.ttsc.e2e `test/mergesynth.test.ts:285` still describes
       registerAugmentations/`@augment`'s parameter as `string | Type`; it is Type-only now.
 
 ## Inline discovery — issue #365 (owner-ordered fold-in, added mid-run)
@@ -188,4 +200,5 @@ to options / options.augmentations / logging.config shapes beyond what this plan
       APIs), decisions entries written present-tense only, di/di.core README ambiguity
       paragraphs, first-pass-docs sweep of everything touched.
 - [x] Commit; push (feature completion); alert peer sessions on this branch to rebase.
-- [x] DELETE this file.
+- [ ] DELETE this file. **Blocked 2026-08-22 on the two HALTED items above — everything else is
+      complete and migrated; delete once the owner rules them.**
