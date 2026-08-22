@@ -43,42 +43,42 @@ export function tuple(members: readonly Type[]): TupleType {
   return intern(`tuple\0${slots.map(id).join(',')}`, () => node<TupleType>({ kind: 'tuple', members: slots }));
 }
 
-export function func(returns: Type, args: Type.Signatures): FunctionType {
+export function func(returns: Type, signatures: Type.Signatures): FunctionType {
   const result = adopt(returns);
-  const rows = adoptRows(args);
+  const adopted = adoptSignatures(signatures);
   return intern(
-    `func\0${id(result)}\0${rowsKey(rows)}`,
-    () => node<FunctionType>({ kind: 'func', args: rows, return: result }),
+    `func\0${id(result)}\0${signaturesKey(adopted)}`,
+    () => node<FunctionType>({ kind: 'func', signatures: adopted, return: result }),
   );
 }
 
-export function ctor(instance: Type, args: Type.Signatures, abstract = false): ConstructorType {
+export function ctor(instance: Type, signatures: Type.Signatures, abstract = false): ConstructorType {
   const slot = adopt(instance);
-  const rows = adoptRows(args);
+  const adopted = adoptSignatures(signatures);
   return intern(
-    `ctor\0${abstract ? 1 : 0}\0${id(slot)}\0${rowsKey(rows)}`,
-    () => node<ConstructorType>({ kind: 'ctor', args: rows, instance: slot, abstract }),
+    `ctor\0${abstract ? 1 : 0}\0${id(slot)}\0${signaturesKey(adopted)}`,
+    () => node<ConstructorType>({ kind: 'ctor', signatures: adopted, instance: slot, abstract }),
   );
 }
 
 /**
- * @throws TypeError - when no row survives; a callable answering to no call has no spelling, and
+ * @throws TypeError - when no signature survives; a callable answering to no call has no spelling, and
  * `[]` is the shape an author reaches for meaning the one call that takes nothing.
  */
-function adoptRows(args: Type.Signatures): Type.Signatures {
-  if (!args.length) {
+function adoptSignatures(signatures: Type.Signatures): Type.Signatures {
+  if (!signatures.length) {
     throw new TypeError('a callable answers to at least one call — write `[[]]` for one taking no parameters');
   }
-  return args.map(row => row.map(adopt));
+  return signatures.map(signature => signature.map(adopt));
 }
 
 /**
- * The parameter rows as one key fragment. Each row is delimited by its own brackets rather than
+ * The parameter signatures as one key fragment. Each signature is delimited by its own brackets rather than
  * joined with a separator, so a callable answering to one empty call and one answering to no call
  * at all are told apart.
  */
-function rowsKey(rows: Type.Signatures): string {
-  return rows.map(row => `(${row.map(id).join(',')})`).join('');
+function signaturesKey(signatures: Type.Signatures): string {
+  return signatures.map(signature => `(${signature.map(id).join(',')})`).join('');
 }
 
 export function array(element: Type): ArrayType {
@@ -308,11 +308,11 @@ function compareChildren(left: Type, right: Type): number {
     }
     case 'func': {
       const other = right as FunctionType;
-      return compareRows(left.args, other.args) || compareTypes(left.return, other.return);
+      return compareSignatures(left.signatures, other.signatures) || compareTypes(left.return, other.return);
     }
     case 'ctor': {
       const other = right as ConstructorType;
-      return compareRows(left.args, other.args) || compareTypes(left.instance, other.instance);
+      return compareSignatures(left.signatures, other.signatures) || compareTypes(left.instance, other.instance);
     }
     default: {
       return 0;
@@ -334,7 +334,7 @@ function comparePairwise(left: readonly Type[], right: readonly Type[]): number 
   return 0;
 }
 
-function compareRows(left: Type.Signatures, right: Type.Signatures): number {
+function compareSignatures(left: Type.Signatures, right: Type.Signatures): number {
   if (left.length !== right.length) {
     return left.length - right.length;
   }
@@ -463,10 +463,10 @@ class AdoptVisitor extends TypeVisitor<Type> {
     return array(type.element);
   }
   protected override visitCtor(type: ConstructorType): Type {
-    return ctor(type.instance, type.args, type.abstract);
+    return ctor(type.instance, type.signatures, type.abstract);
   }
   protected override visitFunc(type: FunctionType): Type {
-    return func(type.return, type.args);
+    return func(type.return, type.signatures);
   }
   protected override visitGeneric(type: GenericType): Type {
     return generic(type.label);

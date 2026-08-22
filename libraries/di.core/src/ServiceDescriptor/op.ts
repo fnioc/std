@@ -25,27 +25,6 @@ export function isValueDescriptor(descriptor: ServiceDescriptor<any>): descripto
   return 'value' in descriptor;
 }
 /**
- * Closes an open registration against the generics a `Type.match` bound,
- * rewriting `serviceType` and the implementer's type so the result stands on its own.
- */
-export function substitute<Lifetime>(descriptor: ServiceDescriptor<Lifetime>, generics: ReadonlyMap<string, Type>): ServiceDescriptor<Lifetime> {
-  if (!generics.size) {
-    return descriptor;
-  }
-  const serviceType = Type.substitute(descriptor.serviceType, generics);
-  if ('ctor' in descriptor) {
-    return { ...descriptor, serviceType, ctorType: Type.substitute(descriptor.ctorType, generics) };
-  }
-  if ('factory' in descriptor) {
-    return { ...descriptor, serviceType, factoryType: Type.substitute(descriptor.factoryType, generics) };
-  }
-  if ('value' in descriptor) {
-    return { ...descriptor, serviceType };
-  }
-  return assertNever(descriptor);
-}
-
-/**
  * Are the two descriptors interchangeable — same service type and the same implementer,
  * lifetime, and implementer type?
  */

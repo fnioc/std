@@ -2,12 +2,10 @@ import type { DistributiveOmit } from '../utils/index.js';
 import * as factory from './factory/factories.js';
 import type { LIST_KINDS, ListName } from './grammar.js';
 import { parseTypeString } from './parse/parser.js';
-import { expandUnionsVisitor } from './visitor/ExpandUnionsVisitor.js';
 import { isOpenType } from './visitor/IsOpenVisitor.js';
 import { matchType } from './visitor/MatchVisitor.js';
 import { stringifyType } from './visitor/StringifyVisitor.js';
 import { substituteType } from './visitor/SubstituteVisitor.js';
-import { typeValidatorVisitor } from './visitor/TypeValidatorVisitor.js';
 import { TypeVisitor } from './visitor/TypeVisitor.js';
 
 // #region types
@@ -66,14 +64,14 @@ export interface GenericType extends TypeBase<'generic'> {
 }
 
 export interface ConstructorType extends TypeBase<'ctor'> {
-  readonly args: Type.Signatures;
+  readonly signatures: Type.Signatures;
   readonly instance: Type;
   /** Does this constructor build an abstract class — one `new` never targets directly? */
   readonly abstract: boolean;
 }
 
 export interface FunctionType extends TypeBase<'func'> {
-  readonly args: Type.Signatures;
+  readonly signatures: Type.Signatures;
   readonly return: Type;
 }
 
@@ -156,17 +154,17 @@ export namespace Type {
    * Type.ctor(box, [[string]]);                               // new (string) => box
    * Type.ctor(box, [[string], []]);                           // new (string; ) => box
    * Type.ctor(box, [[]], true);                                // abstract new () => box
-   * Type.ctor({ instance: box, args: [[]], abstract: false });
+   * Type.ctor({ instance: box, signatures: [[]], abstract: false });
    * ```
    */
-  export function ctor(instance: Type, args: Type.Signatures, abstract?: boolean): ConstructorType;
+  export function ctor(instance: Type, signatures: Type.Signatures, abstract?: boolean): ConstructorType;
   export function ctor(spec: Spec<ConstructorType>): ConstructorType;
   export function ctor(...args: any[]): ConstructorType {
     if (args.length > 1) {
-      return factory.ctor(args[0], atLeastOneRow(args[1]), args[2]);
+      return factory.ctor(args[0], atLeastOneSignature(args[1]), args[2]);
     }
     const spec = args[0] as Spec<ConstructorType>;
-    return adopt({ ...spec, args: atLeastOneRow(spec.args), kind: 'ctor' });
+    return adopt({ ...spec, signatures: atLeastOneSignature(spec.signatures), kind: 'ctor' });
   }
 
   /**
@@ -193,17 +191,17 @@ export namespace Type {
    * ```ts
    * Type.func(box, [[string]]);                             // (string) => box
    * Type.func(box, [[string], []]);                         // (string; ) => box
-   * Type.func({ return: box, args: [[]] });
+   * Type.func({ return: box, signatures: [[]] });
    * ```
    */
-  export function func(returns: Type, args: Type.Signatures): FunctionType;
+  export function func(returns: Type, signatures: Type.Signatures): FunctionType;
   export function func(spec: Spec<FunctionType>): FunctionType;
   export function func(...args: any[]): FunctionType {
     if (args.length > 1) {
-      return factory.func(args[0], atLeastOneRow(args[1]));
+      return factory.func(args[0], atLeastOneSignature(args[1]));
     }
     const spec = args[0] as Spec<FunctionType>;
-    return adopt({ ...spec, args: atLeastOneRow(spec.args), kind: 'func' });
+    return adopt({ ...spec, signatures: atLeastOneSignature(spec.signatures), kind: 'func' });
   }
 
   /** An open generic argument — a labeled hole standing for a type bound later. */
@@ -341,14 +339,6 @@ export namespace Type {
   // #region ops
 
   /**
-   * Expands every union into the union-free alternatives it stands for — `(A | B, C)` becomes
-   * `(A, C)` and `(B, C)`.
-   */
-  export function expand(type: Type): readonly Type[] {
-    return expandUnionsVisitor.visit(type);
-  }
-
-  /**
    * Is `type` address-only — a pure reference, with nothing of its own to build from?
    *
    * @remarks
@@ -371,6 +361,11 @@ export namespace Type {
   /** Does `type` still hold a generic hole anywhere? */
   export function isOpen(type: Type): boolean {
     return isOpenType(type);
+  }
+
+  /** Does the type admit `undefined` — the `undefined` literal itself, or a union carrying it? */
+  export function isOptional(type: Type): boolean {
+    return type === typeLiteral(undefined) || type.kind === 'union' && type.members.includes(typeLiteral(undefined));
   }
 
   /**
@@ -401,13 +396,8 @@ export namespace Type {
     return substituteType(type, substitutions);
   }
 
-  /** Everything malformed about the type, one message per finding — empty means well-formed. */
-  export function validate(type: Type): readonly string[] {
-    return typeValidatorVisitor.visit(type);
-  }
-
-  /** The lenient no-parameter spelling: `[]` names no call, so it reads as one empty row. */
-  function atLeastOneRow(signatures: Type.Signatures): Type.Signatures {
+  /** The lenient no-parameter spelling: `[]` names no call, so it reads as one empty signature. */
+  function atLeastOneSignature(signatures: Type.Signatures): Type.Signatures {
     return signatures.length ? signatures : [[]];
   }
 
@@ -416,12 +406,12 @@ export namespace Type {
   // #region types
 
   /**
-   * The parameter lists a callable answers to — one row per overload, in declaration order, each row
+   * The parameter lists a callable answers to — one signature per overload, in declaration order, each signature
    * holding that overload's parameter types in order.
    *
    * @remarks
-   * An un-overloaded callable carries exactly one row and a parameterless one carries one EMPTY
-   * row — a node never holds `[]`, which the factories accept only as a lenient spelling of `[[]]`.
+   * An un-overloaded callable carries exactly one signature and a parameterless one carries one EMPTY
+   * signature — a node never holds `[]`, which the factories accept only as a lenient spelling of `[[]]`.
    */
   export type Signatures = ReadonlyArray<readonly Type[]>;
 

@@ -153,12 +153,12 @@ class TypeParser {
     }
     switch (name.text) {
       case 'Func': {
-        const [returns, rows] = this.#reservedSignature(name, 'Func<Return, ...Args>');
-        return func(returns, rows);
+        const [returns, signatures] = this.#reservedSignature(name, 'Func<Return, ...Args>');
+        return func(returns, signatures);
       }
       case 'Ctor': {
-        const [instance, rows] = this.#reservedSignature(name, 'Ctor<Instance, ...Args>');
-        return ctor(instance, rows);
+        const [instance, signatures] = this.#reservedSignature(name, 'Ctor<Instance, ...Args>');
+        return ctor(instance, signatures);
       }
       case 'ServiceProvider': {
         if (this.#at('<')) {
@@ -174,10 +174,10 @@ class TypeParser {
 
   /**
    * A reserved signature spelling's arguments: the return or instance type, then the parameter
-   * rows — `Ctor<Instance, A, B; C>`. The head is separated from the first row by the same comma
-   * every other argument uses, so a one-row spelling reads as one flat list.
+   * signatures — `Ctor<Instance, A, B; C>`. The head is separated from the first signature by the same comma
+   * every other argument uses, so a one-signature spelling reads as one flat list.
    */
-  #reservedSignature(name: LexToken, spelling: string): [head: Type, rows: Type.Signatures] {
+  #reservedSignature(name: LexToken, spelling: string): [head: Type, signatures: Type.Signatures] {
     if (!this.#take('<')) {
       throw this.#error(name.position, `\`${spelling}\``);
     }
@@ -189,10 +189,10 @@ class TypeParser {
       return [head, [[]]];
     }
     if (this.#take(';')) {
-      return [head, [[], ...this.#rowList('>')]];
+      return [head, [[], ...this.#signatureList('>')]];
     }
     this.#expect(',');
-    return [head, this.#rowList('>')];
+    return [head, this.#signatureList('>')];
   }
 
   #genericTypes(): readonly Type[] {
@@ -207,23 +207,23 @@ class TypeParser {
   }
 
   /**
-   * A callable's parameter rows up to `closer`: semicolon-separated rows, each a comma-separated
-   * list of types. An empty list is ONE empty row — a callable taking no parameters, rather than
+   * A callable's parameter signatures up to `closer`: semicolon-separated signatures, each a comma-separated
+   * list of types. An empty list is ONE empty signature — a callable taking no parameters, rather than
    * one answering to no call.
    */
-  #rowList(closer: string): Type.Signatures {
-    const rows: Array<readonly Type[]> = [];
+  #signatureList(closer: string): Type.Signatures {
+    const signatures: Array<readonly Type[]> = [];
     for (;;) {
-      rows.push(this.#row(closer));
+      signatures.push(this.#signature(closer));
       if (this.#take(closer)) {
-        return rows;
+        return signatures;
       }
       this.#expect(';');
     }
   }
 
-  /** One row's parameter types, stopping at its `;` or at `closer` without consuming either. */
-  #row(closer: string): readonly Type[] {
+  /** One signature's parameter types, stopping at its `;` or at `closer` without consuming either. */
+  #signature(closer: string): readonly Type[] {
     const types: Type[] = [];
     if (this.#at(closer) || this.#at(';')) {
       return types;
@@ -304,18 +304,18 @@ class TypeParser {
 
   #function(): FunctionType {
     this.#expect('(');
-    const rows = this.#rowList(')');
+    const signatures = this.#signatureList(')');
     this.#expect('=>');
-    return func(this.#type(), rows);
+    return func(this.#type(), signatures);
   }
 
   #ctor(): ConstructorType {
     const abstract = this.#takeName('abstract');
     this.#index++;
     this.#expect('(');
-    const rows = this.#rowList(')');
+    const signatures = this.#signatureList(')');
     this.#expect('=>');
-    return ctor(this.#type(), rows, abstract);
+    return ctor(this.#type(), signatures, abstract);
   }
 
   #peek(): LexToken | undefined {

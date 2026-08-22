@@ -52,19 +52,19 @@ describe('Type.from', () => {
     expect(Type.from('undefined')).toBe(Type.typeLiteral(undefined));
   });
 
-  test('reads a callable answering to several calls, semicolons between its rows', () => {
+  test('reads a callable answering to several calls, semicolons between its signatures', () => {
     expect(Type.from('(app:A; ) => app:B')).toBe(Type.func({ return: B, args: [[A], []] }));
     expect(Type.from('new (app:A; app:B, app:A) => app:B')).toBe(
       Type.ctor({ instance: B, args: [[A], [B, A]], abstract: false }),
     );
-    // A leading empty row is the call taking nothing, written first.
+    // A leading empty signature is the call taking nothing, written first.
     expect(Type.from('(; app:A) => app:B')).toBe(Type.func({ return: B, args: [[], [A]] }));
-    // The reserved spellings carry rows too, the head separated by its own comma.
+    // The reserved spellings carry signatures too, the head separated by its own comma.
     expect(Type.from('Func<app:B, app:A; >')).toBe(Type.from('(app:A; ) => app:B'));
     expect(Type.from('Ctor<app:B; app:A>')).toBe(Type.from('new (; app:A) => app:B'));
   });
 
-  test('a callable with one row spells exactly as it always has', () => {
+  test('a callable with one signature spells exactly as it always has', () => {
     expect(Type.stringify(Type.func(B, [[A]]))).toBe('(app:A) => app:B');
     expect(Type.stringify(Type.ctor(B, [[]]))).toBe('new () => app:B');
     expect(Type.stringify(Type.func({ return: B, args: [[A], []] }))).toBe('(app:A; ) => app:B');
@@ -284,8 +284,8 @@ function generate(random: () => number, depth: number): Type {
   }
   const child = () => generate(random, depth - 1);
   const children = (most: number) => Array.from({ length: many(most) }, child);
-  // At least one row, since a callable answers to at least one call.
-  const rows = () => Array.from({ length: 1 + many(2) }, () => children(2));
+  // At least one signature, since a callable answers to at least one call.
+  const signatures = () => Array.from({ length: 1 + many(2) }, () => children(2));
   const kinds = ['union', 'intersection', 'tuple', 'func', 'ctor', 'global', 'imported', 'object', 'literal', 'generic', 'tag'];
   switch (pick(kinds)) {
     case 'union': {
@@ -298,10 +298,10 @@ function generate(random: () => number, depth: number): Type {
       return Type.tuple(...children(3));
     }
     case 'func': {
-      return Type.func({ return: child(), args: rows() });
+      return Type.func({ return: child(), args: signatures() });
     }
     case 'ctor': {
-      return Type.ctor({ instance: child(), args: rows(), abstract: pick([true, false]) });
+      return Type.ctor({ instance: child(), args: signatures(), abstract: pick([true, false]) });
     }
     case 'object': {
       return Type.object(Object.fromEntries(Array.from({ length: many(3) }, () => [pick(NAMES), child()])));

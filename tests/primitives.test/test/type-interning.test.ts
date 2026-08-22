@@ -225,8 +225,8 @@ describe('Type.adopt', () => {
   });
 });
 
-describe('a callable factory takes its parameter rows whole', () => {
-  test('the positional form spells every row', () => {
+describe('a callable factory takes its parameter signatures whole', () => {
+  test('the positional form spells every signature', () => {
     expect(Type.stringify(Type.ctor(A, [[B]]))).toBe('new (app:B) => app:A');
     expect(Type.stringify(Type.ctor(A, [[]]))).toBe('new () => app:A');
     expect(Type.stringify(Type.func(A, [[B], []]))).toBe('(app:B; ) => app:A');

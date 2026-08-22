@@ -57,7 +57,7 @@ export function id(type: Type): number {
 }
 
 /**
- * Seals a node and the arrays or records holding its children, a callable's rows of parameters
+ * Seals a node and the arrays or records holding its children, a callable's signatures of parameters
  * included. The children themselves arrive already interned, and so already frozen.
  */
 function freeze<T extends Type>(node: T): T {

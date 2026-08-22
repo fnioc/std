@@ -42,16 +42,6 @@ describe('equals', () => {
   });
 });
 
-describe('substitute', () => {
-  test('closes an open registration onto the type the factories would have built', () => {
-    const openBox = Type.imported('Box', 'app', [Type.generic('T')]);
-    const open = ServiceDescriptor.ctor(openBox, Impl, Type.ctor(openBox, [[Type.generic('T')]]));
-    const closed = ServiceDescriptor.substitute(open, new Map([['T', A]]));
-    expect(closed.serviceType).toBe(Type.imported('Box', 'app', [A]));
-    expect('ctor' in closed && closed.ctorType.args[0]![0]).toBe(A);
-  });
-});
-
 describe('ctor', () => {
   test('refuses an abstract implementer type — nothing can `new` it directly', () => {
     expect(() => ServiceDescriptor.ctor(A, Impl, Type.ctor(A, [[]], true)))

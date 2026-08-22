@@ -156,7 +156,7 @@ describe('children pairwise', () => {
     expect(matches(Type.object({ a: T }), Type.object({ b: A }))).toBe(false);
   });
 
-  test('rows pair off: same row count, row i against row i, same arity', () => {
+  test('signatures pair off: same signature count, signature i against signature i, same arity', () => {
     expect(matches(Type.func(C, [[T, B], [T]]), Type.func(C, [[A, B], [A]]))).toBe(true);
     expect(matches(Type.func(C, [[T, B], [T]]), Type.func(C, [[A], [A, B]]))).toBe(false);
     expect(matches(Type.func(C, [[T]]), Type.func(C, [[A, B]]))).toBe(false);
@@ -164,7 +164,7 @@ describe('children pairwise', () => {
 });
 
 describe('the assignability rules are gone', () => {
-  test('no row search: an overloaded subject does not answer a one-row pattern', () => {
+  test('no signature search: an overloaded subject does not answer a one-signature pattern', () => {
     expect(matches(Type.func(C, [[A]]), Type.func(C, [[A, B], [A]]))).toBe(false);
   });
 

@@ -9,10 +9,10 @@ class IsOpenVisitor extends TypeVisitor<boolean> {
     return this.#element(type);
   }
   protected override visitCtor(type: ConstructorType): boolean {
-    return this.#anyRow(type.args) || this.visit(type.instance);
+    return this.#anyRow(type.signatures) || this.visit(type.instance);
   }
   protected override visitFunc(type: FunctionType): boolean {
-    return this.#anyRow(type.args) || this.visit(type.return);
+    return this.#anyRow(type.signatures) || this.visit(type.return);
   }
   protected override visitGeneric(_type: GenericType): boolean {
     return true;
@@ -48,8 +48,8 @@ class IsOpenVisitor extends TypeVisitor<boolean> {
   #any(types: readonly Type[]): boolean {
     return types.some(type => this.visit(type));
   }
-  #anyRow(rows: Type.Signatures): boolean {
-    return rows.some(row => this.#any(row));
+  #anyRow(signatures: Type.Signatures): boolean {
+    return signatures.some(signature => this.#any(signature));
   }
   #arguments(type: NamedType): boolean {
     return this.#any(type.genericArgs);

@@ -42,13 +42,13 @@ class MatchVisitor extends TypeVisitor<boolean, MatchContext> {
   protected override visitCtor(pattern: ConstructorType, { subject, bindings }: MatchContext): boolean {
     return subject.kind === 'ctor'
       && subject.abstract === pattern.abstract
-      && this.#rowsPairwise(pattern.args, subject.args, bindings)
+      && this.#signaturesPairwise(pattern.signatures, subject.signatures, bindings)
       && this.visit(pattern.instance, { subject: subject.instance, bindings });
   }
 
   protected override visitFunc(pattern: FunctionType, { subject, bindings }: MatchContext): boolean {
     return subject.kind === 'func'
-      && this.#rowsPairwise(pattern.args, subject.args, bindings)
+      && this.#signaturesPairwise(pattern.signatures, subject.signatures, bindings)
       && this.visit(pattern.return, { subject: subject.return, bindings });
   }
 
@@ -110,10 +110,10 @@ class MatchVisitor extends TypeVisitor<boolean, MatchContext> {
       && patterns.every((pattern, index) => this.visit(pattern, { subject: subjects[index]!, bindings }));
   }
 
-  /** Same row count, row `i` against row `i`, each row pairwise. */
-  #rowsPairwise(patterns: Type.Signatures, subjects: Type.Signatures, bindings: Map<string, Type>): boolean {
+  /** Same signature count, signature `i` against signature `i`, each signature pairwise. */
+  #signaturesPairwise(patterns: Type.Signatures, subjects: Type.Signatures, bindings: Map<string, Type>): boolean {
     return patterns.length === subjects.length
-      && patterns.every((row, index) => this.#pairwise(row, subjects[index]!, bindings));
+      && patterns.every((signature, index) => this.#pairwise(signature, subjects[index]!, bindings));
   }
 }
 
@@ -126,6 +126,10 @@ const matchVisitor = new MatchVisitor();
 export function matchType(candidate: Type, constraint: Type): [matched: false] | [matched: true, generics: Map<string, Type>] {
   if (isOpenType(constraint)) {
     throw new Error(`match: the constraint type may not contain generic holes — got ${stringifyType(constraint)}`);
+  }
+  // Interned identity IS the closed-candidate match; the walk exists for the holes.
+  if (candidate === constraint) {
+    return [true, new Map()];
   }
   const bindings = new Map<string, Type>();
   return matchVisitor.visit(candidate, { subject: constraint, bindings }) ? [true, bindings] : [false];

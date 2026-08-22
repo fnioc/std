@@ -58,10 +58,10 @@ class CountVisitor extends Type.Visitor<number> {
     return 1 + this.visit(type.element);
   }
   protected override visitCtor(type: ConstructorType): number {
-    return 1 + this.visit(type.instance) + this.#rows(type.args);
+    return 1 + this.visit(type.instance) + this.#signatures(type.args);
   }
   protected override visitFunc(type: FunctionType): number {
-    return 1 + this.visit(type.return) + this.#rows(type.args);
+    return 1 + this.visit(type.return) + this.#signatures(type.args);
   }
   protected override visitGeneric(_type: GenericType): number {
     return 1;
@@ -97,8 +97,8 @@ class CountVisitor extends Type.Visitor<number> {
   #sum(types: readonly Type[]): number {
     return types.reduce((total, type) => total + this.visit(type), 0);
   }
-  #rows(rows: ConstructorType['args']): number {
-    return rows.flat().reduce((total, type) => total + this.visit(type), 0);
+  #signatures(signatures: ConstructorType['args']): number {
+    return signatures.flat().reduce((total, type) => total + this.visit(type), 0);
   }
 }
 

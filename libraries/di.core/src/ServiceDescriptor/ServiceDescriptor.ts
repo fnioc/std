@@ -22,7 +22,7 @@ interface WithLifetime<Lifetime> {
  * A registration the container constructs with `new`.
  *
  * @remarks
- * `ctorType` is where the registration's parameter rows live, so `ctor` and the calls it answers
+ * `ctorType` is where the registration's parameter signatures live, so `ctor` and the calls it answers
  * to are read from one place and cannot disagree.
  */
 export type CtorDescriptor<Lifetime> = Flatten<

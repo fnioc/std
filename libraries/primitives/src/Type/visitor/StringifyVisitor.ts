@@ -27,14 +27,14 @@ class StringifyVisitor extends TypeVisitor<string, Precedence> {
   protected override visitCtor(type: ConstructorType, minimum: Precedence): string {
     const prefix = type.abstract ? 'abstract ' : '';
     return this.#parenthesize(
-      `${prefix}new (${this.#rows(type.args)}) => ` + this.visit(type.instance, Precedence.arrow),
+      `${prefix}new (${this.#signatures(type.signatures)}) => ` + this.visit(type.instance, Precedence.arrow),
       Precedence.arrow,
       minimum,
     );
   }
   protected override visitFunc(type: FunctionType, minimum: Precedence): string {
     return this.#parenthesize(
-      `(${this.#rows(type.args)}) => ` + this.visit(type.return, Precedence.arrow),
+      `(${this.#signatures(type.signatures)}) => ` + this.visit(type.return, Precedence.arrow),
       Precedence.arrow,
       minimum,
     );
@@ -88,11 +88,11 @@ class StringifyVisitor extends TypeVisitor<string, Precedence> {
     return types.map(member => this.visit(member, Precedence.arrow)).join(', ');
   }
   /**
-   * A callable's parameter rows, semicolons between them — the same separator an overload set is
-   * written with. One row therefore spells as its parameters alone.
+   * A callable's parameter signatures, semicolons between them — the same separator an overload set is
+   * written with. One signature therefore spells as its parameters alone.
    */
-  #rows(rows: Type.Signatures): string {
-    return rows.map(row => this.#list(row)).join('; ');
+  #signatures(signatures: Type.Signatures): string {
+    return signatures.map(signature => this.#list(signature)).join('; ');
   }
   #genericTypes(types: readonly Type[]): string {
     return types.length ? `<${this.#list(types)}>` : '';

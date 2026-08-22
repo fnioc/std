@@ -1,6 +1,6 @@
 // Behaviour tests for Type.isOpen -- whether a type still holds a generic hole anywhere. Every
 // position a hole can sit in is covered: a bare hole, an aggregate element, a nominal type's
-// generic arguments, a callable's parameter rows and head, a composite's members, an object's
+// generic arguments, a callable's parameter signatures and head, a composite's members, an object's
 // member values, and a tag's inner type.
 
 import { Type } from '@rhombus-std/primitives';
@@ -37,7 +37,7 @@ describe('Type.isOpen', () => {
     expect(Type.isOpen(Type.imported('Box', 'app', [A]))).toBe(false);
   });
 
-  test('a callable is open through any parameter row or its own head', () => {
+  test('a callable is open through any parameter signature or its own head', () => {
     expect(Type.isOpen(Type.func(A, [[T]]))).toBe(true);
     expect(Type.isOpen(Type.func(T, [[A]]))).toBe(true);
     expect(Type.isOpen(Type.func(A, [[A]]))).toBe(false);

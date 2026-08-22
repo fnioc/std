@@ -1,6 +1,7 @@
 import { tag as tagType } from '../factory/factories.js';
 import { type ArrayType, type ConstructorType, type FunctionType, type GenericType, type GlobalType, type ImportedType, type IntersectionType, type IterableType, type ObjectType, type TagType,
   type TupleType, Type, type TypeLiteralType, type UnionType } from '../Type.js';
+import { isOpenType } from './IsOpenVisitor.js';
 import { TypeVisitor } from './TypeVisitor.js';
 
 /**
@@ -26,7 +27,7 @@ class SubstituteVisitor extends TypeVisitor<Type> {
   protected override visitCtor(type: ConstructorType): Type {
     return Type.ctor({
       instance: this.visit(type.instance),
-      args: this.#allRows(type.args),
+      signatures: this.#allSignatures(type.signatures),
       abstract: type.abstract,
     });
   }
@@ -34,7 +35,7 @@ class SubstituteVisitor extends TypeVisitor<Type> {
   protected override visitFunc(type: FunctionType): Type {
     return Type.func({
       return: this.visit(type.return),
-      args: this.#allRows(type.args),
+      signatures: this.#allSignatures(type.signatures),
     });
   }
 
@@ -85,11 +86,15 @@ class SubstituteVisitor extends TypeVisitor<Type> {
     return types.map(type => this.visit(type));
   }
 
-  #allRows(rows: Type.Signatures): Type.Signatures {
-    return rows.map(row => this.#all(row));
+  #allSignatures(signatures: Type.Signatures): Type.Signatures {
+    return signatures.map(signature => this.#all(signature));
   }
 }
 
 export function substituteType(type: Type, substitutions: ReadonlyMap<string, Type>): Type {
+  // Nothing to put in, or no holes to fill: the tree is already its own substitution.
+  if (!substitutions.size || !isOpenType(type)) {
+    return type;
+  }
   return new SubstituteVisitor(substitutions).visit(type);
 }
