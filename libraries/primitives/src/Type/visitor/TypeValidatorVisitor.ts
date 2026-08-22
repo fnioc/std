@@ -1,4 +1,4 @@
-import type { AggregateType, ArrayType, ConstructorType, FunctionType, GenericType, GlobalType, ImportedType, IntersectionType, IterableType, ObjectType, TagType, TupleType, Type, TypeLiteralType,
+import type { ArrayType, ConstructorType, FunctionType, GenericType, GlobalType, ImportedType, IntersectionType, IterableType, ListType, ObjectType, TagType, TupleType, Type, TypeLiteralType,
   UnionType } from '../Type.js';
 import { TypeVisitor } from './TypeVisitor.js';
 
@@ -49,7 +49,7 @@ class TypeValidatorVisitor extends TypeVisitor<readonly string[]> {
   #all(types: readonly Type[]): readonly string[] {
     return types.flatMap(type => this.visit(type));
   }
-  #element(type: AggregateType): readonly string[] {
+  #element(type: ListType): readonly string[] {
     return this.visit(type.element);
   }
 }

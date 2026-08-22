@@ -4,7 +4,7 @@
 // `T` is erased at runtime, so the engine supplies the closing type itself as a constructor
 // parameter (see `@rhombus-std/logging`'s `addLogging`), and the category is its name.
 
-import type { NominalType } from '@rhombus-std/di.core';
+import type { NamedType } from '@rhombus-std/di.core';
 import { augment } from '@rhombus-std/primitives';
 import { typefor } from '@rhombus-std/primitives.extras';
 import type { Func } from '@rhombus-toolkit/func';
@@ -27,7 +27,7 @@ export interface Logger<T> extends ILogger<T> {}
 export class Logger<T> implements ILogger<T> {
   readonly #logger: ILogger;
 
-  public constructor(factory: ILoggerFactory, categoryType: NominalType) {
+  public constructor(factory: ILoggerFactory, categoryType: NamedType) {
     this.#logger = factory.createLogger(categoryType.name);
   }
 

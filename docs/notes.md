@@ -27,3 +27,8 @@ land; delete the file when empty.
 - [ ] **Mergesynth guard-warning noise** — a cold lowering cache replays ~256 benign
       "merge guard for X cannot check …" lines per full rebuild. Consider a quieter default or a
       summary line.
+- [ ] **Hoist `DistributiveOmit` into `@rhombus-toolkit/type-helpers`** — currently in primitives
+      `src/utils/type-helpers.ts` (the utils dir is the migration queue); fully general, belongs beside `Flatten`. Ride the next type-helpers publish.
+- [ ] **Go-side aggregate/nominal naming echoes** — transforms/ internals (tokens/derive.go,
+      typenode.go, mergesynth nominal_identity_test.go, typesurface) still speak aggregate/nominal
+      where TS now says list/named; wire format unaffected. Rename on the next transforms touch.

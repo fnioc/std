@@ -5,9 +5,9 @@
  */
 
 import type { Func } from '@rhombus-toolkit/func';
-import { type AggregateName, GLOBAL_QUALIFIER, isAggregateName } from '../grammar.js';
-import type { AggregateType, ArrayType, ConstructorType, FunctionType, GenericType, GlobalType, ImportedType, IntersectionType, IterableType, LiteralValue, ObjectType, TagType, TupleType, Type,
-  TypeBrand, TypeLiteralType, UnionType } from '../Type.js';
+import { GLOBAL_QUALIFIER, isListName, type ListName } from '../grammar.js';
+import type { ArrayType, ConstructorType, FunctionType, GenericType, GlobalType, ImportedType, IntersectionType, IterableType, ListType, LiteralValue, ObjectType, TagType, TupleType, Type,
+  TypeLiteralType, UnionType } from '../Type.js';
 import { stringifyType } from '../visitor/StringifyVisitor.js';
 import { TypeVisitor } from '../visitor/TypeVisitor.js';
 import { id, intern, isInterned } from './intern.js';
@@ -20,7 +20,7 @@ type Composite = 'union' | 'intersection';
  * value to supply for it and no way to state that in an assertion; this is the one place that gap
  * is crossed, leaving every factory below fully checked against the shape it claims to build.
  */
-function node<T extends Type>(raw: Omit<T, TypeBrand>): T {
+function node<T extends Type>(raw: Type.RawType<T>): T {
   return raw as unknown as T;
 }
 
@@ -92,11 +92,11 @@ export function iterable(element: Type): IterableType {
 }
 
 /**
- * The aggregate each reserved spelling mints. Keyed by {@link AggregateName}, so a spelling added
+ * The aggregate each reserved spelling mints. Keyed by {@link ListName}, so a spelling added
  * to the grammar without a factory here is a compile error rather than a name that reads as an
  * ordinary type.
  */
-const AGGREGATES: Readonly<Record<AggregateName, Func<[Type], AggregateType>>> = {
+const LISTS: Readonly<Record<ListName, Func<[Type], ListType>>> = {
   Array: array,
   Iterable: iterable,
 };
@@ -106,9 +106,9 @@ const AGGREGATES: Readonly<Record<AggregateName, Func<[Type], AggregateType>>> =
  * canonicalization {@link union} performs, so every door that can spell an aggregate lands on the
  * one interned node and a global spelling of an aggregate never exists.
  */
-export function global(name: string, genericArgs: readonly Type[]): AggregateType | GlobalType {
-  if (genericArgs.length === 1 && isAggregateName(name)) {
-    return AGGREGATES[name](genericArgs[0]!);
+export function global(name: string, genericArgs: readonly Type[]): ListType | GlobalType {
+  if (genericArgs.length === 1 && isListName(name)) {
+    return LISTS[name](genericArgs[0]!);
   }
   const slots = genericArgs.map(adopt);
   return intern(
@@ -293,7 +293,7 @@ function compareChildren(left: Type, right: Type): number {
     }
     case 'array':
     case 'iterable': {
-      return compareTypes(left.element, (right as AggregateType).element);
+      return compareTypes(left.element, (right as ListType).element);
     }
     case 'tag': {
       return compareTypes(left.type, (right as TagType).type);

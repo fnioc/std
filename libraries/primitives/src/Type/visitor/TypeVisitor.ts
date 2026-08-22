@@ -6,7 +6,7 @@ import type { ArrayType, ConstructorType, FunctionType, GenericType, GlobalType,
  *
  * `visit` is the entry point; subclasses supply the per-kind methods and call `this.visit(child)`
  * to recurse into a node's own children — a composite's members, a signature's arguments, an
- * aggregate's element, a tag's inner type.
+ * list's element, a tag's inner type.
  *
  * @typeParam Return - what each handler produces.
  */

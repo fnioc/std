@@ -141,7 +141,7 @@ class TypeParser {
   /**
    * The readings an unescaped, unqualified name carries instead of naming a type. `string`,
    * `number` and the other value types are deliberately absent — they name types like any other.
-   * The aggregate spellings are absent too: the global door canonicalizes them, so parsing one
+   * The list spellings are absent too: the global door canonicalizes them, so parsing one
    * as an ordinary name already lands on its kind node.
    */
   #reserved(name: LexToken): Type | undefined {

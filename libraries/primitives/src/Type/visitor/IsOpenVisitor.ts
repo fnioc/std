@@ -1,5 +1,5 @@
 import { memo } from '../../utils/memo.js';
-import type { AggregateType, ArrayType, ConstructorType, FunctionType, GenericType, GlobalType, ImportedType, IntersectionType, IterableType, NominalType, ObjectType, TagType, TupleType, Type,
+import type { ArrayType, ConstructorType, FunctionType, GenericType, GlobalType, ImportedType, IntersectionType, IterableType, ListType, NamedType, ObjectType, TagType, TupleType, Type,
   TypeLiteralType, UnionType } from '../Type.js';
 import { TypeVisitor } from './TypeVisitor.js';
 
@@ -51,10 +51,10 @@ class IsOpenVisitor extends TypeVisitor<boolean> {
   #anyRow(rows: Type.Signatures): boolean {
     return rows.some(row => this.#any(row));
   }
-  #arguments(type: NominalType): boolean {
+  #arguments(type: NamedType): boolean {
     return this.#any(type.genericArgs);
   }
-  #element(type: AggregateType): boolean {
+  #element(type: ListType): boolean {
     return this.visit(type.element);
   }
 }

@@ -22,7 +22,7 @@ type Precedence = typeof Precedence[keyof typeof Precedence];
 /** Renders a {@link Type} as its source-level spelling — `@rhombus-std/di.core:Foo<string | [number, pkg:something]>`. */
 class StringifyVisitor extends TypeVisitor<string, Precedence> {
   protected override visitArray(type: ArrayType): string {
-    return this.#aggregate('Array', type);
+    return this.#listKind('Array', type);
   }
   protected override visitCtor(type: ConstructorType, minimum: Precedence): string {
     const prefix = type.abstract ? 'abstract ' : '';
@@ -54,7 +54,7 @@ class StringifyVisitor extends TypeVisitor<string, Precedence> {
     return this.#parenthesize(members.join(' & '), Precedence.intersection, minimum);
   }
   protected override visitIterable(type: IterableType): string {
-    return this.#aggregate('Iterable', type);
+    return this.#listKind('Iterable', type);
   }
   protected override visitObject(type: ObjectType): string {
     const members = Object.entries(type.members)
@@ -77,7 +77,7 @@ class StringifyVisitor extends TypeVisitor<string, Precedence> {
   }
 
   /** The reserved spelling, unescaped: the name reads back as this kind rather than as a type. */
-  #aggregate(name: string, type: { readonly element: Type; }): string {
+  #listKind(name: string, type: { readonly element: Type; }): string {
     return `${name}<${this.visit(type.element, Precedence.arrow)}>`;
   }
   #parenthesize(spelling: string, own: Precedence, minimum: Precedence): string {

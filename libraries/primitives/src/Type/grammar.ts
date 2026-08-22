@@ -31,16 +31,16 @@ export const GLOBAL_QUALIFIER = 'global';
  * aggregate wherever it is spelled — parsed, derived, or composed by hand — so the kind node is
  * the only identity the spelling ever has.
  */
-export const AGGREGATE_KINDS = {
+export const LIST_KINDS = {
   Array: 'array',
   Iterable: 'iterable',
 } as const;
 
 /** An aggregate's wire spelling. */
-export type AggregateName = keyof typeof AGGREGATE_KINDS;
+export type ListName = keyof typeof LIST_KINDS;
 
-export function isAggregateName(name: string): name is AggregateName {
-  return Object.hasOwn(AGGREGATE_KINDS, name);
+export function isListName(name: string): name is ListName {
+  return Object.hasOwn(LIST_KINDS, name);
 }
 
 /** The `from` a bare `ServiceProvider` resolves to. */
@@ -55,7 +55,7 @@ export const SERVICE_PROVIDER_FROM = '@rhombus-std/primitives';
  */
 export const RESERVED_NAMES: ReadonlySet<string> = new Set([
   ...KEYWORD_LITERALS.keys(),
-  ...Object.keys(AGGREGATE_KINDS),
+  ...Object.keys(LIST_KINDS),
   'Ctor',
   'Func',
   'ServiceProvider',

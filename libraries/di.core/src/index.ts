@@ -1,6 +1,6 @@
 export { Type } from '@rhombus-std/primitives';
-export type { AggregateType, ArrayType, ConstructorType, FunctionType, GenericType, GlobalType, ImportedType, IntersectionType, IServiceProvider, IterableType, NominalType, ObjectType, RawType,
-  TagType, TupleType, TypeLiteralType, UnionType } from '@rhombus-std/primitives';
+export type { ArrayType, ConstructorType, FunctionType, GenericType, GlobalType, ImportedType, IntersectionType, IServiceProvider, IterableType, ListType, NamedType, ObjectType, TagType, TupleType,
+  TypeLiteralType, UnionType } from '@rhombus-std/primitives';
 
 // Side-effect import: a second loaded copy of this package fails fast here.
 import './single-instance-guard';
