@@ -303,7 +303,10 @@ Weigh EVERY design decision in this document against this split.
 - Nobody but the blackbox interprets ANY datum: the resolution engine inspects none of it; captive
   validation relays the datum to a MODEL-supplied ordering interpreter (a blackbox that declines —
   e.g. any lambda-datum blackbox — opts out of captive checks); diagnostics prints without
-  interpreting. Because the blackbox is the interpreter of `undefined`, such sites necessarily
+  interpreting. CAPTIVE VALIDATION NEEDS NO CONDUIT (owner-ruled, closing the ordering-hook
+  question): the blackbox SHIPS a validator; the COMPOSITION ROOT invokes it with the manifest it
+  already holds (directly, or via the build-time validation stage). The blackbox never receives
+  the manifest — its job stays resolution-time; validation is opt-in composition-root tooling. Because the blackbox is the interpreter of `undefined`, such sites necessarily
   flow through the call — observed-every-make holds with no extra protocol.
 - The default blackbox's vocabulary: a small interned kind-tagged union — `undefined` (transient) |
   `singleton` | `scoped` | `matching(tag)` — strategy and parameter as separate fields, so the tag
@@ -517,5 +520,4 @@ untouched). Not part of the current lane — executed separately.
 1. Async call-site design residue: the async call-site node's shape; the AsyncIterable arm
    (per-item streaming over the sync path's iterable resolution, outside the gather); per-boundary
    nested PromiseCallsite gathers' interaction with the hoist's scope-cache checks.
-2. Captive-dependency validation: the lifetime-ordering declaration hook in the scope contract.
-3. Disposal design proper (contract + default blackbox), including `using`-protocol support.
+2. Disposal design proper (contract + default blackbox), including `using`-protocol support.
