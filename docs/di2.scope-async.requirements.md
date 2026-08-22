@@ -101,8 +101,16 @@ Weigh EVERY design decision in this document against this split.
   KNOWN ENGINE DELTA (owner-flagged): the live engine currently realizes `Iterable` and `Array`
   through IDENTICAL logic — the consult-time split above is unimplemented and must be addressed
   when the aggregate arms land.
+- THE ELEMENT-UNIVERSE RULE (owner-ruled): `AsyncIterable<E>`'s elements are the `E` registrations
+  PLUS the `Promise<E>` registrations — each promise element awaited at its step; the KEY
+  behavioral difference from the sync spelling: `resolve<AsyncIterable<T>>()` can resolve services
+  added via `add<Promise<T>>()`, where `Iterable<T>` cannot (its steps run at user iteration time
+  with no await structurally available — a promise element could only be delivered unawaited, a
+  lie against `E`). **OPEN sliver:** whether `Array<E>` under an enclosing `PromiseCallsite`
+  admits `Promise<E>` elements too (materialization happens at realize, so they could hoist into
+  the enclosing gather).
 - THE ASYNCITERABLE ARM **(proposed)**: the `AsyncIterableCallsite`'s fallback (after exact match,
-  like every arm) plans the SAME element sites the sync `Iterable<E>` arm produces, but each
+  like every arm) plans the element sites per the element-universe rule above, but each
   element subtree walks under its own clean collection — PER-ELEMENT inventories, so an element's
   async deps belong to its own step, never a pooled gather. Realize is an async generator: each
   `next()` runs that element's flat `allSettled` gather, plugs the element, yields — pull-based
