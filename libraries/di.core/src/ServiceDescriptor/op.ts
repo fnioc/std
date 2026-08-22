@@ -3,7 +3,7 @@ import { assertNever } from '@rhombus-toolkit/type-guards';
 import type { CtorDescriptor, FactoryDescriptor, ServiceDescriptor, ValueDescriptor } from './ServiceDescriptor';
 
 /** Which door the registration came in by, read from the member the descriptor carries. */
-export function kind(descriptor: ServiceDescriptor<string>) {
+export function kind(descriptor: ServiceDescriptor<unknown>) {
   if (isCtorDescriptor(descriptor)) {
     return ['ctor', descriptor] as const;
   }
@@ -28,7 +28,7 @@ export function isValueDescriptor(descriptor: ServiceDescriptor<any>): descripto
  * Closes an open registration against the generics a `Type.match` bound,
  * rewriting `serviceType` and the implementer's type so the result stands on its own.
  */
-export function substitute<Scopes extends string>(descriptor: ServiceDescriptor<Scopes>, generics: ReadonlyMap<string, Type>): ServiceDescriptor<Scopes> {
+export function substitute<Scopes>(descriptor: ServiceDescriptor<Scopes>, generics: ReadonlyMap<string, Type>): ServiceDescriptor<Scopes> {
   if (!generics.size) {
     return descriptor;
   }
@@ -50,7 +50,7 @@ export function substitute<Scopes extends string>(descriptor: ServiceDescriptor<
  * scope, and implementer type? Two descriptors can occupy the same slot without being equal (a
  * replaced registration), so prefer {@link matches} for slot identity.
  */
-export function equals(left: ServiceDescriptor<string>, right: ServiceDescriptor<string>): boolean {
+export function equals(left: ServiceDescriptor<unknown>, right: ServiceDescriptor<unknown>): boolean {
   if (left === right) {
     return true;
   }
@@ -58,12 +58,12 @@ export function equals(left: ServiceDescriptor<string>, right: ServiceDescriptor
     return false;
   }
   if ('ctor' in left) {
-    const other = right as CtorDescriptor<string>;
+    const other = right as CtorDescriptor<unknown>;
     return left.ctor === other.ctor && left.scope === other.scope
       && left.ctorType === other.ctorType;
   }
   if ('factory' in left) {
-    const other = right as FactoryDescriptor<string>;
+    const other = right as FactoryDescriptor<unknown>;
     return left.factory === other.factory && left.scope === other.scope
       && left.factoryType === other.factoryType;
   }
@@ -77,6 +77,6 @@ export function equals(left: ServiceDescriptor<string>, right: ServiceDescriptor
  * Do the two occupy the same registration slot? The service type is the whole of a
  * registration's identity — a keyed registration carries its key inside that type, as a tag.
  */
-export function matches(left: ServiceDescriptor<string>, right: ServiceDescriptor<string>): boolean {
+export function matches(left: ServiceDescriptor<unknown>, right: ServiceDescriptor<unknown>): boolean {
   return left.serviceType === right.serviceType;
 }

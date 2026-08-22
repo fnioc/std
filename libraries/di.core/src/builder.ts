@@ -11,7 +11,7 @@ type Slot = 'implementer' | 'lifetime' | 'tag';
  * `Described` is `unknown` until an implementer is chosen; from then on the node IS that
  * descriptor, refined by whatever steps remain.
  */
-type ServiceDescriptorBuilder<T, Scopes extends string, Slots extends Slot, Described> =
+type ServiceDescriptorBuilder<T, Scopes, Slots extends Slot, Described> =
   & Described
   & ('implementer' extends Slots ? IAsImplementer<T, Scopes, Slots> : unknown)
   & ('lifetime' extends Slots ? IWithLifetime<T, Scopes, Slots, Described> : unknown)
@@ -23,7 +23,7 @@ type ServiceDescriptorBuilder<T, Scopes extends string, Slots extends Slot, Desc
  * so a registration that could not satisfy its own address is refused where it is written. Taking
  * a door completes the registration: the result is a {@link ServiceDescriptor}.
  */
-interface IAsImplementer<T, Scopes extends string, Slots extends Slot> {
+interface IAsImplementer<T, Scopes, Slots extends Slot> {
   asClass(
     ctor: AbstractCtor<any[], T> & Ctor,
     ctorType: ConstructorType,
@@ -35,27 +35,27 @@ interface IAsImplementer<T, Scopes extends string, Slots extends Slot> {
   asValue(value: T): ServiceDescriptorBuilder<T, Scopes, Extract<Slots, 'tag'>, ValueDescriptor>;
 }
 
-interface IWithLifetime<T, Scopes extends string, Slots extends Slot, Described> {
+interface IWithLifetime<T, Scopes, Slots extends Slot, Described> {
   withLifetime(scope: Scopes): ServiceDescriptorBuilder<T, Scopes, Exclude<Slots, 'lifetime'>, Described>;
 }
 
-interface ITaggedAs<T, Scopes extends string, Slots extends Slot, Described> {
+interface ITaggedAs<T, Scopes, Slots extends Slot, Described> {
   taggedAs(key: string): ServiceDescriptorBuilder<T, Scopes, Exclude<Slots, 'tag'>, Described>;
 }
 
 /** A registration with nothing chosen yet — what {@link Manifest.describe} opens. */
-export type ServiceDescriptorBuilderFor<T, Scopes extends string> = ServiceDescriptorBuilder<T, Scopes, 'implementer' | 'lifetime' | 'tag', unknown>;
+export type ServiceDescriptorBuilderFor<T, Scopes> = ServiceDescriptorBuilder<T, Scopes, 'implementer' | 'lifetime' | 'tag', unknown>;
 
 /**
  * The chain `describe` opens. Every step hands back a new node, so a discarded intermediate
  * configures nothing — the same rule the manifest itself follows.
  */
-export function openDescription<Scopes extends string>(serviceType: Type): ServiceDescriptorBuilderFor<any, Scopes> {
+export function openDescription<Scopes>(serviceType: Type): ServiceDescriptorBuilderFor<any, Scopes> {
   return new PendingRegistration<Scopes>(serviceType) as unknown as ServiceDescriptorBuilderFor<any, Scopes>;
 }
 
 /** The node the chain walks before an implementer is chosen. */
-class PendingRegistration<Scopes extends string> {
+class PendingRegistration<Scopes> {
   readonly #serviceType: Type;
   readonly #scope: Scopes | undefined;
   readonly #tag: string | undefined;
@@ -95,7 +95,7 @@ class PendingRegistration<Scopes extends string> {
  * A descriptor wearing the chain's remaining steps. The steps are installed non-enumerably, so
  * the node spreads, compares, and registers as the plain descriptor it is.
  */
-function described<Scopes extends string, D extends ServiceDescriptor<Scopes>>(descriptor: D): D {
+function described<Scopes, D extends ServiceDescriptor<Scopes>>(descriptor: D): D {
   return Object.defineProperties({ ...descriptor }, {
     withLifetime: {
       value: function(this: D, scope: Scopes) {

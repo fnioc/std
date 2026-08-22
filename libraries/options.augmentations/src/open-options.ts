@@ -30,7 +30,7 @@ const openOptionsType = Type.imported('IOptions', '@rhombus-std/options', [hole]
  * therefore leaves this registration unlowerable, and the request answers
  * `undefined`.
  */
-export function ensureOpenOptions(manifest: Manifest<string>): Manifest<string> {
+export function ensureOpenOptions(manifest: Manifest<unknown>): Manifest<unknown> {
   return manifest.tryAdd(
     openOptionsType,
     (resolver: IServiceProvider, optionsType: Type, makeBase: Func<[], unknown>): IOptions<unknown> => assembleOptions(resolver, optionsType, makeBase),

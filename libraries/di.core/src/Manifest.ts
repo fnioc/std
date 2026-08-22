@@ -14,7 +14,7 @@ import { ServiceDescriptor } from './ServiceDescriptor';
  * also carries sugared shapes contributed by augmentation. Iterating a manifest yields its
  * descriptors newest-registration-first.
  */
-export interface Manifest<Scopes extends string> extends Iterable<ServiceDescriptor<Scopes>> {
+export interface Manifest<Scopes> extends Iterable<ServiceDescriptor<Scopes>> {
   /** Prepends `descriptor`, ahead of every descriptor already in the chain. */
   _add(descriptor: ServiceDescriptor<Scopes>): Manifest<Scopes>;
   /**
@@ -26,10 +26,10 @@ export interface Manifest<Scopes extends string> extends Iterable<ServiceDescrip
   _remove(descriptor: ServiceDescriptor<Scopes>): Manifest<Scopes>;
 }
 
-export interface DefaultManifest<Scopes extends string> extends Manifest<Scopes> {}
+export interface DefaultManifest<Scopes> extends Manifest<Scopes> {}
 
 @augment(typefor<Manifest<any>>())
-export class DefaultManifest<Scopes extends string> {
+export class DefaultManifest<Scopes> {
   #descriptors: Iterable<ServiceDescriptor<Scopes>>;
   constructor(descriptors?: Iterable<ServiceDescriptor<Scopes>>) {
     this.#descriptors = descriptors ?? [];
@@ -81,7 +81,7 @@ export class DefaultManifest<Scopes extends string> {
   }
 
   static #empty = new DefaultManifest<any>();
-  static empty<Scopes extends string>(): Manifest<Scopes> {
+  static empty<Scopes>(): Manifest<Scopes> {
     return this.#empty;
   }
 }

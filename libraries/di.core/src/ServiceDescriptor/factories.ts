@@ -9,14 +9,14 @@ import type { CtorDescriptor, FactoryDescriptor, ValueDescriptor } from './Servi
  *
  * @throws TypeError - when `ctorType` is abstract — nothing can `new` it directly.
  */
-export function ctor<Scopes extends string>(serviceType: Type, implementer: Ctor, ctorType: ConstructorType, scope?: Scopes): CtorDescriptor<Scopes> {
+export function ctor<Scopes>(serviceType: Type, implementer: Ctor, ctorType: ConstructorType, scope?: Scopes): CtorDescriptor<Scopes> {
   if (ctorType.abstract) {
     throw new TypeError(`${Type.stringify(ctorType)} is abstract — nothing can \`new\` it directly`);
   }
   return { serviceType, ctor: implementer, ctorType, scope };
 }
 
-export function factory<Scopes extends string>(serviceType: Type, implementer: Func, factoryType: FunctionType, scope?: Scopes): FactoryDescriptor<Scopes> {
+export function factory<Scopes>(serviceType: Type, implementer: Func, factoryType: FunctionType, scope?: Scopes): FactoryDescriptor<Scopes> {
   return { serviceType, factory: implementer, factoryType, scope };
 }
 

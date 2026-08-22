@@ -35,16 +35,16 @@ export namespace ServiceManifestHostedServiceAugmentations {
    * its resolver parameter; a class value is disambiguated by type (not
    * arity) and still resolves to the ctor overload below.
    */
-  export function addHostedService(this: Manifest<string>, implementationFactory: Func<[IServiceProvider], IHostedService>): Manifest<string>;
+  export function addHostedService(this: Manifest<unknown>, implementationFactory: Func<[IServiceProvider], IHostedService>): Manifest<unknown>;
   /**
    * Registers `ctor` as an {@link IHostedService} the host will start and
    * stop alongside its lifetime. `implementerType` is the ctor's composed
    * constructor type; omitted, a dependency-free ctor is assumed.
    */
-  export function addHostedService(this: Manifest<string>, ctor: Ctor, implementerType?: ConstructorType): Manifest<string>;
+  export function addHostedService(this: Manifest<unknown>, ctor: Ctor, implementerType?: ConstructorType): Manifest<unknown>;
   // A class value matches the construct-signature arm, an arrow or function the
   // call-signature arm; only the ctor form carries a composed constructor type.
-  export function addHostedService(this: Manifest<string>, ctorOrImplementationFactory: Ctor | Func<[IServiceProvider], IHostedService>, implementerType?: ConstructorType): Manifest<string> {
+  export function addHostedService(this: Manifest<unknown>, ctorOrImplementationFactory: Ctor | Func<[IServiceProvider], IHostedService>, implementerType?: ConstructorType): Manifest<unknown> {
     // The factory form injects the live resolver (via the `Type.func(..., [[typefor<IServiceProvider>()]])`
     // composed type) so the delegate receives it. A ctor form
     // with no `implementerType` is a dependency-free ctor, stated explicitly as one
@@ -59,7 +59,7 @@ export namespace ServiceManifestHostedServiceAugmentations {
 // `Scopes` is defaulted so the merge's type-parameter list matches the target's
 // (TS2428 requires identical parameters).
 declare module '@rhombus-std/di.core' {
-  interface Manifest<Scopes extends string> {
+  interface Manifest<Scopes> {
     addHostedService(implementationFactory: Func<[IServiceProvider], IHostedService>): Manifest<Scopes>;
     addHostedService(ctor: Ctor, implementerType?: ConstructorType): Manifest<Scopes>;
   }

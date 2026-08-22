@@ -8,7 +8,7 @@ import { type Manifest } from '../Manifest';
 import { ConstantType, ServiceDescriptor } from '../ServiceDescriptor';
 
 declare module '@rhombus-std/di.core' {
-  interface Manifest<Scopes extends string> {
+  interface Manifest<Scopes> {
     /** Prepends `descriptor`, ahead of every descriptor already in the chain. */
     add(descriptor: ServiceDescriptor<Scopes>): Manifest<Scopes>;
     /**
@@ -82,19 +82,19 @@ registerAugmentations<Manifest<any>>({
 });
 
 registerAugmentations<Manifest<any>>({
-  addMany(this: Manifest<string>, descriptors: Iterable<ServiceDescriptor<string>>): Manifest<string> {
+  addMany(this: Manifest<unknown>, descriptors: Iterable<ServiceDescriptor<unknown>>): Manifest<unknown> {
     return Iterator.from(descriptors).reduce((man, descriptor) => man.add(descriptor), this);
   },
-  tryAdd(this: Manifest<string>, ...descriptors: ReadonlyArray<ServiceDescriptor<string>>): Manifest<string> {
+  tryAdd(this: Manifest<unknown>, ...descriptors: ReadonlyArray<ServiceDescriptor<unknown>>): Manifest<unknown> {
     return Iterator.from(descriptors)
       .filter(newDesc => !Iterator.from(this).some(existingDesc => ServiceDescriptor.matches(newDesc, existingDesc)))
       .reduce((man, descriptor) => man.add(descriptor), this);
   },
-  remove(this: Manifest<string>, serviceType: Type): Manifest<string> {
+  remove(this: Manifest<unknown>, serviceType: Type): Manifest<unknown> {
     const found = Iterator.from(this).find(descriptor => descriptor.serviceType === serviceType);
     return found ? this.remove(found) : this;
   },
-  removeAll(this: Manifest<string>, serviceType: Type): Manifest<string> {
+  removeAll(this: Manifest<unknown>, serviceType: Type): Manifest<unknown> {
     return Iterator.from(this)
       .filter(descriptor => descriptor.serviceType === serviceType)
       .reduce((man, descriptor) => man.remove(descriptor), this);
@@ -114,13 +114,13 @@ registerAugmentations<Manifest<any>>({
 });
 
 registerAugmentations<Manifest<any>>({
-  describe(this: Manifest<string>, serviceType: Type): ServiceDescriptorBuilderFor<any, string> {
+  describe(this: Manifest<unknown>, serviceType: Type): ServiceDescriptorBuilderFor<any, unknown> {
     return openDescription(serviceType);
   },
 });
 
 /** The descriptor the uniform three-argument shape describes, its door chosen by the implementer type's kind. */
-function toDescriptor(serviceType: Type, implementer: unknown, implementerType: ConstructorType | FunctionType | ConstantType, scope?: string): ServiceDescriptor<string> {
+function toDescriptor(serviceType: Type, implementer: unknown, implementerType: ConstructorType | FunctionType | ConstantType, scope?: unknown): ServiceDescriptor<unknown> {
   switch (implementerType.kind) {
     case 'ctor':
       return ServiceDescriptor.ctor(serviceType, implementer as Ctor, implementerType, scope);

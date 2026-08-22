@@ -8,13 +8,13 @@ import type { Flatten } from '@rhombus-toolkit/type-helpers';
  * by: the implementer's own type cannot (a `Func` registered as a value is handed back; the same
  * `Func` registered as a factory is called).
  */
-export type ServiceDescriptor<Scopes extends string> =
+export type ServiceDescriptor<Scopes> =
   | CtorDescriptor<Scopes>
   | FactoryDescriptor<Scopes>
   | ValueDescriptor;
 
 /** The lifetime a constructed registration is cached under; absent means the manifest's default. */
-interface Scoped<Scopes extends string> {
+interface Scoped<Scopes> {
   readonly scope?: Scopes;
 }
 
@@ -25,7 +25,7 @@ interface Scoped<Scopes extends string> {
  * `ctorType` is where the registration's parameter rows live, so `ctor` and the calls it answers
  * to are read from one place and cannot disagree.
  */
-export type CtorDescriptor<Scopes extends string> = Flatten<
+export type CtorDescriptor<Scopes> = Flatten<
   {
     readonly serviceType: Type;
     readonly ctor: Ctor;
@@ -34,7 +34,7 @@ export type CtorDescriptor<Scopes extends string> = Flatten<
 >;
 
 /** A registration the container calls. */
-export type FactoryDescriptor<Scopes extends string> = Flatten<
+export type FactoryDescriptor<Scopes> = Flatten<
   {
     readonly serviceType: Type;
     readonly factory: Func;

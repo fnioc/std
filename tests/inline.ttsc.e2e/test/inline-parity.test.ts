@@ -671,7 +671,7 @@ const OPTIONS_AUTHORING = `
 import type { Manifest, Type } from '@rhombus-std/di.core';
 import type {} from '@rhombus-std/di.extras';
 import type {} from '@rhombus-std/di.extras.options';
-export type __Keep = [Manifest<string>, Type];
+export type __Keep = [Manifest<unknown>, Type];
 export {};
 `;
 

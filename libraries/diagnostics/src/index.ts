@@ -59,12 +59,12 @@ export namespace ServiceManifestMetricsAugmentations {
    * from every rule / config-bind step registered through the builder, reactive
    * to configuration reloads.
    */
-  export function addMetrics(this: Manifest<string>, configure?: Func<[IMetricsBuilder], void>): Manifest<string> {
+  export function addMetrics(this: Manifest<unknown>, configure?: Func<[IMetricsBuilder], void>): Manifest<unknown> {
     // Register the resolvable `IOptions<MetricsOptions>` assembly at singleton
     // scope. Calling addMetrics twice re-registers the (identical) factory --
     // last-wins bare-token resolution keeps that correct. The factory takes the
     // live provider view via an `IServiceProvider` slot, exactly like assembleOptions.
-    let m: Manifest<string> = this.add(typefor<IOptions<MetricsOptions>>(),
+    let m: Manifest<unknown> = this.add(typefor<IOptions<MetricsOptions>>(),
       (resolver) => assembleDiagnosticsOptions(resolver, typefor<IConfigureOptions<MetricsOptions>>(), typefor<IOptionsChangeTokenSource<MetricsOptions>>(), () => new MetricsOptions()),
       Type.func(typefor<IOptions<MetricsOptions>>(), [[typefor<IServiceProvider>()]]), 'singleton');
     // The per-listener configuration factory, ctor-injected with the collection
@@ -81,7 +81,7 @@ export namespace ServiceManifestMetricsAugmentations {
       configure(builder);
       // The chain is immutable: everything `configure` registered lives on the
       // manifest the BUILDER now holds, not on `m`.
-      m = builder.services as Manifest<string>;
+      m = builder.services as Manifest<unknown>;
     }
     return m;
   }
@@ -95,8 +95,8 @@ export namespace ServiceManifestTracingAugmentations {
    * from every rule / config-bind step registered through the builder, reactive
    * to configuration reloads.
    */
-  export function addTracing(this: Manifest<string>, configure?: Func<[ITracingBuilder], void>): Manifest<string> {
-    let m: Manifest<string> = this.add(typefor<IOptions<TracingOptions>>(),
+  export function addTracing(this: Manifest<unknown>, configure?: Func<[ITracingBuilder], void>): Manifest<unknown> {
+    let m: Manifest<unknown> = this.add(typefor<IOptions<TracingOptions>>(),
       (resolver) => assembleDiagnosticsOptions(resolver, typefor<IConfigureOptions<TracingOptions>>(), typefor<IOptionsChangeTokenSource<TracingOptions>>(), () => new TracingOptions()),
       Type.func(typefor<IOptions<TracingOptions>>(), [[typefor<IServiceProvider>()]]), 'singleton');
     // The per-listener configuration factory, ctor-injected with the collection
@@ -108,7 +108,7 @@ export namespace ServiceManifestTracingAugmentations {
       const builder = new TracingBuilder(m as Manifest<any>);
       configure(builder);
       // Immutable chain -- read back what the builder registered (see addMetrics).
-      m = builder.services as Manifest<string>;
+      m = builder.services as Manifest<unknown>;
     }
     return m;
   }
@@ -117,13 +117,13 @@ export namespace ServiceManifestTracingAugmentations {
 // `Scopes` is defaulted so the merge matches its target's type-parameter list
 // (TS2428 requires identical parameters).
 declare module '@rhombus-std/di.core' {
-  interface Manifest<Scopes extends string> {
+  interface Manifest<Scopes> {
     addMetrics(configure?: Func<[IMetricsBuilder], void>): Manifest<Scopes>;
   }
 }
 
 declare module '@rhombus-std/di.core' {
-  interface Manifest<Scopes extends string> {
+  interface Manifest<Scopes> {
     addTracing(configure?: Func<[ITracingBuilder], void>): Manifest<Scopes>;
   }
 }

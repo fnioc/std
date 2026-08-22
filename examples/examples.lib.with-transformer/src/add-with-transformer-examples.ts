@@ -62,7 +62,7 @@ import { makeServerReport } from './server-report.js';
  *
  * @param services The application's registration builder.
  */
-export function addWithTransformerExamples<S extends string>(
+export function addWithTransformerExamples<S>(
   services: Manifest<S | 'singleton'>,
 ): Manifest<S | 'singleton'> {
   // The greeting, registered against the CONTRACT interface rather than the

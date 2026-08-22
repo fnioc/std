@@ -41,14 +41,14 @@ describe('addMemoryCache', () => {
   });
 
   test('setup joins the options pipeline lazily and configures the cache', () => {
-    const services = new DefaultManifest<string>();
+    const services = new DefaultManifest<unknown>();
     let ran = 0;
 
     // The manifest is immutable, so `addMemoryCache` hands back a NEW manifest
     // carrying the registrations -- build from `returned`, not `services`.
     // The annotation pins what the standalone form gives back: the manifest the
     // verb produced, which the resolve below reads an explicit type argument off.
-    const returned: Manifest<string> = ServiceManifestMemoryCacheAugmentations.addMemoryCache.call(
+    const returned: Manifest<unknown> = ServiceManifestMemoryCacheAugmentations.addMemoryCache.call(
       services,
       (options) => {
         ran++;

@@ -54,9 +54,9 @@ export namespace ServiceManifestLoggingAugmentations {
    * registration -- its own AND whatever the delegate added through the
    * builder's `.services` (the manifest chain is immutable -- never `this`).
    */
-  export function addLogging(this: Manifest<string>, configure?: Func<[ILoggingBuilder], void>): Manifest<string> {
+  export function addLogging(this: Manifest<unknown>, configure?: Func<[ILoggingBuilder], void>): Manifest<unknown> {
     // The LoggerFilterOptions assembly + its default (Information) min level.
-    let m: Manifest<string> = this.addOptions(typefor<LoggerFilterOptions>(), () => new LoggerFilterOptions());
+    let m: Manifest<unknown> = this.addOptions(typefor<LoggerFilterOptions>(), () => new LoggerFilterOptions());
     m = m.addValue<IConfigureOptions<LoggerFilterOptions>>(new DefaultLoggerLevelConfigureOptions(LogLevel.Information));
 
     // ILoggerFactory, injected with the enumerable provider set and the
@@ -91,7 +91,7 @@ export namespace ServiceManifestLoggingAugmentations {
 // `Scopes` is defaulted so the merge's type-parameter list matches every other
 // partial declaration of `Manifest` (TS2428 requires identical parameters).
 declare module '@rhombus-std/di.core' {
-  interface Manifest<Scopes extends string> {
+  interface Manifest<Scopes> {
     addLogging(configure?: Func<[ILoggingBuilder], void>): Manifest<Scopes>;
   }
 }

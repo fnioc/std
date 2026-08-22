@@ -13,12 +13,12 @@ const B = Type.imported('B', 'app');
 class Impl {}
 
 /** A fresh instance, read through the interface every caller holds. */
-function blank(): Manifest<string> {
-  return new DefaultManifest<string>();
+function blank(): Manifest<unknown> {
+  return new DefaultManifest<unknown>();
 }
 
 /** The registered values, newest first — the order iterating a manifest yields. */
-function values(manifest: Manifest<string>): unknown[] {
+function values(manifest: Manifest<unknown>): unknown[] {
   return [...manifest].map(descriptor => 'value' in descriptor ? descriptor.value : ServiceDescriptor.kind(descriptor)[0]);
 }
 

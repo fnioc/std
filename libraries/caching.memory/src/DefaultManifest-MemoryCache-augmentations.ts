@@ -45,8 +45,8 @@ export namespace ServiceManifestMemoryCacheAugmentations {
    * step, so it runs LAZILY when the options first resolve. Returns the
    * manifest for chaining.
    */
-  export function addMemoryCache(this: Manifest<string>, setup?: Func<[MemoryCacheOptions], void>): Manifest<string> {
-    let m: Manifest<string> = this.addOptions(MEMORY_CACHE_OPTIONS_TYPE, () => new MemoryCacheOptions());
+  export function addMemoryCache(this: Manifest<unknown>, setup?: Func<[MemoryCacheOptions], void>): Manifest<unknown> {
+    let m: Manifest<unknown> = this.addOptions(MEMORY_CACHE_OPTIONS_TYPE, () => new MemoryCacheOptions());
     if (setup !== undefined) {
       // `setup` joins the options pipeline as a configure step: it runs
       // lazily, when the options first resolve, not at registration.
@@ -71,11 +71,11 @@ export namespace ServiceManifestMemoryCacheAugmentations {
    * {@link MEMORY_DISTRIBUTED_CACHE_OPTIONS_TYPE}) as a lazy configure
    * step. Returns the manifest for chaining.
    */
-  export function addDistributedMemoryCache(this: Manifest<string>, setup?: Func<[MemoryDistributedCacheOptions], void>): Manifest<string> {
+  export function addDistributedMemoryCache(this: Manifest<unknown>, setup?: Func<[MemoryDistributedCacheOptions], void>): Manifest<unknown> {
     // Same shape as addMemoryCache, over the distributed options type. The
     // cache is REGISTERED here but built lazily on first resolve, over its
     // own private MemoryCache.
-    let m: Manifest<string> = this.addOptions(MEMORY_DISTRIBUTED_CACHE_OPTIONS_TYPE, () => new MemoryDistributedCacheOptions());
+    let m: Manifest<unknown> = this.addOptions(MEMORY_DISTRIBUTED_CACHE_OPTIONS_TYPE, () => new MemoryDistributedCacheOptions());
     if (setup !== undefined) {
       m = m.configure(MEMORY_DISTRIBUTED_CACHE_OPTIONS_TYPE, setup);
     }
@@ -91,7 +91,7 @@ export namespace ServiceManifestMemoryCacheAugmentations {
 // `Scopes` is defaulted so the merge's type-parameter list matches every other
 // partial declaration of `Manifest` (TS2428 requires identical parameters).
 declare module '@rhombus-std/di.core' {
-  interface Manifest<Scopes extends string> {
+  interface Manifest<Scopes> {
     addMemoryCache(setup?: Func<[MemoryCacheOptions], void>): Manifest<Scopes>;
 
     addDistributedMemoryCache(setup?: Func<[MemoryDistributedCacheOptions], void>): Manifest<Scopes>;

@@ -247,7 +247,7 @@ const DEFAULT_NOTIFIER_TYPE = Type.tag(NOTIFIER_TYPE, 'defaults');
  * INTERNED, so two spellings of one type are one object and `===` is the whole
  * comparison.
  */
-function countRegistrations(services: Iterable<ServiceDescriptor<string>>, type: Type): number {
+function countRegistrations(services: Iterable<ServiceDescriptor<unknown>>, type: Type): number {
   let count = 0;
   for (const descriptor of services) {
     if (descriptor.serviceType === type) {
@@ -294,7 +294,7 @@ function demonstrateDiscardTrap(): string {
  *
  * @param services The application's registration builder.
  */
-function addOrderDefaults<S extends string>(
+function addOrderDefaults<S>(
   services: Manifest<S | 'singleton'>,
 ): Manifest<S | 'singleton'> {
   // A default VALUE — the clock every other default depends on.

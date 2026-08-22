@@ -47,7 +47,7 @@ import { GREETING_TYPE, HEALTH_CHECK_TYPE } from './types.js';
  *
  * @param services The application's registration builder.
  */
-export function addWithoutTransformerExamples<S extends string>(
+export function addWithoutTransformerExamples<S>(
   services: Manifest<S | 'singleton'>,
 ): Manifest<S | 'singleton'> {
   // Contributes a greeting to the shared IGreeting collection at the hand-written

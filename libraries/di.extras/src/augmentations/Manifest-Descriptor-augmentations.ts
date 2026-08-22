@@ -3,7 +3,7 @@ import { registerInlineBodies, typefor } from '@rhombus-std/primitives.extras';
 import type { Ctor, Func } from '@rhombus-toolkit/func';
 
 declare module '@rhombus-std/di.core' {
-  interface Manifest<Scopes extends string> {
+  interface Manifest<Scopes> {
     /**
      * Registers a constructor as the implementation of `ServiceType`, the service type derived from the
      * type argument instead of taken explicitly.
@@ -49,29 +49,29 @@ declare module '@rhombus-std/di.core' {
 }
 
 export const ManifestDescriptorAugmentations = {
-  add<ServiceType>(this: Manifest<string>, implementer: any, scope?: string): Manifest<string> {
+  add<ServiceType>(this: Manifest<unknown>, implementer: any, scope?: unknown): Manifest<unknown> {
     return this.add(typefor<ServiceType>(), implementer, typefor(implementer), scope);
   },
-  addValue<ServiceType>(this: Manifest<string>, value: ServiceType): Manifest<string> {
+  addValue<ServiceType>(this: Manifest<unknown>, value: ServiceType): Manifest<unknown> {
     return this.add(typefor<ServiceType>(), value, ConstantType);
   },
-  tryAdd<ServiceType>(this: Manifest<string>, implementer: any, scope?: string): Manifest<string> {
+  tryAdd<ServiceType>(this: Manifest<unknown>, implementer: any, scope?: unknown): Manifest<unknown> {
     return this.tryAdd(typefor<ServiceType>(), implementer, typefor(implementer), scope);
   },
-  tryAddValue<ServiceType>(this: Manifest<string>, value: ServiceType): Manifest<string> {
+  tryAddValue<ServiceType>(this: Manifest<unknown>, value: ServiceType): Manifest<unknown> {
     return this.tryAdd(typefor<ServiceType>(), value, ConstantType);
   },
-  replace<ServiceType>(this: Manifest<string>, implementer: any, scope?: string): Manifest<string> {
+  replace<ServiceType>(this: Manifest<unknown>, implementer: any, scope?: unknown): Manifest<unknown> {
     return this.replace(typefor<ServiceType>(), implementer, typefor(implementer), scope);
   },
-  replaceValue<ServiceType>(this: Manifest<string>, value: ServiceType): Manifest<string> {
+  replaceValue<ServiceType>(this: Manifest<unknown>, value: ServiceType): Manifest<unknown> {
     return this.replace(typefor<ServiceType>(), value, ConstantType);
   },
-  removeAll<ServiceType>(this: Manifest<string>): Manifest<string> {
+  removeAll<ServiceType>(this: Manifest<unknown>): Manifest<unknown> {
     return this.removeAll(typefor<ServiceType>());
   },
-  describe<ServiceType>(this: Manifest<string>) {
+  describe<ServiceType>(this: Manifest<unknown>) {
     return this.describe(typefor<ServiceType>());
   },
 };
-registerInlineBodies<Manifest<string>>(ManifestDescriptorAugmentations);
+registerInlineBodies<Manifest<unknown>>(ManifestDescriptorAugmentations);

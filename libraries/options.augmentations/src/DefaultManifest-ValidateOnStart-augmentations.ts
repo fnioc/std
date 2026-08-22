@@ -21,7 +21,7 @@ import { optionsAddressType } from './option-types.js';
 // `Scopes` is defaulted so the merge matches its target's type-parameter list
 // (TS2428 requires identical parameters).
 declare module '@rhombus-std/di.core' {
-  interface Manifest<Scopes extends string> {
+  interface Manifest<Scopes> {
     /**
      * Marks the options registered at `optionsType` for eager validation at
      * host startup: the host forces the registration's evaluation (running its
@@ -41,7 +41,7 @@ registerAugmentations<Manifest<any>>({
     function factory(resolver: IServiceProvider, startupType: Array<Keyed<Type, typeof valKey>>): IStartupValidator {
       return new StartupValidator(resolver, startupType);
     }
-    return function validateOnStart(this: Manifest<string>, optionsType: Type): Manifest<string> {
+    return function validateOnStart(this: Manifest<unknown>, optionsType: Type): Manifest<unknown> {
       return this
         // Accumulate the target in the flat startup-validation slot. This is the
         // one slot holding the composed `IOptions<T>` address rather than the bare

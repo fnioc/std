@@ -4,7 +4,7 @@ import { Type } from '@rhombus-std/primitives';
 /** A registration that can serve a request, and what the match captured to make it fit. */
 export interface Answer {
   /** The registration as authored — an open one still holds its holes. */
-  readonly descriptor: ServiceDescriptor<string>;
+  readonly descriptor: ServiceDescriptor<unknown>;
   /** The address answered: {@link descriptor}'s service type, closed over {@link generics}. */
   readonly serviceType: Type;
   /** One binding per hole the match filled; empty for a registration that had none. */

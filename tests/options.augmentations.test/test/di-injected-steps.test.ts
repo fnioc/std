@@ -105,7 +105,7 @@ describe('postConfigure — DI-injected', () => {
 describe('validate — DI-injected', () => {
   const LIMIT_TYPE: Type = Type.from('test:Limit');
 
-  function servicesWithLimit(size: number, max: number): Manifest<string> {
+  function servicesWithLimit(size: number, max: number): Manifest<unknown> {
     let services: Manifest<'singleton'> = new DefaultManifest<'singleton'>();
     services = services.add(LIMIT_TYPE, { max }, ConstantType);
     services = services.addOptions(OPTIONS_TYPE, () => ({ ...baseOptions(), retries: size }));

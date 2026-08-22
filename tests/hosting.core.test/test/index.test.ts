@@ -116,7 +116,7 @@ test('addHostedService registers many under one token; the collection resolves a
     public async stop(): Promise<void> {}
   }
 
-  let manifest: Manifest<string> = new DefaultManifest();
+  let manifest: Manifest<unknown> = new DefaultManifest();
   manifest = manifest.addHostedService(A, Type.ctor(HOSTED_SERVICE_TYPE, [[]]));
   manifest = manifest.addHostedService(B, Type.ctor(HOSTED_SERVICE_TYPE, [[]]));
 
@@ -134,7 +134,7 @@ test('addHostedService registers many under one token; the collection resolves a
 });
 
 test('the hosted-service collection resolves to an empty array when none are registered', () => {
-  let manifest: Manifest<string> = new DefaultManifest();
+  let manifest: Manifest<unknown> = new DefaultManifest();
   const provider = manifest.build();
   const scope = provider.createScope('singleton');
   const services: IHostedService[] = scope.getRequiredService(hostedServiceCollectionType());

@@ -17,7 +17,7 @@ import { baseFactoryType, postConfigureStepType, validateStepType } from './opti
 // `Scopes` is defaulted so the merge matches its target's type-parameter list
 // (TS2428 requires identical parameters).
 declare module '@rhombus-std/di.core' {
-  interface Manifest<Scopes extends string> {
+  interface Manifest<Scopes> {
     /**
      * Offers `IOptions<any>` for the options type `optionsType`, taking its base
      * value from whatever `optionsType` itself resolves to.
@@ -71,8 +71,8 @@ declare module '@rhombus-std/di.core' {
 const DEFAULT_VALIDATION_FAILURE_MESSAGE = 'A validation error has occurred.';
 
 export namespace ServiceManifestOptionsAugmentations {
-  export function addOptions(this: Manifest<string>, optionsType: Type): Manifest<string>;
-  export function addOptions(this: Manifest<string>, optionsType: Type, makeBase?: Func<[], any>): Manifest<string> {
+  export function addOptions(this: Manifest<unknown>, optionsType: Type): Manifest<unknown>;
+  export function addOptions(this: Manifest<unknown>, optionsType: Type, makeBase?: Func<[], any>): Manifest<unknown> {
     const manifest = ensureOpenOptions(this);
     // Both forms fill the same base slot, which is what offers this type; they
     // differ only in where the base value comes from. A given factory IS the
@@ -89,11 +89,11 @@ export namespace ServiceManifestOptionsAugmentations {
     );
   }
 
-  export function postConfigure(this: Manifest<string>, optionsType: Type, step: IPostConfigureOptions<any> | Func<[any], void>): Manifest<string>;
-  export function postConfigure<Deps extends readonly unknown[]>(this: Manifest<string>, optionsType: Type, depTypes: DepTypes<Deps>,
-    configureOptions: (options: any, ...deps: Deps) => void): Manifest<string>;
-  export function postConfigure<Deps extends readonly unknown[]>(this: Manifest<string>, optionsType: Type, step: IPostConfigureOptions<any> | Func<[any], void> | DepTypes<Deps>,
-    configureWithDeps?: (options: any, ...deps: Deps) => void): Manifest<string> {
+  export function postConfigure(this: Manifest<unknown>, optionsType: Type, step: IPostConfigureOptions<any> | Func<[any], void>): Manifest<unknown>;
+  export function postConfigure<Deps extends readonly unknown[]>(this: Manifest<unknown>, optionsType: Type, depTypes: DepTypes<Deps>,
+    configureOptions: (options: any, ...deps: Deps) => void): Manifest<unknown>;
+  export function postConfigure<Deps extends readonly unknown[]>(this: Manifest<unknown>, optionsType: Type, step: IPostConfigureOptions<any> | Func<[any], void> | DepTypes<Deps>,
+    configureWithDeps?: (options: any, ...deps: Deps) => void): Manifest<unknown> {
     // DI-injected form: `step` is the dep-type tuple and `configureWithDeps`
     // the callback. Registers a factory for the post-configure slot whose
     // injected params are the resolved deps; it produces an
@@ -113,11 +113,11 @@ export namespace ServiceManifestOptionsAugmentations {
     return this.add(postConfigureStepType(optionsType), wrapped, ConstantType);
   }
 
-  export function validate(this: Manifest<string>, optionsType: Type, validate: Func<[options: any], boolean>, failureMessage?: string): Manifest<string>;
-  export function validate<Deps extends readonly unknown[]>(this: Manifest<string>, optionsType: Type, depTypes: DepTypes<Deps>, validate: Func<[options: any, ...deps: Deps], boolean>,
-    failureMessage?: string): Manifest<string>;
-  export function validate<Deps extends readonly unknown[]>(this: Manifest<string>, optionsType: Type,
-    ...args: [Func<[any], boolean>, string?] | [DepTypes<Deps>, Func<[any], boolean>, string?]): Manifest<string> {
+  export function validate(this: Manifest<unknown>, optionsType: Type, validate: Func<[options: any], boolean>, failureMessage?: string): Manifest<unknown>;
+  export function validate<Deps extends readonly unknown[]>(this: Manifest<unknown>, optionsType: Type, depTypes: DepTypes<Deps>, validate: Func<[options: any, ...deps: Deps], boolean>,
+    failureMessage?: string): Manifest<unknown>;
+  export function validate<Deps extends readonly unknown[]>(this: Manifest<unknown>, optionsType: Type,
+    ...args: [Func<[any], boolean>, string?] | [DepTypes<Deps>, Func<[any], boolean>, string?]): Manifest<unknown> {
     const [depTypes, predicate, failureMessage] = Array.from(function*() {
       if (typeof args[0] === 'function') {
         yield undefined;

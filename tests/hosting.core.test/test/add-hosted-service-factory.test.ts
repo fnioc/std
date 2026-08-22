@@ -16,7 +16,7 @@ test("addHostedService(factory) registers the factory's result under the hosted-
     public async stop(): Promise<void> {}
   }
 
-  let manifest: Manifest<string> = new DefaultManifest();
+  let manifest: Manifest<unknown> = new DefaultManifest();
   const singleton = new Worker();
   // The factory form surfaces an already-constructed instance as a hosted service.
   manifest = manifest.addHostedService(() => singleton);
@@ -38,7 +38,7 @@ test('addHostedService(factory) injects the live resolver so the factory can pul
     public async stop(): Promise<void> {}
   }
 
-  let manifest: Manifest<string> = new DefaultManifest();
+  let manifest: Manifest<unknown> = new DefaultManifest();
   manifest = manifest.add(Type.from('test:Dependency'), Dependency, Type.ctor(Type.from('test:Dependency'), [[]]));
   // The factory receives the resolver -- the reference `Func<IServiceProvider, T>`
   // form used to promote a separately-registered service to a hosted service.
@@ -71,7 +71,7 @@ test('addHostedService(ctor) and addHostedService(factory) coexist under the sha
     public async stop(): Promise<void> {}
   }
 
-  let manifest: Manifest<string> = new DefaultManifest();
+  let manifest: Manifest<unknown> = new DefaultManifest();
   manifest = manifest.addHostedService(CtorWorker, Type.ctor(HOSTED_SERVICE_TYPE, [[]]));
   manifest = manifest.addHostedService(() => new FactoryWorker());
 

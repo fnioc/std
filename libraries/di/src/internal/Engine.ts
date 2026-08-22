@@ -8,7 +8,7 @@ export interface ResolveContext {
   /** What a service asking for the provider receives. */
   readonly serviceProvider: IServiceProvider;
   /** Registrations layered over the manifest for this walk only — a latebound call's arguments. */
-  readonly additionalServices?: ReadonlyArray<ServiceDescriptor<string>>;
+  readonly additionalServices?: ReadonlyArray<ServiceDescriptor<unknown>>;
   /** The scope a scoped-lifetime realization caches into; absent for a direct, uncached resolve. */
   readonly scope?: ServiceScope;
 }

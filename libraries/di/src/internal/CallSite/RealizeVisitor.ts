@@ -70,7 +70,7 @@ class RealizeVisitor {
    * address never collapse into a single cached instance. A site with no lifetime, or a walk
    * with no asking scope, realizes fresh every time: caching needs both.
    */
-  #cached(site: { readonly descriptor?: ServiceDescriptor<string>; }, build: () => any): any {
+  #cached(site: { readonly descriptor?: ServiceDescriptor<unknown>; }, build: () => any): any {
     const scope = this.#context.scope;
     if (site.descriptor === undefined || scope === undefined) {
       return build();

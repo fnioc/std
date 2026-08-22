@@ -20,7 +20,7 @@ import { changeTokenSourceType, configureStepType } from './option-types.js';
 // `Scopes` is defaulted so the merge matches its target's type-parameter list
 // (TS2428 requires identical parameters).
 declare module '@rhombus-std/di.core' {
-  interface Manifest<Scopes extends string> {
+  interface Manifest<Scopes> {
     /**
      * Registers a configuration `section` to bind against the options type
      * `optionsType` — the BARE `T`, as every pipeline verb takes: adds a
@@ -48,12 +48,12 @@ declare module '@rhombus-std/di.core' {
 }
 
 export namespace ServiceManifestOptionsConfigAugmentations {
-  export function configure(this: Manifest<string>, optionsType: Type, section: IConfig): Manifest<string>;
-  export function configure(this: Manifest<string>, optionsType: Type, configureOptions: Func<[any], void>): Manifest<string>;
-  export function configure<Deps extends readonly unknown[]>(this: Manifest<string>, optionsType: Type, depTypes: DepTypes<Deps>,
-    configureOptions: (options: any, ...deps: Deps) => void): Manifest<string>;
-  export function configure<Deps extends readonly unknown[]>(this: Manifest<string>, optionsType: Type, source: IConfig | Func<[any], void> | DepTypes<Deps>,
-    configureWithDeps?: (options: any, ...deps: Deps) => void): Manifest<string> {
+  export function configure(this: Manifest<unknown>, optionsType: Type, section: IConfig): Manifest<unknown>;
+  export function configure(this: Manifest<unknown>, optionsType: Type, configureOptions: Func<[any], void>): Manifest<unknown>;
+  export function configure<Deps extends readonly unknown[]>(this: Manifest<unknown>, optionsType: Type, depTypes: DepTypes<Deps>,
+    configureOptions: (options: any, ...deps: Deps) => void): Manifest<unknown>;
+  export function configure<Deps extends readonly unknown[]>(this: Manifest<unknown>, optionsType: Type, source: IConfig | Func<[any], void> | DepTypes<Deps>,
+    configureWithDeps?: (options: any, ...deps: Deps) => void): Manifest<unknown> {
     // DI-injected form: `source` is the dep-type tuple and
     // `configureWithDeps` the callback. Registers a factory for the configure
     // slot whose injected params are the resolved deps; it produces an
@@ -82,7 +82,7 @@ export namespace ServiceManifestOptionsConfigAugmentations {
     if (typeof configSource === 'function') {
       return this.add(configureStepType(optionsType), { configure: configSource }, ConstantType);
     }
-    let m: Manifest<string> = this.add(configureStepType(optionsType), new ConfigConfigureOptions(configSource), ConstantType);
+    let m: Manifest<unknown> = this.add(configureStepType(optionsType), new ConfigConfigureOptions(configSource), ConstantType);
     m = m.add(changeTokenSourceType(optionsType), new ConfigChangeTokenSource(configSource), ConstantType);
     return m;
   }

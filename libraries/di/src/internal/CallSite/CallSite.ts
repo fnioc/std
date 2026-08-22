@@ -28,14 +28,14 @@ export interface CtorCallSite {
   readonly ctor: Ctor;
   readonly args: CallSite[];
   /** The registration behind the site when it is scoped — the key a scope caches the instance under. */
-  readonly descriptor?: ServiceDescriptor<string>;
+  readonly descriptor?: ServiceDescriptor<unknown>;
 }
 export interface FactoryCallSite {
   readonly kind: 'factory';
   readonly factory: Func;
   readonly args: CallSite[];
   /** The registration behind the site when it is scoped — the key a scope caches the instance under. */
-  readonly descriptor?: ServiceDescriptor<string>;
+  readonly descriptor?: ServiceDescriptor<unknown>;
 }
 export interface LateBoundCallSite {
   readonly kind: 'latebound';
@@ -65,13 +65,13 @@ export namespace CallSite {
   /**
    * A registered constructor the engine `new`s up.
    */
-  export function ctor(ctor: Ctor, args: CallSite[], descriptor?: ServiceDescriptor<string>): CtorCallSite {
+  export function ctor(ctor: Ctor, args: CallSite[], descriptor?: ServiceDescriptor<unknown>): CtorCallSite {
     return { kind: 'ctor', ctor, args, descriptor };
   }
   /**
    * A registered factory the engine invokes — {@link args} realize its parameters.
    */
-  export function factory(factory: Func, args: CallSite[], descriptor?: ServiceDescriptor<string>): FactoryCallSite {
+  export function factory(factory: Func, args: CallSite[], descriptor?: ServiceDescriptor<unknown>): FactoryCallSite {
     return { kind: 'factory', factory, args, descriptor };
   }
   /**

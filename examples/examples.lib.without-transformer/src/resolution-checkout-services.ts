@@ -329,7 +329,7 @@ export class PaymentRouter implements IPaymentRouter {
  *
  * @param services The application's registration builder.
  */
-export function addCheckoutServices<S extends string>(
+export function addCheckoutServices<S>(
   services: Manifest<S | 'singleton'>,
 ): Manifest<S | 'singleton'> {
   const t = CHECKOUT_TYPES;

@@ -48,7 +48,7 @@ import type { IGreeting } from '@rhombus-std/examples.contracts';
 import { typefor } from '@rhombus-std/primitives.extras';
 
 /** The mutable slot a builder exposes so siblings share one manifest. */
-interface ManifestSlot<S extends string> {
+interface ManifestSlot<S> {
   services: Manifest<S>;
 }
 
@@ -299,7 +299,7 @@ export interface IGreetingWorkshopBuilder {
  * and handing the SAME holder to several builders is what keeps them on one
  * chain instead of silently dropping each other's registrations.
  */
-export class GreetingWorkshopBuilder<S extends string> implements IGreetingWorkshopBuilder {
+export class GreetingWorkshopBuilder<S> implements IGreetingWorkshopBuilder {
   readonly #holder: ManifestSlot<S | 'singleton'>;
 
   public constructor(holder: ManifestSlot<S | 'singleton'>) {
@@ -337,7 +337,7 @@ export class GreetingWorkshopBuilder<S extends string> implements IGreetingWorks
  * @param services The application's registration builder.
  * @param configure Receives the builder; its return value is deliberately ignored.
  */
-export function addGreetingWorkshop<S extends string>(services: Manifest<S | 'singleton'>, configure: (builder: IGreetingWorkshopBuilder) => void): Manifest<S | 'singleton'> {
+export function addGreetingWorkshop<S>(services: Manifest<S | 'singleton'>, configure: (builder: IGreetingWorkshopBuilder) => void): Manifest<S | 'singleton'> {
   const holder: ManifestSlot<S | 'singleton'> = { services };
   configure(new GreetingWorkshopBuilder<S>(holder));
 
