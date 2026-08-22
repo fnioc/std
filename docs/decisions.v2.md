@@ -2951,3 +2951,45 @@ hole, so handing the same function back for every instantiation is exactly right
 `Box<%T>` would be handed back as every `Box<X>` while being none of them.
 
 _Owner-ruled (the rewrite plan); Claude-recorded 2026-08-22._
+
+---
+
+## §198 — Inline discovery from the marker call; ownership claims faces; selection is the checker's resolution
+
+The inline stage discovers entries from TWO channels, merged with duplicates removed on
+(type, impl, member): each `registerInlineBodies<Receiver>(Set)` marker call yields one entry per
+exported set member (the receiver from the type argument, its own type arguments stripped; the
+impl from the owning package plus the set identifier), and the `rhombus-std` `inline.entries`
+list stays for every shape — including the floater, which only it can express.
+`@rhombus-std/di.extras`, `di.extras.options` and `config.extras` publish by marker alone;
+`primitives.extras` keeps its floater entry in JSON.
+
+A declaration is claimed by OWNERSHIP: a face belongs to a body iff the face's source file's
+package (the nearest enclosing package.json, so src and rolled dist answer identically) is the
+entry's impl package — a publisher declares nothing onto a receiver that is not sugar. Within one
+publisher, bodies pair with faces per overload: an exact-signature body serves the face spelling
+its discriminator, a rest-shaped body blankets the rest, and the pairing is loudly complete in
+both directions (INLINE_FACE_WITHOUT_BODY / INLINE_BODY_WITHOUT_FACE / INLINE_BODY_COLLISION).
+Selection at a call site is the checker's resolution, full stop: the resolved signature picks the
+body, the engine performs no overload resolution of its own, and the marker-anchored shape
+fallback is gone. Rest bodies are permitted, never required: a trailing rest group and the blind
+`arguments` set splice into call argument lists, through both the spread call form and the
+`.apply` form, each normalized to the direct call a hand author writes with the receiver written
+once.
+
+_Owner-ruled (issue #365 + its spec revisions); Claude-recorded 2026-08-22._
+
+---
+
+## §199 — A second loaded copy of primitives or di.core fails fast at module load
+
+`@rhombus-std/primitives` and `@rhombus-std/di.core` each stamp a process-wide sentinel at entry
+evaluation — `globalThis[Symbol.for('<package>/instance')]` holding the loading module's URL. A
+re-evaluation of the same copy is silent; a genuinely different copy throws immediately, naming
+both module URLs and the deduplicate remedy. This covers at runtime the duplicate-copy hazard the
+identity invariant worries about — a second copy forking the augmentation registry or `Manifest`
+identity — while every package keeps plain `dependencies` (peer-dependency recategorization is
+ruled out as user-confusing). The white-box `./tokens/*` seam and the ttsc preload resolve the
+same files as the barrel and never trip it.
+
+_Owner-ruled; Claude-recorded 2026-08-22._

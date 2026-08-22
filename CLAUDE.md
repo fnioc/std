@@ -417,7 +417,9 @@ before touching):
   that neither reads nor writes the shared cache, and whose additionals outrank the manifest's own
   registrations. Union choice is decided per-manifest against that call's full descriptor universe,
   and a chosen member's RUNTIME failure fails the resolution — never a fallthrough (§158).
-- **Runtime identity is load-bearing** — `di` keeps `di.core` _external_ in its bundle so the
+- **Runtime identity is load-bearing** — and guarded at runtime: primitives and di.core each stamp
+  a `globalThis[Symbol.for('<pkg>/instance')]` sentinel at load, and a second, different copy of
+  either throws immediately naming both module URLs (§199). `di` keeps `di.core` _external_ in its bundle so the
   `Manifest` cross-package augmentations install onto is the same object everywhere;
   a private inlined copy forks identity and breaks the install (§9). config keeps providers
   external for the same reason. **Every bundling package keeps `@rhombus-std/primitives`
