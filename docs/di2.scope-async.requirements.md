@@ -17,8 +17,7 @@ Weigh EVERY design decision in this document against this split.
 
 ## Vocabulary
 
-- "Scope", unqualified, names the PROVIDER-side runtime scope. The composition-side construct is
-  always spelled ManifestScope.
+- "Scope" names the PROVIDER-side runtime scope; no composition-side scope construct exists.
 - Resolution phases: **plan time** (pure, memoized) → **hoist** (async pre-pass) → **gather** (the
   one await point) → **plug** (final sync walk). "Realize" names ONLY an invocation of the sync
   realize visitor — it runs once per hoisted entry (on that site's inner subtree) plus once as the
@@ -170,7 +169,7 @@ Weigh EVERY design decision in this document against this split.
   unresolvable would throw — last resort only, after construct-on-miss/union/other candidates are
   exhausted, never preempting a viable satisfier. The hint is a pointer, not a success guarantee —
   a deeper async failure surfaces iteratively. The pattern generalizes as further near-miss data
-  kinds on the same error: keyed-under-a-tag, and private-in-scope once ManifestScope lands.
+  kinds on the same error: keyed-under-a-tag.
   One-directional by construction — async lookup is a superset of sync.
 - PROMISE-HEADED GUARD (owner-ruled): a final miss on a promise-headed type never runs the
   fallback probe — nested promise delivery is not a thing reality distinguishes — in both modes
@@ -385,38 +384,15 @@ Weigh EVERY design decision in this document against this split.
   (owned-wrapper style); external-ownership opt-out; release override. Split at design time into
   contract items vs default-model policy.
 
-## ManifestScope
+## ManifestScope — CANCELLED
 
-- `manifest.scope(configure)` — the block/returning-delegate form is the primary spelling: the
-  scope closes implicitly at the delegate's return, and the caller can never accidentally continue
-  registering inside the boundary. A naked `createScope()`/`endScope()` pair exists only if a real
-  caller can't use a delegate. Inside the block the type is plain `Manifest` — a library's
-  configure function cannot tell whether it is top-level.
-- Per-registration public/private is the LIBRARY's export list (only the module knows its
-  internals); the scope boundary is the CALLER's import decision. Libs self-scope as hygiene;
-  callers scope for the guarantee; redundant double-scoping is harmless.
-- Harmless-redundancy REQUIRES transitive export: a public registration bubbles up through every
-  enclosing boundary; a private registration pins to its declaring scope. Deliberate censoring of
-  an inner export is out of scope for v1.
-- Lookup visibility is LEXICAL: a descriptor's candidate set = its declaring scope's chain — own
-  scope (privates included), ancestors, and nested scopes' publics. A private inner registration
-  SHADOWS an outer one for that scope's descriptors — contextual binding in its principled,
-  statically-visible form. Top-level `getService` resolves against the root scope: exports only;
-  root-level privates are resolvable by root descriptors but hidden from external resolution (an
-  anti-service-locator guard).
-- Ordinary descriptor verbs (`replace`/`removeAll`/`tryAdd`…) are visibility-scoped exactly like
-  lookup — a peer cannot silently touch another module's privates.
-- Overriding a private IS possible, through deliberate doors only: (1) verbs applied inside the
-  scope block after the lib's configure returns (whoever holds the block holds override rights —
-  zero new mechanism); (2) a self-scoped lib's own tweak-callback parameter; (3) a loudly-named
-  root-authority deep override (build-time overrides layer) that pierces all boundaries — the test
-  and composition-root story. Visibility governs resolution, never composition authority; privacy
-  protects against accidental peer coupling, not against the graph's owner (Type interning makes
-  every address forgeable — the boundary was never a secret). Sealed-forever privates are
-  rejected. **(proposed)**
-- Plan-layer consequence: lookup gains a static CONTEXT parameter and the plan memo key becomes
-  `(request, lookup-context)`. Pure — the context is static manifest structure — so the three-layer
-  cache model is untouched; designed in now, not retrofitted.
+Scoped registrations (`m.scope((s) => s.addPrivate(...).add(...))` — lexically scoped manifests
+with public/private visibility) are ruled OUT (owner, 2026-08-22). Encapsulated composition is a
+DELIBERATE NO: the manifest stays one flat registration space; lookup, the descriptor verbs, and
+the plan memo key (the interned request alone) keep their simple forms; no provenance field is
+reserved on descriptors. A library wanting hidden internals federates in userland — its own inner
+provider behind delegating factories — with the known seams that entails. Issue #329 closed as
+not planned.
 
 ## Extensibility stance
 
@@ -431,10 +407,10 @@ Weigh EVERY design decision in this document against this split.
 - The named extension points the ecosystem-survey verdict is CONDITIONAL on (if one ships weaker
   than designed, its filtered capabilities revert to gaps): the scope door; manifest-as-data +
   descriptor verbs; latebound re-entry; construct-on-miss; open (`$T`) registrations; the
-  augmentation registry; the disposal design's descriptor vocabulary; ManifestScope.
+  augmentation registry; the disposal design's descriptor vocabulary.
 - Surveyed genuine gaps, dispositioned: build-time graph validation (#330; captive checks
   additionally need the scope contract to let lifetimes declare an ordering — a reserved joint);
-  ManifestScope (#329; designed above); resolution diagnostics (#331; purely additive, nothing
+  encapsulated composition (#329 — CANCELLED, a deliberate no); resolution diagnostics (#331; purely additive, nothing
   reserved). Pre-redesign di issues carry the `di classic` label.
 
 ## Invocation coupling
@@ -464,5 +440,3 @@ first client:
    nested PromiseCallsite gathers' interaction with the hoist's scope-cache checks.
 3. Captive-dependency validation: the lifetime-ordering declaration hook in the scope contract.
 4. Disposal design proper (contract + default model), including `using`-protocol support.
-5. ManifestScope dialect (spelling of private registration; deep-override verb naming) and the
-   root-authority override surface.
