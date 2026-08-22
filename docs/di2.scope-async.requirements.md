@@ -335,12 +335,14 @@ Weigh EVERY design decision in this document against this split.
 
 - AUDIT (verified against the autofac lifetime catalog): the whole-picture model expresses the
   entire catalog — call surface (per-dependency/singleton/scoped/matching/per-request/custom/
-  graph-shape), model-shipped registrations (`createScope` with tag + descriptor-carrying args;
+  graph-shape), model-shipped registrations (`createScope` with tag args;
   `Owned<$T>` as an open registration), descriptor vocabulary (owns-what-it-creates,
   external-ownership, release override) — and is strictly stronger twice: canonical-by-return
   grants instance substitution/wrapping without a pipeline, and sharing policy itself is
-  model-territory. Sole exclusion: parameter mutation (activation-pipeline, not lifetime; factory
-  territory here).
+  model-territory. Exclusions, both deliberate: parameter mutation (activation-pipeline, not
+  lifetime; factory territory here), and per-scope registrations
+  (`BeginLifetimeScope(builder =>)`) — not a contract capability; per-scope context is
+  model/userland territory (the scoped-holder pattern serves the use case).
 - The blackbox is REQUIRED to register a `createScope` service (owner-ruled) — the user's
   entrypoint into opening scopes, itself returning a blackbox-backed provider. Its typed shape
   (owner-ruled, closing the creation-args fork): the uniform well-known address is
@@ -369,9 +371,6 @@ Weigh EVERY design decision in this document against this split.
      declaration merging (one discoverable address; recommended). **(proposed lean: 2)**
 - The user-visible scope is a fresh `IServiceProvider` minted as the (engine, child-ctx) binding,
   plus the disposal surface. No additional public scope type.
-- Per-scope registrations = a factory argument carrying descriptors — the `additionalServices`
-  layering. Caveat riding with it: a plan memo keyed on the interned request alone is unsound under
-  layered descriptors; the layer joins the memo key or the resolution bypasses the memo.
 - Measured engine-state inputs (team-lead, 2026-08-13 — priority weights, not requirements): scope
   creation is the critical path (`createScope` throwing accounts for 56 of the 88 known-red tests;
   those tests exercise the placeholder surface and rewrite to this design when it lands); the
