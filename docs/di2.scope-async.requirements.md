@@ -91,6 +91,19 @@ Weigh EVERY design decision in this document against this split.
 - The compositions stay distinct and both remain expressible: `Promise<Iterable<E>>` = the whole
   collection delivered later, then sync iteration; `AsyncIterable<E>` = per-item streaming, each
   element resolving at iteration time.
+- THE ASYNCITERABLE ARM **(proposed)**: the `AsyncIterableCallsite`'s fallback (after exact match,
+  like every arm) plans the SAME element sites the sync `Iterable<E>` arm produces, but each
+  element subtree walks under its own clean collection — PER-ELEMENT inventories, so an element's
+  async deps belong to its own step, never a pooled gather. Realize is an async generator: each
+  `next()` runs that element's flat `allSettled` gather, plugs the element, yields — pull-based
+  and lazy (elements never iterated never resolve); an empty element set completes immediately
+  (the empty-aggregate answer); a step's gather failure throws from that `next()` as the same
+  reason-deduped `AggregateError`.
+- COMPOSITIONAL DISSOLUTIONS **(proposed)**: hit-skips slots into the entry — an `AsyncCallSite`
+  entry consults the scope for `T` before `realize(inner)`; a hit writes the map and prunes the
+  entire inner boundary. Latebound × async needs no rule: a latebound closure with a promise
+  return re-enters through the one door with a promise-typed request, which IS a `PromiseCallsite`
+  at the re-entry root.
 - THE PROMISE CALL-SITE (owner-ruled): every call site whose AS-REQUESTED type is a promise is
   wrapped with a `PromiseCallsite` — THE async boundary node: descendant awaits hoist to it, and
   its realize is a transparent wrapping promise that awaits its collected deps then yields the
