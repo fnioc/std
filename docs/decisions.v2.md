@@ -2863,3 +2863,91 @@ any approximation mistypes tags, aggregates, unions, or literals. Needs an owner
 lie (if any) to accept.
 
 _Claude-recorded 2026-08-20; the digest above (CLAUDE.md) was synced the same day._
+
+---
+
+## §194 — Matching is identity modulo holes; one MatchVisitor; `Type.satisfies` does not exist
+
+`Type.match(candidate, constraint)` is unification and nothing else: is the constraint the
+candidate with each generic hole filled in? Outside a hole, pattern and subject must be the SAME
+interned node — compared structurally only as deep as the holes require, with `visit`
+short-circuiting on interned identity at every level. A hole binds whatever subject fragment
+stands in its place, and a label appearing twice must bind the same type both times. Every other
+kind requires same kind + same scalars (`name`/`from`/`tag`/`value`/`abstract`) + pairwise
+positional recursion — generic args, tuple members, union/intersection members (same count),
+aggregate element, tag inner. Callable rows pair positionally too: same row count, row `i`
+against row `i`, same arity, parameters pairwise, return/instance pairwise. There is NO
+assignability anywhere — no width subtyping, no literal-widens-to-primitive, no member or row
+search, no contravariant swap — so the walk has zero choice points and nothing to roll back.
+
+One stateless `MatchVisitor` (`libraries/primitives/src/Type/visitor/MatchVisitor.ts`) implements
+it, dispatching on the pattern side with the subject and the bindings threaded through the
+`TypeVisitor` context slot. `matchType` is the sole entry, and its open-constraint guard stands:
+a constraint holding a hole throws. `Type.satisfies` and the `SatisfiesVisitor`/
+`PatternMatchVisitor` pair are gone — an API removal, not a rename: the assignability relation
+they computed has no consumer. This lands U5 (decisions.user.md) and supersedes §180's
+within-kind assignability and §179's every/some row doctrine; §191's exact-match ruling is the
+direction it completes.
+
+_Owner-ruled (U5); Claude-recorded 2026-08-22._
+
+---
+
+## §195 — Union and intersection members store in one canonical order: kind rank, scalars, children
+
+`canonicalMembers` (`libraries/primitives/src/Type/factory/factories.ts`) sorts composite members
+with a fixed comparator instead of the token spelling: a rank per kind — holes first, literals
+last — then the kind's own scalars (name/from/tag/value, literal values by category then value),
+then children pairwise (fewer first, then position by position, rows likewise). Identity
+short-circuits the comparison; no declaration order and no id residue enters it. Literals ranking
+last is load-bearing: it is what leaves a literal member as a union's last resort (§196) without
+any literal special-case in the engine. Every visitor iterates `members` as stored and stays
+agnostic of the rule; the parser accepts members in any order and canonicalization lands both
+spellings on the one interned node.
+
+_Claude-recorded 2026-08-22._
+
+---
+
+## §196 — Resolution is one exact-answer loop; a union settles in two phases; `AmbiguousUnionError` is gone
+
+`ToCallSiteVisitor.visit` inlines the exact-answer loop for EVERY request kind, a union's own
+address included: `Registry.answering(type)` yields the registrations answering exactly that one
+address — closed registrations by interned identity, open ones by §194 unification, newest first,
+no union spread — and the first answer whose `CallSite.fromAnswer` builds wins, an unbuildable
+answer falling through to the next. Only when no answer builds does the per-kind step run, as
+decomposition or synthesis, so a registration for a composite beats its parts.
+
+A union with no answer of its own settles in TWO PHASES over the members in canonical order
+(§195), because a registration outranks synthesis here as everywhere: phase 1 takes the first
+member the manifest answers, phase 2 the first member that synthesizes. No ambiguity error, no
+literal special-case — literals order last among members, which keeps a literal member the
+fallback of an optional dependency, and a registered nullish member wins phase 1 like any other.
+Plural suppliable members are settled by member order, deterministically, not raised.
+`AmbiguousUnionError` (di.core and the di re-export), `ServiceProviderOptions.unionAmbiguity`,
+`CallSiteContext.unionAmbiguity`, and the Engine/hosting threading are all removed. §112's
+plan-build-time choice stands — the settled member is baked into the memoized plan, and a chosen
+member that fails to construct fails the resolution (§158) — while its ambiguity-raise clause is
+superseded.
+
+Collections are union-agnostic: `visitArray`/`visitIterable` assemble the element's own answers
+in registration order plus the element's one synthesis as the tail — never a member spread, which
+the two-phase `visitUnion` alone realizes. The provider and scope-factory intrinsics compare by
+interned identity against the one declaring-module `typefor` address (U7) — the dual-spelling
+accommodation is dropped. The cycle guard is a `using`-scoped disposer: entering a type pushes it
+for the extent of the visit and a repeat throws `CycleError`.
+
+_Owner-ruled (the rewrite plan); Claude-recorded 2026-08-22._
+
+---
+
+## §197 — The value door refuses an open service type without a callable root
+
+`ServiceDescriptor.value` throws on a service type that still holds a generic hole UNLESS the
+hole sits under a callable root — a ctor or func at the top, its tag stripped. One erased
+callable honestly is every closing of its holes (the callable's behavior does not depend on the
+hole, so handing the same function back for every instantiation is exactly right — the open
+`() => Whatever<%T>` registration pattern); one instance is not, since a value registered for
+`Box<%T>` would be handed back as every `Box<X>` while being none of them.
+
+_Owner-ruled (the rewrite plan); Claude-recorded 2026-08-22._

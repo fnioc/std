@@ -112,9 +112,15 @@ where that's cheap, and flag the intended divergence rather than pre-emptively t
   unavailable as member names, not because they are callables (§149). A signature carries no
   quantifier list of its own — an open one is spelled by a generic hole sitting inside its
   `args`/`return`/`instance`, closed the same way any other hole is: by tree-position
-  unification against the request (§152, §179, §180). `ConstructorType` carries a boolean
+  unification against the request (§152, §194). **`Type.match` is identity modulo holes** (§194,
+  U5): outside a hole the two sides must be the SAME interned node — no assignability, no width
+  subtyping, no literal widening, no member or row search — and a hole binds its fragment, a
+  repeated label binding the same type each time; `Type.satisfies` does not exist. **Union and
+  intersection members store in one canonical order** (§195): kind rank (holes first, literals
+  last) → the kind's scalars → children pairwise; visitors iterate members as stored.
+  `ConstructorType` carries a boolean
   `abstract` member — a flag, not a kind — matching TypeScript's own `abstract new (...) =>` spelling;
-  an abstract candidate satisfies only an abstract request, and `ServiceDescriptor.ctor` throws on an
+  an abstract pattern matches only an abstract subject, and `ServiceDescriptor.ctor` throws on an
   abstract implementer (§181). `Iterable`/`Array` are the only
   aggregate kinds — delivery is call-site behavior, so `Type.async` and the dedicated `asyncIterable`
   kind are cancelled (`Promise<T>` and an ordinary global `AsyncIterable<E>` cover them, §151).
@@ -165,7 +171,7 @@ where that's cheap, and flag the intended divergence rather than pre-emptively t
   a value throws rather than re-keying, §150) — and an open template is built structurally,
   `Type.imported(name, from, [Type.generic(label)])`, the generic hole shared between the service
   type and the signature slot. The WHOLE error taxonomy ships here:
-  `DiError` an abstract root, `UnsatisfiableError`/`CycleError`/`AmbiguousUnionError`/
+  `DiError` an abstract root, `UnsatisfiableError`/`CycleError`/
   `ManifestValidationError` extending it so one `instanceof` classifies any container failure —
   `ManifestValidationError` carries its own readonly `errors` array positionally matching
   `failures` — it ships runtime) ← `di` (the resolution engine: `ServiceProvider` seals a manifest
@@ -173,7 +179,17 @@ where that's cheap, and flag the intended divergence rather than pre-emptively t
   registered, `getService(type)` returns `undefined`, `getServices(type)` yields the collection; it
   re-exports the taxonomy, so both imports name the same class and `instanceof` holds either way —
   di.core stays external in di's bundle so the `Manifest` cross-package augmentations install onto
-  is the same object everywhere). Several provider members are declared and throw
+  is the same object everywhere. **Resolution is one exact-answer loop** (§196): every request
+  kind first takes the registrations answering its own address, newest first, first answer that
+  builds — an unbuildable answer falls through — and only then synthesizes per kind. A union with
+  no answer of its own settles in TWO PHASES over the members in canonical order — every member's
+  registrations, then every member's synthesis — so there is no ambiguity error and no literal
+  special-case: literals order last, keeping a literal member the fallback of an optional
+  dependency, and a registered nullish member can win the first phase. Collections are
+  union-agnostic: an aggregate assembles the element's own answers in registration order plus one
+  synthesis tail, never a member spread. `ServiceDescriptor.value` refuses an open service type
+  unless the hole sits under a callable root — ctor/func, tag stripped — since one erased callable
+  honestly is every closing and one instance is not, §197). Several provider members are declared and throw
   `NotImplementedError`, so a caller compiles and fails at the point of use, gated on the
   still-undecided lifetime and disposal model: `tryResolve`/`resolveAsync`/`dispose`/`disposeAsync`
   on `IServiceProvider`, plus `createAsyncScope` on both `IServiceProvider` and
