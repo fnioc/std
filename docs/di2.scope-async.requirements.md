@@ -101,14 +101,21 @@ Weigh EVERY design decision in this document against this split.
   KNOWN ENGINE DELTA (owner-flagged): the live engine currently realizes `Iterable` and `Array`
   through IDENTICAL logic — the consult-time split above is unimplemented and must be addressed
   when the aggregate arms land.
-- THE ELEMENT-UNIVERSE RULE (owner-ruled): `AsyncIterable<E>`'s elements are the `E` registrations
-  PLUS the `Promise<E>` registrations — each promise element awaited at its step; the KEY
-  behavioral difference from the sync spelling: `resolve<AsyncIterable<T>>()` can resolve services
-  added via `add<Promise<T>>()`, where `Iterable<T>` cannot (its steps run at user iteration time
-  with no await structurally available — a promise element could only be delivered unawaited, a
-  lie against `E`). **OPEN sliver:** whether `Array<E>` under an enclosing `PromiseCallsite`
-  admits `Promise<E>` elements too (materialization happens at realize, so they could hoist into
-  the enclosing gather).
+- THE ELEMENT-UNIVERSE RULE (owner-ruled; derived, not legislated): an aggregate SPREADS into one
+  element-typed member callsite per candidate, each planned INDIVIDUALLY by the ordinary visitor —
+  so membership is per-candidate slot planning under standard arms, nothing aggregate-specific.
+  Consequences: a promise-headed element (`Promise<T>[]`, `Iterable<Promise<T>>`) admits both
+  `Promise<T>` registrations (exact) and sync `T` registrations (the wrap — sync-honest, so the
+  whole spelling works through the sync door with no boundary); `AsyncIterable<T>` ≡
+  `Iterable<Promise<T>>` in content, differing only in who awaits. A `T` element admits
+  `Promise<T>` registrations only where the slot's context can await — inside a boundary the
+  per-member fallback takes them (resolving `Array<T>`-under-boundary with no special case);
+  outside one the fallback is gated off and the ruled empty-aggregate answer stands (no
+  hint-throw — `getServices` never throws on zero). The KEY behavioral pair: `AsyncIterable<T>`
+  resolves services added via `add<Promise<T>>()`; sync `Iterable<T>` cannot (its steps run at
+  user iteration time, no await structurally available). Enumeration caveat spelled out so
+  "registrations of the element" is never read literally: a candidate is a member iff its
+  element-typed slot plans successfully in context.
 - THE ASYNCITERABLE ARM **(proposed)**: the `AsyncIterableCallsite`'s fallback (after exact match,
   like every arm) plans the element sites per the element-universe rule above, but each
   element subtree walks under its own clean collection — PER-ELEMENT inventories, so an element's
