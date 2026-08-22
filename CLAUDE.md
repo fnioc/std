@@ -304,7 +304,7 @@ where that's cheap, and flag the intended divergence rather than pre-emptively t
   bfcache pageshow), a browser `IHostEnvironment` + `BrowserHost` facade over
   `createEmptyApplicationBuilder` (never a fork); no reference-graph counterpart (§69).
 - **`diagnostics`** — `diagnostics.core` (the `IMetricsBuilder`/`ITracingBuilder` abstractions,
-  the rule/options data model, `METRICS_*`/`TRACING_*` tokens, `clearMetricsListeners`/
+  the rule/options data model, `clearMetricsListeners`/
   `clearTracingListeners` via `di.core`'s `removeAll` (§61), and the most-specific-rule-wins
   resolvers `getMostSpecificInstrumentRule`/`getMostSpecificTracingRule` extracted as standalone
   pure functions over plain-data rule queries — the family's documented selection primitive,

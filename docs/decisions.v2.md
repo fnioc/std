@@ -1779,7 +1779,7 @@ The registration's signature carries both readings §157 allows:
 ```ts
 const hole = Type.generic('$T');
 const openOptions = Type.imported('IOptions', '@rhombus-std/options', [hole]);
-Type.func(openOptions, RESOLVER_TYPE, hole, baseFactoryType(hole));
+Type.func(openOptions, typefor<IServiceProvider>(), hole, baseFactoryType(hole));
 ```
 
 The bare `hole` slot delivers the CLOSING TYPE NODE, so the implementation learns which `T` closed
