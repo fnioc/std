@@ -282,7 +282,7 @@ beforeAll(async () => {
 
   // Untyped `any` return (rather than `unknown`, which the other typefor e2e
   // stubs use) — here the call feeds registerAugmentations/augment's
-  // `string | Type` parameter directly, and the stage matches by callee symbol
+  // `Type` parameter directly, and the stage matches by callee symbol
   // name alone, so the stub's declared type only needs to satisfy the checker.
   writeFileSync(join(projDir, 'src', 'typefor.ts'), `export declare function typefor<T>(): any;\n`);
   writeFileSync(join(projDir, 'src', 'app.ts'), APP_SOURCE);
