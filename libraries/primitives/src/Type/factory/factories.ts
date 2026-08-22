@@ -11,7 +11,7 @@ import type { AggregateType, ArrayType, ConstructorType, FunctionType, GenericTy
 import { stringifyType } from '../visitor/StringifyVisitor.js';
 import { TypeVisitor } from '../visitor/TypeVisitor.js';
 import { id, intern, isInterned } from './intern.js';
-import { LITERAL_BASE } from './literal-base.js';
+import { LITERAL_BASES } from './literal-base.js';
 
 type Composite = 'union' | 'intersection';
 
@@ -205,12 +205,7 @@ function canonicalMembers(kind: Composite, members: readonly Type[]): readonly T
  * fallback of an optional dependency.
  */
 function withoutSubsumedLiterals(members: readonly Type[]): readonly Type[] {
-  const bases = new Set(
-    members
-      .filter(member => member.kind === 'global')
-      .map(member => LITERAL_BASE[member.name])
-      .filter(base => base !== undefined),
-  );
+  const bases = new Set(members.filter(member => member.kind === 'global').map(member => member.name).filter(name => LITERAL_BASES.has(name)));
   if (!bases.size) {
     return members;
   }

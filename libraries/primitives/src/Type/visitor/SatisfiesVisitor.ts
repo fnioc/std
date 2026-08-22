@@ -1,45 +1,42 @@
 import type { Func } from '@rhombus-toolkit/func';
-import { LITERAL_BASE } from '../factory/literal-base.js';
-import type { AggregateType, ArrayType, ConstructorType, FunctionType, GenericType, GlobalType, ImportedType, IntersectionType, IterableType, ObjectType, TagType, TupleType, Type, TypeLiteralType,
+import { sequenceEquals } from '../../utils/iterable.js';
+import { LITERAL_BASES } from '../factory/literal-base.js';
+import type { ArrayType, ConstructorType, FunctionType, GenericType, GlobalType, ImportedType, IntersectionType, IterableType, ObjectType, TagType, TupleType, Type, TypeLiteralType,
   UnionType } from '../Type.js';
 import { isOpenType } from './IsOpenVisitor.js';
 import { stringifyType } from './StringifyVisitor.js';
 import { TypeVisitor } from './TypeVisitor.js';
 
-type Predicate = Func<[proposed: Type], boolean>;
+type Predicate = Func<[candidate: Type], boolean>;
 
 /**
- * Assignability, in the sense of a TypeScript `extends` clause: does `proposed` fit where
- * `condition` is required.
+ * Assignability, in the sense of a TypeScript `extends` clause: does `candidate` fit where
+ * `constraint` is required.
  *
  * @remarks
- * `visit` dispatches on the CONDITION and returns a predicate over the proposed type; the
- * rules that belong to the proposed side (a proposed union must satisfy on every member)
+ * `visit` dispatches on the CONSTRAINT and returns a predicate over the candidate; the
+ * rules that belong to the candidate side (a candidate union must satisfy on every member)
  * are applied by `match` before dispatching.
  *
- * A generic hole in the condition matches anything and records what it matched. A label
+ * A generic hole in the constraint matches anything and records what it matched. A label
  * appearing twice must capture equal types both times, so `Pair<%T, %T>` rejects mismatched
  * arguments.
  */
 class SatisfiesVisitor extends TypeVisitor<Predicate> {
   readonly captures = new Map<string, Type>();
 
-  /** Entry point: applies the proposed-side rules, then dispatches on the condition. */
-  match(proposed: Type, condition: Type): boolean {
-    if (condition.kind === 'generic') {
-      return this.capture(condition.label, proposed);
+  /** Entry point: applies the candidate-side rules, then dispatches on the constraint. */
+  match(candidate: Type, constraint: Type): boolean {
+    if (constraint.kind === 'generic') {
+      return this.capture(constraint.label, candidate);
     }
-    if (proposed.kind === 'union') {
-      return proposed.members.every(member => this.match(member, condition));
+    if (candidate.kind === 'union') {
+      return candidate.members.every(member => this.match(member, constraint));
     }
-    if (proposed.kind === 'intersection' && condition.kind !== 'intersection') {
-      return proposed.members.some(member => this.match(member, condition));
+    if (candidate.kind === 'intersection' && constraint.kind !== 'intersection') {
+      return candidate.members.some(member => this.match(member, constraint));
     }
-    return this.visit(condition)(proposed);
-  }
-
-  protected override visitArray(type: ArrayType): Predicate {
-    return this.#aggregate(type);
+    return this.visit(constraint)(candidate);
   }
 
   /**
@@ -47,181 +44,157 @@ class SatisfiesVisitor extends TypeVisitor<Predicate> {
    * cannot answer a request for one that can. A concrete candidate serves either.
    */
   protected override visitCtor(type: ConstructorType): Predicate {
-    return proposed =>
-      proposed.kind === 'ctor'
-      && (!proposed.abstract || type.abstract)
-      && this.#rows(proposed.args, type.args)
-      && this.match(proposed.instance, type.instance);
+    return candidate =>
+      candidate.kind === 'ctor'
+      && (!candidate.abstract || type.abstract)
+      // Every constraint row must be served by some candidate row; parameters are contravariant,
+      // so the constraint's parameter must fit the candidate's.
+      && type.args.every(constraintRow =>
+        candidate.args.some(candidateRow =>
+          this.#rollingBackCapturesOnFailure(() => sequenceEquals(constraintRow, candidateRow, (constraintArg, candidateArg) => this.match(constraintArg, candidateArg)))
+        )
+      )
+      && this.match(candidate.instance, type.instance);
   }
 
   protected override visitFunc(type: FunctionType): Predicate {
-    return proposed =>
-      proposed.kind === 'func'
-      && this.#rows(proposed.args, type.args)
-      && this.match(proposed.return, type.return);
+    return candidate =>
+      candidate.kind === 'func'
+      // Every constraint row must be served by some candidate row; parameters are contravariant,
+      // so the constraint's parameter must fit the candidate's.
+      && type.args.every(constraintRow =>
+        candidate.args.some(candidateRow =>
+          this.#rollingBackCapturesOnFailure(() => sequenceEquals(constraintRow, candidateRow, (constraintArg, candidateArg) => this.match(constraintArg, candidateArg)))
+        )
+      )
+      && this.match(candidate.return, type.return);
   }
 
   protected override visitGeneric(type: GenericType): Predicate {
-    return proposed => this.capture(type.label, proposed);
+    return candidate => this.capture(type.label, candidate);
   }
 
   /** A literal satisfies the global name of its own primitive base — `'fast'` fits `string`. */
   protected override visitGlobal(type: GlobalType): Predicate {
-    return proposed => {
-      if (proposed.kind === 'literal') {
-        return LITERAL_BASE[type.name] === typeof proposed.value;
+    return candidate => {
+      if (candidate.kind === 'literal') {
+        return LITERAL_BASES.has(type.name) && type.name === typeof candidate.value;
       }
-      return proposed.kind === 'global'
-        && proposed.name === type.name
-        && this.#arguments(type.genericArgs, proposed.genericArgs);
+      return candidate.kind === 'global'
+        && candidate.name === type.name
+        && candidate.genericArgs.length === type.genericArgs.length
+        && type.genericArgs.every((arg, index) => this.match(candidate.genericArgs[index]!, arg));
     };
   }
 
   protected override visitImported(type: ImportedType): Predicate {
-    return proposed =>
-      proposed.kind === 'imported'
-      && proposed.from === type.from
-      && proposed.name === type.name
-      && this.#arguments(type.genericArgs, proposed.genericArgs);
+    return candidate =>
+      candidate.kind === 'imported'
+      && candidate.from === type.from
+      && candidate.name === type.name
+      && candidate.genericArgs.length === type.genericArgs.length
+      && type.genericArgs.every((arg, index) => this.match(candidate.genericArgs[index]!, arg));
   }
 
   protected override visitIntersection(type: IntersectionType): Predicate {
-    return proposed => type.members.every(member => this.match(proposed, member));
+    return candidate => type.members.every(member => this.match(candidate, member));
+  }
+
+  protected override visitArray(type: ArrayType): Predicate {
+    return candidate => candidate.kind === type.kind && this.match(candidate.element, type.element);
   }
 
   protected override visitIterable(type: IterableType): Predicate {
-    return this.#aggregate(type);
+    return candidate => candidate.kind === type.kind && this.match(candidate.element, type.element);
   }
 
   protected override visitObject(type: ObjectType): Predicate {
-    // Width subtyping: the proposed object may carry members the condition does not name.
-    return proposed =>
-      proposed.kind === 'object'
-      && Object.entries(type.members).every(([key, member]) => key in proposed.members && this.match(proposed.members[key]!, member));
+    // Width subtyping: the candidate object may carry members the constraint does not name.
+    return candidate =>
+      candidate.kind === 'object'
+      && Object.entries(type.members).every(([key, member]) => key in candidate.members && this.match(candidate.members[key]!, member));
   }
 
   /**
    * Tags match strictly, in both directions: only the same tag over a satisfying inner type
-   * satisfies a tagged condition, and — since every other condition kind demands its own kind of
-   * the proposed type — a tagged type satisfies no untagged condition. Tagging therefore yields a
+   * satisfies a tagged constraint, and — since every other constraint kind demands its own kind of
+   * the candidate — a tagged type satisfies no untagged constraint. Tagging therefore yields a
    * type distinct from the one it wraps, not a refinement of it.
    */
   protected override visitTag(type: TagType): Predicate {
-    return proposed => proposed.kind === 'tag' && proposed.tag === type.tag && this.match(proposed.type, type.type);
+    return candidate => candidate.kind === 'tag' && candidate.tag === type.tag && this.match(candidate.type, type.type);
   }
 
   protected override visitTuple(type: TupleType): Predicate {
-    return proposed =>
-      proposed.kind === 'tuple'
-      && proposed.members.length === type.members.length
-      && type.members.every((member, index) => this.match(proposed.members[index]!, member));
+    return candidate =>
+      candidate.kind === 'tuple'
+      && candidate.members.length === type.members.length
+      && type.members.every((member, index) => this.match(candidate.members[index]!, member));
   }
 
   protected override visitTypeLiteral(type: TypeLiteralType): Predicate {
-    return proposed => proposed.kind === 'literal' && Object.is(proposed.value, type.value);
+    return candidate => candidate.kind === 'literal' && Object.is(candidate.value, type.value);
   }
 
   protected override visitUnion(type: UnionType): Predicate {
-    return proposed => type.members.some(member => this.#attempt(proposed, member));
+    return candidate => type.members.some(member => this.#rollingBackCapturesOnFailure(() => this.match(candidate, member)));
   }
 
   /** Binds a label, requiring any earlier binding of the same label to be the same type. */
   protected capture(label: string, captured: Type): boolean {
-    const bound = this.captures.get(label);
-    if (bound === undefined) {
-      this.captures.set(label, captured);
-      return true;
-    }
-    return bound === captured;
+    return this.captures.getOrInsert(label, captured) === captured;
   }
 
-  /** One aggregate satisfies another of its own kind, covariantly in the element. */
-  #aggregate(type: AggregateType): Predicate {
-    return proposed => proposed.kind === type.kind && this.match(proposed.element, type.element);
-  }
-
-  /** Generic arguments match one for one, each covariantly. */
-  #arguments(condition: readonly Type[], proposed: readonly Type[]): boolean {
-    return condition.length === proposed.length && condition.every((arg, index) => this.match(proposed[index]!, arg));
-  }
-
-  /**
-   * Every condition row needs an answer: each one must be served by some proposed row. Surplus
-   * proposed rows are extra capability and never count against the match.
-   */
-  #rows(proposed: Type.Signatures, condition: Type.Signatures): boolean {
-    return condition.every(row => proposed.some(candidate => this.#attemptRow(candidate, row)));
-  }
-
-  /** One row against one: same arity, each parameter contravariant. */
-  #attemptRow(proposed: readonly Type[], condition: readonly Type[]): boolean {
-    if (proposed.length !== condition.length) {
-      return false;
-    }
+  /** Runs one trial, keeping its bindings on success; a failed trial binds nothing. */
+  #rollingBackCapturesOnFailure(trial: Func<[], boolean>): boolean {
     const snapshot = new Map(this.captures);
-    // Parameters are contravariant: the condition's parameter must fit the proposed one.
-    if (condition.every((arg, index) => this.match(arg, proposed[index]!))) {
+    if (trial()) {
       return true;
     }
-    this.#restore(snapshot);
-    return false;
-  }
-
-  /** Tries one branch of a condition union, rolling captures back when it fails. */
-  #attempt(proposed: Type, condition: Type): boolean {
-    const snapshot = new Map(this.captures);
-    if (this.match(proposed, condition)) {
-      return true;
-    }
-    this.#restore(snapshot);
-    return false;
-  }
-
-  /** Puts the capture map back the way `snapshot` left it, so a failed trial binds nothing. */
-  #restore(snapshot: ReadonlyMap<string, Type>): void {
     this.captures.clear();
     for (const [label, type] of snapshot) {
       this.captures.set(label, type);
     }
+    return false;
   }
 }
 
 /**
- * The pattern-match sibling of {@link SatisfiesVisitor}: the PROPOSED side is a pattern whose
- * generic holes capture the condition's fragments, while the subtyping direction is unchanged —
- * pattern-instantiated extends condition.
+ * The pattern-match sibling of {@link SatisfiesVisitor}: the CANDIDATE side is a pattern whose
+ * generic holes capture the constraint's fragments, while the subtyping direction is unchanged —
+ * pattern-instantiated extends constraint.
  *
  * @remarks
- * Only the proposed-hole interception is added here. In variance-flipped sub-positions
+ * Only the candidate-hole interception is added here. In variance-flipped sub-positions
  * (function/ctor parameters) the recursion swaps the sides, so a pattern hole arrives as
- * the CONDITION of that sub-match — the inherited condition-hole branch captures it, and
+ * the CONSTRAINT of that sub-match — the inherited constraint-hole branch captures it, and
  * the shared {@link captures} map keeps repeated labels consistent across both.
  */
 class PatternMatchVisitor extends SatisfiesVisitor {
-  override match(proposed: Type, condition: Type): boolean {
-    if (proposed.kind === 'generic') {
-      return this.capture(proposed.label, condition);
+  override match(candidate: Type, constraint: Type): boolean {
+    if (candidate.kind === 'generic') {
+      return this.capture(candidate.label, constraint);
     }
-    return super.match(proposed, condition);
+    return super.match(candidate, constraint);
   }
 }
 
-export function satisfiesType(proposed: Type, condition: Type): [satisfied: false] | [satisfied: true, generics: Map<string, Type>] {
-  if (isOpenType(proposed)) {
-    throw new Error(`satisfies: the proposed type may not contain generic holes — got ${stringifyType(proposed)}`);
+export function satisfiesType(candidate: Type, constraint: Type): [satisfied: false] | [satisfied: true, generics: Map<string, Type>] {
+  if (isOpenType(candidate)) {
+    throw new Error(`satisfies: the candidate type may not contain generic holes — got ${stringifyType(candidate)}`);
   }
   const visitor = new SatisfiesVisitor();
-  return visitor.match(proposed, condition) ? [true, visitor.captures] : [false];
+  return visitor.match(candidate, constraint) ? [true, visitor.captures] : [false];
 }
 
 /**
- * Does some instantiation of {@link pattern} extend {@link subject}? Success carries the
- * instantiation: one entry per generic label in the pattern.
+ * Does some instantiation of {@link candidate} extend {@link constraint}? Success carries the
+ * instantiation: one entry per generic label in the candidate.
  */
-export function matchType(pattern: Type, subject: Type): [matched: false] | [matched: true, generics: Map<string, Type>] {
-  if (isOpenType(subject)) {
-    throw new Error(`match: the subject type may not contain generic holes — got ${stringifyType(subject)}`);
+export function matchType(candidate: Type, constraint: Type): [matched: false] | [matched: true, generics: Map<string, Type>] {
+  if (isOpenType(constraint)) {
+    throw new Error(`match: the constraint type may not contain generic holes — got ${stringifyType(constraint)}`);
   }
   const visitor = new PatternMatchVisitor();
-  return visitor.match(pattern, subject) ? [true, visitor.captures] : [false];
+  return visitor.match(candidate, constraint) ? [true, visitor.captures] : [false];
 }

@@ -496,23 +496,23 @@ export namespace Type {
   }
 
   /**
-   * Does some instantiation of `pattern` extend `subject`? Success carries the instantiation —
-   * one binding per generic label in the pattern.
+   * Does some instantiation of `{@link candidate}` extend `{@link constraint}`? Success carries the instantiation —
+   * one binding per generic label in the candidate.
    *
-   * @throws Error - when `subject` itself holds a generic hole.
+   * @throws Error - when `constraint` itself holds a generic hole.
    */
-  export function match(pattern: Type, subject: Type) {
-    return matchType(pattern, subject);
+  export function match(candidate: Type, constraint: Type) {
+    return matchType(candidate, constraint);
   }
 
   /**
-   * Does `proposed` satisfy `condition`? Success carries one binding per generic label in
-   * the condition.
+   * Does `candidate` satisfy `constraint`? Success carries one binding per generic label in
+   * the constraint.
    *
-   * @throws Error - when `proposed` itself holds a generic hole.
+   * @throws Error - when `candidate` itself holds a generic hole.
    */
-  export function satisfies(proposed: Type, condition: Type) {
-    return satisfiesType(proposed, condition);
+  export function satisfies(candidate: Type, constraint: Type) {
+    return satisfiesType(candidate, constraint);
   }
 
   /** Writes the type as its token spelling — the inverse of {@link from}. */

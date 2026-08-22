@@ -154,10 +154,10 @@ describe('Type.match', () => {
 
 describe('guard against open operands', () => {
   test('Type.satisfies refuses a proposed type that itself holds a generic hole', () => {
-    expect(() => Type.satisfies(Type.generic('T'), A)).toThrow(/proposed type may not contain generic holes/);
+    expect(() => Type.satisfies(Type.generic('T'), A)).toThrow(/candidate type may not contain generic holes/);
   });
 
   test('Type.match refuses a subject that itself holds a generic hole', () => {
-    expect(() => Type.match(A, Type.generic('T'))).toThrow(/subject type may not contain generic holes/);
+    expect(() => Type.match(A, Type.generic('T'))).toThrow(/constraint type may not contain generic holes/);
   });
 });
