@@ -12,7 +12,7 @@ import type {} from '@rhombus-std/di.extras';
 import type { IConfig } from '@rhombus-std/config.core';
 import { LoggerFilterOptions } from '@rhombus-std/logging';
 import type { ILoggingBuilder } from '@rhombus-std/logging.core';
-import type { IConfigureOptions, IOptions } from '@rhombus-std/options';
+import type { IConfigureOptions } from '@rhombus-std/options';
 import { ConfigChangeTokenSource, type IOptionsChangeTokenSource } from '@rhombus-std/options.augmentations';
 import { Type } from '@rhombus-std/primitives';
 import { registerAugmentations, typefor } from '@rhombus-std/primitives.extras';

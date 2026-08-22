@@ -9,7 +9,6 @@
 // compiles this source, with no runtime import of the authoring package.
 import type {} from '@rhombus-std/options.augmentations';
 import type { Manifest } from '@rhombus-std/di.core';
-import type { Type } from '@rhombus-std/primitives';
 import { registerInlineBodies, typefor } from '@rhombus-std/primitives.extras';
 
 // A named import (not a member reference inside the augmentation block) because

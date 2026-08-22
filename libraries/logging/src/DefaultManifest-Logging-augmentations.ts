@@ -31,7 +31,7 @@
 import type {} from '@rhombus-std/di.extras';
 import '@rhombus-std/options.augmentations';
 
-import type { DefaultManifest, Manifest } from '@rhombus-std/di.core';
+import type { Manifest } from '@rhombus-std/di.core';
 import { ILoggerFactory, ILoggerProvider, type ILoggingBuilder, Logger as LoggerOfT, LogLevel } from '@rhombus-std/logging.core';
 import { type IConfigureOptions, IOptions } from '@rhombus-std/options';
 import { Type } from '@rhombus-std/primitives';

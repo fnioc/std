@@ -154,17 +154,21 @@ func assignBodies(inlineByDecl map[*shimast.Node]*matchTarget, resolvedList []*R
 		case len(c.exact) == 1:
 			chosen = c.exact[0]
 		case len(c.exact) > 1:
-			emit(plugin.Diagnostic{Code: "INLINE_BODY_COLLISION", File: nodeFile(d), Start: d.Pos(),
+			emit(plugin.Diagnostic{
+				Code: "INLINE_BODY_COLLISION", File: nodeFile(d), Start: d.Pos(),
 				Message: fmt.Sprintf("member %q at %s: %d bodies spell this face's own signature — one package publishes at most one body per face",
-					c.exact[0].Member, nodePosition(d), len(c.exact))})
+					c.exact[0].Member, nodePosition(d), len(c.exact)),
+			})
 			ok = false
 			continue
 		case len(c.rest) == 1:
 			chosen = c.rest[0]
 		case len(c.rest) > 1:
-			emit(plugin.Diagnostic{Code: "INLINE_BODY_COLLISION", File: nodeFile(d), Start: d.Pos(),
+			emit(plugin.Diagnostic{
+				Code: "INLINE_BODY_COLLISION", File: nodeFile(d), Start: d.Pos(),
 				Message: fmt.Sprintf("member %q at %s: %d rest-shaped bodies blanket this face — one package publishes at most one blanket per member",
-					c.rest[0].Member, nodePosition(d), len(c.rest))})
+					c.rest[0].Member, nodePosition(d), len(c.rest)),
+			})
 			ok = false
 			continue
 		default:
@@ -175,9 +179,11 @@ func assignBodies(inlineByDecl map[*shimast.Node]*matchTarget, resolvedList []*R
 					break
 				}
 			}
-			emit(plugin.Diagnostic{Code: "INLINE_FACE_WITHOUT_BODY", File: nodeFile(d), Start: d.Pos(),
+			emit(plugin.Diagnostic{
+				Code: "INLINE_FACE_WITHOUT_BODY", File: nodeFile(d), Start: d.Pos(),
 				Message: fmt.Sprintf("member %q at %s: the publisher declares this face but registers no body for its signature — "+
-					"the call typechecks, nothing inlines it, and it dies at runtime", member, nodePosition(d))})
+					"the call typechecks, nothing inlines it, and it dies at runtime", member, nodePosition(d)),
+			})
 			ok = false
 			continue
 		}
@@ -189,9 +195,11 @@ func assignBodies(inlineByDecl map[*shimast.Node]*matchTarget, resolvedList []*R
 		if r.Kind == KindFloater || claimed[r] {
 			continue
 		}
-		emit(plugin.Diagnostic{Code: "INLINE_BODY_WITHOUT_FACE",
+		emit(plugin.Diagnostic{
+			Code: "INLINE_BODY_WITHOUT_FACE",
 			Message: fmt.Sprintf("%s: body %q member %q claims no face the publisher declares — no consumer can name it",
-				r.Body.File, r.Owned.Entry.Impl, r.Member)})
+				r.Body.File, r.Owned.Entry.Impl, r.Member),
+		})
 		ok = false
 	}
 
@@ -239,9 +247,11 @@ func uncoveredFacesDiagnosed(resolvedList []*Resolved, checker *shimchecker.Chec
 					if ex.declarationPackage(d) != g.implPkg {
 						continue
 					}
-					emit(plugin.Diagnostic{Code: "INLINE_FACE_WITHOUT_BODY", File: nodeFile(d), Start: d.Pos(),
+					emit(plugin.Diagnostic{
+						Code: "INLINE_FACE_WITHOUT_BODY", File: nodeFile(d), Start: d.Pos(),
 						Message: fmt.Sprintf("member %q at %s: the publisher declares this face but registers no body under the name at all — "+
-							"the call typechecks, nothing inlines it, and it dies at runtime", prop.Name, nodePosition(d))})
+							"the call typechecks, nothing inlines it, and it dies at runtime", prop.Name, nodePosition(d)),
+					})
 					ok = false
 					break
 				}

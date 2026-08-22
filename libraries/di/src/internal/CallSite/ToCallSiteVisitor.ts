@@ -32,7 +32,7 @@ export class ToCallSiteVisitor extends Type.Visitor<CallSite | undefined> {
     if (argIndex !== undefined) {
       return CallSite.lateboundArg(argIndex);
     }
-    using guard = this.#cycleGuard.visiting(serviceType);
+    using _guard = this.#cycleGuard.visiting(serviceType);
     return this.#registry.answering(serviceType)
       .map(answer => CallSite.fromAnswer(serviceType, answer, this))
       .find(Boolean)

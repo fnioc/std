@@ -21,7 +21,7 @@ import '@rhombus-std/options.augmentations';
 // no runtime import of the authoring package.
 import type {} from '@rhombus-std/di.extras';
 
-import type { DefaultManifest, IServiceProvider, Manifest } from '@rhombus-std/di.core';
+import type { IServiceProvider, Manifest } from '@rhombus-std/di.core';
 import type { ILoggerFactory } from '@rhombus-std/logging.core';
 import type { IOptions } from '@rhombus-std/options';
 import { Type } from '@rhombus-std/primitives';

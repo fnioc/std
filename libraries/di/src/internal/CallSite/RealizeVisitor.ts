@@ -29,13 +29,11 @@ export interface RealizeOptions {
 class RealizeVisitor {
   readonly #engine: Engine;
   readonly #serviceProvider: IServiceProvider;
-  readonly #lifetimeModel: LifetimeModel;
   readonly #args: readonly unknown[] | undefined;
 
-  constructor({ engine, serviceProvider, lifetimeModel, args }: RealizeOptions) {
+  constructor({ engine, serviceProvider, args }: RealizeOptions) {
     this.#engine = engine;
     this.#serviceProvider = serviceProvider;
-    this.#lifetimeModel = lifetimeModel;
     this.#args = args;
   }
 

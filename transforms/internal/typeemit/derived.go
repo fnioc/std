@@ -40,7 +40,8 @@ func EmitDerived(f *shimast.NodeFactory, binding *valueimport.Binding, d *tokens
 // followed by its parameter rows as one array of arrays, `func(returns, [[…], […]])`
 // / `ctor(instance, [[…], […]])` — whether the callable answers to one row or several.
 func signatureShaped(f *shimast.NodeFactory, binding *valueimport.Binding, d *tokens.Derived,
-	method string) *shimast.Node {
+	method string,
+) *shimast.Node {
 	return Call(f, binding, method, []*shimast.Node{
 		EmitDerived(f, binding, d.Ret),
 		EmitRows(f, binding, d.Args),
