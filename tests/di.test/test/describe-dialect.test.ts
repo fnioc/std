@@ -137,7 +137,7 @@ describe('the chain terminal is a descriptor', () => {
     const descriptor = manifest.describe(SINK)
       .asClass(Sink, Type.ctor(SINK, [[CLOCK, Type.typeLiteral('held')]]));
 
-    expect(ServiceDescriptor.kind(descriptor)).toBe('ctor');
+    expect(ServiceDescriptor.kind(descriptor)[0]).toBe('ctor');
     expect(descriptor.serviceType).toBe(SINK);
 
     const services = manifest.add(descriptor);

@@ -19,7 +19,7 @@ function blank(): Manifest<string> {
 
 /** The registered values, newest first — the order iterating a manifest yields. */
 function values(manifest: Manifest<string>): unknown[] {
-  return [...manifest].map(descriptor => 'value' in descriptor ? descriptor.value : ServiceDescriptor.kind(descriptor));
+  return [...manifest].map(descriptor => 'value' in descriptor ? descriptor.value : ServiceDescriptor.kind(descriptor)[0]);
 }
 
 describe('add answers to both the primitive and the sugared shapes', () => {

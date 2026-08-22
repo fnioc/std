@@ -14,7 +14,7 @@ class Other {}
 
 /** The registered values, newest first — the order iterating a manifest yields. */
 function values(manifest: Manifest<string>): unknown[] {
-  return [...manifest].map(descriptor => 'value' in descriptor ? descriptor.value : ServiceDescriptor.kind(descriptor));
+  return [...manifest].map(descriptor => 'value' in descriptor ? descriptor.value : ServiceDescriptor.kind(descriptor)[0]);
 }
 
 describe('a no-match registers nothing', () => {
