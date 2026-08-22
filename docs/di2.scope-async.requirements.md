@@ -75,16 +75,18 @@ Weigh EVERY design decision in this document against this split.
   requested value. The boundary-collection walk assigns each island's inventory to exactly this
   node; an empty island degenerates to `Promise.resolve(realizeSync(inner))` — uniform mechanism,
   near-zero cost for sync graphs.
-- Top-level async-shape request: lookup answers first — a literal registration under the requested
-  node wins like any other; on a miss, async activation synthesizes the boundary. Top-level
-  synthesis from a sync-registered `T` is ENTAILED by the door ruling: `resolve<Promise<T>>()` is
-  indistinguishable from `resolveAsync<T>()` after the wrap — one door, same request. **OPEN:**
-  the MID-GRAPH twin — a dep slot typed `Promise<T>` with only `T` registered: synthesize the
-  boundary there too? The case for yes is delivery-mode decoupling, the symmetric twin of the
-  ruled fallback (fallback adapts async-registered→sync-wanting; the wrap adapts
-  sync-registered→promise-wanting; with both, a consumer's declared delivery mode is fully
-  decoupled from the registration's actual mode). Secondary: user-controlled awaiting as a manual
-  orchestration escape.
+- LOOKUP-THEN-ACTIVATE IS THE ESTABLISHED VISITOR ARCHITECTURE (declared in the cloud2 session):
+  exact-match lookup happens in ToCallSiteVisitor's overridden `.visit` FOR ALL TYPES — a literal
+  `Promise<T>` registration wins there like any other — and fallback behavior lives in the
+  kind-specific `.visit*` arms. The promise wrap is therefore the promise arm's ORDINARY fallback,
+  not a new mechanism: on exact-match miss of a promise-headed request, synthesize the
+  `PromiseCallsite` from the element — at top level (entailed by the door ruling:
+  `resolve<Promise<T>>()` ≡ `resolveAsync<T>()` after the wrap) AND mid-graph (closed by
+  uniformity — one mechanism for all use-cases; an empty promise arm would be the carve-out).
+  What the wrap buys: delivery-mode decoupling, the symmetric twin of the ruled fallback
+  (fallback adapts async-registered→sync-wanting; wrap adapts sync-registered→promise-wanting —
+  a consumer's declared delivery mode is fully decoupled from the registration's actual mode),
+  plus user-controlled awaiting as a manual orchestration escape.
 - Asyncness is otherwise a MANIFEST fact, compiled away at plan time: the plan-construction walk
   discovers it (dep wants `A`, the promise-typed registration answers) and mints the site. The
   plan's async-site inventory is pure manifest+request structure.
