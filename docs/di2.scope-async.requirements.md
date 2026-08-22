@@ -208,6 +208,11 @@ Weigh EVERY design decision in this document against this split.
   a plain composite map suffices — no ordinal/slot machinery. The blackbox stores and returns
   awaited values only (async-blind by construction; for an in-flight make the returned "value" is
   the shared promise, consumed only by the gather).
+- VALUE SITES BYPASS THE SCOPE ENGINE ENTIRELY (owner-ruled): a value descriptor presents no
+  make, and makes are the blackbox's whole jurisdiction — so `asValue` registrations, latebound
+  call args, and invoke-frame args are never asked, stored, tracked, or disposed by any scope
+  model; realize reads the payload straight from the descriptor, and ownership stays with
+  whoever supplied the value.
 - Because the blackbox performs every make, it OBSERVES every instance by construction — the
   disposal fact feed collapses into the call itself. `undefined`-datum sites flow through the call
   like any other (the blackbox is their interpreter — see Lifetime data), so observation is total;
