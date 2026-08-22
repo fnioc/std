@@ -198,10 +198,16 @@ Weigh EVERY design decision in this document against this split.
   cannot arrive by return); the former `ScopeCtx` token is gone — THE BLACKBOX IS THE CONTEXT.
   Everything beyond this call surface plus the createScope requirement below is blackbox-impl
   detail of particular models.
-- The governing lifetime comes from the ANSWERING descriptor while the cache key is the
-  as-requested type — the join happens at plan time, so the blackbox never sees the promise-typed
-  address; it stores and returns awaited values only (async-blind by construction; for an
-  in-flight make the returned "value" is the shared promise, consumed only by the gather).
+- THE CANONICAL CACHE KEY IS DESCRIPTOR-COMPOSED: `(as-requested type, answering descriptor)` —
+  both components arrive in the call. The as-requested half keeps the promise address out and
+  keys open-generic closures on the closed request; the descriptor-identity half distinguishes
+  same-type multi-registrations while letting resolve-one and resolve-all SHARE storage (a
+  singleton never double-instantiates via the enumerable path; an aggregate element and the
+  singular resolve of the same registration hit the same entry). Descriptor identity is stable
+  per built provider (manifests seal before build; layered additionals are distinct objects), so
+  a plain composite map suffices — no ordinal/slot machinery. The blackbox stores and returns
+  awaited values only (async-blind by construction; for an in-flight make the returned "value" is
+  the shared promise, consumed only by the gather).
 - Because the blackbox performs every make, it OBSERVES every instance by construction — the
   disposal fact feed collapses into the call itself. `undefined`-datum sites flow through the call
   like any other (the blackbox is their interpreter — see Lifetime data), so observation is total;
