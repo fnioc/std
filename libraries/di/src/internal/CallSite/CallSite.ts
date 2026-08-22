@@ -1,4 +1,4 @@
-import type { ServiceDescriptor } from '@rhombus-std/di.core';
+import { ServiceDescriptor } from '@rhombus-std/di.core';
 import { isAllThere, Type } from '@rhombus-std/primitives';
 import { Ctor, Func } from '@rhombus-toolkit/func';
 import { assertNever } from '@rhombus-toolkit/type-guards';
@@ -27,24 +27,16 @@ export interface CtorCallSite {
   readonly kind: 'ctor';
   readonly ctor: Ctor;
   readonly args: CallSite[];
+  /** The registration behind the site when it is scoped — the key a scope caches the instance under. */
   readonly descriptor?: ServiceDescriptor<string>;
 }
-/**
- * A registered factory the engine invokes — {@link args} realize its parameters.
- * {@link descriptor} carries the same meaning as on {@link CtorCallSite}.
- */
 export interface FactoryCallSite {
   readonly kind: 'factory';
   readonly factory: Func;
   readonly args: CallSite[];
+  /** The registration behind the site when it is scoped — the key a scope caches the instance under. */
   readonly descriptor?: ServiceDescriptor<string>;
 }
-/**
- * A function value handed back to the caller; each invocation re-enters the engine to resolve
- * {@link result}, the call's arguments registered as values for {@link lateBoundArgs}, in order.
- * The row named is the one whose length the call's own argument count matches, so a function
- * answering to several calls binds each of them under its own parameter types.
- */
 export interface LateBoundCallSite {
   readonly kind: 'latebound';
   readonly result: Type;
@@ -57,31 +49,37 @@ export interface ConstantCallSite {
 export interface ServiceProviderCallSite {
   readonly kind: 'service-provider';
 }
-/** The scope factory a dependency uses to open its own resolution scope. */
 export interface ServiceScopeFactoryCallSite {
   readonly kind: 'service-scope-factory';
 }
-/**
- * Every registration serving one type, realized lazily and re-iterably: each walk constructs
- * afresh, so a transient member yields a new instance per pass.
- */
 export interface IterableCallSite {
   readonly kind: 'iterable';
   readonly types: readonly CallSite[];
 }
-/** The same members as {@link IterableCallSite}, realized eagerly into a fresh array per request. */
 export interface ArrayCallSite {
   readonly kind: 'array';
   readonly types: readonly CallSite[];
 }
 
 export namespace CallSite {
+  /**
+   * A registered constructor the engine `new`s up.
+   */
   export function ctor(ctor: Ctor, args: CallSite[], descriptor?: ServiceDescriptor<string>): CtorCallSite {
     return { kind: 'ctor', ctor, args, descriptor };
   }
+  /**
+   * A registered factory the engine invokes — {@link args} realize its parameters.
+   */
   export function factory(factory: Func, args: CallSite[], descriptor?: ServiceDescriptor<string>): FactoryCallSite {
     return { kind: 'factory', factory, args, descriptor };
   }
+  /**
+   * A function value handed back to the caller; each invocation re-enters the engine to resolve
+   * {@link result}, the call's arguments registered as values for {@link lateBoundArgs}, in order.
+   * The row named is the one whose length the call's own argument count matches, so a function
+   * answering to several calls binds each of them under its own parameter types.
+   */
   export function latebound(result: Type, lateBoundArgs: Type.Signatures): LateBoundCallSite {
     return { kind: 'latebound', result, lateBoundArgs };
   }
@@ -91,12 +89,18 @@ export namespace CallSite {
   export function serviceProvider(): ServiceProviderCallSite {
     return { kind: 'service-provider' };
   }
+  /** The scope factory a dependency uses to open its own resolution scope. */
   export function serviceScopeFactory(): ServiceScopeFactoryCallSite {
     return { kind: 'service-scope-factory' };
   }
+  /**
+   * Every registration serving one type, realized lazily and re-iterably: each walk constructs
+   * afresh, so a transient member yields a new instance per pass.
+   */
   export function iterable(types: readonly CallSite[]): IterableCallSite {
     return { kind: 'iterable', types };
   }
+  /** The same members as {@link IterableCallSite}, realized eagerly into a fresh array per request. */
   export function array(types: readonly CallSite[]): ArrayCallSite {
     return { kind: 'array', types };
   }
@@ -111,19 +115,23 @@ export namespace CallSite {
    * site producing it. Undefined when no signature has every parameter satisfiable.
    */
   export function fromAnswer(answer: Answer, visitor: Type.Visitor<CallSite | undefined>): CallSite | undefined {
-    const { descriptor, generics } = answer;
-    if ('ctor' in descriptor) {
-      const args = lowerSignature(descriptor.ctorType.args, generics, visitor);
-      return args && ctor(descriptor.ctor, args, descriptor.scope !== undefined ? descriptor : undefined);
+    const { descriptor: wideDesc, generics } = answer;
+    const [kind, descriptor] = ServiceDescriptor.kind(wideDesc);
+    switch (kind) {
+      case 'ctor': {
+        const args = lowerSignature(descriptor.ctorType.args, generics, visitor);
+        return args && ctor(descriptor.ctor, args, descriptor.scope !== undefined ? descriptor : undefined);
+      }
+      case 'factory': {
+        const args = lowerSignature(descriptor.factoryType.args, generics, visitor);
+        return args && factory(descriptor.factory, args, descriptor.scope !== undefined ? descriptor : undefined);
+      }
+      case 'value': {
+        return constant(descriptor.value);
+      }
+      default:
+        return assertNever(descriptor);
     }
-    if ('factory' in descriptor) {
-      const args = lowerSignature(descriptor.factoryType.args, generics, visitor);
-      return args && factory(descriptor.factory, args, descriptor.scope !== undefined ? descriptor : undefined);
-    }
-    if ('value' in descriptor) {
-      return constant(descriptor.value);
-    }
-    return assertNever(descriptor);
   }
 
   /** The first parameter row whose every parameter lowers to a call site, longest first. */
