@@ -91,6 +91,13 @@ Weigh EVERY design decision in this document against this split.
 - The compositions stay distinct and both remain expressible: `Promise<Iterable<E>>` = the whole
   collection delivered later, then sync iteration; `AsyncIterable<E>` = per-item streaming, each
   element resolving at iteration time.
+- ITERABLE VS ARRAY = WHEN THE SCOPE CACHE IS CONSULTED (owner-distilled): `Array<T>` consults and
+  fills at RESOLUTION (a snapshot — the engine doing `Array.from` for you; immediate full
+  iteration of the iterable is provably element-wise identical); `Iterable<T>` consults PER
+  ELEMENT at each iteration step (a live query — later steps see later scope state, transients
+  fresh per iteration, short-circuit skips construction, an unsatisfiable element throws from its
+  step). Re-iteration pin **(proposed)**: each `Symbol.iterator`/`Symbol.asyncIterator` call mints
+  a FRESH walk — never a one-shot iterator object; a stable snapshot is spelled `Array<T>`.
 - THE ASYNCITERABLE ARM **(proposed)**: the `AsyncIterableCallsite`'s fallback (after exact match,
   like every arm) plans the SAME element sites the sync `Iterable<E>` arm produces, but each
   element subtree walks under its own clean collection — PER-ELEMENT inventories, so an element's
