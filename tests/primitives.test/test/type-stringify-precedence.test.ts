@@ -13,7 +13,7 @@ const C = Type.imported('C', 'app');
 describe('Type.stringify precedence', () => {
   test('a union nested inside an intersection member is parenthesized', () => {
     const type = Type.intersection(Type.union(A, B) as UnionType, C);
-    expect(Type.stringify(type)).toBe('(app:A | app:B) & app:C');
+    expect(Type.stringify(type)).toBe('app:C & (app:A | app:B)');
   });
 
   test('an intersection nested under a tag is parenthesized', () => {
@@ -23,7 +23,7 @@ describe('Type.stringify precedence', () => {
 
   test('a tag over one union member needs no parentheses beyond the tag itself', () => {
     const type = Type.union(Type.tag(A, 'x'), B);
-    expect(Type.stringify(type)).toBe('app:A#x | app:B');
+    expect(Type.stringify(type)).toBe('app:B | app:A#x');
   });
 
   test('an arrow chained through its own return position needs no extra parentheses', () => {

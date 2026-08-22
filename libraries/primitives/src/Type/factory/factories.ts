@@ -196,7 +196,173 @@ function canonicalMembers(kind: Composite, members: readonly Type[]): readonly T
   }
   const distinct = [...new Set(flattened)];
   const reduced = kind === 'union' ? withoutSubsumedLiterals(distinct) : distinct;
-  return [...reduced].sort((left, right) => compare(stringifyType(left), stringifyType(right)));
+  return [...reduced].sort(compareTypes);
+}
+
+/**
+ * The canonical member order: a rank per kind, holes first and literals last — which is what
+ * leaves a literal member as a union's last resort — then the kind's own scalars, then children
+ * pairwise. Everything downstream iterates members as stored and stays agnostic of this rule.
+ */
+const KIND_RANK: Readonly<Record<Type['kind'], number>> = {
+  generic: 0,
+  global: 1,
+  imported: 2,
+  tag: 3,
+  object: 4,
+  tuple: 5,
+  array: 6,
+  iterable: 7,
+  func: 8,
+  ctor: 9,
+  union: 10,
+  intersection: 11,
+  literal: 12,
+};
+
+function compareTypes(left: Type, right: Type): number {
+  if (left === right) {
+    return 0;
+  }
+  return KIND_RANK[left.kind] - KIND_RANK[right.kind] || compareScalars(left, right) || compareChildren(left, right);
+}
+
+/** The fields that name a node rather than compose it, compared kind against same kind. */
+function compareScalars(left: Type, right: Type): number {
+  switch (left.kind) {
+    case 'generic': {
+      return compare(left.label, (right as GenericType).label);
+    }
+    case 'global': {
+      return compare(left.name, (right as GlobalType).name);
+    }
+    case 'imported': {
+      const other = right as ImportedType;
+      return compare(left.from, other.from) || compare(left.name, other.name);
+    }
+    case 'tag': {
+      return compare(left.tag, (right as TagType).tag);
+    }
+    case 'ctor': {
+      return Number(left.abstract) - Number((right as ConstructorType).abstract);
+    }
+    case 'literal': {
+      return compareLiterals(left, right as TypeLiteralType);
+    }
+    default: {
+      return 0;
+    }
+  }
+}
+
+/** Literal values order by category, then by value within one category. */
+const LITERAL_CATEGORY_RANK: Readonly<Record<string, number>> = {
+  boolean: 0,
+  number: 1,
+  bigint: 2,
+  string: 3,
+  object: 4,
+  undefined: 5,
+};
+
+function compareLiterals(left: TypeLiteralType, right: TypeLiteralType): number {
+  const category = LITERAL_CATEGORY_RANK[typeof left.value]! - LITERAL_CATEGORY_RANK[typeof right.value]!;
+  if (category || Object.is(left.value, right.value)) {
+    return category;
+  }
+  if (typeof left.value === 'number' && typeof right.value === 'number') {
+    if (Number.isNaN(left.value) || Number.isNaN(right.value)) {
+      return Number.isNaN(left.value) ? 1 : -1;
+    }
+    if (left.value === right.value) {
+      return Object.is(left.value, -0) ? -1 : 1;
+    }
+    return left.value < right.value ? -1 : 1;
+  }
+  if (typeof left.value === 'bigint' && typeof right.value === 'bigint') {
+    return left.value < right.value ? -1 : 1;
+  }
+  return compare(String(left.value), String(right.value));
+}
+
+function compareChildren(left: Type, right: Type): number {
+  switch (left.kind) {
+    case 'global':
+    case 'imported': {
+      return comparePairwise(left.genericArgs, (right as GlobalType | ImportedType).genericArgs);
+    }
+    case 'array':
+    case 'iterable': {
+      return compareTypes(left.element, (right as AggregateType).element);
+    }
+    case 'tag': {
+      return compareTypes(left.type, (right as TagType).type);
+    }
+    case 'tuple':
+    case 'union':
+    case 'intersection': {
+      return comparePairwise(left.members, (right as TupleType | UnionType | IntersectionType).members);
+    }
+    case 'object': {
+      return compareObjectMembers(left, right as ObjectType);
+    }
+    case 'func': {
+      const other = right as FunctionType;
+      return compareRows(left.args, other.args) || compareTypes(left.return, other.return);
+    }
+    case 'ctor': {
+      const other = right as ConstructorType;
+      return compareRows(left.args, other.args) || compareTypes(left.instance, other.instance);
+    }
+    default: {
+      return 0;
+    }
+  }
+}
+
+/** Fewer children first, then position `i` against position `i`. */
+function comparePairwise(left: readonly Type[], right: readonly Type[]): number {
+  if (left.length !== right.length) {
+    return left.length - right.length;
+  }
+  for (let index = 0; index < left.length; index++) {
+    const order = compareTypes(left[index]!, right[index]!);
+    if (order) {
+      return order;
+    }
+  }
+  return 0;
+}
+
+function compareRows(left: Type.Signatures, right: Type.Signatures): number {
+  if (left.length !== right.length) {
+    return left.length - right.length;
+  }
+  for (let index = 0; index < left.length; index++) {
+    const order = comparePairwise(left[index]!, right[index]!);
+    if (order) {
+      return order;
+    }
+  }
+  return 0;
+}
+
+/** Member names lead — both sides key them sorted — and the member types break the tie. */
+function compareObjectMembers(left: ObjectType, right: ObjectType): number {
+  const leftEntries = Object.entries(left.members);
+  const rightEntries = Object.entries(right.members);
+  if (leftEntries.length !== rightEntries.length) {
+    return leftEntries.length - rightEntries.length;
+  }
+  for (let index = 0; index < leftEntries.length; index++) {
+    const [leftName, leftMember] = leftEntries[index]!;
+    const [rightName, rightMember] = rightEntries[index]!;
+    const order = compare(leftName, rightName) || compareTypes(leftMember, rightMember);
+    if (order) {
+      return order;
+    }
+  }
+  return 0;
 }
 
 /**
