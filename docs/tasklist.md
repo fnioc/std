@@ -251,11 +251,14 @@ whole set is decided fresh when the slots above are rewritten, so this is a demo
 
 ## Housekeeping
 
-- [ ] **Audit every package's dependency categories — owner ruling needed.** The audit found
-      `@rhombus-std/primitives` sitting as a plain `dependencies` entry (never `peerDependencies`) in roughly 35
-      consumers including `di.core`, and `di` lists `di.core` as a plain dependency too — both contradict the
-      stated identity-invariant rule that identity-load-bearing shared packages must be peers of their
-      dependents. Either the rule is narrower than written or the tree is miscategorized — owner call.
+- [ ] **Dependency categories: RULED 2026-08-21 — the tree is right; peers matter only at the published
+      boundary.** In-repo, source-first resolution yields one module instance by construction, so plain
+      `dependencies` on identity-load-bearing packages (`primitives`, `di.core`, config providers) are correct
+      today; the identity invariant bites only where npm nesting can mint a duplicate, i.e. for PUBLISHED
+      consumers. Remaining work, deferred to the pre-publish gate (alongside the trusted-publisher repointing,
+      before PUBLISHING_ENABLED flips): recategorize primitives/di.core (and any other bundle-external
+      identity package) to `peerDependencies` + devDependency duplicates in every consumer's manifest, informed
+      by the actual publish topology.
 - [ ] `libraries/di/src/augmentations/Manifest-ContainerBuilder-augmentations.ts` uses the retired
       `extends Flatten<typeof Ns>` shape, with its docs on the namespace rather than the face — convert to the
       canonical shape (one `declare module` block carrying the faces, docs on the face, `registerAugmentations`
