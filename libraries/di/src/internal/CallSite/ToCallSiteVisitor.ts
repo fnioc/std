@@ -30,11 +30,11 @@ function makeVisitingGuard() {
       }
     }
   }
-  return function visiting(type: Type): Disposable {
-    if (stack.includes(type)) {
-      throw new CycleError([...stack, type]);
+  return function visiting(serviceType: Type): Disposable {
+    if (stack.includes(serviceType)) {
+      throw new CycleError([...stack, serviceType]);
     }
-    return new VisitDisposer(type);
+    return new VisitDisposer(serviceType);
   };
 }
 
@@ -61,14 +61,14 @@ export class ToCallSiteVisitor extends Type.Visitor<CallSite | undefined> {
     this.#registry = context.registry;
   }
 
-  public override visit(type: Type): CallSite | undefined {
+  public override visit(serviceType: Type): CallSite | undefined {
     // An open type stands for a family rather than a value, so there is nothing to build until a
     // request closes its holes.
-    if (Type.isOpen(type)) {
+    if (Type.isOpen(serviceType)) {
       return undefined;
     }
-    using guard = this.#visiting(type);
-    return this.#firstAnswerBuilt(type) ?? super.visit(type);
+    using guard = this.#visiting(serviceType);
+    return this.#firstAnswerBuilt(serviceType) ?? super.visit(serviceType);
   }
 
   protected override visitArray(type: ArrayType): CallSite | undefined {
@@ -164,11 +164,11 @@ export class ToCallSiteVisitor extends Type.Visitor<CallSite | undefined> {
   }
 
   /**
-   * The newest registration answering {@link type}'s own address that actually builds; an
+   * The newest registration answering {@link serviceType}'s own address that actually builds; an
    * unbuildable answer falls through to the next.
    */
-  #firstAnswerBuilt(type: Type): CallSite | undefined {
-    for (const answer of this.#registry.answering(type)) {
+  #firstAnswerBuilt(serviceType: Type): CallSite | undefined {
+    for (const answer of this.#registry.answering(serviceType)) {
       const site = CallSite.fromAnswer(answer, this);
       if (site !== undefined) {
         return site;

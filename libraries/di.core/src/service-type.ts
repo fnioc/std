@@ -7,12 +7,12 @@ import { Type } from '@rhombus-std/primitives';
  * @throws Error - when a key is given for a type that already carries a tag, since a type wears at
  * most one and re-keying it would file the registration somewhere neither side named.
  */
-export function withKey(type: Type, key: string | undefined): Type {
+export function withKey(serviceType: Type, key: string | undefined): Type {
   if (key === undefined) {
-    return type;
+    return serviceType;
   }
-  if (type.kind === 'tag') {
-    throw new Error(`${Type.stringify(type)} already carries a tag; it cannot take the key ${key}.`);
+  if (serviceType.kind === 'tag') {
+    throw new Error(`${Type.stringify(serviceType)} already carries a tag; it cannot take the key ${key}.`);
   }
-  return Type.tag(type, key);
+  return Type.tag(serviceType, key);
 }

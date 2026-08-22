@@ -32,20 +32,20 @@ export class Engine {
    * It holds no instances: it says how to construct, never what was constructed. A request that
    * cannot be satisfied caches nothing, so the failure is rebuilt and rethrown identically.
    */
-  readonly #planFor = memo((type: Type) => this.#build(type, this.#registry));
+  readonly #planFor = memo((serviceType: Type) => this.#build(serviceType, this.#registry));
 
   constructor(manifest: Manifest<any>) {
     this.#manifest = manifest;
     this.#registry = new Registry(manifest);
   }
 
-  /** @throws {UnsatisfiableError} when nothing in the manifest can produce {@link type}. */
-  resolve(type: Type, context: ResolveContext): unknown {
+  /** @throws {UnsatisfiableError} when nothing in the manifest can produce {@link serviceType}. */
+  resolve(serviceType: Type, context: ResolveContext): unknown {
     // A latebound call's arguments are registrations for that walk alone, so its plan is not a
     // fact about this engine's manifest and is built fresh rather than kept.
     const site = context.additionalServices?.length
-      ? this.#build(type, new Registry(this.#manifest.addMany(context.additionalServices)))
-      : this.#planFor(type);
+      ? this.#build(serviceType, new Registry(this.#manifest.addMany(context.additionalServices)))
+      : this.#planFor(serviceType);
     return CallSite.realize(site, { engine: this, serviceProvider: context.serviceProvider, scope: context.scope });
   }
 
@@ -56,10 +56,10 @@ export class Engine {
     return scope;
   }
 
-  /** Whether {@link type} can be built from this engine's manifest, without building it. */
-  canResolve(type: Type): boolean {
+  /** Whether {@link serviceType} can be built from this engine's manifest, without building it. */
+  canResolve(serviceType: Type): boolean {
     try {
-      this.#planFor(type);
+      this.#planFor(serviceType);
       return true;
     } catch (error) {
       if (error instanceof UnsatisfiableError) {
@@ -91,7 +91,7 @@ export class Engine {
    */
   validate(): void {
     const failures = Iterator.from(this.#registry.closedAddresses)
-      .map(type => this.#failure(type))
+      .map(serviceType => this.#failure(serviceType))
       .filter((failure): failure is ValidationFailure => failure !== undefined)
       .toArray();
     if (failures.length) {
@@ -99,19 +99,19 @@ export class Engine {
     }
   }
 
-  #failure(type: Type): ValidationFailure | undefined {
+  #failure(serviceType: Type): ValidationFailure | undefined {
     try {
-      this.#planFor(type);
+      this.#planFor(serviceType);
       return undefined;
     } catch (error) {
-      return { type, error: error instanceof Error ? error : new Error(String(error)) };
+      return { serviceType, error: error instanceof Error ? error : new Error(String(error)) };
     }
   }
 
-  #build(type: Type, registry: Registry): CallSite {
-    const site = CallSite.from(type, { registry });
+  #build(serviceType: Type, registry: Registry): CallSite {
+    const site = CallSite.from(serviceType, { registry });
     if (site === undefined) {
-      throw new UnsatisfiableError(type, 'nothing in the manifest can produce it');
+      throw new UnsatisfiableError(serviceType, 'nothing in the manifest can produce it');
     }
     return site;
   }

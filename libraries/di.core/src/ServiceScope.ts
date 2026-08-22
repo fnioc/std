@@ -17,10 +17,10 @@ export interface ScopeCache {
 /** A resolution scope: shares one {@link cache} of scoped-lifetime instances across its lookups. */
 export interface IServiceScope {
   readonly cache: ScopeCache;
-  /** The value registered for `type`, resolved against this scope. */
-  getRequiredService(type: Type): any;
-  /** Whether anything is registered for `type` in this scope. */
-  isService(type: Type): boolean;
+  /** The value registered for `serviceType`, resolved against this scope. */
+  getRequiredService(serviceType: Type): any;
+  /** Whether anything is registered for `serviceType` in this scope. */
+  isService(serviceType: Type): boolean;
 }
 export interface IServiceScopeFactory {
   /** Opens a new {@link IServiceScope}, optionally labeled `name` for diagnostics. */

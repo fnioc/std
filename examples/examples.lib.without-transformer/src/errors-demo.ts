@@ -93,7 +93,7 @@ export function diagnose(error: unknown): string {
   if (error instanceof ManifestValidationError) {
     // Every broken registration at once rather than the first, so an operator
     // gets one round-trip instead of one per hole.
-    const types = error.failures.map(failure => Type.stringify(failure.type)).join(', ');
+    const types = error.failures.map(failure => Type.stringify(failure.serviceType)).join(', ');
     return `ManifestValidationError — ${error.failures.length} registration(s) cannot be satisfied: ${types}`;
   }
 
@@ -105,7 +105,7 @@ export function diagnose(error: unknown): string {
     return `CycleError — ${path}; break the loop with a factory slot`;
   }
   if (error instanceof UnsatisfiableError) {
-    return `UnsatisfiableError — nothing in the manifest produces ${Type.stringify(error.type)}; `
+    return `UnsatisfiableError — nothing in the manifest produces ${Type.stringify(error.serviceType)}; `
       + 'register it, or ask with getService if its absence is legitimate';
   }
 

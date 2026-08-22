@@ -44,18 +44,18 @@ export class Registry {
   }
 
   /**
-   * Every registration answering exactly {@link request}'s own address, newest first — a closed
-   * registration by interned identity, an open one by unification.
+   * Every registration answering exactly {@link serviceType}'s own address, newest first — a
+   * closed registration by interned identity, an open one by unification.
    */
-  *answering(request: Type): Generator<Answer, void, unknown> {
+  *answering(serviceType: Type): Generator<Answer, void, unknown> {
     for (const descriptor of this.#manifest) {
       const proposedServiceType = descriptor.serviceType;
       if (Type.isOpen(proposedServiceType)) {
-        const [isMatch, generics] = Type.match(proposedServiceType, request);
+        const [isMatch, generics] = Type.match(proposedServiceType, serviceType);
         if (isMatch) {
           yield { descriptor, serviceType: Type.substitute(proposedServiceType, generics), generics };
         }
-      } else if (proposedServiceType === request) {
+      } else if (proposedServiceType === serviceType) {
         yield { descriptor, serviceType: proposedServiceType, generics: NO_GENERICS };
       }
     }

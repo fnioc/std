@@ -66,12 +66,12 @@ export class ServiceScope implements IServiceScope, Disposable, AsyncDisposable 
     return this.#cache;
   }
 
-  getRequiredService(type: Type): any {
-    return this.#engine.resolve(type, { serviceProvider: this.#serviceProvider, scope: this });
+  getRequiredService(serviceType: Type): any {
+    return this.#engine.resolve(serviceType, { serviceProvider: this.#serviceProvider, scope: this });
   }
 
-  isService(type: Type): boolean {
-    return this.#engine.canResolve(type);
+  isService(serviceType: Type): boolean {
+    return this.#engine.canResolve(serviceType);
   }
 
   [Symbol.dispose](): void {

@@ -23,7 +23,7 @@ import { Type } from '@rhombus-std/primitives';
 export abstract class DiError extends Error {}
 
 /**
- * Nothing in the manifest can produce a value for {@link type}.
+ * Nothing in the manifest can produce a value for {@link serviceType}.
  *
  * @remarks
  * Catch this to fall back to another candidate — a union member, a later signature.
@@ -40,13 +40,13 @@ export abstract class DiError extends Error {}
  * ```
  */
 export class UnsatisfiableError extends DiError {
-  /** The type that could not be resolved. */
-  readonly type: Type;
+  /** The service type that could not be resolved. */
+  readonly serviceType: Type;
 
-  constructor(type: Type, reason: string, cause?: UnsatisfiableError) {
-    super(`cannot satisfy ${Type.stringify(type)} — ${reason}`, { cause });
+  constructor(serviceType: Type, reason: string, cause?: UnsatisfiableError) {
+    super(`cannot satisfy ${Type.stringify(serviceType)} — ${reason}`, { cause });
     this.name = 'UnsatisfiableError';
-    this.type = type;
+    this.serviceType = serviceType;
   }
 }
 
@@ -73,7 +73,7 @@ export class CycleError extends DiError {
 /** One registration that could not be lowered. */
 export interface ValidationFailure {
   /** The service type of the registration that failed. */
-  readonly type: Type;
+  readonly serviceType: Type;
   /** What lowering it produced — an {@link UnsatisfiableError}, a {@link CycleError}, or a fault. */
   readonly error: Error;
 }
@@ -92,7 +92,7 @@ export class ManifestValidationError extends DiError {
   constructor(failures: readonly ValidationFailure[]) {
     super(
       `cannot satisfy every registration:\n`
-        + failures.map(failure => `  ${Type.stringify(failure.type)} — ${failure.error.message}`).join('\n'),
+        + failures.map(failure => `  ${Type.stringify(failure.serviceType)} — ${failure.error.message}`).join('\n'),
     );
     this.name = 'ManifestValidationError';
     this.failures = failures;

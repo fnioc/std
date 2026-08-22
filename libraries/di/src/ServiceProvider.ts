@@ -68,7 +68,7 @@ export class ServiceProvider {
     try {
       return this.#engine.resolve(serviceType, { serviceProvider: this });
     } catch (error) {
-      if (error instanceof UnsatisfiableError && error.type === serviceType) {
+      if (error instanceof UnsatisfiableError && error.serviceType === serviceType) {
         return undefined;
       }
       throw error;

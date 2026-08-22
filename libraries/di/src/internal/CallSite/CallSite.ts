@@ -105,8 +105,8 @@ export namespace CallSite {
     return { kind: 'array', types };
   }
 
-  export function from(type: Type, context: CallSiteContext): CallSite | undefined {
-    return new ToCallSiteVisitor(context).visit(type);
+  export function from(serviceType: Type, context: CallSiteContext): CallSite | undefined {
+    return new ToCallSiteVisitor(context).visit(serviceType);
   }
 
   /**
