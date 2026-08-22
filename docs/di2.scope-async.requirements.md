@@ -277,6 +277,15 @@ Weigh EVERY design decision in this document against this split.
   model wants them, are its own interpretation choices.
 - Under the DEFAULT model, an omitted lifetime is the first-class always-create: nothing caches,
   the hit-prune/store machinery never engages, per-occurrence semantics hold.
+- LIBRARY PORTABILITY (owner-ruled, closing the pressure-test blocker): a library PUBLISHES the
+  scope-model shape(s) it supports in its configure function's own signature
+  (`Manifest<DefaultLifetime>`, or a generic constraint over what its registrations need) —
+  incompatibility is a LOUD compile error at the configure call, never a silently-wrong lifetime.
+  No engine-space lingua-franca vocabulary exists (the model's total ownership of the datum
+  domain stays whole); the default model becomes the de facto standard organically because libs
+  target it, and an app on an exotic engine knowingly accepts lib-compat friction (voluntary
+  engine-shipped adapters, or forgoing the lib). Companion convention: library augmentations are
+  written `this: Manifest<L>` with a per-function generic, never `Manifest<any>`.
 
 ## Scope creation
 
@@ -450,6 +459,3 @@ first client:
 4. Disposal design proper (contract + default model), including `using`-protocol support.
 5. ManifestScope dialect (spelling of private registration; deep-override verb naming) and the
    root-authority override surface.
-6. Library portability under model-typed manifests: what lifetime vocabulary an oblivious
-   `(m) => m` configure function targets (default-model lingua franca vs a capability-constraint
-   story).
