@@ -164,8 +164,7 @@ argument.
       dissolve — question the slot's whole shape while rewriting it, don't just preserve it.
 - [ ] **`diagnostics.core` still fabricates package-qualified globals.**
       `libraries/diagnostics.core/src/types.ts:28,:44` (`METRICS_OPTIONS_TYPE` / `TRACING_OPTIONS_TYPE`,
-      `Type.global(\`@rhombus-std/diagnostics/...\`)`) — convert to real
-      `Type.imported('IOptions', '@rhombus-std/options', [...])` addresses like the options family. A repo-wide
+      `Type.global(\`@rhombus-std/diagnostics/...\`)`) — convert to the real addresses`Type.imported('IOptions', '@rhombus-std/options', [...])` like the options family. A repo-wide
       sweep found no other instance.
 
 ## Authoring surface
