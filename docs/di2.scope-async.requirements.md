@@ -198,18 +198,12 @@ Weigh EVERY design decision in this document against this split.
   cannot arrive by return); the former `ScopeCtx` token is gone — THE BLACKBOX IS THE CONTEXT.
   Everything beyond this call surface plus the createScope requirement below is blackbox-impl
   detail of particular models.
-- THE CANONICAL INSTANCE-CACHE KEY IS DESCRIPTOR-COMPOSED — this is the SCOPE layer's key,
-  distinct from the plan memo, which keys on the interned request node ALONE (multi-registrations
-  are disambiguated inside plan trees at construction, never by the plan key):
-  `(site's as-requested type, answering descriptor)` — both components arrive in the call. The as-requested half keeps the promise address out and
-  keys open-generic closures on the closed request; the descriptor-identity half distinguishes
-  same-type multi-registrations while letting resolve-one and resolve-all SHARE storage (a
-  singleton never double-instantiates via the enumerable path; an aggregate element and the
-  singular resolve of the same registration hit the same entry). Descriptor identity is stable
-  per built provider (manifests seal before build; layered additionals are distinct objects), so
-  a plain composite map suffices — no ordinal/slot machinery. The blackbox stores and returns
-  awaited values only (async-blind by construction; for an in-flight make the returned "value" is
-  the shared promise, consumed only by the gather).
+- The PLAN memo keys on the interned request node ALONE — multi-registrations are disambiguated
+  inside plan trees at construction, never by the plan key. How a blackbox keys its INSTANCE
+  storage is its own business (the call hands it the as-requested type and the answering
+  descriptor; what it does with them is model territory). The blackbox stores and returns awaited
+  values only (async-blind by construction; for an in-flight make the returned "value" is the
+  shared promise, consumed only by the gather).
 - VALUE SITES BYPASS THE SCOPE ENGINE ENTIRELY (owner-ruled): a value descriptor presents no
   make, and makes are the blackbox's whole jurisdiction — so `asValue` registrations, latebound
   call args, and invoke-frame args are never asked, stored, tracked, or disposed by any scope
@@ -347,7 +341,15 @@ Weigh EVERY design decision in this document against this split.
 ## Write-back and the race — default-model design record
 
 > With the whole-picture call surface above, everything in this section is BLACKBOX-IMPL detail of
-> the default model, retained as its design record — not engine contract.
+> the default model, retained as its design record — not engine contract. Blackbox internals are
+> NOT planned in this session (owner); entries here are parked material for the default model's
+> own lane.
+
+- Default-model instance key (parked): `(site's as-requested type, answering descriptor)` — the
+  descriptor half makes the unit of "single" the registration-within-a-scope, letting resolve-one
+  and resolve-all share storage while same-type multi-registrations stay distinct; identity, not
+  ordinals (stable per built provider). Descriptor-less synthesized sites never cache — no
+  descriptor, no datum, nothing to instruct caching.
 
 - Post-gather values must be ADMITTABLE into the scope under cacheable lifetimes — forced by
   hit-skips + values-as-requested + the sync-door corollary: hits can only exist if async-created
