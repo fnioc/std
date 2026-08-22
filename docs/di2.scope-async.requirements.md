@@ -32,11 +32,14 @@ Weigh EVERY design decision in this document against this split.
   enters the Type vocabulary.
 - Hoist links are HARD, identity-keyed: the per-resolution context maps the async-site node object
   itself to its value/promise (`Map<AsyncCallSite, …>`). No string labels, no parallel namespace.
-  The map is PER-RESOLUTION (the plan's collection point is shared and immutable; a plan-resident
-  map would cross-talk between concurrent resolutions); keys are the site nodes, never promises.
-- REALIZE MECHANISM (owner-designed; refinements **(proposed)**): a minted `PromiseCallsite` adds
-  its island's collection point to the visitor context; an exact-miss/`Promise<T>`-hit mints an
-  `AsyncCallSite` that registers on it. Each `AsyncCallSite` also captures its DEPENDENCY EDGES —
+  The map is CONTEXT-BORNE and therefore per-resolution by nature: the boundary's realize mints a
+  fresh map and threads it through the realize context to its descendants — the same channel that
+  threads the scope blackbox, delivered subtree-scoped. Keys are the site nodes, never promises.
+- REALIZE MECHANISM (owner-designed; refinements **(proposed)**): the collection point rides the
+  PLAN-construction visitor context — a minted `PromiseCallsite` threads a clean one; an
+  exact-miss/`Promise<T>`-hit mints an `AsyncCallSite` that registers on it; when the boundary's
+  walk returns, the accumulated contents freeze onto the boundary node as its island inventory
+  (immutable-once-assigned — the only plan-side residue). Each `AsyncCallSite` also captures its DEPENDENCY EDGES —
   the async sites minted within its own inner subtree walk (slice the island collection around the
   walk; assigned once). At realization the boundary is visited first: it builds, in the
   collection's topological order (post-order walk ⇒ deps precede dependents), one ENTRY per site —
