@@ -235,7 +235,8 @@ whole set is decided fresh when the slots above are rewritten, so this is a demo
       the author likes: one `registerInlineBodies` call may supply a single overload's body, several overloads'
       bodies, or all of them, and further calls may add more — the engine's unit is the (member, overload
       signature) pair regardless of which call carried it, and it selects the body whose signature matches the
-      checker's resolved overload at the call site. A
+      checker's resolved overload at the call site — when more than one registered body is compatible with the
+      call, the LONGEST compatible overload wins (owner ruling 2026-08-21). A
       rest-parameter body is one authoring choice among several — permitted where written, NEVER a requirement
       of the mechanism. Go side only.
 
