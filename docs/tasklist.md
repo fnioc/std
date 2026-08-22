@@ -255,10 +255,12 @@ whole set is decided fresh when the slots above are rewritten, so this is a demo
       boundary.** In-repo, source-first resolution yields one module instance by construction, so plain
       `dependencies` on identity-load-bearing packages (`primitives`, `di.core`, config providers) are correct
       today; the identity invariant bites only where npm nesting can mint a duplicate, i.e. for PUBLISHED
-      consumers. Remaining work, deferred to the pre-publish gate (alongside the trusted-publisher repointing,
-      before PUBLISHING_ENABLED flips): recategorize primitives/di.core (and any other bundle-external
-      identity package) to `peerDependencies` + devDependency duplicates in every consumer's manifest, informed
-      by the actual publish topology.
+      consumers. Owner preference (2026-08-21): avoid peer deps entirely if possible — they confuse consumers.
+      Preferred direction, deferred to the pre-publish gate (alongside the trusted-publisher repointing):
+      plain deps everywhere + a LOAD-TIME SINGLE-INSTANCE GUARD in the identity packages — `primitives` (and
+      `di.core`) stamp a global-symbol sentinel at module load and a second loaded copy throws immediately with
+      a message naming both module paths. Louder and more portable than peer warnings. Fall back to
+      `peerDependencies` recategorization only if the guard proves insufficient.
 - [ ] `libraries/di/src/augmentations/Manifest-ContainerBuilder-augmentations.ts` uses the retired
       `extends Flatten<typeof Ns>` shape, with its docs on the namespace rather than the face — convert to the
       canonical shape (one `declare module` block carrying the faces, docs on the face, `registerAugmentations`
