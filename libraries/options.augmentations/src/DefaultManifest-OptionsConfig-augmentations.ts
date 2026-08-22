@@ -17,10 +17,10 @@ import { ConfigConfigureOptions } from './ConfigConfigureOptions.js';
 import type { DepTypes } from './dep-types.js';
 import { changeTokenSourceType, configureStepType } from './option-types.js';
 
-// `Scopes` is defaulted so the merge matches its target's type-parameter list
+// `Lifetime` is defaulted so the merge matches its target's type-parameter list
 // (TS2428 requires identical parameters).
 declare module '@rhombus-std/di.core' {
-  interface Manifest<Scopes> {
+  interface Manifest<Lifetime> {
     /**
      * Registers a configuration `section` to bind against the options type
      * `optionsType` — the BARE `T`, as every pipeline verb takes: adds a
@@ -29,21 +29,21 @@ declare module '@rhombus-std/di.core' {
      * reload-capable. Requires a prior {@link addOptions} for the same
      * `optionsType`.
      */
-    configure(optionsType: Type, section: IConfig): Manifest<Scopes>;
+    configure(optionsType: Type, section: IConfig): Manifest<Lifetime>;
     /**
      * Registers a code configure step for `optionsType`: `configureOptions`
      * runs against the value as one configure source among several (no config
      * section, so no change-token source). Distinguished from the
      * config-section overload of {@link configure} by its function argument.
      */
-    configure(optionsType: Type, configureOptions: Func<[any], void>): Manifest<Scopes>;
+    configure(optionsType: Type, configureOptions: Func<[any], void>): Manifest<Lifetime>;
     /**
      * The DI-injected configure step: resolves each type in `depTypes` from
      * the provider at materialization time and passes the instances to
      * `configureOptions` after the options value. A typed caller writes each
      * entry as `typefor<Dep>()`.
      */
-    configure<Deps extends readonly unknown[]>(optionsType: Type, depTypes: DepTypes<Deps>, configureOptions: (options: any, ...deps: Deps) => void): Manifest<Scopes>;
+    configure<Deps extends readonly unknown[]>(optionsType: Type, depTypes: DepTypes<Deps>, configureOptions: (options: any, ...deps: Deps) => void): Manifest<Lifetime>;
   }
 }
 

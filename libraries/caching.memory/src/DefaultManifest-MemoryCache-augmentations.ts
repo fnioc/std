@@ -88,13 +88,13 @@ export namespace ServiceManifestMemoryCacheAugmentations {
   }
 }
 
-// `Scopes` is defaulted so the merge's type-parameter list matches every other
+// `Lifetime` is defaulted so the merge's type-parameter list matches every other
 // partial declaration of `Manifest` (TS2428 requires identical parameters).
 declare module '@rhombus-std/di.core' {
-  interface Manifest<Scopes> {
-    addMemoryCache(setup?: Func<[MemoryCacheOptions], void>): Manifest<Scopes>;
+  interface Manifest<Lifetime> {
+    addMemoryCache(setup?: Func<[MemoryCacheOptions], void>): Manifest<Lifetime>;
 
-    addDistributedMemoryCache(setup?: Func<[MemoryDistributedCacheOptions], void>): Manifest<Scopes>;
+    addDistributedMemoryCache(setup?: Func<[MemoryDistributedCacheOptions], void>): Manifest<Lifetime>;
   }
 }
 

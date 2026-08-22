@@ -28,7 +28,7 @@ export function isValueDescriptor(descriptor: ServiceDescriptor<any>): descripto
  * Closes an open registration against the generics a `Type.match` bound,
  * rewriting `serviceType` and the implementer's type so the result stands on its own.
  */
-export function substitute<Scopes>(descriptor: ServiceDescriptor<Scopes>, generics: ReadonlyMap<string, Type>): ServiceDescriptor<Scopes> {
+export function substitute<Lifetime>(descriptor: ServiceDescriptor<Lifetime>, generics: ReadonlyMap<string, Type>): ServiceDescriptor<Lifetime> {
   if (!generics.size) {
     return descriptor;
   }
@@ -47,7 +47,7 @@ export function substitute<Scopes>(descriptor: ServiceDescriptor<Scopes>, generi
 
 /**
  * Are the two descriptors interchangeable — same slot ({@link matches}) and the same implementer,
- * scope, and implementer type? Two descriptors can occupy the same slot without being equal (a
+ * lifetime, and implementer type? Two descriptors can occupy the same slot without being equal (a
  * replaced registration), so prefer {@link matches} for slot identity.
  */
 export function equals(left: ServiceDescriptor<unknown>, right: ServiceDescriptor<unknown>): boolean {
@@ -59,12 +59,12 @@ export function equals(left: ServiceDescriptor<unknown>, right: ServiceDescripto
   }
   if ('ctor' in left) {
     const other = right as CtorDescriptor<unknown>;
-    return left.ctor === other.ctor && left.scope === other.scope
+    return left.ctor === other.ctor && left.lifetime === other.lifetime
       && left.ctorType === other.ctorType;
   }
   if ('factory' in left) {
     const other = right as FactoryDescriptor<unknown>;
-    return left.factory === other.factory && left.scope === other.scope
+    return left.factory === other.factory && left.lifetime === other.lifetime
       && left.factoryType === other.factoryType;
   }
   if ('value' in left) {

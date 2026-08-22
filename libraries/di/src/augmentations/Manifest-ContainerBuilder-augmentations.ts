@@ -4,7 +4,7 @@ import { ServiceProvider } from '../ServiceProvider.js';
 import { ServiceProviderOptions } from '../ServiceProviderOptions.js';
 
 declare module '@rhombus-std/di.core' {
-  interface Manifest<Scopes> {
+  interface Manifest<Lifetime> {
     /** Builds a provider over these registrations, with every {@link ServiceProviderOptions} default. */
     build(): ServiceProvider;
     /** Builds a provider over these registrations, using `options` in place of the defaults. */

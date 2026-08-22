@@ -78,7 +78,7 @@ export class BrowserConsoleLogger implements ILogger {
     return logLevel !== LogLevel.None;
   }
 
-  /** Scopes are unsupported — plain formatting has nowhere to render them. */
+  /** Lifetime are unsupported — plain formatting has nowhere to render them. */
   public beginScope<TState>(_state: TState): Disposable | undefined {
     return undefined;
   }

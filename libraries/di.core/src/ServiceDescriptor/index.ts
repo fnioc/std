@@ -5,7 +5,7 @@ import type { ServiceDescriptor as Descriptor } from './ServiceDescriptor';
 export { ConstantType } from './ConstantType';
 export type { CtorDescriptor, FactoryDescriptor, ValueDescriptor } from './ServiceDescriptor';
 
-export type ServiceDescriptor<Scopes> = Descriptor<Scopes>;
+export type ServiceDescriptor<Lifetime> = Descriptor<Lifetime>;
 
 /** The descriptor constructors and the operations over them, under the name of the type itself. */
 export const ServiceDescriptor: typeof factories & typeof op = { ...factories, ...op };

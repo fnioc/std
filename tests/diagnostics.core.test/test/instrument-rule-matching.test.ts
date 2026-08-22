@@ -150,7 +150,7 @@ describe('isMoreSpecificInstrumentRule', () => {
     [rule('meter.Name', undefined, undefined), rule('meter', undefined, undefined), false],
     [rule('meter.Name', undefined, undefined), rule('meter.*', undefined, undefined), false],
 
-    // Scopes: Local > Global+Local (as local), Global > Global+Local (as global).
+    // Lifetime: Local > Global+Local (as local), Global > Global+Local (as global).
     [rule(undefined, undefined, undefined, MeterScope.Local), rule(undefined, undefined, undefined, METER_SCOPE_ALL), true],
     [rule(undefined, undefined, undefined, MeterScope.Global), rule(undefined, undefined, undefined, METER_SCOPE_ALL), false],
   ];

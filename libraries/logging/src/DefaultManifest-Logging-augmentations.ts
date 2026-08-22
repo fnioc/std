@@ -88,11 +88,11 @@ export namespace ServiceManifestLoggingAugmentations {
   }
 }
 
-// `Scopes` is defaulted so the merge's type-parameter list matches every other
+// `Lifetime` is defaulted so the merge's type-parameter list matches every other
 // partial declaration of `Manifest` (TS2428 requires identical parameters).
 declare module '@rhombus-std/di.core' {
-  interface Manifest<Scopes> {
-    addLogging(configure?: Func<[ILoggingBuilder], void>): Manifest<Scopes>;
+  interface Manifest<Lifetime> {
+    addLogging(configure?: Func<[ILoggingBuilder], void>): Manifest<Lifetime>;
   }
 }
 

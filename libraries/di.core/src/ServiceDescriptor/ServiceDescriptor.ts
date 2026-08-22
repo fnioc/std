@@ -8,14 +8,14 @@ import type { Flatten } from '@rhombus-toolkit/type-helpers';
  * by: the implementer's own type cannot (a `Func` registered as a value is handed back; the same
  * `Func` registered as a factory is called).
  */
-export type ServiceDescriptor<Scopes> =
-  | CtorDescriptor<Scopes>
-  | FactoryDescriptor<Scopes>
+export type ServiceDescriptor<Lifetime> =
+  | CtorDescriptor<Lifetime>
+  | FactoryDescriptor<Lifetime>
   | ValueDescriptor;
 
 /** The lifetime a constructed registration is cached under; absent means the manifest's default. */
-interface Scoped<Scopes> {
-  readonly scope?: Scopes;
+interface WithLifetime<Lifetime> {
+  readonly lifetime?: Lifetime;
 }
 
 /**
@@ -25,29 +25,29 @@ interface Scoped<Scopes> {
  * `ctorType` is where the registration's parameter rows live, so `ctor` and the calls it answers
  * to are read from one place and cannot disagree.
  */
-export type CtorDescriptor<Scopes> = Flatten<
+export type CtorDescriptor<Lifetime> = Flatten<
   {
     readonly serviceType: Type;
     readonly ctor: Ctor;
     readonly ctorType: ConstructorType;
-  } & Scoped<Scopes>
+  } & WithLifetime<Lifetime>
 >;
 
 /** A registration the container calls. */
-export type FactoryDescriptor<Scopes> = Flatten<
+export type FactoryDescriptor<Lifetime> = Flatten<
   {
     readonly serviceType: Type;
     readonly factory: Func;
     readonly factoryType: FunctionType;
-  } & Scoped<Scopes>
+  } & WithLifetime<Lifetime>
 >;
 
 /**
  * A registration the container hands back as it stands.
  *
  * @remarks
- * It carries no scope: a value IS its instance, so there is no construction for a lifetime to
- * govern and nothing a scope could mean. And it carries no implementer type — a value has no
+ * It carries no lifetime: a value IS its instance, so there is no construction for a lifetime to
+ * govern and nothing a lifetime could mean. And it carries no implementer type — a value has no
  * signature to read, no injection list, and nothing to call.
  */
 export interface ValueDescriptor {

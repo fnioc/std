@@ -18,10 +18,10 @@ import { registerAugmentations } from '@rhombus-std/primitives.extras';
 
 import { optionsAddressType } from './option-types.js';
 
-// `Scopes` is defaulted so the merge matches its target's type-parameter list
+// `Lifetime` is defaulted so the merge matches its target's type-parameter list
 // (TS2428 requires identical parameters).
 declare module '@rhombus-std/di.core' {
-  interface Manifest<Scopes> {
+  interface Manifest<Lifetime> {
     /**
      * Marks the options registered at `optionsType` for eager validation at
      * host startup: the host forces the registration's evaluation (running its
@@ -31,7 +31,7 @@ declare module '@rhombus-std/di.core' {
      * the built-in `IStartupValidator`. Returns the manifest produced by its
      * registrations (the manifest chain is immutable -- never `this`).
      */
-    validateOnStart(optionsType: Type): Manifest<Scopes>;
+    validateOnStart(optionsType: Type): Manifest<Lifetime>;
   }
 }
 

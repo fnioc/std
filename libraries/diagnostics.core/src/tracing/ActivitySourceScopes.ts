@@ -1,7 +1,7 @@
 // The tracing counterpart of MeterScope. Pure data -- no tracing runtime backs it.
 
 /**
- * Scopes used by {@link TracingRule} to distinguish global activity sources
+ * Lifetime used by {@link TracingRule} to distinguish global activity sources
  * (created via an activity-source constructor) from local ones (created via a
  * DI activity-source factory). A bitflag enum; {@link ACTIVITY_SOURCE_SCOPES_ALL}
  * is both.

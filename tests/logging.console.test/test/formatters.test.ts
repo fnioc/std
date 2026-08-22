@@ -230,9 +230,9 @@ test('json: error and scopes are included', () => {
 
   formatter.write(entry({ error }), scopeProviderWith('plain scope', [['RequestId', 'r-1']]), writer);
 
-  const parsed = JSON.parse(writer.toString()) as { Error: string; Scopes: unknown[]; };
+  const parsed = JSON.parse(writer.toString()) as { Error: string; Lifetime: unknown[]; };
   expect(parsed.Error).toBe('Error: boom\n    at somewhere');
-  expect(parsed.Scopes).toEqual(['plain scope', { Message: 'RequestId,r-1', RequestId: 'r-1' }]);
+  expect(parsed.Lifetime).toEqual(['plain scope', { Message: 'RequestId,r-1', RequestId: 'r-1' }]);
 });
 
 test('json: indented output honors the writer options', () => {

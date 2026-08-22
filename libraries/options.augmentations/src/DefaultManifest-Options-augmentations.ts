@@ -14,10 +14,10 @@ import type { DepTypes } from './dep-types.js';
 import { ensureOpenOptions } from './open-options.js';
 import { baseFactoryType, postConfigureStepType, validateStepType } from './option-types.js';
 
-// `Scopes` is defaulted so the merge matches its target's type-parameter list
+// `Lifetime` is defaulted so the merge matches its target's type-parameter list
 // (TS2428 requires identical parameters).
 declare module '@rhombus-std/di.core' {
-  interface Manifest<Scopes> {
+  interface Manifest<Lifetime> {
     /**
      * Offers `IOptions<any>` for the options type `optionsType`, taking its base
      * value from whatever `optionsType` itself resolves to.
@@ -27,35 +27,35 @@ declare module '@rhombus-std/di.core' {
      * answers every `IOptions<…>` request, and this call is what makes it answer
      * for this type. Distinct from the pipeline overload below by its arity.
      */
-    addOptions(optionsType: Type): Manifest<Scopes>;
+    addOptions(optionsType: Type): Manifest<Lifetime>;
     /**
      * Offers `IOptions<any>` for the options type `optionsType`, building its
      * value through the pipeline: `makeBase` produces the instance each run
      * starts from, and every configure / post-configure / validate step and
      * change-token source registered for `optionsType` then applies to it.
      */
-    addOptions(optionsType: Type, makeBase: Func<[], any>): Manifest<Scopes>;
+    addOptions(optionsType: Type, makeBase: Func<[], any>): Manifest<Lifetime>;
 
     /**
      * Registers a post-configure step for `optionsType`, run after every
      * configure step. Accepts a {@link IPostConfigureOptions} or a bare
      * `(options) => void` delegate.
      */
-    postConfigure(optionsType: Type, step: IPostConfigureOptions<any> | Func<[any], void>): Manifest<Scopes>;
+    postConfigure(optionsType: Type, step: IPostConfigureOptions<any> | Func<[any], void>): Manifest<Lifetime>;
     /**
      * The DI-injected post-configure step: resolves each type in `depTypes`
      * and passes the instances to `configureOptions` after the options value
      * — collapsed the same way as the dependency form of {@link configure}
      * above.
      */
-    postConfigure<Deps extends readonly unknown[]>(optionsType: Type, depTypes: DepTypes<Deps>, configureOptions: (options: any, ...deps: Deps) => void): Manifest<Scopes>;
+    postConfigure<Deps extends readonly unknown[]>(optionsType: Type, depTypes: DepTypes<Deps>, configureOptions: (options: any, ...deps: Deps) => void): Manifest<Lifetime>;
 
     /**
      * Registers a validate step for `optionsType`: `validate` runs against the
      * fully-configured value; a `false` result fails validation with
      * `failureMessage`.
      */
-    validate(optionsType: Type, validate: Func<[any], boolean>, failureMessage?: string): Manifest<Scopes>;
+    validate(optionsType: Type, validate: Func<[any], boolean>, failureMessage?: string): Manifest<Lifetime>;
 
     /**
      * The DI-injected validate step: resolves each type in `depTypes` and
@@ -63,7 +63,7 @@ declare module '@rhombus-std/di.core' {
      * result fails with `failureMessage` — collapsed the same way as the
      * dependency form of {@link configure} above.
      */
-    validate<Deps extends readonly unknown[]>(optionsType: Type, depTypes: DepTypes<Deps>, validate: (options: any, ...deps: Deps) => boolean, failureMessage?: string): Manifest<Scopes>;
+    validate<Deps extends readonly unknown[]>(optionsType: Type, depTypes: DepTypes<Deps>, validate: (options: any, ...deps: Deps) => boolean, failureMessage?: string): Manifest<Lifetime>;
   }
 }
 

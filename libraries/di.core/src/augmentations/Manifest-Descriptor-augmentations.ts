@@ -8,46 +8,46 @@ import { type Manifest } from '../Manifest';
 import { ConstantType, ServiceDescriptor } from '../ServiceDescriptor';
 
 declare module '@rhombus-std/di.core' {
-  interface Manifest<Scopes> {
+  interface Manifest<Lifetime> {
     /** Prepends `descriptor`, ahead of every descriptor already in the chain. */
-    add(descriptor: ServiceDescriptor<Scopes>): Manifest<Scopes>;
+    add(descriptor: ServiceDescriptor<Lifetime>): Manifest<Lifetime>;
     /**
      * Swaps in `descriptor` for the first descriptor occupying the same registration slot —
      * see {@link ServiceDescriptor.matches} — leaving every other descriptor untouched.
      */
-    replace(descriptor: ServiceDescriptor<Scopes>): Manifest<Scopes>;
+    replace(descriptor: ServiceDescriptor<Lifetime>): Manifest<Lifetime>;
     /** Drops the descriptor that is {@link ServiceDescriptor.equals} to `descriptor`, if one is present. */
-    remove(descriptor: ServiceDescriptor<Scopes>): Manifest<Scopes>;
+    remove(descriptor: ServiceDescriptor<Lifetime>): Manifest<Lifetime>;
 
     /** Adds every descriptor in `descriptors`, in order — the last one ends up newest. */
-    addMany(descriptors: Iterable<ServiceDescriptor<Scopes>>): Manifest<Scopes>;
+    addMany(descriptors: Iterable<ServiceDescriptor<Lifetime>>): Manifest<Lifetime>;
     /** Adds each descriptor whose registration slot no existing descriptor occupies. */
-    tryAdd(...descriptors: ReadonlyArray<ServiceDescriptor<Scopes>>): Manifest<Scopes>;
+    tryAdd(...descriptors: ReadonlyArray<ServiceDescriptor<Lifetime>>): Manifest<Lifetime>;
 
     /** Registers `ctor` — constructed with `new` — as the implementation of `serviceType`. */
-    add(serviceType: Type, ctor: Ctor, ctorType: ConstructorType, scope?: Scopes): Manifest<Scopes>;
+    add(serviceType: Type, ctor: Ctor, ctorType: ConstructorType, lifetime?: Lifetime): Manifest<Lifetime>;
     /** {@link Manifest.add}'s constructor shape, registering only when the slot is unclaimed. */
-    tryAdd(serviceType: Type, ctor: Ctor, ctorType: ConstructorType, scope?: Scopes): Manifest<Scopes>;
+    tryAdd(serviceType: Type, ctor: Ctor, ctorType: ConstructorType, lifetime?: Lifetime): Manifest<Lifetime>;
     /** {@link Manifest.add}'s constructor shape, swapping in for the registration already in the slot. */
-    replace(serviceType: Type, ctor: Ctor, ctorType: ConstructorType, scope?: Scopes): Manifest<Scopes>;
+    replace(serviceType: Type, ctor: Ctor, ctorType: ConstructorType, lifetime?: Lifetime): Manifest<Lifetime>;
 
     /** Registers `factory` — called, never `new`ed — as the producer of `serviceType`. */
-    add(serviceType: Type, factory: Func, factoryType: FunctionType, scope?: Scopes): Manifest<Scopes>;
+    add(serviceType: Type, factory: Func, factoryType: FunctionType, lifetime?: Lifetime): Manifest<Lifetime>;
     /** {@link Manifest.add}'s factory shape, registering only when the slot is unclaimed. */
-    tryAdd(serviceType: Type, factory: Func, factoryType: FunctionType, scope?: Scopes): Manifest<Scopes>;
+    tryAdd(serviceType: Type, factory: Func, factoryType: FunctionType, lifetime?: Lifetime): Manifest<Lifetime>;
     /** {@link Manifest.add}'s factory shape, swapping in for the registration already in the slot. */
-    replace(serviceType: Type, factory: Func, factoryType: FunctionType, scope?: Scopes): Manifest<Scopes>;
+    replace(serviceType: Type, factory: Func, factoryType: FunctionType, lifetime?: Lifetime): Manifest<Lifetime>;
 
     /**
      * Registers `value` under `serviceType` as it stands: it is handed back on resolution, never
      * constructed or called. The {@link ConstantType} marker is what says so — a callable's own
      * type cannot, so the call site carries the choice.
      */
-    add(serviceType: Type, value: unknown, valueType: ConstantType): Manifest<Scopes>;
+    add(serviceType: Type, value: unknown, valueType: ConstantType): Manifest<Lifetime>;
     /** {@link Manifest.add}'s value shape, registering only when the slot is unclaimed. */
-    tryAdd(serviceType: Type, value: unknown, valueType: ConstantType): Manifest<Scopes>;
+    tryAdd(serviceType: Type, value: unknown, valueType: ConstantType): Manifest<Lifetime>;
     /** {@link Manifest.add}'s value shape, swapping in for the registration already in the slot. */
-    replace(serviceType: Type, value: unknown, valueType: ConstantType): Manifest<Scopes>;
+    replace(serviceType: Type, value: unknown, valueType: ConstantType): Manifest<Lifetime>;
 
     /**
      * Opens a registration chain for `serviceType`: choose the implementer through one of the
@@ -55,12 +55,12 @@ declare module '@rhombus-std/di.core' {
      * {@link ServiceDescriptor} — hand it to the descriptor-taking verbs, hold it in a variable,
      * or build several in a helper and register them together.
      */
-    describe(serviceType: Type): ServiceDescriptorBuilderFor<any, Scopes>;
+    describe(serviceType: Type): ServiceDescriptorBuilderFor<any, Lifetime>;
 
     /** Drops the first descriptor registered for `serviceType`, if one is present. */
-    remove(serviceType: Type): Manifest<Scopes>;
+    remove(serviceType: Type): Manifest<Lifetime>;
     /** Drops every descriptor registered for `serviceType`, leaving every other entry untouched. */
-    removeAll(serviceType: Type): Manifest<Scopes>;
+    removeAll(serviceType: Type): Manifest<Lifetime>;
   }
 }
 
@@ -102,14 +102,14 @@ registerAugmentations<Manifest<any>>({
 });
 
 registerAugmentations<Manifest<any>>({
-  add(this: Manifest<any>, serviceType: Type, implementer: unknown, implementerType: ConstructorType | FunctionType | ConstantType, scope?: any): Manifest<any> {
-    return this.add(toDescriptor(serviceType, implementer, implementerType, scope));
+  add(this: Manifest<any>, serviceType: Type, implementer: unknown, implementerType: ConstructorType | FunctionType | ConstantType, lifetime?: any): Manifest<any> {
+    return this.add(toDescriptor(serviceType, implementer, implementerType, lifetime));
   },
-  tryAdd(this: Manifest<any>, serviceType: Type, implementer: unknown, implementerType: ConstructorType | FunctionType | ConstantType, scope?: any): Manifest<any> {
-    return this.tryAdd(toDescriptor(serviceType, implementer, implementerType, scope));
+  tryAdd(this: Manifest<any>, serviceType: Type, implementer: unknown, implementerType: ConstructorType | FunctionType | ConstantType, lifetime?: any): Manifest<any> {
+    return this.tryAdd(toDescriptor(serviceType, implementer, implementerType, lifetime));
   },
-  replace(this: Manifest<any>, serviceType: Type, implementer: unknown, implementerType: ConstructorType | FunctionType | ConstantType, scope?: any): Manifest<any> {
-    return this.replace(toDescriptor(serviceType, implementer, implementerType, scope));
+  replace(this: Manifest<any>, serviceType: Type, implementer: unknown, implementerType: ConstructorType | FunctionType | ConstantType, lifetime?: any): Manifest<any> {
+    return this.replace(toDescriptor(serviceType, implementer, implementerType, lifetime));
   },
 });
 
@@ -120,12 +120,12 @@ registerAugmentations<Manifest<any>>({
 });
 
 /** The descriptor the uniform three-argument shape describes, its door chosen by the implementer type's kind. */
-function toDescriptor(serviceType: Type, implementer: unknown, implementerType: ConstructorType | FunctionType | ConstantType, scope?: unknown): ServiceDescriptor<unknown> {
+function toDescriptor(serviceType: Type, implementer: unknown, implementerType: ConstructorType | FunctionType | ConstantType, lifetime?: unknown): ServiceDescriptor<unknown> {
   switch (implementerType.kind) {
     case 'ctor':
-      return ServiceDescriptor.ctor(serviceType, implementer as Ctor, implementerType, scope);
+      return ServiceDescriptor.ctor(serviceType, implementer as Ctor, implementerType, lifetime);
     case 'func':
-      return ServiceDescriptor.factory(serviceType, implementer as Func, implementerType, scope);
+      return ServiceDescriptor.factory(serviceType, implementer as Func, implementerType, lifetime);
     case 'constant':
       return ServiceDescriptor.value(serviceType, implementer);
     default:

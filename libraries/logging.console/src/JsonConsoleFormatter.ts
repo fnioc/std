@@ -138,7 +138,7 @@ export class JsonConsoleFormatter extends ConsoleFormatter implements Disposable
 
     const scopes = this.#collectScopes(scopeProvider);
     if (scopes !== undefined) {
-      entry['Scopes'] = scopes;
+      entry['Lifetime'] = scopes;
     }
 
     const writerOptions = this.formatterOptions.jsonWriterOptions;

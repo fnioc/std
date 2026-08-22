@@ -15,13 +15,13 @@ import { registerInlineBodies, typefor } from '@rhombus-std/primitives.extras';
 // A named import (not a member reference inside the augmentation block) because
 // unqualified names in a `declare module` body resolve in THIS file's scope.
 declare module '@rhombus-std/di.core' {
-  interface Manifest<Scopes> {
+  interface Manifest<Lifetime> {
     /**
      * Offers `IOptions<T>`, taking its base value from whatever `T` itself
      * resolves to. Returns a NEW manifest carrying the registration — the
      * result must be kept.
      */
-    addOptions<T>(): Manifest<Scopes>;
+    addOptions<T>(): Manifest<Lifetime>;
   }
 }
 

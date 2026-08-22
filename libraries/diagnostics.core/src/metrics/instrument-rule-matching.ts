@@ -64,7 +64,7 @@ export function instrumentRuleMatches(rule: InstrumentRule, query: InstrumentRul
     return false;
   }
 
-  // Scopes: the rule must cover the instrument's scope.
+  // Lifetime: the rule must cover the instrument's scope.
   const scopeCovered = query.isLocalScope
     ? (rule.scopes & MeterScope.Local) !== 0
     : (rule.scopes & MeterScope.Global) !== 0;

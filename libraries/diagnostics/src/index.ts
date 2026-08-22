@@ -73,7 +73,7 @@ export namespace ServiceManifestMetricsAugmentations {
     if (configure) {
       // The cast works around a TS structural-comparison depth limit -- see
       // clearMetricsListeners in @rhombus-std/diagnostics.core for the full
-      // explanation. `MetricsBuilder`'s ctor takes the Scopes-erased
+      // explanation. `MetricsBuilder`'s ctor takes the Lifetime-erased
       // `Manifest`; `m`'s huge `addClass`/`addFactory` overload surface
       // (di.core's descriptor augmentation merge) pushes the
       // direct-assignment check past TS's recursion budget.
@@ -114,17 +114,17 @@ export namespace ServiceManifestTracingAugmentations {
   }
 }
 
-// `Scopes` is defaulted so the merge matches its target's type-parameter list
+// `Lifetime` is defaulted so the merge matches its target's type-parameter list
 // (TS2428 requires identical parameters).
 declare module '@rhombus-std/di.core' {
-  interface Manifest<Scopes> {
-    addMetrics(configure?: Func<[IMetricsBuilder], void>): Manifest<Scopes>;
+  interface Manifest<Lifetime> {
+    addMetrics(configure?: Func<[IMetricsBuilder], void>): Manifest<Lifetime>;
   }
 }
 
 declare module '@rhombus-std/di.core' {
-  interface Manifest<Scopes> {
-    addTracing(configure?: Func<[ITracingBuilder], void>): Manifest<Scopes>;
+  interface Manifest<Lifetime> {
+    addTracing(configure?: Func<[ITracingBuilder], void>): Manifest<Lifetime>;
   }
 }
 

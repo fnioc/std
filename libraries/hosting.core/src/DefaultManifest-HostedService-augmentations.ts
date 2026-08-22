@@ -56,12 +56,12 @@ export namespace ServiceManifestHostedServiceAugmentations {
   }
 }
 
-// `Scopes` is defaulted so the merge's type-parameter list matches the target's
+// `Lifetime` is defaulted so the merge's type-parameter list matches the target's
 // (TS2428 requires identical parameters).
 declare module '@rhombus-std/di.core' {
-  interface Manifest<Scopes> {
-    addHostedService(implementationFactory: Func<[IServiceProvider], IHostedService>): Manifest<Scopes>;
-    addHostedService(ctor: Ctor, implementerType?: ConstructorType): Manifest<Scopes>;
+  interface Manifest<Lifetime> {
+    addHostedService(implementationFactory: Func<[IServiceProvider], IHostedService>): Manifest<Lifetime>;
+    addHostedService(ctor: Ctor, implementerType?: ConstructorType): Manifest<Lifetime>;
   }
 }
 

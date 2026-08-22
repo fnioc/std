@@ -84,7 +84,7 @@ export function tracingRuleMatches(rule: TracingRule, query: TracingRuleQuery): 
     }
   }
 
-  // Scopes: the rule must cover the source's scope.
+  // Lifetime: the rule must cover the source's scope.
   const requiredScope = query.isLocalScope ? ActivitySourceScopes.Local : ActivitySourceScopes.Global;
   if ((rule.scopes & requiredScope) === 0) {
     return false;

@@ -50,9 +50,9 @@ export namespace MetricsBuilderAugmentations {
   /** Removes all {@link IMetricsListener} registrations from the builder. */
   export function clearMetricsListeners<Self extends IMetricsBuilder>(this: Self): Self {
     // The cast works around a TS structural-comparison depth limit: `services`'s
-    // declared type (`Manifest`, Scopes defaulted) and
-    // `removeAll`'s return (`Manifest<Scopes>`, Scopes bound to
-    // `IServiceProvider<Scopes>`) are the same interface at two instantiations
+    // declared type (`Manifest`, Lifetime defaulted) and
+    // `removeAll`'s return (`Manifest<Lifetime>`, Lifetime bound to
+    // `IServiceProvider<Lifetime>`) are the same interface at two instantiations
     // that differ only in a covariant position -- genuinely assignable -- but the
     // overload surface `Manifest` carries pushes TS's relationship
     // check past its recursion budget, which it resolves as "not assignable"
