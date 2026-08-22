@@ -229,12 +229,18 @@ whole set is decided fresh when the slots above are rewritten, so this is a demo
 
 ## Inline discovery
 
-- [ ] Issue #365 — `registerInlineBodies` is still a doc-only no-op, and discovery still reads the
-      `rhombus-std.json` publish list rather than marker calls (claim by owning package + member name off the
-      checker's resolved overload, rest bodies over declared faces). Go side only.
+- [ ] Issue #365, corrected scope (owner ruling 2026-08-21) — `registerInlineBodies` marker calls become a
+      discovery channel **IN ADDITION TO** the `rhombus-std.json` publish list, which STAYS: not all inlinables
+      are augmentations, so the JSON mechanism is not retired. A member may carry **multiple**
+      `registerInlineBodies` calls, each supplying a DIFFERENT overload signature with its own implementation;
+      the engine selects the body whose signature matches the checker's resolved overload at the call site. A
+      rest-parameter body is one authoring choice among several — permitted where written, NEVER a requirement
+      of the mechanism. Go side only.
 
-- [ ] **The `*.extras` repattern, the TypeScript half of #365.** `getService` still has separate typed bodies
-      rather than collapsing to one overload set with a single rest body, the same shape `add` now has — blocked
+- [ ] **The `*.extras` repattern, the TypeScript half of #365.** Once marker discovery lands, the augmentation
+      sets' instance entries move out of `rhombus-std.json` and into per-overload `registerInlineBodies` calls
+      (the JSON list stays for non-augmentation inlinables). The `getService` family keeps per-overload bodies —
+      each registration carrying its own signature + implementation — not a single collapsed rest body. Blocked
       on the Go half landing first.
 
 ## Housekeeping
