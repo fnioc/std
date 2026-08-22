@@ -234,9 +234,12 @@ whole set is decided fresh when the slots above are rewritten, so this is a demo
       are augmentations, so the JSON mechanism is not retired. Registrations ACCUMULATE, partitioned however
       the author likes: one `registerInlineBodies` call may supply a single overload's body, several overloads'
       bodies, or all of them, and further calls may add more — the engine's unit is the (member, overload
-      signature) pair regardless of which call carried it, and it selects the body whose signature matches the
-      checker's resolved overload at the call site — when more than one registered body is compatible with the
-      call, the LONGEST compatible overload wins (owner ruling 2026-08-21). A
+      signature) pair regardless of which call carried it. Selection (owner ruling 2026-08-21, supersedes the
+      longest-compatible rule): **the engine performs NO overload resolution of its own** — the overload the
+      checker resolved the call to (the one the user's intellisense displays as selected) IS the selection, and
+      the engine inlines the body registered for exactly that signature. A resolved face with no registered
+      body is a loud build error, never a nearest-match substitution — the inlined reality must always be the
+      signature the author saw. A
       rest-parameter body is one authoring choice among several — permitted where written, NEVER a requirement
       of the mechanism. Go side only.
 
