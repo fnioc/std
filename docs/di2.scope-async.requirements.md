@@ -341,7 +341,12 @@ Weigh EVERY design decision in this document against this split.
   lifetime data draw from one vocabulary (what you pass at creation is what registrations
   reference to match it). Creation-ONLY config that is not lifetime vocabulary is model-side: a
   model registers its own richer factory type beside the well-known address (per-model `Func`
-  spellings stay legal); `TLifetime` never carries values no registration may hold.
+  spellings stay legal); `TLifetime` never carries values no registration may hold. CONVENIENCE
+  MEMBER (owner-proposed, endorsed): `sp.createScope(scope?: TLifetime)` — pure forwarding sugar
+  over resolving the well-known address (the `getServiceAsync` pattern; adds no capability),
+  giving users a typed, discoverable creation entrypoint. Placement flag: it lives on the
+  ENGINE-TYPED provider surface only — primitives' universal `IServiceProvider` stays generic-free
+  (adding `TLifetime` there would infect every library signature).
 - Creation is RESOLUTION-DRIVEN: scope factories are registered in the manifest and obtained
   through `getService`, like any service. The sole structural exception is the GENESIS: the root
   ctx is minted at provider build. Installing a scope model = its door + its genesis + its
