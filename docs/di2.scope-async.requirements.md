@@ -290,8 +290,9 @@ Weigh EVERY design decision in this document against this split.
   registrations into a throwaway manifest typed for the lib's model, map each descriptor's
   lifetime through a translation fn (new descriptor objects, everything else spread through), and
   feed the result to the app manifest via the `add(Iterable<ServiceDescriptor>)` overload.
-  Formalization notes: preserve all non-datum descriptor fields; once ManifestScope lands, the
-  iteration path must carry scope provenance.
+  Formalization notes: preserve all non-datum descriptor fields. Scope-fragment re-rooting is
+  ruled OUT (owner) — the translation layer handles flat registration sets only; a self-scoped
+  library is outside its scope.
 
 ## Scope creation
 
