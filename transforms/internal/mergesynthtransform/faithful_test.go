@@ -92,7 +92,7 @@ func TestRecordInsideAnArrayIsNotWavedThrough(t *testing.T) {
 // would widen dispatch for nothing.
 func TestSymbolKeyedMemberCostsOnlyItsOwnClause(t *testing.T) {
 	out, diags := run(t, setOptionsFixture(`
-declare const MARK: unique symbol;
+const MARK: unique symbol = Symbol("m");
 export class R2 { public [MARK]: string = "t"; public host: string = ""; }
 `, "R2"))
 	assertNoMangledKey(t, out)

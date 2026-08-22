@@ -17,6 +17,13 @@
 // names all three internally with a mangled, unmatchable property name; the
 // tests here are on the DECLARATION's shape, never on that name.
 //
+// A PHANTOM member is skipped into a count of its own (Surface.Phantom), because
+// it is not a member a value ever carries: its key is a `declare`d const in an
+// implementation file, which emits no binding for anything to key on. Reporting
+// it as hidden would ask a caller to refuse over a member that cannot be supplied
+// in the first place, while dropping it silently would leave a consumer that
+// enumerates members some other way to key on it unwarned.
+//
 // A get/set accessor IS part of the surface, enumerated as an ordinary member;
 // read its type through Member.Decl, which yields the accessor's declared type.
 // Static members never appear — an instance type's properties do not include
@@ -41,6 +48,7 @@ package typesurface
 import (
 	shimast "github.com/microsoft/typescript-go/shim/ast"
 	shimchecker "github.com/microsoft/typescript-go/shim/checker"
+	shimtspath "github.com/microsoft/typescript-go/shim/tspath"
 	"github.com/samchon/ttsc/packages/ttsc/driver"
 )
 
@@ -68,6 +76,12 @@ type Surface struct {
 	ModifierHidden int
 	// SymbolKeyed counts skipped symbol-keyed members.
 	SymbolKeyed int
+	// Phantom counts skipped members whose key never exists at runtime. They are
+	// not part of Hidden(): nothing is withheld from a consumer by leaving out a
+	// member no value carries. A consumer that reads members through some OTHER
+	// enumeration still has to know they were declared, since that enumeration
+	// will key on them.
+	Phantom int
 	// HasAccessor reports whether any surviving member is a get/set accessor.
 	HasAccessor bool
 }
@@ -139,7 +153,11 @@ func For(checker *shimchecker.Checker, t *shimchecker.Type, anchor *shimast.Node
 			surface.ModifierHidden++
 			continue
 		case isSymbolKeyed(checker, decl):
-			surface.SymbolKeyed++
+			if isPhantomKeyed(checker, decl) {
+				surface.Phantom++
+			} else {
+				surface.SymbolKeyed++
+			}
 			continue
 		}
 		if decl == nil {
@@ -249,6 +267,56 @@ func isSymbolKeyed(checker *shimchecker.Checker, decl *shimast.Node) bool {
 		return true
 	}
 	return nameType.Flags()&shimchecker.TypeFlagsESSymbolLike != 0
+}
+
+// isPhantomKeyed reports whether a symbol-keyed member's key provably never
+// exists at runtime, which makes the member unreachable rather than merely
+// unnameable. A `declare`d binding in an implementation file emits nothing, so
+// the symbol it names is never constructed and no value can carry a property
+// keyed on it — a brand written purely to separate two structurally identical
+// types is the shape. The same declaration in a `.d.ts` file DESCRIBES a binding
+// that some emitted module really creates — a well-known symbol, a compiled
+// package's own brand — so it stays symbol-keyed and counted.
+//
+// The key is reached through the name's TYPE rather than the name itself, so an
+// imported brand is judged at the const it ultimately names instead of at the
+// import specifier standing in for it. Every declaration has to qualify: one that
+// emits is enough for the key to exist, and an unresolvable name proves nothing
+// either way.
+func isPhantomKeyed(checker *shimchecker.Checker, decl *shimast.Node) bool {
+	if checker == nil || decl == nil {
+		return false
+	}
+	name := decl.Name()
+	if name == nil || name.Kind != shimast.KindComputedPropertyName {
+		return false
+	}
+	expr := name.AsComputedPropertyName().Expression
+	if expr == nil || expr.Pos() < 0 {
+		return false
+	}
+	nameSymbol := checker.GetSymbolAtLocation(expr)
+	if nameSymbol == nil {
+		return false
+	}
+	nameType := shimchecker.Checker_getTypeOfSymbol(checker, nameSymbol)
+	if nameType == nil {
+		return false
+	}
+	keySymbol := nameType.Symbol()
+	if keySymbol == nil || len(keySymbol.Declarations) == 0 {
+		return false
+	}
+	for _, keyDecl := range keySymbol.Declarations {
+		if shimast.GetCombinedModifierFlags(keyDecl)&shimast.ModifierFlagsAmbient == 0 {
+			return false
+		}
+		file := shimast.GetSourceFileOfNode(keyDecl)
+		if file == nil || shimtspath.IsDeclarationFileName(file.FileName()) {
+			return false
+		}
+	}
+	return true
 }
 
 // FromLibrary reports whether t is a NOMINAL built-in: a class or interface

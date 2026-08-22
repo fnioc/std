@@ -15,7 +15,18 @@ import (
 // the declared type of `export declare const probe: <name>`.
 func load(t *testing.T, source, name string) (*driver.Program, *shimchecker.Checker, *shimchecker.Type) {
 	t.Helper()
+	return loadWith(t, source, name, nil)
+}
+
+// loadWith is load with sibling files written beside `app.ts`, keyed by file
+// name — a neighbour the fixture imports from, reached by resolution rather than
+// by the `files` list.
+func loadWith(t *testing.T, source, name string, siblings map[string]string) (*driver.Program, *shimchecker.Checker, *shimchecker.Type) {
+	t.Helper()
 	root := t.TempDir()
+	for fileName, content := range siblings {
+		write(t, filepath.Join(root, fileName), content)
+	}
 	write(t, filepath.Join(root, "app.ts"), source+"\nexport declare const probe: "+name+";\n")
 	write(t, filepath.Join(root, "tsconfig.json"), `{
   "compilerOptions": {
@@ -309,5 +320,87 @@ export class C {
 	}
 	if surface.SymbolKeyed != 2 {
 		t.Errorf("SymbolKeyed = %d; want 2 (the `unique symbol` const and the well-known symbol)", surface.SymbolKeyed)
+	}
+}
+
+// A `declare`d const in an implementation file emits no binding, so no value can
+// carry a property keyed on the symbol it names. Such a member is not part of the
+// surface at all — leaving it out of the count is what keeps a consumer from
+// refusing over a member nothing could have supplied.
+func TestAmbientKeyInAnImplementationFileIsNotAMember(t *testing.T) {
+	prog, checker, t0 := load(t, `
+declare const BRAND: unique symbol;
+export interface Branded {
+  readonly [BRAND]: void;
+  host: string;
+}
+`, "Branded")
+	defer func() { _ = prog.Close() }()
+
+	surface := For(checker, t0, nil)
+	got := names(surface)
+	want := []string{"host"}
+	if strings.Join(got, ",") != strings.Join(want, ",") {
+		t.Errorf("members = %v; want %v", got, want)
+	}
+	if surface.SymbolKeyed != 0 {
+		t.Errorf("SymbolKeyed = %d; want 0 (the brand emits no binding to key on)", surface.SymbolKeyed)
+	}
+	if surface.Phantom != 1 {
+		t.Errorf("Phantom = %d; want 1 — a consumer enumerating members some other way still keys on it", surface.Phantom)
+	}
+	if surface.Hidden() != 0 {
+		t.Errorf("Hidden() = %d; want 0 — nothing is withheld by leaving out a member no value carries", surface.Hidden())
+	}
+}
+
+// The brand is judged at the const it names, not at the import specifier
+// standing in for it: importing it changes nothing about whether a binding is
+// emitted.
+func TestAmbientKeyIsPhantomThroughAnImport(t *testing.T) {
+	prog, checker, t0 := loadWith(t, `
+import { BRAND } from "./brand.ts";
+export interface Branded {
+  readonly [BRAND]: void;
+  host: string;
+}
+`, "Branded", map[string]string{
+		"brand.ts": "export declare const BRAND: unique symbol;\n",
+	})
+	defer func() { _ = prog.Close() }()
+
+	surface := For(checker, t0, nil)
+	if got := names(surface); strings.Join(got, ",") != "host" {
+		t.Errorf("members = %v; want [host]", got)
+	}
+	if surface.SymbolKeyed != 0 {
+		t.Errorf("SymbolKeyed = %d; want 0 (the imported brand emits no binding either)", surface.SymbolKeyed)
+	}
+}
+
+// A `.d.ts` declaration DESCRIBES a binding some emitted module really creates,
+// so a value can carry the key. That member keeps its place in the count and the
+// refusal it drives.
+func TestAmbientKeyDeclaredInADeclarationFileStaysCounted(t *testing.T) {
+	prog, checker, t0 := loadWith(t, `
+import { BRAND } from "./brand.js";
+export interface Branded {
+  readonly [BRAND]: void;
+  host: string;
+}
+`, "Branded", map[string]string{
+		"brand.d.ts": "export declare const BRAND: unique symbol;\n",
+	})
+	defer func() { _ = prog.Close() }()
+
+	surface := For(checker, t0, nil)
+	if got := names(surface); strings.Join(got, ",") != "host" {
+		t.Errorf("members = %v; want [host]", got)
+	}
+	if surface.SymbolKeyed != 1 {
+		t.Errorf("SymbolKeyed = %d; want 1 (a declaration file describes a real binding)", surface.SymbolKeyed)
+	}
+	if surface.Phantom != 0 {
+		t.Errorf("Phantom = %d; want 0", surface.Phantom)
 	}
 }

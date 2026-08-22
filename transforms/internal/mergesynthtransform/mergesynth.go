@@ -1108,8 +1108,10 @@ func (s *synthesizer) nominalGuard(
 // set-only accessor — keeps the object floor and nothing else: per-member clauses
 // would be keyed on names no value carries. The same holds one member at a time:
 // a symbol-keyed member is one a caller CAN supply but no string key reads, so
-// the clauses around it stand while its absence is reported. `internal/schema`
-// refuses the mirror-image shape (nothing WRITABLE) on the same predicate.
+// the clauses around it stand while its absence is reported. A member whose key
+// never exists at runtime is not reported at all — there is no value carrying it
+// for a caller to have lost. `internal/schema` refuses the mirror-image shape
+// (nothing WRITABLE) on the same predicate.
 func (s *synthesizer) objectGuard(
 	context nativecontext.ITypiaContext,
 	t *shimchecker.Type,
@@ -1393,8 +1395,11 @@ func (s *synthesizer) objectFaithful(t *shimchecker.Type, seen map[*shimchecker.
 	indexInfos := shimchecker.Checker_getIndexInfosOfType(s.checker, t)
 	surface := typesurface.For(s.checker, t, nil)
 	switch {
-	// Keyed on the checker's internal mangled name, which no object carries.
-	case surface.PrivateNamed > 0 || surface.SymbolKeyed > 0:
+	// Keyed on the checker's internal mangled name, which no object carries. A
+	// phantom member counts here even though nothing needs checking for it: typia
+	// enumerates the declaration either way, so the mangled key still reaches the
+	// emit.
+	case surface.PrivateNamed > 0 || surface.SymbolKeyed > 0 || surface.Phantom > 0:
 		return false
 	// Skipped outright, so the member goes unchecked. typia decides this on the
 	// member's DECLARATION, so it holds through a mapped type (`Partial<T>`,

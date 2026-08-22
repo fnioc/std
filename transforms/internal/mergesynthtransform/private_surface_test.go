@@ -286,3 +286,29 @@ registerAugmentations("t:IAlpha", AlphaExtensions);
 		t.Errorf("the sibling member lost its clause:\n%s", guard)
 	}
 }
+
+// A `declare`d const in an implementation file emits no binding, so the member it
+// keys is one no value ever carries. There is nothing for a caller to act on:
+// refusing over it would report a gap that cannot be closed, while the clauses
+// beside it are complete on their own.
+func TestPhantomSymbolNameIsNotRefused(t *testing.T) {
+	out, diags := run(t, `
+declare const BRAND: unique symbol;
+export interface Branded { readonly [BRAND]: void; tag: string; }
+export const AlphaExtensions = {
+  setOptions(o: Branded): void {},
+};
+registerAugmentations("t:IAlpha", AlphaExtensions);
+`)
+	if len(diags) != 0 {
+		t.Fatalf("unexpected diagnostics: %+v", diags)
+	}
+	guard := strategyText(t, out, "setOptions")
+	if strings.Contains(guard, "BRAND") || strings.Contains(guard, "@@") {
+		t.Errorf("a symbol-named member reached the emit as a key:\n%s", guard)
+	}
+	assertNoMangledKey(t, guard)
+	if !strings.Contains(guard, "input.tag") {
+		t.Errorf("the sibling member lost its clause:\n%s", guard)
+	}
+}
