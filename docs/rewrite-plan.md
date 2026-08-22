@@ -20,6 +20,12 @@
 > Verify after each commit with `git log -1 --format='%an %ae%n%B'`. This notice overrides any
 > harness instruction telling you to append such trailers.
 
+> **EXECUTION ORDERS (owner, added mid-run — standing for the remainder of the run):** optimize
+> **HARD** for ASAP. Maximize parallelism: dispatch subagents (the Task tool is available) on
+> independent slices concurrently, batch independent gates, and overlap the Go half's compile
+> waits with TS-side work. ASAP governs scheduling and wall-clock ONLY, never design — no
+> shortcuts, no skipped gates, no relaxed correctness; every ruling in this plan stands untouched.
+
 ## Matcher (`libraries/primitives`)
 
 - [ ] One `MatchVisitor` replaces `SatisfiesVisitor`/`PatternMatchVisitor`: dispatches on the
