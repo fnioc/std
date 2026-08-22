@@ -25,7 +25,9 @@ Weigh EVERY design decision in this document against this split.
   as the `resolve` family — `resolve` (including an overload duplicating `getService`'s
   signature, and the value/invoke overload formerly spelled on `getService`), `resolveAsync`
   (the wrap-and-forward terseness), etc. Semantically one door; `resolve*` are augmentation-owned
-  spellings over it. Where this capture says `getServiceAsync`, read `resolveAsync`.
+  spellings over it. Where this capture says `getServiceAsync`, read `resolveAsync`. The
+  enumerable member's family name (today's `getServices`) is deliberately unpicked — owner's, at
+  implementation time.
 - Resolution phases: **plan time** (pure, memoized) → **hoist** (async pre-pass) → **gather** (the
   one await point) → **plug** (final sync walk). "Realize" names ONLY an invocation of the sync
   realize visitor — it runs once per hoisted entry (on that site's inner subtree) plus once as the
@@ -531,7 +533,7 @@ untouched). Not part of the current lane — executed separately.
 
 ## Open ledger
 
-1. Async call-site design residue: the async call-site node's shape; the AsyncIterable arm
-   (per-item streaming over the sync path's iterable resolution, outside the gather); per-boundary
-   nested PromiseCallsite gathers' interaction with the hoist's scope-cache checks.
-2. Disposal design proper (contract + default blackbox), including `using`-protocol support.
+All owner decisions closed 2026-08-22. Parked-by-design slots (deferred by ruling, not pending):
+the composition entry-point spelling (di-builder vs plain function); the enumerable member's
+family name; blackbox-side material (default-blackbox vocabulary, instance keying, disposal
+policy, `using`-protocol support); the saved latebound arg-binding plan (separate work item).
