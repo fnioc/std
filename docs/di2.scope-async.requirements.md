@@ -26,8 +26,8 @@ Weigh EVERY design decision in this document against this split.
   signature, and the value/invoke overload formerly spelled on `getService`), `resolveAsync`
   (the wrap-and-forward terseness), etc. Semantically one door; `resolve*` are augmentation-owned
   spellings over it. Where this capture says `getServiceAsync`, read `resolveAsync`. The
-  enumerable member's family name (today's `getServices`) is deliberately unpicked — owner's, at
-  implementation time.
+  enumerable member is `resolveMany<T>()` ⇒ `resolve<Iterable<T>>()` (owner-ruled) — the same
+  one-door forwarding as `resolveAsync`.
 - Resolution phases: **plan time** (pure, memoized) → **hoist** (async pre-pass) → **gather** (the
   one await point) → **plug** (final sync walk). "Realize" names ONLY an invocation of the sync
   realize visitor — it runs once per hoisted entry (on that site's inner subtree) plus once as the
@@ -534,6 +534,7 @@ untouched). Not part of the current lane — executed separately.
 ## Open ledger
 
 All owner decisions closed 2026-08-22. Parked-by-design slots (deferred by ruling, not pending):
-the composition entry-point spelling (di-builder vs plain function); the enumerable member's
-family name; blackbox-side material (default-blackbox vocabulary, instance keying, disposal
+the composition entry-point spelling (di-builder vs plain function); validation issues
+(including whether provider build asserts the required `createScope` registration — punted,
+owner); blackbox-side material (default-blackbox vocabulary, instance keying, disposal
 policy, `using`-protocol support); the saved latebound arg-binding plan (separate work item).
