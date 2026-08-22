@@ -7,6 +7,14 @@
 > capture) and `di2.scope-notes.md` (scope research inputs). Delete once the rulings land in the
 > decision records and code.
 
+## Principle — THE UNTHINKING PATH RUNS THE DEFAULT MODEL
+
+The user who never makes a choice gets the default — so every stability guarantee attaches to
+defaults, and every freedom attaches to deliberate opt-ins. Judge each default by the user who
+will never think about it (conventional, stable, frozen at birth); judge each capability by the
+user who deliberately swaps it in (total, unhedged power — IoC applied to the container itself).
+Weigh EVERY design decision in this document against this split.
+
 ## Vocabulary
 
 - "Scope", unqualified, names the PROVIDER-side runtime scope. The composition-side construct is
