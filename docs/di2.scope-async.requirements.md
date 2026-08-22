@@ -98,6 +98,9 @@ Weigh EVERY design decision in this document against this split.
   fresh per iteration, short-circuit skips construction, an unsatisfiable element throws from its
   step). Re-iteration pin **(proposed)**: each `Symbol.iterator`/`Symbol.asyncIterator` call mints
   a FRESH walk — never a one-shot iterator object; a stable snapshot is spelled `Array<T>`.
+  KNOWN ENGINE DELTA (owner-flagged): the live engine currently realizes `Iterable` and `Array`
+  through IDENTICAL logic — the consult-time split above is unimplemented and must be addressed
+  when the aggregate arms land.
 - THE ASYNCITERABLE ARM **(proposed)**: the `AsyncIterableCallsite`'s fallback (after exact match,
   like every arm) plans the SAME element sites the sync `Iterable<E>` arm produces, but each
   element subtree walks under its own clean collection — PER-ELEMENT inventories, so an element's
