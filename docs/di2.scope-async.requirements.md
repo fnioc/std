@@ -285,7 +285,13 @@ Weigh EVERY design decision in this document against this split.
   domain stays whole); the default model becomes the de facto standard organically because libs
   target it, and an app on an exotic engine knowingly accepts lib-compat friction (voluntary
   engine-shipped adapters, or forgoing the lib). Companion convention: library augmentations are
-  written `this: Manifest<L>` with a per-function generic, never `Manifest<any>`.
+  written `this: Manifest<L>` with a per-function generic, never `Manifest<any>`. Workaround on
+  record (owner; formalization deferred): translate at the boundary — build the lib's
+  registrations into a throwaway manifest typed for the lib's model, map each descriptor's
+  lifetime through a translation fn (new descriptor objects, everything else spread through), and
+  feed the result to the app manifest via the `add(Iterable<ServiceDescriptor>)` overload.
+  Formalization notes: preserve all non-datum descriptor fields; once ManifestScope lands, the
+  iteration path must carry scope provenance.
 
 ## Scope creation
 
