@@ -70,6 +70,25 @@ export class CycleError extends DiError {
   }
 }
 
+/**
+ * The installed lifetime model threw while realizing {@link serviceType} — the model's own code,
+ * not the construction it was asked to perform. The model's error is the `cause`.
+ *
+ * @remarks
+ * Deliberately not an {@link UnsatisfiableError}: a throwing model is a fault in the installed
+ * engine rather than a candidate to fall back from.
+ */
+export class LifetimeModelError extends DiError {
+  /** The service type whose realization the model failed. */
+  readonly serviceType: Type;
+
+  constructor(serviceType: Type, cause: unknown) {
+    super(`the lifetime model failed realizing ${Type.stringify(serviceType)}`, { cause });
+    this.name = 'LifetimeModelError';
+    this.serviceType = serviceType;
+  }
+}
+
 /** One registration that could not be lowered. */
 export interface ValidationFailure {
   /** The service type of the registration that failed. */

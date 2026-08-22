@@ -1,5 +1,6 @@
-import { type LifetimeModel, ServiceDescriptor } from '@rhombus-std/di.core';
+import { type LifetimeModel, LifetimeModelError, ServiceDescriptor } from '@rhombus-std/di.core';
 import type { IServiceProvider } from '@rhombus-std/primitives';
+import type { Func } from '@rhombus-toolkit/func';
 import { assertNever } from '@rhombus-toolkit/type-guards';
 import type { Engine } from '../Engine.js';
 import type { ArrayCallSite, CallSite, ConstantCallSite, CtorCallSite, FactoryCallSite, IterableCallSite, LateBoundCallSite, ServiceProviderCallSite } from './CallSite.js';
@@ -51,11 +52,38 @@ class RealizeVisitor {
   }
 
   protected visitCtor(site: CtorCallSite, model: LifetimeModel): any {
-    return model.realize(site, site.serviceType, site.descriptor, descendantModel => new site.ctor(...site.args.map(arg => this.visit(arg, descendantModel))));
+    return this.#realize(site, model, descendantModel => new site.ctor(...site.args.map(arg => this.visit(arg, descendantModel))));
   }
 
   protected visitFactory(site: FactoryCallSite, model: LifetimeModel): any {
-    return model.realize(site, site.serviceType, site.descriptor, descendantModel => site.factory(...site.args.map(arg => this.visit(arg, descendantModel))));
+    return this.#realize(site, model, descendantModel => site.factory(...site.args.map(arg => this.visit(arg, descendantModel))));
+  }
+
+  /**
+   * Calls the model with the throw attributed: an error raised by the model's own code surfaces
+   * as {@link LifetimeModelError} naming the site, while an error `make` raised passes through
+   * untouched — the construction, not the model, owns that one.
+   */
+  #realize(site: CtorCallSite | FactoryCallSite, model: LifetimeModel, make: Func<[LifetimeModel], unknown>): any {
+    let madeThrew = false;
+    let madeError: unknown;
+    const attributedMake = (descendantModel: LifetimeModel) => {
+      try {
+        return make(descendantModel);
+      } catch (error) {
+        madeThrew = true;
+        madeError = error;
+        throw error;
+      }
+    };
+    try {
+      return model.realize(site, site.serviceType, site.descriptor, attributedMake);
+    } catch (error) {
+      if (madeThrew && error === madeError) {
+        throw error;
+      }
+      throw new LifetimeModelError(site.serviceType, error);
+    }
   }
 
   protected visitLateBound(site: LateBoundCallSite): any {
