@@ -18,6 +18,13 @@ import type { ServiceDescriptor } from './ServiceDescriptor/index';
  *
  * @typeParam Lifetime - the vocabulary of lifetime data this model interprets.
  */
+/**
+ * The lifetime parameter's spelling for a vocabulary: omittable exactly when `undefined` is
+ * assignable to `Lifetime`. Omission is not a special case — it is the value `undefined`, and it
+ * compiles under the same assignability rule every other value answers to.
+ */
+export type LifetimeArgument<Lifetime> = undefined extends Lifetime ? [lifetime?: Lifetime] : [lifetime: Lifetime];
+
 export interface LifetimeModel<Lifetime = unknown> {
   realize(
     site: object,

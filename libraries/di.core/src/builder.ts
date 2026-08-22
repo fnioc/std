@@ -9,10 +9,12 @@ type Slot = 'implementer' | 'lifetime' | 'tag';
 /**
  * The steps still open, as one type: an intersection of the interfaces whose slots survive.
  * `Described` is `unknown` until an implementer is chosen; from then on the node IS that
- * descriptor, refined by whatever steps remain.
+ * descriptor, refined by whatever steps remain — except while a required lifetime is unspent:
+ * when `undefined` is not assignable to `Lifetime` and the `lifetime` slot is still open, the
+ * node withholds descriptor-ness, so a manifest verb refuses it until `withLifetime` is taken.
  */
 type ServiceDescriptorBuilder<T, Lifetime, Slots extends Slot, Described> =
-  & Described
+  & ('lifetime' extends Slots ? (undefined extends Lifetime ? Described : unknown) : Described)
   & ('implementer' extends Slots ? IAsImplementer<T, Lifetime, Slots> : unknown)
   & ('lifetime' extends Slots ? IWithLifetime<T, Lifetime, Slots, Described> : unknown)
   & ('tag' extends Slots ? ITaggedAs<T, Lifetime, Slots, Described> : unknown);

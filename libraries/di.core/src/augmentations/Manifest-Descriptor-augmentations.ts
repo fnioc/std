@@ -4,6 +4,7 @@ import type { Ctor, Func } from '@rhombus-toolkit/func';
 
 import { assertNever } from '@rhombus-toolkit/type-guards';
 import { openDescription, type ServiceDescriptorBuilderFor } from '../builder';
+import type { LifetimeArgument } from '../LifetimeModel';
 import { type Manifest } from '../Manifest';
 import { ConstantType, ServiceDescriptor } from '../ServiceDescriptor';
 
@@ -25,18 +26,18 @@ declare module '@rhombus-std/di.core' {
     tryAdd(...descriptors: ReadonlyArray<ServiceDescriptor<Lifetime>>): Manifest<Lifetime>;
 
     /** Registers `ctor` — constructed with `new` — as the implementation of `serviceType`. */
-    add(serviceType: Type, ctor: Ctor, ctorType: ConstructorType, lifetime?: Lifetime): Manifest<Lifetime>;
+    add(serviceType: Type, ctor: Ctor, ctorType: ConstructorType, ...lifetime: LifetimeArgument<Lifetime>): Manifest<Lifetime>;
     /** {@link Manifest.add}'s constructor shape, registering only when the slot is unclaimed. */
-    tryAdd(serviceType: Type, ctor: Ctor, ctorType: ConstructorType, lifetime?: Lifetime): Manifest<Lifetime>;
+    tryAdd(serviceType: Type, ctor: Ctor, ctorType: ConstructorType, ...lifetime: LifetimeArgument<Lifetime>): Manifest<Lifetime>;
     /** {@link Manifest.add}'s constructor shape, swapping in for the registration already in the slot. */
-    replace(serviceType: Type, ctor: Ctor, ctorType: ConstructorType, lifetime?: Lifetime): Manifest<Lifetime>;
+    replace(serviceType: Type, ctor: Ctor, ctorType: ConstructorType, ...lifetime: LifetimeArgument<Lifetime>): Manifest<Lifetime>;
 
     /** Registers `factory` — called, never `new`ed — as the producer of `serviceType`. */
-    add(serviceType: Type, factory: Func, factoryType: FunctionType, lifetime?: Lifetime): Manifest<Lifetime>;
+    add(serviceType: Type, factory: Func, factoryType: FunctionType, ...lifetime: LifetimeArgument<Lifetime>): Manifest<Lifetime>;
     /** {@link Manifest.add}'s factory shape, registering only when the slot is unclaimed. */
-    tryAdd(serviceType: Type, factory: Func, factoryType: FunctionType, lifetime?: Lifetime): Manifest<Lifetime>;
+    tryAdd(serviceType: Type, factory: Func, factoryType: FunctionType, ...lifetime: LifetimeArgument<Lifetime>): Manifest<Lifetime>;
     /** {@link Manifest.add}'s factory shape, swapping in for the registration already in the slot. */
-    replace(serviceType: Type, factory: Func, factoryType: FunctionType, lifetime?: Lifetime): Manifest<Lifetime>;
+    replace(serviceType: Type, factory: Func, factoryType: FunctionType, ...lifetime: LifetimeArgument<Lifetime>): Manifest<Lifetime>;
 
     /**
      * Registers `value` under `serviceType` as it stands: it is handed back on resolution, never

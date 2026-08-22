@@ -1,4 +1,4 @@
-import { ConstantType, type Manifest, type ServiceDescriptorBuilderFor } from '@rhombus-std/di.core';
+import { ConstantType, type LifetimeArgument, type Manifest, type ServiceDescriptorBuilderFor } from '@rhombus-std/di.core';
 import { registerInlineBodies, typefor } from '@rhombus-std/primitives.extras';
 import type { Ctor, Func } from '@rhombus-toolkit/func';
 
@@ -8,12 +8,12 @@ declare module '@rhombus-std/di.core' {
      * Registers a constructor as the implementation of `ServiceType`, the service type derived from the
      * type argument instead of taken explicitly.
      */
-    add<ServiceType>(implementer: Ctor<any[], ServiceType>, lifetime?: Lifetime): Manifest<Lifetime>;
+    add<ServiceType>(implementer: Ctor<any[], ServiceType>, ...lifetime: LifetimeArgument<Lifetime>): Manifest<Lifetime>;
     /**
      * Registers a factory as the producer of `ServiceType`, the service type derived from the
      * type argument instead of taken explicitly.
      */
-    add<ServiceType>(implementer: Func<any[], ServiceType>, lifetime?: Lifetime): Manifest<Lifetime>;
+    add<ServiceType>(implementer: Func<any[], ServiceType>, ...lifetime: LifetimeArgument<Lifetime>): Manifest<Lifetime>;
     /**
      * Registers `value` as-is under `ServiceType`, the service type derived from the type
      * argument instead of taken explicitly.
@@ -21,16 +21,16 @@ declare module '@rhombus-std/di.core' {
     addValue<ServiceType>(value: ServiceType): Manifest<Lifetime>;
 
     /** {@link Manifest.add}'s constructor shape, registering only when the slot is unclaimed. */
-    tryAdd<ServiceType>(implementer: Ctor<any[], ServiceType>, lifetime?: Lifetime): Manifest<Lifetime>;
+    tryAdd<ServiceType>(implementer: Ctor<any[], ServiceType>, ...lifetime: LifetimeArgument<Lifetime>): Manifest<Lifetime>;
     /** {@link Manifest.add}'s factory shape, registering only when the slot is unclaimed. */
-    tryAdd<ServiceType>(implementer: Func<any[], ServiceType>, lifetime?: Lifetime): Manifest<Lifetime>;
+    tryAdd<ServiceType>(implementer: Func<any[], ServiceType>, ...lifetime: LifetimeArgument<Lifetime>): Manifest<Lifetime>;
     /** {@link Manifest.addValue}, registering only when the slot is unclaimed. */
     tryAddValue<ServiceType>(value: ServiceType): Manifest<Lifetime>;
 
     /** {@link Manifest.add}'s constructor shape, swapping in for the registration already in the slot. */
-    replace<ServiceType>(implementer: Ctor<any[], ServiceType>, lifetime?: Lifetime): Manifest<Lifetime>;
+    replace<ServiceType>(implementer: Ctor<any[], ServiceType>, ...lifetime: LifetimeArgument<Lifetime>): Manifest<Lifetime>;
     /** {@link Manifest.add}'s factory shape, swapping in for the registration already in the slot. */
-    replace<ServiceType>(implementer: Func<any[], ServiceType>, lifetime?: Lifetime): Manifest<Lifetime>;
+    replace<ServiceType>(implementer: Func<any[], ServiceType>, ...lifetime: LifetimeArgument<Lifetime>): Manifest<Lifetime>;
     /** {@link Manifest.addValue}, swapping in for the registration already in the slot. */
     replaceValue<ServiceType>(value: ServiceType): Manifest<Lifetime>;
 
