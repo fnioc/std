@@ -62,17 +62,17 @@ Promise<string>
 An unqualified, unescaped name spelled exactly like one of the words below does not name an
 ordinary type — it carries the reading in this table instead:
 
-| spelling                  | reading                                                                  |
-| ------------------------- | ------------------------------------------------------------------------ |
+| spelling                        | reading                                                                  |
+| ------------------------------- | ------------------------------------------------------------------------ |
 | `Func<Return, ...Signatures>`   | a function type — see [Callable types](#callable-types-func-and-ctor)    |
 | `Ctor<Instance, ...Signatures>` | a constructor type — see [Callable types](#callable-types-func-and-ctor) |
-| `ServiceProvider`         | the provider type itself (no generic arguments)                          |
-| `Array<E>`                | an array of `E` (exactly one argument)                                   |
-| `Iterable<E>`             | an iterable of `E` (exactly one argument)                                |
-| `true`, `false`           | the boolean literal                                                      |
-| `null`, `undefined`       | the nullish literal                                                      |
-| `NaN`, `Infinity`         | the numeric literal (no generic arguments on any of these)               |
-| `new`                     | reserved so it can mark a constructor type — see below                   |
+| `ServiceProvider`               | the provider type itself (no generic arguments)                          |
+| `Array<E>`                      | an array of `E` (exactly one argument)                                   |
+| `Iterable<E>`                   | an iterable of `E` (exactly one argument)                                |
+| `true`, `false`                 | the boolean literal                                                      |
+| `null`, `undefined`             | the nullish literal                                                      |
+| `NaN`, `Infinity`               | the numeric literal (no generic arguments on any of these)               |
+| `new`                           | reserved so it can mark a constructor type — see below                   |
 
 Two doors reopen the ordinary-name reading. **Qualifying** a reserved word disambiguates it — it
 can only be an import or an explicit `global:` — so `app:Func`, `app:ServiceProvider` and
