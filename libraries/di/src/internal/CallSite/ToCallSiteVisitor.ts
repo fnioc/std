@@ -1,6 +1,7 @@
-import { AmbiguousUnionError, CycleError } from '@rhombus-std/di.core';
+import { AmbiguousUnionError, CycleError, IServiceProvider, IServiceScopeFactory } from '@rhombus-std/di.core';
 import { type ArrayType, type ConstructorType, first, type FunctionType, type GenericType, type GlobalType, type ImportedType, type IntersectionType, isAllThere, type IterableType, type ObjectType,
   type TagType, type TupleType, Type, type TypeLiteralType, type UnionType } from '@rhombus-std/primitives';
+import { typefor } from '@rhombus-std/primitives.extras';
 import type { Answer, Registry } from '../Registry.js';
 import { CallSite } from './CallSite.js';
 
@@ -20,7 +21,29 @@ interface Suppliable {
 const SERVICE_PROVIDER_FROMS: readonly string[] = ['@rhombus-std/primitives', '@rhombus-std/di.core'];
 
 /** The module `IServiceScopeFactory` is declared in. */
-const SERVICE_SCOPE_FACTORY_FROM = '@rhombus-std/di.core';
+const SERVICE_SCOPE_FACTORY_FROM = (typefor<IServiceScopeFactory>() as ImportedType).from; // '@rhombus-std/di.core';
+
+function VisitDisposerFactory() {
+  const stack: Type[] = [];
+  class VisitDisposer implements Disposable {
+    readonly #visiting: Type;
+    constructor(visiting: Type) {
+      stack.push(this.#visiting = visiting);
+    }
+    [Symbol.dispose](): void {
+      const popped = stack.pop();
+      if (popped !== this.#visiting) {
+        throw `wtf mate -- disposal has gotten out of order somehow. was expecting to pop "${Type.stringify(this.#visiting)}", but "${popped && Type.stringify(popped)}" is what actually came out.`;
+      }
+    }
+  }
+  return function visiting(type: Type): Disposable {
+    if (stack.includes(type)) {
+      throw new CycleError([...stack, type]);
+    }
+    return new VisitDisposer(type);
+  };
+}
 
 /**
  * Turns a type expression into the {@link CallSite} that constructs a value for it.
@@ -38,8 +61,7 @@ export class ToCallSiteVisitor extends Type.Visitor<CallSite | undefined> {
   readonly #registry: Registry;
   readonly #unionAmbiguity: NonNullable<CallSiteContext['unionAmbiguity']>;
   /** The types this walk has entered and not yet finished, outermost first. */
-  readonly #entered: Type[] = [];
-
+  readonly #visiting = VisitDisposerFactory();
   constructor(context: CallSiteContext) {
     super();
     this.#registry = context.registry;
@@ -52,15 +74,8 @@ export class ToCallSiteVisitor extends Type.Visitor<CallSite | undefined> {
     if (Type.isOpen(type)) {
       return undefined;
     }
-    if (this.#entered.includes(type)) {
-      throw new CycleError([...this.#entered, type]);
-    }
-    this.#entered.push(type);
-    try {
-      return this.#chosen(type) ?? super.visit(type);
-    } finally {
-      this.#entered.pop();
-    }
+    using a = this.#visiting(type);
+    return this.#chosen(type) ?? super.visit(type);
   }
 
   protected override visitArray(type: ArrayType): CallSite | undefined {
@@ -97,10 +112,10 @@ export class ToCallSiteVisitor extends Type.Visitor<CallSite | undefined> {
   }
 
   protected override visitImported(type: ImportedType): CallSite | undefined {
-    if (isServiceProviderType(type)) {
+    if (type === typefor<IServiceProvider>()) {
       return CallSite.serviceProvider();
     }
-    if (isServiceScopeFactoryType(type)) {
+    if (type === typefor<IServiceScopeFactory>()) {
       return CallSite.serviceScopeFactory();
     }
     return undefined;
@@ -177,19 +192,19 @@ export class ToCallSiteVisitor extends Type.Visitor<CallSite | undefined> {
     if (type.kind !== 'union') {
       return first(this.#candidates(type));
     }
-    const answers = Iterator.from(this.#registry.answering(type))
-      .map(answer => [answer.serviceType, CallSite.fromAnswer(answer, this)] as const)
-      .filter((answer): answer is [Type, CallSite] => answer[1] !== undefined)
+    const answers = this.#registry.answering(type)
+      .map(answer => ({ serviceType: answer.serviceType, callsite: CallSite.fromAnswer(answer, this) } as const))
+      .filter((answer): answer is { serviceType: Type; callsite: CallSite; } => answer.callsite !== undefined)
       .toArray();
-    const exact = answers.find(([serviceType]) => serviceType === type);
+
+    const exact = answers.find(({ serviceType }) => serviceType === type);
     if (exact) {
-      return exact[1];
+      return exact.callsite;
     }
-    const competing = [...new Set(answers.map(([serviceType]) => serviceType))];
-    if (competing.length > 1 && this.#unionAmbiguity === 'error') {
-      throw new AmbiguousUnionError(type, competing.toSorted(bySpelling));
+    if (answers.length > 1 && this.#unionAmbiguity === 'error') {
+      throw new AmbiguousUnionError(type, answers.map(({ serviceType }) => serviceType));
     }
-    return answers[0]?.[1];
+    return answers[0]?.callsite;
   }
 
   /** Every registration answering {@link type} that actually builds, newest first. */
@@ -230,29 +245,10 @@ export class ToCallSiteVisitor extends Type.Visitor<CallSite | undefined> {
    */
   #synthesized(type: Type): CallSite | undefined {
     if (type.kind === 'union') {
-      for (const member of type.members) {
-        const site = this.#synthesized(member);
-        if (site) {
-          return site;
-        }
-      }
-      return undefined;
+      return Iterator.from(type.members)
+        .map(member => this.#synthesized(member))
+        .find(Boolean);
     }
     return super.visit(type);
   }
-}
-
-/** Orders competing service types by their canonical spelling, so a message reads the same twice. */
-function bySpelling(left: Type, right: Type): number {
-  return Type.stringify(left).localeCompare(Type.stringify(right));
-}
-
-function isServiceProviderType(type: ImportedType): boolean {
-  return type.name === 'IServiceProvider' && SERVICE_PROVIDER_FROMS.includes(type.from)
-    && !type.genericArgs.length;
-}
-
-function isServiceScopeFactoryType(type: ImportedType): boolean {
-  return type.name === 'IServiceScopeFactory' && type.from === SERVICE_SCOPE_FACTORY_FROM
-    && !type.genericArgs.length;
 }
