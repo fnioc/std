@@ -20,6 +20,22 @@ export function factory<Scopes extends string>(serviceType: Type, implementer: F
   return { serviceType, factory: implementer, factoryType, scope };
 }
 
+/**
+ * @throws TypeError - when `serviceType` still holds a generic hole anywhere but under a callable
+ * root: one erased callable honestly is every closing of its holes, while one instance cannot
+ * stand for every closing of an open type.
+ */
 export function value(serviceType: Type, implementer: unknown): ValueDescriptor {
+  if (Type.isOpen(serviceType) && !isCallable(serviceType)) {
+    throw new TypeError(
+      `${Type.stringify(serviceType)} still holds a generic hole — one value cannot stand for every closing; only a callable can`,
+    );
+  }
   return { serviceType, value: implementer };
+}
+
+/** Is the type a callable at its root, its tag stripped? */
+function isCallable(serviceType: Type): boolean {
+  const root = serviceType.kind === 'tag' ? serviceType.type : serviceType;
+  return root.kind === 'ctor' || root.kind === 'func';
 }

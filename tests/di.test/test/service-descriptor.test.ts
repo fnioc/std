@@ -64,3 +64,32 @@ describe('ctor', () => {
       .toThrow(/is abstract — nothing can `new` it directly/);
   });
 });
+
+describe('value', () => {
+  const T = Type.generic('T');
+
+  test('refuses an open service type — one instance cannot stand for every closing', () => {
+    expect(() => ServiceDescriptor.value(Type.imported('Box', 'app', [T]), {}))
+      .toThrow(/still holds a generic hole/);
+    expect(() => ServiceDescriptor.value(Type.array(T), []))
+      .toThrow(/still holds a generic hole/);
+  });
+
+  test('accepts a hole under a callable root — one erased callable is every closing', () => {
+    const open = Type.func(Type.imported('Box', 'app', [T]), [[]]);
+    expect(ServiceDescriptor.value(open, () => ({})).serviceType).toBe(open);
+    const openCtor = Type.ctor(Type.imported('Box', 'app', [T]), [[]]);
+    expect(ServiceDescriptor.value(openCtor, Impl).serviceType).toBe(openCtor);
+  });
+
+  test('a tag over the callable does not change the answer', () => {
+    const tagged = Type.tag(Type.func(Type.imported('Box', 'app', [T]), [[]]), 'primary');
+    expect(ServiceDescriptor.value(tagged, () => ({})).serviceType).toBe(tagged);
+    expect(() => ServiceDescriptor.value(Type.tag(Type.imported('Box', 'app', [T]), 'primary'), {}))
+      .toThrow(/still holds a generic hole/);
+  });
+
+  test('a closed service type is untouched by the guard', () => {
+    expect(ServiceDescriptor.value(A, 'plain').value).toBe('plain');
+  });
+});
