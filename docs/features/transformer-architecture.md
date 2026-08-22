@@ -527,8 +527,9 @@ Each value parameter may appear at most once in a runtime position (unlimited in
 call's arguments); type
 parameters may appear only as the whole type argument of a primitive call; every other free
 identifier must be a parameter, `this`, a type parameter, or an unaliased primitive import. The
-`rhombus-inline` ESLint rule enforces this for the list-published bodies, including which package
-each primitive name is allowed to be imported from (its one authoring home, per the table above).
+`rhombus-inline` ESLint rule enforces this for the published bodies — JSON-listed and
+marker-discovered alike — including which package each primitive name is allowed to be imported
+from (its one authoring home, per the table above).
 
 Two splice tokens let one body forward an argument set as a group, each spread inside a call's
 argument list: a **trailing rest parameter** holds the arguments past the named ones, and
@@ -587,15 +588,13 @@ discovery reads it syntactically at build time, and the file it lives in is neve
 executed. It is imported from `@rhombus-std/primitives.extras` (authoring-time-only, and the one
 package every body-carrying package already depends on).
 
-**Two reasons, and the shape follows from having both.** One is readability, above. The other is
-that the repo's mechanical dead-code scan counts real references only — so without the marker every
-body set is a permanent known-false "unused export", in a scan whose whole value is that a finding
-means something. Either reason alone would buy something cheaper and worse (a comment; a per-file
-exemption in the scan's config). A marker in the source is the one form that pays both: it states
-the role where the body is read, and it is a real reference, so the scan needs no exemption to stay
-honest here. **Nothing enforces it** — the lint walks only the bodies the manifest lists and the Go
-extractor ignores the call — so add the marker whenever a set is added, or the set goes back to
-being invisible and gets reported.
+**Beyond discovery, the marker also keeps the set visible.** The repo's mechanical dead-code scan
+counts real references only — so without the marker a body set published by JSON alone is a
+permanent known-false "unused export", in a scan whose whole value is that a finding means
+something. The marker is a real reference, so the scan needs no exemption to stay honest here. A
+set with neither a marker nor a JSON entry is simply unpublished: its bodies substitute nowhere,
+and if a sugar face for it exists in the program the emit sweep reports the face loudly
+(`INLINE_FACE_WITHOUT_BODY`) rather than letting calls survive un-lowered.
 
 **Module level only, never wrapping the set.** The Go side-parser finds a set by its top-level
 `const` declaration and its members by walking that declaration, and the body validator rejects any
@@ -603,10 +602,10 @@ identifier inside a body that is not a parameter, type parameter, or known primi
 included. Both the ESLint rule and the Go extractor pin this: a module-level call is clean, a
 reference from inside a body is a free identifier.
 
-**A set that is already a named export of its package's barrel needs no marker of its own** — the
-export itself is the real reference the dead-code scan is looking for. `di.extras`'s augmentation
-sets (below) are exported by name from `src/index.ts` specifically so an `impl` entry can resolve
-to them by walking that re-export graph; the marker's whole job is already done.
+**A barrel export is not a substitute for the marker.** A set exported by name from `src/index.ts`
+already satisfies the dead-code scan, but the export publishes nothing — discovery reads the marker
+call, so every instance-member body set carries one beside its declaration whether the barrel
+exports it or not.
 
 ## The sugar bodies, family by family
 
