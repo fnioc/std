@@ -18,6 +18,13 @@ Weigh EVERY design decision in this document against this split.
 ## Vocabulary
 
 - "Scope" names the PROVIDER-side runtime scope; no composition-side scope construct exists.
+- RESOLUTION-SURFACE NAMING (owner-ruled): primitives' `getService` stays AS IS — single
+  signature, NO overloads, ever (an augmentation cannot carry fewer args than base-interface
+  overloads, so the base member stays pristine). The di-defined extension surface moves forward
+  as the `resolve` family — `resolve` (including an overload duplicating `getService`'s
+  signature, and the value/invoke overload formerly spelled on `getService`), `resolveAsync`
+  (the wrap-and-forward terseness), etc. Semantically one door; `resolve*` are augmentation-owned
+  spellings over it. Where this capture says `getServiceAsync`, read `resolveAsync`.
 - Resolution phases: **plan time** (pure, memoized) → **hoist** (async pre-pass) → **gather** (the
   one await point) → **plug** (final sync walk). "Realize" names ONLY an invocation of the sync
   realize visitor — it runs once per hoisted entry (on that site's inner subtree) plus once as the
@@ -66,7 +73,7 @@ Weigh EVERY design decision in this document against this split.
   promise. A top-level `Promise` request is just the root case of the same rule; the async
   call-site recognizes two requested shapes — `Type.global('Promise', [X])` (X delivered later,
   single) and `Type.global('AsyncIterable', [E])` (the E collection streamed per-item over the
-  SAME iterable resolution the sync path uses). `getServiceAsync(t)` wraps the requested type in a
+  SAME iterable resolution the sync path uses). `resolveAsync(t)` wraps the requested type in a
   Promise node and forwards through the one door — NOTHING ELSE; all machinery lives in the
   promise-call-site handling. The async call-site node's shape is this session's design
   deliverable.
@@ -473,7 +480,7 @@ not planned.
 ## Invocation coupling
 
 Value-driven invocation (owner-ruled 2026-08-13; built on the team-lead lane) is a `getService`
-VALUE overload — `getService(ctor | fn)`: a class (non-writable-prototype sniff) constructs, any
+VALUE overload — `resolve(ctor | fn)` (respelled from `getService` per the naming ruling): a class (non-writable-prototype sniff) constructs, any
 other function calls, with a TypeError-construct-retry rescue. It consumes this design as its
 first client:
 
