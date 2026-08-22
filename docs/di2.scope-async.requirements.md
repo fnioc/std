@@ -198,8 +198,10 @@ Weigh EVERY design decision in this document against this split.
   cannot arrive by return); the former `ScopeCtx` token is gone — THE BLACKBOX IS THE CONTEXT.
   Everything beyond this call surface plus the createScope requirement below is blackbox-impl
   detail of particular models.
-- THE CANONICAL CACHE KEY IS DESCRIPTOR-COMPOSED: `(as-requested type, answering descriptor)` —
-  both components arrive in the call. The as-requested half keeps the promise address out and
+- THE CANONICAL INSTANCE-CACHE KEY IS DESCRIPTOR-COMPOSED — this is the SCOPE layer's key,
+  distinct from the plan memo, which keys on the interned request node ALONE (multi-registrations
+  are disambiguated inside plan trees at construction, never by the plan key):
+  `(site's as-requested type, answering descriptor)` — both components arrive in the call. The as-requested half keeps the promise address out and
   keys open-generic closures on the closed request; the descriptor-identity half distinguishes
   same-type multi-registrations while letting resolve-one and resolve-all SHARE storage (a
   singleton never double-instantiates via the enumerable path; an aggregate element and the
