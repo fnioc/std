@@ -3,7 +3,7 @@ import type { AGGREGATE_KINDS, AggregateName } from './grammar.js';
 import { parseTypeString } from './parse/parser.js';
 import { expandUnionsVisitor } from './visitor/ExpandUnionsVisitor.js';
 import { isOpenType } from './visitor/IsOpenVisitor.js';
-import { matchType, satisfiesType } from './visitor/SatisfiesVisitor.js';
+import { matchType } from './visitor/MatchVisitor.js';
 import { stringifyType } from './visitor/StringifyVisitor.js';
 import { substituteType } from './visitor/SubstituteVisitor.js';
 import { typeValidatorVisitor } from './visitor/TypeValidatorVisitor.js';
@@ -496,23 +496,18 @@ export namespace Type {
   }
 
   /**
-   * Does some instantiation of `{@link candidate}` extend `{@link constraint}`? Success carries the instantiation —
-   * one binding per generic label in the candidate.
+   * Does some instantiation of `{@link candidate}` equal `{@link constraint}`? Success carries the
+   * instantiation — one binding per generic label in the candidate.
+   *
+   * @remarks
+   * Matching is identity modulo holes: outside a hole, the two sides must be the same interned
+   * node — there is no assignability, so no width subtyping, no literal widening to its primitive
+   * base, and no member search.
    *
    * @throws Error - when `constraint` itself holds a generic hole.
    */
   export function match(candidate: Type, constraint: Type) {
     return matchType(candidate, constraint);
-  }
-
-  /**
-   * Does `candidate` satisfy `constraint`? Success carries one binding per generic label in
-   * the constraint.
-   *
-   * @throws Error - when `candidate` itself holds a generic hole.
-   */
-  export function satisfies(candidate: Type, constraint: Type) {
-    return satisfiesType(candidate, constraint);
   }
 
   /** Writes the type as its token spelling — the inverse of {@link from}. */
