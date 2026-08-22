@@ -335,7 +335,13 @@ Weigh EVERY design decision in this document against this split.
   model-territory. Sole exclusion: parameter mutation (activation-pipeline, not lifetime; factory
   territory here).
 - The blackbox is REQUIRED to register a `createScope` service (owner-ruled) — the user's
-  entrypoint into opening scopes, itself returning a blackbox-backed provider.
+  entrypoint into opening scopes, itself returning a blackbox-backed provider. Its typed shape
+  (owner-ruled, closing the creation-args fork): the uniform well-known address is
+  `ScopeFactory<TLifetime>`, typed by the ONE cascading Scopes generic — creation args and
+  lifetime data draw from one vocabulary (what you pass at creation is what registrations
+  reference to match it). Creation-ONLY config that is not lifetime vocabulary is model-side: a
+  model registers its own richer factory type beside the well-known address (per-model `Func`
+  spellings stay legal); `TLifetime` never carries values no registration may hold.
 - Creation is RESOLUTION-DRIVEN: scope factories are registered in the manifest and obtained
   through `getService`, like any service. The sole structural exception is the GENESIS: the root
   ctx is minted at provider build. Installing a scope model = its door + its genesis + its
@@ -497,9 +503,8 @@ untouched). Not part of the current lane — executed separately.
 
 ## Open ledger
 
-1. Scope-creation args: per-model `Func` types vs uniform `ScopeFactory` + merged options type.
-2. Async call-site design residue: the async call-site node's shape; the AsyncIterable arm
+1. Async call-site design residue: the async call-site node's shape; the AsyncIterable arm
    (per-item streaming over the sync path's iterable resolution, outside the gather); per-boundary
    nested PromiseCallsite gathers' interaction with the hoist's scope-cache checks.
-3. Captive-dependency validation: the lifetime-ordering declaration hook in the scope contract.
-4. Disposal design proper (contract + default model), including `using`-protocol support.
+2. Captive-dependency validation: the lifetime-ordering declaration hook in the scope contract.
+3. Disposal design proper (contract + default model), including `using`-protocol support.
