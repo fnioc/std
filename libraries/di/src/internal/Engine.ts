@@ -1,4 +1,4 @@
-import { type Manifest, ManifestValidationError, type ServiceDescriptor, UnsatisfiableError, type ValidationFailure } from '@rhombus-std/di.core';
+import { type LifetimeModel, type Manifest, ManifestValidationError, type ServiceDescriptor, UnsatisfiableError, type ValidationFailure } from '@rhombus-std/di.core';
 import { type IServiceProvider, memo, type Type } from '@rhombus-std/primitives';
 import { CallSite } from './CallSite/index.js';
 import { Registry } from './Registry.js';
@@ -6,6 +6,8 @@ import { Registry } from './Registry.js';
 export interface ResolveContext {
   /** What a service asking for the provider receives. */
   readonly serviceProvider: IServiceProvider;
+  /** The lifetime model governing the walk's root site. */
+  readonly lifetimeModel: LifetimeModel;
   /** Registrations layered over the manifest for this walk only — a latebound call's arguments. */
   readonly additionalServices?: ReadonlyArray<ServiceDescriptor<unknown>>;
 }
@@ -41,7 +43,7 @@ export class Engine {
     const site = context.additionalServices?.length
       ? this.#build(serviceType, new Registry(this.#manifest.addMany(context.additionalServices)))
       : this.#planFor(serviceType);
-    return CallSite.realize(site, { engine: this, serviceProvider: context.serviceProvider });
+    return CallSite.realize(site, { engine: this, serviceProvider: context.serviceProvider, lifetimeModel: context.lifetimeModel });
   }
 
   /** Whether {@link serviceType} can be built from this engine's manifest, without building it. */

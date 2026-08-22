@@ -1,4 +1,4 @@
-import { ServiceDescriptor } from '@rhombus-std/di.core';
+import { type LifetimeModel, ServiceDescriptor } from '@rhombus-std/di.core';
 import type { IServiceProvider } from '@rhombus-std/primitives';
 import { assertNever } from '@rhombus-toolkit/type-guards';
 import type { Engine } from '../Engine.js';
@@ -8,6 +8,8 @@ export interface RealizeContext {
   readonly engine: Engine;
   /** What a service asking for the provider receives — the walk's originating facade. */
   readonly serviceProvider: IServiceProvider;
+  /** The lifetime model governing the walk's root site. */
+  readonly lifetimeModel: LifetimeModel;
 }
 
 /**
@@ -27,12 +29,12 @@ class RealizeVisitor {
     this.#context = context;
   }
 
-  visit(site: CallSite): any {
+  visit(site: CallSite, model: LifetimeModel): any {
     switch (site.kind) {
       case 'ctor':
-        return this.visitCtor(site);
+        return this.visitCtor(site, model);
       case 'factory':
-        return this.visitFactory(site);
+        return this.visitFactory(site, model);
       case 'latebound':
         return this.visitLateBound(site);
       case 'constant':
@@ -40,20 +42,20 @@ class RealizeVisitor {
       case 'service-provider':
         return this.visitServiceProvider(site);
       case 'iterable':
-        return this.visitIterable(site);
+        return this.visitIterable(site, model);
       case 'array':
-        return this.visitArray(site);
+        return this.visitArray(site, model);
       default:
         return assertNever(site);
     }
   }
 
-  protected visitCtor(site: CtorCallSite): any {
-    return new site.ctor(...site.args.map(arg => this.visit(arg)));
+  protected visitCtor(site: CtorCallSite, model: LifetimeModel): any {
+    return model(site, site.serviceType, site.descriptor, descendantModel => new site.ctor(...site.args.map(arg => this.visit(arg, descendantModel))));
   }
 
-  protected visitFactory(site: FactoryCallSite): any {
-    return site.factory(...site.args.map(arg => this.visit(arg)));
+  protected visitFactory(site: FactoryCallSite, model: LifetimeModel): any {
+    return model(site, site.serviceType, site.descriptor, descendantModel => site.factory(...site.args.map(arg => this.visit(arg, descendantModel))));
   }
 
   protected visitLateBound(site: LateBoundCallSite): any {
@@ -62,6 +64,7 @@ class RealizeVisitor {
       const bound = site.lateBoundArgs.find(row => row.length === args.length) ?? site.lateBoundArgs[0] ?? [];
       return context.engine.resolve(site.result, {
         serviceProvider: context.serviceProvider,
+        lifetimeModel: context.lifetimeModel,
         additionalServices: bound.map((serviceType, i) => ServiceDescriptor.value(serviceType, args[i])),
       });
     };
@@ -80,8 +83,8 @@ class RealizeVisitor {
    * Re-iterable rather than a one-shot iterator: a caller that walks it twice gets a value both
    * times. Each walk realizes afresh, so a transient member is a new instance per pass.
    */
-  protected visitIterable(site: IterableCallSite): any {
-    const realize = (inner: CallSite) => this.visit(inner);
+  protected visitIterable(site: IterableCallSite, model: LifetimeModel): any {
+    const realize = (inner: CallSite) => this.visit(inner, model);
     return {
       *[Symbol.iterator]() {
         for (const inner of site.types) {
@@ -91,12 +94,12 @@ class RealizeVisitor {
     };
   }
 
-  protected visitArray(site: ArrayCallSite): any {
-    return site.types.map(inner => this.visit(inner));
+  protected visitArray(site: ArrayCallSite, model: LifetimeModel): any {
+    return site.types.map(inner => this.visit(inner, model));
   }
 }
 
 /** Realizes {@link callSite} into its value; the walk is synchronous throughout. */
 export function realizeCallSite(callSite: CallSite, context: RealizeContext): any {
-  return new RealizeVisitor(context).visit(callSite);
+  return new RealizeVisitor(context).visit(callSite, context.lifetimeModel);
 }

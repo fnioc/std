@@ -17,16 +17,24 @@ export type CallSite =
   | IterableCallSite
   | ArrayCallSite;
 
-/** A registered constructor the engine `new`s up. */
+/**
+ * A registered constructor the engine `new`s up. {@link serviceType} is the type as requested;
+ * {@link descriptor} is the answering registration — the join the lifetime model reads — and is
+ * absent for an engine-synthesized site.
+ */
 export interface CtorCallSite {
   readonly kind: 'ctor';
   readonly ctor: Ctor;
   readonly args: CallSite[];
+  readonly serviceType: Type;
+  readonly descriptor: ServiceDescriptor<unknown> | undefined;
 }
 export interface FactoryCallSite {
   readonly kind: 'factory';
   readonly factory: Func;
   readonly args: CallSite[];
+  readonly serviceType: Type;
+  readonly descriptor: ServiceDescriptor<unknown> | undefined;
 }
 export interface LateBoundCallSite {
   readonly kind: 'latebound';
@@ -53,14 +61,14 @@ export namespace CallSite {
   /**
    * A registered constructor the engine `new`s up.
    */
-  export function ctor(ctor: Ctor, args: CallSite[]): CtorCallSite {
-    return { kind: 'ctor', ctor, args };
+  export function ctor(ctor: Ctor, args: CallSite[], serviceType: Type, descriptor?: ServiceDescriptor<unknown>): CtorCallSite {
+    return { kind: 'ctor', ctor, args, serviceType, descriptor };
   }
   /**
    * A registered factory the engine invokes — {@link args} realize its parameters.
    */
-  export function factory(factory: Func, args: CallSite[]): FactoryCallSite {
-    return { kind: 'factory', factory, args };
+  export function factory(factory: Func, args: CallSite[], serviceType: Type, descriptor?: ServiceDescriptor<unknown>): FactoryCallSite {
+    return { kind: 'factory', factory, args, serviceType, descriptor };
   }
   /**
    * A function value handed back to the caller; each invocation re-enters the engine to resolve
@@ -98,17 +106,17 @@ export namespace CallSite {
    * captured. `visitor` supplies the recursion that turns each signature parameter into the call
    * site producing it. Undefined when no signature has every parameter satisfiable.
    */
-  export function fromAnswer(answer: Answer, visitor: Type.Visitor<CallSite | undefined>): CallSite | undefined {
+  export function fromAnswer(serviceType: Type, answer: Answer, visitor: Type.Visitor<CallSite | undefined>): CallSite | undefined {
     const { descriptor: wideDesc, generics } = answer;
     const [kind, descriptor] = ServiceDescriptor.kind(wideDesc);
     switch (kind) {
       case 'ctor': {
         const args = lowerSignature(descriptor.ctorType.args, generics, visitor);
-        return args && ctor(descriptor.ctor, args);
+        return args && ctor(descriptor.ctor, args, serviceType, wideDesc);
       }
       case 'factory': {
         const args = lowerSignature(descriptor.factoryType.args, generics, visitor);
-        return args && factory(descriptor.factory, args);
+        return args && factory(descriptor.factory, args, serviceType, wideDesc);
       }
       case 'value': {
         return constant(descriptor.value);

@@ -129,7 +129,7 @@ export class ToCallSiteVisitor extends Type.Visitor<CallSite | undefined> {
       }
       members.push(site);
     }
-    return CallSite.factory((...args: any[]) => args, members);
+    return CallSite.factory((...args: any[]) => args, members, type);
   }
 
   protected override visitTypeLiteral(type: TypeLiteralType): CallSite | undefined {
@@ -166,7 +166,7 @@ export class ToCallSiteVisitor extends Type.Visitor<CallSite | undefined> {
    */
   #firstAnswerBuilt(serviceType: Type): CallSite | undefined {
     for (const answer of this.#registry.answering(serviceType)) {
-      const site = CallSite.fromAnswer(answer, this);
+      const site = CallSite.fromAnswer(serviceType, answer, this);
       if (site !== undefined) {
         return site;
       }
@@ -181,7 +181,7 @@ export class ToCallSiteVisitor extends Type.Visitor<CallSite | undefined> {
   #collectionSites(elementType: Type): CallSite[] {
     const sites: CallSite[] = [];
     for (const answer of this.#registry.answering(elementType)) {
-      const site = CallSite.fromAnswer(answer, this);
+      const site = CallSite.fromAnswer(elementType, answer, this);
       if (site !== undefined) {
         sites.push(site);
       }

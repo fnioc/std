@@ -8,6 +8,7 @@ import './single-instance-guard';
 export * from './brands';
 export type { ServiceDescriptorBuilderFor } from './builder';
 export * from './Errors';
+export * from './LifetimeModel';
 export * from './Manifest';
 export * from './ServiceDescriptor';
 
