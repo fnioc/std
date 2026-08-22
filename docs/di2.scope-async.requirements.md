@@ -169,7 +169,11 @@ Weigh EVERY design decision in this document against this split.
   `undefined extends TLifetime` exactly (assignability, not literal union membership — the
   declared type can be any shape). WHETHER `undefined` is included is the BLACKBOX's own choice
   (owner-ruled): the model owns both halves of the key — its admissibility (this strictness dial)
-  and its meaning (the binding above).
+  and its meaning (the binding above). The rule covers BOTH dialects (owner-ruled): in the builder
+  form, when `undefined` is not assignable, completion is reachable ONLY through `withLifetime` —
+  the established stage-gating pattern, conditioned on `TLifetime` (`undefined extends TLifetime ?
+  stage & IComplete : stage`); a registration-time runtime guard (admissibility flag supplied by
+  the model to the manifest surface) backs untyped callers.
 - `undefined` IS A KEY LIKE ANY OTHER, BOUND BY THE BLACKBOX (owner-ruled): the whole datum
   domain, `undefined` included, is keys into the installed model's behavior — swap the blackbox in
   one line and every registration's behavior changes, omissions included; that is inversion of
