@@ -303,10 +303,14 @@ Weigh EVERY design decision in this document against this split.
 - Nobody but the blackbox interprets ANY datum: the resolution engine inspects none of it; captive
   validation relays the datum to a MODEL-supplied ordering interpreter (a blackbox that declines —
   e.g. any lambda-datum blackbox — opts out of captive checks); diagnostics prints without
-  interpreting. CAPTIVE VALIDATION NEEDS NO CONDUIT (owner-ruled, closing the ordering-hook
-  question): the blackbox SHIPS a validator; the COMPOSITION ROOT invokes it with the manifest it
-  already holds (directly, or via the build-time validation stage). The blackbox never receives
-  the manifest — its job stays resolution-time; validation is opt-in composition-root tooling. Because the blackbox is the interpreter of `undefined`, such sites necessarily
+  interpreting. CAPTIVITY IS SOLVED STRUCTURALLY (owner-ruled): the
+  descendant-blackbox forwarding means a longer-lived site's dependencies resolve under ITS
+  forwarded context — a singleton's scoped dependency caches at root, never capturing one
+  request's instance; the classic stale-capture harm cannot occur. What remains is ADVISORY
+  ONLY: an intent-mismatch lint (a `scoped` declaration reachable from a singleton is root-pinned
+  on that path — consistent, but not what the declaration said). If shipped at all, it follows
+  the tooling shape: blackbox-shipped, composition-root-invoked with the manifest the root
+  already holds; the blackbox never receives the manifest — its job stays resolution-time. Because the blackbox is the interpreter of `undefined`, such sites necessarily
   flow through the call — observed-every-make holds with no extra protocol.
 - The default blackbox's vocabulary: a small interned kind-tagged union — `undefined` (transient) |
   `singleton` | `scoped` | `matching(tag)` — strategy and parameter as separate fields, so the tag
