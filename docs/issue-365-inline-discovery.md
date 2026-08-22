@@ -22,7 +22,7 @@ Spec revisions, superseding the body text where they differ:
 ## Context
 
 The `inline` publish list in each `*.extras` package's `rhombus-std.json` names a member by
-`{type, impl, member}` — an interface and a member name, with no way to say *which overload*. The Go
+`{type, impl, member}` — an interface and a member name, with no way to say _which overload_. The Go
 stage papers over that with a `Discriminator` built from the type-parameter count plus the
 value-parameter **names** in order (`bodyextract.go:57`, which states outright that parameter types
 are never read). Nothing makes those names differ between a sugar overload and the primitive it
@@ -33,8 +33,8 @@ The receiver-side reorganization in the working tree removes the last reason to 
 inlinable instance member now follows the augmentation pattern: a `declare module` face beside an
 `export namespace` of bodies, with `registerInlineBodies<Receiver>(TheNamespace)` at module level
 next to it. That call carries everything an entry did — the receiver as its type argument, the body
-set as its argument, the members as the set's own exports — so entries are *discovered*, not
-*declared*.
+set as its argument, the members as the set's own exports — so entries are _discovered_, not
+_declared_.
 
 Two things follow, and together they close the overload hole:
 
@@ -44,7 +44,7 @@ Two things follow, and together they close the overload hole:
   deciding whether that declaration is one of the publisher's. Owning package + member name answers
   it exactly, because a `*.extras` package declares nothing onto a receiver that is not sugar.
 
-Argument-shape matching is *not* the criterion and must not be: one sugar face is
+Argument-shape matching is _not_ the criterion and must not be: one sugar face is
 `add<T>(this: Manifest, value: T)`, whose parameters accept any single argument — including the
 `ServiceDescriptor` the primitive `add` takes. Assignability says yes there; overload resolution
 says no. Only the checker's own pick is correct.
@@ -77,8 +77,8 @@ registerInlineBodies<Manifest>(ManifestDescriptorAugmentations);
 ```
 
 This retires the engine's present assumption, stated verbatim in the diagnostic it currently raises
-(`bodyextract.go:189`): *"the implementation is the declared face, so every parameter it takes must
-be named."* Binding stays what it is today — **positional against the impl's own parameter list** —
+(`bodyextract.go:189`): _"the implementation is the declared face, so every parameter it takes must
+be named."_ Binding stays what it is today — **positional against the impl's own parameter list** —
 and gains exactly two things: a trailing rest absorbs the remaining arguments as a group, and
 `arguments` names the whole set blind. The impl signature is taken as correct; nothing is validated
 against the face's arity.
@@ -87,8 +87,8 @@ Parameters keep their full generality, so a body may reorder, drop, or repeat th
 
 ```ts
 // impl:  asdf(a, b, ...c) { this.qwer(b, ...c, a) }
-asdf(q, w, e, d, f)        // a=q, b=w, c=[e,d,f]
-qwer(w, e, d, f, q)        // emitted
+asdf(q, w, e, d, f); // a=q, b=w, c=[e,d,f]
+qwer(w, e, d, f, q); // emitted
 ```
 
 **`arguments` is a blind replacement for the whole argument set**, in call-site order, independent
@@ -126,11 +126,11 @@ go green until both halves land; the Go work is verified on its own tests until 
 
 **The JSON system stays.** Nothing about `inline.entries` is removed — not the schema, not the
 reader (`ResolveConfig`/`entriesFromResolved`), not the `extends` chain, and not any of the four
-entry shapes. Marker discovery is an *additional* source of the same `Entry` values, so a package
+entry shapes. Marker discovery is an _additional_ source of the same `Entry` values, so a package
 may publish by JSON, by marker, or by both. `primitives.extras` keeps publishing
 `registerAugmentations` as a floater entry (`impl` only, no receiver, its own source is the body) —
 a shape `registerInlineBodies<R>()` cannot express, and the reason the JSON path has to stay live
-regardless. What changes in-repo is only which packages *use* it: the instance entries in
+regardless. What changes in-repo is only which packages _use_ it: the instance entries in
 `di.extras`, `di.extras.options` and `config.extras` become redundant once their markers are read,
 and the owner deletes them as part of the TypeScript half.
 
@@ -147,7 +147,7 @@ files by reusing the BFS already written for `impl` resolution: `resolveEntryFil
 `resolveRelativeModule` (`bodyextract.go:719`) for the barrel graph. In each file, find every call
 to `registerInlineBodies` imported from `@rhombus-std/primitives.extras` — the specifier is already
 known to the parser as `knownAuthoringMarkers` (`bodyextract.go:54`), where it exists only to
-*exclude* the marker from `valueImports`. It becomes a discovery key.
+_exclude_ the marker from `valueImports`. It becomes a discovery key.
 
 From each call, synthesize one `Entry` per exported member of the set:
 
@@ -279,4 +279,3 @@ lands — `di.extras`'s barrel still re-exports a deleted module. Once both halv
 that matters is the app example byte-diff: `examples.app.with-transformer`'s emitted output must
 equal `examples.app.without-transformer`'s `expected.txt`, which is what proves a sugar call site
 and a hand-written primitive call site produce the same bytes.
-
