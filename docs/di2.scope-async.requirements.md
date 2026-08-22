@@ -263,8 +263,13 @@ Weigh EVERY design decision in this document against this split.
   and its meaning (the binding above). The rule covers BOTH dialects (owner-ruled): in the builder
   form, when `undefined` is not assignable, completion is reachable ONLY through `withLifetime` —
   the established stage-gating pattern, conditioned on `TLifetime` (`undefined extends TLifetime ?
-  stage & IComplete : stage`); a registration-time runtime guard (admissibility flag supplied by
-  the model to the manifest surface) backs untyped callers.
+  stage & IComplete : stage`). Admissibility is specified and enforced ENTIRELY by the generic
+  (owner-ruled): the parameter cascades unhindered — scope engine mints the manifest, manifest
+  mints the provider (or a fluent diBuilder with enforced call order, same result) — so NO
+  registration-time datum inspection exists anywhere: no admissibility flag, no
+  `=== undefined` test, no truthiness test; at registration `undefined` is just another value on
+  the one shared path. An out-of-union datum from untyped code reaches the blackbox as an unknown
+  key, whose handling is the model's own binding decision.
 - `undefined` IS A KEY LIKE ANY OTHER, BOUND BY THE BLACKBOX (owner-ruled): the whole datum
   domain, `undefined` included, is keys into the installed model's behavior — swap the blackbox in
   one line and every registration's behavior changes, omissions included; that is inversion of
