@@ -7,7 +7,7 @@
 > capture) and `di2.scope-notes.md` (scope research inputs). Delete once the rulings land in the
 > decision records and code.
 
-## Principle — THE UNTHINKING PATH RUNS THE DEFAULT MODEL
+## Principle — THE UNTHINKING PATH RUNS THE DEFAULT BLACKBOX
 
 The user who never makes a choice gets the default — so every stability guarantee attaches to
 defaults, and every freedom attaches to deliberate opt-ins. Judge each default by the user who
@@ -204,36 +204,36 @@ Weigh EVERY design decision in this document against this split.
   delivered with the factory invocation (descendants realize DURING the factory call, so it
   cannot arrive by return); the former `ScopeCtx` token is gone — THE BLACKBOX IS THE CONTEXT.
   Everything beyond this call surface plus the createScope requirement below is blackbox-impl
-  detail of particular models. The FLAT call is final (owner-ruled): a curried
+  detail of particular blackboxes. The FLAT call is final (owner-ruled): a curried
   install-then-per-site-closure staging was considered and rejected — imperceptible performance
-  gain, real comprehension cost for model authors.
+  gain, real comprehension cost for blackbox authors.
 - The PLAN memo keys on the interned request node ALONE — multi-registrations are disambiguated
   inside plan trees at construction, never by the plan key. How a blackbox keys its INSTANCE
   storage is its own business (the call hands it the as-requested type and the answering
-  descriptor; what it does with them is model territory). The blackbox stores and returns awaited
+  descriptor; what it does with them is blackbox territory). The blackbox stores and returns awaited
   values only (async-blind by construction; for an in-flight make the returned "value" is the
   shared promise, consumed only by the gather).
 - SCOPE ATTRIBUTION/AMBIENCE IS TOOLS-VERIFIED (owner-scoped audit): both question shapes are
-  model-implementable with zero engine involvement — retrospective ("which scope made this
-  instance?") via a model-kept `WeakMap<instance, box>` behind a registered inspector service;
-  mid-construction ("what scope am I under right now?") via the model wrapping ITS OWN factory
-  invocations in its own ambient frame (the model, not the engine, invokes factories under the
+  blackbox-implementable with zero engine involvement — retrospective ("which scope made this
+  instance?") via a blackbox-kept `WeakMap<instance, box>` behind a registered inspector service;
+  mid-construction ("what scope am I under right now?") via the blackbox wrapping ITS OWN factory
+  invocations in its own ambient frame (the blackbox, not the engine, invokes factories under the
   flat call) and exporting its own `currentScope()`. No engine-owned wrap point is reserved —
   the pressure test's ambient-frame graft is dissolved, not deferred. Residue, consistent by
-  ruling: value sites and descriptor-less synthesized sites bypass the model and fall outside any
+  ruling: value sites and descriptor-less synthesized sites bypass the blackbox and fall outside any
   frame or map — caller-owned.
 - CONCURRENT-DEDUP IS TOOLS-VERIFIED (owner-scoped audit): single-flighting concurrent async
-  makes is implementable as pure model policy with tools the contract already grants — same
+  makes is implementable as pure blackbox policy with tools the contract already grants — same
   `(type, descriptor)` identity in both walks' calls; refusal power (hit-vs-make is internal, and
   an in-flight make's returned "value" is legally the shared promise); run-to-completion
   atomicity for the check-and-insert; settle-path ownership for store/evict-on-reject. Engine
   side is coherent by existing rule: the second walk's subtree never runs (in-flight generalizes
   hit-pruning), and a shared rejection lands in each walk's own deduped `AggregateError`. No
-  contract addition; adopt-or-store remains the fallback discipline for models that decline.
+  contract addition; adopt-or-store remains the fallback discipline for blackboxes that decline.
 - VALUE SITES BYPASS THE SCOPE ENGINE ENTIRELY (owner-ruled): a value descriptor presents no
   make, and makes are the blackbox's whole jurisdiction — so `asValue` registrations, latebound
   call args, and invoke-frame args are never asked, stored, tracked, or disposed by any scope
-  model; realize reads the payload straight from the descriptor, and ownership stays with
+  blackbox; realize reads the payload straight from the descriptor, and ownership stays with
   whoever supplied the value.
 - Because the blackbox performs every make, it OBSERVES every instance by construction — the
   disposal fact feed collapses into the call itself. `undefined`-datum sites flow through the call
@@ -247,13 +247,13 @@ Weigh EVERY design decision in this document against this split.
   ancestor hit — inherent to caching. **(proposed)**
 - Mechanism/policy line: the blackbox decides WHETHER each site produces work and WHERE results
   land; the engine decides how outstanding work is scheduled, awaited, and aggregated. Gather
-  semantics are container-level and uniform across every scope model: awaits live only in the
+  semantics are container-level and uniform across every scope blackbox: awaits live only in the
   gather, `allSettled`-shaped, failures thrown as one `AggregateError` deduped by reason identity.
   **(proposed)**
 - Latebound re-entry: the closure captures the CONTEXT BLACKBOX in effect at its mint site and
   re-enters against it — captured-scope semantics by construction, since the blackbox is the
-  context. A model wanting reset-to-root or ambient binding controls what it forwards to latebound
-  factories, which requires the model to distinguish latebound sites — whether the call surface
+  context. A blackbox wanting reset-to-root or ambient binding controls what it forwards to latebound
+  factories, which requires the blackbox to distinguish latebound sites — whether the call surface
   marks them (a site-kind fact it already carries via site identity) is settled in the async/plan
   design, not a new arm. The engine keeps only what is uniform: the re-entry path follows the
   declared return type. **(proposed)**
@@ -261,8 +261,8 @@ Weigh EVERY design decision in this document against this split.
 ## Lifetime data
 
 - The lifetime datum on a descriptor is OPAQUE to the engine at runtime — pure data riding
-  descriptor and plan, interpreted only by the installed scope model's door. Forced by the models
-  below coexisting: one model's datum is a meaning-free user string, another's a structured node.
+  descriptor and plan, interpreted only by the installed scope blackbox's door. Forced by the blackboxs
+  below coexisting: one blackbox's datum is a meaning-free user string, another's a structured node.
 - At the TYPE level the datum is the scope engine's declaration: the scope generic argument can be
   TRULY ANYTHING — a string union, a structured node type, even a lambda type for per-registration
   custom behavior (a function-valued datum is behavior-as-data, same precedent as factory impls on
@@ -277,7 +277,7 @@ Weigh EVERY design decision in this document against this split.
   unset is a COMPILE ERROR — optionality of the lifetime argument follows
   `undefined extends TLifetime` exactly (assignability, not literal union membership — the
   declared type can be any shape). WHETHER `undefined` is included is the BLACKBOX's own choice
-  (owner-ruled): the model owns both halves of the key — its admissibility (this strictness dial)
+  (owner-ruled): the blackbox owns both halves of the key — its admissibility (this strictness dial)
   and its meaning (the binding above). The rule covers BOTH dialects (owner-ruled): in the builder
   form, when `undefined` is not assignable, completion is reachable ONLY through `withLifetime` —
   the established stage-gating pattern, conditioned on `TLifetime` (`undefined extends TLifetime ?
@@ -287,44 +287,44 @@ Weigh EVERY design decision in this document against this split.
   registration-time datum inspection exists anywhere: no admissibility flag, no
   `=== undefined` test, no truthiness test; at registration `undefined` is just another value on
   the one shared path. An out-of-union datum from untyped code reaches the blackbox as an unknown
-  key, whose handling is the model's own binding decision.
+  key, whose handling is the blackbox's own binding decision.
 - `undefined` IS A KEY LIKE ANY OTHER, BOUND BY THE BLACKBOX (owner-ruled): the whole datum
-  domain, `undefined` included, is keys into the installed model's behavior — swap the blackbox in
+  domain, `undefined` included, is keys into the installed blackbox's behavior — swap the blackbox in
   one line and every registration's behavior changes, omissions included; that is inversion of
   control applied to the container itself. Legality stays typed (the assignability rule above) and
-  meaning stays behavioral, both flowing from the same engine choice. Riders: the DEFAULT model
-  binds `undefined` → transient, FROZEN AT BIRTH — and birth-frozen generalizes as a model-author
-  convention: a published model's `undefined`-binding is immutable post-birth, so omission's
+  meaning stays behavioral, both flowing from the same engine choice. Riders: the DEFAULT blackbox
+  binds `undefined` → transient, FROZEN AT BIRTH — and birth-frozen generalizes as a blackbox-author
+  convention: a published blackbox's `undefined`-binding is immutable post-birth, so omission's
   meaning never changes except by the user's own deliberate engine swap. DESCRIPTOR-LESS
   engine-synthesized sites (invoke frames, construct-on-miss) are NOT in the datum domain — the
-  engine controls their per-call freshness directly, under every model, which is what preserves
-  the invocation lane's guarantee; the user-facing always-create escape is a default-model
-  property, and a swapped model may foreclose it as its own deliberate design.
+  engine controls their per-call freshness directly, under every blackbox, which is what preserves
+  the invocation lane's guarantee; the user-facing always-create escape is a default-blackbox
+  property, and a swapped blackbox may foreclose it as its own deliberate design.
 - Nobody but the blackbox interprets ANY datum: the resolution engine inspects none of it; captive
-  validation relays the datum to a MODEL-supplied ordering interpreter (a model that declines —
-  e.g. any lambda-datum model — opts out of captive checks); diagnostics prints without
+  validation relays the datum to a MODEL-supplied ordering interpreter (a blackbox that declines —
+  e.g. any lambda-datum blackbox — opts out of captive checks); diagnostics prints without
   interpreting. Because the blackbox is the interpreter of `undefined`, such sites necessarily
   flow through the call — observed-every-make holds with no extra protocol.
-- The default model's vocabulary: a small interned kind-tagged union — `undefined` (transient) |
+- The default blackbox's vocabulary: a small interned kind-tagged union — `undefined` (transient) |
   `singleton` | `scoped` | `matching(tag)` — strategy and parameter as separate fields, so the tag
   namespace holds only user tags, no reserved values. **(proposed)**
-- The STRING MODEL is a named candidate scope model, not a top-level requirement: user-vocabulary
+- The STRING MODEL is a named candidate scope blackbox, not a top-level requirement: user-vocabulary
   tags with no implicit meaning, scope lifetime bound to the holding variable (`using`-protocol
   support in the disposal design is its consumer). Root-pinning and ask-scope caching, if that
-  model wants them, are its own interpretation choices.
-- Under the DEFAULT model, an omitted lifetime is the first-class always-create: nothing caches,
+  blackbox wants them, are its own interpretation choices.
+- Under the DEFAULT blackbox, an omitted lifetime is the first-class always-create: nothing caches,
   the hit-prune/store machinery never engages, per-occurrence semantics hold.
 - LIBRARY PORTABILITY (owner-ruled, closing the pressure-test blocker): a library PUBLISHES the
-  scope-model shape(s) it supports in its configure function's own signature
+  scope-blackbox shape(s) it supports in its configure function's own signature
   (`Manifest<DefaultLifetime>`, or a generic constraint over what its registrations need) —
   incompatibility is a LOUD compile error at the configure call, never a silently-wrong lifetime.
-  No engine-space lingua-franca vocabulary exists (the model's total ownership of the datum
-  domain stays whole); the default model becomes the de facto standard organically because libs
+  No engine-space lingua-franca vocabulary exists (the blackbox's total ownership of the datum
+  domain stays whole); the default blackbox becomes the de facto standard organically because libs
   target it, and an app on an exotic engine knowingly accepts lib-compat friction (voluntary
   engine-shipped adapters, or forgoing the lib). Companion convention: library augmentations are
   written `this: Manifest<L>` with a per-function generic, never `Manifest<any>`. Workaround on
   record (owner; formalization deferred): translate at the boundary — build the lib's
-  registrations into a throwaway manifest typed for the lib's model, map each descriptor's
+  registrations into a throwaway manifest typed for the lib's blackbox, map each descriptor's
   lifetime through a translation fn (new descriptor objects, everything else spread through), and
   feed the result to the app manifest via the `add(Iterable<ServiceDescriptor>)` overload.
   Formalization notes: preserve all non-datum descriptor fields. Scope-fragment re-rooting is
@@ -333,23 +333,23 @@ Weigh EVERY design decision in this document against this split.
 
 ## Scope creation
 
-- AUDIT (verified against the autofac lifetime catalog): the whole-picture model expresses the
+- AUDIT (verified against the autofac lifetime catalog): the whole-picture contract expresses the
   entire catalog — call surface (per-dependency/singleton/scoped/matching/per-request/custom/
-  graph-shape), model-shipped registrations (`createScope` with tag args;
+  graph-shape), blackbox-shipped registrations (`createScope` with tag args;
   `Owned<$T>` as an open registration), descriptor vocabulary (owns-what-it-creates,
   external-ownership, release override) — and is strictly stronger twice: canonical-by-return
   grants instance substitution/wrapping without a pipeline, and sharing policy itself is
-  model-territory. Exclusions, both deliberate: parameter mutation (activation-pipeline, not
+  blackbox-territory. Exclusions, both deliberate: parameter mutation (activation-pipeline, not
   lifetime; factory territory here), and per-scope registrations
   (`BeginLifetimeScope(builder =>)`) — not a contract capability; per-scope context is
-  model/userland territory (the scoped-holder pattern serves the use case).
+  blackbox/userland territory (the scoped-holder pattern serves the use case).
 - The blackbox is REQUIRED to register a `createScope` service (owner-ruled) — the user's
   entrypoint into opening scopes, itself returning a blackbox-backed provider. Its typed shape
   (owner-ruled, closing the creation-args fork): the uniform well-known address is
   `ScopeFactory<TLifetime>`, typed by the ONE cascading Scopes generic — creation args and
   lifetime data draw from one vocabulary (what you pass at creation is what registrations
-  reference to match it). Creation-ONLY config that is not lifetime vocabulary is model-side: a
-  model registers its own richer factory type beside the well-known address (per-model `Func`
+  reference to match it). Creation-ONLY config that is not lifetime vocabulary is blackbox-side: a
+  blackbox registers its own richer factory type beside the well-known address (per-blackbox `Func`
   spellings stay legal); `TLifetime` never carries values no registration may hold. CONVENIENCE
   MEMBER (owner-proposed, endorsed): `sp.createScope(scope?: TLifetime)` — pure forwarding sugar
   over resolving the well-known address (the `getServiceAsync` pattern; adds no capability),
@@ -358,16 +358,16 @@ Weigh EVERY design decision in this document against this split.
   (adding `TLifetime` there would infect every library signature).
 - Creation is RESOLUTION-DRIVEN: scope factories are registered in the manifest and obtained
   through `getService`, like any service. The sole structural exception is the GENESIS: the root
-  ctx is minted at provider build. Installing a scope model = its door + its genesis + its
-  registrations; swapping models is swapping registrations.
+  ctx is minted at provider build. Installing a scope blackbox = its door + its genesis + its
+  registrations; swapping blackboxes is swapping registrations.
 - Parenting falls out of resolution ancestry: the asking context (as shifted) is the natural
   parent. The factory registration's OWN lifetime selects the parenting policy — a scoped factory
   yields children of the asker; a singleton factory realizes under root context and yields children
   of root. A factory injected into a service parents at the ctx it was realized under. No new
   mechanism. **(proposed)**
 - Creation args stay inside existing grammar. Two candidate shapes — **OPEN**:
-  1. latebound `Func` types per model (zero new surface, no single well-known address);
-  2. one uniform `ScopeFactory` address whose `create(options?)` options type models extend by
+  1. latebound `Func` types per blackbox (zero new surface, no single well-known address);
+  2. one uniform `ScopeFactory` address whose `create(options?)` options type blackboxes extend by
      declaration merging (one discoverable address; recommended). **(proposed lean: 2)**
 - The user-visible scope is a fresh `IServiceProvider` minted as the (engine, child-ctx) binding,
   plus the disposal surface. No additional public scope type.
@@ -376,17 +376,17 @@ Weigh EVERY design decision in this document against this split.
   those tests exercise the placeholder surface and rewrite to this design when it lands); the
   dispose/disposeAsync stubs account for 23 more; singleton instance identity is not honored at all
   today (two resolutions construct twice — the instance layer is entirely greenfield, nothing to
-  preserve). Downstream consumers gated only on this model: `validateOnStart` and the per-provider
+  preserve). Downstream consumers gated only on this blackbox: `validateOnStart` and the per-provider
   logging-config reload test.
 
-## Write-back and the race — default-model design record
+## Write-back and the race — default-blackbox design record
 
 > With the whole-picture call surface above, everything in this section is BLACKBOX-IMPL detail of
-> the default model, retained as its design record — not engine contract. Blackbox internals are
-> NOT planned in this session (owner); entries here are parked material for the default model's
+> the default blackbox, retained as its design record — not engine contract. Blackbox internals are
+> NOT planned in this session (owner); entries here are parked material for the default blackbox's
 > own lane.
 
-- Default-model instance key (parked): `(site's as-requested type, answering descriptor)` — the
+- Default-blackbox instance key (parked): `(site's as-requested type, answering descriptor)` — the
   descriptor half makes the unit of "single" the registration-within-a-scope, letting resolve-one
   and resolve-all share storage while same-type multi-registrations stay distinct; identity, not
   ordinals (stable per built provider). Descriptor-less synthesized sites never cache — no
@@ -423,15 +423,15 @@ Weigh EVERY design decision in this document against this split.
   1. **The contract** — what a disposable scope is (`Symbol.dispose`/`Symbol.asyncDispose`
      protocols, the `disposeAsync` shape) and what disposal guarantees: every tracked instance
      released per its release vocabulary, failures AGGREGATED (never abort-on-first), a disposed
-     scope's door answers with a loud error. Uniform obligations, model-owned execution.
+     scope's door answers with a loud error. Uniform obligations, blackbox-owned execution.
   2. **The per-descriptor disposal vocabulary** — release override (e.g. return-to-pool) and
      external-ownership opt-out, as pure data with ENGINE-defined meaning: "don't you dispose me"
-     means the same thing under every model. The blackbox is contracted to honor it, never
+     means the same thing under every blackbox. The blackbox is contracted to honor it, never
      reinterpret it.
   3. **The fact feed** — every instance the engine realizes passes through the door in creation
      order (the realize walk is post-order, so ask/store order IS dependency order; LIFO teardown
      is derivable blackbox-side). Includes transient disposables via a TRACK op — they enter no
-     cache but the resolving scope must be told about them or no model can dispose them. The feed
+     cache but the resolving scope must be told about them or no blackbox can dispose them. The feed
      is also what makes partial-init unwind expressible as policy (immediate release vs hold to
      scope end).
 - DISPOSE-IN-FLIGHT AND ITS SIBLINGS ARE TOOLS-VERIFIED, NOT CONTRACT (owner-scoped): the four
@@ -439,13 +439,13 @@ Weigh EVERY design decision in this document against this split.
   root-transient tracking; a throwing door's unwind) are all implementable with tools the
   contract already grants — the blackbox observes every make, owns the settle path of every
   promise it built, owns its own disposal members, and holds the release vocabulary in every
-  call; construct-on-miss sites are descriptor-less and already ruled caller-owned. How any model
+  call; construct-on-miss sites are descriptor-less and already ruled caller-owned. How any blackbox
   uses these tools is its own policy — not planned in this session.
 - Requirements checklist for the disposal design (survey-derived): per-registration disposer;
   teardown in reverse dependency order INCLUDING on partial-init failure; release seeing the
   outcome (success vs downstream failure) for rollback semantics; consumer-owned early release
   (owned-wrapper style); external-ownership opt-out; release override. Split at design time into
-  contract items vs default-model policy.
+  contract items vs default-blackbox policy.
 
 ## ManifestScope — CANCELLED
 
@@ -518,4 +518,4 @@ untouched). Not part of the current lane — executed separately.
    (per-item streaming over the sync path's iterable resolution, outside the gather); per-boundary
    nested PromiseCallsite gathers' interaction with the hoist's scope-cache checks.
 2. Captive-dependency validation: the lifetime-ordering declaration hook in the scope contract.
-3. Disposal design proper (contract + default model), including `using`-protocol support.
+3. Disposal design proper (contract + default blackbox), including `using`-protocol support.
