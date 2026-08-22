@@ -14,28 +14,19 @@ export type CallSite =
   | LateBoundCallSite
   | ConstantCallSite
   | ServiceProviderCallSite
-  | ServiceScopeFactoryCallSite
   | IterableCallSite
   | ArrayCallSite;
 
-/**
- * A registered constructor the engine `new`s up. {@link descriptor} is present only when the
- * registration carries a lifetime — it is the key a scoped realization caches its value under,
- * stable and unique per registration even when several registrations share one address.
- */
+/** A registered constructor the engine `new`s up. */
 export interface CtorCallSite {
   readonly kind: 'ctor';
   readonly ctor: Ctor;
   readonly args: CallSite[];
-  /** The registration behind the site when it is scoped — the key a scope caches the instance under. */
-  readonly descriptor?: ServiceDescriptor<unknown>;
 }
 export interface FactoryCallSite {
   readonly kind: 'factory';
   readonly factory: Func;
   readonly args: CallSite[];
-  /** The registration behind the site when it is scoped — the key a scope caches the instance under. */
-  readonly descriptor?: ServiceDescriptor<unknown>;
 }
 export interface LateBoundCallSite {
   readonly kind: 'latebound';
@@ -48,9 +39,6 @@ export interface ConstantCallSite {
 }
 export interface ServiceProviderCallSite {
   readonly kind: 'service-provider';
-}
-export interface ServiceScopeFactoryCallSite {
-  readonly kind: 'service-scope-factory';
 }
 export interface IterableCallSite {
   readonly kind: 'iterable';
@@ -65,14 +53,14 @@ export namespace CallSite {
   /**
    * A registered constructor the engine `new`s up.
    */
-  export function ctor(ctor: Ctor, args: CallSite[], descriptor?: ServiceDescriptor<unknown>): CtorCallSite {
-    return { kind: 'ctor', ctor, args, descriptor };
+  export function ctor(ctor: Ctor, args: CallSite[]): CtorCallSite {
+    return { kind: 'ctor', ctor, args };
   }
   /**
    * A registered factory the engine invokes — {@link args} realize its parameters.
    */
-  export function factory(factory: Func, args: CallSite[], descriptor?: ServiceDescriptor<unknown>): FactoryCallSite {
-    return { kind: 'factory', factory, args, descriptor };
+  export function factory(factory: Func, args: CallSite[]): FactoryCallSite {
+    return { kind: 'factory', factory, args };
   }
   /**
    * A function value handed back to the caller; each invocation re-enters the engine to resolve
@@ -88,10 +76,6 @@ export namespace CallSite {
   }
   export function serviceProvider(): ServiceProviderCallSite {
     return { kind: 'service-provider' };
-  }
-  /** The scope factory a dependency uses to open its own resolution scope. */
-  export function serviceScopeFactory(): ServiceScopeFactoryCallSite {
-    return { kind: 'service-scope-factory' };
   }
   /**
    * Every registration serving one type, realized lazily and re-iterably: each walk constructs
@@ -120,11 +104,11 @@ export namespace CallSite {
     switch (kind) {
       case 'ctor': {
         const args = lowerSignature(descriptor.ctorType.args, generics, visitor);
-        return args && ctor(descriptor.ctor, args, descriptor.scope !== undefined ? descriptor : undefined);
+        return args && ctor(descriptor.ctor, args);
       }
       case 'factory': {
         const args = lowerSignature(descriptor.factoryType.args, generics, visitor);
-        return args && factory(descriptor.factory, args, descriptor.scope !== undefined ? descriptor : undefined);
+        return args && factory(descriptor.factory, args);
       }
       case 'value': {
         return constant(descriptor.value);

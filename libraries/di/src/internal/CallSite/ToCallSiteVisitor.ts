@@ -1,4 +1,4 @@
-import { CycleError, type IServiceProvider, type IServiceScopeFactory } from '@rhombus-std/di.core';
+import { CycleError, type IServiceProvider } from '@rhombus-std/di.core';
 import { type ArrayType, type ConstructorType, type FunctionType, type GenericType, type GlobalType, type ImportedType, type IntersectionType, type IterableType, type ObjectType, type TagType,
   type TupleType, Type, type TypeLiteralType, type UnionType } from '@rhombus-std/primitives';
 import { typefor } from '@rhombus-std/primitives.extras';
@@ -107,9 +107,6 @@ export class ToCallSiteVisitor extends Type.Visitor<CallSite | undefined> {
   protected override visitImported(type: ImportedType): CallSite | undefined {
     if (type === typefor<IServiceProvider>()) {
       return CallSite.serviceProvider();
-    }
-    if (type === typefor<IServiceScopeFactory>()) {
-      return CallSite.serviceScopeFactory();
     }
     return undefined;
   }

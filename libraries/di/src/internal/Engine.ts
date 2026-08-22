@@ -2,15 +2,12 @@ import { type Manifest, ManifestValidationError, type ServiceDescriptor, Unsatis
 import { type IServiceProvider, memo, type Type } from '@rhombus-std/primitives';
 import { CallSite } from './CallSite/index.js';
 import { Registry } from './Registry.js';
-import { ServiceScope } from './ServiceScope.js';
 
 export interface ResolveContext {
   /** What a service asking for the provider receives. */
   readonly serviceProvider: IServiceProvider;
   /** Registrations layered over the manifest for this walk only — a latebound call's arguments. */
   readonly additionalServices?: ReadonlyArray<ServiceDescriptor<unknown>>;
-  /** The scope a scoped-lifetime realization caches into; absent for a direct, uncached resolve. */
-  readonly scope?: ServiceScope;
 }
 
 /**
@@ -20,8 +17,6 @@ export interface ResolveContext {
 export class Engine {
   readonly #manifest: Manifest<any>;
   readonly #registry: Registry;
-  /** Every scope this engine has opened, oldest first — what the provider's own disposal cascades into. */
-  readonly #scopes: ServiceScope[] = [];
 
   /**
    * The plan for a request, built once and kept for as long as this engine lives.
@@ -46,14 +41,7 @@ export class Engine {
     const site = context.additionalServices?.length
       ? this.#build(serviceType, new Registry(this.#manifest.addMany(context.additionalServices)))
       : this.#planFor(serviceType);
-    return CallSite.realize(site, { engine: this, serviceProvider: context.serviceProvider, scope: context.scope });
-  }
-
-  /** Opens a new scope against this engine, tracking it so the provider's own disposal reaches it. */
-  createScope(name: string | undefined, serviceProvider: IServiceProvider): ServiceScope {
-    const scope = new ServiceScope(this, serviceProvider, name);
-    this.#scopes.push(scope);
-    return scope;
+    return CallSite.realize(site, { engine: this, serviceProvider: context.serviceProvider });
   }
 
   /** Whether {@link serviceType} can be built from this engine's manifest, without building it. */
@@ -66,20 +54,6 @@ export class Engine {
         return false;
       }
       throw error;
-    }
-  }
-
-  /** Disposes every scope this engine has opened, most recently opened first. */
-  dispose(): void {
-    for (const scope of this.#scopes.toReversed()) {
-      scope[Symbol.dispose]();
-    }
-  }
-
-  /** Disposes every scope this engine has opened, most recently opened first. */
-  async disposeAsync(): Promise<void> {
-    for (const scope of this.#scopes.toReversed()) {
-      await scope[Symbol.asyncDispose]();
     }
   }
 

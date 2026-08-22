@@ -10,6 +10,5 @@ export type { ServiceDescriptorBuilderFor } from './builder';
 export * from './Errors';
 export * from './Manifest';
 export * from './ServiceDescriptor';
-export * from './ServiceScope';
 
 import './augmentations';
