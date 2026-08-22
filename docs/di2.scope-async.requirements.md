@@ -206,6 +206,15 @@ Weigh EVERY design decision in this document against this split.
   descriptor; what it does with them is model territory). The blackbox stores and returns awaited
   values only (async-blind by construction; for an in-flight make the returned "value" is the
   shared promise, consumed only by the gather).
+- SCOPE ATTRIBUTION/AMBIENCE IS TOOLS-VERIFIED (owner-scoped audit): both question shapes are
+  model-implementable with zero engine involvement — retrospective ("which scope made this
+  instance?") via a model-kept `WeakMap<instance, box>` behind a registered inspector service;
+  mid-construction ("what scope am I under right now?") via the model wrapping ITS OWN factory
+  invocations in its own ambient frame (the model, not the engine, invokes factories under the
+  flat call) and exporting its own `currentScope()`. No engine-owned wrap point is reserved —
+  the pressure test's ambient-frame graft is dissolved, not deferred. Residue, consistent by
+  ruling: value sites and descriptor-less synthesized sites bypass the model and fall outside any
+  frame or map — caller-owned.
 - CONCURRENT-DEDUP IS TOOLS-VERIFIED (owner-scoped audit): single-flighting concurrent async
   makes is implementable as pure model policy with tools the contract already grants — same
   `(type, descriptor)` identity in both walks' calls; refusal power (hit-vs-make is internal, and
