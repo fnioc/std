@@ -157,11 +157,11 @@ service type nothing in the program is ever of, and stores a `Type` node under i
 key wearing a type's clothes, with `[optionsType]` standing in for a composite key component rather than a type
 argument.
 
-- [ ] **Dissolve the `() => T` base-slot shape.**
+- [ ] **The `() => T` base-slot shape — HELD** (owner 2026-08-21: "leave options alone for now").
       `libraries/logging.config/src/LoggingBuilder-Config-augmentations.ts:64` still registers
-      `() => new LoggerFilterOptions()` — a class registration wearing a lambda. The base slot forcing a
-      `() => T` where an ordinary class registration of the options type would do is the bizarro shape to
-      dissolve — question the slot's whole shape while rewriting it, don't just preserve it.
+      `() => new LoggerFilterOptions()` — a class registration wearing a lambda. Dissolving it into an ordinary
+      class registration is the eventual direction; nothing is scheduled and nobody touches the options family
+      for this until the owner reopens it.
 - [ ] **`diagnostics.core` still fabricates package-qualified globals.**
       `libraries/diagnostics.core/src/types.ts:28,:44` (`METRICS_OPTIONS_TYPE` / `TRACING_OPTIONS_TYPE`,
       `Type.global(\`@rhombus-std/diagnostics/...\`)`) — convert to the real addresses`Type.imported('IOptions', '@rhombus-std/options', [...])` like the options family. A repo-wide
@@ -255,12 +255,13 @@ whole set is decided fresh when the slots above are rewritten, so this is a demo
       boundary.** In-repo, source-first resolution yields one module instance by construction, so plain
       `dependencies` on identity-load-bearing packages (`primitives`, `di.core`, config providers) are correct
       today; the identity invariant bites only where npm nesting can mint a duplicate, i.e. for PUBLISHED
-      consumers. Owner preference (2026-08-21): avoid peer deps entirely if possible — they confuse consumers.
-      Preferred direction, deferred to the pre-publish gate (alongside the trusted-publisher repointing):
-      plain deps everywhere + a LOAD-TIME SINGLE-INSTANCE GUARD in the identity packages — `primitives` (and
-      `di.core`) stamp a global-symbol sentinel at module load and a second loaded copy throws immediately with
-      a message naming both module paths. Louder and more portable than peer warnings. Fall back to
-      `peerDependencies` recategorization only if the guard proves insufficient.
+      consumers. Owner ruling (2026-08-21): NO peer deps — plain deps everywhere, and the duplicate-copy hazard is
+      covered by a LOAD-TIME SINGLE-INSTANCE GUARD, approved to implement now (fed to the active run): each
+      identity package (`primitives`, `di.core`) stamps a global-symbol sentinel (e.g.
+      `Symbol.for('@rhombus-std/primitives/instance')`) at module load; a second loaded copy sees the stamp and
+      throws immediately with a message naming both module paths and telling the user to deduplicate their
+      lockfile. Louder and more portable than peer warnings; peers remain only a fallback if the guard proves
+      insufficient in practice.
 - [ ] `libraries/di/src/augmentations/Manifest-ContainerBuilder-augmentations.ts` uses the retired
       `extends Flatten<typeof Ns>` shape, with its docs on the namespace rather than the face — convert to the
       canonical shape (one `declare module` block carrying the faces, docs on the face, `registerAugmentations`
