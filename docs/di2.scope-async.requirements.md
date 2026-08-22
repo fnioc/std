@@ -197,6 +197,14 @@ Weigh EVERY design decision in this document against this split.
 
 ## Scope creation
 
+- AUDIT (verified against the autofac lifetime catalog): the whole-picture model expresses the
+  entire catalog — call surface (per-dependency/singleton/scoped/matching/per-request/custom/
+  graph-shape), model-shipped registrations (`createScope` with tag + descriptor-carrying args;
+  `Owned<$T>` as an open registration), descriptor vocabulary (owns-what-it-creates,
+  external-ownership, release override) — and is strictly stronger twice: canonical-by-return
+  grants instance substitution/wrapping without a pipeline, and sharing policy itself is
+  model-territory. Sole exclusion: parameter mutation (activation-pipeline, not lifetime; factory
+  territory here).
 - The blackbox is REQUIRED to register a `createScope` service (owner-ruled) — the user's
   entrypoint into opening scopes, itself returning a blackbox-backed provider.
 - Creation is RESOLUTION-DRIVEN: scope factories are registered in the manifest and obtained
