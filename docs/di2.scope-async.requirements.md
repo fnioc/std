@@ -38,14 +38,14 @@ Weigh EVERY design decision in this document against this split.
 - REALIZE MECHANISM (owner-designed): the collection point rides the PLAN-construction visitor
   context — a minted `PromiseCallsite` threads a clean one; an exact-miss/`Promise<T>`-hit mints
   an `AsyncCallSite` that registers on it; when the boundary's walk returns, the accumulated
-  contents freeze onto the boundary node as its island inventory (immutable-once-assigned — the
+  contents freeze onto the boundary node as its inventory (immutable-once-assigned — the
   only plan-side residue).
 - AN `AsyncCallSite`'s INNER IS ITSELF A BOUNDARY (owner-surfaced): its inner is the `Promise<T>`
   candidate's callsite — promise-typed as-requested — so a new collection point opens beneath
   every `AsyncCallSite` automatically under the every-promise-callsite-is-a-boundary rule. The
   two kinds differ only in delivery: `PromiseCallsite` hands over the promise UNAWAITED;
-  `AsyncCallSite` is awaited by its ENCLOSING island's hoist and delivers the settled value.
-  Consequence: LAYERS DO NOT EXIST WITHIN AN ISLAND — they are nested islands. An island's sites
+  `AsyncCallSite` is awaited by its ENCLOSING PromiseCallsite's hoist and delivers the settled value.
+  Consequence: LAYERS DO NOT EXIST WITHIN A PromiseCallsite — they are nested PromiseCallsites. A PromiseCallsite's sites
   are mutually independent by construction (a site's async deps register on its inner boundary's
   clean collection, never the enclosing one), so no dependency edges and no topological ordering
   exist: at realization the boundary is visited first, builds one entry per site
@@ -74,11 +74,11 @@ Weigh EVERY design decision in this document against this split.
 - Mechanism (owner-designed): the plan-construction visitor context carries a COLLECTION of async
   sites. Every call site minted on a promise fallback is collected into the current collection; a
   node that is a new async boundary walks its descendants with a CLEAN collection and, when that
-  walk returns, owns its island's inventory — assigned once, so nodes stay immutable after
+  walk returns, owns its inventory — assigned once, so nodes stay immutable after
   construction. Collection-presence is the fallback gate (a miss on `T` falls back to a
-  `Promise<T>` lookup iff a collection exists); an empty collection marks a fully-sync island and
-  skips the async machinery outright. The collection is the plan-time island inventory; the
-  identity-keyed per-resolution map is unchanged at resolve time — static inventory per island,
+  `Promise<T>` lookup iff a collection exists); an empty collection marks a fully-sync PromiseCallsite and
+  skips the async machinery outright. The collection is the plan-time inventory; the
+  identity-keyed per-resolution map is unchanged at resolve time — static inventory per PromiseCallsite,
   per-resolution values. Caveat: if sub-plans are ever memoized per type, boundary context joins
   that memo key; per-root plans need only the walk state.
 - THE SYNC DOOR HAS NO ASYNC FAILURE MODE (owner-ruled): outside a boundary the fallback never
@@ -86,16 +86,16 @@ Weigh EVERY design decision in this document against this split.
   `UnsatisfiableError`, no async-specific taxonomy member, no "surviving async site" concept.
   Consequence, struck knowingly: the former "a fully-cached async graph resolves through the sync
   entrypoint" corollary is dead — plans are pure and cache-independent, so the sync plan for such
-  a graph does not exist regardless of cache warmth. Hit-skips survives fully WITHIN islands (a
+  a graph does not exist regardless of cache warmth. Hit-skips survives fully WITHIN PromiseCallsites (a
   cache hit still skips the factory and its await).
 - The compositions stay distinct and both remain expressible: `Promise<Iterable<E>>` = the whole
   collection delivered later, then sync iteration; `AsyncIterable<E>` = per-item streaming, each
   element resolving at iteration time.
 - THE PROMISE CALL-SITE (owner-ruled): every call site whose AS-REQUESTED type is a promise is
   wrapped with a `PromiseCallsite` — THE async boundary node: descendant awaits hoist to it, and
-  its realize is a transparent wrapping promise that awaits the island's deps then yields the
-  requested value. The boundary-collection walk assigns each island's inventory to exactly this
-  node; an empty island degenerates to `Promise.resolve(realizeSync(inner))` — uniform mechanism,
+  its realize is a transparent wrapping promise that awaits its collected deps then yields the
+  requested value. The boundary-collection walk assigns each inventory to exactly this
+  node; an empty PromiseCallsite degenerates to `Promise.resolve(realizeSync(inner))` — uniform mechanism,
   near-zero cost for sync graphs.
 - LOOKUP-THEN-ACTIVATE IS THE ESTABLISHED VISITOR ARCHITECTURE (declared in the cloud2 session):
   exact-match lookup happens in ToCallSiteVisitor's overridden `.visit` FOR ALL TYPES — a literal
@@ -116,8 +116,8 @@ Weigh EVERY design decision in this document against this split.
   the inventory. An ancestor hit prunes its descendant async sites (their values live inside the
   cached instance); an ancestor miss shifts their context. The flat inventory survives only as an
   upper-bound index ("does this plan contain async at all" — the cheap skip for fully-sync graphs).
-- Static inventory vs dynamic effective set: each resolution filters an island's inventory through
-  the asking scope — hits satisfy sites synchronously within the island, misses become in-flight
+- Static inventory vs dynamic effective set: each resolution filters a PromiseCallsite's inventory through
+  the asking scope — hits satisfy sites synchronously within the PromiseCallsite, misses become in-flight
   entries. A sync walk contains no async sites at all (the fallback is boundary-gated at plan
   time), so the sync/async distinction is decided by plan structure, never by cache state.
 - Plan memoization records instructions only — the callee reference and the argument wiring, never
@@ -407,7 +407,7 @@ first client:
 1. Scope-creation args: per-model `Func` types vs uniform `ScopeFactory` + merged options type.
 2. Async call-site design residue: the async call-site node's shape; the AsyncIterable arm
    (per-item streaming over the sync path's iterable resolution, outside the gather); per-boundary
-   gather islands' interaction with the hoist's scope-cache checks.
+   nested PromiseCallsite gathers' interaction with the hoist's scope-cache checks.
 3. Captive-dependency validation: the lifetime-ordering declaration hook in the scope contract.
 4. Disposal design proper (contract + default model), including `using`-protocol support.
 5. ManifestScope dialect (spelling of private registration; deep-override verb naming) and the
