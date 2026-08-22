@@ -231,9 +231,11 @@ whole set is decided fresh when the slots above are rewritten, so this is a demo
 
 - [ ] Issue #365, corrected scope (owner ruling 2026-08-21) — `registerInlineBodies` marker calls become a
       discovery channel **IN ADDITION TO** the `rhombus-std.json` publish list, which STAYS: not all inlinables
-      are augmentations, so the JSON mechanism is not retired. A member may carry **multiple**
-      `registerInlineBodies` calls, each supplying a DIFFERENT overload signature with its own implementation;
-      the engine selects the body whose signature matches the checker's resolved overload at the call site. A
+      are augmentations, so the JSON mechanism is not retired. Registrations ACCUMULATE, partitioned however
+      the author likes: one `registerInlineBodies` call may supply a single overload's body, several overloads'
+      bodies, or all of them, and further calls may add more — the engine's unit is the (member, overload
+      signature) pair regardless of which call carried it, and it selects the body whose signature matches the
+      checker's resolved overload at the call site. A
       rest-parameter body is one authoring choice among several — permitted where written, NEVER a requirement
       of the mechanism. Go side only.
 
