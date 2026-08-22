@@ -43,7 +43,7 @@ function visitorFor(manifest: Manifest<unknown>) {
 }
 
 describe('a ctor registration', () => {
-  test('lowers to a CtorCallSite over its realized parameter row', () => {
+  test('lowers to a CtorCallSite over its realized parameter signature', () => {
     const manifest = DefaultManifest.empty<unknown>()
       .add(ServiceDescriptor.ctor(CONN, Conn, Type.ctor(CONN, [[]])))
       .add(ServiceDescriptor.ctor(WIDGET, Widget, Type.ctor(WIDGET, [[CONN]])));
@@ -77,16 +77,16 @@ describe('a value registration', () => {
   });
 });
 
-describe('parameter-row selection', () => {
-  test('takes the longest row every parameter of which lowers', () => {
+describe('signature selection', () => {
+  test('takes the longest signature every parameter of which lowers', () => {
     const manifest = DefaultManifest.empty<unknown>()
       .add(ServiceDescriptor.ctor(CONN, Conn, Type.ctor(CONN, [[]])))
       .add(ServiceDescriptor.ctor(WIDGET, Widget, Type.ctor(WIDGET, [[CONN, CACHE], [CONN]])));
-    // Nothing produces CACHE, so the two-parameter row cannot lower and the shorter one wins.
+    // Nothing produces CACHE, so the two-parameter signature cannot lower and the shorter one wins.
     expect(visitorFor(manifest).visit(WIDGET)).toEqual(CallSite.ctor(Widget, [CallSite.ctor(Conn, [])]));
   });
 
-  test('is unsatisfiable when no row lowers in full', () => {
+  test('is unsatisfiable when no signature lowers in full', () => {
     const manifest = DefaultManifest.empty<unknown>()
       .add(ServiceDescriptor.ctor(WIDGET, Widget, Type.ctor(WIDGET, [[CACHE]])));
     expect(visitorFor(manifest).visit(WIDGET)).toBeUndefined();
@@ -161,7 +161,7 @@ describe('the service provider and scope factory', () => {
 });
 
 describe('a function type standing for a late-bound call', () => {
-  test('lowers to a LateBoundCallSite naming the return type and argument rows', () => {
+  test('lowers to a LateBoundCallSite naming the return type and argument signatures', () => {
     const requested = Type.func(WIDGET, [[CONN]]);
     expect(visitorFor(DefaultManifest.empty<unknown>()).visit(requested)).toEqual(CallSite.latebound(WIDGET, [[CONN]]));
   });

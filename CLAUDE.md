@@ -114,7 +114,7 @@ where that's cheap, and flag the intended divergence rather than pre-emptively t
   `args`/`return`/`instance`, closed the same way any other hole is: by tree-position
   unification against the request (§152, §194). **`Type.match` is identity modulo holes** (§194,
   U5): outside a hole the two sides must be the SAME interned node — no assignability, no width
-  subtyping, no literal widening, no member or row search — and a hole binds its fragment, a
+  subtyping, no literal widening, no member or signature search — and a hole binds its fragment, a
   repeated label binding the same type each time; `Type.satisfies` does not exist. **Union and
   intersection members store in one canonical order** (§195): kind rank (holes first, literals
   last) → the kind's scalars → children pairwise; visitors iterate members as stored.
@@ -394,9 +394,9 @@ before touching):
   (`add`/`addFactory`/`addValue`, the descriptor verbs, every augmentation) returns a NEW manifest
   and leaves the receiver alone, so a discarded result registers NOTHING. A verb's long overload
   takes the implementer's whole `Type` node as a required arg 3 — `implementerType`, a
-  `ConstructorType`/`FunctionType` carrying one parameter ROW per overload (the bare `ConstantType`
+  `ConstructorType`/`FunctionType` carrying one parameter SIGNATURE per overload (the bare `ConstantType`
   marker for a value); an intersection means an
-  intersection — and the descriptor stores that node beside the `implementer` itself, so rows are
+  intersection — and the descriptor stores that node beside the `implementer` itself, so signatures are
   read through `implementerType.args` and live in one place. `scope` is arg 4; a keyed registration
   spells its key inside the address (`Type.tag`), never as an argument. A builder
   that wraps a manifest

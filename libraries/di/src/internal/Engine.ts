@@ -1,21 +1,19 @@
-import { type Manifest, ManifestValidationError, type ServiceDescriptor, UnsatisfiableError, type ValidationFailure } from '@rhombus-std/di.core';
-import { type IServiceProvider, memo, type Type } from '@rhombus-std/primitives';
+import { type LifetimeModel, ManifestValidationError, type ServiceDescriptor, UnsatisfiableError, type ValidationFailure } from '@rhombus-std/di.core';
+import { type FunctionType, type IServiceProvider, memo, Type } from '@rhombus-std/primitives';
 import { CallSite } from './CallSite/index.js';
 import { Registry } from './Registry.js';
 
 export interface ResolveContext {
   /** What a service asking for the provider receives. */
   readonly serviceProvider: IServiceProvider;
-  /** Registrations layered over the manifest for this walk only — a latebound call's arguments. */
-  readonly additionalServices?: ReadonlyArray<ServiceDescriptor<unknown>>;
 }
 
 /**
- * The resolution orchestrator: one per manifest, stateless across resolutions — everything
+ * The resolution orchestrator: one per provider, stateless across resolutions — everything
  * per-walk arrives in the {@link ResolveContext}.
  */
 export class Engine {
-  readonly #manifest: Manifest<unknown>;
+  readonly #lifetimeModel: LifetimeModel;
   readonly #registry: Registry;
 
   /**
@@ -27,36 +25,67 @@ export class Engine {
    * It holds no instances: it says how to construct, never what was constructed. A request that
    * cannot be satisfied caches nothing, so the failure is rebuilt and rethrown identically.
    */
-  readonly #planFor = memo((serviceType: Type) => this.#build(serviceType, this.#registry));
+  readonly #getPlanFor = memo((serviceType: Type) => this.#buildCallSite(serviceType, this.#registry));
 
-  constructor(manifest: Manifest<unknown>) {
-    this.#manifest = manifest;
-    // Descriptors are metadata: frozen so nothing can stash state on them once the provider is built.
-    Iterator.from(manifest).forEach(Object.freeze);
-    this.#registry = new Registry(manifest);
+  /**
+   * A latebound function's plan per signature, built on the first call rather than when the
+   * function realizes — deferring past construction is what lets a self-referencing latebound
+   * dependency escape its own cycle.
+   */
+  readonly #getLatePlanFor = memo((funcType: FunctionType) =>
+    memo((signature: readonly Type[]) => {
+      // Reversed so a repeated arg type keeps its FIRST index — Map insertion lets the last write win.
+      const args = new Map(signature.map((argType, index) => [argType, index] as const).reverse());
+      return this.#buildCallSite(funcType.return, this.#registry, args);
+    })
+  );
+
+  constructor(lifetimeModel: LifetimeModel, descriptors: Iterable<ServiceDescriptor<unknown>>) {
+    this.#lifetimeModel = lifetimeModel;
+    this.#registry = new Registry(descriptors);
   }
 
-  /** @throws {UnsatisfiableError} when nothing in the manifest can produce {@link serviceType}. */
+  /** @throws {UnsatisfiableError} when nothing in the registry can produce {@link serviceType}. */
   resolve(serviceType: Type, context: ResolveContext): unknown {
-    // A latebound call's arguments are registrations for that walk alone, so its plan is not a
-    // fact about this engine's manifest and is built fresh rather than kept.
-    const site = context.additionalServices?.length
-      ? this.#build(serviceType, new Registry(this.#manifest.addMany(context.additionalServices)))
-      : this.#planFor(serviceType);
-    return CallSite.realize(site, { engine: this, serviceProvider: context.serviceProvider, lifetimeModel: this.#manifest.lifetimeModel });
+    return CallSite.realize(this.#getPlanFor(serviceType), { engine: this, serviceProvider: context.serviceProvider, lifetimeModel: this.#lifetimeModel });
   }
 
-  /** Whether {@link serviceType} can be built from this engine's manifest, without building it. */
-  canResolve(serviceType: Type): boolean {
-    try {
-      this.#planFor(serviceType);
-      return true;
-    } catch (error) {
-      if (error instanceof UnsatisfiableError) {
-        return false;
-      }
-      throw error;
+  /**
+   * An invocation frame: `descriptor` is the ready-made answer for its own service type, its
+   * dependencies resolve from the registry, and the plan is per-call — nothing registers and
+   * nothing caches.
+   *
+   * @throws {UnsatisfiableError} when no signature of {@link descriptor} can be satisfied.
+   */
+  resolveFrame(descriptor: ServiceDescriptor<unknown>, serviceProvider: IServiceProvider): unknown {
+    const site = CallSite.fromDescriptor(descriptor, this.#registry);
+    if (site === undefined) {
+      throw new UnsatisfiableError(descriptor.serviceType, 'no signature of the invoked callable can be satisfied');
     }
+    return CallSite.realize(site, { engine: this, serviceProvider, lifetimeModel: this.#lifetimeModel });
+  }
+
+  /**
+   * A latebound call: the first signature the call's arity satisfies binds each arg to the
+   * slots naming its type, and the args ride the realize context into the plan's
+   * {@link CallSite.arg} sites. A call may stop short of a signature's full length exactly where
+   * the slots it leaves unfilled admit `undefined` — an omitted optional arrives as the
+   * `undefined` the slot's own type already names.
+   */
+  resolveLatebound(funcType: FunctionType, args: readonly unknown[], serviceProvider: IServiceProvider): unknown {
+    const signature = funcType.signatures.find(candidate =>
+      args.length <= candidate.length
+      && candidate.slice(args.length).every(Type.isOptional)
+    );
+    if (signature === undefined) {
+      throw new TypeError(`${Type.stringify(funcType)} has no signature accepting ${args.length} arg(s)`);
+    }
+    return CallSite.realize(this.#getLatePlanFor(funcType)(signature), {
+      engine: this,
+      serviceProvider,
+      lifetimeModel: this.#lifetimeModel,
+      args,
+    });
   }
 
   /**
@@ -67,7 +96,14 @@ export class Engine {
    */
   validate(): void {
     const failures = Iterator.from(this.#registry.closedAddresses)
-      .map(serviceType => this.#failure(serviceType))
+      .map((serviceType): ValidationFailure | undefined => {
+        try {
+          this.#getPlanFor(serviceType);
+          return undefined;
+        } catch (error) {
+          return { serviceType, error: error instanceof Error ? error : new Error(String(error)) };
+        }
+      })
       .filter((failure): failure is ValidationFailure => failure !== undefined)
       .toArray();
     if (failures.length) {
@@ -75,17 +111,8 @@ export class Engine {
     }
   }
 
-  #failure(serviceType: Type): ValidationFailure | undefined {
-    try {
-      this.#planFor(serviceType);
-      return undefined;
-    } catch (error) {
-      return { serviceType, error: error instanceof Error ? error : new Error(String(error)) };
-    }
-  }
-
-  #build(serviceType: Type, registry: Registry): CallSite {
-    const site = CallSite.from(serviceType, registry);
+  #buildCallSite(serviceType: Type, registry: Registry, args?: ReadonlyMap<Type, number>): CallSite {
+    const site = CallSite.from(serviceType, registry, args);
     if (site === undefined) {
       throw new UnsatisfiableError(serviceType, 'nothing in the manifest can produce it');
     }

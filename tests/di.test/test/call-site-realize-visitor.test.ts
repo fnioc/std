@@ -92,7 +92,7 @@ describe('a late-bound site', () => {
     expect(widget.conn).toBe(conn);
   });
 
-  test("binds the call's arguments under the row whose length matches the call", () => {
+  test("binds the call's arguments under the signature whose length matches the call", () => {
     const lateBoundEngine = new Engine(DefaultManifest.empty<string>());
     const site = CallSite.latebound(CONN, [[CONN, BAR], [CONN]]);
     const call = realizeCallSite(site, { engine: lateBoundEngine, serviceProvider: provider }) as (
@@ -102,7 +102,7 @@ describe('a late-bound site', () => {
     expect(call(conn)).toBe(conn);
   });
 
-  test("falls back to the first row when no row's length matches the call", () => {
+  test("falls back to the first signature when no signature's length matches the call", () => {
     const lateBoundEngine = new Engine(DefaultManifest.empty<string>());
     const site = CallSite.latebound(CONN, [[CONN, BAR], [CONN]]);
     const call = realizeCallSite(site, { engine: lateBoundEngine, serviceProvider: provider }) as (

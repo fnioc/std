@@ -1,16 +1,18 @@
-import { type LifetimeModel, LifetimeModelError, ServiceDescriptor } from '@rhombus-std/di.core';
+import { type LifetimeModel, LifetimeModelError } from '@rhombus-std/di.core';
 import type { IServiceProvider } from '@rhombus-std/primitives';
 import type { Func } from '@rhombus-toolkit/func';
 import { assertNever } from '@rhombus-toolkit/type-guards';
 import type { Engine } from '../Engine.js';
-import type { ArrayCallSite, CallSite, ConstantCallSite, CtorCallSite, FactoryCallSite, IterableCallSite, LateBoundCallSite, ServiceProviderCallSite } from './CallSite.js';
+import type { ArgCallSite, ArrayCallSite, CallSite, ConstantCallSite, CtorCallSite, FactoryCallSite, IterableCallSite, LateBoundCallSite, ServiceProviderCallSite } from './CallSite.js';
 
-export interface RealizeContext {
+export interface RealizeOptions {
   readonly engine: Engine;
   /** What a service asking for the provider receives — the walk's originating facade. */
   readonly serviceProvider: IServiceProvider;
   /** The lifetime model governing the walk's root site. */
   readonly lifetimeModel: LifetimeModel;
+  /** A latebound call's arguments, read by position from the {@link ArgCallSite}s in its plan. */
+  readonly args?: readonly unknown[];
 }
 
 /**
@@ -20,14 +22,14 @@ export interface RealizeContext {
  * One instance per walk — {@link realizeCallSite} is the entry point. `ctor` and `factory`
  * nodes realize their argument sites depth-first; a `latebound` node realizes to a function
  * that re-enters the engine on every call, the call's arguments entering as value
- * registrations; the leaf kinds read the walk-wide {@link RealizeContext} fixed at
+ * registrations; the leaf kinds read the walk-wide {@link RealizeOptions} fixed at
  * construction.
  */
 class RealizeVisitor {
-  readonly #context: RealizeContext;
+  readonly #options: RealizeOptions;
 
-  constructor(context: RealizeContext) {
-    this.#context = context;
+  constructor(options: RealizeOptions) {
+    this.#options = options;
   }
 
   visit(site: CallSite, model: LifetimeModel): any {
@@ -38,6 +40,8 @@ class RealizeVisitor {
         return this.visitFactory(site, model);
       case 'latebound':
         return this.visitLateBound(site);
+      case 'arg':
+        return this.visitArg(site);
       case 'constant':
         return this.visitConstant(site);
       case 'service-provider':
@@ -87,14 +91,11 @@ class RealizeVisitor {
   }
 
   protected visitLateBound(site: LateBoundCallSite): any {
-    const context = this.#context;
-    return (...args: any[]) => {
-      const bound = site.lateBoundArgs.find(row => row.length === args.length) ?? site.lateBoundArgs[0] ?? [];
-      return context.engine.resolve(site.result, {
-        serviceProvider: context.serviceProvider,
-        additionalServices: bound.map((serviceType, i) => ServiceDescriptor.value(serviceType, args[i])),
-      });
-    };
+    return (...args: any[]) => this.#options.engine.resolveLatebound(site.funcType, args, this.#options.serviceProvider);
+  }
+
+  protected visitArg(site: ArgCallSite): any {
+    return this.#options.args![site.index];
   }
 
   protected visitConstant(site: ConstantCallSite): any {
@@ -102,7 +103,7 @@ class RealizeVisitor {
   }
 
   protected visitServiceProvider(_site: ServiceProviderCallSite): any {
-    return this.#context.serviceProvider;
+    return this.#options.serviceProvider;
   }
 
   /**
@@ -127,6 +128,6 @@ class RealizeVisitor {
 }
 
 /** Realizes {@link callSite} into its value; the walk is synchronous throughout. */
-export function realizeCallSite(callSite: CallSite, context: RealizeContext): any {
+export function realizeCallSite(callSite: CallSite, context: RealizeOptions): any {
   return new RealizeVisitor(context).visit(callSite, context.lifetimeModel);
 }

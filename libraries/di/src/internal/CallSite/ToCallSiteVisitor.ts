@@ -13,17 +13,26 @@ import { CallSite } from './CallSite.js';
  */
 export class ToCallSiteVisitor extends Type.Visitor<CallSite | undefined> {
   readonly #registry: Registry;
-  readonly #CycleGuard = makeCycleGuard();
-  constructor(registry: Registry) {
+  /** A latebound caller's argument types, each naming the call position that supplies it. */
+  readonly #args: ReadonlyMap<Type, number> | undefined;
+  readonly #cycleGuard = new CycleGuard();
+  constructor(registry: Registry, args?: ReadonlyMap<Type, number>) {
     super();
     this.#registry = registry;
+    this.#args = args;
   }
 
   public override visit(serviceType: Type): CallSite | undefined {
     if (Type.isOpen(serviceType)) {
       return undefined;
     }
-    using guard = this.#CycleGuard.visiting(serviceType);
+    // A caller's argument outranks every registration, statically: the slot is served by the
+    // call itself, so the manifest is never consulted for it.
+    const argIndex = this.#args?.get(serviceType);
+    if (argIndex !== undefined) {
+      return CallSite.arg(argIndex);
+    }
+    using guard = this.#cycleGuard.visiting(serviceType);
     return this.#registry.answering(serviceType)
       .map(answer => CallSite.fromAnswer(serviceType, answer, this))
       .find(Boolean)
@@ -52,7 +61,7 @@ export class ToCallSiteVisitor extends Type.Visitor<CallSite | undefined> {
   }
 
   protected override visitFunc(type: FunctionType): CallSite | undefined {
-    return CallSite.latebound(type.return, type.args);
+    return CallSite.latebound(type);
   }
 
   protected override visitArray(type: ArrayType): CallSite | undefined {
@@ -117,30 +126,27 @@ export class ToCallSiteVisitor extends Type.Visitor<CallSite | undefined> {
 }
 
 /**
- * Guards a walk against re-entering a type it is still building: `visiting(type)` throws
- * {@link CycleError} on a repeat, and otherwise pushes the type for the extent of the `using`
- * block that holds the returned disposable.
+ * Guards the walk against re-entering a type it is still planning: `visiting(type)` throws
+ * {@link CycleError} on a repeat, and otherwise tracks the type for the extent of the `using`
+ * block holding the returned disposable.
  */
-function makeCycleGuard() {
-  const stack: Type[] = [];
-  return class CycleGuard implements Disposable {
-    readonly #visiting: Type;
-    constructor(visiting: Type) {
-      stack.push(this.#visiting = visiting);
+class CycleGuard {
+  readonly #visiting: Type[] = [];
+
+  visiting(serviceType: Type): Disposable {
+    if (this.#visiting.includes(serviceType)) {
+      throw new CycleError([...this.#visiting, serviceType]);
     }
-    [Symbol.dispose](): void {
-      const popped = stack.pop();
-      if (popped !== this.#visiting) {
-        throw new Error(
-          `the resolution walk unwound out of order — expected to leave "${Type.stringify(this.#visiting)}" but left "${popped ? Type.stringify(popped) : '<empty>'}"`,
-        );
-      }
-    }
-    static visiting(serviceType: Type): Disposable {
-      if (stack.includes(serviceType)) {
-        throw new CycleError([...stack, serviceType]);
-      }
-      return new CycleGuard(serviceType);
-    }
-  };
+    this.#visiting.push(serviceType);
+    return {
+      [Symbol.dispose]: () => {
+        const left = this.#visiting.pop();
+        if (left !== serviceType) {
+          throw new Error(
+            `the resolution walk unwound out of order — expected to leave "${Type.stringify(serviceType)}" but left "${left ? Type.stringify(left) : '<empty>'}"`,
+          );
+        }
+      },
+    };
+  }
 }

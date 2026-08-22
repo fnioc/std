@@ -263,7 +263,7 @@ export const keyedKnown = provider.getRequiredService<Keyed<ICache, 'redis'>>();
 // Steering the observed implementer type with a cast. The derivation reads the
 // checker's type for the argument expression, so a cast at the call site
 // rewrites the observed SHAPE — here narrowing Handler's two-parameter
-// constructor to a one-parameter row. Own file so the steering is compared in
+// constructor to a one-parameter signature. Own file so the steering is compared in
 // isolation.
 const OVERRIDE_SOURCE = `
 import type { Manifest } from '@rhombus-std/di.core';
@@ -492,7 +492,7 @@ describe.skipIf(!toolchainReady)('generic inline stage — registration parity (
     // The service type is the template IRepo<$1>, its hole minted as its own
     // const — a placeholder rather than a named type — and the composite
     // references it by name. The OBSERVED implementer node carries the same hole
-    // inside its dependency row.
+    // inside its dependency signature.
     const hole = constFor(chainModule, 'Type.generic("1")');
     const openType = constFor(chainModule, `Type.imported("IRepo", "chain-app/tokens/chain", [${hole}])`);
     const repoClass = constFor(chainModule, 'Type.imported("ThingRepo", "chain-app/tokens/chain")');
@@ -530,8 +530,8 @@ describe.skipIf(!toolchainReady)('generic inline stage — registration parity (
 
   test('a cast steers the observed implementer SHAPE', () => {
     // Derivation reads the checker's type for the argument expression, so the
-    // cast's one-parameter constructor row is what the node carries — not the
-    // class's own two-parameter row. Kind stays chosen by the door; only the
+    // cast's one-parameter constructor signature is what the node carries — not the
+    // class's own two-parameter signature. Kind stays chosen by the door; only the
     // shape moved.
     const line = lineWith(overrideInline, 'overridden =');
     expect(line).toBeDefined();

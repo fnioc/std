@@ -17,7 +17,7 @@ export class ServiceProvider {
 
   /** @throws {ManifestValidationError} when `options.validateOnBuild` finds an unsatisfiable graph. */
   constructor(manifest: Manifest<unknown>, options: ServiceProviderOptions = ServiceProviderOptions.defaults) {
-    this.#engine = new Engine(manifest);
+    this.#engine = new Engine(manifest.lifetimeModel, manifest);
     if (options.validateOnBuild) {
       this.#engine.validate();
     }
@@ -54,7 +54,7 @@ export class ServiceProvider {
     ...args: [] | [serviceType: Type] | [ctorType: ConstructorType, ctor: Ctor] | [funcType: FunctionType, func: Func]
   ): any {
     if (!arguments.length) {
-      // The zero-argument row exists only so the class satisfies the augmented type-argument
+      // The zero-argument signature exists only so the class satisfies the augmented type-argument
       // face, which the transform rewrites before it can ever reach this body.
       throw new TypeError('getService needs a service type; the zero-argument form exists only pre-transform.');
     }
@@ -77,11 +77,10 @@ export class ServiceProvider {
 
   /**
    * Synthesizes a throwaway {@link ServiceDescriptor} for `value` under the address
-   * `callableType` itself, the node standing as its own implementer type, and resolves it
-   * through the engine's
-   * `additionalServices` channel — so `value` is realized exactly like a registered constructor
-   * or factory, just against a manifest composed for this one call and discarded after. The
-   * node's own parameter rows are therefore the calls the engine may build it through.
+   * `callableType` itself, the node standing as its own implementer type, and hands it to the
+   * engine as an invocation frame — `value` realizes exactly like a registered constructor or
+   * factory, with nothing registered and nothing kept. The node's own signatures are therefore
+   * the calls the engine may build it through.
    */
   #getServiceFromValue(callableType: ConstructorType | FunctionType, value: Ctor | Func): any {
     const descriptor = (() => {
@@ -94,7 +93,7 @@ export class ServiceProvider {
           return assertNever(callableType);
       }
     })();
-    return this.#engine.resolve(callableType, { serviceProvider: this, additionalServices: [descriptor] });
+    return this.#engine.resolveFrame(descriptor, this);
   }
 
   /**

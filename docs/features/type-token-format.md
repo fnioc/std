@@ -64,8 +64,8 @@ ordinary type — it carries the reading in this table instead:
 
 | spelling                  | reading                                                                  |
 | ------------------------- | ------------------------------------------------------------------------ |
-| `Func<Return, ...Rows>`   | a function type — see [Callable types](#callable-types-func-and-ctor)    |
-| `Ctor<Instance, ...Rows>` | a constructor type — see [Callable types](#callable-types-func-and-ctor) |
+| `Func<Return, ...Signatures>`   | a function type — see [Callable types](#callable-types-func-and-ctor)    |
+| `Ctor<Instance, ...Signatures>` | a constructor type — see [Callable types](#callable-types-func-and-ctor) |
 | `ServiceProvider`         | the provider type itself (no generic arguments)                          |
 | `Array<E>`                | an array of `E` (exactly one argument)                                   |
 | `Iterable<E>`             | an iterable of `E` (exactly one argument)                                |
@@ -212,8 +212,8 @@ parentheses.
 
 ## Callable types: Func and Ctor
 
-A function type is `(Rows) => Return`; a constructor type is `new (Rows) => Instance`, or
-`abstract new (Rows) => Instance` for one that builds an abstract class:
+A function type is `(Signatures) => Return`; a constructor type is `new (Signatures) => Instance`, or
+`abstract new (Signatures) => Instance` for one that builds an abstract class:
 
 ```
 (app:B) => app:A
@@ -221,16 +221,16 @@ new (app:B) => app:A
 abstract new (app:A) => app:B
 ```
 
-**Rows** are a callable's parameter lists — one row per overload, semicolon-separated, each row a
-comma-separated list of parameter types. A callable answers to at least one call, so an empty row
-list is never written; a callable taking no parameters at all is one row that is itself empty:
+**Signatures** are a callable's parameter lists — one signature per overload, semicolon-separated, each signature a
+comma-separated list of parameter types. A callable answers to at least one call, so an empty signature
+list is never written; a callable taking no parameters at all is one signature that is itself empty:
 
 ```
-() => app:A                    -- one row, taking nothing
-(app:A) => app:B               -- one row, one parameter
-(app:A; app:B, app:A) => app:B -- two rows: [app:A], then [app:B, app:A]
-(app:A; ) => app:B             -- two rows: [app:A], then an empty row, written last
-(; app:A) => app:B             -- two rows: an empty row written first, then [app:A]
+() => app:A                    -- one signature, taking nothing
+(app:A) => app:B               -- one signature, one parameter
+(app:A; app:B, app:A) => app:B -- two signatures: [app:A], then [app:B, app:A]
+(app:A; ) => app:B             -- two signatures: [app:A], then an empty signature, written last
+(; app:A) => app:B             -- two signatures: an empty signature written first, then [app:A]
 ```
 
 An opening `(` only begins a function type when, once its matching `)` is found, the very next
@@ -240,7 +240,7 @@ parameter list.
 
 `Func` and `Ctor` are reserved unqualified names carrying the same information in argument-list
 form: the return type (for `Func`) or instance type (for `Ctor`) comes first, separated from the
-first parameter row by the same comma every other generic argument uses, with any further rows
+first parameter signature by the same comma every other generic argument uses, with any further signatures
 semicolon-delimited after it:
 
 ```
@@ -248,16 +248,16 @@ Func<app:B, app:A; >        -- (app:A; ) => app:B
 Ctor<app:B; app:A>          -- new (; app:A) => app:B
 ```
 
-A one-row spelling reads as one flat comma list — `Func<app:B, app:A>` is `(app:A) => app:B` — since
-the head and the row's own members share the same separator when there is only one row to
+A one-signature spelling reads as one flat comma list — `Func<app:B, app:A>` is `(app:A) => app:B` — since
+the head and the signature's own members share the same separator when there is only one signature to
 introduce.
 
 ## Grammar summary
 
 ```
 type         := ctor | arrow | union
-ctor         := "abstract"? "new" "(" rows ")" "=>" type
-arrow        := "(" rows ")" "=>" type
+ctor         := "abstract"? "new" "(" signatures ")" "=>" type
+arrow        := "(" signatures ")" "=>" type
 union        := intersection ("|" intersection)*
 intersection := tagged ("&" tagged)*
 tagged       := primary ("#" segment)*
@@ -267,8 +267,8 @@ primary      := literal
               | "(" type ")"
               | "[" list(type) "]"
               | "{" members "}"
-rows         := row (";" row)*
-row          := list(type)?
+signatures         := signature (";" signature)*
+signature          := list(type)?
 members      := (segment ":" type (";" segment ":" type)*)? "}"
 list(type)   := (type ("," type)*)?
 name         := segment (":" segment genericArgs?)?

@@ -65,7 +65,7 @@ describe('the impl doors', () => {
     expect(services.build().getRequiredService(SINK)).toBe(built);
   });
 
-  test('parameter rows describe an overloaded implementation, one row per call signature', () => {
+  test('parameter signatures describe an overloaded implementation, one per call', () => {
     const overloaded = Type.ctor({
       instance: SINK,
       args: [
@@ -74,7 +74,7 @@ describe('the impl doors', () => {
       ],
       abstract: false,
     });
-    // The first row asks for a type nothing registers, so the second is the one the engine takes.
+    // The first signature asks for a type nothing registers, so the second is the one the engine takes.
     const manifest = withClock();
     const services = manifest.add(manifest.describe(SINK).asClass(Sink, overloaded));
 
