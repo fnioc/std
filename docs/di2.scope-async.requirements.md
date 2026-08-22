@@ -443,6 +443,23 @@ first client:
 - The `additionalDescriptors` layer resolving newest-first is LOAD-BEARING for invoke: the
   synthesized frame descriptor must win over any structurally-identical manifest registration.
 
+## Latebound arg binding — saved plan (SEPARATE work item, owner-directed)
+
+Replace value-descriptor layering for latebound call args with PLAN-TIME ARG BINDING: when
+planning the latebound subtree, every slot checks the `Func` type's args row FIRST (preserving
+args-outrank-the-manifest, statically); a match compiles to an `ArgCallsite(index)` — a value-site
+kind, structurally outside the scope engine. At call time the closure realizes its plan with the
+caller's values riding the realize context (`ctx.args[index]`) — the third context-borne facility
+beside the blackbox and the hoist map. The plan lives in the PROVIDER's plan memo keyed on the
+interned `Func` type (pure function of manifest + type; zero occurrence/scope/instance content;
+the return type alone sets the re-entry root, so no enclosing boundary leaks into the key) —
+shared across all latebound sites and ad-hoc requests of the same type. Population stays LAZY at
+first call (the cycle-breaking deferral survives; eager mint-time planning recurses on
+`A → Func<[], A>`). Semantics unchanged: type-keyed binding, args beat registrations, one value
+serves same-typed slots. Consequences: the plan-memo layering caveat evaporates for latebound;
+`additionalDescriptors` shrinks to its one honest consumer (invoke frames, whose ruled channel is
+untouched). Not part of the current lane — executed separately.
+
 ## Open ledger
 
 1. Scope-creation args: per-model `Func` types vs uniform `ScopeFactory` + merged options type.
