@@ -17,8 +17,8 @@ import { Type } from '@rhombus-std/primitives';
  * ```
  *
  * Reach for a leaf type when the distinction matters — {@link UnsatisfiableError} is a candidate
- * to fall back from, while {@link CycleError} and {@link AmbiguousUnionError} are faults in the
- * registrations that a fall-back handler should let through.
+ * to fall back from, while {@link CycleError} is a fault in the registrations that a fall-back
+ * handler should let through.
  */
 export abstract class DiError extends Error {}
 
@@ -67,34 +67,6 @@ export class CycleError extends DiError {
     super(`circular dependency: ${chain.map(type => Type.stringify(type)).join(' -> ')}`);
     this.name = 'CycleError';
     this.chain = chain;
-  }
-}
-
-/**
- * A union dependency has more than one member the manifest can supply, so nothing about the union
- * says which one is meant.
- *
- * @remarks
- * Deliberately not an {@link UnsatisfiableError}: the request can be met, in more ways than one, so
- * a handler falling back through candidates must not swallow it. Resolve it by narrowing the
- * dependency to the member intended, or by keying a registration so the union no longer names it.
- * A provider built with `unionAmbiguity: 'newest'` takes the most recently registered member
- * instead of raising.
- */
-export class AmbiguousUnionError extends DiError {
-  /** The union that could not be decided. */
-  readonly type: Type;
-  /** The members competing to supply it, in the union's own order. */
-  readonly members: readonly Type[];
-
-  constructor(type: Type, members: readonly Type[]) {
-    super(`cannot choose for ${Type.stringify(type)} — ${members.length} members can be supplied: `
-      + members.map(member => Type.stringify(member))
-        .toSorted((a, b) => a.localeCompare(b))
-        .join(', '));
-    this.name = 'AmbiguousUnionError';
-    this.type = type;
-    this.members = members;
   }
 }
 

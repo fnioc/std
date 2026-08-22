@@ -2,7 +2,7 @@
 // catch what it throws without also naming the abstractions. di.core stays
 // external in this bundle, so both specifiers reach ONE class per error and
 // `instanceof` holds whichever one a caller imported from.
-export { AmbiguousUnionError, CycleError, DiError, ManifestValidationError, UnsatisfiableError } from '@rhombus-std/di.core';
+export { CycleError, DiError, ManifestValidationError, UnsatisfiableError } from '@rhombus-std/di.core';
 export type { ValidationFailure } from '@rhombus-std/di.core';
 
 export * from './ServiceProvider.js';

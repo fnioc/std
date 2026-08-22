@@ -1,29 +1,20 @@
-import { AmbiguousUnionError, CycleError, IServiceProvider, IServiceScopeFactory } from '@rhombus-std/di.core';
-import { type ArrayType, type ConstructorType, first, type FunctionType, type GenericType, type GlobalType, type ImportedType, type IntersectionType, isAllThere, type IterableType, type ObjectType,
-  type TagType, type TupleType, Type, type TypeLiteralType, type UnionType } from '@rhombus-std/primitives';
+import { CycleError, type IServiceProvider, type IServiceScopeFactory } from '@rhombus-std/di.core';
+import { type ArrayType, type ConstructorType, type FunctionType, type GenericType, type GlobalType, type ImportedType, type IntersectionType, type IterableType, type ObjectType, type TagType,
+  type TupleType, Type, type TypeLiteralType, type UnionType } from '@rhombus-std/primitives';
 import { typefor } from '@rhombus-std/primitives.extras';
-import type { Answer, Registry } from '../Registry.js';
+import type { Registry } from '../Registry.js';
 import { CallSite } from './CallSite.js';
 
 export interface CallSiteContext {
   readonly registry: Registry;
-  /** What to do when a union has more than one suppliable member; raising is the default. */
-  readonly unionAmbiguity?: 'error' | 'newest';
 }
 
-/** A union member the manifest can supply, paired with what it built. */
-interface Suppliable {
-  readonly member: Type;
-  readonly site: CallSite;
-}
-
-/** The spellings under which a dependency on the provider itself is recognized. */
-const SERVICE_PROVIDER_FROMS: readonly string[] = ['@rhombus-std/primitives', '@rhombus-std/di.core'];
-
-/** The module `IServiceScopeFactory` is declared in. */
-const SERVICE_SCOPE_FACTORY_FROM = (typefor<IServiceScopeFactory>() as ImportedType).from; // '@rhombus-std/di.core';
-
-function VisitDisposerFactory() {
+/**
+ * Guards a walk against re-entering a type it is still building: `visiting(type)` throws
+ * {@link CycleError} on a repeat, and otherwise pushes the type for the extent of the `using`
+ * block that holds the returned disposable.
+ */
+function makeVisitingGuard() {
   const stack: Type[] = [];
   class VisitDisposer implements Disposable {
     readonly #visiting: Type;
@@ -33,7 +24,9 @@ function VisitDisposerFactory() {
     [Symbol.dispose](): void {
       const popped = stack.pop();
       if (popped !== this.#visiting) {
-        throw `wtf mate -- disposal has gotten out of order somehow. was expecting to pop "${Type.stringify(this.#visiting)}", but "${popped && Type.stringify(popped)}" is what actually came out.`;
+        throw new Error(
+          `the resolution walk unwound out of order — expected to leave "${Type.stringify(this.#visiting)}" but left "${popped ? Type.stringify(popped) : '<empty>'}"`,
+        );
       }
     }
   }
@@ -49,23 +42,23 @@ function VisitDisposerFactory() {
  * Turns a type expression into the {@link CallSite} that constructs a value for it.
  *
  * @remarks
- * One instance per walk — {@link CallSite.from} is the entry point. Every node is first checked
- * for a whole-type registration match; the per-kind steps are only the fallback decomposition or
- * synthesis, so a registration for a composite beats its parts. Undefined means the type is
- * unsatisfiable from this manifest; the composite steps use that to fall back — a union tries
- * its next member, a descriptor its next signature. Re-entering a type the walk is still
- * building throws {@link CycleError} instead, which ends the walk outright rather than falling
- * back: no later member or signature can undo a loop.
+ * One instance per walk — {@link CallSite.from} is the entry point. Every node first runs the
+ * exact-answer loop: the registrations answering the type's own address, newest first, and the
+ * first one that builds wins — an unbuildable answer falls through to the next. Only when none
+ * builds does the per-kind step run, as decomposition or synthesis, so a registration for a
+ * composite beats its parts. Undefined means the type is unsatisfiable from this manifest; the
+ * composite steps use that to fall back — a union tries its next member, a descriptor its next
+ * signature. Re-entering a type the walk is still building throws {@link CycleError} instead,
+ * which ends the walk outright rather than falling back: no later member or signature can undo
+ * a loop.
  */
 export class ToCallSiteVisitor extends Type.Visitor<CallSite | undefined> {
   readonly #registry: Registry;
-  readonly #unionAmbiguity: NonNullable<CallSiteContext['unionAmbiguity']>;
-  /** The types this walk has entered and not yet finished, outermost first. */
-  readonly #visiting = VisitDisposerFactory();
+  /** Guards against re-entering a type this walk is still building. */
+  readonly #visiting = makeVisitingGuard();
   constructor(context: CallSiteContext) {
     super();
     this.#registry = context.registry;
-    this.#unionAmbiguity = context.unionAmbiguity ?? 'error';
   }
 
   public override visit(type: Type): CallSite | undefined {
@@ -74,12 +67,12 @@ export class ToCallSiteVisitor extends Type.Visitor<CallSite | undefined> {
     if (Type.isOpen(type)) {
       return undefined;
     }
-    using a = this.#visiting(type);
-    return this.#chosen(type) ?? super.visit(type);
+    using guard = this.#visiting(type);
+    return this.#firstAnswerBuilt(type) ?? super.visit(type);
   }
 
   protected override visitArray(type: ArrayType): CallSite | undefined {
-    return CallSite.array(this.#collection(type.element));
+    return CallSite.array(this.#collectionSites(type.element));
   }
 
   /** Parked: composing one from its parameter types on a miss awaits its design ruling. */
@@ -103,7 +96,7 @@ export class ToCallSiteVisitor extends Type.Visitor<CallSite | undefined> {
   }
 
   protected override visitIterable(type: IterableType): CallSite | undefined {
-    return CallSite.iterable(this.#collection(type.element));
+    return CallSite.iterable(this.#collectionSites(type.element));
   }
 
   /** Nothing global is synthesizable: a global name describes none of itself to build from. */
@@ -131,9 +124,13 @@ export class ToCallSiteVisitor extends Type.Visitor<CallSite | undefined> {
   }
 
   protected override visitTuple(type: TupleType): CallSite | undefined {
-    const members = type.members.map(member => this.visit(member));
-    if (!isAllThere(members)) {
-      return undefined;
+    const members: CallSite[] = [];
+    for (const member of type.members) {
+      const site = this.visit(member);
+      if (site === undefined) {
+        return undefined;
+      }
+      members.push(site);
     }
     return CallSite.factory((...args: any[]) => args, members);
   }
@@ -143,112 +140,60 @@ export class ToCallSiteVisitor extends Type.Visitor<CallSite | undefined> {
   }
 
   /**
-   * Reached only once {@link #chosen} finds no registration for the union — and since a
-   * registration for any member answers the whole union, that means no member has one either.
-   * What remains is synthesis, where the same one-answer rule holds: a member that supplies
-   * itself, a literal and so `undefined`, is the union's fallback rather than a competitor, which
-   * is what leaves an optional dependency resolving to nothing when its service is absent.
-   *
-   * @throws {AmbiguousUnionError} when several members synthesize and the provider was built to
-   * raise rather than take one.
+   * Reached only once the union's own address has no buildable answer. Two phases over the
+   * members in canonical order, because a registration outranks synthesis here as everywhere:
+   * first the members' own registrations, then the members' syntheses. The first member that
+   * delivers wins either phase — with literals ordered last among members, a literal keeps
+   * serving as the fallback of an optional dependency without being a special case, while a
+   * registration for a nullish member wins the first phase like any other.
    */
   protected override visitUnion(type: UnionType): CallSite | undefined {
-    const synthesized: Suppliable[] = [];
     for (const member of type.members) {
-      if (member.kind === 'literal') {
-        continue;
+      const registered = this.#firstAnswerBuilt(member);
+      if (registered !== undefined) {
+        return registered;
       }
-      const site = this.visit(member);
+    }
+    for (const member of type.members) {
+      const synthesized = super.visit(member);
+      if (synthesized !== undefined) {
+        return synthesized;
+      }
+    }
+    return undefined;
+  }
+
+  /**
+   * The newest registration answering {@link type}'s own address that actually builds; an
+   * unbuildable answer falls through to the next.
+   */
+  #firstAnswerBuilt(type: Type): CallSite | undefined {
+    for (const answer of this.#registry.answering(type)) {
+      const site = CallSite.fromAnswer(answer, this);
       if (site !== undefined) {
-        synthesized.push({ member, site });
+        return site;
       }
     }
-    if (synthesized.length > 1 && this.#unionAmbiguity === 'error') {
-      throw new AmbiguousUnionError(type, synthesized.map(candidate => candidate.member));
-    }
-    if (synthesized.length) {
-      return synthesized[0]!.site;
-    }
-    const fallback = type.members.find(member => member.kind === 'literal');
-    if (fallback === undefined) {
-      return undefined;
-    }
-    return this.visit(fallback);
+    return undefined;
   }
 
   /**
-   * The registration answering {@link type}, newest first, or undefined when none does.
-   *
-   * @remarks
-   * A union asks which of several types is meant, and every registration serving any member
-   * answers the whole union — so several answers are a contradiction rather than a preference.
-   * Two registrations of ONE service type are not that: they are the ordinary newest-wins case.
-   * A registration naming the union itself is an exact answer and settles it outright.
-   *
-   * @throws {AmbiguousUnionError} when several service types answer a union and the provider was
-   * built to raise rather than take the newest.
+   * Every way the manifest produces {@link elementType}, in REGISTRATION order — services come
+   * out in the order they were authored — with the element's one synthesis, if any, as the tail.
    */
-  #chosen(type: Type): CallSite | undefined {
-    if (type.kind !== 'union') {
-      return first(this.#candidates(type));
+  #collectionSites(elementType: Type): CallSite[] {
+    const sites: CallSite[] = [];
+    for (const answer of this.#registry.answering(elementType)) {
+      const site = CallSite.fromAnswer(answer, this);
+      if (site !== undefined) {
+        sites.push(site);
+      }
     }
-    const answers = this.#registry.answering(type)
-      .map(answer => ({ serviceType: answer.serviceType, callsite: CallSite.fromAnswer(answer, this) } as const))
-      .filter((answer): answer is { serviceType: Type; callsite: CallSite; } => answer.callsite !== undefined)
-      .toArray();
-
-    const exact = answers.find(({ serviceType }) => serviceType === type);
-    if (exact) {
-      return exact.callsite;
+    sites.reverse();
+    const synthesized = Type.isOpen(elementType) ? undefined : super.visit(elementType);
+    if (synthesized !== undefined) {
+      sites.push(synthesized);
     }
-    if (answers.length > 1 && this.#unionAmbiguity === 'error') {
-      throw new AmbiguousUnionError(type, answers.map(({ serviceType }) => serviceType));
-    }
-    return answers[0]?.callsite;
-  }
-
-  /** Every registration answering {@link type} that actually builds, newest first. */
-  #candidates(type: Type) {
-    return Iterator.from(this.#registry.answering(type))
-      .map((answer: Answer) => CallSite.fromAnswer(answer, this))
-      .filter((site): site is CallSite => !!site);
-  }
-
-  /**
-   * Every way the manifest can produce {@link itemType}, in REGISTRATION order, materialized so
-   * the call site survives repeated realization.
-   *
-   * @remarks
-   * Registration order is what a consumer walking the collection expects — services come out in
-   * the order they were authored. It also puts the newest registration last, which is the one a
-   * request for a single {@link itemType} resolves to, so "the collection ends with the singular
-   * answer" holds without being arranged for separately.
-   *
-   * Synthesis leads because a registration outranks it: {@link visit} consults the registry before
-   * falling back to synthesis, so the synthesized member is the weakest answer and belongs at the
-   * end newest-wins never reaches.
-   */
-  #collection(itemType: Type): CallSite[] {
-    const registered = [...this.#candidates(itemType)].reverse();
-    const synthesized = this.#synthesized(itemType);
-    return synthesized ? [synthesized, ...registered] : registered;
-  }
-
-  /**
-   * The synthesis route only — registration hits are the collection's other category and must
-   * not repeat here, so a union takes its members' syntheses rather than re-running lookups.
-   *
-   * @remarks
-   * A union here takes the first member that synthesizes, in canonical order, rather than the
-   * one-answer rule {@link visitUnion} applies. Its caller is assembling a collection, where
-   * several answers are the point rather than a contradiction.
-   */
-  #synthesized(type: Type): CallSite | undefined {
-    if (type.kind === 'union') {
-      return Iterator.from(type.members)
-        .map(member => this.#synthesized(member))
-        .find(Boolean);
-    }
-    return super.visit(type);
+    return sites;
   }
 }

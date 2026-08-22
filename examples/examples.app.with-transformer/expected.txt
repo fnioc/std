@@ -100,8 +100,6 @@ asking with getService for a registration that cannot be lowered: undefined
 asking with getRequiredService for the same: Error — not a container failure; this diagnostic would rethrow rather than guess
 asking for a type nobody registered: Error — not a container failure; this diagnostic would rethrow rather than guess
 a dependency cycle: CycleError — selfcheck:ILedger -> selfcheck:IAuditLog -> selfcheck:ILedger; break the loop with a factory slot
-a union two registrations can both supply: AmbiguousUnionError — selfcheck:IAuditLog | selfcheck:IMetricsRecorder can be supplied 2 ways (selfcheck:IAuditLog, selfcheck:IMetricsRecorder); narrow the dependency, or key one of the registrations so the union stops naming it
-  built with unionAmbiguity "newest" instead: {"kind":"metrics"}
 every failure above shares one root: true
 something else entirely: TypeError — not a container failure; this diagnostic would rethrow rather than guess
 

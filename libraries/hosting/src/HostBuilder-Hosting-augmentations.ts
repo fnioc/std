@@ -132,8 +132,8 @@ export namespace HostBuilderHostingAugmentations {
   /**
    * Specifies the default service-provider configuration. The delegate receives
    * {@link ServiceProviderOptions.defaults} and returns the
-   * {@link ServiceProviderOptions} (`validateScopes` / `validateOnBuild` /
-   * `unionAmbiguity`) that `build()` then threads into
+   * {@link ServiceProviderOptions} (`validateScopes` / `validateOnBuild`)
+   * that `build()` then threads into
    * `ServiceManifest.build(options)`. Overrides any options set by an earlier
    * `configureDefaults`.
    */

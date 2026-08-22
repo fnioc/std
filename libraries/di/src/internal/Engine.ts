@@ -1,6 +1,5 @@
 import { type Manifest, ManifestValidationError, type ServiceDescriptor, UnsatisfiableError, type ValidationFailure } from '@rhombus-std/di.core';
 import { type IServiceProvider, memo, type Type } from '@rhombus-std/primitives';
-import { ServiceProviderOptions } from '../ServiceProviderOptions.js';
 import { CallSite } from './CallSite/index.js';
 import { Registry } from './Registry.js';
 import { ServiceScope } from './ServiceScope.js';
@@ -21,7 +20,6 @@ export interface ResolveContext {
 export class Engine {
   readonly #manifest: Manifest<any>;
   readonly #registry: Registry;
-  readonly #unionAmbiguity: NonNullable<ServiceProviderOptions['unionAmbiguity']>;
   /** Every scope this engine has opened, oldest first — what the provider's own disposal cascades into. */
   readonly #scopes: ServiceScope[] = [];
 
@@ -36,10 +34,9 @@ export class Engine {
    */
   readonly #planFor = memo((type: Type) => this.#build(type, this.#registry));
 
-  constructor(manifest: Manifest<any>, options: ServiceProviderOptions = ServiceProviderOptions.defaults) {
+  constructor(manifest: Manifest<any>) {
     this.#manifest = manifest;
     this.#registry = new Registry(manifest);
-    this.#unionAmbiguity = options.unionAmbiguity ?? 'error';
   }
 
   /** @throws {UnsatisfiableError} when nothing in the manifest can produce {@link type}. */
@@ -112,7 +109,7 @@ export class Engine {
   }
 
   #build(type: Type, registry: Registry): CallSite {
-    const site = CallSite.from(type, { registry, unionAmbiguity: this.#unionAmbiguity });
+    const site = CallSite.from(type, { registry });
     if (site === undefined) {
       throw new UnsatisfiableError(type, 'nothing in the manifest can produce it');
     }

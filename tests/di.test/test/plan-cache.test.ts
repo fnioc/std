@@ -3,7 +3,7 @@
 // call's own arguments, which is a different set of registrations and so a different plan.
 
 import { ServiceProvider } from '@rhombus-std/di';
-import { AmbiguousUnionError, DefaultManifest, ServiceDescriptor } from '@rhombus-std/di.core';
+import { DefaultManifest, ServiceDescriptor } from '@rhombus-std/di.core';
 import { Type } from '@rhombus-std/primitives';
 import { describe, expect, test } from 'bun:test';
 
@@ -56,21 +56,23 @@ describe('a latebound call resolves against its own registrations', () => {
 });
 
 describe('a union is settled against the resolving call', () => {
-  // `Report` wants `Cache | Redis`; the manifest supplies only the Cache half.
+  // `Report` wants `Cache | Redis`; the manifest supplies only the Redis half, so the
+  // first member in canonical order — app:Cache — goes unanswered until a call supplies it.
   const reports = DefaultManifest.empty<string>()
     .add(ServiceDescriptor.ctor(REPORT, Report, Type.ctor(REPORT, [[Type.union(CACHE, REDIS)]])))
-    .add(ServiceDescriptor.ctor(CACHE, MemoryCache, Type.ctor(CACHE, [[]])));
+    .add(ServiceDescriptor.ctor(REDIS, MemoryCache, Type.ctor(REDIS, [[]])));
 
   test('one member answers when the manifest is the whole universe', () => {
     expect((new ServiceProvider(reports).getService(REPORT) as Report).cache).toBeInstanceOf(MemoryCache);
   });
 
-  test('a call argument supplying the other member makes the same union ambiguous', () => {
+  test('a call argument answering an earlier member outranks it, plan cache and all', () => {
     const provider = new ServiceProvider(reports);
     expect((provider.getService(REPORT) as Report).cache).toBeInstanceOf(MemoryCache);
 
-    const make = provider.getService(Type.func(REPORT, [[REDIS]])) as (redis: unknown) => Report;
-    expect(() => make({})).toThrow(AmbiguousUnionError);
+    const make = provider.getService(Type.func(REPORT, [[CACHE]])) as (cache: unknown) => Report;
+    const passed = { name: 'call-cache' };
+    expect(make(passed).cache).toBe(passed);
   });
 });
 

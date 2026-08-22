@@ -10,8 +10,8 @@
 // Why branch on the CLASS and never on the message: a message names types, and
 // the spelling of a type is a moving target. The class is the contract. Each one
 // also carries the FIELDS needed to write the fix — the type nothing could
-// produce, the path that closed the loop, the union members that competed — so
-// `diagnose` below never has to parse a string.
+// produce, the path that closed the loop — so `diagnose` below never has to
+// parse a string.
 //
 // WHY THE WHOLE CLASSIFIER FITS IN A LIBRARY. `@rhombus-std/di.core` declares the
 // entire taxonomy: `DiError` and every leaf under it. `@rhombus-std/di`
@@ -37,7 +37,7 @@
 // then either app's `errors-demo.ts`; the line between the two files is the line
 // between the abstractions and the engine.
 
-import { AmbiguousUnionError, CycleError, DiError, ManifestValidationError, Type, UnsatisfiableError } from '@rhombus-std/di.core';
+import { CycleError, DiError, ManifestValidationError, Type, UnsatisfiableError } from '@rhombus-std/di.core';
 import type { Manifest } from '@rhombus-std/di.core';
 
 // ── types ────────────────────────────────────────────────────────────────────
@@ -103,14 +103,6 @@ export function diagnose(error: unknown): string {
     // as the loop it makes.
     const path = error.chain.map(type => Type.stringify(type)).join(' -> ');
     return `CycleError — ${path}; break the loop with a factory slot`;
-  }
-  if (error instanceof AmbiguousUnionError) {
-    // Deliberately NOT an unsatisfiable request: the union CAN be met, in more
-    // ways than one, so a handler falling back through candidates must not
-    // swallow it.
-    const members = error.members.map(member => Type.stringify(member)).join(', ');
-    return `AmbiguousUnionError — ${Type.stringify(error.type)} can be supplied ${error.members.length} ways `
-      + `(${members}); narrow the dependency, or key one of the registrations so the union stops naming it`;
   }
   if (error instanceof UnsatisfiableError) {
     return `UnsatisfiableError — nothing in the manifest produces ${Type.stringify(error.type)}; `

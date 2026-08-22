@@ -43,21 +43,20 @@ export class Registry {
     return addresses;
   }
 
-  /** Every registration that can serve {@link requestConstraint}, newest first. */
-  *answering(requestConstraint: Type): Generator<Answer, void, unknown> {
-    const requestedAddresses = [requestConstraint, ...(requestConstraint.kind === 'union' ? requestConstraint.members : [])];
-
+  /**
+   * Every registration answering exactly {@link request}'s own address, newest first — a closed
+   * registration by interned identity, an open one by unification.
+   */
+  *answering(request: Type): Generator<Answer, void, unknown> {
     for (const descriptor of this.#manifest) {
       const proposedServiceType = descriptor.serviceType;
       if (Type.isOpen(proposedServiceType)) {
-        const [isMatch, generics] = Type.match(proposedServiceType, requestConstraint);
+        const [isMatch, generics] = Type.match(proposedServiceType, request);
         if (isMatch) {
           yield { descriptor, serviceType: Type.substitute(proposedServiceType, generics), generics };
         }
-      } else {
-        if (requestedAddresses.includes(proposedServiceType)) {
-          yield { descriptor, serviceType: proposedServiceType, generics: NO_GENERICS };
-        }
+      } else if (proposedServiceType === request) {
+        yield { descriptor, serviceType: proposedServiceType, generics: NO_GENERICS };
       }
     }
   }

@@ -1,9 +1,10 @@
-// Behaviour tests for how the engine settles a union dependency. A union states which types will
-// do, not an order to prefer them in, so exactly one member may answer it -- and a member that
-// supplies itself is the fallback rather than a competitor.
+// Behaviour tests for how the engine settles a union dependency: two phases over the members in
+// canonical order -- first the members' own registrations, then the members' syntheses -- with a
+// registration for the union itself answering ahead of both. Literals order last among members,
+// which is what keeps a literal member as the fallback of an optional dependency.
 
 import { ServiceProvider } from '@rhombus-std/di';
-import { AmbiguousUnionError, ConstantType, CycleError, DefaultManifest, ManifestValidationError, ServiceDescriptor } from '@rhombus-std/di.core';
+import { ConstantType, CycleError, DefaultManifest, ServiceDescriptor } from '@rhombus-std/di.core';
 import { Type } from '@rhombus-std/primitives';
 import { describe, expect, test } from 'bun:test';
 
@@ -48,28 +49,12 @@ describe('one suppliable member', () => {
 });
 
 describe('several suppliable members', () => {
-  test('raise, naming the members that compete', () => {
-    const provider = new ServiceProvider(manifestWith('memory', 'redis'));
-    expect(() => provider.getService(REPORT)).toThrow(AmbiguousUnionError);
-    try {
-      provider.getService(REPORT);
-    } catch (error) {
-      expect(error).toBeInstanceOf(AmbiguousUnionError);
-      expect((error as AmbiguousUnionError).members).toEqual([CACHE, REDIS]);
-      expect((error as AmbiguousUnionError).message).toContain('app:Cache');
-      expect((error as AmbiguousUnionError).message).toContain('app:Redis');
-    }
-  });
-
-  test('are caught at build when the provider validates up front', () => {
-    expect(() => new ServiceProvider(manifestWith('memory', 'redis'), { validateOnBuild: true }))
-      .toThrow(ManifestValidationError);
-  });
-
-  test('settle on the newest registration when asked to', () => {
-    const provider = new ServiceProvider(manifestWith('memory', 'redis'), { unionAmbiguity: 'newest' });
-    const report = provider.getService(REPORT) as Report;
-    expect(report.cache).toBeInstanceOf(RedisCache);
+  test('settle on the first in canonical member order, whichever was registered first', () => {
+    // app:Cache orders before app:Redis, so the registration order cannot show through.
+    const memoryFirst = new ServiceProvider(manifestWith('memory', 'redis')).getService(REPORT) as Report;
+    expect(memoryFirst.cache).toBeInstanceOf(MemoryCache);
+    const redisFirst = new ServiceProvider(manifestWith('redis', 'memory')).getService(REPORT) as Report;
+    expect(redisFirst.cache).toBeInstanceOf(MemoryCache);
   });
 });
 
@@ -92,10 +77,11 @@ describe('a self-supplying member is the fallback', () => {
     expect(report.cache).toBeUndefined();
   });
 
-  test('never competes, so it cannot make a union ambiguous', () => {
-    const report = new ServiceProvider(optionalManifest(true), { validateOnBuild: true })
-      .getService(REPORT) as Report;
-    expect(report.cache).toBeInstanceOf(MemoryCache);
+  test('a registered literal member wins the registration phase like any other', () => {
+    const manifest = optionalManifest(false)
+      .add(ServiceDescriptor.value(Type.typeLiteral(undefined), 'registered-for-undefined'));
+    const report = new ServiceProvider(manifest).getService(REPORT) as Report;
+    expect(report.cache).toBe('registered-for-undefined');
   });
 });
 

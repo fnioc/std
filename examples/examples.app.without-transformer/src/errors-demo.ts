@@ -27,16 +27,11 @@
 // this file is identical to it. The header line names neither dialect for the
 // same reason.
 
-import { ConstantType, DefaultManifest, DiError, type Manifest, ManifestValidationError, Type } from '@rhombus-std/di.core';
+import { DefaultManifest, DiError, type Manifest, ManifestValidationError, Type } from '@rhombus-std/di.core';
 import '@rhombus-std/di';
 import { demonstrateRegistrationErrors, diagnose, stagedFailure } from '@rhombus-std/examples.lib.without-transformer';
 
 // ── the domain ───────────────────────────────────────────────────────────────
-
-/** The service the self-check is protecting. */
-class ReportService {
-  public constructor(public readonly store: unknown) {}
-}
 
 /** Registered, but its own dependency is not — "resolvable in principle". */
 class BrokenStore {
@@ -64,7 +59,6 @@ const STORE_TYPE = Type.from('selfcheck:IStore');
 const CONNECTION_TYPE = Type.from('selfcheck:IConnection');
 const LEDGER_TYPE = Type.from('selfcheck:ILedger');
 const AUDIT_TYPE = Type.from('selfcheck:IAuditLog');
-const METRICS_TYPE = Type.from('selfcheck:IMetricsRecorder');
 
 // ── the staged failures ──────────────────────────────────────────────────────
 
@@ -135,19 +129,6 @@ export function demonstrateErrors(): readonly string[] {
     return services.build().getRequiredService(LEDGER_TYPE);
   }));
 
-  // A UNION slot with more than one member the manifest can supply. A union
-  // states which types will do rather than which to prefer, so two answers means
-  // the registrations have not said enough and the container declines to guess.
-  lines.push(stagedFailure('a union two registrations can both supply', () =>
-    ambiguous().build()
-      .getRequiredService(REPORT_TYPE)));
-
-  // The same container, told what to do about it. `unionAmbiguity: 'newest'`
-  // takes the member whose registration is most recent, which is how the
-  // manifest already settles two registrations of one type.
-  const decided = ambiguous().build({ unionAmbiguity: 'newest' }).getRequiredService(REPORT_TYPE) as ReportService;
-  lines.push(`  built with unionAmbiguity "newest" instead: ${JSON.stringify(decided.store)}`);
-
   // ── and the escape hatch ───────────────────────────────────────────────────
   //
   // Everything above extends ONE root, and that root is declared by di.core —
@@ -161,15 +142,6 @@ export function demonstrateErrors(): readonly string[] {
   lines.push(`something else entirely: ${diagnose(new TypeError('not ours'))}`);
 
   return lines;
-}
-
-/** The graph whose union slot two registrations compete to fill. */
-function ambiguous(): Manifest<'singleton'> {
-  let services: Manifest<'singleton'> = new DefaultManifest<'singleton'>();
-  services = services.add(AUDIT_TYPE, { kind: 'audit' }, ConstantType);
-  services = services.add(METRICS_TYPE, { kind: 'metrics' }, ConstantType);
-  services = services.add(REPORT_TYPE, ReportService, Type.ctor(REPORT_TYPE, [[Type.union(METRICS_TYPE, AUDIT_TYPE)]]), 'singleton');
-  return services;
 }
 
 /** The inner failures the eager pass collected, so one of them can be classified. */

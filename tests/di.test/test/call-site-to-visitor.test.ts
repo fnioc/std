@@ -2,7 +2,7 @@
 // is checked against the registry first; the per-kind visit methods are the fallback decomposition
 // or synthesis a whole-type miss falls back to.
 
-import { AmbiguousUnionError, CycleError, DefaultManifest, type Manifest, ServiceDescriptor } from '@rhombus-std/di.core';
+import { CycleError, DefaultManifest, type Manifest, ServiceDescriptor } from '@rhombus-std/di.core';
 import { CallSite } from '@rhombus-std/di/tokens/internal/CallSite/CallSite';
 import { ToCallSiteVisitor } from '@rhombus-std/di/tokens/internal/CallSite/ToCallSiteVisitor';
 import { Registry } from '@rhombus-std/di/tokens/internal/Registry';
@@ -38,8 +38,8 @@ class Loop {
   constructor(readonly self: unknown) {}
 }
 
-function visitorFor(manifest: Manifest<string>, unionAmbiguity?: 'error' | 'newest') {
-  return new ToCallSiteVisitor({ registry: new Registry(manifest), unionAmbiguity });
+function visitorFor(manifest: Manifest<string>) {
+  return new ToCallSiteVisitor({ registry: new Registry(manifest) });
 }
 
 describe('a ctor registration', () => {
@@ -141,12 +141,9 @@ describe('tagged types', () => {
 });
 
 describe('the service provider and scope factory', () => {
-  test('IServiceProvider resolves under either spelling module, with no registration', () => {
+  test('IServiceProvider resolves under its declaring-module address, with no registration', () => {
     const visitor = visitorFor(DefaultManifest.empty<string>());
     expect(visitor.visit(Type.imported('IServiceProvider', '@rhombus-std/primitives'))).toEqual(
-      CallSite.serviceProvider(),
-    );
-    expect(visitor.visit(Type.imported('IServiceProvider', '@rhombus-std/di.core'))).toEqual(
       CallSite.serviceProvider(),
     );
   });
@@ -237,14 +234,14 @@ describe('an aggregate over every registration for one type', () => {
     expect(visitorFor(DefaultManifest.empty<string>()).visit(Type.iterable(FOO))).toEqual(CallSite.iterable([]));
   });
 
-  test('a member built without any registration for it leads, ahead of every registered one', () => {
+  test('a member built without any registration for it is the tail, after every registered one', () => {
     const manifest = DefaultManifest.empty<string>()
       .add(ServiceDescriptor.value(Type.tuple(FOO, BAR), 'registered-directly'))
       .add(ServiceDescriptor.value(FOO, 'foo-value'))
       .add(ServiceDescriptor.value(BAR, 'bar-value'));
     const site = visitorFor(manifest).visit(Type.iterable(Type.tuple(FOO, BAR)));
     expect(site?.kind).toBe('iterable');
-    expect(site?.kind === 'iterable' && site.types.map(inner => inner.kind)).toEqual(['factory', 'constant']);
+    expect(site?.kind === 'iterable' && site.types.map(inner => inner.kind)).toEqual(['constant', 'factory']);
   });
 });
 
@@ -264,18 +261,12 @@ describe('a union dependency', () => {
     expect(visitorFor(manifest).visit(union)).toEqual(CallSite.constant('the union itself'));
   });
 
-  test('several suppliable members raise, naming the union that could not be decided', () => {
+  test('several suppliable members settle on the first in canonical member order', () => {
     const manifest = DefaultManifest.empty<string>()
-      .add(ServiceDescriptor.ctor(CACHE, MemoryCache, Type.ctor(CACHE, [[]])))
-      .add(ServiceDescriptor.ctor(REDIS, RedisCache, Type.ctor(REDIS, [[]])));
-    expect(() => visitorFor(manifest).visit(Type.union(CACHE, REDIS))).toThrow(AmbiguousUnionError);
-  });
-
-  test('settles on the newest registration instead of raising, when asked to', () => {
-    const manifest = DefaultManifest.empty<string>()
-      .add(ServiceDescriptor.ctor(CACHE, MemoryCache, Type.ctor(CACHE, [[]])))
-      .add(ServiceDescriptor.ctor(REDIS, RedisCache, Type.ctor(REDIS, [[]])));
-    expect(visitorFor(manifest, 'newest').visit(Type.union(CACHE, REDIS))).toEqual(CallSite.ctor(RedisCache, []));
+      .add(ServiceDescriptor.ctor(REDIS, RedisCache, Type.ctor(REDIS, [[]])))
+      .add(ServiceDescriptor.ctor(CACHE, MemoryCache, Type.ctor(CACHE, [[]])));
+    // app:Cache orders before app:Redis, whichever was registered first.
+    expect(visitorFor(manifest).visit(Type.union(CACHE, REDIS))).toEqual(CallSite.ctor(MemoryCache, []));
   });
 
   test('a self-supplying member is the fallback for when nothing else is registered', () => {
@@ -297,12 +288,25 @@ describe('a union dependency', () => {
     expect(site?.kind === 'factory' && site.factory('foo-value', 'bar-value')).toEqual(['foo-value', 'bar-value']);
   });
 
-  test('two members that both build without a registration compete, just as two registrations would', () => {
+  test('two members that both synthesize settle the same way: the first in canonical order wins', () => {
     const manifest = DefaultManifest.empty<string>()
       .add(ServiceDescriptor.value(FOO, 'foo-value'))
       .add(ServiceDescriptor.value(BAR, 'bar-value'));
     const union = Type.union(Type.tuple(FOO, BAR), Type.tuple(BAR, FOO));
-    expect(() => visitorFor(manifest).visit(union)).toThrow(AmbiguousUnionError);
+    const site = visitorFor(manifest).visit(union);
+    expect(site?.kind).toBe('factory');
+    // [app:Bar, app:Foo] orders before [app:Foo, app:Bar], so its synthesis answers.
+    expect(site?.kind === 'factory' && site.factory('bar-value', 'foo-value')).toEqual(['bar-value', 'foo-value']);
+  });
+
+  test("a member registration outranks another member's synthesis, whatever the member order", () => {
+    const manifest = DefaultManifest.empty<string>()
+      .add(ServiceDescriptor.value(FOO, 'foo-value'))
+      .add(ServiceDescriptor.value(BAR, 'bar-value'))
+      .add(ServiceDescriptor.value(Type.tuple(FOO, BAR), 'registered'));
+    // [app:Bar, app:Foo] still orders first, but only [app:Foo, app:Bar] is registered.
+    const union = Type.union(Type.tuple(FOO, BAR), Type.tuple(BAR, FOO));
+    expect(visitorFor(manifest).visit(union)).toEqual(CallSite.constant('registered'));
   });
 });
 
