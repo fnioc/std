@@ -32,3 +32,11 @@ land; delete the file when empty.
 - [ ] **Go-side aggregate/nominal naming echoes** — transforms/ internals (tokens/derive.go,
       typenode.go, mergesynth nominal_identity_test.go, typesurface) still speak aggregate/nominal
       where TS now says list/named; wire format unaffected. Rename on the next transforms touch.
+- [ ] **di.registration.ttsc.e2e repair** — two-part: the sandbox fixture declares `Manifest<"singleton">`
+      and omits the datum (now correctly refused — fixture wants `'singleton' | undefined`), and the Go
+      inline host's face↔body matcher doesn't pair the rest-tuple `...lifetime: LifetimeArgument<L>` faces
+      with their `(implementer, lifetime?)` bodies (INLINE_FACE_WITHOUT_BODY; sugar survives unlowered).
+- [ ] **arg-vocabulary residual sweep** — Engine/CallSite files done; "parameter" prose survives in
+      builder.ts, ServiceProvider.ts docs and elsewhere; house rule is arg, never param/argument.
+- [ ] **Optional: biome via dprint-plugin-exec** for noUnusedImports autofix in the hook — offered, not
+      requested; noUnusedLocals gates the same class without autofix.
