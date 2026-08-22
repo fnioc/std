@@ -225,21 +225,7 @@ Three things it establishes: a fabricated global is replaceable by a real type p
 service-type position derives to the tag; and `typefor(factory)` supplies the whole injection list from the
 factory's own parameters, so no hand-written `Type.func` or `RESOLVER_TYPE` is needed. The architecture for the
 whole set is decided fresh when the slots above are rewritten, so this is a demonstration rather than the target.
-One thing about it survives that rewrite either way:
-
-- [ ] **An aliased union must derive to its NAME, not its members.** `DeriveTyped`
-      (`transforms/internal/tokens/derived.go:60`) tests `isGeneralUnion` and hands off to `deriveUnion` with no
-      check for an alias first, so `Keyed<Type, K>` yields
-      `tag(union(AggregateType, ConstructorType, FunctionType, …), key)` instead of
-      `tag(imported('Type', '@rhombus-std/primitives'), key)`. Naming is what `typefor` does — `schemaof` is the
-      verb that expands — and the expansion makes the address depend on the union's membership, so adding a kind
-      to `Type` silently moves every token derived from it. The wide `boolean` intrinsic is already excluded from
-      decomposition; an alias name is the same kind of exclusion. Fixing this is what makes the `Keyed<Type, K>`
-      spelling below sound.
-
-      **RECORDS CONFLICT** — this doc scheduled it as owner-approved 2026-08-19, but `docs/decisions.v2.md` §191
-      (as amended on the branch) records it as held with nothing scheduled; needs the owner's word before anyone
-      implements or deletes the item.
+(`AliasType` stays HELD per §191, owner re-confirmed 2026-08-21 — nothing from that thread is scheduled.)
 
 ## Inline discovery
 
