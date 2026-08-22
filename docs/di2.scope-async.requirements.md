@@ -69,9 +69,22 @@ Weigh EVERY design decision in this document against this split.
 - The compositions stay distinct and both remain expressible: `Promise<Iterable<E>>` = the whole
   collection delivered later, then sync iteration; `AsyncIterable<E>` = per-item streaming, each
   element resolving at iteration time.
+- THE PROMISE CALL-SITE (owner-ruled): every call site whose AS-REQUESTED type is a promise is
+  wrapped with a `PromiseCallsite` — THE async boundary node: descendant awaits hoist to it, and
+  its realize is a transparent wrapping promise that awaits the island's deps then yields the
+  requested value. The boundary-collection walk assigns each island's inventory to exactly this
+  node; an empty island degenerates to `Promise.resolve(realizeSync(inner))` — uniform mechanism,
+  near-zero cost for sync graphs.
 - Top-level async-shape request: lookup answers first — a literal registration under the requested
-  node wins like any other; on a miss, async activation applies. Uniform lookup-then-activate; a
-  non-top-level dep literally typed `Promise<T>` stays an ordinary lookup. **(proposed)**
+  node wins like any other; on a miss, async activation synthesizes the boundary. Top-level
+  synthesis from a sync-registered `T` is ENTAILED by the door ruling: `resolve<Promise<T>>()` is
+  indistinguishable from `resolveAsync<T>()` after the wrap — one door, same request. **OPEN:**
+  the MID-GRAPH twin — a dep slot typed `Promise<T>` with only `T` registered: synthesize the
+  boundary there too? The case for yes is delivery-mode decoupling, the symmetric twin of the
+  ruled fallback (fallback adapts async-registered→sync-wanting; the wrap adapts
+  sync-registered→promise-wanting; with both, a consumer's declared delivery mode is fully
+  decoupled from the registration's actual mode). Secondary: user-controlled awaiting as a manual
+  orchestration escape.
 - Asyncness is otherwise a MANIFEST fact, compiled away at plan time: the plan-construction walk
   discovers it (dep wants `A`, the promise-typed registration answers) and mints the site. The
   plan's async-site inventory is pure manifest+request structure.
