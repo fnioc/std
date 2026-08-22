@@ -133,6 +133,39 @@ files carry YOUR in-flight edits, so re-verify each site before editing.
 - [ ] Stale comment: tests/mergesynth.ttsc.e2e `test/mergesynth.test.ts:285` still describes
       registerAugmentations/`@augment`'s parameter as `string | Type`; it is Type-only now.
 
+## Inline discovery — issue #365 (owner-ordered fold-in, added mid-run)
+
+The work items live in `docs/tasklist.md` § "Inline discovery" (line ~230). The authoritative
+spec is mirrored IN-REPO at `docs/issue-365-inline-discovery.md` (the issue body plus the
+superseding spec-revisions comment — read the mirror, not GitHub; delete it alongside this file
+at wrap-up). The four rulings, verbatim intent:
+
+1. Marker-call discovery is ADDITIVE — `rhombus-std.json` stays for non-augmentation inlinables;
+   nothing retires it.
+2. `registerInlineBodies` registrations ACCUMULATE in any partition (one overload per call,
+   several, or all in one; later calls add more); the engine's unit is the
+   (member, overload signature) pair regardless of which call carried it.
+3. Rest-parameter bodies are permitted, never required — per-overload bodies with their own
+   signatures are equally first-class.
+4. Selection is the CHECKER'S RESOLUTION, full stop: the engine does no overload resolution of
+   its own — the signature the checker resolved the call to (the one intellisense shows as
+   selected) is the selection, and the engine inlines the body registered for exactly that
+   signature. A resolved face with no registered body is a loud build error (never
+   nearest-match). The existing `GetResolvedSignature` anchoring (`matcher.go:173`) is the
+   foundation: the same resolution that claims the call also picks the body.
+
+Sequencing: the Go half first (discovery + per-overload body extraction + the loud error) — the
+substituter's strictly-positional binding (`substitute.go:84`) is the piece that learns
+per-overload bodies — then the TS half it unblocks: the `*.extras` augmentation sets' entries
+move from `rhombus-std.json` to per-overload `registerInlineBodies` calls (the getService family
+keeps per-overload bodies, NOT a collapsed rest body). The parity e2es are the oracle throughout.
+
+- [ ] Go half: marker-call discovery, per-overload body registration keyed by
+      (member, overload signature), checker's-resolution selection, loud no-body-for-resolved-face
+      build error.
+- [ ] TS half: `*.extras` entries migrate to per-overload `registerInlineBodies` calls.
+- [ ] Parity e2es updated/passing as the oracle.
+
 ## Wrap-up (gate for deleting this file)
 
 - [ ] Full gates: `bun run test`, transforms Go gates, `bun run lint`, `bun run format:check`.
