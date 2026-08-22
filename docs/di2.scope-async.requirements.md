@@ -309,7 +309,8 @@ Weigh EVERY design decision in this document against this split.
   cannot occur — its dependencies never come from a shorter-lived scope. An arbitrary blackbox
   forwards whatever it chooses and OWNS its resulting captivity story; only it knows what its
   keys mean, so only it can define a violation — which is why any captive lint is necessarily
-  blackbox-shipped, composition-root-invoked with the manifest the root already holds. The
+  blackbox-shipped, composition-root-invoked with the manifest the root already holds. NO such
+  lint is planned or ordered — this records placement-if-ever, not work. The
   blackbox never receives the manifest; its job stays resolution-time. Because the blackbox is the interpreter of `undefined`, such sites necessarily
   flow through the call — observed-every-make holds with no extra protocol.
 - The default blackbox's vocabulary: a small interned kind-tagged union — `undefined` (transient) |
