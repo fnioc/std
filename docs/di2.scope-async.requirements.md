@@ -393,6 +393,13 @@ Weigh EVERY design decision in this document against this split.
      cache but the resolving scope must be told about them or no model can dispose them. The feed
      is also what makes partial-init unwind expressible as policy (immediate release vs hold to
      scope end).
+- DISPOSE-IN-FLIGHT AND ITS SIBLINGS ARE TOOLS-VERIFIED, NOT CONTRACT (owner-scoped): the four
+  pressure-test disposal items (a value settling after dispose; construct-on-miss disposables;
+  root-transient tracking; a throwing door's unwind) are all implementable with tools the
+  contract already grants — the blackbox observes every make, owns the settle path of every
+  promise it built, owns its own disposal members, and holds the release vocabulary in every
+  call; construct-on-miss sites are descriptor-less and already ruled caller-owned. How any model
+  uses these tools is its own policy — not planned in this session.
 - Requirements checklist for the disposal design (survey-derived): per-registration disposer;
   teardown in reverse dependency order INCLUDING on partial-init failure; release seeing the
   outcome (success vs downstream failure) for rollback semantics; consumer-owned early release
