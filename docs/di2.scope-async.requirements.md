@@ -106,27 +106,30 @@
 
 ## The scope door
 
-- The scope system is a BLACKBOX behind ONE door. The engine holds an opaque `ScopeCtx` token it
-  received from the scope system and never inspects it — no chain walking, no tag reading, no
-  scope selection engine-side.
-- The ask carries `(site identity, requested type AS-REQUESTED, lifetime datum, ctx)`. The
-  governing lifetime comes from the ANSWERING descriptor while the cache key is the as-requested
-  type — that join happens at plan time, so the door never sees the promise-typed address. The
-  blackbox is async-blind by construction: it stores and returns awaited values only.
-- Answer vocabulary: `hit(value)` | `miss(forward: ScopeCtx)` — final; no third arm. A hit carries
-  no ctx — nothing beneath it ever runs. (A construction-economy single-flight arm remains an
-  ADDITIVE vocabulary extension if a model ever names the demand.)
-- Door shape — two-step probe vs single-step `getOrCreate(key, lifetime, ctx, factory)` — is
-  **OPEN**; both shapes must deliver the forward ctx on the miss arm (as the factory's argument in
-  the single-step form).
-- Engine guarantees to the door: one ask per LIVE site; deterministic pre-order; faithful
-  subtree-scoped delivery of whatever `forward` the door returns; resolution boundaries visible (an
-  entry ask). The threaded ctx is a delivery channel the blackbox may use or ignore (ambient
-  models keep their own state). The only thing foreclosed is observing sites pruned by an ancestor
-  hit — inherent to caching, not to threading. **(proposed)**
-- Context shift: a miss's forward ctx applies to the whole dependency subtree of the matched site,
-  delivered by argument through the recursive walk — per-subtree, immutable, never global. A
-  singleton match shifts its subtree to root context; a transient answer forwards ctx unchanged.
+- THE WHOLE PICTURE (owner-ruled): the scope system is ONE CALLABLE BLACKBOX riding the visitor
+  context. At each callsite visit the engine calls it — `(site identity, serviceType
+  AS-REQUESTED, lifetime datum, factory)` — and it returns the instance/value. Hit-vs-make is
+  INTERNAL to the blackbox: the engine always receives the value it uses (canonical-by-return is
+  automatic), and a hit prunes the subtree simply because the factory was never invoked. The
+  blackbox also supplies the (possibly different) blackbox governing ALL DESCENDANT visits —
+  delivered with the factory invocation (descendants realize DURING the factory call, so it
+  cannot arrive by return); the former `ScopeCtx` token is gone — THE BLACKBOX IS THE CONTEXT.
+  Everything beyond this call surface plus the createScope requirement below is blackbox-impl
+  detail of particular models.
+- The governing lifetime comes from the ANSWERING descriptor while the cache key is the
+  as-requested type — the join happens at plan time, so the blackbox never sees the promise-typed
+  address; it stores and returns awaited values only (async-blind by construction; for an
+  in-flight make the returned "value" is the shared promise, consumed only by the gather).
+- Because the blackbox performs every make, it OBSERVES every instance by construction — the
+  disposal fact feed collapses into the call itself. **OPEN:** undefined-lifetime sites — the
+  engine-owned-transient ruling bypasses the blackbox, blinding it to transient disposables;
+  either `undefined` sites still flow through the call (the meaning stays engine-owned as a
+  CONTRACT OBLIGATION: always-create, never cache) or transient disposables are caller-owned.
+- Engine guarantees: one call per LIVE site; deterministic pre-order; site identity in the call;
+  faithful subtree-scoped delivery of the descendant blackbox — per-subtree, by argument through
+  the recursive walk, never global (a singleton match shifts its subtree to the root blackbox; a
+  transient answer forwards unchanged). The only thing foreclosed is observing sites pruned by an
+  ancestor hit — inherent to caching. **(proposed)**
 - Mechanism/policy line: the blackbox decides WHETHER each site produces work and WHERE results
   land; the engine decides how outstanding work is scheduled, awaited, and aggregated. Gather
   semantics are container-level and uniform across every scope model: awaits live only in the
@@ -180,6 +183,8 @@
 
 ## Scope creation
 
+- The blackbox is REQUIRED to register a `createScope` service (owner-ruled) — the user's
+  entrypoint into opening scopes, itself returning a blackbox-backed provider.
 - Creation is RESOLUTION-DRIVEN: scope factories are registered in the manifest and obtained
   through `getService`, like any service. The sole structural exception is the GENESIS: the root
   ctx is minted at provider build. Installing a scope model = its door + its genesis + its
@@ -206,7 +211,10 @@
   preserve). Downstream consumers gated only on this model: `validateOnStart` and the per-provider
   logging-config reload test.
 
-## Write-back and the race
+## Write-back and the race — default-model design record
+
+> With the whole-picture call surface above, everything in this section is BLACKBOX-IMPL detail of
+> the default model, retained as its design record — not engine contract.
 
 - Post-gather values must be ADMITTABLE into the scope under cacheable lifetimes — forced by
   hit-skips + values-as-requested + the sync-door corollary: hits can only exist if async-created
@@ -329,16 +337,16 @@ first client:
 
 ## Open ledger
 
-1. Door shape: two-step probe vs single-step `getOrCreate` — pure ergonomics now that adopt-or-
-   store removed the single-flight pressure.
-2. Scope-creation args: per-model `Func` types vs uniform `ScopeFactory` + merged options type.
-3. Async call-site design residue: the async call-site node's shape; the AsyncIterable arm
+1. Scope-creation args: per-model `Func` types vs uniform `ScopeFactory` + merged options type.
+2. Async call-site design residue: the async call-site node's shape; the AsyncIterable arm
    (per-item streaming over the sync path's iterable resolution, outside the gather); per-boundary
    gather islands' interaction with the hoist's scope-cache checks.
-4. Captive-dependency validation: the lifetime-ordering declaration hook in the scope contract.
-5. Disposal design proper (contract + default model), including `using`-protocol support.
-6. ManifestScope dialect (spelling of private registration; deep-override verb naming) and the
+3. Captive-dependency validation: the lifetime-ordering declaration hook in the scope contract.
+4. Disposal design proper (contract + default model), including `using`-protocol support.
+5. ManifestScope dialect (spelling of private registration; deep-override verb naming) and the
    root-authority override surface.
-7. Library portability under model-typed manifests: what lifetime vocabulary an oblivious
+6. Library portability under model-typed manifests: what lifetime vocabulary an oblivious
    `(m) => m` configure function targets (default-model lingua franca vs a capability-constraint
    story).
+7. Transient-disposable observation: route `undefined` sites through the blackbox call (meaning
+   stays engine-owned as a contract obligation) vs caller-owned transient disposables.
