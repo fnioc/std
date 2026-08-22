@@ -2,6 +2,7 @@
 
 import { augment } from '@rhombus-std/primitives';
 import { typefor } from '@rhombus-std/primitives.extras';
+import type { LifetimeModel } from './LifetimeModel';
 import { ServiceDescriptor } from './ServiceDescriptor';
 
 /**
@@ -15,6 +16,8 @@ import { ServiceDescriptor } from './ServiceDescriptor';
  * descriptors newest-registration-first.
  */
 export interface Manifest<Lifetime> extends Iterable<ServiceDescriptor<Lifetime>> {
+  /** The model interpreting every registration's lifetime datum when a provider built from here realizes. */
+  readonly lifetimeModel: LifetimeModel<Lifetime>;
   /** Prepends `descriptor`, ahead of every descriptor already in the chain. */
   _add(descriptor: ServiceDescriptor<Lifetime>): Manifest<Lifetime>;
   /**
@@ -31,12 +34,12 @@ export interface DefaultManifest<Lifetime> extends Manifest<Lifetime> {}
 @augment(typefor<Manifest<any>>())
 export class DefaultManifest<Lifetime> {
   #descriptors: Iterable<ServiceDescriptor<Lifetime>>;
-  constructor(descriptors?: Iterable<ServiceDescriptor<Lifetime>>) {
+  constructor(readonly lifetimeModel: LifetimeModel<Lifetime>, descriptors?: Iterable<ServiceDescriptor<Lifetime>>) {
     this.#descriptors = descriptors ?? [];
   }
 
   _add(descriptor: ServiceDescriptor<Lifetime>): Manifest<Lifetime> {
-    return new DefaultManifest<Lifetime>({
+    return new DefaultManifest<Lifetime>(this.lifetimeModel, {
       [Symbol.iterator]: function* added(this: DefaultManifest<Lifetime>) {
         // INTENTIONAL: newest first.
         yield descriptor;
@@ -46,7 +49,7 @@ export class DefaultManifest<Lifetime> {
   }
 
   _remove(descriptor: ServiceDescriptor<Lifetime>): Manifest<Lifetime> {
-    return new DefaultManifest<Lifetime>({
+    return new DefaultManifest<Lifetime>(this.lifetimeModel, {
       [Symbol.iterator]: function* removed(this: DefaultManifest<Lifetime>) {
         const it = Iterator.from(this.#descriptors);
         for (const existing of it) {
@@ -61,7 +64,7 @@ export class DefaultManifest<Lifetime> {
   }
 
   _replace(descriptor: ServiceDescriptor<Lifetime>) {
-    return new DefaultManifest<Lifetime>({
+    return new DefaultManifest<Lifetime>(this.lifetimeModel, {
       [Symbol.iterator]: function* replaced(this: DefaultManifest<Lifetime>) {
         const it = Iterator.from(this.#descriptors);
         for (const existing of it) {
@@ -80,8 +83,7 @@ export class DefaultManifest<Lifetime> {
     return this.#descriptors[Symbol.iterator]();
   }
 
-  static #empty = new DefaultManifest<any>();
-  static empty<Lifetime>(): Manifest<Lifetime> {
-    return this.#empty;
+  static empty<Lifetime>(lifetimeModel: LifetimeModel<Lifetime>): Manifest<Lifetime> {
+    return new DefaultManifest<Lifetime>(lifetimeModel);
   }
 }

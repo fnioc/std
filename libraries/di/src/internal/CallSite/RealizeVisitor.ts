@@ -64,7 +64,6 @@ class RealizeVisitor {
       const bound = site.lateBoundArgs.find(row => row.length === args.length) ?? site.lateBoundArgs[0] ?? [];
       return context.engine.resolve(site.result, {
         serviceProvider: context.serviceProvider,
-        lifetimeModel: context.lifetimeModel,
         additionalServices: bound.map((serviceType, i) => ServiceDescriptor.value(serviceType, args[i])),
       });
     };
