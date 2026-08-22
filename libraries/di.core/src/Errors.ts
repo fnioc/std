@@ -88,10 +88,10 @@ export class AmbiguousUnionError extends DiError {
   readonly members: readonly Type[];
 
   constructor(type: Type, members: readonly Type[]) {
-    super(
-      `cannot choose for ${Type.stringify(type)} — ${members.length} members can be supplied: `
-        + members.map(member => Type.stringify(member)).join(', '),
-    );
+    super(`cannot choose for ${Type.stringify(type)} — ${members.length} members can be supplied: `
+      + members.map(member => Type.stringify(member))
+        .toSorted((a, b) => a.localeCompare(b))
+        .join(', '));
     this.name = 'AmbiguousUnionError';
     this.type = type;
     this.members = members;
