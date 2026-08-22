@@ -30,7 +30,7 @@ export class ToCallSiteVisitor extends Type.Visitor<CallSite | undefined> {
     // call itself, so the manifest is never consulted for it.
     const argIndex = this.#args?.get(serviceType);
     if (argIndex !== undefined) {
-      return CallSite.arg(argIndex);
+      return CallSite.lateboundArg(argIndex);
     }
     using guard = this.#cycleGuard.visiting(serviceType);
     return this.#registry.answering(serviceType)
@@ -93,7 +93,7 @@ export class ToCallSiteVisitor extends Type.Visitor<CallSite | undefined> {
     if (members.some(p => !p)) {
       return undefined;
     }
-    return CallSite.factory((...args: any[]) => args, members as CallSite[], type);
+    return CallSite.factory((...args: any[]) => args, members as CallSite[]);
   }
 
   protected override visitTypeLiteral(type: TypeLiteralType): CallSite | undefined {

@@ -164,7 +164,7 @@ export namespace Type {
       return factory.ctor(args[0], atLeastOneSignature(args[1]), args[2]);
     }
     const spec = args[0] as Spec<ConstructorType>;
-    return adopt({ ...spec, signatures: atLeastOneSignature(spec.signatures), kind: 'ctor' });
+    return Type.adopt({ ...spec, signatures: atLeastOneSignature(spec.signatures), kind: 'ctor' });
   }
 
   /**
@@ -180,7 +180,7 @@ export namespace Type {
     const parsed = new Map<string, Type>();
 
     return function from(type: string | Type): Type {
-      return typeof type === 'string' ? parsed.getOrInsertComputed(type, parseTypeString) : adopt(type);
+      return typeof type === 'string' ? parsed.getOrInsertComputed(type, parseTypeString) : Type.adopt(type);
     };
   })();
 
@@ -201,7 +201,7 @@ export namespace Type {
       return factory.func(args[0], atLeastOneSignature(args[1]));
     }
     const spec = args[0] as Spec<FunctionType>;
-    return adopt({ ...spec, signatures: atLeastOneSignature(spec.signatures), kind: 'func' });
+    return Type.adopt({ ...spec, signatures: atLeastOneSignature(spec.signatures), kind: 'func' });
   }
 
   /** An open generic argument — a labeled hole standing for a type bound later. */
@@ -365,7 +365,7 @@ export namespace Type {
 
   /** Does the type admit `undefined` — the `undefined` literal itself, or a union carrying it? */
   export function isOptional(type: Type): boolean {
-    return type === typeLiteral(undefined) || type.kind === 'union' && type.members.includes(typeLiteral(undefined));
+    return type === Type.typeLiteral(undefined) || type.kind === 'union' && type.members.includes(Type.typeLiteral(undefined));
   }
 
   /**

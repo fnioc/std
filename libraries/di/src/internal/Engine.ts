@@ -1,5 +1,5 @@
 import { type LifetimeModel, ManifestValidationError, type ServiceDescriptor, UnsatisfiableError, type ValidationFailure } from '@rhombus-std/di.core';
-import { type FunctionType, type IServiceProvider, memo, Type } from '@rhombus-std/primitives';
+import { type FunctionType, type IServiceProvider, Type } from '@rhombus-std/primitives';
 import { CallSite } from './CallSite/index.js';
 import { Registry } from './Registry.js';
 
@@ -16,30 +16,6 @@ export class Engine {
   readonly #lifetimeModel: LifetimeModel;
   readonly #registry: Registry;
 
-  /**
-   * The plan for a request, built once and kept for as long as this engine lives.
-   *
-   * @remarks
-   * A plan is a pure function of the interned request and the fixed set of registrations — the
-   * walk reads no runtime state — so the second ask for a type can only rebuild the same tree.
-   * It holds no instances: it says how to construct, never what was constructed. A request that
-   * cannot be satisfied caches nothing, so the failure is rebuilt and rethrown identically.
-   */
-  readonly #getPlanFor = memo((serviceType: Type) => this.#buildCallSite(serviceType, this.#registry));
-
-  /**
-   * A latebound function's plan per signature, built on the first call rather than when the
-   * function realizes — deferring past construction is what lets a self-referencing latebound
-   * dependency escape its own cycle.
-   */
-  readonly #getLatePlanFor = memo((funcType: FunctionType) =>
-    memo((signature: readonly Type[]) => {
-      // Reversed so a repeated arg type keeps its FIRST index — Map insertion lets the last write win.
-      const args = new Map(signature.map((argType, index) => [argType, index] as const).reverse());
-      return this.#buildCallSite(funcType.return, this.#registry, args);
-    })
-  );
-
   constructor(lifetimeModel: LifetimeModel, descriptors: Iterable<ServiceDescriptor<unknown>>) {
     this.#lifetimeModel = lifetimeModel;
     this.#registry = new Registry(descriptors);
@@ -47,7 +23,7 @@ export class Engine {
 
   /** @throws {UnsatisfiableError} when nothing in the registry can produce {@link serviceType}. */
   resolve(serviceType: Type, context: ResolveContext): unknown {
-    return CallSite.realize(this.#getPlanFor(serviceType), { engine: this, serviceProvider: context.serviceProvider, lifetimeModel: this.#lifetimeModel });
+    return CallSite.realize(CallSite.from(serviceType, this.#registry), { engine: this, serviceProvider: context.serviceProvider, lifetimeModel: this.#lifetimeModel });
   }
 
   /**
@@ -80,7 +56,7 @@ export class Engine {
     if (signature === undefined) {
       throw new TypeError(`${Type.stringify(funcType)} has no signature accepting ${args.length} arg(s)`);
     }
-    return CallSite.realize(this.#getLatePlanFor(funcType)(signature), {
+    return CallSite.realize(CallSite.from(funcType.return, this.#registry, signature), {
       engine: this,
       serviceProvider,
       lifetimeModel: this.#lifetimeModel,
@@ -98,7 +74,7 @@ export class Engine {
     const failures = Iterator.from(this.#registry.closedAddresses)
       .map((serviceType): ValidationFailure | undefined => {
         try {
-          this.#getPlanFor(serviceType);
+          CallSite.from(serviceType, this.#registry);
           return undefined;
         } catch (error) {
           return { serviceType, error: error instanceof Error ? error : new Error(String(error)) };
@@ -109,13 +85,5 @@ export class Engine {
     if (failures.length) {
       throw new ManifestValidationError(failures);
     }
-  }
-
-  #buildCallSite(serviceType: Type, registry: Registry, args?: ReadonlyMap<Type, number>): CallSite {
-    const site = CallSite.from(serviceType, registry, args);
-    if (site === undefined) {
-      throw new UnsatisfiableError(serviceType, 'nothing in the manifest can produce it');
-    }
-    return site;
   }
 }
