@@ -1,9 +1,10 @@
 # di2 scope & async requirements — TEMPORARY
 
 > Working capture of the 2026-08-13 scope/async design session, maintained as the session runs.
-> Requirements only — no implementation plan. Untagged entries are owner-ruled in conversation;
-> **(proposed)** entries are Claude's, shown to the owner and not overruled; **OPEN** marks
-> decisions still pending the owner. Companion to `di2.requirements.md` (the taxonomy/dialect
+> Requirements only — no implementation plan. Every entry is owner-ruled — directly, or as a
+> ratified proposal (blanket ratification 2026-08-22: any proposal whose rejection would
+> undermine a direct ruling, plus the thenable mechanisms and the createScope member,
+> explicitly). Companion to `di2.requirements.md` (the taxonomy/dialect
 > capture) and `di2.scope-notes.md` (scope research inputs). Delete once the rulings land in the
 > decision records and code.
 
@@ -63,7 +64,7 @@ Weigh EVERY design decision in this document against this split.
 - The invariant this rests on: OCCURRENCE IDENTITY — two occurrences of the same async dep are two
   distinct node objects. Plans built by walking give this naturally; if plan subtrees are ever
   shared, the async-site wrapper is minted fresh per inclusion point (wrapper identity ≡ occurrence
-  identity) while its inner points at the shared subtree. **(proposed)**
+  identity) while its inner points at the shared subtree.
 - NO ASYNC KIND EXISTS IN THE TYPE GRAMMAR (owner-ruled 2026-08-13, via team-lead; extended same
   day to AsyncIterable): "T delivered later" is spelled by the ordinary global generic `Promise`
   node, and AsyncIterable factors into async delivery (call-site) × iterable resolution (grammar —
@@ -102,7 +103,7 @@ Weigh EVERY design decision in this document against this split.
   iteration of the iterable is provably element-wise identical); `Iterable<T>` consults PER
   ELEMENT at each iteration step (a live query — later steps see later scope state, transients
   fresh per iteration, short-circuit skips construction, an unsatisfiable element throws from its
-  step). Re-iteration pin **(proposed)**: each `Symbol.iterator`/`Symbol.asyncIterator` call mints
+  step). Re-iteration pin: each `Symbol.iterator`/`Symbol.asyncIterator` call mints
   a FRESH walk — never a one-shot iterator object; a stable snapshot is spelled `Array<T>`.
   KNOWN ENGINE DELTA (owner-flagged): the live engine currently realizes `Iterable` and `Array`
   through IDENTICAL logic — the consult-time split above is unimplemented and must be addressed
@@ -122,7 +123,7 @@ Weigh EVERY design decision in this document against this split.
   user iteration time, no await structurally available). Enumeration caveat spelled out so
   "registrations of the element" is never read literally: a candidate is a member iff its
   element-typed slot plans successfully in context.
-- THE ASYNCITERABLE ARM **(proposed)**: the `AsyncIterableCallsite`'s fallback (after exact match,
+- THE ASYNCITERABLE ARM: the `AsyncIterableCallsite`'s fallback (after exact match,
   like every arm) plans the element sites per the element-universe rule above, but each
   element subtree walks under its own clean collection — PER-ELEMENT inventories, so an element's
   async deps belong to its own step, never a pooled gather. Realize is an async generator: each
@@ -130,7 +131,7 @@ Weigh EVERY design decision in this document against this split.
   and lazy (elements never iterated never resolve); an empty element set completes immediately
   (the empty-aggregate answer); a step's gather failure throws from that `next()` as the same
   reason-deduped `AggregateError`.
-- COMPOSITIONAL DISSOLUTIONS **(proposed)**: hit-skips slots into the entry — an `AsyncCallSite`
+- COMPOSITIONAL DISSOLUTIONS: hit-skips slots into the entry — an `AsyncCallSite`
   entry consults the scope for `T` before `realize(inner)`; a hit writes the map and prunes the
   entire inner boundary. Latebound × async needs no rule: a latebound closure with a promise
   return re-enters through the one door with a promise-typed request, which IS a `PromiseCallsite`
@@ -182,7 +183,7 @@ Weigh EVERY design decision in this document against this split.
   fallback probe — nested promise delivery is not a thing reality distinguishes — in both modes
   the failure is plain unresolvable. (Flagged sibling, not decided: whether a missed
   promise-typed slot synthesizes from a registered `X` — resolve sync, deliver wrapped.)
-- THENABLE REALITY (owner-ruled goal; mechanisms **(proposed)**): (1) element-settled invariant —
+- THENABLE REALITY (owner-ruled goal; mechanisms): (1) element-settled invariant —
   the promise spelling normalizes a promise-headed element at mint (`Promise<Promise<X>>` mints
   the interned `Promise<X>`; the `named`-door canonicalization contract), so a nested promise
   node cannot exist; (2) assimilation is `await`'s job — awaited values are settled by JS
@@ -244,19 +245,19 @@ Weigh EVERY design decision in this document against this split.
   faithful subtree-scoped delivery of the descendant blackbox — per-subtree, by argument through
   the recursive walk, never global (a singleton match shifts its subtree to the root blackbox; a
   transient answer forwards unchanged). The only thing foreclosed is observing sites pruned by an
-  ancestor hit — inherent to caching. **(proposed)**
+  ancestor hit — inherent to caching.
 - Mechanism/policy line: the blackbox decides WHETHER each site produces work and WHERE results
   land; the engine decides how outstanding work is scheduled, awaited, and aggregated. Gather
   semantics are container-level and uniform across every scope blackbox: awaits live only in the
   gather, `allSettled`-shaped, failures thrown as one `AggregateError` deduped by reason identity.
-  **(proposed)**
+
 - Latebound re-entry: the closure captures the CONTEXT BLACKBOX in effect at its mint site and
   re-enters against it — captured-scope semantics by construction, since the blackbox is the
   context. A blackbox wanting reset-to-root or ambient binding controls what it forwards to latebound
   factories, which requires the blackbox to distinguish latebound sites — whether the call surface
   marks them (a site-kind fact it already carries via site identity) is settled in the async/plan
   design, not a new arm. The engine keeps only what is uniform: the re-entry path follows the
-  declared return type. **(proposed)**
+  declared return type.
 
 ## Lifetime data
 
@@ -315,7 +316,7 @@ Weigh EVERY design decision in this document against this split.
   flow through the call — observed-every-make holds with no extra protocol.
 - The default blackbox's vocabulary: a small interned kind-tagged union — `undefined` (transient) |
   `singleton` | `scoped` | `matching(tag)` — strategy and parameter as separate fields, so the tag
-  namespace holds only user tags, no reserved values. **(proposed)**
+  namespace holds only user tags, no reserved values.
 - The STRING MODEL is a named candidate scope blackbox, not a top-level requirement: user-vocabulary
   tags with no implicit meaning, scope lifetime bound to the holding variable (`using`-protocol
   support in the disposal design is its consumer). Root-pinning and ask-scope caching, if that
@@ -366,9 +367,10 @@ Weigh EVERY design decision in this document against this split.
   reference to match it). Creation-ONLY config that is not lifetime vocabulary is blackbox-side: a
   blackbox registers its own richer factory type beside the well-known address (per-blackbox `Func`
   spellings stay legal); `TLifetime` never carries values no registration may hold. CONVENIENCE
-  MEMBER (owner-proposed, endorsed): `sp.createScope(scope?: TLifetime)` — pure forwarding sugar
-  over resolving the well-known address (the `getServiceAsync` pattern; adds no capability),
-  giving users a typed, discoverable creation entrypoint. Placement flag: it lives on the
+  MEMBER (owner-ruled): `sp.createScope<T>()` — a generic method whose `T` is CONSTRAINED by the
+  sp's own Scopes generic, forwarding to a correctly-populated `sp.resolve<ScopeFactory<T>>()`;
+  pure forwarding sugar (the `resolveAsync` pattern; adds no capability), giving users a typed,
+  discoverable creation entrypoint that populates the request correctly. Placement flag: it lives on the
   ENGINE-TYPED provider surface only — primitives' universal `IServiceProvider` stays generic-free
   (adding `TLifetime` there would infect every library signature).
 - Creation is RESOLUTION-DRIVEN: scope factories are registered in the manifest and obtained
@@ -379,7 +381,7 @@ Weigh EVERY design decision in this document against this split.
   parent. The factory registration's OWN lifetime selects the parenting policy — a scoped factory
   yields children of the asker; a singleton factory realizes under root context and yields children
   of root. A factory injected into a service parents at the ctx it was realized under. No new
-  mechanism. **(proposed)**
+  mechanism.
 - Creation args stay inside existing grammar. Two candidate shapes — **OPEN**:
   1. latebound `Func` types per blackbox (zero new surface, no single well-known address);
   2. one uniform `ScopeFactory` address whose `create(options?)` options type blackboxes extend by
