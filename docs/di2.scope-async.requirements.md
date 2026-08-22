@@ -143,11 +143,13 @@ Weigh EVERY design decision in this document against this split.
   semantics are container-level and uniform across every scope model: awaits live only in the
   gather, `allSettled`-shaped, failures thrown as one `AggregateError` deduped by reason identity.
   **(proposed)**
-- Latebound re-entry binding is DELEGATED to the blackbox: a mint-time arm
-  (`bindLatebound(site, ctx) → () => ScopeCtx`); the closure stores the thunk, the call re-enters
-  with whatever it yields. Captured vs reset-to-root vs ambient becomes default-model policy, not
-  an engine ruling. The engine keeps only what is uniform: the re-entry path follows the declared
-  return type. **(proposed)**
+- Latebound re-entry: the closure captures the CONTEXT BLACKBOX in effect at its mint site and
+  re-enters against it — captured-scope semantics by construction, since the blackbox is the
+  context. A model wanting reset-to-root or ambient binding controls what it forwards to latebound
+  factories, which requires the model to distinguish latebound sites — whether the call surface
+  marks them (a site-kind fact it already carries via site identity) is settled in the async/plan
+  design, not a new arm. The engine keeps only what is uniform: the re-entry path follows the
+  declared return type. **(proposed)**
 
 ## Lifetime data
 
