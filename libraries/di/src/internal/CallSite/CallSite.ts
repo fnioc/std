@@ -2,9 +2,9 @@ import { ServiceDescriptor } from '@rhombus-std/di.core';
 import { isAllThere, Type } from '@rhombus-std/primitives';
 import type { Ctor, Func } from '@rhombus-toolkit/func';
 import { assertNever } from '@rhombus-toolkit/type-guards';
-import type { Answer } from '../Registry.js';
+import type { Answer, Registry } from '../Registry.js';
 import { realizeCallSite } from './RealizeVisitor.js';
-import { type CallSiteContext, ToCallSiteVisitor } from './ToCallSiteVisitor.js';
+import { ToCallSiteVisitor } from './ToCallSiteVisitor.js';
 
 export type { RealizeContext } from './RealizeVisitor.js';
 
@@ -97,8 +97,8 @@ export namespace CallSite {
     return { kind: 'array', types };
   }
 
-  export function from(serviceType: Type, context: CallSiteContext): CallSite | undefined {
-    return new ToCallSiteVisitor(context).visit(serviceType);
+  export function from(serviceType: Type, registry: Registry): CallSite | undefined {
+    return new ToCallSiteVisitor(registry).visit(serviceType);
   }
 
   /**

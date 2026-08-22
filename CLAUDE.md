@@ -182,10 +182,10 @@ where that's cheap, and flag the intended divergence rather than pre-emptively t
   is the same object everywhere. **Resolution is one exact-answer loop** (§196): every request
   kind first takes the registrations answering its own address, newest first, first answer that
   builds — an unbuildable answer falls through — and only then synthesizes per kind. A union with
-  no answer of its own settles in TWO PHASES over the members in canonical order — every member's
-  registrations, then every member's synthesis — so there is no ambiguity error and no literal
+  no answer of its own settles by its FIRST RESOLVABLE MEMBER in canonical order — each member
+  tried registration-then-synthesis in one pass — so there is no ambiguity error and no literal
   special-case: literals order last, keeping a literal member the fallback of an optional
-  dependency, and a registered nullish member can win the first phase. Collections are
+  dependency. Collections are
   union-agnostic: an aggregate assembles the element's own answers in registration order plus one
   synthesis tail, never a member spread. `ServiceDescriptor.value` refuses an open service type
   unless the hole sits under a callable root — ctor/func, tag stripped — since one erased callable

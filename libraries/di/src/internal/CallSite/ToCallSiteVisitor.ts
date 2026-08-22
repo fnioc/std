@@ -5,74 +5,45 @@ import { typefor } from '@rhombus-std/primitives.extras';
 import type { Registry } from '../Registry.js';
 import { CallSite } from './CallSite.js';
 
-export interface CallSiteContext {
-  readonly registry: Registry;
-}
-
-/**
- * Guards a walk against re-entering a type it is still building: `visiting(type)` throws
- * {@link CycleError} on a repeat, and otherwise pushes the type for the extent of the `using`
- * block that holds the returned disposable.
- */
-function makeVisitingGuard() {
-  const stack: Type[] = [];
-  class VisitDisposer implements Disposable {
-    readonly #visiting: Type;
-    constructor(visiting: Type) {
-      stack.push(this.#visiting = visiting);
-    }
-    [Symbol.dispose](): void {
-      const popped = stack.pop();
-      if (popped !== this.#visiting) {
-        throw new Error(
-          `the resolution walk unwound out of order — expected to leave "${Type.stringify(this.#visiting)}" but left "${popped ? Type.stringify(popped) : '<empty>'}"`,
-        );
-      }
-    }
-  }
-  return function visiting(serviceType: Type): Disposable {
-    if (stack.includes(serviceType)) {
-      throw new CycleError([...stack, serviceType]);
-    }
-    return new VisitDisposer(serviceType);
-  };
-}
-
 /**
  * Turns a type expression into the {@link CallSite} that constructs a value for it.
  *
  * @remarks
- * One instance per walk — {@link CallSite.from} is the entry point. Every node first runs the
- * exact-answer loop: the registrations answering the type's own address, newest first, and the
- * first one that builds wins — an unbuildable answer falls through to the next. Only when none
- * builds does the per-kind step run, as decomposition or synthesis, so a registration for a
- * composite beats its parts. Undefined means the type is unsatisfiable from this manifest; the
- * composite steps use that to fall back — a union tries its next member, a descriptor its next
- * signature. Re-entering a type the walk is still building throws {@link CycleError} instead,
- * which ends the walk outright rather than falling back: no later member or signature can undo
- * a loop.
+ * Exact match lookup first, falling back to Type specific synthesis behavior.
  */
 export class ToCallSiteVisitor extends Type.Visitor<CallSite | undefined> {
   readonly #registry: Registry;
-  /** Guards against re-entering a type this walk is still building. */
-  readonly #visiting = makeVisitingGuard();
-  constructor(context: CallSiteContext) {
+  readonly #CycleGuard = makeCycleGuard();
+  constructor(registry: Registry) {
     super();
-    this.#registry = context.registry;
+    this.#registry = registry;
   }
 
   public override visit(serviceType: Type): CallSite | undefined {
-    // An open type stands for a family rather than a value, so there is nothing to build until a
-    // request closes its holes.
     if (Type.isOpen(serviceType)) {
       return undefined;
     }
-    using guard = this.#visiting(serviceType);
-    return this.#firstAnswerBuilt(serviceType) ?? super.visit(serviceType);
+    using guard = this.#CycleGuard.visiting(serviceType);
+    return this.#registry.answering(serviceType)
+      .map(answer => CallSite.fromAnswer(serviceType, answer, this))
+      .find(Boolean)
+      ?? super.visit(serviceType);
   }
 
-  protected override visitArray(type: ArrayType): CallSite | undefined {
-    return CallSite.array(this.#collectionSites(type.element));
+  protected override visitImported(type: ImportedType): CallSite | undefined {
+    if (type === typefor<IServiceProvider>()) {
+      return CallSite.serviceProvider();
+    }
+    return undefined;
+  }
+
+  /** Nothing global is synthesizable: a global name describes none of itself to build from. */
+  protected override visitGlobal(_type: GlobalType): CallSite | undefined {
+    return undefined;
+  }
+
+  protected override visitGeneric(_type: GenericType): CallSite | undefined {
+    return undefined;
   }
 
   /** Parked: composing one from its parameter types on a miss awaits its design ruling. */
@@ -84,30 +55,18 @@ export class ToCallSiteVisitor extends Type.Visitor<CallSite | undefined> {
     return CallSite.latebound(type.return, type.args);
   }
 
-  protected override visitGeneric(_type: GenericType): CallSite | undefined {
-    return undefined;
-  }
-
-  protected override visitIntersection(_type: IntersectionType): CallSite | undefined {
-    // An intersection is satisfiable only by ONE registration matching every member, and the
-    // whole-type lookup in `visit` already performed that search: no synthesis can produce a
-    // value that is all parts at once, so there is nothing left to decompose.
-    return undefined;
+  protected override visitArray(type: ArrayType): CallSite | undefined {
+    return CallSite.array(this.#collectionSites(type.element));
   }
 
   protected override visitIterable(type: IterableType): CallSite | undefined {
     return CallSite.iterable(this.#collectionSites(type.element));
   }
 
-  /** Nothing global is synthesizable: a global name describes none of itself to build from. */
-  protected override visitGlobal(_type: GlobalType): CallSite | undefined {
-    return undefined;
-  }
-
-  protected override visitImported(type: ImportedType): CallSite | undefined {
-    if (type === typefor<IServiceProvider>()) {
-      return CallSite.serviceProvider();
-    }
+  protected override visitIntersection(_type: IntersectionType): CallSite | undefined {
+    // An intersection is satisfiable only by ONE registration matching every member, and the
+    // whole-type lookup in `visit` already performed that search: no synthesis can produce a
+    // value that is all parts at once, so there is nothing left to decompose.
     return undefined;
   }
 
@@ -121,15 +80,11 @@ export class ToCallSiteVisitor extends Type.Visitor<CallSite | undefined> {
   }
 
   protected override visitTuple(type: TupleType): CallSite | undefined {
-    const members: CallSite[] = [];
-    for (const member of type.members) {
-      const site = this.visit(member);
-      if (site === undefined) {
-        return undefined;
-      }
-      members.push(site);
+    const members = type.members.map(member => this.visit(member));
+    if (members.some(p => !p)) {
+      return undefined;
     }
-    return CallSite.factory((...args: any[]) => args, members, type);
+    return CallSite.factory((...args: any[]) => args, members as CallSite[], type);
   }
 
   protected override visitTypeLiteral(type: TypeLiteralType): CallSite | undefined {
@@ -137,41 +92,14 @@ export class ToCallSiteVisitor extends Type.Visitor<CallSite | undefined> {
   }
 
   /**
-   * Reached only once the union's own address has no buildable answer. Two phases over the
-   * members in canonical order, because a registration outranks synthesis here as everywhere:
-   * first the members' own registrations, then the members' syntheses. The first member that
-   * delivers wins either phase — with literals ordered last among members, a literal keeps
-   * serving as the fallback of an optional dependency without being a special case, while a
-   * registration for a nullish member wins the first phase like any other.
+   * Reached only once the union's own address has no buildable answer: the first resolvable
+   * member wins, in canonical order. With literals ordered last among members, a literal keeps
+   * serving as the fallback of an optional dependency without being a special case.
    */
   protected override visitUnion(type: UnionType): CallSite | undefined {
-    for (const member of type.members) {
-      const registered = this.#firstAnswerBuilt(member);
-      if (registered !== undefined) {
-        return registered;
-      }
-    }
-    for (const member of type.members) {
-      const synthesized = super.visit(member);
-      if (synthesized !== undefined) {
-        return synthesized;
-      }
-    }
-    return undefined;
-  }
-
-  /**
-   * The newest registration answering {@link serviceType}'s own address that actually builds; an
-   * unbuildable answer falls through to the next.
-   */
-  #firstAnswerBuilt(serviceType: Type): CallSite | undefined {
-    for (const answer of this.#registry.answering(serviceType)) {
-      const site = CallSite.fromAnswer(serviceType, answer, this);
-      if (site !== undefined) {
-        return site;
-      }
-    }
-    return undefined;
+    return Iterator.from(type.members)
+      .map(member => this.visit(member))
+      .find(Boolean);
   }
 
   /**
@@ -179,18 +107,40 @@ export class ToCallSiteVisitor extends Type.Visitor<CallSite | undefined> {
    * out in the order they were authored — with the element's one synthesis, if any, as the tail.
    */
   #collectionSites(elementType: Type): CallSite[] {
-    const sites: CallSite[] = [];
-    for (const answer of this.#registry.answering(elementType)) {
-      const site = CallSite.fromAnswer(elementType, answer, this);
-      if (site !== undefined) {
-        sites.push(site);
+    return this.#registry.answering(elementType)
+      .map(answer => CallSite.fromAnswer(elementType, answer, this))
+      .toArray()
+      .reverse()
+      .concat(Type.isOpen(elementType) ? undefined : super.visit(elementType))
+      .filter(p => p !== undefined);
+  }
+}
+
+/**
+ * Guards a walk against re-entering a type it is still building: `visiting(type)` throws
+ * {@link CycleError} on a repeat, and otherwise pushes the type for the extent of the `using`
+ * block that holds the returned disposable.
+ */
+function makeCycleGuard() {
+  const stack: Type[] = [];
+  return class CycleGuard implements Disposable {
+    readonly #visiting: Type;
+    constructor(visiting: Type) {
+      stack.push(this.#visiting = visiting);
+    }
+    [Symbol.dispose](): void {
+      const popped = stack.pop();
+      if (popped !== this.#visiting) {
+        throw new Error(
+          `the resolution walk unwound out of order — expected to leave "${Type.stringify(this.#visiting)}" but left "${popped ? Type.stringify(popped) : '<empty>'}"`,
+        );
       }
     }
-    sites.reverse();
-    const synthesized = Type.isOpen(elementType) ? undefined : super.visit(elementType);
-    if (synthesized !== undefined) {
-      sites.push(synthesized);
+    static visiting(serviceType: Type): Disposable {
+      if (stack.includes(serviceType)) {
+        throw new CycleError([...stack, serviceType]);
+      }
+      return new CycleGuard(serviceType);
     }
-    return sites;
-  }
+  };
 }

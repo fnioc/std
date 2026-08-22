@@ -31,6 +31,8 @@ export class Engine {
 
   constructor(manifest: Manifest<unknown>) {
     this.#manifest = manifest;
+    // Descriptors are metadata: frozen so nothing can stash state on them once the provider is built.
+    Iterator.from(manifest).forEach(Object.freeze);
     this.#registry = new Registry(manifest);
   }
 
@@ -83,7 +85,7 @@ export class Engine {
   }
 
   #build(serviceType: Type, registry: Registry): CallSite {
-    const site = CallSite.from(serviceType, { registry });
+    const site = CallSite.from(serviceType, registry);
     if (site === undefined) {
       throw new UnsatisfiableError(serviceType, 'nothing in the manifest can produce it');
     }

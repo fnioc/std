@@ -2909,7 +2909,7 @@ _Claude-recorded 2026-08-22._
 
 ---
 
-## §196 — Resolution is one exact-answer loop; a union settles in two phases; `AmbiguousUnionError` is gone
+## §196 — Resolution is one exact-answer loop; a union settles by its first resolvable member; `AmbiguousUnionError` is gone
 
 `ToCallSiteVisitor.visit` inlines the exact-answer loop for EVERY request kind, a union's own
 address included: `Registry.answering(type)` yields the registrations answering exactly that one
@@ -2918,11 +2918,11 @@ no union spread — and the first answer whose `CallSite.fromAnswer` builds wins
 answer falling through to the next. Only when no answer builds does the per-kind step run, as
 decomposition or synthesis, so a registration for a composite beats its parts.
 
-A union with no answer of its own settles in TWO PHASES over the members in canonical order
-(§195), because a registration outranks synthesis here as everywhere: phase 1 takes the first
-member the manifest answers, phase 2 the first member that synthesizes. No ambiguity error, no
-literal special-case — literals order last among members, which keeps a literal member the
-fallback of an optional dependency, and a registered nullish member wins phase 1 like any other.
+A union with no answer of its own settles by its FIRST RESOLVABLE MEMBER in canonical order
+(§195): each member runs the ordinary visit — its own registrations, then its synthesis — and
+the first that delivers wins (owner-ruled 2026-08-22). No ambiguity error, no literal
+special-case — literals order last among members, which keeps a literal member the fallback of
+an optional dependency, and a registered nullish member wins like any other.
 Plural suppliable members are settled by member order, deterministically, not raised.
 `AmbiguousUnionError` (di.core and the di re-export), `ServiceProviderOptions.unionAmbiguity`,
 `CallSiteContext.unionAmbiguity`, and the Engine/hosting threading are all removed. §112's
@@ -2932,7 +2932,7 @@ superseded.
 
 Collections are union-agnostic: `visitArray`/`visitIterable` assemble the element's own answers
 in registration order plus the element's one synthesis as the tail — never a member spread, which
-the two-phase `visitUnion` alone realizes. The provider and scope-factory intrinsics compare by
+`visitUnion` alone realizes. The provider and scope-factory intrinsics compare by
 interned identity against the one declaring-module `typefor` address (U7) — the dual-spelling
 accommodation is dropped. The cycle guard is a `using`-scoped disposer: entering a type pushes it
 for the extent of the visit and a repeat throws `CycleError`.
