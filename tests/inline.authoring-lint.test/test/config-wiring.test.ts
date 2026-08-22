@@ -10,10 +10,9 @@ import { basename, join, resolve } from 'node:path';
 // tripwires exist to prevent elsewhere).
 //
 // di.extras carries its marker bodies as object-literal augmentation sets under
-// src/augmentations/*.ts, not the src/inline.ts shape config.extras and
-// di.extras.options use — a distinct file each pairs with a member its own
-// package.json "rhombus-std" inline list actually declares, since the rule only
-// checks bodies of listed impls.
+// src/augmentations/*.ts, each published by the `registerInlineBodies` marker
+// call beside it — the rule only checks bodies of published sets, so the
+// violating text below carries the marker import and call too.
 
 const REPO_ROOT = resolve(import.meta.dir, '..', '..', '..');
 const CONFIG = join(REPO_ROOT, 'eslint.config.mjs');
@@ -44,8 +43,10 @@ describe('repo eslint config wires the inline-authoring rule over di.extras', ()
       // A two-statement body violates singleReturn; lintText runs the real config's
       // resolved rule set against the real path, proving the rule is live (not
       // merely present in the computed config).
-      const violating = `export const ${implName} = {\n`
-        + `  ${member}<T>(this: any): boolean { const x = 1; return x > 0; },\n};\n`;
+      const violating = `import { registerInlineBodies } from '@rhombus-std/primitives.extras';\n`
+        + `export const ${implName} = {\n`
+        + `  ${member}<T>(this: any): boolean { const x = 1; return x > 0; },\n};\n`
+        + `registerInlineBodies<any>(${implName});\n`;
       const [result] = await eslint.lintText(violating, { filePath: file });
       const ids = result.messages.map((m) => m.ruleId);
       expect(ids).toContain('rhombus-inline/inline-authoring');

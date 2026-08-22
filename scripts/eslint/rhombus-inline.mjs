@@ -17,11 +17,12 @@ import { dirname, join } from 'node:path';
 import { entryKind, loadInlineEntries, parseTypeRef } from './inline-entries.mjs';
 
 // Each compile-time primitive maps to its HOME module — the module an inline body
-// may import it from. `typefor` / `tokenfor` / `tokenof` are pure transformables
-// that home in the authoring package @rhombus-std/primitives.extras — every call
-// is substituted, so the runtime @rhombus-std/primitives leaf carries none of
-// them. Mirrors the Go scanner's knownPrimitives map.
-const PRIMITIVE_HOMES = { typefor: '@rhombus-std/primitives.extras', tokenfor: '@rhombus-std/primitives.extras', tokenof: '@rhombus-std/primitives.extras', schemaof: '@rhombus-std/config.extras' };
+// may import it from. All four are pure transformables that home in the authoring
+// package @rhombus-std/primitives.extras — every call is substituted, so the
+// runtime @rhombus-std/primitives leaf carries none of them. Mirrors the Go
+// scanner's knownPrimitives map.
+const PRIMITIVE_HOMES = { typefor: '@rhombus-std/primitives.extras', tokenfor: '@rhombus-std/primitives.extras', tokenof: '@rhombus-std/primitives.extras',
+  schemaof: '@rhombus-std/primitives.extras' };
 
 /** Walks up from a file to the nearest directory containing a package.json. */
 function findPackageDir(/** @type {string} */ file) {
@@ -45,6 +46,132 @@ function readPackageName(/** @type {string} */ packageDir) {
   } catch {
     return null;
   }
+}
+
+// The `registerInlineBodies` authoring marker's home module. A body set is
+// marker-published when a top-level call to a local bound to this marker names
+// it — the same recognition the Go collector applies.
+const MARKER_NAME = 'registerInlineBodies';
+const MARKER_HOME = '@rhombus-std/primitives.extras';
+
+/**
+ * Returns the local names the file binds to the `registerInlineBodies` marker:
+ * a named import from its home module, or — when the home IS the declaring
+ * package — from a package-relative specifier.
+ */
+function markerLocalNames(/** @type {any} */ ast, /** @type {string | null} */ pkgName) {
+  /** @type {Set<string>} */
+  const out = new Set();
+  for (const stmt of ast.body) {
+    if (stmt.type !== 'ImportDeclaration') {
+      continue;
+    }
+    const module = stmt.source.value;
+    const relative = typeof module === 'string' && module.startsWith('.');
+    if (module !== MARKER_HOME && !(relative && pkgName === MARKER_HOME)) {
+      continue;
+    }
+    for (const spec of stmt.specifiers) {
+      if (spec.type !== 'ImportSpecifier') {
+        continue;
+      }
+      const imported = spec.imported.type === 'Identifier' ? spec.imported.name : String(spec.imported.value);
+      if (imported === MARKER_NAME) {
+        out.add(spec.local.name);
+      }
+    }
+  }
+  return out;
+}
+
+/**
+ * Returns the set identifiers published by the file's top-level
+ * `registerInlineBodies(SetName)` calls.
+ */
+function markerSetNames(/** @type {any} */ ast, /** @type {string | null} */ pkgName) {
+  const locals = markerLocalNames(ast, pkgName);
+  /** @type {Set<string>} */
+  const out = new Set();
+  if (locals.size === 0) {
+    return out;
+  }
+  for (const stmt of ast.body) {
+    if (stmt.type !== 'ExpressionStatement' || stmt.expression.type !== 'CallExpression') {
+      continue;
+    }
+    const call = stmt.expression;
+    if (call.callee.type !== 'Identifier' || !locals.has(call.callee.name)) {
+      continue;
+    }
+    if (call.arguments.length === 1 && call.arguments[0].type === 'Identifier') {
+      out.add(call.arguments[0].name);
+    }
+  }
+  return out;
+}
+
+/**
+ * Returns the member names of the body set named setName in the file: each
+ * property of an object-literal `const`, or each exported function of an
+ * `export namespace`.
+ */
+function setMemberNames(/** @type {any} */ ast, /** @type {string} */ setName) {
+  /** @type {Set<string>} */
+  const out = new Set();
+  for (const stmt of ast.body) {
+    const decl = stmt.type === 'ExportNamedDeclaration' && stmt.declaration ? stmt.declaration : stmt;
+    if (decl.type === 'VariableDeclaration') {
+      for (const d of decl.declarations) {
+        if (d.id.type !== 'Identifier' || d.id.name !== setName) {
+          continue;
+        }
+        const init = unwrapTsExpression(d.init);
+        if (!init || init.type !== 'ObjectExpression') {
+          continue;
+        }
+        for (const prop of init.properties) {
+          if (prop.type === 'Property' && prop.key?.type === 'Identifier') {
+            out.add(prop.key.name);
+          }
+        }
+      }
+    } else if (decl.type === 'TSModuleDeclaration' && decl.id?.type === 'Identifier' && decl.id.name === setName) {
+      const body = decl.body;
+      if (!body || body.type !== 'TSModuleBlock') {
+        continue;
+      }
+      for (const s of body.body) {
+        if (s.type === 'ExportNamedDeclaration' && s.declaration?.type === 'FunctionDeclaration' && s.declaration.id) {
+          out.add(s.declaration.id.name);
+        }
+      }
+    }
+  }
+  return out;
+}
+
+/** Strips `as`/`satisfies` and parentheses off an expression node. */
+function unwrapTsExpression(/** @type {any} */ node) {
+  while (node && (node.type === 'TSAsExpression' || node.type === 'TSSatisfiesExpression' || node.type === 'ParenthesizedExpression')) {
+    node = node.expression;
+  }
+  return node;
+}
+
+/**
+ * The name of the namespace a function is declared in (unwrapping the export
+ * wrapper), or null for a module-level function.
+ */
+function enclosingNamespaceName(/** @type {any} */ node) {
+  let parent = node.parent;
+  if (parent?.type === 'ExportNamedDeclaration') {
+    parent = parent.parent;
+  }
+  if (parent?.type === 'TSModuleBlock' && parent.parent?.type === 'TSModuleDeclaration'
+    && parent.parent.id?.type === 'Identifier') {
+    return parent.parent.id.name;
+  }
+  return null;
 }
 
 /** @type {import('eslint').Rule.RuleModule} */
@@ -93,6 +220,26 @@ const rule = {
         implMembers.get(implName).add(e.member);
       } else if (kind === 'floater') {
         freeFns.add(implName);
+      }
+    }
+
+    // The second publish channel: a top-level `registerInlineBodies(SetName)`
+    // call publishes every member of the body set declared beside it in this
+    // same file. Discovered up front from the file's own AST (the call sits
+    // BELOW its set, so lazy per-node discovery would run too late) and merged
+    // into implMembers, so marker-published bodies get exactly the checks a
+    // JSON-listed body gets. Mirrors the Go collector's marker discovery.
+    const ast = (context.sourceCode ?? context.getSourceCode()).ast;
+    for (const setName of markerSetNames(ast, pkgName)) {
+      const members = setMemberNames(ast, setName);
+      if (members.size === 0) {
+        continue;
+      }
+      if (!implMembers.has(setName)) {
+        implMembers.set(setName, new Set());
+      }
+      for (const m of members) {
+        implMembers.get(setName).add(m);
       }
     }
     // The set of all listed names (for the nesting check).
@@ -176,12 +323,20 @@ const rule = {
         }
       },
 
-      // Free-function impls: export function foo<T>() { return ...; }.
+      // Free-function impls (export function foo<T>() { return ...; }) and the
+      // exported functions of a marker-published `export namespace` body set.
       FunctionDeclaration(node) {
-        if (!node.id || !freeFns.has(node.id.name)) {
+        if (!node.id) {
           return;
         }
-        checkBody(context, node, primitiveLocals, valueImportLocals, listedNames, listedMembers);
+        if (freeFns.has(node.id.name)) {
+          checkBody(context, node, primitiveLocals, valueImportLocals, listedNames, listedMembers);
+          return;
+        }
+        const ns = enclosingNamespaceName(node);
+        if (ns !== null && implMembers.get(ns)?.has(node.id.name)) {
+          checkBody(context, node, primitiveLocals, valueImportLocals, listedNames, listedMembers);
+        }
       },
     };
   },
