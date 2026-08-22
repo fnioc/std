@@ -121,10 +121,10 @@
   address; it stores and returns awaited values only (async-blind by construction; for an
   in-flight make the returned "value" is the shared promise, consumed only by the gather).
 - Because the blackbox performs every make, it OBSERVES every instance by construction — the
-  disposal fact feed collapses into the call itself. **OPEN:** undefined-lifetime sites — the
-  engine-owned-transient ruling bypasses the blackbox, blinding it to transient disposables;
-  either `undefined` sites still flow through the call (the meaning stays engine-owned as a
-  CONTRACT OBLIGATION: always-create, never cache) or transient disposables are caller-owned.
+  disposal fact feed collapses into the call itself. `undefined`-datum sites flow through the call
+  like any other (the blackbox is their interpreter — see Lifetime data), so observation is total;
+  only DESCRIPTOR-LESS engine-synthesized sites bypass it, and their results are caller-owned by
+  the invoke ruling.
 - Engine guarantees: one call per LIVE site; deterministic pre-order; site identity in the call;
   faithful subtree-scoped delivery of the descendant blackbox — per-subtree, by argument through
   the recursive walk, never global (a singleton match shifts its subtree to the root blackbox; a
@@ -156,20 +156,27 @@
   specific entry-point shape — e.g. a di-builder fluent API where you pick the engine and receive
   the correspondingly-typed manifest surface — is an owner IDEA, not ruled; only the dependency
   direction (manifest off scope engine) is prescribed.
-- If `undefined` is NOT in the engine's lifetime union, leaving a registration's scope unset is a
-  COMPILE ERROR — optionality of the lifetime argument follows `undefined ∈ TLifetime` exactly.
-- `undefined` IS RESOLUTION-ENGINE-OWNED, UNCONDITIONALLY (owner-ruled): it means
-  transient-without-scope; the door is never consulted for such a site; no scope model ever
-  defines what omission means. The model's union controls only WHETHER omission is legal — the
-  strictness dial of the rule above — never what it means. Scope engines are thereby relieved of
-  including `undefined` just to keep transient expressible. This is also the invocation lane's
-  always-create guarantee: frames are engine-synthesized descriptors carrying `undefined` (not
-  bound by the user-facing union); users get the escape wherever their union admits `undefined`,
-  and a strict union foreclosing it is that composition's deliberate choice.
-- Nobody but the door interprets a DEFINED datum: the resolution engine tests exactly
-  `datum === undefined` and nothing else; captive validation relays the datum to a MODEL-supplied
-  ordering interpreter (a model that declines — e.g. any lambda-datum model — opts out of captive
-  checks); diagnostics prints without interpreting.
+- If `undefined` is not ASSIGNABLE to the engine's lifetime type, leaving a registration's scope
+  unset is a COMPILE ERROR — optionality of the lifetime argument follows
+  `undefined extends TLifetime` exactly (assignability, not literal union membership — the
+  declared type can be any shape).
+- `undefined` IS A KEY LIKE ANY OTHER, BOUND BY THE BLACKBOX (owner-ruled): the whole datum
+  domain, `undefined` included, is keys into the installed model's behavior — swap the blackbox in
+  one line and every registration's behavior changes, omissions included; that is inversion of
+  control applied to the container itself. Legality stays typed (the assignability rule above) and
+  meaning stays behavioral, both flowing from the same engine choice. Riders: the DEFAULT model
+  binds `undefined` → transient, FROZEN AT BIRTH — and birth-frozen generalizes as a model-author
+  convention: a published model's `undefined`-binding is immutable post-birth, so omission's
+  meaning never changes except by the user's own deliberate engine swap. DESCRIPTOR-LESS
+  engine-synthesized sites (invoke frames, construct-on-miss) are NOT in the datum domain — the
+  engine controls their per-call freshness directly, under every model, which is what preserves
+  the invocation lane's guarantee; the user-facing always-create escape is a default-model
+  property, and a swapped model may foreclose it as its own deliberate design.
+- Nobody but the blackbox interprets ANY datum: the resolution engine inspects none of it; captive
+  validation relays the datum to a MODEL-supplied ordering interpreter (a model that declines —
+  e.g. any lambda-datum model — opts out of captive checks); diagnostics prints without
+  interpreting. Because the blackbox is the interpreter of `undefined`, such sites necessarily
+  flow through the call — observed-every-make holds with no extra protocol.
 - The default model's vocabulary: a small interned kind-tagged union — `undefined` (transient) |
   `singleton` | `scoped` | `matching(tag)` — strategy and parameter as separate fields, so the tag
   namespace holds only user tags, no reserved values. **(proposed)**
@@ -177,9 +184,8 @@
   tags with no implicit meaning, scope lifetime bound to the holding variable (`using`-protocol
   support in the disposal design is its consumer). Root-pinning and ask-scope caching, if that
   model wants them, are its own interpretation choices.
-- Transient — the ABSENCE of a lifetime datum — is the first-class always-create: the door never
-  caches, the hit-prune/store machinery never engages, per-occurrence semantics hold. Not a mode
-  bolted onto any feature; the default.
+- Under the DEFAULT model, an omitted lifetime is the first-class always-create: nothing caches,
+  the hit-prune/store machinery never engages, per-occurrence semantics hold.
 
 ## Scope creation
 
@@ -348,5 +354,3 @@ first client:
 6. Library portability under model-typed manifests: what lifetime vocabulary an oblivious
    `(m) => m` configure function targets (default-model lingua franca vs a capability-constraint
    story).
-7. Transient-disposable observation: route `undefined` sites through the blackbox call (meaning
-   stays engine-owned as a contract obligation) vs caller-owned transient disposables.
