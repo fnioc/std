@@ -31,7 +31,21 @@ Weigh EVERY design decision in this document against this split.
   placeholder/generic kind stays exclusively the match-walk capture hole; engine bookkeeping never
   enters the Type vocabulary.
 - Hoist links are HARD, identity-keyed: the per-resolution context maps the async-site node object
-  itself to its value/promise (`Map<AsyncSite, …>`). No string labels, no parallel namespace.
+  itself to its value/promise (`Map<AsyncCallSite, …>`). No string labels, no parallel namespace.
+  The map is PER-RESOLUTION (the plan's collection point is shared and immutable; a plan-resident
+  map would cross-talk between concurrent resolutions); keys are the site nodes, never promises.
+- REALIZE MECHANISM (owner-designed; refinements **(proposed)**): a minted `PromiseCallsite` adds
+  its island's collection point to the visitor context; an exact-miss/`Promise<T>`-hit mints an
+  `AsyncCallSite` that registers on it. Each `AsyncCallSite` also captures its DEPENDENCY EDGES —
+  the async sites minted within its own inner subtree walk (slice the island collection around the
+  walk; assigned once). At realization the boundary is visited first: it builds, in the
+  collection's topological order (post-order walk ⇒ deps precede dependents), one ENTRY per site —
+  `Promise.all(deps' entries) → realizeSync(inner) → write value back into the map` — gathers all
+  entries with `allSettled` inside its own wrapping promise, then the plug walk beneath reads
+  settled values by site identity. One map, two phases (entries during hoist, values after
+  settle); independent sites run concurrently, layered sites serialize exactly as deep as their
+  real edges; a nested boundary delivers its promise unawaited, its own gather living inside its
+  own promise.
 - The invariant this rests on: OCCURRENCE IDENTITY — two occurrences of the same async dep are two
   distinct node objects. Plans built by walking give this naturally; if plan subtrees are ever
   shared, the async-site wrapper is minted fresh per inclusion point (wrapper identity ≡ occurrence
