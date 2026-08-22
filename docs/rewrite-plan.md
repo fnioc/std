@@ -95,6 +95,44 @@ ABSOLUTE MINIMUM to keep the build green; a dedicated session owns the scope/lif
 - ~~Union spread in `Registry` / in collections~~ — the spread is logical only, realized solely
   in `visitUnion`.
 
+## Folded-in mechanical items (owner-ordered, added mid-run)
+
+Verified outstanding by a four-agent audit 2026-08-21; line numbers may drift — several of these
+files carry YOUR in-flight edits, so re-verify each site before editing.
+
+- [ ] `serviceType` naming in di/di.core INTERNALS (the public faces are done): parameters/members
+      holding the SERVICE type say `serviceType`, never `type` — di.core `ServiceScope.ts:21,23`;
+      `Errors.ts:44,46,86,90,105` (the readonly `type` member); `service-type.ts:10` (withKey);
+      di `internal/Engine.ts:37,46,63,105,114`; `internal/CallSite/CallSite.ts:114`;
+      `internal/CallSite/ToCallSiteVisitor.ts:40,71,191,211,246`; `internal/ServiceScope.ts:69,73`.
+- [ ] Inline `typefor<T>()` over shared Type-const bags: di.core `resolver.ts:12` (`RESOLVER_TYPE`,
+      ~10 consumers) and diagnostics.core `types.ts:22-51` (8 exported `*_TYPE` consts) — spell
+      `typefor<T>()` at the use sites, delete the consts. Both packages already stage through ttsc.
+- [ ] diagnostics.core fabricated globals (`types.ts:28,:44` — `METRICS_OPTIONS_TYPE`/
+      `TRACING_OPTIONS_TYPE`, `Type.global('@rhombus-std/diagnostics/...')`): a package specifier
+      hand-concatenated into a global name — convert to the real composed address
+      `Type.imported('IOptions', '@rhombus-std/options', [optionsType])`, the shape the options
+      family uses. Repo sweep found no other instance.
+- [ ] Missing di.extras sugar: one-argument `asClass(ctor)` / `asFactory(fn)` builder sugars
+      (lowering to the two-arg primitives with `typefor(x)` as the second argument) — add them
+      beside the existing di.extras inline entries.
+- [ ] `TypeFor<T>` narrowing (primitives.extras `typefor.ts:13-15`): narrows only
+      ConstructorType/FunctionType today; a NAMED type argument should type as its ImportedType
+      (ambient → GlobalType), with NominalType as the named fallback; unnamed arguments keep
+      falling back to `Type`.
+- [ ] options.augmentations `rollup.dts.mjs:14` — add di.extras to the dts externals.
+- [ ] The disposal-order string throw in di's cycle-guard disposer (was `ToCallSiteVisitor.ts:36`,
+      possibly already reshaped by your rewrite): wherever it lives now, make it a real Error whose
+      message names the disposal-order violation. It is NOT the exempt intentional string throw.
+- [ ] di `src/augmentations/` new-file cleanups: `Manifest-ContainerBuilder-augmentations.ts` uses
+      the retired shape (`extends Flatten<typeof Ns>`, docs on the namespace) — convert to the
+      canonical shape (one declare-module block carrying the docs, registerAugmentations calls
+      grouped by overload shape, no Flatten clause). `ServiceProvider-resolution-augmentations.ts`
+      is an empty stub (empty face + `registerAugmentations({})` + 4 unused imports) — delete it if
+      nothing references it (verify first), else fill it.
+- [ ] Stale comment: tests/mergesynth.ttsc.e2e `test/mergesynth.test.ts:285` still describes
+      registerAugmentations/`@augment`'s parameter as `string | Type`; it is Type-only now.
+
 ## Wrap-up (gate for deleting this file)
 
 - [ ] Full gates: `bun run test`, transforms Go gates, `bun run lint`, `bun run format:check`.
