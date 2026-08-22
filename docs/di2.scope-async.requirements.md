@@ -357,8 +357,7 @@ Weigh EVERY design decision in this document against this split.
   door); (3) an attribution wrap around scope-system calls — a throw mid-resolution surfaces as
   `ScopeModelError` naming the failing site, cause inside (PUBLIC-API NAMING: `ScopeModel*` — the
   "blackbox" word is conversational only). REJECTED — the dev-mode alias guard (returned-value
-  type check). HELD pending word — the factory epoch fence (closure-local used/walk-completed
-  checks at invocation).
+  type check) and the factory epoch fence (closure-local invocation checks).
 - The blackbox is REQUIRED to register a `createScope` service (owner-ruled) — the user's
   entrypoint into opening scopes, itself returning a blackbox-backed provider. Its typed shape
   (owner-ruled, closing the creation-args fork): the uniform well-known address is
