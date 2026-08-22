@@ -204,6 +204,14 @@ Weigh EVERY design decision in this document against this split.
   descriptor; what it does with them is model territory). The blackbox stores and returns awaited
   values only (async-blind by construction; for an in-flight make the returned "value" is the
   shared promise, consumed only by the gather).
+- CONCURRENT-DEDUP IS TOOLS-VERIFIED (owner-scoped audit): single-flighting concurrent async
+  makes is implementable as pure model policy with tools the contract already grants — same
+  `(type, descriptor)` identity in both walks' calls; refusal power (hit-vs-make is internal, and
+  an in-flight make's returned "value" is legally the shared promise); run-to-completion
+  atomicity for the check-and-insert; settle-path ownership for store/evict-on-reject. Engine
+  side is coherent by existing rule: the second walk's subtree never runs (in-flight generalizes
+  hit-pruning), and a shared rejection lands in each walk's own deduped `AggregateError`. No
+  contract addition; adopt-or-store remains the fallback discipline for models that decline.
 - VALUE SITES BYPASS THE SCOPE ENGINE ENTIRELY (owner-ruled): a value descriptor presents no
   make, and makes are the blackbox's whole jurisdiction — so `asValue` registrations, latebound
   call args, and invoke-frame args are never asked, stored, tracked, or disposed by any scope
