@@ -12,8 +12,8 @@ declare module '@rhombus-std/di.core' {
   }
 }
 
-registerAugmentations<Manifest<any>>({
-  build(this: Manifest<any>, options?: ServiceProviderOptions): ServiceProvider {
+registerAugmentations<Manifest<unknown>>({
+  build(this: Manifest<unknown>, options?: ServiceProviderOptions): ServiceProvider {
     return new ServiceProvider(this, options ?? ServiceProviderOptions.defaults);
   },
 });

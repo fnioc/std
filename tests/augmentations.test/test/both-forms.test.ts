@@ -75,11 +75,11 @@ describe('reverse direction — MetricsBuilder (.core interface, downstream conc
     // the real immutable chain does — a double that returned `undefined` (or
     // itself) would hide the threading the augmentation now has to do.
     const recorded: Array<[unknown, unknown]> = [];
-    const make = (): Manifest<any> => {
+    const make = (): Manifest<unknown> => {
       return { add: (serviceType: unknown, value: unknown) => {
         recorded.push([serviceType, value]);
         return make();
-      }, build: () => undefined } as unknown as Manifest<any>;
+      }, build: () => undefined } as unknown as Manifest<unknown>;
     };
 
     const builder = new MetricsBuilder(make());

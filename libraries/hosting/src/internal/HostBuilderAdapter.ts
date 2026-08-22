@@ -43,7 +43,7 @@ export class HostBuilderAdapter implements IHostBuilder {
 
   readonly #configureHostConfigActions: Array<Action<[IConfigBuilder]>> = [];
   readonly #configureAppConfigActions: Array<Action<[HostBuilderContext, IConfigBuilder]>> = [];
-  readonly #configureServicesActions: Array<Func<[HostBuilderContext, Manifest<any>], Manifest<any>>> = [];
+  readonly #configureServicesActions: Array<Func<[HostBuilderContext, Manifest<unknown>], Manifest<unknown>>> = [];
 
   public constructor(config: IConfigManager, holder: ManifestSlot, context: HostBuilderContext) {
     this.#config = config;
@@ -66,14 +66,14 @@ export class HostBuilderAdapter implements IHostBuilder {
     return this;
   }
 
-  public configureServices(configureDelegate: Func<[HostBuilderContext, Manifest<any>], Manifest<any>>): this {
+  public configureServices(configureDelegate: Func<[HostBuilderContext, Manifest<unknown>], Manifest<unknown>>): this {
     this.#configureServicesActions.push(configureDelegate);
     return this;
   }
 
   /** No-op single-container hook, mirroring the application builder. */
   public configureContainer(
-    _configureDelegate: Func<[HostBuilderContext, Manifest<any>], Manifest<any>>,
+    _configureDelegate: Func<[HostBuilderContext, Manifest<unknown>], Manifest<unknown>>,
   ): this {
     return this;
   }

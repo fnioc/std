@@ -64,8 +64,8 @@ declare module '@rhombus-std/di.core' {
   }
 }
 
-registerAugmentations<Manifest<any>>({
-  add(this: Manifest<any>, descriptor: ServiceDescriptor<any>): Manifest<any> {
+registerAugmentations<Manifest<unknown>>({
+  add(this: Manifest<unknown>, descriptor: ServiceDescriptor<any>): Manifest<unknown> {
     // The factory throws at the earliest point that can see an abstract constructor; this is the
     // door a hand-written descriptor literal enters by, so the same refusal stands here too.
     if ('ctor' in descriptor && descriptor.ctorType.abstract) {
@@ -73,15 +73,15 @@ registerAugmentations<Manifest<any>>({
     }
     return this._add(descriptor);
   },
-  replace(this: Manifest<any>, descriptor: ServiceDescriptor<any>): Manifest<any> {
+  replace(this: Manifest<unknown>, descriptor: ServiceDescriptor<any>): Manifest<unknown> {
     return this._replace(descriptor);
   },
-  remove(this: Manifest<any>, descriptor: ServiceDescriptor<any>): Manifest<any> {
+  remove(this: Manifest<unknown>, descriptor: ServiceDescriptor<any>): Manifest<unknown> {
     return this._remove(descriptor);
   },
 });
 
-registerAugmentations<Manifest<any>>({
+registerAugmentations<Manifest<unknown>>({
   addMany(this: Manifest<unknown>, descriptors: Iterable<ServiceDescriptor<unknown>>): Manifest<unknown> {
     return Iterator.from(descriptors).reduce((man, descriptor) => man.add(descriptor), this);
   },
@@ -101,19 +101,19 @@ registerAugmentations<Manifest<any>>({
   },
 });
 
-registerAugmentations<Manifest<any>>({
-  add(this: Manifest<any>, serviceType: Type, implementer: unknown, implementerType: ConstructorType | FunctionType | ConstantType, lifetime?: any): Manifest<any> {
+registerAugmentations<Manifest<unknown>>({
+  add(this: Manifest<unknown>, serviceType: Type, implementer: unknown, implementerType: ConstructorType | FunctionType | ConstantType, lifetime?: any): Manifest<unknown> {
     return this.add(toDescriptor(serviceType, implementer, implementerType, lifetime));
   },
-  tryAdd(this: Manifest<any>, serviceType: Type, implementer: unknown, implementerType: ConstructorType | FunctionType | ConstantType, lifetime?: any): Manifest<any> {
+  tryAdd(this: Manifest<unknown>, serviceType: Type, implementer: unknown, implementerType: ConstructorType | FunctionType | ConstantType, lifetime?: any): Manifest<unknown> {
     return this.tryAdd(toDescriptor(serviceType, implementer, implementerType, lifetime));
   },
-  replace(this: Manifest<any>, serviceType: Type, implementer: unknown, implementerType: ConstructorType | FunctionType | ConstantType, lifetime?: any): Manifest<any> {
+  replace(this: Manifest<unknown>, serviceType: Type, implementer: unknown, implementerType: ConstructorType | FunctionType | ConstantType, lifetime?: any): Manifest<unknown> {
     return this.replace(toDescriptor(serviceType, implementer, implementerType, lifetime));
   },
 });
 
-registerAugmentations<Manifest<any>>({
+registerAugmentations<Manifest<unknown>>({
   describe(this: Manifest<unknown>, serviceType: Type): ServiceDescriptorBuilderFor<any, unknown> {
     return openDescription(serviceType);
   },

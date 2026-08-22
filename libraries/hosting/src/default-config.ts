@@ -62,7 +62,7 @@ export function applyDefaultAppConfig(builder: IConfigBuilder, environment: IHos
 }
 
 /** Registers the default framework services: currently just the console logging provider. */
-export function addDefaultServices(services: Manifest<any>): Manifest<any> {
+export function addDefaultServices(services: Manifest<unknown>): Manifest<unknown> {
   const builder = new LoggingBuilder(services);
   LoggingBuilderProviderAugmentations.addProvider.call(builder, new ConsoleLoggerProvider());
   // The chain is immutable, so the registration lives on the manifest the

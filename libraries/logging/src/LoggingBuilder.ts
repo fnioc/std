@@ -32,12 +32,12 @@ export class LoggingBuilder implements ILoggingBuilder {
    * Wraps either a bare manifest (a private slot is allocated for it) or an
    * existing {@link ManifestSlot} this builder then SHARES.
    */
-  public constructor(services: Manifest<any> | ManifestSlot) {
+  public constructor(services: Manifest<unknown> | ManifestSlot) {
     this.#slot = isSlot(services) ? services : { services };
   }
 
   /** The current manifest — read through the shared slot. */
-  public get services(): Manifest<any> {
+  public get services(): Manifest<unknown> {
     return this.#slot.services;
   }
 
@@ -47,15 +47,15 @@ export class LoggingBuilder implements ILoggingBuilder {
    * downstream `addConfig`/`addConsole`) threads by assigning here and handing
    * the same builder back.
    */
-  public set services(value: Manifest<any>) {
+  public set services(value: Manifest<unknown>) {
     this.#slot.services = value;
   }
 }
 
 /** A writable manifest slot two builders can share, so both write one chain. */
-export type ManifestSlot = { services: Manifest<any>; };
+export type ManifestSlot = { services: Manifest<unknown>; };
 
 /** A manifest is never itself a slot: only a slot carries a `services` member. */
-function isSlot(value: Manifest<any> | ManifestSlot): value is ManifestSlot {
+function isSlot(value: Manifest<unknown> | ManifestSlot): value is ManifestSlot {
   return 'services' in value;
 }

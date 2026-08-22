@@ -38,7 +38,7 @@ export class HostApplicationBuilder implements IHostApplicationBuilder {
   // so they read and write here rather than each carrying a fork of the chain.
   // Handing them a manifest VALUE instead would let `builder.logging.addConsole()`
   // build a chain that `build()` never sees.
-  #services: Manifest<any> = new DefaultManifest();
+  #services: Manifest<unknown> = new DefaultManifest();
   readonly #environment: IHostEnvironment;
   readonly #context: HostBuilderContext;
   readonly #logging: LoggingBuilder;
@@ -136,7 +136,7 @@ export class HostApplicationBuilder implements IHostApplicationBuilder {
   }
 
   /** The collection of services for the application to compose. */
-  public get services(): Manifest<any> {
+  public get services(): Manifest<unknown> {
     return this.#services;
   }
 
@@ -146,7 +146,7 @@ export class HostApplicationBuilder implements IHostApplicationBuilder {
    * caller registering something reassigns `builder.services =
    * builder.services.add(...)` rather than mutating in place.
    */
-  public set services(value: Manifest<any>) {
+  public set services(value: Manifest<unknown>) {
     this.#services = value;
   }
 
@@ -155,7 +155,7 @@ export class HostApplicationBuilder implements IHostApplicationBuilder {
    * container type, so this is a minimal no-op single-container hook: the
    * default build path is always used.
    */
-  public configureContainer(_configure?: Action<[Manifest<any>]>): void {}
+  public configureContainer(_configure?: Action<[Manifest<unknown>]>): void {}
 
   /**
    * Returns a classic {@link IHostBuilder} view over this builder. Lazily

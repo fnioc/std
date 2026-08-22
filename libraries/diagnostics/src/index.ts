@@ -77,7 +77,7 @@ export namespace ServiceManifestMetricsAugmentations {
       // `Manifest`; `m`'s huge `addClass`/`addFactory` overload surface
       // (di.core's descriptor augmentation merge) pushes the
       // direct-assignment check past TS's recursion budget.
-      const builder = new MetricsBuilder(m as Manifest<any>);
+      const builder = new MetricsBuilder(m as Manifest<unknown>);
       configure(builder);
       // The chain is immutable: everything `configure` registered lives on the
       // manifest the BUILDER now holds, not on `m`.
@@ -105,7 +105,7 @@ export namespace ServiceManifestTracingAugmentations {
       'singleton');
     if (configure) {
       // See the addMetrics cast above for why this is needed.
-      const builder = new TracingBuilder(m as Manifest<any>);
+      const builder = new TracingBuilder(m as Manifest<unknown>);
       configure(builder);
       // Immutable chain -- read back what the builder registered (see addMetrics).
       m = builder.services as Manifest<unknown>;
@@ -131,8 +131,8 @@ declare module '@rhombus-std/di.core' {
 // OPEN receiver: register both sets against di.core's `Manifest` type. The
 // `DefaultManifest` decorated `@augment(typefor<Manifest>())` in di.core pulls
 // `addMetrics`/`addTracing` onto its prototype.
-registerAugmentations<Manifest<any>>(ServiceManifestMetricsAugmentations);
-registerAugmentations<Manifest<any>>(ServiceManifestTracingAugmentations);
+registerAugmentations<Manifest<unknown>>(ServiceManifestMetricsAugmentations);
+registerAugmentations<Manifest<unknown>>(ServiceManifestTracingAugmentations);
 
 // Wholesale re-export of this family's own core (the IMetricsBuilder/
 // ITracingBuilder abstractions, the rule/options data model, and the tokens),

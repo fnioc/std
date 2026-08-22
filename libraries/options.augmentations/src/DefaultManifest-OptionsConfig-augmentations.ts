@@ -88,4 +88,4 @@ export namespace ServiceManifestOptionsConfigAugmentations {
   }
 }
 
-registerAugmentations<Manifest<any>>(ServiceManifestOptionsConfigAugmentations);
+registerAugmentations<Manifest<unknown>>(ServiceManifestOptionsConfigAugmentations);

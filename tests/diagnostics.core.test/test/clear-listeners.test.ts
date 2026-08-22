@@ -35,7 +35,7 @@ function listener(name: string): IMetricsListener {
  * immutable, so the manifest each builder was constructed with never sees a
  * single one of these registrations — only the one the builder now holds does.
  */
-function registered(builder: { services: Manifest<any>; }, type: Type): unknown[] {
+function registered(builder: { services: Manifest<unknown>; }, type: Type): unknown[] {
   const results: unknown[] = builder.services.build().getRequiredService(Type.array(type));
   return results;
 }

@@ -34,8 +34,8 @@ declare module '@rhombus-std/di.core' {
  * its own type argument to derive.
  */
 export const ServiceOptionsInline = {
-  addOptions<T>(this: Manifest<any>): Manifest<any> {
+  addOptions<T>(this: Manifest<unknown>): Manifest<unknown> {
     return this.addOptions(typefor<T>());
   },
 };
-registerInlineBodies<Manifest<any>>(ServiceOptionsInline);
+registerInlineBodies<Manifest<unknown>>(ServiceOptionsInline);

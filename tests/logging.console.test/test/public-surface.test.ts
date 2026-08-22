@@ -11,17 +11,17 @@ import { Options } from '@rhombus-std/options';
 import { expect, test } from 'bun:test';
 
 /** A recording stand-in for the di.core registration builder. */
-function fakeServices(): { services: Manifest<any>; values: Array<[Type, unknown]>; } {
+function fakeServices(): { services: Manifest<unknown>; values: Array<[Type, unknown]>; } {
   const values: Array<[Type, unknown]> = [];
-  const make = (): Manifest<any> =>
-    ({ add(serviceType: Type, value: unknown): Manifest<any> {
+  const make = (): Manifest<unknown> =>
+    ({ add(serviceType: Type, value: unknown): Manifest<unknown> {
       values.push([serviceType, value]);
       return make();
-    } }) as unknown as Manifest<any>;
+    } }) as unknown as Manifest<unknown>;
   return { services: make(), values };
 }
 
-function builderOver(services: Manifest<any>): ILoggingBuilder {
+function builderOver(services: Manifest<unknown>): ILoggingBuilder {
   return new LoggingBuilder(services);
 }
 

@@ -65,4 +65,4 @@ declare module '@rhombus-std/di.core' {
   }
 }
 
-registerAugmentations<Manifest<any>>(ServiceManifestHostedServiceAugmentations);
+registerAugmentations<Manifest<unknown>>(ServiceManifestHostedServiceAugmentations);

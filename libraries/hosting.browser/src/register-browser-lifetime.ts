@@ -35,7 +35,7 @@ import { PageLifecycleEvents } from './PageLifecycleEvents';
  * caller must thread this result forward instead of reusing the `services` it
  * passed in.
  */
-export function registerBrowserLifetime(services: Manifest<any>, options: BrowserLifetimeOptions, context?: PageContext): Manifest<any> {
+export function registerBrowserLifetime(services: Manifest<unknown>, options: BrowserLifetimeOptions, context?: PageContext): Manifest<unknown> {
   let s = services.addValue<BrowserLifetimeOptions>(options);
 
   const pageLifecycleEvents = new PageLifecycleEvents(context);

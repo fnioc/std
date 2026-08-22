@@ -157,7 +157,7 @@ export function createFrameworkServices(): FrameworkServices {
  * registration -- the chain is immutable, so the caller must thread this
  * result forward instead of reusing the `services` it passed in.
  */
-export function populateFrameworkServices(services: Manifest<any>, context: HostBuilderContext, environment: HostingEnvironment, config: IConfig, framework: FrameworkServices): Manifest<any> {
+export function populateFrameworkServices(services: Manifest<unknown>, context: HostBuilderContext, environment: HostingEnvironment, config: IConfig, framework: FrameworkServices): Manifest<unknown> {
   let s = services.addValue<IHostEnvironment>(environment);
   s = s.addValue<HostBuilderContext>(context);
   s = s.addValue<IConfig>(config);
@@ -186,7 +186,7 @@ export function populateFrameworkServices(services: Manifest<any>, context: Host
  * `serviceProviderOptions` carries the `validateScopes` / `validateOnBuild`
  * toggles the builders resolved; omitted ⇒ an unvalidated build.
  */
-export function resolveHost(services: Manifest<any>, framework: FrameworkServices, config: IConfig, serviceProviderOptions?: ServiceProviderOptions): IHost {
+export function resolveHost(services: Manifest<unknown>, framework: FrameworkServices, config: IConfig, serviceProviderOptions?: ServiceProviderOptions): IHost {
   const provider = services.build(serviceProviderOptions ?? ServiceProviderOptions.defaults);
 
   const loggerProviders: ILoggerProvider[] = provider.getRequiredService<ILoggerProvider[]>();

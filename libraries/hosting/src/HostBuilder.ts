@@ -36,8 +36,8 @@ export class HostBuilder implements IHostBuilder {
   // Both hold RETURNING delegates: the manifest chain is immutable, so `build()`
   // threads each delegate's return into the next instead of letting them all
   // register into one shared mutable collection.
-  readonly #configureServicesActions: Array<Func<[HostBuilderContext, Manifest<any>], Manifest<any>>> = [];
-  readonly #configureContainerActions: Array<Func<[HostBuilderContext, Manifest<any>], Manifest<any>>> = [];
+  readonly #configureServicesActions: Array<Func<[HostBuilderContext, Manifest<unknown>], Manifest<unknown>>> = [];
+  readonly #configureContainerActions: Array<Func<[HostBuilderContext, Manifest<unknown>], Manifest<unknown>>> = [];
 
   #hostBuilt = false;
 
@@ -54,12 +54,12 @@ export class HostBuilder implements IHostBuilder {
   }
 
   /** Adds services to the container. Additive across calls; the delegate RETURNS the manifest. */
-  public configureServices(configureDelegate: Func<[HostBuilderContext, Manifest<any>], Manifest<any>>): this {
+  public configureServices(configureDelegate: Func<[HostBuilderContext, Manifest<unknown>], Manifest<unknown>>): this {
     this.#configureServicesActions.push(configureDelegate);
     return this;
   }
 
-  public configureContainer(configureDelegate: Func<[HostBuilderContext, Manifest<any>], Manifest<any>>): this {
+  public configureContainer(configureDelegate: Func<[HostBuilderContext, Manifest<unknown>], Manifest<unknown>>): this {
     this.#configureContainerActions.push(configureDelegate);
     return this;
   }
@@ -98,7 +98,7 @@ export class HostBuilder implements IHostBuilder {
     hostBuilderContext.config = appConfig;
 
     // 5. Framework services + the user's configure-services delegates.
-    let services: Manifest<any> = new DefaultManifest();
+    let services: Manifest<unknown> = new DefaultManifest();
     const framework = createFrameworkServices();
     services = populateFrameworkServices(services, hostBuilderContext, hostingEnvironment, appConfig, framework);
 

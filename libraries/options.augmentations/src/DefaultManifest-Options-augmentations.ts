@@ -151,4 +151,4 @@ export namespace ServiceManifestOptionsAugmentations {
   }
 }
 
-registerAugmentations<Manifest<any>>(ServiceManifestOptionsAugmentations);
+registerAugmentations<Manifest<unknown>>(ServiceManifestOptionsAugmentations);

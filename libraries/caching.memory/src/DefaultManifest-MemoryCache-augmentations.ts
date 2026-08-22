@@ -98,4 +98,4 @@ declare module '@rhombus-std/di.core' {
   }
 }
 
-registerAugmentations<Manifest<any>>(ServiceManifestMemoryCacheAugmentations);
+registerAugmentations<Manifest<unknown>>(ServiceManifestMemoryCacheAugmentations);

@@ -11,5 +11,5 @@ import type { Manifest } from '@rhombus-std/di.core';
 /** Configures the metrics system by registering listeners and rules. */
 export interface IMetricsBuilder {
   /** The registration builder that augmentation functions register services against. */
-  services: Manifest<any>;
+  services: Manifest<unknown>;
 }

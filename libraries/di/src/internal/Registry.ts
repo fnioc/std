@@ -23,9 +23,9 @@ const NO_GENERICS: ReadonlyMap<string, Type> = new Map();
  * order, so which kind a registration is never shows.
  */
 export class Registry {
-  readonly #manifest: Manifest<any>;
+  readonly #manifest: Manifest<unknown>;
 
-  constructor(manifest: Manifest<any>) {
+  constructor(manifest: Manifest<unknown>) {
     this.#manifest = manifest;
   }
 

@@ -16,7 +16,7 @@ export class ServiceProvider {
   readonly #engine: Engine;
 
   /** @throws {ManifestValidationError} when `options.validateOnBuild` finds an unsatisfiable graph. */
-  constructor(manifest: Manifest<any>, options: ServiceProviderOptions = ServiceProviderOptions.defaults) {
+  constructor(manifest: Manifest<unknown>, options: ServiceProviderOptions = ServiceProviderOptions.defaults) {
     this.#engine = new Engine(manifest);
     if (options.validateOnBuild) {
       this.#engine.validate();

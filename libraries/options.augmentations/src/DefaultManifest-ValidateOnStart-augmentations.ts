@@ -35,7 +35,7 @@ declare module '@rhombus-std/di.core' {
   }
 }
 
-registerAugmentations<Manifest<any>>({
+registerAugmentations<Manifest<unknown>>({
   validateOnStart: (() => {
     const valKey = `@rhombus-std/options.augmentations/startup-validation-target`;
     function factory(resolver: IServiceProvider, startupType: Array<Keyed<Type, typeof valKey>>): IStartupValidator {

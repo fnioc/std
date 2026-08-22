@@ -15,7 +15,7 @@ export interface ResolveContext {
  * per-walk arrives in the {@link ResolveContext}.
  */
 export class Engine {
-  readonly #manifest: Manifest<any>;
+  readonly #manifest: Manifest<unknown>;
   readonly #registry: Registry;
 
   /**
@@ -29,7 +29,7 @@ export class Engine {
    */
   readonly #planFor = memo((serviceType: Type) => this.#build(serviceType, this.#registry));
 
-  constructor(manifest: Manifest<any>) {
+  constructor(manifest: Manifest<unknown>) {
     this.#manifest = manifest;
     this.#registry = new Registry(manifest);
   }

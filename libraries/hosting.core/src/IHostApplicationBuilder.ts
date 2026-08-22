@@ -38,12 +38,12 @@ export interface IHostApplicationBuilder {
    * builder.services.add(...)`. The same slot backs `logging` and `metrics`, so
    * every registration route lands on one chain.
    */
-  services: Manifest<any>;
+  services: Manifest<unknown>;
 
   /**
    * Configures the instantiated dependency container. The `configure` delegate
    * runs after all other services have been registered. Multiple calls replace
    * the previously stored delegate.
    */
-  configureContainer(configure?: Action<[Manifest<any>]>): void;
+  configureContainer(configure?: Action<[Manifest<unknown>]>): void;
 }

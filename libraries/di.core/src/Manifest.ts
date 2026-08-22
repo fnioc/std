@@ -31,7 +31,7 @@ export interface Manifest<Lifetime> extends Iterable<ServiceDescriptor<Lifetime>
 
 export interface DefaultManifest<Lifetime> extends Manifest<Lifetime> {}
 
-@augment(typefor<Manifest<any>>())
+@augment(typefor<Manifest<unknown>>())
 export class DefaultManifest<Lifetime> {
   #descriptors: Iterable<ServiceDescriptor<Lifetime>>;
   constructor(readonly lifetimeModel: LifetimeModel<Lifetime>, descriptors?: Iterable<ServiceDescriptor<Lifetime>>) {

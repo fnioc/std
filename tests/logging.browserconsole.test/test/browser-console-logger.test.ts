@@ -10,13 +10,13 @@ import { expect, test } from 'bun:test';
  * immutable chain — a double that returned itself would hide exactly the
  * silent-drop bug this shape exists to catch.
  */
-function fakeServices(): { services: Manifest<any>; values: Array<[Type, unknown]>; } {
+function fakeServices(): { services: Manifest<unknown>; values: Array<[Type, unknown]>; } {
   const values: Array<[Type, unknown]> = [];
-  const make = (): Manifest<any> => {
-    return { add(serviceType: Type, value: unknown): Manifest<any> {
+  const make = (): Manifest<unknown> => {
+    return { add(serviceType: Type, value: unknown): Manifest<unknown> {
       values.push([serviceType, value]);
       return make();
-    } } as unknown as Manifest<any>;
+    } } as unknown as Manifest<unknown>;
   };
   return { services: make(), values };
 }
