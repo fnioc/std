@@ -2,9 +2,10 @@
 
 import type { IConfig } from '@rhombus-std/config.core';
 import { ConstantType } from '@rhombus-std/di.core';
-import { type ITracingBuilder, TRACING_CHANGE_TOKEN_SOURCE_TYPE, TRACING_CONFIGURATION_TYPE, TRACING_CONFIGURE_TYPE } from '@rhombus-std/diagnostics.core';
-import { ConfigChangeTokenSource } from '@rhombus-std/options.augmentations';
-import { registerAugmentations } from '@rhombus-std/primitives.extras';
+import { type ITracingBuilder, TracingOptions } from '@rhombus-std/diagnostics.core';
+import type { IConfigureOptions } from '@rhombus-std/options';
+import { ConfigChangeTokenSource, type IOptionsChangeTokenSource } from '@rhombus-std/options.augmentations';
+import { registerAugmentations, typefor } from '@rhombus-std/primitives.extras';
 import type { Flatten } from '@rhombus-toolkit/type-helpers';
 
 import { TracingConfig } from './TracingConfig';
@@ -14,9 +15,9 @@ import { TracingConfigureOptions } from './TracingConfigureOptions';
 export namespace TracingBuilderConfigAugmentations {
   /** Reads tracing enablement rules from `config` and configures which activity sources and activities are enabled. */
   export function addTracingConfig<Self extends ITracingBuilder>(this: Self, config: IConfig): Self {
-    this.services = this.services.add(TRACING_CONFIGURE_TYPE, new TracingConfigureOptions(config), ConstantType);
-    this.services = this.services.add(TRACING_CHANGE_TOKEN_SOURCE_TYPE, new ConfigChangeTokenSource(config), ConstantType);
-    this.services = this.services.add(TRACING_CONFIGURATION_TYPE, new TracingConfig(config), ConstantType);
+    this.services = this.services.add(typefor<IConfigureOptions<TracingOptions>>(), new TracingConfigureOptions(config), ConstantType);
+    this.services = this.services.add(typefor<IOptionsChangeTokenSource<TracingOptions>>(), new ConfigChangeTokenSource(config), ConstantType);
+    this.services = this.services.add(typefor<TracingConfig>(), new TracingConfig(config), ConstantType);
     return this;
   }
 }

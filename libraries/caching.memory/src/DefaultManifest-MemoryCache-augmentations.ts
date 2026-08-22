@@ -22,11 +22,10 @@ import '@rhombus-std/options.augmentations';
 import type {} from '@rhombus-std/di.extras';
 
 import type { DefaultManifest, IServiceProvider, Manifest } from '@rhombus-std/di.core';
-import { RESOLVER_TYPE } from '@rhombus-std/di.core';
 import type { ILoggerFactory } from '@rhombus-std/logging.core';
 import type { IOptions } from '@rhombus-std/options';
 import { Type } from '@rhombus-std/primitives';
-import { registerAugmentations } from '@rhombus-std/primitives.extras';
+import { registerAugmentations, typefor } from '@rhombus-std/primitives.extras';
 import type { Func } from '@rhombus-toolkit/func';
 import { DISTRIBUTED_CACHE_TYPE } from './distributed-cache-type';
 import { MEMORY_CACHE_OPTIONS_TYPE, MEMORY_DISTRIBUTED_CACHE_OPTIONS_TYPE } from './memory-cache-options-type';
@@ -58,7 +57,7 @@ export namespace ServiceManifestMemoryCacheAugmentations {
     // `ILoggerFactory` is registered, so the factory falls to a logger-less
     // construction.
     m = m.tryAdd(MEMORY_CACHE_TYPE, (resolver: IServiceProvider) => new MemoryCache(resolver.getRequiredService<IOptions<MemoryCacheOptions>>(), resolver.getService<ILoggerFactory>()),
-      Type.func(MEMORY_CACHE_TYPE, [[RESOLVER_TYPE]]), 'singleton');
+      Type.func(MEMORY_CACHE_TYPE, [[typefor<IServiceProvider>()]]), 'singleton');
     return m;
   }
 
@@ -84,7 +83,7 @@ export namespace ServiceManifestMemoryCacheAugmentations {
       new MemoryDistributedCache(
         resolver.getRequiredService<IOptions<MemoryDistributedCacheOptions>>(),
         resolver.getService<ILoggerFactory>(),
-      ), Type.func(DISTRIBUTED_CACHE_TYPE, [[RESOLVER_TYPE]]), 'singleton');
+      ), Type.func(DISTRIBUTED_CACHE_TYPE, [[typefor<IServiceProvider>()]]), 'singleton');
     return m;
   }
 }

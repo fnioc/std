@@ -14,7 +14,7 @@
 // resolve to the SAME interned `Type` object, and exporting it from the
 // producer is how a plugin-less codebase keeps them in step.
 
-import { DefaultManifest, RESOLVER_TYPE, Type } from '@rhombus-std/di.core';
+import { DefaultManifest, Type } from '@rhombus-std/di.core';
 import type { IServiceProvider, Manifest } from '@rhombus-std/di.core';
 import '@rhombus-std/di';
 
@@ -163,8 +163,8 @@ async function tour(provider: IServiceProvider): Promise<string[]> {
   // ── the provider as a service ──────────────────────────────────────────────
   //
   // The container can hand back ITSELF: a parameter typed `IServiceProvider`
-  // gets the live provider, and `RESOLVER_TYPE` is the type that names it. No
-  // registration exists for it — the engine supplies it structurally.
+  // gets the live provider, and the reserved `'ServiceProvider'` token names
+  // it. No registration exists for it — the engine supplies it structurally.
   //
   // Injecting the provider is USUALLY a smell. It hides a class's real
   // dependencies from anyone reading its constructor, turns wiring mistakes from
@@ -178,7 +178,7 @@ async function tour(provider: IServiceProvider): Promise<string[]> {
   // gateway for whichever method the buyer picks", so the container itself is the
   // dependency.
   lines.push('the provider as a service — usually a smell, occasionally correct');
-  const view = provider.getRequiredService(RESOLVER_TYPE) as IServiceProvider;
+  const view = provider.getRequiredService(Type.from('ServiceProvider')) as IServiceProvider;
   lines.push(`  the injected view IS the live container: ${view === provider}`);
 
   // ── what the optional sink recorded ────────────────────────────────────────

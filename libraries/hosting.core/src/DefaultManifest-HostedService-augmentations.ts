@@ -11,9 +11,9 @@
 
 // Named imports: unqualified names in a `declare module` body resolve in THIS
 // file's scope, so `Manifest` must be importable here.
-import { type IServiceProvider, type Manifest, RESOLVER_TYPE } from '@rhombus-std/di.core';
+import { type IServiceProvider, type Manifest } from '@rhombus-std/di.core';
 import { type ConstructorType, Type } from '@rhombus-std/primitives';
-import { registerAugmentations } from '@rhombus-std/primitives.extras';
+import { registerAugmentations, typefor } from '@rhombus-std/primitives.extras';
 import type { Ctor, Func } from '@rhombus-toolkit/func';
 import type { IHostedService } from './IHostedService';
 import { HOSTED_SERVICE_TYPE } from './types';
@@ -45,14 +45,14 @@ export namespace ServiceManifestHostedServiceAugmentations {
   // A class value matches the construct-signature arm, an arrow or function the
   // call-signature arm; only the ctor form carries a composed constructor type.
   export function addHostedService(this: Manifest<string>, ctorOrImplementationFactory: Ctor | Func<[IServiceProvider], IHostedService>, implementerType?: ConstructorType): Manifest<string> {
-    // The factory form injects the live resolver (via the `Type.func(..., [[RESOLVER_TYPE]])`
+    // The factory form injects the live resolver (via the `Type.func(..., [[typefor<IServiceProvider>()]])`
     // composed type) so the delegate receives it. A ctor form
     // with no `implementerType` is a dependency-free ctor, stated explicitly as one
     // that carries no argument types (`addClass` has no overload that omits it).
     if (isConstructor(ctorOrImplementationFactory)) {
       return this.add(HOSTED_SERVICE_TYPE, ctorOrImplementationFactory, implementerType ?? Type.ctor(HOSTED_SERVICE_TYPE, [[]]), 'singleton');
     }
-    return this.add(HOSTED_SERVICE_TYPE, ctorOrImplementationFactory as Func, Type.func(HOSTED_SERVICE_TYPE, [[RESOLVER_TYPE]]), 'singleton');
+    return this.add(HOSTED_SERVICE_TYPE, ctorOrImplementationFactory as Func, Type.func(HOSTED_SERVICE_TYPE, [[typefor<IServiceProvider>()]]), 'singleton');
   }
 }
 

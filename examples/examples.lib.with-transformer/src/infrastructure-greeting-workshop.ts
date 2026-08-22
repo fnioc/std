@@ -38,7 +38,7 @@
 // Type-only: puts the sugar's declare-module faces in every program that
 // compiles this source, with no runtime import of the authoring package.
 import type {} from '@rhombus-std/di.extras';
-import { RESOLVER_TYPE, Type } from '@rhombus-std/di.core';
+import { Type } from '@rhombus-std/di.core';
 import type { IServiceProvider, Manifest } from '@rhombus-std/di.core';
 import type { IGreeting } from '@rhombus-std/examples.contracts';
 // `typefor<T>()` folds to the very `Type` a hand author writes out, so a lookup
@@ -371,11 +371,11 @@ export function addGreetingWorkshop<S extends string>(services: Manifest<S | 'si
 
   // The counter-example, at its own derived service type so a caller can resolve
   // both from one container and compare the cards. Its one argument is the
-  // intrinsic provider, which `RESOLVER_TYPE` names without deriving anything —
+  // intrinsic provider, which `typefor<IServiceProvider>()` derives directly —
   // "I want the provider" is plain DI rather than a special argument kind, which
   // is precisely why nothing stops a library doing it and why the comparison has
   // to be made in prose.
-  holder.services = holder.services.add(typefor<LocatorGreetingWorkshop>(), LocatorGreetingWorkshop, Type.ctor(typefor<LocatorGreetingWorkshop>(), [[RESOLVER_TYPE]]), 'singleton');
+  holder.services = holder.services.add(typefor<LocatorGreetingWorkshop>(), LocatorGreetingWorkshop, Type.ctor(typefor<LocatorGreetingWorkshop>(), [[typefor<IServiceProvider>()]]), 'singleton');
 
   return holder.services;
 }

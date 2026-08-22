@@ -1,6 +1,7 @@
-import { type Manifest, RESOLVER_TYPE } from '@rhombus-std/di.core';
+import { type Manifest } from '@rhombus-std/di.core';
 import type { IOptions } from '@rhombus-std/options';
 import { type IServiceProvider, Type } from '@rhombus-std/primitives';
+import { typefor } from '@rhombus-std/primitives.extras';
 import type { Func } from '@rhombus-toolkit/func';
 
 import { assembleOptions } from './assemble-options.js';
@@ -33,6 +34,6 @@ export function ensureOpenOptions(manifest: Manifest<string>): Manifest<string> 
   return manifest.tryAdd(
     openOptionsType,
     (resolver: IServiceProvider, optionsType: Type, makeBase: Func<[], unknown>): IOptions<unknown> => assembleOptions(resolver, optionsType, makeBase),
-    Type.func(openOptionsType, [[RESOLVER_TYPE, hole, baseFactoryType(hole)]]),
+    Type.func(openOptionsType, [[typefor<IServiceProvider>(), hole, baseFactoryType(hole)]]),
   );
 }

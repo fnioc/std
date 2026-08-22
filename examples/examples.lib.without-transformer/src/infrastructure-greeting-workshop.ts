@@ -26,7 +26,7 @@
 // infrastructure-greeting-workshop.ts`: the same scenario, the same output, the
 // type-driven dialect. Diff them to see exactly what the transformer removes.
 
-import { ConstantType, RESOLVER_TYPE, Type } from '@rhombus-std/di.core';
+import { ConstantType, Type } from '@rhombus-std/di.core';
 import type { IServiceProvider, Manifest } from '@rhombus-std/di.core';
 import type { IGreeting } from '@rhombus-std/examples.contracts';
 
@@ -345,10 +345,10 @@ export function addGreetingWorkshop<S extends string>(services: Manifest<S | 'si
 
   // The discouraged twin, registered beside it so a reader can resolve both and
   // watch them produce identical cards from very different constructors. The
-  // intrinsic RESOLVER_TYPE argument is how a plugin-less author asks for the
+  // reserved `'ServiceProvider'` token is how a plugin-less author asks for the
   // live provider — "I want the provider" is plain DI, not a special slot
   // kind, which is precisely why nothing stops a library doing it and why the
   // comparison has to be made in prose.
-  holder.services = holder.services.add(LOCATOR_GREETING_WORKSHOP_TYPE, LocatorGreetingWorkshop, Type.ctor(LOCATOR_GREETING_WORKSHOP_TYPE, [[RESOLVER_TYPE]]), 'singleton');
+  holder.services = holder.services.add(LOCATOR_GREETING_WORKSHOP_TYPE, LocatorGreetingWorkshop, Type.ctor(LOCATOR_GREETING_WORKSHOP_TYPE, [[Type.from('ServiceProvider')]]), 'singleton');
   return holder.services;
 }

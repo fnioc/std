@@ -23,7 +23,7 @@
 // one — an ad-hoc FACTORY parameter — so the comparison is readable in one
 // constructor.
 
-import { ConstantType, RESOLVER_TYPE, Type } from '@rhombus-std/di.core';
+import { ConstantType, Type } from '@rhombus-std/di.core';
 import type { Inject, IServiceProvider, Manifest, Typeof } from '@rhombus-std/di.core';
 import type { CheckoutOrder, IAuditTrail, IExchangeRates, IOrderValidator, IPaymentGateway, IPaymentRouter, IReceipt, IReceiptNumbering } from '@rhombus-std/examples.contracts';
 
@@ -64,14 +64,13 @@ export const CHECKOUT_TYPES = {
    */
   spendLimit: Type.imported('CheckoutSpendLimitMinor', '@rhombus-std/examples.contracts'),
   /**
-   * di's INTRINSIC provider Type — the ONE entry in this bag that is not
-   * hand-composed, because di.core exports the constant. Reach for the constant
-   * rather than composing it: it is the Type the transformer derives for
-   * `IServiceProvider`, the engine recognises it without any registration
-   * existing for it, and a hand-composed copy is one more place for the two to
-   * drift apart.
+   * di's INTRINSIC provider Type — the ONE entry in this bag with a reserved
+   * spelling of its own. `'ServiceProvider'` names the provider itself in the
+   * token grammar, the engine recognises the type it reads to without any
+   * registration existing for it, and the reserved word keeps this bag from
+   * hand-composing the address the engine compares against.
    */
-  resolver: RESOLVER_TYPE,
+  resolver: Type.from('ServiceProvider'),
 } as const;
 
 /** The gateway base, which every keyed lookup below tags. */

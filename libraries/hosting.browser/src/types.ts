@@ -1,6 +1,6 @@
 // The DI-slot types this package's registrations bind to. The hosting-family
 // types this package RESOLVES (HOST_LIFETIME_TYPE, HOST_APPLICATION_LIFETIME_TYPE,
-// LOGGER_FACTORY_TYPE, RESOLVER_TYPE) are imported from their owning packages —
+// LOGGER_FACTORY_TYPE) are imported from their owning packages —
 // never restated.
 
 import { Type } from '@rhombus-std/primitives';

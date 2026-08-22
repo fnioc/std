@@ -10,11 +10,10 @@ import type {} from '@rhombus-std/di.extras';
 
 import type { IConfigureOptions } from '@rhombus-std/options';
 import type { ConstructorType } from '@rhombus-std/primitives';
-import { registerAugmentations } from '@rhombus-std/primitives.extras';
+import { registerAugmentations, typefor } from '@rhombus-std/primitives.extras';
 import type { Ctor, Func } from '@rhombus-toolkit/func';
 import type { Flatten } from '@rhombus-toolkit/type-helpers';
 
-import { METRICS_LISTENER_TYPE } from '../types';
 import type { IMetricsBuilder } from './IMetricsBuilder';
 import { METER_SCOPE_ALL, MeterScope } from './MeterScope';
 import type { IMetricsListener } from './metrics-listener';
@@ -44,7 +43,7 @@ export namespace MetricsBuilderAugmentations {
    * argument types.
    */
   export function addMetricsListenerType<Self extends IMetricsBuilder>(this: Self, ctor: Ctor, implementerType: ConstructorType): Self {
-    this.services = this.services.add(METRICS_LISTENER_TYPE, ctor, implementerType);
+    this.services = this.services.add(typefor<IMetricsListener>(), ctor, implementerType);
     return this;
   }
 

@@ -9,12 +9,13 @@
 // no runtime import of the authoring package.
 import type {} from '@rhombus-std/di.extras';
 
-import { type IServiceProvider, RESOLVER_TYPE } from '@rhombus-std/di.core';
+import { type IServiceProvider } from '@rhombus-std/di.core';
 import type { Manifest } from '@rhombus-std/di.core';
 import { HOST_LIFETIME_TYPE } from '@rhombus-std/hosting';
 import type { IHostApplicationLifetime } from '@rhombus-std/hosting.core';
 import type { ILoggerFactory } from '@rhombus-std/logging.core';
 import { Type } from '@rhombus-std/primitives';
+import { typefor } from '@rhombus-std/primitives.extras';
 import { BrowserLifetime } from './BrowserLifetime';
 import type { BrowserLifetimeOptions } from './BrowserLifetimeOptions';
 import type { PageContext } from './page-context';
@@ -43,5 +44,5 @@ export function registerBrowserLifetime(services: Manifest<any>, options: Browse
   return s.add(HOST_LIFETIME_TYPE,
     (resolver: IServiceProvider) =>
       new BrowserLifetime(resolver.getRequiredService<BrowserLifetimeOptions>(), resolver.getRequiredService<IHostApplicationLifetime>(), resolver.getRequiredService<ILoggerFactory>(),
-        pageLifecycleEvents), Type.func(HOST_LIFETIME_TYPE, [[RESOLVER_TYPE]]));
+        pageLifecycleEvents), Type.func(HOST_LIFETIME_TYPE, [[typefor<IServiceProvider>()]]));
 }

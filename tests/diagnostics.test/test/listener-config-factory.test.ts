@@ -10,11 +10,15 @@
 
 import { ConfigBuilder, type IConfig } from '@rhombus-std/config';
 import '@rhombus-std/di';
-import { DefaultManifest, type Manifest } from '@rhombus-std/di.core';
+import { DefaultManifest, type Manifest, Type } from '@rhombus-std/di.core';
 import { ActivityListenerConfigFactory, DefaultActivityListenerConfigFactory, type IMetricListenerConfigFactory, MetricListenerConfigFactory, MetricsConfig,
   TracingConfig } from '@rhombus-std/diagnostics';
-import { METRICS_LISTENER_CONFIGURATION_FACTORY_TYPE, TRACING_LISTENER_CONFIGURATION_FACTORY_TYPE } from '@rhombus-std/diagnostics.core';
 import { describe, expect, test } from 'bun:test';
+
+// The factory addresses as a plugin-less author spells them — the same interned
+// nodes `typefor` derives inside @rhombus-std/diagnostics.
+const METRICS_LISTENER_CONFIGURATION_FACTORY_TYPE = Type.imported('IMetricListenerConfigFactory', '@rhombus-std/diagnostics');
+const TRACING_LISTENER_CONFIGURATION_FACTORY_TYPE = Type.imported('ActivityListenerConfigFactory', '@rhombus-std/diagnostics');
 
 function configWith(data: Record<string, string>): IConfig {
   return new ConfigBuilder().addInMemoryCollection(data).build();

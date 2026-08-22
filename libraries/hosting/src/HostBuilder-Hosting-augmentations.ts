@@ -15,13 +15,13 @@ import type {} from '@rhombus-std/di.extras';
 
 import { MemoryConfigSource } from '@rhombus-std/config';
 import { ServiceProviderOptions } from '@rhombus-std/di';
-import { ConstantType, type IServiceProvider, RESOLVER_TYPE } from '@rhombus-std/di.core';
+import { ConstantType, type IServiceProvider } from '@rhombus-std/di.core';
 import type { IMetricsBuilder } from '@rhombus-std/diagnostics.core';
 import { type HostBuilderContext, HostDefaults, HostLifecycleAugmentations, type IHostApplicationLifetime, type IHostBuilder, type IHostEnvironment } from '@rhombus-std/hosting.core';
 import { LoggingBuilder } from '@rhombus-std/logging';
 import type { ILoggerFactory, ILoggingBuilder } from '@rhombus-std/logging.core';
 import { type AbortSignal, Type } from '@rhombus-std/primitives';
-import { registerAugmentations } from '@rhombus-std/primitives.extras';
+import { registerAugmentations, typefor } from '@rhombus-std/primitives.extras';
 import type { Func } from '@rhombus-toolkit/func';
 import type { Flatten } from '@rhombus-toolkit/type-helpers';
 import { ConsoleLifetimeOptions } from './ConsoleLifetimeOptions';
@@ -156,7 +156,7 @@ export namespace HostBuilderHostingAugmentations {
       return withOptions.add(HOST_LIFETIME_TYPE,
         (resolver: IServiceProvider) =>
           new ConsoleLifetime(resolver.getRequiredService<ConsoleLifetimeOptions>(), resolver.getRequiredService<IHostEnvironment>(), resolver.getRequiredService<IHostApplicationLifetime>(),
-            resolver.getRequiredService<ILoggerFactory>()), Type.func(HOST_LIFETIME_TYPE, [[RESOLVER_TYPE]]));
+            resolver.getRequiredService<ILoggerFactory>()), Type.func(HOST_LIFETIME_TYPE, [[typefor<IServiceProvider>()]]));
     });
   }
 

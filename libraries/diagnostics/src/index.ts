@@ -23,12 +23,12 @@
 // `Func`, `IMetricsBuilder`/`ITracingBuilder` are named imports (not member
 // references inside the augmentation block) because unqualified names in a
 // `declare module` body resolve in THIS file's scope.
-import { type Manifest, RESOLVER_TYPE } from '@rhombus-std/di.core';
-import { collectionType, type IMetricsBuilder, type ITracingBuilder, METRICS_CHANGE_TOKEN_SOURCE_TYPE, METRICS_CONFIGURATION_TYPE, METRICS_CONFIGURE_TYPE, METRICS_LISTENER_CONFIGURATION_FACTORY_TYPE,
-  METRICS_OPTIONS_TYPE, MetricsOptions, TRACING_CHANGE_TOKEN_SOURCE_TYPE, TRACING_CONFIGURATION_TYPE, TRACING_CONFIGURE_TYPE, TRACING_LISTENER_CONFIGURATION_FACTORY_TYPE, TRACING_OPTIONS_TYPE,
-  TracingOptions } from '@rhombus-std/diagnostics.core';
+import { type IServiceProvider, type Manifest } from '@rhombus-std/di.core';
+import { collectionType, type IMetricsBuilder, type ITracingBuilder, MetricsOptions, TracingOptions } from '@rhombus-std/diagnostics.core';
+import type { IConfigureOptions, IOptions } from '@rhombus-std/options';
+import type { IOptionsChangeTokenSource } from '@rhombus-std/options.augmentations';
 import { Type } from '@rhombus-std/primitives';
-import { registerAugmentations } from '@rhombus-std/primitives.extras';
+import { registerAugmentations, typefor } from '@rhombus-std/primitives.extras';
 import type { Func } from '@rhombus-toolkit/func';
 
 import { assembleDiagnosticsOptions } from './assemble-diagnostics-options';
@@ -39,9 +39,13 @@ import { assembleDiagnosticsOptions } from './assemble-diagnostics-options';
 // registerAugmentations calls (diagnostics.core + the config-augmentation modules)
 // feed their prototypes. Each concrete class satisfies its interface via its own
 // `interface ... extends I` merge beside the class -- no class-side module.
+import type { IMetricListenerConfigFactory } from './metrics/config/IMetricListenerConfigFactory';
 import { MetricListenerConfigFactory } from './metrics/config/MetricListenerConfigFactory';
+import type { MetricsConfig } from './metrics/config/MetricsConfig';
 import { MetricsBuilder } from './metrics/MetricsBuilder';
+import type { ActivityListenerConfigFactory } from './tracing/config/ActivityListenerConfigFactory';
 import { DefaultActivityListenerConfigFactory } from './tracing/config/DefaultActivityListenerConfigFactory';
+import type { TracingConfig } from './tracing/config/TracingConfig';
 import { TracingBuilder } from './tracing/TracingBuilder';
 
 // `addMetrics` and `addTracing` are two separate namespaces -- one member
@@ -51,7 +55,7 @@ export namespace ServiceManifestMetricsAugmentations {
   /**
    * Registers the metrics options assembly and, if `configure` is supplied,
    * runs it over a concrete {@link IMetricsBuilder}. After this call resolving
-   * {@link METRICS_OPTIONS_TYPE} yields an `IOptions<MetricsOptions>` assembled
+   * `IOptions<MetricsOptions>` yields the assembly built
    * from every rule / config-bind step registered through the builder, reactive
    * to configuration reloads.
    */
@@ -59,13 +63,13 @@ export namespace ServiceManifestMetricsAugmentations {
     // Register the resolvable `IOptions<MetricsOptions>` assembly at singleton
     // scope. Calling addMetrics twice re-registers the (identical) factory --
     // last-wins bare-token resolution keeps that correct. The factory takes the
-    // live provider view via a RESOLVER_TYPE slot, exactly like assembleOptions.
-    let m: Manifest<string> = this.add(METRICS_OPTIONS_TYPE, (resolver) => assembleDiagnosticsOptions(resolver, METRICS_CONFIGURE_TYPE, METRICS_CHANGE_TOKEN_SOURCE_TYPE, () => new MetricsOptions()),
-      Type.func(METRICS_OPTIONS_TYPE, [[RESOLVER_TYPE]]), 'singleton');
+    // live provider view via an `IServiceProvider` slot, exactly like assembleOptions.
+    let m: Manifest<string> = this.add(typefor<IOptions<MetricsOptions>>(),
+      (resolver) => assembleDiagnosticsOptions(resolver, typefor<IConfigureOptions<MetricsOptions>>(), typefor<IOptionsChangeTokenSource<MetricsOptions>>(), () => new MetricsOptions()),
+      Type.func(typefor<IOptions<MetricsOptions>>(), [[typefor<IServiceProvider>()]]), 'singleton');
     // The per-listener configuration factory, ctor-injected with the collection
     // of every MetricsConfig marker addMetricsConfig registered.
-    m = m.add(METRICS_LISTENER_CONFIGURATION_FACTORY_TYPE, MetricListenerConfigFactory, Type.ctor(METRICS_LISTENER_CONFIGURATION_FACTORY_TYPE, [[collectionType(METRICS_CONFIGURATION_TYPE)]]),
-      'singleton');
+    m = m.add(typefor<IMetricListenerConfigFactory>(), MetricListenerConfigFactory, Type.ctor(typefor<IMetricListenerConfigFactory>(), [[collectionType(typefor<MetricsConfig>())]]), 'singleton');
     if (configure) {
       // The cast works around a TS structural-comparison depth limit -- see
       // clearMetricsListeners in @rhombus-std/diagnostics.core for the full
@@ -87,16 +91,17 @@ export namespace ServiceManifestTracingAugmentations {
   /**
    * Registers the tracing options assembly and, if `configure` is supplied,
    * runs it over a concrete {@link ITracingBuilder}. After this call resolving
-   * {@link TRACING_OPTIONS_TYPE} yields an `IOptions<TracingOptions>` assembled
+   * `IOptions<TracingOptions>` yields the assembly built
    * from every rule / config-bind step registered through the builder, reactive
    * to configuration reloads.
    */
   export function addTracing(this: Manifest<string>, configure?: Func<[ITracingBuilder], void>): Manifest<string> {
-    let m: Manifest<string> = this.add(TRACING_OPTIONS_TYPE, (resolver) => assembleDiagnosticsOptions(resolver, TRACING_CONFIGURE_TYPE, TRACING_CHANGE_TOKEN_SOURCE_TYPE, () => new TracingOptions()),
-      Type.func(TRACING_OPTIONS_TYPE, [[RESOLVER_TYPE]]), 'singleton');
+    let m: Manifest<string> = this.add(typefor<IOptions<TracingOptions>>(),
+      (resolver) => assembleDiagnosticsOptions(resolver, typefor<IConfigureOptions<TracingOptions>>(), typefor<IOptionsChangeTokenSource<TracingOptions>>(), () => new TracingOptions()),
+      Type.func(typefor<IOptions<TracingOptions>>(), [[typefor<IServiceProvider>()]]), 'singleton');
     // The per-listener configuration factory, ctor-injected with the collection
     // of every TracingConfig marker addTracingConfig registered.
-    m = m.add(TRACING_LISTENER_CONFIGURATION_FACTORY_TYPE, DefaultActivityListenerConfigFactory, Type.ctor(TRACING_LISTENER_CONFIGURATION_FACTORY_TYPE, [[collectionType(TRACING_CONFIGURATION_TYPE)]]),
+    m = m.add(typefor<ActivityListenerConfigFactory>(), DefaultActivityListenerConfigFactory, Type.ctor(typefor<ActivityListenerConfigFactory>(), [[collectionType(typefor<TracingConfig>())]]),
       'singleton');
     if (configure) {
       // See the addMetrics cast above for why this is needed.
@@ -155,7 +160,7 @@ export * from './metrics/config/MetricsConfigureOptions';
 export * from './tracing/config/TracingConfigureOptions';
 
 // The per-listener configuration factories. `addMetrics`/`addTracing` register
-// the concrete factory at METRICS/TRACING_LISTENER_CONFIGURATION_FACTORY_TYPE;
+// the concrete factory at IMetricListenerConfigFactory / ActivityListenerConfigFactory;
 // a consumer resolves it as IMetricListenerConfigFactory /
 // ActivityListenerConfigFactory and asks for a listener's merged view.
 // The concrete factories and the Metrics/TracingConfig markers are exposed here

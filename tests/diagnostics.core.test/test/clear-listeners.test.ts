@@ -13,9 +13,15 @@
 import '@rhombus-std/di';
 import { DefaultManifest, type Manifest, Type } from '@rhombus-std/di.core';
 import { MetricsBuilder, TracingBuilder } from '@rhombus-std/diagnostics';
-import { type IMetricsBuilder, type IMetricsListener, type ITracingBuilder, METRICS_CONFIGURE_TYPE, METRICS_LISTENER_TYPE, MetricsBuilderAugmentations, TRACING_CONFIGURE_TYPE, TRACING_LISTENER_TYPE,
-  TracingBuilderAugmentations } from '@rhombus-std/diagnostics.core';
+import { type IMetricsBuilder, type IMetricsListener, type ITracingBuilder, MetricsBuilderAugmentations, TracingBuilderAugmentations } from '@rhombus-std/diagnostics.core';
 import { describe, expect, test } from 'bun:test';
+
+// The slot addresses as a plugin-less author spells them — the same interned
+// nodes `typefor` derives inside the packages under test.
+const METRICS_LISTENER_TYPE = Type.imported('IMetricsListener', '@rhombus-std/diagnostics.core');
+const TRACING_LISTENER_TYPE = Type.imported('ActivityListenerBuilder', '@rhombus-std/diagnostics.core');
+const METRICS_CONFIGURE_TYPE = Type.imported('IConfigureOptions', '@rhombus-std/options', [Type.imported('MetricsOptions', '@rhombus-std/diagnostics.core')]);
+const TRACING_CONFIGURE_TYPE = Type.imported('IConfigureOptions', '@rhombus-std/options', [Type.imported('TracingOptions', '@rhombus-std/diagnostics.core')]);
 
 function listener(name: string): IMetricsListener {
   return { name };
