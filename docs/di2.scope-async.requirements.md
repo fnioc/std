@@ -35,20 +35,25 @@ Weigh EVERY design decision in this document against this split.
   The map is CONTEXT-BORNE and therefore per-resolution by nature: the boundary's realize mints a
   fresh map and threads it through the realize context to its descendants — the same channel that
   threads the scope blackbox, delivered subtree-scoped. Keys are the site nodes, never promises.
-- REALIZE MECHANISM (owner-designed; refinements **(proposed)**): the collection point rides the
-  PLAN-construction visitor context — a minted `PromiseCallsite` threads a clean one; an
-  exact-miss/`Promise<T>`-hit mints an `AsyncCallSite` that registers on it; when the boundary's
-  walk returns, the accumulated contents freeze onto the boundary node as its island inventory
-  (immutable-once-assigned — the only plan-side residue). Each `AsyncCallSite` also captures its DEPENDENCY EDGES —
-  the async sites minted within its own inner subtree walk (slice the island collection around the
-  walk; assigned once). At realization the boundary is visited first: it builds, in the
-  collection's topological order (post-order walk ⇒ deps precede dependents), one ENTRY per site —
-  `Promise.all(deps' entries) → realizeSync(inner) → write value back into the map` — gathers all
-  entries with `allSettled` inside its own wrapping promise, then the plug walk beneath reads
-  settled values by site identity. One map, two phases (entries during hoist, values after
-  settle); independent sites run concurrently, layered sites serialize exactly as deep as their
-  real edges; a nested boundary delivers its promise unawaited, its own gather living inside its
-  own promise.
+- REALIZE MECHANISM (owner-designed): the collection point rides the PLAN-construction visitor
+  context — a minted `PromiseCallsite` threads a clean one; an exact-miss/`Promise<T>`-hit mints
+  an `AsyncCallSite` that registers on it; when the boundary's walk returns, the accumulated
+  contents freeze onto the boundary node as its island inventory (immutable-once-assigned — the
+  only plan-side residue).
+- AN `AsyncCallSite`'s INNER IS ITSELF A BOUNDARY (owner-surfaced): its inner is the `Promise<T>`
+  candidate's callsite — promise-typed as-requested — so a new collection point opens beneath
+  every `AsyncCallSite` automatically under the every-promise-callsite-is-a-boundary rule. The
+  two kinds differ only in delivery: `PromiseCallsite` hands over the promise UNAWAITED;
+  `AsyncCallSite` is awaited by its ENCLOSING island's hoist and delivers the settled value.
+  Consequence: LAYERS DO NOT EXIST WITHIN AN ISLAND — they are nested islands. An island's sites
+  are mutually independent by construction (a site's async deps register on its inner boundary's
+  clean collection, never the enclosing one), so no dependency edges and no topological ordering
+  exist: at realization the boundary is visited first, builds one entry per site
+  (`realize(inner) → await`), gathers them with a flat `allSettled` inside its own wrapping
+  promise, writes settled values into the context-borne map, and the plug walk beneath reads by
+  site identity. Depth serializes through promise nesting; sibling entries (and their nested
+  gathers) run concurrently; diamond sharing stays per-occurrence, shared only through scope
+  caches (hit-skips per site).
 - The invariant this rests on: OCCURRENCE IDENTITY — two occurrences of the same async dep are two
   distinct node objects. Plans built by walking give this naturally; if plan subtrees are ever
   shared, the async-site wrapper is minted fresh per inclusion point (wrapper identity ≡ occurrence
