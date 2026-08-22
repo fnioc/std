@@ -6,15 +6,15 @@ import { assertNever } from '@rhombus-toolkit/type-guards';
 import { openDescription, type ServiceDescriptorBuilderFor } from '../builder';
 import type { LifetimeArgument } from '../LifetimeModel';
 import { type Manifest } from '../Manifest';
-import { ConstantType, ServiceDescriptor } from '../ServiceDescriptor';
+import { ConstantType, type CtorDescriptor, ServiceDescriptor } from '../ServiceDescriptor';
 
 declare module '@rhombus-std/di.core' {
   interface Manifest<Lifetime> {
     /** Prepends `descriptor`, ahead of every descriptor already in the chain. */
     add(descriptor: ServiceDescriptor<Lifetime>): Manifest<Lifetime>;
     /**
-     * Swaps in `descriptor` for the first descriptor occupying the same registration slot —
-     * see {@link ServiceDescriptor.matches} — leaving every other descriptor untouched.
+     * Swaps in `descriptor` for the first descriptor registered under the same service type, leaving
+     * every other descriptor untouched.
      */
     replace(descriptor: ServiceDescriptor<Lifetime>): Manifest<Lifetime>;
     /** Drops the descriptor that is {@link ServiceDescriptor.equals} to `descriptor`, if one is present. */
@@ -22,21 +22,21 @@ declare module '@rhombus-std/di.core' {
 
     /** Adds every descriptor in `descriptors`, in order — the last one ends up newest. */
     addMany(descriptors: Iterable<ServiceDescriptor<Lifetime>>): Manifest<Lifetime>;
-    /** Adds each descriptor whose registration slot no existing descriptor occupies. */
+    /** Adds each descriptor whose service type has no registration yet. */
     tryAdd(...descriptors: ReadonlyArray<ServiceDescriptor<Lifetime>>): Manifest<Lifetime>;
 
     /** Registers `ctor` — constructed with `new` — as the implementation of `serviceType`. */
     add(serviceType: Type, ctor: Ctor, ctorType: ConstructorType, ...lifetime: LifetimeArgument<Lifetime>): Manifest<Lifetime>;
-    /** {@link Manifest.add}'s constructor shape, registering only when the slot is unclaimed. */
+    /** {@link Manifest.add}'s constructor shape, registering only when the service type has no registration yet. */
     tryAdd(serviceType: Type, ctor: Ctor, ctorType: ConstructorType, ...lifetime: LifetimeArgument<Lifetime>): Manifest<Lifetime>;
-    /** {@link Manifest.add}'s constructor shape, swapping in for the registration already in the slot. */
+    /** {@link Manifest.add}'s constructor shape, replacing the service type's existing registration. */
     replace(serviceType: Type, ctor: Ctor, ctorType: ConstructorType, ...lifetime: LifetimeArgument<Lifetime>): Manifest<Lifetime>;
 
     /** Registers `factory` — called, never `new`ed — as the producer of `serviceType`. */
     add(serviceType: Type, factory: Func, factoryType: FunctionType, ...lifetime: LifetimeArgument<Lifetime>): Manifest<Lifetime>;
-    /** {@link Manifest.add}'s factory shape, registering only when the slot is unclaimed. */
+    /** {@link Manifest.add}'s factory shape, registering only when the service type has no registration yet. */
     tryAdd(serviceType: Type, factory: Func, factoryType: FunctionType, ...lifetime: LifetimeArgument<Lifetime>): Manifest<Lifetime>;
-    /** {@link Manifest.add}'s factory shape, swapping in for the registration already in the slot. */
+    /** {@link Manifest.add}'s factory shape, replacing the service type's existing registration. */
     replace(serviceType: Type, factory: Func, factoryType: FunctionType, ...lifetime: LifetimeArgument<Lifetime>): Manifest<Lifetime>;
 
     /**
@@ -45,9 +45,9 @@ declare module '@rhombus-std/di.core' {
      * type cannot, so the call site carries the choice.
      */
     add(serviceType: Type, value: unknown, valueType: ConstantType): Manifest<Lifetime>;
-    /** {@link Manifest.add}'s value shape, registering only when the slot is unclaimed. */
+    /** {@link Manifest.add}'s value shape, registering only when the service type has no registration yet. */
     tryAdd(serviceType: Type, value: unknown, valueType: ConstantType): Manifest<Lifetime>;
-    /** {@link Manifest.add}'s value shape, swapping in for the registration already in the slot. */
+    /** {@link Manifest.add}'s value shape, replacing the service type's existing registration. */
     replace(serviceType: Type, value: unknown, valueType: ConstantType): Manifest<Lifetime>;
 
     /**
@@ -67,11 +67,6 @@ declare module '@rhombus-std/di.core' {
 
 registerAugmentations<Manifest<unknown>>({
   add(this: Manifest<unknown>, descriptor: ServiceDescriptor<any>): Manifest<unknown> {
-    // The factory throws at the earliest point that can see an abstract constructor; this is the
-    // door a hand-written descriptor literal enters by, so the same refusal stands here too.
-    if ('ctor' in descriptor && descriptor.ctorType.abstract) {
-      throw new TypeError(`${Type.stringify(descriptor.ctorType)} is abstract — nothing can \`new\` it directly`);
-    }
     return this._add(descriptor);
   },
   replace(this: Manifest<unknown>, descriptor: ServiceDescriptor<any>): Manifest<unknown> {
@@ -88,7 +83,7 @@ registerAugmentations<Manifest<unknown>>({
   },
   tryAdd(this: Manifest<unknown>, ...descriptors: ReadonlyArray<ServiceDescriptor<unknown>>): Manifest<unknown> {
     return Iterator.from(descriptors)
-      .filter(newDesc => !Iterator.from(this).some(existingDesc => ServiceDescriptor.matches(newDesc, existingDesc)))
+      .filter(newDesc => !Iterator.from(this).some(existingDesc => existingDesc.serviceType === newDesc.serviceType))
       .reduce((man, descriptor) => man.add(descriptor), this);
   },
   remove(this: Manifest<unknown>, serviceType: Type): Manifest<unknown> {
@@ -111,6 +106,14 @@ registerAugmentations<Manifest<unknown>>({
   },
   replace(this: Manifest<unknown>, serviceType: Type, implementer: unknown, implementerType: ConstructorType | FunctionType | ConstantType, lifetime?: any): Manifest<unknown> {
     return this.replace(toDescriptor(serviceType, implementer, implementerType, lifetime));
+  },
+});
+
+// Must register after the `add(descriptor: ServiceDescriptor)` contribution above — newer
+// contributions dispatch first, and that one's guard also accepts an abstract descriptor.
+registerAugmentations<Manifest<unknown>>({
+  add(this: Manifest<unknown>, descriptor: CtorDescriptor<any> & { ctorType: ConstructorType & { abstract: true; }; }): never {
+    throw new TypeError(`${Type.stringify(descriptor.ctorType)} is abstract — nothing can \`new\` it directly`);
   },
 });
 

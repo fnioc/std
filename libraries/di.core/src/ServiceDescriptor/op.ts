@@ -46,15 +46,14 @@ export function substitute<Lifetime>(descriptor: ServiceDescriptor<Lifetime>, ge
 }
 
 /**
- * Are the two descriptors interchangeable — same slot ({@link matches}) and the same implementer,
- * lifetime, and implementer type? Two descriptors can occupy the same slot without being equal (a
- * replaced registration), so prefer {@link matches} for slot identity.
+ * Are the two descriptors interchangeable — same service type and the same implementer,
+ * lifetime, and implementer type?
  */
 export function equals(left: ServiceDescriptor<unknown>, right: ServiceDescriptor<unknown>): boolean {
   if (left === right) {
     return true;
   }
-  if (kind(left)[0] !== kind(right)[0] || !matches(left, right)) {
+  if (kind(left)[0] !== kind(right)[0] || left.serviceType !== right.serviceType) {
     return false;
   }
   if ('ctor' in left) {
@@ -71,12 +70,4 @@ export function equals(left: ServiceDescriptor<unknown>, right: ServiceDescripto
     return left.value === (right as ValueDescriptor).value;
   }
   return assertNever(left);
-}
-
-/**
- * Do the two occupy the same registration slot? The service type is the whole of a
- * registration's identity — a keyed registration carries its key inside that type, as a tag.
- */
-export function matches(left: ServiceDescriptor<unknown>, right: ServiceDescriptor<unknown>): boolean {
-  return left.serviceType === right.serviceType;
 }

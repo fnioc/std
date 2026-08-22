@@ -21,8 +21,8 @@ export interface Manifest<Lifetime> extends Iterable<ServiceDescriptor<Lifetime>
   /** Prepends `descriptor`, ahead of every descriptor already in the chain. */
   _add(descriptor: ServiceDescriptor<Lifetime>): Manifest<Lifetime>;
   /**
-   * Swaps in `descriptor` for the first descriptor that occupies the same registration slot —
-   * see {@link ServiceDescriptor.matches} — leaving every other descriptor untouched.
+   * Swaps in `descriptor` for the first descriptor registered under the same service type, leaving
+   * every other descriptor untouched.
    */
   _replace(descriptor: ServiceDescriptor<Lifetime>): Manifest<Lifetime>;
   /** Drops the descriptor that is {@link ServiceDescriptor.equals} to `descriptor`, if one is present. */
@@ -68,7 +68,7 @@ export class DefaultManifest<Lifetime> {
       [Symbol.iterator]: function* replaced(this: DefaultManifest<Lifetime>) {
         const it = Iterator.from(this.#descriptors);
         for (const existing of it) {
-          if (ServiceDescriptor.matches(existing, descriptor)) {
+          if (existing.serviceType === descriptor.serviceType) {
             yield descriptor;
             yield* it;
           } else {
