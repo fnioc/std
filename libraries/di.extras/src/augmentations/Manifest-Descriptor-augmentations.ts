@@ -20,18 +20,18 @@ declare module '@rhombus-std/di.core' {
      */
     addValue<ServiceType>(value: ServiceType): Manifest<Lifetime>;
 
-    /** {@link Manifest.add}'s constructor shape, registering only when the slot is unclaimed. */
+    /** {@link Manifest.add}'s constructor shape, registering only when the service type has no registration yet. */
     tryAdd<ServiceType>(implementer: Ctor<any[], ServiceType>, ...lifetime: LifetimeArgument<Lifetime>): Manifest<Lifetime>;
-    /** {@link Manifest.add}'s factory shape, registering only when the slot is unclaimed. */
+    /** {@link Manifest.add}'s factory shape, registering only when the service type has no registration yet. */
     tryAdd<ServiceType>(implementer: Func<any[], ServiceType>, ...lifetime: LifetimeArgument<Lifetime>): Manifest<Lifetime>;
-    /** {@link Manifest.addValue}, registering only when the slot is unclaimed. */
+    /** {@link Manifest.addValue}, registering only when the service type has no registration yet. */
     tryAddValue<ServiceType>(value: ServiceType): Manifest<Lifetime>;
 
-    /** {@link Manifest.add}'s constructor shape, swapping in for the registration already in the slot. */
+    /** {@link Manifest.add}'s constructor shape, replacing the service type's existing registration. */
     replace<ServiceType>(implementer: Ctor<any[], ServiceType>, ...lifetime: LifetimeArgument<Lifetime>): Manifest<Lifetime>;
-    /** {@link Manifest.add}'s factory shape, swapping in for the registration already in the slot. */
+    /** {@link Manifest.add}'s factory shape, replacing the service type's existing registration. */
     replace<ServiceType>(implementer: Func<any[], ServiceType>, ...lifetime: LifetimeArgument<Lifetime>): Manifest<Lifetime>;
-    /** {@link Manifest.addValue}, swapping in for the registration already in the slot. */
+    /** {@link Manifest.addValue}, replacing the service type's existing registration. */
     replaceValue<ServiceType>(value: ServiceType): Manifest<Lifetime>;
 
     /**

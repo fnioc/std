@@ -12,8 +12,6 @@ land; delete the file when empty.
       still says `ScopeModel*`/"scope model" throughout; the ruled public naming is now
       `LifetimeModel*`, `Manifest<Lifetime>`, descriptor `lifetime`. Includes deciding the
       attribution-wrap error's name (`ScopeModelError` → `LifetimeModelError`).
-- [ ] **`LifetimeArgument` name/home** — new exported di.core alias (`LifetimeModel.ts`); owner
-      veto on the name or placement still open.
 - [ ] **Descriptor `lifetime` property is unconditionally optional** — the admissibility gate
       covers the verb dialect and the builder dialect, but a hand-written descriptor literal
       omitting `lifetime` still satisfies `ServiceDescriptor<Lifetime>` under a vocabulary that
