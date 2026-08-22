@@ -1,4 +1,4 @@
-import { Func } from '@rhombus-toolkit/func';
+import type { Func } from '@rhombus-toolkit/func';
 
 /** Yields every element of `source`, substituting `replacement` for each one `match` selects — an exact value or a predicate. */
 export function replace<T>(source: Iterable<T>, match: T | Func<[T], boolean>, replacement: Func<[T], T>): Generator<T>;

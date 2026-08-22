@@ -1,5 +1,5 @@
 import { Type } from '@rhombus-std/primitives';
-import { Func } from '@rhombus-toolkit/func';
+import type { Func } from '@rhombus-toolkit/func';
 
 /**
  * Per-scope storage for scoped-lifetime resolutions, keyed by whatever the engine identifies a

@@ -1,6 +1,6 @@
 import { ServiceDescriptor } from '@rhombus-std/di.core';
 import { isAllThere, Type } from '@rhombus-std/primitives';
-import { Ctor, Func } from '@rhombus-toolkit/func';
+import type { Ctor, Func } from '@rhombus-toolkit/func';
 import { assertNever } from '@rhombus-toolkit/type-guards';
 import type { Answer } from '../Registry.js';
 import { realizeCallSite } from './RealizeVisitor.js';

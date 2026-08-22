@@ -1,5 +1,5 @@
 import { ConstructorType, FunctionType, Type } from '@rhombus-std/primitives';
-import { Ctor, Func } from '@rhombus-toolkit/func';
+import type { Ctor, Func } from '@rhombus-toolkit/func';
 import type { Flatten } from '@rhombus-toolkit/type-helpers';
 
 /**
