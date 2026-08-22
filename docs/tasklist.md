@@ -262,4 +262,7 @@ whole set is decided fresh when the slots above are rewritten, so this is a demo
       this here to get the build to work...", "code-style -- no functional change", "these changes were left out
       from the previous commit by mistake", "overload definitions todo", "code style"); relabeling is now a
       history rewrite of the pushed branch — decide it together with the separate authorship question (all 69 run
-      commits are authored `Claude <noreply@anthropic.com>`).
+      commits are authored `Claude <noreply@anthropic.com>`). SCOPING (agreed with the cloud2 session
+      2026-08-21): this rewrite covers `de8cc99a` AND EARLIER only — cloud2's own run re-authors and
+      force-pushes the post-`de8cc99a` segment itself — and executes only after pinging cloud2 (it holds the
+      local checkout and a live branch monitor; tip movement must be sequenced so nothing is orphaned).
