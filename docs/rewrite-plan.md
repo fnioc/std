@@ -163,11 +163,11 @@ per-overload bodies — then the TS half it unblocks: the `*.extras` augmentatio
 move from `rhombus-std.json` to per-overload `registerInlineBodies` calls (the getService family
 keeps per-overload bodies, NOT a collapsed rest body). The parity e2es are the oracle throughout.
 
-- [ ] Go half: marker-call discovery, per-overload body registration keyed by
+- [x] Go half: marker-call discovery, per-overload body registration keyed by
       (member, overload signature), checker's-resolution selection, loud no-body-for-resolved-face
       build error.
-- [ ] TS half: `*.extras` entries migrate to per-overload `registerInlineBodies` calls.
-- [ ] Parity e2es updated/passing as the oracle.
+- [x] TS half: `*.extras` entries migrate to per-overload `registerInlineBodies` calls.
+- [x] Parity e2es updated/passing as the oracle.
 
 ## Single-instance guard (owner-ordered fold-in, added mid-run)
 
@@ -176,17 +176,17 @@ The duplicate-copy hazard the identity invariant worries about — a second load
 primitives/di.core forking the augmentation registry / `Manifest` identity — is covered at
 RUNTIME instead:
 
-- [ ] `@rhombus-std/primitives` and `@rhombus-std/di.core` each stamp a global-symbol sentinel at
+- [x] `@rhombus-std/primitives` and `@rhombus-std/di.core` each stamp a global-symbol sentinel at
       module load (e.g. `globalThis[Symbol.for('@rhombus-std/primitives/instance')]`) recording
       what identifies the loaded copy (its module URL).
-- [ ] A second, genuinely DIFFERENT copy loading sees the stamp and THROWS immediately — the
+- [x] A second, genuinely DIFFERENT copy loading sees the stamp and THROWS immediately — the
       message names BOTH module paths and tells the user to deduplicate (hard-fail, loud and
       immediate). Guard the guard: compare identity (module URL) and throw only on a real
       difference — same-copy re-evaluation stays silent.
-- [ ] Tests: one copy loads clean; a simulated second copy throws with both paths in the message.
+- [x] Tests: one copy loads clean; a simulated second copy throws with both paths in the message.
       The white-box `./tokens/*` seam and the preload's virtual modules must NOT trip the guard —
       the barrel and a tokens deep-import resolve the same files by design; verify, don't assume.
-- [ ] No dependency recategorization anywhere — plain `dependencies` stay as they are.
+- [x] No dependency recategorization anywhere — plain `dependencies` stay as they are.
 
 ## Options family — HOLD, not a task
 
