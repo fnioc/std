@@ -9,43 +9,42 @@ import (
 	"github.com/fnioc/std/transforms/internal/plugin"
 )
 
-// The declaration set every case here shares: the token-taking primitive, the
-// sugar's own face, and a THIRD overload that has nothing to do with the sugar
-// yet carries the same type-parameter and value-parameter counts as its face.
-// That last one is what makes the pair below meaningful — the two faces are
-// distinguishable only by their value parameters' names.
+// The core surface every case here shares: the token-taking primitive AND an
+// overload that has nothing to do with the sugar yet carries the same
+// type-parameter and value-parameter counts as the sugar's face. Neither is
+// publisher-owned, so neither can ever claim the body — the checker's own
+// resolution is what routes a call to them untouched.
+const declaredFaceCoreIndex = `export interface IQuery {
+  isService(token: string, extra: number): boolean;
+  isService<X>(mismatched: string): boolean;
+}
+export declare const provider: IQuery;
+`
+
 const declaredFaceSugarDTS = `declare module '@scope/core' {
   interface IQuery {
-    isService(token: string, extra: number): boolean;
     isService<T>(extra: number): boolean;
-    isService<X>(mismatched: string): boolean;
   }
 }
 export {};
 `
 
-const declaredFaceCoreIndex = `export interface IQuery {}
-export declare const provider: IQuery;
-`
-
 // TestUnrelatedOverloadIsNotClaimed: a call the checker binds, unambiguously, to
-// a declaration the sugar's implementation does not serve must be left alone.
-// Serving is by exact value parameters, so the unrelated overload — same counts,
-// different parameter name — never enters the inline plan, and the call emerges
-// untouched with no diagnostic against it.
+// a declaration outside the publisher's own — the primitive, or an unrelated
+// overload sharing the sugar face's counts — must be left alone: ownership keeps
+// it out of the inline plan, and the call emerges untouched with no diagnostic.
 func TestUnrelatedOverloadIsNotClaimed(t *testing.T) {
 	inlineBody := `import { tokenfor } from '@rhombus-std/primitives.extras';
-import type { IQuery } from './index';
+import type { IQuery } from '@scope/core';
 export namespace QueryInline {
   export function isService<T>(this: IQuery, extra: number): boolean {
     return this.isService(tokenfor<T>(), extra);
   }
 }
 `
-	// A string argument and no type argument: only the third declaration accepts
-	// this call, and it is not the one the implementation serves.
-	mainSrc := `/// <reference path="./sugar.d.ts" />
-import { provider } from '@scope/core';
+	// A string argument and no type argument: only the unrelated core overload
+	// accepts this call, and the publisher does not own it.
+	mainSrc := `import { provider } from '@scope/core';
 export const bad = provider.isService('x');
 `
 	prog, app := buildWorkspace(t, declaredFaceCoreIndex, inlineBody, declaredFaceSugarDTS, mainSrc)
@@ -67,36 +66,44 @@ export const bad = provider.isService('x');
 	}
 }
 
-// TestRestShapedImplementationIsRefused: an implementation that absorbs its
-// parameters into a rest has no declared face to compare against, so it could
-// serve any declaration of equal type-parameter count. It is refused where it is
-// read, naming the member, rather than silently claiming a stranger.
-func TestRestShapedImplementationIsRefused(t *testing.T) {
+// TestRestShapedImplementationBlanketsTheFace: a rest-shaped body serves as the
+// blanket for every publisher-owned face no exact-signature body claims. The
+// call's arguments past the named parameters splice in as a group, so the
+// emitted call is the one a hand author writes.
+func TestRestShapedImplementationBlanketsTheFace(t *testing.T) {
 	inlineBody := `import { tokenfor } from '@rhombus-std/primitives.extras';
-import type { IQuery } from './index';
+import type { IQuery } from '@scope/core';
 export namespace QueryInline {
   export function isService<T>(this: IQuery, ...rest: any[]): boolean {
     return this.isService(tokenfor<T>(), ...rest);
   }
 }
 `
-	mainSrc := `/// <reference path="./sugar.d.ts" />
-import { provider } from '@scope/core';
-export const bad = provider.isService('x');
+	mainSrc := `import { provider } from '@scope/core';
+interface Foo { readonly brand: 'foo'; }
+export const ok = provider.isService<Foo>(5);
 `
 	prog, app := buildWorkspace(t, declaredFaceCoreIndex, inlineBody, declaredFaceSugarDTS, mainSrc)
 	defer func() { _ = prog.Close() }()
 
+	artifacts := NewArtifacts()
 	var diags []plugin.Diagnostic
-	Build(prog, bodiesFor(t, app), NewArtifacts(), func(d plugin.Diagnostic) { diags = append(diags, d) })
-
-	found := false
-	for _, d := range diags {
-		if strings.Contains(d.Message, "INLINE_REST_BODY") && strings.Contains(d.Message, "isService") {
-			found = true
-		}
+	transform := Build(prog, bodiesFor(t, app), artifacts, func(d plugin.Diagnostic) { diags = append(diags, d) })
+	if len(diags) != 0 {
+		t.Fatalf("Build raised diagnostics: %+v", diags)
 	}
-	if !found {
-		t.Errorf("want an INLINE_REST_BODY refusal naming the member, got %+v", diags)
+
+	ec := shimprinter.NewEmitContext()
+	main := sourceFileWithSuffix(t, prog, "main.ts")
+	out := reprint(ec, transform(ec, main))
+
+	if strings.Contains(out, "isService<") {
+		t.Errorf("sugar form isService<> survived:\n%s", out)
+	}
+	if !strings.Contains(out, "provider.isService(tokenfor(), 5)") && !strings.Contains(out, ", 5)") {
+		t.Errorf("expected the rest group spliced after the token argument:\n%s", out)
+	}
+	if shape := artifacts.SugarMembers["isService"]; len(shape) != 1 || !shape[0].Unbounded {
+		t.Errorf("a rest-bodied shape must publish an unbounded arity, got %+v", shape)
 	}
 }

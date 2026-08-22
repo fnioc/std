@@ -41,19 +41,28 @@ import (
 // walks into packages/* and finds the core package's inline entries.
 const sugarWorkspaceRootPkg = `{ "name": "ws", "private": true, "workspaces": ["packages/*"] }`
 
-// sugarCorePkg is the sugar-owning package: it declares two inline entries whose
-// bodies live out of barrel in src/inline.ts, mirroring the real di.extras shapes
-// (`addClass<T>(ctor)` and `addValue(value)` each carrying a VALUE-argument
-// typefor).
+// sugarCorePkg is the runtime package: the receiver and its explicit token
+// forms, with no sugar of its own.
 const sugarCorePkg = `{
   "name": "@scope/core",
   "version": "1.0.0",
+  "exports": { ".": { "types": "./src/index.ts", "default": "./src/index.ts" } }
+}`
+
+// sugarSugarPkg is the sugar-owning package: it declares two inline entries
+// whose bodies live out of barrel in src/inline.ts, mirroring the real
+// di.extras shapes (`addClass<T>(ctor)` and `addValue(value)` each carrying a
+// VALUE-argument typefor).
+const sugarSugarPkg = `{
+  "name": "@scope/sugar",
+  "version": "1.0.0",
   "exports": { ".": { "types": "./src/index.ts", "default": "./src/index.ts" } },
+  "dependencies": { "@scope/core": "workspace:*" },
   "rhombus-std": {
     "inline": {
       "entries": [
-        { "type": "@scope/core:IManifest", "impl": "@scope/core:ManifestInline", "member": "addClass" },
-        { "type": "@scope/core:IManifest", "impl": "@scope/core:ManifestInline", "member": "addValue" }
+        { "type": "@scope/core:IManifest", "impl": "@scope/sugar:ManifestInline", "member": "addClass" },
+        { "type": "@scope/core:IManifest", "impl": "@scope/sugar:ManifestInline", "member": "addValue" }
       ]
     }
   }
@@ -77,7 +86,7 @@ export declare const services: IManifest;
 // parameter straight into a value-argument typefor call — the shape whose
 // recorded argument this file is about.
 const sugarCoreInline = `import { typefor } from '@rhombus-std/primitives.extras';
-import type { IChain, IManifest } from './index';
+import type { IChain, IManifest } from '@scope/core';
 export const ManifestInline = {
   addClass<T>(this: IManifest, ctor: unknown): IChain {
     return this.addClass(typefor<T>(), ctor, typefor(ctor));
@@ -88,9 +97,10 @@ export const ManifestInline = {
 };
 `
 
-// sugarAppSugarDts is the consumer-side declaration merge the transformer matches
-// against — the authoring overloads layered over the explicit forms above.
-const sugarAppSugarDts = `declare module '@scope/core' {
+// sugarSugarDts is the sugar package's own declaration merge the transformer
+// matches against — the authoring overloads layered over the explicit forms
+// above, owned by the package whose bodies serve them.
+const sugarSugarDts = `declare module '@scope/core' {
   interface IManifest {
     addClass<T>(ctor: unknown): IChain;
     addValue(value: unknown): IManifest;
@@ -106,7 +116,7 @@ const sugarAppTsconfig = `{
     "target": "ES2022", "module": "esnext", "moduleResolution": "bundler",
     "strict": true, "skipLibCheck": true, "noEmitOnError": false
   },
-  "files": ["main.ts", "prim.ts", "sugar.d.ts", "node_modules/@scope/core/src/index.ts"]
+  "files": ["main.ts", "prim.ts", "node_modules/@scope/core/src/index.ts", "node_modules/@scope/sugar/src/index.ts"]
 }`
 
 // sugarAppPrim is a local `typefor` stub. It gives the fixture a SOURCE-WRITTEN
@@ -138,7 +148,12 @@ func buildSugarWorkspace(t *testing.T, mainSrc string) string {
 	core := filepath.Join(root, "packages", "core")
 	writeFixtureFile(t, core, "package.json", sugarCorePkg)
 	writeFixtureFile(t, core, "src/index.ts", sugarCoreIndex)
-	writeFixtureFile(t, core, "src/inline.ts", sugarCoreInline)
+
+	sugar := filepath.Join(root, "packages", "sugar")
+	writeFixtureFile(t, sugar, "package.json", sugarSugarPkg)
+	writeFixtureFile(t, sugar, "src/index.ts", sugarSugarDts)
+	writeFixtureFile(t, sugar, "src/inline.ts", sugarCoreInline)
+	symlinkPkg(t, sugar, "@scope/core", core)
 
 	app := filepath.Join(root, "packages", "app")
 	// Inline emission, so an assertion below reads the derived tree where it was
@@ -146,13 +161,13 @@ func buildSugarWorkspace(t *testing.T, mainSrc string) string {
 	// over a rewritten value argument, which is the same either way; spelling the
 	// tree at the call site is simply what makes the pin legible.
 	writeFixtureFile(t, app, "package.json", `{"name":"@scope/app","version":"1.0.0",`+
-		`"dependencies":{"@scope/core":"workspace:*"},`+
+		`"dependencies":{"@scope/core":"workspace:*","@scope/sugar":"workspace:*"},`+
 		`"rhombus-std":{"typefor":{"emit":"inline"}}}`)
-	writeFixtureFile(t, app, "sugar.d.ts", sugarAppSugarDts)
 	writeFixtureFile(t, app, "prim.ts", sugarAppPrim)
 	writeFixtureFile(t, app, "main.ts", mainSrc)
 	writeFixtureFile(t, app, "tsconfig.json", sugarAppTsconfig)
 	symlinkPkg(t, app, "@scope/core", core)
+	symlinkPkg(t, app, "@scope/sugar", sugar)
 	return app
 }
 

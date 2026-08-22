@@ -38,6 +38,12 @@ type Inlining struct {
 	// names that same export. Keyed by name rather than position, since these bind
 	// to nothing in the call's argument list.
 	Bindings map[string]*shimast.Node
+	// Groups maps a splice token to the argument expressions it stands for, in
+	// call order: the impl's trailing rest parameter holds the arguments past the
+	// named ones, and `arguments` holds the whole set. A spread of either inside a
+	// call's argument list splices the group's members in place; an empty group
+	// splices nothing.
+	Groups map[string][]*shimast.Node
 }
 
 // Result is Substitute's output. Expr is the rewritten expression to splice in
@@ -77,7 +83,7 @@ type Result struct {
 // can trigger a getter, and the contract forbids running that getter twice.
 func Substitute(ec *shimprinter.EmitContext, in Inlining) Result {
 	factory := ec.Factory.AsNodeFactory()
-	body := factory.DeepCloneNode(in.Body)
+	body := normalizeCallForms(ec, factory.DeepCloneNode(in.Body))
 
 	u := in.unbound()
 	params := map[string]*shimast.Node{}
@@ -92,7 +98,7 @@ func Substitute(ec *shimprinter.EmitContext, in Inlining) Result {
 
 	if in.Receiver == nil {
 		// Free function: only value parameters are substituted.
-		return Result{Expr: substituteInto(ec, body, params, nil, u)}
+		return Result{Expr: substituteInto(ec, body, params, nil, u, in.Groups)}
 	}
 
 	receiverCount := countThis(body)
@@ -102,7 +108,7 @@ func Substitute(ec *shimprinter.EmitContext, in Inlining) Result {
 		// Effectful receiver used more than once: bind it once to a temp in
 		// expression position and reference the temp at every `this` site.
 		temp := ec.Factory.NewTempVariable()
-		substituted := substituteInto(ec, body, params, temp, u)
+		substituted := substituteInto(ec, body, params, temp, u, in.Groups)
 		assign := factory.NewBinaryExpression(
 			nil,
 			temp,
@@ -127,7 +133,7 @@ func Substitute(ec *shimprinter.EmitContext, in Inlining) Result {
 	if receiverCount == 0 && !simple {
 		// Receiver's value is never read, but its side effect must still run
 		// exactly once. Keep it as the left of a comma sequence.
-		substituted := substituteInto(ec, body, params, nil, u)
+		substituted := substituteInto(ec, body, params, nil, u, in.Groups)
 		sequence := factory.NewBinaryExpression(
 			nil,
 			factory.DeepCloneNode(in.Receiver),
@@ -141,15 +147,15 @@ func Substitute(ec *shimprinter.EmitContext, in Inlining) Result {
 	// Receiver read 0× (simple), 1× (any), or ≥2× (simple): inline a fresh clone
 	// of it at each site. thisRepl == nil below means "clone the receiver"; a
 	// non-nil node (the temp branch above) means "reference it".
-	return Result{Expr: substituteIntoReceiver(ec, body, params, in.Receiver, u)}
+	return Result{Expr: substituteIntoReceiver(ec, body, params, in.Receiver, u, in.Groups)}
 }
 
 // substituteInto rewrites body in place of a clone: every `this` becomes temp
 // (when non-nil), every value-parameter identifier becomes its argument
 // expression. Property-access member names are left untouched so a body member
 // that happens to share a parameter's name is never rewritten.
-func substituteInto(ec *shimprinter.EmitContext, body *shimast.Node, params map[string]*shimast.Node, temp *shimast.Node, u unbound) *shimast.Node {
-	return rewrite(ec, body, params, func() *shimast.Node { return temp }, u)
+func substituteInto(ec *shimprinter.EmitContext, body *shimast.Node, params map[string]*shimast.Node, temp *shimast.Node, u unbound, groups map[string][]*shimast.Node) *shimast.Node {
+	return rewrite(ec, body, params, func() *shimast.Node { return temp }, u, groups)
 }
 
 // substituteIntoReceiver is substituteInto with the ORIGINAL receiver node
@@ -158,7 +164,7 @@ func substituteInto(ec *shimprinter.EmitContext, body *shimast.Node, params map[
 // receiver get an answerable node; the extra clones are bare and nothing
 // downstream queries them (a duplicated `this` site only ever holds a simple,
 // side-effect-free receiver by the effectful ≥2× path being handled separately).
-func substituteIntoReceiver(ec *shimprinter.EmitContext, body *shimast.Node, params map[string]*shimast.Node, receiver *shimast.Node, u unbound) *shimast.Node {
+func substituteIntoReceiver(ec *shimprinter.EmitContext, body *shimast.Node, params map[string]*shimast.Node, receiver *shimast.Node, u unbound, groups map[string][]*shimast.Node) *shimast.Node {
 	factory := ec.Factory.AsNodeFactory()
 	first := true
 	return rewrite(ec, body, params, func() *shimast.Node {
@@ -167,7 +173,7 @@ func substituteIntoReceiver(ec *shimprinter.EmitContext, body *shimast.Node, par
 			return receiver
 		}
 		return factory.DeepCloneNode(receiver)
-	}, u)
+	}, u, groups)
 }
 
 // unbound is the set of value parameters the call supplied no argument for.
@@ -243,11 +249,29 @@ func danglingParam(node *shimast.Node, u unbound) string {
 // identifier that is NOT a value reference — is preserved verbatim. A `this`
 // inside a nested non-arrow function or class is that scope's own receiver, so
 // substitution stops at those boundaries; value parameters are still rewritten
-// there, since a closure captures them like any other outer binding.
-func rewrite(ec *shimprinter.EmitContext, body *shimast.Node, params map[string]*shimast.Node, thisNode func() *shimast.Node, u unbound) *shimast.Node {
+// there, since a closure captures them like any other outer binding. A spread
+// of a group token (a trailing rest, or `arguments`) inside a call's argument
+// list splices the group's members in place — `arguments` stops at the same
+// boundaries `this` does, since a nested non-arrow function owns its own.
+func rewrite(ec *shimprinter.EmitContext, body *shimast.Node, params map[string]*shimast.Node, thisNode func() *shimast.Node, u unbound, groups map[string][]*shimast.Node) *shimast.Node {
 	factory := ec.Factory.AsNodeFactory()
 	var visitor *shimast.NodeVisitor
 	ownThisDepth := 0
+	spliceGroup := func(node *shimast.Node) ([]*shimast.Node, bool) {
+		if node.Kind != shimast.KindSpreadElement {
+			return nil, false
+		}
+		expr := node.AsSpreadElement().Expression
+		if expr == nil || expr.Kind != shimast.KindIdentifier {
+			return nil, false
+		}
+		name := expr.Text()
+		if name == "arguments" && ownThisDepth > 0 {
+			return nil, false
+		}
+		group, ok := groups[name]
+		return group, ok
+	}
 	visit := func(node *shimast.Node) *shimast.Node {
 		if node == nil {
 			return nil
@@ -290,8 +314,18 @@ func rewrite(ec *shimprinter.EmitContext, body *shimast.Node, params map[string]
 				break
 			}
 			newCallee := visitor.VisitNode(call.Expression)
-			args, changed := u.visitArguments(visitor, call.Arguments.Nodes)
-			if !changed && newCallee == call.Expression {
+			expanded := make([]*shimast.Node, 0, len(call.Arguments.Nodes))
+			spliced := false
+			for _, arg := range call.Arguments.Nodes {
+				if group, ok := spliceGroup(arg); ok {
+					expanded = append(expanded, group...)
+					spliced = true
+					continue
+				}
+				expanded = append(expanded, arg)
+			}
+			args, changed := u.visitArguments(visitor, expanded)
+			if !spliced && !changed && newCallee == call.Expression {
 				return node
 			}
 			return factory.NewCallExpression(newCallee, call.QuestionDotToken, nil, factory.NewNodeList(args), 0)
@@ -300,6 +334,79 @@ func rewrite(ec *shimprinter.EmitContext, body *shimast.Node, params map[string]
 	}
 	visitor = ec.NewNodeVisitor(visit)
 	return visitor.VisitNode(body)
+}
+
+// normalizeCallForms rewrites the two call spellings a body may forward through
+// into the direct call a hand author writes, ahead of receiver counting so the
+// receiver is written exactly once:
+//
+//   - `x.m.apply(this, [ …elements ])` — the array literal collapses into the
+//     argument list (an `as` annotation on it is dropped) and the call becomes
+//     `x.m(…elements)`;
+//   - `(x.m as any)(…)` — the assertion and its parentheses drop, leaving
+//     `x.m(…)`.
+func normalizeCallForms(ec *shimprinter.EmitContext, body *shimast.Node) *shimast.Node {
+	factory := ec.Factory.AsNodeFactory()
+	var visitor *shimast.NodeVisitor
+	visit := func(node *shimast.Node) *shimast.Node {
+		if node == nil {
+			return nil
+		}
+		if node.Kind != shimast.KindCallExpression {
+			return visitor.VisitEachChild(node)
+		}
+		call := node.AsCallExpression()
+		callee := unwrapExpression(call.Expression)
+		if method, elements, ok := applyForm(callee, call); ok {
+			visited := make([]*shimast.Node, 0, len(elements))
+			for _, el := range elements {
+				visited = append(visited, visitor.VisitNode(el))
+			}
+			return factory.NewCallExpression(method, nil, call.TypeArguments, factory.NewNodeList(visited), 0)
+		}
+		if callee != call.Expression {
+			newCallee := visitor.VisitNode(callee)
+			var args []*shimast.Node
+			if call.Arguments != nil {
+				for _, arg := range call.Arguments.Nodes {
+					args = append(args, visitor.VisitNode(arg))
+				}
+			}
+			return factory.NewCallExpression(newCallee, call.QuestionDotToken, call.TypeArguments, factory.NewNodeList(args), 0)
+		}
+		return visitor.VisitEachChild(node)
+	}
+	visitor = ec.NewNodeVisitor(visit)
+	return visitor.VisitNode(body)
+}
+
+// applyForm recognizes `x.m.apply(this, [ …elements ])`: a call whose callee is
+// a property access named `apply` over the method access, whose first argument
+// is `this`, and whose second is an array literal (an `as` annotation
+// unwrapped). It returns the method access and the array's elements.
+func applyForm(callee *shimast.Node, call *shimast.CallExpression) (*shimast.Node, []*shimast.Node, bool) {
+	if callee.Kind != shimast.KindPropertyAccessExpression {
+		return nil, nil, false
+	}
+	access := callee.AsPropertyAccessExpression()
+	if access.Name() == nil || access.Name().Text() != "apply" {
+		return nil, nil, false
+	}
+	method := unwrapExpression(access.Expression)
+	if method.Kind != shimast.KindPropertyAccessExpression {
+		return nil, nil, false
+	}
+	if call.Arguments == nil || len(call.Arguments.Nodes) != 2 {
+		return nil, nil, false
+	}
+	if call.Arguments.Nodes[0].Kind != shimast.KindThisKeyword {
+		return nil, nil, false
+	}
+	array := unwrapExpression(call.Arguments.Nodes[1])
+	if array.Kind != shimast.KindArrayLiteralExpression {
+		return nil, nil, false
+	}
+	return method, array.AsArrayLiteralExpression().Elements.Nodes, true
 }
 
 // countThis reports how many substitutable `this` keywords appear in node —

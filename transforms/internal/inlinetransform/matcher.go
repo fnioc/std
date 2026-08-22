@@ -1,32 +1,28 @@
 // Package inlinetransform holds the matching and side-parse foundations for the
 // generic single-expression function-inlining transform stage. It carries no
-// per-library semantic knowledge: a hand-authored `rhombus-std` marker `inline`
-// publish-list entry names an interface member (or free function), and this
-// package resolves that entry ONCE per program to the declaration site the MARKER
-// names, then decides per call site whether a call is an inlineable one.
+// per-library semantic knowledge: a publish-list entry — a JSON `inline` entry
+// or one a `registerInlineBodies` marker call discovers — names an interface
+// member (or free function), and this package resolves that entry ONCE per
+// program to the publisher's own declarations, then inlines each call the
+// checker resolves to one of them.
 //
-// THE MARKER PICKS THE DECLARATION, NOT THE CHECKER. A marker names a surface and
-// a member on it — package, exported type, member name — and that triple is the
-// anchor. Asking the checker which declaration a call binds to cannot serve as
-// the anchor, because binding is not stable against the ways a receiver can be
-// assembled: an interface reaching two same-named members through two `extends`
-// clauses resolves the collision by keeping one and hiding the other, and a call
-// the author wrote against the hidden one then binds to its surviving sibling.
-// Anchoring on the binding turns that into a silent miss — no substitution, no
-// diagnostic, the authoring type argument erased on the way to JS.
-//
-// So the two load-bearing compositions here both start from the marker:
+// The two load-bearing steps:
 //
 //   - Declaration lookup (markerMemberDeclarations): the entry's `type` token
 //     resolves to a module symbol and then an exported type symbol, and every
 //     type on that surface — the named one and each it transitively extends — is
-//     asked for its OWN member of that name. The union is the marker's
-//     declaration set, whichever member a property lookup would have preferred.
+//     asked for its OWN member of that name. The union is the member's
+//     declaration set, whichever member a property lookup would have preferred;
+//     the subset whose source files the entry's impl PACKAGE owns is what the
+//     body serves, since a publisher declares nothing onto a receiver that is
+//     not sugar.
 //
-//   - Surface matching (carriesSurface): a call whose callee name is the marker's
-//     member belongs to the entry when its RECEIVER carries the marker's named
-//     type. A same-named member on an unrelated receiver fails that test, which is
-//     what keeps matching from degrading to a string compare.
+//   - Selection is the checker's resolution, full stop: the signature the
+//     checker resolved a call to — the one the author's editor displayed — is
+//     the selection, and the engine inlines the body assigned to exactly that
+//     declaration (assignBodies). The engine performs no overload resolution of
+//     its own, and a publisher-owned face with no body is a resolution-time
+//     hard error rather than a nearest-match substitution.
 package inlinetransform
 
 import (
@@ -109,33 +105,6 @@ func surfaceTypes(checker *shimchecker.Checker, typeSym *shimast.Symbol) []*shim
 	}
 	visit(checker.GetDeclaredTypeOfSymbol(typeSym))
 	return out
-}
-
-// carriesSurface reports whether t is the type sym names, or extends it
-// transitively — the receiver-side half of marker anchoring. sym must already be
-// the merged symbol.
-func carriesSurface(checker *shimchecker.Checker, t *shimchecker.Type, sym *shimast.Symbol) bool {
-	if t == nil || sym == nil {
-		return false
-	}
-	seen := map[*shimchecker.Type]bool{}
-	var visit func(cur *shimchecker.Type) bool
-	visit = func(cur *shimchecker.Type) bool {
-		if cur == nil || seen[cur] {
-			return false
-		}
-		seen[cur] = true
-		if s := cur.Symbol(); s != nil && checker.GetMergedSymbol(s) == sym {
-			return true
-		}
-		for _, base := range baseTypesOf(checker, cur) {
-			if visit(base) {
-				return true
-			}
-		}
-		return false
-	}
-	return visit(t)
 }
 
 // baseTypesOf returns t's `extends` bases. A generic base arrives INSTANTIATED,

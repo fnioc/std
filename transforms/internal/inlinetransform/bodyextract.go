@@ -124,10 +124,42 @@ type ResolvedBody struct {
 // absolute path for the life of one build.
 type bodyExtractor struct {
 	cache map[string]*shimast.SourceFile
+	// ownerByDir caches each directory's nearest-enclosing package name, for the
+	// declaration-ownership test.
+	ownerByDir map[string]string
 }
 
 func newBodyExtractor() *bodyExtractor {
-	return &bodyExtractor{cache: map[string]*shimast.SourceFile{}}
+	return &bodyExtractor{cache: map[string]*shimast.SourceFile{}, ownerByDir: map[string]string{}}
+}
+
+// declarationPackage returns the name of the package that owns d's source file —
+// the nearest enclosing package.json's "name" — or "". The walk is package-level
+// rather than file-level so it answers identically for a package's src and for
+// the rolled dist a consumer resolves through.
+func (b *bodyExtractor) declarationPackage(d *shimast.Node) string {
+	file := nodeFile(d)
+	if file == "" {
+		return ""
+	}
+	dir := filepath.Dir(file)
+	if cached, ok := b.ownerByDir[dir]; ok {
+		return cached
+	}
+	name := ""
+	for probe := dir; ; {
+		if fileExists(filepath.Join(probe, "package.json")) {
+			name = packageName(probe)
+			break
+		}
+		parent := filepath.Dir(probe)
+		if parent == probe {
+			break
+		}
+		probe = parent
+	}
+	b.ownerByDir[dir] = name
+	return name
 }
 
 // parseFile side-parses path once, caching the result.
@@ -186,13 +218,6 @@ func (b *bodyExtractor) Extract(packageDir string, e Entry) (*ResolvedBody, erro
 
 	typeParams := typeParamNames(memberNode)
 	params, disc := valueParamsAndDiscriminator(memberNode, typeParams)
-	if bodyHasRestParam(disc.Params) {
-		return nil, fmt.Errorf(
-			"INLINE_REST_BODY: %s impl %q member %q takes a rest parameter; the implementation is the "+
-				"declared face, so every parameter it takes must be named — declare one overload per "+
-				"shape and give the implementation named parameters covering them",
-			implFile, e.Impl, e.Member)
-	}
 	primImports := primitiveImports(implSF, packageName(packageDir))
 
 	rb := &ResolvedBody{
@@ -279,6 +304,9 @@ func (b *bodyExtractor) checkFreeIdentifiers(rb *ResolvedBody, e Entry, fileValu
 	for _, p := range rb.Params {
 		allowed[strings.TrimPrefix(p, "...")] = true
 	}
+	// The blind whole-argument-set stand-in: legal in any body, spliced at the
+	// call site rather than referenced at runtime.
+	allowed["arguments"] = true
 	for _, tp := range rb.TypeParams {
 		allowed[tp] = true
 	}
@@ -467,7 +495,7 @@ func requiredParamCount(node *shimast.Node) int {
 		if name != nil && name.Kind == shimast.KindIdentifier && name.Text() == "this" {
 			continue
 		}
-		if decl.QuestionToken != nil || decl.Initializer != nil {
+		if decl.QuestionToken != nil || decl.Initializer != nil || decl.DotDotDotToken != nil {
 			break
 		}
 		required++
@@ -475,16 +503,12 @@ func requiredParamCount(node *shimast.Node) int {
 	return required
 }
 
-// Matches reports whether a body's discriminator can serve the declaration's.
-//
-// The implementation IS the declared face — one node carries both — so serving
-// is exact: same type-parameter count, same value parameters by name and order.
-// Nothing is relaxed. A body that named its parameters only as a rest could
-// serve any declaration of equal type-parameter count, including one it has
-// nothing to do with, and no property of the call, the declaration or the body
-// distinguishes a coincidental collision from the genuine target; the authoring
-// invariant removes the ambiguity at the source instead, and Extract refuses a
-// rest-shaped body outright.
+// Matches reports whether a body's discriminator names the declaration's own
+// signature exactly: same type-parameter count, same value parameters by name
+// and order. It is the per-overload pairing within one publisher's owned faces
+// — a body with its own declared signature serves the one face spelling it,
+// while a rest-shaped body serves as the blanket for every face no
+// exact-signature body claims (assignBodies).
 func (d Discriminator) Matches(decl Discriminator) bool {
 	return d.Equal(decl)
 }

@@ -147,31 +147,13 @@ const CHAIN_ROOT = join(homedir(), '.cache', 'fnioc-ttsc', 'sandboxes', basename
 const chainInlineDir = join(CHAIN_ROOT, 'inline');
 const inferredDir = join(CHAIN_ROOT, 'inferred');
 
-// The type-driven authoring overloads, hand-declared as a di.core module
-// augmentation so the program carries the sugar surface without pulling
-// di.extras's rolled declare-module types. The signatures are the faces di.extras
-// publishes, so the declarations the stages anchor on are the ones a consumer call
-// actually resolves to. The consumer-merge suite covers the other assembly — the
-// member-map `extends` shape a real dependency graph produces.
+// The type-driven authoring overloads come from the real di.extras
+// declare-module merge (the type-only import), so the declarations the stages
+// anchor on are the publisher's own — the ones whose ownership claims the
+// bodies. The consumer-merge suite covers the other assembly — the member-map
+// `extends` shape a real dependency graph produces.
 const AUTHORING_SOURCE = `
-import type { Manifest } from '@rhombus-std/di.core';
-
-interface Ctor<in Args extends readonly any[] = any[], out Instance = any> {
-  new(...args: Args): Instance;
-}
-type Func<in Args extends readonly any[] = any[], out R = any> = (...args: Args) => R;
-
-declare module '@rhombus-std/di.core' {
-  interface Manifest<Scopes extends string> {
-    add<ServiceType>(implementer: Ctor<any[], ServiceType>, scope?: Scopes): Manifest<Scopes>;
-    add<ServiceType>(implementer: Func<any[], ServiceType>, scope?: Scopes): Manifest<Scopes>;
-    addValue<ServiceType>(value: ServiceType): Manifest<Scopes>;
-    tryAdd<ServiceType>(implementer: Ctor<any[], ServiceType>, scope?: Scopes): Manifest<Scopes>;
-    tryAddValue<ServiceType>(value: ServiceType): Manifest<Scopes>;
-    replace<ServiceType>(implementer: Ctor<any[], ServiceType>, scope?: Scopes): Manifest<Scopes>;
-    replaceValue<ServiceType>(value: ServiceType): Manifest<Scopes>;
-  }
-}
+import type {} from '@rhombus-std/di.extras';
 
 export {};
 `;
@@ -243,23 +225,10 @@ const RESOLVE_SOURCE = `
 import type { Keyed } from '@rhombus-std/di.core';
 import type { IServiceProvider } from '@rhombus-std/primitives';
 
-// The tokenless get* overloads di.extras declaration-merges onto IServiceProvider,
-// hand-declared here so the sandbox program carries them without wiring that
-// package's types. The matcher anchors on the sugar overload at its declaration
-// site, so a program holding only the Type-taking base member has nothing to match
-// and the emit sweep reports every call it could not lower.
-declare module '@rhombus-std/primitives' {
-  interface IServiceProvider {
-    getService<T>(): T | undefined;
-    getRequiredService<T>(): T;
-    getServices<T>(): Iterable<T>;
-    // The value-driven faces. Spelled structurally because the sandbox links no
-    // Ctor/Func package; only the parameter name and the type-parameter count
-    // reach the body matcher.
-    getService<T extends abstract new(...args: any[]) => any>(value: T): InstanceType<T>;
-    getService<T extends { (...args: any[]): any; }>(value: T): ReturnType<T>;
-  }
-}
+// The tokenless get* overloads come from the real di.extras declare-module
+// merge (the type-only import below); the value-driven faces are primitives'
+// own runtime overloads and arrive with the interface itself.
+import type {} from '@rhombus-std/di.extras';
 
 interface IThing {}
 interface ICache {}
@@ -694,30 +663,15 @@ const OPTIONS = join(REPO_ROOT, 'libraries', 'options');
 
 const OPTIONS_DIR = join(homedir(), '.cache', 'fnioc-ttsc', 'sandboxes', basename(REPO_ROOT), 'options');
 
-// The addOptions<T>() sugar overload + the explicit two-token verb, hand-declared
-// as a di.core module augmentation (like the chain's AUTHORING_SOURCE), so the
-// program carries the sugar surface without pulling di.extras.options's rolled
-// declare-module types. The generic signatures mirror di.extras.options's
-// src/augment.ts + options.augmentations so the declaration the inline resolver
-// anchors on is the real face.
+// The addOptions<T>() sugar face and the explicit verb come from the real
+// di.extras.options declare-module merge; the di.extras sugar names ride the
+// same route, so every published body resolves against the publisher's own
+// declarations.
 const OPTIONS_AUTHORING = `
 import type { Manifest, Type } from '@rhombus-std/di.core';
-
-declare module '@rhombus-std/di.core' {
-  interface Manifest<Scopes extends string> {
-    addOptions<T>(): Manifest<Scopes>;
-    addOptions(optionsType: Type): Manifest<Scopes>;
-    // The di.extras sugar names, declared so every published inline entry
-    // resolves in this program (an entry naming a member the program lacks is
-    // a load-time failure by design).
-    add<ServiceType>(implementer: unknown, scope?: Scopes): Manifest<Scopes>;
-    addValue<ServiceType>(value: ServiceType): Manifest<Scopes>;
-    tryAdd<ServiceType>(implementer: unknown, scope?: Scopes): Manifest<Scopes>;
-    tryAddValue<ServiceType>(value: ServiceType): Manifest<Scopes>;
-    replace<ServiceType>(implementer: unknown, scope?: Scopes): Manifest<Scopes>;
-    replaceValue<ServiceType>(value: ServiceType): Manifest<Scopes>;
-  }
-}
+import type {} from '@rhombus-std/di.extras';
+import type {} from '@rhombus-std/di.extras.options';
+export type __Keep = [Manifest<string>, Type];
 export {};
 `;
 

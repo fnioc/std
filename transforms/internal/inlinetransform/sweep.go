@@ -113,10 +113,12 @@ func Sweep(sf *shimast.SourceFile, artifacts *Artifacts) []plugin.Diagnostic {
 // the sweep only catches an unlowered call that still spells its type argument.)
 //
 // Value-arity is a span rather than a count, because a call may stop short of
-// the implementation's optional tail.
+// the implementation's optional tail; a rest-bodied shape has no upper bound.
 func sugarShapeMatches(shape MemberShape, typeArgs, valueArgs int) bool {
-	return typeArgs == shape.TypeArgCount &&
-		valueArgs >= shape.MinValueArgCount && valueArgs <= shape.MaxValueArgCount
+	if typeArgs != shape.TypeArgCount || valueArgs < shape.MinValueArgCount {
+		return false
+	}
+	return shape.Unbounded || valueArgs <= shape.MaxValueArgCount
 }
 
 // anySugarShapeMatches reports whether a call's arity fits any of a member's

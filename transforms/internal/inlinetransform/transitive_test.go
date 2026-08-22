@@ -36,15 +36,13 @@ func buildTransitiveWorkspace(t *testing.T, mainSrc string) (*driver.Program, st
 	writeT(t, filepath.Join(core, "package.json"), `{
   "name": "@scope/core",
   "version": "1.0.0",
-  "exports": { ".": { "types": "./src/index.ts", "default": "./src/index.ts" } },
-  "rhombus-std": { "inline": { "entries": [ { "type": "@scope/core:IQuery", "impl": "@scope/core:QueryInline", "member": "isService" } ] } }
+  "exports": { ".": { "types": "./src/index.ts", "default": "./src/index.ts" } }
 }`)
 	writeT(t, filepath.Join(core, "src", "index.ts"), `export interface IQuery {
   isService(token: string): boolean;
 }
 export declare const provider: IQuery;
 `)
-	writeT(t, filepath.Join(core, "src", "inline.ts"), pilotInlineBody)
 
 	// The middle di package re-exports the core (the real di bundle shape). The
 	// core is deliberately NOT linked under di, so this re-export does not resolve
@@ -76,6 +74,9 @@ declare module '@scope/core' {
   }
 }
 `)
+	writeT(t, filepath.Join(sugar, "src", "index.ts"), `export {};
+`)
+	writeT(t, filepath.Join(sugar, "src", "inline.ts"), pilotInlineBody)
 	linkPackage(t, sugar, "@scope/core", core)
 
 	app := filepath.Join(root, "packages", "app")
@@ -122,10 +123,10 @@ func writeT(t *testing.T, path, content string) {
 }
 
 func transitiveEntry(app string) OwnedEntry {
-	core := filepath.Join(filepath.Dir(app), "core")
+	sugar := filepath.Join(filepath.Dir(app), "sugar")
 	return OwnedEntry{
-		Entry:      Entry{Type: "@scope/core:IQuery", Impl: "@scope/core:QueryInline", Member: "isService"},
-		PackageDir: core,
+		Entry:      Entry{Type: "@scope/core:IQuery", Impl: "@scope/sugar:QueryInline", Member: "isService"},
+		PackageDir: sugar,
 	}
 }
 

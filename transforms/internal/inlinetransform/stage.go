@@ -8,6 +8,7 @@ package inlinetransform
 import (
 	"fmt"
 	"sort"
+	"strings"
 
 	shimast "github.com/microsoft/typescript-go/shim/ast"
 	shimchecker "github.com/microsoft/typescript-go/shim/checker"
@@ -62,16 +63,10 @@ func Build(prog *driver.Program, owned []OwnedEntry, artifacts *Artifacts, emit 
 			continue
 		}
 		resolvedList = append(resolvedList, resolved)
-		for decl, body := range resolved.DeclMap {
-			// Serving is exact, so two bodies reaching one declaration name its
-			// parameters identically: the first claim stands and the owned-entry order
-			// decides, never map iteration.
-			if _, taken := inlineByDecl[decl]; taken {
-				continue
-			}
-			inlineByDecl[decl] = &matchTarget{resolved: resolved, body: body}
-		}
 		if resolved.Kind == KindFloater {
+			for decl, body := range resolved.DeclMap {
+				inlineByDecl[decl] = &matchTarget{resolved: resolved, body: body}
+			}
 			artifacts.FunctionSugars = append(artifacts.FunctionSugars, resolved)
 		} else {
 			artifacts.SugarMembers[resolved.Member] = append(artifacts.SugarMembers[resolved.Member], resolved.Shape())
@@ -81,6 +76,9 @@ func Build(prog *driver.Program, owned []OwnedEntry, artifacts *Artifacts, emit 
 		if len(artifacts.SugarMembers[member]) == 0 {
 			artifacts.SugarMembers[member] = []MemberShape{shape}
 		}
+	}
+	if !assignBodies(inlineByDecl, resolvedList, checker, ex, emit) {
+		return noop
 	}
 
 	if len(inlineByDecl) == 0 {
@@ -111,6 +109,146 @@ func Build(prog *driver.Program, owned []OwnedEntry, artifacts *Artifacts, emit 
 		}
 		return st.run(sf)
 	}
+}
+
+// assignBodies pairs every publisher-owned face with the body serving it and
+// writes the pairs into inlineByDecl. A body with its own declared signature
+// serves the face spelling it exactly; a rest-shaped body blankets every owned
+// face no exact body claims. The pairing is complete in both directions, and a
+// gap is a hard error rather than a silent skip: a face with no body would
+// typecheck and then die at runtime, and a body no face declares is
+// unreachable. Two bodies claiming one face — one package publishing two
+// same-named bodies for one receiver — is a hard error too.
+func assignBodies(inlineByDecl map[*shimast.Node]*matchTarget, resolvedList []*Resolved, checker *shimchecker.Checker, ex *bodyExtractor, emit func(plugin.Diagnostic)) bool {
+	type claim struct {
+		exact []*Resolved
+		rest  []*Resolved
+	}
+	claims := map[*shimast.Node]*claim{}
+	var declOrder []*shimast.Node
+	for _, r := range resolvedList {
+		if r.Kind == KindFloater {
+			continue
+		}
+		for _, d := range r.OwnedDecls {
+			c := claims[d]
+			if c == nil {
+				c = &claim{}
+				claims[d] = c
+				declOrder = append(declOrder, d)
+			}
+			if r.Body.Discriminator.Matches(declarationDiscriminator(d)) {
+				c.exact = append(c.exact, r)
+			} else if r.RestBody {
+				c.rest = append(c.rest, r)
+			}
+		}
+	}
+
+	ok := true
+	claimed := map[*Resolved]bool{}
+	for _, d := range declOrder {
+		c := claims[d]
+		var chosen *Resolved
+		switch {
+		case len(c.exact) == 1:
+			chosen = c.exact[0]
+		case len(c.exact) > 1:
+			emit(plugin.Diagnostic{Code: "INLINE_BODY_COLLISION", File: nodeFile(d), Start: d.Pos(),
+				Message: fmt.Sprintf("member %q at %s: %d bodies spell this face's own signature — one package publishes at most one body per face",
+					c.exact[0].Member, nodePosition(d), len(c.exact))})
+			ok = false
+			continue
+		case len(c.rest) == 1:
+			chosen = c.rest[0]
+		case len(c.rest) > 1:
+			emit(plugin.Diagnostic{Code: "INLINE_BODY_COLLISION", File: nodeFile(d), Start: d.Pos(),
+				Message: fmt.Sprintf("member %q at %s: %d rest-shaped bodies blanket this face — one package publishes at most one blanket per member",
+					c.rest[0].Member, nodePosition(d), len(c.rest))})
+			ok = false
+			continue
+		default:
+			var member string
+			for _, r := range resolvedList {
+				if r.Kind != KindFloater && r.MemberSet[d] {
+					member = r.Member
+					break
+				}
+			}
+			emit(plugin.Diagnostic{Code: "INLINE_FACE_WITHOUT_BODY", File: nodeFile(d), Start: d.Pos(),
+				Message: fmt.Sprintf("member %q at %s: the publisher declares this face but registers no body for its signature — "+
+					"the call typechecks, nothing inlines it, and it dies at runtime", member, nodePosition(d))})
+			ok = false
+			continue
+		}
+		inlineByDecl[d] = &matchTarget{resolved: chosen, body: chosen.Body}
+		claimed[chosen] = true
+	}
+
+	for _, r := range resolvedList {
+		if r.Kind == KindFloater || claimed[r] {
+			continue
+		}
+		emit(plugin.Diagnostic{Code: "INLINE_BODY_WITHOUT_FACE",
+			Message: fmt.Sprintf("%s: body %q member %q claims no face the publisher declares — no consumer can name it",
+				r.Body.File, r.Owned.Entry.Impl, r.Member)})
+		ok = false
+	}
+
+	if !uncoveredFacesDiagnosed(resolvedList, checker, ex, emit) {
+		ok = false
+	}
+	return ok
+}
+
+// uncoveredFacesDiagnosed sweeps each active publisher's whole receiver surface
+// for a member the publisher declares but registers NO body for at all — the
+// gap the per-entry pairing cannot see, since a member with no body has no
+// entry. Returns false when it diagnosed anything.
+func uncoveredFacesDiagnosed(resolvedList []*Resolved, checker *shimchecker.Checker, ex *bodyExtractor, emit func(plugin.Diagnostic)) bool {
+	type group struct {
+		typeSym *shimast.Symbol
+		implPkg string
+		members map[string]bool
+	}
+	groups := map[string]*group{}
+	var order []string
+	for _, r := range resolvedList {
+		if r.Kind == KindFloater || len(r.OwnedDecls) == 0 {
+			continue
+		}
+		key := r.Owned.Entry.Type + "\x00" + r.ImplPackage
+		g := groups[key]
+		if g == nil {
+			g = &group{typeSym: r.TypeSymbol, implPkg: r.ImplPackage, members: map[string]bool{}}
+			groups[key] = g
+			order = append(order, key)
+		}
+		g.members[r.Member] = true
+	}
+
+	ok := true
+	for _, key := range order {
+		g := groups[key]
+		for _, surface := range surfaceTypes(checker, g.typeSym) {
+			for _, prop := range checker.GetPropertiesOfType(surface) {
+				if g.members[prop.Name] {
+					continue
+				}
+				for _, d := range prop.Declarations {
+					if ex.declarationPackage(d) != g.implPkg {
+						continue
+					}
+					emit(plugin.Diagnostic{Code: "INLINE_FACE_WITHOUT_BODY", File: nodeFile(d), Start: d.Pos(),
+						Message: fmt.Sprintf("member %q at %s: the publisher declares this face but registers no body under the name at all — "+
+							"the call typechecks, nothing inlines it, and it dies at runtime", prop.Name, nodePosition(d))})
+					ok = false
+					break
+				}
+			}
+		}
+	}
+	return ok
 }
 
 // fileState carries the per-file inline pass state.
@@ -281,16 +419,14 @@ func (st *fileState) tryInline(node *shimast.Node) (*shimast.Node, bool) {
 		return nil, false
 	}
 
-	// The binding is consulted FIRST because it names which overload of a member
-	// the author reached, which the marker alone cannot say. When it lands outside
-	// every marker's mapped set the marker decides instead — the shape a
-	// same-named member on a second `extends` clause produces, and the shape a
-	// call that binds to nothing at all produces.
+	// The checker's resolution IS the selection: the overload it resolved the
+	// call to — the one the author's editor displayed — names the body, and the
+	// engine performs no overload resolution of its own. A resolved face outside
+	// the assigned set is a stranger's (or a rogue duplicate); resolution-time
+	// assignment already guaranteed every publisher-owned face a body, so nothing
+	// here falls back to shape matching.
 	decl := resolvedDeclaration(st.checker, anchored)
 	target := st.inlineByDecl[decl]
-	if target == nil {
-		target = st.markerAnchored(anchored, calleeName)
-	}
 	if target == nil {
 		// Neither the binding nor the marker claimed the call. If the bound
 		// declaration is provably the same logical member on a duplicate copy,
@@ -311,50 +447,6 @@ func (st *fileState) tryInline(node *shimast.Node) (*shimast.Node, bool) {
 		return nil, false
 	}
 	return replacement, true
-}
-
-// markerAnchored matches a call against the entry the MARKER names. The callee
-// name has already matched some entry's member; this adds the two tests that make
-// the claim safe — the call's shape is one the entry's sugar body accepts, and the
-// RECEIVER carries the type the marker named. A same-named member on an unrelated
-// receiver fails the second; a token-taking sibling on the SAME receiver fails the
-// first. That pair is what keeps anchoring by marker from degrading into matching
-// by name.
-//
-// anchored is the pass-0 call, so the shape tested is the one the author wrote —
-// which is the shape the marker's sugar body describes.
-//
-// A floater is never claimed here: it has no receiver, and same-named function
-// declarations merge into an overload set rather than hiding one, so a floater's
-// binding cannot be taken from it in the first place.
-func (st *fileState) markerAnchored(anchored *shimast.Node, calleeName string) *matchTarget {
-	callee := anchored.AsCallExpression().Expression
-	if callee.Kind != shimast.KindPropertyAccessExpression {
-		return nil
-	}
-	typeArgs, valueArgs := callArity(anchored.AsCallExpression())
-	var receiverType *shimchecker.Type
-	typed := false
-	for _, r := range st.resolvedList {
-		if r.Kind == KindFloater || r.Member != calleeName {
-			continue
-		}
-		shape := r.Shape()
-		if !sugarShapeMatches(shape, typeArgs, valueArgs) {
-			continue
-		}
-		// Typing the receiver costs a checker query, so it waits until a candidate
-		// has cleared the two free tests.
-		if !typed {
-			receiverType = st.checker.GetTypeAtLocation(callee.AsPropertyAccessExpression().Expression)
-			typed = true
-		}
-		if !carriesSurface(st.checker, receiverType, r.TypeSymbol) {
-			continue
-		}
-		return &matchTarget{resolved: r, body: r.Body}
-	}
-	return nil
 }
 
 // inlineCall performs the substitution for a matched call. node is the CURRENT
@@ -403,12 +495,24 @@ func (st *fileState) inlineCall(node, anchored *shimast.Node, target *matchTarge
 		}
 	}
 
-	// Parameters bind positionally. The implementation's parameters ARE the
-	// declared face's, so a call that stops short has simply omitted the optional
-	// tail; those names are handed over as unbound and their argument-position
-	// references drop out of the emitted call.
+	// Parameters bind positionally: the leading named parameters take the
+	// call's arguments one for one, a trailing rest holds whatever follows as a
+	// group, and `arguments` always names the whole set. A call that stops short
+	// of the named list has omitted the optional tail; those names are handed
+	// over as unbound and their argument-position references drop out of the
+	// emitted call.
 	names := body.Params
 	args := callArguments(call)
+	groups := map[string][]*shimast.Node{"arguments": args}
+	if bodyHasRestParam(names) {
+		restName := strings.TrimPrefix(names[len(names)-1], "...")
+		names = names[:len(names)-1]
+		if len(args) > len(names) {
+			groups[restName] = args[len(names):]
+		} else {
+			groups[restName] = nil
+		}
+	}
 	var unboundNames []string
 	if len(args) < len(names) {
 		unboundNames = names[len(args):]
@@ -420,6 +524,7 @@ func (st *fileState) inlineCall(node, anchored *shimast.Node, target *matchTarge
 		Args:     args,
 		Unbound:  unboundNames,
 		Bindings: st.importedValueBindings(body),
+		Groups:   groups,
 	}
 	// The arguments SPLICED into the body come from the CURRENT tree (above), so
 	// they carry whatever earlier passes lowered. The arguments the checker is

@@ -11,12 +11,12 @@ import (
 )
 
 // pilotMemberEntry is the standard IQuery/QueryInline/isService member entry a
-// buildWorkspace workspace declares, owned by its core package.
+// buildWorkspace workspace declares, owned by its sugar package.
 func pilotMemberEntry(app string) OwnedEntry {
-	core := filepath.Join(filepath.Dir(app), "core")
+	sugar := filepath.Join(filepath.Dir(app), "sugar")
 	return OwnedEntry{
-		Entry:      Entry{Type: "@scope/core:IQuery", Impl: "@scope/core:QueryInline", Member: "isService"},
-		PackageDir: core,
+		Entry:      Entry{Type: "@scope/core:IQuery", Impl: "@scope/sugar:QueryInline", Member: "isService"},
+		PackageDir: sugar,
 	}
 }
 
@@ -27,7 +27,7 @@ export declare const provider: IQuery;
 `
 
 const pilotInlineBody = `import { tokenfor } from '@rhombus-std/primitives.extras';
-import type { IQuery } from './index';
+import type { IQuery } from '@scope/core';
 export const QueryInline = {
   isService<T>(this: IQuery): boolean {
     return this.isService(tokenfor<T>());
@@ -145,7 +145,7 @@ func TestResolveUnresolvedTypeAndMember(t *testing.T) {
 	// The impl carries BOTH isService and a `missing` member, so Extract of the
 	// `missing` member succeeds and resolution reaches the interface-member check.
 	inlineBody := `import { tokenfor } from '@rhombus-std/primitives.extras';
-import type { IQuery } from './index';
+import type { IQuery } from '@scope/core';
 export const QueryInline = {
   isService<T>(this: IQuery): boolean {
     return this.isService(tokenfor<T>());
@@ -163,10 +163,10 @@ export const known = provider.isService<Foo>();
 	prog, app := buildWorkspace(t, pilotCoreIndex, inlineBody, pilotSugarDTS, mainSrc)
 	defer func() { _ = prog.Close() }()
 
-	core := filepath.Join(filepath.Dir(app), "core")
+	sugar := filepath.Join(filepath.Dir(app), "sugar")
 
 	t.Run("unresolved type", func(t *testing.T) {
-		e := OwnedEntry{Entry: Entry{Type: "@scope/core:Missing", Impl: "@scope/core:QueryInline", Member: "isService"}, PackageDir: core}
+		e := OwnedEntry{Entry: Entry{Type: "@scope/core:Missing", Impl: "@scope/sugar:QueryInline", Member: "isService"}, PackageDir: sugar}
 		_, _, err := Resolve(prog, prog.Checker, newBodyExtractor(), e)
 		if err == nil || !strings.Contains(err.Error(), "INLINE_UNRESOLVED_TYPE") {
 			t.Fatalf("want INLINE_UNRESOLVED_TYPE, got %v", err)
@@ -174,7 +174,7 @@ export const known = provider.isService<Foo>();
 	})
 
 	t.Run("unresolved member", func(t *testing.T) {
-		e := OwnedEntry{Entry: Entry{Type: "@scope/core:IQuery", Impl: "@scope/core:QueryInline", Member: "missing"}, PackageDir: core}
+		e := OwnedEntry{Entry: Entry{Type: "@scope/core:IQuery", Impl: "@scope/sugar:QueryInline", Member: "missing"}, PackageDir: sugar}
 		_, _, err := Resolve(prog, prog.Checker, newBodyExtractor(), e)
 		if err == nil || !strings.Contains(err.Error(), "INLINE_UNRESOLVED_MEMBER") {
 			t.Fatalf("want INLINE_UNRESOLVED_MEMBER, got %v", err)

@@ -89,31 +89,15 @@ function goEnv(): NodeJS.ProcessEnv {
   return env;
 }
 
-// The type-driven sugar overloads are hand-declared here so the program carries
-// them without wiring the transformer's own types — the merge target is the real di.core
-// Manifest, and the parameter NAMES (implementer / value) match the inline
-// bodies' so the structural overload discriminator resolves each call to the
-// sugar overload. A class with a real constructor dependency (IDep) and a factory
-// with a real parameter dependency give a NON-TRIVIAL signature array, so parity
-// pins the actual implementer-type derivation, not just an empty `[[]]`.
+// The type-driven sugar overloads come from the real di.extras declare-module
+// merge (the type-only import below), so the declarations the calls resolve to
+// are the publisher's own — the ones whose ownership claims the bodies. A class
+// with a real constructor dependency (IDep) and a factory with a real parameter
+// dependency give a NON-TRIVIAL signature array, so parity pins the actual
+// implementer-type derivation, not just an empty `[[]]`.
 const APP_SOURCE = `
 import type { Manifest } from "@rhombus-std/di.core";
-
-// Minimal local constructor / factory shapes, so the source is self-contained
-// (no @rhombus-toolkit/func resolution needed). The overload discriminator
-// reads parameter NAMES, not types, so these stand in for the real ones.
-type Ctor<A extends any[] = any[], R = unknown> = new (...args: A) => R;
-type Func<A extends any[] = any[], R = unknown> = (...args: A) => R;
-
-declare module "@rhombus-std/di.core" {
-  interface Manifest<Scopes extends string> {
-    add<ServiceType>(implementer: Ctor<any[], ServiceType>, scope?: string): Manifest<Scopes>;
-    add<ServiceType>(implementer: Func<any[], ServiceType>, scope?: string): Manifest<Scopes>;
-    addValue<ServiceType>(value: ServiceType): Manifest<Scopes>;
-    tryAddValue<ServiceType>(value: ServiceType): Manifest<Scopes>;
-    replaceValue<ServiceType>(value: ServiceType): Manifest<Scopes>;
-  }
-}
+import type {} from "@rhombus-std/di.extras";
 
 interface IDep {}
 interface IFoo {}

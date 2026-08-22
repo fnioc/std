@@ -31,14 +31,15 @@ type PrimitiveUse struct {
 }
 
 // MemberShape is a certified member-sugar call shape the sweep matches a
-// surviving call against. The implementation's parameters ARE the declared
-// face's, so a call carries the type arguments exactly and a value-argument
+// surviving call against: the type arguments exactly, and a value-argument
 // count anywhere from the required parameters up to the whole list — the span
-// between the two is the optional tail a call may stop short of.
+// between the two is the optional tail a call may stop short of. Unbounded
+// marks a rest-bodied shape, whose accepted argument count has no upper bound.
 type MemberShape struct {
 	TypeArgCount     int
 	MinValueArgCount int
 	MaxValueArgCount int
+	Unbounded        bool
 }
 
 // Artifacts is the per-run state the inline stage hands to downstream stages and

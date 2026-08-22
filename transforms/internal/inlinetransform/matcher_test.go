@@ -266,47 +266,7 @@ func TestMarkerReachesAMemberMapDeclaration(t *testing.T) {
 	if generic != 1 {
 		t.Fatalf("marker names %d generic declarations of reach, want 1 — the member map was not walked", generic)
 	}
-
-	// And the receiver of a call to it carries the marker's surface, which is what
-	// lets the call match despite binding to the shadowing sibling.
-	receiver := receiverOf(callContaining(t, main, "reach<Foo>"))
-	if !carriesSurface(checker, checker.GetTypeAtLocation(receiver), checker.GetMergedSymbol(typeSym)) {
-		t.Fatal("the receiver of manifest.reach<Foo>() does not carry IServiceManifest")
-	}
-}
-
-// TestStrangerReceiverDoesNotCarryTheSurface is the tripwire that keeps anchoring
-// by marker from degrading into matching by name: a same-NAMED member on an
-// unrelated interface has a receiver carrying no part of the marker's surface.
-func TestStrangerReceiverDoesNotCarryTheSurface(t *testing.T) {
-	prog, checker, _ := loadFixture(t)
-	defer func() { _ = prog.Close() }()
-
-	typeSym := checker.GetMergedSymbol(markerType(t, prog, checker))
-
-	root := t.TempDir()
-	write(t, filepath.Join(root, "tsconfig.json"), `{
-  "compilerOptions": { "target": "ES2022", "module": "esnext", "moduleResolution": "bundler", "strict": true, "noEmit": true },
-  "files": ["rogue.ts"]
-}
-`)
-	write(t, filepath.Join(root, "rogue.ts"), `interface Other { isService<T>(): boolean; }
-declare const other: Other;
-other.isService<number>();
-`)
-	rogueProg, diags, err := driver.LoadProgram(root, "tsconfig.json", driver.LoadProgramOptions{})
-	if err != nil || len(diags) != 0 {
-		t.Fatalf("rogue program load failed: err=%v diags=%v", err, diags)
-	}
-	defer func() { _ = rogueProg.Close() }()
-
-	rogueMain := sourceFileWithSuffix(t, rogueProg, "rogue.ts")
-	receiver := receiverOf(callContaining(t, rogueMain, "isService<number>"))
-	// Tested against the FIXTURE's marker symbol but through the rogue program's
-	// checker: an unrelated same-named member sits on a different surface.
-	if carriesSurface(rogueProg.Checker, rogueProg.Checker.GetTypeAtLocation(receiver), typeSym) {
-		t.Fatal("a same-named member on an unrelated interface carried the marker's surface")
-	}
+	_ = main
 }
 
 // ── fixture / AST helpers ────────────────────────────────────────────────────

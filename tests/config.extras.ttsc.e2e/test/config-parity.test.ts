@@ -83,6 +83,7 @@ const TTSC = join(PKG_ROOT, 'node_modules', 'ttsc', 'lib', 'launcher', 'ttsc.js'
 const TS7 = join(PKG_ROOT, 'node_modules', 'typescript');
 const UNPLUGIN = join(PKG_ROOT, 'node_modules', '@ttsc', 'unplugin');
 const CONFIG_TR = join(REPO_ROOT, 'libraries', 'config.extras');
+const CONFIG = join(REPO_ROOT, 'libraries', 'config');
 
 // The working tree is per-worktree and OUTSIDE the repo tree (an enclosing
 // package.json re-roots token derivation; a fixed global home path collided across
@@ -133,30 +134,18 @@ function goEnv(): NodeJS.ProcessEnv {
   return env;
 }
 
-const APP_HEADER = `import { ConfigBuilder } from "@rhombus-std/config";\n`;
+// The type-only config.extras import is what puts the publisher's own
+// `withType` declaration in the program — the face its ownership claims for
+// the discovered body.
+const APP_HEADER = `import { ConfigBuilder } from "@rhombus-std/config";
+import type {} from "@rhombus-std/config.extras";\n`;
 
-// A REAL resolvable @rhombus-std/config package (a .d.ts module + a stub .js), so
-// the consumer import resolves AND the inline stage's witness resolves the module.
-// `withType<U>()` merges onto the class via a TOP-LEVEL interface, which the
-// config.extras inline body resolves off the merged ConfigBuilder symbol.
-const REAL_CONFIG_DTS = `export class ConfigBuilder<T = unknown> {
-  add(source: unknown): this;
-  withSchema<U>(schema: unknown): ConfigBuilder<U>;
-}
-export interface ConfigBuilder<T = unknown> {
-  withType<U>(): ConfigBuilder<U>;
-}
-`;
-const REAL_CONFIG_JS = `export class ConfigBuilder {}
-`;
-const REAL_CONFIG_PKG = JSON.stringify({ name: '@rhombus-std/config', version: '0.0.0', type: 'module', types: './index.d.ts', main: './index.js',
-  exports: { '.': { types: './index.d.ts', import: './index.js', default: './index.js' } } });
 const INLINE_CONSUMER_PKG = JSON.stringify({ name: 'config-inline-consumer', version: '0.0.0', type: 'module', dependencies: { '@rhombus-std/config': '*', '@rhombus-std/config.extras': '*' } });
 
-/** Wire the inline-path consumer: shared toolchain + a real @rhombus-std/config. */
+/** Wire the inline-path consumer: shared toolchain + the real @rhombus-std/config. */
 function setupInlineProject(dir: string): void {
   const nm = join(dir, 'node_modules');
-  mkdirSync(join(nm, '@rhombus-std', 'config'), { recursive: true });
+  mkdirSync(join(nm, '@rhombus-std'), { recursive: true });
   mkdirSync(join(nm, '@ttsc'), { recursive: true });
   // Clear src on reuse so a stale fixture from an earlier run (the `include`
   // glob would still compile it) never lingers.
@@ -168,12 +157,10 @@ function setupInlineProject(dir: string): void {
   link(join(PKG_ROOT, 'node_modules', 'ttsc'), join(nm, 'ttsc'));
   link(UNPLUGIN, join(nm, '@ttsc', 'unplugin'));
   link(CONFIG_TR, join(nm, '@rhombus-std', 'config.extras'));
-
-  // The real @rhombus-std/config package (written, not linked): a consumer import
-  // and the inline witness both resolve it.
-  writeFileSync(join(nm, '@rhombus-std', 'config', 'package.json'), REAL_CONFIG_PKG);
-  writeFileSync(join(nm, '@rhombus-std', 'config', 'index.d.ts'), REAL_CONFIG_DTS);
-  writeFileSync(join(nm, '@rhombus-std', 'config', 'index.js'), REAL_CONFIG_JS);
+  // The real @rhombus-std/config: a stale directory from the fabricated-package
+  // era would shadow the symlink, so clear it first.
+  rmSync(join(nm, '@rhombus-std', 'config'), { recursive: true, force: true });
+  link(CONFIG, join(nm, '@rhombus-std', 'config'));
   // A consumer package.json so CollectProject scans deps and activates inline +
   // schemaof (the ambient-only projects have no package.json -> empty scan).
   writeFileSync(join(dir, 'package.json'), INLINE_CONSUMER_PKG);
@@ -251,7 +238,7 @@ export const b = new ConfigBuilder().withType<Outer>();
   // inline stage's name-based INLINE_UNLOWERED_SUGAR sweep would flag on the emit
   // path, so they cannot ride an inline e2e fixture.)
   writeFileSync(join(isrc, 'chain.ts'), `${APP_HEADER}interface Server { Host: string; Port: number }
-declare const src: unknown;
+declare const src: never;
 export const b = new ConfigBuilder().add(src).withType<Server>();
 `);
   writeFileSync(join(isrc, 'shapes.ts'), `${APP_HEADER}interface T { Host: string }

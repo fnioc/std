@@ -365,10 +365,22 @@ build time, in this repo, in this build. There is no published/carrier form of a
 function, no shipped src, no dist-JS resolution path for it — external consumption of the sugar
 forms stays a deliberately parked follow-up.
 
-### The publish list — the `"rhombus-std"` marker's `"inline"` `"entries"` list
+### Discovery — the `registerInlineBodies` marker call, and the `"inline"` `"entries"` list
 
-A library declares its inlineable members in the `"entries"` list of a `"rhombus-std"` marker's
-`"inline"` object in `package.json`:
+The stage discovers what to substitute from two channels, merged with duplicates removed on
+(type, impl, member):
+
+- **The marker call**, for instance members. A `registerInlineBodies<Receiver>(TheSet)` statement
+  beside a body set carries everything an entry needs — the receiver as its type argument
+  (resolved through the file's imports, its own type arguments stripped), the owning package plus
+  the set identifier as the impl, and the set's own exported members as the member names — so the
+  set's entries are discovered from the source itself, one per member.
+- **The `"entries"` list**, for every shape — including the floater, which only it can express
+  (`impl` only, with the impl function's own source as the body; no marker call can spell a
+  receiverless entry). A package may publish by marker, by list, or by both.
+
+A library that publishes by list declares its inlineable members in the `"entries"` list of a
+`"rhombus-std"` marker's `"inline"` object in `package.json`:
 
 ```jsonc
 {
@@ -460,51 +472,75 @@ a hard load-time failure naming the offending file and the JSON path the schema 
 
 ### How matching works
 
-**The entry names the declaration; the checker never gets to pick a different one.** Each entry
-resolves once per program: the type reference resolves to a module symbol, then to the exported
-type, and then every type on that **surface** — the named one and each it transitively extends — is
-asked for its own member of the entry's name. The union is the entry's declaration set.
+**Declarations are claimed by ownership; calls are selected by the checker.** Each entry resolves
+once per program: the type reference resolves to a module symbol, then to the exported type, and
+then every type on that **surface** — the named one and each it transitively extends — is asked for
+its own member of the entry's name. The union is the member's declaration set, and the subset whose
+source files belong to the entry's **impl package** is what the body serves: a publisher declares
+nothing onto a receiver that is not sugar, so owning package plus member name identifies the sugar
+faces exactly. Ownership is package-level (the nearest enclosing `package.json` above the
+declaration's file), so it answers identically for a package's `src` and for the rolled dist a
+consumer resolves through. Argument-shape matching is deliberately NOT the criterion: one sugar
+face can accept the very argument the primitive takes, and only the checker's own overload
+resolution tells them apart.
 
-Walking the surface rather than asking it for its `member` property is what makes the anchor hold.
-A property lookup answers with one declaration set per name, and an interface that reaches two
-same-named members through two `extends` clauses keeps one and hides the other — which is exactly
-the shape a receiver takes when an abstractions package and its authoring package each contribute a
-member map. Ask for the property and the sugar declaration can be invisible; walk the surface and it
-is always found. An entry naming a member that exists nowhere on its surface is a **load-time
-failure**, never a skip.
+Walking the surface rather than asking it for its `member` property is what makes the lookup
+complete. A property lookup answers with one declaration set per name, and an interface that
+reaches two same-named members through two `extends` clauses keeps one and hides the other — which
+is exactly the shape a receiver takes when an abstractions package and its authoring package each
+contribute a member map. Ask for the property and a declaration can be invisible; walk the surface
+and it is always found. An entry naming a member that exists nowhere on its surface is a
+**load-time failure**, never a skip.
 
-A structural overload discriminator (type-parameter count, value-parameter count _and names_,
-`this` excluded) then separates the sugar overload from the runtime ones sharing its member name.
-**Parameter names on the body are load-bearing** — the discriminator checks them, so a sugar body's
-`ctor`/`factory`/`value` parameter names must match the declared overload's exactly, or the body
-discriminates against the wrong overload.
+**Bodies pair with faces per overload.** A body carrying its own declared signature serves the one
+owned face spelling it exactly (type-parameter count, value parameters by name and order, `this`
+excluded); a rest-shaped body blankets every owned face no exact-signature body claims.
+Registrations accumulate in any partition — one marker call may supply a single overload's body,
+several, or all of them, and further calls may add more; the unit is the (member, overload
+signature) pair regardless of which call carried it. The pairing must be complete in both
+directions, loudly: an owned face no body serves is a hard error (the call typechecks, nothing
+inlines it, and it dies at runtime), as is a body no owned face declares (unreachable — no consumer
+can name it), and two bodies claiming one face.
 
-A call site matches two ways. Its resolved signature's declaration being one the entry claims is the
-first and preferred one, because the binding is the only thing that says WHICH overload of a member
-the author reached. When the binding lands outside every entry's set — a hidden same-named sibling
-answered instead, or the call binds to nothing at all — the entry claims the call on its own terms:
-the callee name is its member, the call's shape is one its body accepts, and the **receiver carries
-the entry's named type**. Those last two are what keep this from becoming a name comparison.
+**Selection is the checker's resolution, full stop.** The signature the checker resolved a call to
+— the one the author's editor displayed — is the selection, and the stage inlines the body assigned
+to exactly that declaration. The engine performs no overload resolution of its own: a call
+resolving to a declaration outside the assigned set (a runtime overload, a stranger's same-named
+member) passes through untouched, and the resolution-time pairing above already guarantees every
+publisher-owned face a body, so nothing ever falls back to a nearest match.
 
 Two hard build failures keep a drifted install honest: a **rogue-duplicate** check when a call
 resolves to a same-named member outside the entry's set on an unrelated copy of the interface (dist
 skew, two physical copies), and an **emit sweep** that fails the build if any primitive or
 listed-sugar call survives to the output un-lowered. The sweep tests against every entry whose
 surface the program carries — including one whose sugar declarations turned out to be missing, which
-is the case where nothing could lower and every call is therefore residue.
+is the case where nothing could lower and every call is therefore residue; a rest-bodied entry's
+shape accepts any argument count from its required lead upward.
 
 ### Authoring rules (lint-enforced)
 
 An inlineable body (`libraries/*/src/inline.ts`) must be exactly one `return <expr>;`, where the
 expression is a single compile-time expression: no logical operators, assignments, comma
-sequences, `await`/`yield`/`new`/spread, or nested functions. A conditional expression (`?:`)
+sequences, `await`/`yield`/`new`, or nested functions. A conditional expression (`?:`)
 **is** permitted — it is still a single compile-time expression over otherwise-clean operands.
 Each value parameter may appear at most once in a runtime position (unlimited inside a primitive
 call's arguments); type
 parameters may appear only as the whole type argument of a primitive call; every other free
 identifier must be a parameter, `this`, a type parameter, or an unaliased primitive import. The
-`rhombus-inline` ESLint rule enforces all of this, including which package each primitive name is
-allowed to be imported from (its one authoring home, per the table above).
+`rhombus-inline` ESLint rule enforces this for the list-published bodies, including which package
+each primitive name is allowed to be imported from (its one authoring home, per the table above).
+
+Two splice tokens let one body forward an argument set as a group, each spread inside a call's
+argument list: a **trailing rest parameter** holds the arguments past the named ones, and
+**`arguments`** stands blindly for the whole set in call order, needing no declared parameter at
+all. Leading named parameters keep binding positionally, so a body may reorder or interleave them
+around the group; a zero-argument call splices an empty group with no special case. Both the spread
+call form — `return (this.add as any)(typefor<T>(), ...args);` — and the `.apply` form —
+`return this.add.apply(this, [typefor<T>(), ...arguments] as any);` — are supported and emit
+identically: the assertion drops, the array collapses into the argument list, and the receiver is
+written exactly once, so the lowered call is the one a hand author writes. A rest body is one
+authoring choice among several — per-overload bodies with their own signatures are equally
+first-class, and nothing requires a rest.
 
 ### Termination: the emitted call binds a different overload
 
@@ -533,9 +569,10 @@ callable.
 
 ### The body marker — `registerInlineBodies`
 
-The publish list above is the **only** thing that points at a body set: nothing else in the code
-says the object has a role at all, so an otherwise-unreferenced set reads as dead code. A body set
-carries a marker beside its declaration, at module level, to say so directly:
+The marker call is the instance-member **discovery channel**: the stage reads the receiver from its
+type argument and one entry per exported member from the set it names, so the statement beside a
+body set is what publishes it — and, in the same stroke, the real reference that keeps the set from
+reading as dead code:
 
 ```ts
 export const ConfigBuilderInline = { withType<T>(this: IWithSchemaTarget): unknown {
@@ -546,8 +583,8 @@ registerInlineBodies(ConfigBuilderInline);
 
 It is the inline-body sister of the augmentation registry's `registerAugmentations` — a statement
 next to the declaration that names its registered role — and it is a deliberate runtime **no-op**:
-the register it refers to is the `package.json` entry, and the file this lives in is never bundled
-or executed. It is imported from `@rhombus-std/primitives.extras` (authoring-time-only, and the one
+discovery reads it syntactically at build time, and the file it lives in is never bundled or
+executed. It is imported from `@rhombus-std/primitives.extras` (authoring-time-only, and the one
 package every body-carrying package already depends on).
 
 **Two reasons, and the shape follows from having both.** One is readability, above. The other is

@@ -9,30 +9,43 @@ import (
 )
 
 // Resolved is a resolved inline entry: the declaration set the MARKER names, the
-// subset of it mapped to the inline body (the sugar overload declarations), and
-// the side-parsed body itself.
+// subset of it the entry's impl package OWNS (the publisher's own faces), and
+// the side-parsed body itself. Which owned face each body serves is decided
+// across entries by assignBodies — a body with its own declared signature
+// serves the face spelling it exactly, and a rest-shaped body blankets the
+// rest.
 type Resolved struct {
 	Owned    OwnedEntry
 	Kind     EntryKind
 	Module   string // the declaring package a surviving call must import Member from
 	TypeName string
 	Member   string // member name (member kind) or floater's export name (floater kind)
-	// TypeSymbol is the merged symbol of the type the marker named, against which
-	// a call's RECEIVER is tested. Nil for a floater, which has no receiver.
+	// TypeSymbol is the merged symbol of the type the marker named. Nil for a
+	// floater, which has no receiver.
 	TypeSymbol *shimast.Symbol
 	Body       *ResolvedBody
-	DeclMap    map[*shimast.Node]*ResolvedBody // sugar declarations → body
-	MemberSet  map[*shimast.Node]bool          // every declaration of the member on the marker's surface
+	// ImplPackage is the package the entry's impl reference names — the owner
+	// whose declarations claim this body.
+	ImplPackage string
+	// OwnedDecls is the subset of the member's declarations whose source files
+	// belong to ImplPackage, in the marker set's stable order.
+	OwnedDecls []*shimast.Node
+	// RestBody marks a body whose trailing parameter is a rest — the blanket
+	// form, serving every owned face no exact-signature body claims.
+	RestBody  bool
+	DeclMap   map[*shimast.Node]*ResolvedBody // floater declaration → body
+	MemberSet map[*shimast.Node]bool          // every declaration of the member on the marker's surface
 }
 
-// Shape is the call shape this entry's sugar accepts. The matcher and the emit
-// sweep test a call against this one predicate, so a call the matcher would claim
-// is exactly the call the sweep reports when nothing claimed it.
+// Shape is the call shape this entry's sugar accepts. The emit sweep tests a
+// surviving call against it. A rest-bodied entry accepts any argument count
+// from its required lead upward.
 func (r *Resolved) Shape() MemberShape {
 	return MemberShape{
 		TypeArgCount:     r.Body.Discriminator.TypeParamCount,
 		MinValueArgCount: r.Body.RequiredParams,
 		MaxValueArgCount: len(r.Body.Params),
+		Unbounded:        r.RestBody,
 	}
 }
 
@@ -76,8 +89,10 @@ func Resolve(prog *driver.Program, checker *shimchecker.Checker, ex *bodyExtract
 }
 
 // resolveMember resolves an ambient instance-member entry: type reference →
-// module symbol → type symbol → the marker's declaration set → the sugar-overload
-// declarations discriminated to the inline body.
+// module symbol → type symbol → the marker's declaration set → the subset the
+// entry's impl package owns. Ownership, not parameter names, is what claims a
+// declaration: a publisher declares nothing onto a receiver that is not sugar,
+// so the faces its own files declare are exactly the body set's.
 func resolveMember(prog *driver.Program, checker *shimchecker.Checker, ex *bodyExtractor, owned OwnedEntry) (*Resolved, ResolveOutcome, error) {
 	e := owned.Entry
 	typeRef, err := ParseTypeRef(e.Type)
@@ -108,68 +123,40 @@ func resolveMember(prog *driver.Program, checker *shimchecker.Checker, ex *bodyE
 			pkg, typeName, e.Member)
 	}
 
+	implRef, err := ParseTypeRef(e.Impl)
+	if err != nil {
+		return nil, OutcomeAbsent, fmt.Errorf("INLINE_ENTRY_SHAPE: %w", err)
+	}
+
 	memberSet := map[*shimast.Node]bool{}
-	declMap := map[*shimast.Node]*ResolvedBody{}
+	var ownedDecls []*shimast.Node
 	for _, d := range declarations {
 		memberSet[d] = true
-		if body.Discriminator.Matches(declarationDiscriminator(d)) {
-			declMap[d] = body
+		if ex.declarationPackage(d) == implRef.From {
+			ownedDecls = append(ownedDecls, d)
 		}
 	}
 	resolved := &Resolved{
-		Owned:      owned,
-		Kind:       KindMember,
-		Module:     pkg,
-		TypeName:   typeName,
-		Member:     e.Member,
-		TypeSymbol: checker.GetMergedSymbol(typeSym),
-		Body:       body,
-		DeclMap:    declMap,
-		MemberSet:  memberSet,
+		Owned:       owned,
+		Kind:        KindMember,
+		Module:      pkg,
+		TypeName:    typeName,
+		Member:      e.Member,
+		TypeSymbol:  checker.GetMergedSymbol(typeSym),
+		Body:        body,
+		ImplPackage: implRef.From,
+		OwnedDecls:  ownedDecls,
+		RestBody:    bodyHasRestParam(body.Params),
+		MemberSet:   memberSet,
 	}
-	if len(declMap) == 0 {
-		// Two very different situations reach here. If no declaration even carries
-		// the body's type-parameter count AND value-parameter count, the sugar
-		// overload is not loaded in this program — a consumer that never pulls in
-		// the augmentation, or a receiver carrying an unrelated overload that
-		// happens to share the body's type-parameter count but not its arity — and
-		// there is nothing to inline; the entry still registers its shape so a call
-		// written in it cannot pass the sweep unnoticed. If one does, the sugar
-		// overload IS present and only its value parameter NAMES disagree with the
-		// body's: an authoring fault, never a configuration. Arity is what tells
-		// these apart — an unrelated overload's own value-parameter count is
-		// essentially never the sugar body's by coincidence, where its
-		// type-parameter count alone often is (both commonly single-type-parameter
-		// generics, for instance).
-		if !anyDeclarationTakes(declarations, body.Discriminator) {
-			return resolved, OutcomeUnmatched, nil
-		}
-		return nil, OutcomeAbsent, fmt.Errorf(
-			"INLINE_DISCRIMINATOR_MISMATCH: %s:%s member %q — impl %q body takes value parameters %v, "+
-				"but no declaration of that member takes the same ones; a receiver belongs in `this`, "+
-				"and every parameter must match the declaration's by name",
-			pkg, typeName, e.Member, e.Impl, body.Discriminator.Params)
+	if len(ownedDecls) == 0 {
+		// The member exists on the surface, but none of its declarations come
+		// from the publisher — the sugar's own declarations are not loaded in
+		// this program. Nothing can inline; the entry still registers its shape
+		// so a call written in it cannot pass the sweep unnoticed.
+		return resolved, OutcomeUnmatched, nil
 	}
 	return resolved, OutcomeActive, nil
-}
-
-// anyDeclarationTakes reports whether any declaration carries the same
-// type-parameter count AND value-parameter count as want — the signal that the
-// sugar overload is loaded, whatever its value parameter NAMES turn out to be.
-// Value-parameter count is load-bearing here, not just type-parameter count: two
-// otherwise-unrelated overloads of one member commonly share a type-parameter
-// count (a single generic parameter is the ordinary shape for both a sugar
-// overload and a runtime one taking an explicit node), so type-parameter count
-// alone cannot tell "the sugar's own declaration, renamed" apart from "a
-// different overload entirely".
-func anyDeclarationTakes(decls []*shimast.Node, want Discriminator) bool {
-	for _, d := range decls {
-		disc := declarationDiscriminator(d)
-		if disc.TypeParamCount == want.TypeParamCount && len(disc.Params) == len(want.Params) {
-			return true
-		}
-	}
-	return false
 }
 
 // resolveFloater resolves a floater entry (impl only, no type, no member): the
