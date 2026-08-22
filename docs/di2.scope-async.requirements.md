@@ -167,7 +167,9 @@ Weigh EVERY design decision in this document against this split.
 - If `undefined` is not ASSIGNABLE to the engine's lifetime type, leaving a registration's scope
   unset is a COMPILE ERROR — optionality of the lifetime argument follows
   `undefined extends TLifetime` exactly (assignability, not literal union membership — the
-  declared type can be any shape).
+  declared type can be any shape). WHETHER `undefined` is included is the BLACKBOX's own choice
+  (owner-ruled): the model owns both halves of the key — its admissibility (this strictness dial)
+  and its meaning (the binding above).
 - `undefined` IS A KEY LIKE ANY OTHER, BOUND BY THE BLACKBOX (owner-ruled): the whole datum
   domain, `undefined` included, is keys into the installed model's behavior — swap the blackbox in
   one line and every registration's behavior changes, omissions included; that is inversion of
