@@ -73,14 +73,14 @@ _Owner-ruled and signed off 2026-08-12._
 A request matches a candidate only within a kind — never across kinds: a ctor never answers a
 func, and an `Array<T>` registration never answers an `Iterable<T>` request (the aggregation
 fallback serves collection requests; only an exact registration of that same type preempts it).
-Within a structural kind the comparison is assignability over the node trees, recursing into
-child positions — a callable serves a request when every requested signature row is served by
-some candidate row, surplus candidate rows harmless. At the identifier kinds the comparison is
-interned identity (`===`). A generic hole binds whatever sits at its position — binding, not
-assignability. Which row the engine constructs through is a separate value-level choice: rows
+Within a structural kind the comparison is identity modulo holes, recursing positionally into
+child positions — same kind, same arity, each child pair compared the same way; there is no
+assignability anywhere. At the identifier kinds the comparison is interned identity (`===`). A
+generic hole binds whatever sits at its position — binding, not assignability. Which row the engine constructs through is a separate value-level choice: rows
 sorted longest-first, first row whose looked-up values are all present.
 
-_Owner-ruled and signed off 2026-08-14._
+_Owner-ruled and signed off 2026-08-14; matching narrowed to identity-modulo-holes with owner
+signoff 2026-08-21._
 
 ## U6 — A parameter takes `Type`, never `Type | string`
 
@@ -92,3 +92,14 @@ instead spreads normalization across every entry point, makes each one restate i
 parsed and unparsed forms indistinguishable in the types one layer in.
 
 _Owner-ruled and signed off 2026-08-16._
+
+## U7 — Use `typefor` whenever possible over hand-composing types
+
+Wherever a `Type` can be derived by `typefor<T>()`, that is the spelling. Hand-composition
+through the `Type.*` factories is reserved for what `typefor` cannot reach: a synthetic address
+with no TypeScript type behind it, a data-input boundary (`Type.from`), a context no transform
+serves. Derivation anchors on the declaring symbol, so every consumer lands on the one interned
+name however their import reached the type — a hand-spelled address can guess wrong (a
+re-export's module, a misremembered name) in a way `typefor` cannot.
+
+_Owner-ruled and signed off 2026-08-21._
