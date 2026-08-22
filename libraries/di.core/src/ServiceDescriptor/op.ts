@@ -3,16 +3,27 @@ import { assertNever } from '@rhombus-toolkit/type-guards';
 import type { CtorDescriptor, FactoryDescriptor, ServiceDescriptor, ValueDescriptor } from './ServiceDescriptor';
 
 /** Which door the registration came in by, read from the member the descriptor carries. */
-export function kind(descriptor: ServiceDescriptor<string>): 'ctor' | 'factory' | 'value' {
-  if ('ctor' in descriptor) {
-    return 'ctor';
+export function kind(descriptor: ServiceDescriptor<string>) {
+  if (isCtorDescriptor(descriptor)) {
+    return ['ctor', descriptor] as const;
   }
-  if ('factory' in descriptor) {
-    return 'factory';
+  if (isFactoryDescriptor(descriptor)) {
+    return ['factory', descriptor] as const;
   }
-  return 'value';
+  if (isValueDescriptor(descriptor)) {
+    return ['value', descriptor] as const;
+  }
+  return assertNever(descriptor);
 }
-
+export function isCtorDescriptor(descriptor: ServiceDescriptor<any>): descriptor is CtorDescriptor<any> {
+  return 'ctor' in descriptor;
+}
+export function isFactoryDescriptor(descriptor: ServiceDescriptor<any>): descriptor is FactoryDescriptor<any> {
+  return 'factory' in descriptor;
+}
+export function isValueDescriptor(descriptor: ServiceDescriptor<any>): descriptor is ValueDescriptor {
+  return 'value' in descriptor;
+}
 /**
  * Closes an open registration against the generics a `Type.satisfies` match captured,
  * rewriting `serviceType` and the implementer's type so the result stands on its own.
@@ -43,7 +54,7 @@ export function equals(left: ServiceDescriptor<string>, right: ServiceDescriptor
   if (left === right) {
     return true;
   }
-  if (kind(left) !== kind(right) || !matches(left, right)) {
+  if (kind(left)[0] !== kind(right)[0] || !matches(left, right)) {
     return false;
   }
   if ('ctor' in left) {
