@@ -51,11 +51,11 @@ class RealizeVisitor {
   }
 
   protected visitCtor(site: CtorCallSite, model: LifetimeModel): any {
-    return model(site, site.serviceType, site.descriptor, descendantModel => new site.ctor(...site.args.map(arg => this.visit(arg, descendantModel))));
+    return model.realize(site, site.serviceType, site.descriptor, descendantModel => new site.ctor(...site.args.map(arg => this.visit(arg, descendantModel))));
   }
 
   protected visitFactory(site: FactoryCallSite, model: LifetimeModel): any {
-    return model(site, site.serviceType, site.descriptor, descendantModel => site.factory(...site.args.map(arg => this.visit(arg, descendantModel))));
+    return model.realize(site, site.serviceType, site.descriptor, descendantModel => site.factory(...site.args.map(arg => this.visit(arg, descendantModel))));
   }
 
   protected visitLateBound(site: LateBoundCallSite): any {

@@ -19,7 +19,7 @@ import type { ServiceDescriptor } from './ServiceDescriptor/index';
  * @typeParam Lifetime - the vocabulary of lifetime data this model interprets.
  */
 export interface LifetimeModel<Lifetime = unknown> {
-  (
+  realize(
     site: object,
     serviceType: Type,
     descriptor: ServiceDescriptor<Lifetime> | undefined,
