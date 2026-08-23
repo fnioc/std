@@ -137,7 +137,7 @@ func assignBodies(inlineByDecl map[*shimast.Node]*matchTarget, resolvedList []*R
 				claims[d] = c
 				declOrder = append(declOrder, d)
 			}
-			if r.Body.Discriminator.Matches(declarationDiscriminator(d)) {
+			if r.Body.Discriminator.Matches(declarationDiscriminator(checker, d)) {
 				c.exact = append(c.exact, r)
 			} else if r.RestBody {
 				c.rest = append(c.rest, r)

@@ -8,6 +8,7 @@ import (
 	"strings"
 
 	shimast "github.com/microsoft/typescript-go/shim/ast"
+	shimchecker "github.com/microsoft/typescript-go/shim/checker"
 
 	"github.com/fnioc/std/transforms/internal/valueimport"
 )
@@ -514,11 +515,166 @@ func (d Discriminator) Matches(decl Discriminator) bool {
 }
 
 // declarationDiscriminator computes the structural discriminator of a merged
-// declaration node (a method signature, method, or function declaration).
-func declarationDiscriminator(node *shimast.Node) Discriminator {
+// declaration node (a method signature, method, or function declaration). A
+// trailing rest parameter is unrolled into the individual elements of its
+// fixed tuple shape first, when it has one — see unrollTrailingRestTuple.
+func declarationDiscriminator(checker *shimchecker.Checker, node *shimast.Node) Discriminator {
 	tps := typeParamNames(node)
 	_, disc := valueParamsAndDiscriminator(node, tps)
+	return unrollTrailingRestTuple(checker, node, disc)
+}
+
+// unrollTrailingRestTuple replaces a trailing rest parameter's single "..."
+// entry with the individual named elements of its tuple shape, when its type
+// resolves to one fixed, fully-labeled tuple (tupleShapeOf) — the concrete
+// case is a rest parameter typed through a conditional alias like
+// `LifetimeArgument<Lifetime> = undefined extends Lifetime ? [lifetime?: Lifetime] : [lifetime: Lifetime]`,
+// which is a rest parameter at the AST level but names exactly one member in
+// every branch, and so pairs with a plain `(implementer, lifetime?)` body the
+// same way an ordinary named parameter would. A rest parameter whose type does
+// not reduce to one fixed shape (a plain array type, an unlabeled tuple
+// element, a conditional whose branches disagree) is left as a plain rest.
+func unrollTrailingRestTuple(checker *shimchecker.Checker, node *shimast.Node, disc Discriminator) Discriminator {
+	if len(disc.Params) == 0 || !strings.HasPrefix(disc.Params[len(disc.Params)-1], "...") {
+		return disc
+	}
+	rest := lastValueParam(node)
+	if rest == nil {
+		return disc
+	}
+	elems, ok := tupleShapeOf(checker, rest.AsParameterDeclaration().Type)
+	if !ok {
+		return disc
+	}
+	unrolled := make([]string, 0, len(disc.Params)-1+len(elems))
+	unrolled = append(unrolled, disc.Params[:len(disc.Params)-1]...)
+	for _, e := range elems {
+		if e.rest {
+			unrolled = append(unrolled, "..."+e.name)
+		} else {
+			unrolled = append(unrolled, e.name)
+		}
+	}
+	disc.Params = unrolled
 	return disc
+}
+
+// lastValueParam returns a function-like node's last value parameter (a
+// `this` parameter excluded), or nil for a node with none.
+func lastValueParam(node *shimast.Node) *shimast.Node {
+	var last *shimast.Node
+	for _, p := range functionLikeParams(node) {
+		name := p.AsParameterDeclaration().Name()
+		if name != nil && name.Kind == shimast.KindIdentifier && name.Text() == "this" {
+			continue
+		}
+		last = p
+	}
+	return last
+}
+
+// tupleElement is one labeled member of a resolved tuple shape.
+type tupleElement struct {
+	name string
+	rest bool
+}
+
+// tupleShapeOf resolves typeNode to its fixed, fully-labeled tuple shape:
+// unwrapping a parenthesized type, recursing into a type alias reference's own
+// written type (never a checker-instantiated one, so an alias generic over the
+// reference's own type arguments resolves by shape alone, independent of what
+// those arguments are), and unifying a conditional type's two branches when
+// they reduce to the identical shape. It reports ok=false for anything that
+// does not reduce to one fixed shape this way: an array type, a tuple with an
+// unlabeled element (nothing to pair a body parameter's name against), or a
+// conditional whose branches disagree.
+func tupleShapeOf(checker *shimchecker.Checker, typeNode *shimast.Node) ([]tupleElement, bool) {
+	if typeNode == nil {
+		return nil, false
+	}
+	switch typeNode.Kind {
+	case shimast.KindParenthesizedType:
+		return tupleShapeOf(checker, typeNode.AsParenthesizedTypeNode().Type)
+	case shimast.KindTupleType:
+		return namedTupleElements(typeNode.AsTupleTypeNode())
+	case shimast.KindConditionalType:
+		cond := typeNode.AsConditionalTypeNode()
+		trueShape, ok1 := tupleShapeOf(checker, cond.TrueType)
+		falseShape, ok2 := tupleShapeOf(checker, cond.FalseType)
+		if !ok1 || !ok2 || !tupleShapesEqual(trueShape, falseShape) {
+			return nil, false
+		}
+		return trueShape, true
+	case shimast.KindTypeReference:
+		return tupleShapeOfAlias(checker, typeNode)
+	default:
+		return nil, false
+	}
+}
+
+// namedTupleElements extracts a tuple type node's own label/rest shape,
+// succeeding only when every element is named — an unlabeled element has
+// nothing to pair a body parameter's name against.
+func namedTupleElements(tuple *shimast.TupleTypeNode) ([]tupleElement, bool) {
+	if tuple.Elements == nil {
+		return nil, true
+	}
+	elems := make([]tupleElement, 0, len(tuple.Elements.Nodes))
+	for _, el := range tuple.Elements.Nodes {
+		if el.Kind != shimast.KindNamedTupleMember {
+			return nil, false
+		}
+		member := el.AsNamedTupleMember()
+		name := member.Name()
+		if name == nil || name.Kind != shimast.KindIdentifier {
+			return nil, false
+		}
+		elems = append(elems, tupleElement{name: name.Text(), rest: member.DotDotDotToken != nil})
+	}
+	return elems, true
+}
+
+// tupleShapeOfAlias resolves a type-reference node to the type alias it names
+// — following an import alias, since a rest parameter's type is routinely
+// spelled through a `import type { X } from '…'` binding rather than a
+// locally-declared one — and recurses into the alias's own written type. A
+// reference to anything but a type alias (an interface, a class, an ambient
+// global) is not a fixed tuple shape.
+func tupleShapeOfAlias(checker *shimchecker.Checker, typeNode *shimast.Node) ([]tupleElement, bool) {
+	name := typeNode.AsTypeReferenceNode().TypeName
+	if name == nil || name.Kind != shimast.KindIdentifier {
+		return nil, false
+	}
+	sym := checker.GetSymbolAtLocation(name)
+	if sym == nil {
+		return nil, false
+	}
+	if sym.Flags&shimast.SymbolFlagsAlias != 0 {
+		if aliased := checker.GetAliasedSymbol(sym); aliased != nil {
+			sym = aliased
+		}
+	}
+	for _, d := range sym.Declarations {
+		if d.Kind == shimast.KindTypeAliasDeclaration {
+			return tupleShapeOf(checker, d.AsTypeAliasDeclaration().Type)
+		}
+	}
+	return nil, false
+}
+
+// tupleShapesEqual reports whether two resolved tuple shapes have the same
+// elements in the same order, ignoring nothing — a conditional's two branches
+// pair only when they agree exactly.
+func tupleShapesEqual(a, b []tupleElement) bool {
+	if len(a) != len(b) {
+		return false
+	}
+	for i := range a {
+		if a[i] != b[i] {
+			return false
+		}
+	}
+	return true
 }
 
 // functionLikeParams returns the parameter list of a method-signature / method /
