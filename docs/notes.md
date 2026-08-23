@@ -55,3 +55,10 @@ land; delete the file when empty.
 - [ ] **augmentations.test residual 5 fails** — suites load again since the matcher fix; the
       remaining failures are untriaged (likely the hosting/logging red pile reaching through
       filter-logging-builder). Triage after the abstract-ctor Go work lands.
+- [ ] **Lifetime-lane queue (order agreed with the owner; nothing runs without his go):**
+      (1) default model v1 — `undefined`→transient frozen at birth, real `'singleton'` retention,
+      captivity forwarding; revives ~88 red tests. (2) bootstrap/genesis — OPENS with a design
+      proposal (entry-point spelling is an open slot in di2.scope-async.requirements.md) and now
+      also owns registering the `ScopeFactory` address. (3) `ScopeFactory<TLifetime>` model-side
+      mechanics (56 red tests). (4) `sp.createScope<T>()` sugar. (5) disposal (23 red tests).
+      (6) depender rework — hosting/logging/examples, delete the four `@ts-nocheck`s.
