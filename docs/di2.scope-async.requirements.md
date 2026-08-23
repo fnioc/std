@@ -244,7 +244,11 @@ Weigh every design decision against this split.
   — the user's entrypoint into opening scopes, itself returning a scope-model-backed provider.
   Its typed shape: the uniform well-known address is `ScopeFactory<TLifetime>`, typed by the ONE
   cascading Scopes generic — creation args and lifetime data draw from one vocabulary (what you
-  pass at creation is what registrations reference to match it). Creation-only config that is not
+  pass at creation is what registrations reference to match it). The address is a CALLABLE
+  interface — a bare call signature taking `LifetimeArgument<TLifetime>` and returning the
+  provider — so the resolved value IS the creation verb, and omission at creation compiles under
+  the same admissibility rule as registration; a model implements it as a registered factory
+  whose own signature lists its deps. Creation-only config that is not
   lifetime vocabulary is model-side: a model registers its own richer factory type beside the
   well-known address (per-model `Func` spellings stay legal); `TLifetime` never carries values no
   registration may hold.

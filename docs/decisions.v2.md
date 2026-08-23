@@ -2993,3 +2993,22 @@ ruled out as user-confusing). The white-box `./tokens/*` seam and the ttsc prelo
 same files as the barrel and never trip it.
 
 _Owner-ruled; Claude-recorded 2026-08-22._
+
+---
+
+## §200 — `ScopeFactory<Lifetime>` is a callable interface returning a provider
+
+The well-known scope-creation address in di.core is an interface with a bare call signature —
+`(...lifetime: LifetimeArgument<Lifetime>): IServiceProvider` — not an object with a
+`createScope` method. The resolved value IS the verb: a caller names the variable and calls it,
+and can pass it around first-class. The interface (rather than a `Func` alias) keeps the address
+nominal for `typefor`. Creation args reuse `LifetimeArgument`, so omission at creation compiles
+exactly when `undefined` is admissible in the vocabulary — the same assignability rule as
+registration — and no name/label arg exists: creation-only config that is not lifetime
+vocabulary is model-side, a richer factory type beside the well-known address. The return is
+primitives' generic-free `IServiceProvider`; lifetime-typed refinement belongs to the
+engine-typed sugar surface. A model implements it as a factory whose own signature lists its
+deps (`(sp) => lifetime => …`), the registration's lifetime selecting the parenting policy; the
+foreclosed class door is a non-cost for the model-author-only implementer audience.
+
+_Owner-ruled; Claude-recorded 2026-08-22._
