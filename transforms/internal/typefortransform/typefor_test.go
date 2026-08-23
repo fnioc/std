@@ -296,9 +296,27 @@ export const tok = typefor(Foo);
 	defer func() { _ = prog.Close() }()
 
 	out := lowerTypefor(t, prog, app)
-	want := `Type.ctor(Type.imported("Foo", "@scope/app/main"), [[Type.imported("IA", "@scope/app/main")]], true)`
+	want := `Type.abstractCtor(Type.imported("Foo", "@scope/app/main"), [[Type.imported("IA", "@scope/app/main")]])`
 	if got := exprFor(t, out, "tok"); got != want {
 		t.Fatalf("typefor(Foo) = %q, want %q\nfull output:\n%s", got, want, out)
+	}
+}
+
+// TestTypeforAccessorInstanceAbstractCtor: `.instance` folds the same way over
+// an abstract-constructor-shaped derivation as over an ordinary one — both
+// kinds carry the member.
+func TestTypeforAccessorInstanceAbstractCtor(t *testing.T) {
+	src := `import { typefor } from '@rhombus-std/primitives.extras';
+abstract class Foo {}
+export const tok = typefor(Foo).instance;
+`
+	prog, app := buildTypeforWorkspace(t, src)
+	defer func() { _ = prog.Close() }()
+
+	out := lowerTypefor(t, prog, app)
+	want := `Type.imported("Foo", "@scope/app/main")`
+	if got := exprFor(t, out, "tok"); got != want {
+		t.Fatalf(".instance fold = %q, want %q\nfull output:\n%s", got, want, out)
 	}
 }
 
@@ -433,8 +451,10 @@ func TestTypeforAccessorKind(t *testing.T) {
 	src := `import { typefor, Keyed } from '@rhombus-std/primitives.extras';
 interface IThing {}
 class Foo {}
+abstract class Bar {}
 export const kFunc = typefor<() => IThing>().kind;
 export const kCtor = typefor(Foo).kind;
+export const kAbstractCtor = typefor(Bar).kind;
 export const kImport = typefor<IThing>().kind;
 export const kGlobal = typefor<string>().kind;
 export const kTag = typefor<Keyed<IThing, "redis">>().kind;
@@ -445,12 +465,13 @@ export const kLit = typefor<"dev">().kind;
 
 	out := lowerTypefor(t, prog, app)
 	cases := map[string]string{
-		"kFunc":   `"func"`,
-		"kCtor":   `"ctor"`,
-		"kImport": `"imported"`,
-		"kGlobal": `"global"`,
-		"kTag":    `"tag"`,
-		"kLit":    `"literal"`,
+		"kFunc":         `"func"`,
+		"kCtor":         `"ctor"`,
+		"kAbstractCtor": `"abstract-ctor"`,
+		"kImport":       `"imported"`,
+		"kGlobal":       `"global"`,
+		"kTag":          `"tag"`,
+		"kLit":          `"literal"`,
 	}
 	for name, want := range cases {
 		if got := exprFor(t, out, name); got != want {

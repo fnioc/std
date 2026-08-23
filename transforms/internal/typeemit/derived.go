@@ -8,14 +8,16 @@ import (
 )
 
 // EmitDerived builds the `Type.*` factory-call expression a tokens.Derived node
-// spells, recursing into a Func/Ctor's head and parameter rows and a Tag's inner
-// type.
+// spells, recursing into a Func/Ctor/AbstractCtor's head and parameter rows and
+// a Tag's inner type.
 func EmitDerived(f *shimast.NodeFactory, binding *valueimport.Binding, d *tokens.Derived) *shimast.Node {
 	switch d.Kind {
 	case tokens.DerivedFunc:
 		return signatureShaped(f, binding, d, "func")
 	case tokens.DerivedCtor:
-		return ctorShaped(f, binding, d)
+		return signatureShaped(f, binding, d, "ctor")
+	case tokens.DerivedAbstractCtor:
+		return signatureShaped(f, binding, d, "abstractCtor")
 	case tokens.DerivedTag:
 		return Call(f, binding, "tag", []*shimast.Node{
 			EmitDerived(f, binding, d.Inner),
@@ -38,7 +40,8 @@ func EmitDerived(f *shimast.NodeFactory, binding *valueimport.Binding, d *tokens
 
 // signatureShaped builds a callable's factory call — the return/instance type
 // followed by its parameter rows as one array of arrays, `func(returns, [[…], […]])`
-// / `ctor(instance, [[…], […]])` — whether the callable answers to one row or several.
+// / `ctor(instance, [[…], […]])` / `abstractCtor(instance, [[…], […]])` —
+// whether the callable answers to one row or several.
 func signatureShaped(f *shimast.NodeFactory, binding *valueimport.Binding, d *tokens.Derived,
 	method string,
 ) *shimast.Node {
@@ -46,21 +49,6 @@ func signatureShaped(f *shimast.NodeFactory, binding *valueimport.Binding, d *to
 		EmitDerived(f, binding, d.Ret),
 		EmitRows(f, binding, d.Args),
 	})
-}
-
-// ctorShaped builds `Type.ctor`'s factory call: the instance type followed by
-// its parameter rows, with a trailing `true` literal only when d marks an
-// abstract class — the same call a hand-writer registering a concrete class
-// would spell with two arguments.
-func ctorShaped(f *shimast.NodeFactory, binding *valueimport.Binding, d *tokens.Derived) *shimast.Node {
-	args := []*shimast.Node{
-		EmitDerived(f, binding, d.Ret),
-		EmitRows(f, binding, d.Args),
-	}
-	if d.Abstract {
-		args = append(args, f.NewKeywordExpression(shimast.KindTrueKeyword))
-	}
-	return Call(f, binding, "ctor", args)
 }
 
 // EmitRow builds the factory call for each parameter in one row, in order.

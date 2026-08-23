@@ -106,7 +106,10 @@ func TestKeyMirrorsTheFlatTokenSpelling(t *testing.T) {
 		`"a" | "b"`:                    Union([]*Node{Literal(`"a"`), Literal(`"b"`)}),
 		`#tag(orders:IClock,"vendor")`: Tag(Named("IClock", "orders", nil), "vendor"),
 		"#func(IClock())":              Func(Named("IClock", "global", nil), [][]*Node{nil}),
-		"#ctor(IClock(orders:IClock))": Ctor(Named("IClock", "global", nil), [][]*Node{{Named("IClock", "orders", nil)}}, false),
+		"#ctor(IClock(orders:IClock))": Ctor(Named("IClock", "global", nil), [][]*Node{{Named("IClock", "orders", nil)}}),
+		"#abstractCtor(IClock(orders:IClock))": AbstractCtor(
+			Named("IClock", "global", nil), [][]*Node{{Named("IClock", "orders", nil)}},
+		),
 	}
 	for want, node := range cases {
 		if node.Key() != want {
@@ -124,8 +127,8 @@ func TestACallableAlwaysSpellsItsRowsArray(t *testing.T) {
 	clock := Named("IClock", "orders", nil)
 	options := Named("IOptions", "orders", nil)
 
-	oneRow := Ctor(widget, [][]*Node{{clock}}, false)
-	several := Ctor(widget, [][]*Node{{clock}, {clock, options}}, false)
+	oneRow := Ctor(widget, [][]*Node{{clock}})
+	several := Ctor(widget, [][]*Node{{clock}, {clock, options}})
 	for _, node := range []*Node{oneRow, several} {
 		if _, err := registry.Ref(node); err != nil {
 			t.Fatal(err)
@@ -177,16 +180,17 @@ func TestARowShapeIsPartOfIdentity(t *testing.T) {
 	}
 }
 
-// TestAbstractIsPartOfCtorIdentity: a concrete and an abstract constructor
-// over the same instance type and rows key — and so intern — differently, and
-// only the abstract one's rendered const carries the trailing `true`.
-func TestAbstractIsPartOfCtorIdentity(t *testing.T) {
+// TestAbstractCtorIsItsOwnKind: a concrete and an abstract constructor over
+// the same instance type and rows are two distinct kinds, so they key — and
+// intern — differently, and each renders through its own factory method with
+// no shared trailing flag.
+func TestAbstractCtorIsItsOwnKind(t *testing.T) {
 	registry := NewRegistry(TypeRef{Module: "@rhombus-std/primitives", Export: "Type"})
 	instance := Named("IWidget", "orders", nil)
 	clock := Named("IClock", "orders", nil)
 
-	concrete := Ctor(instance, [][]*Node{{clock}}, false)
-	abstract := Ctor(instance, [][]*Node{{clock}}, true)
+	concrete := Ctor(instance, [][]*Node{{clock}})
+	abstract := AbstractCtor(instance, [][]*Node{{clock}})
 	if concrete.Key() == abstract.Key() {
 		t.Errorf("a concrete and an abstract constructor over the same shape key the same: %s", concrete.Key())
 	}
@@ -207,7 +211,7 @@ func TestAbstractIsPartOfCtorIdentity(t *testing.T) {
 	if !strings.Contains(module, wantConcrete) {
 		t.Errorf("want %q in:\n%s", wantConcrete, module)
 	}
-	wantAbstract := "export const " + refOf(t, registry, abstract) + " = Type.ctor(" + instanceName + ", [[" + clockName + "]], true);"
+	wantAbstract := "export const " + refOf(t, registry, abstract) + " = Type.abstractCtor(" + instanceName + ", [[" + clockName + "]]);"
 	if !strings.Contains(module, wantAbstract) {
 		t.Errorf("want %q in:\n%s", wantAbstract, module)
 	}

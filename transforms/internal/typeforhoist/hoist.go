@@ -70,6 +70,11 @@ const (
 	// KindCtor is `Type.ctor(instance, rows)`, rows the instance type's
 	// parameter rows as an array of arrays.
 	KindCtor
+	// KindAbstractCtor is `Type.abstractCtor(instance, rows)` — the same shape
+	// as KindCtor, for a construct signature coming from an `abstract class`
+	// declaration. Its own kind rather than a flag on KindCtor, matching the
+	// `Type` node contract's own `'ctor'`/`'abstract-ctor'` split.
+	KindAbstractCtor
 	// KindTag is `Type.tag(inner, key)`.
 	KindTag
 	// KindUndefined and KindNull are the two nullish singletons, each its own
@@ -93,8 +98,9 @@ type Node struct {
 	from string
 	args []*Node
 
-	// rows are a KindFunc / KindCtor signature's parameter rows — one row per
-	// call it answers to, each holding that call's parameter types in order.
+	// rows are a KindFunc / KindCtor / KindAbstractCtor signature's parameter
+	// rows — one row per call it answers to, each holding that call's
+	// parameter types in order.
 	rows [][]*Node
 
 	// literal is a KindLiteral node's value as its TypeScript expression text.
@@ -106,12 +112,9 @@ type Node struct {
 	// label is a KindGeneric's hole number as decimal text.
 	label string
 
-	// ret is a KindFunc's return type or a KindCtor's instance type.
+	// ret is a KindFunc's return type or a KindCtor's/KindAbstractCtor's
+	// instance type.
 	ret *Node
-
-	// abstract marks a KindCtor node built from an abstract class — always false
-	// for KindFunc, which carries no such flag.
-	abstract bool
 
 	// inner and tag spell a KindTag: the branded base and the key branded onto it.
 	inner *Node
@@ -163,18 +166,23 @@ func Generic(label string) *Node {
 
 // Func builds a call-signature node from its return type and parameter rows.
 func Func(ret *Node, rows [][]*Node) *Node {
-	return &Node{kind: KindFunc, key: signatureKey("func", ret, rows, false), ret: ret, rows: rows}
+	return &Node{kind: KindFunc, key: signatureKey("func", ret, rows), ret: ret, rows: rows}
 }
 
-// Ctor builds a construct-signature node from its instance type, parameter
-// rows, and whether it comes from an abstract class. abstract folds into the
-// key, so a concrete and an abstract constructor sharing every other field
-// still intern to two distinct consts.
-func Ctor(instance *Node, rows [][]*Node, abstract bool) *Node {
-	return &Node{
-		kind: KindCtor, key: signatureKey("ctor", instance, rows, abstract),
-		ret: instance, rows: rows, abstract: abstract,
-	}
+// Ctor builds a construct-signature node from its instance type and parameter
+// rows.
+func Ctor(instance *Node, rows [][]*Node) *Node {
+	return &Node{kind: KindCtor, key: signatureKey("ctor", instance, rows), ret: instance, rows: rows}
+}
+
+// AbstractCtor builds a construct-signature node — instance type and
+// parameter rows, exactly like Ctor — for a construct signature coming from an
+// `abstract class` declaration. Its own method name in the key ("abstractCtor"
+// vs "ctor") is what keeps a concrete and an abstract constructor sharing
+// every other field interned to two distinct consts; no separate flag is
+// needed.
+func AbstractCtor(instance *Node, rows [][]*Node) *Node {
+	return &Node{kind: KindAbstractCtor, key: signatureKey("abstractCtor", instance, rows), ret: instance, rows: rows}
 }
 
 // Tag builds a keyed node — the branded base with the key composed into it.
@@ -192,20 +200,18 @@ func Null() *Node {
 	return &Node{kind: KindNull, key: "#null"}
 }
 
-// signatureKey spells a Func / Ctor key. Each parameter row is delimited by its
-// own parentheses, so a callable answering to one empty call and one answering
-// to no call at all key differently — the same identity the runtime intern
-// table gives them. The leading `#` can only ever start a composite: a leaf's
-// key starts with a quote (a string literal), a digit or sign (a number), or an
-// identifier character. abstract appends a marker no ordinary row can spell, so
-// an abstract constructor never shares a concrete one's key.
-func signatureKey(method string, ret *Node, rows [][]*Node, abstract bool) string {
+// signatureKey spells a Func / Ctor / AbstractCtor key. Each parameter row is
+// delimited by its own parentheses, so a callable answering to one empty call
+// and one answering to no call at all key differently — the same identity the
+// runtime intern table gives them. The leading `#` can only ever start a
+// composite: a leaf's key starts with a quote (a string literal), a digit or
+// sign (a number), or an identifier character. method itself is what keeps a
+// concrete and an abstract constructor over the same shape apart — "ctor" vs
+// "abstractCtor" — so no separate marker is needed.
+func signatureKey(method string, ret *Node, rows [][]*Node) string {
 	spelled := "#" + method + "(" + ret.key
 	for _, row := range rows {
 		spelled += "(" + joinKeys(row, ",") + ")"
-	}
-	if abstract {
-		spelled += "!abstract"
 	}
 	return spelled + ")"
 }
@@ -309,7 +315,7 @@ func (n *Node) children() []*Node {
 		return n.args
 	case KindUnion:
 		return n.members
-	case KindFunc, KindCtor:
+	case KindFunc, KindCtor, KindAbstractCtor:
 		out := make([]*Node, 0, len(n.rows)+1)
 		out = append(out, n.ret)
 		return append(out, flatRows(n.rows)...)
@@ -366,6 +372,8 @@ func (r *Registry) expr(n *Node) string {
 		return r.signature(n, "func")
 	case KindCtor:
 		return r.signature(n, "ctor")
+	case KindAbstractCtor:
+		return r.signature(n, "abstractCtor")
 	case KindTag:
 		return r.typeRef.Export + ".tag(" + r.names[n.inner.key] + ", \"" + n.tag + "\")"
 	case KindUndefined:
@@ -386,20 +394,15 @@ func (r *Registry) expr(n *Node) string {
 	}
 }
 
-// signature renders a KindFunc / KindCtor const — the return / instance type
-// followed by its parameter rows as one array of arrays, whether the callable
-// answers to one row or several, with a trailing `true` only when the node
-// marks an abstract constructor.
+// signature renders a KindFunc / KindCtor / KindAbstractCtor const — the
+// return / instance type followed by its parameter rows as one array of
+// arrays, whether the callable answers to one row or several.
 func (r *Registry) signature(n *Node, method string) string {
 	rows := make([]string, len(n.rows))
 	for i, row := range n.rows {
 		rows[i] = "[" + r.joinNames(row) + "]"
 	}
-	call := r.typeRef.Export + "." + method + "(" + r.names[n.ret.key] + ", [" + strings.Join(rows, ", ") + "]"
-	if n.abstract {
-		call += ", true"
-	}
-	return call + ")"
+	return r.typeRef.Export + "." + method + "(" + r.names[n.ret.key] + ", [" + strings.Join(rows, ", ") + "])"
 }
 
 func (r *Registry) joinNames(nodes []*Node) string {

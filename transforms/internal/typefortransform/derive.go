@@ -43,12 +43,12 @@ func emitAccessor(f *shimast.NodeFactory, e emitter, d *tokens.Derived, accessor
 		}
 		return e.node(d.Ret), true
 	case "instance":
-		if d.Kind != tokens.DerivedCtor {
+		if d.Kind != tokens.DerivedCtor && d.Kind != tokens.DerivedAbstractCtor {
 			return nil, false
 		}
 		return e.node(d.Ret), true
 	case "args":
-		if d.Kind != tokens.DerivedFunc && d.Kind != tokens.DerivedCtor {
+		if d.Kind != tokens.DerivedFunc && d.Kind != tokens.DerivedCtor && d.Kind != tokens.DerivedAbstractCtor {
 			return nil, false
 		}
 		rows := make([]*shimast.Node, 0, len(d.Args))

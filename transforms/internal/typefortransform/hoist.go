@@ -76,7 +76,9 @@ func hoistNode(d *tokens.Derived) *typeforhoist.Node {
 	case tokens.DerivedFunc:
 		return typeforhoist.Func(hoistNode(d.Ret), hoistRows(d.Args))
 	case tokens.DerivedCtor:
-		return typeforhoist.Ctor(hoistNode(d.Ret), hoistRows(d.Args), d.Abstract)
+		return typeforhoist.Ctor(hoistNode(d.Ret), hoistRows(d.Args))
+	case tokens.DerivedAbstractCtor:
+		return typeforhoist.AbstractCtor(hoistNode(d.Ret), hoistRows(d.Args))
 	case tokens.DerivedTag:
 		return typeforhoist.Tag(hoistNode(d.Inner), d.Tag)
 	case tokens.DerivedUnion:
