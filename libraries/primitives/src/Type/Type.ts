@@ -112,8 +112,8 @@ export interface TupleType extends TypeBase<'tuple'> {
 }
 
 /** Any type that `typeof` can resolve */
-export interface TypeLiteralType extends TypeBase<'literal'> {
-  readonly value: LiteralValue;
+export interface TypeLiteralType<Value extends LiteralValue = LiteralValue> extends TypeBase<'literal'> {
+  readonly value: Value;
 }
 
 export interface UnionType extends TypeBase<'union'> {
@@ -336,8 +336,8 @@ export namespace Type {
   }
 
   /** A single literal value as a type — `'on'`, `42`, `true`, `null`. */
-  export function typeLiteral(value: LiteralValue): TypeLiteralType;
-  export function typeLiteral(spec: Spec<TypeLiteralType>): TypeLiteralType;
+  export function typeLiteral<const Value extends LiteralValue>(value: Value): TypeLiteralType<Value>;
+  export function typeLiteral<const Value extends LiteralValue>(spec: Spec<TypeLiteralType<Value>>): TypeLiteralType<Value>;
   export function typeLiteral(first: LiteralValue | Spec<TypeLiteralType>): TypeLiteralType {
     return factory.literal(first !== null && typeof first === 'object' ? first.value : first);
   }
