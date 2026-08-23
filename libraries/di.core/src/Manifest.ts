@@ -13,7 +13,9 @@ import { ServiceDescriptor } from './ServiceDescriptor';
  * @remarks
  * `add`/`remove`/`replace` are the substrate every other registration verb composes from; each
  * also carries sugared shapes contributed by augmentation. Iterating a manifest yields its
- * descriptors newest-registration-first.
+ * descriptors newest-registration-first. A verb that changes nothing returns the receiver
+ * itself, so `===` answers "did this change anything" and an unchanged manifest keeps its
+ * cached plans.
  */
 export interface Manifest<Lifetime> extends Iterable<ServiceDescriptor<Lifetime>> {
   /** The model interpreting every registration's lifetime datum when a provider built from here realizes. */
@@ -49,6 +51,9 @@ export class DefaultManifest<Lifetime> {
   }
 
   _remove(descriptor: ServiceDescriptor<Lifetime>): Manifest<Lifetime> {
+    if (!Iterator.from(this.#descriptors).some(existing => ServiceDescriptor.equals(existing, descriptor))) {
+      return this;
+    }
     return new DefaultManifest<Lifetime>(this.lifetimeModel, {
       [Symbol.iterator]: function* removed(this: DefaultManifest<Lifetime>) {
         const it = Iterator.from(this.#descriptors);
@@ -64,6 +69,9 @@ export class DefaultManifest<Lifetime> {
   }
 
   _replace(descriptor: ServiceDescriptor<Lifetime>) {
+    if (!Iterator.from(this.#descriptors).some(existing => existing.serviceType === descriptor.serviceType)) {
+      return this;
+    }
     return new DefaultManifest<Lifetime>(this.lifetimeModel, {
       [Symbol.iterator]: function* replaced(this: DefaultManifest<Lifetime>) {
         const it = Iterator.from(this.#descriptors);

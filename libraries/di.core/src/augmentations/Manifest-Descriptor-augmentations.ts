@@ -1,12 +1,11 @@
-import { type ConstructorType, type FunctionType, Type } from '@rhombus-std/primitives';
+import type { ButNot, ConstructorType, FunctionType, Type } from '@rhombus-std/primitives';
 import { registerAugmentations } from '@rhombus-std/primitives.extras';
-import type { Ctor, Func } from '@rhombus-toolkit/func';
+import type { AbstractCtor, Ctor, Func } from '@rhombus-toolkit/func';
 
-import { assertNever } from '@rhombus-toolkit/type-guards';
 import { openDescription, type ServiceDescriptorBuilderFor } from '../builder';
 import type { LifetimeArgument } from '../LifetimeModel';
 import { type Manifest } from '../Manifest';
-import { ConstantType, type CtorDescriptor, ServiceDescriptor } from '../ServiceDescriptor';
+import { ServiceDescriptor } from '../ServiceDescriptor';
 
 declare module '@rhombus-std/di.core' {
   interface Manifest<Lifetime> {
@@ -40,15 +39,25 @@ declare module '@rhombus-std/di.core' {
     replace(serviceType: Type, factory: Func, factoryType: FunctionType, ...lifetime: LifetimeArgument<Lifetime>): Manifest<Lifetime>;
 
     /**
-     * Registers `value` under `serviceType` as it stands: it is handed back on resolution, never
-     * constructed or called. The {@link ConstantType} marker is what says so — a callable's own
-     * type cannot, so the call site carries the choice.
+     * Registers a non-callable `value` under `serviceType` as it stands: it is handed back on
+     * resolution, never constructed or called. A callable cannot come in this door — its own
+     * type cannot say it is data — so a function meant as a value goes through
+     * {@link Manifest.addValue}.
      */
-    add(serviceType: Type, value: unknown, valueType: ConstantType): Manifest<Lifetime>;
+    add<Value>(serviceType: Type, value: ButNot<Value, Func | AbstractCtor>): Manifest<Lifetime>;
     /** {@link Manifest.add}'s value shape, registering only when the service type has no registration yet. */
-    tryAdd(serviceType: Type, value: unknown, valueType: ConstantType): Manifest<Lifetime>;
+    tryAdd<Value>(serviceType: Type, value: ButNot<Value, Func | AbstractCtor>): Manifest<Lifetime>;
     /** {@link Manifest.add}'s value shape, replacing the service type's existing registration. */
-    replace(serviceType: Type, value: unknown, valueType: ConstantType): Manifest<Lifetime>;
+    replace<Value>(serviceType: Type, value: ButNot<Value, Func | AbstractCtor>): Manifest<Lifetime>;
+    /**
+     * {@link Manifest.add}'s value shape as its own verb: the door that forces a callable down
+     * the value path, and takes any value besides.
+     */
+    addValue(serviceType: Type, value: unknown): Manifest<Lifetime>;
+    /** {@link Manifest.addValue}, registering only when the service type has no registration yet. */
+    tryAddValue(serviceType: Type, value: unknown): Manifest<Lifetime>;
+    /** {@link Manifest.addValue}, replacing the service type's existing registration. */
+    replaceValue(serviceType: Type, value: unknown): Manifest<Lifetime>;
 
     /**
      * Opens a registration chain for `serviceType`: choose the implementer through one of the
@@ -65,6 +74,7 @@ declare module '@rhombus-std/di.core' {
   }
 }
 
+// ServiceDescriptor
 registerAugmentations<Manifest<unknown>>({
   add(this: Manifest<unknown>, descriptor: ServiceDescriptor<any>): Manifest<unknown> {
     return this._add(descriptor);
@@ -77,6 +87,9 @@ registerAugmentations<Manifest<unknown>>({
   },
 });
 
+// Iterable<ServiceDescriptor>
+// ServiceDescriptor[]
+// ServiceType
 registerAugmentations<Manifest<unknown>>({
   addMany(this: Manifest<unknown>, descriptors: Iterable<ServiceDescriptor<unknown>>): Manifest<unknown> {
     return Iterator.from(descriptors).reduce((man, descriptor) => man.add(descriptor), this);
@@ -97,23 +110,51 @@ registerAugmentations<Manifest<unknown>>({
   },
 });
 
+// ServiceType - Ctor - ConstructorType - Lifetime
 registerAugmentations<Manifest<unknown>>({
-  add(this: Manifest<unknown>, serviceType: Type, implementer: unknown, implementerType: ConstructorType | FunctionType | ConstantType, lifetime?: any): Manifest<unknown> {
-    return this.add(toDescriptor(serviceType, implementer, implementerType, lifetime));
+  add(this: Manifest<unknown>, serviceType: Type, ctor: Ctor, ctorType: ConstructorType, lifetime?: any): Manifest<unknown> {
+    return this.add(ServiceDescriptor.ctor(serviceType, ctor, ctorType, lifetime));
   },
-  tryAdd(this: Manifest<unknown>, serviceType: Type, implementer: unknown, implementerType: ConstructorType | FunctionType | ConstantType, lifetime?: any): Manifest<unknown> {
-    return this.tryAdd(toDescriptor(serviceType, implementer, implementerType, lifetime));
+  tryAdd(this: Manifest<unknown>, serviceType: Type, ctor: Ctor, ctorType: ConstructorType, lifetime?: any): Manifest<unknown> {
+    return this.tryAdd(ServiceDescriptor.ctor(serviceType, ctor, ctorType, lifetime));
   },
-  replace(this: Manifest<unknown>, serviceType: Type, implementer: unknown, implementerType: ConstructorType | FunctionType | ConstantType, lifetime?: any): Manifest<unknown> {
-    return this.replace(toDescriptor(serviceType, implementer, implementerType, lifetime));
+  replace(this: Manifest<unknown>, serviceType: Type, ctor: Ctor, ctorType: ConstructorType, lifetime?: any): Manifest<unknown> {
+    return this.replace(ServiceDescriptor.ctor(serviceType, ctor, ctorType, lifetime));
   },
 });
 
-// Must register after the `add(descriptor: ServiceDescriptor)` contribution above — newer
-// contributions dispatch first, and that one's guard also accepts an abstract descriptor.
+// ServiceType - Factory - FunctionType - Lifetime
 registerAugmentations<Manifest<unknown>>({
-  add(this: Manifest<unknown>, descriptor: CtorDescriptor<any> & { ctorType: ConstructorType & { abstract: true; }; }): never {
-    throw new TypeError(`${Type.stringify(descriptor.ctorType)} is abstract — nothing can \`new\` it directly`);
+  add(this: Manifest<unknown>, serviceType: Type, factory: Func, factoryType: FunctionType, lifetime?: any): Manifest<unknown> {
+    return this.add(ServiceDescriptor.factory(serviceType, factory, factoryType, lifetime));
+  },
+  tryAdd(this: Manifest<unknown>, serviceType: Type, factory: Func, factoryType: FunctionType, lifetime?: any): Manifest<unknown> {
+    return this.tryAdd(ServiceDescriptor.factory(serviceType, factory, factoryType, lifetime));
+  },
+  replace(this: Manifest<unknown>, serviceType: Type, factory: Func, factoryType: FunctionType, lifetime?: any): Manifest<unknown> {
+    return this.replace(ServiceDescriptor.factory(serviceType, factory, factoryType, lifetime));
+  },
+});
+
+// ServiceType - Value
+registerAugmentations<Manifest<unknown>>({
+  add(this: Manifest<unknown>, serviceType: Type, value: unknown): Manifest<unknown> {
+    return this.add(ServiceDescriptor.value(serviceType, value));
+  },
+  tryAdd(this: Manifest<unknown>, serviceType: Type, value: unknown): Manifest<unknown> {
+    return this.tryAdd(ServiceDescriptor.value(serviceType, value));
+  },
+  replace(this: Manifest<unknown>, serviceType: Type, value: unknown): Manifest<unknown> {
+    return this.replace(ServiceDescriptor.value(serviceType, value));
+  },
+  addValue(this: Manifest<unknown>, serviceType: Type, value: unknown): Manifest<unknown> {
+    return this.add(ServiceDescriptor.value(serviceType, value));
+  },
+  tryAddValue(this: Manifest<unknown>, serviceType: Type, value: unknown): Manifest<unknown> {
+    return this.tryAdd(ServiceDescriptor.value(serviceType, value));
+  },
+  replaceValue(this: Manifest<unknown>, serviceType: Type, value: unknown): Manifest<unknown> {
+    return this.replace(ServiceDescriptor.value(serviceType, value));
   },
 });
 
@@ -122,17 +163,3 @@ registerAugmentations<Manifest<unknown>>({
     return openDescription(serviceType);
   },
 });
-
-/** The descriptor the uniform three-argument shape describes, its door chosen by the implementer type's kind. */
-function toDescriptor(serviceType: Type, implementer: unknown, implementerType: ConstructorType | FunctionType | ConstantType, lifetime?: unknown): ServiceDescriptor<unknown> {
-  switch (implementerType.kind) {
-    case 'ctor':
-      return ServiceDescriptor.ctor(serviceType, implementer as Ctor, implementerType, lifetime);
-    case 'func':
-      return ServiceDescriptor.factory(serviceType, implementer as Func, implementerType, lifetime);
-    case 'constant':
-      return ServiceDescriptor.value(serviceType, implementer);
-    default:
-      return assertNever(implementerType);
-  }
-}
