@@ -3032,3 +3032,16 @@ switch. `remove`/`removeAll` stay kind-free: removal is identification, not cons
 served by address or held descriptor.
 
 _Owner-ruled; Claude-recorded 2026-08-22._
+
+---
+
+## §202 — A verb that changes nothing returns the receiver
+
+Every manifest registration verb preserves identity on a no-op: `_remove`/`_replace` return the
+receiver when nothing matched, and the augmentation layer's reduce-style verbs already seed with
+the receiver. `===` therefore answers "did this change anything", and — since plans cache
+against the manifest — an unchanged manifest keeps its cached plans instead of silently forking
+them. The guarantee is documented on the `Manifest` interface; `_add` always changes, so it is
+always new.
+
+_Owner-ruled; Claude-recorded 2026-08-22._

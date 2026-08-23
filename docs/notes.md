@@ -38,11 +38,11 @@ land; delete the file when empty.
       with their `(implementer, lifetime?)` bodies (INLINE_FACE_WITHOUT_BODY; sugar survives unlowered). The same face↔body diagnostics are
       FATAL in the bunfig preload, so the defect also fails whole-suite loads in
       augmentations.test, options.augmentations.test, caching.memory.test and hosting.test.
-- [ ] **arg-vocabulary residual sweep** — Engine/CallSite files done; "parameter" prose survives in
-      builder.ts, ServiceProvider.ts docs and elsewhere; house rule is arg, never param/argument.
-      ALSO 9 primitives tests red at tip (predates 2026-08-22 work; bisected): type-from/
-      type-match call the spec doors with `args:` while Type.ts reads `spec.signatures`
-      (throws in atLeastOneSignature) — the sweep's code-side half never landed in Type.ts.
+- [ ] **arg-vocabulary residual sweep** — RULED 2026-08-22: the signatures-list member is
+      `signatures`; `args` is acceptable only for a single signature's own element list; per-element
+      prose is "arg", never param/parameter/argument. Code, spec doors and primitives tests now
+      conform; "parameter" prose still survives in builder.ts, ServiceProvider.ts docs and
+      elsewhere.
 - [ ] **Optional: biome via dprint-plugin-exec** for noUnusedImports autofix in the hook — offered, not
       requested; noUnusedLocals gates the same class without autofix.
 - [ ] __examples.app._ red against the model-taking `DefaultManifest` ctor_* — the demos call
@@ -52,3 +52,10 @@ land; delete the file when empty.
       pre-di2: `ConstantType`/marker phrasing (the marker no longer exists; value door = the
       `*Value` verbs + `NonCallable` add shape), `scope?` args, `Scopes` naming. One pass at lane
       end, not piecemeal.
+- [ ] **augmentations.test residual 5 fails** — suites load again since the matcher fix; the
+      remaining failures are untriaged (likely the hosting/logging red pile reaching through
+      filter-logging-builder). Triage after the abstract-ctor Go work lands.
+- [ ] **Type nodes generic over the described type** — owner fun-thought 2026-08-22: nodes could
+      carry `<out T>` and let covariance rule node assignability. Catch: the engine's homogeneous
+      `Type` infects every signature, and parsed/erased nodes have no image (`Type<unknown>`)
+      exactly where data enters. Brainstorm seed only; no work ordered.
