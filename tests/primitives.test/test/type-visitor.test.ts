@@ -2,8 +2,8 @@
 // handler matching its own kind, a context value threads through recursive calls, and a node
 // carrying no recognized kind fails loudly rather than being silently skipped.
 
-import { type ArrayType, type ConstructorType, type FunctionType, type GenericType, type GlobalType, type ImportedType, type IntersectionType, type IterableType, type ObjectType, type TagType,
-  type TupleType, Type, type TypeLiteralType, type UnionType } from '@rhombus-std/primitives';
+import { type AbstractConstructorType, type ArrayType, type ConstructorType, type FunctionType, type GenericType, type GlobalType, type ImportedType, type IntersectionType, type IterableType,
+  type ObjectType, type TagType, type TupleType, Type, type TypeLiteralType, type UnionType } from '@rhombus-std/primitives';
 import { describe, expect, test } from 'bun:test';
 
 const A = Type.imported('A', 'app');
@@ -15,6 +15,9 @@ class KindVisitor extends Type.Visitor<string> {
     return type.kind;
   }
   protected override visitCtor(type: ConstructorType): string {
+    return type.kind;
+  }
+  protected override visitAbstractCtor(type: AbstractConstructorType): string {
     return type.kind;
   }
   protected override visitFunc(type: FunctionType): string {
@@ -58,10 +61,13 @@ class CountVisitor extends Type.Visitor<number> {
     return 1 + this.visit(type.element);
   }
   protected override visitCtor(type: ConstructorType): number {
-    return 1 + this.visit(type.instance) + this.#signatures(type.args);
+    return 1 + this.visit(type.instance) + this.#signatures(type.signatures);
+  }
+  protected override visitAbstractCtor(type: AbstractConstructorType): number {
+    return 1 + this.visit(type.instance) + this.#signatures(type.signatures);
   }
   protected override visitFunc(type: FunctionType): number {
-    return 1 + this.visit(type.return) + this.#signatures(type.args);
+    return 1 + this.visit(type.return) + this.#signatures(type.signatures);
   }
   protected override visitGeneric(_type: GenericType): number {
     return 1;
@@ -97,7 +103,7 @@ class CountVisitor extends Type.Visitor<number> {
   #sum(types: readonly Type[]): number {
     return types.reduce((total, type) => total + this.visit(type), 0);
   }
-  #signatures(signatures: ConstructorType['args']): number {
+  #signatures(signatures: ConstructorType['signatures']): number {
     return signatures.flat().reduce((total, type) => total + this.visit(type), 0);
   }
 }
@@ -109,6 +115,9 @@ class PathVisitor extends Type.Visitor<string, string> {
   }
   protected override visitCtor(type: ConstructorType, path: string): string {
     return this.visit(type.instance, `${path}>ctor`);
+  }
+  protected override visitAbstractCtor(type: AbstractConstructorType, path: string): string {
+    return this.visit(type.instance, `${path}>abstract-ctor`);
   }
   protected override visitFunc(type: FunctionType, path: string): string {
     return this.visit(type.return, `${path}>func`);
