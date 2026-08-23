@@ -305,12 +305,11 @@ describe('typefor emission modes', () => {
     expect([...declared.values()]).toContain(`Type.ctor(${systemClock}, [[${log}]])`);
     expect([...declared.values()]).toContain(`Type.func(${clock}, [[${log}]])`);
 
-    // An `abstract class` constructor carries the same shape plus a trailing
-    // `true` — the flag defaults to false and stays unspelled everywhere else.
+    // An `abstract class` constructor spells its own kind's factory, same shape.
     const abstractClock = nameOf('Type.imported("AbstractClock", "typefor-emit-app/tokens/app")');
-    expect([...declared.values()]).toContain(`Type.ctor(${abstractClock}, [[${log}]], true)`);
+    expect([...declared.values()]).toContain(`Type.abstractCtor(${abstractClock}, [[${log}]])`);
     for (const spelling of declared.values()) {
-      if (spelling.startsWith('Type.ctor(') || spelling.startsWith('Type.func(')) {
+      if (spelling.startsWith('Type.ctor(') || spelling.startsWith('Type.abstractCtor(') || spelling.startsWith('Type.func(')) {
         expect(spelling).not.toContain('Type.imported(');
         expect(spelling).not.toContain('Type.global(');
       }
