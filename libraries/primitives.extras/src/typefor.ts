@@ -1,19 +1,40 @@
-import type { AbstractConstructorType, ConstructorType, FunctionType, Type } from '@rhombus-std/primitives';
+import type { AbstractConstructorType, ArrayType, ConstructorType, FunctionType, IterableType, NamedType, TupleType, Type, TypeLiteralType, UnionType } from '@rhombus-std/primitives';
 import type { Ctor, Func } from '@rhombus-toolkit/func';
 
+/** Does `T` inhabit `Shape` in both directions — the shape itself, not a subtype of it? */
+type Exactly<T, Shape> = [T] extends [Shape] ? [Shape] extends [T] ? true : false : false;
+
+/** Distributes `T` and asks whether any member fails to cover the whole — true only for a union. */
+type IsUnion<T, Each = T> = T extends unknown ? [Each] extends [T] ? false : true : never;
+
 /**
- * The {@link Type} `typefor` yields for `T`, narrowed to the kind `T` denotes so a constructor's
- * `instance` and a function's `return` / `args` read without a cast. A concrete class narrows
- * before the abstract test, since every concrete constructor also answers the abstract shape.
+ * The {@link Type} `typefor` yields for `T`, narrowed as far as the spelling can be read back
+ * from the structure: callables to their kind (a concrete class before the abstract test, since
+ * every concrete constructor also answers the abstract shape), tuples apart from arrays by their
+ * literal length, an exact `Iterable<E>`, unions, and scalars — a wide scalar names a type
+ * (`NamedType`, since `string` spells a global and `type S = string` an import), a scalar
+ * literal is its own value.
  *
  * @remarks
- * Only the kinds whose accessors carry the derivation are narrowed. A literal branch would be
- * unsound in the case that matters — `[T] extends [string]` holds for the wide `string` as readily
- * as for `"dev"` — so a literal keeps the whole union.
+ * A spelling hidden behind a type alias derives to the ALIAS's name — the address must not shift
+ * with the aliased structure — while the checker sees only the structure, so an alias-addressed
+ * callable, literal, or union arrives as a nominal node at runtime despite the narrower reading
+ * here. Interfaces are why no object branch exists: an interface is structurally identical to an
+ * inline object type, and an interface address is the dominant call.
  */
-export type TypeFor<T> = [T] extends [Ctor<never[], unknown>] ? ConstructorType
+export type TypeFor<T> = [T] extends [never] ? Type
+  : [T] extends [Ctor<never[], unknown>] ? ConstructorType
   : [T] extends [abstract new(...args: never[]) => unknown] ? AbstractConstructorType
   : [T] extends [Func<never[], unknown>] ? FunctionType
+  : [T] extends [unknown[]] ? number extends T['length'] ? ArrayType : TupleType
+  : [T] extends [boolean] ? Exactly<T, boolean> extends true ? NamedType : TypeLiteralType<T & boolean>
+  : IsUnion<T> extends true ? UnionType
+  : [T] extends [string] ? [string] extends [T] ? NamedType : TypeLiteralType<T & string>
+  : [T] extends [number] ? [number] extends [T] ? NamedType : TypeLiteralType<T & number>
+  : [T] extends [bigint] ? [bigint] extends [T] ? NamedType : TypeLiteralType<T & bigint>
+  : [T] extends [undefined] ? TypeLiteralType<undefined>
+  : [T] extends [null] ? TypeLiteralType<null>
+  : [T] extends [Iterable<infer E>] ? [Iterable<E>] extends [T] ? IterableType : Type
   : Type;
 
 /**
@@ -23,7 +44,7 @@ export type TypeFor<T> = [T] extends [Ctor<never[], unknown>] ? ConstructorType
  * The type is derived exactly as spelled: no constructor or call unwrap, and a keyed type arrives
  * as its tag. Every derivation the token primitives used to bake in is a field read on the result —
  * `typefor(C).instance` for what a class builds, `typefor<F>().return` and
- * `typefor<F>().args` for what a factory returns and takes.
+ * `typefor<F>().signatures` for what a factory returns and takes.
  *
  * Resolved at compile time; calling this without that resolution throws.
  *
