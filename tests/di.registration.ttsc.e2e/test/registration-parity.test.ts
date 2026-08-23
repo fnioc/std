@@ -319,10 +319,7 @@ describe.skipIf(!toolchainReady)('registration sugar — addClass / addFactory /
     expect(withInline).toContain(`.add(${fooType}, Foo, ${fooCtorType})`);
     expect(withInline).toContain(`${barFnType})`);
     expect(withInline).toContain(`.add(${barType}, `);
-    // The value door passes the ConstantType marker, imported from di.core the
-    // way a hand author would.
-    expect(withInline).toContain(`.add(${bazType}, bazValue, ConstantType)`);
-    expect(withInline).toMatch(/import\s*\{\s*ConstantType\s*\}\s*from\s*"@rhombus-std\/di\.core"/);
+    expect(withInline).toContain(`.addValue(${bazType}, bazValue)`);
     // The consts are imported, not re-derived at the call site.
     expect(withInline).toContain(`from "./__typefor__.js"`);
     expect(withInline).not.toContain('add<');

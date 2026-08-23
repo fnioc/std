@@ -3,7 +3,7 @@
 // that name to the same instance: a descriptor reaches the primitive, and a service type paired
 // with an implementer reaches the sugar.
 
-import { ConstantType, DefaultManifest, type Manifest, ServiceDescriptor } from '@rhombus-std/di.core';
+import { DefaultManifest, type Manifest, ServiceDescriptor } from '@rhombus-std/di.core';
 import { Type } from '@rhombus-std/primitives';
 import { describe, expect, test } from 'bun:test';
 
@@ -37,8 +37,9 @@ describe('add answers to both the primitive and the sugared shapes', () => {
     expect(values(manifest)).toEqual(['factory']);
   });
 
-  test('a service type paired with the constant marker reaches the value door', () => {
-    expect(values(blank().add(A, 'a', ConstantType))).toEqual(['a']);
+  test('a service type paired with a bare value reaches the value door', () => {
+    expect(values(blank().addValue(A, 'a'))).toEqual(['a']);
+    expect(values(blank().add(A, 'a'))).toEqual(['a']);
   });
 
   test('the two shapes chain into one manifest, newest first', () => {
@@ -61,5 +62,28 @@ describe('remove and replace are reachable on the instance', () => {
       .add(ServiceDescriptor.value(A, 'first'))
       .add(ServiceDescriptor.value(B, 'b'));
     expect(values(manifest.replace(ServiceDescriptor.value(A, 'second')))).toEqual(['b', 'second']);
+  });
+});
+
+describe('a verb that changes nothing returns the receiver', () => {
+  test('remove without a match', () => {
+    const manifest = blank().add(ServiceDescriptor.value(A, 'a'));
+    expect(manifest.remove(ServiceDescriptor.value(B, 'b'))).toBe(manifest);
+    expect(manifest.remove(B)).toBe(manifest);
+  });
+
+  test('replace without a registration to swap', () => {
+    const manifest = blank().add(ServiceDescriptor.value(A, 'a'));
+    expect(manifest.replace(ServiceDescriptor.value(B, 'b'))).toBe(manifest);
+  });
+
+  test('tryAdd of an already-registered service type', () => {
+    const manifest = blank().add(ServiceDescriptor.value(A, 'a'));
+    expect(manifest.tryAdd(ServiceDescriptor.value(A, 'again'))).toBe(manifest);
+  });
+
+  test('removeAll of an unregistered service type', () => {
+    const manifest = blank().add(ServiceDescriptor.value(A, 'a'));
+    expect(manifest.removeAll(B)).toBe(manifest);
   });
 });

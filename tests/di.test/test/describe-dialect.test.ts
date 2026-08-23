@@ -4,7 +4,7 @@
 // produces, that the two produce the same one, and the refusals a caller typing through `any`
 // can still provoke.
 
-import { ConstantType, DefaultManifest, type Manifest, ServiceDescriptor } from '@rhombus-std/di.core';
+import { DefaultManifest, type Manifest, ServiceDescriptor } from '@rhombus-std/di.core';
 import '@rhombus-std/di';
 import { Type } from '@rhombus-std/primitives';
 import { describe, expect, test } from 'bun:test';
@@ -38,7 +38,7 @@ function makeSink(clock: IClock): Sink {
 
 /** A manifest holding nothing but the clock every case below leans on. */
 function withClock(): Manifest<'singleton'> {
-  return new DefaultManifest<'singleton'>().add(CLOCK, new FixedClock(), ConstantType);
+  return new DefaultManifest<'singleton'>().addValue(CLOCK, new FixedClock());
 }
 
 describe('the impl doors', () => {
@@ -98,13 +98,13 @@ describe('the terse form', () => {
 
   test('the constant marker names a value, handed back as it stands', () => {
     const built = new Sink(new FixedClock(), 'as-value');
-    const services = withClock().add(SINK, built, ConstantType);
+    const services = withClock().addValue(SINK, built);
 
     expect(services.build().getRequiredService(SINK)).toBe(built);
   });
 
   test('a callable under the constant marker is handed back, never called', () => {
-    const services = withClock().add(SINK, makeSink, ConstantType);
+    const services = withClock().addValue(SINK, makeSink);
 
     expect(services.build().getRequiredService(SINK)).toBe(makeSink);
   });

@@ -4,7 +4,7 @@
 // because the registry's bag is a flat name namespace, so a receiver cannot take
 // two contributions of one name from a single registration.
 
-import { ConstantType, type Manifest } from '@rhombus-std/di.core';
+import { type Manifest } from '@rhombus-std/di.core';
 import { type IPostConfigureOptions, type IValidateOptions, ValidateOptionsResult } from '@rhombus-std/options';
 import { Type } from '@rhombus-std/primitives';
 import { registerAugmentations } from '@rhombus-std/primitives.extras';
@@ -80,7 +80,7 @@ export namespace ServiceManifestOptionsAugmentations {
     // Given nothing, the base is whatever `optionsType` itself resolves to,
     // injected here so the resolution is the container's, not ours.
     if (makeBase) {
-      return manifest.add(baseFactoryType(optionsType), makeBase, ConstantType);
+      return manifest.addValue(baseFactoryType(optionsType), makeBase);
     }
     return manifest.add(
       baseFactoryType(optionsType),
@@ -110,7 +110,7 @@ export namespace ServiceManifestOptionsAugmentations {
     // runs after every configure step.
     const plain = step as IPostConfigureOptions<any> | Func<[any], void>;
     const wrapped: IPostConfigureOptions<any> = typeof plain === 'function' ? { postConfigure: plain } : plain;
-    return this.add(postConfigureStepType(optionsType), wrapped, ConstantType);
+    return this.addValue(postConfigureStepType(optionsType), wrapped);
   }
 
   export function validate(this: Manifest<unknown>, optionsType: Type, validate: Func<[options: any], boolean>, failureMessage?: string): Manifest<unknown>;
@@ -147,7 +147,7 @@ export namespace ServiceManifestOptionsAugmentations {
         return predicate(options, ...([] as any)) ? ValidateOptionsResult.success : ValidateOptionsResult.fail(failureMessage ?? DEFAULT_VALIDATION_FAILURE_MESSAGE);
       },
     };
-    return this.add(validateStepType(optionsType), step, ConstantType);
+    return this.addValue(validateStepType(optionsType), step);
   }
 }
 

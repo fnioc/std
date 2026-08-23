@@ -6,7 +6,7 @@ import { Type } from '@rhombus-std/primitives';
  *
  * @remarks
  * Every diagnostics "collection" slot is registered with
- * `services.add(<type>, x, ConstantType)` and read back with
+ * `services.addValue(<type>, x)` and read back with
  * `resolver.resolve(collectionType(<type>))` -- the same wrapper convention
  * @rhombus-std/options.augmentations uses to aggregate every registration of a
  * slot.

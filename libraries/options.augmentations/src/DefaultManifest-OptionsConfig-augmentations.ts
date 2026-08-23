@@ -6,7 +6,7 @@
 // cannot take two contributions of one name from a single registration.
 
 import type { IConfig } from '@rhombus-std/config.core';
-import { ConstantType, type Manifest } from '@rhombus-std/di.core';
+import { type Manifest } from '@rhombus-std/di.core';
 import type { IConfigureOptions } from '@rhombus-std/options';
 import { Type } from '@rhombus-std/primitives';
 import { registerAugmentations } from '@rhombus-std/primitives.extras';
@@ -80,10 +80,10 @@ export namespace ServiceManifestOptionsConfigAugmentations {
     // disambiguation `addOptions` uses.
     const configSource = source as IConfig | Func<[any], void>;
     if (typeof configSource === 'function') {
-      return this.add(configureStepType(optionsType), { configure: configSource }, ConstantType);
+      return this.addValue(configureStepType(optionsType), { configure: configSource });
     }
-    let m: Manifest<unknown> = this.add(configureStepType(optionsType), new ConfigConfigureOptions(configSource), ConstantType);
-    m = m.add(changeTokenSourceType(optionsType), new ConfigChangeTokenSource(configSource), ConstantType);
+    let m: Manifest<unknown> = this.addValue(configureStepType(optionsType), new ConfigConfigureOptions(configSource));
+    m = m.addValue(changeTokenSourceType(optionsType), new ConfigChangeTokenSource(configSource));
     return m;
   }
 }

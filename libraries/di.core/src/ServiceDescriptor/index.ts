@@ -2,7 +2,6 @@ import * as factories from './factories';
 import * as op from './op';
 import type { ServiceDescriptor as Descriptor } from './ServiceDescriptor';
 
-export { ConstantType } from './ConstantType';
 export type { CtorDescriptor, FactoryDescriptor, ValueDescriptor } from './ServiceDescriptor';
 
 export type ServiceDescriptor<Lifetime> = Descriptor<Lifetime>;

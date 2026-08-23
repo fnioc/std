@@ -27,7 +27,7 @@ land; delete the file when empty.
 - [ ] **Mergesynth guard-warning noise** — a cold lowering cache replays ~256 benign
       "merge guard for X cannot check …" lines per full rebuild. Consider a quieter default or a
       summary line.
-- [ ] **Hoist `DistributiveOmit` into `@rhombus-toolkit/type-helpers`** — currently in primitives
+- [ ] **Hoist `DistributiveOmit` + `ButNot` into `@rhombus-toolkit/type-helpers`** — currently in primitives
       `src/utils/type-helpers.ts` (the utils dir is the migration queue); fully general, belongs beside `Flatten`. Ride the next type-helpers publish.
 - [ ] **Go-side aggregate/nominal naming echoes** — transforms/ internals (tokens/derive.go,
       typenode.go, mergesynth nominal_identity_test.go, typesurface) still speak aggregate/nominal
@@ -35,8 +35,20 @@ land; delete the file when empty.
 - [ ] **di.registration.ttsc.e2e repair** — two-part: the sandbox fixture declares `Manifest<"singleton">`
       and omits the datum (now correctly refused — fixture wants `'singleton' | undefined`), and the Go
       inline host's face↔body matcher doesn't pair the rest-tuple `...lifetime: LifetimeArgument<L>` faces
-      with their `(implementer, lifetime?)` bodies (INLINE_FACE_WITHOUT_BODY; sugar survives unlowered).
+      with their `(implementer, lifetime?)` bodies (INLINE_FACE_WITHOUT_BODY; sugar survives unlowered). The same face↔body diagnostics are
+      FATAL in the bunfig preload, so the defect also fails whole-suite loads in
+      augmentations.test, options.augmentations.test, caching.memory.test and hosting.test.
 - [ ] **arg-vocabulary residual sweep** — Engine/CallSite files done; "parameter" prose survives in
       builder.ts, ServiceProvider.ts docs and elsewhere; house rule is arg, never param/argument.
+      ALSO 9 primitives tests red at tip (predates 2026-08-22 work; bisected): type-from/
+      type-match call the spec doors with `args:` while Type.ts reads `spec.signatures`
+      (throws in atLeastOneSignature) — the sweep's code-side half never landed in Type.ts.
 - [ ] **Optional: biome via dprint-plugin-exec** for noUnusedImports autofix in the hook — offered, not
       requested; noUnusedLocals gates the same class without autofix.
+- [ ] __examples.app._ red against the model-taking `DefaultManifest` ctor_* — the demos call
+      `new DefaultManifest<'singleton'>()` bare (TS2554) plus kind-mismatch fallout
+      (`typeof PaymentRouter` as `Func`); depender-rework territory alongside hosting/logging.
+- [ ] **CLAUDE.md digest refresh for the di2 surface** — the Architecture digest still speaks
+      pre-di2: `ConstantType`/marker phrasing (the marker no longer exists; value door = the
+      `*Value` verbs + `NonCallable` add shape), `scope?` args, `Scopes` naming. One pass at lane
+      end, not piecemeal.

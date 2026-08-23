@@ -4,7 +4,7 @@
 // authoring surface with hand-written type nodes.
 
 import '@rhombus-std/di';
-import { ConstantType, DefaultManifest, type Manifest, Type } from '@rhombus-std/di.core';
+import { DefaultManifest, type Manifest, Type } from '@rhombus-std/di.core';
 import type { IOptions } from '@rhombus-std/options';
 import { optionsAddressType } from '@rhombus-std/options.augmentations';
 import { describe, expect, test } from 'bun:test';
@@ -20,7 +20,7 @@ describe('addOptions(optionsType) — wrap the bound T', () => {
     let services: Manifest<'singleton'> = new DefaultManifest<'singleton'>();
     const widget: Widget = { name: 'gizmo' };
 
-    services = services.add(WIDGET_TYPE, widget, ConstantType);
+    services = services.addValue(WIDGET_TYPE, widget);
     services = services.addOptions(WIDGET_TYPE);
 
     const provider = services.build();

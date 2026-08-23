@@ -7,7 +7,6 @@
 // listener's merged configuration view.
 
 import type { IConfig } from '@rhombus-std/config.core';
-import { ConstantType } from '@rhombus-std/di.core';
 import { type IMetricsBuilder, MetricsOptions } from '@rhombus-std/diagnostics.core';
 import type { IConfigureOptions } from '@rhombus-std/options';
 import { ConfigChangeTokenSource, type IOptionsChangeTokenSource } from '@rhombus-std/options.augmentations';
@@ -21,9 +20,9 @@ import { MetricsConfigureOptions } from './MetricsConfigureOptions';
 export namespace MetricsBuilderConfigAugmentations {
   /** Reads metrics enablement rules from `config` and configures which meters, instruments, and listeners are enabled. */
   export function addMetricsConfig<Self extends IMetricsBuilder>(this: Self, config: IConfig): Self {
-    this.services = this.services.add(typefor<IConfigureOptions<MetricsOptions>>(), new MetricsConfigureOptions(config), ConstantType);
-    this.services = this.services.add(typefor<IOptionsChangeTokenSource<MetricsOptions>>(), new ConfigChangeTokenSource(config), ConstantType);
-    this.services = this.services.add(typefor<MetricsConfig>(), new MetricsConfig(config), ConstantType);
+    this.services = this.services.addValue(typefor<IConfigureOptions<MetricsOptions>>(), new MetricsConfigureOptions(config));
+    this.services = this.services.addValue(typefor<IOptionsChangeTokenSource<MetricsOptions>>(), new ConfigChangeTokenSource(config));
+    this.services = this.services.addValue(typefor<MetricsConfig>(), new MetricsConfig(config));
     return this;
   }
 }

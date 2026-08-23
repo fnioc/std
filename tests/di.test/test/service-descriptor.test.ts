@@ -42,19 +42,6 @@ describe('equals', () => {
   });
 });
 
-describe('ctor', () => {
-  test('refuses an abstract implementer type — nothing can `new` it directly', () => {
-    expect(() => ServiceDescriptor.ctor(A, Impl, Type.ctor(A, [[]], true)))
-      .toThrow(/is abstract — nothing can `new` it directly/);
-  });
-
-  test('a literal-built descriptor meets the same refusal where it enters a manifest', () => {
-    const literal = { serviceType: A, ctor: Impl, ctorType: Type.ctor(A, [[]], true) };
-    expect(() => DefaultManifest.empty<string>().add(literal))
-      .toThrow(/is abstract — nothing can `new` it directly/);
-  });
-});
-
 describe('value', () => {
   const T = Type.generic('T');
 

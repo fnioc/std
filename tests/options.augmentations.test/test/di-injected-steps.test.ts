@@ -6,7 +6,7 @@
 // can't recover the Deps tuple by inference.
 
 import '@rhombus-std/di';
-import { ConstantType, DefaultManifest, type Manifest, Type } from '@rhombus-std/di.core';
+import { DefaultManifest, type Manifest, Type } from '@rhombus-std/di.core';
 import { type IOptions, OptionsValidationError } from '@rhombus-std/options';
 import { optionsAddressType } from '@rhombus-std/options.augmentations';
 import { describe, expect, test } from 'bun:test';
@@ -48,7 +48,7 @@ describe('configure — DI-injected', () => {
   test('resolves several deps, injected positionally in type order', () => {
     let services: Manifest<'singleton'> = new DefaultManifest<'singleton'>();
     services = services.add(URL_PROVIDER_TYPE, UrlProvider, Type.ctor(URL_PROVIDER_TYPE, [[]]), 'singleton');
-    services = services.add(RETRY_POLICY_TYPE, { attempts: 4 }, ConstantType);
+    services = services.addValue(RETRY_POLICY_TYPE, { attempts: 4 });
     services = services.addOptions(OPTIONS_TYPE, baseOptions);
     services = services.configure<[UrlProvider, { attempts: number; }]>(OPTIONS_TYPE, [
       URL_PROVIDER_TYPE,
@@ -86,7 +86,7 @@ describe('configure — DI-injected', () => {
 describe('postConfigure — DI-injected', () => {
   test('runs after configure with a resolved dep', () => {
     let services: Manifest<'singleton'> = new DefaultManifest<'singleton'>();
-    services = services.add(SUFFIX_TYPE, { text: '!' }, ConstantType);
+    services = services.addValue(SUFFIX_TYPE, { text: '!' });
     services = services.addOptions(OPTIONS_TYPE, baseOptions);
     services = services.configure(OPTIONS_TYPE, (options: WidgetOptions) => {
       options.note = 'base';
@@ -107,7 +107,7 @@ describe('validate — DI-injected', () => {
 
   function servicesWithLimit(size: number, max: number): Manifest<unknown> {
     let services: Manifest<'singleton'> = new DefaultManifest<'singleton'>();
-    services = services.add(LIMIT_TYPE, { max }, ConstantType);
+    services = services.addValue(LIMIT_TYPE, { max });
     services = services.addOptions(OPTIONS_TYPE, () => ({ ...baseOptions(), retries: size }));
     return services;
   }

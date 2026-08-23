@@ -1,7 +1,6 @@
 // The tracing analog of MetricsBuilder-Config-augmentations.
 
 import type { IConfig } from '@rhombus-std/config.core';
-import { ConstantType } from '@rhombus-std/di.core';
 import { type ITracingBuilder, TracingOptions } from '@rhombus-std/diagnostics.core';
 import type { IConfigureOptions } from '@rhombus-std/options';
 import { ConfigChangeTokenSource, type IOptionsChangeTokenSource } from '@rhombus-std/options.augmentations';
@@ -15,9 +14,9 @@ import { TracingConfigureOptions } from './TracingConfigureOptions';
 export namespace TracingBuilderConfigAugmentations {
   /** Reads tracing enablement rules from `config` and configures which activity sources and activities are enabled. */
   export function addTracingConfig<Self extends ITracingBuilder>(this: Self, config: IConfig): Self {
-    this.services = this.services.add(typefor<IConfigureOptions<TracingOptions>>(), new TracingConfigureOptions(config), ConstantType);
-    this.services = this.services.add(typefor<IOptionsChangeTokenSource<TracingOptions>>(), new ConfigChangeTokenSource(config), ConstantType);
-    this.services = this.services.add(typefor<TracingConfig>(), new TracingConfig(config), ConstantType);
+    this.services = this.services.addValue(typefor<IConfigureOptions<TracingOptions>>(), new TracingConfigureOptions(config));
+    this.services = this.services.addValue(typefor<IOptionsChangeTokenSource<TracingOptions>>(), new ConfigChangeTokenSource(config));
+    this.services = this.services.addValue(typefor<TracingConfig>(), new TracingConfig(config));
     return this;
   }
 }

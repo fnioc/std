@@ -15,7 +15,7 @@ import type {} from '@rhombus-std/di.extras';
 
 import { MemoryConfigSource } from '@rhombus-std/config';
 import { ServiceProviderOptions } from '@rhombus-std/di';
-import { ConstantType, type IServiceProvider } from '@rhombus-std/di.core';
+import { type IServiceProvider } from '@rhombus-std/di.core';
 import type { IMetricsBuilder } from '@rhombus-std/diagnostics.core';
 import { type HostBuilderContext, HostDefaults, HostLifecycleAugmentations, type IHostApplicationLifetime, type IHostBuilder, type IHostEnvironment } from '@rhombus-std/hosting.core';
 import { LoggingBuilder } from '@rhombus-std/logging';
@@ -77,13 +77,13 @@ export namespace HostBuilderHostingAugmentations {
   export function configureHostOptions<Self extends IHostBuilder>(this: Self, configureOptions: Func<[HostBuilderContext, HostOptions], void>): Self;
   export function configureHostOptions<Self extends IHostBuilder>(this: Self, configureOptions: Func<[HostBuilderContext, HostOptions], void> | Func<[HostOptions], void>): Self {
     return this.configureServices((context, services) =>
-      services.add(HOST_OPTIONS_CONFIGURE_TYPE, (options: HostOptions) => {
+      services.addValue(HOST_OPTIONS_CONFIGURE_TYPE, (options: HostOptions) => {
         if (configureOptions.length >= 2) {
           (configureOptions as Func<[HostBuilderContext, HostOptions], void>)(context, options);
         } else {
           (configureOptions as Func<[HostOptions], void>)(options);
         }
-      }, ConstantType)
+      })
     );
   }
 

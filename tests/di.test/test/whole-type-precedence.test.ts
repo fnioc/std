@@ -3,7 +3,7 @@
 // intersections each meet the rule their own way.
 
 import { ServiceProvider } from '@rhombus-std/di';
-import { ConstantType, DefaultManifest } from '@rhombus-std/di.core';
+import { DefaultManifest } from '@rhombus-std/di.core';
 import { Type } from '@rhombus-std/primitives';
 import { describe, expect, test } from 'bun:test';
 
@@ -22,7 +22,7 @@ describe('a type literal', () => {
 
   test('is answered by its own registration ahead of self-satisfaction', () => {
     const manifest = DefaultManifest.empty<string>()
-      .add(Type.typeLiteral('dev'), 'override', ConstantType);
+      .addValue(Type.typeLiteral('dev'), 'override');
     expect(new ServiceProvider(manifest).getRequiredService(Type.typeLiteral('dev'))).toBe('override');
   });
 });
@@ -40,9 +40,9 @@ describe('a tuple', () => {
 
   test('is answered by its own registration ahead of a viable synthesis', () => {
     const manifest = DefaultManifest.empty<string>()
-      .add(A, 'a-val', ConstantType)
-      .add(B, 'b-val', ConstantType)
-      .add(Type.tuple(A, B), 'pre-made', ConstantType);
+      .addValue(A, 'a-val')
+      .addValue(B, 'b-val')
+      .addValue(Type.tuple(A, B), 'pre-made');
     expect(new ServiceProvider(manifest).getRequiredService(Type.tuple(A, B))).toBe('pre-made');
   });
 });
@@ -50,8 +50,8 @@ describe('a tuple', () => {
 describe('an iterable address', () => {
   test('collects each registration satisfying a union element exactly once', () => {
     const manifest = DefaultManifest.empty<string>()
-      .add(A, 'a-val', ConstantType)
-      .add(Type.union(A, B), 'either', ConstantType);
+      .addValue(A, 'a-val')
+      .addValue(Type.union(A, B), 'either');
     const gathered = [...new ServiceProvider(manifest).getRequiredService(Type.iterable(Type.union(A, B)))];
     expect(gathered).toHaveLength(2);
     expect(gathered).toContain('a-val');
@@ -60,8 +60,8 @@ describe('an iterable address', () => {
 
   test('registered for exactly, wins outright — never combined with per-element answers', () => {
     const manifest = DefaultManifest.empty<string>()
-      .add(A, 'a-val', ConstantType)
-      .add(Type.iterable(A), 'exact-iter', ConstantType);
+      .addValue(A, 'a-val')
+      .addValue(Type.iterable(A), 'exact-iter');
     expect(new ServiceProvider(manifest).getRequiredService(Type.iterable(A))).toBe('exact-iter');
   });
 });
@@ -70,13 +70,13 @@ describe('an intersection', () => {
   const BOTH = Type.intersection(Type.object({ a: STR }), Type.object({ b: STR }));
 
   test('is answered by a registration for the intersection itself', () => {
-    const manifest = DefaultManifest.empty<string>().add(BOTH, 'both', ConstantType);
+    const manifest = DefaultManifest.empty<string>().addValue(BOTH, 'both');
     expect(new ServiceProvider(manifest).getRequiredService(BOTH)).toBe('both');
   });
 
   test('is never assembled from registrations covering its parts', () => {
     const manifest = DefaultManifest.empty<string>()
-      .add(Type.object({ a: STR, b: STR }), 'both', ConstantType);
+      .addValue(Type.object({ a: STR, b: STR }), 'both');
     expect(new ServiceProvider(manifest).getService(BOTH)).toBeUndefined();
   });
 });

@@ -29,8 +29,8 @@ export type * from './IOptionsChangeTokenSource.js';
 // for a TOptions it doesn't own (logging.config registers both a custom
 // configure step and a change-token source that way). The derived slot type
 // IS that contract, so the derivation functions are exported: a downstream
-// package appends a step with `services.add(configureStepType(optionsType),
-// step, ConstantType)` (or the class/factory forms for a lazily-constructed
+// package appends a step with `services.addValue(configureStepType(optionsType),
+// step)` (or the class/factory forms for a lazily-constructed
 // step), and the assembly for `optionsType` picks it up like any
 // `configure(...)`-registered one.
 export { baseFactoryType, changeTokenSourceType, configureStepType, optionsAddressType, postConfigureStepType, validateStepType } from './option-types.js';

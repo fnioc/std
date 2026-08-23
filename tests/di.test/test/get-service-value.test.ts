@@ -4,7 +4,7 @@
 // builds fresh.
 
 import { ServiceProvider } from '@rhombus-std/di';
-import { ConstantType, DefaultManifest, UnsatisfiableError } from '@rhombus-std/di.core';
+import { DefaultManifest, UnsatisfiableError } from '@rhombus-std/di.core';
 import { Type } from '@rhombus-std/primitives';
 import { describe, expect, test } from 'bun:test';
 
@@ -14,7 +14,7 @@ const Empty = Type.imported('Empty', 'app');
 const Gadget = Type.imported('Gadget', 'app');
 
 function providerWithBar(bar: unknown): ServiceProvider {
-  return new ServiceProvider(DefaultManifest.empty<string>().add(Bar, bar, ConstantType));
+  return new ServiceProvider(DefaultManifest.empty<string>().addValue(Bar, bar));
 }
 
 describe('constructing from a ConstructorType node', () => {

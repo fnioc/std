@@ -1,6 +1,6 @@
 // Side-effect: installs `build` onto di.core's Manifest.
 import '@rhombus-std/di';
-import { ConstantType, DefaultManifest, type Manifest, Type } from '@rhombus-std/di.core';
+import { DefaultManifest, type Manifest, Type } from '@rhombus-std/di.core';
 import type { IOptions } from '@rhombus-std/options';
 import { beforeAll, describe, expect, test } from 'bun:test';
 import { spawnSync } from 'node:child_process';
@@ -630,12 +630,12 @@ describe.skipIf(!toolchainReady)('generic inline stage — lookup parity (W5)', 
     const composed = Type.tag(base, 'redis');
 
     let keyed: Manifest<'singleton'> = new DefaultManifest<'singleton'>();
-    keyed = keyed.add(composed, marker, ConstantType);
+    keyed = keyed.addValue(composed, marker);
     expect(keyed.build().getService(composed)).toBe(marker);
 
     // An unkeyed registration of the same base does not answer the keyed lookup.
     let unkeyed: Manifest<'singleton'> = new DefaultManifest<'singleton'>();
-    unkeyed = unkeyed.add(base, marker, ConstantType);
+    unkeyed = unkeyed.addValue(base, marker);
     expect(unkeyed.build().getService(composed)).toBeUndefined();
   });
 });
@@ -778,7 +778,7 @@ describe.skipIf(!toolchainReady)('generic inline stage — addOptions options wi
     const value: UserOptions = { name: 'ada' };
 
     let services: Manifest<'singleton'> = new DefaultManifest<'singleton'>();
-    services = services.add(optionsType, value, ConstantType);
+    services = services.addValue(optionsType, value);
     services = services.addOptions(optionsType);
 
     const options = services.build().getRequiredService(optionsAddressType(optionsType)) as IOptions<UserOptions>;

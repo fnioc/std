@@ -1,5 +1,5 @@
 import { MemoryConfigSource } from '@rhombus-std/config';
-import { ConstantType, Type } from '@rhombus-std/di.core';
+import { Type } from '@rhombus-std/di.core';
 import { Host } from '@rhombus-std/hosting/tokens/index';
 import { expect, test } from 'bun:test';
 
@@ -20,7 +20,7 @@ test('asHostBuilder replays accumulated configureServices onto the application b
   let replayed = false;
   hostBuilder.configureServices((_context, services) => {
     replayed = true;
-    return services.add(Type.from('test:Marker'), 'present', ConstantType);
+    return services.addValue(Type.from('test:Marker'), 'present');
   });
 
   // Not applied until the application builder is built.

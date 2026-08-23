@@ -6,13 +6,8 @@ import type { CtorDescriptor, FactoryDescriptor, ValueDescriptor } from './Servi
 /**
  * Each factory names how the container reaches the service, which its implementer's type cannot
  * say on its own: a function registered as a VALUE is handed back, never called.
- *
- * @throws TypeError - when `ctorType` is abstract — nothing can `new` it directly.
  */
 export function ctor<Lifetime>(serviceType: Type, implementer: Ctor, ctorType: ConstructorType, lifetime?: Lifetime): CtorDescriptor<Lifetime> {
-  if (ctorType.abstract) {
-    throw new TypeError(`${Type.stringify(ctorType)} is abstract — nothing can \`new\` it directly`);
-  }
   return { serviceType, ctor: implementer, ctorType, lifetime };
 }
 

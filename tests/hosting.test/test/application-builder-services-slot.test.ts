@@ -1,4 +1,4 @@
-import { ConstantType, Type } from '@rhombus-std/di.core';
+import { Type } from '@rhombus-std/di.core';
 // The application builder's services slot (§114). `HostApplicationBuilder`
 // exposes `services` as ONE mutable slot over an immutable manifest chain, and
 // hands that same slot to its `logging` and `metrics` sub-builders. This suite
@@ -44,9 +44,9 @@ test('builder.services and builder.logging registrations both survive into the h
   const marker = new MarkerLoggerProvider();
 
   // Interleaved on purpose: a fork would drop whichever route build() did not read.
-  builder.services = builder.services.add(Type.from('test:First'), 'first', ConstantType);
+  builder.services = builder.services.addValue(Type.from('test:First'), 'first');
   builder.logging.addProvider(marker);
-  builder.services = builder.services.add(Type.from('test:Second'), 'second', ConstantType);
+  builder.services = builder.services.addValue(Type.from('test:Second'), 'second');
 
   const host = builder.build();
   expect(host.services.getRequiredService(Type.from('test:First'))).toBe('first');
@@ -60,7 +60,7 @@ test('builder.metrics shares the same slot as builder.services', () => {
   const builder = Host.createEmptyApplicationBuilder();
 
   const before = builder.services;
-  builder.metrics.services = builder.metrics.services.add(Type.from('test:ViaMetrics'), 'yes', ConstantType);
+  builder.metrics.services = builder.metrics.services.addValue(Type.from('test:ViaMetrics'), 'yes');
 
   expect(builder.services).not.toBe(before);
   expect(builder.services.build().getRequiredService(Type.from('test:ViaMetrics'))).toBe('yes');
@@ -70,10 +70,10 @@ test('asHostBuilder() replays its delegates into the live slot, not a snapshot',
   const builder = Host.createEmptyApplicationBuilder();
   const adapter = builder.asHostBuilder();
 
-  adapter.configureServices((_context, services) => services.add(Type.from('test:Late'), 'late', ConstantType));
+  adapter.configureServices((_context, services) => services.addValue(Type.from('test:Late'), 'late'));
   // Registered AFTER the adapter captured the builder: a captured manifest
   // would have replayed the delegate onto a chain nobody builds from.
-  builder.services = builder.services.add(Type.from('test:Early'), 'early', ConstantType);
+  builder.services = builder.services.addValue(Type.from('test:Early'), 'early');
 
   const host = builder.build();
   expect(host.services.getRequiredService(Type.from('test:Early'))).toBe('early');
