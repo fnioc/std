@@ -55,7 +55,3 @@ land; delete the file when empty.
 - [ ] **augmentations.test residual 5 fails** — suites load again since the matcher fix; the
       remaining failures are untriaged (likely the hosting/logging red pile reaching through
       filter-logging-builder). Triage after the abstract-ctor Go work lands.
-- [ ] **Type nodes generic over the described type** — owner fun-thought 2026-08-22: nodes could
-      carry `<out T>` and let covariance rule node assignability. Catch: the engine's homogeneous
-      `Type` infects every signature, and parsed/erased nodes have no image (`Type<unknown>`)
-      exactly where data enters. Brainstorm seed only; no work ordered.
