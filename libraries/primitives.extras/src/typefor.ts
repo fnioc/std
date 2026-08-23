@@ -1,16 +1,18 @@
-import type { ConstructorType, FunctionType, Type } from '@rhombus-std/primitives';
-import type { Func } from '@rhombus-toolkit/func';
+import type { AbstractConstructorType, ConstructorType, FunctionType, Type } from '@rhombus-std/primitives';
+import type { Ctor, Func } from '@rhombus-toolkit/func';
 
 /**
  * The {@link Type} `typefor` yields for `T`, narrowed to the kind `T` denotes so a constructor's
- * `instance` and a function's `return` / `args` read without a cast.
+ * `instance` and a function's `return` / `args` read without a cast. A concrete class narrows
+ * before the abstract test, since every concrete constructor also answers the abstract shape.
  *
  * @remarks
- * Only the two kinds whose accessors carry the derivation are narrowed. A literal branch would be
+ * Only the kinds whose accessors carry the derivation are narrowed. A literal branch would be
  * unsound in the case that matters — `[T] extends [string]` holds for the wide `string` as readily
  * as for `"dev"` — so a literal keeps the whole union.
  */
-export type TypeFor<T> = [T] extends [abstract new(...args: never[]) => unknown] ? ConstructorType
+export type TypeFor<T> = [T] extends [Ctor<never[], unknown>] ? ConstructorType
+  : [T] extends [abstract new(...args: never[]) => unknown] ? AbstractConstructorType
   : [T] extends [Func<never[], unknown>] ? FunctionType
   : Type;
 

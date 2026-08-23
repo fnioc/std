@@ -2377,37 +2377,35 @@ property names in place of the old ones — an author who writes `typefor(C).ins
 
 _Owner-ruled, Claude-executed 2026-08-14._
 
-## §181 — A constructor's abstractness is a flag, not a kind; an abstract implementer can never register as a constructor
+## §181 — An abstract constructor is its own kind
 
-`ConstructorType` carries a boolean `abstract` member — false for the ordinary case, true for a
-constructor that builds an abstract class, one nothing constructs with `new` directly. `FunctionType`
-carries no such flag; a function value is never abstract. Interning treats the two values as distinct
-nodes: `Type.ctor(box, rows)` and `Type.ctor(box, rows, true)` are different types. The positional
-door's third argument is optional, defaulting to false; the object door names it like every other
-field, required.
+The node space carries two constructor kinds: `ConstructorType` (`kind: 'ctor'`) for a
+constructor `new` targets directly, and `AbstractConstructorType` (`kind: 'abstract-ctor'`) for
+one it never does — each with exactly `instance` and `signatures`, no flag member anywhere. A
+slot that must be able to construct its node spells `ConstructorType` and refuses the abstract
+kind by plain assignability — invalid registrations are inexpressible, and no runtime check
+backs the refusal (admissibility is type-only; an untyped caller gets ordinary JS behavior). A
+position accepting either spells the union. Each kind pairs with its own factory —
+`Type.ctor(instance, signatures)` / `Type.abstractCtor(instance, signatures)`, spec-object doors
+included; no boolean selector argument exists.
 
-The token grammar mirrors TypeScript's own spelling: `abstract new (rows) => instance`, the keyword an
-ordinary contextual name recognized only immediately before `new (` — everywhere else `abstract` reads
-as an ordinary global type name, exactly as `new` itself already does. Stringify emits the prefix only
-when the flag is set; the parser accepts it symmetrically, so the round trip holds both directions.
+The token grammar is unchanged: `abstract new (signatures) => instance` spells the abstract kind,
+the keyword an ordinary contextual name recognized only immediately before `new (` — everywhere
+else `abstract` reads as an ordinary global type name, exactly as `new` itself already does. The
+prefix maps to the kind at the writer and reader, so the round trip holds both directions.
 
-Matching (`SatisfiesVisitor`, within the ctor kind): a concrete candidate serves both a concrete and an
-abstract request, since a value that CAN be constructed answers either address; an abstract candidate
-serves only an abstract request — nothing about a candidate nothing can construct satisfies a request
-for something that can be. `proposed.abstract` implies `type.abstract` is the whole rule.
+Matching stays identity-modulo-holes: the two kinds are distinct nodes, so an abstract pattern
+answers only an abstract subject and the reverse, with no flag comparison anywhere. In canonical
+member order `abstract-ctor` ranks directly after `ctor`.
 
-`ServiceDescriptor.ctor` throws when handed an abstract implementer type, naming it: registering a
-constructor descriptor around a type nothing can `new` would build a registration the engine can never
-actually construct, so the mistake is caught at registration rather than surfacing later as a runtime
-construction failure with no clue where it came from.
+`typefor`'s Go derivation reads a construct signature's declaring class off its symbol and checks
+the `abstract` modifier through the ttsc ast shim's `GetCombinedModifierFlags`/
+`ModifierFlagsAbstract`, minting the kind accordingly; `TypeFor<T>` narrows a concrete class to
+`ConstructorType` before testing the abstract shape, since every concrete constructor also
+answers it. A bare abstract-constructor type literal with no backing class declaration still
+derives concrete — see §183.
 
-Deriving the flag from a TS `abstract class` declaration is wired up: `typefor`'s Go derivation reads
-a construct signature's declaring class off its symbol and checks the `abstract` modifier through the
-ttsc ast shim's `GetCombinedModifierFlags`/`ModifierFlagsAbstract` — both already exposed there, the
-same accessor `typesurface`'s private/protected detection already uses. A bare abstract-constructor
-type literal with no backing class declaration still derives `abstract: false` — see §183.
-
-_Owner-ruled, Claude-executed 2026-08-14._
+_Owner-ruled, Claude-executed 2026-08-22._
 
 ## §184 — Minimal scope/dispose placeholder: least-code choices, not design rulings
 
@@ -3010,5 +3008,27 @@ primitives' generic-free `IServiceProvider`; lifetime-typed refinement belongs t
 engine-typed sugar surface. A model implements it as a factory whose own signature lists its
 deps (`(sp) => lifetime => …`), the registration's lifetime selecting the parenting policy; the
 foreclosed class door is a non-cost for the model-author-only implementer audience.
+
+_Owner-ruled; Claude-recorded 2026-08-22._
+
+---
+
+## §201 — `add` reads the implementer per kind; the named `*Value` verbs are the forcing door
+
+`add` reads an implementer the obvious way per kind, at both layers. Sugar:
+`add<T>(implementer)`'s observed kind picks the door — ctor → class registration under its
+instance type, func → factory under its return type, non-callable → value under its own type.
+Explicit surface: the implementer-type argument names the ctor/func doors, and the two-argument
+shape is the value door. Both hold uniformly across `add`/`tryAdd`/`replace`. A callable meant as data cannot say so by its own type, so the named verbs
+`addValue`/`tryAddValue`/`replaceValue(serviceType, value)` force the value path — and stay total
+over non-callables. No positional door marker exists. The static gate is primitives'
+`ButNot<T, Not> = T & (T extends Not ? never : unknown)` — an assignability veto usable in a
+parameter position, where `Exclude` could only filter union members — spelled
+`ButNot<Value, Func | AbstractCtor>` on the value faces, the callable universe including
+abstract classes. The static layer is the enforcement layer — runtime
+dispatch is arity-driven, admissibility stays type-only. Kind selection at the token layer is
+per-shape registered contributions routed by mergesynth guards, never a hand-written kind
+switch. `remove`/`removeAll` stay kind-free: removal is identification, not construction, and is
+served by address or held descriptor.
 
 _Owner-ruled; Claude-recorded 2026-08-22._

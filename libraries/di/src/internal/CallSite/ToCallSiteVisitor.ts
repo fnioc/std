@@ -1,6 +1,6 @@
 import { CycleError, type IServiceProvider } from '@rhombus-std/di.core';
-import { type ArrayType, type ConstructorType, type FunctionType, type GenericType, type GlobalType, type ImportedType, type IntersectionType, type IterableType, type ObjectType, type TagType,
-  type TupleType, Type, type TypeLiteralType, type UnionType } from '@rhombus-std/primitives';
+import { type AbstractConstructorType, type ArrayType, type ConstructorType, type FunctionType, type GenericType, type GlobalType, type ImportedType, type IntersectionType, type IterableType,
+  type ObjectType, type TagType, type TupleType, Type, type TypeLiteralType, type UnionType } from '@rhombus-std/primitives';
 import { typefor } from '@rhombus-std/primitives.extras';
 import type { Registry } from '../Registry.js';
 import { CallSite } from './CallSite.js';
@@ -57,6 +57,10 @@ export class ToCallSiteVisitor extends Type.Visitor<CallSite | undefined> {
 
   /** Parked: composing one from its parameter types on a miss awaits its design ruling. */
   protected override visitCtor(_type: ConstructorType): CallSite | undefined {
+    return undefined;
+  }
+
+  protected override visitAbstractCtor(_type: AbstractConstructorType): CallSite | undefined {
     return undefined;
   }
 

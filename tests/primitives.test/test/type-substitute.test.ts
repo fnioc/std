@@ -35,14 +35,14 @@ describe('Type.substitute on aggregates', () => {
 
 describe('Type.substitute on callables', () => {
   test('a constructor substitutes its instance and every parameter signature', () => {
-    const open = Type.ctor({ instance: T, args: [[T], [A, T]], abstract: false });
-    const closed = Type.ctor({ instance: A, args: [[A], [A, A]], abstract: false });
+    const open = Type.ctor({ instance: T, signatures: [[T], [A, T]] });
+    const closed = Type.ctor({ instance: A, signatures: [[A], [A, A]] });
     expect(Type.substitute(open, new Map([['T', A]]))).toBe(closed);
   });
 
   test('a function substitutes its return and every parameter signature', () => {
-    const open = Type.func({ return: T, args: [[T, B]] });
-    expect(Type.substitute(open, new Map([['T', A]]))).toBe(Type.func({ return: A, args: [[A, B]] }));
+    const open = Type.func({ return: T, signatures: [[T, B]] });
+    expect(Type.substitute(open, new Map([['T', A]]))).toBe(Type.func({ return: A, signatures: [[A, B]] }));
   });
 
   test('the result stays the same callable kind, so a caller keeps its narrower type', () => {

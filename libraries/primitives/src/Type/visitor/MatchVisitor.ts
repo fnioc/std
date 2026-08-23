@@ -1,5 +1,5 @@
-import type { ArrayType, ConstructorType, FunctionType, GenericType, GlobalType, ImportedType, IntersectionType, IterableType, ObjectType, TagType, TupleType, Type, TypeLiteralType,
-  UnionType } from '../Type.js';
+import type { AbstractConstructorType, ArrayType, ConstructorType, FunctionType, GenericType, GlobalType, ImportedType, IntersectionType, IterableType, ObjectType, TagType, TupleType, Type,
+  TypeLiteralType, UnionType } from '../Type.js';
 import { isOpenType } from './IsOpenVisitor.js';
 import { stringifyType } from './StringifyVisitor.js';
 import { TypeVisitor } from './TypeVisitor.js';
@@ -41,7 +41,12 @@ class MatchVisitor extends TypeVisitor<boolean, MatchContext> {
 
   protected override visitCtor(pattern: ConstructorType, { subject, bindings }: MatchContext): boolean {
     return subject.kind === 'ctor'
-      && subject.abstract === pattern.abstract
+      && this.#signaturesPairwise(pattern.signatures, subject.signatures, bindings)
+      && this.visit(pattern.instance, { subject: subject.instance, bindings });
+  }
+
+  protected override visitAbstractCtor(pattern: AbstractConstructorType, { subject, bindings }: MatchContext): boolean {
+    return subject.kind === 'abstract-ctor'
       && this.#signaturesPairwise(pattern.signatures, subject.signatures, bindings)
       && this.visit(pattern.instance, { subject: subject.instance, bindings });
   }

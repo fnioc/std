@@ -1,7 +1,7 @@
 import { TypeParseError } from '../../TypeParseError.js';
-import { ctor, func, generic, global, imported, intersection, literal, object, tag, tuple, union } from '../factory/factories.js';
+import { abstractCtor, ctor, func, generic, global, imported, intersection, literal, object, tag, tuple, union } from '../factory/factories.js';
 import { GLOBAL_QUALIFIER, KEYWORD_LITERALS, SERVICE_PROVIDER_FROM } from '../grammar.js';
-import type { ConstructorType, FunctionType, ObjectType, Type } from '../Type.js';
+import type { AbstractConstructorType, ConstructorType, FunctionType, ObjectType, Type } from '../Type.js';
 import { lex, type LexToken } from './lexer.js';
 
 const OPENERS = new Set(['(', '[', '{', '<']);
@@ -309,13 +309,13 @@ class TypeParser {
     return func(this.#type(), signatures);
   }
 
-  #ctor(): ConstructorType {
+  #ctor(): ConstructorType | AbstractConstructorType {
     const abstract = this.#takeName('abstract');
     this.#index++;
     this.#expect('(');
     const signatures = this.#signatureList(')');
     this.#expect('=>');
-    return ctor(this.#type(), signatures, abstract);
+    return abstract ? abstractCtor(this.#type(), signatures) : ctor(this.#type(), signatures);
   }
 
   #peek(): LexToken | undefined {

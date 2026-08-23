@@ -1,7 +1,7 @@
 import { memo } from '../../utils/memo.js';
 import { escapeSegment } from '../grammar.js';
-import type { ArrayType, ConstructorType, FunctionType, GenericType, GlobalType, ImportedType, IntersectionType, IterableType, ObjectType, TagType, TupleType, Type, TypeLiteralType,
-  UnionType } from '../Type.js';
+import type { AbstractConstructorType, ArrayType, ConstructorType, FunctionType, GenericType, GlobalType, ImportedType, IntersectionType, IterableType, ObjectType, TagType, TupleType, Type,
+  TypeLiteralType, UnionType } from '../Type.js';
 import { TypeVisitor } from './TypeVisitor.js';
 
 /**
@@ -25,7 +25,12 @@ class StringifyVisitor extends TypeVisitor<string, Precedence> {
     return this.#listKind('Array', type);
   }
   protected override visitCtor(type: ConstructorType, minimum: Precedence): string {
-    const prefix = type.abstract ? 'abstract ' : '';
+    return this.#newArrow('', type, minimum);
+  }
+  protected override visitAbstractCtor(type: AbstractConstructorType, minimum: Precedence): string {
+    return this.#newArrow('abstract ', type, minimum);
+  }
+  #newArrow(prefix: string, type: ConstructorType | AbstractConstructorType, minimum: Precedence): string {
     return this.#parenthesize(
       `${prefix}new (${this.#signatures(type.signatures)}) => ` + this.visit(type.instance, Precedence.arrow),
       Precedence.arrow,

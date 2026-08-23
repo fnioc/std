@@ -114,9 +114,9 @@ describe('same kind, same scalars', () => {
   });
 
   test('an abstract constructor pattern matches only an abstract subject, and the reverse', () => {
-    expect(matches(Type.ctor(T, [[]], true), Type.ctor(A, [[]], true))).toBe(true);
-    expect(matches(Type.ctor(T, [[]], true), Type.ctor(A, [[]]))).toBe(false);
-    expect(matches(Type.ctor(T, [[]]), Type.ctor(A, [[]], true))).toBe(false);
+    expect(matches(Type.abstractCtor(T, [[]]), Type.abstractCtor(A, [[]]))).toBe(true);
+    expect(matches(Type.abstractCtor(T, [[]]), Type.ctor(A, [[]]))).toBe(false);
+    expect(matches(Type.ctor(T, [[]]), Type.abstractCtor(A, [[]]))).toBe(false);
   });
 
   test('a literal matches by exact value identity', () => {

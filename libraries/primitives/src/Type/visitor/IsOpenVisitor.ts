@@ -1,6 +1,6 @@
 import { memo } from '../../utils/memo.js';
-import type { ArrayType, ConstructorType, FunctionType, GenericType, GlobalType, ImportedType, IntersectionType, IterableType, ListType, NamedType, ObjectType, TagType, TupleType, Type,
-  TypeLiteralType, UnionType } from '../Type.js';
+import type { AbstractConstructorType, ArrayType, ConstructorType, FunctionType, GenericType, GlobalType, ImportedType, IntersectionType, IterableType, ListType, NamedType, ObjectType, TagType,
+  TupleType, Type, TypeLiteralType, UnionType } from '../Type.js';
 import { TypeVisitor } from './TypeVisitor.js';
 
 /** Reaches every position a generic hole can sit in, and stops at the first one it finds. */
@@ -9,6 +9,9 @@ class IsOpenVisitor extends TypeVisitor<boolean> {
     return this.#element(type);
   }
   protected override visitCtor(type: ConstructorType): boolean {
+    return this.#anyRow(type.signatures) || this.visit(type.instance);
+  }
+  protected override visitAbstractCtor(type: AbstractConstructorType): boolean {
     return this.#anyRow(type.signatures) || this.visit(type.instance);
   }
   protected override visitFunc(type: FunctionType): boolean {

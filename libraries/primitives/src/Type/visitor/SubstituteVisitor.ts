@@ -1,6 +1,6 @@
 import { tag as tagType } from '../factory/factories.js';
-import { type ArrayType, type ConstructorType, type FunctionType, type GenericType, type GlobalType, type ImportedType, type IntersectionType, type IterableType, type ObjectType, type TagType,
-  type TupleType, Type, type TypeLiteralType, type UnionType } from '../Type.js';
+import { type AbstractConstructorType, type ArrayType, type ConstructorType, type FunctionType, type GenericType, type GlobalType, type ImportedType, type IntersectionType, type IterableType,
+  type ObjectType, type TagType, type TupleType, Type, type TypeLiteralType, type UnionType } from '../Type.js';
 import { isOpenType } from './IsOpenVisitor.js';
 import { TypeVisitor } from './TypeVisitor.js';
 
@@ -28,7 +28,13 @@ class SubstituteVisitor extends TypeVisitor<Type> {
     return Type.ctor({
       instance: this.visit(type.instance),
       signatures: this.#allSignatures(type.signatures),
-      abstract: type.abstract,
+    });
+  }
+
+  protected override visitAbstractCtor(type: AbstractConstructorType): Type {
+    return Type.abstractCtor({
+      instance: this.visit(type.instance),
+      signatures: this.#allSignatures(type.signatures),
     });
   }
 

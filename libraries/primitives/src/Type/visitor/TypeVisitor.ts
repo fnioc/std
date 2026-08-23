@@ -1,5 +1,5 @@
-import type { ArrayType, ConstructorType, FunctionType, GenericType, GlobalType, ImportedType, IntersectionType, IterableType, ObjectType, TagType, TupleType, Type, TypeLiteralType,
-  UnionType } from '../Type.js';
+import type { AbstractConstructorType, ArrayType, ConstructorType, FunctionType, GenericType, GlobalType, ImportedType, IntersectionType, IterableType, ObjectType, TagType, TupleType, Type,
+  TypeLiteralType, UnionType } from '../Type.js';
 
 /**
  * Dispatches a {@link Type} to the handler for its `kind`.
@@ -19,6 +19,8 @@ export abstract class TypeVisitor<out Return, in Context = never> {
         return this.visitArray(type, context);
       case 'ctor':
         return this.visitCtor(type, context);
+      case 'abstract-ctor':
+        return this.visitAbstractCtor(type, context);
       case 'func':
         return this.visitFunc(type, context);
       case 'generic':
@@ -49,6 +51,8 @@ export abstract class TypeVisitor<out Return, in Context = never> {
   protected abstract visitArray(type: ArrayType, context: Context): Return;
 
   protected abstract visitCtor(type: ConstructorType, context: Context): Return;
+
+  protected abstract visitAbstractCtor(type: AbstractConstructorType, context: Context): Return;
 
   protected abstract visitFunc(type: FunctionType, context: Context): Return;
 

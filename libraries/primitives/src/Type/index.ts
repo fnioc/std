@@ -3,5 +3,5 @@
 // of those and is reached only through them.
 
 export { Type } from './Type.js';
-export type { ArrayType, ConstructorType, FunctionType, GenericType, GlobalType, ImportedType, IntersectionType, IterableType, ListType, LiteralValue, NamedType, ObjectType, TagType, TupleType,
-  TypeIdentifier, TypeLiteralType, UnionType } from './Type.js';
+export type { AbstractConstructorType, ArrayType, ConstructorType, FunctionType, GenericType, GlobalType, ImportedType, IntersectionType, IterableType, ListType, LiteralValue, NamedType, ObjectType,
+  TagType, TupleType, TypeIdentifier, TypeLiteralType, UnionType } from './Type.js';

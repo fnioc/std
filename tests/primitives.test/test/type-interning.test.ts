@@ -207,7 +207,7 @@ describe('Type.adopt', () => {
   });
 
   test('the kind written decides the node handed back, so its own members read without a cast', () => {
-    const adopted = Type.adopt({ kind: 'ctor', instance: A, args: [[B]], abstract: false });
+    const adopted = Type.adopt({ kind: 'ctor', instance: A, signatures: [[B]] });
     expect(adopted.instance).toBe(A);
     expect(adopted).toBe(Type.ctor(A, [[B]]));
   });
@@ -233,8 +233,8 @@ describe('a callable factory takes its parameter signatures whole', () => {
   });
 
   test("the object form names the node's own fields, and lands on the same node", () => {
-    expect(Type.ctor({ instance: A, args: [[B]], abstract: false })).toBe(Type.ctor(A, [[B]]));
-    expect(Type.func({ return: A, args: [[B]] })).toBe(Type.func(A, [[B]]));
+    expect(Type.ctor({ instance: A, signatures: [[B]] })).toBe(Type.ctor(A, [[B]]));
+    expect(Type.func({ return: A, signatures: [[B]] })).toBe(Type.func(A, [[B]]));
   });
 });
 
@@ -245,7 +245,7 @@ describe('Type.adopt names a malformed literal', () => {
 
   test('a missing field is named, along with the ones its kind carries', () => {
     expect(() => Type.adopt({ kind: 'ctor', instance: A } as never))
-      .toThrow(/a ctor type carries instance, args, abstract — args is missing/);
+      .toThrow(/a ctor type carries instance, signatures — signatures is missing/);
   });
 
   test("a literal's own undefined value is a value, not an absence", () => {

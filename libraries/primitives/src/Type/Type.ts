@@ -21,6 +21,7 @@ export type NamedType =
 export type Type =
   | ListType
   | ConstructorType
+  | AbstractConstructorType
   | FunctionType
   | IntersectionType
   | ObjectType
@@ -66,8 +67,16 @@ export interface GenericType extends TypeBase<'generic'> {
 export interface ConstructorType extends TypeBase<'ctor'> {
   readonly signatures: Type.Signatures;
   readonly instance: Type;
-  /** Does this constructor build an abstract class — one `new` never targets directly? */
-  readonly abstract: boolean;
+}
+
+/**
+ * An abstract constructor signature — `abstract new (...args) => instance` — its own kind, so a
+ * slot that must be able to `new` its node spells {@link ConstructorType} and refuses this one
+ * by assignability; a position accepting either spells the union.
+ */
+export interface AbstractConstructorType extends TypeBase<'abstract-ctor'> {
+  readonly signatures: Type.Signatures;
+  readonly instance: Type;
 }
 
 export interface FunctionType extends TypeBase<'func'> {
@@ -153,18 +162,36 @@ export namespace Type {
    * ```ts
    * Type.ctor(box, [[string]]);                               // new (string) => box
    * Type.ctor(box, [[string], []]);                           // new (string; ) => box
-   * Type.ctor(box, [[]], true);                                // abstract new () => box
-   * Type.ctor({ instance: box, signatures: [[]], abstract: false });
+   * Type.ctor({ instance: box, signatures: [[]] });
    * ```
    */
-  export function ctor(instance: Type, signatures: Type.Signatures, abstract?: boolean): ConstructorType;
+  export function ctor(instance: Type, signatures: Type.Signatures): ConstructorType;
   export function ctor(spec: Spec<ConstructorType>): ConstructorType;
   export function ctor(...args: any[]): ConstructorType {
     if (args.length > 1) {
-      return factory.ctor(args[0], atLeastOneSignature(args[1]), args[2]);
+      return factory.ctor(args[0], atLeastOneSignature(args[1]));
     }
     const spec = args[0] as Spec<ConstructorType>;
-    return Type.adopt({ ...spec, signatures: atLeastOneSignature(spec.signatures), kind: 'ctor' });
+    return factory.ctor(spec.instance, atLeastOneSignature(spec.signatures));
+  }
+
+  /**
+   * An abstract constructor signature — `abstract new (...args) => instance`.
+   *
+   * @example
+   * ```ts
+   * Type.abstractCtor(box, [[]]);                             // abstract new () => box
+   * Type.abstractCtor({ instance: box, signatures: [[]] });
+   * ```
+   */
+  export function abstractCtor(instance: Type, signatures: Type.Signatures): AbstractConstructorType;
+  export function abstractCtor(spec: Spec<AbstractConstructorType>): AbstractConstructorType;
+  export function abstractCtor(...args: any[]): AbstractConstructorType {
+    if (args.length > 1) {
+      return factory.abstractCtor(args[0], atLeastOneSignature(args[1]));
+    }
+    const spec = args[0] as Spec<AbstractConstructorType>;
+    return factory.abstractCtor(spec.instance, atLeastOneSignature(spec.signatures));
   }
 
   /**

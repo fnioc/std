@@ -6,8 +6,8 @@
 
 import type { Func } from '@rhombus-toolkit/func';
 import { GLOBAL_QUALIFIER, isListName, type ListName } from '../grammar.js';
-import type { ArrayType, ConstructorType, FunctionType, GenericType, GlobalType, ImportedType, IntersectionType, IterableType, ListType, LiteralValue, ObjectType, TagType, TupleType, Type,
-  TypeLiteralType, UnionType } from '../Type.js';
+import type { AbstractConstructorType, ArrayType, ConstructorType, FunctionType, GenericType, GlobalType, ImportedType, IntersectionType, IterableType, ListType, LiteralValue, ObjectType, TagType,
+  TupleType, Type, TypeLiteralType, UnionType } from '../Type.js';
 import { stringifyType } from '../visitor/StringifyVisitor.js';
 import { TypeVisitor } from '../visitor/TypeVisitor.js';
 import { id, intern, isInterned } from './intern.js';
@@ -52,12 +52,21 @@ export function func(returns: Type, signatures: Type.Signatures): FunctionType {
   );
 }
 
-export function ctor(instance: Type, signatures: Type.Signatures, abstract = false): ConstructorType {
+export function ctor(instance: Type, signatures: Type.Signatures): ConstructorType {
   const slot = adopt(instance);
   const adopted = adoptSignatures(signatures);
   return intern(
-    `ctor\0${abstract ? 1 : 0}\0${id(slot)}\0${signaturesKey(adopted)}`,
-    () => node<ConstructorType>({ kind: 'ctor', signatures: adopted, instance: slot, abstract }),
+    `ctor\0${id(slot)}\0${signaturesKey(adopted)}`,
+    () => node<ConstructorType>({ kind: 'ctor', signatures: adopted, instance: slot }),
+  );
+}
+
+export function abstractCtor(instance: Type, signatures: Type.Signatures): AbstractConstructorType {
+  const slot = adopt(instance);
+  const adopted = adoptSignatures(signatures);
+  return intern(
+    `abstract-ctor\0${id(slot)}\0${signaturesKey(adopted)}`,
+    () => node<AbstractConstructorType>({ kind: 'abstract-ctor', signatures: adopted, instance: slot }),
   );
 }
 
@@ -215,9 +224,10 @@ const KIND_RANK: Readonly<Record<Type['kind'], number>> = {
   iterable: 7,
   func: 8,
   ctor: 9,
-  union: 10,
-  intersection: 11,
-  literal: 12,
+  'abstract-ctor': 10,
+  union: 11,
+  intersection: 12,
+  literal: 13,
 };
 
 function compareTypes(left: Type, right: Type): number {
@@ -242,9 +252,6 @@ function compareScalars(left: Type, right: Type): number {
     }
     case 'tag': {
       return compare(left.tag, (right as TagType).tag);
-    }
-    case 'ctor': {
-      return Number(left.abstract) - Number((right as ConstructorType).abstract);
     }
     case 'literal': {
       return compareLiterals(left, right as TypeLiteralType);
@@ -310,8 +317,9 @@ function compareChildren(left: Type, right: Type): number {
       const other = right as FunctionType;
       return compareSignatures(left.signatures, other.signatures) || compareTypes(left.return, other.return);
     }
-    case 'ctor': {
-      const other = right as ConstructorType;
+    case 'ctor':
+    case 'abstract-ctor': {
+      const other = right as ConstructorType | AbstractConstructorType;
       return compareSignatures(left.signatures, other.signatures) || compareTypes(left.instance, other.instance);
     }
     default: {
@@ -423,8 +431,9 @@ export function adopt(type: Type): Type {
 /** The fields each kind's factory reads, so a literal missing one is named rather than followed. */
 const REQUIRED: Readonly<Record<Type['kind'], readonly string[]>> = {
   array: ['element'],
-  ctor: ['instance', 'args', 'abstract'],
-  func: ['return', 'args'],
+  ctor: ['instance', 'signatures'],
+  'abstract-ctor': ['instance', 'signatures'],
+  func: ['return', 'signatures'],
   generic: ['label'],
   global: ['name', 'genericArgs'],
   imported: ['name', 'from', 'genericArgs'],
@@ -463,7 +472,10 @@ class AdoptVisitor extends TypeVisitor<Type> {
     return array(type.element);
   }
   protected override visitCtor(type: ConstructorType): Type {
-    return ctor(type.instance, type.signatures, type.abstract);
+    return ctor(type.instance, type.signatures);
+  }
+  protected override visitAbstractCtor(type: AbstractConstructorType): Type {
+    return abstractCtor(type.instance, type.signatures);
   }
   protected override visitFunc(type: FunctionType): Type {
     return func(type.return, type.signatures);

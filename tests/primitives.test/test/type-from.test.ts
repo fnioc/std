@@ -53,12 +53,12 @@ describe('Type.from', () => {
   });
 
   test('reads a callable answering to several calls, semicolons between its signatures', () => {
-    expect(Type.from('(app:A; ) => app:B')).toBe(Type.func({ return: B, args: [[A], []] }));
+    expect(Type.from('(app:A; ) => app:B')).toBe(Type.func({ return: B, signatures: [[A], []] }));
     expect(Type.from('new (app:A; app:B, app:A) => app:B')).toBe(
-      Type.ctor({ instance: B, args: [[A], [B, A]], abstract: false }),
+      Type.ctor({ instance: B, signatures: [[A], [B, A]] }),
     );
     // A leading empty signature is the call taking nothing, written first.
-    expect(Type.from('(; app:A) => app:B')).toBe(Type.func({ return: B, args: [[], [A]] }));
+    expect(Type.from('(; app:A) => app:B')).toBe(Type.func({ return: B, signatures: [[], [A]] }));
     // The reserved spellings carry signatures too, the head separated by its own comma.
     expect(Type.from('Func<app:B, app:A; >')).toBe(Type.from('(app:A; ) => app:B'));
     expect(Type.from('Ctor<app:B; app:A>')).toBe(Type.from('new (; app:A) => app:B'));
@@ -67,12 +67,12 @@ describe('Type.from', () => {
   test('a callable with one signature spells exactly as it always has', () => {
     expect(Type.stringify(Type.func(B, [[A]]))).toBe('(app:A) => app:B');
     expect(Type.stringify(Type.ctor(B, [[]]))).toBe('new () => app:B');
-    expect(Type.stringify(Type.func({ return: B, args: [[A], []] }))).toBe('(app:A; ) => app:B');
+    expect(Type.stringify(Type.func({ return: B, signatures: [[A], []] }))).toBe('(app:A; ) => app:B');
   });
 
   test('an abstract constructor carries the prefix, round-tripping both directions', () => {
     const value = Type.ctor(B, [[A]]);
-    const built = Type.ctor(B, [[A]], true);
+    const built = Type.abstractCtor(B, [[A]]);
     expect(Type.stringify(value)).toBe('new (app:A) => app:B');
     expect(Type.stringify(built)).toBe('abstract new (app:A) => app:B');
     expect(built).not.toBe(value);
@@ -298,10 +298,10 @@ function generate(random: () => number, depth: number): Type {
       return Type.tuple(...children(3));
     }
     case 'func': {
-      return Type.func({ return: child(), args: signatures() });
+      return Type.func({ return: child(), signatures: signatures() });
     }
     case 'ctor': {
-      return Type.ctor({ instance: child(), args: signatures(), abstract: pick([true, false]) });
+      return pick([Type.ctor, Type.abstractCtor])({ instance: child(), signatures: signatures() });
     }
     case 'object': {
       return Type.object(Object.fromEntries(Array.from({ length: many(3) }, () => [pick(NAMES), child()])));
