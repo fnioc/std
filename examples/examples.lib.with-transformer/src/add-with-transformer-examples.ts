@@ -70,13 +70,13 @@ export function addWithTransformerExamples<S>(
   // `IGreeting` — the same string the manual library writes out — so both
   // libraries' greetings land on one element type and a consumer asking for the
   // collection gets both.
-  services = services.add(typefor<IGreeting>(), FormalGreeting, Type.ctor(typefor<IGreeting>(), [[]]), 'singleton');
+  services = services.add(typefor<IGreeting>(), FormalGreeting, Type.ctor(typefor<IGreeting>(), [[]]), 'singleton' as S | 'singleton');
 
   // The banner, registered ONLY in its `Promise<…>` wrapper. Registering the
   // honest promise (rather than pretending an async fetch is a synchronous value)
   // is what makes an awaited resolution work and a plain one fail loudly — the
   // container never silently hands back an unsettled value.
-  services = services.add(typefor<Promise<IBanner>>(), fetchBanner, Type.func(typefor<Promise<IBanner>>(), [[]]), 'singleton');
+  services = services.add(typefor<Promise<IBanner>>(), fetchBanner, Type.func(typefor<Promise<IBanner>>(), [[]]), 'singleton' as S | 'singleton');
 
   // The report factory, and the densest argument list anywhere in these examples:
   // a collection, two closed generics and an optional union. Every one is named
@@ -84,7 +84,7 @@ export function addWithTransformerExamples<S>(
   // parameter list and the two line up one for one.
   services = services.add(typefor<IServerReport>(), makeServerReport,
     Type.func(typefor<IServerReport>(), [[typefor<IGreeting[]>(), typefor<IOptions<ServerOptions>>(), typefor<IOptions<GreetingPolicy>>(),
-      Type.union(typefor<IHealthCheck>(), Type.typeLiteral(undefined))]]), 'singleton');
+      Type.union(typefor<IHealthCheck>(), Type.typeLiteral(undefined))]]), 'singleton' as S | 'singleton');
 
   return services;
 }

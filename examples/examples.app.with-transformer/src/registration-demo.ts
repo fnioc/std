@@ -24,9 +24,9 @@
 //    written `Type.ctor(theServiceType, [[]])` — one overload, taking nothing beyond
 //    the address.
 
-import { ConstantType, DefaultManifest, Type } from '@rhombus-std/di.core';
+import { di } from '@rhombus-std/di';
+import { DefaultManifest, LifetimeModel, Type } from '@rhombus-std/di.core';
 import type { ImportedType, Manifest, ServiceDescriptor } from '@rhombus-std/di.core';
-import '@rhombus-std/di';
 // The type-driven MINT primitive, and the whole of what this dialect is:
 // `typefor<T>()` becomes the very `Type` a hand author composes by name. It has
 // no runtime footprint — the build folds every call and elides this import with
@@ -266,7 +266,7 @@ function countRegistrations(services: Iterable<ServiceDescriptor<unknown>>, type
  * way to keep a registration is to keep the value it returns.
  */
 function demonstrateDiscardTrap(): string {
-  const empty = new DefaultManifest<'singleton'>();
+  const empty = new DefaultManifest<unknown>(LifetimeModel.noop);
 
   // WRONG — the new manifest is built and immediately dropped on the floor.
   // `empty` is exactly as empty as it was. This compiles, and it is silent.
@@ -298,11 +298,11 @@ function addOrderDefaults<S>(
   services: Manifest<S | 'singleton'>,
 ): Manifest<S | 'singleton'> {
   // A default VALUE — the clock every other default depends on.
-  services = services.tryAdd(DEFAULT_CLOCK_TYPE, new FixedClock(), ConstantType);
+  services = services.tryAdd(DEFAULT_CLOCK_TYPE, new FixedClock());
   // A default CLASS.
-  services = services.tryAdd(DEFAULT_SINK_TYPE, PlainTextSink, Type.ctor(DEFAULT_SINK_TYPE, [[DEFAULT_CLOCK_TYPE, Type.typeLiteral('production')]]), 'singleton');
+  services = services.tryAdd(DEFAULT_SINK_TYPE, PlainTextSink, Type.ctor(DEFAULT_SINK_TYPE, [[DEFAULT_CLOCK_TYPE, Type.typeLiteral('production')]]), 'singleton' as S | 'singleton');
   // A default FACTORY.
-  services = services.tryAdd(DEFAULT_NOTIFIER_TYPE, makeOrderNotifier, Type.func(DEFAULT_NOTIFIER_TYPE, [[DEFAULT_SINK_TYPE]]), 'singleton');
+  services = services.tryAdd(DEFAULT_NOTIFIER_TYPE, makeOrderNotifier, Type.func(DEFAULT_NOTIFIER_TYPE, [[DEFAULT_SINK_TYPE]]), 'singleton' as S | 'singleton');
   return services;
 }
 
@@ -326,7 +326,7 @@ function demonstrateDescriptorVerbs(): string[] {
   const lines: string[] = [];
 
   // Applying the defaults twice leaves exactly one of each.
-  let library: Manifest<'singleton'> = new DefaultManifest<'singleton'>();
+  let library: Manifest<unknown> = new DefaultManifest<unknown>(LifetimeModel.noop);
   library = addOrderDefaults(library);
   library = addOrderDefaults(library);
   lines.push(
@@ -335,18 +335,19 @@ function demonstrateDescriptorVerbs(): string[] {
   );
 
   // An application that already wired its own sink keeps it.
-  let application: Manifest<'singleton'> = new DefaultManifest<'singleton'>();
+  let application: Manifest<unknown> = new DefaultManifest<unknown>(LifetimeModel.noop);
   application = application.add(DEFAULT_SINK_TYPE, RecordingSink, Type.ctor(DEFAULT_SINK_TYPE, [[]]), 'singleton');
   application = addOrderDefaults(application);
-  const kept = application.build().getRequiredService(DEFAULT_SINK_TYPE) as IMessageSink;
+  const kept = di.usingLifetimeModel(LifetimeModel.noop).usingManifest(application).build()
+    .getRequiredService(DEFAULT_SINK_TYPE) as IMessageSink;
   lines.push(`defaults: an application that registered its own sink keeps it (${kept.name})`);
 
   // The host overrides all three defaults outright.
-  let host = addOrderDefaults(new DefaultManifest<'singleton'>());
-  host = host.replace(DEFAULT_CLOCK_TYPE, new FixedClock(), ConstantType);
+  let host = addOrderDefaults(new DefaultManifest<unknown>(LifetimeModel.noop));
+  host = host.replace(DEFAULT_CLOCK_TYPE, new FixedClock());
   host = host.replace(DEFAULT_SINK_TYPE, RecordingSink, Type.ctor(DEFAULT_SINK_TYPE, [[]]), 'singleton');
   host = host.replace(DEFAULT_NOTIFIER_TYPE, makeOrderNotifier, Type.func(DEFAULT_NOTIFIER_TYPE, [[DEFAULT_SINK_TYPE]]), 'singleton');
-  const hostProvider = host.build();
+  const hostProvider = di.usingLifetimeModel(LifetimeModel.noop).usingManifest(host).build();
   const recorder = hostProvider.getRequiredService(DEFAULT_SINK_TYPE) as RecordingSink;
   lines.push(
     `override: replace swapped all three defaults; the host sink is ${recorder.name}, and `
@@ -371,20 +372,18 @@ function demonstrateDescriptorVerbs(): string[] {
  * third, an optional dependency, a factory with two overloads, and a
  * zero-dependency class.
  */
-function buildOrderContainer(): Manifest<'singleton'> {
-  let services: Manifest<'singleton'> = new DefaultManifest<'singleton'>();
+function buildOrderContainer(): Manifest<unknown> {
+  let services: Manifest<unknown> = new DefaultManifest<unknown>(LifetimeModel.noop);
   const clock = new FixedClock();
 
   // A value — an already-built instance. No signature (there is nothing to
-  // construct) and no scope (a value IS its instance, so caching is moot). The
-  // ConstantType marker is what says the instance is handed back rather than
-  // called — a callable's own type could not.
-  services = services.add(CLOCK_TYPE, clock, ConstantType);
+  // construct) and no scope (a value IS its instance, so caching is moot).
+  services = services.add(CLOCK_TYPE, clock);
 
   // The SAME instance again under a KEYED type. The key rides the type itself:
   // registering at the tagged `VENDOR_CLOCK_TYPE` composed above is all a keyed
   // registration is.
-  services = services.add(VENDOR_CLOCK_TYPE, clock, ConstantType);
+  services = services.add(VENDOR_CLOCK_TYPE, clock);
 
   // A third-party class adapted onto our own clock: its constructor names the
   // vendor's `ILegacyClock`, but the composed constructor type is ours to
@@ -406,7 +405,7 @@ function buildOrderContainer(): Manifest<'singleton'> {
   // can supply, longest row first: the two-argument row needs `IEmailOptions`,
   // which nothing registers, so the single-argument row wins and the sink falls
   // back to its built-in address.
-  services = services.add(Type.tag(SINK_TYPE, 'email'), EmailSink, Type.ctor({ instance: SINK_TYPE, args: [[CLOCK_TYPE, EMAIL_OPTIONS_TYPE], [CLOCK_TYPE]], abstract: false }), 'singleton');
+  services = services.add(Type.tag(SINK_TYPE, 'email'), EmailSink, Type.ctor({ instance: SINK_TYPE, signatures: [[CLOCK_TYPE, EMAIL_OPTIONS_TYPE], [CLOCK_TYPE]] }), 'singleton');
 
   // An OPTIONAL dependency, spelled honestly: a union whose other member is the
   // literal `undefined`. A literal member supplies ITSELF rather than competing
@@ -435,20 +434,23 @@ function buildOrderContainer(): Manifest<'singleton'> {
  * descriptor-taking `add`, sits in a variable, or travels between helpers.
  */
 function demonstrateDescribedRegistration(): string {
-  const withClock: Manifest<'singleton'> = new DefaultManifest<'singleton'>().add(CLOCK_TYPE, new FixedClock(), ConstantType);
+  const withClock: Manifest<unknown> = new DefaultManifest<unknown>(LifetimeModel.noop).add(CLOCK_TYPE, new FixedClock());
   const services = withClock.add(
     withClock.describe(SINK_TYPE)
       .asClass(PlainTextSink, Type.ctor(SINK_TYPE, [[CLOCK_TYPE, Type.typeLiteral('staging')]]))
       .withLifetime('singleton'),
   );
 
-  const sink = services.build().getRequiredService(SINK_TYPE) as IMessageSink;
+  const sink = di.usingLifetimeModel(LifetimeModel.noop).usingManifest(services).build()
+    .getRequiredService(SINK_TYPE) as IMessageSink;
   return `described by chain: ${sink.send('order-99 shipped')}`;
 }
 
 /** Exercises the container and reports what each registration produced. */
-function describeOrderContainer(services: Manifest<'singleton'>): string[] {
-  const app = services.build();
+function describeOrderContainer(services: Manifest<unknown>): string[] {
+  // The front door: every genesis starts by choosing the lifetime model, then
+  // seeds the manifest this file already built.
+  const app = di.usingLifetimeModel(LifetimeModel.noop).usingManifest(services).build();
 
   const notifier = app.getRequiredService(NOTIFIER_TYPE) as IOrderNotifier;
   const audit = app.getRequiredService(AUDIT_TYPE) as IAuditLog;
@@ -471,9 +473,10 @@ function describeOrderContainer(services: Manifest<'singleton'>): string[] {
  * slot falls through to `undefined` rather than failing, and — because nothing
  * mutates — the container it was forked from still has all of its sinks.
  */
-function describeSinklessFork(services: Manifest<'singleton'>): string {
+function describeSinklessFork(services: Manifest<unknown>): string {
   const noSinks = services.removeAll(SINK_TYPE);
-  const audit = noSinks.build().getRequiredService(AUDIT_TYPE) as IAuditLog;
+  const audit = di.usingLifetimeModel(LifetimeModel.noop).usingManifest(noSinks).build()
+    .getRequiredService(AUDIT_TYPE) as IAuditLog;
   audit.record('order-42 shipped');
 
   return `fork: removeAll left ${countRegistrations(noSinks, SINK_TYPE)} sinks (the original still has `

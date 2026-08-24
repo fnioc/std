@@ -310,7 +310,7 @@ export class GreetingWorkshopBuilder<S> implements IGreetingWorkshopBuilder {
     // Explicit in BOTH dialects: the ctor arrives as a runtime PARAMETER, so
     // there is no class type for the transformer to derive a constructor type —
     // or a service type — from.
-    this.#holder.services = this.#holder.services.add(GREETING_TYPE, greeting, Type.ctor(GREETING_TYPE, [[]]), 'singleton');
+    this.#holder.services = this.#holder.services.add(GREETING_TYPE, greeting, Type.ctor(GREETING_TYPE, [[]]), 'singleton' as S | 'singleton');
     return this;
   }
 
@@ -348,7 +348,7 @@ export function addGreetingWorkshop<S>(services: Manifest<S | 'singleton'>, conf
   //
   // No lifetime, so transient: the honest tag for something built fresh per
   // recipient.
-  holder.services = holder.services.add(typefor<GreetingCard>(), GreetingCard, CARD_IMPL_TYPE);
+  holder.services = holder.services.add(typefor<GreetingCard>(), GreetingCard, CARD_IMPL_TYPE, undefined as S | 'singleton');
 
   // The workshop itself goes on next so a consumer cannot forget it — and this
   // one is fully tokenless, right down to its composed constructor type. The
@@ -367,7 +367,8 @@ export function addGreetingWorkshop<S>(services: Manifest<S | 'singleton'>, conf
   // top level, which is what lets a library function like this one be authored
   // tokenlessly at all.
   holder.services = holder.services.add(typefor<GreetingWorkshop>(), GreetingWorkshop,
-    Type.ctor(typefor<GreetingWorkshop>(), [[Type.func(typefor<GreetingCard>(), [[typefor<ICardRecipient>()]]), Type.union(typefor<ICardStationery>(), Type.typeLiteral(undefined))]]), 'singleton');
+    Type.ctor(typefor<GreetingWorkshop>(), [[Type.func(typefor<GreetingCard>(), [[typefor<ICardRecipient>()]]), Type.union(typefor<ICardStationery>(), Type.typeLiteral(undefined))]]),
+    'singleton' as S | 'singleton');
 
   // The counter-example, at its own derived service type so a caller can resolve
   // both from one container and compare the cards. Its one argument is the
@@ -375,7 +376,8 @@ export function addGreetingWorkshop<S>(services: Manifest<S | 'singleton'>, conf
   // "I want the provider" is plain DI rather than a special argument kind, which
   // is precisely why nothing stops a library doing it and why the comparison has
   // to be made in prose.
-  holder.services = holder.services.add(typefor<LocatorGreetingWorkshop>(), LocatorGreetingWorkshop, Type.ctor(typefor<LocatorGreetingWorkshop>(), [[typefor<IServiceProvider>()]]), 'singleton');
+  holder.services = holder.services.add(typefor<LocatorGreetingWorkshop>(), LocatorGreetingWorkshop, Type.ctor(typefor<LocatorGreetingWorkshop>(), [[typefor<IServiceProvider>()]]),
+    'singleton' as S | 'singleton');
 
   return holder.services;
 }

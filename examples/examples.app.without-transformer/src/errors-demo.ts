@@ -27,8 +27,8 @@
 // this file is identical to it. The header line names neither dialect for the
 // same reason.
 
-import { DefaultManifest, DiError, type Manifest, ManifestValidationError, Type } from '@rhombus-std/di.core';
-import '@rhombus-std/di';
+import { di } from '@rhombus-std/di';
+import { DefaultManifest, DiError, LifetimeModel, type Manifest, ManifestValidationError, Type } from '@rhombus-std/di.core';
 import { demonstrateRegistrationErrors, diagnose, stagedFailure } from '@rhombus-std/examples.lib.without-transformer';
 
 // ── the domain ───────────────────────────────────────────────────────────────
@@ -63,8 +63,8 @@ const AUDIT_TYPE = Type.from('selfcheck:IAuditLog');
 // ── the staged failures ──────────────────────────────────────────────────────
 
 /** A container whose one registration names a dependency nobody supplies. */
-function withUnsatisfiableStore(): Manifest<'singleton'> {
-  return new DefaultManifest<'singleton'>().add(STORE_TYPE, BrokenStore, Type.ctor(STORE_TYPE, [[CONNECTION_TYPE]]), 'singleton');
+function withUnsatisfiableStore(): Manifest<unknown> {
+  return new DefaultManifest<unknown>(LifetimeModel.noop).add(STORE_TYPE, BrokenStore, Type.ctor(STORE_TYPE, [[CONNECTION_TYPE]]), 'singleton');
 }
 
 /**
@@ -83,7 +83,7 @@ export function demonstrateErrors(): readonly string[] {
   // the node that would have carried the bad registration never materialised.
   // Making the manifest is still the root's job, which is why one arrives as an
   // argument.
-  lines.push(...demonstrateRegistrationErrors(new DefaultManifest<'singleton'>()));
+  lines.push(...demonstrateRegistrationErrors(new DefaultManifest<unknown>(LifetimeModel.noop)));
 
   // ── build time: the eager whole-graph check ────────────────────────────────
   //
@@ -92,7 +92,14 @@ export function demonstrateErrors(): readonly string[] {
   // `ManifestValidationError` rather than stopping at the first. That is the
   // difference between one deployment round-trip and one per hole.
   lines.push(
-    stagedFailure('building with validateOnBuild', () => withUnsatisfiableStore().build({ validateOnBuild: true })),
+    stagedFailure(
+      'building with validateOnBuild',
+      () =>
+        di.usingLifetimeModel(LifetimeModel.noop)
+          .usingManifest(withUnsatisfiableStore())
+          .configureProvider(options => ({ ...options, validateOnBuild: true }))
+          .build(),
+    ),
   );
 
   // The registrations that could not be lowered come back on `failures`, each
@@ -114,7 +121,7 @@ export function demonstrateErrors(): readonly string[] {
   // which is the shape to reach for when a deployment may legitimately not have
   // the thing. `getRequiredService` treats it as a wiring fault and throws, which
   // is the shape to reach for when the service is part of the deal.
-  const lazy = withUnsatisfiableStore().build();
+  const lazy = di.usingLifetimeModel(LifetimeModel.noop).usingManifest(withUnsatisfiableStore()).build();
   lines.push(`asking with resolve for a registration that cannot be lowered: ${lazy.resolve(STORE_TYPE)}`);
   lines.push(stagedFailure('asking with getRequiredService for the same', () => lazy.getRequiredService(STORE_TYPE)));
   lines.push(stagedFailure('asking for a type nobody registered', () => lazy.getRequiredService(REPORT_TYPE)));
@@ -123,10 +130,10 @@ export function demonstrateErrors(): readonly string[] {
   // as the loop it makes — naming just the type that closed it would leave the
   // reader to find the other half.
   lines.push(stagedFailure('a dependency cycle', () => {
-    let services: Manifest<'singleton'> = new DefaultManifest<'singleton'>();
+    let services: Manifest<unknown> = new DefaultManifest<unknown>(LifetimeModel.noop);
     services = services.add(LEDGER_TYPE, Ledger, Type.ctor(LEDGER_TYPE, [[AUDIT_TYPE]]), 'singleton');
     services = services.add(AUDIT_TYPE, AuditLog, Type.ctor(AUDIT_TYPE, [[LEDGER_TYPE]]), 'singleton');
-    return services.build().getRequiredService(LEDGER_TYPE);
+    return di.usingLifetimeModel(LifetimeModel.noop).usingManifest(services).build().getRequiredService(LEDGER_TYPE);
   }));
 
   // ── and the escape hatch ───────────────────────────────────────────────────
@@ -147,7 +154,10 @@ export function demonstrateErrors(): readonly string[] {
 /** The inner failures the eager pass collected, so one of them can be classified. */
 function collectValidationErrors(): readonly Error[] {
   try {
-    withUnsatisfiableStore().build({ validateOnBuild: true });
+    di.usingLifetimeModel(LifetimeModel.noop)
+      .usingManifest(withUnsatisfiableStore())
+      .configureProvider(options => ({ ...options, validateOnBuild: true }))
+      .build();
   } catch (error) {
     if (error instanceof ManifestValidationError) {
       return error.errors;

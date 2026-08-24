@@ -44,7 +44,7 @@
 
 import { ConfigBuilder } from '@rhombus-std/config';
 import type { ConfigRoot } from '@rhombus-std/config';
-import { ConstantType, Type } from '@rhombus-std/di.core';
+import { Type } from '@rhombus-std/di.core';
 import type { IServiceProvider } from '@rhombus-std/di.core';
 import '@rhombus-std/di';
 import { Host, HOST_APPLICATION_LIFETIME_TYPE, HOSTED_SERVICE_TYPE } from '@rhombus-std/hosting';
@@ -245,17 +245,17 @@ services = addWithoutTransformerExamples(services);
 
 // A config-independent policy, offered as IOptions<GreetingPolicy> via the
 // augmentation's explicit addOptions verb, which names the BARE type.
-services = services.add(POLICY_TYPE, { excitement: '!' } satisfies GreetingPolicy, ConstantType);
+services = services.add(POLICY_TYPE, { excitement: '!' } satisfies GreetingPolicy);
 services = services.addOptions(POLICY_TYPE);
 
 // The reactive server options — one shared live instance. Registered AFTER the
 // options pipeline above: addOptions installs the open IOptions template, a
 // single request takes the most recently registered answer, and this closed
 // value is the deployment's override of that template for ServerOptions.
-services = services.add(SERVER_OPTIONS_TYPE, serverOptions, ConstantType);
+services = services.add(SERVER_OPTIONS_TYPE, serverOptions);
 
 // The live config root, so the hosted worker can drive the reload demo.
-services = services.add(CONFIG_TYPE, config, ConstantType);
+services = services.add(CONFIG_TYPE, config);
 
 // The hosted worker — explicit signature (no hosting transformer exists).
 //

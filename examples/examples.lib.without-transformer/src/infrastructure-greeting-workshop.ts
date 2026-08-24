@@ -26,7 +26,7 @@
 // infrastructure-greeting-workshop.ts`: the same scenario, the same output, the
 // type-driven dialect. Diff them to see exactly what the transformer removes.
 
-import { ConstantType, Type } from '@rhombus-std/di.core';
+import { Type } from '@rhombus-std/di.core';
 import type { IServiceProvider, Manifest } from '@rhombus-std/di.core';
 import type { IGreeting } from '@rhombus-std/examples.contracts';
 
@@ -303,12 +303,12 @@ export class GreetingWorkshopBuilder<S> implements IGreetingWorkshopBuilder {
     // a transformer to derive a Type from — this call is explicit in BOTH
     // dialects. Zero-dep ctor, so the composed constructor type carries no
     // argument types beyond the address.
-    this.#holder.services = this.#holder.services.add(GREETING_TYPE, greeting, Type.ctor(GREETING_TYPE, [[]]), 'singleton');
+    this.#holder.services = this.#holder.services.add(GREETING_TYPE, greeting, Type.ctor(GREETING_TYPE, [[]]), 'singleton' as S | 'singleton');
     return this;
   }
 
   public useStationery(stationery: ICardStationery): IGreetingWorkshopBuilder {
-    this.#holder.services = this.#holder.services.add(CARD_STATIONERY_TYPE, stationery, ConstantType);
+    this.#holder.services = this.#holder.services.add(CARD_STATIONERY_TYPE, stationery);
     return this;
   }
 }
@@ -332,7 +332,7 @@ export function addGreetingWorkshop<S>(services: Manifest<S | 'singleton'>, conf
   // something built fresh per recipient. Its second argument type names a Type
   // nothing ever registers; that slot is the caller's, and the factory
   // parameter below is what hands it over.
-  holder.services = holder.services.add(GREETING_CARD_TYPE, GreetingCard, Type.ctor(GREETING_CARD_TYPE, [[GREETING_TYPE, CARD_RECIPIENT_TYPE]]));
+  holder.services = holder.services.add(GREETING_CARD_TYPE, GreetingCard, Type.ctor(GREETING_CARD_TYPE, [[GREETING_TYPE, CARD_RECIPIENT_TYPE]]), undefined as S | 'singleton');
 
   // The workshop itself goes on last so a consumer cannot forget it. Its whole
   // dependency plan is right here, in the composed constructor type, where the
@@ -341,7 +341,7 @@ export function addGreetingWorkshop<S>(services: Manifest<S | 'singleton'>, conf
   // spelled as the union of the stationery with a literal `undefined` that
   // always resolves.
   holder.services = holder.services.add(GREETING_WORKSHOP_TYPE, GreetingWorkshop,
-    Type.ctor(GREETING_WORKSHOP_TYPE, [[Type.func(GREETING_CARD_TYPE, [[CARD_RECIPIENT_TYPE]]), Type.union(CARD_STATIONERY_TYPE, Type.typeLiteral(undefined))]]), 'singleton');
+    Type.ctor(GREETING_WORKSHOP_TYPE, [[Type.func(GREETING_CARD_TYPE, [[CARD_RECIPIENT_TYPE]]), Type.union(CARD_STATIONERY_TYPE, Type.typeLiteral(undefined))]]), 'singleton' as S | 'singleton');
 
   // The discouraged twin, registered beside it so a reader can resolve both and
   // watch them produce identical cards from very different constructors. The
@@ -349,6 +349,7 @@ export function addGreetingWorkshop<S>(services: Manifest<S | 'singleton'>, conf
   // live provider — "I want the provider" is plain DI, not a special slot
   // kind, which is precisely why nothing stops a library doing it and why the
   // comparison has to be made in prose.
-  holder.services = holder.services.add(LOCATOR_GREETING_WORKSHOP_TYPE, LocatorGreetingWorkshop, Type.ctor(LOCATOR_GREETING_WORKSHOP_TYPE, [[Type.from('ServiceProvider')]]), 'singleton');
+  holder.services = holder.services.add(LOCATOR_GREETING_WORKSHOP_TYPE, LocatorGreetingWorkshop, Type.ctor(LOCATOR_GREETING_WORKSHOP_TYPE, [[Type.from('ServiceProvider')]]),
+    'singleton' as S | 'singleton');
   return holder.services;
 }

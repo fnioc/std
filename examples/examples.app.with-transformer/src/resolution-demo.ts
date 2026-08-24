@@ -13,9 +13,9 @@
 // declarations — so consumer and producer meet on the type rather than on a
 // string they each have to spell correctly.
 
-import { DefaultManifest, Type } from '@rhombus-std/di.core';
+import { di } from '@rhombus-std/di';
+import { DefaultManifest, LifetimeModel, Type } from '@rhombus-std/di.core';
 import type { ImportedType, IServiceProvider, Manifest } from '@rhombus-std/di.core';
-import '@rhombus-std/di';
 import { typefor } from '@rhombus-std/primitives.extras';
 
 import type { CheckoutOrder, IAuditTrail, IExchangeRates, IFraudScreen, IOrderValidator, IPaymentGateway, IPaymentRouter, IReceipt } from '@rhombus-std/examples.contracts';
@@ -195,7 +195,7 @@ async function tour(provider: IServiceProvider): Promise<string[]> {
  * surface over it, returning a deterministic report for the caller to print.
  */
 export async function demonstrateResolution(): Promise<readonly string[]> {
-  let services: Manifest<'singleton'> = new DefaultManifest<'singleton'>();
+  let services: Manifest<unknown> = new DefaultManifest<unknown>(LifetimeModel.noop);
   services = addCheckoutServices(services);
-  return await tour(services.build());
+  return await tour(di.usingLifetimeModel(LifetimeModel.noop).usingManifest(services).build());
 }

@@ -161,7 +161,7 @@ export function stagedFailure(what: string, attempt: () => unknown): string {
  * @returns One line, and the chapter header belongs to the caller, who stages
  *   the rest of the taxonomy after it.
  */
-export function demonstrateRegistrationErrors(services: Manifest<'singleton'>): readonly string[] {
+export function demonstrateRegistrationErrors(services: Manifest<unknown>): readonly string[] {
   return [
     stagedFailure(
       'keying a service type that already carries a key',

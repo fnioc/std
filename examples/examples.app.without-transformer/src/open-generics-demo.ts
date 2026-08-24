@@ -35,8 +35,8 @@
 // independently; the same label appearing twice in one registration binds to one
 // captured type wherever it appears.
 
-import { ConstantType, DefaultManifest, type Manifest, Type } from '@rhombus-std/di.core';
-import '@rhombus-std/di';
+import { di } from '@rhombus-std/di';
+import { DefaultManifest, LifetimeModel, type Manifest, Type } from '@rhombus-std/di.core';
 
 import type { AuditEvent, Entity, IJoin, IRepository, ITable, Order, Seed, User } from '@rhombus-std/examples.contracts';
 
@@ -245,16 +245,16 @@ function shortName(token: string): string {
 // into `manifest`; a bare `manifest.add(...)` statement would register
 // nothing.
 
-let manifest: Manifest<'singleton'> = new DefaultManifest<'singleton'>();
+let manifest: Manifest<unknown> = new DefaultManifest<unknown>(LifetimeModel.noop);
 
 // The closed value registrations the templates bottom out at: one seed and one
 // type witness per entity. Nothing generic about them — they are the floor.
 for (const entity of [USER_TYPE, ORDER_TYPE, AUDIT_EVENT_TYPE]) {
-  manifest = manifest.add(witnessOf(entity), entity, ConstantType);
+  manifest = manifest.add(witnessOf(entity), entity);
 }
-manifest = manifest.add(seedOf(USER_TYPE), USER_SEED, ConstantType);
-manifest = manifest.add(seedOf(ORDER_TYPE), ORDER_SEED, ConstantType);
-manifest = manifest.add(seedOf(AUDIT_EVENT_TYPE), AUDIT_SEED, ConstantType);
+manifest = manifest.add(seedOf(USER_TYPE), USER_SEED);
+manifest = manifest.add(seedOf(ORDER_TYPE), ORDER_SEED);
+manifest = manifest.add(seedOf(AUDIT_EVENT_TYPE), AUDIT_SEED);
 
 // Template 1 — `ITable<$1>`. Its signature is where the hole propagates: the
 // first slot is a type CONTAINING `$1`, the second is the `Typeof<$1>` witness.
@@ -292,7 +292,7 @@ manifest = manifest.add(ORDER_JOIN_TEMPLATE, OrderJoin, Type.ctor(ORDER_JOIN_TEM
  * an unordered collection.
  */
 export function demonstrateOpenGenerics(): readonly string[] {
-  const app = manifest.build();
+  const app = di.usingLifetimeModel(LifetimeModel.noop).usingManifest(manifest).build();
 
   // Two closings of ONE registration. Neither type was ever registered.
   const users = app.getRequiredService(repositoryOf(USER_TYPE)) as IRepository<User>;

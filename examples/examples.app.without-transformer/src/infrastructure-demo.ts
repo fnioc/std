@@ -26,9 +26,9 @@
 // Nothing here reads a clock, the filesystem or a random source: the output is
 // byte-stable, which the app's checked-in `expected.txt` diff depends on.
 
-import { DefaultManifest, Type } from '@rhombus-std/di.core';
+import { di } from '@rhombus-std/di';
+import { DefaultManifest, LifetimeModel, Type } from '@rhombus-std/di.core';
 import type { Manifest } from '@rhombus-std/di.core';
-import '@rhombus-std/di';
 // `describeDiError` is the LIBRARY's — classifying what a container threw needs
 // di.core and nothing more. Building the container is this root's, because that
 // is the one thing the engine is for.
@@ -36,8 +36,8 @@ import { addGreetingWorkshop, describeDiError, GREETING_WORKSHOP_TYPE, GreetingW
   WorkshopGreeting } from '@rhombus-std/examples.lib.without-transformer';
 
 /** A fresh, empty manifest for one of this chapter's own containers. */
-function newWorkshopManifest(): Manifest<'singleton'> {
-  return new DefaultManifest<'singleton'>();
+function newWorkshopManifest(): Manifest<unknown> {
+  return new DefaultManifest<unknown>(LifetimeModel.noop);
 }
 
 /**
@@ -67,7 +67,7 @@ export function demonstrateInfrastructure(): readonly string[] {
   const defaults = addGreetingWorkshop(newWorkshopManifest(), (workshop) => {
     workshop.useGreeting(WorkshopGreeting);
   });
-  const defaultProvider = defaults.build();
+  const defaultProvider = di.usingLifetimeModel(LifetimeModel.noop).usingManifest(defaults).build();
   const defaultWorkshop = defaultProvider.getRequiredService(GREETING_WORKSHOP_TYPE) as GreetingWorkshop;
 
   lines.push('app registered no stationery:');
@@ -81,7 +81,8 @@ export function demonstrateInfrastructure(): readonly string[] {
   const customised = addGreetingWorkshop(newWorkshopManifest(), (workshop) => {
     workshop.useGreeting(WorkshopGreeting).useStationery({ border: '***' });
   });
-  const customWorkshop = customised.build().getRequiredService(GREETING_WORKSHOP_TYPE) as GreetingWorkshop;
+  const customWorkshop = di.usingLifetimeModel(LifetimeModel.noop).usingManifest(customised).build()
+    .getRequiredService(GREETING_WORKSHOP_TYPE) as GreetingWorkshop;
 
   lines.push('app registered its own stationery:');
   lines.push(`  stationery overridden: ${customWorkshop.stationeryIsOverridden}`);
@@ -137,11 +138,14 @@ export function demonstrateInfrastructure(): readonly string[] {
   // The eager whole-graph pass is where an unsatisfiable registration turns into
   // something the taxonomy names.
   try {
-    newWorkshopManifest()
+    const brokenManifest = newWorkshopManifest()
       .add(Type.from('@rhombus-std/examples.contracts:IHealthCheck'), GreetingWorkshop, Type.ctor(Type.from('@rhombus-std/examples.contracts:IHealthCheck'), [[
         Type.from('@rhombus-std/examples.contracts:IGreeting'),
-      ]]), 'singleton')
-      .build({ validateOnBuild: true });
+      ]]), 'singleton');
+    di.usingLifetimeModel(LifetimeModel.noop)
+      .usingManifest(brokenManifest)
+      .configureProvider(options => ({ ...options, validateOnBuild: true }))
+      .build();
   } catch (error) {
     lines.push(`building a graph with a hole in it: ${describeDiError(error)}`);
   }

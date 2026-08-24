@@ -23,7 +23,7 @@
 // one — an ad-hoc FACTORY parameter — so the comparison is readable in one
 // constructor.
 
-import { ConstantType, Type } from '@rhombus-std/di.core';
+import { Type } from '@rhombus-std/di.core';
 import type { Inject, IServiceProvider, Manifest, Typeof } from '@rhombus-std/di.core';
 import type { CheckoutOrder, IAuditTrail, IExchangeRates, IOrderValidator, IPaymentGateway, IPaymentRouter, IReceipt, IReceiptNumbering } from '@rhombus-std/examples.contracts';
 
@@ -335,45 +335,45 @@ export function addCheckoutServices<S>(
   const t = CHECKOUT_TYPES;
 
   // The pinned spend limit `TotalWithinLimit` brands its parameter with.
-  services = services.add(t.spendLimit, 250_000, ConstantType);
+  services = services.add(t.spendLimit, 250_000);
 
   // THREE registrations under ONE Type. Nothing about the individual calls says
   // "collection" — a collection is simply what you get when you ask for the
   // array wrapper over a Type that several registrations share.
-  services = services.add(t.validator, TotalWithinLimit, Type.ctor(t.validator, [[t.spendLimit]]), 'singleton');
-  services = services.add(t.validator, AmountIsPositive, Type.ctor(t.validator, [[]]), 'singleton');
+  services = services.add(t.validator, TotalWithinLimit, Type.ctor(t.validator, [[t.spendLimit]]), 'singleton' as S | 'singleton');
+  services = services.add(t.validator, AmountIsPositive, Type.ctor(t.validator, [[]]), 'singleton' as S | 'singleton');
   // The gateway base type, registered as an ordinary value so the classes that
   // probe by key can be handed it.
-  services = services.add(GATEWAY_WITNESS_TYPE, GATEWAY_TYPE, ConstantType);
+  services = services.add(GATEWAY_WITNESS_TYPE, GATEWAY_TYPE);
 
   services = services.add(
     t.validator,
     MethodIsConfigured,
     Type.ctor(t.validator, [[t.resolver, GATEWAY_WITNESS_TYPE]]),
-    'singleton',
+    'singleton' as S | 'singleton',
   );
 
   // THREE registrations under one base, each with its own KEY (argument 5). The
   // effective Types are `IPaymentGateway#card`, `#wallet` and `#invoice`; the
   // bare base is left deliberately unregistered, so an unkeyed resolve of
   // `IPaymentGateway` correctly fails rather than silently picking a winner.
-  services = services.add(Type.tag(t.gateway, 'card'), CardGateway, Type.ctor(t.gateway, [[]]), 'singleton');
-  services = services.add(Type.tag(t.gateway, 'wallet'), WalletGateway, Type.ctor(t.gateway, [[]]), 'singleton');
-  services = services.add(Type.tag(t.gateway, 'invoice'), InvoiceGateway, Type.ctor(t.gateway, [[]]), 'singleton');
+  services = services.add(Type.tag(t.gateway, 'card'), CardGateway, Type.ctor(t.gateway, [[]]), 'singleton' as S | 'singleton');
+  services = services.add(Type.tag(t.gateway, 'wallet'), WalletGateway, Type.ctor(t.gateway, [[]]), 'singleton' as S | 'singleton');
+  services = services.add(Type.tag(t.gateway, 'invoice'), InvoiceGateway, Type.ctor(t.gateway, [[]]), 'singleton' as S | 'singleton');
 
   // The factory target only has to BE registered — `add` here, but a factory
   // or a value registration would serve just as well, since the callable runs the
   // registration's producer rather than `new`-ing the target itself.
   // `…:CheckoutOrder` stays unregistered on purpose: it is the caller-supplied
   // half of the partition.
-  services = services.add(t.numbering, ReceiptNumbering, Type.ctor(t.numbering, [[]]), 'singleton');
-  services = services.add(t.receipt, Receipt, Type.ctor(t.receipt, [[t.order, t.numbering]]), 'singleton');
+  services = services.add(t.numbering, ReceiptNumbering, Type.ctor(t.numbering, [[]]), 'singleton' as S | 'singleton');
+  services = services.add(t.receipt, Receipt, Type.ctor(t.receipt, [[t.order, t.numbering]]), 'singleton' as S | 'singleton');
 
-  services = services.add(t.audit, AuditTrail, Type.ctor(t.audit, [[]]), 'singleton');
+  services = services.add(t.audit, AuditTrail, Type.ctor(t.audit, [[]]), 'singleton' as S | 'singleton');
 
   // Registered under the PROMISE Type — the caller awaits what
   // `getRequiredService` hands back for it; the bare type has no registration.
-  services = services.add(t.ratesPromise, fetchExchangeRates, Type.func(t.ratesPromise, [[]]), 'singleton');
+  services = services.add(t.ratesPromise, fetchExchangeRates, Type.func(t.ratesPromise, [[]]), 'singleton' as S | 'singleton');
 
   services = services.add(
     t.router,
@@ -383,7 +383,7 @@ export function addCheckoutServices<S>(
     // are `args`"; every other argument in the target's constructor is resolved
     // from the container instead.
     Type.ctor(t.router, [[t.resolver, GATEWAY_WITNESS_TYPE, Type.func(t.receipt, [[t.order]])]]),
-    'singleton',
+    'singleton' as S | 'singleton',
   );
 
   return services;
