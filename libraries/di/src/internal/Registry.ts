@@ -46,7 +46,7 @@ export class Registry {
     return Iterator.from(this.#descriptors)
       .map(descriptor => ({
         descriptor,
-        match: Type.match(descriptor.serviceType, serviceType),
+        match: Type.bindGenerics(descriptor.serviceType, serviceType),
       }))
       .filter((candidate): candidate is { descriptor: ServiceDescriptor<unknown>; match: [true, Map<string, Type>]; } => candidate.match[0])
       .map(({ descriptor, match: [, generics] }) => ({ descriptor, generics }));

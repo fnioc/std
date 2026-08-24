@@ -130,7 +130,7 @@ const matchVisitor = new MatchVisitor();
  */
 export function matchType(candidate: Type, constraint: Type): [matched: false] | [matched: true, generics: Map<string, Type>] {
   if (isOpenType(constraint)) {
-    throw new Error(`match: the constraint type may not contain generic holes — got ${stringifyType(constraint)}`);
+    throw new Error(`bindGenerics: the constraint type may not contain generic holes — got ${stringifyType(constraint)}`);
   }
   // Interned identity IS the closed-candidate match; the walk exists for the holes.
   if (candidate === constraint) {

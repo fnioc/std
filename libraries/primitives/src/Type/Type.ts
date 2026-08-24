@@ -406,7 +406,7 @@ export namespace Type {
    *
    * @throws Error - when `constraint` itself holds a generic hole.
    */
-  export function match(candidate: Type, constraint: Type) {
+  export function bindGenerics(candidate: Type, constraint: Type) {
     return matchType(candidate, constraint);
   }
 
