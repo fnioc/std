@@ -91,6 +91,39 @@ land; delete the file when empty.
       inside a scope is the container, not the scope (RealizeVisitor.ts:128-130, not fixable
       model-side); resolveLatebound re-enters under call-time scope, not captured scope
       (RealizeVisitor.ts:116-118).
+- [ ] **`getRequiredService` throws a bare `Error`** when nothing is registered — outside the
+      `DiError` taxonomy, so one `instanceof` no longer classifies every container failure
+      (surfaced by the createScope augmentation, which had to route through `getService`'s
+      undefined split instead of catching a classifiable error). Decide: `UnsatisfiableError`
+      (needs the serviceType member semantics checked) or a dedicated taxonomy member.
+- [ ] **The door concept — owner design direction 2026-08-24; NO implementation until he
+      green-lights (model review first).** `IServiceProvider`'s one-member `getService` is not a
+      bottleneck: every specialized capability is a DOOR — an address you ask the provider for,
+      answered by a specialized callsite. The interface stays frozen forever; capabilities are
+      addresses. Already-true instances: `ScopeFactory`, the `Invoker` marker, bare-hole type
+      delivery. Pieces, in landing order when green-lit:
+      - **Invoker formalization**: export the marker through a real seam (public in di.core) so
+        `typefor` derives the true address — this IS the gospel fix for the typefor-lie residual.
+        Resolving it returns the factory, authored with engine-guts access; the
+        `resolve(callableType, callable)` augmentations remain the transparent sugar over it.
+        Name open — owner floated `InvokerService`/`FrameFactory`; Claude recommends staying with
+        `Invoker` (what-not-how: "frame" names the mechanism).
+      - **ScopeFactory synthesis — RULED 2026-08-24: its own callsite kind** (nominal detection,
+        synthesis tail so a user registration still wins; no manifest registration — model
+        descriptors must be context-free values, per-container machinery lives behind the
+        realizer). STANDING question: dedicated `Realizer.scopeFactory()` door (the working
+        implementation) vs routing through the one `realize` door; revisit a general door table
+        if doors multiply (audit service).
+      - **Latebound reframed as an implicit door** — the composed-manifest semantics live behind
+        the factory the door returns; the engine's multi-entrypoint contract stays private
+        (consistent with the models-get-the-wrapper ruling).
+      - **Resolve-audit service**: a door giving *access* (never a copied snapshot) to the details
+        of the resolve that constructed its holder — full request type, serviceType, ancestry — as
+        a thin handle closing over the engine's per-resolve frame; payload engine-side and lazy.
+        Creation-time semantics under caching (a cache hit reuses instance + handle together).
+        Requires frame data immutable-after-realize or snapshotted at synthesis. Replaces the
+        Typeof witness branding. Ancestor visibility ruled fine — no intra-container trust
+        boundary, and "who asked for me" is useful.
 - [ ] **Mergesynth deeper enumeration — owner call open:** verbose diagnostics now enumerate a
       member's weakened positions, but inside one position's recursive composition
       (object/union/tuple guards) the first uncheckable reason still wins (`guardForType`'s
