@@ -5,6 +5,15 @@ that interface, without touching the interface's declaring package. This doc des
 mechanism: the behavior it guarantees, how to author one, how to consume one, how it actually
 works, and what to watch out for.
 
+## Receiver interfaces are gospel
+
+A receiver interface never changes without explicit conversation — adding, removing, or reshaping
+a member on `IConfigBuilder`, `Manifest`, `IServiceProvider`, or any other receiver is a decision,
+not a drive-by edit. And a receiver's **concrete** class never carries an overload that exists only
+to paper over how augmentations attach to it: its signature matches the interface it merges with
+EXACTLY, member for member, overload for overload. A concrete that drifts from its interface to
+dodge a typing wrinkle is a bug in the augmentation, not a reason to widen the concrete.
+
 ## The behavior
 
 Once an augmentation exists, `builder.addJsonFile('appsettings.json')` compiles for **every** value

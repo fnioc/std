@@ -3,31 +3,14 @@
 Tasks surfaced in passing and deliberately not implemented at the time. Strike items as they
 land; delete the file when empty.
 
-- [ ] **`getService` → `resolve` vocabulary + one-member `IServiceProvider`** (queued behind the
-      pending pass's accept; owner-ruled). `IServiceProvider` keeps ONLY
-      `getService(serviceType: Type): any`; the two callable overloads move to
-      `di.core/src/augmentations/ServiceProvider-service-augmentations.ts` as `resolve`, joined
-      by a plain `resolve(serviceType)` wrapper over `getService`; every other `getService`
-      spelling renames to `resolve`. The callable forms activate the value path via a DETECTABLE
-      PATTERN through the one door: `visitFunc` synthesis detects a requested
-      `Func<[CtorType], Instance]`/`Func<[FuncType], Return]` whose return is identically the
-      callable node's own instance/return, and synthesizes a frame-invoking closure (the supplied
-      callable arriving as the latebound arg) instead of the generic latebound; a registration
-      answering that func-type address still outranks the synthesis (§196), while inside the
-      closure the arg outranks everything for its slot. RULED EXPLICIT: the trigger is a NOMINAL
-      marker, a real di.core exported interface (working name `Invoker<C extends Ctor | Func>`,
-      call signature `(callable: C) => built result`) so `typefor<Invoker<typeof MyCtor>>()`
-      spells the request; the augmentation closes the base with its runtime callable node
-      (interning equates the spellings); engine detects by the marker's address, not a
-      structural Func pattern (which would shadow a legitimate latebound shape). RULED: marker
-      lives in di.core but is NOT exported — the aug file imports it relatively and typefors it;
-      the engine detects by the address pair (`isScopeFactoryAddress` precedent); the only
-      public route to the value path is `resolve(callableType, callable)`. Verify at
-      implementation: what `from` typefor derives for a non-barrel type. Open: marker name; one
-      conditional-return interface vs split ctor/func markers. GOSPEL for
-      `docs/features/augmentations.md`: receiver interfaces never change without explicit
-      conversation; no cover-up overloads on receiver concretes — concrete signatures match the
-      interface EXACTLY.
+- [x] **`getService` → `resolve` vocabulary + one-member `IServiceProvider`** — landed: `IServiceProvider`
+      keeps only `getService(serviceType: Type): any`; the callable overloads live in
+      `di.core/src/augmentations/ServiceProvider-service-augmentations.ts` as `resolve`, joined by
+      a plain `resolve(serviceType)` wrapper. The callable forms route through an unexported
+      `Invoker<C>` marker in `di.core/src/Invoker.ts` — the engine detects its address structurally
+      (`ImportedType` named `Invoker` from `@rhombus-std/di.core`, one generic arg) and synthesizes
+      a closure that realizes the caller's own callable as an invocation frame. GOSPEL landed in
+      `docs/features/augmentations.md`.
 - [ ] **Rework the broken dependers** and delete the four `// @ts-nocheck -- TEMP` headers
       (`hosting/src/HostApplicationBuilder.ts`, `hosting/src/HostBuilder.ts`,
       `hosting/src/default-config.ts`, `logging/src/LoggerFactory.ts`). Until then those two

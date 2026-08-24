@@ -46,7 +46,7 @@ provider.getRequiredService(IGreeter).greet('world'); // "Hello, world!"
 | `ServiceProvider`                                                                             | The concrete engine: seals a `Manifest` (via `build()`) and resolves services against it.                                      |
 | `build()`                                                                                     | The `Manifest` verb this package adds — `manifest.build(options?)` returns a `ServiceProvider`.                                |
 | `ServiceProviderOptions`                                                                      | Build-time behavior: `validateOnBuild` (fail at build instead of at first resolve), `validateScopes` (declared, not yet read). |
-| `resolve(type)` / `getRequiredService(type)` / `getServices(type)`                         | Resolve one optional service, one required service, or every registration of a type.                                           |
+| `resolve(type)` / `getRequiredService(type)` / `getServices(type)`                            | Resolve one optional service, one required service, or every registration of a type.                                           |
 | `DiError`, `UnsatisfiableError`, `CycleError`, `ManifestValidationError`, `ValidationFailure` | Re-exported from `di.core` — the same classes, so `instanceof` holds whichever package a caller imports the taxonomy from.     |
 
 ## How it fits
