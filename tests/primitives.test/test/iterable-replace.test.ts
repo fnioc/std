@@ -1,4 +1,4 @@
-// Coverage for replace()'s four faces (src/utils/iterable.ts): a value match
+// Coverage for replace()'s four faces (src/toolkit/iterable.ts): a value match
 // paired with a value or mapper replacement, each either same-typed or
 // widening the yielded type.
 

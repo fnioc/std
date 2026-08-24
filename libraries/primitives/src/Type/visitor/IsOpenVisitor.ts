@@ -1,4 +1,4 @@
-import { memo } from '../../utils/memo.js';
+import { memo } from '../../toolkit/memo.js';
 import type { AbstractConstructorType, ArrayType, ConstructorType, FunctionType, GenericType, GlobalType, ImportedType, IntersectionType, IterableType, ListType, NamedType, ObjectType, TagType,
   TupleType, Type, TypeLiteralType, UnionType } from '../Type.js';
 import { TypeVisitor } from './TypeVisitor.js';

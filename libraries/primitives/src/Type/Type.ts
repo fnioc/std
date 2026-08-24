@@ -1,4 +1,4 @@
-import type { DistributiveOmit } from '../utils/index.js';
+import type { DistributiveOmit } from '../toolkit/index.js';
 import * as factory from './factory/factories.js';
 import type { LIST_KINDS, ListName } from './grammar.js';
 import { parseTypeString } from './parse/parser.js';
