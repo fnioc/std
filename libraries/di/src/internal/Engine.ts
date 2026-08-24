@@ -1,5 +1,5 @@
-import { type LifetimeModel, ManifestValidationError, type ServiceDescriptor, UnsatisfiableError, type ValidationFailure } from '@rhombus-std/di.core';
-import { type FunctionType, type IServiceProvider, Type } from '@rhombus-std/primitives';
+import { type IServiceProvider, ManifestValidationError, type Realizer, type ServiceDescriptor, UnsatisfiableError, type ValidationFailure } from '@rhombus-std/di.core';
+import { type FunctionType, Type } from '@rhombus-std/primitives';
 import { CallSite } from './CallSite/index.js';
 import { Registry } from './Registry.js';
 
@@ -13,17 +13,17 @@ export interface ResolveContext {
  * per-walk arrives in the {@link ResolveContext}.
  */
 export class Engine {
-  readonly #lifetimeModel: LifetimeModel;
+  readonly #realizer: Realizer;
   readonly #registry: Registry;
 
-  constructor(lifetimeModel: LifetimeModel, descriptors: Iterable<ServiceDescriptor<unknown>>) {
-    this.#lifetimeModel = lifetimeModel;
+  constructor(realizer: Realizer, descriptors: Iterable<ServiceDescriptor<unknown>>) {
+    this.#realizer = realizer;
     this.#registry = new Registry(descriptors);
   }
 
   /** @throws {UnsatisfiableError} when nothing in the registry can produce {@link serviceType}. */
   resolve(serviceType: Type, context: ResolveContext): unknown {
-    return CallSite.realize(CallSite.from(serviceType, this.#registry), { engine: this, serviceProvider: context.serviceProvider, lifetimeModel: this.#lifetimeModel });
+    return CallSite.realize(CallSite.from(serviceType, this.#registry), { engine: this, serviceProvider: context.serviceProvider, realizer: this.#realizer });
   }
 
   /**
@@ -38,7 +38,7 @@ export class Engine {
     if (site === undefined) {
       throw new UnsatisfiableError(descriptor.serviceType, 'no signature of the invoked callable can be satisfied');
     }
-    return CallSite.realize(site, { engine: this, serviceProvider, lifetimeModel: this.#lifetimeModel });
+    return CallSite.realize(site, { engine: this, serviceProvider, realizer: this.#realizer });
   }
 
   /**
@@ -60,7 +60,7 @@ export class Engine {
     return CallSite.realize(result, {
       engine: this,
       serviceProvider,
-      lifetimeModel: this.#lifetimeModel,
+      realizer: this.#realizer,
       args: providedArgs,
     });
   }

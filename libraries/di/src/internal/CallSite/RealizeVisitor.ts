@@ -1,5 +1,4 @@
-import { type LifetimeModel, LifetimeModelError, ServiceDescriptor } from '@rhombus-std/di.core';
-import type { IServiceProvider } from '@rhombus-std/primitives';
+import { type IServiceProvider, LifetimeModelError, type Realizer, ServiceDescriptor } from '@rhombus-std/di.core';
 import type { Ctor, Func } from '@rhombus-toolkit/func';
 import { assertNever } from '@rhombus-toolkit/type-guards';
 import type { Engine } from '../Engine.js';
@@ -10,8 +9,8 @@ export interface RealizeOptions {
   readonly engine: Engine;
   /** What a service asking for the provider receives — the walk's originating facade. */
   readonly serviceProvider: IServiceProvider;
-  /** The lifetime model governing the walk's root site. */
-  readonly lifetimeModel: LifetimeModel;
+  /** The realizer governing the walk's root site. */
+  readonly realizer: Realizer;
   /** A latebound call's arguments, read by position from the {@link LateBoundArgCallSite}s in its plan. */
   readonly args?: readonly unknown[];
 }
@@ -31,22 +30,22 @@ class RealizeVisitor {
   readonly #serviceProvider: IServiceProvider;
   readonly #args: readonly unknown[] | undefined;
 
-  constructor({ engine, serviceProvider, args }: Omit<RealizeOptions, 'lifetimeModel'>) {
+  constructor({ engine, serviceProvider, args }: Omit<RealizeOptions, 'realizer'>) {
     this.#engine = engine;
     this.#serviceProvider = serviceProvider;
     this.#args = args;
   }
 
-  visit(site: CallSite, model: LifetimeModel): any {
+  visit(site: CallSite, realizer: Realizer): any {
     switch (site.kind) {
       case 'registered-ctor':
-        return this.visitRegisteredCtor(site, model);
+        return this.visitRegisteredCtor(site, realizer);
       case 'registered-factory':
-        return this.visitRegisteredFactory(site, model);
+        return this.visitRegisteredFactory(site, realizer);
       case 'ctor':
-        return this.visitCtor(site, model);
+        return this.visitCtor(site, realizer);
       case 'factory':
-        return this.visitFactory(site, model);
+        return this.visitFactory(site, realizer);
       case 'latebound':
         return this.visitLateBound(site);
       case 'latebound-arg':
@@ -58,40 +57,39 @@ class RealizeVisitor {
       case 'service-provider':
         return this.visitServiceProvider(site);
       case 'iterable':
-        return this.visitIterable(site, model);
+        return this.visitIterable(site, realizer);
       case 'array':
-        return this.visitArray(site, model);
+        return this.visitArray(site, realizer);
       default:
         return assertNever(site);
     }
   }
 
-  protected visitRegisteredCtor(site: RegisteredCtorCallSite, model: LifetimeModel): any {
-    return this.#realize(site, model, (...args) => new site.ctor(...args));
+  protected visitRegisteredCtor(site: RegisteredCtorCallSite, realizer: Realizer): any {
+    return this.#realize(site, realizer, (...args) => new site.ctor(...args));
   }
 
-  protected visitRegisteredFactory(site: RegisteredFactoryCallSite, model: LifetimeModel): any {
-    return this.#realize(site, model, site.factory);
+  protected visitRegisteredFactory(site: RegisteredFactoryCallSite, realizer: Realizer): any {
+    return this.#realize(site, realizer, site.factory);
   }
 
   /**
-   * Calls the model with the throw attributed: an error raised by the model's own code surfaces
-   * as {@link LifetimeModelError} naming the site, while an error `make` raised passes through
-   * untouched — the construction, not the model, owns that one.
+   * Calls the realizer with the throw attributed: an error raised by the realizer's own code
+   * surfaces as {@link LifetimeModelError} naming the site, while an error `make` raised passes
+   * through untouched — the construction, not the realizer, owns that one.
    */
-  #realize(site: RegisteredCtorCallSite | RegisteredFactoryCallSite, model: LifetimeModel, callable: Func): any;
-  #realize(site: RegisteredCtorCallSite | RegisteredFactoryCallSite, model: LifetimeModel, callable: Func,
-    { serviceType, descriptor }: RegisteredCtorCallSite | RegisteredFactoryCallSite = site): any {
+  #realize(site: RegisteredCtorCallSite | RegisteredFactoryCallSite, realizer: Realizer, callable: Func): any;
+  #realize(site: RegisteredCtorCallSite | RegisteredFactoryCallSite, realizer: Realizer, callable: Func, { serviceType, descriptor }: RegisteredCtorCallSite | RegisteredFactoryCallSite = site): any {
     let madeThrew = false;
     let madeError: unknown;
     try {
-      return model.realize({
+      return realizer.realize({
         site,
         serviceType,
         descriptor,
-        make: descendantModel => {
+        make: descendantRealizer => {
           try {
-            return callable(...site.args.map(arg => this.visit(arg, descendantModel)));
+            return callable(...site.args.map(arg => this.visit(arg, descendantRealizer)));
           } catch (error) {
             madeThrew = true;
             madeError = error;
@@ -107,12 +105,12 @@ class RealizeVisitor {
     }
   }
 
-  protected visitCtor(site: CtorCallSite, model: LifetimeModel): any {
-    return new site.ctor(...site.args.map(arg => this.visit(arg, model)));
+  protected visitCtor(site: CtorCallSite, realizer: Realizer): any {
+    return new site.ctor(...site.args.map(arg => this.visit(arg, realizer)));
   }
 
-  protected visitFactory(site: FactoryCallSite, model: LifetimeModel): any {
-    return site.factory(...site.args.map(arg => this.visit(arg, model)));
+  protected visitFactory(site: FactoryCallSite, realizer: Realizer): any {
+    return site.factory(...site.args.map(arg => this.visit(arg, realizer)));
   }
 
   protected visitLateBound(site: LateBoundCallSite): any {
@@ -158,16 +156,16 @@ class RealizeVisitor {
    * Re-iterable rather than a one-shot iterator: a caller that walks it twice gets a value both
    * times. Each walk realizes afresh, so a transient member is a new instance per pass.
    */
-  protected visitIterable(site: IterableCallSite, model: LifetimeModel): any {
-    return { [Symbol.iterator]: () => Iterator.from(site.types).map(inner => this.visit(inner, model)) };
+  protected visitIterable(site: IterableCallSite, realizer: Realizer): any {
+    return { [Symbol.iterator]: () => Iterator.from(site.types).map(inner => this.visit(inner, realizer)) };
   }
 
-  protected visitArray(site: ArrayCallSite, model: LifetimeModel): any {
-    return site.types.map(inner => this.visit(inner, model));
+  protected visitArray(site: ArrayCallSite, realizer: Realizer): any {
+    return site.types.map(inner => this.visit(inner, realizer));
   }
 }
 
 /** Realizes {@link callSite} into its value; the walk is synchronous throughout. */
 export function realizeCallSite(callSite: CallSite, options: RealizeOptions): any {
-  return new RealizeVisitor(options).visit(callSite, options.lifetimeModel);
+  return new RealizeVisitor(options).visit(callSite, options.realizer);
 }

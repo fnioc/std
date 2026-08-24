@@ -1,4 +1,4 @@
-import { DefaultManifest, IServiceProvider, type LifetimeModel, type Manifest, type ServiceDescriptor } from '@rhombus-std/di.core';
+import { DefaultManifest, IServiceProvider, type LifetimeModel, type Manifest, type Realizer, type ServiceDescriptor } from '@rhombus-std/di.core';
 import { concat, iterable } from '@rhombus-std/primitives';
 import type { Func } from '@rhombus-toolkit/func';
 import { ServiceProvider } from './ServiceProvider.js';
@@ -24,7 +24,7 @@ export interface ContainerBuilder<Lifetime> {
   configureProvider(configure: Func<[ServiceProviderOptions], ServiceProviderOptions>): ContainerBuilder<Lifetime>;
 
   /** Seals the configured manifest into a provider. */
-  build(): IServiceProvider;
+  build(): IServiceProvider<Lifetime>;
 }
 
 export class DefaultContainerBuilder<Lifetime> implements ContainerBuilder<Lifetime> {
@@ -66,11 +66,12 @@ export class DefaultContainerBuilder<Lifetime> implements ContainerBuilder<Lifet
     );
   }
 
-  build(): IServiceProvider {
-    const floor = this.#lifetimeModel.addModelServices(DefaultManifest.empty());
+  build(): IServiceProvider<Lifetime> {
+    const floor = DefaultManifest.empty<Lifetime>().include(() => this.#lifetimeModel.addModelServices());
     const manifest = Iterator.from(this.#manifestSteps).reduce((manifest, step) => new DefaultManifest(step(manifest)), floor);
     const options = Iterator.from(this.#optionSteps).reduce((options, step) => step(options), ServiceProviderOptions.defaults);
-    return new ServiceProvider(this.#lifetimeModel as LifetimeModel, manifest as Manifest<unknown>, options);
+    const realizer = this.#lifetimeModel.createRealizer() as Realizer;
+    return new ServiceProvider(realizer, manifest as Manifest<unknown>, options) as IServiceProvider<Lifetime>;
   }
 }
 
