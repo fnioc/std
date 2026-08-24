@@ -1,4 +1,3 @@
-// @ts-nocheck -- TEMP: broken depender awaiting the lifetime-model rework; delete this line when reworking
 // LoggerFactory produces one composite logger per category, fanning a write
 // out across every registered provider.
 //
@@ -14,7 +13,7 @@
 // no runtime import of the authoring package.
 import type {} from '@rhombus-std/di.extras';
 
-import { di, type ServiceProvider } from '@rhombus-std/di';
+import { di } from '@rhombus-std/di';
 import { DefaultManifest, LifetimeModel } from '@rhombus-std/di.core';
 import { type IExternalScopeProvider, type ILogger, type ILoggerFactory, type ILoggerProvider, type ILoggingBuilder, LogLevel } from '@rhombus-std/logging.core';
 import { type IOptions, Options } from '@rhombus-std/options';
@@ -169,34 +168,13 @@ export class LoggerFactory implements ILoggerFactory {
   /**
    * Creates a configured {@link ILoggerFactory} from an {@link ILoggingBuilder}
    * delegate. Spins up a {@link DefaultManifest}, runs `addLogging(configure)`,
-   * builds the container, and resolves the factory. The returned
-   * {@link ILoggerFactory} owns the container: disposing it disposes the
-   * provider (and everything it built, the factory included).
+   * builds the container, and resolves the factory.
    */
   public static create(configure: Func<[ILoggingBuilder], void>): ILoggerFactory {
-    const services = DefaultManifest.empty(LifetimeModel.noop).addLogging(configure);
-    const provider = di.usingLifetimeModel(LifetimeModel.noop)
+    const services = DefaultManifest.empty<unknown>().addLogging(configure);
+    return di.usingLifetimeModel(LifetimeModel.noop)
       .usingManifest(services)
-      .build();
-    const factory = provider.getRequiredService<ILoggerFactory>();
-    return new DisposingLoggerFactory(factory, provider);
-  }
-}
-
-/** Wraps a container-resolved {@link ILoggerFactory} so disposing the factory disposes the owning container scope. */
-@augment(typefor<ILoggerFactory>())
-class DisposingLoggerFactory implements ILoggerFactory {
-  public constructor(private readonly factory: ILoggerFactory, private readonly provider: ServiceProvider) {}
-
-  public createLogger(categoryName: string): ILogger {
-    return this.factory.createLogger(categoryName);
-  }
-
-  public addProvider(provider: ILoggerProvider): void {
-    this.factory.addProvider(provider);
-  }
-
-  public [Symbol.dispose](): void {
-    this.provider.dispose();
+      .build()
+      .resolve<ILoggerFactory>();
   }
 }

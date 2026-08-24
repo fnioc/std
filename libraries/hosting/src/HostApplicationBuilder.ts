@@ -1,4 +1,3 @@
-// @ts-nocheck -- TEMP: broken depender awaiting the lifetime-model rework; delete this line when reworking
 // HostApplicationBuilder -- the modern, property-based builder. Unlike the
 // classic delegate-accumulating `HostBuilder`, it exposes its `config`,
 // `environment`, `logging`, `metrics`, and `services` as live properties the

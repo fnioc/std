@@ -131,11 +131,9 @@ export namespace HostBuilderHostingAugmentations {
 
   /**
    * Specifies the default service-provider configuration. The delegate receives
-   * {@link ServiceProviderOptions.defaults} and returns the
-   * {@link ServiceProviderOptions} (`validateScopes` / `validateOnBuild`)
-   * that `build()` then threads into
-   * `ServiceManifest.build(options)`. Overrides any options set by an earlier
-   * `configureDefaults`.
+   * {@link ServiceProviderOptions.defaults} and returns the options `build()`
+   * then threads into the container it assembles. Overrides any options set by
+   * an earlier `configureDefaults`.
    */
   export function useDefaultServiceProvider<Self extends IHostBuilder>(this: Self, configure: Func<[ServiceProviderOptions], ServiceProviderOptions>): Self {
     const options = configure(ServiceProviderOptions.defaults);
@@ -155,8 +153,8 @@ export namespace HostBuilderHostingAugmentations {
       const withOptions = services.addValue<ConsoleLifetimeOptions>(options);
       return withOptions.add(HOST_LIFETIME_TYPE,
         (resolver: IServiceProvider) =>
-          new ConsoleLifetime(resolver.getRequiredService<ConsoleLifetimeOptions>(), resolver.getRequiredService<IHostEnvironment>(), resolver.getRequiredService<IHostApplicationLifetime>(),
-            resolver.getRequiredService<ILoggerFactory>()), Type.func(HOST_LIFETIME_TYPE, [[typefor<IServiceProvider>()]]));
+          new ConsoleLifetime(resolver.getService<ConsoleLifetimeOptions>(), resolver.getService<IHostEnvironment>(), resolver.getService<IHostApplicationLifetime>(),
+            resolver.getService<ILoggerFactory>()), Type.func(HOST_LIFETIME_TYPE, [[typefor<IServiceProvider>()]]));
     });
   }
 

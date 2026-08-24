@@ -3,22 +3,16 @@
 // Lives in `internal/Host.ts` (not `src/Host.ts`) because `src/Host.ts` already
 // holds the static `Host` builder facade -- keeping this one under `internal/`
 // avoids a name collision between the two.
-//
-// Frameless-provider handling: `build()` returns a frameless provider whose
-// singleton registrations only cache once a `"singleton"` scope is open. So
-// `start` opens `createScope("singleton")`, resolves the hosted services from
-// THAT scope, and `stop` disposes it -- that scope is what gives singleton
-// semantics and deterministic disposal.
 
 // Type-only: puts di.extras' declare-module sugar faces in the program with
 // no runtime import of the authoring package.
 import type {} from '@rhombus-std/di.extras';
 
-import type { ServiceProvider } from '@rhombus-std/di';
+import type { IServiceProvider } from '@rhombus-std/di.core';
 import { BackgroundService, type IHost, type IHostApplicationLifetime, type IHostedLifecycleService, type IHostedService, type IHostLifetime } from '@rhombus-std/hosting.core';
 import type { ILogger } from '@rhombus-std/logging.core';
 import type { IStartupValidator } from '@rhombus-std/options';
-import { type AbortSignal, augment } from '@rhombus-std/primitives';
+import { type AbortSignal, augment, Type } from '@rhombus-std/primitives';
 import { typefor } from '@rhombus-std/primitives.extras';
 import type { Func } from '@rhombus-toolkit/func';
 import { BackgroundServiceErrorBehavior } from '../BackgroundServiceErrorBehavior';
@@ -97,7 +91,7 @@ export interface Host extends IHost {}
 /** The internal {@link IHost} implementation. */
 @augment(typefor<IHost>())
 export class Host implements IHost, AsyncDisposable {
-  readonly #services: ServiceProvider;
+  readonly #services: IServiceProvider;
   readonly #applicationLifetime: ApplicationLifetime;
   readonly #logger: ILogger;
   readonly #hostLifetime: IHostLifetime;
@@ -109,7 +103,7 @@ export class Host implements IHost, AsyncDisposable {
   #backgroundServiceTasks?: Array<Promise<void>>;
   #backgroundServiceErrors?: unknown[];
 
-  public constructor(services: ServiceProvider, applicationLifetime: IHostApplicationLifetime, logger: ILogger, hostLifetime: IHostLifetime, options: HostOptions) {
+  public constructor(services: IServiceProvider, applicationLifetime: IHostApplicationLifetime, logger: ILogger, hostLifetime: IHostLifetime, options: HostOptions) {
     if (!(applicationLifetime instanceof ApplicationLifetime)) {
       throw new Error('Replacing IHostApplicationLifetime is not supported.');
     }
@@ -121,7 +115,7 @@ export class Host implements IHost, AsyncDisposable {
   }
 
   /** The services configured for the program (the non-generic resolver view). */
-  public get services(): ServiceProvider {
+  public get services(): IServiceProvider {
     return this.#services;
   }
 
@@ -157,7 +151,7 @@ export class Host implements IHost, AsyncDisposable {
         throw error;
       };
 
-      const hostedServices: IHostedService[] = this.#services.getRequiredService<IHostedService[]>();
+      const hostedServices: IHostedService[] = this.#services.getService<IHostedService[]>();
       this.#hostedServices = hostedServices;
       this.#hostedLifecycleServices = getHostLifecycles(hostedServices);
 
@@ -166,7 +160,7 @@ export class Host implements IHost, AsyncDisposable {
       // registered only when `validateOnStart` ran, so resolve it optionally; a
       // validation failure throws out of start.
       const startupValidator: IStartupValidator | undefined = this.#services.resolve(
-        typefor<IStartupValidator>(),
+        Type.union(typefor<IStartupValidator>(), Type.typeLiteral(undefined)),
       );
       startupValidator?.validate();
 
@@ -203,7 +197,7 @@ export class Host implements IHost, AsyncDisposable {
   /**
    * Stops the hosted services in reverse order. Order: `stopping` -> fire
    * `applicationStopping` -> `stop` -> `stopped` -> fire `applicationStopped` ->
-   * host lifetime stop -> dispose the singleton scope.
+   * host lifetime stop.
    */
   public async stop(abortSignal?: AbortSignal): Promise<void> {
     hostingLog.stopping(this.#logger);
@@ -300,13 +294,9 @@ export class Host implements IHost, AsyncDisposable {
     }
   }
 
-  /** Disposes the host synchronously, and with it the provider it runs against. */
-  public [Symbol.dispose](): void {
-    this.#services.dispose();
-  }
+  /** Disposes the host synchronously. The provider it runs against publishes no disposal to forward to. */
+  public [Symbol.dispose](): void {}
 
-  /** Disposes the host asynchronously, and with it the provider it runs against. */
-  public async [Symbol.asyncDispose](): Promise<void> {
-    await this.#services.disposeAsync();
-  }
+  /** Disposes the host asynchronously. The provider it runs against publishes no disposal to forward to. */
+  public async [Symbol.asyncDispose](): Promise<void> {}
 }

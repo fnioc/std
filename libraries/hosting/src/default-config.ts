@@ -1,4 +1,3 @@
-// @ts-nocheck -- TEMP: broken depender awaiting the lifetime-model rework; delete this line when reworking
 // Shared "apply default configuration" helpers, written against the plain
 // `IConfigBuilder` interface (via `.add(source)` with the provider source
 // classes constructed directly) so both the classic `HostBuilder` (over a
@@ -72,11 +71,10 @@ export function addDefaultServices(services: Manifest<unknown>): Manifest<unknow
 }
 
 /**
- * Builds the default {@link ServiceProviderOptions}. Scope and build-time
- * validation are enabled only in the Development environment, so a production
- * host pays no validation cost while a developer catches lifetime mistakes early.
+ * Builds the default {@link ServiceProviderOptions}. Build-time validation is
+ * enabled only in the Development environment, so a production host pays no
+ * validation cost while a developer catches registration mistakes early.
  */
 export function createDefaultServiceProviderOptions(environment: IHostEnvironment): ServiceProviderOptions {
-  const isDevelopment = HostEnvironmentEnvAugmentations.isDevelopment.call(environment);
-  return { validateScopes: isDevelopment, validateOnBuild: isDevelopment };
+  return { validateOnBuild: HostEnvironmentEnvAugmentations.isDevelopment.call(environment) };
 }

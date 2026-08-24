@@ -1,4 +1,3 @@
-// @ts-nocheck -- TEMP: broken depender awaiting the lifetime-model rework; delete this line when reworking
 // Shared host-composition tail for both builders, factored out so the classic
 // `HostBuilder` and the modern `HostApplicationBuilder` compose identically.
 //
@@ -181,8 +180,8 @@ export function populateFrameworkServices(services: Manifest<unknown>, context: 
  * `config` is the final application configuration folded into
  * {@link HostOptions} before the `configureHostOptions` mutations run.
  *
- * `serviceProviderOptions` carries the `validateScopes` / `validateOnBuild`
- * toggles the builders resolved; omitted ⇒ an unvalidated build.
+ * `serviceProviderOptions` carries the `validateOnBuild` toggle the builders
+ * resolved; omitted ⇒ an unvalidated build.
  */
 export function resolveHost(services: Manifest<unknown>, framework: FrameworkServices, config: IConfig, serviceProviderOptions?: ServiceProviderOptions): IHost {
   const provider = di.usingLifetimeModel(LifetimeModel.noop)
@@ -190,7 +189,7 @@ export function resolveHost(services: Manifest<unknown>, framework: FrameworkSer
     .configureProvider(() => serviceProviderOptions ?? ServiceProviderOptions.defaults)
     .build();
 
-  const loggerProviders: ILoggerProvider[] = provider.getRequiredService<ILoggerProvider[]>();
+  const loggerProviders: ILoggerProvider[] = provider.resolve<ILoggerProvider[]>();
   for (const loggerProvider of loggerProviders) {
     framework.loggerFactory.addProvider(loggerProvider);
   }
@@ -200,14 +199,14 @@ export function resolveHost(services: Manifest<unknown>, framework: FrameworkSer
   // `populateFrameworkServices`; the consumer resolving HOST_OPTIONS_TYPE sees
   // the same mutated instance).
   framework.hostOptions.initialize(config);
-  const configureSteps: Func<[HostOptions], void>[] = provider.getRequiredService(
+  const configureSteps: Func<[HostOptions], void>[] = provider.resolve(
     Type.array(HOST_OPTIONS_CONFIGURE_TYPE),
   );
   for (const configureStep of configureSteps) {
     configureStep(framework.hostOptions);
   }
 
-  const hostLifetime = provider.getRequiredService<IHostLifetime>();
+  const hostLifetime = provider.resolve<IHostLifetime>();
   const logger = framework.loggerFactory.createLogger(HOST_LOGGER_CATEGORY);
 
   return new Host(provider, framework.applicationLifetime, logger, hostLifetime, framework.hostOptions);
