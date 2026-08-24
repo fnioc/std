@@ -89,6 +89,37 @@ export class LifetimeModelError extends DiError {
   }
 }
 
+/**
+ * A registration is kept by the scope wearing {@link tag}, and no scope open where it was asked
+ * for wears it.
+ */
+export class ScopeTagUnmatchedError extends DiError {
+  /** What the lifetime model that refused calls itself. */
+  readonly modelName: string;
+  /** The tag the registration named. */
+  readonly tag: string;
+  /** The service type of the registration that named it. */
+  readonly serviceType: Type;
+
+  constructor(modelName: string, tag: string, serviceType: Type) {
+    super(
+      `the ${modelName} lifetime model keeps ${Type.stringify(serviceType)} in the scope tagged '${tag}', and no open scope carries that tag`,
+    );
+    this.name = 'ScopeTagUnmatchedError';
+    this.modelName = modelName;
+    this.tag = tag;
+    this.serviceType = serviceType;
+  }
+}
+
+/** The installed lifetime model does not publish the standard {@link ScopeFactory} address. */
+export class ScopeFactoryUnavailableError extends DiError {
+  constructor() {
+    super("the installed lifetime model does not publish the standard ScopeFactory — consult the model's documentation for its scope workflow");
+    this.name = 'ScopeFactoryUnavailableError';
+  }
+}
+
 /** One registration that could not be lowered. */
 export interface ValidationFailure {
   /** The service type of the registration that failed. */

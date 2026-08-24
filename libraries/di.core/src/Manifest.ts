@@ -1,8 +1,9 @@
 // DO NOT ADD MEMBERS TO THE TYPES IN THIS FILE
 
-import { augment } from '@rhombus-std/primitives';
+import { augment, concat } from '@rhombus-std/primitives';
 import { typefor } from '@rhombus-std/primitives.extras';
-import type { LifetimeModel } from './LifetimeModel';
+import { Func } from '@rhombus-toolkit/func';
+import { assertNever } from '@rhombus-toolkit/type-guards';
 import { ServiceDescriptor } from './ServiceDescriptor';
 
 /**
@@ -18,8 +19,6 @@ import { ServiceDescriptor } from './ServiceDescriptor';
  * cached plans.
  */
 export interface Manifest<Lifetime> extends Iterable<ServiceDescriptor<Lifetime>> {
-  /** The model interpreting every registration's lifetime datum when a provider built from here realizes. */
-  readonly lifetimeModel: LifetimeModel<Lifetime>;
   /** Prepends `descriptor`, ahead of every descriptor already in the chain. */
   _add(descriptor: ServiceDescriptor<Lifetime>): Manifest<Lifetime>;
   /**
@@ -34,29 +33,36 @@ export interface Manifest<Lifetime> extends Iterable<ServiceDescriptor<Lifetime>
 export interface DefaultManifest<Lifetime> extends Manifest<Lifetime> {}
 
 @augment(typefor<Manifest<unknown>>())
-export class DefaultManifest<Lifetime> {
-  #descriptors: Iterable<ServiceDescriptor<Lifetime>>;
-  constructor(readonly lifetimeModel: LifetimeModel<Lifetime>, descriptors?: Iterable<ServiceDescriptor<Lifetime>>) {
-    this.#descriptors = descriptors ?? [];
+export class DefaultManifest<Lifetime> implements Manifest<Lifetime> {
+  readonly [Symbol.iterator]!: Func<[], Iterator<ServiceDescriptor<Lifetime>>>;
+
+  constructor();
+  constructor(descriptors: Iterable<ServiceDescriptor<Lifetime>>);
+  constructor(generator: Func<[], Iterator<ServiceDescriptor<Lifetime>>>);
+  constructor(arg: Iterable<ServiceDescriptor<Lifetime>> | Func<[], Iterator<ServiceDescriptor<Lifetime>>> = []) {
+    this[Symbol.iterator] = (() => {
+      switch (typeof arg) { // eslint-disable-line @typescript-eslint/switch-exhaustiveness-check
+        case 'object':
+          return () => arg[Symbol.iterator]();
+        case 'function':
+          return arg;
+        default:
+          return assertNever(arg);
+      }
+    })();
   }
 
   _add(descriptor: ServiceDescriptor<Lifetime>): Manifest<Lifetime> {
-    return new DefaultManifest<Lifetime>(this.lifetimeModel, {
-      [Symbol.iterator]: function* added(this: DefaultManifest<Lifetime>) {
-        // INTENTIONAL: newest first.
-        yield descriptor;
-        yield* this.#descriptors;
-      }.bind(this),
-    });
+    return new DefaultManifest<Lifetime>(() => concat(descriptor, this));
   }
 
   _remove(descriptor: ServiceDescriptor<Lifetime>): Manifest<Lifetime> {
-    if (!Iterator.from(this.#descriptors).some(existing => ServiceDescriptor.equals(existing, descriptor))) {
+    if (!Iterator.from(this).some(existing => ServiceDescriptor.equals(existing, descriptor))) {
       return this;
     }
-    return new DefaultManifest<Lifetime>(this.lifetimeModel, {
-      [Symbol.iterator]: function* removed(this: DefaultManifest<Lifetime>) {
-        const it = Iterator.from(this.#descriptors);
+    return new DefaultManifest<Lifetime>(
+      function* removed(this: DefaultManifest<Lifetime>) {
+        const it = Iterator.from(this);
         for (const existing of it) {
           if (ServiceDescriptor.equals(existing, descriptor)) {
             yield* it;
@@ -65,16 +71,16 @@ export class DefaultManifest<Lifetime> {
           }
         }
       }.bind(this),
-    });
+    );
   }
 
   _replace(descriptor: ServiceDescriptor<Lifetime>) {
-    if (!Iterator.from(this.#descriptors).some(existing => existing.serviceType === descriptor.serviceType)) {
+    if (!Iterator.from(this).some(existing => existing.serviceType === descriptor.serviceType)) {
       return this;
     }
-    return new DefaultManifest<Lifetime>(this.lifetimeModel, {
-      [Symbol.iterator]: function* replaced(this: DefaultManifest<Lifetime>) {
-        const it = Iterator.from(this.#descriptors);
+    return new DefaultManifest<Lifetime>(
+      function* replaced(this: DefaultManifest<Lifetime>) {
+        const it = Iterator.from(this);
         for (const existing of it) {
           if (existing.serviceType === descriptor.serviceType) {
             yield descriptor;
@@ -84,14 +90,10 @@ export class DefaultManifest<Lifetime> {
           }
         }
       }.bind(this),
-    });
+    );
   }
 
-  [Symbol.iterator]() {
-    return this.#descriptors[Symbol.iterator]();
-  }
-
-  static empty<Lifetime>(lifetimeModel: LifetimeModel<Lifetime>): Manifest<Lifetime> {
-    return new DefaultManifest<Lifetime>(lifetimeModel);
+  static empty<Lifetime>(): Manifest<Lifetime> {
+    return new DefaultManifest<Lifetime>();
   }
 }

@@ -1,5 +1,6 @@
 import type { Type } from '@rhombus-std/primitives';
 import type { Func } from '@rhombus-toolkit/func';
+import type { Manifest } from '../Manifest';
 import type { ServiceDescriptor } from '../ServiceDescriptor/index';
 
 /**
@@ -16,6 +17,9 @@ export type LifetimeArgument<Lifetime> = undefined extends Lifetime ? [lifetime?
  * @typeParam Lifetime - the vocabulary of lifetime data this model interprets.
  */
 export interface LifetimeModel<Lifetime = unknown> {
+  /** What this model calls itself, so a failure can say which model refused. */
+  readonly name: string;
+
   /**
    * Delivers the value for one construction — from storage, or by invoking `make`, at the
    * model's own discretion: a reuse hit simply never invokes `make`, and with it skips
@@ -39,6 +43,9 @@ export interface LifetimeModel<Lifetime = unknown> {
      */
     make: Func<[LifetimeModel<Lifetime>], unknown>;
   }): unknown;
+
+  /** Registers the model's own services — the scope machinery a provider on this model offers — as the floor beneath every user registration. */
+  addModelServices(manifest: Manifest<Lifetime>): Manifest<Lifetime>;
 }
 
 import { noop as noopModel } from './models/noop';

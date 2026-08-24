@@ -1,4 +1,4 @@
-import type { IServiceProvider } from '@rhombus-std/primitives';
+import { type IServiceProvider, Type } from '@rhombus-std/primitives';
 import type { LifetimeArgument } from './LifetimeModel';
 
 /**
@@ -9,4 +9,9 @@ import type { LifetimeArgument } from './LifetimeModel';
  */
 export interface ScopeFactory<Lifetime> {
   (...lifetime: LifetimeArgument<Lifetime>): IServiceProvider;
+}
+
+export namespace ScopeFactory {
+  /** The address a model registers its creation verb under, and the one a provider looks for. */
+  export const address = Type.imported('ScopeFactory', '@rhombus-std/di.core');
 }
