@@ -67,7 +67,7 @@ export class DefaultContainerBuilder<Lifetime> implements ContainerBuilder<Lifet
   }
 
   build(): IServiceProvider<Lifetime> {
-    const floor = DefaultManifest.empty<Lifetime>().include(() => this.#lifetimeModel.addModelServices());
+    const floor = DefaultManifest.empty<Lifetime>().apply(() => this.#lifetimeModel.addModelServices());
     const manifest = Iterator.from(this.#manifestSteps).reduce((manifest, step) => new DefaultManifest(step(manifest)), floor);
     const options = Iterator.from(this.#optionSteps).reduce((options, step) => step(options), ServiceProviderOptions.defaults);
     const realizer = this.#lifetimeModel.createRealizer() as Realizer;

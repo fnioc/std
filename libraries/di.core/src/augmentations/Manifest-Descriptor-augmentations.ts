@@ -26,9 +26,9 @@ declare module '@rhombus-std/di.core' {
      * in `source`'s own order — `source` re-invoked once per resulting manifest iteration, never
      * called here.
      */
-    include(source: Func<[], Iterable<ServiceDescriptor<Lifetime>>>): Manifest<Lifetime>;
-    /** {@link Manifest.include}'s plain-iterable shape — `source` re-iterated once per resulting manifest iteration, never read here. */
-    include(source: Iterable<ServiceDescriptor<Lifetime>>): Manifest<Lifetime>;
+    apply(source: Func<[], Iterable<ServiceDescriptor<Lifetime>>>): Manifest<Lifetime>;
+    /** {@link Manifest.apply}'s plain-iterable shape — `source` re-iterated once per resulting manifest iteration, never read here. */
+    apply(source: Iterable<ServiceDescriptor<Lifetime>>): Manifest<Lifetime>;
     /** Adds each descriptor whose service type has no registration yet. */
     tryAdd(...descriptors: ReadonlyArray<ServiceDescriptor<Lifetime>>): Manifest<Lifetime>;
 
@@ -102,7 +102,7 @@ registerAugmentations<Manifest<unknown>>({
   addMany(this: Manifest<unknown>, descriptors: Iterable<ServiceDescriptor<unknown>>): Manifest<unknown> {
     return Iterator.from(descriptors).reduce((man, descriptor) => man.add(descriptor), this);
   },
-  include(this: Manifest<unknown>, source: Iterable<ServiceDescriptor<unknown>>): Manifest<unknown> {
+  apply(this: Manifest<unknown>, source: Iterable<ServiceDescriptor<unknown>>): Manifest<unknown> {
     return new DefaultManifest<unknown>(() => concat(source, this));
   },
   tryAdd(this: Manifest<unknown>, ...descriptors: ReadonlyArray<ServiceDescriptor<unknown>>): Manifest<unknown> {
@@ -177,7 +177,7 @@ registerAugmentations<Manifest<unknown>>({
 
 // Func<[], Iterable<ServiceDescriptor>>
 registerAugmentations<Manifest<unknown>>({
-  include(this: Manifest<unknown>, source: Func<[], Iterable<ServiceDescriptor<unknown>>>): Manifest<unknown> {
+  apply(this: Manifest<unknown>, source: Func<[], Iterable<ServiceDescriptor<unknown>>>): Manifest<unknown> {
     return new DefaultManifest<unknown>(() => concat(source(), this));
   },
 });
