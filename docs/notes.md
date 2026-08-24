@@ -3,7 +3,7 @@
 Tasks surfaced in passing and deliberately not implemented at the time. Strike items as they
 land; delete the file when empty.
 
-- [ ] **HELD, awaiting owner go — inherited task 1 (owner-ruled 2026-08-24): types-only
+- [ ] **GREEN-LIT 2026-08-24, IN FLIGHT — inherited task 1: types-only
       `./builders` subpath on di.core** resolving the one-arg asClass/asFactory di.extras sugar
       halt. Full spec: export `IAsImplementer`/`ServiceDescriptorBuilder`/`Slot` in-file in
       di.core `src/builder.ts` (root surface unchanged); dev `exports` subpath → `./src/builder.ts`;
@@ -63,16 +63,85 @@ land; delete the file when empty.
       ILogger registration re-spells as encountered. Engine detection sites (ToCallSiteVisitor
       IServiceProvider/ScopeFactory) switch to hole-template `Type.match` while their receivers
       stay generic; moot for ScopeFactory if the floor-registration rework lands.
-- [ ] **Owner considering (2026-08-24, not yet ruled): drop `getRequiredService`; the one
-      `getService`/`resolve` THROWS on absence** (the engine's classified error), users write
-      their own soft-fail wrappers if wanted. The optional ask already lives in the type
-      grammar: `resolve(typefor<T | undefined>())` — canonical union ordering puts literals
-      last and `undefined` last of all (KIND_RANK.literal=13, LITERAL_CATEGORY_RANK.undefined=5),
-      so the `undefined` constant answers only after `T` fails to build — VERIFIED working
-      today. Drop dissolves the bare-Error taxonomy gap; door probing re-spells as
-      `resolve<ScopeFactory | undefined>()`; internal undefined-leaning call sites (createScope
-      augmentation's split) re-spell through the union form. Claude rec: do it, folded into the
-      rename pass (resolve's contract is touched there anyway).
+- [x] **RULED AND LANDED 2026-08-24 (owner) — `getService` is the whole provider interface.**
+      `IServiceProvider` carries exactly one member, `getService(serviceType: Type): any`, no type
+      parameter, and it THROWS `UnsatisfiableError` when nothing answers. The optional ask lives in
+      the address, not in a second member: `getService(Type.union(type, typefor<undefined>()))` —
+      canonical ordering puts the `undefined` literal last, so it serves only after `type` fails to
+      build (`Type.typeLiteral(undefined)` is the same interned node, for packages carrying no
+      `primitives.extras` dependency). `getRequiredService` is retired; `getServices` is renamed
+      `resolveMany`; `createScope` and `ScopeFactoryUnavailableError` are deleted outright, with the
+      `ScopeFactory` address, the `scope-factory` callsite kind and the model scope machinery
+      untouched. The declared-but-unimplemented provider members (`tryResolve`, `resolveAsync`,
+      `dispose`, `disposeAsync`) are gone. di.extras' sugar mirrors the interface:
+      `getRequiredService<T>()` → `getService<T>()`, `getServices<T>()` → `resolveMany<T>()`, and
+      `resolve<T>()` is untouched. Gates at land: di.core + di tsc clean, `tests/di.test`
+      92 pass / 91 fail / 183 against an 80 / 101 / 181 baseline, zero new failure names or kinds.
+      `resolve` is a bare one-line delegation that throws exactly as `getService` does (owner: "just
+      a single line wrapper — no logic"), and its two callable overloads carry no undefined check
+      and no message of their own — absence surfaces as the engine's classified error. So the
+      explicit surface is `getService(serviceType)`, `resolve(serviceType)`,
+      `resolve(ctorType|funcType, callable)` and `resolveMany(serviceType)`; the zero-arg sugar is
+      `getService<T>()`, `resolve<T>()`, `resolveMany<T>()`. OPEN with the owner: whether the
+      now-vestigial `ServiceProvider<Lifetime>` class parameter may go, and whether
+      `getService<T>()` and `resolve<T>()` — identical twins once `resolve` stopped being soft —
+      should collapse to one name. The typed `sp.createScope<T>()` face is STRUCK; it dissolved with
+      `createScope`.
+- [ ] **A zero-arg sugar may not share a name with a member a class implements — OPEN, owner
+      deciding 2026-08-24.** di.extras' `getService<ServiceType>(): ServiceType` merges a zero-arg
+      overload onto the one name the concrete `ServiceProvider` actually implements
+      (`getService(serviceType: Type): any`, required arg), so the class stops satisfying
+      `IServiceProvider` — TS2430 on the merge line, TS2416 on the member, two TS2322s reaching
+      `di.ts`. INVISIBLE TO EVERY GATE: di's own program never sees di.extras and di.extras' never
+      compiles di, so only a program holding BOTH trips it (`examples.app.with-transformer`
+      reproduces it in-repo). `getRequiredService`/`getServices` never had a concrete counterpart,
+      which is why the collision is new; `resolve` and `resolveMany` reach the provider through
+      `registerAugmentations` alone, so neither can collide. Two exits: the duplicate-signature
+      pattern on `ServiceProvider`'s own interface-merge line (crosses the ServiceProvider freeze),
+      or drop the `getService<T>()` sugar so the zero-arg vocabulary is `resolve<T>()` /
+      `resolveMany<T>()` — Claude's rec, since it crosses no freeze and collapses the
+      `getService<T>()`/`resolve<T>()` twin at the same time. Consumer cost is one word either way.
+- [ ] **Invoker as a named door — owner direction 2026-08-24, awaiting his name pick and one
+      engine go-ahead.** `Invoker<C>` becomes an interface whose surface is a named member
+      `invoke(callable: C)`, its concrete beside it in one file named for the interface
+      (`Default<Interface>`, no `I` prefix — the ruled di naming). The callable `resolve` overloads
+      ask for that door instead of a bare closure. The concrete cannot reach `Engine.resolveFrame`
+      from di.core, so it closes over the invoke callable the engine already synthesizes;
+      `RealizeVisitor.visitInvoker` wraps its existing closure — the one edit needing an explicit
+      go, since it sits in the realize path (no callsite kind is added or changed). Name open:
+      `Invoker` (Claude's rec — reads `invoker.invoke(…)`) vs the owner's `InvokerService`.
+      MEASURED 2026-08-24 (throwaway probe under di.core, deleted after): a member-bearing interface
+      KEEPS its nominal address where a call-signature interface collapses. Same package, same
+      constraint, closed arg, differing only in surface — `MemberTwin<Ctor<any[], Widget>>` derives
+      `imported MemberTwin`, `CallSigTwin<…>` derives a `func` node. Two refinements the probe added:
+      the lie is CLOSED-ARG-ONLY — on the open path both shapes already derive nominally, and the
+      engine only ever spells the open form, so the lie is one a USER hits by writing the closed
+      spelling, not one the engine commits; and the call-signature collapse is not even a faithful
+      structural image, since the conditional return swallows to `unknown`. IMPLEMENTATION
+      REQUIREMENT: the interface must be re-exported through `src/index.ts` — barrel reachability is
+      what decides `from`, and a module reachable only through the `./tokens/*` dev seam derives
+      `from=@rhombus-std/di.core/tokens/…` while a factory-built address says
+      `@rhombus-std/di.core`. That leg is strong inference from the probe's natural experiment, not
+      measurement; cheap to confirm at implementation time.
+- [ ] **Constrained generic holes — the finding behind the two-concretes question (2026-08-24).**
+      Registering `InvokerService<T extends Ctor>` to one concrete and the `Func`-constrained one to
+      another is INEXPRESSIBLE today, by either route. `GenericType` is `{ kind, label }` with no
+      constraint, and `MatchVisitor.visitGeneric` binds whatever it meets
+      (`bindings.getOrInsert(label, subject) === subject`); the shape dodge fails too, because
+      `visitCtor` goes pairwise over signature lists and a hole stands for a Type, never for a
+      signature list — so "any ctor whatsoever" has no spelling. A `constraint?: Type` on
+      `GenericType` plus REAL assignability would make it expressible (identity can never relate a
+      specific ctor node to a variadic `Ctor` bound), and would give `Generic<'C', Ctor | Func>`'s
+      second argument somewhere to land in the node. Two caveats: identity-modulo-holes is a ruled
+      property, not a gap, and reversing it turns matching into a specificity search over open
+      registrations; and constraints alone don't finish the job — a registered invoker concrete
+      needs engine guts, so it wants engine floor-registration at genesis. Claude's read: the prize
+      is de-special-casing doors out of `ToCallSiteVisitor`, not the ctor/func split.
+- [ ] **Session freezes in force (owner 2026-08-24)** — `IServiceProvider`, `Manifest` and
+      `DefaultManifest` are FROZEN; `ServiceProvider` admits only its `getService` body; the `Type`
+      and `CallSite` APIs need the owner's explicit discussion and signoff to change. Butting
+      against one is a conversation with him, never a workaround. Merges are LOCAL, no PRs; every
+      commit is held for his review.
 - [ ] **Post-port rename slate (owner-opened 2026-08-24; one dedicated pass AFTER the in-flight
       lanes land, CLAUDE.md digest included; ideal name first, MEDI-distance a free bonus).**
       OWNER-ENDORSED 2026-08-24 ("record all your suggestions — i like them"): `ServiceProvider`
@@ -183,14 +252,43 @@ land; delete the file when empty.
       still says `ScopeModel*`/"scope model" throughout; the ruled public naming is now
       `LifetimeModel*`, `Manifest<Lifetime>`, descriptor `lifetime`. Includes deciding the
       attribution-wrap error's name (`ScopeModelError` → `LifetimeModelError`).
-- [ ] **Descriptor `lifetime` property is unconditionally optional** — the admissibility gate
-      covers the verb dialect and the builder dialect, but a hand-written descriptor literal
-      omitting `lifetime` still satisfies `ServiceDescriptor<Lifetime>` under a vocabulary that
-      excludes `undefined`. Decide whether the property becomes conditionally required
-      (`undefined extends Lifetime`) like the argument spelling.
-- [ ] **Variance annotations on `Manifest`/`LifetimeModel`** — both are genuinely invariant;
-      annotating (house style) breaks the widest-`Manifest<unknown>` receivers, which then need
-      per-function generics. Do together or not at all.
+- [x] **RULED AND LANDED 2026-08-24 (owner) — the descriptor's `lifetime` is omittable only when
+      `undefined` is in the vocabulary.** `WithLifetime<Lifetime>` is now the conditional
+      `undefined extends Lifetime ? { readonly lifetime?: Lifetime } : { readonly lifetime: Lifetime }`,
+      intersected into the two CONSTRUCTED variants and deliberately not onto the union —
+      `ValueDescriptor` carries no lifetime, since a value IS its instance and there is no
+      construction for a lifetime to govern. The descriptor FACTORIES close the same hole one level
+      up: `ServiceDescriptor.ctor`/`factory` take `...lifetime: LifetimeArgument<Lifetime>`, the
+      rest-arg spelling the verbs already use, so a three-arg call under `StandardLifetime` is
+      refused rather than minting `{ lifetime: undefined }`. Owner's stated fallback if the
+      conditional had needed contortions was to drop optionality entirely; it did not. One cost
+      accepted: each factory casts its return, because a generic body cannot check an object
+      literal against a conditional return type TS only resolves once `Lifetime` is concrete —
+      the cast-free alternative is an overload ladder with a widened implementation signature.
+      Gates: di.core + di clean, `tests/di.test` unchanged at 92 / 91 / 183.
+- [ ] **Variance annotations on `Manifest`/`LifetimeModel` — DEFER into the starfish pass; the
+      blocker is a lifetime-model decision, not a variance one (measured 2026-08-24).** Both are
+      genuinely invariant (a manifest takes a lifetime in at registration and hands one back out
+      when iterated), and method-argument BIVARIANCE is the only thing making the current
+      spellings compile. `Manifest<unknown>` appears 198 times: 55 `this: Manifest<unknown>`
+      augmentation bodies (house rule — the namespace is written at the receiver's widest), 19
+      registry spellings, 28 `DefaultManifest<unknown>` constructions, and ~20 REAL receivers —
+      `ILoggingBuilder.services`, `IMetricsBuilder`/`ITracingBuilder.services`,
+      `IHostApplicationBuilder.services` + `configureContainer`, `IHostBuilder.configureServices`/
+      `configureContainer`, the `ManifestSlot` type in both hosting and logging, plus
+      `addDefaultServices`, `populateFrameworkServices`, `resolveHost`, `registerBrowserLifetime`,
+      `registerProviderOptions`, `ensureOpenOptions` and `ServiceProvider`'s own ctor (reached with
+      an `as Manifest<unknown>` cast at di.ts:77). A builder's `services` is a mutable SLOT, not an
+      argument, so it cannot be made generic per access — annotating forces every builder interface
+      generic in `Lifetime`, cascading into every augmentation that takes one. That cascade is the
+      whole cost; nothing is broken today. SEPARATE, CONCRETE, and worth keeping: framework code
+      hardcodes a vocabulary MEMBER into a vocabulary-erased manifest — `addLogging` registers
+      `LoggerFactory` and the open `ILogger<$1>` with a literal `'singleton'` against
+      `this: Manifest<unknown>`, which typechecks only because `LifetimeArgument<unknown>` accepts
+      anything. Under a model whose vocabulary lacks `'singleton'` (a `tagged<'request'>()`
+      container), that registration is refused at RUNTIME with the naming TypeError and nothing
+      catches it earlier. Whether that matters is a real question — are non-standard vocabularies
+      meant to work with hosting/logging at all? — and it is independent of the annotation.
 - [ ] **Rebuild stale dist bundles beyond the di family** — the rename sweeps (`Scopes` →
       `Lifetime`, `scope` → `lifetime`) touched many packages; only primitives/primitives.extras/
       di.core/di dists were rebuilt. Stale sibling dists resurface phantom two-generic `Manifest`
