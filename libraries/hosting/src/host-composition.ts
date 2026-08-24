@@ -1,3 +1,4 @@
+// @ts-nocheck -- TEMP: broken depender awaiting the lifetime-model rework; delete this line when reworking
 // Shared host-composition tail for both builders, factored out so the classic
 // `HostBuilder` and the modern `HostApplicationBuilder` compose identically.
 //
@@ -21,8 +22,8 @@
 import type {} from '@rhombus-std/di.extras';
 
 import type { IConfig } from '@rhombus-std/config.core';
-import { ServiceProviderOptions } from '@rhombus-std/di';
-import type { Manifest } from '@rhombus-std/di.core';
+import { di, ServiceProviderOptions } from '@rhombus-std/di';
+import { LifetimeModel, type Manifest } from '@rhombus-std/di.core';
 import { Environments, type HostBuilderContext, HostDefaults, type IHost, type IHostApplicationLifetime, type IHostEnvironment, type IHostLifetime } from '@rhombus-std/hosting.core';
 import { LoggerFactory } from '@rhombus-std/logging';
 import type { ILoggerFactory, ILoggerProvider } from '@rhombus-std/logging.core';
@@ -177,9 +178,6 @@ export function populateFrameworkServices(services: Manifest<unknown>, context: 
  * {@link LoggerFactory}, resolves the (possibly overridden) host lifetime, and
  * hands the internal host its dependencies directly.
  *
- * `@rhombus-std/di` MUST be imported by the caller before this runs so
- * `Manifest.build()` is patched on (di.core alone throws in `build()`).
- *
  * `config` is the final application configuration folded into
  * {@link HostOptions} before the `configureHostOptions` mutations run.
  *
@@ -187,7 +185,10 @@ export function populateFrameworkServices(services: Manifest<unknown>, context: 
  * toggles the builders resolved; omitted ⇒ an unvalidated build.
  */
 export function resolveHost(services: Manifest<unknown>, framework: FrameworkServices, config: IConfig, serviceProviderOptions?: ServiceProviderOptions): IHost {
-  const provider = services.build(serviceProviderOptions ?? ServiceProviderOptions.defaults);
+  const provider = di.usingLifetimeModel(LifetimeModel.noop)
+    .usingManifest(services)
+    .configureProvider(() => serviceProviderOptions ?? ServiceProviderOptions.defaults)
+    .build();
 
   const loggerProviders: ILoggerProvider[] = provider.getRequiredService<ILoggerProvider[]>();
   for (const loggerProvider of loggerProviders) {

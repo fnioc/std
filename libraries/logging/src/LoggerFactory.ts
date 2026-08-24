@@ -14,8 +14,8 @@
 // no runtime import of the authoring package.
 import type {} from '@rhombus-std/di.extras';
 
-import type { ServiceProvider } from '@rhombus-std/di';
-import { DefaultManifest } from '@rhombus-std/di.core';
+import { di, type ServiceProvider } from '@rhombus-std/di';
+import { DefaultManifest, LifetimeModel } from '@rhombus-std/di.core';
 import { type IExternalScopeProvider, type ILogger, type ILoggerFactory, type ILoggerProvider, type ILoggingBuilder, LogLevel } from '@rhombus-std/logging.core';
 import { type IOptions, Options } from '@rhombus-std/options';
 import { augment } from '@rhombus-std/primitives';
@@ -174,8 +174,10 @@ export class LoggerFactory implements ILoggerFactory {
    * provider (and everything it built, the factory included).
    */
   public static create(configure: Func<[ILoggingBuilder], void>): ILoggerFactory {
-    const services = new DefaultManifest().addLogging(configure);
-    const provider = services.build();
+    const services = DefaultManifest.empty(LifetimeModel.noop).addLogging(configure);
+    const provider = di.usingLifetimeModel(LifetimeModel.noop)
+      .usingManifest(services)
+      .build();
     const factory = provider.getRequiredService<ILoggerFactory>();
     return new DisposingLoggerFactory(factory, provider);
   }
