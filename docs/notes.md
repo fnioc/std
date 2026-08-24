@@ -112,7 +112,14 @@ land; delete the file when empty.
       landed mint-together round is the hook surface's first client, extracted from it rather
       than discarded. The walk-threaded hook context is the SAME infrastructure as the
       audit-service frame — build once. Sequencing rec: land the current round first, starfish
-      as the generalization pass.
+      as the generalization pass. OWNER-RATIFIED FRAMING 2026-08-24: "the scope model is now
+      just a decorator pattern on sp" — a scope model is an sp DECORATOR (holds an inner sp,
+      diverts realization through Starfish + its hooks); genesis leaning (not yet final):
+      di ships engine-only genesis (`di.usingManifest(...).build()` → bare un-augmented
+      engine-sp), the scope package's own front door wraps it (`standard.wrap(engine)` → the
+      root scope users hold); `Manifest<Lifetime>` keeps the vocabulary in di.core while the
+      interpreter (model/realizer/mint) moves wholly into the scope package. Decorator framing
+      generalizes: any cross-cutting resolution concern (audit, tracing) is the same shape.
 - [ ] **OWNER RULING NEEDED — named-wins typefor derivation for closed generic callables.** The
       Go hole rule (landed) makes OPEN templates derive by name (`ScopeFactory<$<'T'>>` →
       nominal + hole). But a named callable template applied with CLOSED args still derives
