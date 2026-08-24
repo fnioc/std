@@ -48,19 +48,20 @@ export class Engine {
    * the slots it leaves unfilled admit `undefined` — an omitted optional arrives as the
    * `undefined` the slot's own type already names.
    */
-  resolveLatebound(funcType: FunctionType, args: readonly unknown[], serviceProvider: IServiceProvider): unknown {
-    const signature = funcType.signatures.find(candidate =>
-      args.length <= candidate.length
-      && candidate.slice(args.length).every(Type.isOptional)
-    );
+  resolveLatebound(funcType: FunctionType, providedArgs: readonly unknown[], serviceProvider: IServiceProvider): unknown {
+    const signature = funcType.signatures
+      .filter(candidateSignature => providedArgs.length <= candidateSignature.length)
+      .find(candidate => candidate.slice(providedArgs.length).every(Type.isOptional));
+
     if (signature === undefined) {
-      throw new TypeError(`${Type.stringify(funcType)} has no signature accepting ${args.length} arg(s)`);
+      throw new TypeError(`${Type.stringify(funcType)} has no signature accepting ${providedArgs.length} arg(s)`);
     }
-    return CallSite.realize(CallSite.from(funcType.return, this.#registry, signature), {
+    const result = CallSite.from(funcType.return, this.#registry, signature);
+    return CallSite.realize(result, {
       engine: this,
       serviceProvider,
       lifetimeModel: this.#lifetimeModel,
-      args,
+      args: providedArgs,
     });
   }
 

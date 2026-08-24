@@ -1,8 +1,17 @@
-import { Manifest, UnsatisfiableError } from '@rhombus-std/di.core';
+import { type LifetimeModel, Manifest, ScopeFactoryUnavailableError, UnsatisfiableError } from '@rhombus-std/di.core';
 import { augment, type IServiceProvider, NotImplementedError, Type } from '@rhombus-std/primitives';
 import { typefor } from '@rhombus-std/primitives.extras';
 import { Engine } from './internal/Engine.js';
 import { ServiceProviderOptions } from './ServiceProviderOptions.js';
+
+const SCOPE_FACTORY_MODULE = '@rhombus-std/di.core';
+const SCOPE_FACTORY_NAME = 'ScopeFactory';
+
+/** Whether `serviceType` — a tag stripped to its base — is the standard `ScopeFactory` address. */
+function isScopeFactoryAddress(serviceType: Type): boolean {
+  const base = serviceType.kind === 'tag' ? serviceType.type : serviceType;
+  return base.kind === 'imported' && base.name === SCOPE_FACTORY_NAME && base.from === SCOPE_FACTORY_MODULE;
+}
 
 // Merged rather than `implements`: the receiver carries augmented members that the registry
 // installs at runtime, which `implements` would demand statically.
@@ -12,13 +21,28 @@ export interface ServiceProvider extends IServiceProvider {}
 @augment(typefor<IServiceProvider>())
 export class ServiceProvider {
   readonly #engine: Engine;
+  readonly #manifest: Manifest<unknown>;
 
   /** @throws {ManifestValidationError} when `options.validateOnBuild` finds an unsatisfiable graph. */
-  constructor(manifest: Manifest<unknown>, options: ServiceProviderOptions = ServiceProviderOptions.defaults) {
-    this.#engine = new Engine(manifest.lifetimeModel, manifest);
+  constructor(lifetimeModel: LifetimeModel, manifest: Manifest<unknown>, options: ServiceProviderOptions = ServiceProviderOptions.defaults) {
+    this.#manifest = manifest;
+    this.#engine = new Engine(lifetimeModel, manifest);
     if (options.validateOnBuild) {
       this.#engine.validate();
     }
+  }
+
+  /**
+   * Opens a child provider through the model's registered standard `ScopeFactory`.
+   * @throws {ScopeFactoryUnavailableError} when the installed model does not publish one.
+   */
+  createScope(...lifetime: unknown[]): IServiceProvider {
+    const descriptor = Iterator.from(this.#manifest).find(candidate => isScopeFactoryAddress(candidate.serviceType));
+    if (!descriptor) {
+      throw new ScopeFactoryUnavailableError();
+    }
+    const factory = this.getRequiredService(descriptor.serviceType) as (...lifetime: unknown[]) => IServiceProvider;
+    return factory(...lifetime);
   }
 
   /**

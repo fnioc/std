@@ -31,7 +31,7 @@ class RealizeVisitor {
   readonly #serviceProvider: IServiceProvider;
   readonly #args: readonly unknown[] | undefined;
 
-  constructor({ engine, serviceProvider, args }: RealizeOptions) {
+  constructor({ engine, serviceProvider, args }: Omit<RealizeOptions, 'lifetimeModel'>) {
     this.#engine = engine;
     this.#serviceProvider = serviceProvider;
     this.#args = args;
