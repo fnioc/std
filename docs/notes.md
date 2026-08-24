@@ -138,15 +138,16 @@ land; delete the file when empty.
         trust boundary, and "who asked for me" is useful. MECHANISM SETTLED 2026-08-24 (still
         deferred): the ScopeFactory recipe verbatim — synthesized callsite, no registration, so
         the realizer's caching never sees it and creation-time binding falls out free — plus a
-        parent-index over the completed plan that handles read lazily. OWNER CAUTION (load-bearing):
-        the index is PER-PLAN (keyed by the request root, cached with that plan) and the handle is
-        minted AT REALIZE TIME from (active walk's plan, site) — never precomputed onto the site
-        node, since plan-cache sharing puts one site object at different positions in different
-        plans (a later subtree request reuses the big tree's nodes but needs different ancestry).
-        Instance-cache hits keep their creation-walk handle (creation-time semantics). Total
-        engine cost: one callsite kind, one visit member, one post-plan index pass per plan.
-        Dynamic per-walk data (entry request, latebound live args) is out of the payload by
-        design.
+        walk-threaded context the handle closes over. MECHANISM LEANING (owner 2026-08-24,
+        felt-right-not-thought-through): thread an immutable parent-linked frame through the
+        realize walk's context arg (each visit conses its site on), and the audit callsite
+        returns a closure over that frame. The node itself stays one shared position-free value,
+        so plan caching is untouched, and a cached subtree realized under a new request yields
+        the new chain automatically — position is never stored, so the stale-position hazard
+        cannot exist. (Superseded alternative: a per-plan parent-index — works, but needs
+        per-plan keying and can never carry dynamic walk facts; threading can.) Instance-cache
+        hits keep their creation-walk handle (creation-time semantics). Engine cost: one
+        callsite kind, one visit member, one cons per visit.
 - [ ] **Mergesynth deeper enumeration — owner call open:** verbose diagnostics now enumerate a
       member's weakened positions, but inside one position's recursive composition
       (object/union/tuple guards) the first uncheckable reason still wins (`guardForType`'s
