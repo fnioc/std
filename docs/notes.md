@@ -76,6 +76,19 @@ land; delete the file when empty.
       `Default<InterfaceName>` pattern (di backtrack of the global I-prefix rule; other families
       unaffected). Consequence: the interface is bare `Resolver` (or `Container` — final pick at
       pass time), no `IResolver`.
+- [ ] **LANDED ON DISK 2026-08-24 (uncommitted, in the round) — lifetime-vocabulary split.**
+      RULED: standard refuses omission (`StandardLifetime` = the three literals; out-of-vocabulary
+      registration refused with a naming TypeError, engine-wrapped as LifetimeModelError); tagged
+      OWNS omission-means-transient (`tagged<Tags extends string>(): LifetimeModel<Tags |
+      undefined>`, optional tag on its factory); omission ≡ undefined ALWAYS — one value, one
+      path, never two cases; `ScopeFactory<Args extends readonly any[] = []>` decoupled from
+      LifetimeArgument (args = the model's scope-NAMING vocabulary; standard `[]`, tagged
+      `LifetimeArgument<Tags | undefined>`); mint field `ScopeFactory<readonly any[]>`, no second
+      LifetimeModel generic (rejected: nothing consumes it — cascade for zero reach). Suites
+      21/21; di.test 80/181, zero new failures. OPEN FLAG: createScope's typed face still derives
+      args from `LifetimeArgument<Lifetime>`, not the model's factory shape — standard's
+      createScope admits an ignored optional arg; dissolves if the pending lose-createScope
+      ruling lands.
 - [ ] **OWNER RULING NEEDED — named-wins typefor derivation for closed generic callables.** The
       Go hole rule (landed) makes OPEN templates derive by name (`ScopeFactory<$<'T'>>` →
       nominal + hole). But a named callable template applied with CLOSED args still derives
