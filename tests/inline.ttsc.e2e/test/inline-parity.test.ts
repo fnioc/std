@@ -1,6 +1,6 @@
 // Side-effect: installs `build` onto di.core's Manifest.
-import '@rhombus-std/di';
-import { DefaultManifest, type Manifest, Type } from '@rhombus-std/di.core';
+import { di } from '@rhombus-std/di';
+import { DefaultManifest, LifetimeModel, type Manifest, Type } from '@rhombus-std/di.core';
 import type { IOptions } from '@rhombus-std/options';
 import { beforeAll, describe, expect, test } from 'bun:test';
 import { spawnSync } from 'node:child_process';
@@ -631,12 +631,14 @@ describe.skipIf(!toolchainReady)('generic inline stage — lookup parity (W5)', 
 
     let keyed: Manifest<'singleton'> = new DefaultManifest<'singleton'>();
     keyed = keyed.addValue(composed, marker);
-    expect(keyed.build().resolve(composed)).toBe(marker);
+    const keyedProvider = di.usingLifetimeModel(LifetimeModel.noop).usingManifest(keyed).build();
+    expect(keyedProvider.resolve(composed)).toBe(marker);
 
     // An unkeyed registration of the same base does not answer the keyed lookup.
     let unkeyed: Manifest<'singleton'> = new DefaultManifest<'singleton'>();
     unkeyed = unkeyed.addValue(base, marker);
-    expect(unkeyed.build().resolve(composed)).toBeUndefined();
+    const unkeyedProvider = di.usingLifetimeModel(LifetimeModel.noop).usingManifest(unkeyed).build();
+    expect(unkeyedProvider.resolve(composed)).toBeUndefined();
   });
 });
 
@@ -781,7 +783,8 @@ describe.skipIf(!toolchainReady)('generic inline stage — addOptions options wi
     services = services.addValue(optionsType, value);
     services = services.addOptions(optionsType);
 
-    const options = services.build().getRequiredService(optionsAddressType(optionsType)) as IOptions<UserOptions>;
+    const provider = di.usingLifetimeModel(LifetimeModel.noop).usingManifest(services).build();
+    const options = provider.getRequiredService(optionsAddressType(optionsType)) as IOptions<UserOptions>;
     // IOptions<T> resolves to a value that IS the registered T.
     expect(options.value).toBe(value);
   });

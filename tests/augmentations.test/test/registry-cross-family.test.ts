@@ -12,10 +12,10 @@
 //     reaches every subscribed prototype -- the decorator's listener stays
 //     subscribed, so the bag re-installs on each later registerAugmentations.
 
-import type { IServiceProvider } from '@rhombus-std/primitives';
-import '@rhombus-std/di';
-import { DefaultManifest, Type } from '@rhombus-std/di.core';
+import { di } from '@rhombus-std/di';
+import { DefaultManifest, LifetimeModel, Type } from '@rhombus-std/di.core';
 import { MetricsBuilder as DiagnosticsMetricsBuilder } from '@rhombus-std/diagnostics';
+import type { IServiceProvider } from '@rhombus-std/primitives';
 // The IMetricsBuilder augmentation-registry token is derived by `typefor<IMetricsBuilder>()`
 // at each library's build time; this test (no transformer) uses the derived literal directly.
 const METRICS_BUILDER_RECEIVER = Type.from('@rhombus-std/diagnostics.core:IMetricsBuilder');
@@ -35,7 +35,8 @@ describe("hosting's MetricsBuilder receives the diagnostics-family augmentations
     // The call registered a IConfigureOptions<MetricsOptions> step on the
     // builder's manifest, proving the member is diagnostics' real
     // implementation, not a lookalike.
-    const configureSteps: unknown[] = (builder.services.build() as unknown as IServiceProvider).getRequiredService(
+    const provider = di.usingLifetimeModel(LifetimeModel.noop).usingManifest(builder.services).build();
+    const configureSteps: unknown[] = (provider as unknown as IServiceProvider).getRequiredService(
       Type.array(Type.imported('IConfigureOptions', '@rhombus-std/options', [Type.imported('MetricsOptions', '@rhombus-std/diagnostics.core')])),
     );
     expect(configureSteps).toHaveLength(1);

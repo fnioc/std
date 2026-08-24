@@ -59,5 +59,3 @@ narrows<TypeLiteralType<'dev'>>(null! as TypeFor<string>);
 narrows<IterableType>(null! as TypeFor<Map<string, number>>);
 // @ts-expect-error an interface-shaped object keeps the whole union — an address is nominal
 narrows<TypeLiteralType>(null! as TypeFor<object>);
-
-type asdf = TypeFor<'asdf'>;

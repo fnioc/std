@@ -3,8 +3,8 @@
 // the `addOptions<T>()` sugar lowers to — exercised here through the public
 // authoring surface with hand-written type nodes.
 
-import '@rhombus-std/di';
-import { DefaultManifest, type Manifest, Type } from '@rhombus-std/di.core';
+import { di } from '@rhombus-std/di';
+import { DefaultManifest, LifetimeModel, type Manifest, Type } from '@rhombus-std/di.core';
 import type { IOptions } from '@rhombus-std/options';
 import { optionsAddressType } from '@rhombus-std/options.augmentations';
 import { describe, expect, test } from 'bun:test';
@@ -23,7 +23,7 @@ describe('addOptions(optionsType) — wrap the bound T', () => {
     services = services.addValue(WIDGET_TYPE, widget);
     services = services.addOptions(WIDGET_TYPE);
 
-    const provider = services.build();
+    const provider = di.usingLifetimeModel(LifetimeModel.noop).usingManifest(services).build();
     const options: IOptions<Widget> = provider.getRequiredService(optionsAddressType(WIDGET_TYPE));
 
     // The value IS the instance bound at the options type.
@@ -43,7 +43,7 @@ describe('addOptions(optionsType) — wrap the bound T', () => {
     services = services.add(ENGINE_TYPE, Engine, Type.ctor(ENGINE_TYPE, [[]]), 'singleton');
     services = services.addOptions(ENGINE_TYPE);
 
-    const provider = services.build();
+    const provider = di.usingLifetimeModel(LifetimeModel.noop).usingManifest(services).build();
     const options: IOptions<Engine> = provider.getRequiredService(optionsAddressType(ENGINE_TYPE));
 
     // The value is what the container built for the options type -- asserted by
@@ -61,7 +61,7 @@ describe('addOptions(optionsType) — wrap the bound T', () => {
     services = services.addOptions(A_TYPE, () => ({ which: 'a' }));
     services = services.addOptions(B_TYPE, () => ({ which: 'b' }));
 
-    const provider = services.build();
+    const provider = di.usingLifetimeModel(LifetimeModel.noop).usingManifest(services).build();
 
     expect(provider.getRequiredService(optionsAddressType(A_TYPE)).value).toEqual({ which: 'a' });
     expect(provider.getRequiredService(optionsAddressType(B_TYPE)).value).toEqual({ which: 'b' });
@@ -69,7 +69,7 @@ describe('addOptions(optionsType) — wrap the bound T', () => {
 
   test('a type nobody offered is not answered', () => {
     const services: Manifest<'singleton'> = new DefaultManifest<'singleton'>();
-    const provider = services.build();
+    const provider = di.usingLifetimeModel(LifetimeModel.noop).usingManifest(services).build();
 
     // The open registration takes the base slot as a dependency, so a type with
     // no `addOptions` leaves it unlowerable rather than assembling an empty value.
