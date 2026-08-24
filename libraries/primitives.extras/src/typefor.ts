@@ -8,43 +8,58 @@ type Exactly<T, Shape> = [T] extends [Shape] ? [Shape] extends [T] ? true : fals
 type IsUnion<T, Each = T> = T extends unknown ? [Each] extends [T] ? false : true : never;
 
 /**
- * The {@link Type} `typefor` yields for `T`, narrowed as far as the spelling can be read back
- * from the structure: callables to their kind (a concrete class before the abstract test, since
- * every concrete constructor also answers the abstract shape), tuples apart from arrays by their
- * literal length, an exact `Iterable<E>`, unions, and scalars — a wide scalar names a type
- * (`NamedType`, since `string` spells a global and `type S = string` an import), a scalar
- * literal is its own value.
+ * The structural reading of `T`, with `Alias` carrying the address every branch an alias spelling
+ * can hide answers with instead.
+ */
+type DerivedType<T, Alias> = [T] extends [never] ? Type
+  : [T] extends [Ctor<never[], unknown>] ? ConstructorType | Alias
+  : [T] extends [abstract new(...args: never[]) => unknown] ? AbstractConstructorType | Alias
+  : [T] extends [Func<never[], unknown>] ? FunctionType | Alias
+  : [T] extends [unknown[]] ? number extends T['length'] ? ArrayType | Alias : TupleType | Alias
+  : [T] extends [boolean] ? Exactly<T, boolean> extends true ? NamedType : TypeLiteralType<T & boolean> | Alias
+  : IsUnion<T> extends true ? UnionType | Alias
+  : [T] extends [string] ? [string] extends [T] ? NamedType : TypeLiteralType<T & string> | Alias
+  : [T] extends [number] ? [number] extends [T] ? NamedType : TypeLiteralType<T & number> | Alias
+  : [T] extends [bigint] ? [bigint] extends [T] ? NamedType : TypeLiteralType<T & bigint> | Alias
+  : [T] extends [undefined] ? TypeLiteralType<undefined> | Alias
+  : [T] extends [null] ? TypeLiteralType<null> | Alias
+  : [T] extends [Iterable<infer E>] ? [Iterable<E>] extends [T] ? IterableType | Alias : Type
+  : Type;
+
+/**
+ * The {@link Type} `typefor<T>()` yields — the structural kind `T`'s spelling reads back as, or a
+ * {@link NamedType} address wherever an alias could be spelling that same structure.
  *
  * @remarks
- * A spelling hidden behind a type alias derives to the ALIAS's name — the address must not shift
- * with the aliased structure — while the checker sees only the structure, so an alias-addressed
- * callable, literal, or union arrives as a nominal node at runtime despite the narrower reading
- * here. Interfaces are why no object branch exists: an interface is structurally identical to an
- * inline object type, and an interface address is the dominant call.
+ * The structural reading takes callables first (a concrete class before the abstract test, since
+ * every concrete constructor also answers the abstract shape), then arrays apart from tuples by
+ * their literal length, unions, scalars — a wide scalar names a type, since `string` spells a
+ * global and `type S = string` an import, while a scalar literal is its own value — and last an
+ * exact `Iterable<E>`.
+ *
+ * An alias derives to the ALIAS's name, since the address must not shift with the aliased
+ * structure, and nothing in the type says which of the two spellings the call site wrote. So every
+ * branch an alias can stand in front of answers with its structural kind OR a named address, and
+ * the caller checks `kind` before reading the members only one of them carries. Interfaces are why
+ * no object branch exists: an interface is structurally identical to an inline object type, and an
+ * interface address is the dominant call.
  */
-export type TypeFor<T> = [T] extends [never] ? Type
-  : [T] extends [Ctor<never[], unknown>] ? ConstructorType
-  : [T] extends [abstract new(...args: never[]) => unknown] ? AbstractConstructorType
-  : [T] extends [Func<never[], unknown>] ? FunctionType
-  : [T] extends [unknown[]] ? number extends T['length'] ? ArrayType : TupleType
-  : [T] extends [boolean] ? Exactly<T, boolean> extends true ? NamedType : TypeLiteralType<T & boolean>
-  : IsUnion<T> extends true ? UnionType
-  : [T] extends [string] ? [string] extends [T] ? NamedType : TypeLiteralType<T & string>
-  : [T] extends [number] ? [number] extends [T] ? NamedType : TypeLiteralType<T & number>
-  : [T] extends [bigint] ? [bigint] extends [T] ? NamedType : TypeLiteralType<T & bigint>
-  : [T] extends [undefined] ? TypeLiteralType<undefined>
-  : [T] extends [null] ? TypeLiteralType<null>
-  : [T] extends [Iterable<infer E>] ? [Iterable<E>] extends [T] ? IterableType : Type
-  : Type;
+export type TypeFor<T> = DerivedType<T, NamedType>;
+
+/**
+ * The {@link Type} `typefor(value)` yields — the structural kind alone, since observing a value
+ * reads the construct or call signatures it carries rather than a spelling an alias could hide.
+ */
+export type TypeForValue<V> = DerivedType<V, never>;
 
 /**
  * Compile-time {@link Type} for a type — `typefor<IUserRepo>()`.
  *
  * @remarks
  * The type is derived exactly as spelled: no constructor or call unwrap, and a keyed type arrives
- * as its tag. Every derivation the token primitives used to bake in is a field read on the result —
- * `typefor(C).instance` for what a class builds, `typefor<F>().return` and
- * `typefor<F>().signatures` for what a factory returns and takes.
+ * as its tag. What a callable builds, returns, or takes is a field on the derived node —
+ * `.instance`, `.return`, `.signatures` — reachable once a `kind` check has picked the callable
+ * reading out of the result.
  *
  * Resolved at compile time; calling this without that resolution throws.
  *
@@ -68,7 +83,7 @@ export function typefor<T>(): TypeFor<T>;
  * const built = typefor(SqlUserRepo).instance; // → Type.imported('SqlUserRepo', 'pkg')
  * ```
  */
-export function typefor<V>(value: V): TypeFor<V>;
+export function typefor<V>(value: V): TypeForValue<V>;
 export function typefor(_value?: unknown): Type {
   throw new Error(
     "typefor() requires @rhombus-std/primitives.extras's authoring transform to run. "

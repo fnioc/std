@@ -2854,11 +2854,17 @@ single rest body (`.apply`-based) is superseded by the ConstantType ruling: `add
 `tryAddValue`/`replaceValue` are their own sugar members lowering to the three-argument form with
 the marker, because one body per member name cannot discriminate a callable value from a factory.
 
-**Un-landed, recorded:** the `TypeFor<T>` named-type narrowing item halted — TypeScript offers no
-type-level named-vs-structural discriminator, so "a named type argument types as its
-`ImportedType` … everything else keeps falling back to `Type`" is unimplementable as specified;
-any approximation mistypes tags, aggregates, unions, or literals. Needs an owner ruling on which
-lie (if any) to accept.
+**`TypeFor<T>` is the truthful union (owner ruling).** TypeScript carries no type-level
+named-vs-structural discriminator, and an alias spelling derives to the alias's own address, so no
+single-kind answer is honest for a branch an alias can stand in front of. The reading widens
+instead of approximating: callables, arrays and tuples, unions, every literal (`undefined` and
+`null` included, which is also what makes a brand like `Keyed<string, K>` land on its base), and an
+exact `Iterable<E>` each type as `structural kind | NamedType`, and the caller checks `kind` before
+reading the members only one of the two carries. Branches that are already honest stay narrow — a
+wide scalar is a name either way, `never` and the unreadable fallback are the whole `Type`. The
+value overload takes its own `TypeForValue<V>` variant of the same conditional, narrow in every
+branch: observing a value reads the construct or call signatures it carries, which no alias can
+hide.
 
 _Claude-recorded 2026-08-20; the digest above (CLAUDE.md) was synced the same day._
 

@@ -114,15 +114,11 @@ files carry YOUR in-flight edits, so re-verify each site before editing.
       three internal types from di.core: a new-public-API fork the standing "no new exported
       types" order forbids and this plan does not rule. Needs an owner ruling on exporting the
       builder-chain interfaces (or an alternative merge target).
-- [ ] `TypeFor<T>` narrowing (primitives.extras `typefor.ts:13-15`): narrows only
-      ConstructorType/FunctionType today; a NAMED type argument should type as its ImportedType
-      (ambient → GlobalType), with NominalType as the named fallback; unnamed arguments keep
-      falling back to `Type`.
-      **HALTED 2026-08-22:** this is the item §193 already records as halted-unimplementable —
-      TypeScript has no type-level named-vs-structural discriminator, so every approximation
-      mistypes tags, aggregates, unions, or literals. §193's required owner ruling ("which lie,
-      if any, to accept") has not been given; re-verified and left standing rather than
-      inventing one.
+- [x] `TypeFor<T>` narrowing (primitives.extras `typefor.ts`): a named type argument derives its
+      nominal address, which no type-level discriminator separates from the structural reading.
+      **Resolved 2026-08-24 (owner ruling):** every branch an alias spelling can hide widens to
+      `structural kind | NamedType`, forcing a `kind` check before kind-specific members; the
+      value overload keeps the narrow reading, since observing a value never yields a name.
 - [x] options.augmentations `rollup.dts.mjs:14` — add di.extras to the dts externals.
 - [x] The disposal-order string throw in di's cycle-guard disposer (was `ToCallSiteVisitor.ts:36`,
       possibly already reshaped by your rewrite): wherever it lives now, make it a real Error whose
