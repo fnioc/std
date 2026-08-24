@@ -97,9 +97,22 @@ land; delete the file when empty.
       needs (instance-cache lookup before make, store after, scope entry/exit) — so realization
       diverts through the scope engine's inserted callbacks at exactly the right places. The
       engine everts its internals as hooks (the starfish expelling its stomach): scope still
-      can't see engine internals, but they're no longer so internal. Relationship to the current
-      Realizer contract unexplored — could subsume it or sit beside it; needs a design pass
-      before anything moves.
+      can't see engine internals, but they're no longer so internal. DESIGN DEVELOPED 2026-08-24
+      (still idea-stage, nothing implemented): the wrapper is named **`Starfish<T>`**; a SCOPE
+      is an sp impl whose difference from a non-scoped one is that its `getService(T)` resolves
+      `Starfish<T>` from the engine-sp and realizes the deferred under its own hooks — no
+      ambient state, so the mutable `#activeScope`/`enterScope` router hack dies and interleaved
+      async walks stop being a hazard. The ROOT container is itself a scope impl (singletons =
+      root-scope caching; the bare engine never reaches users; noop dissolves into "no hooks").
+      Hook surface = the three engine seams already on the books (beforeMake/afterMake — the
+      Realizer.realize split — plus provider-slot delivery and latebound reentry capture); the
+      deferred must thread hooks into everything realization mints (latebound closures re-enter
+      under CAPTURED hooks, injected provider slots deliver the asking scope, nested deferrals
+      inherit). Realizer stays the model-facing face; hooks are the engine-facing seam; the
+      landed mint-together round is the hook surface's first client, extracted from it rather
+      than discarded. The walk-threaded hook context is the SAME infrastructure as the
+      audit-service frame — build once. Sequencing rec: land the current round first, starfish
+      as the generalization pass.
 - [ ] **OWNER RULING NEEDED — named-wins typefor derivation for closed generic callables.** The
       Go hole rule (landed) makes OPEN templates derive by name (`ScopeFactory<$<'T'>>` →
       nominal + hole). But a named callable template applied with CLOSED args still derives
@@ -183,10 +196,13 @@ land; delete the file when empty.
       derivation that disagrees with the structural address is NOT acceptable; the marker must be
       exported through a seam so `typefor` derives the true address. Fix rides the invoker
       formalization (name pending owner pick).
-- [ ] **RULED 2026-08-24 — scope models receive the WRAPPER**, never raw `Engine`: the engine
-      keeps its current multi-entrypoint contract, `ServiceProvider` stays the routing wrap, and
-      Engine-implementing-`IServiceProvider` is rejected (no current consumer; the door is
-      capability-complete post-Invoker). Input for the scope-planning lane.
+- [ ] **RULED 2026-08-24 — the engine IS an sp (starfish design): `Engine` implements
+      `IServiceProvider`**, one member, UN-AUGMENTED, never handed to users — scope model
+      writers consume it through the same one-door API everyone knows. Scope impls (the root
+      scope included) hold the engine-sp and resolve `Starfish<T>` through it; users hold only
+      augmented scope impls. The engine's multi-entrypoint contract (`resolveLatebound`/
+      `resolveFrame`/`scopeFactory`) collapses toward addresses through the one door. Input for
+      the scope-planning lane.
 - [ ] **CLAUDE.md digest refresh for the di2 surface** — the Architecture digest still speaks
       pre-di2: `ConstantType`/marker phrasing (the marker no longer exists; value door = the
       `*Value` verbs + `NonCallable` add shape), `scope?` args, `Scopes` naming. One pass at lane
