@@ -11,9 +11,9 @@
 // Type-only: puts the sugar's declare-module faces in every program that
 // compiles this source, with no runtime import of the authoring package.
 import type {} from '@rhombus-std/di.extras';
-import type { Keyed, Manifest } from '@rhombus-std/di.core';
+import type { IServiceProvider, Keyed, Manifest } from '@rhombus-std/di.core';
 import { type IStartupValidator, StartupValidator } from '@rhombus-std/options';
-import type { IServiceProvider, Type } from '@rhombus-std/primitives';
+import type { Type } from '@rhombus-std/primitives';
 import { registerAugmentations } from '@rhombus-std/primitives.extras';
 
 import { optionsAddressType } from './option-types.js';

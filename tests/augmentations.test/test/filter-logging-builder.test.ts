@@ -7,9 +7,8 @@
 // and resolves it. Covers both dual-export forms, both overload shapes, rule
 // accumulation across calls, and chaining.
 
-import type { IServiceProvider } from '@rhombus-std/primitives';
 import '@rhombus-std/di';
-import { DefaultManifest } from '@rhombus-std/di.core';
+import { DefaultManifest, type IServiceProvider } from '@rhombus-std/di.core';
 import { FilterLoggingBuilderExtensions, LOGGER_FILTER_OPTIONS_ACCESSOR_TYPE, LOGGER_FILTER_OPTIONS_TYPE, LoggerFilterOptions, LoggingBuilder } from '@rhombus-std/logging';
 import type { ILoggingBuilder } from '@rhombus-std/logging.core';
 import { LogLevel } from '@rhombus-std/logging.core';

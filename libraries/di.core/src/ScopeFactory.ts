@@ -1,4 +1,5 @@
-import { type IServiceProvider, Type } from '@rhombus-std/primitives';
+import { Type } from '@rhombus-std/primitives';
+import type { IServiceProvider } from './IServiceProvider.js';
 import type { LifetimeArgument } from './LifetimeModel';
 
 /**

@@ -1,7 +1,8 @@
+import { type IServiceProvider } from '@rhombus-std/di.core';
 import { collectionType } from '@rhombus-std/diagnostics.core';
 import { type IConfigureOptions, type IOptions, Options } from '@rhombus-std/options';
 import type { IOptionsChangeTokenSource } from '@rhombus-std/options.augmentations';
-import { type IServiceProvider, Type } from '@rhombus-std/primitives';
+import { Type } from '@rhombus-std/primitives';
 import type { Func } from '@rhombus-toolkit/func';
 
 import { CompositeChangeToken } from './CompositeChangeToken';

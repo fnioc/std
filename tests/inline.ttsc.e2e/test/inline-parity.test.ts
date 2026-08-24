@@ -222,11 +222,10 @@ export const self = services.add(SelfRepo);
 // two siblings, the type minted by the typefor stage. Own file so the lookup
 // compare is isolated from the registration whole-file compare.
 const RESOLVE_SOURCE = `
-import type { Keyed } from '@rhombus-std/di.core';
-import type { IServiceProvider } from '@rhombus-std/primitives';
+import type { IServiceProvider, Keyed } from '@rhombus-std/di.core';
 
 // The tokenless get* overloads come from the real di.extras declare-module
-// merge (the type-only import below); the value-driven faces are primitives'
+// merge (the type-only import below); the value-driven faces are di.core's
 // own runtime overloads and arrive with the interface itself.
 import type {} from '@rhombus-std/di.extras';
 

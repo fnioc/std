@@ -1948,7 +1948,7 @@ as its own address, and discarded after. This is real dependency resolution, not
 node's parameter types are what the caller wrote (or derived) them to be, never inspected from the
 value at runtime.
 
-**The two overloads are declared directly on `IServiceProvider` (`@rhombus-std/primitives`)**,
+**The two overloads are declared directly on `IServiceProvider` (`@rhombus-std/di.core`)**,
 alongside its base `getService(type: Type): any` member — one interface, three signatures, one
 ordinary TypeScript overload merge, so an interface-typed caller sees all three exactly like a
 concrete-`ServiceProvider`-typed one does. `libraries/di/src/ServiceProvider.ts` repeats the same

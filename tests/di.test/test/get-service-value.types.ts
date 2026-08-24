@@ -8,10 +8,11 @@
 // an expected-error that stops erroring reveals it.
 
 import type { ServiceProvider } from '@rhombus-std/di';
-import { type IServiceProvider, Type } from '@rhombus-std/primitives';
+import { type IServiceProvider } from '@rhombus-std/di.core';
+import { Type } from '@rhombus-std/primitives';
 
 declare const provider: ServiceProvider;
-// The overloads are declared directly on IServiceProvider (libraries/primitives), so an
+// The overloads are declared directly on IServiceProvider (libraries/di.core), so an
 // interface-typed caller sees them too — unlike a member reached only through `extends`.
 declare const providerInterface: IServiceProvider;
 

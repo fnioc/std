@@ -1,7 +1,7 @@
-import type { IServiceProvider } from '@rhombus-std/primitives';
+import type { IServiceProvider } from '@rhombus-std/di.core';
 import { registerInlineBodies, typefor } from '@rhombus-std/primitives.extras';
 
-declare module '@rhombus-std/primitives' {
+declare module '@rhombus-std/di.core' {
   interface IServiceProvider {
     /**
      * The value registered for `ServiceType`, the service type derived from the type argument

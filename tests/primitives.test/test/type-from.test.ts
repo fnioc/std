@@ -99,7 +99,7 @@ describe('reserved names', () => {
     expect(Type.from('Ctor<app:A, app:B>')).toBe(Type.ctor(A, [[B]]));
     expect(Type.from('ServiceProvider')).toMatchObject({
       kind: 'imported',
-      from: '@rhombus-std/primitives',
+      from: '@rhombus-std/di.core',
       name: 'IServiceProvider',
     });
   });
@@ -121,7 +121,7 @@ describe('escaping', () => {
     const plain: [Type, string][] = [
       [Type.imported('Foo', 'app'), 'app:Foo'],
       [Type.global('string'), 'string'],
-      [Type.imported('IServiceProvider', '@rhombus-std/primitives'), '@rhombus-std/primitives:IServiceProvider'],
+      [Type.imported('IServiceProvider', '@rhombus-std/di.core'), '@rhombus-std/di.core:IServiceProvider'],
       [Type.imported('Box', 'app', [Type.imported('Foo', 'app')]), 'app:Box<app:Foo>'],
       [Type.object({ a: Type.global('string') }), '{ a: string }'],
       [Type.generic('T'), '%T'],

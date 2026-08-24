@@ -1,6 +1,6 @@
-import { type Manifest } from '@rhombus-std/di.core';
+import { type IServiceProvider, type Manifest } from '@rhombus-std/di.core';
 import type { IOptions } from '@rhombus-std/options';
-import { type IServiceProvider, Type } from '@rhombus-std/primitives';
+import { Type } from '@rhombus-std/primitives';
 import { typefor } from '@rhombus-std/primitives.extras';
 import type { Func } from '@rhombus-toolkit/func';
 

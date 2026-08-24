@@ -3,14 +3,14 @@
 // expression, and the closed expression names a service like any other.
 
 import { ServiceProvider } from '@rhombus-std/di';
-import { DefaultManifest, ServiceDescriptor } from '@rhombus-std/di.core';
-import { type IServiceProvider, Type } from '@rhombus-std/primitives';
+import { DefaultManifest, type IServiceProvider, ServiceDescriptor } from '@rhombus-std/di.core';
+import { Type } from '@rhombus-std/primitives';
 import { describe, expect, test } from 'bun:test';
 
 const T = Type.generic('T');
 const FOO = Type.imported('Foo', 'app');
 const BAR = Type.imported('Bar', 'app');
-const SERVICE_PROVIDER = Type.imported('IServiceProvider', '@rhombus-std/primitives');
+const SERVICE_PROVIDER = Type.imported('IServiceProvider', '@rhombus-std/di.core');
 
 const box = (of: Type) => Type.imported('Box', 'app', [of]);
 const holder = (of: Type) => Type.imported('Holder', 'app', [of]);

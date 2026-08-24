@@ -1,5 +1,6 @@
+import { type IServiceProvider } from '@rhombus-std/di.core';
 import { type IConfigureOptions, type IOptions, type IPostConfigureOptions, type IValidateOptions, Options, OptionsFactory } from '@rhombus-std/options';
-import { type IServiceProvider, Type } from '@rhombus-std/primitives';
+import { Type } from '@rhombus-std/primitives';
 import type { Func } from '@rhombus-toolkit/func';
 
 import { CompositeChangeToken } from './CompositeChangeToken.js';

@@ -44,7 +44,7 @@ export function isListName(name: string): name is ListName {
 }
 
 /** The `from` a bare `ServiceProvider` resolves to. */
-export const SERVICE_PROVIDER_FROM = '@rhombus-std/primitives';
+export const SERVICE_PROVIDER_FROM = '@rhombus-std/di.core';
 
 /**
  * Names that mean something other than "a type called this" when they stand unqualified.

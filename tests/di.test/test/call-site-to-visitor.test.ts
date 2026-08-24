@@ -143,7 +143,7 @@ describe('tagged types', () => {
 describe('the service provider and scope factory', () => {
   test('IServiceProvider resolves under its declaring-module address, with no registration', () => {
     const visitor = visitorFor(DefaultManifest.empty<unknown>());
-    expect(visitor.visit(Type.imported('IServiceProvider', '@rhombus-std/primitives'))).toEqual(
+    expect(visitor.visit(Type.imported('IServiceProvider', '@rhombus-std/di.core'))).toEqual(
       CallSite.serviceProvider(),
     );
   });

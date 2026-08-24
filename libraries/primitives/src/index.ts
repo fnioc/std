@@ -7,7 +7,6 @@ stampSingleInstance('@rhombus-std/primitives', (import.meta as unknown as { url:
 
 export * from './augmentation';
 export * from './change-token';
-export type * from './IServiceProvider';
 export * from './NotImplementedError';
 export * from './platform';
 export * from './toolkit';

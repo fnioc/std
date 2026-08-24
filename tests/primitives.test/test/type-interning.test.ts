@@ -26,7 +26,7 @@ describe('one object per type', () => {
   test('the spellings of one type are one object', () => {
     expect(Type.from('Func<app:A, app:B>')).toBe(Type.from('(app:B) => app:A'));
     expect(Type.from('Ctor<app:A, app:B>')).toBe(Type.from('new (app:B) => app:A'));
-    expect(Type.from('ServiceProvider')).toBe(Type.imported('IServiceProvider', '@rhombus-std/primitives'));
+    expect(Type.from('ServiceProvider')).toBe(Type.imported('IServiceProvider', '@rhombus-std/di.core'));
     expect(Type.from('\\Func')).toBe(Type.global('Func'));
   });
 

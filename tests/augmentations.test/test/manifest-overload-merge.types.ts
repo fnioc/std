@@ -8,8 +8,8 @@
 import '@rhombus-std/di.extras';
 import '@rhombus-std/options.augmentations';
 
-import { type Manifest, ServiceDescriptor } from '@rhombus-std/di.core';
-import { type IServiceProvider, Type } from '@rhombus-std/primitives';
+import { type IServiceProvider, type Manifest, ServiceDescriptor } from '@rhombus-std/di.core';
+import { Type } from '@rhombus-std/primitives';
 
 interface IWidget {}
 class Widget implements IWidget {}

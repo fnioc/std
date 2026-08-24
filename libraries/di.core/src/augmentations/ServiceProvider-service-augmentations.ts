@@ -1,9 +1,10 @@
-import { type ConstructorType, type FunctionType, type IServiceProvider, Type } from '@rhombus-std/primitives';
+import { type ConstructorType, type FunctionType, Type } from '@rhombus-std/primitives';
 import { registerAugmentations } from '@rhombus-std/primitives.extras';
 import type { Ctor, Func } from '@rhombus-toolkit/func';
 import { invokerAddress } from '../Invoker.js';
+import type { IServiceProvider } from '../IServiceProvider.js';
 
-declare module '@rhombus-std/primitives' {
+declare module '@rhombus-std/di.core' {
   interface IServiceProvider {
     /**
      * The value registered for `serviceType`, for a caller that treats its absence as a fault
