@@ -295,33 +295,33 @@ export function demonstrateOpenGenerics(): readonly string[] {
   const app = di.usingLifetimeModel(LifetimeModel.noop).usingManifest(manifest).build();
 
   // Two closings of ONE registration. Neither type was ever registered.
-  const users = app.getService(repositoryOf(USER_TYPE)) as IRepository<User>;
-  const orders = app.getService(repositoryOf(ORDER_TYPE)) as IRepository<Order>;
+  const users = app.resolve(repositoryOf(USER_TYPE)) as IRepository<User>;
+  const orders = app.resolve(repositoryOf(ORDER_TYPE)) as IRepository<Order>;
 
   // The middle template, resolved directly. Its `entityToken` came from the
   // `Typeof<$1>` slot, filled in with the type this closing was minted for.
-  const userTable = app.getService(tableOf(USER_TYPE)) as ITable<User>;
+  const userTable = app.resolve(tableOf(USER_TYPE)) as ITable<User>;
 
   // The exact registration for the one entity that needed different behaviour.
-  const audit = app.getService(repositoryOf(AUDIT_EVENT_TYPE)) as IRepository<AuditEvent>;
+  const audit = app.resolve(repositoryOf(AUDIT_EVENT_TYPE)) as IRepository<AuditEvent>;
 
   // Arity 2: the left hole closes onto the template, the right onto the exact
   // registration.
-  const join = app.getService(joinOf(USER_TYPE, AUDIT_EVENT_TYPE)) as IJoin<User, AuditEvent>;
+  const join = app.resolve(joinOf(USER_TYPE, AUDIT_EVENT_TYPE)) as IJoin<User, AuditEvent>;
 
   // Two closings over ONE base that two different templates could serve.
   // `IJoin<Order,User>` matches both `IJoin<Order,$2>` and `IJoin<$1,$2>`, and
   // the pinned one was registered later, so it takes it. `IJoin<AuditEvent,User>`
   // matches only the general template, which still serves it.
-  const pinnedJoin = app.getService(joinOf(ORDER_TYPE, USER_TYPE)) as IJoin<Order, User>;
-  const generalJoin = app.getService(joinOf(AUDIT_EVENT_TYPE, USER_TYPE)) as IJoin<AuditEvent, User>;
+  const pinnedJoin = app.resolve(joinOf(ORDER_TYPE, USER_TYPE)) as IJoin<Order, User>;
+  const generalJoin = app.resolve(joinOf(AUDIT_EVENT_TYPE, USER_TYPE)) as IJoin<AuditEvent, User>;
 
   // A hole is not a service: matching runs against a request that has to be
   // fully closed, so asking for the template itself is refused rather than
   // answered with one arbitrary closing.
   let templateOutcome = 'unexpectedly resolved';
   try {
-    app.getService(REPOSITORY_TEMPLATE);
+    app.resolve(REPOSITORY_TEMPLATE);
   } catch (error) {
     templateOutcome = `was refused (${(error as Error).name})`;
   }

@@ -35,7 +35,7 @@ describe("hosting's MetricsBuilder receives the diagnostics-family augmentations
     // builder's manifest, proving the member is diagnostics' real
     // implementation, not a lookalike.
     const provider = di.usingLifetimeModel(LifetimeModel.noop).usingManifest(builder.services).build();
-    const configureSteps: unknown[] = (provider as unknown as IServiceProvider).getService(
+    const configureSteps: unknown[] = (provider as unknown as IServiceProvider).resolve(
       Type.array(Type.imported('IConfigureOptions', '@rhombus-std/options', [Type.imported('MetricsOptions', '@rhombus-std/diagnostics.core')])),
     );
     expect(configureSteps).toHaveLength(1);

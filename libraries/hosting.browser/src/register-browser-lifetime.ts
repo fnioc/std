@@ -43,6 +43,6 @@ export function registerBrowserLifetime(services: Manifest<unknown>, options: Br
 
   return s.add(HOST_LIFETIME_TYPE,
     (resolver: IServiceProvider) =>
-      new BrowserLifetime(resolver.getService<BrowserLifetimeOptions>(), resolver.getService<IHostApplicationLifetime>(), resolver.getService<ILoggerFactory>(), pageLifecycleEvents),
+      new BrowserLifetime(resolver.resolve<BrowserLifetimeOptions>(), resolver.resolve<IHostApplicationLifetime>(), resolver.resolve<ILoggerFactory>(), pageLifecycleEvents),
     Type.func(HOST_LIFETIME_TYPE, [[typefor<IServiceProvider>()]]));
 }

@@ -90,13 +90,13 @@ describe('a union-typed registration', () => {
 
   test('serves the exact union request', () => {
     const manifest = DefaultManifest.empty<string>().addValue(EITHER, 'either');
-    expect(new ServiceProvider(manifest).getService(EITHER)).toBe('either');
+    expect(new ServiceProvider(manifest).resolve(EITHER)).toBe('either');
   });
 
   test('cannot serve a lone member — the union says which types will do, not what it holds', () => {
     const provider = new ServiceProvider(DefaultManifest.empty<string>().addValue(EITHER, 'either'));
     expect(() => provider.resolve(CACHE)).toThrow(UnsatisfiableError);
-    expect(() => provider.getService(CACHE)).toThrow(UnsatisfiableError);
+    expect(() => provider.resolve(CACHE)).toThrow(UnsatisfiableError);
   });
 });
 

@@ -38,7 +38,7 @@ describe('the leaf kinds', () => {
     const factory = realizeCallSite(CallSite.serviceScopeFactory(), { engine: scopedEngine, serviceProvider: provider });
     expect(factory).toBeInstanceOf(ServiceScopeFactory);
     const scope = (factory as ServiceScopeFactory).createScope();
-    expect(scope.getService(CONN)).toBeInstanceOf(Conn);
+    expect(scope.resolve(CONN)).toBeInstanceOf(Conn);
   });
 });
 

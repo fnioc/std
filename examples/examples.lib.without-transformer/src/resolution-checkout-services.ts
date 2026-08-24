@@ -248,7 +248,7 @@ export class AuditTrail implements IAuditTrail {
 /**
  * Stands in for a startup fetch of exchange rates. Registered under the PROMISE
  * Type — the registration IS the promise, so the caller awaits what
- * `getService` hands back for it. The bare rates type has no
+ * `resolve` hands back for it. The bare rates type has no
  * registration of its own.
  */
 export async function fetchExchangeRates(): Promise<IExchangeRates> {
@@ -301,10 +301,10 @@ export class PaymentRouter implements IPaymentRouter {
 
   public checkout(order: CheckoutOrder): string {
     // The KEYED form: the base type tagged with the method, which is one type
-    // and so an ordinary exact lookup. `getService` (not `resolve`)
+    // and so an ordinary exact lookup. `resolve` (not `resolve`)
     // because by this point a validator has already confirmed the method — a
     // miss now is a wiring bug and should be loud.
-    const gateway = this.#resolver.getService(Type.tag(this.#gatewayType, order.method)) as IPaymentGateway;
+    const gateway = this.#resolver.resolve(Type.tag(this.#gatewayType, order.method)) as IPaymentGateway;
     return `${gateway.charge(order)} → ${this.#mintReceipt(order).text}`;
   }
 }
@@ -372,7 +372,7 @@ export function addCheckoutServices<S>(
   services = services.add(t.audit, AuditTrail, Type.ctor(t.audit, [[]]), 'singleton' as S | 'singleton');
 
   // Registered under the PROMISE Type — the caller awaits what
-  // `getService` hands back for it; the bare type has no registration.
+  // `resolve` hands back for it; the bare type has no registration.
   services = services.add(t.ratesPromise, fetchExchangeRates, Type.func(t.ratesPromise, [[]]), 'singleton' as S | 'singleton');
 
   services = services.add(

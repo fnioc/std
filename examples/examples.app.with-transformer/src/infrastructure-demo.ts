@@ -71,7 +71,7 @@ export function demonstrateInfrastructure(): readonly string[] {
     workshop.useGreeting(WorkshopGreeting);
   });
   const defaultProvider = di.usingLifetimeModel(LifetimeModel.noop).usingManifest(defaults).build();
-  const defaultWorkshop = defaultProvider.getService(typefor<GreetingWorkshop>()) as GreetingWorkshop;
+  const defaultWorkshop = defaultProvider.resolve(typefor<GreetingWorkshop>()) as GreetingWorkshop;
 
   lines.push('app registered no stationery:');
   lines.push(`  stationery overridden: ${defaultWorkshop.stationeryIsOverridden}`);
@@ -85,7 +85,7 @@ export function demonstrateInfrastructure(): readonly string[] {
     workshop.useGreeting(WorkshopGreeting).useStationery({ border: '***' });
   });
   const customWorkshop = di.usingLifetimeModel(LifetimeModel.noop).usingManifest(customised).build()
-    .getService(typefor<GreetingWorkshop>()) as GreetingWorkshop;
+    .resolve(typefor<GreetingWorkshop>()) as GreetingWorkshop;
 
   lines.push('app registered its own stationery:');
   lines.push(`  stationery overridden: ${customWorkshop.stationeryIsOverridden}`);
@@ -115,7 +115,7 @@ export function demonstrateInfrastructure(): readonly string[] {
   // twin below is the WRONG answer, kept only so the right one has something to
   // be compared against. (The resolution chapter has the other case, where a key
   // is not known until a request arrives and no parameter can express it.)
-  const locatorWorkshop = defaultProvider.getService(
+  const locatorWorkshop = defaultProvider.resolve(
     typefor<LocatorGreetingWorkshop>(),
   ) as LocatorGreetingWorkshop;
 

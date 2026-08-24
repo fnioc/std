@@ -28,7 +28,7 @@ function buildProviderFor(lifetime: StandardLifetime): IServiceProvider {
 
 /** Opens a scope the way a user without the engine-typed provider does — through the published address. */
 function openScope(provider: IServiceProvider): IServiceProvider {
-  return (provider.getService(ScopeFactory.address) as Func<[], IServiceProvider>)();
+  return (provider.resolve(ScopeFactory.address) as Func<[], IServiceProvider>)();
 }
 
 describe('the model itself', () => {
@@ -40,42 +40,42 @@ describe('the model itself', () => {
 describe('singleton', () => {
   test('answers every ask with one instance', () => {
     const provider = buildProviderFor('singleton');
-    expect(provider.getService(COUNTER)).toBe(provider.getService(COUNTER));
+    expect(provider.resolve(COUNTER)).toBe(provider.resolve(COUNTER));
   });
 
   test('answers a scope with the very instance the root holds', () => {
     const provider = buildProviderFor('singleton');
-    expect(openScope(provider).getService(COUNTER)).toBe(provider.getService(COUNTER));
+    expect(openScope(provider).resolve(COUNTER)).toBe(provider.resolve(COUNTER));
   });
 });
 
 describe('scoped', () => {
   test('answers every ask within one scope with the same instance', () => {
     const scope = openScope(buildProviderFor('scoped'));
-    expect(scope.getService(COUNTER)).toBe(scope.getService(COUNTER));
+    expect(scope.resolve(COUNTER)).toBe(scope.resolve(COUNTER));
   });
 
   test("never hands one scope another scope's instance", () => {
     const provider = buildProviderFor('scoped');
-    expect(openScope(provider).getService(COUNTER)).not.toBe(openScope(provider).getService(COUNTER));
+    expect(openScope(provider).resolve(COUNTER)).not.toBe(openScope(provider).resolve(COUNTER));
   });
 
   test('treats the root as a scope of its own', () => {
     const provider = buildProviderFor('scoped');
-    expect(provider.getService(COUNTER)).toBe(provider.getService(COUNTER));
-    expect(openScope(provider).getService(COUNTER)).not.toBe(provider.getService(COUNTER));
+    expect(provider.resolve(COUNTER)).toBe(provider.resolve(COUNTER));
+    expect(openScope(provider).resolve(COUNTER)).not.toBe(provider.resolve(COUNTER));
   });
 });
 
 describe('transient', () => {
   test('constructs afresh for every ask', () => {
     const provider = buildProviderFor('transient');
-    expect(provider.getService(COUNTER)).not.toBe(provider.getService(COUNTER));
+    expect(provider.resolve(COUNTER)).not.toBe(provider.resolve(COUNTER));
   });
 
   test('never keeps an instance, in a scope or out of one', () => {
     const provider = buildProviderFor('transient');
-    expect(openScope(provider).getService(COUNTER)).not.toBe(provider.getService(COUNTER));
+    expect(openScope(provider).resolve(COUNTER)).not.toBe(provider.resolve(COUNTER));
   });
 });
 
@@ -87,7 +87,7 @@ describe('a registration naming no lifetime', () => {
 
     let caught: unknown;
     try {
-      provider.getService(COUNTER);
+      provider.resolve(COUNTER);
     } catch (error) {
       caught = error;
     }
@@ -108,21 +108,21 @@ describe('captivity', () => {
       .build();
 
     const scope = openScope(provider);
-    expect((scope.getService(HOLDER) as Holder).counter).toBe(provider.getService(COUNTER));
-    expect((scope.getService(HOLDER) as Holder).counter).not.toBe(scope.getService(COUNTER));
+    expect((scope.resolve(HOLDER) as Holder).counter).toBe(provider.resolve(COUNTER));
+    expect((scope.resolve(HOLDER) as Holder).counter).not.toBe(scope.resolve(COUNTER));
   });
 });
 
 describe('scope creation', () => {
   test('the published address resolves to a working scope opener', () => {
     const provider = buildProviderFor('scoped');
-    const openChildScope = provider.getService(ScopeFactory.address) as Func<[], IServiceProvider>;
-    expect(openChildScope().getService(COUNTER)).toBeInstanceOf(Counter);
+    const openChildScope = provider.resolve(ScopeFactory.address) as Func<[], IServiceProvider>;
+    expect(openChildScope().resolve(COUNTER)).toBeInstanceOf(Counter);
   });
 
   test('a scope opened from inside a scope keeps its own instances', () => {
     const provider = buildProviderFor('scoped');
     const scope = openScope(provider);
-    expect(openScope(scope).getService(COUNTER)).not.toBe(scope.getService(COUNTER));
+    expect(openScope(scope).resolve(COUNTER)).not.toBe(scope.resolve(COUNTER));
   });
 });

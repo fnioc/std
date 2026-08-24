@@ -59,7 +59,7 @@ export interface IHealthCheck {
 /**
  * A startup banner fetched asynchronously — registered ONLY as
  * `Promise<IBanner>`, never bare. The registration IS the promise, so an app
- * awaits what `getService` hands back for that token before using it.
+ * awaits what `resolve` hands back for that token before using it.
  */
 export interface IBanner {
   readonly text: string;

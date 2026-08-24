@@ -59,9 +59,9 @@ manifest.removeAll<IWidget>();
 manifest.addOptions(WIDGET);
 manifest.addOptions(WIDGET, () => new Widget());
 
-// getService (base, primitives) / getService<T> (sugar, di.extras)
-provider.getService(WIDGET);
-provider.getService<IWidget>();
+// resolve (base, primitives) / resolve<T> (sugar, di.extras)
+provider.resolve(WIDGET);
+provider.resolve<IWidget>();
 
 // resolveMany (base, di.core) / resolveMany<T> (sugar, di.extras)
 provider.resolveMany(WIDGET);

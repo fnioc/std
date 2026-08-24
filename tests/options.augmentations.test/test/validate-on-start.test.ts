@@ -26,7 +26,7 @@ describe('validateOnStart', () => {
     services = services.validateOnStart(OPTIONS_TYPE);
 
     const provider = services.build();
-    const validator: IStartupValidator = provider.getService(STARTUP_VALIDATOR_TYPE);
+    const validator: IStartupValidator = provider.resolve(STARTUP_VALIDATOR_TYPE);
 
     expect(typeof validator.validate).toBe('function');
   });
@@ -38,7 +38,7 @@ describe('validateOnStart', () => {
     services = services.validateOnStart(OPTIONS_TYPE);
 
     const provider = services.build();
-    const validator: IStartupValidator = provider.getService(STARTUP_VALIDATOR_TYPE);
+    const validator: IStartupValidator = provider.resolve(STARTUP_VALIDATOR_TYPE);
 
     expect(() => validator.validate()).not.toThrow();
   });
@@ -50,7 +50,7 @@ describe('validateOnStart', () => {
     services = services.validateOnStart(OPTIONS_TYPE);
 
     const provider = services.build();
-    const validator: IStartupValidator = provider.getService(STARTUP_VALIDATOR_TYPE);
+    const validator: IStartupValidator = provider.resolve(STARTUP_VALIDATOR_TYPE);
 
     expect(() => validator.validate()).toThrow(OptionsValidationError);
     expect(() => validator.validate()).toThrow('port must be positive');
@@ -67,7 +67,7 @@ describe('validateOnStart', () => {
     services = services.validateOnStart(OTHER_TYPE);
 
     const provider = services.build();
-    const validator: IStartupValidator = provider.getService(STARTUP_VALIDATOR_TYPE);
+    const validator: IStartupValidator = provider.resolve(STARTUP_VALIDATOR_TYPE);
 
     try {
       validator.validate();

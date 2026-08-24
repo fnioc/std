@@ -31,7 +31,7 @@ describe('postConfigure — bare form', () => {
     });
 
     const provider = services.build();
-    const options: IOptions<WidgetOptions> = provider.getService(optionsAddressType(OPTIONS_TYPE));
+    const options: IOptions<WidgetOptions> = provider.resolve(optionsAddressType(OPTIONS_TYPE));
 
     // 'base!' proves ordering: the post-configure ran after the configure and
     // appended to its result, not before it.
@@ -50,7 +50,7 @@ describe('postConfigure — bare form', () => {
     services = services.postConfigure(OPTIONS_TYPE, step);
 
     const provider = services.build();
-    const options: IOptions<WidgetOptions> = provider.getService(optionsAddressType(OPTIONS_TYPE));
+    const options: IOptions<WidgetOptions> = provider.resolve(optionsAddressType(OPTIONS_TYPE));
 
     expect(options.value.suffix).toBe('base!');
   });
@@ -66,7 +66,7 @@ describe('postConfigure — bare form', () => {
     } });
 
     const provider = services.build();
-    const options: IOptions<WidgetOptions> = provider.getService(optionsAddressType(OPTIONS_TYPE));
+    const options: IOptions<WidgetOptions> = provider.resolve(optionsAddressType(OPTIONS_TYPE));
 
     expect(options.value.suffix).toBe('base-a-b');
   });

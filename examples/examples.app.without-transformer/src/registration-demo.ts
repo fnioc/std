@@ -329,7 +329,7 @@ function demonstrateDescriptorVerbs(): string[] {
   application = application.add(DEFAULT_SINK_TYPE, RecordingSink, Type.ctor(DEFAULT_SINK_TYPE, [[]]), 'singleton');
   application = addOrderDefaults(application);
   const kept = di.usingLifetimeModel(LifetimeModel.noop).usingManifest(application).build()
-    .getService(DEFAULT_SINK_TYPE) as IMessageSink;
+    .resolve(DEFAULT_SINK_TYPE) as IMessageSink;
   lines.push(`defaults: an application that registered its own sink keeps it (${kept.name})`);
 
   // The host overrides all three defaults outright.
@@ -338,7 +338,7 @@ function demonstrateDescriptorVerbs(): string[] {
   host = host.replace(DEFAULT_SINK_TYPE, RecordingSink, Type.ctor(DEFAULT_SINK_TYPE, [[]]), 'singleton');
   host = host.replace(DEFAULT_NOTIFIER_TYPE, makeOrderNotifier, Type.func(DEFAULT_NOTIFIER_TYPE, [[DEFAULT_SINK_TYPE]]), 'singleton');
   const hostProvider = di.usingLifetimeModel(LifetimeModel.noop).usingManifest(host).build();
-  const recorder = hostProvider.getService(DEFAULT_SINK_TYPE) as RecordingSink;
+  const recorder = hostProvider.resolve(DEFAULT_SINK_TYPE) as RecordingSink;
   lines.push(
     `override: replace swapped all three defaults; the host sink is ${recorder.name}, and `
       + `${countRegistrations(host, DEFAULT_SINK_TYPE)} registration is left at its type`,
@@ -432,7 +432,7 @@ function demonstrateDescribedRegistration(): string {
   );
 
   const sink = di.usingLifetimeModel(LifetimeModel.noop).usingManifest(services).build()
-    .getService(SINK_TYPE) as IMessageSink;
+    .resolve(SINK_TYPE) as IMessageSink;
   return `described by chain: ${sink.send('order-99 shipped')}`;
 }
 
@@ -442,11 +442,11 @@ function describeOrderContainer(services: Manifest<unknown>): string[] {
   // seeds the manifest this file already built.
   const app = di.usingLifetimeModel(LifetimeModel.noop).usingManifest(services).build();
 
-  const notifier = app.getService(NOTIFIER_TYPE) as IOrderNotifier;
-  const audit = app.getService(AUDIT_TYPE) as IAuditLog;
-  const email = app.getService(EMAIL_SINK_TYPE) as IMessageSink;
-  const vendorClock = app.getService(VENDOR_CLOCK_TYPE) as IClock;
-  const flags = app.getService(FLAGS_TYPE) as FeatureFlags;
+  const notifier = app.resolve(NOTIFIER_TYPE) as IOrderNotifier;
+  const audit = app.resolve(AUDIT_TYPE) as IAuditLog;
+  const email = app.resolve(EMAIL_SINK_TYPE) as IMessageSink;
+  const vendorClock = app.resolve(VENDOR_CLOCK_TYPE) as IClock;
+  const flags = app.resolve(FLAGS_TYPE) as FeatureFlags;
 
   // The optional sink slot found a sink, so the entry the audit log records is
   // echoed to it as well as kept.
@@ -466,7 +466,7 @@ function describeOrderContainer(services: Manifest<unknown>): string[] {
 function describeSinklessFork(services: Manifest<unknown>): string {
   const noSinks = services.removeAll(SINK_TYPE);
   const audit = di.usingLifetimeModel(LifetimeModel.noop).usingManifest(noSinks).build()
-    .getService(AUDIT_TYPE) as IAuditLog;
+    .resolve(AUDIT_TYPE) as IAuditLog;
   audit.record('order-42 shipped');
 
   return `fork: removeAll left ${countRegistrations(noSinks, SINK_TYPE)} sinks (the original still has `

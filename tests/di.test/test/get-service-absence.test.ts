@@ -1,5 +1,5 @@
-// Behaviour tests for how `getService` answers — or refuses — a request nothing satisfies, and
-// for the union spelling a caller reaches for when absence is an answer rather than a fault.
+// Behaviour tests for how `resolve` answers — or refuses — a request nothing satisfies, and for
+// the union spelling a caller reaches for when absence is an answer rather than a fault.
 
 import { di } from '@rhombus-std/di';
 import { type IServiceProvider, LifetimeModel, UnsatisfiableError } from '@rhombus-std/di.core';
@@ -32,7 +32,7 @@ describe('a falsy registration is an answer, not an absence', () => {
     ['undefined', undefined],
   ])('%s comes back untouched', (_label, value) => {
     const provider = providerFor(value);
-    expect(provider.getService(A)).toBe(value);
+    expect(provider.resolve(A)).toBe(value);
     expect(provider.resolve(A)).toBe(value);
   });
 });
@@ -40,16 +40,16 @@ describe('a falsy registration is an answer, not an absence', () => {
 describe('absence', () => {
   test('nothing registered throws, naming the service type', () => {
     const provider = emptyProvider();
-    expect(() => provider.getService(Missing)).toThrow(UnsatisfiableError);
-    expect(() => provider.getService(Missing)).toThrow('app:Missing');
+    expect(() => provider.resolve(Missing)).toThrow(UnsatisfiableError);
+    expect(() => provider.resolve(Missing)).toThrow('app:Missing');
   });
 
   test('a union with undefined answers undefined instead, which is the optional ask', () => {
-    expect(emptyProvider().getService(Type.union(Missing, UNDEFINED))).toBeUndefined();
+    expect(emptyProvider().resolve(Type.union(Missing, UNDEFINED))).toBeUndefined();
   });
 
   test('the undefined member serves only once the service type has no way to build', () => {
-    expect(providerFor('a').getService(Type.union(A, UNDEFINED))).toBe('a');
+    expect(providerFor('a').resolve(Type.union(A, UNDEFINED))).toBe('a');
   });
 
   test('resolve refuses a miss the same way — one value, one path', () => {

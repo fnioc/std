@@ -201,7 +201,7 @@ export class GreetingWorkshop {
  * on the request that happened to need one.
  *
  * The verbs it uses are all perfectly good verbs — this is not a lesson about
- * `getService` or `resolve` being wrong. It is a lesson about WHERE
+ * `resolve` or `resolve` being wrong. It is a lesson about WHERE
  * they belong: at a composition root, which knows what it is composing, rather
  * than inside a library, which does not.
  *
@@ -247,7 +247,7 @@ export class LocatorGreetingWorkshop {
    * parameter, except asked for here in a method body where nothing can check it.
    */
   public card(name: string): string {
-    this.#mintCard ??= this.#resolver.getService(
+    this.#mintCard ??= this.#resolver.resolve(
       Type.func(GREETING_CARD_TYPE, [[CARD_RECIPIENT_TYPE]]),
     ) as (recipient: ICardRecipient) => GreetingCard;
     return this.#mintCard({ name }).render(this.stationery.border);

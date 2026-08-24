@@ -151,7 +151,7 @@ export class Host implements IHost, AsyncDisposable {
         throw error;
       };
 
-      const hostedServices: IHostedService[] = this.#services.getService<IHostedService[]>();
+      const hostedServices: IHostedService[] = this.#services.resolve<IHostedService[]>();
       this.#hostedServices = hostedServices;
       this.#hostedLifecycleServices = getHostLifecycles(hostedServices);
 

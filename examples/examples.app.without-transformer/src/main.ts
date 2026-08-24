@@ -166,10 +166,10 @@ class InteropWorker implements IHostedLifecycleService {
     // its services is the one thing the library cannot do on this root's behalf.
     // The banner is registered in its `Promise<…>` wrapper, so the container
     // hands back the promise and the caller awaits it.
-    const report = this.#provider.getService(EXAMPLE_TYPES.report) as IServerReport;
-    const banner = await (this.#provider.getService(EXAMPLE_TYPES.banner) as Promise<IBanner>);
+    const report = this.#provider.resolve(EXAMPLE_TYPES.report) as IServerReport;
+    const banner = await (this.#provider.resolve(EXAMPLE_TYPES.banner) as Promise<IBanner>);
 
-    const optionsView = this.#provider.getService(SERVER_OPTIONS_TYPE) as IOptions<ServerOptions>;
+    const optionsView = this.#provider.resolve(SERVER_OPTIONS_TYPE) as IOptions<ServerOptions>;
     const updates: string[] = [];
     const subscription = optionsView.subscribe!((next: ServerOptions) => {
       updates.push(`  reload fired: MaxConnections is now ${next.MaxConnections}`);

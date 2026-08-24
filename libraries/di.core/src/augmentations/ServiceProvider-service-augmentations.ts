@@ -41,7 +41,7 @@ declare module '@rhombus-std/di.core' {
 
 registerAugmentations<IServiceProvider>({
   resolveMany(this: IServiceProvider, serviceType: Type): Iterable<any> {
-    return this.getService(Type.iterable(serviceType));
+    return this.resolve(Type.iterable(serviceType));
   },
 });
 
@@ -53,12 +53,12 @@ registerAugmentations<IServiceProvider>({
 
 registerAugmentations<IServiceProvider>({
   resolve<R>(this: IServiceProvider, ctorType: ConstructorType, ctor: Ctor<any[], R>): R {
-    return this.getService(invokerAddress(ctorType))(ctor);
+    return this.resolve(invokerAddress(ctorType))(ctor);
   },
 });
 
 registerAugmentations<IServiceProvider>({
   resolve<R>(this: IServiceProvider, funcType: FunctionType, func: Func<any[], R>): R {
-    return this.getService(invokerAddress(funcType))(func);
+    return this.resolve(invokerAddress(funcType))(func);
   },
 });

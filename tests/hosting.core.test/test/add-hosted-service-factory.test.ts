@@ -23,7 +23,7 @@ test("addHostedService(factory) registers the factory's result under the hosted-
 
   const provider = manifest.build();
   const scope = provider.createScope('singleton');
-  const services: IHostedService[] = scope.getService(hostedServiceCollectionType());
+  const services: IHostedService[] = scope.resolve(hostedServiceCollectionType());
 
   expect(services).toHaveLength(1);
   expect(services[0]).toBe(singleton);
@@ -43,13 +43,13 @@ test('addHostedService(factory) injects the live resolver so the factory can pul
   // The factory receives the resolver -- the reference `Func<IServiceProvider, T>`
   // form used to promote a separately-registered service to a hosted service.
   manifest = manifest.addHostedService((resolver) => {
-    const dependency: Dependency = resolver.getService(Type.from('test:Dependency'));
+    const dependency: Dependency = resolver.resolve(Type.from('test:Dependency'));
     return dependency;
   });
 
   const provider = manifest.build();
   const scope = provider.createScope('singleton');
-  const services: IHostedService[] = scope.getService(hostedServiceCollectionType());
+  const services: IHostedService[] = scope.resolve(hostedServiceCollectionType());
 
   expect(services).toHaveLength(1);
   expect(services[0]).toBeInstanceOf(Dependency);
@@ -77,7 +77,7 @@ test('addHostedService(ctor) and addHostedService(factory) coexist under the sha
 
   const provider = manifest.build();
   const scope = provider.createScope('singleton');
-  const services: IHostedService[] = scope.getService(hostedServiceCollectionType());
+  const services: IHostedService[] = scope.resolve(hostedServiceCollectionType());
 
   expect(services).toHaveLength(2);
   for (const service of services) {

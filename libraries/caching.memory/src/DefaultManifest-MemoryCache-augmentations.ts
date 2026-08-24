@@ -57,7 +57,7 @@ export namespace ServiceManifestMemoryCacheAugmentations {
     // `ILoggerFactory` is registered, so the factory falls to a logger-less
     // construction.
     m = m.tryAdd(MEMORY_CACHE_TYPE,
-      (resolver: IServiceProvider) => new MemoryCache(resolver.getService<IOptions<MemoryCacheOptions>>(), resolver.resolve(Type.union(typefor<ILoggerFactory>(), Type.typeLiteral(undefined)))),
+      (resolver: IServiceProvider) => new MemoryCache(resolver.resolve<IOptions<MemoryCacheOptions>>(), resolver.resolve(Type.union(typefor<ILoggerFactory>(), Type.typeLiteral(undefined)))),
       Type.func(MEMORY_CACHE_TYPE, [[typefor<IServiceProvider>()]]), 'singleton');
     return m;
   }
@@ -82,7 +82,7 @@ export namespace ServiceManifestMemoryCacheAugmentations {
     }
     m = m.tryAdd(DISTRIBUTED_CACHE_TYPE, (resolver: IServiceProvider) =>
       new MemoryDistributedCache(
-        resolver.getService<IOptions<MemoryDistributedCacheOptions>>(),
+        resolver.resolve<IOptions<MemoryDistributedCacheOptions>>(),
         resolver.resolve(Type.union(typefor<ILoggerFactory>(), Type.typeLiteral(undefined))),
       ), Type.func(DISTRIBUTED_CACHE_TYPE, [[typefor<IServiceProvider>()]]), 'singleton');
     return m;

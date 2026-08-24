@@ -221,7 +221,7 @@ export class GreetingWorkshop {
  * below has a parameter form sitting above it — which is what makes it the
  * counter-example.
  *
- * As a side effect it keeps `getService`, `resolve`, and the
+ * As a side effect it keeps `resolve`, `resolve`, and the
  * intrinsic provider slot demonstrated from inside a library, in the tokenless
  * dialect, which is where a reader is most likely to meet them.
  */
@@ -251,7 +251,7 @@ export class LocatorGreetingWorkshop {
    * only difference is whether the container is asked for it or hands it over.
    */
   public card(name: string): string {
-    this.#mintCard ??= this.#resolver.getService(
+    this.#mintCard ??= this.#resolver.resolve(
       Type.func(typefor<GreetingCard>(), [[typefor<ICardRecipient>()]]),
     ) as (recipient: ICardRecipient) => GreetingCard;
     return this.#mintCard({ name }).render(this.stationery.border);
@@ -352,7 +352,7 @@ export function addGreetingWorkshop<S>(services: Manifest<S | 'singleton'>, conf
 
   // The workshop itself goes on next so a consumer cannot forget it — and this
   // one is fully tokenless, right down to its composed constructor type. The
-  // demo resolves it with `getService(typefor<GreetingWorkshop>())`,
+  // demo resolves it with `resolve(typefor<GreetingWorkshop>())`,
   // which derives the same type from the same class declaration, so neither the
   // callable argument nor the optional stationery argument is ever named at a
   // call site.

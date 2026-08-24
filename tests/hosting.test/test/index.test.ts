@@ -77,7 +77,7 @@ test('lifecycle ordering: starting -> start -> started -> applicationStarted -> 
   builder.configureServices((_context, services) => services.addHostedService(Recorder, Type.ctor(HOSTED_SERVICE_TYPE, [[]])));
 
   const host = builder.build();
-  const lifetime: IHostApplicationLifetime = host.services.getService(
+  const lifetime: IHostApplicationLifetime = host.services.resolve(
     HOST_APPLICATION_LIFETIME_TYPE,
   );
   lifetime.applicationStarted.addEventListener('abort', () => events.push('applicationStarted'), { once: true });
@@ -95,7 +95,7 @@ test('lifecycle ordering: starting -> start -> started -> applicationStarted -> 
 test('IHostApplicationLifetime.stopApplication triggers applicationStopping directly', () => {
   const builder = new HostBuilder();
   const host = builder.build();
-  const lifetime: IHostApplicationLifetime = host.services.getService(
+  const lifetime: IHostApplicationLifetime = host.services.resolve(
     HOST_APPLICATION_LIFETIME_TYPE,
   );
 
@@ -189,7 +189,7 @@ test("IHostEnvironment predicates reflect the built host's environment", async (
   });
 
   const host = builder.build();
-  const environment: IHostEnvironment = host.services.getService(HOST_ENVIRONMENT_TYPE);
+  const environment: IHostEnvironment = host.services.resolve(HOST_ENVIRONMENT_TYPE);
 
   expect(environment.environmentName).toBe('Development');
   // The fluent method form is installed onto HostingEnvironment by @rhombus-std/hosting.

@@ -136,7 +136,7 @@ class StandardScopeProvider implements IServiceProvider {
   }
 
   getService(...request: any[]): any {
-    return this.#router.enterScope(this.#scope, () => (this.#container.getService as Func)(...request));
+    return this.#router.enterScope(this.#scope, () => (this.#container.resolve as Func)(...request));
   }
 }
 

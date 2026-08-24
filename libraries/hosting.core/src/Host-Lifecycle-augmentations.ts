@@ -50,7 +50,7 @@ export namespace HostLifecycleAugmentations {
    * then gracefully stops the host.
    */
   export async function waitForShutdownAsync(this: IHost, abortSignal?: AbortSignal): Promise<void> {
-    const lifetime = this.services.getService<IHostApplicationLifetime>();
+    const lifetime = this.services.resolve<IHostApplicationLifetime>();
 
     const requestStop = (): void => lifetime.stopApplication();
     if (abortSignal !== undefined) {

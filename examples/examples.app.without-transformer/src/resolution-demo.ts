@@ -53,7 +53,7 @@ async function tour(provider: IServiceProvider): Promise<string[]> {
 
   // ── required vs optional ───────────────────────────────────────────────────
   //
-  // `getService` and `resolve` both throw on an address nothing can answer —
+  // `resolve` and `resolve` both throw on an address nothing can answer —
   // neither verb softens a miss on its own. What decides whether absence is a
   // wiring fault or a legitimate answer is the ADDRESS: asking for the bare
   // type is a hard requirement, while asking for `Type.union(type,
@@ -61,20 +61,20 @@ async function tour(provider: IServiceProvider): Promise<string[]> {
   // registration answers `undefined` instead of throwing. This demo keeps
   // calling the union-wrapped lookups through `resolve`, purely as a naming
   // convention for "this may come back undefined" — the union is what does the
-  // work, and `getService` would behave identically given the same address.
+  // work, and `resolve` would behave identically given the same address.
   //
   // The softening is narrow, and that narrowness is the point: it answers for
   // the type that was ASKED for. A registration whose own dependency is
   // missing is itself unsatisfiable, so it too answers with absence rather
   // than a half-built object.
   lines.push('required vs optional lookup');
-  const router = provider.getService(t.router) as IPaymentRouter;
-  lines.push(`  getService(IPaymentRouter): resolved ${router.constructor.name}`);
+  const router = provider.resolve(t.router) as IPaymentRouter;
+  lines.push(`  resolve(IPaymentRouter): resolved ${router.constructor.name}`);
   try {
-    provider.getService(t.fraudScreen);
-    lines.push('  getService(IFraudScreen): UNREACHABLE');
+    provider.resolve(t.fraudScreen);
+    lines.push('  resolve(IFraudScreen): UNREACHABLE');
   } catch (error) {
-    lines.push(`  getService(IFraudScreen): ${(error as Error).name} — a required miss is loud`);
+    lines.push(`  resolve(IFraudScreen): ${(error as Error).name} — a required miss is loud`);
   }
   const audit = provider.resolve(Type.union(t.audit, Type.typeLiteral(undefined))) as IAuditTrail | undefined;
   lines.push(`  resolve(IAuditTrail): ${audit ? 'present' : 'absent'}`);
@@ -107,7 +107,7 @@ async function tour(provider: IServiceProvider): Promise<string[]> {
     }
   }
   const asCollectionType = [
-    ...(provider.getService(Type.iterable(t.validator)) as Iterable<IOrderValidator>),
+    ...(provider.resolve(Type.iterable(t.validator)) as Iterable<IOrderValidator>),
   ];
   lines.push(`  the same aggregation asked for as a type: ${asCollectionType.length} validators`);
 
@@ -144,10 +144,10 @@ async function tour(provider: IServiceProvider): Promise<string[]> {
   lines.push('factory slots — the caller supplies what the container cannot know');
   lines.push(`  mint ${ORDER_C.reference}: ${router.checkout(ORDER_C)}`);
   // The same slot asked for from OUTSIDE a constructor, rather than injected
-  // into one: `getService` over the callable's own `Type.func` type hands
+  // into one: `resolve` over the callable's own `Type.func` type hands
   // back the identical factory `PaymentRouter` receives as a constructor
   // parameter.
-  const mintReceipt = provider.getService(Type.func(t.receipt, [[t.order]])) as (
+  const mintReceipt = provider.resolve(Type.func(t.receipt, [[t.order]])) as (
     order: CheckoutOrder,
   ) => IReceipt;
   lines.push(`  asking the provider for one: ${mintReceipt(ORDER_C).text}`);
@@ -159,7 +159,7 @@ async function tour(provider: IServiceProvider): Promise<string[]> {
   // later". The container hands back the promise it was told about and the
   // caller awaits it — no half-built value ever appears.
   lines.push('async registrations — the promise is the registration');
-  const rates = await (provider.getService(t.ratesPromise) as Promise<IExchangeRates>);
+  const rates = await (provider.resolve(t.ratesPromise) as Promise<IExchangeRates>);
   lines.push(`  rates as of ${rates.asOf}, EUR at ${rates.rate('EUR')}`);
   lines.push(`  the bare type has no registration: ${provider.resolve(Type.union(t.rates, Type.typeLiteral(undefined)))}`);
 
@@ -181,7 +181,7 @@ async function tour(provider: IServiceProvider): Promise<string[]> {
   // gateway for whichever method the buyer picks", so the container itself is the
   // dependency.
   lines.push('the provider as a service — usually a smell, occasionally correct');
-  const view = provider.getService(Type.from('ServiceProvider')) as IServiceProvider;
+  const view = provider.resolve(Type.from('ServiceProvider')) as IServiceProvider;
   lines.push(`  the injected view IS the live container: ${view === provider}`);
 
   // ── what the optional sink recorded ────────────────────────────────────────

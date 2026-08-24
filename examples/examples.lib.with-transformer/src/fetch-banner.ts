@@ -3,7 +3,7 @@ import type { IBanner } from '@rhombus-std/examples.contracts';
 /**
  * Simulates an async banner fetch — the source of this library's
  * `Promise<IBanner>` registration. Nothing registers a bare `IBanner`; an app
- * reaches the banner by awaiting what `getService` hands back for the
+ * reaches the banner by awaiting what `resolve` hands back for the
  * `Promise<IBanner>` token.
  */
 export async function fetchBanner(): Promise<IBanner> {

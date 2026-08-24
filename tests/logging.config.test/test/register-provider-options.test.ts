@@ -44,7 +44,7 @@ describe('LoggerProviderOptions.registerProviderOptions', () => {
     services = LoggerProviderOptions.registerProviderOptions(services, OPTIONS_TYPE, FAKE_PROVIDER_TYPE);
 
     const provider = services.build().createScope('singleton');
-    const options: IOptions<FakeProviderOptions> = provider.getService(OPTIONS_ACCESSOR_TYPE);
+    const options: IOptions<FakeProviderOptions> = provider.resolve(OPTIONS_ACCESSOR_TYPE);
 
     // Only FakeProvider's section binds; the configure step deep-merges onto
     // the makeBase value.
@@ -62,7 +62,7 @@ describe('LoggerProviderOptions.registerProviderOptions', () => {
     services = LoggerProviderOptions.registerProviderOptions(services, OPTIONS_TYPE, FAKE_PROVIDER_TYPE);
 
     const provider = services.build().createScope('singleton');
-    const options: IOptions<FakeProviderOptions> = provider.getService(OPTIONS_ACCESSOR_TYPE);
+    const options: IOptions<FakeProviderOptions> = provider.resolve(OPTIONS_ACCESSOR_TYPE);
     expect(options.value.Format).toBe('json');
 
     const seen: FakeProviderOptions[] = [];
@@ -93,7 +93,7 @@ describe('LoggerProviderOptions.registerProviderOptions', () => {
     });
 
     const provider = services.build().createScope('singleton');
-    const options: IOptions<FakeProviderOptions> = provider.getService(OPTIONS_ACCESSOR_TYPE);
+    const options: IOptions<FakeProviderOptions> = provider.resolve(OPTIONS_ACCESSOR_TYPE);
 
     expect(options.value).toEqual({ Format: 'json', MaxDepth: '9' });
   });

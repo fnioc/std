@@ -25,7 +25,7 @@ function buildProviderKeptBy(keptBy: Tags): IServiceProvider {
 }
 
 function openScope(provider: IServiceProvider, tag: Tags): IServiceProvider {
-  return (provider.getService(ScopeFactory.address) as Func<[Tags], IServiceProvider>)(tag);
+  return (provider.resolve(ScopeFactory.address) as Func<[Tags], IServiceProvider>)(tag);
 }
 
 describe('the model itself', () => {
@@ -37,31 +37,31 @@ describe('the model itself', () => {
 describe('a tagged registration', () => {
   test('is kept by the open scope carrying its tag', () => {
     const scope = openScope(buildProviderKeptBy('request'), 'request');
-    expect(scope.getService(COUNTER)).toBe(scope.getService(COUNTER));
+    expect(scope.resolve(COUNTER)).toBe(scope.resolve(COUNTER));
   });
 
   test('is kept separately by each scope carrying that tag', () => {
     const provider = buildProviderKeptBy('request');
     const request = openScope(provider, 'request');
-    expect(openScope(provider, 'request').getService(COUNTER)).not.toBe(request.getService(COUNTER));
+    expect(openScope(provider, 'request').resolve(COUNTER)).not.toBe(request.resolve(COUNTER));
   });
 
   test('reaches out past scopes carrying other tags', () => {
     const session = openScope(buildProviderKeptBy('session'), 'session');
     const request = openScope(session, 'request');
-    expect(request.getService(COUNTER)).toBe(session.getService(COUNTER));
+    expect(request.resolve(COUNTER)).toBe(session.resolve(COUNTER));
   });
 
   test('is shared by every scope nested inside the one keeping it', () => {
     const session = openScope(buildProviderKeptBy('session'), 'session');
-    expect(openScope(session, 'request').getService(COUNTER))
-      .toBe(openScope(session, 'request').getService(COUNTER));
+    expect(openScope(session, 'request').resolve(COUNTER))
+      .toBe(openScope(session, 'request').resolve(COUNTER));
   });
 
   test('is kept by the nearest scope carrying its tag when one nests inside another', () => {
     const outer = openScope(buildProviderKeptBy('request'), 'request');
     const inner = openScope(outer, 'request');
-    expect(inner.getService(COUNTER)).not.toBe(outer.getService(COUNTER));
+    expect(inner.resolve(COUNTER)).not.toBe(outer.resolve(COUNTER));
   });
 });
 
@@ -71,7 +71,7 @@ describe('an untagged registration', () => {
       .configureServices(manifest => manifest.add(COUNTER, Counter, COUNTER_TYPE))
       .build();
     const scope = openScope(provider, 'request');
-    expect(scope.getService(COUNTER)).not.toBe(scope.getService(COUNTER));
+    expect(scope.resolve(COUNTER)).not.toBe(scope.resolve(COUNTER));
   });
 });
 
@@ -79,7 +79,7 @@ describe('no scope carrying the tag', () => {
   test('fails naming both the model and the tag rather than answering from the root', () => {
     let caught: unknown;
     try {
-      buildProviderKeptBy('request').getService(COUNTER);
+      buildProviderKeptBy('request').resolve(COUNTER);
     } catch (error) {
       caught = error;
     }
@@ -95,6 +95,6 @@ describe('no scope carrying the tag', () => {
 
   test('fails just as loudly from a scope carrying some other tag', () => {
     const session = openScope(buildProviderKeptBy('request'), 'session');
-    expect(() => session.getService(COUNTER)).toThrow(LifetimeModelError);
+    expect(() => session.resolve(COUNTER)).toThrow(LifetimeModelError);
   });
 });

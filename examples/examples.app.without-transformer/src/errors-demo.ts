@@ -116,15 +116,15 @@ export function demonstrateErrors(): readonly string[] {
   // you want is a deployment question — fail at startup, or stay up and answer
   // only the requests that touch the working part.
   //
-  // `resolve` and `getService` both throw here: STORE_TYPE IS registered, so it
+  // `resolve` and `resolve` both throw here: STORE_TYPE IS registered, so it
   // is the chosen answer, and a chosen answer's runtime build failure never
   // falls through to a softer one — the union-with-undefined address that
   // recovers a WHOLLY unregistered type does nothing for a registered type
   // whose own dependency cannot be built.
   const lazy = di.usingLifetimeModel(LifetimeModel.noop).usingManifest(withUnsatisfiableStore()).build();
   lines.push(stagedFailure('asking with resolve for a registration that cannot be lowered', () => lazy.resolve(STORE_TYPE)));
-  lines.push(stagedFailure('asking with getService for the same', () => lazy.getService(STORE_TYPE)));
-  lines.push(stagedFailure('asking for a type nobody registered', () => lazy.getService(REPORT_TYPE)));
+  lines.push(stagedFailure('asking with resolve for the same', () => lazy.resolve(STORE_TYPE)));
+  lines.push(stagedFailure('asking for a type nobody registered', () => lazy.resolve(REPORT_TYPE)));
 
   // A cycle. The error carries the whole PATH, because a cycle is only readable
   // as the loop it makes — naming just the type that closed it would leave the
@@ -133,7 +133,7 @@ export function demonstrateErrors(): readonly string[] {
     let services: Manifest<unknown> = new DefaultManifest<unknown>(LifetimeModel.noop);
     services = services.add(LEDGER_TYPE, Ledger, Type.ctor(LEDGER_TYPE, [[AUDIT_TYPE]]), 'singleton');
     services = services.add(AUDIT_TYPE, AuditLog, Type.ctor(AUDIT_TYPE, [[LEDGER_TYPE]]), 'singleton');
-    return di.usingLifetimeModel(LifetimeModel.noop).usingManifest(services).build().getService(LEDGER_TYPE);
+    return di.usingLifetimeModel(LifetimeModel.noop).usingManifest(services).build().resolve(LEDGER_TYPE);
   }));
 
   // ── and the escape hatch ───────────────────────────────────────────────────

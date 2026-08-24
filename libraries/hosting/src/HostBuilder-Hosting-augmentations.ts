@@ -153,8 +153,8 @@ export namespace HostBuilderHostingAugmentations {
       const withOptions = services.addValue<ConsoleLifetimeOptions>(options);
       return withOptions.add(HOST_LIFETIME_TYPE,
         (resolver: IServiceProvider) =>
-          new ConsoleLifetime(resolver.getService<ConsoleLifetimeOptions>(), resolver.getService<IHostEnvironment>(), resolver.getService<IHostApplicationLifetime>(),
-            resolver.getService<ILoggerFactory>()), Type.func(HOST_LIFETIME_TYPE, [[typefor<IServiceProvider>()]]));
+          new ConsoleLifetime(resolver.resolve<ConsoleLifetimeOptions>(), resolver.resolve<IHostEnvironment>(), resolver.resolve<IHostApplicationLifetime>(), resolver.resolve<ILoggerFactory>()),
+        Type.func(HOST_LIFETIME_TYPE, [[typefor<IServiceProvider>()]]));
     });
   }
 

@@ -37,7 +37,7 @@ function listener(name: string): IMetricsListener {
  */
 function registered(builder: { services: Manifest<unknown>; }, type: Type): unknown[] {
   const provider = di.usingLifetimeModel(LifetimeModel.noop).usingManifest(builder.services).build();
-  const results: unknown[] = provider.getService(Type.array(type));
+  const results: unknown[] = provider.resolve(Type.array(type));
   return results;
 }
 
