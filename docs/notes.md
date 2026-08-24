@@ -17,7 +17,7 @@ land; delete the file when empty.
       `registerInlineBodies` channel, files under `augmentations/`; ttsc e2e parity (lowered
       emission byte-equals the hand-written two-arg call); check off the rewrite-plan halt with a
       one-line resolution; decisions.v2 § entry, present-tense. Full gates before push.
-- [ ] **LANDED ON DISK 2026-08-24 (uncommitted, in the review round) — inherited task 2:
+- [x] **COMMITTED `c03643c1` (owner-approved) — inherited task 2:
       TypeFor tells the truth.** Widening + `TypeForValue` narrow value face (shared
       `DerivedType<T, Alias>` conditional, Alias=never collapses the unions) + @remarks rewrite +
       rewrite-plan check-off + decisions.v2 §193 amended in place. Gates: primitives.extras/
@@ -40,7 +40,7 @@ land; delete the file when empty.
       stands (owner: "leave options alone"; the `() => T` base-slot dissolve NOT approved —
       record it durably during migration); unruled forks get a dated hold note in the tracked
       file, never an invented ruling.
-- [ ] **RULED 2026-08-24 — realizer and scope capability mint TOGETHER; Realizer sheds
+- [x] **COMMITTED `50b6e5fd` (pre-starfish checkpoint; SUPERSEDED by the starfish decorator design for the next pass) — realizer and scope capability mint TOGETHER; Realizer sheds
       `scopeFactory`.** `LifetimeModel.createRealizer()` returns
       `{ realizer: Realizer<L>; scopeFactory?: Func<[IServiceProvider], ScopeFactory<L>> }`
       (named members over a positional tuple; simple models return two views of one object).
