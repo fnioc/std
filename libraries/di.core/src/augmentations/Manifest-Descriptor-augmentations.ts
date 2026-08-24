@@ -1,10 +1,10 @@
-import type { ButNot, ConstructorType, FunctionType, Type } from '@rhombus-std/primitives';
+import { type ButNot, concat, type ConstructorType, type FunctionType, type Type } from '@rhombus-std/primitives';
 import { registerAugmentations } from '@rhombus-std/primitives.extras';
 import type { AbstractCtor, Ctor, Func } from '@rhombus-toolkit/func';
 
 import { openDescription, type ServiceDescriptorBuilderFor } from '../builder';
 import type { LifetimeArgument } from '../LifetimeModel';
-import { type Manifest } from '../Manifest';
+import { DefaultManifest, type Manifest } from '../Manifest';
 import { ServiceDescriptor } from '../ServiceDescriptor';
 
 declare module '@rhombus-std/di.core' {
@@ -21,6 +21,14 @@ declare module '@rhombus-std/di.core' {
 
     /** Adds every descriptor in `descriptors`, in order — the last one ends up newest. */
     addMany(descriptors: Iterable<ServiceDescriptor<Lifetime>>): Manifest<Lifetime>;
+    /**
+     * Folds `source`'s descriptors in as one batch, ahead of everything already in the chain and
+     * in `source`'s own order — `source` re-invoked once per resulting manifest iteration, never
+     * called here.
+     */
+    include(source: Func<[], Iterable<ServiceDescriptor<Lifetime>>>): Manifest<Lifetime>;
+    /** {@link Manifest.include}'s plain-iterable shape — `source` re-iterated once per resulting manifest iteration, never read here. */
+    include(source: Iterable<ServiceDescriptor<Lifetime>>): Manifest<Lifetime>;
     /** Adds each descriptor whose service type has no registration yet. */
     tryAdd(...descriptors: ReadonlyArray<ServiceDescriptor<Lifetime>>): Manifest<Lifetime>;
 
@@ -94,6 +102,9 @@ registerAugmentations<Manifest<unknown>>({
   addMany(this: Manifest<unknown>, descriptors: Iterable<ServiceDescriptor<unknown>>): Manifest<unknown> {
     return Iterator.from(descriptors).reduce((man, descriptor) => man.add(descriptor), this);
   },
+  include(this: Manifest<unknown>, source: Iterable<ServiceDescriptor<unknown>>): Manifest<unknown> {
+    return new DefaultManifest<unknown>(() => concat(source, this));
+  },
   tryAdd(this: Manifest<unknown>, ...descriptors: ReadonlyArray<ServiceDescriptor<unknown>>): Manifest<unknown> {
     return Iterator.from(descriptors)
       .filter(newDesc => !Iterator.from(this).some(existingDesc => existingDesc.serviceType === newDesc.serviceType))
@@ -161,5 +172,12 @@ registerAugmentations<Manifest<unknown>>({
 registerAugmentations<Manifest<unknown>>({
   describe(this: Manifest<unknown>, serviceType: Type): ServiceDescriptorBuilderFor<any, unknown> {
     return openDescription(serviceType);
+  },
+});
+
+// Func<[], Iterable<ServiceDescriptor>>
+registerAugmentations<Manifest<unknown>>({
+  include(this: Manifest<unknown>, source: Func<[], Iterable<ServiceDescriptor<unknown>>>): Manifest<unknown> {
+    return new DefaultManifest<unknown>(() => concat(source(), this));
   },
 });
