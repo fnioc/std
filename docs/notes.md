@@ -65,11 +65,13 @@ land; delete the file when empty.
       stay generic; moot for ScopeFactory if the floor-registration rework lands.
 - [ ] **Post-port rename slate (owner-opened 2026-08-24; one dedicated pass AFTER the in-flight
       lanes land, CLAUDE.md digest included; ideal name first, MEDI-distance a free bonus).**
-      Claude's recommendations, discussed: `ServiceProvider` → the resolving interface (libraries
-      hold it; entry points hold what build() returns); `Scope`/`lifetime` KEEP (place vs policy);
-      `ServiceDescriptor` → `Registration`; internal `CallSite` → `Plan` (a ConstantCallSite calls
-      nothing; the realizer's per-position `site` key keeps its name); `serviceType` → `address`
-      (the design language already says address everywhere). RULED, DI-ONLY: interfaces without
+      OWNER-ENDORSED 2026-08-24 ("record all your suggestions — i like them"): `ServiceProvider`
+      → bare `Resolver` (Claude's lean; `Container` the runner-up, final pick at pass time —
+      `Container` survives in `ContainerBuilder` either way); `Scope`/`lifetime` KEEP (place vs
+      policy; `IServiceScope` → bare `Scope`); `ServiceDescriptor` → `Registration`; internal
+      `CallSite` → `Plan` (a ConstantCallSite calls nothing; the realizer's per-position `site`
+      key keeps its name); `serviceType` → `address` (the design language already says address
+      everywhere; at realize time pairs with the request). RULED, DI-ONLY: interfaces without
       published concretes DROP the `I` prefix — concretes stay unexported on the
       `Default<InterfaceName>` pattern (di backtrack of the global I-prefix rule; other families
       unaffected). Consequence: the interface is bare `Resolver` (or `Container` — final pick at
