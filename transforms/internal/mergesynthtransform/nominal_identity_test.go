@@ -51,6 +51,7 @@ func TestGenuineBuiltInStillTestsNominally(t *testing.T) {
 // constructor. `Error`'s whole declared surface is plain strings, so an object
 // literal is a legal value of it and `instanceof Error` REJECTS one.
 func TestStructurallySatisfiableBuiltInIsNotTestedByInstanceof(t *testing.T) {
+	t.Setenv("TTSC_MERGESYNTH_VERBOSE", "1")
 	for _, name := range []string{"Error", "TypeError", "RangeError"} {
 		out, diags := run(t, setOptionsFixture("", name))
 		assertPrivateSurfaceWarning(t, diags)

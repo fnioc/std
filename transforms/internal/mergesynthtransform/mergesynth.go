@@ -64,6 +64,8 @@
 package mergesynthtransform
 
 import (
+	"fmt"
+	"os"
 	"strings"
 
 	shimast "github.com/microsoft/typescript-go/shim/ast"
@@ -96,6 +98,33 @@ type Diagnostic struct {
 	Message  string
 }
 
+// mergesynthVerboseEnv is the escape hatch out of the default silent path:
+// unset, MERGESYNTH_PRIVATE_SURFACE reports nothing at all — a cold-cache
+// rebuild otherwise floods hundreds of near-identical lines. Set to "1" to get
+// the per-member detail, once per member per host process (mergesynthVerboseSeen).
+const mergesynthVerboseEnv = "TTSC_MERGESYNTH_VERBOSE"
+
+// mergesynthVerboseSeen is the process-wide set of (file, member) pairs already
+// reported under TTSC_MERGESYNTH_VERBOSE=1. The host's file loop can revisit
+// the same file more than once within one process — once per entrypoint
+// compile, or a cache-warmed envelope replaying a prior file's diagnostics —
+// and a member's line is worth reading once, not once per revisit. The host
+// runs its whole file loop on one goroutine (see typeforhoist's own note on
+// the same shape of state), so a plain map needs no lock.
+var mergesynthVerboseSeen = map[string]bool{}
+
+// markPrivateSurfaceSeen reports whether (file, member) already had its
+// MERGESYNTH_PRIVATE_SURFACE line reported this process, marking it seen as a
+// side effect — so a caller checking it can suppress exactly the repeats.
+func markPrivateSurfaceSeen(file, member string) (alreadySeen bool) {
+	key := file + "\x00" + member
+	if mergesynthVerboseSeen[key] {
+		return true
+	}
+	mergesynthVerboseSeen[key] = true
+	return false
+}
+
 // The install functions this stage rewrites, matched on the callee's resolved
 // symbol name (following import aliases) — unambiguous for these two first-party
 // names.
@@ -120,6 +149,7 @@ func New(prog *driver.Program, addDiagnostic func(Diagnostic)) plugin.FileTransf
 			file:          sf,
 			anchor:        plugin.NewCheckerAnchor(ec, sf),
 			addDiagnostic: addDiagnostic,
+			verbose:       os.Getenv(mergesynthVerboseEnv) == "1",
 		}
 		var visitor *shimast.NodeVisitor
 		visit := func(node *shimast.Node) *shimast.Node {
@@ -153,6 +183,10 @@ type synthesizer struct {
 	file          *shimast.SourceFile
 	anchor        plugin.CheckerAnchor
 	addDiagnostic func(Diagnostic)
+	// verbose is TTSC_MERGESYNTH_VERBOSE=1, read once when the file's
+	// synthesizer is built — the escape hatch back to a MERGESYNTH_PRIVATE_SURFACE
+	// diagnostic per weakened guard. Unset, a weakened guard is reported nowhere.
+	verbose bool
 }
 
 func (s *synthesizer) factory() *shimast.NodeFactory {
@@ -404,6 +438,18 @@ type guardedParam struct {
 	guard *shimast.Node
 }
 
+// privateSurfaceFinding is one parameter position synthesizeGuard could not
+// fully cover — its own arg index and declared type spelling, why (reason),
+// and what the emitted guard still checks despite it (tail). One member can
+// carry several — a multi-parameter member with more than one weakened
+// position reports every one of them, not just the first.
+type privateSurfaceFinding struct {
+	index    int
+	typeText string
+	reason   string
+	tail     string
+}
+
 // strategyFor synthesizes one member's merge strategy. The result is always a
 // valid strategy expression; the fallback for a fully un-derivable member is
 // the bare always-pass form (extension wins, chain order breaks ties).
@@ -412,14 +458,21 @@ func (s *synthesizer) strategyFor(m member) *shimast.Node {
 	typeParams := typeParameterNames(m.fn)
 
 	// Parameters pair with the call positionally: params[i] guards args[i]. An
-	// explicit `this` parameter is type-only and never part of the call.
+	// explicit `this` parameter is type-only and never part of the call, but
+	// its declared type — the receiver — is what labels a MERGESYNTH_PRIVATE_SURFACE
+	// finding: "Manifest.remove", not just "remove".
 	guardable := params
+	receiver := ""
 	if len(guardable) > 0 {
 		if name := guardable[0].AsParameterDeclaration().Name(); name != nil && name.Kind == shimast.KindIdentifier && name.Text() == "this" {
+			if t := guardable[0].AsParameterDeclaration().Type; t != nil {
+				receiver = typeNameOf(t)
+			}
 			guardable = guardable[1:]
 		}
 	}
 	guards := make([]guardedParam, 0, len(guardable))
+	var findings []privateSurfaceFinding
 	minArity := 0
 	maxArity := 0
 	hasRest := false
@@ -450,7 +503,10 @@ func (s *synthesizer) strategyFor(m member) *shimast.Node {
 		if referencesTypeParameter(typeNode, typeParams) {
 			continue
 		}
-		node, ok := s.synthesizeGuard(typeNode, m.name, kind)
+		node, ok, finding := s.synthesizeGuard(typeNode, m.name, kind, i)
+		if finding != nil {
+			findings = append(findings, *finding)
+		}
 		if !ok {
 			// The type was known; nothing about a value of it could be checked.
 			// That is a refusal, not an un-derivable parameter.
@@ -459,6 +515,7 @@ func (s *synthesizer) strategyFor(m member) *shimast.Node {
 		}
 		guards = append(guards, guardedParam{index: i, kind: kind, guard: node})
 	}
+	s.reportPrivateSurface(receiver, m.name, findings)
 
 	// No parameter type could be derived AND none was refused: nothing at all is
 	// known about the call, so the extension silently wins.
@@ -468,6 +525,36 @@ func (s *synthesizer) strategyFor(m member) *shimast.Node {
 	return s.guardedStrategy(guards, minArity, maxArity, hasRest)
 }
 
+// reportPrivateSurface emits, under TTSC_MERGESYNTH_VERBOSE=1, ONE
+// MERGESYNTH_PRIVATE_SURFACE diagnostic for the whole member naming every
+// weakened parameter position findings collected — not just the first, the
+// way a single `guard.reason` string would collapse to. Silent by default
+// (findings is always collected regardless, so the counting cost is the same
+// either way, but nothing is reported unless verbose), and deduped once per
+// (file, member) per host process the same as every other verbose line.
+func (s *synthesizer) reportPrivateSurface(receiver, member string, findings []privateSurfaceFinding) {
+	if len(findings) == 0 || !s.verbose {
+		return
+	}
+	label := member
+	if receiver != "" {
+		label = receiver + "." + member
+	}
+	if markPrivateSurfaceSeen(s.file.FileName(), label) {
+		return
+	}
+	parts := make([]string, len(findings))
+	for i, f := range findings {
+		parts[i] = fmt.Sprintf("arg %d (%s): %s; %s", f.index, f.typeText, f.reason, f.tail)
+	}
+	s.addDiagnostic(Diagnostic{
+		File:     s.file.FileName(),
+		Category: Warning,
+		Code:     "MERGESYNTH_PRIVATE_SURFACE",
+		Message:  fmt.Sprintf("merge guard for %q cannot fully check: %s", label, strings.Join(parts, " | ")),
+	})
+}
+
 // synthesizeGuard derives one parameter's guard function expression from its
 // ORIGINAL type node. A typia TransformerError (unsupported type, unresolved
 // shape) surfaces as a panic; it is recovered here and the parameter degrades to
@@ -475,10 +562,12 @@ func (s *synthesizer) strategyFor(m member) *shimast.Node {
 // A guard that requested a typia runtime helper import is likewise dropped (§87:
 // the emitted JS must stay typia-free), with a warning naming the member.
 //
-// Whatever the composer could not cover is reported here, whether or not a guard
-// survived it: a guard weaker than its type is emitted (it still narrows
+// Whatever the composer could not cover is returned as finding rather than
+// reported here directly, so the caller (strategyFor) can fold every weakened
+// parameter of one member into a single diagnostic instead of one per
+// parameter: a guard weaker than its type is emitted (it still narrows
 // dispatch) but never silently.
-func (s *synthesizer) synthesizeGuard(typeNode *shimast.Node, memberName string, kind paramKind) (node *shimast.Node, ok bool) {
+func (s *synthesizer) synthesizeGuard(typeNode *shimast.Node, memberName string, kind paramKind, index int) (node *shimast.Node, ok bool, finding *privateSurfaceFinding) {
 	importer := nativecontext.NewImportProgrammer(nativecontext.ImportProgrammer_IOptions{
 		InternalPrefix: "typia_transform_",
 	})
@@ -501,16 +590,16 @@ func (s *synthesizer) synthesizeGuard(typeNode *shimast.Node, memberName string,
 
 	defer func() {
 		if recovered := recover(); recovered != nil {
-			node, ok = nil, false
+			node, ok, finding = nil, false, nil
 		}
 	}()
 
 	if typeNode.Pos() < 0 {
-		return nil, false
+		return nil, false, nil
 	}
 	t := s.checker.GetTypeFromTypeNode(typeNode)
 	if t == nil {
-		return nil, false
+		return nil, false, nil
 	}
 
 	built := s.guardForType(context, t, typeNameOf(typeNode), map[*shimchecker.Type]bool{})
@@ -530,28 +619,23 @@ func (s *synthesizer) synthesizeGuard(typeNode *shimast.Node, memberName string,
 			Code:     "MERGESYNTH_RUNTIME_IMPORT",
 			Message:  "merge guard for \"" + memberName + "\" needs a typia runtime helper import; dropped (the emitted JS must stay typia-free, §87)",
 		})
-		return nil, false
+		return nil, false, nil
 	}
 	if built.reason != "" {
 		// Each tail says what the emit actually contains. Calling a position
 		// "unchecked" when a clause was in fact emitted for it sends a reader
-		// looking for the wrong thing — and the whole point of the report is that
-		// what got emitted is weaker than the declared type, not absent.
-		tail := "; the guard checks every position it could reach, and the arity bounds stand"
+		// looking for the wrong thing — and the whole point of the report is
+		// that what got emitted is weaker than the declared type, not absent.
+		tail := "the guard checks every position it could reach, and the arity bounds stand"
 		switch {
 		case built.node == nil:
-			tail = "; dropped (that parameter carries no clause, but its arity bounds stand)"
+			tail = "dropped (that parameter carries no clause, but its arity bounds stand)"
 		case built.floor:
-			tail = "; the guard checks only that the value's runtime kind is one the type admits, and the arity bounds stand"
+			tail = "the guard checks only that the value's runtime kind is one the type admits, and the arity bounds stand"
 		}
-		s.addDiagnostic(Diagnostic{
-			File:     s.file.FileName(),
-			Category: Warning,
-			Code:     "MERGESYNTH_PRIVATE_SURFACE",
-			Message:  "merge guard for \"" + memberName + "\" cannot check " + built.reason + tail,
-		})
+		finding = &privateSurfaceFinding{index: index, typeText: typeNameOf(typeNode), reason: built.reason, tail: tail}
 	}
-	return built.node, built.node != nil
+	return built.node, built.node != nil, finding
 }
 
 // guard is one position's synthesized check.

@@ -9,6 +9,8 @@ package mergesynthtransform
 import (
 	"strings"
 	"testing"
+
+	shimprinter "github.com/microsoft/typescript-go/shim/printer"
 )
 
 const accessorClassFixture = `
@@ -136,6 +138,7 @@ registerAugmentations("t:IAlpha", AlphaExtensions);
 // keep the object floor rather than emit either a guard that passes everything or
 // no guard at all.
 func TestPrivateOnlyClassKeepsTheObjectFloorWithADiagnostic(t *testing.T) {
+	t.Setenv("TTSC_MERGESYNTH_VERBOSE", "1")
 	out, diags := run(t, `
 export class Sealed {
   #a: number = 0;
@@ -269,6 +272,7 @@ registerAugmentations("t:IAlpha", AlphaExtensions);
 // The symbol case it has to stay distinct from: a `unique symbol` name carries
 // no string key, so the member is skipped and the refusal reported.
 func TestSymbolComputedNameIsStillRefused(t *testing.T) {
+	t.Setenv("TTSC_MERGESYNTH_VERBOSE", "1")
 	out, diags := run(t, `
 const MARK: unique symbol = Symbol("m");
 export class SK { [MARK]: string = ""; tag: string = ""; }
@@ -284,6 +288,172 @@ registerAugmentations("t:IAlpha", AlphaExtensions);
 	}
 	if !strings.Contains(guard, "input.tag") {
 		t.Errorf("the sibling member lost its clause:\n%s", guard)
+	}
+}
+
+// TestPrivateSurfaceDefaultIsSilent: the default (no TTSC_MERGESYNTH_VERBOSE)
+// path reports NOTHING for a weakened guard — no per-member diagnostic and no
+// summary either, per the owner's ruling that build output must carry no
+// mergesynth private-surface noise by default.
+func TestPrivateSurfaceDefaultIsSilent(t *testing.T) {
+	_, diags := run(t, `
+const MARK: unique symbol = Symbol("m");
+export class SK { [MARK]: string = ""; tag: string = ""; }
+export class Sealed { #a: number = 0; #b: string = ""; }
+export const AlphaExtensions = {
+  setOptions(o: SK): void {},
+  setOther(o: Sealed): void {},
+};
+registerAugmentations("t:IAlpha", AlphaExtensions);
+`)
+
+	for _, d := range diags {
+		if d.Code == "MERGESYNTH_PRIVATE_SURFACE" {
+			t.Errorf("default path must emit no MERGESYNTH_PRIVATE_SURFACE diagnostic, got %+v", d)
+		}
+	}
+}
+
+// TestPrivateSurfaceVerboseEmitsPerMemberDetail: TTSC_MERGESYNTH_VERBOSE=1
+// restores the per-member diagnostics, one per weakened member, each labeled
+// with its declaring receiver type and naming its own weakened arg position
+// and type spelling rather than bare unattributed prose.
+func TestPrivateSurfaceVerboseEmitsPerMemberDetail(t *testing.T) {
+	t.Setenv("TTSC_MERGESYNTH_VERBOSE", "1")
+	_, diags := run(t, `
+const MARK: unique symbol = Symbol("m");
+export class SK { [MARK]: string = ""; tag: string = ""; }
+export class Sealed { #a: number = 0; #b: string = ""; }
+export const AlphaExtensions = {
+  setOptions(o: SK): void {},
+  setOther(o: Sealed): void {},
+};
+registerAugmentations("t:IAlpha", AlphaExtensions);
+`)
+
+	var surface []Diagnostic
+	for _, d := range diags {
+		if d.Code == "MERGESYNTH_PRIVATE_SURFACE" {
+			surface = append(surface, d)
+		}
+	}
+	if len(surface) != 2 {
+		t.Fatalf("want 2 per-member MERGESYNTH_PRIVATE_SURFACE diagnostics under verbose mode, got %d: %+v", len(surface), surface)
+	}
+	for _, d := range surface {
+		if !strings.Contains(d.Message, "merge guard for ") || !strings.Contains(d.Message, "cannot fully check: ") {
+			t.Errorf("verbose diagnostic did not use the per-member wording: %q", d.Message)
+		}
+		if !strings.Contains(d.Message, "arg 0 (") {
+			t.Errorf("verbose diagnostic did not name the weakened arg's position: %q", d.Message)
+		}
+	}
+	if !strings.Contains(surface[0].Message, `"setOptions"`) && !strings.Contains(surface[1].Message, `"setOptions"`) {
+		t.Errorf("no diagnostic named setOptions: %+v", surface)
+	}
+	if !strings.Contains(surface[0].Message, `"setOther"`) && !strings.Contains(surface[1].Message, `"setOther"`) {
+		t.Errorf("no diagnostic named setOther: %+v", surface)
+	}
+}
+
+// TestPrivateSurfaceVerboseNamesEveryWeakenedPosition: a member with MORE
+// THAN ONE weakened parameter gets one diagnostic listing every one of them —
+// not just the first, the way a single `guard.reason` string would collapse
+// to — each tagged with its own arg index and declared type spelling.
+func TestPrivateSurfaceVerboseNamesEveryWeakenedPosition(t *testing.T) {
+	t.Setenv("TTSC_MERGESYNTH_VERBOSE", "1")
+	_, diags := run(t, `
+export class SK { #a: number = 0; }
+export class Sealed { #b: string = ""; }
+export interface IAlphaExt { setBoth(a: SK, b: Sealed): void; }
+export const AlphaExtensions: IAlphaExt = {
+  setBoth(a: SK, b: Sealed): void {},
+};
+registerAugmentations("t:IAlpha", AlphaExtensions);
+`)
+
+	var surface []Diagnostic
+	for _, d := range diags {
+		if d.Code == "MERGESYNTH_PRIVATE_SURFACE" {
+			surface = append(surface, d)
+		}
+	}
+	if len(surface) != 1 {
+		t.Fatalf("want exactly 1 diagnostic for the whole member, got %d: %+v", len(surface), surface)
+	}
+	msg := surface[0].Message
+	if !strings.Contains(msg, `"setBoth"`) {
+		t.Errorf("diagnostic does not name the member: %q", msg)
+	}
+	if !strings.Contains(msg, "arg 0 (SK)") {
+		t.Errorf("diagnostic does not name arg 0's position and type: %q", msg)
+	}
+	if !strings.Contains(msg, "arg 1 (Sealed)") {
+		t.Errorf("diagnostic does not name arg 1's position and type: %q", msg)
+	}
+}
+
+// TestPrivateSurfaceVerboseLabelsTheDeclaringReceiver: a member whose
+// implementation declares an explicit `this` parameter — the shape every
+// real registerAugmentations body takes — labels its diagnostic
+// "Receiver.member", not just the bare member name.
+func TestPrivateSurfaceVerboseLabelsTheDeclaringReceiver(t *testing.T) {
+	t.Setenv("TTSC_MERGESYNTH_VERBOSE", "1")
+	_, diags := run(t, `
+export class Sealed { #a: number = 0; }
+export const AlphaExtensions = {
+  setOptions(this: IAlpha, o: Sealed): void {},
+};
+registerAugmentations("t:IAlpha", AlphaExtensions);
+`)
+
+	var surface []Diagnostic
+	for _, d := range diags {
+		if d.Code == "MERGESYNTH_PRIVATE_SURFACE" {
+			surface = append(surface, d)
+		}
+	}
+	if len(surface) != 1 {
+		t.Fatalf("want exactly 1 diagnostic, got %d: %+v", len(surface), surface)
+	}
+	if !strings.Contains(surface[0].Message, `"IAlpha.setOptions"`) {
+		t.Errorf("diagnostic does not label the declaring receiver: %q", surface[0].Message)
+	}
+}
+
+// TestPrivateSurfaceVerboseDedupedAcrossRepeatedCompiles: the same file
+// transformed twice in one host process — mirroring a multi-entrypoint build
+// or a cache-warmed envelope replaying a prior file's diagnostics — reports a
+// weakened member's line only once, not once per compile.
+func TestPrivateSurfaceVerboseDedupedAcrossRepeatedCompiles(t *testing.T) {
+	t.Setenv("TTSC_MERGESYNTH_VERBOSE", "1")
+	prog, sf := loadFixture(t, `
+export class Sealed {
+  #a: number = 0;
+  #b: string = "";
+}
+export const AlphaExtensions = {
+  setOptions(o: Sealed): void {},
+};
+registerAugmentations("t:IAlpha", AlphaExtensions);
+`)
+	defer func() { _ = prog.Close() }()
+
+	var diags []Diagnostic
+	addDiagnostic := func(d Diagnostic) { diags = append(diags, d) }
+	for range 2 {
+		transform := New(prog, addDiagnostic)
+		transform(shimprinter.NewEmitContext(), sf)
+	}
+
+	var surface []Diagnostic
+	for _, d := range diags {
+		if d.Code == "MERGESYNTH_PRIVATE_SURFACE" {
+			surface = append(surface, d)
+		}
+	}
+	if len(surface) != 1 {
+		t.Fatalf("want exactly 1 MERGESYNTH_PRIVATE_SURFACE diagnostic across 2 compiles of the same file, got %d: %+v", len(surface), surface)
 	}
 }
 
