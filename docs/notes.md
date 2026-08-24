@@ -89,6 +89,17 @@ land; delete the file when empty.
       args from `LifetimeArgument<Lifetime>`, not the model's factory shape — standard's
       createScope admits an ignored optional arg; dissolves if the pending lose-createScope
       ruling lands.
+- [ ] **Owner design direction 2026-08-24 (idea stage, NO implementation): scope as a true
+      bolt-on via the marker-service paradigm — the "starfish" shape.** A request arrives
+      wrapped: `ScopedRequest<T>` (a marker address, like Invoker/ScopeFactory). The plan is
+      built normally but NOT realized; the marker's synthesized answer returns a deferred value
+      that holds the plan AND exposes hook/callback points at the positions a lifetime engine
+      needs (instance-cache lookup before make, store after, scope entry/exit) — so realization
+      diverts through the scope engine's inserted callbacks at exactly the right places. The
+      engine everts its internals as hooks (the starfish expelling its stomach): scope still
+      can't see engine internals, but they're no longer so internal. Relationship to the current
+      Realizer contract unexplored — could subsume it or sit beside it; needs a design pass
+      before anything moves.
 - [ ] **OWNER RULING NEEDED — named-wins typefor derivation for closed generic callables.** The
       Go hole rule (landed) makes OPEN templates derive by name (`ScopeFactory<$<'T'>>` →
       nominal + hole). But a named callable template applied with CLOSED args still derives
