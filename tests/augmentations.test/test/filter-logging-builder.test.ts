@@ -30,7 +30,7 @@ function resolveFilterOptions(builder: ILoggingBuilder): LoggerFilterOptions {
   // The concrete provider's own `getService` shadows the sugar faces this
   // program merges in, so the interface view is reasserted before the call.
   const provider = (services.build() as unknown as IServiceProvider).createScope('singleton');
-  const options: IOptions<LoggerFilterOptions> = provider.getRequiredService(LOGGER_FILTER_OPTIONS_ACCESSOR_TYPE);
+  const options: IOptions<LoggerFilterOptions> = provider.getService(LOGGER_FILTER_OPTIONS_ACCESSOR_TYPE);
   return options.value;
 }
 

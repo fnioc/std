@@ -24,7 +24,7 @@ describe('addOptions(optionsType) — wrap the bound T', () => {
     services = services.addOptions(WIDGET_TYPE);
 
     const provider = di.usingLifetimeModel(LifetimeModel.noop).usingManifest(services).build();
-    const options: IOptions<Widget> = provider.getRequiredService(optionsAddressType(WIDGET_TYPE));
+    const options: IOptions<Widget> = provider.getService(optionsAddressType(WIDGET_TYPE));
 
     // The value IS the instance bound at the options type.
     expect(options.value).toBe(widget);
@@ -44,7 +44,7 @@ describe('addOptions(optionsType) — wrap the bound T', () => {
     services = services.addOptions(ENGINE_TYPE);
 
     const provider = di.usingLifetimeModel(LifetimeModel.noop).usingManifest(services).build();
-    const options: IOptions<Engine> = provider.getRequiredService(optionsAddressType(ENGINE_TYPE));
+    const options: IOptions<Engine> = provider.getService(optionsAddressType(ENGINE_TYPE));
 
     // The value is what the container built for the options type -- asserted by
     // construction rather than by instance identity, which belongs to the
@@ -63,8 +63,8 @@ describe('addOptions(optionsType) — wrap the bound T', () => {
 
     const provider = di.usingLifetimeModel(LifetimeModel.noop).usingManifest(services).build();
 
-    expect(provider.getRequiredService(optionsAddressType(A_TYPE)).value).toEqual({ which: 'a' });
-    expect(provider.getRequiredService(optionsAddressType(B_TYPE)).value).toEqual({ which: 'b' });
+    expect(provider.getService(optionsAddressType(A_TYPE)).value).toEqual({ which: 'a' });
+    expect(provider.getService(optionsAddressType(B_TYPE)).value).toEqual({ which: 'b' });
   });
 
   test('a type nobody offered is not answered', () => {
@@ -73,6 +73,6 @@ describe('addOptions(optionsType) — wrap the bound T', () => {
 
     // The open registration takes the base slot as a dependency, so a type with
     // no `addOptions` leaves it unlowerable rather than assembling an empty value.
-    expect(provider.resolve(optionsAddressType(Type.from('test:NeverOffered')))).toBeUndefined();
+    expect(provider.resolve(Type.union(optionsAddressType(Type.from('test:NeverOffered')), Type.typeLiteral(undefined)))).toBeUndefined();
   });
 });

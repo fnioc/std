@@ -31,7 +31,7 @@ describe('configure — section-to-options binding', () => {
     services = services.configure(WIDGET_OPTIONS_TYPE, config.getSection('Widget'));
 
     const provider = services.build();
-    const options: IOptions<WidgetOptions> = provider.getRequiredService(optionsAddressType(WIDGET_OPTIONS_TYPE));
+    const options: IOptions<WidgetOptions> = provider.getService(optionsAddressType(WIDGET_OPTIONS_TYPE));
 
     expect(options.value).toEqual({ Url: 'http://first', Retries: '3' });
   });
@@ -44,7 +44,7 @@ describe('configure — section-to-options binding', () => {
     services = services.configure(WIDGET_OPTIONS_TYPE, config.getSection('Widget'));
 
     const provider = services.build();
-    const options: IOptions<WidgetOptions> = provider.getRequiredService(optionsAddressType(WIDGET_OPTIONS_TYPE));
+    const options: IOptions<WidgetOptions> = provider.getService(optionsAddressType(WIDGET_OPTIONS_TYPE));
 
     const seen: WidgetOptions[] = [];
     const registration = options.subscribe!((value) => seen.push(value));
@@ -75,7 +75,7 @@ describe('configure — section-to-options binding', () => {
     services = services.configure(WIDGET_OPTIONS_TYPE, config.getSection('Extra'));
 
     const provider = services.build();
-    const options: IOptions<WidgetOptions> = provider.getRequiredService(optionsAddressType(WIDGET_OPTIONS_TYPE));
+    const options: IOptions<WidgetOptions> = provider.getService(optionsAddressType(WIDGET_OPTIONS_TYPE));
 
     expect(options.value).toEqual({ Url: 'http://a', Retries: '5' });
   });
@@ -87,7 +87,7 @@ describe('addOptions — no configured source', () => {
     services = services.addOptions(WIDGET_OPTIONS_TYPE, () => ({ Url: 'default' }));
 
     const provider = services.build();
-    const options: IOptions<WidgetOptions> = provider.getRequiredService(optionsAddressType(WIDGET_OPTIONS_TYPE));
+    const options: IOptions<WidgetOptions> = provider.getService(optionsAddressType(WIDGET_OPTIONS_TYPE));
 
     expect(options.value).toEqual({ Url: 'default' });
     expect(options.subscribe).toBeUndefined();

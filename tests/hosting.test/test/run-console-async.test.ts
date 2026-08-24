@@ -47,8 +47,8 @@ test('runConsoleAsync (configureOptions form) applies the options, and they reac
     services = services.addHostedService((resolver) => {
       // The same options singleton is what the ConsoleLifetime constructor read,
       // so observing it here observes exactly what the lifetime holds.
-      const options: ConsoleLifetimeOptions = resolver.getRequiredService(CONSOLE_LIFETIME_OPTIONS_TYPE);
-      const lifetime: IHostLifetime = resolver.getRequiredService(HOST_LIFETIME_TYPE);
+      const options: ConsoleLifetimeOptions = resolver.getService(CONSOLE_LIFETIME_OPTIONS_TYPE);
+      const lifetime: IHostLifetime = resolver.getService(HOST_LIFETIME_TYPE);
       return { async start(): Promise<void> {
         seenSuppress = options.suppressStatusMessages;
         lifetimeIsConsole = lifetime instanceof ConsoleLifetime;
@@ -81,7 +81,7 @@ test('runConsoleAsync without a configureOptions delegate leaves the console lif
   const builder = new HostBuilder();
   builder.configureServices((_context, services) => {
     services = services.addHostedService((resolver) => {
-      const options: ConsoleLifetimeOptions = resolver.getRequiredService(CONSOLE_LIFETIME_OPTIONS_TYPE);
+      const options: ConsoleLifetimeOptions = resolver.getService(CONSOLE_LIFETIME_OPTIONS_TYPE);
       return { async start(): Promise<void> {
         seenSuppress = options.suppressStatusMessages;
       }, async stop(): Promise<void> {} };

@@ -29,10 +29,10 @@ describe('addMemoryCache', () => {
     services = services.addMemoryCache();
 
     const scope = services.build().createScope('singleton');
-    const cache: MemoryCache = scope.getRequiredService(MEMORY_CACHE_TYPE);
+    const cache: MemoryCache = scope.getService(MEMORY_CACHE_TYPE);
     expect(cache).toBeInstanceOf(MemoryCache);
     // Singleton: the same instance on every resolve.
-    const cacheAgain: MemoryCache = scope.getRequiredService(MEMORY_CACHE_TYPE);
+    const cacheAgain: MemoryCache = scope.getService(MEMORY_CACHE_TYPE);
     expect(cacheAgain).toBe(cache);
 
     // The resolved cache actually works.
@@ -61,7 +61,7 @@ describe('addMemoryCache', () => {
     // Lazy: the configure step has not run at registration/build time.
     expect(ran).toBe(0);
 
-    const cache: MemoryCache = scope.getRequiredService(MEMORY_CACHE_TYPE);
+    const cache: MemoryCache = scope.getService(MEMORY_CACHE_TYPE);
     expect(ran).toBe(1);
     // The configured options reached the cache: statistics are tracked.
     cache.get('absent');
@@ -75,7 +75,7 @@ describe('addMemoryCache', () => {
     });
 
     const scope = services.build().createScope('singleton');
-    const options: { value: MemoryCacheOptions; } = scope.getRequiredService(MEMORY_CACHE_OPTIONS_ACCESSOR_TYPE);
+    const options: { value: MemoryCacheOptions; } = scope.getService(MEMORY_CACHE_OPTIONS_ACCESSOR_TYPE);
     expect(options.value).toBeInstanceOf(MemoryCacheOptions);
     expect(options.value.name).toBe('configured');
   });
@@ -86,7 +86,7 @@ describe('addMemoryCache', () => {
     services = services.addValue(LOGGER_FACTORY_TYPE, factory);
     services = services.addMemoryCache();
 
-    services.build().createScope('singleton').getRequiredService(MEMORY_CACHE_TYPE);
+    services.build().createScope('singleton').getService(MEMORY_CACHE_TYPE);
 
     expect(factory.categories).toEqual(['MemoryCache']);
   });
@@ -96,7 +96,7 @@ describe('addMemoryCache', () => {
     services = services.addMemoryCache();
 
     const cache: MemoryCache = services.build().createScope('singleton')
-      .getRequiredService(MEMORY_CACHE_TYPE);
+      .getService(MEMORY_CACHE_TYPE);
     expect(cache).toBeInstanceOf(MemoryCache);
   });
 
@@ -107,7 +107,7 @@ describe('addMemoryCache', () => {
 
     services = services.addMemoryCache();
 
-    const resolved = services.build().createScope('singleton').getRequiredService(MEMORY_CACHE_TYPE);
+    const resolved = services.build().createScope('singleton').getService(MEMORY_CACHE_TYPE);
     expect(resolved).toBe(sentinel);
   });
 });

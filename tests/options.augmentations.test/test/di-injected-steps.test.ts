@@ -40,7 +40,7 @@ describe('configure — DI-injected', () => {
     });
 
     const provider = services.build();
-    const options: IOptions<WidgetOptions> = provider.getRequiredService(optionsAddressType(OPTIONS_TYPE));
+    const options: IOptions<WidgetOptions> = provider.getService(optionsAddressType(OPTIONS_TYPE));
 
     expect(options.value.url).toBe('http://svc');
   });
@@ -59,7 +59,7 @@ describe('configure — DI-injected', () => {
     });
 
     const provider = services.build();
-    const options: IOptions<WidgetOptions> = provider.getRequiredService(optionsAddressType(OPTIONS_TYPE));
+    const options: IOptions<WidgetOptions> = provider.getService(optionsAddressType(OPTIONS_TYPE));
 
     expect(options.value).toEqual({ url: 'http://svc', retries: 4, note: '' });
   });
@@ -76,7 +76,7 @@ describe('configure — DI-injected', () => {
     });
 
     const provider = services.build();
-    const options: IOptions<WidgetOptions> = provider.getRequiredService(optionsAddressType(OPTIONS_TYPE));
+    const options: IOptions<WidgetOptions> = provider.getService(optionsAddressType(OPTIONS_TYPE));
 
     expect(options.value.url).toBe('http://svc');
     expect(options.value.note).toBe('plain');
@@ -96,7 +96,7 @@ describe('postConfigure — DI-injected', () => {
     });
 
     const provider = services.build();
-    const options: IOptions<WidgetOptions> = provider.getRequiredService(optionsAddressType(OPTIONS_TYPE));
+    const options: IOptions<WidgetOptions> = provider.getService(optionsAddressType(OPTIONS_TYPE));
 
     expect(options.value.note).toBe('base!');
   });
@@ -119,7 +119,7 @@ describe('validate — DI-injected', () => {
     const provider = services.build();
 
     expect(() => {
-      const options: IOptions<WidgetOptions> = provider.getRequiredService(
+      const options: IOptions<WidgetOptions> = provider.getService(
         optionsAddressType(OPTIONS_TYPE),
       );
       return options;
@@ -133,13 +133,13 @@ describe('validate — DI-injected', () => {
     const provider = services.build();
 
     expect(() => {
-      const options: IOptions<WidgetOptions> = provider.getRequiredService(
+      const options: IOptions<WidgetOptions> = provider.getService(
         optionsAddressType(OPTIONS_TYPE),
       );
       return options;
     }).toThrow(OptionsValidationError);
     expect(() => {
-      const options: IOptions<WidgetOptions> = provider.getRequiredService(
+      const options: IOptions<WidgetOptions> = provider.getService(
         optionsAddressType(OPTIONS_TYPE),
       );
       return options;
@@ -153,7 +153,7 @@ describe('validate — DI-injected', () => {
     const provider = services.build();
 
     expect(() => {
-      const options: IOptions<WidgetOptions> = provider.getRequiredService(
+      const options: IOptions<WidgetOptions> = provider.getService(
         optionsAddressType(OPTIONS_TYPE),
       );
       return options;

@@ -82,14 +82,14 @@ describe('addMetrics registers the metrics factory', () => {
     // Singletons cache only inside an open scope frame; the frameless provider
     // `build()` returns resolves everything transiently (di.core §"frameless").
     const provider = manifest.build().createScope('singleton');
-    const factory: IMetricListenerConfigFactory = provider.getRequiredService(
+    const factory: IMetricListenerConfigFactory = provider.getService(
       METRICS_LISTENER_CONFIGURATION_FACTORY_TYPE,
     );
     expect(factory).toBeInstanceOf(MetricListenerConfigFactory);
     expect(factory.getConfig('MyListener').get('Key')).toBe('second');
 
     // Singleton: repeated resolution yields the same instance.
-    const factoryAgain: IMetricListenerConfigFactory = provider.getRequiredService(
+    const factoryAgain: IMetricListenerConfigFactory = provider.getService(
       METRICS_LISTENER_CONFIGURATION_FACTORY_TYPE,
     );
     expect(factoryAgain).toBe(factory);
@@ -99,7 +99,7 @@ describe('addMetrics registers the metrics factory', () => {
     let manifest: Manifest<unknown> = new DefaultManifest();
     manifest = manifest.addMetrics();
 
-    const factory: IMetricListenerConfigFactory = manifest.build().createScope('singleton').getRequiredService(
+    const factory: IMetricListenerConfigFactory = manifest.build().createScope('singleton').getService(
       METRICS_LISTENER_CONFIGURATION_FACTORY_TYPE,
     );
     expect([...factory.getConfig('MyListener').getChildren()]).toHaveLength(0);
@@ -114,12 +114,12 @@ describe('addTracing registers the tracing factory', () => {
     });
 
     const provider = manifest.build().createScope('singleton');
-    const factory: ActivityListenerConfigFactory = provider.getRequiredService(
+    const factory: ActivityListenerConfigFactory = provider.getService(
       TRACING_LISTENER_CONFIGURATION_FACTORY_TYPE,
     );
     expect(factory).toBeInstanceOf(DefaultActivityListenerConfigFactory);
     expect(factory.getConfig('MyListener').get('Key')).toBe('second');
-    const factoryAgain: ActivityListenerConfigFactory = provider.getRequiredService(
+    const factoryAgain: ActivityListenerConfigFactory = provider.getService(
       TRACING_LISTENER_CONFIGURATION_FACTORY_TYPE,
     );
     expect(factoryAgain).toBe(factory);

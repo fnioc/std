@@ -247,16 +247,16 @@ function makeGadget(bar: IBar): IGadget {
 
 declare const provider: IServiceProvider;
 
-export const tokenful = provider.getRequiredService<IThing>();
+export const tokenful = provider.getService<IThing>();
 export const tryTok = provider.resolve<IThing>();
-export const many = provider.getServices<IThing>();
+export const many = provider.resolveMany<IThing>();
 // A type LITERAL is a service type like any other: it derives its own token
 // rather than collapsing to the literal value.
-export const singular = provider.getRequiredService<'dev'>();
+export const singular = provider.getService<'dev'>();
 // A keyed type argument composes base and key into ONE tag token — the same token
 // the keyed registration mints, which is what makes the two meet at runtime.
 export const keyedTok = provider.resolve<Keyed<ICache, 'redis'>>();
-export const keyedKnown = provider.getRequiredService<Keyed<ICache, 'redis'>>();
+export const keyedKnown = provider.getService<Keyed<ICache, 'redis'>>();
 `;
 
 // Steering the observed implementer type with a cast. The derivation reads the
@@ -569,12 +569,12 @@ describe.skipIf(!toolchainReady)('generic inline stage — registration parity (
 });
 
 describe.skipIf(!toolchainReady)('generic inline stage — lookup parity (W5)', () => {
-  test('getRequiredService<I>() lowers to the Type-taking member', () => {
+  test('getService<I>() lowers to the Type-taking member', () => {
     const line = lineWith(resolveInline, 'tokenful =');
     expect(line).toBeDefined();
     const thing = constFor(chainModule, 'Type.imported("IThing", "chain-app/tokens/resolve")');
-    expect(line).toContain(`.getRequiredService(${thing})`);
-    expect(line).not.toContain('getRequiredService<');
+    expect(line).toContain(`.getService(${thing})`);
+    expect(line).not.toContain('getService<');
     assertNoAuthoringSurvivors(resolveInline);
   });
 
@@ -587,21 +587,21 @@ describe.skipIf(!toolchainReady)('generic inline stage — lookup parity (W5)', 
     assertNoAuthoringSurvivors(resolveInline);
   });
 
-  test('getServices<I>() derives the ELEMENT type, not a collection type', () => {
+  test('resolveMany<I>() derives the ELEMENT type, not a collection type', () => {
     // The collection is the verb's own doing; the type argument names one element,
     // so the token is the bare element type.
     const line = lineWith(resolveInline, 'many =');
     expect(line).toBeDefined();
     const thing = constFor(chainModule, 'Type.imported("IThing", "chain-app/tokens/resolve")');
-    expect(line).toContain(`.getServices(${thing})`);
-    expect(line).not.toContain('getServices<');
+    expect(line).toContain(`.resolveMany(${thing})`);
+    expect(line).not.toContain('resolveMany<');
   });
 
   test('a type LITERAL derives its own token like any other service type', () => {
     const line = lineWith(resolveInline, 'singular =');
     expect(line).toBeDefined();
     const literal = constFor(chainModule, 'Type.typeLiteral("dev")');
-    expect(line).toContain(`.getRequiredService(${literal})`);
+    expect(line).toContain(`.getService(${literal})`);
     assertNoAuthoringSurvivors(resolveInline);
   });
 
@@ -616,7 +616,7 @@ describe.skipIf(!toolchainReady)('generic inline stage — lookup parity (W5)', 
 
     const requiredLine = lineWith(resolveInline, 'keyedKnown =');
     expect(requiredLine).toBeDefined();
-    expect(requiredLine).toContain(`.getRequiredService(${composed})`);
+    expect(requiredLine).toContain(`.getService(${composed})`);
     assertNoAuthoringSurvivors(resolveInline);
   });
 
@@ -637,7 +637,7 @@ describe.skipIf(!toolchainReady)('generic inline stage — lookup parity (W5)', 
     let unkeyed: Manifest<'singleton'> = new DefaultManifest<'singleton'>();
     unkeyed = unkeyed.addValue(base, marker);
     const unkeyedProvider = di.usingLifetimeModel(LifetimeModel.noop).usingManifest(unkeyed).build();
-    expect(unkeyedProvider.resolve(composed)).toBeUndefined();
+    expect(unkeyedProvider.resolve(Type.union(composed, Type.typeLiteral(undefined)))).toBeUndefined();
   });
 });
 
@@ -783,7 +783,7 @@ describe.skipIf(!toolchainReady)('generic inline stage — addOptions options wi
     services = services.addOptions(optionsType);
 
     const provider = di.usingLifetimeModel(LifetimeModel.noop).usingManifest(services).build();
-    const options = provider.getRequiredService(optionsAddressType(optionsType)) as IOptions<UserOptions>;
+    const options = provider.getService(optionsAddressType(optionsType)) as IOptions<UserOptions>;
     // IOptions<T> resolves to a value that IS the registered T.
     expect(options.value).toBe(value);
   });

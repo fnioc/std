@@ -28,7 +28,7 @@ test('asHostBuilder replays accumulated configureServices onto the application b
 
   const host = appBuilder.build();
   expect(replayed).toBe(true);
-  expect(host.services.getRequiredService(Type.from('test:Marker'))).toBe('present');
+  expect(host.services.getService(Type.from('test:Marker'))).toBe('present');
 
   host[Symbol.dispose]();
 });

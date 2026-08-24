@@ -122,7 +122,7 @@ test('addHostedService registers many under one token; the collection resolves a
 
   const provider = manifest.build();
   const scope = provider.createScope('singleton');
-  const services: IHostedService[] = scope.getRequiredService(hostedServiceCollectionType());
+  const services: IHostedService[] = scope.getService(hostedServiceCollectionType());
 
   expect(services).toHaveLength(2);
   for (const service of services) {
@@ -137,6 +137,6 @@ test('the hosted-service collection resolves to an empty array when none are reg
   let manifest: Manifest<unknown> = new DefaultManifest();
   const provider = manifest.build();
   const scope = provider.createScope('singleton');
-  const services: IHostedService[] = scope.getRequiredService(hostedServiceCollectionType());
+  const services: IHostedService[] = scope.getService(hostedServiceCollectionType());
   expect(services).toEqual([]);
 });

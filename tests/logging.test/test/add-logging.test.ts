@@ -25,8 +25,8 @@ describe('addLogging', () => {
     const services = new DefaultManifest().addLogging((builder) => builder.addProvider(provider));
 
     const root = services.build().createScope('singleton');
-    const factory: ILoggerFactory = root.getRequiredService(LOGGER_FACTORY_TYPE);
-    const another: ILoggerFactory = root.getRequiredService(LOGGER_FACTORY_TYPE);
+    const factory: ILoggerFactory = root.getService(LOGGER_FACTORY_TYPE);
+    const another: ILoggerFactory = root.getService(LOGGER_FACTORY_TYPE);
     expect(factory).toBe(another); // singleton
 
     const logger = factory.createLogger('App');
@@ -39,7 +39,7 @@ describe('addLogging', () => {
     const services = new DefaultManifest().addLogging((builder) => builder.addProvider(provider));
 
     const root = services.build().createScope('singleton');
-    const factory: ILoggerFactory = root.getRequiredService(LOGGER_FACTORY_TYPE);
+    const factory: ILoggerFactory = root.getService(LOGGER_FACTORY_TYPE);
     const logger = factory.createLogger('App');
 
     logTrace(logger, 't');
@@ -52,7 +52,7 @@ describe('addLogging', () => {
     const services = new DefaultManifest().addLogging((builder) => builder.addProvider(provider));
 
     const iLoggerBase = Type.from(ILOGGER_TOKEN) as ImportedType;
-    const logger: ILogger = services.build().getRequiredService(
+    const logger: ILogger = services.build().getService(
       Type.imported(iLoggerBase.name, iLoggerBase.from, [Type.from('svc:PaymentService')]),
     );
     logError(logger, 'boom');

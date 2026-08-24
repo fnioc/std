@@ -21,10 +21,10 @@ describe('addDistributedMemoryCache', () => {
     expect([...services]).toHaveLength(0);
 
     const scope = registered.build().createScope('singleton');
-    const cache: MemoryDistributedCache = scope.getRequiredService(DISTRIBUTED_CACHE_TYPE);
+    const cache: MemoryDistributedCache = scope.getService(DISTRIBUTED_CACHE_TYPE);
     expect(cache).toBeInstanceOf(MemoryDistributedCache);
     // Singleton: the same instance on every resolve.
-    const cacheAgain: MemoryDistributedCache = scope.getRequiredService(DISTRIBUTED_CACHE_TYPE);
+    const cacheAgain: MemoryDistributedCache = scope.getService(DISTRIBUTED_CACHE_TYPE);
     expect(cacheAgain).toBe(cache);
 
     // The resolved cache actually works.
@@ -52,7 +52,7 @@ describe('addDistributedMemoryCache', () => {
     expect(seen).toBeUndefined();
 
     const cache: MemoryDistributedCache = returned.build().createScope('singleton')
-      .getRequiredService(DISTRIBUTED_CACHE_TYPE);
+      .getService(DISTRIBUTED_CACHE_TYPE);
     expect(cache).toBeInstanceOf(MemoryDistributedCache);
     expect(seen).toBeInstanceOf(MemoryDistributedCacheOptions);
   });

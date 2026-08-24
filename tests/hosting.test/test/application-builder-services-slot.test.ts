@@ -35,7 +35,7 @@ test('builder.logging registrations reach the manifest build() reads', () => {
 
   // The chain is immutable, so this only holds because `logging` writes through
   // the SAME slot `builder.services` reads.
-  const providers: ILoggerProvider[] = builder.services.build().getRequiredService(Type.array(LOGGER_PROVIDER_TYPE));
+  const providers: ILoggerProvider[] = builder.services.build().getService(Type.array(LOGGER_PROVIDER_TYPE));
   expect(providers).toContain(marker);
 });
 
@@ -49,9 +49,9 @@ test('builder.services and builder.logging registrations both survive into the h
   builder.services = builder.services.addValue(Type.from('test:Second'), 'second');
 
   const host = builder.build();
-  expect(host.services.getRequiredService(Type.from('test:First'))).toBe('first');
-  expect(host.services.getRequiredService(Type.from('test:Second'))).toBe('second');
-  expect(host.services.getRequiredService(Type.array(LOGGER_PROVIDER_TYPE))).toContain(marker);
+  expect(host.services.getService(Type.from('test:First'))).toBe('first');
+  expect(host.services.getService(Type.from('test:Second'))).toBe('second');
+  expect(host.services.getService(Type.array(LOGGER_PROVIDER_TYPE))).toContain(marker);
 
   host[Symbol.dispose]();
 });
@@ -63,7 +63,7 @@ test('builder.metrics shares the same slot as builder.services', () => {
   builder.metrics.services = builder.metrics.services.addValue(Type.from('test:ViaMetrics'), 'yes');
 
   expect(builder.services).not.toBe(before);
-  expect(builder.services.build().getRequiredService(Type.from('test:ViaMetrics'))).toBe('yes');
+  expect(builder.services.build().getService(Type.from('test:ViaMetrics'))).toBe('yes');
 });
 
 test('asHostBuilder() replays its delegates into the live slot, not a snapshot', () => {
@@ -76,8 +76,8 @@ test('asHostBuilder() replays its delegates into the live slot, not a snapshot',
   builder.services = builder.services.addValue(Type.from('test:Early'), 'early');
 
   const host = builder.build();
-  expect(host.services.getRequiredService(Type.from('test:Early'))).toBe('early');
-  expect(host.services.getRequiredService(Type.from('test:Late'))).toBe('late');
+  expect(host.services.getService(Type.from('test:Early'))).toBe('early');
+  expect(host.services.getService(Type.from('test:Late'))).toBe('late');
 
   host[Symbol.dispose]();
 });

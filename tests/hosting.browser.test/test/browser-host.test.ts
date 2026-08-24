@@ -40,20 +40,20 @@ test('the facade composes settings config, browser environment, console logging,
   const host = builder.build();
 
   // Logging: the browser console provider is registered.
-  const providers: ILoggerProvider[] = host.services.getRequiredService(Type.array(LOGGER_PROVIDER_TYPE));
+  const providers: ILoggerProvider[] = host.services.getService(Type.array(LOGGER_PROVIDER_TYPE));
   expect(providers.some((provider) => {
     return provider instanceof BrowserConsoleLoggerProvider;
   })).toBe(true);
 
   // Lifetime: the BrowserLifetime registration wins over the NullLifetime
   // default (last registration wins), with the configured options.
-  const lifetime: IHostLifetime = host.services.getRequiredService(HOST_LIFETIME_TYPE);
+  const lifetime: IHostLifetime = host.services.getService(HOST_LIFETIME_TYPE);
   expect(lifetime).toBeInstanceOf(BrowserLifetime);
-  const options: BrowserLifetimeOptions = host.services.getRequiredService(BROWSER_LIFETIME_OPTIONS_TYPE);
+  const options: BrowserLifetimeOptions = host.services.getService(BROWSER_LIFETIME_OPTIONS_TYPE);
   expect(options.stopOnPagehide).toBe(false);
 
   // The bridge: registered as a value, eagerly attached to the page context.
-  const bridge: PageLifecycleEvents = host.services.getRequiredService(PAGE_LIFECYCLE_EVENTS_TYPE);
+  const bridge: PageLifecycleEvents = host.services.getService(PAGE_LIFECYCLE_EVENTS_TYPE);
   expect(bridge).toBeInstanceOf(PageLifecycleEvents);
   expect(page.document.registeredTypes).toContain('visibilitychange');
 
@@ -68,7 +68,7 @@ test('host stop disposes the single bridge listener set — no leak across host 
 
   // The bridge — the single DOM-listening component — attaches its five
   // listeners eagerly at composition.
-  const bridge: PageLifecycleEvents = host.services.getRequiredService(PAGE_LIFECYCLE_EVENTS_TYPE);
+  const bridge: PageLifecycleEvents = host.services.getService(PAGE_LIFECYCLE_EVENTS_TYPE);
   expect(bridge).toBeInstanceOf(PageLifecycleEvents);
   expect(page.document.listenerCount + page.window.listenerCount).toBe(5);
 

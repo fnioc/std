@@ -35,7 +35,7 @@ function filterOptionsFor(config: IConfigRoot): IOptions<LoggerFilterOptions> {
   const builder = new LoggingBuilder(new DefaultManifest<'singleton'>());
   builder.addConfig(config);
   const provider = builder.services.build().createScope('singleton');
-  const options: IOptions<LoggerFilterOptions> = provider.getRequiredService(FILTER_OPTIONS_TYPE);
+  const options: IOptions<LoggerFilterOptions> = provider.getService(FILTER_OPTIONS_TYPE);
   return options;
 }
 
@@ -73,7 +73,7 @@ describe('addConfig — the LoggerFilterOptions pipeline', () => {
     config.set('LogLevel:Default', 'Error');
 
     const provider = builder.services.build().createScope('singleton');
-    const options: IOptions<LoggerFilterOptions> = provider.getRequiredService(FILTER_OPTIONS_TYPE);
+    const options: IOptions<LoggerFilterOptions> = provider.getService(FILTER_OPTIONS_TYPE);
     expect(options.value.rules[0]!.logLevel).toBe(LogLevel.Error);
   });
 
@@ -112,7 +112,7 @@ describe('addConfig — the LoggerFilterOptions pipeline', () => {
     LoggingBuilderConfigAugmentations.addConfig.call(builder, config);
 
     const provider = builder.services.build().createScope('singleton');
-    const options: IOptions<LoggerFilterOptions> = provider.getRequiredService(FILTER_OPTIONS_TYPE);
+    const options: IOptions<LoggerFilterOptions> = provider.getService(FILTER_OPTIONS_TYPE);
     expect(options.value.rules[0]!.logLevel).toBe(LogLevel.Debug);
   });
 });

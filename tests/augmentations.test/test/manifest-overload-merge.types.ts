@@ -59,17 +59,13 @@ manifest.removeAll<IWidget>();
 manifest.addOptions(WIDGET);
 manifest.addOptions(WIDGET, () => new Widget());
 
-// getRequiredService / getRequiredService<T>
-provider.getRequiredService(WIDGET);
-provider.getRequiredService<IWidget>();
-
-// getServices / getServices<T>
-provider.getServices(WIDGET);
-provider.getServices<IWidget>();
-
-// getService (base, primitives) -- the one raw primitive, no longer shared with
-// a di.extras sugar overload
+// getService (base, primitives) / getService<T> (sugar, di.extras)
 provider.getService(WIDGET);
+provider.getService<IWidget>();
+
+// resolveMany (base, di.core) / resolveMany<T> (sugar, di.extras)
+provider.resolveMany(WIDGET);
+provider.resolveMany<IWidget>();
 
 // resolve (base, di.core) / resolve<T> (sugar, di.extras)
 provider.resolve(WIDGET);
