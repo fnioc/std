@@ -3,6 +3,31 @@
 Tasks surfaced in passing and deliberately not implemented at the time. Strike items as they
 land; delete the file when empty.
 
+- [ ] **`getService` → `resolve` vocabulary + one-member `IServiceProvider`** (queued behind the
+      pending pass's accept; owner-ruled). `IServiceProvider` keeps ONLY
+      `getService(serviceType: Type): any`; the two callable overloads move to
+      `di.core/src/augmentations/ServiceProvider-service-augmentations.ts` as `resolve`, joined
+      by a plain `resolve(serviceType)` wrapper over `getService`; every other `getService`
+      spelling renames to `resolve`. The callable forms activate the value path via a DETECTABLE
+      PATTERN through the one door: `visitFunc` synthesis detects a requested
+      `Func<[CtorType], Instance]`/`Func<[FuncType], Return]` whose return is identically the
+      callable node's own instance/return, and synthesizes a frame-invoking closure (the supplied
+      callable arriving as the latebound arg) instead of the generic latebound; a registration
+      answering that func-type address still outranks the synthesis (§196), while inside the
+      closure the arg outranks everything for its slot. RULED EXPLICIT: the trigger is a NOMINAL
+      marker, a real di.core exported interface (working name `Invoker<C extends Ctor | Func>`,
+      call signature `(callable: C) => built result`) so `typefor<Invoker<typeof MyCtor>>()`
+      spells the request; the augmentation closes the base with its runtime callable node
+      (interning equates the spellings); engine detects by the marker's address, not a
+      structural Func pattern (which would shadow a legitimate latebound shape). RULED: marker
+      lives in di.core but is NOT exported — the aug file imports it relatively and typefors it;
+      the engine detects by the address pair (`isScopeFactoryAddress` precedent); the only
+      public route to the value path is `resolve(callableType, callable)`. Verify at
+      implementation: what `from` typefor derives for a non-barrel type. Open: marker name; one
+      conditional-return interface vs split ctor/func markers. GOSPEL for
+      `docs/features/augmentations.md`: receiver interfaces never change without explicit
+      conversation; no cover-up overloads on receiver concretes — concrete signatures match the
+      interface EXACTLY.
 - [ ] **Rework the broken dependers** and delete the four `// @ts-nocheck -- TEMP` headers
       (`hosting/src/HostApplicationBuilder.ts`, `hosting/src/HostBuilder.ts`,
       `hosting/src/default-config.ts`, `logging/src/LoggerFactory.ts`). Until then those two
@@ -28,7 +53,7 @@ land; delete the file when empty.
       "merge guard for X cannot check …" lines per full rebuild. Consider a quieter default or a
       summary line.
 - [ ] **Hoist `DistributiveOmit` + `ButNot` into `@rhombus-toolkit/type-helpers`** — currently in primitives
-      `src/utils/type-helpers.ts` (the utils dir is the migration queue); fully general, belongs beside `Flatten`. Ride the next type-helpers publish.
+      `src/toolkit/type-helpers.ts` (the toolkit dir is the migration queue); fully general, belongs beside `Flatten`. Ride the next type-helpers publish.
 - [ ] **Go-side aggregate/nominal naming echoes** — transforms/ internals (tokens/derive.go,
       typenode.go, mergesynth nominal_identity_test.go, typesurface) still speak aggregate/nominal
       where TS now says list/named; wire format unaffected. Rename on the next transforms touch.
@@ -55,10 +80,36 @@ land; delete the file when empty.
 - [ ] **augmentations.test residual 5 fails** — suites load again since the matcher fix; the
       remaining failures are untriaged (likely the hosting/logging red pile reaching through
       filter-logging-builder). Triage after the abstract-ctor Go work lands.
-- [ ] **Lifetime-lane queue (order agreed with the owner; nothing runs without his go):**
-      (1) default model v1 — `undefined`→transient frozen at birth, real `'singleton'` retention,
-      captivity forwarding; revives ~88 red tests. (2) bootstrap/genesis — OPENS with a design
-      proposal (entry-point spelling is an open slot in di2.scope-async.requirements.md) and now
-      also owns registering the `ScopeFactory` address. (3) `ScopeFactory<TLifetime>` model-side
-      mechanics (56 red tests). (4) `sp.createScope<T>()` sugar. (5) disposal (23 red tests).
-      (6) depender rework — hosting/logging/examples, delete the four `@ts-nocheck`s.
+- [ ] **Models wiring review (standard/tagged landed unwired 2026-08-23):** surface the two
+      models publicly (namespace/barrel), add di.core's missing `./tokens/*` white-box seam
+      (suites deep-import by relative path meanwhile), collapse the ~80 duplicated
+      Scope/Router/ScopeProvider lines shared by the two self-contained model files, and correct
+      LifetimeModel.ts's doc claim that `site` is "the natural key for an instance store" (site
+      is per-plan-position; the models key on (descriptor, requested type)). OWNER RULING NEEDED
+      before wiring the scope-dependent red suites (caching.memory 8, hosting.core 5,
+      diagnostics 3, filter-logging-builder): they spell `createScope('singleton')` on
+      `Manifest<string>` — the TAGGED model's shape, not standard's. ENGINE SEAMS the full spec
+      still needs (models worked around or can't): a scope-bound provider can't start a walk
+      under its own model (router-cell workaround in the models); an injected IServiceProvider
+      inside a scope is the container, not the scope (RealizeVisitor.ts:128-130, not fixable
+      model-side); resolveLatebound re-enters under call-time scope, not captured scope
+      (RealizeVisitor.ts:116-118).
+- [ ] **Mergesynth deeper enumeration — owner call open:** verbose diagnostics now enumerate a
+      member's weakened positions, but inside one position's recursive composition
+      (object/union/tuple guards) the first uncheckable reason still wins (`guardForType`'s
+      `firstReason`, ~15 composition sites). Enumerating those too is a sizable refactor —
+      wanted or not?
+- [ ] **Lifetime-lane queue (order agreed with the owner; nothing runs without his go).**
+      LANDED ON DISK 2026-08-23, uncommitted pending owner accept: the genesis front door
+      (`di.usingLifetimeModel(...)` → ContainerBuilder; `manifest.build()` demolished),
+      `addModelServices` + `name` on the LifetimeModel contract, runtime
+      `ServiceProvider.createScope` throwing the dedicated `ScopeFactoryUnavailableError` when
+      the model didn't publish the standard address, and the `standard`/`tagged` models
+      (unwired; see the wiring-review item above). Still open, in order:
+      (1) default-model WIRING — which model bare genesis/dependers run on, reviving the ~88 red
+      tests (spelling ruling in the wiring-review item). (3-residual) the three engine seams the
+      full spec still needs (listed in the wiring-review item). (4-residual) the TYPED
+      `sp.createScope<T>()` generic face on an engine-typed provider surface. (5) disposal
+      (23 red tests). (6) depender rework — hosting/logging/examples; five `@ts-nocheck -- TEMP`
+      headers now (host-composition.ts joined 2026-08-23); hosting/logging genesis sites run the
+      front door on `LifetimeModel.noop` as minimal green, flow-correctness unreviewed.
