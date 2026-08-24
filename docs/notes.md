@@ -34,6 +34,17 @@ land; delete the file when empty.
       stands (owner: "leave options alone"; the `() => T` base-slot dissolve NOT approved —
       record it durably during migration); unruled forks get a dated hold note in the tracked
       file, never an invented ruling.
+- [ ] **RULED 2026-08-24 — `$<'T'>` hole marker: open templates spell through typefor.** Owner's
+      spelling: `if (Type.match(typefor<ScopeFactory<$<'T'>>>(), type))`. Needs: a phantom
+      `$<Label extends string>` marker type in primitives (Type-node vocabulary, no runtime
+      value); one Go derivation special-case (`$` from `@rhombus-std/primitives` with a literal
+      arg derives `Type.generic(label)`, never a nominal address — the marker denotes the hole,
+      typefor still never lies); value overload untouched (observation can't yield a hole).
+      Replaces string-field matching (`isScopeFactoryAddress`) and the structural
+      `Type.imported(name, from, [Type.generic(...)])` template spelling — logging's open
+      ILogger registration re-spells as encountered. Engine detection sites (ToCallSiteVisitor
+      IServiceProvider/ScopeFactory) switch to hole-template `Type.match` while their receivers
+      stay generic; moot for ScopeFactory if the floor-registration rework lands.
 - [ ] **Sequencing conflicts to resolve at go time (owner aware):** the briefs' push-directly
       protocol vs this branch's 23 unpushed commits + uncommitted review round; the briefs'
       claim of an active "plan-async-then-scope" pusher vs this session's picture (the dirty
