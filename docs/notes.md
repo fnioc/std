@@ -60,11 +60,12 @@ land; delete the file when empty.
       `this.services.addValue is not a function` at
       `diagnostics.core/src/metrics/MetricsBuilder-augmentations.ts:33`; surfaced during the
       resolve-vocab slide-in but cause unattributed (sweep vs pass fallout).
-- [ ] **resolve-vocabulary residuals — owner calls open**: (a) `getRequiredService`/`getServices`
-      keep their `get*` names beside `resolve` — rename for one vocabulary, or keep? (b) the
-      unexported `Invoker` marker: `typefor` on it mints a package-private token that DISAGREES
-      with the structural address both the augmentation and the engine spell by hand — acceptable
-      as-is, or export it through a seam so `typefor` agrees?
+- [ ] **resolve-vocabulary residuals**: (a) OPEN owner call — `getRequiredService`/`getServices`
+      keep their `get*` names beside `resolve` — rename for one vocabulary, or keep? (b) RULED
+      2026-08-24, GOSPEL: `typefor` must never lie — the unexported `Invoker` marker minting a
+      derivation that disagrees with the structural address is NOT acceptable; the marker must be
+      exported through a seam so `typefor` derives the true address. Fix rides the invoker
+      formalization (name pending owner pick).
 - [ ] **RULED 2026-08-24 — scope models receive the WRAPPER**, never raw `Engine`: the engine
       keeps its current multi-entrypoint contract, `ServiceProvider` stays the routing wrap, and
       Engine-implementing-`IServiceProvider` is rejected (no current consumer; the door is
