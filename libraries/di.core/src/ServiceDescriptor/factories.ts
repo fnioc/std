@@ -1,18 +1,19 @@
 import { Type } from '@rhombus-std/primitives';
 import type { ConstructorType, FunctionType } from '@rhombus-std/primitives';
 import type { Ctor, Func } from '@rhombus-toolkit/func';
+import type { LifetimeArgument } from '../LifetimeModel';
 import type { CtorDescriptor, FactoryDescriptor, ValueDescriptor } from './ServiceDescriptor';
 
 /**
  * Each factory names how the container reaches the service, which its implementer's type cannot
  * say on its own: a function registered as a VALUE is handed back, never called.
  */
-export function ctor<Lifetime>(serviceType: Type, implementer: Ctor, ctorType: ConstructorType, lifetime?: Lifetime): CtorDescriptor<Lifetime> {
-  return { serviceType, ctor: implementer, ctorType, lifetime };
+export function ctor<Lifetime>(serviceType: Type, implementer: Ctor, ctorType: ConstructorType, ...lifetime: LifetimeArgument<Lifetime>): CtorDescriptor<Lifetime> {
+  return { serviceType, ctor: implementer, ctorType, lifetime: lifetime[0] } as CtorDescriptor<Lifetime>;
 }
 
-export function factory<Lifetime>(serviceType: Type, implementer: Func, factoryType: FunctionType, lifetime?: Lifetime): FactoryDescriptor<Lifetime> {
-  return { serviceType, factory: implementer, factoryType, lifetime };
+export function factory<Lifetime>(serviceType: Type, implementer: Func, factoryType: FunctionType, ...lifetime: LifetimeArgument<Lifetime>): FactoryDescriptor<Lifetime> {
+  return { serviceType, factory: implementer, factoryType, lifetime: lifetime[0] } as FactoryDescriptor<Lifetime>;
 }
 
 /**
