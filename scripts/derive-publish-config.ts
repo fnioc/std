@@ -101,9 +101,14 @@ function derivePublishedConditions(conditions: Conditions, typesOnly: boolean): 
   if (conditions.import !== undefined) {
     out.import = toDist(conditions.import, 'js');
   }
-  // An authoring-only package declares no runtime condition at all, so there is
-  // nothing for `default` to resolve to and the subpath publishes as `types`
-  // alone — a resolver that reaches it for a value import should find nothing.
+  // A subpath declaring no runtime condition at all publishes as `types` alone:
+  // there is nothing for `default` to resolve to, and a resolver reaching it for
+  // a value import should find nothing. That covers an authoring-only package,
+  // and equally a types-only SUBPATH of a package that does ship JS -- an
+  // augmentation anchor like di.core's `./builders`, whose whole job is to stay
+  // resolvable to the declarations a `declare module` merges into. Such a
+  // subpath is NOT scrubbed (see isInternal): unresolvable, the augmentation
+  // silently detaches into a fresh ambient module.
   const defaultSource = conditions.default ?? conditions.import ?? conditions.bun;
   if (defaultSource !== undefined) {
     out.default = toDist(defaultSource, typesOnly ? 'dts' : 'js');

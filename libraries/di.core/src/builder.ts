@@ -4,7 +4,7 @@ import { withKey } from './service-type';
 import { type CtorDescriptor, type FactoryDescriptor, ServiceDescriptor, type ValueDescriptor } from './ServiceDescriptor';
 
 /** A step the chain has not spent yet. Each verb removes its own, so none can be taken twice. */
-type Slot = 'implementer' | 'lifetime' | 'tag';
+export type Slot = 'implementer' | 'lifetime' | 'tag';
 
 /**
  * The steps still open, as one type: an intersection of the interfaces whose slots survive.
@@ -13,7 +13,7 @@ type Slot = 'implementer' | 'lifetime' | 'tag';
  * when `undefined` is not assignable to `Lifetime` and the `lifetime` slot is still open, the
  * node withholds descriptor-ness, so a manifest verb refuses it until `withLifetime` is taken.
  */
-type ServiceDescriptorBuilder<T, Lifetime, Slots extends Slot, Described> =
+export type ServiceDescriptorBuilder<T, Lifetime, Slots extends Slot, Described> =
   & ('lifetime' extends Slots ? (undefined extends Lifetime ? Described : unknown) : Described)
   & ('implementer' extends Slots ? IAsImplementer<T, Lifetime, Slots> : unknown)
   & ('lifetime' extends Slots ? IWithLifetime<T, Lifetime, Slots, Described> : unknown)
@@ -25,7 +25,7 @@ type ServiceDescriptorBuilder<T, Lifetime, Slots extends Slot, Described> =
  * so a registration that could not satisfy its own address is refused where it is written. Taking
  * a door completes the registration: the result is a {@link ServiceDescriptor}.
  */
-interface IAsImplementer<T, Lifetime, Slots extends Slot> {
+export interface IAsImplementer<T, Lifetime, Slots extends Slot> {
   asClass(
     ctor: AbstractCtor<any[], T> & Ctor,
     ctorType: ConstructorType,
