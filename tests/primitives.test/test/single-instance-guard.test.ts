@@ -7,7 +7,7 @@ import { stampSingleInstance } from '@rhombus-std/primitives';
 import { describe, expect, test } from 'bun:test';
 
 const globals = globalThis as unknown as Record<symbol, unknown>;
-const primitivesSlot = Symbol.for('@rhombus-std/primitives/instance');
+const primitivesSlot = Symbol.for('rhombus-toolkit:@rhombus-std/primitives/instance');
 
 describe('single-instance guard', () => {
   test('loading the barrel stamps the sentinel with a module URL', () => {
@@ -43,7 +43,7 @@ describe('single-instance guard', () => {
 
   test('the first claim of a fresh slot stamps it', () => {
     const name = '@rhombus-std/primitives.test/guard-fixture';
-    const slot = Symbol.for(`${name}/instance`);
+    const slot = Symbol.for(`rhombus-toolkit:${name}/instance`);
     try {
       expect(globals[slot]).toBeUndefined();
       stampSingleInstance(name, 'file:///a.js');

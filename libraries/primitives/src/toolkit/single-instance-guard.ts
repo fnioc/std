@@ -8,17 +8,19 @@
  */
 
 /**
- * Claims the process-wide instance slot for `packageName`, or throws when a
- * different copy of the package already holds it.
+ * Call once at the top of a package's entry module to fail fast when two
+ * copies of that package end up loaded in one process.
  *
  * @remarks
- * The slot is `globalThis[Symbol.for(packageName + '/instance')]`, holding the
- * module URL of the copy that loaded first. A repeat call with the same URL is
- * a re-evaluation of that copy and stays silent; a call with a different URL
- * is a second copy and throws, leaving the original stamp in place.
+ * The first call records `moduleUrl` on `globalThis`, under
+ * `Symbol.for('rhombus-toolkit:' + packageName + '/instance')`. Every later
+ * call compares against that record: the same URL means this same copy is
+ * just being evaluated again, and nothing happens; a different URL means a
+ * second copy of the package is loading, and the call throws an error naming
+ * both URLs.
  */
 export function stampSingleInstance(packageName: string, moduleUrl: string): void {
-  const slot = Symbol.for(`${packageName}/instance`);
+  const slot = Symbol.for(`rhombus-toolkit:${packageName}/instance`);
   const globals = globalThis as unknown as Record<symbol, unknown>;
   const existing = globals[slot];
   if (existing === undefined) {

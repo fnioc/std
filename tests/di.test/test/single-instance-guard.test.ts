@@ -8,7 +8,7 @@ import { stampSingleInstance } from '@rhombus-std/primitives';
 import { describe, expect, test } from 'bun:test';
 
 const globals = globalThis as unknown as Record<symbol, unknown>;
-const diCoreSlot = Symbol.for('@rhombus-std/di.core/instance');
+const diCoreSlot = Symbol.for('rhombus-toolkit:@rhombus-std/di.core/instance');
 
 describe('single-instance guard', () => {
   test('loading the barrel stamps the sentinel with a module URL', () => {
