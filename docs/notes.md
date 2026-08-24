@@ -76,6 +76,20 @@ land; delete the file when empty.
       `Default<InterfaceName>` pattern (di backtrack of the global I-prefix rule; other families
       unaffected). Consequence: the interface is bare `Resolver` (or `Container` — final pick at
       pass time), no `IResolver`.
+- [ ] **OWNER RULING NEEDED — named-wins typefor derivation for closed generic callables.** The
+      Go hole rule (landed) makes OPEN templates derive by name (`ScopeFactory<$<'T'>>` →
+      nominal + hole). But a named callable template applied with CLOSED args still derives
+      STRUCTURALLY — `typefor<ScopeFactory<unknown>>()` takes the call-signature path and dies
+      on the `LifetimeArgument` conditional tuple (and where it survives, emits a func node —
+      an address disagreeing with the engine's nominal detection, a typefor lie). The gospel
+      text says "a named type yields its interned NominalType address"; honoring it means
+      DeriveTyped prefers the nominal spelling for ANY named type before structural
+      classification — a repo-wide derivation change (every `typefor<NamedCallableInterface>()`
+      moves off `Type.func`/`Type.ctor`), so it needs a ruling + parity sweep, not a patch.
+      INTERIM: `ScopeFactory.address` is factory-built with the arg
+      (`Type.imported('ScopeFactory', from, [Type.global('unknown')])`) — matches the one-arg
+      engine pattern; a user spelling the address via typefor still can't reach the door until
+      named-wins lands.
 - [ ] **Sequencing conflicts to resolve at go time (owner aware):** the briefs' push-directly
       protocol vs this branch's 23 unpushed commits + uncommitted review round; the briefs'
       claim of an active "plan-async-then-scope" pusher vs this session's picture (the dirty
