@@ -122,11 +122,21 @@ declare const bazValue: IBaz;
 services.add<IFoo>(Foo);
 services.add<IBar>((dep: IDep) => new BarImpl(dep));
 services.addValue<IBaz>(bazValue);
+
+// The same observation through the chain's own doors, whose one-argument sugar is
+// declared on IAsImplementer through di.core's ./builders subpath — a second
+// receiver, reached by a call whose type the preceding \`describe\` decides.
+services.describe<IFoo>().asClass(Foo);
+services.describe<IBar>().asFactory((dep: IDep) => new BarImpl(dep));
 `;
 
 // HAND_SOURCE is the genuine hand-writer's path: an EXPLICIT implementer type
 // as the third argument to the REAL (unmodified) di.core Manifest.add verb —
-// no sugar, no inline substitution, no local declare-module override.
+// no sugar, no inline substitution, no local declare-module override. The
+// argument is OBSERVED from the class (`typefor(Widget)`) rather than named
+// from its type: a type-position derivation carries a nominal address beside
+// the callable kind, since nothing in the type says whether the call site
+// spelled an alias, and `add` takes the callable kind alone.
 const HAND_SOURCE = `
 import type { Manifest } from "@rhombus-std/di.core";
 import { typefor } from "@rhombus-std/primitives.extras";
@@ -140,7 +150,7 @@ class Widget implements IWidget {
 
 declare const services: Manifest<"singleton">;
 
-export const registered = services.add(typefor<IWidget>(), Widget, typefor<typeof Widget>());
+export const registered = services.add(typefor<IWidget>(), Widget, typefor(Widget), 'singleton');
 `;
 
 function writeTsconfig(dir: string, name: string, outDir: string, plugins: Array<{ transform: string; }>): void {
@@ -335,6 +345,22 @@ describe.skipIf(!toolchainReady)('registration sugar — addClass / addFactory /
     expect(withInline).not.toContain('Type.');
   });
 
+  test('the chain doors observe their implementer, emitting the two-argument call a hand-writer would spell', () => {
+    const typeModule = readTypeModule(projDir, 'dist-inline');
+    const fooType = constFor(typeModule, 'Type.imported("IFoo", "di-reg-app/tokens/app")');
+    const fooClass = constFor(typeModule, 'Type.imported("Foo", "di-reg-app/tokens/app")');
+    const dep = constFor(typeModule, 'Type.imported("IDep", "di-reg-app/tokens/app")');
+    const barType = constFor(typeModule, 'Type.imported("IBar", "di-reg-app/tokens/app")');
+    const barImpl = constFor(typeModule, 'Type.imported("BarImpl", "di-reg-app/tokens/app")');
+    expect(withInline).toContain(`.describe(${fooType}).asClass(Foo, ${constFor(typeModule, `Type.ctor(${fooClass}, [[${dep}]])`)})`);
+    // The factory's own argument is a lambda, so its call is pinned line-wise
+    // rather than whole: the address it opens on and the observed producer type.
+    const asFactoryLine = withInline.split('\n').find((line) => line.includes('.asFactory('));
+    expect(asFactoryLine).toContain(`.describe(${barType})`);
+    expect(asFactoryLine).toContain(`, ${constFor(typeModule, `Type.func(${barImpl}, [[${dep}]])`)})`);
+    expect(withInline).not.toContain('asClass(Foo)');
+  });
+
   test('the generated module mints each distinct type once, with the primitives Type import it needs', () => {
     const typeModule = readTypeModule(projDir, 'dist-inline');
     const declarations = [...typeModule.matchAll(/^export const \$\w+ = (Type\.[^;]+);$/gm)].map((m) => m[1]!);
@@ -430,7 +456,7 @@ function retypecheck(source: string): { readonly status: number | null; readonly
 }
 
 describe.skipIf(!toolchainReady)("implementation type — a hand-writer's explicit third argument", () => {
-  test('typefor<typeof C>() derives the Type.ctor(..., [[]]) node a hand-writer would spell', () => {
+  test('typefor(C) derives the Type.ctor(..., [[]]) node a hand-writer would spell', () => {
     // The primitive is fully substituted: no typefor call left, and the generated
     // module the emitted consts are read from is imported.
     expect(handWithInline).not.toContain('typefor(');
@@ -446,7 +472,7 @@ describe.skipIf(!toolchainReady)("implementation type — a hand-writer's explic
     const widgetClass = constFor(module, 'Type.imported("Widget", "di-reg-hand/tokens/hand")');
     const clock = constFor(module, 'Type.imported("IClock", "di-reg-hand/tokens/hand")');
     const implementerType = constFor(module, `Type.ctor(${widgetClass}, [[${clock}]])`);
-    const want = `.add(${widget}, Widget, ${implementerType})`;
+    const want = `.add(${widget}, Widget, ${implementerType}, "singleton")`;
     expect(handWithInline).toContain(want);
   });
 
