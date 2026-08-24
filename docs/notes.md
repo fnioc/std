@@ -34,6 +34,18 @@ land; delete the file when empty.
       stands (owner: "leave options alone"; the `() => T` base-slot dissolve NOT approved —
       record it durably during migration); unruled forks get a dated hold note in the tracked
       file, never an invented ruling.
+- [ ] **RULED 2026-08-24 — realizer and scope capability mint TOGETHER; Realizer sheds
+      `scopeFactory`.** `LifetimeModel.createRealizer()` returns
+      `{ realizer: Realizer<L>; scopeFactory?: Func<[IServiceProvider], ScopeFactory<L>> }`
+      (named members over a positional tuple; simple models return two views of one object).
+      The container arg rides the factory since no container exists at mint time — input
+      discipline unchanged (declared contract + model internals only). Absence is known AT MINT:
+      a scopeless model's container refuses to synthesize the scope-factory callsite at plan
+      time (honest unsatisfiable, not realize-to-undefined). This KEEPS the synthesized-callsite
+      route — the floor-registration alternative (model registers a container-taking factory
+      descriptor) is DROPPED. Still pending separately: the lose-IServiceProvider-generic +
+      lose-createScope proposal (leaning yes, not executed), proprietary model contracts ride
+      the same mint shape.
 - [ ] **RULED 2026-08-24 — `$<'T'>` hole marker: open templates spell through typefor.** Owner's
       spelling: `if (Type.match(typefor<ScopeFactory<$<'T'>>>(), type))`. Needs: a phantom
       `$<Label extends string>` marker type in primitives (Type-node vocabulary, no runtime

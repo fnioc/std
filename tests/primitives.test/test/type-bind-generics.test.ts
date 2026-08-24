@@ -1,4 +1,4 @@
-// Behaviour tests for Type.match — unification over interned types. Matching is identity modulo
+// Behaviour tests for Type.bindGenerics — unification over interned types. Matching is identity modulo
 // holes: outside a generic hole the two sides must be the same interned node, a hole binds the
 // subject fragment standing in its place, and a repeated label must bind the same type each time.
 // There is no assignability anywhere: no width subtyping, no literal widening to its primitive,
@@ -14,7 +14,7 @@ const T = Type.generic('T');
 const U = Type.generic('U');
 
 function matches(candidate: Type, constraint: Type): boolean {
-  return Type.match(candidate, constraint)[0];
+  return Type.bindGenerics(candidate, constraint)[0];
 }
 
 describe('the identity stop', () => {
@@ -36,43 +36,43 @@ describe('the identity stop', () => {
 
 describe('hole binding', () => {
   test('a bare hole binds the whole subject', () => {
-    const [matched, generics] = Type.match(T, A);
+    const [matched, generics] = Type.bindGenerics(T, A);
     expect(matched).toBe(true);
     expect(generics!.get('T')).toBe(A);
   });
 
   test('a hole inside a generic argument binds that fragment', () => {
-    const [matched, generics] = Type.match(Type.imported('Box', 'app', [T]), Type.imported('Box', 'app', [A]));
+    const [matched, generics] = Type.bindGenerics(Type.imported('Box', 'app', [T]), Type.imported('Box', 'app', [A]));
     expect(matched).toBe(true);
     expect(generics!.get('T')).toBe(A);
   });
 
   test('a hole inside an aggregate element binds that element', () => {
-    const [matched, generics] = Type.match(Type.array(T), Type.array(A));
+    const [matched, generics] = Type.bindGenerics(Type.array(T), Type.array(A));
     expect(matched).toBe(true);
     expect(generics!.get('T')).toBe(A);
   });
 
   test('a hole inside a tag binds only what the tag wraps', () => {
-    const [matched, generics] = Type.match(Type.tag(T, 'primary'), Type.tag(A, 'primary'));
+    const [matched, generics] = Type.bindGenerics(Type.tag(T, 'primary'), Type.tag(A, 'primary'));
     expect(matched).toBe(true);
     expect(generics!.get('T')).toBe(A);
   });
 
   test('a bare hole binds a tagged subject whole', () => {
-    const [matched, generics] = Type.match(T, Type.tag(A, 'primary'));
+    const [matched, generics] = Type.bindGenerics(T, Type.tag(A, 'primary'));
     expect(matched).toBe(true);
     expect(generics!.get('T')).toBe(Type.tag(A, 'primary'));
   });
 
   test('a hole in a parameter position binds the subject parameter', () => {
-    const [matched, generics] = Type.match(Type.func(C, [[T]]), Type.func(C, [[A]]));
+    const [matched, generics] = Type.bindGenerics(Type.func(C, [[T]]), Type.func(C, [[A]]));
     expect(matched).toBe(true);
     expect(generics!.get('T')).toBe(A);
   });
 
   test('several holes bind independently', () => {
-    const [matched, generics] = Type.match(Type.tuple(T, U), Type.tuple(A, B));
+    const [matched, generics] = Type.bindGenerics(Type.tuple(T, U), Type.tuple(A, B));
     expect(matched).toBe(true);
     expect(generics!.get('T')).toBe(A);
     expect(generics!.get('U')).toBe(B);
@@ -81,7 +81,7 @@ describe('hole binding', () => {
   test('closing an open callable through the bindings lands on the subject itself', () => {
     const open = Type.func(Type.imported('Whatever', 'app', [T]), [[]]);
     const closed = Type.func(Type.imported('Whatever', 'app', [Type.global('string')]), [[]]);
-    const [matched, generics] = Type.match(open, closed);
+    const [matched, generics] = Type.bindGenerics(open, closed);
     expect(matched).toBe(true);
     expect(Type.substitute(open, generics!)).toBe(closed);
   });
@@ -138,7 +138,7 @@ describe('children pairwise', () => {
   });
 
   test('union members pair off in canonical order, same count required', () => {
-    const [matched, generics] = Type.match(Type.union(T, B), Type.union(A, B));
+    const [matched, generics] = Type.bindGenerics(Type.union(T, B), Type.union(A, B));
     expect(matched).toBe(true);
     expect(generics!.get('T')).toBe(A);
     expect(matches(Type.union(T, B), Type.union(A, B, C))).toBe(false);
@@ -194,7 +194,7 @@ describe('the assignability rules are gone', () => {
 });
 
 describe('guard against an open constraint', () => {
-  test('Type.match refuses a constraint that itself holds a generic hole', () => {
-    expect(() => Type.match(A, T)).toThrow(/constraint type may not contain generic holes/);
+  test('Type.bindGenerics refuses a constraint that itself holds a generic hole', () => {
+    expect(() => Type.bindGenerics(A, T)).toThrow(/constraint type may not contain generic holes/);
   });
 });
