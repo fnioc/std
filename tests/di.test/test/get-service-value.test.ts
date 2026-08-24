@@ -73,6 +73,6 @@ describe('what the door does not do', () => {
     const provider = providerWithBar('a bar');
     const node = Type.ctor(Foo, [[Bar]]);
     provider.resolve(node, Widget);
-    expect(provider.resolve(node)).toBeUndefined();
+    expect(() => provider.resolve(node)).toThrow(UnsatisfiableError);
   });
 });

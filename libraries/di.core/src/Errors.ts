@@ -112,14 +112,6 @@ export class ScopeTagUnmatchedError extends DiError {
   }
 }
 
-/** The installed lifetime model does not publish the standard {@link ScopeFactory} address. */
-export class ScopeFactoryUnavailableError extends DiError {
-  constructor() {
-    super("the installed lifetime model does not publish the standard ScopeFactory — consult the model's documentation for its scope workflow");
-    this.name = 'ScopeFactoryUnavailableError';
-  }
-}
-
 /** One registration that could not be lowered. */
 export interface ValidationFailure {
   /** The service type of the registration that failed. */

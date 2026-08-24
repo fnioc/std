@@ -4,7 +4,7 @@
 // intermediate `build()` sees, are the properties worth pinning down.
 
 import { ContainerBuilder, di } from '@rhombus-std/di';
-import { DefaultManifest, LifetimeModel, type Manifest, ManifestValidationError, ScopeFactoryUnavailableError, UnsatisfiableError } from '@rhombus-std/di.core';
+import { DefaultManifest, LifetimeModel, type Manifest, ManifestValidationError, UnsatisfiableError } from '@rhombus-std/di.core';
 import { Type } from '@rhombus-std/primitives';
 import { describe, expect, test } from 'bun:test';
 
@@ -28,7 +28,7 @@ describe('a single configureServices step', () => {
     const provider = di.usingLifetimeModel(LifetimeModel.noop)
       .configureServices(manifest => manifest.addValue(A, 'a'))
       .build();
-    expect(provider.getRequiredService(A)).toBe('a');
+    expect(provider.getService(A)).toBe('a');
   });
 });
 
@@ -38,8 +38,8 @@ describe('multiple configureServices steps', () => {
       .configureServices(manifest => manifest.addValue(A, 'a'))
       .configureServices(manifest => manifest.addValue(B, 'b'))
       .build();
-    expect(provider.getRequiredService(A)).toBe('a');
-    expect(provider.getRequiredService(B)).toBe('b');
+    expect(provider.getService(A)).toBe('a');
+    expect(provider.getService(B)).toBe('b');
   });
 
   test('a step that discards the manifest it registered onto registers nothing', () => {
@@ -49,7 +49,7 @@ describe('multiple configureServices steps', () => {
         return manifest;
       })
       .build();
-    expect(provider.getService(A)).toBeUndefined();
+    expect(() => provider.getService(A)).toThrow(UnsatisfiableError);
   });
 });
 
@@ -57,7 +57,7 @@ describe('usingManifest', () => {
   test('seeds the builder from an existing descriptor stream', () => {
     const seed = DefaultManifest.empty<unknown>(LifetimeModel.noop).addValue(A, 'seeded');
     const provider = di.usingLifetimeModel(LifetimeModel.noop).usingManifest(seed).build();
-    expect(provider.getRequiredService(A)).toBe('seeded');
+    expect(provider.getService(A)).toBe('seeded');
   });
 
   test('discards configureServices steps configured before it, keeping steps configured after', () => {
@@ -67,8 +67,8 @@ describe('usingManifest', () => {
       .usingManifest(seed)
       .configureServices(manifest => manifest.addValue(B, 'kept-after'))
       .build();
-    expect(provider.getRequiredService(A)).toBe('seeded');
-    expect(provider.getRequiredService(B)).toBe('kept-after');
+    expect(provider.getService(A)).toBe('seeded');
+    expect(provider.getService(B)).toBe('kept-after');
   });
 
   test('round-trips iteration order: a newer registration still wins over an older one', () => {
@@ -76,7 +76,7 @@ describe('usingManifest', () => {
       .addValue(A, 'older')
       .addValue(A, 'newer');
     const provider = di.usingLifetimeModel(LifetimeModel.noop).usingManifest(seed).build();
-    expect(provider.getRequiredService(A)).toBe('newer');
+    expect(provider.getService(A)).toBe('newer');
   });
 });
 
@@ -87,8 +87,8 @@ describe('builder immutability', () => {
     const _later: ContainerBuilder<unknown> = intermediate.configureServices(manifest => manifest.addValue(B, 'b'));
 
     const provider = intermediate.build();
-    expect(provider.getRequiredService(A)).toBe('a');
-    expect(provider.getService(B)).toBeUndefined();
+    expect(provider.getService(A)).toBe('a');
+    expect(() => provider.getService(B)).toThrow(UnsatisfiableError);
   });
 });
 
@@ -116,48 +116,38 @@ describe('configureProvider', () => {
       .configureServices(manifest => manifest.add(A, Impl, Type.ctor(A, [[]])))
       .configureProvider(options => ({ ...options, validateOnBuild: true }))
       .build();
-    expect(provider.getRequiredService(A)).toBeInstanceOf(Impl);
+    expect(provider.getService(A)).toBeInstanceOf(Impl);
   });
 });
 
 describe('the model floor', () => {
   test('a plain build() resolves the services the model registers for itself', () => {
     const provider = di.usingLifetimeModel(withMarkerFloor).build();
-    expect(provider.getRequiredService(MARKER)).toBe('from-model');
+    expect(provider.getService(MARKER)).toBe('from-model');
   });
 
   test('usingManifest layers over the floor rather than replacing it', () => {
     const seed = DefaultManifest.empty<unknown>(LifetimeModel.noop).addValue(A, 'seeded');
     const provider = di.usingLifetimeModel(withMarkerFloor).usingManifest(seed).build();
-    expect(provider.getRequiredService(A)).toBe('seeded');
-    expect(provider.getRequiredService(MARKER)).toBe('from-model');
+    expect(provider.getService(A)).toBe('seeded');
+    expect(provider.getService(MARKER)).toBe('from-model');
   });
 
   test("a user registration of the same service type outranks the model's", () => {
     const provider = di.usingLifetimeModel(withMarkerFloor)
       .configureServices(manifest => manifest.addValue(MARKER, 'from-user'))
       .build();
-    expect(provider.getRequiredService(MARKER)).toBe('from-user');
+    expect(provider.getService(MARKER)).toBe('from-user');
   });
 });
 
-describe('createScope', () => {
-  test('throws a dedicated error, not UnsatisfiableError, when no ScopeFactory is published', () => {
+describe('the ScopeFactory address', () => {
+  test('is unsatisfiable when the model publishes no factory', () => {
     const provider = di.usingLifetimeModel(LifetimeModel.noop).build();
-
-    let caught: unknown;
-    try {
-      provider.createScope();
-    } catch (error) {
-      caught = error;
-    }
-
-    expect(caught).toBeInstanceOf(ScopeFactoryUnavailableError);
-    expect(caught).not.toBeInstanceOf(UnsatisfiableError);
-    expect((caught as Error).message).toContain('documentation');
+    expect(() => provider.getService(SCOPE_FACTORY)).toThrow(UnsatisfiableError);
   });
 
-  test('invokes the registered ScopeFactory, forwarding the lifetime argument', () => {
+  test('hands back the registered factory, which forwards the lifetime argument', () => {
     const scope = di.usingLifetimeModel(LifetimeModel.noop).build();
     let forwarded: unknown[] = [];
     const provider = di.usingLifetimeModel(LifetimeModel.noop)
@@ -169,7 +159,7 @@ describe('createScope', () => {
       )
       .build();
 
-    expect(provider.createScope('x')).toBe(scope);
+    expect(provider.getService(SCOPE_FACTORY)('x')).toBe(scope);
     expect(forwarded).toEqual(['x']);
   });
 });

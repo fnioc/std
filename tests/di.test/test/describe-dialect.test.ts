@@ -52,7 +52,7 @@ describe('the impl doors', () => {
       withClock().describe(SINK).asClass(Sink, Type.ctor(SINK, [[CLOCK, Type.typeLiteral('staging')]])),
     );
 
-    expect((toProvider(services).getRequiredService(SINK) as Sink).environment).toBe('staging');
+    expect((toProvider(services).getService(SINK) as Sink).environment).toBe('staging');
   });
 
   test('asFactory takes the function together with its type', () => {
@@ -60,14 +60,14 @@ describe('the impl doors', () => {
       withClock().describe(SINK).asFactory(makeSink, Type.func(SINK, [[CLOCK]])),
     );
 
-    expect((toProvider(services).getRequiredService(SINK) as Sink).environment).toBe('from-factory');
+    expect((toProvider(services).getService(SINK) as Sink).environment).toBe('from-factory');
   });
 
   test('asValue takes only the value — it has no call shape to name', () => {
     const built = new Sink(new FixedClock(), 'prebuilt');
     const services = withClock().add(withClock().describe(SINK).asValue(built));
 
-    expect(toProvider(services).getRequiredService(SINK)).toBe(built);
+    expect(toProvider(services).getService(SINK)).toBe(built);
   });
 
   test('parameter signatures describe an overloaded implementation, one per call', () => {
@@ -83,7 +83,7 @@ describe('the impl doors', () => {
     const manifest = withClock();
     const services = manifest.add(manifest.describe(SINK).asClass(Sink, overloaded));
 
-    expect((toProvider(services).getRequiredService(SINK) as Sink).environment).toBe('fallback');
+    expect((toProvider(services).getService(SINK) as Sink).environment).toBe('fallback');
   });
 });
 
@@ -92,26 +92,26 @@ describe('the terse form', () => {
     const services = withClock()
       .add(SINK, Sink, Type.ctor(SINK, [[CLOCK, Type.typeLiteral('terse')]]), 'singleton');
 
-    expect((toProvider(services).getRequiredService(SINK) as Sink).environment).toBe('terse');
+    expect((toProvider(services).getService(SINK) as Sink).environment).toBe('terse');
   });
 
   test('a function type names a factory instead, from the same argument position', () => {
     const services = withClock().add(SINK, makeSink, Type.func(SINK, [[CLOCK]]));
 
-    expect((toProvider(services).getRequiredService(SINK) as Sink).environment).toBe('from-factory');
+    expect((toProvider(services).getService(SINK) as Sink).environment).toBe('from-factory');
   });
 
   test('the constant marker names a value, handed back as it stands', () => {
     const built = new Sink(new FixedClock(), 'as-value');
     const services = withClock().addValue(SINK, built);
 
-    expect(toProvider(services).getRequiredService(SINK)).toBe(built);
+    expect(toProvider(services).getService(SINK)).toBe(built);
   });
 
   test('a callable under the constant marker is handed back, never called', () => {
     const services = withClock().addValue(SINK, makeSink);
 
-    expect(toProvider(services).getRequiredService(SINK)).toBe(makeSink);
+    expect(toProvider(services).getService(SINK)).toBe(makeSink);
   });
 
   test('a tagged address keys the registration, so a keyed registration is one call too', () => {
@@ -146,7 +146,7 @@ describe('the chain terminal is a descriptor', () => {
     expect(descriptor.serviceType).toBe(SINK);
 
     const services = manifest.add(descriptor);
-    expect((toProvider(services).getRequiredService(SINK) as Sink).environment).toBe('held');
+    expect((toProvider(services).getService(SINK) as Sink).environment).toBe('held');
   });
 
   test('the chain steps spread away — a copied descriptor is plain data', () => {
@@ -206,5 +206,5 @@ test('a discarded step configures nothing', () => {
 
   const [filed] = [...services];
   expect(filed!.serviceType).toBe(SINK);
-  expect((toProvider(services).getRequiredService(SINK) as Sink).environment).toBe('kept');
+  expect((toProvider(services).getService(SINK) as Sink).environment).toBe('kept');
 });

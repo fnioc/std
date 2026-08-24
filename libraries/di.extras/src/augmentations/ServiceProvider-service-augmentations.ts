@@ -5,32 +5,35 @@ declare module '@rhombus-std/di.core' {
   interface IServiceProvider {
     /**
      * The value registered for `ServiceType`, the service type derived from the type argument
-     * instead of taken explicitly, or `undefined` when nothing is registered for it.
+     * instead of taken explicitly.
+     *
+     * @throws UnsatisfiableError - when nothing can produce `ServiceType`.
      */
-    resolve<ServiceType>(): ServiceType | undefined;
+    resolve<ServiceType>(): ServiceType;
     /**
      * The value registered for `ServiceType`, the service type derived from the type argument
-     * instead of taken explicitly, for a caller that treats its absence as a fault rather than
-     * an answer.
+     * instead of taken explicitly.
+     *
+     * @throws UnsatisfiableError - when nothing can produce `ServiceType`.
      */
-    getRequiredService<ServiceType>(): ServiceType;
+    getService<ServiceType>(): ServiceType;
     /**
      * Every registration of `ServiceType`, the service type derived from the type argument
      * instead of taken explicitly, as one sequence.
      */
-    getServices<ServiceType>(): Iterable<ServiceType>;
+    resolveMany<ServiceType>(): Iterable<ServiceType>;
   }
 }
 
 export const ServiceProviderServiceAugmentations = {
-  resolve<ServiceType>(this: IServiceProvider): ServiceType | undefined {
+  resolve<ServiceType>(this: IServiceProvider): ServiceType {
     return this.resolve(typefor<ServiceType>());
   },
-  getRequiredService<ServiceType>(this: IServiceProvider): ServiceType {
-    return this.getRequiredService(typefor<ServiceType>());
+  getService<ServiceType>(this: IServiceProvider): ServiceType {
+    return this.getService(typefor<ServiceType>());
   },
-  getServices<ServiceType>(this: IServiceProvider): Iterable<ServiceType> {
-    return this.getServices(typefor<ServiceType>());
+  resolveMany<ServiceType>(this: IServiceProvider): Iterable<ServiceType> {
+    return this.resolveMany(typefor<ServiceType>());
   },
 };
 registerInlineBodies<IServiceProvider>(ServiceProviderServiceAugmentations);

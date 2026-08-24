@@ -3,7 +3,7 @@
 // expression, and the closed expression names a service like any other.
 
 import { ServiceProvider } from '@rhombus-std/di';
-import { DefaultManifest, type IServiceProvider, ServiceDescriptor } from '@rhombus-std/di.core';
+import { DefaultManifest, type IServiceProvider, ServiceDescriptor, UnsatisfiableError } from '@rhombus-std/di.core';
 import { Type } from '@rhombus-std/primitives';
 import { describe, expect, test } from 'bun:test';
 
@@ -67,7 +67,7 @@ describe('a slot that is the hole', () => {
 
   test('is unsatisfiable on a CLOSED registration, where nothing binds it', () => {
     const manifest = DefaultManifest.empty<string>().add(ServiceDescriptor.ctor(FOO, Box, Type.ctor(FOO, [[T]])));
-    expect(new ServiceProvider(manifest).resolve(FOO)).toBeUndefined();
+    expect(() => new ServiceProvider(manifest).resolve(FOO)).toThrow(UnsatisfiableError);
   });
 });
 
@@ -88,7 +88,7 @@ describe('a hole inside a bigger slot', () => {
   });
 
   test('leaves the registration unsatisfiable when the closed expression names nothing', () => {
-    expect(new ServiceProvider(openCrate).resolve(crate(BAR))).toBeUndefined();
+    expect(() => new ServiceProvider(openCrate).resolve(crate(BAR))).toThrow(UnsatisfiableError);
   });
 });
 

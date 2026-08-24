@@ -24,7 +24,7 @@ export interface ContainerBuilder<Lifetime> {
   configureProvider(configure: Func<[ServiceProviderOptions], ServiceProviderOptions>): ContainerBuilder<Lifetime>;
 
   /** Seals the configured manifest into a provider. */
-  build(): IServiceProvider<Lifetime>;
+  build(): IServiceProvider;
 }
 
 export class DefaultContainerBuilder<Lifetime> implements ContainerBuilder<Lifetime> {
@@ -66,7 +66,7 @@ export class DefaultContainerBuilder<Lifetime> implements ContainerBuilder<Lifet
     );
   }
 
-  build(): IServiceProvider<Lifetime> {
+  build(): IServiceProvider {
     const floor = DefaultManifest.empty<Lifetime>().apply(() => this.#lifetimeModel.addModelServices());
     const manifest = Iterator.from(this.#manifestSteps).reduce((manifest, step) => new DefaultManifest(step(manifest)), floor);
     const options = Iterator.from(this.#optionSteps).reduce((options, step) => step(options), ServiceProviderOptions.defaults);
@@ -74,7 +74,7 @@ export class DefaultContainerBuilder<Lifetime> implements ContainerBuilder<Lifet
       realizer: Realizer;
       scopeFactory?: Func<[IServiceProvider], ScopeFactory<readonly any[]>>;
     };
-    return new ServiceProvider(realizer, scopeFactory, manifest as Manifest<unknown>, options) as IServiceProvider<Lifetime>;
+    return new ServiceProvider(realizer, scopeFactory, manifest as Manifest<unknown>, options);
   }
 }
 

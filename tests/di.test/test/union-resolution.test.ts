@@ -4,7 +4,7 @@
 // which is what keeps a literal member as the fallback of an optional dependency.
 
 import { ServiceProvider } from '@rhombus-std/di';
-import { CycleError, DefaultManifest, ServiceDescriptor } from '@rhombus-std/di.core';
+import { CycleError, DefaultManifest, ServiceDescriptor, UnsatisfiableError } from '@rhombus-std/di.core';
 import { Type } from '@rhombus-std/primitives';
 import { describe, expect, test } from 'bun:test';
 
@@ -90,13 +90,13 @@ describe('a union-typed registration', () => {
 
   test('serves the exact union request', () => {
     const manifest = DefaultManifest.empty<string>().addValue(EITHER, 'either');
-    expect(new ServiceProvider(manifest).getRequiredService(EITHER)).toBe('either');
+    expect(new ServiceProvider(manifest).getService(EITHER)).toBe('either');
   });
 
   test('cannot serve a lone member — the union says which types will do, not what it holds', () => {
     const provider = new ServiceProvider(DefaultManifest.empty<string>().addValue(EITHER, 'either'));
-    expect(provider.resolve(CACHE)).toBeUndefined();
-    expect(() => provider.getRequiredService(CACHE)).toThrow('nothing is registered for app:Cache.');
+    expect(() => provider.resolve(CACHE)).toThrow(UnsatisfiableError);
+    expect(() => provider.getService(CACHE)).toThrow(UnsatisfiableError);
   });
 });
 
