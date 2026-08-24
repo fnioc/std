@@ -17,9 +17,15 @@ land; delete the file when empty.
       `registerInlineBodies` channel, files under `augmentations/`; ttsc e2e parity (lowered
       emission byte-equals the hand-written two-arg call); check off the rewrite-plan halt with a
       one-line resolution; decisions.v2 § entry, present-tense. Full gates before push.
-- [ ] **HELD, awaiting owner go — inherited task 2 (owner ruling verbatim: "the outputs need to
-      be widened to the truth, and the user forced to check the kind before exploring the
-      members"): TypeFor tells the truth.** In `primitives.extras/src/typefor.ts`: every
+- [ ] **LANDED ON DISK 2026-08-24 (uncommitted, in the review round) — inherited task 2:
+      TypeFor tells the truth.** Widening + `TypeForValue` narrow value face (shared
+      `DerivedType<T, Alias>` conditional, Alias=never collapses the unions) + @remarks rewrite +
+      rewrite-plan check-off + decisions.v2 §193 amended in place. Gates: primitives.extras/
+      primitives/primitives.test tsc clean; primitives.test 194/194; typefor.ttsc.e2e 11/11;
+      12 red packages diff-proven identical to baseline. REMAINING from the brief: the lifecycle
+      close-out (delete rewrite-plan.md + issue-365 doc) waits on task 1; the OPTIONS FAMILY HOLD
+      must be recorded durably during that migration. Flagged, owner call: typefor.ts:76 throw
+      says "type token string" (wire-format term or stale?). In `primitives.extras/src/typefor.ts`: every
       spelling-ambiguous `TypeFor<T>` branch widens to `… | NamedType` (callables, array/tuple,
       union, every literal branch incl. undefined/null — covers brands, which derive the BASE —
       exact iterable); honest branches stay narrow (wide scalars → `NamedType`, `never`/bottom →
@@ -176,59 +182,59 @@ land; delete the file when empty.
       addresses. Already-true instances: `ScopeFactory`, the `Invoker` marker, bare-hole type
       delivery. Pieces, in landing order when green-lit:
       - **Invoker formalization**: export the marker through a real seam (public in di.core) so
-        `typefor` derives the true address — this IS the gospel fix for the typefor-lie residual.
-        Resolving it returns the factory, authored with engine-guts access; the
-        `resolve(callableType, callable)` augmentations remain the transparent sugar over it.
-        Name open — owner floated `InvokerService`/`FrameFactory`; Claude recommends staying with
-        `Invoker` (what-not-how: "frame" names the mechanism).
+      `typefor` derives the true address — this IS the gospel fix for the typefor-lie residual.
+      Resolving it returns the factory, authored with engine-guts access; the
+      `resolve(callableType, callable)` augmentations remain the transparent sugar over it.
+      Name open — owner floated `InvokerService`/`FrameFactory`; Claude recommends staying with
+      `Invoker` (what-not-how: "frame" names the mechanism).
       - **ScopeFactory synthesis — RULED 2026-08-24: its own callsite kind** (nominal detection,
-        synthesis tail so a user registration still wins; no manifest registration — model
-        descriptors must be context-free values, per-container machinery lives behind the
-        realizer). STANDING question: dedicated `Realizer.scopeFactory()` door (the working
-        implementation) vs routing through the one `realize` door; revisit a general door table
-        if doors multiply (audit service).
+      synthesis tail so a user registration still wins; no manifest registration — model
+      descriptors must be context-free values, per-container machinery lives behind the
+      realizer). STANDING question: dedicated `Realizer.scopeFactory()` door (the working
+      implementation) vs routing through the one `realize` door; revisit a general door table
+      if doors multiply (audit service).
       - **Latebound reframed as an implicit door** — the composed-manifest semantics live behind
-        the factory the door returns; the engine's multi-entrypoint contract stays private
-        (consistent with the models-get-the-wrapper ruling).
-      - **Resolve-audit service**: a door giving *access* (never a copied snapshot) to the details
-        of the resolve that constructed its holder — full request type, serviceType, ancestry — as
-        a thin handle closing over the engine's per-resolve frame; payload engine-side and lazy.
-        Creation-time semantics under caching (a cache hit reuses instance + handle together).
-        Replaces the Typeof witness branding. Ancestor visibility ruled fine — no intra-container
-        trust boundary, and "who asked for me" is useful. MECHANISM SETTLED 2026-08-24 (still
-        deferred): the ScopeFactory recipe verbatim — synthesized callsite, no registration, so
-        the realizer's caching never sees it and creation-time binding falls out free — plus a
-        walk-threaded context the handle closes over. MECHANISM LEANING (owner 2026-08-24,
-        felt-right-not-thought-through): thread an immutable parent-linked frame through the
-        realize walk's context arg (each visit conses its site on), and the audit callsite
-        returns a closure over that frame. The node itself stays one shared position-free value,
-        so plan caching is untouched, and a cached subtree realized under a new request yields
-        the new chain automatically — position is never stored, so the stale-position hazard
-        cannot exist. (Superseded alternative: a per-plan parent-index — works, but needs
-        per-plan keying and can never carry dynamic walk facts; threading can.) Instance-cache
-        hits keep their creation-walk handle (creation-time semantics). Engine cost: one
-        callsite kind, one visit member, one cons per visit.
-        BORDERLINE-FREE PAYLOAD ROSTER (owner directive 2026-08-24: take advantage) — data
-        already in hand at the cons or walk-start point, O(1) to capture:
-        - Per-frame, at cons: **arg position within the parent's signature** (the
-          `site.args.map` index is live at every cons site — answers *which slot*, not just
-          which parent); **collection element index** (visitIterable/visitArray likewise);
-          **the realizer in effect at that visit** (already a visit arg — records which
-          model/scope governed the construction, incl. descendantRealizer swaps); **depth**
-          (one int, saves O(n) chain walks).
-        - Root frame, once per walk (all sitting in RealizeOptions/the engine entrypoint):
-          **genesis kind** — plain resolve vs latebound re-entry vs invocation frame vs
-          collection ask; **the originating facade IServiceProvider**; **a monotonic engine
-          resolve ordinal** (creation ordering across the container). CAVEAT: a latebound
-          re-entry's arg VALUES are also in hand (`#args`) but keeping them is NEW retention —
-          pins caller values for the handle's lifetime; everything else listed is already
-          container-pinned.
-        - Plan-time (store on the node, position-free, zero walk cost): an open registration's
-          **closing bindings** (`Answer.generics` at fromAnswer) — "how my template closed".
-        - Bonus, same data free: the failure paths (`#realize`'s catch, cycle detection) hold
-          the frame when they throw — attaching the ancestry chain to LifetimeModelError/
-          CycleError diagnostics is an ERROR-SURFACE change to green-light explicitly, not
-          plumbing.
+      the factory the door returns; the engine's multi-entrypoint contract stays private
+      (consistent with the models-get-the-wrapper ruling).
+      - **Resolve-audit service**: a door giving _access_ (never a copied snapshot) to the details
+      of the resolve that constructed its holder — full request type, serviceType, ancestry — as
+      a thin handle closing over the engine's per-resolve frame; payload engine-side and lazy.
+      Creation-time semantics under caching (a cache hit reuses instance + handle together).
+      Replaces the Typeof witness branding. Ancestor visibility ruled fine — no intra-container
+      trust boundary, and "who asked for me" is useful. MECHANISM SETTLED 2026-08-24 (still
+      deferred): the ScopeFactory recipe verbatim — synthesized callsite, no registration, so
+      the realizer's caching never sees it and creation-time binding falls out free — plus a
+      walk-threaded context the handle closes over. MECHANISM LEANING (owner 2026-08-24,
+      felt-right-not-thought-through): thread an immutable parent-linked frame through the
+      realize walk's context arg (each visit conses its site on), and the audit callsite
+      returns a closure over that frame. The node itself stays one shared position-free value,
+      so plan caching is untouched, and a cached subtree realized under a new request yields
+      the new chain automatically — position is never stored, so the stale-position hazard
+      cannot exist. (Superseded alternative: a per-plan parent-index — works, but needs
+      per-plan keying and can never carry dynamic walk facts; threading can.) Instance-cache
+      hits keep their creation-walk handle (creation-time semantics). Engine cost: one
+      callsite kind, one visit member, one cons per visit.
+      BORDERLINE-FREE PAYLOAD ROSTER (owner directive 2026-08-24: take advantage) — data
+      already in hand at the cons or walk-start point, O(1) to capture:
+      - Per-frame, at cons: **arg position within the parent's signature** (the
+      `site.args.map` index is live at every cons site — answers _which slot_, not just
+      which parent); **collection element index** (visitIterable/visitArray likewise);
+      **the realizer in effect at that visit** (already a visit arg — records which
+      model/scope governed the construction, incl. descendantRealizer swaps); **depth**
+      (one int, saves O(n) chain walks).
+      - Root frame, once per walk (all sitting in RealizeOptions/the engine entrypoint):
+      **genesis kind** — plain resolve vs latebound re-entry vs invocation frame vs
+      collection ask; **the originating facade IServiceProvider**; **a monotonic engine
+      resolve ordinal** (creation ordering across the container). CAVEAT: a latebound
+      re-entry's arg VALUES are also in hand (`#args`) but keeping them is NEW retention —
+      pins caller values for the handle's lifetime; everything else listed is already
+      container-pinned.
+      - Plan-time (store on the node, position-free, zero walk cost): an open registration's
+      **closing bindings** (`Answer.generics` at fromAnswer) — "how my template closed".
+      - Bonus, same data free: the failure paths (`#realize`'s catch, cycle detection) hold
+      the frame when they throw — attaching the ancestry chain to LifetimeModelError/
+      CycleError diagnostics is an ERROR-SURFACE change to green-light explicitly, not
+      plumbing.
 - [ ] **Mergesynth deeper enumeration — owner call open:** verbose diagnostics now enumerate a
       member's weakened positions, but inside one position's recursive composition
       (object/union/tuple guards) the first uncheckable reason still wins (`guardForType`'s
