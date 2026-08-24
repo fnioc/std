@@ -63,6 +63,17 @@ land; delete the file when empty.
       ILogger registration re-spells as encountered. Engine detection sites (ToCallSiteVisitor
       IServiceProvider/ScopeFactory) switch to hole-template `Type.match` while their receivers
       stay generic; moot for ScopeFactory if the floor-registration rework lands.
+- [ ] **Post-port rename slate (owner-opened 2026-08-24; one dedicated pass AFTER the in-flight
+      lanes land, CLAUDE.md digest included; ideal name first, MEDI-distance a free bonus).**
+      Claude's recommendations, discussed: `ServiceProvider` → the resolving interface (libraries
+      hold it; entry points hold what build() returns); `Scope`/`lifetime` KEEP (place vs policy);
+      `ServiceDescriptor` → `Registration`; internal `CallSite` → `Plan` (a ConstantCallSite calls
+      nothing; the realizer's per-position `site` key keeps its name); `serviceType` → `address`
+      (the design language already says address everywhere). RULED, DI-ONLY: interfaces without
+      published concretes DROP the `I` prefix — concretes stay unexported on the
+      `Default<InterfaceName>` pattern (di backtrack of the global I-prefix rule; other families
+      unaffected). Consequence: the interface is bare `Resolver` (or `Container` — final pick at
+      pass time), no `IResolver`.
 - [ ] **Sequencing conflicts to resolve at go time (owner aware):** the briefs' push-directly
       protocol vs this branch's 23 unpushed commits + uncommitted review round; the briefs'
       claim of an active "plan-async-then-scope" pusher vs this session's picture (the dirty
