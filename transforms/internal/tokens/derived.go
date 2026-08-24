@@ -83,6 +83,20 @@ func DeriveTyped(ctx *Context, checker *shimchecker.Checker, t *shimchecker.Type
 		}
 		return nil, false
 	}
+	// An open type is derived by the node it is SPELLED as — the hole itself, or
+	// the named template carrying it — before any structural classification. A
+	// hole has no closed structure to expand: it is what a request binds against,
+	// and a template's address is its name plus its arguments, which is the
+	// spelling a registration carries. A hole sitting in a signature SLOT is
+	// reached through the signature walk below instead, so an open signature still
+	// classifies as Func/Ctor.
+	if carriesGenericHole(ctx, t) {
+		node, ok := DeriveTypeF(ctx, t, failure)
+		if !ok {
+			return nil, false
+		}
+		return &Derived{Kind: DerivedLeaf, Leaf: node}, true
+	}
 	if ctorSigs := shimchecker.Checker_getSignaturesOfType(checker, t, shimchecker.SignatureKindConstruct); len(ctorSigs) != 0 {
 		kind := DerivedCtor
 		if isAbstractConstructor(t) {
@@ -119,6 +133,22 @@ func DeriveTyped(ctx *Context, checker *shimchecker.Checker, t *shimchecker.Type
 		return nil, false
 	}
 	return &Derived{Kind: DerivedLeaf, Leaf: node}, true
+}
+
+// carriesGenericHole reports whether t is an open type: the `Generic<L, C>` /
+// `$<L>` brand itself, or a generic reference applied — at any depth — with a
+// branded argument. The constraint C is a checker-side bound with no bearing on
+// the derived node, so only the brand's presence matters here.
+func carriesGenericHole(ctx *Context, t *shimchecker.Type) bool {
+	if _, ok := GenericLabelFor(t, ctx.Checker); ok {
+		return true
+	}
+	for _, arg := range genericTypeArguments(ctx, t) {
+		if carriesGenericHole(ctx, arg) {
+			return true
+		}
+	}
+	return false
 }
 
 // isGeneralUnion reports whether t is a union this layer decomposes itself,
