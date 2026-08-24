@@ -76,7 +76,7 @@ land; delete the file when empty.
       `Default<InterfaceName>` pattern (di backtrack of the global I-prefix rule; other families
       unaffected). Consequence: the interface is bare `Resolver` (or `Container` — final pick at
       pass time), no `IResolver`.
-- [ ] **LANDED ON DISK 2026-08-24 (uncommitted, in the round) — lifetime-vocabulary split.**
+- [x] **COMMITTED `50b6e5fd` (pre-starfish checkpoint; rulings survive starfish, hosting machinery condemned) — lifetime-vocabulary split.**
       RULED: standard refuses omission (`StandardLifetime` = the three literals; out-of-vocabulary
       registration refused with a naming TypeError, engine-wrapped as LifetimeModelError); tagged
       OWNS omission-means-transient (`tagged<Tags extends string>(): LifetimeModel<Tags |
@@ -112,7 +112,12 @@ land; delete the file when empty.
       landed mint-together round is the hook surface's first client, extracted from it rather
       than discarded. The walk-threaded hook context is the SAME infrastructure as the
       audit-service frame — build once. Sequencing rec: land the current round first, starfish
-      as the generalization pass. OWNER-RATIFIED FRAMING 2026-08-24: "the scope model is now
+      as the generalization pass. RULED 2026-08-24: the scope decorator resolves the starfish
+      DOOR once and holds it (singleton capability, ScopeFactory precedent) — `Starfish` is ONE
+      non-generic address whose synthesized answer is `(request: Type) => Deferred` (Invoker
+      recipe); no per-request `Starfish<T>` wrapper nodes, no hole-template detection, no
+      shadowing question. Lazy dependency slots, if ever wanted, are a separate `Lazy<T>` door.
+      OWNER-RATIFIED FRAMING 2026-08-24: "the scope model is now
       just a decorator pattern on sp" — a scope model is an sp DECORATOR (holds an inner sp,
       diverts realization through Starfish + its hooks); genesis leaning (not yet final):
       di ships engine-only genesis (`di.usingManifest(...).build()` → bare un-augmented
