@@ -53,9 +53,22 @@ land; delete the file when empty.
       elsewhere.
 - [ ] **Optional: biome via dprint-plugin-exec** for noUnusedImports autofix in the hook — offered, not
       requested; noUnusedLocals gates the same class without autofix.
-- [ ] __examples.app._ red against the model-taking `DefaultManifest` ctor_* — the demos call
-      `new DefaultManifest<'singleton'>()` bare (TS2554) plus kind-mismatch fallout
-      (`typeof PaymentRouter` as `Func`); depender-rework territory alongside hosting/logging.
+- [x] __examples.app._ red against the model-taking `DefaultManifest` ctor_* — greened 2026-08-24:
+      front-door rewiring, `ConstantType` stripped from example call sites, concrete demo manifests
+      widened to `Manifest<unknown>` on `LifetimeModel.noop`; root `bun run build` exits 0.
+- [ ] **MetricsBuilder augmentation regression — untriaged**: `tests/augmentations.test` fails with
+      `this.services.addValue is not a function` at
+      `diagnostics.core/src/metrics/MetricsBuilder-augmentations.ts:33`; surfaced during the
+      resolve-vocab slide-in but cause unattributed (sweep vs pass fallout).
+- [ ] **resolve-vocabulary residuals — owner calls open**: (a) `getRequiredService`/`getServices`
+      keep their `get*` names beside `resolve` — rename for one vocabulary, or keep? (b) the
+      unexported `Invoker` marker: `typefor` on it mints a package-private token that DISAGREES
+      with the structural address both the augmentation and the engine spell by hand — acceptable
+      as-is, or export it through a seam so `typefor` agrees?
+- [ ] **RULED 2026-08-24 — scope models receive the WRAPPER**, never raw `Engine`: the engine
+      keeps its current multi-entrypoint contract, `ServiceProvider` stays the routing wrap, and
+      Engine-implementing-`IServiceProvider` is rejected (no current consumer; the door is
+      capability-complete post-Invoker). Input for the scope-planning lane.
 - [ ] **CLAUDE.md digest refresh for the di2 surface** — the Architecture digest still speaks
       pre-di2: `ConstantType`/marker phrasing (the marker no longer exists; value door = the
       `*Value` verbs + `NonCallable` add shape), `scope?` args, `Scopes` naming. One pass at lane
