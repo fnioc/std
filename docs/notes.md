@@ -63,6 +63,16 @@ land; delete the file when empty.
       ILogger registration re-spells as encountered. Engine detection sites (ToCallSiteVisitor
       IServiceProvider/ScopeFactory) switch to hole-template `Type.match` while their receivers
       stay generic; moot for ScopeFactory if the floor-registration rework lands.
+- [ ] **Owner considering (2026-08-24, not yet ruled): drop `getRequiredService`; the one
+      `getService`/`resolve` THROWS on absence** (the engine's classified error), users write
+      their own soft-fail wrappers if wanted. The optional ask already lives in the type
+      grammar: `resolve(typefor<T | undefined>())` — canonical union ordering puts literals
+      last and `undefined` last of all (KIND_RANK.literal=13, LITERAL_CATEGORY_RANK.undefined=5),
+      so the `undefined` constant answers only after `T` fails to build — VERIFIED working
+      today. Drop dissolves the bare-Error taxonomy gap; door probing re-spells as
+      `resolve<ScopeFactory | undefined>()`; internal undefined-leaning call sites (createScope
+      augmentation's split) re-spell through the union form. Claude rec: do it, folded into the
+      rename pass (resolve's contract is touched there anyway).
 - [ ] **Post-port rename slate (owner-opened 2026-08-24; one dedicated pass AFTER the in-flight
       lanes land, CLAUDE.md digest included; ideal name first, MEDI-distance a free bonus).**
       OWNER-ENDORSED 2026-08-24 ("record all your suggestions — i like them"): `ServiceProvider`
