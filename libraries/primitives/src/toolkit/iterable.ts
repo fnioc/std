@@ -29,6 +29,17 @@ export function isAllThere<T>(items: Iterable<T | undefined>): items is Iterable
   return Iterator.from(items).every(Boolean);
 }
 
+export function concat<T>(...args: ReadonlyArray<Iterable<T> | T>) {
+  return Iterator.from(args).flatMap(p => isIterable(p) ? p : [p]);
+}
+
+export function isIterable(value: unknown): value is Iterable<unknown> {
+  return !!value && typeof value === 'object' && Symbol.iterator in value;
+}
+
+export function iterable<T>(fn: Func<[], Iterator<T>>): Iterable<T> {
+  return { [Symbol.iterator]: fn };
+}
 /**
  * Yields tuples pairing the sources' elements positionally. `inner` ends with the shortest source,
  * every slot present; `outer` runs to the longest, an exhausted source's slot `undefined` — which a
@@ -67,7 +78,9 @@ export function* zip(mode: 'inner' | 'outer', ...sources: ReadonlyArray<Iterable
   const iterators = sources.map(source => Iterator.from(source));
   while (true) {
     const results = iterators.map(iterator => iterator.next());
-    const ended = mode === 'inner' ? results.some(result => result.done) : results.every(result => result.done);
+    const ended = mode === 'inner'
+      ? results.some(result => result.done)
+      : results.every(result => result.done);
     if (ended) {
       return;
     }

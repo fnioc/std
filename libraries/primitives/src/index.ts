@@ -10,6 +10,6 @@ export * from './change-token';
 export type * from './IServiceProvider';
 export * from './NotImplementedError';
 export * from './platform';
-export * from './toolkit/index';
+export * from './toolkit';
 export * from './Type';
 export * from './TypeParseError';
