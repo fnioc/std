@@ -3,6 +3,43 @@
 Tasks surfaced in passing and deliberately not implemented at the time. Strike items as they
 land; delete the file when empty.
 
+- [ ] **HELD, awaiting owner go — inherited task 1 (owner-ruled 2026-08-24): types-only
+      `./builders` subpath on di.core** resolving the one-arg asClass/asFactory di.extras sugar
+      halt. Full spec: export `IAsImplementer`/`ServiceDescriptorBuilder`/`Slot` in-file in
+      di.core `src/builder.ts` (root surface unchanged); dev `exports` subpath → `./src/builder.ts`;
+      published shape TYPES-ONLY (`types` condition, deliberately no `default`) taught to
+      `derive-publish-config.ts` (must NOT ride the `./tokens/*` scrub — an unresolvable specifier
+      detaches the sugar as an ambient module); rolled root `.d.ts` treats
+      `@rhombus-std/di.core/builders` as external-self and the subpath emits its own dts; di.extras
+      one-arg sugars via `declare module '@rhombus-std/di.core/builders'` on `IAsImplementer`
+      (return `ServiceDescriptorBuilder<T, Scopes, Exclude<Slots, 'implementer'>>`), marker inline
+      bodies `asClass(x)` → `asClass(x, typefor(x))` / `asFactory` likewise, published through the
+      `registerInlineBodies` channel, files under `augmentations/`; ttsc e2e parity (lowered
+      emission byte-equals the hand-written two-arg call); check off the rewrite-plan halt with a
+      one-line resolution; decisions.v2 § entry, present-tense. Full gates before push.
+- [ ] **HELD, awaiting owner go — inherited task 2 (owner ruling verbatim: "the outputs need to
+      be widened to the truth, and the user forced to check the kind before exploring the
+      members"): TypeFor tells the truth.** In `primitives.extras/src/typefor.ts`: every
+      spelling-ambiguous `TypeFor<T>` branch widens to `… | NamedType` (callables, array/tuple,
+      union, every literal branch incl. undefined/null — covers brands, which derive the BASE —
+      exact iterable); honest branches stay narrow (wide scalars → `NamedType`, `never`/bottom →
+      `Type`). The VALUE overload does NOT widen (observation never yields a nominal node — its
+      own narrow conditional variant, owner-approved). Rewrite `@remarks` to document the union
+      (checker can't see spelling; narrow on `kind` first). Fix broken call sites by real `kind`
+      narrowing, never casts. Then: check off the rewrite-plan TypeFor halt; correct
+      decisions.v2 §193's un-landed paragraph IN PLACE (no lie accepted; value overload narrow)
+      + record the ruling. WHEN both inherited tasks are landed and gated: migrate remaining
+      permanent content, DELETE `docs/rewrite-plan.md` + `docs/issue-365-inline-discovery.md`,
+      closing the rewrite-plan lifecycle. Carried holds from the transfer: OPTIONS FAMILY HOLD
+      stands (owner: "leave options alone"; the `() => T` base-slot dissolve NOT approved —
+      record it durably during migration); unruled forks get a dated hold note in the tracked
+      file, never an invented ruling.
+- [ ] **Sequencing conflicts to resolve at go time (owner aware):** the briefs' push-directly
+      protocol vs this branch's 23 unpushed commits + uncommitted review round; the briefs'
+      claim of an active "plan-async-then-scope" pusher vs this session's picture (the dirty
+      set here IS the review round); both tasks edit beside the live lifetime-lane files, and
+      the floor-registration rework (if accepted) deletes code the briefs assume stable.
+
 - [x] **`getService` → `resolve` vocabulary + one-member `IServiceProvider`** — landed: `IServiceProvider`
       keeps only `getService(serviceType: Type): any`; the callable overloads live in
       `di.core/src/augmentations/ServiceProvider-service-augmentations.ts` as `resolve`, joined by
