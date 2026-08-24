@@ -91,6 +91,19 @@ land; delete the file when empty.
       inside a scope is the container, not the scope (RealizeVisitor.ts:128-130, not fixable
       model-side); resolveLatebound re-enters under call-time scope, not captured scope
       (RealizeVisitor.ts:116-118).
+- [ ] **mergesynth 5-way `add` guard bug — BLOCKS the ruled addMany→add fold.** Adding an
+      `add(descriptors: Iterable<ServiceDescriptor>)` overload as a 5th `add` shape makes the
+      synthesized dispatcher break at runtime (`TypeError: undefined is not a function at reduce`
+      on even a plain 3-arg ctor add); compiles with zero diagnostics; cleanly bisected — same
+      body under a non-colliding name works, fold to `add` fails, toggled twice. The generated
+      guard tree in di.core's dist/stage looks wrong only once the 5th shape enters. `addMany`
+      stands unchanged meanwhile. Fork to decide: chase the guard-composition defect in
+      transforms/ mergesynth, or sidestep with a hand-authored merge strategy for the collision.
+- [ ] **examples.app.{with,without}-transformer red (TS2769)** — registration-demo/resolution-demo
+      call `new DefaultManifest(model, ...)`-era shapes: `LifetimeModel<unknown>` doesn't match the
+      Iterable ctor overloads. Fallout of the ctor/contract rework landing after the examples were
+      greened; root `bun run build` fails at these two apps only. Fix = semantics-only call-site
+      updates (never fill out demos).
 - [ ] **`getRequiredService` throws a bare `Error`** when nothing is registered — outside the
       `DiError` taxonomy, so one `instanceof` no longer classifies every container failure
       (surfaced by the createScope augmentation, which had to route through `getService`'s
@@ -121,16 +134,41 @@ land; delete the file when empty.
         of the resolve that constructed its holder — full request type, serviceType, ancestry — as
         a thin handle closing over the engine's per-resolve frame; payload engine-side and lazy.
         Creation-time semantics under caching (a cache hit reuses instance + handle together).
-        Requires frame data immutable-after-realize or snapshotted at synthesis. Replaces the
-        Typeof witness branding. Ancestor visibility ruled fine — no intra-container trust
-        boundary, and "who asked for me" is useful.
+        Replaces the Typeof witness branding. Ancestor visibility ruled fine — no intra-container
+        trust boundary, and "who asked for me" is useful. MECHANISM SETTLED 2026-08-24 (still
+        deferred): the ScopeFactory recipe verbatim — synthesized callsite, no registration, so
+        the realizer's caching never sees it and creation-time binding falls out free — plus a
+        parent-index over the completed plan that handles read lazily. OWNER CAUTION (load-bearing):
+        the index is PER-PLAN (keyed by the request root, cached with that plan) and the handle is
+        minted AT REALIZE TIME from (active walk's plan, site) — never precomputed onto the site
+        node, since plan-cache sharing puts one site object at different positions in different
+        plans (a later subtree request reuses the big tree's nodes but needs different ancestry).
+        Instance-cache hits keep their creation-walk handle (creation-time semantics). Total
+        engine cost: one callsite kind, one visit member, one post-plan index pass per plan.
+        Dynamic per-walk data (entry request, latebound live args) is out of the payload by
+        design.
 - [ ] **Mergesynth deeper enumeration — owner call open:** verbose diagnostics now enumerate a
       member's weakened positions, but inside one position's recursive composition
       (object/union/tuple guards) the first uncheckable reason still wins (`guardForType`'s
       `firstReason`, ~15 composition sites). Enumerating those too is a sizable refactor —
       wanted or not?
-- [ ] **Lifetime-lane queue (order agreed with the owner; nothing runs without his go).**
-      LANDED ON DISK 2026-08-23, uncommitted pending owner accept: the genesis front door
+- [ ] **Lifetime-lane queue.** LANDED AND COMMITTED 2026-08-24 (owner-accepted): the di2 pass
+      (front door, `manifest.build()` demolished, examples greening, suite migration),
+      IServiceProvider promoted to di.core (`SERVICE_PROVIDER_FROM` flipped; `Lifetime = unknown`
+      generic; `createScope` as a di.core augmentation resolving `ScopeFactory.address` via
+      `getService` and translating to `ScopeFactoryUnavailableError`), the LifetimeModel/Realizer
+      contract split (`createRealizer()` minted once per `build()`; engine holds only the
+      Realizer), and the Manifest `include` verb. STILL UNCOMMITTED: standard.ts/tagged.ts + their
+      two suites. LANDED ON DISK 2026-08-24 (uncommitted, owner review pending): the
+      ScopeFactory-callsite rework — ScopeFactory OUT of addModelServices (context-free, `[]` in
+      all three models), synthesized via its own callsite kind (invoker precedent, synthesis tail
+      so a manifest registration still wins), realized through `Realizer.scopeFactory(container:
+      IServiceProvider): ScopeFactory | undefined` (explicit param RULED: the factory depends
+      only on its declared contract + model internals, never engine behavior — the interim
+      attachContainer hook was rejected and deleted); noop returns undefined → createScope
+      translates to ScopeFactoryUnavailableError. Smoke-verified, zero test-count deltas. STILL
+      TO DO from the stab scope: the ~80-line Scope/Router/ScopeProvider dedup collapse.
+      Historic remainder of the older queue: the genesis front door
       (`di.usingLifetimeModel(...)` → ContainerBuilder; `manifest.build()` demolished),
       `addModelServices` + `name` on the LifetimeModel contract, runtime
       `ServiceProvider.createScope` throwing the dedicated `ScopeFactoryUnavailableError` when
