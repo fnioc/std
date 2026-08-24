@@ -6,8 +6,8 @@ import type { Ctor, Func } from '@rhombus-toolkit/func';
  * over — the same shape any other registered implementer carries.
  *
  * @remarks
- * Not part of the public surface: nothing registers or requests an `Invoker` by name, and its
- * only door is `resolve`'s callable overloads.
+ * Nothing registers one — the engine answers the address by synthesis; `resolve`'s callable
+ * overloads are the usual door.
  */
 export interface Invoker<C extends Ctor | Func> {
   (callable: C): C extends Ctor<any[], infer R> ? R : C extends Func<any[], infer R> ? R : never;
