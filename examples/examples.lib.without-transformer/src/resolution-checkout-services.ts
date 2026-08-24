@@ -161,12 +161,12 @@ export class MethodIsConfigured implements IOrderValidator {
 
   public check(order: CheckoutOrder): string {
     // A key is a TAG on the service type rather than an argument beside it, so a
-    // keyed probe tags the base and asks the ordinary question: `resolve`
-    // misses cleanly with `undefined` instead of throwing, so presence is exactly
-    // a `resolve` that came back non-`undefined`. Every gateway below is a
-    // stateless value object with no dependencies of its own, so resolving one to
-    // answer the question is free.
-    if (this.#resolver.resolve(Type.tag(this.#gatewayType, order.method)) !== undefined) {
+    // keyed probe tags the base, unions it with the literal `undefined`, and
+    // asks the ordinary question: that address misses cleanly with `undefined`
+    // instead of throwing, so presence is exactly a `resolve` that came back
+    // non-`undefined`. Every gateway below is a stateless value object with no
+    // dependencies of its own, so resolving one to answer the question is free.
+    if (this.#resolver.resolve(Type.union(Type.tag(this.#gatewayType, order.method), Type.typeLiteral(undefined))) !== undefined) {
       return 'ok';
     }
     return `no gateway for "${order.method}"`;
@@ -248,7 +248,7 @@ export class AuditTrail implements IAuditTrail {
 /**
  * Stands in for a startup fetch of exchange rates. Registered under the PROMISE
  * Type — the registration IS the promise, so the caller awaits what
- * `getRequiredService` hands back for it. The bare rates type has no
+ * `getService` hands back for it. The bare rates type has no
  * registration of its own.
  */
 export async function fetchExchangeRates(): Promise<IExchangeRates> {
@@ -301,10 +301,10 @@ export class PaymentRouter implements IPaymentRouter {
 
   public checkout(order: CheckoutOrder): string {
     // The KEYED form: the base type tagged with the method, which is one type
-    // and so an ordinary exact lookup. `getRequiredService` (not `resolve`)
+    // and so an ordinary exact lookup. `getService` (not `resolve`)
     // because by this point a validator has already confirmed the method — a
     // miss now is a wiring bug and should be loud.
-    const gateway = this.#resolver.getRequiredService(Type.tag(this.#gatewayType, order.method)) as IPaymentGateway;
+    const gateway = this.#resolver.getService(Type.tag(this.#gatewayType, order.method)) as IPaymentGateway;
     return `${gateway.charge(order)} → ${this.#mintReceipt(order).text}`;
   }
 }
@@ -372,7 +372,7 @@ export function addCheckoutServices<S>(
   services = services.add(t.audit, AuditTrail, Type.ctor(t.audit, [[]]), 'singleton' as S | 'singleton');
 
   // Registered under the PROMISE Type — the caller awaits what
-  // `getRequiredService` hands back for it; the bare type has no registration.
+  // `getService` hands back for it; the bare type has no registration.
   services = services.add(t.ratesPromise, fetchExchangeRates, Type.func(t.ratesPromise, [[]]), 'singleton' as S | 'singleton');
 
   services = services.add(

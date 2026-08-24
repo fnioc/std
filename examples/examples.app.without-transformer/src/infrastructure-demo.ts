@@ -68,7 +68,7 @@ export function demonstrateInfrastructure(): readonly string[] {
     workshop.useGreeting(WorkshopGreeting);
   });
   const defaultProvider = di.usingLifetimeModel(LifetimeModel.noop).usingManifest(defaults).build();
-  const defaultWorkshop = defaultProvider.getRequiredService(GREETING_WORKSHOP_TYPE) as GreetingWorkshop;
+  const defaultWorkshop = defaultProvider.getService(GREETING_WORKSHOP_TYPE) as GreetingWorkshop;
 
   lines.push('app registered no stationery:');
   lines.push(`  stationery overridden: ${defaultWorkshop.stationeryIsOverridden}`);
@@ -82,7 +82,7 @@ export function demonstrateInfrastructure(): readonly string[] {
     workshop.useGreeting(WorkshopGreeting).useStationery({ border: '***' });
   });
   const customWorkshop = di.usingLifetimeModel(LifetimeModel.noop).usingManifest(customised).build()
-    .getRequiredService(GREETING_WORKSHOP_TYPE) as GreetingWorkshop;
+    .getService(GREETING_WORKSHOP_TYPE) as GreetingWorkshop;
 
   lines.push('app registered its own stationery:');
   lines.push(`  stationery overridden: ${customWorkshop.stationeryIsOverridden}`);
@@ -112,7 +112,7 @@ export function demonstrateInfrastructure(): readonly string[] {
   // twin below is the WRONG answer, kept only so the right one has something to
   // be compared against. (The resolution chapter has the other case, where a key
   // is not known until a request arrives and no parameter can express it.)
-  const locatorWorkshop = defaultProvider.getRequiredService(LOCATOR_GREETING_WORKSHOP_TYPE) as LocatorGreetingWorkshop;
+  const locatorWorkshop = defaultProvider.getService(LOCATOR_GREETING_WORKSHOP_TYPE) as LocatorGreetingWorkshop;
 
   // Which is also where the two shapes stop being interchangeable in practice.
   // The parameter form asked for its card factory in a constructor slot and
@@ -130,9 +130,9 @@ export function demonstrateInfrastructure(): readonly string[] {
   // the dialect-independent errors chapter; what belongs here is the pair of
   // answers a library gets when something is simply not registered.
   //
-  // The optional lookup treats absence as an answer, so nothing is thrown at all
-  // and there is nothing to classify.
-  const missing = defaultProvider.resolve(Type.from('@rhombus-std/examples.contracts:IHealthCheck'));
+  // A union with the literal `undefined` treats absence as an answer, so
+  // nothing is thrown at all and there is nothing to classify.
+  const missing = defaultProvider.resolve(Type.union(Type.from('@rhombus-std/examples.contracts:IHealthCheck'), Type.typeLiteral(undefined)));
   lines.push(`asking optionally for an unregistered type: ${missing}`);
 
   // The eager whole-graph pass is where an unsatisfiable registration turns into

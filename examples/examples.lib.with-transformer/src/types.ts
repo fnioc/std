@@ -34,7 +34,7 @@ export const EXAMPLE_TYPES = {
   report: typefor<IServerReport>(),
   /**
    * The banner is registered ONLY in its promise wrapper, so the caller awaits
-   * what `getRequiredService` hands back for this Type, which carries the
+   * what `getService` hands back for this Type, which carries the
    * `Promise<…>` wrapper the derivation gives it.
    */
   banner: typefor<Promise<IBanner>>(),

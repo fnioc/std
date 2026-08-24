@@ -201,7 +201,7 @@ export class GreetingWorkshop {
  * on the request that happened to need one.
  *
  * The verbs it uses are all perfectly good verbs — this is not a lesson about
- * `getRequiredService` or `resolve` being wrong. It is a lesson about WHERE
+ * `getService` or `resolve` being wrong. It is a lesson about WHERE
  * they belong: at a composition root, which knows what it is composing, rather
  * than inside a library, which does not.
  *
@@ -224,16 +224,17 @@ export class LocatorGreetingWorkshop {
   #mintCard: ((recipient: ICardRecipient) => GreetingCard) | undefined;
 
   /**
-   * `resolve` + `??` is the whole "use the app's registration if there is one,
-   * otherwise build my default" idiom: `resolve` is the verb whose miss is
-   * `undefined` rather than a throw. The union slot on the good class expresses
-   * exactly this, declaratively.
+   * `resolve` over a union-with-`undefined` address, plus `??`, is the whole
+   * "use the app's registration if there is one, otherwise build my default"
+   * idiom: the literal fallback is what answers `undefined` rather than a
+   * throw. The union slot on the good class expresses exactly this,
+   * declaratively.
    */
   public readonly stationery: ICardStationery;
 
   public constructor(resolver: IServiceProvider) {
     this.#resolver = resolver;
-    this.stationery = (resolver.resolve(CARD_STATIONERY_TYPE) as ICardStationery | undefined)
+    this.stationery = (resolver.resolve(Type.union(CARD_STATIONERY_TYPE, Type.typeLiteral(undefined))) as ICardStationery | undefined)
       ?? new PlainStationery();
   }
 
@@ -246,7 +247,7 @@ export class LocatorGreetingWorkshop {
    * parameter, except asked for here in a method body where nothing can check it.
    */
   public card(name: string): string {
-    this.#mintCard ??= this.#resolver.getRequiredService(
+    this.#mintCard ??= this.#resolver.getService(
       Type.func(GREETING_CARD_TYPE, [[CARD_RECIPIENT_TYPE]]),
     ) as (recipient: ICardRecipient) => GreetingCard;
     return this.#mintCard({ name }).render(this.stationery.border);
@@ -254,7 +255,7 @@ export class LocatorGreetingWorkshop {
 
   /** Whether the app registered its own stationery, asked of the container rather than known. */
   public get stationeryIsOverridden(): boolean {
-    return this.#resolver.resolve(CARD_STATIONERY_TYPE) !== undefined;
+    return this.#resolver.resolve(Type.union(CARD_STATIONERY_TYPE, Type.typeLiteral(undefined))) !== undefined;
   }
 }
 

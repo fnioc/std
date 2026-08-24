@@ -71,7 +71,7 @@ export function demonstrateInfrastructure(): readonly string[] {
     workshop.useGreeting(WorkshopGreeting);
   });
   const defaultProvider = di.usingLifetimeModel(LifetimeModel.noop).usingManifest(defaults).build();
-  const defaultWorkshop = defaultProvider.getRequiredService(typefor<GreetingWorkshop>()) as GreetingWorkshop;
+  const defaultWorkshop = defaultProvider.getService(typefor<GreetingWorkshop>()) as GreetingWorkshop;
 
   lines.push('app registered no stationery:');
   lines.push(`  stationery overridden: ${defaultWorkshop.stationeryIsOverridden}`);
@@ -85,7 +85,7 @@ export function demonstrateInfrastructure(): readonly string[] {
     workshop.useGreeting(WorkshopGreeting).useStationery({ border: '***' });
   });
   const customWorkshop = di.usingLifetimeModel(LifetimeModel.noop).usingManifest(customised).build()
-    .getRequiredService(typefor<GreetingWorkshop>()) as GreetingWorkshop;
+    .getService(typefor<GreetingWorkshop>()) as GreetingWorkshop;
 
   lines.push('app registered its own stationery:');
   lines.push(`  stationery overridden: ${customWorkshop.stationeryIsOverridden}`);
@@ -115,7 +115,7 @@ export function demonstrateInfrastructure(): readonly string[] {
   // twin below is the WRONG answer, kept only so the right one has something to
   // be compared against. (The resolution chapter has the other case, where a key
   // is not known until a request arrives and no parameter can express it.)
-  const locatorWorkshop = defaultProvider.getRequiredService(
+  const locatorWorkshop = defaultProvider.getService(
     typefor<LocatorGreetingWorkshop>(),
   ) as LocatorGreetingWorkshop;
 
@@ -135,9 +135,9 @@ export function demonstrateInfrastructure(): readonly string[] {
   // the dialect-independent errors chapter; what belongs here is the pair of
   // answers a library gets when something is simply not registered.
   //
-  // The optional lookup treats absence as an answer, so nothing is thrown at all
-  // and there is nothing to classify.
-  const missing = defaultProvider.resolve(typefor<IHealthCheck>());
+  // A union with the literal `undefined` treats absence as an answer, so
+  // nothing is thrown at all and there is nothing to classify.
+  const missing = defaultProvider.resolve(Type.union(typefor<IHealthCheck>(), Type.typeLiteral(undefined)));
   lines.push(`asking optionally for an unregistered type: ${missing}`);
 
   // The eager whole-graph pass is where an unsatisfiable registration turns into

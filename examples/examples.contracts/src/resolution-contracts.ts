@@ -79,7 +79,7 @@ export interface IAuditTrail {
 
 /**
  * The service that is deliberately NEVER registered. It exists so the examples
- * can show what a MISS looks like on each verb — `getRequiredService` throws,
+ * can show what a MISS looks like on each verb — `getService` throws,
  * `resolve` returns `undefined` — without having to invent a fake Type
  * nobody would ever write.
  */
@@ -90,7 +90,7 @@ export interface IFraudScreen {
 /**
  * Rates fetched once at startup. Registered ONLY as `Promise<IExchangeRates>`,
  * never bare: the registration IS the promise, so the caller awaits what
- * `getRequiredService` hands back for that token. Asking for the bare type
+ * `getService` hands back for that token. Asking for the bare type
  * misses — there is no registration for it.
  */
 export interface IExchangeRates {

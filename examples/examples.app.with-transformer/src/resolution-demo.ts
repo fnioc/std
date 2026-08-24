@@ -52,58 +52,61 @@ async function tour(provider: IServiceProvider): Promise<string[]> {
 
   // ── required vs optional ───────────────────────────────────────────────────
   //
-  // `getRequiredService` and `resolve` differ on exactly one axis: what an
-  // ABSENT service does. Reach for the required form when the service is part of
-  // the deal — a missing one is a wiring bug you want to hear about at startup,
-  // not an `undefined` that leaks three call frames away. Reach for the optional
-  // form when absence is a legitimate deployment shape: an audit sink, a metrics
-  // exporter, a debug-only inspector.
+  // `getService` and `resolve` both throw on an address nothing can answer —
+  // neither verb softens a miss on its own. What decides whether absence is a
+  // wiring fault or a legitimate answer is the ADDRESS: asking for the bare
+  // type is a hard requirement, while asking for `Type.union(type,
+  // Type.typeLiteral(undefined))` adds the literal as a FALLBACK, so an absent
+  // registration answers `undefined` instead of throwing. This demo keeps
+  // calling the union-wrapped lookups through `resolve`, purely as a naming
+  // convention for "this may come back undefined" — the union is what does the
+  // work, and `getService` would behave identically given the same address.
   //
-  // The softening is narrow, and that narrowness is the point: it answers for the
-  // type that was ASKED for. A registration whose own dependency is missing is
-  // itself unsatisfiable, so it too answers with absence rather than a
-  // half-built object.
+  // The softening is narrow, and that narrowness is the point: it answers for
+  // the type that was ASKED for. A registration whose own dependency is
+  // missing is itself unsatisfiable, so it too answers with absence rather
+  // than a half-built object.
   lines.push('required vs optional lookup');
-  const router = provider.getRequiredService(typefor<IPaymentRouter>()) as IPaymentRouter;
-  lines.push(`  getRequiredService(IPaymentRouter): resolved ${router.constructor.name}`);
+  const router = provider.getService(typefor<IPaymentRouter>()) as IPaymentRouter;
+  lines.push(`  getService(IPaymentRouter): resolved ${router.constructor.name}`);
   try {
-    provider.getRequiredService(typefor<IFraudScreen>());
-    lines.push('  getRequiredService(IFraudScreen): UNREACHABLE');
+    provider.getService(typefor<IFraudScreen>());
+    lines.push('  getService(IFraudScreen): UNREACHABLE');
   } catch (error) {
-    lines.push(`  getRequiredService(IFraudScreen): ${(error as Error).name} — a required miss is loud`);
+    lines.push(`  getService(IFraudScreen): ${(error as Error).name} — a required miss is loud`);
   }
-  const audit = provider.resolve(typefor<IAuditTrail>()) as IAuditTrail | undefined;
+  const audit = provider.resolve(Type.union(typefor<IAuditTrail>(), Type.typeLiteral(undefined))) as IAuditTrail | undefined;
   lines.push(`  resolve(IAuditTrail): ${audit ? 'present' : 'absent'}`);
-  lines.push(`  resolve(IFraudScreen): ${provider.resolve(typefor<IFraudScreen>())}`);
-  // A presence question is exactly `resolve` compared against `undefined`:
-  // absence answers `undefined` instead of throwing, so there is no member of its
-  // own to reach for. Unlike a pure existence check, this DOES resolve the
-  // service when one exists — cheap here, since IFraudScreen is never registered
-  // at all, but worth naming: a presence probe on something expensive to build is
-  // no longer free.
-  lines.push(`  resolve(IFraudScreen) !== undefined: ${provider.resolve(typefor<IFraudScreen>()) !== undefined}`);
+  lines.push(`  resolve(IFraudScreen): ${provider.resolve(Type.union(typefor<IFraudScreen>(), Type.typeLiteral(undefined)))}`);
+  // A presence question is exactly a union-wrapped lookup compared against
+  // `undefined`: the literal fallback answers `undefined` instead of throwing,
+  // so there is no dedicated member to reach for. Unlike a pure existence
+  // check, this DOES resolve the service when one exists — cheap here, since
+  // IFraudScreen is never registered at all, but worth naming: a presence
+  // probe on something expensive to build is no longer free.
+  lines.push(`  resolve(IFraudScreen) !== undefined: ${provider.resolve(Type.union(typefor<IFraudScreen>(), Type.typeLiteral(undefined))) !== undefined}`);
 
   // ── collection resolution ──────────────────────────────────────────────────
   //
-  // Three classes registered under one type. `getServices` aggregates all three
+  // Three classes registered under one type. `resolveMany` aggregates all three
   // in registration order; asking for the bare type would hand back only one of
   // them. This is the shape for "several things, all of them run": validators,
   // event handlers, middleware, plugins. An unregistered element type aggregates
   // to an EMPTY list rather than throwing, so a pipeline with nothing plugged in
   // still runs.
   //
-  // `getServices(element)` is sugar for asking for the collection type over it;
+  // `resolveMany(element)` is sugar for asking for the collection type over it;
   // `Type.iterable(element)` spells that type, and either request reaches the
   // same aggregation.
   lines.push('collection resolution — 3 registrations share one type, all of them run');
-  const validators = [...provider.getServices(typefor<IOrderValidator>())] as IOrderValidator[];
+  const validators = [...provider.resolveMany(typefor<IOrderValidator>())] as IOrderValidator[];
   for (const order of [ORDER_A, ORDER_X]) {
     for (const validator of validators) {
       lines.push(`  ${order.reference}: ${validator.name} → ${attempted(() => validator.check(order))}`);
     }
   }
   const asCollectionType = [
-    ...(provider.getRequiredService(Type.iterable(typefor<IOrderValidator>())) as Iterable<IOrderValidator>),
+    ...(provider.getService(Type.iterable(typefor<IOrderValidator>())) as Iterable<IOrderValidator>),
   ];
   lines.push(`  the same aggregation asked for as a type: ${asCollectionType.length} validators`);
 
@@ -120,12 +123,12 @@ async function tour(provider: IServiceProvider): Promise<string[]> {
     // The optional sink, used only because the probe above found one.
     audit?.record(order.reference);
   }
-  const crypto = provider.resolve(Type.tag(typefor<IPaymentGateway>() as ImportedType, 'crypto')) as
+  const crypto = provider.resolve(Type.union(Type.tag(typefor<IPaymentGateway>() as ImportedType, 'crypto'), Type.typeLiteral(undefined))) as
     | IPaymentGateway
     | undefined;
   lines.push(`  resolve at key "crypto": ${crypto?.label}`);
   lines.push(`  a keyed registration is not in the bare base's collection: `
-    + `${[...provider.getServices(typefor<IPaymentGateway>())].length} gateways`);
+    + `${[...provider.resolveMany(typefor<IPaymentGateway>())].length} gateways`);
 
   // ── factory slots ──────────────────────────────────────────────────────────
   //
@@ -142,10 +145,10 @@ async function tour(provider: IServiceProvider): Promise<string[]> {
   lines.push('factory slots — the caller supplies what the container cannot know');
   lines.push(`  mint ${ORDER_C.reference}: ${router.checkout(ORDER_C)}`);
   // The same slot asked for from OUTSIDE a constructor, rather than injected
-  // into one: `getRequiredService` over the callable's own `Type.func` type hands
+  // into one: `getService` over the callable's own `Type.func` type hands
   // back the identical factory `PaymentRouter` receives as a constructor
   // parameter.
-  const mintReceipt = provider.getRequiredService(
+  const mintReceipt = provider.getService(
     Type.func(typefor<IReceipt>(), [[typefor<CheckoutOrder>()]]),
   ) as (order: CheckoutOrder) => IReceipt;
   lines.push(`  asking the provider for one: ${mintReceipt(ORDER_C).text}`);
@@ -157,9 +160,9 @@ async function tour(provider: IServiceProvider): Promise<string[]> {
   // later". The container hands back the promise it was told about and the
   // caller awaits it — no half-built value ever appears.
   lines.push('async registrations — the promise is the registration');
-  const rates = await (provider.getRequiredService(typefor<Promise<IExchangeRates>>()) as Promise<IExchangeRates>);
+  const rates = await (provider.getService(typefor<Promise<IExchangeRates>>()) as Promise<IExchangeRates>);
   lines.push(`  rates as of ${rates.asOf}, EUR at ${rates.rate('EUR')}`);
-  lines.push(`  the bare type has no registration: ${provider.resolve(typefor<IExchangeRates>())}`);
+  lines.push(`  the bare type has no registration: ${provider.resolve(Type.union(typefor<IExchangeRates>(), Type.typeLiteral(undefined)))}`);
 
   // ── the provider as a service ──────────────────────────────────────────────
   //
@@ -180,7 +183,7 @@ async function tour(provider: IServiceProvider): Promise<string[]> {
   // gateway for whichever method the buyer picks", so the container itself is the
   // dependency.
   lines.push('the provider as a service — usually a smell, occasionally correct');
-  const view = provider.getRequiredService(typefor<IServiceProvider>()) as IServiceProvider;
+  const view = provider.getService(typefor<IServiceProvider>()) as IServiceProvider;
   lines.push(`  the injected view IS the live container: ${view === provider}`);
 
   // ── what the optional sink recorded ────────────────────────────────────────
