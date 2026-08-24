@@ -32,7 +32,7 @@ export class StartupValidator implements IStartupValidator {
       try {
         // Resolving assembles the value (running validate steps); reading
         // `.value` re-runs the pipeline for a reactive registration.
-        void (this.#resolver.getService(type) as IOptions<unknown>).value;
+        void (this.#resolver.resolve(type) as IOptions<unknown>).value;
       } catch (error) {
         if (error instanceof OptionsValidationError) {
           failures.push(error);

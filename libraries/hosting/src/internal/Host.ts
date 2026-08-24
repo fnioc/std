@@ -165,7 +165,7 @@ export class Host implements IHost, AsyncDisposable {
       // after resolving hosted services and before starting(). The validator is
       // registered only when `validateOnStart` ran, so resolve it optionally; a
       // validation failure throws out of start.
-      const startupValidator: IStartupValidator | undefined = this.#services.getService(
+      const startupValidator: IStartupValidator | undefined = this.#services.resolve(
         typefor<IStartupValidator>(),
       );
       startupValidator?.validate();

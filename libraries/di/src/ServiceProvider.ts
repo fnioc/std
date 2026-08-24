@@ -1,8 +1,6 @@
-import { Manifest, ServiceDescriptor, UnsatisfiableError } from '@rhombus-std/di.core';
-import { augment, type ConstructorType, type FunctionType, type IServiceProvider, NotImplementedError, Type } from '@rhombus-std/primitives';
+import { Manifest, UnsatisfiableError } from '@rhombus-std/di.core';
+import { augment, type IServiceProvider, NotImplementedError, Type } from '@rhombus-std/primitives';
 import { typefor } from '@rhombus-std/primitives.extras';
-import type { Ctor, Func } from '@rhombus-toolkit/func';
-import { assertNever } from '@rhombus-toolkit/type-guards';
 import { Engine } from './internal/Engine.js';
 import { ServiceProviderOptions } from './ServiceProviderOptions.js';
 
@@ -31,37 +29,7 @@ export class ServiceProvider {
    * when a dependency may legitimately not be there. A registration that exists but cannot be
    * built still throws — that is a broken graph, not an absent service.
    */
-  getService(): any;
-  getService(serviceType: Type): any;
-  /**
-   * Constructs `ctor` fresh, its dependencies resolved from `ctorType` — `ctor`'s own parameter
-   * types, in order.
-   *
-   * @remarks
-   * Nothing here is registered or cached: two calls build two instances, even for a `ctor`
-   * separately registered elsewhere under its own address.
-   */
-  getService<R>(ctorType: ConstructorType, ctor: Ctor<any[], R>): R;
-  /**
-   * Calls `func`, its dependencies resolved from `funcType` — `func`'s own parameter types, in order.
-   *
-   * @remarks
-   * Nothing here is registered or cached: two calls build two results, even for a `func`
-   * separately registered elsewhere under its own address.
-   */
-  getService<R>(funcType: FunctionType, func: Func<any[], R>): R;
-  getService(
-    ...args: [] | [serviceType: Type] | [ctorType: ConstructorType, ctor: Ctor] | [funcType: FunctionType, func: Func]
-  ): any {
-    if (!arguments.length) {
-      // The zero-argument signature exists only so the class satisfies the augmented type-argument
-      // face, which the transform rewrites before it can ever reach this body.
-      throw new TypeError('getService needs a service type; the zero-argument form exists only pre-transform.');
-    }
-    const [serviceType, value] = args;
-    if (value !== undefined) {
-      return this.#getServiceFromValue(serviceType as ConstructorType | FunctionType, value);
-    }
+  getService(serviceType: Type): any {
     if (!serviceType) {
       throw new TypeError('getService was handed a nullish service type.');
     }
@@ -73,27 +41,6 @@ export class ServiceProvider {
       }
       throw error;
     }
-  }
-
-  /**
-   * Synthesizes a throwaway {@link ServiceDescriptor} for `value` under the address
-   * `callableType` itself, the node standing as its own implementer type, and hands it to the
-   * engine as an invocation frame — `value` realizes exactly like a registered constructor or
-   * factory, with nothing registered and nothing kept. The node's own signatures are therefore
-   * the calls the engine may build it through.
-   */
-  #getServiceFromValue(callableType: ConstructorType | FunctionType, value: Ctor | Func): any {
-    const descriptor = (() => {
-      switch (callableType.kind) {
-        case 'ctor':
-          return ServiceDescriptor.ctor(callableType, value as Ctor, callableType);
-        case 'func':
-          return ServiceDescriptor.factory(callableType, value as Func, callableType);
-        default:
-          return assertNever(callableType);
-      }
-    })();
-    return this.#engine.resolveFrame(descriptor, this);
   }
 
   /**

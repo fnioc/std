@@ -1,4 +1,4 @@
-// Type-level checks for the value-driven `getService` overloads: `R` flows from the constructor
+// Type-level checks for the value-driven `resolve` overloads: `R` flows from the constructor
 // or function value's own return type, with no type argument written at the call site. Never
 // executed -- `testit` is ambient, so calling it at runtime would throw. The file earns its keep
 // through `lint` (`tsc --noEmit`), which is why the name keeps it out of bun's test glob.
@@ -33,27 +33,27 @@ declare const gadget: { readonly bar: unknown; };
 declare const wrongShape: { readonly nope: true; };
 
 // A ConstructorType node paired with a constructor infers `R` as the instance type.
-testit(widget, provider.getService(widgetNode, Widget));
+testit(widget, provider.resolve(widgetNode, Widget));
 // @ts-expect-error
-testit(wrongShape, provider.getService(widgetNode, Widget));
+testit(wrongShape, provider.resolve(widgetNode, Widget));
 
 // A FunctionType node paired with a function infers `R` as its return type.
-testit(gadget, provider.getService(gadgetNode, makeGadget));
+testit(gadget, provider.resolve(gadgetNode, makeGadget));
 // @ts-expect-error
-testit(wrongShape, provider.getService(gadgetNode, makeGadget));
+testit(wrongShape, provider.resolve(gadgetNode, makeGadget));
 
 // Both overloads reach an IServiceProvider-typed caller, not only the concrete ServiceProvider.
-testit(widget, providerInterface.getService(widgetNode, Widget));
-testit(gadget, providerInterface.getService(gadgetNode, makeGadget));
+testit(widget, providerInterface.resolve(widgetNode, Widget));
+testit(gadget, providerInterface.resolve(gadgetNode, makeGadget));
 
 // A string is not an address: the boundary converter is the only string door.
 declare const spelled: string;
 // @ts-expect-error
-provider.getService(spelled);
+provider.resolve(spelled);
 
 // A bare constructor with no node still fails: nothing derives its signature without one.
 // @ts-expect-error
-provider.getService(Widget);
+provider.resolve(Widget);
 // A ConstructorType node paired with an incompatible value fails too.
 // @ts-expect-error
-provider.getService(widgetNode, makeGadget);
+provider.resolve(widgetNode, makeGadget);

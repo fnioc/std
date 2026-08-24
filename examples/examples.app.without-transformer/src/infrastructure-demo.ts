@@ -131,7 +131,7 @@ export function demonstrateInfrastructure(): readonly string[] {
   //
   // The optional lookup treats absence as an answer, so nothing is thrown at all
   // and there is nothing to classify.
-  const missing = defaultProvider.getService(Type.from('@rhombus-std/examples.contracts:IHealthCheck'));
+  const missing = defaultProvider.resolve(Type.from('@rhombus-std/examples.contracts:IHealthCheck'));
   lines.push(`asking optionally for an unregistered type: ${missing}`);
 
   // The eager whole-graph pass is where an unsatisfiable registration turns into

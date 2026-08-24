@@ -69,7 +69,7 @@ export interface IReceiptNumbering {
 /**
  * An OPTIONAL cross-cutting service. It happens to be registered here, but the
  * point of the type is that consumers must not ASSUME it: they reach it with
- * `getService`, so the same code runs in a deployment that never wired an audit
+ * `resolve`, so the same code runs in a deployment that never wired an audit
  * sink.
  */
 export interface IAuditTrail {
@@ -80,7 +80,7 @@ export interface IAuditTrail {
 /**
  * The service that is deliberately NEVER registered. It exists so the examples
  * can show what a MISS looks like on each verb — `getRequiredService` throws,
- * `getService` returns `undefined` — without having to invent a fake Type
+ * `resolve` returns `undefined` — without having to invent a fake Type
  * nobody would ever write.
  */
 export interface IFraudScreen {

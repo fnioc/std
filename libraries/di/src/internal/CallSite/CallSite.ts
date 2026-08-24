@@ -1,5 +1,5 @@
 import { type CtorDescriptor, type FactoryDescriptor, ServiceDescriptor, UnsatisfiableError } from '@rhombus-std/di.core';
-import { type FunctionType, isAllThere, Type } from '@rhombus-std/primitives';
+import { type ConstructorType, type FunctionType, isAllThere, Type } from '@rhombus-std/primitives';
 import { memo } from '@rhombus-std/primitives';
 import type { Ctor, Func } from '@rhombus-toolkit/func';
 import { assertNever } from '@rhombus-toolkit/type-guards';
@@ -16,6 +16,7 @@ export type CallSite =
   | CtorCallSite
   | FactoryCallSite
   | LateBoundCallSite
+  | InvokerCallSite
   | ConstantCallSite
   | ServiceProviderCallSite
   | IterableCallSite
@@ -68,6 +69,17 @@ export interface LateBoundArgCallSite {
 export interface LateBoundCallSite {
   readonly kind: 'latebound';
   readonly funcType: FunctionType;
+}
+
+/**
+ * The value path: `callableType` is the constructor or factory node a caller's `resolve` call
+ * supplies its own implementer against — {@link RegisteredCtorCallSite}/
+ * {@link RegisteredFactoryCallSite}'s sibling for a callable that arrives at call time instead of
+ * through a registration.
+ */
+export interface InvokerCallSite {
+  readonly kind: 'invoker';
+  readonly callableType: ConstructorType | FunctionType;
 }
 
 export interface ConstantCallSite {
@@ -127,6 +139,10 @@ export namespace CallSite {
   }
   export function lateboundArg(index: number): LateBoundArgCallSite {
     return { kind: 'latebound-arg', index };
+  }
+  /** The value path's own realization: a closure a caller invokes with their own implementer. */
+  export function invoker(callableType: ConstructorType | FunctionType): InvokerCallSite {
+    return { kind: 'invoker', callableType };
   }
   export function ctor(ctor: Ctor, args: CallSite[]): CtorCallSite {
     return { kind: 'ctor', ctor, args };

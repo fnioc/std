@@ -49,9 +49,9 @@ fork: removeAll left 0 sinks (the original still has 2), so the audit log's opti
 required vs optional lookup
   getRequiredService(IPaymentRouter): resolved PaymentRouter
   getRequiredService(IFraudScreen): Error — a required miss is loud
-  getService(IAuditTrail): present
-  getService(IFraudScreen): undefined
-  getService(IFraudScreen) !== undefined: false
+  resolve(IAuditTrail): present
+  resolve(IFraudScreen): undefined
+  resolve(IFraudScreen) !== undefined: false
 collection resolution — 3 registrations share one type, all of them run
   A-1001: total-within-limit → ok
   A-1001: amount-is-positive → ok
@@ -63,7 +63,7 @@ collection resolution — 3 registrations share one type, all of them run
 keyed resolution — one base type, three keys
   A-1001 checkout (key "wallet"): wallet debited 4250 for A-1001 → #1001 A-1001 via wallet
   B-2002 checkout (key "card"): card authorised 990 for B-2002 → #1001 B-2002 via card
-  getService at key "crypto": undefined
+  resolve at key "crypto": undefined
   a keyed registration is not in the bare base's collection: 0 gateways
 factory slots — the caller supplies what the container cannot know
   mint C-3003: invoice raised 12000 for C-3003 → #1001 C-3003 via invoice
@@ -95,8 +95,8 @@ the template itself is NOT resolvable — a hole is not a service:
 === di errors (dialect-independent) ===
 keying a service type that already carries a key: Error — not a container failure; this diagnostic would rethrow rather than guess
 building with validateOnBuild: ManifestValidationError — 1 registration(s) cannot be satisfied: selfcheck:IStore
-  the failure inside it: UnsatisfiableError — nothing in the manifest produces selfcheck:IStore; register it, or ask with getService if its absence is legitimate
-asking with getService for a registration that cannot be lowered: undefined
+  the failure inside it: UnsatisfiableError — nothing in the manifest produces selfcheck:IStore; register it, or ask with resolve if its absence is legitimate
+asking with resolve for a registration that cannot be lowered: undefined
 asking with getRequiredService for the same: Error — not a container failure; this diagnostic would rethrow rather than guess
 asking for a type nobody registered: Error — not a container failure; this diagnostic would rethrow rather than guess
 a dependency cycle: CycleError — selfcheck:ILedger -> selfcheck:IAuditLog -> selfcheck:ILedger; break the loop with a factory slot

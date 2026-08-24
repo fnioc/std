@@ -110,12 +110,12 @@ export function demonstrateErrors(): readonly string[] {
   // only the requests that touch the working part.
   //
   // The two lookups differ on exactly one axis, and it is what an ABSENT service
-  // does. `getService` treats absence as an answer and hands back `undefined`,
+  // does. `resolve` treats absence as an answer and hands back `undefined`,
   // which is the shape to reach for when a deployment may legitimately not have
   // the thing. `getRequiredService` treats it as a wiring fault and throws, which
   // is the shape to reach for when the service is part of the deal.
   const lazy = withUnsatisfiableStore().build();
-  lines.push(`asking with getService for a registration that cannot be lowered: ${lazy.getService(STORE_TYPE)}`);
+  lines.push(`asking with resolve for a registration that cannot be lowered: ${lazy.resolve(STORE_TYPE)}`);
   lines.push(stagedFailure('asking with getRequiredService for the same', () => lazy.getRequiredService(STORE_TYPE)));
   lines.push(stagedFailure('asking for a type nobody registered', () => lazy.getRequiredService(REPORT_TYPE)));
 

@@ -14,9 +14,9 @@ import { describe, expect, test } from 'bun:test';
 // it structurally so the test needs no di.core dependency.
 type FakeResolver = ConstructorParameters<typeof StartupValidator>[0];
 
-/** An IServiceProvider whose `getService(type)` returns the type's mapped `Options`. */
+/** An IServiceProvider whose `resolve(type)` returns the type's mapped `Options`. */
 function resolverOf(map: Record<string, IOptions<unknown>>): FakeResolver {
-  return { getService(type: Type): IOptions<unknown> {
+  return { resolve(type: Type): IOptions<unknown> {
     const token = Type.stringify(type);
     const options = map[token];
     if (options === undefined) {
@@ -34,13 +34,13 @@ function failing(error: unknown): IOptions<unknown> {
 }
 
 /**
- * An IServiceProvider whose `getService(type)` throws `error` outright -- models
+ * An IServiceProvider whose `resolve(type)` throws `error` outright -- models
  * the non-reactive assembly path, where `assembleOptions` builds eagerly at
- * resolve time so a failed validate step surfaces from `getService()` itself,
+ * resolve time so a failed validate step surfaces from `resolve()` itself,
  * before any `.value` read.
  */
 function resolverThrowing(error: unknown): FakeResolver {
-  return { getService(): IOptions<unknown> {
+  return { resolve(): IOptions<unknown> {
     throw error;
   } } as unknown as FakeResolver;
 }
@@ -79,7 +79,7 @@ describe('StartupValidator.validate', () => {
     }
   });
 
-  test('a validation error thrown eagerly from getService() is caught like a .value failure', () => {
+  test('a validation error thrown eagerly from resolve() is caught like a .value failure', () => {
     const failure = new OptionsValidationError(['eager fail']);
     const validator = new StartupValidator(resolverThrowing(failure), [Type.from('a')]);
 

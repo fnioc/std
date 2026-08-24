@@ -19,16 +19,16 @@ import { changeTokenSourceType, configureStepType, postConfigureStepType, valida
  * registered for this same type, so each fire re-runs this type's pipeline.
  */
 export function assembleOptions<T>(resolver: IServiceProvider, optionsType: Type, makeBase: Func<[], T>): IOptions<T> {
-  const configures: ReadonlyArray<IConfigureOptions<T>> = resolver.getService(
+  const configures: ReadonlyArray<IConfigureOptions<T>> = resolver.resolve(
     Type.array(configureStepType(optionsType)),
   );
-  const postConfigures: ReadonlyArray<IPostConfigureOptions<T>> = resolver.getService(
+  const postConfigures: ReadonlyArray<IPostConfigureOptions<T>> = resolver.resolve(
     Type.array(postConfigureStepType(optionsType)),
   );
-  const validates: ReadonlyArray<IValidateOptions<T>> = resolver.getService(
+  const validates: ReadonlyArray<IValidateOptions<T>> = resolver.resolve(
     Type.array(validateStepType(optionsType)),
   );
-  const sources: ReadonlyArray<IOptionsChangeTokenSource> = resolver.getService(
+  const sources: ReadonlyArray<IOptionsChangeTokenSource> = resolver.resolve(
     Type.array(changeTokenSourceType(optionsType)),
   );
 

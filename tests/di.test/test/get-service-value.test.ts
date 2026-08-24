@@ -1,4 +1,4 @@
-// Behaviour tests for the value-driven `getService` overloads: hand it a `ConstructorType` or
+// Behaviour tests for the value-driven `resolve` overloads: hand it a `ConstructorType` or
 // `FunctionType` node alongside the constructor/function it describes, and its dependencies
 // resolve from the node's own parameter types. Nothing here is registered or cached — every call
 // builds fresh.
@@ -24,7 +24,7 @@ describe('constructing from a ConstructorType node', () => {
 
   test('the node names the class its own dependencies resolve from', () => {
     const provider = providerWithBar('a bar');
-    const widget = provider.getService(Type.ctor(Foo, [[Bar]]), Widget);
+    const widget = provider.resolve(Type.ctor(Foo, [[Bar]]), Widget);
     expect(widget).toBeInstanceOf(Widget);
     expect(widget.bar).toBe('a bar');
   });
@@ -34,7 +34,7 @@ describe('constructing from a ConstructorType node', () => {
   test('two calls never share a result, even for the same node and class', () => {
     const provider = providerWithBar('unused');
     const node = Type.ctor(Empty, [[]]);
-    expect(provider.getService(node, EmptyCtor)).not.toBe(provider.getService(node, EmptyCtor));
+    expect(provider.resolve(node, EmptyCtor)).not.toBe(provider.resolve(node, EmptyCtor));
   });
 });
 
@@ -45,14 +45,14 @@ describe('calling from a FunctionType node', () => {
 
   test('the node names the function its own dependencies resolve from', () => {
     const provider = providerWithBar('from a function');
-    const result = provider.getService(Type.func(Gadget, [[Bar]]), makeGadget);
+    const result = provider.resolve(Type.func(Gadget, [[Bar]]), makeGadget);
     expect(result).toEqual({ bar: 'from a function' });
   });
 
   test('an arrow function works the same way', () => {
     const provider = providerWithBar('from an arrow');
     const arrow = (bar: unknown) => ({ bar });
-    expect(provider.getService(Type.func(Gadget, [[Bar]]), arrow)).toEqual({ bar: 'from an arrow' });
+    expect(provider.resolve(Type.func(Gadget, [[Bar]]), arrow)).toEqual({ bar: 'from an arrow' });
   });
 });
 
@@ -66,13 +66,13 @@ describe('what the door does not do', () => {
     // registration. Here the caller has already said what to build, so a
     // dependency it cannot reach is a broken graph.
     const provider = new ServiceProvider(DefaultManifest.empty<string>());
-    expect(() => provider.getService(Type.ctor(Foo, [[Bar]]), Widget)).toThrow(UnsatisfiableError);
+    expect(() => provider.resolve(Type.ctor(Foo, [[Bar]]), Widget)).toThrow(UnsatisfiableError);
   });
 
   test('the node stays unregistered — a later lookup of it still finds nothing', () => {
     const provider = providerWithBar('a bar');
     const node = Type.ctor(Foo, [[Bar]]);
-    provider.getService(node, Widget);
-    expect(provider.getService(node)).toBeUndefined();
+    provider.resolve(node, Widget);
+    expect(provider.resolve(node)).toBeUndefined();
   });
 });

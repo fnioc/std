@@ -106,7 +106,7 @@ export function diagnose(error: unknown): string {
   }
   if (error instanceof UnsatisfiableError) {
     return `UnsatisfiableError — nothing in the manifest produces ${Type.stringify(error.serviceType)}; `
-      + 'register it, or ask with getService if its absence is legitimate';
+      + 'register it, or ask with resolve if its absence is legitimate';
   }
 
   // ── the three catch-alls ───────────────────────────────────────────────────

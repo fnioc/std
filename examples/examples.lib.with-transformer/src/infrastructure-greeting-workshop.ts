@@ -221,7 +221,7 @@ export class GreetingWorkshop {
  * below has a parameter form sitting above it — which is what makes it the
  * counter-example.
  *
- * As a side effect it keeps `getRequiredService`, `getService`, and the
+ * As a side effect it keeps `getRequiredService`, `resolve`, and the
  * intrinsic provider slot demonstrated from inside a library, in the tokenless
  * dialect, which is where a reader is most likely to meet them.
  */
@@ -235,11 +235,11 @@ export class LocatorGreetingWorkshop {
 
   public constructor(resolver: IServiceProvider) {
     this.#resolver = resolver;
-    // `getService` is the verb whose miss is `undefined` rather than a
+    // `resolve` is the verb whose miss is `undefined` rather than a
     // throw, which is the whole "use the app's registration if there is one,
     // otherwise build my default" idiom. The good class declares the same thing
     // as an optional parameter.
-    this.stationery = (resolver.getService(typefor<ICardStationery>()) as ICardStationery | undefined)
+    this.stationery = (resolver.resolve(typefor<ICardStationery>()) as ICardStationery | undefined)
       ?? new PlainStationery();
   }
 
@@ -262,7 +262,7 @@ export class LocatorGreetingWorkshop {
    * know. The good class answers the same question from a field it was handed.
    */
   public get stationeryIsOverridden(): boolean {
-    return this.#resolver.getService(typefor<ICardStationery>()) !== undefined;
+    return this.#resolver.resolve(typefor<ICardStationery>()) !== undefined;
   }
 }
 
@@ -316,7 +316,7 @@ export class GreetingWorkshopBuilder<S> implements IGreetingWorkshopBuilder {
 
   public useStationery(stationery: ICardStationery): IGreetingWorkshopBuilder {
     // Tokenless from the other side too: the workshop's optional slot and the
-    // locator's `getService` derive the same type this registration does, so the
+    // locator's `resolve` derive the same type this registration does, so the
     // three cannot drift apart.
     this.#holder.services = this.#holder.services.addValue<ICardStationery>(stationery);
     return this;

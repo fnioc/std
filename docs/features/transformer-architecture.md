@@ -2,7 +2,7 @@
 
 `@rhombus-std/di.extras`, `di.extras.options`, `config.extras`, and `primitives.extras`
 each rewrite TypeScript at compile time — `typefor<T>()`, `addClass<T>()`, `addOptions<T>()`,
-`withType<T>()`, `getService<T>()`, and friends. What each rewrite actually _does_ is documented on
+`withType<T>()`, `resolve<T>()`, and friends. What each rewrite actually _does_ is documented on
 its own package (see each package's README). This doc covers the machinery underneath all of
 them: how they run in your build, and how one small set of domain-agnostic primitives — run
 together, over and over, until nothing changes — replaces what used to be four separate
@@ -644,8 +644,8 @@ omitted rather than passed as `undefined`, which is what a hand author would hav
 
 ```ts
 export namespace ServiceProviderServiceAugmentations {
-  export function getService<T>(this: IServiceProvider): T | undefined {
-    return this.getService(typefor<T>());
+  export function resolve<T>(this: IServiceProvider): T | undefined {
+    return this.resolve(typefor<T>());
   }
   export function getRequiredService<T>(this: IServiceProvider): T {
     return this.getRequiredService(typefor<T>());

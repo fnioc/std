@@ -218,7 +218,7 @@ export const self = services.add(SelfRepo);
 `;
 
 // Lookup-family source (W5). The type-driven get* forms lower through the inline
-// bodies to the Type-taking member: `provider.getService(typefor<T>())` and its
+// bodies to the Type-taking member: `provider.resolve(typefor<T>())` and its
 // two siblings, the type minted by the typefor stage. Own file so the lookup
 // compare is isolated from the registration whole-file compare.
 const RESOLVE_SOURCE = `
@@ -249,14 +249,14 @@ function makeGadget(bar: IBar): IGadget {
 declare const provider: IServiceProvider;
 
 export const tokenful = provider.getRequiredService<IThing>();
-export const tryTok = provider.getService<IThing>();
+export const tryTok = provider.resolve<IThing>();
 export const many = provider.getServices<IThing>();
 // A type LITERAL is a service type like any other: it derives its own token
 // rather than collapsing to the literal value.
 export const singular = provider.getRequiredService<'dev'>();
 // A keyed type argument composes base and key into ONE tag token — the same token
 // the keyed registration mints, which is what makes the two meet at runtime.
-export const keyedTok = provider.getService<Keyed<ICache, 'redis'>>();
+export const keyedTok = provider.resolve<Keyed<ICache, 'redis'>>();
 export const keyedKnown = provider.getRequiredService<Keyed<ICache, 'redis'>>();
 `;
 
@@ -579,12 +579,12 @@ describe.skipIf(!toolchainReady)('generic inline stage — lookup parity (W5)', 
     assertNoAuthoringSurvivors(resolveInline);
   });
 
-  test('getService<I>() lowers to the Type-taking member', () => {
+  test('resolve<I>() lowers to the Type-taking member', () => {
     const line = lineWith(resolveInline, 'tryTok =');
     expect(line).toBeDefined();
     const thing = constFor(chainModule, 'Type.imported("IThing", "chain-app/tokens/resolve")');
-    expect(line).toContain(`.getService(${thing})`);
-    expect(line).not.toContain('getService<');
+    expect(line).toContain(`.resolve(${thing})`);
+    expect(line).not.toContain('resolve<');
     assertNoAuthoringSurvivors(resolveInline);
   });
 
@@ -613,7 +613,7 @@ describe.skipIf(!toolchainReady)('generic inline stage — lookup parity (W5)', 
     const composed = constFor(chainModule, `Type.tag(${cache}, "redis")`);
     const getLine = lineWith(resolveInline, 'keyedTok =');
     expect(getLine).toBeDefined();
-    expect(getLine).toContain(`.getService(${composed})`);
+    expect(getLine).toContain(`.resolve(${composed})`);
 
     const requiredLine = lineWith(resolveInline, 'keyedKnown =');
     expect(requiredLine).toBeDefined();
@@ -631,12 +631,12 @@ describe.skipIf(!toolchainReady)('generic inline stage — lookup parity (W5)', 
 
     let keyed: Manifest<'singleton'> = new DefaultManifest<'singleton'>();
     keyed = keyed.addValue(composed, marker);
-    expect(keyed.build().getService(composed)).toBe(marker);
+    expect(keyed.build().resolve(composed)).toBe(marker);
 
     // An unkeyed registration of the same base does not answer the keyed lookup.
     let unkeyed: Manifest<'singleton'> = new DefaultManifest<'singleton'>();
     unkeyed = unkeyed.addValue(base, marker);
-    expect(unkeyed.build().getService(composed)).toBeUndefined();
+    expect(unkeyed.build().resolve(composed)).toBeUndefined();
   });
 });
 

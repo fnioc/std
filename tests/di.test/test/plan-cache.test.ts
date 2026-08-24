@@ -31,23 +31,23 @@ const widgets = DefaultManifest.empty<string>()
 describe('a latebound call resolves against its own registrations', () => {
   test('the call argument outranks the manifest, even after the plain plan is cached', () => {
     const provider = new ServiceProvider(widgets);
-    expect((provider.getService(WIDGET) as Widget).conn).toBeInstanceOf(ManifestConn);
+    expect((provider.resolve(WIDGET) as Widget).conn).toBeInstanceOf(ManifestConn);
 
-    const make = provider.getService(Type.func(WIDGET, [[CONN]])) as (conn: unknown) => Widget;
+    const make = provider.resolve(Type.func(WIDGET, [[CONN]])) as (conn: unknown) => Widget;
     const passed = new CallConn();
     expect(make(passed).conn).toBe(passed);
   });
 
   test('and leaves the manifest plan alone for the next plain resolution', () => {
     const provider = new ServiceProvider(widgets);
-    const make = provider.getService(Type.func(WIDGET, [[CONN]])) as (conn: unknown) => Widget;
+    const make = provider.resolve(Type.func(WIDGET, [[CONN]])) as (conn: unknown) => Widget;
     make(new CallConn());
 
-    expect((provider.getService(WIDGET) as Widget).conn).toBeInstanceOf(ManifestConn);
+    expect((provider.resolve(WIDGET) as Widget).conn).toBeInstanceOf(ManifestConn);
   });
 
   test('each call is planned afresh, so one call never answers the next', () => {
-    const make = new ServiceProvider(widgets).getService(Type.func(WIDGET, [[CONN]])) as (conn: unknown) => Widget;
+    const make = new ServiceProvider(widgets).resolve(Type.func(WIDGET, [[CONN]])) as (conn: unknown) => Widget;
     const first = new CallConn();
     const second = new CallConn();
     expect(make(first).conn).toBe(first);
@@ -63,14 +63,14 @@ describe('a union is settled against the resolving call', () => {
     .add(ServiceDescriptor.ctor(REDIS, MemoryCache, Type.ctor(REDIS, [[]])));
 
   test('one member answers when the manifest is the whole universe', () => {
-    expect((new ServiceProvider(reports).getService(REPORT) as Report).cache).toBeInstanceOf(MemoryCache);
+    expect((new ServiceProvider(reports).resolve(REPORT) as Report).cache).toBeInstanceOf(MemoryCache);
   });
 
   test('a call argument answering an earlier member outranks it, plan cache and all', () => {
     const provider = new ServiceProvider(reports);
-    expect((provider.getService(REPORT) as Report).cache).toBeInstanceOf(MemoryCache);
+    expect((provider.resolve(REPORT) as Report).cache).toBeInstanceOf(MemoryCache);
 
-    const make = provider.getService(Type.func(REPORT, [[CACHE]])) as (cache: unknown) => Report;
+    const make = provider.resolve(Type.func(REPORT, [[CACHE]])) as (cache: unknown) => Report;
     const passed = { name: 'call-cache' };
     expect(make(passed).cache).toBe(passed);
   });
@@ -90,7 +90,7 @@ describe('a chosen member that fails while being built', () => {
       .add(ServiceDescriptor.ctor(CACHE, Exploding, Type.ctor(CACHE, [[]])));
 
     // The literal is the union's fallback for an ABSENT service, never for a broken one.
-    expect(() => new ServiceProvider(manifest).getService(REPORT)).toThrow('boom');
+    expect(() => new ServiceProvider(manifest).resolve(REPORT)).toThrow('boom');
   });
 
   test('fails it again on the next ask, with the plan unchanged', () => {
@@ -103,8 +103,8 @@ describe('a chosen member that fails while being built', () => {
       }, Type.func(CONN, [[]])));
     const provider = new ServiceProvider(manifest);
 
-    expect(() => provider.getService(WIDGET)).toThrow('boom');
-    expect(() => provider.getService(WIDGET)).toThrow('boom');
+    expect(() => provider.resolve(WIDGET)).toThrow('boom');
+    expect(() => provider.resolve(WIDGET)).toThrow('boom');
     expect(attempts).toBe(2);
   });
 });

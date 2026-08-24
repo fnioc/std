@@ -19,6 +19,6 @@ describe('getServices', () => {
       .add(ServiceDescriptor.value(A, 'first'))
       .add(ServiceDescriptor.value(A, 'second'));
     const provider = new ServiceProvider(manifest);
-    expect([...provider.getServices(A)]).toEqual([...provider.getService(Type.iterable(A))]);
+    expect([...provider.getServices(A)]).toEqual([...provider.resolve(Type.iterable(A))]);
   });
 });

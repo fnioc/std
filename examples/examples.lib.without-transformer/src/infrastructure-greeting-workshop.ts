@@ -201,7 +201,7 @@ export class GreetingWorkshop {
  * on the request that happened to need one.
  *
  * The verbs it uses are all perfectly good verbs — this is not a lesson about
- * `getRequiredService` or `getService` being wrong. It is a lesson about WHERE
+ * `getRequiredService` or `resolve` being wrong. It is a lesson about WHERE
  * they belong: at a composition root, which knows what it is composing, rather
  * than inside a library, which does not.
  *
@@ -224,8 +224,8 @@ export class LocatorGreetingWorkshop {
   #mintCard: ((recipient: ICardRecipient) => GreetingCard) | undefined;
 
   /**
-   * `getService` + `??` is the whole "use the app's registration if there is one,
-   * otherwise build my default" idiom: `getService` is the verb whose miss is
+   * `resolve` + `??` is the whole "use the app's registration if there is one,
+   * otherwise build my default" idiom: `resolve` is the verb whose miss is
    * `undefined` rather than a throw. The union slot on the good class expresses
    * exactly this, declaratively.
    */
@@ -233,7 +233,7 @@ export class LocatorGreetingWorkshop {
 
   public constructor(resolver: IServiceProvider) {
     this.#resolver = resolver;
-    this.stationery = (resolver.getService(CARD_STATIONERY_TYPE) as ICardStationery | undefined)
+    this.stationery = (resolver.resolve(CARD_STATIONERY_TYPE) as ICardStationery | undefined)
       ?? new PlainStationery();
   }
 
@@ -254,7 +254,7 @@ export class LocatorGreetingWorkshop {
 
   /** Whether the app registered its own stationery, asked of the container rather than known. */
   public get stationeryIsOverridden(): boolean {
-    return this.#resolver.getService(CARD_STATIONERY_TYPE) !== undefined;
+    return this.#resolver.resolve(CARD_STATIONERY_TYPE) !== undefined;
   }
 }
 

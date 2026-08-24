@@ -73,6 +73,6 @@ describe('addOptions(optionsType) — wrap the bound T', () => {
 
     // The open registration takes the base slot as a dependency, so a type with
     // no `addOptions` leaves it unlowerable rather than assembling an empty value.
-    expect(provider.getService(optionsAddressType(Type.from('test:NeverOffered')))).toBeUndefined();
+    expect(provider.resolve(optionsAddressType(Type.from('test:NeverOffered')))).toBeUndefined();
   });
 });

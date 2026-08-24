@@ -36,14 +36,14 @@ function manifestWith(...caches: readonly ('memory' | 'redis')[]) {
 
 describe('one suppliable member', () => {
   test('answers the union', () => {
-    const report = new ServiceProvider(manifestWith('memory')).getService(REPORT) as Report;
+    const report = new ServiceProvider(manifestWith('memory')).resolve(REPORT) as Report;
     expect(report.cache).toBeInstanceOf(MemoryCache);
   });
 
   test('answers it whichever way the union was spelled', () => {
     // The two spellings are one interned object, so the engine cannot see a difference.
     expect(Type.union(REDIS, CACHE)).toBe(Type.union(CACHE, REDIS));
-    const report = new ServiceProvider(manifestWith('redis')).getService(REPORT) as Report;
+    const report = new ServiceProvider(manifestWith('redis')).resolve(REPORT) as Report;
     expect(report.cache).toBeInstanceOf(RedisCache);
   });
 });
@@ -51,9 +51,9 @@ describe('one suppliable member', () => {
 describe('several suppliable members', () => {
   test('settle on the first in canonical member order, whichever was registered first', () => {
     // app:Cache orders before app:Redis, so the registration order cannot show through.
-    const memoryFirst = new ServiceProvider(manifestWith('memory', 'redis')).getService(REPORT) as Report;
+    const memoryFirst = new ServiceProvider(manifestWith('memory', 'redis')).resolve(REPORT) as Report;
     expect(memoryFirst.cache).toBeInstanceOf(MemoryCache);
-    const redisFirst = new ServiceProvider(manifestWith('redis', 'memory')).getService(REPORT) as Report;
+    const redisFirst = new ServiceProvider(manifestWith('redis', 'memory')).resolve(REPORT) as Report;
     expect(redisFirst.cache).toBeInstanceOf(MemoryCache);
   });
 });
@@ -68,19 +68,19 @@ describe('a self-supplying member is the fallback', () => {
   }
 
   test('yields the service when one is registered', () => {
-    const report = new ServiceProvider(optionalManifest(true)).getService(REPORT) as Report;
+    const report = new ServiceProvider(optionalManifest(true)).resolve(REPORT) as Report;
     expect(report.cache).toBeInstanceOf(MemoryCache);
   });
 
   test('yields the literal when none is', () => {
-    const report = new ServiceProvider(optionalManifest(false)).getService(REPORT) as Report;
+    const report = new ServiceProvider(optionalManifest(false)).resolve(REPORT) as Report;
     expect(report.cache).toBeUndefined();
   });
 
   test('a registered literal member wins the registration phase like any other', () => {
     const manifest = optionalManifest(false)
       .add(ServiceDescriptor.value(Type.typeLiteral(undefined), 'registered-for-undefined'));
-    const report = new ServiceProvider(manifest).getService(REPORT) as Report;
+    const report = new ServiceProvider(manifest).resolve(REPORT) as Report;
     expect(report.cache).toBe('registered-for-undefined');
   });
 });
@@ -95,7 +95,7 @@ describe('a union-typed registration', () => {
 
   test('cannot serve a lone member — the union says which types will do, not what it holds', () => {
     const provider = new ServiceProvider(DefaultManifest.empty<string>().addValue(EITHER, 'either'));
-    expect(provider.getService(CACHE)).toBeUndefined();
+    expect(provider.resolve(CACHE)).toBeUndefined();
     expect(() => provider.getRequiredService(CACHE)).toThrow('nothing is registered for app:Cache.');
   });
 });
@@ -103,6 +103,6 @@ describe('a union-typed registration', () => {
 describe('the cycle guard', () => {
   test('still closes a loop after the move to identity comparison', () => {
     const manifest = DefaultManifest.empty<string>().add(ServiceDescriptor.ctor(LOOP, Loop, Type.ctor(LOOP, [[LOOP]])));
-    expect(() => new ServiceProvider(manifest).getService(LOOP)).toThrow(CycleError);
+    expect(() => new ServiceProvider(manifest).resolve(LOOP)).toThrow(CycleError);
   });
 });

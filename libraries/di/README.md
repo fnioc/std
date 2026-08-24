@@ -37,7 +37,7 @@ const provider: ServiceProvider = new DefaultManifest()
 provider.getRequiredService(IGreeter).greet('world'); // "Hello, world!"
 ```
 
-`build()` is the one verb `di` adds to every `Manifest` — everything up to that point is [`di.core`](../di.core/README.md)'s registration surface. `getService(type)` returns `undefined` when nothing is registered; `getRequiredService(type)` throws; `getServices(type)` returns every registration of a type as an iterable, empty rather than throwing or returning `undefined` when nothing matches.
+`build()` is the one verb `di` adds to every `Manifest` — everything up to that point is [`di.core`](../di.core/README.md)'s registration surface. `resolve(type)` returns `undefined` when nothing is registered; `getRequiredService(type)` throws; `getServices(type)` returns every registration of a type as an iterable, empty rather than throwing or returning `undefined` when nothing matches.
 
 ## Key exports
 
@@ -46,7 +46,7 @@ provider.getRequiredService(IGreeter).greet('world'); // "Hello, world!"
 | `ServiceProvider`                                                                             | The concrete engine: seals a `Manifest` (via `build()`) and resolves services against it.                                      |
 | `build()`                                                                                     | The `Manifest` verb this package adds — `manifest.build(options?)` returns a `ServiceProvider`.                                |
 | `ServiceProviderOptions`                                                                      | Build-time behavior: `validateOnBuild` (fail at build instead of at first resolve), `validateScopes` (declared, not yet read). |
-| `getService(type)` / `getRequiredService(type)` / `getServices(type)`                         | Resolve one optional service, one required service, or every registration of a type.                                           |
+| `resolve(type)` / `getRequiredService(type)` / `getServices(type)`                         | Resolve one optional service, one required service, or every registration of a type.                                           |
 | `DiError`, `UnsatisfiableError`, `CycleError`, `ManifestValidationError`, `ValidationFailure` | Re-exported from `di.core` — the same classes, so `instanceof` holds whichever package a caller imports the taxonomy from.     |
 
 ## How it fits
@@ -57,6 +57,6 @@ provider.getRequiredService(IGreeter).greet('world'); // "Hello, world!"
 
 ## Notes
 
-- `ServiceProvider`'s `tryResolve`, `resolveAsync`, `dispose`, and `disposeAsync` are declared but not implemented yet — each throws `NotImplementedError`, ahead of the lifetime and disposal model they depend on. `getService`, `getRequiredService`, `getServices`, and `createScope` all work today.
+- `ServiceProvider`'s `tryResolve`, `resolveAsync`, `dispose`, and `disposeAsync` are declared but not implemented yet — each throws `NotImplementedError`, ahead of the lifetime and disposal model they depend on. `resolve`, `getRequiredService`, `getServices`, and `createScope` all work today.
 - A discarded `.add(...)` / `.addClass(...)` / etc. result registers nothing — the manifest is immutable, so always chain or reassign (see [`di.core`](../di.core/README.md)).
 - A union dependency settles deterministically: a registration for the union's own address answers it outright; otherwise the members are tried in the union's canonical order, every member's registrations before any member's synthesis. Literals order last among members, which is what keeps a literal member (such as `undefined`) as the fallback of an optional dependency.

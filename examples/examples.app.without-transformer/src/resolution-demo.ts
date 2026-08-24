@@ -53,7 +53,7 @@ async function tour(provider: IServiceProvider): Promise<string[]> {
 
   // ── required vs optional ───────────────────────────────────────────────────
   //
-  // `getRequiredService` and `getService` differ on exactly one axis: what an
+  // `getRequiredService` and `resolve` differ on exactly one axis: what an
   // ABSENT service does. Reach for the required form when the service is part of
   // the deal — a missing one is a wiring bug you want to hear about at startup,
   // not an `undefined` that leaks three call frames away. Reach for the optional
@@ -73,16 +73,16 @@ async function tour(provider: IServiceProvider): Promise<string[]> {
   } catch (error) {
     lines.push(`  getRequiredService(IFraudScreen): ${(error as Error).name} — a required miss is loud`);
   }
-  const audit = provider.getService(t.audit) as IAuditTrail | undefined;
-  lines.push(`  getService(IAuditTrail): ${audit ? 'present' : 'absent'}`);
-  lines.push(`  getService(IFraudScreen): ${provider.getService(t.fraudScreen)}`);
-  // A presence question is exactly `getService` compared against `undefined`:
+  const audit = provider.resolve(t.audit) as IAuditTrail | undefined;
+  lines.push(`  resolve(IAuditTrail): ${audit ? 'present' : 'absent'}`);
+  lines.push(`  resolve(IFraudScreen): ${provider.resolve(t.fraudScreen)}`);
+  // A presence question is exactly `resolve` compared against `undefined`:
   // absence answers `undefined` instead of throwing, so there is no member of its
   // own to reach for. Unlike a pure existence check, this DOES resolve the
   // service when one exists — cheap here, since IFraudScreen is never registered
   // at all, but worth naming: a presence probe on something expensive to build is
   // no longer free.
-  lines.push(`  getService(IFraudScreen) !== undefined: ${provider.getService(t.fraudScreen) !== undefined}`);
+  lines.push(`  resolve(IFraudScreen) !== undefined: ${provider.resolve(t.fraudScreen) !== undefined}`);
 
   // ── collection resolution ──────────────────────────────────────────────────
   //
@@ -121,8 +121,8 @@ async function tour(provider: IServiceProvider): Promise<string[]> {
     // The optional sink, used only because the probe above found one.
     audit?.record(order.reference);
   }
-  const crypto = provider.getService(Type.tag(t.gateway, 'crypto')) as IPaymentGateway | undefined;
-  lines.push(`  getService at key "crypto": ${crypto?.label}`);
+  const crypto = provider.resolve(Type.tag(t.gateway, 'crypto')) as IPaymentGateway | undefined;
+  lines.push(`  resolve at key "crypto": ${crypto?.label}`);
   lines.push(`  a keyed registration is not in the bare base's collection: `
     + `${[...provider.getServices(t.gateway)].length} gateways`);
 
@@ -158,7 +158,7 @@ async function tour(provider: IServiceProvider): Promise<string[]> {
   lines.push('async registrations — the promise is the registration');
   const rates = await (provider.getRequiredService(t.ratesPromise) as Promise<IExchangeRates>);
   lines.push(`  rates as of ${rates.asOf}, EUR at ${rates.rate('EUR')}`);
-  lines.push(`  the bare type has no registration: ${provider.getService(t.rates)}`);
+  lines.push(`  the bare type has no registration: ${provider.resolve(t.rates)}`);
 
   // ── the provider as a service ──────────────────────────────────────────────
   //

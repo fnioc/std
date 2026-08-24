@@ -38,7 +38,7 @@ manifest.addClass(Type.imported('IGreeter', 'app'), ConsoleGreeter,
 | ------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------ |
 | `ManifestDescriptorAugmentations`     | The tokenless bodies for `tryAdd`, `tryAddClass`/`tryAddFactory`/`tryAddValue`, `replaceClass`/`replaceFactory`/`replaceValue`, and `removeAll`. |
 | `ManifestServiceAugmentations`        | The tokenless bodies for `add`, `addClass`, `addFactory`, and `addValue`.                                                                        |
-| `ServiceProviderServiceAugmentations` | The tokenless body backing `getService`/`getRequiredService`/`getServices` on `IServiceProvider`.                                                |
+| `ServiceProviderServiceAugmentations` | The tokenless body backing `resolve`/`getRequiredService`/`getServices` on `IServiceProvider`.                                                |
 
 `di.extras` carries no primitive of its own: every body above imports `typefor<T>()` from [`@rhombus-std/primitives.extras`](../primitives.extras/README.md) to derive the address `T` names, then forwards its remaining arguments untouched.
 

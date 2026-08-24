@@ -1,10 +1,10 @@
-import { type LifetimeModel, LifetimeModelError } from '@rhombus-std/di.core';
+import { type LifetimeModel, LifetimeModelError, ServiceDescriptor } from '@rhombus-std/di.core';
 import type { IServiceProvider } from '@rhombus-std/primitives';
-import type { Func } from '@rhombus-toolkit/func';
+import type { Ctor, Func } from '@rhombus-toolkit/func';
 import { assertNever } from '@rhombus-toolkit/type-guards';
 import type { Engine } from '../Engine.js';
-import type { ArrayCallSite, CallSite, ConstantCallSite, CtorCallSite, FactoryCallSite, IterableCallSite, LateBoundArgCallSite, LateBoundCallSite, RegisteredCtorCallSite, RegisteredFactoryCallSite,
-  ServiceProviderCallSite } from './CallSite.js';
+import type { ArrayCallSite, CallSite, ConstantCallSite, CtorCallSite, FactoryCallSite, InvokerCallSite, IterableCallSite, LateBoundArgCallSite, LateBoundCallSite, RegisteredCtorCallSite,
+  RegisteredFactoryCallSite, ServiceProviderCallSite } from './CallSite.js';
 
 export interface RealizeOptions {
   readonly engine: Engine;
@@ -51,6 +51,8 @@ class RealizeVisitor {
         return this.visitLateBound(site);
       case 'latebound-arg':
         return this.visitLateBoundArg(site);
+      case 'invoker':
+        return this.visitInvoker(site);
       case 'constant':
         return this.visitConstant(site);
       case 'service-provider':
@@ -119,6 +121,28 @@ class RealizeVisitor {
 
   protected visitLateBoundArg(site: LateBoundArgCallSite): any {
     return this.#args![site.index];
+  }
+
+  /**
+   * The closure `resolve(callableType, callable)` hands back: each call synthesizes a throwaway
+   * descriptor for the caller's own `callable`, under `callableType` itself as the address, and
+   * hands it to the engine as an invocation frame — nothing here is registered or cached.
+   */
+  protected visitInvoker(site: InvokerCallSite): any {
+    const { callableType } = site;
+    return (callable: Ctor | Func) => {
+      const descriptor = (() => {
+        switch (callableType.kind) {
+          case 'ctor':
+            return ServiceDescriptor.ctor(callableType, callable as Ctor, callableType);
+          case 'func':
+            return ServiceDescriptor.factory(callableType, callable as Func, callableType);
+          default:
+            return assertNever(callableType);
+        }
+      })();
+      return this.#engine.resolveFrame(descriptor, this.#serviceProvider);
+    };
   }
 
   protected visitConstant(site: ConstantCallSite): any {

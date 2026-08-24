@@ -161,12 +161,12 @@ export class MethodIsConfigured implements IOrderValidator {
 
   public check(order: CheckoutOrder): string {
     // A key is a TAG on the service type rather than an argument beside it, so a
-    // keyed probe tags the base and asks the ordinary question: `getService`
+    // keyed probe tags the base and asks the ordinary question: `resolve`
     // misses cleanly with `undefined` instead of throwing, so presence is exactly
-    // a `getService` that came back non-`undefined`. Every gateway below is a
+    // a `resolve` that came back non-`undefined`. Every gateway below is a
     // stateless value object with no dependencies of its own, so resolving one to
     // answer the question is free.
-    if (this.#resolver.getService(Type.tag(this.#gatewayType, order.method)) !== undefined) {
+    if (this.#resolver.resolve(Type.tag(this.#gatewayType, order.method)) !== undefined) {
       return 'ok';
     }
     return `no gateway for "${order.method}"`;
@@ -301,7 +301,7 @@ export class PaymentRouter implements IPaymentRouter {
 
   public checkout(order: CheckoutOrder): string {
     // The KEYED form: the base type tagged with the method, which is one type
-    // and so an ordinary exact lookup. `getRequiredService` (not `getService`)
+    // and so an ordinary exact lookup. `getRequiredService` (not `resolve`)
     // because by this point a validator has already confirmed the method — a
     // miss now is a wiring bug and should be loud.
     const gateway = this.#resolver.getRequiredService(Type.tag(this.#gatewayType, order.method)) as IPaymentGateway;

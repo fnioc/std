@@ -77,6 +77,6 @@ describe('an intersection', () => {
   test('is never assembled from registrations covering its parts', () => {
     const manifest = DefaultManifest.empty<string>()
       .addValue(Type.object({ a: STR, b: STR }), 'both');
-    expect(new ServiceProvider(manifest).getService(BOTH)).toBeUndefined();
+    expect(new ServiceProvider(manifest).resolve(BOTH)).toBeUndefined();
   });
 });

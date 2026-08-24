@@ -67,6 +67,10 @@ provider.getRequiredService<IWidget>();
 provider.getServices(WIDGET);
 provider.getServices<IWidget>();
 
-// getService (base, primitives) / getService<T> (sugar, di.extras)
+// getService (base, primitives) -- the one raw primitive, no longer shared with
+// a di.extras sugar overload
 provider.getService(WIDGET);
-provider.getService<IWidget>();
+
+// resolve (base, di.core) / resolve<T> (sugar, di.extras)
+provider.resolve(WIDGET);
+provider.resolve<IWidget>();

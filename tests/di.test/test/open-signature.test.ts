@@ -20,7 +20,7 @@ describe('an open signature as a service type', () => {
     const made = () => 'made';
     const manifest = DefaultManifest.empty<string>().add(ServiceDescriptor.value(OPEN, made));
     const provider = new ServiceProvider(manifest);
-    expect(provider.getService(CLOSED)).toBe(made);
+    expect(provider.resolve(CLOSED)).toBe(made);
   });
 
   test('closing discharges the hole, landing on the requested type itself', () => {

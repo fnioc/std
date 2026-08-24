@@ -7,7 +7,7 @@ declare module '@rhombus-std/primitives' {
      * The value registered for `ServiceType`, the service type derived from the type argument
      * instead of taken explicitly, or `undefined` when nothing is registered for it.
      */
-    getService<ServiceType>(): ServiceType | undefined;
+    resolve<ServiceType>(): ServiceType | undefined;
     /**
      * The value registered for `ServiceType`, the service type derived from the type argument
      * instead of taken explicitly, for a caller that treats its absence as a fault rather than
@@ -23,8 +23,8 @@ declare module '@rhombus-std/primitives' {
 }
 
 export const ServiceProviderServiceAugmentations = {
-  getService<ServiceType>(this: IServiceProvider): ServiceType | undefined {
-    return this.getService(typefor<ServiceType>());
+  resolve<ServiceType>(this: IServiceProvider): ServiceType | undefined {
+    return this.resolve(typefor<ServiceType>());
   },
   getRequiredService<ServiceType>(this: IServiceProvider): ServiceType {
     return this.getRequiredService(typefor<ServiceType>());

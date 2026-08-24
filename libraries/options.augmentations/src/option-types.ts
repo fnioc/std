@@ -36,7 +36,7 @@ export function changeTokenSourceType(optionsType: Type): Type {
  * @remarks
  * This slot is what OFFERS an options type. The single open `IOptions<$T>`
  * registration takes it as a dependency, so a type with nothing registered here
- * leaves that registration unlowerable and `getService(IOptions<T>)` answers
+ * leaves that registration unlowerable and `resolve(IOptions<T>)` answers
  * `undefined` rather than assembling a value nobody asked for.
  */
 export function baseFactoryType(optionsType: Type): Type {
