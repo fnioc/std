@@ -131,7 +131,14 @@ land; delete the file when empty.
       stacking composes at BIND time: a scope decorator answering a door request hands back a
       door pre-composing its own hooks beneath the asker's, so N stacked decorators pay N
       compositions at construction and one bound call per request. Lazy dependency slots, if
-      ever wanted, are a separate `Lazy<T>` door. OWNER-RATIFIED FRAMING 2026-08-24: "the scope model is now
+      ever wanted, are a separate `Lazy<T>` door. GENESIS SETTLED 2026-08-24 (owner ruled,
+      Claude agreed): the basic di builder returns the bare engine-sp — or wrapped ONCE in an
+      empty AUGMENTED sp (keeps the engine-never-handed-out rule while users get the resolve
+      sugar) — and with the starfish door never called, no hooks are planted and everything is
+      transient and WORKS as-is (noop = the default state, not a model). Model attachment point
+      TBD — likely builder AUGMENTATIONS (`.useStandardScopes()`-style verbs on ContainerBuilder,
+      the config-provider precedent), the model package's augmentation wrapping the built sp in
+      its decorator. OWNER-RATIFIED FRAMING 2026-08-24: "the scope model is now
       just a decorator pattern on sp" — a scope model is an sp DECORATOR (holds an inner sp,
       diverts realization through Starfish + its hooks); genesis leaning (not yet final):
       di ships engine-only genesis (`di.usingManifest(...).build()` → bare un-augmented
