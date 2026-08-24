@@ -1,6 +1,7 @@
-import { type IServiceProvider, Manifest, type Realizer, UnsatisfiableError } from '@rhombus-std/di.core';
+import { type IServiceProvider, Manifest, type Realizer, type ScopeFactory, UnsatisfiableError } from '@rhombus-std/di.core';
 import { augment, NotImplementedError, Type } from '@rhombus-std/primitives';
 import { typefor } from '@rhombus-std/primitives.extras';
+import type { Func } from '@rhombus-toolkit/func';
 import { Engine } from './internal/Engine.js';
 import { ServiceProviderOptions } from './ServiceProviderOptions.js';
 
@@ -12,8 +13,13 @@ export class ServiceProvider<Lifetime = unknown> implements IServiceProvider<Lif
   readonly #engine: Engine;
 
   /** @throws {ManifestValidationError} when `options.validateOnBuild` finds an unsatisfiable graph. */
-  constructor(realizer: Realizer, manifest: Manifest<unknown>, options: ServiceProviderOptions = ServiceProviderOptions.defaults) {
-    this.#engine = new Engine(realizer, manifest);
+  constructor(
+    realizer: Realizer,
+    scopeFactory: Func<[IServiceProvider], ScopeFactory<readonly any[]>> | undefined,
+    manifest: Manifest<unknown>,
+    options: ServiceProviderOptions = ServiceProviderOptions.defaults,
+  ) {
+    this.#engine = new Engine(realizer, scopeFactory, manifest);
     if (options.validateOnBuild) {
       this.#engine.validate();
     }

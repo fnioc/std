@@ -1,7 +1,8 @@
-import { CycleError, type IServiceProvider } from '@rhombus-std/di.core';
+import { CycleError, type Generic, type Invoker, type IServiceProvider, ScopeFactory } from '@rhombus-std/di.core';
 import { type AbstractConstructorType, type ArrayType, type ConstructorType, type FunctionType, type GenericType, type GlobalType, type ImportedType, type IntersectionType, type IterableType,
   type ObjectType, type TagType, type TupleType, Type, type TypeLiteralType, type UnionType } from '@rhombus-std/primitives';
 import { typefor } from '@rhombus-std/primitives.extras';
+import type { Ctor, Func } from '@rhombus-toolkit/func';
 import type { Registry } from '../Registry.js';
 import { CallSite } from './CallSite.js';
 
@@ -42,6 +43,12 @@ export class ToCallSiteVisitor extends Type.Visitor<CallSite | undefined> {
   protected override visitImported(type: ImportedType): CallSite | undefined {
     if (type === typefor<IServiceProvider>()) {
       return CallSite.serviceProvider();
+    }
+    const [isScopeFactory] = Type.bindGenerics(typefor<ScopeFactory<Generic<'T', readonly any[]>>>(), type);
+    if (isScopeFactory) {
+      // A model that never scopes leaves the address genuinely unsatisfiable, rather than
+      // planting a site that realizes to nothing.
+      return this.#registry.opensScopes ? CallSite.scopeFactory() : undefined;
     }
     const callableType = invokerCallableType(type);
     return callableType && CallSite.invoker(callableType);
@@ -130,20 +137,15 @@ export class ToCallSiteVisitor extends Type.Visitor<CallSite | undefined> {
   }
 }
 
-const INVOKER_NAME = 'Invoker';
-const INVOKER_PACKAGE = '@rhombus-std/di.core';
-
 /**
  * The callable node `type` names through the value path's marker address — di.core's
  * `resolve(callableType, callable)` closes over it as `Invoker<typeof callableType>` — or
  * `undefined` when `type` is not that address.
  */
 function invokerCallableType(type: ImportedType): ConstructorType | FunctionType | undefined {
-  if (type.name !== INVOKER_NAME || type.from !== INVOKER_PACKAGE || type.genericArgs.length !== 1) {
-    return undefined;
-  }
-  const callableType = type.genericArgs[0]!;
-  return callableType.kind === 'ctor' || callableType.kind === 'func' ? callableType : undefined;
+  const [matched, generics] = Type.bindGenerics(typefor<Invoker<Generic<'C', Ctor | Func>>>(), type);
+  const callableType = matched ? generics.get('C') : undefined;
+  return callableType?.kind === 'ctor' || callableType?.kind === 'func' ? callableType : undefined;
 }
 
 /**

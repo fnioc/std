@@ -1,5 +1,6 @@
-import { type IServiceProvider, ManifestValidationError, type Realizer, type ServiceDescriptor, UnsatisfiableError, type ValidationFailure } from '@rhombus-std/di.core';
+import { type IServiceProvider, ManifestValidationError, type Realizer, type ScopeFactory, type ServiceDescriptor, UnsatisfiableError, type ValidationFailure } from '@rhombus-std/di.core';
 import { type FunctionType, Type } from '@rhombus-std/primitives';
+import type { Func } from '@rhombus-toolkit/func';
 import { CallSite } from './CallSite/index.js';
 import { Registry } from './Registry.js';
 
@@ -14,16 +15,23 @@ export interface ResolveContext {
  */
 export class Engine {
   readonly #realizer: Realizer;
+  readonly #scopeFactory: Func<[IServiceProvider], ScopeFactory<readonly any[]>> | undefined;
   readonly #registry: Registry;
 
-  constructor(realizer: Realizer, descriptors: Iterable<ServiceDescriptor<unknown>>) {
+  constructor(realizer: Realizer, scopeFactory: Func<[IServiceProvider], ScopeFactory<readonly any[]>> | undefined, descriptors: Iterable<ServiceDescriptor<unknown>>) {
     this.#realizer = realizer;
-    this.#registry = new Registry(descriptors);
+    this.#scopeFactory = scopeFactory;
+    this.#registry = new Registry(descriptors, scopeFactory !== undefined);
   }
 
   /** @throws {UnsatisfiableError} when nothing in the registry can produce {@link serviceType}. */
   resolve(serviceType: Type, context: ResolveContext): unknown {
     return CallSite.realize(CallSite.from(serviceType, this.#registry), { engine: this, serviceProvider: context.serviceProvider, realizer: this.#realizer });
+  }
+
+  /** Opens `serviceProvider`'s scope factory, or `undefined` when the installed model doesn't scope. */
+  scopeFactory(serviceProvider: IServiceProvider): ScopeFactory<readonly any[]> | undefined {
+    return this.#scopeFactory?.(serviceProvider);
   }
 
   /**

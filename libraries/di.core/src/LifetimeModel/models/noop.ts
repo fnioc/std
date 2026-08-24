@@ -14,6 +14,6 @@ export const noop: LifetimeModel<unknown> = {
     return [];
   },
   createRealizer() {
-    return realizer;
+    return { realizer };
   },
 };

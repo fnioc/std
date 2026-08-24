@@ -1,5 +1,7 @@
 import type { Type } from '@rhombus-std/primitives';
 import type { Func } from '@rhombus-toolkit/func';
+import type { IServiceProvider } from '../IServiceProvider';
+import type { ScopeFactory } from '../ScopeFactory';
 import type { ServiceDescriptor } from '../ServiceDescriptor/index';
 
 /**
@@ -10,9 +12,7 @@ import type { ServiceDescriptor } from '../ServiceDescriptor/index';
 export type LifetimeArgument<Lifetime> = undefined extends Lifetime ? [lifetime?: Lifetime] : [lifetime: Lifetime];
 
 /**
- * The one callable governing instance reuse: the engine calls it at every realized site, and the
- * value it returns is the value the engine uses. Per-container machinery, minted by a
- * {@link LifetimeModel}'s {@link LifetimeModel.createRealizer | createRealizer}.
+ * The engine-facing face of a {@link LifetimeModel}.
  *
  * @typeParam Lifetime - the vocabulary of lifetime data this realizer interprets.
  */
@@ -43,9 +43,7 @@ export interface Realizer<Lifetime = unknown> {
 }
 
 /**
- * Genesis-time policy: what a container built on this model offers before any user
- * registration, and the per-container {@link Realizer} it mints to interpret lifetimes during
- * resolution.
+ * A defined scope/lifetime pattern of behavior.
  *
  * @typeParam Lifetime - the vocabulary of lifetime data this model interprets.
  */
@@ -56,8 +54,21 @@ export interface LifetimeModel<Lifetime = unknown> {
   /** The model's own services — the scope machinery a provider on this model offers — as the floor beneath every user registration. */
   addModelServices(): Iterable<ServiceDescriptor<Lifetime>>;
 
-  /** Mints the realizer a container built on this model resolves through, once per build. */
-  createRealizer(): Realizer<Lifetime>;
+  /**
+   * Mints one container's machinery, once per build: the {@link Realizer} every resolution runs
+   * through, and the scope-opening capability the container publishes.
+   *
+   * @remarks
+   * An absent `scopeFactory` settles at mint time that this model never scopes, which is what
+   * lets the scope-opening address come back unsatisfiable rather than answering with nothing.
+   * Its `container` is the provider a scope it opens defers to for anything the scope itself
+   * doesn't keep. The factory's own args are the model's vocabulary for naming a scope as it
+   * opens, which each model states in its own return type.
+   */
+  createRealizer(): {
+    realizer: Realizer<Lifetime>;
+    scopeFactory?: Func<[IServiceProvider], ScopeFactory<readonly any[]>>;
+  };
 }
 
 import { noop as noopModel } from './models/noop';

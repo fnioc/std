@@ -3,7 +3,7 @@ import type { Ctor, Func } from '@rhombus-toolkit/func';
 import { assertNever } from '@rhombus-toolkit/type-guards';
 import type { Engine } from '../Engine.js';
 import type { ArrayCallSite, CallSite, ConstantCallSite, CtorCallSite, FactoryCallSite, InvokerCallSite, IterableCallSite, LateBoundArgCallSite, LateBoundCallSite, RegisteredCtorCallSite,
-  RegisteredFactoryCallSite, ServiceProviderCallSite } from './CallSite.js';
+  RegisteredFactoryCallSite, ScopeFactoryCallSite, ServiceProviderCallSite } from './CallSite.js';
 
 export interface RealizeOptions {
   readonly engine: Engine;
@@ -56,6 +56,8 @@ class RealizeVisitor {
         return this.visitConstant(site);
       case 'service-provider':
         return this.visitServiceProvider(site);
+      case 'scope-factory':
+        return this.visitScopeFactory(site);
       case 'iterable':
         return this.visitIterable(site, realizer);
       case 'array':
@@ -149,6 +151,11 @@ class RealizeVisitor {
 
   protected visitServiceProvider(_site: ServiceProviderCallSite): any {
     return this.#serviceProvider;
+  }
+
+  /** Binds the container's scope factory to the walk's own provider, so a scope it opens defers there. */
+  protected visitScopeFactory(_site: ScopeFactoryCallSite): any {
+    return this.#engine.scopeFactory(this.#serviceProvider);
   }
 
   /**

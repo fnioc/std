@@ -21,9 +21,15 @@ export interface Answer {
 export class Registry {
   /** The transfer out of the authoring structure: one flat frozen snapshot, newest first. */
   readonly #descriptors: ReadonlyArray<ServiceDescriptor<unknown>>;
+  /**
+   * Whether the container's lifetime model scopes at all — the one thing a plan reads that no
+   * registration carries, and the reason a plan may refuse the scope-opening address outright.
+   */
+  readonly opensScopes: boolean;
 
-  constructor(descriptors: Iterable<ServiceDescriptor<unknown>>) {
+  constructor(descriptors: Iterable<ServiceDescriptor<unknown>>, opensScopes: boolean) {
     this.#descriptors = Iterator.from(descriptors).map(descriptor => Object.freeze(descriptor)).toArray();
+    this.opensScopes = opensScopes;
   }
 
   /**

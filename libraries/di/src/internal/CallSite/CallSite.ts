@@ -19,6 +19,7 @@ export type CallSite =
   | InvokerCallSite
   | ConstantCallSite
   | ServiceProviderCallSite
+  | ScopeFactoryCallSite
   | IterableCallSite
   | ArrayCallSite;
 
@@ -91,6 +92,15 @@ export interface ServiceProviderCallSite {
   readonly kind: 'service-provider';
 }
 
+/**
+ * The address a model publishes its scope-opening capability under. Engine-synthesized, the
+ * same way {@link InvokerCallSite} answers a structurally-detected marker rather than a
+ * registration — and synthesized only for a container whose model scopes at all.
+ */
+export interface ScopeFactoryCallSite {
+  readonly kind: 'scope-factory';
+}
+
 export interface IterableCallSite {
   readonly kind: 'iterable';
   readonly types: readonly CallSite[];
@@ -155,6 +165,9 @@ export namespace CallSite {
   }
   export function serviceProvider(): ServiceProviderCallSite {
     return { kind: 'service-provider' };
+  }
+  export function scopeFactory(): ScopeFactoryCallSite {
+    return { kind: 'scope-factory' };
   }
   /**
    * Every registration serving one type, realized lazily and re-iterably: each walk constructs

@@ -17,7 +17,7 @@ declare module '@rhombus-std/di.core' {
 
 registerAugmentations<IServiceProvider>({
   createScope(this: IServiceProvider, lifetime?: unknown): IServiceProvider {
-    const factory = this.getService(ScopeFactory.address) as ScopeFactory<unknown> | undefined;
+    const factory = this.getService(ScopeFactory.address) as ScopeFactory<readonly any[]> | undefined;
     if (factory === undefined) {
       throw new ScopeFactoryUnavailableError();
     }
