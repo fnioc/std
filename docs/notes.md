@@ -112,12 +112,16 @@ land; delete the file when empty.
       landed mint-together round is the hook surface's first client, extracted from it rather
       than discarded. The walk-threaded hook context is the SAME infrastructure as the
       audit-service frame — build once. Sequencing rec: land the current round first, starfish
-      as the generalization pass. RULED 2026-08-24: the scope decorator resolves the starfish
-      DOOR once and holds it (singleton capability, ScopeFactory precedent) — `Starfish` is ONE
-      non-generic address whose synthesized answer is `(request: Type) => Deferred` (Invoker
-      recipe); no per-request `Starfish<T>` wrapper nodes, no hole-template detection, no
-      shadowing question. Lazy dependency slots, if ever wanted, are a separate `Lazy<T>` door.
-      OWNER-RATIFIED FRAMING 2026-08-24: "the scope model is now
+      as the generalization pass. SETTLED 2026-08-24 (owner+Claude converged): the starfish
+      door is PERSISTED and TWO-STAGE — `Starfish` is ONE non-generic address; its synthesized
+      answer is `(hooks) => (request: Type) => any`; a scope acquires the door from its INNER sp
+      once, binds its hooks once, and the per-request path is a bare bound call — no per-request
+      hook registration, no per-request deferred, no `Starfish<T>` wrapper nodes (the request is
+      a value arg; when the payload can be a value, the address encodes nothing). Decorator
+      stacking composes at BIND time: a scope decorator answering a door request hands back a
+      door pre-composing its own hooks beneath the asker's, so N stacked decorators pay N
+      compositions at construction and one bound call per request. Lazy dependency slots, if
+      ever wanted, are a separate `Lazy<T>` door. OWNER-RATIFIED FRAMING 2026-08-24: "the scope model is now
       just a decorator pattern on sp" — a scope model is an sp DECORATOR (holds an inner sp,
       diverts realization through Starfish + its hooks); genesis leaning (not yet final):
       di ships engine-only genesis (`di.usingManifest(...).build()` → bare un-augmented
