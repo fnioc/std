@@ -98,7 +98,7 @@ beforeAll(() => {
   mkdirSync(join(lib, 'internal'), { recursive: true });
   writeFileSync(join(lib, 'package.json'), JSON.stringify({ name: 'your-lib', version: '3.4.5', exports: { '.': './index.js', './contracts': './contracts/index.js' } }));
   // Everything a call site derives for is barrel-reachable: the strict derivation
-  // rejects a type reachable only through a non-barrel, non-`./tokens/*` subpath.
+  // rejects a type reachable only through a non-barrel, non-`./private/*` subpath.
   writeFileSync(join(lib, 'index.d.ts'), `export { Deep } from "./internal/deep";\nexport { IFoo, Scoped } from "./contracts/index.js";\n`);
   writeFileSync(join(lib, 'internal', 'deep.d.ts'), `export interface Deep {}\n`);
   writeFileSync(join(lib, 'contracts', 'index.d.ts'),
@@ -162,9 +162,9 @@ describe.skipIf(!toolchainReady)('typefor package-boundary derivation', () => {
     // A fully-defaulted instantiation IS the bare alias, so a bare reference to
     // Local / Scoped derives without their "singleton" default rather than
     // closing it in.
-    expect(app).toContain('localDefaultAlias = Type.imported("Local", "typefor-pkg-shapes-app/tokens/app")');
+    expect(app).toContain('localDefaultAlias = Type.imported("Local", "typefor-pkg-shapes-app/private/app")');
     expect(app).not.toContain(
-      'Type.imported("Local", "typefor-pkg-shapes-app/tokens/app", [Type.typeLiteral("singleton")])',
+      'Type.imported("Local", "typefor-pkg-shapes-app/private/app", [Type.typeLiteral("singleton")])',
     );
     expect(app).toContain('publicDefaultAlias = Type.imported("Scoped", "your-lib")');
     expect(app).not.toContain('Type.imported("Scoped", "your-lib", [Type.typeLiteral("singleton")])');
@@ -172,7 +172,7 @@ describe.skipIf(!toolchainReady)('typefor package-boundary derivation', () => {
 
   test('defaulted-generic alias with an explicit non-default argument: closed type', () => {
     expect(app).toContain(
-      'localExplicitAlias = Type.imported("Local", "typefor-pkg-shapes-app/tokens/app", [Type.typeLiteral("request")])',
+      'localExplicitAlias = Type.imported("Local", "typefor-pkg-shapes-app/private/app", [Type.typeLiteral("request")])',
     );
     expect(app).toContain('publicExplicitAlias = Type.imported("Scoped", "your-lib", [Type.typeLiteral("request")])');
   });

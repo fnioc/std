@@ -292,9 +292,9 @@ describe('typefor emission modes', () => {
   test.skipIf(!toolchainReady)('a composite const references its members instead of re-spelling them', () => {
     const declared = constants(modules.get('hoisted')!);
     const nameOf = (spelling: string): string => [...declared].find(([, held]) => held === spelling)![0];
-    const clock = nameOf('Type.imported("IClock", "typefor-emit-app/tokens/app")');
-    const log = nameOf('Type.imported("IAuditLog", "typefor-emit-app/tokens/app")');
-    const systemClock = nameOf('Type.imported("SystemClock", "typefor-emit-app/tokens/app")');
+    const clock = nameOf('Type.imported("IClock", "typefor-emit-app/private/app")');
+    const log = nameOf('Type.imported("IAuditLog", "typefor-emit-app/private/app")');
+    const systemClock = nameOf('Type.imported("SystemClock", "typefor-emit-app/private/app")');
 
     // A generic argument, a constructor's instance type and parameters, and a
     // function's return and parameters are all references — every composite is
@@ -306,7 +306,7 @@ describe('typefor emission modes', () => {
     expect([...declared.values()]).toContain(`Type.func(${clock}, [[${log}]])`);
 
     // An `abstract class` constructor spells its own kind's factory, same shape.
-    const abstractClock = nameOf('Type.imported("AbstractClock", "typefor-emit-app/tokens/app")');
+    const abstractClock = nameOf('Type.imported("AbstractClock", "typefor-emit-app/private/app")');
     expect([...declared.values()]).toContain(`Type.abstractCtor(${abstractClock}, [[${log}]])`);
     for (const spelling of declared.values()) {
       if (spelling.startsWith('Type.ctor(') || spelling.startsWith('Type.abstractCtor(') || spelling.startsWith('Type.func(')) {
@@ -320,13 +320,13 @@ describe('typefor emission modes', () => {
     const app = lowered.get('inline')!;
     expect(modules.get('inline')).toBe('');
     expect(app).not.toContain(TYPE_MODULE);
-    expect(app).toContain('Type.imported("IClock", "typefor-emit-app/tokens/app")');
+    expect(app).toContain('Type.imported("IClock", "typefor-emit-app/private/app")');
     expect(app).toContain(
-      'Type.global("Promise", [Type.imported("IClock", "typefor-emit-app/tokens/app")])',
+      'Type.global("Promise", [Type.imported("IClock", "typefor-emit-app/private/app")])',
     );
     // An exported union alias derives to its NAME, never its members — the
     // address must not shift with the union's membership.
-    expect(app).toContain('Type.imported("Level", "typefor-emit-app/tokens/app")');
+    expect(app).toContain('Type.imported("Level", "typefor-emit-app/private/app")');
     expect(app).not.toContain('Type.union(');
   });
 

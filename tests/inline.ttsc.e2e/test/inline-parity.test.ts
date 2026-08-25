@@ -468,9 +468,9 @@ describe.skipIf(!toolchainReady)('generic inline stage — registration parity (
     // them, in the same order.
     const line = lineWith(chainInline, 'closed =');
     expect(line).toBeDefined();
-    const logger = constFor(chainModule, 'Type.imported("ILogger", "chain-app/tokens/chain")');
-    const consoleClass = constFor(chainModule, 'Type.imported("ConsoleLogger", "chain-app/tokens/chain")');
-    const clock = constFor(chainModule, 'Type.imported("IClock", "chain-app/tokens/chain")');
+    const logger = constFor(chainModule, 'Type.imported("ILogger", "chain-app/private/chain")');
+    const consoleClass = constFor(chainModule, 'Type.imported("ConsoleLogger", "chain-app/private/chain")');
+    const clock = constFor(chainModule, 'Type.imported("IClock", "chain-app/private/chain")');
     const consoleCtor = constFor(chainModule, `Type.ctor(${consoleClass}, [[${clock}]])`);
     expect(line).toContain(`add(${logger}, ConsoleLogger, ${consoleCtor}, "singleton")`);
     assertNoAuthoringSurvivors(chainInline);
@@ -479,8 +479,8 @@ describe.skipIf(!toolchainReady)('generic inline stage — registration parity (
   test('a second call at the same address observes ITS implementer, not the first one', () => {
     const line = lineWith(chainInline, 'emptySig =');
     expect(line).toBeDefined();
-    const logger = constFor(chainModule, 'Type.imported("ILogger", "chain-app/tokens/chain")');
-    const noDepsClass = constFor(chainModule, 'Type.imported("NoDepsLogger", "chain-app/tokens/chain")');
+    const logger = constFor(chainModule, 'Type.imported("ILogger", "chain-app/private/chain")');
+    const noDepsClass = constFor(chainModule, 'Type.imported("NoDepsLogger", "chain-app/private/chain")');
     const noDepsCtor = constFor(chainModule, `Type.ctor(${noDepsClass}, [[]])`);
     expect(line).toContain(`add(${logger}, NoDepsLogger, ${noDepsCtor}, "singleton")`);
     assertNoAuthoringSurvivors(chainInline);
@@ -494,9 +494,9 @@ describe.skipIf(!toolchainReady)('generic inline stage — registration parity (
     // references it by name. The OBSERVED implementer node carries the same hole
     // inside its dependency signature.
     const hole = constFor(chainModule, 'Type.generic("1")');
-    const openType = constFor(chainModule, `Type.imported("IRepo", "chain-app/tokens/chain", [${hole}])`);
-    const repoClass = constFor(chainModule, 'Type.imported("ThingRepo", "chain-app/tokens/chain")');
-    const storeDep = constFor(chainModule, `Type.imported("IStore", "chain-app/tokens/chain", [${hole}])`);
+    const openType = constFor(chainModule, `Type.imported("IRepo", "chain-app/private/chain", [${hole}])`);
+    const repoClass = constFor(chainModule, 'Type.imported("ThingRepo", "chain-app/private/chain")');
+    const storeDep = constFor(chainModule, `Type.imported("IStore", "chain-app/private/chain", [${hole}])`);
     const repoCtor = constFor(chainModule, `Type.ctor(${repoClass}, [[${storeDep}]])`);
     expect(line).toContain(`add(${openType}, ThingRepo, ${repoCtor})`);
     assertNoAuthoringSurvivors(chainInline);
@@ -521,9 +521,9 @@ describe.skipIf(!toolchainReady)('generic inline stage — registration parity (
     expect(line).toBeDefined();
     // One argument, not a base plus a trailing key: the tag IS the service type,
     // and it composes the base's own const rather than re-spelling it.
-    const cache = constFor(chainModule, 'Type.imported("ICache", "chain-app/tokens/keyed")');
+    const cache = constFor(chainModule, 'Type.imported("ICache", "chain-app/private/keyed")');
     const keyedCache = constFor(chainModule, `Type.tag(${cache}, "redis")`);
-    const redisClass = constFor(chainModule, 'Type.imported("RedisCache", "chain-app/tokens/keyed")');
+    const redisClass = constFor(chainModule, 'Type.imported("RedisCache", "chain-app/private/keyed")');
     const redisCtor = constFor(chainModule, `Type.ctor(${redisClass}, [[]])`);
     expect(line).toContain(`add(${keyedCache}, RedisCache, ${redisCtor})`);
   });
@@ -535,8 +535,8 @@ describe.skipIf(!toolchainReady)('generic inline stage — registration parity (
     // shape moved.
     const line = lineWith(overrideInline, 'overridden =');
     expect(line).toBeDefined();
-    const handler = constFor(chainModule, 'Type.imported("IHandler", "chain-app/tokens/override")');
-    const req = constFor(chainModule, 'Type.imported("IReq", "chain-app/tokens/override")');
+    const handler = constFor(chainModule, 'Type.imported("IHandler", "chain-app/private/override")');
+    const req = constFor(chainModule, 'Type.imported("IReq", "chain-app/private/override")');
     const steered = constFor(chainModule, `Type.ctor(${handler}, [[${req}]])`);
     expect(line).toContain(`add(${handler}, Handler, ${steered})`);
     assertNoAuthoringSurvivors(overrideInline);
@@ -573,7 +573,7 @@ describe.skipIf(!toolchainReady)('generic inline stage — lookup parity (W5)', 
   test('resolve<I>() lowers to the Type-taking member', () => {
     const line = lineWith(resolveInline, 'tokenful =');
     expect(line).toBeDefined();
-    const thing = constFor(chainModule, 'Type.imported("IThing", "chain-app/tokens/resolve")');
+    const thing = constFor(chainModule, 'Type.imported("IThing", "chain-app/private/resolve")');
     expect(line).toContain(`.resolve(${thing})`);
     expect(line).not.toContain('resolve<');
     assertNoAuthoringSurvivors(resolveInline);
@@ -582,7 +582,7 @@ describe.skipIf(!toolchainReady)('generic inline stage — lookup parity (W5)', 
   test('resolve<I>() lowers to the Type-taking member', () => {
     const line = lineWith(resolveInline, 'tryTok =');
     expect(line).toBeDefined();
-    const thing = constFor(chainModule, 'Type.imported("IThing", "chain-app/tokens/resolve")');
+    const thing = constFor(chainModule, 'Type.imported("IThing", "chain-app/private/resolve")');
     expect(line).toContain(`.resolve(${thing})`);
     expect(line).not.toContain('resolve<');
     assertNoAuthoringSurvivors(resolveInline);
@@ -593,7 +593,7 @@ describe.skipIf(!toolchainReady)('generic inline stage — lookup parity (W5)', 
     // so the token is the bare element type.
     const line = lineWith(resolveInline, 'many =');
     expect(line).toBeDefined();
-    const thing = constFor(chainModule, 'Type.imported("IThing", "chain-app/tokens/resolve")');
+    const thing = constFor(chainModule, 'Type.imported("IThing", "chain-app/private/resolve")');
     expect(line).toContain(`.resolveMany(${thing})`);
     expect(line).not.toContain('resolveMany<');
   });
@@ -609,7 +609,7 @@ describe.skipIf(!toolchainReady)('generic inline stage — lookup parity (W5)', 
   test('a keyed lookup mints the SAME tag token a keyed registration does', () => {
     // The identity is the whole point: registration and lookup are two halves of
     // one keyed contract, and a token that differed between them would miss.
-    const cache = constFor(chainModule, 'Type.imported("ICache", "chain-app/tokens/resolve")');
+    const cache = constFor(chainModule, 'Type.imported("ICache", "chain-app/private/resolve")');
     const composed = constFor(chainModule, `Type.tag(${cache}, "redis")`);
     const getLine = lineWith(resolveInline, 'keyedTok =');
     expect(getLine).toBeDefined();
@@ -626,7 +626,7 @@ describe.skipIf(!toolchainReady)('generic inline stage — lookup parity (W5)', 
     // real container, using the tag the transformer actually minted, so a keyed
     // registration and a keyed lookup are shown to meet rather than assumed to.
     const marker = { tag: 'redis-cache' };
-    const base = Type.imported('ICache', 'chain-app/tokens/resolve');
+    const base = Type.imported('ICache', 'chain-app/private/resolve');
     const composed = Type.tag(base, 'redis');
 
     let keyed: Manifest<'singleton'> = new DefaultManifest<'singleton'>();

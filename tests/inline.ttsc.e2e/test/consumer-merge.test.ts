@@ -191,8 +191,8 @@ describe.skipIf(!toolchainReady)('inline stage — consumer merge shapes', () =>
     expect(line).toBeDefined();
     // The derived token leads, and everything the author wrote after the ctor
     // reaches the token-taking member in order.
-    const logger = constFor(MERGED_DIR, 'Type.imported("ILogger", "merged-app/tokens/merged")');
-    const loggerClass = constFor(MERGED_DIR, 'Type.imported("ConsoleLogger", "merged-app/tokens/merged")');
+    const logger = constFor(MERGED_DIR, 'Type.imported("ILogger", "merged-app/private/merged")');
+    const loggerClass = constFor(MERGED_DIR, 'Type.imported("ConsoleLogger", "merged-app/private/merged")');
     const loggerCtorType = constFor(MERGED_DIR, `Type.ctor(${loggerClass}, [[]])`);
     expect(line).toMatch(new RegExp(`\\.add\\(\\s*${logger.replace('$', '\\$')}\\b`));
     expect(line).toContain(`ConsoleLogger, ${loggerCtorType}, 'singleton'`);
