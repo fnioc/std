@@ -5,7 +5,7 @@
 // The §7 derivation rule (confirmed against the hand-authored pairs):
 //
 //   publishConfig.exports = exports, with two transforms:
-//     1. SCRUB   -- the white-box `./tokens/*` subpath is dropped, so a
+//     1. SCRUB   -- the white-box `./private/*` subpath is dropped, so a
 //                   published consumer can't reach the seam even though src/
 //                   still ships in the tarball (§7). This is the whole point:
 //                   pnpm honours publishConfig.exports, and omitting the key
@@ -64,7 +64,7 @@ interface Manifest {
 
 /** True for the white-box seam subpath dropped from the published surface (§7). */
 function isInternal(subpath: string): boolean {
-  return subpath.startsWith('./tokens/');
+  return subpath.startsWith('./private/');
 }
 
 /**

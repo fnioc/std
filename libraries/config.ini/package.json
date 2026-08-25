@@ -21,7 +21,7 @@
   "sideEffects": true,
   "exports": {
     ".": "./src/index.ts",
-    "./tokens/*": {
+    "./private/*": {
       "types": "./src/*.ts",
       "bun": "./src/*.ts"
     }

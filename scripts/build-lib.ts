@@ -68,8 +68,8 @@ if (typecheck.status !== 0) {
 }
 
 // Entrypoints: src/index.ts + every exports subpath whose `import` condition
-// is a non-index dist/bundle/*.js. (`./tokens/*`, `./private/*`, `./ttsc`, and
-// bun-only subpaths all fail the test and are correctly ignored.)
+// is a non-index dist/bundle/*.js. (`./private/*`, `./ttsc`, and bun-only
+// subpaths all fail the test and are correctly ignored.)
 const entrypoints = ['src/index.ts'];
 const dtsConfigs = ['rollup.dts.mjs'];
 for (const [subpath, target] of Object.entries(manifest.exports ?? {})) {

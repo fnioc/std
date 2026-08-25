@@ -23,7 +23,7 @@
   "exports": {
     ".": "./src/index.ts",
     "./ttsc": "./ttsc.mjs",
-    "./tokens/*": {
+    "./private/*": {
       "types": "./src/*.ts",
       "bun": "./src/*.ts"
     }

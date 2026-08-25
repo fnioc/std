@@ -19,7 +19,7 @@
   "types": "./src/index.ts",
   "exports": {
     ".": "./src/index.ts",
-    "./tokens/*": {
+    "./private/*": {
       "types": "./src/*.ts",
       "bun": "./src/*.ts"
     }
