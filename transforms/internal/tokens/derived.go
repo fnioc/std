@@ -1,6 +1,7 @@
 package tokens
 
 import (
+	shimast "github.com/microsoft/typescript-go/shim/ast"
 	shimchecker "github.com/microsoft/typescript-go/shim/checker"
 )
 
@@ -51,16 +52,23 @@ type Derived struct {
 
 // DeriveTyped classifies a checker type: a `Keyed<T, K>` brand first (so a
 // keyed factory or class still classifies its stripped base as Func/Ctor
-// beneath the tag), then the construct signatures (checked before call,
-// matching TypeFor<T>'s own conditional order — EVERY signature is read, so an
-// overloaded declaration carries one parameter row per overload), then the call
-// signatures, then the nullish singletons and a general union (an optional
-// parameter's implicit `| undefined` reaches here; one spelled through an
-// exported alias derives as that name instead of decomposing), and otherwise
-// the plain DeriveTypeF leaf. Each recursion point — a signature's return/instance type,
-// its parameters, a tag's inner type, a union's members — reclassifies from
-// scratch, so a factory that itself returns a factory nests
-// `Type.func(Type.func(...))` the way a hand-writer would spell it.
+// beneath the tag), then a NAMED type by its own name — a call or construct
+// signature never overrides that, and neither does whether one of its type
+// arguments is open or closed, so `ScopeFactory<X>` derives the same way
+// whichever X it closes over. The func package's Ctor/Func/AbstractCtor are
+// the sole exception to naming: those three, and any genuinely anonymous
+// callable literal (which has no name to derive by in the first place), fall
+// through to the construct signatures (checked before call, matching
+// TypeFor<T>'s own conditional order — EVERY signature is read, so an
+// overloaded declaration carries one parameter row per overload), then the
+// call signatures, then the nullish singletons and a general union (an
+// optional parameter's implicit `| undefined` reaches here; one spelled
+// through an exported alias derives as that name instead of decomposing),
+// and otherwise the plain DeriveTypeF leaf. Each recursion point — a
+// signature's return/instance type, its parameters, a tag's inner type, a
+// union's members — reclassifies from scratch, so a factory that itself
+// returns a factory nests `Type.func(Type.func(...))` the way a hand-writer
+// would spell it.
 func DeriveTyped(ctx *Context, checker *shimchecker.Checker, t *shimchecker.Type, failure *Failure) (*Derived, bool) {
 	if t == nil {
 		return nil, false
@@ -83,19 +91,46 @@ func DeriveTyped(ctx *Context, checker *shimchecker.Checker, t *shimchecker.Type
 		}
 		return nil, false
 	}
-	// An open type is derived by the node it is SPELLED as — the hole itself, or
-	// the named template carrying it — before any structural classification. A
-	// hole has no closed structure to expand: it is what a request binds against,
-	// and a template's address is its name plus its arguments, which is the
-	// spelling a registration carries. A hole sitting in a signature SLOT is
-	// reached through the signature walk below instead, so an open signature still
-	// classifies as Func/Ctor.
-	if carriesGenericHole(ctx, t) {
-		node, ok := DeriveTypeF(ctx, t, failure)
-		if !ok {
-			return nil, false
+	// The hole brand itself is read before naming — `Generic<L, C>` / `$<L>`
+	// is spelled as the hole regardless of what its constraint C bears (a
+	// constrained hole is still a hole even when C is itself callable), and a
+	// constrained hole's C can carry a symbol of its own that the named check
+	// below would otherwise claim first.
+	if label, ok := GenericLabelFor(t, checker); ok {
+		return &Derived{Kind: DerivedLeaf, Leaf: &TypeNode{Kind: TypeNodePlaceholder, Label: label}}, true
+	}
+	// A named type is derived by the node it is SPELLED as, before any
+	// structural classification: its address is its name plus its own type
+	// arguments (each independently reclassified — a hole among them derives
+	// to `Type.generic(label)`, anything else to its own address), which is
+	// the spelling a registration carries. The func package's Ctor/AbstractCtor
+	// interfaces are the narrow exception below.
+	//
+	// A general union defers to its OWN gate further down (isGeneralUnion):
+	// unions have a THIRD option this rule does not — decomposing into their
+	// members — and addressableAliasSymbol's export-status test decides that
+	// case on narrower grounds than "has a symbol." A hole sitting in a
+	// signature SLOT is reached through the signature walk below instead, so
+	// an open signature still classifies as Func/Ctor.
+	//
+	// An ANONYMOUS object type is excluded up front, before the symbol check,
+	// even though one can still carry a symbol: `typeof Foo` — the type an
+	// OBSERVED class or function value has — sets its `.symbol` to the
+	// declaration's own symbol purely for reflection (so `keyof typeof Foo`
+	// and friends work), while its ObjectFlags mark it Anonymous rather than
+	// Class/Interface, because it is not the declared type Foo names — it is
+	// the checker's synthesized description of Foo's call/construct
+	// signatures. `Func<Args, Return>` resolves to exactly this shape too (a
+	// bare function type literal under an alias), which is what makes the
+	// explicit exception below only need to name Ctor/AbstractCtor.
+	if t.ObjectFlags()&shimchecker.ObjectFlagsAnonymous == 0 && !isGeneralUnion(t) {
+		if symbol := resolvedSymbolFor(t); symbol != nil && !isFuncPackageCallable(ctx, symbol) {
+			node, ok := deriveNamedNode(ctx, t, symbol, failure)
+			if !ok {
+				return nil, false
+			}
+			return &Derived{Kind: DerivedLeaf, Leaf: node}, true
 		}
-		return &Derived{Kind: DerivedLeaf, Leaf: node}, true
 	}
 	if ctorSigs := shimchecker.Checker_getSignaturesOfType(checker, t, shimchecker.SignatureKindConstruct); len(ctorSigs) != 0 {
 		kind := DerivedCtor
@@ -135,20 +170,29 @@ func DeriveTyped(ctx *Context, checker *shimchecker.Checker, t *shimchecker.Type
 	return &Derived{Kind: DerivedLeaf, Leaf: node}, true
 }
 
-// carriesGenericHole reports whether t is an open type: the `Generic<L, C>` /
-// `$<L>` brand itself, or a generic reference applied — at any depth — with a
-// branded argument. The constraint C is a checker-side bound with no bearing on
-// the derived node, so only the brand's presence matters here.
-func carriesGenericHole(ctx *Context, t *shimchecker.Type) bool {
-	if _, ok := GenericLabelFor(t, ctx.Checker); ok {
-		return true
+// funcPackageCallableNames are the three @rhombus-toolkit/func spellings that
+// route to a callable Type kind structurally regardless of naming — the
+// narrow exception "named derives by name" carves out. A same-named type
+// declared anywhere else is not exempt and derives by name like everything
+// else.
+var funcPackageCallableNames = map[string]bool{"Ctor": true, "Func": true, "AbstractCtor": true}
+
+// isFuncPackageCallable reports whether symbol is Ctor, Func, or AbstractCtor
+// as exported by @rhombus-toolkit/func specifically.
+func isFuncPackageCallable(ctx *Context, symbol *shimast.Symbol) bool {
+	if !funcPackageCallableNames[symbol.Name] {
+		return false
 	}
-	for _, arg := range genericTypeArguments(ctx, t) {
-		if carriesGenericHole(ctx, arg) {
-			return true
-		}
+	decl := primaryDeclaration(symbol)
+	if decl == nil {
+		return false
 	}
-	return false
+	sourceFile := shimast.GetSourceFileOfNode(decl)
+	if sourceFile == nil {
+		return false
+	}
+	pkg := nearestPackage(ctx, sourceFile.FileName())
+	return pkg != nil && pkg.name == "@rhombus-toolkit/func"
 }
 
 // isGeneralUnion reports whether t is a union this layer decomposes itself,

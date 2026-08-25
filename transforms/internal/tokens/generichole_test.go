@@ -11,9 +11,10 @@ import (
 // `Generic<L, C>` / `$<L>` hole brand. A hole, and any template applied with
 // one, derives by the node it is spelled as, ahead of the callable/union
 // classification: a constrained hole is still a hole even though its constraint
-// bears signatures, and an open template is its named address even though the
-// template itself is callable. A hole sitting in a signature SLOT is the other
-// reading and keeps the callable classification.
+// bears signatures, and a named template (Opener) is its named address whether
+// its argument is open or closed — a call signature never overrides a name, so
+// the OPEN and CLOSED instantiations classify identically. A hole sitting in a
+// signature SLOT is the other reading and keeps the callable classification.
 
 // genericHoleFixtureSrc mirrors the shapes an open registration is authored
 // with: the brand pair, a callable template (a scope factory), a plain
@@ -112,13 +113,19 @@ func TestDeriveTypedOpenTemplateNamesItsArgument(t *testing.T) {
 	}
 }
 
-func TestDeriveTypedClosedCallableTemplateStaysAFunction(t *testing.T) {
+func TestDeriveTypedClosedCallableTemplateStaysNamed(t *testing.T) {
 	derive, done := loadGenericHoles(t)
 	defer done()
 
-	d := derive("closedOpener")
-	if d.Kind != DerivedFunc {
-		t.Fatalf("closed callable template derived kind %v, want a function: %+v", d.Kind, d)
+	node := requireNamedLeaf(t, derive("closedOpener"))
+	if node.Name != "Opener" || node.From != "global" {
+		t.Fatalf("closed callable template derived %+v, want the bare name Opener", node)
+	}
+	if len(node.Args) != 1 {
+		t.Fatalf("expected exactly one generic arg, got %d: %+v", len(node.Args), node.Args)
+	}
+	if node.Args[0].Kind != TypeNodeNamed || node.Args[0].Name != "IProvider" {
+		t.Fatalf("expected IProvider as the closed argument, got %+v", node.Args[0])
 	}
 }
 

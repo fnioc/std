@@ -101,24 +101,34 @@ func DeriveTypeF(ctx *Context, t *shimchecker.Type, failure *Failure) (*TypeNode
 		return &TypeNode{Kind: TypeNodeTag, Inner: inner, Tag: key}, true
 	}
 
-	symbol := t.Symbol()
-	if alias := aliasOf(t); alias != nil && alias.symbol != nil {
-		symbol = alias.symbol
-	}
+	symbol := resolvedSymbolFor(t)
 	if symbol == nil {
 		return nil, false
 	}
 	return deriveNamedNode(ctx, t, symbol, failure)
 }
 
+// resolvedSymbolFor returns the symbol a type is spelled by, direct or through
+// its alias, or nil when the type carries no addressable name: no symbol at
+// all, or an anonymous / synthesized one (typescript-go's internal `__type`
+// marker) a caller could never spell. DeriveTyped's own named-type check
+// shares this resolution with DeriveTypeF's, so the two can never disagree
+// about whether a given type has a name to derive by.
+func resolvedSymbolFor(t *shimchecker.Type) *shimast.Symbol {
+	symbol := t.Symbol()
+	if alias := aliasOf(t); alias != nil && alias.symbol != nil {
+		symbol = alias.symbol
+	}
+	if symbol == nil || symbol.Name == "" || isInternalSymbolName(symbol.Name) {
+		return nil
+	}
+	return symbol
+}
+
 // deriveNamedNode builds the Named node a symbol-bearing type spells: the
 // FROM/NAME pair off the symbol's primary declaration, plus the closed generic
 // type arguments, each recursively derived.
 func deriveNamedNode(ctx *Context, t *shimchecker.Type, symbol *shimast.Symbol, failure *Failure) (*TypeNode, bool) {
-	name := symbol.Name
-	if name == "" || isInternalSymbolName(name) {
-		return nil, false
-	}
 	decl := primaryDeclaration(symbol)
 	if decl == nil {
 		return nil, false
