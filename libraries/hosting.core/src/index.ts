@@ -3,13 +3,11 @@
 // alongside them (BackgroundService, HostAbortedError, Environments,
 // HostDefaults), and the shared DI-slot tokens.
 //
-// IMPORTING THIS PACKAGE HAS A SIDE EFFECT: it registers `addHostedService`
-// against di.core's `ServiceManifest` augmentation token, and the IHost /
+// IMPORTING THIS PACKAGE HAS A SIDE EFFECT: it registers the IHost /
 // IHostBuilder / IHostEnvironment augmentation sets against their own tokens
 // (see HostLifecycleAugmentations.ts, HostBuilderStartAugmentations.ts,
-// HostEnvironmentEnvAugmentations.ts, ServiceManifestHostedServiceAugmentations.ts).
-// The concrete classes that consume those bags pull them onto their
-// prototypes via `@augment`.
+// HostEnvironmentEnvAugmentations.ts). The concrete classes that consume
+// those bags pull them onto their prototypes via `@augment`.
 
 // Core contracts.
 export type * from './HostBuilderContext';
@@ -43,6 +41,6 @@ export * from './HostBuilder-Start-augmentations';
 // Environment predicates.
 export * from './HostEnvironment-Env-augmentations';
 
-// The `addHostedService` registration augmentation + its side-effect
-// registration against di.core's ServiceManifest augmentation token.
-export * from './DefaultManifest-HostedService-augmentations';
+// `getHostedServiceManifest`: the registration a consumer merges into their
+// own manifest to add a hosted service.
+export * from './manifests';
