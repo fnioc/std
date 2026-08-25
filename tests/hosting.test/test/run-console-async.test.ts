@@ -1,6 +1,5 @@
 import { Type } from '@rhombus-std/di.core';
-import { CONSOLE_LIFETIME_OPTIONS_TYPE, ConsoleLifetime, type ConsoleLifetimeOptions, HOST_LIFETIME_TYPE, HostBuilder, HOSTED_SERVICE_TYPE,
-  type IHostLifetime } from '@rhombus-std/hosting/private/index';
+import { CONSOLE_LIFETIME_OPTIONS_TYPE, ConsoleLifetime, type ConsoleLifetimeOptions, HOST_LIFETIME_TYPE, HostBuilder, HOSTED_SERVICE_TYPE, type IHostLifetime } from '@rhombus-std/hosting';
 import { expect, test } from 'bun:test';
 
 // runConsoleAsync builds and starts the host internally, then blocks until

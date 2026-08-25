@@ -10,7 +10,7 @@
 // `addOptions`/`validate`/`validateOnStart` manifest verbs are installed.
 
 import { Type } from '@rhombus-std/di.core';
-import { HostBuilder, HOSTED_SERVICE_TYPE } from '@rhombus-std/hosting/private/index';
+import { HostBuilder, HOSTED_SERVICE_TYPE } from '@rhombus-std/hosting';
 import { OptionsValidationError } from '@rhombus-std/options';
 import '@rhombus-std/options.augmentations';
 import { expect, test } from 'bun:test';
