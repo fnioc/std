@@ -8,7 +8,7 @@
 
 import { ConfigBuilder, type IConfigRoot } from '@rhombus-std/config';
 import { di } from '@rhombus-std/di';
-import { DefaultManifest, LifetimeModel, Type } from '@rhombus-std/di.core';
+import { LifetimeModel, Manifest, Type } from '@rhombus-std/di.core';
 import { LoggingBuilder } from '@rhombus-std/logging';
 import { type ILoggerProviderConfig, type ILoggerProviderConfigFactory, loggerProviderConfigType } from '@rhombus-std/logging.config';
 import { describe, expect, test } from 'bun:test';
@@ -30,7 +30,7 @@ describe('addConfig() — provider-configuration services', () => {
   test('the factory chains the provider-named section of every registered configuration', () => {
     // The chain is immutable, so build the manifest the BUILDER holds after
     // both addConfig calls — not the one it was constructed with.
-    const builder = new LoggingBuilder(new DefaultManifest<'singleton'>());
+    const builder = new LoggingBuilder(Manifest.empty<unknown>());
     builder.addConfig(rootWith({ 'FakeProvider:Format': 'json', 'FakeProvider:MaxDepth': '3' }));
     builder.addConfig(rootWith({
       'FakeProvider:Format': 'text', // later configuration wins on conflict
@@ -50,7 +50,7 @@ describe('addConfig() — provider-configuration services', () => {
 
   test('the chained provider configuration is LIVE across a reload', () => {
     const config = rootWith({ 'FakeProvider:Format': 'json' });
-    const builder = new LoggingBuilder(new DefaultManifest<'singleton'>());
+    const builder = new LoggingBuilder(Manifest.empty<unknown>());
     builder.addConfig(config);
 
     const provider = di.usingLifetimeModel(LifetimeModel.noop).usingManifest(builder.services).build();
@@ -71,7 +71,7 @@ describe('addConfig() — provider-configuration services', () => {
 
   // Needs the standard lifetime model's singleton caching, not yet wired for this suite.
   test.skip('the open ILoggerProviderConfig<$1> registration closes per provider', () => {
-    const builder = new LoggingBuilder(new DefaultManifest<'singleton'>());
+    const builder = new LoggingBuilder(Manifest.empty<unknown>());
     builder.addConfig(rootWith({ 'FakeProvider:Format': 'json' }));
 
     const provider = di.usingLifetimeModel(LifetimeModel.noop).usingManifest(builder.services).build();
@@ -85,7 +85,7 @@ describe('addConfig() — provider-configuration services', () => {
   });
 
   test('the no-arg method form registers the services without a filter pipeline', () => {
-    const builder = new LoggingBuilder(new DefaultManifest<'singleton'>());
+    const builder = new LoggingBuilder(Manifest.empty<unknown>());
     builder.addConfig();
 
     const provider = di.usingLifetimeModel(LifetimeModel.noop).usingManifest(builder.services).build();

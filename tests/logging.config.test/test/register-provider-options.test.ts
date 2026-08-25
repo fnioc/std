@@ -1,4 +1,4 @@
-// End-to-end: `LoggerProviderOptions.registerProviderOptions` — a provider
+// End-to-end: `LoggerProviderOptions.getProviderOptionsManifest` — a provider
 // package's options type binds from ITS configuration section (chained across
 // every `addConfig`'d configuration by the provider-configuration
 // factory), lazily and reload-reactively, through the standard
@@ -11,7 +11,7 @@
 
 import { ConfigBuilder, type IConfigRoot } from '@rhombus-std/config';
 import { di } from '@rhombus-std/di';
-import { DefaultManifest, LifetimeModel, type Manifest, Type } from '@rhombus-std/di.core';
+import { LifetimeModel, Manifest, Type } from '@rhombus-std/di.core';
 import { LoggingBuilder } from '@rhombus-std/logging';
 import { LoggerProviderOptions } from '@rhombus-std/logging.config';
 import type { IOptions } from '@rhombus-std/options';
@@ -31,16 +31,15 @@ function rootWith(data: Record<string, string>): IConfigRoot {
   return new ConfigBuilder().addInMemoryCollection(data).build() as unknown as IConfigRoot;
 }
 
-describe('LoggerProviderOptions.registerProviderOptions', () => {
+describe('LoggerProviderOptions.getProviderOptionsManifest', () => {
   test("binds the provider's section into the options assembly for the type", () => {
     const config = rootWith({ 'FakeProvider:Format': 'json', 'FakeProvider:MaxDepth': '3', 'OtherProvider:Format': 'xml' });
 
-    let services: Manifest<'singleton'> = new DefaultManifest<'singleton'>();
-    const logging = new LoggingBuilder(services);
+    const logging = new LoggingBuilder(Manifest.empty<unknown>());
     logging.addConfig(config);
-    services = logging.services;
+    let services = logging.services;
     services = services.addOptions(OPTIONS_TYPE, () => ({ Format: 'text' }));
-    services = LoggerProviderOptions.registerProviderOptions(services, OPTIONS_TYPE, FAKE_PROVIDER_TYPE);
+    services = services.addMany(LoggerProviderOptions.getProviderOptionsManifest(OPTIONS_TYPE, FAKE_PROVIDER_TYPE));
 
     const provider = di.usingLifetimeModel(LifetimeModel.noop).usingManifest(services).build();
     const options: IOptions<FakeProviderOptions> = provider.resolve(OPTIONS_ACCESSOR_TYPE);
@@ -53,12 +52,11 @@ describe('LoggerProviderOptions.registerProviderOptions', () => {
   test('a reload re-binds and notifies subscribers (the change-token source)', () => {
     const config = rootWith({ 'FakeProvider:Format': 'json' });
 
-    let services: Manifest<'singleton'> = new DefaultManifest<'singleton'>();
-    const logging = new LoggingBuilder(services);
+    const logging = new LoggingBuilder(Manifest.empty<unknown>());
     logging.addConfig(config);
-    services = logging.services;
+    let services = logging.services;
     services = services.addOptions(OPTIONS_TYPE, () => ({ Format: 'text' }));
-    services = LoggerProviderOptions.registerProviderOptions(services, OPTIONS_TYPE, FAKE_PROVIDER_TYPE);
+    services = services.addMany(LoggerProviderOptions.getProviderOptionsManifest(OPTIONS_TYPE, FAKE_PROVIDER_TYPE));
 
     const provider = di.usingLifetimeModel(LifetimeModel.noop).usingManifest(services).build();
     const options: IOptions<FakeProviderOptions> = provider.resolve(OPTIONS_ACCESSOR_TYPE);
@@ -79,14 +77,12 @@ describe('LoggerProviderOptions.registerProviderOptions', () => {
   test("composes with a consumer's own configure step for the same token", () => {
     const config = rootWith({ 'FakeProvider:Format': 'json' });
 
-    let services: Manifest<'singleton'> = new DefaultManifest<'singleton'>();
-    const logging = new LoggingBuilder(services);
+    const logging = new LoggingBuilder(Manifest.empty<unknown>());
     logging.addConfig(config);
-    services = logging.services;
+    let services = logging.services;
     services = services.addOptions(OPTIONS_TYPE, () => ({ Format: 'text' }));
-    services = LoggerProviderOptions.registerProviderOptions(services, OPTIONS_TYPE, FAKE_PROVIDER_TYPE);
-    // The reference's services.Configure<TOptions>(delegate) analog: one more
-    // configure source in the SAME pipeline, running after the provider bind.
+    services = services.addMany(LoggerProviderOptions.getProviderOptionsManifest(OPTIONS_TYPE, FAKE_PROVIDER_TYPE));
+    // One more configure source in the SAME pipeline, running after the provider bind.
     services = services.configure(OPTIONS_TYPE, (value: FakeProviderOptions) => {
       value.MaxDepth = '9';
     });

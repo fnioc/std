@@ -11,7 +11,7 @@
 
 import { ConfigBuilder, type IConfigRoot } from '@rhombus-std/config';
 import { di } from '@rhombus-std/di';
-import { DefaultManifest, LifetimeModel, Type } from '@rhombus-std/di.core';
+import { LifetimeModel, Manifest, Type } from '@rhombus-std/di.core';
 import { LoggerFilterOptions, LoggingBuilder } from '@rhombus-std/logging';
 import '@rhombus-std/logging.config';
 import { LogLevel } from '@rhombus-std/logging.core';
@@ -31,7 +31,7 @@ function rootWith(data: Record<string, string>): IConfigRoot {
 function filterOptionsFor(config: IConfigRoot): IOptions<LoggerFilterOptions> {
   // The chain is immutable, so the manifest handed to the builder never sees
   // `addConfig`'s registrations — build the one the BUILDER holds afterwards.
-  const builder = new LoggingBuilder(new DefaultManifest<'singleton'>());
+  const builder = new LoggingBuilder(Manifest.empty<unknown>());
   builder.addConfig(config);
   const provider = di.usingLifetimeModel(LifetimeModel.noop).usingManifest(builder.services).build();
   const options: IOptions<LoggerFilterOptions> = provider.resolve(FILTER_OPTIONS_TYPE);
@@ -64,7 +64,7 @@ describe('addConfig — the LoggerFilterOptions pipeline', () => {
   test('the bind is LAZY — a write after registration but before first resolve is seen', () => {
     const config = rootWith({ 'LogLevel:Default': 'Information' });
 
-    const builder = new LoggingBuilder(new DefaultManifest<'singleton'>());
+    const builder = new LoggingBuilder(Manifest.empty<unknown>());
     builder.addConfig(config);
 
     // Mutate AFTER registration: an eager bind would have snapshotted
@@ -107,7 +107,7 @@ describe('addConfig — the LoggerFilterOptions pipeline', () => {
     const { LoggingBuilderConfigAugmentations } = await import('@rhombus-std/logging.config');
     const config = rootWith({ 'LogLevel:Default': 'Debug' });
 
-    const builder = new LoggingBuilder(new DefaultManifest<'singleton'>());
+    const builder = new LoggingBuilder(Manifest.empty<unknown>());
     LoggingBuilderConfigAugmentations.addConfig.call(builder, config);
 
     const provider = di.usingLifetimeModel(LifetimeModel.noop).usingManifest(builder.services).build();

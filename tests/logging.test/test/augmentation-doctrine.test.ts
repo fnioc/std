@@ -5,16 +5,14 @@
 // package lint) fails to compile the `addProvider` call below if that extends
 // merge regresses; bun test exercises the @augment runtime install.
 
-// Side-effect: installs `build` onto di.core's Manifest.
-import '@rhombus-std/di';
-import { DefaultManifest } from '@rhombus-std/di.core';
+import { Manifest } from '@rhombus-std/di.core';
 import { LoggingBuilder } from '@rhombus-std/logging';
 import type { ILoggerProvider } from '@rhombus-std/logging.core';
 import { expect, test } from 'bun:test';
 import { RecordingProvider } from './helpers';
 
 test('LoggingBuilder inherits interface-augmented members via the extends merge', () => {
-  const builder = new LoggingBuilder(new DefaultManifest());
+  const builder = new LoggingBuilder(Manifest.empty<unknown>());
   const provider: ILoggerProvider = new RecordingProvider();
 
   // `addProvider` lives only on ILoggingBuilder (its interface-side merge), never

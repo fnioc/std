@@ -66,9 +66,9 @@ binding `LoggerFilterOptions` from anything.
 | `ILoggerProviderConfigFactory`           | Interface a provider resolves to fetch its own configuration section by provider token.                                                     |
 | `LoggerProviderConfig`                   | The concrete `ILoggerProviderConfig<T>` implementation, backed by the factory.                                                              |
 | `LoggerProviderConfigFactory`            | The concrete `ILoggerProviderConfigFactory` implementation.                                                                                 |
-| `LoggerProviderOptions`                  | `registerProviderOptions(services, optionsToken, providerType)` — wires a provider's options type to reload from its configuration section. |
-| `LoggerProviderConfigureOptions`         | The configure step `registerProviderOptions` registers for a provider's options.                                                            |
-| `LoggerProviderOptionsChangeTokenSource` | The reload change-token source `registerProviderOptions` registers for a provider's options.                                                |
+| `LoggerProviderOptions`                  | `getProviderOptionsManifest(optionsToken, providerType)` — the registrations that wire a provider's options type to reload from its configuration section, as a manifest to merge in. |
+| `LoggerProviderConfigureOptions`         | The configure step `getProviderOptionsManifest` registers for a provider's options.                                                            |
+| `LoggerProviderOptionsChangeTokenSource` | The reload change-token source `getProviderOptionsManifest` registers for a provider's options.                                                |
 | `LoggerFilterConfigureOptions`           | The configure step that binds `LoggerFilterOptions` (levels, rules, scope capture) from configuration.                                      |
 | `LoggingConfig`                          | A small holder exposing the raw `IConfig` the logging setup was bound from.                                                                 |
 
@@ -76,18 +76,20 @@ binding `LoggerFilterOptions` from anything.
 
 If you're authoring your own logging provider and want its options bound
 from a section of the same configuration tree — the same mechanism the
-built-in filter binding uses — call `LoggerProviderOptions.registerProviderOptions`
-after `addConfig` has run:
+built-in filter binding uses — merge in
+`LoggerProviderOptions.getProviderOptionsManifest`'s manifest after
+`addConfig` has run:
 
 ```ts
 import { LoggerProviderOptions } from '@rhombus-std/logging.config';
 
-LoggerProviderOptions.registerProviderOptions<MyProviderOptions, MyProvider>(services, myProviderOptionsToken,
-  myProviderToken);
+services = services.addMany(
+  LoggerProviderOptions.getProviderOptionsManifest<MyProviderOptions, MyProvider>(myProviderOptionsToken, myProviderToken),
+);
 ```
 
-That appends a configure step and a reload-reactive change-token source to
-`myProviderOptionsToken`'s options pipeline, sourced from whatever
+That manifest carries a configure step and a reload-reactive change-token
+source for `myProviderOptionsToken`'s options pipeline, sourced from whatever
 `ILoggerProviderConfigFactory` resolves as `MyProvider`'s section —
 so `IOptions<MyProviderOptions>` stays current across configuration reloads
 with no extra wiring in the provider itself.

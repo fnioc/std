@@ -13,6 +13,7 @@ import type { Manifest } from '@rhombus-std/di.core';
 import type { ILoggingBuilder } from '@rhombus-std/logging.core';
 import { augment } from '@rhombus-std/primitives';
 import { typefor } from '@rhombus-std/primitives.extras';
+import type { Func } from '@rhombus-toolkit/func';
 
 // Binding the ILoggingBuilder interface onto the class flows every
 // augmentation of the interface — this package's `addProvider`/`addFilter`/…,
@@ -49,6 +50,16 @@ export class LoggingBuilder implements ILoggingBuilder {
    */
   public set services(value: Manifest<unknown>) {
     this.#slot.services = value;
+  }
+
+  /**
+   * Runs `configure` over a builder wrapping `manifest` and returns the
+   * resulting manifest, narrowed back to `manifest`'s own lifetime vocabulary.
+   */
+  static run<Lifetime>(manifest: Manifest<Lifetime>, configure?: Func<[ILoggingBuilder], void>) {
+    const builder = new LoggingBuilder(manifest as any);
+    configure?.(builder);
+    return builder.services as typeof manifest;
   }
 }
 

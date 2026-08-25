@@ -3,8 +3,8 @@
 // @rhombus-std/di container.
 
 import { di } from '@rhombus-std/di';
-import { DefaultManifest, type ImportedType, LifetimeModel, Type } from '@rhombus-std/di.core';
-import { LOGGER_FACTORY_TYPE, LoggerFactory } from '@rhombus-std/logging';
+import { type ImportedType, LifetimeModel, Type } from '@rhombus-std/di.core';
+import { getLoggingManifest, LOGGER_FACTORY_TYPE, LoggerFactory } from '@rhombus-std/logging';
 import type { ILogger, ILoggerFactory } from '@rhombus-std/logging.core';
 import { logError, LogLevel, logTrace, logWarning } from '@rhombus-std/logging.core';
 import { describe, expect, test } from 'bun:test';
@@ -22,7 +22,7 @@ describe('addLogging', () => {
   // Needs the standard lifetime model's singleton caching, not yet wired for this suite.
   test.skip('registers a working singleton ILoggerFactory over the added providers', () => {
     const provider = new RecordingProvider();
-    const services = new DefaultManifest().addLogging((builder) => builder.addProvider(provider));
+    const services = getLoggingManifest((builder) => builder.addProvider(provider));
 
     const root = services.build().createScope('singleton');
     const factory: ILoggerFactory = root.resolve(LOGGER_FACTORY_TYPE);
@@ -36,7 +36,7 @@ describe('addLogging', () => {
 
   test('defaults the minimum level to Information', () => {
     const provider = new RecordingProvider();
-    const services = new DefaultManifest().addLogging((builder) => builder.addProvider(provider));
+    const services = getLoggingManifest((builder) => builder.addProvider(provider));
 
     const root = di.usingLifetimeModel(LifetimeModel.noop).usingManifest(services).build();
     const factory: ILoggerFactory = root.resolve(LOGGER_FACTORY_TYPE);
@@ -49,7 +49,7 @@ describe('addLogging', () => {
 
   test('resolves ILogger<T> with the category derived from the closing type token', () => {
     const provider = new RecordingProvider();
-    const services = new DefaultManifest().addLogging((builder) => builder.addProvider(provider));
+    const services = getLoggingManifest((builder) => builder.addProvider(provider));
 
     const iLoggerBase = Type.from(ILOGGER_TOKEN) as ImportedType;
     const logger: ILogger = di.usingLifetimeModel(LifetimeModel.noop).usingManifest(services).build().resolve(
