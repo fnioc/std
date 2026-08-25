@@ -29,7 +29,11 @@ export interface Manifest<Lifetime> extends Iterable<ServiceDescriptor<Lifetime>
   /** Drops the descriptor that is {@link ServiceDescriptor.equals} to `descriptor`, if one is present. */
   _remove(descriptor: ServiceDescriptor<Lifetime>): Manifest<Lifetime>;
 }
-
+export namespace Manifest {
+  export function empty<Lifetime>(): Manifest<Lifetime> {
+    return new DefaultManifest<Lifetime>();
+  }
+}
 export interface DefaultManifest<Lifetime> extends Manifest<Lifetime> {}
 
 @augment(typefor<Manifest<unknown>>())
@@ -91,9 +95,5 @@ export class DefaultManifest<Lifetime> implements Manifest<Lifetime> {
         }
       }.bind(this),
     );
-  }
-
-  static empty<Lifetime>(): Manifest<Lifetime> {
-    return new DefaultManifest<Lifetime>();
   }
 }
