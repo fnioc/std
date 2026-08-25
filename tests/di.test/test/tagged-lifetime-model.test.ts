@@ -5,10 +5,10 @@
 
 import { di } from '@rhombus-std/di';
 import { type IServiceProvider, LifetimeModelError, ScopeFactory, ScopeTagUnmatchedError } from '@rhombus-std/di.core';
+import { tagged } from '@rhombus-std/di.core/private/LifetimeModel/models/tagged';
 import { Type } from '@rhombus-std/primitives';
 import type { Func } from '@rhombus-toolkit/func';
 import { describe, expect, test } from 'bun:test';
-import { tagged } from '../../../libraries/di.core/src/LifetimeModel/models/tagged';
 
 type Tags = 'session' | 'request';
 

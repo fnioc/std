@@ -5,10 +5,10 @@
 
 import { di } from '@rhombus-std/di';
 import { type IServiceProvider, LifetimeModelError, ScopeFactory, ServiceDescriptor } from '@rhombus-std/di.core';
+import { standard, type StandardLifetime } from '@rhombus-std/di.core/private/LifetimeModel/models/standard';
 import { Type } from '@rhombus-std/primitives';
 import type { Func } from '@rhombus-toolkit/func';
 import { describe, expect, test } from 'bun:test';
-import { standard, type StandardLifetime } from '../../../libraries/di.core/src/LifetimeModel/models/standard';
 
 const COUNTER = Type.imported('Counter', 'app');
 const HOLDER = Type.imported('Holder', 'app');

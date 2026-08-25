@@ -23,6 +23,10 @@
     ".": "./src/index.ts",
     "./builders": {
       "types": "./src/builder.ts"
+    },
+    "./private/*": {
+      "types": "./src/*.ts",
+      "bun": "./src/*.ts"
     }
   },
   "files": [
