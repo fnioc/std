@@ -76,7 +76,7 @@ describe('reverse direction — MetricsBuilder (.core interface, downstream conc
     // itself) would hide the threading the augmentation now has to do.
     const recorded: Array<[unknown, unknown]> = [];
     const make = (): Manifest<unknown> => {
-      return { add: (serviceType: unknown, value: unknown) => {
+      return { addValue: (serviceType: unknown, value: unknown) => {
         recorded.push([serviceType, value]);
         return make();
       }, build: () => undefined } as unknown as Manifest<unknown>;
