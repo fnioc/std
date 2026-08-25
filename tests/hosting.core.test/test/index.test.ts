@@ -1,8 +1,8 @@
 import { DefaultManifest, type Manifest, Type } from '@rhombus-std/di.core';
 import { BackgroundService, Environments, HostAbortedError, HostDefaults, HOSTED_SERVICE_TYPE, hostedServiceCollectionType, HostEnvironmentEnvAugmentations, type IHostedService,
-  type IHostEnvironment } from '@rhombus-std/hosting.core/tokens/index';
+  type IHostEnvironment } from '@rhombus-std/hosting.core/private/index';
 // Side-effect: installs `addHostedService` onto di.core's Manifest.
-import '@rhombus-std/hosting.core/tokens/index';
+import '@rhombus-std/hosting.core/private/index';
 // Side-effect: installs `build` onto di.core's Manifest.
 import '@rhombus-std/di';
 import { NullFileProvider } from '@rhombus-std/fileproviders.core';

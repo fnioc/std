@@ -3,9 +3,9 @@
 // or synthesis a whole-type miss falls back to.
 
 import { CycleError, DefaultManifest, type Manifest, ServiceDescriptor } from '@rhombus-std/di.core';
-import { CallSite } from '@rhombus-std/di/tokens/internal/CallSite/CallSite';
-import { ToCallSiteVisitor } from '@rhombus-std/di/tokens/internal/CallSite/ToCallSiteVisitor';
-import { Registry } from '@rhombus-std/di/tokens/internal/Registry';
+import { CallSite } from '@rhombus-std/di/private/internal/CallSite/CallSite';
+import { ToCallSiteVisitor } from '@rhombus-std/di/private/internal/CallSite/ToCallSiteVisitor';
+import { Registry } from '@rhombus-std/di/private/internal/Registry';
 import { Type } from '@rhombus-std/primitives';
 import { describe, expect, test } from 'bun:test';
 

@@ -2,11 +2,11 @@
 // the timestamp token formatter, and the ANSI escape-code tables — via the
 // library's `internal/*` subpath (docs §7/§40).
 
-import { ConsoleColor, DEFAULT_BACKGROUND_COLOR, DEFAULT_FOREGROUND_COLOR, getBackgroundColorEscapeCode, getForegroundColorEscapeCode } from '@rhombus-std/logging.console/tokens/ConsoleColor';
-import { ConsoleControlCharacterSanitizer } from '@rhombus-std/logging.console/tokens/ConsoleControlCharacterSanitizer';
-import { formatTimestamp } from '@rhombus-std/logging.console/tokens/date-format';
-import { StringWriter } from '@rhombus-std/logging.console/tokens/text-writer';
-import { writeColoredMessage } from '@rhombus-std/logging.console/tokens/write-colored-message';
+import { ConsoleColor, DEFAULT_BACKGROUND_COLOR, DEFAULT_FOREGROUND_COLOR, getBackgroundColorEscapeCode, getForegroundColorEscapeCode } from '@rhombus-std/logging.console/private/ConsoleColor';
+import { ConsoleControlCharacterSanitizer } from '@rhombus-std/logging.console/private/ConsoleControlCharacterSanitizer';
+import { formatTimestamp } from '@rhombus-std/logging.console/private/date-format';
+import { StringWriter } from '@rhombus-std/logging.console/private/text-writer';
+import { writeColoredMessage } from '@rhombus-std/logging.console/private/write-colored-message';
 import { expect, test } from 'bun:test';
 
 // --- sanitizer ---

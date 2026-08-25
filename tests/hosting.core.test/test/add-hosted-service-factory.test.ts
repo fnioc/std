@@ -1,7 +1,7 @@
 import { DefaultManifest, type Manifest, Type } from '@rhombus-std/di.core';
-import { HOSTED_SERVICE_TYPE, hostedServiceCollectionType, type IHostedService } from '@rhombus-std/hosting.core/tokens/index';
+import { HOSTED_SERVICE_TYPE, hostedServiceCollectionType, type IHostedService } from '@rhombus-std/hosting.core/private/index';
 // Side-effect: installs `addHostedService` onto di.core's Manifest.
-import '@rhombus-std/hosting.core/tokens/index';
+import '@rhombus-std/hosting.core/private/index';
 // Side-effect: installs `build` onto di.core's Manifest.
 import '@rhombus-std/di';
 import { expect, test } from 'bun:test';
