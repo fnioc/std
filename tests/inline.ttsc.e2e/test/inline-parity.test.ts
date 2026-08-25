@@ -203,10 +203,11 @@ declare const services: Manifest<'singleton'>;
 export const keyed = services.add<Keyed<ICache, 'redis'>>(RedisCache);
 `;
 
-// A sugar call with NO type argument. The service type is the sugar's type
-// argument, and no parameter mentions it, so there is nothing for the checker to
-// infer it from. The stage refuses with a named diagnostic rather than deriving a
+// A sugar call with NO type argument. The stage cannot recover the service type
+// from the call, so it refuses with a named diagnostic rather than deriving a
 // token for `unknown` — compiled on its own, since the refusal fails the build.
+// The lifetime is spelled because this vocabulary requires one: without it the
+// call fails overload resolution first and the refusal is never the whole story.
 const INFERRED_SOURCE = `
 import type { Manifest } from '@rhombus-std/di.core';
 
@@ -214,7 +215,7 @@ class SelfRepo {}
 
 declare const services: Manifest<'singleton'>;
 
-export const self = services.add(SelfRepo);
+export const self = services.add(SelfRepo, 'singleton');
 `;
 
 // Lookup-family source (W5). The type-driven get* forms lower through the inline
