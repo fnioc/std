@@ -116,11 +116,13 @@ declare const bazValue: IBaz;
 
 // Top-level registration statements: the inline stage substitutes the sugar
 // bodies for registrations that appear as top-level expression statements, so both
-// spawn-descriptor lowerings exercise the same shape. Each call stops short of the
-// optional \`scope\` tail, which is what a hand author would have written; the
-// implementer type is OBSERVED from the argument, so no call spells one.
-services.add<IFoo>(Foo);
-services.add<IBar>((dep: IDep) => new BarImpl(dep));
+// spawn-descriptor lowerings exercise the same shape. \`Manifest<"singleton">\`
+// makes the lifetime argument REQUIRED, so each ctor/factory call names it —
+// what a hand author would have written; the implementer type is OBSERVED
+// from the argument, so no call spells one. A value door takes no lifetime at
+// all, so \`addValue\` stops after the value.
+services.add<IFoo>(Foo, 'singleton');
+services.add<IBar>((dep: IDep) => new BarImpl(dep), 'singleton');
 services.addValue<IBaz>(bazValue);
 
 // The same observation through the chain's own doors, whose one-argument sugar is
@@ -326,7 +328,7 @@ describe.skipIf(!toolchainReady)('registration sugar — addClass / addFactory /
     // carries the very node a hand author would spell as the third argument.
     const fooCtorType = constFor(typeModule, `Type.ctor(${fooClass}, [[${dep}]])`);
     const barFnType = constFor(typeModule, `Type.func(${barImpl}, [[${dep}]])`);
-    expect(withInline).toContain(`.add(${fooType}, Foo, ${fooCtorType})`);
+    expect(withInline).toContain(`.add(${fooType}, Foo, ${fooCtorType}, "singleton")`);
     expect(withInline).toContain(`${barFnType})`);
     expect(withInline).toContain(`.add(${barType}, `);
     expect(withInline).toContain(`.addValue(${bazType}, bazValue)`);
