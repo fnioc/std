@@ -11,7 +11,7 @@
 // methods are `this`-based and installed verbatim.
 
 import { di } from '@rhombus-std/di';
-import { DefaultManifest, LifetimeModel, type Manifest, Type } from '@rhombus-std/di.core';
+import { LifetimeModel, Manifest, Type } from '@rhombus-std/di.core';
 import { MetricsBuilder, TracingBuilder } from '@rhombus-std/diagnostics';
 import { type IMetricsBuilder, type IMetricsListener, type ITracingBuilder, MetricsBuilderAugmentations, TracingBuilderAugmentations } from '@rhombus-std/diagnostics.core';
 import { describe, expect, test } from 'bun:test';
@@ -43,7 +43,7 @@ function registered(builder: { services: Manifest<unknown>; }, type: Type): unkn
 
 describe('MetricsBuilderAugmentations.clearMetricsListeners', () => {
   test('removes every IMetricsListener registration', () => {
-    const manifest = new DefaultManifest();
+    const manifest = Manifest.empty<unknown>();
     const builder: IMetricsBuilder = new MetricsBuilder(manifest);
 
     MetricsBuilderAugmentations.addMetricsListener.call(builder, listener('a'));
@@ -55,7 +55,7 @@ describe('MetricsBuilderAugmentations.clearMetricsListeners', () => {
   });
 
   test('listeners added AFTER a clear survive', () => {
-    const manifest = new DefaultManifest();
+    const manifest = Manifest.empty<unknown>();
     const builder: IMetricsBuilder = new MetricsBuilder(manifest);
 
     MetricsBuilderAugmentations.addMetricsListener.call(builder, listener('stale'));
@@ -67,7 +67,7 @@ describe('MetricsBuilderAugmentations.clearMetricsListeners', () => {
   });
 
   test('only the listener slot is cleared -- other registrations survive', () => {
-    const manifest = new DefaultManifest();
+    const manifest = Manifest.empty<unknown>();
     const builder: IMetricsBuilder = new MetricsBuilder(manifest);
 
     MetricsBuilderAugmentations.addMetricsListener.call(builder, listener('a'));
@@ -78,7 +78,7 @@ describe('MetricsBuilderAugmentations.clearMetricsListeners', () => {
   });
 
   test('the method form reaches the concrete MetricsBuilder through the registry', () => {
-    const manifest = new DefaultManifest();
+    const manifest = Manifest.empty<unknown>();
     const builder = new MetricsBuilder(manifest);
 
     expect(builder.clearMetricsListeners).toBeInstanceOf(Function);
@@ -90,7 +90,7 @@ describe('MetricsBuilderAugmentations.clearMetricsListeners', () => {
 
 describe('TracingBuilderAugmentations.clearTracingListeners', () => {
   test('removes every ActivityListenerBuilder registration', () => {
-    const manifest = new DefaultManifest();
+    const manifest = Manifest.empty<unknown>();
     const builder: ITracingBuilder = new TracingBuilder(manifest);
 
     TracingBuilderAugmentations.addTracingListener.call(builder, 'L1', () => {});
@@ -102,7 +102,7 @@ describe('TracingBuilderAugmentations.clearTracingListeners', () => {
   });
 
   test('listeners added AFTER a clear survive; rules are untouched', () => {
-    const manifest = new DefaultManifest();
+    const manifest = Manifest.empty<unknown>();
     const builder: ITracingBuilder = new TracingBuilder(manifest);
 
     TracingBuilderAugmentations.addTracingListener.call(builder, 'stale', () => {});
@@ -118,7 +118,7 @@ describe('TracingBuilderAugmentations.clearTracingListeners', () => {
   });
 
   test('the method form reaches the concrete TracingBuilder through the registry', () => {
-    const manifest = new DefaultManifest();
+    const manifest = Manifest.empty<unknown>();
     const builder = new TracingBuilder(manifest);
 
     expect(builder.clearTracingListeners).toBeInstanceOf(Function);
