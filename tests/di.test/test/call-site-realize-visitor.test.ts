@@ -33,7 +33,7 @@ describe('the leaf kinds', () => {
   });
 
   test('service-scope-factory realizes to a working scope opener', () => {
-    const manifest = DefaultManifest.empty<string>().add(ServiceDescriptor.ctor(CONN, Conn, Type.ctor(CONN, [[]])));
+    const manifest = DefaultManifest.empty<string>().add(ServiceDescriptor.ctor(CONN, Conn, Type.ctor(CONN, [[]]), 'singleton'));
     const scopedEngine = new Engine(manifest);
     const factory = realizeCallSite(CallSite.serviceScopeFactory(), { engine: scopedEngine, serviceProvider: provider });
     expect(factory).toBeInstanceOf(ServiceScopeFactory);
@@ -79,7 +79,7 @@ describe('iterable and array sites', () => {
 describe('a late-bound site', () => {
   test('returns a function that re-enters the engine with its call args registered', () => {
     const manifest = DefaultManifest.empty<string>().add(
-      ServiceDescriptor.ctor(WIDGET, Widget, Type.ctor(WIDGET, [[CONN]])),
+      ServiceDescriptor.ctor(WIDGET, Widget, Type.ctor(WIDGET, [[CONN]]), 'singleton'),
     );
     const lateBoundEngine = new Engine(manifest);
     const site = CallSite.latebound(WIDGET, [[CONN]]);

@@ -82,7 +82,7 @@ describe('transient', () => {
 describe('a registration naming no lifetime', () => {
   test('is refused, naming the model that had no reading for it', () => {
     const provider = di.usingLifetimeModel(standard())
-      .configureServices(manifest => manifest.add(ServiceDescriptor.ctor<StandardLifetime>(COUNTER, Counter, Type.ctor(COUNTER, [[]]))))
+      .configureServices(manifest => manifest.add(ServiceDescriptor.ctor<StandardLifetime>(COUNTER, Counter, Type.ctor(COUNTER, [[]]), 'singleton')))
       .build();
 
     let caught: unknown;

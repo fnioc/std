@@ -25,8 +25,8 @@ class Report {
 
 /** `Widget(Conn)`, with a Conn of its own — so the manifest alone already answers `Widget`. */
 const widgets = DefaultManifest.empty<string>()
-  .add(ServiceDescriptor.ctor(WIDGET, Widget, Type.ctor(WIDGET, [[CONN]])))
-  .add(ServiceDescriptor.ctor(CONN, ManifestConn, Type.ctor(CONN, [[]])));
+  .add(ServiceDescriptor.ctor(WIDGET, Widget, Type.ctor(WIDGET, [[CONN]]), 'singleton'))
+  .add(ServiceDescriptor.ctor(CONN, ManifestConn, Type.ctor(CONN, [[]]), 'singleton'));
 
 describe('a latebound call resolves against its own registrations', () => {
   test('the call argument outranks the manifest, even after the plain plan is cached', () => {
@@ -59,8 +59,8 @@ describe('a union is settled against the resolving call', () => {
   // `Report` wants `Cache | Redis`; the manifest supplies only the Redis half, so the
   // first member in canonical order — app:Cache — goes unanswered until a call supplies it.
   const reports = DefaultManifest.empty<string>()
-    .add(ServiceDescriptor.ctor(REPORT, Report, Type.ctor(REPORT, [[Type.union(CACHE, REDIS)]])))
-    .add(ServiceDescriptor.ctor(REDIS, MemoryCache, Type.ctor(REDIS, [[]])));
+    .add(ServiceDescriptor.ctor(REPORT, Report, Type.ctor(REPORT, [[Type.union(CACHE, REDIS)]]), 'singleton'))
+    .add(ServiceDescriptor.ctor(REDIS, MemoryCache, Type.ctor(REDIS, [[]]), 'singleton'));
 
   test('one member answers when the manifest is the whole universe', () => {
     expect((new ServiceProvider(reports).resolve(REPORT) as Report).cache).toBeInstanceOf(MemoryCache);
@@ -85,9 +85,9 @@ describe('a chosen member that fails while being built', () => {
     }
     const manifest = DefaultManifest.empty<string>()
       .add(
-        ServiceDescriptor.ctor(REPORT, Report, Type.ctor(REPORT, [[Type.union(CACHE, Type.typeLiteral(undefined))]])),
+        ServiceDescriptor.ctor(REPORT, Report, Type.ctor(REPORT, [[Type.union(CACHE, Type.typeLiteral(undefined))]]), 'singleton'),
       )
-      .add(ServiceDescriptor.ctor(CACHE, Exploding, Type.ctor(CACHE, [[]])));
+      .add(ServiceDescriptor.ctor(CACHE, Exploding, Type.ctor(CACHE, [[]]), 'singleton'));
 
     // The literal is the union's fallback for an ABSENT service, never for a broken one.
     expect(() => new ServiceProvider(manifest).resolve(REPORT)).toThrow('boom');
@@ -96,11 +96,11 @@ describe('a chosen member that fails while being built', () => {
   test('fails it again on the next ask, with the plan unchanged', () => {
     let attempts = 0;
     const manifest = DefaultManifest.empty<string>()
-      .add(ServiceDescriptor.ctor(WIDGET, Widget, Type.ctor(WIDGET, [[CONN]])))
+      .add(ServiceDescriptor.ctor(WIDGET, Widget, Type.ctor(WIDGET, [[CONN]]), 'singleton'))
       .add(ServiceDescriptor.factory(CONN, () => {
         attempts++;
         throw new Error('boom');
-      }, Type.func(CONN, [[]])));
+      }, Type.func(CONN, [[]]), 'singleton'));
     const provider = new ServiceProvider(manifest);
 
     expect(() => provider.resolve(WIDGET)).toThrow('boom');
