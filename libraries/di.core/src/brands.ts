@@ -49,7 +49,11 @@ declare const HOLE: unique symbol;
  */
 export type Generic<L extends string, C = unknown> = C & { readonly [HOLE]?: L; };
 
-/** {@link Generic} without a constraint — the spelling an open template usually wants. */
+/**
+ * {@link Generic} without a constraint.
+ *
+ * @deprecated Spell an unconstrained hole as `Generic<'T'>`.
+ */
 export type $<L extends string> = Generic<L>;
 
 // ── Keyed ─────────────────────────────────────────────────────────────────────
