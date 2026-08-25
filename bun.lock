@@ -913,6 +913,7 @@
       "version": "0.0.0",
       "devDependencies": {
         "@rhombus-std/config": "workspace:*",
+        "@rhombus-std/di": "workspace:*",
         "@rhombus-std/di.core": "workspace:*",
         "@rhombus-std/hosting": "workspace:*",
         "@rhombus-std/logging.core": "workspace:*",

@@ -1,4 +1,5 @@
-import { Type } from '@rhombus-std/di.core';
+import { di } from '@rhombus-std/di';
+import { LifetimeModel, Type } from '@rhombus-std/di.core';
 // The application builder's services slot (§114). `HostApplicationBuilder`
 // exposes `services` as ONE mutable slot over an immutable manifest chain, and
 // hands that same slot to its `logging` and `metrics` sub-builders. This suite
@@ -35,7 +36,7 @@ test('builder.logging registrations reach the manifest build() reads', () => {
 
   // The chain is immutable, so this only holds because `logging` writes through
   // the SAME slot `builder.services` reads.
-  const providers: ILoggerProvider[] = builder.services.build().resolve(Type.array(LOGGER_PROVIDER_TYPE));
+  const providers: ILoggerProvider[] = di.usingLifetimeModel(LifetimeModel.noop).usingManifest(builder.services).build().resolve(Type.array(LOGGER_PROVIDER_TYPE));
   expect(providers).toContain(marker);
 });
 
@@ -63,7 +64,7 @@ test('builder.metrics shares the same slot as builder.services', () => {
   builder.metrics.services = builder.metrics.services.addValue(Type.from('test:ViaMetrics'), 'yes');
 
   expect(builder.services).not.toBe(before);
-  expect(builder.services.build().resolve(Type.from('test:ViaMetrics'))).toBe('yes');
+  expect(di.usingLifetimeModel(LifetimeModel.noop).usingManifest(builder.services).build().resolve(Type.from('test:ViaMetrics'))).toBe('yes');
 });
 
 test('asHostBuilder() replays its delegates into the live slot, not a snapshot', () => {

@@ -11,8 +11,8 @@ function fakeEnvironment(environmentName: string): IHostEnvironment {
 }
 
 test('createDefaultServiceProviderOptions enables validation only in Development', () => {
-  expect(createDefaultServiceProviderOptions(fakeEnvironment('Development'))).toEqual({ validateScopes: true, validateOnBuild: true });
-  expect(createDefaultServiceProviderOptions(fakeEnvironment('Production'))).toEqual({ validateScopes: false, validateOnBuild: false });
+  expect(createDefaultServiceProviderOptions(fakeEnvironment('Development'))).toEqual({ validateOnBuild: true });
+  expect(createDefaultServiceProviderOptions(fakeEnvironment('Production'))).toEqual({ validateOnBuild: false });
 });
 
 test('useDefaultServiceProvider threads validateOnBuild into the provider build', () => {
