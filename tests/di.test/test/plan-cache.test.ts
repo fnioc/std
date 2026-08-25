@@ -3,7 +3,7 @@
 // call's own arguments, which is a different set of registrations and so a different plan.
 
 import { di } from '@rhombus-std/di';
-import { DefaultManifest, LifetimeModel, type Manifest, ServiceDescriptor } from '@rhombus-std/di.core';
+import { LifetimeModel, Manifest, ServiceDescriptor } from '@rhombus-std/di.core';
 import { Type } from '@rhombus-std/primitives';
 import { describe, expect, test } from 'bun:test';
 
@@ -29,7 +29,7 @@ class Report {
 }
 
 /** `Widget(Conn)`, with a Conn of its own — so the manifest alone already answers `Widget`. */
-const widgets = DefaultManifest.empty<string>()
+const widgets = Manifest.empty<string>()
   .add(ServiceDescriptor.ctor(WIDGET, Widget, Type.ctor(WIDGET, [[CONN]]), 'singleton'))
   .add(ServiceDescriptor.ctor(CONN, ManifestConn, Type.ctor(CONN, [[]]), 'singleton'));
 
@@ -63,7 +63,7 @@ describe('a latebound call resolves against its own registrations', () => {
 describe('a union is settled against the resolving call', () => {
   // `Report` wants `Cache | Redis`; the manifest supplies only the Redis half, so the
   // first member in canonical order — app:Cache — goes unanswered until a call supplies it.
-  const reports = DefaultManifest.empty<string>()
+  const reports = Manifest.empty<string>()
     .add(ServiceDescriptor.ctor(REPORT, Report, Type.ctor(REPORT, [[Type.union(CACHE, REDIS)]]), 'singleton'))
     .add(ServiceDescriptor.ctor(REDIS, MemoryCache, Type.ctor(REDIS, [[]]), 'singleton'));
 
@@ -88,7 +88,7 @@ describe('a chosen member that fails while being built', () => {
         throw new Error('boom');
       }
     }
-    const manifest = DefaultManifest.empty<string>()
+    const manifest = Manifest.empty<string>()
       .add(
         ServiceDescriptor.ctor(REPORT, Report, Type.ctor(REPORT, [[Type.union(CACHE, Type.typeLiteral(undefined))]]), 'singleton'),
       )
@@ -100,7 +100,7 @@ describe('a chosen member that fails while being built', () => {
 
   test('fails it again on the next ask, with the plan unchanged', () => {
     let attempts = 0;
-    const manifest = DefaultManifest.empty<string>()
+    const manifest = Manifest.empty<string>()
       .add(ServiceDescriptor.ctor(WIDGET, Widget, Type.ctor(WIDGET, [[CONN]]), 'singleton'))
       .add(ServiceDescriptor.factory(CONN, () => {
         attempts++;

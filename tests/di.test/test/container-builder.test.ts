@@ -4,7 +4,7 @@
 // intermediate `build()` sees, are the properties worth pinning down.
 
 import { ContainerBuilder, di } from '@rhombus-std/di';
-import { DefaultManifest, LifetimeModel, ManifestValidationError, type Realizer, ServiceDescriptor, UnsatisfiableError } from '@rhombus-std/di.core';
+import { LifetimeModel, Manifest, ManifestValidationError, type Realizer, ServiceDescriptor, UnsatisfiableError } from '@rhombus-std/di.core';
 import { Type } from '@rhombus-std/primitives';
 import { describe, expect, test } from 'bun:test';
 
@@ -64,13 +64,13 @@ describe('multiple configureServices steps', () => {
 
 describe('usingManifest', () => {
   test('seeds the builder from an existing descriptor stream', () => {
-    const seed = DefaultManifest.empty<unknown>().addValue(A, 'seeded');
+    const seed = Manifest.empty<unknown>().addValue(A, 'seeded');
     const provider = di.usingLifetimeModel(LifetimeModel.noop).usingManifest(seed).build();
     expect(provider.resolve(A)).toBe('seeded');
   });
 
   test('discards configureServices steps configured before it, keeping steps configured after', () => {
-    const seed = DefaultManifest.empty<unknown>().addValue(A, 'seeded');
+    const seed = Manifest.empty<unknown>().addValue(A, 'seeded');
     const provider = di.usingLifetimeModel(LifetimeModel.noop)
       .configureServices(manifest => manifest.addValue(A, 'discarded'))
       .usingManifest(seed)
@@ -81,7 +81,7 @@ describe('usingManifest', () => {
   });
 
   test('round-trips iteration order: a newer registration still wins over an older one', () => {
-    const seed = DefaultManifest.empty<unknown>()
+    const seed = Manifest.empty<unknown>()
       .addValue(A, 'older')
       .addValue(A, 'newer');
     const provider = di.usingLifetimeModel(LifetimeModel.noop).usingManifest(seed).build();
@@ -136,7 +136,7 @@ describe('the model floor', () => {
   });
 
   test('usingManifest layers over the floor rather than replacing it', () => {
-    const seed = DefaultManifest.empty<unknown>().addValue(A, 'seeded');
+    const seed = Manifest.empty<unknown>().addValue(A, 'seeded');
     const provider = di.usingLifetimeModel(withMarkerFloor).usingManifest(seed).build();
     expect(provider.resolve(A)).toBe('seeded');
     expect(provider.resolve(MARKER)).toBe('from-model');

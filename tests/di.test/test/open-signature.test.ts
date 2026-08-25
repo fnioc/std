@@ -2,7 +2,7 @@
 // address, closed positionally by a request for the instantiated shape.
 
 import { di } from '@rhombus-std/di';
-import { DefaultManifest, LifetimeModel, type Manifest, ServiceDescriptor } from '@rhombus-std/di.core';
+import { LifetimeModel, Manifest, ServiceDescriptor } from '@rhombus-std/di.core';
 import { Type } from '@rhombus-std/primitives';
 import { describe, expect, test } from 'bun:test';
 
@@ -23,7 +23,7 @@ const CLOSED = Type.func({ return: whatever(STRING), signatures: [[]] });
 describe('an open signature as a service type', () => {
   test('a request for the instantiated shape resolves the open registration', () => {
     const made = () => 'made';
-    const manifest = DefaultManifest.empty<string>().add(ServiceDescriptor.value(OPEN, made));
+    const manifest = Manifest.empty<string>().add(ServiceDescriptor.value(OPEN, made));
     const provider = toProvider(manifest);
     expect(provider.resolve(CLOSED)).toBe(made);
   });

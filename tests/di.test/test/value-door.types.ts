@@ -1,10 +1,10 @@
-import { DefaultManifest } from '@rhombus-std/di.core';
+import { Manifest } from '@rhombus-std/di.core';
 import { Type } from '@rhombus-std/primitives';
 
 const T = Type.from('probe:T');
 
 function blank() {
-  return DefaultManifest.empty<unknown>();
+  return Manifest.empty<unknown>();
 }
 
 blank().add(T, { a: 1 });

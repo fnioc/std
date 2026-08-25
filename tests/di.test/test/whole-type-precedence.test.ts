@@ -3,7 +3,7 @@
 // intersections each meet the rule their own way.
 
 import { di } from '@rhombus-std/di';
-import { DefaultManifest, LifetimeModel, type Manifest, UnsatisfiableError } from '@rhombus-std/di.core';
+import { LifetimeModel, Manifest, UnsatisfiableError } from '@rhombus-std/di.core';
 import { Type } from '@rhombus-std/primitives';
 import { describe, expect, test } from 'bun:test';
 
@@ -21,12 +21,12 @@ class Foo {}
 
 describe('a type literal', () => {
   test('self-satisfies when nothing is registered for it', () => {
-    const provider = toProvider(DefaultManifest.empty<string>());
+    const provider = toProvider(Manifest.empty<string>());
     expect(provider.resolve(Type.typeLiteral('prod'))).toBe('prod');
   });
 
   test('is answered by its own registration ahead of self-satisfaction', () => {
-    const manifest = DefaultManifest.empty<string>()
+    const manifest = Manifest.empty<string>()
       .addValue(Type.typeLiteral('dev'), 'override');
     expect(toProvider(manifest).resolve(Type.typeLiteral('dev'))).toBe('override');
   });
@@ -34,7 +34,7 @@ describe('a type literal', () => {
 
 describe('a tuple', () => {
   test('synthesizes from its members, a literal member supplying itself', () => {
-    const manifest = DefaultManifest.empty<string>()
+    const manifest = Manifest.empty<string>()
       .add(FOO, Foo, Type.ctor(FOO, [[]]), 'singleton');
     const pair = toProvider(manifest)
       .resolve(Type.tuple(FOO, Type.typeLiteral(5))) as [Foo, number];
@@ -44,7 +44,7 @@ describe('a tuple', () => {
   });
 
   test('is answered by its own registration ahead of a viable synthesis', () => {
-    const manifest = DefaultManifest.empty<string>()
+    const manifest = Manifest.empty<string>()
       .addValue(A, 'a-val')
       .addValue(B, 'b-val')
       .addValue(Type.tuple(A, B), 'pre-made');
@@ -54,7 +54,7 @@ describe('a tuple', () => {
 
 describe('an iterable address', () => {
   test('collects each registration satisfying a union element exactly once', () => {
-    const manifest = DefaultManifest.empty<string>()
+    const manifest = Manifest.empty<string>()
       .addValue(A, 'a-val')
       .addValue(Type.union(A, B), 'either');
     const gathered = [...toProvider(manifest).resolve(Type.iterable(Type.union(A, B)))];
@@ -64,7 +64,7 @@ describe('an iterable address', () => {
   });
 
   test('registered for exactly, wins outright — never combined with per-element answers', () => {
-    const manifest = DefaultManifest.empty<string>()
+    const manifest = Manifest.empty<string>()
       .addValue(A, 'a-val')
       .addValue(Type.iterable(A), 'exact-iter');
     expect(toProvider(manifest).resolve(Type.iterable(A))).toBe('exact-iter');
@@ -75,12 +75,12 @@ describe('an intersection', () => {
   const BOTH = Type.intersection(Type.object({ a: STR }), Type.object({ b: STR }));
 
   test('is answered by a registration for the intersection itself', () => {
-    const manifest = DefaultManifest.empty<string>().addValue(BOTH, 'both');
+    const manifest = Manifest.empty<string>().addValue(BOTH, 'both');
     expect(toProvider(manifest).resolve(BOTH)).toBe('both');
   });
 
   test('is never assembled from registrations covering its parts', () => {
-    const manifest = DefaultManifest.empty<string>()
+    const manifest = Manifest.empty<string>()
       .addValue(Type.object({ a: STR, b: STR }), 'both');
     expect(() => toProvider(manifest).resolve(BOTH)).toThrow(UnsatisfiableError);
   });

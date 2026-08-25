@@ -2,7 +2,7 @@
 // already holding the slot, in the slot it holds, and answers a no-match by changing nothing —
 // so the descriptor-taking spelling and the uniform three-argument spelling agree.
 
-import { DefaultManifest, type Manifest, ServiceDescriptor } from '@rhombus-std/di.core';
+import { Manifest, ServiceDescriptor } from '@rhombus-std/di.core';
 import { Type } from '@rhombus-std/primitives';
 import { describe, expect, test } from 'bun:test';
 
@@ -19,32 +19,32 @@ function values(manifest: Manifest<unknown>): unknown[] {
 
 describe('a no-match registers nothing', () => {
   test('a value replace on an empty manifest', () => {
-    expect([...DefaultManifest.empty<unknown>().replaceValue(A, 'a')]).toHaveLength(0);
+    expect([...Manifest.empty<unknown>().replaceValue(A, 'a')]).toHaveLength(0);
   });
 
   test('a constructor replace on an empty manifest', () => {
-    expect([...DefaultManifest.empty<unknown>().replace(A, Impl, Type.ctor(A, [[]]))]).toHaveLength(0);
+    expect([...Manifest.empty<unknown>().replace(A, Impl, Type.ctor(A, [[]]))]).toHaveLength(0);
   });
 
   test('a factory replace on an empty manifest', () => {
-    expect([...DefaultManifest.empty<unknown>().replace(A, () => 'a', Type.func(A, [[]]))])
+    expect([...Manifest.empty<unknown>().replace(A, () => 'a', Type.func(A, [[]]))])
       .toHaveLength(0);
   });
 
   test('a manifest holding some OTHER service type is left alone', () => {
-    const manifest = DefaultManifest.empty<unknown>().addValue(B, 'b');
+    const manifest = Manifest.empty<unknown>().addValue(B, 'b');
     expect(values(manifest.replaceValue(A, 'a'))).toEqual(['b']);
   });
 
   test('a bare registration is not the slot a tagged replace targets', () => {
-    const manifest = DefaultManifest.empty<unknown>().addValue(A, 'bare');
+    const manifest = Manifest.empty<unknown>().addValue(A, 'bare');
     expect(values(manifest.replaceValue(Type.tag(A, 'primary'), 'keyed'))).toEqual(['bare']);
   });
 });
 
 describe('a match is swapped in place', () => {
   test('the replacement keeps the position the old descriptor held', () => {
-    const manifest = DefaultManifest.empty<unknown>()
+    const manifest = Manifest.empty<unknown>()
       .addValue(A, 'a-old')
       .addValue(B, 'b');
     expect(values(manifest)).toEqual(['b', 'a-old']);
@@ -52,14 +52,14 @@ describe('a match is swapped in place', () => {
   });
 
   test('only the first registration of the service type is swapped', () => {
-    const manifest = DefaultManifest.empty<unknown>()
+    const manifest = Manifest.empty<unknown>()
       .addValue(A, 'a-older')
       .addValue(A, 'a-newer');
     expect(values(manifest.replaceValue(A, 'a-new'))).toEqual(['a-new', 'a-older']);
   });
 
   test('a constructor replace swaps the constructor a registration builds through', () => {
-    const manifest = DefaultManifest.empty<unknown>()
+    const manifest = Manifest.empty<unknown>()
       .add(A, Impl, Type.ctor(A, [[]]))
       .addValue(B, 'b');
     const replaced = [...manifest.replace(A, Other, Type.ctor(A, [[]]))];
@@ -69,7 +69,7 @@ describe('a match is swapped in place', () => {
   });
 
   test('a factory replace swaps the factory a registration builds through', () => {
-    const manifest = DefaultManifest.empty<unknown>()
+    const manifest = Manifest.empty<unknown>()
       .add(A, () => 'old', Type.func(A, [[]]))
       .addValue(B, 'b');
     const replaced = [...manifest.replace(A, () => 'new', Type.func(A, [[]]))];
@@ -79,7 +79,7 @@ describe('a match is swapped in place', () => {
   });
 
   test('a tagged replace reaches the tagged slot without disturbing the bare one', () => {
-    const manifest = DefaultManifest.empty<unknown>()
+    const manifest = Manifest.empty<unknown>()
       .addValue(Type.tag(A, 'primary'), 'keyed-old')
       .addValue(A, 'bare');
     expect(values(manifest.replaceValue(Type.tag(A, 'primary'), 'keyed-new'))).toEqual(['bare', 'keyed-new']);
@@ -88,7 +88,7 @@ describe('a match is swapped in place', () => {
 
 describe('the two spellings of replace agree', () => {
   test('on a match', () => {
-    const manifest = DefaultManifest.empty<unknown>()
+    const manifest = Manifest.empty<unknown>()
       .addValue(A, 'a-old')
       .addValue(B, 'b');
     expect(values(manifest.replaceValue(A, 'a-new')))
@@ -96,7 +96,7 @@ describe('the two spellings of replace agree', () => {
   });
 
   test('on a no-match', () => {
-    const manifest = DefaultManifest.empty<unknown>().addValue(B, 'b');
+    const manifest = Manifest.empty<unknown>().addValue(B, 'b');
     expect(values(manifest.replaceValue(A, 'a-new')))
       .toEqual(values(manifest.replace(ServiceDescriptor.value(A, 'a-new'))));
   });
@@ -104,7 +104,7 @@ describe('the two spellings of replace agree', () => {
 
 describe('the string boundary', () => {
   test('Type.from names the same slot the Type does', () => {
-    const manifest = DefaultManifest.empty<unknown>().addValue(A, 'a-old');
+    const manifest = Manifest.empty<unknown>().addValue(A, 'a-old');
     expect(values(manifest.replaceValue(Type.from('app:A'), 'a-new'))).toEqual(['a-new']);
   });
 
@@ -117,7 +117,7 @@ describe('the string boundary', () => {
 
 describe('the receiver is untouched', () => {
   test('a discarded replace registers nothing', () => {
-    const manifest = DefaultManifest.empty<unknown>().addValue(A, 'a-old');
+    const manifest = Manifest.empty<unknown>().addValue(A, 'a-old');
     manifest.replaceValue(A, 'a-new');
     expect(values(manifest)).toEqual(['a-old']);
   });

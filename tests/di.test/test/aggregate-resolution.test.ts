@@ -2,7 +2,7 @@
 // registration for one element type.
 
 import { di } from '@rhombus-std/di';
-import { DefaultManifest, LifetimeModel, type Manifest, ServiceDescriptor } from '@rhombus-std/di.core';
+import { LifetimeModel, Manifest, ServiceDescriptor } from '@rhombus-std/di.core';
 import { Type } from '@rhombus-std/primitives';
 import { describe, expect, test } from 'bun:test';
 
@@ -15,12 +15,12 @@ const A = Type.imported('A', 'app');
 
 describe('resolveMany', () => {
   test('nothing registered is the empty sequence, not a failure', () => {
-    const provider = toProvider(DefaultManifest.empty<string>());
+    const provider = toProvider(Manifest.empty<string>());
     expect([...provider.resolveMany(A)]).toEqual([]);
   });
 
   test('reads the same aggregate the iterable address names', () => {
-    const manifest = DefaultManifest.empty<string>()
+    const manifest = Manifest.empty<string>()
       .add(ServiceDescriptor.value(A, 'first'))
       .add(ServiceDescriptor.value(A, 'second'));
     const provider = toProvider(manifest);

@@ -5,7 +5,7 @@
 // of an optional dependency.
 
 import { di } from '@rhombus-std/di';
-import { CycleError, DefaultManifest, LifetimeModel, type Manifest, ServiceDescriptor, UnsatisfiableError } from '@rhombus-std/di.core';
+import { CycleError, LifetimeModel, Manifest, ServiceDescriptor, UnsatisfiableError } from '@rhombus-std/di.core';
 import { Type } from '@rhombus-std/primitives';
 import { describe, expect, test } from 'bun:test';
 
@@ -30,7 +30,7 @@ class Loop {
 
 /** A manifest registering `Report` over `Cache | Redis`, plus whichever caches are named. */
 function manifestWith(...caches: readonly ('memory' | 'redis')[]) {
-  let manifest = DefaultManifest.empty<string>()
+  let manifest = Manifest.empty<string>()
     .add(ServiceDescriptor.ctor(REPORT, Report, Type.ctor(REPORT, [[Type.union(CACHE, REDIS)]]), 'singleton'));
   for (const cache of caches) {
     manifest = cache === 'memory'
@@ -68,7 +68,7 @@ describe('a self-supplying member is the fallback', () => {
   const OPTIONAL = Type.union(CACHE, Type.typeLiteral(undefined));
 
   function optionalManifest(registerCache: boolean) {
-    const manifest = DefaultManifest.empty<string>()
+    const manifest = Manifest.empty<string>()
       .add(ServiceDescriptor.ctor(REPORT, Report, Type.ctor(REPORT, [[OPTIONAL]]), 'singleton'));
     return registerCache ? manifest.add(ServiceDescriptor.ctor(CACHE, MemoryCache, Type.ctor(CACHE, [[]]), 'singleton')) : manifest;
   }
@@ -95,12 +95,12 @@ describe('a union-typed registration', () => {
   const EITHER = Type.union(CACHE, REDIS);
 
   test('serves the exact union request', () => {
-    const manifest = DefaultManifest.empty<string>().addValue(EITHER, 'either');
+    const manifest = Manifest.empty<string>().addValue(EITHER, 'either');
     expect(toProvider(manifest).resolve(EITHER)).toBe('either');
   });
 
   test('cannot serve a lone member — the union says which types will do, not what it holds', () => {
-    const provider = toProvider(DefaultManifest.empty<string>().addValue(EITHER, 'either'));
+    const provider = toProvider(Manifest.empty<string>().addValue(EITHER, 'either'));
     expect(() => provider.resolve(CACHE)).toThrow(UnsatisfiableError);
     expect(() => provider.resolve(CACHE)).toThrow(UnsatisfiableError);
   });
@@ -108,7 +108,7 @@ describe('a union-typed registration', () => {
 
 describe('the cycle guard', () => {
   test('still closes a loop after the move to identity comparison', () => {
-    const manifest = DefaultManifest.empty<string>().add(ServiceDescriptor.ctor(LOOP, Loop, Type.ctor(LOOP, [[LOOP]]), 'singleton'));
+    const manifest = Manifest.empty<string>().add(ServiceDescriptor.ctor(LOOP, Loop, Type.ctor(LOOP, [[LOOP]]), 'singleton'));
     expect(() => toProvider(manifest).resolve(LOOP)).toThrow(CycleError);
   });
 });

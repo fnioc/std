@@ -4,7 +4,7 @@
 // builds fresh.
 
 import { di } from '@rhombus-std/di';
-import { DefaultManifest, type IServiceProvider, LifetimeModel, type Manifest, UnsatisfiableError } from '@rhombus-std/di.core';
+import { type IServiceProvider, LifetimeModel, Manifest, UnsatisfiableError } from '@rhombus-std/di.core';
 import { Type } from '@rhombus-std/primitives';
 import { describe, expect, test } from 'bun:test';
 
@@ -19,7 +19,7 @@ function toProvider(manifest: Manifest<string>): IServiceProvider {
 }
 
 function providerWithBar(bar: unknown): IServiceProvider {
-  return toProvider(DefaultManifest.empty<string>().addValue(Bar, bar));
+  return toProvider(Manifest.empty<string>().addValue(Bar, bar));
 }
 
 describe('constructing from a ConstructorType node', () => {
@@ -70,7 +70,7 @@ describe('what the door does not do', () => {
     // Absence answers the one-argument lookup, which is a question about a
     // registration. Here the caller has already said what to build, so a
     // dependency it cannot reach is a broken graph.
-    const provider = toProvider(DefaultManifest.empty<string>());
+    const provider = toProvider(Manifest.empty<string>());
     expect(() => provider.resolve(Type.ctor(Foo, [[Bar]]), Widget)).toThrow(UnsatisfiableError);
   });
 

@@ -2,7 +2,7 @@
 // are built by hand here through the CallSite factories, independent of what ToCallSiteVisitor
 // would have produced, so each node kind is exercised on its own terms.
 
-import { DefaultManifest, type IServiceProvider, LifetimeModel, ServiceDescriptor } from '@rhombus-std/di.core';
+import { type IServiceProvider, LifetimeModel, Manifest, ServiceDescriptor } from '@rhombus-std/di.core';
 import { CallSite } from '@rhombus-std/di/private/internal/CallSite/CallSite';
 import { realizeCallSite } from '@rhombus-std/di/private/internal/CallSite/RealizeVisitor';
 import { Engine } from '@rhombus-std/di/private/internal/Engine';
@@ -26,7 +26,7 @@ function engineFor(descriptors: Iterable<ServiceDescriptor<unknown>>): Engine {
   return new Engine(realizer, undefined, descriptors);
 }
 
-const engine = engineFor(DefaultManifest.empty<unknown>());
+const engine = engineFor(Manifest.empty<unknown>());
 const context = { engine, serviceProvider: provider, realizer };
 
 describe('the leaf kinds', () => {
@@ -80,7 +80,7 @@ describe('iterable and array sites', () => {
 
 describe('a late-bound site', () => {
   test('returns a function that re-enters the engine with its call args registered', () => {
-    const manifest = DefaultManifest.empty<unknown>().add(
+    const manifest = Manifest.empty<unknown>().add(
       ServiceDescriptor.ctor(WIDGET, Widget, Type.ctor(WIDGET, [[CONN]]), 'singleton'),
     );
     const lateBoundEngine = engineFor(manifest);
@@ -95,7 +95,7 @@ describe('a late-bound site', () => {
   });
 
   test("binds the call's arguments under the signature whose length matches the call", () => {
-    const lateBoundEngine = engineFor(DefaultManifest.empty<unknown>());
+    const lateBoundEngine = engineFor(Manifest.empty<unknown>());
     const site = CallSite.latebound(Type.func(CONN, [[CONN, BAR], [CONN]]));
     const call = realizeCallSite(site, { engine: lateBoundEngine, serviceProvider: provider, realizer }) as (
       ...args: unknown[]
@@ -105,7 +105,7 @@ describe('a late-bound site', () => {
   });
 
   test('throws when no signature accepts the call arity — nothing falls back silently', () => {
-    const lateBoundEngine = engineFor(DefaultManifest.empty<unknown>());
+    const lateBoundEngine = engineFor(Manifest.empty<unknown>());
     const site = CallSite.latebound(Type.func(CONN, [[CONN, BAR], [CONN]]));
     const call = realizeCallSite(site, { engine: lateBoundEngine, serviceProvider: provider, realizer }) as (
       ...args: unknown[]

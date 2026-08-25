@@ -2,7 +2,7 @@
 // is checked against the registry first; the per-kind visit methods are the fallback decomposition
 // or synthesis a whole-type miss falls back to.
 
-import { CycleError, DefaultManifest, type Manifest, ScopeFactory, ServiceDescriptor } from '@rhombus-std/di.core';
+import { CycleError, Manifest, ScopeFactory, ServiceDescriptor } from '@rhombus-std/di.core';
 import { CallSite } from '@rhombus-std/di/private/internal/CallSite/CallSite';
 import { ToCallSiteVisitor } from '@rhombus-std/di/private/internal/CallSite/ToCallSiteVisitor';
 import { Registry } from '@rhombus-std/di/private/internal/Registry';
@@ -47,7 +47,7 @@ describe('a ctor registration', () => {
   test('lowers to a CtorCallSite over its realized parameter signature', () => {
     const connDescriptor = ServiceDescriptor.ctor(CONN, Conn, Type.ctor(CONN, [[]]));
     const widgetDescriptor = ServiceDescriptor.ctor(WIDGET, Widget, Type.ctor(WIDGET, [[CONN]]));
-    const manifest = DefaultManifest.empty<unknown>().add(connDescriptor).add(widgetDescriptor);
+    const manifest = Manifest.empty<unknown>().add(connDescriptor).add(widgetDescriptor);
     expect(visitorFor(manifest).visit(WIDGET)).toEqual(
       CallSite.registeredCtor(Widget, [CallSite.registeredCtor(Conn, [], CONN, connDescriptor)], WIDGET, widgetDescriptor),
     );
@@ -55,11 +55,11 @@ describe('a ctor registration', () => {
 
   test('carries its own descriptor whether or not the registration has a lifetime', () => {
     const withLifetime = ServiceDescriptor.ctor(CONN, Conn, Type.ctor(CONN, [[]]), 'singleton');
-    expect(visitorFor(DefaultManifest.empty<unknown>().add(withLifetime)).visit(CONN))
+    expect(visitorFor(Manifest.empty<unknown>().add(withLifetime)).visit(CONN))
       .toEqual(CallSite.registeredCtor(Conn, [], CONN, withLifetime));
 
     const withoutLifetime = ServiceDescriptor.ctor(CONN, Conn, Type.ctor(CONN, [[]]));
-    expect(visitorFor(DefaultManifest.empty<unknown>().add(withoutLifetime)).visit(CONN))
+    expect(visitorFor(Manifest.empty<unknown>().add(withoutLifetime)).visit(CONN))
       .toEqual(CallSite.registeredCtor(Conn, [], CONN, withoutLifetime));
   });
 });
@@ -68,7 +68,7 @@ describe('a factory registration', () => {
   test('lowers to a FactoryCallSite the same way a ctor does', () => {
     const impl = () => new Conn();
     const descriptor = ServiceDescriptor.factory(CONN, impl, Type.func(CONN, [[]]));
-    expect(visitorFor(DefaultManifest.empty<unknown>().add(descriptor)).visit(CONN))
+    expect(visitorFor(Manifest.empty<unknown>().add(descriptor)).visit(CONN))
       .toEqual(CallSite.registeredFactory(impl, [], CONN, descriptor));
   });
 });
@@ -76,7 +76,7 @@ describe('a factory registration', () => {
 describe('a value registration', () => {
   test('lowers to a ConstantCallSite carrying the value as-is', () => {
     const value = { name: 'redis' };
-    const manifest = DefaultManifest.empty<unknown>().add(ServiceDescriptor.value(CACHE, value));
+    const manifest = Manifest.empty<unknown>().add(ServiceDescriptor.value(CACHE, value));
     expect(visitorFor(manifest).visit(CACHE)).toEqual(CallSite.constant(value));
   });
 });
@@ -85,7 +85,7 @@ describe('signature selection', () => {
   test('takes the longest signature every parameter of which lowers', () => {
     const connDescriptor = ServiceDescriptor.ctor(CONN, Conn, Type.ctor(CONN, [[]]));
     const widgetDescriptor = ServiceDescriptor.ctor(WIDGET, Widget, Type.ctor(WIDGET, [[CONN, CACHE], [CONN]]));
-    const manifest = DefaultManifest.empty<unknown>().add(connDescriptor).add(widgetDescriptor);
+    const manifest = Manifest.empty<unknown>().add(connDescriptor).add(widgetDescriptor);
     // Nothing produces CACHE, so the two-parameter signature cannot lower and the shorter one wins.
     expect(visitorFor(manifest).visit(WIDGET)).toEqual(
       CallSite.registeredCtor(Widget, [CallSite.registeredCtor(Conn, [], CONN, connDescriptor)], WIDGET, widgetDescriptor),
@@ -93,7 +93,7 @@ describe('signature selection', () => {
   });
 
   test('is unsatisfiable when no signature lowers in full', () => {
-    const manifest = DefaultManifest.empty<unknown>()
+    const manifest = Manifest.empty<unknown>()
       .add(ServiceDescriptor.ctor(WIDGET, Widget, Type.ctor(WIDGET, [[CACHE]])));
     expect(visitorFor(manifest).visit(WIDGET)).toBeUndefined();
   });
@@ -102,7 +102,7 @@ describe('signature selection', () => {
 describe('a bare generic-hole parameter', () => {
   test('receives the closing type as a ConstantCallSite', () => {
     const descriptor = ServiceDescriptor.ctor(box(T), Box, Type.ctor(box(T), [[T]]));
-    const manifest = DefaultManifest.empty<unknown>().add(descriptor);
+    const manifest = Manifest.empty<unknown>().add(descriptor);
     expect(visitorFor(manifest).visit(box(FOO))).toEqual(
       CallSite.registeredCtor(Box, [CallSite.constant(FOO)], box(FOO), descriptor),
     );
@@ -110,7 +110,7 @@ describe('a bare generic-hole parameter', () => {
 
   test('tracks the request, so two closings lower to two different sites', () => {
     const descriptor = ServiceDescriptor.ctor(box(T), Box, Type.ctor(box(T), [[T]]));
-    const manifest = DefaultManifest.empty<unknown>().add(descriptor);
+    const manifest = Manifest.empty<unknown>().add(descriptor);
     const visitor = visitorFor(manifest);
     expect(visitor.visit(box(FOO))).toEqual(CallSite.registeredCtor(Box, [CallSite.constant(FOO)], box(FOO), descriptor));
     expect(visitor.visit(box(BAR))).toEqual(CallSite.registeredCtor(Box, [CallSite.constant(BAR)], box(BAR), descriptor));
@@ -121,7 +121,7 @@ describe('a generic hole inside a bigger parameter', () => {
   test('closes into the expression and lowers as an ordinary dependency', () => {
     const crateDescriptor = ServiceDescriptor.ctor(crate(T), Crate, Type.ctor(crate(T), [[T, holder(T)]]));
     const holderDescriptor = ServiceDescriptor.ctor(holder(FOO), Holder, Type.ctor(holder(FOO), [[]]));
-    const manifest = DefaultManifest.empty<unknown>().add(crateDescriptor).add(holderDescriptor);
+    const manifest = Manifest.empty<unknown>().add(crateDescriptor).add(holderDescriptor);
     expect(visitorFor(manifest).visit(crate(FOO))).toEqual(
       CallSite.registeredCtor(
         Crate,
@@ -133,7 +133,7 @@ describe('a generic hole inside a bigger parameter', () => {
   });
 
   test('is unsatisfiable when the closed expression names nothing', () => {
-    const manifest = DefaultManifest.empty<unknown>()
+    const manifest = Manifest.empty<unknown>()
       .add(ServiceDescriptor.ctor(crate(T), Crate, Type.ctor(crate(T), [[T, holder(T)]])));
     expect(visitorFor(manifest).visit(crate(FOO))).toBeUndefined();
   });
@@ -142,7 +142,7 @@ describe('a generic hole inside a bigger parameter', () => {
 describe('tagged types', () => {
   test('a tag is its own address, distinct from the base it tags', () => {
     const tagged = Type.tag(FOO, 'primary');
-    const manifest = DefaultManifest.empty<unknown>()
+    const manifest = Manifest.empty<unknown>()
       .add(ServiceDescriptor.value(tagged, 'the primary one'))
       .add(ServiceDescriptor.value(FOO, 'the plain one'));
     const visitor = visitorFor(manifest);
@@ -151,26 +151,26 @@ describe('tagged types', () => {
   });
 
   test('an unregistered tag has nothing to build it from', () => {
-    const manifest = DefaultManifest.empty<unknown>().add(ServiceDescriptor.value(FOO, 'the plain one'));
+    const manifest = Manifest.empty<unknown>().add(ServiceDescriptor.value(FOO, 'the plain one'));
     expect(visitorFor(manifest).visit(Type.tag(FOO, 'primary'))).toBeUndefined();
   });
 });
 
 describe('the service provider and scope factory', () => {
   test('IServiceProvider resolves under its declaring-module address, with no registration', () => {
-    const visitor = visitorFor(DefaultManifest.empty<unknown>());
+    const visitor = visitorFor(Manifest.empty<unknown>());
     expect(visitor.visit(Type.imported('IServiceProvider', '@rhombus-std/di.core'))).toEqual(
       CallSite.serviceProvider(),
     );
   });
 
   test('the ScopeFactory address resolves the same way, when the container opens scopes at all', () => {
-    const visitor = visitorFor(DefaultManifest.empty<unknown>(), true);
+    const visitor = visitorFor(Manifest.empty<unknown>(), true);
     expect(visitor.visit(ScopeFactory.address)).toEqual(CallSite.scopeFactory());
   });
 
   test('a same-named import from an unrecognized module is not the provider', () => {
-    const visitor = visitorFor(DefaultManifest.empty<unknown>());
+    const visitor = visitorFor(Manifest.empty<unknown>());
     expect(visitor.visit(Type.imported('IServiceProvider', 'somewhere-else'))).toBeUndefined();
   });
 });
@@ -178,19 +178,19 @@ describe('the service provider and scope factory', () => {
 describe('a function type standing for a late-bound call', () => {
   test('lowers to a LateBoundCallSite naming the return type and argument signatures', () => {
     const requested = Type.func(WIDGET, [[CONN]]);
-    expect(visitorFor(DefaultManifest.empty<unknown>()).visit(requested)).toEqual(CallSite.latebound(requested));
+    expect(visitorFor(Manifest.empty<unknown>()).visit(requested)).toEqual(CallSite.latebound(requested));
   });
 
   test('a registration for the function type itself still wins', () => {
     const impl = () => new Conn();
-    const manifest = DefaultManifest.empty<unknown>().add(ServiceDescriptor.value(Type.func(WIDGET, [[CONN]]), impl));
+    const manifest = Manifest.empty<unknown>().add(ServiceDescriptor.value(Type.func(WIDGET, [[CONN]]), impl));
     expect(visitorFor(manifest).visit(Type.func(WIDGET, [[CONN]]))).toEqual(CallSite.constant(impl));
   });
 });
 
 describe('a tuple type', () => {
   test('lowers to a FactoryCallSite collecting each member', () => {
-    const manifest = DefaultManifest.empty<unknown>()
+    const manifest = Manifest.empty<unknown>()
       .add(ServiceDescriptor.value(FOO, 'foo-value'))
       .add(ServiceDescriptor.value(BAR, 'bar-value'));
     const site = visitorFor(manifest).visit(Type.tuple(FOO, BAR));
@@ -199,38 +199,38 @@ describe('a tuple type', () => {
   });
 
   test('is unsatisfiable when any member is', () => {
-    const manifest = DefaultManifest.empty<unknown>().add(ServiceDescriptor.value(FOO, 'foo-value'));
+    const manifest = Manifest.empty<unknown>().add(ServiceDescriptor.value(FOO, 'foo-value'));
     expect(visitorFor(manifest).visit(Type.tuple(FOO, BAR))).toBeUndefined();
   });
 });
 
 describe('a type literal', () => {
   test('lowers to a ConstantCallSite carrying the literal value', () => {
-    expect(visitorFor(DefaultManifest.empty<unknown>()).visit(Type.typeLiteral(42))).toEqual(CallSite.constant(42));
+    expect(visitorFor(Manifest.empty<unknown>()).visit(Type.typeLiteral(42))).toEqual(CallSite.constant(42));
   });
 });
 
 describe('type kinds nothing is synthesized from', () => {
   test('a constructor type requested directly stays unsatisfiable', () => {
-    expect(visitorFor(DefaultManifest.empty<unknown>()).visit(Type.ctor(FOO, [[]]))).toBeUndefined();
+    expect(visitorFor(Manifest.empty<unknown>()).visit(Type.ctor(FOO, [[]]))).toBeUndefined();
   });
 
   test('an intersection is answered only by a whole-type registration, never assembled from its parts', () => {
-    expect(visitorFor(DefaultManifest.empty<unknown>()).visit(Type.intersection(FOO, BAR))).toBeUndefined();
+    expect(visitorFor(Manifest.empty<unknown>()).visit(Type.intersection(FOO, BAR))).toBeUndefined();
   });
 
   test('an object type is not assembled from its members', () => {
-    expect(visitorFor(DefaultManifest.empty<unknown>()).visit(Type.object({ name: FOO }))).toBeUndefined();
+    expect(visitorFor(Manifest.empty<unknown>()).visit(Type.object({ name: FOO }))).toBeUndefined();
   });
 
   test('a global type has nothing to build it from', () => {
-    expect(visitorFor(DefaultManifest.empty<unknown>()).visit(Type.global('String'))).toBeUndefined();
+    expect(visitorFor(Manifest.empty<unknown>()).visit(Type.global('String'))).toBeUndefined();
   });
 });
 
 describe('an aggregate over every registration for one type', () => {
   test('an iterable collects them oldest to newest, ending with the newest', () => {
-    const manifest = DefaultManifest.empty<unknown>()
+    const manifest = Manifest.empty<unknown>()
       .add(ServiceDescriptor.value(FOO, 'first'))
       .add(ServiceDescriptor.value(FOO, 'second'))
       .add(ServiceDescriptor.value(FOO, 'third'));
@@ -241,16 +241,16 @@ describe('an aggregate over every registration for one type', () => {
   });
 
   test('an array collects the same members eagerly instead', () => {
-    const manifest = DefaultManifest.empty<unknown>().add(ServiceDescriptor.value(FOO, 'only'));
+    const manifest = Manifest.empty<unknown>().add(ServiceDescriptor.value(FOO, 'only'));
     expect(visitorFor(manifest).visit(Type.array(FOO))).toEqual(CallSite.array([CallSite.constant('only')]));
   });
 
   test('nothing registered is the empty collection, not a failure', () => {
-    expect(visitorFor(DefaultManifest.empty<unknown>()).visit(Type.iterable(FOO))).toEqual(CallSite.iterable([]));
+    expect(visitorFor(Manifest.empty<unknown>()).visit(Type.iterable(FOO))).toEqual(CallSite.iterable([]));
   });
 
   test('a member built without any registration for it is the tail, after every registered one', () => {
-    const manifest = DefaultManifest.empty<unknown>()
+    const manifest = Manifest.empty<unknown>()
       .add(ServiceDescriptor.value(Type.tuple(FOO, BAR), 'registered-directly'))
       .add(ServiceDescriptor.value(FOO, 'foo-value'))
       .add(ServiceDescriptor.value(BAR, 'bar-value'));
@@ -263,7 +263,7 @@ describe('an aggregate over every registration for one type', () => {
 describe('a union dependency', () => {
   test('one suppliable member answers it', () => {
     const descriptor = ServiceDescriptor.ctor(CACHE, MemoryCache, Type.ctor(CACHE, [[]]));
-    const manifest = DefaultManifest.empty<unknown>().add(descriptor);
+    const manifest = Manifest.empty<unknown>().add(descriptor);
     expect(visitorFor(manifest).visit(Type.union(CACHE, REDIS))).toEqual(
       CallSite.registeredCtor(MemoryCache, [], CACHE, descriptor),
     );
@@ -271,7 +271,7 @@ describe('a union dependency', () => {
 
   test('a registration for the union itself settles it outright', () => {
     const union = Type.union(CACHE, REDIS);
-    const manifest = DefaultManifest.empty<unknown>()
+    const manifest = Manifest.empty<unknown>()
       .add(ServiceDescriptor.ctor(CACHE, MemoryCache, Type.ctor(CACHE, [[]])))
       .add(ServiceDescriptor.value(union, 'the union itself'));
     expect(visitorFor(manifest).visit(union)).toEqual(CallSite.constant('the union itself'));
@@ -280,7 +280,7 @@ describe('a union dependency', () => {
   test('several suppliable members settle on the first in canonical member order', () => {
     const redisDescriptor = ServiceDescriptor.ctor(REDIS, RedisCache, Type.ctor(REDIS, [[]]));
     const cacheDescriptor = ServiceDescriptor.ctor(CACHE, MemoryCache, Type.ctor(CACHE, [[]]));
-    const manifest = DefaultManifest.empty<unknown>().add(redisDescriptor).add(cacheDescriptor);
+    const manifest = Manifest.empty<unknown>().add(redisDescriptor).add(cacheDescriptor);
     // app:Cache orders before app:Redis, whichever was registered first.
     expect(visitorFor(manifest).visit(Type.union(CACHE, REDIS))).toEqual(
       CallSite.registeredCtor(MemoryCache, [], CACHE, cacheDescriptor),
@@ -290,13 +290,13 @@ describe('a union dependency', () => {
   test('a self-supplying member is the fallback for when nothing else is registered', () => {
     const optional = Type.union(CACHE, Type.typeLiteral(undefined));
     const cacheDescriptor = ServiceDescriptor.ctor(CACHE, MemoryCache, Type.ctor(CACHE, [[]]));
-    const withCache = DefaultManifest.empty<unknown>().add(cacheDescriptor);
+    const withCache = Manifest.empty<unknown>().add(cacheDescriptor);
     expect(visitorFor(withCache).visit(optional)).toEqual(CallSite.registeredCtor(MemoryCache, [], CACHE, cacheDescriptor));
-    expect(visitorFor(DefaultManifest.empty<unknown>()).visit(optional)).toEqual(CallSite.constant(undefined));
+    expect(visitorFor(Manifest.empty<unknown>()).visit(optional)).toEqual(CallSite.constant(undefined));
   });
 
   test('a member built without any registration for it can still answer the union', () => {
-    const manifest = DefaultManifest.empty<unknown>()
+    const manifest = Manifest.empty<unknown>()
       .add(ServiceDescriptor.value(FOO, 'foo-value'))
       .add(ServiceDescriptor.value(BAR, 'bar-value'));
     const union = Type.union(Type.tuple(FOO, BAR), Type.typeLiteral(null));
@@ -306,7 +306,7 @@ describe('a union dependency', () => {
   });
 
   test('two members that both synthesize settle the same way: the first in canonical order wins', () => {
-    const manifest = DefaultManifest.empty<unknown>()
+    const manifest = Manifest.empty<unknown>()
       .add(ServiceDescriptor.value(FOO, 'foo-value'))
       .add(ServiceDescriptor.value(BAR, 'bar-value'));
     const union = Type.union(Type.tuple(FOO, BAR), Type.tuple(BAR, FOO));
@@ -326,7 +326,7 @@ describe('a union dependency', () => {
 
 describe('the cycle guard', () => {
   test('throws CycleError naming the path back to the repeat', () => {
-    const manifest = DefaultManifest.empty<unknown>().add(ServiceDescriptor.ctor(LOOP, Loop, Type.ctor(LOOP, [[LOOP]])));
+    const manifest = Manifest.empty<unknown>().add(ServiceDescriptor.ctor(LOOP, Loop, Type.ctor(LOOP, [[LOOP]])));
     try {
       visitorFor(manifest).visit(LOOP);
       throw new Error('expected a CycleError');
@@ -345,7 +345,7 @@ describe('the cycle guard', () => {
     class ImplB {
       constructor(readonly a: unknown) {}
     }
-    const manifest = DefaultManifest.empty<unknown>()
+    const manifest = Manifest.empty<unknown>()
       .add(ServiceDescriptor.ctor(A, ImplA, Type.ctor(A, [[B]])))
       .add(ServiceDescriptor.ctor(B, ImplB, Type.ctor(B, [[A]])));
     try {
@@ -360,6 +360,6 @@ describe('the cycle guard', () => {
 
 describe('an unanswered address', () => {
   test('returns undefined rather than throwing', () => {
-    expect(visitorFor(DefaultManifest.empty<unknown>()).visit(FOO)).toBeUndefined();
+    expect(visitorFor(Manifest.empty<unknown>()).visit(FOO)).toBeUndefined();
   });
 });
