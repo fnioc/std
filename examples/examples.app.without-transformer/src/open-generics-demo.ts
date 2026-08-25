@@ -14,9 +14,10 @@
 //
 // THE HOLE IS A PLACEHOLDER TYPE. `Type.generic(label)` composes one, and
 // `Type.imported(base, from, [hole])` puts it where a type argument goes. Where the
-// type-driven dialect writes the compile-time brands `$<'1'>` / `Generic<'1', Entity>`,
-// this file composes the same value directly — the brands exist so a transformer
-// can derive it, and with no transformer there is nothing to derive.
+// type-driven dialect writes the compile-time brand `Generic<'TEntity'>` (or
+// `Generic<'TEntity', Entity>` where the surrounding type constrains it), this
+// file composes the same value directly — the brand exists so a transformer can
+// derive it, and with no transformer there is nothing to derive.
 //
 // WHAT AN OPEN TEMPLATE MAY LOOK LIKE. ONE hole anywhere in the service type is
 // enough; the remaining type arguments may be concrete. `IRepository<$1>` and
@@ -245,7 +246,7 @@ function shortName(token: string): string {
 // into `manifest`; a bare `manifest.add(...)` statement would register
 // nothing.
 
-let manifest: Manifest<unknown> = new DefaultManifest<unknown>(LifetimeModel.noop);
+let manifest: Manifest<unknown> = new DefaultManifest<unknown>();
 
 // The closed value registrations the templates bottom out at: one seed and one
 // type witness per entity. Nothing generic about them — they are the floor.
@@ -285,13 +286,13 @@ manifest = manifest.add(ORDER_JOIN_TEMPLATE, OrderJoin, Type.ctor(ORDER_JOIN_TEM
 // ── the demonstration ───────────────────────────────────────────────────────
 
 /**
- * Resolves several closings of the templates registered above and returns the
- * report as lines. Returns rather than prints so the caller owns the output.
+ * Resolves several closings of the templates registered above and yields the
+ * report as lines. Yields rather than prints so the caller owns the output.
  *
  * Deliberately order-stable: fixed seed rows, no timestamps, no iteration over
  * an unordered collection.
  */
-export function demonstrateOpenGenerics(): readonly string[] {
+export function* demonstrateOpenGenerics(): Generator<string> {
   const app = di.usingLifetimeModel(LifetimeModel.noop).usingManifest(manifest).build();
 
   // Two closings of ONE registration. Neither type was ever registered.
@@ -326,12 +327,20 @@ export function demonstrateOpenGenerics(): readonly string[] {
     templateOutcome = `was refused (${(error as Error).name})`;
   }
 
-  return ['=== di open generics — without transformer ===', 'IRepository<$1> is registered ONCE; every closing below is minted from it:', `  IRepository<User>: ${users.describe()}`,
-    `  IRepository<Order>: ${orders.describe()}`, 'the closing propagates down the graph — IRepository<T> -> ITable<T> -> Seed<T>:',
-    `  ITable<User> reports the closing it was minted for: ${shortName(userTable.entityToken)}`,
-    `  IRepository<User>.all() is the array registered as Seed<User>: ${Object.is(users.all(), USER_SEED.rows)}`, 'a CLOSED registration serves the one closing it names:',
-    `  IRepository<AuditEvent>: ${audit.describe()}`, 'arity 2 — $1 and $2 close independently, each side keeping its own precedence:', `  IJoin<User,AuditEvent>: ${join.describe()}`,
-    'a template may pin some arguments; where two overlap, the later registration wins:', `  IJoin<Order,User> goes to the pinned IJoin<Order,$2>: ${pinnedJoin.describe()}`,
-    `  IJoin<AuditEvent,User> goes to the general IJoin<$1,$2>: ${generalJoin.describe()}`, 'the template itself is NOT resolvable — a hole is not a service:',
-    `  asking for IRepository<$1> ${templateOutcome}`];
+  yield '=== di open generics — without transformer ===';
+  yield 'IRepository<$1> is registered ONCE; every closing below is minted from it:';
+  yield `  IRepository<User>: ${users.describe()}`;
+  yield `  IRepository<Order>: ${orders.describe()}`;
+  yield 'the closing propagates down the graph — IRepository<T> -> ITable<T> -> Seed<T>:';
+  yield `  ITable<User> reports the closing it was minted for: ${shortName(userTable.entityToken)}`;
+  yield `  IRepository<User>.all() is the array registered as Seed<User>: ${Object.is(users.all(), USER_SEED.rows)}`;
+  yield 'a CLOSED registration serves the one closing it names:';
+  yield `  IRepository<AuditEvent>: ${audit.describe()}`;
+  yield 'arity 2 — $1 and $2 close independently, each side keeping its own precedence:';
+  yield `  IJoin<User,AuditEvent>: ${join.describe()}`;
+  yield 'a template may pin some arguments; where two overlap, the later registration wins:';
+  yield `  IJoin<Order,User> goes to the pinned IJoin<Order,$2>: ${pinnedJoin.describe()}`;
+  yield `  IJoin<AuditEvent,User> goes to the general IJoin<$1,$2>: ${generalJoin.describe()}`;
+  yield 'the template itself is NOT resolvable — a hole is not a service:';
+  yield `  asking for IRepository<$1> ${templateOutcome}`;
 }

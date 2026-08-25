@@ -88,7 +88,6 @@ const POLICY_TYPE = Type.imported('GreetingPolicy', '@rhombus-std/examples.contr
 const SERVER_OPTIONS_TYPE = Type.imported('IOptions', '@rhombus-std/options', [
   Type.imported('ServerOptions', '@rhombus-std/examples.contracts'),
 ]);
-const POLICY_OPTIONS_TYPE = Type.imported('IOptions', '@rhombus-std/options', [POLICY_TYPE]);
 const CONFIG_TYPE = Type.imported('ConfigRoot', '@rhombus-std/config');
 
 // ── config ───────────────────────────────────────────────────────────────────
@@ -284,14 +283,20 @@ await host.runAsync();
 // the pieces a LIBRARY author (rather than an application) reaches for.
 //
 // Each chapter owns its own container, so nothing here can perturb the host's —
-// and each returns its lines rather than printing, which is what lets this file
-// decide the order and the spacing. The whole run is deterministic (fixed
-// clocks, fixed seed data, no filesystem, no randomness): the app's checked-in
-// `expected.txt` is a byte-for-byte diff of this output.
+// and each yields its lines rather than printing, which is what lets this file
+// decide the order and the spacing. A chapter is a generator, so its container
+// is built as its lines are drawn; the loop below draws each one to exhaustion
+// before starting the next, so the chapters stay as isolated as they read.
+// The resolution chapter awaits a promised registration part-way through and is
+// therefore an async generator, which is why the loop awaits every line.
+//
+// The whole run is deterministic (fixed clocks, fixed seed data, no filesystem,
+// no randomness): the app's checked-in `expected.txt` is a byte-for-byte diff of
+// this output.
 
-const tour: readonly (readonly string[])[] = [
+const tour: readonly (Iterable<string> | AsyncIterable<string>)[] = [
   demonstrateRegistration(),
-  await demonstrateResolution(),
+  demonstrateResolution(),
   demonstrateOpenGenerics(),
   // A chapter with no dialect: an error class reads the same whether or not a
   // transformer ran, so there is nothing for a with-transformer twin to differ
@@ -306,7 +311,7 @@ const tour: readonly (readonly string[])[] = [
 
 for (const chapter of tour) {
   console.log('');
-  for (const line of chapter) {
+  for await (const line of chapter) {
     console.log(line);
   }
 }

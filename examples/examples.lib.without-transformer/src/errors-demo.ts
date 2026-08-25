@@ -105,8 +105,14 @@ export function diagnose(error: unknown): string {
     return `CycleError — ${path}; break the loop with a factory slot`;
   }
   if (error instanceof UnsatisfiableError) {
-    return `UnsatisfiableError — nothing in the manifest produces ${Type.stringify(error.serviceType)}; `
-      + 'register it, or ask with resolve if its absence is legitimate';
+    // The REASON comes from the error rather than being composed here. Only the
+    // engine knows which of the two absences it met — the request has no
+    // registration at all, or it has one whose own dependencies do not — and a
+    // second telling of that here could only drift out of step with it. What
+    // this table adds is the CLASSIFICATION and what to do next; the account of
+    // what happened stays where it was decided.
+    return `UnsatisfiableError — ${error.message}; `
+      + 'register what is missing, or ask through the union address if its absence is legitimate';
   }
 
   // ── the three catch-alls ───────────────────────────────────────────────────

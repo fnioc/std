@@ -18,11 +18,12 @@
 //    the receiver alone, so a call whose result is discarded registers NOTHING.
 //    Thread it: `services = services.add(...)`. `demonstrateDiscardTrap`
 //    below shows the failure mode on purpose.
-// 2. A CONSTRUCTOR TYPE IS ALWAYS STATED, never inferred. `typefor<T>()`
-//    derives the TYPE an argument names; it does not read a constructor and
-//    guess the argument list, so "this class takes no dependencies" is still
-//    written `Type.ctor(theServiceType, [[]])` — one overload, taking nothing beyond
-//    the address.
+// 2. AN IMPLEMENTER TYPE IS ALWAYS STATED, never inferred from the implementer
+//    argument. `typefor<T>()` derives the type an argument NAMES; handed the
+//    implementer itself, `typefor(C)` OBSERVES the construct or call signatures
+//    it declares. Either way the signature is written at the call site — which
+//    is what lets a registration point a slot somewhere the declaration does
+//    not, as the keyed and literal slots below do.
 
 import { di } from '@rhombus-std/di';
 import { DefaultManifest, LifetimeModel, Type } from '@rhombus-std/di.core';
@@ -218,7 +219,6 @@ const CLOCK_TYPE = typefor<IClock>() as ImportedType;
 const SINK_TYPE = typefor<IMessageSink>() as ImportedType;
 const EMAIL_OPTIONS_TYPE = typefor<IEmailOptions>();
 const AUDIT_TYPE = typefor<IAuditLog>();
-const METRICS_TYPE = typefor<IMetricsRecorder>();
 const NOTIFIER_TYPE = typefor<IOrderNotifier>() as ImportedType;
 const FLAGS_TYPE = typefor<FeatureFlags>();
 
@@ -266,14 +266,14 @@ function countRegistrations(services: Iterable<ServiceDescriptor<unknown>>, type
  * way to keep a registration is to keep the value it returns.
  */
 function demonstrateDiscardTrap(): string {
-  const empty = new DefaultManifest<unknown>(LifetimeModel.noop);
+  const empty = new DefaultManifest<unknown>();
 
   // WRONG — the new manifest is built and immediately dropped on the floor.
   // `empty` is exactly as empty as it was. This compiles, and it is silent.
-  empty.add(FLAGS_TYPE, FeatureFlags, Type.ctor(FLAGS_TYPE, [[]]), 'singleton');
+  empty.add(FLAGS_TYPE, FeatureFlags, typefor(FeatureFlags), 'singleton');
 
   // RIGHT — thread the result back in.
-  const threaded = empty.add(FLAGS_TYPE, FeatureFlags, Type.ctor(FLAGS_TYPE, [[]]), 'singleton');
+  const threaded = empty.add(FLAGS_TYPE, FeatureFlags, typefor(FeatureFlags), 'singleton');
 
   return `immutability: the discarded call registered ${countRegistrations(empty, FLAGS_TYPE)}, `
     + `the threaded one registered ${countRegistrations(threaded, FLAGS_TYPE)}`;
@@ -322,46 +322,36 @@ function addOrderDefaults<S>(
  * None of these has a type-driven form, so this function is IDENTICAL in the
  * with-transformer app.
  */
-function demonstrateDescriptorVerbs(): string[] {
-  const lines: string[] = [];
-
+function* demonstrateDescriptorVerbs(): Generator<string> {
   // Applying the defaults twice leaves exactly one of each.
-  let library: Manifest<unknown> = new DefaultManifest<unknown>(LifetimeModel.noop);
+  let library: Manifest<unknown> = new DefaultManifest<unknown>();
   library = addOrderDefaults(library);
   library = addOrderDefaults(library);
-  lines.push(
-    `defaults: applying them twice leaves ${countRegistrations(library, DEFAULT_SINK_TYPE)} sink `
-      + `(tryAdd only registers what is missing)`,
-  );
+  yield `defaults: applying them twice leaves ${countRegistrations(library, DEFAULT_SINK_TYPE)} sink `
+    + `(tryAdd only registers what is missing)`;
 
   // An application that already wired its own sink keeps it.
-  let application: Manifest<unknown> = new DefaultManifest<unknown>(LifetimeModel.noop);
-  application = application.add(DEFAULT_SINK_TYPE, RecordingSink, Type.ctor(DEFAULT_SINK_TYPE, [[]]), 'singleton');
+  let application: Manifest<unknown> = new DefaultManifest<unknown>();
+  application = application.add(DEFAULT_SINK_TYPE, RecordingSink, typefor(RecordingSink), 'singleton');
   application = addOrderDefaults(application);
   const kept = di.usingLifetimeModel(LifetimeModel.noop).usingManifest(application).build()
     .resolve(DEFAULT_SINK_TYPE) as IMessageSink;
-  lines.push(`defaults: an application that registered its own sink keeps it (${kept.name})`);
+  yield `defaults: an application that registered its own sink keeps it (${kept.name})`;
 
   // The host overrides all three defaults outright.
-  let host = addOrderDefaults(new DefaultManifest<unknown>(LifetimeModel.noop));
+  let host = addOrderDefaults(new DefaultManifest<unknown>());
   host = host.replace(DEFAULT_CLOCK_TYPE, new FixedClock());
-  host = host.replace(DEFAULT_SINK_TYPE, RecordingSink, Type.ctor(DEFAULT_SINK_TYPE, [[]]), 'singleton');
+  host = host.replace(DEFAULT_SINK_TYPE, RecordingSink, typefor(RecordingSink), 'singleton');
   host = host.replace(DEFAULT_NOTIFIER_TYPE, makeOrderNotifier, Type.func(DEFAULT_NOTIFIER_TYPE, [[DEFAULT_SINK_TYPE]]), 'singleton');
   const hostProvider = di.usingLifetimeModel(LifetimeModel.noop).usingManifest(host).build();
   const recorder = hostProvider.resolve(DEFAULT_SINK_TYPE) as RecordingSink;
-  lines.push(
-    `override: replace swapped all three defaults; the host sink is ${recorder.name}, and `
-      + `${countRegistrations(host, DEFAULT_SINK_TYPE)} registration is left at its type`,
-  );
+  yield `override: replace swapped all three defaults; the host sink is ${recorder.name}, and `
+    + `${countRegistrations(host, DEFAULT_SINK_TYPE)} registration is left at its type`;
 
   // Teardown strips the type completely.
   const stripped = host.removeAll(DEFAULT_SINK_TYPE);
-  lines.push(
-    `teardown: removeAll left ${countRegistrations(stripped, DEFAULT_SINK_TYPE)} sinks on the new manifest, `
-      + `and ${countRegistrations(host, DEFAULT_SINK_TYPE)} on the original (nothing mutates)`,
-  );
-
-  return lines;
+  yield `teardown: removeAll left ${countRegistrations(stripped, DEFAULT_SINK_TYPE)} sinks on the new manifest, `
+    + `and ${countRegistrations(host, DEFAULT_SINK_TYPE)} on the original (nothing mutates)`;
 }
 
 // ── 3. the application container ─────────────────────────────────────────────
@@ -373,7 +363,7 @@ function demonstrateDescriptorVerbs(): string[] {
  * zero-dependency class.
  */
 function buildOrderContainer(): Manifest<unknown> {
-  let services: Manifest<unknown> = new DefaultManifest<unknown>(LifetimeModel.noop);
+  let services: Manifest<unknown> = new DefaultManifest<unknown>();
   const clock = new FixedClock();
 
   // A value — an already-built instance. No signature (there is nothing to
@@ -411,17 +401,17 @@ function buildOrderContainer(): Manifest<unknown> {
   // literal `undefined`. A literal member supplies ITSELF rather than competing
   // for the argument, so this yields the sink when one is registered and
   // `undefined` when none is — and the argument is never unsatisfiable.
-  services = services.add(AUDIT_TYPE, AuditLog, Type.ctor(AUDIT_TYPE, [[CLOCK_TYPE, Type.union(SINK_TYPE, Type.typeLiteral(undefined))]]), 'singleton');
+  services = services.add(AUDIT_TYPE, AuditLog, typefor(AuditLog), 'singleton');
 
   // The same shape on a FACTORY, whose second argument is a union of two
   // SERVICES plus the literal `undefined`. Only the audit log is registered, so
   // exactly one member can be supplied and the argument settles on it without
   // ambiguity.
-  services = services.add(NOTIFIER_TYPE, makeOrderNotifier, Type.func(NOTIFIER_TYPE, [[SINK_TYPE, Type.union(METRICS_TYPE, AUDIT_TYPE, Type.typeLiteral(undefined))]]), 'singleton');
+  services = services.add(NOTIFIER_TYPE, makeOrderNotifier, typefor(makeOrderNotifier), 'singleton');
 
-  // A zero-dependency class: a composed constructor type that carries no
-  // argument types beyond the address.
-  services = services.add(FLAGS_TYPE, FeatureFlags, Type.ctor(FLAGS_TYPE, [[]]), 'singleton');
+  // A zero-dependency class: observing it yields a constructor type carrying no
+  // argument types at all.
+  services = services.add(FLAGS_TYPE, FeatureFlags, typefor(FeatureFlags), 'singleton');
 
   return services;
 }
@@ -434,7 +424,7 @@ function buildOrderContainer(): Manifest<unknown> {
  * descriptor-taking `add`, sits in a variable, or travels between helpers.
  */
 function demonstrateDescribedRegistration(): string {
-  const withClock: Manifest<unknown> = new DefaultManifest<unknown>(LifetimeModel.noop).add(CLOCK_TYPE, new FixedClock());
+  const withClock: Manifest<unknown> = new DefaultManifest<unknown>().add(CLOCK_TYPE, new FixedClock());
   const services = withClock.add(
     withClock.describe(SINK_TYPE)
       .asClass(PlainTextSink, Type.ctor(SINK_TYPE, [[CLOCK_TYPE, Type.typeLiteral('staging')]]))
@@ -487,13 +477,17 @@ function describeSinklessFork(services: Manifest<unknown>): string {
 // ── entry point ──────────────────────────────────────────────────────────────
 
 /**
- * Runs the whole registration tour and returns a deterministic report, leaving
+ * Runs the whole registration tour, yielding a deterministic report and leaving
  * the caller to decide where the lines go. The with-transformer app returns the
  * same body from the type-driven dialect.
  */
-export function demonstrateRegistration(): readonly string[] {
+export function* demonstrateRegistration(): Generator<string> {
   const services = buildOrderContainer();
 
-  return ['=== di registration — with transformer ===', demonstrateDiscardTrap(), ...demonstrateDescriptorVerbs(), ...describeOrderContainer(services), demonstrateDescribedRegistration(),
-    describeSinklessFork(services)];
+  yield '=== di registration — with transformer ===';
+  yield demonstrateDiscardTrap();
+  yield* demonstrateDescriptorVerbs();
+  yield* describeOrderContainer(services);
+  yield demonstrateDescribedRegistration();
+  yield describeSinklessFork(services);
 }

@@ -256,7 +256,7 @@ function countRegistrations(services: Iterable<ServiceDescriptor<unknown>>, type
  * way to keep a registration is to keep the value it returns.
  */
 function demonstrateDiscardTrap(): string {
-  const empty = new DefaultManifest<unknown>(LifetimeModel.noop);
+  const empty = new DefaultManifest<unknown>();
 
   // WRONG — the new manifest is built and immediately dropped on the floor.
   // `empty` is exactly as empty as it was. This compiles, and it is silent.
@@ -312,46 +312,36 @@ function addOrderDefaults<S>(
  * None of these has a type-driven form, so this function is IDENTICAL in the
  * with-transformer app.
  */
-function demonstrateDescriptorVerbs(): string[] {
-  const lines: string[] = [];
-
+function* demonstrateDescriptorVerbs(): Generator<string> {
   // Applying the defaults twice leaves exactly one of each.
-  let library: Manifest<unknown> = new DefaultManifest<unknown>(LifetimeModel.noop);
+  let library: Manifest<unknown> = new DefaultManifest<unknown>();
   library = addOrderDefaults(library);
   library = addOrderDefaults(library);
-  lines.push(
-    `defaults: applying them twice leaves ${countRegistrations(library, DEFAULT_SINK_TYPE)} sink `
-      + `(tryAdd only registers what is missing)`,
-  );
+  yield `defaults: applying them twice leaves ${countRegistrations(library, DEFAULT_SINK_TYPE)} sink `
+    + `(tryAdd only registers what is missing)`;
 
   // An application that already wired its own sink keeps it.
-  let application: Manifest<unknown> = new DefaultManifest<unknown>(LifetimeModel.noop);
+  let application: Manifest<unknown> = new DefaultManifest<unknown>();
   application = application.add(DEFAULT_SINK_TYPE, RecordingSink, Type.ctor(DEFAULT_SINK_TYPE, [[]]), 'singleton');
   application = addOrderDefaults(application);
   const kept = di.usingLifetimeModel(LifetimeModel.noop).usingManifest(application).build()
     .resolve(DEFAULT_SINK_TYPE) as IMessageSink;
-  lines.push(`defaults: an application that registered its own sink keeps it (${kept.name})`);
+  yield `defaults: an application that registered its own sink keeps it (${kept.name})`;
 
   // The host overrides all three defaults outright.
-  let host = addOrderDefaults(new DefaultManifest<unknown>(LifetimeModel.noop));
+  let host = addOrderDefaults(new DefaultManifest<unknown>());
   host = host.replace(DEFAULT_CLOCK_TYPE, new FixedClock());
   host = host.replace(DEFAULT_SINK_TYPE, RecordingSink, Type.ctor(DEFAULT_SINK_TYPE, [[]]), 'singleton');
   host = host.replace(DEFAULT_NOTIFIER_TYPE, makeOrderNotifier, Type.func(DEFAULT_NOTIFIER_TYPE, [[DEFAULT_SINK_TYPE]]), 'singleton');
   const hostProvider = di.usingLifetimeModel(LifetimeModel.noop).usingManifest(host).build();
   const recorder = hostProvider.resolve(DEFAULT_SINK_TYPE) as RecordingSink;
-  lines.push(
-    `override: replace swapped all three defaults; the host sink is ${recorder.name}, and `
-      + `${countRegistrations(host, DEFAULT_SINK_TYPE)} registration is left at its type`,
-  );
+  yield `override: replace swapped all three defaults; the host sink is ${recorder.name}, and `
+    + `${countRegistrations(host, DEFAULT_SINK_TYPE)} registration is left at its type`;
 
   // Teardown strips the type completely.
   const stripped = host.removeAll(DEFAULT_SINK_TYPE);
-  lines.push(
-    `teardown: removeAll left ${countRegistrations(stripped, DEFAULT_SINK_TYPE)} sinks on the new manifest, `
-      + `and ${countRegistrations(host, DEFAULT_SINK_TYPE)} on the original (nothing mutates)`,
-  );
-
-  return lines;
+  yield `teardown: removeAll left ${countRegistrations(stripped, DEFAULT_SINK_TYPE)} sinks on the new manifest, `
+    + `and ${countRegistrations(host, DEFAULT_SINK_TYPE)} on the original (nothing mutates)`;
 }
 
 // ── 3. the application container ─────────────────────────────────────────────
@@ -363,7 +353,7 @@ function demonstrateDescriptorVerbs(): string[] {
  * zero-dependency class.
  */
 function buildOrderContainer(): Manifest<unknown> {
-  let services: Manifest<unknown> = new DefaultManifest<unknown>(LifetimeModel.noop);
+  let services: Manifest<unknown> = new DefaultManifest<unknown>();
   const clock = new FixedClock();
 
   // A value — an already-built instance. No signature (there is nothing to
@@ -424,7 +414,7 @@ function buildOrderContainer(): Manifest<unknown> {
  * descriptor-taking `add`, sits in a variable, or travels between helpers.
  */
 function demonstrateDescribedRegistration(): string {
-  const withClock: Manifest<unknown> = new DefaultManifest<unknown>(LifetimeModel.noop).add(CLOCK_TYPE, new FixedClock());
+  const withClock: Manifest<unknown> = new DefaultManifest<unknown>().add(CLOCK_TYPE, new FixedClock());
   const services = withClock.add(
     withClock.describe(SINK_TYPE)
       .asClass(PlainTextSink, Type.ctor(SINK_TYPE, [[CLOCK_TYPE, Type.typeLiteral('staging')]]))
@@ -477,13 +467,17 @@ function describeSinklessFork(services: Manifest<unknown>): string {
 // ── entry point ──────────────────────────────────────────────────────────────
 
 /**
- * Runs the whole registration tour and returns a deterministic report, leaving
+ * Runs the whole registration tour, yielding a deterministic report and leaving
  * the caller to decide where the lines go. The with-transformer app returns the
  * same body from the type-driven dialect.
  */
-export function demonstrateRegistration(): readonly string[] {
+export function* demonstrateRegistration(): Generator<string> {
   const services = buildOrderContainer();
 
-  return ['=== di registration — without transformer ===', demonstrateDiscardTrap(), ...demonstrateDescriptorVerbs(), ...describeOrderContainer(services), demonstrateDescribedRegistration(),
-    describeSinklessFork(services)];
+  yield '=== di registration — without transformer ===';
+  yield demonstrateDiscardTrap();
+  yield* demonstrateDescriptorVerbs();
+  yield* describeOrderContainer(services);
+  yield demonstrateDescribedRegistration();
+  yield describeSinklessFork(services);
 }

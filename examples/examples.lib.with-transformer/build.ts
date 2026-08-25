@@ -2,11 +2,9 @@
 //
 // This example library is authored in the tokenless di dialect and consumed
 // only as its BUILD (every exports condition resolves to dist), so the
-// transformer MUST run: the tokenless registration forms and the typefor<T>()
-// calls in types.ts and infrastructure-greeting-workshop.ts — naming service
-// types and dependency slots, including inside `Type.func(..., [[]])` — all have to
-// be lowered before anything can execute. The Go engine runs during the
-// Bun.build emit:
+// transformer MUST run: every `typefor` call in this package — naming service
+// types, dependency slots and implementer types — has to be folded before
+// anything can execute. The Go engine runs during the Bun.build emit:
 //
 //   - dist/*.js  — a per-file STAGE runs @ttsc/unplugin/bun over each src file in
 //     isolation, lowering every tokenless call to its explicit `Type` (and

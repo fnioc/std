@@ -64,16 +64,16 @@ const AUDIT_TYPE = Type.from('selfcheck:IAuditLog');
 
 /** A container whose one registration names a dependency nobody supplies. */
 function withUnsatisfiableStore(): Manifest<unknown> {
-  return new DefaultManifest<unknown>(LifetimeModel.noop).add(STORE_TYPE, BrokenStore, Type.ctor(STORE_TYPE, [[CONNECTION_TYPE]]), 'singleton');
+  return new DefaultManifest<unknown>().add(STORE_TYPE, BrokenStore, Type.ctor(STORE_TYPE, [[CONNECTION_TYPE]]), 'singleton');
 }
 
 /**
- * Walks the whole taxonomy and returns the report lines.
+ * Walks the whole taxonomy, yielding the report lines.
  *
- * @returns One line per failure, in a fixed order.
+ * @yields One line per failure, in a fixed order.
  */
-export function demonstrateErrors(): readonly string[] {
-  const lines: string[] = ['=== di errors (dialect-independent) ==='];
+export function* demonstrateErrors(): Generator<string> {
+  yield '=== di errors (dialect-independent) ===';
 
   // ── registration time: the manifest refuses before anything is built ───────
   //
@@ -83,31 +83,28 @@ export function demonstrateErrors(): readonly string[] {
   // the node that would have carried the bad registration never materialised.
   // Making the manifest is still the root's job, which is why one arrives as an
   // argument.
-  lines.push(...demonstrateRegistrationErrors(new DefaultManifest<unknown>(LifetimeModel.noop)));
+  yield* demonstrateRegistrationErrors(new DefaultManifest<unknown>());
 
   // ── build time: the eager whole-graph check ────────────────────────────────
   //
-  // `validateOnBuild` lowers every registration while the provider is being
+  // `validateOnBuild` plans every registration while the provider is being
   // built — nothing is constructed — and collects EVERY failure into one
   // `ManifestValidationError` rather than stopping at the first. That is the
   // difference between one deployment round-trip and one per hole.
-  lines.push(
-    stagedFailure(
-      'building with validateOnBuild',
-      () =>
-        di.usingLifetimeModel(LifetimeModel.noop)
-          .usingManifest(withUnsatisfiableStore())
-          .configureProvider(options => ({ ...options, validateOnBuild: true }))
-          .build(),
-    ),
+  yield stagedFailure(
+    'building with validateOnBuild',
+    () =>
+      di.usingLifetimeModel(LifetimeModel.noop)
+        .usingManifest(withUnsatisfiableStore())
+        .configureProvider(options => ({ ...options, validateOnBuild: true }))
+        .build(),
   );
 
-  // The registrations that could not be lowered come back on `failures`, each
-  // paired with what lowering it produced. Those inner errors are where
-  // `UnsatisfiableError` is READ: the provider's own lookups answer an
-  // unsatisfiable request with absence (see below), so the validation pass is
-  // what hands the classified failure over.
-  lines.push(`  the failure inside it: ${diagnose(collectValidationErrors()[0])}`);
+  // The registrations that could not be planned come back on `failures`, each
+  // paired with the error planning it produced — one classified failure per
+  // hole, which is what makes the aggregate readable instead of a first-hole
+  // report.
+  yield `  the failure inside it: ${diagnose(collectValidationErrors()[0])}`;
 
   // ── resolution time ────────────────────────────────────────────────────────
   //
@@ -116,25 +113,23 @@ export function demonstrateErrors(): readonly string[] {
   // you want is a deployment question — fail at startup, or stay up and answer
   // only the requests that touch the working part.
   //
-  // `resolve` throws here: STORE_TYPE IS registered, so it is the chosen
-  // answer, and a chosen answer's runtime build failure never falls through
-  // to a softer one — the union-with-undefined address that recovers a
-  // WHOLLY unregistered type does nothing for a registered type whose own
-  // dependency cannot be built.
+  // `resolve` throws here: STORE_TYPE is registered, so it is the chosen
+  // answer, and the dependency that answer names is not — an unbuildable
+  // answer is reported at the address that was asked for rather than
+  // silently handed back half-built.
   const lazy = di.usingLifetimeModel(LifetimeModel.noop).usingManifest(withUnsatisfiableStore()).build();
-  lines.push(stagedFailure('asking with resolve for a registration that cannot be lowered', () => lazy.resolve(STORE_TYPE)));
-  lines.push(stagedFailure('asking with resolve for the same', () => lazy.resolve(STORE_TYPE)));
-  lines.push(stagedFailure('asking for a type nobody registered', () => lazy.resolve(REPORT_TYPE)));
+  yield stagedFailure('asking at the bare address for a registration that cannot be built', () => lazy.resolve(STORE_TYPE));
+  yield stagedFailure('asking for a type nobody registered', () => lazy.resolve(REPORT_TYPE));
 
   // A cycle. The error carries the whole PATH, because a cycle is only readable
   // as the loop it makes — naming just the type that closed it would leave the
   // reader to find the other half.
-  lines.push(stagedFailure('a dependency cycle', () => {
-    let services: Manifest<unknown> = new DefaultManifest<unknown>(LifetimeModel.noop);
+  yield stagedFailure('a dependency cycle', () => {
+    let services: Manifest<unknown> = new DefaultManifest<unknown>();
     services = services.add(LEDGER_TYPE, Ledger, Type.ctor(LEDGER_TYPE, [[AUDIT_TYPE]]), 'singleton');
     services = services.add(AUDIT_TYPE, AuditLog, Type.ctor(AUDIT_TYPE, [[LEDGER_TYPE]]), 'singleton');
     return di.usingLifetimeModel(LifetimeModel.noop).usingManifest(services).build().resolve(LEDGER_TYPE);
-  }));
+  });
 
   // ── and the escape hatch ───────────────────────────────────────────────────
   //
@@ -145,10 +140,8 @@ export function demonstrateErrors(): readonly string[] {
   // specifier a caller reached them through. A consumer that does not want to
   // enumerate the taxonomy catches `DiError` and knows it has caught a container
   // problem rather than swallowed a bug in its own code.
-  lines.push(`every failure above shares one root: ${new ManifestValidationError([]) instanceof DiError}`);
-  lines.push(`something else entirely: ${diagnose(new TypeError('not ours'))}`);
-
-  return lines;
+  yield `every failure above shares one root: ${new ManifestValidationError([]) instanceof DiError}`;
+  yield `something else entirely: ${diagnose(new TypeError('not ours'))}`;
 }
 
 /** The inner failures the eager pass collected, so one of them can be classified. */

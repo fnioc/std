@@ -29,10 +29,8 @@
 // violation read backwards. What a consumer still needs in order to RESOLVE is
 // the Type agreement, and `./types.ts` publishes that.
 
-import { Type } from '@rhombus-std/di.core';
 import type { Manifest } from '@rhombus-std/di.core';
-import type { GreetingPolicy, IBanner, IGreeting, IHealthCheck, IServerReport, ServerOptions } from '@rhombus-std/examples.contracts';
-import type { IOptions } from '@rhombus-std/options';
+import type { IBanner, IGreeting, IServerReport } from '@rhombus-std/examples.contracts';
 // The type-driven MINT primitive, and the whole of what this dialect is:
 // `typefor<T>()` becomes the service type a hand author writes out. It has no
 // runtime footprint — the build folds every call and elides this import with
@@ -70,21 +68,19 @@ export function addWithTransformerExamples<S>(
   // `IGreeting` — the same string the manual library writes out — so both
   // libraries' greetings land on one element type and a consumer asking for the
   // collection gets both.
-  services = services.add(typefor<IGreeting>(), FormalGreeting, Type.ctor(typefor<IGreeting>(), [[]]), 'singleton' as S | 'singleton');
+  services = services.add(typefor<IGreeting>(), FormalGreeting, typefor(FormalGreeting), 'singleton' as S | 'singleton');
 
   // The banner, registered ONLY in its `Promise<…>` wrapper. Registering the
   // honest promise (rather than pretending an async fetch is a synchronous value)
   // is what makes an awaited resolution work and a plain one fail loudly — the
   // container never silently hands back an unsettled value.
-  services = services.add(typefor<Promise<IBanner>>(), fetchBanner, Type.func(typefor<Promise<IBanner>>(), [[]]), 'singleton' as S | 'singleton');
+  services = services.add(typefor<Promise<IBanner>>(), fetchBanner, typefor(fetchBanner), 'singleton' as S | 'singleton');
 
   // The report factory, and the densest argument list anywhere in these examples:
-  // a collection, two closed generics and an optional union. Every one is named
-  // by its TYPE rather than by a string — read it against `./server-report.ts`'s
-  // parameter list and the two line up one for one.
-  services = services.add(typefor<IServerReport>(), makeServerReport,
-    Type.func(typefor<IServerReport>(), [[typefor<IGreeting[]>(), typefor<IOptions<ServerOptions>>(), typefor<IOptions<GreetingPolicy>>(),
-      Type.union(typefor<IHealthCheck>(), Type.typeLiteral(undefined))]]), 'singleton' as S | 'singleton');
+  // a collection, two closed generics and an optional union. Observing the
+  // function reads all four straight off its declaration — read it against
+  // `./server-report.ts`'s parameter list and the two line up one for one.
+  services = services.add(typefor<IServerReport>(), makeServerReport, typefor(makeServerReport), 'singleton' as S | 'singleton');
 
   return services;
 }

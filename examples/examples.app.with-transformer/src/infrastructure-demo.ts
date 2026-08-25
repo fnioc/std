@@ -40,7 +40,7 @@ import { describeDiError } from '@rhombus-std/examples.lib.without-transformer';
 
 /** A fresh, empty manifest for one of this chapter's own containers. */
 function newWorkshopManifest(): Manifest<unknown> {
-  return new DefaultManifest<unknown>(LifetimeModel.noop);
+  return new DefaultManifest<unknown>();
 }
 
 /**
@@ -56,12 +56,12 @@ function attempted(attempt: () => string): string {
 }
 
 /**
- * Exercises the di.core infrastructure surface and returns the report lines.
+ * Exercises the di.core infrastructure surface, yielding the report lines.
  *
- * @returns One line per observation, in a fixed order.
+ * @yields One line per observation, in a fixed order.
  */
-export function demonstrateInfrastructure(): readonly string[] {
-  const lines: string[] = ['=== di infrastructure (library-author surface) — with transformer ==='];
+export function* demonstrateInfrastructure(): Generator<string> {
+  yield '=== di infrastructure (library-author surface) — with transformer ===';
 
   // ── 1. the configure(builder) seam ─────────────────────────────────────────
   // The consumer never sees a manifest: `useGreeting` writes into the holder
@@ -73,9 +73,9 @@ export function demonstrateInfrastructure(): readonly string[] {
   const defaultProvider = di.usingLifetimeModel(LifetimeModel.noop).usingManifest(defaults).build();
   const defaultWorkshop = defaultProvider.resolve(typefor<GreetingWorkshop>()) as GreetingWorkshop;
 
-  lines.push('app registered no stationery:');
-  lines.push(`  stationery overridden: ${defaultWorkshop.stationeryIsOverridden}`);
-  lines.push(`  card: ${defaultWorkshop.card('Ada')}`);
+  yield 'app registered no stationery:';
+  yield `  stationery overridden: ${defaultWorkshop.stationeryIsOverridden}`;
+  yield `  card: ${defaultWorkshop.card('Ada')}`;
 
   // ── 2. the same library, with the app overriding a default ─────────────────
   // The workshop's optional stationery slot now has a registration behind it, so
@@ -87,9 +87,9 @@ export function demonstrateInfrastructure(): readonly string[] {
   const customWorkshop = di.usingLifetimeModel(LifetimeModel.noop).usingManifest(customised).build()
     .resolve(typefor<GreetingWorkshop>()) as GreetingWorkshop;
 
-  lines.push('app registered its own stationery:');
-  lines.push(`  stationery overridden: ${customWorkshop.stationeryIsOverridden}`);
-  lines.push(`  card: ${customWorkshop.card('Grace')}`);
+  yield 'app registered its own stationery:';
+  yield `  stationery overridden: ${customWorkshop.stationeryIsOverridden}`;
+  yield `  card: ${customWorkshop.card('Grace')}`;
 
   // ── 3. the same card, two ways to get the dependencies ─────────────────────
   //
@@ -124,9 +124,9 @@ export function demonstrateInfrastructure(): readonly string[] {
   // already holds it; the locator asks the provider for one at the moment it
   // renders, so the identical card costs one extra lookup on every call the
   // parameter form paid for exactly once.
-  lines.push('the same card, two ways to reach its dependencies:');
-  lines.push(`  parameters (GreetingWorkshop): ${defaultWorkshop.card('Linus')}`);
-  lines.push(`  injected provider (LocatorGreetingWorkshop): ${attempted(() => locatorWorkshop.card('Linus'))}`);
+  yield 'the same card, two ways to reach its dependencies:';
+  yield `  parameters (GreetingWorkshop): ${defaultWorkshop.card('Linus')}`;
+  yield `  injected provider (LocatorGreetingWorkshop): ${attempted(() => locatorWorkshop.card('Linus'))}`;
 
   // ── 4. absence, and the taxonomy root ──────────────────────────────────────
   // `DiError` is shared by di.core and the resolution engine, so ONE
@@ -138,7 +138,7 @@ export function demonstrateInfrastructure(): readonly string[] {
   // A union with the literal `undefined` treats absence as an answer, so
   // nothing is thrown at all and there is nothing to classify.
   const missing = defaultProvider.resolve(Type.union(typefor<IHealthCheck>(), Type.typeLiteral(undefined)));
-  lines.push(`asking optionally for an unregistered type: ${missing}`);
+  yield `asking optionally for an unregistered type: ${missing}`;
 
   // The eager whole-graph pass is where an unsatisfiable registration turns into
   // something the taxonomy names.
@@ -150,8 +150,6 @@ export function demonstrateInfrastructure(): readonly string[] {
       .configureProvider(options => ({ ...options, validateOnBuild: true }))
       .build();
   } catch (error) {
-    lines.push(`building a graph with a hole in it: ${describeDiError(error)}`);
+    yield `building a graph with a hole in it: ${describeDiError(error)}`;
   }
-
-  return lines;
 }

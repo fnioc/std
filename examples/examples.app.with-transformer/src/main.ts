@@ -46,10 +46,9 @@ import type { ConfigRoot } from '@rhombus-std/config';
 // no runtime import of the authoring package.
 import type {} from '@rhombus-std/di.extras';
 
-import { Type } from '@rhombus-std/di.core';
 import type { IServiceProvider } from '@rhombus-std/di.core';
 import '@rhombus-std/di';
-import { Host, HOSTED_SERVICE_TYPE } from '@rhombus-std/hosting';
+import { Host } from '@rhombus-std/hosting';
 import type { IHostApplicationLifetime, IHostedLifecycleService } from '@rhombus-std/hosting';
 import type { ILogger, ILoggerFactory } from '@rhombus-std/logging.core';
 import { logInformation } from '@rhombus-std/logging.core';
@@ -260,8 +259,7 @@ services = services.addValue<ConfigRoot>(config);
 // The composed chain goes BACK onto the builder. `builder.services` is a live
 // slot over an immutable chain, so everything registered into the local
 // `services` above is invisible to `build()` until it is handed back here.
-builder.services = services.addHostedService(InteropWorker,
-  Type.ctor(HOSTED_SERVICE_TYPE, [[typefor<IServiceProvider>(), typefor<IHostApplicationLifetime>(), typefor<ILoggerFactory>(), typefor<ConfigRoot>()]]));
+builder.services = services.addHostedService(InteropWorker, typefor(InteropWorker));
 
 // ── run the scenario ──────────────────────────────────────────────────────────
 
@@ -283,14 +281,20 @@ await host.runAsync();
 // the pieces a LIBRARY author (rather than an application) reaches for.
 //
 // Each chapter owns its own container, so nothing here can perturb the host's —
-// and each returns its lines rather than printing, which is what lets this file
-// decide the order and the spacing. The whole run is deterministic (fixed
-// clocks, fixed seed data, no filesystem, no randomness): the app's checked-in
-// `expected.txt` is a byte-for-byte diff of this output.
+// and each yields its lines rather than printing, which is what lets this file
+// decide the order and the spacing. A chapter is a generator, so its container
+// is built as its lines are drawn; the loop below draws each one to exhaustion
+// before starting the next, so the chapters stay as isolated as they read.
+// The resolution chapter awaits a promised registration part-way through and is
+// therefore an async generator, which is why the loop awaits every line.
+//
+// The whole run is deterministic (fixed clocks, fixed seed data, no filesystem,
+// no randomness): the app's checked-in `expected.txt` is a byte-for-byte diff of
+// this output.
 
-const tour: readonly (readonly string[])[] = [
+const tour: readonly (Iterable<string> | AsyncIterable<string>)[] = [
   demonstrateRegistration(),
-  await demonstrateResolution(),
+  demonstrateResolution(),
   demonstrateOpenGenerics(),
   // A chapter with no dialect: an error class reads the same whether or not a
   // transformer ran, so there is nothing for a with-transformer twin to differ
@@ -305,7 +309,7 @@ const tour: readonly (readonly string[])[] = [
 
 for (const chapter of tour) {
   console.log('');
-  for (const line of chapter) {
+  for await (const line of chapter) {
     console.log(line);
   }
 }

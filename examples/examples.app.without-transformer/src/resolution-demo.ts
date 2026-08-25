@@ -40,16 +40,16 @@ function attempted(attempt: () => string): string {
 }
 
 /**
- * Runs the resolution tour and returns the report lines.
+ * Runs the resolution tour, yielding the report lines.
  *
  * `provider` is typed as the `IServiceProvider` INTERFACE rather than the
  * container class: everything below is available to any injected dependency that
  * declares an `IServiceProvider` parameter, not just to code holding the root
  * provider.
  */
-async function tour(provider: IServiceProvider): Promise<string[]> {
+async function* tour(provider: IServiceProvider): AsyncGenerator<string> {
   const t = CHECKOUT_TYPES;
-  const lines: string[] = ['=== di resolution — without transformer ==='];
+  yield '=== di resolution — without transformer ===';
 
   // ── required vs optional ───────────────────────────────────────────────────
   //
@@ -66,25 +66,25 @@ async function tour(provider: IServiceProvider): Promise<string[]> {
   // the type that was ASKED for. A registration whose own dependency is
   // missing is itself unsatisfiable, so it too answers with absence rather
   // than a half-built object.
-  lines.push('required vs optional lookup');
+  yield 'required vs optional lookup';
   const router = provider.resolve(t.router) as IPaymentRouter;
-  lines.push(`  resolve(IPaymentRouter): resolved ${router.constructor.name}`);
+  yield `  resolve(IPaymentRouter): resolved ${router.constructor.name}`;
   try {
     provider.resolve(t.fraudScreen);
-    lines.push('  resolve(IFraudScreen): UNREACHABLE');
+    yield '  resolve(IFraudScreen): UNREACHABLE';
   } catch (error) {
-    lines.push(`  resolve(IFraudScreen): ${(error as Error).name} — a required miss is loud`);
+    yield `  resolve(IFraudScreen): ${(error as Error).name} — a required miss is loud`;
   }
   const audit = provider.resolve(Type.union(t.audit, Type.typeLiteral(undefined))) as IAuditTrail | undefined;
-  lines.push(`  resolve(IAuditTrail): ${audit ? 'present' : 'absent'}`);
-  lines.push(`  resolve(IFraudScreen): ${provider.resolve(Type.union(t.fraudScreen, Type.typeLiteral(undefined)))}`);
+  yield `  resolve(IAuditTrail): ${audit ? 'present' : 'absent'}`;
+  yield `  resolve(IFraudScreen): ${provider.resolve(Type.union(t.fraudScreen, Type.typeLiteral(undefined)))}`;
   // A presence question is exactly a union-wrapped lookup compared against
   // `undefined`: the literal fallback answers `undefined` instead of throwing,
   // so there is no dedicated member to reach for. Unlike a pure existence
   // check, this DOES resolve the service when one exists — cheap here, since
   // IFraudScreen is never registered at all, but worth naming: a presence
   // probe on something expensive to build is no longer free.
-  lines.push(`  resolve(IFraudScreen) !== undefined: ${provider.resolve(Type.union(t.fraudScreen, Type.typeLiteral(undefined))) !== undefined}`);
+  yield `  resolve(IFraudScreen) !== undefined: ${provider.resolve(Type.union(t.fraudScreen, Type.typeLiteral(undefined))) !== undefined}`;
 
   // ── collection resolution ──────────────────────────────────────────────────
   //
@@ -98,17 +98,17 @@ async function tour(provider: IServiceProvider): Promise<string[]> {
   // `resolveMany(element)` is sugar for asking for the collection type over it;
   // `Type.iterable(element)` spells that type, and either request reaches the
   // same aggregation.
-  lines.push('collection resolution — 3 registrations share one type, all of them run');
+  yield 'collection resolution — 3 registrations share one type, all of them run';
   const validators = [...provider.resolveMany(t.validator)] as IOrderValidator[];
   for (const order of [ORDER_A, ORDER_X]) {
     for (const validator of validators) {
-      lines.push(`  ${order.reference}: ${validator.name} → ${attempted(() => validator.check(order))}`);
+      yield `  ${order.reference}: ${validator.name} → ${attempted(() => validator.check(order))}`;
     }
   }
   const asCollectionType = [
     ...(provider.resolve(Type.iterable(t.validator)) as Iterable<IOrderValidator>),
   ];
-  lines.push(`  the same aggregation asked for as a type: ${asCollectionType.length} validators`);
+  yield `  the same aggregation asked for as a type: ${asCollectionType.length} validators`;
 
   // ── keyed resolution ───────────────────────────────────────────────────────
   //
@@ -117,16 +117,16 @@ async function tour(provider: IServiceProvider): Promise<string[]> {
   // the registration. `Type.tag(base, "card")` is one type, and it hits the same
   // exact-match lookup every other type does — which is why a keyed registration
   // is invisible to a collection request over its bare base.
-  lines.push('keyed resolution — one base type, three keys');
+  yield 'keyed resolution — one base type, three keys';
   for (const order of [ORDER_A, ORDER_B]) {
-    lines.push(`  ${order.reference} checkout (key "${order.method}"): ${router.checkout(order)}`);
+    yield `  ${order.reference} checkout (key "${order.method}"): ${router.checkout(order)}`;
     // The optional sink, used only because the probe above found one.
     audit?.record(order.reference);
   }
   const crypto = provider.resolve(Type.union(Type.tag(t.gateway, 'crypto'), Type.typeLiteral(undefined))) as IPaymentGateway | undefined;
-  lines.push(`  resolve at key "crypto": ${crypto?.label}`);
-  lines.push(`  a keyed registration is not in the bare base's collection: `
-    + `${[...provider.resolveMany(t.gateway)].length} gateways`);
+  yield `  resolve at key "crypto": ${crypto?.label}`;
+  yield `  a keyed registration is not in the bare base's collection: `
+    + `${[...provider.resolveMany(t.gateway)].length} gateways`;
 
   // ── factory slots ──────────────────────────────────────────────────────────
   //
@@ -140,8 +140,8 @@ async function tour(provider: IServiceProvider): Promise<string[]> {
   // which is how the checkout lines above minted their receipts. A parameterized
   // factory builds a fresh instance per call, because the arguments differ every
   // time and a cached one would answer the wrong question.
-  lines.push('factory slots — the caller supplies what the container cannot know');
-  lines.push(`  mint ${ORDER_C.reference}: ${router.checkout(ORDER_C)}`);
+  yield 'factory slots — the caller supplies what the container cannot know';
+  yield `  mint ${ORDER_C.reference}: ${router.checkout(ORDER_C)}`;
   // The same slot asked for from OUTSIDE a constructor, rather than injected
   // into one: `resolve` over the callable's own `Type.func` type hands
   // back the identical factory `PaymentRouter` receives as a constructor
@@ -149,7 +149,7 @@ async function tour(provider: IServiceProvider): Promise<string[]> {
   const mintReceipt = provider.resolve(Type.func(t.receipt, [[t.order]])) as (
     order: CheckoutOrder,
   ) => IReceipt;
-  lines.push(`  asking the provider for one: ${mintReceipt(ORDER_C).text}`);
+  yield `  asking the provider for one: ${mintReceipt(ORDER_C).text}`;
 
   // ── async registrations ────────────────────────────────────────────────────
   //
@@ -157,10 +157,10 @@ async function tour(provider: IServiceProvider): Promise<string[]> {
   // `Promise<…:IExchangeRates>`, which is the honest way to say "this arrives
   // later". The container hands back the promise it was told about and the
   // caller awaits it — no half-built value ever appears.
-  lines.push('async registrations — the promise is the registration');
+  yield 'async registrations — the promise is the registration';
   const rates = await (provider.resolve(t.ratesPromise) as Promise<IExchangeRates>);
-  lines.push(`  rates as of ${rates.asOf}, EUR at ${rates.rate('EUR')}`);
-  lines.push(`  the bare type has no registration: ${provider.resolve(Type.union(t.rates, Type.typeLiteral(undefined)))}`);
+  yield `  rates as of ${rates.asOf}, EUR at ${rates.rate('EUR')}`;
+  yield `  the bare type has no registration: ${provider.resolve(Type.union(t.rates, Type.typeLiteral(undefined)))}`;
 
   // ── the provider as a service ──────────────────────────────────────────────
   //
@@ -179,23 +179,24 @@ async function tour(provider: IServiceProvider): Promise<string[]> {
   // not exist until an order arrives. No constructor parameter can express "the
   // gateway for whichever method the buyer picks", so the container itself is the
   // dependency.
-  lines.push('the provider as a service — usually a smell, occasionally correct');
+  yield 'the provider as a service — usually a smell, occasionally correct';
   const view = provider.resolve(Type.from('ServiceProvider')) as IServiceProvider;
-  lines.push(`  the injected view IS the live container: ${view === provider}`);
+  yield `  the injected view IS the live container: ${view === provider}`;
 
   // ── what the optional sink recorded ────────────────────────────────────────
   const recorded = audit ? `${audit.entries.length} entries, last ${audit.entries.at(-1)}` : 'no sink wired';
-  lines.push(`optional audit trail: ${recorded}`);
-
-  return lines;
+  yield `optional audit trail: ${recorded}`;
 }
 
 /**
  * Builds a container for the checkout scenario and walks the whole resolution
- * surface over it, returning a deterministic report for the caller to print.
+ * surface over it, yielding a deterministic report for the caller to print.
+ *
+ * The tour awaits a promised registration part-way through, so its lines arrive
+ * asynchronously — every other chapter is an ordinary generator.
  */
-export async function demonstrateResolution(): Promise<readonly string[]> {
-  let services: Manifest<unknown> = new DefaultManifest<unknown>(LifetimeModel.noop);
+export function demonstrateResolution(): AsyncGenerator<string> {
+  let services: Manifest<unknown> = new DefaultManifest<unknown>();
   services = addCheckoutServices(services);
-  return await tour(di.usingLifetimeModel(LifetimeModel.noop).usingManifest(services).build());
+  return tour(di.usingLifetimeModel(LifetimeModel.noop).usingManifest(services).build());
 }

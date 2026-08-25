@@ -12,12 +12,11 @@
 // closed registration on demand for whichever closing is asked for. Adding a
 // fourth entity later costs one `Seed<T>` value and nothing else.
 //
-// THE HOLE IS A PLACEHOLDER TYPE, and it is the one thing here with no type to
-// derive it from: a hole stands for a type argument that has not been chosen, so
-// there is no declaration to point `typefor` at. `Type.generic(label)`
-// composes one and `Type.imported(base, from, [hole])` puts it where a type
-// argument goes — written out identically in both dialects, because sugar
-// removes boilerplate only where there is a type to remove it from.
+// THE HOLE IS A PLACEHOLDER TYPE, and `Generic<'Label'>` is how one is spelled
+// as a TYPE: it goes wherever a type argument goes, so `ITable<Generic<'TEntity'>>`
+// is an ordinary type expression and `typefor` derives the template from it
+// exactly as it derives a closed type. The manual twin composes the same nodes
+// by hand.
 //
 // WHAT AN OPEN TEMPLATE MAY LOOK LIKE. ONE hole anywhere in the service type is
 // enough; the remaining type arguments may be concrete. `IRepository<$1>` and
@@ -37,68 +36,45 @@
 // captured type wherever it appears.
 
 import { di } from '@rhombus-std/di';
-import { $, DefaultManifest, LifetimeModel, type Manifest, Type, Typeof } from '@rhombus-std/di.core';
+import { DefaultManifest, type Generic, LifetimeModel, type Manifest, Type } from '@rhombus-std/di.core';
 import { typefor } from '@rhombus-std/primitives.extras';
 
 import type { AuditEvent, Entity, IJoin, IRepository, ITable, Order, Seed, User } from '@rhombus-std/examples.contracts';
 import '@rhombus-std/di.extras';
 // ── the service types ───────────────────────────────────────────────────────
 //
-// The three entities are DERIVED; everything built over them is composed, since
-// a closing that still has a hole in it has no declaration to derive from. The
-// manual twin composes all four the same way, which is what lets a hand-written
-// consumer interoperate with a library authored from types.
+// Every type below — open or closed — is derived from a type expression. A hole
+// is spelled `Generic<'Label'>` and sits where a type argument sits, so an open
+// template is written the same way a closed type is. A second type argument
+// constrains what may close the hole, and is worth reaching for only where the
+// surrounding type demands it — the derived node is a bare labelled hole either
+// way. The manual twin composes the same nodes by hand, which is what lets a
+// hand-written consumer interoperate with a library authored from types.
+//
+// `Typeof<T>` is the one exception, and it is composed below: it names a slot
+// that receives the TYPE of a closing rather than an instance of it, and it
+// resolves to a structural intersection rather than to a name, so there is
+// nothing for `typefor` to derive it from.
 
-const CONTRACTS = '@rhombus-std/examples.contracts';
-
-const USER_TYPE = typefor<User>();
-const ORDER_TYPE = typefor<Order>();
-const AUDIT_EVENT_TYPE = typefor<AuditEvent>();
-
-/** `Seed<T>` — the closed value each closing bottoms out at. */
-function seedOf(entity: Type): Type {
-  return Type.imported('Seed', CONTRACTS, [entity]);
-}
-
-/** `ITable<T>` — the middle link. */
-function tableOf(entity: Type): Type {
-  return Type.imported('ITable', CONTRACTS, [entity]);
-}
-
-/** `IRepository<T>` — the type a consumer actually asks for. */
-function repositoryOf(entity: Type): Type {
-  return Type.imported('IRepository', CONTRACTS, [entity]);
-}
-
-/** `IJoin<L,R>` — the arity-2 type the two-hole template serves. */
-function joinOf(left: Type, right: Type): Type {
-  return Type.imported('IJoin', CONTRACTS, [left, right]);
-}
-
-/**
- * `Typeof<T>` — a slot that receives the TYPE of a closing rather than an
- * instance of it. It is an ordinary service type carrying an ordinary value
- * registration; what makes it useful is that a template's signature can name
- * `Typeof<$1>` and have the hole substituted per closing.
- */
+/** `Typeof<T>` — the witness slot, and the one type here composed by hand. */
 function witnessOf(entity: Type): Type {
   return Type.imported('Typeof', '@rhombus-std/di.core', [entity]);
 }
 
-// The open TEMPLATES. A hole is a placeholder type, and it is matched
-// positionally against the closing's arguments — `$1` in `IJoin<$1,$2>` binds
-// the first argument wherever else `$1` appears in that registration.
-const HOLE_1 = Type.generic('1');
-const HOLE_2 = Type.generic('2');
-type TEntity = $<'TEntity'>;
-type T = $<'T'>;
-const TABLE_TEMPLATE = typefor<ITable<TEntity>>(); // tableOf(HOLE_1);
-const REPOSITORY_TEMPLATE = typefor<IRepository<TEntity>>(); // repositoryOf(HOLE_1);
-const JOIN_TEMPLATE = typefor<IJoin<$<'TLeft'>, $<'TRight'>>>(); // joinOf(HOLE_1, HOLE_2);
+// A hole's LABEL is what binds it: the same label appearing twice in one
+// registration binds to one captured type wherever it appears, so a template's
+// service type and its dependency slots have to agree on the spelling — which
+// is why the composed witness spells the same label the derived types carry.
+type TEntity = Generic<'TEntity'>;
+type TRight = Generic<'TRight'>;
+const ENTITY_HOLE = Type.generic('TEntity');
+const TABLE_TEMPLATE = typefor<ITable<TEntity>>();
+const REPOSITORY_TEMPLATE = typefor<IRepository<TEntity>>();
+const JOIN_TEMPLATE = typefor<IJoin<Generic<'TLeft'>, TRight>>();
 // The partially-open one. A concrete argument and a hole compose exactly the
 // same way two holes do — there is nothing special about the mixed form, which
 // is why it needed no new grammar to allow.
-const ORDER_JOIN_TEMPLATE = typefor<IJoin<Order, T>>(); // joinOf(ORDER_TYPE, HOLE_2);
+const ORDER_JOIN_TEMPLATE = typefor<IJoin<Order, TRight>>();
 
 // ── the data each closing bottoms out at ────────────────────────────────────
 
@@ -141,7 +117,7 @@ class InMemoryTable<TEntity> implements ITable<TEntity> {
 
 /**
  * The template a consumer actually asks for. `TEntity extends Entity` is the
- * bound that the type-driven dialect spells `Generic<'1', Entity>`; composing a
+ * bound that the type-driven dialect spells `Generic<'TEntity', Entity>`; composing a
  * placeholder by hand carries no type-level constraint at all, so the bound is
  * simply the class's own business.
  */
@@ -247,79 +223,76 @@ function shortName(token: string): string {
 // into `manifest`; a bare `manifest.add(...)` statement would register
 // nothing.
 
-let manifest: Manifest<unknown> = new DefaultManifest<unknown>(LifetimeModel.noop);
+let manifest: Manifest<unknown> = new DefaultManifest<unknown>();
 
 // The closed value registrations the templates bottom out at: one seed and one
 // type witness per entity. Nothing generic about them — they are the floor.
-for (const entity of [USER_TYPE, ORDER_TYPE, AUDIT_EVENT_TYPE]) {
-  manifest = manifest.add(witnessOf(entity), entity);
-}
-// manifest = manifest.add<Seed<User>>(USER_SEED)
-// .add<Seed<Order>>(ORDER_SEED)
-// .add<Seed<AuditEvent>>(AUDIT_SEED)
-manifest = manifest.add(seedOf(USER_TYPE), USER_SEED);
-manifest = manifest.add(seedOf(ORDER_TYPE), ORDER_SEED);
-manifest = manifest.add(seedOf(AUDIT_EVENT_TYPE), AUDIT_SEED);
+manifest = manifest.add(witnessOf(typefor<User>()), typefor<User>());
+manifest = manifest.add(witnessOf(typefor<Order>()), typefor<Order>());
+manifest = manifest.add(witnessOf(typefor<AuditEvent>()), typefor<AuditEvent>());
+manifest = manifest.add(typefor<Seed<User>>(), USER_SEED);
+manifest = manifest.add(typefor<Seed<Order>>(), ORDER_SEED);
+manifest = manifest.add(typefor<Seed<AuditEvent>>(), AUDIT_SEED);
 
 // Template 1 — `ITable<$1>`. Its signature is where the hole propagates: the
 // first slot is a type CONTAINING `$1`, the second is the `Typeof<$1>` witness.
 // Both are rewritten per closing before the class is constructed.
-manifest = manifest.add(TABLE_TEMPLATE, InMemoryTable, Type.ctor(TABLE_TEMPLATE, [[seedOf(HOLE_1), witnessOf(HOLE_1)]]), 'singleton');
+manifest = manifest.add(TABLE_TEMPLATE, InMemoryTable, Type.ctor(TABLE_TEMPLATE, [[typefor<Seed<TEntity>>(), witnessOf(ENTITY_HOLE)]]), 'singleton');
 
 // Template 2 — `IRepository<$1>`, the one a consumer asks for. Its dependency is
 // itself a template closing, so resolving `IRepository<User>` closes
 // `ITable<$1>` to `ITable<User>` on the way down.
-manifest = manifest.add(REPOSITORY_TEMPLATE, InMemoryRepository, Type.ctor(REPOSITORY_TEMPLATE, [[tableOf(HOLE_1), witnessOf(HOLE_1)]]), 'singleton');
+manifest = manifest.add(REPOSITORY_TEMPLATE, InMemoryRepository, Type.ctor(REPOSITORY_TEMPLATE, [[typefor<ITable<TEntity>>(), witnessOf(ENTITY_HOLE)]]), 'singleton');
 
 // The one exact override, registered AFTER the template it overrides. It is
 // filed at a fully CLOSED type, so it can only ever match `AuditEvent` — the
 // template still serves every other entity.
-manifest = manifest.add(repositoryOf(AUDIT_EVENT_TYPE), AuditRepository, Type.ctor(repositoryOf(AUDIT_EVENT_TYPE), [[tableOf(AUDIT_EVENT_TYPE)]]), 'singleton');
+manifest = manifest.add(typefor<IRepository<AuditEvent>>(), AuditRepository, Type.ctor(typefor<IRepository<AuditEvent>>(), [[typefor<ITable<AuditEvent>>()]]), 'singleton');
 
 // Template 3 — fully open, arity 2. Each dependency names a DIFFERENT hole, so
 // the two sides close independently.
-manifest = manifest.add(JOIN_TEMPLATE, RepositoryJoin, Type.ctor(JOIN_TEMPLATE, [[repositoryOf(HOLE_1), repositoryOf(HOLE_2)]]), 'singleton');
+manifest = manifest.add(JOIN_TEMPLATE, RepositoryJoin, Type.ctor(JOIN_TEMPLATE, [[typefor<IRepository<Generic<'TLeft'>>>(), typefor<IRepository<TRight>>()]]), 'singleton');
 
 // Template 4 — PARTIALLY OPEN, and registered after the general one on purpose.
 // The service type pins the left argument (`IJoin<Order,$2>`) and so does the
 // left dependency argument; only the right one carries a hole. Both templates
 // match a join whose left side is an order, and the later registration is the
 // one that takes it.
-manifest = manifest.add(ORDER_JOIN_TEMPLATE, OrderJoin, Type.ctor(ORDER_JOIN_TEMPLATE, [[repositoryOf(ORDER_TYPE), repositoryOf(HOLE_2)]]), 'singleton');
+manifest = manifest.add(ORDER_JOIN_TEMPLATE, OrderJoin, Type.ctor(ORDER_JOIN_TEMPLATE, [[typefor<IRepository<Order>>(), typefor<IRepository<TRight>>()]]), 'singleton');
 
 // ── the demonstration ───────────────────────────────────────────────────────
 
 /**
- * Resolves several closings of the templates registered above and returns the
- * report as lines. Returns rather than prints so the caller owns the output.
+ * Resolves several closings of the templates registered above and yields the
+ * report as lines. Yields rather than prints so the caller owns the output.
  *
  * Deliberately order-stable: fixed seed rows, no timestamps, no iteration over
  * an unordered collection.
  */
-export function demonstrateOpenGenerics(): readonly string[] {
+export function* demonstrateOpenGenerics(): Generator<string> {
   const app = di.usingLifetimeModel(LifetimeModel.noop).usingManifest(manifest).build();
 
   // Two closings of ONE registration. Neither type was ever registered.
-  const users = app.resolve(repositoryOf(USER_TYPE)) as IRepository<User>;
-  const orders = app.resolve(repositoryOf(ORDER_TYPE)) as IRepository<Order>;
+  const users = app.resolve(typefor<IRepository<User>>()) as IRepository<User>;
+  const orders = app.resolve(typefor<IRepository<Order>>()) as IRepository<Order>;
 
   // The middle template, resolved directly. Its `entityToken` came from the
   // `Typeof<$1>` slot, filled in with the type this closing was minted for.
-  const userTable = app.resolve(tableOf(USER_TYPE)) as ITable<User>;
+  const userTable = app.resolve(typefor<ITable<User>>()) as ITable<User>;
 
   // The exact registration for the one entity that needed different behaviour.
-  const audit = app.resolve(repositoryOf(AUDIT_EVENT_TYPE)) as IRepository<AuditEvent>;
+  const audit = app.resolve(typefor<IRepository<AuditEvent>>()) as IRepository<AuditEvent>;
 
   // Arity 2: the left hole closes onto the template, the right onto the exact
   // registration.
-  const join = app.resolve(joinOf(USER_TYPE, AUDIT_EVENT_TYPE)) as IJoin<User, AuditEvent>;
+  const join = app.resolve(typefor<IJoin<User, AuditEvent>>()) as IJoin<User, AuditEvent>;
 
   // Two closings over ONE base that two different templates could serve.
   // `IJoin<Order,User>` matches both `IJoin<Order,$2>` and `IJoin<$1,$2>`, and
   // the pinned one was registered later, so it takes it. `IJoin<AuditEvent,User>`
   // matches only the general template, which still serves it.
-  const pinnedJoin = app.resolve(joinOf(ORDER_TYPE, USER_TYPE)) as IJoin<Order, User>;
-  const generalJoin = app.resolve(joinOf(AUDIT_EVENT_TYPE, USER_TYPE)) as IJoin<AuditEvent, User>;
+  const pinnedJoin = app.resolve(typefor<IJoin<Order, User>>()) as IJoin<Order, User>;
+  const generalJoin = app.resolve(typefor<IJoin<AuditEvent, User>>()) as IJoin<AuditEvent, User>;
 
   // A hole is not a service: matching runs against a request that has to be
   // fully closed, so asking for the template itself is refused rather than
@@ -331,12 +304,20 @@ export function demonstrateOpenGenerics(): readonly string[] {
     templateOutcome = `was refused (${(error as Error).name})`;
   }
 
-  return ['=== di open generics — with transformer ===', 'IRepository<$1> is registered ONCE; every closing below is minted from it:', `  IRepository<User>: ${users.describe()}`,
-    `  IRepository<Order>: ${orders.describe()}`, 'the closing propagates down the graph — IRepository<T> -> ITable<T> -> Seed<T>:',
-    `  ITable<User> reports the closing it was minted for: ${shortName(userTable.entityToken)}`,
-    `  IRepository<User>.all() is the array registered as Seed<User>: ${Object.is(users.all(), USER_SEED.rows)}`, 'a CLOSED registration serves the one closing it names:',
-    `  IRepository<AuditEvent>: ${audit.describe()}`, 'arity 2 — $1 and $2 close independently, each side keeping its own precedence:', `  IJoin<User,AuditEvent>: ${join.describe()}`,
-    'a template may pin some arguments; where two overlap, the later registration wins:', `  IJoin<Order,User> goes to the pinned IJoin<Order,$2>: ${pinnedJoin.describe()}`,
-    `  IJoin<AuditEvent,User> goes to the general IJoin<$1,$2>: ${generalJoin.describe()}`, 'the template itself is NOT resolvable — a hole is not a service:',
-    `  asking for IRepository<$1> ${templateOutcome}`];
+  yield '=== di open generics — with transformer ===';
+  yield 'IRepository<$1> is registered ONCE; every closing below is minted from it:';
+  yield `  IRepository<User>: ${users.describe()}`;
+  yield `  IRepository<Order>: ${orders.describe()}`;
+  yield 'the closing propagates down the graph — IRepository<T> -> ITable<T> -> Seed<T>:';
+  yield `  ITable<User> reports the closing it was minted for: ${shortName(userTable.entityToken)}`;
+  yield `  IRepository<User>.all() is the array registered as Seed<User>: ${Object.is(users.all(), USER_SEED.rows)}`;
+  yield 'a CLOSED registration serves the one closing it names:';
+  yield `  IRepository<AuditEvent>: ${audit.describe()}`;
+  yield 'arity 2 — $1 and $2 close independently, each side keeping its own precedence:';
+  yield `  IJoin<User,AuditEvent>: ${join.describe()}`;
+  yield 'a template may pin some arguments; where two overlap, the later registration wins:';
+  yield `  IJoin<Order,User> goes to the pinned IJoin<Order,$2>: ${pinnedJoin.describe()}`;
+  yield `  IJoin<AuditEvent,User> goes to the general IJoin<$1,$2>: ${generalJoin.describe()}`;
+  yield 'the template itself is NOT resolvable — a hole is not a service:';
+  yield `  asking for IRepository<$1> ${templateOutcome}`;
 }

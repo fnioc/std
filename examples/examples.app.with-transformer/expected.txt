@@ -47,8 +47,8 @@ fork: removeAll left 0 sinks (the original still has 2), so the audit log's opti
 
 === di resolution — with transformer ===
 required vs optional lookup
-  getRequiredService(IPaymentRouter): resolved PaymentRouter
-  getRequiredService(IFraudScreen): Error — a required miss is loud
+  resolve(IPaymentRouter): resolved PaymentRouter
+  resolve(IFraudScreen): UnsatisfiableError — a required miss is loud
   resolve(IAuditTrail): present
   resolve(IFraudScreen): undefined
   resolve(IFraudScreen) !== undefined: false
@@ -90,15 +90,14 @@ a template may pin some arguments; where two overlap, the later registration win
   IJoin<Order,User> goes to the pinned IJoin<Order,$2>: Order (3, total 66) joined with User (2)
   IJoin<AuditEvent,User> goes to the general IJoin<$1,$2>: AuditEvent (2) joined with User (2)
 the template itself is NOT resolvable — a hole is not a service:
-  asking for IRepository<$1> was refused (Error)
+  asking for IRepository<$1> was refused (UnsatisfiableError)
 
 === di errors (dialect-independent) ===
 keying a service type that already carries a key: Error — not a container failure; this diagnostic would rethrow rather than guess
 building with validateOnBuild: ManifestValidationError — 1 registration(s) cannot be satisfied: selfcheck:IStore
   the failure inside it: UnsatisfiableError — nothing in the manifest produces selfcheck:IStore; register it, or ask with resolve if its absence is legitimate
-asking with resolve for a registration that cannot be lowered: undefined
-asking with getRequiredService for the same: Error — not a container failure; this diagnostic would rethrow rather than guess
-asking for a type nobody registered: Error — not a container failure; this diagnostic would rethrow rather than guess
+asking at the bare address for a registration that cannot be built: UnsatisfiableError — nothing in the manifest produces selfcheck:IStore; register it, or ask with resolve if its absence is legitimate
+asking for a type nobody registered: UnsatisfiableError — nothing in the manifest produces selfcheck:IReportService; register it, or ask with resolve if its absence is legitimate
 a dependency cycle: CycleError — selfcheck:ILedger -> selfcheck:IAuditLog -> selfcheck:ILedger; break the loop with a factory slot
 every failure above shares one root: true
 something else entirely: TypeError — not a container failure; this diagnostic would rethrow rather than guess

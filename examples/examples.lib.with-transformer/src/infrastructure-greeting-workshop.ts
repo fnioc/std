@@ -52,18 +52,6 @@ interface ManifestSlot<S> {
   services: Manifest<S>;
 }
 
-// ── types ────────────────────────────────────────────────────────────────────
-
-/**
- * The contract the workshop registers a greeting under.
- *
- * Composed by hand because the implementation arrives as a runtime parameter,
- * so there is no type at the call site for `typefor` to derive from (see the
- * header). It is composed exactly as `typefor<IGreeting>()` would derive it, so
- * a reader can check it against what the sugar would produce.
- */
-const GREETING_TYPE: Type = Type.imported('IGreeting', '@rhombus-std/examples.contracts');
-
 // ── the domain ───────────────────────────────────────────────────────────────
 
 /** Who a card is addressed to. Known only at call time, so never a registration. */
@@ -118,16 +106,6 @@ export class GreetingCard {
 }
 
 /**
- * The card's composed constructor type, every argument named by its TYPE.
- *
- * The first argument derives `"@rhombus-std/examples.contracts:IGreeting"`, the
- * same type the workshop registers the greeting under. `ICardRecipient` derives
- * one that is never registered anywhere; that is the point — it can only ever be
- * filled by the caller.
- */
-const CARD_IMPL_TYPE = Type.ctor(typefor<GreetingCard>(), [[typefor<IGreeting>(), typefor<ICardRecipient>()]]);
-
-/**
  * The library's one real service, and the model citizen of the package: it mints
  * {@link GreetingCard}s on demand WITHOUT ever holding the container.
  *
@@ -156,8 +134,8 @@ export class GreetingWorkshop {
    * The card factory, handed over ALREADY BUILT. The container worked the slot
    * plan out once, at registration — which slot the caller fills, which it
    * resolves — so there is nothing to memoise and no first-use branch. The lazy
-   * `#mintCard ??= …` this class used to carry existed only because the provider
-   * arrived where the factory should have.
+   * `#mintCard ??= …` in {@link LocatorGreetingWorkshop} is there only because
+   * the provider arrived where the factory should have.
    *
    * The factory deliberately does not cache its RESULT either: the arguments
    * differ per call, so a fresh card every time is the only correct answer.
@@ -244,15 +222,15 @@ export class LocatorGreetingWorkshop {
   }
 
   /**
-   * `Type.func(result, [[...args]])` IS the caller/container partition, spelled as a
-   * type: the listed arguments are the ones the CALLER supplies, and every other
-   * slot in the target's signature resolves from the container. It is the SAME
-   * partition {@link GreetingWorkshop} states as a constructor parameter — the
-   * only difference is whether the container is asked for it or hands it over.
+   * A callable type IS the caller/container partition, spelled as a type: its
+   * argument types are the ones the CALLER supplies, and every other slot in the
+   * target's signature resolves from the container. It is the SAME partition
+   * {@link GreetingWorkshop} states as a constructor parameter — the only
+   * difference is whether the container is asked for it or hands it over.
    */
   public card(name: string): string {
     this.#mintCard ??= this.#resolver.resolve(
-      Type.func(typefor<GreetingCard>(), [[typefor<ICardRecipient>()]]),
+      typefor<(recipient: ICardRecipient) => GreetingCard>(),
     ) as (recipient: ICardRecipient) => GreetingCard;
     return this.#mintCard({ name }).render(this.stationery.border);
   }
@@ -307,10 +285,12 @@ export class GreetingWorkshopBuilder<S> implements IGreetingWorkshopBuilder {
   }
 
   public useGreeting(greeting: new() => IGreeting): IGreetingWorkshopBuilder {
-    // Explicit in BOTH dialects: the ctor arrives as a runtime PARAMETER, so
-    // there is no class type for the transformer to derive a constructor type —
-    // or a service type — from.
-    this.#holder.services = this.#holder.services.add(GREETING_TYPE, greeting, Type.ctor(GREETING_TYPE, [[]]), 'singleton' as S | 'singleton');
+    // The service type is derived like every other one here, but the
+    // constructor type is composed: the ctor arrives as a runtime PARAMETER, so
+    // there is no class at this call site to observe, and a constructor type
+    // named as a type argument reads back as an address just as readily as a
+    // callable — the verb needs the callable reading.
+    this.#holder.services = this.#holder.services.add(typefor<IGreeting>(), greeting, Type.ctor(typefor<IGreeting>(), [[]]), 'singleton' as S | 'singleton');
     return this;
   }
 
@@ -341,14 +321,15 @@ export function addGreetingWorkshop<S>(services: Manifest<S | 'singleton'>, conf
   const holder: ManifestSlot<S | 'singleton'> = { services };
   configure(new GreetingWorkshopBuilder<S>(holder));
 
-  // The card. Its SERVICE TYPE is derived (`typefor<GreetingCard>()`) and so is
-  // its composed constructor type, because one of its arguments — the recipient
-  // — is the caller's and has no registration behind it, which the derivation
-  // states rather than hides.
+  // The card. Its SERVICE TYPE is derived from the type, its CONSTRUCTOR TYPE
+  // observed from the class itself — so the greeting argument arrives as the
+  // very type the workshop registers a greeting under, and the recipient
+  // argument as one nothing registers anywhere. That second one is the point:
+  // observing the class states the caller's slot rather than hiding it.
   //
   // No lifetime, so transient: the honest tag for something built fresh per
   // recipient.
-  holder.services = holder.services.add(typefor<GreetingCard>(), GreetingCard, CARD_IMPL_TYPE, undefined as S | 'singleton');
+  holder.services = holder.services.add(typefor<GreetingCard>(), GreetingCard, typefor(GreetingCard), undefined as S | 'singleton');
 
   // The workshop itself goes on next so a consumer cannot forget it — and this
   // one is fully tokenless, right down to its composed constructor type. The
@@ -366,9 +347,7 @@ export function addGreetingWorkshop<S>(services: Manifest<S | 'singleton'>, conf
   // Registration sugar lowers in any expression context, not only at a module's
   // top level, which is what lets a library function like this one be authored
   // tokenlessly at all.
-  holder.services = holder.services.add(typefor<GreetingWorkshop>(), GreetingWorkshop,
-    Type.ctor(typefor<GreetingWorkshop>(), [[Type.func(typefor<GreetingCard>(), [[typefor<ICardRecipient>()]]), Type.union(typefor<ICardStationery>(), Type.typeLiteral(undefined))]]),
-    'singleton' as S | 'singleton');
+  holder.services = holder.services.add(typefor<GreetingWorkshop>(), GreetingWorkshop, typefor(GreetingWorkshop), 'singleton' as S | 'singleton');
 
   // The counter-example, at its own derived service type so a caller can resolve
   // both from one container and compare the cards. Its one argument is the
@@ -376,8 +355,7 @@ export function addGreetingWorkshop<S>(services: Manifest<S | 'singleton'>, conf
   // "I want the provider" is plain DI rather than a special argument kind, which
   // is precisely why nothing stops a library doing it and why the comparison has
   // to be made in prose.
-  holder.services = holder.services.add(typefor<LocatorGreetingWorkshop>(), LocatorGreetingWorkshop, Type.ctor(typefor<LocatorGreetingWorkshop>(), [[typefor<IServiceProvider>()]]),
-    'singleton' as S | 'singleton');
+  holder.services = holder.services.add(typefor<LocatorGreetingWorkshop>(), LocatorGreetingWorkshop, typefor(LocatorGreetingWorkshop), 'singleton' as S | 'singleton');
 
   return holder.services;
 }
