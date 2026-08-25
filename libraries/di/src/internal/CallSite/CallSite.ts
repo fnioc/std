@@ -192,7 +192,8 @@ export namespace CallSite {
    * each arg type binding the call position that supplies it — memoized per signature; the map
    * form is the raw uncached build the memoized forms bottom out in.
    *
-   * @throws {UnsatisfiableError} when nothing in the manifest can produce {@link serviceType}.
+   * @throws {UnsatisfiableError} when {@link serviceType} has no registration, or has one whose
+   * own dependencies cannot be met.
    */
   export const from = (() => {
     const planFor = memo((registry: Registry) =>
@@ -200,7 +201,18 @@ export namespace CallSite {
         memo((args: ReadonlyMap<Type, number>) => {
           const site = new ToCallSiteVisitor(registry, args).visit(serviceType);
           if (site === undefined) {
-            throw new UnsatisfiableError(serviceType, 'nothing in the manifest can produce it');
+            // Two failures reach here and a caller acts on them differently: nothing is registered
+            // for the request at all, or something is and the graph beneath it has the hole. An
+            // open request cannot be asked which it is — matching one against a registration binds
+            // holes, and a hole on the asking side has nothing to bind to — so it reports the
+            // absence it can stand behind.
+            const registered = !Type.isOpen(serviceType) && !registry.answering(serviceType).next().done;
+            throw new UnsatisfiableError(
+              serviceType,
+              registered
+                ? 'it is registered, but something it needs is not'
+                : 'nothing in the manifest produces it',
+            );
           }
           return site;
         })
