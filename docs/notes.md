@@ -297,7 +297,32 @@ land; delete the file when empty.
       root scope users hold); `Manifest<Lifetime>` keeps the vocabulary in di.core while the
       interpreter (model/realizer/mint) moves wholly into the scope package. Decorator framing
       generalizes: any cross-cutting resolution concern (audit, tracing) is the same shape.
-- [ ] **OWNER RULING NEEDED — named-wins typefor derivation for closed generic callables.** The
+- [ ] **SETTLED 2026-08-25 (owner: "we're def doing this") — resolution is a CHAIN; one format is
+      still TBD.** The entrypoint a user holds is an empty AUGMENTED sp: its `getService` calls the
+      head of the chain and it has nothing else of its own, so `resolve`/`resolveMany` arrive by
+      augmentation while the chain does the work. The endpoint is the engine. A scope model is one
+      link, and the two link formats are isomorphic under the one-member interface —
+      `Ctor<[IServiceProvider], IServiceProvider>` (decorator) and
+      `Func<[Func<[Type], unknown>], Func<[Type], unknown>>` (middleware) — with an adapter class
+      carrying either into the other, so BOTH are supported and a model author picks. TBD: which is
+      the BASE format the chain is built out of. Leak-containment is NOT the deciding axis — the
+      owner is comfortable with the engine being reachable ("i actually kind of like the idea that I
+      COULD, even though i never would"), which is what makes the two formats a free choice rather
+      than a safety one; note only that a middleware-built chain hands each link a function and so
+      cannot produce the engine object, while a decorator-built one can. Composes with the two-stage
+      Starfish door unchanged: a link acquires the door from its `next` at bind time, binds its hooks
+      once, and the per-request path stays a bare bound call. This also retires the
+      front-door-vs-builder-verb fork — attachment is a list of links folded at genesis, and a verb
+      or a wrap call are two front ends over the same list.
+- [x] **RULED AND LANDED `fbdd4c49` — a named type derives BY NAME; its kind never depends on a
+      descendant's openness.** Type arguments derive recursively (a hole to `Type.generic(label)`,
+      anything else to its own address). The exception set routed structurally to the callable
+      kinds is `Ctor`/`AbstractCtor` resolved specifically to `@rhombus-toolkit/func`, plus bare
+      TS callable syntax — `Func` needs no entry, being an alias to an anonymous function type,
+      and anonymous types are excluded from the named branch so `typefor(SomeClass)` still
+      observes a ctor. Gates: Go green; typefor.ttsc.e2e 11/0 and inline.ttsc.e2e 15/4, both
+      unchanged. FOLLOW-UP: `di.core/src/ScopeFactory.ts` hand-writes its own address as a
+      workaround for this defect and can now spell `typefor<ScopeFactory<unknown>>()`. Was: The
       Go hole rule (landed) makes OPEN templates derive by name (`ScopeFactory<$<'T'>>` →
       nominal + hole). But a named callable template applied with CLOSED args still derives
       STRUCTURALLY — `typefor<ScopeFactory<unknown>>()` takes the call-signature path and dies
