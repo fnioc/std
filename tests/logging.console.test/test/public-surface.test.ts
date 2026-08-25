@@ -14,7 +14,7 @@ import { expect, test } from 'bun:test';
 function fakeServices(): { services: Manifest<unknown>; values: Array<[Type, unknown]>; } {
   const values: Array<[Type, unknown]> = [];
   const make = (): Manifest<unknown> =>
-    ({ add(serviceType: Type, value: unknown): Manifest<unknown> {
+    ({ addValue(serviceType: Type, value: unknown): Manifest<unknown> {
       values.push([serviceType, value]);
       return make();
     } }) as unknown as Manifest<unknown>;
