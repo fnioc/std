@@ -13,7 +13,7 @@
 //     subscribed, so the bag re-installs on each later registerAugmentations.
 
 import { di } from '@rhombus-std/di';
-import { DefaultManifest, type IServiceProvider, LifetimeModel, Type } from '@rhombus-std/di.core';
+import { type IServiceProvider, LifetimeModel, Manifest, Type } from '@rhombus-std/di.core';
 import { MetricsBuilder as DiagnosticsMetricsBuilder } from '@rhombus-std/diagnostics';
 // The IMetricsBuilder augmentation-registry token is derived by `typefor<IMetricsBuilder>()`
 // at each library's build time; this test (no transformer) uses the derived literal directly.
@@ -42,7 +42,7 @@ describe("hosting's MetricsBuilder receives the diagnostics-family augmentations
   });
 
   test('the config-binding member registered downstream reaches it too', () => {
-    const metrics = new HostingMetricsBuilder(new DefaultManifest());
+    const metrics = new HostingMetricsBuilder(Manifest.empty<unknown>());
     expect(metrics.addMetricsConfig).toBeInstanceOf(Function);
   });
 });
@@ -56,8 +56,8 @@ describe('late registration reaches every decorated class sharing the token', ()
     } });
 
     type Probed = { lateRegisteredProbe(): unknown; };
-    const hosting = new HostingMetricsBuilder(new DefaultManifest()) as unknown as Probed;
-    const diagnostics = new DiagnosticsMetricsBuilder(new DefaultManifest()) as unknown as Probed;
+    const hosting = new HostingMetricsBuilder(Manifest.empty<unknown>()) as unknown as Probed;
+    const diagnostics = new DiagnosticsMetricsBuilder(Manifest.empty<unknown>()) as unknown as Probed;
 
     expect(hosting.lateRegisteredProbe).toBeInstanceOf(Function);
     expect(diagnostics.lateRegisteredProbe).toBeInstanceOf(Function);
