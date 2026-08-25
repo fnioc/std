@@ -49,7 +49,7 @@ function toProvider(manifest: Manifest<'singleton'>) {
 describe('the impl doors', () => {
   test('asClass takes the constructor together with its type', () => {
     const services = withClock().add(
-      withClock().describe(SINK).asClass(Sink, Type.ctor(SINK, [[CLOCK, Type.typeLiteral('staging')]])),
+      withClock().describe(SINK).asClass(Sink, Type.ctor(SINK, [[CLOCK, Type.typeLiteral('staging')]])).withLifetime('singleton'),
     );
 
     expect((toProvider(services).resolve(SINK) as Sink).environment).toBe('staging');
@@ -57,7 +57,7 @@ describe('the impl doors', () => {
 
   test('asFactory takes the function together with its type', () => {
     const services = withClock().add(
-      withClock().describe(SINK).asFactory(makeSink, Type.func(SINK, [[CLOCK]])),
+      withClock().describe(SINK).asFactory(makeSink, Type.func(SINK, [[CLOCK]])).withLifetime('singleton'),
     );
 
     expect((toProvider(services).resolve(SINK) as Sink).environment).toBe('from-factory');
@@ -73,15 +73,14 @@ describe('the impl doors', () => {
   test('parameter signatures describe an overloaded implementation, one per call', () => {
     const overloaded = Type.ctor({
       instance: SINK,
-      args: [
+      signatures: [
         [Type.imported('IMissing', 'app'), Type.typeLiteral('unreachable')],
         [CLOCK, Type.typeLiteral('fallback')],
       ],
-      abstract: false,
     });
     // The first signature asks for a type nothing registers, so the second is the one the engine takes.
     const manifest = withClock();
-    const services = manifest.add(manifest.describe(SINK).asClass(Sink, overloaded));
+    const services = manifest.add(manifest.describe(SINK).asClass(Sink, overloaded).withLifetime('singleton'));
 
     expect((toProvider(services).resolve(SINK) as Sink).environment).toBe('fallback');
   });
@@ -96,7 +95,7 @@ describe('the terse form', () => {
   });
 
   test('a function type names a factory instead, from the same argument position', () => {
-    const services = withClock().add(SINK, makeSink, Type.func(SINK, [[CLOCK]]));
+    const services = withClock().add(SINK, makeSink, Type.func(SINK, [[CLOCK]]), 'singleton');
 
     expect((toProvider(services).resolve(SINK) as Sink).environment).toBe('from-factory');
   });
@@ -140,7 +139,7 @@ describe('the chain terminal is a descriptor', () => {
   test('a door taken IS the descriptor — held in a variable, registered later', () => {
     const manifest = withClock();
     const descriptor = manifest.describe(SINK)
-      .asClass(Sink, Type.ctor(SINK, [[CLOCK, Type.typeLiteral('held')]]));
+      .asClass(Sink, Type.ctor(SINK, [[CLOCK, Type.typeLiteral('held')]])).withLifetime('singleton');
 
     expect(ServiceDescriptor.kind(descriptor)[0]).toBe('ctor');
     expect(descriptor.serviceType).toBe(SINK);
@@ -174,8 +173,8 @@ describe('lifetime and tag', () => {
     const other = [...lifetimeFirst][0]!;
     expect(tagged.serviceType).toBe(Type.tag(SINK, 'primary'));
     expect(other.serviceType).toBe(tagged.serviceType);
-    expect('ctor' in tagged && tagged.scope).toBe('singleton');
-    expect('ctor' in other && other.scope).toBe('singleton');
+    expect('ctor' in tagged && tagged.lifetime).toBe('singleton');
+    expect('ctor' in other && other.lifetime).toBe('singleton');
   });
 
   test('refine after the door too — the descriptor rebuilds instead of mutating', () => {
@@ -183,8 +182,8 @@ describe('lifetime and tag', () => {
     const bare = manifest.describe(SINK).asClass(Sink, Type.ctor(SINK, [[CLOCK, Type.typeLiteral('x')]]));
     const scoped = bare.withLifetime('singleton');
 
-    expect(bare.scope).toBeUndefined();
-    expect(scoped.scope).toBe('singleton');
+    expect(scoped).not.toBe(bare);
+    expect(scoped.lifetime).toBe('singleton');
   });
 
   test('a tag on a type that already carries one is refused', () => {
@@ -199,7 +198,7 @@ describe('lifetime and tag', () => {
 test('a discarded step configures nothing', () => {
   const manifest = withClock();
   const configured = manifest.describe(SINK)
-    .asClass(Sink, Type.ctor(SINK, [[CLOCK, Type.typeLiteral('kept')]]));
+    .asClass(Sink, Type.ctor(SINK, [[CLOCK, Type.typeLiteral('kept')]])).withLifetime('singleton');
   // The dropped result would have tagged the registration; the kept one never saw it.
   configured.taggedAs('dropped');
   const services = manifest.add(configured);

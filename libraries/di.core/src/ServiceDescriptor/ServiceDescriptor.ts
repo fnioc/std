@@ -18,9 +18,10 @@ export type ServiceDescriptor<Lifetime> =
  * admits `undefined` — in which case absence means the manifest's default. A vocabulary of named
  * lifetimes has no reading for silence, so its registrations must name one.
  */
-type WithLifetime<Lifetime> = undefined extends Lifetime ? { readonly lifetime?: Lifetime; }
-  : { readonly lifetime: Lifetime; };
-
+interface WithLifetimeMembers<Lifetime> {
+  readonly lifetime: Lifetime;
+}
+type WithLifetime<Lifetime> = Readonly<undefined extends Lifetime ? Partial<WithLifetimeMembers<Lifetime>> : Required<WithLifetimeMembers<Lifetime>>>;
 /**
  * A registration the container constructs with `new`.
  *

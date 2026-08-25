@@ -82,11 +82,15 @@ land; delete the file when empty.
       and no message of their own — absence surfaces as the engine's classified error. So the
       explicit surface is `getService(serviceType)`, `resolve(serviceType)`,
       `resolve(ctorType|funcType, callable)` and `resolveMany(serviceType)`; the zero-arg sugar is
-      `getService<T>()`, `resolve<T>()`, `resolveMany<T>()`. OPEN with the owner: whether the
-      now-vestigial `ServiceProvider<Lifetime>` class parameter may go, and whether
-      `getService<T>()` and `resolve<T>()` — identical twins once `resolve` stopped being soft —
-      should collapse to one name. The typed `sp.createScope<T>()` face is STRUCK; it dissolved with
-      `createScope`.
+      `resolve<T>()` and `resolveMany<T>()`. RULED 2026-08-24 and landed: **`getService` exists only
+      as the single member of `IServiceProvider`; the vocabulary is `resolve` everywhere else** —
+      five keeps in the whole repo, being the declaration, `ServiceProvider`'s implementation of it,
+      the delegation inside the `resolve` augmentation, and the two scope providers, which implement
+      the interface and so must carry the member. The zero-arg `getService<T>()` sugar is deleted
+      outright, leaving `resolve<T>()` as the only zero-arg form. The concrete `ServiceProvider`
+      drops its own type parameter too — it existed only to forward to the interface's, so the
+      ruling that removed one removes both. The typed `sp.createScope<T>()` face is STRUCK; it
+      dissolved with `createScope`.
 - [ ] **A zero-arg sugar may not share a name with a member a class implements — OPEN, owner
       deciding 2026-08-24.** di.extras' `getService<ServiceType>(): ServiceType` merges a zero-arg
       overload onto the one name the concrete `ServiceProvider` actually implements
@@ -137,23 +141,28 @@ land; delete the file when empty.
       registrations; and constraints alone don't finish the job — a registered invoker concrete
       needs engine guts, so it wants engine floor-registration at genesis. Claude's read: the prize
       is de-special-casing doors out of `ToCallSiteVisitor`, not the ctor/func split.
-- [ ] **AWAITING OWNER REVIEW — `Registrar<Lifetime>`, the write half of a manifest
-      (uncommitted on disk 2026-08-24).** `libraries/di.core/src/Manifest.ts` declares
-      `Registrar<Lifetime>` — `_add`/`_replace`/`_remove`, each returning `Registrar<Lifetime>` —
-      and `Manifest<Lifetime> extends Registrar<Lifetime>, Iterable<ServiceDescriptor<Lifetime>>`.
-      No member added to `Manifest`, none moved out. WHY IT MUST BE A BASE CLAUSE, measured: a
-      separately-declared `Registrar` that `Manifest` merely satisfies structurally accepts
-      EVERYTHING, because structural member comparison keeps methods bivariant; the `extends`
-      clause is what makes TS measure variance on `Registrar`'s own parameter, which appears only
-      in argument position. WHY IT CANNOT BE `Manifest` ITSELF: a manifest is iterable, and
-      iterating pins `Lifetime` exactly, so `this: Manifest<'singleton'>` refuses every caller
-      including the correct ones. Demonstration lives in
-      `tests/di.test/test/registrar-vocabulary.types.ts` — self-verifying via `@ts-expect-error`,
-      confirmed in the program and producing zero diagnostics. STEP TWO, not started: the
-      augmentation `declare module` FACES still merge onto `Manifest`, so a body typed
-      `this: Registrar<'singleton'>` cannot yet reach `add`; they retarget to `Registrar`, which
-      `Manifest` then inherits. (`Registrar` needs no barrel edit — di.core re-exports `./Manifest`
-      wholesale.)
+- [ ] **A registration verb cannot state the vocabulary it needs. Rolled back 2026-08-24 — do not
+      re-derive the write-half split.** The problem is real and has a workaround in the tree:
+      `addCheckoutServices<S>(services: Manifest<S | 'singleton'>)` and `addGreetingWorkshop` in the
+      `examples.lib.*` packages carry a PHANTOM type parameter purely to spell "any vocabulary
+      containing `'singleton'`", plus a `'singleton' as S | 'singleton'` cast at every registration
+      — about fourteen of them. Inside di.core, `addLogging`/`addHostedService`/`addMemoryCache`
+      write a bare `'singleton'` into `this: Manifest<unknown>`, checked by nothing.
+      A write-half interface (`Registrar<Lifetime>` holding the verbs, `Manifest` extending it plus
+      `Iterable`) was built and REVERTED. Three measurements, all reproducible:
+      (1) it must be a BASE CLAUSE — a separately-declared interface `Manifest` merely satisfies
+      structurally accepts everything, since structural member comparison keeps methods bivariant;
+      (2) every verb on it must return the write half — returning `Manifest<Lifetime>` puts an
+      invariant type in a producing position and then NO caller is admissible;
+      (3) and that return is what kills it: registration functions are manifest-in/manifest-out, so
+      the caller's `services = addCheckout(services)` fails with `Property '[Symbol.iterator]' is
+      missing in type 'Registrar<"singleton">'`. The chain and the constraint cannot both hold.
+      Independently fatal: the verbs that actually name a lifetime are all AUGMENTATIONS, and a
+      `declare module` merge must repeat the target's own type-parameter list (TS2428), so a face
+      can never say `'singleton'` — the constraint could only ever sit on a body, where it checks
+      nothing at any call site. Any future attempt has to answer the chain first; a verb returning
+      the polymorphic `this` type is the only shape that could, and that contradicts the
+      faces-never-use-`this` rule in `docs/features/augmentations.md`.
 - [ ] **The value-door guard is INERT at every sugar call site.** `add<IFoo>(Foo)` — one argument
       under a vocabulary requiring the lifetime datum — cannot bind the ctor face, binds the VALUE
       face instead, and registers the class itself as the instance. `ButNot<T, Not> = T &
