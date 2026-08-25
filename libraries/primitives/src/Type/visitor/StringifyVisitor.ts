@@ -93,8 +93,8 @@ class StringifyVisitor extends TypeVisitor<string, Precedence> {
     return types.map(member => this.visit(member, Precedence.arrow)).join(', ');
   }
   /**
-   * A callable's parameter signatures, semicolons between them — the same separator an overload set is
-   * written with. One signature therefore spells as its parameters alone.
+   * A callable's signatures, semicolons between them — the same separator an overload set is
+   * written with. One signature therefore spells as its args alone.
    */
   #signatures(signatures: Type.Signatures): string {
     return signatures.map(signature => this.#list(signature)).join('; ');

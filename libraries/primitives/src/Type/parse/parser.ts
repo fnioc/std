@@ -173,7 +173,7 @@ class TypeParser {
   }
 
   /**
-   * A reserved signature spelling's arguments: the return or instance type, then the parameter
+   * A reserved signature spelling's arguments: the return or instance type, then the
    * signatures — `Ctor<Instance, A, B; C>`. The head is separated from the first signature by the same comma
    * every other argument uses, so a one-signature spelling reads as one flat list.
    */
@@ -207,8 +207,8 @@ class TypeParser {
   }
 
   /**
-   * A callable's parameter signatures up to `closer`: semicolon-separated signatures, each a comma-separated
-   * list of types. An empty list is ONE empty signature — a callable taking no parameters, rather than
+   * A callable's signatures up to `closer`: semicolon-separated signatures, each a comma-separated
+   * list of types. An empty list is ONE empty signature — a callable taking no args, rather than
    * one answering to no call.
    */
   #signatureList(closer: string): Type.Signatures {
@@ -222,7 +222,7 @@ class TypeParser {
     }
   }
 
-  /** One signature's parameter types, stopping at its `;` or at `closer` without consuming either. */
+  /** One signature's arg types, stopping at its `;` or at `closer` without consuming either. */
   #signature(closer: string): readonly Type[] {
     const types: Type[] = [];
     if (this.#at(closer) || this.#at(';')) {

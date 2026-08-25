@@ -2,7 +2,7 @@
 // `ILoggerFactory`, categorized by `T`.
 //
 // `T` is erased at runtime, so the engine supplies the closing type itself as a constructor
-// parameter (see `@rhombus-std/logging`'s `addLogging`), and the category is its name.
+// arg (see `@rhombus-std/logging`'s `addLogging`), and the category is its name.
 
 import type { NamedType } from '@rhombus-std/di.core';
 import { augment } from '@rhombus-std/primitives';

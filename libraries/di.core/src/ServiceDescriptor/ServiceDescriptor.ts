@@ -26,7 +26,7 @@ type WithLifetime<Lifetime> = Readonly<undefined extends Lifetime ? Partial<With
  * A registration the container constructs with `new`.
  *
  * @remarks
- * `ctorType` is where the registration's parameter signatures live, so `ctor` and the calls it answers
+ * `ctorType` is where the registration's signatures live, so `ctor` and the calls it answers
  * to are read from one place and cannot disagree.
  */
 export type CtorDescriptor<Lifetime> = Flatten<

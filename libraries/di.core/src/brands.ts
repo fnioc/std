@@ -1,4 +1,4 @@
-// Compile-time phantom brands, read off a constructor or factory parameter's TYPE
+// Compile-time phantom brands, read off a constructor or factory arg's TYPE
 // to decide what fills its dependency slot: a pinned token (`Inject`), an
 // open-generic hole (`Generic` / `$`), a resolution key (`Keyed`), and a
 // type-argument witness (`Typeof`). All of them erase — zero runtime footprint.
@@ -14,7 +14,7 @@ type IsUnion<T, Members = T> = T extends unknown ? ([Members] extends [T] ? fals
 declare const TOKEN: unique symbol;
 
 /**
- * Pins one parameter's service type, overriding the type it would otherwise
+ * Pins one arg's service type, overriding the type it would otherwise
  * derive from its own declaration.
  *
  * @remarks
@@ -39,7 +39,7 @@ declare const HOLE: unique symbol;
 
 /**
  * Stands for a type argument an open registration has not been closed against
- * yet — the parameter's slot is filled by whatever the request closes it to.
+ * yet — the arg's slot is filled by whatever the request closes it to.
  *
  * @remarks
  * `L` labels the hole so several can be told apart and a repeated one binds
@@ -87,7 +87,7 @@ export type Keyed<T, K extends string> = T & { readonly [KEY]?: K; };
 // ── Typeof ────────────────────────────────────────────────────────────────────
 
 /**
- * Marks a constructor parameter that receives the {@link NamedType} of a type argument instead of a
+ * Marks a constructor arg that receives the {@link NamedType} of a type argument instead of a
  * resolved instance of it — `Logger<T>` naming its category after `T` rather than constructing one.
  *
  * @remarks

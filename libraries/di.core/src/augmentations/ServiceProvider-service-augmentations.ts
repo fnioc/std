@@ -18,7 +18,7 @@ declare module '@rhombus-std/di.core' {
      */
     resolve(serviceType: Type): any;
     /**
-     * Constructs `ctor` fresh, its dependencies resolved from `ctorType` — `ctor`'s own parameter
+     * Constructs `ctor` fresh, its dependencies resolved from `ctorType` — `ctor`'s own arg
      * types, in order, the same shape {@link ConstructorType} carries for any other registered
      * constructor.
      *
@@ -28,7 +28,7 @@ declare module '@rhombus-std/di.core' {
      */
     resolve<R>(ctorType: ConstructorType, ctor: Ctor<any[], R>): R;
     /**
-     * Calls `func`, its dependencies resolved from `funcType` — `func`'s own parameter types, in
+     * Calls `func`, its dependencies resolved from `funcType` — `func`'s own arg types, in
      * order, the same shape {@link FunctionType} carries for any other registered factory.
      *
      * @remarks

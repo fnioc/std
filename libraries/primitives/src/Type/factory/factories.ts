@@ -76,13 +76,13 @@ export function abstractCtor(instance: Type, signatures: Type.Signatures): Abstr
  */
 function adoptSignatures(signatures: Type.Signatures): Type.Signatures {
   if (!signatures.length) {
-    throw new TypeError('a callable answers to at least one call — write `[[]]` for one taking no parameters');
+    throw new TypeError('a callable answers to at least one call — write `[[]]` for one taking no args');
   }
   return signatures.map(signature => signature.map(adopt));
 }
 
 /**
- * The parameter signatures as one key fragment. Each signature is delimited by its own brackets rather than
+ * The signatures as one key fragment. Each signature is delimited by its own brackets rather than
  * joined with a separator, so a callable answering to one empty call and one answering to no call
  * at all are told apart.
  */

@@ -21,7 +21,7 @@ export type ServiceDescriptorBuilder<T, Lifetime, Slots extends Slot, Described>
 
 /**
  * Choosing what produces the service. Each door takes the implementation together with its own
- * type — the node carrying its parameter signatures — and takes only implementations that produce `T`,
+ * type — the node carrying its signatures — and takes only implementations that produce `T`,
  * so a registration that could not satisfy its own address is refused where it is written. Taking
  * a door completes the registration: the result is a {@link ServiceDescriptor}.
  */

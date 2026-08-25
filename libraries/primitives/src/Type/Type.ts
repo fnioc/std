@@ -423,7 +423,7 @@ export namespace Type {
     return substituteType(type, substitutions);
   }
 
-  /** The lenient no-parameter spelling: `[]` names no call, so it reads as one empty signature. */
+  /** The lenient no-arg spelling: `[]` names no call, so it reads as one empty signature. */
   function atLeastOneSignature(signatures: Type.Signatures): Type.Signatures {
     return signatures.length ? signatures : [[]];
   }
@@ -433,11 +433,11 @@ export namespace Type {
   // #region types
 
   /**
-   * The parameter lists a callable answers to — one signature per overload, in declaration order, each signature
-   * holding that overload's parameter types in order.
+   * The signatures a callable answers to — one signature per overload, in declaration order, each signature
+   * holding that overload's arg types in order.
    *
    * @remarks
-   * An un-overloaded callable carries exactly one signature and a parameterless one carries one EMPTY
+   * An un-overloaded callable carries exactly one signature, and one that takes no args carries one EMPTY
    * signature — a node never holds `[]`, which the factories accept only as a lenient spelling of `[[]]`.
    */
   export type Signatures = ReadonlyArray<readonly Type[]>;
