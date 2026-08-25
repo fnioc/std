@@ -71,17 +71,11 @@ export namespace ServiceManifestMetricsAugmentations {
     // of every MetricsConfig marker addMetricsConfig registered.
     m = m.add(typefor<IMetricListenerConfigFactory>(), MetricListenerConfigFactory, Type.ctor(typefor<IMetricListenerConfigFactory>(), [[collectionType(typefor<MetricsConfig>())]]), 'singleton');
     if (configure) {
-      // The cast works around a TS structural-comparison depth limit -- see
-      // clearMetricsListeners in @rhombus-std/diagnostics.core for the full
-      // explanation. `MetricsBuilder`'s ctor takes the Lifetime-erased
-      // `Manifest`; `m`'s huge `addClass`/`addFactory` overload surface
-      // (di.core's descriptor augmentation merge) pushes the
-      // direct-assignment check past TS's recursion budget.
-      const builder = new MetricsBuilder(m as Manifest<unknown>);
+      const builder = new MetricsBuilder(m);
       configure(builder);
       // The chain is immutable: everything `configure` registered lives on the
       // manifest the BUILDER now holds, not on `m`.
-      m = builder.services as Manifest<unknown>;
+      m = builder.services;
     }
     return m;
   }
@@ -105,10 +99,10 @@ export namespace ServiceManifestTracingAugmentations {
       'singleton');
     if (configure) {
       // See the addMetrics cast above for why this is needed.
-      const builder = new TracingBuilder(m as Manifest<unknown>);
+      const builder = new TracingBuilder(m);
       configure(builder);
       // Immutable chain -- read back what the builder registered (see addMetrics).
-      m = builder.services as Manifest<unknown>;
+      m = builder.services;
     }
     return m;
   }

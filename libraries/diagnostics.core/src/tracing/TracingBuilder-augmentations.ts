@@ -49,10 +49,7 @@ export namespace TracingBuilderAugmentations {
 
   /** Removes all {@link ActivityListenerBuilder} registrations from the builder. */
   export function clearTracingListeners<Self extends ITracingBuilder>(this: Self): Self {
-    // See the sibling MetricsBuilder-augmentations.ts `clearMetricsListeners`
-    // comment: the cast works around a TS structural-comparison depth limit on
-    // `Manifest`'s large overload surface, not a real type error.
-    this.services = this.services.removeAll<ActivityListenerBuilder>() as typeof this.services;
+    this.services = this.services.removeAll<ActivityListenerBuilder>();
     return this;
   }
 
