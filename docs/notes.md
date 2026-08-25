@@ -177,7 +177,7 @@ land; delete the file when empty.
       `add<ILogger>(ConsoleLogger, 'singleton')` emits `.add(…)` while `add<IRepo<Generic<'1'>>>(ThingRepo)`
       emits `.addValue(…)` — same fixture, arity the only difference, and the second is the silent
       wrong door this ruling closes. Two `tests/di.registration.ttsc.e2e` failures are this.
-- [ ] **`expected.txt` regeneration owed** (both `examples.app.*`). The demos' printed labels moved
+- [x] **`expected.txt` regeneration — SATISFIED by `76801472`, verified 2026-08-24 (both apps build and their output byte-matches the checked-in goldens).** Was: (both `examples.app.*`). The demos' printed labels moved
       with the provider vocabulary, and one line changed VALUE as well as text: `resolve` of a
       registered-but-unbuildable service now throws where it printed `undefined`, because a chosen
       union member's build failure never falls through to the undefined tail. The files are a
@@ -451,7 +451,7 @@ land; delete the file when empty.
       guard tree in di.core's dist/stage looks wrong only once the 5th shape enters. `addMany`
       stands unchanged meanwhile. Fork to decide: chase the guard-composition defect in
       transforms/ mergesynth, or sidestep with a hand-authored merge strategy for the collision.
-- [ ] **examples.app.{with,without}-transformer red (TS2769)** — registration-demo/resolution-demo
+- [x] **NO LONGER REPRODUCES, verified 2026-08-24 — examples.app.{with,without}-transformer red (TS2769)**; the modernization landed in `61645a26`/`d20d524a`/`76801472`. Was: — registration-demo/resolution-demo
       call `new DefaultManifest(model, ...)`-era shapes: `LifetimeModel<unknown>` doesn't match the
       Iterable ctor overloads. Fallout of the ctor/contract rework landing after the examples were
       greened; root `bun run build` fails at these two apps only. Fix = semantics-only call-site
