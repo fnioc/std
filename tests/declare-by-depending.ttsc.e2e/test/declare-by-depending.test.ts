@@ -55,7 +55,7 @@ const goBuildTmp = process.env.GOTMPDIR ?? join(homedir(), '.cache', 'fnioc-ttsc
 const COLD_BUILD_MS = 600_000;
 
 // A lone typefor<T>() over a local interface — the observable both fixtures share:
-// lowered to Type.imported("IWidget", "@fixture/consumer/tokens/app") (the
+// lowered to Type.imported("IWidget", "@fixture/consumer/private/app") (the
 // named-package consumer's package-qualified self-import) when the primitive
 // stages activate, left as a bare typefor() call when they do not.
 const APP_SOURCE = `
@@ -184,7 +184,7 @@ describe.skipIf(!toolchainReady)('declare-by-depending through real ttsc', () =>
   test('a direct di.extras dep spawns the always-on host and lowers typefor', () => {
     // Auto-discovery spawned the host off di.extras's ttsc.plugin marker; the
     // always-on host lowered typefor<IWidget>() to its `Type.imported` tree.
-    expect(consumerApp).toContain('Type.imported("IWidget", "@fixture/consumer/tokens/app")');
+    expect(consumerApp).toContain('Type.imported("IWidget", "@fixture/consumer/private/app")');
     expect(consumerApp).not.toContain('typefor');
   });
 

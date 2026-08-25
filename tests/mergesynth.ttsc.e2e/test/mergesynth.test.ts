@@ -376,7 +376,7 @@ describe.skipIf(!toolchainReady)('mergesynth on the collapsed host — emitted J
   });
 
   test('typefor lowering is byte-identical on the collapsed host', () => {
-    expect(app).toContain('Type.imported("IAlpha", "@fixture/mergesynth-consumer/tokens/app")');
+    expect(app).toContain('Type.imported("IAlpha", "@fixture/mergesynth-consumer/private/app")');
     expect(app).not.toContain('typefor');
   });
 });

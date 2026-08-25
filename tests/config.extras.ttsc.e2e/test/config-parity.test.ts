@@ -355,7 +355,7 @@ describe.skipIf(!toolchainReady)('ttsc/Go config withType->withSchema byte-parit
 
   test('inline: a member naming another interface stays that name, un-expanded', () => {
     // `Inner` keeps its address; its own member never enters the tree.
-    const inner = nameOf('Type.imported("Inner", "config-inline-consumer/tokens/named-member")');
+    const inner = nameOf('Type.imported("Inner", "config-inline-consumer/private/named-member")');
     expect(flat('named-member')).toContain(
       `.withSchema(Type.object({ inner: ${inner} }))`,
     );

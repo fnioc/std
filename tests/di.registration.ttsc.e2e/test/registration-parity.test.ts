@@ -316,12 +316,12 @@ describe.skipIf(!toolchainReady)('registration sugar — addClass / addFactory /
     // Each verb takes the service type as its first argument, resolved from the
     // generated const module — the same Type factories a caller writing this
     // without the transform would reach for.
-    const fooType = constFor(typeModule, 'Type.imported("IFoo", "di-reg-app/tokens/app")');
-    const fooClass = constFor(typeModule, 'Type.imported("Foo", "di-reg-app/tokens/app")');
-    const dep = constFor(typeModule, 'Type.imported("IDep", "di-reg-app/tokens/app")');
-    const barType = constFor(typeModule, 'Type.imported("IBar", "di-reg-app/tokens/app")');
-    const barImpl = constFor(typeModule, 'Type.imported("BarImpl", "di-reg-app/tokens/app")');
-    const bazType = constFor(typeModule, 'Type.imported("IBaz", "di-reg-app/tokens/app")');
+    const fooType = constFor(typeModule, 'Type.imported("IFoo", "di-reg-app/private/app")');
+    const fooClass = constFor(typeModule, 'Type.imported("Foo", "di-reg-app/private/app")');
+    const dep = constFor(typeModule, 'Type.imported("IDep", "di-reg-app/private/app")');
+    const barType = constFor(typeModule, 'Type.imported("IBar", "di-reg-app/private/app")');
+    const barImpl = constFor(typeModule, 'Type.imported("BarImpl", "di-reg-app/private/app")');
+    const bazType = constFor(typeModule, 'Type.imported("IBaz", "di-reg-app/private/app")');
     // The implementer type is OBSERVED from the argument — the emitted call
     // carries the very node a hand author would spell as the third argument.
     const fooCtorType = constFor(typeModule, `Type.ctor(${fooClass}, [[${dep}]])`);
@@ -347,11 +347,11 @@ describe.skipIf(!toolchainReady)('registration sugar — addClass / addFactory /
 
   test('the chain doors observe their implementer, emitting the two-argument call a hand-writer would spell', () => {
     const typeModule = readTypeModule(projDir, 'dist-inline');
-    const fooType = constFor(typeModule, 'Type.imported("IFoo", "di-reg-app/tokens/app")');
-    const fooClass = constFor(typeModule, 'Type.imported("Foo", "di-reg-app/tokens/app")');
-    const dep = constFor(typeModule, 'Type.imported("IDep", "di-reg-app/tokens/app")');
-    const barType = constFor(typeModule, 'Type.imported("IBar", "di-reg-app/tokens/app")');
-    const barImpl = constFor(typeModule, 'Type.imported("BarImpl", "di-reg-app/tokens/app")');
+    const fooType = constFor(typeModule, 'Type.imported("IFoo", "di-reg-app/private/app")');
+    const fooClass = constFor(typeModule, 'Type.imported("Foo", "di-reg-app/private/app")');
+    const dep = constFor(typeModule, 'Type.imported("IDep", "di-reg-app/private/app")');
+    const barType = constFor(typeModule, 'Type.imported("IBar", "di-reg-app/private/app")');
+    const barImpl = constFor(typeModule, 'Type.imported("BarImpl", "di-reg-app/private/app")');
     expect(withInline).toContain(`.describe(${fooType}).asClass(Foo, ${constFor(typeModule, `Type.ctor(${fooClass}, [[${dep}]])`)})`);
     // The factory's own argument is a lambda, so its call is pinned line-wise
     // rather than whole: the address it opens on and the observed producer type.
@@ -468,9 +468,9 @@ describe.skipIf(!toolchainReady)("implementation type — a hand-writer's explic
     // const answers to one call, so it spells flat — the instance type followed
     // by that one dependency, each itself a const.
     const module = readTypeModule(handProjDir, 'dist-inline');
-    const widget = constFor(module, 'Type.imported("IWidget", "di-reg-hand/tokens/hand")');
-    const widgetClass = constFor(module, 'Type.imported("Widget", "di-reg-hand/tokens/hand")');
-    const clock = constFor(module, 'Type.imported("IClock", "di-reg-hand/tokens/hand")');
+    const widget = constFor(module, 'Type.imported("IWidget", "di-reg-hand/private/hand")');
+    const widgetClass = constFor(module, 'Type.imported("Widget", "di-reg-hand/private/hand")');
+    const clock = constFor(module, 'Type.imported("IClock", "di-reg-hand/private/hand")');
     const implementerType = constFor(module, `Type.ctor(${widgetClass}, [[${clock}]])`);
     const want = `.add(${widget}, Widget, ${implementerType}, "singleton")`;
     expect(handWithInline).toContain(want);
