@@ -610,14 +610,14 @@ export const bad = typefor<IThing>().return;
 	}
 }
 
-// TestTypeforAggregateCarriesOnlyItsElement pins the arity an aggregate spelling
-// derives at. The lib declares `Iterable<T, TReturn = any, TNext = any>` and
+// TestTypeforListCarriesOnlyItsElement pins the arity a list spelling derives
+// at. The lib declares `Iterable<T, TReturn = any, TNext = any>` and
 // `AsyncIterable` identically, and a bare `Iterable<E>` reference still resolves
 // all three arguments — so the derivation must keep only the element. The runtime
-// `named` door mints an aggregate kind from a SINGLE argument under `global`, so a
+// `named` door mints a list kind from a SINGLE argument under `global`, so a
 // spelling that carried the defaulted tail would land as an ordinary named type
-// that no aggregate registration answers.
-func TestTypeforAggregateCarriesOnlyItsElement(t *testing.T) {
+// that no list registration answers.
+func TestTypeforListCarriesOnlyItsElement(t *testing.T) {
 	src := `import { typefor } from '@rhombus-std/primitives.extras';
 interface IThing {}
 export const arr = typefor<IThing[]>();

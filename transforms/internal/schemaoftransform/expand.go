@@ -39,7 +39,7 @@ const (
 
 	MessageUnsupportedType = "unsupported type for an expanded member. A member is either named -- " +
 		"kept as its own address -- or one of the structural spellings the Type grammar " +
-		"admits: an object, a union, a tuple, an aggregate, or a literal. A callable, and an " +
+		"admits: an object, a union, a tuple, a list, or a literal. A callable, and an " +
 		"anonymous structure with no nameable shape, are neither."
 
 	MessagePrivateOnlySurface = "no member of this type can be written from outside it -- each is a #-named " +

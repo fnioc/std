@@ -14,7 +14,7 @@ import (
 // string. It carries exactly the kinds the flat walk ever produced: a named type
 // (with its generic arguments), a literal value, a literal union, an
 // open-generic hole placeholder, and a keyed type (the `Keyed<T, K>` brand read
-// in a nested position — an aggregate element, a generic argument).
+// in a nested position — a list element, a generic argument).
 type TypeNode struct {
 	Kind TypeNodeKind
 

@@ -10,15 +10,15 @@ import (
 	"github.com/fnioc/std/transforms/internal/tokentext"
 )
 
-// collectionTokenBases are the default-lib aggregate spellings whose token keeps
+// collectionTokenBases are the default-lib list spellings whose token keeps
 // only the ELEMENT type argument.
 //
 // The lib declares `Iterable<T, TReturn = any, TNext = any>` and `AsyncIterable`
 // the same way, and a bare `Iterable<E>` reference still resolves all three — so
 // without trimming, the two defaulted tail arguments ride along into the token and
-// the aggregate is never spelled as one: the `named` door mints an aggregate kind
-// only from a SINGLE argument under `global`, so a three-argument spelling lands as
-// an ordinary named type that no aggregate registration answers.
+// the list is never spelled as one: the `named` door mints a list kind only from
+// a SINGLE argument under `global`, so a three-argument spelling lands as an
+// ordinary named type that no list registration answers.
 var collectionTokenBases = map[string]bool{"Array": true, "AsyncIterable": true, "Iterable": true}
 
 // This file holds the shared token-derivation helpers (intrinsic / literal / base

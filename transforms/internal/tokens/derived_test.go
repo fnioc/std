@@ -146,11 +146,11 @@ export type Keyed<T, K extends string> = T & { readonly [KEY]?: K };
 
 export interface ImportedType { readonly kind: "imported"; readonly name: string; readonly from: string; readonly typeArgs?: Type[]; }
 export interface GlobalType { readonly kind: "global"; readonly name: string; readonly typeArgs?: Type[]; }
-export interface AggregateType { readonly kind: "aggregate"; readonly element: Type; }
+export interface ListType { readonly kind: "list"; readonly element: Type; }
 export interface ConstructorType { readonly kind: "ctor"; readonly instance: Type; readonly args: Type[][]; }
 export interface FunctionType { readonly kind: "func"; readonly returns: Type; readonly args: Type[][]; }
 export interface TagType { readonly kind: "tag"; readonly type: Exclude<Type, TagType>; readonly tag: string; }
-export type Type = ImportedType | GlobalType | AggregateType | ConstructorType | FunctionType | TagType;
+export type Type = ImportedType | GlobalType | ListType | ConstructorType | FunctionType | TagType;
 
 declare const keyedType: Keyed<Type, "startup-validation-target">;
 declare const optKeyed: Keyed<ImportedType, "k"> | undefined;
