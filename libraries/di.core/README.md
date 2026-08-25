@@ -2,7 +2,7 @@
 
 **The dependency-injection abstractions a library depends on to declare registrations, without pulling in a resolution engine.**
 
-`@rhombus-std/di.core` carries the `Manifest` — an immutable registration ledger — the `Type`-addressed registration verbs, the fluent builder those verbs are built from, and the whole error taxonomy a container failure can raise. If you're writing an application, you'll normally install [`@rhombus-std/di`](../di/README.md) instead, which re-exports everything here plus `ServiceProvider`, the engine that actually seals a manifest and resolves against it. Install `di.core` directly when you're authoring a library that needs to _describe_ registrations — a plugin, a set of default services, a test helper — without depending on how they get resolved.
+`@rhombus-std/di.core` carries the `Manifest` — an immutable registration ledger — the `Type`-addressed registration verbs, the fluent builder those verbs are built from, and the whole error taxonomy a container failure can raise. If you're writing an application, you'll normally install [`@rhombus-std/di`](../di/README.md) instead, which pulls this package in and adds the engine that seals a manifest and resolves against it. Install `di.core` directly when you're authoring a library that needs to _describe_ registrations — a plugin, a set of default services, a test helper — without depending on how they get resolved.
 
 ## Install
 
@@ -30,46 +30,56 @@ class ConsoleGreeter implements IGreeter {
   }
 }
 
-const manifest = new DefaultManifest()
-  .add(IGreeter, register => register.asClass(ConsoleGreeter).withSignature());
+const manifest = new DefaultManifest<unknown>().add(IGreeter, ConsoleGreeter, Type.ctor(IGreeter, [[]]));
 ```
 
-The builder lambda (`register => register.asClass(...).withSignature(...)`) chooses an implementation (`asClass`/`asFactory`/`asValue`), then names its call shape — `withSignature(...paramTypes)` for one row of argument types, `withSignatures(...rows)` for several, or `withType(implementerType)` for the whole composed constructor/function type — exactly one of the three, ever — and optionally sets a lifetime scope (`withLifetime`) or a resolution key (`taggedAs`).
+`add(serviceType, ctor, ctorType, ...lifetime)` is the flat form — it states a whole registration in one call, `ctorType` carrying the constructor's own parameter signatures so they're read from one place. `manifest.describe(serviceType)` opens the same registration as a chain instead, useful once a lifetime or a key is in play:
 
-The same registration can also be stated in one call, with the implementer's whole composed type given directly: `manifest.addClass(IGreeter, ConsoleGreeter, Type.ctor(IGreeter, [[]]))` — `addClass`/`addFactory`/`addValue` take the implementer's whole composed `Type` as `implementerType` (`Type.ctor(IGreeter, [[]])` for a no-argument constructor, `Type.ctor(IGreeter, [[TypeA, TypeB]])` for one two-argument overload) instead of a builder lambda.
+```ts
+type Lifetime = 'singleton' | 'request';
 
-`di.core` alone can declare and inspect a manifest, but has nothing that resolves against one — that's [`@rhombus-std/di`](../di/README.md)'s `build()`.
+let manifest = new DefaultManifest<Lifetime>();
+manifest = manifest.add(
+  manifest.describe(IGreeter).asClass(ConsoleGreeter, Type.ctor(IGreeter, [[]])).withLifetime('singleton'),
+);
+```
+
+`describe(serviceType)` chooses an implementer through one of the `as*` doors (`asClass`/`asFactory`/`asValue`), then optionally refines it with `withLifetime(lifetime)` and `taggedAs(key)`, in either order. Once a door is taken the chain node _is_ a `ServiceDescriptor` — hand it to `add`/`tryAdd`/`replace`, hold it in a variable, or build several in a helper before registering them together. A lifetime vocabulary that admits `undefined` (like `unknown`) lets the chain skip `withLifetime` entirely; a vocabulary of named lifetimes withholds descriptor-ness until `withLifetime` is called.
+
+`di.core` alone can declare and inspect a manifest, but has nothing that resolves against one — that's [`@rhombus-std/di`](../di/README.md)'s job.
 
 ## Key exports
 
 | Export                                                     | What it is                                                                                                                                                            |
-| ---------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `Manifest<Scopes>`                                         | The interface every registration verb works against: an immutable, iterable chain of `ServiceDescriptor`s, newest registration first.                                 |
-| `DefaultManifest<Scopes>`                                  | The concrete `Manifest` — start a registration chain with `new DefaultManifest()`.                                                                                    |
-| `add` / `addClass` / `addFactory` / `addValue`             | Register a service, either through the fluent builder (`add(type, register => ...)`) or by naming the implementation and its call shape directly.                     |
-| `tryAdd` / `tryAddClass` / `tryAddFactory` / `tryAddValue` | The same verbs, but a no-op when a matching registration (same address, key, and implementation shape) already exists.                                                |
-| `replaceClass` / `replaceFactory` / `replaceValue`         | Remove any existing registration under the address (and key), then add the new one.                                                                                   |
-| `remove` / `replace` / `removeAll` / `addMany`             | Lower-level descriptor operations: drop or swap one descriptor by identity, drop everything filed under an address, or add several descriptors at once.               |
-| `ServiceDescriptor`                                        | The registration primitive. `ServiceDescriptor.ctor` / `.factory` / `.value` construct one directly; `.matches` / `.equals` compare two.                              |
-| `Type` (re-exported from `primitives`)                     | The address every registration is filed under — `Type.imported`, `Type.tag`, `Type.array`, and the rest of the factories.                                             |
-| `Inject<T, K>`                                             | Pins a constructor parameter's service type to a specific address, overriding what it would otherwise derive from the parameter's own declared type.                  |
-| `Hole<N, C>` / `$<N>`                                      | Marks an open-generic slot in a registration template, closed by whatever type the request supplies. `N` numbers the hole; `C` constrains what may close it.          |
-| `Keyed<T, K>`                                              | Tags a constructor parameter with a resolution key, distinguishing one registration of a type from another.                                                           |
-| `Typeof<T>`                                                | Marks a constructor parameter that receives `T`'s `Type` itself, rather than a resolved instance of it — for something like a generic logger naming its own category. |
-| `DiError`                                                  | The abstract root every container error extends. Catch this to tell a container failure from anything else with one check, without naming which failure it was.       |
-| `UnsatisfiableError` / `CycleError`                        | Nothing can produce the requested type; or a resolution loops back on itself.                                                                                         |
-| `ManifestValidationError`                                  | Raised by an up-front validation pass — carries every registration that failed to lower, not just the first.                                                          |
-| `IServiceProvider`                                         | The resolution interface a library depends on to pull services out of a sealed container, without depending on the engine that seals it.                              |
-| `IServiceScope` / `IServiceScopeFactory` / `ScopeCache`    | The per-request resolution scope contract.                                                                                                                            |
+| ------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `Manifest<Lifetime>`                                        | The interface every registration verb works against: an immutable, iterable chain of `ServiceDescriptor`s, newest registration first.                               |
+| `DefaultManifest<Lifetime>`                                  | The concrete `Manifest` — start a registration chain with `new DefaultManifest()`.                                                                                    |
+| `add` / `tryAdd` / `replace`                                 | Register a service, either through the flat form (`add(type, ctor, ctorType, ...lifetime)`, and the matching `factory`/value shapes) or via `describe(type)`'s chain. `tryAdd` is a no-op when the service type already has a registration; `replace` swaps out the existing one. |
+| `addValue` / `tryAddValue` / `replaceValue`                  | The value-registering shapes as their own verbs — the door that forces a callable down the value path instead of being read as a factory.                            |
+| `describe(serviceType)`                                      | Opens a registration chain for `serviceType`: an `as*` door chooses the implementer, `withLifetime`/`taggedAs` refine it, and the result is a `ServiceDescriptor`.    |
+| `remove` / `removeAll` / `addMany` / `apply`                 | Lower-level descriptor operations: drop one descriptor or every descriptor under an address, or fold several descriptors in at once.                                 |
+| `ServiceDescriptor`                                          | The registration primitive. `ServiceDescriptor.ctor` / `.factory` / `.value` construct one directly; `.matches` / `.equals` compare two.                              |
+| `Type` (re-exported from `primitives`)                       | The address every registration is filed under — `Type.imported`, `Type.tag`, `Type.ctor`, and the rest of the factories.                                              |
+| `Inject<T, K>`                                                | Pins a constructor parameter's service type to a specific address, overriding what it would otherwise derive from the parameter's own declared type.                 |
+| `Generic<L, C>`                                               | Marks an open-generic slot in a registration template, closed by whatever type the request supplies. `L` labels the hole so several can be told apart; `C` constrains what may close it. |
+| `Keyed<T, K>`                                                 | Tags a constructor parameter with a resolution key, distinguishing one registration of a type from another.                                                          |
+| `Typeof<T>`                                                   | Marks a constructor parameter that receives `T`'s `Type` itself, rather than a resolved instance of it — for something like a generic logger naming its own category. |
+| `IServiceProvider`                                            | The resolution interface a library depends on to pull services out of a sealed container: `getService(serviceType)`, throwing when nothing can produce it — plus the `resolve(serviceType)` / `resolveMany(serviceType)` augmentations `di.core` layers on top of it. |
+| `LifetimeModel<Lifetime>`                                     | The scope/lifetime pattern a container runs on. `LifetimeModel.noop` is the built-in model that retains nothing — every registration is constructed fresh every time. |
+| `ScopeFactory<Args>`                                          | The interface a lifetime model publishes under `ScopeFactory.address` when it supports opening scopes — resolving that address hands back the opener itself.        |
+| `DiError`                                                     | The abstract root every container error extends. Catch this to tell a container failure from anything else with one check, without naming which failure it was.      |
+| `UnsatisfiableError` / `CycleError`                           | Nothing can produce the requested type; or a resolution loops back on itself.                                                                                        |
+| `LifetimeModelError` / `ScopeTagUnmatchedError`               | The installed lifetime model threw while realizing a service; or a registration is kept by a scope tag that no open scope carries.                                    |
+| `ManifestValidationError` / `ValidationFailure`               | Raised by an up-front validation pass — carries every registration that failed to lower, not just the first.                                                          |
 
 ## How it fits
 
-`@rhombus-std/di.core` depends only on `@rhombus-std/primitives`. If you're building an application, install [`@rhombus-std/di`](../di/README.md) instead — it re-exports everything here plus `ServiceProvider`, the concrete engine. Install `di.core` directly when you're authoring a library that needs to describe registrations — a plugin, a set of default services, a test helper — without depending on how they get resolved.
+`@rhombus-std/di.core` depends only on `@rhombus-std/primitives`. If you're building an application, install [`@rhombus-std/di`](../di/README.md) instead — it pulls this package in and adds `ServiceProvider`, the concrete engine that seals a manifest and resolves against it. Install `di.core` directly when you're authoring a library that needs to describe registrations — a plugin, a set of default services, a test helper — without depending on how they get resolved.
 
-[`@rhombus-std/di.extras`](../di.extras/README.md) is the companion authoring package: it supplies tokenless (`<T>`-only, no explicit `Type` argument) forms of the verbs above, for a program built through this repo's Go/ttsc transform. `di.core`'s explicit, address-first verbs are the complete, hand-writable API either way.
+[`@rhombus-std/di.extras`](../di.extras/README.md) is the companion authoring package: it supplies type-argument-derived forms of the verbs above (`add<T>(...)` instead of `add(typeof T, ...)`), for a program built through this repo's Go/ttsc transform. `di.core`'s explicit, address-first verbs are the complete, hand-writable API either way.
 
 ## Notes
 
-- The manifest is immutable: every verb returns a new `Manifest` rather than mutating the receiver, so `manifest.addClass(...)` alone, with its result discarded, registers nothing — always reassign or chain.
-- `IServiceProvider` and `IServiceScope` describe more surface than any implementation has finished yet — several members are declared ahead of the lifetime and disposal model they depend on. `@rhombus-std/di`'s `ServiceProvider` is the concrete implementation; see its README for which members work today.
-- A keyed registration composes the key into the address itself (`Type.tag(base, key)`), not as a separate lookup — registering or requesting the same type with a different key names a different address entirely.
+- The manifest is immutable: every verb returns a new `Manifest` rather than mutating the receiver, so `manifest.add(...)` alone, with its result discarded, registers nothing — always reassign or chain.
+- A keyed registration composes the key into the address itself (`Type.tag(base, key)`, what `taggedAs(key)` does on a `describe` chain), not as a separate lookup — registering or requesting the same type with a different key names a different address entirely.
+- `IServiceProvider` describes exactly one member — `getService(serviceType)` — so an implementation has nothing partially finished to work around; `di.core` itself layers `resolve(serviceType)` and `resolveMany(serviceType)` on top of it as augmentations, so both are available on any `IServiceProvider` without depending on the resolution engine that built one.
