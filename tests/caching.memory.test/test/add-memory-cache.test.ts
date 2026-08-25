@@ -76,12 +76,16 @@ describe('getMemoryCacheManifest', () => {
     expect(cache).toBeInstanceOf(MemoryCache);
   });
 
-  // The reference TryAdd semantics -- an earlier IMemoryCache registration survives a later
-  // addMemoryCache call -- do not carry over to a manifest-returning function: getMemoryCacheManifest
-  // builds its own registration from an empty manifest, with no visibility into what a consumer has
-  // already registered, so its tryAdd only ever protects against a second call to
-  // getMemoryCacheManifest itself, not against a consumer's own prior registration. Preserving the
-  // original guarantee would need either a consumer-supplied manifest parameter (the shape this
-  // conversion moves away from) or a different merge primitive; flagged rather than decided here.
-  test.skip('keeps an earlier IMemoryCache registration (the reference TryAdd semantics)', () => {});
+  test('keeps an earlier IMemoryCache registration (the reference TryAdd semantics)', () => {
+    const sentinel = { marker: 'pre-registered' };
+    let services: Manifest<unknown> = Manifest.empty<unknown>().addValue(MEMORY_CACHE_TYPE, sentinel);
+
+    // Spreading into tryAdd's rest-parameter overload runs the existing-registration
+    // check against the CALLER's own manifest -- unlike addMany, which appends
+    // unconditionally -- so the sentinel already held for MEMORY_CACHE_TYPE survives.
+    services = services.tryAdd(...getMemoryCacheManifest());
+
+    const resolved = di.usingLifetimeModel(LifetimeModel.noop).usingManifest(services).build().resolve(MEMORY_CACHE_TYPE);
+    expect(resolved).toBe(sentinel);
+  });
 });
