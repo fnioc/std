@@ -1,7 +1,7 @@
 {
   "name": "@rhombus-std/fileproviders.physical",
   "version": "0.0.0",
-  "description": "Disk-backed file provider ported from ME.FileProviders.Physical: PhysicalFileProvider serves IFileInfo/IDirectoryContents off the on-disk file system and watches exact files and directory prefixes for changes. Depends on @rhombus-std/fileproviders.core and @rhombus-std/primitives.",
+  "description": "Disk-backed file provider: PhysicalFileProvider serves IFileInfo/IDirectoryContents off the on-disk file system and watches exact files and directory prefixes for changes. Depends on @rhombus-std/fileproviders.core and @rhombus-std/primitives.",
   "keywords": [
     "fileproviders",
     "filesystem",

@@ -1,7 +1,7 @@
 {
   "name": "@rhombus-std/hosting.core",
   "version": "0.0.0",
-  "description": "Hosting abstractions: IHost/IHostedService/IHostedLifecycleService/BackgroundService, IHostApplicationLifetime/IHostLifetime, the IHostBuilder/IHostApplicationBuilder builder contracts, HostBuilderContext/IHostEnvironment, and the addHostedService registration augmentation.",
+  "description": "Hosting abstractions: IHost/IHostedService/IHostedLifecycleService/BackgroundService, IHostApplicationLifetime/IHostLifetime, the IHostBuilder/IHostApplicationBuilder builder contracts, HostBuilderContext/IHostEnvironment, and getHostedServiceManifest -- the hosted-service registration, published as a manifest to merge into your own.",
   "keywords": [
     "hosting",
     "generic-host",

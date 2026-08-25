@@ -1,7 +1,7 @@
 {
   "name": "@rhombus-std/fileproviders.composite",
   "version": "0.0.0",
-  "description": "Composite file provider ported from ME.FileProviders.Composite: CompositeFileProvider/CompositeDirectoryContents fold multiple IFileProvider instances into one, trying each in registration order. Depends on @rhombus-std/fileproviders.core and @rhombus-std/primitives.",
+  "description": "Composite file provider: CompositeFileProvider/CompositeDirectoryContents fold multiple IFileProvider instances into one, trying each in registration order. Depends on @rhombus-std/fileproviders.core and @rhombus-std/primitives.",
   "keywords": [
     "fileproviders",
     "filesystem",

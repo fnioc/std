@@ -1,7 +1,7 @@
 {
   "name": "@rhombus-std/logging.core",
   "version": "0.0.0",
-  "description": "Logging abstractions ported from ME.Logging.Abstractions: ILogger/ILoggerFactory/ILoggerProvider/ILoggingBuilder + LogLevel/EventId, plus the real-runtime logInformation/logError/... convenience wrappers. Depends on @rhombus-std/di.core for the ServiceManifest type only.",
+  "description": "Logging abstractions: ILogger/ILoggerFactory/ILoggerProvider/ILoggingBuilder + LogLevel/EventId, plus the real-runtime logInformation/logError/... convenience wrappers. Depends on @rhombus-std/di.core for the Manifest type ILoggingBuilder wraps.",
   "keywords": [
     "logging",
     "abstractions",

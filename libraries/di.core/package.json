@@ -1,7 +1,7 @@
 {
   "name": "@rhombus-std/di.core",
   "version": "10.1.0",
-  "description": "The ioc abstractions substrate: the dependency-signature data format, the slot/token surface + helpers, and the concrete registration builder (ServiceManifest) a library author depends on to author registrations without the di resolution engine. Depends only on the primitives leaf for the augmentation registry.",
+  "description": "The ioc abstractions substrate: the dependency-signature data format, the slot/token surface + helpers, and the concrete registration builder (Manifest) a library author depends on to author registrations without the di resolution engine. Depends only on the primitives leaf for the augmentation registry.",
   "keywords": [
     "dependency-injection",
     "di",

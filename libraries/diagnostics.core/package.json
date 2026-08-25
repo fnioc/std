@@ -1,7 +1,7 @@
 {
   "name": "@rhombus-std/diagnostics.core",
   "version": "0.0.0",
-  "description": "Diagnostics abstractions ported from ME.Diagnostics.Abstractions: the metrics/tracing configuration surface (MetricsOptions/TracingOptions, InstrumentRule/TracingRule, MeterScope/ActivitySourceScopes, IMetricsBuilder/ITracingBuilder) plus the builder extension functions. No metrics/tracing runtime behind it.",
+  "description": "Diagnostics abstractions: the metrics/tracing configuration surface (MetricsOptions/TracingOptions, InstrumentRule/TracingRule, MeterScope/ActivitySourceScopes, IMetricsBuilder/ITracingBuilder) plus the builder extension functions. No metrics/tracing runtime behind it.",
   "keywords": [
     "diagnostics",
     "metrics",

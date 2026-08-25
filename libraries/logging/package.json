@@ -1,7 +1,7 @@
 {
   "name": "@rhombus-std/logging",
   "version": "0.0.0",
-  "description": "Logging runtime ported from ME.Logging: LoggerFactory/Logger/NullLogger, LoggerFilterOptions/Rule, and the addLogging augmentation that patches @rhombus-std/di.core's ServiceManifest. Providers are out of scope (see issue #75).",
+  "description": "Logging runtime: LoggerFactory/Logger/NullLogger, LoggerFilterOptions/Rule, and getLoggingManifest -- the logging registrations, published as a manifest to merge into your own. Providers are out of scope.",
   "keywords": [
     "logging",
     "ioc",

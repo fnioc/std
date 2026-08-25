@@ -1,7 +1,7 @@
 {
   "name": "@rhombus-std/diagnostics",
   "version": "0.0.0",
-  "description": "Diagnostics implementation ported from ME.Diagnostics: concrete MetricsBuilder/TracingBuilder, config-binding of MetricsOptions/TracingOptions, and the addMetrics/addTracing service-registration augmentation. The metrics/tracing listener runtime is intentionally not implemented.",
+  "description": "Diagnostics implementation: concrete MetricsBuilder/TracingBuilder, config-binding of MetricsOptions/TracingOptions, and getMetricsManifest/getTracingManifest -- the service registrations, published as a manifest to merge into your own. The metrics/tracing listener runtime is intentionally not implemented.",
   "keywords": [
     "diagnostics",
     "metrics",

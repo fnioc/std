@@ -1,14 +1,14 @@
 // Public entry point for @rhombus-std/diagnostics.
 //
 // Re-exports the family's own core (diagnostics.core's abstractions and
-// rule/options model), the concrete MetricsBuilder/TracingBuilder, and every
-// augmentation set this package installs -- each re-export also runs that
-// module's registerAugmentations side effect, so importing this barrel (even
-// bare, `import "@rhombus-std/diagnostics";`) installs the full surface:
-// addMetrics/addTracing on di.core's Manifest, the config-binding sets on the
-// family's own builders, and the config-bind IConfigureOptions steps. This
-// package MUST keep `"sideEffects": true` so a bundler cannot tree-shake any
-// of it away.
+// rule/options model), the concrete MetricsBuilder/TracingBuilder,
+// getMetricsManifest/getTracingManifest, and every augmentation set this
+// package installs -- each re-export also runs that module's
+// registerAugmentations side effect, so importing this barrel (even bare,
+// `import "@rhombus-std/diagnostics";`) installs the config-binding sets
+// onto the family's own builders and the config-bind IConfigureOptions
+// steps. This package MUST keep `"sideEffects": true` so a bundler cannot
+// tree-shake any of it away.
 //
 // There is no listener/subscription runtime behind any of this (no
 // Meter/Instrument/Activity/ActivitySource) -- resolving the assembled
