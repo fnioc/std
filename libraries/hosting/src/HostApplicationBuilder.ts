@@ -12,8 +12,7 @@
 import { ConfigManager } from '@rhombus-std/config';
 import type { IConfigManager } from '@rhombus-std/config.core';
 import type { ServiceProviderOptions } from '@rhombus-std/di';
-import { DefaultManifest } from '@rhombus-std/di.core';
-import type { Manifest } from '@rhombus-std/di.core';
+import { Manifest } from '@rhombus-std/di.core';
 import type { IMetricsBuilder } from '@rhombus-std/diagnostics.core';
 import { type HostBuilderContext, HostDefaults, type IHost, type IHostApplicationBuilder, type IHostBuilder, type IHostEnvironment } from '@rhombus-std/hosting.core';
 import { LoggingBuilder } from '@rhombus-std/logging';
@@ -38,7 +37,7 @@ export class HostApplicationBuilder implements IHostApplicationBuilder {
   // so they read and write here rather than each carrying a fork of the chain.
   // Handing them a manifest VALUE instead would let `builder.logging.addConsole()`
   // build a chain that `build()` never sees.
-  #services: Manifest<unknown> = new DefaultManifest();
+  #services: Manifest<unknown> = Manifest.empty<unknown>();
   readonly #environment: IHostEnvironment;
   readonly #context: HostBuilderContext;
   readonly #logging: LoggingBuilder;

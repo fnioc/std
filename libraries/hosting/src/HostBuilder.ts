@@ -10,8 +10,7 @@
 
 import { ConfigManager } from '@rhombus-std/config';
 import type { IConfigBuilder } from '@rhombus-std/config.core';
-import { DefaultManifest } from '@rhombus-std/di.core';
-import type { Manifest } from '@rhombus-std/di.core';
+import { Manifest } from '@rhombus-std/di.core';
 import type { HostBuilderContext, IHost, IHostBuilder } from '@rhombus-std/hosting.core';
 import { augment } from '@rhombus-std/primitives';
 import { typefor } from '@rhombus-std/primitives.extras';
@@ -98,7 +97,7 @@ export class HostBuilder implements IHostBuilder {
     hostBuilderContext.config = appConfig;
 
     // 5. Framework services + the user's configure-services delegates.
-    let services: Manifest<unknown> = new DefaultManifest();
+    let services: Manifest<unknown> = Manifest.empty<unknown>();
     const framework = createFrameworkServices();
     services = populateFrameworkServices(services, hostBuilderContext, hostingEnvironment, appConfig, framework);
 
