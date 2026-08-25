@@ -211,12 +211,14 @@ describe.skipIf(!toolchainReady)('inline stage — consumer merge shapes', () =>
 
   test('the sugar fails the build by name when the authoring surface is absent', () => {
     // Nothing can lower here, and passing the call through would emit a call
-    // whose arguments are shifted. The build stops at entry resolution: a
-    // sugar-only member name (addValue) exists nowhere on the program's
-    // Manifest surface, and an entry naming a declaration the program lacks is
-    // a load-time failure that says which member.
+    // whose arguments are shifted. di.extras' own marker entry for `addValue`
+    // resolves fine workspace-wide — the failure is at THIS call site: with no
+    // merge into Manifest's surface, `.addValue<ILogger>(...)` never matches a
+    // real overload, so the loop leaves it untouched. The emit sweep is what
+    // catches a call this name- and arity-shaped surviving to the end of the
+    // pass, and fails the build by name rather than shipping it quietly.
     expect(unwired.status).not.toBe(0);
-    const named = unwired.diagnostics.filter((d) => d.code === 'INLINE_RESOLVE');
+    const named = unwired.diagnostics.filter((d) => d.code === 'INLINE_UNLOWERED_SUGAR');
     expect(named.length).toBeGreaterThan(0);
     for (const diagnostic of named) {
       expect(diagnostic.category).toBe('error');
