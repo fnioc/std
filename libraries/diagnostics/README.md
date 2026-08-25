@@ -35,7 +35,9 @@ services = services.addMany(getMetricsManifest((builder) => {
 }));
 
 const provider = di.usingLifetimeModel(LifetimeModel.noop).usingManifest(services).build();
-const METRICS_OPTIONS_TYPE: Type = Type.from('@rhombus-std/options:IOptions<@rhombus-std/diagnostics.core:MetricsOptions>');
+const METRICS_OPTIONS_TYPE: Type = Type.from(
+  '@rhombus-std/options:IOptions<@rhombus-std/diagnostics.core:MetricsOptions>',
+);
 const options = provider.resolve(METRICS_OPTIONS_TYPE);
 options.value.rules; // the assembled InstrumentRule[]
 ```
@@ -75,15 +77,15 @@ underlying configuration reloads — no manual re-subscription needed.
 
 ## Key exports
 
-| Export                                                                                                     | What it is                                                                                                                                                            |
-| ---------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `getMetricsManifest` / `getTracingManifest`                                                                 | Builds the resolvable, reload-reactive `IOptions<MetricsOptions>` / `IOptions<TracingOptions>` assembly on `Manifest<'singleton'>` and, if given a callback, runs it over a concrete builder. Merge the result into your own manifest. |
-| `MetricsBuilder`, `TracingBuilder`                                                                         | The concrete builder classes handed to your `configure` callback — construct one directly, or use their static `run(manifest, configure)`, if you're not going through `getMetricsManifest`/`getTracingManifest`. |
-| `MetricsBuilderConfigAugmentations.addMetricsConfig`, `TracingBuilderConfigAugmentations.addTracingConfig` | Binds an `IConfig` into the metrics/tracing rule pipeline, reactive to reload.                                                                                        |
-| `MetricsConfigureOptions`, `TracingConfigureOptions`                                                       | The configuration-parsing steps behind `addMetricsConfig`/`addTracingConfig`, exposed for manual wiring.                                                              |
-| `IMetricListenerConfigFactory`, `MetricListenerConfigFactory`                                              | Builds a per-listener merged configuration view out of every `addMetricsConfig` call registered.                                                                      |
-| `ActivityListenerConfigFactory`, `DefaultActivityListenerConfigFactory`                                    | The tracing counterpart of the above.                                                                                                                                 |
-| `MetricsConfig`, `TracingConfig`                                                                           | Markers tracking each configuration source bound in, consumed by the listener configuration factories.                                                                |
+| Export                                                                                                     | What it is                                                                                                                                                                                                                             |
+| ---------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `getMetricsManifest` / `getTracingManifest`                                                                | Builds the resolvable, reload-reactive `IOptions<MetricsOptions>` / `IOptions<TracingOptions>` assembly on `Manifest<'singleton'>` and, if given a callback, runs it over a concrete builder. Merge the result into your own manifest. |
+| `MetricsBuilder`, `TracingBuilder`                                                                         | The concrete builder classes handed to your `configure` callback — construct one directly, or use their static `run(manifest, configure)`, if you're not going through `getMetricsManifest`/`getTracingManifest`.                      |
+| `MetricsBuilderConfigAugmentations.addMetricsConfig`, `TracingBuilderConfigAugmentations.addTracingConfig` | Binds an `IConfig` into the metrics/tracing rule pipeline, reactive to reload.                                                                                                                                                         |
+| `MetricsConfigureOptions`, `TracingConfigureOptions`                                                       | The configuration-parsing steps behind `addMetricsConfig`/`addTracingConfig`, exposed for manual wiring.                                                                                                                               |
+| `IMetricListenerConfigFactory`, `MetricListenerConfigFactory`                                              | Builds a per-listener merged configuration view out of every `addMetricsConfig` call registered.                                                                                                                                       |
+| `ActivityListenerConfigFactory`, `DefaultActivityListenerConfigFactory`                                    | The tracing counterpart of the above.                                                                                                                                                                                                  |
+| `MetricsConfig`, `TracingConfig`                                                                           | Markers tracking each configuration source bound in, consumed by the listener configuration factories.                                                                                                                                 |
 
 ## How it fits
 

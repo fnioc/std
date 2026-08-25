@@ -58,10 +58,10 @@ semantics `tryAdd` always had here — an earlier registration for the same
 type is kept, while configure steps still accumulate:
 
 ```ts
+import type { IMemoryCache } from '@rhombus-std/caching.core';
+import { getMemoryCacheManifest, MEMORY_CACHE_TYPE } from '@rhombus-std/caching.memory';
 import { di } from '@rhombus-std/di';
 import { LifetimeModel, Manifest } from '@rhombus-std/di.core';
-import { getMemoryCacheManifest, MEMORY_CACHE_TYPE } from '@rhombus-std/caching.memory';
-import type { IMemoryCache } from '@rhombus-std/caching.core';
 
 let services: Manifest<unknown> = Manifest.empty<unknown>();
 services = services.tryAdd(...getMemoryCacheManifest((options) => {
@@ -127,17 +127,17 @@ if (options.trackStatistics) {
 
 ## Key exports
 
-| Export                                                                 | What it is                                                                                                                                                  |
-| ---------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `MemoryCache`                                                          | The `IMemoryCache` implementation: `createEntry`, `tryGetValue`, `remove`, `clear`, `compact(percentage)`, `getCurrentStatistics()`, `count`, `keys`.       |
-| `MemoryCacheOptions`                                                   | Configures a `MemoryCache` — `sizeLimit`, `compactionPercentage`, `expirationScanFrequency`, `trackStatistics`, `trackLinkedCacheEntries`, `clock`, `name`. |
-| `MemoryCacheEntryOptions`                                              | Re-exported from `@rhombus-std/caching.core` for convenience — the per-entry options bag.                                                                   |
-| `MemoryDistributedCache`                                               | An `IDistributedCache` implementation backed by a private `MemoryCache`; byte-payload `get`/`set`/`refresh`/`remove`.                                       |
-| `MemoryDistributedCacheOptions`                                        | A `MemoryCacheOptions` subclass defaulting `sizeLimit` to 200 MB.                                                                                           |
-| `getMemoryCacheManifest`, `getDistributedMemoryCacheManifest`         | Build the `IMemoryCache`/`IDistributedCache` registration (plus its options pipeline) as its own manifest — merge the result into your own with `tryAdd`.  |
-| `MEMORY_CACHE_TYPE`, `DISTRIBUTED_CACHE_TYPE`                          | The addresses `getMemoryCacheManifest`/`getDistributedMemoryCacheManifest` register against.                                                                |
-| `MEMORY_CACHE_OPTIONS_TYPE`, `MEMORY_DISTRIBUTED_CACHE_OPTIONS_TYPE`   | The addresses their respective options pipelines resolve at.                                                                                                 |
-| `ISystemClock`                                                         | Interface for supplying a custom `utcNow` — plug in for deterministic expiration in tests.                                                                  |
+| Export                                                               | What it is                                                                                                                                                  |
+| -------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `MemoryCache`                                                        | The `IMemoryCache` implementation: `createEntry`, `tryGetValue`, `remove`, `clear`, `compact(percentage)`, `getCurrentStatistics()`, `count`, `keys`.       |
+| `MemoryCacheOptions`                                                 | Configures a `MemoryCache` — `sizeLimit`, `compactionPercentage`, `expirationScanFrequency`, `trackStatistics`, `trackLinkedCacheEntries`, `clock`, `name`. |
+| `MemoryCacheEntryOptions`                                            | Re-exported from `@rhombus-std/caching.core` for convenience — the per-entry options bag.                                                                   |
+| `MemoryDistributedCache`                                             | An `IDistributedCache` implementation backed by a private `MemoryCache`; byte-payload `get`/`set`/`refresh`/`remove`.                                       |
+| `MemoryDistributedCacheOptions`                                      | A `MemoryCacheOptions` subclass defaulting `sizeLimit` to 200 MB.                                                                                           |
+| `getMemoryCacheManifest`, `getDistributedMemoryCacheManifest`        | Build the `IMemoryCache`/`IDistributedCache` registration (plus its options pipeline) as its own manifest — merge the result into your own with `tryAdd`.   |
+| `MEMORY_CACHE_TYPE`, `DISTRIBUTED_CACHE_TYPE`                        | The addresses `getMemoryCacheManifest`/`getDistributedMemoryCacheManifest` register against.                                                                |
+| `MEMORY_CACHE_OPTIONS_TYPE`, `MEMORY_DISTRIBUTED_CACHE_OPTIONS_TYPE` | The addresses their respective options pipelines resolve at.                                                                                                |
+| `ISystemClock`                                                       | Interface for supplying a custom `utcNow` — plug in for deterministic expiration in tests.                                                                  |
 
 ## How it fits
 
