@@ -199,7 +199,8 @@ export namespace CallSite {
     const planFor = memo((registry: Registry) =>
       memo((serviceType: Type) =>
         memo((args: ReadonlyMap<Type, number>) => {
-          const site = new ToCallSiteVisitor(registry, args).visit(serviceType);
+          const visitor = new ToCallSiteVisitor(registry, args);
+          const site = visitor.visit(serviceType);
           if (site === undefined) {
             // Two failures reach here and a caller acts on them differently: nothing is registered
             // for the request at all, or something is and the graph beneath it has the hole. An
@@ -207,11 +208,18 @@ export namespace CallSite {
             // holes, and a hole on the asking side has nothing to bind to — so it reports the
             // absence it can stand behind.
             const registered = !Type.isOpen(serviceType) && !registry.answering(serviceType).next().done;
+            // The walk's own leaf failure, when it lies beneath serviceType rather than being
+            // serviceType itself, names the actual dependency that could not be met.
+            const missing = visitor.missingDependency;
+            const cause = missing !== undefined && missing !== serviceType
+              ? new UnsatisfiableError(missing, 'nothing in the manifest produces it')
+              : undefined;
             throw new UnsatisfiableError(
               serviceType,
               registered
                 ? 'it is registered, but something it needs is not'
                 : 'nothing in the manifest produces it',
+              cause,
             );
           }
           return site;

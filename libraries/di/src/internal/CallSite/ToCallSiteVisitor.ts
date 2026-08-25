@@ -17,10 +17,22 @@ export class ToCallSiteVisitor extends Type.Visitor<CallSite | undefined> {
   /** A latebound caller's argument types, each naming the call position that supplies it. */
   readonly #args: ReadonlyMap<Type, number> | undefined;
   readonly #cycleGuard = new CycleGuard();
+  /**
+   * The first type this walk found nothing to build from — a true leaf, since a type whose own
+   * recursion fails somewhere beneath it never reaches this field: the deeper failure sets it
+   * first, and a leaf, having recursed into nothing, always attributes squarely to itself.
+   */
+  #missingDependency: Type | undefined;
+
   constructor(registry: Registry, args?: ReadonlyMap<Type, number>) {
     super();
     this.#registry = registry;
     this.#args = args;
+  }
+
+  /** The specific type the whole walk could not build from, once {@link visit} has returned `undefined`. */
+  get missingDependency(): Type | undefined {
+    return this.#missingDependency;
   }
 
   public override visit(serviceType: Type): CallSite | undefined {
@@ -34,10 +46,14 @@ export class ToCallSiteVisitor extends Type.Visitor<CallSite | undefined> {
       return CallSite.lateboundArg(argIndex);
     }
     using _guard = this.#cycleGuard.visiting(serviceType);
-    return this.#registry.answering(serviceType)
+    const site = this.#registry.answering(serviceType)
       .map(answer => CallSite.fromAnswer(serviceType, answer, this))
       .find(Boolean)
       ?? super.visit(serviceType);
+    if (site === undefined && this.#missingDependency === undefined) {
+      this.#missingDependency = serviceType;
+    }
+    return site;
   }
 
   protected override visitImported(type: ImportedType): CallSite | undefined {
