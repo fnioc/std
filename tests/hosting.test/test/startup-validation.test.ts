@@ -10,7 +10,7 @@
 // `addOptions`/`validate`/`validateOnStart` manifest verbs are installed.
 
 import { Type } from '@rhombus-std/di.core';
-import { HostBuilder, HOSTED_SERVICE_TYPE } from '@rhombus-std/hosting';
+import { getHostedServiceManifest, HostBuilder, HOSTED_SERVICE_TYPE } from '@rhombus-std/hosting';
 import { OptionsValidationError } from '@rhombus-std/options';
 import '@rhombus-std/options.augmentations';
 import { expect, test } from 'bun:test';
@@ -36,7 +36,7 @@ test('a failing validateOnStart aborts host start before any hosted service runs
     services = services.addOptions(OPTIONS_TYPE, () => ({ port: 0 }));
     services = services.validate(OPTIONS_TYPE, (o: ServerOptions) => o.port > 0, 'port must be positive');
     services = services.validateOnStart(OPTIONS_TYPE);
-    services = services.addHostedService(Worker, Type.ctor(HOSTED_SERVICE_TYPE, [[]]));
+    services = services.addMany(getHostedServiceManifest(Worker, Type.ctor(HOSTED_SERVICE_TYPE, [[]])));
     return services;
   });
 
@@ -65,7 +65,7 @@ test('valid options let validateOnStart pass and the host starts normally', asyn
     services = services.addOptions(OPTIONS_TYPE, () => ({ port: 8080 }));
     services = services.validate(OPTIONS_TYPE, (o: ServerOptions) => o.port > 0, 'port must be positive');
     services = services.validateOnStart(OPTIONS_TYPE);
-    services = services.addHostedService(Worker, Type.ctor(HOSTED_SERVICE_TYPE, [[]]));
+    services = services.addMany(getHostedServiceManifest(Worker, Type.ctor(HOSTED_SERVICE_TYPE, [[]])));
     return services;
   });
 
