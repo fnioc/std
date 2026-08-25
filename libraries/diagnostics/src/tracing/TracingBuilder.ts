@@ -5,6 +5,7 @@ import type { Manifest } from '@rhombus-std/di.core';
 import type { ITracingBuilder } from '@rhombus-std/diagnostics.core';
 import { augment } from '@rhombus-std/primitives';
 import { typefor } from '@rhombus-std/primitives.extras';
+import type { Func } from '@rhombus-toolkit/func';
 
 // Interface-extends merge: binding the ITracingBuilder SYMBOL flows every
 // in-program augmentation of the interface (the listener/rule members from
@@ -30,5 +31,11 @@ export class TracingBuilder implements ITracingBuilder {
   /** @param services The registration surface augmentation functions register against. */
   public constructor(services: Manifest<unknown>) {
     this.services = services;
+  }
+
+  static run<Lifetime>(manifest: Manifest<Lifetime>, configure?: Func<[ITracingBuilder], void>) {
+    const builder = new TracingBuilder(manifest as any);
+    configure?.(builder);
+    return builder.services as typeof manifest;
   }
 }

@@ -23,7 +23,7 @@ export function assembleDiagnosticsOptions<T>(resolver: IServiceProvider, config
   const steps: ReadonlyArray<IConfigureOptions<T>> = resolver.resolve(
     collectionType(configureType),
   );
-  const sources: ReadonlyArray<IOptionsChangeTokenSource> = resolver.resolve(
+  const sources: readonly IOptionsChangeTokenSource[] = resolver.resolve(
     collectionType(sourceType),
   );
 

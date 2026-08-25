@@ -29,8 +29,7 @@ export * from './tracing/TracingBuilder';
 // / `IOptions<TracingOptions>` assembly and the per-listener configuration
 // factory onto di.core's `Manifest`, and runs the consumer's configure
 // callback over a concrete builder.
-export * from './Manifest-Metrics-augmentations';
-export * from './Manifest-Tracing-augmentations';
+export * from './manifests';
 
 // The config-binding augmentation sets. Their receiver is the family's OWN
 // builder interface; each self-registers against the builder token so the

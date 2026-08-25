@@ -10,8 +10,8 @@
 
 import { ConfigBuilder, type IConfig } from '@rhombus-std/config';
 import { di } from '@rhombus-std/di';
-import { DefaultManifest, LifetimeModel, type Manifest, Type } from '@rhombus-std/di.core';
-import { ActivityListenerConfigFactory, DefaultActivityListenerConfigFactory, type IMetricListenerConfigFactory, MetricListenerConfigFactory, MetricsConfig,
+import { LifetimeModel, Type } from '@rhombus-std/di.core';
+import { ActivityListenerConfigFactory, DefaultActivityListenerConfigFactory, getMetricsManifest, getTracingManifest, type IMetricListenerConfigFactory, MetricListenerConfigFactory, MetricsConfig,
   TracingConfig } from '@rhombus-std/diagnostics';
 import { describe, expect, test } from 'bun:test';
 
@@ -75,8 +75,7 @@ describe('DefaultActivityListenerConfigFactory', () => {
 describe('addMetrics registers the metrics factory', () => {
   // Needs the standard lifetime model's singleton caching, not yet wired for this suite.
   test.skip('resolves as a singleton fed by every addMetricsConfig call', () => {
-    let manifest: Manifest<unknown> = new DefaultManifest();
-    manifest = manifest.addMetrics((metrics) => {
+    const manifest = getMetricsManifest((metrics) => {
       metrics.addMetricsConfig(first()).addMetricsConfig(second());
     });
 
@@ -95,8 +94,7 @@ describe('addMetrics registers the metrics factory', () => {
   });
 
   test('with no bound configuration the factory yields empty views', () => {
-    let manifest: Manifest<unknown> = new DefaultManifest();
-    manifest = manifest.addMetrics();
+    const manifest = getMetricsManifest();
 
     const factory: IMetricListenerConfigFactory = di.usingLifetimeModel(LifetimeModel.noop).usingManifest(manifest).build().resolve(
       METRICS_LISTENER_CONFIGURATION_FACTORY_TYPE,
@@ -108,8 +106,7 @@ describe('addMetrics registers the metrics factory', () => {
 describe('addTracing registers the tracing factory', () => {
   // Needs the standard lifetime model's singleton caching, not yet wired for this suite.
   test.skip('resolves as a singleton fed by every addTracingConfig call', () => {
-    let manifest: Manifest<unknown> = new DefaultManifest();
-    manifest = manifest.addTracing((tracing) => {
+    const manifest = getTracingManifest((tracing) => {
       tracing.addTracingConfig(first()).addTracingConfig(second());
     });
 

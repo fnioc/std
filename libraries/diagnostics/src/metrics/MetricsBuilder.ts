@@ -8,6 +8,7 @@ import type { Manifest } from '@rhombus-std/di.core';
 import type { IMetricsBuilder } from '@rhombus-std/diagnostics.core';
 import { augment } from '@rhombus-std/primitives';
 import { typefor } from '@rhombus-std/primitives.extras';
+import { Func } from '@rhombus-toolkit/func';
 
 // Interface-extends merge: binding the IMetricsBuilder SYMBOL flows every
 // in-program augmentation of the interface (the listener/rule members from
@@ -33,5 +34,10 @@ export class MetricsBuilder implements IMetricsBuilder {
   /** @param services The registration surface augmentation functions register against. */
   public constructor(services: Manifest<unknown>) {
     this.services = services;
+  }
+  static run<Lifetime>(manifest: Manifest<Lifetime>, configure?: Func<[IMetricsBuilder], void>) {
+    const builder = new MetricsBuilder(manifest as any);
+    configure?.(builder);
+    return builder.services as typeof manifest;
   }
 }
