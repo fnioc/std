@@ -707,9 +707,10 @@ Tests live in sibling `tests/<lib>.test` packages (files under `tests/<lib>.test
 co-located with `src/`. Transformer↔engine byte-parity suites are `tests/<family>.ttsc.e2e` (script
 `test:e2e`).
 
-- A test reaches a library through a plain `workspace:*` devDependency and its PUBLIC surface.
-  Neither a relative path into `src/` nor the `./tokens/*` subpath is a way in: `./tokens/*` is
-  for token derivation, which is what its name says. A test that needs something the barrel does
-  not export is telling you the thing should be exported — surface it, don't tunnel to it.
+- A test reaches a library through a plain `workspace:*` devDependency: its PUBLIC surface for
+  black-box work, and the `./private/*` subpath when it genuinely needs an internal.
+- **`./tokens/*` is NOT that door** — it exists for token derivation, which is what its name says.
+  Neither is a relative path into a sibling's `src/`. A test doing either is reaching past the
+  seam that was built for it.
 
 See `docs/decisions.md` §7 for the rationale and the publish-time scrub mechanics.
