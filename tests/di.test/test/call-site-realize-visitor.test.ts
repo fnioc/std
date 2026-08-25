@@ -2,11 +2,10 @@
 // are built by hand here through the CallSite factories, independent of what ToCallSiteVisitor
 // would have produced, so each node kind is exercised on its own terms.
 
-import { DefaultManifest, type IServiceProvider, ServiceDescriptor } from '@rhombus-std/di.core';
+import { DefaultManifest, type IServiceProvider, LifetimeModel, ServiceDescriptor } from '@rhombus-std/di.core';
 import { CallSite } from '@rhombus-std/di/private/internal/CallSite/CallSite';
 import { realizeCallSite } from '@rhombus-std/di/private/internal/CallSite/RealizeVisitor';
 import { Engine } from '@rhombus-std/di/private/internal/Engine';
-import { ServiceScope, ServiceScopeFactory } from '@rhombus-std/di/private/internal/ServiceScope';
 import { Type } from '@rhombus-std/primitives';
 import { describe, expect, test } from 'bun:test';
 
@@ -20,8 +19,15 @@ class Widget {
 }
 
 const provider = {} as IServiceProvider;
-const engine = new Engine(DefaultManifest.empty<string>());
-const context = { engine, serviceProvider: provider };
+const { realizer } = LifetimeModel.noop.createRealizer();
+
+/** Seals `descriptors` into an Engine on the noop lifetime model — no scoping, no caching. */
+function engineFor(descriptors: Iterable<ServiceDescriptor<unknown>>): Engine {
+  return new Engine(realizer, undefined, descriptors);
+}
+
+const engine = engineFor(DefaultManifest.empty<unknown>());
+const context = { engine, serviceProvider: provider, realizer };
 
 describe('the leaf kinds', () => {
   test('constant returns its value untouched', () => {
@@ -32,14 +38,10 @@ describe('the leaf kinds', () => {
     expect(realizeCallSite(CallSite.serviceProvider(), context)).toBe(provider);
   });
 
-  test('service-scope-factory realizes to a working scope opener', () => {
-    const manifest = DefaultManifest.empty<string>().add(ServiceDescriptor.ctor(CONN, Conn, Type.ctor(CONN, [[]]), 'singleton'));
-    const scopedEngine = new Engine(manifest);
-    const factory = realizeCallSite(CallSite.serviceScopeFactory(), { engine: scopedEngine, serviceProvider: provider });
-    expect(factory).toBeInstanceOf(ServiceScopeFactory);
-    const scope = (factory as ServiceScopeFactory).createScope();
-    expect(scope.resolve(CONN)).toBeInstanceOf(Conn);
-  });
+  // Scope-opening realizes to the model's own ScopeFactory function now (see
+  // standard-lifetime-model.test.ts / tagged-lifetime-model.test.ts) — the scope/lifetime
+  // system is unbuilt here, so this stays dormant.
+  test.skip('service-scope-factory realizes to a working scope opener', () => {});
 });
 
 describe('ctor and factory sites', () => {
@@ -78,12 +80,12 @@ describe('iterable and array sites', () => {
 
 describe('a late-bound site', () => {
   test('returns a function that re-enters the engine with its call args registered', () => {
-    const manifest = DefaultManifest.empty<string>().add(
+    const manifest = DefaultManifest.empty<unknown>().add(
       ServiceDescriptor.ctor(WIDGET, Widget, Type.ctor(WIDGET, [[CONN]]), 'singleton'),
     );
-    const lateBoundEngine = new Engine(manifest);
-    const site = CallSite.latebound(WIDGET, [[CONN]]);
-    const make = realizeCallSite(site, { engine: lateBoundEngine, serviceProvider: provider }) as (
+    const lateBoundEngine = engineFor(manifest);
+    const site = CallSite.latebound(Type.func(WIDGET, [[CONN]]));
+    const make = realizeCallSite(site, { engine: lateBoundEngine, serviceProvider: provider, realizer }) as (
       conn: unknown,
     ) => Widget;
     const conn = new Conn();
@@ -93,69 +95,32 @@ describe('a late-bound site', () => {
   });
 
   test("binds the call's arguments under the signature whose length matches the call", () => {
-    const lateBoundEngine = new Engine(DefaultManifest.empty<string>());
-    const site = CallSite.latebound(CONN, [[CONN, BAR], [CONN]]);
-    const call = realizeCallSite(site, { engine: lateBoundEngine, serviceProvider: provider }) as (
+    const lateBoundEngine = engineFor(DefaultManifest.empty<unknown>());
+    const site = CallSite.latebound(Type.func(CONN, [[CONN, BAR], [CONN]]));
+    const call = realizeCallSite(site, { engine: lateBoundEngine, serviceProvider: provider, realizer }) as (
       ...args: unknown[]
     ) => unknown;
     const conn = new Conn();
     expect(call(conn)).toBe(conn);
   });
 
-  test("falls back to the first signature when no signature's length matches the call", () => {
-    const lateBoundEngine = new Engine(DefaultManifest.empty<string>());
-    const site = CallSite.latebound(CONN, [[CONN, BAR], [CONN]]);
-    const call = realizeCallSite(site, { engine: lateBoundEngine, serviceProvider: provider }) as (
+  test('throws when no signature accepts the call arity — nothing falls back silently', () => {
+    const lateBoundEngine = engineFor(DefaultManifest.empty<unknown>());
+    const site = CallSite.latebound(Type.func(CONN, [[CONN, BAR], [CONN]]));
+    const call = realizeCallSite(site, { engine: lateBoundEngine, serviceProvider: provider, realizer }) as (
       ...args: unknown[]
     ) => unknown;
     const conn = new Conn();
-    expect(call(conn, 'extra', 'args')).toBe(conn);
+    expect(() => call(conn, 'extra', 'args')).toThrow(TypeError);
   });
 });
 
-describe('scoped caching', () => {
-  test('a lifetime-tagged site realizes once per scope and is cached for the next ask', () => {
-    let builds = 0;
-    class Counted {
-      constructor() {
-        builds++;
-      }
-    }
-    const descriptor = ServiceDescriptor.ctor(WIDGET, Counted, Type.ctor(WIDGET, [[]]), 'singleton');
-    const site = CallSite.ctor(Counted, [], descriptor);
-    const scope = new ServiceScope(engine, provider);
-    const first = realizeCallSite(site, { engine, serviceProvider: provider, scope });
-    const second = realizeCallSite(site, { engine, serviceProvider: provider, scope });
-    expect(first).toBe(second);
-    expect(builds).toBe(1);
-  });
-
-  test("a fresh scope never sees another scope's cached value", () => {
-    class Counted {}
-    const descriptor = ServiceDescriptor.ctor(WIDGET, Counted, Type.ctor(WIDGET, [[]]), 'singleton');
-    const site = CallSite.ctor(Counted, [], descriptor);
-    const scopeA = new ServiceScope(engine, provider);
-    const scopeB = new ServiceScope(engine, provider);
-    const a = realizeCallSite(site, { engine, serviceProvider: provider, scope: scopeA });
-    const b = realizeCallSite(site, { engine, serviceProvider: provider, scope: scopeB });
-    expect(a).not.toBe(b);
-  });
-
-  test('no scope in the walk means no caching, even with a lifetime tag', () => {
-    class Counted {}
-    const descriptor = ServiceDescriptor.ctor(WIDGET, Counted, Type.ctor(WIDGET, [[]]), 'singleton');
-    const site = CallSite.ctor(Counted, [], descriptor);
-    const first = realizeCallSite(site, context);
-    const second = realizeCallSite(site, context);
-    expect(first).not.toBe(second);
-  });
-
-  test('no lifetime on the site means no caching, even inside a scope', () => {
-    class Counted {}
-    const site = CallSite.ctor(Counted, []);
-    const scope = new ServiceScope(engine, provider);
-    const first = realizeCallSite(site, { engine, serviceProvider: provider, scope });
-    const second = realizeCallSite(site, { engine, serviceProvider: provider, scope });
-    expect(first).not.toBe(second);
-  });
+// The scope/lifetime system is unbuilt here — ServiceScope/ServiceScopeFactory no longer exist;
+// per-scope caching now lives entirely in the lifetime models themselves (see
+// standard-lifetime-model.test.ts / tagged-lifetime-model.test.ts).
+describe.skip('scoped caching', () => {
+  test.skip('a lifetime-tagged site realizes once per scope and is cached for the next ask', () => {});
+  test.skip("a fresh scope never sees another scope's cached value", () => {});
+  test.skip('no scope in the walk means no caching, even with a lifetime tag', () => {});
+  test.skip('no lifetime on the site means no caching, even inside a scope', () => {});
 });

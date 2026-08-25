@@ -2,10 +2,15 @@
 // manifest it was built from; a latebound call resolves against that manifest composed with the
 // call's own arguments, which is a different set of registrations and so a different plan.
 
-import { ServiceProvider } from '@rhombus-std/di';
-import { DefaultManifest, ServiceDescriptor } from '@rhombus-std/di.core';
+import { di } from '@rhombus-std/di';
+import { DefaultManifest, LifetimeModel, type Manifest, ServiceDescriptor } from '@rhombus-std/di.core';
 import { Type } from '@rhombus-std/primitives';
 import { describe, expect, test } from 'bun:test';
+
+/** Seals `manifest` into a provider through the front door, on the noop lifetime model. */
+function toProvider(manifest: Manifest<string>) {
+  return di.usingLifetimeModel(LifetimeModel.noop).usingManifest(manifest).build();
+}
 
 const CONN = Type.imported('Conn', 'app');
 const WIDGET = Type.imported('Widget', 'app');
@@ -30,7 +35,7 @@ const widgets = DefaultManifest.empty<string>()
 
 describe('a latebound call resolves against its own registrations', () => {
   test('the call argument outranks the manifest, even after the plain plan is cached', () => {
-    const provider = new ServiceProvider(widgets);
+    const provider = toProvider(widgets);
     expect((provider.resolve(WIDGET) as Widget).conn).toBeInstanceOf(ManifestConn);
 
     const make = provider.resolve(Type.func(WIDGET, [[CONN]])) as (conn: unknown) => Widget;
@@ -39,7 +44,7 @@ describe('a latebound call resolves against its own registrations', () => {
   });
 
   test('and leaves the manifest plan alone for the next plain resolution', () => {
-    const provider = new ServiceProvider(widgets);
+    const provider = toProvider(widgets);
     const make = provider.resolve(Type.func(WIDGET, [[CONN]])) as (conn: unknown) => Widget;
     make(new CallConn());
 
@@ -47,7 +52,7 @@ describe('a latebound call resolves against its own registrations', () => {
   });
 
   test('each call is planned afresh, so one call never answers the next', () => {
-    const make = new ServiceProvider(widgets).resolve(Type.func(WIDGET, [[CONN]])) as (conn: unknown) => Widget;
+    const make = toProvider(widgets).resolve(Type.func(WIDGET, [[CONN]])) as (conn: unknown) => Widget;
     const first = new CallConn();
     const second = new CallConn();
     expect(make(first).conn).toBe(first);
@@ -63,11 +68,11 @@ describe('a union is settled against the resolving call', () => {
     .add(ServiceDescriptor.ctor(REDIS, MemoryCache, Type.ctor(REDIS, [[]]), 'singleton'));
 
   test('one member answers when the manifest is the whole universe', () => {
-    expect((new ServiceProvider(reports).resolve(REPORT) as Report).cache).toBeInstanceOf(MemoryCache);
+    expect((toProvider(reports).resolve(REPORT) as Report).cache).toBeInstanceOf(MemoryCache);
   });
 
   test('a call argument answering an earlier member outranks it, plan cache and all', () => {
-    const provider = new ServiceProvider(reports);
+    const provider = toProvider(reports);
     expect((provider.resolve(REPORT) as Report).cache).toBeInstanceOf(MemoryCache);
 
     const make = provider.resolve(Type.func(REPORT, [[CACHE]])) as (cache: unknown) => Report;
@@ -90,7 +95,7 @@ describe('a chosen member that fails while being built', () => {
       .add(ServiceDescriptor.ctor(CACHE, Exploding, Type.ctor(CACHE, [[]]), 'singleton'));
 
     // The literal is the union's fallback for an ABSENT service, never for a broken one.
-    expect(() => new ServiceProvider(manifest).resolve(REPORT)).toThrow('boom');
+    expect(() => toProvider(manifest).resolve(REPORT)).toThrow('boom');
   });
 
   test('fails it again on the next ask, with the plan unchanged', () => {
@@ -101,7 +106,7 @@ describe('a chosen member that fails while being built', () => {
         attempts++;
         throw new Error('boom');
       }, Type.func(CONN, [[]]), 'singleton'));
-    const provider = new ServiceProvider(manifest);
+    const provider = toProvider(manifest);
 
     expect(() => provider.resolve(WIDGET)).toThrow('boom');
     expect(() => provider.resolve(WIDGET)).toThrow('boom');

@@ -2,10 +2,15 @@
 // asks for the type that closed it; a hole standing inside a bigger slot is part of a type
 // expression, and the closed expression names a service like any other.
 
-import { ServiceProvider } from '@rhombus-std/di';
-import { DefaultManifest, type IServiceProvider, ServiceDescriptor, UnsatisfiableError } from '@rhombus-std/di.core';
+import { di } from '@rhombus-std/di';
+import { DefaultManifest, type IServiceProvider, LifetimeModel, type Manifest, ServiceDescriptor, UnsatisfiableError } from '@rhombus-std/di.core';
 import { Type } from '@rhombus-std/primitives';
 import { describe, expect, test } from 'bun:test';
+
+/** Seals `manifest` into a provider through the front door, on the noop lifetime model. */
+function toProvider(manifest: Manifest<string>) {
+  return di.usingLifetimeModel(LifetimeModel.noop).usingManifest(manifest).build();
+}
 
 const T = Type.generic('T');
 const FOO = Type.imported('Foo', 'app');
@@ -36,25 +41,29 @@ const openBox = DefaultManifest.empty<string>()
 
 describe('a slot that is the hole', () => {
   test('receives the type that closed the registration', () => {
-    const built = new ServiceProvider(openBox).resolve(box(FOO)) as Box;
+    const built = toProvider(openBox).resolve(box(FOO)) as Box;
     expect(built.closing).toBe(FOO);
   });
 
   test('receives it without anything being registered for that type', () => {
     // Nothing in `openBox` produces a Foo, and the request is still satisfiable: the slot asks
     // for the type, never for a value of it.
-    expect(new ServiceProvider(openBox, { validateOnBuild: true }).resolve(box(FOO))).toBeInstanceOf(Box);
+    const provider = di.usingLifetimeModel(LifetimeModel.noop)
+      .usingManifest(openBox)
+      .configureProvider(options => ({ ...options, validateOnBuild: true }))
+      .build();
+    expect(provider.resolve(box(FOO))).toBeInstanceOf(Box);
   });
 
   test('receives it even where the closing type IS registered', () => {
     const manifest = openBox.add(ServiceDescriptor.ctor(FOO, Foo, Type.ctor(FOO, [[]]), 'singleton'));
-    const built = new ServiceProvider(manifest).resolve(box(FOO)) as Box;
+    const built = toProvider(manifest).resolve(box(FOO)) as Box;
     expect(built.closing).toBe(FOO);
     expect(built.closing).not.toBeInstanceOf(Foo);
   });
 
   test('tracks the request, so two closings deliver two types', () => {
-    const provider = new ServiceProvider(openBox);
+    const provider = toProvider(openBox);
     expect((provider.resolve(box(FOO)) as Box).closing).toBe(FOO);
     expect((provider.resolve(box(BAR)) as Box).closing).toBe(BAR);
   });
@@ -62,12 +71,12 @@ describe('a slot that is the hole', () => {
   test('feeds a factory registration the same way', () => {
     const manifest = DefaultManifest.empty<string>()
       .add(ServiceDescriptor.factory(box(T), (closing: unknown) => ({ closing }), Type.func(box(T), [[T]]), 'singleton'));
-    expect((new ServiceProvider(manifest).resolve(box(FOO)) as Box).closing).toBe(FOO);
+    expect((toProvider(manifest).resolve(box(FOO)) as Box).closing).toBe(FOO);
   });
 
   test('is unsatisfiable on a CLOSED registration, where nothing binds it', () => {
     const manifest = DefaultManifest.empty<string>().add(ServiceDescriptor.ctor(FOO, Box, Type.ctor(FOO, [[T]]), 'singleton'));
-    expect(() => new ServiceProvider(manifest).resolve(FOO)).toThrow(UnsatisfiableError);
+    expect(() => toProvider(manifest).resolve(FOO)).toThrow(UnsatisfiableError);
   });
 });
 
@@ -77,18 +86,18 @@ describe('a hole inside a bigger slot', () => {
     .add(ServiceDescriptor.ctor(holder(FOO), Holder, Type.ctor(holder(FOO), [[]]), 'singleton'));
 
   test('closes into a type expression, which resolves as a service', () => {
-    const built = new ServiceProvider(openCrate).resolve(crate(FOO)) as Crate;
+    const built = toProvider(openCrate).resolve(crate(FOO)) as Crate;
     expect(built.held).toBeInstanceOf(Holder);
   });
 
   test('sits beside a bare hole in one signature, each read its own way', () => {
-    const built = new ServiceProvider(openCrate).resolve(crate(FOO)) as Crate;
+    const built = toProvider(openCrate).resolve(crate(FOO)) as Crate;
     expect(built.closing).toBe(FOO);
     expect(built.held).toBeInstanceOf(Holder);
   });
 
   test('leaves the registration unsatisfiable when the closed expression names nothing', () => {
-    expect(() => new ServiceProvider(openCrate).resolve(crate(BAR))).toThrow(UnsatisfiableError);
+    expect(() => toProvider(openCrate).resolve(crate(BAR))).toThrow(UnsatisfiableError);
   });
 });
 
@@ -99,7 +108,7 @@ describe('reaching an instance of the closing type', () => {
     const manifest = DefaultManifest.empty<string>()
       .add(ServiceDescriptor.ctor(box(T), Resolving, Type.ctor(box(T), [[T, SERVICE_PROVIDER]]), 'singleton'))
       .add(ServiceDescriptor.ctor(FOO, Foo, Type.ctor(FOO, [[]]), 'singleton'));
-    const built = new ServiceProvider(manifest).resolve(box(FOO)) as Resolving;
+    const built = toProvider(manifest).resolve(box(FOO)) as Resolving;
     expect(built.provider.resolve(built.closing)).toBeInstanceOf(Foo);
   });
 });
@@ -109,7 +118,7 @@ describe('an open registration with no signature at all', () => {
     const echo = Type.func(T, [[T]]);
     const manifest = DefaultManifest.empty<string>()
       .add(ServiceDescriptor.value(echo, (value: unknown) => value));
-    const resolved = new ServiceProvider(manifest).resolve(Type.func(FOO, [[FOO]])) as (value: number) => number;
+    const resolved = toProvider(manifest).resolve(Type.func(FOO, [[FOO]])) as (value: number) => number;
     expect(resolved(42)).toBe(42);
   });
 });

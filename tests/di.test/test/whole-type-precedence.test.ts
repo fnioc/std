@@ -2,10 +2,15 @@
 // registration for the whole type always outranks that synthesis. Literals, tuples, iterables and
 // intersections each meet the rule their own way.
 
-import { ServiceProvider } from '@rhombus-std/di';
-import { DefaultManifest, UnsatisfiableError } from '@rhombus-std/di.core';
+import { di } from '@rhombus-std/di';
+import { DefaultManifest, LifetimeModel, type Manifest, UnsatisfiableError } from '@rhombus-std/di.core';
 import { Type } from '@rhombus-std/primitives';
 import { describe, expect, test } from 'bun:test';
+
+/** Seals `manifest` into a provider through the front door, on the noop lifetime model. */
+function toProvider(manifest: Manifest<string>) {
+  return di.usingLifetimeModel(LifetimeModel.noop).usingManifest(manifest).build();
+}
 
 const A = Type.imported('A', 'app');
 const B = Type.imported('B', 'app');
@@ -16,22 +21,22 @@ class Foo {}
 
 describe('a type literal', () => {
   test('self-satisfies when nothing is registered for it', () => {
-    const provider = new ServiceProvider(DefaultManifest.empty<string>());
+    const provider = toProvider(DefaultManifest.empty<string>());
     expect(provider.resolve(Type.typeLiteral('prod'))).toBe('prod');
   });
 
   test('is answered by its own registration ahead of self-satisfaction', () => {
     const manifest = DefaultManifest.empty<string>()
       .addValue(Type.typeLiteral('dev'), 'override');
-    expect(new ServiceProvider(manifest).resolve(Type.typeLiteral('dev'))).toBe('override');
+    expect(toProvider(manifest).resolve(Type.typeLiteral('dev'))).toBe('override');
   });
 });
 
 describe('a tuple', () => {
   test('synthesizes from its members, a literal member supplying itself', () => {
     const manifest = DefaultManifest.empty<string>()
-      .add(FOO, Foo, Type.ctor(FOO, [[]]));
-    const pair = new ServiceProvider(manifest)
+      .add(FOO, Foo, Type.ctor(FOO, [[]]), 'singleton');
+    const pair = toProvider(manifest)
       .resolve(Type.tuple(FOO, Type.typeLiteral(5))) as [Foo, number];
     expect(Array.isArray(pair)).toBe(true);
     expect(pair[0]).toBeInstanceOf(Foo);
@@ -43,7 +48,7 @@ describe('a tuple', () => {
       .addValue(A, 'a-val')
       .addValue(B, 'b-val')
       .addValue(Type.tuple(A, B), 'pre-made');
-    expect(new ServiceProvider(manifest).resolve(Type.tuple(A, B))).toBe('pre-made');
+    expect(toProvider(manifest).resolve(Type.tuple(A, B))).toBe('pre-made');
   });
 });
 
@@ -52,7 +57,7 @@ describe('an iterable address', () => {
     const manifest = DefaultManifest.empty<string>()
       .addValue(A, 'a-val')
       .addValue(Type.union(A, B), 'either');
-    const gathered = [...new ServiceProvider(manifest).resolve(Type.iterable(Type.union(A, B)))];
+    const gathered = [...toProvider(manifest).resolve(Type.iterable(Type.union(A, B)))];
     expect(gathered).toHaveLength(2);
     expect(gathered).toContain('a-val');
     expect(gathered).toContain('either');
@@ -62,7 +67,7 @@ describe('an iterable address', () => {
     const manifest = DefaultManifest.empty<string>()
       .addValue(A, 'a-val')
       .addValue(Type.iterable(A), 'exact-iter');
-    expect(new ServiceProvider(manifest).resolve(Type.iterable(A))).toBe('exact-iter');
+    expect(toProvider(manifest).resolve(Type.iterable(A))).toBe('exact-iter');
   });
 });
 
@@ -71,12 +76,12 @@ describe('an intersection', () => {
 
   test('is answered by a registration for the intersection itself', () => {
     const manifest = DefaultManifest.empty<string>().addValue(BOTH, 'both');
-    expect(new ServiceProvider(manifest).resolve(BOTH)).toBe('both');
+    expect(toProvider(manifest).resolve(BOTH)).toBe('both');
   });
 
   test('is never assembled from registrations covering its parts', () => {
     const manifest = DefaultManifest.empty<string>()
       .addValue(Type.object({ a: STR, b: STR }), 'both');
-    expect(() => new ServiceProvider(manifest).resolve(BOTH)).toThrow(UnsatisfiableError);
+    expect(() => toProvider(manifest).resolve(BOTH)).toThrow(UnsatisfiableError);
   });
 });

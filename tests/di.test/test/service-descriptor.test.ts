@@ -10,20 +10,11 @@ const B = Type.imported('B', 'app');
 
 class Impl {}
 
-describe('matches', () => {
-  test('holds across the spellings of one service type', () => {
-    expect(ServiceDescriptor.matches(
-      ServiceDescriptor.value(Type.from('app:A'), 1),
-      ServiceDescriptor.value(A, 2),
-    )).toBe(true);
-  });
-
-  test('separates a keyed registration from the bare one it tags', () => {
-    expect(ServiceDescriptor.matches(
-      ServiceDescriptor.value(A, 1),
-      ServiceDescriptor.value(Type.tag(A, 'primary'), 2),
-    )).toBe(false);
-  });
+// ServiceDescriptor.matches is retired — the service-type identity test it named is inlined at
+// each call site instead (e.g. Manifest's own replace/remove verbs), not a public op.
+describe.skip('matches', () => {
+  test.skip('holds across the spellings of one service type', () => {});
+  test.skip('separates a keyed registration from the bare one it tags', () => {});
 });
 
 describe('equals', () => {
