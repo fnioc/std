@@ -44,13 +44,13 @@ provider.resolve(IGreeter).greet('world'); // "Hello, world!"
 
 ## Key exports
 
-| Export                                                                                        | What it is                                                                                                                     |
-| ----------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------- |
-| `di`                                                                                             | The genesis namespace — `di.usingLifetimeModel(model)` opens a `ContainerBuilder` running on `model`.                            |
-| `ContainerBuilder<Lifetime>`                                                                     | Assembles a provider: `usingManifest` / `configureServices` compose the manifest, `configureProvider` composes the build options, `build()` seals it into an `IServiceProvider`. |
-| `ServiceProvider`                                                                                | The concrete engine `build()` returns: resolves services against the sealed manifest and lifetime model.                          |
-| `ServiceProviderOptions`                                                                         | Build-time behavior: `validateOnBuild` lowers every closed registration while building, so an unsatisfiable graph fails at the build instead of at some later resolution. |
-| `DiError`, `UnsatisfiableError`, `CycleError`, `LifetimeModelError`, `ManifestValidationError`, `ValidationFailure` | Re-exported from `di.core` — the same classes, so `instanceof` holds whichever package a caller imports the taxonomy from. |
+| Export                                                                                                              | What it is                                                                                                                                                                       |
+| ------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `di`                                                                                                                | The genesis namespace — `di.usingLifetimeModel(model)` opens a `ContainerBuilder` running on `model`.                                                                            |
+| `ContainerBuilder<Lifetime>`                                                                                        | Assembles a provider: `usingManifest` / `configureServices` compose the manifest, `configureProvider` composes the build options, `build()` seals it into an `IServiceProvider`. |
+| `ServiceProvider`                                                                                                   | The concrete engine `build()` returns: resolves services against the sealed manifest and lifetime model.                                                                         |
+| `ServiceProviderOptions`                                                                                            | Build-time behavior: `validateOnBuild` lowers every closed registration while building, so an unsatisfiable graph fails at the build instead of at some later resolution.        |
+| `DiError`, `UnsatisfiableError`, `CycleError`, `LifetimeModelError`, `ManifestValidationError`, `ValidationFailure` | Re-exported from `di.core` — the same classes, so `instanceof` holds whichever package a caller imports the taxonomy from.                                                       |
 
 ## How it fits
 
