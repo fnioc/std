@@ -24,7 +24,7 @@ describe('addLogging', () => {
     const provider = new RecordingProvider();
     const services = getLoggingManifest((builder) => builder.addProvider(provider));
 
-    const root = services.build().createScope('singleton');
+    const root = di.usingLifetimeModel(LifetimeModel.noop).usingManifest(services).build();
     const factory: ILoggerFactory = root.resolve(LOGGER_FACTORY_TYPE);
     const another: ILoggerFactory = root.resolve(LOGGER_FACTORY_TYPE);
     expect(factory).toBe(another); // singleton

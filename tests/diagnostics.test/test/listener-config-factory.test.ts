@@ -79,7 +79,7 @@ describe('addMetrics registers the metrics factory', () => {
       metrics.addMetricsConfig(first()).addMetricsConfig(second());
     });
 
-    const provider = manifest.build().createScope('singleton');
+    const provider = di.usingLifetimeModel(LifetimeModel.noop).usingManifest(manifest).build();
     const factory: IMetricListenerConfigFactory = provider.resolve(
       METRICS_LISTENER_CONFIGURATION_FACTORY_TYPE,
     );
@@ -110,7 +110,7 @@ describe('addTracing registers the tracing factory', () => {
       tracing.addTracingConfig(first()).addTracingConfig(second());
     });
 
-    const provider = manifest.build().createScope('singleton');
+    const provider = di.usingLifetimeModel(LifetimeModel.noop).usingManifest(manifest).build();
     const factory: ActivityListenerConfigFactory = provider.resolve(
       TRACING_LISTENER_CONFIGURATION_FACTORY_TYPE,
     );
