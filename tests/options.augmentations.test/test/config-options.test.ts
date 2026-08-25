@@ -4,9 +4,9 @@
 
 import { ConfigBuilder, type IConfigRoot } from '@rhombus-std/config';
 import { di } from '@rhombus-std/di';
-import { DefaultManifest, LifetimeModel, type Manifest, Type } from '@rhombus-std/di.core';
+import { LifetimeModel, Manifest, Type } from '@rhombus-std/di.core';
 import type { IOptions } from '@rhombus-std/options';
-import { optionsAddressType } from '@rhombus-std/options.augmentations';
+import { getConfigureManifest, optionsAddressType } from '@rhombus-std/options.augmentations';
 import { describe, expect, test } from 'bun:test';
 
 interface WidgetOptions {
@@ -26,9 +26,9 @@ describe('configure — section-to-options binding', () => {
   test("resolving IOptions<T> binds the section's values into the base", () => {
     const config = rootWith({ 'Widget:Url': 'http://first', 'Widget:Retries': '3' });
 
-    let services: Manifest<'singleton'> = new DefaultManifest<'singleton'>();
+    let services: Manifest<unknown> = Manifest.empty<unknown>();
     services = services.addOptions(WIDGET_OPTIONS_TYPE, () => ({ Url: '' }));
-    services = services.configure(WIDGET_OPTIONS_TYPE, config.getSection('Widget'));
+    services = services.addMany(getConfigureManifest(WIDGET_OPTIONS_TYPE, config.getSection('Widget')));
 
     const provider = di.usingLifetimeModel(LifetimeModel.noop).usingManifest(services).build();
     const options: IOptions<WidgetOptions> = provider.resolve(optionsAddressType(WIDGET_OPTIONS_TYPE));
@@ -39,9 +39,9 @@ describe('configure — section-to-options binding', () => {
   test('a reload delivers a fresh value and fires subscribe with it', () => {
     const config = rootWith({ 'Widget:Url': 'http://first' });
 
-    let services: Manifest<'singleton'> = new DefaultManifest<'singleton'>();
+    let services: Manifest<unknown> = Manifest.empty<unknown>();
     services = services.addOptions(WIDGET_OPTIONS_TYPE, () => ({ Url: '' }));
-    services = services.configure(WIDGET_OPTIONS_TYPE, config.getSection('Widget'));
+    services = services.addMany(getConfigureManifest(WIDGET_OPTIONS_TYPE, config.getSection('Widget')));
 
     const provider = di.usingLifetimeModel(LifetimeModel.noop).usingManifest(services).build();
     const options: IOptions<WidgetOptions> = provider.resolve(optionsAddressType(WIDGET_OPTIONS_TYPE));
@@ -69,10 +69,10 @@ describe('configure — section-to-options binding', () => {
   test('two configure calls deep-merge their sections into one value', () => {
     const config = rootWith({ 'Widget:Url': 'http://a', 'Extra:Retries': '5' });
 
-    let services: Manifest<'singleton'> = new DefaultManifest<'singleton'>();
+    let services: Manifest<unknown> = Manifest.empty<unknown>();
     services = services.addOptions(WIDGET_OPTIONS_TYPE, () => ({ Url: '' }));
-    services = services.configure(WIDGET_OPTIONS_TYPE, config.getSection('Widget'));
-    services = services.configure(WIDGET_OPTIONS_TYPE, config.getSection('Extra'));
+    services = services.addMany(getConfigureManifest(WIDGET_OPTIONS_TYPE, config.getSection('Widget')));
+    services = services.addMany(getConfigureManifest(WIDGET_OPTIONS_TYPE, config.getSection('Extra')));
 
     const provider = di.usingLifetimeModel(LifetimeModel.noop).usingManifest(services).build();
     const options: IOptions<WidgetOptions> = provider.resolve(optionsAddressType(WIDGET_OPTIONS_TYPE));
@@ -83,7 +83,7 @@ describe('configure — section-to-options binding', () => {
 
 describe('addOptions — no configured source', () => {
   test('delivers a static snapshot (value from makeBase, no subscribe)', () => {
-    let services: Manifest<'singleton'> = new DefaultManifest<'singleton'>();
+    let services: Manifest<unknown> = Manifest.empty<unknown>();
     services = services.addOptions(WIDGET_OPTIONS_TYPE, () => ({ Url: 'default' }));
 
     const provider = di.usingLifetimeModel(LifetimeModel.noop).usingManifest(services).build();

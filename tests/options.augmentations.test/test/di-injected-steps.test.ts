@@ -6,9 +6,9 @@
 // can't recover the Deps tuple by inference.
 
 import { di } from '@rhombus-std/di';
-import { DefaultManifest, LifetimeModel, type Manifest, Type } from '@rhombus-std/di.core';
+import { LifetimeModel, Manifest, Type } from '@rhombus-std/di.core';
 import { type IOptions, OptionsValidationError } from '@rhombus-std/options';
-import { optionsAddressType } from '@rhombus-std/options.augmentations';
+import { getConfigureManifest, getPostConfigureManifest, getValidateManifest, optionsAddressType } from '@rhombus-std/options.augmentations';
 import { describe, expect, test } from 'bun:test';
 
 interface WidgetOptions {
@@ -32,12 +32,12 @@ function baseOptions(): WidgetOptions {
 
 describe('configure — DI-injected', () => {
   test('resolves a class dep and passes it after the options value', () => {
-    let services: Manifest<'singleton'> = new DefaultManifest<'singleton'>();
+    let services: Manifest<unknown> = Manifest.empty<unknown>();
     services = services.add(URL_PROVIDER_TYPE, UrlProvider, Type.ctor(URL_PROVIDER_TYPE, [[]]), 'singleton');
     services = services.addOptions(OPTIONS_TYPE, baseOptions);
-    services = services.configure<[UrlProvider]>(OPTIONS_TYPE, [URL_PROVIDER_TYPE], (options: WidgetOptions, urls) => {
+    services = services.addMany(getConfigureManifest<[UrlProvider]>(OPTIONS_TYPE, [URL_PROVIDER_TYPE], (options: WidgetOptions, urls) => {
       options.url = urls.base;
-    });
+    }));
 
     const provider = di.usingLifetimeModel(LifetimeModel.noop).usingManifest(services).build();
     const options: IOptions<WidgetOptions> = provider.resolve(optionsAddressType(OPTIONS_TYPE));
@@ -46,17 +46,17 @@ describe('configure — DI-injected', () => {
   });
 
   test('resolves several deps, injected positionally in type order', () => {
-    let services: Manifest<'singleton'> = new DefaultManifest<'singleton'>();
+    let services: Manifest<unknown> = Manifest.empty<unknown>();
     services = services.add(URL_PROVIDER_TYPE, UrlProvider, Type.ctor(URL_PROVIDER_TYPE, [[]]), 'singleton');
     services = services.addValue(RETRY_POLICY_TYPE, { attempts: 4 });
     services = services.addOptions(OPTIONS_TYPE, baseOptions);
-    services = services.configure<[UrlProvider, { attempts: number; }]>(OPTIONS_TYPE, [
+    services = services.addMany(getConfigureManifest<[UrlProvider, { attempts: number; }]>(OPTIONS_TYPE, [
       URL_PROVIDER_TYPE,
       RETRY_POLICY_TYPE,
     ], (options: WidgetOptions, urls, policy) => {
       options.url = urls.base;
       options.retries = policy.attempts;
-    });
+    }));
 
     const provider = di.usingLifetimeModel(LifetimeModel.noop).usingManifest(services).build();
     const options: IOptions<WidgetOptions> = provider.resolve(optionsAddressType(OPTIONS_TYPE));
@@ -65,15 +65,15 @@ describe('configure — DI-injected', () => {
   });
 
   test('a DI configure composes with a plain configure delegate', () => {
-    let services: Manifest<'singleton'> = new DefaultManifest<'singleton'>();
+    let services: Manifest<unknown> = Manifest.empty<unknown>();
     services = services.add(URL_PROVIDER_TYPE, UrlProvider, Type.ctor(URL_PROVIDER_TYPE, [[]]), 'singleton');
     services = services.addOptions(OPTIONS_TYPE, baseOptions);
-    services = services.configure(OPTIONS_TYPE, (options: WidgetOptions) => {
+    services = services.addMany(getConfigureManifest(OPTIONS_TYPE, (options: WidgetOptions) => {
       options.note = 'plain';
-    });
-    services = services.configure<[UrlProvider]>(OPTIONS_TYPE, [URL_PROVIDER_TYPE], (options: WidgetOptions, urls) => {
+    }));
+    services = services.addMany(getConfigureManifest<[UrlProvider]>(OPTIONS_TYPE, [URL_PROVIDER_TYPE], (options: WidgetOptions, urls) => {
       options.url = urls.base;
-    });
+    }));
 
     const provider = di.usingLifetimeModel(LifetimeModel.noop).usingManifest(services).build();
     const options: IOptions<WidgetOptions> = provider.resolve(optionsAddressType(OPTIONS_TYPE));
@@ -85,15 +85,15 @@ describe('configure — DI-injected', () => {
 
 describe('postConfigure — DI-injected', () => {
   test('runs after configure with a resolved dep', () => {
-    let services: Manifest<'singleton'> = new DefaultManifest<'singleton'>();
+    let services: Manifest<unknown> = Manifest.empty<unknown>();
     services = services.addValue(SUFFIX_TYPE, { text: '!' });
     services = services.addOptions(OPTIONS_TYPE, baseOptions);
-    services = services.configure(OPTIONS_TYPE, (options: WidgetOptions) => {
+    services = services.addMany(getConfigureManifest(OPTIONS_TYPE, (options: WidgetOptions) => {
       options.note = 'base';
-    });
-    services = services.postConfigure<[{ text: string; }]>(OPTIONS_TYPE, [SUFFIX_TYPE], (options: WidgetOptions, suffix) => {
+    }));
+    services = services.addMany(getPostConfigureManifest<[{ text: string; }]>(OPTIONS_TYPE, [SUFFIX_TYPE], (options: WidgetOptions, suffix) => {
       options.note += suffix.text;
-    });
+    }));
 
     const provider = di.usingLifetimeModel(LifetimeModel.noop).usingManifest(services).build();
     const options: IOptions<WidgetOptions> = provider.resolve(optionsAddressType(OPTIONS_TYPE));
@@ -106,7 +106,7 @@ describe('validate — DI-injected', () => {
   const LIMIT_TYPE: Type = Type.from('test:Limit');
 
   function servicesWithLimit(size: number, max: number): Manifest<unknown> {
-    let services: Manifest<'singleton'> = new DefaultManifest<'singleton'>();
+    let services: Manifest<unknown> = Manifest.empty<unknown>();
     services = services.addValue(LIMIT_TYPE, { max });
     services = services.addOptions(OPTIONS_TYPE, () => ({ ...baseOptions(), retries: size }));
     return services;
@@ -114,7 +114,7 @@ describe('validate — DI-injected', () => {
 
   test('a passing predicate resolves the options without throwing', () => {
     let services = servicesWithLimit(3, 10);
-    services = services.validate<[{ max: number; }]>(OPTIONS_TYPE, [LIMIT_TYPE], (options: WidgetOptions, limit) => options.retries <= limit.max, 'retries over limit');
+    services = services.addMany(getValidateManifest<[{ max: number; }]>(OPTIONS_TYPE, [LIMIT_TYPE], (options: WidgetOptions, limit) => options.retries <= limit.max, 'retries over limit'));
 
     const provider = di.usingLifetimeModel(LifetimeModel.noop).usingManifest(services).build();
 
@@ -128,7 +128,7 @@ describe('validate — DI-injected', () => {
 
   test('a failing predicate surfaces the failure message', () => {
     let services = servicesWithLimit(50, 10);
-    services = services.validate<[{ max: number; }]>(OPTIONS_TYPE, [LIMIT_TYPE], (options: WidgetOptions, limit) => options.retries <= limit.max, 'retries over limit');
+    services = services.addMany(getValidateManifest<[{ max: number; }]>(OPTIONS_TYPE, [LIMIT_TYPE], (options: WidgetOptions, limit) => options.retries <= limit.max, 'retries over limit'));
 
     const provider = di.usingLifetimeModel(LifetimeModel.noop).usingManifest(services).build();
 
@@ -148,7 +148,7 @@ describe('validate — DI-injected', () => {
 
   test('a failing predicate with no message uses the default', () => {
     let services = servicesWithLimit(50, 10);
-    services = services.validate<[{ max: number; }]>(OPTIONS_TYPE, [LIMIT_TYPE], (options: WidgetOptions, limit) => options.retries <= limit.max);
+    services = services.addMany(getValidateManifest<[{ max: number; }]>(OPTIONS_TYPE, [LIMIT_TYPE], (options: WidgetOptions, limit) => options.retries <= limit.max));
 
     const provider = di.usingLifetimeModel(LifetimeModel.noop).usingManifest(services).build();
 

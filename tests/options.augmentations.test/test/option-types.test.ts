@@ -6,7 +6,7 @@
 
 import { ConfigBuilder, type IConfigRoot } from '@rhombus-std/config';
 import { di } from '@rhombus-std/di';
-import { DefaultManifest, LifetimeModel, type Manifest, Type } from '@rhombus-std/di.core';
+import { LifetimeModel, Manifest, Type } from '@rhombus-std/di.core';
 import type { IOptions } from '@rhombus-std/options';
 import { changeTokenSourceType, ConfigChangeTokenSource, configureStepType, optionsAddressType, postConfigureStepType, validateStepType } from '@rhombus-std/options.augmentations';
 import { describe, expect, test } from 'bun:test';
@@ -43,7 +43,7 @@ describe('the public slot-type grammar', () => {
     const config = new ConfigBuilder().addInMemoryCollection({ 'Widget:Url': 'http://first' })
       .build() as unknown as IConfigRoot;
 
-    let services: Manifest<'singleton'> = new DefaultManifest<'singleton'>();
+    let services: Manifest<'singleton'> = Manifest.empty<'singleton'>();
     services = services.addOptions(WIDGET_OPTIONS_TYPE, () => ({ Url: '' }));
     // What `configure(WIDGET_OPTIONS_TYPE, section)` does internally, spelled
     // through the public grammar: a custom configure step plus a bare

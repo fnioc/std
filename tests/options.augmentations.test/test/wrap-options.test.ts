@@ -4,7 +4,7 @@
 // authoring surface with hand-written type nodes.
 
 import { di } from '@rhombus-std/di';
-import { DefaultManifest, LifetimeModel, type Manifest, Type } from '@rhombus-std/di.core';
+import { LifetimeModel, Manifest, Type } from '@rhombus-std/di.core';
 import type { IOptions } from '@rhombus-std/options';
 import { optionsAddressType } from '@rhombus-std/options.augmentations';
 import { describe, expect, test } from 'bun:test';
@@ -17,7 +17,7 @@ const WIDGET_TYPE: Type = Type.from('test:Widget');
 
 describe('addOptions(optionsType) — wrap the bound T', () => {
   test('resolving IOptions<T> delivers the bound T', () => {
-    let services: Manifest<'singleton'> = new DefaultManifest<'singleton'>();
+    let services: Manifest<'singleton'> = Manifest.empty<'singleton'>();
     const widget: Widget = { name: 'gizmo' };
 
     services = services.addValue(WIDGET_TYPE, widget);
@@ -38,7 +38,7 @@ describe('addOptions(optionsType) — wrap the bound T', () => {
     }
     const ENGINE_TYPE: Type = Type.from('test:Engine');
 
-    let services: Manifest<'singleton'> = new DefaultManifest<'singleton'>();
+    let services: Manifest<'singleton'> = Manifest.empty<'singleton'>();
     // Explicit-type class registration: a zero-arg ctor.
     services = services.add(ENGINE_TYPE, Engine, Type.ctor(ENGINE_TYPE, [[]]), 'singleton');
     services = services.addOptions(ENGINE_TYPE);
@@ -57,7 +57,7 @@ describe('addOptions(optionsType) — wrap the bound T', () => {
     const A_TYPE: Type = Type.from('test:AOptions');
     const B_TYPE: Type = Type.from('test:BOptions');
 
-    let services: Manifest<'singleton'> = new DefaultManifest<'singleton'>();
+    let services: Manifest<'singleton'> = Manifest.empty<'singleton'>();
     services = services.addOptions(A_TYPE, () => ({ which: 'a' }));
     services = services.addOptions(B_TYPE, () => ({ which: 'b' }));
 
@@ -68,7 +68,7 @@ describe('addOptions(optionsType) — wrap the bound T', () => {
   });
 
   test('a type nobody offered is not answered', () => {
-    const services: Manifest<'singleton'> = new DefaultManifest<'singleton'>();
+    const services: Manifest<'singleton'> = Manifest.empty<'singleton'>();
     const provider = di.usingLifetimeModel(LifetimeModel.noop).usingManifest(services).build();
 
     // The open registration takes the base slot as a dependency, so a type with
