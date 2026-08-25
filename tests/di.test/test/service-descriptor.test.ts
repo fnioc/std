@@ -1,7 +1,7 @@
 // Behaviour tests for descriptor identity. Interned types make `===` the whole of type equality,
 // so a registration written as a token and one written through the factories occupy one slot.
 
-import { DefaultManifest, ServiceDescriptor } from '@rhombus-std/di.core';
+import { ServiceDescriptor } from '@rhombus-std/di.core';
 import { Type } from '@rhombus-std/primitives';
 import { describe, expect, test } from 'bun:test';
 

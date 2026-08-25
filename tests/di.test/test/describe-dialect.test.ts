@@ -5,7 +5,7 @@
 // can still provoke.
 
 import { di } from '@rhombus-std/di';
-import { DefaultManifest, LifetimeModel, type Manifest, ServiceDescriptor } from '@rhombus-std/di.core';
+import { LifetimeModel, Manifest, ServiceDescriptor } from '@rhombus-std/di.core';
 import { Type } from '@rhombus-std/primitives';
 import { describe, expect, test } from 'bun:test';
 
@@ -38,7 +38,7 @@ function makeSink(clock: IClock): Sink {
 
 /** A manifest holding nothing but the clock every case below leans on. */
 function withClock(): Manifest<'singleton'> {
-  return new DefaultManifest<'singleton'>().addValue(CLOCK, new FixedClock());
+  return Manifest.empty<'singleton'>().addValue(CLOCK, new FixedClock());
 }
 
 /** Seals `manifest` into a provider through the front door, on the noop lifetime model. */

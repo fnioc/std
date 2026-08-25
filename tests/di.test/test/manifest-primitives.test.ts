@@ -3,7 +3,7 @@
 // that name to the same instance: a descriptor reaches the primitive, and a service type paired
 // with an implementer reaches the sugar.
 
-import { DefaultManifest, type Manifest, ServiceDescriptor } from '@rhombus-std/di.core';
+import { Manifest, ServiceDescriptor } from '@rhombus-std/di.core';
 import { Type } from '@rhombus-std/primitives';
 import { describe, expect, test } from 'bun:test';
 
@@ -14,7 +14,7 @@ class Impl {}
 
 /** A fresh instance, read through the interface every caller holds. */
 function blank(): Manifest<unknown> {
-  return new DefaultManifest<unknown>();
+  return Manifest.empty<unknown>();
 }
 
 /** The registered values, newest first — the order iterating a manifest yields. */
