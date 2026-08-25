@@ -3,9 +3,47 @@
 Tasks surfaced in passing and deliberately not implemented at the time. Strike items as they
 land; delete the file when empty.
 
-- [ ] **GREEN-LIT 2026-08-24, IN FLIGHT — inherited task 1: types-only
-      `./builders` subpath on di.core** resolving the one-arg asClass/asFactory di.extras sugar
-      halt. Full spec: export `IAsImplementer`/`ServiceDescriptorBuilder`/`Slot` in-file in
+- [ ] **A library that ships registrations returns its own manifest instead of taking the
+      consumer's.** It builds on the narrowest lifetime vocabulary it needs and hands the result
+      back; the consumer merges. `Manifest<Lifetime>` is invariant — the lifetime sits in `add`'s
+      argument position and in iteration's return position — so a parameter of that type accepts
+      nothing but an exact match; that is what forced the phantom type parameter and 28 casts the
+      examples carried. Returning a manifest makes the only crossing the merge, which reads it as
+      `Iterable<ServiceDescriptor<L>>`, covariant. Landed for: diagnostics
+      (`getMetricsManifest`/`getTracingManifest`), logging (`getLoggingManifest`,
+      `LoggerProviderOptions.getProviderOptionsManifest`), hosting.core
+      (`getHostedServiceManifest`), caching.memory (`getMemoryCacheManifest`/
+      `getDistributedMemoryCacheManifest`), options.augmentations (four of five verbs), and every
+      `examples.lib.*` helper. `DefaultManifest` is no longer named outside di.core;
+      `Manifest.empty<L>()` reaches an empty one.
+
+      Three facts, each measured, not reasoned:
+      - `addOptions` cannot convert. Removing it fails with `TS2554: Expected 0 arguments, but got
+      1` at `di.extras.options`'s inline body `this.addOptions(typefor<T>())` — the sugar's own
+      zero-arg face becomes the only `addOptions` in the merged interface, so its body no longer
+      matches an overload of itself. The sugar depends on the explicit member existing as a
+      different overload of the same name.
+      - The merge verb carries the semantics. `addMany(m)` appends unconditionally; `tryAdd(...m)`
+      — spreading the descriptors — runs the existing-registration check against the caller's own
+      manifest, which is how `tryAdd` idempotency survives the conversion.
+      - `add` does not yet take a manifest at the type level. `manifest.add(someManifest)` merges
+      at runtime but typechecks only by matching the VALUE overload, since `ButNot<ServiceType,
+      Func | AbstractCtor | ServiceDescriptor<any>>` does not exclude a manifest. The
+      `addMany`→`add` fold is half-landed. Do not write `.add(aManifest)` as the idiom anywhere.
+- [ ] **OPEN, awaiting the owner — the four converted options steps return `Manifest<unknown>`,
+      the widest vocabulary, so no narrower consumer can merge them.** `getConfigureManifest`,
+      `getPostConfigureManifest`, `getValidateManifest`, and `getValidateOnStartManifest` build
+      from `Manifest.empty<unknown>()`; `ServiceDescriptor<unknown>` is not assignable to
+      `ServiceDescriptor<'singleton'>`, so a consumer building on a narrower vocabulary cannot
+      merge one in. Diagnostics and logging return `Manifest<'singleton'>` instead, and flow into
+      anything wider. Underneath it: those four steps register without naming a lifetime, which
+      only ever typechecked because a method's `this` is compared bivariantly; a free function
+      gets no such loophole, so something has to say what lifetime an options pipeline step
+      registers at. That is a semantics call for the owner, not a mechanical fix.
+- [x] **LANDED `5d018d21` — the types-only `./builders` subpath exists on di.core, resolving the
+      one-arg asClass/asFactory di.extras sugar halt.** Was: GREEN-LIT 2026-08-24, IN FLIGHT —
+      inherited task 1: types-only `./builders` subpath on di.core resolving the one-arg
+      asClass/asFactory di.extras sugar halt. Full spec: export `IAsImplementer`/`ServiceDescriptorBuilder`/`Slot` in-file in
       di.core `src/builder.ts` (root surface unchanged); dev `exports` subpath → `./src/builder.ts`;
       published shape TYPES-ONLY (`types` condition, deliberately no `default`) taught to
       `derive-publish-config.ts` (must NOT ride the `./private/*` scrub — an unresolvable specifier
@@ -141,8 +179,12 @@ land; delete the file when empty.
       registrations; and constraints alone don't finish the job — a registered invoker concrete
       needs engine guts, so it wants engine floor-registration at genesis. Claude's read: the prize
       is de-special-casing doors out of `ToCallSiteVisitor`, not the ctor/func split.
-- [ ] **A registration verb cannot state the vocabulary it needs. Rolled back 2026-08-24 — do not
-      re-derive the write-half split.** The problem is real and has a workaround in the tree:
+- [x] **RESOLVED by `61c8e029` — the phantom type parameter is gone: every `examples.lib.*` helper
+      now builds and returns its own manifest instead of taking the consumer's.** No
+      `Manifest<S | 'singleton'>` spelling or `'singleton' as S | 'singleton'` cast remains
+      anywhere in `examples.lib.*` (the general shape is recorded at the top of this file). Was:
+      A registration verb cannot state the vocabulary it needs. Rolled back 2026-08-24 — do not
+      re-derive the write-half split. The problem is real and has a workaround in the tree:
       `addCheckoutServices<S>(services: Manifest<S | 'singleton'>)` and `addGreetingWorkshop` in the
       `examples.lib.*` packages carry a PHANTOM type parameter purely to spell "any vocabulary
       containing `'singleton'`", plus a `'singleton' as S | 'singleton'` cast at every registration
@@ -211,11 +253,11 @@ land; delete the file when empty.
       from deciding which overload wins. Do not re-derive the guard without a measured call that
       is wrong and that the existing constraints do not already refuse; two attempts to construct
       one were both wrong.
-- [ ] **Small, offered and unanswered (2026-08-24):** (a) `UnsatisfiableError` could name the
-      SPECIFIC missing dependency rather than "something it needs is not" — the failing arg's Type
-      is in hand where an answer is rejected and is dropped rather than carried to the throw; the
-      class already takes a `cause`, and this is the same threading the resolve-audit frame wants.
-      (b) `$` is deprecated but still spelled in `tests/inline.ttsc.e2e` and di.core's README table;
+- [ ] **(a) LANDED `b41cfeba` — `UnsatisfiableError` now names the specific missing dependency.**
+      `ToCallSiteVisitor` tracks the first type its own walk found nothing to build from and
+      `CallSite.from` threads it in as the outer error's `cause` when it differs from the
+      originally requested type, so `error.cause.serviceType` names the exact dependency. (b) `$`
+      is deprecated but still spelled in `tests/inline.ttsc.e2e` and di.core's README table;
       clearing those lets the alias be deleted outright. (c) the examples' unsatisfiable line now
       reads with two em-dashes (`UnsatisfiableError — cannot satisfy X — reason`) because the
       classifier prefixes the class and the engine's message opens with "cannot satisfy".
@@ -350,7 +392,10 @@ land; delete the file when empty.
       (`ImportedType` named `Invoker` from `@rhombus-std/di.core`, one generic arg) and synthesizes
       a closure that realizes the caller's own callable as an invocation frame. GOSPEL landed in
       `docs/features/augmentations.md`.
-- [ ] **Rework the broken dependers** and delete the four `// @ts-nocheck -- TEMP` headers
+- [x] **LANDED `ddb1ba83` — the four `// @ts-nocheck -- TEMP` headers are gone**
+      (`hosting/src/HostApplicationBuilder.ts`, `hosting/src/HostBuilder.ts`,
+      `hosting/src/default-config.ts`, `logging/src/LoggerFactory.ts` all typecheck for real).
+      Was: Rework the broken dependers and delete the four `// @ts-nocheck -- TEMP` headers
       (`hosting/src/HostApplicationBuilder.ts`, `hosting/src/HostBuilder.ts`,
       `hosting/src/default-config.ts`, `logging/src/LoggerFactory.ts`). Until then those two
       packages' `tsc` gates pass spuriously. The broken test suites (`tests/di.test` scope
@@ -373,8 +418,15 @@ land; delete the file when empty.
       literal against a conditional return type TS only resolves once `Lifetime` is concrete —
       the cast-free alternative is an overload ladder with a widened implementation signature.
       Gates: di.core + di clean, `tests/di.test` unchanged at 92 / 91 / 183.
-- [ ] **Variance annotations on `Manifest`/`LifetimeModel` — DEFER into the starfish pass; the
-      blocker is a lifetime-model decision, not a variance one (measured 2026-08-24).** Both are
+- [x] **SUPERSEDED — the returned-manifest pattern recorded at the top of this file is the answer
+      for every framework package that has converted so far** (`5ca9f434`, `3d8d9ecf`, `32a401ec`,
+      `eba0c72c`, `d4ae6f97`; caching.memory and hosting.core landed the same shape). A library
+      that hardcoded a lifetime into `this: Manifest<unknown>` now mints its own
+      `Manifest<'singleton'>` (or, for four options.augmentations verbs, still `Manifest<unknown>`
+      — see the open question at the top of this file) and returns it; the vocabulary question is
+      checked at the merge instead of nowhere. Was: Variance annotations on
+      `Manifest`/`LifetimeModel` — DEFER into the starfish pass; the blocker is a lifetime-model
+      decision, not a variance one (measured 2026-08-24). Both are
       genuinely invariant (a manifest takes a lifetime in at registration and hands one back out
       when iterated), and method-argument BIVARIANCE is the only thing making the current
       spellings compile. `Manifest<unknown>` appears 198 times: 55 `this: Manifest<unknown>`
@@ -438,7 +490,10 @@ land; delete the file when empty.
 - [x] __examples.app._ red against the model-taking `DefaultManifest` ctor_* — greened 2026-08-24:
       front-door rewiring, `ConstantType` stripped from example call sites, concrete demo manifests
       widened to `Manifest<unknown>` on `LifetimeModel.noop`; root `bun run build` exits 0.
-- [ ] **MetricsBuilder augmentation regression — untriaged**: `tests/augmentations.test` fails with
+- [x] **FIXED `fd2cfc4f` — the recording manifest stand-ins in three test files implemented
+      `add(serviceType, value)` where the augmentations under test call the manifest's dedicated
+      `addValue` verb; renamed to match.** Test-side, not a library defect. Was: MetricsBuilder
+      augmentation regression — untriaged: `tests/augmentations.test` fails with
       `this.services.addValue is not a function` at
       `diagnostics.core/src/metrics/MetricsBuilder-augmentations.ts:33`; surfaced during the
       resolve-vocab slide-in but cause unattributed (sweep vs pass fallout).
@@ -459,23 +514,45 @@ land; delete the file when empty.
       pre-di2: `ConstantType`/marker phrasing (the marker no longer exists; value door = the
       `*Value` verbs + `NonCallable` add shape), `scope?` args, `Scopes` naming. One pass at lane
       end, not piecemeal.
-- [ ] **augmentations.test residual 5 fails** — suites load again since the matcher fix; the
+- [x] **GREEN `fd2cfc4f` — `tests/augmentations.test` is 19/19.** The residual 5 were the
+      addValue-mock issue above plus `filter-logging-builder.test.ts` building its provider
+      through the retired `manifest.build()`/`createScope` pair; repaired onto
+      `di.usingLifetimeModel(LifetimeModel.noop).usingManifest(...).build()`. Was:
+      augmentations.test residual 5 fails — suites load again since the matcher fix; the
       remaining failures are untriaged (likely the hosting/logging red pile reaching through
       filter-logging-builder). Triage after the abstract-ctor Go work lands.
-- [ ] **Models wiring review (standard/tagged landed unwired 2026-08-23):** surface the two
-      models publicly (namespace/barrel), add di.core's missing `./private/*` white-box seam
-      (suites deep-import by relative path meanwhile), collapse the ~80 duplicated
-      Scope/Router/ScopeProvider lines shared by the two self-contained model files, and correct
-      LifetimeModel.ts's doc claim that `site` is "the natural key for an instance store" (site
-      is per-plan-position; the models key on (descriptor, requested type)). OWNER RULING NEEDED
-      before wiring the scope-dependent red suites (caching.memory 8, hosting.core 5,
-      diagnostics 3, filter-logging-builder): they spell `createScope('singleton')` on
-      `Manifest<string>` — the TAGGED model's shape, not standard's. ENGINE SEAMS the full spec
-      still needs (models worked around or can't): a scope-bound provider can't start a walk
-      under its own model (router-cell workaround in the models); an injected IServiceProvider
-      inside a scope is the container, not the scope (RealizeVisitor.ts:128-130, not fixable
-      model-side); resolveLatebound re-enters under call-time scope, not captured scope
-      (RealizeVisitor.ts:116-118).
+- [x] **LANDED — di.core's `./private/*` white-box seam exists (`196112b6`), and the
+      scope-dependent red suites it was blocking (caching.memory 8, hosting.core 5, most of
+      diagnostics) are green again** — not by wiring `createScope('singleton')` on the tagged
+      model, but because caching.memory and hosting.core no longer take a manifest to register
+      into at all (they return their own, recorded at the top of this file), and the test-side
+      callers that only ever needed a resolvable provider moved onto
+      `di.usingLifetimeModel(LifetimeModel.noop).usingManifest(...).build()`. Two diagnostics
+      tests and one logging.config test stay `test.skip`, needing the standard lifetime model's
+      real singleton caching, which this did not touch. Was: Models wiring review (standard/tagged
+      landed unwired 2026-08-23): surface the two models publicly (namespace/barrel), add
+      di.core's missing `./private/*` white-box seam (suites deep-import by relative path
+      meanwhile), collapse the ~80 duplicated Scope/Router/ScopeProvider lines shared by the two
+      self-contained model files, and correct LifetimeModel.ts's doc claim that `site` is "the
+      natural key for an instance store" (site is per-plan-position; the models key on
+      (descriptor, requested type)). OWNER RULING NEEDED before wiring the scope-dependent red
+      suites (caching.memory 8, hosting.core 5, diagnostics 3, filter-logging-builder): they spell
+      `createScope('singleton')` on `Manifest<string>` — the TAGGED model's shape, not standard's.
+      ENGINE SEAMS the full spec still needs (models worked around or can't): a scope-bound
+      provider can't start a walk under its own model (router-cell workaround in the models); an
+      injected IServiceProvider inside a scope is the container, not the scope
+      (RealizeVisitor.ts:128-130, not fixable model-side); resolveLatebound re-enters under
+      call-time scope, not captured scope (RealizeVisitor.ts:116-118).
+- [ ] **The two lifetime models need a public surface, deduplication, and three engine seams.**
+      `standard`/`tagged` aren't surfaced through a namespace or barrel yet. The two
+      self-contained model files share ~80 duplicated Scope/Router/ScopeProvider lines, ready to
+      collapse. LifetimeModel.ts's doc claims `site` is "the natural key for an instance store";
+      it is per-plan-position, and the models actually key on (descriptor, requested type). The
+      full spec still needs three engine seams the models currently work around or can't reach: a
+      scope-bound provider can't start a walk under its own model (router-cell workaround in the
+      models); an injected `IServiceProvider` inside a scope is the container, not the scope
+      (RealizeVisitor.ts:128-130, not fixable model-side); `resolveLatebound` re-enters under
+      call-time scope, not captured scope (RealizeVisitor.ts:116-118).
 - [ ] **mergesynth 5-way `add` guard bug — BLOCKS the ruled addMany→add fold.** Adding an
       `add(descriptors: Iterable<ServiceDescriptor>)` overload as a 5th `add` shape makes the
       synthesized dispatcher break at runtime (`TypeError: undefined is not a function at reduce`
@@ -489,11 +566,17 @@ land; delete the file when empty.
       Iterable ctor overloads. Fallout of the ctor/contract rework landing after the examples were
       greened; root `bun run build` fails at these two apps only. Fix = semantics-only call-site
       updates (never fill out demos).
-- [ ] **`getRequiredService` throws a bare `Error`** when nothing is registered — outside the
-      `DiError` taxonomy, so one `instanceof` no longer classifies every container failure
-      (surfaced by the createScope augmentation, which had to route through `getService`'s
-      undefined split instead of catching a classifiable error). Decide: `UnsatisfiableError`
-      (needs the serviceType member semantics checked) or a dedicated taxonomy member.
+- [x] **DECIDED, `b41cfeba` — one class, not a dedicated taxonomy member.** `UnsatisfiableError`
+      already extends `DiError`; both "nothing registered" and "registered but a dependency isn't"
+      stay one class, since both are legitimately fall-back-from under the class's own documented
+      contract (unlike `CycleError`, kept separate because it is a bug signal a fallback handler
+      must not swallow). The distinction is machine-readable via `cause` instead (see the
+      specific-dependency entry above). Was: `getRequiredService` throws a bare `Error` when
+      nothing is registered — outside the `DiError` taxonomy, so one `instanceof` no longer
+      classifies every container failure (surfaced by the createScope augmentation, which had to
+      route through `getService`'s undefined split instead of catching a classifiable error).
+      Decide: `UnsatisfiableError` (needs the serviceType member semantics checked) or a dedicated
+      taxonomy member.
 - [ ] **The door concept — owner design direction 2026-08-24; NO implementation until he
       green-lights (model review first).** `IServiceProvider`'s one-member `getService` is not a
       bottleneck: every specialized capability is a DOOR — an address you ask the provider for,
