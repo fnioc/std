@@ -163,17 +163,20 @@ land; delete the file when empty.
       nothing at any call site. Any future attempt has to answer the chain first; a verb returning
       the polymorphic `this` type is the only shape that could, and that contradicts the
       faces-never-use-`this` rule in `docs/features/augmentations.md`.
-- [ ] **The value-door guard is INERT at every sugar call site.** `add<IFoo>(Foo)` — one argument
-      under a vocabulary requiring the lifetime datum — cannot bind the ctor face, binds the VALUE
-      face instead, and registers the class itself as the instance. `ButNot<T, Not> = T &
-      Exclude<T, Not>` is computed on the SERVICE type, not the argument, so with `T` given
-      explicitly it reduces to plain `T`, never sees that the argument is a constructor, and an
-      empty interface accepts it. It only ever discriminates when `T` is INFERRED from the
-      argument — which no sugar call site does. Corroborated in one inline e2e dump: two-arg
-      `add<ILogger>(ConsoleLogger, 'singleton')` lowers to `.add(…)`, one-arg
-      `add<IRepo<$<'1'>>>(ThingRepo)` lowers to `.addValue(…)`, same fixture, arity the only
-      difference. A missing required lifetime should be a refusal; today it is a silent wrong door.
-      Two `tests/di.registration.ttsc.e2e` failures are this.
+- [ ] **RULED 2026-08-24 — the DOOR is picked by the address, not by the value.** Given
+      `class Foo implements IFoo` and a vocabulary admitting `undefined`:
+      `manifest.add<IFoo>(Foo)` is a CTOR descriptor addressed by `IFoo`; `manifest.add(Foo)` is a
+      ctor descriptor addressed by `Foo`; `manifest.add<typeof Foo>(Foo)` is a VALUE descriptor
+      whose value is the constructor; `manifest.addValue(Foo)` is the same. So a non-callable
+      address plus a callable implementer means CONSTRUCT, and an address that IS the implementer's
+      own type means the callable is data.
+      Consequence: `ButNot<Value, Func | AbstractCtor>` guards backwards. It refuses a callable
+      VALUE — precisely the case that must reach the value door when the address is `typeof Foo` —
+      and it discriminates nothing when the address is `IFoo`, because it is computed on the
+      service type, which is spelled explicitly at every sugar call site. Measured in one lowering:
+      `add<ILogger>(ConsoleLogger, 'singleton')` emits `.add(…)` while `add<IRepo<Generic<'1'>>>(ThingRepo)`
+      emits `.addValue(…)` — same fixture, arity the only difference, and the second is the silent
+      wrong door this ruling closes. Two `tests/di.registration.ttsc.e2e` failures are this.
 - [ ] **`expected.txt` regeneration owed** (both `examples.app.*`). The demos' printed labels moved
       with the provider vocabulary, and one line changed VALUE as well as text: `resolve` of a
       registered-but-unbuildable service now throws where it printed `undefined`, because a chosen
@@ -332,6 +335,12 @@ land; delete the file when empty.
       container), that registration is refused at RUNTIME with the naming TypeError and nothing
       catches it earlier. Whether that matters is a real question — are non-standard vocabularies
       meant to work with hosting/logging at all? — and it is independent of the annotation.
+      **DEFERRED by the owner 2026-08-25 ("tbd").** The two answers, for whoever picks it up: NO
+      means the framework packages state a dependence on the standard vocabulary as a precondition
+      and the `Manifest<unknown>` erasure is a permanent, known shortcut; YES means a framework
+      registration cannot name `'singleton'` at all and needs a vocabulary-independent way to say
+      "one per container", which is a lifetime-model increment rather than a bolt-on. The answer
+      decides whether the lifetime work carries a role concept.
 - [ ] **Rebuild stale dist bundles beyond the di family** — the rename sweeps (`Scopes` →
       `Lifetime`, `scope` → `lifetime`) touched many packages; only primitives/primitives.extras/
       di.core/di dists were rebuilt. Stale sibling dists resurface phantom two-generic `Manifest`
