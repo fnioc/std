@@ -14,7 +14,7 @@
 import type {} from '@rhombus-std/di.extras';
 
 import { di } from '@rhombus-std/di';
-import { DefaultManifest, LifetimeModel } from '@rhombus-std/di.core';
+import { LifetimeModel, Manifest } from '@rhombus-std/di.core';
 import { type IExternalScopeProvider, type ILogger, type ILoggerFactory, type ILoggerProvider, type ILoggingBuilder, LogLevel } from '@rhombus-std/logging.core';
 import { type IOptions, Options } from '@rhombus-std/options';
 import { augment } from '@rhombus-std/primitives';
@@ -167,11 +167,11 @@ export class LoggerFactory implements ILoggerFactory {
 
   /**
    * Creates a configured {@link ILoggerFactory} from an {@link ILoggingBuilder}
-   * delegate. Spins up a {@link DefaultManifest}, runs `addLogging(configure)`,
+   * delegate. Spins up an empty {@link Manifest}, runs `addLogging(configure)`,
    * builds the container, and resolves the factory.
    */
   public static create(configure: Func<[ILoggingBuilder], void>): ILoggerFactory {
-    const services = DefaultManifest.empty<unknown>().addLogging(configure);
+    const services = Manifest.empty<unknown>().addLogging(configure);
     return di.usingLifetimeModel(LifetimeModel.noop)
       .usingManifest(services)
       .build()
