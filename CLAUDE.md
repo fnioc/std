@@ -4,7 +4,16 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 # `@rhombus-std` monorepo
 
-Project-specific rules only. General git/commit/worktree conventions live in user prefs, not here.
+Project-specific rules only. General git/commit conventions live in user prefs, not here.
+
+## Worktrees and merges — a deliberate deviation from user prefs
+
+User prefs make a worktree the mandatory home for every code edit, and a PR the way work lands.
+**Neither holds here.** Work happens in place on the shared branch, and a branch that does get
+taken merges **locally** — no PR is opened for it, so the auto-merge and merge-queue habits are
+out of scope too. Reach for a worktree only where it unlocks real parallelism: concurrent lanes
+with genuine conflict risk. Coding and testing are delegated to subagents to keep the main
+session's context for design — those subagents work in this tree, not in isolated worktrees.
 
 **Decision records** (`docs/`) — one authority rule: only the owner's file is gospel.
 
