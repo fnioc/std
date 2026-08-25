@@ -402,7 +402,10 @@ land; delete the file when empty.
       registration cannot name `'singleton'` at all and needs a vocabulary-independent way to say
       "one per container", which is a lifetime-model increment rather than a bolt-on. The answer
       decides whether the lifetime work carries a role concept.
-- [ ] **Rebuild stale dist bundles beyond the di family** — the rename sweeps (`Scopes` →
+- [x] **DEAD, verified 2026-08-25 — nothing in-repo resolves `dist/` at all** (`main`/`types`/dev
+      `exports` all point at src, the editor config needs no paths, the root solution stub has an
+      empty `references`, and no tsconfig carries `paths`), so a stale bundle cannot produce a
+      diagnostic anywhere. No rebuild was run. Was: — the rename sweeps (`Scopes` →
       `Lifetime`, `scope` → `lifetime`) touched many packages; only primitives/primitives.extras/
       di.core/di dists were rebuilt. Stale sibling dists resurface phantom two-generic `Manifest`
       diagnostics in the editor.
@@ -411,7 +414,10 @@ land; delete the file when empty.
       summary line.
 - [ ] **Hoist `DistributiveOmit` + `ButNot` into `@rhombus-toolkit/type-helpers`** — currently in primitives
       `src/toolkit/type-helpers.ts` (the toolkit dir is the migration queue); fully general, belongs beside `Flatten`. Ride the next type-helpers publish.
-- [ ] **Go-side aggregate/nominal naming echoes** — transforms/ internals (tokens/derive.go,
+- [x] **LANDED `950bcc44` — aggregate→list in the Go internals; every `nominal` occurrence KEPT,
+      being nominal-vs-structural typing (an `instanceof`-checkable identity in guard synthesis),
+      a different concept from the `NamedType` kind grouping.** Gates green, both e2e baselines
+      unchanged, no token string moved. Was: — transforms/ internals (tokens/derive.go,
       typenode.go, mergesynth nominal_identity_test.go, typesurface) still speak aggregate/nominal
       where TS now says list/named; wire format unaffected. Rename on the next transforms touch.
 - [ ] **di.registration.ttsc.e2e repair** — two-part: the sandbox fixture declares `Manifest<"singleton">`
@@ -420,7 +426,9 @@ land; delete the file when empty.
       with their `(implementer, lifetime?)` bodies (INLINE_FACE_WITHOUT_BODY; sugar survives unlowered). The same face↔body diagnostics are
       FATAL in the bunfig preload, so the defect also fails whole-suite loads in
       augmentations.test, options.augmentations.test, caching.memory.test and hosting.test.
-- [ ] **arg-vocabulary residual sweep** — RULED 2026-08-22: the signatures-list member is
+- [x] **LANDED `879a5a7a` — 23 prose edits across 11 files. Boundary drawn: `arg` names an element
+      of a di signature (`Type.Signatures`, ctor/func nodes); an ordinary hand-authored callback's
+      own parameters keep "parameter", as do `@param`/`@typeParam` tags and "type parameter".** Was: — RULED 2026-08-22: the signatures-list member is
       `signatures`; `args` is acceptable only for a single signature's own element list; per-element
       prose is "arg", never param/parameter/argument. Code, spec doors and primitives tests now
       conform; "parameter" prose still survives in builder.ts, ServiceProvider.ts docs and
