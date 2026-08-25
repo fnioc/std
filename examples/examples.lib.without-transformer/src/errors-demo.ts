@@ -111,7 +111,7 @@ export function diagnose(error: unknown): string {
     // second telling of that here could only drift out of step with it. What
     // this table adds is the CLASSIFICATION and what to do next; the account of
     // what happened stays where it was decided.
-    return `UnsatisfiableError — ${error.message}; `
+    return `UnsatisfiableError: ${error.message}; `
       + 'register what is missing, or ask through the union address if its absence is legitimate';
   }
 
