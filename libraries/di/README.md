@@ -16,7 +16,7 @@ bun add @rhombus-std/di
 
 ```ts
 import { di } from '@rhombus-std/di';
-import { DefaultManifest, LifetimeModel, Type } from '@rhombus-std/di.core';
+import { LifetimeModel, Manifest, Type } from '@rhombus-std/di.core';
 
 interface IGreeter {
   greet(name: string): string;
@@ -29,7 +29,7 @@ class ConsoleGreeter implements IGreeter {
   }
 }
 
-const manifest = new DefaultManifest<unknown>().add(IGreeter, ConsoleGreeter, Type.ctor(IGreeter, [[]]));
+const manifest = Manifest.empty<unknown>().add(IGreeter, ConsoleGreeter, Type.ctor(IGreeter, [[]]));
 
 const provider = di.usingLifetimeModel(LifetimeModel.noop)
   .usingManifest(manifest)
@@ -61,5 +61,5 @@ provider.resolve(IGreeter).greet('world'); // "Hello, world!"
 ## Notes
 
 - A discarded `.add(...)`, `.describe(...)`, or `.configureServices(...)` result configures nothing — both `Manifest` and `ContainerBuilder` are immutable, so always chain or reassign.
-- A union dependency settles deterministically: a registration for the union's own address answers it outright; otherwise the members are tried in the union's canonical order, every member's registrations before any member's synthesis. Literals order last among members, which is what keeps a literal member (such as `undefined`) as the fallback of an optional dependency.
-- `LifetimeModel.noop` — the only lifetime model this package exports directly — retains nothing: every registration is constructed fresh on every resolution, and it never opens a scope. A model that scopes publishes the capability to open one under `ScopeFactory.address`, resolved like any other service.
+- A union dependency settles deterministically: a registration for the union's own address answers it outright; otherwise each member is tried, registration then synthesis, in the union's canonical order, and the first one that resolves settles it. Literals order last among members, which is what keeps a literal member (such as `undefined`) as the fallback of an optional dependency.
+- `LifetimeModel.noop`, from `di.core`, retains nothing: every registration is constructed fresh on every resolution, and it never opens a scope. A model that scopes publishes the capability to open one under `ScopeFactory.address`, resolved like any other service.
