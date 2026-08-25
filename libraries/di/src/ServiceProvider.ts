@@ -5,11 +5,11 @@ import type { Func } from '@rhombus-toolkit/func';
 import { Engine } from './internal/Engine.js';
 import { ServiceProviderOptions } from './ServiceProviderOptions.js';
 
-export interface ServiceProvider<Lifetime = unknown> extends IServiceProvider {}
+export interface ServiceProvider extends IServiceProvider {}
 
 /** The user-facing door: a manifest sealed into a resolvable provider. */
 @augment(typefor<IServiceProvider>())
-export class ServiceProvider<Lifetime = unknown> implements IServiceProvider {
+export class ServiceProvider implements IServiceProvider {
   readonly #engine: Engine;
 
   /** @throws {ManifestValidationError} when `options.validateOnBuild` finds an unsatisfiable graph. */
