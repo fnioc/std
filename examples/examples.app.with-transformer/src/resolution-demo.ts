@@ -52,15 +52,14 @@ async function tour(provider: IServiceProvider): Promise<string[]> {
 
   // ── required vs optional ───────────────────────────────────────────────────
   //
-  // `resolve` and `resolve` both throw on an address nothing can answer —
-  // neither verb softens a miss on its own. What decides whether absence is a
-  // wiring fault or a legitimate answer is the ADDRESS: asking for the bare
-  // type is a hard requirement, while asking for `Type.union(type,
-  // Type.typeLiteral(undefined))` adds the literal as a FALLBACK, so an absent
-  // registration answers `undefined` instead of throwing. This demo keeps
-  // calling the union-wrapped lookups through `resolve`, purely as a naming
-  // convention for "this may come back undefined" — the union is what does the
-  // work, and `resolve` would behave identically given the same address.
+  // Every lookup goes through `resolve`, and `resolve` throws on an address
+  // nothing can answer — it does not soften a miss on its own. What decides
+  // whether absence is a wiring fault or a legitimate answer is the ADDRESS:
+  // asking for the bare type is a hard requirement, while asking for
+  // `Type.union(type, Type.typeLiteral(undefined))` adds the literal as a
+  // FALLBACK, so an absent registration answers `undefined` instead of
+  // throwing. The distinction below is entirely in which address each call
+  // spells, never in a second verb.
   //
   // The softening is narrow, and that narrowness is the point: it answers for
   // the type that was ASKED for. A registration whose own dependency is

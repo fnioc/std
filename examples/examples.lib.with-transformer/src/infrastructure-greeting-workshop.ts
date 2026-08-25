@@ -221,9 +221,9 @@ export class GreetingWorkshop {
  * below has a parameter form sitting above it — which is what makes it the
  * counter-example.
  *
- * As a side effect it keeps `resolve`, `resolve`, and the
- * intrinsic provider slot demonstrated from inside a library, in the tokenless
- * dialect, which is where a reader is most likely to meet them.
+ * As a side effect it keeps `resolve` and the intrinsic provider slot
+ * demonstrated from inside a library, in the tokenless dialect, which is
+ * where a reader is most likely to meet them.
  */
 export class LocatorGreetingWorkshop {
   readonly #resolver: IServiceProvider;

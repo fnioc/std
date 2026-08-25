@@ -79,9 +79,9 @@ export interface IAuditTrail {
 
 /**
  * The service that is deliberately NEVER registered. It exists so the examples
- * can show what a MISS looks like on each verb — `resolve` throws,
- * `resolve` returns `undefined` — without having to invent a fake Type
- * nobody would ever write.
+ * can show what a MISS looks like on each address — the bare type throws,
+ * the union with a literal `undefined` fallback answers `undefined` — without
+ * having to invent a fake Type nobody would ever write.
  */
 export interface IFraudScreen {
   screen(order: CheckoutOrder): string;

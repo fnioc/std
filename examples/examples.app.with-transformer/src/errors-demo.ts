@@ -116,11 +116,11 @@ export function demonstrateErrors(): readonly string[] {
   // you want is a deployment question — fail at startup, or stay up and answer
   // only the requests that touch the working part.
   //
-  // `resolve` and `resolve` both throw here: STORE_TYPE IS registered, so it
-  // is the chosen answer, and a chosen answer's runtime build failure never
-  // falls through to a softer one — the union-with-undefined address that
-  // recovers a WHOLLY unregistered type does nothing for a registered type
-  // whose own dependency cannot be built.
+  // `resolve` throws here: STORE_TYPE IS registered, so it is the chosen
+  // answer, and a chosen answer's runtime build failure never falls through
+  // to a softer one — the union-with-undefined address that recovers a
+  // WHOLLY unregistered type does nothing for a registered type whose own
+  // dependency cannot be built.
   const lazy = di.usingLifetimeModel(LifetimeModel.noop).usingManifest(withUnsatisfiableStore()).build();
   lines.push(stagedFailure('asking with resolve for a registration that cannot be lowered', () => lazy.resolve(STORE_TYPE)));
   lines.push(stagedFailure('asking with resolve for the same', () => lazy.resolve(STORE_TYPE)));

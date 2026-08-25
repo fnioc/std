@@ -301,9 +301,9 @@ export class PaymentRouter implements IPaymentRouter {
 
   public checkout(order: CheckoutOrder): string {
     // The KEYED form: the base type tagged with the method, which is one type
-    // and so an ordinary exact lookup. `resolve` (not `resolve`)
-    // because by this point a validator has already confirmed the method — a
-    // miss now is a wiring bug and should be loud.
+    // and so an ordinary exact lookup. The BARE address, no union fallback —
+    // by this point a validator has already confirmed the method, so a miss
+    // now is a wiring bug and should be loud rather than answered softly.
     const gateway = this.#resolver.resolve(Type.tag(this.#gatewayType, order.method)) as IPaymentGateway;
     return `${gateway.charge(order)} → ${this.#mintReceipt(order).text}`;
   }

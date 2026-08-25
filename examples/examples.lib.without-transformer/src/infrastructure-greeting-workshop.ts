@@ -200,10 +200,10 @@ export class GreetingWorkshop {
  * survives construction and fails at the first `card()` call, in production,
  * on the request that happened to need one.
  *
- * The verbs it uses are all perfectly good verbs — this is not a lesson about
- * `resolve` or `resolve` being wrong. It is a lesson about WHERE
- * they belong: at a composition root, which knows what it is composing, rather
- * than inside a library, which does not.
+ * The verb it uses is a perfectly good verb — this is not a lesson about
+ * `resolve` being wrong. It is a lesson about WHERE it belongs: at a
+ * composition root, which knows what it is composing, rather than inside a
+ * library, which does not.
  *
  * There is exactly one thing it can do that the class above cannot: it
  * CONSTRUCTS against a provider that holds no cards at all, because it defers
