@@ -2,10 +2,10 @@
 // to have.
 //
 // A library CONTRIBUTES REGISTRATIONS. It does not own a container: it never
-// constructs a manifest, never calls `build()`, never opens a scope and never
-// resolves. It exports ONE function that takes the application's manifest and
-// hands back the manifest with this library's services added; the application —
-// the only thing that knows what it is composing — does the rest.
+// calls `build()`, never opens a scope and never resolves. It exports ONE
+// function that builds its own self-contained manifest and hands it back; the
+// application — the only thing that knows what it is composing — merges it into
+// its own and does the rest.
 //
 // That split is not a style choice, it is what the package boundary is FOR. This
 // library depends on `@rhombus-std/di.core` (the abstractions: the manifest, the
@@ -29,7 +29,7 @@
 // violation read backwards. What a consumer still needs in order to RESOLVE is
 // the Type agreement, and `./types.ts` publishes that.
 
-import type { Manifest } from '@rhombus-std/di.core';
+import { Manifest } from '@rhombus-std/di.core';
 import type { IBanner, IGreeting, IServerReport } from '@rhombus-std/examples.contracts';
 // The type-driven MINT primitive, and the whole of what this dialect is:
 // `typefor<T>()` becomes the service type a hand author writes out. It has no
@@ -43,44 +43,35 @@ import { FormalGreeting } from './formal-greeting.js';
 import { makeServerReport } from './server-report.js';
 
 /**
- * Registers this library's services into `services`, returning the manifest with
- * those registrations added. The manifest is immutable, so the caller must thread
- * the return value back in (`services = addWithTransformerExamples(services)`) —
- * the passed-in `services` is left untouched.
+ * Builds this library's services as its own manifest, on the narrowest lifetime
+ * vocabulary it needs — `'singleton'`, the one lifetime all three registrations
+ * use. A caller merges the result into their own manifest
+ * (`services = services.addMany(addWithTransformerExamples())`).
  *
  * The name is derived mechanically from the package name, which is the point of
  * the `add<PackageName>` convention: a consumer who knows the package knows the
  * call without reading anything.
- *
- * The scope union is generic so ANY application union works, and the manifest
- * that comes back is the caller's OWN type rather than a widened one — the
- * threading assignment would not otherwise typecheck, since `build()`'s provider
- * carries the scope union covariantly. `| 'singleton'` states the one scope this
- * library actually registers at, so an app whose union lacks it still composes.
- *
- * @param services The application's registration builder.
  */
-export function addWithTransformerExamples<S>(
-  services: Manifest<S | 'singleton'>,
-): Manifest<S | 'singleton'> {
+export function addWithTransformerExamples(): Manifest<'singleton'> {
+  let services = Manifest.empty<'singleton'>();
   // The greeting, registered against the CONTRACT interface rather than the
   // class: `typefor<IGreeting>()` derives the service type from
   // `IGreeting` — the same string the manual library writes out — so both
   // libraries' greetings land on one element type and a consumer asking for the
   // collection gets both.
-  services = services.add(typefor<IGreeting>(), FormalGreeting, typefor(FormalGreeting), 'singleton' as S | 'singleton');
+  services = services.add(typefor<IGreeting>(), FormalGreeting, typefor(FormalGreeting), 'singleton');
 
   // The banner, registered ONLY in its `Promise<…>` wrapper. Registering the
   // honest promise (rather than pretending an async fetch is a synchronous value)
   // is what makes an awaited resolution work and a plain one fail loudly — the
   // container never silently hands back an unsettled value.
-  services = services.add(typefor<Promise<IBanner>>(), fetchBanner, typefor(fetchBanner), 'singleton' as S | 'singleton');
+  services = services.add(typefor<Promise<IBanner>>(), fetchBanner, typefor(fetchBanner), 'singleton');
 
   // The report factory, and the densest argument list anywhere in these examples:
   // a collection, two closed generics and an optional union. Observing the
   // function reads all four straight off its declaration — read it against
   // `./server-report.ts`'s parameter list and the two line up one for one.
-  services = services.add(typefor<IServerReport>(), makeServerReport, typefor(makeServerReport), 'singleton' as S | 'singleton');
+  services = services.add(typefor<IServerReport>(), makeServerReport, typefor(makeServerReport), 'singleton');
 
   return services;
 }

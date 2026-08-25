@@ -10,8 +10,8 @@
 // reading a manifest as data, reasoning about tokens, catching container errors —
 // is reachable from the abstractions package alone. The engine is the
 // application's choice, so the application makes it: each export below either
-// registers INTO a manifest it was handed, or takes what it needs (a provider, a
-// way to build one) as an ordinary parameter.
+// builds its OWN self-contained manifest for the caller to merge, or takes what
+// it needs (a provider, a way to build one) as an ordinary parameter.
 //
 // Nothing here constructs a manifest, calls `build()`, or decides that there
 // should be a container. Where a demonstration needed one of those it lives in

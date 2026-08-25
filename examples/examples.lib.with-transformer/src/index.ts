@@ -25,9 +25,10 @@
 
 // ── the library's front door ─────────────────────────────────────────────────
 
-// ONE function that takes the application's manifest and hands it back with this
-// library's services registered. Everything an app needs to consume this package
-// is this call plus, for a manual-dialect app, the Types below.
+// ONE function that builds its own self-contained manifest with this library's
+// services registered and hands it back for the caller to merge. Everything an
+// app needs to consume this package is this call plus, for a manual-dialect app,
+// the Types below.
 export { addWithTransformerExamples } from './add-with-transformer-examples.js';
 export { EXAMPLE_TYPES } from './types.js';
 

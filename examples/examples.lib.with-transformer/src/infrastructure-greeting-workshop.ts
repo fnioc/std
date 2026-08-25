@@ -38,8 +38,8 @@
 // Type-only: puts the sugar's declare-module faces in every program that
 // compiles this source, with no runtime import of the authoring package.
 import type {} from '@rhombus-std/di.extras';
-import { Type } from '@rhombus-std/di.core';
-import type { IServiceProvider, Manifest } from '@rhombus-std/di.core';
+import { Manifest, Type } from '@rhombus-std/di.core';
+import type { IServiceProvider } from '@rhombus-std/di.core';
 import type { IGreeting } from '@rhombus-std/examples.contracts';
 // `typefor<T>()` folds to the very `Type` a hand author writes out, so a lookup
 // written from a type and a registration written from a type cannot drift. It
@@ -48,8 +48,8 @@ import type { IGreeting } from '@rhombus-std/examples.contracts';
 import { typefor } from '@rhombus-std/primitives.extras';
 
 /** The mutable slot a builder exposes so siblings share one manifest. */
-interface ManifestSlot<S> {
-  services: Manifest<S>;
+interface ManifestSlot {
+  services: Manifest<'singleton' | undefined>;
 }
 
 // ── the domain ───────────────────────────────────────────────────────────────
@@ -247,9 +247,9 @@ export class LocatorGreetingWorkshop {
 // ── the configure(builder) seam ──────────────────────────────────────────────
 
 /**
- * What a consuming application sees inside `addGreetingWorkshop(services, …)`.
- * A fluent, ORDINARY object — no manifest threading, no return value to
- * remember. That ergonomics is bought entirely by the manifest slot; see
+ * What a consuming application sees inside `addGreetingWorkshop(…)`. A fluent,
+ * ORDINARY object — no manifest threading, no return value to remember. That
+ * ergonomics is bought entirely by the manifest slot; see
  * {@link GreetingWorkshopBuilder}.
  */
 export interface IGreetingWorkshopBuilder {
@@ -277,10 +277,10 @@ export interface IGreetingWorkshopBuilder {
  * and handing the SAME holder to several builders is what keeps them on one
  * chain instead of silently dropping each other's registrations.
  */
-export class GreetingWorkshopBuilder<S> implements IGreetingWorkshopBuilder {
-  readonly #holder: ManifestSlot<S | 'singleton'>;
+export class GreetingWorkshopBuilder implements IGreetingWorkshopBuilder {
+  readonly #holder: ManifestSlot;
 
-  public constructor(holder: ManifestSlot<S | 'singleton'>) {
+  public constructor(holder: ManifestSlot) {
     this.#holder = holder;
   }
 
@@ -290,7 +290,7 @@ export class GreetingWorkshopBuilder<S> implements IGreetingWorkshopBuilder {
     // there is no class at this call site to observe, and a constructor type
     // named as a type argument reads back as an address just as readily as a
     // callable — the verb needs the callable reading.
-    this.#holder.services = this.#holder.services.add(typefor<IGreeting>(), greeting, Type.ctor(typefor<IGreeting>(), [[]]), 'singleton' as S | 'singleton');
+    this.#holder.services = this.#holder.services.add(typefor<IGreeting>(), greeting, Type.ctor(typefor<IGreeting>(), [[]]), 'singleton');
     return this;
   }
 
@@ -304,22 +304,20 @@ export class GreetingWorkshopBuilder<S> implements IGreetingWorkshopBuilder {
 }
 
 /**
- * Registers the greeting workshop into `services`, letting the caller configure
- * it through a fluent builder. The manifest is immutable, so the caller still
- * threads the RESULT back in (`services = addGreetingWorkshop(services, …)`) —
- * but everything the callback did lands in one place regardless of what the
- * callback returned, because the callback wrote into the holder rather than into
- * a manifest it had to hand back.
+ * Builds the greeting workshop as its own manifest, letting the caller configure
+ * it through a fluent builder, on the narrowest lifetime vocabulary it needs —
+ * `'singleton'` for the workshop itself and its locator twin, plus `undefined`
+ * for the one transient registration (the card). A caller merges the result
+ * into their own manifest (`services = services.addMany(addGreetingWorkshop(…))`).
  *
- * Like every `add*` in this repo it takes the caller's manifest and hands one
- * back. It never makes one, and it never builds one.
+ * Like every `add*` in this repo it hands the caller a self-contained manifest.
+ * It never touches the caller's own.
  *
- * @param services The application's registration builder.
  * @param configure Receives the builder; its return value is deliberately ignored.
  */
-export function addGreetingWorkshop<S>(services: Manifest<S | 'singleton'>, configure: (builder: IGreetingWorkshopBuilder) => void): Manifest<S | 'singleton'> {
-  const holder: ManifestSlot<S | 'singleton'> = { services };
-  configure(new GreetingWorkshopBuilder<S>(holder));
+export function addGreetingWorkshop(configure: (builder: IGreetingWorkshopBuilder) => void): Manifest<'singleton' | undefined> {
+  const holder: ManifestSlot = { services: Manifest.empty<'singleton' | undefined>() };
+  configure(new GreetingWorkshopBuilder(holder));
 
   // The card. Its SERVICE TYPE is derived from the type, its CONSTRUCTOR TYPE
   // observed from the class itself — so the greeting argument arrives as the
@@ -329,7 +327,7 @@ export function addGreetingWorkshop<S>(services: Manifest<S | 'singleton'>, conf
   //
   // No lifetime, so transient: the honest tag for something built fresh per
   // recipient.
-  holder.services = holder.services.add(typefor<GreetingCard>(), GreetingCard, typefor(GreetingCard), undefined as S | 'singleton');
+  holder.services = holder.services.add(typefor<GreetingCard>(), GreetingCard, typefor(GreetingCard), undefined);
 
   // The workshop itself goes on next so a consumer cannot forget it — and this
   // one is fully tokenless, right down to its composed constructor type. The
@@ -347,7 +345,7 @@ export function addGreetingWorkshop<S>(services: Manifest<S | 'singleton'>, conf
   // Registration sugar lowers in any expression context, not only at a module's
   // top level, which is what lets a library function like this one be authored
   // tokenlessly at all.
-  holder.services = holder.services.add(typefor<GreetingWorkshop>(), GreetingWorkshop, typefor(GreetingWorkshop), 'singleton' as S | 'singleton');
+  holder.services = holder.services.add(typefor<GreetingWorkshop>(), GreetingWorkshop, typefor(GreetingWorkshop), 'singleton');
 
   // The counter-example, at its own derived service type so a caller can resolve
   // both from one container and compare the cards. Its one argument is the
@@ -355,7 +353,7 @@ export function addGreetingWorkshop<S>(services: Manifest<S | 'singleton'>, conf
   // "I want the provider" is plain DI rather than a special argument kind, which
   // is precisely why nothing stops a library doing it and why the comparison has
   // to be made in prose.
-  holder.services = holder.services.add(typefor<LocatorGreetingWorkshop>(), LocatorGreetingWorkshop, typefor(LocatorGreetingWorkshop), 'singleton' as S | 'singleton');
+  holder.services = holder.services.add(typefor<LocatorGreetingWorkshop>(), LocatorGreetingWorkshop, typefor(LocatorGreetingWorkshop), 'singleton');
 
   return holder.services;
 }

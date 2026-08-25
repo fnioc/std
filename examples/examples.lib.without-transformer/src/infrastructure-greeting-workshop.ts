@@ -26,15 +26,15 @@
 // infrastructure-greeting-workshop.ts`: the same scenario, the same output, the
 // type-driven dialect. Diff them to see exactly what the transformer removes.
 
-import { Type } from '@rhombus-std/di.core';
-import type { IServiceProvider, Manifest } from '@rhombus-std/di.core';
+import { Manifest, Type } from '@rhombus-std/di.core';
+import type { IServiceProvider } from '@rhombus-std/di.core';
 import type { IGreeting } from '@rhombus-std/examples.contracts';
 
 import { GREETING_TYPE } from './types.js';
 
 /** The mutable slot a builder exposes so siblings share one manifest. */
-interface ManifestSlot<S> {
-  services: Manifest<S>;
+interface ManifestSlot {
+  services: Manifest<'singleton' | undefined>;
 }
 
 // ── types ────────────────────────────────────────────────────────────────────
@@ -262,10 +262,10 @@ export class LocatorGreetingWorkshop {
 // ── the configure(builder) seam ──────────────────────────────────────────────
 
 /**
- * What a consuming application sees inside `addGreetingWorkshop(services, …)`.
- * A fluent, ORDINARY object — no manifest threading, no return value to
- * remember. That ergonomics is bought entirely by
- * {@link ManifestSlot}; see {@link GreetingWorkshopBuilder}.
+ * What a consuming application sees inside `addGreetingWorkshop(…)`. A fluent,
+ * ORDINARY object — no manifest threading, no return value to remember. That
+ * ergonomics is bought entirely by {@link ManifestSlot}; see
+ * {@link GreetingWorkshopBuilder}.
  */
 export interface IGreetingWorkshopBuilder {
   /** Chooses the greeting implementation every card is rendered with. */
@@ -292,10 +292,10 @@ export interface IGreetingWorkshopBuilder {
  * work, and handing the SAME holder to several builders is what keeps them on
  * one chain instead of silently dropping each other's registrations.
  */
-export class GreetingWorkshopBuilder<S> implements IGreetingWorkshopBuilder {
-  readonly #holder: ManifestSlot<S | 'singleton'>;
+export class GreetingWorkshopBuilder implements IGreetingWorkshopBuilder {
+  readonly #holder: ManifestSlot;
 
-  public constructor(holder: ManifestSlot<S | 'singleton'>) {
+  public constructor(holder: ManifestSlot) {
     this.#holder = holder;
   }
 
@@ -304,7 +304,7 @@ export class GreetingWorkshopBuilder<S> implements IGreetingWorkshopBuilder {
     // a transformer to derive a Type from — this call is explicit in BOTH
     // dialects. Zero-dep ctor, so the composed constructor type carries no
     // argument types beyond the address.
-    this.#holder.services = this.#holder.services.add(GREETING_TYPE, greeting, Type.ctor(GREETING_TYPE, [[]]), 'singleton' as S | 'singleton');
+    this.#holder.services = this.#holder.services.add(GREETING_TYPE, greeting, Type.ctor(GREETING_TYPE, [[]]), 'singleton');
     return this;
   }
 
@@ -315,25 +315,23 @@ export class GreetingWorkshopBuilder<S> implements IGreetingWorkshopBuilder {
 }
 
 /**
- * Registers the greeting workshop into `services`, letting the caller configure
- * it through a fluent builder. The manifest is immutable, so the caller still
- * threads the RESULT back in (`services = addGreetingWorkshop(services, …)`) —
- * but everything the callback did lands in one place regardless of what the
- * callback returned, because the callback wrote into the holder rather than into
- * a manifest it had to hand back.
+ * Builds the greeting workshop as its own manifest, letting the caller configure
+ * it through a fluent builder, on the narrowest lifetime vocabulary it needs —
+ * `'singleton'` for the workshop itself and its locator twin, plus `undefined`
+ * for the one transient registration (the card). A caller merges the result
+ * into their own manifest (`services = services.addMany(addGreetingWorkshop(…))`).
  *
- * @param services The application's registration builder.
  * @param configure Receives the builder; its return value is deliberately ignored.
  */
-export function addGreetingWorkshop<S>(services: Manifest<S | 'singleton'>, configure: (builder: IGreetingWorkshopBuilder) => void): Manifest<S | 'singleton'> {
-  const holder: ManifestSlot<S | 'singleton'> = { services };
-  configure(new GreetingWorkshopBuilder<S>(holder));
+export function addGreetingWorkshop(configure: (builder: IGreetingWorkshopBuilder) => void): Manifest<'singleton' | undefined> {
+  const holder: ManifestSlot = { services: Manifest.empty<'singleton' | undefined>() };
+  configure(new GreetingWorkshopBuilder(holder));
 
   // The card, registered with NO lifetime — transient, the honest tag for
   // something built fresh per recipient. Its second argument type names a Type
   // nothing ever registers; that slot is the caller's, and the factory
   // parameter below is what hands it over.
-  holder.services = holder.services.add(GREETING_CARD_TYPE, GreetingCard, Type.ctor(GREETING_CARD_TYPE, [[GREETING_TYPE, CARD_RECIPIENT_TYPE]]), undefined as S | 'singleton');
+  holder.services = holder.services.add(GREETING_CARD_TYPE, GreetingCard, Type.ctor(GREETING_CARD_TYPE, [[GREETING_TYPE, CARD_RECIPIENT_TYPE]]), undefined);
 
   // The workshop itself goes on last so a consumer cannot forget it. Its whole
   // dependency plan is right here, in the composed constructor type, where the
@@ -342,7 +340,7 @@ export function addGreetingWorkshop<S>(services: Manifest<S | 'singleton'>, conf
   // spelled as the union of the stationery with a literal `undefined` that
   // always resolves.
   holder.services = holder.services.add(GREETING_WORKSHOP_TYPE, GreetingWorkshop,
-    Type.ctor(GREETING_WORKSHOP_TYPE, [[Type.func(GREETING_CARD_TYPE, [[CARD_RECIPIENT_TYPE]]), Type.union(CARD_STATIONERY_TYPE, Type.typeLiteral(undefined))]]), 'singleton' as S | 'singleton');
+    Type.ctor(GREETING_WORKSHOP_TYPE, [[Type.func(GREETING_CARD_TYPE, [[CARD_RECIPIENT_TYPE]]), Type.union(CARD_STATIONERY_TYPE, Type.typeLiteral(undefined))]]), 'singleton');
 
   // The discouraged twin, registered beside it so a reader can resolve both and
   // watch them produce identical cards from very different constructors. The
@@ -350,7 +348,6 @@ export function addGreetingWorkshop<S>(services: Manifest<S | 'singleton'>, conf
   // live provider — "I want the provider" is plain DI, not a special slot
   // kind, which is precisely why nothing stops a library doing it and why the
   // comparison has to be made in prose.
-  holder.services = holder.services.add(LOCATOR_GREETING_WORKSHOP_TYPE, LocatorGreetingWorkshop, Type.ctor(LOCATOR_GREETING_WORKSHOP_TYPE, [[Type.from('ServiceProvider')]]),
-    'singleton' as S | 'singleton');
+  holder.services = holder.services.add(LOCATOR_GREETING_WORKSHOP_TYPE, LocatorGreetingWorkshop, Type.ctor(LOCATOR_GREETING_WORKSHOP_TYPE, [[Type.from('ServiceProvider')]]), 'singleton');
   return holder.services;
 }

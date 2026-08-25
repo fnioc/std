@@ -28,8 +28,7 @@
 // byte-stable, which the app's checked-in `expected.txt` diff depends on.
 
 import { di } from '@rhombus-std/di';
-import { DefaultManifest, LifetimeModel, Type } from '@rhombus-std/di.core';
-import type { Manifest } from '@rhombus-std/di.core';
+import { LifetimeModel, Manifest, Type } from '@rhombus-std/di.core';
 import type { IGreeting, IHealthCheck } from '@rhombus-std/examples.contracts';
 import { typefor } from '@rhombus-std/primitives.extras';
 // `describeDiError` is the LIBRARY's — classifying what a container threw needs
@@ -40,7 +39,7 @@ import { describeDiError } from '@rhombus-std/examples.lib.without-transformer';
 
 /** A fresh, empty manifest for one of this chapter's own containers. */
 function newWorkshopManifest(): Manifest<unknown> {
-  return new DefaultManifest<unknown>();
+  return Manifest.empty<unknown>();
 }
 
 /**
@@ -66,8 +65,10 @@ export function* demonstrateInfrastructure(): Generator<string> {
   // ── 1. the configure(builder) seam ─────────────────────────────────────────
   // The consumer never sees a manifest: `useGreeting` writes into the holder
   // slot, and `addGreetingWorkshop` reads the finished chain back out. Note who
-  // does what — the root supplies the empty manifest, the library fills it.
-  const defaults = addGreetingWorkshop(newWorkshopManifest(), (workshop) => {
+  // does what — the library builds its own empty manifest and hands back a
+  // self-contained one; this root has nothing else to merge in, so it uses the
+  // result directly.
+  const defaults = addGreetingWorkshop((workshop) => {
     workshop.useGreeting(WorkshopGreeting);
   });
   const defaultProvider = di.usingLifetimeModel(LifetimeModel.noop).usingManifest(defaults).build();
@@ -81,7 +82,7 @@ export function* demonstrateInfrastructure(): Generator<string> {
   // The workshop's optional stationery slot now has a registration behind it, so
   // the container fills the parameter instead of leaving it undefined. Same
   // library code, both branches.
-  const customised = addGreetingWorkshop(newWorkshopManifest(), (workshop) => {
+  const customised = addGreetingWorkshop((workshop) => {
     workshop.useGreeting(WorkshopGreeting).useStationery({ border: '***' });
   });
   const customWorkshop = di.usingLifetimeModel(LifetimeModel.noop).usingManifest(customised).build()

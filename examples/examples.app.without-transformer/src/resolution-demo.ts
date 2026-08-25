@@ -15,8 +15,8 @@
 // producer is how a plugin-less codebase keeps them in step.
 
 import { di } from '@rhombus-std/di';
-import { DefaultManifest, LifetimeModel, Type } from '@rhombus-std/di.core';
-import type { IServiceProvider, Manifest } from '@rhombus-std/di.core';
+import { LifetimeModel, Type } from '@rhombus-std/di.core';
+import type { IServiceProvider } from '@rhombus-std/di.core';
 
 import type { CheckoutOrder, IAuditTrail, IExchangeRates, IOrderValidator, IPaymentGateway, IPaymentRouter, IReceipt } from '@rhombus-std/examples.contracts';
 import { addCheckoutServices, CHECKOUT_TYPES } from '@rhombus-std/examples.lib.without-transformer';
@@ -196,7 +196,5 @@ async function* tour(provider: IServiceProvider): AsyncGenerator<string> {
  * asynchronously — every other chapter is an ordinary generator.
  */
 export function demonstrateResolution(): AsyncGenerator<string> {
-  let services: Manifest<unknown> = new DefaultManifest<unknown>();
-  services = addCheckoutServices(services);
-  return tour(di.usingLifetimeModel(LifetimeModel.noop).usingManifest(services).build());
+  return tour(di.usingLifetimeModel(LifetimeModel.noop).usingManifest(addCheckoutServices()).build());
 }

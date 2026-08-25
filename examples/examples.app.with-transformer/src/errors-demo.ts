@@ -28,7 +28,7 @@
 // same reason.
 
 import { di } from '@rhombus-std/di';
-import { DefaultManifest, DiError, LifetimeModel, type Manifest, ManifestValidationError, Type } from '@rhombus-std/di.core';
+import { DiError, LifetimeModel, Manifest, ManifestValidationError, Type } from '@rhombus-std/di.core';
 import { demonstrateRegistrationErrors, diagnose, stagedFailure } from '@rhombus-std/examples.lib.without-transformer';
 
 // ── the domain ───────────────────────────────────────────────────────────────
@@ -64,7 +64,7 @@ const AUDIT_TYPE = Type.from('selfcheck:IAuditLog');
 
 /** A container whose one registration names a dependency nobody supplies. */
 function withUnsatisfiableStore(): Manifest<unknown> {
-  return new DefaultManifest<unknown>().add(STORE_TYPE, BrokenStore, Type.ctor(STORE_TYPE, [[CONNECTION_TYPE]]), 'singleton');
+  return Manifest.empty<unknown>().add(STORE_TYPE, BrokenStore, Type.ctor(STORE_TYPE, [[CONNECTION_TYPE]]), 'singleton');
 }
 
 /**
@@ -83,7 +83,7 @@ export function* demonstrateErrors(): Generator<string> {
   // the node that would have carried the bad registration never materialised.
   // Making the manifest is still the root's job, which is why one arrives as an
   // argument.
-  yield* demonstrateRegistrationErrors(new DefaultManifest<unknown>());
+  yield* demonstrateRegistrationErrors(Manifest.empty<unknown>());
 
   // ── build time: the eager whole-graph check ────────────────────────────────
   //
@@ -125,7 +125,7 @@ export function* demonstrateErrors(): Generator<string> {
   // as the loop it makes — naming just the type that closed it would leave the
   // reader to find the other half.
   yield stagedFailure('a dependency cycle', () => {
-    let services: Manifest<unknown> = new DefaultManifest<unknown>();
+    let services: Manifest<unknown> = Manifest.empty<unknown>();
     services = services.add(LEDGER_TYPE, Ledger, Type.ctor(LEDGER_TYPE, [[AUDIT_TYPE]]), 'singleton');
     services = services.add(AUDIT_TYPE, AuditLog, Type.ctor(AUDIT_TYPE, [[LEDGER_TYPE]]), 'singleton');
     return di.usingLifetimeModel(LifetimeModel.noop).usingManifest(services).build().resolve(LEDGER_TYPE);

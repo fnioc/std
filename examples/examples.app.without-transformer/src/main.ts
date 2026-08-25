@@ -14,8 +14,9 @@
 //
 //   1. make the manifest       — here the Generic Host makes it, and hands it
 //                                over as `builder.services`;
-//   2. hand it to each library — one `add<PackageName>(services)` call apiece,
-//                                threaded, because the manifest is immutable;
+//   2. merge each library in   — one `add<PackageName>()` call apiece, each
+//                                library's own self-contained manifest merged
+//                                into `services`;
 //   3. add what the APP owns   — its config, its options, its hosted worker;
 //   4. build the provider      — `builder.build()`;
 //   5. one top-level resolve   — `host.runAsync()`, which resolves the hosted
@@ -47,7 +48,7 @@ import type { ConfigRoot } from '@rhombus-std/config';
 import { Type } from '@rhombus-std/di.core';
 import type { IServiceProvider } from '@rhombus-std/di.core';
 import '@rhombus-std/di';
-import { Host, HOST_APPLICATION_LIFETIME_TYPE, HOSTED_SERVICE_TYPE } from '@rhombus-std/hosting';
+import { getHostedServiceManifest, Host, HOST_APPLICATION_LIFETIME_TYPE, HOSTED_SERVICE_TYPE } from '@rhombus-std/hosting';
 import type { IHostApplicationLifetime, IHostedLifecycleService } from '@rhombus-std/hosting';
 import { LOGGER_FACTORY_TYPE } from '@rhombus-std/logging';
 import type { ILogger, ILoggerFactory } from '@rhombus-std/logging.core';
@@ -215,25 +216,26 @@ const config = buildConfig();
 const serverOptions = makeServerOptions(config);
 
 // STEP 1 — make the manifest. The Generic Host owns it here and hands it over as
-// a writable slot; a container-only app would write `new DefaultManifest()`
-// instead, exactly as the tour's chapters do further down. Either way it is the
-// ROOT that starts the chain.
+// a writable slot; a container-only app would write `Manifest.empty()` instead,
+// exactly as the tour's chapters do further down. Either way it is the ROOT that
+// starts the chain.
 const builder = Host.createApplicationBuilder();
 let services = builder.services;
 
-// STEP 2 — hand the manifest to each library, one `add*` call apiece.
+// STEP 2 — merge each library's own manifest in, one `add*` call apiece.
 //
 // This is the whole consumer-facing shape of a library that ships services: one
-// exported function, named after the package, taking a manifest and returning
-// one. Neither call below knows or cares what the other registered — both
-// greetings land in the same `IGreeting` collection because both libraries chose
-// the same contract type, which is what a shared contracts package is for.
+// exported function, named after the package, building its OWN self-contained
+// manifest and handing it back. Neither call below knows or cares what the other
+// registered — both greetings land in the same `IGreeting` collection because
+// both libraries chose the same contract type, which is what a shared contracts
+// package is for.
 //
-// The manifest is IMMUTABLE, so every call is threaded back into `services`; a
-// bare `addWithoutTransformerExamples(services)` statement would register
-// nothing at all.
-services = addWithTransformerExamples(services);
-services = addWithoutTransformerExamples(services);
+// The manifest is IMMUTABLE, so every merge is threaded back into `services`; a
+// bare `services.addMany(addWithoutTransformerExamples())` statement whose
+// result went unassigned would register nothing at all.
+services = services.addMany(addWithTransformerExamples());
+services = services.addMany(addWithoutTransformerExamples());
 
 // STEP 3 — add what the APPLICATION owns.
 //
@@ -261,7 +263,9 @@ services = services.add(CONFIG_TYPE, config);
 // The composed chain goes BACK onto the builder. `builder.services` is a live
 // slot over an immutable chain, so everything registered into the local
 // `services` above is invisible to `build()` until it is handed back here.
-builder.services = services.addHostedService(InteropWorker, Type.ctor(HOSTED_SERVICE_TYPE, [[Type.from('ServiceProvider'), HOST_APPLICATION_LIFETIME_TYPE, LOGGER_FACTORY_TYPE, CONFIG_TYPE]]));
+builder.services = services.addMany(
+  getHostedServiceManifest(InteropWorker, Type.ctor(HOSTED_SERVICE_TYPE, [[Type.from('ServiceProvider'), HOST_APPLICATION_LIFETIME_TYPE, LOGGER_FACTORY_TYPE, CONFIG_TYPE]])),
+);
 
 // ── run the scenario ──────────────────────────────────────────────────────────
 

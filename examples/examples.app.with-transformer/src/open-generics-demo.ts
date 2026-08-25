@@ -36,7 +36,7 @@
 // captured type wherever it appears.
 
 import { di } from '@rhombus-std/di';
-import { DefaultManifest, type Generic, LifetimeModel, type Manifest, Type } from '@rhombus-std/di.core';
+import { type Generic, LifetimeModel, Manifest, Type } from '@rhombus-std/di.core';
 import { typefor } from '@rhombus-std/primitives.extras';
 
 import type { AuditEvent, Entity, IJoin, IRepository, ITable, Order, Seed, User } from '@rhombus-std/examples.contracts';
@@ -223,7 +223,7 @@ function shortName(token: string): string {
 // into `manifest`; a bare `manifest.add(...)` statement would register
 // nothing.
 
-let manifest: Manifest<unknown> = new DefaultManifest<unknown>();
+let manifest: Manifest<unknown> = Manifest.empty<unknown>();
 
 // The closed value registrations the templates bottom out at: one seed and one
 // type witness per entity. Nothing generic about them — they are the floor.

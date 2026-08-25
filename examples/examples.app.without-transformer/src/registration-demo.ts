@@ -23,8 +23,8 @@
 //    taking nothing beyond the address.
 
 import { di } from '@rhombus-std/di';
-import { DefaultManifest, LifetimeModel, Type } from '@rhombus-std/di.core';
-import type { Manifest, ServiceDescriptor } from '@rhombus-std/di.core';
+import { LifetimeModel, Manifest, Type } from '@rhombus-std/di.core';
+import type { ServiceDescriptor } from '@rhombus-std/di.core';
 
 // ── the domain ───────────────────────────────────────────────────────────────
 
@@ -256,7 +256,7 @@ function countRegistrations(services: Iterable<ServiceDescriptor<unknown>>, type
  * way to keep a registration is to keep the value it returns.
  */
 function demonstrateDiscardTrap(): string {
-  const empty = new DefaultManifest<unknown>();
+  const empty = Manifest.empty<unknown>();
 
   // WRONG — the new manifest is built and immediately dropped on the floor.
   // `empty` is exactly as empty as it was. This compiles, and it is silent.
@@ -272,27 +272,23 @@ function demonstrateDiscardTrap(): string {
 // ── 2. the library's defaults, and a host overriding them ────────────────────
 
 /**
- * What a library ships: registrations an application gets for free. Every verb
- * here is a `tryAdd` — "register this only if nobody already has" — which is
- * what makes calling it twice, or calling it after the application wired its
- * own implementation, harmless. Under an immutable manifest the
- * already-registered branch simply hands the receiver back, so the caller
- * threads the result either way.
- *
- * The scope union is generic so any application union works, and `| 'singleton'`
- * states the one scope these defaults register at.
- *
- * @param services The application's registration builder.
+ * What a library ships: registrations an application gets for free, built as
+ * its own manifest on the narrowest lifetime vocabulary it needs —
+ * `'singleton'`, the one lifetime every default here registers at. Every verb
+ * here is a `tryAdd` — "register this only if nobody already has" — so a
+ * caller merging the result in with `services.tryAdd(...addOrderDefaults())`
+ * stays idempotent too: calling this twice, or after the application wired its
+ * own implementation, changes nothing, because `tryAdd`'s existing-registration
+ * check runs against the same service types either way.
  */
-function addOrderDefaults<S>(
-  services: Manifest<S | 'singleton'>,
-): Manifest<S | 'singleton'> {
+function addOrderDefaults(): Manifest<'singleton'> {
+  let services = Manifest.empty<'singleton'>();
   // A default VALUE — the clock every other default depends on.
   services = services.tryAdd(DEFAULT_CLOCK_TYPE, new FixedClock());
   // A default CLASS.
-  services = services.tryAdd(DEFAULT_SINK_TYPE, PlainTextSink, Type.ctor(DEFAULT_SINK_TYPE, [[DEFAULT_CLOCK_TYPE, Type.typeLiteral('production')]]), 'singleton' as S | 'singleton');
+  services = services.tryAdd(DEFAULT_SINK_TYPE, PlainTextSink, Type.ctor(DEFAULT_SINK_TYPE, [[DEFAULT_CLOCK_TYPE, Type.typeLiteral('production')]]), 'singleton');
   // A default FACTORY.
-  services = services.tryAdd(DEFAULT_NOTIFIER_TYPE, makeOrderNotifier, Type.func(DEFAULT_NOTIFIER_TYPE, [[DEFAULT_SINK_TYPE]]), 'singleton' as S | 'singleton');
+  services = services.tryAdd(DEFAULT_NOTIFIER_TYPE, makeOrderNotifier, Type.func(DEFAULT_NOTIFIER_TYPE, [[DEFAULT_SINK_TYPE]]), 'singleton');
   return services;
 }
 
@@ -314,22 +310,22 @@ function addOrderDefaults<S>(
  */
 function* demonstrateDescriptorVerbs(): Generator<string> {
   // Applying the defaults twice leaves exactly one of each.
-  let library: Manifest<unknown> = new DefaultManifest<unknown>();
-  library = addOrderDefaults(library);
-  library = addOrderDefaults(library);
+  let library: Manifest<unknown> = Manifest.empty<unknown>();
+  library = library.tryAdd(...addOrderDefaults());
+  library = library.tryAdd(...addOrderDefaults());
   yield `defaults: applying them twice leaves ${countRegistrations(library, DEFAULT_SINK_TYPE)} sink `
     + `(tryAdd only registers what is missing)`;
 
   // An application that already wired its own sink keeps it.
-  let application: Manifest<unknown> = new DefaultManifest<unknown>();
+  let application: Manifest<unknown> = Manifest.empty<unknown>();
   application = application.add(DEFAULT_SINK_TYPE, RecordingSink, Type.ctor(DEFAULT_SINK_TYPE, [[]]), 'singleton');
-  application = addOrderDefaults(application);
+  application = application.tryAdd(...addOrderDefaults());
   const kept = di.usingLifetimeModel(LifetimeModel.noop).usingManifest(application).build()
     .resolve(DEFAULT_SINK_TYPE) as IMessageSink;
   yield `defaults: an application that registered its own sink keeps it (${kept.name})`;
 
   // The host overrides all three defaults outright.
-  let host = addOrderDefaults(new DefaultManifest<unknown>());
+  let host: Manifest<unknown> = Manifest.empty<unknown>().tryAdd(...addOrderDefaults());
   host = host.replace(DEFAULT_CLOCK_TYPE, new FixedClock());
   host = host.replace(DEFAULT_SINK_TYPE, RecordingSink, Type.ctor(DEFAULT_SINK_TYPE, [[]]), 'singleton');
   host = host.replace(DEFAULT_NOTIFIER_TYPE, makeOrderNotifier, Type.func(DEFAULT_NOTIFIER_TYPE, [[DEFAULT_SINK_TYPE]]), 'singleton');
@@ -353,7 +349,7 @@ function* demonstrateDescriptorVerbs(): Generator<string> {
  * zero-dependency class.
  */
 function buildOrderContainer(): Manifest<unknown> {
-  let services: Manifest<unknown> = new DefaultManifest<unknown>();
+  let services: Manifest<unknown> = Manifest.empty<unknown>();
   const clock = new FixedClock();
 
   // A value — an already-built instance. No signature (there is nothing to
@@ -414,7 +410,7 @@ function buildOrderContainer(): Manifest<unknown> {
  * descriptor-taking `add`, sits in a variable, or travels between helpers.
  */
 function demonstrateDescribedRegistration(): string {
-  const withClock: Manifest<unknown> = new DefaultManifest<unknown>().add(CLOCK_TYPE, new FixedClock());
+  const withClock: Manifest<unknown> = Manifest.empty<unknown>().add(CLOCK_TYPE, new FixedClock());
   const services = withClock.add(
     withClock.describe(SINK_TYPE)
       .asClass(PlainTextSink, Type.ctor(SINK_TYPE, [[CLOCK_TYPE, Type.typeLiteral('staging')]]))
