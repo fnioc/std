@@ -42,10 +42,10 @@ export type * from './IOptionsChangeTokenSource.js';
 // `configure(...)`-registered one.
 export { baseFactoryType, changeTokenSourceType, configureStepType, optionsAddressType, postConfigureStepType, validateStepType } from './option-types.js';
 
-// Re-exporting DefaultManifest-Options-augmentations.js executes its module,
-// so the `registerAugmentations` side effect installs `addOptions` onto the
+// Re-exporting Manifest-Options-augmentations.js executes its module, so the
+// `registerAugmentations` side effect installs `addOptions` onto the
 // manifest; the other two modules contribute their manifest-returning
 // functions the same way any other export does.
-export * from './DefaultManifest-Options-augmentations.js';
-export * from './DefaultManifest-OptionsConfig-augmentations.js';
-export * from './DefaultManifest-ValidateOnStart-augmentations.js';
+export * from './configure-manifests.js';
+export * from './Manifest-Options-augmentations.js';
+export * from './validate-on-start-manifests.js';
