@@ -1,10 +1,12 @@
-// The `addOptions` / `postConfigure` / `validate` half of the pipeline authoring
-// surface on di.core's registration builder. The `configure` half is the sibling
-// ./DefaultManifest-OptionsConfig-augmentations set -- two sets rather than one
-// because the registry's bag is a flat name namespace, so a receiver cannot take
-// two contributions of one name from a single registration.
+// The `addOptions` verb: offers `IOptions<any>` for an options type -- one
+// open registration answering every `IOptions<…>` request, closed by
+// whatever type asks. `postConfigure` and `validate` each return their own
+// self-contained manifest for the caller to merge in with `addMany`. The
+// `configure` step is the sibling ./DefaultManifest-OptionsConfig-augmentations
+// set, and `validateOnStart` the sibling ./DefaultManifest-ValidateOnStart-augmentations
+// one.
 
-import { type Manifest } from '@rhombus-std/di.core';
+import { Manifest } from '@rhombus-std/di.core';
 import { type IPostConfigureOptions, type IValidateOptions, ValidateOptionsResult } from '@rhombus-std/options';
 import { Type } from '@rhombus-std/primitives';
 import { registerAugmentations } from '@rhombus-std/primitives.extras';
@@ -35,40 +37,8 @@ declare module '@rhombus-std/di.core' {
      * change-token source registered for `optionsType` then applies to it.
      */
     addOptions(optionsType: Type, makeBase: Func<[], any>): Manifest<Lifetime>;
-
-    /**
-     * Registers a post-configure step for `optionsType`, run after every
-     * configure step. Accepts a {@link IPostConfigureOptions} or a bare
-     * `(options) => void` delegate.
-     */
-    postConfigure(optionsType: Type, step: IPostConfigureOptions<any> | Func<[any], void>): Manifest<Lifetime>;
-    /**
-     * The DI-injected post-configure step: resolves each type in `depTypes`
-     * and passes the instances to `configureOptions` after the options value
-     * — collapsed the same way as the dependency form of {@link configure}
-     * above.
-     */
-    postConfigure<Deps extends readonly unknown[]>(optionsType: Type, depTypes: DepTypes<Deps>, configureOptions: (options: any, ...deps: Deps) => void): Manifest<Lifetime>;
-
-    /**
-     * Registers a validate step for `optionsType`: `validate` runs against the
-     * fully-configured value; a `false` result fails validation with
-     * `failureMessage`.
-     */
-    validate(optionsType: Type, validate: Func<[any], boolean>, failureMessage?: string): Manifest<Lifetime>;
-
-    /**
-     * The DI-injected validate step: resolves each type in `depTypes` and
-     * passes the instances to `validate` after the options value; a `false`
-     * result fails with `failureMessage` — collapsed the same way as the
-     * dependency form of {@link configure} above.
-     */
-    validate<Deps extends readonly unknown[]>(optionsType: Type, depTypes: DepTypes<Deps>, validate: (options: any, ...deps: Deps) => boolean, failureMessage?: string): Manifest<Lifetime>;
   }
 }
-
-// Default message used when a `validate` caller supplies none.
-const DEFAULT_VALIDATION_FAILURE_MESSAGE = 'A validation error has occurred.';
 
 export namespace ServiceManifestOptionsAugmentations {
   export function addOptions(this: Manifest<unknown>, optionsType: Type): Manifest<unknown>;
@@ -88,67 +58,91 @@ export namespace ServiceManifestOptionsAugmentations {
       Type.func(baseFactoryType(optionsType), [[optionsType]]),
     );
   }
-
-  export function postConfigure(this: Manifest<unknown>, optionsType: Type, step: IPostConfigureOptions<any> | Func<[any], void>): Manifest<unknown>;
-  export function postConfigure<Deps extends readonly unknown[]>(this: Manifest<unknown>, optionsType: Type, depTypes: DepTypes<Deps>,
-    configureOptions: (options: any, ...deps: Deps) => void): Manifest<unknown>;
-  export function postConfigure<Deps extends readonly unknown[]>(this: Manifest<unknown>, optionsType: Type, step: IPostConfigureOptions<any> | Func<[any], void> | DepTypes<Deps>,
-    configureWithDeps?: (options: any, ...deps: Deps) => void): Manifest<unknown> {
-    // DI-injected form: `step` is the dep-type tuple and `configureWithDeps`
-    // the callback. Registers a factory for the post-configure slot whose
-    // injected params are the resolved deps; it produces an
-    // IPostConfigureOptions that forwards them after the options value. The
-    // deps resolve once, when the assembly reads the slot.
-    if (Array.isArray(step)) {
-      const callback = configureWithDeps as (options: any, ...deps: Deps) => void;
-      return this.add(postConfigureStepType(optionsType), (...deps: Deps): IPostConfigureOptions<any> => ({ postConfigure(options: any): void {
-        callback(options, ...deps);
-      } }), Type.func(postConfigureStepType(optionsType), [[...step]]));
-    }
-    // A bare delegate is wrapped into an IPostConfigureOptions<any>; both append
-    // to the type's post-configure slot, which `assembleOptions` reads and
-    // runs after every configure step.
-    const plain = step as IPostConfigureOptions<any> | Func<[any], void>;
-    const wrapped: IPostConfigureOptions<any> = typeof plain === 'function' ? { postConfigure: plain } : plain;
-    return this.addValue(postConfigureStepType(optionsType), wrapped);
-  }
-
-  export function validate(this: Manifest<unknown>, optionsType: Type, validate: Func<[options: any], boolean>, failureMessage?: string): Manifest<unknown>;
-  export function validate<Deps extends readonly unknown[]>(this: Manifest<unknown>, optionsType: Type, depTypes: DepTypes<Deps>, validate: Func<[options: any, ...deps: Deps], boolean>,
-    failureMessage?: string): Manifest<unknown>;
-  export function validate<Deps extends readonly unknown[]>(this: Manifest<unknown>, optionsType: Type,
-    ...args: [Func<[any], boolean>, string?] | [DepTypes<Deps>, Func<[any], boolean>, string?]): Manifest<unknown> {
-    const [depTypes, predicate, failureMessage] = Array.from(function*() {
-      if (typeof args[0] === 'function') {
-        yield undefined;
-      }
-      yield* args;
-    }()) as [DepTypes<Deps> | undefined, Func<[options: any, ...deps: Deps], boolean>, string | undefined];
-
-    // DI-injected form: `depTypes` is the dep-type tuple, `predicate` the
-    // callback, `failureMessage` its message. Registers a factory whose
-    // injected params are the resolved deps, producing an IValidateOptions
-    // that forwards them after the options value.
-    if (depTypes) {
-      return this.add(
-        validateStepType(optionsType),
-        (...deps: Deps): IValidateOptions<any> => ({
-          validate(options: any): ValidateOptionsResult {
-            return predicate(options, ...deps) ? ValidateOptionsResult.success : ValidateOptionsResult.fail(failureMessage ?? DEFAULT_VALIDATION_FAILURE_MESSAGE);
-          },
-        }),
-        Type.func(validateStepType(optionsType), [[...depTypes]]),
-      );
-    }
-    // Wraps the predicate into an IValidateOptions<any> step appended to the
-    // type's validate slot.
-    const step: IValidateOptions<any> = {
-      validate(options: any): ValidateOptionsResult {
-        return predicate(options, ...([] as any)) ? ValidateOptionsResult.success : ValidateOptionsResult.fail(failureMessage ?? DEFAULT_VALIDATION_FAILURE_MESSAGE);
-      },
-    };
-    return this.addValue(validateStepType(optionsType), step);
-  }
 }
 
 registerAugmentations<Manifest<unknown>>(ServiceManifestOptionsAugmentations);
+
+/**
+ * A post-configure step for `optionsType`, run after every configure step, as
+ * its own manifest — merge it into a container's registrations with
+ * `addMany`. Accepts a {@link IPostConfigureOptions} or a bare
+ * `(options) => void` delegate.
+ */
+export function getPostConfigureManifest(optionsType: Type, step: IPostConfigureOptions<any> | Func<[any], void>): Manifest<unknown>;
+/**
+ * The DI-injected post-configure step: resolves each type in `depTypes` and
+ * passes the instances to `configureOptions` after the options value —
+ * collapsed the same way as the dependency form of `getConfigureManifest`.
+ */
+export function getPostConfigureManifest<Deps extends readonly unknown[]>(optionsType: Type, depTypes: DepTypes<Deps>, configureOptions: (options: any, ...deps: Deps) => void): Manifest<unknown>;
+export function getPostConfigureManifest<Deps extends readonly unknown[]>(optionsType: Type, step: IPostConfigureOptions<any> | Func<[any], void> | DepTypes<Deps>,
+  configureWithDeps?: (options: any, ...deps: Deps) => void): Manifest<unknown> {
+  // DI-injected form: `step` is the dep-type tuple and `configureWithDeps`
+  // the callback. Registers a factory for the post-configure slot whose
+  // injected params are the resolved deps; it produces an
+  // IPostConfigureOptions that forwards them after the options value. The
+  // deps resolve once, when the assembly reads the slot.
+  if (Array.isArray(step)) {
+    const callback = configureWithDeps as (options: any, ...deps: Deps) => void;
+    return Manifest.empty<unknown>().add(postConfigureStepType(optionsType), (...deps: Deps): IPostConfigureOptions<any> => ({ postConfigure(options: any): void {
+      callback(options, ...deps);
+    } }), Type.func(postConfigureStepType(optionsType), [[...step]]));
+  }
+  // A bare delegate is wrapped into an IPostConfigureOptions<any>; both append
+  // to the type's post-configure slot, which `assembleOptions` reads and
+  // runs after every configure step.
+  const plain = step as IPostConfigureOptions<any> | Func<[any], void>;
+  const wrapped: IPostConfigureOptions<any> = typeof plain === 'function' ? { postConfigure: plain } : plain;
+  return Manifest.empty<unknown>().addValue(postConfigureStepType(optionsType), wrapped);
+}
+
+// Default message used when a `getValidateManifest` caller supplies none.
+const DEFAULT_VALIDATION_FAILURE_MESSAGE = 'A validation error has occurred.';
+
+/**
+ * A validate step for `optionsType`, as its own manifest — merge it into a
+ * container's registrations with `addMany`. `validate` runs against the
+ * fully-configured value; a `false` result fails validation with
+ * `failureMessage`.
+ */
+export function getValidateManifest(optionsType: Type, validate: Func<[options: any], boolean>, failureMessage?: string): Manifest<unknown>;
+/**
+ * The DI-injected validate step: resolves each type in `depTypes` and passes
+ * the instances to `validate` after the options value; a `false` result
+ * fails with `failureMessage` — collapsed the same way as the dependency form
+ * of `getConfigureManifest`.
+ */
+export function getValidateManifest<Deps extends readonly unknown[]>(optionsType: Type, depTypes: DepTypes<Deps>, validate: Func<[options: any, ...deps: Deps], boolean>,
+  failureMessage?: string): Manifest<unknown>;
+export function getValidateManifest<Deps extends readonly unknown[]>(optionsType: Type, ...args: [Func<[any], boolean>, string?] | [DepTypes<Deps>, Func<[any], boolean>, string?]): Manifest<unknown> {
+  const [depTypes, predicate, failureMessage] = Array.from(function*() {
+    if (typeof args[0] === 'function') {
+      yield undefined;
+    }
+    yield* args;
+  }()) as [DepTypes<Deps> | undefined, Func<[options: any, ...deps: Deps], boolean>, string | undefined];
+
+  // DI-injected form: `depTypes` is the dep-type tuple, `predicate` the
+  // callback, `failureMessage` its message. Registers a factory whose
+  // injected params are the resolved deps, producing an IValidateOptions
+  // that forwards them after the options value.
+  if (depTypes) {
+    return Manifest.empty<unknown>().add(
+      validateStepType(optionsType),
+      (...deps: Deps): IValidateOptions<any> => ({
+        validate(options: any): ValidateOptionsResult {
+          return predicate(options, ...deps) ? ValidateOptionsResult.success : ValidateOptionsResult.fail(failureMessage ?? DEFAULT_VALIDATION_FAILURE_MESSAGE);
+        },
+      }),
+      Type.func(validateStepType(optionsType), [[...depTypes]]),
+    );
+  }
+  // Wraps the predicate into an IValidateOptions<any> step appended to the
+  // type's validate slot.
+  const step: IValidateOptions<any> = {
+    validate(options: any): ValidateOptionsResult {
+      return predicate(options, ...([] as any)) ? ValidateOptionsResult.success : ValidateOptionsResult.fail(failureMessage ?? DEFAULT_VALIDATION_FAILURE_MESSAGE);
+    },
+  };
+  return Manifest.empty<unknown>().addValue(validateStepType(optionsType), step);
+}

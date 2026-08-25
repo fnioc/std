@@ -1,22 +1,29 @@
-// The config -> Options bridge: installs fluent authoring methods onto di.core's
-// registration builder via the augmentation pattern (TS declaration merging + a
-// runtime prototype assignment through the OPEN-set registry), the same
-// mechanism @rhombus-std/config.json uses to add `addJsonFile` to ConfigBuilder:
+// The config -> Options bridge. `addOptions` installs a fluent verb onto
+// di.core's registration builder via the augmentation pattern (TS declaration
+// merging + a runtime prototype assignment through the OPEN-set registry),
+// the same mechanism @rhombus-std/config.json uses to add `addJsonFile` to
+// ConfigBuilder. `getConfigureManifest`, `getPostConfigureManifest`,
+// `getValidateManifest`, and `getValidateOnStartManifest` are ordinary
+// functions, each returning a self-contained manifest for the caller to
+// merge in with `addMany`:
 //
 //   - `addOptions(T[, makeBase])` -- offers `IOptions<T>` for the options type
 //     `T`, either over a base factory or over whatever `T` itself resolves to.
-//   - `configure(T, section)` -- registers a config-bind configure step
-//     PLUS a change-token source wired to the section's reload token, so the
-//     delivered `IOptions<T>` binds the section and reacts to reloads.
-//   - `validateOnStart(T)` -- forces the pipeline to run at host startup.
+//   - `getConfigureManifest(T, section)` -- a manifest registering a
+//     config-bind configure step PLUS a change-token source wired to the
+//     section's reload token, so the delivered `IOptions<T>` binds the
+//     section and reacts to reloads.
+//   - `getValidateOnStartManifest(T)` -- a manifest that forces the pipeline
+//     to run at host startup.
 //
 // Every verb names the BARE `T`. `IOptions<T>` is registered once, open, and
 // answers every closed request; the type that closed it arrives through a
 // bare-hole signature slot, from which the assembly finds that type's steps.
 //
-// A consumer who only wants the sugar takes a bare side-effect import:
-// `import "@rhombus-std/options.augmentations";`. This package MUST keep
-// `"sideEffects": true` so a bundler cannot tree-shake the augmentation away.
+// A consumer who only wants `addOptions`'s verb takes a bare side-effect
+// import: `import "@rhombus-std/options.augmentations";`. This package MUST
+// keep `"sideEffects": true` so a bundler cannot tree-shake the augmentation
+// away.
 //
 // di and config stay mutually unaware -- the bridge code lives ONLY here.
 
@@ -35,8 +42,10 @@ export type * from './IOptionsChangeTokenSource.js';
 // `configure(...)`-registered one.
 export { baseFactoryType, changeTokenSourceType, configureStepType, optionsAddressType, postConfigureStepType, validateStepType } from './option-types.js';
 
-// Each re-export executes its module, so the `registerAugmentations` side effect
-// installs the verbs onto the manifest.
+// Re-exporting DefaultManifest-Options-augmentations.js executes its module,
+// so the `registerAugmentations` side effect installs `addOptions` onto the
+// manifest; the other two modules contribute their manifest-returning
+// functions the same way any other export does.
 export * from './DefaultManifest-Options-augmentations.js';
 export * from './DefaultManifest-OptionsConfig-augmentations.js';
 export * from './DefaultManifest-ValidateOnStart-augmentations.js';
