@@ -2,12 +2,8 @@
 // rule directly) and `ILoggingBuilder` (registers a configure step that appends
 // the same rule once the options pipeline assembles the LoggerFilterOptions).
 
-// Side-effect + merge: installs `configure` (and the rest of the options
-// pipeline verbs) onto di.core's ServiceManifest, and brings the interface
-// merge that types `builder.services.configure(...)` below into the program.
-import '@rhombus-std/options.augmentations';
-
 import type { ILoggingBuilder, LogLevel } from '@rhombus-std/logging.core';
+import { getConfigureManifest } from '@rhombus-std/options.augmentations';
 import { registerAugmentations } from '@rhombus-std/primitives.extras';
 import type { Func } from '@rhombus-toolkit/func';
 import type { Flatten } from '@rhombus-toolkit/type-helpers';
@@ -56,9 +52,10 @@ declare module '@rhombus-std/logging.core' {
 
 /** Registers `configureOptions` as a configure step for the {@link LOGGER_FILTER_OPTIONS_TYPE} pipeline. */
 function configureFilter(builder: ILoggingBuilder, configureOptions: Func<[LoggerFilterOptions], void>): ILoggingBuilder {
-  // The chain is immutable: `configure` hands back a NEW manifest, so it must be
-  // written into the builder's slot -- a bare call would register nothing.
-  builder.services = builder.services.configure(LOGGER_FILTER_OPTIONS_TYPE, configureOptions);
+  // getConfigureManifest returns its own self-contained manifest; merging it in
+  // is what writes the step into the builder's slot -- a bare call would
+  // register nothing.
+  builder.services = builder.services.addMany(getConfigureManifest(LOGGER_FILTER_OPTIONS_TYPE, configureOptions));
   return builder;
 }
 

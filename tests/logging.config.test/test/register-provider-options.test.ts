@@ -15,7 +15,7 @@ import { LifetimeModel, Manifest, Type } from '@rhombus-std/di.core';
 import { LoggingBuilder } from '@rhombus-std/logging';
 import { LoggerProviderOptions } from '@rhombus-std/logging.config';
 import type { IOptions } from '@rhombus-std/options';
-import { optionsAddressType } from '@rhombus-std/options.augmentations';
+import { getConfigureManifest, optionsAddressType } from '@rhombus-std/options.augmentations';
 import { describe, expect, test } from 'bun:test';
 
 interface FakeProviderOptions {
@@ -83,9 +83,9 @@ describe('LoggerProviderOptions.getProviderOptionsManifest', () => {
     services = services.addOptions(OPTIONS_TYPE, () => ({ Format: 'text' }));
     services = services.addMany(LoggerProviderOptions.getProviderOptionsManifest(OPTIONS_TYPE, FAKE_PROVIDER_TYPE));
     // One more configure source in the SAME pipeline, running after the provider bind.
-    services = services.configure(OPTIONS_TYPE, (value: FakeProviderOptions) => {
+    services = services.addMany(getConfigureManifest(OPTIONS_TYPE, (value: FakeProviderOptions) => {
       value.MaxDepth = '9';
-    });
+    }));
 
     const provider = di.usingLifetimeModel(LifetimeModel.noop).usingManifest(services).build();
     const options: IOptions<FakeProviderOptions> = provider.resolve(OPTIONS_ACCESSOR_TYPE);
