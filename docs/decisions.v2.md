@@ -79,10 +79,10 @@ mechanics: §192. _Owner-directed via the exports-rework charter (tasklist, 2026
 
 ## §83 — The white-box subpath is for tests and token derivation only
 
-Each library's white-box subpath (today `./tokens/*`, §97) maps to `./src/*` and is
+Each library's white-box subpath (`./private/*`, §97) maps to `./src/*` and is
 publish-scrubbed, so it is reachable by exactly two things: test suites (which deep-import through
 it), and token derivation's non-public token form for a type reachable only through it
-(`pkg/tokens/<path>:Type`). Nothing in shipped code imports through it. _Owner-approved._
+(`pkg/private/<path>:Type`). Nothing in shipped code imports through it. _Owner-approved._
 
 ## §24 — No pluggable containers
 
@@ -270,21 +270,21 @@ divergent lowering.
 
 _Owner-directed 2026-07-18._
 
-## §97 — White-box surface: `./tokens/*`; strict token derivation
+## §97 — White-box surface: `./private/*`; strict token derivation
 
-Every library exposes `./tokens/*` as its one white-box seam: `types`/`bun` → `./src/*.ts`,
+Every library exposes `./private/*` as its one white-box seam: `types`/`bun` → `./src/*.ts`,
 deliberately carrying no `default` so the subpath stays NON-PUBLIC to token derivation. It serves
 both typing and execution — a deep-imported source file lands on the same module instance the
 barrel resolves (source-first, §72/§192), lowered at load time where the package lowers. The root
-`.` export is the bare-string source barrel (§72). `./tokens/*` is in-repo only: `publishConfig`
+`.` export is the bare-string source barrel (§72). `./private/*` is in-repo only: `publishConfig`
 rewrites `exports` without it, and `files` excludes the stage emit directory.
 
 Token derivation for an exports-mapped file matches the **shortest** subpath among export entries
 carrying a `default` condition — public, where a bare-string target counts as carrying one — with
 ties broken lexicographically; the root `.` export is the shortest possible case, deriving the bare
-`pkg:Type` form. If no public entry reaches the file, `./tokens/*` — deliberately default-less, the
-one sanctioned in-repo internal surface — derives `pkg/tokens/<path>:Type`. If neither reaches it, a
-hard diagnostic names both fixes (export the type publicly, or expose its file via `./tokens/*`).
+`pkg:Type` form. If no public entry reaches the file, `./private/*` — deliberately default-less, the
+one sanctioned in-repo internal surface — derives `pkg/private/<path>:Type`. If neither reaches it, a
+hard diagnostic names both fixes (export the type publicly, or expose its file via `./private/*`).
 Shortest-within-public supports deliberate public aliasing; only publish-surviving entries ever
 compete, so an internal or test mapping can never affect token identity. The derivation path for a
 package with no exports map is unchanged. `internal` is banned as an export alias, since it collides
@@ -2745,14 +2745,11 @@ plus a `source` condition (editor-only, activated by `tsconfig.editor.json`'s
 `customConditions: ["source"]`) and — on the seven self-`declare module`-ing packages — a
 package-unique `<pkg>-source` condition activated by that package's own `tsconfig.ci.json`, fixing
 the TS2664 self-typecheck (a package cannot resolve its own public specifier to a dist that its own
-build has not produced yet). Two white-box seams ride beside it: `./tokens/*` (src, all conditions)
-and, on lowering packages, `./private/*` (`types` → src, `bun` → `dist/stage` per-file lowered
-emit), with a documented double-instance hazard (one suite loading a package through both the
-barrel and `./private/*` forks its module identity — exactly what requirement 2 outlaws).
-`publishConfig.exports` (pnpm-only publish) scrubs the seams and dev conditions; `scripts/derive-publish-config.ts` derives it mechanically. The ttsc token derivation reads the
+build has not produced yet). One white-box seam rides beside it: `./private/*` (src, all conditions).
+`publishConfig.exports` (pnpm-only publish) scrubs the seam and dev conditions; `scripts/derive-publish-config.ts` derives it mechanically. The ttsc token derivation reads the
 exports map itself: a public entry (bare string or `default`-reachable) is a tier-1 token source
-with dist targets twinned back to their `src/` stems (`EntrySourceStems`), `./tokens/*` is the
-sanctioned non-public reach whose files mint `pkg/tokens/<path>` tokens, and any OTHER non-public
+with dist targets twinned back to their `src/` stems (`EntrySourceStems`), `./private/*` is the
+sanctioned non-public reach whose files mint `pkg/private/<path>` tokens, and any OTHER non-public
 subpath reaching a file is a hard diagnostic.
 
 **The decision: the conventional shape is src-first in-repo.** Every library's dev exports resolve
@@ -2784,12 +2781,10 @@ source files its program is compiling). This is the pattern the requirements + c
   build is untouched: stage-then-bundle stays, and the parity invariant (lowered == hand-written)
   is what makes running lowered-on-load src equivalent to running `dist`.
 - **The wire format does not move.** `.` stays public (its src stem is the same stem the build
-  program compiles); `./tokens/*` stays, non-public (`types`/`bun` → src, no `default`), so
-  internal types keep minting `pkg/tokens/<path>` tokens; `./private/*` is deleted, which only
-  removes a tier-3 diagnosis candidate. No transforms/ change.
-- **`./private/*` consumers move to `./tokens/*`.** The seam's reason to exist — executing the
-  lowered stage emit — is served by load-time lowering now; white-box suites import src through
-  `./tokens/*` and the preload lowers it. `dist/stage` remains a build intermediate only.
+  program compiles); `./private/*` stays, non-public (`types`/`bun` → src, no `default`), so
+  internal types keep minting `pkg/private/<path>` tokens. White-box suites import src through
+  `./private/*` and the preload lowers it; `dist/stage` remains a build intermediate only. No
+  transforms/ change.
 - **Compile-scope typings travel with the source that needs them.** A consumer program compiling a
   dependency's src must see its `node:*` shims, so each src file importing a node builtin carries
   `/// <reference path="./node-builtins.d.ts" />`.
@@ -2811,7 +2806,7 @@ gates — the live-types property, working as intended. `build-all`'s tiering is
 load-bearing for typecheck correctness (nothing in-repo resolves upstream dist anymore); it stays
 as-is to keep publish builds ordered and the change surface small.
 
-**Held, deliberately.** Renaming `./tokens/*` to `./src/*` would be marginally more conventional
+**Held, deliberately.** Renaming `./private/*` to `./src/*` would be marginally more conventional
 naming but moves the engine's tier rules and the token namespace for zero requirement gain — not
 taken. The editor whole-repo program (`tsconfig.json` per package, `include: ["../*/src/**/*"]`)
 stays: src-first exports make resolution build-independent, but only a whole-repo program makes
@@ -2993,7 +2988,7 @@ re-evaluation of the same copy is silent; a genuinely different copy throws imme
 both module URLs and the deduplicate remedy. This covers at runtime the duplicate-copy hazard the
 identity invariant worries about — a second copy forking the augmentation registry or `Manifest`
 identity — while every package keeps plain `dependencies` (peer-dependency recategorization is
-ruled out as user-confusing). The white-box `./tokens/*` seam and the ttsc preload resolve the
+ruled out as user-confusing). The white-box `./private/*` seam and the ttsc preload resolve the
 same files as the barrel and never trip it.
 
 _Owner-ruled; Claude-recorded 2026-08-22._

@@ -8,7 +8,7 @@ land; delete the file when empty.
       halt. Full spec: export `IAsImplementer`/`ServiceDescriptorBuilder`/`Slot` in-file in
       di.core `src/builder.ts` (root surface unchanged); dev `exports` subpath → `./src/builder.ts`;
       published shape TYPES-ONLY (`types` condition, deliberately no `default`) taught to
-      `derive-publish-config.ts` (must NOT ride the `./tokens/*` scrub — an unresolvable specifier
+      `derive-publish-config.ts` (must NOT ride the `./private/*` scrub — an unresolvable specifier
       detaches the sugar as an ambient module); rolled root `.d.ts` treats
       `@rhombus-std/di.core/builders` as external-self and the subpath emits its own dts; di.extras
       one-arg sugars via `declare module '@rhombus-std/di.core/builders'` on `IAsImplementer`
@@ -123,8 +123,8 @@ land; delete the file when empty.
       spelling, not one the engine commits; and the call-signature collapse is not even a faithful
       structural image, since the conditional return swallows to `unknown`. IMPLEMENTATION
       REQUIREMENT: the interface must be re-exported through `src/index.ts` — barrel reachability is
-      what decides `from`, and a module reachable only through the `./tokens/*` dev seam derives
-      `from=@rhombus-std/di.core/tokens/…` while a factory-built address says
+      what decides `from`, and a module reachable only through the `./private/*` dev seam derives
+      `from=@rhombus-std/di.core/private/…` while a factory-built address says
       `@rhombus-std/di.core`. That leg is strong inference from the probe's natural experiment, not
       measurement; cheap to confirm at implementation time.
 - [ ] **Constrained generic holes — the finding behind the two-concretes question (2026-08-24).**
@@ -430,7 +430,7 @@ land; delete the file when empty.
       remaining failures are untriaged (likely the hosting/logging red pile reaching through
       filter-logging-builder). Triage after the abstract-ctor Go work lands.
 - [ ] **Models wiring review (standard/tagged landed unwired 2026-08-23):** surface the two
-      models publicly (namespace/barrel), add di.core's missing `./tokens/*` white-box seam
+      models publicly (namespace/barrel), add di.core's missing `./private/*` white-box seam
       (suites deep-import by relative path meanwhile), collapse the ~80 duplicated
       Scope/Router/ScopeProvider lines shared by the two self-contained model files, and correct
       LifetimeModel.ts's doc claim that `site` is "the natural key for an instance store" (site

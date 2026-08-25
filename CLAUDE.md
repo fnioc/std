@@ -532,7 +532,7 @@ AND value identity hold by construction (one `Manifest`, one augmentation regist
 custom conditions anywhere: a package's own `declare module` against its own public specifier
 resolves to the very source being compiled, so the self-typecheck needs no special casing.
 
-**The one dev-only seam is `./tokens/*`** (`types`/`bun` → `./src/*.ts`, deliberately no `default`
+**The one dev-only seam is `./private/*`** (`types`/`bun` → `./src/*.ts`, deliberately no `default`
 so it stays non-public for token derivation, §97): the white-box surface test suites deep-import
 internals through, scrubbed from `publishConfig.exports`. The bundled publish artifacts live under
 `dist/bundle/` — a role-named sibling of the `dist/stage/` lowering emit — so `dist` holds one
@@ -663,7 +663,7 @@ bespoke config schema grammar (`Schema`/`Infer`/`OPTIONAL`) and the `signaturefo
 **Publish with pnpm — never npm (or `bun publish`).** The dev→dist swap and the white-box scrub
 (`docs/decisions.md` §7) both ride on `publishConfig.exports`; pnpm is the only package manager that
 rewrites `exports` from that override at publish time. Publishing with anything else ships the wrong
-entry points and leaks the white-box `./tokens/*` + `./private/*` seams.
+entry points and leaks the white-box `./private/*` seam.
 
 ## Repository settings
 
@@ -708,9 +708,9 @@ Tests live in sibling `tests/<lib>.test` packages (files under `tests/<lib>.test
 co-located with `src/`. Transformer↔engine byte-parity suites are `tests/<family>.ttsc.e2e` (script
 `test:e2e`).
 
-- **White-box** (needs to reach into a library's internals): via the library's `./tokens/*` seam —
+- **White-box** (needs to reach into a library's internals): via the library's `./private/*` seam —
   a deep import of the source file, typed and runnable (the preload lowers it at load time). The
-  barrel and a `./tokens/*` deep import resolve the same source files, so both land on ONE module
+  barrel and a `./private/*` deep import resolve the same source files, so both land on ONE module
   instance per file — mixing them cannot fork the package's augmentation installs.
 - **Black-box** (exercises only the public surface): via a plain `workspace:*`
   devDependency on the library.
