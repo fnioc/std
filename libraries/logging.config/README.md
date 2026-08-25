@@ -57,20 +57,20 @@ binding `LoggerFilterOptions` from anything.
 
 ## Key exports
 
-| Export                                   | What it is                                                                                                                                  |
-| ---------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------- |
-| `LoggingBuilderConfigAugmentations`      | The standalone form of `addConfig` — call it directly as `LoggingBuilderConfigAugmentations.addConfig(builder, config)`.                    |
-| `addConfig` (method)                     | Same operation, as an instance method on `ILoggingBuilder` once this package is imported.                                                   |
-| `ILoggerProviderConfig<T>`               | Interface exposing the configuration section bound to a specific logger provider.                                                           |
-| `loggerProviderConfigToken`              | Derives the registration token for `ILoggerProviderConfig<T>` closed over a given provider type.                                            |
-| `ILoggerProviderConfigFactory`           | Interface a provider resolves to fetch its own configuration section by provider token.                                                     |
-| `LoggerProviderConfig`                   | The concrete `ILoggerProviderConfig<T>` implementation, backed by the factory.                                                              |
-| `LoggerProviderConfigFactory`            | The concrete `ILoggerProviderConfigFactory` implementation.                                                                                 |
+| Export                                   | What it is                                                                                                                                                                            |
+| ---------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `LoggingBuilderConfigAugmentations`      | The standalone form of `addConfig` — call it directly as `LoggingBuilderConfigAugmentations.addConfig(builder, config)`.                                                              |
+| `addConfig` (method)                     | Same operation, as an instance method on `ILoggingBuilder` once this package is imported.                                                                                             |
+| `ILoggerProviderConfig<T>`               | Interface exposing the configuration section bound to a specific logger provider.                                                                                                     |
+| `loggerProviderConfigToken`              | Derives the registration token for `ILoggerProviderConfig<T>` closed over a given provider type.                                                                                      |
+| `ILoggerProviderConfigFactory`           | Interface a provider resolves to fetch its own configuration section by provider token.                                                                                               |
+| `LoggerProviderConfig`                   | The concrete `ILoggerProviderConfig<T>` implementation, backed by the factory.                                                                                                        |
+| `LoggerProviderConfigFactory`            | The concrete `ILoggerProviderConfigFactory` implementation.                                                                                                                           |
 | `LoggerProviderOptions`                  | `getProviderOptionsManifest(optionsToken, providerType)` — the registrations that wire a provider's options type to reload from its configuration section, as a manifest to merge in. |
-| `LoggerProviderConfigureOptions`         | The configure step `getProviderOptionsManifest` registers for a provider's options.                                                            |
-| `LoggerProviderOptionsChangeTokenSource` | The reload change-token source `getProviderOptionsManifest` registers for a provider's options.                                                |
-| `LoggerFilterConfigureOptions`           | The configure step that binds `LoggerFilterOptions` (levels, rules, scope capture) from configuration.                                      |
-| `LoggingConfig`                          | A small holder exposing the raw `IConfig` the logging setup was bound from.                                                                 |
+| `LoggerProviderConfigureOptions`         | The configure step `getProviderOptionsManifest` registers for a provider's options.                                                                                                   |
+| `LoggerProviderOptionsChangeTokenSource` | The reload change-token source `getProviderOptionsManifest` registers for a provider's options.                                                                                       |
+| `LoggerFilterConfigureOptions`           | The configure step that binds `LoggerFilterOptions` (levels, rules, scope capture) from configuration.                                                                                |
+| `LoggingConfig`                          | A small holder exposing the raw `IConfig` the logging setup was bound from.                                                                                                           |
 
 ## Writing a configurable provider
 
@@ -84,7 +84,8 @@ built-in filter binding uses — merge in
 import { LoggerProviderOptions } from '@rhombus-std/logging.config';
 
 services = services.addMany(
-  LoggerProviderOptions.getProviderOptionsManifest<MyProviderOptions, MyProvider>(myProviderOptionsToken, myProviderToken),
+  LoggerProviderOptions.getProviderOptionsManifest<MyProviderOptions, MyProvider>(myProviderOptionsToken,
+    myProviderToken),
 );
 ```
 
