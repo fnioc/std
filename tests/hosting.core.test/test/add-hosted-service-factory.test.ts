@@ -1,8 +1,6 @@
 import { di } from '@rhombus-std/di';
-import { DefaultManifest, LifetimeModel, type Manifest, Type } from '@rhombus-std/di.core';
-import { HOSTED_SERVICE_TYPE, hostedServiceCollectionType, type IHostedService } from '@rhombus-std/hosting.core/private/index';
-// Side-effect: installs `addHostedService` onto di.core's Manifest.
-import '@rhombus-std/hosting.core/private/index';
+import { LifetimeModel, Manifest, Type } from '@rhombus-std/di.core';
+import { getHostedServiceManifest, HOSTED_SERVICE_TYPE, hostedServiceCollectionType, type IHostedService } from '@rhombus-std/hosting.core/private/index';
 import { expect, test } from 'bun:test';
 
 test("addHostedService(factory) registers the factory's result under the hosted-service token", async () => {
@@ -15,10 +13,10 @@ test("addHostedService(factory) registers the factory's result under the hosted-
     public async stop(): Promise<void> {}
   }
 
-  let manifest: Manifest<unknown> = new DefaultManifest();
+  let manifest: Manifest<unknown> = Manifest.empty<unknown>();
   const singleton = new Worker();
   // The factory form surfaces an already-constructed instance as a hosted service.
-  manifest = manifest.addHostedService(() => singleton);
+  manifest = manifest.addMany(getHostedServiceManifest(() => singleton));
 
   const provider = di.usingLifetimeModel(LifetimeModel.noop).usingManifest(manifest).build();
   const services: IHostedService[] = provider.resolve(hostedServiceCollectionType());
@@ -36,14 +34,14 @@ test('addHostedService(factory) injects the live resolver so the factory can pul
     public async stop(): Promise<void> {}
   }
 
-  let manifest: Manifest<unknown> = new DefaultManifest();
+  let manifest: Manifest<unknown> = Manifest.empty<unknown>();
   manifest = manifest.add(Type.from('test:Dependency'), Dependency, Type.ctor(Type.from('test:Dependency'), [[]]));
   // The factory receives the resolver -- the reference `Func<IServiceProvider, T>`
   // form used to promote a separately-registered service to a hosted service.
-  manifest = manifest.addHostedService((resolver) => {
+  manifest = manifest.addMany(getHostedServiceManifest((resolver) => {
     const dependency: Dependency = resolver.resolve(Type.from('test:Dependency'));
     return dependency;
-  });
+  }));
 
   const provider = di.usingLifetimeModel(LifetimeModel.noop).usingManifest(manifest).build();
   const services: IHostedService[] = provider.resolve(hostedServiceCollectionType());
@@ -68,9 +66,9 @@ test('addHostedService(ctor) and addHostedService(factory) coexist under the sha
     public async stop(): Promise<void> {}
   }
 
-  let manifest: Manifest<unknown> = new DefaultManifest();
-  manifest = manifest.addHostedService(CtorWorker, Type.ctor(HOSTED_SERVICE_TYPE, [[]]));
-  manifest = manifest.addHostedService(() => new FactoryWorker());
+  let manifest: Manifest<unknown> = Manifest.empty<unknown>();
+  manifest = manifest.addMany(getHostedServiceManifest(CtorWorker, Type.ctor(HOSTED_SERVICE_TYPE, [[]])));
+  manifest = manifest.addMany(getHostedServiceManifest(() => new FactoryWorker()));
 
   const provider = di.usingLifetimeModel(LifetimeModel.noop).usingManifest(manifest).build();
   const services: IHostedService[] = provider.resolve(hostedServiceCollectionType());

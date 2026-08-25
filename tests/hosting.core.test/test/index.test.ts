@@ -1,10 +1,8 @@
 import { di } from '@rhombus-std/di';
-import { DefaultManifest, LifetimeModel, type Manifest, Type } from '@rhombus-std/di.core';
-import { BackgroundService, Environments, HostAbortedError, HostDefaults, HOSTED_SERVICE_TYPE, hostedServiceCollectionType, HostEnvironmentEnvAugmentations, type IHostedService,
-  type IHostEnvironment } from '@rhombus-std/hosting.core/private/index';
-// Side-effect: installs `addHostedService` onto di.core's Manifest.
-import '@rhombus-std/hosting.core/private/index';
+import { LifetimeModel, Manifest, Type } from '@rhombus-std/di.core';
 import { NullFileProvider } from '@rhombus-std/fileproviders.core';
+import { BackgroundService, Environments, getHostedServiceManifest, HostAbortedError, HostDefaults, HOSTED_SERVICE_TYPE, hostedServiceCollectionType, HostEnvironmentEnvAugmentations,
+  type IHostedService, type IHostEnvironment } from '@rhombus-std/hosting.core/private/index';
 import type { Func } from '@rhombus-toolkit/func';
 import { expect, test } from 'bun:test';
 
@@ -115,9 +113,9 @@ test('addHostedService registers many under one token; the collection resolves a
     public async stop(): Promise<void> {}
   }
 
-  let manifest: Manifest<unknown> = new DefaultManifest();
-  manifest = manifest.addHostedService(A, Type.ctor(HOSTED_SERVICE_TYPE, [[]]));
-  manifest = manifest.addHostedService(B, Type.ctor(HOSTED_SERVICE_TYPE, [[]]));
+  let manifest: Manifest<unknown> = Manifest.empty<unknown>();
+  manifest = manifest.addMany(getHostedServiceManifest(A, Type.ctor(HOSTED_SERVICE_TYPE, [[]])));
+  manifest = manifest.addMany(getHostedServiceManifest(B, Type.ctor(HOSTED_SERVICE_TYPE, [[]])));
 
   const provider = di.usingLifetimeModel(LifetimeModel.noop).usingManifest(manifest).build();
   const services: IHostedService[] = provider.resolve(hostedServiceCollectionType());
@@ -130,7 +128,7 @@ test('addHostedService registers many under one token; the collection resolves a
 });
 
 test('the hosted-service collection resolves to an empty array when none are registered', () => {
-  let manifest: Manifest<unknown> = new DefaultManifest();
+  const manifest: Manifest<unknown> = Manifest.empty<unknown>();
   const provider = di.usingLifetimeModel(LifetimeModel.noop).usingManifest(manifest).build();
   const services: IHostedService[] = provider.resolve(hostedServiceCollectionType());
   expect(services).toEqual([]);
