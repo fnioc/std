@@ -278,7 +278,7 @@ func runTransform(host Host, args []string) int {
 		}
 	}
 	// Route the token core's hard derivation diagnostics (a type reachable only
-	// through a non-barrel, non-tokens export subpath) into the envelope as errors.
+	// through a non-barrel, non-private export subpath) into the envelope as errors.
 	ctx.Diag = func(file string, start int, code, message string) {
 		emit(DiagFromPlugin(plugin.Diagnostic{File: file, Start: start, Code: code, Message: message}))
 	}

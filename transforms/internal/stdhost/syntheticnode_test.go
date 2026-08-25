@@ -94,9 +94,9 @@ export class Widget {
 // passing — a matcher that skipped a rebuilt chain would leave `typefor(...)`
 // standing here.
 const syntheticLoweredRegistration = `manifest.addClass("pkg:Widget", Widget, Type.ctor(` +
-	`Type.imported("Widget", "@rhombus-std/synthetic-fixture/tokens/app"), [[` +
-	`Type.imported("IClock", "@rhombus-std/synthetic-fixture/tokens/app"), ` +
-	`Type.union(Type.imported("IOptions", "@rhombus-std/synthetic-fixture/tokens/app"), Type.typeLiteral(undefined))]]))`
+	`Type.imported("Widget", "@rhombus-std/synthetic-fixture/private/app"), [[` +
+	`Type.imported("IClock", "@rhombus-std/synthetic-fixture/private/app"), ` +
+	`Type.union(Type.imported("IOptions", "@rhombus-std/synthetic-fixture/private/app"), Type.typeLiteral(undefined))]]))`
 
 // syntheticFixture assembles the two-file fixture around one registration
 // statement.

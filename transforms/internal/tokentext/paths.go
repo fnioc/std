@@ -65,8 +65,8 @@ func PosixRelative(from, to string) (string, bool) {
 
 // PackagePrivateToken renders the tier-2 (app-internal) base token
 // `packageName/<decl path relative to package root, ext stripped>:<exportName>`,
-// with a leading `src/` segment rewritten to `tokens/` so the token equals the
-// package's `./tokens/*` white-box import specifier (the source-referenced token
+// with a leading `src/` segment rewritten to `private/` so the token equals the
+// package's `./private/*` white-box import specifier (the source-referenced token
 // surface a non-barrel type is reached through).
 func PackagePrivateToken(pkgName, pkgDir, declPath, exportName string) string {
 	from, name := PackagePrivateTokenParts(pkgName, pkgDir, declPath, exportName)
@@ -85,7 +85,7 @@ func PackagePrivateTokenParts(pkgName, pkgDir, declPath, exportName string) (fro
 		base = StripExt(strings.TrimLeft(Normalize(declPath), "/"))
 	}
 	if strings.HasPrefix(base, "src/") {
-		base = "tokens/" + base[len("src/"):]
+		base = "private/" + base[len("src/"):]
 	}
 	return pkgName + "/" + base, exportName
 }
