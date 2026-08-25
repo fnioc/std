@@ -1,9 +1,8 @@
-import { DefaultManifest, type Manifest, Type } from '@rhombus-std/di.core';
+import { di } from '@rhombus-std/di';
+import { DefaultManifest, LifetimeModel, type Manifest, Type } from '@rhombus-std/di.core';
 import { HOSTED_SERVICE_TYPE, hostedServiceCollectionType, type IHostedService } from '@rhombus-std/hosting.core/private/index';
 // Side-effect: installs `addHostedService` onto di.core's Manifest.
 import '@rhombus-std/hosting.core/private/index';
-// Side-effect: installs `build` onto di.core's Manifest.
-import '@rhombus-std/di';
 import { expect, test } from 'bun:test';
 
 test("addHostedService(factory) registers the factory's result under the hosted-service token", async () => {
@@ -21,9 +20,8 @@ test("addHostedService(factory) registers the factory's result under the hosted-
   // The factory form surfaces an already-constructed instance as a hosted service.
   manifest = manifest.addHostedService(() => singleton);
 
-  const provider = manifest.build();
-  const scope = provider.createScope('singleton');
-  const services: IHostedService[] = scope.resolve(hostedServiceCollectionType());
+  const provider = di.usingLifetimeModel(LifetimeModel.noop).usingManifest(manifest).build();
+  const services: IHostedService[] = provider.resolve(hostedServiceCollectionType());
 
   expect(services).toHaveLength(1);
   expect(services[0]).toBe(singleton);
@@ -47,9 +45,8 @@ test('addHostedService(factory) injects the live resolver so the factory can pul
     return dependency;
   });
 
-  const provider = manifest.build();
-  const scope = provider.createScope('singleton');
-  const services: IHostedService[] = scope.resolve(hostedServiceCollectionType());
+  const provider = di.usingLifetimeModel(LifetimeModel.noop).usingManifest(manifest).build();
+  const services: IHostedService[] = provider.resolve(hostedServiceCollectionType());
 
   expect(services).toHaveLength(1);
   expect(services[0]).toBeInstanceOf(Dependency);
@@ -75,9 +72,8 @@ test('addHostedService(ctor) and addHostedService(factory) coexist under the sha
   manifest = manifest.addHostedService(CtorWorker, Type.ctor(HOSTED_SERVICE_TYPE, [[]]));
   manifest = manifest.addHostedService(() => new FactoryWorker());
 
-  const provider = manifest.build();
-  const scope = provider.createScope('singleton');
-  const services: IHostedService[] = scope.resolve(hostedServiceCollectionType());
+  const provider = di.usingLifetimeModel(LifetimeModel.noop).usingManifest(manifest).build();
+  const services: IHostedService[] = provider.resolve(hostedServiceCollectionType());
 
   expect(services).toHaveLength(2);
   for (const service of services) {

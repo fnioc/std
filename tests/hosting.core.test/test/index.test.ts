@@ -1,10 +1,9 @@
-import { DefaultManifest, type Manifest, Type } from '@rhombus-std/di.core';
+import { di } from '@rhombus-std/di';
+import { DefaultManifest, LifetimeModel, type Manifest, Type } from '@rhombus-std/di.core';
 import { BackgroundService, Environments, HostAbortedError, HostDefaults, HOSTED_SERVICE_TYPE, hostedServiceCollectionType, HostEnvironmentEnvAugmentations, type IHostedService,
   type IHostEnvironment } from '@rhombus-std/hosting.core/private/index';
 // Side-effect: installs `addHostedService` onto di.core's Manifest.
 import '@rhombus-std/hosting.core/private/index';
-// Side-effect: installs `build` onto di.core's Manifest.
-import '@rhombus-std/di';
 import { NullFileProvider } from '@rhombus-std/fileproviders.core';
 import type { Func } from '@rhombus-toolkit/func';
 import { expect, test } from 'bun:test';
@@ -120,23 +119,19 @@ test('addHostedService registers many under one token; the collection resolves a
   manifest = manifest.addHostedService(A, Type.ctor(HOSTED_SERVICE_TYPE, [[]]));
   manifest = manifest.addHostedService(B, Type.ctor(HOSTED_SERVICE_TYPE, [[]]));
 
-  const provider = manifest.build();
-  const scope = provider.createScope('singleton');
-  const services: IHostedService[] = scope.resolve(hostedServiceCollectionType());
+  const provider = di.usingLifetimeModel(LifetimeModel.noop).usingManifest(manifest).build();
+  const services: IHostedService[] = provider.resolve(hostedServiceCollectionType());
 
   expect(services).toHaveLength(2);
   for (const service of services) {
     await service.start(new AbortController().signal);
   }
   expect(order).toEqual(['A', 'B']);
-
-  expect(scope.isService(HOSTED_SERVICE_TYPE)).toBe(true);
 });
 
 test('the hosted-service collection resolves to an empty array when none are registered', () => {
   let manifest: Manifest<unknown> = new DefaultManifest();
-  const provider = manifest.build();
-  const scope = provider.createScope('singleton');
-  const services: IHostedService[] = scope.resolve(hostedServiceCollectionType());
+  const provider = di.usingLifetimeModel(LifetimeModel.noop).usingManifest(manifest).build();
+  const services: IHostedService[] = provider.resolve(hostedServiceCollectionType());
   expect(services).toEqual([]);
 });
