@@ -533,7 +533,8 @@ custom conditions anywhere: a package's own `declare module` against its own pub
 resolves to the very source being compiled, so the self-typecheck needs no special casing.
 
 **The one dev-only seam is `./tokens/*`** (`types`/`bun` → `./src/*.ts`, deliberately no `default`
-so it stays non-public for token derivation, §97), scrubbed from `publishConfig.exports`. The bundled publish artifacts live under
+so it stays non-public for token derivation, §97): the white-box surface test suites deep-import
+internals through, scrubbed from `publishConfig.exports`. The bundled publish artifacts live under
 `dist/bundle/` — a role-named sibling of the `dist/stage/` lowering emit — so `dist` holds one
 directory per build role; nothing in-repo resolves either.
 
@@ -707,9 +708,11 @@ Tests live in sibling `tests/<lib>.test` packages (files under `tests/<lib>.test
 co-located with `src/`. Transformer↔engine byte-parity suites are `tests/<family>.ttsc.e2e` (script
 `test:e2e`).
 
-- A test reaches a library through a plain `workspace:*` devDependency and its PUBLIC surface.
-  Neither a relative path into `src/` nor the `./tokens/*` subpath is a way in: `./tokens/*` is
-  for token derivation, which is what its name says. A test that needs something the barrel does
-  not export is telling you the thing should be exported — surface it, don't tunnel to it.
+- **White-box** (needs to reach into a library's internals): via the library's `./tokens/*` seam —
+  a deep import of the source file, typed and runnable (the preload lowers it at load time). The
+  barrel and a `./tokens/*` deep import resolve the same source files, so both land on ONE module
+  instance per file — mixing them cannot fork the package's augmentation installs.
+- **Black-box** (exercises only the public surface): via a plain `workspace:*`
+  devDependency on the library.
 
 See `docs/decisions.md` §7 for the rationale and the publish-time scrub mechanics.
