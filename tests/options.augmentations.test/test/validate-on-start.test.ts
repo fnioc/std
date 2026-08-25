@@ -3,8 +3,8 @@
 // Exercised through the authoring surface with hand-written type nodes,
 // the way the host resolves the validator at boot.
 
-import '@rhombus-std/di';
-import { DefaultManifest, type Manifest, Type } from '@rhombus-std/di.core';
+import { di } from '@rhombus-std/di';
+import { DefaultManifest, LifetimeModel, type Manifest, Type } from '@rhombus-std/di.core';
 import { type IStartupValidator, OptionsValidationError } from '@rhombus-std/options';
 import '@rhombus-std/options.augmentations';
 import { describe, expect, test } from 'bun:test';
@@ -25,7 +25,7 @@ describe('validateOnStart', () => {
     services = services.addOptions(OPTIONS_TYPE, () => ({ port: 8080 }));
     services = services.validateOnStart(OPTIONS_TYPE);
 
-    const provider = services.build();
+    const provider = di.usingLifetimeModel(LifetimeModel.noop).usingManifest(services).build();
     const validator: IStartupValidator = provider.resolve(STARTUP_VALIDATOR_TYPE);
 
     expect(typeof validator.validate).toBe('function');
@@ -37,7 +37,7 @@ describe('validateOnStart', () => {
     services = services.validate(OPTIONS_TYPE, (o: ServerOptions) => o.port > 0, 'port must be positive');
     services = services.validateOnStart(OPTIONS_TYPE);
 
-    const provider = services.build();
+    const provider = di.usingLifetimeModel(LifetimeModel.noop).usingManifest(services).build();
     const validator: IStartupValidator = provider.resolve(STARTUP_VALIDATOR_TYPE);
 
     expect(() => validator.validate()).not.toThrow();
@@ -49,7 +49,7 @@ describe('validateOnStart', () => {
     services = services.validate(OPTIONS_TYPE, (o: ServerOptions) => o.port > 0, 'port must be positive');
     services = services.validateOnStart(OPTIONS_TYPE);
 
-    const provider = services.build();
+    const provider = di.usingLifetimeModel(LifetimeModel.noop).usingManifest(services).build();
     const validator: IStartupValidator = provider.resolve(STARTUP_VALIDATOR_TYPE);
 
     expect(() => validator.validate()).toThrow(OptionsValidationError);
@@ -66,7 +66,7 @@ describe('validateOnStart', () => {
     services = services.validate(OTHER_TYPE, (o: ServerOptions) => o.port > 0, 'second bad');
     services = services.validateOnStart(OTHER_TYPE);
 
-    const provider = services.build();
+    const provider = di.usingLifetimeModel(LifetimeModel.noop).usingManifest(services).build();
     const validator: IStartupValidator = provider.resolve(STARTUP_VALIDATOR_TYPE);
 
     try {

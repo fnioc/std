@@ -3,8 +3,8 @@
 // bridge (#40) exercised through its public authoring surface only.
 
 import { ConfigBuilder, type IConfigRoot } from '@rhombus-std/config';
-import '@rhombus-std/di';
-import { DefaultManifest, type Manifest, Type } from '@rhombus-std/di.core';
+import { di } from '@rhombus-std/di';
+import { DefaultManifest, LifetimeModel, type Manifest, Type } from '@rhombus-std/di.core';
 import type { IOptions } from '@rhombus-std/options';
 import { optionsAddressType } from '@rhombus-std/options.augmentations';
 import { describe, expect, test } from 'bun:test';
@@ -30,7 +30,7 @@ describe('configure — section-to-options binding', () => {
     services = services.addOptions(WIDGET_OPTIONS_TYPE, () => ({ Url: '' }));
     services = services.configure(WIDGET_OPTIONS_TYPE, config.getSection('Widget'));
 
-    const provider = services.build();
+    const provider = di.usingLifetimeModel(LifetimeModel.noop).usingManifest(services).build();
     const options: IOptions<WidgetOptions> = provider.resolve(optionsAddressType(WIDGET_OPTIONS_TYPE));
 
     expect(options.value).toEqual({ Url: 'http://first', Retries: '3' });
@@ -43,7 +43,7 @@ describe('configure — section-to-options binding', () => {
     services = services.addOptions(WIDGET_OPTIONS_TYPE, () => ({ Url: '' }));
     services = services.configure(WIDGET_OPTIONS_TYPE, config.getSection('Widget'));
 
-    const provider = services.build();
+    const provider = di.usingLifetimeModel(LifetimeModel.noop).usingManifest(services).build();
     const options: IOptions<WidgetOptions> = provider.resolve(optionsAddressType(WIDGET_OPTIONS_TYPE));
 
     const seen: WidgetOptions[] = [];
@@ -74,7 +74,7 @@ describe('configure — section-to-options binding', () => {
     services = services.configure(WIDGET_OPTIONS_TYPE, config.getSection('Widget'));
     services = services.configure(WIDGET_OPTIONS_TYPE, config.getSection('Extra'));
 
-    const provider = services.build();
+    const provider = di.usingLifetimeModel(LifetimeModel.noop).usingManifest(services).build();
     const options: IOptions<WidgetOptions> = provider.resolve(optionsAddressType(WIDGET_OPTIONS_TYPE));
 
     expect(options.value).toEqual({ Url: 'http://a', Retries: '5' });
@@ -86,7 +86,7 @@ describe('addOptions — no configured source', () => {
     let services: Manifest<'singleton'> = new DefaultManifest<'singleton'>();
     services = services.addOptions(WIDGET_OPTIONS_TYPE, () => ({ Url: 'default' }));
 
-    const provider = services.build();
+    const provider = di.usingLifetimeModel(LifetimeModel.noop).usingManifest(services).build();
     const options: IOptions<WidgetOptions> = provider.resolve(optionsAddressType(WIDGET_OPTIONS_TYPE));
 
     expect(options.value).toEqual({ Url: 'default' });
