@@ -7,7 +7,7 @@ original in place — and every entry speaks only of the present.
 
 ## U1 — `replace` replaces — in place, and nothing when nothing matches
 
-`Manifest.replace(registration)` swaps the first `Registration.matches` hit for the incoming
+`Manifest.replace(registration)` swaps the first `Registration.equals` hit for the incoming
 registration at the SAME position in the chain, and when no registration matches it registers nothing.
 It never degrades to `add`.
 

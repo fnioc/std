@@ -75,7 +75,6 @@
 ## Scope — standing order, not a task
 
 ABSOLUTE MINIMUM to keep the build green; a dedicated session owns the scope/lifetime model.
-`descriptor` stays on scoped call sites exactly as-is.
 
 ## Decided against
 

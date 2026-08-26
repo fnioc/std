@@ -1,6 +1,6 @@
 // Rolls the public type surface of @rhombus-std/primitives.extras into a
-// single dist/bundle/index.d.ts — the authoring-only token-grammar predicate
-// stubs and `typefor`, whose return type comes from `Type`.
+// single dist/bundle/index.d.ts — typefor, schemaof, registerAugmentations,
+// and registerInlineBodies, whose types come from @rhombus-std/primitives.
 // rollup-plugin-dts drives the TypeScript compiler with this package's tsconfig,
 // so extensionless relative specifiers resolve through `moduleResolution: bundler`.
 

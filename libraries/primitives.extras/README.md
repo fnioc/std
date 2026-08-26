@@ -89,8 +89,13 @@ one `Type`.
 ## Key exports
 
 Its JavaScript API is `typefor<T>()` / `typefor(value)` — one function, narrowed by which overload
-a call site binds to — plus its build-time-only guard-rail error. Everything else this package
-carries is the Go/`ttsc` engine descriptor those calls lower through. See [Usage](#usage) above.
+a call site binds to — plus its build-time-only guard-rail error. Alongside it: `schemaof<T>()`,
+expanding a type into the `Type` tree describing its members; `registerAugmentations<R>(set, merge?)`,
+registering an augmentation set against a receiver type by deriving its `Type` the same way
+`typefor<T>()` does; and `registerInlineBodies(bodies)`, a runtime no-op that marks an object
+literal, in code, as the inline sugar body set published in the package's `package.json`
+`"rhombus-std"` marker's `"inline"` list. Everything else this package carries is the Go/`ttsc`
+engine descriptor those calls lower through. See [Usage](#usage) above.
 
 ## How it fits
 
@@ -108,10 +113,10 @@ the same way and call `typefor<T>()` directly on their own terms.
 
 ## Notes
 
-- Its JavaScript surface is small on purpose: `typefor<T>()` / `typefor(value)` and their
-  guard-rail error (thrown only when the transformer isn't wired up) are the whole of it —
-  everything else the package carries is the build-time-only Go/`ttsc` engine descriptor those
-  calls lower through.
+- Its JavaScript surface is small on purpose: `typefor<T>()` / `typefor(value)`, `schemaof<T>()`,
+  `registerAugmentations`, and `registerInlineBodies` (see [Key exports](#key-exports) above) are
+  the whole of it — everything else the package carries is the build-time-only Go/`ttsc` engine
+  descriptor those calls lower through.
 - `typefor<T>()`'s runtime body only ever executes if the transformer isn't
   wired up; a correctly configured build never reaches it.
 - `typefor<T>()` calls are rewritten in the same pass as `di.extras`'s own stages — the

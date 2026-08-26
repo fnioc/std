@@ -1,7 +1,7 @@
 {
-  // The satellite's own program: `augment.ts` declaration-merges `addOptions<T>()`
-  // onto di.core's `Manifest`, resolved to its source barrel like every in-repo
-  // consumer.
+  // The satellite's own program: `src/augmentations/Manifest-options-augmentations.ts`
+  // declaration-merges `addOptions<T>()` onto di.core's `Manifest`, resolved to its
+  // source barrel like every in-repo consumer.
   "extends": "../../tsconfig.lib.json",
   "include": ["src/**/*"]
 }

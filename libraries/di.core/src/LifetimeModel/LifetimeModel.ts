@@ -28,9 +28,9 @@ export interface Realizer<Lifetime = unknown> {
    */
   realize(construction: {
     /**
-     * An opaque identity for THIS construction: the same object arrives on every repeat of the
-     * same ask, and two registrations answering one type arrive as two distinct identities —
-     * the natural key for an instance store.
+     * The identity of this position in the realizing walk: the same object arrives on every
+     * repeat of the same ask, and each distinct position in the walk — even one sharing a
+     * registration and a closing with another — has its own.
      */
     site: object;
     /**
