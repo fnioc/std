@@ -186,7 +186,7 @@ export const closed = services.add<ILogger>(ConsoleLogger, 'singleton');
 
 export const emptySig = services.add<ILogger>(NoDepsLogger, 'singleton');
 
-export const open = services.add<IRepo<$<'1'>>>(ThingRepo);
+export const open = services.add<IRepo<$<'1'>>>(ThingRepo, 'singleton');
 `;
 
 // A KEYED service type. Base and key compose into ONE tag token, and the lookup
@@ -200,7 +200,7 @@ class RedisCache implements ICache {}
 
 declare const services: Manifest<'singleton'>;
 
-export const keyed = services.add<Keyed<ICache, 'redis'>>(RedisCache);
+export const keyed = services.add<Keyed<ICache, 'redis'>>(RedisCache, 'singleton');
 `;
 
 // A sugar call with NO type argument. The stage cannot recover the service type
@@ -280,7 +280,7 @@ class Handler implements IHandler {
 
 declare const services: Manifest<'singleton'>;
 
-export const overridden = services.add<IHandler>(Handler as unknown as new(req: IReq) => IHandler);
+export const overridden = services.add<IHandler>(Handler as unknown as new(req: IReq) => IHandler, 'singleton');
 `;
 
 function writeChainSrc(dir: string): void {
@@ -498,7 +498,7 @@ describe.skipIf(!toolchainReady)('generic inline stage — registration parity (
     const repoClass = constFor(chainModule, 'Type.imported("ThingRepo", "chain-app/private/chain")');
     const storeDep = constFor(chainModule, `Type.imported("IStore", "chain-app/private/chain", [${hole}])`);
     const repoCtor = constFor(chainModule, `Type.ctor(${repoClass}, [[${storeDep}]])`);
-    expect(line).toContain(`add(${openType}, ThingRepo, ${repoCtor})`);
+    expect(line).toContain(`add(${openType}, ThingRepo, ${repoCtor}, "singleton")`);
     assertNoAuthoringSurvivors(chainInline);
   });
 
@@ -525,7 +525,7 @@ describe.skipIf(!toolchainReady)('generic inline stage — registration parity (
     const keyedCache = constFor(chainModule, `Type.tag(${cache}, "redis")`);
     const redisClass = constFor(chainModule, 'Type.imported("RedisCache", "chain-app/private/keyed")');
     const redisCtor = constFor(chainModule, `Type.ctor(${redisClass}, [[]])`);
-    expect(line).toContain(`add(${keyedCache}, RedisCache, ${redisCtor})`);
+    expect(line).toContain(`add(${keyedCache}, RedisCache, ${redisCtor}, "singleton")`);
   });
 
   test('a cast steers the observed implementer SHAPE', () => {
@@ -538,7 +538,7 @@ describe.skipIf(!toolchainReady)('generic inline stage — registration parity (
     const handler = constFor(chainModule, 'Type.imported("IHandler", "chain-app/private/override")');
     const req = constFor(chainModule, 'Type.imported("IReq", "chain-app/private/override")');
     const steered = constFor(chainModule, `Type.ctor(${handler}, [[${req}]])`);
-    expect(line).toContain(`add(${handler}, Handler, ${steered})`);
+    expect(line).toContain(`add(${handler}, Handler, ${steered}, "singleton")`);
     assertNoAuthoringSurvivors(overrideInline);
   });
 
