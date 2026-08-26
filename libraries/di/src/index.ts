@@ -7,5 +7,4 @@ export type { ValidationFailure } from '@rhombus-std/di.core';
 
 export { type ContainerBuilder, di } from './di.js';
 export * from './models/index.js';
-export * from './ServiceProvider.js';
 export { ServiceProviderOptions } from './ServiceProviderOptions.js';

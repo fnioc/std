@@ -7,8 +7,8 @@
 // to `any`, and `any` satisfies every constraint -- so the positive cases keep passing and only
 // an expected-error that stops erroring reveals it.
 
-import type { ServiceProvider } from '@rhombus-std/di';
 import { type IServiceProvider } from '@rhombus-std/di.core';
+import type { ServiceProvider } from '@rhombus-std/di/private/ServiceProvider';
 import { Type } from '@rhombus-std/primitives';
 
 declare const provider: ServiceProvider;
