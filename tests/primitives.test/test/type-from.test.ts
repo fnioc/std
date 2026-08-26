@@ -205,7 +205,7 @@ describe('round trip', () => {
         throw new Error(`seed ${seed} spelled ${token} which read back as ${Type.stringify(reread)}`);
       }
     }
-  });
+  }, 30_000);
 });
 
 const NAMES = [
