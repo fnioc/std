@@ -118,10 +118,11 @@ where that's cheap, and flag the intended divergence rather than pre-emptively t
   repeated label binding the same type each time; `Type.satisfies` does not exist. **Union and
   intersection members store in one canonical order** (§195): kind rank (holes first, literals
   last) → the kind's scalars → children pairwise; visitors iterate members as stored.
-  `ConstructorType` carries a boolean
-  `abstract` member — a flag, not a kind — matching TypeScript's own `abstract new (...) =>` spelling;
-  an abstract pattern matches only an abstract subject, and `Registration.ctor` throws on an
-  abstract implementer (§181). `Iterable`/`Array` are the only
+  `AbstractConstructorType` (`'abstract-ctor'`) is
+  its own kind beside `ConstructorType` (`'ctor'`) — no flag member anywhere — spelled
+  `abstract new (...) =>`; an abstract pattern answers only an abstract subject, and a slot that
+  must construct its node spells `ConstructorType` and refuses the abstract kind by plain
+  assignability, with no runtime check behind it (§181). `Iterable`/`Array` are the only
   aggregate kinds — delivery is site behavior, so `Type.async` and the dedicated `asyncIterable`
   kind are cancelled (`Promise<T>` and an ordinary global `AsyncIterable<E>` cover them, §151).
   **The wire format is fixed**: token strings never move for a TS-surface change. Also the
