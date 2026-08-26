@@ -266,6 +266,35 @@ land; delete the file when empty.
       and `CallSite` APIs need the owner's explicit discussion and signoff to change. Butting
       against one is a conversation with him, never a workaround. Merges are LOCAL, no PRs; every
       commit is held for his review.
+- [ ] **RULED 2026-08-25 — the starfish hook surface is ONE member, and it IS `Realizer`.** Two of
+      the three seams the design sketched dissolve. LATEBOUND REENTRY is not a seam: a closure
+      captures its realizer lexically at mint time and reentry runs the same internal realize path,
+      so capture is an engine INVARIANT, not something a model plugs into — and since capture is the
+      ruled behaviour (it is what kills the ambient `#activeScope` hazard) no policy is left to
+      decide. PROVIDER-SLOT DELIVERY is not a separate member either: when the engine needs to
+      deliver an `IServiceProvider` it consults the scope for that address like any other
+      construction, and the model answers AS IF A CACHE HIT — returning the appropriate scope-sp
+      without ever calling `make`. Which scope to answer for comes from the model's OWN value on the
+      walk-threaded context the realizer visitor carries, never from a synthetic descriptor, and
+      never from a bound field (a fixed `provider` cannot vary per asking position, which is what a
+      scoped registration's slot needs). So `Hooks` and `Realizer` are the same thing, there is no
+      engine-facing seam distinct from the model-facing face, and the door's answer is
+      `(realizer: Realizer<Lifetime>) => (request: Type) => unknown`.
+- [ ] **`Manifest.empty()` has no descriptor-taking form — OWNER CALL.** `libraries/di/src/di.ts`
+      lines 56 and 71 still construct `new DefaultManifest(descriptors)` / `new DefaultManifest(() =>
+      concat(...))`, and they are the last real use of the concrete class outside di.core (the only
+      others are a Go parity fixture that pins the class identity on purpose, and the
+      single-instance-guard test that asserts the class EXISTS). `Manifest.empty<L>()` takes no
+      arguments, so constructing FROM descriptors has no namespace equivalent. Minting one
+      (`Manifest.from(...)` or similar) is new public API and needs the owner's word.
+- [ ] **`docs/libraries/di.md` — a set-level question, not a file-level one.** It is one of NINE
+      per-family docs under `docs/libraries/`, all linked from `docs/README.md`, and `docs/README.md`
+      calls them a "divergences" chapter series. The reference-comparison framing is therefore
+      SET-WIDE, not a di.md flaw: `config.md` carries 19 such mentions, `logging.md` 16,
+      `options.md` 13. di.md is the most stale of the nine because di moved most — it still teaches
+      `ServiceManifest`, token strings, `.as()`, `resolveFactory`, `UnregisteredTokenError`, none of
+      which exist. Deleting it alone leaves a hole in a documented set and singles out one family
+      for a property all nine share. The call is what happens to the CHAPTER SERIES.
 - [ ] **Post-port rename slate (owner-opened 2026-08-24; one dedicated pass AFTER the in-flight
       lanes land, CLAUDE.md digest included; ideal name first, MEDI-distance a free bonus).**
       OWNER-ENDORSED 2026-08-24 ("record all your suggestions — i like them"): `ServiceProvider`
