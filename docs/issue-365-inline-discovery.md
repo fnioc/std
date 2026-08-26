@@ -65,7 +65,7 @@ declare module '@rhombus-std/di.core' {
   }
 }
 
-export namespace ManifestDescriptorAugmentations {
+export namespace ManifestRegistrationAugmentations {
   export function add<T>(this: Manifest, ...args: any[]): Manifest {
     return this.add.apply(this, [typefor<T>(), ...args] as any);
   }
@@ -73,7 +73,7 @@ export namespace ManifestDescriptorAugmentations {
     return this.removeAll(typefor<T>());
   }
 }
-registerInlineBodies<Manifest>(ManifestDescriptorAugmentations);
+registerInlineBodies<Manifest>(ManifestRegistrationAugmentations);
 ```
 
 This retires the engine's present assumption, stated verbatim in the diagnostic it currently raises

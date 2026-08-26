@@ -31,8 +31,8 @@ its own manifest, which a caller merges into their registrations with
 
 ```ts
 import { ConfigBuilder } from '@rhombus-std/config';
-import { di } from '@rhombus-std/di';
-import { LifetimeModel, Manifest, Type } from '@rhombus-std/di.core';
+import { di, noop } from '@rhombus-std/di';
+import { Manifest, Type } from '@rhombus-std/di.core';
 import type { IOptions } from '@rhombus-std/options';
 import { getConfigureManifest, optionsAddressType } from '@rhombus-std/options.augmentations';
 
@@ -47,7 +47,7 @@ let services = Manifest.empty<unknown>();
 services = services.addOptions(WIDGET_OPTIONS_TYPE, () => ({ Url: '' }));
 services = services.addMany(getConfigureManifest(WIDGET_OPTIONS_TYPE, config.getSection('Widget')));
 
-const provider = di.usingLifetimeModel(LifetimeModel.noop).usingManifest(services).build();
+const provider = di.usingLifetimeModel(noop()).usingManifest(services).build();
 const options: IOptions<WidgetOptions> = provider.resolve(optionsAddressType(WIDGET_OPTIONS_TYPE));
 
 options.value; // { Url: "http://first" }

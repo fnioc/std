@@ -1887,7 +1887,7 @@ _Claude-directed 2026-08-13, executing the owner's §155/§157 direction._
 A constructor parameter whose type is a plain function type (`(dep: IDep) => IThing`) derives as an
 ordinary nested `Type.func(returns, ...argTypes)` node — the SAME derivation any function-typed
 value gets, nothing signature-position-specific. The landed resolution engine (`PlannerVisitor`,
-`libraries/di/src/internal/CallSite/`) already handles this generically as a synthesis fallback:
+`libraries/di/src/internal/Plan/`) already handles this generically as a synthesis fallback:
 `visitFunc` builds a `LateBoundPlan` whose invocation re-enters the engine to resolve the
 function type's OWN return type, with the call's own arguments registered as value registrations for
 the function type's OWN parameter types (`RealizeVisitor.visitLateBound`) — address-keyed, not

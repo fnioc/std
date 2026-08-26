@@ -797,15 +797,12 @@ land; delete the file when empty.
       cast-steers-shape) reports instead that the generated const module holds no const spelled
       `Type.imported("RedisCache", ...)`, i.e. the in-flight W2 templating work. Either they are
       one failure seen from two angles or one of the two entries is stale; nobody has dug in.
-- [ ] **OWNER-ONLY residue from the rename pass — three doc spots Claude may not touch.**
+- [ ] **OWNER-ONLY residue from the rename pass — two doc spots Claude may not touch.**
       `docs/decisions.md` is retired and write-forbidden, yet :1497 still says "the (serviceType,
-      implementationType)" and :1993 "There is no `ServiceDescriptor` object". `docs/decisions.user.md`
-      is gospel and owner-authored, and :10-11 and :55 still name `ServiceDescriptor` — the :55
-      line is a near-verbatim duplicate of a decisions.v2 entry that DID rename, suggesting it was
-      copied into gospel. Both files now misdescribe types that no longer exist; only the owner can
-      correct either. Separately, `docs/rewrite-plan.md:78` carries a standing order —
-      "`descriptor` stays on scoped call sites exactly as-is" — that predates this rename and needs
-      a ruling on whether it is superseded.
+      implementationType)" and :1993 "There is no `ServiceDescriptor` object". The file misdescribes
+      types that no longer exist; only the owner can correct it. Separately, `docs/rewrite-plan.md:78`
+      carries a standing order — "`descriptor` stays on scoped call sites exactly as-is" — that
+      predates this rename and needs a ruling on whether it is superseded.
 - [ ] **`docs/decisions.v2.md` §170 describes a `Registration` shape that never existed.** It
       claims one generic base `{ kind; address; implementer; implementerType }` shared by all three
       variants. The real type is a union — `CtorRegistration | FactoryRegistration | ValueRegistration`

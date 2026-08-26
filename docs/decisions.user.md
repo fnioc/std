@@ -7,8 +7,8 @@ original in place — and every entry speaks only of the present.
 
 ## U1 — `replace` replaces — in place, and nothing when nothing matches
 
-`Manifest.replace(descriptor)` swaps the first `ServiceDescriptor.matches` hit for the incoming
-descriptor at the SAME position in the chain, and when no descriptor matches it registers nothing.
+`Manifest.replace(registration)` swaps the first `Registration.matches` hit for the incoming
+registration at the SAME position in the chain, and when no registration matches it registers nothing.
 It never degrades to `add`.
 
 The reference's `Replace` is remove-then-add-unconditionally: the oldest match is removed, the
@@ -52,7 +52,7 @@ _Owner-ruled and signed off 2026-08-12._
 `Type` is one flat node space. `TypeIdentifier = GenericType | NominalType | TagType` names
 the address-only kinds: a pure reference has nothing to build from. Every `Type` can be an
 address — interning makes any node registrable and resolvable by `===`, and a
-`ServiceDescriptor` may link absolutely any `Type` to an implementation. Every non-identifier
+`Registration` may link absolutely any `Type` to an implementation. Every non-identifier
 `Type` can also serve as a spec: when no registration answers, the container constructs it by
 composing looked-up leaves; a pure reference misses instead. The capability lives in the usage
 and the registry — a node has one identity, never two.

@@ -637,7 +637,7 @@ A call that stops short of the optional tail — `services.addClass<ILogger>(Con
 emits `services.addClass(TYPE, ConsoleLogger, impl)`: the arguments the call never wrote are
 omitted rather than passed as `undefined`, which is what a hand author would have written.
 
-`ManifestDescriptorAugmentations`, in a sibling file, carries the identical shape for `tryAdd`,
+`ManifestRegistrationAugmentations`, in a sibling file, carries the identical shape for `tryAdd`,
 `tryAddClass`/`tryAddFactory`/`tryAddValue`, `replaceClass`/`replaceFactory`/`replaceValue`, and
 `removeAll`. `ServiceProviderServiceAugmentations` puts the same pattern on a different receiver,
 `IServiceProvider`, for members with nothing left to forward once the type argument is minted:

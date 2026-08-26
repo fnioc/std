@@ -113,7 +113,7 @@ owner positions on record: `docs/di2.scope-notes.md`.
 union+namespace shape + `address: Type`-only — done. FunctionType rename — done. Package moves
 — done, direct-repoint shape (no shims: di.core imports Type/IServiceProvider straight from
 primitives; utils split — memo/UnionToTuple → primitives-internal, isAllThere/first →
-di/CallSite/utils.ts; primitives rebuilt clean; di.core barrel re-exports the Type surface +
+di/Plan/utils.ts; primitives rebuilt clean; di.core barrel re-exports the Type surface +
 IServiceProvider and now ScopeCache). Handoff snapshot committed + pushed as tag `di2-handoff`
 (9aa32c9).
 

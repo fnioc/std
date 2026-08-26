@@ -15,8 +15,8 @@ bun add @rhombus-std/di
 ## Usage
 
 ```ts
-import { di } from '@rhombus-std/di';
-import { LifetimeModel, Manifest, Type } from '@rhombus-std/di.core';
+import { di, noop } from '@rhombus-std/di';
+import { Manifest, Type } from '@rhombus-std/di.core';
 
 interface IGreeter {
   greet(name: string): string;
@@ -31,7 +31,7 @@ class ConsoleGreeter implements IGreeter {
 
 const manifest = Manifest.empty<unknown>().add(IGreeter, ConsoleGreeter, Type.ctor(IGreeter, [[]]));
 
-const provider = di.usingLifetimeModel(LifetimeModel.noop)
+const provider = di.usingLifetimeModel(noop())
   .usingManifest(manifest)
   .build();
 
@@ -62,4 +62,4 @@ provider.resolve(IGreeter).greet('world'); // "Hello, world!"
 
 - A discarded `.add(...)`, `.describe(...)`, or `.configureServices(...)` result configures nothing — both `Manifest` and `ContainerBuilder` are immutable, so always chain or reassign.
 - A union dependency settles deterministically: a registration for the union's own address answers it outright; otherwise each member is tried, registration then synthesis, in the union's canonical order, and the first one that resolves settles it. Literals order last among members, which is what keeps a literal member (such as `undefined`) as the fallback of an optional dependency.
-- `LifetimeModel.noop`, from `di.core`, retains nothing: every registration is constructed fresh on every resolution, and it never opens a scope. A model that scopes publishes the capability to open one under `ScopeFactory.address`, resolved like any other service.
+- `noop()`, from `di`, retains nothing: every registration is constructed fresh on every resolution, and it never opens a scope. A model that scopes publishes the capability to open one under `ScopeFactory.address`, resolved like any other service.

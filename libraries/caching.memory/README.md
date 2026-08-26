@@ -53,22 +53,22 @@ friends — works on it directly.
 `Manifest<unknown>`: the cache itself registers at `'singleton'`, but a
 `setup` callback folds in its own configure step, which carries no lifetime of
 its own, so the manifest as a whole stays at the wider `unknown`. A caller
-merges the result with `tryAdd`, spreading its descriptors: that keeps the
+merges the result with `tryAdd`, spreading its registrations: that keeps the
 semantics `tryAdd` always had here — an earlier registration for the same
 type is kept, while configure steps still accumulate:
 
 ```ts
 import type { IMemoryCache } from '@rhombus-std/caching.core';
 import { getMemoryCacheManifest, MEMORY_CACHE_TYPE } from '@rhombus-std/caching.memory';
-import { di } from '@rhombus-std/di';
-import { LifetimeModel, Manifest } from '@rhombus-std/di.core';
+import { di, noop } from '@rhombus-std/di';
+import { Manifest } from '@rhombus-std/di.core';
 
 let services: Manifest<unknown> = Manifest.empty<unknown>();
 services = services.tryAdd(...getMemoryCacheManifest((options) => {
   options.sizeLimit = 1024;
 }));
 
-const provider = di.usingLifetimeModel(LifetimeModel.noop).usingManifest(services).build();
+const provider = di.usingLifetimeModel(noop()).usingManifest(services).build();
 const cache: IMemoryCache = provider.resolve(MEMORY_CACHE_TYPE);
 ```
 

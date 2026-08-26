@@ -93,7 +93,7 @@ files carry YOUR in-flight edits, so re-verify each site before editing.
 
 - [x] `address` naming in di/di.core INTERNALS (the public faces are done): parameters/members
       holding the address say `address`, never `type` — di.core `ServiceScope.ts:21,23`;
-      `Errors.ts:44,46,86,90,105` (the readonly `type` member); `service-type.ts:10` (withKey);
+      `Errors.ts:44,46,86,90,105` (the readonly `type` member); `address.ts:10` (withKey);
       di `internal/Engine.ts:37,46,63,105,114`; `internal/Plan/Plan.ts:114`;
       `internal/Plan/PlannerVisitor.ts:40,71,191,211,246`; `internal/ServiceScope.ts:69,73`.
 - [x] Inline `typefor<T>()` over shared Type-const bags: di.core `resolver.ts:12` (`RESOLVER_TYPE`,
