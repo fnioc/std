@@ -1,4 +1,4 @@
-import { DefaultManifest, IServiceProvider, type LifetimeModel, Manifest, type Realizer, type ScopeFactory, type ServiceDescriptor } from '@rhombus-std/di.core';
+import { DefaultManifest, IServiceProvider, type LifetimeModel, Manifest, type Registration } from '@rhombus-std/di.core';
 import { concat, iterable } from '@rhombus-std/primitives';
 import type { Func } from '@rhombus-toolkit/func';
 import { ServiceProvider } from './ServiceProvider.js';
@@ -13,12 +13,12 @@ export interface ContainerBuilder<Lifetime> {
   configureServices(configure: Func<[Manifest<Lifetime>], Manifest<Lifetime>>): ContainerBuilder<Lifetime>;
 
   /**
-   * Seeds the manifest from an existing descriptor stream, discarding anything configured before
-   * this call — the descriptor stream layers over the model floor, never replacing it.
+   * Seeds the manifest from an existing registration stream, discarding anything configured before
+   * this call — the registration stream layers over the model floor, never replacing it.
    * @param manifest - iteration order is registration order (newest first), exactly as a
    * {@link Manifest} iterates.
    */
-  usingManifest(manifest: Iterable<ServiceDescriptor<Lifetime>>): ContainerBuilder<Lifetime>;
+  usingManifest(manifest: Iterable<Registration<Lifetime>>): ContainerBuilder<Lifetime>;
 
   /** Composes provider options; delegates apply in call order, each receiving the previous one's result. */
   configureProvider(configure: Func<[ServiceProviderOptions], ServiceProviderOptions>): ContainerBuilder<Lifetime>;
@@ -29,12 +29,12 @@ export interface ContainerBuilder<Lifetime> {
 
 export class DefaultContainerBuilder<Lifetime> implements ContainerBuilder<Lifetime> {
   readonly #lifetimeModel: LifetimeModel<Lifetime>;
-  readonly #manifestSteps: Iterable<Func<[Manifest<Lifetime>], Iterable<ServiceDescriptor<Lifetime>>>>;
+  readonly #manifestSteps: Iterable<Func<[Manifest<Lifetime>], Iterable<Registration<Lifetime>>>>;
   readonly #optionSteps: Iterable<Func<[ServiceProviderOptions], ServiceProviderOptions>>;
 
   constructor(
     lifetimeModel: LifetimeModel<Lifetime>,
-    manifestSteps: Iterable<Func<[Manifest<Lifetime>], Iterable<ServiceDescriptor<Lifetime>>>>,
+    manifestSteps: Iterable<Func<[Manifest<Lifetime>], Iterable<Registration<Lifetime>>>>,
     optionSteps: Iterable<Func<[ServiceProviderOptions], ServiceProviderOptions>>,
   ) {
     this.#lifetimeModel = lifetimeModel;
@@ -42,7 +42,7 @@ export class DefaultContainerBuilder<Lifetime> implements ContainerBuilder<Lifet
     this.#optionSteps = optionSteps;
   }
 
-  configureServices(configure: Func<[Manifest<Lifetime>], Iterable<ServiceDescriptor<Lifetime>>>): ContainerBuilder<Lifetime> {
+  configureServices(configure: Func<[Manifest<Lifetime>], Iterable<Registration<Lifetime>>>): ContainerBuilder<Lifetime> {
     return new DefaultContainerBuilder(
       this.#lifetimeModel,
       iterable(() => concat(this.#manifestSteps, configure)),
@@ -50,7 +50,7 @@ export class DefaultContainerBuilder<Lifetime> implements ContainerBuilder<Lifet
     );
   }
 
-  usingManifest(manifest: Iterable<ServiceDescriptor<Lifetime>>): ContainerBuilder<Lifetime> {
+  usingManifest(manifest: Iterable<Registration<Lifetime>>): ContainerBuilder<Lifetime> {
     return new DefaultContainerBuilder(
       this.#lifetimeModel,
       [floor => new DefaultManifest<Lifetime>(() => concat(manifest, floor))],
@@ -67,14 +67,11 @@ export class DefaultContainerBuilder<Lifetime> implements ContainerBuilder<Lifet
   }
 
   build(): IServiceProvider {
-    const floor = Manifest.empty<Lifetime>().apply(() => this.#lifetimeModel.addModelServices());
+    const { realizer, scopeFactory } = this.#lifetimeModel.createRealizer();
+    const floor = scopeFactory ? Manifest.empty<Lifetime>().add(scopeFactory) : Manifest.empty<Lifetime>();
     const manifest = Iterator.from(this.#manifestSteps).reduce((manifest, step) => new DefaultManifest(step(manifest)), floor);
     const options = Iterator.from(this.#optionSteps).reduce((options, step) => step(options), ServiceProviderOptions.defaults);
-    const { realizer, scopeFactory } = this.#lifetimeModel.createRealizer() as {
-      realizer: Realizer;
-      scopeFactory?: Func<[IServiceProvider], ScopeFactory<readonly any[]>>;
-    };
-    return new ServiceProvider(realizer, scopeFactory, manifest as Manifest<unknown>, options);
+    return new ServiceProvider(realizer, manifest, options);
   }
 }
 

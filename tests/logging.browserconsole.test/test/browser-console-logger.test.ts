@@ -13,8 +13,8 @@ import { expect, test } from 'bun:test';
 function fakeServices(): { services: Manifest<unknown>; values: Array<[Type, unknown]>; } {
   const values: Array<[Type, unknown]> = [];
   const make = (): Manifest<unknown> => {
-    return { addValue(serviceType: Type, value: unknown): Manifest<unknown> {
-      values.push([serviceType, value]);
+    return { addValue(address: Type, value: unknown): Manifest<unknown> {
+      values.push([address, value]);
       return make();
     } } as unknown as Manifest<unknown>;
   };
@@ -119,8 +119,8 @@ test('addBrowserConsole registers ONE provider per manifest, however many calls 
   BrowserConsoleLoggerAugmentations.addBrowserConsole.call(builder);
   BrowserConsoleLoggerAugmentations.addBrowserConsole.call(builder);
 
-  const providers = values.filter(([serviceType]) => {
-    return serviceType === LOGGER_PROVIDER_TYPE;
+  const providers = values.filter(([address]) => {
+    return address === LOGGER_PROVIDER_TYPE;
   });
   expect(providers).toHaveLength(1);
   expect(providers[0]?.[1]).toBeInstanceOf(BrowserConsoleLoggerProvider);
@@ -136,8 +136,8 @@ test('the per-builder dedup is keyed by the builder, not effectively global', ()
   BrowserConsoleLoggerAugmentations.addBrowserConsole.call(new LoggingBuilder(second.services));
 
   const providersFor = (values: Array<[Type, unknown]>) => {
-    return values.filter(([serviceType]) => {
-      return serviceType === LOGGER_PROVIDER_TYPE;
+    return values.filter(([address]) => {
+      return address === LOGGER_PROVIDER_TYPE;
     });
   };
   expect(providersFor(first.values)).toHaveLength(1);

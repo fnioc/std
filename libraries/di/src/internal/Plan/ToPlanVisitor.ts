@@ -1,18 +1,18 @@
-import { CycleError, type Generic, type Invoker, type IServiceProvider, ScopeFactory } from '@rhombus-std/di.core';
+import { CycleError, type Generic, type Invoker, type IServiceProvider } from '@rhombus-std/di.core';
 import { type AbstractConstructorType, type ArrayType, type ConstructorType, type FunctionType, type GenericType, type GlobalType, type ImportedType, type IntersectionType, type IterableType,
   type ObjectType, type TagType, type TupleType, Type, type TypeLiteralType, type UnionType } from '@rhombus-std/primitives';
 import { typefor } from '@rhombus-std/primitives.extras';
 import type { Ctor, Func } from '@rhombus-toolkit/func';
 import type { Registry } from '../Registry.js';
-import { CallSite } from './CallSite.js';
+import { Plan } from './Plan.js';
 
 /**
- * Turns a type expression into the {@link CallSite} that constructs a value for it.
+ * Turns a type expression into the {@link Plan} that constructs a value for it.
  *
  * @remarks
  * Exact match lookup first, falling back to Type specific synthesis behavior.
  */
-export class ToCallSiteVisitor extends Type.Visitor<CallSite | undefined> {
+export class ToPlanVisitor extends Type.Visitor<Plan | undefined> {
   readonly #registry: Registry;
   /** A latebound caller's argument types, each naming the call position that supplies it. */
   readonly #args: ReadonlyMap<Type, number> | undefined;
@@ -35,72 +35,66 @@ export class ToCallSiteVisitor extends Type.Visitor<CallSite | undefined> {
     return this.#missingDependency;
   }
 
-  public override visit(serviceType: Type): CallSite | undefined {
-    if (Type.isOpen(serviceType)) {
+  public override visit(address: Type): Plan | undefined {
+    if (Type.isOpen(address)) {
       return undefined;
     }
     // A caller's argument outranks every registration, statically: the slot is served by the
     // call itself, so the manifest is never consulted for it.
-    const argIndex = this.#args?.get(serviceType);
+    const argIndex = this.#args?.get(address);
     if (argIndex !== undefined) {
-      return CallSite.lateboundArg(argIndex);
+      return Plan.lateboundArg(argIndex);
     }
-    using _guard = this.#cycleGuard.visiting(serviceType);
-    const site = this.#registry.answering(serviceType)
-      .map(answer => CallSite.fromAnswer(serviceType, answer, this))
+    using _guard = this.#cycleGuard.visiting(address);
+    const plan = this.#registry.answering(address)
+      .map(answer => Plan.fromAnswer(address, answer, this))
       .find(Boolean)
-      ?? super.visit(serviceType);
-    if (site === undefined && this.#missingDependency === undefined) {
-      this.#missingDependency = serviceType;
+      ?? super.visit(address);
+    if (plan === undefined && this.#missingDependency === undefined) {
+      this.#missingDependency = address;
     }
-    return site;
+    return plan;
   }
 
-  protected override visitImported(type: ImportedType): CallSite | undefined {
+  protected override visitImported(type: ImportedType): Plan | undefined {
     if (type === typefor<IServiceProvider>()) {
-      return CallSite.serviceProvider();
-    }
-    const [isScopeFactory] = Type.bindGenerics(typefor<ScopeFactory<Generic<'T', readonly any[]>>>(), type);
-    if (isScopeFactory) {
-      // A model that never scopes leaves the address genuinely unsatisfiable, rather than
-      // planting a site that realizes to nothing.
-      return this.#registry.opensScopes ? CallSite.scopeFactory() : undefined;
+      return Plan.serviceProvider();
     }
     const callableType = invokerCallableType(type);
-    return callableType && CallSite.invoker(callableType);
+    return callableType && Plan.invoker(callableType);
   }
 
   /** Nothing global is synthesizable: a global name describes none of itself to build from. */
-  protected override visitGlobal(_type: GlobalType): CallSite | undefined {
+  protected override visitGlobal(_type: GlobalType): Plan | undefined {
     return undefined;
   }
 
-  protected override visitGeneric(_type: GenericType): CallSite | undefined {
+  protected override visitGeneric(_type: GenericType): Plan | undefined {
     return undefined;
   }
 
   /** Parked: composing one from its arg types on a miss awaits its design ruling. */
-  protected override visitCtor(_type: ConstructorType): CallSite | undefined {
+  protected override visitCtor(_type: ConstructorType): Plan | undefined {
     return undefined;
   }
 
-  protected override visitAbstractCtor(_type: AbstractConstructorType): CallSite | undefined {
+  protected override visitAbstractCtor(_type: AbstractConstructorType): Plan | undefined {
     return undefined;
   }
 
-  protected override visitFunc(type: FunctionType): CallSite | undefined {
-    return CallSite.latebound(type);
+  protected override visitFunc(type: FunctionType): Plan | undefined {
+    return Plan.latebound(type);
   }
 
-  protected override visitArray(type: ArrayType): CallSite | undefined {
-    return CallSite.array(this.#collectionSites(type.element));
+  protected override visitArray(type: ArrayType): Plan | undefined {
+    return Plan.array(this.#collectionSites(type.element));
   }
 
-  protected override visitIterable(type: IterableType): CallSite | undefined {
-    return CallSite.iterable(this.#collectionSites(type.element));
+  protected override visitIterable(type: IterableType): Plan | undefined {
+    return Plan.iterable(this.#collectionSites(type.element));
   }
 
-  protected override visitIntersection(_type: IntersectionType): CallSite | undefined {
+  protected override visitIntersection(_type: IntersectionType): Plan | undefined {
     // An intersection is satisfiable only by ONE registration matching every member, and the
     // whole-type lookup in `visit` already performed that search: no synthesis can produce a
     // value that is all parts at once, so there is nothing left to decompose.
@@ -108,24 +102,24 @@ export class ToCallSiteVisitor extends Type.Visitor<CallSite | undefined> {
   }
 
   /** Parked: composing one from its property types on a miss awaits its design ruling. */
-  protected override visitObject(_type: ObjectType): CallSite | undefined {
+  protected override visitObject(_type: ObjectType): Plan | undefined {
     return undefined;
   }
 
-  protected override visitTag(_type: TagType): CallSite | undefined {
+  protected override visitTag(_type: TagType): Plan | undefined {
     return undefined;
   }
 
-  protected override visitTuple(type: TupleType): CallSite | undefined {
+  protected override visitTuple(type: TupleType): Plan | undefined {
     const members = type.members.map(member => this.visit(member));
     if (members.some(p => !p)) {
       return undefined;
     }
-    return CallSite.factory((...args: any[]) => args, members as CallSite[]);
+    return Plan.factory((...args: any[]) => args, members as Plan[]);
   }
 
-  protected override visitTypeLiteral(type: TypeLiteralType): CallSite | undefined {
-    return CallSite.constant(type.value);
+  protected override visitTypeLiteral(type: TypeLiteralType): Plan | undefined {
+    return Plan.constant(type.value);
   }
 
   /**
@@ -133,7 +127,7 @@ export class ToCallSiteVisitor extends Type.Visitor<CallSite | undefined> {
    * member wins, in canonical order. With literals ordered last among members, a literal keeps
    * serving as the fallback of an optional dependency without being a special case.
    */
-  protected override visitUnion(type: UnionType): CallSite | undefined {
+  protected override visitUnion(type: UnionType): Plan | undefined {
     return Iterator.from(type.members)
       .map(member => this.visit(member))
       .find(Boolean);
@@ -143,9 +137,9 @@ export class ToCallSiteVisitor extends Type.Visitor<CallSite | undefined> {
    * Every way the manifest produces {@link elementType}, in REGISTRATION order — services come
    * out in the order they were authored — with the element's one synthesis, if any, as the tail.
    */
-  #collectionSites(elementType: Type): CallSite[] {
+  #collectionSites(elementType: Type): Plan[] {
     return this.#registry.answering(elementType)
-      .map(answer => CallSite.fromAnswer(elementType, answer, this))
+      .map(answer => Plan.fromAnswer(elementType, answer, this))
       .toArray()
       .reverse()
       .concat(Type.isOpen(elementType) ? undefined : super.visit(elementType))
@@ -172,17 +166,17 @@ function invokerCallableType(type: ImportedType): ConstructorType | FunctionType
 class CycleGuard {
   readonly #visiting: Type[] = [];
 
-  visiting(serviceType: Type): Disposable {
-    if (this.#visiting.includes(serviceType)) {
-      throw new CycleError([...this.#visiting, serviceType]);
+  visiting(address: Type): Disposable {
+    if (this.#visiting.includes(address)) {
+      throw new CycleError([...this.#visiting, address]);
     }
-    this.#visiting.push(serviceType);
+    this.#visiting.push(address);
     return {
       [Symbol.dispose]: () => {
         const left = this.#visiting.pop();
-        if (left !== serviceType) {
+        if (left !== address) {
           throw new Error(
-            `the resolution walk unwound out of order — expected to leave "${Type.stringify(serviceType)}" but left "${left ? Type.stringify(left) : '<empty>'}"`,
+            `the resolution walk unwound out of order — expected to leave "${Type.stringify(address)}" but left "${left ? Type.stringify(left) : '<empty>'}"`,
           );
         }
       },

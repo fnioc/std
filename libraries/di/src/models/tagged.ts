@@ -1,16 +1,12 @@
-import { augment, type Type } from '@rhombus-std/primitives';
+import { type IServiceProvider, type LifetimeArgument, type LifetimeModel, type Realizer, Registration, ScopeFactory, ScopeTagUnmatchedError, type TaggedLifetime } from '@rhombus-std/di.core';
+import { augment, Type } from '@rhombus-std/primitives';
 import { typefor } from '@rhombus-std/primitives.extras';
 import type { Func } from '@rhombus-toolkit/func';
-import { ScopeTagUnmatchedError } from '../../Errors';
-import type { IServiceProvider } from '../../IServiceProvider';
-import type { ScopeFactory } from '../../ScopeFactory';
-import type { ServiceDescriptor } from '../../ServiceDescriptor';
-import type { LifetimeArgument, LifetimeModel, Realizer } from '../LifetimeModel';
 
 const MODEL_NAME = 'tagged';
 
 /** What the engine hands a realizer for one construction. */
-type Construction<Tags> = Parameters<Realizer<Tags>['realize']>[0];
+type Construction<Tags extends string> = Parameters<Realizer<TaggedLifetime<Tags>>['realize']>[0];
 
 /**
  * One open scope: the tag it answers to, the scopes enclosing it, and the instances it keeps.
@@ -20,7 +16,7 @@ type Construction<Tags> = Parameters<Realizer<Tags>['realize']>[0];
  * keeping an instance is also the one its dependencies resolve from — a tagged instance reaching
  * for something kept by a scope nested inside its own fails loudly rather than capturing it.
  */
-class TaggedScope<Tags extends string> implements Realizer<Tags | undefined> {
+class TaggedScope<Tags extends string> implements Realizer<TaggedLifetime<Tags>> {
   readonly name = MODEL_NAME;
   readonly #tag: Tags | undefined;
   readonly #enclosing: TaggedScope<Tags> | undefined;
@@ -29,7 +25,7 @@ class TaggedScope<Tags extends string> implements Realizer<Tags | undefined> {
    * registrations of one type stay apart, an open registration keeps one instance per closing,
    * and asking for a service alone or through a collection reaches the same entry.
    */
-  readonly #instances = new Map<ServiceDescriptor<Tags | undefined>, Map<Type, unknown>>();
+  readonly #instances = new Map<Registration<TaggedLifetime<Tags>>, Map<Type, unknown>>();
 
   constructor(tag?: Tags, enclosing?: TaggedScope<Tags>) {
     this.#tag = tag;
@@ -37,21 +33,21 @@ class TaggedScope<Tags extends string> implements Realizer<Tags | undefined> {
   }
 
   /** @throws {ScopeTagUnmatchedError} when no scope open here carries the tag the registration named. */
-  realize({ serviceType, descriptor, make }: Construction<Tags | undefined>): unknown {
-    const holder = this.#findHolder('lifetime' in descriptor ? descriptor.lifetime : undefined, serviceType);
+  realize({ populatedAddress, registration, make }: Construction<Tags>): unknown {
+    const holder = this.#findHolder('lifetime' in registration ? registration.lifetime : undefined, populatedAddress);
     if (holder === undefined) {
       return make(this);
     }
-    let byRequest = holder.#instances.get(descriptor);
+    let byRequest = holder.#instances.get(registration);
     if (!byRequest) {
       byRequest = new Map();
-      holder.#instances.set(descriptor, byRequest);
+      holder.#instances.set(registration, byRequest);
     }
-    if (byRequest.has(serviceType)) {
-      return byRequest.get(serviceType);
+    if (byRequest.has(populatedAddress)) {
+      return byRequest.get(populatedAddress);
     }
     const instance = make(holder);
-    byRequest.set(serviceType, instance);
+    byRequest.set(populatedAddress, instance);
     return instance;
   }
 
@@ -60,13 +56,13 @@ class TaggedScope<Tags extends string> implements Realizer<Tags | undefined> {
   }
 
   /** The nearest scope carrying `lifetime`, or `undefined` — for a registration naming no tag — to construct afresh every ask. */
-  #findHolder(lifetime: Tags | undefined, serviceType: Type): TaggedScope<Tags> | undefined {
+  #findHolder(lifetime: TaggedLifetime<Tags>, address: Type): TaggedScope<Tags> | undefined {
     if (lifetime === undefined) {
       return undefined;
     }
     const holder = Iterator.from(this.#walkOutwards()).find(scope => scope.#tag === lifetime);
     if (!holder) {
-      throw new ScopeTagUnmatchedError(this.name, lifetime, serviceType);
+      throw new ScopeTagUnmatchedError(this.name, lifetime, address);
     }
     return holder;
   }
@@ -83,19 +79,19 @@ class TaggedScope<Tags extends string> implements Realizer<Tags | undefined> {
  * One container's machinery: it points each walk at the scope whose provider opened it, so one
  * realizer serves every scope.
  */
-class TaggedRouter<Tags extends string> implements Realizer<Tags | undefined> {
+class TaggedRouter<Tags extends string> implements Realizer<TaggedLifetime<Tags>> {
   #activeScope = new TaggedScope<Tags>();
 
-  realize(construction: Construction<Tags | undefined>): unknown {
+  realize(construction: Construction<Tags>): unknown {
     return this.#activeScope.realize(construction);
   }
 
   /** `container` is the provider a {@link TaggedScopeProvider} defers to for anything the scope itself doesn't keep. */
-  openScopesFrom(container: IServiceProvider): ScopeFactory<LifetimeArgument<Tags | undefined>> {
+  openScopesFrom(container: IServiceProvider): ScopeFactory<LifetimeArgument<TaggedLifetime<Tags>>> {
     // Read while the asking walk is still running, so the scope open right now is the one a
     // child is parented to.
     const parent = this.#activeScope;
-    return (...lifetime: LifetimeArgument<Tags | undefined>) => new TaggedScopeProvider(this, parent.openChild(lifetime[0]), container);
+    return (...lifetime: LifetimeArgument<TaggedLifetime<Tags>>) => new TaggedScopeProvider(this, parent.openChild(lifetime[0]), container);
   }
 
   /** Runs `resolution` with `scope` answering for every site it realizes. */
@@ -145,20 +141,21 @@ class TaggedScopeProvider<Tags extends string> implements IServiceProvider {
  * @typeParam Tags - the tags a scope may carry, defaulting to any string. The vocabulary a
  * registration draws on is those plus `undefined`, the transient reading.
  */
-export function tagged<Tags extends string = string>(): LifetimeModel<Tags | undefined> {
+export function tagged<Tags extends string = string>(): LifetimeModel<TaggedLifetime<Tags>> {
   return {
     name: MODEL_NAME,
-
-    /** Nothing to lay: the scope factory is minted beside the realizer rather than registered. */
-    addModelServices(): Iterable<ServiceDescriptor<Tags | undefined>> {
-      return [];
-    },
+    transient: undefined,
 
     createRealizer() {
       const router = new TaggedRouter<Tags>();
       return {
         realizer: router,
-        scopeFactory: container => router.openScopesFrom(container),
+        scopeFactory: Registration.factory<TaggedLifetime<Tags>>(
+          ScopeFactory.address,
+          (container: IServiceProvider) => router.openScopesFrom(container),
+          Type.func(ScopeFactory.address, [[typefor<IServiceProvider>()]]),
+          undefined,
+        ),
       };
     },
   };

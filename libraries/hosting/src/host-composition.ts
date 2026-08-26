@@ -21,8 +21,8 @@
 import type {} from '@rhombus-std/di.extras';
 
 import type { IConfig } from '@rhombus-std/config.core';
-import { di, ServiceProviderOptions } from '@rhombus-std/di';
-import { LifetimeModel, type Manifest } from '@rhombus-std/di.core';
+import { di, noop, ServiceProviderOptions } from '@rhombus-std/di';
+import { type Manifest } from '@rhombus-std/di.core';
 import { Environments, type HostBuilderContext, HostDefaults, type IHost, type IHostApplicationLifetime, type IHostEnvironment, type IHostLifetime } from '@rhombus-std/hosting.core';
 import { LoggerFactory } from '@rhombus-std/logging';
 import type { ILoggerFactory, ILoggerProvider } from '@rhombus-std/logging.core';
@@ -184,7 +184,7 @@ export function populateFrameworkServices(services: Manifest<unknown>, context: 
  * resolved; omitted ⇒ an unvalidated build.
  */
 export function resolveHost(services: Manifest<unknown>, framework: FrameworkServices, config: IConfig, serviceProviderOptions?: ServiceProviderOptions): IHost {
-  const provider = di.usingLifetimeModel(LifetimeModel.noop)
+  const provider = di.usingLifetimeModel(noop())
     .usingManifest(services)
     .configureProvider(() => serviceProviderOptions ?? ServiceProviderOptions.defaults)
     .build();

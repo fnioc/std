@@ -1,7 +1,7 @@
 import type { ConstructorType, FunctionType, Type } from '@rhombus-std/primitives';
 import type { AbstractCtor, Ctor, Func } from '@rhombus-toolkit/func';
-import { withKey } from './service-type';
-import { type CtorDescriptor, type FactoryDescriptor, ServiceDescriptor, type ValueDescriptor } from './ServiceDescriptor';
+import { withKey } from './address';
+import { type CtorRegistration, type FactoryRegistration, Registration, type ValueRegistration } from './Registration';
 
 /** A step the chain has not spent yet. Each verb removes its own, so none can be taken twice. */
 export type Slot = 'implementer' | 'lifetime' | 'tag';
@@ -9,11 +9,11 @@ export type Slot = 'implementer' | 'lifetime' | 'tag';
 /**
  * The steps still open, as one type: an intersection of the interfaces whose slots survive.
  * `Described` is `unknown` until an implementer is chosen; from then on the node IS that
- * descriptor, refined by whatever steps remain — except while a required lifetime is unspent:
+ * registration, refined by whatever steps remain — except while a required lifetime is unspent:
  * when `undefined` is not assignable to `Lifetime` and the `lifetime` slot is still open, the
- * node withholds descriptor-ness, so a manifest verb refuses it until `withLifetime` is taken.
+ * node withholds registration-ness, so a manifest verb refuses it until `withLifetime` is taken.
  */
-export type ServiceDescriptorBuilder<T, Lifetime, Slots extends Slot, Described> =
+export type RegistrationBuilder<T, Lifetime, Slots extends Slot, Described> =
   & ('lifetime' extends Slots ? (undefined extends Lifetime ? Described : unknown) : Described)
   & ('implementer' extends Slots ? IAsImplementer<T, Lifetime, Slots> : unknown)
   & ('lifetime' extends Slots ? IWithLifetime<T, Lifetime, Slots, Described> : unknown)
@@ -23,82 +23,82 @@ export type ServiceDescriptorBuilder<T, Lifetime, Slots extends Slot, Described>
  * Choosing what produces the service. Each door takes the implementation together with its own
  * type — the node carrying its signatures — and takes only implementations that produce `T`,
  * so a registration that could not satisfy its own address is refused where it is written. Taking
- * a door completes the registration: the result is a {@link ServiceDescriptor}.
+ * a door completes the registration: the result is a {@link Registration}.
  */
 export interface IAsImplementer<T, Lifetime, Slots extends Slot> {
   asClass(
     ctor: AbstractCtor<any[], T> & Ctor,
     ctorType: ConstructorType,
-  ): ServiceDescriptorBuilder<T, Lifetime, Exclude<Slots, 'implementer'>, CtorDescriptor<Lifetime>>;
+  ): RegistrationBuilder<T, Lifetime, Exclude<Slots, 'implementer'>, CtorRegistration<Lifetime>>;
   asFactory(
     fn: Func<any[], T>,
     fnType: FunctionType,
-  ): ServiceDescriptorBuilder<T, Lifetime, Exclude<Slots, 'implementer'>, FactoryDescriptor<Lifetime>>;
-  asValue(value: T): ServiceDescriptorBuilder<T, Lifetime, Extract<Slots, 'tag'>, ValueDescriptor>;
+  ): RegistrationBuilder<T, Lifetime, Exclude<Slots, 'implementer'>, FactoryRegistration<Lifetime>>;
+  asValue(value: T): RegistrationBuilder<T, Lifetime, Extract<Slots, 'tag'>, ValueRegistration>;
 }
 
 interface IWithLifetime<T, Lifetime, Slots extends Slot, Described> {
-  withLifetime(lifetime: Lifetime): ServiceDescriptorBuilder<T, Lifetime, Exclude<Slots, 'lifetime'>, Described>;
+  withLifetime(lifetime: Lifetime): RegistrationBuilder<T, Lifetime, Exclude<Slots, 'lifetime'>, Described>;
 }
 
 interface ITaggedAs<T, Lifetime, Slots extends Slot, Described> {
-  taggedAs(key: string): ServiceDescriptorBuilder<T, Lifetime, Exclude<Slots, 'tag'>, Described>;
+  taggedAs(key: string): RegistrationBuilder<T, Lifetime, Exclude<Slots, 'tag'>, Described>;
 }
 
 /** A registration with nothing chosen yet — what {@link Manifest.describe} opens. */
-export type ServiceDescriptorBuilderFor<T, Lifetime> = ServiceDescriptorBuilder<T, Lifetime, 'implementer' | 'lifetime' | 'tag', unknown>;
+export type RegistrationBuilderFor<T, Lifetime> = RegistrationBuilder<T, Lifetime, 'implementer' | 'lifetime' | 'tag', unknown>;
 
 /**
  * The chain `describe` opens. Every step hands back a new node, so a discarded intermediate
  * configures nothing — the same rule the manifest itself follows.
  */
-export function openDescription<Lifetime>(serviceType: Type): ServiceDescriptorBuilderFor<any, Lifetime> {
-  return new PendingRegistration<Lifetime>(serviceType) as unknown as ServiceDescriptorBuilderFor<any, Lifetime>;
+export function openRegistration<Lifetime>(address: Type): RegistrationBuilderFor<any, Lifetime> {
+  return new PendingRegistration<Lifetime>(address) as unknown as RegistrationBuilderFor<any, Lifetime>;
 }
 
 /** The node the chain walks before an implementer is chosen. */
 class PendingRegistration<Lifetime> {
-  readonly #serviceType: Type;
+  readonly #baseAddress: Type;
   readonly #lifetime: Lifetime | undefined;
   readonly #tag: string | undefined;
 
-  constructor(serviceType: Type, lifetime?: Lifetime, tag?: string) {
-    this.#serviceType = serviceType;
+  constructor(baseAddress: Type, lifetime?: Lifetime, tag?: string) {
+    this.#baseAddress = baseAddress;
     this.#lifetime = lifetime;
     this.#tag = tag;
   }
 
   asClass(ctor: Ctor, ctorType: ConstructorType) {
-    return described(ServiceDescriptor.ctor(this.#address(), ctor, ctorType, this.#lifetime));
+    return described(Registration.ctor(this.#address(), ctor, ctorType, this.#lifetime));
   }
 
   asFactory(fn: Func, fnType: FunctionType) {
-    return described(ServiceDescriptor.factory(this.#address(), fn, fnType, this.#lifetime));
+    return described(Registration.factory(this.#address(), fn, fnType, this.#lifetime));
   }
 
   asValue(value: unknown) {
-    return described(ServiceDescriptor.value(this.#address(), value));
+    return described(Registration.value(this.#address(), value));
   }
 
   withLifetime(lifetime: Lifetime) {
-    return new PendingRegistration<Lifetime>(this.#serviceType, lifetime, this.#tag);
+    return new PendingRegistration<Lifetime>(this.#baseAddress, lifetime, this.#tag);
   }
 
   taggedAs(key: string) {
-    return new PendingRegistration<Lifetime>(this.#serviceType, this.#lifetime, key);
+    return new PendingRegistration<Lifetime>(this.#baseAddress, this.#lifetime, key);
   }
 
   #address(): Type {
-    return withKey(this.#serviceType, this.#tag);
+    return withKey(this.#baseAddress, this.#tag);
   }
 }
 
 /**
- * A descriptor wearing the chain's remaining steps. The steps are installed non-enumerably, so
- * the node spreads, compares, and registers as the plain descriptor it is.
+ * A registration wearing the chain's remaining steps. The steps are installed non-enumerably, so
+ * the node spreads, compares, and registers as the plain registration it is.
  */
-function described<Lifetime, D extends ServiceDescriptor<Lifetime>>(descriptor: D): D {
-  return Object.defineProperties({ ...descriptor }, {
+function described<Lifetime, D extends Registration<Lifetime>>(registration: D): D {
+  return Object.defineProperties({ ...registration }, {
     withLifetime: {
       value: function(this: D, lifetime: Lifetime) {
         return described<Lifetime, D>({ ...this, lifetime });
@@ -106,7 +106,7 @@ function described<Lifetime, D extends ServiceDescriptor<Lifetime>>(descriptor: 
     },
     taggedAs: {
       value: function(this: D, key: string) {
-        return described<Lifetime, D>({ ...this, serviceType: withKey(this.serviceType, key) });
+        return described<Lifetime, D>({ ...this, address: withKey(this.address, key) });
       },
     },
   }) as D;

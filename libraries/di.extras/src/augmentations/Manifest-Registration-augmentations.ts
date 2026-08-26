@@ -1,4 +1,4 @@
-import type { LifetimeArgument, Manifest, ServiceDescriptor, ServiceDescriptorBuilderFor } from '@rhombus-std/di.core';
+import type { LifetimeArgument, Manifest, Registration, RegistrationBuilderFor } from '@rhombus-std/di.core';
 import type { ButNot } from '@rhombus-std/primitives';
 import { registerInlineBodies, typefor } from '@rhombus-std/primitives.extras';
 import type { AbstractCtor, Ctor, Func } from '@rhombus-toolkit/func';
@@ -20,7 +20,7 @@ declare module '@rhombus-std/di.core' {
      * the type argument instead of taken explicitly. A callable lands on the shapes above
      * instead; {@link Manifest.addValue} is the door that forces one down the value path.
      */
-    add<ServiceType>(value: ButNot<ServiceType, Func | AbstractCtor | ServiceDescriptor<any>>): Manifest<Lifetime>;
+    add<ServiceType>(value: ButNot<ServiceType, Func | AbstractCtor | Registration<any>>): Manifest<Lifetime>;
     /**
      * Registers `value` as-is under `ServiceType`, the service type derived from the type
      * argument instead of taken explicitly.
@@ -32,7 +32,7 @@ declare module '@rhombus-std/di.core' {
     /** {@link Manifest.add}'s factory shape, registering only when the service type has no registration yet. */
     tryAdd<ServiceType>(implementer: Func<any[], ServiceType>, ...lifetime: LifetimeArgument<Lifetime>): Manifest<Lifetime>;
     /** {@link Manifest.add}'s value shape, registering only when the service type has no registration yet. */
-    tryAdd<ServiceType>(value: ButNot<ServiceType, Func | AbstractCtor | ServiceDescriptor<any>>): Manifest<Lifetime>;
+    tryAdd<ServiceType>(value: ButNot<ServiceType, Func | AbstractCtor | Registration<any>>): Manifest<Lifetime>;
     /** {@link Manifest.addValue}, registering only when the service type has no registration yet. */
     tryAddValue<ServiceType>(value: ServiceType): Manifest<Lifetime>;
 
@@ -41,7 +41,7 @@ declare module '@rhombus-std/di.core' {
     /** {@link Manifest.add}'s factory shape, replacing the service type's existing registration. */
     replace<ServiceType>(implementer: Func<any[], ServiceType>, ...lifetime: LifetimeArgument<Lifetime>): Manifest<Lifetime>;
     /** {@link Manifest.add}'s value shape, replacing the service type's existing registration. */
-    replace<ServiceType>(value: ButNot<ServiceType, Func | AbstractCtor | ServiceDescriptor<any>>): Manifest<Lifetime>;
+    replace<ServiceType>(value: ButNot<ServiceType, Func | AbstractCtor | Registration<any>>): Manifest<Lifetime>;
     /** {@link Manifest.addValue}, replacing the service type's existing registration. */
     replaceValue<ServiceType>(value: ServiceType): Manifest<Lifetime>;
 
@@ -55,11 +55,11 @@ declare module '@rhombus-std/di.core' {
      * {@link Manifest.describe} with `ServiceType` derived from the type argument instead of
      * taken explicitly.
      */
-    describe<ServiceType>(): ServiceDescriptorBuilderFor<ServiceType, Lifetime>;
+    describe<ServiceType>(): RegistrationBuilderFor<ServiceType, Lifetime>;
   }
 }
 
-export const ManifestDescriptorAugmentations = {
+export const ManifestRegistrationAugmentations = {
   add<ServiceType>(this: Manifest<unknown>, implementer: any, lifetime?: unknown): Manifest<unknown> {
     return this.add(typefor<ServiceType>(), implementer, typefor(implementer), lifetime);
   },
@@ -85,19 +85,19 @@ export const ManifestDescriptorAugmentations = {
     return this.describe(typefor<ServiceType>());
   },
 };
-registerInlineBodies<Manifest<unknown>>(ManifestDescriptorAugmentations);
+registerInlineBodies<Manifest<unknown>>(ManifestRegistrationAugmentations);
 
 // A separate set because its `add` is the value shape's own body — an object literal cannot
 // carry a second `add` beside the callable blanket above.
-export const ManifestDescriptorValueAugmentations = {
-  add<ServiceType>(this: Manifest<unknown>, value: ButNot<ServiceType, Func | AbstractCtor | ServiceDescriptor<any>>): Manifest<unknown> {
+export const ManifestRegistrationValueAugmentations = {
+  add<ServiceType>(this: Manifest<unknown>, value: ButNot<ServiceType, Func | AbstractCtor | Registration<any>>): Manifest<unknown> {
     return this.addValue(typefor<ServiceType>(), value);
   },
-  tryAdd<ServiceType>(this: Manifest<unknown>, value: ButNot<ServiceType, Func | AbstractCtor | ServiceDescriptor<any>>): Manifest<unknown> {
+  tryAdd<ServiceType>(this: Manifest<unknown>, value: ButNot<ServiceType, Func | AbstractCtor | Registration<any>>): Manifest<unknown> {
     return this.tryAddValue(typefor<ServiceType>(), value);
   },
-  replace<ServiceType>(this: Manifest<unknown>, value: ButNot<ServiceType, Func | AbstractCtor | ServiceDescriptor<any>>): Manifest<unknown> {
+  replace<ServiceType>(this: Manifest<unknown>, value: ButNot<ServiceType, Func | AbstractCtor | Registration<any>>): Manifest<unknown> {
     return this.replaceValue(typefor<ServiceType>(), value);
   },
 };
-registerInlineBodies<Manifest<unknown>>(ManifestDescriptorValueAugmentations);
+registerInlineBodies<Manifest<unknown>>(ManifestRegistrationValueAugmentations);

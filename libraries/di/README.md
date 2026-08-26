@@ -38,9 +38,9 @@ const provider = di.usingLifetimeModel(LifetimeModel.noop)
 provider.resolve(IGreeter).greet('world'); // "Hello, world!"
 ```
 
-`di.usingLifetimeModel(model)` is the one entry point: it opens a `ContainerBuilder` running on `model`'s scope/lifetime behavior. `.usingManifest(manifest)` seeds the builder from an existing descriptor stream (discarding whatever was configured before it); `.configureServices(configure)` composes registrations onto the manifest instead, one delegate per call, each receiving the previous step's result; `.configureProvider(configure)` composes `ServiceProviderOptions` the same way. `.build()` seals everything into a `ServiceProvider`. Every builder method returns a **new** `ContainerBuilder`, so — exactly like `Manifest` itself — a discarded result configures nothing.
+`di.usingLifetimeModel(model)` is the one entry point: it opens a `ContainerBuilder` running on `model`'s scope/lifetime behavior. `.usingManifest(manifest)` seeds the builder from an existing registration stream (discarding whatever was configured before it); `.configureServices(configure)` composes registrations onto the manifest instead, one delegate per call, each receiving the previous step's result; `.configureProvider(configure)` composes `ServiceProviderOptions` the same way. `.build()` seals everything into a `ServiceProvider`. Every builder method returns a **new** `ContainerBuilder`, so — exactly like `Manifest` itself — a discarded result configures nothing.
 
-`resolve(serviceType)` and `resolveMany(serviceType)` are `di.core`'s own augmentations on `IServiceProvider`, so they're available the moment `di.core` is loaded — which it always is, since `di` depends on it.
+`resolve(address)` and `resolveMany(address)` are `di.core`'s own augmentations on `IServiceProvider`, so they're available the moment `di.core` is loaded — which it always is, since `di` depends on it.
 
 ## Key exports
 
@@ -54,7 +54,7 @@ provider.resolve(IGreeter).greet('world'); // "Hello, world!"
 
 ## How it fits
 
-`@rhombus-std/di` depends on [`@rhombus-std/di.core`](../di.core/README.md) for the `Manifest`/`ServiceDescriptor`/`LifetimeModel` surface and `@rhombus-std/primitives` for `Type` and the augmentation registry. It re-exports the whole `di.core` error taxonomy, so code that already imports the engine doesn't need a second import from the abstractions package just to catch what it throws.
+`@rhombus-std/di` depends on [`@rhombus-std/di.core`](../di.core/README.md) for the `Manifest`/`Registration`/`LifetimeModel` surface and `@rhombus-std/primitives` for `Type` and the augmentation registry. It re-exports the whole `di.core` error taxonomy, so code that already imports the engine doesn't need a second import from the abstractions package just to catch what it throws.
 
 [`@rhombus-std/di.extras`](../di.extras/README.md) supplies type-argument-derived (`<T>`-only) authoring sugar for the registration verbs, for a program built through this repo's Go/ttsc transform; `di` and `di.core` work identically without it.
 

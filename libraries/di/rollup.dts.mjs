@@ -1,6 +1,6 @@
 // Rolls the public type surface of @rhombus-std/di into a single dist/bundle/index.d.ts.
 // @rhombus-std/di.core is kept EXTERNAL — the output re-exports the abstraction
-// interfaces (`Manifest`, `IServiceProvider`, `ServiceDescriptor`,
+// interfaces (`Manifest`, `IServiceProvider`, `Registration`,
 // …) FROM `@rhombus-std/di.core` rather than inlining them. This is load-bearing:
 // an authoring package augments `declare module "@rhombus-std/di.core"`, so
 // the interfaces a consumer holds must carry the `@rhombus-std/di.core` module

@@ -7,16 +7,16 @@ import type { IServiceProvider } from '../IServiceProvider.js';
 declare module '@rhombus-std/di.core' {
   interface IServiceProvider {
     /**
-     * Every registration of `serviceType`, as one sequence. Nothing registered is an empty
+     * Every registration of `address`, as one sequence. Nothing registered is an empty
      * sequence rather than an absence, so this neither throws nor answers `undefined`.
      */
-    resolveMany(serviceType: Type): Iterable<any>;
+    resolveMany(address: Type): Iterable<any>;
     /**
-     * The value registered for `serviceType`.
+     * The value registered for `address`.
      *
-     * @throws UnsatisfiableError - when nothing can produce `serviceType`.
+     * @throws UnsatisfiableError - when nothing can produce `address`.
      */
-    resolve(serviceType: Type): any;
+    resolve(address: Type): any;
     /**
      * Constructs `ctor` fresh, its dependencies resolved from `ctorType` — `ctor`'s own arg
      * types, in order, the same shape {@link ConstructorType} carries for any other registered
@@ -40,14 +40,14 @@ declare module '@rhombus-std/di.core' {
 }
 
 registerAugmentations<IServiceProvider>({
-  resolveMany(this: IServiceProvider, serviceType: Type): Iterable<any> {
-    return this.resolve(Type.iterable(serviceType));
+  resolveMany(this: IServiceProvider, address: Type): Iterable<any> {
+    return this.resolve(Type.iterable(address));
   },
 });
 
 registerAugmentations<IServiceProvider>({
-  resolve(this: IServiceProvider, serviceType: Type): any {
-    return this.getService(serviceType);
+  resolve(this: IServiceProvider, address: Type): any {
+    return this.getService(address);
   },
 });
 

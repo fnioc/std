@@ -14,8 +14,8 @@ import { expect, test } from 'bun:test';
 function fakeServices(): { services: Manifest<unknown>; values: Array<[Type, unknown]>; } {
   const values: Array<[Type, unknown]> = [];
   const make = (): Manifest<unknown> =>
-    ({ addValue(serviceType: Type, value: unknown): Manifest<unknown> {
-      values.push([serviceType, value]);
+    ({ addValue(address: Type, value: unknown): Manifest<unknown> {
+      values.push([address, value]);
       return make();
     } }) as unknown as Manifest<unknown>;
   return { services: make(), values };
@@ -157,7 +157,7 @@ test('addConsole registers exactly one provider per manifest', () => {
   });
   ConsoleLoggerAugmentations.addSimpleConsole.call(builder);
 
-  const providers = values.filter(([serviceType]) => serviceType === LOGGER_PROVIDER_TYPE);
+  const providers = values.filter(([address]) => address === LOGGER_PROVIDER_TYPE);
   expect(providers).toHaveLength(1);
   expect(providers[0]?.[1]).toBeInstanceOf(ConsoleLoggerProvider);
 });

@@ -23,7 +23,7 @@ import { Type } from '@rhombus-std/primitives';
 export abstract class DiError extends Error {}
 
 /**
- * Nothing in the manifest can produce a value for {@link serviceType}.
+ * Nothing in the manifest can produce a value for {@link address}.
  *
  * @remarks
  * Catch this to fall back to another candidate — a union member, a later signature.
@@ -41,12 +41,12 @@ export abstract class DiError extends Error {}
  */
 export class UnsatisfiableError extends DiError {
   /** The service type that could not be resolved. */
-  readonly serviceType: Type;
+  readonly address: Type;
 
-  constructor(serviceType: Type, reason: string, cause?: UnsatisfiableError) {
-    super(`cannot satisfy ${Type.stringify(serviceType)} — ${reason}`, { cause });
+  constructor(address: Type, reason: string, cause?: UnsatisfiableError) {
+    super(`cannot satisfy ${Type.stringify(address)} — ${reason}`, { cause });
     this.name = 'UnsatisfiableError';
-    this.serviceType = serviceType;
+    this.address = address;
   }
 }
 
@@ -71,7 +71,7 @@ export class CycleError extends DiError {
 }
 
 /**
- * The installed lifetime model threw while realizing {@link serviceType} — the model's own code,
+ * The installed lifetime model threw while realizing {@link address} — the model's own code,
  * not the construction it was asked to perform. The model's error is the `cause`.
  *
  * @remarks
@@ -80,12 +80,12 @@ export class CycleError extends DiError {
  */
 export class LifetimeModelError extends DiError {
   /** The service type whose realization the model failed. */
-  readonly serviceType: Type;
+  readonly address: Type;
 
-  constructor(serviceType: Type, cause: unknown) {
-    super(`the lifetime model failed realizing ${Type.stringify(serviceType)}`, { cause });
+  constructor(address: Type, cause: unknown) {
+    super(`the lifetime model failed realizing ${Type.stringify(address)}`, { cause });
     this.name = 'LifetimeModelError';
-    this.serviceType = serviceType;
+    this.address = address;
   }
 }
 
@@ -99,23 +99,23 @@ export class ScopeTagUnmatchedError extends DiError {
   /** The tag the registration named. */
   readonly tag: string;
   /** The service type of the registration that named it. */
-  readonly serviceType: Type;
+  readonly address: Type;
 
-  constructor(modelName: string, tag: string, serviceType: Type) {
+  constructor(modelName: string, tag: string, address: Type) {
     super(
-      `the ${modelName} lifetime model keeps ${Type.stringify(serviceType)} in the scope tagged '${tag}', and no open scope carries that tag`,
+      `the ${modelName} lifetime model keeps ${Type.stringify(address)} in the scope tagged '${tag}', and no open scope carries that tag`,
     );
     this.name = 'ScopeTagUnmatchedError';
     this.modelName = modelName;
     this.tag = tag;
-    this.serviceType = serviceType;
+    this.address = address;
   }
 }
 
 /** One registration that could not be lowered. */
 export interface ValidationFailure {
   /** The service type of the registration that failed. */
-  readonly serviceType: Type;
+  readonly address: Type;
   /** What lowering it produced — an {@link UnsatisfiableError}, a {@link CycleError}, or a fault. */
   readonly error: Error;
 }
@@ -134,7 +134,7 @@ export class ManifestValidationError extends DiError {
   constructor(failures: readonly ValidationFailure[]) {
     super(
       `cannot satisfy every registration:\n`
-        + failures.map(failure => `  ${Type.stringify(failure.serviceType)} — ${failure.error.message}`).join('\n'),
+        + failures.map(failure => `  ${Type.stringify(failure.address)} — ${failure.error.message}`).join('\n'),
     );
     this.name = 'ManifestValidationError';
     this.failures = failures;

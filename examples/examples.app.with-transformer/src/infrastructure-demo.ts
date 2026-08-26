@@ -27,8 +27,8 @@
 // Nothing here reads a clock, the filesystem or a random source: the output is
 // byte-stable, which the app's checked-in `expected.txt` diff depends on.
 
-import { di } from '@rhombus-std/di';
-import { LifetimeModel, Manifest, Type } from '@rhombus-std/di.core';
+import { di, noop } from '@rhombus-std/di';
+import { Manifest, Type } from '@rhombus-std/di.core';
 import type { IGreeting, IHealthCheck } from '@rhombus-std/examples.contracts';
 import { typefor } from '@rhombus-std/primitives.extras';
 // `describeDiError` is the LIBRARY's — classifying what a container threw needs
@@ -71,7 +71,7 @@ export function* demonstrateInfrastructure(): Generator<string> {
   const defaults = addGreetingWorkshop((workshop) => {
     workshop.useGreeting(WorkshopGreeting);
   });
-  const defaultProvider = di.usingLifetimeModel(LifetimeModel.noop).usingManifest(defaults).build();
+  const defaultProvider = di.usingLifetimeModel(noop()).usingManifest(defaults).build();
   const defaultWorkshop = defaultProvider.resolve(typefor<GreetingWorkshop>()) as GreetingWorkshop;
 
   yield 'app registered no stationery:';
@@ -85,7 +85,7 @@ export function* demonstrateInfrastructure(): Generator<string> {
   const customised = addGreetingWorkshop((workshop) => {
     workshop.useGreeting(WorkshopGreeting).useStationery({ border: '***' });
   });
-  const customWorkshop = di.usingLifetimeModel(LifetimeModel.noop).usingManifest(customised).build()
+  const customWorkshop = di.usingLifetimeModel(noop()).usingManifest(customised).build()
     .resolve(typefor<GreetingWorkshop>()) as GreetingWorkshop;
 
   yield 'app registered its own stationery:';
@@ -146,7 +146,7 @@ export function* demonstrateInfrastructure(): Generator<string> {
   try {
     const brokenManifest = newWorkshopManifest()
       .add(typefor<IHealthCheck>(), GreetingWorkshop, Type.ctor(typefor<IHealthCheck>(), [[typefor<IGreeting>()]]), 'singleton');
-    di.usingLifetimeModel(LifetimeModel.noop)
+    di.usingLifetimeModel(noop())
       .usingManifest(brokenManifest)
       .configureProvider(options => ({ ...options, validateOnBuild: true }))
       .build();

@@ -1,8 +1,8 @@
-// Behaviour tests for `replace`. Replacing is a targeted override: it swaps the descriptor
+// Behaviour tests for `replace`. Replacing is a targeted override: it swaps the registration
 // already holding the slot, in the slot it holds, and answers a no-match by changing nothing —
-// so the descriptor-taking spelling and the uniform three-argument spelling agree.
+// so the registration-taking spelling and the uniform three-argument spelling agree.
 
-import { Manifest, ServiceDescriptor } from '@rhombus-std/di.core';
+import { Manifest, Registration } from '@rhombus-std/di.core';
 import { Type } from '@rhombus-std/primitives';
 import { describe, expect, test } from 'bun:test';
 
@@ -14,7 +14,7 @@ class Other {}
 
 /** The registered values, newest first — the order iterating a manifest yields. */
 function values(manifest: Manifest<unknown>): unknown[] {
-  return [...manifest].map(descriptor => 'value' in descriptor ? descriptor.value : ServiceDescriptor.kind(descriptor)[0]);
+  return [...manifest].map(registration => 'value' in registration ? registration.value : Registration.kind(registration)[0]);
 }
 
 describe('a no-match registers nothing', () => {
@@ -43,7 +43,7 @@ describe('a no-match registers nothing', () => {
 });
 
 describe('a match is swapped in place', () => {
-  test('the replacement keeps the position the old descriptor held', () => {
+  test('the replacement keeps the position the old registration held', () => {
     const manifest = Manifest.empty<unknown>()
       .addValue(A, 'a-old')
       .addValue(B, 'b');
@@ -92,13 +92,13 @@ describe('the two spellings of replace agree', () => {
       .addValue(A, 'a-old')
       .addValue(B, 'b');
     expect(values(manifest.replaceValue(A, 'a-new')))
-      .toEqual(values(manifest.replace(ServiceDescriptor.value(A, 'a-new'))));
+      .toEqual(values(manifest.replace(Registration.value(A, 'a-new'))));
   });
 
   test('on a no-match', () => {
     const manifest = Manifest.empty<unknown>().addValue(B, 'b');
     expect(values(manifest.replaceValue(A, 'a-new')))
-      .toEqual(values(manifest.replace(ServiceDescriptor.value(A, 'a-new'))));
+      .toEqual(values(manifest.replace(Registration.value(A, 'a-new'))));
   });
 });
 

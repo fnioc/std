@@ -27,8 +27,8 @@ blank().replace(T, class {});
 
 class Impl {}
 
-blank().add({ serviceType: T, ctor: Impl, ctorType: Type.ctor(T, [[]]) });
-// @ts-expect-error an abstract constructor node cannot sit in a descriptor at all
-blank().add({ serviceType: T, ctor: Impl, ctorType: Type.abstractCtor(T, [[]]) });
+blank().add({ address: T, ctor: Impl, ctorType: Type.ctor(T, [[]]) });
+// @ts-expect-error an abstract constructor node cannot sit in a registration at all
+blank().add({ address: T, ctor: Impl, ctorType: Type.abstractCtor(T, [[]]) });
 // @ts-expect-error the spec door mints the same abstract kind
-blank().add({ serviceType: T, ctor: Impl, ctorType: Type.abstractCtor({ instance: T, signatures: [[]] }) });
+blank().add({ address: T, ctor: Impl, ctorType: Type.abstractCtor({ instance: T, signatures: [[]] }) });

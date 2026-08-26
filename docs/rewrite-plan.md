@@ -36,7 +36,7 @@
 - [x] Wire: union token spellings reorder; the parser accepts any order; regenerate the parity
       oracles and both `expected.txt`.
 
-## Call-site walk (`libraries/di`)
+## Plan walk (`libraries/di`)
 
 - [x] `visit` inlines the exact-answer loop for EVERY request kind — a union's own address
       included: `answering(type)` newest first, first answer whose `fromAnswer` builds wins; an
@@ -61,14 +61,14 @@
 - [x] `#synthesized`/`#collection`/`bySpelling`/`Suppliable` die. No helper branches on
       `type.kind`; surviving mechanism helpers get fully descriptive names; named-member
       objects over tuples.
-- [x] Absorb the uncommitted `ToCallSiteVisitor.ts` working-tree experiment (typefor intrinsics
+- [x] Absorb the uncommitted `ToPlanVisitor.ts` working-tree experiment (typefor intrinsics
       + disposer prototype) — do not lose the owner's edits without absorbing their intent.
 - [x] The three `errors-demo` examples lose their ambiguity section; regenerate both
       `expected.txt`.
 
 ## Value door (`libraries/di.core`)
 
-- [x] `ServiceDescriptor.value` refuses `Type.isOpen(serviceType)` UNLESS the hole sits under a
+- [x] `Registration.value` refuses `Type.isOpen(address)` UNLESS the hole sits under a
       callable root (ctor/func, tags stripped) — one erased callable honestly is every closing;
       one instance is not.
 
@@ -91,11 +91,11 @@ ABSOLUTE MINIMUM to keep the build green; a dedicated session owns the scope/lif
 Verified outstanding by a four-agent audit 2026-08-21; line numbers may drift — several of these
 files carry YOUR in-flight edits, so re-verify each site before editing.
 
-- [x] `serviceType` naming in di/di.core INTERNALS (the public faces are done): parameters/members
-      holding the SERVICE type say `serviceType`, never `type` — di.core `ServiceScope.ts:21,23`;
+- [x] `address` naming in di/di.core INTERNALS (the public faces are done): parameters/members
+      holding the address say `address`, never `type` — di.core `ServiceScope.ts:21,23`;
       `Errors.ts:44,46,86,90,105` (the readonly `type` member); `service-type.ts:10` (withKey);
-      di `internal/Engine.ts:37,46,63,105,114`; `internal/CallSite/CallSite.ts:114`;
-      `internal/CallSite/ToCallSiteVisitor.ts:40,71,191,211,246`; `internal/ServiceScope.ts:69,73`.
+      di `internal/Engine.ts:37,46,63,105,114`; `internal/Plan/Plan.ts:114`;
+      `internal/Plan/ToPlanVisitor.ts:40,71,191,211,246`; `internal/ServiceScope.ts:69,73`.
 - [x] Inline `typefor<T>()` over shared Type-const bags: di.core `resolver.ts:12` (`RESOLVER_TYPE`,
       ~10 consumers) and diagnostics.core `types.ts:22-51` (8 exported `*_TYPE` consts) — spell
       `typefor<T>()` at the use sites, delete the consts. Both packages already stage through ttsc.
@@ -109,7 +109,7 @@ files carry YOUR in-flight edits, so re-verify each site before editing.
       beside the existing di.extras inline entries.
       **HALTED 2026-08-22:** the sugar face must reach the chain via a di.extras `declare module`
       merge, but `asClass`/`asFactory` live on `IAsImplementer`, which di.core does NOT export
-      (nor its `Slot` / `ServiceDescriptorBuilder` carriers, which the merged overloads' returns
+      (nor its `Slot` / `RegistrationBuilder` carriers, which the merged overloads' returns
       need) — TS merges only exported declarations, so landing this REQUIRES exporting those
       three internal types from di.core: a new-public-API fork the standing "no new exported
       types" order forbids and this plan does not rule. Needs an owner ruling on exporting the
@@ -120,7 +120,7 @@ files carry YOUR in-flight edits, so re-verify each site before editing.
       `structural kind | NamedType`, forcing a `kind` check before kind-specific members; the
       value overload keeps the narrow reading, since observing a value never yields a name.
 - [x] options.augmentations `rollup.dts.mjs:14` — add di.extras to the dts externals.
-- [x] The disposal-order string throw in di's cycle-guard disposer (was `ToCallSiteVisitor.ts:36`,
+- [x] The disposal-order string throw in di's cycle-guard disposer (was `ToPlanVisitor.ts:36`,
       possibly already reshaped by your rewrite): wherever it lives now, make it a real Error whose
       message names the disposal-order violation. It is NOT the exempt intentional string throw.
 - [x] di `src/augmentations/` new-file cleanups: `Manifest-ContainerBuilder-augmentations.ts` uses

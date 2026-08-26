@@ -1,35 +1,22 @@
-import { type ServiceDescriptor } from '@rhombus-std/di.core';
+import { type Registration } from '@rhombus-std/di.core';
 import { Type } from '@rhombus-std/primitives';
 
 /** A registration that can serve a request, and what the match captured to make it fit. */
 export interface Answer {
   /** The registration as authored — an open one still holds its holes. */
-  readonly descriptor: ServiceDescriptor<unknown>;
+  readonly registration: Registration<unknown>;
   /** One binding per hole the match filled; empty for a registration that had none. */
   readonly generics: ReadonlyMap<string, Type>;
 }
 
 /**
  * The registrations read for resolution: which of them answer a request, newest first.
- *
- * @remarks
- * A CLOSED registration names a fixed address and answers a request it is interned-identical to.
- * An OPEN registration names a family instead, so it is matched against the request to learn what
- * its holes capture. Both come back out of {@link answering} as one kind of {@link Answer} in one
- * order, so which kind a registration is never shows.
  */
 export class Registry {
-  /** The transfer out of the authoring structure: one flat frozen snapshot, newest first. */
-  readonly #descriptors: ReadonlyArray<ServiceDescriptor<unknown>>;
-  /**
-   * Whether the container's lifetime model scopes at all — the one thing a plan reads that no
-   * registration carries, and the reason a plan may refuse the scope-opening address outright.
-   */
-  readonly opensScopes: boolean;
+  readonly #registrations: ReadonlyArray<Registration<unknown>>;
 
-  constructor(descriptors: Iterable<ServiceDescriptor<unknown>>, opensScopes: boolean) {
-    this.#descriptors = Iterator.from(descriptors).map(descriptor => Object.freeze(descriptor)).toArray();
-    this.opensScopes = opensScopes;
+  constructor(registrations: Iterable<Registration<unknown>>) {
+    this.#registrations = Iterator.from(registrations).map(registration => Object.freeze(registration)).toArray();
   }
 
   /**
@@ -38,23 +25,23 @@ export class Registry {
    */
   get closedAddresses(): ReadonlySet<Type> {
     return new Set(
-      Iterator.from(this.#descriptors)
-        .map(descriptor => descriptor.serviceType)
-        .filter(serviceType => !Type.isOpen(serviceType)),
+      Iterator.from(this.#registrations)
+        .map(registration => registration.address)
+        .filter(address => !Type.isOpen(address)),
     );
   }
 
   /**
-   * Every registration answering exactly {@link serviceType}'s own address, newest first — a
+   * Every registration answering exactly {@link address}'s own address, newest first — a
    * closed registration by interned identity, an open one by unification.
    */
-  answering(serviceType: Type): IteratorObject<Answer, undefined> {
-    return Iterator.from(this.#descriptors)
-      .map(descriptor => ({
-        descriptor,
-        match: Type.bindGenerics(descriptor.serviceType, serviceType),
+  answering(address: Type): IteratorObject<Answer, undefined> {
+    return Iterator.from(this.#registrations)
+      .map(registration => ({
+        registration,
+        match: Type.bindGenerics(registration.address, address),
       }))
-      .filter((candidate): candidate is { descriptor: ServiceDescriptor<unknown>; match: [true, Map<string, Type>]; } => candidate.match[0])
-      .map(({ descriptor, match: [, generics] }) => ({ descriptor, generics }));
+      .filter((candidate): candidate is { registration: Registration<unknown>; match: [true, Map<string, Type>]; } => candidate.match[0])
+      .map(({ registration, match: [, generics] }) => ({ registration, generics }));
   }
 }

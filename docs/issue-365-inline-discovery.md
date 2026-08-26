@@ -27,7 +27,7 @@ stage papers over that with a `Discriminator` built from the type-parameter coun
 value-parameter **names** in order (`bodyextract.go:57`, which states outright that parameter types
 are never read). Nothing makes those names differ between a sugar overload and the primitive it
 sugars; today they happen to, and that is the whole of the safety margin. Rename a parameter and a
-consumer's `manifest.add(descriptor)` silently starts substituting a sugar body.
+consumer's `manifest.add(registration)` silently starts substituting a sugar body.
 
 The receiver-side reorganization in the working tree removes the last reason to keep the JSON. Every
 inlinable instance member now follows the augmentation pattern: a `declare module` face beside an
@@ -46,7 +46,7 @@ Two things follow, and together they close the overload hole:
 
 Argument-shape matching is _not_ the criterion and must not be: one sugar face is
 `add<T>(this: Manifest, value: T)`, whose parameters accept any single argument — including the
-`ServiceDescriptor` the primitive `add` takes. Assignability says yes there; overload resolution
+`Registration` the primitive `add` takes. Assignability says yes there; overload resolution
 says no. Only the checker's own pick is correct.
 
 ### One body per member, covering every face
@@ -57,7 +57,7 @@ An author should not have to restate the overload set inside the namespace. One 
 ```ts
 declare module '@rhombus-std/di.core' {
   interface Manifest<Scopes extends string> {
-    add<T>(this: Manifest, configure: Func<[ServiceDescriptorBuilderFor<T, string>], IComplete>): Manifest;
+    add<T>(this: Manifest, configure: Func<[RegistrationBuilderFor<T, string>], IComplete>): Manifest;
     add<T>(this: Manifest, ctor: Ctor<any[], T>, ctorType: ConstructorType, scope?: string): Manifest;
     add<T>(this: Manifest, factory: Func<any[], T>, factoryType: FunctionType, scope?: string): Manifest;
     add<T>(this: Manifest, value: T): Manifest;
@@ -107,7 +107,7 @@ manifest.tryAdd(__typefor_IGreeter, Greeter, ctorType);
 A spread of a declared trailing rest and a spread of `arguments` are both supported, and where a
 body could be written either way the two emit identically.
 
-For the descriptor verbs that means:
+For the registration verbs that means:
 
 ```ts
 manifest.add<IGreeter>(Greeter, ctorType, 'scoped');
@@ -264,7 +264,7 @@ New and updated Go tests, all in `internal/inlinetransform/`:
 - `collector_test.go` — a fixture whose entries come only from markers; a fixture carrying both a
   JSON instance entry and the equivalent marker, asserting one deduplicated entry.
 - `resolve_test.go` / `declaredface_test.go` — the load-bearing case: a receiver carrying a
-  primitive `add(descriptor)` from package A and a sugar `add` overload set from package B, with
+  primitive `add(registration)` from package A and a sugar `add` overload set from package B, with
   only B's declarations claiming B's body. Plus the name-diff diagnostics in both directions.
 - `substitute_test.go` — splice emission for both call forms and both splice tokens; a zero-argument
   call site splicing empty; the reorder case (`asdf(a, b, ...c)` → `this.qwer(b, ...c, a)`); a

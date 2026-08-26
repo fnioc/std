@@ -93,7 +93,7 @@ export function diagnose(error: unknown): string {
   if (error instanceof ManifestValidationError) {
     // Every broken registration at once rather than the first, so an operator
     // gets one round-trip instead of one per hole.
-    const types = error.failures.map(failure => Type.stringify(failure.serviceType)).join(', ');
+    const types = error.failures.map(failure => Type.stringify(failure.address)).join(', ');
     return `ManifestValidationError — ${error.failures.length} registration(s) cannot be satisfied: ${types}`;
   }
 
@@ -153,7 +153,7 @@ export function stagedFailure(what: string, attempt: () => unknown): string {
  *
  * Staging this against the CALLER's manifest is safe, and worth understanding
  * rather than taking on trust: `describe` opens a chain of freestanding nodes,
- * and nothing reaches the manifest until a finished descriptor is handed to a
+ * and nothing reaches the manifest until a finished registration is handed to a
  * verb — so a step that refuses throws from the chain and `services` is exactly
  * what it was before. A discarded chain registers nothing; a rejected one
  * leaves nothing behind.

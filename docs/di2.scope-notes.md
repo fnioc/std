@@ -32,17 +32,17 @@ Raw material for the future scope discussion — not decisions. Owner deferred t
 - The whole roster is one per-node question: which cache does `getOrAdd` target — none / root /
   current / nearest-tagged-ancestor / minted-child. Hook shape:
   `cacheFor(lifetime, chain) → cache | undefined`; the scope chain carries names.
-- **Single-axis unification**: `ServiceDescriptor`'s open `Scopes extends string` can fold
+- **Single-axis unification**: `Registration`'s open `Scopes extends string` can fold
   autofac's two axes (instance-scope kind + matching tag) into ONE tag space — `undefined` =
   transient, `'singleton'` = root cache, any other tag = nearest matching ancestor. A real
   simplification; needs owner sign-off.
 - Tag-miss behavior: recommend THROW (autofac's choice) over silent fallback.
-- Per-scope registrations = the same mechanism as latebound `additionalServices`: descriptors
+- Per-scope registrations = the same mechanism as latebound `additionalServices`: registrations
   layered over the immutable manifest. Same engine-memo-keying caveat.
 - Root degeneration becomes literal and intentional under singleton = scoped-to-root.
 - Captive detection is statically POSSIBLE here (static trees, scope-pure lowering) IF lifetimes
   declare an ordering — an open string family has none intrinsically. Design input for hooks.
-- `Owned<T>`-style ownership could be an `owned` callsite kind wrapping an inner site and minting a
+- `Owned<T>`-style ownership could be an `owned` plan kind wrapping an inner site and minting a
   child cache.
 - Disposal: nothing disposal-shaped exists in di2 yet. Open, discuss-first: TS explicit resource
   management (`Symbol.dispose`/`using`) vs a hand-rolled interface.
@@ -51,16 +51,16 @@ Raw material for the future scope discussion — not decisions. Owner deferred t
 
 ## Owner positions so far (NOT signed decisions)
 
-- Scope is applied in RealizeVisitor only, absolutely last-minute; callsite trees memoizable; the
+- Scope is applied in RealizeVisitor only, absolutely last-minute; plan trees memoizable; the
   current `ScopeCache` type is throwaway greenfield.
 - Leans: latebound "might even be allowed to reset to the top level scope." On record against:
   scoped deps under the latebound would come from root rather than the invoking scope, and a
   matching tag active at build time would have to throw at root. The research memo leans
   captured-scope instead. Genuine fork, undecided.
 - SP recreation-on-request over threading (owner proposal; agreed in principle — SP = (engine,
-  scope) binding minted at the service-provider callsite). Unconfirmed detail: SP identity is then
+  scope) binding minted at the service-provider plan node). Unconfirmed detail: SP identity is then
   non-stable across requests unless memoized per scope.
-- Disposal is scope's domain and must not affect the callsite layer.
+- Disposal is scope's domain and must not affect the plan layer.
 - **Values are cached AS REQUESTED**: a scope cache stores the AWAITED value, never the promise,
   keyed by the requested type; a cache hit skips the entire hoist/await machinery. Consequence: a
   fully-cached async graph succeeds through the SYNC entrypoint. Open consequence (unargued): two
@@ -98,7 +98,7 @@ SHARE instance caches — each registration caches under its own slot, the singu
 0, the enumerable path reads every slot. Without it, resolve-one and resolve-all cache separately
 and a scoped/singleton instance can double-instantiate. Our newest-first singular iteration makes
 the reverse-index convention line up exactly (winner ≡ slot 0), and slots are computable once at
-container build from the descriptor chain.
+container build from the registration chain.
 
 Our translation is cheaper than the reference's: with interned Types (`===`), a
 `ServiceIdentifier` can itself be interned on `(type, key)` — every cache becomes a plain
@@ -115,7 +115,7 @@ default.
 
 **Owner constraint (2026-08-12): metadata never holds state.** The reference lets the instance
 cache leak into service metadata (a pre-supplied singleton lives ON its descriptor; a resolved
-singleton is cached ON its call site). Our model keeps descriptors and plans pure — instances
+singleton is cached ON its call site). Our model keeps registrations and plans pure — instances
 live only in scope-owned caches keyed by the interned request, never on registration or plan
 records.
 

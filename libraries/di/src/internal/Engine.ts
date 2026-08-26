@@ -1,7 +1,6 @@
-import { type IServiceProvider, ManifestValidationError, type Realizer, type ScopeFactory, type ServiceDescriptor, UnsatisfiableError, type ValidationFailure } from '@rhombus-std/di.core';
+import { type IServiceProvider, ManifestValidationError, type Realizer, type Registration, UnsatisfiableError, type ValidationFailure } from '@rhombus-std/di.core';
 import { type FunctionType, Type } from '@rhombus-std/primitives';
-import type { Func } from '@rhombus-toolkit/func';
-import { CallSite } from './CallSite/index.js';
+import { Plan } from './Plan/index.js';
 import { Registry } from './Registry.js';
 
 export interface ResolveContext {
@@ -15,44 +14,37 @@ export interface ResolveContext {
  */
 export class Engine {
   readonly #realizer: Realizer;
-  readonly #scopeFactory: Func<[IServiceProvider], ScopeFactory<readonly any[]>> | undefined;
   readonly #registry: Registry;
 
-  constructor(realizer: Realizer, scopeFactory: Func<[IServiceProvider], ScopeFactory<readonly any[]>> | undefined, descriptors: Iterable<ServiceDescriptor<unknown>>) {
+  constructor(realizer: Realizer, registrations: Iterable<Registration<unknown>>) {
     this.#realizer = realizer;
-    this.#scopeFactory = scopeFactory;
-    this.#registry = new Registry(descriptors, scopeFactory !== undefined);
+    this.#registry = new Registry(registrations);
   }
 
-  /** @throws {UnsatisfiableError} when nothing in the registry can produce {@link serviceType}. */
-  resolve(serviceType: Type, context: ResolveContext): unknown {
-    return CallSite.realize(CallSite.from(serviceType, this.#registry), { engine: this, serviceProvider: context.serviceProvider, realizer: this.#realizer });
-  }
-
-  /** Opens `serviceProvider`'s scope factory, or `undefined` when the installed model doesn't scope. */
-  scopeFactory(serviceProvider: IServiceProvider): ScopeFactory<readonly any[]> | undefined {
-    return this.#scopeFactory?.(serviceProvider);
+  /** @throws {UnsatisfiableError} when nothing in the registry can produce {@link address}. */
+  resolve(address: Type, context: ResolveContext): unknown {
+    return Plan.realize(Plan.from(address, this.#registry), { engine: this, serviceProvider: context.serviceProvider, realizer: this.#realizer });
   }
 
   /**
-   * An invocation frame: `descriptor` is the ready-made answer for its own service type, its
+   * An invocation frame: `registration` is the ready-made answer for its own service type, its
    * dependencies resolve from the registry, and the plan is per-call — nothing registers and
    * nothing caches.
    *
-   * @throws {UnsatisfiableError} when no signature of {@link descriptor} can be satisfied.
+   * @throws {UnsatisfiableError} when no signature of {@link registration} can be satisfied.
    */
-  resolveFrame(descriptor: ServiceDescriptor<unknown>, serviceProvider: IServiceProvider): unknown {
-    const site = CallSite.fromDescriptor(descriptor, this.#registry);
-    if (site === undefined) {
-      throw new UnsatisfiableError(descriptor.serviceType, 'no signature of the invoked callable can be satisfied');
+  resolveFrame(registration: Registration<unknown>, serviceProvider: IServiceProvider): unknown {
+    const plan = Plan.fromRegistration(registration, this.#registry);
+    if (plan === undefined) {
+      throw new UnsatisfiableError(registration.address, 'no signature of the invoked callable can be satisfied');
     }
-    return CallSite.realize(site, { engine: this, serviceProvider, realizer: this.#realizer });
+    return Plan.realize(plan, { engine: this, serviceProvider, realizer: this.#realizer });
   }
 
   /**
    * A latebound call: the first signature the call's arity satisfies binds each arg to the
    * slots naming its type, and the args ride the realize context into the plan's
-   * {@link CallSite.arg} sites. A call may stop short of a signature's full length exactly where
+   * {@link Plan.arg} sites. A call may stop short of a signature's full length exactly where
    * the slots it leaves unfilled admit `undefined` — an omitted optional arrives as the
    * `undefined` the slot's own type already names.
    */
@@ -64,8 +56,8 @@ export class Engine {
     if (signature === undefined) {
       throw new TypeError(`${Type.stringify(funcType)} has no signature accepting ${providedArgs.length} arg(s)`);
     }
-    const result = CallSite.from(funcType.return, this.#registry, signature);
-    return CallSite.realize(result, {
+    const result = Plan.from(funcType.return, this.#registry, signature);
+    return Plan.realize(result, {
       engine: this,
       serviceProvider,
       realizer: this.#realizer,
@@ -81,12 +73,12 @@ export class Engine {
    */
   validate(): void {
     const failures = Iterator.from(this.#registry.closedAddresses)
-      .map((serviceType): ValidationFailure | undefined => {
+      .map((address): ValidationFailure | undefined => {
         try {
-          CallSite.from(serviceType, this.#registry);
+          Plan.from(address, this.#registry);
           return undefined;
         } catch (error) {
-          return { serviceType, error: error instanceof Error ? error : new Error(String(error)) };
+          return { address, error: error instanceof Error ? error : new Error(String(error)) };
         }
       })
       .filter((failure): failure is ValidationFailure => failure !== undefined)

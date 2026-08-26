@@ -25,9 +25,9 @@
 //    is what lets a registration point a slot somewhere the declaration does
 //    not, as the keyed and literal slots below do.
 
-import { di } from '@rhombus-std/di';
-import { LifetimeModel, Manifest, Type } from '@rhombus-std/di.core';
-import type { ImportedType, ServiceDescriptor } from '@rhombus-std/di.core';
+import { di, noop } from '@rhombus-std/di';
+import { Manifest, Type } from '@rhombus-std/di.core';
+import type { ImportedType, Registration } from '@rhombus-std/di.core';
 // The type-driven MINT primitive, and the whole of what this dialect is:
 // `typefor<T>()` becomes the very `Type` a hand author composes by name. It has
 // no runtime footprint — the build folds every call and elides this import with
@@ -230,7 +230,7 @@ const VENDOR_CLOCK_TYPE = Type.tag(CLOCK_TYPE, 'vendor');
 const EMAIL_SINK_TYPE = Type.tag(SINK_TYPE, 'email');
 
 // The library-defaults scenario needs its own service types rather than the
-// application's, so that the descriptor verbs below can register, override and
+// application's, so that the registration verbs below can register, override and
 // strip them without touching the container the rest of the chapter builds. They
 // are tagged rather than separately declared: a tag makes one more type out of a
 // type that already exists.
@@ -242,15 +242,15 @@ const DEFAULT_NOTIFIER_TYPE = Type.tag(NOTIFIER_TYPE, 'defaults');
 
 /**
  * Counts the registrations bound to `type`. A manifest is an
- * `Iterable<ServiceDescriptor>`, so this is the honest way to observe what a
+ * `Iterable<Registration>`, so this is the honest way to observe what a
  * chain of verbs actually recorded — no build, no resolution. Types are
  * INTERNED, so two spellings of one type are one object and `===` is the whole
  * comparison.
  */
-function countRegistrations(services: Iterable<ServiceDescriptor<unknown>>, type: Type): number {
+function countRegistrations(services: Iterable<Registration<unknown>>, type: Type): number {
   let count = 0;
-  for (const descriptor of services) {
-    if (descriptor.serviceType === type) {
+  for (const registration of services) {
+    if (registration.address === type) {
       count += 1;
     }
   }
@@ -303,7 +303,7 @@ function addOrderDefaults(): Manifest<'singleton'> {
 }
 
 /**
- * The descriptor verbs, in the order a real application meets them:
+ * The registration verbs, in the order a real application meets them:
  *
  *   - `tryAdd`   — IDEMPOTENT DEFAULTS. A library registers only what is
  *                  missing, so applying its defaults twice, or applying them
@@ -318,7 +318,7 @@ function addOrderDefaults(): Manifest<'singleton'> {
  * None of these has a type-driven form, so this function is IDENTICAL in the
  * with-transformer app.
  */
-function* demonstrateDescriptorVerbs(): Generator<string> {
+function* demonstrateRegistrationVerbs(): Generator<string> {
   // Applying the defaults twice leaves exactly one of each.
   let library: Manifest<unknown> = Manifest.empty<unknown>();
   library = library.tryAdd(...addOrderDefaults());
@@ -330,7 +330,7 @@ function* demonstrateDescriptorVerbs(): Generator<string> {
   let application: Manifest<unknown> = Manifest.empty<unknown>();
   application = application.add(DEFAULT_SINK_TYPE, RecordingSink, typefor(RecordingSink), 'singleton');
   application = application.tryAdd(...addOrderDefaults());
-  const kept = di.usingLifetimeModel(LifetimeModel.noop).usingManifest(application).build()
+  const kept = di.usingLifetimeModel(noop()).usingManifest(application).build()
     .resolve(DEFAULT_SINK_TYPE) as IMessageSink;
   yield `defaults: an application that registered its own sink keeps it (${kept.name})`;
 
@@ -339,7 +339,7 @@ function* demonstrateDescriptorVerbs(): Generator<string> {
   host = host.replace(DEFAULT_CLOCK_TYPE, new FixedClock());
   host = host.replace(DEFAULT_SINK_TYPE, RecordingSink, typefor(RecordingSink), 'singleton');
   host = host.replace(DEFAULT_NOTIFIER_TYPE, makeOrderNotifier, Type.func(DEFAULT_NOTIFIER_TYPE, [[DEFAULT_SINK_TYPE]]), 'singleton');
-  const hostProvider = di.usingLifetimeModel(LifetimeModel.noop).usingManifest(host).build();
+  const hostProvider = di.usingLifetimeModel(noop()).usingManifest(host).build();
   const recorder = hostProvider.resolve(DEFAULT_SINK_TYPE) as RecordingSink;
   yield `override: replace swapped all three defaults; the host sink is ${recorder.name}, and `
     + `${countRegistrations(host, DEFAULT_SINK_TYPE)} registration is left at its type`;
@@ -376,7 +376,7 @@ function buildOrderContainer(): Manifest<unknown> {
   // write, so the argument simply names the keyed clock registered above.
   services = services.add(SINK_TYPE, VendorSink, Type.ctor(SINK_TYPE, [[VENDOR_CLOCK_TYPE]]), 'singleton');
 
-  // The 4-argument constructor form: serviceType, ctor, implementerType, scope. The second
+  // The 4-argument constructor form: address, ctor, implementerType, scope. The second
   // argument is a LITERAL — its value is injected verbatim, with no container
   // lookup.
   //
@@ -416,8 +416,8 @@ function buildOrderContainer(): Manifest<unknown> {
  * The other way to spell a registration: a chain opened at `describe`, walked
  * step by step. Each step returns a NEW node — the same rule the manifest
  * itself follows — and once an implementer door is taken the node IS a
- * ServiceDescriptor, so the finished chain hands straight to the
- * descriptor-taking `add`, sits in a variable, or travels between helpers.
+ * Registration, so the finished chain hands straight to the
+ * registration-taking `add`, sits in a variable, or travels between helpers.
  */
 function demonstrateDescribedRegistration(): string {
   const withClock: Manifest<unknown> = Manifest.empty<unknown>().add(CLOCK_TYPE, new FixedClock());
@@ -427,7 +427,7 @@ function demonstrateDescribedRegistration(): string {
       .withLifetime('singleton'),
   );
 
-  const sink = di.usingLifetimeModel(LifetimeModel.noop).usingManifest(services).build()
+  const sink = di.usingLifetimeModel(noop()).usingManifest(services).build()
     .resolve(SINK_TYPE) as IMessageSink;
   return `described by chain: ${sink.send('order-99 shipped')}`;
 }
@@ -436,7 +436,7 @@ function demonstrateDescribedRegistration(): string {
 function describeOrderContainer(services: Manifest<unknown>): string[] {
   // The front door: every genesis starts by choosing the lifetime model, then
   // seeds the manifest this file already built.
-  const app = di.usingLifetimeModel(LifetimeModel.noop).usingManifest(services).build();
+  const app = di.usingLifetimeModel(noop()).usingManifest(services).build();
 
   const notifier = app.resolve(NOTIFIER_TYPE) as IOrderNotifier;
   const audit = app.resolve(AUDIT_TYPE) as IAuditLog;
@@ -461,7 +461,7 @@ function describeOrderContainer(services: Manifest<unknown>): string[] {
  */
 function describeSinklessFork(services: Manifest<unknown>): string {
   const noSinks = services.removeAll(SINK_TYPE);
-  const audit = di.usingLifetimeModel(LifetimeModel.noop).usingManifest(noSinks).build()
+  const audit = di.usingLifetimeModel(noop()).usingManifest(noSinks).build()
     .resolve(AUDIT_TYPE) as IAuditLog;
   audit.record('order-42 shipped');
 
@@ -482,7 +482,7 @@ export function* demonstrateRegistration(): Generator<string> {
 
   yield '=== di registration — with transformer ===';
   yield demonstrateDiscardTrap();
-  yield* demonstrateDescriptorVerbs();
+  yield* demonstrateRegistrationVerbs();
   yield* describeOrderContainer(services);
   yield demonstrateDescribedRegistration();
   yield describeSinklessFork(services);

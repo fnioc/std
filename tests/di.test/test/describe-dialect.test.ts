@@ -1,11 +1,11 @@
 // Behaviour tests for the describe dialect — the chain opened at `manifest.describe`, and the
 // terse three-argument form that states a registration at once. The stage types are what stop
-// most misuse at the call site; these cover what reaches runtime: the descriptor each form
+// most misuse at the call site; these cover what reaches runtime: the registration each form
 // produces, that the two produce the same one, and the refusals a caller typing through `any`
 // can still provoke.
 
-import { di } from '@rhombus-std/di';
-import { LifetimeModel, Manifest, ServiceDescriptor } from '@rhombus-std/di.core';
+import { di, noop } from '@rhombus-std/di';
+import { Manifest, Registration } from '@rhombus-std/di.core';
 import { Type } from '@rhombus-std/primitives';
 import { describe, expect, test } from 'bun:test';
 
@@ -43,7 +43,7 @@ function withClock(): Manifest<'singleton'> {
 
 /** Seals `manifest` into a provider through the front door, on the noop lifetime model. */
 function toProvider(manifest: Manifest<'singleton'>) {
-  return di.usingLifetimeModel(LifetimeModel.noop).usingManifest(manifest).build();
+  return di.usingLifetimeModel(noop()).usingManifest(manifest).build();
 }
 
 describe('the impl doors', () => {
@@ -118,10 +118,10 @@ describe('the terse form', () => {
       .add(Type.tag(SINK, 'primary'), Sink, Type.ctor(SINK, [[CLOCK, Type.typeLiteral('keyed')]]), 'singleton');
     const [filed] = [...services];
 
-    expect(filed!.serviceType).toBe(Type.tag(SINK, 'primary'));
+    expect(filed!.address).toBe(Type.tag(SINK, 'primary'));
   });
 
-  test('files the same descriptor the chain does', () => {
+  test('files the same registration the chain does', () => {
     const manifest = withClock();
     const walked = manifest.add(
       manifest.describe(SINK)
@@ -131,30 +131,30 @@ describe('the terse form', () => {
     const stated = withClock()
       .add(Type.tag(SINK, 'primary'), Sink, Type.ctor(SINK, [[CLOCK, Type.typeLiteral('same')]]), 'singleton');
 
-    expect(ServiceDescriptor.equals([...stated][0]!, [...walked][0]!)).toBe(true);
+    expect(Registration.equals([...stated][0]!, [...walked][0]!)).toBe(true);
   });
 });
 
-describe('the chain terminal is a descriptor', () => {
-  test('a door taken IS the descriptor — held in a variable, registered later', () => {
+describe('the chain terminal is a registration', () => {
+  test('a door taken IS the registration — held in a variable, registered later', () => {
     const manifest = withClock();
-    const descriptor = manifest.describe(SINK)
+    const registration = manifest.describe(SINK)
       .asClass(Sink, Type.ctor(SINK, [[CLOCK, Type.typeLiteral('held')]])).withLifetime('singleton');
 
-    expect(ServiceDescriptor.kind(descriptor)[0]).toBe('ctor');
-    expect(descriptor.serviceType).toBe(SINK);
+    expect(Registration.kind(registration)[0]).toBe('ctor');
+    expect(registration.address).toBe(SINK);
 
-    const services = manifest.add(descriptor);
+    const services = manifest.add(registration);
     expect((toProvider(services).resolve(SINK) as Sink).environment).toBe('held');
   });
 
-  test('the chain steps spread away — a copied descriptor is plain data', () => {
+  test('the chain steps spread away — a copied registration is plain data', () => {
     const manifest = withClock();
-    const descriptor = manifest.describe(SINK)
+    const registration = manifest.describe(SINK)
       .asClass(Sink, Type.ctor(SINK, [[CLOCK, Type.typeLiteral('plain')]]));
 
-    expect(Object.keys({ ...descriptor })).not.toContain('withLifetime');
-    expect(Object.keys({ ...descriptor })).not.toContain('taggedAs');
+    expect(Object.keys({ ...registration })).not.toContain('withLifetime');
+    expect(Object.keys({ ...registration })).not.toContain('taggedAs');
   });
 });
 
@@ -171,13 +171,13 @@ describe('lifetime and tag', () => {
 
     const tagged = [...tagFirst][0]!;
     const other = [...lifetimeFirst][0]!;
-    expect(tagged.serviceType).toBe(Type.tag(SINK, 'primary'));
-    expect(other.serviceType).toBe(tagged.serviceType);
+    expect(tagged.address).toBe(Type.tag(SINK, 'primary'));
+    expect(other.address).toBe(tagged.address);
     expect('ctor' in tagged && tagged.lifetime).toBe('singleton');
     expect('ctor' in other && other.lifetime).toBe('singleton');
   });
 
-  test('refine after the door too — the descriptor rebuilds instead of mutating', () => {
+  test('refine after the door too — the registration rebuilds instead of mutating', () => {
     const manifest = withClock();
     const bare = manifest.describe(SINK).asClass(Sink, Type.ctor(SINK, [[CLOCK, Type.typeLiteral('x')]]));
     const scoped = bare.withLifetime('singleton');
@@ -204,6 +204,6 @@ test('a discarded step configures nothing', () => {
   const services = manifest.add(configured);
 
   const [filed] = [...services];
-  expect(filed!.serviceType).toBe(SINK);
+  expect(filed!.address).toBe(SINK);
   expect((toProvider(services).resolve(SINK) as Sink).environment).toBe('kept');
 });

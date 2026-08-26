@@ -484,7 +484,7 @@ Closing an open registration (`IRepo<%T>`) against a ground request (`IRepo<app:
 
 - **Holes are labels, not indices.** `Type.match` records one binding per generic label in the pattern, so a template may reuse or reorder labels freely; a repeated label must bind the same `Type` at every occurrence, which interning makes an `===` compare.
 - **One grammar, one parse.** `Type.from` is the sole place a token string becomes a `Type`, for a registration, a request, or a dependency signature alike (§111) — there is no second, shallower classifier a hand-typed template's whitespace or hole spelling could disagree with.
-- **The engine.** `Registry` (`libraries/di/src/internal/Registry.ts`) partitions a manifest once, at construction, into closed registrations (keyed by the interned `Type` itself, reached by `===`) and open registrations (kept in a list); `Registry#answering(request)` answers a closed hit by identity and an open hit by running `Type.match` against each open registration in turn, yielding a `ServiceDescriptor` already closed over whatever the match captured (`ServiceDescriptor.substitute`).
+- **The engine.** `Registry` (`libraries/di/src/internal/Registry.ts`) partitions a manifest once, at construction, into closed registrations (keyed by the interned `Type` itself, reached by `===`) and open registrations (kept in a list); `Registry#answering(request)` answers a closed hit by identity and an open hit by running `Type.match` against each open registration in turn, yielding a `Registration` already closed over whatever the match captured (`Registration.substitute`).
 - **Partial closing is live; most-specific-wins is not.** A registration mixes concrete args and generic holes freely — `Type.match`'s unification is fully recursive over the whole tree, so nothing about registering a partially-closed template needs special-casing (§124's retired ground). Overlapping open registrations are ranked by registration recency, not specificity (§125's retired ground, and the present gap it leaves).
 
 §141 records the `Type` taxonomy this matching walks over; §142 the resolution walk that calls it.
@@ -543,9 +543,9 @@ _Owner-directed (the mutable-slot seam, forced by the immutable-manifest design)
 
 ## §108 — `Manifest` is an interface; its own body carries three primitives, every registration verb arrives through augmentation
 
-`Manifest<Scopes>` (`libraries/di.core/src/Manifest.ts`) is an interface extending `Iterable<ServiceDescriptor<Scopes>>`, and its own body declares exactly three members — `add`, `remove`, `replace`, each taking one descriptor — each returning a NEW manifest rather than mutating the receiver, so a call whose result is discarded registers nothing. `DefaultManifest` is the concrete, `@augment`-decorated class: an immutable decorator chain where `add` prepends one descriptor via a generator that yields the new descriptor then delegates to the rest, so iteration order is newest-registration-first.
+`Manifest<Scopes>` (`libraries/di.core/src/Manifest.ts`) is an interface extending `Iterable<Registration<Scopes>>`, and its own body declares exactly three members — `add`, `remove`, `replace`, each taking one registration — each returning a NEW manifest rather than mutating the receiver, so a call whose result is discarded registers nothing. `DefaultManifest` is the concrete, `@augment`-decorated class: an immutable decorator chain where `add` prepends one registration via a generator that yields the new registration then delegates to the rest, so iteration order is newest-registration-first.
 
-Every other registration verb — `addMany`, `addClass`, `addFactory`, `addValue`, `tryAdd` and its typed siblings, `replaceClass`/`replaceFactory`/`replaceValue`, `removeAll` — arrives through augmentation onto `Manifest`, in `libraries/di.core/src/augmentations/`. Augmentation also contributes further `add` shapes on the primitive's own name: a lambda that walks the per-registration builder (§109), or an implementation plus its composed call-shape type positionally (§188). `addClass`/`addFactory`/`addValue` are separate convenience verbs that compose a `ServiceDescriptor` from a type, an implementation, and the implementation's own composed `Type` (`libraries/di.core/src/ServiceDescriptor/ServiceDescriptor.ts`), then forward to `add`. Builders that wrap a manifest and are configured by a caller delegate keep mutation-shaped ergonomics on top via a mutable-slot seam (§114). _Owner-directed (the immutable-chain, verb-carried-by-augmentation direction); the builder's slot mechanics (§109) are Claude's._
+Every other registration verb — `addMany`, `addClass`, `addFactory`, `addValue`, `tryAdd` and its typed siblings, `replaceClass`/`replaceFactory`/`replaceValue`, `removeAll` — arrives through augmentation onto `Manifest`, in `libraries/di.core/src/augmentations/`. Augmentation also contributes further `add` shapes on the primitive's own name: a lambda that walks the per-registration builder (§109), or an implementation plus its composed call-shape type positionally (§188). `addClass`/`addFactory`/`addValue` are separate convenience verbs that compose a `Registration` from a type, an implementation, and the implementation's own composed `Type` (`libraries/di.core/src/Registration/Registration.ts`), then forward to `add`. Builders that wrap a manifest and are configured by a caller delegate keep mutation-shaped ergonomics on top via a mutable-slot seam (§114). _Owner-directed (the immutable-chain, verb-carried-by-augmentation direction); the builder's slot mechanics (§109) are Claude's._
 
 ---
 
@@ -579,7 +579,7 @@ Claude's, done as a dedicated PR per the owner's "name them right the first time
 
 ## §111 — One `Type` tree serves both the resolve side and the signature side
 
-A resolve request and a dependency-signature slot are the SAME `Type` expression — there is no separate tree for one and not the other. `Type` (`libraries/primitives/src/Type/Type.ts`) is a single plain-data discriminated union, minted through interning factories (`libraries/primitives/src/Type/internals/factories.ts`), and every operation over it — `match`, `satisfies`, `substitute`, `stringify`, `validate` — is written once, as a dedicated `TypeVisitor<T>` subclass (`SatisfiesVisitor`, `SubstituteVisitor`, `StringifyVisitor`, `TypeValidatorVisitor`) dispatching one `switch (kind)`, not `accept`-on-node. Nodes stay plain data, so the immutable-update idiom keeps working, and a `ServiceDescriptor`'s dependency signatures (`TypeSignatures`, `libraries/primitives/src/Type/Type.ts`) are literally `ReadonlyArray<readonly Type[]>` — the same `Type` nodes a request is built from, closed over an open registration's captured bindings by substituting the descriptor's whole `implementerType` (`ServiceDescriptor/op.ts`'s `substitute`, which applies `Type.substitute` to it directly).
+A resolve request and a dependency-signature slot are the SAME `Type` expression — there is no separate tree for one and not the other. `Type` (`libraries/primitives/src/Type/Type.ts`) is a single plain-data discriminated union, minted through interning factories (`libraries/primitives/src/Type/internals/factories.ts`), and every operation over it — `match`, `satisfies`, `substitute`, `stringify`, `validate` — is written once, as a dedicated `TypeVisitor<T>` subclass (`SatisfiesVisitor`, `SubstituteVisitor`, `StringifyVisitor`, `TypeValidatorVisitor`) dispatching one `switch (kind)`, not `accept`-on-node. Nodes stay plain data, so the immutable-update idiom keeps working, and a `Registration`'s dependency signatures (`TypeSignatures`, `libraries/primitives/src/Type/Type.ts`) are literally `ReadonlyArray<readonly Type[]>` — the same `Type` nodes a request is built from, closed over an open registration's captured bindings by substituting the registration's whole `implementerType` (`Registration/op.ts`'s `substitute`, which applies `Type.substitute` to it directly).
 
 The wire format is the one grammar `Type.from`/`Type.stringify` run at the data-input/output boundary (§106) — there is no separate parse step for a signature versus a resolve target. _Owner-directed (the one-tree, parse-at-the-boundary direction); the visitor shape and node-as-plain-data reasoning are Claude's._
 
@@ -587,7 +587,7 @@ The wire format is the one grammar `Type.from`/`Type.stringify` run at the data-
 
 ## §112 — A union dependency is chosen once, when the plan is built; nothing here falls through if the chosen member later fails to construct
 
-`ToCallSiteVisitor` (`libraries/di/src/internal/CallSite/ToCallSiteVisitor.ts`) decides a union's member at PLAN-BUILD time: `#chosen`/`visitUnion` ask which registered or synthesizable member the union resolves to, and that choice is baked into the `CallSite` the engine memoizes per request (`Engine#planFor`, `libraries/di/src/internal/Engine.ts`). Realizing the plan later never re-asks the question — nothing in `CallSite`/`RealizeVisitor` catches a construction failure and tries the union's next candidate. Multiple members that could each answer the union raise `AmbiguousUnionError` at plan-build time (or take the newest, under `unionAmbiguity: 'newest'`); a literal member is the union's fallback when no other member resolves.
+`ToPlanVisitor` (`libraries/di/src/internal/Plan/ToPlanVisitor.ts`) decides a union's member at PLAN-BUILD time: `#chosen`/`visitUnion` ask which registered or synthesizable member the union resolves to, and that choice is baked into the `Plan` the engine memoizes per request (`Engine#planFor`, `libraries/di/src/internal/Engine.ts`). Realizing the plan later never re-asks the question — nothing in `Plan`/`RealizeVisitor` catches a construction failure and tries the union's next candidate. Multiple members that could each answer the union raise `AmbiguousUnionError` at plan-build time (or take the newest, under `unionAmbiguity: 'newest'`); a literal member is the union's fallback when no other member resolves.
 
 _Claude's finding, flagged for owner review: whether a union member that throws or rejects during construction should fall back to the next candidate is a design question the current engine has not answered either way._
 
@@ -762,7 +762,7 @@ immediately. This retires the prior split behavior where different code paths in
 `openEntry`, `ServiceManifestClass`, and the string-grammar registration-time classification this
 entry described do not exist. The current engine draws no distinction between "registering" and
 "matching" an open template: `Registry` (`libraries/di/src/internal/Registry.ts`) partitions every
-registration once, by `Type.isOpen(descriptor.serviceType)`, into a closed map (keyed by identity)
+registration once, by `Type.isOpen(registration.address)`, into a closed map (keyed by identity)
 and an open list matched per request via `Type.match`. A registration mixing concrete args and
 generic holes needs no special-casing, because `Type.match`'s unification is already fully
 recursive over the whole tree — there is no separate all-holes rule to enforce or retire. §106
@@ -773,7 +773,7 @@ records the current matching mechanism; §141 records the `Type` taxonomy it wal
 ## §125 — Overlapping open registrations are NOT ranked by specificity; the current registry resolves them by registration recency
 
 `Registry#answering` (`libraries/di/src/internal/Registry.ts`) collects every open registration
-whose service type `Type.match`es the request, and orders every answer — closed and open together —
+whose address `Type.match`es the request, and orders every answer — closed and open together —
 by `rank`, the registration's position in manifest iteration order (newest first, since
 `Manifest#add` prepends). There is no specificity measure: two open registrations both matching one
 request (`IRepo<User,%A>` and `IRepo<%A,%B>` against `IRepo<User,Foo>`) are resolved by which was
@@ -796,7 +796,7 @@ A keyed request and a keyed registration meet at one interned `Type.tag(base, ke
 the keyed-identity class of bug this entry catalogued — a verb naming the bare base where the
 composed tag was meant — has no separate string-composition step left to get wrong.
 
-The current engine (`Registry`, `Engine`, `ToCallSiteVisitor` — §106, §111, §112) has no scope or
+The current engine (`Registry`, `Engine`, `ToPlanVisitor` — §106, §111, §112) has no scope or
 disposal model yet: `IServiceScope`/`IServiceScopeFactory` (`libraries/di.core/src/ServiceScope.ts`)
 are declared, and `AsyncServiceScope` is explicitly a "scaffold: the async face of a scope, pending
 the scope model." Use-after-dispose is not yet a question this engine can raise; a correctness
@@ -845,7 +845,7 @@ caller-supplied arguments). Deleting the surface retires that standing obligatio
 `ActivationError` goes too. `ActivatorUtilities` was its ONLY thrower — verified across the whole
 repo, engine included — so no other failure mode loses the error it reports with.
 
-**What §56 (v1) no longer describes.** §56 records three things landing together; the descriptor
+**What §56 (v1) no longer describes.** §56 records three things landing together; the registration
 `tryAdd*`/`replace*` verbs and `EmptyServiceProvider` are untouched and still current. Its
 `ActivatorUtilities` bullet, and every deliberate divergence hanging off it — positional argument
 matching in place of type-assignability, no constructor selection, no
@@ -1305,14 +1305,14 @@ _Owner-directed 2026-08-13._
 
 ## §141 — di2's Type taxonomy: one flat node space, address vs. spec as usage, not identity
 
-di2's `Type` is one flat node space with one public parent — no descriptor union, no overlapping
+di2's `Type` is one flat node space with one public parent — no registration union, no overlapping
 door unions. `TypeIdentifier = NominalType | GenericType | TagType` names the ADDRESS-ONLY kinds:
 a pure reference can never self-construct. `NominalType = GlobalType | ImportedType` is the pair a
 name is reached by — the ambient scope, or an import from a package that the node carries as its
 `from`.
 
 Every `Type` can be an ADDRESS: interning makes any node registrable and resolvable by `===`, so a
-`ServiceDescriptor` may link absolutely any `Type` to an implementation. Every NON-identifier `Type`
+`Registration` may link absolutely any `Type` to an implementation. Every NON-identifier `Type`
 can also be a SPEC — it self-constructs when no registration answers a request for it. The
 capability lives in the USAGE and the registry, never as a dual identity stamped on the node itself.
 
@@ -1363,7 +1363,7 @@ THE CACHING MODEL IS THREE MEMO LAYERS, one per lifetime, and nothing else:
 1. **Types** are memoized globally — interning, `===` identity, immortal.
 2. **Plans** are memoized per provider, keyed on the interned request, dying with the provider —
    conditioned on a purity audit (plan construction is a pure function of the request node and the
-   provider's fixed descriptor set, reading no runtime state). A failed construction is not cached;
+   provider's fixed registration set, reading no runtime state). A failed construction is not cached;
    determinism makes rebuild-and-rethrow identical.
 3. **Instances** are cached per scope, internally — `realize` interprets a plan's lifetime data
    against the asking scope, and scopes own their instance caches outright.
@@ -1374,15 +1374,15 @@ only. Plans hold no instances and scopes hold no plans — the layers meet only 
 Resolve-one and resolve-all share instance caches, so a scoped or singleton instance never
 double-instantiates via the enumerable path.
 
-Metadata never holds state: descriptors and plans stay pure, and instances live only in scope-owned
+Metadata never holds state: registrations and plans stay pure, and instances live only in scope-owned
 caches keyed by the interned request. The scope model adopts nothing from prior art without its own
 justification, case by case.
 
 _Owner-directed 2026-08-13._
 
-## §143 — di2's descriptor impl description composes one node; the address stands in the instance slot
+## §143 — di2's registration impl description composes one node; the address stands in the instance slot
 
-A descriptor's impl description is one composed node, not a separate registration-time check: sugar
+A registration's impl description is one composed node, not a separate registration-time check: sugar
 derives the exact impl type by transform (the way it derives signatures), and the explicit API is
 unchanged — the registration verb composes the node internally from the provided signatures, with
 the ADDRESS standing in the instance slot. That stand-in is honest: "a constructable producing the
@@ -1440,7 +1440,7 @@ argument and the builder lambda second. The sugar form `add<T>(configure)` is ex
 with the first argument derived and deleted — a one-argument-forward inline body whose parity with
 the hand-written form is trivially visible — so builder ergonomics are never transformer-exclusive.
 
-THE BUILDER IS GENERIC: its stages carry the service type `T`, and every impl door enforces
+THE BUILDER IS GENERIC: its stages carry the address `T`, and every impl door enforces
 extension — `asClass(ctor: Ctor<any[], T>)`, `asFactory(fn: Func<any[], T>)`, `asValue(value: T)` —
 the same constraint (§143) threaded through the builder path, not only the flat verbs. `T` defaults
 to `any`: `add<T = any>(type, configure)`. Sugar derives `T` precisely; a hand-roller may spell it
@@ -1478,10 +1478,10 @@ non-reserved literal as `GlobalType`, a dynamic string as the honest union, each
 prove. The object-parameter overloads (§144) narrow the same way via literal property inference.
 
 An aggregate address's CONTRACT is the protocol alone — an `Iterable` / `Array` of every
-registration of the element. Binding is a property of the SYNTHESIZED descriptor-miss fallback
+registration of the element. Binding is a property of the SYNTHESIZED registration-miss fallback
 only: the synthesized `array` materializes at resolution, and the synthesized `iterable` is
 late-bound, each element resolving at iteration time. A
-registration answering at lookup under an aggregate address binds however its own descriptor binds
+registration answering at lookup under an aggregate address binds however its own registration binds
 — the engine imposes nothing on it. A registration under an aggregate address answers at lookup
 before synthesis, uniformly, with no reserved-name carve-out in the door and no warning machinery:
 shadowing an aggregate is legal, and the consequences belong to the registrant.
@@ -1577,14 +1577,14 @@ _Owner-directed 2026-08-13._
 
 ## §151 — Delivery is not a node kind: `Type.async` and the `asyncIterable` kind are cancelled
 
-Handing a value over later is a property of the call site, not of the type being named. "A `T`
+Handing a value over later is a property of the site, not of the type being named. "A `T`
 delivered later" is `Promise<T>` — the ordinary global generic that a `Promise<T>` reference already
 derives to — so `Type.async` and the `Async<E>` wire spelling are gone with nothing replacing them.
 
-`AsyncIterable<E>` factors the same way: an async sequence is a call site's iteration protocol over a
+`AsyncIterable<E>` factors the same way: an async sequence is a site's iteration protocol over a
 collection, and `AsyncIterable` is a real TypeScript name that spells as an ordinary global generic.
 Its dedicated aggregate kind is gone too, and with no kind left to produce one, the engine's
-async-iterable call site and its realization go with it.
+async-iterable plan node and its realization go with it.
 
 `Type.iterable` and `Type.array` are the aggregates that remain, and they are the only addresses
 carrying collection-resolution semantics. What survives untouched on the derivation side: an
@@ -1639,7 +1639,7 @@ implementation type directly — `ConstructorType` for `addClass`/`tryAddClass`/
 `FunctionType` for `addFactory`/`tryAddFactory`/`replaceFactory`, `ConstructorType | undefined` for
 `addHostedService`'s ctor overload. `add`/`tryAdd` already took `implementerType` this way — the
 array-taking verbs were the residue. Each verb stores the node it is handed, verbatim, as `implementerType`
-(`libraries/di.core/src/ServiceDescriptor/ServiceDescriptor.ts`) — there is no derivation step and no
+(`libraries/di.core/src/Registration/Registration.ts`) — there is no derivation step and no
 separate stored-signatures member; a reader wanting a registration's parameter rows reads
 `implementerType.args` directly (§170).
 
@@ -1714,7 +1714,7 @@ for `IServiceProvider` beside the delivered type and look the instance up with i
 kind carries the distinction: the slot's own shape is the whole of it, read before substitution.
 
 That ordering is what the engine's shape follows from. The registry hands the lowering the
-registration as authored plus the bindings its match captured, rather than a descriptor already
+registration as authored plus the bindings its match captured, rather than a registration already
 substituted — substituting first closes a bare hole into an ordinary type and erases the very
 distinction the rule turns on.
 
@@ -1722,14 +1722,14 @@ _Owner-directed 2026-08-13._
 
 ## §158 — A plan belongs to the manifest it was built from; a chosen answer that fails, fails the resolution
 
-Plans are cached against the manifest. A resolution carrying additional descriptors — a latebound
+Plans are cached against the manifest. A resolution carrying additional registrations — a latebound
 call's arguments, entering as registrations for that walk alone — is resolving a DIFFERENT,
 ephemeral composed manifest: it never reuses a manifest-only cached plan, and its own plan never
 enters the shared cache. The additionals are the most recent registrations in that composed
 manifest, so they win the addresses they answer.
 
 Union member choice follows the same boundary. It is decided per-manifest, against the full
-descriptor universe of the resolving call, so a call argument supplying a second member makes a
+registration universe of the resolving call, so a call argument supplying a second member makes a
 union ambiguous that the manifest alone settles cleanly.
 
 Choice is settled at plan time and never revisited: once a member is chosen, its RUNTIME failure
@@ -1886,10 +1886,10 @@ _Claude-directed 2026-08-13, executing the owner's §155/§157 direction._
 
 A constructor parameter whose type is a plain function type (`(dep: IDep) => IThing`) derives as an
 ordinary nested `Type.func(returns, ...argTypes)` node — the SAME derivation any function-typed
-value gets, nothing signature-position-specific. The landed resolution engine (`ToCallSiteVisitor`,
+value gets, nothing signature-position-specific. The landed resolution engine (`ToPlanVisitor`,
 `libraries/di/src/internal/CallSite/`) already handles this generically as a synthesis fallback:
-`visitFunc` builds a `LateBoundCallSite` whose invocation re-enters the engine to resolve the
-function type's OWN return type, with the call's own arguments registered as value descriptors for
+`visitFunc` builds a `LateBoundPlan` whose invocation re-enters the engine to resolve the
+function type's OWN return type, with the call's own arguments registered as value registrations for
 the function type's OWN parameter types (`RealizeVisitor.visitLateBound`) — address-keyed, not
 positional. This is a real, tested mechanism (`tests/di.test/test/plan-cache.test.ts`,
 `open-registration.test.ts`), landed independently of this primitive.
@@ -1940,7 +1940,7 @@ dependency shim an earlier draft of this door carried — the node already says 
 and already carries the real parameter types, so there is nothing left to sniff or rescue.
 
 **Dependencies resolve from the node's own parameter rows, not a fixed one-entry signature.** The
-node and value are wrapped in a throwaway `ServiceDescriptor` (`ctor` or `factory`, matching the
+node and value are wrapped in a throwaway `Registration` (`ctor` or `factory`, matching the
 node's kind) carrying the node itself as its `implementerType` — the SAME reading `addClass`/
 `addFactory`'s long overload already gives a composed impl type (§155) — resolved via the engine's
 `additionalServices` channel against a manifest composed for that one call, under the node itself
@@ -2037,15 +2037,15 @@ no-argument overload) and its second is `[A]`.
 
 _Claude-directed 2026-08-13, executing the owner's 2D-overloads ruling._
 
-## §170 — The descriptor carries the implementer's whole type; an intersection means an intersection
+## §170 — The registration carries the implementer's whole type; an intersection means an intersection
 
-A file-internal generic base (`libraries/di.core/src/ServiceDescriptor/ServiceDescriptor.ts`)
-carries what every registration has: `interface Descriptor<Kind, Implementer, ImplementerType
-extends Type> { kind; serviceType; implementer; implementerType }` — the address a registration
-answers to keeps the name `serviceType`. Only three aliases reach the public surface:
-`CtorDescriptor<Scopes>` is the base at `'ctor'` / `Ctor` / `ConstructorType`, intersected with a
-scope member; `FactoryDescriptor<Scopes>` is the same shape at `'factory'` / `Func` /
-`FunctionType`; `ValueDescriptor` is the base at `'value'` / `unknown` / `Type`, carrying no scope
+A file-internal generic base (`libraries/di.core/src/Registration/Registration.ts`)
+carries what every registration has: `interface Registration<Kind, Implementer, ImplementerType
+extends Type> { kind; address; implementer; implementerType }` — the address a registration
+answers to is named `address`, never `type`. Only three aliases reach the public surface:
+`CtorRegistration<Scopes>` is the base at `'ctor'` / `Ctor` / `ConstructorType`, intersected with a
+scope member; `FactoryRegistration<Scopes>` is the same shape at `'factory'` / `Func` /
+`FunctionType`; `ValueRegistration` is the base at `'value'` / `unknown` / `Type`, carrying no scope
 member at all — a value IS its own instance, so there is no construction for a lifetime to govern.
 Both intersections are wrapped in `Flatten` so a hover reads one member list rather than an `A & B`
 expression.
@@ -2053,12 +2053,12 @@ expression.
 The payload member is `implementer` on all three kinds, and `implementerType` is its type —
 `ConstructorType`, `FunctionType`, and the value's own `Type` respectively — with no separate
 stored-signatures member; every reader wanting a registration's parameter rows reads
-`implementerType.args`. The three static factories `ServiceDescriptor.ctor` / `.factory` / `.value`
+`implementerType.args`. The three static factories `Registration.ctor` / `.factory` / `.value`
 stay distinct rather than collapsing to one dispatcher, because how the container reaches a service
 is the CALLER'S INTENT and is not derivable from the implementer's own type — a function registered
 as a value must be handed back, never called. `op.ts`'s `equals` compares `implementerType` by
-`===`, since the intern table already decides `Type` equality — two descriptors naming the same
-callable node ARE the same descriptor, structurally. The registration verbs' public parameter is
+`===`, since the intern table already decides `Type` equality — two registrations naming the same
+callable node ARE the same registration, structurally. The registration verbs' public parameter is
 named `implementerType` throughout; no public API spells the abbreviation "impl".
 
 The builder's hand-roller door (`libraries/di.core/src/builder.ts`) mints the anonymous callable its
@@ -2072,9 +2072,9 @@ for one anywhere on the registration surface: every registration verb, `withType
 a union with `IntersectionType` — an intersection means an intersection (`A & B`, both required at
 once), never an overload set spelled the wrong way.
 
-The resolution engine reads `implementerType.args` the same way: `CallSite.ts`'s row choice is
+The resolution engine reads `implementerType.args` the same way: `Plan.ts`'s row choice is
 longest-row-first, first-fully-resolvable-wins — the first parameter row, walked longest to
-shortest, whose every parameter resolves to a call site is the one the engine builds, so an
+shortest, whose every parameter resolves to a plan node is the one the engine builds, so an
 overloaded registration prefers its most-specific answerable row over a shorter one that also
 resolves.
 
@@ -2424,26 +2424,26 @@ Left alone, still throwing: `ServiceProvider.tryResolve`/`resolveAsync`,
 `IServiceScopeFactory.createAsyncScope`/`IServiceProvider.createAsyncScope` — no red test or example
 reaches them, so nothing was built for them.
 
-**`IServiceScopeFactory` is recognized structurally, not registered.** `ToCallSiteVisitor` answers a
+**`IServiceScopeFactory` is recognized structurally, not registered.** `ToPlanVisitor` answers a
 request for it the same way it already answered `IServiceProvider` — by name and declaring module,
 with no manifest entry required — and `RealizeVisitor` hands back a `ServiceScopeFactory` bound to
 the walk's own engine and provider. This is the existing pattern for `IServiceProvider`, reused
 rather than invented, and it is what let `createScope`'s current implementation start working
 without being touched.
 
-**A lifetime tag gates caching; its VALUE is ignored.** A ctor/factory site whose descriptor carries
-any lifetime caches into whichever scope is asking, keyed by that descriptor; a site with none
+**A lifetime tag gates caching; its VALUE is ignored.** A ctor/factory site whose registration carries
+any lifetime caches into whichever scope is asking, keyed by that registration; a site with none
 realizes fresh every time. There is no matching-scope-by-tag search, no ancestor lookup, and no
 distinction between different tag strings — every registration in the repo today tags `'singleton'`
 and nothing else, so this is the cheapest gate that already satisfies all of them. Multiple named
 scope kinds, tag-mismatch handling, and nested/ancestor scope chains are all untouched.
 
-**The cache key is the answering descriptor, not the bare requested type.** A single address can
+**The cache key is the answering registration, not the bare requested type.** A single address can
 carry several registrations — many hosted services under one token is the case the baseline tests
 exercise — and each needs its own cache slot; keying purely by the requested `Type` (the literal
 reading of the parked notes' "keyed by the requested type") collapsed them into one. A
-`ServiceDescriptor` object is stable across every separate plan build that reaches it (the engine
-holds one `Registry` over one set of descriptor objects for its whole life), so keying on it instead
+`Registration` object is stable across every separate plan build that reaches it (the engine
+holds one `Registry` over one set of registration objects for its whole life), so keying on it instead
 satisfies §142's resolve-one/resolve-all sharing invariant while still giving every registration its
 own slot. `ScopeCache`'s key parameter widened from `Type` to `unknown` in
 `libraries/di.core/src/ServiceScope.ts` to carry it — the interface's shape, not its behavior; no
@@ -2462,7 +2462,7 @@ untouched.
 **The provider a scoped dependency receives is the root provider.** Resolving through a scope hands
 an `IServiceProvider`-typed dependency the same provider the scope itself was opened from, not a
 view bound to that scope — a nested resolution reached through it does not share the outer scope's
-cache. The "SP = (engine, scope) binding minted at the callsite" idea the parked notes lean toward
+cache. The "SP = (engine, scope) binding minted at the plan node" idea the parked notes lean toward
 is the more complete answer; this is the cheaper one, taken because no red test exercises the
 difference.
 
@@ -2494,16 +2494,16 @@ function's own doc comment says scope AND build-time validation are Development-
 implementation only ever set `validateOnBuild`. `validateScopes` now follows the same
 `isDevelopment` value.
 
-## §186 — Async resolution is call-site behavior
+## §186 — Async resolution is site behavior
 
 The container has no async type kind and no async resolution machinery of its own: asynchrony is
-call-site behavior. `getServiceAsync` wraps the synchronous resolution in a `Promise` and
+site behavior. `getServiceAsync` wraps the synchronous resolution in a `Promise` and
 forwards; everything reachable asynchronously is reachable through `getService`. A dependency on
 `Promise<T>` or `AsyncIterable<T>` is spelled with the ordinary global generics — there is no
 dedicated node kind for either. The parts that interact with scope — the hoist walk consulting
 the scope cache per async site, per-occurrence placeholder labels, and the concurrent-miss
 double-instantiation question — are held in docs/di2.scope-notes.md for the scope design session;
-none of them changes the call-site principle.
+none of them changes the site principle.
 
 _Owner-ruled (pre-compact session record), Claude-recorded 2026-08-14._
 
@@ -2546,7 +2546,7 @@ caller holding the interface reaches them — a member reached only through an `
 invisible to that caller even though it is genuinely there.
 
 Dependencies resolve for real. The node carries the parameter rows the callable takes, so the
-provider synthesizes a `ServiceDescriptor` for `value` under the node — the node standing as its own
+provider synthesizes a `Registration` for `value` under the node — the node standing as its own
 implementer type — and resolves it through the engine's `additionalServices` channel. `value` is
 realized exactly as a registered constructor or factory is, against a manifest composed for this one
 call and discarded after; the row-selection doctrine picks the construction row. What follows is that
@@ -2554,7 +2554,7 @@ the result is caller-owned: the call registers nothing, caches nothing, and a la
 same node still finds nothing. Two calls build two results. A dependency the manifest cannot reach
 throws rather than arriving `undefined` — the caller has already said what to build, so an
 unreachable dependency is a broken graph, not an absent service. An abstract implementer type is
-refused by the descriptor factory's own guard, which this door inherits rather than bypasses.
+refused by the registration factory's own guard, which this door inherits rather than bypasses.
 
 The authoring face is `getService(SomeClass)` / `getService(someFunction)`: `typefor`'s value form
 derives the callable's own node — a class arrives as the `ConstructorType` it is — and the sugar
@@ -2581,10 +2581,10 @@ _Owner-ruled via task #19, Claude-executed 2026-08-14._
 
 ## §188 — The manifest primitives are public `add`/`remove`/`replace`; an augmentation's block face is receiver-spelled and its namespace is plain implementation
 
-`Manifest<Scopes>`'s own body declares three primitives — `add(descriptor)`, `remove(descriptor)`,
-`replace(descriptor)` — and `DefaultManifest` implements them under those names. They are the
+`Manifest<Scopes>`'s own body declares three primitives — `add(registration)`, `remove(registration)`,
+`replace(registration)` — and `DefaultManifest` implements them under those names. They are the
 substrate every registration verb composes from and carry no marker of privacy, because a caller
-holding a `ServiceDescriptor` has a legitimate reason to reach each of them.
+holding a `Registration` has a legitimate reason to reach each of them.
 
 An augmentation set contributing chaining members to that receiver splits the two jobs. The
 NAMESPACE is implementation: it writes the receiver at its widest (`this: Manifest<string>`, plain
@@ -2601,12 +2601,12 @@ namespace, `extends Flatten<typeof TheNamespace>` has nothing left to derive and
 A sugared shape whose entire body forwards to a primitive is not written: the primitive's own
 declaration is the whole story for it. What remains of `add` — the configure lambda, the
 constructor, the factory — shares a name with the primitive on `DefaultManifest`'s prototype, so the
-registration supplies a merge strategy: a lone `ServiceDescriptor` routes to the primitive, and every
-other shape to the sugar, which is also what keeps the sugar's own closing `this.add(descriptor)`
+registration supplies a merge strategy: a lone `Registration` routes to the primitive, and every
+other shape to the sugar, which is also what keeps the sugar's own closing `this.add(registration)`
 from re-entering itself. The strategy is hand-written rather than left to merge synthesis, because a
 package's authored source must install correctly with no transformer in play.
 
-The concrete class pays for the shared name: a `DefaultManifest` narrowing `add` to the descriptor
+The concrete class pays for the shared name: a `DefaultManifest` narrowing `add` to the registration
 shape alone is not a `Manifest`, so the class declares an open second signature beside the
 primitive's. The precise sugared faces are readable on `Manifest`, which is the type callers hold.
 
@@ -2820,18 +2820,18 @@ system — make it conventional")._
 The 2026-08-20 tasklist run landed the repattern the tasklist specified; this entry records the
 landed shape and the two interpretive calls the run made where sources disagreed.
 
-**The landed shape.** The flat verbs converge on `add/tryAdd/replace(serviceType, implementer,
+**The landed shape.** The flat verbs converge on `add/tryAdd/replace(address, implementer,
 implementerType, scope?)`, with kind selection a total switch over
 `ConstructorType | FunctionType | ConstantType`. `ConstantType` is a di.core value — a marker
 carrying only its kind — because a callable registered AS a value derives a `FunctionType` exactly
 like a factory does, so the call site is the only place the value/factory distinction exists. The
 configure-lambda overloads, `withType`/`withSignature`/`withSignatures`, the one-of-three-doors
 invariant and its runtime guard, and `IComplete` are gone. The chain opens at
-`manifest.describe(serviceType)`; a taken door yields a real `ServiceDescriptor` whose remaining
+`manifest.describe(address)`; a taken door yields a real `Registration` whose remaining
 steps (`withLifetime`/`taggedAs`) are installed non-enumerably, so the node spreads, compares, and
 registers as plain data. A keyed registration is a tagged ADDRESS; no verb takes a key argument.
 di.extras carries eleven inline entries (flat verbs + value doors + `removeAll` + `describe` +
-the three `get*` members); each sugar derives the service type AND observes the implementer type,
+the three `get*` members); each sugar derives the address AND observes the implementer type,
 and termination rests on the emitted call binding a different overload than the face. The
 value-driven `getService(value)` door (§167) is deliberately un-shipped with the back-out; it
 ships separately.
@@ -2910,10 +2910,10 @@ _Claude-recorded 2026-08-22._
 
 ## §196 — Resolution is one exact-answer loop; a union settles by its first resolvable member; `AmbiguousUnionError` is gone
 
-`ToCallSiteVisitor.visit` inlines the exact-answer loop for EVERY request kind, a union's own
+`ToPlanVisitor.visit` inlines the exact-answer loop for EVERY request kind, a union's own
 address included: `Registry.answering(type)` yields the registrations answering exactly that one
 address — closed registrations by interned identity, open ones by §194 unification, newest first,
-no union spread — and the first answer whose `CallSite.fromAnswer` builds wins, an unbuildable
+no union spread — and the first answer whose `Plan.fromAnswer` builds wins, an unbuildable
 answer falling through to the next. Only when no answer builds does the per-kind step run, as
 decomposition or synthesis, so a registration for a composite beats its parts.
 
@@ -2940,9 +2940,9 @@ _Owner-ruled (the rewrite plan); Claude-recorded 2026-08-22._
 
 ---
 
-## §197 — The value door refuses an open service type without a callable root
+## §197 — The value door refuses an open address without a callable root
 
-`ServiceDescriptor.value` throws on a service type that still holds a generic hole UNLESS the
+`Registration.value` throws on an address that still holds a generic hole UNLESS the
 hole sits under a callable root — a ctor or func at the top, its tag stripped. One erased
 callable honestly is every closing of its holes (the callable's behavior does not depend on the
 hole, so handing the same function back for every instantiation is exactly right — the open
@@ -3021,7 +3021,7 @@ _Owner-ruled; Claude-recorded 2026-08-22._
 instance type, func → factory under its return type, non-callable → value under its own type.
 Explicit surface: the implementer-type argument names the ctor/func doors, and the two-argument
 shape is the value door. Both hold uniformly across `add`/`tryAdd`/`replace`. A callable meant as data cannot say so by its own type, so the named verbs
-`addValue`/`tryAddValue`/`replaceValue(serviceType, value)` force the value path — and stay total
+`addValue`/`tryAddValue`/`replaceValue(address, value)` force the value path — and stay total
 over non-callables. No positional door marker exists. The static gate is primitives'
 `ButNot<T, Not> = T & (T extends Not ? never : unknown)` — an assignability veto usable in a
 parameter position, where `Exclude` could only filter union members — spelled
@@ -3030,7 +3030,7 @@ abstract classes. The static layer is the enforcement layer — runtime
 dispatch is arity-driven, admissibility stays type-only. Kind selection at the token layer is
 per-shape registered contributions routed by mergesynth guards, never a hand-written kind
 switch. `remove`/`removeAll` stay kind-free: removal is identification, not construction, and is
-served by address or held descriptor.
+served by address or held registration.
 
 _Owner-ruled; Claude-recorded 2026-08-22._
 

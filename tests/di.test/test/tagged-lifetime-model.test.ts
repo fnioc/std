@@ -1,14 +1,11 @@
 // Behaviour tests for the tagged lifetime model: which of the open scopes keeps an instance when
 // scopes are named, and what happens when none of them answers to the name a registration used.
-// The model is not on the package barrel yet, so it is reached white-box, at the source path it
-// lives on.
 //
 // The scope/lifetime system is unbuilt here — every describe below stays skipped rather than
 // chased to green.
 
-import { di } from '@rhombus-std/di';
+import { di, tagged } from '@rhombus-std/di';
 import { type IServiceProvider, LifetimeModelError, ScopeFactory, ScopeTagUnmatchedError } from '@rhombus-std/di.core';
-import { tagged } from '@rhombus-std/di.core/private/LifetimeModel/models/tagged';
 import { Type } from '@rhombus-std/primitives';
 import type { Func } from '@rhombus-toolkit/func';
 import { describe, expect, test } from 'bun:test';

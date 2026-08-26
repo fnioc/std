@@ -9,7 +9,7 @@ land; delete the file when empty.
       argument position and in iteration's return position — so a parameter of that type accepts
       nothing but an exact match; that is what forced the phantom type parameter and 28 casts the
       examples carried. Returning a manifest makes the only crossing the merge, which reads it as
-      `Iterable<ServiceDescriptor<L>>`, covariant. Landed for: diagnostics
+      `Iterable<Registration<L>>`, covariant. Landed for: diagnostics
       (`getMetricsManifest`/`getTracingManifest`), logging (`getLoggingManifest`,
       `LoggerProviderOptions.getProviderOptionsManifest`), hosting.core
       (`getHostedServiceManifest`), caching.memory (`getMemoryCacheManifest`/
@@ -24,17 +24,17 @@ land; delete the file when empty.
       matches an overload of itself. The sugar depends on the explicit member existing as a
       different overload of the same name.
       - The merge verb carries the semantics. `addMany(m)` appends unconditionally; `tryAdd(...m)`
-      — spreading the descriptors — runs the existing-registration check against the caller's own
+      — spreading the registrations — runs the existing-registration check against the caller's own
       manifest, which is how `tryAdd` idempotency survives the conversion.
       - `add` does not yet take a manifest at the type level. `manifest.add(someManifest)` merges
       at runtime but typechecks only by matching the VALUE overload, since `ButNot<ServiceType,
-      Func | AbstractCtor | ServiceDescriptor<any>>` does not exclude a manifest. The
+      Func | AbstractCtor | Registration<any>>` does not exclude a manifest. The
       `addMany`→`add` fold is half-landed. Do not write `.add(aManifest)` as the idiom anywhere.
 - [ ] **OPEN, awaiting the owner — the four converted options steps return `Manifest<unknown>`,
       the widest vocabulary, so no narrower consumer can merge them.** `getConfigureManifest`,
       `getPostConfigureManifest`, `getValidateManifest`, and `getValidateOnStartManifest` build
-      from `Manifest.empty<unknown>()`; `ServiceDescriptor<unknown>` is not assignable to
-      `ServiceDescriptor<'singleton'>`, so a consumer building on a narrower vocabulary cannot
+      from `Manifest.empty<unknown>()`; `Registration<unknown>` is not assignable to
+      `Registration<'singleton'>`, so a consumer building on a narrower vocabulary cannot
       merge one in. Diagnostics and logging return `Manifest<'singleton'>` instead, and flow into
       anything wider. Underneath it: those four steps register without naming a lifetime, which
       only ever typechecked because a method's `this` is compared bivariantly; a free function
@@ -43,14 +43,14 @@ land; delete the file when empty.
 - [x] **LANDED `5d018d21` — the types-only `./builders` subpath exists on di.core, resolving the
       one-arg asClass/asFactory di.extras sugar halt.** Was: GREEN-LIT 2026-08-24, IN FLIGHT —
       inherited task 1: types-only `./builders` subpath on di.core resolving the one-arg
-      asClass/asFactory di.extras sugar halt. Full spec: export `IAsImplementer`/`ServiceDescriptorBuilder`/`Slot` in-file in
+      asClass/asFactory di.extras sugar halt. Full spec: export `IAsImplementer`/`RegistrationBuilder`/`Slot` in-file in
       di.core `src/builder.ts` (root surface unchanged); dev `exports` subpath → `./src/builder.ts`;
       published shape TYPES-ONLY (`types` condition, deliberately no `default`) taught to
       `derive-publish-config.ts` (must NOT ride the `./private/*` scrub — an unresolvable specifier
       detaches the sugar as an ambient module); rolled root `.d.ts` treats
       `@rhombus-std/di.core/builders` as external-self and the subpath emits its own dts; di.extras
       one-arg sugars via `declare module '@rhombus-std/di.core/builders'` on `IAsImplementer`
-      (return `ServiceDescriptorBuilder<T, Scopes, Exclude<Slots, 'implementer'>>`), marker inline
+      (return `RegistrationBuilder<T, Scopes, Exclude<Slots, 'implementer'>>`), marker inline
       bodies `asClass(x)` → `asClass(x, typefor(x))` / `asFactory` likewise, published through the
       `registerInlineBodies` channel, files under `augmentations/`; ttsc e2e parity (lowered
       emission byte-equals the hand-written two-arg call); check off the rewrite-plan halt with a
@@ -84,10 +84,10 @@ land; delete the file when empty.
       (named members over a positional tuple; simple models return two views of one object).
       The container arg rides the factory since no container exists at mint time — input
       discipline unchanged (declared contract + model internals only). Absence is known AT MINT:
-      a scopeless model's container refuses to synthesize the scope-factory callsite at plan
-      time (honest unsatisfiable, not realize-to-undefined). This KEEPS the synthesized-callsite
+      a scopeless model's container refuses to synthesize the scope-factory plan node at plan
+      time (honest unsatisfiable, not realize-to-undefined). This KEEPS the synthesized-plan
       route — the floor-registration alternative (model registers a container-taking factory
-      descriptor) is DROPPED. Still pending separately: the lose-IServiceProvider-generic +
+      registration) is DROPPED. Still pending separately: the lose-IServiceProvider-generic +
       lose-createScope proposal (leaning yes, not executed), proprietary model contracts ride
       the same mint shape.
 - [ ] **RULED 2026-08-24 — `$<'T'>` hole marker: open templates spell through typefor.** Owner's
@@ -98,18 +98,18 @@ land; delete the file when empty.
       typefor still never lies); value overload untouched (observation can't yield a hole).
       Replaces string-field matching (`isScopeFactoryAddress`) and the structural
       `Type.imported(name, from, [Type.generic(...)])` template spelling — logging's open
-      ILogger registration re-spells as encountered. Engine detection sites (ToCallSiteVisitor
+      ILogger registration re-spells as encountered. Engine detection sites (ToPlanVisitor
       IServiceProvider/ScopeFactory) switch to hole-template `Type.match` while their receivers
       stay generic; moot for ScopeFactory if the floor-registration rework lands.
 - [x] **RULED AND LANDED 2026-08-24 (owner) — `getService` is the whole provider interface.**
-      `IServiceProvider` carries exactly one member, `getService(serviceType: Type): any`, no type
+      `IServiceProvider` carries exactly one member, `getService(address: Type): any`, no type
       parameter, and it THROWS `UnsatisfiableError` when nothing answers. The optional ask lives in
       the address, not in a second member: `getService(Type.union(type, typefor<undefined>()))` —
       canonical ordering puts the `undefined` literal last, so it serves only after `type` fails to
       build (`Type.typeLiteral(undefined)` is the same interned node, for packages carrying no
       `primitives.extras` dependency). `getRequiredService` is retired; `getServices` is renamed
       `resolveMany`; `createScope` and `ScopeFactoryUnavailableError` are deleted outright, with the
-      `ScopeFactory` address, the `scope-factory` callsite kind and the model scope machinery
+      `ScopeFactory` address, the `scope-factory` plan kind and the model scope machinery
       untouched. The declared-but-unimplemented provider members (`tryResolve`, `resolveAsync`,
       `dispose`, `disposeAsync`) are gone. di.extras' sugar mirrors the interface:
       `getRequiredService<T>()` → `getService<T>()`, `getServices<T>()` → `resolveMany<T>()`, and
@@ -118,8 +118,8 @@ land; delete the file when empty.
       `resolve` is a bare one-line delegation that throws exactly as `getService` does (owner: "just
       a single line wrapper — no logic"), and its two callable overloads carry no undefined check
       and no message of their own — absence surfaces as the engine's classified error. So the
-      explicit surface is `getService(serviceType)`, `resolve(serviceType)`,
-      `resolve(ctorType|funcType, callable)` and `resolveMany(serviceType)`; the zero-arg sugar is
+      explicit surface is `getService(address)`, `resolve(address)`,
+      `resolve(ctorType|funcType, callable)` and `resolveMany(address)`; the zero-arg sugar is
       `resolve<T>()` and `resolveMany<T>()`. RULED 2026-08-24 and landed: **`getService` exists only
       as the single member of `IServiceProvider`; the vocabulary is `resolve` everywhere else** —
       five keeps in the whole repo, being the declaration, `ServiceProvider`'s implementation of it,
@@ -132,7 +132,7 @@ land; delete the file when empty.
 - [ ] **A zero-arg sugar may not share a name with a member a class implements — OPEN, owner
       deciding 2026-08-24.** di.extras' `getService<ServiceType>(): ServiceType` merges a zero-arg
       overload onto the one name the concrete `ServiceProvider` actually implements
-      (`getService(serviceType: Type): any`, required arg), so the class stops satisfying
+      (`getService(address: Type): any`, required arg), so the class stops satisfying
       `IServiceProvider` — TS2430 on the merge line, TS2416 on the member, two TS2322s reaching
       `di.ts`. INVISIBLE TO EVERY GATE: di's own program never sees di.extras and di.extras' never
       compiles di, so only a program holding BOTH trips it (`examples.app.with-transformer`
@@ -150,7 +150,7 @@ land; delete the file when empty.
       ask for that door instead of a bare closure. The concrete cannot reach `Engine.resolveFrame`
       from di.core, so it closes over the invoke callable the engine already synthesizes;
       `RealizeVisitor.visitInvoker` wraps its existing closure — the one edit needing an explicit
-      go, since it sits in the realize path (no callsite kind is added or changed). Name open:
+      go, since it sits in the realize path (no plan kind is added or changed). Name open:
       `Invoker` (Claude's rec — reads `invoker.invoke(…)`) vs the owner's `InvokerService`.
       MEASURED 2026-08-24 (throwaway probe under di.core, deleted after): a member-bearing interface
       KEEPS its nominal address where a call-signature interface collapses. Same package, same
@@ -178,7 +178,7 @@ land; delete the file when empty.
       property, not a gap, and reversing it turns matching into a specificity search over open
       registrations; and constraints alone don't finish the job — a registered invoker concrete
       needs engine guts, so it wants engine floor-registration at genesis. Claude's read: the prize
-      is de-special-casing doors out of `ToCallSiteVisitor`, not the ctor/func split.
+      is de-special-casing doors out of `ToPlanVisitor`, not the ctor/func split.
 - [x] **RESOLVED by `61c8e029` — the phantom type parameter is gone: every `examples.lib.*` helper
       now builds and returns its own manifest instead of taking the consumer's.** No
       `Manifest<S | 'singleton'>` spelling or `'singleton' as S | 'singleton'` cast remains
@@ -207,18 +207,19 @@ land; delete the file when empty.
       faces-never-use-`this` rule in `docs/features/augmentations.md`.
 - [ ] **RULED 2026-08-24 — the DOOR is picked by the address, not by the value.** Given
       `class Foo implements IFoo` and a vocabulary admitting `undefined`:
-      `manifest.add<IFoo>(Foo)` is a CTOR descriptor addressed by `IFoo`; `manifest.add(Foo)` is a
-      ctor descriptor addressed by `Foo`; `manifest.add<typeof Foo>(Foo)` is a VALUE descriptor
+      `manifest.add<IFoo>(Foo)` is a CTOR registration addressed by `IFoo`; `manifest.add(Foo)` is a
+      ctor registration addressed by `Foo`; `manifest.add<typeof Foo>(Foo)` is a VALUE registration
       whose value is the constructor; `manifest.addValue(Foo)` is the same. So a non-callable
       address plus a callable implementer means CONSTRUCT, and an address that IS the implementer's
       own type means the callable is data.
       Consequence: `ButNot<Value, Func | AbstractCtor>` guards backwards. It refuses a callable
       VALUE — precisely the case that must reach the value door when the address is `typeof Foo` —
       and it discriminates nothing when the address is `IFoo`, because it is computed on the
-      service type, which is spelled explicitly at every sugar call site. Measured in one lowering:
+      address, which is spelled explicitly at every sugar call site. Measured in one lowering:
       `add<ILogger>(ConsoleLogger, 'singleton')` emits `.add(…)` while `add<IRepo<Generic<'1'>>>(ThingRepo)`
       emits `.addValue(…)` — same fixture, arity the only difference, and the second is the silent
       wrong door this ruling closes. Two `tests/di.registration.ttsc.e2e` failures are this.
+
 - [x] **`expected.txt` regeneration — SATISFIED by `76801472`, verified 2026-08-24 (both apps build and their output byte-matches the checked-in goldens).** Was: (both `examples.app.*`). The demos' printed labels moved
       with the provider vocabulary, and one line changed VALUE as well as text: `resolve` of a
       registered-but-unbuildable service now throws where it printed `undefined`, because a chosen
@@ -236,34 +237,34 @@ land; delete the file when empty.
       on a type that is not a reference (`t.AsTypeReference()` returns nil), which the recursion
       reached through `any[]`'s `any`. Fully reverted. The earlier reading — "the refusal is
       gone, which is the confirmation" — was wrong: the panic had eaten the refusal, and the
-      suite's failing SET never shifted. `add(Ctor)` deriving its service type from the
+      suite's failing SET never shifted. `add(Ctor)` deriving its address from the
       implementer remains UNBUILT, and wants an approach other than pairing type arguments.
 - [ ] **`tests/inline.ttsc.e2e` — four failures inherited, unattributed.** Baseline 15 pass /
       4 fail: the sugar-fails-by-name-without-the-authoring-surface case, the open template
       carrying its hole into both tokens, the keyed base+key tag compose, and the cast that
       steers the observed implementer SHAPE (its `Type.imported("IReq", …)` const is never
-      minted). All four predate the descriptor-lifetime and door work and none has been
+      minted). All four predate the registration-lifetime and door work and none has been
       diagnosed.
 - [x] **Tried and ROLLED BACK 2026-08-24 — the `bind` subtraction on the di.extras value face.**
       A structural guard (`& { readonly bind?: never }`) was added beside `ButNot` on the sugar's
       value shape, on the theory that `add<IFoo>(Foo)` silently reached the value door. The owner
       judged it unnecessary and it is fully reverted. Standing: `ButNot`'s job on the sugar is
-      INTELLISENSE HONESTY — subtracting `Func | AbstractCtor | ServiceDescriptor<any>` keeps a
-      value overload from being OFFERED for a callable or a descriptor, which is a different job
+      INTELLISENSE HONESTY — subtracting `Func | AbstractCtor | Registration<any>` keeps a
+      value overload from being OFFERED for a callable or a registration, which is a different job
       from deciding which overload wins. Do not re-derive the guard without a measured call that
       is wrong and that the existing constraints do not already refuse; two attempts to construct
       one were both wrong.
 - [ ] **(a) LANDED `b41cfeba` — `UnsatisfiableError` now names the specific missing dependency.**
-      `ToCallSiteVisitor` tracks the first type its own walk found nothing to build from and
-      `CallSite.from` threads it in as the outer error's `cause` when it differs from the
-      originally requested type, so `error.cause.serviceType` names the exact dependency. (b) `$`
+      `ToPlanVisitor` tracks the first type its own walk found nothing to build from and
+      `Plan.from` threads it in as the outer error's `cause` when it differs from the
+      originally requested type, so `error.cause.address` names the exact dependency. (b) `$`
       is deprecated but still spelled in `tests/inline.ttsc.e2e` and di.core's README table;
       clearing those lets the alias be deleted outright. (c) the examples' unsatisfiable line now
       reads with two em-dashes (`UnsatisfiableError — cannot satisfy X — reason`) because the
       classifier prefixes the class and the engine's message opens with "cannot satisfy".
 - [ ] **Session freezes in force (owner 2026-08-24)** — `IServiceProvider`, `Manifest` and
       `DefaultManifest` are FROZEN; `ServiceProvider` admits only its `getService` body; the `Type`
-      and `CallSite` APIs need the owner's explicit discussion and signoff to change. Butting
+      and `Plan` APIs need the owner's explicit discussion and signoff to change. Butting
       against one is a conversation with him, never a workaround. Merges are LOCAL, no PRs; every
       commit is held for his review.
 - [ ] **RULED 2026-08-25 — the starfish hook surface is ONE member, and it IS `Realizer`.** Two of
@@ -275,17 +276,17 @@ land; delete the file when empty.
       deliver an `IServiceProvider` it consults the scope for that address like any other
       construction, and the model answers AS IF A CACHE HIT — returning the appropriate scope-sp
       without ever calling `make`. Which scope to answer for comes from the model's OWN value on the
-      walk-threaded context the realizer visitor carries, never from a synthetic descriptor, and
+      walk-threaded context the realizer visitor carries, never from a synthetic registration, and
       never from a bound field (a fixed `provider` cannot vary per asking position, which is what a
       scoped registration's slot needs). So `Hooks` and `Realizer` are the same thing, there is no
       engine-facing seam distinct from the model-facing face, and the door's answer is
       `(realizer: Realizer<Lifetime>) => (request: Type) => unknown`.
-- [ ] **`Manifest.empty()` has no descriptor-taking form — OWNER CALL.** `libraries/di/src/di.ts`
-      lines 56 and 71 still construct `new DefaultManifest(descriptors)` / `new DefaultManifest(() =>
+- [ ] **`Manifest.empty()` has no registration-taking form — OWNER CALL.** `libraries/di/src/di.ts`
+      lines 56 and 71 still construct `new DefaultManifest(registrations)` / `new DefaultManifest(() =>
       concat(...))`, and they are the last real use of the concrete class outside di.core (the only
       others are a Go parity fixture that pins the class identity on purpose, and the
       single-instance-guard test that asserts the class EXISTS). `Manifest.empty<L>()` takes no
-      arguments, so constructing FROM descriptors has no namespace equivalent. Minting one
+      arguments, so constructing FROM registrations has no namespace equivalent. Minting one
       (`Manifest.from(...)` or similar) is new public API and needs the owner's word.
 - [ ] **`docs/libraries/di.md` — a set-level question, not a file-level one.** It is one of NINE
       per-family docs under `docs/libraries/`, all linked from `docs/README.md`, and `docs/README.md`
@@ -295,27 +296,15 @@ land; delete the file when empty.
       `ServiceManifest`, token strings, `.as()`, `resolveFactory`, `UnregisteredTokenError`, none of
       which exist. Deleting it alone leaves a hole in a documented set and singles out one family
       for a property all nine share. The call is what happens to the CHAPTER SERIES.
-- [ ] **SIGNED OFF 2026-08-25, NOT YET EXECUTED — three of the rename slate's entries.** The owner
-      signed off on `serviceType` → `address`, internal `CallSite` → `Plan`, and `ServiceDescriptor`
-      → `Registration`, explicitly "just record, don't execute yet". The rest of the slate below is
-      still unruled: the `ServiceProvider` → `Resolver`-vs-`Container` pick, and `IServiceScope` →
-      bare `Scope`. NOTE on blast radius, larger now than when the slate was written:
-      `ServiceDescriptor` appears in the signature of every `get*Manifest` function across six
-      packages, in `tryAdd`/`addMany`, and in the merge idiom the returned-manifest pattern made
-      repo-wide.
-- [ ] **Post-port rename slate (owner-opened 2026-08-24; one dedicated pass AFTER the in-flight
-      lanes land, CLAUDE.md digest included; ideal name first, MEDI-distance a free bonus).**
-      OWNER-ENDORSED 2026-08-24 ("record all your suggestions — i like them"): `ServiceProvider`
-      → bare `Resolver` (Claude's lean; `Container` the runner-up, final pick at pass time —
-      `Container` survives in `ContainerBuilder` either way); `Scope`/`lifetime` KEEP (place vs
-      policy; `IServiceScope` → bare `Scope`); `ServiceDescriptor` → `Registration`; internal
-      `CallSite` → `Plan` (a ConstantCallSite calls nothing; the realizer's per-position `site`
-      key keeps its name); `serviceType` → `address` (the design language already says address
-      everywhere; at realize time pairs with the request). RULED, DI-ONLY: interfaces without
-      published concretes DROP the `I` prefix — concretes stay unexported on the
-      `Default<InterfaceName>` pattern (di backtrack of the global I-prefix rule; other families
-      unaffected). Consequence: the interface is bare `Resolver` (or `Container` — final pick at
-      pass time), no `IResolver`.
+- [x] **The rename slate lands: `address`, `Plan`, `Registration`; `ServiceProvider` keeps its
+      name.** A registration's address parameter is `address`, never `serviceType`. The engine's
+      internal resolution IR is `Plan` (a `ConstantPlan` calls nothing; the realizer's
+      per-position `site` key keeps its own name). The registration primitive is `Registration`,
+      appearing in the signature of every `get*Manifest` function across six packages, in
+      `tryAdd`/`addMany`, and in the merge idiom the returned-manifest pattern made repo-wide.
+      `Scope`/`lifetime` keep their names (place vs policy). RULED: the `ServiceProvider` →
+      `Resolver`-vs-`Container` pick is closed — `ServiceProvider` keeps its name, so the
+      interface stays `IServiceProvider`.
 - [x] **COMMITTED `50b6e5fd` (pre-starfish checkpoint; rulings survive starfish, hosting machinery condemned) — lifetime-vocabulary split.**
       RULED: standard refuses omission (`StandardLifetime` = the three literals; out-of-vocabulary
       registration refused with a naming TypeError, engine-wrapped as LifetimeModelError); tagged
@@ -422,9 +411,9 @@ land; delete the file when empty.
       the floor-registration rework (if accepted) deletes code the briefs assume stable.
 
 - [x] **`getService` → `resolve` vocabulary + one-member `IServiceProvider`** — landed: `IServiceProvider`
-      keeps only `getService(serviceType: Type): any`; the callable overloads live in
+      keeps only `getService(address: Type): any`; the callable overloads live in
       `di.core/src/augmentations/ServiceProvider-service-augmentations.ts` as `resolve`, joined by
-      a plain `resolve(serviceType)` wrapper. The callable forms route through an unexported
+      a plain `resolve(address)` wrapper. The callable forms route through an unexported
       `Invoker<C>` marker in `di.core/src/Invoker.ts` — the engine detects its address structurally
       (`ImportedType` named `Invoker` from `@rhombus-std/di.core`, one generic arg) and synthesizes
       a closure that realizes the caller's own callable as an invocation frame. GOSPEL landed in
@@ -439,15 +428,15 @@ land; delete the file when empty.
       suites, `tests/hosting.core.test`, …) ride the same rework.
 - [ ] **Align the requirements doc with the LifetimeModel naming** — `docs/di2.scope-async.requirements.md`
       still says `ScopeModel*`/"scope model" throughout; the ruled public naming is now
-      `LifetimeModel*`, `Manifest<Lifetime>`, descriptor `lifetime`. Includes deciding the
+      `LifetimeModel*`, `Manifest<Lifetime>`, registration `lifetime`. Includes deciding the
       attribution-wrap error's name (`ScopeModelError` → `LifetimeModelError`).
-- [x] **RULED AND LANDED 2026-08-24 (owner) — the descriptor's `lifetime` is omittable only when
+- [x] **RULED AND LANDED 2026-08-24 (owner) — the registration's `lifetime` is omittable only when
       `undefined` is in the vocabulary.** `WithLifetime<Lifetime>` is now the conditional
       `undefined extends Lifetime ? { readonly lifetime?: Lifetime } : { readonly lifetime: Lifetime }`,
       intersected into the two CONSTRUCTED variants and deliberately not onto the union —
-      `ValueDescriptor` carries no lifetime, since a value IS its instance and there is no
-      construction for a lifetime to govern. The descriptor FACTORIES close the same hole one level
-      up: `ServiceDescriptor.ctor`/`factory` take `...lifetime: LifetimeArgument<Lifetime>`, the
+      `ValueRegistration` carries no lifetime, since a value IS its instance and there is no
+      construction for a lifetime to govern. The registration FACTORIES close the same hole one level
+      up: `Registration.ctor`/`factory` take `...lifetime: LifetimeArgument<Lifetime>`, the
       rest-arg spelling the verbs already use, so a three-arg call under `StandardLifetime` is
       refused rather than minting `{ lifetime: undefined }`. Owner's stated fallback if the
       conditional had needed contortions was to drop optionality entirely; it did not. One cost
@@ -528,7 +517,7 @@ land; delete the file when empty.
       front-door rewiring, `ConstantType` stripped from example call sites, concrete demo manifests
       widened to `Manifest<unknown>` on `LifetimeModel.noop`; root `bun run build` exits 0.
 - [x] **FIXED `fd2cfc4f` — the recording manifest stand-ins in three test files implemented
-      `add(serviceType, value)` where the augmentations under test call the manifest's dedicated
+      `add(address, value)` where the augmentations under test call the manifest's dedicated
       `addValue` verb; renamed to match.** Test-side, not a library defect. Was: MetricsBuilder
       augmentation regression — untriaged: `tests/augmentations.test` fails with
       `this.services.addValue is not a function` at
@@ -572,7 +561,7 @@ land; delete the file when empty.
       meanwhile), collapse the ~80 duplicated Scope/Router/ScopeProvider lines shared by the two
       self-contained model files, and correct LifetimeModel.ts's doc claim that `site` is "the
       natural key for an instance store" (site is per-plan-position; the models key on
-      (descriptor, requested type)). OWNER RULING NEEDED before wiring the scope-dependent red
+      (registration, requested type)). OWNER RULING NEEDED before wiring the scope-dependent red
       suites (caching.memory 8, hosting.core 5, diagnostics 3, filter-logging-builder): they spell
       `createScope('singleton')` on `Manifest<string>` — the TAGGED model's shape, not standard's.
       ENGINE SEAMS the full spec still needs (models worked around or can't): a scope-bound
@@ -584,14 +573,14 @@ land; delete the file when empty.
       `standard`/`tagged` aren't surfaced through a namespace or barrel yet. The two
       self-contained model files share ~80 duplicated Scope/Router/ScopeProvider lines, ready to
       collapse. LifetimeModel.ts's doc claims `site` is "the natural key for an instance store";
-      it is per-plan-position, and the models actually key on (descriptor, requested type). The
+      it is per-plan-position, and the models actually key on (registration, requested type). The
       full spec still needs three engine seams the models currently work around or can't reach: a
       scope-bound provider can't start a walk under its own model (router-cell workaround in the
       models); an injected `IServiceProvider` inside a scope is the container, not the scope
       (RealizeVisitor.ts:128-130, not fixable model-side); `resolveLatebound` re-enters under
       call-time scope, not captured scope (RealizeVisitor.ts:116-118).
 - [ ] **mergesynth 5-way `add` guard bug — BLOCKS the ruled addMany→add fold.** Adding an
-      `add(descriptors: Iterable<ServiceDescriptor>)` overload as a 5th `add` shape makes the
+      `add(registrations: Iterable<Registration>)` overload as a 5th `add` shape makes the
       synthesized dispatcher break at runtime (`TypeError: undefined is not a function at reduce`
       on even a plain 3-arg ctor add); compiles with zero diagnostics; cleanly bisected — same
       body under a non-colliding name works, fold to `add` fails, toggled twice. The generated
@@ -612,12 +601,12 @@ land; delete the file when empty.
       nothing is registered — outside the `DiError` taxonomy, so one `instanceof` no longer
       classifies every container failure (surfaced by the createScope augmentation, which had to
       route through `getService`'s undefined split instead of catching a classifiable error).
-      Decide: `UnsatisfiableError` (needs the serviceType member semantics checked) or a dedicated
+      Decide: `UnsatisfiableError` (needs the address member semantics checked) or a dedicated
       taxonomy member.
 - [ ] **The door concept — owner design direction 2026-08-24; NO implementation until he
       green-lights (model review first).** `IServiceProvider`'s one-member `getService` is not a
       bottleneck: every specialized capability is a DOOR — an address you ask the provider for,
-      answered by a specialized callsite. The interface stays frozen forever; capabilities are
+      answered by a specialized plan node. The interface stays frozen forever; capabilities are
       addresses. Already-true instances: `ScopeFactory`, the `Invoker` marker, bare-hole type
       delivery. Pieces, in landing order when green-lit:
       - **Invoker formalization**: export the marker through a real seam (public in di.core) so
@@ -626,9 +615,9 @@ land; delete the file when empty.
       `resolve(callableType, callable)` augmentations remain the transparent sugar over it.
       Name open — owner floated `InvokerService`/`FrameFactory`; Claude recommends staying with
       `Invoker` (what-not-how: "frame" names the mechanism).
-      - **ScopeFactory synthesis — RULED 2026-08-24: its own callsite kind** (nominal detection,
+      - **ScopeFactory synthesis — RULED 2026-08-24: its own plan kind** (nominal detection,
       synthesis tail so a user registration still wins; no manifest registration — model
-      descriptors must be context-free values, per-container machinery lives behind the
+      registrations must be context-free values, per-container machinery lives behind the
       realizer). STANDING question: dedicated `Realizer.scopeFactory()` door (the working
       implementation) vs routing through the one `realize` door; revisit a general door table
       if doors multiply (audit service).
@@ -636,23 +625,23 @@ land; delete the file when empty.
       the factory the door returns; the engine's multi-entrypoint contract stays private
       (consistent with the models-get-the-wrapper ruling).
       - **Resolve-audit service**: a door giving _access_ (never a copied snapshot) to the details
-      of the resolve that constructed its holder — full request type, serviceType, ancestry — as
+      of the resolve that constructed its holder — full request type, address, ancestry — as
       a thin handle closing over the engine's per-resolve frame; payload engine-side and lazy.
       Creation-time semantics under caching (a cache hit reuses instance + handle together).
       Replaces the Typeof witness branding. Ancestor visibility ruled fine — no intra-container
       trust boundary, and "who asked for me" is useful. MECHANISM SETTLED 2026-08-24 (still
-      deferred): the ScopeFactory recipe verbatim — synthesized callsite, no registration, so
+      deferred): the ScopeFactory recipe verbatim — synthesized plan node, no registration, so
       the realizer's caching never sees it and creation-time binding falls out free — plus a
       walk-threaded context the handle closes over. MECHANISM LEANING (owner 2026-08-24,
       felt-right-not-thought-through): thread an immutable parent-linked frame through the
-      realize walk's context arg (each visit conses its site on), and the audit callsite
+      realize walk's context arg (each visit conses its site on), and the audit plan node
       returns a closure over that frame. The node itself stays one shared position-free value,
       so plan caching is untouched, and a cached subtree realized under a new request yields
       the new chain automatically — position is never stored, so the stale-position hazard
       cannot exist. (Superseded alternative: a per-plan parent-index — works, but needs
       per-plan keying and can never carry dynamic walk facts; threading can.) Instance-cache
       hits keep their creation-walk handle (creation-time semantics). Engine cost: one
-      callsite kind, one visit member, one cons per visit.
+      plan kind, one visit member, one cons per visit.
       BORDERLINE-FREE PAYLOAD ROSTER (owner directive 2026-08-24: take advantage) — data
       already in hand at the cons or walk-start point, O(1) to capture:
       - Per-frame, at cons: **arg position within the parent's signature** (the
@@ -687,8 +676,8 @@ land; delete the file when empty.
       contract split (`createRealizer()` minted once per `build()`; engine holds only the
       Realizer), and the Manifest `include` verb. STILL UNCOMMITTED: standard.ts/tagged.ts + their
       two suites. LANDED ON DISK 2026-08-24 (uncommitted, owner review pending): the
-      ScopeFactory-callsite rework — ScopeFactory OUT of addModelServices (context-free, `[]` in
-      all three models), synthesized via its own callsite kind (invoker precedent, synthesis tail
+      ScopeFactory-plan rework — ScopeFactory OUT of addModelServices (context-free, `[]` in
+      all three models), synthesized via its own plan kind (invoker precedent, synthesis tail
       so a manifest registration still wins), realized through `Realizer.scopeFactory(container:
       IServiceProvider): ScopeFactory | undefined` (explicit param RULED: the factory depends
       only on its declared contract + model internals, never engine behavior — the interim
@@ -708,3 +697,126 @@ land; delete the file when empty.
       (23 red tests). (6) depender rework — hosting/logging/examples; five `@ts-nocheck -- TEMP`
       headers now (host-composition.ts joined 2026-08-23); hosting/logging genesis sites run the
       front door on `LifetimeModel.noop` as minimal green, flow-correctness unreviewed.
+- [ ] **Pre-publish import audit — OWNER REMINDER, deferred deliberately 2026-08-25.** The lifetime
+      models moved out of `di.core` into `di` (`standard`/`tagged`/`noop`, the last now a factory
+      function like the other two); `di.core` kept the contract plus the two vocabulary aliases
+      `StandardLifetime` and `TaggedLifetime<Tags>`. Call sites were fixed MECHANICALLY — minimum
+      edit to green the gate — because the owner ruled the full pass not worth the token burn
+      mid-flight. Before publishing, sweep every consumer and make each import right: which package
+      each name should come from, import ordering, and the README/doc prose that still describes
+      `LifetimeModel.noop` as a di.core namespace member (`di`, `di.core`, `logging`,
+      `diagnostics`, `hosting.core`, `caching.memory`, `options.augmentations`). Nothing here is a
+      correctness bug — the gate is green — it is stale spelling awaiting one deliberate pass.
+- [ ] **RULED 2026-08-25 — the realizer threads a `LifetimeContext`, not a `Realizer`. Lands WITH
+      starfish, not before.** `Realizer.realize`'s `make` takes the model's own walk-scoped context
+      in place of a `Realizer`, and the model still chooses what descendants receive — the existing
+      power is genuinely exercised and must survive, since a singleton's whole dependency subtree
+      realizes under the ROOT rather than under whatever scope asked for it, which is what stops a
+      singleton capturing a shorter-lived instance. The engine NEVER inspects a context and never
+      mints one: a container-rooted walk seeds from `rootContext`, returned by `createRealizer()`
+      beside the realizer; a walk entering through a scope-bound provider seeds from the context the
+      model handed that provider when it opened the scope. Both origins are the model's, which is
+      what keeps the value genuinely opaque. `rootContext` is a PROPERTY, not a method — one value
+      per container is what keeps a container-lifetime instance container-lifetime, and a model
+      wanting per-walk behavior expresses it in what it hands descendants. It is the ROOT context,
+      never the "empty" one: for a scoping model the entry context is the root scope. `noop`'s is a
+      shared empty stamped object rather than `undefined`. `LifetimeContext` is a REAL named type,
+      BRAND-STAMPED on the `ConfigSection` precedent (an exported unique symbol each context class
+      stamps on itself) — not for nominal safety against a model, but because the visitor threads
+      plan / provider / context and an UNBRANDED empty interface accepts all three, so a transposed
+      argument would compile; `unknown` is worse still, being the one type that accepts every other
+      slot's value. `Context` is a type parameter on `Realizer`
+      (`Realizer<Lifetime, Context extends LifetimeContext = LifetimeContext>`), NOT on
+      `LifetimeModel` — the engine has zero reach and putting it on the model cascades through
+      `ContainerBuilder`, `usingLifetimeModel` and `build()`. The boundary erases to
+      `LifetimeContext` and a model's narrower realizer satisfies it by method-parameter
+      bivariance — unsound in principle, invisible in practice, taken knowingly because TS has no
+      existential. `ResolveContext` gains the context beside `serviceProvider`; that is the only new
+      plumbing, everything else swaps what the visitor already threads. PAYOFF: the mutate-and-restore
+      ambient state each scoping model carries — an active-scope field plus an `enterScope`
+      try/finally, near-identically duplicated — becomes a threaded value, because a scope-bound
+      provider seeds a fresh walk directly instead of mutating and unwinding; that is what makes the
+      Scope/Router/ScopeProvider dedup collapse tractable. SEQUENCING: this IS starfish's
+      walk-threaded hook context, already recorded as "build once" — doing it separately would change
+      `Realizer`'s contract twice, once to carry a context and again when the engine becomes an sp and
+      `realize` also carries provider-slot delivery.
+- [ ] **RULED 2026-08-25 — the scope factory is PER-MODEL, and the shared `ScopeFactory<Args>`
+      interface is cancelled.** Each model publishes its own interface; a consumer wanting to swap
+      models wraps. `ScopeFactory<Args>` failed because its type argument was the CALL-SIGNATURE
+      tuple — one runtime object wearing many spellings, so erasure and narrowing kept producing
+      addresses that resolved dishonestly (asking a tagged container for the zero-arg opener
+      succeeded and handed back a factory needing a tag). The replacement names the SCOPE IDENTITY
+      in the factory's type argument, as a `Type`: one registration per identity, so one spelling
+      resolves one thing. A model with open-ended naming (tagged accepts any string) registers ONCE
+      as an OPEN registration whose hole delivers the closing type to the factory — the
+      `ILogger<$1>` pattern — accepting that an unknown scope then RESOLVES rather than failing;
+      a model wanting the unsatisfiable check enumerates instead. `Type.tag` was considered and
+      rejected: its key is a string, and a model may name scopes with something else, so the
+      identity must be a `Type` for every model to work the same way. CONSTRAINT the shape must
+      respect: the factory is an interface with a NAMED METHOD, never a bare call signature, so
+      that it, the realizer and the model CAN be polymorphic views of one object — required to be
+      possible, not required to be done. An `AdHoc` model — `Lifetime` a lambda, each registration
+      carrying its own retention behavior — needs nothing new, since `Lifetime` is unconstrained,
+      and it is the case that makes `LifetimeModel.transient` load-bearing rather than decorative
+      (no caller can guess a lambda). STILL OPEN, not ruled: `LifetimeModel<Registration, Request>`
+      splitting the registration vocabulary from the scope-naming one — real (standard has three
+      registration words and names no scopes; `never`/`void`/`Tags` distinguish cannot-scope from
+      scopes-unnamed from scopes-by-name), but PHANTOM until a typed `createScope<T>()` surface
+      consumes it, so it is one decision with that open item, not two. NOT YET IMPLEMENTED: the
+      tree still carries the shared interface and registers at the erased `ScopeFactory.address`.
+- [ ] **RULED 2026-08-25, LANDED — `LifetimeModel.transient` stays.** The contract carries
+      `readonly transient: Lifetime`, the model's own spelling of "construct afresh, keep nothing",
+      so a party that must register at transient without knowing which model it lands on can name
+      it. Nothing reads it today and the owner ruled it stays anyway; the `AdHoc` shape above is
+      what makes it necessary rather than ornamental.
+- [ ] **RESTORED — RULED, DI-ONLY: interfaces without published concretes DROP the `I` prefix**,
+      concretes staying unexported on the `Default<InterfaceName>` pattern (a di backtrack of the
+      global I-prefix rule; other families unaffected). This survives independently of the
+      cancelled `ServiceProvider` → `Resolver` rename — `Manifest`/`DefaultManifest` is the
+      convention in force today.
+- [ ] **BLOCKER, pre-existing, unowned — `bun run build` cannot complete.** `@rhombus-std/di.extras`
+      fails its d.ts rollup: `libraries/di.core/src/Registration/op.ts:5` — TS2883, the inferred
+      return type of `kind()` cannot be named without referencing `Type` through the isolated
+      linker's nested `node_modules`, "likely not portable". Reproduced directly. The error names
+      its own fix: an explicit return annotation on that one function. Until then only per-package
+      `bun run build` works, and anything needing the whole topological build is stuck.
+- [ ] **FINDING — `typefor<Func<[ConcreteArg, ...], X>>()` cannot derive a `FunctionType` at all.**
+      `@rhombus-toolkit/func@3.6.0` added `in`/`out` variance annotations to `Func<Args, Return,
+      This>`; TS takes a declared-variance fast path when comparing two instantiations of an
+      annotated alias, and that path does a plain `never[] extends [ConcreteArg]` structural check
+      instead of the lenient rest-parameter call-signature comparison an unannotated arrow type
+      gets, so the derivation fails. Verified with isolated probes against throwaway interfaces —
+      nothing specific to any one type. A repo-wide grep finds ZERO existing call sites, so this is
+      a previously-unexercised path rather than a regression, but every future one hits it. The
+      workaround in the models is to build the node directly with `Type.func(...)`. A real fix is
+      upstream in `@rhombus-toolkit/func` or in `primitives.extras`'s `DerivedType`.
+- [ ] **OPEN — the three `inline.ttsc.e2e` failures have two competing root causes on record.**
+      The door-selection entry describes `add<IFoo>(Foo)` with the lifetime omitted failing both
+      callable overloads on ARITY and falling through to the one-parameter VALUE overload. A fresh
+      reading of the same three cases (open-template hole, keyed-service tag-compose,
+      cast-steers-shape) reports instead that the generated const module holds no const spelled
+      `Type.imported("RedisCache", ...)`, i.e. the in-flight W2 templating work. Either they are
+      one failure seen from two angles or one of the two entries is stale; nobody has dug in.
+- [ ] **OWNER-ONLY residue from the rename pass — three doc spots Claude may not touch.**
+      `docs/decisions.md` is retired and write-forbidden, yet :1497 still says "the (serviceType,
+      implementationType)" and :1993 "There is no `ServiceDescriptor` object". `docs/decisions.user.md`
+      is gospel and owner-authored, and :10-11 and :55 still name `ServiceDescriptor` — the :55
+      line is a near-verbatim duplicate of a decisions.v2 entry that DID rename, suggesting it was
+      copied into gospel. Both files now misdescribe types that no longer exist; only the owner can
+      correct either. Separately, `docs/rewrite-plan.md:78` carries a standing order —
+      "`descriptor` stays on scoped call sites exactly as-is" — that predates this rename and needs
+      a ruling on whether it is superseded.
+- [ ] **`docs/decisions.v2.md` §170 describes a `Registration` shape that never existed.** It
+      claims one generic base `{ kind; address; implementer; implementerType }` shared by all three
+      variants. The real type is a union — `CtorRegistration | FactoryRegistration | ValueRegistration`
+      — each variant carrying its OWN field names (`ctor`/`ctorType`, `factory`/`factoryType`,
+      `value`), with no stored `kind` field at all; kind is derived by presence-check in
+      `Registration/op.ts`. The rename pass corrected its vocabulary but deliberately left the
+      structural claims alone, since rewriting them is not a rename.
+- [ ] **FLAKE — `primitives.test`'s `type-from.test.ts` "round trip" property test times out at
+      5000ms intermittently.** Passes standalone in ~390ms and passes on retry; the package is
+      untouched by any current work. It matters because `bun run test` chains its two halves with
+      `&&`, so this flake short-circuits the run BEFORE `bun scripts/run-e2e.mjs` executes, making
+      the e2e suites silently not-run rather than failing. Workaround while it stands: run
+      `bun --filter '*' test` and `bun scripts/run-e2e.mjs` separately. A raised timeout or a
+      smaller property-test sample would fix it.

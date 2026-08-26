@@ -4,14 +4,14 @@
 // wins. Literals order last among members, which is what keeps a literal member as the fallback
 // of an optional dependency.
 
-import { di } from '@rhombus-std/di';
-import { CycleError, LifetimeModel, Manifest, ServiceDescriptor, UnsatisfiableError } from '@rhombus-std/di.core';
+import { di, noop } from '@rhombus-std/di';
+import { CycleError, Manifest, Registration, UnsatisfiableError } from '@rhombus-std/di.core';
 import { Type } from '@rhombus-std/primitives';
 import { describe, expect, test } from 'bun:test';
 
 /** Seals `manifest` into a provider through the front door, on the noop lifetime model. */
 function toProvider(manifest: Manifest<string>) {
-  return di.usingLifetimeModel(LifetimeModel.noop).usingManifest(manifest).build();
+  return di.usingLifetimeModel(noop()).usingManifest(manifest).build();
 }
 
 const CACHE = Type.imported('Cache', 'app');
@@ -31,11 +31,11 @@ class Loop {
 /** A manifest registering `Report` over `Cache | Redis`, plus whichever caches are named. */
 function manifestWith(...caches: readonly ('memory' | 'redis')[]) {
   let manifest = Manifest.empty<string>()
-    .add(ServiceDescriptor.ctor(REPORT, Report, Type.ctor(REPORT, [[Type.union(CACHE, REDIS)]]), 'singleton'));
+    .add(Registration.ctor(REPORT, Report, Type.ctor(REPORT, [[Type.union(CACHE, REDIS)]]), 'singleton'));
   for (const cache of caches) {
     manifest = cache === 'memory'
-      ? manifest.add(ServiceDescriptor.ctor(CACHE, MemoryCache, Type.ctor(CACHE, [[]]), 'singleton'))
-      : manifest.add(ServiceDescriptor.ctor(REDIS, RedisCache, Type.ctor(REDIS, [[]]), 'singleton'));
+      ? manifest.add(Registration.ctor(CACHE, MemoryCache, Type.ctor(CACHE, [[]]), 'singleton'))
+      : manifest.add(Registration.ctor(REDIS, RedisCache, Type.ctor(REDIS, [[]]), 'singleton'));
   }
   return manifest;
 }
@@ -69,8 +69,8 @@ describe('a self-supplying member is the fallback', () => {
 
   function optionalManifest(registerCache: boolean) {
     const manifest = Manifest.empty<string>()
-      .add(ServiceDescriptor.ctor(REPORT, Report, Type.ctor(REPORT, [[OPTIONAL]]), 'singleton'));
-    return registerCache ? manifest.add(ServiceDescriptor.ctor(CACHE, MemoryCache, Type.ctor(CACHE, [[]]), 'singleton')) : manifest;
+      .add(Registration.ctor(REPORT, Report, Type.ctor(REPORT, [[OPTIONAL]]), 'singleton'));
+    return registerCache ? manifest.add(Registration.ctor(CACHE, MemoryCache, Type.ctor(CACHE, [[]]), 'singleton')) : manifest;
   }
 
   test('yields the service when one is registered', () => {
@@ -85,7 +85,7 @@ describe('a self-supplying member is the fallback', () => {
 
   test('a registered literal member wins the registration phase like any other', () => {
     const manifest = optionalManifest(false)
-      .add(ServiceDescriptor.value(Type.typeLiteral(undefined), 'registered-for-undefined'));
+      .add(Registration.value(Type.typeLiteral(undefined), 'registered-for-undefined'));
     const report = toProvider(manifest).resolve(REPORT) as Report;
     expect(report.cache).toBe('registered-for-undefined');
   });
@@ -108,7 +108,7 @@ describe('a union-typed registration', () => {
 
 describe('the cycle guard', () => {
   test('still closes a loop after the move to identity comparison', () => {
-    const manifest = Manifest.empty<string>().add(ServiceDescriptor.ctor(LOOP, Loop, Type.ctor(LOOP, [[LOOP]]), 'singleton'));
+    const manifest = Manifest.empty<string>().add(Registration.ctor(LOOP, Loop, Type.ctor(LOOP, [[LOOP]]), 'singleton'));
     expect(() => toProvider(manifest).resolve(LOOP)).toThrow(CycleError);
   });
 });

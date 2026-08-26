@@ -6,13 +6,13 @@ export type { AbstractConstructorType, ArrayType, ConstructorType, FunctionType,
 import './single-instance-guard';
 
 export * from './brands';
-export type { ServiceDescriptorBuilderFor } from './builder';
+export type { RegistrationBuilderFor } from './builder';
 export * from './Errors';
 export type { Invoker } from './Invoker';
 export type * from './IServiceProvider';
 export * from './LifetimeModel';
 export * from './Manifest';
+export * from './Registration';
 export * from './ScopeFactory';
-export * from './ServiceDescriptor';
 
 import './augmentations';

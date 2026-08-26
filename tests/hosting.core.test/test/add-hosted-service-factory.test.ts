@@ -1,5 +1,5 @@
-import { di } from '@rhombus-std/di';
-import { LifetimeModel, Manifest, Type } from '@rhombus-std/di.core';
+import { di, noop } from '@rhombus-std/di';
+import { Manifest, Type } from '@rhombus-std/di.core';
 import { getHostedServiceManifest, HOSTED_SERVICE_TYPE, hostedServiceCollectionType, type IHostedService } from '@rhombus-std/hosting.core/private/index';
 import { expect, test } from 'bun:test';
 
@@ -18,7 +18,7 @@ test("addHostedService(factory) registers the factory's result under the hosted-
   // The factory form surfaces an already-constructed instance as a hosted service.
   manifest = manifest.addMany(getHostedServiceManifest(() => singleton));
 
-  const provider = di.usingLifetimeModel(LifetimeModel.noop).usingManifest(manifest).build();
+  const provider = di.usingLifetimeModel(noop()).usingManifest(manifest).build();
   const services: IHostedService[] = provider.resolve(hostedServiceCollectionType());
 
   expect(services).toHaveLength(1);
@@ -43,7 +43,7 @@ test('addHostedService(factory) injects the live resolver so the factory can pul
     return dependency;
   }));
 
-  const provider = di.usingLifetimeModel(LifetimeModel.noop).usingManifest(manifest).build();
+  const provider = di.usingLifetimeModel(noop()).usingManifest(manifest).build();
   const services: IHostedService[] = provider.resolve(hostedServiceCollectionType());
 
   expect(services).toHaveLength(1);
@@ -70,7 +70,7 @@ test('addHostedService(ctor) and addHostedService(factory) coexist under the sha
   manifest = manifest.addMany(getHostedServiceManifest(CtorWorker, Type.ctor(HOSTED_SERVICE_TYPE, [[]])));
   manifest = manifest.addMany(getHostedServiceManifest(() => new FactoryWorker()));
 
-  const provider = di.usingLifetimeModel(LifetimeModel.noop).usingManifest(manifest).build();
+  const provider = di.usingLifetimeModel(noop()).usingManifest(manifest).build();
   const services: IHostedService[] = provider.resolve(hostedServiceCollectionType());
 
   expect(services).toHaveLength(2);

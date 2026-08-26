@@ -1,8 +1,6 @@
 import type { Type } from '@rhombus-std/primitives';
 import type { Func } from '@rhombus-toolkit/func';
-import type { IServiceProvider } from '../IServiceProvider';
-import type { ScopeFactory } from '../ScopeFactory';
-import type { ServiceDescriptor } from '../ServiceDescriptor/index';
+import type { Registration } from '../Registration/index';
 
 /**
  * The lifetime parameter's spelling for a vocabulary: omittable exactly when `undefined` is
@@ -10,6 +8,12 @@ import type { ServiceDescriptor } from '../ServiceDescriptor/index';
  * compiles under the same assignability rule every other value answers to.
  */
 export type LifetimeArgument<Lifetime> = undefined extends Lifetime ? [lifetime?: Lifetime] : [lifetime: Lifetime];
+
+/** What a registration on the `standard` model says about reuse: one instance for the whole container, one per open scope, or a fresh one every ask. */
+export type StandardLifetime = 'singleton' | 'scoped' | 'transient';
+
+/** What a registration on the `tagged` model says about reuse: the tag of the scope keeping it, or `undefined` for transient. */
+export type TaggedLifetime<Tags extends string = string> = Tags | undefined;
 
 /**
  * The engine-facing face of a {@link LifetimeModel}.
@@ -29,10 +33,15 @@ export interface Realizer<Lifetime = unknown> {
      * the natural key for an instance store.
      */
     site: object;
-    /** The type as the resolver requested it. */
-    serviceType: Type;
-    /** The registration that answered, carrying the {@link ServiceDescriptor.lifetime | lifetime} this realizer interprets. */
-    descriptor: ServiceDescriptor<Lifetime>;
+    /**
+     * The answering registration's address with whatever the match captured filled in — the only
+     * record of which closing answered, so an open registration's several closings stay apart in
+     * an instance store. Narrower than the caller's ask when that ask was a union or a
+     * collection, since a member and an element each match on their own.
+     */
+    populatedAddress: Type;
+    /** The registration that answered, carrying the {@link Registration.lifetime | lifetime} this realizer interprets. */
+    registration: Registration<Lifetime>;
     /**
      * Constructs the value. The realizer it receives governs every dependency constructed along
      * the way: pass a different one to change how the whole subtree behaves, or the receiver to
@@ -51,28 +60,27 @@ export interface LifetimeModel<Lifetime = unknown> {
   /** What this model calls itself, so a failure can say which model refused. */
   readonly name: string;
 
-  /** The model's own services — the scope machinery a provider on this model offers — as the floor beneath every user registration. */
-  addModelServices(): Iterable<ServiceDescriptor<Lifetime>>;
+  /**
+   * How this model spells "construct afresh, keep nothing" — the one reading every model has,
+   * whatever vocabulary it draws on, so a registration that must never be reused can name it
+   * without knowing which model it lands on.
+   */
+  readonly transient: Lifetime;
 
   /**
    * Mints one container's machinery, once per build: the {@link Realizer} every resolution runs
    * through, and the scope-opening capability the container publishes.
    *
    * @remarks
-   * An absent `scopeFactory` settles at mint time that this model never scopes, which is what
-   * lets the scope-opening address come back unsatisfiable rather than answering with nothing.
-   * Its `container` is the provider a scope it opens defers to for anything the scope itself
-   * doesn't keep. The factory's own args are the model's vocabulary for naming a scope as it
-   * opens, which each model states in its own return type.
+   * An absent `scopeFactory` means this model never scopes: the scope-opening address is simply
+   * left unregistered, and comes back unsatisfiable the same way any other unregistered address
+   * does. The registration is a factory taking `IServiceProvider`, which arrives as an ordinary
+   * dependency — the provider a scope it opens defers to for anything the scope itself doesn't
+   * keep. The factory's own args are the model's vocabulary for naming a scope as it opens,
+   * which each model states in its own return type.
    */
   createRealizer(): {
     realizer: Realizer<Lifetime>;
-    scopeFactory?: Func<[IServiceProvider], ScopeFactory<readonly any[]>>;
+    scopeFactory?: Registration<Lifetime>;
   };
-}
-
-import { noop as noopModel } from './models/noop';
-
-export namespace LifetimeModel {
-  export const noop = noopModel;
 }

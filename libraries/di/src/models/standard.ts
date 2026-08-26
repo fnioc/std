@@ -1,17 +1,8 @@
-import { augment, type Type } from '@rhombus-std/primitives';
+import { type IServiceProvider, type LifetimeModel, type Realizer, Registration, ScopeFactory, type StandardLifetime } from '@rhombus-std/di.core';
+import { augment, Type } from '@rhombus-std/primitives';
 import { typefor } from '@rhombus-std/primitives.extras';
 import type { Func } from '@rhombus-toolkit/func';
 import { assertNever } from '@rhombus-toolkit/type-guards';
-import type { IServiceProvider } from '../../IServiceProvider';
-import type { ScopeFactory } from '../../ScopeFactory';
-import type { ServiceDescriptor } from '../../ServiceDescriptor';
-import type { LifetimeModel, Realizer } from '../LifetimeModel';
-
-/**
- * What a registration on the {@link standard} model says about reuse: one instance for the whole
- * container, one per open scope, or a fresh one every ask.
- */
-export type StandardLifetime = 'singleton' | 'scoped' | 'transient';
 
 const MODEL_NAME = 'standard';
 
@@ -33,27 +24,27 @@ class StandardScope implements Realizer<StandardLifetime> {
    * registrations of one type stay apart, an open registration keeps one instance per closing,
    * and asking for a service alone or through a collection reaches the same entry.
    */
-  readonly #instances = new Map<ServiceDescriptor<StandardLifetime>, Map<Type, unknown>>();
+  readonly #instances = new Map<Registration<StandardLifetime>, Map<Type, unknown>>();
 
   constructor(enclosing?: StandardScope) {
     this.#rootScope = enclosing ? enclosing.#rootScope : this;
   }
 
-  realize({ serviceType, descriptor, make }: Construction): unknown {
-    const holder = this.#findHolder('lifetime' in descriptor ? descriptor.lifetime : undefined);
+  realize({ populatedAddress, registration, make }: Construction): unknown {
+    const holder = this.#findHolder('lifetime' in registration ? registration.lifetime : undefined);
     if (holder === undefined) {
       return make(this);
     }
-    let byRequest = holder.#instances.get(descriptor);
+    let byRequest = holder.#instances.get(registration);
     if (!byRequest) {
       byRequest = new Map();
-      holder.#instances.set(descriptor, byRequest);
+      holder.#instances.set(registration, byRequest);
     }
-    if (byRequest.has(serviceType)) {
-      return byRequest.get(serviceType);
+    if (byRequest.has(populatedAddress)) {
+      return byRequest.get(populatedAddress);
     }
     const instance = make(holder);
-    byRequest.set(serviceType, instance);
+    byRequest.set(populatedAddress, instance);
     return instance;
   }
 
@@ -152,17 +143,20 @@ class StandardScopeProvider implements IServiceProvider {
 export function standard(): LifetimeModel<StandardLifetime> {
   return {
     name: MODEL_NAME,
-
-    /** Nothing to lay: the scope factory is minted beside the realizer rather than registered. */
-    addModelServices(): Iterable<ServiceDescriptor<StandardLifetime>> {
-      return [];
-    },
+    transient: 'transient',
 
     createRealizer() {
       const router = new StandardRouter();
       return {
         realizer: router,
-        scopeFactory: container => router.openScopesFrom(container),
+        // 'transient': openScopesFrom reads the router's active scope at CALL time, so a cached
+        // instance would freeze every child to whichever scope first resolved this factory.
+        scopeFactory: Registration.factory<StandardLifetime>(
+          ScopeFactory.address,
+          (container: IServiceProvider) => router.openScopesFrom(container),
+          Type.func(ScopeFactory.address, [[typefor<IServiceProvider>()]]),
+          'transient',
+        ),
       };
     },
   };

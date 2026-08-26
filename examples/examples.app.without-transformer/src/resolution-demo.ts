@@ -14,8 +14,8 @@
 // resolve to the SAME interned `Type` object, and exporting it from the
 // producer is how a plugin-less codebase keeps them in step.
 
-import { di } from '@rhombus-std/di';
-import { LifetimeModel, Type } from '@rhombus-std/di.core';
+import { di, noop } from '@rhombus-std/di';
+import { Type } from '@rhombus-std/di.core';
 import type { IServiceProvider } from '@rhombus-std/di.core';
 
 import type { CheckoutOrder, IAuditTrail, IExchangeRates, IOrderValidator, IPaymentGateway, IPaymentRouter, IReceipt } from '@rhombus-std/examples.contracts';
@@ -196,5 +196,5 @@ async function* tour(provider: IServiceProvider): AsyncGenerator<string> {
  * asynchronously — every other chapter is an ordinary generator.
  */
 export function demonstrateResolution(): AsyncGenerator<string> {
-  return tour(di.usingLifetimeModel(LifetimeModel.noop).usingManifest(addCheckoutServices()).build());
+  return tour(di.usingLifetimeModel(noop()).usingManifest(addCheckoutServices()).build());
 }

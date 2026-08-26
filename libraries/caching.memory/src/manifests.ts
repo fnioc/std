@@ -7,7 +7,7 @@
 // registration); the cache factory then resolves the assembled options plus
 // -- when logging is registered -- the `ILoggerFactory`, falling back to a
 // logger-less construction when no logger factory is available. The configure
-// step's own descriptors carry no lifetime of their own, which is what keeps
+// step's own registrations carry no lifetime of their own, which is what keeps
 // the manifest at `unknown` rather than the narrower `'singleton'` the cache
 // registration itself uses.
 //

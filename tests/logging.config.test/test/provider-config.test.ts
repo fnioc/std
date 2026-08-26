@@ -7,8 +7,8 @@
 // (`"<declaring-package>:<TypeName>"` and its closed-generic form).
 
 import { ConfigBuilder, type IConfigRoot } from '@rhombus-std/config';
-import { di } from '@rhombus-std/di';
-import { LifetimeModel, Manifest, Type } from '@rhombus-std/di.core';
+import { di, noop } from '@rhombus-std/di';
+import { Manifest, Type } from '@rhombus-std/di.core';
 import { LoggingBuilder } from '@rhombus-std/logging';
 import { type ILoggerProviderConfig, type ILoggerProviderConfigFactory, loggerProviderConfigType } from '@rhombus-std/logging.config';
 import { describe, expect, test } from 'bun:test';
@@ -37,7 +37,7 @@ describe('addConfig() — provider-configuration services', () => {
       'OtherProvider:Format': 'xml', // other providers' sections are invisible
     }));
 
-    const provider = di.usingLifetimeModel(LifetimeModel.noop).usingManifest(builder.services).build();
+    const provider = di.usingLifetimeModel(noop()).usingManifest(builder.services).build();
     const factory: ILoggerProviderConfigFactory = provider.resolve(FACTORY_TYPE);
     const config = factory.getConfig(FAKE_PROVIDER_TYPE);
 
@@ -53,7 +53,7 @@ describe('addConfig() — provider-configuration services', () => {
     const builder = new LoggingBuilder(Manifest.empty<unknown>());
     builder.addConfig(config);
 
-    const provider = di.usingLifetimeModel(LifetimeModel.noop).usingManifest(builder.services).build();
+    const provider = di.usingLifetimeModel(noop()).usingManifest(builder.services).build();
     const factory: ILoggerProviderConfigFactory = provider.resolve(FACTORY_TYPE);
     const providerConfig = factory.getConfig(FAKE_PROVIDER_TYPE);
     expect(providerConfig.get('Format')).toBe('json');
@@ -74,7 +74,7 @@ describe('addConfig() — provider-configuration services', () => {
     const builder = new LoggingBuilder(Manifest.empty<unknown>());
     builder.addConfig(rootWith({ 'FakeProvider:Format': 'json' }));
 
-    const provider = di.usingLifetimeModel(LifetimeModel.noop).usingManifest(builder.services).build();
+    const provider = di.usingLifetimeModel(noop()).usingManifest(builder.services).build();
     const providerConfigType = loggerProviderConfigType(FAKE_PROVIDER_TYPE);
     const providerConfig: ILoggerProviderConfig<unknown> = provider.resolve(providerConfigType);
 
@@ -88,7 +88,7 @@ describe('addConfig() — provider-configuration services', () => {
     const builder = new LoggingBuilder(Manifest.empty<unknown>());
     builder.addConfig();
 
-    const provider = di.usingLifetimeModel(LifetimeModel.noop).usingManifest(builder.services).build();
+    const provider = di.usingLifetimeModel(noop()).usingManifest(builder.services).build();
     const factory: ILoggerProviderConfigFactory = provider.resolve(FACTORY_TYPE);
     // No LoggingConfig registered yet: every provider section is empty.
     expect(factory.getConfig(FAKE_PROVIDER_TYPE).get('Format')).toBeUndefined();

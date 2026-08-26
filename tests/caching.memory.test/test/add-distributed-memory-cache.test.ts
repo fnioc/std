@@ -3,8 +3,8 @@
 // and the resolved singleton's end-to-end behavior.
 
 import { DISTRIBUTED_CACHE_TYPE, getDistributedMemoryCacheManifest, MemoryDistributedCache, MemoryDistributedCacheOptions } from '@rhombus-std/caching.memory';
-import { di } from '@rhombus-std/di';
-import { LifetimeModel, type Manifest } from '@rhombus-std/di.core';
+import { di, noop } from '@rhombus-std/di';
+import { type Manifest } from '@rhombus-std/di.core';
 import { describe, expect, test } from 'bun:test';
 
 describe('getDistributedMemoryCacheManifest', () => {
@@ -24,7 +24,7 @@ describe('getDistributedMemoryCacheManifest', () => {
     // configure step runs when the options resolve, not at registration.
     expect(seen).toBeUndefined();
 
-    const cache: MemoryDistributedCache = di.usingLifetimeModel(LifetimeModel.noop).usingManifest(returned).build()
+    const cache: MemoryDistributedCache = di.usingLifetimeModel(noop()).usingManifest(returned).build()
       .resolve(DISTRIBUTED_CACHE_TYPE);
     expect(cache).toBeInstanceOf(MemoryDistributedCache);
     expect(seen).toBeInstanceOf(MemoryDistributedCacheOptions);

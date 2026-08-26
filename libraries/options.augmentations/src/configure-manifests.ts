@@ -49,15 +49,15 @@ export function getConfigureManifest<Deps extends readonly unknown[]>(optionsTyp
   if (Array.isArray(source)) {
     const callback = configureWithDeps as (options: any, ...deps: Deps) => void;
 
-    const serviceType = configureStepType(optionsType);
+    const address = configureStepType(optionsType);
     return Manifest.empty<unknown>().add({
-      serviceType,
+      address,
       factory: (...deps: Deps): IConfigureOptions<any> => ({
         configure(options: any): void {
           callback(options, ...deps);
         },
       }),
-      factoryType: Type.func(serviceType, [[...source]]),
+      factoryType: Type.func(address, [[...source]]),
     });
   }
   // A bare delegate is a pure code configure step: registers only the

@@ -1,6 +1,6 @@
 // clearMetricsListeners / clearTracingListeners -- the ports of the reference
 // `MetricsBuilderAugmentations.ClearListeners` / `TracingBuilderAugmentations.ClearListeners`
-// (`builder.Services.RemoveAll<...>()` through di.core's removeAll descriptor
+// (`builder.Services.RemoveAll<...>()` through di.core's removeAll registration
 // verb). Exercised in both dual-export forms (docs §28): the standalone
 // `Set.member(builder, ...)` call and the registry-installed method, both
 // against the concrete @rhombus-std/diagnostics builders (the interface-side
@@ -10,8 +10,8 @@
 // The standalone form calls `Set.member.call(builder, ...)`: the augmentation
 // methods are `this`-based and installed verbatim.
 
-import { di } from '@rhombus-std/di';
-import { LifetimeModel, Manifest, Type } from '@rhombus-std/di.core';
+import { di, noop } from '@rhombus-std/di';
+import { Manifest, Type } from '@rhombus-std/di.core';
 import { MetricsBuilder, TracingBuilder } from '@rhombus-std/diagnostics';
 import { type IMetricsBuilder, type IMetricsListener, type ITracingBuilder, MetricsBuilderAugmentations, TracingBuilderAugmentations } from '@rhombus-std/diagnostics.core';
 import { describe, expect, test } from 'bun:test';
@@ -36,7 +36,7 @@ function listener(name: string): IMetricsListener {
  * single one of these registrations — only the one the builder now holds does.
  */
 function registered(builder: { services: Manifest<unknown>; }, type: Type): unknown[] {
-  const provider = di.usingLifetimeModel(LifetimeModel.noop).usingManifest(builder.services).build();
+  const provider = di.usingLifetimeModel(noop()).usingManifest(builder.services).build();
   const results: unknown[] = provider.resolve(Type.array(type));
   return results;
 }

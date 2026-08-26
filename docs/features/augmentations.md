@@ -58,7 +58,7 @@ one of its augmentations live inside one family's own package (`MemoryCacheEntry
 `MetricsOptions`, `LoggerFilterOptions`) — these install directly, no token needed.
 
 **2. Name the file `<Receiver>-<Topic>-augmentations.ts`**, where `Receiver` is the receiver's name
-with a leading `I` dropped and `Topic` is a short word for the member group (`Json`, `Descriptor`,
+with a leading `I` dropped and `Topic` is a short word for the member group (`Json`, `Registration`,
 `Service`, `Sugar`).
 
 **3. Write the implementation as a namespace of exported function declarations.** This namespace is
@@ -93,7 +93,7 @@ is the implementation and writes the receiver's type argument at its widest: `Ma
 export namespace ManifestServiceAugmentations {
   export function addValue(this: Manifest<string>, type: string | Type, value: unknown,
     key?: string): Manifest<string> {
-    return this.add(ServiceDescriptor.value(withKey(type, key), value));
+    return this.add(Registration.value(withKey(type, key), value));
   }
 }
 
@@ -134,11 +134,11 @@ call shapes declares several real overloads, each with its own named parameters 
 contributes three (a configure lambda, a constructor, a factory), never one signature padded with
 `...args: any[]`. A genuinely variadic member still can't end its _implementation_ in a bare rest:
 it keeps a leading named parameter and only then a trailing rest. `tryAdd`'s overload declarations
-can spell `...descriptors: ReadonlyArray<ServiceDescriptor<string>>` on their own, because a
+can spell `...registrations: ReadonlyArray<Registration<string>>` on their own, because a
 declared overload is just a call shape — but the implementation underneath every overload reads:
 
 ```ts
-export function tryAdd(this: Manifest<string>, first: ServiceDescriptor<string> | Type | string,
+export function tryAdd(this: Manifest<string>, first: Registration<string> | Type | string,
   ...rest: readonly any[]): Manifest<string> {
   /* ... */
 }
@@ -439,7 +439,7 @@ registry never receives augmentations registered against the other.
   needs the duplicate to see every overload. A merge strategy is for a name that's already taken on
   the receiver's prototype — its own hand-written primitive, or an earlier registration — where the
   runtime dispatcher has to decide which implementation a given call reaches. `Manifest.add` needs
-  the strategy and no duplicate: a lone descriptor routes to the primitive, every other shape to the
+  the strategy and no duplicate: a lone registration routes to the primitive, every other shape to the
   sugar.
 - **The extends-merge (`export interface X extends I {}`) is per-class, not automatic.** Forget it
   on a concrete implementer and instances still get every augmentation at runtime — they're just

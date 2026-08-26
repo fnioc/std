@@ -1,14 +1,11 @@
 // Behaviour tests for the standard lifetime model: which scope keeps an instance, what a
 // registration naming no lifetime meets, and what a singleton's own dependencies resolve from.
-// The model is not on the package barrel yet, so it is reached white-box, at the source path it
-// lives on.
 //
 // The scope/lifetime system is unbuilt here — every describe below stays skipped rather than
 // chased to green.
 
-import { di } from '@rhombus-std/di';
-import { type IServiceProvider, LifetimeModelError, ScopeFactory, ServiceDescriptor } from '@rhombus-std/di.core';
-import { standard, type StandardLifetime } from '@rhombus-std/di.core/private/LifetimeModel/models/standard';
+import { di, standard } from '@rhombus-std/di';
+import { type IServiceProvider, LifetimeModelError, Registration, ScopeFactory, type StandardLifetime } from '@rhombus-std/di.core';
 import { Type } from '@rhombus-std/primitives';
 import type { Func } from '@rhombus-toolkit/func';
 import { describe, expect, test } from 'bun:test';
@@ -85,7 +82,7 @@ describe.skip('transient', () => {
 describe.skip('a registration naming no lifetime', () => {
   test('is refused, naming the model that had no reading for it', () => {
     const provider = di.usingLifetimeModel(standard())
-      .configureServices(manifest => manifest.add(ServiceDescriptor.ctor<StandardLifetime>(COUNTER, Counter, Type.ctor(COUNTER, [[]]), 'singleton')))
+      .configureServices(manifest => manifest.add(Registration.ctor<StandardLifetime>(COUNTER, Counter, Type.ctor(COUNTER, [[]]), 'singleton')))
       .build();
 
     let caught: unknown;

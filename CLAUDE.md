@@ -120,9 +120,9 @@ where that's cheap, and flag the intended divergence rather than pre-emptively t
   last) → the kind's scalars → children pairwise; visitors iterate members as stored.
   `ConstructorType` carries a boolean
   `abstract` member — a flag, not a kind — matching TypeScript's own `abstract new (...) =>` spelling;
-  an abstract pattern matches only an abstract subject, and `ServiceDescriptor.ctor` throws on an
+  an abstract pattern matches only an abstract subject, and `Registration.ctor` throws on an
   abstract implementer (§181). `Iterable`/`Array` are the only
-  aggregate kinds — delivery is call-site behavior, so `Type.async` and the dedicated `asyncIterable`
+  aggregate kinds — delivery is site behavior, so `Type.async` and the dedicated `asyncIterable`
   kind are cancelled (`Promise<T>` and an ordinary global `AsyncIterable<E>` cover them, §151).
   **The wire format is fixed**: token strings never move for a TS-surface change. Also the
   change-token trio (`IChangeToken`,
@@ -163,21 +163,26 @@ where that's cheap, and flag the intended divergence rather than pre-emptively t
   compile-scope `node-builtins.d.ts` files (§44).
 - **`di`** — `di.core` (the abstractions: `Manifest<Scopes>` the interface, `DefaultManifest<Scopes>`
   its concrete class — an iterable decorator chain whose own body declares only the public
-  descriptor-taking primitives `add`/`remove`/`replace` (§188); every other verb, and `add`'s own
+  registration-taking primitives `add`/`remove`/`replace` (§188); every other verb, and `add`'s own
   sugared shapes, arrive through augmentation sets, so a discarded verb result registers NOTHING. A service is named by a `Type` (re-exported from `primitives`, authored via
   `typefor<T>()`). A keyed registration composes the key into the type —
   `Type.tag(base, key)`, never a separate argument or a `base#key` string, and a type wears AT MOST
   ONE tag (`TagType.type` and the `tag` base are `Exclude<Type, TagType>`; a tagged base arriving as
   a value throws rather than re-keying, §150) — and an open template is built structurally,
-  `Type.imported(name, from, [Type.generic(label)])`, the generic hole shared between the service
-  type and the signature slot. The WHOLE error taxonomy ships here:
+  `Type.imported(name, from, [Type.generic(label)])`, the generic hole shared between the address
+  and the signature slot. The WHOLE error taxonomy ships here:
   `DiError` an abstract root, `UnsatisfiableError`/`CycleError`/
   `ManifestValidationError` extending it so one `instanceof` classifies any container failure —
   `ManifestValidationError` carries its own readonly `errors` array positionally matching
-  `failures` — it ships runtime) ← `di` (the resolution engine: `ServiceProvider` seals a manifest
-  through the manifest's `build()` verb; `getRequiredService(type)` throws when nothing is
-  registered, `getService(type)` returns `undefined`, `getServices(type)` yields the collection; it
-  re-exports the taxonomy, so both imports name the same class and `instanceof` holds either way —
+  `failures` — it ships runtime) ← `di` (the resolution engine: `di.usingLifetimeModel(model)` opens
+  a `ContainerBuilder` whose `build()` verb seals a manifest into a `ServiceProvider`;
+  `IServiceProvider` declares the single primitive `getService(address)`, and di.core layers
+  `resolve(address)` (throws `UnsatisfiableError` when nothing can produce it),
+  `resolveMany(address)` (every registration as one sequence — never throws, never answers
+  `undefined`), and two latebound overloads (`resolve(ctorType, ctor)` / `resolve(funcType, func)`,
+  constructing or calling an unregistered callable, nothing registered or cached) on top as
+  augmentations; it re-exports the taxonomy, so both imports name the same class and `instanceof`
+  holds either way —
   di.core stays external in di's bundle so the `Manifest` cross-package augmentations install onto
   is the same object everywhere. **Resolution is one exact-answer loop** (§196): every request
   kind first takes the registrations answering its own address, newest first, first answer that
@@ -187,36 +192,32 @@ where that's cheap, and flag the intended divergence rather than pre-emptively t
   special-case: literals order last, keeping a literal member the fallback of an optional
   dependency. Collections are
   union-agnostic: an aggregate assembles the element's own answers in registration order plus one
-  synthesis tail, never a member spread. `ServiceDescriptor.value` refuses an open service type
+  synthesis tail, never a member spread. `Registration.value` refuses an open address
   unless the hole sits under a callable root — ctor/func, tag stripped — since one erased callable
-  honestly is every closing and one instance is not, §197). Several provider members are declared and throw
-  `NotImplementedError`, so a caller compiles and fails at the point of use, gated on the
-  still-undecided lifetime and disposal model: `tryResolve`/`resolveAsync`/`dispose`/`disposeAsync`
-  on `IServiceProvider`, plus `createAsyncScope` on both `IServiceProvider` and
-  `IServiceScopeFactory` — `createScope(name?)` itself is real and takes an optional name,
-  `IServiceScope` declares `getRequiredService`/`isService`, and
-  `ServiceProviderOptions.validateScopes` is declared and read by nothing. The registration chain
-  opens at `manifest.describe(serviceType)`: the doors `asClass(ctor, ctorType)`/
+  honestly is every closing and one instance is not, §197). Opening a scope is an ordinary
+  registration: a lifetime model that supports scoping contributes it through `createRealizer()`,
+  and it resolves like any other service — di carries no not-implemented placeholders. The registration chain
+  opens at `manifest.describe(address)`: the doors `asClass(ctor, ctorType)`/
   `asFactory(fn, fnType)` take the implementer together with its own type, `asValue(value)` takes
-  only the value, and once a door is taken the node IS a `ServiceDescriptor` — refined by
-  `withLifetime`/`taggedAs`, handed to the descriptor-taking verbs, held in a variable, or built in
+  only the value, and once a door is taken the node IS a `Registration` — refined by
+  `withLifetime`/`taggedAs`, handed to the registration-taking verbs, held in a variable, or built in
   a helper. The flat verbs share one uniform shape,
-  `add/tryAdd/replace(serviceType, implementer, implementerType, scope?)`, the value door passing
+  `add/tryAdd/replace(address, implementer, implementerType, scope?)`, the value door passing
   the bare `ConstantType` marker (a di.core value, not a `Type` node kind — a callable registered
   AS a value is indistinguishable from a factory by its own type, so the call site carries the
   choice) and kind selection a total switch over
   `ConstructorType | FunctionType | ConstantType`. A keyed registration is a TAGGED ADDRESS —
   there is no key argument anywhere. A
   builder that wraps a manifest holds it in a local structural `ManifestSlot`, and an all-in-one
-  verb returns the manifest itself rather than a fluent tail. `NotImplementedError` lives in
-  `primitives` and extends `Error` directly, since not-implemented is not a container concept.
+  verb returns the manifest itself rather than a fluent tail.
   `di.extras` (the Go/ttsc authoring surface, depending on **`di.core` types only, never the `di`
   runtime** — hard invariant) carries `rhombus-std` marker `inline` entries for the flat verbs and
   value doors (`add`/`addValue`, `tryAdd`/`tryAddValue`, `replace`/`replaceValue`, `removeAll`,
-  `describe`) plus the three `get*` provider
-  members (`getService`/`getRequiredService`/`getServices`) — eleven entries total, each entry's
-  `impl` resolved by walking `src/index.ts`'s re-export graph. Each sugar derives BOTH the service
-  type and the observed implementer type (`add<ServiceType>(implementer, scope?)` lowers to
+  `describe` — `add`/`tryAdd`/`replace` each carrying a second, value-shape entry), the
+  `asClass`/`asFactory` builder sugars, and the two provider members
+  (`resolve<ServiceType>()`/`resolveMany<ServiceType>()`) — fifteen entries total, each entry's
+  `impl` resolved by walking `src/index.ts`'s re-export graph. Each sugar derives BOTH the address
+  and the observed implementer type (`add<ServiceType>(implementer, scope?)` lowers to
   `add(typefor<ServiceType>(), implementer, typefor(implementer), scope)`; a cast at the call site
   steers the observed SHAPE, never the kind), and the emitted call binds a different overload than
   the face, which is what terminates the lowering loop.
@@ -359,8 +360,9 @@ where that's cheap, and flag the intended divergence rather than pre-emptively t
   priority-then-LRU compaction, eviction callbacks, `getCurrentStatistics`/`MemoryCacheStatistics`,
   `keys`/`count` enumeration, linked-entry tracking (§65), plus `MemoryDistributedCache` +
   `addDistributedMemoryCache` (§60); `addMemoryCache`/`addDistributedMemoryCache` now route through
-  a real `IOptions<T>` pipeline and resolve `ILoggerFactory` via `tryResolve`, registering through
-  `di.core`'s `tryAddFactory` (§65); ← `caching.core` + `logging.core` + `options` + `primitives`,
+  a real `IOptions<T>` pipeline and resolve `ILoggerFactory` through the optional-address pattern
+  (`resolve(Type.union(typefor<ILoggerFactory>(), Type.typeLiteral(undefined)))`), registering
+  through `di.core`'s `tryAddFactory` (§65); ← `caching.core` + `logging.core` + `options` + `primitives`,
   `di.core` as peer). Meter/observable-counter metrics hooks stay unported — no meter/instrument
   analog exists (§17).
 - **`fileproviders`** — `fileproviders.core` (`IFileProvider`/`IFileInfo`/`IDirectoryContents`,
@@ -391,12 +393,12 @@ before touching):
   (`IServiceProvider`, `Manifest`); a concrete implementation (`DefaultManifest`, `ServiceProvider`)
   never appears in a public type (§1, §10).
 - **The manifest is IMMUTABLE** — `Manifest` is an iterable decorator chain: every verb
-  (`add`/`addFactory`/`addValue`, the descriptor verbs, every augmentation) returns a NEW manifest
+  (`add`/`addFactory`/`addValue`, the registration verbs, every augmentation) returns a NEW manifest
   and leaves the receiver alone, so a discarded result registers NOTHING. A verb's long overload
   takes the implementer's whole `Type` node as a required arg 3 — `implementerType`, a
   `ConstructorType`/`FunctionType` carrying one parameter SIGNATURE per overload (the bare `ConstantType`
   marker for a value); an intersection means an
-  intersection — and the descriptor stores that node beside the `implementer` itself, so signatures are
+  intersection — and the registration stores that node beside the `implementer` itself, so signatures are
   read through `implementerType.args` and live in one place. `scope` is arg 4; a keyed registration
   spells its key inside the address (`Type.tag`), never as an argument. A builder
   that wraps a manifest
@@ -411,11 +413,11 @@ before touching):
   is inexpressible by design — take `IServiceProvider` beside the delivered type and look it up.
   No `Type` kind carries the distinction: the slot's shape is read BEFORE substitution, which is
   why the registry hands the lowering the registration plus its captured bindings rather than an
-  already-substituted descriptor (§157).
+  already-substituted registration (§157).
 - **A plan belongs to its manifest** — plans cache against the manifest; a resolution carrying
-  additional descriptors (a latebound call's arguments) resolves an ephemeral COMPOSED manifest
+  additional registrations (a latebound call's arguments) resolves an ephemeral COMPOSED manifest
   that neither reads nor writes the shared cache, and whose additionals outrank the manifest's own
-  registrations. Union choice is decided per-manifest against that call's full descriptor universe,
+  registrations. Union choice is decided per-manifest against that call's full registration universe,
   and a chosen member's RUNTIME failure fails the resolution — never a fallthrough (§158).
 - **Runtime identity is load-bearing** — and guarded at runtime: primitives and di.core each stamp
   a `globalThis[Symbol.for('<pkg>/instance')]` sentinel at load, and a second, different copy of

@@ -1,7 +1,6 @@
-import { type IServiceProvider, Manifest, type Realizer, type ScopeFactory } from '@rhombus-std/di.core';
+import { type IServiceProvider, type Realizer, type Registration } from '@rhombus-std/di.core';
 import { augment, Type } from '@rhombus-std/primitives';
 import { typefor } from '@rhombus-std/primitives.extras';
-import type { Func } from '@rhombus-toolkit/func';
 import { Engine } from './internal/Engine.js';
 import { ServiceProviderOptions } from './ServiceProviderOptions.js';
 
@@ -15,20 +14,19 @@ export class ServiceProvider implements IServiceProvider {
   /** @throws {ManifestValidationError} when `options.validateOnBuild` finds an unsatisfiable graph. */
   constructor(
     realizer: Realizer,
-    scopeFactory: Func<[IServiceProvider], ScopeFactory<readonly any[]>> | undefined,
-    manifest: Manifest<unknown>,
+    registrations: Iterable<Registration<unknown>>,
     options: ServiceProviderOptions = ServiceProviderOptions.defaults,
   ) {
-    this.#engine = new Engine(realizer, scopeFactory, manifest);
+    this.#engine = new Engine(realizer, registrations);
     if (options.validateOnBuild) {
       this.#engine.validate();
     }
   }
 
-  getService(serviceType: Type): any {
-    if (!serviceType) {
+  getService(address: Type): any {
+    if (!address) {
       throw new TypeError('getService was handed a nullish service type.');
     }
-    return this.#engine.resolve(serviceType, { serviceProvider: this });
+    return this.#engine.resolve(address, { serviceProvider: this });
   }
 }

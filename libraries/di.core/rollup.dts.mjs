@@ -23,7 +23,7 @@ const BUILDERS_SPECIFIER = '@rhombus-std/di.core/builders';
  * Sends every in-package import of the chain module out to the ./builders subpath the chain also
  * publishes under. The two rolls would otherwise each declare their own `IAsImplementer`, and a
  * registration-authoring package augments the subpath's — leaving the one the root's
- * `ServiceDescriptorBuilderFor` reads unmerged, so the sugar would never reach a caller.
+ * `RegistrationBuilderFor` reads unmerged, so the sugar would never reach a caller.
  */
 const buildersSubpath = {
   name: 'builders-subpath',

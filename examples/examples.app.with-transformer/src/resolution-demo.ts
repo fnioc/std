@@ -13,8 +13,8 @@
 // declarations — so consumer and producer meet on the type rather than on a
 // string they each have to spell correctly.
 
-import { di } from '@rhombus-std/di';
-import { LifetimeModel, Type } from '@rhombus-std/di.core';
+import { di, noop } from '@rhombus-std/di';
+import { Type } from '@rhombus-std/di.core';
 import type { ImportedType, IServiceProvider } from '@rhombus-std/di.core';
 import { typefor } from '@rhombus-std/primitives.extras';
 
@@ -197,5 +197,5 @@ async function* tour(provider: IServiceProvider): AsyncGenerator<string> {
  * asynchronously — every other chapter is an ordinary generator.
  */
 export function demonstrateResolution(): AsyncGenerator<string> {
-  return tour(di.usingLifetimeModel(LifetimeModel.noop).usingManifest(addCheckoutServices()).build());
+  return tour(di.usingLifetimeModel(noop()).usingManifest(addCheckoutServices()).build());
 }

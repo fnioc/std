@@ -107,7 +107,7 @@ its own branch; the integrator merges each lane the moment it lands, not in one 
   (2) the type-door collapse into asClass/asFactory; (3) ConstantType + addValue + the uniform `add`;
   (4) the `describe` chain + its inline entry; (5) U6's builder.ts + ServiceProvider.ts legs (they land last
   because the door collapse deletes most of them). L1 authors all new code ALREADY in the target naming
-  (`serviceType`, `ServiceType`, no "token") so the L4 rename sweep never has to touch its output.
+  (`address`, `ServiceType`, no "token") so the L4 rename sweep never has to touch its output.
 - **L2 — Go engine (parallel).** transforms/: aliased-union naming with the exportedness gate, AliasType
   derivation + node + factory (the primitives/Type.ts edits ride here — different files from L1),
   `Hole`→`Generic` rename, mergesynth ctor/func split. Parity e2es updated per change. Touches L1 only at the
@@ -117,8 +117,8 @@ its own branch; the integrator merges each lane the moment it lands, not in one 
   Keyed derivation land — do not wait for L1 to finish entirely.
 - **L4 — mechanical sweeps (parallel, file-scoped agents).** getOrInsert swap, groupBy, lazy-thrown strings,
   assertNever style, iterable `replace` overloads, smoke.ts audit/port, `configureContainer` degeneralization,
-  errors-demo reimplementation, and the token→type + serviceType renames over every file OUTSIDE L1's blast
-  radius (di.core/src/builder.ts, ServiceProvider.ts, the descriptor augmentation files). After L1 lands, one
+  errors-demo reimplementation, and the token→type + address renames over every file OUTSIDE L1's blast
+  radius (di.core/src/builder.ts, ServiceProvider.ts, the registration augmentation files). After L1 lands, one
   cheap re-sweep over its files for any straggler naming.
 - **L5 — exports rework (parallel worktree).** The conventional-exports overhaul + the feat-src-first-exports
   salvage-check-and-delete. Its conflicts with other lanes are package.json/tsconfig JSON — easy merges,
@@ -137,12 +137,12 @@ remote-worker rules above.
 A parameter that names a type takes a `Type` and nothing else; a consumer holding a string writes `Type.from(...)`
 at the call. Most sites are already converted by hand. What remains:
 
-- [ ] **A parameter naming the SERVICE type is spelled `serviceType`, not `type`.** Faces are done; the internals
-      still name the service type `type`: `libraries/di.core/src/ServiceScope.ts:21,23`;
+- [ ] **A parameter naming an address is spelled `address`, not `type`.** Faces are done; the internals
+      still name the address `type`: `libraries/di.core/src/ServiceScope.ts:21,23`;
       `libraries/di.core/src/Errors.ts:44,46,86,90,105` (readonly `type` member);
-      `libraries/di.core/src/service-type.ts:10` (`withKey`);
-      `libraries/di/src/internal/Engine.ts:37,46,63,105,114`; `libraries/di/src/internal/CallSite/CallSite.ts:114`;
-      `ToCallSiteVisitor.ts:40,71,191,211,246`; `libraries/di/src/internal/ServiceScope.ts:69,73`. Several of these
+      `libraries/di.core/src/address.ts:10` (`withKey`);
+      `libraries/di/src/internal/Engine.ts:37,46,63,105,114`; `libraries/di/src/internal/Plan/Plan.ts:114`;
+      `ToPlanVisitor.ts:40,71,191,211,246`; `libraries/di/src/internal/ServiceScope.ts:69,73`. Several of these
       files carry uncommitted owner edits — re-verify lines before editing.
 
 **Exempt — leave alone:** `libraries/primitives/src/Type/Type.ts` `:162` (`Signatures.from`) and `:265`. These
@@ -152,8 +152,8 @@ turned into a node — so they keep their string legs. The re-sweep must not fla
 ## Kill the sentinel slots
 
 `libraries/options.augmentations/src/option-types.ts` fabricates global type names and registers values under them
-that have no relationship to the name. `add(startupValidationTargetType(), optionsAddressType(type))` declares a
-service type nothing in the program is ever of, and stores a `Type` node under it. Every one of these is a bucket
+that have no relationship to the name. `add(startupValidationTargetType(), optionsAddressType(type))` declares an
+address nothing in the program is ever of, and stores a `Type` node under it. Every one of these is a bucket
 key wearing a type's clothes, with `[optionsType]` standing in for a composite key component rather than a type
 argument.
 
@@ -196,7 +196,7 @@ argument.
       structural node `schemaof` would build. Narrow no further than that — the named case is the only one a call
       site demands today, so everything else keeps falling back to `Type`.
 
-A `Keyed<Type, K>` sketch demonstrating the shape — a real service type carrying a key, with a value genuinely
+A `Keyed<Type, K>` sketch demonstrating the shape — a real address carrying a key, with a value genuinely
 assignable to it, and the factory's own signature supplying its injection list:
 
 ```ts
@@ -272,7 +272,7 @@ whole set is decided fresh when the slots above are rewritten, so this is a demo
 - [ ] `tests/mergesynth.ttsc.e2e/test/mergesynth.test.ts:285` still describes `registerAugmentations`/`augment`'s
       parameter as `string | Type`; the parameter is `Type`-only now.
 - [ ] **Replace the one remaining lazily-thrown string.**
-      `libraries/di/src/internal/CallSite/ToCallSiteVisitor.ts:36` throws `` `wtf mate...` `` in
+      `libraries/di/src/internal/Plan/ToPlanVisitor.ts:36` throws `` `wtf mate...` `` in
       `VisitDisposerFactory`'s `[Symbol.dispose]`, with no matching `catch` anywhere — it doesn't qualify for the
       intentional-control-flow exemption, so convert it to a real Error. The file carries uncommitted owner
       edits — re-verify the line before editing.

@@ -8,7 +8,7 @@
 import '@rhombus-std/di.extras';
 import '@rhombus-std/options.augmentations';
 
-import { type IServiceProvider, type Manifest, ServiceDescriptor } from '@rhombus-std/di.core';
+import { type IServiceProvider, type Manifest, Registration } from '@rhombus-std/di.core';
 import { Type } from '@rhombus-std/primitives';
 
 interface IWidget {}
@@ -19,8 +19,8 @@ const WIDGET = Type.imported('Widget', 'test');
 declare const manifest: Manifest<'singleton'>;
 declare const provider: IServiceProvider;
 
-// add: descriptor / token constructor / token factory / token value / sugar
-manifest.add(ServiceDescriptor.value(WIDGET, new Widget()));
+// add: registration / token constructor / token factory / token value / sugar
+manifest.add(Registration.value(WIDGET, new Widget()));
 manifest.add(WIDGET, Widget, Type.ctor(WIDGET, [[]]), 'singleton');
 manifest.add(WIDGET, () => new Widget(), Type.func(WIDGET, [[]]), 'singleton');
 manifest.addValue(WIDGET, new Widget());
@@ -30,16 +30,16 @@ manifest.add<IWidget>(() => new Widget(), 'singleton');
 // addValue / addValue<T>
 manifest.addValue<IWidget>(new Widget());
 
-// tryAdd: descriptor / token forms / sugar
-manifest.tryAdd(ServiceDescriptor.value(WIDGET, new Widget()));
+// tryAdd: registration / token forms / sugar
+manifest.tryAdd(Registration.value(WIDGET, new Widget()));
 manifest.tryAdd(WIDGET, Widget, Type.ctor(WIDGET, [[]]), 'singleton');
 manifest.tryAdd(WIDGET, () => new Widget(), Type.func(WIDGET, [[]]), 'singleton');
 manifest.tryAddValue(WIDGET, new Widget());
 manifest.tryAdd<IWidget>(Widget, 'singleton');
 manifest.tryAddValue<IWidget>(new Widget());
 
-// replace: descriptor / token forms / sugar
-manifest.replace(ServiceDescriptor.value(WIDGET, new Widget()));
+// replace: registration / token forms / sugar
+manifest.replace(Registration.value(WIDGET, new Widget()));
 manifest.replace(WIDGET, Widget, Type.ctor(WIDGET, [[]]), 'singleton');
 manifest.replace(WIDGET, () => new Widget(), Type.func(WIDGET, [[]]), 'singleton');
 manifest.replaceValue(WIDGET, new Widget());

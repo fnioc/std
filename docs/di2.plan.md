@@ -11,34 +11,34 @@ shown to the owner and not overruled; everything untagged is owner-set.
 - **primitives** owns the Type algebra (`src/Type/`: Type + kind interfaces, TypeVisitor,
   Equals/ToString/Substitute/Satisfies/Validator/ExpandUnions visitors) and `IServiceProvider`.
   Zero-dep leaf holds — trivial helpers inlined, never imported.
-- **di.core** owns registration: ServiceDescriptor (+`op`), Manifest/DefaultManifest, both augmentation
+- **di.core** owns registration: Registration (+`op`), Manifest/DefaultManifest, both augmentation
   sets, the error taxonomy. Re-exports Type + IServiceProvider from primitives (Token replacement
   is a later, separate effort). ScopeCache placeholder parks here pending scope design.
-- **di** owns resolution: CallSite (engine IR), ToCallSiteVisitor (lowering), RealizeVisitor, the
+- **di** owns resolution: Plan (engine IR), ToPlanVisitor (lowering), RealizeVisitor, the
   Engine, ServiceProvider. Engine internals stay out of di's public barrel.
 - **Engine**: ONE per manifest, stateless per-resolution; internal context-taking
   `resolve(type, context)` plus the async sibling. `IServiceProvider` stays single-arg FOREVER —
   the user door. `ServiceProvider` is a thin (engine, scope-binding) facade.
-- Recursion discipline: lowering recursion stays inside ToCallSiteVisitor; realize recursion stays
+- Recursion discipline: lowering recursion stays inside ToPlanVisitor; realize recursion stays
   inside RealizeVisitor; the ONE sanctioned cross-file loop is latebound → engine entrypoint.
 - The engine memoizes `type → { tree, asyncSites }` (sound: manifest immutable, lowering
-  scope-pure). A latebound re-entry layers extra value descriptors ⇒ its memo key includes those
+  scope-pure). A latebound re-entry layers extra value registrations ⇒ its memo key includes those
   arg types, or bypasses. **(proposed)**
 
 ## Type layer
 
-- `FunctionType` (kind `'function'`) is the shape; late binding is a callsite strategy (CallSite
+- `FunctionType` (kind `'function'`) is the shape; late binding is a plan strategy (Plan
   keeps `latebound`). Done.
 - `Type.parse` performs structural upgrades only (`Func`→FunctionType, `Ctor`→ConstructorType). Strategy
-  recognition happens at lowering: `IServiceProvider`→ServiceProviderCallSite,
-  iterable→IterableCallSite, promise fallback→async placeholder. No ServiceProviderType kind.
+  recognition happens at lowering: `IServiceProvider`→ServiceProviderPlan,
+  iterable→IterablePlan, promise fallback→async placeholder. No ServiceProviderType kind.
   Value-type-as-service (`string`, `number`, …) errors at the resolve entrypoint, not in parse.
   **(proposed)**
 
 ## Lowering
 
-- ToCallSiteVisitor consults the manifest, closes open generics (match-captures →
-  `ServiceDescriptor.op.substitute`), lowers to the CallSite tree. Scope-independent, always.
+- ToPlanVisitor consults the manifest, closes open generics (match-captures →
+  `Registration.op.substitute`), lowers to the Plan tree. Scope-independent, always.
 - Every node is checked for a WHOLE-TYPE registration match first (overridden `visit`);
   decomposition/synthesis — union members, tuple assembly, literal constant, latebound,
   `IServiceProvider` recognition — is only the fallback. A registration for a composite beats its
@@ -51,14 +51,14 @@ shown to the owner and not overruled; everything untagged is owner-set.
   named fallback. Collection = BOTH categories: every registration matching `T` (newest first)
   PLUS `T`'s pure-synthesis result (a union contributes its members' syntheses only — lookups
   never re-run there, so registrations don't double-count). An exact `Iterable<T>` registration
-  wins outright, never combined. Zero matches ⇒ empty sequence, not unsatisfiable. The callsite
+  wins outright, never combined. Zero matches ⇒ empty sequence, not unsatisfiable. The plan
   is materialized; realize hands each walk a lazy iterator.
 - Failure signal is `UnsatisfiableError` everywhere — the `'failzor'` throw and undefined-returns
   die. Catch sites: union-member choice, next-signature choice, promise fallback. **(proposed)**
 - A lookup miss on `T` falls back to `Promise<T>`; a hit there produces an async placeholder node
   (per-occurrence label) wrapping the `Promise<T>` site.
-- The ad-hoc machinery is deleted: `AdHocCallSite`, `RealizeContext.adhoc`, the ServiceProvider
-  adhoc branches. Latebound call args enter re-entry as value descriptors (`additionalServices`).
+- The ad-hoc machinery is deleted: `AdHocPlan`, `RealizeContext.adhoc`, the ServiceProvider
+  adhoc branches. Latebound call args enter re-entry as value registrations (`additionalServices`).
 
 ## Async resolution
 
@@ -86,7 +86,7 @@ Async ≡ the manifest registers `Promise<T>` and a dep wants `T`. A dep literal
 First-class end-to-end.
 
 - Realizes to a closure over the creating context; each call re-enters the engine with the call
-  args as value descriptors. This is THE cross-file loop.
+  args as value registrations. This is THE cross-file loop.
 - **Hoisting stops at latebound boundaries**: a latebound node is a leaf of the enclosing walk;
   its subtree's asyncness belongs to the future call. Hence: A depends on B, only `Promise<B>`
   registered, request `Func<[], Promise<A>>` — the SYNC entrypoint succeeds (it only mints the
@@ -110,7 +110,7 @@ owner positions on record: `docs/di2.scope-notes.md`.
 
 ## Status (bookkeeping, not sequencing)
 
-union+namespace shape + `serviceType: Type`-only — done. FunctionType rename — done. Package moves
+union+namespace shape + `address: Type`-only — done. FunctionType rename — done. Package moves
 — done, direct-repoint shape (no shims: di.core imports Type/IServiceProvider straight from
 primitives; utils split — memo/UnionToTuple → primitives-internal, isAllThere/first →
 di/CallSite/utils.ts; primitives rebuilt clean; di.core barrel re-exports the Type surface +
@@ -118,7 +118,7 @@ IServiceProvider and now ScopeCache). Handoff snapshot committed + pushed as tag
 (9aa32c9).
 
 Engine v1 — done, UNCOMMITTED past the tag: `Engine` (context-taking resolve, additionalServices
-layering, `UnsatisfiableError` at the boundary), ToCallSiteVisitor finished (union first-satisfiable
+layering, `UnsatisfiableError` at the boundary), ToPlanVisitor finished (union first-satisfiable
 member; literal → constant; `IServiceProvider` recognition; function → registration lookup then
 latebound fallback; intersection/object/tag/ctor → generic lookup; placeholder → undefined),
 RealizeVisitor rewritten (latebound loop-back through the engine; ad-hoc machinery deleted), dumb
