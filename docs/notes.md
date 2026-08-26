@@ -295,6 +295,14 @@ land; delete the file when empty.
       `ServiceManifest`, token strings, `.as()`, `resolveFactory`, `UnregisteredTokenError`, none of
       which exist. Deleting it alone leaves a hole in a documented set and singles out one family
       for a property all nine share. The call is what happens to the CHAPTER SERIES.
+- [ ] **SIGNED OFF 2026-08-25, NOT YET EXECUTED — three of the rename slate's entries.** The owner
+      signed off on `serviceType` → `address`, internal `CallSite` → `Plan`, and `ServiceDescriptor`
+      → `Registration`, explicitly "just record, don't execute yet". The rest of the slate below is
+      still unruled: the `ServiceProvider` → `Resolver`-vs-`Container` pick, and `IServiceScope` →
+      bare `Scope`. NOTE on blast radius, larger now than when the slate was written:
+      `ServiceDescriptor` appears in the signature of every `get*Manifest` function across six
+      packages, in `tryAdd`/`addMany`, and in the merge idiom the returned-manifest pattern made
+      repo-wide.
 - [ ] **Post-port rename slate (owner-opened 2026-08-24; one dedicated pass AFTER the in-flight
       lanes land, CLAUDE.md digest included; ideal name first, MEDI-distance a free bonus).**
       OWNER-ENDORSED 2026-08-24 ("record all your suggestions — i like them"): `ServiceProvider`
