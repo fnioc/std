@@ -1,8 +1,5 @@
 // Behaviour tests for the standard lifetime model: which scope keeps an instance, what a
 // registration naming no lifetime meets, and what a singleton's own dependencies resolve from.
-//
-// The scope/lifetime system is unbuilt here — every describe below stays skipped rather than
-// chased to green.
 
 import { di, standard } from '@rhombus-std/di';
 import { type IServiceProvider, LifetimeModelError, Registration, ScopeFactory, type StandardLifetime } from '@rhombus-std/di.core';
@@ -31,13 +28,13 @@ function openScope(provider: IServiceProvider): IServiceProvider {
   return (provider.resolve(ScopeFactory.address) as Func<[], IServiceProvider>)();
 }
 
-describe.skip('the model itself', () => {
+describe('the model itself', () => {
   test('names itself, so a failure can say which model refused', () => {
     expect(standard().name).toBe('standard');
   });
 });
 
-describe.skip('singleton', () => {
+describe('singleton', () => {
   test('answers every ask with one instance', () => {
     const provider = buildProviderFor('singleton');
     expect(provider.resolve(COUNTER)).toBe(provider.resolve(COUNTER));
@@ -49,7 +46,7 @@ describe.skip('singleton', () => {
   });
 });
 
-describe.skip('scoped', () => {
+describe('scoped', () => {
   test('answers every ask within one scope with the same instance', () => {
     const scope = openScope(buildProviderFor('scoped'));
     expect(scope.resolve(COUNTER)).toBe(scope.resolve(COUNTER));
@@ -67,7 +64,7 @@ describe.skip('scoped', () => {
   });
 });
 
-describe.skip('transient', () => {
+describe('transient', () => {
   test('constructs afresh for every ask', () => {
     const provider = buildProviderFor('transient');
     expect(provider.resolve(COUNTER)).not.toBe(provider.resolve(COUNTER));
@@ -79,10 +76,12 @@ describe.skip('transient', () => {
   });
 });
 
-describe.skip('a registration naming no lifetime', () => {
+describe('a registration naming no lifetime', () => {
   test('is refused, naming the model that had no reading for it', () => {
     const provider = di.usingLifetimeModel(standard())
-      .configureServices(manifest => manifest.add(Registration.ctor<StandardLifetime>(COUNTER, Counter, Type.ctor(COUNTER, [[]]), 'singleton')))
+      // The types forbid a lifetime-less registration on this model, so the cast is what reaches
+      // the runtime guard an untyped caller would hit.
+      .configureServices(manifest => manifest.add(Registration.ctor(COUNTER, Counter, Type.ctor(COUNTER, [[]])) as unknown as Registration<StandardLifetime>))
       .build();
 
     let caught: unknown;
@@ -97,7 +96,7 @@ describe.skip('a registration naming no lifetime', () => {
   });
 });
 
-describe.skip('captivity', () => {
+describe('captivity', () => {
   test("a singleton's scoped dependency comes from the root, not the scope it was asked from", () => {
     const provider = di.usingLifetimeModel(standard())
       .configureServices(manifest =>
@@ -113,7 +112,7 @@ describe.skip('captivity', () => {
   });
 });
 
-describe.skip('scope creation', () => {
+describe('scope creation', () => {
   test('the published address resolves to a working scope opener', () => {
     const provider = buildProviderFor('scoped');
     const openChildScope = provider.resolve(ScopeFactory.address) as Func<[], IServiceProvider>;

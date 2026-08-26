@@ -1,8 +1,5 @@
 // Behaviour tests for the tagged lifetime model: which of the open scopes keeps an instance when
 // scopes are named, and what happens when none of them answers to the name a registration used.
-//
-// The scope/lifetime system is unbuilt here — every describe below stays skipped rather than
-// chased to green.
 
 import { di, tagged } from '@rhombus-std/di';
 import { type IServiceProvider, LifetimeModelError, ScopeFactory, ScopeTagUnmatchedError } from '@rhombus-std/di.core';
@@ -28,13 +25,13 @@ function openScope(provider: IServiceProvider, tag: Tags): IServiceProvider {
   return (provider.resolve(ScopeFactory.address) as Func<[Tags], IServiceProvider>)(tag);
 }
 
-describe.skip('the model itself', () => {
+describe('the model itself', () => {
   test('names itself, so a failure can say which model refused', () => {
     expect(tagged().name).toBe('tagged');
   });
 });
 
-describe.skip('a tagged registration', () => {
+describe('a tagged registration', () => {
   test('is kept by the open scope carrying its tag', () => {
     const scope = openScope(buildProviderKeptBy('request'), 'request');
     expect(scope.resolve(COUNTER)).toBe(scope.resolve(COUNTER));
@@ -65,7 +62,7 @@ describe.skip('a tagged registration', () => {
   });
 });
 
-describe.skip('an untagged registration', () => {
+describe('an untagged registration', () => {
   test('is constructed afresh for every ask', () => {
     const provider = di.usingLifetimeModel(tagged<Tags>())
       .configureServices(manifest => manifest.add(COUNTER, Counter, COUNTER_TYPE))
@@ -75,7 +72,7 @@ describe.skip('an untagged registration', () => {
   });
 });
 
-describe.skip('no scope carrying the tag', () => {
+describe('no scope carrying the tag', () => {
   test('fails naming both the model and the tag rather than answering from the root', () => {
     let caught: unknown;
     try {

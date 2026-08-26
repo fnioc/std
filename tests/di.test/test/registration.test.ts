@@ -10,13 +10,6 @@ const B = Type.imported('B', 'app');
 
 class Impl {}
 
-// Registration.matches is retired — the service-type identity test it named is inlined at
-// each call site instead (e.g. Manifest's own replace/remove verbs), not a public op.
-describe.skip('matches', () => {
-  test.skip('holds across the spellings of one service type', () => {});
-  test.skip('separates a keyed registration from the bare one it tags', () => {});
-});
-
 describe('equals', () => {
   test('holds when the signatures agree however they were spelled', () => {
     expect(Registration.equals(
