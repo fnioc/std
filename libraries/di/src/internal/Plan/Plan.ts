@@ -4,8 +4,8 @@ import { memo } from '@rhombus-std/primitives';
 import type { Ctor, Func } from '@rhombus-toolkit/func';
 import { assertNever } from '@rhombus-toolkit/type-guards';
 import type { Answer, Registry } from '../Registry.js';
+import { PlannerVisitor } from './PlannerVisitor.js';
 import { realizePlan } from './RealizeVisitor.js';
-import { ToPlanVisitor } from './ToPlanVisitor.js';
 
 export type { RealizeOptions } from './RealizeVisitor.js';
 
@@ -188,7 +188,7 @@ export namespace Plan {
     const planFor = memo((registry: Registry) =>
       memo((address: Type) =>
         memo((args: ReadonlyMap<Type, number>) => {
-          const visitor = new ToPlanVisitor(registry, args);
+          const visitor = new PlannerVisitor(registry, args);
           const plan = visitor.visit(address);
           if (plan === undefined) {
             // Two failures reach here and a caller acts on them differently: nothing is registered
@@ -242,7 +242,7 @@ export namespace Plan {
    * comes back synthesized, outside the lifetime model's jurisdiction.
    */
   export function fromRegistration(registration: Registration<unknown>, registry: Registry): Plan | undefined {
-    const visitor = new ToPlanVisitor(registry);
+    const visitor = new PlannerVisitor(registry);
     const [kind, narrowed] = Registration.kind(registration);
     switch (kind) {
       case 'ctor': {

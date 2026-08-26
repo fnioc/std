@@ -1,10 +1,10 @@
-// Behaviour tests for ToPlanVisitor: what Plan tree a Type request lowers to. Every node
+// Behaviour tests for PlannerVisitor: what Plan tree a Type request lowers to. Every node
 // is checked against the registry first; the per-kind visit methods are the fallback decomposition
 // or synthesis a whole-type miss falls back to.
 
 import { CycleError, Manifest, Registration } from '@rhombus-std/di.core';
 import { Plan } from '@rhombus-std/di/private/internal/Plan/Plan';
-import { ToPlanVisitor } from '@rhombus-std/di/private/internal/Plan/ToPlanVisitor';
+import { PlannerVisitor } from '@rhombus-std/di/private/internal/Plan/PlannerVisitor';
 import { Registry } from '@rhombus-std/di/private/internal/Registry';
 import { Type } from '@rhombus-std/primitives';
 import { describe, expect, test } from 'bun:test';
@@ -39,7 +39,7 @@ class Loop {
 }
 
 function visitorFor(manifest: Manifest<unknown>) {
-  return new ToPlanVisitor(new Registry(manifest));
+  return new PlannerVisitor(new Registry(manifest));
 }
 
 describe('a ctor registration', () => {

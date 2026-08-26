@@ -1,5 +1,5 @@
 // Behaviour tests for RealizeVisitor: turning a Plan tree into the value it describes. Plans
-// are built by hand here through the Plan factories, independent of what ToPlanVisitor
+// are built by hand here through the Plan factories, independent of what PlannerVisitor
 // would have produced, so each node kind is exercised on its own terms.
 
 import { noop } from '@rhombus-std/di';

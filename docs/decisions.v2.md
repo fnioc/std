@@ -587,7 +587,7 @@ The wire format is the one grammar `Type.from`/`Type.stringify` run at the data-
 
 ## §112 — A union dependency is chosen once, when the plan is built; nothing here falls through if the chosen member later fails to construct
 
-`ToPlanVisitor` (`libraries/di/src/internal/Plan/ToPlanVisitor.ts`) decides a union's member at PLAN-BUILD time: `#chosen`/`visitUnion` ask which registered or synthesizable member the union resolves to, and that choice is baked into the `Plan` the engine memoizes per request (`Engine#planFor`, `libraries/di/src/internal/Engine.ts`). Realizing the plan later never re-asks the question — nothing in `Plan`/`RealizeVisitor` catches a construction failure and tries the union's next candidate. Multiple members that could each answer the union raise `AmbiguousUnionError` at plan-build time (or take the newest, under `unionAmbiguity: 'newest'`); a literal member is the union's fallback when no other member resolves.
+`PlannerVisitor` (`libraries/di/src/internal/Plan/PlannerVisitor.ts`) decides a union's member at PLAN-BUILD time: `#chosen`/`visitUnion` ask which registered or synthesizable member the union resolves to, and that choice is baked into the `Plan` the engine memoizes per request (`Engine#planFor`, `libraries/di/src/internal/Engine.ts`). Realizing the plan later never re-asks the question — nothing in `Plan`/`RealizeVisitor` catches a construction failure and tries the union's next candidate. Multiple members that could each answer the union raise `AmbiguousUnionError` at plan-build time (or take the newest, under `unionAmbiguity: 'newest'`); a literal member is the union's fallback when no other member resolves.
 
 _Claude's finding, flagged for owner review: whether a union member that throws or rejects during construction should fall back to the next candidate is a design question the current engine has not answered either way._
 
@@ -796,7 +796,7 @@ A keyed request and a keyed registration meet at one interned `Type.tag(base, ke
 the keyed-identity class of bug this entry catalogued — a verb naming the bare base where the
 composed tag was meant — has no separate string-composition step left to get wrong.
 
-The current engine (`Registry`, `Engine`, `ToPlanVisitor` — §106, §111, §112) has no scope or
+The current engine (`Registry`, `Engine`, `PlannerVisitor` — §106, §111, §112) has no scope or
 disposal model yet: `IServiceScope`/`IServiceScopeFactory` (`libraries/di.core/src/ServiceScope.ts`)
 are declared, and `AsyncServiceScope` is explicitly a "scaffold: the async face of a scope, pending
 the scope model." Use-after-dispose is not yet a question this engine can raise; a correctness
@@ -1886,7 +1886,7 @@ _Claude-directed 2026-08-13, executing the owner's §155/§157 direction._
 
 A constructor parameter whose type is a plain function type (`(dep: IDep) => IThing`) derives as an
 ordinary nested `Type.func(returns, ...argTypes)` node — the SAME derivation any function-typed
-value gets, nothing signature-position-specific. The landed resolution engine (`ToPlanVisitor`,
+value gets, nothing signature-position-specific. The landed resolution engine (`PlannerVisitor`,
 `libraries/di/src/internal/CallSite/`) already handles this generically as a synthesis fallback:
 `visitFunc` builds a `LateBoundPlan` whose invocation re-enters the engine to resolve the
 function type's OWN return type, with the call's own arguments registered as value registrations for
@@ -2424,7 +2424,7 @@ Left alone, still throwing: `ServiceProvider.tryResolve`/`resolveAsync`,
 `IServiceScopeFactory.createAsyncScope`/`IServiceProvider.createAsyncScope` — no red test or example
 reaches them, so nothing was built for them.
 
-**`IServiceScopeFactory` is recognized structurally, not registered.** `ToPlanVisitor` answers a
+**`IServiceScopeFactory` is recognized structurally, not registered.** `PlannerVisitor` answers a
 request for it the same way it already answered `IServiceProvider` — by name and declaring module,
 with no manifest entry required — and `RealizeVisitor` hands back a `ServiceScopeFactory` bound to
 the walk's own engine and provider. This is the existing pattern for `IServiceProvider`, reused
@@ -2910,7 +2910,7 @@ _Claude-recorded 2026-08-22._
 
 ## §196 — Resolution is one exact-answer loop; a union settles by its first resolvable member; `AmbiguousUnionError` is gone
 
-`ToPlanVisitor.visit` inlines the exact-answer loop for EVERY request kind, a union's own
+`PlannerVisitor.visit` inlines the exact-answer loop for EVERY request kind, a union's own
 address included: `Registry.answering(type)` yields the registrations answering exactly that one
 address — closed registrations by interned identity, open ones by §194 unification, newest first,
 no union spread — and the first answer whose `Plan.fromAnswer` builds wins, an unbuildable

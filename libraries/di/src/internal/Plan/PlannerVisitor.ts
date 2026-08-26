@@ -12,7 +12,7 @@ import { Plan } from './Plan.js';
  * @remarks
  * Exact match lookup first, falling back to Type specific synthesis behavior.
  */
-export class ToPlanVisitor extends Type.Visitor<Plan | undefined> {
+export class PlannerVisitor extends Type.Visitor<Plan | undefined> {
   readonly #registry: Registry;
   /** A latebound caller's argument types, each naming the call position that supplies it. */
   readonly #args: ReadonlyMap<Type, number> | undefined;

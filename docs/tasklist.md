@@ -142,7 +142,7 @@ at the call. Most sites are already converted by hand. What remains:
       `libraries/di.core/src/Errors.ts:44,46,86,90,105` (readonly `type` member);
       `libraries/di.core/src/address.ts:10` (`withKey`);
       `libraries/di/src/internal/Engine.ts:37,46,63,105,114`; `libraries/di/src/internal/Plan/Plan.ts:114`;
-      `ToPlanVisitor.ts:40,71,191,211,246`; `libraries/di/src/internal/ServiceScope.ts:69,73`. Several of these
+      `PlannerVisitor.ts:40,71,191,211,246`; `libraries/di/src/internal/ServiceScope.ts:69,73`. Several of these
       files carry uncommitted owner edits — re-verify lines before editing.
 
 **Exempt — leave alone:** `libraries/primitives/src/Type/Type.ts` `:162` (`Signatures.from`) and `:265`. These
@@ -272,7 +272,7 @@ whole set is decided fresh when the slots above are rewritten, so this is a demo
 - [ ] `tests/mergesynth.ttsc.e2e/test/mergesynth.test.ts:285` still describes `registerAugmentations`/`augment`'s
       parameter as `string | Type`; the parameter is `Type`-only now.
 - [ ] **Replace the one remaining lazily-thrown string.**
-      `libraries/di/src/internal/Plan/ToPlanVisitor.ts:36` throws `` `wtf mate...` `` in
+      `libraries/di/src/internal/Plan/PlannerVisitor.ts:36` throws `` `wtf mate...` `` in
       `VisitDisposerFactory`'s `[Symbol.dispose]`, with no matching `catch` anywhere — it doesn't qualify for the
       intentional-control-flow exemption, so convert it to a real Error. The file carries uncommitted owner
       edits — re-verify the line before editing.

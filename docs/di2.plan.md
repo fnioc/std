@@ -14,12 +14,12 @@ shown to the owner and not overruled; everything untagged is owner-set.
 - **di.core** owns registration: Registration (+`op`), Manifest/DefaultManifest, both augmentation
   sets, the error taxonomy. Re-exports Type + IServiceProvider from primitives (Token replacement
   is a later, separate effort). ScopeCache placeholder parks here pending scope design.
-- **di** owns resolution: Plan (engine IR), ToPlanVisitor (lowering), RealizeVisitor, the
+- **di** owns resolution: Plan (engine IR), PlannerVisitor (lowering), RealizeVisitor, the
   Engine, ServiceProvider. Engine internals stay out of di's public barrel.
 - **Engine**: ONE per manifest, stateless per-resolution; internal context-taking
   `resolve(type, context)` plus the async sibling. `IServiceProvider` stays single-arg FOREVER —
   the user door. `ServiceProvider` is a thin (engine, scope-binding) facade.
-- Recursion discipline: lowering recursion stays inside ToPlanVisitor; realize recursion stays
+- Recursion discipline: lowering recursion stays inside PlannerVisitor; realize recursion stays
   inside RealizeVisitor; the ONE sanctioned cross-file loop is latebound → engine entrypoint.
 - The engine memoizes `type → { tree, asyncSites }` (sound: manifest immutable, lowering
   scope-pure). A latebound re-entry layers extra value registrations ⇒ its memo key includes those
@@ -37,7 +37,7 @@ shown to the owner and not overruled; everything untagged is owner-set.
 
 ## Lowering
 
-- ToPlanVisitor consults the manifest, closes open generics (match-captures →
+- PlannerVisitor consults the manifest, closes open generics (match-captures →
   `Registration.op.substitute`), lowers to the Plan tree. Scope-independent, always.
 - Every node is checked for a WHOLE-TYPE registration match first (overridden `visit`);
   decomposition/synthesis — union members, tuple assembly, literal constant, latebound,
@@ -118,7 +118,7 @@ IServiceProvider and now ScopeCache). Handoff snapshot committed + pushed as tag
 (9aa32c9).
 
 Engine v1 — done, UNCOMMITTED past the tag: `Engine` (context-taking resolve, additionalServices
-layering, `UnsatisfiableError` at the boundary), ToPlanVisitor finished (union first-satisfiable
+layering, `UnsatisfiableError` at the boundary), PlannerVisitor finished (union first-satisfiable
 member; literal → constant; `IServiceProvider` recognition; function → registration lookup then
 latebound fallback; intersection/object/tag/ctor → generic lookup; placeholder → undefined),
 RealizeVisitor rewritten (latebound loop-back through the engine; ad-hoc machinery deleted), dumb

@@ -98,7 +98,7 @@ land; delete the file when empty.
       typefor still never lies); value overload untouched (observation can't yield a hole).
       Replaces string-field matching (`isScopeFactoryAddress`) and the structural
       `Type.imported(name, from, [Type.generic(...)])` template spelling — logging's open
-      ILogger registration re-spells as encountered. Engine detection sites (ToPlanVisitor
+      ILogger registration re-spells as encountered. Engine detection sites (PlannerVisitor
       IServiceProvider/ScopeFactory) switch to hole-template `Type.match` while their receivers
       stay generic; moot for ScopeFactory if the floor-registration rework lands.
 - [x] **RULED AND LANDED 2026-08-24 (owner) — `getService` is the whole provider interface.**
@@ -178,7 +178,7 @@ land; delete the file when empty.
       property, not a gap, and reversing it turns matching into a specificity search over open
       registrations; and constraints alone don't finish the job — a registered invoker concrete
       needs engine guts, so it wants engine floor-registration at genesis. Claude's read: the prize
-      is de-special-casing doors out of `ToPlanVisitor`, not the ctor/func split.
+      is de-special-casing doors out of `PlannerVisitor`, not the ctor/func split.
 - [x] **RESOLVED by `61c8e029` — the phantom type parameter is gone: every `examples.lib.*` helper
       now builds and returns its own manifest instead of taking the consumer's.** No
       `Manifest<S | 'singleton'>` spelling or `'singleton' as S | 'singleton'` cast remains
@@ -255,7 +255,7 @@ land; delete the file when empty.
       is wrong and that the existing constraints do not already refuse; two attempts to construct
       one were both wrong.
 - [ ] **(a) LANDED `b41cfeba` — `UnsatisfiableError` now names the specific missing dependency.**
-      `ToPlanVisitor` tracks the first type its own walk found nothing to build from and
+      `PlannerVisitor` tracks the first type its own walk found nothing to build from and
       `Plan.from` threads it in as the outer error's `cause` when it differs from the
       originally requested type, so `error.cause.address` names the exact dependency. (b) `$`
       is deprecated but still spelled in `tests/inline.ttsc.e2e` and di.core's README table;
