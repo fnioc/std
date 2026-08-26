@@ -39,9 +39,9 @@ import type { ObjectType } from '@rhombus-std/primitives';
 export function schemaof<T>(): ObjectType {
   void (null as T | null);
   throw new Error(
-    "schemaof<T>() requires @rhombus-std/config.extras's compile-time transform to run. "
-      + 'It has not been applied. Write the Type tree with the Type factories directly, or '
-      + 'configure the transformer.',
+    "schemaof<T>() requires @rhombus-std/primitives.extras's authoring transform to run. "
+      + 'It has not been applied. Depend on @rhombus-std/primitives.extras so ttsc spawns the '
+      + '@rhombus-std transform host, or write the Type tree with the Type factories directly.',
   );
 }
 
