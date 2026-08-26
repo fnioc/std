@@ -46,8 +46,8 @@ export class PlannerVisitor extends Type.Visitor<Plan | undefined> {
       return Plan.lateboundArg(argIndex);
     }
     using _guard = this.#cycleGuard.visiting(address);
-    const plan = this.#registry.answering(address)
-      .map(answer => Plan.fromAnswer(address, answer, this))
+    const plan = this.#registry.matching(address)
+      .map(match => Plan.fromMatch(address, match, this))
       .find(Boolean)
       ?? super.visit(address);
     if (plan === undefined && this.#missingDependency === undefined) {
@@ -138,8 +138,8 @@ export class PlannerVisitor extends Type.Visitor<Plan | undefined> {
    * out in the order they were authored — with the element's one synthesis, if any, as the tail.
    */
   #collectionSites(elementType: Type): Plan[] {
-    return this.#registry.answering(elementType)
-      .map(answer => Plan.fromAnswer(elementType, answer, this))
+    return this.#registry.matching(elementType)
+      .map(match => Plan.fromMatch(elementType, match, this))
       .toArray()
       .reverse()
       .concat(Type.isOpen(elementType) ? undefined : super.visit(elementType))

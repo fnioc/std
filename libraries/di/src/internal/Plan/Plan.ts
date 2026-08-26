@@ -3,7 +3,7 @@ import { type ConstructorType, type FunctionType, isAllThere, Type } from '@rhom
 import { memo } from '@rhombus-std/primitives';
 import type { Ctor, Func } from '@rhombus-toolkit/func';
 import { assertNever } from '@rhombus-toolkit/type-guards';
-import type { Answer, Registry } from '../Registry.js';
+import type { Match, Registry } from '../Registry.js';
 import { PlannerVisitor } from './PlannerVisitor.js';
 import { realizePlan } from './RealizeVisitor.js';
 
@@ -196,7 +196,7 @@ export namespace Plan {
             // open request cannot be asked which it is — matching one against a registration binds
             // holes, and a hole on the asking side has nothing to bind to — so it reports the
             // absence it can stand behind.
-            const registered = !Type.isOpen(address) && !registry.answering(address).next().done;
+            const registered = !Type.isOpen(address) && !registry.matching(address).next().done;
             // The walk's own leaf failure, when it lies beneath address rather than being
             // address itself, names the actual dependency that could not be met.
             const missing = visitor.missingDependency;
@@ -265,8 +265,8 @@ export namespace Plan {
    * captured. `visitor` supplies the recursion that turns each signature arg into the plan
    * producing it. Undefined when no signature has every arg satisfiable.
    */
-  export function fromAnswer(populatedAddress: Type, answer: Answer, visitor: Type.Visitor<Plan | undefined>): Plan | undefined {
-    const { registration: wideRegistration, generics } = answer;
+  export function fromMatch(populatedAddress: Type, match: Match, visitor: Type.Visitor<Plan | undefined>): Plan | undefined {
+    const { registration: wideRegistration, generics } = match;
     const [kind, registration] = Registration.kind(wideRegistration);
     switch (kind) {
       case 'ctor': {

@@ -39,9 +39,9 @@
 ## Plan walk (`libraries/di`)
 
 - [x] `visit` inlines the exact-answer loop for EVERY request kind — a union's own address
-      included: `answering(type)` newest first, first answer whose `fromAnswer` builds wins; an
+      included: `matching(type)` newest first, first match whose `fromMatch` builds wins; an
       unbuildable hit falls through; then `super.visit` synthesis. `#chosen`/`#candidates` die.
-- [x] `Registry.answering` answers exactly ONE address (closed identity + open unification) —
+- [x] `Registry.matching` answers exactly ONE address (closed identity + open unification) —
       remove the `requestedAddresses` union spread.
 - [x] `visitUnion` is two-phase over canonical member order (registration outranks synthesis, as
       everywhere): phase 1 = first member the manifest answers; phase 2 = first member that
@@ -79,7 +79,7 @@ ABSOLUTE MINIMUM to keep the build green; a dedicated session owns the scope/lif
 
 ## Decided against
 
-- ~~`Registry.answering` memoization~~ — ruled skip; plans already memoize per root.
+- ~~`Registry.matching` memoization~~ — ruled skip; plans already memoize per root.
 - ~~Literal-fallback tier by kind in `visitUnion`~~ — superseded by the two phases.
 - ~~Dual-spelling provider recognition~~ — dropped; `typefor` derives the one declaring-module
   address (U7).

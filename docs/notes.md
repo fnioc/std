@@ -658,7 +658,7 @@ land; delete the file when empty.
       pins caller values for the handle's lifetime; everything else listed is already
       container-pinned.
       - Plan-time (store on the node, position-free, zero walk cost): an open registration's
-      **closing bindings** (`Answer.generics` at fromAnswer) — "how my template closed".
+      **closing bindings** (`Match.generics` at fromMatch) — "how my template closed".
       - Bonus, same data free: the failure paths (`#realize`'s catch, cycle detection) hold
       the frame when they throw — attaching the ancestry chain to LifetimeModelError/
       CycleError diagnostics is an ERROR-SURFACE change to green-light explicitly, not

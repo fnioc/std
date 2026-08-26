@@ -484,7 +484,7 @@ Closing an open registration (`IRepo<%T>`) against a ground request (`IRepo<app:
 
 - **Holes are labels, not indices.** `Type.match` records one binding per generic label in the pattern, so a template may reuse or reorder labels freely; a repeated label must bind the same `Type` at every occurrence, which interning makes an `===` compare.
 - **One grammar, one parse.** `Type.from` is the sole place a token string becomes a `Type`, for a registration, a request, or a dependency signature alike (§111) — there is no second, shallower classifier a hand-typed template's whitespace or hole spelling could disagree with.
-- **The engine.** `Registry` (`libraries/di/src/internal/Registry.ts`) partitions a manifest once, at construction, into closed registrations (keyed by the interned `Type` itself, reached by `===`) and open registrations (kept in a list); `Registry#answering(request)` answers a closed hit by identity and an open hit by running `Type.match` against each open registration in turn, yielding a `Registration` already closed over whatever the match captured (`Registration.substitute`).
+- **The engine.** `Registry` (`libraries/di/src/internal/Registry.ts`) partitions a manifest once, at construction, into closed registrations (keyed by the interned `Type` itself, reached by `===`) and open registrations (kept in a list); `Registry#matching(request)` answers a closed hit by identity and an open hit by running `Type.match` against each open registration in turn, yielding a `Registration` already closed over whatever the match captured (`Registration.substitute`).
 - **Partial closing is live; most-specific-wins is not.** A registration mixes concrete args and generic holes freely — `Type.match`'s unification is fully recursive over the whole tree, so nothing about registering a partially-closed template needs special-casing (§124's retired ground). Overlapping open registrations are ranked by registration recency, not specificity (§125's retired ground, and the present gap it leaves).
 
 §141 records the `Type` taxonomy this matching walks over; §142 the resolution walk that calls it.
@@ -772,7 +772,7 @@ records the current matching mechanism; §141 records the `Type` taxonomy it wal
 
 ## §125 — Overlapping open registrations are NOT ranked by specificity; the current registry resolves them by registration recency
 
-`Registry#answering` (`libraries/di/src/internal/Registry.ts`) collects every open registration
+`Registry#matching` (`libraries/di/src/internal/Registry.ts`) collects every open registration
 whose address `Type.match`es the request, and orders every answer — closed and open together —
 by `rank`, the registration's position in manifest iteration order (newest first, since
 `Manifest#add` prepends). There is no specificity measure: two open registrations both matching one
@@ -2911,9 +2911,9 @@ _Claude-recorded 2026-08-22._
 ## §196 — Resolution is one exact-answer loop; a union settles by its first resolvable member; `AmbiguousUnionError` is gone
 
 `PlannerVisitor.visit` inlines the exact-answer loop for EVERY request kind, a union's own
-address included: `Registry.answering(type)` yields the registrations answering exactly that one
+address included: `Registry.matching(type)` yields the registrations answering exactly that one
 address — closed registrations by interned identity, open ones by §194 unification, newest first,
-no union spread — and the first answer whose `Plan.fromAnswer` builds wins, an unbuildable
+no union spread — and the first match whose `Plan.fromMatch` builds wins, an unbuildable
 answer falling through to the next. Only when no answer builds does the per-kind step run, as
 decomposition or synthesis, so a registration for a composite beats its parts.
 

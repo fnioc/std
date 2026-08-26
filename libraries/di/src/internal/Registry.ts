@@ -2,7 +2,7 @@ import { type Registration } from '@rhombus-std/di.core';
 import { Type } from '@rhombus-std/primitives';
 
 /** A registration that can serve a request, and what the match captured to make it fit. */
-export interface Answer {
+export interface Match {
   /** The registration as authored — an open one still holds its holes. */
   readonly registration: Registration<unknown>;
   /** One binding per hole the match filled; empty for a registration that had none. */
@@ -10,7 +10,7 @@ export interface Answer {
 }
 
 /**
- * The registrations read for resolution: which of them answer a request, newest first.
+ * The registrations read for resolution: which of them match a request, newest first.
  */
 export class Registry {
   readonly #registrations: ReadonlyArray<Registration<unknown>>;
@@ -32,16 +32,16 @@ export class Registry {
   }
 
   /**
-   * Every registration answering exactly {@link address}'s own address, newest first — a
+   * Every registration matching exactly {@link address}'s own address, newest first — a
    * closed registration by interned identity, an open one by unification.
    */
-  answering(address: Type): IteratorObject<Answer, undefined> {
+  matching(address: Type): IteratorObject<Match, undefined> {
     return Iterator.from(this.#registrations)
       .map(registration => ({
         registration,
-        match: Type.bindGenerics(registration.address, address),
+        bound: Type.bindGenerics(registration.address, address),
       }))
-      .filter((candidate): candidate is { registration: Registration<unknown>; match: [true, Map<string, Type>]; } => candidate.match[0])
-      .map(({ registration, match: [, generics] }) => ({ registration, generics }));
+      .filter((candidate): candidate is { registration: Registration<unknown>; bound: [true, Map<string, Type>]; } => candidate.bound[0])
+      .map(({ registration, bound: [, generics] }) => ({ registration, generics }));
   }
 }
