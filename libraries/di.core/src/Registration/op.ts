@@ -2,7 +2,10 @@ import { assertNever } from '@rhombus-toolkit/type-guards';
 import type { CtorRegistration, FactoryRegistration, Registration, ValueRegistration } from './Registration';
 
 /** Which door the registration came in by, read from the member the registration carries. */
-export function kind(registration: Registration<unknown>) {
+export function kind(registration: Registration<unknown>):
+  | readonly ['ctor', CtorRegistration<unknown>]
+  | readonly ['factory', FactoryRegistration<unknown>]
+  | readonly ['value', ValueRegistration] {
   if (isCtorRegistration(registration)) {
     return ['ctor', registration] as const;
   }
