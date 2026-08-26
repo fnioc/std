@@ -1,7 +1,7 @@
 {
   "name": "@rhombus-std/di.extras.options",
   "version": "0.0.0",
-  "description": "A @rhombus-std/di.extras satellite: the type-only declare-module for the addOptions<T>() sugar plus its rhombus-std inline body. A Go/ttsc descriptor package — the sugar is substituted from its inline body (this.addOptions(typefor(T))) by the shared owner binary's inline + typefor stages.",
+  "description": "A @rhombus-std/di.extras satellite: the type-only declare-module for the addOptions<T>() sugar plus its rhombus-std inline body. A Go/ttsc descriptor package \u2014 the sugar is substituted from its inline body (this.addOptions(typefor(T))) by the shared owner binary's inline + typefor stages.",
   "keywords": [
     "options",
     "dependency-injection",
@@ -43,21 +43,17 @@
     "lint": "bun x tsc --noEmit -p tsconfig.ci.json"
   },
   "dependencies": {
-    "@rhombus-std/primitives": "workspace:*",
-    "@rhombus-std/primitives.extras": "workspace:*"
-  },
-  "peerDependencies": {
-    "@rhombus-std/di.core": "workspace:^",
-    "@rhombus-std/di.extras": "workspace:^",
-    "@rhombus-std/options": "workspace:^",
-    "@rhombus-std/options.augmentations": "workspace:^",
-    "typescript": ">=5.2"
-  },
-  "devDependencies": {
     "@rhombus-std/di.core": "workspace:*",
     "@rhombus-std/di.extras": "workspace:*",
     "@rhombus-std/options": "workspace:*",
     "@rhombus-std/options.augmentations": "workspace:*",
+    "@rhombus-std/primitives": "workspace:*",
+    "@rhombus-std/primitives.extras": "workspace:*"
+  },
+  "peerDependencies": {
+    "typescript": ">=5.2"
+  },
+  "devDependencies": {
     "typescript": "^6.0.3"
   },
   "publishConfig": {

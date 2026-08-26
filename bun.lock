@@ -116,6 +116,7 @@
       "version": "0.0.0",
       "dependencies": {
         "@rhombus-std/caching.core": "workspace:*",
+        "@rhombus-std/di.core": "workspace:*",
         "@rhombus-std/logging.core": "workspace:*",
         "@rhombus-std/options": "workspace:*",
         "@rhombus-std/options.augmentations": "workspace:*",
@@ -124,15 +125,11 @@
         "@rhombus-toolkit/type-guards": "^1.3.4",
       },
       "devDependencies": {
-        "@rhombus-std/di.core": "workspace:*",
         "@rhombus-std/di.extras": "workspace:*",
         "@rhombus-std/primitives.extras": "workspace:*",
         "@ttsc/unplugin": "^0.18.1",
         "ttsc": "^0.18.1",
         "typescript": "^6.0.3",
-      },
-      "peerDependencies": {
-        "@rhombus-std/di.core": "workspace:^",
       },
     },
     "libraries/config": {
@@ -157,19 +154,16 @@
       "name": "@rhombus-std/config.commandline",
       "version": "0.0.0",
       "dependencies": {
+        "@rhombus-std/config": "workspace:*",
         "@rhombus-std/config.core": "workspace:*",
         "@rhombus-std/primitives": "workspace:*",
         "@rhombus-toolkit/type-helpers": "^2.0.0",
       },
       "devDependencies": {
-        "@rhombus-std/config": "workspace:*",
         "@rhombus-std/primitives.extras": "workspace:*",
         "@ttsc/unplugin": "^0.18.1",
         "ttsc": "^0.18.1",
         "typescript": "^6.0.3",
-      },
-      "peerDependencies": {
-        "@rhombus-std/config": "workspace:^",
       },
     },
     "libraries/config.core": {
@@ -185,42 +179,34 @@
       "name": "@rhombus-std/config.env",
       "version": "0.0.0",
       "dependencies": {
+        "@rhombus-std/config": "workspace:*",
         "@rhombus-std/config.core": "workspace:*",
         "@rhombus-std/primitives": "workspace:*",
         "@rhombus-toolkit/func": "^3.6.0",
         "@rhombus-toolkit/type-helpers": "^2.0.0",
       },
       "devDependencies": {
-        "@rhombus-std/config": "workspace:*",
         "@rhombus-std/primitives.extras": "workspace:*",
         "@ttsc/unplugin": "^0.18.1",
         "ttsc": "^0.18.1",
         "typescript": "^6.0.3",
-      },
-      "peerDependencies": {
-        "@rhombus-std/config": "workspace:^",
       },
     },
     "libraries/config.extras": {
       "name": "@rhombus-std/config.extras",
       "version": "0.0.0",
       "dependencies": {
-        "@rhombus-std/primitives": "workspace:*",
-        "@rhombus-std/primitives.extras": "workspace:*",
-      },
-      "devDependencies": {
         "@rhombus-std/config": "workspace:*",
         "@rhombus-std/config.core": "workspace:*",
-      },
-      "peerDependencies": {
-        "@rhombus-std/config": "workspace:^",
-        "@rhombus-std/config.core": "workspace:^",
+        "@rhombus-std/primitives": "workspace:*",
+        "@rhombus-std/primitives.extras": "workspace:*",
       },
     },
     "libraries/config.file": {
       "name": "@rhombus-std/config.file",
       "version": "0.0.0",
       "dependencies": {
+        "@rhombus-std/config": "workspace:*",
         "@rhombus-std/config.core": "workspace:*",
         "@rhombus-std/fileproviders.core": "workspace:*",
         "@rhombus-std/fileproviders.physical": "workspace:*",
@@ -229,20 +215,17 @@
         "@rhombus-toolkit/type-helpers": "^2.0.0",
       },
       "devDependencies": {
-        "@rhombus-std/config": "workspace:*",
         "@rhombus-std/primitives.extras": "workspace:*",
         "@ttsc/unplugin": "^0.18.1",
         "ttsc": "^0.18.1",
         "typescript": "^6.0.3",
-      },
-      "peerDependencies": {
-        "@rhombus-std/config": "workspace:^",
       },
     },
     "libraries/config.ini": {
       "name": "@rhombus-std/config.ini",
       "version": "0.0.0",
       "dependencies": {
+        "@rhombus-std/config": "workspace:*",
         "@rhombus-std/config.core": "workspace:*",
         "@rhombus-std/config.file": "workspace:*",
         "@rhombus-std/fileproviders.core": "workspace:*",
@@ -250,20 +233,17 @@
         "@rhombus-toolkit/type-helpers": "^2.0.0",
       },
       "devDependencies": {
-        "@rhombus-std/config": "workspace:*",
         "@rhombus-std/primitives.extras": "workspace:*",
         "@ttsc/unplugin": "^0.18.1",
         "ttsc": "^0.18.1",
         "typescript": "^6.0.3",
-      },
-      "peerDependencies": {
-        "@rhombus-std/config": "workspace:^",
       },
     },
     "libraries/config.json": {
       "name": "@rhombus-std/config.json",
       "version": "0.0.0",
       "dependencies": {
+        "@rhombus-std/config": "workspace:*",
         "@rhombus-std/config.core": "workspace:*",
         "@rhombus-std/config.file": "workspace:*",
         "@rhombus-std/fileproviders.core": "workspace:*",
@@ -271,20 +251,17 @@
         "@rhombus-toolkit/type-helpers": "^2.0.0",
       },
       "devDependencies": {
-        "@rhombus-std/config": "workspace:*",
         "@rhombus-std/primitives.extras": "workspace:*",
         "@ttsc/unplugin": "^0.18.1",
         "ttsc": "^0.18.1",
         "typescript": "^6.0.3",
-      },
-      "peerDependencies": {
-        "@rhombus-std/config": "workspace:^",
       },
     },
     "libraries/config.xml": {
       "name": "@rhombus-std/config.xml",
       "version": "0.0.0",
       "dependencies": {
+        "@rhombus-std/config": "workspace:*",
         "@rhombus-std/config.core": "workspace:*",
         "@rhombus-std/config.file": "workspace:*",
         "@rhombus-std/fileproviders.core": "workspace:*",
@@ -292,14 +269,10 @@
         "@rhombus-toolkit/type-helpers": "^2.0.0",
       },
       "devDependencies": {
-        "@rhombus-std/config": "workspace:*",
         "@rhombus-std/primitives.extras": "workspace:*",
         "@ttsc/unplugin": "^0.18.1",
         "ttsc": "^0.18.1",
         "typescript": "^6.0.3",
-      },
-      "peerDependencies": {
-        "@rhombus-std/config": "workspace:^",
       },
     },
     "libraries/di": {
@@ -339,6 +312,7 @@
       "name": "@rhombus-std/di.extras",
       "version": "10.1.0",
       "dependencies": {
+        "@rhombus-std/di.core": "workspace:*",
         "@rhombus-std/primitives": "workspace:*",
         "@rhombus-std/primitives.extras": "workspace:*",
         "@rhombus-toolkit/func": "3.6.0",
@@ -346,11 +320,9 @@
         "@rhombus-toolkit/type-helpers": "^2.0.0",
       },
       "devDependencies": {
-        "@rhombus-std/di.core": "workspace:*",
         "typescript": "^6.0.3",
       },
       "peerDependencies": {
-        "@rhombus-std/di.core": "workspace:^",
         "typescript": ">=5.2",
       },
     },
@@ -358,21 +330,17 @@
       "name": "@rhombus-std/di.extras.options",
       "version": "0.0.0",
       "dependencies": {
-        "@rhombus-std/primitives": "workspace:*",
-        "@rhombus-std/primitives.extras": "workspace:*",
-      },
-      "devDependencies": {
         "@rhombus-std/di.core": "workspace:*",
         "@rhombus-std/di.extras": "workspace:*",
         "@rhombus-std/options": "workspace:*",
         "@rhombus-std/options.augmentations": "workspace:*",
+        "@rhombus-std/primitives": "workspace:*",
+        "@rhombus-std/primitives.extras": "workspace:*",
+      },
+      "devDependencies": {
         "typescript": "^6.0.3",
       },
       "peerDependencies": {
-        "@rhombus-std/di.core": "workspace:^",
-        "@rhombus-std/di.extras": "workspace:^",
-        "@rhombus-std/options": "workspace:^",
-        "@rhombus-std/options.augmentations": "workspace:^",
         "typescript": ">=5.2",
       },
     },
@@ -382,6 +350,7 @@
       "dependencies": {
         "@rhombus-std/config": "workspace:*",
         "@rhombus-std/config.core": "workspace:*",
+        "@rhombus-std/di.core": "workspace:*",
         "@rhombus-std/diagnostics.core": "workspace:*",
         "@rhombus-std/options": "workspace:*",
         "@rhombus-std/options.augmentations": "workspace:*",
@@ -390,15 +359,11 @@
         "@rhombus-toolkit/type-helpers": "^2.0.0",
       },
       "devDependencies": {
-        "@rhombus-std/di.core": "workspace:*",
         "@rhombus-std/di.extras": "workspace:*",
         "@rhombus-std/primitives.extras": "workspace:*",
         "@ttsc/unplugin": "^0.18.1",
         "ttsc": "^0.18.1",
         "typescript": "^6.0.3",
-      },
-      "peerDependencies": {
-        "@rhombus-std/di.core": "workspace:^",
       },
     },
     "libraries/diagnostics.core": {
@@ -527,6 +492,7 @@
       "version": "0.0.0",
       "dependencies": {
         "@rhombus-std/di": "workspace:*",
+        "@rhombus-std/di.core": "workspace:*",
         "@rhombus-std/logging.core": "workspace:*",
         "@rhombus-std/options": "workspace:*",
         "@rhombus-std/options.augmentations": "workspace:*",
@@ -534,16 +500,12 @@
         "@rhombus-toolkit/type-helpers": "^2.0.0",
       },
       "devDependencies": {
-        "@rhombus-std/di.core": "workspace:*",
         "@rhombus-std/di.extras": "workspace:*",
         "@rhombus-std/primitives.extras": "workspace:*",
         "@rhombus-toolkit/func": "3.6.0",
         "@ttsc/unplugin": "^0.18.1",
         "ttsc": "^0.18.1",
         "typescript": "^6.0.3",
-      },
-      "peerDependencies": {
-        "@rhombus-std/di.core": "workspace:^",
       },
     },
     "libraries/logging.browserconsole": {
@@ -634,20 +596,17 @@
       "version": "0.0.0",
       "dependencies": {
         "@rhombus-std/config.core": "workspace:*",
+        "@rhombus-std/di.core": "workspace:*",
         "@rhombus-std/options": "workspace:*",
         "@rhombus-std/primitives": "workspace:*",
         "@rhombus-toolkit/func": "^3.6.0",
       },
       "devDependencies": {
-        "@rhombus-std/di.core": "workspace:*",
         "@rhombus-std/di.extras": "workspace:*",
         "@rhombus-std/primitives.extras": "workspace:*",
         "@ttsc/unplugin": "^0.18.1",
         "ttsc": "^0.18.1",
         "typescript": "^6.0.3",
-      },
-      "peerDependencies": {
-        "@rhombus-std/di.core": "workspace:^",
       },
     },
     "libraries/primitives": {

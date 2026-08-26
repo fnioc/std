@@ -1,7 +1,7 @@
 {
   "name": "@rhombus-std/config.extras",
   "version": "0.0.0",
-  "description": "The @rhombus-std/config authoring surface: types .withType<T>() onto ConfigBuilder and rewrites it into a generated .withSchema(Type.object({...})) call at compile time. A Go/ttsc descriptor package — the transform runs in the shared owner binary.",
+  "description": "The @rhombus-std/config authoring surface: types .withType<T>() onto ConfigBuilder and rewrites it into a generated .withSchema(Type.object({...})) call at compile time. A Go/ttsc descriptor package \u2014 the transform runs in the shared owner binary.",
   "keywords": [
     "configuration",
     "config",
@@ -40,12 +40,10 @@
     "lint": "bun x tsc --noEmit -p tsconfig.ci.json"
   },
   "dependencies": {
+    "@rhombus-std/config": "workspace:*",
+    "@rhombus-std/config.core": "workspace:*",
     "@rhombus-std/primitives": "workspace:*",
     "@rhombus-std/primitives.extras": "workspace:*"
-  },
-  "peerDependencies": {
-    "@rhombus-std/config": "workspace:^",
-    "@rhombus-std/config.core": "workspace:^"
   },
   "publishConfig": {
     "access": "public",
@@ -63,8 +61,5 @@
   },
   "main": "./src/index.ts",
   "types": "./src/index.ts",
-  "devDependencies": {
-    "@rhombus-std/config": "workspace:*",
-    "@rhombus-std/config.core": "workspace:*"
-  }
+  "devDependencies": {}
 }

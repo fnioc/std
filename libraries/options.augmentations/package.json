@@ -36,15 +36,12 @@
   },
   "dependencies": {
     "@rhombus-std/config.core": "workspace:*",
+    "@rhombus-std/di.core": "workspace:*",
     "@rhombus-std/options": "workspace:*",
     "@rhombus-std/primitives": "workspace:*",
     "@rhombus-toolkit/func": "^3.6.0"
   },
-  "peerDependencies": {
-    "@rhombus-std/di.core": "workspace:^"
-  },
   "devDependencies": {
-    "@rhombus-std/di.core": "workspace:*",
     "@rhombus-std/di.extras": "workspace:*",
     "@rhombus-std/primitives.extras": "workspace:*",
     "@ttsc/unplugin": "^0.18.1",
