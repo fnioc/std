@@ -1,86 +1,151 @@
 import type { Type } from '@rhombus-std/primitives';
 import type { Func } from '@rhombus-toolkit/func';
+import type { IServiceProvider } from '../IServiceProvider';
 import type { Registration } from '../Registration/index';
 
-/**
- * The lifetime parameter's spelling for a vocabulary: omittable exactly when `undefined` is
- * assignable to `Lifetime`. Omission is not a special case — it is the value `undefined`, and it
- * compiles under the same assignability rule every other value answers to.
- */
+/** Lets the lifetime argument be omitted entirely when `undefined` is in the vocabulary. */
 export type LifetimeArgument<Lifetime> = undefined extends Lifetime ? [lifetime?: Lifetime] : [lifetime: Lifetime];
 
-/** What a registration on the `standard` model says about reuse: one instance for the whole container, one per open scope, or a fresh one every ask. */
+/** Lifetime options for the `standard` model. */
 export type StandardLifetime = 'singleton' | 'scoped' | 'transient';
 
-/** What a registration on the `tagged` model says about reuse: the tag of the scope keeping it, or `undefined` for transient. */
+/** Lifetime options for the `tagged` model. */
 export type TaggedLifetime<Tags extends string = string> = Tags | undefined;
 
 /**
- * The engine-facing face of a {@link LifetimeModel}.
- *
- * @typeParam Lifetime - the vocabulary of lifetime data this realizer interprets.
- */
-export interface Realizer<Lifetime = unknown> {
-  /**
-   * Delivers the value for one construction — from storage, or by invoking `make`, at the
-   * realizer's own discretion: a reuse hit simply never invokes `make`, and with it skips
-   * everything the construction would have needed.
-   */
-  realize(construction: {
-    /**
-     * The identity of this position in the realizing walk: the same object arrives on every
-     * repeat of the same ask, and each distinct position in the walk — even one sharing a
-     * registration and a closing with another — has its own.
-     */
-    site: object;
-    /**
-     * The answering registration's address with whatever the match captured filled in — the only
-     * record of which closing answered, so an open registration's several closings stay apart in
-     * an instance store. Narrower than the caller's ask when that ask was a union or a
-     * collection, since a member and an element each match on their own.
-     */
-    populatedAddress: Type;
-    /** The registration that answered, carrying the {@link Registration.lifetime | lifetime} this realizer interprets. */
-    registration: Registration<Lifetime>;
-    /**
-     * Constructs the value. The realizer it receives governs every dependency constructed along
-     * the way: pass a different one to change how the whole subtree behaves, or the receiver to
-     * keep it.
-     */
-    make: Func<[Realizer<Lifetime>], unknown>;
-  }): unknown;
-}
-
-/**
- * A defined scope/lifetime pattern of behavior.
+ * A defined pattern of behavior for how long a construction is kept and what keeps it.
  *
  * @typeParam Lifetime - the vocabulary of lifetime data this model interprets.
  */
 export interface LifetimeModel<Lifetime = unknown> {
-  /** What this model calls itself, so a failure can say which model refused. */
+  /** What this model calls itself. */
   readonly name: string;
 
-  /**
-   * How this model spells "construct afresh, keep nothing" — the one reading every model has,
-   * whatever vocabulary it draws on, so a registration that must never be reused can name it
-   * without knowing which model it lands on.
-   */
+  /** This model's value for "construct afresh, keep nothing". */
   readonly transient: Lifetime;
 
   /**
-   * Mints one container's machinery, once per build: the {@link Realizer} every resolution runs
-   * through, and the scope-opening capability the container publishes.
+   * Mints one container's machinery: how this model wraps the container's resolutions, and the
+   * registration it publishes for opening a nested container.
    *
    * @remarks
-   * An absent `scopeFactory` means this model never scopes: the scope-opening address is simply
-   * left unregistered, and comes back unsatisfiable the same way any other unregistered address
-   * does. The registration is a factory taking `IServiceProvider`, which arrives as an ordinary
-   * dependency — the provider a scope it opens defers to for anything the scope itself doesn't
-   * keep. The factory's own args are the model's vocabulary for naming a scope as it opens,
-   * which each model states in its own return type.
+   * `wrapResolve` is called once, at build, with the handler it wraps and the container that will
+   * answer through the handler it returns; that handler then serves every request. An absent
+   * `wrapResolve` means this model wraps nothing and the container answers with the provider built
+   * for it; an absent `scopeFactory` means this model opens nothing.
    */
-  createRealizer(): {
-    realizer: Realizer<Lifetime>;
+  install(): {
+    wrapResolve?: Func<[Func<[Type], unknown>, IServiceProvider], Func<[Type], unknown>>;
     scopeFactory?: Registration<Lifetime>;
   };
+}
+
+/**
+ * One construction the engine is performing.
+ *
+ * @typeParam Lifetime - the vocabulary of lifetime data the reading handlers interpret.
+ * @typeParam Context - the shape of the context these handlers thread through a resolution.
+ */
+export interface Construction<Lifetime = unknown, Context = unknown> {
+  /** This node's position in the resolution: one per node, referentially stable, opaque. */
+  readonly site: object;
+  /** The address this site answers, as it was requested, with any captures filled in. */
+  readonly populatedAddress: Type;
+  /** The registration that matched, absent when the engine rather than the manifest is answering. */
+  readonly registration?: Registration<Lifetime>;
+  /** The context the enclosing construction placed this one under — never this node's own answer. */
+  readonly context: Context;
+}
+
+/** What a pre-construction handler answers: an instance in place of constructing, or the context this construction's dependencies resolve under — `undefined` placing them under none. */
+export type Interception<Context = unknown> =
+  | { readonly instance: unknown; }
+  | { readonly within: Context | undefined; };
+
+/**
+ * Opens one resolution, answering the context its constructions start under.
+ *
+ * @typeParam Context - the shape of the context threaded through the resolution.
+ */
+export type BeginResolveHandler<Context = unknown> = Func<[request: Type, injected: Context], Context>;
+
+/** A {@link BeginResolveHandler} owning its chain: `next` is everything registered downstream of it. */
+export type BeginResolveMiddleware<Context = unknown> = Func<[request: Type, injected: Context, next: BeginResolveHandler<Context>], Context>;
+
+/** Runs before the engine constructs, answering an instance in place of constructing or the context the dependencies resolve under. */
+export type BeforeConstructHandler<Lifetime = unknown, Context = unknown> = Func<[construction: Construction<Lifetime, Context>], Interception<Context>>;
+
+/** A {@link BeforeConstructHandler} owning its chain: `next` is everything registered downstream of it. */
+export type BeforeConstructMiddleware<Lifetime = unknown, Context = unknown> = Func<
+  [construction: Construction<Lifetime, Context>, next: BeforeConstructHandler<Lifetime, Context>],
+  Interception<Context>
+>;
+
+/**
+ * Swaps the instance the engine has just constructed for the one this handler answers — a proxy, a
+ * frozen copy, a decorator — everything downstream reading what it returns.
+ *
+ * @remarks
+ * Runs only where the engine BUILT: a {@link BeforeConstructHandler} that supplied an instance
+ * skips it entirely. The engine hands over the raw product and takes back whatever is answered: it
+ * never tests for a thenable, never awaits, and never unwraps, so a construction that produced a
+ * pending promise arrives here as that promise.
+ */
+export type CanonicalizeHandler<Lifetime = unknown, Context = unknown> = Func<[construction: Construction<Lifetime, Context>, instance: unknown], unknown>;
+
+/** A {@link CanonicalizeHandler} owning its chain: `next` is everything registered downstream of it. */
+export type CanonicalizeMiddleware<Lifetime = unknown, Context = unknown> = Func<
+  [construction: Construction<Lifetime, Context>, instance: unknown, next: CanonicalizeHandler<Lifetime, Context>],
+  unknown
+>;
+
+/** Runs once the engine has constructed, on the instance as it stands — never awaited, never unwrapped. */
+export type AfterConstructHandler<Lifetime = unknown, Context = unknown> = Func<[construction: Construction<Lifetime, Context>, instance: unknown], void>;
+
+/** An {@link AfterConstructHandler} owning its chain: `next` is everything registered downstream of it. */
+export type AfterConstructMiddleware<Lifetime = unknown, Context = unknown> = Func<
+  [construction: Construction<Lifetime, Context>, instance: unknown, next: AfterConstructHandler<Lifetime, Context>],
+  void
+>;
+
+/**
+ * What one registered handler asks to be spared.
+ *
+ * @typeParam Lifetime - the vocabulary of lifetime data the predicate reads.
+ */
+export interface HookOptions<Lifetime = unknown> {
+  /**
+   * Whether the handler has anything to say about a node, asked once per registration — or, for a
+   * node no registration stands behind, once per address.
+   *
+   * @remarks
+   * A `false` verdict passes the node straight to the next handler in the chain. Declaring the
+   * predicate is an optimization and never a correctness step for a plain handler: one that
+   * declares none is asked about nothing and runs everywhere, so every handler has to be right on
+   * its own. Middleware never consults this predicate — it already receives the construction
+   * directly and `next` besides, so it decides for itself whether it has anything to do. The
+   * verdict is remembered per registration, so a predicate pruning an open registration that
+   * answers several addresses must decide from the registration alone.
+   */
+  interested?(registration: Registration<Lifetime> | undefined, address: Type): boolean;
+}
+
+/**
+ * The four handlers the engine holds, one apiece and every one of them present: whatever was
+ * registered is composed into these before the engine ever sees it.
+ *
+ * @typeParam Lifetime - the vocabulary of lifetime data these handlers interpret.
+ * @typeParam Context - the shape of the context they thread through a resolution.
+ */
+export interface Hooks<Lifetime = unknown, Context = unknown> {
+  readonly beginResolve: BeginResolveHandler<Context>;
+  readonly beforeConstruct: BeforeConstructHandler<Lifetime, Context>;
+  readonly canonicalize: CanonicalizeHandler<Lifetime, Context>;
+  readonly afterConstruct: AfterConstructHandler<Lifetime, Context>;
+}
+
+/** Classifies registrations into the conventional lifetime vocabulary a validator reasons over. */
+export interface LifetimePolicy {
+  /** The lifetime `registration` carries, `undefined` when it carries none this policy reads. */
+  classify(registration: Registration<unknown> | undefined): StandardLifetime | undefined;
 }

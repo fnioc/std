@@ -1,10 +1,9 @@
 // Behaviour tests for the tagged lifetime model: which of the open scopes keeps an instance when
 // scopes are named, and what happens when none of them answers to the name a registration used.
 
-import { di, tagged } from '@rhombus-std/di';
-import { type IServiceProvider, LifetimeModelError, ScopeFactory, ScopeTagUnmatchedError } from '@rhombus-std/di.core';
+import { di, tagged, TaggedScopeFactory } from '@rhombus-std/di';
+import { type IServiceProvider, LifetimeModelError, ScopeTagUnmatchedError } from '@rhombus-std/di.core';
 import { Type } from '@rhombus-std/primitives';
-import type { Func } from '@rhombus-toolkit/func';
 import { describe, expect, test } from 'bun:test';
 
 type Tags = 'session' | 'request';
@@ -22,7 +21,8 @@ function buildProviderKeptBy(keptBy: Tags): IServiceProvider {
 }
 
 function openScope(provider: IServiceProvider, tag: Tags): IServiceProvider {
-  return (provider.resolve(ScopeFactory.address) as Func<[Tags], IServiceProvider>)(tag);
+  const address = TaggedScopeFactory.addressOf(Type.typeLiteral(tag));
+  return (provider.resolve(address) as TaggedScopeFactory).openScope();
 }
 
 describe('the model itself', () => {

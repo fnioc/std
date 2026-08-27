@@ -1,5 +1,5 @@
-// A package-internal side channel carrying the pending ServiceProviderOptions
-// for a classic HostBuilder from the point they are chosen (configureDefaults /
+// A package-internal side channel carrying the pending validation options for
+// a classic HostBuilder from the point they are chosen (configureDefaults /
 // useDefaultServiceProvider) to the point the provider is built
 // (HostBuilder.build()).
 //
@@ -11,11 +11,10 @@
 // default (which depends on the resolved hosting environment) can be computed
 // once the context exists. Last write wins.
 
-import type { ServiceProviderOptions } from '@rhombus-std/di';
 import type { HostBuilderContext, IHostBuilder } from '@rhombus-std/hosting.core';
 
-/** Produces the {@link ServiceProviderOptions} from the fully-resolved build context. */
-export type ServiceProviderOptionsFactory = (context: HostBuilderContext) => ServiceProviderOptions;
+/** The `validation` addon's own options shape, produced from the fully-resolved build context. */
+export type ServiceProviderOptionsFactory = (context: HostBuilderContext) => { validateOnBuild?: boolean; validateScopes?: boolean; };
 
 const SERVICE_PROVIDER_OPTIONS_FACTORY = Symbol('serviceProviderOptionsFactory');
 
@@ -29,7 +28,7 @@ export function setServiceProviderOptionsFactory(builder: IHostBuilder, factory:
  * set (a plain, unvalidated build).
  */
 export function resolveServiceProviderOptions(builder: IHostBuilder, context: HostBuilderContext):
-  | ServiceProviderOptions
+  | { validateOnBuild?: boolean; validateScopes?: boolean; }
   | undefined {
   const factory = builder.properties.get(SERVICE_PROVIDER_OPTIONS_FACTORY) as ServiceProviderOptionsFactory | undefined;
   return factory?.(context);

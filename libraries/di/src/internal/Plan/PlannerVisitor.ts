@@ -1,4 +1,4 @@
-import { CycleError, type Generic, type Invoker, type IServiceProvider } from '@rhombus-std/di.core';
+import { CycleError, type Generic, type Invoker, type IServiceProvider, type Starfish } from '@rhombus-std/di.core';
 import { type AbstractConstructorType, type ArrayType, type ConstructorType, type FunctionType, type GenericType, type GlobalType, type ImportedType, type IntersectionType, type IterableType,
   type ObjectType, type TagType, type TupleType, Type, type TypeLiteralType, type UnionType } from '@rhombus-std/primitives';
 import { typefor } from '@rhombus-std/primitives.extras';
@@ -18,7 +18,7 @@ export class PlannerVisitor extends Type.Visitor<Plan | undefined> {
   readonly #args: ReadonlyMap<Type, number> | undefined;
   readonly #cycleGuard = new CycleGuard();
   /**
-   * The first type this walk found nothing to build from — a true leaf, since a type whose own
+   * The first type this pass found nothing to build from — a true leaf, since a type whose own
    * recursion fails somewhere beneath it never reaches this field: the deeper failure sets it
    * first, and a leaf, having recursed into nothing, always attributes squarely to itself.
    */
@@ -30,7 +30,7 @@ export class PlannerVisitor extends Type.Visitor<Plan | undefined> {
     this.#args = args;
   }
 
-  /** The specific type the whole walk could not build from, once {@link visit} has returned `undefined`. */
+  /** The specific type the whole pass could not build from, once {@link visit} has returned `undefined`. */
   get missingDependency(): Type | undefined {
     return this.#missingDependency;
   }
@@ -58,7 +58,10 @@ export class PlannerVisitor extends Type.Visitor<Plan | undefined> {
 
   protected override visitImported(type: ImportedType): Plan | undefined {
     if (type === typefor<IServiceProvider>()) {
-      return Plan.serviceProvider();
+      return Plan.serviceProvider(type);
+    }
+    if (type === typefor<Starfish>()) {
+      return Plan.starfish();
     }
     const callableType = invokerCallableType(type);
     return callableType && Plan.invoker(callableType);
@@ -159,7 +162,7 @@ function invokerCallableType(type: ImportedType): ConstructorType | FunctionType
 }
 
 /**
- * Guards the walk against re-entering a type it is still planning: `visiting(type)` throws
+ * Guards the pass against re-entering a type it is still planning: `visiting(type)` throws
  * {@link CycleError} on a repeat, and otherwise tracks the type for the extent of the `using`
  * block holding the returned disposable.
  */
@@ -176,7 +179,7 @@ class CycleGuard {
         const left = this.#visiting.pop();
         if (left !== address) {
           throw new Error(
-            `the resolution walk unwound out of order — expected to leave "${Type.stringify(address)}" but left "${left ? Type.stringify(left) : '<empty>'}"`,
+            `the planning pass unwound out of order — expected to leave "${Type.stringify(address)}" but left "${left ? Type.stringify(left) : '<empty>'}"`,
           );
         }
       },

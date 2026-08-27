@@ -196,7 +196,7 @@ where that's cheap, and flag the intended divergence rather than pre-emptively t
   synthesis tail, never a member spread. `Registration.value` refuses an open address
   unless the hole sits under a callable root — ctor/func, tag stripped — since one erased callable
   honestly is every closing and one instance is not, §197). Opening a scope is an ordinary
-  registration: a lifetime model that supports scoping contributes it through `createRealizer()`,
+  registration: a lifetime model that supports scoping contributes it through `install()`,
   and it resolves like any other service — di carries no not-implemented placeholders. The registration chain
   opens at `manifest.describe(address)`: the doors `asClass(ctor, ctorType)`/
   `asFactory(fn, fnType)` take the implementer together with its own type, `asValue(value)` takes

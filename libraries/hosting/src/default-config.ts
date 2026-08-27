@@ -17,7 +17,6 @@ import { CommandLineConfigSource } from '@rhombus-std/config.commandline';
 import type { IConfigBuilder } from '@rhombus-std/config.core';
 import { EnvironmentVariablesConfigSource } from '@rhombus-std/config.env';
 import { JsonConfigSource } from '@rhombus-std/config.json';
-import type { ServiceProviderOptions } from '@rhombus-std/di';
 import type { Manifest } from '@rhombus-std/di.core';
 import { HostDefaults, HostEnvironmentEnvAugmentations, type IHostEnvironment } from '@rhombus-std/hosting.core';
 import { LoggingBuilder, LoggingBuilderProviderAugmentations } from '@rhombus-std/logging';
@@ -71,10 +70,11 @@ export function addDefaultServices(services: Manifest<unknown>): Manifest<unknow
 }
 
 /**
- * Builds the default {@link ServiceProviderOptions}. Build-time validation is
- * enabled only in the Development environment, so a production host pays no
- * validation cost while a developer catches registration mistakes early.
+ * Builds the default validation options for the `validation` addon. Build-time
+ * validation is enabled only in the Development environment, so a production
+ * host pays no validation cost while a developer catches registration mistakes
+ * early.
  */
-export function createDefaultServiceProviderOptions(environment: IHostEnvironment): ServiceProviderOptions {
+export function createDefaultServiceProviderOptions(environment: IHostEnvironment): { validateOnBuild?: boolean; validateScopes?: boolean; } {
   return { validateOnBuild: HostEnvironmentEnvAugmentations.isDevelopment.call(environment) };
 }

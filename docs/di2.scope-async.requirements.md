@@ -18,7 +18,7 @@ Weigh every design decision against this split.
 
 - "Scope" names the PROVIDER-side runtime scope. No composition-side scope construct exists — the
   manifest is one flat registration space.
-- The SCOPE MODEL is the installed scope system. Public API naming uses `ScopeModel*`.
+- The SCOPE MODEL is the installed scope system. Public API naming uses `LifetimeModel*`.
 - Resolution phases: **plan time** (pure, memoized) → **hoist** (async pre-pass) → **gather** (the
   one await point) → **plug** (final sync walk). "Realize" names only an invocation of the sync
   realize visitor — once per hoisted entry (on that site's inner subtree) plus once as the plug.
@@ -295,9 +295,10 @@ Weigh every design decision against this split.
   site forwards root), the classic stale-capture harm cannot occur — a singleton's dependencies
   never come from a shorter-lived scope. An arbitrary model forwards whatever it chooses and OWNS
   its resulting captivity story; only it knows what its keys mean, so only it can define a
-  violation — any captive lint is therefore necessarily model-shipped and
-  composition-root-invoked with the manifest the root already holds. The model never receives the
-  manifest; its job stays resolution-time. No such lint is planned or ordered.
+  violation — the model therefore EXPORTS that meaning as a policy object (`LifetimePolicy`), and
+  the captive guard ships as a separately-installable validation addon consuming it: a runtime
+  hook entry threading lifetime marks down the walk, plus a build-time sweep over plan view
+  nodes. The model never receives the manifest; its job stays resolution-time.
 
 ## Engine hardening
 
@@ -306,7 +307,7 @@ Weigh every design decision against this split.
 - A disposed latch on the engine-minted root provider — resolution after root disposal fails
   loudly at the engine door.
 - An attribution wrap around scope-model calls: a throw mid-resolution surfaces as
-  `ScopeModelError` naming the failing site, cause inside.
+  `LifetimeModelError` naming the failing site, cause inside.
 
 ## Concurrency
 
@@ -316,10 +317,11 @@ Weigh every design decision against this split.
   promise; run-to-completion makes the check-and-insert atomic; the model owns the settle path
   for store/evict-on-reject. Engine-side coherence: the second walk's subtree never runs
   (in-flight generalizes hit-pruning), and a shared rejection lands in each walk's own deduped
-  `AggregateError`. Scope attribution and ambience are likewise model-implementable
-  (retrospective via a model-kept `WeakMap<instance, box>` behind a registered inspector service;
-  mid-construction via the model wrapping its own factory invocations in its own ambient frame —
-  the model, not the engine, invokes factories). No engine involvement in any of it.
+  `AggregateError`. Scope attribution is likewise model-implementable retrospectively (a
+  model-kept `WeakMap<instance, box>` behind a registered inspector service). Mid-construction
+  ambience is OPEN: the engine, not the model, invokes factories, so a `currentScope()` visible
+  inside a constructor requires an engine-provided seam if it is ever wanted — an owner call,
+  currently unmade.
 
 ## Coverage and extensibility
 
@@ -332,13 +334,16 @@ Weigh every design decision against this split.
   mutation (activation-pipeline, not lifetime; factory territory here), and per-scope
   registrations (`BeginLifetimeScope(builder =>)`) — per-scope context is model/userland
   territory (the scoped-holder pattern serves the use case).
-- NO middleware/interception chain, in the engine or the scope system. Every surveyed middleware
-  use-case decomposes into: factories, plan-time composition, registration data, the scope-model
-  call, or a read-only observer seam. Purpose-built seams ship on NAMED demand.
+- Resolution IS a chain: build-composed middleware links (`wrapResolve`, model innermost) plus
+  the named-event hook roster around construction and resolution — those two are the
+  purpose-built seams, and every surveyed middleware use-case lands on one of them (or on
+  factories, plan-time composition, registration data). Seams beyond them still ship only on
+  NAMED demand.
 - Joints vs surfaces discipline: architectural joints are reserved before freeze; additive
   surfaces ship on demand. The named extension points the coverage verdict is conditional on: the
-  scope-model call; manifest-as-data + registration verbs; latebound re-entry; construct-on-miss;
-  open (`$T`) registrations; the augmentation registry; the disposal vocabulary.
+  hook-event roster; the chain-addon seam; manifest-as-data + registration verbs; latebound
+  re-entry; construct-on-miss; open (`$T`) registrations; the augmentation registry; the disposal
+  vocabulary.
 
 ## Invocation coupling
 
@@ -420,11 +425,13 @@ contract above is complete without it.
   is per-registration, so userland single-flight is wrong there; a construction-economy answer arm
   remains an additive contract extension if a model ever names the demand.
 - **Attribution / ambience patterns**: retrospective instance→scope via `WeakMap` behind a
-  registered inspector service; mid-construction `currentScope()` via the model wrapping its own
-  factory invocations in its own `AsyncLocalStorage` frame (`run`, never `enterWith`).
-- **Captive intent lint** (placement-if-ever; none planned): a model with ordered lifetime
-  vocabulary can ship `validate(manifest)` walking registrations (types, args rows, datums) with
-  its own ordering, invoked by the composition root.
+  registered inspector service. Mid-construction `currentScope()` is unresolved — factories are
+  engine-invoked, so it requires an engine-provided seam (which would run the invocation inside a
+  model-configured `AsyncLocalStorage` frame — `run`, never `enterWith`) if it is ever wanted;
+  owner call, currently unmade.
+- **Captive lint**: ships as the validation addon — a chain addon consuming the model's exported
+  `LifetimePolicy`, composition-root-installed; a runtime guard hook entry plus a build-time
+  plan sweep.
 - **Web Locks note**: `navigator.locks` (Node ≥22.5; absent in Bun) is the wrong tool for
   in-agent dedup (async grant latency, string names, serialize-then-recheck); its niche is
   cross-agent external-effect exclusion INSIDE user factories.

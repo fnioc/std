@@ -1,10 +1,9 @@
 // Behaviour tests for the standard lifetime model: which scope keeps an instance, what a
 // registration naming no lifetime meets, and what a singleton's own dependencies resolve from.
 
-import { di, standard } from '@rhombus-std/di';
-import { type IServiceProvider, LifetimeModelError, Registration, ScopeFactory, type StandardLifetime } from '@rhombus-std/di.core';
+import { di, standard, StandardScopeFactory } from '@rhombus-std/di';
+import { type IServiceProvider, LifetimeModelError, Registration, type StandardLifetime } from '@rhombus-std/di.core';
 import { Type } from '@rhombus-std/primitives';
-import type { Func } from '@rhombus-toolkit/func';
 import { describe, expect, test } from 'bun:test';
 
 const COUNTER = Type.imported('Counter', 'app');
@@ -25,7 +24,7 @@ function buildProviderFor(lifetime: StandardLifetime): IServiceProvider {
 
 /** Opens a scope the way a user without the engine-typed provider does — through the published address. */
 function openScope(provider: IServiceProvider): IServiceProvider {
-  return (provider.resolve(ScopeFactory.address) as Func<[], IServiceProvider>)();
+  return (provider.resolve(StandardScopeFactory.address) as StandardScopeFactory).openScope();
 }
 
 describe('the model itself', () => {
@@ -115,8 +114,8 @@ describe('captivity', () => {
 describe('scope creation', () => {
   test('the published address resolves to a working scope opener', () => {
     const provider = buildProviderFor('scoped');
-    const openChildScope = provider.resolve(ScopeFactory.address) as Func<[], IServiceProvider>;
-    expect(openChildScope().resolve(COUNTER)).toBeInstanceOf(Counter);
+    const factory = provider.resolve(StandardScopeFactory.address) as StandardScopeFactory;
+    expect(factory.openScope().resolve(COUNTER)).toBeInstanceOf(Counter);
   });
 
   test('a scope opened from inside a scope keeps its own instances', () => {

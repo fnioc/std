@@ -1,4 +1,4 @@
-import { type Registration } from '@rhombus-std/di.core';
+import type { Registration } from '@rhombus-std/di.core';
 import { Type } from '@rhombus-std/primitives';
 
 /** A registration that can serve a request, and what the match captured to make it fit. */
@@ -19,9 +19,14 @@ export class Registry {
     this.#registrations = Iterator.from(registrations).map(registration => Object.freeze(registration)).toArray();
   }
 
+  /** Every registration filed, newest first. */
+  get registrations(): ReadonlyArray<Registration<unknown>> {
+    return this.#registrations;
+  }
+
   /**
-   * Every address a closed registration answers — what a whole-registry check has to walk, since
-   * an open registration has no request to close its holes against.
+   * Every address a closed registration answers — what a whole-registry check has to enumerate,
+   * since an open registration has no request to close its holes against.
    */
   get closedAddresses(): ReadonlySet<Type> {
     return new Set(

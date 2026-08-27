@@ -56,7 +56,7 @@ export function openRegistration<Lifetime>(address: Type): RegistrationBuilderFo
   return new PendingRegistration<Lifetime>(address) as unknown as RegistrationBuilderFor<any, Lifetime>;
 }
 
-/** The node the chain walks before an implementer is chosen. */
+/** The node the chain passes through before an implementer is chosen. */
 class PendingRegistration<Lifetime> {
   readonly #baseAddress: Type;
   readonly #lifetime: Lifetime | undefined;

@@ -6,12 +6,14 @@ import './single-instance-guard';
 
 export * from './brands';
 export type { RegistrationBuilderFor } from './builder';
+export type * from './ChainAddon';
 export * from './Errors';
 export type { Invoker } from './Invoker';
 export type * from './IServiceProvider';
 export * from './LifetimeModel';
 export * from './Manifest';
 export * from './Registration';
-export * from './ScopeFactory';
+export * from './ResolveAudit';
+export * from './Starfish';
 
 import './augmentations';

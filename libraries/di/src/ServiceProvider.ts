@@ -1,32 +1,23 @@
-import { type IServiceProvider, type Realizer, type Registration } from '@rhombus-std/di.core';
-import { augment, Type } from '@rhombus-std/primitives';
+import type { IServiceProvider } from '@rhombus-std/di.core';
+import { augment, type Type } from '@rhombus-std/primitives';
 import { typefor } from '@rhombus-std/primitives.extras';
-import { Engine } from './internal/Engine.js';
-import { ServiceProviderOptions } from './ServiceProviderOptions.js';
+import type { Func } from '@rhombus-toolkit/func';
 
 export interface ServiceProvider extends IServiceProvider {}
 
-/** The user-facing door: a manifest sealed into a resolvable provider. */
+/** The user-facing provider: an empty, augmented door answering every request through one handler, bound as the provider is constructed. */
 @augment(typefor<IServiceProvider>())
 export class ServiceProvider implements IServiceProvider {
-  readonly #engine: Engine;
+  readonly #handler: Func<[Type], unknown>;
 
-  /** @throws {ManifestValidationError} when `options.validateOnBuild` finds an unsatisfiable graph. */
-  constructor(
-    realizer: Realizer,
-    registrations: Iterable<Registration<unknown>>,
-    options: ServiceProviderOptions = ServiceProviderOptions.defaults,
-  ) {
-    this.#engine = new Engine(realizer, registrations);
-    if (options.validateOnBuild) {
-      this.#engine.validate();
-    }
+  constructor(bind: Func<[IServiceProvider], Func<[Type], unknown>>) {
+    this.#handler = bind(this);
   }
 
   getService(address: Type): any {
     if (!address) {
       throw new TypeError('getService was handed a nullish service type.');
     }
-    return this.#engine.resolve(address, { serviceProvider: this });
+    return this.#handler(address);
   }
 }

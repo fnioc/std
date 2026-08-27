@@ -21,7 +21,7 @@
 import type {} from '@rhombus-std/di.extras';
 
 import type { IConfig } from '@rhombus-std/config.core';
-import { di, noop, ServiceProviderOptions } from '@rhombus-std/di';
+import { di, noop, standardValidationPolicy, validation } from '@rhombus-std/di';
 import { type Manifest } from '@rhombus-std/di.core';
 import { Environments, type HostBuilderContext, HostDefaults, type IHost, type IHostApplicationLifetime, type IHostEnvironment, type IHostLifetime } from '@rhombus-std/hosting.core';
 import { LoggerFactory } from '@rhombus-std/logging';
@@ -180,13 +180,14 @@ export function populateFrameworkServices(services: Manifest<unknown>, context: 
  * `config` is the final application configuration folded into
  * {@link HostOptions} before the `configureHostOptions` mutations run.
  *
- * `serviceProviderOptions` carries the `validateOnBuild` toggle the builders
- * resolved; omitted ⇒ an unvalidated build.
+ * `serviceProviderOptions` carries the `validateOnBuild`/`validateScopes`
+ * toggles the builders resolved, threaded into the `validation` chain addon;
+ * omitted ⇒ an unvalidated build.
  */
-export function resolveHost(services: Manifest<unknown>, framework: FrameworkServices, config: IConfig, serviceProviderOptions?: ServiceProviderOptions): IHost {
+export function resolveHost(services: Manifest<unknown>, framework: FrameworkServices, config: IConfig, serviceProviderOptions?: { validateOnBuild?: boolean; validateScopes?: boolean; }): IHost {
   const provider = di.usingLifetimeModel(noop())
     .usingManifest(services)
-    .configureProvider(() => serviceProviderOptions ?? ServiceProviderOptions.defaults)
+    .withAddon(validation(standardValidationPolicy, serviceProviderOptions ?? {}))
     .build();
 
   const loggerProviders: ILoggerProvider[] = provider.resolve<ILoggerProvider[]>();

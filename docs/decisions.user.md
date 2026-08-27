@@ -103,3 +103,23 @@ name however their import reached the type — a hand-spelled address can guess 
 re-export's module, a misremembered name) in a way `typefor` cannot.
 
 _Owner-ruled and signed off 2026-08-21._
+
+## U8 — The threaded context collection is immutable; a slot's interior is the addon's own
+
+The collection of per-addon contexts threaded through a walk is immutable: a slot changes only by
+replacement through the hook-return channel, so a fork never leaks between subtrees and a captured
+collection stays stable for as long as anything holds it. To the engine and to every other addon,
+a slot's value is an opaque token — never read, never cloned, compared by identity at most.
+
+Inside its own slot, an addon sets its own mutability rules. Nothing outside the addon can observe
+the interior, and an invariant nobody else can observe is not the framework's to enforce — nor
+could it be: freezing is shallow, and arbitrary values cannot be policed. The freedom is
+load-bearing, not merely tolerated: a slot value wants to be a stable identity with evolving state
+behind it, so that a deferred capture sees live state through the identity it holds rather than a
+stale snapshot of mint time — a lifetime model's scope is exactly this shape.
+
+Convention, not requirement: keep the slot value itself a frozen identity/topology object and hang
+accumulating state behind it — a private member or a side store, the addon's choice. The shipped
+models follow the convention.
+
+_Owner-ruled and signed off 2026-08-27._

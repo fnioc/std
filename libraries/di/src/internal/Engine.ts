@@ -1,54 +1,99 @@
-import { type IServiceProvider, ManifestValidationError, type Realizer, type Registration, UnsatisfiableError, type ValidationFailure } from '@rhombus-std/di.core';
-import { type FunctionType, Type } from '@rhombus-std/primitives';
+import { type Hooks, type IServiceProvider, type Registration, type Starfish, UnsatisfiableError } from '@rhombus-std/di.core';
+import { augment, type FunctionType, Type } from '@rhombus-std/primitives';
+import { typefor } from '@rhombus-std/primitives.extras';
+import { HookComposer } from './HookComposer.js';
 import { Plan } from './Plan/index.js';
 import { Registry } from './Registry.js';
 
+/** Who a resolution is answered by, and the context it runs under. */
 export interface ResolveContext {
-  /** What a service asking for the provider receives. */
+  /** What a service asking for the provider receives when its model has none of its own to hand out. */
   readonly serviceProvider: IServiceProvider;
+  /** The context the resolution's constructions sit under, absent to run it under none. */
+  readonly context?: unknown;
 }
 
-/**
- * The resolution orchestrator: one per provider, stateless across resolutions — everything
- * per-walk arrives in the {@link ResolveContext}.
- */
-export class Engine {
-  readonly #realizer: Realizer;
-  readonly #registry: Registry;
+export interface Engine extends IServiceProvider {}
 
-  constructor(realizer: Realizer, registrations: Iterable<Registration<unknown>>) {
-    this.#realizer = realizer;
+/** The resolution orchestrator: one per container. Also the chain's terminus — a bare engine is itself a fully working, transient-only provider. */
+@augment(typefor<IServiceProvider>())
+export class Engine implements IServiceProvider {
+  readonly #registry: Registry;
+  readonly #composer = new HookComposer();
+  #starfish: Starfish | undefined;
+
+  constructor(registrations: Iterable<Registration<unknown>>) {
     this.#registry = new Registry(registrations);
   }
 
-  /** @throws {UnsatisfiableError} when nothing in the registry can produce {@link address}. */
-  resolve(address: Type, context: ResolveContext): unknown {
-    return Plan.realize(Plan.from(address, this.#registry), { engine: this, serviceProvider: context.serviceProvider, realizer: this.#realizer });
+  getService(address: Type): any {
+    if (!address) {
+      throw new TypeError('getService was handed a nullish service type.');
+    }
+    return this.resolveUnder(address, { serviceProvider: this });
+  }
+
+  /** The registrations this engine resolves against. */
+  get registry(): Registry {
+    return this.#registry;
+  }
+
+  /** The one handler every resolution runs through, as everything filed through the door composes. */
+  get hooks(): Hooks {
+    return this.#composer.hooks;
+  }
+
+  /** The one door this engine answers `Starfish` with, minted on the first ask and shared by every later one. */
+  get starfish(): Starfish {
+    return this.#starfish ??= {
+      bind: binding => {
+        const { provider, context } = binding;
+        return request => this.resolveUnder(request, { serviceProvider: provider ?? this, context });
+      },
+      onBeginResolve: fn => this.#composer.onBeginResolve(fn),
+      onBeforeConstruct: (fn, options) => this.#composer.onBeforeConstruct(fn, options),
+      onCanonicalize: (fn, options) => this.#composer.onCanonicalize(fn, options),
+      onAfterConstruct: (fn, options) => this.#composer.onAfterConstruct(fn, options),
+    };
   }
 
   /**
-   * An invocation frame: `registration` is the ready-made answer for its own service type, its
-   * dependencies resolve from the registry, and the plan is per-call — nothing registers and
-   * nothing caches.
+   * Resolves `address`, opening the resolution under whatever `injection` carried.
    *
+   * @throws {UnsatisfiableError} when nothing in the registry can produce {@link address}.
+   */
+  resolveUnder(address: Type, injection: ResolveContext): unknown {
+    return Plan.realize(Plan.from(address, this.#registry), {
+      engine: this,
+      serviceProvider: injection.serviceProvider,
+      context: this.hooks.beginResolve(address, injection.context),
+    });
+  }
+
+  /**
+   * An invocation frame for `registration`: dependencies resolve from the registry, but nothing
+   * registers or caches.
+   *
+   * @param running - the context captured where the caller was minted; the resolution re-opens
+   * through the handler so an opener that reads ambient state can override it.
    * @throws {UnsatisfiableError} when no signature of {@link registration} can be satisfied.
    */
-  resolveFrame(registration: Registration<unknown>, serviceProvider: IServiceProvider): unknown {
+  resolveFrame(registration: Registration<unknown>, running: ResolveContext): unknown {
     const plan = Plan.fromRegistration(registration, this.#registry);
     if (plan === undefined) {
       throw new UnsatisfiableError(registration.address, 'no signature of the invoked callable can be satisfied');
     }
-    return Plan.realize(plan, { engine: this, serviceProvider, realizer: this.#realizer });
+    return Plan.realize(plan, { engine: this, ...running, context: this.hooks.beginResolve(registration.address, running.context) });
   }
 
   /**
-   * A latebound call: the first signature the call's arity satisfies binds each arg to the
-   * slots naming its type, and the args ride the realize context into the plan's
-   * {@link Plan.arg} sites. A call may stop short of a signature's full length exactly where
-   * the slots it leaves unfilled admit `undefined` — an omitted optional arrives as the
-   * `undefined` the slot's own type already names.
+   * A latebound call: binds each arg to the first signature whose arity fits, positionally.
+   * A call may stop short of the full signature wherever the remaining slots admit `undefined`.
+   *
+   * @param running - the context captured where the caller was minted; the resolution re-opens
+   * through the handler so an opener that reads ambient state can override it.
    */
-  resolveLatebound(funcType: FunctionType, providedArgs: readonly unknown[], serviceProvider: IServiceProvider): unknown {
+  resolveLatebound(funcType: FunctionType, providedArgs: readonly unknown[], running: ResolveContext): unknown {
     const signature = funcType.signatures
       .filter(candidateSignature => providedArgs.length <= candidateSignature.length)
       .find(candidate => candidate.slice(providedArgs.length).every(Type.isOptional));
@@ -59,32 +104,9 @@ export class Engine {
     const result = Plan.from(funcType.return, this.#registry, signature);
     return Plan.realize(result, {
       engine: this,
-      serviceProvider,
-      realizer: this.#realizer,
+      ...running,
+      context: this.hooks.beginResolve(funcType.return, running.context),
       args: providedArgs,
     });
-  }
-
-  /**
-   * Builds a plan for every closed registration up front, collecting each failure instead of
-   * stopping at the first, so one pass reports the whole broken graph.
-   *
-   * @throws {ManifestValidationError} when any registration has no plan.
-   */
-  validate(): void {
-    const failures = Iterator.from(this.#registry.closedAddresses)
-      .map((address): ValidationFailure | undefined => {
-        try {
-          Plan.from(address, this.#registry);
-          return undefined;
-        } catch (error) {
-          return { address, error: error instanceof Error ? error : new Error(String(error)) };
-        }
-      })
-      .filter((failure): failure is ValidationFailure => failure !== undefined)
-      .toArray();
-    if (failures.length) {
-      throw new ManifestValidationError(failures);
-    }
   }
 }

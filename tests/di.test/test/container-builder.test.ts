@@ -1,19 +1,21 @@
 // Behaviour tests for `di.usingLifetimeModel(...)`, the container-builder front door. It composes
-// manifest and provider-option steps in call order, and every step is a pure delegate over an
+// manifest steps and addons in call/install order, and every step is a pure delegate over an
 // immutable value — so what a discarded return registers, and what a later `usingManifest` or an
 // intermediate `build()` sees, are the properties worth pinning down.
 
-import { ContainerBuilder, di, noop } from '@rhombus-std/di';
-import { Manifest, ManifestValidationError, UnsatisfiableError } from '@rhombus-std/di.core';
+import { ContainerBuilder, di, noop, StandardScopeFactory, validation } from '@rhombus-std/di';
+import { type ChainAddon, type LifetimePolicy, Manifest, ManifestValidationError, UnsatisfiableError } from '@rhombus-std/di.core';
 import { Type } from '@rhombus-std/primitives';
 import { describe, expect, test } from 'bun:test';
 
 const A = Type.imported('A', 'app');
 const B = Type.imported('B', 'app');
-const SCOPE_FACTORY = Type.imported('ScopeFactory', '@rhombus-std/di.core', []);
 
 class Impl {}
 class NeedsB {}
+
+/** `noop()` carries no lifetime vocabulary, so a policy for it classifies nothing. */
+const noopPolicy: LifetimePolicy = { classify: () => undefined };
 
 describe('a single configureServices step', () => {
   test('resolves the value it registered', () => {
@@ -84,19 +86,33 @@ describe('builder immutability', () => {
   });
 });
 
-describe('configureProvider', () => {
-  test('composes provider options in call order', () => {
+describe('withAddon', () => {
+  test('installs addons in call order, each one contributing at build', () => {
+    const order: string[] = [];
+    const first: ChainAddon<unknown> = { install: () => ({ atBuild: () => order.push('first') }) };
+    const second: ChainAddon<unknown> = { install: () => ({ atBuild: () => order.push('second') }) };
+
+    di.usingLifetimeModel(noop())
+      .withAddon(first)
+      .withAddon(second)
+      .build();
+
+    expect(order).toEqual(['first', 'second']);
+  });
+});
+
+describe('the validation addon', () => {
+  test('validateOnBuild throws ManifestValidationError when a closed address is unsatisfiable', () => {
     expect(
       () =>
         di.usingLifetimeModel(noop())
           .configureServices(manifest => manifest.add(A, NeedsB, Type.ctor(A, [[B]])))
-          .configureProvider(options => ({ ...options, validateOnBuild: false }))
-          .configureProvider(options => ({ ...options, validateOnBuild: true }))
+          .withAddon(validation(noopPolicy, { validateOnBuild: true }))
           .build(),
     ).toThrow(ManifestValidationError);
   });
 
-  test('without configureProvider, an unsatisfiable graph builds fine — the failure surfaces on resolution', () => {
+  test('without the addon, an unsatisfiable graph builds fine — the failure surfaces on resolution', () => {
     const provider = di.usingLifetimeModel(noop())
       .configureServices(manifest => manifest.add(A, NeedsB, Type.ctor(A, [[B]])))
       .build();
@@ -106,31 +122,24 @@ describe('configureProvider', () => {
   test('validateOnBuild does not throw when every closed address is satisfiable', () => {
     const provider = di.usingLifetimeModel(noop())
       .configureServices(manifest => manifest.add(A, Impl, Type.ctor(A, [[]])))
-      .configureProvider(options => ({ ...options, validateOnBuild: true }))
+      .withAddon(validation(noopPolicy, { validateOnBuild: true }))
       .build();
     expect(provider.resolve(A)).toBeInstanceOf(Impl);
   });
 });
 
-describe('the ScopeFactory address', () => {
+describe("a model's scope-opening address", () => {
   test('is unsatisfiable when the model publishes no factory', () => {
     const provider = di.usingLifetimeModel(noop()).build();
-    expect(() => provider.resolve(SCOPE_FACTORY)).toThrow(UnsatisfiableError);
+    expect(() => provider.resolve(StandardScopeFactory.address)).toThrow(UnsatisfiableError);
   });
 
-  test('hands back the registered factory, which forwards the lifetime argument', () => {
+  test('is a registration like any other, so a container can answer it itself', () => {
     const scope = di.usingLifetimeModel(noop()).build();
-    let forwarded: unknown[] = [];
     const provider = di.usingLifetimeModel(noop())
-      .configureServices(manifest =>
-        manifest.addValue(SCOPE_FACTORY, (...args: unknown[]) => {
-          forwarded = args;
-          return scope;
-        })
-      )
+      .configureServices(manifest => manifest.addValue(StandardScopeFactory.address, { openScope: () => scope }))
       .build();
 
-    expect(provider.resolve(SCOPE_FACTORY)('x')).toBe(scope);
-    expect(forwarded).toEqual(['x']);
+    expect((provider.resolve(StandardScopeFactory.address) as StandardScopeFactory).openScope()).toBe(scope);
   });
 });

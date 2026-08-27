@@ -2,7 +2,6 @@
 // are built by hand here through the Plan factories, independent of what PlannerVisitor
 // would have produced, so each node kind is exercised on its own terms.
 
-import { noop } from '@rhombus-std/di';
 import { type IServiceProvider, Manifest, Registration } from '@rhombus-std/di.core';
 import { Engine } from '@rhombus-std/di/private/internal/Engine';
 import { Plan } from '@rhombus-std/di/private/internal/Plan/Plan';
@@ -20,15 +19,14 @@ class Widget {
 }
 
 const provider = {} as IServiceProvider;
-const { realizer } = noop().createRealizer();
 
-/** Seals `registrations` into an Engine on the noop lifetime model — no scoping, no caching. */
+/** Seals `registrations` into an Engine — nothing binds hooks here, so no scope keeps anything. */
 function engineFor(registrations: Iterable<Registration<unknown>>): Engine {
-  return new Engine(realizer, registrations);
+  return new Engine(registrations);
 }
 
 const engine = engineFor(Manifest.empty<unknown>());
-const context = { engine, serviceProvider: provider, realizer };
+const context = { engine, serviceProvider: provider, request: WIDGET };
 
 describe('the leaf kinds', () => {
   test('constant returns its value untouched', () => {
@@ -36,12 +34,12 @@ describe('the leaf kinds', () => {
   });
 
   test("service-provider returns the context's own facade", () => {
-    expect(realizePlan(Plan.serviceProvider(), context)).toBe(provider);
+    expect(realizePlan(Plan.serviceProvider(Type.imported('IServiceProvider', '@rhombus-std/di.core')), context)).toBe(provider);
   });
 
-  // Scope-opening realizes to the model's own ScopeFactory function now (see
-  // standard-lifetime-model.test.ts / tagged-lifetime-model.test.ts) — the scope/lifetime
-  // system is unbuilt here, so this stays dormant.
+  // Scope-opening is a registration each model publishes at its own address (see
+  // standard-lifetime-model.test.ts / tagged-lifetime-model.test.ts), so no plan kind of its
+  // own reaches here.
   test.skip('service-scope-factory realizes to a working scope opener', () => {});
 });
 
@@ -86,7 +84,7 @@ describe('a late-bound plan', () => {
     );
     const lateBoundEngine = engineFor(manifest);
     const plan = Plan.latebound(Type.func(WIDGET, [[CONN]]));
-    const make = realizePlan(plan, { engine: lateBoundEngine, serviceProvider: provider, realizer }) as (
+    const make = realizePlan(plan, { engine: lateBoundEngine, serviceProvider: provider, request: WIDGET }) as (
       conn: unknown,
     ) => Widget;
     const conn = new Conn();
@@ -98,7 +96,7 @@ describe('a late-bound plan', () => {
   test("binds the call's arguments under the signature whose length matches the call", () => {
     const lateBoundEngine = engineFor(Manifest.empty<unknown>());
     const plan = Plan.latebound(Type.func(CONN, [[CONN, BAR], [CONN]]));
-    const call = realizePlan(plan, { engine: lateBoundEngine, serviceProvider: provider, realizer }) as (
+    const call = realizePlan(plan, { engine: lateBoundEngine, serviceProvider: provider, request: WIDGET }) as (
       ...args: unknown[]
     ) => unknown;
     const conn = new Conn();
@@ -108,7 +106,7 @@ describe('a late-bound plan', () => {
   test('throws when no signature accepts the call arity — nothing falls back silently', () => {
     const lateBoundEngine = engineFor(Manifest.empty<unknown>());
     const plan = Plan.latebound(Type.func(CONN, [[CONN, BAR], [CONN]]));
-    const call = realizePlan(plan, { engine: lateBoundEngine, serviceProvider: provider, realizer }) as (
+    const call = realizePlan(plan, { engine: lateBoundEngine, serviceProvider: provider, request: WIDGET }) as (
       ...args: unknown[]
     ) => unknown;
     const conn = new Conn();
@@ -116,9 +114,8 @@ describe('a late-bound plan', () => {
   });
 });
 
-// The scope/lifetime system is unbuilt here — ServiceScope/ServiceScopeFactory no longer exist;
-// per-scope caching now lives entirely in the lifetime models themselves (see
-// standard-lifetime-model.test.ts / tagged-lifetime-model.test.ts).
+// Per-scope caching lives entirely in the lifetime models (see standard-lifetime-model.test.ts /
+// tagged-lifetime-model.test.ts), so the visitor has nothing of its own to pin down here.
 describe.skip('scoped caching', () => {
   test.skip('a lifetime-tagged plan realizes once per scope and is cached for the next ask', () => {});
   test.skip("a fresh scope never sees another scope's cached value", () => {});

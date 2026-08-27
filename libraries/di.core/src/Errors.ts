@@ -27,7 +27,7 @@ export abstract class DiError extends Error {}
  *
  * @remarks
  * Catch this to fall back to another candidate — a union member, a later signature.
- * Anything else escaping a resolution walk is a fault rather than an unsatisfiable
+ * Anything else escaping a resolution is a fault rather than an unsatisfiable
  * request, so a handler that swallows it should rethrow what it does not recognise:
  *
  * ```ts
@@ -90,8 +90,8 @@ export class LifetimeModelError extends DiError {
 }
 
 /**
- * A registration is kept by the scope wearing {@link tag}, and no scope open where it was asked
- * for wears it.
+ * A registration is kept by whichever container carries {@link tag}, and none open here carries
+ * it.
  */
 export class ScopeTagUnmatchedError extends DiError {
   /** What the lifetime model that refused calls itself. */
@@ -103,11 +103,49 @@ export class ScopeTagUnmatchedError extends DiError {
 
   constructor(modelName: string, tag: string, address: Type) {
     super(
-      `the ${modelName} lifetime model keeps ${Type.stringify(address)} in the scope tagged '${tag}', and no open scope carries that tag`,
+      `the ${modelName} lifetime model keeps ${Type.stringify(address)} in the container tagged '${tag}', and no open container carries that tag`,
     );
     this.name = 'ScopeTagUnmatchedError';
     this.modelName = modelName;
     this.tag = tag;
+    this.address = address;
+  }
+}
+
+/**
+ * A singleton depends on a registration with a shorter lifetime: the singleton holds it for as
+ * long as the singleton itself lives, so the shorter lifetime is never honored.
+ */
+export class CaptiveDependencyError extends DiError {
+  /** The singleton service type doing the capturing. */
+  readonly ownerAddress: Type;
+  /** The shorter-lived service type it captures. */
+  readonly nodeAddress: Type;
+
+  constructor(ownerAddress: Type, nodeAddress: Type) {
+    super(
+      `${Type.stringify(ownerAddress)} is a singleton and constructs ${Type.stringify(nodeAddress)}, holding it for as long as the singleton itself lives — past its own shorter lifetime`,
+    );
+    this.name = 'CaptiveDependencyError';
+    this.ownerAddress = ownerAddress;
+    this.nodeAddress = nodeAddress;
+  }
+}
+
+/**
+ * A registration is addressed by a bare type parameter, which unifies with every request — so it
+ * answers every address no newer registration already answers.
+ */
+export class UniversalAddressError extends DiError {
+  /** The address that is nothing but a hole. */
+  readonly address: Type;
+
+  constructor(address: Type) {
+    super(
+      `${Type.stringify(address)} is nothing but a type parameter, so this registration answers every request no newer one does; `
+        + `give it the service type it provides and leave the hole inside — ILogger<%T> rather than %T`,
+    );
+    this.name = 'UniversalAddressError';
     this.address = address;
   }
 }

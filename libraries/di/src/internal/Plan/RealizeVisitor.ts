@@ -1,16 +1,18 @@
-import { type IServiceProvider, LifetimeModelError, type Realizer, Registration } from '@rhombus-std/di.core';
+import { type Construction, type Hooks, type IServiceProvider, Registration, type Starfish } from '@rhombus-std/di.core';
+import type { Type } from '@rhombus-std/primitives';
+import { typefor } from '@rhombus-std/primitives.extras';
 import type { Ctor, Func } from '@rhombus-toolkit/func';
 import { assertNever } from '@rhombus-toolkit/type-guards';
 import type { Engine } from '../Engine.js';
-import type { ArrayPlan, ConstantPlan, CtorPlan, FactoryPlan, InvokerPlan, IterablePlan, LateBoundArgPlan, LateBoundPlan, Plan, RegisteredCtorPlan, RegisteredFactoryPlan,
-  ServiceProviderPlan } from './Plan.js';
+import type { ArrayPlan, ConstantPlan, CtorPlan, FactoryPlan, InvokerPlan, IterablePlan, LateBoundArgPlan, LateBoundPlan, Plan, RegisteredCtorPlan, RegisteredFactoryPlan, ServiceProviderPlan,
+  StarfishPlan } from './Plan.js';
 
 export interface RealizeOptions {
   readonly engine: Engine;
-  /** What a service asking for the provider receives — the walk's originating facade. */
+  /** The facade a slot naming `IServiceProvider` falls back to — the provider this resolution was asked of. */
   readonly serviceProvider: IServiceProvider;
-  /** The realizer governing the walk's root plan. */
-  readonly realizer: Realizer;
+  /** The context this resolution's constructions sit under, as it opened. */
+  readonly context?: unknown;
   /** A latebound call's arguments, read by position from the {@link LateBoundArgPlan}s in its plan. */
   readonly args?: readonly unknown[];
 }
@@ -19,101 +21,94 @@ export interface RealizeOptions {
  * Realizes a {@link Plan} tree into the value it describes.
  *
  * @remarks
- * One instance per walk — {@link realizePlan} is the entry point. `ctor` and `factory`
- * nodes realize their argument sites depth-first; a `latebound` node realizes to a function
- * that re-enters the engine on every call, the call's arguments entering as value
- * registrations; the leaf kinds read the walk-wide {@link RealizeOptions} fixed at
- * construction.
+ * One instance per walk, entered through {@link realizePlan}. One context value descends with the
+ * walk — opaque to everything here, moved and never read.
  */
 class RealizeVisitor {
   readonly #engine: Engine;
   readonly #serviceProvider: IServiceProvider;
+  readonly #hooks: Hooks;
   readonly #args: readonly unknown[] | undefined;
 
-  constructor({ engine, serviceProvider, args }: Omit<RealizeOptions, 'realizer'>) {
+  constructor({ engine, serviceProvider, args }: RealizeOptions) {
     this.#engine = engine;
     this.#serviceProvider = serviceProvider;
+    this.#hooks = engine.hooks;
     this.#args = args;
   }
 
-  visit(plan: Plan, realizer: Realizer): any {
+  visit(plan: Plan, context: unknown): any {
     switch (plan.kind) {
       case 'registered-ctor':
-        return this.visitRegisteredCtor(plan, realizer);
+        return this.visitRegisteredCtor(plan, context);
       case 'registered-factory':
-        return this.visitRegisteredFactory(plan, realizer);
+        return this.visitRegisteredFactory(plan, context);
       case 'ctor':
-        return this.visitCtor(plan, realizer);
+        return this.visitCtor(plan, context);
       case 'factory':
-        return this.visitFactory(plan, realizer);
+        return this.visitFactory(plan, context);
       case 'latebound':
-        return this.visitLateBound(plan);
+        return this.visitLateBound(plan, context);
       case 'latebound-arg':
         return this.visitLateBoundArg(plan);
       case 'invoker':
-        return this.visitInvoker(plan);
+        return this.visitInvoker(plan, context);
       case 'constant':
         return this.visitConstant(plan);
       case 'service-provider':
-        return this.visitServiceProvider(plan);
+        return this.visitServiceProvider(plan, context);
+      case 'starfish':
+        return this.visitStarfish(plan, context);
       case 'iterable':
-        return this.visitIterable(plan, realizer);
+        return this.visitIterable(plan, context);
       case 'array':
-        return this.visitArray(plan, realizer);
+        return this.visitArray(plan, context);
       default:
         return assertNever(plan);
     }
   }
 
-  protected visitRegisteredCtor(plan: RegisteredCtorPlan, realizer: Realizer): any {
-    return this.#realize(plan, realizer, (...args) => new plan.ctor(...args));
+  protected visitRegisteredCtor(plan: RegisteredCtorPlan, context: unknown): any {
+    return this.#realize(plan, plan.populatedAddress, plan.registration, context, within => new plan.ctor(...plan.args.map(arg => this.visit(arg, within))));
   }
 
-  protected visitRegisteredFactory(plan: RegisteredFactoryPlan, realizer: Realizer): any {
-    return this.#realize(plan, realizer, plan.factory);
+  protected visitRegisteredFactory(plan: RegisteredFactoryPlan, context: unknown): any {
+    return this.#realize(plan, plan.populatedAddress, plan.registration, context, within => plan.factory(...plan.args.map(arg => this.visit(arg, within))));
   }
 
   /**
-   * Calls the realizer with the throw attributed: an error raised by the realizer's own code
-   * surfaces as {@link LifetimeModelError} naming the plan, while an error `make` raised passes
-   * through untouched — the construction, not the realizer, owns that one.
+   * Constructs through the engine's one handler: an `{instance}` answer is the node's value,
+   * built by nobody and swept by nothing, while a `{within}` answer is the context this node's
+   * dependencies resolve under. What is built is canonicalized, and the node settles on whatever
+   * that answered before anything downstream reads it.
    */
-  #realize(plan: RegisteredCtorPlan | RegisteredFactoryPlan, realizer: Realizer, factory: Func): any {
-    let madeThrew = false;
-    let madeError: unknown;
-    try {
-      return realizer.realize({
-        site: plan,
-        populatedAddress: plan.populatedAddress,
-        registration: plan.registration,
-        make: descendantRealizer => {
-          try {
-            return factory(...plan.args.map(arg => this.visit(arg, descendantRealizer)));
-          } catch (error) {
-            madeThrew = true;
-            madeError = error;
-            throw error;
-          }
-        },
-      });
-    } catch (error) {
-      if (madeThrew && error === madeError) {
-        throw error;
-      }
-      throw new LifetimeModelError(plan.populatedAddress, error);
+  #realize(plan: Plan, populatedAddress: Type, registration: Registration<unknown> | undefined, context: unknown, make: Func<[unknown], unknown>): any {
+    const construction: Construction = { site: plan, populatedAddress, registration, context };
+    const answer = this.#hooks.beforeConstruct(construction);
+    if ('instance' in answer) {
+      return answer.instance;
     }
+    const instance = this.#hooks.canonicalize(construction, make(answer.within));
+    this.#hooks.afterConstruct(construction, instance);
+    return instance;
   }
 
-  protected visitCtor(plan: CtorPlan, realizer: Realizer): any {
-    return new plan.ctor(...plan.args.map(arg => this.visit(arg, realizer)));
+  protected visitCtor(plan: CtorPlan, context: unknown): any {
+    return new plan.ctor(...plan.args.map(arg => this.visit(arg, context)));
   }
 
-  protected visitFactory(plan: FactoryPlan, realizer: Realizer): any {
-    return plan.factory(...plan.args.map(arg => this.visit(arg, realizer)));
+  protected visitFactory(plan: FactoryPlan, context: unknown): any {
+    return plan.factory(...plan.args.map(arg => this.visit(arg, context)));
   }
 
-  protected visitLateBound(plan: LateBoundPlan): any {
-    return (...args: any[]) => this.#engine.resolveLatebound(plan.funcType, args, this.#serviceProvider);
+  /**
+   * Each call re-enters under the context at the position the function was minted — the model's
+   * `{within}` re-threading makes that position's context the honest ownership context: a
+   * singleton's factory carries the root-threaded context, a scoped service's factory carries its
+   * own owning context.
+   */
+  protected visitLateBound(plan: LateBoundPlan, context: unknown): any {
+    return (...args: any[]) => this.#engine.resolveLatebound(plan.funcType, args, { serviceProvider: this.#serviceProvider, context });
   }
 
   protected visitLateBoundArg(plan: LateBoundArgPlan): any {
@@ -125,7 +120,7 @@ class RealizeVisitor {
    * registration for the caller's own `callable`, under `callableType` itself as the address, and
    * hands it to the engine as an invocation frame — nothing here is registered or cached.
    */
-  protected visitInvoker(plan: InvokerPlan): any {
+  protected visitInvoker(plan: InvokerPlan, context: unknown): any {
     const { callableType } = plan;
     return (callable: Ctor | Func) => {
       const registration = (() => {
@@ -138,7 +133,7 @@ class RealizeVisitor {
             return assertNever(callableType);
         }
       })();
-      return this.#engine.resolveFrame(registration, this.#serviceProvider);
+      return this.#engine.resolveFrame(registration, { serviceProvider: this.#serviceProvider, context });
     };
   }
 
@@ -146,8 +141,22 @@ class RealizeVisitor {
     return plan.value;
   }
 
-  protected visitServiceProvider(_plan: ServiceProviderPlan): any {
-    return this.#serviceProvider;
+  /**
+   * The provider a slot naming `IServiceProvider` resolves to: whoever answers this construction —
+   * the lifetime model, structurally, for the context enclosing it — falling back to the provider
+   * this resolution was asked of when nothing answers.
+   */
+  protected visitServiceProvider(plan: ServiceProviderPlan, context: unknown): any {
+    return this.#realize(plan, typefor<IServiceProvider>(), undefined, context, () => this.#serviceProvider);
+  }
+
+  /**
+   * The engine's own door — one object, whoever asks for it. The handler sees the ask like any
+   * construction, with no registration behind it, so a dependency-position door is catchable, and
+   * suppliable, by whoever holds a hook.
+   */
+  protected visitStarfish(plan: StarfishPlan, context: unknown): any {
+    return this.#realize(plan, typefor<Starfish>(), undefined, context, () => this.#engine.starfish);
   }
 
   /**
@@ -155,16 +164,16 @@ class RealizeVisitor {
    * Re-iterable rather than a one-shot iterator: a caller that walks it twice gets a value both
    * times. Each walk realizes afresh, so a transient member is a new instance per pass.
    */
-  protected visitIterable(plan: IterablePlan, realizer: Realizer): any {
-    return { [Symbol.iterator]: () => Iterator.from(plan.types).map(inner => this.visit(inner, realizer)) };
+  protected visitIterable(plan: IterablePlan, context: unknown): any {
+    return { [Symbol.iterator]: () => Iterator.from(plan.types).map(inner => this.visit(inner, context)) };
   }
 
-  protected visitArray(plan: ArrayPlan, realizer: Realizer): any {
-    return plan.types.map(inner => this.visit(inner, realizer));
+  protected visitArray(plan: ArrayPlan, context: unknown): any {
+    return plan.types.map(inner => this.visit(inner, context));
   }
 }
 
 /** Realizes {@link plan} into its value; the walk is synchronous throughout. */
 export function realizePlan(plan: Plan, options: RealizeOptions): any {
-  return new RealizeVisitor(options).visit(plan, options.realizer);
+  return new RealizeVisitor(options).visit(plan, options.context);
 }

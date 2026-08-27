@@ -3046,3 +3046,96 @@ them. The guarantee is documented on the `Manifest` interface; `_add` always cha
 always new.
 
 _Owner-ruled; Claude-recorded 2026-08-22._
+
+---
+
+## §203 — The realize walk stays opaque to lifetime vocabulary; audit is an addon behind a shared `beginWalk` hook
+
+`RealizeVisitor` names no lifetime, scope, or audit vocabulary of its own: each addon reads only
+the one strand it contributed, and the walk's binding does the same. `Construction` and `Hooks`
+carry their `Context` generic with no `LifetimeContext` bound — `Context = unknown` — so
+`LifetimeContext` stays purely the vocabulary a lifetime model invents for itself, never a shape
+the walk constrains. A seed or an `{within}` answer that names no context is not normalized to
+some empty sentinel; it stays `undefined`, and the addon that produced it is the one that reads
+its own absence back.
+
+`LifetimeModelError` is minted by the lifetime models themselves, wrapping a throw from their own
+hook — the engine passes the throw through and knows nothing of the error type.
+
+A new `beginWalk(request, seed)` hook joins the one shared `Hooks` roster rather than opening a
+second door: hooks stay together for now, and a dedicated interception point is minted only once a
+genuinely foreign domain needs one of its own. `beginWalk` opens each walk and answers the strand
+that walk starts from; the per-walk array of strands is minted only where some installed hook
+actually declares `beginWalk`, so a build with none pays nothing for it.
+
+Audit is an addon, `resolve-audit`, not engine machinery. It registers `ResolveAudit` the same way
+any other registration would — the placement ladder runs registration, then addon, before ever
+reaching for an engine change — threads its own frame chain through its own strand via `{within}`,
+and supplies the audit instance from `beforeConstruct` at the `ResolveAudit` address. The
+consequence is that audit is install-to-use: without the `resolve-audit` addon installed,
+resolving `ResolveAudit` is `Unsatisfiable` like any other unregistered address. The dedicated
+`resolve-audit` plan kind and its planner-side synthesis do not exist.
+
+_Owner-ruled; Claude-recorded 2026-08-27._
+
+---
+
+## §204 — One aggregated engine handler; Starfish composes per-hook by fold; providers are context-transforming closures
+
+The engine holds exactly one handler, born of aggregation, carrying all four members
+(`beginResolve`/`beforeConstruct`/`canonicalize`/`afterConstruct`) — never a list the realize walk
+iterates. Its `realize` is a straight script: the single fork it runs is whichever the caller
+supplied or, absent that, the one it builds itself: no branch-per-addon, no dispatch table.
+
+The Starfish door registers per hook, not per handler: each of the four members is its own
+registration point, and each accepts either a plain handler function or Koa-style middleware
+`(ctx, next)`, discriminated by the registered function's declared arity — one parameter is a
+plain handler, two is middleware. Registration composes every contribution for that hook by fold,
+not by list-and-iterate-at-call-time; the standard pairings fold with the model's own contribution
+innermost by convention only — nothing in the door enforces sweep order, an addon that needs a
+different position folds itself there deliberately.
+
+A provider is one closure that decorates the walk: it injects its own context at walk-open, which
+means `beginResolve` is, structurally, a context transformer — it receives the incoming context
+and answers the context the rest of the walk sees, never a side channel. An addon that needs a
+private compartment invisible to sibling addons packs that compartment itself, in middleware form,
+closing over its own state; the platform manages no slots, roster, or namespace on an addon's
+behalf.
+
+The resolve chain keeps `wrapResolve` in transformer form: registering a behavior wraps the
+existing resolve function in a new one and never adds a runtime layer the walk must additionally
+step through, so hook count at registration time costs nothing at call time beyond the wrapping
+already paid for.
+
+`scope` names only the lifetime models' own vocabulary; `walk` names only the realize visitor's
+traversal. Neither hook, provider, nor addon machinery borrows either word.
+
+_Owner-ruled; Claude-recorded 2026-08-27._
+
+---
+
+## §205 — Capture-at-mint closures; every resolution opens through `beginResolve`; ambient scoping stays parked
+
+A latebound closure and an invoker closure each capture the context at the position they were
+minted, not the context the whole resolution opened under, and re-enter through that captured
+value on every call. The model's `{within}` re-threading is what makes the mint position the
+honest ownership context: a singleton's factory closes over the root-threaded context once and
+keeps it for the life of the container, while a scoped service's factory closes over its own
+scope's context — so a cached holder never smuggles a first caller's context into a later one.
+
+Every resolution opens through `beginResolve(request, injected)` — a fresh top-level ask, an
+invocation frame, and a latebound call alike, re-entries included, never only the outermost one.
+This is the ambient-adoption seam: an opener that reads ambient state decides there, and nothing
+downstream may bypass the handler to inject a context directly. An addon that packs its own
+compartment into the threaded context therefore has to recognize a re-entry that hands its own
+pack back as `injected` — `resolve-audit` does this by remembering every pack it has minted and
+unwrapping to the inner context before folding in a fresh compartment, so a re-entered resolution
+never mistakes its own bookkeeping tuple for someone else's ambient value.
+
+Ambient scoping itself stays parked. Browsers have no `AsyncLocalStorage`, and TC39's
+`AsyncContext` is still Stage 2, so an ambient lifetime model has no portable primitive to stand
+on today. It arrives, when the platform does, as an outside node/bun-only package shipping an
+ambient lifetime model plus its companion addon, authored against `di.core` alone — `di` and
+`di.core` themselves stay unchanged.
+
+_Owner-ruled; Claude-recorded 2026-08-27._

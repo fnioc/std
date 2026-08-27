@@ -158,9 +158,8 @@ describe('tagged types', () => {
 describe('the service provider', () => {
   test('IServiceProvider resolves under its declaring-module address, with no registration', () => {
     const visitor = visitorFor(Manifest.empty<unknown>());
-    expect(visitor.visit(Type.imported('IServiceProvider', '@rhombus-std/di.core'))).toEqual(
-      Plan.serviceProvider(),
-    );
+    const address = Type.imported('IServiceProvider', '@rhombus-std/di.core');
+    expect(visitor.visit(address)).toEqual(Plan.serviceProvider(address));
   });
 
   test('a same-named import from an unrecognized module is not the provider', () => {

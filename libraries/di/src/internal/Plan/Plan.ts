@@ -19,15 +19,14 @@ export type Plan =
   | InvokerPlan
   | ConstantPlan
   | ServiceProviderPlan
+  | StarfishPlan
   | IterablePlan
   | ArrayPlan;
 
 /**
- * A registered constructor the engine `new`s up. {@link registration} is the answering registration
- * — the join the lifetime model reads — and is absent for an engine-synthesized plan;
- * {@link populatedAddress} is that registration's address with whatever the match captured filled
- * in, the only surviving record of which closing answered, since the bindings themselves are
- * spent lowering the signature and not kept.
+ * A registered constructor the engine `new`s up; {@link registration} is the matching
+ * registration (absent for an engine-synthesized plan), and {@link populatedAddress} is its
+ * address with the match's bindings filled in.
  */
 export interface RegisteredCtorPlan {
   readonly kind: 'registered-ctor';
@@ -89,8 +88,15 @@ export interface ConstantPlan {
   readonly value: any;
 }
 
+/** A dependency slot naming `IServiceProvider`; {@link address} is the spelling that reached it. */
 export interface ServiceProviderPlan {
   readonly kind: 'service-provider';
+  readonly address: Type;
+}
+
+/** The hook door, realized into the two-stage function a provider binds itself into the engine with. */
+export interface StarfishPlan {
+  readonly kind: 'starfish';
 }
 
 export interface IterablePlan {
@@ -102,6 +108,8 @@ export interface ArrayPlan {
   readonly kind: 'array';
   readonly types: readonly Plan[];
 }
+
+const STARFISH: StarfishPlan = { kind: 'starfish' };
 
 export namespace Plan {
   /**
@@ -155,12 +163,15 @@ export namespace Plan {
   export function constant(value: any): ConstantPlan {
     return { kind: 'constant', value };
   }
-  export function serviceProvider(): ServiceProviderPlan {
-    return { kind: 'service-provider' };
+  export function serviceProvider(address: Type): ServiceProviderPlan {
+    return { kind: 'service-provider', address };
+  }
+  export function starfish(): StarfishPlan {
+    return STARFISH;
   }
   /**
-   * Every registration serving one type, realized lazily and re-iterably: each walk constructs
-   * afresh, so a transient member yields a new instance per pass.
+   * Every registration serving one type, realized lazily and re-iterably: each resolution
+   * constructs afresh, so a transient member yields a new instance per pass.
    */
   export function iterable(types: readonly Plan[]): IterablePlan {
     return { kind: 'iterable', types };
@@ -175,7 +186,7 @@ export namespace Plan {
    *
    * @remarks
    * A plan is a pure function of the interned request and the registry's fixed registrations —
-   * the walk reads no runtime state — so the second ask for a request can only rebuild the same
+   * building it reads no runtime state — so the second ask for a request can only rebuild the same
    * tree; it holds no instances. A request that cannot be satisfied caches nothing, so the
    * failure is rebuilt and rethrown identically. The signature form is the latebound plan —
    * each arg type binding the call position that supplies it — memoized per signature; the map
@@ -197,7 +208,7 @@ export namespace Plan {
             // holes, and a hole on the asking side has nothing to bind to — so it reports the
             // absence it can stand behind.
             const registered = !Type.isOpen(address) && !registry.matching(address).next().done;
-            // The walk's own leaf failure, when it lies beneath address rather than being
+            // The planning pass's own leaf failure, when it lies beneath address rather than being
             // address itself, names the actual dependency that could not be met.
             const missing = visitor.missingDependency;
             const cause = missing !== undefined && missing !== address
