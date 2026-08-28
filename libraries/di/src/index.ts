@@ -6,6 +6,6 @@ export { CaptiveDependencyError, CycleError, DiError, ManifestValidationError, U
 export type { Middleware, ValidationFailure } from '@rhombus-std/di.core';
 
 export { resolveAudit } from './addons/resolve-audit.js';
-export { validation } from './addons/validation.js';
+export { validateBuildability, validateCaptivity, validateUniversalAddresses } from './addons/validation.js';
 export { type ContainerBuilder, di } from './di.js';
 export * from './models/index.js';
