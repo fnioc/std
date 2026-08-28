@@ -17,9 +17,10 @@ export interface ContainerBuilder<Lifetime> {
    * Files every registration in `manifest`, in its own order, ahead of everything configured so
    * far — the same layering {@link configureServices} gives any other registration stream.
    * @param manifest - iteration order is registration order (newest first), exactly as a
-   * {@link Manifest} iterates.
+   * {@link Manifest} iterates; this is `Manifest`'s own order-preserving `add` overload, so the
+   * argument is a `Manifest` specifically, not any registration stream.
    */
-  usingManifest(manifest: Iterable<Registration<Lifetime>>): ContainerBuilder<Lifetime>;
+  usingManifest(manifest: Manifest<Lifetime>): ContainerBuilder<Lifetime>;
 
   /**
    * Installs `addon`: its registrations file in call order, and its own middleware — if it mints
@@ -60,8 +61,8 @@ class DefaultContainerBuilder<Lifetime> implements ContainerBuilder<Lifetime> {
     );
   }
 
-  usingManifest(manifest: Iterable<Registration<Lifetime>>): ContainerBuilder<Lifetime> {
-    return this.configureServices(man => man.addManifest(manifest));
+  usingManifest(manifest: Manifest<Lifetime>): ContainerBuilder<Lifetime> {
+    return this.configureServices(man => man.add(manifest));
   }
 
   useAddon(addon: Addon): ContainerBuilder<Lifetime> {
