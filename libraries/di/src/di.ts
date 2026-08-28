@@ -61,7 +61,7 @@ class DefaultContainerBuilder<Lifetime> implements ContainerBuilder<Lifetime> {
   }
 
   usingManifest(manifest: Iterable<Registration<Lifetime>>): ContainerBuilder<Lifetime> {
-    return this.configureServices(man => man.add(manifest));
+    return this.configureServices(man => man.addManifest(manifest));
   }
 
   useAddon(addon: Addon): ContainerBuilder<Lifetime> {
