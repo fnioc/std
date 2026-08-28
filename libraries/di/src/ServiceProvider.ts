@@ -1,23 +1,19 @@
 import type { IServiceProvider } from '@rhombus-std/di.core';
 import { augment, type Type } from '@rhombus-std/primitives';
 import { typefor } from '@rhombus-std/primitives.extras';
-import type { Func } from '@rhombus-toolkit/func';
 
 export interface ServiceProvider extends IServiceProvider {}
 
-/** The user-facing provider: an empty, augmented door answering every request through one handler, bound as the provider is constructed. */
+/** The user-facing provider a container whose model keeps nothing is built with: it forwards, and does nothing else. */
 @augment(typefor<IServiceProvider>())
 export class ServiceProvider implements IServiceProvider {
-  readonly #handler: Func<[Type], unknown>;
+  readonly #inner: IServiceProvider;
 
-  constructor(bind: Func<[IServiceProvider], Func<[Type], unknown>>) {
-    this.#handler = bind(this);
+  constructor(inner: IServiceProvider) {
+    this.#inner = inner;
   }
 
   getService(address: Type): any {
-    if (!address) {
-      throw new TypeError('getService was handed a nullish service type.');
-    }
-    return this.#handler(address);
+    return this.#inner.getService(address);
   }
 }

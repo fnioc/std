@@ -1,4 +1,4 @@
-import { CycleError, type Generic, type Invoker, type IServiceProvider, type Starfish } from '@rhombus-std/di.core';
+import { CycleError, type Generic, type Invoker, type IServiceProvider } from '@rhombus-std/di.core';
 import { type AbstractConstructorType, type ArrayType, type ConstructorType, type FunctionType, type GenericType, type GlobalType, type ImportedType, type IntersectionType, type IterableType,
   type ObjectType, type TagType, type TupleType, Type, type TypeLiteralType, type UnionType } from '@rhombus-std/primitives';
 import { typefor } from '@rhombus-std/primitives.extras';
@@ -58,10 +58,7 @@ export class PlannerVisitor extends Type.Visitor<Plan | undefined> {
 
   protected override visitImported(type: ImportedType): Plan | undefined {
     if (type === typefor<IServiceProvider>()) {
-      return Plan.serviceProvider(type);
-    }
-    if (type === typefor<Starfish>()) {
-      return Plan.starfish();
+      return Plan.serviceProvider();
     }
     const callableType = invokerCallableType(type);
     return callableType && Plan.invoker(callableType);

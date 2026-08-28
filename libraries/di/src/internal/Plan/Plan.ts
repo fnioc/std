@@ -7,8 +7,6 @@ import type { Match, Registry } from '../Registry.js';
 import { PlannerVisitor } from './PlannerVisitor.js';
 import { realizePlan } from './RealizeVisitor.js';
 
-export type { RealizeOptions } from './RealizeVisitor.js';
-
 export type Plan =
   | LateBoundArgPlan
   | RegisteredCtorPlan
@@ -19,7 +17,6 @@ export type Plan =
   | InvokerPlan
   | ConstantPlan
   | ServiceProviderPlan
-  | StarfishPlan
   | IterablePlan
   | ArrayPlan;
 
@@ -88,15 +85,9 @@ export interface ConstantPlan {
   readonly value: any;
 }
 
-/** A dependency slot naming `IServiceProvider`; {@link address} is the spelling that reached it. */
+/** A dependency slot naming `IServiceProvider`. */
 export interface ServiceProviderPlan {
   readonly kind: 'service-provider';
-  readonly address: Type;
-}
-
-/** The hook door, realized into the two-stage function a provider binds itself into the engine with. */
-export interface StarfishPlan {
-  readonly kind: 'starfish';
 }
 
 export interface IterablePlan {
@@ -108,8 +99,6 @@ export interface ArrayPlan {
   readonly kind: 'array';
   readonly types: readonly Plan[];
 }
-
-const STARFISH: StarfishPlan = { kind: 'starfish' };
 
 export namespace Plan {
   /**
@@ -163,11 +152,8 @@ export namespace Plan {
   export function constant(value: any): ConstantPlan {
     return { kind: 'constant', value };
   }
-  export function serviceProvider(address: Type): ServiceProviderPlan {
-    return { kind: 'service-provider', address };
-  }
-  export function starfish(): StarfishPlan {
-    return STARFISH;
+  export function serviceProvider(): ServiceProviderPlan {
+    return { kind: 'service-provider' };
   }
   /**
    * Every registration serving one type, realized lazily and re-iterably: each resolution
