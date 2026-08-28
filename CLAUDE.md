@@ -163,9 +163,10 @@ where that's cheap, and flag the intended divergence rather than pre-emptively t
   pinned by `types: []` in `/tsconfig.lib.json`; `node:fs`/`node:path` imports get per-package
   compile-scope `node-builtins.d.ts` files (§44).
 - **`di`** — `di.core` (the abstractions: `Manifest<Scopes>` the interface, `DefaultManifest<Scopes>`
-  its concrete class — an iterable decorator chain whose own body declares only the public
-  registration-taking primitives `add`/`remove`/`replace` (§188); every other verb, and `add`'s own
-  sugared shapes, arrive through augmentation sets, so a discarded verb result registers NOTHING. A service is named by a `Type` (re-exported from `primitives`, authored via
+  its concrete class — an iterable decorator chain whose own body declares only the
+  underscore-prefixed primitives `_add`/`_replace`/`_remove`; every public verb — `add`/`replace`/
+  `remove` themselves included, and every one of `add`'s sugared shapes — arrives through
+  augmentation (§218), so a discarded verb result registers NOTHING. A service is named by a `Type` (re-exported from `primitives`, authored via
   `typefor<T>()`). A keyed registration composes the key into the type —
   `Type.tag(base, key)`, never a separate argument or a `base#key` string, and a type wears AT MOST
   ONE tag (`TagType.type` and the `tag` base are `Exclude<Type, TagType>`; a tagged base arriving as
@@ -185,7 +186,58 @@ where that's cheap, and flag the intended divergence rather than pre-emptively t
   augmentations; it re-exports the taxonomy, so both imports name the same class and `instanceof`
   holds either way —
   di.core stays external in di's bundle so the `Manifest` cross-package augmentations install onto
-  is the same object everywhere. **Resolution is one exact-answer loop** (§196): every request
+  is the same object everywhere.
+  The container's own tracked identity collapses to a plain `Func<[Type], unknown>`, never an
+  `IServiceProvider` (§215): `ServiceProvider` — di's one `@augment` carrier — normalizes whatever
+  it is handed, a bare dispatch function or another provider, into one held call every ask forwards
+  through. `ContainerBuilder` holds exactly two dimensions, both replayed at `build()` (§216):
+  `configureServices` steps (the registrations dimension) and `useAddon`/`use` steps (the addon
+  dimension, each minting an `AddonInstallation` — `{ middleware?, registrations? }` — when
+  replayed). `Addon.create()` answers that same shape; `useAddon` composes its `middleware` into
+  the one request-grain `Middleware` chain the builder folds around the engine — `(next) =>
+  (request) => unknown`, composed once at build, where install-time work (planting a permanent
+  hook, sweeping the manifest) is sanctioned inside the factory itself — the first call composing
+  outermost, and files its `registrations` above whatever came before. `di.usingLifetimeModel
+  (model)` is nothing but `useAddon(model)` on an empty builder: `LifetimeModel.create()` answers
+  the identical addon shape, so a lifetime model is an addon, full stop — being the FIRST
+  `useAddon` call is the only reason its registrations land at the floor and its middleware
+  composes outermost (§212/§215). `usingManifest(manifest)` forwards through
+  `configureServices(man => man.add(manifest))` — layering, never replacing.
+
+  `Manifest.add` carries three overloads sharing one name (§218): a single `Registration`; a
+  `Manifest` (an order-preserving wholesale merge, the argument's own order landing intact ahead of
+  the chain); and `ButNot<Iterable<Registration<Lifetime>>, Manifest<any>>` (the consecutive-adds
+  fold, each filed in turn, the last one ending up newest) — a runtime `instanceof DefaultManifest`
+  guard is what routes an argument STATICALLY typed as `Manifest` to the merge behavior rather than
+  the fold. `apply` and `addMany` are both gone outright; di.extras' type-driven value sugar
+  excludes `Iterable<Registration<any>>` from its own `ButNot` the same way, so a bare `Manifest`
+  handed to the value door is never mistaken for a value.
+
+  Every resolution runs through one engine-owned hook install list (§211): `Control<IEngineHooks>`
+  — a public `di.core` control — answers `useHooks(behavior: Behavior): Disposable`, installing
+  `behavior` immediately over every resolution the container answers from that call on; disposing
+  uninstalls exactly that install and nothing else. Permanent and scoped installation are the same
+  call, told apart only by where it is made and whether the disposer is ever run. Folding is LIFO —
+  the newest still-installed layer stands innermost, closest to the construction, the container's
+  own built-in installs standing outermost — and a scope's own keeper installs itself through this
+  same door, bracketing each forwarded ask with `using`. A scope's learned-answers memo is checked
+  BEFORE any hook installs and bypasses everything, hooks included, when it hits.
+
+  `validateUniversalAddresses()`, `validateBuildability()`, and `validateCaptivity(policy:
+  LifetimePolicy)` are three independently installable addons, one check apiece — the aggregated
+  `validation(policy)` addon is gone (§217). Each reads the manifest through the same
+  `Control<Iterable<Registration<unknown>>>` control ask the engine answers directly, a read-only
+  view built from public types alone. `resolveAudit(...lifetime)` is an ordinary addon too: its
+  `registrations` files the placeholder `ResolveAudit` address, and its `middleware` plants the
+  four hooks permanently through `Control<IEngineHooks>` at build, then steps aside.
+  `LifetimePolicy.classify` ranks a registration's keeper by numeric tier — `{ tier, label } |
+  'unkept' | undefined` — tier 0 the container root, a higher tier a narrower keeper, `'unkept'`
+  transparent to captivity in both directions, `undefined` meaning the lifetime is model-defined;
+  `StandardLifetime`/`TaggedLifetime` are vocabulary belonging to their own models, not the
+  validator (§210). The `standard`/`tagged`/`noop` lifetime models share their root-scope plumbing
+  through `models/root-anchor.ts`'s `anchorRoot(kind, root)`, each model's own `Scope` subclass
+  supplying only `selectOwningScope` and its child-construction call.
+  **Resolution is one exact-answer loop** (§196): every request
   kind first takes the registrations answering its own address, newest first, first answer that
   builds — an unbuildable answer falls through — and only then synthesizes per kind. A union with
   no answer of its own settles by its FIRST RESOLVABLE MEMBER in canonical order — each member
@@ -196,7 +248,7 @@ where that's cheap, and flag the intended divergence rather than pre-emptively t
   synthesis tail, never a member spread. `Registration.value` refuses an open address
   unless the hole sits under a callable root — ctor/func, tag stripped — since one erased callable
   honestly is every closing and one instance is not, §197). Opening a scope is an ordinary
-  registration: a lifetime model that supports scoping contributes it through `install()`,
+  registration: a lifetime model that supports scoping contributes it through its own `create()`,
   and it resolves like any other service — di carries no not-implemented placeholders. The registration chain
   opens at `manifest.describe(address)`: the doors `asClass(ctor, ctorType)`/
   `asFactory(fn, fnType)` take the implementer together with its own type, `asValue(value)` takes
@@ -208,9 +260,7 @@ where that's cheap, and flag the intended divergence rather than pre-emptively t
   AS a value is indistinguishable from a factory by its own type, so the call site carries the
   choice) and kind selection a total switch over
   `ConstructorType | FunctionType | ConstantType`. A keyed registration is a TAGGED ADDRESS —
-  there is no key argument anywhere. A
-  builder that wraps a manifest holds it in a local structural `ManifestSlot`, and an all-in-one
-  verb returns the manifest itself rather than a fluent tail.
+  there is no key argument anywhere.
   `di.extras` (the Go/ttsc authoring surface, depending on **`di.core` types only, never the `di`
   runtime** — hard invariant) carries `rhombus-std` marker `inline` entries for the flat verbs and
   value doors (`add`/`addValue`, `tryAdd`/`tryAddValue`, `replace`/`replaceValue`, `removeAll`,
@@ -394,7 +444,7 @@ before touching):
   (`IServiceProvider`, `Manifest`); a concrete implementation (`DefaultManifest`, `ServiceProvider`)
   never appears in a public type (§1, §10).
 - **The manifest is IMMUTABLE** — `Manifest` is an iterable decorator chain: every verb
-  (`add`/`addFactory`/`addValue`, the registration verbs, every augmentation) returns a NEW manifest
+  (`add`/`tryAdd`/`replace`/`addValue`, the registration verbs, every augmentation) returns a NEW manifest
   and leaves the receiver alone, so a discarded result registers NOTHING. A verb's long overload
   takes the implementer's whole `Type` node as a required arg 3 — `implementerType`, a
   `ConstructorType`/`FunctionType` carrying one parameter SIGNATURE per overload (the bare `ConstantType`
