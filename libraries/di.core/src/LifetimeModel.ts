@@ -1,5 +1,5 @@
-import type { IServiceProvider } from './IServiceProvider';
-import type { Registration } from './Registration/index';
+import type { Middleware } from './Middleware.js';
+import type { Registration } from './Registration/index.js';
 
 /** Lets the lifetime argument be omitted entirely when `undefined` is in the vocabulary. */
 export type LifetimeArgument<Lifetime> = undefined extends Lifetime ? [lifetime?: Lifetime] : [lifetime: Lifetime];
@@ -17,19 +17,18 @@ export interface LifetimeModel<Lifetime = unknown> {
   readonly transient: Lifetime;
 
   /**
-   * Mints one container's machinery: the registration it publishes for opening a nested container,
-   * and the attach step that returns the root provider.
+   * Mints one container's contribution to the build: the middleware carrying this model's keeping
+   * into every resolution, and the registrations it publishes — the floor a container's own
+   * registrations layer over.
    *
    * @remarks
-   * `attach` is called once, at build. It receives the provider the container resolves through and
-   * returns the container's root user-facing provider, the one that carries this model's keeping
-   * behavior into every resolution asked of it. An absent `attach` means this model keeps nothing
-   * and the build mints a bare provider itself; an absent `scopeFactory` means this model opens
-   * nothing.
+   * Choosing a lifetime model is the builder's first call, so this middleware composes outermost,
+   * ahead of every addon's and `use()`'s own. A model that keeps nothing omits it, leaving the
+   * container to resolve straight through whatever composes inside it.
    */
   create(): {
-    attach?(inner: IServiceProvider): IServiceProvider;
-    scopeFactory?: Registration<Lifetime>;
+    readonly middleware?: Middleware;
+    readonly registrations?: Iterable<Registration<Lifetime>>;
   };
 }
 

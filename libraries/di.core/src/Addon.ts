@@ -18,7 +18,7 @@ export interface AddonInstallation {
 }
 
 /** An addon a container builder installs beside the lifetime model. */
-export interface ChainAddon {
+export interface Addon {
   /** Mints this addon's contribution to one container; called once per build. */
   create(): AddonInstallation;
 }

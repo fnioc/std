@@ -4,9 +4,9 @@ export type { ImportedType, NamedType } from '@rhombus-std/primitives';
 // Side-effect import: a second loaded copy of this package fails fast here.
 import './single-instance-guard';
 
+export type * from './Addon';
 export * from './brands';
 export type { RegistrationBuilderFor } from './builder';
-export type * from './ChainAddon';
 export * from './Control';
 export * from './Errors';
 export type * from './hooks';
