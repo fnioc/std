@@ -103,7 +103,7 @@ export class ScopeTagUnmatchedError extends DiError {
 
   constructor(modelName: string, tag: string, address: Type) {
     super(
-      `the ${modelName} lifetime model keeps ${Type.stringify(address)} in the container tagged '${tag}', and no open container carries that tag`,
+      `the ${modelName} lifetime model keeps ${Type.stringify(address)} in the scope tagged '${tag}', and no open scope carries that tag`,
     );
     this.name = 'ScopeTagUnmatchedError';
     this.modelName = modelName;
@@ -146,6 +146,24 @@ export class UniversalAddressError extends DiError {
         + `give it the service type it provides and leave the hole inside — ILogger<%T> rather than %T`,
     );
     this.name = 'UniversalAddressError';
+    this.address = address;
+  }
+}
+
+/**
+ * A control ask naming something no control plane here answers.
+ *
+ * @remarks
+ * Deliberately not an {@link UnsatisfiableError}: a control ask never reaches the manifest, so no
+ * registration could have satisfied it.
+ */
+export class UnknownControlError extends DiError {
+  /** The ask that was made. */
+  readonly address: Type;
+
+  constructor(address: Type) {
+    super(`the engine answers no control ask for ${Type.stringify(address)}`);
+    this.name = 'UnknownControlError';
     this.address = address;
   }
 }

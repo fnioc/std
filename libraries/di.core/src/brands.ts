@@ -50,6 +50,12 @@ declare const HOLE: unique symbol;
 export type Generic<L extends string, C = unknown> = C & { readonly [HOLE]?: L; };
 
 /**
+ * The conventional hole for a pattern with one of them; written twice in one pattern it binds the
+ * same type at both occurrences, as any repeated label does.
+ */
+export type T = Generic<'T'>;
+
+/**
  * {@link Generic} without a constraint.
  *
  * @deprecated Spell an unconstrained hole as `Generic<'T'>`.
