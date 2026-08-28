@@ -2,8 +2,8 @@ import { type IServiceProvider, type LifetimeModel, type LifetimePolicy, Registr
 import { Type } from '@rhombus-std/primitives';
 import { typefor } from '@rhombus-std/primitives.extras';
 import { assertNever } from '@rhombus-toolkit/type-guards';
+import { anchorRoot } from './root-anchor.js';
 import { Scope } from './Scope.js';
-import { resolvesFrom, ScopeProvider } from './ScopeProvider.js';
 
 const MODEL_NAME = 'standard';
 
@@ -102,31 +102,27 @@ export function standard(): LifetimeModel<StandardLifetime> {
 
     create() {
       const rootScope = new StandardScope();
-      /** The provider the container is built with; nothing resolves before the build has attached. */
-      let rootProvider!: ScopeProvider<StandardScope>;
+      const { middleware, enclosingScope, openChild } = anchorRoot(StandardScope, rootScope);
 
       /** Opens scopes nested inside the one `container` resolves from. */
       function openFrom(container: IServiceProvider): StandardScopeFactory {
-        // An ask that did not come through one of this model's providers carries no scope: nest under the root.
-        const enclosingProvider = resolvesFrom(container, StandardScope) ? container : rootProvider;
         return {
-          openScope: () => enclosingProvider.openScope(enclosingProvider.scope.openChild()),
+          openScope: () => openChild(enclosingScope(container).openChild()),
         };
       }
 
       return {
-        attach(inner) {
-          rootProvider = new ScopeProvider(inner, rootScope);
-          return rootProvider;
-        },
+        middleware,
         // 'transient': the opener reads the scope the ask came from, so a kept instance would
         // freeze every child to whichever scope first resolved it.
-        scopeFactory: Registration.factory<StandardLifetime>(
-          StandardScopeFactory.address,
-          openFrom,
-          Type.func(StandardScopeFactory.address, [[typefor<IServiceProvider>()]]),
-          'transient',
-        ),
+        registrations: [
+          Registration.factory<StandardLifetime>(
+            StandardScopeFactory.address,
+            openFrom,
+            Type.func(StandardScopeFactory.address, [[typefor<IServiceProvider>()]]),
+            'transient',
+          ),
+        ],
       };
     },
   };

@@ -1,6 +1,5 @@
-import type { Registration } from '@rhombus-std/di.core';
+import type { IServiceProvider, Registration } from '@rhombus-std/di.core';
 import type { Type } from '@rhombus-std/primitives';
-import type { ScopeProvider } from './ScopeProvider.js';
 
 /**
  * One open scope of a lifetime model: what it has kept, the provider resolving from it, and the
@@ -14,8 +13,8 @@ export abstract class Scope {
    */
   readonly #instances = new Map<Registration<unknown>, Map<Type, unknown>>();
 
-  /** The provider resolving from this scope, bound when that provider is minted. */
-  provider: ScopeProvider | undefined;
+  /** The provider resolving from this scope, bound when its binding mints it. */
+  provider: IServiceProvider | undefined;
 
   /**
    * The scope keeping what `registration` produces for `populatedAddress`, or `undefined` to

@@ -1,8 +1,8 @@
 import { type IServiceProvider, type LifetimeModel, Registration, ScopeTagUnmatchedError } from '@rhombus-std/di.core';
 import { Type } from '@rhombus-std/primitives';
 import { typefor } from '@rhombus-std/primitives.extras';
+import { anchorRoot } from './root-anchor.js';
 import { Scope } from './Scope.js';
-import { resolvesFrom, ScopeProvider } from './ScopeProvider.js';
 
 const MODEL_NAME = 'tagged';
 
@@ -91,8 +91,7 @@ export function tagged<Tags extends string = string>(): LifetimeModel<TaggedLife
 
     create() {
       const rootScope = new TaggedScope();
-      /** The provider the container is built with; nothing resolves before the build has attached. */
-      let rootProvider!: ScopeProvider<TaggedScope>;
+      const { middleware, enclosingScope, openChild } = anchorRoot(TaggedScope, rootScope);
 
       /**
        * Opens scopes carrying the tag `tag` names, nested inside the one `container` resolves from.
@@ -103,25 +102,22 @@ export function tagged<Tags extends string = string>(): LifetimeModel<TaggedLife
         if (tag.kind !== 'literal' || typeof tag.value !== 'string') {
           throw new TypeError(`the ${MODEL_NAME} lifetime model names a scope with a string literal, and ${Type.stringify(tag)} is not one`);
         }
-        // An ask that did not come through one of this model's providers carries no scope: nest under the root.
-        const enclosingProvider = resolvesFrom(container, TaggedScope) ? container : rootProvider;
         const name = tag.value;
         return {
-          openScope: () => enclosingProvider.openScope(enclosingProvider.scope.openChild(name)),
+          openScope: () => openChild(enclosingScope(container).openChild(name)),
         };
       }
 
       return {
-        attach(inner) {
-          rootProvider = new ScopeProvider(inner, rootScope);
-          return rootProvider;
-        },
-        scopeFactory: Registration.factory<TaggedLifetime<Tags>>(
-          TaggedScopeFactory.template,
-          openFrom,
-          Type.func(TaggedScopeFactory.template, [[typefor<IServiceProvider>(), Type.generic('Tag')]]),
-          undefined,
-        ),
+        middleware,
+        registrations: [
+          Registration.factory<TaggedLifetime<Tags>>(
+            TaggedScopeFactory.template,
+            openFrom,
+            Type.func(TaggedScopeFactory.template, [[typefor<IServiceProvider>(), Type.generic('Tag')]]),
+            undefined,
+          ),
+        ],
       };
     },
   };
