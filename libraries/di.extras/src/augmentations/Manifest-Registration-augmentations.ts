@@ -18,9 +18,11 @@ declare module '@rhombus-std/di.core' {
     /**
      * Registers a non-callable `value` as-is under `ServiceType`, the service type derived from
      * the type argument instead of taken explicitly. A callable lands on the shapes above
-     * instead; {@link Manifest.addValue} is the door that forces one down the value path.
+     * instead; {@link Manifest.addValue} is the door that forces one down the value path. A
+     * registration stream lands on {@link Manifest.add}'s own batch shape instead, so this
+     * overload never captures it either.
      */
-    add<ServiceType>(value: ButNot<ServiceType, Func | AbstractCtor | Registration<any>>): Manifest<Lifetime>;
+    add<ServiceType>(value: ButNot<ServiceType, Func | AbstractCtor | Registration<any> | Iterable<Registration<any>>>): Manifest<Lifetime>;
     /**
      * Registers `value` as-is under `ServiceType`, the service type derived from the type
      * argument instead of taken explicitly.
@@ -90,7 +92,7 @@ registerInlineBodies<Manifest<unknown>>(ManifestRegistrationAugmentations);
 // A separate set because its `add` is the value shape's own body — an object literal cannot
 // carry a second `add` beside the callable blanket above.
 export const ManifestRegistrationValueAugmentations = {
-  add<ServiceType>(this: Manifest<unknown>, value: ButNot<ServiceType, Func | AbstractCtor | Registration<any>>): Manifest<unknown> {
+  add<ServiceType>(this: Manifest<unknown>, value: ButNot<ServiceType, Func | AbstractCtor | Registration<any> | Iterable<Registration<any>>>): Manifest<unknown> {
     return this.addValue(typefor<ServiceType>(), value);
   },
   tryAdd<ServiceType>(this: Manifest<unknown>, value: ButNot<ServiceType, Func | AbstractCtor | Registration<any>>): Manifest<unknown> {
