@@ -3053,24 +3053,24 @@ _Owner-ruled; Claude-recorded 2026-08-22._
 
 `RealizeVisitor` names no lifetime, scope, or audit vocabulary of its own: each addon reads only
 the one strand it contributed, and the walk's binding does the same. `Construction` and `Hooks`
-carry their `Context` generic with no `LifetimeContext` bound — `Context = unknown` — so
-`LifetimeContext` stays purely the vocabulary a lifetime model invents for itself, never a shape
-the walk constrains. A seed or an `{within}` answer that names no context is not normalized to
+carry their `State` generic with no model-imposed bound — `State = unknown` — so the state a
+lifetime model threads stays purely the vocabulary it invents for itself, never a shape
+the walk constrains. An injected opening or a `{state}` answer that names no state is not normalized to
 some empty sentinel; it stays `undefined`, and the addon that produced it is the one that reads
 its own absence back.
 
 `LifetimeModelError` is minted by the lifetime models themselves, wrapping a throw from their own
 hook — the engine passes the throw through and knows nothing of the error type.
 
-A new `beginWalk(request, seed)` hook joins the one shared `Hooks` roster rather than opening a
-second door: hooks stay together for now, and a dedicated interception point is minted only once a
-genuinely foreign domain needs one of its own. `beginWalk` opens each walk and answers the strand
-that walk starts from; the per-walk array of strands is minted only where some installed hook
-actually declares `beginWalk`, so a build with none pays nothing for it.
+The `beginResolve(request, injected)` hook joins the one shared `Hooks` roster rather than opening
+a second door: hooks stay together for now, and a dedicated interception point is minted only once
+a genuinely foreign domain needs one of its own. `beginResolve` opens each resolution and answers
+the state it runs under; a hook nobody files against composes to the identity, so a build with
+none pays nothing for it.
 
 Audit is an addon, `resolve-audit`, not engine machinery. It registers `ResolveAudit` the same way
 any other registration would — the placement ladder runs registration, then addon, before ever
-reaching for an engine change — threads its own frame chain through its own strand via `{within}`,
+reaching for an engine change — threads its own frame chain through its own strand via `{state}`,
 and supplies the audit instance from `beforeConstruct` at the `ResolveAudit` address. The
 consequence is that audit is install-to-use: without the `resolve-audit` addon installed,
 resolving `ResolveAudit` is `Unsatisfiable` like any other unregistered address. The dedicated
@@ -3080,32 +3080,30 @@ _Owner-ruled; Claude-recorded 2026-08-27._
 
 ---
 
-## §204 — One aggregated engine handler; Starfish composes per-hook by fold; providers are context-transforming closures
+## §204 — One aggregated engine handler; Starfish composes by fold; providers are state-transforming closures
 
 The engine holds exactly one handler, born of aggregation, carrying all four members
 (`beginResolve`/`beforeConstruct`/`canonicalize`/`afterConstruct`) — never a list the realize walk
 iterates. Its `realize` is a straight script: the single fork it runs is whichever the caller
 supplied or, absent that, the one it builds itself: no branch-per-addon, no dispatch table.
 
-The Starfish door registers per hook, not per handler: each of the four members is its own
-registration point, and each accepts either a plain handler function or Koa-style middleware
-`(ctx, next)`, discriminated by the registered function's declared arity — one parameter is a
-plain handler, two is middleware. Registration composes every contribution for that hook by fold,
-not by list-and-iterate-at-call-time; the standard pairings fold with the model's own contribution
-innermost by convention only — nothing in the door enforces sweep order, an addon that needs a
-different position folds itself there deliberately.
+The door files per bundle, not per hook: `useHooks` takes one `Behavior` whose up to four members
+each accept either a plain handler function or Koa-style middleware with a trailing `next`,
+discriminated by the filed function's declared arity. Every contribution composes by fold, not by
+list-and-iterate-at-call-time; the built chain sits outermost and the first-filed bundle
+innermost, so a scope's keepers — filed first, per request — run closest to the construction and
+an addon middleware observing through `next` sees a scope-cache answer come back.
 
-A provider is one closure that decorates the walk: it injects its own context at walk-open, which
-means `beginResolve` is, structurally, a context transformer — it receives the incoming context
-and answers the context the rest of the walk sees, never a side channel. An addon that needs a
+A provider is one closure that decorates the walk: it injects its own state at resolution-open,
+which means `beginResolve` is, structurally, a state transformer — it receives the incoming state
+and answers the state the rest of the walk sees, never a side channel. An addon that needs a
 private compartment invisible to sibling addons packs that compartment itself, in middleware form,
 closing over its own state; the platform manages no slots, roster, or namespace on an addon's
 behalf.
 
-The resolve chain keeps `wrapResolve` in transformer form: registering a behavior wraps the
-existing resolve function in a new one and never adds a runtime layer the walk must additionally
-step through, so hook count at registration time costs nothing at call time beyond the wrapping
-already paid for.
+An addon contributes its permanent hooks as data on its installation; the builder composes them
+once into the built chain, so hook count at registration time costs nothing at call time beyond
+the folds already paid for — never a runtime layer the walk must additionally step through.
 
 `scope` names only the lifetime models' own vocabulary; `walk` names only the realize visitor's
 traversal. Neither hook, provider, nor addon machinery borrows either word.
@@ -3116,20 +3114,20 @@ _Owner-ruled; Claude-recorded 2026-08-27._
 
 ## §205 — Capture-at-mint closures; every resolution opens through `beginResolve`; ambient scoping stays parked
 
-A latebound closure and an invoker closure each capture the context at the position they were
-minted, not the context the whole resolution opened under, and re-enter through that captured
-value on every call. The model's `{within}` re-threading is what makes the mint position the
-honest ownership context: a singleton's factory closes over the root-threaded context once and
+A latebound closure and an invoker closure each capture the state at the position they were
+minted, not the state the whole resolution opened under, and re-enter through that captured
+value on every call. The model's `{state}` re-threading is what makes the mint position the
+honest ownership state: a singleton's factory closes over the root-threaded state once and
 keeps it for the life of the container, while a scoped service's factory closes over its own
-scope's context — so a cached holder never smuggles a first caller's context into a later one.
+scope's state — so a cached holder never smuggles a first caller's state into a later one.
 
 Every resolution opens through `beginResolve(request, injected)` — a fresh top-level ask, an
 invocation frame, and a latebound call alike, re-entries included, never only the outermost one.
 This is the ambient-adoption seam: an opener that reads ambient state decides there, and nothing
-downstream may bypass the handler to inject a context directly. An addon that packs its own
-compartment into the threaded context therefore has to recognize a re-entry that hands its own
+downstream may bypass the handler to inject state directly. An addon that packs its own
+compartment into the threaded state therefore has to recognize a re-entry that hands its own
 pack back as `injected` — `resolve-audit` does this by remembering every pack it has minted and
-unwrapping to the inner context before folding in a fresh compartment, so a re-entered resolution
+unwrapping to the inner state before folding in a fresh compartment, so a re-entered resolution
 never mistakes its own bookkeeping tuple for someone else's ambient value.
 
 Ambient scoping itself stays parked. Browsers have no `AsyncLocalStorage`, and TC39's
@@ -3138,4 +3136,391 @@ on today. It arrives, when the platform does, as an outside node/bun-only packag
 ambient lifetime model plus its companion addon, authored against `di.core` alone — `di` and
 `di.core` themselves stay unchanged.
 
+---
+
+## §206 — Resolution is a decorator stack; every provider is a just-in-time skin; middleware is builder sugar
+
+The resolution surface is a decorator stack with the engine as its terminus. A builder-fed
+`MiddlewareServiceProvider` is the captured head of that stack — the layer a builder assembled from
+its own registered middleware, sitting in front of the engine and nothing else. An empty builder
+composes an empty chain, and elides to the bare engine: a provider with no middleware pays no
+wrapping cost, and defaults live in builders, never in the core.
+
+Every provider a caller holds is a skin: the empty augmented `ServiceProvider` surface, minted
+just-in-time over an internal open-speaking layer underneath. The skin carries no state of its
+own — it exists to give the caller the augmented public shape over whatever internal layer is
+actually doing the speaking.
+
+A scope is a per-scope factory minting its own skin, and the skin carries the whole lifetime
+implementation hardcoded to its scope: its keeper hooks ride each request as per-request filings
+down to the engine. Those keepers are scope-local: they die with the scope's provider, and they
+are never a door registration — nothing installs a scope's keeping into the manifest, because
+nothing outside the scope's own lifetime should ever reach it.
+
+The scope provider's per-request seed is what opens the resolution's state: it answers the
+captured state where one exists — a re-entering closure keeps the world it was minted in — and
+its own scope otherwise. There is no second path to a resolution's state; every opening goes
+through the aggregated `beginResolve`.
+
+Middleware is authorship sugar on the builder (`use`) — a way to add to the chain without
+touching a decorator by hand. Decorators are the composition idiom itself, and carry no registration
+API of their own: a decorator is written and wrapped, never registered. Starfish carries `useHooks`
+and `getService` — file on the door, resolve through the door — and `bind` and
+`Binding` do not exist, here or anywhere in this stack.
+
 _Owner-ruled; Claude-recorded 2026-08-27._
+
+---
+
+## §207 — The observing surface is vocabulary-blind; the threaded data is named `state`; the head stands apart
+
+`Middleware` — the curried decorator of the provider contract a builder composes — stands
+in its own di.core module. There is no internal protocol type: the thing a container resolves
+through is a plain `IServiceProvider`, and the lifetime-model contract's attach receives exactly
+that.
+
+The addon and hook surfaces carry no lifetime generic. `ChainAddon` and `AddonInstallation` are
+non-generic, and an installation's registrations are `Iterable<Registration<any>>`: a generic
+addon takes its lifetime as an argument (`LifetimeArgument`) precisely because it cannot know the
+container's vocabulary, so a type-level ferry of that vocabulary buys nothing the model's own
+runtime read doesn't already enforce with a better error. The observing types — `Construction`,
+the four handler/middleware families, `Hooks`, the `Starfish` door — are likewise
+vocabulary-blind: `Construction.registration` is `Registration<unknown>`, and the one party that
+interprets lifetimes, the model, narrows structurally the way `LifetimePolicy.classify` does. The
+`Lifetime` generic survives only where vocabulary is authored: `LifetimeModel` itself, the
+manifest, the builder.
+
+`LifetimeModel.install()` deliberately does not share the addon installation shape. The model's
+attach takes more (the raw head, because the model mints every user-facing provider over it) and
+returns more (the container); expressing the model as an addon would hand every addon the head.
+The asymmetry is the privilege boundary, not an irregularity.
+
+The per-resolution threaded data is named **state** — the `State` generic on the observing types
+and `Construction.state`. 'Context' names nothing in this stack; `Interception.state` and the
+`injected` parameter keep their names.
+
+_Owner-ruled; Claude-recorded 2026-08-27._
+
+---
+
+## §208 — Control asks; the lifecycle-aware engine; behaviors as windows and frames; the model is the scope provider
+
+One-arg `getService` is the only resolution surface in the system — public providers, middleware,
+the door, and the engine alike. Per-request hook bundles (`Behavior`: the four optional members,
+each a plain handler or a trailing-`next` middleware by declared arity) reach the engine as
+**windows**, opened by calling `useHooks` on the door a **control ask** answers with: `Control<T>`
+is a public di.core class — `constructor(readonly service: T)`, the carrier idiom
+`IOptions<T>.value` already established — and its address is always derived,
+`typefor<Control<Starfish>>()`, never hand-minted.
+
+The engine owns its lifecycle in one branch, ahead of planning and hooks alike. A control ask
+counts as nothing: it runs no hook, opens no window, reads no frame, and answers
+`new Control(freshDoor)`; a control ask whose payload is not the door throws `UnknownControlError`
+(di.core's taxonomy) rather than falling through. An unmarked ask is a request: it folds every
+open window and whatever frame is filed for its own address into the built chain (built chain
+outermost, the filed frame innermost, windows between), seeds state through the aggregated
+`beginResolve`, and realizes. No plan kind knows a magic address: a plain `Starfish` ask is an
+ordinary, unregistered — therefore unsatisfiable — address.
+
+The door is volatile: minted only by the control branch, fresh per ask, thrown away after. Its
+`useHooks` member opens a window on the engine itself, not on the door — active from the call
+until the returned disposable runs, never one-shot and never scoped to the door's own life. A
+provider-answered door is rewrapped so that resolving through it routes through the answering
+provider — keeping, middleware, and memo intact — while the engine-minted door's own `getService`
+runs at the terminus.
+
+Middleware speaks the provider contract itself: curried single-arg `(next) => (request) =>
+unknown`, composed once over the static terminus — so an installer-style factory that resolves
+through its `next` at composition time runs exactly once. Control asks travel the chain as
+ordinary traffic; a middleware may observe them and may make its own. Addons contribute
+registrations, permanent hooks as data, and `atBuild`; nothing attaches imperatively.
+
+The lifetime model IS the scope provider. `install()` yields an attach that mints the root
+provider over the container's inner, and the scope-factory registration; each provider hardcodes
+its scope, files keeper and probe per request as one address-keyed frame, seeds `injected ?? scope`
+(a re-entering closure keeps the world it was minted in), keeps its scope's instances on the scope
+object itself, and fronts a learned memo of top-level KEPT answers — a registration whose lifetime
+keeps in no scope never enters it — that bypasses the whole chain only when no window is open. The
+memo consults a di-internal window-awareness seam, `IEngineHooks.hasOpenHookWindow` (engine and
+middleware provider alike), never a public member. Latebound and invoker closures capture the
+aggregated hooks and state at mint; re-entries never touch the filed-frame list.
+
+_Owner-ruled; Claude-recorded 2026-08-28._
+
+---
+
+## §209 — The door carries two members; a window stands until disposed; a scope's keeper rides an addressed frame, not a window
+
+`Starfish` carries exactly `getService(address)` and `useHooks(bundle): Disposable`. The four
+per-kind filing verbs do not exist: one method puts a `Behavior` bundle in effect, and the
+`Disposable` it returns is the only way to take it back out. A bundle is active from the call that
+installs it until the returned disposable runs — active-until-dispose, not one-shot — and a
+resolution opened anywhere inside that window, including one opened from inside a construction the
+window itself triggered, runs under it.
+
+A one-stage surface won this over a two-stage split. A define-once/activate-per-ask design was
+weighed and cut as speculative: its only conceivable consumer, per-request middleware hooks, has
+no present need, and the audit addon (§203) already fits the plain install-and-observe shape one
+stage gives it. Dispose is the only deactivation; there is no `deactivate` verb, because
+identity-keyed removal would force a caller to hold a reference just to tear its own activation
+down, and would just as easily let any other holder of that reference tear it down instead — a
+per-activation disposable carries no such aliasing. A caller that discards `useHooks`'s return
+without ever disposing it leaves the bundle active for the container's life; that is the code
+doing exactly what it was told, not a leak to guard against.
+
+`Engine.getService` snapshots every open window at entry, folding them into the one `Hooks` the
+resolution runs under for its own life. A resolution that opens while a window is held — a
+latebound closure invoked later, a re-entrant ask fired from inside a construction — keeps the
+hooks captured at the position it was minted, however late it actually runs. The engine is
+synchronous end to end throughout, so a promise-valued product passes through every hook opaque,
+and no hook ever fires inside an async continuation.
+
+The owner's ruling on how far a provider may reach is absolute and quoted verbatim: "NOTHING, no
+data, no callstack, NOTHING may traverse into the engine concrete outside of
+`IServiceProvider.getService(Type)`." Every provider standing over the engine — the middleware
+chain, a scope's provider, the lifetime model's own `attach` — is wired at composition with a
+plain `IServiceProvider` and nothing more; intersecting a provider's declared type with an
+internal seam to smuggle a second member past the door is itself the violation, not a workaround
+for one. The owner's own clarification draws the line the law needs to be usable at all: "the
+control services aren't violations bc they themselves came from getService" — the engine's
+machinery is reachable, but only by asking for it through `getService` like any other address,
+never by holding a typed reference to the concrete `Engine`.
+
+That machinery is two control services, not one, each its own address. `Control<IEngineHooks>`
+answers the DEFINE stage — `useHooks(hooks): HookHandle`, pure minting: it folds a set of
+`Behavior`s into one inert, reusable handle and touches nothing live. `Control<IEngineHookState>`
+answers the STATE stage, extending `IActivatable<HookHandle>` with `hasOpenHookWindow`.
+`IActivatable<Handle>` is the reusable shape of any setup-then-activate control surface: a
+definition side mints a handle once, out of whatever vocabulary it speaks; `activate(handle):
+Disposable` brackets one use of that handle, and disposing ends exactly that activation and no
+other.
+
+A `ScopeProvider` asks for both controls exactly once, at construction: it folds its keeper and
+its probe into one handle through `IEngineHooks.useHooks`, then brackets every forwarded ask with
+`using … = hookState.activate(handle)`. Fold order among activations is LIFO — the newest bracket
+still open is the innermost, nearer the walk than one still enclosing it — with every public
+window standing outside all of them and the built chain outermost still. Probing learns only what
+its OWN scope kept, gated on `selectOwningScope(...) === scope`, so a construction a nested scope
+owns never teaches the scope enclosing it anything. The traversal-attribution consequence this
+still carries is re-derived from the brackets themselves, not from any address-tracking mechanism:
+everything resolved while a bracket holds — a middleware's own rewritten forward, a pre-resolve
+made through the container, `next` called twice — runs under it, because a bracket stands over the
+engine itself and not over any one address; a `next` invoked after its own traversal has already
+returned finds no bracket open, and resolves under nothing but the built chain and whatever public
+windows remain.
+
+A scope's learned-answers memo is bypassed outright while any window is open — the check is
+`IEngineHookState.hasOpenHookWindow`, read before the provider ever activates its own handle —
+while an activation for the scope's own keeping never inhibits it.
+
+Seven questions stand open, not settled. `atBuild` hands every addon the raw `Engine` concrete
+rather than a door — `installation.atBuild?.(engine)` passes the instance itself, and the
+validation addon reads `engine.registry` straight off it — which is exactly what the single-door
+law forbids, and undesigned: nobody has fixed it yet. A control ask a provider makes at its own
+construction travels the same chain a plain resolution would, an owner ruling — controls travel
+through the chain like anything else — whose measured consequence is that a middleware body runs
+during `build()`, before the container exists to anyone, and a middleware that answers an
+unrecognized address itself, rather than forwarding it, breaks `build()` outright; accepting that
+or narrowing it is the owner's call, not yet made. The observing surface cannot tell "answered
+from keeping, and by which scope" apart from "freshly constructed": `canonicalize` and
+`afterConstruct` never run at all on a kept answer, only a middleware-form hook can even see that
+an interception happened, and the learned-answers fast path bypasses every hook a build installed,
+an auditor's included — if an auditor ever needs that visibility, a roster event is the
+placement-ladder rung to reach for, not an engine change. `Scope.provider` is a public, mutable
+field, written as a side effect of the `ScopeProvider` constructor rather than handed in. An
+interception's `{ state: undefined }` is documented legal, yet the keeper reads its incoming
+state unconditionally, so a hook upstream of it that answers exactly that crashes the keeper
+instead of falling through. `Starfish.useHooks` and `IEngineHooks.useHooks` share one name for
+opposite things — the door's version opens a window immediately and hands back its end, the
+machinery's version only mints an inert handle for a different member on a different interface to
+activate later — a rename-batch candidate. And a control's address derives from the type that
+names it, `IEngineHooks` and `IEngineHookState` included, both living under an internal,
+unpublished module path, so an error naming that address in text a published consumer can see
+cites a specifier nothing outside the package can resolve.
+
+_Owner-ruled; Claude-recorded 2026-08-28._
+
+Addendum, same day: the augmentation install is the public wrapper's alone — only
+`ServiceProvider`, the public-facing provider, carries `@augment(typefor<IServiceProvider>())`
+(owner: "only the jit wrapped, public-facing ServiceProvider gets augmented"). The internal
+implementers — `Engine`, `MiddlewareServiceProvider`, `ScopeProvider` and its bound starfish,
+`VolatileStarfish` — install nothing, so the layered `resolve`/`resolveMany` verbs exist at
+runtime only on the surface a consumer holds. And an interception's members are `result` (an
+answer standing in for construction) and `state` (what the construction's dependencies resolve
+under) — `instance`/`within` presumed use the value never promised (owner: "within makes
+assumptions about how the state is going to be used"); the engine-product `instance` parameters
+of canonicalize/afterConstruct keep their name, where it is accurate.
+
+## §210 — Lifetime classification ranks numeric keeper tiers; the three-word vocabulary belongs to the standard model alone
+
+`LifetimePolicy.classify` answers `{ tier, label } | 'unkept' | undefined`: tier 0 is the
+container root and a higher tier a narrower keeper, `label` is the tier's human name for error
+text, `'unkept'` means constructed per ask and kept by nothing (transparent to captivity in both
+directions — never captive as a dependency, looked through as a consumer), and `undefined` means
+the lifetime is model-defined and ranks only at runtime (owner: "undefined isn't opt-out, it's
+model defined"). The validator flags a captive wherever a kept registration's subtree constructs
+one kept by a strictly narrower tier, the nearest kept ancestor serving as the keeper context —
+so a model with several nested tiers gets inter-tier captivity detection the words could not
+express (owner: tiers "accomplish the same validation, but more generalized"; implemented on his
+"fix the classifier if you're confident that it's correct"). `StandardLifetime` thereby stops
+being the validator's vocabulary and lives beside the `standard` model in `di`, exactly as
+`TaggedLifetime` lives beside `tagged`; di.core's `LifetimeModel.ts` keeps only
+`LifetimeArgument`, `LifetimeModel`, `LifetimePolicy`. The engine-hook vocabulary
+(`Construction`, `Interception`, the handler/middleware pairs, `Hooks`, `Behavior`) is not
+lifetime material and lives in `di.core/src/hooks.ts` (owner: "the majority are not lifetime
+related (just bc lifetime uses them doesn't count)").
+
+Open beside it: `CaptiveDependencyError` does not yet carry the classification labels its
+message would need under a multi-tier model (its "is a singleton" text stays accurate for
+`standard`, where only tier 0 can be a flagging keeper); wiring labels through is undesigned and
+unordered.
+
+_Owner-directed; Claude-recorded 2026-08-28._
+
+## §211 — One stateful install list replaces Starfish; permanent vs scoped is only where useHooks is called
+
+There is one hook door and one install model. `Control<IEngineHooks>` — now a public `di.core`
+interface — is the single control the engine answers for hook access; `Starfish` is gone.
+`IEngineHooks.useHooks(hooks: Behavior): Disposable` installs `hooks` immediately, over every
+resolution the container answers from that point on, and disposing the answer uninstalls exactly
+that install. Permanent installation and scoped installation are not two mechanisms — they are the
+same call, differing only in where it is made and whether the disposer is ever run: held for the
+container's life, or bracketed in a `using` block. The owner's own framing: "drop the starfish
+interface. all hooks ALWAYS install immediately, and are ALL uninstallable via a disposer returned
+from the useHooks call. permanant installation vs getService scoped is just in _where_ it's called
+and _if_ it's disposed." And on the mechanism itself: "why don't you just keep a stateful array of
+hooks on the engine, and dispose removes them the list referentially?"
+
+The engine keeps exactly that: one `#installed: HookLayer[]`, seeded at construction from the
+built chain's own behaviors, appended to by every later `useHooks` call, and spliced by referential
+`lastIndexOf` when a disposer runs — the same disposer shape the removed `activate` used, now the
+only shape there is. Folding a resolution's hooks is uniform LIFO: the most recently installed
+layer stands innermost, closest to the construction, and the earliest-installed layer — the built
+chain — stands outermost, `installed.reduceRight(layered, identity)`. There is no separate
+"window" tier and no separate "activation" tier standing at different distances from the walk; an
+install is an install, and its distance from the walk is purely a function of when it was made
+relative to everything else still installed.
+
+`ScopeProvider` asks for `Control<IEngineHooks>` once, at construction, and stores the handle
+alongside its own `keeping` and `probing` behaviors — minted once, installed fresh around every
+forwarded ask: `using _probing = hooks.useHooks(probing); using _keeping = hooks.useHooks(keeping);`
+before `#inner.getService(address)`. Installing probing first and keeping second keeps keeping
+innermost, matching the order the prior activation handle held its own entries in. Every control
+ask now passes straight through this provider unchanged — there is no `Control<Starfish>` branch,
+no `ProviderBoundStarfish`, no special case at all: "no special cases" is the standing rule, and
+the single-door model means a control reaching this provider needs nothing done to it.
+
+The scope's learned-answers memo now serves unconditionally, before any bracket is installed: "the
+short circuit SHOULD bypass EVERYTHING, including hooks. later, if we need, we can add a
+configuration option to disable it." A future opt-out is a config knob to add when a use case
+demands it, not a branch to pre-build now.
+
+Deleted: `Starfish` (di.core), `VolatileStarfish`, `IEngineHookState`, `IActivatable`, the
+`ProviderBoundStarfish` class, `HookHandle`, `aggregateHooks`, `Engine#activate`,
+`Engine#openWindow`. `aggregate-hooks.ts` keeps `hookLayer`, the identity chain, and the four
+compose functions, and now exports one fold, `foldHooks`.
+
+This also closes the private-specifier concern the hooks control ask used to carry: `IEngineHooks`
+lived under an internal, unpublished module path, so an error naming that control address in text
+a published consumer could see cited a specifier nothing outside the package could resolve.
+`IEngineHooks` is now `di.core` public surface, so the address it derives from is one every
+consumer of the package can already resolve.
+
+_Owner-ruled; Claude-recorded 2026-08-28._
+
+## §212 — The addon contract is `create(): { middleware, registrations }`; the lifetime model mints its own machinery the same way
+
+An addon and a lifetime model both mint their contribution to a build through a member named
+`create`, and an addon's hooks are named `middleware` — one hook shape, one verb, named the same
+wherever it appears. The owner's own framing: "the 'addon' contract will now be
+`di.useAddon(addon:{create():{middleware:Func<...>, registrations:Iterable<Registration<any>>});`.
+lifetime model _could_ follow this pattern, but it's a special case bc the builder needs to
+forward the generic arg to the registration builder (i.e. manifest). we need to get validation to
+conform next -- let me look over what it does. go ahead and refactor the audit service into this
+shape."
+
+`ChainAddon.create(): AddonInstallation` replaces `install()`; `AddonInstallation.middleware`
+replaces its `hooks` member, `registrations` and `atBuild` keep their names and shapes.
+`ContainerBuilder.withAddon` becomes `useAddon`, matching the verb an addon mints through.
+`LifetimeModel.create()` replaces `install()` too, named in lockstep with the addon contract — but
+a lifetime model stays its own argument to the builder rather than folding into the addon list,
+because the builder has to forward the container's `Lifetime` generic into the registration
+builder (the manifest) at the model's own call site, something an addon-shaped `create()` with no
+type parameter of its own cannot carry.
+
+`resolveAudit` conforms fully: its `create()` returns `{ middleware: {...}, registrations: [...] }`,
+and its placeholder factory's error now names `useAddon` and `middleware` rather than the retired
+`withAddon`/`hooks` spelling. The `validation` addon renames `install()` to `create()` and its
+error text's `withAddon` mention to `useAddon` — nominal conformance only. It does not yet answer
+through the addon-mint shape the way `resolveAudit` does; the owner is reviewing what `validation`
+should look like under this contract next, so `AddonInstallation.atBuild` stays in the contract
+for now, read only by `validation`'s own installation, until that review lands.
+
+_Owner-ruled; Claude-recorded 2026-08-28._
+
+## §213 — An addon's `middleware` is a `Middleware`; `atBuild` is gone; a permanent hook installs itself through the same door a scope does
+
+`AddonInstallation.middleware` is a `Middleware` — the ordinary request-grain kind the
+builder already composes around the engine from `use()` — not a `Behavior`. The owner's own
+correction: "yes, the member i named middleware is suppoed to be a middleware. didn't think i'd
+need to say that." An addon wanting a permanent hook plants it itself, at build, through the same
+door a scope's own keeping installs through: its middleware asks for `Control<IEngineHooks>`
+through `next`, calls `useHooks` on what comes back, and returns `next` unchanged — stepping aside
+once its install-time work is done. `resolveAudit` is the shipped example; nothing about the
+engine or the builder singles out "addon hooks" as their own kind of contribution any more — an
+addon that wants one installs it exactly the way anything else would.
+
+`atBuild` is deleted from `AddonInstallation`, and `Engine`'s constructor drops its `builtChain`
+parameter — `#installed` now starts empty and grows only through `useHooks`, whoever calls it and
+whenever. `use()` and `useAddon()` feed one middleware list in builder-call order, the first call
+composing outermost; an addon's own middleware, if it mints one, takes its place in that same list
+at the position `useAddon` was called, not a separate earlier-composing tier. Concretely, the
+builder now stores one ordered list of thunks — one per `useAddon`/`use` call — each minting an
+`AddonInstallation`-shaped value at build (`{ middleware }` alone for a plain `use()` call, the
+addon's own `create()` result for `useAddon`); `build()` maps that list once, reads `registrations`
+off every entry the way it always did, and reads `middleware` off every entry the same way,
+composing them into the one chain `MiddlewareServiceProvider` already knew how to build. No
+`atBuild` loop remains to delete anything from.
+
+A second control answers the manifest a container resolves against: `typefor<Control<Iterable
+<Registration<unknown>>>>()`, answered with `new Control(this.#registry.registrations)` — the
+registry's own frozen array serves as the iterable, a read-only view built from public types alone.
+`typefor` derived this spelling cleanly on the first attempt; the `Control<Manifest<unknown>>`
+fallback the spec allowed for was never needed. `validation` is this control's first consumer: its
+middleware asks for it through `next`, builds a fresh `Registry` from what comes back, and sweeps
+that — `validateBuild` now takes a `Registry` directly, its `instanceof Engine` guard and the
+`TypeError` it threw both gone, since nothing about validating a registration set needs the engine
+concrete any more. The sweep logic itself (`captivePairs`, the classification walk) is untouched —
+shape conversion only, pending the owner's own review of what the sweep does.
+
+One internal accommodation the spec didn't name: `askForControl`'s `provider` parameter narrows
+from `IServiceProvider` to `Pick<IServiceProvider, 'getService'>`, since a middleware only ever
+holds `next` — a bare dispatch function, not an object carrying the augmented `resolve`/
+`resolveMany` members `IServiceProvider` types as having. The function reads nothing but
+`getService` either way; only its parameter's declared width changes, and every existing call site
+(a real `IServiceProvider`) is trivially assignable to the narrower type.
+
+_Owner-ruled; Claude-recorded 2026-08-28._
+
+## §214 — The pipeline type is named `Middleware`, unqualified; the hook-stage names stay qualified
+
+`ResolveMiddleware` is `Middleware` now — `libraries/di.core/src/ResolveMiddleware.ts` renamed to
+`Middleware.ts`. The owner's own reasoning: "`ResolveMiddleware` is a bad name bc it has that
+installer stage, optionally modifying the resolve pipeline. call it either DiMiddleware
+(DIMiddleware? they're both kinda ugly) or just plan Middleware." `Middleware`, unqualified, is
+what shipped: the container has exactly one pipeline type, so it needs no qualifier to tell it
+apart from anything else in scope. The hook-stage names — `BeginResolveMiddleware`,
+`BeforeConstructMiddleware`, `CanonicalizeMiddleware`, `AfterConstructMiddleware` — stay qualified,
+since those four sit alongside four differently-shaped handlers on `Hooks`/`Behavior` and the
+`Resolve`/`Construct`/`Canonicalize` prefixes are what tells one apart from another; nothing about
+this rename touches them.
+
+`Middleware.ts`'s own doc now states plainly what the type covers: a factory that composes once, at
+build, and may do install-time work of its own there — planting a permanent hook, sweeping the
+manifest — before answering the function each request runs through. Every consumer follows the
+rename: the `di.core` barrel (alphabetical position moves from after `ResolveAudit` to between
+`Manifest` and `Registration`), `ChainAddon.ts`, `di.ts` (the `use()` member and its implementation),
+`di`'s own barrel re-export, and `MiddlewareServiceProvider.ts` — whose own class name is untouched,
+since it names what the class does (compose middleware around a provider), not the type it composes.
+
+_Owner-ruled; Claude-recorded 2026-08-28._

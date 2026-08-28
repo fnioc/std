@@ -3,7 +3,7 @@
 // external in this bundle, so both specifiers reach ONE class per error and
 // `instanceof` holds whichever one a caller imported from.
 export { CaptiveDependencyError, CycleError, DiError, ManifestValidationError, UniversalAddressError, UnknownControlError, UnsatisfiableError } from '@rhombus-std/di.core';
-export type { ValidationFailure } from '@rhombus-std/di.core';
+export type { Middleware, ValidationFailure } from '@rhombus-std/di.core';
 
 export { resolveAudit } from './addons/resolve-audit.js';
 export { validation } from './addons/validation.js';

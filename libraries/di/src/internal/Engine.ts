@@ -1,99 +1,130 @@
-import { type Hooks, type IServiceProvider, type Registration, type Starfish, UnsatisfiableError } from '@rhombus-std/di.core';
-import { augment, type FunctionType, Type } from '@rhombus-std/primitives';
+import { type Behavior, Control, type Hooks, type IEngineHooks, type IServiceProvider, type Registration, UnknownControlError, UnsatisfiableError } from '@rhombus-std/di.core';
+import { assertTruthy, type FunctionType, Type } from '@rhombus-std/primitives';
 import { typefor } from '@rhombus-std/primitives.extras';
-import { HookComposer } from './HookComposer.js';
+import { foldHooks, type HookLayer, hookLayer } from './aggregate-hooks.js';
+import { isControlAsk } from './control-recognition.js';
 import { Plan } from './Plan/index.js';
 import { Registry } from './Registry.js';
 
-/** Who a resolution is answered by, and the context it runs under. */
-export interface ResolveContext {
-  /** What a service asking for the provider receives when its model has none of its own to hand out. */
-  readonly serviceProvider: IServiceProvider;
-  /** The context the resolution's constructions sit under, absent to run it under none. */
-  readonly context?: unknown;
+/** A resolution as it stood where a callable was minted, so invoking that callable re-enters the same way. */
+interface RunningResolve {
+  /** The one handler the resolution was running through. */
+  readonly hooks: Hooks;
+  /** The state at the position the callable was minted. */
+  readonly state: unknown;
 }
 
 export interface Engine extends IServiceProvider {}
 
 /** The resolution orchestrator: one per container. Also the chain's terminus — a bare engine is itself a fully working, transient-only provider. */
-@augment(typefor<IServiceProvider>())
-export class Engine implements IServiceProvider {
+export class Engine implements IServiceProvider, IEngineHooks {
   readonly #registry: Registry;
-  readonly #composer = new HookComposer();
-  #starfish: Starfish | undefined;
+  /** Every hook layer installed and not yet disposed, oldest first; starts empty. */
+  readonly #installed: HookLayer[] = [];
 
   constructor(registrations: Iterable<Registration<unknown>>) {
     this.#registry = new Registry(registrations);
   }
 
+  // #region IServiceProvider
+
+  /**
+   * Resolves `address` under everything installed and not yet disposed.
+   *
+   * @remarks
+   * A control ask is answered here and nowhere else: the engine hands back what it names itself,
+   * running no hook and standing nothing over anything, so reaching for a control changes nothing
+   * about the resolution that follows.
+   *
+   * @throws {UnsatisfiableError} when nothing in the registry can produce {@link address}.
+   * @throws {UnknownControlError} when a control ask names something the engine cannot answer.
+   */
   getService(address: Type): any {
-    if (!address) {
-      throw new TypeError('getService was handed a nullish service type.');
+    assertTruthy(address, 'the service type handed to the engine');
+    // A provider offers one door, so what the providers of this package work the engine through is
+    // asked for the same way anything else is: as a control, answered here and held by whoever asked.
+    if (address === typefor<Control<IEngineHooks>>()) {
+      return new Control(this);
     }
-    return this.resolveUnder(address, { serviceProvider: this });
+    // What an addon's own middleware validates its manifest against at build, before anything
+    // else can have registered or resolved.
+    if (address === typefor<Control<Iterable<Registration<unknown>>>>()) {
+      return new Control(this.#registry.registrations);
+    }
+    if (isControlAsk(address)) {
+      throw new UnknownControlError(address);
+    }
+    // The most recently installed layer stands closest to the walk, so a bracket's keeping seeds
+    // the state before anything installed earlier reads it — which is what makes a unit of work
+    // opened inside another answer from its own scope. An install made during a resolution affects
+    // only resolutions opened after it: a resolution already under way keeps what it opened with,
+    // its latebound closures included, however late they fire.
+    const hooks = foldHooks(this.#installed);
+    return Plan.realize(Plan.from(address, this.#registry), {
+      engine: this,
+      hooks,
+      state: hooks.beginResolve(address, undefined),
+    });
   }
+
+  // #endregion
+
+  // #region IEngineHooks
+
+  useHooks<State = unknown>(hooks: Behavior<State>): Disposable {
+    const layer = hookLayer(hooks);
+    this.#installed.push(layer);
+    let held = true;
+    return {
+      [Symbol.dispose]: () => {
+        if (!held) {
+          return;
+        }
+        held = false;
+        this.#installed.splice(this.#installed.lastIndexOf(layer), 1);
+      },
+    };
+  }
+
+  // #endregion
+
+  // #region internals
 
   /** The registrations this engine resolves against. */
   get registry(): Registry {
     return this.#registry;
   }
 
-  /** The one handler every resolution runs through, as everything filed through the door composes. */
-  get hooks(): Hooks {
-    return this.#composer.hooks;
-  }
-
-  /** The one door this engine answers `Starfish` with, minted on the first ask and shared by every later one. */
-  get starfish(): Starfish {
-    return this.#starfish ??= {
-      bind: binding => {
-        const { provider, context } = binding;
-        return request => this.resolveUnder(request, { serviceProvider: provider ?? this, context });
-      },
-      onBeginResolve: fn => this.#composer.onBeginResolve(fn),
-      onBeforeConstruct: (fn, options) => this.#composer.onBeforeConstruct(fn, options),
-      onCanonicalize: (fn, options) => this.#composer.onCanonicalize(fn, options),
-      onAfterConstruct: (fn, options) => this.#composer.onAfterConstruct(fn, options),
-    };
-  }
-
-  /**
-   * Resolves `address`, opening the resolution under whatever `injection` carried.
-   *
-   * @throws {UnsatisfiableError} when nothing in the registry can produce {@link address}.
-   */
-  resolveUnder(address: Type, injection: ResolveContext): unknown {
-    return Plan.realize(Plan.from(address, this.#registry), {
-      engine: this,
-      serviceProvider: injection.serviceProvider,
-      context: this.hooks.beginResolve(address, injection.context),
-    });
-  }
-
   /**
    * An invocation frame for `registration`: dependencies resolve from the registry, but nothing
    * registers or caches.
    *
-   * @param running - the context captured where the caller was minted; the resolution re-opens
-   * through the handler so an opener that reads ambient state can override it.
+   * @param running - the resolution as it stood where the caller was minted; it re-opens through
+   * that resolution's own handler, so an opener that reads ambient state can override the state
+   * captured there.
    * @throws {UnsatisfiableError} when no signature of {@link registration} can be satisfied.
    */
-  resolveFrame(registration: Registration<unknown>, running: ResolveContext): unknown {
+  resolveFrame(registration: Registration<unknown>, running: RunningResolve): unknown {
     const plan = Plan.fromRegistration(registration, this.#registry);
     if (plan === undefined) {
       throw new UnsatisfiableError(registration.address, 'no signature of the invoked callable can be satisfied');
     }
-    return Plan.realize(plan, { engine: this, ...running, context: this.hooks.beginResolve(registration.address, running.context) });
+    return Plan.realize(plan, {
+      engine: this,
+      hooks: running.hooks,
+      state: running.hooks.beginResolve(registration.address, running.state),
+    });
   }
 
   /**
    * A latebound call: binds each arg to the first signature whose arity fits, positionally.
    * A call may stop short of the full signature wherever the remaining slots admit `undefined`.
    *
-   * @param running - the context captured where the caller was minted; the resolution re-opens
-   * through the handler so an opener that reads ambient state can override it.
+   * @param running - the resolution as it stood where the caller was minted; it re-opens through
+   * that resolution's own handler, so an opener that reads ambient state can override the state
+   * captured there.
    */
-  resolveLatebound(funcType: FunctionType, providedArgs: readonly unknown[], running: ResolveContext): unknown {
+  resolveLatebound(funcType: FunctionType, providedArgs: readonly unknown[], running: RunningResolve): unknown {
     const signature = funcType.signatures
       .filter(candidateSignature => providedArgs.length <= candidateSignature.length)
       .find(candidate => candidate.slice(providedArgs.length).every(Type.isOptional));
@@ -101,12 +132,13 @@ export class Engine implements IServiceProvider {
     if (signature === undefined) {
       throw new TypeError(`${Type.stringify(funcType)} has no signature accepting ${providedArgs.length} arg(s)`);
     }
-    const result = Plan.from(funcType.return, this.#registry, signature);
-    return Plan.realize(result, {
+    return Plan.realize(Plan.from(funcType.return, this.#registry, signature), {
       engine: this,
-      ...running,
-      context: this.hooks.beginResolve(funcType.return, running.context),
+      hooks: running.hooks,
+      state: running.hooks.beginResolve(funcType.return, running.state),
       args: providedArgs,
     });
   }
+
+  // #endregion
 }

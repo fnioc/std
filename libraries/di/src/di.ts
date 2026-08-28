@@ -1,7 +1,8 @@
-import { type AddonInstallation, type ChainAddon, DefaultManifest, IServiceProvider, type LifetimeModel, Manifest, type Registration } from '@rhombus-std/di.core';
-import { concat, iterable, type Type } from '@rhombus-std/primitives';
+import { type AddonInstallation, type ChainAddon, DefaultManifest, IServiceProvider, type LifetimeModel, Manifest, type Middleware, type Registration } from '@rhombus-std/di.core';
+import { concat, iterable } from '@rhombus-std/primitives';
 import type { Func } from '@rhombus-toolkit/func';
 import { Engine } from './internal/Engine.js';
+import { MiddlewareServiceProvider } from './internal/MiddlewareServiceProvider.js';
 import { ServiceProvider } from './ServiceProvider.js';
 
 /**
@@ -21,46 +22,44 @@ export interface ContainerBuilder<Lifetime> {
    */
   usingManifest(manifest: Iterable<Registration<Lifetime>>): ContainerBuilder<Lifetime>;
 
-  /** Installs `addon` beside the lifetime model; addons contribute in the order they were added. */
-  withAddon(addon: ChainAddon<Lifetime>): ContainerBuilder<Lifetime>;
+  /**
+   * Installs `addon` beside the lifetime model: its registrations file in call order, and its own
+   * middleware — if it mints one — composes into the same chain {@link use} composes into, at this
+   * call's position.
+   */
+  useAddon(addon: ChainAddon): ContainerBuilder<Lifetime>;
+
+  /**
+   * Composes request-grain middleware around the engine, alongside whatever an addon's own
+   * middleware contributes: one chain, in call order, the first call wrapping outermost.
+   */
+  use(middleware: Middleware): ContainerBuilder<Lifetime>;
 
   /** Seals the configured manifest into a provider. */
   build(): IServiceProvider;
 }
 
-/**
- * Names one handler in the composed chain and links it to the handler it forwards to, so
- * `console.dir` on the provider's own handler expands layer by layer out to the engine's door.
- */
-function inspectable<Lifetime>(
-  handler: Func<[Type], unknown>,
-  name: string,
-  links: { next?: Func<[Type], unknown>; addon?: AddonInstallation<Lifetime>; },
-): Func<[Type], unknown> {
-  Object.defineProperty(handler, 'name', { value: name, configurable: true });
-  return Object.assign(handler, links);
-}
-
-export class DefaultContainerBuilder<Lifetime> implements ContainerBuilder<Lifetime> {
+class DefaultContainerBuilder<Lifetime> implements ContainerBuilder<Lifetime> {
   readonly #lifetimeModel: LifetimeModel<Lifetime>;
   readonly #manifestSteps: Iterable<Func<[Manifest<Lifetime>], Iterable<Registration<Lifetime>>>>;
-  readonly #addons: Iterable<ChainAddon<Lifetime>>;
+  /** One thunk per `useAddon`/`use` call, in call order — a plain middleware mints a registration-less installation. */
+  readonly #steps: Iterable<Func<[], AddonInstallation>>;
 
   constructor(
     lifetimeModel: LifetimeModel<Lifetime>,
     manifestSteps: Iterable<Func<[Manifest<Lifetime>], Iterable<Registration<Lifetime>>>>,
-    addons: Iterable<ChainAddon<Lifetime>>,
+    steps: Iterable<Func<[], AddonInstallation>>,
   ) {
     this.#lifetimeModel = lifetimeModel;
     this.#manifestSteps = manifestSteps;
-    this.#addons = addons;
+    this.#steps = steps;
   }
 
   configureServices(configure: Func<[Manifest<Lifetime>], Iterable<Registration<Lifetime>>>): ContainerBuilder<Lifetime> {
     return new DefaultContainerBuilder(
       this.#lifetimeModel,
       iterable(() => concat(this.#manifestSteps, configure)),
-      this.#addons,
+      this.#steps,
     );
   }
 
@@ -68,45 +67,44 @@ export class DefaultContainerBuilder<Lifetime> implements ContainerBuilder<Lifet
     return new DefaultContainerBuilder(
       this.#lifetimeModel,
       [floor => new DefaultManifest<Lifetime>(() => concat(manifest, floor))],
-      this.#addons,
+      this.#steps,
     );
   }
 
-  withAddon(addon: ChainAddon<Lifetime>): ContainerBuilder<Lifetime> {
+  useAddon(addon: ChainAddon): ContainerBuilder<Lifetime> {
     return new DefaultContainerBuilder(
       this.#lifetimeModel,
       this.#manifestSteps,
-      iterable(() => concat(this.#addons, addon)),
+      iterable(() => concat(this.#steps, () => addon.create())),
+    );
+  }
+
+  use(middleware: Middleware): ContainerBuilder<Lifetime> {
+    return new DefaultContainerBuilder(
+      this.#lifetimeModel,
+      this.#manifestSteps,
+      iterable(() => concat(this.#steps, () => ({ middleware }))),
     );
   }
 
   build(): IServiceProvider {
-    const { wrapResolve, scopeFactory } = this.#lifetimeModel.install();
-    const installations = Iterator.from(this.#addons).map(addon => addon.install()).toArray();
+    const { attach: modelAttach, scopeFactory } = this.#lifetimeModel.create();
+    const installations = Iterator.from(this.#steps).map(step => step()).toArray();
     const floor = scopeFactory ? Manifest.empty<Lifetime>().add(scopeFactory) : Manifest.empty<Lifetime>();
-    const filed = installations.reduce(
-      (manifest, { registrations }) => registrations ? new DefaultManifest<Lifetime>(() => concat(registrations, manifest)) : manifest,
+    // An addon files registrations without knowing this container's lifetime vocabulary; reading
+    // what they carry is the model's job, at construction.
+    const manifestWithAddons = installations.reduce(
+      (manifest, { registrations }) => registrations ? new DefaultManifest<Lifetime>(() => concat(registrations as Iterable<Registration<Lifetime>>, manifest)) : manifest,
       floor,
     );
-    const manifest = Iterator.from(this.#manifestSteps).reduce((manifest, step) => new DefaultManifest(step(manifest)), filed);
+    const manifest = Iterator.from(this.#manifestSteps).reduce((manifest, step) => new DefaultManifest(step(manifest)), manifestWithAddons);
     const engine = new Engine(manifest);
-    // Addons file their hooks first, so the lifetime model — filed last — composes innermost,
-    // closest to the construction. With nothing to wrap, the handler is the identity chain — the
-    // user-facing provider is always this wrap.
-    const layers: Array<{ name: string; wrapResolve?: AddonInstallation<Lifetime>['wrapResolve']; addon?: AddonInstallation<Lifetime>; }> = [
-      ...installations.map((addon, index) => ({ name: `addon${index}`, wrapResolve: addon.wrapResolve, addon })),
-      { name: this.#lifetimeModel.name, wrapResolve },
-    ];
-    const provider = new ServiceProvider(self =>
-      layers.reduce(
-        (next, { name, wrapResolve: wrap, addon }) => wrap ? inspectable(wrap(next, self), name, { next, ...addon && { addon } }) : next,
-        inspectable((address: Type) => engine.getService(address), 'engine.getService', {}),
-      )
-    );
-    for (const installation of installations) {
-      installation.atBuild?.(engine);
-    }
-    return provider;
+    // The chain every resolution runs inside, in call order: the first `useAddon`/`use` call wraps
+    // outermost, so everything a request brings with it — a scope's keeping included — sits within.
+    const middlewares = installations.map(({ middleware }) => middleware).filter(middleware => middleware !== undefined);
+    // Identity-elision: an empty middleware list leaves the engine as what the container resolves through.
+    const inner = middlewares.length ? new MiddlewareServiceProvider(engine, middlewares) : engine;
+    return modelAttach ? modelAttach(inner) : new ServiceProvider(inner);
   }
 }
 

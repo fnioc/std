@@ -486,6 +486,11 @@ boilerplate, never add a capability or change behavior. So the explicit/token fo
 (`add(token, …)`, `addOptions(token, …)`) are primary and complete; the type-driven forms
 (`add<T>()`, `addOptions<T>()`) are sugar rewritten _into_ them.
 
+## typefor calls are always inline
+
+`typefor<T>()` is spelled directly at its use site, every time — never hoisted into a const
+(module-level or otherwise) and never wrapped in a helper. No address consts.
+
 ## Comments
 
 **A comment explains the code in front of the reader — never the history of how it got there.**

@@ -1,9 +1,9 @@
 import { type AfterConstructHandler, type BeforeConstructHandler, LifetimeModelError } from '@rhombus-std/di.core';
 
-/** The pair a lifetime model files through the door: where a construction is kept, and what its dependencies resolve under. */
-export interface ConstructionHooks<Lifetime, Context> {
-  readonly beforeConstruct: BeforeConstructHandler<Lifetime, Context>;
-  readonly afterConstruct: AfterConstructHandler<Lifetime, Context>;
+/** The pair a lifetime model contributes: where a construction is kept, and what its dependencies resolve under. */
+export interface ConstructionHooks<State> {
+  readonly beforeConstruct: BeforeConstructHandler<State>;
+  readonly afterConstruct: AfterConstructHandler<State>;
 }
 
 /**
@@ -11,7 +11,7 @@ export interface ConstructionHooks<Lifetime, Context> {
  * address it was realizing; an error the construction itself raised is not the model's, and passes
  * through untouched.
  */
-export function classifyingHooks<Lifetime, Context>(hooks: ConstructionHooks<Lifetime, Context>): ConstructionHooks<Lifetime, Context> {
+export function classifyingHooks<State>(hooks: ConstructionHooks<State>): ConstructionHooks<State> {
   return {
     beforeConstruct(construction) {
       try {

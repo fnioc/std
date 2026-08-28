@@ -5,7 +5,7 @@ export function noop(): LifetimeModel<unknown> {
   return {
     name: 'noop',
     transient: undefined,
-    install() {
+    create() {
       return {};
     },
   };

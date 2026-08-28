@@ -15,6 +15,7 @@ export type { Invoker } from './Invoker';
 export type * from './IServiceProvider';
 export * from './LifetimeModel';
 export * from './Manifest';
+export type * from './Middleware';
 export * from './Registration';
 export * from './ResolveAudit';
 

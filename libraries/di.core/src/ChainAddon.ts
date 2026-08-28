@@ -1,36 +1,24 @@
-import type { Type } from '@rhombus-std/primitives';
-import type { Func } from '@rhombus-toolkit/func';
-import type { IServiceProvider } from './IServiceProvider.js';
+import type { Middleware } from './Middleware.js';
 import type { Registration } from './Registration/index.js';
 
-/**
- * What one addon contributes to the container being built.
- *
- * @typeParam Lifetime - the vocabulary of lifetime data the container's registrations carry.
- */
-export interface AddonInstallation<Lifetime = unknown> {
-  /** Registrations filed beneath the user's own, above the lifetime model's floor. */
-  readonly registrations?: Iterable<Registration<Lifetime>>;
+/** What one addon contributes to the container being built. */
+export interface AddonInstallation {
+  /** Registrations filed beneath the user's own, above the lifetime model's floor; the lifetime each carries is the model's to read at runtime. */
+  readonly registrations?: Iterable<Registration<any>>;
 
   /**
-   * Wraps the container's resolve function once, at build; addons wrap outside the lifetime model.
+   * Middleware the builder composes into the container's one chain, alongside every other addon's
+   * and `use()`'s own, in call order.
    *
    * @remarks
-   * This is also where an addon files its handlers through the door: resolve the given function
-   * with `typefor<Starfish>()` to reach it, since the container passed alongside cannot yet answer.
+   * Composes once, at build — see {@link Middleware}'s own remarks for what that means. An addon
+   * that only needs install-time work does that work directly here and returns `next` unchanged.
    */
-  readonly wrapResolve?: Func<[Func<[Type], unknown>, IServiceProvider], Func<[Type], unknown>>;
-
-  /** Runs once every installation's registrations are in place, handed the provider the build resolves through; a throw aborts the build. */
-  readonly atBuild?: Func<[IServiceProvider], void>;
+  readonly middleware?: Middleware;
 }
 
-/**
- * An addon a container builder installs beside the lifetime model.
- *
- * @typeParam Lifetime - the vocabulary of lifetime data the container's registrations carry.
- */
-export interface ChainAddon<Lifetime = unknown> {
+/** An addon a container builder installs beside the lifetime model. */
+export interface ChainAddon {
   /** Mints this addon's contribution to one container; called once per build. */
-  install(): AddonInstallation<Lifetime>;
+  create(): AddonInstallation;
 }
