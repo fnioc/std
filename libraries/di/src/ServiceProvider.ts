@@ -1,19 +1,20 @@
 import type { IServiceProvider } from '@rhombus-std/di.core';
 import { augment, type Type } from '@rhombus-std/primitives';
 import { typefor } from '@rhombus-std/primitives.extras';
+import type { Func } from '@rhombus-toolkit/func';
 
 export interface ServiceProvider extends IServiceProvider {}
 
-/** The user-facing provider a container whose model keeps nothing is built with: it forwards, and does nothing else. */
+/** The user-facing provider every container is minted with: one held call, forwarded on every ask. */
 @augment(typefor<IServiceProvider>())
 export class ServiceProvider implements IServiceProvider {
-  readonly #inner: IServiceProvider;
+  readonly #getService: Func<[Type], unknown>;
 
-  constructor(inner: IServiceProvider) {
-    this.#inner = inner;
+  constructor(source: IServiceProvider | Func<[Type], unknown>) {
+    this.#getService = typeof source === 'function' ? source : source.getService.bind(source);
   }
 
   getService(address: Type): any {
-    return this.#inner.getService(address);
+    return this.#getService(address);
   }
 }
