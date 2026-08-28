@@ -128,7 +128,7 @@ const matchVisitor = new MatchVisitor();
  * Does some instantiation of {@link candidate} equal {@link constraint}? Success carries the
  * instantiation: one entry per generic label in the candidate.
  */
-export function matchType(candidate: Type, constraint: Type): [matched: false] | [matched: true, generics: Map<string, Type>] {
+export function matchType(candidate: Type, constraint: Type): [isMatch: false] | [isMatch: true, generics: Map<string, Type>] {
   if (isOpenType(constraint)) {
     throw new Error(`bindGenerics: the constraint type may not contain generic holes — got ${stringifyType(constraint)}`);
   }
