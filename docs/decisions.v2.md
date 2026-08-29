@@ -3772,14 +3772,10 @@ hypothetical miss can't remove an unrelated layer at the same index. Left alone,
 than fixed: the `{state: undefined}` keeper crash recorded open in §209, and `resolvesFrom`'s
 cross-container discrimination, which has no live path to reach today.
 
-Of the concerns this verification pass raised, two are resolved and two stay open. The `noop()` face
+Of the concerns this verification pass raised, one is resolved and two stay open. The `noop()` face
 fix — an injected `IServiceProvider` slot answering the engine's own augmented face rather than the
-raw `Engine` — is accepted as shipped: "pending your in-flight changes, everything is approved." The
-noop()-plus-`use()`-middleware concern is a non-issue (owner-ruled 2026-08-28, Claude-recorded): the
-`ServiceProvider` JIT wrap plus the `IServiceProviderInternal` two-tier contract (§220) already give
-every injected slot the engine's own augmented face, so there is no second head to thread — under
-`standard`/`tagged` this never arose either, since the scope's own face answers instead, middleware
-included. Still open, awaiting the owner: `resolvesFrom`'s `WeakMap` keys the public `face`, and
+raw `Engine` — is accepted as shipped: "pending your in-flight changes, everything is approved."
+Still open, awaiting the owner: `resolvesFrom`'s `WeakMap` keys the public `face`, and
 nothing distinguishes a provider's own identity from the container it resolves from if two bindings
 ever shared a face; and `ResolveAudit`'s placeholder registration body's wording ("the resolve-audit
 addon answers this at construction") reads as an implementation note rather than caller-facing
