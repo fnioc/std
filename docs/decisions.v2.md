@@ -3772,13 +3772,18 @@ hypothetical miss can't remove an unrelated layer at the same index. Left alone,
 than fixed: the `{state: undefined}` keeper crash recorded open in §209, and `resolvesFrom`'s
 cross-container discrimination, which has no live path to reach today.
 
-Open, awaiting the owner, from the same verification pass — none acted on yet: the `noop()` face fix
-means a `use()` middleware installed on a noop container now runs silently on every ask where it
-previously threw before ever reaching the middleware chain, a behavior change nobody has signed off
-on; `resolvesFrom`'s `WeakMap` keys the public `face`, and nothing distinguishes a provider's own
-identity from the container it resolves from if two bindings ever shared a face; and `ResolveAudit`'s
-placeholder registration body's wording ("the resolve-audit addon answers this at construction")
-reads as an implementation note rather than caller-facing guidance.
+Of the concerns this verification pass raised, one is resolved and two stay open. The `noop()` face
+fix — an injected `IServiceProvider` slot answering the engine's own augmented face rather than the
+raw `Engine` — is accepted as shipped: "pending your in-flight changes, everything is approved." Its
+residue parks as an open item for the provider-semantics design work rather than a defect: under
+`noop()` plus a `use()` middleware, that face dispatches straight at the engine, so the injected
+provider's verbs silently skip the middleware chain where they used to throw loudly; under
+`standard`/`tagged` this never fires, since the scope's own face answers instead, middleware
+included. Still open, awaiting the owner: `resolvesFrom`'s `WeakMap` keys the public `face`, and
+nothing distinguishes a provider's own identity from the container it resolves from if two bindings
+ever shared a face; and `ResolveAudit`'s placeholder registration body's wording ("the resolve-audit
+addon answers this at construction") reads as an implementation note rather than caller-facing
+guidance.
 
 _Owner-ruled; Claude-recorded 2026-08-28._
 
@@ -3878,33 +3883,39 @@ _Owner-ruled; Claude-recorded 2026-08-28._
 don't exist. The owner weighed several naming shapes for the eight and settled on the most direct
 one himself, then delegated the pick outright: "choose the answer you like best and do it. proceed
 with plan." `Hooks`' four members spell their handler-form signature directly —
-`beginResolve: Func<[request: Type, injected: State], State>` and so on. `Behavior`'s four (still
-optional) slots spell the handler-or-middleware union directly, the handler half read off `Hooks`
-itself by indexed access rather than duplicated — `Hooks<State>['beginResolve'] |
-Func<[request: Type, injected: State, next: Hooks<State>['beginResolve']], State>` — so the
-middleware shape's `next` parameter can never drift from what a handler actually looks like. A
-caller who must predefine one member's implementation standalone, before assigning it, has the same
-indexed-access door: `Hooks['beginResolve']`, `Behavior['beforeConstruct']` — noted on both
-interfaces' own docs.
+`beginResolve: Func<[request: Type, injected: State], State>` and so on — the one place the
+signatures and their per-hook docs live, `canonicalize`'s built-only/no-thenable remark folded in
+from where `Behavior` used to carry it. `Construction` and `Interception` move into the `Hooks`
+namespace — `Hooks.Construction<State>`, `Hooks.Interception<State>` — the owner's "do it for hooks"
+ruling; `hooks.ts`'s top level is now the `Hooks` interface and namespace alone.
 
-`Behavior.compose`'s internal composers keep their bodies, cast to the same indexed-access shapes
-rather than minting file-private aliases — `hook as Hooks['beginResolve']` for the handler branch,
-`hook as Func<[..., next: Hooks['beginResolve']], ...>` for the middleware branch, spelling only the
-`next` parameter's wrapper inline. `compose`'s own call sites cast each `behavior.*` slot to the bare
-`Func` the composers take (`behavior.beginResolve as Func`): TS's contravariant-position generic
-default doesn't distribute cleanly over a two-armed union of different arities passed to a
-fixed-shape parameter, so the cast is load-bearing there, not decorative.
+`Behavior` is derived, not hand-spelled, per two more owner directives: "make a mapped type for the
+koa pattern and type the compose functions properly -- no casts" and "make a generic generalized
+version for the first half of all those compose functions." `Koa<Handler>` is the koa pattern as a
+conditional type — a handler's middleware form is the same signature with a trailing `next`,
+standing for everything beneath the layer: `Handler extends Func<infer Args, infer Answer> ?
+Func<[...Args, next: Handler], Answer> : never`. `Behavior<State>` is the mapped type over `Hooks`'
+own shape, each member optional and widened to its handler-or-middleware union: `{ readonly [K in
+keyof Hooks<State>]?: Hooks<State>[K] | Koa<Hooks<State>[K]> }` — an interface converts to a type
+alias to hold it, alias and namespace coexisting the same way `Type` already does in `primitives`. A
+standalone implementation of one member, predefined before it's assigned, is typed the same
+indexed-access way either interface always allowed — `Hooks['beginResolve']`,
+`Behavior['beforeConstruct']`.
 
-`Construction` and `Interception` move into the `Hooks` namespace — `Hooks.Construction<State>`,
-`Hooks.Interception<State>` — the owner's "do it for hooks" ruling; `hooks.ts`'s top level is now
-the `Hooks` interface and namespace alone, `Behavior.ts`'s the `Behavior` interface and namespace
-alone. `resolve-audit.ts` restructures per the owner's own observation: its four hooks predefine
-together as one `Behavior<unknown>` object literal — contextual typing carries each slot's shape
-without a per-member alias annotation — each hook's doc moving to sit directly above its own
-property. `classifying-hooks.ts`'s `ConstructionHooks<State>` and `ScopeBinding.ts`'s
-`ownScopeKeeps`/`RealizeVisitor.ts`'s `#realize` name `Hooks.Construction<State>` where they need
-the shape explicitly; `ScopeBinding.ts`'s `keeping` gives its `beginResolve` arrow explicit parameter
-types where the union contextual-types an anonymous function ambiguously otherwise. The `Type`
-namespace migration this pattern also fits stays HELD — untouched, a separate call for `primitives`.
+`Behavior.compose` is castless. `ownsChain` is a typed guard, `hook is Middleware`, so both its
+branches narrow on their own; one generic helper, `composeMember`, covers the uniform first half of
+all four composers — absent, middleware, or handler are the same three-way branch for every hook,
+with `next.length` standing in for the per-hook handler arity the four now-deleted aliases used to
+carry as a magic number (verified equal to each handler's own declared arity in all four cases). An
+absent hook is the first branch, `if (!hook) { return next; }`, so `compose`'s own body drops its
+per-member ternaries for four plain assignments — the guard lives once, at `composeMember`'s top,
+and the four per-hook second halves (how a HANDLER combines with `next`) never see an absent one.
+`resolve-audit.ts` restructures per the owner's own observation: its four hooks predefine together as
+one `Behavior<unknown>` object literal — contextual typing carries each slot's shape without a
+per-member alias annotation, each hook's doc sitting directly above its own property.
+`classifying-hooks.ts`'s `ConstructionHooks<State>` and `ScopeBinding.ts`'s `ownScopeKeeps`/
+`RealizeVisitor.ts`'s `#realize` name `Hooks.Construction<State>` where they need the shape
+explicitly; `ScopeBinding.ts`'s `keeping` gives its `beginResolve` arrow explicit parameter types
+where the union contextual-types an anonymous function ambiguously otherwise.
 
 _Owner-ruled; Claude-recorded 2026-08-28._
