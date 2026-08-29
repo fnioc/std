@@ -3870,3 +3870,41 @@ the same identity to hand back later, so it isn't a spot an anonymous expression
 `Behavior` was already an interface, so no alias-to-interface conversion was needed for the merge.
 
 _Owner-ruled; Claude-recorded 2026-08-28._
+
+## §222 — The eight hook alias types are gone; every signature spells inline
+
+`BeginResolveHandler`/`BeginResolveMiddleware`, `BeforeConstructHandler`/`BeforeConstructMiddleware`,
+`CanonicalizeHandler`/`CanonicalizeMiddleware`, and `AfterConstructHandler`/`AfterConstructMiddleware`
+don't exist. The owner weighed several naming shapes for the eight and settled on the most direct
+one himself, then delegated the pick outright: "choose the answer you like best and do it. proceed
+with plan." `Hooks`' four members spell their handler-form signature directly —
+`beginResolve: Func<[request: Type, injected: State], State>` and so on. `Behavior`'s four (still
+optional) slots spell the handler-or-middleware union directly, the handler half read off `Hooks`
+itself by indexed access rather than duplicated — `Hooks<State>['beginResolve'] |
+Func<[request: Type, injected: State, next: Hooks<State>['beginResolve']], State>` — so the
+middleware shape's `next` parameter can never drift from what a handler actually looks like. A
+caller who must predefine one member's implementation standalone, before assigning it, has the same
+indexed-access door: `Hooks['beginResolve']`, `Behavior['beforeConstruct']` — noted on both
+interfaces' own docs.
+
+`Behavior.compose`'s internal composers keep their bodies, cast to the same indexed-access shapes
+rather than minting file-private aliases — `hook as Hooks['beginResolve']` for the handler branch,
+`hook as Func<[..., next: Hooks['beginResolve']], ...>` for the middleware branch, spelling only the
+`next` parameter's wrapper inline. `compose`'s own call sites cast each `behavior.*` slot to the bare
+`Func` the composers take (`behavior.beginResolve as Func`): TS's contravariant-position generic
+default doesn't distribute cleanly over a two-armed union of different arities passed to a
+fixed-shape parameter, so the cast is load-bearing there, not decorative.
+
+`Construction` and `Interception` move into the `Hooks` namespace — `Hooks.Construction<State>`,
+`Hooks.Interception<State>` — the owner's "do it for hooks" ruling; `hooks.ts`'s top level is now
+the `Hooks` interface and namespace alone, `Behavior.ts`'s the `Behavior` interface and namespace
+alone. `resolve-audit.ts` restructures per the owner's own observation: its four hooks predefine
+together as one `Behavior<unknown>` object literal — contextual typing carries each slot's shape
+without a per-member alias annotation — each hook's doc moving to sit directly above its own
+property. `classifying-hooks.ts`'s `ConstructionHooks<State>` and `ScopeBinding.ts`'s
+`ownScopeKeeps`/`RealizeVisitor.ts`'s `#realize` name `Hooks.Construction<State>` where they need
+the shape explicitly; `ScopeBinding.ts`'s `keeping` gives its `beginResolve` arrow explicit parameter
+types where the union contextual-types an anonymous function ambiguously otherwise. The `Type`
+namespace migration this pattern also fits stays HELD — untouched, a separate call for `primitives`.
+
+_Owner-ruled; Claude-recorded 2026-08-28._
