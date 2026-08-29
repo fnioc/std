@@ -3781,3 +3781,70 @@ placeholder registration body's wording ("the resolve-audit addon answers this a
 reads as an implementation note rather than caller-facing guidance.
 
 _Owner-ruled; Claude-recorded 2026-08-28._
+
+## §220 — `IServiceProvider` splits into a public tier and an `IServiceProviderInternal` primitive tier
+
+The provider contract is two interfaces, not one — each self-contained, neither extending the
+other. `IServiceProviderInternal` declares the single primitive, `getService(address: Type): any` —
+what every internal implementer of resolution actually IS, and what every internal caller of
+resolution is typed to hold. `IServiceProvider` declares its OWN `getService`, the same signature,
+independently — what `resolve`/`resolveMany`/the latebound overloads merge onto via `declare
+module`, the augmented, consumer-facing tier. The two are structurally compatible by having the same
+member, which is all assignability ever needed — an `Engine` (typed `IServiceProviderInternal`)
+still assigns wherever `IServiceProviderInternal` is asked for, and a `ServiceProvider` (typed
+`IServiceProvider`) still assigns wherever either is asked for, purely on shape. Duplicating rather
+than extending means the public face's own declaration never routes through the internal type at
+all — reading `IServiceProvider`'s own `getService` doc answers a consumer's question completely,
+without a jump to a second, differently-audienced interface first — and each carries a doc voiced
+for its own reader: `IServiceProviderInternal`'s speaks to an implementer (what internals pass
+around), `IServiceProvider`'s speaks to a consumer (`resolve` as the everyday name for the same
+answer). Owner ruling, verbatim, in two passes: first, "create IServiceProviderInternal. move
+getService to it. set IServiceProvider to extend IServiceProviderInternal. change engine to
+implement the internal one. change ServiceProvider to take the internal one in ctor. switch all the
+internal points that currently lie. IServiceProvider only in public facing spots." — then, amending
+the `extends` shape specifically: "IServiceProvider DUPLICATES the getService declaration instead —
+two self-contained interfaces, structurally compatible (which is all the assignability needs). Give
+each declaration its own-voiced doc."
+
+`IServiceProviderInternal` lives in `IServiceProvider.ts` beside `IServiceProvider` rather than its
+own file — the two are one contract split into two tiers, and reading them side by side is more
+useful than a barrel entry apart. `Engine` now `implements IServiceProviderInternal` (its own
+`interface Engine extends IServiceProviderInternal {}` merge narrows to match) — it no longer types as
+carrying `resolve`/`resolveMany`. An `Engine` handed out directly used to type-check as a full
+provider while throwing at runtime the moment anything called an augmented verb on it (§219); now
+the type says exactly what the value can do. `ServiceProvider`'s constructor takes
+`IServiceProviderInternal | Func<[Type], unknown>` —
+every provider it wraps only ever needs to be asked, never itself carries the augmented verbs it's
+about to be handed. `askForControl` — the one place a control ask reaches into whatever it's given —
+takes `IServiceProviderInternal` outright now, dissolving the `Pick<IServiceProvider, 'getService'>`
+wart its signature carried: that `Pick` existed only to say "I only need `getService`" without a type
+that said so on its own; now one does.
+
+Everywhere else `IServiceProvider` appears in `di`'s internals, it was already the public tier
+honestly: `build()`'s return, `keeping`'s `state.provider` answer and `Scope.provider`, the
+scope-factory faces' `openScope(): IServiceProvider`, `resolvesFrom`'s `container` parameter, the
+models' `openFrom` factory parameter (the same value `enclosingScope` and `openChild` thread through
+`root-anchor.ts` — a user's own factory receives the wrapped face, never the internal engine), and
+every `typefor<IServiceProvider>()` address — the address always names the public face; no address is
+ever minted for the internal type. `ScopeBinding.ts`, `root-anchor.ts`, and `RealizeVisitor.ts` were
+swept and came back clean on inspection — every `IServiceProvider` reference in each was already one
+of these public-facing spots or a `typefor` address, not a getService-only internal lie; `di.ts`'s
+`build()` likewise only touches `IServiceProvider` at its own public return, with `Engine` and plain
+function types carrying every internal step in between. **`IServiceProvider` only in public-facing
+spots** is the standing rule going forward.
+
+The wrap into the public face is minted just-in-time at each handout, never cached for identity — no
+`ServiceProvider` anywhere carries a `===`-stability guarantee. Owner: "we always wrap with
+ServiceProvider JIT." `RealizeVisitor.ts`'s `engineFaces` `WeakMap` and `faceOf` are deleted;
+`visitServiceProvider`'s fallback answers `new ServiceProvider(this.#engine)` inline, fresh on every
+construction that reaches it, rather than the one-per-engine cache it minted before. The rest of `di`
+was swept for the same pattern and came back with one genuine exception, left as-is: `ScopeBinding`'s
+stored `face` is not a handout cache but the scope's own identity — `resolvesFrom` keys its `WeakMap`
+on that exact object to recover which scope a caller-held container resolves from, so a caller handed
+a fresh wrap on every access would break that lookup the moment it asked twice. Flagged for the
+owner as the one judgment call this sweep found, rather than folded into the JIT rule by assumption.
+No smoke case leaned on a provider object's own identity — every existing assertion compared resolved
+values or scope-kept instances, never a provider reference itself — so nothing needed rewriting to
+stay behavioral.
+
+_Owner-ruled; Claude-recorded 2026-08-28._
