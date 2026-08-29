@@ -1,8 +1,9 @@
-import { type Construction, type Hooks, type IServiceProvider, Registration } from '@rhombus-std/di.core';
+import { type Hooks, type IServiceProvider, Registration } from '@rhombus-std/di.core';
 import type { Type } from '@rhombus-std/primitives';
 import { typefor } from '@rhombus-std/primitives.extras';
 import type { Ctor, Func } from '@rhombus-toolkit/func';
 import { assertNever } from '@rhombus-toolkit/type-guards';
+import { ServiceProvider } from '../../ServiceProvider.js';
 import type { Engine } from '../Engine.js';
 import type { ArrayPlan, ConstantPlan, CtorPlan, FactoryPlan, InvokerPlan, IterablePlan, LateBoundArgPlan, LateBoundPlan, Plan, RegisteredCtorPlan, RegisteredFactoryPlan,
   ServiceProviderPlan } from './Plan.js';
@@ -79,7 +80,7 @@ class RealizeVisitor {
    * that answered before anything downstream reads it.
    */
   #realize(plan: Plan, populatedAddress: Type, registration: Registration<unknown> | undefined, state: unknown, make: Func<[unknown], unknown>): any {
-    const construction: Construction = { site: plan, populatedAddress, registration, state };
+    const construction: Hooks.Construction = { site: plan, populatedAddress, registration, state };
     const answer = this.#hooks.beforeConstruct(construction);
     if ('result' in answer) {
       return answer.result;
@@ -139,11 +140,12 @@ class RealizeVisitor {
 
   /**
    * The provider a slot naming `IServiceProvider` resolves to: whoever answers this construction —
-   * the lifetime model, structurally, for the state enclosing it — falling back to the engine
-   * itself when nothing answers.
+   * the lifetime model, structurally, for the state enclosing it — falling back to a fresh augmented
+   * wrap of the engine itself when nothing answers. Minted just-in-time, not cached: no provider
+   * object carries an identity guarantee.
    */
   protected visitServiceProvider(plan: ServiceProviderPlan, state: unknown): any {
-    return this.#realize(plan, typefor<IServiceProvider>(), undefined, state, () => this.#engine);
+    return this.#realize(plan, typefor<IServiceProvider>(), undefined, state, () => new ServiceProvider(this.#engine));
   }
 
   /**
