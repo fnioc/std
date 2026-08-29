@@ -1,4 +1,4 @@
-import type { Behavior } from './hooks.js';
+import type { Behavior } from './Behavior.js';
 
 /**
  * The one control the engine answers for hook access: install and uninstall what runs over every

@@ -1,4 +1,4 @@
-import { Control, type IServiceProvider, type T, UnsatisfiableError } from '@rhombus-std/di.core';
+import { Control, type IServiceProviderInternal, type T, UnsatisfiableError } from '@rhombus-std/di.core';
 import { Type } from '@rhombus-std/primitives';
 import { typefor } from '@rhombus-std/primitives.extras';
 
@@ -14,7 +14,7 @@ export function isControlAsk(address: Type): boolean {
  * @throws {UnsatisfiableError} when the answer is not a control — a middleware standing in the way
  * answered the ask itself.
  */
-export function askForControl<Service>(provider: Pick<IServiceProvider, 'getService'>, address: Type): Service {
+export function askForControl<Service>(provider: IServiceProviderInternal, address: Type): Service {
   const answer: unknown = provider.getService(address);
   if (!(answer instanceof Control)) {
     throw new UnsatisfiableError(address, 'a middleware answered the control ask with something other than a control');
