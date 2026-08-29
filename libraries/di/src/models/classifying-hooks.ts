@@ -1,9 +1,9 @@
-import { type AfterConstructHandler, type BeforeConstructHandler, LifetimeModelError } from '@rhombus-std/di.core';
+import { type Hooks, LifetimeModelError } from '@rhombus-std/di.core';
 
 /** The pair a lifetime model contributes: where a construction is kept, and what its dependencies resolve under. */
 export interface ConstructionHooks<State> {
-  readonly beforeConstruct: BeforeConstructHandler<State>;
-  readonly afterConstruct: AfterConstructHandler<State>;
+  readonly beforeConstruct: Hooks<State>['beforeConstruct'];
+  readonly afterConstruct: Hooks<State>['afterConstruct'];
 }
 
 /**

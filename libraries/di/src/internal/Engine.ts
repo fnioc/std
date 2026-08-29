@@ -1,7 +1,7 @@
-import { type Behavior, Control, type Hooks, type IEngineHooks, type IServiceProvider, type Registration, UnknownControlError, UnsatisfiableError } from '@rhombus-std/di.core';
+import { Behavior, Control, Hooks, type IEngineHooks, type IServiceProviderInternal, type Registration, UnknownControlError, UnsatisfiableError } from '@rhombus-std/di.core';
 import { assertTruthy, type FunctionType, Type } from '@rhombus-std/primitives';
 import { typefor } from '@rhombus-std/primitives.extras';
-import { foldHooks, type HookLayer, hookLayer } from './aggregate-hooks.js';
+import type { Func } from '@rhombus-toolkit/func';
 import { isControlAsk } from './control-recognition.js';
 import { Plan } from './Plan/index.js';
 import { Registry } from './Registry.js';
@@ -14,19 +14,23 @@ interface RunningResolve {
   readonly state: unknown;
 }
 
-export interface Engine extends IServiceProvider {}
+export interface Engine extends IServiceProviderInternal {}
 
 /** The resolution orchestrator: one per container. Also the chain's terminus — a bare engine is itself a fully working, transient-only provider. */
-export class Engine implements IServiceProvider, IEngineHooks {
+export class Engine implements IServiceProviderInternal, IEngineHooks {
   readonly #registry: Registry;
-  /** Every hook layer installed and not yet disposed, oldest first; starts empty. */
-  readonly #installed: HookLayer[] = [];
+  /**
+   * Every hook layer installed and not yet disposed, oldest first; starts empty. Each layer is the
+   * chain standing outside whatever it's handed, held here by identity — the token `useHooks`'s
+   * disposer looks up to remove exactly the one it installed and no other.
+   */
+  readonly #installed: Array<Func<[inner: Hooks], Hooks>> = [];
 
   constructor(registrations: Iterable<Registration<unknown>>) {
     this.#registry = new Registry(registrations);
   }
 
-  // #region IServiceProvider
+  // #region IServiceProviderInternal
 
   /**
    * Resolves `address` under everything installed and not yet disposed.
@@ -59,7 +63,7 @@ export class Engine implements IServiceProvider, IEngineHooks {
     // opened inside another answer from its own scope. An install made during a resolution affects
     // only resolutions opened after it: a resolution already under way keeps what it opened with,
     // its latebound closures included, however late they fire.
-    const hooks = foldHooks(this.#installed);
+    const hooks = this.#installed.reduceRight((inner, layer) => layer(inner), Hooks.identity);
     return Plan.realize(Plan.from(address, this.#registry), {
       engine: this,
       hooks,
@@ -72,16 +76,14 @@ export class Engine implements IServiceProvider, IEngineHooks {
   // #region IEngineHooks
 
   useHooks<State = unknown>(hooks: Behavior<State>): Disposable {
-    const layer = hookLayer(hooks);
+    const layer: Func<[inner: Hooks], Hooks> = inner => Behavior.compose(hooks, inner);
     this.#installed.push(layer);
-    let held = true;
     return {
       [Symbol.dispose]: () => {
-        if (!held) {
-          return;
+        const at = this.#installed.lastIndexOf(layer);
+        if (at >= 0) {
+          this.#installed.splice(at, 1);
         }
-        held = false;
-        this.#installed.splice(this.#installed.lastIndexOf(layer), 1);
       },
     };
   }

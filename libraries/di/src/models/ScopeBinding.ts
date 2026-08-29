@@ -1,4 +1,4 @@
-import { type Behavior, type Construction, Control, type IEngineHooks, type IServiceProvider, LifetimeModelError } from '@rhombus-std/di.core';
+import { type Behavior, Control, type Hooks, type IEngineHooks, type IServiceProvider, LifetimeModelError } from '@rhombus-std/di.core';
 import { assertTruthy, type Type } from '@rhombus-std/primitives';
 import { typefor } from '@rhombus-std/primitives.extras';
 import type { AbstractCtor, Func } from '@rhombus-toolkit/func';
@@ -41,7 +41,7 @@ function keeping(scope: Scope): Behavior<Scope> {
   });
 
   return {
-    beginResolve: (_request, injected) => injected ?? scope,
+    beginResolve: (_request: Type, injected: Scope) => injected ?? scope,
     beforeConstruct: hooks.beforeConstruct,
     afterConstruct: hooks.afterConstruct,
   };
@@ -63,7 +63,7 @@ function probing(scope: Scope, learn: Func<[Type, unknown], void>): Behavior<Sco
    *
    * @throws {LifetimeModelError} when the model refuses the registration's lifetime.
    */
-  function ownScopeKeeps({ populatedAddress, registration, state }: Construction<Scope>): boolean {
+  function ownScopeKeeps({ populatedAddress, registration, state }: Hooks.Construction<Scope>): boolean {
     if (registration === undefined) {
       return false;
     }

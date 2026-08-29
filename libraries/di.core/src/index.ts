@@ -5,11 +5,12 @@ export type { ImportedType, NamedType } from '@rhombus-std/primitives';
 import './single-instance-guard';
 
 export type * from './Addon';
+export * from './Behavior';
 export * from './brands';
 export type { RegistrationBuilderFor } from './builder';
 export * from './Control';
 export * from './Errors';
-export type * from './hooks';
+export * from './hooks';
 export type { IEngineHooks } from './IEngineHooks';
 export type { Invoker } from './Invoker';
 export type * from './IServiceProvider';
