@@ -1,5 +1,4 @@
-import { type AddonInstallation, type AfterConstructMiddleware, type BeforeConstructMiddleware, type BeginResolveMiddleware, type CanonicalizeMiddleware, type ChainAddon, Control, type IEngineHooks,
-  type LifetimeArgument, Registration, type ResolveAudit } from '@rhombus-std/di.core';
+import { type Addon, type AddonInstallation, type Behavior, Control, type IEngineHooks, type LifetimeArgument, Registration, type ResolveAudit } from '@rhombus-std/di.core';
 import { Type } from '@rhombus-std/primitives';
 import { typefor } from '@rhombus-std/primitives.extras';
 import { askForControl } from '../internal/control-recognition.js';
@@ -26,10 +25,6 @@ function pack(compartment: AuditCompartment, inner: unknown): AuditState {
   const state: AuditState = [compartment, inner];
   packs.add(state);
   return state;
-}
-
-function unpack(state: unknown): AuditState {
-  return state as AuditState;
 }
 
 /** Whether `state` is a pack this addon minted itself, rather than something injected by whoever resolved under it. */
@@ -68,40 +63,56 @@ class AuditView implements ResolveAudit {
   }
 }
 
-/**
- * Opens each resolution with a fresh compartment, its frame chain empty until a construction
- * pushes onto it. A re-entering resolution injects a state this addon already packed, and only
- * the state beneath the compartment belongs to everyone else.
- */
-const beginResolve: BeginResolveMiddleware<unknown> = (request, injected, next) => pack({ request, frame: undefined }, next(request, isOwnPack(injected) ? injected[1] : injected));
+/** The four hooks this addon plants, together — contextual typing carries each slot's handler-or-middleware shape. */
+const hooks: Behavior<unknown> = {
+  /**
+   * Opens each resolution with a fresh compartment, its frame chain empty until a construction
+   * pushes onto it. A re-entering resolution injects a state this addon already packed, and only
+   * the state beneath the compartment belongs to everyone else.
+   */
+  beginResolve(request, injected, next) {
+    return pack({ request, frame: undefined }, next(request, isOwnPack(injected) ? injected[1] : injected));
+  },
 
-/**
- * Answers `ResolveAudit` for whoever names it, pushing the enclosing construction's address onto
- * the compartment for everything beneath it.
- */
-const beforeConstruct: BeforeConstructMiddleware<unknown> = (construction, next) => {
-  const [compartment, inner] = unpack(construction.state);
-  if (construction.populatedAddress === typefor<ResolveAudit>()) {
-    return { result: new AuditView(compartment) };
-  }
-  const answer = next({ ...construction, state: inner });
-  if ('result' in answer) {
-    return answer;
-  }
-  const frame: AuditFrame = { address: construction.populatedAddress, parent: compartment.frame };
-  return { state: pack({ request: compartment.request, frame }, answer.state) };
-};
+  /**
+   * Answers `ResolveAudit` for whoever names it, pushing the enclosing construction's address onto
+   * the compartment for everything beneath it. A construction whose state isn't this addon's own
+   * pack passes through unchanged — nothing here to contribute, and nothing safe to unwrap.
+   */
+  beforeConstruct(construction, next) {
+    if (!isOwnPack(construction.state)) {
+      return next(construction);
+    }
+    const [compartment, inner] = construction.state;
+    if (construction.populatedAddress === typefor<ResolveAudit>()) {
+      return { result: new AuditView(compartment) };
+    }
+    const answer = next({ ...construction, state: inner });
+    if ('result' in answer) {
+      return answer;
+    }
+    const frame: AuditFrame = { address: construction.populatedAddress, parent: compartment.frame };
+    return { state: pack({ request: compartment.request, frame }, answer.state) };
+  },
 
-/** Hands canonicalize the state beneath this addon's compartment, since it runs on the same construction {@link beforeConstruct} received rather than what it answered. */
-const canonicalize: CanonicalizeMiddleware<unknown> = (construction, instance, next) => {
-  const [, inner] = unpack(construction.state);
-  return next({ ...construction, state: inner }, instance);
-};
+  /** Hands canonicalize the state beneath this addon's compartment, since it runs on the same construction {@link beforeConstruct} received rather than what it answered. */
+  canonicalize(construction, instance, next) {
+    if (!isOwnPack(construction.state)) {
+      return next(construction, instance);
+    }
+    const [, inner] = construction.state;
+    return next({ ...construction, state: inner }, instance);
+  },
 
-/** Hands afterConstruct the state beneath this addon's compartment, since it runs on the same construction {@link beforeConstruct} received rather than what it answered. */
-const afterConstruct: AfterConstructMiddleware<unknown> = (construction, instance, next) => {
-  const [, inner] = unpack(construction.state);
-  next({ ...construction, state: inner }, instance);
+  /** Hands afterConstruct the state beneath this addon's compartment, since it runs on the same construction {@link beforeConstruct} received rather than what it answered. */
+  afterConstruct(construction, instance, next) {
+    if (!isOwnPack(construction.state)) {
+      next(construction, instance);
+      return;
+    }
+    const [, inner] = construction.state;
+    next({ ...construction, state: inner }, instance);
+  },
 };
 
 /**
@@ -111,8 +122,8 @@ const afterConstruct: AfterConstructMiddleware<unknown> = (construction, instanc
  * @param lifetime - what the registration it files carries; the lifetime model's transient, or
  * nothing at all where the vocabulary admits omission.
  */
-export function resolveAudit<Lifetime>(...lifetime: LifetimeArgument<Lifetime>): ChainAddon;
-export function resolveAudit(lifetime?: any): ChainAddon {
+export function resolveAudit<Lifetime>(...lifetime: LifetimeArgument<Lifetime>): Addon;
+export function resolveAudit(lifetime?: any): Addon {
   return {
     create(): AddonInstallation {
       const address = typefor<ResolveAudit>();
@@ -130,8 +141,7 @@ export function resolveAudit(lifetime?: any): ChainAddon {
         // Plants the four hooks permanently, at build, and steps aside: everything downstream of
         // here runs exactly as it would have without this middleware in the chain.
         middleware: next => {
-          askForControl<IEngineHooks>({ getService: next }, typefor<Control<IEngineHooks>>())
-            .useHooks({ beginResolve, beforeConstruct, canonicalize, afterConstruct });
+          askForControl<IEngineHooks>({ getService: next }, typefor<Control<IEngineHooks>>()).useHooks(hooks);
           return next;
         },
       };
