@@ -3851,13 +3851,22 @@ _Owner-ruled; Claude-recorded 2026-08-28._
 
 ## §221 — `Behavior` owns its own composition
 
-`Behavior.compose(behavior, inner)` — a namespace merged onto the `Behavior` interface in
-`hooks.ts` — is the one exported member: `behavior` standing over `inner`, each of the four hooks
-`behavior` wrote composing over `inner`'s own and a member it left off passing `inner`'s straight
-through. The four per-hook composers and the middleware-vs-handler arity check move into the
-namespace alongside it, unexported. The engine keeps only layering and folding — `Engine.useHooks`
-mints its `HookLayer` inline, `inner => Behavior.compose(hooks, inner)`, and `aggregate-hooks.ts`
-now holds nothing but the identity terminus, `HookLayer`, and `foldHooks`. `Behavior` was already an
-interface, so no alias-to-interface conversion was needed for the merge.
+`Behavior.compose(behavior, inner)` — a namespace merged onto the `Behavior` interface, both now in
+their own `Behavior.ts` — is the one exported member: `behavior` standing over `inner`, each of the
+four hooks `behavior` wrote composing over `inner`'s own and a member it left off passing `inner`'s
+straight through. The four per-hook composers and the middleware-vs-handler arity check live in the
+namespace alongside it, unexported. `hooks.ts` keeps the rest of the vocabulary the two files once
+shared — the handler/middleware aliases, `Construction`, `Interception`, `Hooks` — and carries its
+own namespace merge, `Hooks.identity`: the chain that supplies nothing, changes nothing, and passes
+state straight through, the same value `aggregate-hooks.ts` once held under that name.
+`aggregate-hooks.ts` is deleted outright — `foldHooks` (single-use) inlines at its one call site in
+`getService`: `this.#installed.reduceRight((inner, layer) => layer(inner), Hooks.identity)`.
+`HookLayer` has exactly one remaining use once `foldHooks` is gone — the `#installed` field's
+annotation — so the type itself inlines too, `Array<Func<[inner: Hooks], Hooks>>`, its doc carried
+onto the field: each layer is the chain standing outside whatever it's handed, held by identity as
+the token `useHooks`'s disposer looks up to remove exactly the one it installed. The `const layer`
+local inside `useHooks` stays a named binding — `push` and the disposer's `lastIndexOf` both need
+the same identity to hand back later, so it isn't a spot an anonymous expression can take its place.
+`Behavior` was already an interface, so no alias-to-interface conversion was needed for the merge.
 
 _Owner-ruled; Claude-recorded 2026-08-28._
