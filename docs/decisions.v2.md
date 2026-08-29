@@ -4012,3 +4012,29 @@ learned memo, a request-keyed shortcut aliasing the registration-keyed truth —
 under several spellings is harmless.
 
 _Owner-ruled 2026-08-28, Claude-recorded._
+
+## §227 — Every addon threads its own private state; the walk carries an engine-owned VisitorContext
+
+Every installed behavior/addon has its own PRIVATE threaded state. The realize walk threads one
+engine-owned `VisitorContext` parameter carrying: a per-behavior states collection (one slot per
+installed `Behavior`, keyed by behavior identity), the latebound call args, and the boundary's
+hoisted map as an engine transient. This supersedes `docs/di2.scope-async.requirements.md`'s line
+that no separate context token exists, and retires the single-opaque-state channel.
+
+The dispatch layer hands each behavior exactly its own slot at every hook; an answered state updates
+only that slot through immutable per-step context derivation. No behavior can observe or clobber
+another's — the crash class where an upstream `{state: undefined}` reaches the keeper (§209's open
+item) dissolves structurally rather than by guards.
+
+The state-envelope pattern — an addon packing its compartment over "whatever sits beneath",
+recognized by identity and unwrapped around every hook — is dead machinery under keyed slots: the
+resolve-audit addon keeps only its frame chain and view, its hooks becoming plain slot reads.
+
+A boundary's plug walk derives a child context carrying its own gathered map — no fresh visitor per
+boundary. A latebound closure captures the context's states at mint and strips boundary transients: a
+latebound node is a hoist leaf, and its future call never sees an old hoisted map.
+
+Implementation rides branch `refactor-di-visitor-context` off the async head, landing after the async
+review.
+
+_Owner-ruled 2026-08-29, Claude-recorded._
