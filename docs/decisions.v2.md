@@ -3919,3 +3919,12 @@ explicitly; `ScopeBinding.ts`'s `keeping` gives its `beginResolve` arrow explici
 where the union contextual-types an anonymous function ambiguously otherwise.
 
 _Owner-ruled; Claude-recorded 2026-08-28._
+
+## §223 — Disposal design: two pre-rulings for the design session
+
+The owner pre-ruled two boundaries before the disposal design work opens. First: the policy for
+unkept (transient) disposables is **model-defined** — "that'll be LifetimeModel configuration, or
+different LifetimeModels. bottom line is it will be model defined." — never engine policy. Second:
+the collision between latebound callables surviving disposal and a disposed scope's teardown is
+approached **prior-art first** — "find out what other libs with this feature do." — before any
+design is proposed. The disposal session runs at xhigh effort by standing arrangement.
