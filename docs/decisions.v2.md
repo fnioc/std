@@ -3928,3 +3928,70 @@ different LifetimeModels. bottom line is it will be model defined." — never en
 the collision between latebound callables surviving disposal and a disposed scope's teardown is
 approached **prior-art first** — "find out what other libs with this feature do." — before any
 design is proposed. The disposal session runs at xhigh effort by standing arrangement.
+
+## §224 — The keeper caches the make's product, promise included; the async double-make race dissolves by construction
+
+A scope's cache stores whatever the make returned — a promise product included; the model is fully
+async-blind and never insists on settled values. A promise site's product is its boundary's own
+wrapping promise, minted and stored in one synchronous run-to-completion block, so concurrent walks
+share one promise and double-instantiation is impossible by construction. The governing invariants,
+owner-stated: promises hoist to their nearest parent promise; realization stays synchronous
+throughout; a promise needing dep promises becomes a node in the hoist tree collecting its deps'
+awaits.
+
+This supersedes the in-flight single-flight map and the adopt-or-store write-back from
+`docs/di2.scope-async.requirements.md`'s addendum — with one make and one settle continuation per
+product, both are dead machinery. A gather hit on a settled cached promise costs one microtask,
+consistent with "the sync/async distinction is decided by plan structure, never by cache state."
+
+Standard-model rejection policy (Claude-defaulted, flagged for owner override): at store, a thenable
+product (a thenable-protocol check, never `instanceof Promise`) gets a rejection handler that evicts
+the entry — failures never cache, retry works; concurrent holders still share that rejection, deduped
+per walk.
+
+Also ruled the same day: the `di.extras` `resolveAsync` sugar entry is licensed; docs, tests, and
+examples for the async lane are deferred until the code is owner-reviewed (priority: review-ready
+ASAP).
+
+_Owner-ruled 2026-08-28, Claude-recorded._
+
+## §225 — Instance disposal: the engine carries contract and vocabulary; every behavior is the model's
+
+The split: the engine owns the CONTRACT — `Symbol.dispose`/`Symbol.asyncDispose` protocols on scopes
+and on the root provider surface, with three guarantees: every tracked instance released per its
+release vocabulary, release failures aggregated (never abort-on-first), a disposed scope answering
+loudly — plus the per-registration disposal VOCABULARY. The model owns ALL behavior: timing,
+ordering, cascade, partial-failure handling, transient policy.
+
+No new hook for tracking: the keeper performs every make, so its disposal knowledge is total by
+construction — it files what it keeps at make time. Even a track-everything policy is implementable
+purely model-side, since transient makes pass through the keeper too. Value registrations bypass the
+model and are never tracked — caller-owned.
+
+The vocabulary: detection defaults to the disposal protocols on the instance itself; two
+per-registration overrides — an external-ownership opt-out and a release override (covering
+return-to-pool) — spelled as the refinement verbs `externallyOwned()` and `withRelease(fn)` beside
+`withLifetime`/`taggedAs`. Pure data, engine-defined meaning, honored by every model.
+
+Standard-model policy: LIFO release of a scope's kept instances, reference-deduped; children-before-
+parent cascade; unkept/transient instances untracked, consumer-owned (transient-disposable policy
+stays model-defined).
+
+Async: `asyncDispose` is preferred over `dispose` per instance; a synchronous dispose meeting an
+async-only disposable throws loudly naming the instance's address; a cached promise product is
+released by awaiting it and releasing the settled value; a value settling after its scope's dispose
+is released immediately on arrival.
+
+Container dispose on the func-head surface: dispose rides the JIT `ServiceProvider` wrap and forwards
+to the one root teardown, so wrap identity stays a non-contract; a second dispose is an idempotent
+no-op.
+
+A disposed latch stands at the engine door and each scope door: any ask after teardown throws,
+latebound re-entry included — as `DisposedError extends DiError`, so one `instanceof` classifies it.
+Hook-window disposal is a distinct event from scope teardown: a latebound closure's captured hooks
+survive their window's dispose; a disposed scope refuses re-entry.
+
+Implementation queues behind the async lane (same engine files).
+
+_Owner-delegated 2026-08-28 (behavior Claude-owned, owner reviews patterns/style; always
+model-defined), Claude-designed._
