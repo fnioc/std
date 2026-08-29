@@ -3993,3 +3993,26 @@ Implementation queues behind the async lane, in the lifetime model.
 
 _Owner-delegated 2026-08-28 (behavior Claude-owned, owner reviews patterns/style; always
 model-defined; containment owner-ruled), Claude-designed._
+
+## §226 — The instance cache keys as-registered, never as-requested
+
+The unit of "single" is the ANSWERING REGISTRATION: the instance cache keys on the registration's
+identity, paired with its capture bindings for an open registration — `ILogger<A>` and `ILogger<B>`
+close one registration into distinct instances. The requested spelling never splits the key. This
+supersedes `docs/di2.scope-async.requirements.md`'s line that the request key is the as-requested
+type.
+
+Why the request cannot be the key: delivery-mode decoupling makes one registration reachable under
+many spellings — `T` via the boundary fallback and `Promise<T>` name the same singleton; a union
+settling on a member shares it with the direct member ask; an aggregate's element site shares it with
+resolve-one. Keyed as-requested, each pair double-makes one singleton registration.
+
+The wrap direction caches the sync registration's instance, never the wrapping promise — the wrap is
+site structure, minted per site over the shared instance.
+
+Two memos deliberately stay request-keyed and do not conflict: the plan memo (plans are per-request
+structure; registrations are disambiguated inside plan trees, never by the plan key) and the scope's
+learned memo, a request-keyed shortcut aliasing the registration-keyed truth — one product memoized
+under several spellings is harmless.
+
+_Owner-ruled 2026-08-28, Claude-recorded._
