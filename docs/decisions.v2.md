@@ -3955,43 +3955,41 @@ ASAP).
 
 _Owner-ruled 2026-08-28, Claude-recorded._
 
-## §225 — Instance disposal: the engine carries contract and vocabulary; every behavior is the model's
+## §225 — Instance disposal lives entirely in the lifetime model; the engine is untouched
 
-The split: the engine owns the CONTRACT — `Symbol.dispose`/`Symbol.asyncDispose` protocols on scopes
-and on the root provider surface, with three guarantees: every tracked instance released per its
-release vocabulary, release failures aggregated (never abort-on-first), a disposed scope answering
-loudly — plus the per-registration disposal VOCABULARY. The model owns ALL behavior: timing,
-ordering, cascade, partial-failure handling, transient policy.
+Disposal is contained wholly to the scope blackbox and the existing hook seam — the engine carries no
+new contract and no new vocabulary, no change of any kind. Two lines of
+`docs/di2.scope-async.requirements.md`'s Disposal/Engine-hardening sections are overridden by this
+ruling: the disposed latch that section put on the engine-minted root provider moves model-side, and
+the per-registration disposal vocabulary is NOT engine-defined.
 
-No new hook for tracking: the keeper performs every make, so its disposal knowledge is total by
-construction — it files what it keeps at make time. Even a track-everything policy is implementable
-purely model-side, since transient makes pass through the keeper too. Value registrations bypass the
-model and are never tracked — caller-owned.
+The disposed latch: the model's own minted provider objects and keeper refuse any ask after teardown;
+a latebound re-entry hits the captured scope model and gets the same refusal. Nothing sits at the
+engine door.
 
-The vocabulary: detection defaults to the disposal protocols on the instance itself; two
-per-registration overrides — an external-ownership opt-out and a release override (covering
-return-to-pool) — spelled as the refinement verbs `externallyOwned()` and `withRelease(fn)` beside
-`withLifetime`/`taggedAs`. Pure data, engine-defined meaning, honored by every model.
+No dispose members on `ServiceProvider` or the func-head surface: root teardown is resolution-driven,
+mirroring `createScope` — the model registers its own teardown-bearing surface, and its scope objects
+(root included) carry `Symbol.dispose`/`Symbol.asyncDispose` as model-minted values.
 
-Standard-model policy: LIFO release of a scope's kept instances, reference-deduped; children-before-
-parent cascade; unkept/transient instances untracked, consumer-owned (transient-disposable policy
-stays model-defined).
+The release vocabulary rides the LIFETIME DATUM — the model's own total property — rather than any
+engine-defined field: no `externallyOwned()`/`withRelease()` verbs, no `Registration` field, zero new
+manifest surface. The standard model widens its own datum type to carry release policy (an
+external-ownership opt-out, a release override such as return-to-pool).
 
-Async: `asyncDispose` is preferred over `dispose` per instance; a synchronous dispose meeting an
-async-only disposable throws loudly naming the instance's address; a cached promise product is
-released by awaiting it and releasing the settled value; a value settling after its scope's dispose
-is released immediately on arrival.
+No `DisposedError` in the `di.core` taxonomy: the standard model throws its own disposed-scope error,
+surfaced via `LifetimeModelError` (`.cause`) — the `ScopeTagUnmatchedError` precedent.
 
-Container dispose on the func-head surface: dispose rides the JIT `ServiceProvider` wrap and forwards
-to the one root teardown, so wrap identity stays a non-contract; a second dispose is an idempotent
-no-op.
+The rest stands as specced: the keeper tracks at make time with no new hook, since it performs every
+make and its disposal knowledge is total by construction; value registrations bypass the model and
+are never tracked. Standard-model policy: LIFO release of a scope's kept instances,
+reference-deduped; children-before-parent cascade; unkept/transient instances untracked,
+consumer-owned (transient-disposable policy stays model-defined). `asyncDispose` is preferred over
+`dispose` per instance; a synchronous dispose meeting an async-only disposable throws loudly naming
+the instance's address; a cached promise product is released by awaiting it and releasing the settled
+value; a value settling after its scope's dispose is released immediately on arrival. A second
+dispose is an idempotent no-op; release failures aggregate, never abort-on-first.
 
-A disposed latch stands at the engine door and each scope door: any ask after teardown throws,
-latebound re-entry included — as `DisposedError extends DiError`, so one `instanceof` classifies it.
-Hook-window disposal is a distinct event from scope teardown: a latebound closure's captured hooks
-survive their window's dispose; a disposed scope refuses re-entry.
-
-Implementation queues behind the async lane (same engine files).
+Implementation queues behind the async lane, in the lifetime model.
 
 _Owner-delegated 2026-08-28 (behavior Claude-owned, owner reviews patterns/style; always
-model-defined), Claude-designed._
+model-defined; containment owner-ruled), Claude-designed._
