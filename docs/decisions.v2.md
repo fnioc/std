@@ -3848,3 +3848,16 @@ values or scope-kept instances, never a provider reference itself — so nothing
 stay behavioral.
 
 _Owner-ruled; Claude-recorded 2026-08-28._
+
+## §221 — `Behavior` owns its own composition
+
+`Behavior.compose(behavior, inner)` — a namespace merged onto the `Behavior` interface in
+`hooks.ts` — is the one exported member: `behavior` standing over `inner`, each of the four hooks
+`behavior` wrote composing over `inner`'s own and a member it left off passing `inner`'s straight
+through. The four per-hook composers and the middleware-vs-handler arity check move into the
+namespace alongside it, unexported. The engine keeps only layering and folding — `Engine.useHooks`
+mints its `HookLayer` inline, `inner => Behavior.compose(hooks, inner)`, and `aggregate-hooks.ts`
+now holds nothing but the identity terminus, `HookLayer`, and `foldHooks`. `Behavior` was already an
+interface, so no alias-to-interface conversion was needed for the merge.
+
+_Owner-ruled; Claude-recorded 2026-08-28._
