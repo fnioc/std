@@ -4015,24 +4015,34 @@ _Owner-ruled 2026-08-28, Claude-recorded._
 
 ## §227 — Every addon threads its own private state; the walk carries an engine-owned VisitorContext
 
-Every installed behavior/addon has its own PRIVATE threaded state. The realize walk threads one
-engine-owned `VisitorContext` parameter carrying: a per-behavior states collection (one slot per
-installed `Behavior`, keyed by behavior identity), the latebound call args, and the boundary's
-hoisted map as an engine transient. This supersedes `docs/di2.scope-async.requirements.md`'s line
-that no separate context token exists, and retires the single-opaque-state channel.
+Every installed behavior/addon has its own PRIVATE threaded state. The `VisitorContext` the realize
+walk threads is IMMUTABLE end to end, and the states it carries are BLACKBOXES the driver moves and
+never reads into. The states member is not a keyed map — a terrible immutable carrier, since a
+wholesale copy per derivation loses structural sharing — but a FROZEN POSITIONAL ARRAY, one slot per
+fold position, minted together with the hook chain from one snapshot of the install list: each
+wrapper the compose fold mints closes over its own index, and the chain+states pair travels and is
+captured together, latebound included, so positions never dangle — a later install or dispose
+re-folds the NEXT resolution while an in-flight walk keeps its own captured pair. A behavior object
+installed twice gets two slots natively, one per fold position. `VisitorContext` also carries the
+latebound call args and the boundary's hoisted map as an engine transient. This supersedes
+`docs/di2.scope-async.requirements.md`'s line that no separate context token exists, and retires the
+single-opaque-state channel.
 
-The dispatch layer hands each behavior exactly its own slot at every hook; an answered state updates
-only that slot through immutable per-step context derivation. No behavior can observe or clobber
-another's — the crash class where an upstream `{state: undefined}` reaches the keeper (§209's open
-item) dissolves structurally rather than by guards.
+Derivation is `states.with(index, answered)`, batched per construction into one derived context the
+dependency subtree realizes under. No behavior can observe or clobber another's — the crash class
+where an upstream `{state: undefined}` reaches the keeper (§209's open item) dissolves structurally
+rather than by guards.
 
 The state-envelope pattern — an addon packing its compartment over "whatever sits beneath",
-recognized by identity and unwrapped around every hook — is dead machinery under keyed slots: the
-resolve-audit addon keeps only its frame chain and view, its hooks becoming plain slot reads.
+recognized by identity and unwrapped around every hook — is dead machinery under positional slots:
+the resolve-audit addon keeps only its frame chain and view, its hooks becoming plain slot reads.
 
 A boundary's plug walk derives a child context carrying its own gathered map — no fresh visitor per
-boundary. A latebound closure captures the context's states at mint and strips boundary transients: a
-latebound node is a hoist leaf, and its future call never sees an old hoisted map.
+boundary — and a latebound closure strips boundary transients from its captured pair, so its future
+call never sees an old hoisted map. States are PER-RESOLVE VOLATILE: born at `beginResolve`, dead at
+resolution end; durable state lives on the scope object or the behavior's own closure, never in the
+slots. A latebound capture extends its own walk's states for re-entry — that walk's world, never
+shared forward.
 
 Implementation rides branch `refactor-di-visitor-context` off the async head, landing after the async
 review.
