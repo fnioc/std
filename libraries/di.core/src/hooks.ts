@@ -17,7 +17,16 @@ export interface Hooks<State = unknown> {
   readonly beginResolve: Func<[request: Type, injected: State], State>;
   /** Runs before the engine constructs, answering a result in place of constructing or the state the dependencies resolve under. */
   readonly beforeConstruct: Func<[construction: Hooks.Construction<State>], Hooks.Interception<State>>;
-  /** Swaps the instance the engine has just constructed for the one this hook answers — a proxy, a frozen copy, a decorator — everything downstream reading what it returns. */
+  /**
+   * Swaps the instance the engine has just constructed for the one this hook answers — a proxy, a
+   * frozen copy, a decorator — everything downstream reading what it returns.
+   *
+   * @remarks
+   * Runs only where the engine BUILT: a beforeConstruct that supplied a result skips it entirely. The
+   * engine hands over the raw product and takes back whatever is answered: it never tests for a
+   * thenable, never awaits, and never unwraps, so a construction that produced a pending promise
+   * arrives here as that promise.
+   */
   readonly canonicalize: Func<[construction: Hooks.Construction<State>, instance: unknown], unknown>;
   /** Runs once the engine has constructed, on the instance as it stands — never awaited, never unwrapped. */
   readonly afterConstruct: Func<[construction: Hooks.Construction<State>, instance: unknown], void>;
