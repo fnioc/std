@@ -7,7 +7,7 @@ export interface MatchContext {
   /** The subject fragment standing where the current pattern node does. */
   readonly subject: Type;
   /** One entry per hole label bound so far, shared by the whole walk. */
-  readonly bindings: Map<string, Type>;
+  readonly bindings: Record<string, Type>;
 }
 
 /**
@@ -56,7 +56,7 @@ export class MatchVisitor extends TypeVisitor<boolean, MatchContext> {
   }
 
   protected override visitGeneric(pattern: GenericType, { subject, bindings }: MatchContext): boolean {
-    return bindings.getOrInsert(pattern.label, subject) === subject;
+    return (bindings[pattern.label] ??= subject) === subject;
   }
 
   protected override visitGlobal(pattern: GlobalType, { subject, bindings }: MatchContext): boolean {
@@ -108,13 +108,13 @@ export class MatchVisitor extends TypeVisitor<boolean, MatchContext> {
   }
 
   /** Same count, and position `i` of the pattern matches position `i` of the subject. */
-  #pairwise(patterns: readonly Type[], subjects: readonly Type[], bindings: Map<string, Type>): boolean {
+  #pairwise(patterns: readonly Type[], subjects: readonly Type[], bindings: Record<string, Type>): boolean {
     return patterns.length === subjects.length
       && patterns.every((pattern, index) => this.visit(pattern, { subject: subjects[index]!, bindings }));
   }
 
   /** Same signature count, signature `i` against signature `i`, each signature pairwise. */
-  #signaturesPairwise(patterns: Type.Signatures, subjects: Type.Signatures, bindings: Map<string, Type>): boolean {
+  #signaturesPairwise(patterns: Type.Signatures, subjects: Type.Signatures, bindings: Record<string, Type>): boolean {
     return patterns.length === subjects.length
       && patterns.every((signature, index) => this.#pairwise(signature, subjects[index]!, bindings));
   }

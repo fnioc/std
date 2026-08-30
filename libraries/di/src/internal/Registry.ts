@@ -6,7 +6,7 @@ export interface Match {
   /** The registration as authored — an open one still holds its holes. */
   readonly registration: Registration<unknown>;
   /** One binding per hole the match filled; empty for a registration that had none. */
-  readonly generics: ReadonlyMap<string, Type>;
+  readonly generics: Readonly<Record<string, Type>>;
   /** The address it was matched against, which is the address this match answers. */
   readonly address: Type;
 }

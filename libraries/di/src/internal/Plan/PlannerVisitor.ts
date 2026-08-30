@@ -145,7 +145,7 @@ export class PlannerVisitor extends Type.Visitor<Plan | undefined> {
     }
     const [matched, generics] = Type.bindGenerics(typefor<AsyncIterable<Generic<'E'>>>(), type);
     if (matched) {
-      return Plan.asyncIterable(this.#planElements(Type.promise(generics.get('E')!)));
+      return Plan.asyncIterable(this.#planElements(Type.promise(generics.E!)));
     }
     return undefined;
   }
@@ -259,7 +259,7 @@ interface PassDiagnostics {
  */
 function invokerCallableType(type: ImportedType): ConstructorType | FunctionType | undefined {
   const [matched, generics] = Type.bindGenerics(typefor<Invoker<Generic<'C', Ctor | Func>>>(), type);
-  const callableType = matched ? generics.get('C') : undefined;
+  const callableType = matched ? generics.C : undefined;
   return callableType?.kind === 'ctor' || callableType?.kind === 'func' ? callableType : undefined;
 }
 

@@ -428,7 +428,7 @@ export namespace Type {
   /** What `type` settles to: the inner type for a `Promise<T>`, the type itself otherwise. */
   export function awaited(type: Type): Type {
     const [matched, generics] = Type.bindGenerics(PROMISE_PATTERN, type);
-    return matched ? generics.get('S')! : type;
+    return matched ? generics.S! : type;
   }
 
   /**
@@ -444,14 +444,14 @@ export namespace Type {
    */
   export const bindGenerics = (() => {
     const visitor = new MatchVisitor();
-    return function bindGenerics(possiblyOpenCandidate: Type, closedConstraint: Type): [isMatch: false] | [isMatch: true, generics: Map<string, Type>] {
+    return function bindGenerics(possiblyOpenCandidate: Type, closedConstraint: Type): [isMatch: false] | [isMatch: true, generics: Record<string, Type>] {
       if (Type.isOpen(closedConstraint)) {
         throw new Error(`bindGenerics: the constraint type may not contain generic holes — got ${Type.stringify(closedConstraint)}`);
       }
       if (possiblyOpenCandidate === closedConstraint) {
-        return [true, new Map()];
+        return [true, Object.create(null) as Record<string, Type>];
       }
-      const bindings = new Map<string, Type>();
+      const bindings: Record<string, Type> = Object.create(null);
       return visitor.visit(possiblyOpenCandidate, { subject: closedConstraint, bindings }) ? [true, bindings] : [false];
     };
   })();
@@ -462,11 +462,11 @@ export namespace Type {
   }
 
   /** Replaces each generic hole whose label the map names; other holes stay. */
-  export function substitute(type: ConstructorType, substitutions: ReadonlyMap<string, Type>): ConstructorType;
-  export function substitute(type: FunctionType, substitutions: ReadonlyMap<string, Type>): FunctionType;
-  export function substitute(type: Type, substitutions: ReadonlyMap<string, Type>): Type;
-  export function substitute(type: Type, substitutions: ReadonlyMap<string, Type>): Type {
-    if (!substitutions.size || Type.isClosed(type)) {
+  export function substitute(type: ConstructorType, substitutions: Readonly<Record<string, Type>>): ConstructorType;
+  export function substitute(type: FunctionType, substitutions: Readonly<Record<string, Type>>): FunctionType;
+  export function substitute(type: Type, substitutions: Readonly<Record<string, Type>>): Type;
+  export function substitute(type: Type, substitutions: Readonly<Record<string, Type>>): Type {
+    if (Type.isClosed(type)) {
       return type;
     }
     return new SubstituteVisitor(substitutions).visit(type);

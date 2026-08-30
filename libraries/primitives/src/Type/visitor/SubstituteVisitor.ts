@@ -12,9 +12,9 @@ import { TypeVisitor } from './TypeVisitor.js';
  * mapping `T` to a type containing `%T` terminates instead of looping.
  */
 export class SubstituteVisitor extends TypeVisitor<Type> {
-  readonly #substitutions: ReadonlyMap<string, Type>;
+  readonly #substitutions: Readonly<Record<string, Type>>;
 
-  constructor(substitutions: ReadonlyMap<string, Type>) {
+  constructor(substitutions: Readonly<Record<string, Type>>) {
     super();
     this.#substitutions = substitutions;
   }
@@ -45,7 +45,7 @@ export class SubstituteVisitor extends TypeVisitor<Type> {
   }
 
   protected override visitGeneric(type: GenericType): Type {
-    return this.#substitutions.get(type.label) ?? type;
+    return this.#substitutions[type.label] ?? type;
   }
 
   protected override visitGlobal(type: GlobalType): Type {

@@ -320,11 +320,11 @@ export namespace Plan {
     const [kind, narrowed] = Registration.kind(registration);
     switch (kind) {
       case 'ctor': {
-        const args = lowerSignature(narrowed.ctorType.signatures, new Map(), visitor);
+        const args = lowerSignature(narrowed.ctorType.signatures, Object.create(null), visitor);
         return args && Plan.ctor(narrowed.ctor, args);
       }
       case 'factory': {
-        const args = lowerSignature(narrowed.factoryType.signatures, new Map(), visitor);
+        const args = lowerSignature(narrowed.factoryType.signatures, Object.create(null), visitor);
         return args && Plan.factory(narrowed.factory, args);
       }
       case 'value':
@@ -373,18 +373,18 @@ export namespace Plan {
    * run on — while a hole inside a larger arg closes into that expression and resolves as any
    * other dependency.
    */
-  function lowerSignature(signatures: Type.Signatures, generics: ReadonlyMap<string, Type>, visitor: Type.Visitor<Plan | undefined>): Plan[] | undefined {
+  function lowerSignature(signatures: Type.Signatures, generics: Readonly<Record<string, Type>>, visitor: Type.Visitor<Plan | undefined>): Plan[] | undefined {
     return Iterator.from(signatures.toSorted((a, b) => b.length - a.length))
       .map(signature => signature.map(arg => lowerArg(arg, generics, visitor)))
       .find(isAllThere);
   }
 
-  function lowerArg(arg: Type, generics: ReadonlyMap<string, Type>, visitor: Type.Visitor<Plan | undefined>): Plan | undefined {
+  function lowerArg(arg: Type, generics: Readonly<Record<string, Type>>, visitor: Type.Visitor<Plan | undefined>): Plan | undefined {
     if (arg.kind === 'generic') {
-      const closing = generics.get(arg.label);
+      const closing = generics[arg.label];
       return closing && Plan.constant(closing);
     }
-    return visitor.visit(generics.size ? Type.substitute(arg, generics) : arg);
+    return visitor.visit(Type.substitute(arg, generics));
   }
 
   export function realize(plan: Plan, options: RealizeOptions): any {
