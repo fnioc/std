@@ -3979,8 +3979,11 @@ are never tracked. Standard-model policy: LIFO release of a scope's kept instanc
 reference-deduped; children-before-parent cascade; unkept/transient instances untracked,
 consumer-owned (transient-disposable policy stays model-defined). `asyncDispose` is preferred over
 `dispose` per instance; a synchronous dispose meeting an async-only disposable throws loudly naming
-the instance's address; a cached promise product is released by awaiting it and releasing the settled
-value; a value settling after its scope's dispose is released immediately on arrival. A second
+the instance's address; a promise product the container never awaited — delivered as a promise by a synchronous
+`resolve` — is out of the scope's reach and is not released at all, its holder owns what settles;
+a promise product the container itself awaited (`resolveAsync`, or any boundary it settled) puts
+the settled value in reach, is released by `asyncDispose` awaiting it and releasing that value,
+and is an async-only disposable to a synchronous dispose, which throws as above. A second
 dispose is an idempotent no-op; release failures aggregate, never abort-on-first.
 
 Implementation queues behind the async lane, in the lifetime model.

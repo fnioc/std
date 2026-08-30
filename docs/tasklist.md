@@ -339,9 +339,10 @@ Only work this session owns; the lane above is another session's.
 - [x] Standard model at runtime — RULED: matches the reference exactly; `validateScopes` /
       `validateOnBuild` switches, both default on; refusal only while `validateScopes` is on.
       Follow-up change queued behind the in-flight §229 workflow.
-- [ ] Disposal: a synchronous `Symbol.dispose` meeting a still-pending promise product attaches a
-      release-on-settle continuation and returns, swallowing a later release failure (chosen) — or
-      throws loudly naming the address. One word: swallow / throw.
+- [x] Disposal: sync dispose meeting a promise product — RULED: out of reach if the container
+      never awaited it (not released, holder owns it); in reach if delivered through
+      `resolveAsync`/a settled boundary — async disposal required, sync throws the async-only
+      clause. `releaseOnArrival` goes away; the claim records whether the container awaited it.
 - [ ] Disposal: the tagged teardown is tag-agnostic (a plain address, not a `Generic<'Tag'>`
       template) — "mirroring createScope" read as the mechanism, not the template shape. ok / mirror.
 - [ ] Disposal hazard, unfixed: a `StandardScopeFactory` handle captured before its scope's teardown
@@ -352,6 +353,10 @@ Only work this session owns; the lane above is another session's.
 
 **Queued** (carried from the burned session handoff; each behind the item above it only where stated)
 
+- [ ] Lifetime follow-ups behind the in-flight §229 workflow: `standard({ validateScopes,
+      validateOnBuild })` replacing the single flag, refusal gated on `validateScopes`; the
+      disposal reach rule above (claim marks container-awaited products; sync path skips
+      out-of-reach, throws on in-reach; `releaseOnArrival` deleted).
 - [ ] Async: docs, tests, examples and the `resolveAsync` transformer-parity e2e — deferred by the
       owner until post-review; the review is done, so this is next.
 - [ ] Captivity validator: skip `ConstantType` products (a value has no lifetime to capture).
