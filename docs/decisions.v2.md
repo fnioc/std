@@ -4059,3 +4059,31 @@ where the conventional model reads as its lifetime name. The classification brid
 to serve a shared validator, and goes with it.
 
 _Owner-ruled 2026-08-30._
+
+## §229 — Captivity validation is model-owned middleware; there is no generic validator
+
+Scope captivity — a longer-lived keeper holding a shorter-lived dependency — is structurally
+impossible when the threaded state is used correctly: a keeper's dependencies resolve under the
+state its own construction was threaded, so the model that keeps them decides their ownership.
+Anywhere that does not hold is the lifetime model's own business, never the engine's and never a
+generic addon's — the same ownership §228 already settled, carried through to its consequence.
+
+There is therefore no cross-model lifetime-tier abstraction and no shared validator:
+`LifetimePolicy` (`di.core`) and `validateCaptivity(policy)` (`di`'s validation addon) are removed.
+Each lifetime model decides whether it needs a validator at all.
+
+The standard model needs one: its tiers (singleton over scoped over unkept) are fixed, so a
+singleton→scoped edge is decidable from the plans before anything resolves. The standard model's
+own module owns that validator, exports it as a `Middleware`, and the model's main addon
+(`standard()`) composes it in by default — validation is on unless the composer removes it. At
+runtime the standard model refuses a scoped ask arriving under root state with a model-owned error
+rather than keeping the instance at root.
+
+The tagged model needs none and cannot have a correct one: tag nesting is decided at runtime by
+which tags get opened under which, so no static order exists; its runtime refusal
+(`ScopeTagUnmatchedError` when no ancestor carries the tag) is the whole mechanism.
+
+`hosting` installs the standard model's addon and inherits its validator rather than installing
+`validation(standardValidationPolicy, …)`.
+
+_Owner-ruled 2026-08-30, Claude-recorded._
