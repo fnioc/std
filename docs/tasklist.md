@@ -412,7 +412,9 @@ Dropped by the rulings (standalone `is*` conversions): `di.core/src/Manifest.ts:
 `di/src/internal/Plan/PlannerVisitor.ts:196` (`members.some(p => !p)` + cast → standalone
 `isAllThere(members)`; note the conversion would also have deleted the `as Plan[]` cast).
 
-Remaining:
+Remaining — IN APPLICATION (sonnet subagent dispatched 2026-08-30; factory `address` consts kept
+per ruling with tagged's `: Type` widening; teardown consts deleted, errors onto `DiError`,
+comprehension respellings, typefor-derived option slot types):
 
 | should have used                                                                                                          | used instead                                                                                       |
 | ------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------- |
@@ -423,9 +425,7 @@ Remaining:
 | `registry.getMatches(address).some(isDefined)`                                                                            | `!registry.getMatches(address).next().done` emptiness probe — `libraries/di/src/internal/Plan/Plan.ts:271` |
 | `isCtorRegistration(left)` / `isFactoryRegistration(left)` / `isValueRegistration(left)` — this module's own guards, already used by `kind()` | `'ctor' in left` / `'factory' in left` / `'value' in left` hand-rolled branches in `equals()` — `libraries/di.core/src/Registration/op.ts:40` |
 | `typefor<ResolveAudit>()` inline at each use site                                                                         | hoisted local `const address = typefor<ResolveAudit>()` — `libraries/di/src/addons/resolve-audit.ts:86` |
-| `typefor<StandardScopeFactory>()` inline at each use site                                                                 | hoisted address const `StandardScopeFactory.address` — `libraries/di/src/lifetime/models/standard.ts:36` |
 | `typefor<StandardScopeTeardown>()` inline at each use site                                                                | hoisted address const `StandardScopeTeardown.address` — `libraries/di/src/lifetime/models/standard.ts:44` |
-| `typefor<TaggedScopeFactory<Generic<'Tags', string>>>()` inline at each use site                                          | hoisted address const `TaggedScopeFactory.address` — `libraries/di/src/lifetime/models/tagged.ts:28` |
 | `typefor<TaggedScopeTeardown>()` inline at each use site                                                                  | hoisted address const `TaggedScopeTeardown.address` — `libraries/di/src/lifetime/models/tagged.ts:36` |
 | `extends DiError` (`@rhombus-std/di.core` error taxonomy)                                                                 | `class DisposedScopeError extends Error` — `libraries/di/src/lifetime/models/standard.ts:48`       |
 | `extends DiError` (`@rhombus-std/di.core` error taxonomy)                                                                 | `class ScopedAtRootError extends Error` — `libraries/di/src/lifetime/models/standard.ts:56`        |
@@ -440,11 +440,11 @@ Remaining:
 The typefor replacements are ALL in scope — none ride the depender punt (owner, 2026-08-30).
 Punted with the depender adaptations: `CompositeChangeToken` (`CompositeChangeToken.ts:9`).
 
-**Members that should not exist:**
+**Members that should not exist** (ruled 2026-08-30: the FACTORY `address` fields stay — a public
+convenience for no-sugar consumers; never hoist an address for internal use, and this sets no
+habit of minting such fields):
 
-- [ ] `StandardScopeFactory.address` — `libraries/di/src/lifetime/models/standard.ts:36`
 - [ ] `StandardScopeTeardown.address` — `libraries/di/src/lifetime/models/standard.ts:44`
-- [ ] `TaggedScopeFactory.address` — `libraries/di/src/lifetime/models/tagged.ts:28`
 - [ ] `TaggedScopeTeardown.address` — `libraries/di/src/lifetime/models/tagged.ts:36`
 - [ ] `CompositeChangeToken` — `libraries/options.augmentations/src/CompositeChangeToken.ts:9` (depender-punted)
 - [ ] `openOptionsType` — `libraries/options.augmentations/src/open-options.ts:16`
