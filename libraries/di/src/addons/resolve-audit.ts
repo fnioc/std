@@ -88,7 +88,11 @@ export function resolveAudit(lifetime?: any): Addon {
           Registration.factory(
             address,
             () => {
-              throw new Error('the resolve-audit addon answers this at construction; install it through useAddon so its middleware stands behind the registration');
+              throw new Error(
+                `the resolve-audit addon answers ${
+                  Type.stringify(address)
+                } through hooks its own installation plants, and nothing planted them — install it with useAddon rather than filing this registration by hand`,
+              );
             },
             Type.func(address, [[]]),
             lifetime,
