@@ -345,18 +345,18 @@ Only work this session owns; the lane above is another session's.
       clause. `releaseOnArrival` goes away; the claim records whether the container awaited it.
 - [x] Disposal: the tagged teardown is tag-agnostic — RULED ok (simplest reading: the mirror is the
       resolution-driven registration mechanism, not the template shape). No change.
-- [ ] Disposal hazard, unfixed: a `StandardScopeFactory` handle captured before its scope's teardown
-      can still `openScope()` afterwards, minting a live child of a torn-down parent. Records are
-      silent; needs a ruling before code.
-- [ ] Hosting drops `ServiceProviderOptions.validateScopes` (ruled (a) for the other lane under
-      §229; a public hosting API removal). ok / keep.
+- [x] Disposal hazard — RULED mirror the reference: `openScope()` on a factory whose enclosing
+      scope is disposed throws `DisposedScopeError`. Queued with the lifetime follow-ups.
+- [x] Hosting drops `ServiceProviderOptions.validateScopes` — done by the other lane under §229;
+      surfaced as a public hosting API removal. If hosting ever composes on `standard()`, the
+      reference's two flags map 1:1 onto `standard({ validateScopes, validateOnBuild })`.
 
 **Queued** (carried from the burned session handoff; each behind the item above it only where stated)
 
 - [ ] Lifetime follow-ups behind the in-flight §229 workflow: `standard({ validateScopes,
       validateOnBuild })` replacing the single flag, refusal gated on `validateScopes`; the
       disposal reach rule above (claim marks container-awaited products; sync path skips
-      out-of-reach, throws on in-reach; `releaseOnArrival` deleted).
+      out-of-reach, throws on in-reach; `releaseOnArrival` deleted); `openScope()` refuses on a disposed enclosing scope.
 - [ ] Async: docs, tests, examples and the `resolveAsync` transformer-parity e2e — deferred by the
       owner until post-review; the review is done, so this is next.
 - [ ] Captivity validator: skip `ConstantType` products (a value has no lifetime to capture).
