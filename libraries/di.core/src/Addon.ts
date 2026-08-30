@@ -1,10 +1,12 @@
+import type { ButNot } from '@rhombus-std/primitives';
+
 import type { Middleware } from './Middleware.js';
 import type { Registration } from './Registration/index.js';
 
 /** What one addon contributes to the container being built. */
 export interface AddonInstallation {
-  /** Registrations filed beneath the user's own, above the lifetime model's floor; the lifetime each carries is the model's to read at runtime. */
-  readonly registrations?: Iterable<Registration<any>>;
+  /** Registrations filed beneath the user's own, above the lifetime model's floor; the lifetime each carries is the model's to read at runtime. Re-iterable — the builder walks it more than once, so a one-shot iterator cannot come in this door. */
+  readonly registrations?: ButNot<Iterable<Registration<any>>, Iterator<any>>;
 
   /**
    * Middleware the builder composes into the container's one chain, alongside every other addon's

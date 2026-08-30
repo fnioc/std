@@ -86,7 +86,13 @@ class DefaultContainerBuilder<Lifetime> implements ContainerBuilder<Lifetime> {
     // first call, so the model's own installation is always first here too — its registrations
     // land at the floor, and every later addon files above it.
     const manifestWithAddons = installations.reduce(
-      (manifest, { registrations }) => registrations ? new DefaultManifest<Lifetime>(() => concat(Iterator.from(registrations as Iterable<Registration<Lifetime>>).toArray(), manifest)) : manifest,
+      (manifest, { registrations }) => {
+        if (!registrations) {
+          return manifest;
+        }
+        const materialized = Iterator.from(registrations as Iterable<Registration<Lifetime>>).toArray();
+        return new DefaultManifest<Lifetime>(() => concat(materialized, manifest));
+      },
       Manifest.empty<Lifetime>(),
     );
     const manifest = Iterator.from(this.#manifestSteps).reduce((manifest, step) => new DefaultManifest(step(manifest)), manifestWithAddons);

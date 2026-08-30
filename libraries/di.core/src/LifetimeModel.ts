@@ -1,3 +1,5 @@
+import type { ButNot } from '@rhombus-std/primitives';
+
 import type { Middleware } from './Middleware.js';
 import type { Registration } from './Registration/index.js';
 
@@ -28,6 +30,6 @@ export interface LifetimeModel<Lifetime = unknown> {
    */
   create(): {
     readonly middleware?: Middleware;
-    readonly registrations?: Iterable<Registration<Lifetime>>;
+    readonly registrations?: ButNot<Iterable<Registration<Lifetime>>, Iterator<any>>;
   };
 }
