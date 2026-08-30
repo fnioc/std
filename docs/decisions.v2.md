@@ -3370,10 +3370,8 @@ being the validator's vocabulary and lives beside the `standard` model in `di`, 
 lifetime material and lives in `di.core/src/hooks.ts` (owner: "the majority are not lifetime
 related (just bc lifetime uses them doesn't count)").
 
-Open beside it: `CaptiveDependencyError` does not yet carry the classification labels its
-message would need under a multi-tier model (its "is a singleton" text stays accurate for
-`standard`, where only tier 0 can be a flagging keeper); wiring labels through is undesigned and
-unordered.
+Validation itself belongs to each model rather than to a shared addon reading this policy — see
+§228, which is where the error's wording is answered.
 
 _Owner-directed; Claude-recorded 2026-08-28._
 
@@ -4048,3 +4046,16 @@ Implementation rides branch `refactor-di-visitor-context` off the async head, la
 review.
 
 _Owner-ruled 2026-08-29, Claude-recorded._
+
+## §228 — Each lifetime model owns its own validator
+
+A model knows what its lifetime data means and nothing else does, so the model that defines a
+keeper is the thing that can say when one is captured. Validation is therefore the model's own,
+not a shared addon reading a classification the model exports for it.
+
+What follows: a captivity error names keepers in the vocabulary of the model raising it, so no
+single message has to describe every model's keepers at once — a tagged scope reads as its tag
+where the conventional model reads as its lifetime name. The classification bridge in §210 exists
+to serve a shared validator, and goes with it.
+
+_Owner-ruled 2026-08-30._

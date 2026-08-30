@@ -284,3 +284,18 @@ whole set is decided fresh when the slots above are rewritten, so this is a demo
       2026-08-21): this rewrite covers `de8cc99a` AND EARLIER only — cloud2's own run re-authors and
       force-pushes the post-`de8cc99a` segment itself — and executes only after pinging cloud2 (it holds the
       local checkout and a live branch monitor; tip movement must be sequenced so nothing is orphaned).
+
+## Punted 2026-08-30 — deliberately parked, not forgotten
+
+- [ ] **Per-model validators (§228).** Validation moves onto each lifetime model; `LifetimePolicy`,
+      `standardValidationPolicy`, and the shared `validateCaptivity(policy)` addon go with the
+      bridge they exist to serve, and `CaptiveDependencyError` stops naming one model's vocabulary.
+- [ ] **#274 / #366 keep-or-teardown.** Two stale draft PRs predating the current stack — decide
+      close-vs-refresh, remembering the repo auto-arms auto-merge so neither may ever be marked
+      ready in passing.
+- [ ] **The gated second phase.** Tests, dependers, and hosting adaptation for the deliberately-red
+      packages, plus the deferred async docs/tests/examples and the `resolveAsync` parity e2e.
+      Mechanical adaptation to now-stable surfaces; starts only on the owner's go-ahead, which is
+      the thing actually gating it.
+- [ ] **Diagnostics knip leftovers.** knip flags orphaned exports in the diagnostics family; each
+      gets deleted or genuinely wired, ending the suppression. Report-only — never run `--fix`.
