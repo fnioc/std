@@ -3,8 +3,8 @@ import { Type } from '@rhombus-std/primitives';
 import { typefor } from '@rhombus-std/primitives.extras';
 import type { Func } from '@rhombus-toolkit/func';
 import { assertNever, hasMember, isFunction } from '@rhombus-toolkit/type-guards';
-import { anchorRoot } from './root-anchor.js';
-import { type Claim, Scope } from './Scope.js';
+import { anchorRoot } from '../root-anchor.js';
+import { type Claim, Scope } from '../Scope.js';
 
 const MODEL_NAME = 'standard';
 

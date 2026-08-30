@@ -8,4 +8,4 @@ export type { Middleware, ValidationFailure } from '@rhombus-std/di.core';
 export { resolveAudit } from './addons/resolve-audit.js';
 export { validateBuildability, validateCaptivity, validateUniversalAddresses } from './addons/validation.js';
 export { type ContainerBuilder, di } from './di.js';
-export * from './models/index.js';
+export * from './lifetime/index.js';

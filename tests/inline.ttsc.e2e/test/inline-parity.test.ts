@@ -127,7 +127,7 @@ function goEnv(): NodeJS.ProcessEnv {
 // Three shapes of service type reach the same verb:
 //
 //   1. closed        services.add<ILogger>(ConsoleLogger, 'singleton')
-//   2. open template services.add<IRepo<$<'1'>>>(ThingRepo)  (hole-carrying dep)
+//   2. open template services.add<IRepo<Generic<'1'>>>(ThingRepo)  (hole-carrying dep)
 //   3. keyed         services.add<Keyed<ICache, 'redis'>>(RedisCache)
 //
 // WIRING. The chain sandbox deps {di.core, di.extras}, symlinks the authoring
@@ -161,7 +161,8 @@ export {};
 // The closed and open service types, kept in one file so a whole-file compare
 // pins import elision and surrounding text alongside the per-line tokens.
 const CHAIN_SOURCE = `
-import type { $, Manifest } from '@rhombus-std/di.core';
+import type { Manifest } from '@rhombus-std/di.core';
+import type { Generic } from '@rhombus-std/primitives.extras';
 
 interface ILogger {}
 interface IClock {}
@@ -175,7 +176,7 @@ class ConsoleLogger implements ILogger {
 }
 class NoDepsLogger implements ILogger {}
 class ThingRepo {
-  constructor(store: IStore<$<'1'>>) {
+  constructor(store: IStore<Generic<'1'>>) {
     void store;
   }
 }
@@ -186,14 +187,15 @@ export const closed = services.add<ILogger>(ConsoleLogger, 'singleton');
 
 export const emptySig = services.add<ILogger>(NoDepsLogger, 'singleton');
 
-export const open = services.add<IRepo<$<'1'>>>(ThingRepo, 'singleton');
+export const open = services.add<IRepo<Generic<'1'>>>(ThingRepo, 'singleton');
 `;
 
 // A KEYED service type. Base and key compose into ONE tag token, and the lookup
 // side mints the identical token — that identity is what makes a keyed
 // registration and a keyed lookup meet. Own file so the compare is isolated.
 const KEYED_SOURCE = `
-import type { Keyed, Manifest } from '@rhombus-std/di.core';
+import type { Manifest } from '@rhombus-std/di.core';
+import type { Keyed } from '@rhombus-std/primitives.extras';
 
 interface ICache {}
 class RedisCache implements ICache {}
@@ -223,7 +225,8 @@ export const self = services.add(SelfRepo, 'singleton');
 // two siblings, the type minted by the typefor stage. Own file so the lookup
 // compare is isolated from the registration whole-file compare.
 const RESOLVE_SOURCE = `
-import type { IServiceProvider, Keyed } from '@rhombus-std/di.core';
+import type { IServiceProvider } from '@rhombus-std/di.core';
+import type { Keyed } from '@rhombus-std/primitives.extras';
 
 // The tokenless get* overloads come from the real di.extras declare-module
 // merge (the type-only import below); the value-driven faces are di.core's

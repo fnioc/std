@@ -1,7 +1,7 @@
-import { CycleError, type Generic, type Invoker, type IServiceProvider } from '@rhombus-std/di.core';
+import { CycleError, type Invoker, type IServiceProvider } from '@rhombus-std/di.core';
 import { type AbstractConstructorType, type ArrayType, type ConstructorType, type FunctionType, type GenericType, type GlobalType, type ImportedType, type IntersectionType, type IterableType,
   type ObjectType, type TagType, type TupleType, Type, type TypeLiteralType, type UnionType } from '@rhombus-std/primitives';
-import { typefor } from '@rhombus-std/primitives.extras';
+import { type Generic, typefor } from '@rhombus-std/primitives.extras';
 import type { Ctor, Func } from '@rhombus-toolkit/func';
 import type { Registry } from '../Registry.js';
 import { type AsyncPlan, Plan } from './Plan.js';

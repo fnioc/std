@@ -1,6 +1,6 @@
-import { Control, type IServiceProviderInternal, type T, UnsatisfiableError } from '@rhombus-std/di.core';
+import { Control, type IServiceProviderInternal, UnsatisfiableError } from '@rhombus-std/di.core';
 import { Type } from '@rhombus-std/primitives';
-import { typefor } from '@rhombus-std/primitives.extras';
+import { type T, typefor } from '@rhombus-std/primitives.extras';
 
 /** Whether `address` is a control ask at all, whatever that ask asks for. */
 export function isControlAsk(address: Type): boolean {

@@ -1,8 +1,8 @@
-import { Generic, type IServiceProvider, type LifetimeModel, Registration, ScopeTagUnmatchedError } from '@rhombus-std/di.core';
+import { type IServiceProvider, type LifetimeModel, Registration, ScopeTagUnmatchedError } from '@rhombus-std/di.core';
 import { Type } from '@rhombus-std/primitives';
-import { typefor } from '@rhombus-std/primitives.extras';
-import { anchorRoot } from './root-anchor.js';
-import { Scope } from './Scope.js';
+import { type Generic, typefor } from '@rhombus-std/primitives.extras';
+import { anchorRoot } from '../root-anchor.js';
+import { Scope } from '../Scope.js';
 
 const MODEL_NAME = 'tagged';
 
