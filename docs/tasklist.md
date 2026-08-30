@@ -358,7 +358,7 @@ Only work this session owns; the lane above is another session's.
 - [ ] §210 captive-error label wording; `ResolveAudit` placeholder error wording; `Behavior`
       hover-doc IDE check.
 - [ ] Diagnostics knip pass; bench re-run against the reconciled engine.
-- [ ] Two audits IN FLIGHT (wf_dfa573c3-c7a, dispatched 2026-08-30): defects (Fable scan+verify;
+- [x] Two audits LANDED (wf_dfa573c3-c7a, 2026-08-30): defects (Fable scan+verify;
       verified single-obvious fixes applied by a non-Fable agent, committed on landing; the rest
       recorded in '## Audit findings') and reinvention (Fable scan+verify vs a shelf inventory;
       pointer table + members-that-should-not-exist list, recorded here and shown to the owner).
@@ -369,15 +369,16 @@ Only work this session owns; the lane above is another session's.
 
 **Defects — open**
 
-- [ ] `libraries/di.core/src/augmentations/Manifest-Registration-augmentations.ts:111` — the
-      order-preserving `add(manifest)` merge gates on `instanceof DefaultManifest` while the
-      documented contract keys on the `Manifest` interface; a custom `Manifest` implementation
-      falls into the consecutive-adds fold and gets its registration precedence silently reversed.
+- [x] `add(manifest)` vs `add(registrations)` dispatch — NOT a defect (owner-ruled 2026-08-30):
+      the declared `add(registrations: ButNot<Iterable<Registration>, Manifest>)` overload is the
+      contract, mergesynth handles the runtime dispatch for it, and the
+      `instanceof DefaultManifest` inside the Iterable arm is double-safety only.
 - [ ] `libraries/options.augmentations/src/Manifest-Options-augmentations.ts:56` — the
       one-argument `addOptions(T)` door captures a single container-resolved base instance and
       re-runs the mutating configure pipeline on that same object for every `.value` read and
       reload (vs. `makeBase`'s fresh instance per run), so deleted config keys never clear and
-      appending configure steps compound on every read.
+      appending configure steps compound on every read. Saved but PUNTED with the depender
+      adaptations (owner-ruled 2026-08-30).
 
 **Defects — autofixed**
 
