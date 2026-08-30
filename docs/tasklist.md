@@ -377,8 +377,9 @@ Only work this session owns; the lane above is another session's.
       siblings, `IObservableInstrumentsSource`, `getMetricsManifest`/`getTracingManifest`), or the
       `@rhombus-std/di.extras` devDependency the `add<T>()` sugar in `manifests.ts` needs for the
       ttsc inline-body transform, invisible to knip for the same reason `ttsc`/`@ttsc/unplugin`
-      already are. Bench re-run: no bench package or script exists anywhere in the repo or its git
-      history — nothing to run; not fabricated.
+      already are.
+- [ ] Bench re-run — DROPPED (owner-ruled 2026-08-30): no bench package or script exists anywhere
+      in the repo or its git history; no substitute attempted.
 - [ ] Endgame shape (owner-ruled 2026-08-30): #274 merges LOCALLY; then the squash plus the
       depender fixes that make build+tests green go up as ONE commit; #366 closes then.
 - [x] Two audits LANDED (wf_dfa573c3-c7a, 2026-08-30): defects (Fable scan+verify;
