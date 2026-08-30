@@ -86,7 +86,7 @@ export class MatchVisitor extends TypeVisitor<boolean, MatchContext> {
     }
     const patternEntries = Object.entries(pattern.members);
     return patternEntries.length === Object.keys(subject.members).length
-      && patternEntries.every(([name, member]) => name in subject.members && this.visit(member, { subject: subject.members[name]!, bindings }));
+      && patternEntries.every(([name, member]) => Object.hasOwn(subject.members, name) && this.visit(member, { subject: subject.members[name]!, bindings }));
   }
 
   protected override visitTag(pattern: TagType, { subject, bindings }: MatchContext): boolean {

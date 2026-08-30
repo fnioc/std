@@ -119,9 +119,12 @@ registerAugmentations<Manifest<unknown>>({
 // ServiceType
 registerAugmentations<Manifest<unknown>>({
   tryAdd(this: Manifest<unknown>, ...registrations: ReadonlyArray<Registration<unknown>>): Manifest<unknown> {
-    return Iterator.from(registrations)
-      .filter(newRegistration => !Iterator.from(this).some(existingRegistration => existingRegistration.address === newRegistration.address))
-      .reduce((man, registration) => man._add(registration), this);
+    return registrations.reduce<Manifest<unknown>>((man, registration) => {
+      if (Iterator.from(man).some(existing => existing.address === registration.address)) {
+        return man;
+      }
+      return man._add(registration);
+    }, this);
   },
   remove(this: Manifest<unknown>, address: Type): Manifest<unknown> {
     const found = Iterator.from(this).find(registration => registration.address === address);

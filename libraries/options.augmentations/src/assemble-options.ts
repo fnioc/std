@@ -3,7 +3,7 @@ import { type IConfigureOptions, type IOptions, type IPostConfigureOptions, type
 import { Type } from '@rhombus-std/primitives';
 import type { Func } from '@rhombus-toolkit/func';
 
-import { CompositeChangeToken } from './CompositeChangeToken.js';
+import { CompositeChangeToken } from '@rhombus-std/primitives';
 import type { IOptionsChangeTokenSource } from './IOptionsChangeTokenSource.js';
 import { changeTokenSourceType, configureStepType, postConfigureStepType, validateStepType } from './option-types.js';
 

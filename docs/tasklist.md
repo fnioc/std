@@ -364,3 +364,77 @@ Only work this session owns; the lane above is another session's.
       pointer table + members-that-should-not-exist list, recorded here and shown to the owner).
       Scope: di+di.core deep; di.extras, di.extras.options, options, options.augmentations;
       primitives(+extras) capped.
+
+## Audit findings — 2026-08-30
+
+**Defects — open**
+
+- [ ] `libraries/di.core/src/augmentations/Manifest-Registration-augmentations.ts:111` — the
+      order-preserving `add(manifest)` merge gates on `instanceof DefaultManifest` while the
+      documented contract keys on the `Manifest` interface; a custom `Manifest` implementation
+      falls into the consecutive-adds fold and gets its registration precedence silently reversed.
+- [ ] `libraries/options.augmentations/src/Manifest-Options-augmentations.ts:56` — the
+      one-argument `addOptions(T)` door captures a single container-resolved base instance and
+      re-runs the mutating configure pipeline on that same object for every `.value` read and
+      reload (vs. `makeBase`'s fresh instance per run), so deleted config keys never clear and
+      appending configure steps compound on every read.
+
+**Defects — autofixed**
+
+- [x] tryAdd same-batch duplicate: changed filter-over-original to reduce that tests each
+      candidate against the accumulated manifest (`Manifest-Registration-augmentations.ts:121-127`).
+- [x] `build()` one-shot Iterable: materialized each installation's registrations with
+      `Iterator.from(...).toArray()` before chaining into the manifest (`di.ts:89`).
+- [x] `CompositeChangeToken` no-latch leak: replaced the local latch-less class with primitives'
+      `CompositeChangeToken` (import in `assemble-options.ts:6` now reads from
+      `@rhombus-std/primitives`); local `CompositeChangeToken.ts` left in tree (deleting it is
+      scope growth).
+- [x] `MatchVisitor` prototype-chain false positive: replaced `name in subject.members` with
+      `Object.hasOwn(subject.members, name)` (`MatchVisitor.ts:89`).
+- [x] `isAllThere` falsy-element false negative: replaced `.every(Boolean)` with
+      `.every(item => item !== undefined)` (`is-all-there.ts:3`).
+
+**Reinvention**
+
+| should have used                                                                                                                                                               | used instead                                                                                                                                                                                      |
+| ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `isAllThere(members)` (`@rhombus-std/primitives`)                                                                                                                              | `members.some(p => !p)` + `members as Plan[]` cast — `libraries/di/src/internal/Plan/PlannerVisitor.ts:196`                                                                                       |
+| `iterable(() => this.#enclosing().drop(1))` (`@rhombus-std/primitives`)                                                                                                        | hand-built `{ [Symbol.iterator]: () => ... }` object literal — `libraries/di/src/addons/resolve-audit.ts:35`                                                                                      |
+| `iterable(() => Iterator.from(plan.types).map(inner => self.visit(inner, context)))` (`@rhombus-std/primitives`)                                                               | hand-built `{ *[Symbol.iterator]() { ... } }` object literal — `libraries/di/src/internal/Plan/RealizeVisitor.ts:191`                                                                             |
+| `first(this.#enclosing())` (`@rhombus-std/primitives`)                                                                                                                         | `this.#enclosing().next().value` — `libraries/di/src/addons/resolve-audit.ts:31`                                                                                                                  |
+| `first(this.#registry.getMatches(promised)) === undefined` (`@rhombus-std/primitives`)                                                                                         | `.getMatches(promised).next().done` emptiness probe — `libraries/di/src/internal/Plan/PlannerVisitor.ts:112`                                                                                      |
+| `first(registry.getMatches(address)) !== undefined` (`@rhombus-std/primitives`)                                                                                                | `!registry.getMatches(address).next().done` emptiness probe — `libraries/di/src/internal/Plan/Plan.ts:271`                                                                                        |
+| `isCtorRegistration(left)` / `isFactoryRegistration(left)` / `isValueRegistration(left)` — this module's own guards, already used by `kind()` above                            | `'ctor' in left` / `'factory' in left` / `'value' in left` hand-rolled branches in `equals()` — `libraries/di.core/src/Registration/op.ts:40`                                                     |
+| `isFunction(arg)` (`@rhombus-toolkit/type-guards`)                                                                                                                             | `switch (typeof arg)` chain with eslint-disable + `assertNever` — `libraries/di.core/src/Manifest.ts:48`                                                                                          |
+| `isFunction(source)` (`@rhombus-toolkit/type-guards`)                                                                                                                          | `typeof source === 'function'` — `libraries/di/src/ServiceProvider.ts:14`                                                                                                                         |
+| `.filter(isDefined)` (`@rhombus-toolkit/type-guards`)                                                                                                                          | `.filter(middleware => middleware !== undefined)` — `libraries/di/src/di.ts:97`                                                                                                                   |
+| `.filter(isDefined)` (`@rhombus-toolkit/type-guards`)                                                                                                                          | `.filter(match => match !== undefined)` — `libraries/di/src/internal/Registry.ts:57`                                                                                                              |
+| `.filter(isDefined)` (`@rhombus-toolkit/type-guards`)                                                                                                                          | `.filter(plan => plan !== undefined)` — `libraries/di/src/internal/Plan/PlannerVisitor.ts:235`                                                                                                    |
+| `typefor<ResolveAudit>()` inline at each use site                                                                                                                              | hoisted local `const address = typefor<ResolveAudit>()` — `libraries/di/src/addons/resolve-audit.ts:86`                                                                                           |
+| `typefor<StandardScopeFactory>()` inline at each use site                                                                                                                      | hoisted address const `StandardScopeFactory.address` — `libraries/di/src/lifetime/models/standard.ts:36`                                                                                          |
+| `typefor<StandardScopeTeardown>()` inline at each use site                                                                                                                     | hoisted address const `StandardScopeTeardown.address` — `libraries/di/src/lifetime/models/standard.ts:44`                                                                                         |
+| `typefor<TaggedScopeFactory<Generic<'Tags', string>>>()` inline at each use site                                                                                               | hoisted address const `TaggedScopeFactory.address` — `libraries/di/src/lifetime/models/tagged.ts:28`                                                                                              |
+| `typefor<TaggedScopeTeardown>()` inline at each use site                                                                                                                       | hoisted address const `TaggedScopeTeardown.address` — `libraries/di/src/lifetime/models/tagged.ts:36`                                                                                             |
+| `extends DiError` (`@rhombus-std/di.core` error taxonomy)                                                                                                                      | `class DisposedScopeError extends Error` — new error shape outside the taxonomy — `libraries/di/src/lifetime/models/standard.ts:48`                                                               |
+| `extends DiError` (`@rhombus-std/di.core` error taxonomy)                                                                                                                      | `class ScopedAtRootError extends Error` — new error shape outside the taxonomy — `libraries/di/src/lifetime/models/standard.ts:56`                                                                |
+| `extends DiError` (`@rhombus-std/di.core` error taxonomy)                                                                                                                      | `class DisposedScopeError extends Error` — new error shape outside the taxonomy (duplicate of standard.ts's) — `libraries/di/src/lifetime/models/tagged.ts:40`                                    |
+| `isFunction(configSource)` (`@rhombus-toolkit/type-guards` ^3.0.0 — add to options.augmentations deps)                                                                         | `typeof configSource === 'function'` — `libraries/options.augmentations/src/configure-manifests.ts:68`                                                                                            |
+| `isFunction(plain)` (`@rhombus-toolkit/type-guards` ^3.0.0 — add to options.augmentations deps)                                                                                | `typeof plain === 'function'` — `libraries/options.augmentations/src/Manifest-Options-augmentations.ts:94`                                                                                        |
+| `isFunction(args[0])` (`@rhombus-toolkit/type-guards` ^3.0.0 — add to options.augmentations deps)                                                                              | `typeof args[0] === 'function'` — `libraries/options.augmentations/src/Manifest-Options-augmentations.ts:118`                                                                                     |
+| `CompositeChangeToken` (`@rhombus-std/primitives`, `change-token/CompositeChangeToken` — same readonly `IChangeToken[]` ctor, implements `IChangeToken`)                       | local class `CompositeChangeToken` re-implementing the same composition (consumed only by `assemble-options.ts`) — `libraries/options.augmentations/src/CompositeChangeToken.ts:9`                |
+| `Type.substitute(typefor<IConfigureOptions<Generic<'T'>>>(), { T: optionsType })`                                                                                              | `Type.imported('IConfigureOptions', '@rhombus-std/options', [optionsType])` — hand-spelled address — `libraries/options.augmentations/src/option-types.ts:15`                                     |
+| `Type.substitute(typefor<IPostConfigureOptions<Generic<'T'>>>(), { T: optionsType })`                                                                                          | `Type.imported('IPostConfigureOptions', '@rhombus-std/options', [optionsType])` — hand-spelled address — `libraries/options.augmentations/src/option-types.ts:20`                                 |
+| `Type.substitute(typefor<IValidateOptions<Generic<'T'>>>(), { T: optionsType })`                                                                                               | `Type.imported('IValidateOptions', '@rhombus-std/options', [optionsType])` — hand-spelled address — `libraries/options.augmentations/src/option-types.ts:25`                                      |
+| `Type.substitute(typefor<IOptionsChangeTokenSource<Generic<'T'>>>(), { T: optionsType })`                                                                                      | `Type.imported('IOptionsChangeTokenSource', '@rhombus-std/options.augmentations', [optionsType])` — hand-spelled address — `libraries/options.augmentations/src/option-types.ts:30`               |
+| `Type.substitute(typefor<IOptions<Generic<'T'>>>(), { T: optionsType })`                                                                                                       | `Type.imported('IOptions', '@rhombus-std/options', [optionsType])` — hand-spelled address — `libraries/options.augmentations/src/option-types.ts:55`                                              |
+| `typefor<IOptions<Generic<'$T'>>>()` inline at the use sites (`ensureOpenOptions` lines 35, 37)                                                                                | hoisted const `openOptionsType = Type.imported('IOptions', '@rhombus-std/options', [hole])` — hand-spelled address in an address const — `libraries/options.augmentations/src/open-options.ts:16` |
+| `isObject(existing)` (`@rhombus-toolkit/type-guards` ^3.0.0 — v3 impl is `hasValue` + `typeof 'object'`, not a plain-object check; keep the `as Record<string, unknown>` cast) | `typeof existing === 'object' && existing !== null` — `libraries/options.augmentations/src/ConfigConfigureOptions.ts:17`                                                                          |
+
+**Members that should not exist:**
+
+- [ ] `StandardScopeFactory.address` — `libraries/di/src/lifetime/models/standard.ts:36`
+- [ ] `StandardScopeTeardown.address` — `libraries/di/src/lifetime/models/standard.ts:44`
+- [ ] `TaggedScopeFactory.address` — `libraries/di/src/lifetime/models/tagged.ts:28`
+- [ ] `TaggedScopeTeardown.address` — `libraries/di/src/lifetime/models/tagged.ts:36`
+- [ ] `CompositeChangeToken` — `libraries/options.augmentations/src/CompositeChangeToken.ts:9`
+- [ ] `openOptionsType` — `libraries/options.augmentations/src/open-options.ts:16`
