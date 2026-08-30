@@ -2,9 +2,15 @@ import { Control, type IServiceProviderInternal, UnsatisfiableError } from '@rho
 import { Type } from '@rhombus-std/primitives';
 import { type T, typefor } from '@rhombus-std/primitives.extras';
 
-/** Whether `address` is a control ask at all, whatever that ask asks for. */
+/**
+ * Whether `address` is a control ask at all, whatever that ask asks for.
+ *
+ * @remarks
+ * An address still carrying a hole is nobody's control ask, and it reaches here on its way to the
+ * refusal the engine owes it — so it answers `false` rather than being matched against.
+ */
 export function isControlAsk(address: Type): boolean {
-  return Type.isMatch(typefor<Control<T>>(), address);
+  return Type.isClosed(address) && Type.isMatch(typefor<Control<T>>(), address);
 }
 
 /**

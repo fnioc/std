@@ -72,7 +72,7 @@ async registrations — the promise is the registration
   rates as of 2026-01-01, EUR at 0.85
   the bare type has no registration: undefined
 the provider as a service — usually a smell, occasionally correct
-  the injected view IS the live container: true
+  the injected view is a view onto it, not the container object: true
 optional audit trail: 2 entries, last B-2002
 
 === di open generics — with transformer ===
@@ -94,7 +94,7 @@ the template itself is NOT resolvable — a hole is not a service:
 
 === di errors (dialect-independent) ===
 keying a service type that already carries a key: Error — not a container failure; this diagnostic would rethrow rather than guess
-building with validateOnBuild: ManifestValidationError — 1 registration(s) cannot be satisfied: selfcheck:IStore
+building with validateBuildability: ManifestValidationError — 1 registration(s) cannot be satisfied: selfcheck:IStore
   the failure inside it: UnsatisfiableError: cannot satisfy selfcheck:IStore — it is registered, but something it needs is not; register what is missing, or ask through the union address if its absence is legitimate
 asking at the bare address for a registration that cannot be built: UnsatisfiableError: cannot satisfy selfcheck:IStore — it is registered, but something it needs is not; register what is missing, or ask through the union address if its absence is legitimate
 asking for a type nobody registered: UnsatisfiableError: cannot satisfy selfcheck:IReportService — nothing in the manifest produces it; register what is missing, or ask through the union address if its absence is legitimate

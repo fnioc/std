@@ -182,7 +182,7 @@ async function* tour(provider: IServiceProvider): AsyncGenerator<string> {
   // dependency.
   yield 'the provider as a service — usually a smell, occasionally correct';
   const view = provider.resolve(typefor<IServiceProvider>()) as IServiceProvider;
-  yield `  the injected view IS the live container: ${view === provider}`;
+  yield `  the injected view is a view onto it, not the container object: ${view !== provider}`;
 
   // ── what the optional sink recorded ────────────────────────────────────────
   const recorded = audit ? `${audit.entries.length} entries, last ${audit.entries.at(-1)}` : 'no sink wired';
