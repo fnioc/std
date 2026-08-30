@@ -352,8 +352,12 @@ Only work this session owns; the lane above is another session's.
 **Queued** (carried from the burned session handoff; each behind the item above it only where stated)
 
 - [x] Lifetime follow-ups — landed inside 399c3352.
-- [ ] Async: docs, tests, examples and the `resolveAsync` transformer-parity e2e — deferred by the
-      owner until post-review; the review is done, so this is next.
+- [x] Async: docs, tests, examples and the `resolveAsync` transformer-parity e2e — feature doc
+      (78122683), gap-filling tests for gather/reach/AsyncIterable (0147669b), the resolveAsync
+      demo in both resolution-demo.ts twins (a4b3dbf3), and the inline.ttsc.e2e parity fixture
+      (f8aa90da). Gates green: di.test 258/258, inline.ttsc.e2e 20/20; every touched file is
+      dprint-clean (whole-repo `format:check` still fails on the reinvention table above, unrelated
+      to this item).
 - [ ] Captivity validator: skip `ConstantType` products (a value has no lifetime to capture).
 - [ ] §210 captive-error label wording; `ResolveAudit` placeholder error wording; `Behavior`
       hover-doc IDE check.
