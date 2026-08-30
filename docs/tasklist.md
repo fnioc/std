@@ -378,7 +378,8 @@ Only work this session owns; the lane above is another session's.
       re-runs the mutating configure pipeline on that same object for every `.value` read and
       reload (vs. `makeBase`'s fresh instance per run), so deleted config keys never clear and
       appending configure steps compound on every read. Saved but PUNTED with the depender
-      adaptations (owner-ruled 2026-08-30).
+      adaptations (owner-ruled 2026-08-30); all depender work is sequenced AFTER the #274 merge —
+      not raised before then (owner-ruled 2026-08-30).
 
 **Defects — autofixed**
 
@@ -390,7 +391,7 @@ Only work this session owns; the lane above is another session's.
       (`libraries/options.augmentations/src/CompositeChangeToken.ts`): the local latch-less class
       multi-fires and never detaches; the fix is composing primitives' `CompositeChangeToken`.
       Autofix reverted as out of scope — saved but PUNTED with the depender adaptations
-      (owner-ruled 2026-08-30).
+      (owner-ruled 2026-08-30); sequenced AFTER the #274 merge — not raised before then.
 - [x] `MatchVisitor` prototype-chain false positive: replaced `name in subject.members` with
       `Object.hasOwn(subject.members, name)` (`MatchVisitor.ts:89`).
 - [x] `isAllThere` falsy-element false negative: replaced `.every(Boolean)` with
