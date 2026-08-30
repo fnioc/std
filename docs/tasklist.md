@@ -358,6 +358,8 @@ Only work this session owns; the lane above is another session's.
 - [ ] §210 captive-error label wording; `ResolveAudit` placeholder error wording; `Behavior`
       hover-doc IDE check.
 - [ ] Diagnostics knip pass; bench re-run against the reconciled engine.
+- [ ] Endgame shape (owner-ruled 2026-08-30): #274 merges LOCALLY; then the squash plus the
+      depender fixes that make build+tests green go up as ONE commit; #366 closes then.
 - [x] Two audits LANDED (wf_dfa573c3-c7a, 2026-08-30): defects (Fable scan+verify;
       verified single-obvious fixes applied by a non-Fable agent, committed on landing; the rest
       recorded in '## Audit findings') and reinvention (Fable scan+verify vs a shelf inventory;
