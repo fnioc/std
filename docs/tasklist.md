@@ -285,17 +285,32 @@ whole set is decided fresh when the slots above are rewritten, so this is a demo
       force-pushes the post-`de8cc99a` segment itself — and executes only after pinging cloud2 (it holds the
       local checkout and a live branch monitor; tip movement must be sequenced so nothing is orphaned).
 
-## Punted 2026-08-30 — deliberately parked, not forgotten
 
-- [ ] **Per-model validators (§228).** Validation moves onto each lifetime model; `LifetimePolicy`,
-      `standardValidationPolicy`, and the shared `validateCaptivity(policy)` addon go with the
-      bridge they exist to serve, and `CaptiveDependencyError` stops naming one model's vocabulary.
-- [ ] **#274 / #366 keep-or-teardown.** Two stale draft PRs predating the current stack — decide
-      close-vs-refresh, remembering the repo auto-arms auto-merge so neither may ever be marked
-      ready in passing.
-- [ ] **The gated second phase.** Tests, dependers, and hosting adaptation for the deliberately-red
-      packages, plus the deferred async docs/tests/examples and the `resolveAsync` parity e2e.
-      Mechanical adaptation to now-stable surfaces; starts only on the owner's go-ahead, which is
-      the thing actually gating it.
-- [ ] **Diagnostics knip leftovers.** knip flags orphaned exports in the diagnostics family; each
-      gets deleted or genuinely wired, ending the suppression. Report-only — never run `--fix`.
+## Claude's lane — 2026-08-30
+
+Only work this session owns. Items the owner drives (§228 per-model validators, the scope-issue
+handoff, #274/#366, the knip sweep) are his and are deliberately absent.
+
+**In flight**
+
+- [ ] Open-address control recognition + the two example fixtures that pin it. `isControlAsk` fed a
+      still-open address to `bindGenerics` as its constraint, so a raw `Error` escaped where the
+      engine owes an `UnsatisfiableError`; it answers `false` for an open address now. Written,
+      gated locally, uncommitted — the repo cannot be verified while another lane is mid-edit.
+- [ ] Three read-only audits of `di.*` and their in-repo dependencies (8 packages): defects, each
+      finding carrying a concrete failure scenario; reinvention, inventory-first so a hand-rolled
+      helper can be matched against what already exists; overengineering, each finding naming the
+      requirement the code satisfies that was never given. Scoped and briefed, held until the tree
+      is still.
+
+**Complete**
+
+- [x] Instance disposal in the lifetime model.
+- [x] `Generic`/`Keyed`/`T` moved to `primitives.extras`, `$` dropped, scope machinery grouped
+      under `lifetime/` with the models beneath it.
+- [x] `Type.isMatch`, replacing the two `bindGenerics` call sites that discarded the bindings.
+- [x] di.core stops re-exporting `Type`/`ImportedType`/`NamedType`.
+- [x] The whole repo adapted to the replaced API surface — `addMany`, `withAddon`,
+      `configureProvider`, `validation`, `ServiceProviderOptions` — across hosting, logging,
+      caching, options, diagnostics, the examples, and every test package.
+- [x] Every test package typechecks, not merely runs.
