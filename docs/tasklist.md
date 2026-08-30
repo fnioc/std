@@ -402,8 +402,8 @@ Rulings (owner, 2026-08-30): the `is*` guards from type-guards are comprehension
 (`.filter(isFunction)`, `.find(isDefined)`) — the `isFunction`/`isObject` conversion rows are
 DROPPED; no work converting to them outside that shape. The `first` rows follow
 `@rhombus-toolkit/obj`'s current signatures — never the `*try` helpers; an emptiness probe spells
-`.find(isDefined)`/`.find(hasValue)` where that is the real shape. Remaining rows proceed once
-the toolkit dep bumps land.
+`isUndefined(first(...))` (`isDefined(first(...))` for the negated probe). Remaining rows proceed
+once the toolkit dep bumps land.
 
 | should have used                                                                                                                                                               | used instead                                                                                                                                                                                      |
 | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
