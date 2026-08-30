@@ -42,7 +42,7 @@ export class HostApplicationBuilder implements IHostApplicationBuilder {
   readonly #logging: LoggingBuilder;
   readonly #metrics: MetricsBuilder;
   readonly #framework: FrameworkServices;
-  readonly #serviceProviderOptions: { validateOnBuild?: boolean; validateScopes?: boolean; } | undefined;
+  readonly #serviceProviderOptions: { validateOnBuild?: boolean; } | undefined;
 
   #hostBuilderAdapter?: HostBuilderAdapter;
   #hostBuilt = false;

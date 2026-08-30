@@ -13,21 +13,15 @@
 
 import type { HostBuilderContext, IHostBuilder } from '@rhombus-std/hosting.core';
 
-/**
- * The validation toggles a service-provider build honours: `validateOnBuild` plans every closed
- * address at build time, `validateScopes` walks every buildable address for captive
- * dependencies.
- */
+/** The validation a service-provider build honours: `validateOnBuild` plans every closed address at build time. */
 export interface ServiceProviderOptions {
   readonly validateOnBuild?: boolean;
-  readonly validateScopes?: boolean;
 }
 
 export namespace ServiceProviderOptions {
   /** What a build without options gets: no validation. */
   export const defaults: ServiceProviderOptions = {
     validateOnBuild: false,
-    validateScopes: false,
   };
 }
 

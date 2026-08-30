@@ -38,7 +38,7 @@ test('useDefaultServiceProvider threads validateOnBuild into the provider build'
 
 test('useDefaultServiceProvider validate-on-build accepts a sound host graph (framework services validate cleanly)', () => {
   const builder = new HostBuilder();
-  builder.useDefaultServiceProvider((options) => ({ ...options, validateScopes: true, validateOnBuild: true }));
+  builder.useDefaultServiceProvider((options) => ({ ...options, validateOnBuild: true }));
   expect(() => builder.build()).not.toThrow();
 });
 

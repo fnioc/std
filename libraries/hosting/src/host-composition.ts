@@ -21,7 +21,7 @@
 import type {} from '@rhombus-std/di.extras';
 
 import type { IConfig } from '@rhombus-std/config.core';
-import { di, noop, standardValidationPolicy, validateBuildability, validateCaptivity } from '@rhombus-std/di';
+import { di, noop, validateBuildability } from '@rhombus-std/di';
 import { type Manifest } from '@rhombus-std/di.core';
 import { Environments, type HostBuilderContext, HostDefaults, type IHost, type IHostApplicationLifetime, type IHostEnvironment, type IHostLifetime } from '@rhombus-std/hosting.core';
 import { LoggerFactory } from '@rhombus-std/logging';
@@ -181,18 +181,15 @@ export function populateFrameworkServices(services: Manifest<unknown>, context: 
  * `config` is the final application configuration folded into
  * {@link HostOptions} before the `configureHostOptions` mutations run.
  *
- * `serviceProviderOptions` carries the `validateOnBuild`/`validateScopes`
- * toggles the builders resolved, wired to the `validateBuildability`/
- * `validateCaptivity` addons; omitted ⇒ an unvalidated build.
+ * `serviceProviderOptions` carries the `validateOnBuild` toggle the builders
+ * resolved, wired to the `validateBuildability` addon; omitted ⇒ an
+ * unvalidated build.
  */
 export function resolveHost(services: Manifest<unknown>, framework: FrameworkServices, config: IConfig, serviceProviderOptions?: ServiceProviderOptions): IHost {
   let builder = di.usingLifetimeModel(noop())
     .usingManifest(services);
   if (serviceProviderOptions?.validateOnBuild) {
     builder = builder.useAddon(validateBuildability());
-  }
-  if (serviceProviderOptions?.validateScopes) {
-    builder = builder.useAddon(validateCaptivity(standardValidationPolicy));
   }
   const provider = builder.build();
 
