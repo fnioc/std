@@ -118,13 +118,13 @@ describe('interned nodes are sealed', () => {
 describe('substitution', () => {
   test('a substitution that changes nothing returns the same object', () => {
     const open = Type.imported('Box', 'app', [Type.generic('T')]);
-    expect(Type.substitute(open, new Map())).toBe(open);
-    expect(Type.substitute(open, new Map([['U', A]]))).toBe(open);
+    expect(Type.substitute(open, {})).toBe(open);
+    expect(Type.substitute(open, { U: A })).toBe(open);
   });
 
   test('a closed type is the one the factory would have built', () => {
     const open = Type.imported('Box', 'app', [Type.generic('T')]);
-    expect(Type.substitute(open, new Map([['T', A]]))).toBe(Type.imported('Box', 'app', [A]));
+    expect(Type.substitute(open, { T: A })).toBe(Type.imported('Box', 'app', [A]));
   });
 });
 
