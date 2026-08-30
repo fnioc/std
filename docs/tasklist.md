@@ -361,3 +361,8 @@ Only work this session owns; the lane above is another session's.
 - [ ] §210 captive-error label wording; `ResolveAudit` placeholder error wording; `Behavior`
       hover-doc IDE check.
 - [ ] Diagnostics knip pass; bench re-run against the reconciled engine.
+- [ ] Two read-only audits, owner-ordered, launched once §229 lands: (1) defects — each finding
+      carries a concrete failure scenario; (2) reinvention — code that re-engineered what existing
+      tooling or repo patterns already covered. Assumed scope: di.core, di, di.extras, primitives,
+      primitives.extras, tests/di.test. The other lane holds the same pair queued; deduplicated by
+      message before dispatch.
