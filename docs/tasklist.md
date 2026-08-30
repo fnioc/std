@@ -412,9 +412,10 @@ Dropped by the rulings (standalone `is*` conversions): `di.core/src/Manifest.ts:
 `di/src/internal/Plan/PlannerVisitor.ts:196` (`members.some(p => !p)` + cast → standalone
 `isAllThere(members)`; note the conversion would also have deleted the `as Plan[]` cast).
 
-Remaining — IN APPLICATION (sonnet subagent dispatched 2026-08-30; factory `address` consts kept
-per ruling with tagged's `: Type` widening; teardown consts deleted, errors onto `DiError`,
-comprehension respellings, typefor-derived option slot types):
+Remaining — APPLIED (1cc4cde8; factory `address` consts kept per ruling with tagged's `: Type`
+widening; teardown consts deleted — the affected test hand-rolls the address, per the ruling that
+where typefor is unavailable (all of tests/), hand-rolling is the path; model errors onto
+`DiError`; comprehension respellings; typefor-derived option slot types):
 
 | should have used                                                                                                          | used instead                                                                                       |
 | ------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------- |
@@ -444,7 +445,7 @@ Punted with the depender adaptations: `CompositeChangeToken` (`CompositeChangeTo
 convenience for no-sugar consumers; never hoist an address for internal use, and this sets no
 habit of minting such fields):
 
-- [ ] `StandardScopeTeardown.address` — `libraries/di/src/lifetime/models/standard.ts:44`
-- [ ] `TaggedScopeTeardown.address` — `libraries/di/src/lifetime/models/tagged.ts:36`
+- [x] `StandardScopeTeardown.address` — deleted (1cc4cde8)
+- [x] `TaggedScopeTeardown.address` — deleted (1cc4cde8)
 - [ ] `CompositeChangeToken` — `libraries/options.augmentations/src/CompositeChangeToken.ts:9` (depender-punted)
-- [ ] `openOptionsType` — `libraries/options.augmentations/src/open-options.ts:16`
+- [x] `openOptionsType` — deleted (1cc4cde8)
