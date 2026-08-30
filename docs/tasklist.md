@@ -285,7 +285,6 @@ whole set is decided fresh when the slots above are rewritten, so this is a demo
       force-pushes the post-`de8cc99a` segment itself — and executes only after pinging cloud2 (it holds the
       local checkout and a live branch monitor; tip movement must be sequenced so nothing is orphaned).
 
-
 ## Claude's lane — 2026-08-30
 
 Only work this session owns. Items the owner drives (§228 per-model validators, the scope-issue
@@ -314,3 +313,27 @@ handoff, #274/#366, the knip sweep) are his and are deliberately absent.
       `configureProvider`, `validation`, `ServiceProviderOptions` — across hosting, logging,
       caching, options, diagnostics, the examples, and every test package.
 - [x] Every test package typechecks, not merely runs.
+
+## Review lane (Fable session) — 2026-08-30
+
+Only work this session owns; the lane above is another session's.
+
+**In flight**
+
+- [ ] §229 captivity is model-owned: `LifetimePolicy`, `validateCaptivity` and
+      `standardValidationPolicy` deleted; the standard model owns its validator, composed into
+      `standard()` by default with a composition opt-out, and refuses a scoped ask arriving under
+      root state at runtime; tagged gets none. Workflow running; the `hosting` install change is
+      reported to the other lane, not made here.
+
+**Complete**
+
+- [x] The five scope issues from the owner's handoff — retention closed by a parent-link
+      constructor argument, a cleared kept map and a cleared binding memo; one-shot `bindProvider`
+      behind a read-only accessor; undefined threaded state falls through in keeper and prober; one
+      lazy `#drainTeardown` walk under both teardown paths; `typefor` teardown addresses. (3246976e)
+- [x] §229 recorded (948c6738) and aligned to the middleware⇄addon rule.
+- [x] §225 instance disposal implemented — committed by the owner.
+- [x] §227 VisitorContext refactor reconciled into the async implementation — committed by the owner.
+- [x] "site" vocabulary sweep across code and docs; `Type.match` in the async-delivery
+      recognizers; `isThenable` moved to primitives' toolkit — committed by the owner.
