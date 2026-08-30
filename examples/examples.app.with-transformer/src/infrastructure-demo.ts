@@ -27,7 +27,7 @@
 // Nothing here reads a clock, the filesystem or a random source: the output is
 // byte-stable, which the app's checked-in `expected.txt` diff depends on.
 
-import { di, noop } from '@rhombus-std/di';
+import { di, noop, validateBuildability } from '@rhombus-std/di';
 import { Manifest } from '@rhombus-std/di.core';
 import type { IGreeting, IHealthCheck } from '@rhombus-std/examples.contracts';
 import { Type } from '@rhombus-std/primitives';
@@ -149,7 +149,7 @@ export function* demonstrateInfrastructure(): Generator<string> {
       .add(typefor<IHealthCheck>(), GreetingWorkshop, Type.ctor(typefor<IHealthCheck>(), [[typefor<IGreeting>()]]), 'singleton');
     di.usingLifetimeModel(noop())
       .usingManifest(brokenManifest)
-      .configureProvider(options => ({ ...options, validateOnBuild: true }))
+      .useAddon(validateBuildability())
       .build();
   } catch (error) {
     yield `building a graph with a hole in it: ${describeDiError(error)}`;

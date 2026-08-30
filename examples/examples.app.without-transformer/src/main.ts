@@ -232,10 +232,10 @@ let services = builder.services;
 // package is for.
 //
 // The manifest is IMMUTABLE, so every merge is threaded back into `services`; a
-// bare `services.addMany(addWithoutTransformerExamples())` statement whose
+// bare `services.add(addWithoutTransformerExamples())` statement whose
 // result went unassigned would register nothing at all.
-services = services.addMany(addWithTransformerExamples());
-services = services.addMany(addWithoutTransformerExamples());
+services = services.add(addWithTransformerExamples());
+services = services.add(addWithoutTransformerExamples());
 
 // STEP 3 — add what the APPLICATION owns.
 //
@@ -263,7 +263,7 @@ services = services.add(CONFIG_TYPE, config);
 // The composed chain goes BACK onto the builder. `builder.services` is a live
 // slot over an immutable chain, so everything registered into the local
 // `services` above is invisible to `build()` until it is handed back here.
-builder.services = services.addMany(
+builder.services = services.add(
   getHostedServiceManifest(InteropWorker, Type.ctor(HOSTED_SERVICE_TYPE, [[Type.from('ServiceProvider'), HOST_APPLICATION_LIFETIME_TYPE, LOGGER_FACTORY_TYPE, CONFIG_TYPE]])),
 );
 

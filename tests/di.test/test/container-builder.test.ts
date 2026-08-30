@@ -3,8 +3,8 @@
 // immutable value — so what a discarded return registers, and what a later `usingManifest` or an
 // intermediate `build()` sees, are the properties worth pinning down.
 
-import { ContainerBuilder, di, noop, StandardScopeFactory, validation } from '@rhombus-std/di';
-import { type ChainAddon, type LifetimePolicy, Manifest, ManifestValidationError, UnsatisfiableError } from '@rhombus-std/di.core';
+import { type ContainerBuilder, di, noop, StandardScopeFactory, validateBuildability } from '@rhombus-std/di';
+import { type Addon, Manifest, ManifestValidationError, UnsatisfiableError } from '@rhombus-std/di.core';
 import { Type } from '@rhombus-std/primitives';
 import { describe, expect, test } from 'bun:test';
 
@@ -13,9 +13,6 @@ const B = Type.imported('B', 'app');
 
 class Impl {}
 class NeedsB {}
-
-/** `noop()` carries no lifetime vocabulary, so a policy for it classifies nothing. */
-const noopPolicy: LifetimePolicy = { classify: () => undefined };
 
 describe('a single configureServices step', () => {
   test('resolves the value it registered', () => {
@@ -86,28 +83,34 @@ describe('builder immutability', () => {
   });
 });
 
-describe('withAddon', () => {
+describe('useAddon', () => {
   test('installs addons in call order, each one contributing at build', () => {
     const order: string[] = [];
-    const first: ChainAddon<unknown> = { install: () => ({ atBuild: () => order.push('first') }) };
-    const second: ChainAddon<unknown> = { install: () => ({ atBuild: () => order.push('second') }) };
+    const first: Addon = { create: () => {
+      order.push('first');
+      return {};
+    } };
+    const second: Addon = { create: () => {
+      order.push('second');
+      return {};
+    } };
 
     di.usingLifetimeModel(noop())
-      .withAddon(first)
-      .withAddon(second)
+      .useAddon(first)
+      .useAddon(second)
       .build();
 
     expect(order).toEqual(['first', 'second']);
   });
 });
 
-describe('the validation addon', () => {
-  test('validateOnBuild throws ManifestValidationError when a closed address is unsatisfiable', () => {
+describe('the validateBuildability addon', () => {
+  test('throws ManifestValidationError when a closed address is unsatisfiable', () => {
     expect(
       () =>
         di.usingLifetimeModel(noop())
           .configureServices(manifest => manifest.add(A, NeedsB, Type.ctor(A, [[B]])))
-          .withAddon(validation(noopPolicy, { validateOnBuild: true }))
+          .useAddon(validateBuildability())
           .build(),
     ).toThrow(ManifestValidationError);
   });
@@ -119,10 +122,10 @@ describe('the validation addon', () => {
     expect(provider).toBeDefined();
   });
 
-  test('validateOnBuild does not throw when every closed address is satisfiable', () => {
+  test('does not throw when every closed address is satisfiable', () => {
     const provider = di.usingLifetimeModel(noop())
       .configureServices(manifest => manifest.add(A, Impl, Type.ctor(A, [[]])))
-      .withAddon(validation(noopPolicy, { validateOnBuild: true }))
+      .useAddon(validateBuildability())
       .build();
     expect(provider.resolve(A)).toBeInstanceOf(Impl);
   });

@@ -197,5 +197,5 @@ async function* tour(provider: IServiceProvider): AsyncGenerator<string> {
  * asynchronously — every other chapter is an ordinary generator.
  */
 export function demonstrateResolution(): AsyncGenerator<string> {
-  return tour(di.usingLifetimeModel(noop()).usingManifest(addCheckoutServices()).build());
+  return tour(di.usingLifetimeModel(noop()).configureServices(manifest => manifest.add(addCheckoutServices())).build());
 }

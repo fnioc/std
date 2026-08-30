@@ -33,7 +33,7 @@ import { GREETING_TYPE, HEALTH_CHECK_TYPE } from './types.js';
  * Builds this library's services as its own manifest, on the narrowest lifetime
  * vocabulary it needs — `'singleton'`, the one lifetime both registrations use.
  * A caller merges the result into their own manifest
- * (`services = services.addMany(addWithoutTransformerExamples())`).
+ * (`services = services.add(addWithoutTransformerExamples())`).
  *
  * The name is derived mechanically from the package name, which is the point of
  * the `add<PackageName>` convention: a consumer who knows the package knows the

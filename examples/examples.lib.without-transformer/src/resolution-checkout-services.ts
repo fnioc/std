@@ -316,7 +316,7 @@ export class PaymentRouter implements IPaymentRouter {
  * Builds the whole checkout container as its own manifest, on the narrowest
  * lifetime vocabulary it needs — `'singleton'`, the one lifetime every
  * registration below uses. The caller merges the result into their own manifest
- * (`services = services.addMany(addCheckoutServices())`); nothing here ever sees
+ * (`services = services.add(addCheckoutServices())`); nothing here ever sees
  * the caller's manifest, so it composes into any vocabulary that admits
  * `'singleton'`.
  *

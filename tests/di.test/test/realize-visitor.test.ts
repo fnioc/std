@@ -2,10 +2,9 @@
 // are built by hand here through the Plan factories, independent of what PlannerVisitor
 // would have produced, so each node kind is exercised on its own terms.
 
-import { type IServiceProvider, Manifest, Registration } from '@rhombus-std/di.core';
+import { HookChain, type IServiceProvider, Manifest, Registration } from '@rhombus-std/di.core';
 import { Engine } from '@rhombus-std/di/private/internal/Engine';
 import { Plan } from '@rhombus-std/di/private/internal/Plan/Plan';
-import { realizePlan } from '@rhombus-std/di/private/internal/Plan/RealizeVisitor';
 import { Type } from '@rhombus-std/primitives';
 import { describe, expect, test } from 'bun:test';
 
@@ -18,23 +17,27 @@ class Widget {
   constructor(readonly conn: unknown) {}
 }
 
-const provider = {} as IServiceProvider;
-
 /** Seals `registrations` into an Engine — nothing binds hooks here, so no scope keeps anything. */
 function engineFor(registrations: Iterable<Registration<unknown>>): Engine {
   return new Engine(registrations);
 }
 
+/** Realizes `plan` against `engine`, through the chain that neither intercepts nor transforms. */
+function realize(plan: Plan, engine: Engine): any {
+  return Plan.realize(plan, { engine, chain: HookChain.identity, context: { states: [] } });
+}
+
 const engine = engineFor(Manifest.empty<unknown>());
-const context = { engine, serviceProvider: provider, request: WIDGET };
 
 describe('the leaf kinds', () => {
   test('constant returns its value untouched', () => {
-    expect(realizePlan(Plan.constant(42), context)).toBe(42);
+    expect(realize(Plan.constant(42), engine)).toBe(42);
   });
 
-  test("service-provider returns the context's own facade", () => {
-    expect(realizePlan(Plan.serviceProvider(Type.imported('IServiceProvider', '@rhombus-std/di.core')), context)).toBe(provider);
+  test('service-provider mints a fresh facade wrapping the engine it realized under', () => {
+    const withConn = engineFor(Manifest.empty<unknown>().add(Registration.ctor(CONN, Conn, Type.ctor(CONN, [[]]), 'singleton')));
+    const facade = realize(Plan.serviceProvider(), withConn) as IServiceProvider;
+    expect(facade.resolve(CONN)).toBeInstanceOf(Conn);
   });
 
   // Scope-opening is a registration each model publishes at its own address (see
@@ -46,21 +49,21 @@ describe('the leaf kinds', () => {
 describe('ctor and factory plans', () => {
   test('a ctor plan `new`s its constructor over its realized args, depth-first', () => {
     const plan = Plan.ctor(Widget, [Plan.ctor(Conn, [])]);
-    const widget = realizePlan(plan, context) as Widget;
+    const widget = realize(plan, engine) as Widget;
     expect(widget).toBeInstanceOf(Widget);
     expect(widget.conn).toBeInstanceOf(Conn);
   });
 
   test('a factory plan calls its function over its realized args', () => {
     const plan = Plan.factory((a: number, b: number) => a + b, [Plan.constant(2), Plan.constant(3)]);
-    expect(realizePlan(plan, context)).toBe(5);
+    expect(realize(plan, engine)).toBe(5);
   });
 });
 
 describe('iterable and array plans', () => {
   test('an array realizes every member eagerly, in order', () => {
     const plan = Plan.array([Plan.constant(1), Plan.constant(2), Plan.constant(3)]);
-    expect(realizePlan(plan, context)).toEqual([1, 2, 3]);
+    expect(realize(plan, engine)).toEqual([1, 2, 3]);
   });
 
   test('an iterable realizes lazily, fresh on every walk', () => {
@@ -71,7 +74,7 @@ describe('iterable and array plans', () => {
         return builds;
       }, []),
     ]);
-    const values = realizePlan(plan, context);
+    const values = realize(plan, engine);
     expect([...values]).toEqual([1]);
     expect([...values]).toEqual([2]);
   });
@@ -84,9 +87,7 @@ describe('a late-bound plan', () => {
     );
     const lateBoundEngine = engineFor(manifest);
     const plan = Plan.latebound(Type.func(WIDGET, [[CONN]]));
-    const make = realizePlan(plan, { engine: lateBoundEngine, serviceProvider: provider, request: WIDGET }) as (
-      conn: unknown,
-    ) => Widget;
+    const make = realize(plan, lateBoundEngine) as (conn: unknown) => Widget;
     const conn = new Conn();
     const widget = make(conn);
     expect(widget).toBeInstanceOf(Widget);
@@ -96,9 +97,7 @@ describe('a late-bound plan', () => {
   test("binds the call's arguments under the signature whose length matches the call", () => {
     const lateBoundEngine = engineFor(Manifest.empty<unknown>());
     const plan = Plan.latebound(Type.func(CONN, [[CONN, BAR], [CONN]]));
-    const call = realizePlan(plan, { engine: lateBoundEngine, serviceProvider: provider, request: WIDGET }) as (
-      ...args: unknown[]
-    ) => unknown;
+    const call = realize(plan, lateBoundEngine) as (...args: unknown[]) => unknown;
     const conn = new Conn();
     expect(call(conn)).toBe(conn);
   });
@@ -106,9 +105,7 @@ describe('a late-bound plan', () => {
   test('throws when no signature accepts the call arity — nothing falls back silently', () => {
     const lateBoundEngine = engineFor(Manifest.empty<unknown>());
     const plan = Plan.latebound(Type.func(CONN, [[CONN, BAR], [CONN]]));
-    const call = realizePlan(plan, { engine: lateBoundEngine, serviceProvider: provider, request: WIDGET }) as (
-      ...args: unknown[]
-    ) => unknown;
+    const call = realize(plan, lateBoundEngine) as (...args: unknown[]) => unknown;
     const conn = new Conn();
     expect(() => call(conn, 'extra', 'args')).toThrow(TypeError);
   });

@@ -27,7 +27,7 @@
 // this file is identical to it. The header line names neither dialect for the
 // same reason.
 
-import { di, noop } from '@rhombus-std/di';
+import { di, noop, validateBuildability } from '@rhombus-std/di';
 import { DiError, Manifest, ManifestValidationError } from '@rhombus-std/di.core';
 import { demonstrateRegistrationErrors, diagnose, stagedFailure } from '@rhombus-std/examples.lib.without-transformer';
 import { Type } from '@rhombus-std/primitives';
@@ -88,16 +88,16 @@ export function* demonstrateErrors(): Generator<string> {
 
   // ── build time: the eager whole-graph check ────────────────────────────────
   //
-  // `validateOnBuild` plans every registration while the provider is being
+  // `validateBuildability` plans every registration while the provider is being
   // built — nothing is constructed — and collects EVERY failure into one
   // `ManifestValidationError` rather than stopping at the first. That is the
   // difference between one deployment round-trip and one per hole.
   yield stagedFailure(
-    'building with validateOnBuild',
+    'building with validateBuildability',
     () =>
       di.usingLifetimeModel(noop())
         .usingManifest(withUnsatisfiableStore())
-        .configureProvider(options => ({ ...options, validateOnBuild: true }))
+        .useAddon(validateBuildability())
         .build(),
   );
 
@@ -150,7 +150,7 @@ function collectValidationErrors(): readonly Error[] {
   try {
     di.usingLifetimeModel(noop())
       .usingManifest(withUnsatisfiableStore())
-      .configureProvider(options => ({ ...options, validateOnBuild: true }))
+      .useAddon(validateBuildability())
       .build();
   } catch (error) {
     if (error instanceof ManifestValidationError) {

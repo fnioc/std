@@ -46,7 +46,7 @@ import { makeServerReport } from './server-report.js';
  * Builds this library's services as its own manifest, on the narrowest lifetime
  * vocabulary it needs — `'singleton'`, the one lifetime all three registrations
  * use. A caller merges the result into their own manifest
- * (`services = services.addMany(addWithTransformerExamples())`).
+ * (`services = services.add(addWithTransformerExamples())`).
  *
  * The name is derived mechanically from the package name, which is the point of
  * the `add<PackageName>` convention: a consumer who knows the package knows the
