@@ -162,6 +162,12 @@ async function* tour(provider: IServiceProvider): AsyncGenerator<string> {
   yield `  rates as of ${rates.asOf}, EUR at ${rates.rate('EUR')}`;
   yield `  the bare type has no registration: ${provider.resolve(Type.union(t.rates, Type.typeLiteral(undefined)))}`;
 
+  // `resolveAsync(address)` is `resolve(Promise<address>)` and an await folded
+  // into one call — the same `Promise<…:IExchangeRates>` registration answering
+  // both spellings.
+  const ratesAgain = await (provider.resolveAsync(t.rates) as Promise<IExchangeRates>);
+  yield `  resolveAsync unwraps the same registration directly: EUR at ${ratesAgain.rate('EUR')}`;
+
   // ── the provider as a service ──────────────────────────────────────────────
   //
   // The container can hand back ITSELF: a parameter typed `IServiceProvider`

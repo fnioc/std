@@ -15,6 +15,9 @@
 
 import { di, noop } from '@rhombus-std/di';
 import type { IServiceProvider } from '@rhombus-std/di.core';
+// Type-only: puts di.extras' declare-module sugar faces in the program with no
+// runtime import — `resolveAsync<T>()` below is inlined away at compile time.
+import type {} from '@rhombus-std/di.extras';
 import { type ImportedType, Type } from '@rhombus-std/primitives';
 import { typefor } from '@rhombus-std/primitives.extras';
 
@@ -161,6 +164,12 @@ async function* tour(provider: IServiceProvider): AsyncGenerator<string> {
   const rates = await (provider.resolve(typefor<Promise<IExchangeRates>>()) as Promise<IExchangeRates>);
   yield `  rates as of ${rates.asOf}, EUR at ${rates.rate('EUR')}`;
   yield `  the bare type has no registration: ${provider.resolve(Type.union(typefor<IExchangeRates>(), Type.typeLiteral(undefined)))}`;
+
+  // `resolveAsync<T>()` is `resolve(Promise<T>)` and an await folded into one
+  // call — the service type derived the same way `resolve<T>()` derives it,
+  // and the same `Promise<…:IExchangeRates>` registration answering both spellings.
+  const ratesAgain = await provider.resolveAsync<IExchangeRates>();
+  yield `  resolveAsync unwraps the same registration directly: EUR at ${ratesAgain.rate('EUR')}`;
 
   // ── the provider as a service ──────────────────────────────────────────────
   //
