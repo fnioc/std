@@ -1,7 +1,7 @@
 import { type Hooks, LifetimeModelError } from '@rhombus-std/di.core';
 
 /** The pair a lifetime model contributes: where a construction is kept, and what its dependencies resolve under. */
-export interface ConstructionHooks<State> {
+export interface ModelHooks<State> {
   readonly beforeConstruct: Hooks<State>['beforeConstruct'];
   readonly afterConstruct: Hooks<State>['afterConstruct'];
 }
@@ -11,7 +11,7 @@ export interface ConstructionHooks<State> {
  * address it was realizing; an error the construction itself raised is not the model's, and passes
  * through untouched.
  */
-export function classifyingHooks<State>(hooks: ConstructionHooks<State>): ConstructionHooks<State> {
+export function attributingHooks<State>(hooks: ModelHooks<State>): ModelHooks<State> {
   return {
     beforeConstruct(construction) {
       try {

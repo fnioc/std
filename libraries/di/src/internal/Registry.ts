@@ -58,13 +58,6 @@ export class Registry {
   }
 }
 
-// function getMatch(registration:Registration<unknown>, type: Type){
-//   const [isMatch, generics] = Type.bindGenerics(registration.address, type);
-//   if (isMatch) {
-//     return { registration, generics, address: type };
-//   }
-//   return undefined;
-// }
 /** The first of the two addresses that `registration` answers, absent when it answers neither. */
 function getMatchOfEither(registration: Registration<unknown>, primary: Type, alternate: Type | undefined): Match | undefined {
   const [isMatch, generics] = Type.bindGenerics(registration.address, primary);
