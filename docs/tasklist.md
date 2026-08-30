@@ -287,7 +287,7 @@ whole set is decided fresh when the slots above are rewritten, so this is a demo
 
 ## Claude's lane — 2026-08-30
 
-Only work this session owns. Items the owner drives (§228 per-model validators, the scope-issue
+Only work this session owns. Items the owner drives (§229 model-owned captivity, the scope-issue
 handoff, #274/#366, the knip sweep) are his and are deliberately absent.
 
 **In flight**
