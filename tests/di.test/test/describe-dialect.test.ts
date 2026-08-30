@@ -43,7 +43,7 @@ function withClock(): Manifest<'singleton'> {
 
 /** Seals `manifest` into a provider through the front door, on the noop lifetime model. */
 function toProvider(manifest: Manifest<'singleton'>) {
-  return di.usingLifetimeModel(noop()).usingManifest(manifest).build();
+  return di.usingLifetimeModel(noop()).configureServices(m => m.add(manifest)).build();
 }
 
 describe('the impl doors', () => {

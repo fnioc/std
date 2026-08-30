@@ -15,7 +15,7 @@ const Gadget = Type.imported('Gadget', 'app');
 
 /** Seals `manifest` into a provider through the front door, on the noop lifetime model. */
 function toProvider(manifest: Manifest<string>): IServiceProvider {
-  return di.usingLifetimeModel(noop()).usingManifest(manifest).build();
+  return di.usingLifetimeModel(noop()).configureServices(m => m.add(manifest)).build();
 }
 
 function providerWithBar(bar: unknown): IServiceProvider {

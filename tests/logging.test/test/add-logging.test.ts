@@ -24,7 +24,7 @@ describe('addLogging', () => {
     const provider = new RecordingProvider();
     const services = getLoggingManifest((builder) => builder.addProvider(provider));
 
-    const root = di.usingLifetimeModel(noop()).usingManifest(services).build();
+    const root = di.usingLifetimeModel(noop()).configureServices(m => m.add(services)).build();
     const factory: ILoggerFactory = root.resolve(LOGGER_FACTORY_TYPE);
     const another: ILoggerFactory = root.resolve(LOGGER_FACTORY_TYPE);
     expect(factory).toBe(another); // singleton
@@ -38,7 +38,7 @@ describe('addLogging', () => {
     const provider = new RecordingProvider();
     const services = getLoggingManifest((builder) => builder.addProvider(provider));
 
-    const root = di.usingLifetimeModel(noop()).usingManifest(services).build();
+    const root = di.usingLifetimeModel(noop()).configureServices(m => m.add(services)).build();
     const factory: ILoggerFactory = root.resolve(LOGGER_FACTORY_TYPE);
     const logger = factory.createLogger('App');
 
@@ -52,7 +52,7 @@ describe('addLogging', () => {
     const services = getLoggingManifest((builder) => builder.addProvider(provider));
 
     const iLoggerBase = Type.from(ILOGGER_TOKEN) as ImportedType;
-    const logger: ILogger = di.usingLifetimeModel(noop()).usingManifest(services).build().resolve(
+    const logger: ILogger = di.usingLifetimeModel(noop()).configureServices(m => m.add(services)).build().resolve(
       Type.imported(iLoggerBase.name, iLoggerBase.from, [Type.from('svc:PaymentService')]),
     );
     logError(logger, 'boom');

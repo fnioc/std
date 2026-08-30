@@ -1,8 +1,8 @@
 // Behaviour tests for the standard lifetime model: which scope keeps an instance, what a
 // registration naming no lifetime meets, and what a singleton's own dependencies resolve from.
 
-import { di, standard, StandardScopeFactory } from '@rhombus-std/di';
-import { type IServiceProvider, LifetimeModelError, Registration, type StandardLifetime } from '@rhombus-std/di.core';
+import { di, standard, type StandardLifetime, StandardScopeFactory } from '@rhombus-std/di';
+import { type IServiceProvider, LifetimeModelError, Registration } from '@rhombus-std/di.core';
 import { Type } from '@rhombus-std/primitives';
 import { describe, expect, test } from 'bun:test';
 

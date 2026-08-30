@@ -54,7 +54,7 @@ describe('the public slot-type grammar', () => {
     } });
     services = services.addValue(changeTokenSourceType(WIDGET_OPTIONS_TYPE), new ConfigChangeTokenSource(config));
 
-    const provider = di.usingLifetimeModel(noop()).usingManifest(services).build();
+    const provider = di.usingLifetimeModel(noop()).configureServices(m => m.add(services)).build();
     const options: IOptions<WidgetOptions> = provider.resolve(optionsAddressType(WIDGET_OPTIONS_TYPE));
     expect(options.value).toEqual({ Url: 'http://first' });
 

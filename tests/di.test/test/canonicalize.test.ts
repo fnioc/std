@@ -7,7 +7,7 @@
 // `Starfish` door — the container never finishes.
 
 import { di, noop, standard, validateUniversalAddresses } from '@rhombus-std/di';
-import { type Addon, type AddonInstallation, type Behavior, Control, type IEngineHooks, ManifestValidationError, UniversalAddressError } from '@rhombus-std/di.core';
+import { type Addon, type AddonInstallation, type Behavior, Control, type Hooks, type IEngineHooks, ManifestValidationError, UniversalAddressError } from '@rhombus-std/di.core';
 import { Type } from '@rhombus-std/primitives';
 import { describe, expect, test } from 'bun:test';
 
@@ -45,7 +45,7 @@ function hooked(hooks: Behavior): Addon {
 
 /** Hooks that swap every instance they are swept over for a `tag`-labelled wrapper around it. */
 function wrapping(tag: string): Behavior {
-  return { canonicalize: (_construction, instance) => ({ tag, inner: instance }) };
+  return { canonicalize: (_construction: Hooks.Construction, instance: unknown) => ({ tag, inner: instance }) };
 }
 
 describe('canonicalize', () => {
@@ -74,7 +74,7 @@ describe('canonicalize', () => {
   });
 
   test('an entry with nothing to change returns what arrived, and the sweep carries on past it', () => {
-    const passthrough: Behavior = { canonicalize: (_construction, instance) => instance };
+    const passthrough: Behavior = { canonicalize: (_construction: Hooks.Construction, instance: unknown) => instance };
     const provider = di.usingLifetimeModel(noop())
       .configureServices(manifest => manifest.add(A, Impl, Type.ctor(A, [[]])))
       .useAddon(hooked(wrapping('outer')))
@@ -91,7 +91,7 @@ describe('canonicalize', () => {
     const supplied = new Impl();
     let sweeps = 0;
     const counting: Behavior = {
-      canonicalize: (_construction, instance) => {
+      canonicalize: (_construction: Hooks.Construction, instance: unknown) => {
         sweeps++;
         return instance;
       },
@@ -110,7 +110,7 @@ describe('canonicalize', () => {
   test('a scope holding the swept instance answers the later ask with it, unswept a second time', () => {
     let sweeps = 0;
     const counting: Behavior = {
-      canonicalize: (_construction, instance) => {
+      canonicalize: (_construction: Hooks.Construction, instance: unknown) => {
         sweeps++;
         return { tag: 'once', inner: instance };
       },
@@ -129,7 +129,7 @@ describe('canonicalize', () => {
 
   test('an entry uninterested in a node fires nowhere on it', () => {
     const onlyA: Behavior = {
-      canonicalize: (construction, instance) => construction.populatedAddress === A ? { tag: 'wrapped', inner: instance } : instance,
+      canonicalize: (construction: Hooks.Construction, instance: unknown) => construction.populatedAddress === A ? { tag: 'wrapped', inner: instance } : instance,
     };
 
     const provider = di.usingLifetimeModel(noop())
