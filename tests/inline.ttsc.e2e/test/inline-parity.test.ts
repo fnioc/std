@@ -254,6 +254,7 @@ declare const provider: IServiceProvider;
 
 export const tokenful = provider.resolve<IThing>();
 export const tryTok = provider.resolve<IThing>();
+export const asyncThing = provider.resolveAsync<IThing>();
 export const many = provider.resolveMany<IThing>();
 // A type LITERAL is a service type like any other: it derives its own token
 // rather than collapsing to the literal value.
@@ -589,6 +590,15 @@ describe.skipIf(!toolchainReady)('generic inline stage — lookup parity (W5)', 
     const thing = constFor(chainModule, 'Type.imported("IThing", "chain-app/private/resolve")');
     expect(line).toContain(`.resolve(${thing})`);
     expect(line).not.toContain('resolve<');
+    assertNoAuthoringSurvivors(resolveInline);
+  });
+
+  test('resolveAsync<I>() lowers to the Type-taking member, the same as resolve<I>()', () => {
+    const line = lineWith(resolveInline, 'asyncThing =');
+    expect(line).toBeDefined();
+    const thing = constFor(chainModule, 'Type.imported("IThing", "chain-app/private/resolve")');
+    expect(line).toContain(`.resolveAsync(${thing})`);
+    expect(line).not.toContain('resolveAsync<');
     assertNoAuthoringSurvivors(resolveInline);
   });
 
