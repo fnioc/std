@@ -37,17 +37,17 @@ export function equals(left: Registration<unknown>, right: Registration<unknown>
   if (kind(left)[0] !== kind(right)[0] || left.address !== right.address) {
     return false;
   }
-  if ('ctor' in left) {
+  if (isCtorRegistration(left)) {
     const other = right as CtorRegistration<unknown>;
     return left.ctor === other.ctor && left.lifetime === other.lifetime
       && left.ctorType === other.ctorType;
   }
-  if ('factory' in left) {
+  if (isFactoryRegistration(left)) {
     const other = right as FactoryRegistration<unknown>;
     return left.factory === other.factory && left.lifetime === other.lifetime
       && left.factoryType === other.factoryType;
   }
-  if ('value' in left) {
+  if (isValueRegistration(left)) {
     return left.value === (right as ValueRegistration).value;
   }
   return assertNever(left);

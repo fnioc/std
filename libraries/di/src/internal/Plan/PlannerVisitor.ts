@@ -110,7 +110,7 @@ export class PlannerVisitor extends Type.Visitor<Plan | undefined> {
       return undefined;
     }
     const promised = Type.promise(address);
-    if (this.#registry.getMatches(promised).next().done || this.#cycleGuard.isVisiting(promised)) {
+    if (!this.#registry.getMatches(promised).some(isDefined) || this.#cycleGuard.isVisiting(promised)) {
       return undefined;
     }
     if (this.#collecting === undefined) {

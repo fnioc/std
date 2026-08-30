@@ -2,6 +2,7 @@ import { type HookChain, type IServiceProvider, Registration } from '@rhombus-st
 import type { Type } from '@rhombus-std/primitives';
 import { typefor } from '@rhombus-std/primitives.extras';
 import type { Ctor, Func } from '@rhombus-toolkit/func';
+import { iterable } from '@rhombus-toolkit/obj';
 import { assertNever } from '@rhombus-toolkit/type-guards';
 import { ServiceProvider } from '../../ServiceProvider.js';
 import type { Engine } from '../Engine.js';
@@ -186,14 +187,7 @@ export class RealizeVisitor {
    * short-circuit skips construction. Re-iteration mints a fresh walk.
    */
   protected visitIterable(plan: IterablePlan, context: VisitorContext): any {
-    const self = this;
-    return {
-      *[Symbol.iterator]() {
-        for (const inner of plan.types) {
-          yield self.visit(inner, context);
-        }
-      },
-    };
+    return iterable(() => Iterator.from(plan.types).map(inner => this.visit(inner, context)));
   }
 
   /** A snapshot: every element is realized eagerly at resolution time. */

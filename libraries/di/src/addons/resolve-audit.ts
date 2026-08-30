@@ -1,6 +1,8 @@
 import { type Addon, type AddonInstallation, type Behavior, Control, type IEngineHooks, type LifetimeArgument, Registration, type ResolveAudit } from '@rhombus-std/di.core';
 import { Type } from '@rhombus-std/primitives';
 import { typefor } from '@rhombus-std/primitives.extras';
+import { iterable } from '@rhombus-toolkit/obj';
+import { isDefined } from '@rhombus-toolkit/type-guards';
 import { askForControl } from '../internal/control-recognition.js';
 
 /** One construction enclosing the reading, linked to the construction that reached it. */
@@ -28,11 +30,11 @@ class AuditView implements ResolveAudit {
   }
 
   get address(): Type | undefined {
-    return this.#enclosing().next().value;
+    return this.#enclosing().find(isDefined);
   }
 
   get ancestry(): Iterable<Type> {
-    return { [Symbol.iterator]: () => this.#enclosing().drop(1) };
+    return iterable(() => this.#enclosing().drop(1));
   }
 
   /** The address of each construction enclosing the reading, innermost first. */
@@ -82,19 +84,18 @@ export function resolveAudit<Lifetime>(...lifetime: LifetimeArgument<Lifetime>):
 export function resolveAudit(lifetime?: any): Addon {
   return {
     create(): AddonInstallation {
-      const address = typefor<ResolveAudit>();
       return {
         registrations: [
           Registration.factory(
-            address,
+            typefor<ResolveAudit>(),
             () => {
               throw new Error(
                 `the resolve-audit addon answers ${
-                  Type.stringify(address)
+                  Type.stringify(typefor<ResolveAudit>())
                 } through hooks its own installation plants, and nothing planted them — install it with useAddon rather than filing this registration by hand`,
               );
             },
-            Type.func(address, [[]]),
+            Type.func(typefor<ResolveAudit>(), [[]]),
             lifetime,
           ),
         ],

@@ -2,7 +2,7 @@ import { type CtorRegistration, type FactoryRegistration, Registration, Unsatisf
 import { type ConstructorType, type FunctionType, Type } from '@rhombus-std/primitives';
 import type { Ctor, Func } from '@rhombus-toolkit/func';
 import { memo } from '@rhombus-toolkit/once';
-import { assertNever, isAllThere, isReadonlyArray } from '@rhombus-toolkit/type-guards';
+import { assertNever, isAllThere, isDefined, isReadonlyArray } from '@rhombus-toolkit/type-guards';
 import type { Match, Registry } from '../Registry.js';
 import { PlannerVisitor } from './PlannerVisitor.js';
 import { type RealizeOptions, RealizeVisitor } from './RealizeVisitor.js';
@@ -268,7 +268,7 @@ export namespace Plan {
             // open request cannot be asked which it is — matching one against a registration binds
             // holes, and a hole on the asking side has nothing to bind to — so it reports the
             // absence it can stand behind.
-            const registered = Type.isClosed(address) && !registry.getMatches(address).next().done;
+            const registered = Type.isClosed(address) && registry.getMatches(address).some(isDefined);
             // The planning pass's own leaf failure, when it lies beneath address rather than being
             // address itself, names the actual dependency that could not be met.
             const missing = visitor.missingDependency;

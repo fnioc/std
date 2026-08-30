@@ -1,4 +1,4 @@
-import { type IServiceProvider, type LifetimeModel, Registration, ScopeTagUnmatchedError } from '@rhombus-std/di.core';
+import { DiError, type IServiceProvider, type LifetimeModel, Registration, ScopeTagUnmatchedError } from '@rhombus-std/di.core';
 import { Type } from '@rhombus-std/primitives';
 import { type Generic, typefor } from '@rhombus-std/primitives.extras';
 import { anchorRoot } from '../root-anchor.js';
@@ -31,13 +31,8 @@ export namespace TaggedScopeFactory {
 /** Tears down the scope it was resolved from, releasing every instance that scope keeps. */
 export interface TaggedScopeTeardown extends Disposable, AsyncDisposable {}
 
-export namespace TaggedScopeTeardown {
-  /** The address the {@link tagged} model publishes its teardown under. */
-  export const address: Type = typefor<TaggedScopeTeardown>();
-}
-
 /** An ask reached a scope this model had already torn down. */
-class DisposedScopeError extends Error {
+class DisposedScopeError extends DiError {
   constructor(address: Type) {
     super(`the ${MODEL_NAME} lifetime model cannot keep ${Type.stringify(address)} — its scope has been disposed`);
     this.name = 'DisposedScopeError';
@@ -150,9 +145,9 @@ export function tagged<Tags extends string = string>(): LifetimeModel<TaggedLife
             undefined,
           ),
           Registration.factory<TaggedLifetime<Tags>>(
-            TaggedScopeTeardown.address,
+            typefor<TaggedScopeTeardown>(),
             teardownFrom,
-            Type.func(TaggedScopeTeardown.address, [[typefor<IServiceProvider>()]]),
+            Type.func(typefor<TaggedScopeTeardown>(), [[typefor<IServiceProvider>()]]),
             undefined,
           ),
         ],

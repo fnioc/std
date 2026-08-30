@@ -2,7 +2,7 @@
 // latch, LIFO release with reference dedup, the children-before-parent cascade, the sync/async
 // dispose-protocol preference, and the release-policy widening on the standard datum.
 
-import { di, standard, StandardScopeFactory, StandardScopeTeardown } from '@rhombus-std/di';
+import { di, standard, StandardScopeFactory, type StandardScopeTeardown } from '@rhombus-std/di';
 import { type IServiceProvider, LifetimeModelError } from '@rhombus-std/di.core';
 import { Type } from '@rhombus-std/primitives';
 import { describe, expect, test } from 'bun:test';
@@ -85,7 +85,7 @@ function openScope(provider: IServiceProvider): IServiceProvider {
  * resolution, mirroring how a scope is opened.
  */
 function readTeardownFrom(provider: IServiceProvider): StandardScopeTeardown {
-  return provider.resolve(StandardScopeTeardown.address) as StandardScopeTeardown;
+  return provider.resolve(Type.imported('StandardScopeTeardown', '@rhombus-std/di')) as StandardScopeTeardown;
 }
 
 /**

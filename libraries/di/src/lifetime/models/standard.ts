@@ -1,4 +1,4 @@
-import { type IServiceProvider, type LifetimeModel, type Middleware, Registration } from '@rhombus-std/di.core';
+import { DiError, type IServiceProvider, type LifetimeModel, type Middleware, Registration } from '@rhombus-std/di.core';
 import { Type } from '@rhombus-std/primitives';
 import { typefor } from '@rhombus-std/primitives.extras';
 import type { Func } from '@rhombus-toolkit/func';
@@ -39,13 +39,8 @@ export namespace StandardScopeFactory {
 /** Tears down the scope it was resolved from, releasing every instance that scope keeps. */
 export interface StandardScopeTeardown extends Disposable, AsyncDisposable {}
 
-export namespace StandardScopeTeardown {
-  /** The address the {@link standard} model publishes its teardown under. */
-  export const address = typefor<StandardScopeTeardown>();
-}
-
 /** An ask reached a scope this model had already torn down. */
-class DisposedScopeError extends Error {
+class DisposedScopeError extends DiError {
   constructor(address: Type) {
     super(`the ${MODEL_NAME} lifetime model cannot keep ${Type.stringify(address)} — its scope has been disposed`);
     this.name = 'DisposedScopeError';
@@ -53,7 +48,7 @@ class DisposedScopeError extends Error {
 }
 
 /** A `'scoped'` ask arrived at the root scope, which has no nested scope to keep it. */
-class ScopedAtRootError extends Error {
+class ScopedAtRootError extends DiError {
   constructor(address: Type) {
     super(`the ${MODEL_NAME} lifetime model cannot resolve the scoped service ${Type.stringify(address)} from the root provider`);
     this.name = 'ScopedAtRootError';
@@ -199,9 +194,9 @@ export function standard(options?: { validateScopes?: boolean; validateOnBuild?:
             'transient',
           ),
           Registration.factory<StandardLifetime>(
-            StandardScopeTeardown.address,
+            typefor<StandardScopeTeardown>(),
             teardownFrom,
-            Type.func(StandardScopeTeardown.address, [[typefor<IServiceProvider>()]]),
+            Type.func(typefor<StandardScopeTeardown>(), [[typefor<IServiceProvider>()]]),
             'transient',
           ),
         ],
