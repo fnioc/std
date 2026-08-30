@@ -4,7 +4,7 @@ import { typefor } from '@rhombus-std/primitives.extras';
 import type { AbstractCtor, Func } from '@rhombus-toolkit/func';
 import { askForControl, isControlAsk } from '../internal/control-recognition.js';
 import { ServiceProvider } from '../ServiceProvider.js';
-import { classifyingHooks } from './classifying-hooks.js';
+import { attributingHooks } from './attributing-hooks.js';
 import { evictOnReject } from './evict-on-reject.js';
 import type { Scope } from './Scope.js';
 
@@ -17,7 +17,7 @@ import type { Scope } from './Scope.js';
  * so a re-entering call keeps the position it was minted at.
  */
 function keeping(scope: Scope): Behavior<Scope> {
-  const hooks = classifyingHooks<Scope>({
+  const hooks = attributingHooks<Scope>({
     beforeConstruct({ populatedAddress, registration, state }) {
       // Without a registration the engine, not the manifest, is answering: nothing here is kept by a scope.
       if (registration === undefined) {
