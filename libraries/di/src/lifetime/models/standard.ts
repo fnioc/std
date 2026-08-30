@@ -5,10 +5,10 @@ import type { Func } from '@rhombus-toolkit/func';
 import { assertNever } from '@rhombus-toolkit/type-guards';
 import { anchorRoot } from '../root-anchor.js';
 import { type Claim, Scope } from '../Scope.js';
-import { validateStandardCaptivity } from './captivity-validation.js';
-import { readKeeping, readLifetime } from './standard-lifetime.js';
+import { validateStandardCaptivity } from './standard.captivity-validation.js';
+import { readKeeping, readLifetime } from './standard.lifetime.js';
 
-export { readKeeping, readLifetime } from './standard-lifetime.js';
+export { readKeeping, readLifetime } from './standard.lifetime.js';
 
 const MODEL_NAME = 'standard';
 

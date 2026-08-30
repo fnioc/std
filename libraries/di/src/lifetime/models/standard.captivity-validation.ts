@@ -3,7 +3,7 @@ import type { Type } from '@rhombus-std/primitives';
 import { assertNever } from '@rhombus-toolkit/type-guards';
 import { planClosedAddresses, registryOf } from '../../internal/closed-address-plans.js';
 import type { Plan } from '../../internal/Plan/index.js';
-import { readKeeping, readLifetime } from './standard-lifetime.js';
+import { readKeeping, readLifetime } from './standard.lifetime.js';
 
 /** Where `registration`'s product is kept in the standard tiers. */
 function classifyStandardKeeping(registration: Registration<unknown> | undefined): { readonly tier: number; } | 'unkept' | undefined {
