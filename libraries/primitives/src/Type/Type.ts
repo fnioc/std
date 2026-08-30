@@ -422,7 +422,7 @@ export namespace Type {
 
   /** Is `type` a `Promise<…>` — the one spelling the container reads as deferred delivery? */
   export function isPromiseLike(type: Type): boolean {
-    return Type.bindGenerics(PROMISE_PATTERN, type)[0];
+    return Type.isMatch(PROMISE_PATTERN, type);
   }
 
   /** What `type` settles to: the inner type for a `Promise<T>`, the type itself otherwise. */
@@ -455,6 +455,17 @@ export namespace Type {
       return visitor.visit(possiblyOpenCandidate, { subject: closedConstraint, bindings }) ? [true, bindings] : [false];
     };
   })();
+
+  /**
+   * Does some instantiation of `pattern` equal `candidate`?
+   *
+   * @param pattern - may contain generic holes.
+   * @param candidate - may not contain generic holes.
+   * @throws Error - when `candidate` holds a generic hole.
+   */
+  export function isMatch(pattern: Type, candidate: Type): boolean {
+    return Type.bindGenerics(pattern, candidate)[0];
+  }
 
   /** Writes the type as its token spelling — the inverse of {@link from}. */
   export function stringify(type: Type): string {

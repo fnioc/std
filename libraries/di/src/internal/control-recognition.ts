@@ -4,8 +4,7 @@ import { type T, typefor } from '@rhombus-std/primitives.extras';
 
 /** Whether `address` is a control ask at all, whatever that ask asks for. */
 export function isControlAsk(address: Type): boolean {
-  const [isMatch] = Type.bindGenerics(typefor<Control<T>>(), address);
-  return isMatch;
+  return Type.isMatch(typefor<Control<T>>(), address);
 }
 
 /**
