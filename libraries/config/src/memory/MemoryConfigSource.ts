@@ -3,6 +3,7 @@
 // an in-memory source is a core building block, not an optional add-on.
 
 import type { IConfigBuilder, IConfigProvider, IConfigSource } from '@rhombus-std/config.core';
+import { isIterable } from '@rhombus-toolkit/type-guards';
 import { MemoryConfigProvider } from './MemoryConfigProvider';
 
 /**
@@ -14,7 +15,7 @@ export type ConfigData = Iterable<readonly [string, string]> | Record<string, st
 
 /** Normalizes {@link ConfigData} to an iterable of `[key, value]` pairs. */
 export function toEntries(data: ConfigData): Iterable<readonly [string, string]> {
-  return Symbol.iterator in data ? (data as Iterable<readonly [string, string]>) : Object.entries(data);
+  return isIterable(data) ? data : Object.entries(data);
 }
 
 /** A configuration source backed by an in-memory key/value collection. */
