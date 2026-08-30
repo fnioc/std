@@ -4068,7 +4068,7 @@ own module owns that validator, exports it as a middleware — an addon where it
 registered — and the model's main addon (`standard()`) composes it in by default — validation is on unless the composer removes it. At
 runtime the standard model's behavior is two independent switches, both on by default: `validateOnBuild`
 runs the build-time sweep, and `validateScopes` makes a scoped ask arriving under root state
-throw `CaptiveDependencyError`; with `validateScopes` off, root keeps the instance. The standard
+throw a model-local `ScopedAtRootError`, surfaced through `LifetimeModelError`; with `validateScopes` off, root keeps the instance. The standard
 model always matches its reference implementation's behavior — an owner ruling, never a Claude
 default.
 

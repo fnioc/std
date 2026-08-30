@@ -1,10 +1,14 @@
-import { type IServiceProvider, type LifetimeModel, type LifetimePolicy, Registration } from '@rhombus-std/di.core';
+import { type IServiceProvider, type LifetimeModel, type Middleware, Registration } from '@rhombus-std/di.core';
 import { Type } from '@rhombus-std/primitives';
 import { typefor } from '@rhombus-std/primitives.extras';
 import type { Func } from '@rhombus-toolkit/func';
-import { assertNever, hasMember, isFunction } from '@rhombus-toolkit/type-guards';
+import { assertNever } from '@rhombus-toolkit/type-guards';
 import { anchorRoot } from '../root-anchor.js';
 import { type Claim, Scope } from '../Scope.js';
+import { validateStandardCaptivity } from './captivity-validation.js';
+import { readKeeping, readLifetime } from './standard-lifetime.js';
+
+export { readKeeping, readLifetime } from './standard-lifetime.js';
 
 const MODEL_NAME = 'standard';
 
@@ -48,13 +52,23 @@ class DisposedScopeError extends Error {
   }
 }
 
+/** A `'scoped'` ask arrived at the root scope, which has no nested scope to keep it. */
+class ScopedAtRootError extends Error {
+  constructor(address: Type) {
+    super(`the ${MODEL_NAME} lifetime model cannot resolve the scoped service ${Type.stringify(address)} from the root provider`);
+    this.name = 'ScopedAtRootError';
+  }
+}
+
 /** One open scope: its place in the chain and the root it defers singletons to. */
 class StandardScope extends Scope {
   readonly #rootScope: StandardScope;
+  readonly #validateScopes: boolean;
 
-  constructor(parent?: StandardScope) {
+  constructor(parent?: StandardScope, validateScopes = true) {
     super(parent);
     this.#rootScope = parent ? parent.#rootScope : this;
+    this.#validateScopes = parent ? parent.#validateScopes : validateScopes;
   }
 
   openChild(): StandardScope {
@@ -62,6 +76,7 @@ class StandardScope extends Scope {
   }
 
   /**
+   * @throws {ScopedAtRootError} when a 'scoped' registration is asked for under root state and scope validation is on.
    * @throws {TypeError} when the registration named no lifetime.
    * @throws {DisposedScopeError} when this scope has already been torn down.
    */
@@ -79,6 +94,9 @@ class StandardScope extends Scope {
         return this.#rootScope;
       }
       case 'scoped': {
+        if (this === this.#rootScope && this.#validateScopes) {
+          throw new ScopedAtRootError(populatedAddress);
+        }
         return this;
       }
       case 'transient': {
@@ -120,80 +138,38 @@ class StandardScope extends Scope {
   }
 }
 
-/** The lifetime `registration` named, absent when it named none this model reads. */
-function readLifetime(registration: Registration<unknown> | undefined): StandardLifetime | undefined {
-  if (registration === undefined || !('lifetime' in registration)) {
-    return undefined;
-  }
-  const { lifetime } = registration;
-  if (lifetime === 'singleton' || lifetime === 'scoped' || lifetime === 'transient') {
-    return lifetime;
-  }
-  return namesRelease(lifetime) ? lifetime : undefined;
-}
-
-/** Whether `lifetime` is the object form, naming a keeper and the release to give what it keeps. */
-function namesRelease(lifetime: unknown): lifetime is StandardLifetime.WithRelease {
-  return hasMember(lifetime, 'keep')
-    && (lifetime.keep === 'singleton' || lifetime.keep === 'scoped')
-    && hasMember(lifetime, 'release')
-    && (lifetime.release === 'external' || isFunction(lifetime.release));
-}
-
-/** Which scope `lifetime` keeps its instance in. */
-function readKeeping(lifetime: StandardLifetime): 'singleton' | 'scoped' | 'transient' {
-  return typeof lifetime === 'string' ? lifetime : lifetime.keep;
-}
-
 /** The release `registration` named for what it produces, absent where it named none. */
 function readRelease(registration: Registration<unknown>): StandardLifetime.WithRelease['release'] | undefined {
   const lifetime = readLifetime(registration);
   return lifetime !== undefined && typeof lifetime !== 'string' ? lifetime.release : undefined;
 }
 
-/** Ranks {@link standard} lifetimes by keeper tier, for the validation addon. */
-export const standardValidationPolicy: LifetimePolicy = {
-  classify(registration) {
-    const lifetime = readLifetime(registration);
-    if (lifetime === undefined) {
-      return undefined;
-    }
-    const keeping = readKeeping(lifetime);
-    switch (keeping) {
-      case 'singleton': {
-        return { tier: 0, label: 'singleton' };
-      }
-      case 'scoped': {
-        return { tier: 1, label: 'scoped' };
-      }
-      case 'transient': {
-        return 'unkept';
-      }
-      default: {
-        return assertNever(keeping);
-      }
-    }
-  },
-};
-
 /**
- * The conventional model: `'singleton'`, `'scoped'`, `'transient'`. The root is a scope like any
- * other, so a `'scoped'` registration resolved outside every opened scope is kept for the
- * container's lifetime.
+ * The conventional model: `'singleton'`, `'scoped'`, `'transient'`. Two independent checks, both
+ * on by default: `validateOnBuild` composes the build-time captivity sweep, and `validateScopes`
+ * refuses a `'scoped'` ask at the root scope — with it off, the root keeps the instance.
  */
-export function standard(): LifetimeModel<StandardLifetime> {
+export function standard(options?: { validateScopes?: boolean; validateOnBuild?: boolean; }): LifetimeModel<StandardLifetime> {
+  const validateScopes = options?.validateScopes ?? true;
+  const captivityValidator = (options?.validateOnBuild ?? true) ? validateStandardCaptivity() : undefined;
   return {
     name: MODEL_NAME,
     transient: 'transient',
 
     create() {
-      const rootScope = new StandardScope();
-      const { middleware, enclosingScope, openChild } = anchorRoot(StandardScope, rootScope);
+      const rootScope = new StandardScope(undefined, validateScopes);
+      const { middleware: scopeMiddleware, enclosingScope, openChild } = anchorRoot(StandardScope, rootScope);
 
       /** Opens scopes nested inside the one `container` resolves from. */
       function openFrom(container: IServiceProvider): StandardScopeFactory {
         return {
-          openScope: () => openChild(enclosingScope(container).openChild()),
+          openScope: () => {
+            const scope = enclosingScope(container);
+            if (scope.disposed) {
+              throw new DisposedScopeError(StandardScopeFactory.address);
+            }
+            return openChild(scope.openChild());
+          },
         };
       }
 
@@ -204,6 +180,11 @@ export function standard(): LifetimeModel<StandardLifetime> {
           [Symbol.dispose]: () => scope.dispose(),
           [Symbol.asyncDispose]: () => scope.disposeAsync(),
         };
+      }
+
+      let middleware: Middleware = scopeMiddleware;
+      if (captivityValidator) {
+        middleware = next => scopeMiddleware(captivityValidator(next));
       }
 
       return {

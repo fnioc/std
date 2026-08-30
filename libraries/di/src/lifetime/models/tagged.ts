@@ -121,7 +121,13 @@ export function tagged<Tags extends string = string>(): LifetimeModel<TaggedLife
       /** Opens scopes nested inside the one `container` resolves from, each carrying the tag its call names. */
       function openFrom(container: IServiceProvider): TaggedScopeFactory {
         return {
-          openScope: tag => openChild(enclosingScope(container).openChild(tag)),
+          openScope: tag => {
+            const scope = enclosingScope(container);
+            if (scope.disposed) {
+              throw new DisposedScopeError(TaggedScopeFactory.address);
+            }
+            return openChild(scope.openChild(tag));
+          },
         };
       }
 

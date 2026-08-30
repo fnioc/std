@@ -93,17 +93,20 @@ export abstract class Scope {
    * share the one promise and the make behind it runs once. A promise that rejects is dropped
    * again, leaving the next ask free to retry.
    *
-   * A claim landing after this scope's teardown is released straight away: the claim list it would
-   * have joined has already drained, so nothing else would ever reach it.
+   * Only what the scope can reach is tracked for release: a promise handed back by a synchronous
+   * resolve — a thenable answering an address that is not itself promise-like — is the caller's to
+   * settle and dispose, so it is remembered as the answer but never released here. A claim landing
+   * after this scope's teardown is dropped, its holder owning whatever it produced.
    */
   claimInstance(registration: Registration<unknown>, populatedAddress: Type, instance: unknown): void {
     if (this.#disposed) {
-      void releaseOnArrival(instance);
       return;
     }
     const byAddress = this.#instances.getOrInsertComputed(registration, () => new Map());
     byAddress.set(populatedAddress, instance);
-    this.#claims.push({ registration, populatedAddress, instance });
+    if (withinReach(populatedAddress, instance)) {
+      this.#claims.push({ registration, populatedAddress, instance });
+    }
     evictOnReject(instance, () => {
       if (byAddress.get(populatedAddress) === instance) {
         byAddress.delete(populatedAddress);
@@ -235,6 +238,15 @@ export abstract class Scope {
   }
 }
 
+/**
+ * Whether `instance` is something the scope can release: a thenable answering an address that is
+ * not itself promise-like was handed back unawaited by a synchronous resolve, so it is out of
+ * reach and its holder owns what it settles to.
+ */
+function withinReach(populatedAddress: Type, instance: unknown): boolean {
+  return !isThenable(instance) || Type.isPromiseLike(populatedAddress);
+}
+
 /** The disposal function `instance` carries under `protocol`, absent when it carries none. */
 function getDispose(instance: unknown, protocol: symbol): Func | undefined {
   if (!hasMember(instance, protocol)) {
@@ -267,15 +279,14 @@ async function disposeInstanceAsync(instance: unknown): Promise<void> {
  * Releases `instance` through its synchronous disposal protocol.
  *
  * @remarks
- * A promise product is released once it settles, since a synchronous teardown has no way to wait
- * for it.
+ * A promise product in reach settles to its value only asynchronously, which a synchronous
+ * teardown cannot wait for, so it is refused the same way an async-only disposable is.
  *
- * @throws {TypeError} when the instance carries only the asynchronous protocol.
+ * @throws {TypeError} when the instance is a promise product, or carries only the asynchronous protocol.
  */
 function disposeInstance(populatedAddress: Type, instance: unknown): void {
   if (isThenable(instance)) {
-    void releaseOnArrival(instance);
-    return;
+    throw new TypeError(`a synchronous dispose cannot release ${Type.stringify(populatedAddress)} — it settles to its value only through an asynchronous release`);
   }
   const releaseSync = getDispose(instance, Symbol.dispose);
   if (releaseSync) {
@@ -284,14 +295,5 @@ function disposeInstance(populatedAddress: Type, instance: unknown): void {
   }
   if (getDispose(instance, Symbol.asyncDispose)) {
     throw new TypeError(`a synchronous dispose cannot release ${Type.stringify(populatedAddress)} — it carries only Symbol.asyncDispose`);
-  }
-}
-
-/** Releases `instance` the moment it arrives, where the teardown that would have released it has already returned. */
-async function releaseOnArrival(instance: unknown): Promise<void> {
-  try {
-    await disposeInstanceAsync(instance);
-  } catch {
-    // The scope is torn down and its teardown has returned: nobody is left to hand this failure to.
   }
 }

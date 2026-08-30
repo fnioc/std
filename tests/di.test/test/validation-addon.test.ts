@@ -1,9 +1,10 @@
-// Behaviour tests for the validation addons: `validateCaptivity` walks every buildable address
-// for captive pairs, and `validateBuildability` plans every closed address up front — both run
-// their sweep at `build()`, so a broken manifest never produces a provider.
+// Behaviour tests for the validation middleware, addons, and the standard model's captivity
+// sweep: `validateStandardCaptivity` walks every buildable address for captive pairs, and
+// `validateBuildability` plans every closed address up front — both run their sweep at
+// `build()`, so a broken manifest never produces a provider.
 
-import { di, standard, StandardScopeFactory, standardValidationPolicy, validateBuildability, validateCaptivity } from '@rhombus-std/di';
-import { CaptiveDependencyError, type IServiceProvider, ManifestValidationError } from '@rhombus-std/di.core';
+import { di, standard, StandardScopeFactory, validateBuildability, validateStandardCaptivity } from '@rhombus-std/di';
+import { CaptiveDependencyError, type IServiceProvider, LifetimeModelError, ManifestValidationError } from '@rhombus-std/di.core';
 import { Type } from '@rhombus-std/primitives';
 import { describe, expect, test } from 'bun:test';
 
@@ -30,8 +31,8 @@ function openScope(provider: IServiceProvider): IServiceProvider {
   return (provider.resolve(StandardScopeFactory.address) as StandardScopeFactory).openScope();
 }
 
-describe('validateCaptivity', () => {
-  test('a captive dependency reached through an intervening transient throws ManifestValidationError naming the owner and the captured node', () => {
+describe('standard model captivity validation', () => {
+  test('standard() catches a captive dependency at build time by default', () => {
     let caught: unknown;
     try {
       di.usingLifetimeModel(standard())
@@ -41,7 +42,6 @@ describe('validateCaptivity', () => {
             .add(SINGLETON, Singleton, Type.ctor(SINGLETON, [[SCOPED]]), 'singleton')
             .add(TRANSIENT, Transient, Type.ctor(TRANSIENT, [[SINGLETON]]), 'transient')
         )
-        .useAddon(validateCaptivity(standardValidationPolicy))
         .build();
     } catch (error) {
       caught = error;
@@ -54,34 +54,71 @@ describe('validateCaptivity', () => {
     expect((captured as CaptiveDependencyError).nodeAddress).toBe(SCOPED);
   });
 
-  test("a scoped registration resolved from the root provider is kept for the container's lifetime", () => {
-    const provider = di.usingLifetimeModel(standard())
-      .configureServices(manifest => manifest.add(SCOPED, Scoped, Type.ctor(SCOPED, [[]]), 'scoped'))
-      .useAddon(validateCaptivity(standardValidationPolicy))
-      .build();
-
-    expect(provider.resolve(SCOPED)).toBe(provider.resolve(SCOPED));
+  test('validateOnBuild off omits the captivity validator', () => {
+    expect(() =>
+      di.usingLifetimeModel(standard({ validateOnBuild: false }))
+        .configureServices(manifest =>
+          manifest
+            .add(SCOPED, Scoped, Type.ctor(SCOPED, [[]]), 'scoped')
+            .add(SINGLETON, Singleton, Type.ctor(SINGLETON, [[SCOPED]]), 'singleton')
+        )
+        .build()
+    ).not.toThrow();
   });
 
-  test('the same resolution from an opened scope succeeds', () => {
+  test('the standalone middleware catches a captive dependency when composed manually', () => {
+    expect(() =>
+      di.usingLifetimeModel(standard({ validateOnBuild: false }))
+        .configureServices(manifest =>
+          manifest
+            .add(SCOPED, Scoped, Type.ctor(SCOPED, [[]]), 'scoped')
+            .add(SINGLETON, Singleton, Type.ctor(SINGLETON, [[SCOPED]]), 'singleton')
+        )
+        .use(validateStandardCaptivity())
+        .build()
+    ).toThrow(ManifestValidationError);
+  });
+
+  test('a scoped registration resolved from an opened scope succeeds', () => {
     const provider = di.usingLifetimeModel(standard())
       .configureServices(manifest => manifest.add(SCOPED, Scoped, Type.ctor(SCOPED, [[]]), 'scoped'))
-      .useAddon(validateCaptivity(standardValidationPolicy))
       .build();
 
     expect(openScope(provider).resolve(SCOPED)).toBeInstanceOf(Scoped);
   });
 
-  test('without the addon, a captive dependency silently caches instead of throwing — the current standard-model semantics', () => {
-    const provider = di.usingLifetimeModel(standard())
-      .configureServices(manifest =>
-        manifest
-          .add(SCOPED, Scoped, Type.ctor(SCOPED, [[]]), 'scoped')
-          .add(SINGLETON, Singleton, Type.ctor(SINGLETON, [[SCOPED]]), 'singleton')
-      )
+  test('validateScopes off permits a scoped registration at the root scope — root keeps the instance', () => {
+    const provider = di.usingLifetimeModel(standard({ validateScopes: false }))
+      .configureServices(manifest => manifest.add(SCOPED, Scoped, Type.ctor(SCOPED, [[]]), 'scoped'))
       .build();
 
-    expect((provider.resolve(SINGLETON) as Singleton).scoped).toBe(provider.resolve(SCOPED));
+    const instance = provider.resolve(SCOPED);
+    expect(instance).toBeInstanceOf(Scoped);
+    // Root keeps it: same instance on every ask.
+    expect(provider.resolve(SCOPED)).toBe(instance);
+  });
+
+  test('the validator and selectOwningScope agree on a keep-only lifetime', () => {
+    // { keep: 'singleton' } without a `release` member is not a valid StandardLifetime: the
+    // validator must classify it the same way selectOwningScope reads it (no lifetime), so the
+    // build succeeds and a resolve of the singleton hits the "named none" guard — never the
+    // captive-pair path.
+    const KEEP_ONLY = Type.imported('KeepOnly', 'app');
+    class KeepOnly {}
+
+    const provider = di.usingLifetimeModel(standard())
+      .configureServices(manifest => manifest.add(KEEP_ONLY, KeepOnly, Type.ctor(KEEP_ONLY, [[]]), { keep: 'singleton' } as never))
+      .build();
+
+    let caught: unknown;
+    try {
+      provider.resolve(KEEP_ONLY);
+    } catch (error) {
+      caught = error;
+    }
+
+    expect(caught).toBeInstanceOf(LifetimeModelError);
+    expect(((caught as LifetimeModelError).cause as Error).message).toContain('named none');
   });
 });
 
@@ -113,7 +150,7 @@ describe('validateBuildability', () => {
   });
 
   test('a captive dependency, being structurally buildable, does not trip validateBuildability on its own', () => {
-    const provider = di.usingLifetimeModel(standard())
+    const provider = di.usingLifetimeModel(standard({ validateOnBuild: false }))
       .configureServices(manifest =>
         manifest
           .add(SCOPED, Scoped, Type.ctor(SCOPED, [[]]), 'scoped')

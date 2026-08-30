@@ -31,21 +31,3 @@ export interface LifetimeModel<Lifetime = unknown> {
     readonly registrations?: Iterable<Registration<Lifetime>>;
   };
 }
-
-/**
- * Classifies registrations by where their product is kept, for a validator to rank.
- *
- * @remarks
- * Tier 0 is the container root; a higher tier is a narrower keeper. `'unkept'` means the
- * registration is constructed fresh per ask and kept by nothing. `undefined` means the
- * registration's lifetime is model-defined and ranks only at runtime.
- */
-export interface LifetimePolicy {
-  /**
-   * Where `registration`'s product is kept.
-   *
-   * @returns a tier and its human-readable label, `'unkept'`, or `undefined` — see the interface
-   * remarks for what each means.
-   */
-  classify(registration: Registration<unknown> | undefined): { readonly tier: number; readonly label: string; } | 'unkept' | undefined;
-}

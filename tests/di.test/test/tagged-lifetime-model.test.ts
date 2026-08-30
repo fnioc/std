@@ -99,3 +99,57 @@ describe('no scope carrying the tag', () => {
     expect(() => session.resolve(COUNTER)).toThrow(LifetimeModelError);
   });
 });
+
+describe('opening a scope from a disposed factory', () => {
+  // §225 — CreateScope on a torn-down provider is refused: the model throws its disposed-scope
+  // error, naming the factory's own address.
+  test('refuses openScope once the scope the factory was resolved from is disposed', () => {
+    const session = openScope(buildProviderKeptBy('session'), 'session');
+    const factory = session.resolve(SCOPE_FACTORY) as TaggedScopeFactory<Tags>;
+    (session as unknown as Disposable)[Symbol.dispose]();
+
+    let caught: unknown;
+    try {
+      factory.openScope('request');
+    } catch (error) {
+      caught = error;
+    }
+    expect((caught as Error).name).toBe('DisposedScopeError');
+    expect((caught as Error).message).toContain('TaggedScopeFactory');
+  });
+});
+
+describe('no captivity validation', () => {
+  test('tagged() builds and resolves through an opened scope without error', () => {
+    const TAG_A = Type.imported('TagA', 'app');
+    class TagA {}
+
+    const provider = di.usingLifetimeModel(tagged())
+      .configureServices(manifest => manifest.add(TAG_A, TagA, Type.ctor(TAG_A, [[]]), 'session'))
+      .build();
+
+    const scope = (provider.resolve(
+      Type.imported('TaggedScopeFactory', '@rhombus-std/di', [Type.typeLiteral('session')]),
+    ) as TaggedScopeFactory).openScope('session');
+    expect(scope.resolve(TAG_A)).toBeInstanceOf(TagA);
+  });
+
+  test('a singleton-to-session shape builds without a captivity sweep', () => {
+    const TAG_SING = Type.imported('TagSingleton', 'app');
+    const TAG_SESS = Type.imported('TagSession', 'app');
+    class TagSession {}
+    class TagSingleton {
+      constructor(readonly session: TagSession) {}
+    }
+
+    expect(() =>
+      di.usingLifetimeModel(tagged())
+        .configureServices(manifest =>
+          manifest
+            .add(TAG_SESS, TagSession, Type.ctor(TAG_SESS, [[]]), 'session')
+            .add(TAG_SING, TagSingleton, Type.ctor(TAG_SING, [[TAG_SESS]]), 'root')
+        )
+        .build()
+    ).not.toThrow();
+  });
+});

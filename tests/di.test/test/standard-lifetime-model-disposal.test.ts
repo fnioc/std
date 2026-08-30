@@ -300,10 +300,10 @@ describe('the sync/async dispose-protocol preference', () => {
   });
 });
 
-describe('the promise-boundary product', () => {
-  // §225 lines 3984-3985 — "a cached promise product is released by awaiting it and releasing
-  // the settled value."
-  test('async teardown awaits a cached promise product before releasing what it settles to', async () => {
+describe('the promise-boundary product in reach', () => {
+  // §225 — a promise product the container itself awaited (a boundary it settled) puts the settled
+  // value in reach: async teardown awaits it and releases what it settles to.
+  test('async teardown awaits a kept promise product before releasing what it settles to', async () => {
     const provider = di.usingLifetimeModel(standard())
       .configureServices(manifest =>
         manifest.add(
@@ -319,31 +319,70 @@ describe('the promise-boundary product', () => {
     expect((await kept).disposed).toBe(true);
   });
 
-  // §225 line 3985 — "a value settling after its scope's dispose is released immediately on
-  // arrival": the synchronous counterpart, where the product is still pending when dispose runs.
-  test('sync teardown does not wait on a pending promise product, but releases it once it settles', async () => {
-    let settle!: (recorder: Recorder) => void;
+  // §225 — such a product is an async-only disposable to a synchronous dispose, which throws
+  // loudly naming the address.
+  test('sync teardown meeting a kept promise product throws, naming the address', () => {
     const provider = di.usingLifetimeModel(standard())
       .configureServices(manifest =>
         manifest.add(
           Type.promise(RECORDER),
-          () =>
-            new Promise<Recorder>(resolve => {
-              settle = resolve;
-            }),
+          () => Promise.resolve(new Recorder()),
           Type.func(Type.promise(RECORDER), [[]]),
           'singleton',
         )
       )
       .build();
-    const kept = provider.resolve(Type.promise(RECORDER)) as Promise<Recorder>;
-    expect(() => readTeardownFrom(provider)[Symbol.dispose]()).not.toThrow();
+    provider.resolve(Type.promise(RECORDER));
 
+    let caught: unknown;
+    try {
+      readTeardownFrom(provider)[Symbol.dispose]();
+    } catch (error) {
+      caught = error;
+    }
+    // The refusal aggregates like every other release failure, so the address it names rides the
+    // aggregated failure rather than the message on top.
+    const failures = (caught as AggregateError).errors as Error[];
+    expect(failures).toHaveLength(1);
+    expect(failures.map(failure => failure.message).join()).toContain('Recorder');
+  });
+});
+
+describe('the promise-boundary product out of reach', () => {
+  // §225 — a promise product the container never awaited, delivered as a promise by a synchronous
+  // resolve, is out of the scope's reach and is released by neither teardown path; its holder owns
+  // what it settles to.
+  test('neither teardown path releases a promise a synchronous resolve handed back', async () => {
     const recorder = new Recorder();
-    settle(recorder);
+    const provider = di.usingLifetimeModel(standard())
+      .configureServices(manifest => manifest.add(RECORDER, () => Promise.resolve(recorder), Type.func(RECORDER, [[]]), 'singleton'))
+      .build();
+
+    const kept = provider.resolve(RECORDER) as Promise<Recorder>;
+    expect(() => readTeardownFrom(provider)[Symbol.dispose]()).not.toThrow();
     await kept;
     await new Promise(resolve => setTimeout(resolve, 0));
-    expect(recorder.disposed).toBe(true);
+    expect(recorder.disposed).toBe(false);
+  });
+});
+
+describe('opening a scope from a disposed factory', () => {
+  // §225 — CreateScope on a torn-down provider is refused: the model throws its disposed-scope
+  // error, naming the factory's own address.
+  test('refuses openScope once the scope the factory was resolved from is disposed', () => {
+    const provider = buildProviderFor('scoped');
+    const scope = openScope(provider);
+    const factory = scope.resolve(StandardScopeFactory.address) as StandardScopeFactory;
+    readMintedDisposal(scope)[Symbol.dispose]();
+
+    let caught: unknown;
+    try {
+      factory.openScope();
+    } catch (error) {
+      caught = error;
+    }
+    expect((caught as Error).name).toBe('DisposedScopeError');
+    expect((caught as Error).message).toContain('StandardScopeFactory');
   });
 });
 
