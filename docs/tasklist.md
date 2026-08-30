@@ -315,11 +315,10 @@ Only work this session owns; the lane above is another session's.
 
 **In flight**
 
-- [ ] §229 captivity is model-owned: `LifetimePolicy`, `validateCaptivity` and
-      `standardValidationPolicy` deleted; the standard model owns its validator, composed into
-      `standard()` by default with a composition opt-out, and refuses a scoped ask arriving under
-      root state at runtime; tagged gets none. Workflow running; the `hosting` install change is
-      reported to the other lane, not made here.
+- [x] §229 captivity is model-owned — landed (399c3352): generic seam deleted;
+      `validateStandardCaptivity` middleware; `standard({ validateScopes, validateOnBuild })`,
+      independent, both default on; model-local `ScopedAtRootError` root refusal; §225 reach rule
+      model-contained; disposed-factory guard in both models; hosting side done by the other lane.
 
 **Complete**
 
@@ -352,18 +351,16 @@ Only work this session owns; the lane above is another session's.
 
 **Queued** (carried from the burned session handoff; each behind the item above it only where stated)
 
-- [ ] Lifetime follow-ups behind the in-flight §229 workflow: `standard({ validateScopes,
-      validateOnBuild })` replacing the single flag, refusal gated on `validateScopes`; the
-      disposal reach rule above (claim marks container-awaited products; sync path skips
-      out-of-reach, throws on in-reach; `releaseOnArrival` deleted); `openScope()` refuses on a disposed enclosing scope.
+- [x] Lifetime follow-ups — landed inside 399c3352.
 - [ ] Async: docs, tests, examples and the `resolveAsync` transformer-parity e2e — deferred by the
       owner until post-review; the review is done, so this is next.
 - [ ] Captivity validator: skip `ConstantType` products (a value has no lifetime to capture).
 - [ ] §210 captive-error label wording; `ResolveAudit` placeholder error wording; `Behavior`
       hover-doc IDE check.
 - [ ] Diagnostics knip pass; bench re-run against the reconciled engine.
-- [ ] Two read-only audits, owner-ordered, launched once §229 lands: (1) defects — each finding
-      carries a concrete failure scenario; (2) reinvention — code that re-engineered what existing
-      tooling or repo patterns already covered. Assumed scope: di.core, di, di.extras, primitives,
-      primitives.extras, tests/di.test. The other lane holds the same pair queued; deduplicated by
-      message before dispatch.
+- [ ] Two audits IN FLIGHT (wf_dfa573c3-c7a, dispatched 2026-08-30): defects (Fable scan+verify;
+      verified single-obvious fixes applied by a non-Fable agent, committed on landing; the rest
+      recorded in '## Audit findings') and reinvention (Fable scan+verify vs a shelf inventory;
+      pointer table + members-that-should-not-exist list, recorded here and shown to the owner).
+      Scope: di+di.core deep; di.extras, di.extras.options, options, options.augmentations;
+      primitives(+extras) capped.
