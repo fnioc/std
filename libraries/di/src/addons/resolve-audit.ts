@@ -90,9 +90,9 @@ export function resolveAudit(lifetime?: any): Addon {
             typefor<ResolveAudit>(),
             () => {
               throw new Error(
-                `the resolve-audit addon answers ${
+                `${
                   Type.stringify(typefor<ResolveAudit>())
-                } through hooks its own installation plants, and nothing planted them — install it with useAddon rather than filing this registration by hand`,
+                } is answered by the resolve-audit addon's own hooks, and this container never installed them — resolve it from a container built with useAddon(resolveAudit())`,
               );
             },
             Type.func(typefor<ResolveAudit>(), [[]]),
