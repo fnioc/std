@@ -340,8 +340,9 @@ Only work this session owns; the lane above is another session's.
 
 **Awaiting the owner's word** (Claude-defaulted readings, each flagged in the diff it shipped in)
 
-- [ ] Standard model at runtime: a scoped ask arriving under root state is REFUSED with
-      `CaptiveDependencyError` (chosen) — or kept at root. One word: refuse / keep.
+- [x] Standard model at runtime — RULED: matches the reference exactly; `validateScopes` /
+      `validateOnBuild` switches, both default on; refusal only while `validateScopes` is on.
+      Follow-up change queued behind the in-flight §229 workflow.
 - [ ] Disposal: a synchronous `Symbol.dispose` meeting a still-pending promise product attaches a
       release-on-settle continuation and returns, swallowing a later release failure (chosen) — or
       throws loudly naming the address. One word: swallow / throw.

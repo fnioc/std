@@ -4063,8 +4063,11 @@ The standard model needs one: its tiers (singleton over scoped over unkept) are 
 singleton→scoped edge is decidable from the plans before anything resolves. The standard model's
 own module owns that validator, exports it as a middleware — an addon where it needs services
 registered — and the model's main addon (`standard()`) composes it in by default — validation is on unless the composer removes it. At
-runtime the standard model refuses a scoped ask arriving under root state with a model-owned error
-rather than keeping the instance at root.
+runtime the standard model's behavior is two independent switches, both on by default: `validateOnBuild`
+runs the build-time sweep, and `validateScopes` makes a scoped ask arriving under root state
+throw `CaptiveDependencyError`; with `validateScopes` off, root keeps the instance. The standard
+model always matches its reference implementation's behavior — an owner ruling, never a Claude
+default.
 
 The tagged model needs none and cannot have a correct one: tag nesting is decided at runtime by
 which tags get opened under which, so no static order exists; its runtime refusal
