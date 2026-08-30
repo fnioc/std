@@ -1,4 +1,4 @@
-import type { ButNot } from '@rhombus-std/primitives';
+import type { ButNot } from '@rhombus-toolkit/types';
 
 import type { Middleware } from './Middleware.js';
 import type { Registration } from './Registration/index.js';

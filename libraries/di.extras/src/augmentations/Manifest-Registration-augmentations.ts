@@ -1,7 +1,7 @@
 import type { LifetimeArgument, Manifest, Registration, RegistrationBuilderFor } from '@rhombus-std/di.core';
-import type { ButNot } from '@rhombus-std/primitives';
 import { registerInlineBodies, typefor } from '@rhombus-std/primitives.extras';
 import type { AbstractCtor, Ctor, Func } from '@rhombus-toolkit/func';
+import type { ButNot } from '@rhombus-toolkit/types';
 
 declare module '@rhombus-std/di.core' {
   interface Manifest<Lifetime> {

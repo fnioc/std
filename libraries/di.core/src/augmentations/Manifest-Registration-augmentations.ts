@@ -1,6 +1,8 @@
-import { type ButNot, concat, type ConstructorType, type FunctionType, type Type } from '@rhombus-std/primitives';
+import { type ConstructorType, type FunctionType, type Type } from '@rhombus-std/primitives';
 import { registerAugmentations } from '@rhombus-std/primitives.extras';
 import type { AbstractCtor, Ctor, Func } from '@rhombus-toolkit/func';
+import { concat } from '@rhombus-toolkit/obj';
+import type { ButNot } from '@rhombus-toolkit/types';
 
 import { openRegistration, type RegistrationBuilderFor } from '../builder';
 import type { LifetimeArgument } from '../LifetimeModel';

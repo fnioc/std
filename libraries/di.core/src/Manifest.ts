@@ -1,8 +1,9 @@
 // DO NOT ADD MEMBERS TO THE TYPES IN THIS FILE
 
-import { augment, concat } from '@rhombus-std/primitives';
+import { augment } from '@rhombus-std/primitives';
 import { typefor } from '@rhombus-std/primitives.extras';
 import { Func } from '@rhombus-toolkit/func';
+import { concat } from '@rhombus-toolkit/obj';
 import { assertNever } from '@rhombus-toolkit/type-guards';
 import { Registration } from './Registration';
 

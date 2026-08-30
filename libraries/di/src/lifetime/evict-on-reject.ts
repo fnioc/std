@@ -1,5 +1,5 @@
-import { isThenable } from '@rhombus-std/primitives';
 import type { Func } from '@rhombus-toolkit/func';
+import { isPromiseLike } from '@rhombus-toolkit/type-guards';
 
 /**
  * Runs `drop` if `kept` turns out to be a rejected promise, leaving anything else alone.
@@ -10,7 +10,7 @@ import type { Func } from '@rhombus-toolkit/func';
  * rejection handled, so a promise nobody ends up awaiting stays quiet.
  */
 export function evictOnReject(kept: unknown, drop: Func<[], void>): void {
-  if (isThenable(kept)) {
+  if (isPromiseLike(kept)) {
     kept.then(undefined, drop);
   }
 }

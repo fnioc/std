@@ -1,6 +1,7 @@
 import { type Addon, type AddonInstallation, DefaultManifest, IServiceProvider, type LifetimeModel, Manifest, type Middleware, type Registration } from '@rhombus-std/di.core';
-import { concat, iterable, type Type } from '@rhombus-std/primitives';
+import { type Type } from '@rhombus-std/primitives';
 import type { Func } from '@rhombus-toolkit/func';
+import { concat, iterable } from '@rhombus-toolkit/obj';
 import { isDefined } from '@rhombus-toolkit/type-guards';
 import { Engine } from './internal/Engine.js';
 import { ServiceProvider } from './ServiceProvider.js';

@@ -1,7 +1,7 @@
 import type { IServiceProvider, Registration } from '@rhombus-std/di.core';
-import { isThenable, Type } from '@rhombus-std/primitives';
+import { Type } from '@rhombus-std/primitives';
 import type { Func } from '@rhombus-toolkit/func';
-import { hasMember, isDefined, isFunction } from '@rhombus-toolkit/type-guards';
+import { hasMember, isDefined, isFunction, isPromiseLike } from '@rhombus-toolkit/type-guards';
 import { evictOnReject } from './evict-on-reject.js';
 
 /** One instance a scope claimed: what produced it, the address it answers for, and the instance itself. */
@@ -244,7 +244,7 @@ export abstract class Scope {
  * reach and its holder owns what it settles to.
  */
 function withinReach(populatedAddress: Type, instance: unknown): boolean {
-  return !isThenable(instance) || Type.isPromiseLike(populatedAddress);
+  return !isPromiseLike(instance) || Type.isPromiseLike(populatedAddress);
 }
 
 /** The disposal function `instance` carries under `protocol`, absent when it carries none. */
@@ -264,7 +264,7 @@ function getDispose(instance: unknown, protocol: symbol): Func | undefined {
  * produced no instance at all, so there is nothing left to release.
  */
 async function disposeInstanceAsync(instance: unknown): Promise<void> {
-  if (isThenable(instance)) {
+  if (isPromiseLike(instance)) {
     return disposeInstanceAsync(await instance.then(settled => settled, () => undefined));
   }
   const releaseAsync = getDispose(instance, Symbol.asyncDispose);
@@ -285,7 +285,7 @@ async function disposeInstanceAsync(instance: unknown): Promise<void> {
  * @throws {TypeError} when the instance is a promise product, or carries only the asynchronous protocol.
  */
 function disposeInstance(populatedAddress: Type, instance: unknown): void {
-  if (isThenable(instance)) {
+  if (isPromiseLike(instance)) {
     throw new TypeError(`a synchronous dispose cannot release ${Type.stringify(populatedAddress)} — it settles to its value only through an asynchronous release`);
   }
   const releaseSync = getDispose(instance, Symbol.dispose);

@@ -1,8 +1,8 @@
 import { type CtorRegistration, type FactoryRegistration, Registration, UnsatisfiableError } from '@rhombus-std/di.core';
-import { type ConstructorType, type FunctionType, isAllThere, Type } from '@rhombus-std/primitives';
-import { memo } from '@rhombus-std/primitives';
+import { type ConstructorType, type FunctionType, Type } from '@rhombus-std/primitives';
 import type { Ctor, Func } from '@rhombus-toolkit/func';
-import { assertNever, isReadonlyArray } from '@rhombus-toolkit/type-guards';
+import { memo } from '@rhombus-toolkit/once';
+import { assertNever, isAllThere, isReadonlyArray } from '@rhombus-toolkit/type-guards';
 import type { Match, Registry } from '../Registry.js';
 import { PlannerVisitor } from './PlannerVisitor.js';
 import { type RealizeOptions, RealizeVisitor } from './RealizeVisitor.js';
@@ -373,7 +373,7 @@ export namespace Plan {
   function lowerSignature(signatures: Type.Signatures, generics: Readonly<Record<string, Type>>, visitor: Type.Visitor<Plan | undefined>): Plan[] | undefined {
     return Iterator.from(signatures.toSorted((a, b) => b.length - a.length))
       .map(signature => signature.map(arg => lowerArg(arg, generics, visitor)))
-      .find(isAllThere);
+      .find((plans): plans is Plan[] => isAllThere(plans));
   }
 
   function lowerArg(arg: Type, generics: Readonly<Record<string, Type>>, visitor: Type.Visitor<Plan | undefined>): Plan | undefined {
