@@ -343,8 +343,8 @@ Only work this session owns; the lane above is another session's.
       never awaited it (not released, holder owns it); in reach if delivered through
       `resolveAsync`/a settled boundary — async disposal required, sync throws the async-only
       clause. `releaseOnArrival` goes away; the claim records whether the container awaited it.
-- [ ] Disposal: the tagged teardown is tag-agnostic (a plain address, not a `Generic<'Tag'>`
-      template) — "mirroring createScope" read as the mechanism, not the template shape. ok / mirror.
+- [x] Disposal: the tagged teardown is tag-agnostic — RULED ok (simplest reading: the mirror is the
+      resolution-driven registration mechanism, not the template shape). No change.
 - [ ] Disposal hazard, unfixed: a `StandardScopeFactory` handle captured before its scope's teardown
       can still `openScope()` afterwards, minting a live child of a torn-down parent. Records are
       silent; needs a ruling before code.
