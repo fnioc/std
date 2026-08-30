@@ -37,7 +37,7 @@ export interface StandardScopeTeardown extends Disposable, AsyncDisposable {}
 
 export namespace StandardScopeTeardown {
   /** The address the {@link standard} model publishes its teardown under. */
-  export const address: Type = Type.imported('StandardScopeTeardown', '@rhombus-std/di');
+  export const address = typefor<StandardScopeTeardown>();
 }
 
 /** An ask reached a scope this model had already torn down. */
@@ -52,15 +52,13 @@ class DisposedScopeError extends Error {
 class StandardScope extends Scope {
   readonly #rootScope: StandardScope;
 
-  constructor(enclosing?: StandardScope) {
-    super();
-    this.#rootScope = enclosing ? enclosing.#rootScope : this;
+  constructor(parent?: StandardScope) {
+    super(parent);
+    this.#rootScope = parent ? parent.#rootScope : this;
   }
 
   openChild(): StandardScope {
-    const child = new StandardScope(this);
-    this.trackChild(child);
-    return child;
+    return new StandardScope(this);
   }
 
   /**

@@ -19,6 +19,9 @@ import type { Scope } from './Scope.js';
 function keeping(scope: Scope): Behavior<Scope> {
   const hooks = attributingHooks<Scope>({
     beforeConstruct({ populatedAddress, registration, state }) {
+      if (state === undefined) {
+        return { state };
+      }
       // Without a registration the engine, not the manifest, is answering: nothing here is kept by a scope.
       if (registration === undefined) {
         if (populatedAddress === typefor<IServiceProvider>() && state.provider) {
@@ -34,7 +37,7 @@ function keeping(scope: Scope): Behavior<Scope> {
     },
 
     afterConstruct({ populatedAddress, registration, state }, instance) {
-      if (registration === undefined) {
+      if (state === undefined || registration === undefined) {
         return;
       }
       state.selectOwningScope(registration, populatedAddress)?.claimInstance(registration, populatedAddress, instance);
@@ -65,7 +68,7 @@ function probing(scope: Scope, learn: Func<[Type, unknown], void>): Behavior<Sco
    * @throws {LifetimeModelError} when the model refuses the registration's lifetime.
    */
   function selectKeeper({ populatedAddress, registration, state }: Hooks.Construction<Scope>): Scope | undefined {
-    if (registration === undefined) {
+    if (registration === undefined || state === undefined) {
       return undefined;
     }
     try {
@@ -207,9 +210,19 @@ export class ScopeBinding<S extends Scope = Scope> {
     this.face = new ServiceProvider(this.dispatch);
     // Minted onto this one face rather than declared on `ServiceProvider`: teardown belongs to the
     // model, and the provider contract carries no disposal member of its own.
-    Object.defineProperty(this.face, Symbol.dispose, { value: () => scope.dispose() });
-    Object.defineProperty(this.face, Symbol.asyncDispose, { value: () => scope.disposeAsync() });
-    scope.provider = this.face;
+    Object.defineProperty(this.face, Symbol.dispose, {
+      value: () => {
+        try {
+          scope.dispose();
+        } finally {
+          this.#learnedAnswers.clear();
+        }
+      },
+    });
+    Object.defineProperty(this.face, Symbol.asyncDispose, {
+      value: () => scope.disposeAsync().finally(() => this.#learnedAnswers.clear()),
+    });
+    scope.bindProvider(this.face);
     bindings.set(this.face, this);
   }
 

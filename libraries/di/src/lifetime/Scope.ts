@@ -1,6 +1,6 @@
 import type { IServiceProvider, Registration } from '@rhombus-std/di.core';
 import { isThenable, Type } from '@rhombus-std/primitives';
-import type { Action, Func } from '@rhombus-toolkit/func';
+import type { Func } from '@rhombus-toolkit/func';
 import { hasMember, isDefined, isFunction } from '@rhombus-toolkit/type-guards';
 import { evictOnReject } from './evict-on-reject.js';
 
@@ -26,14 +26,41 @@ export abstract class Scope {
   /** Every claim made here, in claim order, so teardown can release them newest first. */
   readonly #claims: Claim[] = [];
 
-  /** Every scope opened beneath this one, in opening order, so teardown reaches them first. */
-  readonly #children: Scope[] = [];
+  /** Every scope opened beneath this one: each joins as it is constructed and leaves as its own teardown completes. */
+  readonly #children = new Set<Scope>();
+
+  /** The scope this one was opened inside, absent for a root. */
+  readonly #parent: Scope | undefined;
 
   /** Whether teardown has already run here. */
   #disposed = false;
 
-  /** The provider resolving from this scope, bound when its binding mints it. */
-  provider: IServiceProvider | undefined;
+  /** The provider resolving from this scope, absent until its binding mints it. */
+  #provider: IServiceProvider | undefined;
+
+  constructor(parent?: Scope) {
+    this.#parent = parent;
+    if (parent) {
+      parent.#children.add(this);
+    }
+  }
+
+  /** The provider resolving from this scope, bound once by its binding. */
+  get provider(): IServiceProvider | undefined {
+    return this.#provider;
+  }
+
+  /**
+   * Binds the provider resolving from this scope.
+   *
+   * @throws {TypeError} when this scope is already bound.
+   */
+  bindProvider(provider: IServiceProvider): void {
+    if (this.#provider) {
+      throw new TypeError('this scope is already bound to a provider');
+    }
+    this.#provider = provider;
+  }
 
   /** Whether this scope has been torn down, so every later ask is refused. */
   get disposed(): boolean {
@@ -56,11 +83,6 @@ export abstract class Scope {
       return undefined;
     }
     return { result: byRequest.get(populatedAddress) };
-  }
-
-  /** Records `child` as opened beneath this scope, so this scope's teardown reaches it first. */
-  trackChild(child: Scope): void {
-    this.#children.push(child);
   }
 
   /**
@@ -105,20 +127,27 @@ export abstract class Scope {
     }
     this.#disposed = true;
 
-    const failures = new Array<Action>()
-      .concat(this.#children.toReversed().map(child => () => child.dispose()))
-      .concat(this.#drainClaims().map(claim => () => this.releaseInstance(claim)))
-      .map(fn => {
-        try {
-          fn();
-        } catch (error) {
-          return [error];
-        }
-      })
-      .filter(isDefined);
+    try {
+      const failures = this.#drainTeardown()
+        .map(step => {
+          try {
+            if (step instanceof Scope) {
+              step.dispose();
+            } else {
+              this.releaseInstance(step);
+            }
+          } catch (error) {
+            return [error];
+          }
+        })
+        .filter(isDefined)
+        .toArray();
 
-    if (failures.length) {
-      throw new AggregateError(failures.flatMap(p => p), 'one or more instances failed to release');
+      if (failures.length) {
+        throw new AggregateError(failures.flatMap(p => p), 'one or more instances failed to release');
+      }
+    } finally {
+      this.#detachFromParent();
     }
   }
 
@@ -132,23 +161,28 @@ export abstract class Scope {
       return;
     }
     this.#disposed = true;
-    const failures = await Array.fromAsync(async function*(this: Scope) {
-      const tasks = new Array<Func<[], Promise<void>>>()
-        .concat(this.#children.toReversed().map(child => () => child.disposeAsync()))
-        .concat(this.#drainClaims().map(claim => () => this.releaseInstanceAsync(claim)));
 
-      // can't map the tasks like I did in the sync version because these Promise versions would execute in parallel and order matters here
-      for (const task of tasks) {
-        try {
-          await task();
-        } catch (error) {
-          yield error;
+    try {
+      // The steps run in turn: release order is reverse dependency order.
+      const failures = await Array.fromAsync(async function*(this: Scope) {
+        for (const step of this.#drainTeardown()) {
+          try {
+            if (step instanceof Scope) {
+              await step.disposeAsync();
+            } else {
+              await this.releaseInstanceAsync(step);
+            }
+          } catch (error) {
+            yield error;
+          }
         }
-      }
-    }.call(this));
+      }.call(this));
 
-    if (failures.length) {
-      throw new AggregateError(failures, 'one or more instances failed to release');
+      if (failures.length) {
+        throw new AggregateError(failures, 'one or more instances failed to release');
+      }
+    } finally {
+      this.#detachFromParent();
     }
   }
 
@@ -174,8 +208,22 @@ export abstract class Scope {
     disposeInstance(claim.populatedAddress, claim.instance);
   }
 
-  /** Empties the claim list, answering it newest first with each instance reference appearing once. */
-  #drainClaims(): Claim[] {
+  /** Removes this scope from its parent's child set. */
+  #detachFromParent(): void {
+    if (this.#parent) {
+      this.#parent.#children.delete(this);
+    }
+  }
+
+  /** Every scope opened beneath this one, newest first, then every instance claimed here, newest first. */
+  *#drainTeardown(): Generator<Scope | Claim> {
+    yield* [...this.#children].reverse();
+    yield* this.#drainKept();
+  }
+
+  /** Empties what this scope kept, returning its claims newest first with each instance appearing once. */
+  #drainKept(): Claim[] {
+    this.#instances.clear();
     const released = new Set<unknown>();
     return this.#claims.splice(0).reverse().filter(claim => {
       if (released.has(claim.instance)) {

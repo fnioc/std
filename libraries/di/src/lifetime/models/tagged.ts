@@ -33,7 +33,7 @@ export interface TaggedScopeTeardown extends Disposable, AsyncDisposable {}
 
 export namespace TaggedScopeTeardown {
   /** The address the {@link tagged} model publishes its teardown under. */
-  export const address: Type = Type.imported('TaggedScopeTeardown', '@rhombus-std/di');
+  export const address: Type = typefor<TaggedScopeTeardown>();
 }
 
 /** An ask reached a scope this model had already torn down. */
@@ -47,18 +47,17 @@ class DisposedScopeError extends Error {
 /** One open scope: the tag it answers to and the scopes enclosing it. */
 class TaggedScope extends Scope {
   readonly #tag: string | undefined;
+  /** The scope enclosing this one, narrowed to this model so its own tag is reachable. */
   readonly #enclosing: TaggedScope | undefined;
 
-  constructor(tag?: string, enclosing?: TaggedScope) {
-    super();
+  constructor(tag?: string, parent?: TaggedScope) {
+    super(parent);
     this.#tag = tag;
-    this.#enclosing = enclosing;
+    this.#enclosing = parent;
   }
 
   openChild(tag: string | undefined): TaggedScope {
-    const child = new TaggedScope(tag, this);
-    this.trackChild(child);
-    return child;
+    return new TaggedScope(tag, this);
   }
 
   /**
