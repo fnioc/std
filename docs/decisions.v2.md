@@ -4074,8 +4074,8 @@ Each lifetime model decides whether it needs a validator at all.
 
 The standard model needs one: its tiers (singleton over scoped over unkept) are fixed, so a
 singleton→scoped edge is decidable from the plans before anything resolves. The standard model's
-own module owns that validator, exports it as a `Middleware`, and the model's main addon
-(`standard()`) composes it in by default — validation is on unless the composer removes it. At
+own module owns that validator, exports it as a middleware — an addon where it needs services
+registered — and the model's main addon (`standard()`) composes it in by default — validation is on unless the composer removes it. At
 runtime the standard model refuses a scoped ask arriving under root state with a model-owned error
 rather than keeping the instance at root.
 
