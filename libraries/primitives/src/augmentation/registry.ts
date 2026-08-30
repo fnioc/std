@@ -26,8 +26,12 @@ type Contribution = readonly [fn: AugmentationFn, merge?: MergeStrategy<any>];
 /**
  * A receiver's bag: a per-name list of contributions, so a name registered by two
  * sets accumulates both (replayed in registration order at a late class's catch-up).
+ *
+ * @remarks
+ * Prototype-less at runtime — an augmented member may legally be named `toString` or
+ * `constructor`, and a plain `{}` would answer those from the inherited method rather than the bag.
  */
-type Bag = Map<string, Contribution[]>;
+type Bag = Record<string, Contribution[]>;
 
 /** A subscribed class's installer for ONE registration's set. */
 type DeltaInstaller = (set: AugmentationSet<any>, merge: MergeStrategies<any> | undefined) => void;
@@ -69,9 +73,9 @@ function requireIdentifier(receiver: Type): void {
  */
 export function registerAugmentations<R>(receiver: Type, set: AugmentationSet<R>, merge?: MergeStrategies<R>): void {
   requireIdentifier(receiver);
-  const bag = bags.getOrInsert(receiver, new Map());
+  const bag = bags.getOrInsert(receiver, Object.create(null));
   for (const [name, fn] of Object.entries(set as Record<string, AugmentationFn>)) {
-    bag.getOrInsert(name, []).push([fn, merge?.[name]]);
+    (bag[name] ??= []).push([fn, merge?.[name]]);
   }
 
   const installers = subscribers.get(receiver);
@@ -109,7 +113,7 @@ export function augment(receiver: Type) {
     // accumulated same-name pair collides here exactly as it would at dispatch.
     const bag = bags.get(receiver);
     if (bag !== undefined) {
-      for (const [name, contributions] of bag) {
+      for (const [name, contributions] of Object.entries(bag)) {
         for (const [fn, strategy] of contributions) {
           const merge = strategy !== undefined ? { [name]: strategy } : undefined;
           applyAugmentations(target, { [name]: fn } as AugmentationSet<any>, merge);

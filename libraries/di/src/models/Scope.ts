@@ -1,5 +1,6 @@
 import type { IServiceProvider, Registration } from '@rhombus-std/di.core';
 import type { Type } from '@rhombus-std/primitives';
+import { evictOnReject } from './evict-on-reject.js';
 
 /**
  * One open scope of a lifetime model: what it has kept, the provider resolving from it, and the
@@ -31,8 +32,21 @@ export abstract class Scope {
     return { result: byRequest.get(populatedAddress) };
   }
 
-  /** Holds `instance` as what `registration` answers here for `populatedAddress` from here on. */
+  /**
+   * Holds `instance` as what `registration` answers here for `populatedAddress` from here on.
+   *
+   * @remarks
+   * Whatever the construction produced is what is held, a promise included — so concurrent asks
+   * share the one promise and the make behind it runs once. A promise that rejects is dropped
+   * again, leaving the next ask free to retry.
+   */
   claimInstance(registration: Registration<unknown>, populatedAddress: Type, instance: unknown): void {
-    this.#instances.getOrInsertComputed(registration, () => new Map()).set(populatedAddress, instance);
+    const byAddress = this.#instances.getOrInsertComputed(registration, () => new Map());
+    byAddress.set(populatedAddress, instance);
+    evictOnReject(instance, () => {
+      if (byAddress.get(populatedAddress) === instance) {
+        byAddress.delete(populatedAddress);
+      }
+    });
   }
 }

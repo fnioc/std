@@ -9,27 +9,10 @@ interface AuditFrame {
   readonly parent: AuditFrame | undefined;
 }
 
-/** What this addon carries through a resolution: the request that opened it, and the constructions reaching the current position. */
+/** What this addon threads through a resolution: the request that opened it, and the constructions reaching the current position. */
 interface AuditCompartment {
   readonly request: Type;
   readonly frame: AuditFrame | undefined;
-}
-
-/** The state shape this addon threads: its own compartment paired with whatever state sits beneath it. */
-type AuditState = readonly [compartment: AuditCompartment, inner: unknown];
-
-/** Every state this addon has minted, so a re-entering resolution's injected state is recognizable as its own. */
-const packs = new WeakSet<AuditState>();
-
-function pack(compartment: AuditCompartment, inner: unknown): AuditState {
-  const state: AuditState = [compartment, inner];
-  packs.add(state);
-  return state;
-}
-
-/** Whether `state` is a pack this addon minted itself, rather than something injected by whoever resolved under it. */
-function isOwnPack(state: unknown): state is AuditState {
-  return Array.isArray(state) && packs.has(state as unknown as AuditState);
 }
 
 /** Reads a compartment's frame chain on demand, so a reading that never asks gathers nothing. */
@@ -63,55 +46,28 @@ class AuditView implements ResolveAudit {
   }
 }
 
-/** The four hooks this addon plants, together — contextual typing carries each slot's handler-or-middleware shape. */
-const hooks: Behavior<unknown> = {
-  /**
-   * Opens each resolution with a fresh compartment, its frame chain empty until a construction
-   * pushes onto it. A re-entering resolution injects a state this addon already packed, and only
-   * the state beneath the compartment belongs to everyone else.
-   */
-  beginResolve(request, injected, next) {
-    return pack({ request, frame: undefined }, next(request, isOwnPack(injected) ? injected[1] : injected));
+/** The hooks this addon plants — contextual typing carries each slot's handler-or-middleware shape. */
+const hooks: Behavior<AuditCompartment> = {
+  /** Opens each resolution with a fresh compartment, its frame chain empty until a construction pushes onto it. */
+  beginResolve(request: Type): AuditCompartment {
+    return { request, frame: undefined };
   },
 
   /**
-   * Answers `ResolveAudit` for whoever names it, pushing the enclosing construction's address onto
-   * the compartment for everything beneath it. A construction whose state isn't this addon's own
-   * pack passes through unchanged — nothing here to contribute, and nothing safe to unwrap.
+   * Answers `ResolveAudit` for whoever names it — nothing beneath ever sees that construction —
+   * and otherwise pushes the enclosing construction's address onto the compartment everything
+   * beneath it reads.
    */
   beforeConstruct(construction, next) {
-    if (!isOwnPack(construction.state)) {
-      return next(construction);
-    }
-    const [compartment, inner] = construction.state;
     if (construction.populatedAddress === typefor<ResolveAudit>()) {
-      return { result: new AuditView(compartment) };
+      return { result: new AuditView(construction.state) };
     }
-    const answer = next({ ...construction, state: inner });
+    const answer = next(construction);
     if ('result' in answer) {
       return answer;
     }
-    const frame: AuditFrame = { address: construction.populatedAddress, parent: compartment.frame };
-    return { state: pack({ request: compartment.request, frame }, answer.state) };
-  },
-
-  /** Hands canonicalize the state beneath this addon's compartment, since it runs on the same construction {@link beforeConstruct} received rather than what it answered. */
-  canonicalize(construction, instance, next) {
-    if (!isOwnPack(construction.state)) {
-      return next(construction, instance);
-    }
-    const [, inner] = construction.state;
-    return next({ ...construction, state: inner }, instance);
-  },
-
-  /** Hands afterConstruct the state beneath this addon's compartment, since it runs on the same construction {@link beforeConstruct} received rather than what it answered. */
-  afterConstruct(construction, instance, next) {
-    if (!isOwnPack(construction.state)) {
-      next(construction, instance);
-      return;
-    }
-    const [, inner] = construction.state;
-    next({ ...construction, state: inner }, instance);
+    const frame: AuditFrame = { address: construction.populatedAddress, parent: construction.state.frame };
+    return { state: { request: construction.state.request, frame } };
   },
 };
 

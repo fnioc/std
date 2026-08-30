@@ -1,10 +1,9 @@
-import { memo } from '../../toolkit/memo.js';
 import type { AbstractConstructorType, ArrayType, ConstructorType, FunctionType, GenericType, GlobalType, ImportedType, IntersectionType, IterableType, ListType, NamedType, ObjectType, TagType,
   TupleType, Type, TypeLiteralType, UnionType } from '../Type.js';
 import { TypeVisitor } from './TypeVisitor.js';
 
 /** Reaches every position a generic hole can sit in, and stops at the first one it finds. */
-class IsOpenVisitor extends TypeVisitor<boolean> {
+export class IsOpenVisitor extends TypeVisitor<boolean> {
   protected override visitArray(type: ArrayType): boolean {
     return this.#element(type);
   }
@@ -61,17 +60,3 @@ class IsOpenVisitor extends TypeVisitor<boolean> {
     return this.visit(type.element);
   }
 }
-
-const isOpenVisitor = new IsOpenVisitor();
-
-/**
- * Does `type` still hold a generic hole anywhere — an open registration, which serves a request by
- * capturing its fragments and so has nothing to build until one arrives?
- *
- * @remarks
- * A node is interned and frozen, so the answer holds forever and is remembered against the node
- * itself. The node stays pure data and never carries the answer of its own.
- */
-export const isOpenType = memo(function isOpen(type: Type): boolean {
-  return isOpenVisitor.visit(type);
-});

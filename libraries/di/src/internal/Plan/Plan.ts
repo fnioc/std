@@ -5,7 +5,7 @@ import type { Ctor, Func } from '@rhombus-toolkit/func';
 import { assertNever } from '@rhombus-toolkit/type-guards';
 import type { Match, Registry } from '../Registry.js';
 import { PlannerVisitor } from './PlannerVisitor.js';
-import { realizePlan } from './RealizeVisitor.js';
+import { type RealizeOptions, RealizeVisitor } from './RealizeVisitor.js';
 
 export type Plan =
   | LateBoundArgPlan
@@ -18,7 +18,11 @@ export type Plan =
   | ConstantPlan
   | ServiceProviderPlan
   | IterablePlan
-  | ArrayPlan;
+  | ArrayPlan
+  | PromisePlan
+  | RegisteredPromisePlan
+  | AsyncPlan
+  | AsyncIterablePlan;
 
 /**
  * A registered constructor the engine `new`s up; {@link registration} is the matching
@@ -100,6 +104,46 @@ export interface ArrayPlan {
   readonly types: readonly Plan[];
 }
 
+/**
+ * The async boundary: the wrapping promise a promise-addressed node hands over, minted afresh on
+ * every ask. Everything in {@link inventory} is settled before {@link inner} realizes, which is
+ * the one place a walk waits.
+ */
+export interface PromisePlan {
+  readonly kind: 'promise';
+  readonly inner: Plan;
+  readonly inventory: readonly AsyncPlan[];
+  readonly populatedAddress: Type;
+}
+
+/**
+ * A registration answering the promise address itself: the wrapping promise is that
+ * registration's own product, so the construction protocol runs at this node with
+ * {@link envelope} as its make — the kept product is the promise the envelope mints.
+ */
+export interface RegisteredPromisePlan {
+  readonly kind: 'registered-promise';
+  readonly registration: Registration<unknown>;
+  readonly envelope: PromisePlan;
+}
+
+/**
+ * One dependency the enclosing boundary settles on this node's behalf: the boundary realizes
+ * {@link inner} and awaits it, and the walk beneath reads the settled value from here.
+ */
+export interface AsyncPlan {
+  readonly kind: 'async';
+  readonly inner: Plan;
+  /** The address the slot asked for — the settled shape, never the promise. */
+  readonly address: Type;
+}
+
+/** Every element of a stepwise sequence, each its own boundary, settled as its step runs. */
+export interface AsyncIterablePlan {
+  readonly kind: 'async-iterable';
+  readonly elements: readonly Plan[];
+}
+
 export namespace Plan {
   /**
    * A registered constructor the engine `new`s up.
@@ -168,6 +212,37 @@ export namespace Plan {
   }
 
   /**
+   * The boundary wrapping `inner` — the node for `populatedAddress`, whose realization is the
+   * promise `inventory` settles into.
+   */
+  export function promise(inner: Plan, inventory: readonly AsyncPlan[], populatedAddress: Type): PromisePlan {
+    return { kind: 'promise', inner, inventory, populatedAddress };
+  }
+
+  /**
+   * The boundary for an address `inner`'s own registration answered: the construction demotes to
+   * the envelope's plain make and the registration rides this node — one node per address, so the
+   * two never both claim it.
+   */
+  export function registeredPromise(inner: RegisteredCtorPlan | RegisteredFactoryPlan, inventory: readonly AsyncPlan[], populatedAddress: Type): RegisteredPromisePlan {
+    const make = inner.kind === 'registered-ctor' ? Plan.ctor(inner.ctor, inner.args) : Plan.factory(inner.factory, inner.args);
+    return { kind: 'registered-promise', registration: inner.registration, envelope: Plan.promise(make, inventory, populatedAddress) };
+  }
+
+  /** A dependency the enclosing boundary settles: `address` is what the slot asked for. */
+  export function async(inner: Plan, address: Type): AsyncPlan {
+    return { kind: 'async', inner, address };
+  }
+
+  /**
+   * A sequence whose steps settle one at a time: each element is a boundary of its own, so an
+   * element nobody iterates is never realized.
+   */
+  export function asyncIterable(elements: readonly Plan[]): AsyncIterablePlan {
+    return { kind: 'async-iterable', elements };
+  }
+
+  /**
    * The plan for a request, built once and kept for as long as its registry lives.
    *
    * @remarks
@@ -193,7 +268,7 @@ export namespace Plan {
             // open request cannot be asked which it is — matching one against a registration binds
             // holes, and a hole on the asking side has nothing to bind to — so it reports the
             // absence it can stand behind.
-            const registered = !Type.isOpen(address) && !registry.matching(address).next().done;
+            const registered = Type.isClosed(address) && !registry.getMatches(address).next().done;
             // The planning pass's own leaf failure, when it lies beneath address rather than being
             // address itself, names the actual dependency that could not be met.
             const missing = visitor.missingDependency;
@@ -219,15 +294,17 @@ export namespace Plan {
 
     /** The plain request's args: nothing bound. */
     const NO_ARGS: ReadonlyMap<Type, number> = new Map();
-
+    function isArray(value: any): value is readonly unknown[] {
+      return Array.isArray(value);
+    }
     function from(address: Type, registry: Registry): Plan;
     function from(address: Type, registry: Registry, signature: readonly Type[]): Plan;
     function from(address: Type, registry: Registry, args: ReadonlyMap<Type, number>): Plan;
     function from(address: Type, registry: Registry, args?: readonly Type[] | ReadonlyMap<Type, number>): Plan {
-      if (Array.isArray(args)) {
+      if (isArray(args)) {
         return from(address, registry, toArgs(args));
       }
-      return planFor(registry)(address)((args as ReadonlyMap<Type, number> | undefined) ?? NO_ARGS);
+      return planFor(registry)(address)(args ?? NO_ARGS);
     }
 
     return from;
@@ -310,5 +387,7 @@ export namespace Plan {
     return visitor.visit(generics.size ? Type.substitute(arg, generics) : arg);
   }
 
-  export const realize = realizePlan;
+  export function realize(plan: Plan, options: RealizeOptions): any {
+    return new RealizeVisitor(options).visit(plan, options.context);
+  }
 }

@@ -43,7 +43,11 @@ export class UnsatisfiableError extends DiError {
   /** The service type that could not be resolved. */
   readonly address: Type;
 
-  constructor(address: Type, reason: string, cause?: UnsatisfiableError) {
+  constructor(
+    address: Type,
+    reason: string,
+    cause?: UnsatisfiableError,
+  ) {
     super(`cannot satisfy ${Type.stringify(address)} — ${reason}`, { cause });
     this.name = 'UnsatisfiableError';
     this.address = address;

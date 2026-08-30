@@ -5,6 +5,7 @@ import type { AbstractCtor, Func } from '@rhombus-toolkit/func';
 import { askForControl, isControlAsk } from '../internal/control-recognition.js';
 import { ServiceProvider } from '../ServiceProvider.js';
 import { classifyingHooks } from './classifying-hooks.js';
+import { evictOnReject } from './evict-on-reject.js';
 import type { Scope } from './Scope.js';
 
 /**
@@ -59,33 +60,40 @@ function keeping(scope: Scope): Behavior<Scope> {
  */
 function probing(scope: Scope, learn: Func<[Type, unknown], void>): Behavior<Scope> {
   /**
-   * Whether `scope` itself is what keeps this construction.
+   * The scope keeping this construction, absent where nothing keeps it.
    *
    * @throws {LifetimeModelError} when the model refuses the registration's lifetime.
    */
-  function ownScopeKeeps({ populatedAddress, registration, state }: Hooks.Construction<Scope>): boolean {
+  function selectKeeper({ populatedAddress, registration, state }: Hooks.Construction<Scope>): Scope | undefined {
     if (registration === undefined) {
-      return false;
+      return undefined;
     }
     try {
-      return state.selectOwningScope(registration, populatedAddress) === scope;
+      return state.selectOwningScope(registration, populatedAddress);
     } catch (error) {
       throw new LifetimeModelError(populatedAddress, error);
     }
   }
 
   return {
+    // The probe threads by the keeper's own rule so that it stands at the same position in the
+    // scope chain: what it reads of a construction is what the keeper read of it.
+    beginResolve: (_request: Type, injected: Scope) => injected ?? scope,
+
     beforeConstruct(construction, next) {
       const answer = next(construction);
-      if ('result' in answer && ownScopeKeeps(construction)) {
-        learn(construction.populatedAddress, answer.result);
+      if ('result' in answer) {
+        if (selectKeeper(construction) === scope) {
+          learn(construction.populatedAddress, answer.result);
+        }
+        return answer;
       }
-      return answer;
+      return { state: selectKeeper(construction) ?? construction.state };
     },
 
     afterConstruct(construction, instance, next) {
       next(construction, instance);
-      if (ownScopeKeeps(construction)) {
+      if (selectKeeper(construction) === scope) {
         learn(construction.populatedAddress, instance);
       }
     },
@@ -176,6 +184,11 @@ export class ScopeBinding<S extends Scope = Scope> {
         const answer = next(address);
         if (this.#pending && this.#pending[0] === address && this.#pending[1] === answer) {
           this.#learnedAnswers.set(address, answer);
+          evictOnReject(answer, () => {
+            if (this.#learnedAnswers.get(address) === answer) {
+              this.#learnedAnswers.delete(address);
+            }
+          });
         }
         return answer;
       } finally {

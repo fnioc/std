@@ -98,7 +98,7 @@ land; delete the file when empty.
       typefor still never lies); value overload untouched (observation can't yield a hole).
       Replaces string-field matching (`isScopeFactoryAddress`) and the structural
       `Type.imported(name, from, [Type.generic(...)])` template spelling — logging's open
-      ILogger registration re-spells as encountered. Engine detection sites (PlannerVisitor
+      ILogger registration re-spells as encountered. Engine detection plan nodes (PlannerVisitor
       IServiceProvider/ScopeFactory) switch to hole-template `Type.match` while their receivers
       stay generic; moot for ScopeFactory if the floor-registration rework lands.
 - [x] **RULED AND LANDED 2026-08-24 (owner) — `getService` is the whole provider interface.**
@@ -634,7 +634,7 @@ land; delete the file when empty.
       the realizer's caching never sees it and creation-time binding falls out free — plus a
       walk-threaded context the handle closes over. MECHANISM LEANING (owner 2026-08-24,
       felt-right-not-thought-through): thread an immutable parent-linked frame through the
-      realize walk's context arg (each visit conses its site on), and the audit plan node
+      realize walk's context arg (each visit conses its node on), and the audit plan node
       returns a closure over that frame. The node itself stays one shared position-free value,
       so plan caching is untouched, and a cached subtree realized under a new request yields
       the new chain automatically — position is never stored, so the stale-position hazard
@@ -645,7 +645,7 @@ land; delete the file when empty.
       BORDERLINE-FREE PAYLOAD ROSTER (owner directive 2026-08-24: take advantage) — data
       already in hand at the cons or walk-start point, O(1) to capture:
       - Per-frame, at cons: **arg position within the parent's signature** (the
-      `site.args.map` index is live at every cons site — answers _which slot_, not just
+      `node.args.map` index is live at every cons site — answers _which slot_, not just
       which parent); **collection element index** (visitIterable/visitArray likewise);
       **the realizer in effect at that visit** (already a visit arg — records which
       model/scope governed the construction, incl. descendantRealizer swaps); **depth**

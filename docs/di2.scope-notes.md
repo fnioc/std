@@ -42,7 +42,7 @@ Raw material for the future scope discussion — not decisions. Owner deferred t
 - Root degeneration becomes literal and intentional under singleton = scoped-to-root.
 - Captive detection is statically POSSIBLE here (static trees, scope-pure lowering) IF lifetimes
   declare an ordering — an open string family has none intrinsically. Design input for hooks.
-- `Owned<T>`-style ownership could be an `owned` plan kind wrapping an inner site and minting a
+- `Owned<T>`-style ownership could be an `owned` plan kind wrapping an inner plan node and minting a
   child cache.
 - Disposal: nothing disposal-shaped exists in di2 yet. Open, discuss-first: TS explicit resource
   management (`Symbol.dispose`/`using`) vs a hand-rolled interface.
@@ -70,7 +70,7 @@ Raw material for the future scope discussion — not decisions. Owner deferred t
 
 ## Async leftovers that touch scope
 
-- Hoist phase 1 must consult the scope cache per async site BEFORE realizing its inner (the
+- Hoist phase 1 must consult the scope cache per async plan BEFORE realizing its inner (the
   hit-skips rule above).
 - Placeholder labels are per-OCCURRENCE, never per-type: cross-consumer sharing comes only from
   scope caches, so transient semantics match the sync path exactly.

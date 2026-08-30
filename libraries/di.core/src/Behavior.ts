@@ -1,5 +1,5 @@
 import type { Func } from '@rhombus-toolkit/func';
-import type { Hooks } from './hooks.js';
+import type { HookChain, Hooks } from './hooks.js';
 
 /**
  * The koa pattern: a handler's middleware form is the same signature with a trailing `next` —
@@ -18,7 +18,14 @@ export type Koa<Handler> = Handler extends Func<infer Args extends readonly unkn
  * beneath it run by calling it. The two are told apart by how many parameters the function declares,
  * so middleware has to declare all of them, `next` included.
  *
- * A resolution folds the behaviors accompanying it into one {@link Hooks}, the first behavior
+ * State is threaded through a slot of this behavior's own, private to it for as long as the install
+ * lives: a hook is handed that slot's bare value and what it answers goes straight back into that
+ * slot, so no state another behavior threads is reachable from here and none of this one's is
+ * reachable from there. What a middleware's `next` answers therefore carries the outcome alone — a
+ * result standing in place of the construction, or the very state the middleware handed it, meaning
+ * everything beneath ran and had nothing to report.
+ *
+ * A resolution folds the behaviors accompanying it into one {@link HookChain}, the first behavior
  * innermost, and the container's own behaviors wrap the result. A standalone implementation of one
  * member on its own, predefined before it's assigned, is typed by indexed access —
  * `Behavior['beforeConstruct']`.
@@ -30,77 +37,144 @@ export type Behavior<State = any> = {
 };
 
 export namespace Behavior {
-  /** Whether `hook` was written as middleware: it owns the chain when it declares more parameters than the handler form does. */
-  function ownsChain<Handler extends (...args: any[]) => any, Middleware extends (...args: any[]) => any>(hook: Handler | Middleware, handlerArity: number): hook is Middleware {
-    return hook.length > handlerArity;
+  /** How many parameters each hook's plain handler form declares; anything longer is middleware, the extra parameter being `next`. */
+  const handlerArity: Record<keyof Hooks, number> = {
+    beginResolve: 2,
+    beforeConstruct: 1,
+    canonicalize: 2,
+    afterConstruct: 2,
+  };
+
+  /**
+   * Which of the two forms `hook` was written in: middleware when it owns the chain — it declares
+   * more parameters than `member`'s handler form does — and a plain handler otherwise. Arity is the
+   * whole discriminator, so each form is read back by assertion.
+   */
+  function readForm<K extends keyof Hooks>(member: K, hook: NonNullable<Behavior[K]>): { middleware: Koa<Hooks<any>[K]>; } | { handler: Hooks<any>[K]; } {
+    if (hook.length > handlerArity[member]) {
+      return { middleware: hook as Koa<Hooks<any>[K]> };
+    }
+    return { handler: hook as Hooks<any>[K] };
   }
 
-  /** A handler transforms the injection `next` answered. */
-  function byBeginResolveHandler(handler: Hooks['beginResolve'], next: Hooks['beginResolve']): Hooks['beginResolve'] {
-    return (request, injected) => handler(request, next(request, injected));
+  /** `construction` as the behavior holding `slot` sees it: the same node, its own state and no one else's. */
+  function constructionForSlot(construction: HookChain.Construction, slot: number): Hooks.Construction {
+    return {
+      node: construction.node,
+      populatedAddress: construction.populatedAddress,
+      registration: construction.registration,
+      state: construction.states[slot],
+    };
   }
 
-  /** A handler's own `{result}` answer wins outright; its `{state}` re-threads the construction `next` then sees. */
-  function byBeforeConstructHandler(handler: Hooks['beforeConstruct'], next: Hooks['beforeConstruct']): Hooks['beforeConstruct'] {
-    return construction => {
-      const answer = handler(construction);
+  /** `seen` as the chain beneath reads it: whatever a middleware rewrote about the node, over the states the construction arrived carrying. */
+  function constructionBeneath(seen: Hooks.Construction, states: readonly unknown[]): HookChain.Construction {
+    return {
+      node: seen.node,
+      populatedAddress: seen.populatedAddress,
+      registration: seen.registration,
+      states,
+    };
+  }
+
+  /**
+   * A handler files the state it opens under into its own slot, everything beneath having opened
+   * first; middleware opens what is beneath by calling `next`, which answers back the very state it
+   * was handed, no slot but this one being the middleware's to read.
+   */
+  function composeBeginResolve(hook: Behavior['beginResolve'], slot: number, inner: HookChain['beginResolve']): HookChain['beginResolve'] {
+    if (!hook) {
+      return inner;
+    }
+    const form = readForm('beginResolve', hook);
+    if ('middleware' in form) {
+      return (request, injected, opening) => {
+        opening[slot] = form.middleware(request, injected[slot], (beneathRequest, threaded) => {
+          inner(beneathRequest, injected, opening);
+          return threaded;
+        });
+      };
+    }
+    return (request, injected, opening) => {
+      inner(request, injected, opening);
+      opening[slot] = form.handler(request, injected[slot]);
+    };
+  }
+
+  /**
+   * A `{result}` answer wins outright and nothing beneath this layer runs; a `{state}` answer is
+   * filed into this behavior's own slot, which is where its dependencies read it back.
+   */
+  function composeBeforeConstruct(hook: Behavior['beforeConstruct'], slot: number, inner: HookChain['beforeConstruct']): HookChain['beforeConstruct'] {
+    if (!hook) {
+      return inner;
+    }
+    const form = readForm('beforeConstruct', hook);
+    if ('middleware' in form) {
+      return (construction, within) => {
+        const answer = form.middleware(constructionForSlot(construction, slot), seen => inner(constructionBeneath(seen, construction.states), within) ?? { state: seen.state });
+        if ('result' in answer) {
+          return answer;
+        }
+        within[slot] = answer.state;
+        return undefined;
+      };
+    }
+    return (construction, within) => {
+      const answer = form.handler(constructionForSlot(construction, slot));
       if ('result' in answer) {
         return answer;
       }
-      return next({ ...construction, state: answer.state });
+      within[slot] = answer.state;
+      return inner(construction, within);
     };
   }
 
   /** A handler transforms first and hands its answer on, so the innermost layer settles the canonical instance. */
-  function byCanonicalizeHandler(handler: Hooks['canonicalize'], next: Hooks['canonicalize']): Hooks['canonicalize'] {
-    return (construction, instance) => next(construction, handler(construction, instance));
+  function composeCanonicalize(hook: Behavior['canonicalize'], slot: number, inner: HookChain['canonicalize']): HookChain['canonicalize'] {
+    if (!hook) {
+      return inner;
+    }
+    const form = readForm('canonicalize', hook);
+    if ('middleware' in form) {
+      return (construction, instance) => form.middleware(constructionForSlot(construction, slot), instance, (seen, transformed) => inner(constructionBeneath(seen, construction.states), transformed));
+    }
+    return (construction, instance) => inner(construction, form.handler(constructionForSlot(construction, slot), instance));
   }
 
   /** A handler runs after everything downstream of it, so the innermost layer runs first and the outermost last. */
-  function byAfterConstructHandler(handler: Hooks['afterConstruct'], next: Hooks['afterConstruct']): Hooks['afterConstruct'] {
+  function composeAfterConstruct(hook: Behavior['afterConstruct'], slot: number, inner: HookChain['afterConstruct']): HookChain['afterConstruct'] {
+    if (!hook) {
+      return inner;
+    }
+    const form = readForm('afterConstruct', hook);
+    if ('middleware' in form) {
+      return (construction, instance) => form.middleware(constructionForSlot(construction, slot), instance, (seen, settled) => inner(constructionBeneath(seen, construction.states), settled));
+    }
     return (construction, instance) => {
-      next(construction, instance);
-      handler(construction, instance);
+      inner(construction, instance);
+      form.handler(constructionForSlot(construction, slot), instance);
     };
   }
 
   /**
-   * `hook` standing over `next`, for one hook member: absent, `next` passes straight through;
-   * middleware runs in `next`'s own place and calls it itself; a handler is combined with `next` by
-   * `byHandler`, the one piece particular to each of the four hooks.
-   */
-  function composeMember<Args extends readonly unknown[], Answer>(
-    hook: (Func<Args, Answer> | Koa<Func<Args, Answer>>) | undefined,
-    next: Func<Args, Answer>,
-    byHandler: (handler: Func<Args, Answer>, next: Func<Args, Answer>) => Func<Args, Answer>,
-  ): Func<Args, Answer> {
-    if (!hook) {
-      return next;
-    }
-    if (ownsChain<Func<Args, Answer>, Koa<Func<Args, Answer>>>(hook, next.length)) {
-      return (...args: Args) => hook(...args, next);
-    }
-    return byHandler(hook, next);
-  }
-
-  /**
-   * `behavior` standing over `inner`: each of the four hooks `behavior` wrote composes over
-   * `inner`'s own, a member it left off passes `inner`'s straight through untouched.
+   * `behavior` standing over `inner`, threading its own state through `slot`: each of the four hooks
+   * `behavior` wrote composes over `inner`'s own, a member it left off passing `inner`'s straight
+   * through untouched.
    *
    * @remarks
-   * A composed hook is told middleware from handler by arity alone — middleware declares a
-   * trailing `next` and is called in `next`'s own place, running everything beneath it itself;
-   * a handler has no `next` parameter and instead transforms what calling `inner` already
-   * answered. Composing `behavior` over `inner` puts `behavior` closer to the call and `inner`
-   * further from it, so stacking layers outer-to-inner over successively wider `inner`s is what
-   * nests the outermost caller around everything installed before it.
+   * Composing `behavior` over `inner` puts `behavior` closer to the call and `inner` further from
+   * it, so stacking layers outer-to-inner over successively wider `inner`s is what nests the
+   * outermost caller around everything installed before it. `slot` is `behavior`'s position in the
+   * install list the chain is folded from, and the same position in the state array minted
+   * alongside it.
    */
-  export function compose(behavior: Behavior, inner: Hooks): Hooks {
+  export function compose(behavior: Behavior, slot: number, inner: HookChain): HookChain {
     return {
-      beginResolve: composeMember(behavior.beginResolve, inner.beginResolve, byBeginResolveHandler),
-      beforeConstruct: composeMember(behavior.beforeConstruct, inner.beforeConstruct, byBeforeConstructHandler),
-      canonicalize: composeMember(behavior.canonicalize, inner.canonicalize, byCanonicalizeHandler),
-      afterConstruct: composeMember(behavior.afterConstruct, inner.afterConstruct, byAfterConstructHandler),
+      beginResolve: composeBeginResolve(behavior.beginResolve, slot, inner.beginResolve),
+      beforeConstruct: composeBeforeConstruct(behavior.beforeConstruct, slot, inner.beforeConstruct),
+      canonicalize: composeCanonicalize(behavior.canonicalize, slot, inner.canonicalize),
+      afterConstruct: composeAfterConstruct(behavior.afterConstruct, slot, inner.afterConstruct),
     };
   }
 }

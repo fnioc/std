@@ -11,6 +11,14 @@ declare module '@rhombus-std/di.core' {
      */
     resolve<ServiceType>(): ServiceType;
     /**
+     * The value registered for `ServiceType`, the service type derived from the type argument
+     * instead of taken explicitly, delivered asynchronously — every dependency beneath it that
+     * arrives as a promise is awaited before the value is handed over.
+     *
+     * @throws UnsatisfiableError - when nothing can produce `ServiceType`.
+     */
+    resolveAsync<ServiceType>(): Promise<ServiceType>;
+    /**
      * Every registration of `ServiceType`, the service type derived from the type argument
      * instead of taken explicitly, as one sequence.
      */
@@ -21,6 +29,9 @@ declare module '@rhombus-std/di.core' {
 export const ServiceProviderServiceAugmentations = {
   resolve<ServiceType>(this: IServiceProvider): ServiceType {
     return this.resolve(typefor<ServiceType>());
+  },
+  resolveAsync<ServiceType>(this: IServiceProvider): Promise<ServiceType> {
+    return this.resolveAsync(typefor<ServiceType>());
   },
   resolveMany<ServiceType>(this: IServiceProvider): Iterable<ServiceType> {
     return this.resolveMany(typefor<ServiceType>());

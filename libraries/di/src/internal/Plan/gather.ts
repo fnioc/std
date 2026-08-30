@@ -1,0 +1,33 @@
+import { Type } from '@rhombus-std/primitives';
+import type { Func } from '@rhombus-toolkit/func';
+import type { AsyncPlan } from './Plan.js';
+
+/**
+ * Settles every entry of a boundary's inventory together — the one point a resolution waits — and
+ * answers what each entry settled on, read back by entry identity.
+ *
+ * @param address - the boundary's own address, named in the failure.
+ * @throws {AggregateError} when any entry fails, carrying each distinct reason once.
+ */
+export async function gather(
+  inventory: readonly AsyncPlan[],
+  address: Type,
+  open: Func<[AsyncPlan], unknown>,
+): Promise<ReadonlyMap<AsyncPlan, unknown>> {
+  const outcomes = await Promise.allSettled(inventory.map(async entry => open(entry)));
+  const reasons = new Set(
+    outcomes.filter(outcome => outcome.status === 'rejected').map(outcome => outcome.reason),
+  );
+  if (reasons.size > 0) {
+    throw new AggregateError(
+      [...reasons],
+      `cannot deliver ${Type.stringify(address)} — ${reasons.size} of the dependencies it awaits failed`,
+    );
+  }
+  return new Map(inventory.map((entry, at) => [entry, (outcomes[at] as PromiseFulfilledResult<unknown>).value]));
+}
+
+/** Runs `run` in the caller's own tick, its outcome — value or throw — delivered as a promise. */
+export async function start<T>(run: Func<[], T>): Promise<T> {
+  return run();
+}

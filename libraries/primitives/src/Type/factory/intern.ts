@@ -21,7 +21,7 @@
 import type { Func } from '@rhombus-toolkit/func';
 import type { Type } from '../Type.js';
 
-const table = new Map<string, Type>();
+const table: Record<string, Type> = {};
 const ids = new WeakMap<Type, number>();
 let nextId = 0;
 
@@ -32,11 +32,14 @@ let nextId = 0;
  * for a node the table already holds.
  */
 export function intern<T extends Type>(key: string, build: Func<[], T>): T {
-  return table.getOrInsertComputed(key, () => {
-    const minted = freeze(build());
-    ids.set(minted, nextId++);
-    return minted;
-  }) as T;
+  const existing = table[key];
+  if (existing !== undefined) {
+    return existing as T;
+  }
+  const minted = freeze(build());
+  ids.set(minted, nextId++);
+  table[key] = minted;
+  return minted as T;
 }
 
 /**

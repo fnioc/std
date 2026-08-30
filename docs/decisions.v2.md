@@ -1577,11 +1577,11 @@ _Owner-directed 2026-08-13._
 
 ## §151 — Delivery is not a node kind: `Type.async` and the `asyncIterable` kind are cancelled
 
-Handing a value over later is a property of the site, not of the type being named. "A `T`
+Handing a value over later is a property of the plan node, not of the type being named. "A `T`
 delivered later" is `Promise<T>` — the ordinary global generic that a `Promise<T>` reference already
 derives to — so `Type.async` and the `Async<E>` wire spelling are gone with nothing replacing them.
 
-`AsyncIterable<E>` factors the same way: an async sequence is a site's iteration protocol over a
+`AsyncIterable<E>` factors the same way: an async sequence is a plan node's iteration protocol over a
 collection, and `AsyncIterable` is a real TypeScript name that spells as an ordinary global generic.
 Its dedicated aggregate kind is gone too, and with no kind left to produce one, the engine's
 async-iterable plan node and its realization go with it.
@@ -2431,8 +2431,8 @@ the walk's own engine and provider. This is the existing pattern for `IServicePr
 rather than invented, and it is what let `createScope`'s current implementation start working
 without being touched.
 
-**A lifetime tag gates caching; its VALUE is ignored.** A ctor/factory site whose registration carries
-any lifetime caches into whichever scope is asking, keyed by that registration; a site with none
+**A lifetime tag gates caching; its VALUE is ignored.** A ctor/factory plan node whose registration carries
+any lifetime caches into whichever scope is asking, keyed by that registration; a plan node with none
 realizes fresh every time. There is no matching-scope-by-tag search, no ancestor lookup, and no
 distinction between different tag strings — every registration in the repo today tags `'singleton'`
 and nothing else, so this is the cheapest gate that already satisfies all of them. Multiple named
@@ -2494,16 +2494,16 @@ function's own doc comment says scope AND build-time validation are Development-
 implementation only ever set `validateOnBuild`. `validateScopes` now follows the same
 `isDevelopment` value.
 
-## §186 — Async resolution is site behavior
+## §186 — Async resolution is plan-node behavior
 
 The container has no async type kind and no async resolution machinery of its own: asynchrony is
-site behavior. `getServiceAsync` wraps the synchronous resolution in a `Promise` and
+plan-node behavior. `getServiceAsync` wraps the synchronous resolution in a `Promise` and
 forwards; everything reachable asynchronously is reachable through `getService`. A dependency on
 `Promise<T>` or `AsyncIterable<T>` is spelled with the ordinary global generics — there is no
 dedicated node kind for either. The parts that interact with scope — the hoist walk consulting
-the scope cache per async site, per-occurrence placeholder labels, and the concurrent-miss
+the scope cache per async plan, per-occurrence placeholder labels, and the concurrent-miss
 double-instantiation question — are held in docs/di2.scope-notes.md for the scope design session;
-none of them changes the site principle.
+none of them changes the plan-node principle.
 
 _Owner-ruled (pre-compact session record), Claude-recorded 2026-08-14._
 
@@ -3928,7 +3928,7 @@ design is proposed. The disposal session runs at xhigh effort by standing arrang
 ## §224 — The keeper caches the make's product, promise included; the async double-make race dissolves by construction
 
 A scope's cache stores whatever the make returned — a promise product included; the model is fully
-async-blind and never insists on settled values. A promise site's product is its boundary's own
+async-blind and never insists on settled values. A promise plan's product is its boundary's own
 wrapping promise, minted and stored in one synchronous run-to-completion block, so concurrent walks
 share one promise and double-instantiation is impossible by construction. The governing invariants,
 owner-stated: promises hoist to their nearest parent promise; realization stays synchronous
@@ -4000,11 +4000,11 @@ type.
 
 Why the request cannot be the key: delivery-mode decoupling makes one registration reachable under
 many spellings — `T` via the boundary fallback and `Promise<T>` name the same singleton; a union
-settling on a member shares it with the direct member ask; an aggregate's element site shares it with
+settling on a member shares it with the direct member ask; an aggregate's element plan node shares it with
 resolve-one. Keyed as-requested, each pair double-makes one singleton registration.
 
 The wrap direction caches the sync registration's instance, never the wrapping promise — the wrap is
-site structure, minted per site over the shared instance.
+plan-node structure, minted per plan node over the shared instance.
 
 Two memos deliberately stay request-keyed and do not conflict: the plan memo (plans are per-request
 structure; registrations are disambiguated inside plan trees, never by the plan key) and the scope's

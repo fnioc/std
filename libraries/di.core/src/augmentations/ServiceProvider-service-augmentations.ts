@@ -18,6 +18,17 @@ declare module '@rhombus-std/di.core' {
      */
     resolve(address: Type): any;
     /**
+     * The value registered for `address`, delivered asynchronously: every dependency beneath it
+     * that arrives as a promise is awaited before the value is handed over.
+     *
+     * @remarks
+     * Equivalent to asking for `Promise<address>` through {@link resolve}, and the same registration
+     * answers either spelling.
+     *
+     * @throws UnsatisfiableError - when nothing can produce `address`.
+     */
+    resolveAsync(address: Type): Promise<any>;
+    /**
      * Constructs `ctor` fresh, its dependencies resolved from `ctorType` — `ctor`'s own arg
      * types, in order, the same shape {@link ConstructorType} carries for any other registered
      * constructor.
@@ -48,6 +59,12 @@ registerAugmentations<IServiceProvider>({
 registerAugmentations<IServiceProvider>({
   resolve(this: IServiceProvider, address: Type): any {
     return this.getService(address);
+  },
+});
+
+registerAugmentations<IServiceProvider>({
+  resolveAsync(this: IServiceProvider, address: Type): Promise<any> {
+    return this.resolve(Type.global('Promise', [address]));
   },
 });
 

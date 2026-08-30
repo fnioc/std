@@ -6,3 +6,4 @@
 // published surface for them to be part of.
 
 export { Plan } from './Plan.js';
+export type { VisitorContext } from './RealizeVisitor.js';

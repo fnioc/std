@@ -3,14 +3,14 @@ import type { Func } from '@rhombus-toolkit/func';
 import type { Registration } from './Registration/index.js';
 
 /**
- * The four handlers the engine holds, one apiece and every one of them present: whatever was
- * registered is composed into these before the engine ever sees it.
+ * The four handlers one behavior contributes, every one of them present — a `Behavior` is the same
+ * four with each of them optional.
  *
  * @remarks
  * A standalone implementation of one member on its own, predefined before it's assigned, is typed
  * by indexed access — `Hooks['beginResolve']`.
  *
- * @typeParam State - the shape of the state they thread through a resolution.
+ * @typeParam State - the shape of the state it threads through a resolution.
  */
 export interface Hooks<State = unknown> {
   /** Opens one resolution, answering the state its constructions start under. */
@@ -34,18 +34,18 @@ export interface Hooks<State = unknown> {
 
 export namespace Hooks {
   /**
-   * One construction the engine is performing.
+   * One construction the engine is performing, as one behavior sees it.
    *
    * @typeParam State - the shape of the state these handlers thread through a resolution.
    */
   export interface Construction<State = unknown> {
     /** This node's position in the resolution: one per node, referentially stable, opaque. */
-    readonly site: object;
-    /** The address this site answers, as it was requested, with any captures filled in. */
+    readonly node: object;
+    /** The address this node answers, as it was requested, with any captures filled in. */
     readonly populatedAddress: Type;
     /** The registration that matched, absent when the engine rather than the manifest is answering. */
     readonly registration?: Registration<unknown>;
-    /** The state the enclosing construction placed this one under — never this node's own answer. */
+    /** This behavior's own state, as the enclosing construction left it — never this node's own answer, and never anyone else's. */
     readonly state: State;
   }
 
@@ -53,14 +53,59 @@ export namespace Hooks {
   export type Interception<State = unknown> =
     | { readonly result: unknown; }
     | { readonly state: State | undefined; };
+}
 
-  /** The chain everything starts from: it supplies nothing, changes nothing, and passes the state straight through. */
-  export const identity: Hooks = {
-    beginResolve(_request, injected) {
-      return injected;
-    },
-    beforeConstruct(construction) {
-      return { state: construction.state };
+/**
+ * The four handlers the engine drives, everything installed folded into one apiece.
+ *
+ * @remarks
+ * A chain is folded from one snapshot of the install list, and every behavior in it owns the slot
+ * at its own position in that list. A slot is private to its owner: the chain reads the value out,
+ * hands the behavior that bare value, and files back whatever the behavior answered, so nothing
+ * here lets one behavior read or overwrite another's. The slots a construction is answered under
+ * are collected across the whole chain and handed back in one array, which is what the dependency
+ * subtree then resolves under.
+ */
+export interface HookChain {
+  /**
+   * Opens one resolution, each behavior filing into its own slot of `opening` the state its
+   * constructions start under — seeded from `injected`, so a slot whose owner writes nothing keeps
+   * what it was handed.
+   */
+  readonly beginResolve: Func<[request: Type, injected: readonly unknown[], opening: unknown[]], void>;
+  /**
+   * Runs before the engine constructs, answering a result to stand in place of constructing or
+   * nothing at all — each behavior having filed into `within` the state its dependencies resolve
+   * under, seeded from the states the construction arrived carrying.
+   */
+  readonly beforeConstruct: Func<[construction: HookChain.Construction, within: unknown[]], HookChain.Interception>;
+  /** Settles what the engine has just constructed, every behavior transforming outermost-first. */
+  readonly canonicalize: Func<[construction: HookChain.Construction, instance: unknown], unknown>;
+  /** Runs once the engine has constructed, innermost behavior first. */
+  readonly afterConstruct: Func<[construction: HookChain.Construction, instance: unknown], void>;
+}
+
+export namespace HookChain {
+  /** One construction as the chain sees it: where it sits, and every installed behavior's state as the construction arrived carrying it. */
+  export interface Construction {
+    /** This node's position in the resolution: one per node, referentially stable, opaque. */
+    readonly node: object;
+    /** The address this node answers, as it was requested, with any captures filled in. */
+    readonly populatedAddress: Type;
+    /** The registration that matched, absent when the engine rather than the manifest is answering. */
+    readonly registration?: Registration<unknown>;
+    /** One slot per installed behavior, in install order. */
+    readonly states: readonly unknown[];
+  }
+
+  /** What the chain answers for a construction: a result standing in place of it, or nothing at all — go ahead and construct. */
+  export type Interception = { readonly result: unknown; } | undefined;
+
+  /** The chain everything folds onto: it supplies nothing, changes nothing, and files no state. */
+  export const identity: HookChain = {
+    beginResolve() {},
+    beforeConstruct() {
+      return undefined;
     },
     canonicalize(_construction, instance) {
       return instance;

@@ -7,6 +7,8 @@ export interface Match {
   readonly registration: Registration<unknown>;
   /** One binding per hole the match filled; empty for a registration that had none. */
   readonly generics: ReadonlyMap<string, Type>;
+  /** The address it was matched against, which is the address this match answers. */
+  readonly address: Type;
 }
 
 /**
@@ -32,7 +34,7 @@ export class Registry {
     return new Set(
       Iterator.from(this.#registrations)
         .map(registration => registration.address)
-        .filter(address => !Type.isOpen(address)),
+        .filter(Type.isClosed),
     );
   }
 
@@ -40,13 +42,40 @@ export class Registry {
    * Every registration matching exactly {@link address}'s own address, newest first — a
    * closed registration by interned identity, an open one by unification.
    */
-  matching(address: Type): IteratorObject<Match, undefined> {
-    return Iterator.from(this.#registrations)
-      .map(registration => ({
-        registration,
-        bound: Type.bindGenerics(registration.address, address),
-      }))
-      .filter((candidate): candidate is { registration: Registration<unknown>; bound: [true, Map<string, Type>]; } => candidate.bound[0])
-      .map(({ registration, bound: [, generics] }) => ({ registration, generics }));
+  getMatches(address: Type) {
+    return this.getMatchesForEither(address);
   }
+
+  /**
+   * Every registration matching {@link primary} or {@link alternate}, newest first — one pass
+   * over the registrations, so a registration matching both is answered once under
+   * {@link primary}.
+   */
+  getMatchesForEither(primary: Type, alternate?: Type) {
+    return Iterator.from(this.#registrations)
+      .map(registration => getMatchOfEither(registration, primary, alternate))
+      .filter(match => match !== undefined);
+  }
+}
+
+// function getMatch(registration:Registration<unknown>, type: Type){
+//   const [isMatch, generics] = Type.bindGenerics(registration.address, type);
+//   if (isMatch) {
+//     return { registration, generics, address: type };
+//   }
+//   return undefined;
+// }
+/** The first of the two addresses that `registration` answers, absent when it answers neither. */
+function getMatchOfEither(registration: Registration<unknown>, primary: Type, alternate: Type | undefined): Match | undefined {
+  const [isMatch, generics] = Type.bindGenerics(registration.address, primary);
+  if (isMatch) {
+    return { registration, generics, address: primary };
+  }
+  if (alternate !== undefined) {
+    const [isMatched2, generics2] = Type.bindGenerics(registration.address, alternate);
+    if (isMatched2) {
+      return { registration, generics: generics2, address: alternate };
+    }
+  }
+  return undefined;
 }

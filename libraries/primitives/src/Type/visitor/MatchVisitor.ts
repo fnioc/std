@@ -1,11 +1,9 @@
-import type { AbstractConstructorType, ArrayType, ConstructorType, FunctionType, GenericType, GlobalType, ImportedType, IntersectionType, IterableType, ObjectType, TagType, TupleType, Type,
+import { AbstractConstructorType, ArrayType, ConstructorType, FunctionType, GenericType, GlobalType, ImportedType, IntersectionType, IterableType, ObjectType, TagType, TupleType, Type,
   TypeLiteralType, UnionType } from '../Type.js';
-import { isOpenType } from './IsOpenVisitor.js';
-import { stringifyType } from './StringifyVisitor.js';
 import { TypeVisitor } from './TypeVisitor.js';
 
 /** What a match threads through the walk: the subject fragment in play, and the bindings so far. */
-interface MatchContext {
+export interface MatchContext {
   /** The subject fragment standing where the current pattern node does. */
   readonly subject: Type;
   /** One entry per hole label bound so far, shared by the whole walk. */
@@ -25,7 +23,7 @@ interface MatchContext {
  * no width subtyping, no literal widening to its primitive, no member search. With no choice
  * points, a failed branch has nothing to roll back.
  */
-class MatchVisitor extends TypeVisitor<boolean, MatchContext> {
+export class MatchVisitor extends TypeVisitor<boolean, MatchContext> {
   public override visit(pattern: Type): boolean;
   public override visit(pattern: Type, context: MatchContext): boolean;
   public override visit(pattern: Type, context?: MatchContext): boolean {
@@ -120,22 +118,4 @@ class MatchVisitor extends TypeVisitor<boolean, MatchContext> {
     return patterns.length === subjects.length
       && patterns.every((signature, index) => this.#pairwise(signature, subjects[index]!, bindings));
   }
-}
-
-const matchVisitor = new MatchVisitor();
-
-/**
- * Does some instantiation of {@link candidate} equal {@link constraint}? Success carries the
- * instantiation: one entry per generic label in the candidate.
- */
-export function matchType(candidate: Type, constraint: Type): [isMatch: false] | [isMatch: true, generics: Map<string, Type>] {
-  if (isOpenType(constraint)) {
-    throw new Error(`bindGenerics: the constraint type may not contain generic holes — got ${stringifyType(constraint)}`);
-  }
-  // Interned identity IS the closed-candidate match; the walk exists for the holes.
-  if (candidate === constraint) {
-    return [true, new Map()];
-  }
-  const bindings = new Map<string, Type>();
-  return matchVisitor.visit(candidate, { subject: constraint, bindings }) ? [true, bindings] : [false];
 }

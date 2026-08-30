@@ -1,11 +1,12 @@
 import type { DistributiveOmit } from '../toolkit/index.js';
+import { memo } from '../toolkit/memo.js';
 import * as factory from './factory/factories.js';
 import type { LIST_KINDS, ListName } from './grammar.js';
 import { parseTypeString } from './parse/parser.js';
-import { isOpenType } from './visitor/IsOpenVisitor.js';
-import { matchType } from './visitor/MatchVisitor.js';
+import { IsOpenVisitor } from './visitor/IsOpenVisitor.js';
+import { MatchVisitor } from './visitor/MatchVisitor.js';
 import { stringifyType } from './visitor/StringifyVisitor.js';
-import { substituteType } from './visitor/SubstituteVisitor.js';
+import { SubstituteVisitor } from './visitor/SubstituteVisitor.js';
 import { TypeVisitor } from './visitor/TypeVisitor.js';
 
 // #region types
@@ -203,11 +204,18 @@ export namespace Type {
    * @throws TypeParseError - when the token is malformed.
    */
   export const from = (() => {
-    /** Every token that has already been read, so a repeated request skips the lexer. */
-    const parsed = new Map<string, Type>();
+    /**
+     * Every token that has already been read, so a repeated request skips the lexer.
+     *
+     * @remarks
+     * A prototype-less object, since a caller-spelled token may legally coincide with a name
+     * `Object.prototype` already carries — `toString`, `constructor` — and a plain `{}` would
+     * answer those from the inherited method rather than the cache.
+     */
+    const parsed: Record<string, Type> = Object.create(null);
 
     return function from(type: string | Type): Type {
-      return typeof type === 'string' ? parsed.getOrInsertComputed(type, parseTypeString) : Type.adopt(type);
+      return typeof type === 'string' ? (parsed[type] ??= parseTypeString(type)) : Type.adopt(type);
     };
   })();
 
@@ -310,6 +318,11 @@ export namespace Type {
     return factory.object(members);
   }
 
+  /** `Promise<settled>` — idempotent: `promise(Promise<X>)` returns the interned `Promise<X>`. */
+  export function promise(settled: Type): GlobalType {
+    return Type.global('Promise', [Type.awaited(settled)]);
+  }
+
   /**
    * The given type wearing a tag — a distinct name for the same underlying type, so the same
    * type under a different tag is a different type.
@@ -386,13 +399,36 @@ export namespace Type {
   })();
 
   /** Does `type` still hold a generic hole anywhere? */
-  export function isOpen(type: Type): boolean {
-    return isOpenType(type);
+  export const isOpen = (() => {
+    const visitor = new IsOpenVisitor();
+    const check = memo(function isOpen(type: Type): boolean {
+      return visitor.visit(type);
+    });
+    return function isOpen(type: Type): boolean {
+      return check(type);
+    };
+  })();
+
+  export function isClosed(type: Type): boolean {
+    return !Type.isOpen(type);
   }
 
   /** Does the type admit `undefined` — the `undefined` literal itself, or a union carrying it? */
   export function isOptional(type: Type): boolean {
     return type === Type.typeLiteral(undefined) || type.kind === 'union' && type.members.includes(Type.typeLiteral(undefined));
+  }
+
+  const PROMISE_PATTERN = Type.global('Promise', [Type.generic('S')]);
+
+  /** Is `type` a `Promise<…>` — the one spelling the container reads as deferred delivery? */
+  export function isPromiseLike(type: Type): boolean {
+    return Type.bindGenerics(PROMISE_PATTERN, type)[0];
+  }
+
+  /** What `type` settles to: the inner type for a `Promise<T>`, the type itself otherwise. */
+  export function awaited(type: Type): Type {
+    const [matched, generics] = Type.bindGenerics(PROMISE_PATTERN, type);
+    return matched ? generics.get('S')! : type;
   }
 
   /**
@@ -406,9 +442,19 @@ export namespace Type {
    *
    * @throws Error - when `constraint` itself holds a generic hole.
    */
-  export function bindGenerics(candidate: Type, constraint: Type) {
-    return matchType(candidate, constraint);
-  }
+  export const bindGenerics = (() => {
+    const visitor = new MatchVisitor();
+    return function bindGenerics(possiblyOpenCandidate: Type, closedConstraint: Type): [isMatch: false] | [isMatch: true, generics: Map<string, Type>] {
+      if (Type.isOpen(closedConstraint)) {
+        throw new Error(`bindGenerics: the constraint type may not contain generic holes — got ${Type.stringify(closedConstraint)}`);
+      }
+      if (possiblyOpenCandidate === closedConstraint) {
+        return [true, new Map()];
+      }
+      const bindings = new Map<string, Type>();
+      return visitor.visit(possiblyOpenCandidate, { subject: closedConstraint, bindings }) ? [true, bindings] : [false];
+    };
+  })();
 
   /** Writes the type as its token spelling — the inverse of {@link from}. */
   export function stringify(type: Type): string {
@@ -420,7 +466,10 @@ export namespace Type {
   export function substitute(type: FunctionType, substitutions: ReadonlyMap<string, Type>): FunctionType;
   export function substitute(type: Type, substitutions: ReadonlyMap<string, Type>): Type;
   export function substitute(type: Type, substitutions: ReadonlyMap<string, Type>): Type {
-    return substituteType(type, substitutions);
+    if (!substitutions.size || Type.isClosed(type)) {
+      return type;
+    }
+    return new SubstituteVisitor(substitutions).visit(type);
   }
 
   /** The lenient no-arg spelling: `[]` names no call, so it reads as one empty signature. */

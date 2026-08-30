@@ -1,17 +1,27 @@
-import { Behavior, Control, Hooks, type IEngineHooks, type IServiceProviderInternal, type Registration, UnknownControlError, UnsatisfiableError } from '@rhombus-std/di.core';
+import { Behavior, Control, HookChain, type IEngineHooks, type IServiceProviderInternal, type Registration, UnknownControlError, UnsatisfiableError } from '@rhombus-std/di.core';
 import { assertTruthy, type FunctionType, Type } from '@rhombus-std/primitives';
 import { typefor } from '@rhombus-std/primitives.extras';
 import type { Func } from '@rhombus-toolkit/func';
 import { isControlAsk } from './control-recognition.js';
-import { Plan } from './Plan/index.js';
+import { Plan, type VisitorContext } from './Plan/index.js';
 import { Registry } from './Registry.js';
 
 /** A resolution as it stood where a callable was minted, so invoking that callable re-enters the same way. */
 interface RunningResolve {
-  /** The one handler the resolution was running through. */
-  readonly hooks: Hooks;
-  /** The state at the position the callable was minted. */
-  readonly state: unknown;
+  /** The one chain the resolution was running through. */
+  readonly chain: HookChain;
+  /** What the walk carried at the position the callable was minted, everything an enclosing boundary settled stripped off. */
+  readonly context: VisitorContext;
+}
+
+/**
+ * The state every behavior on `chain` opens `request` under, one slot apiece: each files into its
+ * own, seeded from `injected` — so a slot nobody writes keeps whatever the caller carried in.
+ */
+function openStates(chain: HookChain, request: Type, injected: readonly unknown[]): readonly unknown[] {
+  const opening = injected.slice();
+  chain.beginResolve(request, injected, opening);
+  return Object.freeze(opening);
 }
 
 export interface Engine extends IServiceProviderInternal {}
@@ -21,10 +31,11 @@ export class Engine implements IServiceProviderInternal, IEngineHooks {
   readonly #registry: Registry;
   /**
    * Every hook layer installed and not yet disposed, oldest first; starts empty. Each layer is the
-   * chain standing outside whatever it's handed, held here by identity — the token `useHooks`'s
-   * disposer looks up to remove exactly the one it installed and no other.
+   * chain standing outside whatever it's handed, threading its state through the slot at its own
+   * position here, and held by identity — the token `useHooks`'s disposer looks up to remove
+   * exactly the one it installed and no other.
    */
-  readonly #installed: Array<Func<[inner: Hooks], Hooks>> = [];
+  readonly #installed: Array<Func<[slot: number, inner: HookChain], HookChain>> = [];
 
   constructor(registrations: Iterable<Registration<unknown>>) {
     this.#registry = new Registry(registrations);
@@ -60,14 +71,15 @@ export class Engine implements IServiceProviderInternal, IEngineHooks {
     }
     // The most recently installed layer stands closest to the walk, so a bracket's keeping seeds
     // the state before anything installed earlier reads it — which is what makes a unit of work
-    // opened inside another answer from its own scope. An install made during a resolution affects
-    // only resolutions opened after it: a resolution already under way keeps what it opened with,
+    // opened inside another answer from its own scope. Chain and slots mint together, off one
+    // snapshot of the install list, so an install or dispose made during a resolution affects only
+    // resolutions opened after it: a resolution already under way keeps the pair it opened with,
     // its latebound closures included, however late they fire.
-    const hooks = this.#installed.reduceRight((inner, layer) => layer(inner), Hooks.identity);
+    const chain = this.#installed.reduceRight((inner, layer, slot) => layer(slot, inner), HookChain.identity);
     return Plan.realize(Plan.from(address, this.#registry), {
       engine: this,
-      hooks,
-      state: hooks.beginResolve(address, undefined),
+      chain,
+      context: { states: openStates(chain, address, new Array(this.#installed.length)) },
     });
   }
 
@@ -76,7 +88,7 @@ export class Engine implements IServiceProviderInternal, IEngineHooks {
   // #region IEngineHooks
 
   useHooks<State = unknown>(hooks: Behavior<State>): Disposable {
-    const layer: Func<[inner: Hooks], Hooks> = inner => Behavior.compose(hooks, inner);
+    const layer: Func<[slot: number, inner: HookChain], HookChain> = (slot, inner) => Behavior.compose(hooks, slot, inner);
     this.#installed.push(layer);
     return {
       [Symbol.dispose]: () => {
@@ -102,7 +114,7 @@ export class Engine implements IServiceProviderInternal, IEngineHooks {
    * registers or caches.
    *
    * @param running - the resolution as it stood where the caller was minted; it re-opens through
-   * that resolution's own handler, so an opener that reads ambient state can override the state
+   * that resolution's own chain, so an opener that reads ambient state can override the state
    * captured there.
    * @throws {UnsatisfiableError} when no signature of {@link registration} can be satisfied.
    */
@@ -113,8 +125,8 @@ export class Engine implements IServiceProviderInternal, IEngineHooks {
     }
     return Plan.realize(plan, {
       engine: this,
-      hooks: running.hooks,
-      state: running.hooks.beginResolve(registration.address, running.state),
+      chain: running.chain,
+      context: { states: openStates(running.chain, registration.address, running.context.states) },
     });
   }
 
@@ -123,7 +135,7 @@ export class Engine implements IServiceProviderInternal, IEngineHooks {
    * A call may stop short of the full signature wherever the remaining slots admit `undefined`.
    *
    * @param running - the resolution as it stood where the caller was minted; it re-opens through
-   * that resolution's own handler, so an opener that reads ambient state can override the state
+   * that resolution's own chain, so an opener that reads ambient state can override the state
    * captured there.
    */
   resolveLatebound(funcType: FunctionType, providedArgs: readonly unknown[], running: RunningResolve): unknown {
@@ -136,9 +148,11 @@ export class Engine implements IServiceProviderInternal, IEngineHooks {
     }
     return Plan.realize(Plan.from(funcType.return, this.#registry, signature), {
       engine: this,
-      hooks: running.hooks,
-      state: running.hooks.beginResolve(funcType.return, running.state),
-      args: providedArgs,
+      chain: running.chain,
+      context: {
+        states: openStates(running.chain, funcType.return, running.context.states),
+        args: providedArgs,
+      },
     });
   }
 

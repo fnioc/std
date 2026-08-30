@@ -21,7 +21,7 @@ shown to the owner and not overruled; everything untagged is owner-set.
   the user door. `ServiceProvider` is a thin (engine, scope-binding) facade.
 - Recursion discipline: lowering recursion stays inside PlannerVisitor; realize recursion stays
   inside RealizeVisitor; the ONE sanctioned cross-file loop is latebound → engine entrypoint.
-- The engine memoizes `type → { tree, asyncSites }` (sound: manifest immutable, lowering
+- The engine memoizes `type → { tree, asyncPlans }` (sound: manifest immutable, lowering
   scope-pure). A latebound re-entry layers extra value registrations ⇒ its memo key includes those
   arg types, or bypasses. **(proposed)**
 
@@ -56,7 +56,7 @@ shown to the owner and not overruled; everything untagged is owner-set.
 - Failure signal is `UnsatisfiableError` everywhere — the `'failzor'` throw and undefined-returns
   die. Catch sites: union-member choice, next-signature choice, promise fallback. **(proposed)**
 - A lookup miss on `T` falls back to `Promise<T>`; a hit there produces an async placeholder node
-  (per-occurrence label) wrapping the `Promise<T>` site.
+  (per-occurrence label) wrapping the `Promise<T>` plan node.
 - The ad-hoc machinery is deleted: `AdHocPlan`, `RealizeContext.adhoc`, the ServiceProvider
   adhoc branches. Latebound call args enter re-entry as value registrations (`additionalServices`).
 
@@ -67,15 +67,15 @@ Async ≡ the manifest registers `Promise<T>` and a dep wants `T`. A dep literal
 
 - Placeholders are per-OCCURRENCE (unique ids), never per-type — async transients keep sync-path
   semantics; sharing comes only from scope caches.
-- Async entry, hoist step: per async site, scope-cache check FIRST — a hit satisfies the site
+- Async entry, hoist step: per async plan, scope-cache check FIRST — a hit satisfies the plan node
   synchronously with the awaited value (caches store values as-requested, never promises; full
-  scope design pending). On miss, the site's inner becomes one entry in a flat label→promise map.
-  Entries chain: creation order is leaves-first for free (lowering finishes nested sites before
+  scope design pending). On miss, the plan node's inner becomes one entry in a flat label→promise map.
+  Entries chain: creation order is leaves-first for free (lowering finishes nested plan nodes before
   their parents), and each entry awaits the labels its own subtree recorded, then sync-realizes
   its inner and unwraps. ONE flat gather awaits the whole map.
 - Plug step: fully-sync realize of the tree; async placeholders read `promised.get(label)` from
   context — the memoized tree is never mutated.
-- Sync entry: same walk; throws iff any async site survives its cache check. Corollary: a
+- Sync entry: same walk; throws iff any async plan survives its cache check. Corollary: a
   fully-cached async graph resolves through the SYNC entrypoint.
 - The gather observes every in-flight entry (`allSettled`-shaped — no unhandled rejections);
   rejections throw as ONE `AggregateError`, deduped by reason identity (a chained entry rethrows

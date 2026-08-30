@@ -1,7 +1,6 @@
 import { tag as tagType } from '../factory/factories.js';
 import { type AbstractConstructorType, type ArrayType, type ConstructorType, type FunctionType, type GenericType, type GlobalType, type ImportedType, type IntersectionType, type IterableType,
   type ObjectType, type TagType, type TupleType, Type, type TypeLiteralType, type UnionType } from '../Type.js';
-import { isOpenType } from './IsOpenVisitor.js';
 import { TypeVisitor } from './TypeVisitor.js';
 
 /**
@@ -12,7 +11,7 @@ import { TypeVisitor } from './TypeVisitor.js';
  * One pass, no re-entry: a substituted type is spliced in as-is and never re-scanned, so
  * mapping `T` to a type containing `%T` terminates instead of looping.
  */
-class SubstituteVisitor extends TypeVisitor<Type> {
+export class SubstituteVisitor extends TypeVisitor<Type> {
   readonly #substitutions: ReadonlyMap<string, Type>;
 
   constructor(substitutions: ReadonlyMap<string, Type>) {
@@ -95,12 +94,4 @@ class SubstituteVisitor extends TypeVisitor<Type> {
   #allSignatures(signatures: Type.Signatures): Type.Signatures {
     return signatures.map(signature => this.#all(signature));
   }
-}
-
-export function substituteType(type: Type, substitutions: ReadonlyMap<string, Type>): Type {
-  // Nothing to put in, or no holes to fill: the tree is already its own substitution.
-  if (!substitutions.size || !isOpenType(type)) {
-    return type;
-  }
-  return new SubstituteVisitor(substitutions).visit(type);
 }

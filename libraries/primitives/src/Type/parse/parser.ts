@@ -145,11 +145,11 @@ class TypeParser {
    * as an ordinary name already lands on its kind node.
    */
   #reserved(name: LexToken): Type | undefined {
-    if (KEYWORD_LITERALS.has(name.text)) {
+    if (Object.hasOwn(KEYWORD_LITERALS, name.text)) {
       if (this.#at('<')) {
         throw this.#error(this.#peek()!.position, `no type arguments — \`${name.text}\` is a literal`);
       }
-      return literal(KEYWORD_LITERALS.get(name.text));
+      return literal(KEYWORD_LITERALS[name.text]);
     }
     switch (name.text) {
       case 'Func': {

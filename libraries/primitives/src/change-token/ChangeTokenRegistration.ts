@@ -1,8 +1,5 @@
+import { isThenable } from '../toolkit/is-thenable.js';
 import type { ChangeTokenConsumer, ChangeTokenProducer, IChangeToken } from './IChangeToken.js';
-
-function isThenable(value: void | PromiseLike<void>): value is PromiseLike<void> {
-  return typeof (value as PromiseLike<void> | undefined)?.then === 'function';
-}
 
 /**
  * One live subscription: holds the consumer against whatever token the producer

@@ -114,38 +114,32 @@ function* captivePairs(
 ): Generator<ValidationFailure> {
   switch (plan.kind) {
     case 'registered-ctor':
-    case 'registered-factory': {
-      const classification = policy.classify(plan.registration);
-      if (classification === 'unkept' || classification === undefined) {
-        for (const arg of plan.args) {
-          yield* captivePairs(arg, keeper, policy, reported);
-        }
-        return;
-      }
-      if (keeper !== undefined && classification.tier > keeper.tier && !reported.get(keeper.address)?.has(plan.populatedAddress)) {
-        reported.getOrInsertComputed(keeper.address, () => new Set()).add(plan.populatedAddress);
-        yield { address: keeper.address, error: new CaptiveDependencyError(keeper.address, plan.populatedAddress) };
-      }
-      const nextKeeper = { address: plan.populatedAddress, tier: classification.tier };
-      for (const arg of plan.args) {
-        yield* captivePairs(arg, nextKeeper, policy, reported);
-      }
+    case 'registered-factory':
+      yield* keptSubtree(plan.registration, plan.populatedAddress, plan.args, keeper, policy, reported);
       return;
-    }
+    // A wrap the engine synthesized keeps nothing; its subtree answers to the enclosing keeper.
+    case 'promise':
+      yield* descend([plan.inner, ...plan.inventory], keeper, policy, reported);
+      return;
+    // A boundary a registration answered keeps the promise it hands over, so it is the keeper for
+    // its whole subtree — the dependencies it awaits alongside the construction it wraps.
+    case 'registered-promise':
+      yield* keptSubtree(plan.registration, plan.envelope.populatedAddress, [plan.envelope.inner, ...plan.envelope.inventory], keeper, policy, reported);
+      return;
+    case 'async':
+      yield* captivePairs(plan.inner, keeper, policy, reported);
+      return;
+    case 'async-iterable':
+      yield* descend(plan.elements, keeper, policy, reported);
+      return;
     case 'ctor':
-    case 'factory': {
-      for (const arg of plan.args) {
-        yield* captivePairs(arg, keeper, policy, reported);
-      }
+    case 'factory':
+      yield* descend(plan.args, keeper, policy, reported);
       return;
-    }
     case 'iterable':
-    case 'array': {
-      for (const member of plan.types) {
-        yield* captivePairs(member, keeper, policy, reported);
-      }
+    case 'array':
+      yield* descend(plan.types, keeper, policy, reported);
       return;
-    }
     // Each of these ends the sweep: a value, a provider facade, or a call the container only
     // makes once someone invokes it, which no build-time reading can follow.
     case 'constant':
@@ -156,5 +150,37 @@ function* captivePairs(
       return;
     default:
       return assertNever(plan);
+  }
+}
+
+/** The subtree of a plan node kept by `registration`: it becomes the keeper everything beneath answers to. */
+function* keptSubtree(
+  registration: Registration<unknown>,
+  populatedAddress: Type,
+  beneath: readonly Plan[],
+  keeper: { address: Type; tier: number; } | undefined,
+  policy: LifetimePolicy,
+  reported: Map<Type, Set<Type>>,
+): Generator<ValidationFailure> {
+  const classification = policy.classify(registration);
+  if (classification === 'unkept' || classification === undefined) {
+    yield* descend(beneath, keeper, policy, reported);
+    return;
+  }
+  if (keeper !== undefined && classification.tier > keeper.tier && !reported.get(keeper.address)?.has(populatedAddress)) {
+    reported.getOrInsertComputed(keeper.address, () => new Set()).add(populatedAddress);
+    yield { address: keeper.address, error: new CaptiveDependencyError(keeper.address, populatedAddress) };
+  }
+  yield* descend(beneath, { address: populatedAddress, tier: classification.tier }, policy, reported);
+}
+
+function* descend(
+  plans: readonly Plan[],
+  keeper: { address: Type; tier: number; } | undefined,
+  policy: LifetimePolicy,
+  reported: Map<Type, Set<Type>>,
+): Generator<ValidationFailure> {
+  for (const plan of plans) {
+    yield* captivePairs(plan, keeper, policy, reported);
   }
 }
