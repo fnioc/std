@@ -37,7 +37,8 @@
 // captured type wherever it appears.
 
 import { di, noop } from '@rhombus-std/di';
-import { Manifest, Type } from '@rhombus-std/di.core';
+import { Manifest } from '@rhombus-std/di.core';
+import { Type } from '@rhombus-std/primitives';
 
 import type { AuditEvent, Entity, IJoin, IRepository, ITable, Order, Seed, User } from '@rhombus-std/examples.contracts';
 

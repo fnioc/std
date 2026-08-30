@@ -11,11 +11,12 @@
 
 import { ConfigBuilder, type IConfigRoot } from '@rhombus-std/config';
 import { di, noop } from '@rhombus-std/di';
-import { Manifest, Type } from '@rhombus-std/di.core';
+import { Manifest } from '@rhombus-std/di.core';
 import { LoggingBuilder } from '@rhombus-std/logging';
 import { LoggerProviderOptions } from '@rhombus-std/logging.config';
 import type { IOptions } from '@rhombus-std/options';
 import { getConfigureManifest, optionsAddressType } from '@rhombus-std/options.augmentations';
+import { Type } from '@rhombus-std/primitives';
 import { describe, expect, test } from 'bun:test';
 
 interface FakeProviderOptions {

@@ -28,8 +28,9 @@
 // same reason.
 
 import { di, noop } from '@rhombus-std/di';
-import { DiError, Manifest, ManifestValidationError, Type } from '@rhombus-std/di.core';
+import { DiError, Manifest, ManifestValidationError } from '@rhombus-std/di.core';
 import { demonstrateRegistrationErrors, diagnose, stagedFailure } from '@rhombus-std/examples.lib.without-transformer';
+import { Type } from '@rhombus-std/primitives';
 
 // ── the domain ───────────────────────────────────────────────────────────────
 

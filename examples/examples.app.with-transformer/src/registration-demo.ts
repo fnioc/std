@@ -26,8 +26,9 @@
 //    not, as the keyed and literal slots below do.
 
 import { di, noop } from '@rhombus-std/di';
-import { Manifest, Type } from '@rhombus-std/di.core';
-import type { ImportedType, Registration } from '@rhombus-std/di.core';
+import { Manifest } from '@rhombus-std/di.core';
+import type { Registration } from '@rhombus-std/di.core';
+import { type ImportedType, Type } from '@rhombus-std/primitives';
 // The type-driven MINT primitive, and the whole of what this dialect is:
 // `typefor<T>()` becomes the very `Type` a hand author composes by name. It has
 // no runtime footprint — the build folds every call and elides this import with

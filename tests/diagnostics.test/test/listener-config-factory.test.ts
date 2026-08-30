@@ -10,9 +10,9 @@
 
 import { ConfigBuilder, type IConfig } from '@rhombus-std/config';
 import { di, noop } from '@rhombus-std/di';
-import { Type } from '@rhombus-std/di.core';
 import { ActivityListenerConfigFactory, DefaultActivityListenerConfigFactory, getMetricsManifest, getTracingManifest, type IMetricListenerConfigFactory, MetricListenerConfigFactory, MetricsConfig,
   TracingConfig } from '@rhombus-std/diagnostics';
+import { Type } from '@rhombus-std/primitives';
 import { describe, expect, test } from 'bun:test';
 
 // The factory addresses as a plugin-less author spells them — the same interned

@@ -14,8 +14,8 @@
 // string they each have to spell correctly.
 
 import { di, noop } from '@rhombus-std/di';
-import { Type } from '@rhombus-std/di.core';
-import type { ImportedType, IServiceProvider } from '@rhombus-std/di.core';
+import type { IServiceProvider } from '@rhombus-std/di.core';
+import { type ImportedType, Type } from '@rhombus-std/primitives';
 import { typefor } from '@rhombus-std/primitives.extras';
 
 import type { CheckoutOrder, IAuditTrail, IExchangeRates, IFraudScreen, IOrderValidator, IPaymentGateway, IPaymentRouter, IReceipt } from '@rhombus-std/examples.contracts';

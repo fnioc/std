@@ -19,7 +19,8 @@
   },
   "dependencies": {
     "@rhombus-std/di.core": "workspace:*",
-    "@rhombus-std/examples.contracts": "workspace:*"
+    "@rhombus-std/examples.contracts": "workspace:*",
+    "@rhombus-std/primitives": "workspace:*"
   },
   "devDependencies": {
     "typescript": "^6.0.3"

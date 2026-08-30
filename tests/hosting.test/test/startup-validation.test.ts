@@ -8,10 +8,10 @@
 // (merged in via `addMany`) registers the built-in IStartupValidator, and
 // Host.start resolves and forces it.
 
-import { Type } from '@rhombus-std/di.core';
 import { getHostedServiceManifest, HostBuilder, HOSTED_SERVICE_TYPE } from '@rhombus-std/hosting';
 import { OptionsValidationError } from '@rhombus-std/options';
 import { getValidateManifest, getValidateOnStartManifest } from '@rhombus-std/options.augmentations';
+import { Type } from '@rhombus-std/primitives';
 // Installs the `addOptions` verb onto di.core's Manifest.
 import '@rhombus-std/options.augmentations';
 import { expect, test } from 'bun:test';

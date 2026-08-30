@@ -11,8 +11,9 @@
 
 import { ConfigBuilder, type IConfigRoot } from '@rhombus-std/config';
 import { di, noop } from '@rhombus-std/di';
-import { Manifest, Type } from '@rhombus-std/di.core';
+import { Manifest } from '@rhombus-std/di.core';
 import { LoggerFilterOptions, LoggingBuilder } from '@rhombus-std/logging';
+import { Type } from '@rhombus-std/primitives';
 import '@rhombus-std/logging.config';
 import { LogLevel } from '@rhombus-std/logging.core';
 import type { IOptions } from '@rhombus-std/options';

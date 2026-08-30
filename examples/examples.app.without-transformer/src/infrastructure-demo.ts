@@ -27,7 +27,8 @@
 // byte-stable, which the app's checked-in `expected.txt` diff depends on.
 
 import { di, noop } from '@rhombus-std/di';
-import { Manifest, Type } from '@rhombus-std/di.core';
+import { Manifest } from '@rhombus-std/di.core';
+import { Type } from '@rhombus-std/primitives';
 // `describeDiError` is the LIBRARY's — classifying what a container threw needs
 // di.core and nothing more. Building the container is this root's, because that
 // is the one thing the engine is for.

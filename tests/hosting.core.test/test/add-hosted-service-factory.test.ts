@@ -1,6 +1,7 @@
 import { di, noop } from '@rhombus-std/di';
-import { Manifest, Type } from '@rhombus-std/di.core';
+import { Manifest } from '@rhombus-std/di.core';
 import { getHostedServiceManifest, HOSTED_SERVICE_TYPE, hostedServiceCollectionType, type IHostedService } from '@rhombus-std/hosting.core/private/index';
+import { Type } from '@rhombus-std/primitives';
 import { expect, test } from 'bun:test';
 
 test("addHostedService(factory) registers the factory's result under the hosted-service token", async () => {

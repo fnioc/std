@@ -15,8 +15,8 @@
 // producer is how a plugin-less codebase keeps them in step.
 
 import { di, noop } from '@rhombus-std/di';
-import { Type } from '@rhombus-std/di.core';
 import type { IServiceProvider } from '@rhombus-std/di.core';
+import { Type } from '@rhombus-std/primitives';
 
 import type { CheckoutOrder, IAuditTrail, IExchangeRates, IOrderValidator, IPaymentGateway, IPaymentRouter, IReceipt } from '@rhombus-std/examples.contracts';
 import { addCheckoutServices, CHECKOUT_TYPES } from '@rhombus-std/examples.lib.without-transformer';

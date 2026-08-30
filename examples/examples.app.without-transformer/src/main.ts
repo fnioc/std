@@ -45,8 +45,8 @@
 
 import { ConfigBuilder } from '@rhombus-std/config';
 import type { ConfigRoot } from '@rhombus-std/config';
-import { Type } from '@rhombus-std/di.core';
 import type { IServiceProvider } from '@rhombus-std/di.core';
+import { Type } from '@rhombus-std/primitives';
 import '@rhombus-std/di';
 import { getHostedServiceManifest, Host, HOST_APPLICATION_LIFETIME_TYPE, HOSTED_SERVICE_TYPE } from '@rhombus-std/hosting';
 import type { IHostApplicationLifetime, IHostedLifecycleService } from '@rhombus-std/hosting';

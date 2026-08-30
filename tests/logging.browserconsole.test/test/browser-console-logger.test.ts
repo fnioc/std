@@ -1,7 +1,8 @@
-import type { Manifest, Type } from '@rhombus-std/di.core';
+import type { Manifest } from '@rhombus-std/di.core';
 import { LOGGER_PROVIDER_TYPE, LoggingBuilder } from '@rhombus-std/logging';
 import { BrowserConsoleLogger, BrowserConsoleLoggerAugmentations, BrowserConsoleLoggerProvider, type ConsoleLike, consoleMethodFor } from '@rhombus-std/logging.browserconsole';
 import { EventId, LogLevel } from '@rhombus-std/logging.core';
+import type { Type } from '@rhombus-std/primitives';
 import { expect, test } from 'bun:test';
 
 /**

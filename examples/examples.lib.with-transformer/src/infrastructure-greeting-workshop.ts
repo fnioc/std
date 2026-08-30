@@ -38,9 +38,10 @@
 // Type-only: puts the sugar's declare-module faces in every program that
 // compiles this source, with no runtime import of the authoring package.
 import type {} from '@rhombus-std/di.extras';
-import { Manifest, Type } from '@rhombus-std/di.core';
+import { Manifest } from '@rhombus-std/di.core';
 import type { IServiceProvider } from '@rhombus-std/di.core';
 import type { IGreeting } from '@rhombus-std/examples.contracts';
+import { Type } from '@rhombus-std/primitives';
 // `typefor<T>()` folds to the very `Type` a hand author writes out, so a lookup
 // written from a type and a registration written from a type cannot drift. It
 // has no runtime footprint — every call is folded and this import elided with

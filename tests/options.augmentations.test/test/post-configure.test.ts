@@ -9,9 +9,10 @@
 // implemented but had no manifest-surface caller (#128).
 
 import { di, noop } from '@rhombus-std/di';
-import { Manifest, Type } from '@rhombus-std/di.core';
+import { Manifest } from '@rhombus-std/di.core';
 import type { IOptions, IPostConfigureOptions } from '@rhombus-std/options';
 import { getConfigureManifest, getPostConfigureManifest, optionsAddressType } from '@rhombus-std/options.augmentations';
+import { Type } from '@rhombus-std/primitives';
 import { describe, expect, test } from 'bun:test';
 
 interface WidgetOptions {

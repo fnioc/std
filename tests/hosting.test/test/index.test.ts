@@ -1,7 +1,7 @@
 import { MemoryConfigSource } from '@rhombus-std/config';
-import { Type } from '@rhombus-std/di.core';
 import { BackgroundService, getHostedServiceManifest, Host, HOST_APPLICATION_LIFETIME_TYPE, HOST_ENVIRONMENT_TYPE, HostBuilder, HOSTED_SERVICE_TYPE, type IHostApplicationLifetime,
   type IHostedLifecycleService, type IHostEnvironment } from '@rhombus-std/hosting';
+import { Type } from '@rhombus-std/primitives';
 import type { Func } from '@rhombus-toolkit/func';
 import { expect, test } from 'bun:test';
 

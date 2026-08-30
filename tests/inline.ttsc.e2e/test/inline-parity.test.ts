@@ -1,7 +1,8 @@
 // Side-effect: installs `build` onto di.core's Manifest.
 import { di, noop } from '@rhombus-std/di';
-import { DefaultManifest, type Manifest, Type } from '@rhombus-std/di.core';
+import { DefaultManifest, type Manifest } from '@rhombus-std/di.core';
 import type { IOptions } from '@rhombus-std/options';
+import { Type } from '@rhombus-std/primitives';
 import { beforeAll, describe, expect, test } from 'bun:test';
 import { spawnSync } from 'node:child_process';
 import { mkdirSync, readFileSync, rmSync, symlinkSync, writeFileSync } from 'node:fs';
@@ -673,9 +674,10 @@ const OPTIONS_DIR = join(homedir(), '.cache', 'fnioc-ttsc', 'sandboxes', basenam
 // same route, so every published body resolves against the publisher's own
 // declarations.
 const OPTIONS_AUTHORING = `
-import type { Manifest, Type } from '@rhombus-std/di.core';
+import type { Manifest } from '@rhombus-std/di.core';
 import type {} from '@rhombus-std/di.extras';
 import type {} from '@rhombus-std/di.extras.options';
+import type { Type } from '@rhombus-std/primitives';
 export type __Keep = [Manifest<unknown>, Type];
 export {};
 `;

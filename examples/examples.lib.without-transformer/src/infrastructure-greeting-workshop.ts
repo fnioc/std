@@ -26,9 +26,10 @@
 // infrastructure-greeting-workshop.ts`: the same scenario, the same output, the
 // type-driven dialect. Diff them to see exactly what the transformer removes.
 
-import { Manifest, Type } from '@rhombus-std/di.core';
+import { Manifest } from '@rhombus-std/di.core';
 import type { IServiceProvider } from '@rhombus-std/di.core';
 import type { IGreeting } from '@rhombus-std/examples.contracts';
+import { Type } from '@rhombus-std/primitives';
 
 import { GREETING_TYPE } from './types.js';
 

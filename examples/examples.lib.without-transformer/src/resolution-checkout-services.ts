@@ -23,9 +23,10 @@
 // one — an ad-hoc FACTORY parameter — so the comparison is readable in one
 // constructor.
 
-import { Manifest, Type } from '@rhombus-std/di.core';
+import { Manifest } from '@rhombus-std/di.core';
 import type { Inject, IServiceProvider, Typeof } from '@rhombus-std/di.core';
 import type { CheckoutOrder, IAuditTrail, IExchangeRates, IOrderValidator, IPaymentGateway, IPaymentRouter, IReceipt, IReceiptNumbering } from '@rhombus-std/examples.contracts';
+import { Type } from '@rhombus-std/primitives';
 
 // ── types ────────────────────────────────────────────────────────────────────
 

@@ -13,13 +13,13 @@
 //     subscribed, so the bag re-installs on each later registerAugmentations.
 
 import { di, noop } from '@rhombus-std/di';
-import { type IServiceProvider, Manifest, Type } from '@rhombus-std/di.core';
+import { type IServiceProvider, Manifest } from '@rhombus-std/di.core';
 import { MetricsBuilder as DiagnosticsMetricsBuilder } from '@rhombus-std/diagnostics';
 // The IMetricsBuilder augmentation-registry token is derived by `typefor<IMetricsBuilder>()`
 // at each library's build time; this test (no transformer) uses the derived literal directly.
 const METRICS_BUILDER_RECEIVER = Type.from('@rhombus-std/diagnostics.core:IMetricsBuilder');
 import { HostApplicationBuilder, MetricsBuilder as HostingMetricsBuilder } from '@rhombus-std/hosting';
-import { registerAugmentations } from '@rhombus-std/primitives';
+import { registerAugmentations, Type } from '@rhombus-std/primitives';
 import { describe, expect, test } from 'bun:test';
 
 describe("hosting's MetricsBuilder receives the diagnostics-family augmentations", () => {

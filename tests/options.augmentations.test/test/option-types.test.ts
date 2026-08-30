@@ -6,9 +6,10 @@
 
 import { ConfigBuilder, type IConfigRoot } from '@rhombus-std/config';
 import { di, noop } from '@rhombus-std/di';
-import { Manifest, Type } from '@rhombus-std/di.core';
+import { Manifest } from '@rhombus-std/di.core';
 import type { IOptions } from '@rhombus-std/options';
 import { changeTokenSourceType, ConfigChangeTokenSource, configureStepType, optionsAddressType, postConfigureStepType, validateStepType } from '@rhombus-std/options.augmentations';
+import { Type } from '@rhombus-std/primitives';
 import { describe, expect, test } from 'bun:test';
 
 interface WidgetOptions {

@@ -11,9 +11,10 @@
 // methods are `this`-based and installed verbatim.
 
 import { di, noop } from '@rhombus-std/di';
-import { Manifest, Type } from '@rhombus-std/di.core';
+import { Manifest } from '@rhombus-std/di.core';
 import { MetricsBuilder, TracingBuilder } from '@rhombus-std/diagnostics';
 import { type IMetricsBuilder, type IMetricsListener, type ITracingBuilder, MetricsBuilderAugmentations, TracingBuilderAugmentations } from '@rhombus-std/diagnostics.core';
+import { Type } from '@rhombus-std/primitives';
 import { describe, expect, test } from 'bun:test';
 
 // The slot addresses as a plugin-less author spells them — the same interned

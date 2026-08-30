@@ -1,4 +1,3 @@
-import { Type } from '@rhombus-std/di.core';
 import { HOST_LIFETIME_TYPE } from '@rhombus-std/hosting';
 import { BROWSER_LIFETIME_OPTIONS_TYPE, BrowserHost, BrowserLifetime, type BrowserLifetimeOptions, createBrowserEnvironment, PAGE_LIFECYCLE_EVENTS_TYPE,
   PageLifecycleEvents } from '@rhombus-std/hosting.browser';
@@ -6,6 +5,7 @@ import { Environments, getHostedServiceManifest, HOSTED_SERVICE_TYPE, type IHost
 import { LOGGER_PROVIDER_TYPE } from '@rhombus-std/logging';
 import { BrowserConsoleLoggerProvider } from '@rhombus-std/logging.browserconsole';
 import type { ILoggerProvider } from '@rhombus-std/logging.core';
+import { Type } from '@rhombus-std/primitives';
 import { expect, test } from 'bun:test';
 import { makeFakePage } from './fakes';
 

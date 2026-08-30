@@ -22,7 +22,8 @@
 // nothing has to be lowered for it to run, so the raw source is already usable.
 // This is the manual dialect's producer half of the interop matrix.
 
-import { Manifest, Type } from '@rhombus-std/di.core';
+import { Manifest } from '@rhombus-std/di.core';
+import { Type } from '@rhombus-std/primitives';
 
 import { CasualGreeting } from './casual-greeting.js';
 import { HealthCheck } from './health-check.js';

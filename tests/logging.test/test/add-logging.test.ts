@@ -3,10 +3,10 @@
 // @rhombus-std/di container.
 
 import { di, noop } from '@rhombus-std/di';
-import { type ImportedType, Type } from '@rhombus-std/di.core';
 import { getLoggingManifest, LOGGER_FACTORY_TYPE, LoggerFactory } from '@rhombus-std/logging';
 import type { ILogger, ILoggerFactory } from '@rhombus-std/logging.core';
 import { logError, LogLevel, logTrace, logWarning } from '@rhombus-std/logging.core';
+import { type ImportedType, Type } from '@rhombus-std/primitives';
 import { describe, expect, test } from 'bun:test';
 import { RecordingProvider } from './helpers';
 

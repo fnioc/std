@@ -4,9 +4,10 @@
 // the way the host resolves the validator at boot.
 
 import { di, noop } from '@rhombus-std/di';
-import { Manifest, Type } from '@rhombus-std/di.core';
+import { Manifest } from '@rhombus-std/di.core';
 import { type IStartupValidator, OptionsValidationError } from '@rhombus-std/options';
 import { getValidateManifest, getValidateOnStartManifest } from '@rhombus-std/options.augmentations';
+import { Type } from '@rhombus-std/primitives';
 import { describe, expect, test } from 'bun:test';
 
 interface ServerOptions {

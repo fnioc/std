@@ -1,6 +1,3 @@
-export { Type } from '@rhombus-std/primitives';
-export type { ImportedType, NamedType } from '@rhombus-std/primitives';
-
 // Side-effect import: a second loaded copy of this package fails fast here.
 import './single-instance-guard';
 

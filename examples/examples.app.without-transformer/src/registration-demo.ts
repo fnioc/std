@@ -23,8 +23,9 @@
 //    taking nothing beyond the address.
 
 import { di, noop } from '@rhombus-std/di';
-import { Manifest, Type } from '@rhombus-std/di.core';
+import { Manifest } from '@rhombus-std/di.core';
 import type { Registration } from '@rhombus-std/di.core';
+import { Type } from '@rhombus-std/primitives';
 
 // ── the domain ───────────────────────────────────────────────────────────────
 

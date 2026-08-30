@@ -16,11 +16,12 @@ import type { IMemoryCache } from '@rhombus-std/caching.core';
 import { CacheEntrySugarAugmentations, CacheItemPriority, MemoryCacheSugarAugmentations } from '@rhombus-std/caching.core';
 import { MemoryCache, MemoryCacheOptions } from '@rhombus-std/caching.memory';
 import { ConfigBuilder, MemoryConfigBuilderAugmentations } from '@rhombus-std/config';
-import { type Manifest, Type } from '@rhombus-std/di.core';
+import { type Manifest } from '@rhombus-std/di.core';
 import { MetricsBuilder } from '@rhombus-std/diagnostics';
 import { type IMetricsListener, MetricsBuilderAugmentations, MetricsOptions, MetricsOptionsAugmentations, TracingOptions, TracingOptionsAugmentations } from '@rhombus-std/diagnostics.core';
 import { LoggerFilterOptions, LoggerFilterOptionsExtensions } from '@rhombus-std/logging';
 import { LogLevel } from '@rhombus-std/logging.core';
+import { Type } from '@rhombus-std/primitives';
 import { describe, expect, test } from 'bun:test';
 
 const METRICS_LISTENER_TYPE = Type.imported('IMetricsListener', '@rhombus-std/diagnostics.core');

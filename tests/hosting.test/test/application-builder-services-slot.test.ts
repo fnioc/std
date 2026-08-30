@@ -1,5 +1,5 @@
 import { di, noop } from '@rhombus-std/di';
-import { Type } from '@rhombus-std/di.core';
+import { Type } from '@rhombus-std/primitives';
 // The application builder's services slot (§114). `HostApplicationBuilder`
 // exposes `services` as ONE mutable slot over an immutable manifest chain, and
 // hands that same slot to its `logging` and `metrics` sub-builders. This suite

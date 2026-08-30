@@ -58,6 +58,7 @@
         "@rhombus-std/logging.core": "workspace:*",
         "@rhombus-std/options": "workspace:*",
         "@rhombus-std/options.augmentations": "workspace:*",
+        "@rhombus-std/primitives": "workspace:*",
       },
       "devDependencies": {
         "@rhombus-std/examples.contracts": "workspace:*",
@@ -91,6 +92,7 @@
       "dependencies": {
         "@rhombus-std/di.core": "workspace:*",
         "@rhombus-std/examples.contracts": "workspace:*",
+        "@rhombus-std/primitives": "workspace:*",
       },
       "devDependencies": {
         "typescript": "^6.0.3",
@@ -809,6 +811,7 @@
         "@rhombus-std/di.core": "workspace:*",
         "@rhombus-std/diagnostics": "workspace:*",
         "@rhombus-std/diagnostics.core": "workspace:*",
+        "@rhombus-std/primitives": "workspace:*",
       },
     },
     "tests/diagnostics.test": {
@@ -820,6 +823,7 @@
         "@rhombus-std/di.core": "workspace:*",
         "@rhombus-std/diagnostics": "workspace:*",
         "@rhombus-std/diagnostics.core": "workspace:*",
+        "@rhombus-std/primitives": "workspace:*",
       },
     },
     "tests/fileproviders.composite.test": {
@@ -869,6 +873,7 @@
         "@rhombus-std/di.core": "workspace:*",
         "@rhombus-std/fileproviders.core": "workspace:*",
         "@rhombus-std/hosting.core": "workspace:*",
+        "@rhombus-std/primitives": "workspace:*",
         "@rhombus-toolkit/func": "^3.6.0",
       },
     },
@@ -883,6 +888,7 @@
         "@rhombus-std/logging.core": "workspace:*",
         "@rhombus-std/options": "workspace:*",
         "@rhombus-std/options.augmentations": "workspace:*",
+        "@rhombus-std/primitives": "workspace:*",
         "@rhombus-toolkit/func": "^3.6.0",
       },
     },
@@ -920,6 +926,7 @@
         "@rhombus-std/logging": "workspace:*",
         "@rhombus-std/logging.browserconsole": "workspace:*",
         "@rhombus-std/logging.core": "workspace:*",
+        "@rhombus-std/primitives": "workspace:*",
       },
     },
     "tests/logging.config.test": {
@@ -934,6 +941,7 @@
         "@rhombus-std/logging.core": "workspace:*",
         "@rhombus-std/options": "workspace:*",
         "@rhombus-std/options.augmentations": "workspace:*",
+        "@rhombus-std/primitives": "workspace:*",
       },
     },
     "tests/logging.console.test": {
@@ -945,6 +953,7 @@
         "@rhombus-std/logging.console": "workspace:*",
         "@rhombus-std/logging.core": "workspace:*",
         "@rhombus-std/options": "workspace:*",
+        "@rhombus-std/primitives": "workspace:*",
       },
     },
     "tests/logging.core.test": {
@@ -964,6 +973,7 @@
         "@rhombus-std/di.core": "workspace:*",
         "@rhombus-std/logging": "workspace:*",
         "@rhombus-std/logging.core": "workspace:*",
+        "@rhombus-std/primitives": "workspace:*",
         "@rhombus-toolkit/func": "3.6.0",
       },
     },
@@ -987,6 +997,7 @@
         "@rhombus-std/di.core": "workspace:*",
         "@rhombus-std/options": "workspace:*",
         "@rhombus-std/options.augmentations": "workspace:*",
+        "@rhombus-std/primitives": "workspace:*",
       },
     },
     "tests/options.test": {
