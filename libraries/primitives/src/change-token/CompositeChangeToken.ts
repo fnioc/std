@@ -1,6 +1,6 @@
 import type { Func } from '@rhombus-toolkit/func';
 
-import { AbortController } from '../platform/abort.js';
+import { AbortController } from '@rhombus-toolkit/platform';
 import { CancellationChangeToken } from './CancellationChangeToken.js';
 import type { IChangeToken } from './IChangeToken.js';
 

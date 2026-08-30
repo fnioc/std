@@ -1,5 +1,5 @@
-import type { DistributiveOmit } from '../toolkit/index.js';
-import { memo } from '../toolkit/memo.js';
+import { memo } from '@rhombus-toolkit/once';
+import type { DistributiveOmit } from '@rhombus-toolkit/types';
 import * as factory from './factory/factories.js';
 import type { LIST_KINDS, ListName } from './grammar.js';
 import { parseTypeString } from './parse/parser.js';

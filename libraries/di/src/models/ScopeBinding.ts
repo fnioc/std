@@ -1,5 +1,5 @@
 import { type Behavior, Control, type Hooks, type IEngineHooks, type IServiceProvider, LifetimeModelError } from '@rhombus-std/di.core';
-import { assertTruthy, type Type } from '@rhombus-std/primitives';
+import type { Type } from '@rhombus-std/primitives';
 import { typefor } from '@rhombus-std/primitives.extras';
 import type { AbstractCtor, Func } from '@rhombus-toolkit/func';
 import { askForControl, isControlAsk } from '../internal/control-recognition.js';
@@ -167,7 +167,9 @@ export class ScopeBinding<S extends Scope = Scope> {
     });
 
     this.dispatch = address => {
-      assertTruthy(address, 'the service type handed to a scope');
+      if (!address) {
+        throw new TypeError('a scope dispatch received no address — the caller resolved without a service type');
+      }
       if (isControlAsk(address)) {
         return next(address);
       }

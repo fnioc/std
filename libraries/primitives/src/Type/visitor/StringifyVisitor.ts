@@ -1,4 +1,4 @@
-import { memo } from '../../toolkit/memo.js';
+import { memo } from '@rhombus-toolkit/once';
 import { escapeSegment } from '../grammar.js';
 import type { AbstractConstructorType, ArrayType, ConstructorType, FunctionType, GenericType, GlobalType, ImportedType, IntersectionType, IterableType, ObjectType, TagType, TupleType, Type,
   TypeLiteralType, UnionType } from '../Type.js';

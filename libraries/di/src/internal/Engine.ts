@@ -1,5 +1,5 @@
 import { Behavior, Control, HookChain, type IEngineHooks, type IServiceProviderInternal, type Registration, UnknownControlError, UnsatisfiableError } from '@rhombus-std/di.core';
-import { assertTruthy, type FunctionType, Type } from '@rhombus-std/primitives';
+import { type FunctionType, Type } from '@rhombus-std/primitives';
 import { typefor } from '@rhombus-std/primitives.extras';
 import type { Func } from '@rhombus-toolkit/func';
 import { isControlAsk } from './control-recognition.js';
@@ -55,7 +55,9 @@ export class Engine implements IServiceProviderInternal, IEngineHooks {
    * @throws {UnknownControlError} when a control ask names something the engine cannot answer.
    */
   getService(address: Type): any {
-    assertTruthy(address, 'the service type handed to the engine');
+    if (!address) {
+      throw new TypeError('getService received no address — the caller resolved without a service type');
+    }
     // A provider offers one door, so what the providers of this package work the engine through is
     // asked for the same way anything else is: as a control, answered here and held by whoever asked.
     if (address === typefor<Control<IEngineHooks>>()) {
