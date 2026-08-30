@@ -307,8 +307,9 @@ Nothing. Every item this lane owns is committed.
 - [x] Every test package typechecks, not merely runs.
 - [x] An open address answers `false` to control recognition, so asking at a template reaches the
       engine's refusal instead of escaping as a raw `Error`.
-- [x] `validateScopes` removed from hosting's `ServiceProviderOptions` — a public API removal,
-      captivity being the keeping model's own concern.
+- [x] `validateScopes` removed from hosting's `ServiceProviderOptions`, captivity being the
+      keeping model's own concern. A depender adaptation, so it follows di rather than waiting on
+      a ruling of its own.
 
 ## Review lane (Fable session) — 2026-08-30
 
