@@ -337,3 +337,27 @@ Only work this session owns; the lane above is another session's.
 - [x] §227 VisitorContext refactor reconciled into the async implementation — committed by the owner.
 - [x] "site" vocabulary sweep across code and docs; `Type.match` in the async-delivery
       recognizers; `isThenable` moved to primitives' toolkit — committed by the owner.
+
+**Awaiting the owner's word** (Claude-defaulted readings, each flagged in the diff it shipped in)
+
+- [ ] Standard model at runtime: a scoped ask arriving under root state is REFUSED with
+      `CaptiveDependencyError` (chosen) — or kept at root. One word: refuse / keep.
+- [ ] Disposal: a synchronous `Symbol.dispose` meeting a still-pending promise product attaches a
+      release-on-settle continuation and returns, swallowing a later release failure (chosen) — or
+      throws loudly naming the address. One word: swallow / throw.
+- [ ] Disposal: the tagged teardown is tag-agnostic (a plain address, not a `Generic<'Tag'>`
+      template) — "mirroring createScope" read as the mechanism, not the template shape. ok / mirror.
+- [ ] Disposal hazard, unfixed: a `StandardScopeFactory` handle captured before its scope's teardown
+      can still `openScope()` afterwards, minting a live child of a torn-down parent. Records are
+      silent; needs a ruling before code.
+- [ ] Hosting drops `ServiceProviderOptions.validateScopes` (ruled (a) for the other lane under
+      §229; a public hosting API removal). ok / keep.
+
+**Queued** (carried from the burned session handoff; each behind the item above it only where stated)
+
+- [ ] Async: docs, tests, examples and the `resolveAsync` transformer-parity e2e — deferred by the
+      owner until post-review; the review is done, so this is next.
+- [ ] Captivity validator: skip `ConstantType` products (a value has no lifetime to capture).
+- [ ] §210 captive-error label wording; `ResolveAudit` placeholder error wording; `Behavior`
+      hover-doc IDE check.
+- [ ] Diagnostics knip pass; bench re-run against the reconciled engine.
