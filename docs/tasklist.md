@@ -412,7 +412,7 @@ Dropped by the rulings (standalone `is*` conversions): `di.core/src/Manifest.ts:
 `di/src/internal/Plan/PlannerVisitor.ts:196` (`members.some(p => !p)` + cast → standalone
 `isAllThere(members)`; note the conversion would also have deleted the `as Plan[]` cast).
 
-Remaining (di/di.core lane):
+Remaining:
 
 | should have used                                                                                                          | used instead                                                                                       |
 | ------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------- |
@@ -430,10 +430,15 @@ Remaining (di/di.core lane):
 | `extends DiError` (`@rhombus-std/di.core` error taxonomy)                                                                 | `class DisposedScopeError extends Error` — `libraries/di/src/lifetime/models/standard.ts:48`       |
 | `extends DiError` (`@rhombus-std/di.core` error taxonomy)                                                                 | `class ScopedAtRootError extends Error` — `libraries/di/src/lifetime/models/standard.ts:56`        |
 | `extends DiError` (`@rhombus-std/di.core` error taxonomy)                                                                 | `class DisposedScopeError extends Error` (duplicate of standard.ts's) — `libraries/di/src/lifetime/models/tagged.ts:40` |
+| `Type.substitute(typefor<IConfigureOptions<Generic<'T'>>>(), { T: optionsType })`                                         | `Type.imported('IConfigureOptions', '@rhombus-std/options', [optionsType])` — `libraries/options.augmentations/src/option-types.ts:15` |
+| `Type.substitute(typefor<IPostConfigureOptions<Generic<'T'>>>(), { T: optionsType })`                                     | `Type.imported('IPostConfigureOptions', '@rhombus-std/options', [optionsType])` — `libraries/options.augmentations/src/option-types.ts:20` |
+| `Type.substitute(typefor<IValidateOptions<Generic<'T'>>>(), { T: optionsType })`                                          | `Type.imported('IValidateOptions', '@rhombus-std/options', [optionsType])` — `libraries/options.augmentations/src/option-types.ts:25` |
+| `Type.substitute(typefor<IOptionsChangeTokenSource<Generic<'T'>>>(), { T: optionsType })`                                 | `Type.imported('IOptionsChangeTokenSource', '@rhombus-std/options.augmentations', [optionsType])` — `libraries/options.augmentations/src/option-types.ts:30` |
+| `Type.substitute(typefor<IOptions<Generic<'T'>>>(), { T: optionsType })`                                                  | `Type.imported('IOptions', '@rhombus-std/options', [optionsType])` — `libraries/options.augmentations/src/option-types.ts:55` |
+| `typefor<IOptions<Generic<'$T'>>>()` inline at the use sites (`ensureOpenOptions` lines 35, 37)                           | hoisted const `openOptionsType = Type.imported('IOptions', '@rhombus-std/options', [hole])` — `libraries/options.augmentations/src/open-options.ts:16` |
 
-Punted with the depender adaptations (options.augmentations): the five
-`Type.substitute(typefor<…>(), { T: optionsType })` rows (`option-types.ts:15/20/25/30/55`),
-`openOptionsType` (`open-options.ts:16`), `CompositeChangeToken` (`CompositeChangeToken.ts:9`).
+The typefor replacements are ALL in scope — none ride the depender punt (owner, 2026-08-30).
+Punted with the depender adaptations: `CompositeChangeToken` (`CompositeChangeToken.ts:9`).
 
 **Members that should not exist:**
 
@@ -442,4 +447,4 @@ Punted with the depender adaptations (options.augmentations): the five
 - [ ] `TaggedScopeFactory.address` — `libraries/di/src/lifetime/models/tagged.ts:28`
 - [ ] `TaggedScopeTeardown.address` — `libraries/di/src/lifetime/models/tagged.ts:36`
 - [ ] `CompositeChangeToken` — `libraries/options.augmentations/src/CompositeChangeToken.ts:9` (depender-punted)
-- [ ] `openOptionsType` — `libraries/options.augmentations/src/open-options.ts:16` (depender-punted)
+- [ ] `openOptionsType` — `libraries/options.augmentations/src/open-options.ts:16`
