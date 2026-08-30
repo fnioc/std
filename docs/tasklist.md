@@ -358,10 +358,27 @@ Only work this session owns; the lane above is another session's.
       (f8aa90da). Gates green: di.test 258/258, inline.ttsc.e2e 20/20; every touched file is
       dprint-clean (whole-repo `format:check` still fails on the reinvention table above, unrelated
       to this item).
-- [ ] Captivity validator: skip `ConstantType` products (a value has no lifetime to capture).
-- [ ] §210 captive-error label wording; `ResolveAudit` placeholder error wording; `Behavior`
-      hover-doc IDE check.
-- [ ] Diagnostics knip pass; bench re-run against the reconciled engine.
+- [x] Captivity validator: skip `ConstantType` products — already true after the §229 rewrite (a
+      value carries no lifetime datum and its plan node ends the walk without descending);
+      regression test added (989e7851).
+- [x] §210 captive-error label wording (07c9a9fb): `CaptiveDependencyError` named the captor "a
+      singleton" unconditionally, wrong vocabulary for a shared di.core error under §210's
+      generalized tiers — reworded to name the actual problem (a longer-lived keeper outliving a
+      shorter-lived dependency) without asserting which tier. `ResolveAudit` placeholder wording
+      (90c77ff3): named the real cause (this container never installed the addon's hooks) and the
+      fix (`useAddon(resolveAudit())`) plainly, dropping the "filing this registration by hand"
+      indirection. `Behavior` hover-doc IDE check: OK, no edit — verified via the TypeScript
+      compiler API that hovering `Behavior` at every import site resolves through the alias to
+      `Behavior.ts`'s own TSDoc.
+- [x] Diagnostics knip pass: no removals — every finding in `diagnostics`/`diagnostics.core` is
+      either the repo-wide `*Augmentations` namespace false positive (declaration-merging, every
+      package has it), a deliberately unwired public primitive the files' own doc comments call
+      out as not yet driven by a runtime this repo doesn't have (`instrumentRuleMatches` &
+      siblings, `IObservableInstrumentsSource`, `getMetricsManifest`/`getTracingManifest`), or the
+      `@rhombus-std/di.extras` devDependency the `add<T>()` sugar in `manifests.ts` needs for the
+      ttsc inline-body transform, invisible to knip for the same reason `ttsc`/`@ttsc/unplugin`
+      already are. Bench re-run: no bench package or script exists anywhere in the repo or its git
+      history — nothing to run; not fabricated.
 - [ ] Endgame shape (owner-ruled 2026-08-30): #274 merges LOCALLY; then the squash plus the
       depender fixes that make build+tests green go up as ONE commit; #366 closes then.
 - [x] Two audits LANDED (wf_dfa573c3-c7a, 2026-08-30): defects (Fable scan+verify;
