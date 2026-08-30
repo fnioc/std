@@ -40,7 +40,7 @@ describe('LoggerProviderOptions.getProviderOptionsManifest', () => {
     logging.addConfig(config);
     let services = logging.services;
     services = services.addOptions(OPTIONS_TYPE, () => ({ Format: 'text' }));
-    services = services.addMany(LoggerProviderOptions.getProviderOptionsManifest(OPTIONS_TYPE, FAKE_PROVIDER_TYPE));
+    services = services.add(LoggerProviderOptions.getProviderOptionsManifest(OPTIONS_TYPE, FAKE_PROVIDER_TYPE));
 
     const provider = di.usingLifetimeModel(noop()).usingManifest(services).build();
     const options: IOptions<FakeProviderOptions> = provider.resolve(OPTIONS_ACCESSOR_TYPE);
@@ -57,7 +57,7 @@ describe('LoggerProviderOptions.getProviderOptionsManifest', () => {
     logging.addConfig(config);
     let services = logging.services;
     services = services.addOptions(OPTIONS_TYPE, () => ({ Format: 'text' }));
-    services = services.addMany(LoggerProviderOptions.getProviderOptionsManifest(OPTIONS_TYPE, FAKE_PROVIDER_TYPE));
+    services = services.add(LoggerProviderOptions.getProviderOptionsManifest(OPTIONS_TYPE, FAKE_PROVIDER_TYPE));
 
     const provider = di.usingLifetimeModel(noop()).usingManifest(services).build();
     const options: IOptions<FakeProviderOptions> = provider.resolve(OPTIONS_ACCESSOR_TYPE);
@@ -82,9 +82,9 @@ describe('LoggerProviderOptions.getProviderOptionsManifest', () => {
     logging.addConfig(config);
     let services = logging.services;
     services = services.addOptions(OPTIONS_TYPE, () => ({ Format: 'text' }));
-    services = services.addMany(LoggerProviderOptions.getProviderOptionsManifest(OPTIONS_TYPE, FAKE_PROVIDER_TYPE));
+    services = services.add(LoggerProviderOptions.getProviderOptionsManifest(OPTIONS_TYPE, FAKE_PROVIDER_TYPE));
     // One more configure source in the SAME pipeline, running after the provider bind.
-    services = services.addMany(getConfigureManifest(OPTIONS_TYPE, (value: FakeProviderOptions) => {
+    services = services.add(getConfigureManifest(OPTIONS_TYPE, (value: FakeProviderOptions) => {
       value.MaxDepth = '9';
     }));
 

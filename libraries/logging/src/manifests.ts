@@ -1,6 +1,6 @@
 // The logging registrations, published as a manifest built on the narrowest
 // lifetime vocabulary it actually uses. A consumer merges it into their own
-// manifest -- `services.addMany(getLoggingManifest())` -- and that merge is
+// manifest -- `services.add(getLoggingManifest())` -- and that merge is
 // what checks their vocabulary covers what these registrations ask for.
 
 import { Manifest } from '@rhombus-std/di.core';

@@ -83,7 +83,7 @@ built-in filter binding uses — merge in
 ```ts
 import { LoggerProviderOptions } from '@rhombus-std/logging.config';
 
-services = services.addMany(
+services = services.add(
   LoggerProviderOptions.getProviderOptionsManifest<MyProviderOptions, MyProvider>(myProviderOptionsToken,
     myProviderToken),
 );
