@@ -386,10 +386,11 @@ Only work this session owns; the lane above is another session's.
       candidate against the accumulated manifest (`Manifest-Registration-augmentations.ts:121-127`).
 - [x] `build()` one-shot Iterable: materialized each installation's registrations with
       `Iterator.from(...).toArray()` before chaining into the manifest (`di.ts:89`).
-- [x] `CompositeChangeToken` no-latch leak: replaced the local latch-less class with primitives'
-      `CompositeChangeToken` (import in `assemble-options.ts:6` now reads from
-      `@rhombus-std/primitives`); local `CompositeChangeToken.ts` left in tree (deleting it is
-      scope growth).
+- [ ] `CompositeChangeToken` no-latch leak
+      (`libraries/options.augmentations/src/CompositeChangeToken.ts`): the local latch-less class
+      multi-fires and never detaches; the fix is composing primitives' `CompositeChangeToken`.
+      Autofix reverted as out of scope — saved but PUNTED with the depender adaptations
+      (owner-ruled 2026-08-30).
 - [x] `MatchVisitor` prototype-chain false positive: replaced `name in subject.members` with
       `Object.hasOwn(subject.members, name)` (`MatchVisitor.ts:89`).
 - [x] `isAllThere` falsy-element false negative: replaced `.every(Boolean)` with
