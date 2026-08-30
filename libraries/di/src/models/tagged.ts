@@ -1,4 +1,4 @@
-import { type IServiceProvider, type LifetimeModel, Registration, ScopeTagUnmatchedError } from '@rhombus-std/di.core';
+import { Generic, type IServiceProvider, type LifetimeModel, Registration, ScopeTagUnmatchedError } from '@rhombus-std/di.core';
 import { Type } from '@rhombus-std/primitives';
 import { typefor } from '@rhombus-std/primitives.extras';
 import { anchorRoot } from './root-anchor.js';
@@ -9,23 +9,39 @@ const MODEL_NAME = 'tagged';
 /** Lifetime options for the {@link tagged} model. */
 export type TaggedLifetime<Tags extends string = string> = Tags | undefined;
 
-/** Opens scopes on the {@link tagged} model; the tag the opened scope carries is the one its address named. */
-export interface TaggedScopeFactory {
-  /** Opens a scope nested inside the one this factory was resolved from. */
-  openScope(): IServiceProvider;
+/**
+ * Opens scopes on the {@link tagged} model, each carrying the tag the call names.
+ *
+ * @typeParam Tags - the tags this asker opens scopes under, so a call naming one outside the set
+ * it declared is a compile error.
+ */
+export interface TaggedScopeFactory<Tags extends string = string> {
+  /** Opens a scope carrying `tag`, nested inside the one this factory was resolved from. */
+  openScope(tag: Tags): IServiceProvider;
 }
 
 export namespace TaggedScopeFactory {
-  /** The address opening a scope carrying the tag `tag` spells as a string literal. */
-  export function addressOf(tag: Type): Type {
-    return Type.imported('TaggedScopeFactory', '@rhombus-std/di', [tag]);
-  }
-
   /**
-   * The one address the model registers, its tag left open: the model enumerates no tags, so a
-   * scope named by a tag nothing was registered under still opens.
+   * The one address the model registers, its tag set left open: the model enumerates no tags, so
+   * every asker reaches this one registration through whichever set it names.
    */
-  export const template: Type = addressOf(Type.generic('Tag'));
+  export const address: Type = typefor<TaggedScopeFactory<Generic<'Tags', string>>>();
+}
+
+/** Tears down the scope it was resolved from, releasing every instance that scope keeps. */
+export interface TaggedScopeTeardown extends Disposable, AsyncDisposable {}
+
+export namespace TaggedScopeTeardown {
+  /** The address the {@link tagged} model publishes its teardown under. */
+  export const address: Type = Type.imported('TaggedScopeTeardown', '@rhombus-std/di');
+}
+
+/** An ask reached a scope this model had already torn down. */
+class DisposedScopeError extends Error {
+  constructor(address: Type) {
+    super(`the ${MODEL_NAME} lifetime model cannot keep ${Type.stringify(address)} — its scope has been disposed`);
+    this.name = 'DisposedScopeError';
+  }
 }
 
 /** One open scope: the tag it answers to and the scopes enclosing it. */
@@ -40,7 +56,9 @@ class TaggedScope extends Scope {
   }
 
   openChild(tag: string | undefined): TaggedScope {
-    return new TaggedScope(tag, this);
+    const child = new TaggedScope(tag, this);
+    this.trackChild(child);
+    return child;
   }
 
   /**
@@ -48,8 +66,12 @@ class TaggedScope extends Scope {
    * naming no tag — to construct afresh every ask.
    *
    * @throws {ScopeTagUnmatchedError} when no scope open here carries the tag the registration named.
+   * @throws {DisposedScopeError} when this scope has already been torn down.
    */
   override selectOwningScope(registration: Registration<unknown>, populatedAddress: Type): TaggedScope | undefined {
+    if (this.disposed) {
+      throw new DisposedScopeError(populatedAddress);
+    }
     const lifetime = readLifetime(registration);
     if (lifetime === undefined) {
       return undefined;
@@ -59,6 +81,10 @@ class TaggedScope extends Scope {
       throw new ScopeTagUnmatchedError(MODEL_NAME, lifetime, populatedAddress);
     }
     return owner;
+  }
+
+  override mintDisposedError(address: Type): Error {
+    return new DisposedScopeError(address);
   }
 
   /** This scope first, then each scope enclosing it. */
@@ -79,8 +105,8 @@ function readLifetime(registration: Registration<unknown>): TaggedLifetime {
 }
 
 /**
- * The model whose scopes are named: a registration's datum is the tag of the scope keeping it,
- * and the address opening a scope names the tag that scope will carry.
+ * The model whose scopes are named: a registration's datum is the tag of the scope keeping it, and
+ * opening a scope names the tag that scope will carry.
  *
  * @typeParam Tags - the tags a scope may carry, defaulting to any string.
  */
@@ -93,18 +119,19 @@ export function tagged<Tags extends string = string>(): LifetimeModel<TaggedLife
       const rootScope = new TaggedScope();
       const { middleware, enclosingScope, openChild } = anchorRoot(TaggedScope, rootScope);
 
-      /**
-       * Opens scopes carrying the tag `tag` names, nested inside the one `container` resolves from.
-       *
-       * @throws {TypeError} when `tag` is anything but a string literal.
-       */
-      function openFrom(container: IServiceProvider, tag: Type): TaggedScopeFactory {
-        if (tag.kind !== 'literal' || typeof tag.value !== 'string') {
-          throw new TypeError(`the ${MODEL_NAME} lifetime model names a scope with a string literal, and ${Type.stringify(tag)} is not one`);
-        }
-        const name = tag.value;
+      /** Opens scopes nested inside the one `container` resolves from, each carrying the tag its call names. */
+      function openFrom(container: IServiceProvider): TaggedScopeFactory {
         return {
-          openScope: () => openChild(enclosingScope(container).openChild(name)),
+          openScope: tag => openChild(enclosingScope(container).openChild(tag)),
+        };
+      }
+
+      /** Tears down the scope `container` resolves from, whatever tag that scope carries. */
+      function teardownFrom(container: IServiceProvider): TaggedScopeTeardown {
+        const scope = enclosingScope(container);
+        return {
+          [Symbol.dispose]: () => scope.dispose(),
+          [Symbol.asyncDispose]: () => scope.disposeAsync(),
         };
       }
 
@@ -112,9 +139,15 @@ export function tagged<Tags extends string = string>(): LifetimeModel<TaggedLife
         middleware,
         registrations: [
           Registration.factory<TaggedLifetime<Tags>>(
-            TaggedScopeFactory.template,
+            TaggedScopeFactory.address,
             openFrom,
-            Type.func(TaggedScopeFactory.template, [[typefor<IServiceProvider>(), Type.generic('Tag')]]),
+            Type.func(TaggedScopeFactory.address, [[typefor<IServiceProvider>()]]),
+            undefined,
+          ),
+          Registration.factory<TaggedLifetime<Tags>>(
+            TaggedScopeTeardown.address,
+            teardownFrom,
+            Type.func(TaggedScopeTeardown.address, [[typefor<IServiceProvider>()]]),
             undefined,
           ),
         ],

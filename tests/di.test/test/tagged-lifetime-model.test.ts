@@ -20,9 +20,13 @@ function buildProviderKeptBy(keptBy: Tags): IServiceProvider {
     .build();
 }
 
+/** The closed address an asker declaring every tag this suite uses spells by hand. */
+const SCOPE_FACTORY = Type.imported('TaggedScopeFactory', '@rhombus-std/di', [
+  Type.union(Type.typeLiteral('session'), Type.typeLiteral('request')),
+]);
+
 function openScope(provider: IServiceProvider, tag: Tags): IServiceProvider {
-  const address = TaggedScopeFactory.addressOf(Type.typeLiteral(tag));
-  return (provider.resolve(address) as TaggedScopeFactory).openScope();
+  return (provider.resolve(SCOPE_FACTORY) as TaggedScopeFactory<Tags>).openScope(tag);
 }
 
 describe('the model itself', () => {

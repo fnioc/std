@@ -173,6 +173,11 @@ export class ScopeBinding<S extends Scope = Scope> {
       if (isControlAsk(address)) {
         return next(address);
       }
+      // Ahead of the memo, so what this scope learned to answer straight away is refused too: after
+      // teardown nothing resolves from here, however short the path to the answer would have been.
+      if (this.#scope.disposed) {
+        throw new LifetimeModelError(address, this.#scope.mintDisposedError(address));
+      }
       if (this.#learnedAnswers.has(address)) {
         return this.#learnedAnswers.get(address);
       }
@@ -200,6 +205,10 @@ export class ScopeBinding<S extends Scope = Scope> {
     };
 
     this.face = new ServiceProvider(this.dispatch);
+    // Minted onto this one face rather than declared on `ServiceProvider`: teardown belongs to the
+    // model, and the provider contract carries no disposal member of its own.
+    Object.defineProperty(this.face, Symbol.dispose, { value: () => scope.dispose() });
+    Object.defineProperty(this.face, Symbol.asyncDispose, { value: () => scope.disposeAsync() });
     scope.provider = this.face;
     bindings.set(this.face, this);
   }
