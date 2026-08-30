@@ -38,7 +38,7 @@
     "@rhombus-std/config.core": "workspace:*",
     "@rhombus-std/primitives": "workspace:*",
     "@rhombus-toolkit/func": "^3.6.0",
-    "@rhombus-toolkit/type-guards": "^3.0.0",
+    "@rhombus-toolkit/type-guards": "^3.1.0",
     "@rhombus-toolkit/type-helpers": "^2.0.0"
   },
   "devDependencies": {
