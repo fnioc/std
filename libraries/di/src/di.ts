@@ -1,6 +1,7 @@
 import { type Addon, type AddonInstallation, DefaultManifest, IServiceProvider, type LifetimeModel, Manifest, type Middleware, type Registration } from '@rhombus-std/di.core';
 import { concat, iterable, type Type } from '@rhombus-std/primitives';
 import type { Func } from '@rhombus-toolkit/func';
+import { isDefined } from '@rhombus-toolkit/type-guards';
 import { Engine } from './internal/Engine.js';
 import { ServiceProvider } from './ServiceProvider.js';
 
@@ -100,7 +101,7 @@ class DefaultContainerBuilder<Lifetime> implements ContainerBuilder<Lifetime> {
     // The chain every resolution runs inside, in call order: the model's own middleware wraps
     // outermost — falling straight out of being the first installation — and each later
     // `useAddon`/`use` call wraps inside the one before it.
-    const middlewares = installations.map(({ middleware }) => middleware).filter(middleware => middleware !== undefined);
+    const middlewares = installations.map(({ middleware }) => middleware).filter(isDefined);
     const head = middlewares.reduceRight<Func<[request: Type], unknown>>((next, middleware) => middleware(next), address => engine.getService(address));
     return new ServiceProvider(head);
   }

@@ -1,5 +1,6 @@
 import type { Registration } from '@rhombus-std/di.core';
 import { Type } from '@rhombus-std/primitives';
+import { isDefined } from '@rhombus-toolkit/type-guards';
 
 /** A registration that can serve a request, and what the match captured to make it fit. */
 export interface Match {
@@ -54,7 +55,7 @@ export class Registry {
   getMatchesForEither(primary: Type, alternate?: Type) {
     return Iterator.from(this.#registrations)
       .map(registration => getMatchOfEither(registration, primary, alternate))
-      .filter(match => match !== undefined);
+      .filter(isDefined);
   }
 }
 

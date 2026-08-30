@@ -3,6 +3,7 @@ import { type AbstractConstructorType, type ArrayType, type ConstructorType, typ
   type ObjectType, type TagType, type TupleType, Type, type TypeLiteralType, type UnionType } from '@rhombus-std/primitives';
 import { type Generic, typefor } from '@rhombus-std/primitives.extras';
 import type { Ctor, Func } from '@rhombus-toolkit/func';
+import { isDefined } from '@rhombus-toolkit/type-guards';
 import type { Registry } from '../Registry.js';
 import { type AsyncPlan, Plan } from './Plan.js';
 
@@ -232,7 +233,7 @@ export class PlannerVisitor extends Type.Visitor<Plan | undefined> {
       .reverse()
       .concat(visitor => Type.isOpen(settled) ? undefined : visitor.#synthesize(settled))
       .map(produce => this.#planDelivery(elementType, produce))
-      .filter(plan => plan !== undefined);
+      .filter(isDefined);
   }
 }
 
