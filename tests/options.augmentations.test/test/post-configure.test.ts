@@ -25,10 +25,10 @@ describe('postConfigure — bare form', () => {
   test('a plain delegate runs after configure, seeing the configured value', () => {
     let services: Manifest<unknown> = Manifest.empty<unknown>();
     services = services.addOptions(OPTIONS_TYPE, () => ({ suffix: '' }));
-    services = services.addMany(getConfigureManifest(OPTIONS_TYPE, (options: WidgetOptions) => {
+    services = services.add(getConfigureManifest(OPTIONS_TYPE, (options: WidgetOptions) => {
       options.suffix = 'base';
     }));
-    services = services.addMany(getPostConfigureManifest(OPTIONS_TYPE, (options: WidgetOptions) => {
+    services = services.add(getPostConfigureManifest(OPTIONS_TYPE, (options: WidgetOptions) => {
       options.suffix += '!';
     }));
 
@@ -43,13 +43,13 @@ describe('postConfigure — bare form', () => {
   test('a pre-built IPostConfigureOptions object runs after configure', () => {
     let services: Manifest<unknown> = Manifest.empty<unknown>();
     services = services.addOptions(OPTIONS_TYPE, () => ({ suffix: '' }));
-    services = services.addMany(getConfigureManifest(OPTIONS_TYPE, (options: WidgetOptions) => {
+    services = services.add(getConfigureManifest(OPTIONS_TYPE, (options: WidgetOptions) => {
       options.suffix = 'base';
     }));
     const step: IPostConfigureOptions<WidgetOptions> = { postConfigure(options) {
       options.suffix += '!';
     } };
-    services = services.addMany(getPostConfigureManifest(OPTIONS_TYPE, step));
+    services = services.add(getPostConfigureManifest(OPTIONS_TYPE, step));
 
     const provider = di.usingLifetimeModel(noop()).usingManifest(services).build();
     const options: IOptions<WidgetOptions> = provider.resolve(optionsAddressType(OPTIONS_TYPE));
@@ -60,10 +60,10 @@ describe('postConfigure — bare form', () => {
   test('every registered post-configure step runs, in registration order', () => {
     let services: Manifest<unknown> = Manifest.empty<unknown>();
     services = services.addOptions(OPTIONS_TYPE, () => ({ suffix: 'base' }));
-    services = services.addMany(getPostConfigureManifest(OPTIONS_TYPE, (options: WidgetOptions) => {
+    services = services.add(getPostConfigureManifest(OPTIONS_TYPE, (options: WidgetOptions) => {
       options.suffix += '-a';
     }));
-    services = services.addMany(getPostConfigureManifest(OPTIONS_TYPE, { postConfigure(options: WidgetOptions) {
+    services = services.add(getPostConfigureManifest(OPTIONS_TYPE, { postConfigure(options: WidgetOptions) {
       options.suffix += '-b';
     } }));
 

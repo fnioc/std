@@ -1,7 +1,7 @@
 // The `configure` step of the pipeline authoring surface: a config section to
 // bind (which also wires a change-token source), a bare code delegate, or the
 // DI-injected form. Each call returns its own self-contained manifest for the
-// caller to merge in with `addMany`. Its siblings are
+// caller to merge in with `add`. Its siblings are
 // ./Manifest-Options-augmentations (`addOptions` / `postConfigure` /
 // `validate`) and ./validate-on-start-manifests.
 
@@ -19,7 +19,7 @@ import { changeTokenSourceType, configureStepType } from './option-types.js';
 /**
  * A configuration `section` to bind against the options type `optionsType`,
  * as its own manifest — merge it into a container's registrations with
- * `addMany`. Adds a config-bind configure step and a change-token source
+ * `add`. Adds a config-bind configure step and a change-token source
  * wired to the section's reload token, which is what makes the resulting
  * `IOptions<T>` reload-capable. Requires a prior `addOptions` for the same
  * `optionsType`.

@@ -61,7 +61,7 @@ describe('getMemoryCacheManifest', () => {
   test('injects the registered ILoggerFactory into the cache', () => {
     const factory = new RecordingLoggerFactory();
     let services: Manifest<unknown> = Manifest.empty<unknown>().addValue(LOGGER_FACTORY_TYPE, factory);
-    services = services.addMany(getMemoryCacheManifest());
+    services = services.add(getMemoryCacheManifest());
 
     di.usingLifetimeModel(noop()).usingManifest(services).build().resolve(MEMORY_CACHE_TYPE);
 

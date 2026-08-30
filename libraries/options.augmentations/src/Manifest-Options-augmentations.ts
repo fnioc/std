@@ -1,7 +1,7 @@
 // The `addOptions` verb: offers `IOptions<any>` for an options type -- one
 // open registration answering every `IOptions<…>` request, closed by
 // whatever type asks. `postConfigure` and `validate` each return their own
-// self-contained manifest for the caller to merge in with `addMany`. The
+// self-contained manifest for the caller to merge in with `add`. The
 // `configure` step is the sibling ./configure-manifests set, and
 // `validateOnStart` the sibling ./validate-on-start-manifests one.
 
@@ -64,7 +64,7 @@ registerAugmentations<Manifest<unknown>>(ServiceManifestOptionsAugmentations);
 /**
  * A post-configure step for `optionsType`, run after every configure step, as
  * its own manifest — merge it into a container's registrations with
- * `addMany`. Accepts a {@link IPostConfigureOptions} or a bare
+ * `add`. Accepts a {@link IPostConfigureOptions} or a bare
  * `(options) => void` delegate.
  */
 export function getPostConfigureManifest(optionsType: Type, step: IPostConfigureOptions<any> | Func<[any], void>): Manifest<unknown>;
@@ -100,7 +100,7 @@ const DEFAULT_VALIDATION_FAILURE_MESSAGE = 'A validation error has occurred.';
 
 /**
  * A validate step for `optionsType`, as its own manifest — merge it into a
- * container's registrations with `addMany`. `validate` runs against the
+ * container's registrations with `add`. `validate` runs against the
  * fully-configured value; a `false` result fails validation with
  * `failureMessage`.
  */

@@ -24,7 +24,7 @@ describe('validateOnStart', () => {
   test('registers a resolvable IStartupValidator', () => {
     let services: Manifest<unknown> = Manifest.empty<unknown>();
     services = services.addOptions(OPTIONS_TYPE, () => ({ port: 8080 }));
-    services = services.addMany(getValidateOnStartManifest(OPTIONS_TYPE));
+    services = services.add(getValidateOnStartManifest(OPTIONS_TYPE));
 
     const provider = di.usingLifetimeModel(noop()).usingManifest(services).build();
     const validator: IStartupValidator = provider.resolve(STARTUP_VALIDATOR_TYPE);
@@ -35,8 +35,8 @@ describe('validateOnStart', () => {
   test('valid options -> validate() does not throw', () => {
     let services: Manifest<unknown> = Manifest.empty<unknown>();
     services = services.addOptions(OPTIONS_TYPE, () => ({ port: 8080 }));
-    services = services.addMany(getValidateManifest(OPTIONS_TYPE, (o: ServerOptions) => o.port > 0, 'port must be positive'));
-    services = services.addMany(getValidateOnStartManifest(OPTIONS_TYPE));
+    services = services.add(getValidateManifest(OPTIONS_TYPE, (o: ServerOptions) => o.port > 0, 'port must be positive'));
+    services = services.add(getValidateOnStartManifest(OPTIONS_TYPE));
 
     const provider = di.usingLifetimeModel(noop()).usingManifest(services).build();
     const validator: IStartupValidator = provider.resolve(STARTUP_VALIDATOR_TYPE);
@@ -47,8 +47,8 @@ describe('validateOnStart', () => {
   test('a failing validate step surfaces as OptionsValidationError', () => {
     let services: Manifest<unknown> = Manifest.empty<unknown>();
     services = services.addOptions(OPTIONS_TYPE, () => ({ port: 0 }));
-    services = services.addMany(getValidateManifest(OPTIONS_TYPE, (o: ServerOptions) => o.port > 0, 'port must be positive'));
-    services = services.addMany(getValidateOnStartManifest(OPTIONS_TYPE));
+    services = services.add(getValidateManifest(OPTIONS_TYPE, (o: ServerOptions) => o.port > 0, 'port must be positive'));
+    services = services.add(getValidateOnStartManifest(OPTIONS_TYPE));
 
     const provider = di.usingLifetimeModel(noop()).usingManifest(services).build();
     const validator: IStartupValidator = provider.resolve(STARTUP_VALIDATOR_TYPE);
@@ -60,12 +60,12 @@ describe('validateOnStart', () => {
   test('two failing registrations aggregate into one AggregateError', () => {
     let services: Manifest<unknown> = Manifest.empty<unknown>();
     services = services.addOptions(OPTIONS_TYPE, () => ({ port: 0 }));
-    services = services.addMany(getValidateManifest(OPTIONS_TYPE, (o: ServerOptions) => o.port > 0, 'first bad'));
-    services = services.addMany(getValidateOnStartManifest(OPTIONS_TYPE));
+    services = services.add(getValidateManifest(OPTIONS_TYPE, (o: ServerOptions) => o.port > 0, 'first bad'));
+    services = services.add(getValidateOnStartManifest(OPTIONS_TYPE));
 
     services = services.addOptions(OTHER_TYPE, () => ({ port: -1 }));
-    services = services.addMany(getValidateManifest(OTHER_TYPE, (o: ServerOptions) => o.port > 0, 'second bad'));
-    services = services.addMany(getValidateOnStartManifest(OTHER_TYPE));
+    services = services.add(getValidateManifest(OTHER_TYPE, (o: ServerOptions) => o.port > 0, 'second bad'));
+    services = services.add(getValidateOnStartManifest(OTHER_TYPE));
 
     const provider = di.usingLifetimeModel(noop()).usingManifest(services).build();
     const validator: IStartupValidator = provider.resolve(STARTUP_VALIDATOR_TYPE);

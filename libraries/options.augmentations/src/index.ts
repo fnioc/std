@@ -5,7 +5,7 @@
 // ConfigBuilder. `getConfigureManifest`, `getPostConfigureManifest`,
 // `getValidateManifest`, and `getValidateOnStartManifest` are ordinary
 // functions, each returning a self-contained manifest for the caller to
-// merge in with `addMany`:
+// merge in with `add`:
 //
 //   - `addOptions(T[, makeBase])` -- offers `IOptions<T>` for the options type
 //     `T`, either over a base factory or over whatever `T` itself resolves to.

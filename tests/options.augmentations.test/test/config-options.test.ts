@@ -29,7 +29,7 @@ describe('configure — section-to-options binding', () => {
 
     let services: Manifest<unknown> = Manifest.empty<unknown>();
     services = services.addOptions(WIDGET_OPTIONS_TYPE, () => ({ Url: '' }));
-    services = services.addMany(getConfigureManifest(WIDGET_OPTIONS_TYPE, config.getSection('Widget')));
+    services = services.add(getConfigureManifest(WIDGET_OPTIONS_TYPE, config.getSection('Widget')));
 
     const provider = di.usingLifetimeModel(noop()).usingManifest(services).build();
     const options: IOptions<WidgetOptions> = provider.resolve(optionsAddressType(WIDGET_OPTIONS_TYPE));
@@ -42,7 +42,7 @@ describe('configure — section-to-options binding', () => {
 
     let services: Manifest<unknown> = Manifest.empty<unknown>();
     services = services.addOptions(WIDGET_OPTIONS_TYPE, () => ({ Url: '' }));
-    services = services.addMany(getConfigureManifest(WIDGET_OPTIONS_TYPE, config.getSection('Widget')));
+    services = services.add(getConfigureManifest(WIDGET_OPTIONS_TYPE, config.getSection('Widget')));
 
     const provider = di.usingLifetimeModel(noop()).usingManifest(services).build();
     const options: IOptions<WidgetOptions> = provider.resolve(optionsAddressType(WIDGET_OPTIONS_TYPE));
@@ -72,8 +72,8 @@ describe('configure — section-to-options binding', () => {
 
     let services: Manifest<unknown> = Manifest.empty<unknown>();
     services = services.addOptions(WIDGET_OPTIONS_TYPE, () => ({ Url: '' }));
-    services = services.addMany(getConfigureManifest(WIDGET_OPTIONS_TYPE, config.getSection('Widget')));
-    services = services.addMany(getConfigureManifest(WIDGET_OPTIONS_TYPE, config.getSection('Extra')));
+    services = services.add(getConfigureManifest(WIDGET_OPTIONS_TYPE, config.getSection('Widget')));
+    services = services.add(getConfigureManifest(WIDGET_OPTIONS_TYPE, config.getSection('Extra')));
 
     const provider = di.usingLifetimeModel(noop()).usingManifest(services).build();
     const options: IOptions<WidgetOptions> = provider.resolve(optionsAddressType(WIDGET_OPTIONS_TYPE));

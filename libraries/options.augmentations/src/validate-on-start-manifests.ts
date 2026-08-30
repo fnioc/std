@@ -6,7 +6,7 @@
 // getValidateOnStartManifest(optionsType) returns a manifest appending that
 // type's `IOptions<T>` address to the keyed startup-validation target list
 // and registering the built-in StartupValidator as the IStartupValidator —
-// merge it into a container's registrations with `addMany`. The host
+// merge it into a container's registrations with `add`. The host
 // resolves that (optionally) and calls `validate()`.
 
 // Type-only: puts the sugar's declare-module faces in every program that
@@ -28,7 +28,7 @@ function factory(resolver: IServiceProvider, startupType: Array<Keyed<Type, type
 /**
  * Marks the options registered at `optionsType` for eager validation at host
  * startup, as its own manifest — merge it into a container's registrations
- * with `addMany`. The host forces the registration's evaluation (running its
+ * with `add`. The host forces the registration's evaluation (running its
  * validate steps) before starting hosted services, so a validation failure
  * surfaces at boot instead of on first use. Requires a prior `addOptions` for
  * the same `optionsType` and a host that resolves the built-in
