@@ -287,20 +287,12 @@ whole set is decided fresh when the slots above are rewritten, so this is a demo
 
 ## Claude's lane — 2026-08-30
 
-Only work this session owns. Items the owner drives (§229 model-owned captivity, the scope-issue
-handoff, #274/#366, the knip sweep) are his and are deliberately absent.
+Only work this session owns. §229 model-owned captivity, the scope-issue handoff, #274/#366, the
+knip sweep and both read-only audits belong to the review lane below.
 
 **In flight**
 
-- [ ] Open-address control recognition + the two example fixtures that pin it. `isControlAsk` fed a
-      still-open address to `bindGenerics` as its constraint, so a raw `Error` escaped where the
-      engine owes an `UnsatisfiableError`; it answers `false` for an open address now. Written,
-      gated locally, uncommitted — the repo cannot be verified while another lane is mid-edit.
-- [ ] Three read-only audits of `di.*` and their in-repo dependencies (8 packages): defects, each
-      finding carrying a concrete failure scenario; reinvention, inventory-first so a hand-rolled
-      helper can be matched against what already exists; overengineering, each finding naming the
-      requirement the code satisfies that was never given. Scoped and briefed, held until the tree
-      is still.
+Nothing. Every item this lane owns is committed.
 
 **Complete**
 
@@ -313,6 +305,10 @@ handoff, #274/#366, the knip sweep) are his and are deliberately absent.
       `configureProvider`, `validation`, `ServiceProviderOptions` — across hosting, logging,
       caching, options, diagnostics, the examples, and every test package.
 - [x] Every test package typechecks, not merely runs.
+- [x] An open address answers `false` to control recognition, so asking at a template reaches the
+      engine's refusal instead of escaping as a raw `Error`.
+- [x] `validateScopes` removed from hosting's `ServiceProviderOptions` — a public API removal,
+      captivity being the keeping model's own concern.
 
 ## Review lane (Fable session) — 2026-08-30
 
