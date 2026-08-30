@@ -2,7 +2,7 @@ import { type CtorRegistration, type FactoryRegistration, Registration, Unsatisf
 import { type ConstructorType, type FunctionType, isAllThere, Type } from '@rhombus-std/primitives';
 import { memo } from '@rhombus-std/primitives';
 import type { Ctor, Func } from '@rhombus-toolkit/func';
-import { assertNever } from '@rhombus-toolkit/type-guards';
+import { assertNever, isReadonlyArray } from '@rhombus-toolkit/type-guards';
 import type { Match, Registry } from '../Registry.js';
 import { PlannerVisitor } from './PlannerVisitor.js';
 import { type RealizeOptions, RealizeVisitor } from './RealizeVisitor.js';
@@ -294,14 +294,11 @@ export namespace Plan {
 
     /** The plain request's args: nothing bound. */
     const NO_ARGS: ReadonlyMap<Type, number> = new Map();
-    function isArray(value: any): value is readonly unknown[] {
-      return Array.isArray(value);
-    }
     function from(address: Type, registry: Registry): Plan;
     function from(address: Type, registry: Registry, signature: readonly Type[]): Plan;
     function from(address: Type, registry: Registry, args: ReadonlyMap<Type, number>): Plan;
     function from(address: Type, registry: Registry, args?: readonly Type[] | ReadonlyMap<Type, number>): Plan {
-      if (isArray(args)) {
+      if (isReadonlyArray(args)) {
         return from(address, registry, toArgs(args));
       }
       return planFor(registry)(address)(args ?? NO_ARGS);

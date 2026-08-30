@@ -11,6 +11,7 @@
 import { type IChangeToken, type MergeStrategies } from '@rhombus-std/primitives';
 import { registerAugmentations } from '@rhombus-std/primitives.extras';
 import type { Func } from '@rhombus-toolkit/func';
+import { hasMember } from '@rhombus-toolkit/type-guards';
 import type { Flatten } from '@rhombus-toolkit/type-helpers';
 import { CacheEntrySugarAugmentations } from './CacheEntry-Sugar-augmentations';
 import type { ICacheEntry } from './ICacheEntry';
@@ -22,9 +23,7 @@ type Expiration = Date | number | IChangeToken;
 
 /** Narrows the `expiration` union: an `IChangeToken` (not a `Date`/`number`). */
 function isChangeToken(value: unknown): value is IChangeToken {
-  return typeof value === 'object'
-    && value !== null
-    && typeof (value as IChangeToken).registerChangeCallback === 'function';
+  return hasMember(value, 'registerChangeCallback') && typeof value.registerChangeCallback === 'function';
 }
 
 /** Applies `expiration` to a fresh entry, if one was supplied. */

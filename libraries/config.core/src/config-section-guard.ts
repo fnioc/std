@@ -8,6 +8,7 @@
 // than a forked private copy. `ConfigRoot`/`ConfigManager` do not apply the
 // brand, so the guard returns `false` for them.
 
+import { hasMember } from '@rhombus-toolkit/type-guards';
 import { configSectionBrand, type IConfigSection } from './IConfigSection';
 
 /**
@@ -15,7 +16,5 @@ import { configSectionBrand, type IConfigSection } from './IConfigSection';
  * Reads the {@link configSectionBrand} the concrete section stamps on itself.
  */
 export function isConfigSection(config: unknown): config is IConfigSection {
-  return typeof config === 'object'
-    && config !== null
-    && (config as Record<PropertyKey, unknown>)[configSectionBrand] === true;
+  return hasMember(config, configSectionBrand) && config[configSectionBrand] === true;
 }

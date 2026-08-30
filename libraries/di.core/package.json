@@ -55,7 +55,7 @@
   },
   "dependencies": {
     "@rhombus-std/primitives": "workspace:^",
-    "@rhombus-toolkit/type-guards": "^2.0.1",
+    "@rhombus-toolkit/type-guards": "^3.0.0",
     "@rhombus-toolkit/type-helpers": "^2.0.0"
   },
   "devDependencies": {

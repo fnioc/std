@@ -42,7 +42,7 @@
     "@rhombus-std/options.augmentations": "workspace:*",
     "@rhombus-std/primitives": "workspace:*",
     "@rhombus-toolkit/func": "^3.6.0",
-    "@rhombus-toolkit/type-guards": "^2.0.1"
+    "@rhombus-toolkit/type-guards": "^3.0.0"
   },
   "devDependencies": {
     "@rhombus-std/di.extras": "workspace:*",
