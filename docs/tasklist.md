@@ -398,6 +398,13 @@ Only work this session owns; the lane above is another session's.
 
 **Reinvention**
 
+Rulings (owner, 2026-08-30): the `is*` guards from type-guards are comprehension-context helpers
+(`.filter(isFunction)`, `.find(isDefined)`) — the `isFunction`/`isObject` conversion rows are
+DROPPED; no work converting to them outside that shape. The `first` rows follow
+`@rhombus-toolkit/obj`'s current signatures — never the `*try` helpers; an emptiness probe spells
+`.find(isDefined)`/`.find(hasValue)` where that is the real shape. Remaining rows proceed once
+the toolkit dep bumps land.
+
 | should have used                                                                                                                                                               | used instead                                                                                                                                                                                      |
 | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `isAllThere(members)` (`@rhombus-std/primitives`)                                                                                                                              | `members.some(p => !p)` + `members as Plan[]` cast — `libraries/di/src/internal/Plan/PlannerVisitor.ts:196`                                                                                       |
