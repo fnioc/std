@@ -14,7 +14,6 @@
 import type {} from '@rhombus-std/di.extras';
 
 import { MemoryConfigSource } from '@rhombus-std/config';
-import { ServiceProviderOptions } from '@rhombus-std/di';
 import { type IServiceProvider } from '@rhombus-std/di.core';
 import type { IMetricsBuilder } from '@rhombus-std/diagnostics.core';
 import { type HostBuilderContext, HostDefaults, HostLifecycleAugmentations, type IHostApplicationLifetime, type IHostBuilder, type IHostEnvironment } from '@rhombus-std/hosting.core';
@@ -30,7 +29,7 @@ import { HOST_LIFETIME_TYPE, HOST_OPTIONS_CONFIGURE_TYPE } from './framework-typ
 import type { HostOptions } from './HostOptions';
 import { ConsoleLifetime } from './internal/ConsoleLifetime';
 import { MetricsBuilder } from './MetricsBuilder';
-import { setServiceProviderOptionsFactory } from './ServiceProviderOptionsFactory';
+import { ServiceProviderOptions, setServiceProviderOptionsFactory } from './ServiceProviderOptionsFactory';
 
 /**
  * Registered under the `IHostBuilder` type; the concrete `HostBuilder` pulls it

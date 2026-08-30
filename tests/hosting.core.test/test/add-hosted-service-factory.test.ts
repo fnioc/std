@@ -17,7 +17,7 @@ test("addHostedService(factory) registers the factory's result under the hosted-
   let manifest: Manifest<unknown> = Manifest.empty<unknown>();
   const singleton = new Worker();
   // The factory form surfaces an already-constructed instance as a hosted service.
-  manifest = manifest.addMany(getHostedServiceManifest(() => singleton));
+  manifest = manifest.add(getHostedServiceManifest(() => singleton));
 
   const provider = di.usingLifetimeModel(noop()).usingManifest(manifest).build();
   const services: IHostedService[] = provider.resolve(hostedServiceCollectionType());
@@ -39,7 +39,7 @@ test('addHostedService(factory) injects the live resolver so the factory can pul
   manifest = manifest.add(Type.from('test:Dependency'), Dependency, Type.ctor(Type.from('test:Dependency'), [[]]));
   // The factory receives the resolver -- the reference `Func<IServiceProvider, T>`
   // form used to promote a separately-registered service to a hosted service.
-  manifest = manifest.addMany(getHostedServiceManifest((resolver) => {
+  manifest = manifest.add(getHostedServiceManifest((resolver) => {
     const dependency: Dependency = resolver.resolve(Type.from('test:Dependency'));
     return dependency;
   }));
@@ -68,8 +68,8 @@ test('addHostedService(ctor) and addHostedService(factory) coexist under the sha
   }
 
   let manifest: Manifest<unknown> = Manifest.empty<unknown>();
-  manifest = manifest.addMany(getHostedServiceManifest(CtorWorker, Type.ctor(HOSTED_SERVICE_TYPE, [[]])));
-  manifest = manifest.addMany(getHostedServiceManifest(() => new FactoryWorker()));
+  manifest = manifest.add(getHostedServiceManifest(CtorWorker, Type.ctor(HOSTED_SERVICE_TYPE, [[]])));
+  manifest = manifest.add(getHostedServiceManifest(() => new FactoryWorker()));
 
   const provider = di.usingLifetimeModel(noop()).usingManifest(manifest).build();
   const services: IHostedService[] = provider.resolve(hostedServiceCollectionType());

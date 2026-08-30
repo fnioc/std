@@ -115,8 +115,8 @@ test('addHostedService registers many under one token; the collection resolves a
   }
 
   let manifest: Manifest<unknown> = Manifest.empty<unknown>();
-  manifest = manifest.addMany(getHostedServiceManifest(A, Type.ctor(HOSTED_SERVICE_TYPE, [[]])));
-  manifest = manifest.addMany(getHostedServiceManifest(B, Type.ctor(HOSTED_SERVICE_TYPE, [[]])));
+  manifest = manifest.add(getHostedServiceManifest(A, Type.ctor(HOSTED_SERVICE_TYPE, [[]])));
+  manifest = manifest.add(getHostedServiceManifest(B, Type.ctor(HOSTED_SERVICE_TYPE, [[]])));
 
   const provider = di.usingLifetimeModel(noop()).usingManifest(manifest).build();
   const services: IHostedService[] = provider.resolve(hostedServiceCollectionType());

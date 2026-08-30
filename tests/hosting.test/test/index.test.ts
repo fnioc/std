@@ -34,7 +34,7 @@ test('HostBuilder.build runs and stops its hosted services', async () => {
   }
 
   const builder = new HostBuilder();
-  builder.configureServices((_context, services) => services.addMany(getHostedServiceManifest(Worker, Type.ctor(HOSTED_SERVICE_TYPE, [[]]))));
+  builder.configureServices((_context, services) => services.add(getHostedServiceManifest(Worker, Type.ctor(HOSTED_SERVICE_TYPE, [[]]))));
 
   const host = builder.build();
   expect(host.services).toBeDefined();
@@ -73,7 +73,7 @@ test('lifecycle ordering: starting -> start -> started -> applicationStarted -> 
   }
 
   const builder = new HostBuilder();
-  builder.configureServices((_context, services) => services.addMany(getHostedServiceManifest(Recorder, Type.ctor(HOSTED_SERVICE_TYPE, [[]]))));
+  builder.configureServices((_context, services) => services.add(getHostedServiceManifest(Recorder, Type.ctor(HOSTED_SERVICE_TYPE, [[]]))));
 
   const host = builder.build();
   const lifetime: IHostApplicationLifetime = host.services.resolve(
@@ -126,7 +126,7 @@ test('BackgroundService: execute runs on start; stop aborts its stopping signal'
   }
 
   const builder = new HostBuilder();
-  builder.configureServices((_context, services) => services.addMany(getHostedServiceManifest(Worker, Type.ctor(HOSTED_SERVICE_TYPE, [[]]))));
+  builder.configureServices((_context, services) => services.add(getHostedServiceManifest(Worker, Type.ctor(HOSTED_SERVICE_TYPE, [[]]))));
 
   const host = builder.build();
   await host.start();
@@ -165,9 +165,9 @@ test('addHostedService registers many under one shared token; the host resolves 
 
   const builder = new HostBuilder();
   builder.configureServices((_context, services) => {
-    services = services.addMany(getHostedServiceManifest(A, Type.ctor(HOSTED_SERVICE_TYPE, [[]])));
-    services = services.addMany(getHostedServiceManifest(B, Type.ctor(HOSTED_SERVICE_TYPE, [[]])));
-    services = services.addMany(getHostedServiceManifest(C, Type.ctor(HOSTED_SERVICE_TYPE, [[]])));
+    services = services.add(getHostedServiceManifest(A, Type.ctor(HOSTED_SERVICE_TYPE, [[]])));
+    services = services.add(getHostedServiceManifest(B, Type.ctor(HOSTED_SERVICE_TYPE, [[]])));
+    services = services.add(getHostedServiceManifest(C, Type.ctor(HOSTED_SERVICE_TYPE, [[]])));
     return services;
   });
 
@@ -235,7 +235,7 @@ test('Host.createApplicationBuilder().build() produces a runnable IHost', async 
   expect(builder.config).toBeDefined();
   expect(builder.logging).toBeDefined();
 
-  builder.services = builder.services.addMany(getHostedServiceManifest(Worker, Type.ctor(HOSTED_SERVICE_TYPE, [[]])));
+  builder.services = builder.services.add(getHostedServiceManifest(Worker, Type.ctor(HOSTED_SERVICE_TYPE, [[]])));
 
   const host = builder.build();
   await host.start();

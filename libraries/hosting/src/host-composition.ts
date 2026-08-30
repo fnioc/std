@@ -21,7 +21,7 @@
 import type {} from '@rhombus-std/di.extras';
 
 import type { IConfig } from '@rhombus-std/config.core';
-import { di, noop, standardValidationPolicy, validation } from '@rhombus-std/di';
+import { di, noop, standardValidationPolicy, validateBuildability, validateCaptivity } from '@rhombus-std/di';
 import { type Manifest } from '@rhombus-std/di.core';
 import { Environments, type HostBuilderContext, HostDefaults, type IHost, type IHostApplicationLifetime, type IHostEnvironment, type IHostLifetime } from '@rhombus-std/hosting.core';
 import { LoggerFactory } from '@rhombus-std/logging';
@@ -35,6 +35,7 @@ import { ApplicationLifetime } from './internal/ApplicationLifetime';
 import { Host } from './internal/Host';
 import { HostingEnvironment } from './internal/HostingEnvironment';
 import { NullLifetime } from './internal/NullLifetime';
+import type { ServiceProviderOptions } from './ServiceProviderOptionsFactory';
 
 /** The category the internal host writes its lifecycle log messages under. */
 const HOST_LOGGER_CATEGORY = 'Rhombus.Hosting.Host';
@@ -181,14 +182,19 @@ export function populateFrameworkServices(services: Manifest<unknown>, context: 
  * {@link HostOptions} before the `configureHostOptions` mutations run.
  *
  * `serviceProviderOptions` carries the `validateOnBuild`/`validateScopes`
- * toggles the builders resolved, threaded into the `validation` chain addon;
- * omitted ⇒ an unvalidated build.
+ * toggles the builders resolved, wired to the `validateBuildability`/
+ * `validateCaptivity` addons; omitted ⇒ an unvalidated build.
  */
-export function resolveHost(services: Manifest<unknown>, framework: FrameworkServices, config: IConfig, serviceProviderOptions?: { validateOnBuild?: boolean; validateScopes?: boolean; }): IHost {
-  const provider = di.usingLifetimeModel(noop())
-    .usingManifest(services)
-    .withAddon(validation(standardValidationPolicy, serviceProviderOptions ?? {}))
-    .build();
+export function resolveHost(services: Manifest<unknown>, framework: FrameworkServices, config: IConfig, serviceProviderOptions?: ServiceProviderOptions): IHost {
+  let builder = di.usingLifetimeModel(noop())
+    .usingManifest(services);
+  if (serviceProviderOptions?.validateOnBuild) {
+    builder = builder.useAddon(validateBuildability());
+  }
+  if (serviceProviderOptions?.validateScopes) {
+    builder = builder.useAddon(validateCaptivity(standardValidationPolicy));
+  }
+  const provider = builder.build();
 
   const loggerProviders: ILoggerProvider[] = provider.resolve<ILoggerProvider[]>();
   for (const loggerProvider of loggerProviders) {

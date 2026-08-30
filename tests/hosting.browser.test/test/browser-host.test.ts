@@ -90,7 +90,7 @@ test('BrowserHost.run() starts, ignores a bfcache pagehide, and stops on a termi
   const events: string[] = [];
 
   const runPromise = BrowserHost.run({ pageContext: page.context }, (builder) => {
-    builder.services = builder.services.addMany(getHostedServiceManifest(class Worker {
+    builder.services = builder.services.add(getHostedServiceManifest(class Worker {
       public async start(): Promise<void> {
         events.push('start');
       }

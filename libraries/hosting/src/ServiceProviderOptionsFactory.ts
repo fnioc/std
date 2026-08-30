@@ -13,8 +13,26 @@
 
 import type { HostBuilderContext, IHostBuilder } from '@rhombus-std/hosting.core';
 
-/** The `validation` addon's own options shape, produced from the fully-resolved build context. */
-export type ServiceProviderOptionsFactory = (context: HostBuilderContext) => { validateOnBuild?: boolean; validateScopes?: boolean; };
+/**
+ * The validation toggles a service-provider build honours: `validateOnBuild` plans every closed
+ * address at build time, `validateScopes` walks every buildable address for captive
+ * dependencies.
+ */
+export interface ServiceProviderOptions {
+  readonly validateOnBuild?: boolean;
+  readonly validateScopes?: boolean;
+}
+
+export namespace ServiceProviderOptions {
+  /** What a build without options gets: no validation. */
+  export const defaults: ServiceProviderOptions = {
+    validateOnBuild: false,
+    validateScopes: false,
+  };
+}
+
+/** Produces the {@link ServiceProviderOptions} for a build, from the fully-resolved build context. */
+export type ServiceProviderOptionsFactory = (context: HostBuilderContext) => ServiceProviderOptions;
 
 const SERVICE_PROVIDER_OPTIONS_FACTORY = Symbol('serviceProviderOptionsFactory');
 
@@ -27,9 +45,7 @@ export function setServiceProviderOptionsFactory(builder: IHostBuilder, factory:
  * Resolves the recorded options against `context`, or `undefined` when none was
  * set (a plain, unvalidated build).
  */
-export function resolveServiceProviderOptions(builder: IHostBuilder, context: HostBuilderContext):
-  | { validateOnBuild?: boolean; validateScopes?: boolean; }
-  | undefined {
+export function resolveServiceProviderOptions(builder: IHostBuilder, context: HostBuilderContext): ServiceProviderOptions | undefined {
   const factory = builder.properties.get(SERVICE_PROVIDER_OPTIONS_FACTORY) as ServiceProviderOptionsFactory | undefined;
   return factory?.(context);
 }

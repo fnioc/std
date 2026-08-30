@@ -22,6 +22,7 @@ import { HostDefaults, HostEnvironmentEnvAugmentations, type IHostEnvironment } 
 import { LoggingBuilder, LoggingBuilderProviderAugmentations } from '@rhombus-std/logging';
 import { ConsoleLoggerProvider } from '@rhombus-std/logging.console';
 import { process } from '@rhombus-std/primitives';
+import type { ServiceProviderOptions } from './ServiceProviderOptionsFactory';
 
 /** The environment-variable prefix the host configuration is seeded from. */
 export const HOST_ENVIRONMENT_VARIABLE_PREFIX = 'RHOMBUS_';
@@ -75,6 +76,6 @@ export function addDefaultServices(services: Manifest<unknown>): Manifest<unknow
  * host pays no validation cost while a developer catches registration mistakes
  * early.
  */
-export function createDefaultServiceProviderOptions(environment: IHostEnvironment): { validateOnBuild?: boolean; validateScopes?: boolean; } {
+export function createDefaultServiceProviderOptions(environment: IHostEnvironment): ServiceProviderOptions {
   return { validateOnBuild: HostEnvironmentEnvAugmentations.isDevelopment.call(environment) };
 }
