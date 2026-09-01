@@ -671,13 +671,7 @@ Design recorded as §231.
 - [ ] Derivation must spell an optional property as a union with `undefined` — `ObjectType.members`
       carries no optional flag, and `Type.isOptional` already defines optional as exactly that union,
       so the union's literal fallback is what keeps a missing optional from failing the whole shape.
-- [ ] COMMENT ONLY, no behaviour change: `visitTag` returns `undefined` with no doc saying why,
-      where `visitIntersection` explains its own. Give it the same treatment — synthesizing a tag
-      would fall back to its base, so a keyed address would resolve to the unkeyed service. The
-      returned `undefined` is the protocol every caller reads (`visit` records
-      `missingDependency`, `visitUnion` skips on it, `visitTuple`/`visitObject` refuse on it) and
-      must not become a throw.
-- [ ] COMMENT ONLY, no behaviour change: `visitCtor` / `visitAbstractCtor` say "Parked: awaits its
-      design ruling" when there is nothing to rule — a constructor value cannot be composed from a
-      signature, only carried by a registration, and handing back a closure that constructs is what
-      `visitFunc` already returns. Say that instead. They keep returning `undefined`.
+- [ ] DELETE the "Parked: awaits its design ruling" comments on `visitCtor` and
+      `visitAbstractCtor` — there is nothing to rule, so they promise work that is not coming. Add
+      nothing in their place: every kind that synthesizes nothing just returns `undefined`, which
+      the class doc already accounts for. `visitTag` needs no comment either.
