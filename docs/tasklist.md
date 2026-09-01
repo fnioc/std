@@ -949,3 +949,35 @@ Side-by-side audit otherwise CLEAN: no process-global mutable state in di, di.co
 primitives, primitives.extras or any external dependency lets two containers observe each other.
 Two independent containers are fine; two loaded COPIES of primitives or di.core are impossible by
 design, and fail loud.
+
+## Signatures as a Type node (2026-09-01)
+
+`Type[][]` is the one place a node's children are host arrays rather than nodes, which is what
+`adoptSignatures` and `signaturesKey` exist for. Making a signature list a node retires both, drops
+the ctor/func intern key to two ids, and satisfies the one-kind-per-member rule.
+
+- [ ] Give a tuple a way to express open length — an optional or rest slot. Today both are refused
+      (`tokens/node_test.go:164`) on the stated grounds that "a list of slots can only state a fixed
+      one, so derivation fails rather than reporting an arity the type does not have". That single
+      addition closes two refusals: variable-length tuples become derivable, and a signature
+      inherits variadic instead of needing a variadic slot of its own.
+- [ ] Then a signature list becomes a node. Tuple-of-tuples or union-of-tuples is still open; a
+      third form supporting both is NOT viable — two spellings of one type would intern to two nodes
+      and `===` is the equality operator for the whole subsystem.
+- [ ] Order among signatures: by `members.length` ASCENDING, so the overload needing the fewest
+      optional fills wins. Changes today's behaviour, which is declaration order.
+- [ ] OWNER-RULED: equal-length signatures that are both resolvable have nothing to choose between
+      them — the author wrote something ambiguous, and no container can read their mind. The
+      canonical order picks, and that is DOCUMENTED as the behaviour rather than papered over. The
+      tiebreak therefore has to be deterministic, not meaningful, so no specificity comparison is
+      owed. Document it as "the canonical order picks", NOT as TypeScript parity: our union matches
+      TS in reduction (dedupe, literal subsumption) but its ORDER is `KIND_RANK`'s own, and TS has no
+      stable member order to match.
+- [ ] Open, if signatures land in a `UnionType`: a one-signature callable's union collapses to the
+      bare tuple, so the field's shape varies with overload count. Either consumers read "tuple or
+      union of tuples", or a non-canonical one-member union needs a constructor — and then an answer
+      for why that constructor cannot be reached for ordinary addresses, since two ways to build one
+      kind is where interning identity fragments.
+- [ ] Consequence either way: this changes the `Type` union, so the Go node vocabulary must follow
+      and every visitor gains the case. A `Type`-model change, not a transformer patch, and
+      independent of the resolution-door work.
