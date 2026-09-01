@@ -907,8 +907,9 @@ if that write-up slips.
 - [ ] May an addon contribute per-ask registrations of its own? `Plan.from` memoizes per `Registry`
       object (`Plan.ts:250-252`), so a per-ask registry rebuilds every plan on every ask. Addresses
       must be fixed at build and only values vary — a real constraint on the addon surface.
-- [ ] `UnknownControlError` is lost to uniform lookup: an unanswerable control ask becomes a generic
-      `UnsatisfiableError`. Accept the weaker diagnostic, or recover it at the refusal path?
+- [ ] RULED: accept the weaker diagnostic. An unanswerable control ask becomes a generic
+      `UnsatisfiableError` once control services are ordinary registrations; `UnknownControlError`
+      goes rather than being recovered at the refusal path.
 - [ ] §224 (the keeper caches the make's product) and §226 (the instance cache keys as-registered)
       are true only of the models we happen to know, so they are blackbox detail standing as general
       rulings — which the black-box ruling itself forbids. Sealed from the clean-room writers either
@@ -991,3 +992,48 @@ the ctor/func intern key to two ids, and satisfies the one-kind-per-member rule.
 - [ ] Consequence either way: this changes the `Type` union, so the Go node vocabulary must follow
       and every visitor gains the case. A `Type`-model change, not a transformer patch, and
       independent of the resolution-door work.
+
+## Moved out of the decision log — second sweep (2026-09-01)
+
+- [ ] Certify the static / namespace / const-member and class-member (shape-1-without-`impl`)
+      matchers. Grammar-valid today, matchers uncertified. Nested member paths (`A.B.fn`) are
+      describable by the grammar and deliberately unimplemented — that half is a decision, not work.
+- [ ] The authoring sugar the value door was meant to pair with is HELD, waiting on a settled
+      spelling for its inline body. Unblock or drop it.
+
+## Door and signatures — captured 2026-09-01
+
+- [ ] The engine calls `next` when it cannot answer, rather than owning the refusal: user
+      extensibility may legitimately compose BELOW the engine, so it is not the last word and the
+      terminus is the genuine "nobody answered" point. This obliges a distinction the engine does not
+      make today — "no registration for this address" is delegable, "a registration exists and its
+      dependencies cannot be met" is an error that must NOT fall through to a user's fallback and
+      read as a miss. `Plan.from` raises `UnsatisfiableError` for both today.
+- [ ] The seeded `IServiceProvider` factory lives in the MAIN MANIFEST, not the overlay; only the
+      live ask itself is per-request. Consequence recorded rather than decided: a resolvability
+      validator, if one is ever built, either knows the provider is manifest-side or works against
+      the overlay.
+- [ ] The tooling description belongs as a SECTION INSIDE the requirements doc — the APIs a model
+      must build on — not as a document of its own. Write it after the door lands, since that is the
+      surface it describes.
+- [ ] Decide whether symbol-keyed members being excluded from derivation becomes a STATED RULE
+      rather than a convenient accident. It is load-bearing for the resolvable-request design: a
+      `[key: symbol]: unknown` member that derived would put a slot on the address nothing can answer.
+
+### Awaiting the owner's word
+
+- [ ] Should the engine BYPASS hooks for a `controlLifetime` registration, or should each model skip
+      it inside its own black box? Recommended: the engine bypasses — the alternative puts the same
+      skip in every model and forces every model to import `controlLifetime` to recognise what it is
+      skipping, a concept the model is meant to sit outside of. Cost: an audit or diagnostics addon
+      cannot observe control resolutions either.
+- [ ] Does "remove all Lifetime related interfaces" reach `LifetimeArgument<Lifetime>` and
+      `LifetimeModelError`? `LifetimeModel` is unambiguous. `LifetimeArgument` is the vararg helper an
+      addon uses to take a lifetime from its caller and says nothing about how a model works, so it
+      would stay. `LifetimeModelError` is a shared error ABOUT models — the same shape of problem as
+      `CaptiveDependencyError`.
+- [ ] An array-typed rest parameter (`...deps: IDep[]`) derives as ONE required `Array<IDep>` slot
+      where a tuple-typed rest refuses loudly — a silent arity misstatement, the class §232 forbids.
+      Refuse it too, or let the open-length tuple work express it honestly?
+- [ ] Does commit `1f83a7c2` stay? One of its tests calls that arity misstatement "the current,
+      deliberate behavior this test pins", while the same agent's report calls it a real silent gap.

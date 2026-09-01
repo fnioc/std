@@ -1262,8 +1262,7 @@ loudly (an uncertified-kind diagnostic), never silently.
 Matching stays certified only for the shapes already landed (§91: interface member and free
 function). Static / namespace / const-member and class-member (shape-1-without-`impl`) matching are
 grammar-valid but their matchers are not yet certified, and nested member paths (`A.B.fn`) are
-describable by the grammar but deliberately unimplemented — both open edges, pending certification
-work.
+describable by the grammar but deliberately unimplemented.
 
 Go stays agnostic of the inlinable roster itself (U2, `decisions.user.md`; the general
 source-agnostic principle is §117's) — nothing in the marker grammar introduces a name table, a
@@ -1491,7 +1490,7 @@ throws or returns `undefined` for zero matches — the empty aggregate is the an
 
 _Owner-directed 2026-08-13._
 
-## §146 — di2's `IOptions<T>` is one open registration; the composed-generic derivation question is still open
+## §146 — di2's `IOptions<T>` is one open registration, and the composed-generic derivation question dissolves with it
 
 `IOptions<T>` is served by ONE open registration in di2 — `IOptions<$T>` with a
 placeholder-parameterized impl, the same mechanism the open logger registration already uses. No
@@ -1800,7 +1799,7 @@ It is composed inside the verb, never at a call site.
 
 _Claude-directed 2026-08-13, executing the owner's standing options ruling._
 
-## §161 — `tokenfor`/`tokenof` leave the authoring surface; their Go stage stays, pending its own pass
+## §161 — `tokenfor`/`tokenof` leave the authoring surface
 
 The two token primitives are gone from `primitives.extras`. Their last call site was the
 `addOptions<T>()` sugar body, which composed `IOptions<T>`; once one open registration serves the
@@ -1971,8 +1970,8 @@ for a sugar overload and an explicit-node one alike). A Go regression test
 (`TestResolveMemberUnmatchedDespiteArityCollidingOverload`, `resolve_test.go`) pins the shape red
 before the fix, green after.
 
-**The authoring sugar this door was meant to pair with is held**, pending a settled spelling for
-its inline body. Nothing in this entry describes that door; it ships separately.
+**The authoring sugar this door was meant to pair with is held.** Nothing in this entry describes
+that door; it ships separately.
 
 _Owner-directed 2026-08-13._
 
