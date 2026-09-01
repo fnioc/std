@@ -271,11 +271,7 @@ whole set is decided fresh when the slots above are rewritten, so this is a demo
       or fill it, per the vestigial rule — verify nothing imports it first.
 - [ ] `tests/mergesynth.ttsc.e2e/test/mergesynth.test.ts:285` still describes `registerAugmentations`/`augment`'s
       parameter as `string | Type`; the parameter is `Type`-only now.
-- [ ] **Replace the one remaining lazily-thrown string.**
-      `libraries/di/src/internal/Plan/PlannerVisitor.ts:36` throws `` `wtf mate...` `` in
-      `VisitDisposerFactory`'s `[Symbol.dispose]`, with no matching `catch` anywhere — it doesn't qualify for the
-      intentional-control-flow exemption, so convert it to a real Error. The file carries uncommitted owner
-      edits — re-verify the line before editing.
+
 - [x] **Conventional-commit labels on the owner's commits — CLOSED, no rewrite.** Authorship is
       already uniform (`Thomas Butler` on all 601 branch commits). The repo is squash-only, and a
       squash takes its parsed title from the PR while the individual messages become body text, so
@@ -637,6 +633,13 @@ Design recorded as §230. Open:
 - [ ] Design the tagged model against the same tools.
 - [ ] Check whether `anchorRoot` and `ScopeBinding`'s bracketing still have a job.
 
+## Validation options surface
+
+- [ ] An options surface on the di builder that selectively installs the three validation
+      middlewares. Owner-deferred when they were split (§217): `validateUniversalAddresses`,
+      `validateBuildability` and `validateCaptivity` ship as ordinary addons that a composer
+      `useAddon`s individually, with nothing scaffolded toward selecting a subset.
+
 ## Merge-strategy guards (2026-09-01)
 
 - [ ] Find out whether mergesynth DETECTS overloads whose guards are provably indistinguishable, or
@@ -668,6 +671,13 @@ Design recorded as §231.
 - [ ] Derivation must spell an optional property as a union with `undefined` — `ObjectType.members`
       carries no optional flag, and `Type.isOptional` already defines optional as exactly that union,
       so the union's literal fallback is what keeps a missing optional from failing the whole shape.
-- [ ] Restate `visitTag`'s `undefined` as the refusal it is, with its reason.
-- [ ] Replace `visitCtor` / `visitAbstractCtor`'s "awaits its design ruling" comments with stated
-      refusals — there is nothing for them to answer.
+- [ ] COMMENT ONLY, no behaviour change: `visitTag` returns `undefined` with no doc saying why,
+      where `visitIntersection` explains its own. Give it the same treatment — synthesizing a tag
+      would fall back to its base, so a keyed address would resolve to the unkeyed service. The
+      returned `undefined` is the protocol every caller reads (`visit` records
+      `missingDependency`, `visitUnion` skips on it, `visitTuple`/`visitObject` refuse on it) and
+      must not become a throw.
+- [ ] COMMENT ONLY, no behaviour change: `visitCtor` / `visitAbstractCtor` say "Parked: awaits its
+      design ruling" when there is nothing to rule — a constructor value cannot be composed from a
+      signature, only carried by a registration, and handing back a closure that constructs is what
+      `visitFunc` already returns. Say that instead. They keep returning `undefined`.
