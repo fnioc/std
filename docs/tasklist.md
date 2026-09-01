@@ -872,9 +872,21 @@ if that write-up slips.
 - [ ] The live ask is registered in the overlay under its NARROW type — `ServiceRequest` for an ask
       a provider opened, `ControlRequest` for one the fold makes. There is no discriminant check
       anywhere: whoever mints the request picks the address, which is the only place that knows.
-      An ask for the `Request` union resolves through the union machinery that already exists and
-      finds whichever arm is registered; an ask for `ServiceRequest` under a `ControlRequest` finds
-      nothing and refuses through the ordinary absence path.
+      An ask for `ServiceRequest` under a `ControlRequest` finds nothing and refuses through the
+      ordinary absence path.
+      VERIFIED, and it rules out resolving the union structurally: an EXPORTED alias derives as a
+      NAME, not a union — `TestDeriveNodeExportedAliasUnionNames` against
+      `TestDeriveNodeLocalAliasUnionDecomposes` in `transforms/internal/tokens/derived_test.go`,
+      where only the non-exported alias decomposes. `Request` must be exported, so `typefor<Request>()`
+      is `Type.imported("Request", ...)`, a name resolves nominally with no fallback, and an ask for
+      it would refuse. The overlay therefore registers the ask under BOTH addresses — the narrow arm
+      and the union name — one object, two value registrations. FOR NOW: owner-ruled as the way
+      forward, not as the settled answer. The thing underneath it is general — no exported union
+      alias can ever be answered by a registration against one of its arms — and the eventual fix
+      is assignability, which the owner intends to tackle one day. It subsumes this case: an arm is
+      assignable to the union, so the narrow registration answers the wide ask on its own and the
+      second registration goes. The direction is the whole point and is easy to get backwards — a
+      NARROWER registration may answer a WIDER ask, never the reverse.
 - [ ] Consequence to get right: the overlay's ADDRESSES must be visible to the PLANNER while its
       VALUES arrive per ask. A plan is memoized per `Registry` object (`Plan.ts:250-252`), so an
       overlay folded into a fresh registry per ask kills the plan cache outright — but an overlay
