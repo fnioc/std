@@ -1,4 +1,4 @@
-import type { Type } from '@rhombus-std/primitives';
+import { ImmutableLinkedList, type Type } from '@rhombus-std/primitives';
 import type { Behavior, Koa } from './Behavior.js';
 import type { Hooks } from './hooks.js';
 import type { Registration } from './Registration/index.js';
@@ -26,43 +26,25 @@ interface Layer<Hook> {
   readonly middleware: boolean;
   /** The state slot this behavior threads through — the same one in every chain it joins. */
   readonly slot: number;
-  /** The layer standing outside this one, farther from the engine; absent at the outermost. */
-  readonly next: Layer<Hook> | undefined;
 }
 
-/** One hook's layers: the most recently installed at the head, the farthest from the engine at the end. */
-type Chain<K extends keyof Hooks> = Layer<NonNullable<Behavior[K]>> | undefined;
+/** One hook's layers: the most recently installed nearest the engine, the farthest from it at the other end. */
+type Chain<K extends keyof Hooks> = ImmutableLinkedList<Layer<NonNullable<Behavior[K]>>>;
+
+/** The layers of `chain` in the order a walk asks them, farthest from the engine first. */
+type Walk<K extends keyof Hooks> = ReadonlyArray<Layer<NonNullable<Behavior[K]>>>;
 
 /** `chain` with `hook` standing nearest the engine, or `chain` itself where the behavior wrote no such hook. */
-function installed<Hook extends { readonly length: number; }>(chain: Layer<Hook> | undefined, member: keyof Hooks, hook: Hook | undefined, slot: number): Layer<Hook> | undefined {
+function installed<Hook extends { readonly length: number; }>(chain: ImmutableLinkedList<Layer<Hook>>, member: keyof Hooks, hook: Hook | undefined, slot: number): ImmutableLinkedList<Layer<Hook>> {
   if (hook === undefined) {
     return chain;
   }
-  return { hook, middleware: hook.length > handlerArity[member], slot, next: chain };
+  return chain.push({ hook, middleware: hook.length > handlerArity[member], slot });
 }
 
 /** `chain` without the layer threading `slot`, sharing everything outside it. */
-function uninstalled<Hook>(chain: Layer<Hook> | undefined, slot: number): Layer<Hook> | undefined {
-  if (chain === undefined) {
-    return undefined;
-  }
-  if (chain.slot === slot) {
-    return chain.next;
-  }
-  const outside = uninstalled(chain.next, slot);
-  return outside === chain.next ? chain : { ...chain, next: outside };
-}
-
-/** The layer of `chain` standing farthest from the engine of those `enclosing` stands over; absent where it stands over none. */
-function farthest<Hook>(chain: Layer<Hook> | undefined, enclosing: Layer<Hook> | undefined): Layer<Hook> | undefined {
-  if (chain === enclosing) {
-    return undefined;
-  }
-  let layer = chain;
-  while (layer !== undefined && layer.next !== enclosing) {
-    layer = layer.next;
-  }
-  return layer;
+function uninstalled<Hook>(chain: ImmutableLinkedList<Layer<Hook>>, slot: number): ImmutableLinkedList<Layer<Hook>> {
+  return chain.remove(layer => layer.slot === slot);
 }
 
 /** `construction` as the behavior holding `slot` sees it: the same node, its own state and no one else's. */
@@ -86,45 +68,45 @@ function constructionBeneath(seen: Hooks.Construction, states: readonly unknown[
 }
 
 /**
- * Opens what `enclosing` stands over, farthest from the engine outward.
+ * Opens the layers from `index` on, the farthest from the engine first.
  *
  * @remarks
  * A handler files the state it opens under into its own slot, everything nearer the engine having
  * opened first; middleware opens what it encloses by calling `next`, which answers back the very
  * state it was handed, no slot but this one being the middleware's to read.
  */
-function runBeginResolve(chain: Chain<'beginResolve'>, enclosing: Chain<'beginResolve'>, request: Type, injected: readonly unknown[], opening: unknown[]): void {
-  const layer = farthest(chain, enclosing);
+function runBeginResolve(walk: Walk<'beginResolve'>, index: number, request: Type, injected: readonly unknown[], opening: unknown[]): void {
+  const layer = walk[index];
   if (layer === undefined) {
     return;
   }
   if (layer.middleware) {
     opening[layer.slot] = (layer.hook as Koa<Hooks<any>['beginResolve']>)(request, injected[layer.slot], (beneathRequest, threaded) => {
-      runBeginResolve(chain, layer, beneathRequest, injected, opening);
+      runBeginResolve(walk, index + 1, beneathRequest, injected, opening);
       return threaded;
     });
     return;
   }
-  runBeginResolve(chain, layer, request, injected, opening);
+  runBeginResolve(walk, index + 1, request, injected, opening);
   opening[layer.slot] = (layer.hook as Hooks<any>['beginResolve'])(request, injected[layer.slot]);
 }
 
 /**
- * Asks what `enclosing` stands over, farthest from the engine first.
+ * Asks the layers from `index` on, the farthest from the engine first.
  *
  * @remarks
  * A `{result}` answer wins outright and nothing nearer the engine runs; a `{state}` answer is filed
  * into that behavior's own slot, which is where its dependencies read it back.
  */
-function runBeforeConstruct(chain: Chain<'beforeConstruct'>, enclosing: Chain<'beforeConstruct'>, construction: HookChain.Construction, within: unknown[]): HookChain.Interception {
-  const layer = farthest(chain, enclosing);
+function runBeforeConstruct(walk: Walk<'beforeConstruct'>, index: number, construction: HookChain.Construction, within: unknown[]): HookChain.Interception {
+  const layer = walk[index];
   if (layer === undefined) {
     return undefined;
   }
   if (layer.middleware) {
     const answer = (layer.hook as Koa<Hooks<any>['beforeConstruct']>)(
       constructionForSlot(construction, layer.slot),
-      seen => runBeforeConstruct(chain, layer, constructionBeneath(seen, construction.states), within) ?? { state: seen.state },
+      seen => runBeforeConstruct(walk, index + 1, constructionBeneath(seen, construction.states), within) ?? { state: seen.state },
     );
     if ('result' in answer) {
       return answer;
@@ -137,12 +119,12 @@ function runBeforeConstruct(chain: Chain<'beforeConstruct'>, enclosing: Chain<'b
     return answer;
   }
   within[layer.slot] = answer.state;
-  return runBeforeConstruct(chain, layer, construction, within);
+  return runBeforeConstruct(walk, index + 1, construction, within);
 }
 
 /** Settles what the engine built: a handler transforms what everything nearer the engine already produced, so the farthest layer settles the canonical instance. */
-function runCanonicalize(chain: Chain<'canonicalize'>, enclosing: Chain<'canonicalize'>, construction: HookChain.Construction, instance: unknown): unknown {
-  const layer = farthest(chain, enclosing);
+function runCanonicalize(walk: Walk<'canonicalize'>, index: number, construction: HookChain.Construction, instance: unknown): unknown {
+  const layer = walk[index];
   if (layer === undefined) {
     return instance;
   }
@@ -150,15 +132,15 @@ function runCanonicalize(chain: Chain<'canonicalize'>, enclosing: Chain<'canonic
     return (layer.hook as Koa<Hooks<any>['canonicalize']>)(
       constructionForSlot(construction, layer.slot),
       instance,
-      (seen, transformed) => runCanonicalize(chain, layer, constructionBeneath(seen, construction.states), transformed),
+      (seen, transformed) => runCanonicalize(walk, index + 1, constructionBeneath(seen, construction.states), transformed),
     );
   }
-  return (layer.hook as Hooks<any>['canonicalize'])(constructionForSlot(construction, layer.slot), runCanonicalize(chain, layer, construction, instance));
+  return (layer.hook as Hooks<any>['canonicalize'])(constructionForSlot(construction, layer.slot), runCanonicalize(walk, index + 1, construction, instance));
 }
 
-/** Tells what `enclosing` stands over that the engine has constructed: a handler runs after everything nearer the engine, so the farthest layer runs last. */
-function runAfterConstruct(chain: Chain<'afterConstruct'>, enclosing: Chain<'afterConstruct'>, construction: HookChain.Construction, instance: unknown): void {
-  const layer = farthest(chain, enclosing);
+/** Tells the layers from `index` on that the engine has constructed: a handler runs after everything nearer the engine, so the farthest layer runs last. */
+function runAfterConstruct(walk: Walk<'afterConstruct'>, index: number, construction: HookChain.Construction, instance: unknown): void {
+  const layer = walk[index];
   if (layer === undefined) {
     return;
   }
@@ -166,11 +148,11 @@ function runAfterConstruct(chain: Chain<'afterConstruct'>, enclosing: Chain<'aft
     (layer.hook as Koa<Hooks<any>['afterConstruct']>)(
       constructionForSlot(construction, layer.slot),
       instance,
-      (seen, settled) => runAfterConstruct(chain, layer, constructionBeneath(seen, construction.states), settled),
+      (seen, settled) => runAfterConstruct(walk, index + 1, constructionBeneath(seen, construction.states), settled),
     );
     return;
   }
-  runAfterConstruct(chain, layer, construction, instance);
+  runAfterConstruct(walk, index + 1, construction, instance);
   (layer.hook as Hooks<any>['afterConstruct'])(constructionForSlot(construction, layer.slot), instance);
 }
 
@@ -188,7 +170,7 @@ function runAfterConstruct(chain: Chain<'afterConstruct'>, enclosing: Chain<'aft
  */
 export class HookChain {
   /** The chain of a container with nothing installed: supplies nothing, changes nothing, files no state. */
-  static readonly identity = new HookChain(undefined, undefined, undefined, undefined, 0);
+  static readonly identity = new HookChain(ImmutableLinkedList.empty(), ImmutableLinkedList.empty(), ImmutableLinkedList.empty(), ImmutableLinkedList.empty(), 0);
 
   readonly #beginResolve: Chain<'beginResolve'>;
   readonly #beforeConstruct: Chain<'beforeConstruct'>;
@@ -246,7 +228,7 @@ export class HookChain {
    * what it was handed.
    */
   beginResolve(request: Type, injected: readonly unknown[], opening: unknown[]): void {
-    runBeginResolve(this.#beginResolve, undefined, request, injected, opening);
+    runBeginResolve(this.#beginResolve.tailToHead(), 0, request, injected, opening);
   }
 
   /**
@@ -255,17 +237,17 @@ export class HookChain {
    * under, seeded from the states the construction arrived carrying.
    */
   beforeConstruct(construction: HookChain.Construction, within: unknown[]): HookChain.Interception {
-    return runBeforeConstruct(this.#beforeConstruct, undefined, construction, within);
+    return runBeforeConstruct(this.#beforeConstruct.tailToHead(), 0, construction, within);
   }
 
   /** Settles what the engine has just constructed, the behavior nearest the engine transforming first and the farthest settling on the final instance. */
   canonicalize(construction: HookChain.Construction, instance: unknown): unknown {
-    return runCanonicalize(this.#canonicalize, undefined, construction, instance);
+    return runCanonicalize(this.#canonicalize.tailToHead(), 0, construction, instance);
   }
 
   /** Runs once the engine has constructed, the behavior nearest the engine first. */
   afterConstruct(construction: HookChain.Construction, instance: unknown): void {
-    runAfterConstruct(this.#afterConstruct, undefined, construction, instance);
+    runAfterConstruct(this.#afterConstruct.tailToHead(), 0, construction, instance);
   }
 }
 
