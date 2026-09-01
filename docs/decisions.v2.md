@@ -1504,10 +1504,6 @@ The consequence is that the composed-generic derivation question dissolves for t
 engine grammar extension, no new derivation path is needed — and the `tokenfor`/`tokenof`/
 `nameoftransform` trio retires once the `addOptions` body is rewritten to bare `typefor<T>()`.
 
-**Still open**: whether a bare `typefor<T>()` derives correctly inside a SUBSTITUTED body is
-unverified — its sibling `tokenof<T>()` is witnessed working there, but `typefor<T>()`'s own
-substituted-body behavior is the premise to probe before the trio retirement can proceed.
-
 _Owner-directed 2026-08-13._
 
 ## §147 — Singular death names its own retiring machinery
@@ -3921,7 +3917,7 @@ unkept (transient) disposables is **model-defined** — "that'll be LifetimeMode
 different LifetimeModels. bottom line is it will be model defined." — never engine policy. Second:
 the collision between latebound callables surviving disposal and a disposed scope's teardown is
 approached **prior-art first** — "find out what other libs with this feature do." — before any
-design is proposed. The disposal session runs at xhigh effort by standing arrangement.
+design is proposed.
 
 ## §224 — The keeper caches the make's product, promise included; the async double-make race dissolves by construction
 

@@ -846,3 +846,68 @@ Design recorded as §231.
       `visitAbstractCtor` — there is nothing to rule, so they promise work that is not coming. Add
       nothing in their place: every kind that synthesizes nothing just returns `undefined`, which
       the class doc already accounts for. `visitTag` needs no comment either.
+
+## Moved out of the decision log (2026-09-01)
+
+- [ ] Probe whether a bare `typefor<T>()` derives correctly inside a SUBSTITUTED body. `tokenof<T>()`
+      is witnessed working there; `typefor<T>()`'s own substituted-body behavior is unverified, and
+      retiring the `tokenfor`/`tokenof`/`nameoftransform` trio is gated on it.
+- [ ] Prior-art research, before any disposal design is proposed: what other containers do about a
+      latebound callable that outlives the scope it was minted in.
+
+## Resolution door — design taken this session (2026-09-01)
+
+Settled in conversation, to be written up as a decision entry; listed here only so nothing is lost
+if that write-up slips.
+
+- [ ] `Request` splits into `ServiceRequest | CompositionRequest`. Named types, so a named address
+      resolves nominally and structural synthesis cannot manufacture the arm that is absent.
+- [ ] The live ask enters the registration graph in exactly ONE place — its own type. Every control
+      service becomes an ordinary registration that declares a `ServiceRequest` slot and derives
+      from it. The engine's control branch goes, and with it the volatile door.
+- [ ] `IServiceProvider` is a permanent factory registration under `controlLifetime`, its slot
+      addressed `ServiceRequest`. During the fold nothing answers that slot, so it is unsatisfiable
+      through the ordinary absence path with no check written anywhere.
+- [ ] `controlLifetime` stops bypassing planning. Today `Engine.#resolveControlLifetime` calls the
+      factory with the raw request and no plan; it must plan the factory's slots like any other
+      registration, keeping only the no-caching property.
+- [ ] Drop §208, §209 and §220 from the decision log. Nothing cites §208 or §220; §209's only
+      inbound citations are decision entries about the deleted keeper.
+
+## Resolution door — open, awaiting the owner (2026-09-01)
+
+- [ ] Does `Type` become a resolvable address, so a factory slot declared `Type` receives the
+      current ask's address? Real capability, and `Type` appears in many signatures that would then
+      pick it up unintentionally.
+- [ ] May an addon contribute per-ask registrations of its own? `Plan.from` memoizes per `Registry`
+      object (`Plan.ts:250-252`), so a per-ask registry rebuilds every plan on every ask. Addresses
+      must be fixed at build and only values vary — a real constraint on the addon surface.
+- [ ] `UnknownControlError` is lost to uniform lookup: an unanswerable control ask becomes a generic
+      `UnsatisfiableError`. Accept the weaker diagnostic, or recover it at the refusal path?
+- [ ] §224 (the keeper caches the make's product) and §226 (the instance cache keys as-registered)
+      are true only of the models we happen to know, so they are blackbox detail standing as general
+      rulings — which the black-box ruling itself forbids. Sealed from the clean-room writers either
+      way. Open: drop them, or re-scope each to "the standard model's own choice" the way the tandem
+      pair is already scoped. §225 and §229 are boundary rulings, read as contract, and stay.
+
+## Builder reshape — aftermath (2026-09-01)
+
+- [ ] No static `withServices` opener exists, though the spec says services or the model may come
+      first. `hosting` and `logging` each hand-rolled `const noLifetimeModel: Addon<unknown>` to open
+      a chain — the noop model, reintroduced in product code, twice.
+- [ ] The engine is not really an element of one list: its middleware ignores `next` and the fold
+      seeds a throwing terminus that is dead by construction (`di.ts`, `build()`).
+- [ ] Nothing registers anything under `controlLifetime`. The mechanism is built and unused.
+- [ ] `LifetimeModel` survives with zero implementers in product code. Delete, or keep for the first
+      real model?
+- [ ] `di.usingLifetimeModel` and `use(middleware)` were removed. The spec sketch omitted both but
+      never said to drop them — confirm or restore.
+- [ ] `logging/README.md` still demonstrates `di.usingLifetimeModel(standardLifetimeAddon())`; it
+      cannot be adapted honestly until a lifetime model exists.
+- [ ] Correct two stale passages in this file: the single-door ruling spells the law
+      `IServiceProvider.getService(Type)` where the chain and engine now take a `Request`; and the
+      builder-shape section's tail says the MODEL seeds `IServiceProvider`, which the
+      `controlLifetime` ruling in the paragraph above it supersedes — the engine seeds it,
+      unconditionally.
+- [ ] Side-by-side audit of di, di.core, di.extras, primitives, primitives.extras and their external
+      deps for process-global mutable state — findings pending.
