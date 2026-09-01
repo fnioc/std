@@ -60,15 +60,17 @@ type is kept, while configure steps still accumulate:
 ```ts
 import type { IMemoryCache } from '@rhombus-std/caching.core';
 import { getMemoryCacheManifest, MEMORY_CACHE_TYPE } from '@rhombus-std/caching.memory';
-import { di, noopLifetimeAddon } from '@rhombus-std/di';
-import { Manifest } from '@rhombus-std/di.core';
+import { Builder } from '@rhombus-std/di';
+import { type Addon, Manifest } from '@rhombus-std/di.core';
 
 let services: Manifest<unknown> = Manifest.empty<unknown>();
 services = services.tryAdd(...getMemoryCacheManifest((options) => {
   options.sizeLimit = 1024;
 }));
 
-const provider = di.usingLifetimeModel(noopLifetimeAddon()).usingManifest(services).build();
+// No lifetime model is installed; a vacuous addon opens the builder's vocabulary with nothing.
+const noLifetimeModel: Addon<unknown> = { registrations: [], middleware: (next) => next };
+const provider = Builder.useAddon(noLifetimeModel).withServices(() => services).build();
 const cache: IMemoryCache = provider.resolve(MEMORY_CACHE_TYPE);
 ```
 

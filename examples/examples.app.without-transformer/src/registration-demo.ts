@@ -22,10 +22,12 @@
 //    dependencies" is written `Type.ctor(theAddress, [[]])` — one overload,
 //    taking nothing beyond the address.
 
-import { di, noopLifetimeAddon } from '@rhombus-std/di';
-import { Manifest } from '@rhombus-std/di.core';
-import type { Registration } from '@rhombus-std/di.core';
+import { Builder } from '@rhombus-std/di';
+import { type Addon, Manifest, type Registration } from '@rhombus-std/di.core';
 import { Type } from '@rhombus-std/primitives';
+
+/** No lifetime model is installed here; a vacuous addon opens the builder's vocabulary with nothing. */
+const noLifetimeModel: Addon<unknown> = { registrations: [], middleware: next => next };
 
 // ── the domain ───────────────────────────────────────────────────────────────
 
@@ -321,7 +323,7 @@ function* demonstrateRegistrationVerbs(): Generator<string> {
   let application: Manifest<unknown> = Manifest.empty<unknown>();
   application = application.add(DEFAULT_SINK_TYPE, RecordingSink, Type.ctor(DEFAULT_SINK_TYPE, [[]]), 'singleton');
   application = application.tryAdd(...addOrderDefaults());
-  const kept = di.usingLifetimeModel(noopLifetimeAddon()).usingManifest(application).build()
+  const kept = Builder.useAddon(noLifetimeModel).withServices(() => application).build()
     .resolve(DEFAULT_SINK_TYPE) as IMessageSink;
   yield `defaults: an application that registered its own sink keeps it (${kept.name})`;
 
@@ -330,7 +332,7 @@ function* demonstrateRegistrationVerbs(): Generator<string> {
   host = host.replace(DEFAULT_CLOCK_TYPE, new FixedClock());
   host = host.replace(DEFAULT_SINK_TYPE, RecordingSink, Type.ctor(DEFAULT_SINK_TYPE, [[]]), 'singleton');
   host = host.replace(DEFAULT_NOTIFIER_TYPE, makeOrderNotifier, Type.func(DEFAULT_NOTIFIER_TYPE, [[DEFAULT_SINK_TYPE]]), 'singleton');
-  const hostProvider = di.usingLifetimeModel(noopLifetimeAddon()).usingManifest(host).build();
+  const hostProvider = Builder.useAddon(noLifetimeModel).withServices(() => host).build();
   const recorder = hostProvider.resolve(DEFAULT_SINK_TYPE) as RecordingSink;
   yield `override: replace swapped all three defaults; the host sink is ${recorder.name}, and `
     + `${countRegistrations(host, DEFAULT_SINK_TYPE)} registration is left at its type`;
@@ -418,7 +420,7 @@ function demonstrateDescribedRegistration(): string {
       .withLifetime('singleton'),
   );
 
-  const sink = di.usingLifetimeModel(noopLifetimeAddon()).usingManifest(services).build()
+  const sink = Builder.useAddon(noLifetimeModel).withServices(() => services).build()
     .resolve(SINK_TYPE) as IMessageSink;
   return `described by chain: ${sink.send('order-99 shipped')}`;
 }
@@ -427,7 +429,7 @@ function demonstrateDescribedRegistration(): string {
 function describeOrderContainer(services: Manifest<unknown>): string[] {
   // The front door: every genesis starts by choosing the lifetime model, then
   // seeds the manifest this file already built.
-  const app = di.usingLifetimeModel(noopLifetimeAddon()).usingManifest(services).build();
+  const app = Builder.useAddon(noLifetimeModel).withServices(() => services).build();
 
   const notifier = app.resolve(NOTIFIER_TYPE) as IOrderNotifier;
   const audit = app.resolve(AUDIT_TYPE) as IAuditLog;
@@ -452,7 +454,7 @@ function describeOrderContainer(services: Manifest<unknown>): string[] {
  */
 function describeSinklessFork(services: Manifest<unknown>): string {
   const noSinks = services.removeAll(SINK_TYPE);
-  const audit = di.usingLifetimeModel(noopLifetimeAddon()).usingManifest(noSinks).build()
+  const audit = Builder.useAddon(noLifetimeModel).withServices(() => noSinks).build()
     .resolve(AUDIT_TYPE) as IAuditLog;
   audit.record('order-42 shipped');
 

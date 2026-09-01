@@ -155,18 +155,8 @@ describe('tagged types', () => {
   });
 });
 
-describe('the service provider', () => {
-  test('IServiceProvider resolves under its declaring-module address, with no registration', () => {
-    const visitor = visitorFor(Manifest.empty<unknown>());
-    const address = Type.imported('IServiceProvider', '@rhombus-std/di.core');
-    expect(visitor.visit(address)).toEqual(Plan.serviceProvider());
-  });
-
-  test('a same-named import from an unrecognized module is not the provider', () => {
-    const visitor = visitorFor(Manifest.empty<unknown>());
-    expect(visitor.visit(Type.imported('IServiceProvider', 'somewhere-else'))).toBeUndefined();
-  });
-});
+// IServiceProvider carries no special case here: it resolves through an ordinary registration,
+// seeded by the lifetime model under `controlLifetime` and answered by the engine directly.
 
 describe('a function type standing for a late-bound call', () => {
   test('lowers to a LateBoundPlan naming the return type and argument signatures', () => {

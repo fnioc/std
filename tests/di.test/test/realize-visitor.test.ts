@@ -2,7 +2,7 @@
 // are built by hand here through the Plan factories, independent of what PlannerVisitor
 // would have produced, so each node kind is exercised on its own terms.
 
-import { HookChain, type IServiceProvider, Manifest, Registration } from '@rhombus-std/di.core';
+import { HookChain, Manifest, Registration, type Request } from '@rhombus-std/di.core';
 import { Engine } from '@rhombus-std/di/private/internal/Engine';
 import { Plan } from '@rhombus-std/di/private/internal/Plan/Plan';
 import { Type } from '@rhombus-std/primitives';
@@ -22,9 +22,12 @@ function engineFor(registrations: Iterable<Registration<unknown>>): Engine {
   return new Engine(registrations);
 }
 
+/** The request these tests realize under — nothing here reads `type` or `serviceProvider`. */
+const request: Request = { type: Type.imported('Placeholder', 'app'), serviceProvider: undefined as unknown as Request['serviceProvider'] };
+
 /** Realizes `plan` against `engine`, through the chain that neither intercepts nor transforms. */
 function realize(plan: Plan, engine: Engine): any {
-  return Plan.realize(plan, { engine, chain: HookChain.identity, context: { states: [] } });
+  return Plan.realize(plan, { engine, chain: HookChain.identity, context: { states: [] }, request });
 }
 
 const engine = engineFor(Manifest.empty<unknown>());
@@ -34,11 +37,8 @@ describe('the leaf kinds', () => {
     expect(realize(Plan.constant(42), engine)).toBe(42);
   });
 
-  test('service-provider mints a fresh facade wrapping the engine it realized under', () => {
-    const withConn = engineFor(Manifest.empty<unknown>().add(Registration.ctor(CONN, Conn, Type.ctor(CONN, [[]]), 'singleton')));
-    const facade = realize(Plan.serviceProvider(), withConn) as IServiceProvider;
-    expect(facade.resolve(CONN)).toBeInstanceOf(Conn);
-  });
+  // IServiceProvider is an ordinary registration under `controlLifetime`, seeded by the lifetime
+  // model and answered by the engine directly — there is no plan kind of its own to exercise here.
 
   // Scope-opening is a registration each model publishes at its own address (see
   // standard-lifetime-model.test.ts / tagged-lifetime-model.test.ts), so no plan kind of its

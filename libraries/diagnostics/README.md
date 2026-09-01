@@ -24,8 +24,8 @@ manifest to merge, never a container.
 ## Usage
 
 ```ts
-import { di, noopLifetimeAddon } from '@rhombus-std/di';
-import { Manifest, Type } from '@rhombus-std/di.core';
+import { Builder } from '@rhombus-std/di';
+import { type Addon, Manifest, Type } from '@rhombus-std/di.core';
 import { getMetricsManifest } from '@rhombus-std/diagnostics';
 
 let services: Manifest<'singleton'> = Manifest.empty<'singleton'>();
@@ -34,7 +34,9 @@ services = services.addMany(getMetricsManifest((builder) => {
   builder.disableMetrics('MyApp.Http', 'request.duration'); // ...except one instrument
 }));
 
-const provider = di.usingLifetimeModel(noopLifetimeAddon()).usingManifest(services).build();
+// No lifetime model is installed; a vacuous addon opens the builder's vocabulary with nothing.
+const noLifetimeModel: Addon<'singleton'> = { registrations: [], middleware: (next) => next };
+const provider = Builder.useAddon(noLifetimeModel).withServices(() => services).build();
 const METRICS_OPTIONS_TYPE: Type = Type.from(
   '@rhombus-std/options:IOptions<@rhombus-std/diagnostics.core:MetricsOptions>',
 );

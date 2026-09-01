@@ -26,14 +26,17 @@
 // Nothing here reads a clock, the filesystem or a random source: the output is
 // byte-stable, which the app's checked-in `expected.txt` diff depends on.
 
-import { di, noopLifetimeAddon, validateBuildability } from '@rhombus-std/di';
-import { Manifest } from '@rhombus-std/di.core';
+import { Builder, validateBuildability } from '@rhombus-std/di';
+import { type Addon, Manifest } from '@rhombus-std/di.core';
 import { Type } from '@rhombus-std/primitives';
 // `describeDiError` is the LIBRARY's — classifying what a container threw needs
 // di.core and nothing more. Building the container is this root's, because that
 // is the one thing the engine is for.
 import { addGreetingWorkshop, describeDiError, GREETING_WORKSHOP_TYPE, GreetingWorkshop, LOCATOR_GREETING_WORKSHOP_TYPE, LocatorGreetingWorkshop,
   WorkshopGreeting } from '@rhombus-std/examples.lib.without-transformer';
+
+/** No lifetime model is installed here; a vacuous addon opens the builder's vocabulary with nothing. */
+const noLifetimeModel: Addon<unknown> = { registrations: [], middleware: next => next };
 
 /** A fresh, empty manifest for one of this chapter's own containers. */
 function newWorkshopManifest(): Manifest<unknown> {
@@ -69,7 +72,7 @@ export function* demonstrateInfrastructure(): Generator<string> {
   const defaults = addGreetingWorkshop((workshop) => {
     workshop.useGreeting(WorkshopGreeting);
   });
-  const defaultProvider = di.usingLifetimeModel(noopLifetimeAddon()).usingManifest(defaults).build();
+  const defaultProvider = Builder.useAddon(noLifetimeModel).withServices(() => defaults).build();
   const defaultWorkshop = defaultProvider.resolve(GREETING_WORKSHOP_TYPE) as GreetingWorkshop;
 
   yield 'app registered no stationery:';
@@ -83,7 +86,7 @@ export function* demonstrateInfrastructure(): Generator<string> {
   const customised = addGreetingWorkshop((workshop) => {
     workshop.useGreeting(WorkshopGreeting).useStationery({ border: '***' });
   });
-  const customWorkshop = di.usingLifetimeModel(noopLifetimeAddon()).usingManifest(customised).build()
+  const customWorkshop = Builder.useAddon(noLifetimeModel).withServices(() => customised).build()
     .resolve(GREETING_WORKSHOP_TYPE) as GreetingWorkshop;
 
   yield 'app registered its own stationery:';
@@ -144,8 +147,8 @@ export function* demonstrateInfrastructure(): Generator<string> {
       .add(Type.from('@rhombus-std/examples.contracts:IHealthCheck'), GreetingWorkshop, Type.ctor(Type.from('@rhombus-std/examples.contracts:IHealthCheck'), [[
         Type.from('@rhombus-std/examples.contracts:IGreeting'),
       ]]), 'singleton');
-    di.usingLifetimeModel(noopLifetimeAddon())
-      .usingManifest(brokenManifest)
+    Builder.useAddon(noLifetimeModel)
+      .withServices(() => brokenManifest)
       .useAddon(validateBuildability())
       .build();
   } catch (error) {

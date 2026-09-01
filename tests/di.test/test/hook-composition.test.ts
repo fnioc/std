@@ -6,7 +6,7 @@
 // was named in, and every ordering fact read through the builder arrives inverted. These tests
 // describe what the chain itself does, so a change in either layer cannot quietly cancel out.
 
-import { type Behavior, type Hooks, Registration } from '@rhombus-std/di.core';
+import { type Behavior, type Hooks, Registration, type Request } from '@rhombus-std/di.core';
 import { Engine } from '@rhombus-std/di/private/internal/Engine';
 import { Type } from '@rhombus-std/primitives';
 import { describe, expect, test } from 'bun:test';
@@ -19,9 +19,14 @@ function engineWithLeaf(): Engine {
   return new Engine([Registration.ctor(LEAF, Leaf, Type.ctor(LEAF, [[]]))]);
 }
 
+/** A request for `LEAF` — none of these tests read `serviceProvider`. */
+function requestForLeaf(): Request {
+  return { type: LEAF, serviceProvider: undefined as unknown as Request['serviceProvider'] };
+}
+
 describe('hook chain composition', () => {
   test('an engine resolves with no lifetime model and no middleware at all', () => {
-    expect(engineWithLeaf().getService(LEAF)).toBeInstanceOf(Leaf);
+    expect(engineWithLeaf().getService(requestForLeaf())).toBeInstanceOf(Leaf);
   });
 
   test('middleware form: the earlier install stands outermost', () => {
@@ -41,7 +46,7 @@ describe('hook chain composition', () => {
 
     engine.useHooks(tracing('first'));
     engine.useHooks(tracing('second'));
-    engine.getService(LEAF);
+    engine.getService(requestForLeaf());
 
     expect(log).toEqual(['enter first', 'enter second', 'exit second', 'exit first']);
   });
@@ -60,7 +65,7 @@ describe('hook chain composition', () => {
 
     engine.useHooks(stamping('first'));
     engine.useHooks(stamping('second'));
-    const resolved = engine.getService(LEAF) as { by: string; };
+    const resolved = engine.getService(requestForLeaf()) as { by: string; };
 
     expect(applied).toEqual(['second', 'first']);
     expect(resolved.by).toBe('first');
@@ -87,7 +92,7 @@ describe('hook chain composition', () => {
     engine.useHooks(outer);
     engine.useHooks(inner);
 
-    expect(engine.getService(LEAF)).toBe(standIn);
+    expect(engine.getService(requestForLeaf())).toBe(standIn);
     expect(reached).toEqual(['outer']);
   });
 
@@ -106,7 +111,7 @@ describe('hook chain composition', () => {
 
     engine.useHooks(threading('owned-by-first'));
     engine.useHooks(threading('owned-by-second'));
-    engine.getService(LEAF);
+    engine.getService(requestForLeaf());
 
     expect(seen).toEqual(['owned-by-first', 'owned-by-second']);
   });
@@ -126,7 +131,7 @@ describe('hook chain composition', () => {
     const kept = engine.useHooks(counting('kept'));
     const dropped = engine.useHooks(counting('dropped'));
     dropped[Symbol.dispose]();
-    engine.getService(LEAF);
+    engine.getService(requestForLeaf());
 
     expect(ran).toEqual(['kept']);
     expect(kept).toBeDefined();
