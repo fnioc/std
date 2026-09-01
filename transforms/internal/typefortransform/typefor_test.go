@@ -281,6 +281,28 @@ export const tok = typefor<IThing<$<'TEntity'>>>();
 	}
 }
 
+// TestTypeforNamedTypeMultipleGenericArgs pins that a named type's OWN generic
+// arguments all survive in order — unlike the collection bases in
+// TestTypeforListCarriesOnlyItsElement below, an ordinary two-parameter
+// interface is not truncated.
+func TestTypeforNamedTypeMultipleGenericArgs(t *testing.T) {
+	src := `import { typefor } from '@rhombus-std/primitives.extras';
+interface IPair<A, B> { readonly a: A; readonly b: B; }
+interface IClock {}
+interface IStore {}
+export const tok = typefor<IPair<IClock, IStore>>();
+`
+	prog, app := buildTypeforWorkspace(t, src)
+	defer func() { _ = prog.Close() }()
+
+	out := lowerTypefor(t, prog, app)
+	want := `Type.imported("IPair", "@scope/app/main", [` +
+		`Type.imported("IClock", "@scope/app/main"), Type.imported("IStore", "@scope/app/main")])`
+	if got := exprFor(t, out, "tok"); got != want {
+		t.Fatalf("typefor<IPair<IClock, IStore>>() = %q, want %q\nfull output:\n%s", got, want, out)
+	}
+}
+
 func TestTypeforLiteral(t *testing.T) {
 	src := `import { typefor } from '@rhombus-std/primitives.extras';
 export const tok = typefor<"dev">();
@@ -292,6 +314,32 @@ export const tok = typefor<"dev">();
 	want := `Type.typeLiteral("dev")`
 	if got := exprFor(t, out, "tok"); got != want {
 		t.Fatalf("typefor<\"dev\">() = %q, want %q\nfull output:\n%s", got, want, out)
+	}
+}
+
+// TestTypeforLiteralKinds covers the literal kinds TestTypeforLiteral's bare
+// string does not reach: a negative number, a negative bigint, and — inside one
+// union — the true/false PAIR collapsing back into the wide `boolean` member
+// beside a `null` singleton, nullish-last.
+func TestTypeforLiteralKinds(t *testing.T) {
+	src := `import { typefor } from '@rhombus-std/primitives.extras';
+export const num = typefor<-5>();
+export const big = typefor<-7n>();
+export const boolPair = typefor<true | false | null>();
+`
+	prog, app := buildTypeforWorkspace(t, src)
+	defer func() { _ = prog.Close() }()
+
+	out := lowerTypefor(t, prog, app)
+	cases := map[string]string{
+		"num":      `Type.typeLiteral(-5)`,
+		"big":      `Type.typeLiteral(-7n)`,
+		"boolPair": `Type.union(Type.global("boolean"), Type.typeLiteral(null))`,
+	}
+	for name, want := range cases {
+		if got := exprFor(t, out, name); got != want {
+			t.Errorf("%s = %q, want %q\nfull output:\n%s", name, got, want, out)
+		}
 	}
 }
 
@@ -344,6 +392,32 @@ export const tok = typefor(Foo);
 	}
 }
 
+// TestTypeforValueArgCtorOverloaded pins Rows for a CONSTRUCTOR carrying
+// multiple overloaded signatures — TestTypeforAccessorArgsOverloaded below
+// covers this for a plain function; a class constructor reaches the same
+// multi-row path through Type.ctor instead of Type.func.
+func TestTypeforValueArgCtorOverloaded(t *testing.T) {
+	src := `import { typefor } from '@rhombus-std/primitives.extras';
+interface IA {}
+interface IB {}
+class Widget {
+  constructor(a: IA);
+  constructor(a: IA, b: IB);
+  constructor(a: IA, b?: IB) { void a; void b; }
+}
+export const tok = typefor(Widget).args;
+`
+	prog, app := buildTypeforWorkspace(t, src)
+	defer func() { _ = prog.Close() }()
+
+	out := lowerTypefor(t, prog, app)
+	want := `[[Type.imported("IA", "@scope/app/main")], ` +
+		`[Type.imported("IA", "@scope/app/main"), Type.imported("IB", "@scope/app/main")]]`
+	if got := exprFor(t, out, "tok"); got != want {
+		t.Fatalf(".args fold = %q, want %q\nfull output:\n%s", got, want, out)
+	}
+}
+
 func TestTypeforValueArgAbstractCtor(t *testing.T) {
 	src := `import { typefor } from '@rhombus-std/primitives.extras';
 interface IA {}
@@ -359,6 +433,31 @@ export const tok = typefor(Foo);
 	want := `Type.abstractCtor(Type.imported("Foo", "@scope/app/main"), [[Type.imported("IA", "@scope/app/main")]])`
 	if got := exprFor(t, out, "tok"); got != want {
 		t.Fatalf("typefor(Foo) = %q, want %q\nfull output:\n%s", got, want, out)
+	}
+}
+
+// TestTypeforValueArgAbstractCtorOverloaded is the ctor-overload test above,
+// off an ABSTRACT class — KindAbstractCtor carries Rows exactly like
+// KindCtor and KindFunc.
+func TestTypeforValueArgAbstractCtorOverloaded(t *testing.T) {
+	src := `import { typefor } from '@rhombus-std/primitives.extras';
+interface IA {}
+interface IB {}
+abstract class Widget {
+  constructor(a: IA);
+  constructor(a: IA, b: IB);
+  constructor(a: IA, b?: IB) { void a; void b; }
+}
+export const tok = typefor(Widget).args;
+`
+	prog, app := buildTypeforWorkspace(t, src)
+	defer func() { _ = prog.Close() }()
+
+	out := lowerTypefor(t, prog, app)
+	want := `[[Type.imported("IA", "@scope/app/main")], ` +
+		`[Type.imported("IA", "@scope/app/main"), Type.imported("IB", "@scope/app/main")]]`
+	if got := exprFor(t, out, "tok"); got != want {
+		t.Fatalf(".args fold = %q, want %q\nfull output:\n%s", got, want, out)
 	}
 }
 
@@ -706,6 +805,7 @@ interface IThing {}
 export const arr = typefor<IThing[]>();
 export const iter = typefor<Iterable<IThing>>();
 export const aiter = typefor<AsyncIterable<IThing>>();
+export const roarr = typefor<readonly IThing[]>();
 `
 	prog, app := buildTypeforWorkspace(t, src)
 	defer func() { _ = prog.Close() }()
@@ -716,6 +816,10 @@ export const aiter = typefor<AsyncIterable<IThing>>();
 		{"arr", `Type.global("Array", [` + element + `])`},
 		{"iter", `Type.global("Iterable", [` + element + `])`},
 		{"aiter", `Type.global("AsyncIterable", [` + element + `])`},
+		// readonly T[] is `ReadonlyArray<T>` — not in collectionTokenBases, and not
+		// the mutable Array kind the runtime's `named` door collapses to
+		// ArrayType, so it must derive as its OWN name rather than either.
+		{"roarr", `Type.global("ReadonlyArray", [` + element + `])`},
 	} {
 		if got := exprFor(t, out, tc.name); got != tc.want {
 			t.Errorf("%s = %q, want %q\nfull output:\n%s", tc.name, got, tc.want, out)

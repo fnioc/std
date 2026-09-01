@@ -87,3 +87,31 @@ export const tupleRest = typefor(TupleRest);
 		t.Fatalf("expected one %s diagnostic, got %+v", valueArgUnderivableCode, diags)
 	}
 }
+
+// TestTypeforValueArgArrayRestParameterKeepsItsElementType pins the OTHER rest
+// shape: unlike a tuple-typed rest parameter, an ARRAY-typed one
+// (`...deps: IDep[]`) is not refused — deriveSignatureNode's tuple-only guard
+// lets it fall through to an ordinary array-typed slot. The call it answers to
+// takes zero or more IDep arguments; the derived signature states exactly one
+// IDep[] argument instead, since Type.Signatures has no variadic slot to spell
+// the difference. This is the current, deliberate behavior this test pins, not
+// a defect it is asserting away.
+func TestTypeforValueArgArrayRestParameterKeepsItsElementType(t *testing.T) {
+	src := `import { typefor } from '@rhombus-std/primitives.extras';
+interface IDep {}
+class ArrayRest { constructor(...deps: IDep[]) { void deps; } }
+export const arrayRest = typefor(ArrayRest);
+`
+	prog, app := buildTypeforWorkspace(t, src)
+	defer func() { _ = prog.Close() }()
+
+	out, diags := lowerTypeforDiags(t, prog, app)
+	if len(diags) != 0 {
+		t.Fatalf("unexpected diagnostics: %+v", diags)
+	}
+	want := `Type.ctor(Type.imported("ArrayRest", "@scope/app/main"), ` +
+		`[[Type.global("Array", [Type.imported("IDep", "@scope/app/main")])]])`
+	if got := exprFor(t, out, "arrayRest"); got != want {
+		t.Errorf("arrayRest: got %q, want %q\nfull output:\n%s", got, want, out)
+	}
+}
