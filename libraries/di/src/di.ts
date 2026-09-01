@@ -1,4 +1,4 @@
-import { type Addon, DefaultManifest, Manifest, type Middleware, type Registration, type Request } from '@rhombus-std/di.core';
+import { type Addon, DefaultManifest, type IServiceProvider, Manifest, type Middleware, type Registration, type Request } from '@rhombus-std/di.core';
 import type { Func } from '@rhombus-toolkit/func';
 import { concat, iterable } from '@rhombus-toolkit/obj';
 import { Engine } from './internal/Engine.js';
@@ -25,7 +25,7 @@ export interface Builder<Lifetime> {
   withServices(fn: Func<[Manifest<Lifetime>], Iterable<Registration<Lifetime>>>): Builder<Lifetime>;
 
   /** Seals the configured manifest into a provider. */
-  build(): import('@rhombus-std/di.core').IServiceProvider;
+  build(): IServiceProvider;
 }
 
 /**
@@ -53,14 +53,15 @@ class DefaultBuilder<Lifetime> implements Builder<Lifetime> {
     );
   }
 
-  build(): import('@rhombus-std/di.core').IServiceProvider {
+  build(): IServiceProvider {
     let manifest = Manifest.empty<Lifetime>();
     const middlewares: Middleware[] = [];
 
     for (const step of this.#steps) {
       const { registrations, middleware } = step(manifest);
       const materialized = Iterator.from(registrations as Iterable<Registration<Lifetime>>).toArray();
-      manifest = new DefaultManifest<Lifetime>(() => concat(materialized, manifest));
+      const tail = manifest;
+      manifest = new DefaultManifest<Lifetime>(() => concat(materialized, tail));
       middlewares.push(middleware);
     }
 

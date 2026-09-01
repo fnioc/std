@@ -94,7 +94,8 @@ export class Engine implements IEngineHooks {
    * with no planning, no hooks, and no caching.
    */
   #resolveControlLifetime(request: Request): unknown {
-    const match = this.#registry.getMatches(request.type).find(Boolean);
+    const match = Iterator.from(this.#registry.getMatches(request.type))
+      .find(m => 'lifetime' in m.registration && m.registration.lifetime === controlLifetime);
     if (!match) {
       throw new UnsatisfiableError(request.type, 'control-lifetime address has no registration');
     }
