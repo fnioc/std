@@ -961,8 +961,17 @@ the ctor/func intern key to two ids, and satisfies the one-kind-per-member rule.
       one, so derivation fails rather than reporting an arity the type does not have". That single
       addition closes two refusals: variable-length tuples become derivable, and a signature
       inherits variadic instead of needing a variadic slot of its own.
-- [ ] Then a signature list becomes a node. Tuple-of-tuples or union-of-tuples is still open; a
-      third form supporting both is NOT viable — two spellings of one type would intern to two nodes
+- [ ] Then a signature list becomes a node, held in ONE slot rather than a host array of host
+      arrays. The slot is typed by the widest shape it can hold, which is the convention the factories
+      already run on: a factory that can collapse answers the wide type (`union`, `intersection`
+      answer `Type`) while one that cannot answers its own (`tuple`, `array`, `imported`). `global`
+      is the closer precedent — it collapses to a `ListType` and enumerates its two outcomes rather
+      than widening all the way — so the slot reads `TupleType | UnionType`: a tuple for one
+      signature, a union for several. It makes no promise about the union's members being tuples;
+      that is the construction check's job, replacing `adoptSignatures`' existing one. Reads go
+      through a single normalizing accessor answering `readonly TupleType[]`, so the one-or-many
+      branch lives in one place instead of in every visitor.
+      A third form supporting both spellings is NOT viable — two spellings of one type would intern to two nodes
       and `===` is the equality operator for the whole subsystem.
 - [ ] Order among signatures: by `members.length` ASCENDING, so the overload needing the fewest
       optional fills wins. Changes today's behaviour, which is declaration order.
