@@ -678,6 +678,18 @@ The constraint and a caller-supplied lifetime are different axes and a registeri
 both: the constraint says which vocabularies it works under, the parameter which value within one to
 use.
 
+The engine becomes a middleware. It stops being the terminus the fold wraps around — `build()` today
+composes every installation's middleware around `address => engine.getService(address)` — and becomes
+the innermost element of the same one list, composed exactly like anything else. There is then no
+special last step, only a list.
+
+`ServiceProvider` is the sole implementer of `IServiceProvider`, and `IServiceProviderInternal` is
+dropped. That interface is the bare `getService(address): any` door, and it exists only so the engine
+can be provider-shaped; a middleware is not, so nothing implements it once the engine moves. Its two
+users take the plain function instead: `ServiceProvider`'s constructor loses its
+`IServiceProviderInternal | Func<…>` union, and `askForControl` takes what it is really asking
+through.
+
 - [ ] Build it. Today `ContainerBuilder<Lifetime>` takes its parameter from `usingLifetimeModel`
       specifically, `Addon` is not generic, and `AddonInstallation.registrations` is
       `Iterable<Registration<any>>`.
