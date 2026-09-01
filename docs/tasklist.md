@@ -765,6 +765,10 @@ Two conditions on the brief:
   standard model always matches the reference's behaviour, and the reference's own structure is
   nothing like this engine's, so consulting it cannot contaminate the shape.
 
+There is no `noop` model in the replacement set. Installing a model is optional outright, so a
+container with none installed already IS that case; a model that does nothing was only ever
+standing in for the absence of one.
+
 Sequencing: after the builder reshape, not alongside — the models are built against the new door.
 
 ## Node-vocabulary collapse — review findings (2026-09-01)
