@@ -4162,3 +4162,23 @@ nothing to answer — a constructor value cannot be composed from a signature, o
 registration, and handing back a closure that constructs is what `visitFunc` already returns.
 
 _Owner-ruled 2026-09-01, Claude-recorded._
+
+## §232 — The transformer's node vocabulary mirrors the `Type` union
+
+The Go side generates TypeScript `Type` expressions, so it carries one node vocabulary with one kind
+per member of that union and children of the same node type. A container's member can then be any
+kind, because there is no poorer half to fall into.
+
+Two partial vocabularies split along a seam with no meaning on the TypeScript side — one the tree
+form of a string walk, the other a classification layered over it — left `Tag` in both, `Undefined`
+and `Null` redundant with `Literal`, `Union` implemented twice incompatibly, and `Object`,
+`Intersection` and `List` absent. The cost was not academic: a container's members were typed by the
+poorer half, so the walk a container recursed through was dictated by a field type rather than by the
+shape being derived — a tuple slot that was a general union refused the whole tuple, and a callable
+slot derived as a service token where the same type inside a union derived correctly.
+
+The invariant this buys: a derivation refusal means exactly one thing — `Type` cannot express this
+shape. Every refusal is justifiable by naming the missing `Type` member, and refusals stay loud
+rather than becoming silent approximations.
+
+_Owner-ruled 2026-09-01, Claude-recorded._

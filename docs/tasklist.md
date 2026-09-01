@@ -637,6 +637,18 @@ Design recorded as §230. Open:
 - [ ] Design the tagged model against the same tools.
 - [ ] Check whether `anchorRoot` and `ScopeBinding`'s bracketing still have a job.
 
+## Transformer vocabulary collapse (2026-09-01)
+
+Design recorded as §232.
+
+- [ ] Re-run `tests/di.test` once the transformer builds again — it resolves through `ttsc`, so it
+      cannot pass while the Go tree is half-migrated. Last clean run 292 pass / 6 skip / 0 fail; the
+      only changes since are `di.core`'s hook-chain walk moving onto `ImmutableLinkedList`, which
+      typechecks and lints clean.
+- [ ] Run the repo-wide `bun run lint` once nothing else is building — only the touched packages have
+      been linted, because concurrent build and lint here produces phantom type errors.
+- [ ] Consume the collapse workflow's review findings and decide what to fix.
+
 ## Structural synthesis (2026-09-01)
 
 Design recorded as §231.
