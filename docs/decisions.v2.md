@@ -3910,14 +3910,14 @@ where the union contextual-types an anonymous function ambiguously otherwise.
 
 _Owner-ruled; Claude-recorded 2026-08-28._
 
-## §223 — Disposal design: two pre-rulings for the design session
+## §223 — Two disposal boundaries
 
-The owner pre-ruled two boundaries before the disposal design work opens. First: the policy for
-unkept (transient) disposables is **model-defined** — "that'll be LifetimeModel configuration, or
-different LifetimeModels. bottom line is it will be model defined." — never engine policy. Second:
-the collision between latebound callables surviving disposal and a disposed scope's teardown is
-approached **prior-art first** — "find out what other libs with this feature do." — before any
-design is proposed.
+The policy for unkept disposables — those a model keeps nothing for — is **model-defined**:
+"that'll be LifetimeModel configuration, or different LifetimeModels. bottom line is it will be
+model defined." Never engine policy.
+
+A callable outliving the scope it was minted in collides with nothing of that scope's, because
+nothing built from a latebound argument is ever kept in one. §230 carries the rule and the reason.
 
 ## §224 — The keeper caches the make's product, promise included; the async double-make race dissolves by construction
 

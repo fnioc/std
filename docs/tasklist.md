@@ -852,8 +852,6 @@ Design recorded as §231.
 - [ ] Probe whether a bare `typefor<T>()` derives correctly inside a SUBSTITUTED body. `tokenof<T>()`
       is witnessed working there; `typefor<T>()`'s own substituted-body behavior is unverified, and
       retiring the `tokenfor`/`tokenof`/`nameoftransform` trio is gated on it.
-- [ ] Prior-art research, before any disposal design is proposed: what other containers do about a
-      latebound callable that outlives the scope it was minted in.
 
 ## Resolution door — design taken this session (2026-09-01)
 
