@@ -857,7 +857,7 @@ Design recorded as §231.
 Settled in conversation, to be written up as a decision entry; listed here only so nothing is lost
 if that write-up slips.
 
-- [ ] `Request` splits into `ServiceRequest | CompositionRequest`. Named types, so a named address
+- [ ] `Request` splits into `ServiceRequest | ControlRequest`. Named types, so a named address
       resolves nominally and structural synthesis cannot manufacture the arm that is absent.
 - [ ] The live ask enters the registration graph in exactly ONE place — its own type. Every control
       service becomes an ordinary registration that declares a `ServiceRequest` slot and derives
@@ -869,13 +869,18 @@ if that write-up slips.
       `Request` answers whichever arm the live ask is; asking for `ServiceRequest` answers only when
       that is what the ask is, and refuses otherwise. A control service declares the arm it needs
       and inherits the refusal for free.
-- [ ] UNCONFIRMED PREMISE, raised with the owner and not yet answered — the whole design rests on
-      it. The engine answers an ask for `ServiceRequest` with the live request only when the live
-      request IS one, decided by a check on the value's own shape, once, centrally; a
-      `CompositionRequest` then leaves that slot unanswered and every control service depending on
-      it refuses through the ordinary absence path. The alternative reading — matching the
-      request's TYPE NODE against the slot — has no way to reach, since the request arrives as a
-      value and the engine never holds a node for it.
+- [ ] The live ask is registered in the overlay under its NARROW type — `ServiceRequest` for an ask
+      a provider opened, `ControlRequest` for one the fold makes. There is no discriminant check
+      anywhere: whoever mints the request picks the address, which is the only place that knows.
+      An ask for the `Request` union resolves through the union machinery that already exists and
+      finds whichever arm is registered; an ask for `ServiceRequest` under a `ControlRequest` finds
+      nothing and refuses through the ordinary absence path.
+- [ ] Consequence to get right: the overlay's ADDRESSES must be visible to the PLANNER while its
+      VALUES arrive per ask. A plan is memoized per `Registry` object (`Plan.ts:250-252`), so an
+      overlay folded into a fresh registry per ask kills the plan cache outright — but an overlay
+      invisible at plan time makes `ServiceRequest` unplannable and every control service refuses
+      before it starts. The declaration belongs in the registry the engine plans against; only the
+      answer comes from the ask.
 - [ ] `controlLifetime` stops bypassing planning. Today `Engine.#resolveControlLifetime` calls the
       factory with the raw request and no plan; it must plan the factory's slots like any other
       registration, keeping only the no-caching property.
