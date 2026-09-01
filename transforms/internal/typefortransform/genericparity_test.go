@@ -80,7 +80,7 @@ class Svc<T> implements ISvc<$<'1'>> { constructor(store: IStore<T>, logger: ILo
 // through a class's own generic instantiation) fails to derive — the checker
 // resolves that parameter's type differently for an arrow function literal
 // than for a constructor parameter of the identical syntactic shape, and
-// tokens.DeriveTyped reports it underivable rather than guess at a node. The
+// tokens.DeriveNode reports it underivable rather than guess at a node. The
 // call is left un-lowered, matching every other underivable shape's
 // degradation.
 func TestTypeforValueArgFactoryParamGenericIsAKnownGap(t *testing.T) {

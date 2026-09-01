@@ -122,6 +122,7 @@ export const abstractClockCtor = typefor<typeof AbstractClock>();
 export const clockFactory = typefor<typeof makeClock>();
 export const clockPair = typefor<[IClock, IAuditLog]>();
 export const ctorParams = typefor<ConstructorParameters<typeof SystemClock>>();
+export const config = typefor<{ readonly host: string; port: number }>();
 `;
 
 type Mode = 'hoisted' | 'inline' | 'default' | 'override';
@@ -342,6 +343,11 @@ describe('typefor emission modes', () => {
     expect(app).toContain(
       'Type.tuple(Type.imported("IClock", "typefor-emit-app/private/app"), '
         + 'Type.imported("IAuditLog", "typefor-emit-app/private/app"))',
+    );
+    // An anonymous record spells `Type.object`, its members keyed by name in
+    // declaration order.
+    expect(app).toContain(
+      'Type.object({ host: Type.global("string"), port: Type.global("number") })',
     );
   });
 

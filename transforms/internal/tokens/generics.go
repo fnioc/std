@@ -12,11 +12,10 @@ import (
 // This file extends the token-derivation core with the pieces the registration
 // transformer needs beyond bare name derivation: open-generic hole handling, the
 // Inject/Hole brand walks, the unbound-type-parameter failure channel, and the
-// literal/singleton classifiers. The walk itself (DeriveTypeF, typenode.go)
-// reuses the in-package derivation leaves (intrinsicToken, baseTokenFor,
-// genericTypeArguments, primaryDeclaration, aliasOf) so there is a single source
-// of truth for the base token shape; DeriveTokenF here is a thin renderer over
-// that tree.
+// literal/singleton classifiers. The walk itself (DeriveNode, node.go) reuses the
+// in-package derivation leaves (intrinsicToken, baseTokenFor, genericTypeArguments,
+// primaryDeclaration, aliasOf) so there is a single source of truth for the base
+// token shape; DeriveTokenF here is a thin renderer over that tree.
 
 // The unique-symbol brand property names. A branded type carries a
 // computed-symbol optional property whose declaring `const` is named exactly one
@@ -51,23 +50,23 @@ type Failure struct {
 	UnboundTypeParameter *shimchecker.Type
 }
 
-// DeriveTokenF is the ONE token derivation the engine uses: the token for a type,
-// with open-generic hole support (the `$N` render) and the unbound-type-parameter
-// failure channel. It composes the shared intrinsic / literal / base / generic
-// helpers in derive.go; for a closed (hole-free) type it is byte-identical to the
-// plain derivation the deleted di_options stage once used (its `DeriveToken`,
-// removed in W6p3). ok=false marks a nameless anonymous structure or an unbound
-// type parameter (the caller turns that into a hard diagnostic).
+// DeriveTokenF is the ONE token derivation the engine uses: the flat token for a
+// type, with open-generic hole support (the `$N` render) and the
+// unbound-type-parameter failure channel. ok=false marks a shape with no flat
+// token spelling — a nameless anonymous structure, a callable, an unbound type
+// parameter (the caller turns that into a hard diagnostic) — reported through the
+// same channel the caller reads.
 //
-// It is a RENDERER over DeriveTypeF (typenode.go): the two can never drift
-// because there is only one walk, kept as a tree; this function just joins that
-// tree into the flat string every caller here still wants.
+// It is a RENDERER over the one derivation walk (DeriveNode, node.go): the tree it
+// builds is joined into the flat string every caller here wants, and a node with
+// no flat spelling refuses in renderNode, so the token and the structured Type a
+// call site emits can never disagree about what a type is.
 func DeriveTokenF(ctx *Context, t *shimchecker.Type, failure *Failure) (string, bool) {
-	node, ok := DeriveTypeF(ctx, t, failure)
+	node, ok := DeriveNode(ctx, ctx.Checker, t, failure)
 	if !ok {
 		return "", false
 	}
-	return renderTypeNode(node), true
+	return renderNode(node)
 }
 
 // internalSymbolNamePrefix is typescript-go's marker byte for a synthesized

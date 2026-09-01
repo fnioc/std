@@ -196,10 +196,10 @@ func lowerSugarApp(t *testing.T, mainSrc string) (string, decodedEnvelope) {
 // receiver finally inlines, the argument it splices — and, before the repair,
 // recorded — is the rebuilt one.
 //
-// The value's type is an anonymous object literal, which has no derivable type, so
-// the correct outcome is the NAMED diagnostic. The point of the pin is that a named
-// diagnostic is what a lowering failure looks like: the run reports it and still
-// emits the file, with the sibling registration fully lowered.
+// The value's type is an anonymous object literal, which derives to a
+// `Type.object` token over its members. The point of the pin is that the run
+// lowers cleanly and still emits the file, with the sibling registration fully
+// lowered — the crash-repair holds whether or not the rewritten argument derives.
 func TestWaitingSugarOverRewrittenValueArgumentDoesNotCrash(t *testing.T) {
 	lowered, env := lowerSugarApp(t, `import { services } from '@scope/core';
 import { typefor } from './prim';
@@ -225,9 +225,14 @@ export const registered = services
 	if !strings.Contains(lowered, `Type.imported("IClock", "@scope/app/main"), retries: 3`) {
 		t.Fatalf("the source-written typefor inside the waiting call's argument did not lower:\n%s", lowered)
 	}
-	// The underivable value reports itself by name rather than taking the process down.
-	if findDiag(env, "VALUE_ARG_TYPE_UNDERIVABLE") == nil {
-		t.Fatalf("an anonymous object-literal value must report VALUE_ARG_TYPE_UNDERIVABLE; diagnostics = %+v", env.Diagnostics)
+	// The rewritten object-literal value derives its token as a Type.object over
+	// its members, so the run lowers cleanly rather than taking the process down.
+	if !strings.Contains(lowered, `.addValue(Type.object({ clockToken: `) ||
+		!strings.Contains(lowered, `retries: Type.global("number") }),`) {
+		t.Fatalf("the object-literal value's token did not derive to Type.object:\n%s", lowered)
+	}
+	if len(env.Diagnostics) != 0 {
+		t.Fatalf("the clean lowering must report no diagnostic; diagnostics = %+v", env.Diagnostics)
 	}
 }
 

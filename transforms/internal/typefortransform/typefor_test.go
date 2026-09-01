@@ -617,7 +617,7 @@ export const rt = t.return;
 
 // TestTypeforValueArgSourceWrittenPlainValue proves a value argument with
 // neither a construct nor a call signature derives as its own type via the
-// tokens.DeriveTypeF leaf path, matching typefor<AppConfig>().
+// tokens.DeriveNode leaf path, matching typefor<AppConfig>().
 func TestTypeforValueArgPlainValue(t *testing.T) {
 	src := `import { typefor } from '@rhombus-std/primitives.extras';
 interface AppConfig { host: string }
@@ -636,12 +636,33 @@ export const viaType = typefor<AppConfig>();
 	}
 }
 
+// TestTypeforTypeArgAnonymousObjectDerivesToObject covers an anonymous record
+// type argument: it spells `Type.object` over its members, keyed by name, so a
+// structural shape the Type grammar CAN express is lowered rather than refused.
+func TestTypeforTypeArgAnonymousObjectDerivesToObject(t *testing.T) {
+	src := `import { typefor } from '@rhombus-std/primitives.extras';
+export const obj = typefor<{ readonly a: number; b: string }>();
+`
+	prog, app := buildTypeforWorkspace(t, src)
+	defer func() { _ = prog.Close() }()
+
+	out, diags := lowerTypeforDiags(t, prog, app)
+	if len(diags) != 0 {
+		t.Fatalf("anonymous object must derive cleanly, got %+v", diags)
+	}
+	want := `Type.object({ a: Type.global("number"), b: Type.global("string") })`
+	if got := exprFor(t, out, "obj"); got != want {
+		t.Fatalf("anonymous object derived %q, want %q\nfull output:\n%s", got, want, out)
+	}
+}
+
 // TestTypeforTypeArgUnderivableReportsDiagnostic covers the failure path: an
-// anonymous / unnameable type argument cannot derive a Type, so the stage
-// reports a targeted diagnostic and leaves the call UN-lowered.
+// index-signature object has no fixed member list the `Type.object` grammar can
+// state, so it cannot derive a Type, and the stage reports a targeted diagnostic
+// and leaves the call UN-lowered.
 func TestTypeforTypeArgUnderivableReportsDiagnostic(t *testing.T) {
 	src := `import { typefor } from '@rhombus-std/primitives.extras';
-export const anon = typefor<{ readonly a: number }>();
+export const indexed = typefor<{ [key: string]: number }>();
 `
 	prog, app := buildTypeforWorkspace(t, src)
 	defer func() { _ = prog.Close() }()

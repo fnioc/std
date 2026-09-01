@@ -10,7 +10,7 @@ import (
 // typefor_test.go do not reach: an inline function-type param, an optional
 // param, an inline union param, an inline arrow VALUE, and a declaration-less
 // ctor VALUE. Every shape derives cleanly (no diagnostic) — the same
-// tokens.DeriveTyped narrowing every other typefor derivation shares.
+// tokens.DeriveNode narrowing every other typefor derivation shares.
 //
 // A REST parameter (`...deps: [A, B]`) is NOT among these shapes — see
 // TestTypeforValueArgRestParameterIsAKnownGap below.
@@ -67,7 +67,7 @@ export const ctorValue = typefor(Ctor);
 // limitation: a REST parameter occupies a single slot whose type is the
 // parameter's own tuple type, while the call it answers to takes one argument
 // per tuple slot — expanding a rest parameter back into slots of its own is a
-// derivation tokens.DeriveTyped does not do, so it reports
+// derivation tokens.DeriveNode does not do, so it reports
 // valueArgUnderivableCode rather than misstating the signature's arity as one.
 func TestTypeforValueArgRestParameterIsAKnownGap(t *testing.T) {
 	src := `import { typefor } from '@rhombus-std/primitives.extras';

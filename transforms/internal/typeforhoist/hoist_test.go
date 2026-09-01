@@ -118,6 +118,44 @@ func TestKeyMirrorsTheFlatTokenSpelling(t *testing.T) {
 	}
 }
 
+// TestObjectAndIntersectionRender pins the record and intersection consts: an
+// object references each member by name keyed on its property, an intersection
+// references its members positionally, and both key structurally so declaration
+// order never fragments one type into two consts.
+func TestObjectAndIntersectionRender(t *testing.T) {
+	registry := NewRegistry(TypeRef{Module: "@rhombus-std/primitives", Export: "Type"})
+	str := Named("string", "global", nil)
+	num := Named("number", "global", nil)
+	thing := Named("IThing", "orders", nil)
+	other := Named("IOther", "orders", nil)
+
+	object := Object([]ObjectMember{{Key: "host", Type: str}, {Key: "port", Type: num}})
+	inter := Intersection([]*Node{thing, other})
+	for _, node := range []*Node{object, inter} {
+		if _, err := registry.Ref(node); err != nil {
+			t.Fatal(err)
+		}
+	}
+
+	module := registry.Module()
+	wantObject := "export const " + refOf(t, registry, object) + " = Type.object({ host: " +
+		refOf(t, registry, str) + ", port: " + refOf(t, registry, num) + " });"
+	if !strings.Contains(module, wantObject) {
+		t.Errorf("want %q in:\n%s", wantObject, module)
+	}
+	wantInter := "export const " + refOf(t, registry, inter) + " = Type.intersection(" +
+		refOf(t, registry, thing) + ", " + refOf(t, registry, other) + ");"
+	if !strings.Contains(module, wantInter) {
+		t.Errorf("want %q in:\n%s", wantInter, module)
+	}
+
+	// Member order does not fragment an object's identity.
+	reordered := Object([]ObjectMember{{Key: "port", Type: num}, {Key: "host", Type: str}})
+	if reordered.Key() != object.Key() {
+		t.Fatalf("object key depends on member order: %q vs %q", reordered.Key(), object.Key())
+	}
+}
+
 // TestACallableAlwaysSpellsItsRowsArray: a const holding a callable renders its
 // parameter rows as one array of arrays, whether it answers to one row or
 // several.

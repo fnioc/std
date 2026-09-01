@@ -18,7 +18,9 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"fmt"
+	"regexp"
 	"sort"
+	"strconv"
 	"strings"
 )
 
@@ -80,6 +82,11 @@ const (
 	KindAbstractCtor
 	// KindTag is `Type.tag(inner, key)`.
 	KindTag
+	// KindObject is `Type.object({ key: member, ... })` — a record of named
+	// members, each keyed by its property name.
+	KindObject
+	// KindIntersection is `Type.intersection(...members)`.
+	KindIntersection
 	// KindUndefined and KindNull are the two nullish singletons, each its own
 	// `Type.typeLiteral` call. They are kinds rather than literals because the
 	// token grammar's literal values exclude them.
@@ -123,6 +130,16 @@ type Node struct {
 	// inner and tag spell a KindTag: the branded base and the key branded onto it.
 	inner *Node
 	tag   string
+
+	// object are a KindObject's members, each a property name paired with its
+	// type node, in declaration order.
+	object []ObjectMember
+}
+
+// ObjectMember is one member of a KindObject node: a property name and its type.
+type ObjectMember struct {
+	Key  string
+	Type *Node
 }
 
 // Key is the node's canonical identity — the string the registry interns on and
@@ -167,6 +184,31 @@ func Union(members []*Node) *Node {
 // two types, and so two consts.
 func Tuple(members []*Node) *Node {
 	return &Node{kind: KindTuple, key: "[" + joinKeys(members, ",") + "]", members: members}
+}
+
+// Object builds a record node. The key sorts the members by name, matching how
+// the runtime intern table identifies an object, so declaration order never
+// fragments one type into two consts; the members are kept in the order given so
+// the rendered const reads the way the call site derived it.
+func Object(members []ObjectMember) *Node {
+	entries := make([]string, len(members))
+	for i, m := range members {
+		entries[i] = strconv.Quote(m.Key) + ":" + m.Type.key
+	}
+	sort.Strings(entries)
+	return &Node{kind: KindObject, key: "{" + strings.Join(entries, ",") + "}", object: members}
+}
+
+// Intersection builds an intersection node. Like a union, its key sorts the
+// members so member order never fragments one type, while the members render in
+// the order given.
+func Intersection(members []*Node) *Node {
+	keys := make([]string, len(members))
+	for i, m := range members {
+		keys[i] = m.key
+	}
+	sort.Strings(keys)
+	return &Node{kind: KindIntersection, key: strings.Join(keys, " & "), members: members}
 }
 
 // Generic builds an open-generic hole node. label is the hole number's decimal
@@ -332,6 +374,14 @@ func (n *Node) children() []*Node {
 		return append(out, flatRows(n.rows)...)
 	case KindTag:
 		return []*Node{n.inner}
+	case KindObject:
+		out := make([]*Node, 0, len(n.object))
+		for _, member := range n.object {
+			out = append(out, member.Type)
+		}
+		return out
+	case KindIntersection:
+		return n.members
 	default:
 		return nil
 	}
@@ -389,6 +439,14 @@ func (r *Registry) expr(n *Node) string {
 		return r.signature(n, "abstractCtor")
 	case KindTag:
 		return r.typeRef.Export + ".tag(" + r.names[n.inner.key] + ", \"" + n.tag + "\")"
+	case KindObject:
+		members := make([]string, len(n.object))
+		for i, member := range n.object {
+			members[i] = objectKey(member.Key) + ": " + r.names[member.Type.key]
+		}
+		return r.typeRef.Export + ".object({ " + strings.Join(members, ", ") + " })"
+	case KindIntersection:
+		return r.typeRef.Export + ".intersection(" + r.joinNames(n.members) + ")"
 	case KindUndefined:
 		return r.typeRef.Export + ".typeLiteral(undefined)"
 	case KindNull:
@@ -449,6 +507,18 @@ func nameFor(key string) string {
 	}
 	return "$" + readable + "_" + suffix
 }
+
+// objectKey renders an object member's key the way the emitted call site spells
+// it: a bare identifier when the name is a legal JS identifier, else a quoted
+// string, so a hoisted `Type.object` const reads byte-for-byte like the inline one.
+func objectKey(name string) string {
+	if jsIdentifier.MatchString(name) {
+		return name
+	}
+	return strconv.Quote(name)
+}
+
+var jsIdentifier = regexp.MustCompile(`^[A-Za-z_$][A-Za-z0-9_$]*$`)
 
 // sanitize replaces every non-alphanumeric rune with "_", collapsing runs and
 // trimming the ends, so the readable part of a name is a legal identifier body.

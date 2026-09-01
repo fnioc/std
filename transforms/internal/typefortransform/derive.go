@@ -15,7 +15,7 @@ import (
 // the emitter has already reported why, and the caller leaves the original node
 // alone.
 type emitter interface {
-	node(d *tokens.Derived) *shimast.Node
+	node(n *tokens.Node) *shimast.Node
 }
 
 // inlineEmitter spells a derived tree as the `Type.*` factory calls themselves,
@@ -25,34 +25,34 @@ type inlineEmitter struct {
 	binding *valueimport.Binding
 }
 
-func (e *inlineEmitter) node(d *tokens.Derived) *shimast.Node {
-	return typeemit.EmitDerived(e.factory, e.binding, d)
+func (e *inlineEmitter) node(n *tokens.Node) *shimast.Node {
+	return typeemit.EmitNode(e.factory, e.binding, n)
 }
 
 // emitAccessor projects a TypeBase member name onto a derived node, returning the
 // AST expression the property access folds to and applies=true — or applies=false
 // when the member does not exist on this node's kind, so the caller reports the
 // mismatch rather than silently producing nothing.
-func emitAccessor(f *shimast.NodeFactory, e emitter, d *tokens.Derived, accessor string) (*shimast.Node, bool) {
+func emitAccessor(f *shimast.NodeFactory, e emitter, n *tokens.Node, accessor string) (*shimast.Node, bool) {
 	switch accessor {
 	case "kind":
-		return f.NewStringLiteral(tokens.KindName(d), shimast.TokenFlagsNone), true
+		return f.NewStringLiteral(tokens.KindName(n), shimast.TokenFlagsNone), true
 	case "return":
-		if d.Kind != tokens.DerivedFunc {
+		if n.Kind != tokens.KindFunc {
 			return nil, false
 		}
-		return e.node(d.Ret), true
+		return e.node(n.Ret), true
 	case "instance":
-		if d.Kind != tokens.DerivedCtor && d.Kind != tokens.DerivedAbstractCtor {
+		if n.Kind != tokens.KindCtor && n.Kind != tokens.KindAbstractCtor {
 			return nil, false
 		}
-		return e.node(d.Ret), true
+		return e.node(n.Ret), true
 	case "args":
-		if d.Kind != tokens.DerivedFunc && d.Kind != tokens.DerivedCtor && d.Kind != tokens.DerivedAbstractCtor {
+		if n.Kind != tokens.KindFunc && n.Kind != tokens.KindCtor && n.Kind != tokens.KindAbstractCtor {
 			return nil, false
 		}
-		rows := make([]*shimast.Node, 0, len(d.Args))
-		for _, row := range d.Args {
+		rows := make([]*shimast.Node, 0, len(n.Rows))
+		for _, row := range n.Rows {
 			items := make([]*shimast.Node, 0, len(row))
 			for _, a := range row {
 				item := e.node(a)
@@ -65,20 +65,20 @@ func emitAccessor(f *shimast.NodeFactory, e emitter, d *tokens.Derived, accessor
 		}
 		return f.NewArrayLiteralExpression(f.NewNodeList(rows), false), true
 	case "tag":
-		if d.Kind != tokens.DerivedTag {
+		if n.Kind != tokens.KindTag {
 			return nil, false
 		}
-		return f.NewStringLiteral(d.Tag, shimast.TokenFlagsNone), true
+		return f.NewStringLiteral(n.Tag, shimast.TokenFlagsNone), true
 	case "type":
-		if d.Kind != tokens.DerivedTag {
+		if n.Kind != tokens.KindTag {
 			return nil, false
 		}
-		return e.node(d.Inner), true
+		return e.node(n.Inner), true
 	case "value":
-		if d.Kind != tokens.DerivedLeaf || d.Leaf.Kind != tokens.TypeNodeLiteral {
+		if n.Kind != tokens.KindLiteral || n.Literal.Kind == tokens.LiteralNull || n.Literal.Kind == tokens.LiteralUndefined {
 			return nil, false
 		}
-		return typeemit.Literal(f, d.Leaf.Literal), true
+		return typeemit.Literal(f, n.Literal), true
 	default:
 		return nil, false
 	}
