@@ -633,6 +633,37 @@ Design recorded as §230. Open:
 - [ ] Design the tagged model against the same tools.
 - [ ] Check whether `anchorRoot` and `ScopeBinding`'s bracketing still have a job.
 
+## Builder shape — owner-prescribed, not yet built
+
+Supersedes §216's two dimensions when it lands: registrations stop being a dimension of their own and
+become an addon like any other, so the builder holds one list.
+
+```ts
+interface Addon<Lifetime> {
+  registrations: Iterable<Registration<Lifetime>>;
+  middleware;
+}
+
+class Builder<T> {
+  static useAddon<T>(addon: Addon<T>): Builder<T>;
+  useAddon(addon: Addon<T>): Builder<T>;
+  withServices(fn: Func<[Manifest<T>], Iterable<Registration<T>>>) {
+    return this.useAddon(ManifestAddon.build(fn));
+  }
+}
+```
+
+The static overload is the lock-on: it infers `T` from whichever addon opens the chain and answers a
+`Builder<T>`, and the instance overload then demands that same `T`. Services or the model may come
+first and either fixes the vocabulary. A separate widened interface is not needed — an addon that
+does not care about the vocabulary declares `Addon<any>`.
+
+- [ ] Build it. Today `ContainerBuilder<Lifetime>` takes its parameter from `usingLifetimeModel`
+      specifically, `Addon` is not generic, and `AddonInstallation.registrations` is
+      `Iterable<Registration<any>>`.
+- [ ] Decide what happens when an addon that names no vocabulary opens the chain: `T` infers `any`,
+      so the builder locks onto nothing and every later addon passes whatever it carries.
+
 ## Validation options surface
 
 - [ ] An options surface on the di builder that selectively installs the three validation
