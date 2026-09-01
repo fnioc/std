@@ -768,6 +768,11 @@ Two conditions on the brief:
 - The reference is therefore the oracle, never the deleted port. Its own structure is nothing like
   this engine's, so consulting it cannot contaminate the shape.
 
+Validations are not part of the model. They are additional middleware layers, separate from it —
+but authored WITHIN the addon's black box, by whoever writes the model, not supplied by the engine
+and not a shared generic validator. §217 already records the three as independently installable,
+each throwing over only its own failure kind; this says who authors them and where they sit.
+
 There is no `noop` model in the replacement set. Installing a model is optional outright, so a
 container with none installed already IS that case; a model that does nothing was only ever
 standing in for the absence of one.
