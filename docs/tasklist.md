@@ -759,11 +759,14 @@ and a reader reproduces it by gravity.
 Two conditions on the brief:
 
 - The CODE is off-limits, the CONTRACT is not. `tests/di.test`'s model suites travel with the brief
-  as the executable specification — behaviour without structure. 22 of 30 files there do not load
-  with the models absent; that list is the specification.
-- The reference implementation is the oracle, never the deleted port. The standing rule is that the
-  standard model always matches the reference's behaviour, and the reference's own structure is
-  nothing like this engine's, so consulting it cannot contaminate the shape.
+  as behaviour without structure. 22 of 30 files there do not load with the models absent.
+- THE REFERENCE OUTRANKS THE TESTS. Every test for `standard` must be a reflection of the reference
+  lifetime model. Where a test asserts something the reference does not do, the TEST is over-spec —
+  challenge it and cut it, do not satisfy it. Reproducing our own inventions is exactly what the
+  clean-room is meant to stop, and a test suite is as capable of carrying them forward as the source
+  was. Known instance: `validateScopes` defaults ON here where the reference defaults it OFF.
+- The reference is therefore the oracle, never the deleted port. Its own structure is nothing like
+  this engine's, so consulting it cannot contaminate the shape.
 
 There is no `noop` model in the replacement set. Installing a model is optional outright, so a
 container with none installed already IS that case; a model that does nothing was only ever
