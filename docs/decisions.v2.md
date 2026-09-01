@@ -4081,7 +4081,7 @@ which tags get opened under which, so no static order exists; its runtime refusa
 
 _Owner-ruled 2026-08-30, Claude-recorded._
 
-## §230 — The resolution door carries a request; a lifetime model is a tandem pair
+## §230 — The resolution door carries a request
 
 `getService(Type)` becomes `getService(Request)` for the middleware chain and the engine;
 `IServiceProvider` keeps its own signature. `ServiceProvider` allocates one `Request` per call and
@@ -4102,20 +4102,26 @@ imported symbol is reachable only through an import a reviewer can see. Attachme
 DOWN, before `next` — the object is shared with every layer beneath and with the engine, so a write
 on the unwind is invisible to everything it was meant for.
 
-A lifetime model contributes a pair. The middleware is the inner half: it installs the whole
+The chain is folded by `di.build` and nowhere else. That is the builder's rule; everything past it
+is the model's own business.
+
+A lifetime model is a black box. Nothing in the door, the engine or the chain says how one organizes
+itself, and they differ from one another — the tagged model is not built the way the standard one is.
+
+The standard model's own choice is a pair. The middleware is the inner half: it installs the whole
 implementation through `Control<IEngineHooks>` once, at fold time, and holds every cache in that
-closure. The outer half is the single wrap a scope factory puts over the already-folded chain,
+closure. The outer half is the single wrap its scope factory puts over the already-folded chain,
 attaching the scope it closes over. `create()` returns the pair for the singleton scope too, so the
-container's own provider is born attached and no unattached provider exists to be handed out. The
-chain is folded by `di.build` and nowhere else.
+container's own provider is born attached and no unattached provider exists to be handed out.
 
 `beginResolve` receives the request and reads the attachment once into the behavior's own slot;
 every later hook takes it from `construction.state`. `injected ?? …` keeps nested resolutions
 inheriting the enclosing scope, so the attachment is consulted only at the door.
 
-Opening a scope therefore COMPOSES rather than installs. Nothing accumulates on the chain, which is
-what makes an outer scope answering an inner scope's ask structurally impossible rather than governed
-by a precedence rule, and what stops per-node cost scaling with nesting depth.
+Under that model, opening a scope therefore composes rather than installs. Nothing accumulates on the
+chain, which is what makes an outer scope answering an inner scope's ask structurally impossible
+there rather than governed by a precedence rule, and what stops per-node cost scaling with nesting
+depth.
 
 A scope never captures a value built from a latebound argument: the address is the cache key and it
 does not carry the arguments, so a cached value would be handed to callers whose arguments could
