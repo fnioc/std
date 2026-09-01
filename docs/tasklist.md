@@ -733,6 +733,49 @@ becomes an ordinary registration, and `visitServiceProvider` and its plan kind g
       values, and dispatch falls to whichever is tried first. The flooring is deliberate and
       honest; whether the ambiguity is reported is the open part.
 
+## Node-vocabulary collapse — review findings (2026-09-01)
+
+Found by adversarial review of `2b7542e6`, which is committed and gate-green. None of these were in
+the implementer's behaviour-change list.
+
+- [ ] `schemaoftransform/expand.go:229` — a member typed as a NAMED callable alias
+      (`type Handler = (x: string) => number`) now hard-errors `992001 unsupported type` where it
+      derived as `Type.imported("Handler", …)`. The construct/call gates moved ahead of the second
+      name read. Violates the stated invariant: `Handler` IS expressible, so the refusal is "the
+      walk could not do it" wearing a grammar limit. Same class for a `typeof SomeClass` member.
+- [ ] `tokens/node.go:325-329` — `deriveObjectNode` silently drops symbol-keyed members and still
+      answers `true`, so `IThing & { [KEY]?: string }` derives `Type.intersection(…, Type.object({}))`
+      and any two such brands over one base collapse onto the same node. The old walk refused. Refuse
+      when a property set is non-empty in the checker and empty after filtering.
+- [ ] `tokens/node.go:331-333` — an optional property whose type is a union ALIAS loses its identity:
+      `{ a?: Level }` derives `union(lit a, lit b, lit undefined)` rather than `named(Level)`, because
+      the checker's `Level | undefined` carries no alias. `Type.isOptional` still answers, but
+      `Type.isMatch(Level, …)` no longer does. May be unavoidable; decide and say so either way.
+- [ ] `tokens/generics.go:64-70` — `DeriveTokenF` strings are NOT byte-identical as claimed: a named
+      callable alias went from its name to a refusal, and a literal-union alias from its members to
+      its name. Latent — `TokenForType`/`TokenForReturnType`/`ServiceBaseTokenFor`/`KeyedTokenFor`
+      have no callers outside `internal/tokens` — but they are the package's exported surface.
+- [ ] `tokens/node_test.go:22` — `TestDeriveTokenFMatchesRendererOverDeriveNode` asserts an
+      expression equals itself now that `DeriveTokenF`'s whole body is `renderNode(DeriveNode(…))`.
+      It would pass with every kind deleted.
+- [ ] `tokens/node.go:156-158` — a new refusal for an `Inject`-pinned keyed base, with no test and no
+      counterpart in the old walk, so `typefor<Keyed<Inject<T,"tok">,"k">>()` went from lowering to a
+      diagnostic. `Type.tag(Type.global(tok), key)` is spellable, so the justification is arguable.
+- [ ] `typeforhoist/hoist.go:203-211` — the intersection key joins with `" & "` unparenthesized in the
+      same flat namespace as the union's `" | "`, and `Registry.Ref` matches on the string alone, so
+      `Union([Inter([A,B]), C])` and `Inter([A, Union([B,C])])` both key `"A & B | C"`. Unreachable
+      today because TS distributes, but the union key was unambiguous before this kind existed. Wrap
+      it as `Tuple` and `Object` wrap theirs.
+- [ ] `typeemit/typeemit.go:198-206`, `typeforhoist/hoist.go:511-521`,
+      `schemaoftransform/expand.go:317-320` — three independent copies of the object-key spelling
+      rule, each with its own identifier regexp. Hoisted-to-inline byte parity now depends on all
+      three staying identical.
+- [ ] `tokens/node.go:400-414` — `withUndefined` treats a `null` member as satisfying optionality, but
+      `Type.isOptional` (Type.ts:417) accepts only `typeLiteral(undefined)`. Unreachable under strict;
+      still the wrong predicate.
+- [ ] `tokens/node.go:290` — `deriveTupleNode` reads `ctx.Checker` where every sibling uses the passed
+      `checker`. Cosmetic today; the parameter exists so it can differ.
+
 ## Transformer vocabulary collapse (2026-09-01)
 
 Design recorded as §232.
