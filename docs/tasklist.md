@@ -660,9 +660,18 @@ first and either fixes the vocabulary.
 NO ADDON WIDENS THE BUILDER'S TYPE. Every addon is generic in the vocabulary and threads it —
 `class MyAddon<T> implements Addon<T>` — including one with no opinion about it. Declaring
 `Addon<any>` is the failure this forbids: it erases the vocabulary, so the builder locks onto nothing
-and every later addon passes whatever it carries. An addon needing a lifetime value it cannot know
-takes one from its caller, which is what `auditAddon`'s `...lifetime: LifetimeArgument<Lifetime>`
-already does. A separate widened interface is therefore not needed and must not exist.
+and every later addon passes whatever it carries. A separate widened interface is
+therefore not needed and must not exist.
+
+An addon that only works under certain vocabularies says so through its CONSTRAINT —
+`class MyAddon<T extends StandardLifetime> implements Addon<T>` — so a builder whose vocabulary
+cannot satisfy it fails to compile rather than throwing at resolve time. That is the trap
+`diagnosticsAddon` fell into: `'transient'` satisfies `standard` and raises
+`ScopeTagUnmatchedError` under `tagged`, with nothing at the call site saying so.
+
+The constraint and a caller-supplied lifetime are different axes and an addon may want both: the
+constraint says which vocabularies it works under, while a parameter like `auditAddon`'s
+`...lifetime: LifetimeArgument<Lifetime>` says which value within one to use.
 
 - [ ] Build it. Today `ContainerBuilder<Lifetime>` takes its parameter from `usingLifetimeModel`
       specifically, `Addon` is not generic, and `AddonInstallation.registrations` is
