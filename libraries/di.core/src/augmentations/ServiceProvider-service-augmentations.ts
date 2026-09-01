@@ -14,6 +14,11 @@ declare module '@rhombus-std/di.core' {
     /**
      * The value registered for `address`.
      *
+     * @remarks
+     * A caller for whom absence is an answer rather than a fault spells that in the address it
+     * asks for: `resolve(Type.union(address, typefor<undefined>()))` orders the `undefined`
+     * literal last, so it answers only once `address` itself has no way to build.
+     *
      * @throws UnsatisfiableError - when nothing can produce `address`.
      */
     resolve(address: Type): any;
