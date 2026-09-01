@@ -445,11 +445,11 @@ export namespace Type {
   export const bindGenerics = (() => {
     const visitor = new MatchVisitor();
     return function bindGenerics(possiblyOpenCandidate: Type, closedConstraint: Type): [isMatch: false] | [isMatch: true, generics: Record<string, Type>] {
-      if (Type.isOpen(closedConstraint)) {
-        throw new Error(`bindGenerics: the constraint type may not contain generic holes — got ${Type.stringify(closedConstraint)}`);
-      }
       if (possiblyOpenCandidate === closedConstraint) {
         return [true, Object.create(null) as Record<string, Type>];
+      }
+      if (Type.isOpen(closedConstraint)) {
+        throw new Error(`bindGenerics: the constraint type may not contain generic holes — got ${Type.stringify(closedConstraint)}`);
       }
       const bindings: Record<string, Type> = Object.create(null);
       return visitor.visit(possiblyOpenCandidate, { subject: closedConstraint, bindings }) ? [true, bindings] : [false];
