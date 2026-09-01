@@ -701,10 +701,12 @@ becomes an ordinary registration, and `visitServiceProvider` and its plan kind g
 - [ ] Seeding it needs a lifetime in a vocabulary the seeder owns. Every registration names one, the
       value must be transient — a cached provider is wrong — and only the model knows how to spell
       transient, so the MODEL seeds this, not the builder.
-- [ ] Latebound and invoker frames have no `Request`: `resolveFrame` and `resolveLatebound` reach
-      `Plan.realize` directly, bypassing the chain, so a factory reading `request.serviceProvider`
-      cannot answer there. `visitServiceProvider` can today, synthesizing from the visitor context.
-      Settle this before the special case is removed.
+      A request is captured for the whole lifecycle of the `getService` that opened it, including any
+      latebounds constructed under it — `captureForLaterCall` already snapshots the chain and the states for
+      that reason, and the request joins them. So `resolveFrame` and `resolveLatebound` answer
+      `request.serviceProvider` from the ask that minted the callable, and carrying it is also what stops a
+      closure being re-pointed by whatever provider later invokes it.
+
 - [ ] A resolvable `Request` is per-ask state that a cached service can capture — a singleton taking
       one holds a stale ask's type and attachments, and captivity validation will not catch it
       because transient into singleton is legal.

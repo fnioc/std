@@ -4126,9 +4126,11 @@ depth.
 A scope never captures a value built from a latebound argument: the address is the cache key and it
 does not carry the arguments, so a cached value would be handed to callers whose arguments could
 never have produced it. The taint propagates upward — a construction is uncacheable when anything in
-its subtree consumed a latebound argument — and it is a static property of the plan tree. Latebound
-calls bypassing the middleware chain is what makes this hold: they have no request and no provider to
-be re-pointed by, so their untainted dependencies can only file into the scope they were minted in.
+its subtree consumed a latebound argument — and it is a static property of the plan tree. A request is
+captured for the whole lifecycle of the `getService` that opened it, latebounds constructed under it
+included, so a latebound call carries the request it was minted under rather than meeting a new one —
+which is what keeps a closure invoked through some other provider filing its untainted dependencies
+into the scope it was minted in.
 
 `Invoker` stays. Spelling a late registration as a branded argument was refused: a temporary
 registration produces a value the cache cannot honestly key, so an instance built from a registration
