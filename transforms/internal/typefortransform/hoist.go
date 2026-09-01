@@ -109,7 +109,8 @@ func hoistRows(rows [][]*tokens.Derived) [][]*typeforhoist.Node {
 	return out
 }
 
-// hoistLeaf mirrors the unclassified named / literal / union / placeholder tree.
+// hoistLeaf mirrors the unclassified named / literal / union / tuple /
+// placeholder tree.
 // A named type's generic arguments become CHILD nodes rather than part of the
 // parent's spelling, so each closed argument earns its own const and is
 // referenced by name.
@@ -123,6 +124,12 @@ func hoistLeaf(n *tokens.TypeNode) *typeforhoist.Node {
 			members = append(members, hoistLeaf(m))
 		}
 		return typeforhoist.Union(members)
+	case tokens.TypeNodeTuple:
+		slots := make([]*typeforhoist.Node, 0, len(n.Members))
+		for _, m := range n.Members {
+			slots = append(slots, hoistLeaf(m))
+		}
+		return typeforhoist.Tuple(slots)
 	case tokens.TypeNodePlaceholder:
 		return typeforhoist.Generic(n.Label)
 	case tokens.TypeNodeTag:

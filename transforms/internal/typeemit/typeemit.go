@@ -54,6 +54,12 @@ func Leaf(f *shimast.NodeFactory, binding *valueimport.Binding, n *tokens.TypeNo
 			members = append(members, Leaf(f, binding, m))
 		}
 		return Call(f, binding, "union", members)
+	case tokens.TypeNodeTuple:
+		slots := make([]*shimast.Node, 0, len(n.Members))
+		for _, m := range n.Members {
+			slots = append(slots, Leaf(f, binding, m))
+		}
+		return Call(f, binding, "tuple", slots)
 	case tokens.TypeNodePlaceholder:
 		return Call(f, binding, "generic", []*shimast.Node{f.NewStringLiteral(n.Label, shimast.TokenFlagsNone)})
 	case tokens.TypeNodeTag:

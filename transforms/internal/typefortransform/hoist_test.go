@@ -162,3 +162,35 @@ func constNameIn(t *testing.T, module string) string {
 	}
 	return rest[:end]
 }
+
+// TestHoistedTupleReferencesItsSlotsByName: a tuple's slots are CHILD nodes,
+// so each earns its own const — shared with any other derivation of the same
+// type — and the tuple's const is one factory call over their names.
+func TestHoistedTupleReferencesItsSlotsByName(t *testing.T) {
+	prog, app := buildTypeforWorkspace(t, `
+import { typefor } from "@rhombus-std/primitives.extras";
+interface IClock {}
+interface IStore {}
+export const pair = typefor<[IClock, IStore]>();
+export const clock = typefor<IClock>();
+`)
+	defer prog.Close()
+	_, registry := hoistTypefor(t, prog, app)
+
+	module := registry.Module()
+	// IClock, IStore and the tuple over them — the tuple's first slot reuses the
+	// const the bare IClock derivation earned.
+	if registry.Len() != 3 {
+		t.Fatalf("want 3 interned nodes, got %d:\n%s", registry.Len(), module)
+	}
+	for _, line := range strings.Split(module, "\n") {
+		if !strings.Contains(line, "Type.tuple(") {
+			continue
+		}
+		if strings.Contains(line, "Type.imported(") {
+			t.Fatalf("the tuple const re-spells its slots instead of naming them:\n%s", line)
+		}
+		return
+	}
+	t.Fatalf("no tuple const was rendered:\n%s", module)
+}

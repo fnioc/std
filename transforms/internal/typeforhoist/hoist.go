@@ -62,6 +62,9 @@ const (
 	KindLiteral
 	// KindUnion is `Type.union(...members)`.
 	KindUnion
+	// KindTuple is `Type.tuple(...members)` — a fixed-length slot list, whose
+	// ORDER is part of the type where a union's member order is not.
+	KindTuple
 	// KindGeneric is `Type.generic(label)` — an open-generic hole.
 	KindGeneric
 	// KindFunc is `Type.func(returns, rows)`, rows the return type's parameter
@@ -106,7 +109,8 @@ type Node struct {
 	// literal is a KindLiteral node's value as its TypeScript expression text.
 	literal string
 
-	// members are a KindUnion's member nodes, in the order they are emitted.
+	// members are a KindUnion's or a KindTuple's member nodes, in the order they
+	// are emitted.
 	members []*Node
 
 	// label is a KindGeneric's hole number as decimal text.
@@ -156,6 +160,13 @@ func Union(members []*Node) *Node {
 	}
 	sort.Strings(keys)
 	return &Node{kind: KindUnion, key: strings.Join(keys, " | "), members: members}
+}
+
+// Tuple builds a slot-list node. Where a union's key sorts its members, this
+// one keeps the order given: two tuples over the same types in two orders are
+// two types, and so two consts.
+func Tuple(members []*Node) *Node {
+	return &Node{kind: KindTuple, key: "[" + joinKeys(members, ",") + "]", members: members}
 }
 
 // Generic builds an open-generic hole node. label is the hole number's decimal
@@ -313,7 +324,7 @@ func (n *Node) children() []*Node {
 	switch n.kind {
 	case KindNamed:
 		return n.args
-	case KindUnion:
+	case KindUnion, KindTuple:
 		return n.members
 	case KindFunc, KindCtor, KindAbstractCtor:
 		out := make([]*Node, 0, len(n.rows)+1)
@@ -366,6 +377,8 @@ func (r *Registry) expr(n *Node) string {
 		return r.typeRef.Export + ".typeLiteral(" + n.literal + ")"
 	case KindUnion:
 		return r.typeRef.Export + ".union(" + r.joinNames(n.members) + ")"
+	case KindTuple:
+		return r.typeRef.Export + ".tuple(" + r.joinNames(n.members) + ")"
 	case KindGeneric:
 		return r.typeRef.Export + ".generic(\"" + n.label + "\")"
 	case KindFunc:

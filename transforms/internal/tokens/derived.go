@@ -273,10 +273,18 @@ func deriveSignatureShaped(
 	rows := make([][]*Derived, 0, len(sigs))
 	for _, sig := range sigs {
 		params := shimchecker.Signature_parameters(sig)
+		spreadsLastParameter := shimchecker.Signature_hasRestParameter(sig)
 		row := make([]*Derived, 0, len(params))
-		for _, param := range params {
+		for i, param := range params {
 			paramType := checker.GetTypeOfSymbol(param)
 			if paramType == nil {
+				return nil, false
+			}
+			// A tuple-typed REST parameter stands for one argument per slot, so
+			// the single slot it occupies here would misstate the call's arity.
+			// Expanding it into one slot per element is a derivation of its own,
+			// not this one, so the whole signature is underivable instead.
+			if spreadsLastParameter && i == len(params)-1 && shimchecker.IsTupleType(paramType) {
 				return nil, false
 			}
 			argNode, ok := DeriveTyped(ctx, checker, paramType, failure)
@@ -313,6 +321,8 @@ func KindName(d *Derived) string {
 			return "literal"
 		case TypeNodeUnion:
 			return "union"
+		case TypeNodeTuple:
+			return "tuple"
 		case TypeNodePlaceholder:
 			return "generic"
 		case TypeNodeTag:

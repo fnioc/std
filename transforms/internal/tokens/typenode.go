@@ -12,7 +12,7 @@ import (
 // TypeNode is the STRUCTURED form of a derived token — the same derivation
 // DeriveTokenF walks, kept as a small tree instead of being joined into a flat
 // string. It carries exactly the kinds the flat walk ever produced: a named type
-// (with its generic arguments), a literal value, a literal union, an
+// (with its generic arguments), a literal value, a literal union, a tuple, an
 // open-generic hole placeholder, and a keyed type (the `Keyed<T, K>` brand read
 // in a nested position — a list element, a generic argument).
 type TypeNode struct {
@@ -30,7 +30,8 @@ type TypeNode struct {
 
 	// Union: a pure-literal union's members, each itself a Literal node, in
 	// checker order (unsorted — a renderer that needs the canonical sorted-join
-	// spelling sorts at render time).
+	// spelling sorts at render time). Tuple: the slot types in declaration
+	// order, which IS part of the type's identity and so is never sorted.
 	Members []*TypeNode
 
 	// Placeholder: the hole's label.
@@ -48,6 +49,7 @@ const (
 	TypeNodeNamed TypeNodeKind = iota
 	TypeNodeLiteral
 	TypeNodeUnion
+	TypeNodeTuple
 	TypeNodePlaceholder
 	TypeNodeTag
 )
@@ -101,11 +103,43 @@ func DeriveTypeF(ctx *Context, t *shimchecker.Type, failure *Failure) (*TypeNode
 		return &TypeNode{Kind: TypeNodeTag, Inner: inner, Tag: key}, true
 	}
 
-	symbol := resolvedSymbolFor(t)
-	if symbol == nil {
+	if symbol := resolvedSymbolFor(t); symbol != nil {
+		return deriveNamedNode(ctx, t, symbol, failure)
+	}
+	// A tuple is read only once naming has failed, so an ALIASED tuple derives
+	// as the name it was spelled through, exactly as an aliased union does —
+	// its address cannot shift with the element list. An anonymous one has no
+	// name to be spelled by, and its slots are its whole identity.
+	return deriveTupleNode(ctx, t, failure)
+}
+
+// deriveTupleNode builds the Tuple node an anonymous tuple type spells: its
+// slot types in declaration order, each recursively derived. Only a tuple whose
+// every slot is REQUIRED has the fixed length the node stands for — an
+// optional, rest or variadic slot leaves the length open, which an ordered list
+// of slots cannot state, so such a tuple is underivable rather than derived at
+// the wrong arity. A readonly modifier and slot labels say nothing about the
+// slots themselves and are dropped. ok=false also covers "not a tuple at all",
+// which is every other nameless type.
+func deriveTupleNode(ctx *Context, t *shimchecker.Type, failure *Failure) (*TypeNode, bool) {
+	if !shimchecker.IsTupleType(t) {
 		return nil, false
 	}
-	return deriveNamedNode(ctx, t, symbol, failure)
+	for _, slotFlags := range t.TargetTupleType().ElementFlags() {
+		if slotFlags != shimchecker.ElementFlagsRequired {
+			return nil, false
+		}
+	}
+	slots := ctx.Checker.GetTypeArguments(t)
+	members := make([]*TypeNode, 0, len(slots))
+	for _, slot := range slots {
+		member, ok := DeriveTypeF(ctx, slot, failure)
+		if !ok {
+			return nil, false
+		}
+		members = append(members, member)
+	}
+	return &TypeNode{Kind: TypeNodeTuple, Members: members}, true
 }
 
 // resolvedSymbolFor returns the symbol a type is spelled by, direct or through
@@ -273,6 +307,12 @@ func renderTypeNode(n *TypeNode) string {
 		}
 		sort.Strings(parts)
 		return strings.Join(parts, " | ")
+	case TypeNodeTuple:
+		parts := make([]string, len(n.Members))
+		for i, m := range n.Members {
+			parts[i] = renderTypeNode(m)
+		}
+		return "[" + strings.Join(parts, ",") + "]"
 	case TypeNodePlaceholder:
 		return "$" + n.Label
 	case TypeNodeTag:

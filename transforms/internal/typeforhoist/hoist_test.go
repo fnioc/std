@@ -238,3 +238,34 @@ func TestAnAlphanumericKeyNamesItself(t *testing.T) {
 		t.Fatalf("want a readable prefix, got %s", nameFor("orders:IClock"))
 	}
 }
+
+// TestTupleKeepsSlotOrder: a tuple's identity is its slots IN ORDER, where a
+// union's is its sorted member set, so two tuples over the same two names are
+// two consts — each one factory call over its slots by name.
+func TestTupleKeepsSlotOrder(t *testing.T) {
+	registry := NewRegistry(TypeRef{Module: "@rhombus-std/primitives", Export: "Type"})
+	clock := Named("IClock", "orders", nil)
+	store := Named("IStore", "orders", nil)
+
+	forward := Tuple([]*Node{clock, store})
+	reversed := Tuple([]*Node{store, clock})
+	if forward.Key() == reversed.Key() {
+		t.Errorf("both slot orders key the same: %s", forward.Key())
+	}
+	for _, node := range []*Node{forward, reversed} {
+		if _, err := registry.Ref(node); err != nil {
+			t.Fatal(err)
+		}
+	}
+	// The two tuples plus the two names they are built over.
+	if registry.Len() != 4 {
+		t.Fatalf("want 4 distinct nodes, got %d:\n%s", registry.Len(), registry.Module())
+	}
+
+	module := registry.Module()
+	want := "export const " + refOf(t, registry, forward) + " = Type.tuple(" +
+		refOf(t, registry, clock) + ", " + refOf(t, registry, store) + ");"
+	if !strings.Contains(module, want) {
+		t.Errorf("want %q in:\n%s", want, module)
+	}
+}

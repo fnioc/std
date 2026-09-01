@@ -206,6 +206,66 @@ export const tok = typefor<IThing<IOther>>();
 	}
 }
 
+// TestTypeforTupleGenericArg pins a tuple in TYPE-ARGUMENT position: its slots
+// become the factory call's positional arguments, in order, each derived like
+// any other node — so a nested tuple nests and a hole among the slots stays a
+// hole.
+func TestTypeforTupleGenericArg(t *testing.T) {
+	src := `import { typefor, $ } from '@rhombus-std/primitives.extras';
+interface IThing<T> {}
+interface IClock {}
+interface IStore {}
+export const pair = typefor<IThing<[IClock, IStore]>>();
+export const nested = typefor<IThing<[IClock, [IStore, IClock]]>>();
+export const holed = typefor<IThing<[IClock, $<'TEntity'>]>>();
+export const empty = typefor<IThing<[]>>();
+`
+	prog, app := buildTypeforWorkspace(t, src)
+	defer func() { _ = prog.Close() }()
+
+	out := lowerTypefor(t, prog, app)
+	clock := `Type.imported("IClock", "@scope/app/main")`
+	store := `Type.imported("IStore", "@scope/app/main")`
+	thing := func(arg string) string {
+		return `Type.imported("IThing", "@scope/app/main", [` + arg + `])`
+	}
+	cases := map[string]string{
+		"pair":   thing(`Type.tuple(` + clock + `, ` + store + `)`),
+		"nested": thing(`Type.tuple(` + clock + `, Type.tuple(` + store + `, ` + clock + `))`),
+		"holed":  thing(`Type.tuple(` + clock + `, Type.generic("TEntity"))`),
+		"empty":  thing(`Type.tuple()`),
+	}
+	for name, want := range cases {
+		if got := exprFor(t, out, name); got != want {
+			t.Errorf("%s = %q, want %q\nfull output:\n%s", name, got, want, out)
+		}
+	}
+}
+
+// TestTypeforParameterListUtilities pins that ConstructorParameters<> and
+// Parameters<> need no case of their own: the checker resolves both to a
+// concrete tuple before derivation sees them, so they emit as one.
+func TestTypeforParameterListUtilities(t *testing.T) {
+	src := `import { typefor } from '@rhombus-std/primitives.extras';
+interface IClock {}
+interface IStore {}
+class Widget { constructor(clock: IClock, store: IStore) { void clock; void store; } }
+declare function build(clock: IClock, store: IStore): IClock;
+export const ctorParams = typefor<ConstructorParameters<typeof Widget>>();
+export const fnParams = typefor<Parameters<typeof build>>();
+`
+	prog, app := buildTypeforWorkspace(t, src)
+	defer func() { _ = prog.Close() }()
+
+	out := lowerTypefor(t, prog, app)
+	want := `Type.tuple(Type.imported("IClock", "@scope/app/main"), Type.imported("IStore", "@scope/app/main"))`
+	for _, name := range []string{"ctorParams", "fnParams"} {
+		if got := exprFor(t, out, name); got != want {
+			t.Errorf("%s = %q, want %q\nfull output:\n%s", name, got, want, out)
+		}
+	}
+}
+
 func TestTypeforGenericPlaceholder(t *testing.T) {
 	src := `import { typefor, $ } from '@rhombus-std/primitives.extras';
 interface IThing<T> {}
@@ -459,6 +519,7 @@ export const kImport = typefor<IThing>().kind;
 export const kGlobal = typefor<string>().kind;
 export const kTag = typefor<Keyed<IThing, "redis">>().kind;
 export const kLit = typefor<"dev">().kind;
+export const kTuple = typefor<[IThing, string]>().kind;
 `
 	prog, app := buildTypeforWorkspace(t, src)
 	defer func() { _ = prog.Close() }()
@@ -472,6 +533,7 @@ export const kLit = typefor<"dev">().kind;
 		"kGlobal":       `"global"`,
 		"kTag":          `"tag"`,
 		"kLit":          `"literal"`,
+		"kTuple":        `"tuple"`,
 	}
 	for name, want := range cases {
 		if got := exprFor(t, out, name); got != want {

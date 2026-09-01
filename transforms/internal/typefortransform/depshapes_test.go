@@ -64,11 +64,11 @@ export const ctorValue = typefor(Ctor);
 }
 
 // TestTypeforValueArgRestParameterIsAKnownGap pins a deliberate scope
-// limitation: a REST parameter derives to a single slot whose type is the
-// parameter's own (tuple or array) type — tokens.DeriveTyped has no
-// tuple-expansion case, so a tuple-typed rest param's element types are not
-// individually reachable, and derivation reports valueArgUnderivableCode rather
-// than silently misrepresenting the signature's arity.
+// limitation: a REST parameter occupies a single slot whose type is the
+// parameter's own tuple type, while the call it answers to takes one argument
+// per tuple slot — expanding a rest parameter back into slots of its own is a
+// derivation tokens.DeriveTyped does not do, so it reports
+// valueArgUnderivableCode rather than misstating the signature's arity as one.
 func TestTypeforValueArgRestParameterIsAKnownGap(t *testing.T) {
 	src := `import { typefor } from '@rhombus-std/primitives.extras';
 interface IDep {}
