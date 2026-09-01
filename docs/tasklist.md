@@ -698,7 +698,23 @@ being a special case in the planner: the manifest is seeded with a factory
 `(request: Request) => request.serviceProvider`, addressed as `IServiceProvider`. The provider
 becomes an ordinary registration, and `visitServiceProvider` and its plan kind go.
 
-- [ ] Seeding it needs a lifetime in a vocabulary the seeder owns. Every registration names one, the
+The lifetime it is seeded under is `Control` — a symbol `di.core` declares and exports, not a string
+(a tagged vocabulary is arbitrary strings, so `'control'` is a legal scope tag and would be
+ambiguous) and not `Symbol.for` (its only advantage is surviving duplicate copies, which the
+single-instance guard already makes impossible and loud). The slot type is `Lifetime | typeof
+Control` — one engine-owned value declared once on `Registration`, not the unbounded erasure that
+`Addon<any>` would be. The ENGINE answers a `Control`-lifetime registration itself, the way it
+already answers a `Control<T>` address ask, so no model sees one, no vocabulary changes, and nothing
+can cache it because `beforeConstruct` never fires. That retires `visitServiceProvider` and its plan
+kind, replacing a hardcoded special case with a general one.
+
+Per-ask is not transient. Transient is fresh per construction; this is one per ask, shared for the
+whole lifecycle including latebounds. The model owns scopes, the engine owns asks, which is why it
+does not belong in any model's vocabulary. Three consumers justify the mechanism: `IServiceProvider`,
+`Request` itself, and `Diagnostics`, which already mints a per-ask compartment and had to fake a
+lifetime to get registered.
+
+- [ ] ~~Seeding it needs a lifetime in a vocabulary the seeder owns.~~ ANSWERED above. Every registration names one, the
       value must be transient — a cached provider is wrong — and only the model knows how to spell
       transient, so the MODEL seeds this, not the builder.
       A request is captured for the whole lifecycle of the `getService` that opened it, including any
@@ -732,6 +748,24 @@ becomes an ordinary registration, and `visitServiceProvider` and its plan kind g
       differing only in element type — `Iterable<Foo>` against `Iterable<Bar>` — accept identical
       values, and dispatch falls to whichever is tried first. The flooring is deliberate and
       honest; whether the ambiguity is reported is the open part.
+
+## The lifetime models are written again from scratch (2026-09-01)
+
+Deleted in `libraries/di/src/lifetime/` — the three models and the machinery their shape depended on
+(scope binding, root anchor, attributing hooks). Owner-ruled: written clean-room, by a context that
+has never read the deleted source, because that source is shaped by the very machinery §230 removes
+and a reader reproduces it by gravity.
+
+Two conditions on the brief:
+
+- The CODE is off-limits, the CONTRACT is not. `tests/di.test`'s model suites travel with the brief
+  as the executable specification — behaviour without structure. 22 of 30 files there do not load
+  with the models absent; that list is the specification.
+- The reference implementation is the oracle, never the deleted port. The standing rule is that the
+  standard model always matches the reference's behaviour, and the reference's own structure is
+  nothing like this engine's, so consulting it cannot contaminate the shape.
+
+Sequencing: after the builder reshape, not alongside — the models are built against the new door.
 
 ## Node-vocabulary collapse — review findings (2026-09-01)
 
