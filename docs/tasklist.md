@@ -655,14 +655,18 @@ class Builder<T> {
 
 The static overload is the lock-on: it infers `T` from whichever addon opens the chain and answers a
 `Builder<T>`, and the instance overload then demands that same `T`. Services or the model may come
-first and either fixes the vocabulary. A separate widened interface is not needed — an addon that
-does not care about the vocabulary declares `Addon<any>`.
+first and either fixes the vocabulary.
+
+NO ADDON WIDENS THE BUILDER'S TYPE. Every addon is generic in the vocabulary and threads it —
+`class MyAddon<T> implements Addon<T>` — including one with no opinion about it. Declaring
+`Addon<any>` is the failure this forbids: it erases the vocabulary, so the builder locks onto nothing
+and every later addon passes whatever it carries. An addon needing a lifetime value it cannot know
+takes one from its caller, which is what `auditAddon`'s `...lifetime: LifetimeArgument<Lifetime>`
+already does. A separate widened interface is therefore not needed and must not exist.
 
 - [ ] Build it. Today `ContainerBuilder<Lifetime>` takes its parameter from `usingLifetimeModel`
       specifically, `Addon` is not generic, and `AddonInstallation.registrations` is
       `Iterable<Registration<any>>`.
-- [ ] Decide what happens when an addon that names no vocabulary opens the chain: `T` infers `any`,
-      so the builder locks onto nothing and every later addon passes whatever it carries.
 
 ## Validation options surface
 
