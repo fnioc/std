@@ -4080,3 +4080,85 @@ which tags get opened under which, so no static order exists; its runtime refusa
 `validation(standardValidationPolicy, …)`.
 
 _Owner-ruled 2026-08-30, Claude-recorded._
+
+## §230 — The resolution door carries a request; a lifetime model is a tandem pair
+
+`getService(Type)` becomes `getService(Request)` for the middleware chain and the engine;
+`IServiceProvider` keeps its own signature. `ServiceProvider` allocates one `Request` per call and
+puts itself on it, and it is the only `IServiceProvider` implementation.
+
+```ts
+interface Request {
+  readonly type: Type;
+  readonly serviceProvider: IServiceProvider;
+  [key: symbol]: unknown;
+}
+```
+
+The index signature declares the mechanism without naming any contents, so a core type carries no
+lifetime vocabulary while an addon still attaches what it needs, under a symbol it exports. A string
+key would be reachable by anyone who types the same string with nothing recording that they did; an
+imported symbol is reachable only through an import a reviewer can see. Attachment happens on the way
+DOWN, before `next` — the object is shared with every layer beneath and with the engine, so a write
+on the unwind is invisible to everything it was meant for.
+
+A lifetime model contributes a pair. The middleware is the inner half: it installs the whole
+implementation through `Control<IEngineHooks>` once, at fold time, and holds every cache in that
+closure. The outer half is the single wrap a scope factory puts over the already-folded chain,
+attaching the scope it closes over. `create()` returns the pair for the singleton scope too, so the
+container's own provider is born attached and no unattached provider exists to be handed out. The
+chain is folded by `di.build` and nowhere else.
+
+`beginResolve` receives the request and reads the attachment once into the behavior's own slot;
+every later hook takes it from `construction.state`. `injected ?? …` keeps nested resolutions
+inheriting the enclosing scope, so the attachment is consulted only at the door.
+
+Opening a scope therefore COMPOSES rather than installs. Nothing accumulates on the chain, which is
+what makes an outer scope answering an inner scope's ask structurally impossible rather than governed
+by a precedence rule, and what stops per-node cost scaling with nesting depth.
+
+A scope never captures a value built from a latebound argument: the address is the cache key and it
+does not carry the arguments, so a cached value would be handed to callers whose arguments could
+never have produced it. The taint propagates upward — a construction is uncacheable when anything in
+its subtree consumed a latebound argument — and it is a static property of the plan tree. Latebound
+calls bypassing the middleware chain is what makes this hold: they have no request and no provider to
+be re-pointed by, so their untainted dependencies can only file into the scope they were minted in.
+
+`Invoker` stays. Spelling a late registration as a branded argument was refused: a temporary
+registration produces a value the cache cannot honestly key, so an instance built from a registration
+that exists for one frame would be handed out afterwards to asks that could never have produced it.
+
+_Owner-ruled 2026-09-01, Claude-recorded._
+
+## §231 — An unregistered object or tuple type synthesizes when every member resolves
+
+All of them or none — one unresolvable member leaves the whole shape unsatisfiable rather than
+half-built, which is the rule tuple synthesis already applied to its members. `visitObject` composes a
+shape from its own properties on the same terms, and `#answer`'s existing order does the rest: a
+registration for the shape itself answers first, and only a miss falls through to building one.
+
+A NAME is a name: a named type resolves nominally, through a registration, and never composes from
+its members. Matching is identity modulo holes — no assignability, no width subtyping, no member
+search — and letting a named shape fall back to its members would be that analysis by another route.
+The difference is only the fallback. Registrations answer first for every address alike — `#answer`
+consults the registry before ever reaching a kind's own synthesis — so an anonymous shape is
+registerable exactly like a named one, and interning is what lets a registration made against one
+spelling be found by the same shape spelled somewhere else. What a named type lacks is the fallback:
+a miss ends there, where an anonymous shape goes on to compose from its members. A utility type lands
+on whichever side its alias leaves it, with no special case either way.
+
+Optional properties are carried as a union with `undefined`, since `ObjectType.members` holds no
+optional flag and `Type.isOptional` already defines optional as exactly that union. The union's
+literal fallback is what keeps an unresolvable optional property from failing the whole shape.
+
+Synthesis from shape requires the members to reach the planner. A named shape derives by its own name,
+which discards them, so a name resolves through a registration and never through synthesis; an
+anonymous one does not derive at all. Structural derivation in `typefor` is therefore the gap that
+gates this, not the planner.
+
+`visitTag` refuses for a reason of its own: synthesizing a tag would fall back to its base, so a keyed
+address would silently resolve to the unkeyed service. `visitCtor` and `visitAbstractCtor` have
+nothing to answer — a constructor value cannot be composed from a signature, only carried by a
+registration, and handing back a closure that constructs is what `visitFunc` already returns.
+
+_Owner-ruled 2026-09-01, Claude-recorded._

@@ -623,134 +623,28 @@ no product consumer afterwards and is deleted. `standard` already gated its equi
 `validateScopes`, so the two models now agree in shape — though `standard` defaults that flag ON
 where the older engine defaults it OFF, which remains a separate divergence.
 
-## Resolution door, late registration and the lifetime models (2026-09-01)
+## Resolution door and lifetime models (2026-09-01)
 
-**The door becomes a request object.** `getService(Type)` becomes `getService(Request)` for the
-middleware chain and the engine — `IServiceProvider` keeps its own signature. `ServiceProvider`
-allocates one `Request` per call and puts itself on it; it is the only `IServiceProvider`
-implementation and no others are to be written.
+Design recorded as §230. Open:
 
-```ts
-interface Request {
-  readonly type: Type;
-  readonly serviceProvider: IServiceProvider;
-  readonly [key: symbol]: unknown;
-}
-```
+- [ ] Scope and container disposal: the caches live in the middleware's closure, the thing disposed
+      is a `ServiceProvider`, and nothing links them.
+- [ ] Decide whether adding an addon to an already-built container is supported. If not, the dynamic
+      half of `HookChain` has no caller and deletes.
+- [ ] A latebound closure invoked after its minting scope is disposed — part of the disposal item.
+- [ ] Confirm the per-ask `Request` allocation replaces one rather than joining one, on a path whose
+      measured fixed cost is ~400ns.
+- [ ] Design the tagged model against the same tools.
+- [ ] Check whether `anchorRoot` and `ScopeBinding`'s bracketing still have a job.
 
-The index signature declares the mechanism without declaring any contents, so a core type carries no
-lifetime vocabulary while addons can still attach what they need. It is `readonly`, with the one
-layer that writes casting through `{ [key: symbol]: unknown }` — the cast is the point, since it
-makes every write a conspicuous act rather than a facility. `unknown` rather than `any` so reading
-forces a cast at the two sites that do it. Attaching happens on the way DOWN, before `next`: the
-object is shared with every layer beneath and with the engine, so a write on the unwind is invisible
-to everything it was meant for and mutates an object something else may still hold.
+## Structural synthesis (2026-09-01)
 
-A symbol rather than a keyed `properties` map: the map is reachable by anyone who types the same
-string, with nothing recording that they did, so cross-addon coupling happens silently. An exported
-symbol is equally reachable but only through an import a reviewer can see. It also keeps a `Map`
-allocation and its hashing off the per-ask path.
+Design recorded as §231.
 
-**Standard — the tandem pair.** The addon's `create()` returns a middleware and a scope factory
-built together, sharing one lexical symbol. The middleware is the inner half: it installs the whole
-lifetime implementation through `Control<IEngineHooks>` once, at fold time, and holds every cache in
-that closure. The outer half is the single wrap the scope factory puts over the already-folded
-chain, which attaches the scope it closes over. `create()` also returns the pair for the singleton
-scope, so the container's own provider is born attached and no unattached provider ever exists to be
-handed out. Root and `openScope` mint through the same function or they drift.
-
-The chain is folded by `di.build` and nowhere else; the factory does one additional wrap of the
-folded chain, never a re-fold. The engine knows nothing of middleware — no head reference, no chain
-of its own beyond hooks.
-
-**How the scope reaches the implementation.** `beginResolve` takes what is being asked, so with the
-door carrying a `Request` it receives the `Request`:
-
-```ts
-beginResolve: (request, injected) => injected ?? request[SCOPE],
-beforeConstruct: c => { const scope = c.state; /* ... */ },
-```
-
-One read, at the one point per resolution where reading is defined, straight into the behavior's own
-slot; every later hook takes it from `construction.state`. `injected ?? …` keeps nested resolutions
-inheriting the enclosing scope, so the fallback only fires at the door, where a real `Request`
-exists. No ambient plane, no read-outside-`beginResolve` rule to enforce, and no staleness — a later
-attachment on another resolution cannot reach back into one that already filed its state.
-
-**What this settles.** Opening a scope composes rather than installs, so nothing accumulates on the
-chain: the cross-scope leak — an outer scope's behavior answering and claiming an inner scope's ask —
-is structurally impossible rather than governed by a precedence rule. Per-node cost stops scaling
-with nesting depth, since one behavior is installed instead of one per open scope. Two earlier
-prerequisites dissolve: nothing needs a resolution entry that accepts injected states, and nothing
-needs `useHooks` to hand back its slot, because the behavior reads its own slot through
-`construction.state` already.
-
-**`Invoker` stays as it is.** Spelling a late registration as a branded argument —
-`Func<[Reg<Ctor<any[], Foo>>, SomethingElse], Foo>`, the `Reg` entries searched alongside the
-registry — is refused: a temporary registration produces a value the cache cannot honestly key. The
-address is what a scope caches under, and it does not identify the producer, so an instance built
-from a registration that exists for one frame would be handed out afterwards to asks that could
-never have produced it, shadowing the manifest's own registration for the rest of the scope's life.
-Two calls passing different `Reg` arguments would resolve to whichever ran first. `visitInvoker`
-keeps building its one-shot registration for the root, and `resolveFrame` stays a separate verb from
-`resolveLatebound`.
-
-**A scope never captures a value built from a latebound argument.** The address is the cache key
-and it does not capture the arguments, so a `scoped` or `singleton` registration reached through a
-latebound call would hand every later caller the value the first call's arguments produced —
-`make(clockA)` cached, `make(clockB)` a cache hit whose argument is silently discarded. The taint
-propagates upward: a construction is uncacheable when anything in its subtree consumed a latebound
-argument, not only the node that read one, and that is a static property of the plan tree — whether
-it contains a `LateBoundArgPlan`. `visitInvoker`'s synthesized registration is the same case, its
-callable being an argument in all but name.
-
-The engine surfaces the fact and the model acts on it: caching is the model's business, and `node`
-is opaque, so one bit has to reach `Hooks.Construction`. Open: whether a tainted `scoped` or
-`singleton` registration resolves transiently — matching `tagged`'s unmatched-tag ruling — or errors,
-which is louder for anyone who genuinely expected singleton identity.
-
-Latebound calls bypassing the middleware chain is what makes this hold. `resolveFrame` and
-`resolveLatebound` call `Plan.realize` directly, so a latebound invocation has no `Request` and no
-provider to be re-pointed by: its scope is the one captured where the callable was minted, and its
-untainted dependencies cache there and nowhere else. A `Request` on that path would let the same
-closure, invoked through a different provider, file its dependencies into a scope it was never
-created in.
-
-**Tagged is not designed yet.** The same tools — the request object, symbol attachment, a tandem
-pair, composing rather than installing — have to be applied to it and a design reached. Its per-scope
-layers discriminate by tag where `standard` has no discriminator, so it may not need the same shape;
-what it must not keep is a layer installed per open scope. Two known wrinkles: an innermost blocker
-cannot infer "unmatched" from arrival alone, because a matching layer still delegates inward to
-construct and claims on the unwind, so both paths reach it identically; and two open scopes carrying
-the same tag reproduce the leak in miniature unless same-tag nesting is refused or the walk runs
-nearest-first.
-
-### Open, needing a decision
-
-1. **Scope and container disposal.** The caches live in the middleware's closure and the thing a
-   caller disposes is a `ServiceProvider`, so closing a scope has to reach back into that closure to
-   drop its cache. Same direction across the same boundary as attachment, and it wants the same
-   mechanism rather than a second one. The container's own disposal is the same link with the
-   singleton scope, not a separate concern.
-2. **Does anything install hooks after build?** Scopes compose, `standard` installs once at fold,
-   audit and diagnostics install at build. If nothing installs late, the dynamic half of `HookChain`
-   — install-after-the-fact, disposal restoring a captured previous head, the slot free list, the
-   LIFO latch and the out-of-order quadratic — has no caller and deletes, which moots the two open
-   verdicts on the rework rather than answering them. The question is whether adding an addon to an
-   already-built container is a supported scenario.
-3. **A latebound closure invoked after its scope is disposed.** Its untainted dependencies still
-   resolve into the scope captured where it was minted, which may be gone. Part of the disposal
-   question above rather than separate from it.
-4. **Does the engine get smaller?** `anchorRoot` conflates capturing HEAD with installing a root
-   layer and has no remaining job once the root is just a scope the model makes. `ScopeBinding`'s
-   dynamic-extent bracketing existed to bound when a scope's keeping was installed; with nothing
-   installed it plausibly collapses to minting a provider.
-5. **Per-ask `Request` allocation.** One object per `getService` lands on the path the rework was
-   clearing, where the measured fixed cost is roughly 400ns per ask. Confirm it replaces an
-   allocation rather than joining one.
-
-### Expected payoff, to verify against the benchmarks
-
-Per-node cost constant in nesting depth rather than proportional to the enclosing scopes on the
-stack; one lifetime behavior installed instead of two; no chain install or dispose on scope open or
-close; and one `bind` or wrap per scope-open in place of the per-ask fold.
+- [ ] `typefor` cannot derive a structural or tuple type — HELD pending the tuple work landing.
+- [ ] Derivation must spell an optional property as a union with `undefined` — `ObjectType.members`
+      carries no optional flag, and `Type.isOptional` already defines optional as exactly that union,
+      so the union's literal fallback is what keeps a missing optional from failing the whole shape.
+- [ ] Restate `visitTag`'s `undefined` as the refusal it is, with its reason.
+- [ ] Replace `visitCtor` / `visitAbstractCtor`'s "awaits its design ruling" comments with stated
+      refusals — there is nothing for them to answer.
