@@ -40,7 +40,7 @@ The most common thing you'll reach for directly from this package is
 `getHostedServiceManifest`, for registering long-running work:
 
 ```ts
-import { di, noop } from '@rhombus-std/di';
+import { di, noopLifetimeAddon } from '@rhombus-std/di';
 import { Manifest } from '@rhombus-std/di.core';
 import { BackgroundService, getHostedServiceManifest, hostedServiceCollectionType } from '@rhombus-std/hosting.core';
 import type { AbortSignal } from '@rhombus-std/primitives';
@@ -57,7 +57,7 @@ class Worker extends BackgroundService {
 let services: Manifest<'singleton'> = Manifest.empty<'singleton'>();
 services = services.addMany(getHostedServiceManifest(Worker));
 
-const provider = di.usingLifetimeModel(noop()).usingManifest(services).build();
+const provider = di.usingLifetimeModel(noopLifetimeAddon()).usingManifest(services).build();
 const workers = provider.resolve(hostedServiceCollectionType()); // [Worker instance]
 ```
 

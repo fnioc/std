@@ -316,7 +316,7 @@ Only work this session owns; the lane above is another session's.
 **In flight**
 
 - [x] §229 captivity is model-owned — landed (399c3352): generic seam deleted;
-      `validateStandardCaptivity` middleware; `standard({ validateScopes, validateOnBuild })`,
+      `validateStandardCaptivity` middleware; `standardLifetimeAddon({ validateScopes, validateOnBuild })`,
       independent, both default on; model-local `ScopedAtRootError` root refusal; §225 reach rule
       model-contained; disposed-factory guard in both models; hosting side done by the other lane.
 
@@ -346,8 +346,8 @@ Only work this session owns; the lane above is another session's.
 - [x] Disposal hazard — RULED mirror the reference: `openScope()` on a factory whose enclosing
       scope is disposed throws `DisposedScopeError`. Queued with the lifetime follow-ups.
 - [x] Hosting drops `ServiceProviderOptions.validateScopes` — done by the other lane under §229;
-      surfaced as a public hosting API removal. If hosting ever composes on `standard()`, the
-      reference's two flags map 1:1 onto `standard({ validateScopes, validateOnBuild })`.
+      surfaced as a public hosting API removal. If hosting ever composes on `standardLifetimeAddon()`, the
+      reference's two flags map 1:1 onto `standardLifetimeAddon({ validateScopes, validateOnBuild })`.
 
 **Queued** (carried from the burned session handoff; each behind the item above it only where stated)
 
@@ -364,9 +364,9 @@ Only work this session owns; the lane above is another session's.
 - [x] §210 captive-error label wording (07c9a9fb): `CaptiveDependencyError` named the captor "a
       singleton" unconditionally, wrong vocabulary for a shared di.core error under §210's
       generalized tiers — reworded to name the actual problem (a longer-lived keeper outliving a
-      shorter-lived dependency) without asserting which tier. `ResolveAudit` placeholder wording
+      shorter-lived dependency) without asserting which tier. `Audit` placeholder wording
       (90c77ff3): named the real cause (this container never installed the addon's hooks) and the
-      fix (`useAddon(resolveAudit())`) plainly, dropping the "filing this registration by hand"
+      fix (`useAddon(auditAddon())`) plainly, dropping the "filing this registration by hand"
       indirection. `Behavior` hover-doc IDE check: OK, no edit — verified via the TypeScript
       compiler API that hovering `Behavior` at every import site resolves through the alias to
       `Behavior.ts`'s own TSDoc.
@@ -378,8 +378,17 @@ Only work this session owns; the lane above is another session's.
       `@rhombus-std/di.extras` devDependency the `add<T>()` sugar in `manifests.ts` needs for the
       ttsc inline-body transform, invisible to knip for the same reason `ttsc`/`@ttsc/unplugin`
       already are.
-- [ ] Bench re-run — DROPPED (owner-ruled 2026-08-30): no bench package or script exists anywhere
-      in the repo or its git history; no substitute attempted.
+- [x] Bench re-run — SUPERSEDED by the owner's 2026-08-30 instruction to dig di-classic out of tag
+      `di2-handoff` (9aa32c95) and benchmark it against this branch. Both engines built and measured
+      as their SHIPPED dist bundles, one harness copied verbatim into each side, 15 interleaved
+      rounds pinned to one core, minimum per scenario. Result: against classic, this engine on the
+      `standard` model is ~6-12x slower on uncached paths and ~2x on cached ones, worst at scope
+      creation; on the `noop` model it is ~1.7x (median), beating classic on the 10-wide graph. The
+      lifetime model, not the resolution engine, carries the gap — `standard` costs ~3.8x `noop`.
+      Suites live in the scratch worktrees `+di-classic-bench` / `+di-current-bench`.
+      Two caveats of record: `enumerable-5` is not like-for-like (classic has no collection concept,
+      so it is a keyed regex key-scan), and classic ran with `validateScopes`/`validateOnBuild` off —
+      their documented defaults — where `standardLifetimeAddon()` defaults both ON, which is not yet priced.
 - [ ] Endgame shape (owner-ruled 2026-08-30): #274 merges LOCALLY; then the squash plus the
       depender fixes that make build+tests green go up as ONE commit; #366 closes then.
 - [x] Two audits LANDED (wf_dfa573c3-c7a, 2026-08-30): defects (Fable scan+verify;
@@ -444,13 +453,13 @@ where typefor is unavailable (all of tests/), hand-rolling is the path; model er
 
 | should have used                                                                                                                              | used instead                                                                                                                                                 |
 | --------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| `iterable(() => this.#enclosing().drop(1))` (`@rhombus-toolkit/obj`)                                                                          | hand-built `{ [Symbol.iterator]: () => ... }` object literal — `libraries/di/src/addons/resolve-audit.ts:35`                                                 |
-| `this.#enclosing().find(isDefined)`                                                                                                           | `this.#enclosing().next().value` — `libraries/di/src/addons/resolve-audit.ts:31`                                                                             |
+| `iterable(() => this.#enclosing().drop(1))` (`@rhombus-toolkit/obj`)                                                                          | hand-built `{ [Symbol.iterator]: () => ... }` object literal — `libraries/di/src/addons/audit-addon.ts:35`                                                   |
+| `this.#enclosing().find(isDefined)`                                                                                                           | `this.#enclosing().next().value` — `libraries/di/src/addons/audit-addon.ts:31`                                                                               |
 | `iterable(() => Iterator.from(plan.types).map(inner => self.visit(inner, context)))` (`@rhombus-toolkit/obj`)                                 | hand-built `{ *[Symbol.iterator]() { ... } }` object literal — `libraries/di/src/internal/Plan/RealizeVisitor.ts:191`                                        |
 | `!this.#registry.getMatches(promised).some(isDefined)`                                                                                        | `.getMatches(promised).next().done` emptiness probe — `libraries/di/src/internal/Plan/PlannerVisitor.ts:112`                                                 |
 | `registry.getMatches(address).some(isDefined)`                                                                                                | `!registry.getMatches(address).next().done` emptiness probe — `libraries/di/src/internal/Plan/Plan.ts:271`                                                   |
 | `isCtorRegistration(left)` / `isFactoryRegistration(left)` / `isValueRegistration(left)` — this module's own guards, already used by `kind()` | `'ctor' in left` / `'factory' in left` / `'value' in left` hand-rolled branches in `equals()` — `libraries/di.core/src/Registration/op.ts:40`                |
-| `typefor<ResolveAudit>()` inline at each use site                                                                                             | hoisted local `const address = typefor<ResolveAudit>()` — `libraries/di/src/addons/resolve-audit.ts:86`                                                      |
+| `typefor<Audit>()` inline at each use site                                                                                                    | hoisted local `const address = typefor<Audit>()` — `libraries/di/src/addons/audit-addon.ts:86`                                                               |
 | `typefor<StandardScopeTeardown>()` inline at each use site                                                                                    | hoisted address const `StandardScopeTeardown.address` — `libraries/di/src/lifetime/models/standard.ts:44`                                                    |
 | `typefor<TaggedScopeTeardown>()` inline at each use site                                                                                      | hoisted address const `TaggedScopeTeardown.address` — `libraries/di/src/lifetime/models/tagged.ts:36`                                                        |
 | `extends DiError` (`@rhombus-std/di.core` error taxonomy)                                                                                     | `class DisposedScopeError extends Error` — `libraries/di/src/lifetime/models/standard.ts:48`                                                                 |
@@ -474,3 +483,274 @@ habit of minting such fields):
 - [x] `TaggedScopeTeardown.address` — deleted (1cc4cde8)
 - [ ] `CompositeChangeToken` — `libraries/options.augmentations/src/CompositeChangeToken.ts:9` (depender-punted)
 - [x] `openOptionsType` — deleted (1cc4cde8)
+
+## Engine cost structure — 2026-08-31
+
+Measurements live in `docs/benchmarks.md`. This section records what the code review of both
+engines establishes, and what it predicts.
+
+**Where the orders differ, cold against hot.**
+
+| stage                                 | classic cold            | classic hot                  | current cold | current hot  |
+| ------------------------------------- | ----------------------- | ---------------------------- | ------------ | ------------ |
+| find the registration for an address  | O(1) hash               | O(1) per node, every resolve | O(n) scan    | not executed |
+| plan a resolution                     | O(d·w) interpreted live | O(d·w), re-walked every call | O(d·w·n)     | O(1)         |
+| resolve a collection                  | O(1) + O(c)             | O(1) + O(1)                  | O(n)         | O(1)         |
+| match an open or generic registration | O(c·g log c)            | O(1)                         | O(n·g)       | O(1)         |
+
+Splitting the columns inverts the story the absolute timings tell. This engine is heavier cold and
+structurally lighter hot: the other re-interprets the graph on every resolve, cheap per node but
+paid every time, where this one pays once per distinct address and then answers the whole subtree
+from a memo. What it loses by on the warm path is constants, not order.
+
+**Where the orders differ.** Address lookup is the only stage differing in order: a registration
+is found by scanning the whole registry (`Registry.getMatchesForEither`), where the older engine
+hashes a token. Open/generic matching scales the same way — every registration is tested, rather
+than bucketing by base token first. Both costs are paid ONCE per distinct address and then
+eliminated by the plan memo (`Plan.from`, a `registry → address → args` WeakMap chain), so warm
+resolution is amortised O(1) in registry size. Measured directly: a warm resolve performs ZERO
+registry scans — 10 at build, 3 on the first resolve of a 3-node graph, none across 1000 further
+resolves. Total cold cost grows with (distinct addresses resolved x registrations), which is
+startup-bounded.
+
+**Where only the constants differ.** Everything else. The resolve path carries a fixed per-ask
+cost of roughly 2.3us plus roughly 600ns per constructed node, fitted across four graph shapes:
+
+| shape         | nodes | extra over the older engine |
+| ------------- | ----- | --------------------------- |
+| leaf          | 1     | 2882 ns                     |
+| factory       | 2     | 3382 ns                     |
+| depth-8 chain | 8     | 7467 ns                     |
+| width-10 fan  | 11    | 8871 ns                     |
+
+The fixed part dominates a shallow graph and amortises over a deep one, which is why a one-node
+resolve costs 9.2x and an eight-deep one 2.2x.
+
+**Two redundancies account for per-ask work, and are the first things to measure a fix against.**
+
+- `Engine.ts:80` folds the entire hook chain afresh on every `getService`, allocating a closure
+  per hook per installed behaviour plus a slots array. The snapshot semantics it provides — a
+  resolution keeps the chain it opened with — survive a version counter on the install list.
+- `ScopeBinding.ts:191` installs `probing` and `keeping` on every dispatch and removes them after,
+  so the install list genuinely differs per ask and defeats a naive version cache. The two
+  compound: the churn is what makes the rebuild real work rather than a cache hit.
+
+Prediction worth testing: removing both should collapse the fixed per-ask cost, taking a one-node
+resolve from ~9x toward ~2x while a deep graph barely moves.
+
+**Cheaper leads, unmeasured.** `constructionForSlot` mints a view object per behaviour per node per
+hook. A transient registration reads its lifetime and switches twice per node to conclude there is
+nothing to keep — `registration.lifetime === model.transient` short-circuits both hooks, entirely
+inside the model. `bindGenerics` allocates a bindings record before knowing whether a candidate
+matches.
+
+## Hook chain — design, rework and open verdicts (2026-08-31)
+
+**The shape of the cost.** A warm resolve carries a fixed per-ask cost plus a per-node cost, and
+both scale with the number of installed behaviours: roughly 400ns per ask and 260ns per node PER
+BEHAVIOUR, measured identically under `noop`, `standard` and `tagged`. The rate being the same
+across models is the finding — it is the cost of participating in the chain, not of anything a
+model computes. `standard` is two behaviours, which accounts for nearly all its overhead.
+
+**Why it was expensive.** Hooks are added at the end farthest from the engine, which is the most
+deeply nested position, so adding one rebuilt all k layers. The per-ask fold allocated a chain
+record plus four closures per behaviour, discarded and rebuilt identically on the next ask. The
+per-node cost is `constructionForSlot` minting a private view per behaviour per hook, three times
+per construction, plus a `states.slice()`, a context spread and an `Object.freeze` per node
+regardless of how many behaviours are installed.
+
+**Why the fold could not simply be deleted.** It is what gives a resolution a snapshot of the
+install list. Resolutions interleave through `resolveAsync` and several scopes are open at once, so
+reading a mutable list live is wrong for any concurrent resolution, not merely for a latebound
+closure firing after teardown. Replacing the fold with live arrays passes 253 of 254 tests and
+fails exactly that one.
+
+**The design that resolves it: persistence, not promises.** An immutable linked node per hook —
+`{ hook, slot, next }` — with `next` pointing outward. Extending allocates one node and shares the
+entire tail, so adding a behaviour is O(1) instead of a rebuild, and immutability gives the
+snapshot property structurally rather than by copying. Walk direction is free either way: head-to-
+tail for farthest-first, recursion applying on the unwind for farthest-last. A promise-like type
+would add value-threading and a failure channel we do not want — modelling a veto as a rejection
+uses the error channel for a normal outcome. What is worth taking from promises is the immutability
+that makes appending safe, not the interface.
+
+**Ruled: the single door.** Everything reaches capability through the container's one resolution
+door. Side channels are violations — no `WeakMap` or `Map` keyed on constructions, nodes, scopes or
+providers, no module-level registry, no back-channel between a behaviour and the engine outside the
+hook contract. Hooks are legitimate only because a behaviour obtains `IEngineHooks` as a service
+resolved through that door. Per-resolution data travels in the threaded state slots; capability
+travels through the door. Reaching for a `WeakMap` to attach data is the tell that a boundary has
+been misread.
+
+**Rework landed, uncommitted.** `libraries/di.core/src/HookChain.ts` is new and holds the layer
+node, the four walkers and the `HookChain` value; `Behavior` is types only and its namespace is
+gone; `Engine` carries a `#chain` value and a `#freeSlots` list in place of the install array and
+the fold. Slots are assigned per behaviour and carried on every layer it mints. Disposal restores
+the captured previous head when it is the most recent install and rebuilds only the layers inside
+the removed one otherwise. Gates green: di.test 287 pass / 6 skip / 0 fail with no test edited,
+lint clean in di and di.core, `tsc` clean across the 15 libraries depending on di.core.
+
+**Adversarial verdicts.** Upheld: in-flight isolation including latebound closures after teardown;
+per-behaviour slot isolation across differing hook subsets; farthest-holds-final-authority
+uniformly with the middleware form overriding.
+
+Refuted, and PRE-EXISTING rather than caused by the rework — the important one: with several scopes
+open, a construction belonging to one scope IS kept and claimed by another's behaviour. Every
+scope's `keeping` installs on the one engine-wide chain, bracketed only by the dynamic extent of
+`ScopeBinding.dispatch`. While an outer dispatch is on the stack and an inner scope is asked, both
+keepings are layers of the chain the inner ask captures; `beforeConstruct` runs farthest-first so
+the outer scope can answer the inner ask from its own cache, and with nothing cached both scopes'
+`afterConstruct` claim the instance, landing it in two scopes' instance maps. The same precedence
+holds under the previous fold.
+
+Refuted, rework-specific and modest: an unimplemented hook is not free, because `RealizeVisitor`
+builds `beforeConstruct`'s apparatus — construction record, `states.slice()`, `Object.freeze`,
+context spread — before the chain is consulted, on every node even when nothing is installed; and
+out-of-order disposal misses the LIFO latch, so disposing many installs oldest-first is quadratic.
+
+**Also ruled this session.** A model may return bare HEAD rather than anchoring a root: `standard`
+needs its root because singletons live there, `tagged` does not and pays for a root that can never
+own anything. `anchorRoot` conflates capturing HEAD with installing a root layer; capturing costs
+nothing at request time because a middleware factory runs once at fold time and can hand back
+`next` unchanged. Scope factories wrap the captured HEAD, so N scopes are N parallel lifetime
+layers over one shared chain, and a child replaces rather than layers — nesting lives in the scope
+graph, not the middleware stack.
+
+**Tagged divergence fixed.** An unmatched tag now resolves transiently instead of throwing, which
+is what the older engine does: a scope-tagged registration finding no matching open frame resolves
+transiently by default and errors only under opt-in scope validation. `ScopeTagUnmatchedError` had
+no product consumer afterwards and is deleted. `standard` already gated its equivalent behind
+`validateScopes`, so the two models now agree in shape — though `standard` defaults that flag ON
+where the older engine defaults it OFF, which remains a separate divergence.
+
+## Resolution door, late registration and the lifetime models (2026-09-01)
+
+**The door becomes a request object.** `getService(Type)` becomes `getService(Request)` for the
+middleware chain and the engine — `IServiceProvider` keeps its own signature. `ServiceProvider`
+allocates one `Request` per call and puts itself on it; it is the only `IServiceProvider`
+implementation and no others are to be written.
+
+```ts
+interface Request {
+  readonly type: Type;
+  readonly serviceProvider: IServiceProvider;
+  readonly [key: symbol]: unknown;
+}
+```
+
+The index signature declares the mechanism without declaring any contents, so a core type carries no
+lifetime vocabulary while addons can still attach what they need. It is `readonly`, with the one
+layer that writes casting through `{ [key: symbol]: unknown }` — the cast is the point, since it
+makes every write a conspicuous act rather than a facility. `unknown` rather than `any` so reading
+forces a cast at the two sites that do it. Attaching happens on the way DOWN, before `next`: the
+object is shared with every layer beneath and with the engine, so a write on the unwind is invisible
+to everything it was meant for and mutates an object something else may still hold.
+
+A symbol rather than a keyed `properties` map: the map is reachable by anyone who types the same
+string, with nothing recording that they did, so cross-addon coupling happens silently. An exported
+symbol is equally reachable but only through an import a reviewer can see. It also keeps a `Map`
+allocation and its hashing off the per-ask path.
+
+**Standard — the tandem pair.** The addon's `create()` returns a middleware and a scope factory
+built together, sharing one lexical symbol. The middleware is the inner half: it installs the whole
+lifetime implementation through `Control<IEngineHooks>` once, at fold time, and holds every cache in
+that closure. The outer half is the single wrap the scope factory puts over the already-folded
+chain, which attaches the scope it closes over. `create()` also returns the pair for the singleton
+scope, so the container's own provider is born attached and no unattached provider ever exists to be
+handed out. Root and `openScope` mint through the same function or they drift.
+
+The chain is folded by `di.build` and nowhere else; the factory does one additional wrap of the
+folded chain, never a re-fold. The engine knows nothing of middleware — no head reference, no chain
+of its own beyond hooks.
+
+**How the scope reaches the implementation.** `beginResolve` takes what is being asked, so with the
+door carrying a `Request` it receives the `Request`:
+
+```ts
+beginResolve: (request, injected) => injected ?? request[SCOPE],
+beforeConstruct: c => { const scope = c.state; /* ... */ },
+```
+
+One read, at the one point per resolution where reading is defined, straight into the behavior's own
+slot; every later hook takes it from `construction.state`. `injected ?? …` keeps nested resolutions
+inheriting the enclosing scope, so the fallback only fires at the door, where a real `Request`
+exists. No ambient plane, no read-outside-`beginResolve` rule to enforce, and no staleness — a later
+attachment on another resolution cannot reach back into one that already filed its state.
+
+**What this settles.** Opening a scope composes rather than installs, so nothing accumulates on the
+chain: the cross-scope leak — an outer scope's behavior answering and claiming an inner scope's ask —
+is structurally impossible rather than governed by a precedence rule. Per-node cost stops scaling
+with nesting depth, since one behavior is installed instead of one per open scope. Two earlier
+prerequisites dissolve: nothing needs a resolution entry that accepts injected states, and nothing
+needs `useHooks` to hand back its slot, because the behavior reads its own slot through
+`construction.state` already.
+
+**`Invoker` stays as it is.** Spelling a late registration as a branded argument —
+`Func<[Reg<Ctor<any[], Foo>>, SomethingElse], Foo>`, the `Reg` entries searched alongside the
+registry — is refused: a temporary registration produces a value the cache cannot honestly key. The
+address is what a scope caches under, and it does not identify the producer, so an instance built
+from a registration that exists for one frame would be handed out afterwards to asks that could
+never have produced it, shadowing the manifest's own registration for the rest of the scope's life.
+Two calls passing different `Reg` arguments would resolve to whichever ran first. `visitInvoker`
+keeps building its one-shot registration for the root, and `resolveFrame` stays a separate verb from
+`resolveLatebound`.
+
+**A scope never captures a value built from a latebound argument.** The address is the cache key
+and it does not capture the arguments, so a `scoped` or `singleton` registration reached through a
+latebound call would hand every later caller the value the first call's arguments produced —
+`make(clockA)` cached, `make(clockB)` a cache hit whose argument is silently discarded. The taint
+propagates upward: a construction is uncacheable when anything in its subtree consumed a latebound
+argument, not only the node that read one, and that is a static property of the plan tree — whether
+it contains a `LateBoundArgPlan`. `visitInvoker`'s synthesized registration is the same case, its
+callable being an argument in all but name.
+
+The engine surfaces the fact and the model acts on it: caching is the model's business, and `node`
+is opaque, so one bit has to reach `Hooks.Construction`. Open: whether a tainted `scoped` or
+`singleton` registration resolves transiently — matching `tagged`'s unmatched-tag ruling — or errors,
+which is louder for anyone who genuinely expected singleton identity.
+
+Latebound calls bypassing the middleware chain is what makes this hold. `resolveFrame` and
+`resolveLatebound` call `Plan.realize` directly, so a latebound invocation has no `Request` and no
+provider to be re-pointed by: its scope is the one captured where the callable was minted, and its
+untainted dependencies cache there and nowhere else. A `Request` on that path would let the same
+closure, invoked through a different provider, file its dependencies into a scope it was never
+created in.
+
+**Tagged is not designed yet.** The same tools — the request object, symbol attachment, a tandem
+pair, composing rather than installing — have to be applied to it and a design reached. Its per-scope
+layers discriminate by tag where `standard` has no discriminator, so it may not need the same shape;
+what it must not keep is a layer installed per open scope. Two known wrinkles: an innermost blocker
+cannot infer "unmatched" from arrival alone, because a matching layer still delegates inward to
+construct and claims on the unwind, so both paths reach it identically; and two open scopes carrying
+the same tag reproduce the leak in miniature unless same-tag nesting is refused or the walk runs
+nearest-first.
+
+### Open, needing a decision
+
+1. **Scope and container disposal.** The caches live in the middleware's closure and the thing a
+   caller disposes is a `ServiceProvider`, so closing a scope has to reach back into that closure to
+   drop its cache. Same direction across the same boundary as attachment, and it wants the same
+   mechanism rather than a second one. The container's own disposal is the same link with the
+   singleton scope, not a separate concern.
+2. **Does anything install hooks after build?** Scopes compose, `standard` installs once at fold,
+   audit and diagnostics install at build. If nothing installs late, the dynamic half of `HookChain`
+   — install-after-the-fact, disposal restoring a captured previous head, the slot free list, the
+   LIFO latch and the out-of-order quadratic — has no caller and deletes, which moots the two open
+   verdicts on the rework rather than answering them. The question is whether adding an addon to an
+   already-built container is a supported scenario.
+3. **A latebound closure invoked after its scope is disposed.** Its untainted dependencies still
+   resolve into the scope captured where it was minted, which may be gone. Part of the disposal
+   question above rather than separate from it.
+4. **Does the engine get smaller?** `anchorRoot` conflates capturing HEAD with installing a root
+   layer and has no remaining job once the root is just a scope the model makes. `ScopeBinding`'s
+   dynamic-extent bracketing existed to bound when a scope's keeping was installed; with nothing
+   installed it plausibly collapses to minting a provider.
+5. **Per-ask `Request` allocation.** One object per `getService` lands on the path the rework was
+   clearing, where the measured fixed cost is roughly 400ns per ask. Confirm it replaces an
+   allocation rather than joining one.
+
+### Expected payoff, to verify against the benchmarks
+
+Per-node cost constant in nesting depth rather than proportional to the enclosing scopes on the
+stack; one lifetime behavior installed instead of two; no chain install or dispose on scope open or
+close; and one `bind` or wrap per scope-open in place of the per-ask fold.

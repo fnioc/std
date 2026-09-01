@@ -60,7 +60,7 @@ type is kept, while configure steps still accumulate:
 ```ts
 import type { IMemoryCache } from '@rhombus-std/caching.core';
 import { getMemoryCacheManifest, MEMORY_CACHE_TYPE } from '@rhombus-std/caching.memory';
-import { di, noop } from '@rhombus-std/di';
+import { di, noopLifetimeAddon } from '@rhombus-std/di';
 import { Manifest } from '@rhombus-std/di.core';
 
 let services: Manifest<unknown> = Manifest.empty<unknown>();
@@ -68,7 +68,7 @@ services = services.tryAdd(...getMemoryCacheManifest((options) => {
   options.sizeLimit = 1024;
 }));
 
-const provider = di.usingLifetimeModel(noop()).usingManifest(services).build();
+const provider = di.usingLifetimeModel(noopLifetimeAddon()).usingManifest(services).build();
 const cache: IMemoryCache = provider.resolve(MEMORY_CACHE_TYPE);
 ```
 

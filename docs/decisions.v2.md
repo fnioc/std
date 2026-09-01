@@ -3068,13 +3068,13 @@ a genuinely foreign domain needs one of its own. `beginResolve` opens each resol
 the state it runs under; a hook nobody files against composes to the identity, so a build with
 none pays nothing for it.
 
-Audit is an addon, `resolve-audit`, not engine machinery. It registers `ResolveAudit` the same way
+Audit is an addon, `audit-addon`, not engine machinery. It registers `Audit` the same way
 any other registration would — the placement ladder runs registration, then addon, before ever
 reaching for an engine change — threads its own frame chain through its own strand via `{state}`,
-and supplies the audit instance from `beforeConstruct` at the `ResolveAudit` address. The
-consequence is that audit is install-to-use: without the `resolve-audit` addon installed,
-resolving `ResolveAudit` is `Unsatisfiable` like any other unregistered address. The dedicated
-`resolve-audit` plan kind and its planner-side synthesis do not exist.
+and supplies the audit instance from `beforeConstruct` at the `Audit` address. The
+consequence is that audit is install-to-use: without the `audit-addon` addon installed,
+resolving `Audit` is `Unsatisfiable` like any other unregistered address. The dedicated
+`audit-addon` plan kind and its planner-side synthesis do not exist.
 
 _Owner-ruled; Claude-recorded 2026-08-27._
 
@@ -3126,7 +3126,7 @@ invocation frame, and a latebound call alike, re-entries included, never only th
 This is the ambient-adoption seam: an opener that reads ambient state decides there, and nothing
 downstream may bypass the handler to inject state directly. An addon that packs its own
 compartment into the threaded state therefore has to recognize a re-entry that hands its own
-pack back as `injected` — `resolve-audit` does this by remembering every pack it has minted and
+pack back as `injected` — `audit-addon` does this by remembering every pack it has minted and
 unwrapping to the inner state before folding in a fresh compartment, so a re-entered resolution
 never mistakes its own bookkeeping tuple for someone else's ambient value.
 
@@ -3447,11 +3447,11 @@ the quote above raises dissolves the same way an ordinary addon's registrations 
 it — `AddonInstallation.registrations` is `Iterable<Registration<any>>`, and the one call site that
 knows what `Lifetime` is casts it there, same for a lifetime model as for anything else.
 
-`resolveAudit` conforms fully: its `create()` returns `{ middleware: {...}, registrations: [...] }`,
+`auditAddon` conforms fully: its `create()` returns `{ middleware: {...}, registrations: [...] }`,
 and its placeholder factory's error now names `useAddon` and `middleware` rather than the retired
 `withAddon`/`hooks` spelling. The `validation` addon renames `install()` to `create()` and its
 error text's `withAddon` mention to `useAddon` — nominal conformance only. It does not yet answer
-through the addon-mint shape the way `resolveAudit` does; the owner is reviewing what `validation`
+through the addon-mint shape the way `auditAddon` does; the owner is reviewing what `validation`
 should look like under this contract next, so `AddonInstallation.atBuild` stays in the contract
 for now, read only by `validation`'s own installation, until that review lands.
 
@@ -3465,7 +3465,7 @@ correction: "yes, the member i named middleware is suppoed to be a middleware. d
 need to say that." An addon wanting a permanent hook plants it itself, at build, through the same
 door a scope's own keeping installs through: its middleware asks for `Control<IEngineHooks>`
 through `next`, calls `useHooks` on what comes back, and returns `next` unchanged — stepping aside
-once its install-time work is done. `resolveAudit` is the shipped example; nothing about the
+once its install-time work is done. `auditAddon` is the shipped example; nothing about the
 engine or the builder singles out "addon hooks" as their own kind of contribution any more — an
 addon that wants one installs it exactly the way anything else would.
 
@@ -3517,7 +3517,7 @@ this rename touches them.
 `Middleware.ts`'s own doc now states plainly what the type covers: a factory that composes once, at
 build, and may do install-time work of its own there — planting a permanent hook, sweeping the
 manifest — before answering the function each request runs through. Every consumer follows the
-rename: the `di.core` barrel (alphabetical position moves from after `ResolveAudit` to between
+rename: the `di.core` barrel (alphabetical position moves from after `Audit` to between
 `Manifest` and `Registration`), `Addon.ts`, `di.ts` (the `use()` member and its implementation),
 `di`'s own barrel re-export, and `MiddlewareServiceProvider.ts` — whose own class name is untouched,
 since it names what the class does (compose middleware around a provider), not the type it composes.
@@ -3585,7 +3585,7 @@ Alongside the reshape: the interface `ChainAddon` renames to `Addon` — `librar
 /ChainAddon.ts` moves to `Addon.ts`. `AddonInstallation` keeps its own name; only the addon contract
 itself was named `ChainAddon`, and nothing about what it describes changed. Every reference follows:
 the `di.core` barrel (alphabetical position moves ahead of `brands`), `di.ts`'s `useAddon` parameter,
-and both addons (`resolveAudit`, `validation`).
+and both addons (`auditAddon`, `validation`).
 
 _Owner-ruled; Claude-recorded 2026-08-28._
 
@@ -3752,7 +3752,7 @@ correctness intact regardless since this memo bypasses everything for what it do
 union-addressed ask never memoizes at all, since `populatedAddress` is the resolved member, never the
 union asked for; perf-only, since the scope's own instance map still answers it correctly.
 
-A `noop()` container's injected `IServiceProvider` slot is the engine's own augmented face now, not
+A `noopLifetimeAddon()` container's injected `IServiceProvider` slot is the engine's own augmented face now, not
 the bare `Engine`. `Engine` merges in `resolve`/`resolveMany` at the type level, but only the public
 `ServiceProvider` wrapper carries the `@augment` install (§209's addendum), so an `Engine` handed
 out directly threw `TypeError` the moment anything called the augmented verbs on it. `RealizeVisitor`
@@ -3761,7 +3761,7 @@ mints one `ServiceProvider` per `Engine` the first time anything asks, cached in
 reaches it, not a fresh wrapper each time. `RealizeVisitor.ts` was already committed as owner-approved
 before this fix; this is a post-approval change riding the same commit as the memo fix.
 
-Cheap hardening from the same review: `resolveAudit`'s `beforeConstruct`/`canonicalize`/
+Cheap hardening from the same review: `auditAddon`'s `beforeConstruct`/`canonicalize`/
 `afterConstruct` used to destructure `construction.state` as its own pack unconditionally; all three
 now check `isOwnPack` first, the same guard `beginResolve` already used, and pass the construction
 through unchanged when the state isn't this addon's own — nothing to contribute, nothing safe to
@@ -3770,12 +3770,12 @@ hypothetical miss can't remove an unrelated layer at the same index. Left alone,
 than fixed: the `{state: undefined}` keeper crash recorded open in §209, and `resolvesFrom`'s
 cross-container discrimination, which has no live path to reach today.
 
-Of the concerns this verification pass raised, one is resolved and two stay open. The `noop()` face
+Of the concerns this verification pass raised, one is resolved and two stay open. The `noopLifetimeAddon()` face
 fix — an injected `IServiceProvider` slot answering the engine's own augmented face rather than the
 raw `Engine` — is accepted as shipped: "pending your in-flight changes, everything is approved."
 Still open, awaiting the owner: `resolvesFrom`'s `WeakMap` keys the public `face`, and
 nothing distinguishes a provider's own identity from the container it resolves from if two bindings
-ever shared a face; and `ResolveAudit`'s placeholder registration body's wording ("the resolve-audit
+ever shared a face; and `Audit`'s placeholder registration body's wording ("the audit-addon
 addon answers this at construction") reads as an implementation note rather than caller-facing
 guidance.
 
@@ -3904,7 +3904,7 @@ carry as a magic number (verified equal to each handler's own declared arity in 
 absent hook is the first branch, `if (!hook) { return next; }`, so `compose`'s own body drops its
 per-member ternaries for four plain assignments — the guard lives once, at `composeMember`'s top,
 and the four per-hook second halves (how a HANDLER combines with `next`) never see an absent one.
-`resolve-audit.ts` restructures per the owner's own observation: its four hooks predefine together as
+`audit-addon.ts` restructures per the owner's own observation: its four hooks predefine together as
 one `Behavior<unknown>` object literal — contextual typing carries each slot's shape without a
 per-member alias annotation, each hook's doc sitting directly above its own property.
 `classifying-hooks.ts`'s `ConstructionHooks<State>` and `ScopeBinding.ts`'s `ownScopeKeeps`/
@@ -4036,7 +4036,7 @@ rather than by guards.
 
 The state-envelope pattern — an addon packing its compartment over "whatever sits beneath",
 recognized by identity and unwrapped around every hook — is dead machinery under positional slots:
-the resolve-audit addon keeps only its frame chain and view, its hooks becoming plain slot reads.
+the audit-addon addon keeps only its frame chain and view, its hooks becoming plain slot reads.
 
 A boundary's plug walk derives a child context carrying its own gathered map — no fresh visitor per
 boundary — and a latebound closure strips boundary transients from its captured pair, so its future
@@ -4065,7 +4065,7 @@ Each lifetime model decides whether it needs a validator at all.
 The standard model needs one: its tiers (singleton over scoped over unkept) are fixed, so a
 singleton→scoped edge is decidable from the plans before anything resolves. The standard model's
 own module owns that validator, exports it as a middleware — an addon where it needs services
-registered — and the model's main addon (`standard()`) composes it in by default — validation is on unless the composer removes it. At
+registered — and the model's main addon (`standardLifetimeAddon()`) composes it in by default — validation is on unless the composer removes it. At
 runtime the standard model's behavior is two independent switches, both on by default: `validateOnBuild`
 runs the build-time sweep, and `validateScopes` makes a scoped ask arriving under root state
 throw a model-local `ScopedAtRootError`, surfaced through `LifetimeModelError`; with `validateScopes` off, root keeps the instance. The standard
