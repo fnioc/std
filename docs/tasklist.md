@@ -890,6 +890,11 @@ if that write-up slips.
 
 ## Builder reshape — aftermath (2026-09-01)
 
+- [ ] `CaptiveDependencyError` is a shared captivity error in di.core's taxonomy
+      (`libraries/di.core/src/Errors.ts:101`), re-exported from di. Nothing in product code throws
+      it — its only caller is a test. A shared captivity type is exactly what "captivity is the
+      model's own, never shared between models" forbids, so it is a live deletion candidate.
+
 - [ ] No static `withServices` opener exists, though the spec says services or the model may come
       first. `hosting` and `logging` each hand-rolled `const noLifetimeModel: Addon<unknown>` to open
       a chain — the noop model, reintroduced in product code, twice.
