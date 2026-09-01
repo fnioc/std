@@ -9,5 +9,6 @@ export * from '@rhombus-toolkit/platform';
 export * from './augmentation';
 export * from './change-token';
 export * from './NotImplementedError';
+export * from './toolkit';
 export * from './Type';
 export * from './TypeParseError';
