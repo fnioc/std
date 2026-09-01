@@ -16,7 +16,6 @@ export type Plan =
   | LateBoundPlan
   | InvokerPlan
   | ConstantPlan
-  | ServiceProviderPlan
   | IterablePlan
   | ArrayPlan
   | PromisePlan
@@ -87,11 +86,6 @@ export interface InvokerPlan {
 export interface ConstantPlan {
   readonly kind: 'constant';
   readonly value: any;
-}
-
-/** A dependency slot naming `IServiceProvider`. */
-export interface ServiceProviderPlan {
-  readonly kind: 'service-provider';
 }
 
 export interface IterablePlan {
@@ -195,9 +189,6 @@ export namespace Plan {
   }
   export function constant(value: any): ConstantPlan {
     return { kind: 'constant', value };
-  }
-  export function serviceProvider(): ServiceProviderPlan {
-    return { kind: 'service-provider' };
   }
   /**
    * Every registration serving one type, realized lazily and re-iterably: each resolution

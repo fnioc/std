@@ -2,6 +2,8 @@ import { ConstructorType, FunctionType, Type } from '@rhombus-std/primitives';
 import type { Ctor, Func } from '@rhombus-toolkit/func';
 import type { Flatten } from '@rhombus-toolkit/type-helpers';
 
+import type { controlLifetime } from '../Control.js';
+
 /**
  * One registration: what a manifest resolves `address` to. The member naming the
  * implementer — `ctor`, `factory`, or `value` — is what says which door the registration came in
@@ -14,12 +16,12 @@ export type Registration<Lifetime> =
   | ValueRegistration;
 
 /**
- * The lifetime a constructed registration is cached under, omittable only where the vocabulary
- * admits `undefined` — in which case absence means the manifest's default. A vocabulary of named
- * lifetimes has no reading for silence, so its registrations must name one.
+ * The lifetime a constructed registration is cached under. A model's own vocabulary value, or
+ * {@link controlLifetime} — the engine-owned sentinel the engine answers itself, outside every
+ * model's jurisdiction. Omittable only where the vocabulary admits `undefined`.
  */
 interface WithLifetimeMembers<Lifetime> {
-  readonly lifetime: Lifetime;
+  readonly lifetime: Lifetime | typeof controlLifetime;
 }
 type WithLifetime<Lifetime> = Readonly<undefined extends Lifetime ? Partial<WithLifetimeMembers<Lifetime>> : Required<WithLifetimeMembers<Lifetime>>>;
 /**

@@ -2,6 +2,7 @@ import { ImmutableLinkedList, type Type } from '@rhombus-std/primitives';
 import type { Behavior, Koa } from './Behavior.js';
 import type { Hooks } from './hooks.js';
 import type { Registration } from './Registration/index.js';
+import type { Request } from './Request.js';
 
 /** How many parameters each hook's plain handler form declares; anything longer is middleware, the extra parameter being `next`. */
 const handlerArity: Record<keyof Hooks, number> = {
@@ -75,7 +76,7 @@ function constructionBeneath(seen: Hooks.Construction, states: readonly unknown[
  * opened first; middleware opens what it encloses by calling `next`, which answers back the very
  * state it was handed, no slot but this one being the middleware's to read.
  */
-function runBeginResolve(walk: Walk<'beginResolve'>, index: number, request: Type, injected: readonly unknown[], opening: unknown[]): void {
+function runBeginResolve(walk: Walk<'beginResolve'>, index: number, request: Request, injected: readonly unknown[], opening: unknown[]): void {
   const layer = walk[index];
   if (layer === undefined) {
     return;
@@ -227,7 +228,7 @@ export class HookChain {
    * constructions start under — seeded from `injected`, so a slot whose owner writes nothing keeps
    * what it was handed.
    */
-  beginResolve(request: Type, injected: readonly unknown[], opening: unknown[]): void {
+  beginResolve(request: Request, injected: readonly unknown[], opening: unknown[]): void {
     runBeginResolve(this.#beginResolve.tailToHead(), 0, request, injected, opening);
   }
 

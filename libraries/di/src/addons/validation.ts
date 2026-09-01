@@ -1,4 +1,4 @@
-import { type Addon, type AddonInstallation, ManifestValidationError, UniversalAddressError, type ValidationFailure } from '@rhombus-std/di.core';
+import { type Addon, ManifestValidationError, UniversalAddressError, type ValidationFailure } from '@rhombus-std/di.core';
 import type { Type } from '@rhombus-std/primitives';
 import { planClosedAddresses, registryOf } from '../internal/closed-address-plans.js';
 
@@ -8,22 +8,19 @@ import { planClosedAddresses, registryOf } from '../internal/closed-address-plan
  *
  * @throws {ManifestValidationError} when any registration fails.
  */
-export function validateUniversalAddresses(): Addon {
+export function validateUniversalAddresses<Lifetime>(): Addon<Lifetime> {
   return {
-    create(): AddonInstallation {
-      return {
-        middleware: next => {
-          const registry = registryOf(next);
-          const failures: ValidationFailure[] = Iterator.from(registry.registrations)
-            .filter(registration => registration.address.kind === 'generic')
-            .map(registration => ({ address: registration.address, error: new UniversalAddressError(registration.address) }))
-            .toArray();
-          if (failures.length) {
-            throw new ManifestValidationError(failures);
-          }
-          return next;
-        },
-      };
+    registrations: [],
+    middleware: next => {
+      const registry = registryOf(next);
+      const failures: ValidationFailure[] = Iterator.from(registry.registrations)
+        .filter(registration => registration.address.kind === 'generic')
+        .map(registration => ({ address: registration.address, error: new UniversalAddressError(registration.address) }))
+        .toArray();
+      if (failures.length) {
+        throw new ManifestValidationError(failures);
+      }
+      return next;
     },
   };
 }
@@ -34,21 +31,18 @@ export function validateUniversalAddresses(): Addon {
  *
  * @throws {ManifestValidationError} when any address fails to plan.
  */
-export function validateBuildability(): Addon {
+export function validateBuildability<Lifetime>(): Addon<Lifetime> {
   return {
-    create(): AddonInstallation {
-      return {
-        middleware: next => {
-          const registry = registryOf(next);
-          const failures: ValidationFailure[] = Iterator.from(planClosedAddresses(registry))
-            .filter((planned): planned is { address: Type; error: Error; } => 'error' in planned)
-            .toArray();
-          if (failures.length) {
-            throw new ManifestValidationError(failures);
-          }
-          return next;
-        },
-      };
+    registrations: [],
+    middleware: next => {
+      const registry = registryOf(next);
+      const failures: ValidationFailure[] = Iterator.from(planClosedAddresses(registry))
+        .filter((planned): planned is { address: Type; error: Error; } => 'error' in planned)
+        .toArray();
+      if (failures.length) {
+        throw new ManifestValidationError(failures);
+      }
+      return next;
     },
   };
 }

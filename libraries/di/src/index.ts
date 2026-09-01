@@ -8,4 +8,4 @@ export type { Middleware, ValidationFailure } from '@rhombus-std/di.core';
 export { auditAddon } from './addons/audit-addon.js';
 export { type DiagnosticEdge, type DiagnosticPhase, type DiagnosticReading, diagnosticsAddon, type DiagnosticsAddonOptions, type DiagnosticsProbe } from './addons/diagnostics-addon.js';
 export { validateBuildability, validateUniversalAddresses } from './addons/validation.js';
-export { type ContainerBuilder, di } from './di.js';
+export { Builder } from './di.js';

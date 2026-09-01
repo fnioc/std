@@ -18,5 +18,6 @@ export * from './LifetimeModel';
 export * from './Manifest';
 export type * from './Middleware';
 export * from './Registration';
+export type * from './Request';
 
 import './augmentations';

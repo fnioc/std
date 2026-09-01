@@ -1,5 +1,5 @@
-import { type Addon, type AddonInstallation, type Behavior, Control, type DiagnosticEdge, type DiagnosticPhase, type DiagnosticReading, Diagnostics, type DiagnosticsSegment, type IEngineHooks,
-  Registration } from '@rhombus-std/di.core';
+import { type Addon, type Behavior, Control, type DiagnosticEdge, type DiagnosticPhase, type DiagnosticReading, Diagnostics, type DiagnosticsSegment, type IEngineHooks, type LifetimeArgument,
+  Registration, type Request } from '@rhombus-std/di.core';
 import { Type } from '@rhombus-std/primitives';
 import { typefor } from '@rhombus-std/primitives.extras';
 import type { Func } from '@rhombus-toolkit/func';
@@ -82,7 +82,7 @@ class DiagnosticsView implements Diagnostics {
 }
 
 /** The addon a probe composes into a container, plus direct access to what it recorded. */
-export interface DiagnosticsProbe extends Addon {
+export interface DiagnosticsProbe<Lifetime> extends Addon<Lifetime> {
   /** The name this probe was configured with. */
   readonly name: string;
   /** Every reading this probe has taken so far, oldest first. */
@@ -102,11 +102,6 @@ export interface DiagnosticsAddonOptions {
   readonly now: Func<[], number>;
   /** How many readings this probe holds before it starts dropping them. */
   readonly capacity?: number;
-  /**
-   * What the composed lifetime model calls its own transient tier — e.g. `standardLifetimeAddon.transient`
-   * — since the `Diagnostics` this probe answers is itself a fresh, per-ask scratch object.
-   */
-  readonly transientLifetime?: unknown;
 }
 
 /**
@@ -116,15 +111,7 @@ export interface DiagnosticsAddonOptions {
  * @remarks
  * Compose as many as the question needs and hold onto each one apart — one outside the lifetime
  * model, one against the engine — and the differences between their readings attribute the cost to
- * each segment. The builder cannot place anything outside the lifetime model, since
- * `usingLifetimeModel` installs it ahead of every addon a caller can name; folding the chain by hand
- * can, an addon being only its registrations and its middleware.
- *
- * ```ts
- * di.usingLifetimeModel(standardLifetimeAddon())
- *   .useAddon(diagnosticsAddon({ name: 'against-engine', now, transientLifetime: standardLifetimeAddon.transient }))
- *   .build();
- * ```
+ * each segment.
  *
  * Resolving `Diagnostics` from a container carrying one or more of these gathers a segment from
  * every probe installed on it, named for the probe that recorded it.
@@ -137,18 +124,23 @@ export interface DiagnosticsAddonOptions {
  *
  * A construction the chain answers outright never reaches the engine, so its `beforeConstruct` pair
  * closes with no `afterConstruct` pair beside it.
+ *
+ * @param options - probe configuration: name, clock, and optional capacity.
+ * @param lifetime - what the registration it files carries; the lifetime model's transient, or
+ * nothing at all where the vocabulary admits omission.
  */
-export function diagnosticsAddon(options: DiagnosticsAddonOptions): DiagnosticsProbe {
-  const { name, now, capacity = DEFAULT_CAPACITY, transientLifetime } = options;
+export function diagnosticsAddon<Lifetime>(options: DiagnosticsAddonOptions, ...lifetime: LifetimeArgument<Lifetime>): DiagnosticsProbe<Lifetime>;
+export function diagnosticsAddon(options: DiagnosticsAddonOptions, lifetime?: any): DiagnosticsProbe<any> {
+  const { name, now, capacity = DEFAULT_CAPACITY } = options;
   const columns = columnsOf(capacity);
 
   const hooks: Behavior<unknown> = {
-    beginResolve(request, injected, next) {
+    beginResolve(request: Request, injected: unknown, next: Func<[Request, unknown], unknown>) {
       if (columns.count < capacity) {
         columns.clock[columns.count] = now();
         columns.phase[columns.count] = P_BEGIN_RESOLVE;
         columns.edge[columns.count] = E_PRE;
-        columns.address[columns.count] = request;
+        columns.address[columns.count] = request.type;
         columns.node[columns.count] = undefined;
         columns.count++;
       } else {
@@ -159,7 +151,7 @@ export function diagnosticsAddon(options: DiagnosticsAddonOptions): DiagnosticsP
         columns.clock[columns.count] = now();
         columns.phase[columns.count] = P_BEGIN_RESOLVE;
         columns.edge[columns.count] = E_POST;
-        columns.address[columns.count] = request;
+        columns.address[columns.count] = request.type;
         columns.node[columns.count] = undefined;
         columns.count++;
       } else {
@@ -260,50 +252,46 @@ export function diagnosticsAddon(options: DiagnosticsAddonOptions): DiagnosticsP
       return columns.dropped;
     },
 
-    create(): AddonInstallation {
-      return {
-        registrations: [
-          Registration.factory(
-            Diagnostics.address,
-            () => {
-              throw new Error(
-                `${
-                  Type.stringify(Diagnostics.address)
-                } is answered by the diagnostics addon's own hooks, and this container never installed them — resolve it from a container built with useAddon(diagnosticsAddon({ name, now }))`,
-              );
-            },
-            Type.func(Diagnostics.address, [[]]),
-            transientLifetime,
-          ),
-        ],
-        // Plants the hooks as the chain folds, then stands in the request chain at its own position.
-        middleware: next => {
-          askForControl<IEngineHooks>({ getService: next }, typefor<Control<IEngineHooks>>()).useHooks(hooks);
-          return request => {
-            if (columns.count < capacity) {
-              columns.clock[columns.count] = now();
-              columns.phase[columns.count] = P_RESOLVE;
-              columns.edge[columns.count] = E_PRE;
-              columns.address[columns.count] = request;
-              columns.node[columns.count] = undefined;
-              columns.count++;
-            } else {
-              columns.dropped++;
-            }
-            const answer = next(request);
-            if (columns.count < capacity) {
-              columns.clock[columns.count] = now();
-              columns.phase[columns.count] = P_RESOLVE;
-              columns.edge[columns.count] = E_POST;
-              columns.address[columns.count] = request;
-              columns.node[columns.count] = undefined;
-              columns.count++;
-            } else {
-              columns.dropped++;
-            }
-            return answer;
-          };
+    registrations: [
+      Registration.factory(
+        Diagnostics.address,
+        () => {
+          throw new Error(
+            `${
+              Type.stringify(Diagnostics.address)
+            } is answered by the diagnostics addon's own hooks, and this container never installed them — resolve it from a container built with useAddon(diagnosticsAddon({ name, now }))`,
+          );
         },
+        Type.func(Diagnostics.address, [[]]),
+        lifetime,
+      ),
+    ],
+    // Plants the hooks as the chain folds, then stands in the request chain at its own position.
+    middleware: next => {
+      askForControl<IEngineHooks>(next, typefor<Control<IEngineHooks>>()).useHooks(hooks);
+      return (request: Request) => {
+        if (columns.count < capacity) {
+          columns.clock[columns.count] = now();
+          columns.phase[columns.count] = P_RESOLVE;
+          columns.edge[columns.count] = E_PRE;
+          columns.address[columns.count] = request.type;
+          columns.node[columns.count] = undefined;
+          columns.count++;
+        } else {
+          columns.dropped++;
+        }
+        const answer = next(request);
+        if (columns.count < capacity) {
+          columns.clock[columns.count] = now();
+          columns.phase[columns.count] = P_RESOLVE;
+          columns.edge[columns.count] = E_POST;
+          columns.address[columns.count] = request.type;
+          columns.node[columns.count] = undefined;
+          columns.count++;
+        } else {
+          columns.dropped++;
+        }
+        return answer;
       };
     },
   };

@@ -1,14 +1,12 @@
-import { type HookChain, type IServiceProvider, Registration } from '@rhombus-std/di.core';
+import { type HookChain, Registration, type Request } from '@rhombus-std/di.core';
 import type { Type } from '@rhombus-std/primitives';
-import { typefor } from '@rhombus-std/primitives.extras';
 import type { Ctor, Func } from '@rhombus-toolkit/func';
 import { iterable } from '@rhombus-toolkit/obj';
 import { assertNever } from '@rhombus-toolkit/type-guards';
-import { ServiceProvider } from '../../ServiceProvider.js';
 import type { Engine } from '../Engine.js';
 import { gather } from './gather.js';
 import type { ArrayPlan, AsyncIterablePlan, AsyncPlan, ConstantPlan, CtorPlan, FactoryPlan, InvokerPlan, IterablePlan, LateBoundArgPlan, LateBoundPlan, Plan, PromisePlan, RegisteredCtorPlan,
-  RegisteredFactoryPlan, RegisteredPromisePlan, ServiceProviderPlan } from './Plan.js';
+  RegisteredFactoryPlan, RegisteredPromisePlan } from './Plan.js';
 
 /**
  * What one position in a walk carries. Immutable: a position that changes any of it derives a fresh
@@ -32,6 +30,8 @@ export interface RealizeOptions {
   readonly chain: HookChain;
   /** What the walk starts carrying. */
   readonly context: VisitorContext;
+  /** The request that opened this resolution — captured for the whole lifecycle including latebounds. */
+  readonly request: Request;
 }
 
 /**
@@ -53,10 +53,12 @@ function captureForLaterCall(context: VisitorContext): VisitorContext {
 export class RealizeVisitor {
   readonly #engine: Engine;
   readonly #chain: HookChain;
+  readonly #request: Request;
 
-  constructor({ engine, chain }: RealizeOptions) {
+  constructor({ engine, chain, request }: RealizeOptions) {
     this.#engine = engine;
     this.#chain = chain;
+    this.#request = request;
   }
 
   visit(plan: Plan, context: VisitorContext): any {
@@ -77,8 +79,6 @@ export class RealizeVisitor {
         return this.visitInvoker(plan, context);
       case 'constant':
         return this.visitConstant(plan);
-      case 'service-provider':
-        return this.visitServiceProvider(plan, context);
       case 'iterable':
         return this.visitIterable(plan, context);
       case 'array':
@@ -135,10 +135,13 @@ export class RealizeVisitor {
    * Each call re-enters under the states at the position the function was minted — the model's
    * `{state}` re-threading makes that position's state the honest ownership state: a
    * singleton's factory carries the root-threaded state, a scoped service's factory carries its
-   * own owning state.
+   * own owning state. The request is captured too — a latebound call carries the request it was
+   * minted under rather than meeting a new one.
    */
   protected visitLateBound(plan: LateBoundPlan, context: VisitorContext): any {
-    return (...args: any[]) => this.#engine.resolveLatebound(plan.funcType, args, { chain: this.#chain, context: captureForLaterCall(context) });
+    const captured = captureForLaterCall(context);
+    const request = this.#request;
+    return (...args: any[]) => this.#engine.resolveLatebound(plan.funcType, args, { chain: this.#chain, context: captured, request });
   }
 
   protected visitLateBoundArg(plan: LateBoundArgPlan, context: VisitorContext): any {
@@ -152,6 +155,8 @@ export class RealizeVisitor {
    */
   protected visitInvoker(plan: InvokerPlan, context: VisitorContext): any {
     const { callableType } = plan;
+    const captured = captureForLaterCall(context);
+    const request = this.#request;
     return (callable: Ctor | Func) => {
       const registration = (() => {
         switch (callableType.kind) {
@@ -163,22 +168,12 @@ export class RealizeVisitor {
             return assertNever(callableType);
         }
       })();
-      return this.#engine.resolveFrame(registration, { chain: this.#chain, context: captureForLaterCall(context) });
+      return this.#engine.resolveFrame(registration, { chain: this.#chain, context: captured, request });
     };
   }
 
   protected visitConstant(plan: ConstantPlan): any {
     return plan.value;
-  }
-
-  /**
-   * The provider a slot naming `IServiceProvider` resolves to: whoever answers this construction —
-   * the lifetime model, structurally, for the state enclosing it — falling back to a fresh augmented
-   * wrap of the engine itself when nothing answers. Minted just-in-time, not cached: no provider
-   * object carries an identity guarantee.
-   */
-  protected visitServiceProvider(plan: ServiceProviderPlan, context: VisitorContext): any {
-    return this.#realize(plan, typefor<IServiceProvider>(), undefined, context, () => new ServiceProvider(this.#engine));
   }
 
   /**

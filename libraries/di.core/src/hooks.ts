@@ -1,6 +1,8 @@
 import type { Type } from '@rhombus-std/primitives';
 import type { Func } from '@rhombus-toolkit/func';
+
 import type { Registration } from './Registration/index.js';
+import type { Request } from './Request.js';
 
 /**
  * The four handlers one behavior contributes, every one of them present — a `Behavior` is the same
@@ -20,7 +22,7 @@ export interface Hooks<State = unknown> {
    * Declared with a third `next` parameter, this hook runs as middleware; with two, as a plain
    * handler.
    */
-  readonly beginResolve: Func<[request: Type, injected: State], State>;
+  readonly beginResolve: Func<[request: Request, injected: State], State>;
   /**
    * Runs before the engine constructs, answering a result in place of constructing or the state the dependencies resolve under.
    *

@@ -1,9 +1,10 @@
-import type { Type } from '@rhombus-std/primitives';
 import type { Func } from '@rhombus-toolkit/func';
 
+import type { Request } from './Request.js';
+
 /**
- * The container's one request-grain pipeline type: what `use()` composes around the engine, and
- * what an addon's own contribution rides too.
+ * The container's one request-grain pipeline type: what the builder composes around the engine,
+ * and what an addon's own contribution rides too.
  *
  * @remarks
  * The chain composes once, at build: a factory runs exactly once, and may do install-time work of
@@ -18,4 +19,4 @@ import type { Func } from '@rhombus-toolkit/func';
  * ask of its own. A `next` held onto and called after its traversal has answered belongs to no ask
  * at all, and resolves under nothing.
  */
-export type Middleware = Func<[next: Func<[request: Type], unknown>], Func<[request: Type], unknown>>;
+export type Middleware = Func<[next: Func<[request: Request], unknown>], Func<[request: Request], unknown>>;

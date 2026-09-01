@@ -1,4 +1,4 @@
-import type { Registration } from '@rhombus-std/di.core';
+import type { Registration, Request } from '@rhombus-std/di.core';
 import { Control } from '@rhombus-std/di.core';
 import type { Type } from '@rhombus-std/primitives';
 import { typefor } from '@rhombus-std/primitives.extras';
@@ -8,8 +8,8 @@ import { Plan } from './Plan/index.js';
 import { Registry } from './Registry.js';
 
 /** The registry `next` resolves against, read once through the manifest control. */
-export function registryOf(next: Func<[request: Type], unknown>): Registry {
-  const registrations = askForControl<Iterable<Registration<unknown>>>({ getService: next }, typefor<Control<Iterable<Registration<unknown>>>>());
+export function registryOf(next: Func<[request: Request], unknown>): Registry {
+  const registrations = askForControl<Iterable<Registration<unknown>>>(next, typefor<Control<Iterable<Registration<unknown>>>>());
   return new Registry(registrations);
 }
 

@@ -1,4 +1,4 @@
-import { type Behavior, Control, HookChain, type IEngineHooks, type IServiceProviderInternal, type Registration, UnknownControlError, UnsatisfiableError } from '@rhombus-std/di.core';
+import { type Behavior, Control, controlLifetime, HookChain, type IEngineHooks, type Registration, type Request, UnknownControlError, UnsatisfiableError } from '@rhombus-std/di.core';
 import { type FunctionType, Type } from '@rhombus-std/primitives';
 import { typefor } from '@rhombus-std/primitives.extras';
 import { isControlAsk } from './control-recognition.js';
@@ -11,23 +11,25 @@ interface RunningResolve {
   readonly chain: HookChain;
   /** What the walk carried at the position the callable was minted, everything an enclosing boundary settled stripped off. */
   readonly context: VisitorContext;
+  /** The request that opened the ask this callable was minted under. */
+  readonly request: Request;
 }
 
 /**
  * The state every behavior on `chain` opens `request` under, one slot apiece: each files into its
  * own, seeded from `injected` — so a slot nobody writes keeps whatever the caller carried in.
  */
-function openStates(chain: HookChain, request: Type, injected: readonly unknown[]): readonly unknown[] {
+function openStates(chain: HookChain, request: Request, injected: readonly unknown[]): readonly unknown[] {
   const opening = injected.slice();
   chain.beginResolve(request, injected, opening);
   return Object.freeze(opening);
 }
 
-export interface Engine extends IServiceProviderInternal {}
-
-/** The resolution orchestrator: one per container. Also the chain's terminus — a bare engine is itself a fully working, transient-only provider. */
-export class Engine implements IServiceProviderInternal, IEngineHooks {
+/** The resolution orchestrator: one per container. Composed as the innermost middleware element. */
+export class Engine implements IEngineHooks {
   readonly #registry: Registry;
+  /** Addresses whose registrations carry the engine-owned {@link controlLifetime}, precomputed at construction. */
+  readonly #controlLifetimeAddresses: ReadonlySet<Type>;
   /** Everything installed and not yet disposed, the most recently installed standing nearest the walk. */
   #chain: HookChain = HookChain.identity;
   /** The slots of behaviors since disposed, handed out again before the chain is widened. */
@@ -35,22 +37,31 @@ export class Engine implements IServiceProviderInternal, IEngineHooks {
 
   constructor(registrations: Iterable<Registration<unknown>>) {
     this.#registry = new Registry(registrations);
+    this.#controlLifetimeAddresses = new Set(
+      Iterator.from(this.#registry.registrations)
+        .filter(r => 'lifetime' in r && r.lifetime === controlLifetime)
+        .map(r => r.address),
+    );
   }
 
-  // #region IServiceProviderInternal
+  // #region resolution
 
   /**
-   * Resolves `address` under everything installed and not yet disposed.
+   * Resolves `request` under everything installed and not yet disposed.
    *
    * @remarks
    * A control ask is answered here and nowhere else: the engine hands back what it names itself,
    * running no hook and standing nothing over anything, so reaching for a control changes nothing
    * about the resolution that follows.
    *
-   * @throws {UnsatisfiableError} when nothing in the registry can produce {@link address}.
+   * A registration carrying {@link controlLifetime} is answered directly — its factory receives
+   * the request and nothing else, bypassing the plan infrastructure and the hook chain.
+   *
+   * @throws {UnsatisfiableError} when nothing in the registry can produce the requested address.
    * @throws {UnknownControlError} when a control ask names something the engine cannot answer.
    */
-  getService(address: Type): any {
+  getService(request: Request): any {
+    const address = request.type;
     switch (address) {
       case undefined:
         throw new TypeError('getService received no address — the caller resolved without a service type');
@@ -66,11 +77,35 @@ export class Engine implements IServiceProviderInternal, IEngineHooks {
       }
     }
 
+    if (this.#controlLifetimeAddresses.has(address)) {
+      return this.#resolveControlLifetime(request);
+    }
+
     return Plan.realize(Plan.from(address, this.#registry), {
       engine: this,
       chain: this.#chain,
-      context: { states: openStates(this.#chain, address, new Array(this.#chain.width)) },
+      context: { states: openStates(this.#chain, request, new Array(this.#chain.width)) },
+      request,
     });
+  }
+
+  /**
+   * Answers a {@link controlLifetime} registration directly: the factory receives the request
+   * with no planning, no hooks, and no caching.
+   */
+  #resolveControlLifetime(request: Request): unknown {
+    const match = this.#registry.getMatches(request.type).find(Boolean);
+    if (!match) {
+      throw new UnsatisfiableError(request.type, 'control-lifetime address has no registration');
+    }
+    const { registration } = match;
+    if ('factory' in registration) {
+      return registration.factory(request);
+    }
+    if ('value' in registration) {
+      return registration.value;
+    }
+    throw new TypeError(`control-lifetime registration for ${Type.stringify(request.type)} has an unsupported implementer kind`);
   }
 
   // #endregion
@@ -118,7 +153,8 @@ export class Engine implements IServiceProviderInternal, IEngineHooks {
     return Plan.realize(plan, {
       engine: this,
       chain: running.chain,
-      context: { states: openStates(running.chain, registration.address, running.context.states) },
+      context: { states: openStates(running.chain, running.request, running.context.states) },
+      request: running.request,
     });
   }
 
@@ -142,9 +178,10 @@ export class Engine implements IServiceProviderInternal, IEngineHooks {
       engine: this,
       chain: running.chain,
       context: {
-        states: openStates(running.chain, funcType.return, running.context.states),
+        states: openStates(running.chain, running.request, running.context.states),
         args: providedArgs,
       },
+      request: running.request,
     });
   }
 
