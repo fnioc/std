@@ -2,14 +2,14 @@
 // aggregate reads, latebound invocation, the async boundary, provider self-injection, open
 // registrations, and union resolution.
 
-import { di, noop } from '@rhombus-std/di';
+import { di, noopLifetimeAddon } from '@rhombus-std/di';
 import { type IServiceProvider, Manifest, Registration } from '@rhombus-std/di.core';
 import { Type } from '@rhombus-std/primitives';
 import { describe, expect, test } from 'bun:test';
 
 /** Seals `manifest` into a provider through the front door, on the noop lifetime model. */
 function toProvider(manifest: Manifest<unknown>): IServiceProvider {
-  return di.usingLifetimeModel(noop()).usingManifest(manifest).build();
+  return di.usingLifetimeModel(noopLifetimeAddon()).usingManifest(manifest).build();
 }
 
 const CLOCK = Type.imported('Clock', 'app');

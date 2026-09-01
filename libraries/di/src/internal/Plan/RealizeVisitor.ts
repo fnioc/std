@@ -16,8 +16,8 @@ import type { ArrayPlan, AsyncIterablePlan, AsyncPlan, ConstantPlan, CtorPlan, F
  */
 export interface VisitorContext {
   /**
-   * One state per installed behavior, in the install order the chain was folded from — frozen, and
-   * opaque to everything here: a slot is moved between the chain and its owner and never read.
+   * One state per installed behavior, each at the slot its owner threads — frozen, and opaque to
+   * everything here: a slot is moved between the chain and its owner and never read.
    */
   readonly states: readonly unknown[];
   /** A latebound call's arguments, read by position from the {@link LateBoundArgPlan}s in its plan. */

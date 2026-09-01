@@ -9,7 +9,7 @@
 // Exercised through the public authoring surface only (black-box).
 
 import { ConfigBuilder, type IConfig } from '@rhombus-std/config';
-import { di, noop } from '@rhombus-std/di';
+import { di, noopLifetimeAddon } from '@rhombus-std/di';
 import { ActivityListenerConfigFactory, DefaultActivityListenerConfigFactory, getMetricsManifest, getTracingManifest, type IMetricListenerConfigFactory, MetricListenerConfigFactory, MetricsConfig,
   TracingConfig } from '@rhombus-std/diagnostics';
 import { Type } from '@rhombus-std/primitives';
@@ -79,7 +79,7 @@ describe('addMetrics registers the metrics factory', () => {
       metrics.addMetricsConfig(first()).addMetricsConfig(second());
     });
 
-    const provider = di.usingLifetimeModel(noop()).configureServices(m => m.add(manifest)).build();
+    const provider = di.usingLifetimeModel(noopLifetimeAddon()).configureServices(m => m.add(manifest)).build();
     const factory: IMetricListenerConfigFactory = provider.resolve(
       METRICS_LISTENER_CONFIGURATION_FACTORY_TYPE,
     );
@@ -96,7 +96,7 @@ describe('addMetrics registers the metrics factory', () => {
   test('with no bound configuration the factory yields empty views', () => {
     const manifest = getMetricsManifest();
 
-    const factory: IMetricListenerConfigFactory = di.usingLifetimeModel(noop()).configureServices(m => m.add(manifest)).build().resolve(
+    const factory: IMetricListenerConfigFactory = di.usingLifetimeModel(noopLifetimeAddon()).configureServices(m => m.add(manifest)).build().resolve(
       METRICS_LISTENER_CONFIGURATION_FACTORY_TYPE,
     );
     expect([...factory.getConfig('MyListener').getChildren()]).toHaveLength(0);
@@ -110,7 +110,7 @@ describe('addTracing registers the tracing factory', () => {
       tracing.addTracingConfig(first()).addTracingConfig(second());
     });
 
-    const provider = di.usingLifetimeModel(noop()).configureServices(m => m.add(manifest)).build();
+    const provider = di.usingLifetimeModel(noopLifetimeAddon()).configureServices(m => m.add(manifest)).build();
     const factory: ActivityListenerConfigFactory = provider.resolve(
       TRACING_LISTENER_CONFIGURATION_FACTORY_TYPE,
     );

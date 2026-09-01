@@ -27,7 +27,7 @@
 // this file is identical to it. The header line names neither dialect for the
 // same reason.
 
-import { di, noop, validateBuildability } from '@rhombus-std/di';
+import { di, noopLifetimeAddon, validateBuildability } from '@rhombus-std/di';
 import { DiError, Manifest, ManifestValidationError } from '@rhombus-std/di.core';
 import { demonstrateRegistrationErrors, diagnose, stagedFailure } from '@rhombus-std/examples.lib.without-transformer';
 import { Type } from '@rhombus-std/primitives';
@@ -95,7 +95,7 @@ export function* demonstrateErrors(): Generator<string> {
   yield stagedFailure(
     'building with validateBuildability',
     () =>
-      di.usingLifetimeModel(noop())
+      di.usingLifetimeModel(noopLifetimeAddon())
         .usingManifest(withUnsatisfiableStore())
         .useAddon(validateBuildability())
         .build(),
@@ -118,7 +118,7 @@ export function* demonstrateErrors(): Generator<string> {
   // answer, and the dependency that answer names is not — an unbuildable
   // answer is reported at the address that was asked for rather than
   // silently handed back half-built.
-  const lazy = di.usingLifetimeModel(noop()).usingManifest(withUnsatisfiableStore()).build();
+  const lazy = di.usingLifetimeModel(noopLifetimeAddon()).usingManifest(withUnsatisfiableStore()).build();
   yield stagedFailure('asking at the bare address for a registration that cannot be built', () => lazy.resolve(STORE_TYPE));
   yield stagedFailure('asking for a type nobody registered', () => lazy.resolve(REPORT_TYPE));
 
@@ -129,7 +129,7 @@ export function* demonstrateErrors(): Generator<string> {
     let services: Manifest<unknown> = Manifest.empty<unknown>();
     services = services.add(LEDGER_TYPE, Ledger, Type.ctor(LEDGER_TYPE, [[AUDIT_TYPE]]), 'singleton');
     services = services.add(AUDIT_TYPE, AuditLog, Type.ctor(AUDIT_TYPE, [[LEDGER_TYPE]]), 'singleton');
-    return di.usingLifetimeModel(noop()).usingManifest(services).build().resolve(LEDGER_TYPE);
+    return di.usingLifetimeModel(noopLifetimeAddon()).usingManifest(services).build().resolve(LEDGER_TYPE);
   });
 
   // ── and the escape hatch ───────────────────────────────────────────────────
@@ -148,7 +148,7 @@ export function* demonstrateErrors(): Generator<string> {
 /** The inner failures the eager pass collected, so one of them can be classified. */
 function collectValidationErrors(): readonly Error[] {
   try {
-    di.usingLifetimeModel(noop())
+    di.usingLifetimeModel(noopLifetimeAddon())
       .usingManifest(withUnsatisfiableStore())
       .useAddon(validateBuildability())
       .build();

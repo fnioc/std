@@ -1,4 +1,4 @@
-import { type Addon, type AddonInstallation, type Behavior, Control, type IEngineHooks, type LifetimeArgument, Registration, type ResolveAudit } from '@rhombus-std/di.core';
+import { type Addon, type AddonInstallation, type Audit, type Behavior, Control, type IEngineHooks, type LifetimeArgument, Registration } from '@rhombus-std/di.core';
 import { Type } from '@rhombus-std/primitives';
 import { typefor } from '@rhombus-std/primitives.extras';
 import { iterable } from '@rhombus-toolkit/obj';
@@ -18,7 +18,7 @@ interface AuditCompartment {
 }
 
 /** Reads a compartment's frame chain on demand, so a reading that never asks gathers nothing. */
-class AuditView implements ResolveAudit {
+class AuditView implements Audit {
   readonly #compartment: AuditCompartment;
 
   constructor(compartment: AuditCompartment) {
@@ -56,12 +56,12 @@ const hooks: Behavior<AuditCompartment> = {
   },
 
   /**
-   * Answers `ResolveAudit` for whoever names it — nothing beneath ever sees that construction —
+   * Answers `Audit` for whoever names it — nothing beneath ever sees that construction —
    * and otherwise pushes the enclosing construction's address onto the compartment everything
    * beneath it reads.
    */
   beforeConstruct(construction, next) {
-    if (construction.populatedAddress === typefor<ResolveAudit>()) {
+    if (construction.populatedAddress === typefor<Audit>()) {
       return { result: new AuditView(construction.state) };
     }
     const answer = next(construction);
@@ -74,28 +74,28 @@ const hooks: Behavior<AuditCompartment> = {
 };
 
 /**
- * Answers `ResolveAudit` for whoever names it: what the resolve was asked for, the address of the
+ * Answers `Audit` for whoever names it: what the resolve was asked for, the address of the
  * construction holding the audit, and the addresses enclosing that one.
  *
  * @param lifetime - what the registration it files carries; the lifetime model's transient, or
  * nothing at all where the vocabulary admits omission.
  */
-export function resolveAudit<Lifetime>(...lifetime: LifetimeArgument<Lifetime>): Addon;
-export function resolveAudit(lifetime?: any): Addon {
+export function auditAddon<Lifetime>(...lifetime: LifetimeArgument<Lifetime>): Addon;
+export function auditAddon(lifetime?: any): Addon {
   return {
     create(): AddonInstallation {
       return {
         registrations: [
           Registration.factory(
-            typefor<ResolveAudit>(),
+            typefor<Audit>(),
             () => {
               throw new Error(
                 `${
-                  Type.stringify(typefor<ResolveAudit>())
-                } is answered by the resolve-audit addon's own hooks, and this container never installed them — resolve it from a container built with useAddon(resolveAudit())`,
+                  Type.stringify(typefor<Audit>())
+                } is answered by the audit addon's own hooks, and this container never installed them — resolve it from a container built with useAddon(auditAddon())`,
               );
             },
-            Type.func(typefor<ResolveAudit>(), [[]]),
+            Type.func(typefor<Audit>(), [[]]),
             lifetime,
           ),
         ],

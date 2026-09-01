@@ -5,7 +5,7 @@
 // assembly picks it up like any other.
 
 import { ConfigBuilder, type IConfigRoot } from '@rhombus-std/config';
-import { di, noop } from '@rhombus-std/di';
+import { di, noopLifetimeAddon } from '@rhombus-std/di';
 import { Manifest } from '@rhombus-std/di.core';
 import type { IOptions } from '@rhombus-std/options';
 import { changeTokenSourceType, ConfigChangeTokenSource, configureStepType, optionsAddressType, postConfigureStepType, validateStepType } from '@rhombus-std/options.augmentations';
@@ -54,7 +54,7 @@ describe('the public slot-type grammar', () => {
     } });
     services = services.addValue(changeTokenSourceType(WIDGET_OPTIONS_TYPE), new ConfigChangeTokenSource(config));
 
-    const provider = di.usingLifetimeModel(noop()).configureServices(m => m.add(services)).build();
+    const provider = di.usingLifetimeModel(noopLifetimeAddon()).configureServices(m => m.add(services)).build();
     const options: IOptions<WidgetOptions> = provider.resolve(optionsAddressType(WIDGET_OPTIONS_TYPE));
     expect(options.value).toEqual({ Url: 'http://first' });
 

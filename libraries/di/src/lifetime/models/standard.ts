@@ -12,7 +12,7 @@ export { readKeeping, readLifetime } from './standard.lifetime.js';
 
 const MODEL_NAME = 'standard';
 
-/** Lifetime options for the {@link standard} model. */
+/** Lifetime options for the {@link standardLifetimeAddon} model. */
 export type StandardLifetime = 'singleton' | 'scoped' | 'transient' | StandardLifetime.WithRelease;
 
 export namespace StandardLifetime {
@@ -25,14 +25,14 @@ export namespace StandardLifetime {
   }
 }
 
-/** Opens scopes on the {@link standard} model, where a scope has no name of its own. */
+/** Opens scopes on the {@link standardLifetimeAddon} model, where a scope has no name of its own. */
 export interface StandardScopeFactory {
   /** Opens a scope nested inside the one this factory was resolved from. */
   openScope(): IServiceProvider;
 }
 
 export namespace StandardScopeFactory {
-  /** The address the {@link standard} model publishes its opener under. */
+  /** The address the {@link standardLifetimeAddon} model publishes its opener under. */
   export const address = typefor<StandardScopeFactory>();
 }
 
@@ -144,7 +144,7 @@ function readRelease(registration: Registration<unknown>): StandardLifetime.With
  * on by default: `validateOnBuild` composes the build-time captivity sweep, and `validateScopes`
  * refuses a `'scoped'` ask at the root scope — with it off, the root keeps the instance.
  */
-export function standard(options?: { validateScopes?: boolean; validateOnBuild?: boolean; }): LifetimeModel<StandardLifetime> {
+export function standardLifetimeAddon(options?: { validateScopes?: boolean; validateOnBuild?: boolean; }): LifetimeModel<StandardLifetime> {
   const validateScopes = options?.validateScopes ?? true;
   const captivityValidator = (options?.validateOnBuild ?? true) ? validateStandardCaptivity() : undefined;
   return {
@@ -203,4 +203,9 @@ export function standard(options?: { validateScopes?: boolean; validateOnBuild?:
       };
     },
   };
+}
+
+export namespace standardLifetimeAddon {
+  /** This model's value for "construct afresh, keep nothing", reachable without building one. */
+  export const transient: StandardLifetime = 'transient';
 }

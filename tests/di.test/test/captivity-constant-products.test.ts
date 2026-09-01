@@ -1,7 +1,7 @@
 // Behaviour tests proving the standard model's captivity sweep leaves a value registration's
 // product alone: it has no lifetime to capture, so it never becomes a captor or a captive.
 
-import { di, standard } from '@rhombus-std/di';
+import { di, standardLifetimeAddon } from '@rhombus-std/di';
 import { Type } from '@rhombus-std/primitives';
 import { describe, expect, test } from 'bun:test';
 
@@ -17,7 +17,7 @@ class Holder {
 
 describe('captivity sweep and value registrations', () => {
   test('a singleton depending on a plain value builds without a captivity error', () => {
-    const provider = di.usingLifetimeModel(standard())
+    const provider = di.usingLifetimeModel(standardLifetimeAddon())
       .configureServices(manifest =>
         manifest
           .addValue(LABEL, 'checkout')
@@ -33,7 +33,7 @@ describe('captivity sweep and value registrations', () => {
 
   test('a value dependency sitting beside a real captive pair does not mask it', () => {
     expect(() =>
-      di.usingLifetimeModel(standard())
+      di.usingLifetimeModel(standardLifetimeAddon())
         .configureServices(manifest =>
           manifest
             .addValue(LABEL, 'checkout')

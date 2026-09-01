@@ -1,8 +1,8 @@
 // Behaviour tests for the tagged lifetime model: which of the open scopes keeps an instance when
-// scopes are named, and what happens when none of them answers to the name a registration used.
+// scopes are named, and what a registration whose tag no open scope carries settles for instead.
 
-import { di, tagged, TaggedScopeFactory } from '@rhombus-std/di';
-import { type IServiceProvider, LifetimeModelError, ScopeTagUnmatchedError } from '@rhombus-std/di.core';
+import { di, taggedLifetimeAddon, TaggedScopeFactory } from '@rhombus-std/di';
+import { type IServiceProvider, LifetimeModelError } from '@rhombus-std/di.core';
 import { Type } from '@rhombus-std/primitives';
 import { describe, expect, test } from 'bun:test';
 
@@ -15,7 +15,7 @@ class Counter {}
 
 /** A container whose only registration is {@link Counter}, kept by the scope tagged `keptBy`. */
 function buildProviderKeptBy(keptBy: Tags): IServiceProvider {
-  return di.usingLifetimeModel(tagged<Tags>())
+  return di.usingLifetimeModel(taggedLifetimeAddon<Tags>())
     .configureServices(manifest => manifest.add(COUNTER, Counter, COUNTER_TYPE, keptBy))
     .build();
 }
@@ -31,7 +31,12 @@ function openScope(provider: IServiceProvider, tag: Tags): IServiceProvider {
 
 describe('the model itself', () => {
   test('names itself, so a failure can say which model refused', () => {
-    expect(tagged().name).toBe('tagged');
+    expect(taggedLifetimeAddon().name).toBe('tagged');
+  });
+
+  test("publishes its transient tier statically, matching a built model's own", () => {
+    expect(taggedLifetimeAddon.transient).toBeUndefined();
+    expect(taggedLifetimeAddon().transient).toBeUndefined();
   });
 });
 
@@ -68,7 +73,7 @@ describe('a tagged registration', () => {
 
 describe('an untagged registration', () => {
   test('is constructed afresh for every ask', () => {
-    const provider = di.usingLifetimeModel(tagged<Tags>())
+    const provider = di.usingLifetimeModel(taggedLifetimeAddon<Tags>())
       .configureServices(manifest => manifest.add(COUNTER, Counter, COUNTER_TYPE))
       .build();
     const scope = openScope(provider, 'request');
@@ -77,26 +82,32 @@ describe('an untagged registration', () => {
 });
 
 describe('no scope carrying the tag', () => {
-  test('fails naming both the model and the tag rather than answering from the root', () => {
-    let caught: unknown;
-    try {
-      buildProviderKeptBy('request').resolve(COUNTER);
-    } catch (error) {
-      caught = error;
-    }
+  test('is constructed afresh at the root, which keeps nothing', () => {
+    const provider = buildProviderKeptBy('request');
 
-    expect(caught).toBeInstanceOf(LifetimeModelError);
-    const cause = (caught as LifetimeModelError).cause;
-    expect(cause).toBeInstanceOf(ScopeTagUnmatchedError);
-    expect((cause as ScopeTagUnmatchedError).modelName).toBe('tagged');
-    expect((cause as ScopeTagUnmatchedError).tag).toBe('request');
-    expect((cause as Error).message).toContain('the tagged lifetime model');
-    expect((cause as Error).message).toContain('no open scope carries that tag');
+    const first = provider.resolve(COUNTER);
+    const second = provider.resolve(COUNTER);
+
+    expect(first).toBeInstanceOf(Counter);
+    expect(first).not.toBe(second);
   });
 
-  test('fails just as loudly from a scope carrying some other tag', () => {
+  test('is constructed afresh from a scope carrying some other tag', () => {
     const session = openScope(buildProviderKeptBy('request'), 'session');
-    expect(() => session.resolve(COUNTER)).toThrow(LifetimeModelError);
+
+    const first = session.resolve(COUNTER);
+    const second = session.resolve(COUNTER);
+
+    expect(first).toBeInstanceOf(Counter);
+    expect(first).not.toBe(second);
+  });
+
+  test('is kept again as soon as a scope carrying the tag is opened', () => {
+    const provider = buildProviderKeptBy('request');
+    const request = openScope(provider, 'request');
+
+    expect(request.resolve(COUNTER)).toBe(request.resolve(COUNTER));
+    expect(provider.resolve(COUNTER)).not.toBe(request.resolve(COUNTER));
   });
 });
 
@@ -120,11 +131,11 @@ describe('opening a scope from a disposed factory', () => {
 });
 
 describe('no captivity validation', () => {
-  test('tagged() builds and resolves through an opened scope without error', () => {
+  test('taggedLifetimeAddon() builds and resolves through an opened scope without error', () => {
     const TAG_A = Type.imported('TagA', 'app');
     class TagA {}
 
-    const provider = di.usingLifetimeModel(tagged())
+    const provider = di.usingLifetimeModel(taggedLifetimeAddon())
       .configureServices(manifest => manifest.add(TAG_A, TagA, Type.ctor(TAG_A, [[]]), 'session'))
       .build();
 
@@ -143,7 +154,7 @@ describe('no captivity validation', () => {
     }
 
     expect(() =>
-      di.usingLifetimeModel(tagged())
+      di.usingLifetimeModel(taggedLifetimeAddon())
         .configureServices(manifest =>
           manifest
             .add(TAG_SESS, TagSession, Type.ctor(TAG_SESS, [[]]), 'session')

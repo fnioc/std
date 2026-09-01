@@ -94,29 +94,6 @@ export class LifetimeModelError extends DiError {
 }
 
 /**
- * A registration is kept by whichever container carries {@link tag}, and none open here carries
- * it.
- */
-export class ScopeTagUnmatchedError extends DiError {
-  /** What the lifetime model that refused calls itself. */
-  readonly modelName: string;
-  /** The tag the registration named. */
-  readonly tag: string;
-  /** The service type of the registration that named it. */
-  readonly address: Type;
-
-  constructor(modelName: string, tag: string, address: Type) {
-    super(
-      `the ${modelName} lifetime model keeps ${Type.stringify(address)} in the scope tagged '${tag}', and no open scope carries that tag`,
-    );
-    this.name = 'ScopeTagUnmatchedError';
-    this.modelName = modelName;
-    this.tag = tag;
-    this.address = address;
-  }
-}
-
-/**
  * A registration is kept longer than one it constructs: the longer-lived keeper holds the
  * shorter-lived dependency for as long as the keeper itself lives, so the dependency's own
  * lifetime is never honored.

@@ -35,7 +35,7 @@
 // independently; the same label appearing twice in one registration binds to one
 // captured type wherever it appears.
 
-import { di, noop } from '@rhombus-std/di';
+import { di, noopLifetimeAddon } from '@rhombus-std/di';
 import { Manifest } from '@rhombus-std/di.core';
 import { Type } from '@rhombus-std/primitives';
 import { type Generic, typefor } from '@rhombus-std/primitives.extras';
@@ -271,7 +271,7 @@ manifest = manifest.add(ORDER_JOIN_TEMPLATE, OrderJoin, Type.ctor(ORDER_JOIN_TEM
  * an unordered collection.
  */
 export function* demonstrateOpenGenerics(): Generator<string> {
-  const app = di.usingLifetimeModel(noop()).usingManifest(manifest).build();
+  const app = di.usingLifetimeModel(noopLifetimeAddon()).usingManifest(manifest).build();
 
   // Two closings of ONE registration. Neither type was ever registered.
   const users = app.resolve(typefor<IRepository<User>>()) as IRepository<User>;

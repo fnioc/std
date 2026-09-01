@@ -2,7 +2,7 @@
 // latch, LIFO release with reference dedup, the children-before-parent cascade, the sync/async
 // dispose-protocol preference, and the release-policy widening on the standard datum.
 
-import { di, standard, StandardScopeFactory, type StandardScopeTeardown } from '@rhombus-std/di';
+import { di, standardLifetimeAddon, StandardScopeFactory, type StandardScopeTeardown } from '@rhombus-std/di';
 import { type IServiceProvider, LifetimeModelError } from '@rhombus-std/di.core';
 import { Type } from '@rhombus-std/primitives';
 import { describe, expect, test } from 'bun:test';
@@ -70,7 +70,7 @@ class AsyncOnlyRecorder {
 
 /** A container whose only registration is {@link Counter} under `lifetime`. */
 function buildProviderFor(lifetime: 'singleton' | 'scoped' | 'transient'): IServiceProvider {
-  return di.usingLifetimeModel(standard())
+  return di.usingLifetimeModel(standardLifetimeAddon())
     .configureServices(manifest => manifest.add(COUNTER, Counter, Type.ctor(COUNTER, [[]]), lifetime))
     .build();
 }
@@ -110,8 +110,6 @@ describe('the disposed latch', () => {
     expect(() => provider.resolve(COUNTER)).toThrow();
   });
 
-  // §225 line 3975 — "the standard model throws its own disposed-scope error, surfaced via
-  // LifetimeModelError (.cause) — the ScopeTagUnmatchedError precedent."
   test("surfaces the refusal as a LifetimeModelError, the model's own error riding .cause", () => {
     const provider = buildProviderFor('singleton');
     readTeardownFrom(provider)[Symbol.dispose]();
@@ -130,7 +128,7 @@ describe('the disposed latch', () => {
   // §225 line 3963 — "a latebound re-entry hits the captured scope model and gets the same
   // refusal."
   test('a latebound closure captured before teardown gets the same refusal once called after it', () => {
-    const provider = di.usingLifetimeModel(standard())
+    const provider = di.usingLifetimeModel(standardLifetimeAddon())
       .configureServices(manifest => manifest.add(WIDGET, Widget, Type.ctor(WIDGET, [[]]), 'transient'))
       .build();
     const scope = openScope(provider);
@@ -173,7 +171,7 @@ describe('release order', () => {
   // §225 line 3980 — "Standard-model policy: LIFO release of a scope's kept instances."
   test("releases a scope's kept instances in reverse claim order", () => {
     const order: string[] = [];
-    const provider = di.usingLifetimeModel(standard())
+    const provider = di.usingLifetimeModel(standardLifetimeAddon())
       .configureServices(manifest =>
         manifest
           .add(A, () => new OrderRecorder('A', order), Type.func(A, [[]]), 'singleton')
@@ -189,7 +187,7 @@ describe('release order', () => {
   // §225 line 3981 — "reference-deduped."
   test('disposes one shared instance once, even when two registrations both produced it', () => {
     const shared = new CountingRecorder();
-    const provider = di.usingLifetimeModel(standard())
+    const provider = di.usingLifetimeModel(standardLifetimeAddon())
       .configureServices(manifest =>
         manifest
           .add(A, () => shared, Type.func(A, [[]]), 'singleton')
@@ -205,7 +203,7 @@ describe('release order', () => {
   // §225 line 3981 — "children-before-parent cascade."
   test('tears a child scope down before releasing what the parent itself kept', () => {
     const order: string[] = [];
-    const provider = di.usingLifetimeModel(standard())
+    const provider = di.usingLifetimeModel(standardLifetimeAddon())
       .configureServices(manifest =>
         manifest
           .add(A, () => new OrderRecorder('root', order), Type.func(A, [[]]), 'singleton')
@@ -223,7 +221,7 @@ describe('release order', () => {
 describe('what the model never tracks', () => {
   // §225 line 3981-3982 — "unkept/transient instances untracked, consumer-owned."
   test('never disposes a transient instance, since nothing tracks it', () => {
-    const provider = di.usingLifetimeModel(standard())
+    const provider = di.usingLifetimeModel(standardLifetimeAddon())
       .configureServices(manifest => manifest.add(RECORDER, Recorder, Type.ctor(RECORDER, [[]]), 'transient'))
       .build();
     const instance = provider.resolve(RECORDER) as Recorder;
@@ -234,7 +232,7 @@ describe('what the model never tracks', () => {
   // §225 lines 3978-3980 — "value registrations bypass the model and are never tracked."
   test('never disposes a value registration, since it bypasses the model entirely', () => {
     const instance = new Recorder();
-    const provider = di.usingLifetimeModel(standard())
+    const provider = di.usingLifetimeModel(standardLifetimeAddon())
       .configureServices(manifest => manifest.addValue(RECORDER, instance))
       .build();
     provider.resolve(RECORDER);
@@ -247,7 +245,7 @@ describe('tracking needs no addon installed', () => {
   // §225 line 3978 — "the keeper tracks at make time with no new hook, since it performs every
   // make and its disposal knowledge is total by construction."
   test('disposes a kept instance with no addon or behavior installed beyond the model itself', () => {
-    const provider = di.usingLifetimeModel(standard())
+    const provider = di.usingLifetimeModel(standardLifetimeAddon())
       .configureServices(manifest => manifest.add(RECORDER, Recorder, Type.ctor(RECORDER, [[]]), 'singleton'))
       .build();
     const instance = provider.resolve(RECORDER) as Recorder;
@@ -259,7 +257,7 @@ describe('tracking needs no addon installed', () => {
 describe('the sync/async dispose-protocol preference', () => {
   // §225 line 3982 — "asyncDispose is preferred over dispose per instance."
   test('async teardown prefers Symbol.asyncDispose over Symbol.dispose when an instance offers both', async () => {
-    const provider = di.usingLifetimeModel(standard())
+    const provider = di.usingLifetimeModel(standardLifetimeAddon())
       .configureServices(manifest => manifest.add(RECORDER, DualProtocolRecorder, Type.ctor(RECORDER, [[]]), 'singleton'))
       .build();
     const instance = provider.resolve(RECORDER) as DualProtocolRecorder;
@@ -270,7 +268,7 @@ describe('the sync/async dispose-protocol preference', () => {
 
   // Same line — a preference implies a fallback when the preferred member is absent.
   test('async teardown falls back to Symbol.dispose when that is all an instance offers', async () => {
-    const provider = di.usingLifetimeModel(standard())
+    const provider = di.usingLifetimeModel(standardLifetimeAddon())
       .configureServices(manifest => manifest.add(RECORDER, Recorder, Type.ctor(RECORDER, [[]]), 'singleton'))
       .build();
     const instance = provider.resolve(RECORDER) as Recorder;
@@ -281,7 +279,7 @@ describe('the sync/async dispose-protocol preference', () => {
   // §225 lines 3983-3984 — "a synchronous dispose meeting an async-only disposable throws
   // loudly naming the instance's address."
   test('a synchronous teardown meeting an async-only disposable throws, naming the address', () => {
-    const provider = di.usingLifetimeModel(standard())
+    const provider = di.usingLifetimeModel(standardLifetimeAddon())
       .configureServices(manifest => manifest.add(RECORDER, AsyncOnlyRecorder, Type.ctor(RECORDER, [[]]), 'singleton'))
       .build();
     provider.resolve(RECORDER);
@@ -304,7 +302,7 @@ describe('the promise-boundary product in reach', () => {
   // §225 — a promise product the container itself awaited (a boundary it settled) puts the settled
   // value in reach: async teardown awaits it and releases what it settles to.
   test('async teardown awaits a kept promise product before releasing what it settles to', async () => {
-    const provider = di.usingLifetimeModel(standard())
+    const provider = di.usingLifetimeModel(standardLifetimeAddon())
       .configureServices(manifest =>
         manifest.add(
           Type.promise(RECORDER),
@@ -322,7 +320,7 @@ describe('the promise-boundary product in reach', () => {
   // §225 — such a product is an async-only disposable to a synchronous dispose, which throws
   // loudly naming the address.
   test('sync teardown meeting a kept promise product throws, naming the address', () => {
-    const provider = di.usingLifetimeModel(standard())
+    const provider = di.usingLifetimeModel(standardLifetimeAddon())
       .configureServices(manifest =>
         manifest.add(
           Type.promise(RECORDER),
@@ -354,7 +352,7 @@ describe('the promise-boundary product out of reach', () => {
   // what it settles to.
   test('neither teardown path releases a promise a synchronous resolve handed back', async () => {
     const recorder = new Recorder();
-    const provider = di.usingLifetimeModel(standard())
+    const provider = di.usingLifetimeModel(standardLifetimeAddon())
       .configureServices(manifest => manifest.add(RECORDER, () => Promise.resolve(recorder), Type.func(RECORDER, [[]]), 'singleton'))
       .build();
 
@@ -389,7 +387,7 @@ describe('opening a scope from a disposed factory', () => {
 describe('idempotence', () => {
   // §225 lines 3985-3986 — "A second dispose is an idempotent no-op."
   test('a second synchronous teardown is a no-op, releasing nothing twice', () => {
-    const provider = di.usingLifetimeModel(standard())
+    const provider = di.usingLifetimeModel(standardLifetimeAddon())
       .configureServices(manifest => manifest.add(RECORDER, CountingRecorder, Type.ctor(RECORDER, [[]]), 'singleton'))
       .build();
     const instance = provider.resolve(RECORDER) as CountingRecorder;
@@ -402,7 +400,7 @@ describe('idempotence', () => {
   });
 
   test('a second asynchronous teardown is a no-op too', async () => {
-    const provider = di.usingLifetimeModel(standard())
+    const provider = di.usingLifetimeModel(standardLifetimeAddon())
       .configureServices(manifest => manifest.add(RECORDER, CountingRecorder, Type.ctor(RECORDER, [[]]), 'singleton'))
       .build();
     const instance = provider.resolve(RECORDER) as CountingRecorder;
@@ -429,7 +427,7 @@ describe('release failures', () => {
       }
     }
 
-    const provider = di.usingLifetimeModel(standard())
+    const provider = di.usingLifetimeModel(standardLifetimeAddon())
       .configureServices(manifest =>
         manifest
           .add(A, ThrowingRecorder, Type.ctor(A, [[]]), 'singleton')
@@ -448,7 +446,7 @@ describe('the release-policy widening on the standard datum', () => {
   // §225 lines 3970-3973 — "The standard model widens its own datum type to carry release
   // policy (an external-ownership opt-out ...)."
   test('a release of "external" skips teardown entirely, leaving the instance for its owner', () => {
-    const provider = di.usingLifetimeModel(standard())
+    const provider = di.usingLifetimeModel(standardLifetimeAddon())
       .configureServices(manifest => manifest.add(RECORDER, Recorder, Type.ctor(RECORDER, [[]]), { keep: 'singleton', release: 'external' }))
       .build();
     const instance = provider.resolve(RECORDER) as Recorder;
@@ -459,7 +457,7 @@ describe('the release-policy widening on the standard datum', () => {
   // Same lines — "... a release override such as return-to-pool)."
   test("a release override runs in place of the instance's own dispose protocol", () => {
     let overrideRan = false;
-    const provider = di.usingLifetimeModel(standard())
+    const provider = di.usingLifetimeModel(standardLifetimeAddon())
       .configureServices(manifest =>
         manifest.add(RECORDER, Recorder, Type.ctor(RECORDER, [[]]), {
           keep: 'singleton',

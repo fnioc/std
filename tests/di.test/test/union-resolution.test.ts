@@ -4,14 +4,14 @@
 // wins. Literals order last among members, which is what keeps a literal member as the fallback
 // of an optional dependency.
 
-import { di, noop } from '@rhombus-std/di';
+import { di, noopLifetimeAddon } from '@rhombus-std/di';
 import { CycleError, Manifest, Registration, UnsatisfiableError } from '@rhombus-std/di.core';
 import { Type } from '@rhombus-std/primitives';
 import { describe, expect, test } from 'bun:test';
 
 /** Seals `manifest` into a provider through the front door, on the noop lifetime model. */
 function toProvider(manifest: Manifest<string>) {
-  return di.usingLifetimeModel(noop()).configureServices(m => m.add(manifest)).build();
+  return di.usingLifetimeModel(noopLifetimeAddon()).configureServices(m => m.add(manifest)).build();
 }
 
 const CACHE = Type.imported('Cache', 'app');

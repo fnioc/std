@@ -21,7 +21,7 @@
 import type {} from '@rhombus-std/di.extras';
 
 import type { IConfig } from '@rhombus-std/config.core';
-import { di, noop, validateBuildability } from '@rhombus-std/di';
+import { di, noopLifetimeAddon, validateBuildability } from '@rhombus-std/di';
 import { type Manifest } from '@rhombus-std/di.core';
 import { Environments, type HostBuilderContext, HostDefaults, type IHost, type IHostApplicationLifetime, type IHostEnvironment, type IHostLifetime } from '@rhombus-std/hosting.core';
 import { LoggerFactory } from '@rhombus-std/logging';
@@ -186,7 +186,7 @@ export function populateFrameworkServices(services: Manifest<unknown>, context: 
  * unvalidated build.
  */
 export function resolveHost(services: Manifest<unknown>, framework: FrameworkServices, config: IConfig, serviceProviderOptions?: ServiceProviderOptions): IHost {
-  let builder = di.usingLifetimeModel(noop())
+  let builder = di.usingLifetimeModel(noopLifetimeAddon())
     .usingManifest(services);
   if (serviceProviderOptions?.validateOnBuild) {
     builder = builder.useAddon(validateBuildability());

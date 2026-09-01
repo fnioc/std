@@ -3,7 +3,7 @@
 // immutable value — so what a discarded return registers, and what a later `usingManifest` or an
 // intermediate `build()` sees, are the properties worth pinning down.
 
-import { type ContainerBuilder, di, noop, StandardScopeFactory, validateBuildability } from '@rhombus-std/di';
+import { type ContainerBuilder, di, noopLifetimeAddon, StandardScopeFactory, validateBuildability } from '@rhombus-std/di';
 import { type Addon, Manifest, ManifestValidationError, UnsatisfiableError } from '@rhombus-std/di.core';
 import { Type } from '@rhombus-std/primitives';
 import { describe, expect, test } from 'bun:test';
@@ -16,7 +16,7 @@ class NeedsB {}
 
 describe('a single configureServices step', () => {
   test('resolves the value it registered', () => {
-    const provider = di.usingLifetimeModel(noop())
+    const provider = di.usingLifetimeModel(noopLifetimeAddon())
       .configureServices(manifest => manifest.addValue(A, 'a'))
       .build();
     expect(provider.resolve(A)).toBe('a');
@@ -25,7 +25,7 @@ describe('a single configureServices step', () => {
 
 describe('multiple configureServices steps', () => {
   test("compose in call order, each seeing the previous step's manifest", () => {
-    const provider = di.usingLifetimeModel(noop())
+    const provider = di.usingLifetimeModel(noopLifetimeAddon())
       .configureServices(manifest => manifest.addValue(A, 'a'))
       .configureServices(manifest => manifest.addValue(B, 'b'))
       .build();
@@ -34,7 +34,7 @@ describe('multiple configureServices steps', () => {
   });
 
   test('a step that discards the manifest it registered onto registers nothing', () => {
-    const provider = di.usingLifetimeModel(noop())
+    const provider = di.usingLifetimeModel(noopLifetimeAddon())
       .configureServices(manifest => {
         manifest.addValue(A, 'a');
         return manifest;
@@ -47,13 +47,13 @@ describe('multiple configureServices steps', () => {
 describe('usingManifest', () => {
   test('seeds the builder from an existing registration stream', () => {
     const seed = Manifest.empty<unknown>().addValue(A, 'seeded');
-    const provider = di.usingLifetimeModel(noop()).usingManifest(seed).build();
+    const provider = di.usingLifetimeModel(noopLifetimeAddon()).usingManifest(seed).build();
     expect(provider.resolve(A)).toBe('seeded');
   });
 
   test('discards configureServices steps configured before it, keeping steps configured after', () => {
     const seed = Manifest.empty<unknown>().addValue(A, 'seeded');
-    const provider = di.usingLifetimeModel(noop())
+    const provider = di.usingLifetimeModel(noopLifetimeAddon())
       .configureServices(manifest => manifest.addValue(A, 'discarded'))
       .usingManifest(seed)
       .configureServices(manifest => manifest.addValue(B, 'kept-after'))
@@ -66,14 +66,14 @@ describe('usingManifest', () => {
     const seed = Manifest.empty<unknown>()
       .addValue(A, 'older')
       .addValue(A, 'newer');
-    const provider = di.usingLifetimeModel(noop()).usingManifest(seed).build();
+    const provider = di.usingLifetimeModel(noopLifetimeAddon()).usingManifest(seed).build();
     expect(provider.resolve(A)).toBe('newer');
   });
 });
 
 describe('builder immutability', () => {
   test("an intermediate builder's build() excludes steps derived from it later", () => {
-    const intermediate = di.usingLifetimeModel(noop())
+    const intermediate = di.usingLifetimeModel(noopLifetimeAddon())
       .configureServices(manifest => manifest.addValue(A, 'a'));
     const _later: ContainerBuilder<unknown> = intermediate.configureServices(manifest => manifest.addValue(B, 'b'));
 
@@ -95,7 +95,7 @@ describe('useAddon', () => {
       return {};
     } };
 
-    di.usingLifetimeModel(noop())
+    di.usingLifetimeModel(noopLifetimeAddon())
       .useAddon(first)
       .useAddon(second)
       .build();
@@ -108,7 +108,7 @@ describe('the validateBuildability addon', () => {
   test('throws ManifestValidationError when a closed address is unsatisfiable', () => {
     expect(
       () =>
-        di.usingLifetimeModel(noop())
+        di.usingLifetimeModel(noopLifetimeAddon())
           .configureServices(manifest => manifest.add(A, NeedsB, Type.ctor(A, [[B]])))
           .useAddon(validateBuildability())
           .build(),
@@ -116,14 +116,14 @@ describe('the validateBuildability addon', () => {
   });
 
   test('without the addon, an unsatisfiable graph builds fine — the failure surfaces on resolution', () => {
-    const provider = di.usingLifetimeModel(noop())
+    const provider = di.usingLifetimeModel(noopLifetimeAddon())
       .configureServices(manifest => manifest.add(A, NeedsB, Type.ctor(A, [[B]])))
       .build();
     expect(provider).toBeDefined();
   });
 
   test('does not throw when every closed address is satisfiable', () => {
-    const provider = di.usingLifetimeModel(noop())
+    const provider = di.usingLifetimeModel(noopLifetimeAddon())
       .configureServices(manifest => manifest.add(A, Impl, Type.ctor(A, [[]])))
       .useAddon(validateBuildability())
       .build();
@@ -133,13 +133,13 @@ describe('the validateBuildability addon', () => {
 
 describe("a model's scope-opening address", () => {
   test('is unsatisfiable when the model publishes no factory', () => {
-    const provider = di.usingLifetimeModel(noop()).build();
+    const provider = di.usingLifetimeModel(noopLifetimeAddon()).build();
     expect(() => provider.resolve(StandardScopeFactory.address)).toThrow(UnsatisfiableError);
   });
 
   test('is a registration like any other, so a container can answer it itself', () => {
-    const scope = di.usingLifetimeModel(noop()).build();
-    const provider = di.usingLifetimeModel(noop())
+    const scope = di.usingLifetimeModel(noopLifetimeAddon()).build();
+    const provider = di.usingLifetimeModel(noopLifetimeAddon())
       .configureServices(manifest => manifest.addValue(StandardScopeFactory.address, { openScope: () => scope }))
       .build();
 

@@ -2,14 +2,14 @@
 // registration for the whole type always outranks that synthesis. Literals, tuples, iterables and
 // intersections each meet the rule their own way.
 
-import { di, noop } from '@rhombus-std/di';
+import { di, noopLifetimeAddon } from '@rhombus-std/di';
 import { Manifest, UnsatisfiableError } from '@rhombus-std/di.core';
 import { Type } from '@rhombus-std/primitives';
 import { describe, expect, test } from 'bun:test';
 
 /** Seals `manifest` into a provider through the front door, on the noop lifetime model. */
 function toProvider(manifest: Manifest<string>) {
-  return di.usingLifetimeModel(noop()).configureServices(m => m.add(manifest)).build();
+  return di.usingLifetimeModel(noopLifetimeAddon()).configureServices(m => m.add(manifest)).build();
 }
 
 const A = Type.imported('A', 'app');

@@ -2,11 +2,11 @@
 // and for the controls around it: install order and the supply path that skips the sweep. The
 // bare-hole registration at the end is the other thing the engine takes without comment — it
 // resolves as a fallback provider, and only the validation addon objects. Those two run on
-// `noop()` deliberately: a hole-addressed registration matches the addresses the engine
-// synthesizes too, so on a model that resolves one while building — `standard()` asks for its
+// `noopLifetimeAddon()` deliberately: a hole-addressed registration matches the addresses the engine
+// synthesizes too, so on a model that resolves one while building — `standardLifetimeAddon()` asks for its
 // `Starfish` door — the container never finishes.
 
-import { di, noop, standard, validateUniversalAddresses } from '@rhombus-std/di';
+import { di, noopLifetimeAddon, standardLifetimeAddon, validateUniversalAddresses } from '@rhombus-std/di';
 import { type Addon, type AddonInstallation, type Behavior, Control, type Hooks, type IEngineHooks, ManifestValidationError, UniversalAddressError } from '@rhombus-std/di.core';
 import { Type } from '@rhombus-std/primitives';
 import { describe, expect, test } from 'bun:test';
@@ -50,7 +50,7 @@ function wrapping(tag: string): Behavior {
 
 describe('canonicalize', () => {
   test('answers in place of the instance the engine built', () => {
-    const provider = di.usingLifetimeModel(noop())
+    const provider = di.usingLifetimeModel(noopLifetimeAddon())
       .configureServices(manifest => manifest.add(A, Impl, Type.ctor(A, [[]])))
       .useAddon(hooked(wrapping('wrapped')))
       .build();
@@ -60,11 +60,11 @@ describe('canonicalize', () => {
     expect(answered.inner).toBeInstanceOf(Impl);
   });
 
-  test('sweeps in install order, so the addon installed first wraps outermost', () => {
-    const provider = di.usingLifetimeModel(noop())
+  test('sweeps in install order, so the addon installed last wraps outermost', () => {
+    const provider = di.usingLifetimeModel(noopLifetimeAddon())
       .configureServices(manifest => manifest.add(A, Impl, Type.ctor(A, [[]])))
-      .useAddon(hooked(wrapping('outer')))
       .useAddon(hooked(wrapping('inner')))
+      .useAddon(hooked(wrapping('outer')))
       .build();
 
     const answered = provider.resolve(A) as Wrapped;
@@ -75,11 +75,11 @@ describe('canonicalize', () => {
 
   test('an entry with nothing to change returns what arrived, and the sweep carries on past it', () => {
     const passthrough: Behavior = { canonicalize: (_construction: Hooks.Construction, instance: unknown) => instance };
-    const provider = di.usingLifetimeModel(noop())
+    const provider = di.usingLifetimeModel(noopLifetimeAddon())
       .configureServices(manifest => manifest.add(A, Impl, Type.ctor(A, [[]])))
-      .useAddon(hooked(wrapping('outer')))
-      .useAddon(hooked(passthrough))
       .useAddon(hooked(wrapping('inner')))
+      .useAddon(hooked(passthrough))
+      .useAddon(hooked(wrapping('outer')))
       .build();
 
     const answered = provider.resolve(A) as Wrapped;
@@ -97,7 +97,7 @@ describe('canonicalize', () => {
       },
     };
 
-    const provider = di.usingLifetimeModel(noop())
+    const provider = di.usingLifetimeModel(noopLifetimeAddon())
       .configureServices(manifest => manifest.add(A, Impl, Type.ctor(A, [[]])))
       .useAddon(hooked({ beforeConstruct: () => ({ result: supplied }) }))
       .useAddon(hooked(counting))
@@ -116,7 +116,7 @@ describe('canonicalize', () => {
       },
     };
 
-    const provider = di.usingLifetimeModel(standard())
+    const provider = di.usingLifetimeModel(standardLifetimeAddon())
       .configureServices(manifest => manifest.add(A, Impl, Type.ctor(A, [[]]), 'singleton'))
       .useAddon(hooked(counting))
       .build();
@@ -132,7 +132,7 @@ describe('canonicalize', () => {
       canonicalize: (construction: Hooks.Construction, instance: unknown) => construction.populatedAddress === A ? { tag: 'wrapped', inner: instance } : instance,
     };
 
-    const provider = di.usingLifetimeModel(noop())
+    const provider = di.usingLifetimeModel(noopLifetimeAddon())
       .configureServices(manifest =>
         manifest
           .add(A, Impl, Type.ctor(A, [[]]))
@@ -148,7 +148,7 @@ describe('canonicalize', () => {
 
 describe('a registration addressed by nothing but a hole', () => {
   test('answers whatever no newer registration does, leaving the ones that do alone', () => {
-    const provider = di.usingLifetimeModel(noop())
+    const provider = di.usingLifetimeModel(noopLifetimeAddon())
       .configureServices(manifest =>
         manifest
           .add(T, Fallback, Type.ctor(T, [[]]))
@@ -163,7 +163,7 @@ describe('a registration addressed by nothing but a hole', () => {
   test('is what validateUniversalAddresses reports, inside the build error', () => {
     let caught: unknown;
     try {
-      di.usingLifetimeModel(noop())
+      di.usingLifetimeModel(noopLifetimeAddon())
         .configureServices(manifest => manifest.add(T, Fallback, Type.ctor(T, [[]])))
         .useAddon(validateUniversalAddresses())
         .build();

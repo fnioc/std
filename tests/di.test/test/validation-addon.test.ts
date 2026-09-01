@@ -3,7 +3,7 @@
 // `validateBuildability` plans every closed address up front — both run their sweep at
 // `build()`, so a broken manifest never produces a provider.
 
-import { di, standard, StandardScopeFactory, validateBuildability, validateStandardCaptivity } from '@rhombus-std/di';
+import { di, standardLifetimeAddon, StandardScopeFactory, validateBuildability, validateStandardCaptivity } from '@rhombus-std/di';
 import { CaptiveDependencyError, type IServiceProvider, LifetimeModelError, ManifestValidationError } from '@rhombus-std/di.core';
 import { Type } from '@rhombus-std/primitives';
 import { describe, expect, test } from 'bun:test';
@@ -32,10 +32,10 @@ function openScope(provider: IServiceProvider): IServiceProvider {
 }
 
 describe('standard model captivity validation', () => {
-  test('standard() catches a captive dependency at build time by default', () => {
+  test('standardLifetimeAddon() catches a captive dependency at build time by default', () => {
     let caught: unknown;
     try {
-      di.usingLifetimeModel(standard())
+      di.usingLifetimeModel(standardLifetimeAddon())
         .configureServices(manifest =>
           manifest
             .add(SCOPED, Scoped, Type.ctor(SCOPED, [[]]), 'scoped')
@@ -56,7 +56,7 @@ describe('standard model captivity validation', () => {
 
   test('validateOnBuild off omits the captivity validator', () => {
     expect(() =>
-      di.usingLifetimeModel(standard({ validateOnBuild: false }))
+      di.usingLifetimeModel(standardLifetimeAddon({ validateOnBuild: false }))
         .configureServices(manifest =>
           manifest
             .add(SCOPED, Scoped, Type.ctor(SCOPED, [[]]), 'scoped')
@@ -68,7 +68,7 @@ describe('standard model captivity validation', () => {
 
   test('the standalone middleware catches a captive dependency when composed manually', () => {
     expect(() =>
-      di.usingLifetimeModel(standard({ validateOnBuild: false }))
+      di.usingLifetimeModel(standardLifetimeAddon({ validateOnBuild: false }))
         .configureServices(manifest =>
           manifest
             .add(SCOPED, Scoped, Type.ctor(SCOPED, [[]]), 'scoped')
@@ -80,7 +80,7 @@ describe('standard model captivity validation', () => {
   });
 
   test('a scoped registration resolved from an opened scope succeeds', () => {
-    const provider = di.usingLifetimeModel(standard())
+    const provider = di.usingLifetimeModel(standardLifetimeAddon())
       .configureServices(manifest => manifest.add(SCOPED, Scoped, Type.ctor(SCOPED, [[]]), 'scoped'))
       .build();
 
@@ -88,7 +88,7 @@ describe('standard model captivity validation', () => {
   });
 
   test('validateScopes off permits a scoped registration at the root scope — root keeps the instance', () => {
-    const provider = di.usingLifetimeModel(standard({ validateScopes: false }))
+    const provider = di.usingLifetimeModel(standardLifetimeAddon({ validateScopes: false }))
       .configureServices(manifest => manifest.add(SCOPED, Scoped, Type.ctor(SCOPED, [[]]), 'scoped'))
       .build();
 
@@ -106,7 +106,7 @@ describe('standard model captivity validation', () => {
     const KEEP_ONLY = Type.imported('KeepOnly', 'app');
     class KeepOnly {}
 
-    const provider = di.usingLifetimeModel(standard())
+    const provider = di.usingLifetimeModel(standardLifetimeAddon())
       .configureServices(manifest => manifest.add(KEEP_ONLY, KeepOnly, Type.ctor(KEEP_ONLY, [[]]), { keep: 'singleton' } as never))
       .build();
 
@@ -126,7 +126,7 @@ describe('validateBuildability', () => {
   test('aggregates an unsatisfiable closed address into a ManifestValidationError thrown from build()', () => {
     expect(
       () =>
-        di.usingLifetimeModel(standard())
+        di.usingLifetimeModel(standardLifetimeAddon())
           .configureServices(manifest => manifest.add(A, NeedsB, Type.ctor(A, [[B]]), 'singleton'))
           .useAddon(validateBuildability())
           .build(),
@@ -135,7 +135,7 @@ describe('validateBuildability', () => {
 
   test('never invokes a registered factory — only its signature is checked', () => {
     let invoked = false;
-    const provider = di.usingLifetimeModel(standard())
+    const provider = di.usingLifetimeModel(standardLifetimeAddon())
       .configureServices(manifest =>
         manifest.add(FACTORY, () => {
           invoked = true;
@@ -150,7 +150,7 @@ describe('validateBuildability', () => {
   });
 
   test('a captive dependency, being structurally buildable, does not trip validateBuildability on its own', () => {
-    const provider = di.usingLifetimeModel(standard({ validateOnBuild: false }))
+    const provider = di.usingLifetimeModel(standardLifetimeAddon({ validateOnBuild: false }))
       .configureServices(manifest =>
         manifest
           .add(SCOPED, Scoped, Type.ctor(SCOPED, [[]]), 'scoped')

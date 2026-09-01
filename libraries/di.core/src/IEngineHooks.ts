@@ -15,6 +15,10 @@ export interface IEngineHooks {
    * built-in installs stand outermost, first. Call-site placement is what scopes an install —
    * held for the container's life, or bracketed in a `using` block — nothing here distinguishes
    * the two. Disposing an install a second time does nothing.
+   *
+   * A resolution runs the installed behaviours from nearest the engine outward. For a plain
+   * handler, the layer farthest from the engine applies last and so holds final authority; the
+   * middleware form exists to override that by enclosing the layers beneath it.
    */
   useHooks<State = unknown>(hooks: Behavior<State>): Disposable;
 }

@@ -1,14 +1,14 @@
 // Behaviour tests for a signature carrying a generic hole in its return type — an open callable
 // address, closed positionally by a request for the instantiated shape.
 
-import { di, noop } from '@rhombus-std/di';
+import { di, noopLifetimeAddon } from '@rhombus-std/di';
 import { Manifest, Registration } from '@rhombus-std/di.core';
 import { Type } from '@rhombus-std/primitives';
 import { describe, expect, test } from 'bun:test';
 
 /** Seals `manifest` into a provider through the front door, on the noop lifetime model. */
 function toProvider(manifest: Manifest<string>) {
-  return di.usingLifetimeModel(noop()).configureServices(m => m.add(manifest)).build();
+  return di.usingLifetimeModel(noopLifetimeAddon()).configureServices(m => m.add(manifest)).build();
 }
 
 const T = Type.generic('T');

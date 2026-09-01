@@ -8,7 +8,7 @@
 // di-injected-steps.test.ts; this closes the bare form, which was
 // implemented but had no manifest-surface caller (#128).
 
-import { di, noop } from '@rhombus-std/di';
+import { di, noopLifetimeAddon } from '@rhombus-std/di';
 import { Manifest } from '@rhombus-std/di.core';
 import type { IOptions, IPostConfigureOptions } from '@rhombus-std/options';
 import { getConfigureManifest, getPostConfigureManifest, optionsAddressType } from '@rhombus-std/options.augmentations';
@@ -32,7 +32,7 @@ describe('postConfigure — bare form', () => {
       options.suffix += '!';
     }));
 
-    const provider = di.usingLifetimeModel(noop()).usingManifest(services).build();
+    const provider = di.usingLifetimeModel(noopLifetimeAddon()).usingManifest(services).build();
     const options: IOptions<WidgetOptions> = provider.resolve(optionsAddressType(OPTIONS_TYPE));
 
     // 'base!' proves ordering: the post-configure ran after the configure and
@@ -51,7 +51,7 @@ describe('postConfigure — bare form', () => {
     } };
     services = services.add(getPostConfigureManifest(OPTIONS_TYPE, step));
 
-    const provider = di.usingLifetimeModel(noop()).usingManifest(services).build();
+    const provider = di.usingLifetimeModel(noopLifetimeAddon()).usingManifest(services).build();
     const options: IOptions<WidgetOptions> = provider.resolve(optionsAddressType(OPTIONS_TYPE));
 
     expect(options.value.suffix).toBe('base!');
@@ -67,7 +67,7 @@ describe('postConfigure — bare form', () => {
       options.suffix += '-b';
     } }));
 
-    const provider = di.usingLifetimeModel(noop()).usingManifest(services).build();
+    const provider = di.usingLifetimeModel(noopLifetimeAddon()).usingManifest(services).build();
     const options: IOptions<WidgetOptions> = provider.resolve(optionsAddressType(OPTIONS_TYPE));
 
     expect(options.value.suffix).toBe('base-a-b');

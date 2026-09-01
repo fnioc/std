@@ -5,7 +5,8 @@
 export { CaptiveDependencyError, CycleError, DiError, ManifestValidationError, UniversalAddressError, UnknownControlError, UnsatisfiableError } from '@rhombus-std/di.core';
 export type { Middleware, ValidationFailure } from '@rhombus-std/di.core';
 
-export { resolveAudit } from './addons/resolve-audit.js';
+export { auditAddon } from './addons/audit-addon.js';
+export { type DiagnosticEdge, type DiagnosticPhase, type DiagnosticReading, diagnosticsAddon, type DiagnosticsAddonOptions, type DiagnosticsProbe } from './addons/diagnostics-addon.js';
 export { validateBuildability, validateUniversalAddresses } from './addons/validation.js';
 export { type ContainerBuilder, di } from './di.js';
 export * from './lifetime/index.js';

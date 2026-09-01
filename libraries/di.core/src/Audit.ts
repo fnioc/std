@@ -1,7 +1,8 @@
 import { Type } from '@rhombus-std/primitives';
+import { typefor } from '@rhombus-std/primitives.extras';
 
-/** Access to the resolve that constructed the holder, answered where the resolve-audit addon is installed. */
-export interface ResolveAudit {
+/** Access to the resolve that constructed the holder, answered where the audit addon is installed. */
+export interface Audit {
   /** The request that opened the resolution. */
   get request(): Type;
 
@@ -10,4 +11,9 @@ export interface ResolveAudit {
 
   /** The address of each construction enclosing the holder, innermost first. */
   get ancestry(): Iterable<Type>;
+}
+
+export namespace Audit {
+  /** The address the audit addon answers when named as a constructor dependency. */
+  export const address: Type = typefor<Audit>();
 }

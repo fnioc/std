@@ -4,7 +4,7 @@
 // the options resolve), and the ILoggerFactory injection.
 
 import { getMemoryCacheManifest, MEMORY_CACHE_OPTIONS_ACCESSOR_TYPE, MEMORY_CACHE_TYPE, MemoryCache, MemoryCacheOptions } from '@rhombus-std/caching.memory';
-import { di, noop } from '@rhombus-std/di';
+import { di, noopLifetimeAddon } from '@rhombus-std/di';
 import { Manifest } from '@rhombus-std/di.core';
 import { LOGGER_FACTORY_TYPE, NullLogger } from '@rhombus-std/logging';
 import type { ILogger, ILoggerFactory, ILoggerProvider } from '@rhombus-std/logging.core';
@@ -36,7 +36,7 @@ describe('getMemoryCacheManifest', () => {
       options.trackStatistics = true;
     });
 
-    const scope = di.usingLifetimeModel(noop()).usingManifest(returned).build();
+    const scope = di.usingLifetimeModel(noopLifetimeAddon()).usingManifest(returned).build();
     // Lazy: the configure step has not run at registration/build time.
     expect(ran).toBe(0);
 
@@ -52,7 +52,7 @@ describe('getMemoryCacheManifest', () => {
       options.name = 'configured';
     });
 
-    const scope = di.usingLifetimeModel(noop()).usingManifest(services).build();
+    const scope = di.usingLifetimeModel(noopLifetimeAddon()).usingManifest(services).build();
     const options: { value: MemoryCacheOptions; } = scope.resolve(MEMORY_CACHE_OPTIONS_ACCESSOR_TYPE);
     expect(options.value).toBeInstanceOf(MemoryCacheOptions);
     expect(options.value.name).toBe('configured');
@@ -63,7 +63,7 @@ describe('getMemoryCacheManifest', () => {
     let services: Manifest<unknown> = Manifest.empty<unknown>().addValue(LOGGER_FACTORY_TYPE, factory);
     services = services.add(getMemoryCacheManifest());
 
-    di.usingLifetimeModel(noop()).usingManifest(services).build().resolve(MEMORY_CACHE_TYPE);
+    di.usingLifetimeModel(noopLifetimeAddon()).usingManifest(services).build().resolve(MEMORY_CACHE_TYPE);
 
     expect(factory.categories).toEqual(['MemoryCache']);
   });
@@ -71,7 +71,7 @@ describe('getMemoryCacheManifest', () => {
   test('resolves without a registered ILoggerFactory (null-logger fallback)', () => {
     const services = getMemoryCacheManifest();
 
-    const cache: MemoryCache = di.usingLifetimeModel(noop()).usingManifest(services).build()
+    const cache: MemoryCache = di.usingLifetimeModel(noopLifetimeAddon()).usingManifest(services).build()
       .resolve(MEMORY_CACHE_TYPE);
     expect(cache).toBeInstanceOf(MemoryCache);
   });
@@ -85,7 +85,7 @@ describe('getMemoryCacheManifest', () => {
     // unconditionally -- so the sentinel already held for MEMORY_CACHE_TYPE survives.
     services = services.tryAdd(...getMemoryCacheManifest());
 
-    const resolved = di.usingLifetimeModel(noop()).usingManifest(services).build().resolve(MEMORY_CACHE_TYPE);
+    const resolved = di.usingLifetimeModel(noopLifetimeAddon()).usingManifest(services).build().resolve(MEMORY_CACHE_TYPE);
     expect(resolved).toBe(sentinel);
   });
 });

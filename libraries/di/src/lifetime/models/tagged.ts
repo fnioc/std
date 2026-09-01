@@ -1,4 +1,4 @@
-import { DiError, type IServiceProvider, type LifetimeModel, Registration, ScopeTagUnmatchedError } from '@rhombus-std/di.core';
+import { DiError, type IServiceProvider, type LifetimeModel, Registration } from '@rhombus-std/di.core';
 import { Type } from '@rhombus-std/primitives';
 import { type Generic, typefor } from '@rhombus-std/primitives.extras';
 import { anchorRoot } from '../root-anchor.js';
@@ -6,11 +6,11 @@ import { Scope } from '../Scope.js';
 
 const MODEL_NAME = 'tagged';
 
-/** Lifetime options for the {@link tagged} model. */
+/** Lifetime options for the {@link taggedLifetimeAddon} model. */
 export type TaggedLifetime<Tags extends string = string> = Tags | undefined;
 
 /**
- * Opens scopes on the {@link tagged} model, each carrying the tag the call names.
+ * Opens scopes on the {@link taggedLifetimeAddon} model, each carrying the tag the call names.
  *
  * @typeParam Tags - the tags this asker opens scopes under, so a call naming one outside the set
  * it declared is a compile error.
@@ -56,10 +56,10 @@ class TaggedScope extends Scope {
   }
 
   /**
-   * The nearest scope carrying the tag `registration` named, or `undefined` — for a registration
-   * naming no tag — to construct afresh every ask.
+   * The nearest scope carrying the tag `registration` named, or `undefined` to construct afresh
+   * every ask — which is the answer both for a registration naming no tag and for one whose tag
+   * no scope open here carries.
    *
-   * @throws {ScopeTagUnmatchedError} when no scope open here carries the tag the registration named.
    * @throws {DisposedScopeError} when this scope has already been torn down.
    */
   override selectOwningScope(registration: Registration<unknown>, populatedAddress: Type): TaggedScope | undefined {
@@ -70,11 +70,7 @@ class TaggedScope extends Scope {
     if (lifetime === undefined) {
       return undefined;
     }
-    const owner = Iterator.from(this.#ancestry()).find(scope => scope.#tag === lifetime);
-    if (!owner) {
-      throw new ScopeTagUnmatchedError(MODEL_NAME, lifetime, populatedAddress);
-    }
-    return owner;
+    return Iterator.from(this.#ancestry()).find(scope => scope.#tag === lifetime);
   }
 
   override mintDisposedError(address: Type): Error {
@@ -104,7 +100,7 @@ function readLifetime(registration: Registration<unknown>): TaggedLifetime {
  *
  * @typeParam Tags - the tags a scope may carry, defaulting to any string.
  */
-export function tagged<Tags extends string = string>(): LifetimeModel<TaggedLifetime<Tags>> {
+export function taggedLifetimeAddon<Tags extends string = string>(): LifetimeModel<TaggedLifetime<Tags>> {
   return {
     name: MODEL_NAME,
     transient: undefined,
@@ -154,4 +150,9 @@ export function tagged<Tags extends string = string>(): LifetimeModel<TaggedLife
       };
     },
   };
+}
+
+export namespace taggedLifetimeAddon {
+  /** This model's value for "construct afresh, keep nothing", reachable without building one. */
+  export const transient: undefined = undefined;
 }

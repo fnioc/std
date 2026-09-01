@@ -26,7 +26,7 @@
 // Nothing here reads a clock, the filesystem or a random source: the output is
 // byte-stable, which the app's checked-in `expected.txt` diff depends on.
 
-import { di, noop, validateBuildability } from '@rhombus-std/di';
+import { di, noopLifetimeAddon, validateBuildability } from '@rhombus-std/di';
 import { Manifest } from '@rhombus-std/di.core';
 import { Type } from '@rhombus-std/primitives';
 // `describeDiError` is the LIBRARY's — classifying what a container threw needs
@@ -69,7 +69,7 @@ export function* demonstrateInfrastructure(): Generator<string> {
   const defaults = addGreetingWorkshop((workshop) => {
     workshop.useGreeting(WorkshopGreeting);
   });
-  const defaultProvider = di.usingLifetimeModel(noop()).usingManifest(defaults).build();
+  const defaultProvider = di.usingLifetimeModel(noopLifetimeAddon()).usingManifest(defaults).build();
   const defaultWorkshop = defaultProvider.resolve(GREETING_WORKSHOP_TYPE) as GreetingWorkshop;
 
   yield 'app registered no stationery:';
@@ -83,7 +83,7 @@ export function* demonstrateInfrastructure(): Generator<string> {
   const customised = addGreetingWorkshop((workshop) => {
     workshop.useGreeting(WorkshopGreeting).useStationery({ border: '***' });
   });
-  const customWorkshop = di.usingLifetimeModel(noop()).usingManifest(customised).build()
+  const customWorkshop = di.usingLifetimeModel(noopLifetimeAddon()).usingManifest(customised).build()
     .resolve(GREETING_WORKSHOP_TYPE) as GreetingWorkshop;
 
   yield 'app registered its own stationery:';
@@ -144,7 +144,7 @@ export function* demonstrateInfrastructure(): Generator<string> {
       .add(Type.from('@rhombus-std/examples.contracts:IHealthCheck'), GreetingWorkshop, Type.ctor(Type.from('@rhombus-std/examples.contracts:IHealthCheck'), [[
         Type.from('@rhombus-std/examples.contracts:IGreeting'),
       ]]), 'singleton');
-    di.usingLifetimeModel(noop())
+    di.usingLifetimeModel(noopLifetimeAddon())
       .usingManifest(brokenManifest)
       .useAddon(validateBuildability())
       .build();

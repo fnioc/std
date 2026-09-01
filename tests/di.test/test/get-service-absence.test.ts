@@ -1,7 +1,7 @@
 // Behaviour tests for how `resolve` answers — or refuses — a request nothing satisfies, and for
 // the union spelling a caller reaches for when absence is an answer rather than a fault.
 
-import { di, noop } from '@rhombus-std/di';
+import { di, noopLifetimeAddon } from '@rhombus-std/di';
 import { type IServiceProvider, UnsatisfiableError } from '@rhombus-std/di.core';
 import { Type } from '@rhombus-std/primitives';
 import { describe, expect, test } from 'bun:test';
@@ -12,11 +12,11 @@ const Missing = Type.imported('Missing', 'app');
 const UNDEFINED = Type.typeLiteral(undefined);
 
 function emptyProvider(): IServiceProvider {
-  return di.usingLifetimeModel(noop()).build();
+  return di.usingLifetimeModel(noopLifetimeAddon()).build();
 }
 
 function providerFor(value: unknown): IServiceProvider {
-  return di.usingLifetimeModel(noop())
+  return di.usingLifetimeModel(noopLifetimeAddon())
     .configureServices(manifest => manifest.addValue(A, value))
     .build();
 }

@@ -1,4 +1,4 @@
-import { di, noop } from '@rhombus-std/di';
+import { di, noopLifetimeAddon } from '@rhombus-std/di';
 import { Manifest } from '@rhombus-std/di.core';
 import { NullFileProvider } from '@rhombus-std/fileproviders.core';
 import { BackgroundService, Environments, getHostedServiceManifest, HostAbortedError, HostDefaults, HOSTED_SERVICE_TYPE, hostedServiceCollectionType, HostEnvironmentEnvAugmentations,
@@ -118,7 +118,7 @@ test('addHostedService registers many under one token; the collection resolves a
   manifest = manifest.add(getHostedServiceManifest(A, Type.ctor(HOSTED_SERVICE_TYPE, [[]])));
   manifest = manifest.add(getHostedServiceManifest(B, Type.ctor(HOSTED_SERVICE_TYPE, [[]])));
 
-  const provider = di.usingLifetimeModel(noop()).usingManifest(manifest).build();
+  const provider = di.usingLifetimeModel(noopLifetimeAddon()).usingManifest(manifest).build();
   const services: IHostedService[] = provider.resolve(hostedServiceCollectionType());
 
   expect(services).toHaveLength(2);
@@ -130,7 +130,7 @@ test('addHostedService registers many under one token; the collection resolves a
 
 test('the hosted-service collection resolves to an empty array when none are registered', () => {
   const manifest: Manifest<unknown> = Manifest.empty<unknown>();
-  const provider = di.usingLifetimeModel(noop()).usingManifest(manifest).build();
+  const provider = di.usingLifetimeModel(noopLifetimeAddon()).usingManifest(manifest).build();
   const services: IHostedService[] = provider.resolve(hostedServiceCollectionType());
   expect(services).toEqual([]);
 });

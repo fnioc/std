@@ -1,7 +1,7 @@
 // Behaviour tests for the standard lifetime model: which scope keeps an instance, what a
 // registration naming no lifetime meets, and what a singleton's own dependencies resolve from.
 
-import { di, standard, type StandardLifetime, StandardScopeFactory } from '@rhombus-std/di';
+import { di, type StandardLifetime, standardLifetimeAddon, StandardScopeFactory } from '@rhombus-std/di';
 import { type IServiceProvider, LifetimeModelError, ManifestValidationError, Registration } from '@rhombus-std/di.core';
 import { Type } from '@rhombus-std/primitives';
 import { describe, expect, test } from 'bun:test';
@@ -17,7 +17,7 @@ class Holder {
 
 /** A container whose only registration is {@link Counter} under `lifetime`. */
 function buildProviderFor(lifetime: StandardLifetime): IServiceProvider {
-  return di.usingLifetimeModel(standard())
+  return di.usingLifetimeModel(standardLifetimeAddon())
     .configureServices(manifest => manifest.add(COUNTER, Counter, Type.ctor(COUNTER, [[]]), lifetime))
     .build();
 }
@@ -29,7 +29,12 @@ function openScope(provider: IServiceProvider): IServiceProvider {
 
 describe('the model itself', () => {
   test('names itself, so a failure can say which model refused', () => {
-    expect(standard().name).toBe('standard');
+    expect(standardLifetimeAddon().name).toBe('standard');
+  });
+
+  test("publishes its transient tier statically, matching a built model's own", () => {
+    expect(standardLifetimeAddon.transient).toBe('transient');
+    expect(standardLifetimeAddon.transient).toBe(standardLifetimeAddon().transient);
   });
 });
 
@@ -85,7 +90,7 @@ describe('transient', () => {
 
 describe('a registration naming no lifetime', () => {
   test('is refused, naming the model that had no reading for it', () => {
-    const provider = di.usingLifetimeModel(standard())
+    const provider = di.usingLifetimeModel(standardLifetimeAddon())
       // The types forbid a lifetime-less registration on this model, so the cast is what reaches
       // the runtime guard an untyped caller would hit.
       .configureServices(manifest => manifest.add(Registration.ctor(COUNTER, Counter, Type.ctor(COUNTER, [[]])) as unknown as Registration<StandardLifetime>))
@@ -106,7 +111,7 @@ describe('a registration naming no lifetime', () => {
 describe('captivity', () => {
   test('a singleton depending on a scoped registration is caught at build time by the default validator', () => {
     expect(() =>
-      di.usingLifetimeModel(standard())
+      di.usingLifetimeModel(standardLifetimeAddon())
         .configureServices(manifest =>
           manifest
             .add(COUNTER, Counter, Type.ctor(COUNTER, [[]]), 'scoped')
@@ -117,7 +122,7 @@ describe('captivity', () => {
   });
 
   test('with both checks off, a singleton depending on a scoped registration resolves — root keeps the scoped instance', () => {
-    const provider = di.usingLifetimeModel(standard({ validateOnBuild: false, validateScopes: false }))
+    const provider = di.usingLifetimeModel(standardLifetimeAddon({ validateOnBuild: false, validateScopes: false }))
       .configureServices(manifest =>
         manifest
           .add(COUNTER, Counter, Type.ctor(COUNTER, [[]]), 'scoped')
@@ -136,7 +141,7 @@ describe('captivity', () => {
 describe('the two validation switches', () => {
   test('are both on by default: the sweep catches a captive pair and the root refuses a scoped ask', () => {
     expect(() =>
-      di.usingLifetimeModel(standard())
+      di.usingLifetimeModel(standardLifetimeAddon())
         .configureServices(manifest =>
           manifest
             .add(COUNTER, Counter, Type.ctor(COUNTER, [[]]), 'scoped')
@@ -149,7 +154,7 @@ describe('the two validation switches', () => {
   });
 
   test('validateScopes off keeps a scoped ask at the root — same instance on a second ask', () => {
-    const provider = di.usingLifetimeModel(standard({ validateScopes: false }))
+    const provider = di.usingLifetimeModel(standardLifetimeAddon({ validateScopes: false }))
       .configureServices(manifest => manifest.add(COUNTER, Counter, Type.ctor(COUNTER, [[]]), 'scoped'))
       .build();
 
@@ -159,7 +164,7 @@ describe('the two validation switches', () => {
   });
 
   test('validateOnBuild off drops the sweep while the runtime root refusal still fires', () => {
-    const provider = di.usingLifetimeModel(standard({ validateOnBuild: false }))
+    const provider = di.usingLifetimeModel(standardLifetimeAddon({ validateOnBuild: false }))
       .configureServices(manifest =>
         manifest
           .add(COUNTER, Counter, Type.ctor(COUNTER, [[]]), 'scoped')

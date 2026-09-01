@@ -13,7 +13,7 @@
 // declarations — so consumer and producer meet on the type rather than on a
 // string they each have to spell correctly.
 
-import { di, noop } from '@rhombus-std/di';
+import { di, noopLifetimeAddon } from '@rhombus-std/di';
 import type { IServiceProvider } from '@rhombus-std/di.core';
 // Type-only: puts di.extras' declare-module sugar faces in the program with no
 // runtime import — `resolveAsync<T>()` below is inlined away at compile time.
@@ -206,5 +206,5 @@ async function* tour(provider: IServiceProvider): AsyncGenerator<string> {
  * asynchronously — every other chapter is an ordinary generator.
  */
 export function demonstrateResolution(): AsyncGenerator<string> {
-  return tour(di.usingLifetimeModel(noop()).configureServices(manifest => manifest.add(addCheckoutServices())).build());
+  return tour(di.usingLifetimeModel(noopLifetimeAddon()).configureServices(manifest => manifest.add(addCheckoutServices())).build());
 }

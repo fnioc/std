@@ -5,7 +5,7 @@
 // nodes -- the caller supplies <Deps> explicitly, since the type array alone
 // can't recover the Deps tuple by inference.
 
-import { di, noop } from '@rhombus-std/di';
+import { di, noopLifetimeAddon } from '@rhombus-std/di';
 import { Manifest } from '@rhombus-std/di.core';
 import { type IOptions, OptionsValidationError } from '@rhombus-std/options';
 import { getConfigureManifest, getPostConfigureManifest, getValidateManifest, optionsAddressType } from '@rhombus-std/options.augmentations';
@@ -40,7 +40,7 @@ describe('configure — DI-injected', () => {
       options.url = urls.base;
     }));
 
-    const provider = di.usingLifetimeModel(noop()).usingManifest(services).build();
+    const provider = di.usingLifetimeModel(noopLifetimeAddon()).usingManifest(services).build();
     const options: IOptions<WidgetOptions> = provider.resolve(optionsAddressType(OPTIONS_TYPE));
 
     expect(options.value.url).toBe('http://svc');
@@ -59,7 +59,7 @@ describe('configure — DI-injected', () => {
       options.retries = policy.attempts;
     }));
 
-    const provider = di.usingLifetimeModel(noop()).usingManifest(services).build();
+    const provider = di.usingLifetimeModel(noopLifetimeAddon()).usingManifest(services).build();
     const options: IOptions<WidgetOptions> = provider.resolve(optionsAddressType(OPTIONS_TYPE));
 
     expect(options.value).toEqual({ url: 'http://svc', retries: 4, note: '' });
@@ -76,7 +76,7 @@ describe('configure — DI-injected', () => {
       options.url = urls.base;
     }));
 
-    const provider = di.usingLifetimeModel(noop()).usingManifest(services).build();
+    const provider = di.usingLifetimeModel(noopLifetimeAddon()).usingManifest(services).build();
     const options: IOptions<WidgetOptions> = provider.resolve(optionsAddressType(OPTIONS_TYPE));
 
     expect(options.value.url).toBe('http://svc');
@@ -96,7 +96,7 @@ describe('postConfigure — DI-injected', () => {
       options.note += suffix.text;
     }));
 
-    const provider = di.usingLifetimeModel(noop()).usingManifest(services).build();
+    const provider = di.usingLifetimeModel(noopLifetimeAddon()).usingManifest(services).build();
     const options: IOptions<WidgetOptions> = provider.resolve(optionsAddressType(OPTIONS_TYPE));
 
     expect(options.value.note).toBe('base!');
@@ -117,7 +117,7 @@ describe('validate — DI-injected', () => {
     let services = servicesWithLimit(3, 10);
     services = services.add(getValidateManifest<[{ max: number; }]>(OPTIONS_TYPE, [LIMIT_TYPE], (options: WidgetOptions, limit) => options.retries <= limit.max, 'retries over limit'));
 
-    const provider = di.usingLifetimeModel(noop()).usingManifest(services).build();
+    const provider = di.usingLifetimeModel(noopLifetimeAddon()).usingManifest(services).build();
 
     expect(() => {
       const options: IOptions<WidgetOptions> = provider.resolve(
@@ -131,7 +131,7 @@ describe('validate — DI-injected', () => {
     let services = servicesWithLimit(50, 10);
     services = services.add(getValidateManifest<[{ max: number; }]>(OPTIONS_TYPE, [LIMIT_TYPE], (options: WidgetOptions, limit) => options.retries <= limit.max, 'retries over limit'));
 
-    const provider = di.usingLifetimeModel(noop()).usingManifest(services).build();
+    const provider = di.usingLifetimeModel(noopLifetimeAddon()).usingManifest(services).build();
 
     expect(() => {
       const options: IOptions<WidgetOptions> = provider.resolve(
@@ -151,7 +151,7 @@ describe('validate — DI-injected', () => {
     let services = servicesWithLimit(50, 10);
     services = services.add(getValidateManifest<[{ max: number; }]>(OPTIONS_TYPE, [LIMIT_TYPE], (options: WidgetOptions, limit) => options.retries <= limit.max));
 
-    const provider = di.usingLifetimeModel(noop()).usingManifest(services).build();
+    const provider = di.usingLifetimeModel(noopLifetimeAddon()).usingManifest(services).build();
 
     expect(() => {
       const options: IOptions<WidgetOptions> = provider.resolve(

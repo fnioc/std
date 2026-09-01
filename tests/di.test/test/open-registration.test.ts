@@ -2,14 +2,14 @@
 // asks for the type that closed it; a hole standing inside a bigger slot is part of a type
 // expression, and the closed expression names a service like any other.
 
-import { di, noop, validateBuildability } from '@rhombus-std/di';
+import { di, noopLifetimeAddon, validateBuildability } from '@rhombus-std/di';
 import { type IServiceProvider, Manifest, Registration, UnsatisfiableError } from '@rhombus-std/di.core';
 import { Type } from '@rhombus-std/primitives';
 import { describe, expect, test } from 'bun:test';
 
 /** Seals `manifest` into a provider through the front door, on the noop lifetime model. */
 function toProvider(manifest: Manifest<string>) {
-  return di.usingLifetimeModel(noop()).configureServices(m => m.add(manifest)).build();
+  return di.usingLifetimeModel(noopLifetimeAddon()).configureServices(m => m.add(manifest)).build();
 }
 
 const T = Type.generic('T');
@@ -48,7 +48,7 @@ describe('a slot that is the hole', () => {
   test('receives it without anything being registered for that type', () => {
     // Nothing in `openBox` produces a Foo, and the request is still satisfiable: the slot asks
     // for the type, never for a value of it.
-    const provider = di.usingLifetimeModel(noop())
+    const provider = di.usingLifetimeModel(noopLifetimeAddon())
       .configureServices(m => m.add(openBox))
       .useAddon(validateBuildability())
       .build();
