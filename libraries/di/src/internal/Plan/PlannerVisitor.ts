@@ -183,9 +183,13 @@ export class PlannerVisitor extends Type.Visitor<Plan | undefined> {
     return undefined;
   }
 
-  /** Parked: composing one from its property types on a miss awaits its design ruling. */
-  protected override visitObject(_type: ObjectType): Plan | undefined {
-    return undefined;
+  protected override visitObject(type: ObjectType): Plan | undefined {
+    const names = Object.keys(type.members);
+    const properties = names.map(name => this.visit(type.members[name]!));
+    if (properties.some(p => !p)) {
+      return undefined;
+    }
+    return Plan.factory((...values: any[]) => Object.fromEntries(names.map((name, position) => [name, values[position]])), properties as Plan[]);
   }
 
   protected override visitTag(_type: TagType): Plan | undefined {
