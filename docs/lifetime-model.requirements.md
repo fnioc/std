@@ -1,61 +1,43 @@
 # Lifetime model requirements
 
 A lifetime model is a defined pattern of behavior for how long a construction is kept and what
-keeps it. It is an `Addon<Lifetime>`: registrations it files, and middleware that composes into
-the container's one request pipeline, generic in a vocabulary of its own choosing — the
-`Lifetime` type parameter names whatever data a registration's `lifetime` member carries for this
-model to interpret. Nothing outside the model reads that member; nothing outside the model
-prescribes what values it may hold.
+keeps it. How a model organizes itself internally, and what tooling its author has to work with,
+is not this document's concern. This document states only what any lifetime model must do and
+must never do — behavior a caller outside the model can observe and check.
 
-The boundary the model sits on is fixed and small: nothing in the manifest, the engine, or the
-chain says how a model organizes itself. Two models need not be built alike.
+The engine owns the ask: what was requested and what it takes to satisfy it. The model owns the
+scope: whatever grouping of asks it treats as sharing, or not sharing, a construction. A thing
+that lives no longer than the one ask that produced it is not a lifetime, and belongs to no
+model's vocabulary.
 
-The engine owns the ask: what was requested, its address, and the constructions it takes to
-satisfy it. The model owns the scope: whatever grouping of asks it defines as sharing (or not
-sharing) a construction. A per-ask thing — data that lives no longer than the resolution that
-created it — is not a lifetime and belongs to no model's vocabulary; the engine already tracks the
-ask itself without any model's help.
-
-There is no "does nothing" lifetime model to author. Installing a model is optional outright — a
-container with none installed is already the case a no-op model would represent: nothing reads
-the `lifetime` member of any registration, because nothing installed knows how.
+There is no "does nothing" lifetime model to author. A container with no lifetime model installed
+is already the case such a model would represent: nothing reads, checks, or acts on any
+registration's lifetime.
 
 ## Requirements
 
-### Vocabulary and identity
+### Identity
 
-1. A lifetime model is an `Addon<Lifetime>` in a vocabulary of its own choosing; nothing about
-   that vocabulary's shape — a string tag, an enum, an object, a union of literals — is
-   prescribed.
-2. A model names itself, so a failure can say which model refused:
-   ```ts
-   const model = myLifetimeAddon();
-   model.name; // "standard", "tagged", whatever this model calls itself
-   ```
-3. A model publishes its own value for "construct afresh, keep nothing" — its `transient` — in
-   its own vocabulary. A registration carrying that value is never kept by anything the model
-   installs.
-4. Every registration a model's own addon files, and every registration a caller adds under that
-   model, carries a `lifetime` drawn from the model's vocabulary (or the engine-owned
-   `controlLifetime` sentinel, which is outside every model's jurisdiction and never reaches the
-   model at all). A registration naming no lifetime the model recognizes is the model's own to
-   refuse, at whatever point it chooses to check.
+1. A model is an `Addon<Lifetime>` generic in its own vocabulary, and every registration names a
+   lifetime from that vocabulary.
+2. A failure caused by what a registration's lifetime says, or by what a model does with it,
+   identifies to the caller which model raised it.
+3. Every model offers at least one lifetime that constructs afresh for every ask and keeps
+   nothing: resolving such a registration twice — from the same scope, or from different ones —
+   never yields the same instance.
 
-### Scope ownership
+### No fixed shape
 
-5. The model owns scopes. It defines how many kinds exist, how they nest, what data marks one,
-   and how a caller opens one — none of it named or shaped by the engine, the manifest, or the
-   hook chain.
-6. A per-ask thing — a value that lives no longer than the one resolution that produced it — is
-   never a lifetime. The engine already tracks the ask; a model's vocabulary describes only what
-   outlives it.
-7. Where a model publishes a way to open a nested scope, that surface — its address, its shape,
-   what it's called — is the model's own invention. Nothing elsewhere in the container names or
-   expects it.
+4. No two models are required to agree on how they organize themselves: how many kinds of scope
+   exist, how they nest, what marks one, or what a failure specific to one model looks like beyond
+   requirement 2. Neither a caller nor another model may assume one model's shape from having seen
+   another's.
+5. No lifetime model is required at all. A container with none installed behaves exactly as if a
+   model that interprets nothing were present.
 
 ### The unit of "single"
 
-8. The unit of "single" is the answering registration together with its generic capture — never
+6. The unit of "single" is the answering registration together with its generic capture — never
    the spelling a caller happened to ask with. Two different spellings that resolve to the same
    registration, closed the same way, share one instance under a keeping lifetime:
    ```ts
@@ -65,7 +47,7 @@ the `lifetime` member of any registration, because nothing installed knows how.
    const viaDependent = (provider.resolve(HOLDER) as Holder).widget;
    direct === viaDependent; // true, under a keeping lifetime
    ```
-9. One open-generic registration, closed two different ways, is two different "single"s — never
+7. One open-generic registration, closed two different ways, is two different "single"s — never
    conflated into one instance:
    ```ts
    provider.resolve(typefor<Repo<number>>()) !== provider.resolve(typefor<Repo<string>>());
@@ -74,26 +56,28 @@ the `lifetime` member of any registration, because nothing installed knows how.
 
 ### Concurrency and async-blindness
 
-10. A model must never construct the same thing twice for one lifetime. Concurrent asks for the
-    same answering registration and the same generic capture, under a keeping lifetime, settle on
-    one product — the second ask in reaches the first ask's in-flight or already-settled result,
-    never a fresh construction.
-11. This holds for asynchronous products exactly as it holds for synchronous ones: a construction
-    that produces a pending promise is the product being kept, and a second concurrent ask for the
-    same single reaches that same pending promise rather than starting its own construction.
-12. A model is async-blind. It never insists on a settled value, never calls `.then` on what it's
-    keeping, never awaits a product before deciding whether or how to keep it, and never treats a
-    pending promise differently from any other value the engine handed it.
+8. Under a keeping lifetime, two asks for the same registration and the same generic capture, made
+   concurrently, are answered with the identical product — never two separately constructed ones —
+   whichever of the two asks finishes first.
+9. This holds identically when a construction's product is a still-pending promise: a second
+   concurrent ask for the same kept single is answered with that very same pending promise, not a
+   fresh one.
+10. A kept construction whose product is a promise is handed back exactly as constructed —
+    pending, settled, or rejected — never awaited, unwrapped, or substituted for something else on
+    the way to a caller asking for the raw value:
+    ```ts
+    const pending = provider.resolve(WIDGET); // this registration's construction returns a promise
+    pending instanceof Promise; // true
+    pending === provider.resolve(WIDGET); // true, under a keeping lifetime — the very same
+    // pending promise handed back again, never awaited or replaced by what it settles to
+    ```
 
 ### Latebound arguments
 
-13. A value built from a latebound argument — supplied by the caller at the moment of the ask
+11. A value built from a latebound argument — supplied by the caller at the moment of the ask
     rather than carried on the registration or the closed address — is never kept by a model. The
     address that would key a cached slot for it carries no record of those arguments, so there is
-    nothing stable to key the slot on. This reaches exactly as far as the arguments do: a
-    dependency resolved during the same call whose own subtree consumed no latebound argument is
-    kept normally, in the scope the call was minted under. A model that declines to keep everything
-    reached from a latebound call is refusing more than it was asked to:
+    nothing stable to key the slot on:
     ```ts
     const make = provider.resolve(Type.func(WIDGET, [[Type.string()]])) as (name: string) => Widget;
     make('a') !== make('b'); // never conflated, whatever the registration's own lifetime says
@@ -101,55 +85,40 @@ the `lifetime` member of any registration, because nothing installed knows how.
 
 ### Disposal
 
-14. Instance disposal belongs entirely to the model. The engine, the manifest, and the hook chain
-    carry no disposal contract of any kind — no dispose-shaped hook a model is expected to
-    implement, no dispose-named error in the shared taxonomy, nothing.
-15. Where a model chooses to track constructed instances for later release, the mechanism for
-    triggering that release — what it's called, how a caller reaches it, whether it distinguishes
-    a synchronous release from an asynchronous one — is the model's own invention. Nothing
-    elsewhere in the container calls it, awaits it, or assumes its shape.
-16. A registration whose implementer the engine never constructs — a value registration, handed
-    back exactly as given — has no construction for a model's disposal policy to govern, and a
-    model must never treat one as an instance it tracks.
+12. Two different models are never required to release, or even track, kept constructions the same
+    way, on the same trigger, or at all. A caller must not assume disposal behavior carries over
+    from one model to another.
+13. For a construction under a lifetime that keeps nothing, whether it is disposed at all, and by
+    what, is a decision that belongs to the model that constructed it — not fixed by anything
+    outside that model, and not necessarily the same choice two different models make. A model may
+    expose this choice as something a caller configures.
+14. A registration handed back exactly as given, never constructed by anything, is never something
+    a model disposes as though it had built it.
 
-### Captivity and validation
+### Captivity
 
-17. Whether a longer-lived registration may depend on a shorter-lived one — captivity, where the
-    longer-lived one constructs the shorter-lived one and holds it past that dependency's own
-    lifetime — is the model's own judgment call. Nothing in the engine, the manifest, or the hook
-    chain supplies a captivity check, an error naming one, or an opinion on whether captivity is
-    ever acceptable.
-18. Where a model wants such a check, it authors it as a middleware layer of its own, inside its
-    own addon — reading whatever the model's own registrations and vocabulary already expose. It
-    is never contributed by the engine, and never a type or a check shared with another model:
-    each model that wants captivity checking writes its own.
-
-### Composition
-
-19. A lifetime model is an `Addon<Lifetime>` and nothing more: its registrations file the way any
-    addon's do, its middleware composes into the one chain the way any addon's does, and a
-    container may run with one installed, several installed side by side under different
-    vocabularies, or none at all. Two models need not organize their scopes alike, name their
-    errors alike, or agree on what "kept" even means beyond the shared boundary above.
+15. Whether a registration that lives longer may depend on, and hold onto, one that lives for a
+    shorter span is a question no two models are required to answer alike. Nothing outside the
+    model deciding it supplies a default answer, a check, or an error naming the situation, and a
+    check one model performs for this is never shared with or imposed on another model.
 
 ## Over-specified tests to cut
 
 - **A scoped registration resolved at the root scope is refused by default.**
   `tests/di.test/test/standard-lifetime-model.test.ts`, `describe('scoped')` → `'refuses a scoped
   ask at the root scope'`, and the `'the two validation switches'` block asserting both switches
-  are "on by default." The reference's scope-validation option defaults OFF: resolving a
-  scope-limited registration from the root, with no validation installed, silently succeeds and
+  are "on by default." The reference's scope-validation switch defaults OFF: resolving a
+  scope-limited registration from the root, with no validation turned on, silently succeeds and
   the root itself keeps the instance (captive-at-root, not a refusal). A model may choose to
-  refuse this by default, but nothing about the reference — or about requirement 17 above —
-  requires it, and the reference's own default is the opposite.
+  refuse this by default, but nothing requires it, and the reference's own default is the
+  opposite.
 
 - **A pending promise product is awaited during release, and a synchronous release throws on
   meeting one.** `tests/di.test/test/standard-lifetime-model-disposal.test.ts`,
   `describe('the promise-boundary product in reach')` and its sync-throw counterpart. This
-  directly contradicts requirement 12: a model is async-blind and never awaits a product it keeps,
-  release included. The reference has no async construction at all, so there is no reference
-  behavior to match here — the contradiction is with the model's own async-blindness requirement,
-  not with reference parity.
+  directly contradicts requirement 10: a kept promise is never awaited or unwrapped by the model.
+  The reference has no async construction at all, so there is no reference behavior to match
+  here — the contradiction is with the async-blindness requirement itself.
 
 - **Disposing a scope cascades into disposing every open child scope before releasing what the
   parent itself kept.** Same file, `describe('release order')` →
@@ -162,25 +131,25 @@ the `lifetime` member of any registration, because nothing installed knows how.
   `describe('what the model never tracks')` → `'never disposes a transient instance, since nothing
   tracks it'`. This is backwards from the reference: a transient disposable IS captured by the
   scope that constructed it and IS released when that scope tears down — it is simply never
-  reused for a second ask. Not tracking transient disposables is a legitimate design choice a
-  model may make, but asserting it as the required behavior misstates the reference.
+  reused for a second ask. Not tracking transient disposables is a legitimate choice a model may
+  make (requirement 13), but asserting it as the required behavior misstates the reference.
 
-- **Opening a nested scope from an already-disposed non-root scope is refused, even while the
-  scope's own root provider is still alive.** `describe('opening a scope from a disposed
-  factory')` in both `standard-lifetime-model-disposal.test.ts` and
-  `tagged-lifetime-model.test.ts`. In the reference, opening a new scope delegates straight to the
-  root provider's own disposed check; a non-root scope's own disposed state does not gate creating
-  a further scope from it. A model may choose to be stricter, but the reference itself is not.
+- **Opening a nested scope from an already-disposed non-root scope is refused, even while that
+  scope's own root is still alive.** `describe('opening a scope from a disposed factory')` in both
+  `standard-lifetime-model-disposal.test.ts` and `tagged-lifetime-model.test.ts`. In the
+  reference, opening a new scope delegates straight to the root's own disposed check; a non-root
+  scope's own disposed state does not gate creating a further scope from it. A model may choose to
+  be stricter, but the reference itself is not.
 
-- **A generic, engine-shared `CaptiveDependencyError` and a standalone captivity-sweep addon
-  usable across models.** `tests/di.test/test/validation-addon.test.ts` and
-  `tests/di.test/test/captivity-constant-products.test.ts` both exercise a captivity error and
-  validator imported from the shared surface rather than authored inside one model's own addon.
-  This contradicts requirement 18 directly: captivity checking is each model's own, never a type
-  or a check shared between models.
+- **A generic captive-dependency error and check, shared across models rather than each model's
+  own.** `tests/di.test/test/validation-addon.test.ts` and
+  `tests/di.test/test/captivity-constant-products.test.ts` both exercise a captivity error and a
+  reusable captivity check imported from a shared library rather than authored per model. This
+  contradicts requirement 15 directly: captivity checking is each model's own, never a check
+  shared between models.
 
 - **A `noopLifetimeAddon` that a container installs to get "no lifetime interpretation."**
   `tests/di.test/test/async-resolution.test.ts` builds its provider through
-  `di.usingLifetimeModel(noopLifetimeAddon())`. This is exactly the model the opening section
-  above rules out: a container with no model installed is already what a no-op model would be: no
-  need to author or install one to reach that state.
+  `di.usingLifetimeModel(noopLifetimeAddon())`. This is exactly the model requirement 5 rules
+  out: a container with no model installed is already what such a model would be — nothing to
+  author or install to reach that state.
