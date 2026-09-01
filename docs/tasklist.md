@@ -690,6 +690,25 @@ users take the plain function instead: `ServiceProvider`'s constructor loses its
 `IServiceProviderInternal | Func<…>` union, and `askForControl` takes what it is really asking
 through.
 
+`ServiceProvider`'s constructor takes `Func<[Request], unknown>` and nothing else, and the rest of the
+`Request` conversion proceeds from there.
+
+The `Request` a `getService` call is running under is itself resolvable, and `IServiceProvider` stops
+being a special case in the planner: the manifest is seeded with a factory
+`(request: Request) => request.serviceProvider`, addressed as `IServiceProvider`. The provider
+becomes an ordinary registration, and `visitServiceProvider` and its plan kind go.
+
+- [ ] Seeding it needs a lifetime in a vocabulary the seeder owns. Every registration names one, the
+      value must be transient — a cached provider is wrong — and only the model knows how to spell
+      transient, so the MODEL seeds this, not the builder.
+- [ ] Latebound and invoker frames have no `Request`: `resolveFrame` and `resolveLatebound` reach
+      `Plan.realize` directly, bypassing the chain, so a factory reading `request.serviceProvider`
+      cannot answer there. `visitServiceProvider` can today, synthesizing from the visitor context.
+      Settle this before the special case is removed.
+- [ ] A resolvable `Request` is per-ask state that a cached service can capture — a singleton taking
+      one holds a stale ask's type and attachments, and captivity validation will not catch it
+      because transient into singleton is legal.
+
 - [ ] Build it. Today `ContainerBuilder<Lifetime>` takes its parameter from `usingLifetimeModel`
       specifically, `Addon` is not generic, and `AddonInstallation.registrations` is
       `Iterable<Registration<any>>`.
