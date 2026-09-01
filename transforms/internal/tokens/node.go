@@ -200,7 +200,9 @@ func deriveNode(ctx *Context, checker *shimchecker.Checker, t *shimchecker.Type,
 		return deriveSignatureNode(ctx, checker, callSigs, failure, KindFunc, s)
 	}
 
-	if t.Flags()&shimchecker.TypeFlagsUndefined != 0 {
+	// void reads as the same undefined literal SingletonValue already gives it
+	// (generics.go) — the Type model has no separate void member of its own.
+	if t.Flags()&(shimchecker.TypeFlagsUndefined|shimchecker.TypeFlagsVoid) != 0 {
 		return &Node{Kind: KindLiteral, Literal: LiteralValue{Kind: LiteralUndefined}}, true
 	}
 	if t.Flags()&shimchecker.TypeFlagsNull != 0 {
