@@ -849,9 +849,8 @@ Design recorded as §231.
 
 ## Moved out of the decision log (2026-09-01)
 
-- [ ] Probe whether a bare `typefor<T>()` derives correctly inside a SUBSTITUTED body. `tokenof<T>()`
-      is witnessed working there; `typefor<T>()`'s own substituted-body behavior is unverified, and
-      retiring the `tokenfor`/`tokenof`/`nameoftransform` trio is gated on it.
+- [x] Probe whether a bare `typefor<T>()` derives correctly inside a SUBSTITUTED body — confirmed
+      correct by a real `ttsc` build (§233); the `tokenfor`/`tokenof`/`nameoftransform` trio is retired.
 
 ## Resolution door — design taken this session (2026-09-01)
 
@@ -866,6 +865,17 @@ if that write-up slips.
 - [ ] `IServiceProvider` is a permanent factory registration under `controlLifetime`, its slot
       addressed `ServiceRequest`. During the fold nothing answers that slot, so it is unsatisfiable
       through the ordinary absence path with no check written anywhere.
+- [ ] `Request` and every arm of the union are resolvable addresses in their own right. Asking for
+      `Request` answers whichever arm the live ask is; asking for `ServiceRequest` answers only when
+      that is what the ask is, and refuses otherwise. A control service declares the arm it needs
+      and inherits the refusal for free.
+- [ ] UNCONFIRMED PREMISE, raised with the owner and not yet answered — the whole design rests on
+      it. The engine answers an ask for `ServiceRequest` with the live request only when the live
+      request IS one, decided by a check on the value's own shape, once, centrally; a
+      `CompositionRequest` then leaves that slot unanswered and every control service depending on
+      it refuses through the ordinary absence path. The alternative reading — matching the
+      request's TYPE NODE against the slot — has no way to reach, since the request arrives as a
+      value and the engine never holds a node for it.
 - [ ] `controlLifetime` stops bypassing planning. Today `Engine.#resolveControlLifetime` calls the
       factory with the raw request and no plan; it must plan the factory's slots like any other
       registration, keeping only the no-caching property.
