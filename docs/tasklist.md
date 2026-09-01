@@ -1020,6 +1020,22 @@ the ctor/func intern key to two ids, and satisfies the one-kind-per-member rule.
       rather than a convenient accident. It is load-bearing for the resolvable-request design: a
       `[key: symbol]: unknown` member that derived would put a slot on the address nothing can answer.
 
+### Ruled 2026-09-01
+
+- [ ] The ENGINE bypasses hooks for a `controlLifetime` registration. A model never sees one and
+      never has to know the sentinel exists. Cost accepted: an audit or diagnostics addon cannot
+      observe control resolutions either.
+- [ ] `LifetimeArgument<Lifetime>` and `LifetimeModelError` both STAY. "Remove all Lifetime related
+      interfaces" reaches `LifetimeModel` itself, not the vararg helper a registering addon uses nor
+      the error.
+- [ ] A tuple with an optional or rest element must DERIVE, not refuse — "support it if you can".
+      That is the open-length tuple work above, and it settles the array-typed rest parameter too:
+      the answer is to state the shape honestly, never to approximate it. Widening `[IA, ...IB[]]`
+      to `Array<IA | IB>` loses that the first element is required and is `IA`; spelling
+      `[IA, IB?]` as a two-member tuple claims an arity the type does not have. Both are the silent
+      approximation §232 forbids. The first-pass coverage commit's array-rest test, which pins the
+      current misstatement as deliberate, gets rewritten when this lands.
+
 ### Awaiting the owner's word
 
 - [ ] Should the engine BYPASS hooks for a `controlLifetime` registration, or should each model skip
@@ -1035,5 +1051,3 @@ the ctor/func intern key to two ids, and satisfies the one-kind-per-member rule.
 - [ ] An array-typed rest parameter (`...deps: IDep[]`) derives as ONE required `Array<IDep>` slot
       where a tuple-typed rest refuses loudly — a silent arity misstatement, the class §232 forbids.
       Refuse it too, or let the open-length tuple work express it honestly?
-- [ ] Does commit `1f83a7c2` stay? One of its tests calls that arity misstatement "the current,
-      deliberate behavior this test pins", while the same agent's report calls it a real silent gap.
