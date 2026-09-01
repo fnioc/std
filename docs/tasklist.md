@@ -907,5 +907,13 @@ if that write-up slips.
       builder-shape section's tail says the MODEL seeds `IServiceProvider`, which the
       `controlLifetime` ruling in the paragraph above it supersedes — the engine seeds it,
       unconditionally.
-- [ ] Side-by-side audit of di, di.core, di.extras, primitives, primitives.extras and their external
-      deps for process-global mutable state — findings pending.
+- [ ] Two unbounded, never-evicting caches keyed on runtime input, both plain objects holding strong
+      references: `Type/factory/intern.ts:24` (`table`, keyed on a structural string) and
+      `Type/Type.ts:215` (`parsed`, keyed on the raw token string). `Type.from` is the door data
+      arriving from outside comes through, so the second one grows with program INPUT, not with
+      source vocabulary. Decide whether that needs a bound.
+
+Side-by-side audit otherwise CLEAN: no process-global mutable state in di, di.core, di.extras,
+primitives, primitives.extras or any external dependency lets two containers observe each other.
+Two independent containers are fine; two loaded COPIES of primitives or di.core are impossible by
+design, and fail loud.
