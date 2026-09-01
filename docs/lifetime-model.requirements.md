@@ -77,7 +77,11 @@ registration's lifetime.
 11. A value built from a latebound argument — supplied by the caller at the moment of the ask
     rather than carried on the registration or the closed address — is never kept by a model. The
     address that would key a cached slot for it carries no record of those arguments, so there is
-    nothing stable to key the slot on:
+    nothing stable to key the slot on. This reaches exactly as far as the arguments do: something
+    resolved during the same call whose own dependencies never touched a latebound argument is kept
+    exactly as it would have been outside that call, and a caller can observe it is the same
+    instance they would get by asking directly. A model that declines to keep everything reached
+    from a latebound call is refusing more than it was asked to:
     ```ts
     const make = provider.resolve(Type.func(WIDGET, [[Type.string()]])) as (name: string) => Widget;
     make('a') !== make('b'); // never conflated, whatever the registration's own lifetime says
