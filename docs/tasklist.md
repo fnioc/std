@@ -637,6 +637,17 @@ Design recorded as §230. Open:
 - [ ] Design the tagged model against the same tools.
 - [ ] Check whether `anchorRoot` and `ScopeBinding`'s bracketing still have a job.
 
+## Merge-strategy guards (2026-09-01)
+
+- [ ] Find out whether mergesynth DETECTS overloads whose guards are provably indistinguishable, or
+      silently order-dispatches. A collection's element type is never inspected: `Iterable` is a
+      structurally satisfiable readonly view, so it is excluded from `nominalGlobals`
+      (`mergesynthtransform/mergesynth.go:1075`) and floored by `objectKindCondition`, whose own
+      comment names `Iterable<T>` as the reason it may not narrow past object-kind. So overloads
+      differing only in element type — `Iterable<Foo>` against `Iterable<Bar>` — accept identical
+      values, and dispatch falls to whichever is tried first. The flooring is deliberate and
+      honest; whether the ambiguity is reported is the open part.
+
 ## Transformer vocabulary collapse (2026-09-01)
 
 Design recorded as §232.
