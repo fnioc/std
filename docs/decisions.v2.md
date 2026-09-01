@@ -2891,7 +2891,8 @@ _Owner-ruled (U5); Claude-recorded 2026-08-22._
 ## §195 — Union and intersection members store in one canonical order: kind rank, scalars, children
 
 `canonicalMembers` (`libraries/primitives/src/Type/factory/factories.ts`) sorts composite members
-with a fixed comparator instead of the token spelling: a rank per kind — holes first, literals
+with a fixed comparator instead of the token spelling — TS7's own `CompareTypes` shape translated
+to this vocabulary, diverging only by carrying no declaration-order or id residue: a rank per kind — holes first, literals
 last — then the kind's own scalars (name/from/tag/value, literal values by category then value),
 then children pairwise (fewer first, then position by position, rows likewise). Identity
 short-circuits the comparison; no declaration order and no id residue enters it. Literals ranking

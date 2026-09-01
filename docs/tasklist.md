@@ -970,9 +970,10 @@ the ctor/func intern key to two ids, and satisfies the one-kind-per-member rule.
       them — the author wrote something ambiguous, and no container can read their mind. The
       canonical order picks, and that is DOCUMENTED as the behaviour rather than papered over. The
       tiebreak therefore has to be deterministic, not meaningful, so no specificity comparison is
-      owed. Document it as "the canonical order picks", NOT as TypeScript parity: our union matches
-      TS in reduction (dedupe, literal subsumption) but its ORDER is `KIND_RANK`'s own, and TS has no
-      stable member order to match.
+      owed. Document it as "the canonical order picks" — and that order IS
+      TypeScript's, so it can be documented as such: `canonicalMembers` adopts TS7's `CompareTypes`
+      shape translated to this vocabulary, diverging only by dropping declaration-order and id
+      residue, which TypeScript itself is moving away from.
 - [ ] Open, if signatures land in a `UnionType`: a one-signature callable's union collapses to the
       bare tuple, so the field's shape varies with overload count. Either consumers read "tuple or
       union of tuples", or a non-canonical one-member union needs a constructor — and then an answer
