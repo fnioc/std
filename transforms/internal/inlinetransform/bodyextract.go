@@ -14,28 +14,20 @@ import (
 )
 
 // knownPrimitives maps each compile-time primitive an inlineable body may call to
-// its HOME module — the module an inline body is allowed to import it from.
-// `tokenfor<T>()` / `tokenfor(value)` derives from a TYPE or the value's PRODUCED
-// type (construct/call-sig return; the `addClass` / `addFactory` self forms), and
-// `tokenof<T>()` / `tokenof(value)` from the raw type / the value's OWN type with
-// no unwrap (the `addValue` self form, which registers an already-built value
-// under its own type — matching the di engine's raw-type `addValue` derivation).
-// Both home in the authoring package `@rhombus-std/primitives.extras` (constraint
-// 11: pure transformables, moved out of the runtime `@rhombus-std/primitives`
-// leaf — every call is elided from the shipped output after lowering, so nothing
-// ships a reference and a consumer deps the authoring package build-time only).
-// `schemaof<T>()` binds a TYPE argument and lowers to the config family's runtime
-// schema object literal — the engine half of the `.withType<T>()` sugar body
-// `this.withSchema(schemaof<T>())`. It is authoring-time-only and homes beside
-// the other primitive verbs in `@rhombus-std/primitives.extras`.
+// its HOME module — the module an inline body is allowed to import it from. Both
+// home in the authoring package `@rhombus-std/primitives.extras` (constraint 11:
+// pure transformables, moved out of the runtime `@rhombus-std/primitives` leaf —
+// every call is elided from the shipped output after lowering, so nothing ships a
+// reference and a consumer deps the authoring package build-time only).
 // `typefor<T>()` / `typefor(value)` bind a TYPE or VALUE argument and lower to a
 // structured runtime `Type` value (the `Type.*` factory tree the argument
 // spells); a VALUE argument also carries a constructor's or factory's
-// dependency-signature derivation. It homes beside `tokenfor` / `tokenof` in
-// `@rhombus-std/primitives.extras`.
+// dependency-signature derivation.
+// `schemaof<T>()` binds a TYPE argument and lowers to the config family's runtime
+// schema object literal — the engine half of the `.withType<T>()` sugar body
+// `this.withSchema(schemaof<T>())`. It is authoring-time-only and homes beside
+// `typefor` in `@rhombus-std/primitives.extras`.
 var knownPrimitives = map[string]string{
-	"tokenfor": "@rhombus-std/primitives.extras",
-	"tokenof":  "@rhombus-std/primitives.extras",
 	"schemaof": "@rhombus-std/primitives.extras",
 	"typefor":  "@rhombus-std/primitives.extras",
 }

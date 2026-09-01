@@ -210,7 +210,7 @@ export interface BuildPackageOptions {
   readonly splitting?: boolean;
   /**
    * A tsconfig (relative to `dir`) whose existence opts the package into the
-   * ttsc/Go lowering that rewrites authoring sugar (`tokenfor<T>()` and the
+   * ttsc/Go lowering that rewrites authoring sugar (`typefor<T>()` and the
    * inline-substituted registration / options / config forms). When
    * set, the JS pipeline gains a lowering STAGE that runs before the bundle:
    *

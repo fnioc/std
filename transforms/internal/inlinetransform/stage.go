@@ -677,8 +677,8 @@ func (st *fileState) registerPrimitives(
 			}
 		}
 		use := PrimitiveUse{Name: prim, TypeArgs: bound}
-		// A VALUE-argument primitive (typefor(ctor), tokenof(value)) records the
-		// PARSE node behind its spliced argument, because the consuming stage's only
+		// A VALUE-argument primitive (typefor(ctor)) records the PARSE node
+		// behind its spliced argument, because the consuming stage's only
 		// use for it is a checker query. A TYPE-argument primitive (typefor<T>()) has
 		// no value argument and leaves this nil.
 		if args := n.AsCallExpression().Arguments; args != nil && len(args.Nodes) == 1 {

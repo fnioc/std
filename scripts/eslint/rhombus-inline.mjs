@@ -17,12 +17,11 @@ import { dirname, join } from 'node:path';
 import { entryKind, loadInlineEntries, parseTypeRef } from './inline-entries.mjs';
 
 // Each compile-time primitive maps to its HOME module — the module an inline body
-// may import it from. All four are pure transformables that home in the authoring
+// may import it from. Both are pure transformables that home in the authoring
 // package @rhombus-std/primitives.extras — every call is substituted, so the
-// runtime @rhombus-std/primitives leaf carries none of them. Mirrors the Go
-// scanner's knownPrimitives map.
-const PRIMITIVE_HOMES = { typefor: '@rhombus-std/primitives.extras', tokenfor: '@rhombus-std/primitives.extras', tokenof: '@rhombus-std/primitives.extras',
-  schemaof: '@rhombus-std/primitives.extras' };
+// runtime @rhombus-std/primitives leaf carries neither. Mirrors the Go scanner's
+// knownPrimitives map.
+const PRIMITIVE_HOMES = { typefor: '@rhombus-std/primitives.extras', schemaof: '@rhombus-std/primitives.extras' };
 
 /** Walks up from a file to the nearest directory containing a package.json. */
 function findPackageDir(/** @type {string} */ file) {

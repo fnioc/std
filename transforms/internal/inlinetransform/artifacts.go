@@ -12,9 +12,9 @@ import (
 // (the callee clone has no symbol).
 //
 // TypeArgs carries a TYPE-argument primitive's bound arguments (typefor<T>()).
-// ValueArg carries a VALUE-argument primitive's argument (typefor(ctor),
-// tokenof(value)) as the PARSE node behind it, so the consuming stage can
-// checker-query it even though the primitive's own callee is synthetic.
+// ValueArg carries a VALUE-argument primitive's argument (typefor(ctor)) as the
+// PARSE node behind it, so the consuming stage can checker-query it even though
+// the primitive's own callee is synthetic.
 //
 // IT IS A PARSE NODE, NOT THE SPLICED ONE, AND THAT IS LOAD-BEARING. Substitution
 // happens on whatever pass the visitor first reaches the sugar call, which is not

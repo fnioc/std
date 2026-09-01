@@ -52,9 +52,9 @@ func TestElideTypeforImports(t *testing.T) {
 		},
 		{
 			name:    "partial-keeps-sibling",
-			src:     "import { typefor, tokenfor } from '@rhombus-std/primitives.extras';\nexport const x = 1;\n",
+			src:     "import { typefor, schemaof } from '@rhombus-std/primitives.extras';\nexport const x = 1;\n",
 			absent:  []string{"typefor"},
-			present: []string{"tokenfor", "@rhombus-std/primitives.extras"},
+			present: []string{"schemaof", "@rhombus-std/primitives.extras"},
 		},
 		{
 			name:    "aliased-exported-name-drops",
@@ -106,7 +106,7 @@ func TestElideTypeforImports(t *testing.T) {
 // a non-import statement and an import without the binding.
 func TestElideTypeforImportsPassthrough(t *testing.T) {
 	ec := shimprinter.NewEmitContext()
-	sf := parseImportFixture(t, "import { tokenfor } from '@rhombus-std/primitives.extras';\nexport const x = 1;\n")
+	sf := parseImportFixture(t, "import { schemaof } from '@rhombus-std/primitives.extras';\nexport const x = 1;\n")
 	out := elideTypeforImports(ec.Factory.AsNodeFactory(), sf)
 	if out != sf {
 		t.Fatal("a file with no typefor binding must be returned unchanged (same pointer)")
@@ -138,7 +138,7 @@ func firstNamedImportSpecifiers(t *testing.T, sf *shimast.SourceFile) []*shimast
 // TestExportedName: the exported name of a specifier is its PROPERTY name when
 // aliased (`typefor as tf` -> "typefor"), else its local name.
 func TestExportedName(t *testing.T) {
-	sf := parseImportFixture(t, "import { typefor as tf, tokenfor } from '@rhombus-std/primitives.extras';\n")
+	sf := parseImportFixture(t, "import { typefor as tf, schemaof } from '@rhombus-std/primitives.extras';\n")
 	specs := firstNamedImportSpecifiers(t, sf)
 	if len(specs) != 2 {
 		t.Fatalf("expected 2 specifiers, got %d", len(specs))
@@ -146,7 +146,7 @@ func TestExportedName(t *testing.T) {
 	if got := exportedName(specs[0]); got != "typefor" {
 		t.Errorf("aliased specifier exportedName = %q, want typefor", got)
 	}
-	if got := exportedName(specs[1]); got != "tokenfor" {
-		t.Errorf("plain specifier exportedName = %q, want tokenfor", got)
+	if got := exportedName(specs[1]); got != "schemaof" {
+		t.Errorf("plain specifier exportedName = %q, want schemaof", got)
 	}
 }

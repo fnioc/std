@@ -4186,3 +4186,31 @@ shape. Every refusal is justifiable by naming the missing `Type` member, and ref
 rather than becoming silent approximations.
 
 _Owner-ruled 2026-09-01, Claude-recorded._
+
+## §233 — A bare `typefor<T>()` derives correctly inside a substituted body; the `tokenfor`/`tokenof`/`nameoftransform` trio is retired
+
+§146's gate is cleared. A real project compiled through the actual `ttsc` host — `add<ServiceType>(implementer)`
+and `addValue<ServiceType>(value)`, whose sugar bodies call nothing but a bare `typefor<ServiceType>()` —
+lowers exactly as a hand-writer would spell it:
+
+```ts
+services.add($di_reg_app_private_app_IFoo_3a8ff602b3, Foo, $vate_app_Foo_di_reg_app_private_app_IDep_7befee0871,
+  'singleton');
+services.addValue($di_reg_app_private_app_IBaz_bf0fe67954, bazValue);
+```
+
+where `$di_reg_app_private_app_IFoo_3a8ff602b3` is the hoisted `Type.imported("IFoo", "di-reg-app/private/app")`
+const — the same address a hand-written `typefor<IFoo>()` at that call site derives, and the same the
+`tests/di.registration.ttsc.e2e` parity suite already pins byte-for-byte against the explicit form. No
+`typefor<`/`typefor(` survives the emit, matching every other substituted-body call site in `di.extras`
+(`resolve<T>()`, `tryAdd<T>()`, `describe<T>()`, …), which already rely on the identical bare-call shape.
+
+`tokenfor`/`tokenof` carried no live definition to retire — `primitives.extras` exports only `typefor` and
+`schemaof`, and the Go `nameof` stage was already gone (`ed69175f`). What remained was residue: the
+`tokenfor`/`tokenof` entries in the inline stage's `knownPrimitives` allow-list and the matching ESLint
+`PRIMITIVE_HOMES` table, a `tokenof` mention in the artifacts doc comments, and `tokenfor` used throughout
+the Go inline-transform unit tests as a stand-in primitive name. All of it is gone; the Go tests now use
+`typefor` (or, where a fixture needed two distinct sibling primitives, `typefor` + `schemaof`) as their
+stand-in instead.
+
+_Claude-verified 2026-09-01, closing §146's gate._

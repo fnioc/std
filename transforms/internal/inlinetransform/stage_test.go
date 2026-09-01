@@ -171,11 +171,11 @@ func TestStageHoistsEffectfulReceiverTemp(t *testing.T) {
 }
 export declare function makeProvider(): IQuery;
 `
-	inlineBody := `import { tokenfor } from '@rhombus-std/primitives.extras';
+	inlineBody := `import { typefor } from '@rhombus-std/primitives.extras';
 import type { IQuery } from '@scope/core';
 export const QueryInline = {
   isService<T>(this: IQuery): boolean {
-    return this.isService(tokenfor<T>()) && this.isService(tokenfor<T>());
+    return this.isService(typefor<T>()) && this.isService(typefor<T>());
   },
 };
 `
@@ -228,14 +228,14 @@ func TestStageUnrecoverableTypeArgIsHardError(t *testing.T) {
 }
 export declare const provider: IQuery;
 `
-	inlineBody := `import { tokenfor } from '@rhombus-std/primitives.extras';
+	inlineBody := `import { typefor } from '@rhombus-std/primitives.extras';
 import type { IQuery } from '@scope/core';
 export const QueryInline = {
   isService<T>(this: IQuery): boolean {
-    return this.isService(tokenfor<T>());
+    return this.isService(typefor<T>());
   },
   pick<T>(this: IQuery, value: T): boolean {
-    return this.isService(tokenfor(value));
+    return this.isService(typefor(value));
   },
 };
 `
@@ -288,8 +288,8 @@ export const picked = provider.pick(theFoo);
 	if strings.Contains(out, "provider.pick(") {
 		t.Errorf("provider.pick(theFoo) should have inlined despite the unwritten type argument, got:\n%s", out)
 	}
-	if !strings.Contains(out, "isService(tokenfor(theFoo))") {
-		t.Errorf("expected the pick body spliced in as isService(tokenfor(theFoo)), got:\n%s", out)
+	if !strings.Contains(out, "isService(typefor(theFoo))") {
+		t.Errorf("expected the pick body spliced in as isService(typefor(theFoo)), got:\n%s", out)
 	}
 	// The unrecoverable call is left untouched in the output.
 	if !strings.Contains(out, "provider.isService()") {
@@ -608,11 +608,11 @@ func setupWorkspace(t *testing.T) (*driver.Program, string) {
 }
 export declare const provider: IQuery;
 `
-	inlineBody := `import { tokenfor } from '@rhombus-std/primitives.extras';
+	inlineBody := `import { typefor } from '@rhombus-std/primitives.extras';
 import type { IQuery } from '@scope/core';
 export const QueryInline = {
   isService<T>(this: IQuery): boolean {
-    return this.isService(tokenfor<T>());
+    return this.isService(typefor<T>());
   },
 };
 `
@@ -626,7 +626,7 @@ export const literal = provider.isService('x');
 
 // TestStageInlinesMemberSugar drives the whole stage over the workspace: collect
 // the publish list, resolve the entry, substitute the body at the explicit call,
-// and register the synthetic tokenfor call. It asserts the sugar call is gone, the
+// and register the synthetic typefor call. It asserts the sugar call is gone, the
 // primitive form remains, exactly one primitive was registered, and the
 // primitive-form (non-sugar) call passed through untouched.
 func TestStageInlinesMemberSugar(t *testing.T) {
@@ -661,8 +661,8 @@ func TestStageInlinesMemberSugar(t *testing.T) {
 		t.Fatalf("expected exactly 1 registered primitive call, got %d", len(artifacts.PrimitiveCalls))
 	}
 	for _, use := range artifacts.PrimitiveCalls {
-		if use.Name != "tokenfor" || len(use.TypeArgs) != 1 {
-			t.Fatalf("registered primitive = %+v, want tokenfor with 1 type arg", use)
+		if use.Name != "typefor" || len(use.TypeArgs) != 1 {
+			t.Fatalf("registered primitive = %+v, want typefor with 1 type arg", use)
 		}
 		if typeName(prog.Checker, use.TypeArgs[0]) != "Foo" {
 			t.Fatalf("registered primitive type arg = %q, want Foo", typeName(prog.Checker, use.TypeArgs[0]))
@@ -713,11 +713,11 @@ export declare const provider: IQuery;
 }
 export {};
 `)
-	write(t, filepath.Join(sugar, "src", "inline.ts"), `import { tokenfor } from '@rhombus-std/primitives.extras';
+	write(t, filepath.Join(sugar, "src", "inline.ts"), `import { typefor } from '@rhombus-std/primitives.extras';
 import type { IQuery } from '@scope/core';
 export const QueryInline = {
   isService<T>(this: IQuery): boolean {
-    return this.isService(tokenfor<T>());
+    return this.isService(typefor<T>());
   },
 };
 `)
