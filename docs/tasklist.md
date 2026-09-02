@@ -1179,10 +1179,31 @@ Left open by the repair's own review (its finish stage died on the 5-hour quota)
       generalises: an overload that accepts an already-built value is a way past whatever door built
       it, and "validate once, let the type carry the guarantee" only holds if the type is the ONLY
       way in.
-- [x] **Two spellings for one type.** `Type.tuple({ members: [], rest: X })` used as a row and a
+- [ ] **Two spellings for one type.** `Type.tuple({ members: [], rest: X })` used as a row and a
       `ListType` row stringify identically, so `Type.from(Type.stringify(a)) === b` — the round-trip
-      conflates two distinct nodes. RULED: refuse the rest-only tuple at construction, the same
-      discipline `[]` versus `[[]]` already gets. No collapse, no canonicalisation between them.
+      conflates two distinct nodes.
+      RULED, REVERSING the refuse-at-construction ruling `5782bf5b` shipped: the rest-only tuple
+      COLLAPSES, `Type.tuple({ members: [], rest: X })` returning the `ListType` directly. The
+      precedent is the composite factory — `union([a])` answers `a`, `global("Array", [T])` answers a
+      `ListType` — a degenerate composite becomes what it degenerates to, and the return type widens
+      to say so, here `TupleType | ListType`.
+      It beats refusing because it is exact rather than policy: in TypeScript `[...X[]]` IS `X[]`, one
+      type rather than two spellings, so refusing a legal spelling of an expressible type answers the
+      wrong question. It kills the defect STRUCTURALLY — a node that cannot be minted cannot collide
+      — rather than by a check somebody maintains. And the `[]` versus `[[]]` analogy behind refusing
+      does not hold: those are genuinely different (no signatures at all, versus one signature taking
+      no arguments) where a rest-only tuple and a list are the same thing.
+      Corroborating, from the repair's own review two items above: the checker already normalises
+      `[...B[]]` to `B[]` before derivation, which is why `node.go`'s rest-only branch looks
+      unreachable. TypeScript collapses this shape itself; the factory should agree with it rather
+      than refuse what the language treats as one type.
+      THE BOUNDARY: collapse only when `members` is empty AND `rest` is present.
+      `{ members: [], rest: undefined }` stays a `TupleType` — the legitimate empty tuple, which is
+      what a zero-argument signature's row is. Inverting that breaks every no-arg callable.
+      The collapse must reach `Type.adopt`, `Type.from` and the parser too, or a node revived from
+      JSON or parsed from a token reintroduces the shape the factory will no longer mint. `fe948cb0`
+      already has the Go derivation emitting the list here, so derivation and construction currently
+      disagree about whether the node may exist; the collapse is what makes them agree.
 - [x] A zero-argument memo miss in `Engine.boundArgTypes` — the interning-for-identity rework did not
       cover the empty-signature case.
 - [x] Two doc inaccuracies, a history-narrating comment in `typeforhoist`, and four shapes the blind
