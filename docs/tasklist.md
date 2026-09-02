@@ -1353,9 +1353,10 @@ Internal, non-exported:
   2. [ ] `RequestMembers` — a non-exported base interface the two arms extend, so the shared members
          and their docs live once. Recommend yes.
 -
-  3. [ ] `LiveAskPlan` plus two internal symbols — the three request addresses declared in the registry
-         as value registrations carrying a sentinel, planned as the live ask; no per-ask Registry, the
-         plan memo intact. Recommend yes.
+  3. [x] RULED 2026-09-02 — yes, as `RequestPlan` (kind `'request'`), the owner's name. It takes the
+         place the old `service-provider` plan kind held; the provider is a seeded factory reading
+         `request.serviceProvider`. The three request addresses are value registrations carrying a
+         sentinel; no per-ask Registry, the plan memo intact. The two internal symbols ride along.
 -
   4. [ ] `InstalledHooks` — the engine's installed list, its precomputed per-kind dispatch, and the two
          control verbs. Recommend yes.
