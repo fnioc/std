@@ -1212,40 +1212,57 @@ later lanes branch from the previous lane's tip so they stack, and rebase once t
 Owner notes on the later steps: 19's answer is already in effect (the model implementations are
 deleted; the standard model is written clean-room).
 
-### Hooks ride the request — ruled 2026-09-02, for phase 2
+### Hooks — ruled 2026-09-02, for phase 2 (supersedes the phase 2 design run `wf_fe44239a`, which must be revised before implementation)
 
-- The requirement: a hook executes ONLY for asks that flowed through its middleware. Parallel scopes
-  are a fork in the chain — two live layers over one base chain — and a request through one must
-  never run the other's hooks. Only the ask itself knows which layers it traversed, so the hooks in
-  effect are a property of the `Request`. ALL levels: the engine holds no hook state, there is no
-  registration and nothing to unregister; `useHooks`, the disposable window, `Control<IEngineHooks>`
-  and `IEngineHooks` go (§208/§209 leave the log at step 9).
-- A latebound is created inside a resolve and INVOKED later, when no traversal is open; what it
-  captured at creation — the request — is all it has, so its hooks are the minting traversal's.
-  An activation window (`using _ = handle.activate()`) is not wrong — the engine is synchronous, so
-  a window is ask-scoped — but at invocation it would have to re-open from the captured request,
-  which then must carry the hooks anyway; the engine table adds a leaked handle per orphaned layer
-  and nothing else.
-- The hooks member is a NAMED member of `Request`, not symbol-keyed: the symbol rule keeps ADDON
-  vocabulary off the core type, and a hook bundle is di.core's own vocabulary.
-- Allocation plan (one plan, not options): the behavior is a CLASS instantiated once per layer in
-  the middleware factory at fold (hook bodies on the prototype, closed-over state in `#` fields);
-  handler-vs-trailing-`next` arity is read once when attached, never at dispatch; the per-ask link
-  IS the request substitution — the layer calls `request.withHooks(hooks)`, a method on `Request`
-  whose argument is a `Partial<Behavior>` (a layer may supply exactly one hook, written inline:
-  `request.withHooks({ beforeConstruct(construction) { … } })`). RULED: the signature is
-  `withHooks(hooks: Partial<Behavior>): this` — it MUTATES the request and RETURNS IT, the
-  polymorphic `this` saying "the same request, as if new"; callers write
-  `next(request.withHooks(hooks))` as if it were a new value,
-  but no request is allocated per layer: `ServiceProvider` mints one request per ask with one
-  `hooks` array, a layer pushes onto it on the way down (zero allocation), and the engine sizes its
-  per-ask states array from `hooks.length` at the door. Safe because a request is never shared
-  between asks and nothing writes to it after the traversal, so a latebound's capture is stable
-  without a copy. The dispatch loop allocates nothing. No layer precomputes a merged hook list — it cannot know which
-  inner layers attach on the way down, and a cache of that shape is wrong for forks.
-- Install-time WORK still happens once, in the factory closure; only putting hooks in effect moves
-  to the request. Base-chain layers see every ask because every scope wraps outside them, not by
-  privilege.
+- The requirement for behaviour-modifying hooks: they execute ONLY for asks that flowed through
+  their middleware. Parallel scopes are a fork in the chain — two live layers over one base chain —
+  and an ask through one must never run the other's. Only the ask itself knows which layers it
+  traversed, so activation is a property of the `Request`.
+- ONE mechanism. A middleware installs its hooks ONCE, in its outer (install-time) call, through the
+  engine's hooks control, which it reaches through the door like any control. The engine holds every
+  installed bundle; installing and uninstalling are COLD (each rebuilds the engine's precomputed
+  per-kind dispatch once); nothing on the ask path installs, splices or checks for removal. Two
+  control verbs, one entry shape underneath:
+  - `useHooks(hooks: Partial<Behavior>): Handle` — GATED: in effect only for an ask that activated
+    the handle. The layer's per-ask function is `request => next(request.activate(handle))`.
+  - `installHooks(hooks: Partial<Behavior>): Handle` — ALWAYS ACTIVE: an installer middleware
+    (audit, diagnostics) adds its hooks and its per-ask function is `next` itself. Its effects are
+    global and forever by definition. (`installHooks` is Claude's name; the owner may rename.)
+- Activation: `request.activate(handle): this` MUTATES the request and returns it — the request
+  records which handles are active; callers write `next(request.activate(handle))` as if it were a
+  new value. Alloc-free gate: a handle is an index, a check is one comparison. The engine dispatches
+  the always-active set first (outermost, precomputed once per install) and then the request's
+  activated handles in activation order; trailing-`next` hooks nest in that order. DISPATCH WALKS
+  ONLY WHAT IS ACTIVE, never the whole installed list — so entries that are dead cost nothing per ask
+  and a scope-per-request process does not slow with uptime.
+- Why the request and not an engine-side window: a latebound is CREATED inside a resolve, while a
+  window is open, and INVOKED later, when none is; what it captured at creation — the request — is
+  all it has, so the request must be what remembers the active handles. `using _ = handle.activate()`
+  was considered and dropped for exactly that. The engine is synchronous, so a window would have been
+  ask-scoped; that was never the problem.
+- The middleware chain NEVER seals: layers may be added at any time (a scope factory wraps a new
+  layer over the folded chain), and hooks may be installed at any time. A scope factory installs its
+  model's hooks once per behaviour where it can; installing per scope opening is permitted — the
+  installed list only grows, and thousands of dead entries are kilobytes.
+- Orphaned middleware: never activates again; its entries cost memory only. Uninstall EXISTS
+  (`handle.uninstall()` or the control's verb) for long-lived containers, kept off the hot path. A
+  handle a captured request still names after uninstall simply fails its gate. Best-effort
+  reclamation is permitted through a `FinalizationRegistry` registered on the PER-ASK HANDLER the
+  chain holds (that is what orphaning drops), holding only the handle id (never the handler or the
+  bundle); it is non-deterministic and may never run, which is acceptable only because uninstall is
+  semantics-neutral. It lives in the addon that opens scopes, not the engine.
+- Allocation: the behaviour is a CLASS instantiated once per install (hook bodies on the prototype,
+  closed-over state in `#` fields); handler-vs-trailing-`next` arity is read once at install, never at
+  dispatch; per-ask hook state lives in the engine's per-ask states array sized from the active count;
+  per-scope data rides the request (§230); the dispatch loop allocates nothing.
+- Hooks are di.core's own vocabulary, so `activate`, the active set, and the control's verbs are NAMED
+  members, not symbol-keyed; the symbol rule keeps ADDON vocabulary off the core type.
+- Performance: the win is per-node — always-active hooks and arity are precomputed per install rather
+  than per ask, so the realize loop skips hook kinds nobody implements; a few percent of an ask on a
+  small graph, more on deep ones, visible only on the benchmark. The tier exists for its semantics;
+  the speed is a consequence.
+- Gone: the disposable window (§209), `withHooks`, install/uninstall on the ask path, and any
+  engine-side "which hooks are in effect" state other than the installed list and its gates.
 
 ## Session — di builder reshape (2026-09-01, branch `feat-di-builder-spec`, worktree `+feat-di-builder-spec`)
 
