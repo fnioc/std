@@ -1581,3 +1581,27 @@ Steps 5–8 of the di execution order, built to the 2026-09-02 rulings; every co
 **Decision-log entries touched**: §230 rewritten in place to the ruled door (request classes,
 seeds, null lifetime, shadowing-beneath, hook tiers); §231 gains the request-classes exception to
 "a name never resolves without a registration". Nothing else in the log was written.
+
+**Addendum (owner ask, 2026-09-02): the portable floor and the lifetime contract**
+
+- `tests/di.test/test/container-contract.test.ts` — 12 black-box tests using only the public
+  surface, each valid under MEDI modulo naming: constructor injection, transient-style fresh
+  construction, instance registrations, factory-taking-the-provider, last-registration-wins,
+  refusal of an unregistered address, collections in registration order (empty for an
+  unregistered element type), keyed isolation both directions, open-generic closing, the A→B→A
+  cycle, and the provider as an injectable that resolves. Deliberately excluded (divergent by
+  ruling): self-referential registrations (we decorate, MEDI cycles), provider identity (we hand
+  a fresh view, MEDI hands itself), engine delegation, requests, hooks.
+- `tests/di.test/test/lifetime-contract.test.ts` — the lifetime behavior contract as 26
+  `test.todo` entries (green as todos; each throws under `--todo` until a model lands), one per
+  MEDI lifetime behavior: singleton sharing/laziness/once-only factory/instance passthrough,
+  scoped per-scope identity and root refusal under scope validation, transient freshness,
+  captivity under both switch positions, disposal (reverse order, scope-owned transients,
+  never-dispose-supplied-instances, async/sync split, disposed refusals), scope mechanics, per-
+  element collection lifetimes, and build-time validation. Scope-validation DEFAULTS are
+  deliberately unpinned — the known reference-default divergence is the owner's open call. These
+  entries are the behavior-without-structure brief the clean-room model (step 15) is written
+  against; bodies get filled in against whatever addon surface the owner's requirements doc
+  (step 14) lands.
+- Gate after both: di.test 137 pass / 6 skip / 26 todo / 18 fail (same 18 dead-model load
+  failures); the new files typecheck clean.
