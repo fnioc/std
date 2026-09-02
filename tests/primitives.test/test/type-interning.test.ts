@@ -230,6 +230,11 @@ describe('Type.adopt', () => {
   test('an already-interned node adopts to itself', () => {
     expect(Type.adopt(A)).toBe(A);
   });
+
+  test("a tree revived from JSON adopts, though serialization drops a fixed tuple's absent rest", () => {
+    expect(Type.adopt(JSON.parse(JSON.stringify(Type.tuple(A))))).toBe(Type.tuple(A));
+    expect(Type.adopt(JSON.parse(JSON.stringify(Type.func(A, [[A, B]]))))).toBe(Type.func(A, [[A, B]]));
+  });
 });
 
 describe('a callable factory takes its parameter signatures whole', () => {
@@ -243,6 +248,10 @@ describe('a callable factory takes its parameter signatures whole', () => {
   test("the object form names the node's own fields, and lands on the same node", () => {
     expect(Type.ctor({ instance: A, signatures: [[B]] })).toBe(Type.ctor(A, [[B]]));
     expect(Type.func({ return: A, signatures: [[B]] })).toBe(Type.func(A, [[B]]));
+  });
+
+  test('an empty rows array is refused — a callable answers to at least one call', () => {
+    expect(() => Type.func(A, [])).toThrow(/at least one/);
   });
 });
 

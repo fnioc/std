@@ -75,13 +75,12 @@ export function signatures(rows: readonly (TupleType | ListType)[]): TupleType |
 /**
  * The slot form of a callable's second argument: a pre-built slot passes through, and the
  * fixed-arity rows spelling — one array of arg types per overload — builds one tuple per row
- * through {@link signatures}. An empty rows array is the lenient no-arg spelling: `[]` names no
- * call, so it reads as one empty signature.
+ * through {@link signatures}.
  */
 export function toSignatureSlot(input: TupleType | ListType | UnionType | readonly (readonly Type[])[]): TupleType | ListType | UnionType {
   if (Array.isArray(input)) {
     const rows = input as readonly (readonly Type[])[];
-    return signatures(rows.length ? rows.map(row => tuple(row, undefined)) : [tuple([], undefined)]);
+    return signatures(rows.map(row => tuple(row, undefined)));
   }
   return input as TupleType | ListType | UnionType;
 }
@@ -463,7 +462,7 @@ const REQUIRED: Readonly<Record<Type['kind'], readonly string[]>> = {
   literal: ['value'],
   object: ['members'],
   tag: ['tag', 'type'],
-  tuple: ['members', 'rest'],
+  tuple: ['members'],
   union: ['members'],
 };
 

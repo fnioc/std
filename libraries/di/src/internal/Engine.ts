@@ -204,5 +204,7 @@ function boundArgTypes(row: TupleType | ListType, count: number): readonly Type[
   if (element === undefined) {
     return undefined;
   }
-  return [...members, ...Array.from({ length: count - members.length }, () => element)];
+  // Built as an interned tuple so a repeated arity binds the same array identity and the
+  // plan memo behind Plan.from can hit.
+  return Type.tuple(...members, ...Array.from({ length: count - members.length }, () => element)).members;
 }
