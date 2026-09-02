@@ -1217,6 +1217,29 @@ Left open by the repair's own review (its finish stage died on the 5-hour quota)
 - [x] Two doc inaccuracies, a history-narrating comment in `typeforhoist`, and four shapes the blind
       suite does not cover.
 
+## Review protocol and phases — owner-set 2026-09-02
+
+Every lane flows through the owner's serial review: a lane is SQUASH-MERGED into
+`IServiceManifest-repair` locally and left UNCOMMITTED (staged) so the owner reviews the diff in the
+working tree before it becomes a commit. Lanes may start in worktrees as soon as they are unblocked;
+later lanes branch from the previous lane's tip so they stack, and rebase once the owner commits.
+
+- Phase 1: steps 10 and 11 now (10 in `+feat-di-delete-lifetime-model`, 11 in `+feat-di-builder-spec`);
+  step 9 waits for phase 2's 7 and 8 — the recorded hard edge, retiring the control branch before
+  `IServiceProvider` is seeded under `controlLifetime` leaves nothing to answer control asks. The
+  owner listed 9 in phase 1; flagged, not overridden.
+- Phase 2: the `Request` type in full — steps 5, 6, 7, 8 — then 9.
+- Also queued on the builder branch before its review: `Type.from` string-only with the parser
+  parsing literally into the adopt visitor (ruled above).
+
+Owner notes on the later steps: 19's answer is already in effect (the model implementations are
+deleted; the standard model is written clean-room). 17: scope factories wrap on a NEW middleware
+layer where install-time hooks may be set up; for volatile request-time hooks, today uninstalled
+through a disposable, the owner is considering attaching them to the `Request` instead — Claude's
+assessment is in the conversation of 2026-09-02 and favours it: two hook lifetimes (chain-time via
+the middleware layer, ask-time via the request attachment) and no third disposable-window kind; the
+engine reads the attachment once at the door and threads it, never re-folding a chain per ask.
+
 ## Session — di builder reshape (2026-09-01, branch `feat-di-builder-spec`, worktree `+feat-di-builder-spec`)
 
 Steps 3, 4 and 11 of the execution order, built as one change from a critiqued design. Fourteen
