@@ -530,18 +530,16 @@ describe.skipIf(!toolchainReady)('blind shapes: the derived node is the hand-bui
     expect(Type.signatureRows(hand.signatures)).toEqual([Type.tuple(Type.tuple(imported('IA'), imported('IB')))]);
   });
 
-  // FINDING: the derivation drops the caller-facing optionality a default value
-  // creates. `new DefaultedWidget()` and `new DefaultedWidget(undefined)` are
-  // both legal hand-written calls — `typeof DefaultedWidget` is
-  // `new (a?: IA) => DefaultedWidget` — so the slot must admit undefined the
-  // way an explicit `a?: IA` does, yet the emitted row is a bare required
-  // `[[IA]]`.
-  test.todo('a default-valued parameter is optional to its callers, so its slot admits undefined', () => {
+  test('a default-valued parameter is optional to its callers, so its slot admits undefined', () => {
     const hand = Type.ctor(
       imported('DefaultedWidget'),
       [[Type.union(imported('IA'), Type.typeLiteral(undefined))]],
     );
     expect(evaluate(emitted('defaultedCtor'))).toBe(hand);
+    // `new DefaultedWidget()` and `new DefaultedWidget(undefined)` are both
+    // hand-written calls — `typeof DefaultedWidget` is
+    // `new (a?: IA) => DefaultedWidget` — so the one slot admits undefined
+    // exactly as an explicit `a?: IA` spells it.
     expect(Type.signatureRows(hand.signatures)).toEqual([
       Type.tuple(Type.union(imported('IA'), Type.typeLiteral(undefined))),
     ]);
