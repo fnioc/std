@@ -1382,9 +1382,11 @@ Exported from di.core:
 Behaviour:
 
 -
-  8. [ ] Hooks fire only at registration-carrying nodes (registered ctor/factory/promise), never at
-         engine-synthesised ones; `Hooks.Construction.registration` loses its optional marker.
-         Recommend yes.
+  8. [x] RULED 2026-09-02 — hooks fire only at registration-carrying nodes, never at
+         engine-synthesised ones; `Hooks.Construction.registration` drops its optional marker. Contract
+         line that rides along: the consumer a hook sees is the NEAREST REGISTERED ANCESTOR, skipping
+         synthesised glue (a singleton consuming a tuple holding a scoped service is the consumer of
+         that scoped service).
 -
   9. [ ] `afterConstruct` is skipped when `beforeConstruct` answered a result. Recommend yes.
 -
