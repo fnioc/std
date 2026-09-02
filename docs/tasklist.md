@@ -1296,3 +1296,47 @@ change to `Builder`'s signatures needs a manual isolated tsc pass over that file
 - [ ] Known and NOT this branch's: the without-transformer example app wedges at baseline after
       "Hosting started" (reproduced at `6732b734` with pre-branch sources), so its output-diff gate
       cannot run; owned by the hosting rework / red-by-design surface.
+
+## Ideas (2026-09-02) — not ruled, not scheduled
+
+### Registration carries no lifetime; addons demand per-registration data
+
+`Registration` reduces to address plus implementer. Lifetime stops being the privileged extra and
+becomes one addon's demand among others (tags, keys, diagnostics labels, validation metadata). The
+black box becomes structural: the core type carries no addon vocabulary and an addon attaches what
+it needs — the same move `Request` already makes (§230), one level down. Control registrations then
+need no sentinel at all, because there is no slot to fill.
+
+A mechanism has to answer two halves: how an addon DECLARES a demand ("every registration filed
+while I am installed must carry X", with X's type), and how that demand is ENFORCED at authoring
+time. Where it bites: order (services filed before the demanding addon cannot satisfy it
+retroactively — the lock-on's existing dynamic, to be decided deliberately); type plumbing (addons
+contributing slots); the sugar layer (`add<T>()` must see the demands to lower to the explicit form).
+Runtime cost is nothing — the data lives on the frozen registration object where `lifetime` lives
+today. The owner has a solution in mind for every part except the `RegistrationBuilder`.
+
+The builder, in the abstract, is a slot machine and only its slot list changes. Today the slots are
+a literal union with one special case (registration-ness withheld while `lifetime` is unspent and
+`undefined` is not in the vocabulary). Generalised, the slot list is `'implementer' | keyof Demands`
+and the special case is the general rule: a demand is REQUIRED exactly when its type excludes
+`undefined`, and the node withholds registration-ness while any required demand is unspent.
+
+```ts
+type Required<D> = { [K in keyof D]: undefined extends D[K] ? never : K }[keyof D];
+
+type RegistrationBuilder<T, D, Spent extends keyof D, Described> =
+  & (Required<D> extends Spent ? Described : unknown)
+  & ('implementer' extends Spent ? unknown : IAsImplementer<T, D, Spent>)
+  & { with<K extends Exclude<keyof D, Spent>>(key: K, value: D[K]): RegistrationBuilder<T, D, Spent | K, Described>; };
+```
+
+- One generic verb, many fluent names: `with('lifetime', v)` is the primitive; `withLifetime(v)` and
+  `taggedAs(k)` are augmentations that call it, shipped the way `Manifest` verbs already are. The
+  builder never learns a demand's name.
+- The map is the vocabulary: whatever threads `Lifetime` through `Addon`, `Builder`, `Manifest` and
+  the lock-on threads `Demands` instead; lock-on becomes intersection (two addons' demands merge into
+  one map); withholding, lock-on and "no addon widens the builder" keep their meaning with `Lifetime`
+  replaced by the map.
+- An optional demand (typed with `undefined`) is a slot that may stay unspent — today's tag.
+- Open: where `Demands` is read from — the type parameter (per-container, no global merging; the
+  sketch above) or a merged interface addons declare into. The builder works either way.
