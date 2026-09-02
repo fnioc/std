@@ -19,10 +19,10 @@ declare module '@rhombus-std/di.core/builders' {
 }
 
 export const AsImplementerRegistrationAugmentations = {
-  asClass(this: IAsImplementer<any, any, Slot>, ctor: Ctor) {
+  asClass(this: IAsImplementer<any, any, Slot>, ctor: Ctor): RegistrationBuilder<any, any, Exclude<Slot, 'implementer'>, CtorRegistration<any>> {
     return this.asClass(ctor, typefor(ctor));
   },
-  asFactory(this: IAsImplementer<any, any, Slot>, fn: Func) {
+  asFactory(this: IAsImplementer<any, any, Slot>, fn: Func): RegistrationBuilder<any, any, Exclude<Slot, 'implementer'>, FactoryRegistration<any>> {
     return this.asFactory(fn, typefor(fn));
   },
 };

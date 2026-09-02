@@ -2,7 +2,7 @@
 // are built by hand here through the Plan factories, independent of what PlannerVisitor
 // would have produced, so each node kind is exercised on its own terms.
 
-import { Manifest, Registration, type Request } from '@rhombus-std/di.core';
+import { ControlRequest, Manifest, Registration, type Request } from '@rhombus-std/di.core';
 import { Engine } from '@rhombus-std/di/private/internal/Engine';
 import { Plan } from '@rhombus-std/di/private/internal/Plan/Plan';
 import { Type } from '@rhombus-std/primitives';
@@ -22,8 +22,8 @@ function engineFor(registrations: Iterable<Registration<unknown>>): Engine {
   return new Engine(registrations);
 }
 
-/** The request these tests realize under — nothing here reads `type` or `serviceProvider`. */
-const request: Request = { type: Type.imported('Placeholder', 'app'), serviceProvider: undefined as unknown as Request['serviceProvider'] };
+/** The request these tests realize under — nothing here reads `type`. */
+const request: Request = new ControlRequest(Type.imported('Placeholder', 'app'));
 
 /** Realizes `plan` against `engine`. */
 function realize(plan: Plan, engine: Engine): any {
@@ -37,8 +37,8 @@ describe('the leaf kinds', () => {
     expect(realize(Plan.constant(42), engine)).toBe(42);
   });
 
-  // IServiceProvider is an ordinary registration under `controlLifetime`, seeded by the lifetime
-  // model and answered by the engine directly — there is no plan kind of its own to exercise here.
+  // IServiceProvider is an ordinary factory registration the engine seeds, its slot answered by
+  // the request in flight — see engine-request-door.test.ts for that path.
 
   // Scope-opening is a registration each model publishes at its own address (see
   // standard-lifetime-model.test.ts / tagged-lifetime-model.test.ts), so no plan kind of its

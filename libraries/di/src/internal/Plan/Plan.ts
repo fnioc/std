@@ -16,6 +16,7 @@ export type Plan =
   | LateBoundPlan
   | InvokerPlan
   | ConstantPlan
+  | RequestPlan
   | IterablePlan
   | ArrayPlan
   | PromisePlan
@@ -94,6 +95,16 @@ export interface InvokerPlan {
 export interface ConstantPlan {
   readonly kind: 'constant';
   readonly value: any;
+}
+
+/**
+ * A slot naming one of the request classes — `Request`, `ServiceRequest` or `ControlRequest` —
+ * answered at realize time with the ask in flight, when the ask is an instance of what
+ * {@link address} names.
+ */
+export interface RequestPlan {
+  readonly kind: 'request';
+  readonly address: Type;
 }
 
 export interface IterablePlan {
@@ -199,6 +210,10 @@ export namespace Plan {
   }
   export function constant(value: any): ConstantPlan {
     return { kind: 'constant', value };
+  }
+  /** The ask in flight, checked against the request class `address` names when it is realized. */
+  export function request(address: Type): RequestPlan {
+    return { kind: 'request', address };
   }
   /**
    * Every registration serving one type, realized lazily and re-iterably: each resolution
@@ -333,13 +348,21 @@ export namespace Plan {
    * Lowers a registration the registry matched to a request, closing it over whatever the match
    * captured. `visitor` supplies the recursion that turns each signature arg into the plan
    * producing it. Undefined when no signature has every arg satisfiable.
+   *
+   * @remarks
+   * A slot naming the registration's own address resolves BENEATH it: matching starts after the
+   * registration being planned, so a factory for `Foo` shaped `Func<[Foo], Foo>` receives what it
+   * shadows rather than itself.
    */
-  export function fromMatch(populatedAddress: Type, match: Match, visitor: Type.Visitor<Plan | undefined>): Plan | undefined {
+  export function fromMatch(populatedAddress: Type, match: Match, visitor: PlannerVisitor): Plan | undefined {
     const { registration: wideRegistration, generics } = match;
+    const slots: SlotLowering = {
+      visit: address => address === populatedAddress ? visitor.visitBeneath(address, match.index) : visitor.visit(address),
+    };
     const [kind, registration] = Registration.kind(wideRegistration);
     switch (kind) {
       case 'ctor': {
-        const lowered = lowerSignature(registration.ctorType.signatures, generics, visitor);
+        const lowered = lowerSignature(registration.ctorType.signatures, generics, slots);
         return Plan.registeredCtor({
           ctor: registration.ctor,
           args: lowered?.[0],
@@ -349,7 +372,7 @@ export namespace Plan {
         });
       }
       case 'factory': {
-        const lowered = lowerSignature(registration.factoryType.signatures, generics, visitor);
+        const lowered = lowerSignature(registration.factoryType.signatures, generics, slots);
         return Plan.registeredFactory({
           factory: registration.factory,
           args: lowered?.[0],
@@ -366,6 +389,11 @@ export namespace Plan {
     }
   }
 
+  /** What lowers one slot: the planner's own visit, or a view routing a self-named slot beneath its registration. */
+  interface SlotLowering {
+    visit(address: Type): Plan | undefined;
+  }
+
   /**
    * The first signature whose every arg lowers to a plan, longest first — a row's length is its
    * fixed slot count, so a rest-only row is the last resort and equal lengths keep the slot's
@@ -376,7 +404,7 @@ export namespace Plan {
   function lowerSignature(
     signatures: TupleType | ListType | UnionType,
     generics: Readonly<Record<string, Type>>,
-    visitor: Type.Visitor<Plan | undefined>,
+    visitor: SlotLowering,
   ): [args: Plan[], rest: Plan | undefined] | undefined {
     return Iterator.from(Type.signatureRows(signatures).toSorted((a, b) => fixedLength(b) - fixedLength(a)))
       .map(row => lowerRow(row, generics, visitor))
@@ -391,7 +419,7 @@ export namespace Plan {
   function lowerRow(
     row: TupleType | ListType,
     generics: Readonly<Record<string, Type>>,
-    visitor: Type.Visitor<Plan | undefined>,
+    visitor: SlotLowering,
   ): [args: Plan[], rest: Plan | undefined] | undefined {
     const list = restList(row);
     const rest = list === undefined ? undefined : lowerArg(list, generics, visitor);
@@ -420,7 +448,7 @@ export namespace Plan {
     return row;
   }
 
-  function lowerArg(arg: Type, generics: Readonly<Record<string, Type>>, visitor: Type.Visitor<Plan | undefined>): Plan | undefined {
+  function lowerArg(arg: Type, generics: Readonly<Record<string, Type>>, visitor: SlotLowering): Plan | undefined {
     if (arg.kind === 'generic') {
       const closing = generics[arg.label];
       return closing && Plan.constant(closing);
@@ -429,6 +457,6 @@ export namespace Plan {
   }
 
   export function realize(plan: Plan, options: RealizeOptions): any {
-    return new RealizeVisitor(options).visit(plan, options.context);
+    return new RealizeVisitor(options).realize(plan, options.context);
   }
 }

@@ -13,8 +13,8 @@ forgot to keep is a compile-visible bug rather than a silent one, and every fail
 you branch on with `instanceof`.
 
 `di.core` (the abstractions: the immutable `Manifest` and its `Registration`s, the `describe`
-chain, `Addon` / `Middleware` / `Request`, `IServiceProvider`, the whole error taxonomy, and the
-`Control` carrier) ← `di` (the engine: `Builder`, the plan-and-realize resolution core, the
+chain, `Addon` / `Middleware`, the `Request` classes, `IServiceProvider`, the whole error taxonomy,
+and the `ControlService` control surface) ← `di` (the engine: `Builder`, the plan-and-realize resolution core, the
 `ServiceProvider` every container is minted with, and the validation addons; it re-exports the
 taxonomy so both imports name the same classes). A library references `di.core`; only an entry point
 references `di`. `di.extras` (the type-argument sugar — `add<T>()`, `describe<T>()`,
@@ -337,18 +337,85 @@ const observing: Addon<unknown> = {
 };
 ```
 
-A `Request` is the address being resolved, the provider that opened the ask, and whatever a
-middleware attaches on the way down under a symbol it exports — attached before `next`, since the
-object is shared with every layer beneath, and reachable only through an import a reviewer can see.
-The chain composes once, at build: a middleware factory runs exactly once and may do install-time
-work there, resolving through `next` whatever that work needs.
+A `Request` is the address being resolved plus whatever a middleware attaches on the way down
+under a symbol it exports — attached before `next`, since the object is shared with every layer
+beneath, and reachable only through an import a reviewer can see. A `ServiceRequest` — the arm a
+provider mints — also carries the provider that opened the ask. The chain composes once, at build:
+a middleware factory runs exactly once and may do install-time work there, resolving through
+`next` whatever that work needs.
 
 ```ts
 const SCOPE: unique symbol = Symbol('scope');
-const scoping: Middleware = next => request => next({ ...request, [SCOPE]: openScope() });
+const scoping: Middleware = next => request => {
+  request[SCOPE] = openScope();
+  return next(request);
+};
 ```
 
-### 13. Validation addons
+At install time a middleware reaches the engine's own controls through the same door, by minting a
+`ControlRequest` for `ControlService`. Its two hook verbs install a `Behavior` — any of
+`beginResolve` / `beforeConstruct` / `canonicalize` / `afterConstruct` — in one of two tiers.
+`installHooks(hooks)` is always active: the hooks run for every ask, outermost — the audit and
+diagnostics tier. `stageHooks(hooks)` is gated: the hooks run only for an ask that activated the
+answered `Handle`, which is how a scope layer keeps its behavior to the asks that flowed through
+it — two parallel layers over one chain never run each other's staged hooks, and a latebound
+closure invoked later still runs the hooks of the layer it was minted under. Either verb answers a
+disposable `Handle`; disposing it is the uninstall. Construction hooks fire only at
+registration-carrying nodes — never at an engine-synthesised object, tuple, or collection node,
+and never at the engine's own seeded rows.
+
+```ts
+const scopeLayer: Middleware = next => {
+  const control = next(new ControlRequest(typefor<ControlService>())) as ControlService;
+  const handle = control.stageHooks({ afterConstruct: (construction, instance) => scope.keep(construction, instance) });
+  return request => next(request.activate(handle));
+};
+```
+
+### 13. The ask itself is a service
+
+A factory can take the resolution it is running under. A slot typed `ServiceRequest` receives the
+live ask — its address in `type`, the provider that opened it in `serviceProvider` — with no
+registration anywhere: the planner answers a slot naming `Request`, `ServiceRequest` or
+`ControlRequest` from the ask in flight. The arm is checked: a `ServiceRequest` slot refuses under
+a middleware's fold-time `ControlRequest`, and a slot typed by the base `Request` accepts either.
+
+```ts
+services = services.add(
+  typefor<IAudit>(),
+  (request: ServiceRequest) => new Audit(request.type, request.serviceProvider),
+  Type.func(typefor<IAudit>(), [[typefor<ServiceRequest>()]]),
+);
+```
+
+That is also all `IServiceProvider` is: the engine seeds an ordinary factory registration reading
+the request, so a constructor parameter typed `IServiceProvider` receives a fresh view forwarding
+to the provider that opened the ask — never the container object itself, since provider identity
+is not a contract. The engine's two seeded rows — `IServiceProvider` and `ControlService` — file
+oldest, carry a `null` lifetime, and are visible in `ControlService.registry` like anything else;
+registering your own `IServiceProvider` shadows the seed.
+
+### 14. Shadowing resolves beneath: decoration with no verb
+
+Registrations at one address shadow, newest first — and a registration whose own slot names its
+own address resolves that slot from what it shadows, because matching for a self-named slot starts
+after the registration being planned. So a factory for `Foo` shaped `Func<[Foo], Foo>` is a
+decorator with no decorator verb: it receives the older `Foo` and answers the address itself.
+
+```ts
+services = services
+  .add(typefor<IFoo>(), PlainFoo, typefor(PlainFoo))
+  .add(typefor<IFoo>(), (foo: IFoo) => new LoggingFoo(foo), Type.func(typefor<IFoo>(), [[typefor<IFoo>()]]));
+
+provider.resolve<IFoo>(); // a LoggingFoo wrapping the PlainFoo
+```
+
+A self-named slot with nothing older is unsatisfiable — the ask throws rather than delegating —
+and a collection ask still enumerates every match, decorator and shadowed both, in authored order.
+Only the self-named slot resolves beneath: a genuine cycle through a second address still throws
+`CycleError`.
+
+### 15. Validation addons
 
 Find every broken registration before the first ask, all at once. Two addons sweep the manifest at
 build and throw `ManifestValidationError` carrying every failure together, so one attempt surfaces
@@ -363,11 +430,14 @@ const provider = Builder
   .build(); // throws ManifestValidationError naming IRepo, before any ask
 ```
 
-Your own build-time sweep is a middleware away: it reads the manifest through the roster ask, which
-the engine answers itself with the registrations it resolves against.
+Your own build-time sweep is a middleware away: `ControlService.registry` is the registrations the
+container resolves against, read through the door at fold time.
 
 ```ts
-const roster = next({ type: typefor<Control<Iterable<Registration<unknown>>>>(), serviceProvider });
+const control = next(new ControlRequest(typefor<ControlService>())) as ControlService;
+for (const registration of control.registry) {
+  inspect(registration);
+}
 ```
 
 ---

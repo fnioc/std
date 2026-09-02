@@ -10,6 +10,8 @@ export interface Match {
   readonly generics: Readonly<Record<string, Type>>;
   /** The address it was matched against, which is the address this match answers. */
   readonly address: Type;
+  /** The registration's position among the registrations, newest first — where a search for what it shadows starts after. */
+  readonly index: number;
 }
 
 /**
@@ -43,18 +45,23 @@ export class Registry {
    * Every registration matching {@link primary} or {@link alternate}, newest first — one pass
    * over the registrations, so a registration matching both is answered once under
    * {@link primary}. A closed registration matches by interned identity, an open one by unification.
+   *
+   * @param start - the position to search from; a registration resolving a slot naming its own
+   * address passes its own position plus one, so only what it shadows can answer.
    */
-  getMatches(primary: Type, alternate?: Type) {
+  getMatches(primary: Type, alternate?: Type, start = 0) {
     return Iterator.from(this.#registrations)
-      .map((registration): Match | undefined => {
+      .drop(start)
+      .map((registration, dropped): Match | undefined => {
+        const index = start + dropped;
         const [isMatch, generics] = Type.bindGenerics(registration.address, primary);
         if (isMatch) {
-          return { registration, generics, address: primary };
+          return { registration, generics, address: primary, index };
         }
         if (alternate !== undefined) {
           const [isAlternateMatch, alternateGenerics] = Type.bindGenerics(registration.address, alternate);
           if (isAlternateMatch) {
-            return { registration, generics: alternateGenerics, address: alternate };
+            return { registration, generics: alternateGenerics, address: alternate, index };
           }
         }
         return undefined;

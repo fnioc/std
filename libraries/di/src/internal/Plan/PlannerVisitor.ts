@@ -1,4 +1,4 @@
-import { CycleError, type Invoker } from '@rhombus-std/di.core';
+import { type ControlRequest, CycleError, type Invoker, type Request, type ServiceRequest } from '@rhombus-std/di.core';
 import { type AbstractConstructorType, type ArrayType, type ConstructorType, type FunctionType, type GenericType, type GlobalType, type ImportedType, type IntersectionType, type IterableType,
   type ObjectType, type TagType, type TupleType, Type, type TypeLiteralType, type UnionType } from '@rhombus-std/primitives';
 import { type Generic, typefor } from '@rhombus-std/primitives.extras';
@@ -127,7 +127,32 @@ export class PlannerVisitor extends Type.Visitor<Plan | undefined> {
     return hoisted;
   }
 
+  /**
+   * The answer for `address` among only the registrations after `position` — how a slot naming
+   * its own registration's address resolves what that registration shadows. No guard frame opens
+   * for the address itself (the walk that reached the slot already holds it); the strictly
+   * growing position bounds the nesting, and a dependency elsewhere in the graph that loops back
+   * still trips the guard.
+   *
+   * @remarks
+   * No synthesis stands beneath the matches: a self-named slot with nothing older to answer it is
+   * unsatisfiable.
+   */
+  visitBeneath(address: Type, position: number): Plan | undefined {
+    const plan = this.#registry.getMatches(address, undefined, position + 1)
+      .map(match => Plan.fromMatch(address, match, this))
+      .find(isDefined);
+    if (plan === undefined && this.#diagnostics.missingDependency === undefined) {
+      this.#diagnostics.missingDependency = address;
+    }
+    return plan;
+  }
+
   protected override visitImported(type: ImportedType): Plan | undefined {
+    // A slot naming a request class is answered with the ask in flight, at realize time.
+    if (type === typefor<Request>() || type === typefor<ServiceRequest>() || type === typefor<ControlRequest>()) {
+      return Plan.request(type);
+    }
     const callableType = invokerCallableType(type);
     return callableType && Plan.invoker(callableType);
   }

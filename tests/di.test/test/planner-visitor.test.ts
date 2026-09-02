@@ -188,8 +188,8 @@ describe('tagged types', () => {
   });
 });
 
-// IServiceProvider carries no special case here: it resolves through an ordinary registration,
-// seeded by the lifetime model under `controlLifetime` and answered by the engine directly.
+// IServiceProvider carries no special case here: it resolves through an ordinary factory
+// registration the engine seeds, whose slot names the request in flight.
 
 describe('a function type standing for a late-bound call', () => {
   test('lowers to a LateBoundPlan naming the return type and argument signatures', () => {
@@ -341,15 +341,11 @@ describe('a union dependency', () => {
 });
 
 describe('the cycle guard', () => {
-  test('throws CycleError naming the path back to the repeat', () => {
+  // A slot naming its own registration's address is not a cycle: it resolves beneath, against
+  // only what that registration shadows, and with nothing older it is simply unsatisfiable.
+  test('a self-named slot with nothing beneath it is unsatisfiable, not a cycle', () => {
     const manifest = Manifest.empty<unknown>().add(Registration.ctor(LOOP, Loop, Type.ctor(LOOP, [[LOOP]])));
-    try {
-      visitorFor(manifest).visit(LOOP);
-      throw new Error('expected a CycleError');
-    } catch (error) {
-      expect(error).toBeInstanceOf(CycleError);
-      expect((error as CycleError).chain).toEqual([LOOP, LOOP]);
-    }
+    expect(visitorFor(manifest).visit(LOOP)).toBeUndefined();
   });
 
   test('a longer loop names every type on the path', () => {

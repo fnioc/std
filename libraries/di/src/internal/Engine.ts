@@ -1,22 +1,35 @@
-import { Control, controlLifetime, type GetService, type Registration, type Request, UnsatisfiableError } from '@rhombus-std/di.core';
+import { type ControlService, type GetService, type IServiceProvider, Registration, type Request, type ServiceRequest, UnsatisfiableError } from '@rhombus-std/di.core';
 import { type FunctionType, type ListType, type TupleType, Type } from '@rhombus-std/primitives';
 import { typefor } from '@rhombus-std/primitives.extras';
-import { Plan } from './Plan/index.js';
+import { concat } from '@rhombus-toolkit/obj';
+import { ServiceProvider } from '../ServiceProvider.js';
+import { Plan, type VisitorContext } from './Plan/index.js';
+import { InstalledHooks } from './Plan/InstalledHooks.js';
 import { Registry } from './Registry.js';
 
 /** The resolution orchestrator: one per container. Composed as the innermost middleware element. */
 export class Engine {
   readonly #registry: Registry;
-  /** Addresses whose registrations carry the engine-owned {@link controlLifetime}, precomputed at construction. */
-  readonly #controlLifetimeAddresses: ReadonlySet<Type>;
+  readonly #hooks: InstalledHooks;
+  /** The engine's own two rows, by identity — the nodes no hook ever fires at. */
+  readonly #seeds: ReadonlySet<Registration<unknown>>;
 
   constructor(registrations: Iterable<Registration<unknown>>) {
-    this.#registry = new Registry(registrations);
-    this.#controlLifetimeAddresses = new Set(
-      Iterator.from(this.#registry.registrations)
-        .filter(r => 'lifetime' in r && r.lifetime === controlLifetime)
-        .map(r => r.address),
-    );
+    // A fresh view per handout, forwarding to the provider that opened the ask — provider
+    // identity is never a contract, and the view is never the container object itself.
+    const provider = (request: ServiceRequest): IServiceProvider => new ServiceProvider(inner => request.serviceProvider.getService(inner.type));
+    const control = (): ControlService => this.#hooks;
+    // The engine's own rows file after the given ones, so they are the OLDEST and any user
+    // registration at the same address shadows them. Both carry a null lifetime — no model
+    // governs them, and hooks never fire at their nodes.
+    const seeds = [
+      Registration.factory(typefor<IServiceProvider>(), provider, typefor(provider), null),
+      Registration.factory(typefor<ControlService>(), control, typefor(control), null),
+    ];
+    this.#registry = new Registry(concat<Registration<unknown>>(registrations, seeds));
+    // Read back off the registry so seed identity tracks whatever it filed.
+    this.#seeds = new Set(this.#registry.registrations.slice(-seeds.length));
+    this.#hooks = new InstalledHooks(this.#registry.registrations);
   }
 
   // #region resolution
@@ -25,13 +38,6 @@ export class Engine {
    * Resolves `request` from its registrations, or hands it to `next`.
    *
    * @remarks
-   * The roster ask, `Control<Iterable<Registration<unknown>>>`, is answered by the engine itself
-   * with the registrations it resolves against — how a middleware sweeping the manifest at build
-   * reads it.
-   *
-   * A registration carrying {@link controlLifetime} is answered directly — its factory receives
-   * the request and nothing else, bypassing the plan infrastructure.
-   *
    * An address no registration matches is not the engine's to refuse: it flows through `next`,
    * and whatever stands beneath answers or refuses it.
    *
@@ -41,13 +47,6 @@ export class Engine {
     const address = request.type;
     if (address === undefined) {
       throw new TypeError('getService received no address — the caller resolved without a service type');
-    }
-    if (address === typefor<Control<Iterable<Registration<unknown>>>>()) {
-      return new Control(this.#registry.registrations);
-    }
-
-    if (this.#controlLifetimeAddresses.has(address)) {
-      return this.#resolveControlLifetime(request);
     }
 
     // Planning must run before delegating: it answers unregistered object and tuple asks by
@@ -61,27 +60,7 @@ export class Engine {
       }
       throw error;
     }
-    return Plan.realize(plan, { engine: this, context: {}, request });
-  }
-
-  /**
-   * Answers a {@link controlLifetime} registration directly: the factory receives the request
-   * with no planning and no caching.
-   */
-  #resolveControlLifetime(request: Request): unknown {
-    const match = Iterator.from(this.#registry.getMatches(request.type))
-      .find(m => 'lifetime' in m.registration && m.registration.lifetime === controlLifetime);
-    if (!match) {
-      throw new UnsatisfiableError(request.type, 'control-lifetime address has no registration');
-    }
-    const { registration } = match;
-    if ('factory' in registration) {
-      return registration.factory(request);
-    }
-    if ('value' in registration) {
-      return registration.value;
-    }
-    throw new TypeError(`control-lifetime registration for ${Type.stringify(request.type)} has an unsupported implementer kind`);
+    return Plan.realize(plan, { engine: this, context: EMPTY_CONTEXT, request });
   }
 
   // #endregion
@@ -93,6 +72,16 @@ export class Engine {
     return this.#registry;
   }
 
+  /** The installed behaviors — this engine's `ControlService` implementation. */
+  get installedHooks(): InstalledHooks {
+    return this.#hooks;
+  }
+
+  /** Whether `registration` is one of this engine's own seeded rows. */
+  isSeeded(registration: Registration<unknown>): boolean {
+    return this.#seeds.has(registration);
+  }
+
   /**
    * @param request - the request that opened the ask the caller was minted under.
    * @throws {UnsatisfiableError} when no signature of {@link registration} can be satisfied.
@@ -102,7 +91,7 @@ export class Engine {
     if (plan === undefined) {
       throw new UnsatisfiableError(registration.address, 'no signature of the invoked callable can be satisfied');
     }
-    return Plan.realize(plan, { engine: this, context: {}, request });
+    return Plan.realize(plan, { engine: this, context: EMPTY_CONTEXT, request });
   }
 
   /**
@@ -125,6 +114,9 @@ export class Engine {
   // #endregion
 }
 
+/** What a fresh ask starts from — shared, since a walk only ever derives a new context, never writes one. */
+const EMPTY_CONTEXT: VisitorContext = Object.freeze({});
+
 /**
  * The arg types a call of `count` args binds against one signature row, or undefined when the
  * arity does not fit: one fixed slot per position — a call may stop short wherever every
@@ -136,7 +128,12 @@ function boundArgTypes(row: TupleType | ListType, count: number): readonly Type[
   // zero-arg call binds the same array identity every time and the plan memo can hit.
   const members = row.kind === 'tuple' ? row.members : Type.tuple().members;
   if (count <= members.length) {
-    return members.slice(count).every(Type.isOptional) ? members : undefined;
+    for (let i = count; i < members.length; i++) {
+      if (!Type.isOptional(members[i]!)) {
+        return undefined;
+      }
+    }
+    return members;
   }
   const element = row.kind === 'tuple' ? row.rest : row.element;
   if (element === undefined) {

@@ -172,7 +172,8 @@ async function* tour(provider: IServiceProvider): AsyncGenerator<string> {
   //
   // The container can hand back ITSELF: a parameter typed `IServiceProvider`
   // gets the live provider, and the reserved `'ServiceProvider'` token names
-  // it. No registration exists for it — the engine supplies it structurally.
+  // it. The engine seeds an ordinary factory registration for it, answering a
+  // fresh view onto the provider that opened the ask.
   //
   // Injecting the provider is USUALLY a smell. It hides a class's real
   // dependencies from anyone reading its constructor, turns wiring mistakes from

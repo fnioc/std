@@ -3,15 +3,15 @@
 // share nothing unless they also share the address, and a repeated arity against one callable
 // hits the memo instead of planning again.
 
-import { Manifest, Registration, type Request } from '@rhombus-std/di.core';
+import { ControlRequest, Manifest, Registration, type Request } from '@rhombus-std/di.core';
 import { Engine } from '@rhombus-std/di/private/internal/Engine';
 import { Plan } from '@rhombus-std/di/private/internal/Plan/Plan';
 import { PlannerVisitor } from '@rhombus-std/di/private/internal/Plan/PlannerVisitor';
 import { type FunctionType, Type } from '@rhombus-std/primitives';
 import { afterEach, describe, expect, spyOn, test } from 'bun:test';
 
-/** The request these tests realize under — nothing here reads `type` or `serviceProvider`. */
-const request: Request = { type: Type.imported('Placeholder', 'app'), serviceProvider: undefined as unknown as Request['serviceProvider'] };
+/** The request these tests realize under — nothing here reads `type`. */
+const request: Request = new ControlRequest(Type.imported('Placeholder', 'app'));
 
 /** An engine over `manifest`, answering a latebound function type with the function it realizes to. */
 function toProvider(manifest: Manifest<string>) {

@@ -1,9 +1,9 @@
 // Behaviour tests for the validation addons: what each one refuses at build, what it lets
 // stand, and that either slots into a useAddon chain like any other addon. Both read the
-// roster through the chain itself, so every case goes through the builder.
+// registry through the chain itself, so every case goes through the builder.
 
 import { Builder, validateBuildability, validateUniversalAddresses } from '@rhombus-std/di';
-import { ManifestValidationError, Registration } from '@rhombus-std/di.core';
+import { ManifestValidationError, Registration, UnsatisfiableError } from '@rhombus-std/di.core';
 import { Type } from '@rhombus-std/primitives';
 import { describe, expect, test } from 'bun:test';
 
@@ -22,14 +22,17 @@ class Box {
 }
 
 describe('validateUniversalAddresses', () => {
-  test('refuses a registration addressed by nothing but a hole', () => {
+  // A registration addressed by nothing but a hole matches every ask — the addon's own control
+  // ask included, so the read of the registry itself comes back poisoned. The build still
+  // refuses, through the control guard rather than a per-registration diagnostic.
+  test('refuses to build when a registration addressed by nothing but a hole poisons the control ask', () => {
     const build = () =>
       Builder.withServices(manifest => manifest.add(Registration.ctor(T, Box, Type.ctor(T, [[]]))))
         .useAddon(validateUniversalAddresses())
         .build();
 
-    expect(build).toThrow(ManifestValidationError);
-    expect(build).toThrow('%T is nothing but a type parameter');
+    expect(build).toThrow(UnsatisfiableError);
+    expect(build).toThrow('something other than the engine control');
   });
 
   test('passes an open address that is more than a hole', () => {

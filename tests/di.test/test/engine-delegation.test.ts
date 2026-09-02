@@ -4,7 +4,7 @@
 // builder, where the chain's terminus is what stands beneath.
 
 import { Builder } from '@rhombus-std/di';
-import { Control, Registration, type Request, UnsatisfiableError } from '@rhombus-std/di.core';
+import { ControlRequest, type ControlService, Registration, type Request, UnsatisfiableError } from '@rhombus-std/di.core';
 import { Engine } from '@rhombus-std/di/private/internal/Engine';
 import { Type } from '@rhombus-std/primitives';
 import { describe, expect, test } from 'bun:test';
@@ -18,22 +18,12 @@ const OPEN_BOX = Type.imported('Box', 'app', [Type.generic('T')]);
 
 const DI_CORE = '@rhombus-std/di.core';
 
-/** A control ask the engine does not own: `Control` around a service nothing answers. */
-const UNOWNED_CONTROL = Type.imported('Control', DI_CORE, [MISSING]);
-
-/** The engine-owned roster ask, `Control<Iterable<Registration<unknown>>>`. */
-const ROSTER_CONTROL = Type.imported('Control', DI_CORE, [
-  Type.iterable(Type.imported('Registration', DI_CORE, [Type.global('unknown')])),
-]);
+/** The engine's own control address. */
+const CONTROL = Type.imported('ControlService', DI_CORE);
 
 class Conn {}
 class Widget {
   constructor(readonly conn: unknown) {}
-}
-
-/** A request for `address` — none of these tests read `serviceProvider`. */
-function requestFor(address: Type): Request {
-  return { type: address, serviceProvider: undefined as unknown as Request['serviceProvider'] };
 }
 
 describe('what the engine answers itself', () => {
@@ -41,7 +31,7 @@ describe('what the engine answers itself', () => {
     const engine = new Engine([Registration.ctor(CONN, Conn, Type.ctor(CONN, [[]]))]);
     const seen: Request[] = [];
 
-    const answer = engine.getService(requestFor(CONN), request => {
+    const answer = engine.getService(new ControlRequest(CONN), request => {
       seen.push(request);
       return undefined;
     });
@@ -54,7 +44,7 @@ describe('what the engine answers itself', () => {
     const engine = new Engine([Registration.ctor(WIDGET, Widget, Type.ctor(WIDGET, [[CONN]]))]);
     const seen: Request[] = [];
     const ask = () =>
-      engine.getService(requestFor(WIDGET), request => {
+      engine.getService(new ControlRequest(WIDGET), request => {
         seen.push(request);
         return undefined;
       });
@@ -64,18 +54,20 @@ describe('what the engine answers itself', () => {
     expect(seen).toEqual([]);
   });
 
-  test('the roster control comes back from the engine without consulting next', () => {
+  test('the control service comes back from the engine without consulting next', () => {
     const registration = Registration.ctor(CONN, Conn, Type.ctor(CONN, [[]]));
     const engine = new Engine([registration]);
     const seen: Request[] = [];
 
-    const answer = engine.getService(requestFor(ROSTER_CONTROL), request => {
+    const answer = engine.getService(new ControlRequest(CONTROL), request => {
       seen.push(request);
       return undefined;
-    });
+    }) as ControlService;
 
-    expect(answer).toBeInstanceOf(Control);
-    expect([...answer.service]).toEqual([registration]);
+    expect(typeof answer.stageHooks).toBe('function');
+    const registry = [...answer.registry];
+    expect(registry[0]).toBe(registration);
+    expect(registry).toHaveLength(3);
     expect(seen).toEqual([]);
   });
 
@@ -83,7 +75,7 @@ describe('what the engine answers itself', () => {
     const engine = new Engine([Registration.ctor(CONN, Conn, Type.ctor(CONN, [[]]))]);
     const seen: Request[] = [];
 
-    const answer = engine.getService(requestFor(Type.object({ conn: CONN })), request => {
+    const answer = engine.getService(new ControlRequest(Type.object({ conn: CONN })), request => {
       seen.push(request);
       return undefined;
     });
@@ -98,7 +90,7 @@ describe('what flows through next', () => {
     const engine = new Engine([]);
     const beneath = { answered: 'beneath the engine' };
     const seen: Request[] = [];
-    const request = requestFor(MISSING);
+    const request = new ControlRequest(MISSING);
 
     const answer = engine.getService(request, delegated => {
       seen.push(delegated);
@@ -115,21 +107,7 @@ describe('what flows through next', () => {
     const beneath = { answered: 'beneath the engine' };
     const seen: Request[] = [];
 
-    const answer = engine.getService(requestFor(OPEN_BOX), request => {
-      seen.push(request);
-      return beneath;
-    });
-
-    expect(answer).toBe(beneath);
-    expect(seen).toHaveLength(1);
-  });
-
-  test('a control ask the engine does not own delegates like any other', () => {
-    const engine = new Engine([Registration.ctor(CONN, Conn, Type.ctor(CONN, [[]]))]);
-    const beneath = { answered: 'beneath the engine' };
-    const seen: Request[] = [];
-
-    const answer = engine.getService(requestFor(UNOWNED_CONTROL), request => {
+    const answer = engine.getService(new ControlRequest(OPEN_BOX), request => {
       seen.push(request);
       return beneath;
     });

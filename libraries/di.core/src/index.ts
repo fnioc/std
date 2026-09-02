@@ -5,7 +5,7 @@ export type * from './Addon';
 export type * from './Behavior';
 export * from './brands';
 export type { RegistrationBuilderFor } from './builder';
-export * from './Control';
+export type * from './ControlService';
 export * from './Errors';
 export * from './hooks';
 export type { Invoker } from './Invoker';
@@ -14,6 +14,6 @@ export type * from './LifetimeArgument';
 export * from './Manifest';
 export type * from './Middleware';
 export * from './Registration';
-export type * from './Request';
+export * from './Request';
 
 import './augmentations';

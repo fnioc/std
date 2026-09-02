@@ -39,7 +39,7 @@ manifest.add(Type.imported('IGreeter', 'app'), ConsoleGreeter, Type.ctor(Type.im
 
 `di.extras` carries no primitive of its own: every body above imports `typefor<T>()` from [`@rhombus-std/primitives.extras`](../primitives.extras/README.md) to derive the address or implementer type it needs, then forwards its remaining arguments untouched.
 
-These three augmentation sets aren't meant to be called directly — they're what the transform's marker roster (`package.json`'s `"rhombus-std": { "inline": { "entries": [...] } }`) points at as each type-argument-derived verb's source body.
+These three augmentation sets aren't meant to be called directly — they're what the transform's marker list (`package.json`'s `"rhombus-std": { "inline": { "entries": [...] } }`) points at as each type-argument-derived verb's source body.
 
 ## How it fits
 

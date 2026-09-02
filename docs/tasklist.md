@@ -1339,7 +1339,7 @@ type RegistrationBuilder<T, D, Spent extends keyof D, Described> =
 
 ## Phase 2 — signoffs owed before implementation (2026-09-02)
 
-- [ ] Before implementation: REVISE `docs/phase2-request-door.design.md` (branch
+- [x] Before implementation: REVISE `docs/phase2-request-door.design.md` (branch
       `feat-di-request-door`) against every ruling below dated 2026-09-02 — it predates all of them
       (class-shaped `Request`, unregistered request + `RequestPlan`, `ControlService` umbrella,
       disposable `Handle`, private `active`, no helpers, shadowing resolves beneath, null lifetime
@@ -1406,8 +1406,8 @@ Behaviour:
           planned. Decoration with no verb. Consequences: no older match is unsatisfiable (throws,
           never delegates); a collection ask still enumerates every match, decorator and shadowed
           both. Divergence from the reference, which throws a cycle here; outside the lifetime model.
-          - [ ] TODO: describe this feature in the di library doc (`docs/libraries/di.md`), with the
-                `Func<[Foo], Foo>` example — rides with the phase 2 docs fallout.
+          - [x] Described in `docs/libraries/di.md` §14 with the `Func<[Foo], Foo>` example
+          (landed with the phase 2 docs fallout).
 -
   11. [x] RULED 2026-09-02 — HIDE ON INPUTS, EXPLICIT ON OUTPUTS. The seeded lifetime is `null` at
           runtime, cast in at the two seed sites. Inputs (`Registration.*` factories, the builder,
@@ -1503,3 +1503,81 @@ contract forces.
       means binding twice: a per-registration `hasMatch(registration, address)` used by both, with
       `getMatches` binding again for the generics on a hit — or leave `getMatches` on
       `bindGenerics` as it is. One word: TWICE or LEAVE.
+
+## Session — phase 2 request door (2026-09-02, branch `feat-di-request-door`)
+
+Steps 5–8 of the di execution order, built to the 2026-09-02 rulings; every commit on
+`feat-di-request-door` above `c8561b3`, pushed.
+
+**Commits landed**
+
+- `b45de4c` docs(di) — the design doc revised in place to the ruled shape before any code.
+- `754a3cc` feat(di.core) — `Request` abstract class + `ServiceRequest`/`ControlRequest`,
+  `ControlService`, `Handle extends Disposable`; `Control<T>`/`controlLifetime` deleted;
+  `Hooks.Construction.registration` required; the lifetime slot loses the control union member.
+- `0668f98` feat(di) — the two seeds (provider view + control), `RequestPlan` answered from the
+  ask in flight, shadowing-resolves-beneath (`Match.index`, `getMatches` start,
+  `visitBeneath`), `InstalledHooks` with the two-tier dispatch, validation addons inline the
+  control ask, `registryOf` deleted.
+- `3acb829` test(di.test) — `engine-request-door` + `installed-hooks` suites; requests minted as
+  class instances; the direct self-loop cycle test rewritten to the beneath rule; the
+  universal-address test repinned (see decisions below).
+- `984898b` docs(di) — READMEs, `docs/libraries/di.md` §12–§14 (hook tiers, the ask as a
+  service, shadowing), §230/§231 corrected in place, example comments.
+- `ce494a5` docs(tasklist) — dprint reflow.
+- `702a96c` fix(di.extras) — return annotations on the observing as-door bodies (di.core's new
+  d.ts made the inferred set un-nameable, TS2883).
+- `15b6681` fix(di) — seed-ness keyed on the engine's two rows by identity (review lens 1: a
+  user null-lifetime registration must not suppress hooks); regression test.
+- `635eaf5` perf(di) — shared frozen empty context, loop-built call args, the construction
+  protocol skipped when no construction-kind hook participates (review lens 2).
+- `4140f1d` docs(di) — design doc re-synced to the built shape (review lens 3).
+
+**Gates** (before → after; "before" is the branch baseline at `c8561b3`)
+
+- `tests/di.test`: 105 pass / 6 skip / 18 fail → 125 pass / 6 skip / 18 fail; the 18 are the
+  same lifetime-model load failures, no new file fails to load (one net test moved: the
+  engine-delegation registry-control case replaced the deleted `Control` one; validation kept 6).
+- `bun run build`: green (after `702a96c`). `bun run format:check`: green.
+- `bun run test`: red only with the known deleted-lifetime-export load failures (37 sites across
+  ten `*.test` packages, all `noopLifetimeAddon`/`di`/`standardLifetimeAddon`/
+  `StandardScopeFactory`); no expect-level failure anywhere. `bun run lint`: red only in those
+  same test packages, same missing exports.
+- e2e: `bun run test:e2e` — all suites green except `inline.ttsc.e2e` (3 pass / 1 fail: its
+  parity fixture imports the deleted `noopLifetimeAddon`; pre-existing).
+- Both example apps build, run, and byte-match `expected.txt` — the step 7 wedge is closed.
+
+**Decisions I had to make** (unruled gaps; each flagged for reversal)
+
+- The seeded `IServiceProvider` factory answers a FRESH `ServiceProvider` view forwarding to
+  `request.serviceProvider.getService(type)` — the prompt's "mint a fresh provider wrap per
+  handout" read together with the demo's pinned `view !== provider` line; a by-reference answer
+  would print `false` there.
+- A registration addressed by nothing but a hole matches the control ask itself (user rows are
+  newer than seeds), so `validateUniversalAddresses` can no longer reach its per-registration
+  diagnostic: the build still refuses, via the inline control guard's `UnsatisfiableError`. The
+  test was repinned to that behavior (accepted-weaker-diagnostic precedent, ruled 2026-09-01).
+  Consequence worth the owner's eye: the addon's `ManifestValidationError` branch is in practice
+  unreachable for exactly the defect it names.
+- Seed-ness is identity (`Engine.isSeeded`, the two rows), not `lifetime === null` — a user
+  registration carrying null runs hooks normally.
+- `Plan.request` synthesis sits in `visitImported`, so a user registration at a request-class
+  address shadows it like everything else.
+- Dispatch middleware-form semantics where unruled (beginResolve `next` return, a middleware
+  discarding a deeper `{ result }`): implemented to the Behavior doc's reading; noted in the
+  design doc's Open section.
+
+**Left undone / for the owner**
+
+- Review lens 2 findings not taken (recorded in this session's transcript): per-ask
+  precomputation of the activated per-kind lists (per-node flag rechecks today, O(A) per kind per
+  hooked node); one `Hooks.Construction` carrier per KIND per behavior (three for a behavior
+  implementing all three — sharing one changes carrier identity, needs a ruling); memoizing the
+  invoker path's per-call re-plan; a negative-plan marker for delegated misses (every delegated
+  ask pays a failed plan + full registry scan today — interacts with "caches nothing").
+- `Request`'s per-ask `active: []` allocation could be lazied, but the ruled member shape spells
+  the field; left as ruled.
+
+**Decision-log entries touched**: §230 rewritten in place to the ruled door (request classes,
+seeds, null lifetime, shadowing-beneath, hook tiers); §231 gains the request-classes exception to
+"a name never resolves without a registration". Nothing else in the log was written.

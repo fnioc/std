@@ -3800,44 +3800,62 @@ _Owner-ruled 2026-08-30, Claude-recorded._
 ## §230 — The resolution door carries a request
 
 `getService(Type)` becomes `getService(Request)` for the middleware chain and the engine;
-`IServiceProvider` keeps its own signature. `ServiceProvider` allocates one `Request` per call and
-puts itself on it, and it is the only `IServiceProvider` implementation.
+`IServiceProvider` keeps its own signature. `Request` is an exported abstract class in `di.core`
+with two exported inheritors — the arms, told apart by `instanceof`: `ServiceRequest` (an ask a
+provider opened, carrying `serviceProvider`) and `ControlRequest` (an ask a middleware makes at
+fold time, adding nothing). `ServiceProvider` allocates one `ServiceRequest` per call and puts
+itself on it, and it is the only `IServiceProvider` implementation; a middleware mints
+`new ControlRequest(typefor<ControlService>())` for its fold-time control asks. The class also
+carries the activation surface: `activate(handle): this` records a staged-hook handle on the ask
+(a `private readonly active` list the engine reads by element access) and answers the same
+request, written `next(request.activate(handle))`.
 
-```ts
-interface Request {
-  readonly type: Type;
-  readonly serviceProvider: IServiceProvider;
-  [key: symbol]: unknown;
-}
-```
+The index signature `[key: symbol]: unknown` declares the attachment mechanism without naming any
+contents, so a core type carries no lifetime vocabulary while an addon still attaches what it
+needs, under a symbol it exports. A string key would be reachable by anyone who types the same
+string with nothing recording that they did; an imported symbol is reachable only through an import
+a reviewer can see. Attachment happens on the way DOWN, before `next` — the object is shared with
+every layer beneath and with the engine, so a write on the unwind is invisible to everything it was
+meant for.
 
-The index signature declares the mechanism without naming any contents, so a core type carries no
-lifetime vocabulary while an addon still attaches what it needs, under a symbol it exports. A string
-key would be reachable by anyone who types the same string with nothing recording that they did; an
-imported symbol is reachable only through an import a reviewer can see. Attachment happens on the way
-DOWN, before `next` — the object is shared with every layer beneath and with the engine, so a write
-on the unwind is invisible to everything it was meant for.
+The request is NOT registered. The planner answers a slot naming `Request`, `ServiceRequest` or
+`ControlRequest` with its own plan kind (`RequestPlan`), and the realize walk answers the ask in
+flight when it is an instance of the asked class — the base answers either arm — else throws
+`UnsatisfiableError`. Addresses stay fixed at build and only the answer arrives per ask, so the
+per-registry plan memo never invalidates.
+
+The engine seeds exactly two registrations, appended after the user's so they file oldest and a
+user registration at the same address shadows them — "permanent" means always present, not
+unbeatable. `IServiceProvider` is a factory whose slot is `ServiceRequest`, answering a fresh
+provider view forwarding to the minting request's provider (provider identity is never a
+contract); `ControlService` — one umbrella control interface exported from `di.core` — answers the
+engine's own surface: `registry` (the registrations the engine resolves against) and the two hook
+verbs. The seeded lifetime is `null` at runtime, hidden on inputs and explicit on outputs: the
+registration factories, the builder and `Manifest.add` type the slot `Lifetime`, while the
+engine's own reads and `ControlService.registry` admit `null`. Seeded rows plan their slots like
+any other registration, are visible in the registry, and no hook ever fires at their nodes.
+
+Shadowing resolves beneath: a registration whose own slot names its own address (a factory for
+`Foo` shaped `Func<[Foo], Foo>`) gets the shadowed, older registration as that dependency —
+matching for a self-named slot starts after the registration being planned. Decoration with no
+verb. Nothing older makes the ask unsatisfiable (a throw, never a delegation); a collection ask
+still enumerates every match; a genuine cycle through a second address still throws `CycleError`.
+
+Hooks are one installed mechanism with two tiers, reached through `ControlService`:
+`installHooks(hooks)` is always active — every ask, outermost — and `stageHooks(hooks)` is gated,
+in effect only for an ask that activated the answered `Handle`. `Handle extends Disposable` with
+an `index`; disposing is the uninstall, and a captured request naming a disposed handle simply
+fails its gate. Install and dispose are cold and rebuild the engine's precomputed per-kind
+dispatch; the ask path walks only what is active, allocates nothing of its own, and skips every
+hook kind nobody implements. Construction hooks fire only at registration-carrying nodes, never at
+engine-synthesised ones, and the consumer a hook sees is the nearest registered ancestor;
+`afterConstruct` is skipped when `beforeConstruct` answered a result. The chain never seals:
+layers and hooks may be added at any time.
 
 The chain is folded by `di.build` and nowhere else. That is the builder's rule; everything past it
-is the model's own business.
-
-A lifetime model is a black box. Nothing in the door, the engine or the chain says how one organizes
-itself, and they differ from one another — the tagged model is not built the way the standard one is.
-
-The standard model's own choice is a pair. The middleware is the inner half: it installs the whole
-implementation through `Control<IEngineHooks>` once, at fold time, and holds every cache in that
-closure. The outer half is the single wrap its scope factory puts over the already-folded chain,
-attaching the scope it closes over. `create()` returns the pair for the singleton scope too, so the
-container's own provider is born attached and no unattached provider exists to be handed out.
-
-`beginResolve` receives the request and reads the attachment once into the behavior's own slot;
-every later hook takes it from `construction.state`. `injected ?? …` keeps nested resolutions
-inheriting the enclosing scope, so the attachment is consulted only at the door.
-
-Under that model, opening a scope therefore composes rather than installs. Nothing accumulates on the
-chain, which is what makes an outer scope answering an inner scope's ask structurally impossible
-there rather than governed by a precedence rule, and what stops per-node cost scaling with nesting
-depth.
+is the model's own business. A lifetime model is a black box: nothing in the door, the engine or
+the chain says how one organizes itself, and a model acts only through the hooks — which is what
+makes the seeded rows structurally uncacheable.
 
 A scope never captures a value built from a latebound argument: the address is the cache key and it
 does not carry the arguments, so a cached value would be handed to callers whose arguments could
@@ -3846,13 +3864,13 @@ its subtree consumed a latebound argument — and it is a static property of the
 captured for the whole lifecycle of the `getService` that opened it, latebounds constructed under it
 included, so a latebound call carries the request it was minted under rather than meeting a new one —
 which is what keeps a closure invoked through some other provider filing its untainted dependencies
-into the scope it was minted in.
+into the scope it was minted in, and running that scope's staged hooks however it is invoked.
 
 `Invoker` stays. Spelling a late registration as a branded argument was refused: a temporary
 registration produces a value the cache cannot honestly key, so an instance built from a registration
 that exists for one frame would be handed out afterwards to asks that could never have produced it.
 
-_Owner-ruled 2026-09-01, Claude-recorded._
+_Owner-ruled 2026-09-01 and 2026-09-02, Claude-recorded._
 
 ## §231 — An unregistered object or tuple type synthesizes when every member resolves
 
@@ -3862,7 +3880,8 @@ shape from its own properties on the same terms, and `#answer`'s existing order 
 registration for the shape itself answers first, and only a miss falls through to building one.
 
 A NAME is a name: a named type resolves nominally, through a registration, and never composes from
-its members. Matching is identity modulo holes — no assignability, no width subtyping, no member
+its members. (The three request classes are the one named exception — answered from the ask in
+flight, §230 — and still compose from nothing.) Matching is identity modulo holes — no assignability, no width subtyping, no member
 search — and letting a named shape fall back to its members would be that analysis by another route.
 The difference is only the fallback. Registrations answer first for every address alike — `#answer`
 consults the registry before ever reaching a kind's own synthesis — so an anonymous shape is

@@ -5,6 +5,18 @@ import type { Registration } from './Registration/index.js';
 import type { Request } from './Request.js';
 
 /**
+ * One installed behavior's slot in the engine's installed list.
+ *
+ * @remarks
+ * Disposing it uninstalls the behavior: install and dispose are cold, and a request that
+ * activated the handle afterwards simply fails its gate.
+ */
+export interface Handle extends Disposable {
+  /** The installed slot; an ask's gate is one comparison against it. */
+  readonly index: number;
+}
+
+/**
  * The four handlers one behavior contributes, every one of them present — a `Behavior` is the same
  * four with each of them optional.
  *
@@ -66,8 +78,8 @@ export namespace Hooks {
     readonly node: object;
     /** The address this node answers, as it was requested, with any captures filled in. */
     readonly populatedAddress: Type;
-    /** The registration that matched, absent when the engine rather than the manifest is answering. */
-    readonly registration?: Registration<unknown>;
+    /** The registration this construction realizes. */
+    readonly registration: Registration<unknown>;
     /** This behavior's own state, as the enclosing construction left it — never this node's own answer, and never anyone else's. */
     readonly state: State;
   }

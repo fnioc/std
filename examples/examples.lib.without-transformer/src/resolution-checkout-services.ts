@@ -67,9 +67,9 @@ export const CHECKOUT_TYPES = {
   /**
    * di's INTRINSIC provider Type — the ONE entry in this bag with a reserved
    * spelling of its own. `'ServiceProvider'` names the provider itself in the
-   * token grammar, the engine recognises the type it reads to without any
-   * registration existing for it, and the reserved word keeps this bag from
-   * hand-composing the address the engine compares against.
+   * token grammar, the engine seeds a registration answering it, and the
+   * reserved word keeps this bag from hand-composing the address that
+   * registration files under.
    */
   resolver: Type.from('ServiceProvider'),
 } as const;
