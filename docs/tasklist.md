@@ -1224,11 +1224,11 @@ Every lane flows through the owner's serial review: a lane is SQUASH-MERGED into
 working tree before it becomes a commit. Lanes may start in worktrees as soon as they are unblocked;
 later lanes branch from the previous lane's tip so they stack, and rebase once the owner commits.
 
-- Phase 1: steps 10 and 11 now (10 in `+feat-di-delete-lifetime-model`, 11 in `+feat-di-builder-spec`);
-  step 9 waits for phase 2's 7 and 8 — the recorded hard edge, retiring the control branch before
-  `IServiceProvider` is seeded under `controlLifetime` leaves nothing to answer control asks. The
-  owner listed 9 in phase 1; flagged, not overridden.
-- Phase 2: the `Request` type in full — steps 5, 6, 7, 8 — then 9.
+- Phase 1: steps 9, 10 and 11 (10 in `+feat-di-delete-lifetime-model`, 11 in `+feat-di-builder-spec`,
+  9 next, stacked on 11). The recorded edge "9 after 7" is OVERRIDDEN by the owner for this queue:
+  the engine is not run at any point in it, so the old control branch is cleared out first and the
+  new door written in afterwards — nothing has to keep answering control asks in between.
+- Phase 2: the `Request` type in full — steps 5, 6, 7, 8.
 - Also queued on the builder branch before its review: `Type.from` string-only with the parser
   parsing literally into the adopt visitor (ruled above).
 
