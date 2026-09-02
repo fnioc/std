@@ -964,18 +964,18 @@ primitives, primitives.extras or any external dependency lets two containers obs
 Two independent containers are fine; two loaded COPIES of primitives or di.core are impossible by
 design, and fail loud.
 
-## Signatures as a Type node (2026-09-01)
+## Signatures as a Type node (2026-09-01) — LANDED `d95a316c` + `3c256815`
 
 `Type[][]` is the one place a node's children are host arrays rather than nodes, which is what
 `adoptSignatures` and `signaturesKey` exist for. Making a signature list a node retires both, drops
 the ctor/func intern key to two ids, and satisfies the one-kind-per-member rule.
 
-- [ ] Give a tuple a way to express open length — an optional or rest slot. Today both are refused
+- [x] Give a tuple a way to express open length — an optional or rest slot. Today both are refused
       (`tokens/node_test.go:164`) on the stated grounds that "a list of slots can only state a fixed
       one, so derivation fails rather than reporting an arity the type does not have". That single
       addition closes two refusals: variable-length tuples become derivable, and a signature
       inherits variadic instead of needing a variadic slot of its own.
-- [ ] Then a signature list becomes a node, held in ONE slot rather than a host array of host
+- [x] Then a signature list becomes a node, held in ONE slot rather than a host array of host
       arrays. The slot is typed by the widest shape it can hold, which is the convention the factories
       already run on: a factory that can collapse answers the wide type (`union`, `intersection`
       answer `Type`) while one that cannot answers its own (`tuple`, `array`, `imported`). `global`
@@ -987,7 +987,7 @@ the ctor/func intern key to two ids, and satisfies the one-kind-per-member rule.
       branch lives in one place instead of in every visitor.
       A third form supporting both spellings is NOT viable — two spellings of one type would intern to two nodes
       and `===` is the equality operator for the whole subsystem.
-- [ ] Order among signatures: ADD NO ORDERING RULE. `compareTypes`/`canonicalMembers` must not gain
+- [x] Order among signatures: ADD NO ORDERING RULE. `compareTypes`/`canonicalMembers` must not gain
       a length-first or signature-aware rule. Selection already happens at the point of use and the
       stored order is already the right tiebreak: the LONGEST SATISFIABLE signature wins
       (`Plan.ts`'s `lowerSignature` sorts longest-first and takes the first whose every arg lowers),
@@ -995,12 +995,12 @@ the ctor/func intern key to two ids, and satisfies the one-kind-per-member rule.
       stable. The single obligation: the normalizing accessor must return a union's members AS
       STORED — grouping, deduping or rebuilding them silently changes which of two equal-length
       overloads wins, and no existing test would catch it.
-- [ ] Optionality is NOT a tuple field. `Type.isOptional` already defines optional once for the
+- [x] Optionality is NOT a tuple field. `Type.isOptional` already defines optional once for the
       whole model as "admits `undefined`", objects spell an optional property as a union carrying
       the `undefined` literal, and optional parameters already derive that way. A tuple obeys the
       same rule, so the tuple gains a REST slot and nothing else — no `optionalCount`, no
       `TupleOptionalCount`, and no fabricating overloads for optional parameters.
-- [ ] A signature that is entirely a rest parameter is a `ListType`, not a one-member tuple holding
+- [x] A signature that is entirely a rest parameter is a `ListType`, not a one-member tuple holding
       an array: the row IS the argument list. That is what fixes the live miscall where
       `(...deps: IDep[])` receives `[theArray]` as its first argument.
 - [ ] OWNER-RULED: equal-length signatures that are both resolvable have nothing to choose between
@@ -1083,7 +1083,7 @@ the ctor/func intern key to two ids, and satisfies the one-kind-per-member rule.
 
 The order to work in, one line each. Sections above carry the substance; this is the sequence.
 
-1. Signature slot becomes one `Type` node, open-length tuples and the Go mirror as fallout. IN FLIGHT.
+1. ~~Signature slot becomes one `Type` node, open-length tuples and the Go mirror as fallout.~~ DONE — `d95a316c` (the change) + `3c256815` (review repairs). A list row spreads at the call, a required-prefix-plus-rest derives as an open tuple, optionality stayed a union with `undefined`, and `compareTypes` gained no ordering rule.
 2. Resume the blind typefor shape suite once the Go toolchain frees up.
 3. Add the static `withServices` opener so nothing hand-rolls a vacuous addon to start a chain.
 4. Engine calls `next` when it cannot answer; split "no registration" (delegable) from "unbuildable registration" (error).
@@ -1142,3 +1142,9 @@ SOFT:
 - **13** is docs-only and can land at any point.
 
 FREE: 2, 3, 4, 12 and 13 can be placed anywhere consistent with the above.
+
+## Left by the signatures work (2026-09-01)
+
+- [ ] `docs/notes.md` still names `Type.Signatures` and `optionalCount`; both are gone from the code.
+- [ ] `typeforhoist.Union`'s doc comment calls itself a "literal-union node" though it has long held
+      general members. Pre-existing, surfaced by this pass.
