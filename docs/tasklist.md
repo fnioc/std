@@ -1394,10 +1394,10 @@ Behaviour:
 Open, needs a design answer:
 
 -
-  12. [ ] An addon OUTSIDE di cannot mint a `ControlRequest` for its own fold-time control ask once
-          the request carries `activate`, because the minting helpers (`registryOf`, `hooksControlOf`) are
-          di-internal. Either di exports a minting helper, or `ControlRequest` becomes a class in di.core.
-          Claude leans the helper.
+  12. [x] RULED 2026-09-02 — moot. Requests are made only inside `ServiceProvider`, whose class is
+          private (the interface alone is exported); no user ever mints one. Neither a minting helper
+          nor a `ControlRequest` class. An addon outside di reaches a control the way it reaches any
+          service: through the provider it holds.
 
 Also open from the design, for visibility (no owner word needed unless he objects): `beginResolve`'s
 `injected` is `undefined` at the door and a `{ state }` redirect does not survive a latebound
