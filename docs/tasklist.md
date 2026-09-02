@@ -1347,11 +1347,9 @@ revising agent AS IF ruled — they are not; they are listed here to be answered
 Internal, non-exported:
 
 -
-  1. [ ] `DefaultRequest` — the concrete request class in di (prototype methods, one active set per
-         ask). Recommend yes.
+  1. [x] DISSOLVED — `Request` is the class; no `DefaultRequest`.
 -
-  2. [ ] `RequestMembers` — a non-exported base interface the two arms extend, so the shared members
-         and their docs live once. Recommend yes.
+  2. [x] DISSOLVED — the abstract class carries the shared members.
 -
   3. [x] RULED 2026-09-02 — yes, as `RequestPlan` (kind `'request'`), the owner's name. It takes the
          place the old `service-provider` plan kind held; the provider is a seeded factory reading
@@ -1397,12 +1395,12 @@ Ruled 2026-09-02 from the owner's review of the queue:
 - [x] NO HELPERS for the fold-time control asks. `registryOf` and `hooksControlOf` do not exist; a
       middleware spells the ask inline, `next(new ControlRequest(typefor<HooksControl>()))`, and the
       roster ask's control guard plus `new Registry(…)` inline at the two validation call sites.
-- [ ] Asked by the owner, answered yes by Claude, awaiting his word: `Request` is an exported
+- [x] RULED 2026-09-02: `Request` is an exported
       `abstract class` in di.core with `ServiceRequest` and `ControlRequest` exported as its two
       inheritors; the union alias goes; `serviceProvider` lives on `ServiceRequest` only; the arm
       check is `instanceof`; `DefaultRequest`, `RequestMembers` and the arm symbol all dissolve
       (items 1 and 2 with them).
-- [ ] Asked by the owner, agreed by Claude, awaiting his word: the request is NOT registered — the
+- [x] RULED 2026-09-02 (the owner's own position, confirmed): the request is NOT registered — the
       planner answers a slot naming any of the three request classes with `Plan.request(address)`,
       and the sentinel symbol goes (re-spelling item 3). The control services STAY registrations:
       engine-seeded factories appended oldest, values from the engine's closure or the request,
