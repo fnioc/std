@@ -1318,7 +1318,7 @@ and the special case is the general rule: a demand is REQUIRED exactly when its 
 `undefined`, and the node withholds registration-ness while any required demand is unspent.
 
 ```ts
-type Required<D> = { [K in keyof D]: undefined extends D[K] ? never : K }[keyof D];
+type Required<D> = { [K in keyof D]: undefined extends D[K] ? never : K; }[keyof D];
 
 type RegistrationBuilder<T, D, Spent extends keyof D, Described> =
   & (Required<D> extends Spent ? Described : unknown)
@@ -1336,3 +1336,59 @@ type RegistrationBuilder<T, D, Spent extends keyof D, Described> =
 - An optional demand (typed with `undefined`) is a slot that may stay unspent — today's tag.
 - Open: where `Demands` is read from — the type parameter (per-container, no global merging; the
   sketch above) or a merged interface addons declare into. The builder works either way.
+
+## Phase 2 — signoffs owed before implementation (2026-09-02)
+
+The phase 2 design (`docs/phase2-request-door.design.md` on `feat-di-request-door`, commit
+`f565bdb8`) is complete and revised against the hooks ruling. It waits on these owner answers; each is
+Claude's recommendation, none is ruled. The first-design items 1–3 and 8–10 were briefed to the
+revising agent AS IF ruled — they are not; they are listed here to be answered.
+
+Internal, non-exported:
+
+- [ ] 1. `DefaultRequest` — the concrete request class in di (prototype methods, one active set per
+      ask). Recommend yes.
+- [ ] 2. `RequestMembers` — a non-exported base interface the two arms extend, so the shared members
+      and their docs live once. Recommend yes.
+- [ ] 3. `LiveAskPlan` plus two internal symbols — the three request addresses declared in the registry
+      as value registrations carrying a sentinel, planned as the live ask; no per-ask Registry, the
+      plan memo intact. Recommend yes.
+- [ ] 4. `InstalledHooks` — the engine's installed list, its precomputed per-kind dispatch, and the two
+      control verbs. Recommend yes.
+
+Exported from di.core:
+
+- [ ] 5. `Handle` — what `useHooks`/`installHooks` return: an index for the alloc-free gate, and
+      `uninstall`. Recommend yes.
+- [ ] 6. `HooksControl` — the control's interface: `useHooks(hooks: Partial<Behavior>): Handle` (gated)
+      and `installHooks(hooks: Partial<Behavior>): Handle` (always active). Names Claude's.
+      Recommend yes.
+- [ ] 7. `Request.active` — the public readonly active set beside `activate(handle): this`.
+      Recommend yes.
+
+Behaviour:
+
+- [ ] 8. Hooks fire only at registration-carrying nodes (registered ctor/factory/promise), never at
+      engine-synthesised ones; `Hooks.Construction.registration` loses its optional marker.
+      Recommend yes.
+- [ ] 9. `afterConstruct` is skipped when `beforeConstruct` answered a result. Recommend yes.
+- [ ] 10. Seeds file oldest, so a user registration at the same address shadows a seeded one —
+      "permanent" means always present, not unbeatable. Recommend yes.
+- [ ] 11. The control lifetime is `null` at runtime, cast in at the two seed sites, ABSENT from the
+      slot's type; the `controlLifetime` symbol and its union member go. The owner said "fine at a
+      minimum"; the one place the type then lies is the roster (a walker switching on lifetime meets
+      a `null` its type did not promise) — whether the roster hides engine-owned registrations is a
+      separate call.
+
+Open, needs a design answer:
+
+- [ ] 12. An addon OUTSIDE di cannot mint a `ControlRequest` for its own fold-time control ask once
+      the request carries `activate`, because the minting helpers (`registryOf`, `hooksControlOf`) are
+      di-internal. Either di exports a minting helper, or `ControlRequest` becomes a class in di.core.
+      Claude leans the helper.
+
+Also open from the design, for visibility (no owner word needed unless he objects): `beginResolve`'s
+`injected` is `undefined` at the door and a `{ state }` redirect does not survive a latebound
+re-entry; the demoted make inside a registered-promise envelope runs no hooks; one
+`Hooks.Construction` carrier per behaviour per hooked node is the one per-node allocation the hook
+contract forces.
