@@ -1166,6 +1166,14 @@ Left open by the repair's own review (its finish stage died on the 5-hour quota)
       owner may reverse): keep the narrowing, since a plain-object `ctorType` never passes a
       primitives door and exhaustive narrowing is owed anyway, but its message must say the row
       reached planning unvalidated rather than restate the door's wording.
+- [ ] RULED 2026-09-02: `Type.adopt` STAYS (no reason not to), and it is the one semantic door — a
+      visitor whose every case is a factory call, so whatever a factory collapses or refuses applies
+      to a revived node. The PARSER stops calling the factories: it parses LITERALLY into plain
+      `RawType` data and hands the tree to that visitor, so `Type.from(string)` is
+      `adopt(parseLiteral(token))` and `Type.from(object)` is `adopt(object)` — one path, and the
+      grammar can no longer drift from the factories. A parse error still comes from the parser; a
+      semantic refusal comes from the factory. Supersedes any collapse logic written into the parser.
+      Docs ride along (type-token-format.md, the `Type.from`/`adopt` TSDoc, §~1999's adopt entry).
 - [ ] `node.go`'s rest-only-tuple branch is unwitnessed and probably unreachable (the checker
       normalises `[...B[]]` to `B[]` before derivation). Add the one-case `node_test.go` that
       drives it, or drop the branch.
