@@ -1,13 +1,17 @@
 # DI benchmarks
 
 Two engines, same service graph. "classic" is the string-keyed, tag-scoped engine; "current" is
-the `Type`-addressed engine. The headline comparison runs classic against current's `tagged()`
-lifetime model — the older engine's scopes are tag-based (its singleton scenario opens a scope
-named `'singleton'`), making `tagged()` the like-for-like counterpart, not `standard()`. Both
-engines run only through their built `dist/bundle/index.js` public entry — no source imports, no
-transformer sugar (`typefor`, `add<T>()`) anywhere in a timed path. Every scope-bearing scenario
-opens an equivalent scope on both sides — same tag, same nesting, same setup-vs-timed-closure
-placement — so every ratio below compares the same operation on both engines.
+the `Type`-addressed engine. This document holds two runs that measure different things and are
+not comparable with each other in absolute terms: the paired dist run (everything up to
+"Scope parity"), and the source-first run of the current tip against classic (the last section).
+
+The paired dist run compares classic against the current engine with a tag-scoped lifetime model
+installed — the older engine's scopes are tag-based (its singleton scenario opens a scope named
+`'singleton'`), making a tag-scoped model the like-for-like counterpart. Both engines run only
+through their built `dist/bundle/index.js` public entry — no source imports, no transformer sugar
+(`typefor`, `add<T>()`) anywhere in a timed path. Every scope-bearing scenario opens an equivalent
+scope on both sides — same tag, same nesting, same setup-vs-timed-closure placement — so every
+ratio in that run compares the same operation on both engines.
 
 ## Method
 
@@ -86,10 +90,11 @@ ns/op ratios, median of 1000 paired attempts per scenario; IQR and rejected-pair
 
 ### `scope/create-resolve-dispose`: side by side, not a ratio
 
-The two engines' scopes have different disposal contracts. The current engine's scope disposal
-cascades: tearing down a scope also tears down every child scope it opened and everything those
-children own. The older engine's scope disposal releases only the instances that scope itself
-claimed, leaving any child scopes for the caller to dispose. This scenario's single scope carries
+The two scopes measured here have different disposal contracts. The lifetime model installed on
+the current engine for this run disposes a scope by cascading: tearing down a scope also tears
+down every child scope it opened and everything those children own. The older engine's scope
+disposal releases only the instances that scope itself claimed, leaving any child scopes for the
+caller to dispose. This scenario's single scope carries
 no children on either side, so the contract difference costs nothing extra here, but the two
 numbers still describe operations with different guarantees and are reported as absolutes only:
 classic 517.1 ns, current 10,548.2 ns.
@@ -132,3 +137,102 @@ needed before this section can state a finding.
 Every scope-bearing scenario opens an equivalent scope on both engines — same tag, same nesting,
 same point relative to the timed operation — confirmed for every scenario in the baseline matrix
 before it was run.
+
+## Source-first run: current tip vs classic
+
+The current engine at the tip of its branch, against the same classic engine, both loaded from
+source rather than from a built bundle. The current engine's front door here is
+`Builder.withServices(...).build()` with no lifetime model installed, so every resolve constructs
+fresh; the classic suite is the one from the paired run, resolving its package to the source entry.
+Every registration on both sides uses the explicit authoring forms — no transformer sugar in any
+timed path. Neither side runs any build-time validation: the current engine's validation addons
+are not installed, and the older engine has no counterpart.
+
+### Scenarios
+
+- `build/manifest-200` — compose 200 zero-dependency class registrations into a manifest and build
+  a provider from it.
+- `resolve/transient-leaf` — resolve one zero-dependency class; a fresh instance each time (1 node).
+- `resolve/transient-depth8` — resolve the head of a chain of eight classes, each depending on the
+  next (8 nodes).
+- `resolve/transient-width10` — resolve a class whose constructor takes ten zero-dependency classes
+  (11 nodes).
+- `resolve/factory-1dep` — resolve a factory-registered service taking one class dependency
+  (2 nodes).
+- `resolve/enumerable-5` — resolve every registration under one address, five on both sides.
+  **Not like-for-like**: the older engine answers a regex key pattern over five keyed registrations
+  sharing one string token and returns an array; the current engine walks five registrations at one
+  address and the scenario spreads the resulting iterable into an array.
+- `resolve/singleton-cached`, `resolve/scoped-cached`, `scope/create-resolve-dispose` — classic
+  only. Each depends on a construction being kept and handed back, or on a scope; how long a
+  construction is kept is the lifetime model's own concern, installed as an addon, and none is
+  installed here, so the current engine cannot express these three.
+
+### Protocol
+
+The same timing harness, copied verbatim into both trees, measures every scenario: iterations are
+calibrated until one batch takes about 50 ms (capped at one million), three warm-up batches run,
+then nine trials each preceded by a forced full collection; a round's figure for a scenario is the
+per-operation median of its nine trials. Seven rounds alternate classic then current, each round a
+fresh bun 1.3.14 process pinned to one core with the runtime transpiler cache disabled and a
+three-second pause before each process. The reported figure per scenario is the **minimum across
+the seven rounds' medians**; the per-round range is reported alongside so a reader can see how far
+the rounds disagree.
+
+The desktop stayed up throughout: the one-minute load average sat between 0.5 and 1.3 before each
+process. Within-round trial spread was wide on the allocation-heavy scenarios (the nine trials of
+`build/manifest-200` on the current engine spread across a range about as wide as their median), which is why the figure
+is a minimum of medians rather than a single round.
+
+### Results (ns/op, minimum of per-round medians)
+
+| scenario                     |   classic |     current | current ÷ classic | classic rounds (min–max) |  current rounds (min–max) |
+| ---------------------------- | --------: | ----------: | ----------------: | -----------------------: | ------------------------: |
+| build/manifest-200           | 666,283.6 | 2,568,022.1 |            3.854x |    666,283.6 – 720,600.6 | 2,568,022.1 – 3,651,626.4 |
+| resolve/transient-leaf       |     250.3 |       216.2 |            0.864x |            250.3 – 256.7 |             216.2 – 239.9 |
+| resolve/transient-depth8     |   3,039.2 |     1,019.5 |            0.335x |        3,039.2 – 3,655.2 |         1,019.5 – 1,081.5 |
+| resolve/transient-width10    |   3,754.9 |     1,353.6 |            0.360x |        3,754.9 – 4,494.5 |         1,353.6 – 1,480.3 |
+| resolve/factory-1dep         |     611.6 |       323.8 |            0.529x |            611.6 – 658.7 |             323.8 – 399.9 |
+| resolve/enumerable-5         |  10,714.4 |     1,195.4 | 0.112x (see note) |      10,714.4 – 11,554.0 |         1,195.4 – 1,468.5 |
+| resolve/singleton-cached     |      53.1 |         n/a |                 — |              53.1 – 61.5 |                         — |
+| resolve/scoped-cached        |      52.0 |         n/a |                 — |              52.0 – 56.3 |                         — |
+| scope/create-resolve-dispose |     462.3 |         n/a |                 — |            462.3 – 580.0 |                         — |
+
+The current engine is faster on every resolution it can express. The `resolve/enumerable-5` ratio
+is recorded but is not a comparison of the same operation (see the scenario note above).
+
+### The one loss: `build/manifest-200`
+
+Building a provider from 200 registrations costs the current engine 2.57 ms against classic's
+0.67 ms. The cost sits in the build step itself: the current engine materialises its registry at
+build, freezing every registration as it is filed, on top of composing the manifest's
+registrations.
+
+### Fixed cost vs per-node cost
+
+The current engine's transient-resolve times decompose into a fixed per-ask cost plus a
+per-constructed-node cost:
+
+```
+leaf     (1 node):    216.2 ns
+factory  (2 nodes):   323.8 ns
+depth8   (8 nodes): 1,019.5 ns
+width10 (11 nodes): 1,353.6 ns
+```
+
+A line through the 1-node and 11-node points gives about 114 ns per constructed node and about
+102 ns fixed per ask. The middle two points land on it: the line predicts 330 ns for 2 nodes
+(measured 323.8) and 1,012 ns for 8 nodes (measured 1,019.5). The older engine's one-node ask
+costs 250 ns and each further node about 350 ns between its 1-node and 11-node points, so the gap
+widens with graph size: near parity on a leaf, roughly 3x on the deep and wide graphs.
+
+### Caveats
+
+- **Not comparable with the paired dist run above.** Both engines here load from source, and the
+  earlier run loads both from built bundles; absolute times differ across the two sections for that
+  reason alone, and no ratio should be formed across sections.
+- **`resolve/enumerable-5` is not like-for-like** — see the scenario note.
+- **Neither side paid validation.** The current engine's validation addons are not installed; the
+  older engine has none to install.
+- **Live machine.** The desktop stayed up and the core was pinned but not reserved, so rounds carry
+  interference the minimum-of-medians only partly removes; the per-round ranges show how much.
