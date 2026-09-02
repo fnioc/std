@@ -1364,12 +1364,12 @@ Internal, non-exported:
 Exported from di.core:
 
 -
-  5. [ ] `Handle` — what `useHooks`/`installHooks` return: an index for the alloc-free gate, and
-         `uninstall`. Recommend yes.
+  5. [x] RULED 2026-09-02 — `Handle extends Disposable` with `index`; disposing IS the uninstall. No
+         `uninstall()` on the handle and no `uninstall(handle)` verb on the control.
 -
   6. [ ] `HooksControl` — the control's interface: `useHooks(hooks: Partial<Behavior>): Handle` (gated)
          and `installHooks(hooks: Partial<Behavior>): Handle` (always active). Names Claude's.
-         Recommend yes.
+         Recommend yes. (No `uninstall` verb — ruled under 5.)
 -
   7. [ ] `Request.active` — the public readonly active set beside `activate(handle): this`.
          Recommend yes.
@@ -1391,6 +1391,22 @@ Behaviour:
           minimum"; the one place the type then lies is the roster (a walker switching on lifetime meets
           a `null` its type did not promise) — whether the roster hides engine-owned registrations is a
           separate call.
+
+Ruled 2026-09-02 from the owner's review of the queue:
+
+- [x] NO HELPERS for the fold-time control asks. `registryOf` and `hooksControlOf` do not exist; a
+      middleware spells the ask inline, `next(new ControlRequest(typefor<HooksControl>()))`, and the
+      roster ask's control guard plus `new Registry(…)` inline at the two validation call sites.
+- [ ] Asked by the owner, answered yes by Claude, awaiting his word: `Request` is an exported
+      `abstract class` in di.core with `ServiceRequest` and `ControlRequest` exported as its two
+      inheritors; the union alias goes; `serviceProvider` lives on `ServiceRequest` only; the arm
+      check is `instanceof`; `DefaultRequest`, `RequestMembers` and the arm symbol all dissolve
+      (items 1 and 2 with them).
+- [ ] Asked by the owner, agreed by Claude, awaiting his word: the request is NOT registered — the
+      planner answers a slot naming any of the three request classes with `Plan.request(address)`,
+      and the sentinel symbol goes (re-spelling item 3). The control services STAY registrations:
+      engine-seeded factories appended oldest, values from the engine's closure or the request,
+      lifetime `null`, hooks never fire at them.
 
 Open, needs a design answer:
 
