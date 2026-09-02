@@ -1254,7 +1254,10 @@ deleted; the standard model is written clean-room).
 - Allocation plan (one plan, not options): the behavior is a CLASS instantiated once per layer in
   the middleware factory at fold (hook bodies on the prototype, closed-over state in `#` fields);
   handler-vs-trailing-`next` arity is read once when attached, never at dispatch; the per-ask link
-  IS the request substitution — the layer answers `Object.create(request, { hooks: … })`, so the
+  IS the request substitution — the layer calls `request.withHooks(hooks)`, a method on `Request`
+  whose argument is a `Partial<Behavior>` (a layer may supply exactly one hook, written inline:
+  `request.withHooks({ beforeConstruct(construction) { … } })`), and which answers the derived
+  request `Object.create(request, { hooks: … })` — so the
   request is the linked list, every attachment above still reads through the prototype chain, and
   the engine collects the hooks in effect by walking `getPrototypeOf` from the request at the door;
   per-ask hook state lives in the engine's existing per-ask states array sized from that walk; the
