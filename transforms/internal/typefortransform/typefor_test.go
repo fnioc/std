@@ -392,9 +392,9 @@ export const tok = typefor(Foo);
 	}
 }
 
-// TestTypeforValueArgCtorOverloaded pins Rows for a CONSTRUCTOR carrying
-// multiple overloaded signatures — TestTypeforAccessorArgsOverloaded below
-// covers this for a plain function; a class constructor reaches the same
+// TestTypeforValueArgCtorOverloaded pins the signatures slot for a CONSTRUCTOR
+// carrying multiple overloaded signatures — TestTypeforAccessorSignaturesOverloaded
+// below covers this for a plain function; a class constructor reaches the same
 // multi-row path through Type.ctor instead of Type.func.
 func TestTypeforValueArgCtorOverloaded(t *testing.T) {
 	src := `import { typefor } from '@rhombus-std/primitives.extras';
@@ -405,16 +405,16 @@ class Widget {
   constructor(a: IA, b: IB);
   constructor(a: IA, b?: IB) { void a; void b; }
 }
-export const tok = typefor(Widget).args;
+export const tok = typefor(Widget).signatures;
 `
 	prog, app := buildTypeforWorkspace(t, src)
 	defer func() { _ = prog.Close() }()
 
 	out := lowerTypefor(t, prog, app)
-	want := `[[Type.imported("IA", "@scope/app/main")], ` +
-		`[Type.imported("IA", "@scope/app/main"), Type.imported("IB", "@scope/app/main")]]`
+	want := `Type.union(Type.tuple(Type.imported("IA", "@scope/app/main")), ` +
+		`Type.tuple(Type.imported("IA", "@scope/app/main"), Type.imported("IB", "@scope/app/main")))`
 	if got := exprFor(t, out, "tok"); got != want {
-		t.Fatalf(".args fold = %q, want %q\nfull output:\n%s", got, want, out)
+		t.Fatalf(".signatures fold = %q, want %q\nfull output:\n%s", got, want, out)
 	}
 }
 
@@ -437,8 +437,8 @@ export const tok = typefor(Foo);
 }
 
 // TestTypeforValueArgAbstractCtorOverloaded is the ctor-overload test above,
-// off an ABSTRACT class — KindAbstractCtor carries Rows exactly like
-// KindCtor and KindFunc.
+// off an ABSTRACT class — KindAbstractCtor carries its signatures slot exactly
+// like KindCtor and KindFunc.
 func TestTypeforValueArgAbstractCtorOverloaded(t *testing.T) {
 	src := `import { typefor } from '@rhombus-std/primitives.extras';
 interface IA {}
@@ -448,16 +448,16 @@ abstract class Widget {
   constructor(a: IA, b: IB);
   constructor(a: IA, b?: IB) { void a; void b; }
 }
-export const tok = typefor(Widget).args;
+export const tok = typefor(Widget).signatures;
 `
 	prog, app := buildTypeforWorkspace(t, src)
 	defer func() { _ = prog.Close() }()
 
 	out := lowerTypefor(t, prog, app)
-	want := `[[Type.imported("IA", "@scope/app/main")], ` +
-		`[Type.imported("IA", "@scope/app/main"), Type.imported("IB", "@scope/app/main")]]`
+	want := `Type.union(Type.tuple(Type.imported("IA", "@scope/app/main")), ` +
+		`Type.tuple(Type.imported("IA", "@scope/app/main"), Type.imported("IB", "@scope/app/main")))`
 	if got := exprFor(t, out, "tok"); got != want {
-		t.Fatalf(".args fold = %q, want %q\nfull output:\n%s", got, want, out)
+		t.Fatalf(".signatures fold = %q, want %q\nfull output:\n%s", got, want, out)
 	}
 }
 
@@ -514,45 +514,45 @@ export const tok = typefor<(a: IA, b: IB) => IThing>().return;
 	}
 }
 
-// TestTypeforAccessorArgs: `.args` is a callable's parameter ROWS, so the fold
-// emits an array of arrays — one row per call the declaration answers to, each
-// holding that call's parameter types in order.
-func TestTypeforAccessorArgs(t *testing.T) {
+// TestTypeforAccessorSignatures: `.signatures` is a callable's signatures slot,
+// so the fold emits the slot node itself — one tuple for an un-overloaded
+// declaration.
+func TestTypeforAccessorSignatures(t *testing.T) {
 	src := `import { typefor } from '@rhombus-std/primitives.extras';
 interface IA {}
 interface IB {}
 interface IThing {}
-export const tok = typefor<(a: IA, b: IB) => IThing>().args;
+export const tok = typefor<(a: IA, b: IB) => IThing>().signatures;
 `
 	prog, app := buildTypeforWorkspace(t, src)
 	defer func() { _ = prog.Close() }()
 
 	out := lowerTypefor(t, prog, app)
-	want := `[[Type.imported("IA", "@scope/app/main"), Type.imported("IB", "@scope/app/main")]]`
+	want := `Type.tuple(Type.imported("IA", "@scope/app/main"), Type.imported("IB", "@scope/app/main"))`
 	if got := exprFor(t, out, "tok"); got != want {
-		t.Fatalf(".args fold = %q, want %q\nfull output:\n%s", got, want, out)
+		t.Fatalf(".signatures fold = %q, want %q\nfull output:\n%s", got, want, out)
 	}
 }
 
-// TestTypeforAccessorArgsOverloaded: an overloaded declaration carries one row
-// per overload, in declaration order.
-func TestTypeforAccessorArgsOverloaded(t *testing.T) {
+// TestTypeforAccessorSignaturesOverloaded: an overloaded declaration's slot is
+// the union of its per-overload rows, in declaration order.
+func TestTypeforAccessorSignaturesOverloaded(t *testing.T) {
 	src := `import { typefor } from '@rhombus-std/primitives.extras';
 interface IA {}
 interface IB {}
 interface IThing {}
 declare function make(a: IA): IThing;
 declare function make(a: IA, b: IB): IThing;
-export const tok = typefor<typeof make>().args;
+export const tok = typefor<typeof make>().signatures;
 `
 	prog, app := buildTypeforWorkspace(t, src)
 	defer func() { _ = prog.Close() }()
 
 	out := lowerTypefor(t, prog, app)
-	want := `[[Type.imported("IA", "@scope/app/main")], ` +
-		`[Type.imported("IA", "@scope/app/main"), Type.imported("IB", "@scope/app/main")]]`
+	want := `Type.union(Type.tuple(Type.imported("IA", "@scope/app/main")), ` +
+		`Type.tuple(Type.imported("IA", "@scope/app/main"), Type.imported("IB", "@scope/app/main")))`
 	if got := exprFor(t, out, "tok"); got != want {
-		t.Fatalf(".args fold = %q, want %q\nfull output:\n%s", got, want, out)
+		t.Fatalf(".signatures fold = %q, want %q\nfull output:\n%s", got, want, out)
 	}
 }
 

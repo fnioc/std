@@ -207,10 +207,10 @@ func TestDeriveNodeKeyedElementMatchesTheKeyedRoot(t *testing.T) {
 	if !ok {
 		t.Fatal("factory did not derive")
 	}
-	if n.Kind != KindFunc || len(n.Rows) != 1 || len(n.Rows[0]) != 2 {
-		t.Fatalf("factory derived %+v, want one two-parameter row", n)
+	if n.Kind != KindFunc || n.Sig == nil || n.Sig.Kind != KindTuple || len(n.Sig.Members) != 2 {
+		t.Fatalf("factory derived %+v, want one two-parameter signature", n)
 	}
-	slot := n.Rows[0][1]
+	slot := n.Sig.Members[1]
 	array := requireNamed(t, slot)
 	if array.Name != "Array" || array.From != "global" || len(array.Args) != 1 {
 		t.Fatalf("targets slot derived %+v, want Array with one element", array)

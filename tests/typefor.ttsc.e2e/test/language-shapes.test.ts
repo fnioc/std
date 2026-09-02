@@ -110,6 +110,7 @@ export declare class OverloadedWidget {
 }
 export declare function optParamFn(a: IA, b?: IB): IC;
 export declare function restParamFn(a: IA, ...rest: IB[]): IC;
+export declare function allRestFn(...rest: IB[]): IC;
 
 type Cond<T> = T extends string ? IA : IB;
 type ElementOf<T> = T extends readonly (infer E)[] ? E : never;
@@ -145,20 +146,22 @@ export const objDeepNested = typefor<{ readonly outer: { readonly list: IA[]; re
 export const unionOfObjOfTuple = typefor<{ readonly items: [() => IA, IB] } | IC>();
 export const optionalArrayOfPromises = typefor<{ readonly items?: Promise<IA>[] }>();
 
-// Tuples: nested. An optional or rest tuple ELEMENT is not exercised here —
-// unlike an optional object member or a rest parameter, both currently refuse.
+// Tuples: nested, an optional element, a trailing rest element.
 export const tupleNested = typefor<[IA, [IB, IC]]>();
+export const tupleOptional = typefor<[IA, IB?]>();
+export const tupleRest = typefor<[IA, ...IB[]]>();
 
 // A self-referential type reached through a NAME terminates by naming — the
 // walk never has to open INode's own recursive member.
 export const selfRefNamed = typefor<INode>();
 
 // Callables: overloaded (func and ctor), an optional parameter, a rest
-// parameter.
+// parameter with a required prefix, and one that is nothing but a rest.
 export const overloadedFunc = typefor<typeof overloaded>();
 export const overloadedCtor = typefor<typeof OverloadedWidget>();
 export const optParamFunc = typefor<typeof optParamFn>();
 export const restParamFunc = typefor<typeof restParamFn>();
+export const allRestFunc = typefor<typeof allRestFn>();
 
 // Every literal kind, and the true/false pair TypeScript itself widens back to
 // \`boolean\` before this derivation ever sees a union.
@@ -313,6 +316,14 @@ describe.skipIf(!toolchainReady)('typefor compositional shapes', () => {
     expect(app).toContain(`tupleNested = Type.tuple(${IA}, Type.tuple(${IB}, ${IC}))`);
   });
 
+  test("a tuple with an optional element carries undefined in that slot's own type", () => {
+    expect(app).toContain(`tupleOptional = Type.tuple(${IA}, Type.union(${IB}, Type.typeLiteral(undefined)))`);
+  });
+
+  test('a tuple with a trailing rest element states its open length', () => {
+    expect(app).toContain(`tupleRest = Type.tuple({ members: [${IA}], rest: ${IB} })`);
+  });
+
   test('a self-referential type reached through a name terminates by naming', () => {
     expect(app).toContain(`selfRefNamed = ${local('INode')}`);
   });
@@ -326,8 +337,12 @@ describe.skipIf(!toolchainReady)('typefor compositional shapes', () => {
     expect(app).toContain(`optParamFunc = Type.func(${IC}, [[${IA}, Type.union(${IB}, Type.typeLiteral(undefined))]])`);
   });
 
-  test('a function with a rest parameter', () => {
-    expect(app).toContain(`restParamFunc = Type.func(${IC}, [[${IA}, Type.global("Array", [${IB}])]])`);
+  test('a function with a required prefix and a trailing rest derives an open-length tuple row', () => {
+    expect(app).toContain(`restParamFunc = Type.func(${IC}, Type.tuple({ members: [${IA}], rest: ${IB} }))`);
+  });
+
+  test('a function that is nothing but a rest parameter derives the list as its whole row', () => {
+    expect(app).toContain(`allRestFunc = Type.func(${IC}, Type.global("Array", [${IB}]))`);
   });
 
   test('every literal kind', () => {

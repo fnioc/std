@@ -63,13 +63,13 @@ const accessorMismatchCode = "TYPEFOR_ACCESSOR_MISMATCH"
 // property Type.ts's kind-specific interfaces expose, plus the `kind`
 // discriminant every one of them shares.
 var accessorNames = map[string]bool{
-	"instance": true,
-	"return":   true,
-	"args":     true,
-	"value":    true,
-	"tag":      true,
-	"type":     true,
-	"kind":     true,
+	"instance":   true,
+	"return":     true,
+	"signatures": true,
+	"value":      true,
+	"tag":        true,
+	"type":       true,
+	"kind":       true,
 }
 
 // New builds the per-file transform: it visits every call expression, replacing

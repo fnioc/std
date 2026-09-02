@@ -1,7 +1,7 @@
 import { TypeParseError } from '../../TypeParseError.js';
-import { abstractCtor, ctor, func, generic, global, imported, intersection, literal, object, tag, tuple, union } from '../factory/factories.js';
+import { abstractCtor, ctor, func, generic, global, imported, intersection, literal, object, signatures, tag, tuple, union } from '../factory/factories.js';
 import { GLOBAL_QUALIFIER, KEYWORD_LITERALS, SERVICE_PROVIDER_FROM } from '../grammar.js';
-import type { AbstractConstructorType, ConstructorType, FunctionType, ObjectType, Type } from '../Type.js';
+import type { AbstractConstructorType, ConstructorType, FunctionType, ListType, ObjectType, TupleType, Type, UnionType } from '../Type.js';
 import { lex, type LexToken } from './lexer.js';
 
 const OPENERS = new Set(['(', '[', '{', '<']);
@@ -105,7 +105,7 @@ class TypeParser {
       }
       case '[': {
         this.#index++;
-        return tuple(this.#typeList(']'));
+        return this.#tuple();
       }
       case '{': {
         this.#index++;
@@ -153,12 +153,12 @@ class TypeParser {
     }
     switch (name.text) {
       case 'Func': {
-        const [returns, signatures] = this.#reservedSignature(name, 'Func<Return, ...Args>');
-        return func(returns, signatures);
+        const [returns, slot] = this.#reservedSignature(name, 'Func<Return, ...Args>');
+        return func(returns, slot);
       }
       case 'Ctor': {
-        const [instance, signatures] = this.#reservedSignature(name, 'Ctor<Instance, ...Args>');
-        return ctor(instance, signatures);
+        const [instance, slot] = this.#reservedSignature(name, 'Ctor<Instance, ...Args>');
+        return ctor(instance, slot);
       }
       case 'ServiceProvider': {
         if (this.#at('<')) {
@@ -177,7 +177,7 @@ class TypeParser {
    * signatures — `Ctor<Instance, A, B; C>`. The head is separated from the first signature by the same comma
    * every other argument uses, so a one-signature spelling reads as one flat list.
    */
-  #reservedSignature(name: LexToken, spelling: string): [head: Type, signatures: Type.Signatures] {
+  #reservedSignature(name: LexToken, spelling: string): [head: Type, slot: TupleType | ListType | UnionType] {
     if (!this.#take('<')) {
       throw this.#error(name.position, `\`${spelling}\``);
     }
@@ -186,13 +186,13 @@ class TypeParser {
     }
     const head = this.#type();
     if (this.#take('>')) {
-      return [head, [[]]];
+      return [head, tuple([], undefined)];
     }
     if (this.#take(';')) {
-      return [head, [[], ...this.#signatureList('>')]];
+      return [head, signatures([tuple([], undefined), ...this.#signatureRows('>')])];
     }
     this.#expect(',');
-    return [head, this.#signatureList('>')];
+    return [head, signatures(this.#signatureRows('>'))];
   }
 
   #genericTypes(): readonly Type[] {
@@ -211,30 +211,75 @@ class TypeParser {
    * list of types. An empty list is ONE empty signature — a callable taking no args, rather than
    * one answering to no call.
    */
-  #signatureList(closer: string): Type.Signatures {
-    const signatures: Array<readonly Type[]> = [];
+  #signatureRows(closer: string): Array<TupleType | ListType> {
+    const rows: Array<TupleType | ListType> = [];
     for (;;) {
-      signatures.push(this.#signature(closer));
+      rows.push(this.#signature(closer));
       if (this.#take(closer)) {
-        return signatures;
+        return rows;
       }
       this.#expect(';');
     }
   }
 
-  /** One signature's arg types, stopping at its `;` or at `closer` without consuming either. */
-  #signature(closer: string): readonly Type[] {
+  /**
+   * One signature, stopping at its `;` or at `closer` without consuming either. Fixed arg types
+   * become a tuple; a trailing `...` slot names the list its open length draws from, and one that
+   * is the whole signature IS the row — the list itself.
+   */
+  #signature(closer: string): TupleType | ListType {
     const types: Type[] = [];
     if (this.#at(closer) || this.#at(';')) {
-      return types;
+      return tuple(types, undefined);
     }
     for (;;) {
+      if (this.#take('...')) {
+        const list = this.#restList();
+        if (!(this.#at(closer) || this.#at(';'))) {
+          throw this.#error(this.#peek()?.position ?? this.#token.length, 'the signature to end — a rest slot comes last');
+        }
+        return types.length ? tuple(types, list.element) : list;
+      }
       types.push(this.#type());
       if (this.#at(closer) || this.#at(';')) {
-        return types;
+        return tuple(types, undefined);
       }
       this.#expect(',');
     }
+  }
+
+  /** The list type a `...` slot draws its elements from. */
+  #restList(): ListType {
+    const position = this.#peek()?.position ?? this.#token.length;
+    const list = this.#type();
+    if (list.kind !== 'array' && list.kind !== 'iterable') {
+      throw this.#error(position, 'a list type after `...`');
+    }
+    return list;
+  }
+
+  /**
+   * A tuple's slot list: fixed members, then at most one rest (`...List<T>`) slot, which must
+   * come last and stores the list's element.
+   */
+  #tuple(): TupleType {
+    const members: Type[] = [];
+    let rest: Type | undefined;
+    if (!this.#take(']')) {
+      for (;;) {
+        if (this.#take('...')) {
+          rest = this.#restList().element;
+          this.#expect(']');
+          break;
+        }
+        members.push(this.#type());
+        if (this.#take(']')) {
+          break;
+        }
+        this.#expect(',');
+      }
+    }
+    return tuple(members, rest);
   }
 
   #typeList(closer: string): readonly Type[] {
@@ -304,18 +349,18 @@ class TypeParser {
 
   #function(): FunctionType {
     this.#expect('(');
-    const signatures = this.#signatureList(')');
+    const slot = signatures(this.#signatureRows(')'));
     this.#expect('=>');
-    return func(this.#type(), signatures);
+    return func(this.#type(), slot);
   }
 
   #ctor(): ConstructorType | AbstractConstructorType {
     const abstract = this.#takeName('abstract');
     this.#index++;
     this.#expect('(');
-    const signatures = this.#signatureList(')');
+    const slot = signatures(this.#signatureRows(')'));
     this.#expect('=>');
-    return abstract ? abstractCtor(this.#type(), signatures) : ctor(this.#type(), signatures);
+    return abstract ? abstractCtor(this.#type(), slot) : ctor(this.#type(), slot);
   }
 
   #peek(): LexToken | undefined {

@@ -76,11 +76,11 @@ func newHoistEmitter(
 func hoistFromNode(n *tokens.Node) *typeforhoist.Node {
 	switch n.Kind {
 	case tokens.KindFunc:
-		return typeforhoist.Func(hoistFromNode(n.Ret), hoistRows(n.Rows))
+		return typeforhoist.Func(hoistFromNode(n.Ret), hoistFromNode(n.Sig))
 	case tokens.KindCtor:
-		return typeforhoist.Ctor(hoistFromNode(n.Ret), hoistRows(n.Rows))
+		return typeforhoist.Ctor(hoistFromNode(n.Ret), hoistFromNode(n.Sig))
 	case tokens.KindAbstractCtor:
-		return typeforhoist.AbstractCtor(hoistFromNode(n.Ret), hoistRows(n.Rows))
+		return typeforhoist.AbstractCtor(hoistFromNode(n.Ret), hoistFromNode(n.Sig))
 	case tokens.KindTag:
 		return typeforhoist.Tag(hoistFromNode(n.Inner), n.Tag)
 	case tokens.KindUnion:
@@ -88,7 +88,11 @@ func hoistFromNode(n *tokens.Node) *typeforhoist.Node {
 	case tokens.KindIntersection:
 		return typeforhoist.Intersection(hoistNodes(n.Members))
 	case tokens.KindTuple:
-		return typeforhoist.Tuple(hoistNodes(n.Members))
+		var rest *typeforhoist.Node
+		if n.TupleRest != nil {
+			rest = hoistFromNode(n.TupleRest)
+		}
+		return typeforhoist.Tuple(hoistNodes(n.Members), rest)
 	case tokens.KindObject:
 		members := make([]typeforhoist.ObjectMember, 0, len(n.Properties))
 		for _, property := range n.Properties {
@@ -119,15 +123,6 @@ func hoistNodes(ns []*tokens.Node) []*typeforhoist.Node {
 	out := make([]*typeforhoist.Node, 0, len(ns))
 	for _, n := range ns {
 		out = append(out, hoistFromNode(n))
-	}
-	return out
-}
-
-// hoistRows mirrors a callable's parameter rows, one row per call it answers to.
-func hoistRows(rows [][]*tokens.Node) [][]*typeforhoist.Node {
-	out := make([][]*typeforhoist.Node, 0, len(rows))
-	for _, row := range rows {
-		out = append(out, hoistNodes(row))
 	}
 	return out
 }

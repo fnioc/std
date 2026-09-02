@@ -199,11 +199,17 @@ precedence, so a nested arrow needs no extra parentheses:
 
 ## Tuples
 
-A fixed-length, ordered list of member types is comma-separated inside square brackets:
+An ordered list of member types is comma-separated inside square brackets. At most one slot,
+written last, may be a trailing rest: `...` followed by the list the open length draws from —
+either list spelling reads, and the tuple stores the list's element, so `Type.stringify` always
+re-emits an `Array` spelling. A slot that may be absent carries `undefined` in its own type, the
+same as an optional object member.
 
 ```
 [app:A, 5]
 []
+[app:A, app:B | undefined]
+[app:A, ...Array<app:B>]
 ```
 
 Members are written at the loosest precedence, the same as an object member's type or a generic
@@ -221,16 +227,26 @@ new (app:B) => app:A
 abstract new (app:A) => app:B
 ```
 
-**Signatures** are a callable's parameter lists — one signature per overload, semicolon-separated, each signature a
-comma-separated list of parameter types. A callable answers to at least one call, so an empty signature
-list is never written; a callable taking no parameters at all is one signature that is itself empty:
+**Signatures** are a callable's parameter lists — one signature per overload, semicolon-separated,
+each signature a comma-separated list of parameter types. A callable answers to at least one call,
+so an empty signature list is never written; a callable taking no parameters at all is one
+signature that is itself empty. The node behind the parentheses is the union of the per-overload
+rows — each row a tuple, or a list for a signature that is entirely a rest — so overloads read
+back in the union's one canonical order however they were written:
 
 ```
 () => app:A                    -- one signature, taking nothing
 (app:A) => app:B               -- one signature, one parameter
 (app:A; app:B, app:A) => app:B -- two signatures: [app:A], then [app:B, app:A]
-(app:A; ) => app:B             -- two signatures: [app:A], then an empty signature, written last
-(; app:A) => app:B             -- two signatures: an empty signature written first, then [app:A]
+(; app:A) => app:B             -- two signatures: an empty signature, then [app:A]
+```
+
+A signature's last slot may be a trailing rest, `...` followed by the list its open length draws
+from; a signature that is nothing but that slot IS the list itself:
+
+```
+(...Array<app:A>) => app:B           -- any number of app:A arguments
+(app:A, ...Array<app:B>) => app:C    -- one app:A, then any number of app:B
 ```
 
 An opening `(` only begins a function type when, once its matching `)` is found, the very next
@@ -265,11 +281,13 @@ primary      := literal
               | "%" segment
               | name
               | "(" type ")"
-              | "[" list(type) "]"
+              | "[" tuple "]"
               | "{" members "}"
-signatures         := signature (";" signature)*
-signature          := list(type)?
+signatures   := signature (";" signature)*
+signature    := (slot ("," slot)*)?
 members      := (segment ":" type (";" segment ":" type)*)? "}"
+tuple        := (slot ("," slot)*)?
+slot         := type | "..." type
 list(type)   := (type ("," type)*)?
 name         := segment (":" segment genericArgs?)?
 genericArgs  := "<" list(type) ">"

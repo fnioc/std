@@ -1,4 +1,4 @@
-import { AbstractConstructorType, ArrayType, ConstructorType, FunctionType, GenericType, GlobalType, ImportedType, IntersectionType, IterableType, ObjectType, TagType, TupleType, Type,
+import type { AbstractConstructorType, ArrayType, ConstructorType, FunctionType, GenericType, GlobalType, ImportedType, IntersectionType, IterableType, ObjectType, TagType, TupleType, Type,
   TypeLiteralType, UnionType } from '../Type.js';
 import { TypeVisitor } from './TypeVisitor.js';
 
@@ -39,19 +39,19 @@ export class MatchVisitor extends TypeVisitor<boolean, MatchContext> {
 
   protected override visitCtor(pattern: ConstructorType, { subject, bindings }: MatchContext): boolean {
     return subject.kind === 'ctor'
-      && this.#signaturesPairwise(pattern.signatures, subject.signatures, bindings)
+      && this.visit(pattern.signatures, { subject: subject.signatures, bindings })
       && this.visit(pattern.instance, { subject: subject.instance, bindings });
   }
 
   protected override visitAbstractCtor(pattern: AbstractConstructorType, { subject, bindings }: MatchContext): boolean {
     return subject.kind === 'abstract-ctor'
-      && this.#signaturesPairwise(pattern.signatures, subject.signatures, bindings)
+      && this.visit(pattern.signatures, { subject: subject.signatures, bindings })
       && this.visit(pattern.instance, { subject: subject.instance, bindings });
   }
 
   protected override visitFunc(pattern: FunctionType, { subject, bindings }: MatchContext): boolean {
     return subject.kind === 'func'
-      && this.#signaturesPairwise(pattern.signatures, subject.signatures, bindings)
+      && this.visit(pattern.signatures, { subject: subject.signatures, bindings })
       && this.visit(pattern.return, { subject: subject.return, bindings });
   }
 
@@ -96,7 +96,9 @@ export class MatchVisitor extends TypeVisitor<boolean, MatchContext> {
   }
 
   protected override visitTuple(pattern: TupleType, { subject, bindings }: MatchContext): boolean {
-    return subject.kind === 'tuple' && this.#pairwise(pattern.members, subject.members, bindings);
+    return subject.kind === 'tuple'
+      && this.#pairwise(pattern.members, subject.members, bindings)
+      && this.#restSlot(pattern.rest, subject.rest, bindings);
   }
 
   protected override visitTypeLiteral(pattern: TypeLiteralType, { subject }: MatchContext): boolean {
@@ -113,9 +115,11 @@ export class MatchVisitor extends TypeVisitor<boolean, MatchContext> {
       && patterns.every((pattern, index) => this.visit(pattern, { subject: subjects[index]!, bindings }));
   }
 
-  /** Same signature count, signature `i` against signature `i`, each signature pairwise. */
-  #signaturesPairwise(patterns: Type.Signatures, subjects: Type.Signatures, bindings: Record<string, Type>): boolean {
-    return patterns.length === subjects.length
-      && patterns.every((signature, index) => this.#pairwise(signature, subjects[index]!, bindings));
+  /** A tuple's rest slot: absent on both sides, or present on both and matching. */
+  #restSlot(pattern: Type | undefined, subject: Type | undefined, bindings: Record<string, Type>): boolean {
+    if (pattern === undefined || subject === undefined) {
+      return pattern === subject;
+    }
+    return this.visit(pattern, { subject, bindings });
   }
 }

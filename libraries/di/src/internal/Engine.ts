@@ -1,5 +1,5 @@
 import { type Behavior, Control, controlLifetime, HookChain, type IEngineHooks, type Registration, type Request, UnknownControlError, UnsatisfiableError } from '@rhombus-std/di.core';
-import { type FunctionType, Type } from '@rhombus-std/primitives';
+import { type FunctionType, type ListType, type TupleType, Type } from '@rhombus-std/primitives';
 import { typefor } from '@rhombus-std/primitives.extras';
 import { isControlAsk } from './control-recognition.js';
 import { Plan, type VisitorContext } from './Plan/index.js';
@@ -168,9 +168,9 @@ export class Engine implements IEngineHooks {
    * captured there.
    */
   resolveLatebound(funcType: FunctionType, providedArgs: readonly unknown[], running: RunningResolve): unknown {
-    const signature = funcType.signatures
-      .filter(candidateSignature => providedArgs.length <= candidateSignature.length)
-      .find(candidate => candidate.slice(providedArgs.length).every(Type.isOptional));
+    const signature = Iterator.from(Type.signatureRows(funcType.signatures))
+      .map(row => boundArgTypes(row, providedArgs.length))
+      .find(candidate => candidate !== undefined);
 
     if (signature === undefined) {
       throw new TypeError(`${Type.stringify(funcType)} has no signature accepting ${providedArgs.length} arg(s)`);
@@ -187,4 +187,22 @@ export class Engine implements IEngineHooks {
   }
 
   // #endregion
+}
+
+/**
+ * The arg types a call of `count` args binds against one signature row, or undefined when the
+ * arity does not fit: one fixed slot per position — a call may stop short wherever every
+ * remaining slot admits `undefined` — and a rest slot absorbing every surplus position as its
+ * element.
+ */
+function boundArgTypes(row: TupleType | ListType, count: number): readonly Type[] | undefined {
+  const members = row.kind === 'tuple' ? row.members : [];
+  if (count <= members.length) {
+    return members.slice(count).every(Type.isOptional) ? members : undefined;
+  }
+  const element = row.kind === 'tuple' ? row.rest : row.element;
+  if (element === undefined) {
+    return undefined;
+  }
+  return [...members, ...Array.from({ length: count - members.length }, () => element)];
 }

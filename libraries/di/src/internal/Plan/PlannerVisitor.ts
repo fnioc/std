@@ -198,7 +198,8 @@ export class PlannerVisitor extends Type.Visitor<Plan | undefined> {
     if (members.some(p => !p)) {
       return undefined;
     }
-    return Plan.factory((...args: any[]) => args, members as Plan[]);
+    const rest = type.rest === undefined ? undefined : this.visit(Type.array(type.rest));
+    return Plan.factory((...args: any[]) => args, members as Plan[], rest);
   }
 
   protected override visitTypeLiteral(type: TypeLiteralType): Plan | undefined {

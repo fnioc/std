@@ -99,16 +99,19 @@ func TestUnionIdentityIgnoresMemberOrder(t *testing.T) {
 
 func TestKeyMirrorsTheFlatTokenSpelling(t *testing.T) {
 	cases := map[string]*Node{
-		"IClock":                       Named("IClock", "global", nil),
-		"orders:IClock":                Named("IClock", "orders", nil),
-		"Promise<orders:IClock>":       Named("Promise", "global", []*Node{Named("IClock", "orders", nil)}),
-		"$1":                           Generic("1"),
-		`"a" | "b"`:                    Union([]*Node{Literal(`"a"`), Literal(`"b"`)}),
-		`#tag(orders:IClock,"vendor")`: Tag(Named("IClock", "orders", nil), "vendor"),
-		"#func(IClock())":              Func(Named("IClock", "global", nil), [][]*Node{nil}),
-		"#ctor(IClock(orders:IClock))": Ctor(Named("IClock", "global", nil), [][]*Node{{Named("IClock", "orders", nil)}}),
-		"#abstractCtor(IClock(orders:IClock))": AbstractCtor(
-			Named("IClock", "global", nil), [][]*Node{{Named("IClock", "orders", nil)}},
+		"IClock":                        Named("IClock", "global", nil),
+		"orders:IClock":                 Named("IClock", "orders", nil),
+		"Promise<orders:IClock>":        Named("Promise", "global", []*Node{Named("IClock", "orders", nil)}),
+		"$1":                            Generic("1"),
+		`"a" | "b"`:                     Union([]*Node{Literal(`"a"`), Literal(`"b"`)}),
+		`#tag(orders:IClock,"vendor")`:  Tag(Named("IClock", "orders", nil), "vendor"),
+		"[orders:IClock]~orders:IStore": Tuple([]*Node{Named("IClock", "orders", nil)}, Named("IStore", "orders", nil)),
+		"#func(IClock)([])":             Func(Named("IClock", "global", nil), Tuple(nil, nil)),
+		"#ctor(IClock)([orders:IClock])": Ctor(
+			Named("IClock", "global", nil), Tuple([]*Node{Named("IClock", "orders", nil)}, nil),
+		),
+		"#abstractCtor(IClock)([orders:IClock])": AbstractCtor(
+			Named("IClock", "global", nil), Tuple([]*Node{Named("IClock", "orders", nil)}, nil),
 		),
 	}
 	for want, node := range cases {
@@ -156,18 +159,21 @@ func TestObjectAndIntersectionRender(t *testing.T) {
 	}
 }
 
-// TestACallableAlwaysSpellsItsRowsArray: a const holding a callable renders its
-// parameter rows as one array of arrays, whether it answers to one row or
-// several.
-func TestACallableAlwaysSpellsItsRowsArray(t *testing.T) {
+// TestACallableSpellsFixedRowsAndReferencesAnOpenSlot: a const holding a
+// callable renders a slot of fixed argument lists as the rows spelling over
+// member consts — one array per signature — while a slot carrying an open
+// length references the slot node's own const.
+func TestACallableSpellsFixedRowsAndReferencesAnOpenSlot(t *testing.T) {
 	registry := NewRegistry(TypeRef{Module: "@rhombus-std/primitives", Export: "Type"})
 	widget := Named("IWidget", "orders", nil)
 	clock := Named("IClock", "orders", nil)
 	options := Named("IOptions", "orders", nil)
 
-	oneRow := Ctor(widget, [][]*Node{{clock}})
-	several := Ctor(widget, [][]*Node{{clock}, {clock, options}})
-	for _, node := range []*Node{oneRow, several} {
+	oneRow := Ctor(widget, Tuple([]*Node{clock}, nil))
+	several := Ctor(widget, Union([]*Node{Tuple([]*Node{clock}, nil), Tuple([]*Node{clock, options}, nil)}))
+	openSlot := Tuple([]*Node{clock}, options)
+	open := Ctor(widget, openSlot)
+	for _, node := range []*Node{oneRow, several, open} {
 		if _, err := registry.Ref(node); err != nil {
 			t.Fatal(err)
 		}
@@ -186,6 +192,14 @@ func TestACallableAlwaysSpellsItsRowsArray(t *testing.T) {
 	if !strings.Contains(module, wantSeveral) {
 		t.Errorf("want %q in:\n%s", wantSeveral, module)
 	}
+	wantOpen := "export const " + refOf(t, registry, open) + " = Type.ctor(" + widgetName + ", " + refOf(t, registry, openSlot) + ");"
+	if !strings.Contains(module, wantOpen) {
+		t.Errorf("want %q in:\n%s", wantOpen, module)
+	}
+	wantSlot := "export const " + refOf(t, registry, openSlot) + " = Type.tuple({ members: [" + clockName + "], rest: " + optionsName + " });"
+	if !strings.Contains(module, wantSlot) {
+		t.Errorf("want %q in:\n%s", wantSlot, module)
+	}
 }
 
 // TestARowShapeIsPartOfIdentity: two callables over the same head and the same
@@ -198,9 +212,9 @@ func TestARowShapeIsPartOfIdentity(t *testing.T) {
 	clock := Named("IClock", "orders", nil)
 	options := Named("IOptions", "orders", nil)
 
-	together := Func(head, [][]*Node{{clock, options}})
-	apart := Func(head, [][]*Node{{clock}, {options}})
-	takesNothing := Func(head, [][]*Node{nil})
+	together := Func(head, Tuple([]*Node{clock, options}, nil))
+	apart := Func(head, Union([]*Node{Tuple([]*Node{clock}, nil), Tuple([]*Node{options}, nil)}))
+	takesNothing := Func(head, Tuple(nil, nil))
 	if together.Key() == apart.Key() {
 		t.Errorf("one row of two parameters keys the same as two rows of one: %s", together.Key())
 	}
@@ -212,23 +226,25 @@ func TestARowShapeIsPartOfIdentity(t *testing.T) {
 			t.Fatal(err)
 		}
 	}
-	// The three callables plus the three names they are built over.
+	// The three callables plus the three names they are built over — a fixed
+	// slot's rows spell inline, so they mint no consts of their own.
 	if registry.Len() != 6 {
 		t.Fatalf("want 6 distinct nodes, got %d:\n%s", registry.Len(), registry.Module())
 	}
 }
 
 // TestAbstractCtorIsItsOwnKind: a concrete and an abstract constructor over
-// the same instance type and rows are two distinct kinds, so they key — and
-// intern — differently, and each renders through its own factory method with
-// no shared trailing flag.
+// the same instance type and signatures are two distinct kinds, so they key —
+// and intern — differently, and each renders through its own factory method
+// with no shared trailing flag.
 func TestAbstractCtorIsItsOwnKind(t *testing.T) {
 	registry := NewRegistry(TypeRef{Module: "@rhombus-std/primitives", Export: "Type"})
 	instance := Named("IWidget", "orders", nil)
 	clock := Named("IClock", "orders", nil)
 
-	concrete := Ctor(instance, [][]*Node{{clock}})
-	abstract := AbstractCtor(instance, [][]*Node{{clock}})
+	sig := Tuple([]*Node{clock}, nil)
+	concrete := Ctor(instance, sig)
+	abstract := AbstractCtor(instance, sig)
 	if concrete.Key() == abstract.Key() {
 		t.Errorf("a concrete and an abstract constructor over the same shape key the same: %s", concrete.Key())
 	}
@@ -285,8 +301,8 @@ func TestTupleKeepsSlotOrder(t *testing.T) {
 	clock := Named("IClock", "orders", nil)
 	store := Named("IStore", "orders", nil)
 
-	forward := Tuple([]*Node{clock, store})
-	reversed := Tuple([]*Node{store, clock})
+	forward := Tuple([]*Node{clock, store}, nil)
+	reversed := Tuple([]*Node{store, clock}, nil)
 	if forward.Key() == reversed.Key() {
 		t.Errorf("both slot orders key the same: %s", forward.Key())
 	}

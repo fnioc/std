@@ -8,13 +8,13 @@ export class IsOpenVisitor extends TypeVisitor<boolean> {
     return this.#element(type);
   }
   protected override visitCtor(type: ConstructorType): boolean {
-    return this.#anyRow(type.signatures) || this.visit(type.instance);
+    return this.visit(type.signatures) || this.visit(type.instance);
   }
   protected override visitAbstractCtor(type: AbstractConstructorType): boolean {
-    return this.#anyRow(type.signatures) || this.visit(type.instance);
+    return this.visit(type.signatures) || this.visit(type.instance);
   }
   protected override visitFunc(type: FunctionType): boolean {
-    return this.#anyRow(type.signatures) || this.visit(type.return);
+    return this.visit(type.signatures) || this.visit(type.return);
   }
   protected override visitGeneric(_type: GenericType): boolean {
     return true;
@@ -38,7 +38,7 @@ export class IsOpenVisitor extends TypeVisitor<boolean> {
     return this.visit(type.type);
   }
   protected override visitTuple(type: TupleType): boolean {
-    return this.#any(type.members);
+    return this.#any(type.members) || (type.rest !== undefined && this.visit(type.rest));
   }
   protected override visitTypeLiteral(_type: TypeLiteralType): boolean {
     return false;
@@ -49,9 +49,6 @@ export class IsOpenVisitor extends TypeVisitor<boolean> {
 
   #any(types: readonly Type[]): boolean {
     return types.some(type => this.visit(type));
-  }
-  #anyRow(signatures: Type.Signatures): boolean {
-    return signatures.some(signature => this.#any(signature));
   }
   #arguments(type: NamedType): boolean {
     return this.#any(type.genericArgs);

@@ -58,6 +58,11 @@ describe('ctor and factory plans', () => {
     const plan = Plan.factory((a: number, b: number) => a + b, [Plan.constant(2), Plan.constant(3)]);
     expect(realize(plan, engine)).toBe(5);
   });
+
+  test("a rest plan's realized list spreads into the call, one argument per element", () => {
+    const plan = Plan.factory((...args: unknown[]) => args, [Plan.constant(1)], Plan.array([Plan.constant(2), Plan.constant(3)]));
+    expect(realize(plan, engine)).toEqual([1, 2, 3]);
+  });
 });
 
 describe('iterable and array plans', () => {

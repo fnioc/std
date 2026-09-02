@@ -98,6 +98,39 @@ describe('signature selection', () => {
   });
 });
 
+describe('a rest signature', () => {
+  test('an all-rest row lowers the whole argument list as one list plan', () => {
+    const connRegistration = Registration.ctor(CONN, Conn, Type.ctor(CONN, [[]]));
+    const widgetRegistration = Registration.ctor(WIDGET, Widget, Type.ctor(WIDGET, Type.array(CONN)));
+    const manifest = Manifest.empty<unknown>().add(connRegistration).add(widgetRegistration);
+    expect(visitorFor(manifest).visit(WIDGET)).toEqual(
+      Plan.registeredCtor({
+        ctor: Widget,
+        args: [],
+        rest: Plan.array([Plan.registeredCtor(Conn, [], CONN, connRegistration)]),
+        populatedAddress: WIDGET,
+        registration: widgetRegistration,
+      }),
+    );
+  });
+
+  test('a required prefix plus a trailing rest lowers the prefix per slot and the open length as its list', () => {
+    const connRegistration = Registration.ctor(CONN, Conn, Type.ctor(CONN, [[]]));
+    const crateRegistration = Registration.ctor(FOO, Crate, Type.ctor(FOO, Type.tuple({ members: [CONN], rest: CONN })));
+    const manifest = Manifest.empty<unknown>().add(connRegistration).add(crateRegistration);
+    const connPlan = Plan.registeredCtor(Conn, [], CONN, connRegistration);
+    expect(visitorFor(manifest).visit(FOO)).toEqual(
+      Plan.registeredCtor({
+        ctor: Crate,
+        args: [connPlan],
+        rest: Plan.array([connPlan]),
+        populatedAddress: FOO,
+        registration: crateRegistration,
+      }),
+    );
+  });
+});
+
 describe('a bare generic-hole parameter', () => {
   test('receives the closing type as a ConstantPlan', () => {
     const registration = Registration.ctor(box(T), Box, Type.ctor(box(T), [[T]]));

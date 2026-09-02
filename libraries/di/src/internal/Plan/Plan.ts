@@ -1,5 +1,5 @@
 import { type CtorRegistration, type FactoryRegistration, Registration, UnsatisfiableError } from '@rhombus-std/di.core';
-import { type ConstructorType, type FunctionType, Type } from '@rhombus-std/primitives';
+import { type ConstructorType, type FunctionType, type ListType, type TupleType, Type, type UnionType } from '@rhombus-std/primitives';
 import type { Ctor, Func } from '@rhombus-toolkit/func';
 import { memo } from '@rhombus-toolkit/once';
 import { assertNever, isAllThere, isDefined, isReadonlyArray } from '@rhombus-toolkit/type-guards';
@@ -32,6 +32,8 @@ export interface RegisteredCtorPlan {
   readonly kind: 'registered-ctor';
   readonly ctor: Ctor;
   readonly args: Plan[];
+  /** A trailing plan realizing a list; its elements extend the call one argument each. */
+  readonly rest?: Plan;
   readonly populatedAddress: Type;
   readonly registration: CtorRegistration<unknown>;
 }
@@ -40,6 +42,8 @@ export interface RegisteredFactoryPlan {
   readonly kind: 'registered-factory';
   readonly factory: Func;
   readonly args: Plan[];
+  /** A trailing plan realizing a list; its elements extend the call one argument each. */
+  readonly rest?: Plan;
   readonly populatedAddress: Type;
   readonly registration: FactoryRegistration<unknown>;
 }
@@ -52,6 +56,8 @@ export interface CtorPlan {
   readonly kind: 'ctor';
   readonly ctor: Ctor;
   readonly args: Plan[];
+  /** A trailing plan realizing a list; its elements extend the call one argument each. */
+  readonly rest?: Plan;
 }
 
 /** {@link Plan.Ctor}'s factory-shaped sibling. */
@@ -59,6 +65,8 @@ export interface FactoryPlan {
   readonly kind: 'factory';
   readonly factory: Func;
   readonly args: Plan[];
+  /** A trailing plan realizing a list; its elements extend the call one argument each. */
+  readonly rest?: Plan;
 }
 
 /** A latebound caller's argument, read off the realize context by position — a value plan. */
@@ -143,7 +151,7 @@ export namespace Plan {
    * A registered constructor the engine `new`s up.
    */
   export function registeredCtor(ctor: Ctor, args: Plan[], populatedAddress: Type, registration: CtorRegistration<unknown>): RegisteredCtorPlan;
-  export function registeredCtor(spec: { ctor: Ctor; args: Plan[] | undefined; populatedAddress: Type; registration: CtorRegistration<unknown>; }): RegisteredCtorPlan | undefined;
+  export function registeredCtor(spec: { ctor: Ctor; args: Plan[] | undefined; rest?: Plan; populatedAddress: Type; registration: CtorRegistration<unknown>; }): RegisteredCtorPlan | undefined;
   export function registeredCtor(...call: any[]): RegisteredCtorPlan | undefined {
     if (call.length > 1) {
       const [ctor, args, populatedAddress, registration] = call;
@@ -156,7 +164,9 @@ export namespace Plan {
    * A registered factory the engine invokes — {@link args} realize its call.
    */
   export function registeredFactory(factory: Func, args: Plan[], populatedAddress: Type, registration: FactoryRegistration<unknown>): RegisteredFactoryPlan;
-  export function registeredFactory(spec: { factory: Func; args: Plan[] | undefined; populatedAddress: Type; registration: FactoryRegistration<unknown>; }): RegisteredFactoryPlan | undefined;
+  export function registeredFactory(
+    spec: { factory: Func; args: Plan[] | undefined; rest?: Plan; populatedAddress: Type; registration: FactoryRegistration<unknown>; },
+  ): RegisteredFactoryPlan | undefined;
   export function registeredFactory(...call: any[]): RegisteredFactoryPlan | undefined {
     if (call.length > 1) {
       const [factory, args, populatedAddress, registration] = call;
@@ -181,11 +191,11 @@ export namespace Plan {
   export function invoker(callableType: ConstructorType | FunctionType): InvokerPlan {
     return { kind: 'invoker', callableType };
   }
-  export function ctor(ctor: Ctor, args: Plan[]): CtorPlan {
-    return { kind: 'ctor', ctor, args };
+  export function ctor(ctor: Ctor, args: Plan[], rest?: Plan): CtorPlan {
+    return { kind: 'ctor', ctor, args, rest };
   }
-  export function factory(factory: Func, args: Plan[]): FactoryPlan {
-    return { kind: 'factory', factory, args };
+  export function factory(factory: Func, args: Plan[], rest?: Plan): FactoryPlan {
+    return { kind: 'factory', factory, args, rest };
   }
   export function constant(value: any): ConstantPlan {
     return { kind: 'constant', value };
@@ -216,7 +226,7 @@ export namespace Plan {
    * two never both claim it.
    */
   export function registeredPromise(inner: RegisteredCtorPlan | RegisteredFactoryPlan, inventory: readonly AsyncPlan[], populatedAddress: Type): RegisteredPromisePlan {
-    const make = inner.kind === 'registered-ctor' ? Plan.ctor(inner.ctor, inner.args) : Plan.factory(inner.factory, inner.args);
+    const make = inner.kind === 'registered-ctor' ? Plan.ctor(inner.ctor, inner.args, inner.rest) : Plan.factory(inner.factory, inner.args, inner.rest);
     return { kind: 'registered-promise', registration: inner.registration, envelope: Plan.promise(make, inventory, populatedAddress) };
   }
 
@@ -308,12 +318,12 @@ export namespace Plan {
     const [kind, narrowed] = Registration.kind(registration);
     switch (kind) {
       case 'ctor': {
-        const args = lowerSignature(narrowed.ctorType.signatures, Object.create(null), visitor);
-        return args && Plan.ctor(narrowed.ctor, args);
+        const lowered = lowerSignature(narrowed.ctorType.signatures, Object.create(null), visitor);
+        return lowered && Plan.ctor(narrowed.ctor, lowered[0], lowered[1]);
       }
       case 'factory': {
-        const args = lowerSignature(narrowed.factoryType.signatures, Object.create(null), visitor);
-        return args && Plan.factory(narrowed.factory, args);
+        const lowered = lowerSignature(narrowed.factoryType.signatures, Object.create(null), visitor);
+        return lowered && Plan.factory(narrowed.factory, lowered[0], lowered[1]);
       }
       case 'value':
         return Plan.constant(narrowed.value);
@@ -332,17 +342,21 @@ export namespace Plan {
     const [kind, registration] = Registration.kind(wideRegistration);
     switch (kind) {
       case 'ctor': {
+        const lowered = lowerSignature(registration.ctorType.signatures, generics, visitor);
         return Plan.registeredCtor({
           ctor: registration.ctor,
-          args: lowerSignature(registration.ctorType.signatures, generics, visitor),
+          args: lowered?.[0],
+          rest: lowered?.[1],
           populatedAddress,
           registration,
         });
       }
       case 'factory': {
+        const lowered = lowerSignature(registration.factoryType.signatures, generics, visitor);
         return Plan.registeredFactory({
           factory: registration.factory,
-          args: lowerSignature(registration.factoryType.signatures, generics, visitor),
+          args: lowered?.[0],
+          rest: lowered?.[1],
           populatedAddress,
           registration,
         });
@@ -356,15 +370,48 @@ export namespace Plan {
   }
 
   /**
-   * The first signature whose every arg lowers to a plan, longest first. An arg that IS a
-   * hole receives its closing type as a constant — an erased type parameter has nothing else to
-   * run on — while a hole inside a larger arg closes into that expression and resolves as any
-   * other dependency.
+   * The first signature whose every arg lowers to a plan, longest first — a row's length is its
+   * fixed slot count, so a rest-only row is the last resort and equal lengths keep the slot's
+   * stored order. An arg that IS a hole receives its closing type as a constant — an erased type
+   * parameter has nothing else to run on — while a hole inside a larger arg closes into that
+   * expression and resolves as any other dependency.
    */
-  function lowerSignature(signatures: Type.Signatures, generics: Readonly<Record<string, Type>>, visitor: Type.Visitor<Plan | undefined>): Plan[] | undefined {
-    return Iterator.from(signatures.toSorted((a, b) => b.length - a.length))
-      .map(signature => signature.map(arg => lowerArg(arg, generics, visitor)))
-      .find((plans): plans is Plan[] => isAllThere(plans));
+  function lowerSignature(
+    signatures: TupleType | ListType | UnionType,
+    generics: Readonly<Record<string, Type>>,
+    visitor: Type.Visitor<Plan | undefined>,
+  ): [args: Plan[], rest: Plan | undefined] | undefined {
+    return Iterator.from(Type.signatureRows(signatures).toSorted((a, b) => fixedLength(b) - fixedLength(a)))
+      .map(row => lowerRow(row, generics, visitor))
+      .find(isDefined);
+  }
+
+  function fixedLength(row: TupleType | ListType): number {
+    return row.kind === 'tuple' ? row.members.length : 0;
+  }
+
+  /** One row's args as plans — the fixed slots each their own, the open length as one list plan. */
+  function lowerRow(
+    row: TupleType | ListType,
+    generics: Readonly<Record<string, Type>>,
+    visitor: Type.Visitor<Plan | undefined>,
+  ): [args: Plan[], rest: Plan | undefined] | undefined {
+    const list = restList(row);
+    const rest = list === undefined ? undefined : lowerArg(list, generics, visitor);
+    if (list !== undefined && rest === undefined) {
+      return undefined;
+    }
+    const members = row.kind === 'tuple' ? row.members : [];
+    const args = members.map(arg => lowerArg(arg, generics, visitor));
+    return isAllThere(args) ? [args, rest] : undefined;
+  }
+
+  /** The list a row's open length draws from: a rest-only row is its own list; a tuple's rest slot draws from an array of its element. */
+  function restList(row: TupleType | ListType): Type | undefined {
+    if (row.kind !== 'tuple') {
+      return row;
+    }
+    return row.rest === undefined ? undefined : Type.array(row.rest);
   }
 
   function lowerArg(arg: Type, generics: Readonly<Record<string, Type>>, visitor: Type.Visitor<Plan | undefined>): Plan | undefined {

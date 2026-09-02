@@ -130,8 +130,8 @@ func TestDeriveNodeHoleInASignatureSlotKeepsTheCallable(t *testing.T) {
 	if n.Kind != KindCtor {
 		t.Fatalf("open constructor derived kind %v, want a constructor: %+v", n.Kind, n)
 	}
-	if len(n.Rows) != 1 || len(n.Rows[0]) != 1 {
-		t.Fatalf("expected one signature of one parameter, got %+v", n.Rows)
+	if n.Sig == nil || n.Sig.Kind != KindTuple || len(n.Sig.Members) != 1 {
+		t.Fatalf("expected one signature of one parameter, got %+v", n.Sig)
 	}
-	requireHole(t, n.Rows[0][0], "1")
+	requireHole(t, n.Sig.Members[0], "1")
 }

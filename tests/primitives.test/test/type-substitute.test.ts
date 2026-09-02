@@ -63,6 +63,12 @@ describe('Type.substitute on composites', () => {
     expect(Type.substitute(Type.tuple(T, B), { T: A })).toBe(Type.tuple(A, B));
   });
 
+  test('a tuple substitutes its rest slot too', () => {
+    const open = Type.tuple({ members: [T, B], rest: T });
+    const closed = Type.tuple({ members: [A, B], rest: A });
+    expect(Type.substitute(open, { T: A })).toBe(closed);
+  });
+
   test('an object substitutes every member value, keeping the keys', () => {
     expect(Type.substitute(Type.object({ a: T, b: B }), { T: A })).toBe(Type.object({ a: A, b: B }));
   });

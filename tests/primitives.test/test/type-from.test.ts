@@ -43,6 +43,16 @@ describe('Type.from', () => {
     expect(Type.from('(app:A | app:B)#primary')).toBe(Type.tag(Type.union(A, B) as UnionType, 'primary'));
   });
 
+  test("reads a tuple with a trailing rest slot, which stores the list's element", () => {
+    expect(Type.from('[app:A, ...Array<app:B>]')).toBe(Type.tuple({ members: [A], rest: B }));
+    expect(Type.from('[...Array<app:B>]')).toBe(Type.tuple({ members: [], rest: B }));
+    expect(Type.from('[...Iterable<app:B>]')).toBe(Type.tuple({ members: [], rest: B }));
+  });
+
+  test('a rest slot draws from a list', () => {
+    expect(() => Type.from('[app:A, ...app:B]')).toThrow(TypeParseError);
+  });
+
   test('reads tuples, generic holes and literals', () => {
     expect(Type.from('[app:A, 5]')).toBe(Type.tuple(A, Type.typeLiteral(5)));
     expect(Type.from('[]')).toBe(Type.tuple());
@@ -67,7 +77,8 @@ describe('Type.from', () => {
   test('a callable with one signature spells exactly as it always has', () => {
     expect(Type.stringify(Type.func(B, [[A]]))).toBe('(app:A) => app:B');
     expect(Type.stringify(Type.ctor(B, [[]]))).toBe('new () => app:B');
-    expect(Type.stringify(Type.func({ return: B, signatures: [[A], []] }))).toBe('(app:A; ) => app:B');
+    // An overload set stores its rows canonically, shorter first, and spells in that order.
+    expect(Type.stringify(Type.func({ return: B, signatures: [[A], []] }))).toBe('(; app:A) => app:B');
   });
 
   test('an abstract constructor carries the prefix, round-tripping both directions', () => {
@@ -295,7 +306,7 @@ function generate(random: () => number, depth: number): Type {
       return Type.intersection(...Array.from({ length: 2 + many(2) }, child));
     }
     case 'tuple': {
-      return Type.tuple(...children(3));
+      return Type.tuple({ members: children(3), rest: many(1) ? child() : undefined });
     }
     case 'func': {
       return Type.func({ return: child(), signatures: signatures() });

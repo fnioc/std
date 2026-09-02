@@ -97,11 +97,20 @@ export class RealizeVisitor {
   }
 
   protected visitRegisteredCtor(plan: RegisteredCtorPlan, context: VisitorContext): any {
-    return this.#realize(plan, plan.populatedAddress, plan.registration, context, within => new plan.ctor(...plan.args.map(arg => this.visit(arg, within))));
+    return this.#realize(plan, plan.populatedAddress, plan.registration, context, within => new plan.ctor(...this.#callArgs(plan, within)));
   }
 
   protected visitRegisteredFactory(plan: RegisteredFactoryPlan, context: VisitorContext): any {
-    return this.#realize(plan, plan.populatedAddress, plan.registration, context, within => plan.factory(...plan.args.map(arg => this.visit(arg, within))));
+    return this.#realize(plan, plan.populatedAddress, plan.registration, context, within => plan.factory(...this.#callArgs(plan, within)));
+  }
+
+  /** The call's realized argument list: one value per arg plan, then the rest plan's list spread one argument per element. */
+  #callArgs(plan: { readonly args: Plan[]; readonly rest?: Plan; }, context: VisitorContext): any[] {
+    const values = plan.args.map(arg => this.visit(arg, context));
+    if (plan.rest !== undefined) {
+      values.push(...this.visit(plan.rest, context));
+    }
+    return values;
   }
 
   /**
@@ -124,11 +133,11 @@ export class RealizeVisitor {
   }
 
   protected visitCtor(plan: CtorPlan, context: VisitorContext): any {
-    return new plan.ctor(...plan.args.map(arg => this.visit(arg, context)));
+    return new plan.ctor(...this.#callArgs(plan, context));
   }
 
   protected visitFactory(plan: FactoryPlan, context: VisitorContext): any {
-    return plan.factory(...plan.args.map(arg => this.visit(arg, context)));
+    return plan.factory(...this.#callArgs(plan, context));
   }
 
   /**

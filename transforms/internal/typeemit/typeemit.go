@@ -46,7 +46,7 @@ func Call(f *shimast.NodeFactory, binding *valueimport.Binding, method string, a
 
 // EmitNode builds the `Type.*` factory-call expression a derived node spells,
 // recursing into each kind's children — a named type's arguments, a callable's
-// head and parameter rows, a tag's inner type, a composite's members, an object's
+// head and signatures, a tag's inner type, a composite's members, an object's
 // property types.
 func EmitNode(f *shimast.NodeFactory, binding *valueimport.Binding, n *tokens.Node) *shimast.Node {
 	switch n.Kind {
@@ -68,7 +68,7 @@ func EmitNode(f *shimast.NodeFactory, binding *valueimport.Binding, n *tokens.No
 	case tokens.KindUnion:
 		return Call(f, binding, "union", emitMembers(f, binding, n.Members))
 	case tokens.KindTuple:
-		return Call(f, binding, "tuple", emitMembers(f, binding, n.Members))
+		return emitTuple(f, binding, n)
 	case tokens.KindIntersection:
 		return Call(f, binding, "intersection", emitMembers(f, binding, n.Members))
 	case tokens.KindObject:
@@ -91,6 +91,20 @@ func emitMembers(f *shimast.NodeFactory, binding *valueimport.Binding, members [
 	return out
 }
 
+// emitTuple builds a tuple's factory call: the plain `Type.tuple(...members)`
+// a fixed-length tuple spells, or — when it carries a rest slot — the spec form
+// `Type.tuple({ members: [...], rest })` that alone can state one.
+func emitTuple(f *shimast.NodeFactory, binding *valueimport.Binding, n *tokens.Node) *shimast.Node {
+	if n.TupleRest == nil {
+		return Call(f, binding, "tuple", emitMembers(f, binding, n.Members))
+	}
+	spec := f.NewObjectLiteralExpression(f.NewNodeList([]*shimast.Node{
+		f.NewPropertyAssignment(nil, PropertyKey(f, "members"), nil, nil, f.NewArrayLiteralExpression(f.NewNodeList(emitMembers(f, binding, n.Members)), false)),
+		f.NewPropertyAssignment(nil, PropertyKey(f, "rest"), nil, nil, EmitNode(f, binding, n.TupleRest)),
+	}), false)
+	return Call(f, binding, "tuple", []*shimast.Node{spec})
+}
+
 // emitObject builds `Type.object({ key: <member>, ... })`, each member keyed by
 // its property name in declaration order.
 func emitObject(f *shimast.NodeFactory, binding *valueimport.Binding, n *tokens.Node) *shimast.Node {
@@ -105,30 +119,47 @@ func emitObject(f *shimast.NodeFactory, binding *valueimport.Binding, n *tokens.
 }
 
 // signatureShaped builds a callable's factory call — the return/instance type
-// followed by its parameter rows as one array of arrays, `func(returns, [[…], […]])`
-// / `ctor(instance, [[…], […]])` / `abstractCtor(instance, [[…], […]])` — whether
-// the callable answers to one row or several.
+// followed by its signatures. When every signature is a fixed argument list the
+// rows spelling is used — `func(returns, [[…], […]])` — the same text a hand
+// author writes; a signature carrying an open length takes the slot node's own
+// spelling instead, since a rows array cannot state one.
 func signatureShaped(f *shimast.NodeFactory, binding *valueimport.Binding, n *tokens.Node, method string) *shimast.Node {
+	slot := EmitNode(f, binding, n.Sig)
+	if rows, fixed := fixedRows(n.Sig); fixed {
+		items := make([]*shimast.Node, 0, len(rows))
+		for _, row := range rows {
+			items = append(items, f.NewArrayLiteralExpression(f.NewNodeList(emitMembers(f, binding, row)), false))
+		}
+		slot = f.NewArrayLiteralExpression(f.NewNodeList(items), false)
+	}
 	return Call(f, binding, method, []*shimast.Node{
 		EmitNode(f, binding, n.Ret),
-		EmitRows(f, binding, n.Rows),
+		slot,
 	})
 }
 
-// EmitRow builds the factory call for each parameter in one row, in order.
-func EmitRow(f *shimast.NodeFactory, binding *valueimport.Binding, row []*tokens.Node) []*shimast.Node {
-	return emitMembers(f, binding, row)
+// fixedRows reads a signatures slot back as fixed parameter rows — ok=false
+// when any signature carries an open length (a rest slot, or a row that IS a
+// list), which the rows spelling cannot state.
+func fixedRows(sig *tokens.Node) ([][]*tokens.Node, bool) {
+	rowNodes := signatureRowNodes(sig)
+	rows := make([][]*tokens.Node, 0, len(rowNodes))
+	for _, row := range rowNodes {
+		if row.Kind != tokens.KindTuple || row.TupleRest != nil {
+			return nil, false
+		}
+		rows = append(rows, row.Members)
+	}
+	return rows, true
 }
 
-// EmitRows builds a callable's parameter rows as one array literal of arrays —
-// the shape a `Type.func` / `Type.ctor` factory call's rows argument takes, and
-// the shape a `.args` accessor fold produces directly.
-func EmitRows(f *shimast.NodeFactory, binding *valueimport.Binding, rows [][]*tokens.Node) *shimast.Node {
-	items := make([]*shimast.Node, 0, len(rows))
-	for _, row := range rows {
-		items = append(items, f.NewArrayLiteralExpression(f.NewNodeList(EmitRow(f, binding, row)), false))
+// signatureRowNodes is a signatures slot's per-overload rows, in stored order:
+// a union's members, or the lone row itself.
+func signatureRowNodes(sig *tokens.Node) []*tokens.Node {
+	if sig.Kind == tokens.KindUnion {
+		return sig.Members
 	}
-	return f.NewArrayLiteralExpression(f.NewNodeList(items), false)
+	return []*tokens.Node{sig}
 }
 
 // Named builds the factory call a name-addressed type spells: `Type.global(name)`

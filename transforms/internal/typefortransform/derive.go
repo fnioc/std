@@ -47,23 +47,15 @@ func emitAccessor(f *shimast.NodeFactory, e emitter, n *tokens.Node, accessor st
 			return nil, false
 		}
 		return e.node(n.Ret), true
-	case "args":
+	case "signatures":
 		if n.Kind != tokens.KindFunc && n.Kind != tokens.KindCtor && n.Kind != tokens.KindAbstractCtor {
 			return nil, false
 		}
-		rows := make([]*shimast.Node, 0, len(n.Rows))
-		for _, row := range n.Rows {
-			items := make([]*shimast.Node, 0, len(row))
-			for _, a := range row {
-				item := e.node(a)
-				if item == nil {
-					return nil, true
-				}
-				items = append(items, item)
-			}
-			rows = append(rows, f.NewArrayLiteralExpression(f.NewNodeList(items), false))
+		slot := e.node(n.Sig)
+		if slot == nil {
+			return nil, true
 		}
-		return f.NewArrayLiteralExpression(f.NewNodeList(rows), false), true
+		return slot, true
 	case "tag":
 		if n.Kind != tokens.KindTag {
 			return nil, false

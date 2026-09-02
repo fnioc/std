@@ -66,7 +66,7 @@ export interface GenericType extends TypeBase<'generic'> {
 }
 
 export interface ConstructorType extends TypeBase<'ctor'> {
-  readonly signatures: Type.Signatures;
+  readonly signatures: TupleType | ListType | UnionType;
   readonly instance: Type;
 }
 
@@ -76,12 +76,12 @@ export interface ConstructorType extends TypeBase<'ctor'> {
  * by assignability; a position accepting either spells the union.
  */
 export interface AbstractConstructorType extends TypeBase<'abstract-ctor'> {
-  readonly signatures: Type.Signatures;
+  readonly signatures: TupleType | ListType | UnionType;
   readonly instance: Type;
 }
 
 export interface FunctionType extends TypeBase<'func'> {
-  readonly signatures: Type.Signatures;
+  readonly signatures: TupleType | ListType | UnionType;
   readonly return: Type;
 }
 
@@ -109,7 +109,10 @@ export interface TagType extends TypeBase<'tag'> {
 }
 
 export interface TupleType extends TypeBase<'tuple'> {
+  /** Every fixed slot in order. A slot that may be absent admits `undefined`, like any other optional position. */
   readonly members: readonly Type[];
+  /** A trailing rest slot's element type, or undefined for a fixed-length tuple. */
+  readonly rest: Type | undefined;
 }
 
 /** Any type that `typeof` can resolve */
@@ -162,18 +165,21 @@ export namespace Type {
    * @example
    * ```ts
    * Type.ctor(box, [[string]]);                               // new (string) => box
-   * Type.ctor(box, [[string], []]);                           // new (string; ) => box
-   * Type.ctor({ instance: box, signatures: [[]] });
+   * Type.ctor(box, [[string], []]);                           // new (; string) => box
+   * Type.ctor(box, Type.signatures([Type.tuple(string)]));    // same, slot pre-built
+   * Type.ctor({ instance: box, signatures: Type.signatures([Type.tuple()]) });
    * ```
    */
-  export function ctor(instance: Type, signatures: Type.Signatures): ConstructorType;
+  export function ctor(instance: Type, signatures: TupleType | ListType | UnionType): ConstructorType;
+  export function ctor(instance: Type, signatures: readonly (readonly Type[])[]): ConstructorType;
   export function ctor(spec: Spec<ConstructorType>): ConstructorType;
+  export function ctor(spec: { instance: Type; signatures: readonly (readonly Type[])[]; }): ConstructorType;
   export function ctor(...args: any[]): ConstructorType {
     if (args.length > 1) {
-      return factory.ctor(args[0], atLeastOneSignature(args[1]));
+      return factory.ctor(args[0], factory.toSignatureSlot(args[1]));
     }
-    const spec = args[0] as Spec<ConstructorType>;
-    return factory.ctor(spec.instance, atLeastOneSignature(spec.signatures));
+    const spec = args[0];
+    return factory.ctor(spec.instance, factory.toSignatureSlot(spec.signatures));
   }
 
   /**
@@ -182,17 +188,20 @@ export namespace Type {
    * @example
    * ```ts
    * Type.abstractCtor(box, [[]]);                             // abstract new () => box
-   * Type.abstractCtor({ instance: box, signatures: [[]] });
+   * Type.abstractCtor(box, Type.signatures([Type.tuple()]));  // same, slot pre-built
+   * Type.abstractCtor({ instance: box, signatures: Type.signatures([Type.tuple()]) });
    * ```
    */
-  export function abstractCtor(instance: Type, signatures: Type.Signatures): AbstractConstructorType;
+  export function abstractCtor(instance: Type, signatures: TupleType | ListType | UnionType): AbstractConstructorType;
+  export function abstractCtor(instance: Type, signatures: readonly (readonly Type[])[]): AbstractConstructorType;
   export function abstractCtor(spec: Spec<AbstractConstructorType>): AbstractConstructorType;
+  export function abstractCtor(spec: { instance: Type; signatures: readonly (readonly Type[])[]; }): AbstractConstructorType;
   export function abstractCtor(...args: any[]): AbstractConstructorType {
     if (args.length > 1) {
-      return factory.abstractCtor(args[0], atLeastOneSignature(args[1]));
+      return factory.abstractCtor(args[0], factory.toSignatureSlot(args[1]));
     }
-    const spec = args[0] as Spec<AbstractConstructorType>;
-    return factory.abstractCtor(spec.instance, atLeastOneSignature(spec.signatures));
+    const spec = args[0];
+    return factory.abstractCtor(spec.instance, factory.toSignatureSlot(spec.signatures));
   }
 
   /**
@@ -225,18 +234,21 @@ export namespace Type {
    * @example
    * ```ts
    * Type.func(box, [[string]]);                             // (string) => box
-   * Type.func(box, [[string], []]);                         // (string; ) => box
-   * Type.func({ return: box, signatures: [[]] });
+   * Type.func(box, [[string], []]);                         // (; string) => box
+   * Type.func(box, Type.signatures([Type.tuple(string)]));  // same, slot pre-built
+   * Type.func({ return: box, signatures: Type.signatures([Type.tuple()]) });
    * ```
    */
-  export function func(returns: Type, signatures: Type.Signatures): FunctionType;
+  export function func(returns: Type, signatures: TupleType | ListType | UnionType): FunctionType;
+  export function func(returns: Type, signatures: readonly (readonly Type[])[]): FunctionType;
   export function func(spec: Spec<FunctionType>): FunctionType;
+  export function func(spec: { return: Type; signatures: readonly (readonly Type[])[]; }): FunctionType;
   export function func(...args: any[]): FunctionType {
     if (args.length > 1) {
-      return factory.func(args[0], atLeastOneSignature(args[1]));
+      return factory.func(args[0], factory.toSignatureSlot(args[1]));
     }
-    const spec = args[0] as Spec<FunctionType>;
-    return Type.adopt({ ...spec, signatures: atLeastOneSignature(spec.signatures), kind: 'func' });
+    const spec = args[0];
+    return factory.func(spec.return, factory.toSignatureSlot(spec.signatures));
   }
 
   /** An open generic argument — a labeled hole standing for a type bound later. */
@@ -338,14 +350,23 @@ export namespace Type {
     return tag;
   })();
 
-  /** A fixed-length, ordered list of member types — `[A, B, C]`. */
+  /**
+   * An ordered list of member types — `[A, B, C]`. The variadic spelling is fixed-length; a
+   * trailing rest slot needs the spec form.
+   *
+   * @example
+   * ```ts
+   * Type.tuple(a, b);                          // [a, b]
+   * Type.tuple({ members: [a], rest: b });     // [a, ...b[]]
+   * ```
+   */
   export function tuple(...types: readonly Type[]): TupleType;
   export function tuple(spec: Spec<TupleType>): TupleType;
   export function tuple(...args: readonly Type[] | [Spec<TupleType>]): TupleType {
     const [first] = args;
     return first !== undefined && !isNode(first)
-      ? factory.tuple(first.members)
-      : factory.tuple(args as readonly Type[]);
+      ? factory.tuple(first.members, first.rest)
+      : factory.tuple(args as readonly Type[], undefined);
   }
 
   /** A single literal value as a type — `'on'`, `42`, `true`, `null`. */
@@ -483,24 +504,34 @@ export namespace Type {
     return new SubstituteVisitor(substitutions).visit(type);
   }
 
-  /** The lenient no-arg spelling: `[]` names no call, so it reads as one empty signature. */
-  function atLeastOneSignature(signatures: Type.Signatures): Type.Signatures {
-    return signatures.length ? signatures : [[]];
+  /**
+   * Builds the signatures slot a callable carries. Each row is one overload: a {@link TupleType}
+   * for a fixed argument list (an open one when it carries a rest slot), a {@link ListType} for a
+   * signature that is entirely a rest. Several rows become a union; one returns the row itself.
+   *
+   * @throws TypeError - when no row is given (a callable answers to at least one call), or a row
+   * is neither a tuple nor a list.
+   */
+  export function signatures(rows: readonly (TupleType | ListType)[]): TupleType | ListType | UnionType {
+    return factory.signatures(rows);
+  }
+
+  /**
+   * The per-overload rows a callable's signature slot carries, in stored order: one entry per
+   * overload, each a {@link TupleType} (fixed arity) or a {@link ListType} (rest-only).
+   *
+   * @remarks
+   * A union's members are returned as-stored — the canonical order the slot was interned with.
+   * Consumers that need a different order (e.g. longest-first) sort the result themselves.
+   */
+  export function signatureRows(slot: TupleType | ListType | UnionType): readonly (TupleType | ListType)[] {
+    if (slot.kind === 'union') {
+      return slot.members as readonly (TupleType | ListType)[];
+    }
+    return [slot];
   }
 
   // #endregion
-
-  // #region types
-
-  /**
-   * The signatures a callable answers to — one signature per overload, in declaration order, each signature
-   * holding that overload's arg types in order.
-   *
-   * @remarks
-   * An un-overloaded callable carries exactly one signature, and one that takes no args carries one EMPTY
-   * signature — a node never holds `[]`, which the factories accept only as a lenient spelling of `[[]]`.
-   */
-  export type Signatures = ReadonlyArray<readonly Type[]>;
 
   /**
    * The dispatch surface over the node kinds — subclass it and implement the `visit*` member for

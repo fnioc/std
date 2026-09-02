@@ -42,6 +42,13 @@ describe('one object per type', () => {
     expect(forged).not.toBe(A);
     expect(Type.tuple(forged)).toBe(Type.tuple(A));
   });
+
+  test("a tuple's rest slot is part of its identity", () => {
+    const rest = Type.tuple({ members: [A], rest: B });
+    expect(rest).not.toBe(Type.tuple(A, B));
+    expect(rest).not.toBe(Type.tuple(A));
+    expect(Type.tuple({ members: [A], rest: B })).toBe(rest);
+  });
 });
 
 describe('canonical form', () => {
@@ -207,7 +214,7 @@ describe('Type.adopt', () => {
   });
 
   test('the kind written decides the node handed back, so its own members read without a cast', () => {
-    const adopted = Type.adopt({ kind: 'ctor', instance: A, signatures: [[B]] });
+    const adopted = Type.adopt({ kind: 'ctor', instance: A, signatures: Type.tuple(B) });
     expect(adopted.instance).toBe(A);
     expect(adopted).toBe(Type.ctor(A, [[B]]));
   });
@@ -229,7 +236,8 @@ describe('a callable factory takes its parameter signatures whole', () => {
   test('the positional form spells every signature', () => {
     expect(Type.stringify(Type.ctor(A, [[B]]))).toBe('new (app:B) => app:A');
     expect(Type.stringify(Type.ctor(A, [[]]))).toBe('new () => app:A');
-    expect(Type.stringify(Type.func(A, [[B], []]))).toBe('(app:B; ) => app:A');
+    // An overload set stores its rows canonically, shorter first, and spells in that order.
+    expect(Type.stringify(Type.func(A, [[B], []]))).toBe('(; app:B) => app:A');
   });
 
   test("the object form names the node's own fields, and lands on the same node", () => {

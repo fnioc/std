@@ -139,6 +139,14 @@ describe('children pairwise', () => {
     expect(matches(Type.tuple(T), Type.tuple(A, B))).toBe(false);
   });
 
+  test("a tuple's rest slot binds like any other position, and openness must agree", () => {
+    const withRest = Type.tuple({ members: [], rest: T });
+    const generics = expectBindings(withRest, Type.tuple({ members: [], rest: A }));
+    expect(generics.T).toBe(A);
+    expect(matches(withRest, Type.tuple())).toBe(false);
+    expect(matches(Type.tuple(), Type.tuple({ members: [], rest: A }))).toBe(false);
+  });
+
   test('union members pair off in canonical order, same count required', () => {
     const generics = expectBindings(Type.union(T, B), Type.union(A, B));
     expect(generics.T).toBe(A);
@@ -157,9 +165,10 @@ describe('children pairwise', () => {
     expect(matches(Type.object({ a: T }), Type.object({ b: A }))).toBe(false);
   });
 
-  test('signatures pair off: same signature count, signature i against signature i, same arity', () => {
+  test("signatures pair off as the slot's union: same row count, canonical order, same arity", () => {
     expect(matches(Type.func(C, [[T, B], [T]]), Type.func(C, [[A, B], [A]]))).toBe(true);
-    expect(matches(Type.func(C, [[T, B], [T]]), Type.func(C, [[A], [A, B]]))).toBe(false);
+    // Overload order is not part of the slot — a union stores its rows canonically.
+    expect(matches(Type.func(C, [[T, B], [T]]), Type.func(C, [[A], [A, B]]))).toBe(true);
     expect(matches(Type.func(C, [[T]]), Type.func(C, [[A, B]]))).toBe(false);
   });
 });

@@ -161,21 +161,39 @@ func TestDeriveNodeTupleSlotOrderIsIdentity(t *testing.T) {
 	}
 }
 
-// TestDeriveNodeVariableLengthTupleIsUnderivable pins the refusal: an optional
-// or rest slot leaves the tuple's length open, and a list of slots can only
-// state a fixed one, so derivation fails rather than reporting an arity the type
-// does not have.
-func TestDeriveNodeVariableLengthTupleIsUnderivable(t *testing.T) {
+// TestDeriveNodeVariableLengthTupleStatesItsOpenLength pins that an optional or
+// rest slot derives honestly rather than refusing or approximating: an optional
+// slot keeps the `| undefined` its checker type already carries — the one
+// spelling the model gives an absent-able position — and a trailing rest slot's
+// element becomes TupleRest, held OUT of Members rather than folded into it.
+func TestDeriveNodeVariableLengthTupleStatesItsOpenLength(t *testing.T) {
 	prog, ctx, main := loadGenerics(t)
 	defer func() { _ = prog.Close() }()
 
-	for _, name := range []string{"tupleOptional", "tupleRest"} {
-		t.Run(name, func(t *testing.T) {
-			node, ok := DeriveNode(ctx, ctx.Checker, typeOfDecl(t, ctx.Checker, main, name), nil)
-			if ok {
-				t.Fatalf("%s derived %+v, want a refusal", name, node)
-			}
-		})
+	node, ok := DeriveNode(ctx, ctx.Checker, typeOfDecl(t, ctx.Checker, main, "tupleOptional"), nil)
+	if !ok {
+		t.Fatal("tupleOptional did not derive a node")
+	}
+	if node.Kind != KindTuple || node.TupleRest != nil || len(node.Members) != 2 {
+		t.Fatalf("tupleOptional derived %+v, want a two-slot fixed tuple", node)
+	}
+	if node.Members[0].Name != "IOther" {
+		t.Fatalf("tupleOptional members %+v, want IOther first", node.Members)
+	}
+	optional := node.Members[1]
+	if optional.Kind != KindUnion || len(optional.Members) != 2 || optional.Members[0].Name != "ICache" || !isNullishLiteral(optional.Members[1]) {
+		t.Fatalf("tupleOptional's optional slot derived %+v, want ICache | undefined", optional)
+	}
+
+	node, ok = DeriveNode(ctx, ctx.Checker, typeOfDecl(t, ctx.Checker, main, "tupleRest"), nil)
+	if !ok {
+		t.Fatal("tupleRest did not derive a node")
+	}
+	if node.Kind != KindTuple || len(node.Members) != 1 || node.Members[0].Name != "IOther" {
+		t.Fatalf("tupleRest derived %+v, want a tuple of [IOther]", node)
+	}
+	if node.TupleRest == nil || node.TupleRest.Kind != KindNamed || node.TupleRest.Name != "ICache" {
+		t.Fatalf("tupleRest's rest slot derived %+v, want the named ICache", node.TupleRest)
 	}
 }
 

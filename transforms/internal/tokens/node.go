@@ -27,19 +27,20 @@ const (
 	KindGeneric
 	// KindTag is a branded base wearing a key — `Type.tag(inner, key)`.
 	KindTag
-	// KindFunc is a call signature — `Type.func(return, rows)`.
+	// KindFunc is a call signature — `Type.func(return, signatures)`.
 	KindFunc
-	// KindCtor is a construct signature — `Type.ctor(instance, rows)`.
+	// KindCtor is a construct signature — `Type.ctor(instance, signatures)`.
 	KindCtor
 	// KindAbstractCtor is a construct signature from an `abstract class` —
-	// `Type.abstractCtor(instance, rows)`, its own kind rather than a flag on
-	// KindCtor so the two intern distinctly.
+	// `Type.abstractCtor(instance, signatures)`, its own kind rather than a flag
+	// on KindCtor so the two intern distinctly.
 	KindAbstractCtor
 	// KindUnion is a union of alternatives — `Type.union(...members)`. Member
 	// order is not part of its identity; the runtime factory canonicalizes.
 	KindUnion
-	// KindTuple is a fixed-length slot list — `Type.tuple(...members)`. Slot order
-	// IS part of its identity, so it is never sorted.
+	// KindTuple is an ordered slot list — `Type.tuple(...members)`, plus a rest
+	// slot when its length is open. Slot order IS part of its identity, so it is
+	// never sorted.
 	KindTuple
 	// KindObject is a record of named members — `Type.object({ key: member })`.
 	KindObject
@@ -71,15 +72,22 @@ type Node struct {
 	Tag   string
 
 	// Ret is a KindFunc's return type, or a KindCtor's / KindAbstractCtor's
-	// instance type; Rows are the parameter rows, one per overload, each in
-	// parameter order.
-	Ret  *Node
-	Rows [][]*Node
+	// instance type; Sig is the signatures slot — one KindTuple (fixed argument
+	// list) or list-shaped node (a signature that is entirely a rest) for a
+	// single signature, a KindUnion of those for an overload set.
+	Ret *Node
+	Sig *Node
 
 	// Members are a KindUnion's / KindTuple's / KindIntersection's member nodes.
 	// A tuple keeps them in declaration order; a union and an intersection do not
 	// depend on order for identity.
 	Members []*Node
+
+	// TupleRest is a KindTuple's open length: a trailing rest slot's element
+	// type, nil for a fixed-length tuple. A slot that may be absent is spelled
+	// as its type being (or containing) a union with the `undefined` literal,
+	// the same way a `?`-optional object property spells its own.
+	TupleRest *Node
 
 	// Properties are a KindObject's members, each a key paired with its type, in
 	// declaration order. A `?`-optional property is spelled as its type being (or
@@ -271,31 +279,50 @@ func deriveNamedNode(ctx *Context, checker *shimchecker.Checker, t *shimchecker.
 
 // deriveTupleNode builds the Tuple node an anonymous tuple type spells: its slot
 // types in declaration order, each recursively derived, so a slot that is itself
-// a union, a callable, or an object reaches its own kind. Only a tuple whose every
-// slot is REQUIRED has the fixed length a slot list can state — an optional, rest,
-// or variadic slot leaves the length open, which `TupleType.members` cannot encode,
-// so such a tuple refuses rather than deriving at the wrong arity. A readonly
-// modifier and slot labels say nothing about the slots and are dropped. ok=false
-// also covers "not a tuple at all".
+// a union, a callable, or an object reaches its own kind. An OPTIONAL slot's
+// checker type already carries `| undefined`, which is the one spelling the model
+// gives an absent-able position, so it derives as-is; a trailing REST slot's
+// element becomes TupleRest. Only a VARIADIC slot (a `...T` spread of a generic
+// array/tuple, rather than a plain `...T[]` rest) or a rest slot anywhere but
+// last has no member this walk can spell, so those refuse. A readonly modifier
+// and slot labels say nothing about the slots and are dropped. ok=false also
+// covers "not a tuple at all".
 func deriveTupleNode(ctx *Context, checker *shimchecker.Checker, t *shimchecker.Type, failure *Failure, s seen) (*Node, bool) {
 	if !shimchecker.IsTupleType(t) {
 		return nil, false
 	}
-	for _, slotFlags := range t.TargetTupleType().ElementFlags() {
-		if slotFlags != shimchecker.ElementFlagsRequired {
+	flags := t.TargetTupleType().ElementFlags()
+	restIndex := -1
+	for i, slotFlags := range flags {
+		switch slotFlags {
+		case shimchecker.ElementFlagsRequired, shimchecker.ElementFlagsOptional:
+			if restIndex != -1 {
+				return nil, false
+			}
+		case shimchecker.ElementFlagsRest:
+			if restIndex != -1 || i != len(flags)-1 {
+				return nil, false
+			}
+			restIndex = i
+		default:
 			return nil, false
 		}
 	}
 	slots := ctx.Checker.GetTypeArguments(t)
 	members := make([]*Node, 0, len(slots))
-	for _, slot := range slots {
+	var rest *Node
+	for i, slot := range slots {
 		member, ok := deriveNode(ctx, checker, slot, failure, s)
 		if !ok {
 			return nil, false
 		}
+		if i == restIndex {
+			rest = member
+			continue
+		}
 		members = append(members, member)
 	}
-	return &Node{Kind: KindTuple, Members: members}, true
+	return &Node{Kind: KindTuple, Members: members, TupleRest: rest}, true
 }
 
 // deriveObjectNode builds the Object node an anonymous record spells: its public,
@@ -394,9 +421,12 @@ func deriveUnionNode(ctx *Context, checker *shimchecker.Checker, t *shimchecker.
 }
 
 // deriveSignatureNode derives a Func/Ctor node from a whole signature list: one
-// parameter row per signature, in declaration order, each parameter independently
-// reclassified. The node carries ONE head — the function's product, or the
-// constructor's instance — read off the first signature.
+// row node per signature, in declaration order, each parameter independently
+// reclassified — a fixed argument list as a KindTuple, a REST parameter as the
+// open length its type states. The node carries ONE head — the function's
+// product, or the constructor's instance — read off the first signature; several
+// rows sit in one KindUnion, matching the union the runtime signatures slot
+// canonicalizes to.
 func deriveSignatureNode(
 	ctx *Context,
 	checker *shimchecker.Checker,
@@ -409,32 +439,75 @@ func deriveSignatureNode(
 	if !ok {
 		return nil, false
 	}
-	rows := make([][]*Node, 0, len(sigs))
+	rows := make([]*Node, 0, len(sigs))
 	for _, sig := range sigs {
-		params := shimchecker.Signature_parameters(sig)
-		spreadsLastParameter := shimchecker.Signature_hasRestParameter(sig)
-		row := make([]*Node, 0, len(params))
-		for i, param := range params {
-			paramType := checker.GetTypeOfSymbol(param)
-			if paramType == nil {
-				return nil, false
-			}
-			// A tuple-typed REST parameter stands for one argument per slot, so the
-			// single slot it occupies here would misstate the call's arity. Expanding
-			// it into one slot per element is a derivation of its own, not this one,
-			// so the whole signature refuses instead.
-			if spreadsLastParameter && i == len(params)-1 && shimchecker.IsTupleType(paramType) {
-				return nil, false
-			}
-			argNode, ok := deriveNode(ctx, checker, paramType, failure, s)
-			if !ok {
-				return nil, false
-			}
-			row = append(row, argNode)
+		row, ok := deriveSignatureRow(ctx, checker, sig, failure, s)
+		if !ok {
+			return nil, false
 		}
 		rows = append(rows, row)
 	}
-	return &Node{Kind: kind, Ret: ret, Rows: rows}, true
+	sigNode := rows[0]
+	if len(rows) > 1 {
+		sigNode = &Node{Kind: KindUnion, Members: rows}
+	}
+	return &Node{Kind: kind, Ret: ret, Sig: sigNode}, true
+}
+
+// deriveSignatureRow derives one signature's argument list as a single node: a
+// KindTuple over the fixed parameters, absorbing a trailing REST parameter as the
+// row's own open length — a list-typed rest contributes its element as
+// TupleRest (the list ITSELF when it is the whole signature), and a tuple-typed
+// rest splices its slots in as if they were written as parameters. A rest whose
+// type is neither a list nor a tuple has no arity this vocabulary can state, so
+// the signature refuses.
+func deriveSignatureRow(ctx *Context, checker *shimchecker.Checker, sig *shimchecker.Signature, failure *Failure, s seen) (*Node, bool) {
+	params := shimchecker.Signature_parameters(sig)
+	spreadsLastParameter := shimchecker.Signature_hasRestParameter(sig)
+	fixed := params
+	if spreadsLastParameter {
+		fixed = params[:len(params)-1]
+	}
+	members := make([]*Node, 0, len(params))
+	for _, param := range fixed {
+		paramType := checker.GetTypeOfSymbol(param)
+		if paramType == nil {
+			return nil, false
+		}
+		argNode, ok := deriveNode(ctx, checker, paramType, failure, s)
+		if !ok {
+			return nil, false
+		}
+		members = append(members, argNode)
+	}
+	if !spreadsLastParameter {
+		return &Node{Kind: KindTuple, Members: members}, true
+	}
+	restType := checker.GetTypeOfSymbol(params[len(params)-1])
+	if restType == nil {
+		return nil, false
+	}
+	rest, ok := deriveNode(ctx, checker, restType, failure, s)
+	if !ok {
+		return nil, false
+	}
+	switch {
+	case rest.Kind == KindTuple:
+		return &Node{Kind: KindTuple, Members: append(members, rest.Members...), TupleRest: rest.TupleRest}, true
+	case isListNode(rest):
+		if len(members) == 0 {
+			return rest, true
+		}
+		return &Node{Kind: KindTuple, Members: members, TupleRest: rest.Args[0]}, true
+	default:
+		return nil, false
+	}
+}
+
+// isListNode reports whether a node names one of the two list aggregates the
+// runtime canonicalizes to its own kind — a global `Array<E>` or `Iterable<E>`.
+func isListNode(n *Node) bool {
+	return n.Kind == KindNamed && n.From == "global" && (n.Name == "Array" || n.Name == "Iterable") && len(n.Args) == 1
 }
 
 // withUndefined qualifies a member with the `undefined` literal — the member
@@ -618,13 +691,20 @@ func renderNode(n *Node) (string, bool) {
 		sort.Strings(parts)
 		return strings.Join(parts, " | "), true
 	case KindTuple:
-		parts := make([]string, 0, len(n.Members))
+		parts := make([]string, 0, len(n.Members)+1)
 		for _, m := range n.Members {
 			s, ok := renderNode(m)
 			if !ok {
 				return "", false
 			}
 			parts = append(parts, s)
+		}
+		if n.TupleRest != nil {
+			s, ok := renderNode(n.TupleRest)
+			if !ok {
+				return "", false
+			}
+			parts = append(parts, "...Array<"+s+">")
 		}
 		return "[" + strings.Join(parts, ",") + "]", true
 	case KindGeneric:
