@@ -1,6 +1,8 @@
 # The standard lifetime model — design
 
-Status: specs ruled by the owner 2026-09-02. Architecture proposed below, awaiting signoff.
+Status: specs ruled by the owner 2026-09-02. Architecture pending the API surface push named below.
+Implementation follows as a cloud run briefed from this document, greenlit by the owner 2026-09-02
+on the condition that the architecture is complete first.
 
 ## Specs
 
@@ -65,4 +67,10 @@ document is silent, the reference decides.
 
 ## Architecture
 
-Pending the API shapes the types plan against.
+Pending. The types plan against the di API surface on `origin/feat-di-request-door` once the request
+door's current state is pushed there (asked of the run 2026-09-02, commit subject to contain "api
+surface"): middleware and request, hooks, addon shape, `ServiceProvider` construction, scope
+abstractions in di.core, registration lifetime, dispose protocol.
+
+The implementation must verify every behavior it matches against the reference source itself,
+not against this document's summary of it.
