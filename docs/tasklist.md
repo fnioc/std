@@ -964,7 +964,7 @@ primitives, primitives.extras or any external dependency lets two containers obs
 Two independent containers are fine; two loaded COPIES of primitives or di.core are impossible by
 design, and fail loud.
 
-## Signatures as a Type node (2026-09-01) — LANDED `d95a316c` + `3c256815`
+## Signatures as a Type node (2026-09-01) — LANDED `d95a316c` + `3c256815`, repairs in flight
 
 `Type[][]` is the one place a node's children are host arrays rather than nodes, which is what
 `adoptSignatures` and `signaturesKey` exist for. Making a signature list a node retires both, drops
@@ -1148,3 +1148,25 @@ FREE: 2, 3, 4, 12 and 13 can be placed anywhere consistent with the above.
 - [ ] `docs/notes.md` still names `Type.Signatures` and `optionalCount`; both are gone from the code.
 - [ ] `typeforhoist.Union`'s doc comment calls itself a "literal-union node" though it has long held
       general members. Pre-existing, surfaced by this pass.
+
+## Signatures slot — adversarial pass findings (2026-09-01)
+
+Eleven findings survived two-refuter votes; a Fable repair run is landing them. Two are real defects,
+and both are failures of a rule this design stated rather than incidental bugs.
+
+- [ ] **The one validating door has a second entrance.** The spec put the check in
+      `Type.signatures(rows)` alone, so `func`/`ctor`/`abstractCtor` could take the slot type and
+      validate nothing. But their PRE-BUILT-SLOT overloads, `toSignatureSlot`'s non-array branch and
+      `Type.adopt` all accept a union of non-row members, so an invalid callable interns, stringifies
+      to a form the parser cannot read, and `Plan.ts`'s rest handling would spread it. The lesson
+      generalises: an overload that accepts an already-built value is a way past whatever door built
+      it, and "validate once, let the type carry the guarantee" only holds if the type is the ONLY
+      way in.
+- [ ] **Two spellings for one type.** `Type.tuple({ members: [], rest: X })` used as a row and a
+      `ListType` row stringify identically, so `Type.from(Type.stringify(a)) === b` — the round-trip
+      conflates two distinct nodes. RULED: refuse the rest-only tuple at construction, the same
+      discipline `[]` versus `[[]]` already gets. No collapse, no canonicalisation between them.
+- [ ] A zero-argument memo miss in `Engine.boundArgTypes` — the interning-for-identity rework did not
+      cover the empty-signature case.
+- [ ] Two doc inaccuracies, a history-narrating comment in `typeforhoist`, and four shapes the blind
+      suite does not cover.
