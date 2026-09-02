@@ -1374,8 +1374,9 @@ Exported from di.core:
          ask goes with it. The seeded control registrations are two: `IServiceProvider` and
          `ControlService`. The word "roster" is banned — it is the registry; sweep it from comments.
 -
-  7. [ ] `Request.active` — the public readonly active set beside `activate(handle): this`.
-         Recommend yes.
+  7. [x] RULED 2026-09-02 — NOT public. `private readonly active: Handle[]` (TS `private`, not
+         `#`), so the engine and tests reach it by element access, `request['active']`. Inspection of
+         an ask is what the hooks are for.
 
 Behaviour:
 
