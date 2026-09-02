@@ -260,7 +260,8 @@ class TypeParser {
 
   /**
    * A tuple's slot list: fixed members, then at most one rest (`...List<T>`) slot, which must
-   * come last and stores the list's element.
+   * come last, follow at least one fixed member — a tuple that is nothing but a rest is the list
+   * itself, whose token is the list's own spelling — and stores the list's element.
    */
   #tuple(): TupleType {
     const members: Type[] = [];
@@ -268,6 +269,12 @@ class TypeParser {
     if (!this.#take(']')) {
       for (;;) {
         if (this.#take('...')) {
+          if (!members.length) {
+            throw this.#error(
+              this.#lexed[this.#index - 1]!.position,
+              'a fixed slot before the rest — a tuple that is nothing but a rest is the list itself',
+            );
+          }
           rest = this.#restList().element;
           this.#expect(']');
           break;

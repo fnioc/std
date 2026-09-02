@@ -45,12 +45,16 @@ describe('Type.from', () => {
 
   test("reads a tuple with a trailing rest slot, which stores the list's element", () => {
     expect(Type.from('[app:A, ...Array<app:B>]')).toBe(Type.tuple({ members: [A], rest: B }));
-    expect(Type.from('[...Array<app:B>]')).toBe(Type.tuple({ members: [], rest: B }));
-    expect(Type.from('[...Iterable<app:B>]')).toBe(Type.tuple({ members: [], rest: B }));
+    expect(Type.from('[app:A, ...Iterable<app:B>]')).toBe(Type.tuple({ members: [A], rest: B }));
   });
 
   test('a rest slot draws from a list', () => {
     expect(() => Type.from('[app:A, ...app:B]')).toThrow(TypeParseError);
+  });
+
+  test('a tuple that is nothing but a rest is malformed — that type is the list, spelled as itself', () => {
+    expect(() => Type.from('[...Array<app:B>]')).toThrow(TypeParseError);
+    expect(() => Type.from('[...Iterable<app:B>]')).toThrow(TypeParseError);
   });
 
   test('reads tuples, generic holes and literals', () => {
@@ -202,6 +206,17 @@ describe('malformed tokens', () => {
 });
 
 describe('round trip', () => {
+  test('every open-row shape reads back as the identical node', () => {
+    const listRow = Type.func(A, Type.signatures([Type.array(B)]));
+    expect(Type.from(Type.stringify(listRow))).toBe(listRow);
+
+    const prefixRestRow = Type.func(A, Type.signatures([Type.tuple({ members: [A], rest: B })]));
+    expect(Type.from(Type.stringify(prefixRestRow))).toBe(prefixRestRow);
+
+    const both = Type.func(A, Type.signatures([Type.array(B), Type.tuple({ members: [A], rest: B })]));
+    expect(Type.from(Type.stringify(both))).toBe(both);
+  });
+
   test('every generated type reads back from its own spelling', () => {
     for (let seed = 1; seed <= 2000; seed++) {
       const original = generate(makeRandom(seed), 4);
@@ -306,7 +321,8 @@ function generate(random: () => number, depth: number): Type {
       return Type.intersection(...Array.from({ length: 2 + many(2) }, child));
     }
     case 'tuple': {
-      return Type.tuple({ members: children(3), rest: many(1) ? child() : undefined });
+      const members = children(3);
+      return Type.tuple({ members, rest: members.length && many(1) ? child() : undefined });
     }
     case 'func': {
       return Type.func({ return: child(), signatures: signatures() });

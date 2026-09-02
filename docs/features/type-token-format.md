@@ -202,7 +202,9 @@ precedence, so a nested arrow needs no extra parentheses:
 An ordered list of member types is comma-separated inside square brackets. At most one slot,
 written last, may be a trailing rest: `...` followed by the list the open length draws from —
 either list spelling reads, and the tuple stores the list's element, so `Type.stringify` always
-re-emits an `Array` spelling. A slot that may be absent carries `undefined` in its own type, the
+re-emits an `Array` spelling. A rest needs at least one fixed slot before it: a tuple that is
+nothing but a rest is the list itself, so that type's token is the list's own spelling and a
+bracketed one is malformed. A slot that may be absent carries `undefined` in its own type, the
 same as an optional object member.
 
 ```
@@ -284,10 +286,10 @@ primary      := literal
               | "[" tuple "]"
               | "{" members "}"
 signatures   := signature (";" signature)*
-signature    := (slot ("," slot)*)?
+signature    := (type ("," type)* ("," rest)? | rest)?
 members      := (segment ":" type (";" segment ":" type)*)? "}"
-tuple        := (slot ("," slot)*)?
-slot         := type | "..." type
+tuple        := (type ("," type)* ("," rest)?)?
+rest         := "..." type
 list(type)   := (type ("," type)*)?
 name         := segment (":" segment genericArgs?)?
 genericArgs  := "<" list(type) ">"
@@ -298,3 +300,6 @@ segment      := plain-identifier | "\" escaped-body
 `name` covers both forms: a bare segment names a global type (or, unescaped and reserved, one of
 the readings in [Reserved names](#reserved-names)); `segment ":" segment` names an import, or —
 when the first segment is exactly `global` — the same global type its bare name would.
+
+A `rest` slot's type must read as a list — `Array<E>` or `Iterable<E>`, however that list is
+spelled; `...` in front of anything else is malformed.

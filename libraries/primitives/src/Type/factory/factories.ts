@@ -38,13 +38,46 @@ export function intersection(members: readonly Type[]): Type {
   return composite('intersection', members);
 }
 
+/**
+ * @throws TypeError - when the tuple would be nothing but a rest slot; that type is the list
+ * itself and spells as the list.
+ */
 export function tuple(members: readonly Type[], rest: Type | undefined): TupleType {
   const slots = members.map(adopt);
   const restSlot = rest === undefined ? undefined : adopt(rest);
+  if (restSlot !== undefined && !slots.length) {
+    throw new TypeError(`a tuple that is nothing but a rest is the list itself — spell it ${stringifyType(array(restSlot))}`);
+  }
   return intern(
     `tuple\0${restSlot === undefined ? '' : id(restSlot)}\0${slots.map(id).join(',')}`,
     () => node<TupleType>({ kind: 'tuple', members: slots, rest: restSlot }),
   );
+}
+
+/**
+ * One signature row: a {@link TupleType} (a fixed argument list, open-length with a rest slot) or
+ * a {@link ListType} (a signature that is entirely a rest).
+ *
+ * @throws TypeError - when the row is neither.
+ */
+function checkSignatureRow(row: Type): void {
+  if (row.kind !== 'tuple' && row.kind !== 'array' && row.kind !== 'iterable') {
+    throw new TypeError(`a signature row is a tuple or a list — got ${stringifyType(row)}`);
+  }
+}
+
+/**
+ * The signatures slot a callable factory receives, adopted and checked: a lone node is one row, a
+ * union is one row per member, and a slot carrying anything else is refused before it interns.
+ *
+ * @throws TypeError - when the slot, or a member of its union, is not a signature row.
+ */
+function adoptSignatureSlot(slot: TupleType | ListType | UnionType): TupleType | ListType | UnionType {
+  const adopted = adopt(slot as Type);
+  for (const row of adopted.kind === 'union' ? adopted.members : [adopted]) {
+    checkSignatureRow(row);
+  }
+  return adopted as TupleType | ListType | UnionType;
 }
 
 /**
@@ -65,9 +98,7 @@ export function signatures(rows: readonly (TupleType | ListType)[]): TupleType |
   }
   const slots = rows.map(row => adopt(row));
   for (const slot of slots) {
-    if (slot.kind !== 'tuple' && slot.kind !== 'array' && slot.kind !== 'iterable') {
-      throw new TypeError(`a signature row is a tuple or a list — got ${stringifyType(slot)}`);
-    }
+    checkSignatureRow(slot);
   }
   return union(slots) as TupleType | ListType | UnionType;
 }
@@ -87,7 +118,7 @@ export function toSignatureSlot(input: TupleType | ListType | UnionType | readon
 
 export function func(returns: Type, slot: TupleType | ListType | UnionType): FunctionType {
   const result = adopt(returns);
-  const adopted = adopt(slot as Type) as TupleType | ListType | UnionType;
+  const adopted = adoptSignatureSlot(slot);
   return intern(
     `func\0${id(result)}\0${id(adopted)}`,
     () => node<FunctionType>({ kind: 'func', signatures: adopted, return: result }),
@@ -96,7 +127,7 @@ export function func(returns: Type, slot: TupleType | ListType | UnionType): Fun
 
 export function ctor(instance: Type, slot: TupleType | ListType | UnionType): ConstructorType {
   const head = adopt(instance);
-  const adopted = adopt(slot as Type) as TupleType | ListType | UnionType;
+  const adopted = adoptSignatureSlot(slot);
   return intern(
     `ctor\0${id(head)}\0${id(adopted)}`,
     () => node<ConstructorType>({ kind: 'ctor', signatures: adopted, instance: head }),
@@ -105,7 +136,7 @@ export function ctor(instance: Type, slot: TupleType | ListType | UnionType): Co
 
 export function abstractCtor(instance: Type, slot: TupleType | ListType | UnionType): AbstractConstructorType {
   const head = adopt(instance);
-  const adopted = adopt(slot as Type) as TupleType | ListType | UnionType;
+  const adopted = adoptSignatureSlot(slot);
   return intern(
     `abstract-ctor\0${id(head)}\0${id(adopted)}`,
     () => node<AbstractConstructorType>({ kind: 'abstract-ctor', signatures: adopted, instance: head }),

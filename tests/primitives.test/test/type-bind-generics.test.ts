@@ -140,11 +140,11 @@ describe('children pairwise', () => {
   });
 
   test("a tuple's rest slot binds like any other position, and openness must agree", () => {
-    const withRest = Type.tuple({ members: [], rest: T });
-    const generics = expectBindings(withRest, Type.tuple({ members: [], rest: A }));
+    const withRest = Type.tuple({ members: [B], rest: T });
+    const generics = expectBindings(withRest, Type.tuple({ members: [B], rest: A }));
     expect(generics.T).toBe(A);
-    expect(matches(withRest, Type.tuple())).toBe(false);
-    expect(matches(Type.tuple(), Type.tuple({ members: [], rest: A }))).toBe(false);
+    expect(matches(withRest, Type.tuple(B))).toBe(false);
+    expect(matches(Type.tuple(B), Type.tuple({ members: [B], rest: A }))).toBe(false);
   });
 
   test('union members pair off in canonical order, same count required', () => {

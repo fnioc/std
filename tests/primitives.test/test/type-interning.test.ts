@@ -49,6 +49,10 @@ describe('one object per type', () => {
     expect(rest).not.toBe(Type.tuple(A));
     expect(Type.tuple({ members: [A], rest: B })).toBe(rest);
   });
+
+  test('a tuple that is nothing but a rest is refused — that type is the list itself', () => {
+    expect(() => Type.tuple({ members: [], rest: B })).toThrow(/the list itself — spell it Array<app:B>/);
+  });
 });
 
 describe('canonical form', () => {
@@ -252,6 +256,31 @@ describe('a callable factory takes its parameter signatures whole', () => {
 
   test('an empty rows array is refused — a callable answers to at least one call', () => {
     expect(() => Type.func(A, [])).toThrow(/at least one/);
+  });
+});
+
+describe('every door into a signatures slot runs the row check', () => {
+  test('a pre-built union slot with a non-row member is refused', () => {
+    const slot = Type.union(Type.tuple(A), B);
+    if (slot.kind !== 'union') {
+      throw new Error('the probe union collapsed');
+    }
+    expect(() => Type.ctor(A, slot)).toThrow(/a signature row is a tuple or a list — got app:B/);
+    expect(() => Type.abstractCtor(A, slot)).toThrow(/a signature row is a tuple or a list — got app:B/);
+    expect(() => Type.func(A, slot)).toThrow(/a signature row is a tuple or a list — got app:B/);
+  });
+
+  test('a pre-built slot that is no row at all is refused', () => {
+    expect(() => Type.func(A, B as never)).toThrow(/a signature row is a tuple or a list — got app:B/);
+  });
+
+  test('a revived tree with a malformed signatures slot is refused', () => {
+    const revived = {
+      kind: 'func',
+      return: { kind: 'imported', name: 'A', from: 'app', genericArgs: [] },
+      signatures: { kind: 'global', name: 'string', genericArgs: [] },
+    };
+    expect(() => Type.adopt(revived as never)).toThrow(/a signature row is a tuple or a list — got string/);
   });
 });
 

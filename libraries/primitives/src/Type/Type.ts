@@ -164,11 +164,13 @@ export namespace Type {
    *
    * @example
    * ```ts
-   * Type.ctor(box, [[string]]);                               // new (string) => box
-   * Type.ctor(box, [[string], []]);                           // new (; string) => box
-   * Type.ctor(box, Type.signatures([Type.tuple(string)]));    // same, slot pre-built
+   * Type.ctor(box, [[string]]);                                             // new (string) => box
+   * Type.ctor(box, [[string], []]);                                         // new (; string) => box
+   * Type.ctor(box, Type.signatures([Type.tuple(string), Type.tuple()]));    // same, slot pre-built
    * Type.ctor({ instance: box, signatures: Type.signatures([Type.tuple()]) });
    * ```
+   *
+   * @throws TypeError - when a pre-built slot carries a row that is neither a tuple nor a list.
    */
   export function ctor(instance: Type, signatures: TupleType | ListType | UnionType): ConstructorType;
   export function ctor(instance: Type, signatures: readonly (readonly Type[])[]): ConstructorType;
@@ -191,6 +193,8 @@ export namespace Type {
    * Type.abstractCtor(box, Type.signatures([Type.tuple()]));  // same, slot pre-built
    * Type.abstractCtor({ instance: box, signatures: Type.signatures([Type.tuple()]) });
    * ```
+   *
+   * @throws TypeError - when a pre-built slot carries a row that is neither a tuple nor a list.
    */
   export function abstractCtor(instance: Type, signatures: TupleType | ListType | UnionType): AbstractConstructorType;
   export function abstractCtor(instance: Type, signatures: readonly (readonly Type[])[]): AbstractConstructorType;
@@ -233,11 +237,13 @@ export namespace Type {
    *
    * @example
    * ```ts
-   * Type.func(box, [[string]]);                             // (string) => box
-   * Type.func(box, [[string], []]);                         // (; string) => box
-   * Type.func(box, Type.signatures([Type.tuple(string)]));  // same, slot pre-built
+   * Type.func(box, [[string]]);                                             // (string) => box
+   * Type.func(box, [[string], []]);                                         // (; string) => box
+   * Type.func(box, Type.signatures([Type.tuple(string), Type.tuple()]));    // same, slot pre-built
    * Type.func({ return: box, signatures: Type.signatures([Type.tuple()]) });
    * ```
+   *
+   * @throws TypeError - when a pre-built slot carries a row that is neither a tuple nor a list.
    */
   export function func(returns: Type, signatures: TupleType | ListType | UnionType): FunctionType;
   export function func(returns: Type, signatures: readonly (readonly Type[])[]): FunctionType;
@@ -359,6 +365,9 @@ export namespace Type {
    * Type.tuple(a, b);                          // [a, b]
    * Type.tuple({ members: [a], rest: b });     // [a, ...b[]]
    * ```
+   *
+   * @throws TypeError - when the members are empty and a rest is given; a tuple that is nothing
+   * but a rest is the list itself, spelled `Type.array(rest)`.
    */
   export function tuple(...types: readonly Type[]): TupleType;
   export function tuple(spec: Spec<TupleType>): TupleType;
