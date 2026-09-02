@@ -1233,12 +1233,36 @@ later lanes branch from the previous lane's tip so they stack, and rebase once t
   parsing literally into the adopt visitor (ruled above).
 
 Owner notes on the later steps: 19's answer is already in effect (the model implementations are
-deleted; the standard model is written clean-room). 17: scope factories wrap on a NEW middleware
-layer where install-time hooks may be set up; for volatile request-time hooks, today uninstalled
-through a disposable, the owner is considering attaching them to the `Request` instead — Claude's
-assessment is in the conversation of 2026-09-02 and favours it: two hook lifetimes (chain-time via
-the middleware layer, ask-time via the request attachment) and no third disposable-window kind; the
-engine reads the attachment once at the door and threads it, never re-folding a chain per ask.
+deleted; the standard model is written clean-room).
+
+### Hooks ride the request — ruled 2026-09-02, for phase 2
+
+- The requirement: a hook executes ONLY for asks that flowed through its middleware. Parallel scopes
+  are a fork in the chain — two live layers over one base chain — and a request through one must
+  never run the other's hooks. Only the ask itself knows which layers it traversed, so the hooks in
+  effect are a property of the `Request`. ALL levels: the engine holds no hook state, there is no
+  registration and nothing to unregister; `useHooks`, the disposable window, `Control<IEngineHooks>`
+  and `IEngineHooks` go (§208/§209 leave the log at step 9).
+- A latebound is created inside a resolve and INVOKED later, when no traversal is open; what it
+  captured at creation — the request — is all it has, so its hooks are the minting traversal's.
+  An activation window (`using _ = handle.activate()`) is not wrong — the engine is synchronous, so
+  a window is ask-scoped — but at invocation it would have to re-open from the captured request,
+  which then must carry the hooks anyway; the engine table adds a leaked handle per orphaned layer
+  and nothing else.
+- The hooks member is a NAMED member of `Request`, not symbol-keyed: the symbol rule keeps ADDON
+  vocabulary off the core type, and a hook bundle is di.core's own vocabulary.
+- Allocation plan (one plan, not options): the behavior is a CLASS instantiated once per layer in
+  the middleware factory at fold (hook bodies on the prototype, closed-over state in `#` fields);
+  handler-vs-trailing-`next` arity is read once when attached, never at dispatch; the per-ask link
+  IS the request substitution — the layer answers `Object.create(request, { hooks: … })`, so the
+  request is the linked list, every attachment above still reads through the prototype chain, and
+  the engine collects the hooks in effect by walking `getPrototypeOf` from the request at the door;
+  per-ask hook state lives in the engine's existing per-ask states array sized from that walk; the
+  dispatch loop allocates nothing. No layer precomputes a merged hook list — it cannot know which
+  inner layers attach on the way down, and a cache of that shape is wrong for forks.
+- Install-time WORK still happens once, in the factory closure; only putting hooks in effect moves
+  to the request. Base-chain layers see every ask because every scope wraps outside them, not by
+  privilege.
 
 ## Session — di builder reshape (2026-09-01, branch `feat-di-builder-spec`, worktree `+feat-di-builder-spec`)
 
