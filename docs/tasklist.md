@@ -1446,3 +1446,18 @@ contract forces.
 - **Docs sweep left alone, deliberately:** §204, §206, §207, §210, §211, §219, §221, §222 and
   §215's model-chronicle tail describe the owner-ruled Starfish/useHooks surface that step 9
   deleted; the owner decides whether they leave the log or are rewritten.
+
+## Two questions the owner has not answered (2026-09-02)
+
+- [ ] **Beneath the engine.** The ruling says user extensibility may compose below the engine, but
+      `build()` folds every addon above it and the engine's `next` reaches only the terminus, so
+      there is no position to compose into. The builder review resolved it in DOCS ("beneath the
+      engine only the terminus stands"). Claude's pick: LEAVE — the mechanism (the engine calls
+      `next`) exists; the addon surface that places something beneath it is a later addition when a
+      real fallback consumer exists. Alternative: give addons a position now. One word.
+- [ ] **`Registry.getMatches` and `hasMatch`.** The owner asked for `getMatches` to use `hasMatch`
+      in its body and `hasMatch` to use `bindGenerics`; the second half is done. `getMatches` needs
+      the generics `bindGenerics` returns and `hasMatch` answers only a boolean, so the first half
+      means binding twice: a per-registration `hasMatch(registration, address)` used by both, with
+      `getMatches` binding again for the generics on a hit — or leave `getMatches` on
+      `bindGenerics` as it is. One word: TWICE or LEAVE.
