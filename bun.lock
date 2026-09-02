@@ -1026,6 +1026,7 @@
       "name": "@rhombus-std/typefor.ttsc.e2e",
       "version": "0.0.0",
       "devDependencies": {
+        "@rhombus-std/primitives": "workspace:*",
         "@rhombus-std/primitives.extras": "workspace:*",
         "@ttsc/unplugin": "^0.18.1",
         "ttsc": "^0.18.1",

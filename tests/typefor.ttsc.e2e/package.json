@@ -9,6 +9,7 @@
     "test:e2e": "bun test"
   },
   "devDependencies": {
+    "@rhombus-std/primitives": "workspace:*",
     "@rhombus-std/primitives.extras": "workspace:*",
     "@ttsc/unplugin": "^0.18.1",
     "ttsc": "^0.18.1",

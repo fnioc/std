@@ -112,6 +112,12 @@ export declare function optParamFn(a: IA, b?: IB): IC;
 export declare function restParamFn(a: IA, ...rest: IB[]): IC;
 export declare function allRestFn(...rest: IB[]): IC;
 
+export declare class DerivedWidget extends Widget {}
+export declare class PlainWidget {}
+export declare function equalLenFn(a: IA): IC;
+export declare function equalLenFn(b: IB): IC;
+export declare function optPrefixRestFn(a?: IA, ...rest: IB[]): IC;
+
 type Cond<T> = T extends string ? IA : IB;
 type ElementOf<T> = T extends readonly (infer E)[] ? E : never;
 
@@ -163,6 +169,13 @@ export const optParamFunc = typefor<typeof optParamFn>();
 export const restParamFunc = typefor<typeof restParamFn>();
 export const allRestFunc = typefor<typeof allRestFn>();
 
+// A constructor reached by inheritance, a class with no constructor at all,
+// two overloads of EQUAL length, and an optional prefix before a rest.
+export const inheritedCtor = typefor<typeof DerivedWidget>();
+export const zeroParamCtor = typefor<typeof PlainWidget>();
+export const equalLenFunc = typefor<typeof equalLenFn>();
+export const optPrefixRestFunc = typefor<typeof optPrefixRestFn>();
+
 // Every literal kind, and the true/false pair TypeScript itself widens back to
 // \`boolean\` before this derivation ever sees a union.
 export const strLit = typefor<"dev">();
@@ -191,8 +204,12 @@ export const inferResolved = typefor<ElementOf<readonly IA[]>>();
 `;
 
 let app = '';
+// The runtime the blind shapes' emitted expressions evaluate against — the same
+// primitives the sandbox's primitives.extras link resolves to.
+let Type: typeof import('@rhombus-std/primitives').Type;
 
-beforeAll(() => {
+beforeAll(async () => {
+  Type = (await import('@rhombus-std/primitives')).Type;
   if (!toolchainReady) {
     return;
   }
@@ -373,5 +390,57 @@ describe.skipIf(!toolchainReady)('typefor compositional shapes', () => {
   test('closed type-level computation that LOSES its alias — a conditional type and an infer extraction — resolves all the way to the concrete shape underneath', () => {
     expect(app).toContain(`condResolved = ${IA}`);
     expect(app).toContain(`inferResolved = ${IA}`);
+  });
+});
+
+/** The expression `name` is initialized with in the emitted app. */
+function emitted(name: string): string {
+  const match = new RegExp(`const ${name} = (.*);`).exec(app);
+  if (match === null) {
+    throw new Error(`${name} is not a const of the emitted app:\n${app}`);
+  }
+  return match[1]!;
+}
+
+/** The `Type` node the emitted factory text builds when run. */
+function evaluate(expression: string): unknown {
+  return new Function('Type', `return ${expression};`)(Type);
+}
+
+describe.skipIf(!toolchainReady)('blind shapes: the derived node is the hand-built one, arity and all', () => {
+  const imported = (name: string) => Type.imported(name, `${PKG_NAME}/private/app`);
+
+  test('a class whose constructor is inherited carries the base rows under its own name', () => {
+    const hand = Type.ctor(imported('DerivedWidget'), [[imported('IA')]]);
+    expect(evaluate(emitted('inheritedCtor'))).toBe(hand);
+    // `new DerivedWidget(a)` — the one hand-written call is one argument.
+    expect(Type.signatureRows(hand.signatures)).toEqual([Type.tuple(imported('IA'))]);
+  });
+
+  test('a class with no constructor at all answers one empty row', () => {
+    const hand = Type.ctor(imported('PlainWidget'), [[]]);
+    expect(evaluate(emitted('zeroParamCtor'))).toBe(hand);
+    // `new PlainWidget()` — the hand-written call takes nothing.
+    expect(Type.signatureRows(hand.signatures)).toEqual([Type.tuple()]);
+  });
+
+  test('equal-length overloads keep one row apiece', () => {
+    const hand = Type.func(imported('IC'), [[imported('IA')], [imported('IB')]]);
+    expect(evaluate(emitted('equalLenFunc'))).toBe(hand);
+    // Both hand-written calls are one argument, so both rows are length one.
+    expect(Type.signatureRows(hand.signatures)).toEqual([Type.tuple(imported('IA')), Type.tuple(imported('IB'))]);
+  });
+
+  test('an optional prefix and a trailing rest share one open row', () => {
+    const hand = Type.func(
+      imported('IC'),
+      Type.tuple({ members: [Type.union(imported('IA'), Type.typeLiteral(undefined))], rest: imported('IB') }),
+    );
+    expect(evaluate(emitted('optPrefixRestFunc'))).toBe(hand);
+    // `optPrefixRestFn()`, `(a)` and `(a, b, b)` are all hand-written calls: one
+    // fixed slot admitting undefined, then the open length.
+    expect(Type.signatureRows(hand.signatures)).toEqual([
+      Type.tuple({ members: [Type.union(imported('IA'), Type.typeLiteral(undefined))], rest: imported('IB') }),
+    ]);
   });
 });
