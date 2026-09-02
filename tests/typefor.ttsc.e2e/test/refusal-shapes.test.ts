@@ -8,8 +8,9 @@ import { basename, join, resolve } from 'node:path';
 // twin, covering shapes that are not composed from other types but reached only
 // through unbounded type-level COMPUTATION — an index signature (however it is
 // spelled: a literal one, or a mapped type over an unbounded key set), a
-// template literal type over a non-literal placeholder, and a structural type
-// that loses its name and self-references. Each is expected to REFUSE rather
+// template literal type over a non-literal placeholder, a structural type
+// that loses its name and self-references, and a generic class constructor
+// reached with its type parameter left open. Each is expected to REFUSE rather
 // than derive: `libraries/primitives/src/Type/Type.ts`'s `ObjectType.members`
 // is a finite Record keyed by known names, its `TypeLiteralType` carries exactly
 // one concrete value, and every `Type` node is a finite tree — none of the four
@@ -95,6 +96,13 @@ export const templateLit = typefor<Greeting>();
 // genuinely anonymous record whose own member is the very same type again.
 type Cond<T> = T extends never ? never : { readonly self: Cond<T> };
 export const selfRefStructural = typefor<Cond<string>>();
+
+// A generic class's constructor with its type parameter left open: T is bound
+// only at a use site, so the rows hold an unresolved parameter — a hole is
+// spelled explicitly with \`Generic<"T">\` (see language-shapes.test.ts's
+// genericHole), never minted from an unbound one.
+export declare class SelfSeededWidget<T> { constructor(seed: T, ...more: T[]); }
+export const openGenericCtor = typefor<typeof SelfSeededWidget>();
 `;
 
 interface BuildResult {
@@ -193,6 +201,12 @@ describe.skipIf(!toolchainReady)('typefor refusal shapes', () => {
     // with no cycle guard would hang spawnSync itself, failing beforeAll before
     // this test ever runs.
     const outcome = outcomeFor('selfRefStructural');
+    expect(outcome.lowered).toBe(false);
+    expect(diagnostics().length).toBeGreaterThan(0);
+  });
+
+  test('a generic class constructor with its type parameter left open refuses rather than minting a hole', () => {
+    const outcome = outcomeFor('openGenericCtor');
     expect(outcome.lowered).toBe(false);
     expect(diagnostics().length).toBeGreaterThan(0);
   });

@@ -118,6 +118,19 @@ export declare function equalLenFn(a: IA): IC;
 export declare function equalLenFn(b: IB): IC;
 export declare function optPrefixRestFn(a?: IA, ...rest: IB[]): IC;
 
+export declare class OptPrefixRestWidget { constructor(a?: IA, ...rest: IB[]); }
+export declare class TupleUnionWidget { constructor(pair: [IA] | [IB, IC]); }
+export declare class RestCallbackWidget { constructor(make: (a: IA, ...rest: IB[]) => IC); }
+export declare class RestOnlyOverloadWidget {
+  constructor(a: IA);
+  constructor(...rest: IB[]);
+}
+export declare class HiddenWidget { private constructor(a: IA); }
+export declare class ReadonlyPairWidget { constructor(pair: readonly [IA, IB]); }
+export class DefaultedWidget { constructor(readonly a: IA = {}) {} }
+type SeedThenMore = [IA, ...IB[]];
+export declare class AliasSeededWidget { constructor(seed: SeedThenMore); }
+
 type Cond<T> = T extends string ? IA : IB;
 type ElementOf<T> = T extends readonly (infer E)[] ? E : never;
 
@@ -175,6 +188,21 @@ export const inheritedCtor = typefor<typeof DerivedWidget>();
 export const zeroParamCtor = typefor<typeof PlainWidget>();
 export const equalLenFunc = typefor<typeof equalLenFn>();
 export const optPrefixRestFunc = typefor<typeof optPrefixRestFn>();
+
+// Constructor rows a reader could mis-derive: an optional-only prefix before a
+// rest, a parameter that IS a union of tuples, a parameter carrying its own
+// rest-bearing function type, an overload set whose second overload is nothing
+// but a rest, a private constructor, a readonly tuple parameter, a
+// default-valued parameter, and a parameter whose tuple-with-rest type is
+// reached through an alias.
+export const optPrefixRestCtor = typefor<typeof OptPrefixRestWidget>();
+export const tupleUnionCtor = typefor<typeof TupleUnionWidget>();
+export const restCallbackCtor = typefor<typeof RestCallbackWidget>();
+export const restOnlyOverloadCtor = typefor<typeof RestOnlyOverloadWidget>();
+export const hiddenCtor = typefor<typeof HiddenWidget>();
+export const readonlyPairCtor = typefor<typeof ReadonlyPairWidget>();
+export const defaultedCtor = typefor<typeof DefaultedWidget>();
+export const aliasSeededCtor = typefor<typeof AliasSeededWidget>();
 
 // Every literal kind, and the true/false pair TypeScript itself widens back to
 // \`boolean\` before this derivation ever sees a union.
@@ -442,5 +470,88 @@ describe.skipIf(!toolchainReady)('blind shapes: the derived node is the hand-bui
     expect(Type.signatureRows(hand.signatures)).toEqual([
       Type.tuple({ members: [Type.union(imported('IA'), Type.typeLiteral(undefined))], rest: imported('IB') }),
     ]);
+  });
+
+  test('an optional-only prefix and a trailing rest on a constructor share one open row', () => {
+    const hand = Type.ctor(
+      imported('OptPrefixRestWidget'),
+      Type.tuple({ members: [Type.union(imported('IA'), Type.typeLiteral(undefined))], rest: imported('IB') }),
+    );
+    expect(evaluate(emitted('optPrefixRestCtor'))).toBe(hand);
+    // `new OptPrefixRestWidget()`, `(a)` and `(a, b, b)` are all hand-written
+    // calls: one fixed slot admitting undefined, then the open length.
+    expect(Type.signatureRows(hand.signatures)).toEqual([
+      Type.tuple({ members: [Type.union(imported('IA'), Type.typeLiteral(undefined))], rest: imported('IB') }),
+    ]);
+  });
+
+  test('a parameter that is a union of tuple types stays one fixed slot, never a second row', () => {
+    const pairType = Type.union(Type.tuple(imported('IA')), Type.tuple(imported('IB'), imported('IC')));
+    const hand = Type.ctor(imported('TupleUnionWidget'), [[pairType]]);
+    expect(evaluate(emitted('tupleUnionCtor'))).toBe(hand);
+    // `new TupleUnionWidget([a])` — the one hand-written call is one argument.
+    expect(Type.signatureRows(hand.signatures)).toEqual([Type.tuple(pairType)]);
+  });
+
+  test("a parameter carrying its own rest-bearing function type keeps that rest inside the parameter's node", () => {
+    const makeType = Type.func(
+      imported('IC'),
+      Type.tuple({ members: [imported('IA')], rest: imported('IB') }),
+    );
+    const hand = Type.ctor(imported('RestCallbackWidget'), [[makeType]]);
+    expect(evaluate(emitted('restCallbackCtor'))).toBe(hand);
+    // `new RestCallbackWidget(f)` — the one hand-written call is one argument.
+    expect(Type.signatureRows(hand.signatures)).toEqual([Type.tuple(makeType)]);
+  });
+
+  test('an overload set pairing a fixed row with a rest-only one keeps the fixed tuple and the bare list side by side', () => {
+    const hand = Type.ctor(
+      imported('RestOnlyOverloadWidget'),
+      Type.signatures([Type.tuple(imported('IA')), Type.array(imported('IB'))]),
+    );
+    expect(evaluate(emitted('restOnlyOverloadCtor'))).toBe(hand);
+    // `new RestOnlyOverloadWidget(a)` and `(b, b, b)` are the hand-written
+    // calls: one fixed one-argument row, one open row of any length.
+    expect(Type.signatureRows(hand.signatures)).toEqual([Type.tuple(imported('IA')), Type.array(imported('IB'))]);
+  });
+
+  test('a private constructor derives its declared row — accessibility is not part of the shape', () => {
+    const hand = Type.ctor(imported('HiddenWidget'), [[imported('IA')]]);
+    expect(evaluate(emitted('hiddenCtor'))).toBe(hand);
+    // No call site outside the class can spell `new HiddenWidget(a)`, but the
+    // declared row is still the one the class's own factory would hand-write.
+    expect(Type.signatureRows(hand.signatures)).toEqual([Type.tuple(imported('IA'))]);
+  });
+
+  test('a readonly tuple parameter derives the same tuple node its mutable spelling does', () => {
+    const hand = Type.ctor(imported('ReadonlyPairWidget'), [[Type.tuple(imported('IA'), imported('IB'))]]);
+    expect(evaluate(emitted('readonlyPairCtor'))).toBe(hand);
+    // `new ReadonlyPairWidget([a, b])` — the one hand-written call is one argument.
+    expect(Type.signatureRows(hand.signatures)).toEqual([Type.tuple(Type.tuple(imported('IA'), imported('IB')))]);
+  });
+
+  // FINDING: the derivation drops the caller-facing optionality a default value
+  // creates. `new DefaultedWidget()` and `new DefaultedWidget(undefined)` are
+  // both legal hand-written calls — `typeof DefaultedWidget` is
+  // `new (a?: IA) => DefaultedWidget` — so the slot must admit undefined the
+  // way an explicit `a?: IA` does, yet the emitted row is a bare required
+  // `[[IA]]`.
+  test.todo('a default-valued parameter is optional to its callers, so its slot admits undefined', () => {
+    const hand = Type.ctor(
+      imported('DefaultedWidget'),
+      [[Type.union(imported('IA'), Type.typeLiteral(undefined))]],
+    );
+    expect(evaluate(emitted('defaultedCtor'))).toBe(hand);
+    expect(Type.signatureRows(hand.signatures)).toEqual([
+      Type.tuple(Type.union(imported('IA'), Type.typeLiteral(undefined))),
+    ]);
+  });
+
+  test('a parameter reached through a tuple alias keeps the alias name — the rest stays inside the named type', () => {
+    const hand = Type.ctor(imported('AliasSeededWidget'), [[imported('SeedThenMore')]]);
+    expect(evaluate(emitted('aliasSeededCtor'))).toBe(hand);
+    // `new AliasSeededWidget([a, b, b])` — the one hand-written call is one
+    // argument; the open length lives inside the parameter, not the row.
+    expect(Type.signatureRows(hand.signatures)).toEqual([Type.tuple(imported('SeedThenMore'))]);
   });
 });
