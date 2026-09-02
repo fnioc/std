@@ -1388,7 +1388,8 @@ Behaviour:
          synthesised glue (a singleton consuming a tuple holding a scoped service is the consumer of
          that scoped service).
 -
-  9. [ ] `afterConstruct` is skipped when `beforeConstruct` answered a result. Recommend yes.
+  9. [x] RULED 2026-09-02 — `afterConstruct` is skipped when `beforeConstruct` answered a result;
+         "after" means after a construction happened.
 -
   10. [ ] Seeds file oldest, so a user registration at the same address shadows a seeded one —
           "permanent" means always present, not unbeatable. Recommend yes.
