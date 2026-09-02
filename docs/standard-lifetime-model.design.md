@@ -78,7 +78,8 @@ out in full, never abbreviated.
 Pending. The types plan against the di API surface on `origin/feat-di-request-door` once the request
 door's current state is pushed there (asked of the run 2026-09-02, commit subject to contain "api
 surface"): middleware and request, hooks, addon shape, `ServiceProvider` construction, scope
-abstractions in di.core, registration lifetime, dispose protocol.
+abstractions in di.core, registration lifetime, dispose protocol. The hooks surface to plan against
+is the one carrying `Request.activate(hooks_handle)`; a surface without it is the earlier shape.
 
 The implementation must verify every behavior it matches against the reference source itself,
 not against this document's summary of it.
