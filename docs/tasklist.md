@@ -1097,3 +1097,35 @@ Blocking on the owner, each at the step it gates: does `Type` become a resolvabl
 an addon contribute per-ask registrations (6); is the symbol-key derivation exclusion a stated rule
 or an accident (5); and confirm the per-ask `Request` allocation replaces one rather than joining
 one against the ~400ns fixed cost (cheapest to answer while 5-9 are open).
+
+### Why this order — the constraints, so a different one can be derived
+
+The sequence above is one solution to these edges. Re-order freely within them; violating one is
+what costs rework.
+
+HARD, and each for a stated reason:
+
+- **1 before 2** — only because this machine cannot run concurrent Go compiles. Not a logical
+  dependency; whichever holds the toolchain blocks the other.
+- **5 -> 6 -> 7 -> 8 -> 9** — a real chain. 5 creates the arms; 6 makes them answerable; 7 seeds the
+  first consumer that declares an arm; 8 makes 7 plannable rather than special-cased; 9 removes the
+  branch 7 replaced, and cannot precede it without leaving nothing to answer control asks.
+- **9 before 10-13** — each is a question 9 settles rather than one to decide beforehand.
+- **9 before 14** — the requirements doc's APIs section describes the post-door surface, so writing
+  it earlier documents a shape with a known expiry.
+- **14 before 15** — the model is written against the requirements, and by an author who has read
+  nothing else.
+- **15 before 16** — 22 `di.test` files cannot load without a model, so nothing re-greens until one
+  exists.
+- **15 before 18-22** — all five are model-owned questions and cannot be answered against no model.
+
+SOFT:
+
+- **3 and 4** depend on nothing and gate nothing. They are early because they repair what already
+  landed and are cheap, not because anything waits on them. 4 makes 9's story cleaner but is not
+  required by it.
+- **17 after 15** by preference only: the standard model proves the tools the tagged model reuses.
+  Nothing structural forbids the reverse.
+- **13** is docs-only and can land at any point.
+
+FREE: 2, 3, 4, 12 and 13 can be placed anywhere consistent with the above.
