@@ -1,5 +1,17 @@
 # `@rhombus-std/di`
 
+A container whose addresses are your types. `add<IClock>(SystemClock)` registers against the
+interface itself — no string keys, no tokens to keep in sync, no decorators, no reflection polyfill —
+because a `Type` is an interned node and `typefor<IClock>()` is resolved at compile time. Constructors
+are plain TypeScript: a union parameter takes the first alternative that resolves, an optional one
+falls back to `undefined`, an object-shaped one is built from its properties, a `(customer: string)
+=> Report` one becomes a factory that threads the caller's argument through. Async is one call —
+`resolveAsync` hoists every await in the graph onto one boundary and settles them in parallel. And
+there is one door: `Builder` opens a chain, every addon rides the same composable middleware pipeline
+the engine sits inside, and `build()` seals it. The manifest is immutable, so a registration you
+forgot to keep is a compile-visible bug rather than a silent one, and every failure is a typed error
+you branch on with `instanceof`.
+
 `di.core` (the abstractions: the immutable `Manifest` and its `Registration`s, the `describe`
 chain, `Addon` / `Middleware` / `Request`, `IServiceProvider`, the whole error taxonomy, and the
 `Control` carrier) ← `di` (the engine: `Builder`, the plan-and-realize resolution core, the
@@ -15,13 +27,14 @@ obtained from a `Builder`'s `build()`. `Manifest` is IMMUTABLE — every verb re
 so every snippet reassigns `services = services.add(...)` rather than calling it as a bare statement
 (see section 2).
 
-### 1. The builder and the chain
+### 1. One door: the builder and the chain
 
-A provider is assembled through one surface: `Builder.withServices(fn)` installs the registrations
-`fn` composes onto an empty manifest, `Builder.useAddon(addon)` installs an addon, and either may
-open the chain. Every input threads one lifetime vocabulary — `unknown` until the first input
-carrying one locks it on, and fixed for the chain from there. `build()` seals the chain into an
-`IServiceProvider`.
+Everything a container is made of arrives through one surface, and the type system checks that the
+pieces agree. `Builder.withServices(fn)` installs the registrations `fn` composes onto an empty
+manifest, `Builder.useAddon(addon)` installs an addon, and either may open the chain. Every input
+threads one lifetime vocabulary — `unknown` until the first input carrying one locks it on, and
+fixed for the chain from there, so an addon speaking a different vocabulary is refused where it is
+written. `build()` seals the chain into an `IServiceProvider`.
 
 ```ts
 const provider = Builder
@@ -38,7 +51,7 @@ const clock = provider.resolve<IClock>();
 
 An addon is two things: the registrations it files, and the middleware it composes into the
 container's one chain. Registrations are an addon like any other — `withServices` is an addon
-contributing no middleware of its own.
+contributing no middleware of its own — so a library ships its whole contribution as one value.
 
 ```ts
 const addon: Addon<unknown> = {
@@ -49,11 +62,11 @@ const addon: Addon<unknown> = {
 
 ### 2. The manifest is immutable
 
-`Manifest` is an iterable chain of registrations, newest first. Every registration verb — `add`,
-`tryAdd`, `replace`, `remove`, `removeAll`, `addValue` and their kin — returns a NEW manifest
-wrapping the one it was called on, and the receiver itself is untouched. A call whose result is
-discarded registers nothing. A verb that changes nothing returns the receiver itself, so `===`
-answers "did this change anything".
+No registration order bugs and no action at a distance. `Manifest` is an iterable chain of
+registrations, newest first. Every registration verb — `add`, `tryAdd`, `replace`, `remove`,
+`removeAll`, `addValue` and their kin — returns a NEW manifest wrapping the one it was called on,
+and the receiver itself is untouched. A call whose result is discarded registers nothing. A verb that
+changes nothing returns the receiver itself, so `===` answers "did this change anything".
 
 ```ts
 let services = Manifest.empty();
@@ -65,21 +78,23 @@ services = services.replace<IClock>(WallClock); // swaps the first IClock regist
 services = services.removeAll<IClock>(); // every IClock registration gone
 ```
 
-`add` also takes a whole manifest, merged as one batch in its own order, or any iterable of
-registrations, filed one after another.
+Manifests compose. `add` also takes a whole manifest, merged as one batch in its own order, or any
+iterable of registrations, filed one after another — so a feature's registrations are a value you
+build once and hand around.
 
 ```ts
 services = services.add(Manifest.build(m => m.add<IClock>(SystemClock)));
 ```
 
-### 3. Registrations and the `describe` chain
+### 3. Registrations are data, and `describe` builds one
 
-A registration is plain data: an `address` (a `Type`) and one implementer — a `ctor` the engine
-`new`s, a `factory` it calls, or a `value` it hands back as it stands. The member naming the
-implementer says which door it came in by, because the implementer's own type cannot: a function
-registered as a value is handed back, the same function registered as a factory is called. A
-constructor or factory carries its own type beside it — `ctorType` / `factoryType` — which is where
-its signatures live.
+A registration is a plain object you can inspect, compare and construct yourself: an `address` (a
+`Type`) and one implementer — a `ctor` the engine `new`s, a `factory` it calls, or a `value` it
+hands back as it stands. The member naming the implementer says which door it came in by, because
+the implementer's own type cannot: a function registered as a value is handed back, the same
+function registered as a factory is called. A constructor or factory carries its own type beside it —
+`ctorType` / `factoryType` — which is where its signatures live, so the engine reads what a
+constructor takes from the same place the constructor is.
 
 ```ts
 Registration.ctor(typefor<IClock>(), SystemClock, typefor(SystemClock));
@@ -87,11 +102,11 @@ Registration.factory(typefor<IClock>(), makeClock, typefor(makeClock));
 Registration.value(typefor<IClock>(), new SystemClock());
 ```
 
-`describe` opens a chain that builds one: choose the implementer through an `as*` door, refined by
-`withLifetime` and `taggedAs`. Each step hands back a new node and spends its own slot, so none can
-be taken twice; once a door is taken the node IS a `Registration` — hand it to the
-registration-taking verbs, hold it in a variable, or build several in a helper and register them
-together.
+`describe` opens a chain that builds one, and the type system tracks which steps remain: choose the
+implementer through an `as*` door, refined by `withLifetime` and `taggedAs`. Each step hands back a
+new node and spends its own slot, so none can be taken twice; once a door is taken the node IS a
+`Registration` — hand it to the registration-taking verbs, hold it in a variable, or build several in
+a helper and register them together.
 
 ```ts
 const clock = services.describe<IClock>().taggedAs('wall').asClass(WallClock).withLifetime('app');
@@ -110,15 +125,16 @@ services = services.add<IClock>(new SystemClock()); // value shape: handed back 
 services = services.addValue<() => Date>(() => new Date()); // a function meant as a value
 ```
 
-### 4. Lifetime is a vocabulary
+### 4. Lifetime is a vocabulary you choose
 
-A registration carries a `lifetime` from the chain's vocabulary — the `Lifetime` type argument on
-`Manifest<Lifetime>` and `Builder<Lifetime>`. A vocabulary that admits `undefined` lets the
-argument be omitted; one that does not makes every constructed registration name a value, and the
-`describe` chain withholds registration-ness until `withLifetime` is taken. What a value MEANS —
-how long the construction is kept, and where — is the lifetime model's own concern, installed as an
-addon that reads each registration's `lifetime` at runtime. The engine promises only which node a
-construction happens at.
+The container does not dictate your lifetimes; it carries them. A registration holds a `lifetime`
+from the chain's vocabulary — the `Lifetime` type argument on `Manifest<Lifetime>` and
+`Builder<Lifetime>`. A vocabulary that admits `undefined` lets the argument be omitted; one that does
+not makes every constructed registration name a value, and the `describe` chain withholds
+registration-ness until `withLifetime` is taken, so a missing lifetime is a compile error rather than
+a runtime surprise. What a value MEANS — how long the construction is kept, and where — is the
+lifetime model's own concern, installed as an addon that reads each registration's `lifetime` at
+runtime. The engine promises only which node a construction happens at.
 
 ```ts
 // vocabulary admits omission: the lifetime argument is optional
@@ -133,8 +149,9 @@ model's jurisdiction and realizes afresh on every call.
 
 ### 5. Async resolution
 
-`resolveAsync<T>()` is the one path that awaits: it asks for `Promise<T>` and settles everything
-beneath that only a promise registration can answer, in one wait. Plain `resolve()` never awaits
+An async-built dependency composes like any other, and the container does the awaiting where a
+constructor cannot. `resolveAsync<T>()` asks for `Promise<T>` and settles everything beneath that
+only a promise registration can answer, in one wait, in parallel. Plain `resolve()` never awaits
 anything — asking it for the `Promise<T>` type itself hands back a promise as a value. Full
 mechanics: `docs/features/async-resolution.md`.
 
@@ -147,13 +164,13 @@ const pending = provider.resolve<Promise<IBanner>>(); // same registration, un-a
 
 ### 6. Collection resolution
 
-Three wrapper addresses resolve over the same aggregate — `T[]`, `Iterable<T>` and
-`AsyncIterable<T>` — each walking every registration of `T` in registration order, with the
-element's own synthesis (if `T` has one) as the tail. `T[]` is a snapshot, every element realized
-eagerly; `Iterable<T>` is a live query, each iteration step realizing one element, re-iterable;
-`AsyncIterable<T>` settles one element per step. An unregistered element type aggregates to an
-empty collection; the bare element address still throws. `resolveMany<T>()` is `Iterable<T>` by
-name.
+Ask for the collection shape you mean and get exactly its semantics. Three wrapper addresses
+resolve over the same aggregate — `T[]`, `Iterable<T>` and `AsyncIterable<T>` — each walking every
+registration of `T` in registration order, with the element's own synthesis (if `T` has one) as the
+tail. `T[]` is a snapshot, every element realized eagerly; `Iterable<T>` is a live query, each
+iteration step realizing one element, re-iterable; `AsyncIterable<T>` settles one element per step.
+An unregistered element type aggregates to an empty collection; the bare element address still
+throws. `resolveMany<T>()` is `Iterable<T>` by name.
 
 ```ts
 services = services.add<IGreeting>(FormalGreeting).add<IGreeting>(CasualGreeting);
@@ -165,13 +182,14 @@ provider.resolve<IPlugin[]>(); // no IPlugin registered anywhere → [], never t
 provider.resolve<IPlugin>(); // same case, bare address → throws UnsatisfiableError
 ```
 
-### 7. Whole-type precedence, unions, and optional dependencies
+### 7. Unions and optional dependencies, written as TypeScript
 
-Every ask is answered the same way: the registrations matching the whole address, newest first,
-and only on a miss the address kind's own synthesis. A union is one such kind. A parameter typed as
-a union is satisfied by a registration of the union itself if one exists, and otherwise by the
-first member that resolves, in the union's canonical member order — falling through past a member
-nothing produces and past one whose graph has a hole. Exhausting every member throws.
+A constructor parameter typed `IRedisCache | IMemoryCache` means what it says. Every ask is
+answered the same way: the registrations matching the whole address, newest first, and only on a
+miss the address kind's own synthesis. A union is one such kind — satisfied by a registration of the
+union itself if one exists, and otherwise by the first member that resolves, in the union's
+canonical member order, falling through past a member nothing produces and past one whose graph has
+a hole. Exhausting every member throws.
 
 ```ts
 class CacheConsumer {
@@ -188,8 +206,8 @@ services = services.add(
 );
 ```
 
-Canonical order puts literals last, which is what makes an optional dependency work with no special
-case: `dep?: IFoo` is `IFoo | undefined`, and the `undefined` literal serves only once `IFoo` itself
+Optional parameters need no special case and no `!` casts. Canonical order puts literals last, so
+`dep?: IFoo` — which is `IFoo | undefined` — serves the `undefined` literal only once `IFoo` itself
 has no way to build. A caller for whom absence is an answer spells that in the address it asks for.
 
 ```ts
@@ -198,10 +216,10 @@ provider.resolve(Type.union(typefor<IFoo>(), typefor<undefined>())); // IFoo, or
 
 ### 8. Synthesis on a miss: literals, objects, tuples
 
-A literal address is its own value, injected directly with no registration involved. An object
-type with no registration of its own is built from its properties — all of them or none, so one
-unresolvable property leaves the whole object unsatisfiable rather than half-built. A tuple is
-built the same way, member by member.
+Shapes you did not register are built for you. A literal address is its own value, injected
+directly with no registration involved. An object type with no registration of its own is built from
+its properties — all of them or none, so one unresolvable property leaves the whole object
+unsatisfiable rather than half-built. A tuple is built the same way, member by member.
 
 ```ts
 class Environment {
@@ -218,11 +236,12 @@ and the whole-type lookup is that search.
 
 ### 9. Open registrations and type-argument injection
 
-A registration's address may carry a generic hole; a request closes it by unification, and the
-match's bindings fill the implementer's signature. An arg that IS the hole receives its closing
-type as a constant — an erased type parameter has nothing else to run on — which is what a
-`Typeof<T>` parameter reads: the closing type's `NamedType`, not an instance of it. A hole standing
-inside a larger arg closes into that expression and resolves as any other dependency.
+Register `ILogger<T>` once and resolve `ILogger<User>`, `ILogger<Order>`, any closing at all. A
+registration's address may carry a generic hole; a request closes it by unification, and the match's
+bindings fill the implementer's signature. An arg that IS the hole receives its closing type as a
+constant — an erased type parameter has nothing else to run on — which is what a `Typeof<T>`
+parameter reads: the closing type's `NamedType`, not an instance of it. A hole standing inside a
+larger arg closes into that expression and resolves as any other dependency.
 
 ```ts
 class Logger<T> {
@@ -245,10 +264,11 @@ A registration addressed by nothing but a hole would unify with every request; t
 
 ### 10. Callable slots: latebound factories and invokers
 
-A function-typed address resolves to a function: each call plans the return type with the call's
-own arguments bound positionally to the signature row whose arity fits, and an argument the caller
-supplies outranks every registration of that type — the manifest is never consulted for it. A call
-may stop short of the full row wherever the remaining slots admit `undefined`.
+A parameter typed as a function is a factory the container writes for you. A function-typed
+address resolves to a function: each call plans the return type with the call's own arguments bound
+positionally to the signature row whose arity fits, and an argument the caller supplies outranks
+every registration of that type — the manifest is never consulted for it. A call may stop short of
+the full row wherever the remaining slots admit `undefined`.
 
 ```ts
 class Report {
@@ -263,10 +283,9 @@ const makeReport = provider.resolve<(customer: string) => Report>();
 makeReport('acme'); // log from the container, 'acme' threaded straight through
 ```
 
-`resolve(callableType, callable)` is the value path: it constructs or calls the callable the
-caller hands over, its dependencies resolved from the callable's own type, registering and caching
-nothing — two calls build two instances, even for a class separately registered under its own
-address.
+`resolve(callableType, callable)` is the value path — construct or call something you hold in your
+hand with its dependencies filled in, registering and caching nothing. Two calls build two
+instances, even for a class separately registered under its own address.
 
 ```ts
 const report = provider.resolve(typefor(Report), Report); // fresh, never registered
@@ -274,11 +293,11 @@ const report = provider.resolve(typefor(Report), Report); // fresh, never regist
 
 ### 11. Keyed registrations
 
-A key is a tag on the address, so a keyed type is one type rather than a type plus an argument:
-`Keyed<IStore, 'sql'>` derives as `IStore` wearing the tag `sql`, `taggedAs('sql')` on the
-`describe` chain files under it, and a parameter typed `Keyed<IStore, 'sql'>` asks for exactly
-that. A tagged address is distinct from the bare one, so `IStore[]` collects the untagged
-registrations only and a type wears at most one tag.
+A key is a tag on the address, so a keyed type is one type rather than a type plus an argument, and
+a constructor asks for the keyed one by type alone. `Keyed<IStore, 'sql'>` derives as `IStore`
+wearing the tag `sql`, `taggedAs('sql')` on the `describe` chain files under it, and a parameter
+typed `Keyed<IStore, 'sql'>` asks for exactly that. A tagged address is distinct from the bare one,
+so `IStore[]` collects the untagged registrations only, and a type wears at most one tag.
 
 ```ts
 services = services
@@ -299,13 +318,14 @@ provider.resolve(Type.tag(typefor<IStore>(), 'sql'));
 `Inject<T, 'token'>` pins a parameter's address outright, overriding what its declaration would
 derive; the value type stays `T`.
 
-### 12. Middleware and the engine's door
+### 12. One chain: middleware and the engine's door
 
-One request-grain pipeline serves every ask. The builder composes each addon's middleware in call
-order around the engine, which is the innermost element; beneath the engine stands the chain's
-terminus, which throws `UnsatisfiableError`. The engine answers what its registrations can produce
-and hands an address no registration matches on through `next`, so a middleware above it sees
-every ask on the way down and every answer — or refusal — on the way back up.
+Every cross-cutting concern — tracing, scoping, validation, a fallback source — is a middleware on
+one request-grain pipeline, and the engine is just its innermost element. The builder composes each
+addon's middleware in call order around the engine; beneath the engine stands the chain's terminus,
+which throws `UnsatisfiableError`. The engine answers what its registrations can produce and hands
+an address no registration matches on through `next`, so a middleware above it sees every ask on the
+way down and every answer — or refusal — on the way back up.
 
 ```ts
 const observing: Addon<unknown> = {
@@ -319,9 +339,9 @@ const observing: Addon<unknown> = {
 
 A `Request` is the address being resolved, the provider that opened the ask, and whatever a
 middleware attaches on the way down under a symbol it exports — attached before `next`, since the
-object is shared with every layer beneath. The chain composes once, at build: a middleware factory
-runs exactly once and may do install-time work there, resolving through `next` whatever that work
-needs.
+object is shared with every layer beneath, and reachable only through an import a reviewer can see.
+The chain composes once, at build: a middleware factory runs exactly once and may do install-time
+work there, resolving through `next` whatever that work needs.
 
 ```ts
 const SCOPE: unique symbol = Symbol('scope');
@@ -330,10 +350,11 @@ const scoping: Middleware = next => request => next({ ...request, [SCOPE]: openS
 
 ### 13. Validation addons
 
-Two addons sweep the manifest at build and throw `ManifestValidationError` carrying every failure
-at once, so one attempt surfaces the whole broken graph. `validateUniversalAddresses()` rejects a
-registration addressed by nothing but a hole; `validateBuildability()` plans every closed address
-the manifest answers, and a plan that cannot build is a failure.
+Find every broken registration before the first ask, all at once. Two addons sweep the manifest at
+build and throw `ManifestValidationError` carrying every failure together, so one attempt surfaces
+the whole broken graph. `validateUniversalAddresses()` rejects a registration addressed by nothing
+but a hole; `validateBuildability()` plans every closed address the manifest answers, and a plan
+that cannot build is a failure.
 
 ```ts
 const provider = Builder
@@ -342,8 +363,8 @@ const provider = Builder
   .build(); // throws ManifestValidationError naming IRepo, before any ask
 ```
 
-A middleware sweeping the manifest reads it through the roster ask, which the engine answers itself
-with the registrations it resolves against.
+Your own build-time sweep is a middleware away: it reads the manifest through the roster ask, which
+the engine answers itself with the registrations it resolves against.
 
 ```ts
 const roster = next({ type: typefor<Control<Iterable<Registration<unknown>>>>(), serviceProvider });
@@ -373,11 +394,12 @@ catch (error) {
 
 ### Explicit forms are primary
 
-Every capability above is fully usable with the addresses spelled out: `typefor<T>()` at the use
-site names a type, `Type.from(token)` reads one from a string, and the `Type` factories compose
-one. The type-argument sugar `di.extras` carries — `add<I>(Ctor)`, `resolve<I>()`,
-`describe<I>()` — is exactly the explicit call with the addresses derived, never a capability of
-its own.
+Nothing here needs a build step to work. Every capability above is fully usable with the addresses
+spelled out: `typefor<T>()` at the use site names a type, `Type.from(token)` reads one from a
+string, and the `Type` factories compose one. The type-argument sugar `di.extras` carries —
+`add<I>(Ctor)`, `resolve<I>()`, `describe<I>()` — is exactly the explicit call with the addresses
+derived, never a capability of its own, so a library compiled once runs for every consumer whether
+or not they compile with the transform.
 
 ```ts
 services = services.add<IClock>(SystemClock);
@@ -391,7 +413,7 @@ services = services.add(Type.imported('IClock', 'app'), SystemClock,
 ### Identity is load-bearing
 
 A registration matches a request by interned identity — an open one by unification — so two
-spellings of one type must be one object. `primitives` and `di.core` each stamp themselves at load
-and fail fast on a second copy: a duplicate would fork the intern table, and fork `DefaultManifest`
-so augmentations installed onto one copy's prototype never reach manifests built by the other.
-Every bundle keeps both external.
+spellings of one type must be one object, and they are. `primitives` and `di.core` each stamp
+themselves at load and fail fast on a second copy: a duplicate would fork the intern table, and fork
+`DefaultManifest` so augmentations installed onto one copy's prototype never reach manifests built by
+the other. Every bundle keeps both external.
