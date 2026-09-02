@@ -964,7 +964,7 @@ primitives, primitives.extras or any external dependency lets two containers obs
 Two independent containers are fine; two loaded COPIES of primitives or di.core are impossible by
 design, and fail loud.
 
-## Signatures as a Type node (2026-09-01) — LANDED `d95a316c` + `3c256815`, repairs in flight
+## Signatures as a Type node (2026-09-01) — LANDED `d95a316c` + `3c256815`, REPAIRED `5782bf5b`..`ab022ae2`
 
 `Type[][]` is the one place a node's children are host arrays rather than nodes, which is what
 `adoptSignatures` and `signaturesKey` exist for. Making a signature list a node retires both, drops
@@ -1151,10 +1151,27 @@ FREE: 2, 3, 4, 12 and 13 can be placed anywhere consistent with the above.
 
 ## Signatures slot — adversarial pass findings (2026-09-01)
 
-Eleven findings survived two-refuter votes; a Fable repair run is landing them. Two are real defects,
-and both are failures of a rule this design stated rather than incidental bugs.
+Eleven findings survived two-refuter votes; a Fable repair run landed them as `5782bf5b` (every
+signatures door runs the one row check; a rest-only tuple is refused), `ec8c175b` (a malformed row
+never plans as a spread; a zero-arg rest call hits the plan memo), `fe948cb0` (the Go derivation
+emits the list for a rest-only tuple) and `ab022ae2` (open-row emission parity, four more blind
+shapes). Gates after: Go build/vet/test/gofmt clean, tsc clean in primitives, primitives.extras, di,
+di.core; primitives 217/0; typefor e2e 60/0; di.test 94 pass / 6 skip / 22 fail with the load-failing
+set unchanged. Two were real defects, and both are failures of a rule this design stated rather
+than incidental bugs.
 
-- [ ] **The one validating door has a second entrance.** The spec put the check in
+Left open by the repair's own review (its finish stage died on the 5-hour quota):
+
+- [ ] `Plan.restList` narrows a row to list-or-tuple and throws on anything else — a second spelling
+      of the row predicate, in a package that cannot import the one function. RULED (Claude, the
+      owner may reverse): keep the narrowing, since a plain-object `ctorType` never passes a
+      primitives door and exhaustive narrowing is owed anyway, but its message must say the row
+      reached planning unvalidated rather than restate the door's wording.
+- [ ] `node.go`'s rest-only-tuple branch is unwitnessed and probably unreachable (the checker
+      normalises `[...B[]]` to `B[]` before derivation). Add the one-case `node_test.go` that
+      drives it, or drop the branch.
+
+- [x] **The one validating door has a second entrance.** The spec put the check in
       `Type.signatures(rows)` alone, so `func`/`ctor`/`abstractCtor` could take the slot type and
       validate nothing. But their PRE-BUILT-SLOT overloads, `toSignatureSlot`'s non-array branch and
       `Type.adopt` all accept a union of non-row members, so an invalid callable interns, stringifies
@@ -1162,11 +1179,38 @@ and both are failures of a rule this design stated rather than incidental bugs.
       generalises: an overload that accepts an already-built value is a way past whatever door built
       it, and "validate once, let the type carry the guarantee" only holds if the type is the ONLY
       way in.
-- [ ] **Two spellings for one type.** `Type.tuple({ members: [], rest: X })` used as a row and a
+- [x] **Two spellings for one type.** `Type.tuple({ members: [], rest: X })` used as a row and a
       `ListType` row stringify identically, so `Type.from(Type.stringify(a)) === b` — the round-trip
       conflates two distinct nodes. RULED: refuse the rest-only tuple at construction, the same
       discipline `[]` versus `[[]]` already gets. No collapse, no canonicalisation between them.
-- [ ] A zero-argument memo miss in `Engine.boundArgTypes` — the interning-for-identity rework did not
+- [x] A zero-argument memo miss in `Engine.boundArgTypes` — the interning-for-identity rework did not
       cover the empty-signature case.
-- [ ] Two doc inaccuracies, a history-narrating comment in `typeforhoist`, and four shapes the blind
+- [x] Two doc inaccuracies, a history-narrating comment in `typeforhoist`, and four shapes the blind
       suite does not cover.
+
+## Session — di builder reshape (2026-09-01, branch `feat-di-builder-spec`, worktree `+feat-di-builder-spec`)
+
+Steps 3, 4 and 11 of the execution order, built as one change from a critiqued design. Fourteen
+commits on the branch, rebased onto `3c256815` and NOT yet rebased onto the repair commits above:
+the registered predicate moved onto `Registry` (one place; `Plan.from` and the engine call it);
+`UnknownControlError` deleted; the engine delegates through `next` when no registration matches and
+throws when one exists but cannot be built; `Builder` interface with the unknown-until-locked
+conditional verbs, `DefaultContext`, both openers in `namespace Builder`, the engine folded as a real
+middleware over a terminus that throws `UnsatisfiableError`; callers migrated (logging, hosting, the
+ten example demos, four README snippets); §208 corrected in place; new tests (engine delegation,
+chain openers, the lock-on type probe repointed at the shipped surface). Gates on the branch: tsc
+clean in di.core, di, hosting, logging, both example apps; eslint clean; di.test 98 pass / 6 skip /
+22 fail with the load-failing set unchanged; dprint clean.
+
+Not yet done — the review fan-out died on the 5-hour quota (resets 23:50):
+
+- [ ] Craft review's three findings, unapplied: both `as never` out-casts in `DefaultContext`'s verbs
+      are removable and their comments false; `PlannerVisitor.#awaitPromised` hand-rolls the
+      registered predicate a second time; `build()`'s `registrations as Iterable<…>` cast is a no-op.
+- [ ] The spec-fidelity and correctness review lenses never ran. Run them serialized, then repair.
+- [ ] Rebase onto the repair commits (`Engine.ts` overlaps on `boundArgTypes`'s zero-arg line), then
+      merge locally into `IServiceManifest-repair` — only when the branch is green AND the shared
+      branch is clean.
+- [ ] Known and NOT this branch's: the without-transformer example app wedges at baseline after
+      "Hosting started" (reproduced at `6732b734` with pre-branch sources), so its output-diff gate
+      cannot run; owned by the hosting rework / red-by-design surface.
