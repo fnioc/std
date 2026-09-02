@@ -628,10 +628,11 @@ Design recorded as §230. Open:
 - [ ] Decide whether adding an addon to an already-built container is supported. If not, the dynamic
       half of `HookChain` has no caller and deletes.
 - [ ] A latebound closure invoked after its minting scope is disposed — part of the disposal item.
-- [ ] The per-ask `Request` object JOINS the per-ask allocations rather than replacing one: the
-      engine still builds its own `{ context: { states } }` per ask alongside it
-      (`Engine.ts`, `getService`). Accept the extra object on the ~400ns path, or fold the engine's
-      per-ask context onto the request under an engine-owned symbol so the count does not rise.
+- [ ] RULED (owner delegated the call): the per-ask `Request` object is ACCEPTED as an additional
+      allocation. It joins the engine's own per-ask `{ context: { states } }` (`Engine.ts`,
+      `getService`) rather than replacing it; a two-field literal is noise against the ~400ns floor,
+      and folding engine state onto the request would put engine internals on the addon attachment
+      mechanism for a gain nobody would measure.
 - [ ] Design the tagged model against the same tools.
 - [ ] Check whether `anchorRoot` and `ScopeBinding`'s bracketing still have a job.
 
@@ -1097,9 +1098,8 @@ The order to work in, one line each. Sections above carry the substance; this is
 
 Ruled 2026-09-01, so nothing gates 5-7 any more: `Type` is not a resolvable address (the `Request`
 is, and carries the type); an addon may contribute per-ask registrations; the symbol-key derivation
-exclusion stays as it is, unrelated to the request design. Still open: whether the per-ask `Request`
-allocation is accepted as an ADDITIONAL object on the ~400ns path (it joins the existing per-ask
-context allocation rather than replacing it).
+exclusion stays as it is, unrelated to the request design; and the per-ask `Request` allocation is
+accepted as an additional object on the ~400ns path. Nothing blocks 5-9 on the owner.
 
 ### Why this order — the constraints, so a different one can be derived
 
