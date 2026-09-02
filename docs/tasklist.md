@@ -1339,6 +1339,14 @@ type RegistrationBuilder<T, D, Spent extends keyof D, Described> =
 
 ## Phase 2 — signoffs owed before implementation (2026-09-02)
 
+- [ ] Before implementation: REVISE `docs/phase2-request-door.design.md` (branch
+      `feat-di-request-door`) against every ruling below dated 2026-09-02 — it predates all of them
+      (class-shaped `Request`, unregistered request + `RequestPlan`, `ControlService` umbrella,
+      disposable `Handle`, private `active`, no helpers, shadowing resolves beneath, null lifetime
+      hidden-on-inputs). The tasklist is the truth where the two disagree.
+- [ ] Two snapshot refs from 2026-09-01 (`refs/snapshots/collision-2026-09-01`,
+      `refs/snapshots/reconcile-partial`) are superseded; delete on the owner's word.
+
 The phase 2 design (`docs/phase2-request-door.design.md` on `feat-di-request-door`, commit
 `f565bdb8`) is complete and revised against the hooks ruling. It waits on these owner answers; each is
 Claude's recommendation, none is ruled. The first-design items 1–3 and 8–10 were briefed to the
