@@ -1344,8 +1344,7 @@ type RegistrationBuilder<T, D, Spent extends keyof D, Described> =
       (class-shaped `Request`, unregistered request + `RequestPlan`, `ControlService` umbrella,
       disposable `Handle`, private `active`, no helpers, shadowing resolves beneath, null lifetime
       hidden-on-inputs). The tasklist is the truth where the two disagree.
-- [ ] Two snapshot refs from 2026-09-01 (`refs/snapshots/collision-2026-09-01`,
-      `refs/snapshots/reconcile-partial`) are superseded; delete on the owner's word.
+- [x] DONE 2026-09-02 — the two 2026-09-01 snapshot refs were verified superseded and deleted.
 
 The phase 2 design (`docs/phase2-request-door.design.md` on `feat-di-request-door`, commit
 `f565bdb8`) is complete and revised against the hooks ruling. It waits on these owner answers; each is
