@@ -1404,3 +1404,45 @@ Also open from the design, for visibility (no owner word needed unless he object
 re-entry; the demoted make inside a registered-promise envelope runs no hooks; one
 `Hooks.Construction` carrier per behaviour per hooked node is the one per-node allocation the hook
 contract forces.
+
+## Overnight 2026-09-02 — findings for the owner (nothing here is ruled)
+
+- **The example app wedge is step 7.** `examples.app.without-transformer` hangs after "Hosting
+  started" because the engine's `IServiceProvider` seed is designed but unbuilt: the worker's ctor
+  asks for `Type.from('ServiceProvider')` (the reserved spelling for `IServiceProvider`), nothing
+  answers it, and `Host.start` resolves hosted services as a COLLECTION — the planner drops an
+  unbuildable member silently (`PlannerVisitor.#planElements`, `.filter(isDefined)`), so the host
+  starts zero services and `waitForShutdownAsync` waits forever. A single ask for the same address
+  throws loud. Proven: one forwarding registration at that address in a scratch copy unwedges the
+  host section byte-for-byte, and the tour then fails at the same root in chapter-local containers
+  (three more sites depend on the reserved token). The fix IS step 7, in phase-1 shape — one
+  engine-owned registration `{ address: typefor<IServiceProvider>(), factory: request =>
+  request.serviceProvider, lifetime: control }` — parked with phase 2 per the owner's hold. Two
+  nuances at fix time: `resolution-demo` asserts the resolved provider is a view, not the container
+  object (the JIT-wrap rule answers it: mint a fresh wrap); and the phase-2 design addresses the
+  factory's slot as `ServiceRequest`.
+- **Design question surfaced by it:** a collection ask silently drops unbuildable members. A wiring
+  error became a zero-service host with no diagnostic. Whether collections should refuse (or hosting
+  should log when zero hosted services resolve) is the owner's call.
+- **Separate, runtime-level:** bun 1.3.14 busy-polls its event loop at 100% of a core when a process
+  is kept alive only by signal handlers (`ConsoleLifetime` registers three) with no armed timer or IO.
+  Minimal repro: `bun -e 'process.on("SIGINT",()=>{}); await new Promise(()=>{});'`. Any armed timer
+  drops it to idle. Hosting's concern, not di's.
+- **Derivation findings from the blind suite (`b3834cf2`):** (a) a defaulted parameter derives as
+  required where TypeScript types it optional — a typefor-never-lies defect, being fixed on the
+  branch; (b) a parameter typed through a LOCAL, unexported alias derives as an imported address
+  naming an unimportable name — same family as the private-ctor question; (c) a generic class whose
+  ctor takes `T` refuses derivation (`TYPE_ARG_TYPE_UNDERIVABLE`) rather than minting a hole —
+  pinned as the refusal that exists; whether an open type parameter should auto-mint a hole is a
+  design question.
+- **Benchmarks, tip vs classic (source-first both sides, core-pinned, 7 interleaved rounds, min of
+  medians; the bench worktrees no longer existed and were reconstructed from preserved copies):**
+  transient leaf 216 vs 250 ns; depth-8 1,020 vs 3,039; width-10 1,354 vs 3,755; factory-1dep 324
+  vs 612 — the tip wins every resolution it can express, roughly 102 ns fixed per ask + 114 ns per
+  node against 250 + 350. It LOSES build/manifest-200: 2.57 ms vs 0.67 ms (Registry materialisation
+  plus per-registration `Object.freeze` at build). Singleton/scoped/scope-lifecycle scenarios cannot
+  run on the tip (no lifetime model). Absolutes are not comparable to `docs/benchmarks.md`'s dist
+  run. Artifacts under the session scratchpad `bench/`.
+- **Docs sweep left alone, deliberately:** §204, §206, §207, §210, §211, §219, §221, §222 and
+  §215's model-chronicle tail describe the owner-ruled Starfish/useHooks surface that step 9
+  deleted; the owner decides whether they leave the log or are rewritten.
