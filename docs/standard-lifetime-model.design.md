@@ -62,8 +62,9 @@ Optional, each an additional middleware layer, off unless added:
 
 ### Everything else
 
-Behavior and disposal match Microsoft.Extensions.DependencyInjection exactly. Where this document is
-silent, Microsoft.Extensions.DependencyInjection decides. Its observable behavior is catalogued in
+Runtime behavior matches Microsoft.Extensions.DependencyInjection exactly: lifetime, caching,
+disposal, and the conditions validation rejects. The API surface is this repository's own. Where
+this document is silent on behavior, Microsoft.Extensions.DependencyInjection decides. Its observable behavior is catalogued in
 `standard-lifetime-model.reference-behavior.md`, extracted from its source, which is not reachable
 from the cloud. Error types and messages are not cloned verbatim; the conditions that raise them
 are.
