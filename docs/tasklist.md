@@ -932,8 +932,8 @@ if that write-up slips.
 - [ ] The engine is not really an element of one list: its middleware ignores `next` and the fold
       seeds a throwing terminus that is dead by construction (`di.ts`, `build()`).
 - [ ] Nothing registers anything under `controlLifetime`. The mechanism is built and unused.
-- [ ] `LifetimeModel` survives with zero implementers in product code. Delete, or keep for the first
-      real model?
+- [x] RULED: deleted. `LifetimeArgument` and `LifetimeModelError` stay; a model is an `Addon`
+      installed through `useAddon`.
 - [ ] RULED 2026-09-01: build the builder AS SPEC'D in "Builder shape — owner-prescribed" —
       `useAddon(Addon<T>)` and `withServices(fn: Func<[Manifest<T>], Iterable<Registration<T>>>)`
       are the members, no `use` verb, no registration-iterable or middleware overloads, no
@@ -1092,7 +1092,7 @@ The order to work in, one line each. Sections above carry the substance; this is
 7. Seed `IServiceProvider` as a permanent factory in the main manifest under `controlLifetime`.
 8. `controlLifetime` plans its factory's slots instead of bypassing planning; the engine skips hooks for it.
 9. Retire the control branch; `getService`'s switch goes; §208, §209 and §220 come out of the log.
-10. Delete `LifetimeModel`; keep `LifetimeArgument` and `LifetimeModelError`.
+10. DONE. Delete `LifetimeModel`; keep `LifetimeArgument` and `LifetimeModelError`.
 11. RULED: build as spec'd — `useAddon`/`withServices`; `Builder` interface, `DefaultContext` class, `namespace Builder` opener; unknown-until-locked vocabulary; engine becomes a real middleware. NEXT, with 3 and 4.
 12. Delete `CaptiveDependencyError` — a shared captivity type nothing throws.
 13. DONE. "The MODEL seeds this" corrected; the single-door wording was the public signature, not stale.

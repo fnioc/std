@@ -14,7 +14,7 @@ export * from './hooks';
 export type { IEngineHooks } from './IEngineHooks';
 export type { Invoker } from './Invoker';
 export type * from './IServiceProvider';
-export * from './LifetimeModel';
+export type * from './LifetimeArgument';
 export * from './Manifest';
 export type * from './Middleware';
 export * from './Registration';

@@ -5,7 +5,7 @@ import { concat } from '@rhombus-toolkit/obj';
 import type { ButNot } from '@rhombus-toolkit/types';
 
 import { openRegistration, type RegistrationBuilderFor } from '../builder';
-import type { LifetimeArgument } from '../LifetimeModel';
+import type { LifetimeArgument } from '../LifetimeArgument';
 import { DefaultManifest, type Manifest } from '../Manifest';
 import { Registration } from '../Registration';
 

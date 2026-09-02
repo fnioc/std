@@ -3188,13 +3188,12 @@ runtime read doesn't already enforce with a better error. The observing types �
 the four handler/middleware families, `Hooks`, the `Starfish` door — are likewise
 vocabulary-blind: `Construction.registration` is `Registration<unknown>`, and the one party that
 interprets lifetimes, the model, narrows structurally the way `LifetimePolicy.classify` does. The
-`Lifetime` generic survives only where vocabulary is authored: `LifetimeModel` itself, the
-manifest, the builder.
+`Lifetime` generic survives only where vocabulary is authored: the `Addon<Lifetime>` a lifetime
+model is, the manifest, the builder.
 
-`LifetimeModel.install()` deliberately does not share the addon installation shape. The model's
-attach takes more (the raw head, because the model mints every user-facing provider over it) and
-returns more (the container); expressing the model as an addon would hand every addon the head.
-The asymmetry is the privilege boundary, not an irregularity.
+A lifetime model has no contract of its own: it is an `Addon<Lifetime>`, installed through the
+builder's `useAddon`, and its middleware receives `next` exactly as every other addon's does
+(§215).
 
 The per-resolution threaded data is named **state** — the `State` generic on the observing types
 and `Construction.state`. 'Context' names nothing in this stack; `Interception.state` and the
@@ -3367,8 +3366,8 @@ so a model with several nested tiers gets inter-tier captivity detection the wor
 express (owner: tiers "accomplish the same validation, but more generalized"; implemented on his
 "fix the classifier if you're confident that it's correct"). `StandardLifetime` thereby stops
 being the validator's vocabulary and lives beside the `standard` model in `di`, exactly as
-`TaggedLifetime` lives beside `tagged`; di.core's `LifetimeModel.ts` keeps only
-`LifetimeArgument`, `LifetimeModel`, `LifetimePolicy`. The engine-hook vocabulary
+`TaggedLifetime` lives beside `tagged`; di.core's `LifetimeArgument.ts` keeps only
+`LifetimeArgument`. The engine-hook vocabulary
 (`Construction`, `Interception`, the handler/middleware pairs, `Hooks`, `Behavior`) is not
 lifetime material and lives in `di.core/src/hooks.ts` (owner: "the majority are not lifetime
 related (just bc lifetime uses them doesn't count)").
@@ -3443,10 +3442,9 @@ shape."
 `Addon.create(): AddonInstallation` replaces `install()`; `AddonInstallation.middleware`
 replaces its `hooks` member, `registrations` and `atBuild` keep their names and shapes.
 `ContainerBuilder.withAddon` becomes `useAddon`, matching the verb an addon mints through.
-`LifetimeModel.create()` replaces `install()` too, named in lockstep with the addon contract, and a
-lifetime model folds into the addon list the same way anything else does: `usingLifetimeModel`
-opens a builder and calls `useAddon` on the model itself. The `Lifetime`-generic-forwarding concern
-the quote above raises dissolves the same way an ordinary addon's registrations already dissolve
+A lifetime model is an `Addon` outright, with no contract of its own, and it folds into the addon
+list the same way anything else does: the builder's `useAddon` installs it. The
+`Lifetime`-generic-forwarding concern the quote above raises dissolves the same way an ordinary addon's registrations already dissolve
 it — `AddonInstallation.registrations` is `Iterable<Registration<any>>`, and the one call site that
 knows what `Lifetime` is casts it there, same for a lifetime model as for anything else.
 
@@ -3538,9 +3536,8 @@ tracked will be just a func, not an sp." `ServiceProvider` normalizes whatever i
 `typeof source === 'function' ? source : address => source.getService(address)` — into one held
 call, and every ask forwards through it; it remains the package's one `@augment` carrier.
 
-`LifetimeModel.create()` answers the addon shape, `{ middleware?, registrations? }` — `attach` and
-`scopeFactory` are gone. A model's `middleware` composes exactly like any other: it receives `next`
-(what `attach` used to receive as `inner`, renamed to match every other middleware's own parameter)
+A lifetime model is an `Addon`, `{ middleware, registrations }`, and nothing more. A model's
+`middleware` composes exactly like any other: it receives `next` (what `attach` used to receive as `inner`, renamed to match every other middleware's own parameter)
 and answers what runs in its place. Choosing a lifetime model is the builder's first call, so its
 middleware is the first entry in `di.ts`'s one middleware list — `[modelMiddleware, ...installations
 .map(...)]` — and the standing rule ("first call composes outermost") places it outermost without

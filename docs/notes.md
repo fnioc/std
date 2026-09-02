@@ -426,9 +426,10 @@ land; delete the file when empty.
       `hosting/src/default-config.ts`, `logging/src/LoggerFactory.ts`). Until then those two
       packages' `tsc` gates pass spuriously. The broken test suites (`tests/di.test` scope
       suites, `tests/hosting.core.test`, …) ride the same rework.
-- [ ] **Align the requirements doc with the LifetimeModel naming** — `docs/di2.scope-async.requirements.md`
-      still says `ScopeModel*`/"scope model" throughout; the ruled public naming is now
-      `LifetimeModel*`, `Manifest<Lifetime>`, registration `lifetime`. Includes deciding the
+- [ ] **Align the requirements doc with the lifetime naming** — `docs/di2.scope-async.requirements.md`
+      still says `ScopeModel*`/"scope model" throughout; the ruled public naming is
+      `Manifest<Lifetime>`, registration `lifetime`, `LifetimeArgument`, `LifetimeModelError`, and a
+      lifetime model is an `Addon` installed through the builder's `useAddon`. Includes deciding the
       attribution-wrap error's name (`ScopeModelError` → `LifetimeModelError`).
 - [x] **RULED AND LANDED 2026-08-24 (owner) — the registration's `lifetime` is omittable only when
       `undefined` is in the vocabulary.** `WithLifetime<Lifetime>` is now the conditional
@@ -572,8 +573,7 @@ land; delete the file when empty.
 - [ ] **The two lifetime models need a public surface, deduplication, and three engine seams.**
       `standard`/`tagged` aren't surfaced through a namespace or barrel yet. The two
       self-contained model files share ~80 duplicated Scope/Router/ScopeProvider lines, ready to
-      collapse. LifetimeModel.ts's doc claims `site` is "the natural key for an instance store";
-      it is per-plan-position, and the models actually key on (registration, requested type). The
+      collapse. The
       full spec still needs three engine seams the models currently work around or can't reach: a
       scope-bound provider can't start a walk under its own model (router-cell workaround in the
       models); an injected `IServiceProvider` inside a scope is the container, not the scope
@@ -699,12 +699,12 @@ land; delete the file when empty.
       front door on `LifetimeModel.noop` as minimal green, flow-correctness unreviewed.
 - [ ] **Pre-publish import audit — OWNER REMINDER, deferred deliberately 2026-08-25.** The lifetime
       models moved out of `di.core` into `di` (`standard`/`tagged`/`noop`, the last now a factory
-      function like the other two); `di.core` kept the contract plus the two vocabulary aliases
-      `StandardLifetime` and `TaggedLifetime<Tags>`. Call sites were fixed MECHANICALLY — minimum
+      function like the other two); `di.core` keeps `LifetimeArgument` and `LifetimeModelError` plus the two vocabulary aliases
+      `StandardLifetime` and `TaggedLifetime<Tags>`; a model is an `Addon` like any other. Call sites were fixed MECHANICALLY — minimum
       edit to green the gate — because the owner ruled the full pass not worth the token burn
       mid-flight. Before publishing, sweep every consumer and make each import right: which package
       each name should come from, import ordering, and the README/doc prose that still describes
-      `LifetimeModel.noop` as a di.core namespace member (`di`, `di.core`, `logging`,
+      a `noop` model as a di.core namespace member (`di`, `di.core`, `logging`,
       `diagnostics`, `hosting.core`, `caching.memory`, `options.augmentations`). Nothing here is a
       correctness bug — the gate is green — it is stale spelling awaiting one deliberate pass.
 - [ ] **RULED 2026-08-25 — the realizer threads a `LifetimeContext`, not a `Realizer`. Lands WITH
@@ -727,7 +727,7 @@ land; delete the file when empty.
       argument would compile; `unknown` is worse still, being the one type that accepts every other
       slot's value. `Context` is a type parameter on `Realizer`
       (`Realizer<Lifetime, Context extends LifetimeContext = LifetimeContext>`), NOT on
-      `LifetimeModel` — the engine has zero reach and putting it on the model cascades through
+      the model — the engine has zero reach and putting it on the model cascades through
       `ContainerBuilder`, `usingLifetimeModel` and `build()`. The boundary erases to
       `LifetimeContext` and a model's narrower realizer satisfies it by method-parameter
       bivariance — unsound in principle, invisible in practice, taken knowingly because TS has no
@@ -757,18 +757,17 @@ land; delete the file when empty.
       that it, the realizer and the model CAN be polymorphic views of one object — required to be
       possible, not required to be done. An `AdHoc` model — `Lifetime` a lambda, each registration
       carrying its own retention behavior — needs nothing new, since `Lifetime` is unconstrained,
-      and it is the case that makes `LifetimeModel.transient` load-bearing rather than decorative
-      (no caller can guess a lambda). STILL OPEN, not ruled: `LifetimeModel<Registration, Request>`
+      and it is the case that makes a model's own transient value load-bearing rather than decorative
+      (no caller can guess a lambda). STILL OPEN, not ruled: a model generic `<Registration, Request>`
       splitting the registration vocabulary from the scope-naming one — real (standard has three
       registration words and names no scopes; `never`/`void`/`Tags` distinguish cannot-scope from
       scopes-unnamed from scopes-by-name), but PHANTOM until a typed `createScope<T>()` surface
       consumes it, so it is one decision with that open item, not two. NOT YET IMPLEMENTED: the
-      tree still carries the shared interface and registers at the erased `ScopeFactory.address`.
-- [ ] **RULED 2026-08-25, LANDED — `LifetimeModel.transient` stays.** The contract carries
-      `readonly transient: Lifetime`, the model's own spelling of "construct afresh, keep nothing",
-      so a party that must register at transient without knowing which model it lands on can name
-      it. Nothing reads it today and the owner ruled it stays anyway; the `AdHoc` shape above is
-      what makes it necessary rather than ornamental.
+      tree registers at the erased `ScopeFactory.address`.
+- [x] **RULED 2026-09-02 (owner), LANDED — a lifetime model has no shared contract.** A model is
+      an `Addon<Lifetime>` installed through the builder's `useAddon`; `di.core` keeps
+      `LifetimeArgument` and `LifetimeModelError` only. Its spelling of "construct afresh, keep
+      nothing" is the model's own to publish.
 - [ ] **RESTORED — RULED, DI-ONLY: interfaces without published concretes DROP the `I` prefix**,
       concretes staying unexported on the `Default<InterfaceName>` pattern (a di backtrack of the
       global I-prefix rule; other families unaffected). This survives independently of the
