@@ -974,8 +974,22 @@ the ctor/func intern key to two ids, and satisfies the one-kind-per-member rule.
       branch lives in one place instead of in every visitor.
       A third form supporting both spellings is NOT viable — two spellings of one type would intern to two nodes
       and `===` is the equality operator for the whole subsystem.
-- [ ] Order among signatures: by `members.length` ASCENDING, so the overload needing the fewest
-      optional fills wins. Changes today's behaviour, which is declaration order.
+- [ ] Order among signatures: ADD NO ORDERING RULE. `compareTypes`/`canonicalMembers` must not gain
+      a length-first or signature-aware rule. Selection already happens at the point of use and the
+      stored order is already the right tiebreak: the LONGEST SATISFIABLE signature wins
+      (`Plan.ts`'s `lowerSignature` sorts longest-first and takes the first whose every arg lowers),
+      and equal-length satisfiable ones fall to the union's canonical order because `toSorted` is
+      stable. The single obligation: the normalizing accessor must return a union's members AS
+      STORED — grouping, deduping or rebuilding them silently changes which of two equal-length
+      overloads wins, and no existing test would catch it.
+- [ ] Optionality is NOT a tuple field. `Type.isOptional` already defines optional once for the
+      whole model as "admits `undefined`", objects spell an optional property as a union carrying
+      the `undefined` literal, and optional parameters already derive that way. A tuple obeys the
+      same rule, so the tuple gains a REST slot and nothing else — no `optionalCount`, no
+      `TupleOptionalCount`, and no fabricating overloads for optional parameters.
+- [ ] A signature that is entirely a rest parameter is a `ListType`, not a one-member tuple holding
+      an array: the row IS the argument list. That is what fixes the live miscall where
+      `(...deps: IDep[])` receives `[theArray]` as its first argument.
 - [ ] OWNER-RULED: equal-length signatures that are both resolvable have nothing to choose between
       them — the author wrote something ambiguous, and no container can read their mind. The
       canonical order picks, and that is DOCUMENTED as the behaviour rather than papered over. The
@@ -1051,3 +1065,35 @@ the ctor/func intern key to two ids, and satisfies the one-kind-per-member rule.
 - [ ] An array-typed rest parameter (`...deps: IDep[]`) derives as ONE required `Array<IDep>` slot
       where a tuple-typed rest refuses loudly — a silent arity misstatement, the class §232 forbids.
       Refuse it too, or let the open-length tuple work express it honestly?
+
+## di — proposed execution order (2026-09-01)
+
+The order to work in, one line each. Sections above carry the substance; this is the sequence.
+
+1. Signature slot becomes one `Type` node, open-length tuples and the Go mirror as fallout. IN FLIGHT.
+2. Resume the blind typefor shape suite once the Go toolchain frees up.
+3. Add the static `withServices` opener so nothing hand-rolls a vacuous addon to start a chain.
+4. Engine calls `next` when it cannot answer; split "no registration" (delegable) from "unbuildable registration" (error).
+5. Split `Request` into `ServiceRequest | ControlRequest` — types only.
+6. Register the live ask under both its narrow arm and the union name.
+7. Seed `IServiceProvider` as a permanent factory in the main manifest under `controlLifetime`.
+8. `controlLifetime` plans its factory's slots instead of bypassing planning; the engine skips hooks for it.
+9. Retire the control branch; `getService`'s switch goes; §208, §209 and §220 come out of the log.
+10. Delete `LifetimeModel`; keep `LifetimeArgument` and `LifetimeModelError`.
+11. Confirm or restore `di.usingLifetimeModel` and `use(middleware)`.
+12. Delete `CaptiveDependencyError` — a shared captivity type nothing throws.
+13. Correct the two stale passages in this file: the single-door wording, and "the MODEL seeds this".
+14. Owner hand-rolls the model requirements doc, including its APIs-to-build-on section.
+15. Write the standard model clean-room against the finished door.
+16. Un-comment the dependers and re-green the 22 `di.test` files.
+17. Write the tagged model.
+18. Scope and container disposal.
+19. Whether an addon may install into an already-built container — if not, half of `HookChain` deletes.
+20. A latebound closure invoked after its minting scope is disposed.
+21. Whether `anchorRoot` and `ScopeBinding`'s bracketing still have a job.
+22. The validation options surface.
+
+Blocking on the owner, each at the step it gates: does `Type` become a resolvable address (7); may
+an addon contribute per-ask registrations (6); is the symbol-key derivation exclusion a stated rule
+or an accident (5); and confirm the per-ask `Request` allocation replaces one rather than joining
+one against the ~400ns fixed cost (cheapest to answer while 5-9 are open).
