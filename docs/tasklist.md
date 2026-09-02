@@ -1256,8 +1256,10 @@ deleted; the standard model is written clean-room).
   handler-vs-trailing-`next` arity is read once when attached, never at dispatch; the per-ask link
   IS the request substitution — the layer calls `request.withHooks(hooks)`, a method on `Request`
   whose argument is a `Partial<Behavior>` (a layer may supply exactly one hook, written inline:
-  `request.withHooks({ beforeConstruct(construction) { … } })`). RULED: `withHooks` MUTATES the
-  request and RETURNS IT — callers write `next(request.withHooks(hooks))` as if it were a new value,
+  `request.withHooks({ beforeConstruct(construction) { … } })`). RULED: the signature is
+  `withHooks(hooks: Partial<Behavior>): this` — it MUTATES the request and RETURNS IT, the
+  polymorphic `this` saying "the same request, as if new"; callers write
+  `next(request.withHooks(hooks))` as if it were a new value,
   but no request is allocated per layer: `ServiceProvider` mints one request per ask with one
   `hooks` array, a layer pushes onto it on the way down (zero allocation), and the engine sizes its
   per-ask states array from `hooks.length` at the door. Safe because a request is never shared
