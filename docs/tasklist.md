@@ -1402,11 +1402,13 @@ Behaviour:
           - [ ] TODO: describe this feature in the di library doc (`docs/libraries/di.md`), with the
                 `Func<[Foo], Foo>` example — rides with the phase 2 docs fallout.
 -
-  11. [ ] The control lifetime is `null` at runtime, cast in at the two seed sites, ABSENT from the
-          slot's type; the `controlLifetime` symbol and its union member go. The owner said "fine at a
-          minimum"; the one place the type then lies is the roster (a walker switching on lifetime meets
-          a `null` its type did not promise) — whether the roster hides engine-owned registrations is a
-          separate call.
+  11. [x] RULED 2026-09-02 — HIDE ON INPUTS, EXPLICIT ON OUTPUTS. The seeded lifetime is `null` at
+          runtime, cast in at the two seed sites. Inputs (`Registration.*` factories, the builder,
+          `Manifest.add`) type the slot `Lifetime`; `controlLifetime` and its union member DELETE.
+          Outputs that can hand a seeded row back (the engine's own reads; `ControlService.registry`,
+          whose vocabulary is `unknown`) admit `null`, and the `registry` doc says the engine's two
+          rows carry it. Hooks stay `Registration<Lifetime>` — they never fire at a seeded node. The
+          seeded rows are NOT hidden from the registry.
 
 Ruled 2026-09-02 from the owner's review of the queue:
 
