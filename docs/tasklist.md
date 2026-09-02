@@ -934,16 +934,18 @@ if that write-up slips.
 - [ ] Nothing registers anything under `controlLifetime`. The mechanism is built and unused.
 - [ ] `LifetimeModel` survives with zero implementers in product code. Delete, or keep for the first
       real model?
-- [ ] RULED 2026-09-01: the builder's one verb is `use`. `use(Addon<T>)` is the core member;
-      `use(Iterable<Registration<T>>)` and `use(Middleware)` are AUGMENTATIONS, not core members.
-      The interface is `Builder`; the non-exported implementation is `DefaultContext`; the static
-      opener is a function in a `namespace Builder` (same name as the interface), not a static
-      method. `di.usingLifetimeModel` is not restored — a model is an addon and goes through `use`.
-      Proceed with this shape and its direct consequences: the engine becomes a real middleware
-      that calls `next` when it cannot answer (the throwing terminus is then live, not dead).
-      Open, needs the owner's word: does `use(Iterable<Registration<T>>)` fully replace the
-      prescribed `withServices(fn: Func<[Manifest<T>], Iterable<Registration<T>>>)` form, so no
-      step receives the accumulated manifest any more?
+- [ ] RULED 2026-09-01: build the builder AS SPEC'D in "Builder shape — owner-prescribed" —
+      `useAddon(Addon<T>)` and `withServices(fn: Func<[Manifest<T>], Iterable<Registration<T>>>)`
+      are the members, no `use` verb, no registration-iterable or middleware overloads, no
+      augmentations. The interface is `Builder`; the non-exported implementation is
+      `DefaultContext`; the opener is a function in `namespace Builder`, not a static method.
+      `di.usingLifetimeModel` is not restored — a model is an addon and goes through `useAddon`.
+      Lock-on semantics, stated by the owner: a chain may open with addons whose `T` is still
+      `unknown`; the first addon carrying a concrete vocabulary SWITCHES the builder to it, and
+      from then on every addon must thread that `T`. That is why `Addon<T>` is generic even where
+      an addon does not use `T` — it threads the vocabulary through. Direct consequence to land
+      with it: the engine becomes a real middleware that calls `next` when it cannot answer, so
+      the chain's terminus is live rather than dead by construction.
 - [ ] `logging/README.md` still demonstrates `di.usingLifetimeModel(standardLifetimeAddon())`; it
       cannot be adapted honestly until a lifetime model exists.
 - [x] The builder-shape section's tail now says the ENGINE seeds `IServiceProvider` under
@@ -1091,7 +1093,7 @@ The order to work in, one line each. Sections above carry the substance; this is
 8. `controlLifetime` plans its factory's slots instead of bypassing planning; the engine skips hooks for it.
 9. Retire the control branch; `getService`'s switch goes; §208, §209 and §220 come out of the log.
 10. Delete `LifetimeModel`; keep `LifetimeArgument` and `LifetimeModelError`.
-11. RULED: builder verb is `use`; `Builder` interface, `DefaultContext` class, `namespace Builder` opener; registration and middleware overloads as augmentations; engine becomes a real middleware. NEXT.
+11. RULED: build as spec'd — `useAddon`/`withServices`; `Builder` interface, `DefaultContext` class, `namespace Builder` opener; unknown-until-locked vocabulary; engine becomes a real middleware. NEXT, with 3 and 4.
 12. Delete `CaptiveDependencyError` — a shared captivity type nothing throws.
 13. DONE. "The MODEL seeds this" corrected; the single-door wording was the public signature, not stale.
 14. Owner hand-rolls the model requirements doc, including its APIs-to-build-on section.
