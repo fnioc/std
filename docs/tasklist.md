@@ -1365,9 +1365,14 @@ Exported from di.core:
   5. [x] RULED 2026-09-02 — `Handle extends Disposable` with `index`; disposing IS the uninstall. No
          `uninstall()` on the handle and no `uninstall(handle)` verb on the control.
 -
-  6. [ ] `HooksControl` — the control's interface: `useHooks(hooks: Partial<Behavior>): Handle` (gated)
-         and `installHooks(hooks: Partial<Behavior>): Handle` (always active). Names Claude's.
-         Recommend yes. (No `uninstall` verb — ruled under 5.)
+  6. [x] RULED 2026-09-02 — ONE umbrella `ControlService`, exported from di.core, the engine's own
+         surface reached through the door: `registry: Iterable<Registration<unknown>>` (the
+         registrations the engine resolves against), `stageHooks(hooks): Handle` (gated — in effect
+         only for an ask that activated the handle), `installHooks(hooks): Handle` (always active,
+         outermost). No `uninstall` verb (5). `Control<T>` and `controlLifetime` DELETE: the umbrella
+         is its own specific address, so no marker wrapper is needed, and the separate registry
+         ask goes with it. The seeded control registrations are two: `IServiceProvider` and
+         `ControlService`. The word "roster" is banned — it is the registry; sweep it from comments.
 -
   7. [ ] `Request.active` — the public readonly active set beside `activate(handle): this`.
          Recommend yes.
