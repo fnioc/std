@@ -128,6 +128,10 @@ export class ScopeValidationError extends DiError {
 A scope is its provider: `IServiceProvider` is disposable, so `openScope()` answers the scope's
 provider and disposing it ends the scope. No scope type exists beyond that.
 
+Opening a scope goes through the factory alone: no augmentation puts `openScope` on `IServiceProvider`,
+so the core interface's shape carries no scope vocabulary. That can follow the day a concrete consumer
+asks for it.
+
 The vocabulary is strict: `undefined` is not in it, so every constructor and factory registration
 names its lifetime, as every service descriptor in Microsoft.Extensions.DependencyInjection carries
 one. A value registration carries none and behaves as a pre-built singleton instance does there:
