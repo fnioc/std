@@ -65,7 +65,8 @@ Optional, each an additional middleware layer, off unless added:
 Behavior and disposal match Microsoft.Extensions.DependencyInjection exactly. Where this document is
 silent, Microsoft.Extensions.DependencyInjection decides. Its observable behavior is catalogued in
 `standard-lifetime-model.reference-behavior.md`, extracted from its source, which is not reachable
-from the cloud.
+from the cloud. Error types and messages are not cloned verbatim; the conditions that raise them
+are.
 
 ### Documentation
 
