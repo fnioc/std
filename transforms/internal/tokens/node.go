@@ -461,7 +461,9 @@ func deriveSignatureNode(
 // TupleRest (the list ITSELF when it is the whole signature), and a tuple-typed
 // rest splices its slots in as if they were written as parameters. A rest whose
 // type is neither a list nor a tuple has no arity this vocabulary can state, so
-// the signature refuses.
+// the signature refuses. A parameter its callers may omit — spelled `a?: T` or
+// given a default, `a: T = fallback` — is its type unioned with the `undefined`
+// literal either way, so the two spellings are one slot.
 func deriveSignatureRow(ctx *Context, checker *shimchecker.Checker, sig *shimchecker.Signature, failure *Failure, s seen) (*Node, bool) {
 	params := shimchecker.Signature_parameters(sig)
 	spreadsLastParameter := shimchecker.Signature_hasRestParameter(sig)
@@ -478,6 +480,9 @@ func deriveSignatureRow(ctx *Context, checker *shimchecker.Checker, sig *shimche
 		argNode, ok := deriveNode(ctx, checker, paramType, failure, s)
 		if !ok {
 			return nil, false
+		}
+		if decl := param.ValueDeclaration; decl != nil && (decl.Initializer() != nil || decl.QuestionToken() != nil) {
+			argNode = withUndefined(argNode)
 		}
 		members = append(members, argNode)
 	}

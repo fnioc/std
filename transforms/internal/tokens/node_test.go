@@ -1,6 +1,7 @@
 package tokens
 
 import (
+	"reflect"
 	"testing"
 )
 
@@ -194,6 +195,35 @@ func TestDeriveNodeVariableLengthTupleStatesItsOpenLength(t *testing.T) {
 	}
 	if node.TupleRest == nil || node.TupleRest.Kind != KindNamed || node.TupleRest.Name != "ICache" {
 		t.Fatalf("tupleRest's rest slot derived %+v, want the named ICache", node.TupleRest)
+	}
+}
+
+// TestDeriveNodeDefaultedParameterIsOptionalToItsCallers pins that a parameter
+// with a default value derives the same slot an explicitly optional one does:
+// `new DefaultedWidget()` is a legal call, so its slot admits undefined exactly
+// as `cache?: ICache` spells it, and the two constructors are one row shape.
+func TestDeriveNodeDefaultedParameterIsOptionalToItsCallers(t *testing.T) {
+	prog, ctx, main := loadGenerics(t)
+	defer func() { _ = prog.Close() }()
+
+	rowOf := func(name string) *Node {
+		t.Helper()
+		node, ok := DeriveNode(ctx, ctx.Checker, typeOfDecl(t, ctx.Checker, main, name), nil)
+		if !ok {
+			t.Fatalf("%s did not derive a node", name)
+		}
+		if node.Kind != KindCtor || node.Sig == nil || node.Sig.Kind != KindTuple || len(node.Sig.Members) != 1 {
+			t.Fatalf("%s derived %+v, want one single-parameter constructor row", name, node)
+		}
+		return node.Sig
+	}
+
+	defaulted := rowOf("defaultedCtor").Members[0]
+	if defaulted.Kind != KindUnion || len(defaulted.Members) != 2 || defaulted.Members[0].Name != "ICache" || !isNullishLiteral(defaulted.Members[1]) {
+		t.Fatalf("defaultedCtor's slot derived %+v, want ICache | undefined", defaulted)
+	}
+	if optional := rowOf("optionalCtor"); !reflect.DeepEqual(rowOf("defaultedCtor"), optional) {
+		t.Fatalf("defaultedCtor's row %+v differs from the explicit-optional spelling %+v", defaulted, optional)
 	}
 }
 

@@ -92,6 +92,11 @@ declare const tupleRestOnly: [...ICache[]];
 declare const tupleCtorParams: ConstructorParameters<typeof Widget>;
 declare const tupleFnParams: Parameters<typeof build>;
 
+class OptionalWidget { constructor(readonly cache?: ICache) {} }
+class DefaultedWidget { constructor(readonly cache: ICache = { cache: 0 }) {} }
+declare const optionalCtor: typeof OptionalWidget;
+declare const defaultedCtor: typeof DefaultedWidget;
+
 declare const puA: "a" | "b";
 declare const puNonLit: "a" | number;
 declare const puNonUnion: "a";
