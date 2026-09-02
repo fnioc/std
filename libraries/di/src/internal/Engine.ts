@@ -196,7 +196,9 @@ export class Engine implements IEngineHooks {
  * element.
  */
 function boundArgTypes(row: TupleType | ListType, count: number): readonly Type[] | undefined {
-  const members = row.kind === 'tuple' ? row.members : [];
+  // A list row's fixed slots are the interned empty tuple's members, never a fresh [], so a
+  // zero-arg call binds the same array identity every time and the plan memo can hit.
+  const members = row.kind === 'tuple' ? row.members : Type.tuple().members;
   if (count <= members.length) {
     return members.slice(count).every(Type.isOptional) ? members : undefined;
   }

@@ -406,12 +406,21 @@ export namespace Plan {
     return isAllThere(args) ? [args, rest] : undefined;
   }
 
-  /** The list a row's open length draws from: a rest-only row is its own list; a tuple's rest slot draws from an array of its element. */
+  /**
+   * The list a row's open length draws from: a rest-only row is its own list; a tuple's rest slot
+   * draws from an array of its element.
+   *
+   * @throws TypeError - when the row is neither a tuple nor a list; such a row has no argument
+   * list to plan, spread or otherwise.
+   */
   function restList(row: TupleType | ListType): Type | undefined {
-    if (row.kind !== 'tuple') {
-      return row;
+    if (row.kind === 'tuple') {
+      return row.rest === undefined ? undefined : Type.array(row.rest);
     }
-    return row.rest === undefined ? undefined : Type.array(row.rest);
+    if (row.kind !== 'array' && row.kind !== 'iterable') {
+      throw new TypeError(`a signature row is a tuple or a list — got a ${(row as Type).kind}`);
+    }
+    return row;
   }
 
   function lowerArg(arg: Type, generics: Readonly<Record<string, Type>>, visitor: Type.Visitor<Plan | undefined>): Plan | undefined {

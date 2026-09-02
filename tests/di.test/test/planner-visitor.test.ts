@@ -6,7 +6,7 @@ import { CycleError, Manifest, Registration } from '@rhombus-std/di.core';
 import { Plan } from '@rhombus-std/di/private/internal/Plan/Plan';
 import { PlannerVisitor } from '@rhombus-std/di/private/internal/Plan/PlannerVisitor';
 import { Registry } from '@rhombus-std/di/private/internal/Registry';
-import { Type } from '@rhombus-std/primitives';
+import { type ConstructorType, Type } from '@rhombus-std/primitives';
 import { describe, expect, test } from 'bun:test';
 
 const CONN = Type.imported('Conn', 'app');
@@ -377,5 +377,19 @@ describe('the cycle guard', () => {
 describe('an unanswered address', () => {
   test('returns undefined rather than throwing', () => {
     expect(visitorFor(Manifest.empty<unknown>()).visit(FOO)).toBeUndefined();
+  });
+});
+
+describe('a malformed signature row', () => {
+  test('is refused at planning, never spread as arguments', () => {
+    // Forged past the factories, the way no interned node can be built: the registration's
+    // ctor node claims a bare named type as its whole signatures slot.
+    const forged = {
+      kind: 'ctor',
+      instance: CONN,
+      signatures: Type.global('string'),
+    } as unknown as ConstructorType;
+    const manifest = Manifest.empty<unknown>().add(Registration.ctor(CONN, Conn, forged));
+    expect(() => visitorFor(manifest).visit(CONN)).toThrow(/a signature row is a tuple or a list — got a global/);
   });
 });
