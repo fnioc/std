@@ -2,7 +2,7 @@
 // are built by hand here through the Plan factories, independent of what PlannerVisitor
 // would have produced, so each node kind is exercised on its own terms.
 
-import { HookChain, Manifest, Registration, type Request } from '@rhombus-std/di.core';
+import { Manifest, Registration, type Request } from '@rhombus-std/di.core';
 import { Engine } from '@rhombus-std/di/private/internal/Engine';
 import { Plan } from '@rhombus-std/di/private/internal/Plan/Plan';
 import { Type } from '@rhombus-std/primitives';
@@ -17,7 +17,7 @@ class Widget {
   constructor(readonly conn: unknown) {}
 }
 
-/** Seals `registrations` into an Engine — nothing binds hooks here, so no scope keeps anything. */
+/** Seals `registrations` into an Engine. */
 function engineFor(registrations: Iterable<Registration<unknown>>): Engine {
   return new Engine(registrations);
 }
@@ -25,9 +25,9 @@ function engineFor(registrations: Iterable<Registration<unknown>>): Engine {
 /** The request these tests realize under — nothing here reads `type` or `serviceProvider`. */
 const request: Request = { type: Type.imported('Placeholder', 'app'), serviceProvider: undefined as unknown as Request['serviceProvider'] };
 
-/** Realizes `plan` against `engine`, through the chain that neither intercepts nor transforms. */
+/** Realizes `plan` against `engine`. */
 function realize(plan: Plan, engine: Engine): any {
-  return Plan.realize(plan, { engine, chain: HookChain.identity, context: { states: [] }, request });
+  return Plan.realize(plan, { engine, context: {}, request });
 }
 
 const engine = engineFor(Manifest.empty<unknown>());

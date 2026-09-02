@@ -27,9 +27,6 @@ export interface Hooks<State = unknown> {
    * Runs before the engine constructs, answering a result in place of constructing or the state the dependencies resolve under.
    *
    * @remarks
-   * A plain handler farthest from the engine is asked first: if it answers a result, nothing
-   * nearer the engine ever runs, so the farthest install that chooses to intercept always wins.
-   *
    * Declared with a second `next` parameter, this hook runs as middleware; with one, as a plain
    * handler.
    */

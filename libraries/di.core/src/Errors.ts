@@ -94,29 +94,6 @@ export class LifetimeModelError extends DiError {
 }
 
 /**
- * A registration is kept longer than one it constructs: the longer-lived keeper holds the
- * shorter-lived dependency for as long as the keeper itself lives, so the dependency's own
- * lifetime is never honored.
- */
-export class CaptiveDependencyError extends DiError {
-  /** The longer-lived service type doing the capturing. */
-  readonly ownerAddress: Type;
-  /** The shorter-lived service type it captures. */
-  readonly nodeAddress: Type;
-
-  constructor(ownerAddress: Type, nodeAddress: Type) {
-    super(
-      `${Type.stringify(ownerAddress)} constructs ${Type.stringify(nodeAddress)} and keeps it for as long as ${Type.stringify(ownerAddress)} itself lives — past ${
-        Type.stringify(nodeAddress)
-      }'s own shorter lifetime`,
-    );
-    this.name = 'CaptiveDependencyError';
-    this.ownerAddress = ownerAddress;
-    this.nodeAddress = nodeAddress;
-  }
-}
-
-/**
  * A registration is addressed by a bare type parameter, which unifies with every request — so it
  * answers every address no newer registration already answers.
  */

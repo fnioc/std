@@ -3,7 +3,7 @@
 // share nothing unless they also share the address, and a repeated arity against one callable
 // hits the memo instead of planning again.
 
-import { HookChain, Manifest, Registration, type Request } from '@rhombus-std/di.core';
+import { Manifest, Registration, type Request } from '@rhombus-std/di.core';
 import { Engine } from '@rhombus-std/di/private/internal/Engine';
 import { Plan } from '@rhombus-std/di/private/internal/Plan/Plan';
 import { PlannerVisitor } from '@rhombus-std/di/private/internal/Plan/PlannerVisitor';
@@ -18,7 +18,7 @@ function toProvider(manifest: Manifest<string>) {
   const engine = new Engine(manifest);
   return {
     resolve(funcType: FunctionType): unknown {
-      return Plan.realize(Plan.latebound(funcType), { engine, chain: HookChain.identity, context: { states: [] }, request });
+      return Plan.realize(Plan.latebound(funcType), { engine, context: {}, request });
     },
   };
 }

@@ -3203,156 +3203,6 @@ _Owner-ruled; Claude-recorded 2026-08-27._
 
 ---
 
-## §208 — Control asks; the lifecycle-aware engine; behaviors as windows and frames; the model is the scope provider
-
-One-arg `getService` is the only resolution surface in the system — public providers, middleware,
-the door, and the engine alike. Per-request hook bundles (`Behavior`: the four optional members,
-each a plain handler or a trailing-`next` middleware by declared arity) reach the engine as
-**windows**, opened by calling `useHooks` on the door a **control ask** answers with: `Control<T>`
-is a public di.core class — `constructor(readonly service: T)`, the carrier idiom
-`IOptions<T>.value` already established — and its address is always derived,
-`typefor<Control<Starfish>>()`, never hand-minted.
-
-The engine owns its lifecycle in one branch, ahead of planning and hooks alike. A control ask
-counts as nothing: it runs no hook, opens no window, reads no frame, and answers
-`new Control(freshDoor)`; a control ask whose payload is not the door takes the ordinary
-unregistered path — handed on through the engine's `next`. Beneath the engine only the chain's
-terminus stands — every addon's middleware composes above it — and the terminus raises the generic
-`UnsatisfiableError`. An unmarked ask is a request: it folds every
-open window and whatever frame is filed for its own address into the built chain (built chain
-outermost, the filed frame innermost, windows between), seeds state through the aggregated
-`beginResolve`, and realizes. No plan kind knows a magic address: a plain `Starfish` ask is an
-ordinary, unregistered — therefore unsatisfiable — address.
-
-The door is volatile: minted only by the control branch, fresh per ask, thrown away after. Its
-`useHooks` member opens a window on the engine itself, not on the door — active from the call
-until the returned disposable runs, never one-shot and never scoped to the door's own life. A
-provider-answered door is rewrapped so that resolving through it routes through the answering
-provider — keeping, middleware, and memo intact — while the engine-minted door's own `getService`
-runs at the terminus.
-
-Middleware speaks the provider contract itself: curried single-arg `(next) => (request) =>
-unknown`, composed once over the static terminus — so an installer-style factory that resolves
-through its `next` at composition time runs exactly once. Control asks travel the chain as
-ordinary traffic; a middleware may observe them and may make its own. Addons contribute
-registrations, permanent hooks as data, and `atBuild`; nothing attaches imperatively.
-
-The lifetime model IS the scope provider. `install()` yields an attach that mints the root
-provider over the container's inner, and the scope-factory registration; each provider hardcodes
-its scope, files keeper and probe per request as one address-keyed frame, seeds `injected ?? scope`
-(a re-entering closure keeps the world it was minted in), keeps its scope's instances on the scope
-object itself, and fronts a learned memo of top-level KEPT answers — a registration whose lifetime
-keeps in no scope never enters it — that bypasses the whole chain only when no window is open. The
-memo consults a di-internal window-awareness seam, `IEngineHooks.hasOpenHookWindow` (engine and
-middleware provider alike), never a public member. Latebound and invoker closures capture the
-aggregated hooks and state at mint; re-entries never touch the filed-frame list.
-
-_Owner-ruled; Claude-recorded 2026-08-28._
-
----
-
-## §209 — The door carries two members; a window stands until disposed; a scope's keeper rides an addressed frame, not a window
-
-`Starfish` carries exactly `getService(address)` and `useHooks(bundle): Disposable`. The four
-per-kind filing verbs do not exist: one method puts a `Behavior` bundle in effect, and the
-`Disposable` it returns is the only way to take it back out. A bundle is active from the call that
-installs it until the returned disposable runs — active-until-dispose, not one-shot — and a
-resolution opened anywhere inside that window, including one opened from inside a construction the
-window itself triggered, runs under it.
-
-A one-stage surface won this over a two-stage split. A define-once/activate-per-ask design was
-weighed and cut as speculative: its only conceivable consumer, per-request middleware hooks, has
-no present need, and the audit addon (§203) already fits the plain install-and-observe shape one
-stage gives it. Dispose is the only deactivation; there is no `deactivate` verb, because
-identity-keyed removal would force a caller to hold a reference just to tear its own activation
-down, and would just as easily let any other holder of that reference tear it down instead — a
-per-activation disposable carries no such aliasing. A caller that discards `useHooks`'s return
-without ever disposing it leaves the bundle active for the container's life; that is the code
-doing exactly what it was told, not a leak to guard against.
-
-`Engine.getService` snapshots every open window at entry, folding them into the one `Hooks` the
-resolution runs under for its own life. A resolution that opens while a window is held — a
-latebound closure invoked later, a re-entrant ask fired from inside a construction — keeps the
-hooks captured at the position it was minted, however late it actually runs. The engine is
-synchronous end to end throughout, so a promise-valued product passes through every hook opaque,
-and no hook ever fires inside an async continuation.
-
-The owner's ruling on how far a provider may reach is absolute and quoted verbatim: "NOTHING, no
-data, no callstack, NOTHING may traverse into the engine concrete outside of
-`IServiceProvider.getService(Type)`." Every provider standing over the engine — the middleware
-chain, a scope's provider, the lifetime model's own `attach` — is wired at composition with a
-plain `IServiceProvider` and nothing more; intersecting a provider's declared type with an
-internal seam to smuggle a second member past the door is itself the violation, not a workaround
-for one. The owner's own clarification draws the line the law needs to be usable at all: "the
-control services aren't violations bc they themselves came from getService" — the engine's
-machinery is reachable, but only by asking for it through `getService` like any other address,
-never by holding a typed reference to the concrete `Engine`.
-
-That machinery is two control services, not one, each its own address. `Control<IEngineHooks>`
-answers the DEFINE stage — `useHooks(hooks): HookHandle`, pure minting: it folds a set of
-`Behavior`s into one inert, reusable handle and touches nothing live. `Control<IEngineHookState>`
-answers the STATE stage, extending `IActivatable<HookHandle>` with `hasOpenHookWindow`.
-`IActivatable<Handle>` is the reusable shape of any setup-then-activate control surface: a
-definition side mints a handle once, out of whatever vocabulary it speaks; `activate(handle):
-Disposable` brackets one use of that handle, and disposing ends exactly that activation and no
-other.
-
-A `ScopeProvider` asks for both controls exactly once, at construction: it folds its keeper and
-its probe into one handle through `IEngineHooks.useHooks`, then brackets every forwarded ask with
-`using … = hookState.activate(handle)`. Fold order among activations is LIFO — the newest bracket
-still open is the innermost, nearer the walk than one still enclosing it — with every public
-window standing outside all of them and the built chain outermost still. Probing learns only what
-its OWN scope kept, gated on `selectOwningScope(...) === scope`, so a construction a nested scope
-owns never teaches the scope enclosing it anything. The traversal-attribution consequence this
-still carries is re-derived from the brackets themselves, not from any address-tracking mechanism:
-everything resolved while a bracket holds — a middleware's own rewritten forward, a pre-resolve
-made through the container, `next` called twice — runs under it, because a bracket stands over the
-engine itself and not over any one address; a `next` invoked after its own traversal has already
-returned finds no bracket open, and resolves under nothing but the built chain and whatever public
-windows remain.
-
-A scope's learned-answers memo is bypassed outright while any window is open — the check is
-`IEngineHookState.hasOpenHookWindow`, read before the provider ever activates its own handle —
-while an activation for the scope's own keeping never inhibits it.
-
-Seven questions stand open, not settled. `atBuild` hands every addon the raw `Engine` concrete
-rather than a door — `installation.atBuild?.(engine)` passes the instance itself, and the
-validation addon reads `engine.registry` straight off it — which is exactly what the single-door
-law forbids, and undesigned: nobody has fixed it yet. A control ask a provider makes at its own
-construction travels the same chain a plain resolution would, an owner ruling — controls travel
-through the chain like anything else — whose measured consequence is that a middleware body runs
-during `build()`, before the container exists to anyone, and a middleware that answers an
-unrecognized address itself, rather than forwarding it, breaks `build()` outright; accepting that
-or narrowing it is the owner's call, not yet made. The observing surface cannot tell "answered
-from keeping, and by which scope" apart from "freshly constructed": `canonicalize` and
-`afterConstruct` never run at all on a kept answer, only a middleware-form hook can even see that
-an interception happened, and the learned-answers fast path bypasses every hook a build installed,
-an auditor's included — if an auditor ever needs that visibility, a roster event is the
-placement-ladder rung to reach for, not an engine change. `Scope.provider` is a public, mutable
-field, written as a side effect of the `ScopeProvider` constructor rather than handed in. An
-interception's `{ state: undefined }` is documented legal, yet the keeper reads its incoming
-state unconditionally, so a hook upstream of it that answers exactly that crashes the keeper
-instead of falling through. `Starfish.useHooks` and `IEngineHooks.useHooks` share one name for
-opposite things — the door's version opens a window immediately and hands back its end, the
-machinery's version only mints an inert handle for a different member on a different interface to
-activate later — a rename-batch candidate. And a control's address derives from the type that
-names it, `IEngineHooks` and `IEngineHookState` included, both living under an internal,
-unpublished module path, so an error naming that address in text a published consumer can see
-cites a specifier nothing outside the package can resolve.
-
-_Owner-ruled; Claude-recorded 2026-08-28._
-
-Addendum, same day: the augmentation install is the public wrapper's alone — only
-`ServiceProvider`, the public-facing provider, carries `@augment(typefor<IServiceProvider>())`
-(owner: "only the jit wrapped, public-facing ServiceProvider gets augmented"). The internal
-implementers — `Engine`, `MiddlewareServiceProvider`, `ScopeProvider` and its bound starfish,
-`VolatileStarfish` — install nothing, so the layered `resolve`/`resolveMany` verbs exist at
-runtime only on the surface a consumer holds. And an interception's members are `result` (an
-answer standing in for construction) and `state` (what the construction's dependencies resolve
-under) — `instance`/`within` presumed use the value never promised (owner: "within makes
-assumptions about how the state is going to be used"); the engine-product `instance` parameters
-of canonicalize/afterConstruct keep their name, where it is accurate.
-
 ## §210 — Lifetime classification ranks numeric keeper tiers; the three-word vocabulary belongs to the standard model alone
 
 `LifetimePolicy.classify` answers `{ tier, label } | 'unkept' | undefined`: tier 0 is the
@@ -3754,7 +3604,7 @@ union asked for; perf-only, since the scope's own instance map still answers it 
 
 A `noopLifetimeAddon()` container's injected `IServiceProvider` slot is the engine's own augmented face now, not
 the bare `Engine`. `Engine` merges in `resolve`/`resolveMany` at the type level, but only the public
-`ServiceProvider` wrapper carries the `@augment` install (§209's addendum), so an `Engine` handed
+`ServiceProvider` wrapper carries the `@augment` install, so an `Engine` handed
 out directly threw `TypeError` the moment anything called the augmented verbs on it. `RealizeVisitor`
 mints one `ServiceProvider` per `Engine` the first time anything asks, cached in a module-level
 `WeakMap<Engine, ServiceProvider>` — one stable face per engine across every construction that
@@ -3767,7 +3617,7 @@ now check `isOwnPack` first, the same guard `beginResolve` already used, and pas
 through unchanged when the state isn't this addon's own — nothing to contribute, nothing safe to
 unwrap. `Engine.useHooks`'s disposer guards its `lastIndexOf` result before splicing, so a
 hypothetical miss can't remove an unrelated layer at the same index. Left alone, both noted rather
-than fixed: the `{state: undefined}` keeper crash recorded open in §209, and `resolvesFrom`'s
+than fixed: the `{state: undefined}` keeper crash, and `resolvesFrom`'s
 cross-container discrimination, which has no live path to reach today.
 
 Of the concerns this verification pass raised, one is resolved and two stay open. The `noopLifetimeAddon()` face
@@ -3778,73 +3628,6 @@ nothing distinguishes a provider's own identity from the container it resolves f
 ever shared a face; and `Audit`'s placeholder registration body's wording ("the audit-addon
 addon answers this at construction") reads as an implementation note rather than caller-facing
 guidance.
-
-_Owner-ruled; Claude-recorded 2026-08-28._
-
-## §220 — `IServiceProvider` splits into a public tier and an `IServiceProviderInternal` primitive tier
-
-The provider contract is two interfaces, not one — each self-contained, neither extending the
-other. `IServiceProviderInternal` declares the single primitive, `getService(address: Type): any` —
-what every internal implementer of resolution actually IS, and what every internal caller of
-resolution is typed to hold. `IServiceProvider` declares its OWN `getService`, the same signature,
-independently — what `resolve`/`resolveMany`/the latebound overloads merge onto via `declare
-module`, the augmented, consumer-facing tier. The two are structurally compatible by having the same
-member, which is all assignability ever needed — an `Engine` (typed `IServiceProviderInternal`)
-still assigns wherever `IServiceProviderInternal` is asked for, and a `ServiceProvider` (typed
-`IServiceProvider`) still assigns wherever either is asked for, purely on shape. Duplicating rather
-than extending means the public face's own declaration never routes through the internal type at
-all — reading `IServiceProvider`'s own `getService` doc answers a consumer's question completely,
-without a jump to a second, differently-audienced interface first — and each carries a doc voiced
-for its own reader: `IServiceProviderInternal`'s speaks to an implementer (what internals pass
-around), `IServiceProvider`'s speaks to a consumer (`resolve` as the everyday name for the same
-answer). Owner ruling, verbatim, in two passes: first, "create IServiceProviderInternal. move
-getService to it. set IServiceProvider to extend IServiceProviderInternal. change engine to
-implement the internal one. change ServiceProvider to take the internal one in ctor. switch all the
-internal points that currently lie. IServiceProvider only in public facing spots." — then, amending
-the `extends` shape specifically: "IServiceProvider DUPLICATES the getService declaration instead —
-two self-contained interfaces, structurally compatible (which is all the assignability needs). Give
-each declaration its own-voiced doc."
-
-`IServiceProviderInternal` lives in `IServiceProvider.ts` beside `IServiceProvider` rather than its
-own file — the two are one contract split into two tiers, and reading them side by side is more
-useful than a barrel entry apart. `Engine` now `implements IServiceProviderInternal` (its own
-`interface Engine extends IServiceProviderInternal {}` merge narrows to match) — it no longer types as
-carrying `resolve`/`resolveMany`. An `Engine` handed out directly used to type-check as a full
-provider while throwing at runtime the moment anything called an augmented verb on it (§219); now
-the type says exactly what the value can do. `ServiceProvider`'s constructor takes
-`IServiceProviderInternal | Func<[Type], unknown>` —
-every provider it wraps only ever needs to be asked, never itself carries the augmented verbs it's
-about to be handed. `askForControl` — the one place a control ask reaches into whatever it's given —
-takes `IServiceProviderInternal` outright now, dissolving the `Pick<IServiceProvider, 'getService'>`
-wart its signature carried: that `Pick` existed only to say "I only need `getService`" without a type
-that said so on its own; now one does.
-
-Everywhere else `IServiceProvider` appears in `di`'s internals, it was already the public tier
-honestly: `build()`'s return, `keeping`'s `state.provider` answer and `Scope.provider`, the
-scope-factory faces' `openScope(): IServiceProvider`, `resolvesFrom`'s `container` parameter, the
-models' `openFrom` factory parameter (the same value `enclosingScope` and `openChild` thread through
-`root-anchor.ts` — a user's own factory receives the wrapped face, never the internal engine), and
-every `typefor<IServiceProvider>()` address — the address always names the public face; no address is
-ever minted for the internal type. `ScopeBinding.ts`, `root-anchor.ts`, and `RealizeVisitor.ts` were
-swept and came back clean on inspection — every `IServiceProvider` reference in each was already one
-of these public-facing spots or a `typefor` address, not a getService-only internal lie; `di.ts`'s
-`build()` likewise only touches `IServiceProvider` at its own public return, with `Engine` and plain
-function types carrying every internal step in between. **`IServiceProvider` only in public-facing
-spots** is the standing rule going forward.
-
-The wrap into the public face is minted just-in-time at each handout, never cached for identity — no
-`ServiceProvider` anywhere carries a `===`-stability guarantee. Owner: "we always wrap with
-ServiceProvider JIT." `RealizeVisitor.ts`'s `engineFaces` `WeakMap` and `faceOf` are deleted;
-`visitServiceProvider`'s fallback answers `new ServiceProvider(this.#engine)` inline, fresh on every
-construction that reaches it, rather than the one-per-engine cache it minted before. The rest of `di`
-was swept for the same pattern and came back with one genuine exception, left as-is: `ScopeBinding`'s
-stored `face` is not a handout cache but the scope's own identity — `resolvesFrom` keys its `WeakMap`
-on that exact object to recover which scope a caller-held container resolves from, so a caller handed
-a fresh wrap on every access would break that lookup the moment it asked twice. Flagged for the
-owner as the one judgment call this sweep found, rather than folded into the JIT rule by assumption.
-No smoke case leaned on a provider object's own identity — every existing assertion compared resolved
-values or scope-kept instances, never a provider reference itself — so nothing needed rewriting to
-stay behavioral.
 
 _Owner-ruled; Claude-recorded 2026-08-28._
 
@@ -4031,7 +3814,7 @@ single-opaque-state channel.
 
 Derivation is `states.with(index, answered)`, batched per construction into one derived context the
 dependency subtree realizes under. No behavior can observe or clobber another's — the crash class
-where an upstream `{state: undefined}` reaches the keeper (§209's open item) dissolves structurally
+where an upstream `{state: undefined}` reaches the keeper dissolves structurally
 rather than by guards.
 
 The state-envelope pattern — an addon packing its compartment over "whatever sits beneath",

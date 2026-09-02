@@ -1,15 +1,26 @@
-import type { GetService, Registration } from '@rhombus-std/di.core';
-import { Control } from '@rhombus-std/di.core';
+import { Control, type GetService, type IServiceProvider, type Registration, UnsatisfiableError } from '@rhombus-std/di.core';
 import type { Type } from '@rhombus-std/primitives';
 import { typefor } from '@rhombus-std/primitives.extras';
-import { askForControl } from './control-recognition.js';
 import { Plan } from './Plan/index.js';
 import { Registry } from './Registry.js';
 
-/** The registry `next` resolves against, read once through the manifest control. */
+/**
+ * The registry `next` resolves against, read once through the roster control.
+ *
+ * @remarks
+ * At fold time, no real provider exists yet; the request sent here carries no meaningful
+ * `serviceProvider` — the roster ask never reads it.
+ *
+ * @throws {UnsatisfiableError} when the answer is not a control — a middleware standing in the way
+ * answered the roster ask itself.
+ */
 export function registryOf(next: GetService): Registry {
-  const registrations = askForControl<Iterable<Registration<unknown>>>(next, typefor<Control<Iterable<Registration<unknown>>>>());
-  return new Registry(registrations);
+  const address = typefor<Control<Iterable<Registration<unknown>>>>();
+  const answer: unknown = next({ type: address, serviceProvider: undefined as unknown as IServiceProvider });
+  if (!(answer instanceof Control)) {
+    throw new UnsatisfiableError(address, 'a middleware answered the roster ask with something other than a control');
+  }
+  return new Registry(answer.service as Iterable<Registration<unknown>>);
 }
 
 /** One closed address, planned — or the error planning it threw. */

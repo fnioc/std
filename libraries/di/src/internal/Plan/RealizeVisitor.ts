@@ -1,5 +1,4 @@
-import { type HookChain, Registration, type Request } from '@rhombus-std/di.core';
-import type { Type } from '@rhombus-std/primitives';
+import { Registration, type Request } from '@rhombus-std/di.core';
 import type { Ctor, Func } from '@rhombus-toolkit/func';
 import { iterable } from '@rhombus-toolkit/obj';
 import { assertNever } from '@rhombus-toolkit/type-guards';
@@ -13,11 +12,6 @@ import type { ArrayPlan, AsyncIterablePlan, AsyncPlan, ConstantPlan, CtorPlan, F
  * context for the subtree beneath, leaving every other position's own untouched.
  */
 export interface VisitorContext {
-  /**
-   * One state per installed behavior, each at the slot its owner threads — frozen, and opaque to
-   * everything here: a slot is moved between the chain and its owner and never read.
-   */
-  readonly states: readonly unknown[];
   /** A latebound call's arguments, read by position from the {@link LateBoundArgPlan}s in its plan. */
   readonly args?: readonly unknown[];
   /** What the enclosing boundary settled, read back by node identity; absent outside one. */
@@ -26,21 +20,10 @@ export interface VisitorContext {
 
 export interface RealizeOptions {
   readonly engine: Engine;
-  /** The one chain this resolution runs through, as its behaviors aggregated where it opened. */
-  readonly chain: HookChain;
   /** What the walk starts carrying. */
   readonly context: VisitorContext;
   /** The request that opened this resolution — captured for the whole lifecycle including latebounds. */
   readonly request: Request;
-}
-
-/**
- * What a callable minted mid-walk carries into its own call: every behavior's state at the position
- * it was minted, and nothing an enclosing boundary settled — the call opens its own boundaries, and
- * a map of what some earlier one settled would answer its plan nodes with stale values.
- */
-function captureForLaterCall(context: VisitorContext): VisitorContext {
-  return { states: context.states };
 }
 
 /**
@@ -52,12 +35,10 @@ function captureForLaterCall(context: VisitorContext): VisitorContext {
  */
 export class RealizeVisitor {
   readonly #engine: Engine;
-  readonly #chain: HookChain;
   readonly #request: Request;
 
-  constructor({ engine, chain, request }: RealizeOptions) {
+  constructor({ engine, request }: RealizeOptions) {
     this.#engine = engine;
-    this.#chain = chain;
     this.#request = request;
   }
 
@@ -72,11 +53,11 @@ export class RealizeVisitor {
       case 'factory':
         return this.visitFactory(plan, context);
       case 'latebound':
-        return this.visitLateBound(plan, context);
+        return this.visitLateBound(plan);
       case 'latebound-arg':
         return this.visitLateBoundArg(plan, context);
       case 'invoker':
-        return this.visitInvoker(plan, context);
+        return this.visitInvoker(plan);
       case 'constant':
         return this.visitConstant(plan);
       case 'iterable':
@@ -97,11 +78,11 @@ export class RealizeVisitor {
   }
 
   protected visitRegisteredCtor(plan: RegisteredCtorPlan, context: VisitorContext): any {
-    return this.#realize(plan, plan.populatedAddress, plan.registration, context, within => new plan.ctor(...this.#callArgs(plan, within)));
+    return new plan.ctor(...this.#callArgs(plan, context));
   }
 
   protected visitRegisteredFactory(plan: RegisteredFactoryPlan, context: VisitorContext): any {
-    return this.#realize(plan, plan.populatedAddress, plan.registration, context, within => plan.factory(...this.#callArgs(plan, within)));
+    return plan.factory(...this.#callArgs(plan, context));
   }
 
   /** The call's realized argument list: one value per arg plan, then the rest plan's list spread one argument per element. */
@@ -113,25 +94,6 @@ export class RealizeVisitor {
     return values;
   }
 
-  /**
-   * Constructs through the engine's one chain: a `{result}` answer is the node's value, built by
-   * nobody and swept by nothing, while anything else means going ahead under the states every
-   * behavior just filed — one derived context, whatever the chain's length. What is built is
-   * canonicalized, and the node settles on whatever that answered before anything downstream reads
-   * it.
-   */
-  #realize(plan: Plan, populatedAddress: Type, registration: Registration<unknown> | undefined, context: VisitorContext, make: Func<[VisitorContext], unknown>): any {
-    const construction: HookChain.Construction = { node: plan, populatedAddress, registration, states: context.states };
-    const withinStates = context.states.slice();
-    const answer = this.#chain.beforeConstruct(construction, withinStates);
-    if (answer) {
-      return answer.result;
-    }
-    const instance = this.#chain.canonicalize(construction, make({ ...context, states: Object.freeze(withinStates) }));
-    this.#chain.afterConstruct(construction, instance);
-    return instance;
-  }
-
   protected visitCtor(plan: CtorPlan, context: VisitorContext): any {
     return new plan.ctor(...this.#callArgs(plan, context));
   }
@@ -141,16 +103,14 @@ export class RealizeVisitor {
   }
 
   /**
-   * Each call re-enters under the states at the position the function was minted — the model's
-   * `{state}` re-threading makes that position's state the honest ownership state: a
-   * singleton's factory carries the root-threaded state, a scoped service's factory carries its
-   * own owning state. The request is captured too — a latebound call carries the request it was
-   * minted under rather than meeting a new one.
+   * Each call re-enters under the request the function was minted under rather than meeting a
+   * new one, and opens boundaries of its own — nothing an enclosing boundary settled carries in,
+   * since a map of what some earlier one settled would answer the call's plan nodes with stale
+   * values.
    */
-  protected visitLateBound(plan: LateBoundPlan, context: VisitorContext): any {
-    const captured = captureForLaterCall(context);
+  protected visitLateBound(plan: LateBoundPlan): any {
     const request = this.#request;
-    return (...args: any[]) => this.#engine.resolveLatebound(plan.funcType, args, { chain: this.#chain, context: captured, request });
+    return (...args: any[]) => this.#engine.resolveLatebound(plan.funcType, args, request);
   }
 
   protected visitLateBoundArg(plan: LateBoundArgPlan, context: VisitorContext): any {
@@ -162,9 +122,8 @@ export class RealizeVisitor {
    * registration for the caller's own `callable`, under `callableType` itself as the address, and
    * hands it to the engine as an invocation frame — nothing here is registered or cached.
    */
-  protected visitInvoker(plan: InvokerPlan, context: VisitorContext): any {
+  protected visitInvoker(plan: InvokerPlan): any {
     const { callableType } = plan;
-    const captured = captureForLaterCall(context);
     const request = this.#request;
     return (callable: Ctor | Func) => {
       const registration = (() => {
@@ -177,7 +136,7 @@ export class RealizeVisitor {
             return assertNever(callableType);
         }
       })();
-      return this.#engine.resolveFrame(registration, { chain: this.#chain, context: captured, request });
+      return this.#engine.resolveFrame(registration, request);
     };
   }
 
@@ -204,24 +163,16 @@ export class RealizeVisitor {
     return this.#deliver(plan, context);
   }
 
-  /**
-   * A registration answered the promise address itself, so the wrapping promise is its product:
-   * the construction protocol runs here with the envelope as the make, and a later ask for the
-   * same address answers the kept promise and enters nothing beneath it.
-   */
+  /** A registration answered the promise address itself, so the wrapping promise is its product, delivered from the envelope. */
   protected visitRegisteredPromise(plan: RegisteredPromisePlan, context: VisitorContext): any {
-    return this.#realize(plan, plan.envelope.populatedAddress, plan.registration, context, within => this.#deliver(plan.envelope, within));
+    return this.#deliver(plan.envelope, context);
   }
 
   async #deliver(plan: PromisePlan, context: VisitorContext): Promise<unknown> {
     if (!plan.inventory.length) {
       return this.visit(plan.inner, context);
     }
-    const hoisted = await gather(plan.inventory, plan.populatedAddress, entry => {
-      // The inner visit's own beforeConstruct is the hit-skip: a cached promise prunes the entire
-      // inner boundary, and a settled cached promise costs one microtask.
-      return this.visit(entry.inner, context);
-    });
+    const hoisted = await gather(plan.inventory, plan.populatedAddress, entry => this.visit(entry.inner, context));
     return this.visit(plan.inner, { ...context, hoisted });
   }
 

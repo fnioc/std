@@ -1,39 +1,14 @@
-import { type Behavior, Control, controlLifetime, type GetService, HookChain, type IEngineHooks, type Registration, type Request, UnsatisfiableError } from '@rhombus-std/di.core';
+import { Control, controlLifetime, type GetService, type Registration, type Request, UnsatisfiableError } from '@rhombus-std/di.core';
 import { type FunctionType, type ListType, type TupleType, Type } from '@rhombus-std/primitives';
 import { typefor } from '@rhombus-std/primitives.extras';
-import { isControlAsk } from './control-recognition.js';
-import { Plan, type VisitorContext } from './Plan/index.js';
+import { Plan } from './Plan/index.js';
 import { Registry } from './Registry.js';
 
-/** A resolution as it stood where a callable was minted, so invoking that callable re-enters the same way. */
-interface RunningResolve {
-  /** The one chain the resolution was running through. */
-  readonly chain: HookChain;
-  /** What the walk carried at the position the callable was minted, everything an enclosing boundary settled stripped off. */
-  readonly context: VisitorContext;
-  /** The request that opened the ask this callable was minted under. */
-  readonly request: Request;
-}
-
-/**
- * The state every behavior on `chain` opens `request` under, one slot apiece: each files into its
- * own, seeded from `injected` — so a slot nobody writes keeps whatever the caller carried in.
- */
-function openStates(chain: HookChain, request: Request, injected: readonly unknown[]): readonly unknown[] {
-  const opening = injected.slice();
-  chain.beginResolve(request, injected, opening);
-  return Object.freeze(opening);
-}
-
 /** The resolution orchestrator: one per container. Composed as the innermost middleware element. */
-export class Engine implements IEngineHooks {
+export class Engine {
   readonly #registry: Registry;
   /** Addresses whose registrations carry the engine-owned {@link controlLifetime}, precomputed at construction. */
   readonly #controlLifetimeAddresses: ReadonlySet<Type>;
-  /** Everything installed and not yet disposed, the most recently installed standing nearest the walk. */
-  #chain: HookChain = HookChain.identity;
-  /** The slots of behaviors since disposed, handed out again before the chain is widened. */
-  readonly #freeSlots: number[] = [];
 
   constructor(registrations: Iterable<Registration<unknown>>) {
     this.#registry = new Registry(registrations);
@@ -47,15 +22,15 @@ export class Engine implements IEngineHooks {
   // #region resolution
 
   /**
-   * Resolves `request` under everything installed and not yet disposed, or hands it to `next`.
+   * Resolves `request` from its registrations, or hands it to `next`.
    *
    * @remarks
-   * A control ask the engine owns is answered here and nowhere else: the engine hands back what it
-   * names itself, running no hook and standing nothing over anything, so reaching for a control
-   * changes nothing about the resolution that follows.
+   * The roster ask, `Control<Iterable<Registration<unknown>>>`, is answered by the engine itself
+   * with the registrations it resolves against — how a middleware sweeping the manifest at build
+   * reads it.
    *
    * A registration carrying {@link controlLifetime} is answered directly — its factory receives
-   * the request and nothing else, bypassing the plan infrastructure and the hook chain.
+   * the request and nothing else, bypassing the plan infrastructure.
    *
    * An address no registration matches is not the engine's to refuse: it flows through `next`,
    * and whatever stands beneath answers or refuses it.
@@ -64,19 +39,11 @@ export class Engine implements IEngineHooks {
    */
   getService(request: Request, next: GetService): any {
     const address = request.type;
-    switch (address) {
-      case undefined:
-        throw new TypeError('getService received no address — the caller resolved without a service type');
-      case typefor<Control<IEngineHooks>>():
-        return new Control(this);
-      case typefor<Control<Iterable<Registration<unknown>>>>(): {
-        return new Control(this.#registry.registrations);
-      }
-      default: {
-        if (isControlAsk(address)) {
-          return next(request);
-        }
-      }
+    if (address === undefined) {
+      throw new TypeError('getService received no address — the caller resolved without a service type');
+    }
+    if (address === typefor<Control<Iterable<Registration<unknown>>>>()) {
+      return new Control(this.#registry.registrations);
     }
 
     if (this.#controlLifetimeAddresses.has(address)) {
@@ -94,17 +61,12 @@ export class Engine implements IEngineHooks {
       }
       throw error;
     }
-    return Plan.realize(plan, {
-      engine: this,
-      chain: this.#chain,
-      context: { states: openStates(this.#chain, request, new Array(this.#chain.width)) },
-      request,
-    });
+    return Plan.realize(plan, { engine: this, context: {}, request });
   }
 
   /**
    * Answers a {@link controlLifetime} registration directly: the factory receives the request
-   * with no planning, no hooks, and no caching.
+   * with no planning and no caching.
    */
   #resolveControlLifetime(request: Request): unknown {
     const match = Iterator.from(this.#registry.getMatches(request.type))
@@ -124,30 +86,6 @@ export class Engine implements IEngineHooks {
 
   // #endregion
 
-  // #region IEngineHooks
-
-  useHooks<State = unknown>(hooks: Behavior<State>): Disposable {
-    const slot = this.#freeSlots.pop() ?? this.#chain.width;
-    const beneath = this.#chain;
-    const standing = beneath.with(hooks, slot);
-    this.#chain = standing;
-    let live = true;
-    return {
-      [Symbol.dispose]: () => {
-        if (!live) {
-          return;
-        }
-        live = false;
-        // Uninstalling the most recent install is the chain from before it; anything else has to
-        // answer a chain the layers installed since still stand in.
-        this.#chain = this.#chain === standing ? beneath : this.#chain.without(slot);
-        this.#freeSlots.push(slot);
-      },
-    };
-  }
-
-  // #endregion
-
   // #region internals
 
   /** The registrations this engine resolves against. */
@@ -156,31 +94,24 @@ export class Engine implements IEngineHooks {
   }
 
   /**
-   * @param running - the resolution as it stood where the caller was created.
+   * @param request - the request that opened the ask the caller was minted under.
    * @throws {UnsatisfiableError} when no signature of {@link registration} can be satisfied.
    */
-  resolveFrame(registration: Registration<unknown>, running: RunningResolve): unknown {
+  resolveFrame(registration: Registration<unknown>, request: Request): unknown {
     const plan = Plan.fromRegistration(registration, this.#registry);
     if (plan === undefined) {
       throw new UnsatisfiableError(registration.address, 'no signature of the invoked callable can be satisfied');
     }
-    return Plan.realize(plan, {
-      engine: this,
-      chain: running.chain,
-      context: { states: openStates(running.chain, running.request, running.context.states) },
-      request: running.request,
-    });
+    return Plan.realize(plan, { engine: this, context: {}, request });
   }
 
   /**
    * A latebound call: binds each arg to the first signature whose arity fits, positionally.
    * A call may stop short of the full signature wherever the remaining slots admit `undefined`.
    *
-   * @param running - the resolution as it stood where the caller was minted; it re-opens through
-   * that resolution's own chain, so an opener that reads ambient state can override the state
-   * captured there.
+   * @param request - the request that opened the ask the callable was minted under.
    */
-  resolveLatebound(funcType: FunctionType, providedArgs: readonly unknown[], running: RunningResolve): unknown {
+  resolveLatebound(funcType: FunctionType, providedArgs: readonly unknown[], request: Request): unknown {
     const signature = Iterator.from(Type.signatureRows(funcType.signatures))
       .map(row => boundArgTypes(row, providedArgs.length))
       .find(candidate => candidate !== undefined);
@@ -188,15 +119,7 @@ export class Engine implements IEngineHooks {
     if (signature === undefined) {
       throw new TypeError(`${Type.stringify(funcType)} has no signature accepting ${providedArgs.length} arg(s)`);
     }
-    return Plan.realize(Plan.from(funcType.return, this.#registry, signature), {
-      engine: this,
-      chain: running.chain,
-      context: {
-        states: openStates(running.chain, running.request, running.context.states),
-        args: providedArgs,
-      },
-      request: running.request,
-    });
+    return Plan.realize(Plan.from(funcType.return, this.#registry, signature), { engine: this, context: { args: providedArgs }, request });
   }
 
   // #endregion

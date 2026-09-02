@@ -899,8 +899,7 @@ if that write-up slips.
 - [ ] `controlLifetime` stops bypassing planning. Today `Engine.#resolveControlLifetime` calls the
       factory with the raw request and no plan; it must plan the factory's slots like any other
       registration, keeping only the no-caching property.
-- [ ] Drop §208, §209 and §220 from the decision log. Nothing cites §208 or §220; §209's only
-      inbound citations are decision entries about the deleted keeper.
+- [x] §208, §209 and §220 are out of the decision log; every cross-reference is corrected in place.
 
 ## Resolution door — open, awaiting the owner (2026-09-01)
 
@@ -921,10 +920,8 @@ if that write-up slips.
 
 ## Builder reshape — aftermath (2026-09-01)
 
-- [ ] `CaptiveDependencyError` is a shared captivity error in di.core's taxonomy
-      (`libraries/di.core/src/Errors.ts:101`), re-exported from di. Nothing in product code throws
-      it — its only caller is a test. A shared captivity type is exactly what "captivity is the
-      model's own, never shared between models" forbids, so it is a live deletion candidate.
+- [x] `CaptiveDependencyError` is out of di.core's taxonomy: captivity is the model's own, never
+      shared between models, so a shared captivity error type has no owner.
 
 - [ ] No static `withServices` opener exists, though the spec says services or the model may come
       first. `hosting` and `logging` each hand-rolled `const noLifetimeModel: Addon<unknown>` to open
@@ -950,9 +947,8 @@ if that write-up slips.
       cannot be adapted honestly until a lifetime model exists.
 - [x] The builder-shape section's tail now says the ENGINE seeds `IServiceProvider` under
       `controlLifetime`, unconditionally. The single-door law spelled `IServiceProvider.getService(Type)`
-      is NOT stale: it is the owner's verbatim quote in §209 and names the public interface's
-      signature, which §230 keeps — only the chain and engine take a `Request`. §209 leaves the log
-      at step 9 regardless.
+      is NOT stale: it is the owner's verbatim ruling and names the public interface's
+      signature, which §230 keeps — only the chain and engine take a `Request`.
 - [ ] Two unbounded, never-evicting caches keyed on runtime input, both plain objects holding strong
       references: `Type/factory/intern.ts:24` (`table`, keyed on a structural string) and
       `Type/Type.ts:215` (`parsed`, keyed on the raw token string). `Type.from` is the door data
@@ -1073,8 +1069,8 @@ the ctor/func intern key to two ids, and satisfies the one-kind-per-member rule.
 - [ ] Does "remove all Lifetime related interfaces" reach `LifetimeArgument<Lifetime>` and
       `LifetimeModelError`? `LifetimeModel` is unambiguous. `LifetimeArgument` is the vararg helper an
       addon uses to take a lifetime from its caller and says nothing about how a model works, so it
-      would stay. `LifetimeModelError` is a shared error ABOUT models — the same shape of problem as
-      `CaptiveDependencyError`.
+      `LifetimeModelError` is a shared error ABOUT models — a shared type with no single owner,
+      the shape a model-owned concern never takes.
 - [ ] An array-typed rest parameter (`...deps: IDep[]`) derives as ONE required `Array<IDep>` slot
       where a tuple-typed rest refuses loudly — a silent arity misstatement, the class §232 forbids.
       Refuse it too, or let the open-length tuple work express it honestly?
