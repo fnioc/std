@@ -62,8 +62,16 @@ Optional, each an additional middleware layer, off unless added:
 
 ### Everything else
 
-Behavior and disposal match the reference container, `ME.DependencyInjection`, exactly. Where this
-document is silent, the reference decides.
+Behavior and disposal match Microsoft.Extensions.DependencyInjection exactly. Where this document is
+silent, Microsoft.Extensions.DependencyInjection decides. Its observable behavior is catalogued in
+`standard-lifetime-model.reference-behavior.md`, extracted from its source, which is not reachable
+from the cloud.
+
+### Documentation
+
+Against the repository's usual rule, every doc and doc-comment of the standard lifetime model says
+explicitly that it is a clone of Microsoft.Extensions.DependencyInjection, with that name spelled
+out in full, never abbreviated.
 
 ## Architecture
 
