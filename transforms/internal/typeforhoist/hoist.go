@@ -186,9 +186,9 @@ func Union(members []*Node) *Node {
 
 // Tuple builds a slot-list node. Where a union's key sorts its members, this
 // one keeps the order given: two tuples over the same types in two orders are
-// two types, and so two consts. rest states the tuple's open length, if any — a
-// fixed-length tuple's key is untouched by it, so a rest slot never fragments
-// the identity a pre-existing const already carries.
+// two types, and so two consts. rest states the tuple's open length, if any —
+// an open tuple appends it to the key a fixed-length one keys by, so the two
+// forms of one slot list intern as distinct consts.
 func Tuple(members []*Node, rest *Node) *Node {
 	key := "[" + joinKeys(members, ",") + "]"
 	if rest != nil {

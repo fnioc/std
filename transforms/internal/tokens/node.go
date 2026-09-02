@@ -282,7 +282,8 @@ func deriveNamedNode(ctx *Context, checker *shimchecker.Checker, t *shimchecker.
 // a union, a callable, or an object reaches its own kind. An OPTIONAL slot's
 // checker type already carries `| undefined`, which is the one spelling the model
 // gives an absent-able position, so it derives as-is; a trailing REST slot's
-// element becomes TupleRest. Only a VARIADIC slot (a `...T` spread of a generic
+// element becomes TupleRest, and a tuple that is nothing but that slot derives
+// as the list itself. Only a VARIADIC slot (a `...T` spread of a generic
 // array/tuple, rather than a plain `...T[]` rest) or a rest slot anywhere but
 // last has no member this walk can spell, so those refuse. A readonly modifier
 // and slot labels say nothing about the slots and are dropped. ok=false also
@@ -321,6 +322,11 @@ func deriveTupleNode(ctx *Context, checker *shimchecker.Checker, t *shimchecker.
 			continue
 		}
 		members = append(members, member)
+	}
+	if len(members) == 0 && rest != nil {
+		// A tuple that is nothing but a rest slot is the list itself, so it
+		// derives as the array its open length draws from.
+		return &Node{Kind: KindNamed, Name: "Array", From: "global", Args: []*Node{rest}}, true
 	}
 	return &Node{Kind: KindTuple, Members: members, TupleRest: rest}, true
 }
