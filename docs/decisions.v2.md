@@ -543,9 +543,9 @@ _Owner-directed (the mutable-slot seam, forced by the immutable-manifest design)
 
 ## §108 — `Manifest` is an interface; its own body carries three primitives, every registration verb arrives through augmentation
 
-`Manifest<Scopes>` (`libraries/di.core/src/Manifest.ts`) is an interface extending `Iterable<Registration<Scopes>>`, and its own body declares exactly three members — `add`, `remove`, `replace`, each taking one registration — each returning a NEW manifest rather than mutating the receiver, so a call whose result is discarded registers nothing. `DefaultManifest` is the concrete, `@augment`-decorated class: an immutable decorator chain where `add` prepends one registration via a generator that yields the new registration then delegates to the rest, so iteration order is newest-registration-first.
+`Manifest<Scopes>` (`libraries/di.core/src/Manifest.ts`) is an interface extending `Iterable<Registration<Scopes>>`, and its own body declares exactly three primitives — `_add`, `_remove`, `_replace`, each taking one registration — each returning a NEW manifest rather than mutating the receiver, so a call whose result is discarded registers nothing. `DefaultManifest` is the concrete, `@augment`-decorated class: an immutable decorator chain where `add` prepends one registration via a generator that yields the new registration then delegates to the rest, so iteration order is newest-registration-first.
 
-Every other registration verb — `addMany`, `addClass`, `addFactory`, `addValue`, `tryAdd` and its typed siblings, `replaceClass`/`replaceFactory`/`replaceValue`, `removeAll` — arrives through augmentation onto `Manifest`, in `libraries/di.core/src/augmentations/`. Augmentation also contributes further `add` shapes on the primitive's own name: a lambda that walks the per-registration builder (§109), or an implementation plus its composed call-shape type positionally (§188). `addClass`/`addFactory`/`addValue` are separate convenience verbs that compose a `Registration` from a type, an implementation, and the implementation's own composed `Type` (`libraries/di.core/src/Registration/Registration.ts`), then forward to `add`. Builders that wrap a manifest and are configured by a caller delegate keep mutation-shaped ergonomics on top via a mutable-slot seam (§114). _Owner-directed (the immutable-chain, verb-carried-by-augmentation direction); the builder's slot mechanics (§109) are Claude's._
+Every registration verb — `add`, `tryAdd`, `replace`, `addValue`/`tryAddValue`/`replaceValue`, `remove`, `removeAll`, `describe` — arrives through augmentation onto `Manifest`, in `libraries/di.core/src/augmentations/`, composing down to the three primitives; §193 records the landed verb surface. Builders that wrap a manifest and are configured by a caller delegate keep mutation-shaped ergonomics on top via a mutable-slot seam (§114). _Owner-directed (the immutable-chain, verb-carried-by-augmentation direction); the builder's slot mechanics (§109) are Claude's._
 
 ---
 
@@ -884,10 +884,10 @@ hole either is one, by the one parser's rule, or the text after `%` names someth
 ## §130 — A library references the abstractions package; only an entry point references the engine
 
 The whole di error taxonomy is DECLARED in `@rhombus-std/di.core` and re-exported from
-`@rhombus-std/di`. `UnsatisfiableError`, `CycleError`, `AmbiguousUnionError`, and
-`ManifestValidationError` join the `DiError` root — `libraries/di.core/src/Errors.ts` declares all
-five. `libraries/di/src/index.ts` re-exports them directly, with no separate `errors.ts` file of its
-own, so every `from '@rhombus-std/di'` import naming one keeps working unchanged.
+`@rhombus-std/di`. `UnsatisfiableError`, `CycleError`, `LifetimeModelError`, `UniversalAddressError`,
+and `ManifestValidationError` join the `DiError` root — `libraries/di.core/src/Errors.ts` declares
+them. `libraries/di/src/index.ts` re-exports the taxonomy directly, with no separate `errors.ts`
+file of its own, so every `from '@rhombus-std/di'` import naming one keeps working unchanged.
 
 **The rule this enforces.** A library references the abstractions package; only an entry point
 references the engine. It is repo-wide, not an examples-only convention. `examples.lib.*` are its
@@ -916,22 +916,16 @@ for every one of them, and an error thrown by the engine satisfies `instanceof` 
 imported from `di.core`.
 
 **`logging` is an exception. The rule stands.** `logging` and `hosting` are the only libraries
-carrying a RUNTIME `@rhombus-std/di` dependency. `di.core` ships `DefaultManifest`, the concrete
-`Manifest` implementation; `di` installs `build()` onto every `Manifest` (an augmentation sealing it
-into a `ServiceProvider`, `libraries/di/src/Manifest-ContainerBuilder-augmentations.ts`). `hosting`
-is an entry point by job description, so it is not an exception at all. `logging` is:
-`LoggerFactory.create` (`libraries/logging/src/LoggerFactory.ts`) does `new
-DefaultManifest().addLogging(configure)`, then `.build()`, then resolves the factory out of the
-provider — entry-point work by this entry's letter, inside a library.
+carrying a RUNTIME `@rhombus-std/di` dependency — `di`'s `Builder` is the one thing that seals
+registrations into a provider, and both call it. `hosting` is an entry point by job description, so
+it is not an exception at all. `logging` is: `LoggerFactory.create`
+(`libraries/logging/src/LoggerFactory.ts`) builds the logging manifest from its configure delegate,
+then `Builder.withServices(...).build()`, then resolves the factory out of the provider —
+entry-point work by this entry's letter, inside a library.
 
 It stays. The API is a legitimate convenience for a consumer who wants logging without composing a
-container, and the returned `DisposingLoggerFactory`'s `[Symbol.dispose]` forwards to the provider
-it built, so the intended shape is "the factory owns the scope it made." Whether that forward
-actually disposes anything today rides on the still-unbuilt scope/dispose model:
-`ServiceProvider.dispose()`/`disposeAsync()` (`libraries/di/src/ServiceProvider.ts`) are currently
-`NotImplementedError` stubs, so calling `LoggerFactory.create`'s disposal path throws rather than
-tearing anything down — a gap in the scope/dispose model generally, not a defect specific to
-`logging`'s carve-out.
+container. What the factory's own disposal tears down rides on the still-unbuilt scope/dispose
+model — a gap in that model generally, not a defect specific to `logging`'s carve-out.
 
 **The exception is `logging`, by name. The list is closed.** The paragraph above explains why
 `logging` earned it; it is not a test anyone else may apply. No other library builds a container,
@@ -3050,7 +3044,7 @@ _Owner-ruled; Claude-recorded 2026-08-22._
 
 ---
 
-## §203 — The realize walk stays opaque to lifetime vocabulary; audit is an addon behind a shared `beginWalk` hook
+## §203 — The realize walk stays opaque to lifetime vocabulary; audit is an addon behind a shared `beginResolve` hook
 
 `RealizeVisitor` names no lifetime, scope, or audit vocabulary of its own: each addon reads only
 the one strand it contributed, and the walk's binding does the same. `Construction` and `Hooks`
@@ -3278,113 +3272,79 @@ consumer of the package can already resolve.
 
 _Owner-ruled; Claude-recorded 2026-08-28._
 
-## §212 — The addon contract is `create(): { middleware, registrations }`; the lifetime model mints its own machinery the same way
+## §212 — The addon contract is `{ registrations, middleware }`; the lifetime model mints its own machinery the same way
 
-An addon and a lifetime model both mint their contribution to a build through a member named
-`create`, and an addon's hooks are named `middleware` — one hook shape, one verb, named the same
-wherever it appears. The owner's own framing: "the 'addon' contract will now be
+An addon states its whole contribution to a build through two members — the `registrations` it
+files and the `middleware` it composes — and an addon's hooks ride its `middleware`: one hook
+shape, one name, wherever it appears. The owner's own framing: "the 'addon' contract will now be
 `di.useAddon(addon:{create():{middleware:Func<...>, registrations:Iterable<Registration<any>>});`.
 lifetime model _could_ follow this pattern, but it's a special case bc the builder needs to
 forward the generic arg to the registration builder (i.e. manifest). we need to get validation to
 conform next -- let me look over what it does. go ahead and refactor the audit service into this
 shape."
 
-`Addon.create(): AddonInstallation` replaces `install()`; `AddonInstallation.middleware`
-replaces its `hooks` member, `registrations` and `atBuild` keep their names and shapes.
-`ContainerBuilder.withAddon` becomes `useAddon`, matching the verb an addon mints through.
-A lifetime model is an `Addon` outright, with no contract of its own, and it folds into the addon
-list the same way anything else does: the builder's `useAddon` installs it. The
-`Lifetime`-generic-forwarding concern the quote above raises dissolves the same way an ordinary addon's registrations already dissolve
-it — `AddonInstallation.registrations` is `Iterable<Registration<any>>`, and the one call site that
-knows what `Lifetime` is casts it there, same for a lifetime model as for anything else.
-
-`auditAddon` conforms fully: its `create()` returns `{ middleware: {...}, registrations: [...] }`,
-and its placeholder factory's error now names `useAddon` and `middleware` rather than the retired
-`withAddon`/`hooks` spelling. The `validation` addon renames `install()` to `create()` and its
-error text's `withAddon` mention to `useAddon` — nominal conformance only. It does not yet answer
-through the addon-mint shape the way `auditAddon` does; the owner is reviewing what `validation`
-should look like under this contract next, so `AddonInstallation.atBuild` stays in the contract
-for now, read only by `validation`'s own installation, until that review lands.
+`Addon<Lifetime>` (`libraries/di.core/src/Addon.ts`) carries exactly those two members, and the
+builder's `useAddon` installs one, matching the verb to what an addon is. A lifetime model is an
+`Addon` outright, with no contract of its own, and it folds into the addon list the same way
+anything else does: the builder's `useAddon` installs it. The `Lifetime`-generic-forwarding
+concern the quote above raises dissolves in the type itself: `Addon<Lifetime>` carries the
+vocabulary, and the builder chain locks onto the first input that names a concrete one.
 
 _Owner-ruled; Claude-recorded 2026-08-28._
 
-## §213 — An addon's `middleware` is a `Middleware`; `atBuild` is gone; a permanent hook installs itself through the same door a scope does
+## §213 — An addon's `middleware` is a `Middleware`; there is no `atBuild`; a permanent hook installs itself through the same door a scope does
 
-`AddonInstallation.middleware` is a `Middleware` — the ordinary request-grain kind the
-builder already composes around the engine from `use()` — not a `Behavior`. The owner's own
+`Addon.middleware` is a `Middleware` — the ordinary request-grain kind the builder
+composes around the engine — not a `Behavior`. The owner's own
 correction: "yes, the member i named middleware is suppoed to be a middleware. didn't think i'd
 need to say that." An addon wanting a permanent hook plants it itself, at build, through the same
-door a scope's own keeping installs through: its middleware asks for `Control<IEngineHooks>`
-through `next`, calls `useHooks` on what comes back, and returns `next` unchanged — stepping aside
-once its install-time work is done. `auditAddon` is the shipped example; nothing about the
-engine or the builder singles out "addon hooks" as their own kind of contribution any more — an
-addon that wants one installs it exactly the way anything else would.
+door a scope's own keeping installs through: its middleware asks for the engine's hooks control
+through `next`, installs, and returns `next` unchanged — stepping aside once its install-time work
+is done. Nothing about the engine or the builder singles out "addon hooks" as their own kind of
+contribution — an addon that wants one installs it exactly the way anything else would.
 
-`atBuild` is deleted from `AddonInstallation`, and `Engine`'s constructor drops its `builtChain`
-parameter — `#installed` now starts empty and grows only through `useHooks`, whoever calls it and
-whenever. `use()` and `useAddon()` feed one middleware list in builder-call order, the first call
-composing outermost; an addon's own middleware, if it mints one, takes its place in that same list
-at the position `useAddon` was called, not a separate earlier-composing tier. Concretely, the
-builder now stores one ordered list of thunks — one per `useAddon`/`use` call — each minting an
-`AddonInstallation`-shaped value at build (`{ middleware }` alone for a plain `use()` call, the
-addon's own `create()` result for `useAddon`); `build()` maps that list once, reads `registrations`
-off every entry the way it always did, and reads `middleware` off every entry the same way,
-composing them into the one chain `MiddlewareServiceProvider` already knew how to build. No
-`atBuild` loop remains to delete anything from.
+There is no `atBuild` member and no separate addon-hook tier: `useAddon` feeds one middleware
+list in builder-call order, the first call composing outermost, and an addon's own middleware
+takes its place in that list at the position `useAddon` was called. `build()` reads
+`registrations` and `middleware` off every addon and composes the one chain — §216 records the
+fold.
 
 A second control answers the manifest a container resolves against: `typefor<Control<Iterable
 <Registration<unknown>>>>()`, answered with `new Control(this.#registry.registrations)` — the
 registry's own frozen array serves as the iterable, a read-only view built from public types alone.
 `typefor` derived this spelling cleanly on the first attempt; the `Control<Manifest<unknown>>`
-fallback the spec allowed for was never needed. `validation` is this control's first consumer: its
-middleware asks for it through `next`, builds a fresh `Registry` from what comes back, and sweeps
-that — `validateBuild` now takes a `Registry` directly, its `instanceof Engine` guard and the
-`TypeError` it threw both gone, since nothing about validating a registration set needs the engine
-concrete any more. The sweep logic itself (`captivePairs`, the classification walk) is untouched —
-shape conversion only, pending the owner's own review of what the sweep does.
-
-One internal accommodation the spec didn't name: `askForControl`'s `provider` parameter narrows
-from `IServiceProvider` to `Pick<IServiceProvider, 'getService'>`, since a middleware only ever
-holds `next` — a bare dispatch function, not an object carrying the augmented `resolve`/
-`resolveMany` members `IServiceProvider` types as having. The function reads nothing but
-`getService` either way; only its parameter's declared width changes, and every existing call site
-(a real `IServiceProvider`) is trivially assignable to the narrower type.
+fallback the spec allowed for was never needed. The validation addons are this control's consumers: each middleware asks for it
+through `next` (`registryOf`), builds a `Registry` from what comes back, and sweeps that — nothing
+about validating a registration set needs the engine concrete.
 
 _Owner-ruled; Claude-recorded 2026-08-28._
 
-## §214 — The pipeline type is named `Middleware`, unqualified; the hook-stage names stay qualified
+## §214 — The pipeline type is named `Middleware`, unqualified
 
-`ResolveMiddleware` is `Middleware` now — `libraries/di.core/src/ResolveMiddleware.ts` renamed to
-`Middleware.ts`. The owner's own reasoning: "`ResolveMiddleware` is a bad name bc it has that
+The container's one pipeline type is `Middleware` — `libraries/di.core/src/Middleware.ts`. The
+owner's own reasoning: "`ResolveMiddleware` is a bad name bc it has that
 installer stage, optionally modifying the resolve pipeline. call it either DiMiddleware
 (DIMiddleware? they're both kinda ugly) or just plan Middleware." `Middleware`, unqualified, is
 what shipped: the container has exactly one pipeline type, so it needs no qualifier to tell it
-apart from anything else in scope. The hook-stage names — `BeginResolveMiddleware`,
-`BeforeConstructMiddleware`, `CanonicalizeMiddleware`, `AfterConstructMiddleware` — stay qualified,
-since those four sit alongside four differently-shaped handlers on `Hooks`/`Behavior` and the
-`Resolve`/`Construct`/`Canonicalize` prefixes are what tells one apart from another; nothing about
-this rename touches them.
+apart from anything else in scope. The hook vocabulary is untouched by this — its signatures spell
+inline on `Hooks`/`Behavior` (§222).
 
-`Middleware.ts`'s own doc now states plainly what the type covers: a factory that composes once, at
+`Middleware.ts`'s own doc states plainly what the type covers: a factory that composes once, at
 build, and may do install-time work of its own there — planting a permanent hook, sweeping the
-manifest — before answering the function each request runs through. Every consumer follows the
-rename: the `di.core` barrel (alphabetical position moves from after `Audit` to between
-`Manifest` and `Registration`), `Addon.ts`, `di.ts` (the `use()` member and its implementation),
-`di`'s own barrel re-export, and `MiddlewareServiceProvider.ts` — whose own class name is untouched,
-since it names what the class does (compose middleware around a provider), not the type it composes.
+manifest — before answering the function each request runs through.
 
 _Owner-ruled; Claude-recorded 2026-08-28._
 
 ## §215 — The head every provider tracks is a plain func; the model mints it through the same middleware every addon does
 
-The container's tracked identity collapses to `Func<[Type], unknown>`, not an `IServiceProvider`.
-The owner's own reversal, verbatim: "i think i want to change `LifetimeModel.create` to return a
+The container's tracked identity is a plain func — `GetService` (request in, product out; §230) —
+not an `IServiceProvider`. The owner's own reversal, verbatim: "i think i want to change `LifetimeModel.create` to return a
 normal middleware, and change the ServiceProvider ctor to `class ServiceProvider {
 #getService:Func<[Type], unknown>; constructor(source:IServiceProvider|Func<[Type], unknown>);
 }`. this reverses what i said before about 'decorator pattern being king'. the head that's being
-tracked will be just a func, not an sp." `ServiceProvider` normalizes whatever it is handed —
-`typeof source === 'function' ? source : address => source.getService(address)` — into one held
-call, and every ask forwards through it; it remains the package's one `@augment` carrier.
+tracked will be just a func, not an sp." `ServiceProvider` holds exactly that one call —
+`constructor(source: GetService)` — and every ask forwards through it; it remains the package's
+one `@augment` carrier.
 
 A lifetime model is an `Addon`, `{ middleware, registrations }`, and nothing more. A model's
 `middleware` composes exactly like any other: it receives `next` (what `attach` used to receive as `inner`, renamed to match every other middleware's own parameter)
@@ -3439,62 +3399,51 @@ and both addons (`auditAddon`, `validation`).
 
 _Owner-ruled; Claude-recorded 2026-08-28._
 
-## §216 — The builder holds exactly two dimensions: registrations steps and addon steps, both replayed at build
+## §216 — The builder holds exactly one list: every input is an addon, replayed at build
 
-`DefaultContainerBuilder`'s only private state is `#manifestSteps` (one `configureServices`
-delegate per call — the registrations dimension) and `#steps` (one `useAddon`/`use` thunk per
-call — the addon dimension, each minting an `AddonInstallation` when replayed). No `#lifetimeModel`
-field exists. The owner's own two edits, preserved verbatim: `usingManifest` is
-`return this.configureServices(man => man.add(manifest));`, and `usingLifetimeModel` is
-`return new DefaultContainerBuilder<Lifetime>().useAddon(lifetimeModel);` — a lifetime model is an
-addon, full stop, as §212 also records; nothing distinguishes it from any other `useAddon` call, and
-`useAddon` itself just appends the thunk, with no destructuring at the call site.
+`DefaultContext`'s only private state is `#addons` — one `Addon` per `useAddon`/`withServices`
+call, in call order. No `#lifetimeModel` field exists: a lifetime model is an addon, full stop, as
+§212 also records, and nothing distinguishes installing one from any other `useAddon` call.
+`withServices(fn)` is registration authoring as an addon too: it wraps the registrations `fn`
+composes onto an empty manifest into an addon contributing identity middleware. Every verb returns
+a NEW `Builder`, so a discarded result configures nothing — exactly as `Manifest`'s own verbs
+behave.
 
-`build()` replays both lists: `Iterator.from(this.#steps).map(step => step())` runs `addon.create()`
-once per build, files each installation's registrations newest-first above the previous — the
-model's own installation is always first, so its registrations land at the floor and every later
-addon files above it — then folds `#manifestSteps` over that, mints the `Engine`, and
-`reduceRight`s every installation's middleware around `address => engine.getService(address)`; the
-model's own middleware wraps outermost purely by being the first installation. `usingManifest` no
-longer discards prior configuration: forwarding through `configureServices` files the given stream
-ahead of whatever is already configured, layering rather than replacing.
+`build()` replays the list once: it folds every addon's `registrations` into one stream — a later
+addon's filings landing ahead of an earlier one's, newest first — mints the `Engine` over that,
+and `reduceRight`s every addon's `middleware` around the engine's own middleware, which answers
+what its registrations can produce and hands anything unregistered on through `next`.
+`new ServiceProvider(head)` is the one mint site, unconditional: folding zero middlewares around
+the base function returns that function unchanged, so an empty chain needs no identity-elision
+branch.
 
-**`Manifest.add` gains an iterable overload, and it did not exist before this**:
-`add(registrations: Iterable<Registration<Lifetime>>): Manifest<Lifetime>`, delegating to `apply`
-so a multi-element stream keeps its own order at the front of the chain — what the owner's own
-`man.add(manifest)` call binds to. `Manifest.ts` declares only the underscore-prefixed
-`_add`/`_replace`/`_remove` as `DefaultManifest`'s real primitives; every public `add` shape,
-singular included, already lived entirely in `Manifest-Registration-augmentations.ts`, confirmed by
-reading that file before adding this one beside it, in its own `registerAugmentations` call next to
-the single-`Registration` primitive.
+**`Manifest.add` carries batch overloads** — `add(manifest)`, the order-preserving merge, and
+`add(registrations)`, the consecutive-adds fold; §218 records their exact dispatch. `Manifest.ts`
+declares only the underscore-prefixed `_add`/`_replace`/`_remove` as `DefaultManifest`'s real
+primitives; every public `add` shape, singular included, lives entirely in
+`Manifest-Registration-augmentations.ts`.
 
 _Owner-ruled; Claude-recorded 2026-08-28._
 
-## §217 — Validation is three independently installable middlewares, one per check
+## §217 — Validation is independently installable middlewares, one per check
 
-The aggregate `validation(policy)` addon is gone; `validateUniversalAddresses()`,
-`validateBuildability()`, and `validateCaptivity(policy)` replace it, each its own `Addon`, each
-throwing its own `ManifestValidationError` over only its own failure kind. The owner's own ruling:
-"there should be a validation middleware for each validation so that the user can custimize. we'll
-prob make an 'options' surface in the di builder that selectively installs them, but not now.
-commit validations soon as they fit that bill." That options surface is explicitly deferred — this
-pass installs the three as ordinary addons, `useAddon`ed individually, nothing scaffolded toward
-selecting a subset for the owner later.
+There is no aggregate `validation(policy)` addon: `validateUniversalAddresses()` and
+`validateBuildability()` are each their own `Addon`, each throwing its own
+`ManifestValidationError` over only its own failure kind — and captivity validation is model-owned
+(§229), never a shared validator. The owner's own ruling: "there should be a validation middleware
+for each validation so that the user can custimize. we'll prob make an 'options' surface in the di
+builder that selectively installs them, but not now. commit validations soon as they fit that
+bill." That options surface is explicitly deferred — the validators install as ordinary addons,
+`useAddon`ed individually, nothing scaffolded toward selecting a subset for the owner later.
 
 `validateUniversalAddresses` rejects a registration addressed by nothing but a hole; needs no
 policy. `validateBuildability` plans every closed address, failing the ones that don't build; needs
-no policy. `validateCaptivity` walks every address that DID build for captive pairs, reading
-lifetimes through the `LifetimePolicy` it takes. The shared plumbing — the manifest control ask
-into a `Registry`, and enumerating every closed address's plan-or-error — is private to the file
-(`registryOf`, `planClosedAddresses`); `validateBuildability` and `validateCaptivity` both consume
-`planClosedAddresses`'s output, filtering to the error branch and the plan branch respectively, but
-install and fail wholly independently of each other. The sweep logic itself — the captive-pair walk,
-the tier classification — is unchanged, byte-for-byte where it isn't just reshaped around the split;
-it is still awaiting the owner's own review of what it does, same as before the split.
+no policy. The shared plumbing — the roster control ask into a `Registry`, and enumerating every
+closed address's plan-or-error — lives in `closed-address-plans.ts` (`registryOf`,
+`planClosedAddresses`), private to `di`'s internals.
 
-`hosting` was the aggregate's only outside consumer, already gated red on a `withAddon` call site
-that predates the `useAddon` rename — it adapts to the split when that package's own review lands,
-not here.
+`hosting` installs `validateBuildability` behind its `serviceProviderOptions.validateOnBuild`
+toggle; omitted means an unvalidated build.
 
 _Owner-ruled; Claude-recorded 2026-08-28._
 
@@ -3504,19 +3453,18 @@ _Owner-ruled; Claude-recorded 2026-08-28._
 `add(manifest: Manifest<Lifetime>)`, the order-preserving wholesale merge — `new DefaultManifest(()
 => concat(manifest, this))`, the stream's own order landing intact ahead of everything already in
 the chain; and `add(registrations: ButNot<Iterable<Registration<Lifetime>>, Manifest<any>>)`, the
-consecutive-adds fold `addMany` used to be — each filed in turn, the last ending up newest. There is
-no `addManifest`; an intermediate design step minted one, and the owner overruled it: "actualy,
+consecutive-adds fold — each filed in turn, the last ending up newest. There is
+no `addManifest` — the owner overruled minting one: "actualy,
 should we just overload add on Manifest for the order behavior?" then, settling it, "that's what
-ButNot is for." `apply` is deleted outright, both overloads, face and implementation — "get rid of
-apply, i never sanctioned that. do the work at the callsite." `addMany` stays deleted, renamed into
-`add`'s own consecutive-adds shape, per the owner's original framing: "either way, only one should
+ButNot is for." `apply` does not exist, in any overload — "get rid of
+apply, i never sanctioned that. do the work at the callsite." `addMany` does not exist either —
+the consecutive-adds shape lives on `add` itself, per the owner's framing: "either way, only one should
 exist. `add` is better if it's safe. need to make sure the `add<T>(value)` version in extras doesn't
 hog."
 
 **The runtime dispatch cannot tell `add(manifest)` from `add(registrations)` at all — proven, not
 assumed.** A throw planted in each contribution showed the `Manifest`-shaped handler never fires,
-for any call, including one whose STATIC argument type is `Manifest<Lifetime>` outright (`usingManifest`
-itself). Every call to `add` with one iterable-shaped argument lands in the consecutive-adds
+for any call, including one whose STATIC argument type is `Manifest<Lifetime>` outright. Every call to `add` with one iterable-shaped argument lands in the consecutive-adds
 contribution, full stop; the separate `Manifest` contribution exists for the static overload set to
 have a corresponding implementation and stays correct if the dispatch is ever fixed to actually
 route to it, but today it is dead code. What makes the merge behavior real is the owner's own
@@ -3529,14 +3477,6 @@ same throw-per-contribution technique confirms a bare `Registration` also lands 
 consecutive-adds contribution by default, not the dedicated `add(registration)` one — harmless, since
 `concat`'s accept-permissive single-value handling plus the `_add`-direct fold answer it correctly
 regardless.
-
-`ContainerBuilder.usingManifest`'s parameter narrows from `Iterable<Registration<Lifetime>>` to
-`Manifest<Lifetime>` — **a public builder signature change, flagged**: its own contract ("iteration
-order is registration order, exactly as a `Manifest` iterates") is the order-preserving merge, which
-only the `Manifest` overload's static type binds crisply; a bare array handed to the old signature
-would have compiled fine while silently taking the reversing consecutive-adds path. Line 66 keeps
-the owner's own original spelling, `man.add(manifest)`; now that `manifest` is statically a
-`Manifest<Lifetime>`, that line binds the merge overload.
 
 Made safe: `di.extras`'s type-driven value sugar, `add<ServiceType>(value: ButNot<ServiceType, Func
 | AbstractCtor | Registration<any>>)`, extends its exclusion to `ButNot<ServiceType, Func |
@@ -3568,13 +3508,6 @@ wins instead (consecutive-adds); and a `Manifest` assigned to a variable statica
 `Iterable<Registration<...>>`, forcing TypeScript itself to bind the consecutive-adds overload,
 still landing on the order-preserving merge at runtime — the exact case the `instanceof` guard
 exists for, proven rather than reasoned about.
-
-`addMany`'s dependers — `options.augmentations`, `caching.memory`, `logging`, `logging.config` —
-are untouched and go red on this; they are the owner's own gated adaptation zone, migrating their
-`addMany` manifest-merges to `add(manifest)` when their own review lands — their existing usage was
-silently order-reversing relative to what `add(manifest)` gives, so the migration is a correctness
-fix for them too, not just a rename. `di.core/README.md` still names both `addMany` and `apply`,
-left as-is for the same reason — prose, not code, outside this pass's scope.
 
 _Owner-ruled; Claude-recorded 2026-08-28._
 
