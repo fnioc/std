@@ -134,24 +134,6 @@ export class UniversalAddressError extends DiError {
   }
 }
 
-/**
- * A control ask naming something no control plane here answers.
- *
- * @remarks
- * Deliberately not an {@link UnsatisfiableError}: a control ask never reaches the manifest, so no
- * registration could have satisfied it.
- */
-export class UnknownControlError extends DiError {
-  /** The ask that was made. */
-  readonly address: Type;
-
-  constructor(address: Type) {
-    super(`the engine answers no control ask for ${Type.stringify(address)}`);
-    this.name = 'UnknownControlError';
-    this.address = address;
-  }
-}
-
 /** One registration that could not be lowered. */
 export interface ValidationFailure {
   /** The service type of the registration that failed. */

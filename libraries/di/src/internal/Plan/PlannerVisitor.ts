@@ -110,7 +110,7 @@ export class PlannerVisitor extends Type.Visitor<Plan | undefined> {
       return undefined;
     }
     const promised = Type.promise(address);
-    if (!this.#registry.getMatches(promised).some(isDefined) || this.#cycleGuard.isVisiting(promised)) {
+    if (!this.#registry.hasMatch(promised) || this.#cycleGuard.isVisiting(promised)) {
       return undefined;
     }
     if (this.#collecting === undefined) {
@@ -229,7 +229,7 @@ export class PlannerVisitor extends Type.Visitor<Plan | undefined> {
   #planElements(elementType: Type): Plan[] {
     const settled = Type.awaited(elementType);
 
-    return this.#registry.getMatchesForEither(elementType, Type.isPromiseLike(elementType) ? settled : undefined)
+    return this.#registry.getMatches(elementType, Type.isPromiseLike(elementType) ? settled : undefined)
       .map(match => (visitor: PlannerVisitor) => Plan.fromMatch(match.address, match, visitor))
       .toArray()
       .reverse()

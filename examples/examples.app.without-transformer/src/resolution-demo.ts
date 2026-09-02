@@ -15,14 +15,11 @@
 // producer is how a plugin-less codebase keeps them in step.
 
 import { Builder } from '@rhombus-std/di';
-import type { Addon, IServiceProvider } from '@rhombus-std/di.core';
+import type { IServiceProvider } from '@rhombus-std/di.core';
 import { Type } from '@rhombus-std/primitives';
 
 import type { CheckoutOrder, IAuditTrail, IExchangeRates, IOrderValidator, IPaymentGateway, IPaymentRouter, IReceipt } from '@rhombus-std/examples.contracts';
 import { addCheckoutServices, CHECKOUT_TYPES } from '@rhombus-std/examples.lib.without-transformer';
-
-/** No lifetime model is installed here; a vacuous addon opens the builder's vocabulary with nothing. */
-const noLifetimeModel: Addon<unknown> = { registrations: [], middleware: next => next };
 
 // Fixed orders — no clock, no randomness, so the output is byte-stable.
 const ORDER_A: CheckoutOrder = { reference: 'A-1001', amountMinor: 4250, method: 'wallet' };
@@ -205,5 +202,5 @@ async function* tour(provider: IServiceProvider): AsyncGenerator<string> {
  * asynchronously — every other chapter is an ordinary generator.
  */
 export function demonstrateResolution(): AsyncGenerator<string> {
-  return tour(Builder.useAddon(noLifetimeModel).withServices(manifest => manifest.add(addCheckoutServices())).build());
+  return tour(Builder.withServices(manifest => manifest.add(addCheckoutServices())).build());
 }

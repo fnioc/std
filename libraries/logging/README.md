@@ -55,7 +55,7 @@ Wired into a container you're building yourself, `getLoggingManifest` is
 something you merge in rather than a method you call on your own manifest:
 
 ```ts
-import { di, standardLifetimeAddon } from '@rhombus-std/di';
+import { Builder } from '@rhombus-std/di';
 import { Manifest } from '@rhombus-std/di.core';
 import { getLoggingManifest, LOGGER_FACTORY_TYPE } from '@rhombus-std/logging';
 import type { ILogger, ILoggerFactory } from '@rhombus-std/logging.core';
@@ -66,7 +66,7 @@ services = services.add(getLoggingManifest((builder) => {
   builder.setMinimumLevel(LogLevel.Warning);
 }));
 
-const provider = di.usingLifetimeModel(standardLifetimeAddon()).usingManifest(services).build();
+const provider = Builder.withServices(() => services).build();
 const factory: ILoggerFactory = provider.resolve(LOGGER_FACTORY_TYPE);
 const logger: ILogger = factory.createLogger('App');
 ```

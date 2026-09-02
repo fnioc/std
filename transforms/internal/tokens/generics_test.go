@@ -88,6 +88,7 @@ declare const tupleLabeled: [first: IOther, second: ICache];
 declare const tupleAliased: Pair;
 declare const tupleOptional: [IOther, ICache?];
 declare const tupleRest: [IOther, ...ICache[]];
+declare const tupleRestOnly: [...ICache[]];
 declare const tupleCtorParams: ConstructorParameters<typeof Widget>;
 declare const tupleFnParams: Parameters<typeof build>;
 

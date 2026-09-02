@@ -24,9 +24,14 @@ function requestForLeaf(): Request {
   return { type: LEAF, serviceProvider: undefined as unknown as Request['serviceProvider'] };
 }
 
+/** The chain beneath the engine — every ask here is registered, so it never fires. */
+function unanswered(request: Request): unknown {
+  throw new Error(`nothing beneath the engine answers ${Type.stringify(request.type)}`);
+}
+
 describe('hook chain composition', () => {
   test('an engine resolves with no lifetime model and no middleware at all', () => {
-    expect(engineWithLeaf().getService(requestForLeaf())).toBeInstanceOf(Leaf);
+    expect(engineWithLeaf().getService(requestForLeaf(), unanswered)).toBeInstanceOf(Leaf);
   });
 
   test('middleware form: the earlier install stands outermost', () => {
@@ -46,7 +51,7 @@ describe('hook chain composition', () => {
 
     engine.useHooks(tracing('first'));
     engine.useHooks(tracing('second'));
-    engine.getService(requestForLeaf());
+    engine.getService(requestForLeaf(), unanswered);
 
     expect(log).toEqual(['enter first', 'enter second', 'exit second', 'exit first']);
   });
@@ -65,7 +70,7 @@ describe('hook chain composition', () => {
 
     engine.useHooks(stamping('first'));
     engine.useHooks(stamping('second'));
-    const resolved = engine.getService(requestForLeaf()) as { by: string; };
+    const resolved = engine.getService(requestForLeaf(), unanswered) as { by: string; };
 
     expect(applied).toEqual(['second', 'first']);
     expect(resolved.by).toBe('first');
@@ -92,7 +97,7 @@ describe('hook chain composition', () => {
     engine.useHooks(outer);
     engine.useHooks(inner);
 
-    expect(engine.getService(requestForLeaf())).toBe(standIn);
+    expect(engine.getService(requestForLeaf(), unanswered)).toBe(standIn);
     expect(reached).toEqual(['outer']);
   });
 
@@ -111,7 +116,7 @@ describe('hook chain composition', () => {
 
     engine.useHooks(threading('owned-by-first'));
     engine.useHooks(threading('owned-by-second'));
-    engine.getService(requestForLeaf());
+    engine.getService(requestForLeaf(), unanswered);
 
     expect(seen).toEqual(['owned-by-first', 'owned-by-second']);
   });
@@ -131,7 +136,7 @@ describe('hook chain composition', () => {
     const kept = engine.useHooks(counting('kept'));
     const dropped = engine.useHooks(counting('dropped'));
     dropped[Symbol.dispose]();
-    engine.getService(requestForLeaf());
+    engine.getService(requestForLeaf(), unanswered);
 
     expect(ran).toEqual(['kept']);
     expect(kept).toBeDefined();

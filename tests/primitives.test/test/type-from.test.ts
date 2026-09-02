@@ -52,9 +52,10 @@ describe('Type.from', () => {
     expect(() => Type.from('[app:A, ...app:B]')).toThrow(TypeParseError);
   });
 
-  test('a tuple that is nothing but a rest is malformed — that type is the list, spelled as itself', () => {
-    expect(() => Type.from('[...Array<app:B>]')).toThrow(TypeParseError);
-    expect(() => Type.from('[...Iterable<app:B>]')).toThrow(TypeParseError);
+  test('a tuple that is nothing but a rest reads as the array its element fills', () => {
+    expect(Type.from('[...Array<app:B>]')).toBe(Type.array(B));
+    // The rest slot stores the element alone, so the list it drew from is not part of what the tuple spells.
+    expect(Type.from('[...Iterable<app:B>]')).toBe(Type.array(B));
   });
 
   test('reads tuples, generic holes and literals', () => {

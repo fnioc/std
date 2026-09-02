@@ -22,7 +22,7 @@ import type {} from '@rhombus-std/di.extras';
 
 import type { IConfig } from '@rhombus-std/config.core';
 import { Builder, validateBuildability } from '@rhombus-std/di';
-import { type Addon, type Manifest } from '@rhombus-std/di.core';
+import { type Manifest } from '@rhombus-std/di.core';
 import { Environments, type HostBuilderContext, HostDefaults, type IHost, type IHostApplicationLifetime, type IHostEnvironment, type IHostLifetime } from '@rhombus-std/hosting.core';
 import { LoggerFactory } from '@rhombus-std/logging';
 import type { ILoggerFactory, ILoggerProvider } from '@rhombus-std/logging.core';
@@ -172,9 +172,6 @@ export function populateFrameworkServices(services: Manifest<unknown>, context: 
   return s.add(HOST_LIFETIME_TYPE, NullLifetime, Type.ctor(HOST_LIFETIME_TYPE, [[]]));
 }
 
-/** No lifetime model is installed here; a vacuous addon opens the builder's vocabulary with nothing. */
-const noLifetimeModel: Addon<unknown> = { registrations: [], middleware: next => next };
-
 /**
  * Builds the provider and constructs the internal {@link Host}. Loads the
  * container's registered {@link ILoggerProvider}s into the owned
@@ -189,7 +186,7 @@ const noLifetimeModel: Addon<unknown> = { registrations: [], middleware: next =>
  * unvalidated build.
  */
 export function resolveHost(services: Manifest<unknown>, framework: FrameworkServices, config: IConfig, serviceProviderOptions?: ServiceProviderOptions): IHost {
-  let builder = Builder.useAddon(noLifetimeModel).withServices(() => services);
+  let builder = Builder.withServices(() => services);
   if (serviceProviderOptions?.validateOnBuild) {
     builder = builder.useAddon(validateBuildability());
   }

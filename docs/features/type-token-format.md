@@ -9,6 +9,13 @@ A token names exactly one type. Whitespace between tokens (around punctuation, i
 argument lists) is insignificant and never appears in a written token; `Type.from` accepts it
 anywhere a reader would expect a boundary.
 
+`Type.from` reads in two steps. The parser turns the spelling into a plain node tree exactly as
+written — grammar only — and `Type.adopt` brings that tree in through the factories, so a token is
+canonicalized precisely as a hand-built node is: union members flattened, deduped and sorted, a
+rest-only tuple collapsed to its list, `Array<E>` landing on the array node. A malformed token is
+a `TypeParseError` from the parser; a well-formed token spelling a type the factories refuse is
+their own `TypeError`.
+
 ## Names
 
 A name is written as one **segment** — the building block behind a global name, an import
@@ -201,11 +208,12 @@ precedence, so a nested arrow needs no extra parentheses:
 
 An ordered list of member types is comma-separated inside square brackets. At most one slot,
 written last, may be a trailing rest: `...` followed by the list the open length draws from —
-either list spelling reads, and the tuple stores the list's element, so `Type.stringify` always
-re-emits an `Array` spelling. A rest needs at least one fixed slot before it: a tuple that is
-nothing but a rest is the list itself, so that type's token is the list's own spelling and a
-bracketed one is malformed. A slot that may be absent carries `undefined` in its own type, the
-same as an optional object member.
+either list spelling reads, and the tuple stores the list's element alone, so `Type.stringify`
+always re-emits an `Array` spelling. A tuple that is nothing but a rest is the array its element
+fills, so `[...Array<app:B>]` — and, the list kind not being part of what the slot stores,
+`[...Iterable<app:B>]` — reads as the very node `Array<app:B>` names and stringifies back to that
+spelling; `[]` with no rest is the zero-length tuple. A slot that may be absent carries
+`undefined` in its own type, the same as an optional object member.
 
 ```
 [app:A, 5]
@@ -288,7 +296,7 @@ primary      := literal
 signatures   := signature (";" signature)*
 signature    := (type ("," type)* ("," rest)? | rest)?
 members      := (segment ":" type (";" segment ":" type)*)? "}"
-tuple        := (type ("," type)* ("," rest)?)?
+tuple        := (type ("," type)* ("," rest)? | rest)?
 rest         := "..." type
 list(type)   := (type ("," type)*)?
 name         := segment (":" segment genericArgs?)?

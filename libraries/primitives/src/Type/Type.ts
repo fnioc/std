@@ -2,7 +2,7 @@ import { memo } from '@rhombus-toolkit/once';
 import type { DistributiveOmit } from '@rhombus-toolkit/types';
 import * as factory from './factory/factories.js';
 import type { LIST_KINDS, ListName } from './grammar.js';
-import { parseTypeString } from './parse/parser.js';
+import { parseLiteral } from './parse/parser.js';
 import { IsOpenVisitor } from './visitor/IsOpenVisitor.js';
 import { MatchVisitor } from './visitor/MatchVisitor.js';
 import { stringifyType } from './visitor/StringifyVisitor.js';
@@ -140,14 +140,26 @@ export namespace Type {
   type Spec<T extends Type> = Omit<RawType<T>, 'kind'>;
 
   /**
-   * Brings a Type into the system, thus guaranteeing referential equality
+   * Brings a Type into the system, thus guaranteeing referential equality.
+   *
+   * @remarks
+   * The one door meaning enters by: every kind is rebuilt through its own factory, so whatever a
+   * factory canonicalizes, collapses or refuses applies to a node arriving as plain data — a tree
+   * revived from JSON, one a cast produced, the tree {@link from} reads out of a token. A tuple
+   * node that is nothing but a rest slot adopts as the list it collapses to, so a tuple-kind node
+   * can answer a {@link ListType}.
+   *
+   * @throws TypeError - when the node names no kind, lacks a field its kind carries, or spells a
+   * type its factory refuses.
    *
    * @example
    * ```ts
    * Type.adopt({ kind: 'imported', name: 'IClock', from: 'app', genericArgs: [] });
    * ```
    */
-  export function adopt<const Node extends RawType>(node: Node): Extract<Type, { kind: Node['kind']; }>;
+  export function adopt<const Node extends RawType>(
+    node: Node,
+  ): Extract<Type, { kind: Node['kind']; }> | ('tuple' extends Node['kind'] ? ListType : never);
   export function adopt(node: RawType): Type {
     return factory.adopt(node as Type);
   }
@@ -212,7 +224,8 @@ export namespace Type {
    * Reads a type token back into the {@link Type} it spells — the inverse of {@link stringify}.
    *
    * @remarks
-   * The token format: `docs/features/type-token-format.md`.
+   * The token format: `docs/features/type-token-format.md`. The token is read literally and the
+   * tree handed to {@link adopt}, so a token is canonicalized exactly as a hand-built node is.
    *
    * @throws TypeParseError - when the token is malformed.
    */
@@ -227,8 +240,8 @@ export namespace Type {
      */
     const parsed: Record<string, Type> = Object.create(null);
 
-    return function from(type: string | Type): Type {
-      return typeof type === 'string' ? (parsed[type] ??= parseTypeString(type)) : Type.adopt(type);
+    return function from(token: string): Type {
+      return parsed[token] ??= Type.adopt(parseLiteral(token));
     };
   })();
 
@@ -360,18 +373,21 @@ export namespace Type {
    * An ordered list of member types — `[A, B, C]`. The variadic spelling is fixed-length; a
    * trailing rest slot needs the spec form.
    *
+   * @remarks
+   * A tuple that is nothing but a rest slot is the list its open length draws from, so
+   * `{ members: [], rest: x }` collapses to `Type.array(x)`; `{ members: [] }` with no rest is
+   * the zero-length tuple.
+   *
    * @example
    * ```ts
    * Type.tuple(a, b);                          // [a, b]
    * Type.tuple({ members: [a], rest: b });     // [a, ...b[]]
+   * Type.tuple({ members: [], rest: b });      // b[] — the list itself
    * ```
-   *
-   * @throws TypeError - when the members are empty and a rest is given; a tuple that is nothing
-   * but a rest is the list itself, spelled `Type.array(rest)`.
    */
   export function tuple(...types: readonly Type[]): TupleType;
-  export function tuple(spec: Spec<TupleType>): TupleType;
-  export function tuple(...args: readonly Type[] | [Spec<TupleType>]): TupleType {
+  export function tuple(spec: Spec<TupleType>): TupleType | ListType;
+  export function tuple(...args: readonly Type[] | [Spec<TupleType>]): TupleType | ListType {
     const [first] = args;
     return first !== undefined && !isNode(first)
       ? factory.tuple(first.members, first.rest)

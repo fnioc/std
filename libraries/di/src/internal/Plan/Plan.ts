@@ -265,11 +265,8 @@ export namespace Plan {
           const plan = visitor.visit(address);
           if (plan === undefined) {
             // Two failures reach here and a caller acts on them differently: nothing is registered
-            // for the request at all, or something is and the graph beneath it has the hole. An
-            // open request cannot be asked which it is — matching one against a registration binds
-            // holes, and a hole on the asking side has nothing to bind to — so it reports the
-            // absence it can stand behind.
-            const registered = Type.isClosed(address) && registry.getMatches(address).some(isDefined);
+            // for the request at all, or something is and the graph beneath it has the hole.
+            const registered = registry.hasMatch(address);
             // The planning pass's own leaf failure, when it lies beneath address rather than being
             // address itself, names the actual dependency that could not be met.
             const missing = visitor.missingDependency;
@@ -410,15 +407,15 @@ export namespace Plan {
    * The list a row's open length draws from: a rest-only row is its own list; a tuple's rest slot
    * draws from an array of its element.
    *
-   * @throws TypeError - when the row is neither a tuple nor a list; such a row has no argument
-   * list to plan, spread or otherwise.
+   * @throws TypeError - when the row is neither a tuple nor a list: such a row can only be a
+   * forged node that reached planning unvalidated, and it has no argument list to plan.
    */
   function restList(row: TupleType | ListType): Type | undefined {
     if (row.kind === 'tuple') {
       return row.rest === undefined ? undefined : Type.array(row.rest);
     }
     if (row.kind !== 'array' && row.kind !== 'iterable') {
-      throw new TypeError(`a signature row is a tuple or a list — got a ${(row as Type).kind}`);
+      throw new TypeError(`a ${(row as Type).kind} row reached planning unvalidated — no factory builds it into a signatures slot`);
     }
     return row;
   }

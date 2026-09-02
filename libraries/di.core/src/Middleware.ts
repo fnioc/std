@@ -19,4 +19,7 @@ import type { Request } from './Request.js';
  * ask of its own. A `next` held onto and called after its traversal has answered belongs to no ask
  * at all, and resolves under nothing.
  */
-export type Middleware = Func<[next: Func<[request: Request], unknown>], Func<[request: Request], unknown>>;
+export type Middleware = Func<[next: GetService], GetService>;
+
+/** The resolution function one ask runs through: a request in, whatever answers it out. */
+export type GetService = Func<[request: Request], unknown>;

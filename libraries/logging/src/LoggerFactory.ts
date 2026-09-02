@@ -14,7 +14,6 @@
 import type {} from '@rhombus-std/di.extras';
 
 import { Builder } from '@rhombus-std/di';
-import type { Addon } from '@rhombus-std/di.core';
 import { type IExternalScopeProvider, type ILogger, type ILoggerFactory, type ILoggerProvider, type ILoggingBuilder, LogLevel } from '@rhombus-std/logging.core';
 import { type IOptions, Options } from '@rhombus-std/options';
 import { augment } from '@rhombus-std/primitives';
@@ -173,12 +172,8 @@ export class LoggerFactory implements ILoggerFactory {
    */
   public static create(configure: Func<[ILoggingBuilder], void>): ILoggerFactory {
     const services = getLoggingManifest(configure);
-    return Builder.useAddon(noLifetimeModel)
-      .withServices(manifest => manifest.add(services))
+    return Builder.withServices(manifest => manifest.add(services))
       .build()
       .resolve<ILoggerFactory>();
   }
 }
-
-/** No lifetime model is installed here; a vacuous addon opens the builder's vocabulary with nothing. */
-const noLifetimeModel: Addon<unknown> = { registrations: [], middleware: next => next };

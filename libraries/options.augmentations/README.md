@@ -32,7 +32,7 @@ its own manifest, which a caller merges into their registrations with
 ```ts
 import { ConfigBuilder } from '@rhombus-std/config';
 import { Builder } from '@rhombus-std/di';
-import { type Addon, Manifest, Type } from '@rhombus-std/di.core';
+import { Manifest, Type } from '@rhombus-std/di.core';
 import type { IOptions } from '@rhombus-std/options';
 import { getConfigureManifest, optionsAddressType } from '@rhombus-std/options.augmentations';
 
@@ -47,9 +47,7 @@ let services = Manifest.empty<unknown>();
 services = services.addOptions(WIDGET_OPTIONS_TYPE, () => ({ Url: '' }));
 services = services.addMany(getConfigureManifest(WIDGET_OPTIONS_TYPE, config.getSection('Widget')));
 
-// No lifetime model is installed; a vacuous addon opens the builder's vocabulary with nothing.
-const noLifetimeModel: Addon<unknown> = { registrations: [], middleware: (next) => next };
-const provider = Builder.useAddon(noLifetimeModel).withServices(() => services).build();
+const provider = Builder.withServices(() => services).build();
 const options: IOptions<WidgetOptions> = provider.resolve(optionsAddressType(WIDGET_OPTIONS_TYPE));
 
 options.value; // { Url: "http://first" }

@@ -40,36 +40,31 @@ export class Registry {
   }
 
   /**
-   * Every registration matching exactly {@link address}'s own address, newest first — a
-   * closed registration by interned identity, an open one by unification.
-   */
-  getMatches(address: Type) {
-    return this.getMatchesForEither(address);
-  }
-
-  /**
    * Every registration matching {@link primary} or {@link alternate}, newest first — one pass
    * over the registrations, so a registration matching both is answered once under
-   * {@link primary}.
+   * {@link primary}. A closed registration matches by interned identity, an open one by unification.
    */
-  getMatchesForEither(primary: Type, alternate?: Type) {
+  getMatches(primary: Type, alternate?: Type) {
     return Iterator.from(this.#registrations)
-      .map(registration => getMatchOfEither(registration, primary, alternate))
+      .map((registration): Match | undefined => {
+        const [isMatch, generics] = Type.bindGenerics(registration.address, primary);
+        if (isMatch) {
+          return { registration, generics, address: primary };
+        }
+        if (alternate !== undefined) {
+          const [isAlternateMatch, alternateGenerics] = Type.bindGenerics(registration.address, alternate);
+          if (isAlternateMatch) {
+            return { registration, generics: alternateGenerics, address: alternate };
+          }
+        }
+        return undefined;
+      })
       .filter(isDefined);
   }
-}
 
-/** The first of the two addresses that `registration` answers, absent when it answers neither. */
-function getMatchOfEither(registration: Registration<unknown>, primary: Type, alternate: Type | undefined): Match | undefined {
-  const [isMatch, generics] = Type.bindGenerics(registration.address, primary);
-  if (isMatch) {
-    return { registration, generics, address: primary };
+  /** Whether any registration matches `address` — an open address never is, since a hole on the asking side binds nothing. */
+  hasMatch(address: Type): boolean {
+    return Type.isClosed(address)
+      && this.#registrations.some(registration => Type.bindGenerics(registration.address, address)[0]);
   }
-  if (alternate !== undefined) {
-    const [isMatched2, generics2] = Type.bindGenerics(registration.address, alternate);
-    if (isMatched2) {
-      return { registration, generics: generics2, address: alternate };
-    }
-  }
-  return undefined;
 }

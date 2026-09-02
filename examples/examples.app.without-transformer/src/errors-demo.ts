@@ -28,12 +28,9 @@
 // same reason.
 
 import { Builder, validateBuildability } from '@rhombus-std/di';
-import { type Addon, DiError, Manifest, ManifestValidationError } from '@rhombus-std/di.core';
+import { DiError, Manifest, ManifestValidationError } from '@rhombus-std/di.core';
 import { demonstrateRegistrationErrors, diagnose, stagedFailure } from '@rhombus-std/examples.lib.without-transformer';
 import { Type } from '@rhombus-std/primitives';
-
-/** No lifetime model is installed here; a vacuous addon opens the builder's vocabulary with nothing. */
-const noLifetimeModel: Addon<unknown> = { registrations: [], middleware: next => next };
 
 // ── the domain ───────────────────────────────────────────────────────────────
 
@@ -98,8 +95,7 @@ export function* demonstrateErrors(): Generator<string> {
   yield stagedFailure(
     'building with validateBuildability',
     () =>
-      Builder.useAddon(noLifetimeModel)
-        .withServices(() => withUnsatisfiableStore())
+      Builder.withServices(() => withUnsatisfiableStore())
         .useAddon(validateBuildability())
         .build(),
   );
@@ -121,7 +117,7 @@ export function* demonstrateErrors(): Generator<string> {
   // answer, and the dependency that answer names is not — an unbuildable
   // answer is reported at the address that was asked for rather than
   // silently handed back half-built.
-  const lazy = Builder.useAddon(noLifetimeModel).withServices(() => withUnsatisfiableStore()).build();
+  const lazy = Builder.withServices(() => withUnsatisfiableStore()).build();
   yield stagedFailure('asking at the bare address for a registration that cannot be built', () => lazy.resolve(STORE_TYPE));
   yield stagedFailure('asking for a type nobody registered', () => lazy.resolve(REPORT_TYPE));
 
@@ -132,7 +128,7 @@ export function* demonstrateErrors(): Generator<string> {
     let services: Manifest<unknown> = Manifest.empty<unknown>();
     services = services.add(LEDGER_TYPE, Ledger, Type.ctor(LEDGER_TYPE, [[AUDIT_TYPE]]), 'singleton');
     services = services.add(AUDIT_TYPE, AuditLog, Type.ctor(AUDIT_TYPE, [[LEDGER_TYPE]]), 'singleton');
-    return Builder.useAddon(noLifetimeModel).withServices(() => services).build().resolve(LEDGER_TYPE);
+    return Builder.withServices(() => services).build().resolve(LEDGER_TYPE);
   });
 
   // ── and the escape hatch ───────────────────────────────────────────────────
@@ -151,8 +147,7 @@ export function* demonstrateErrors(): Generator<string> {
 /** The inner failures the eager pass collected, so one of them can be classified. */
 function collectValidationErrors(): readonly Error[] {
   try {
-    Builder.useAddon(noLifetimeModel)
-      .withServices(() => withUnsatisfiableStore())
+    Builder.withServices(() => withUnsatisfiableStore())
       .useAddon(validateBuildability())
       .build();
   } catch (error) {

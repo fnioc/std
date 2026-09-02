@@ -1151,7 +1151,8 @@ FREE: 2, 3, 4, 12 and 13 can be placed anywhere consistent with the above.
 ## Signatures slot — adversarial pass findings (2026-09-01)
 
 Eleven findings survived two-refuter votes; a Fable repair run landed them as `5782bf5b` (every
-signatures door runs the one row check; a rest-only tuple is refused), `ec8c175b` (a malformed row
+signatures door runs the one row check; a rest-only tuple is refused — the refusal since reversed
+to the collapse recorded below), `ec8c175b` (a malformed row
 never plans as a spread; a zero-arg rest call hits the plan memo), `fe948cb0` (the Go derivation
 emits the list for a rest-only tuple) and `ab022ae2` (open-row emission parity, four more blind
 shapes). Gates after: Go build/vet/test/gofmt clean, tsc clean in primitives, primitives.extras, di,
@@ -1161,23 +1162,16 @@ than incidental bugs.
 
 Left open by the repair's own review (its finish stage died on the 5-hour quota):
 
-- [ ] `Plan.restList` narrows a row to list-or-tuple and throws on anything else — a second spelling
+- [x] `Plan.restList` narrows a row to list-or-tuple and throws on anything else — a second spelling
       of the row predicate, in a package that cannot import the one function. RULED (Claude, the
       owner may reverse): keep the narrowing, since a plain-object `ctorType` never passes a
       primitives door and exhaustive narrowing is owed anyway, but its message must say the row
       reached planning unvalidated rather than restate the door's wording.
-- [ ] RULED 2026-09-02: `Type.adopt` STAYS (no reason not to), and it is the one semantic door — a
-      visitor whose every case is a factory call, so whatever a factory collapses or refuses applies
-      to a revived node. The PARSER stops calling the factories: it parses LITERALLY into plain
-      `RawType` data and hands the tree to that visitor, so `Type.from(token)` is
-      `adopt(parseLiteral(token))`. `Type.from` takes a STRING ONLY (owner: accepting anything
-      else is not a requirement): plain data goes through `Type.adopt` directly, so each door has
-      one input and the grammar can no longer drift from the factories. A parse error still comes from the parser; a
-      semantic refusal comes from the factory. Supersedes any collapse logic written into the parser.
-      Docs ride along (type-token-format.md, the `Type.from`/`adopt` TSDoc, §~1999's adopt entry).
-- [ ] `node.go`'s rest-only-tuple branch is unwitnessed and probably unreachable (the checker
-      normalises `[...B[]]` to `B[]` before derivation). Add the one-case `node_test.go` that
-      drives it, or drop the branch.
+- [x] `node.go`'s rest-only-tuple branch is unwitnessed and unreachable: the checker normalises
+      every rest-only spelling (`[...B[]]`, `[...Array<B>]`, `Parameters` of a rest-only function,
+      a `[...T]` spread instantiated with a list) to the array before derivation. The branch is
+      deleted; a `node_test.go` case pins that the rest-only source spelling derives the Array
+      node.
 
 - [x] **The one validating door has a second entrance.** The spec put the check in
       `Type.signatures(rows)` alone, so `func`/`ctor`/`abstractCtor` could take the slot type and
@@ -1187,31 +1181,14 @@ Left open by the repair's own review (its finish stage died on the 5-hour quota)
       generalises: an overload that accepts an already-built value is a way past whatever door built
       it, and "validate once, let the type carry the guarantee" only holds if the type is the ONLY
       way in.
-- [ ] **Two spellings for one type.** `Type.tuple({ members: [], rest: X })` used as a row and a
-      `ListType` row stringify identically, so `Type.from(Type.stringify(a)) === b` — the round-trip
-      conflates two distinct nodes.
-      RULED, REVERSING the refuse-at-construction ruling `5782bf5b` shipped: the rest-only tuple
-      COLLAPSES, `Type.tuple({ members: [], rest: X })` returning the `ListType` directly. The
-      precedent is the composite factory — `union([a])` answers `a`, `global("Array", [T])` answers a
-      `ListType` — a degenerate composite becomes what it degenerates to, and the return type widens
-      to say so, here `TupleType | ListType`.
-      It beats refusing because it is exact rather than policy: in TypeScript `[...X[]]` IS `X[]`, one
-      type rather than two spellings, so refusing a legal spelling of an expressible type answers the
-      wrong question. It kills the defect STRUCTURALLY — a node that cannot be minted cannot collide
-      — rather than by a check somebody maintains. And the `[]` versus `[[]]` analogy behind refusing
-      does not hold: those are genuinely different (no signatures at all, versus one signature taking
-      no arguments) where a rest-only tuple and a list are the same thing.
-      Corroborating, from the repair's own review two items above: the checker already normalises
-      `[...B[]]` to `B[]` before derivation, which is why `node.go`'s rest-only branch looks
-      unreachable. TypeScript collapses this shape itself; the factory should agree with it rather
-      than refuse what the language treats as one type.
-      THE BOUNDARY: collapse only when `members` is empty AND `rest` is present.
-      `{ members: [], rest: undefined }` stays a `TupleType` — the legitimate empty tuple, which is
-      what a zero-argument signature's row is. Inverting that breaks every no-arg callable.
-      The collapse must reach `Type.adopt`, `Type.from` and the parser too, or a node revived from
-      JSON or parsed from a token reintroduces the shape the factory will no longer mint. `fe948cb0`
-      already has the Go derivation emitting the list here, so derivation and construction currently
-      disagree about whether the node may exist; the collapse is what makes them agree.
+- [x] **Two spellings for one type.** `Type.tuple({ members: [], rest: X })` used as a row and a
+      `ListType` row stringify identically, so the round-trip would conflate two distinct nodes.
+      RULED (owner): collapse — the rest-only tuple IS the list, so every entrance answers
+      `Type.array(X)` (the factory, `Type.adopt`, and the parser, where `[...Array<X>]` reads as
+      the list's own node). The one boundary: the collapse fires only when members is empty AND a
+      rest is present; `{ members: [], rest: undefined }` is the legitimate empty tuple — a
+      zero-argument signature's row — and stays a `TupleType`. `Type.tuple` accordingly answers
+      `TupleType | ListType`, and callers narrow at the call site.
 - [x] A zero-argument memo miss in `Engine.boundArgTypes` — the interning-for-identity rework did not
       cover the empty-signature case.
 - [x] Two doc inaccuracies, a history-narrating comment in `typeforhoist`, and four shapes the blind
@@ -1272,26 +1249,32 @@ deleted; the standard model is written clean-room).
 
 ## Session — di builder reshape (2026-09-01, branch `feat-di-builder-spec`, worktree `+feat-di-builder-spec`)
 
-Steps 3, 4 and 11 of the execution order, built as one change from a critiqued design. Fourteen
-commits on the branch, rebased onto `3c256815` and NOT yet rebased onto the repair commits above:
-the registered predicate moved onto `Registry` (one place; `Plan.from` and the engine call it);
-`UnknownControlError` deleted; the engine delegates through `next` when no registration matches and
-throws when one exists but cannot be built; `Builder` interface with the unknown-until-locked
-conditional verbs, `DefaultContext`, both openers in `namespace Builder`, the engine folded as a real
-middleware over a terminus that throws `UnsatisfiableError`; callers migrated (logging, hosting, the
-ten example demos, four README snippets); §208 corrected in place; new tests (engine delegation,
-chain openers, the lock-on type probe repointed at the shipped surface). Gates on the branch: tsc
-clean in di.core, di, hosting, logging, both example apps; eslint clean; di.test 98 pass / 6 skip /
-22 fail with the load-failing set unchanged; dprint clean.
+Steps 3, 4 and 11 of the execution order, built as one change from a critiqued design. The branch
+is rebased onto `ab022ae2`, the repair tip: the registered predicate moved onto `Registry` (one
+place; `Plan.from`, the engine, and `PlannerVisitor.#awaitPromised` call it); `UnknownControlError`
+deleted; the engine delegates through `next` when no registration matches and throws when one
+exists but cannot be built; `Builder` interface with the unknown-until-locked conditional verbs,
+`DefaultContext`, both openers in `namespace Builder`, the engine folded as a real middleware over
+a terminus that throws `UnsatisfiableError`; callers migrated (logging, hosting, the ten example
+demos, the di, logging, and four downstream README snippets); §208 corrected in place; new tests
+(engine delegation, chain openers, the lock-on type probe repointed at the shipped surface). Gates
+on the branch: tsc clean in di.core, di, hosting, logging, both example apps; eslint clean; di.test
+105 pass / 6 skip / 22 fail with the load-failing set unchanged; dprint clean.
 
-Not yet done — the review fan-out died on the 5-hour quota (resets 23:50):
+Shipped cast inventory (differs from the critiqued design's disclosed shape, deliberately): one
+in-cast per `DefaultContext` verb, zero out-casts, and no cast in `build()` — the removals only
+strengthen checking. The lock-on type probe (`builder-lock-on.types.test.ts`) is exercised by no
+green gate until the lifetime-model deletion lane lets di.test's lint run again; until then a
+change to `Builder`'s signatures needs a manual isolated tsc pass over that file.
 
-- [ ] Craft review's three findings, unapplied: both `as never` out-casts in `DefaultContext`'s verbs
-      are removable and their comments false; `PlannerVisitor.#awaitPromised` hand-rolls the
-      registered predicate a second time; `build()`'s `registrations as Iterable<…>` cast is a no-op.
-- [ ] The spec-fidelity and correctness review lenses never ran. Run them serialized, then repair.
-- [ ] Rebase onto the repair commits (`Engine.ts` overlaps on `boundArgTypes`'s zero-arg line), then
-      merge locally into `IServiceManifest-repair` — only when the branch is green AND the shared
+- [x] Craft review's three findings, applied: `1d74e22b` removed both `as never` out-casts in
+      `DefaultContext`'s verbs, `08e785e1` pointed `PlannerVisitor.#awaitPromised` at the
+      registry's one registered predicate, `f1f0efb1` dropped `build()`'s no-op cast.
+- [x] The spec-fidelity and correctness review lenses ran; repair applied (the di and logging
+      README front doors moved to the shipped `Builder` surface, §208's beneath-the-engine
+      sentence corrected to the terminus-only shape). One finding rejected as an unruled design
+      change: no addon position exists beneath the engine, and adding one is the owner's call.
+- [ ] Merge locally into `IServiceManifest-repair` — only when the branch is green AND the shared
       branch is clean.
 - [ ] Known and NOT this branch's: the without-transformer example app wedges at baseline after
       "Hosting started" (reproduced at `6732b734` with pre-branch sources), so its output-diff gate

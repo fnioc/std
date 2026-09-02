@@ -390,6 +390,6 @@ describe('a malformed signature row', () => {
       signatures: Type.global('string'),
     } as unknown as ConstructorType;
     const manifest = Manifest.empty<unknown>().add(Registration.ctor(CONN, Conn, forged));
-    expect(() => visitorFor(manifest).visit(CONN)).toThrow(/a signature row is a tuple or a list — got a global/);
+    expect(() => visitorFor(manifest).visit(CONN)).toThrow(/a global row reached planning unvalidated/);
   });
 });

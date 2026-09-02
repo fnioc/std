@@ -1,4 +1,4 @@
-import { type Behavior, Control, controlLifetime, HookChain, type IEngineHooks, type Registration, type Request, UnknownControlError, UnsatisfiableError } from '@rhombus-std/di.core';
+import { type Behavior, Control, controlLifetime, type GetService, HookChain, type IEngineHooks, type Registration, type Request, UnsatisfiableError } from '@rhombus-std/di.core';
 import { type FunctionType, type ListType, type TupleType, Type } from '@rhombus-std/primitives';
 import { typefor } from '@rhombus-std/primitives.extras';
 import { isControlAsk } from './control-recognition.js';
@@ -47,20 +47,22 @@ export class Engine implements IEngineHooks {
   // #region resolution
 
   /**
-   * Resolves `request` under everything installed and not yet disposed.
+   * Resolves `request` under everything installed and not yet disposed, or hands it to `next`.
    *
    * @remarks
-   * A control ask is answered here and nowhere else: the engine hands back what it names itself,
-   * running no hook and standing nothing over anything, so reaching for a control changes nothing
-   * about the resolution that follows.
+   * A control ask the engine owns is answered here and nowhere else: the engine hands back what it
+   * names itself, running no hook and standing nothing over anything, so reaching for a control
+   * changes nothing about the resolution that follows.
    *
    * A registration carrying {@link controlLifetime} is answered directly — its factory receives
    * the request and nothing else, bypassing the plan infrastructure and the hook chain.
    *
-   * @throws {UnsatisfiableError} when nothing in the registry can produce the requested address.
-   * @throws {UnknownControlError} when a control ask names something the engine cannot answer.
+   * An address no registration matches is not the engine's to refuse: it flows through `next`,
+   * and whatever stands beneath answers or refuses it.
+   *
+   * @throws {UnsatisfiableError} when the address is registered but something it needs is not.
    */
-  getService(request: Request): any {
+  getService(request: Request, next: GetService): any {
     const address = request.type;
     switch (address) {
       case undefined:
@@ -72,7 +74,7 @@ export class Engine implements IEngineHooks {
       }
       default: {
         if (isControlAsk(address)) {
-          throw new UnknownControlError(address);
+          return next(request);
         }
       }
     }
@@ -81,7 +83,18 @@ export class Engine implements IEngineHooks {
       return this.#resolveControlLifetime(request);
     }
 
-    return Plan.realize(Plan.from(address, this.#registry), {
+    // Planning must run before delegating: it answers unregistered object and tuple asks by
+    // synthesis, which a registration check up front would turn away.
+    let plan: Plan;
+    try {
+      plan = Plan.from(address, this.#registry);
+    } catch (error) {
+      if (error instanceof UnsatisfiableError && !this.#registry.hasMatch(address)) {
+        return next(request);
+      }
+      throw error;
+    }
+    return Plan.realize(plan, {
       engine: this,
       chain: this.#chain,
       context: { states: openStates(this.#chain, request, new Array(this.#chain.width)) },

@@ -197,6 +197,26 @@ func TestDeriveNodeVariableLengthTupleStatesItsOpenLength(t *testing.T) {
 	}
 }
 
+// TestDeriveNodeRestOnlyTupleDerivesAsTheList pins that a rest-only spelling
+// like `[...ICache[]]` derives as the Array node: the checker normalizes the
+// tuple away to the array itself before the tuple walk ever sees it, so the
+// derivation answers the list the open length draws from.
+func TestDeriveNodeRestOnlyTupleDerivesAsTheList(t *testing.T) {
+	prog, ctx, main := loadGenerics(t)
+	defer func() { _ = prog.Close() }()
+
+	node, ok := DeriveNode(ctx, ctx.Checker, typeOfDecl(t, ctx.Checker, main, "tupleRestOnly"), nil)
+	if !ok {
+		t.Fatal("tupleRestOnly did not derive a node")
+	}
+	if node.Kind != KindNamed || node.Name != "Array" || node.From != "global" {
+		t.Fatalf("tupleRestOnly derived %+v, want the global Array", node)
+	}
+	if len(node.Args) != 1 || node.Args[0].Name != "ICache" {
+		t.Fatalf("tupleRestOnly's element derived %+v, want ICache", node.Args)
+	}
+}
+
 // TestDeriveNodeAliasedTupleDerivesByName pins that a tuple spelled through a
 // type alias derives as the NAME it was spelled through, like an aliased union:
 // its address must not shift with the element list.

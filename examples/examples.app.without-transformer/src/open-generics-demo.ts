@@ -37,13 +37,10 @@
 // captured type wherever it appears.
 
 import { Builder } from '@rhombus-std/di';
-import { type Addon, Manifest } from '@rhombus-std/di.core';
+import { Manifest } from '@rhombus-std/di.core';
 import { Type } from '@rhombus-std/primitives';
 
 import type { AuditEvent, Entity, IJoin, IRepository, ITable, Order, Seed, User } from '@rhombus-std/examples.contracts';
-
-/** No lifetime model is installed here; a vacuous addon opens the builder's vocabulary with nothing. */
-const noLifetimeModel: Addon<unknown> = { registrations: [], middleware: next => next };
 
 // ── the service types, composed as the transformer derives them ─────────────
 //
@@ -297,7 +294,7 @@ manifest = manifest.add(ORDER_JOIN_TEMPLATE, OrderJoin, Type.ctor(ORDER_JOIN_TEM
  * an unordered collection.
  */
 export function* demonstrateOpenGenerics(): Generator<string> {
-  const app = Builder.useAddon(noLifetimeModel).withServices(() => manifest).build();
+  const app = Builder.withServices(() => manifest).build();
 
   // Two closings of ONE registration. Neither type was ever registered.
   const users = app.resolve(repositoryOf(USER_TYPE)) as IRepository<User>;

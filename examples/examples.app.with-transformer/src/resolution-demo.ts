@@ -14,7 +14,7 @@
 // string they each have to spell correctly.
 
 import { Builder } from '@rhombus-std/di';
-import type { Addon, IServiceProvider } from '@rhombus-std/di.core';
+import type { IServiceProvider } from '@rhombus-std/di.core';
 // Type-only: puts di.extras' declare-module sugar faces in the program with no
 // runtime import — `resolveAsync<T>()` below is inlined away at compile time.
 import type {} from '@rhombus-std/di.extras';
@@ -23,9 +23,6 @@ import { typefor } from '@rhombus-std/primitives.extras';
 
 import type { CheckoutOrder, IAuditTrail, IExchangeRates, IFraudScreen, IOrderValidator, IPaymentGateway, IPaymentRouter, IReceipt } from '@rhombus-std/examples.contracts';
 import { addCheckoutServices } from '@rhombus-std/examples.lib.without-transformer';
-
-/** No lifetime model is installed here; a vacuous addon opens the builder's vocabulary with nothing. */
-const noLifetimeModel: Addon<unknown> = { registrations: [], middleware: next => next };
 
 // Fixed orders — no clock, no randomness, so the output is byte-stable.
 const ORDER_A: CheckoutOrder = { reference: 'A-1001', amountMinor: 4250, method: 'wallet' };
@@ -209,5 +206,5 @@ async function* tour(provider: IServiceProvider): AsyncGenerator<string> {
  * asynchronously — every other chapter is an ordinary generator.
  */
 export function demonstrateResolution(): AsyncGenerator<string> {
-  return tour(Builder.useAddon(noLifetimeModel).withServices(manifest => manifest.add(addCheckoutServices())).build());
+  return tour(Builder.withServices(manifest => manifest.add(addCheckoutServices())).build());
 }

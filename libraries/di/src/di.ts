@@ -1,4 +1,4 @@
-import { type Addon, DefaultManifest, type IServiceProvider, Manifest, type Middleware, type Registration, type Request } from '@rhombus-std/di.core';
+import { type Addon, type GetService, type IServiceProvider, Manifest, type Middleware, type Registration, UnsatisfiableError } from '@rhombus-std/di.core';
 import type { Func } from '@rhombus-toolkit/func';
 import { concat, iterable } from '@rhombus-toolkit/obj';
 import { Engine } from './internal/Engine.js';
@@ -9,73 +9,71 @@ import { ServiceProvider } from './ServiceProvider.js';
  * any manifest content — arrives through this one surface, and {@link build} seals it into a
  * provider. The builder holds one list; registrations are an addon like any other.
  *
- * @typeParam Lifetime - the lifetime vocabulary every addon on this builder must thread.
+ * @typeParam Lifetime - the lifetime vocabulary every addon on this builder must thread: `unknown`
+ * until the first input carrying a vocabulary locks it on, and fixed for the chain from there.
  */
 export interface Builder<Lifetime> {
   /**
    * Installs `addon`: its registrations file in call order, and its middleware composes into
    * the same chain alongside every other addon's, at this call's position.
    */
-  useAddon(addon: Addon<Lifetime>): Builder<Lifetime>;
+  useAddon<Candidate>(
+    addon: Addon<Candidate> & Addon<unknown extends Lifetime ? Candidate : Lifetime> & (0 extends 1 & Candidate ? never : unknown),
+  ): Builder<unknown extends Lifetime ? Candidate : Lifetime>;
 
   /**
-   * Composes registrations onto the manifest through `fn`, which receives the manifest accumulated
-   * from every prior addon and answers the registrations to add.
+   * Installs the registrations `fn` composes onto an empty manifest, as an addon contributing no
+   * middleware of its own.
    */
-  withServices(fn: Func<[Manifest<Lifetime>], Iterable<Registration<Lifetime>>>): Builder<Lifetime>;
+  withServices<Candidate>(
+    fn:
+      & Func<[Manifest<unknown extends Lifetime ? Candidate : Lifetime>], Iterable<Registration<unknown extends Lifetime ? Candidate : Lifetime>>>
+      & (0 extends 1 & Candidate ? never : unknown),
+  ): Builder<unknown extends Lifetime ? Candidate : Lifetime>;
 
   /** Seals the configured manifest into a provider. */
   build(): IServiceProvider;
 }
 
+/** The addon `withServices` installs: the registrations `fn` composes, and no middleware of its own. */
+function servicesAddon<Lifetime>(fn: Func<[Manifest<Lifetime>], Iterable<Registration<Lifetime>>>): Addon<Lifetime> {
+  return { registrations: Manifest.build(fn), middleware: identityMiddleware };
+}
+
 /**
- * One step the builder replays at build time. Receives the manifest accumulated so far and
- * answers its registrations and its middleware.
+ * The one builder. The vocabulary is a compile-time thread the {@link Builder} interface carries;
+ * at runtime every addon folds into one manifest, so the class holds none and the openers hand it
+ * out under whichever vocabulary their caller locked on.
  */
-type BuildStep<Lifetime> = Func<[Manifest<Lifetime>], { registrations: Iterable<Registration<Lifetime>>; middleware: Middleware; }>;
+class DefaultContext implements Builder<any> {
+  readonly #addons: Iterable<Addon<any>>;
 
-class DefaultBuilder<Lifetime> implements Builder<Lifetime> {
-  readonly #steps: Iterable<BuildStep<Lifetime>>;
-
-  constructor(steps: Iterable<BuildStep<Lifetime>> = []) {
-    this.#steps = steps;
+  constructor(addons: Iterable<Addon<any>> = []) {
+    this.#addons = addons;
   }
 
-  useAddon(addon: Addon<Lifetime>): Builder<Lifetime> {
-    return new DefaultBuilder(
-      iterable(() => concat(this.#steps, () => ({ registrations: addon.registrations, middleware: addon.middleware }))),
-    );
+  useAddon(addon: Addon<any>): Builder<any> {
+    return new DefaultContext(iterable(() => concat(this.#addons, addon)));
   }
 
-  withServices(fn: Func<[Manifest<Lifetime>], Iterable<Registration<Lifetime>>>): Builder<Lifetime> {
-    return new DefaultBuilder(
-      iterable(() => concat(this.#steps, (manifest: Manifest<Lifetime>) => ({ registrations: fn(manifest), middleware: identityMiddleware }))),
-    );
+  withServices(fn: Func<[Manifest<any>], Iterable<Registration<any>>>): Builder<any> {
+    return new DefaultContext(iterable(() => concat(this.#addons, servicesAddon(fn))));
   }
 
   build(): IServiceProvider {
-    let manifest = Manifest.empty<Lifetime>();
-    const middlewares: Middleware[] = [];
+    const addons = Array.from(this.#addons);
+    const engine = new Engine(addons.reduce((newer, addon) => concat(addon.registrations, newer), [] as Iterable<Registration<any>>));
+    // The engine composes exactly like any other middleware: it answers what its registrations
+    // can produce and hands anything unregistered on through `next`.
+    const engineMiddleware: Middleware = next => request => engine.getService(request, next);
 
-    for (const step of this.#steps) {
-      const { registrations, middleware } = step(manifest);
-      const materialized = Iterator.from(registrations as Iterable<Registration<Lifetime>>).toArray();
-      const tail = manifest;
-      manifest = new DefaultManifest<Lifetime>(() => concat(materialized, tail));
-      middlewares.push(middleware);
-    }
-
-    const engine = new Engine(manifest);
-    // The engine is the innermost middleware element, composed exactly like anything else.
-    const engineMiddleware: Middleware = _next => request => engine.getService(request);
-    middlewares.push(engineMiddleware);
-
-    const head = middlewares.reduceRight<Func<[request: Request], unknown>>(
-      (next, middleware) => middleware(next),
-      _request => {
-        throw new Error('resolution reached past the engine — the chain has no terminus');
-      },
-    );
+    const head = addons
+      .map(addon => addon.middleware)
+      .concat(engineMiddleware)
+      .reduceRight(
+        (next, middleware) => middleware(next),
+        middlewareTermination,
+      );
     return new ServiceProvider(head);
   }
 }
@@ -83,9 +81,19 @@ class DefaultBuilder<Lifetime> implements Builder<Lifetime> {
 /** The identity middleware: passes every request through unchanged. */
 const identityMiddleware: Middleware = next => next;
 
-/** The lock-on: infers `Lifetime` from whichever addon opens the chain. */
+/** The chain openers — services or the model may come first, and either fixes the vocabulary. */
 export namespace Builder {
-  export function useAddon<Lifetime>(addon: Addon<Lifetime>): Builder<Lifetime> {
-    return new DefaultBuilder<Lifetime>().useAddon(addon);
+  export function useAddon<Lifetime>(addon: Addon<Lifetime> & (0 extends 1 & Lifetime ? never : unknown)): Builder<Lifetime> {
+    return new DefaultContext([addon]);
+  }
+
+  export function withServices<Lifetime>(
+    fn: Func<[Manifest<Lifetime>], Iterable<Registration<Lifetime>>> & (0 extends 1 & Lifetime ? never : unknown),
+  ): Builder<Lifetime> {
+    return new DefaultContext([servicesAddon(fn)]);
   }
 }
+
+const middlewareTermination: GetService = request => {
+  throw new UnsatisfiableError(request.type, 'nothing in the manifest produces it');
+};

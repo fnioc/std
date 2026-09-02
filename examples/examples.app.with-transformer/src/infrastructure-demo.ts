@@ -28,7 +28,7 @@
 // byte-stable, which the app's checked-in `expected.txt` diff depends on.
 
 import { Builder, validateBuildability } from '@rhombus-std/di';
-import { type Addon, Manifest } from '@rhombus-std/di.core';
+import { Manifest } from '@rhombus-std/di.core';
 import type { IGreeting, IHealthCheck } from '@rhombus-std/examples.contracts';
 import { Type } from '@rhombus-std/primitives';
 import { typefor } from '@rhombus-std/primitives.extras';
@@ -37,9 +37,6 @@ import { typefor } from '@rhombus-std/primitives.extras';
 // is the one thing the engine is for.
 import { addGreetingWorkshop, GreetingWorkshop, LocatorGreetingWorkshop, WorkshopGreeting } from '@rhombus-std/examples.lib.with-transformer';
 import { describeDiError } from '@rhombus-std/examples.lib.without-transformer';
-
-/** No lifetime model is installed here; a vacuous addon opens the builder's vocabulary with nothing. */
-const noLifetimeModel: Addon<unknown> = { registrations: [], middleware: next => next };
 
 /** A fresh, empty manifest for one of this chapter's own containers. */
 function newWorkshopManifest(): Manifest<unknown> {
@@ -75,7 +72,7 @@ export function* demonstrateInfrastructure(): Generator<string> {
   const defaults = addGreetingWorkshop((workshop) => {
     workshop.useGreeting(WorkshopGreeting);
   });
-  const defaultProvider = Builder.useAddon(noLifetimeModel).withServices(() => defaults).build();
+  const defaultProvider = Builder.withServices(() => defaults).build();
   const defaultWorkshop = defaultProvider.resolve(typefor<GreetingWorkshop>()) as GreetingWorkshop;
 
   yield 'app registered no stationery:';
@@ -89,7 +86,7 @@ export function* demonstrateInfrastructure(): Generator<string> {
   const customised = addGreetingWorkshop((workshop) => {
     workshop.useGreeting(WorkshopGreeting).useStationery({ border: '***' });
   });
-  const customWorkshop = Builder.useAddon(noLifetimeModel).withServices(() => customised).build()
+  const customWorkshop = Builder.withServices(() => customised).build()
     .resolve(typefor<GreetingWorkshop>()) as GreetingWorkshop;
 
   yield 'app registered its own stationery:';
@@ -150,8 +147,7 @@ export function* demonstrateInfrastructure(): Generator<string> {
   try {
     const brokenManifest = newWorkshopManifest()
       .add(typefor<IHealthCheck>(), GreetingWorkshop, Type.ctor(typefor<IHealthCheck>(), [[typefor<IGreeting>()]]), 'singleton');
-    Builder.useAddon(noLifetimeModel)
-      .withServices(() => brokenManifest)
+    Builder.withServices(() => brokenManifest)
       .useAddon(validateBuildability())
       .build();
   } catch (error) {

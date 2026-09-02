@@ -17,8 +17,8 @@ type Composite = 'union' | 'intersection';
 
 /**
  * Stamps a built node as a {@link Type}. The brand exists only in the type system, so there is no
- * value to supply for it and no way to state that in an assertion; this is the one place that gap
- * is crossed, leaving every factory below fully checked against the shape it claims to build.
+ * value to supply for it and no way to state that in an assertion; the factories cross that gap
+ * here, leaving every one below fully checked against the shape it claims to build.
  */
 function node<T extends Type>(raw: Type.RawType<T>): T {
   return raw as unknown as T;
@@ -39,14 +39,14 @@ export function intersection(members: readonly Type[]): Type {
 }
 
 /**
- * @throws TypeError - when the tuple would be nothing but a rest slot; that type is the list
- * itself and spells as the list.
+ * A tuple that is nothing but a rest slot is the list its open length draws from, so it collapses
+ * to {@link array} of the rest; an empty members list with no rest stays the zero-length tuple.
  */
-export function tuple(members: readonly Type[], rest: Type | undefined): TupleType {
+export function tuple(members: readonly Type[], rest: Type | undefined): TupleType | ListType {
   const slots = members.map(adopt);
   const restSlot = rest === undefined ? undefined : adopt(rest);
   if (restSlot !== undefined && !slots.length) {
-    throw new TypeError(`a tuple that is nothing but a rest is the list itself — spell it ${stringifyType(array(restSlot))}`);
+    return array(restSlot);
   }
   return intern(
     `tuple\0${restSlot === undefined ? '' : id(restSlot)}\0${slots.map(id).join(',')}`,

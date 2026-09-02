@@ -1,7 +1,6 @@
-import type { IServiceProvider, Request } from '@rhombus-std/di.core';
+import type { GetService, IServiceProvider, Request } from '@rhombus-std/di.core';
 import { augment, type Type } from '@rhombus-std/primitives';
 import { typefor } from '@rhombus-std/primitives.extras';
-import type { Func } from '@rhombus-toolkit/func';
 
 export interface ServiceProvider extends IServiceProvider {}
 
@@ -12,9 +11,9 @@ export interface ServiceProvider extends IServiceProvider {}
  */
 @augment(typefor<IServiceProvider>())
 export class ServiceProvider implements IServiceProvider {
-  readonly #getService: Func<[Request], unknown>;
+  readonly #getService: GetService;
 
-  constructor(source: Func<[Request], unknown>) {
+  constructor(source: GetService) {
     this.#getService = source;
   }
 

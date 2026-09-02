@@ -41,7 +41,7 @@ The most common thing you'll reach for directly from this package is
 
 ```ts
 import { Builder } from '@rhombus-std/di';
-import { type Addon, Manifest } from '@rhombus-std/di.core';
+import { Manifest } from '@rhombus-std/di.core';
 import { BackgroundService, getHostedServiceManifest, hostedServiceCollectionType } from '@rhombus-std/hosting.core';
 import type { AbortSignal } from '@rhombus-std/primitives';
 
@@ -57,9 +57,7 @@ class Worker extends BackgroundService {
 let services: Manifest<'singleton'> = Manifest.empty<'singleton'>();
 services = services.addMany(getHostedServiceManifest(Worker));
 
-// No lifetime model is installed; a vacuous addon opens the builder's vocabulary with nothing.
-const noLifetimeModel: Addon<'singleton'> = { registrations: [], middleware: (next) => next };
-const provider = Builder.useAddon(noLifetimeModel).withServices(() => services).build();
+const provider = Builder.withServices(() => services).build();
 const workers = provider.resolve(hostedServiceCollectionType()); // [Worker instance]
 ```
 

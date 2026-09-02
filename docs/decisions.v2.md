@@ -2000,8 +2000,13 @@ exported roster carries no per-factory spec interface.
 every field it publishes, `kind` included, minus the intern-table brand (`RawType<T>`) — it
 canonicalizes, freezes and interns it, and hands back the canonical instance, so `===` decides its
 equality exactly as any other factory's result does. It's the door a tree arriving from outside
-takes — a value revived from JSON, one a cast produced — and the mechanism every other factory
-already shared; `adopt` names and publishes it rather than adding a second one.
+takes — a value revived from JSON, one a cast produced, the tree the parser reads out of a token —
+and the mechanism every other factory already shared; `adopt` names and publishes it rather than
+adding a second one. It is also the ONE semantic door: a visitor whose every case is a factory
+call, so whatever a factory canonicalizes, collapses or refuses applies to a revived node. The
+parser owns grammar alone — it parses a token literally into `RawType` data and `Type.from(token)`
+is `adopt(parseLiteral(token))` — so the grammar cannot drift from the factories. `Type.from`
+takes a string only; plain data goes through `Type.adopt` directly, one input per door.
 
 Interning identity includes the rows: the intern key brackets each row separately, which is what
 keeps a callable's one-empty-row shape distinct from every other row shape it could carry.
@@ -3211,8 +3216,10 @@ is a public di.core class — `constructor(readonly service: T)`, the carrier id
 
 The engine owns its lifecycle in one branch, ahead of planning and hooks alike. A control ask
 counts as nothing: it runs no hook, opens no window, reads no frame, and answers
-`new Control(freshDoor)`; a control ask whose payload is not the door throws `UnknownControlError`
-(di.core's taxonomy) rather than falling through. An unmarked ask is a request: it folds every
+`new Control(freshDoor)`; a control ask whose payload is not the door takes the ordinary
+unregistered path — handed on through the engine's `next`. Beneath the engine only the chain's
+terminus stands — every addon's middleware composes above it — and the terminus raises the generic
+`UnsatisfiableError`. An unmarked ask is a request: it folds every
 open window and whatever frame is filed for its own address into the built chain (built chain
 outermost, the filed frame innermost, windows between), seeds state through the aggregated
 `beginResolve`, and realizes. No plan kind knows a magic address: a plain `Starfish` ask is an

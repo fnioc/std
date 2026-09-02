@@ -1,8 +1,8 @@
 # @rhombus-std/di
 
-**The dependency-injection engine — choose a lifetime model, seed it with a `Manifest`, and seal the result into a `ServiceProvider` you resolve services out of.**
+**The dependency-injection engine — open a `Builder` chain, feed it addons and registrations, and seal the result into a provider you resolve services out of.**
 
-`@rhombus-std/di` builds on [`@rhombus-std/di.core`](../di.core/README.md) — the `Manifest` registration surface and the error taxonomy — adding the genesis front door (`di.usingLifetimeModel(...)`) and the concrete `ServiceProvider` it produces. Install this at your application's composition root, the place that actually builds the container. A library that only needs to declare registrations or accept an already-built `IServiceProvider` should depend on `di.core` alone.
+`@rhombus-std/di` builds on [`@rhombus-std/di.core`](../di.core/README.md) — the `Manifest` registration surface and the error taxonomy — adding the genesis front door (`Builder.useAddon(...)` / `Builder.withServices(...)`) and the concrete provider it produces. Install this at your application's composition root, the place that actually builds the container. A library that only needs to declare registrations or accept an already-built `IServiceProvider` should depend on `di.core` alone.
 
 ## Install
 
@@ -15,7 +15,7 @@ bun add @rhombus-std/di
 ## Usage
 
 ```ts
-import { di, noopLifetimeAddon } from '@rhombus-std/di';
+import { Builder } from '@rhombus-std/di';
 import { Manifest, Type } from '@rhombus-std/di.core';
 
 interface IGreeter {
@@ -31,35 +31,32 @@ class ConsoleGreeter implements IGreeter {
 
 const manifest = Manifest.empty<unknown>().add(IGreeter, ConsoleGreeter, Type.ctor(IGreeter, [[]]));
 
-const provider = di.usingLifetimeModel(noopLifetimeAddon())
-  .usingManifest(manifest)
-  .build();
+const provider = Builder.withServices(() => manifest).build();
 
 provider.resolve(IGreeter).greet('world'); // "Hello, world!"
 ```
 
-`di.usingLifetimeModel(model)` is the one entry point: it opens a `ContainerBuilder` running on `model`'s scope/lifetime behavior. `.usingManifest(manifest)` seeds the builder from an existing registration stream (discarding whatever was configured before it); `.configureServices(configure)` composes registrations onto the manifest instead, one delegate per call, each receiving the previous step's result; `.configureProvider(configure)` composes `ServiceProviderOptions` the same way. `.build()` seals everything into a `ServiceProvider`. Every builder method returns a **new** `ContainerBuilder`, so — exactly like `Manifest` itself — a discarded result configures nothing.
+`Builder.useAddon(addon)` and `Builder.withServices(fn)` open the chain, and the same two verbs extend it. `useAddon` installs an addon: its registrations file in call order, and its middleware composes into the resolution chain at that call's position. `withServices` installs the registrations a delegate composes onto an empty manifest, as an addon with no middleware of its own. The first input carrying a concrete lifetime vocabulary locks the chain onto it, and every addon after that must speak the same one. `.build()` seals everything into a provider; an ask nothing in the manifest answers throws `UnsatisfiableError`. Every verb returns a **new** `Builder`, so — exactly like `Manifest` itself — a discarded result configures nothing.
 
 `resolve(address)` and `resolveMany(address)` are `di.core`'s own augmentations on `IServiceProvider`, so they're available the moment `di.core` is loaded — which it always is, since `di` depends on it.
 
 ## Key exports
 
-| Export                                                                                                              | What it is                                                                                                                                                                       |
-| ------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `di`                                                                                                                | The genesis namespace — `di.usingLifetimeModel(model)` opens a `ContainerBuilder` running on `model`.                                                                            |
-| `ContainerBuilder<Lifetime>`                                                                                        | Assembles a provider: `usingManifest` / `configureServices` compose the manifest, `configureProvider` composes the build options, `build()` seals it into an `IServiceProvider`. |
-| `ServiceProvider`                                                                                                   | The concrete engine `build()` returns: resolves services against the sealed manifest and lifetime model.                                                                         |
-| `ServiceProviderOptions`                                                                                            | Build-time behavior: `validateOnBuild` lowers every closed registration while building, so an unsatisfiable graph fails at the build instead of at some later resolution.        |
-| `DiError`, `UnsatisfiableError`, `CycleError`, `LifetimeModelError`, `ManifestValidationError`, `ValidationFailure` | Re-exported from `di.core` — the same classes, so `instanceof` holds whichever package a caller imports the taxonomy from.                                                       |
+| Export                                                                                                                                           | What it is                                                                                                                                                                                                                    |
+| ------------------------------------------------------------------------------------------------------------------------------------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `Builder`                                                                                                                                        | The one entry point: `Builder.useAddon(...)` / `Builder.withServices(...)` open a chain, `useAddon` / `withServices` extend it, and `build()` seals it into an `IServiceProvider`.                                            |
+| `auditAddon`                                                                                                                                     | Answers `Audit` for whoever names it: what the resolve was asked for, and the construction addresses enclosing the one holding the audit.                                                                                     |
+| `diagnosticsAddon`                                                                                                                               | A timing probe composed into the chain; resolving `Diagnostics` gathers a segment of readings from every probe the container carries.                                                                                         |
+| `validateUniversalAddresses`, `validateBuildability`                                                                                             | Validation addons: the first rejects a registration addressed by nothing but a hole, the second plans every closed address while building — so an unsatisfiable graph fails at the build instead of at some later resolution. |
+| `DiError`, `UnsatisfiableError`, `CycleError`, `CaptiveDependencyError`, `ManifestValidationError`, `UniversalAddressError`, `ValidationFailure` | Re-exported from `di.core` — the same classes, so `instanceof` holds whichever package a caller imports the taxonomy from.                                                                                                    |
 
 ## How it fits
 
-`@rhombus-std/di` depends on [`@rhombus-std/di.core`](../di.core/README.md) for the `Manifest`/`Registration`/`LifetimeModel` surface and `@rhombus-std/primitives` for `Type` and the augmentation registry. It re-exports the whole `di.core` error taxonomy, so code that already imports the engine doesn't need a second import from the abstractions package just to catch what it throws.
+`@rhombus-std/di` depends on [`@rhombus-std/di.core`](../di.core/README.md) for the `Manifest`/`Registration`/`Addon` surface and `@rhombus-std/primitives` for `Type` and the augmentation registry. It re-exports the whole `di.core` error taxonomy, so code that already imports the engine doesn't need a second import from the abstractions package just to catch what it throws.
 
 [`@rhombus-std/di.extras`](../di.extras/README.md) supplies type-argument-derived (`<T>`-only) authoring sugar for the registration verbs, for a program built through this repo's Go/ttsc transform; `di` and `di.core` work identically without it.
 
 ## Notes
 
-- A discarded `.add(...)`, `.describe(...)`, or `.configureServices(...)` result configures nothing — both `Manifest` and `ContainerBuilder` are immutable, so always chain or reassign.
+- A discarded `.add(...)`, `.describe(...)`, or `.withServices(...)` result configures nothing — both `Manifest` and `Builder` are immutable, so always chain or reassign.
 - A union dependency settles deterministically: a registration for the union's own address answers it outright; otherwise each member is tried, registration then synthesis, in the union's canonical order, and the first one that resolves settles it. Literals order last among members, which is what keeps a literal member (such as `undefined`) as the fallback of an optional dependency.
-- `noopLifetimeAddon()`, from `di`, retains nothing: every registration is constructed fresh on every resolution, and it never opens a scope. A model that scopes publishes its own opener at its own address — `StandardScopeFactory.address` for `standardLifetimeAddon()`, `TaggedScopeFactory.address` for `taggedLifetimeAddon()`, which names the tag at the `openScope` call — resolved like any other service.

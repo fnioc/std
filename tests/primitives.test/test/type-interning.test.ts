@@ -50,8 +50,15 @@ describe('one object per type', () => {
     expect(Type.tuple({ members: [A], rest: B })).toBe(rest);
   });
 
-  test('a tuple that is nothing but a rest is refused — that type is the list itself', () => {
-    expect(() => Type.tuple({ members: [], rest: B })).toThrow(/the list itself — spell it Array<app:B>/);
+  test('a tuple that is nothing but a rest collapses to the list itself', () => {
+    expect(Type.tuple({ members: [], rest: B })).toBe(Type.array(B));
+    expect(Type.adopt({ kind: 'tuple', members: [], rest: B })).toBe(Type.array(B));
+  });
+
+  test('the empty tuple stays a tuple — no rest, nothing to collapse into', () => {
+    const empty = Type.tuple({ members: [], rest: undefined });
+    expect(empty.kind).toBe('tuple');
+    expect(empty).toBe(Type.tuple());
   });
 });
 

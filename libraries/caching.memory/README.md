@@ -61,16 +61,14 @@ type is kept, while configure steps still accumulate:
 import type { IMemoryCache } from '@rhombus-std/caching.core';
 import { getMemoryCacheManifest, MEMORY_CACHE_TYPE } from '@rhombus-std/caching.memory';
 import { Builder } from '@rhombus-std/di';
-import { type Addon, Manifest } from '@rhombus-std/di.core';
+import { Manifest } from '@rhombus-std/di.core';
 
 let services: Manifest<unknown> = Manifest.empty<unknown>();
 services = services.tryAdd(...getMemoryCacheManifest((options) => {
   options.sizeLimit = 1024;
 }));
 
-// No lifetime model is installed; a vacuous addon opens the builder's vocabulary with nothing.
-const noLifetimeModel: Addon<unknown> = { registrations: [], middleware: (next) => next };
-const provider = Builder.useAddon(noLifetimeModel).withServices(() => services).build();
+const provider = Builder.withServices(() => services).build();
 const cache: IMemoryCache = provider.resolve(MEMORY_CACHE_TYPE);
 ```
 

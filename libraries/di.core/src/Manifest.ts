@@ -34,6 +34,11 @@ export namespace Manifest {
   export function empty<Lifetime>(): Manifest<Lifetime> {
     return new DefaultManifest<Lifetime>();
   }
+
+  /** The registrations `fn` composes onto an empty manifest. */
+  export function build<Lifetime>(fn: Func<[Manifest<Lifetime>], Iterable<Registration<Lifetime>>>): Iterable<Registration<Lifetime>> {
+    return fn(empty<Lifetime>());
+  }
 }
 export interface DefaultManifest<Lifetime> extends Manifest<Lifetime> {}
 
