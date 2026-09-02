@@ -1391,8 +1391,16 @@ Behaviour:
   9. [x] RULED 2026-09-02 — `afterConstruct` is skipped when `beforeConstruct` answered a result;
          "after" means after a construction happened.
 -
-  10. [ ] Seeds file oldest, so a user registration at the same address shadows a seeded one —
-          "permanent" means always present, not unbeatable. Recommend yes.
+  10. [x] RULED 2026-09-02 — seeds file oldest; a user registration at the same address shadows a
+          seeded one. "Permanent" means always present, not unbeatable.
+          RULED with it — SHADOWING RESOLVES BENEATH: a registration whose own slot names its own
+          address (a factory for `Foo` shaped `Func<[Foo], Foo>`) gets the SHADOWED registration as
+          that dependency — matching for a self-named slot starts after the registration being
+          planned. Decoration with no verb. Consequences: no older match is unsatisfiable (throws,
+          never delegates); a collection ask still enumerates every match, decorator and shadowed
+          both. Divergence from the reference, which throws a cycle here; outside the lifetime model.
+          - [ ] TODO: describe this feature in the di library doc (`docs/libraries/di.md`), with the
+                `Func<[Foo], Foo>` example — rides with the phase 2 docs fallout.
 -
   11. [ ] The control lifetime is `null` at runtime, cast in at the two seed sites, ABSENT from the
           slot's type; the `controlLifetime` symbol and its union member go. The owner said "fine at a
