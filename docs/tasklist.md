@@ -1490,7 +1490,7 @@ contract forces.
       engine only the terminus stands"). Claude's pick: LEAVE — the mechanism (the engine calls
       `next`) exists; the addon surface that places something beneath it is a later addition when a
       real fallback consumer exists. Alternative: give addons a position now. One word.
-- [ ] **`Registry.getMatches` and `hasMatch`.** The owner asked for `getMatches` to use `hasMatch`
+- [x] RULED 2026-09-02: LEAVE — the owner had misread the code; the ask is withdrawn. **`Registry.getMatches` and `hasMatch`.** The owner asked for `getMatches` to use `hasMatch`
       in its body and `hasMatch` to use `bindGenerics`; the second half is done. `getMatches` needs
       the generics `bindGenerics` returns and `hasMatch` answers only a boolean, so the first half
       means binding twice: a per-registration `hasMatch(registration, address)` used by both, with
