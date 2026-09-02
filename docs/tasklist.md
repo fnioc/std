@@ -1356,8 +1356,9 @@ Internal, non-exported:
          `request.serviceProvider`. The three request addresses are value registrations carrying a
          sentinel; no per-ask Registry, the plan memo intact. The two internal symbols ride along.
 -
-  4. [ ] `InstalledHooks` — the engine's installed list, its precomputed per-kind dispatch, and the two
-         control verbs. Recommend yes.
+  4. [x] RULED 2026-09-02 — yes; the owner's one directive: BEST RUNTIME PERFORMANCE. Install and
+         dispose are cold and may cost whatever precomputation buys the ask path; the ask path walks
+         only what is active, allocates nothing, and skips every hook kind nobody implements.
 
 Exported from di.core:
 
