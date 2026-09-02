@@ -1256,12 +1256,13 @@ deleted; the standard model is written clean-room).
   handler-vs-trailing-`next` arity is read once when attached, never at dispatch; the per-ask link
   IS the request substitution — the layer calls `request.withHooks(hooks)`, a method on `Request`
   whose argument is a `Partial<Behavior>` (a layer may supply exactly one hook, written inline:
-  `request.withHooks({ beforeConstruct(construction) { … } })`), and which answers the derived
-  request `Object.create(request, { hooks: … })` — so the
-  request is the linked list, every attachment above still reads through the prototype chain, and
-  the engine collects the hooks in effect by walking `getPrototypeOf` from the request at the door;
-  per-ask hook state lives in the engine's existing per-ask states array sized from that walk; the
-  dispatch loop allocates nothing. No layer precomputes a merged hook list — it cannot know which
+  `request.withHooks({ beforeConstruct(construction) { … } })`). RULED: `withHooks` MUTATES the
+  request and RETURNS IT — callers write `next(request.withHooks(hooks))` as if it were a new value,
+  but no request is allocated per layer: `ServiceProvider` mints one request per ask with one
+  `hooks` array, a layer pushes onto it on the way down (zero allocation), and the engine sizes its
+  per-ask states array from `hooks.length` at the door. Safe because a request is never shared
+  between asks and nothing writes to it after the traversal, so a latebound's capture is stable
+  without a copy. The dispatch loop allocates nothing. No layer precomputes a merged hook list — it cannot know which
   inner layers attach on the way down, and a cache of that shape is wrong for forks.
 - Install-time WORK still happens once, in the factory closure; only putting hooks in effect moves
   to the request. Base-chain layers see every ask because every scope wraps outside them, not by
