@@ -628,8 +628,10 @@ Design recorded as §230. Open:
 - [ ] Decide whether adding an addon to an already-built container is supported. If not, the dynamic
       half of `HookChain` has no caller and deletes.
 - [ ] A latebound closure invoked after its minting scope is disposed — part of the disposal item.
-- [ ] Confirm the per-ask `Request` allocation replaces one rather than joining one, on a path whose
-      measured fixed cost is ~400ns.
+- [ ] The per-ask `Request` object JOINS the per-ask allocations rather than replacing one: the
+      engine still builds its own `{ context: { states } }` per ask alongside it
+      (`Engine.ts`, `getService`). Accept the extra object on the ~400ns path, or fold the engine's
+      per-ask context onto the request under an engine-owned symbol so the count does not rise.
 - [ ] Design the tagged model against the same tools.
 - [ ] Check whether `anchorRoot` and `ScopeBinding`'s bracketing still have a job.
 
@@ -901,12 +903,12 @@ if that write-up slips.
 
 ## Resolution door — open, awaiting the owner (2026-09-01)
 
-- [ ] Does `Type` become a resolvable address, so a factory slot declared `Type` receives the
-      current ask's address? Real capability, and `Type` appears in many signatures that would then
-      pick it up unintentionally.
-- [ ] May an addon contribute per-ask registrations of its own? `Plan.from` memoizes per `Registry`
-      object (`Plan.ts:250-252`), so a per-ask registry rebuilds every plan on every ask. Addresses
-      must be fixed at build and only values vary — a real constraint on the addon surface.
+- [ ] RULED: `Type` is NOT a resolvable address. The `Request` is the resolvable thing and it
+      carries the requested type; a factory that wants the current ask's address takes the request.
+- [ ] RULED: an addon MAY contribute per-ask registrations of its own. Constraint the implementation
+      must respect: `Plan.from` memoizes per `Registry` object (`Plan.ts:250-252`), so a per-ask
+      registry must not rebuild every plan on every ask — addresses stay fixed at build and only
+      values vary.
 - [ ] RULED: accept the weaker diagnostic. An unanswerable control ask becomes a generic
       `UnsatisfiableError` once control services are ordinary registrations; `UnknownControlError`
       goes rather than being recovered at the refusal path.
@@ -1030,9 +1032,9 @@ the ctor/func intern key to two ids, and satisfies the one-kind-per-member rule.
 - [ ] The tooling description belongs as a SECTION INSIDE the requirements doc — the APIs a model
       must build on — not as a document of its own. Write it after the door lands, since that is the
       surface it describes.
-- [ ] Decide whether symbol-keyed members being excluded from derivation becomes a STATED RULE
-      rather than a convenient accident. It is load-bearing for the resolvable-request design: a
-      `[key: symbol]: unknown` member that derived would put a slot on the address nothing can answer.
+- [ ] RULED: leave symbol-keyed derivation exclusion as it is until there is a reason to change it.
+      A key does not have to be a symbol to be excluded from an interface, so the exclusion is not
+      what keeps `Request`'s `[key: symbol]: unknown` member off the address — the two are unrelated.
 
 ### Ruled 2026-09-01
 
@@ -1093,10 +1095,11 @@ The order to work in, one line each. Sections above carry the substance; this is
 21. Whether `anchorRoot` and `ScopeBinding`'s bracketing still have a job.
 22. The validation options surface.
 
-Blocking on the owner, each at the step it gates: does `Type` become a resolvable address (7); may
-an addon contribute per-ask registrations (6); is the symbol-key derivation exclusion a stated rule
-or an accident (5); and confirm the per-ask `Request` allocation replaces one rather than joining
-one against the ~400ns fixed cost (cheapest to answer while 5-9 are open).
+Ruled 2026-09-01, so nothing gates 5-7 any more: `Type` is not a resolvable address (the `Request`
+is, and carries the type); an addon may contribute per-ask registrations; the symbol-key derivation
+exclusion stays as it is, unrelated to the request design. Still open: whether the per-ask `Request`
+allocation is accepted as an ADDITIONAL object on the ~400ns path (it joins the existing per-ask
+context allocation rather than replacing it).
 
 ### Why this order — the constraints, so a different one can be derived
 
