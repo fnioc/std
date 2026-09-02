@@ -1484,7 +1484,7 @@ contract forces.
 
 ## Two questions the owner has not answered (2026-09-02)
 
-- [ ] **Beneath the engine.** The ruling says user extensibility may compose below the engine, but
+- [x] RULED 2026-09-02: LEAVE. **Beneath the engine.** The ruling says user extensibility may compose below the engine, but
       `build()` folds every addon above it and the engine's `next` reaches only the terminus, so
       there is no position to compose into. The builder review resolved it in DOCS ("beneath the
       engine only the terminus stands"). Claude's pick: LEAVE — the mechanism (the engine calls
