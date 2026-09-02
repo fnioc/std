@@ -505,7 +505,7 @@ land; delete the file when empty.
       FATAL in the bunfig preload, so the defect also fails whole-suite loads in
       augmentations.test, options.augmentations.test, caching.memory.test and hosting.test.
 - [x] **LANDED `879a5a7a` — 23 prose edits across 11 files. Boundary drawn: `arg` names an element
-      of a di signature (`Type.Signatures`, ctor/func nodes); an ordinary hand-authored callback's
+      of a di signature (the signatures slot, ctor/func nodes); an ordinary hand-authored callback's
       own parameters keep "parameter", as do `@param`/`@typeParam` tags and "type parameter".** Was: — RULED 2026-08-22: the signatures-list member is
       `signatures`; `args` is acceptable only for a single signature's own element list; per-element
       prose is "arg", never param/parameter/argument. Code, spec doors and primitives tests now

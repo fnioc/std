@@ -1145,7 +1145,6 @@ FREE: 2, 3, 4, 12 and 13 can be placed anywhere consistent with the above.
 
 ## Left by the signatures work (2026-09-01)
 
-- [ ] `docs/notes.md` still names `Type.Signatures` and `optionalCount`; both are gone from the code.
 - [ ] `typeforhoist.Union`'s doc comment calls itself a "literal-union node" though it has long held
       general members. Pre-existing, surfaced by this pass.
 
