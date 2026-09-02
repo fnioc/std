@@ -717,9 +717,9 @@ does not belong in any model's vocabulary. Three consumers justify the mechanism
 `Request` itself, and `Diagnostics`, which already mints a per-ask compartment and had to fake a
 lifetime to get registered.
 
-- [ ] ~~Seeding it needs a lifetime in a vocabulary the seeder owns.~~ ANSWERED above. Every registration names one, the
-      value must be transient — a cached provider is wrong — and only the model knows how to spell
-      transient, so the MODEL seeds this, not the builder.
+- [ ] ~~Seeding it needs a lifetime in a vocabulary the seeder owns.~~ ANSWERED above. Every registration names one, and
+      a cached provider is wrong, so the seed goes under `controlLifetime` — the engine's own value,
+      not any model's vocabulary — and the ENGINE seeds it, unconditionally; no model is involved.
       A request is captured for the whole lifecycle of the `getService` that opened it, including any
       latebounds constructed under it — `captureForLaterCall` already snapshots the chain and the states for
       that reason, and the request joins them. So `resolveFrame` and `resolveLatebound` answer
@@ -938,11 +938,11 @@ if that write-up slips.
       never said to drop them — confirm or restore.
 - [ ] `logging/README.md` still demonstrates `di.usingLifetimeModel(standardLifetimeAddon())`; it
       cannot be adapted honestly until a lifetime model exists.
-- [ ] Correct two stale passages in this file: the single-door ruling spells the law
-      `IServiceProvider.getService(Type)` where the chain and engine now take a `Request`; and the
-      builder-shape section's tail says the MODEL seeds `IServiceProvider`, which the
-      `controlLifetime` ruling in the paragraph above it supersedes — the engine seeds it,
-      unconditionally.
+- [x] The builder-shape section's tail now says the ENGINE seeds `IServiceProvider` under
+      `controlLifetime`, unconditionally. The single-door law spelled `IServiceProvider.getService(Type)`
+      is NOT stale: it is the owner's verbatim quote in §209 and names the public interface's
+      signature, which §230 keeps — only the chain and engine take a `Request`. §209 leaves the log
+      at step 9 regardless.
 - [ ] Two unbounded, never-evicting caches keyed on runtime input, both plain objects holding strong
       references: `Type/factory/intern.ts:24` (`table`, keyed on a structural string) and
       `Type/Type.ts:215` (`parsed`, keyed on the raw token string). `Type.from` is the door data
@@ -1085,7 +1085,7 @@ The order to work in, one line each. Sections above carry the substance; this is
 10. Delete `LifetimeModel`; keep `LifetimeArgument` and `LifetimeModelError`.
 11. Confirm or restore `di.usingLifetimeModel` and `use(middleware)`.
 12. Delete `CaptiveDependencyError` — a shared captivity type nothing throws.
-13. Correct the two stale passages in this file: the single-door wording, and "the MODEL seeds this".
+13. DONE. "The MODEL seeds this" corrected; the single-door wording was the public signature, not stale.
 14. Owner hand-rolls the model requirements doc, including its APIs-to-build-on section.
 15. Write the standard model clean-room against the finished door.
 16. Un-comment the dependers and re-green the 22 `di.test` files.
