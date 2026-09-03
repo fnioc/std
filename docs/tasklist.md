@@ -2433,6 +2433,16 @@ Two forks, the owner delegated the call to Claude 2026-09-03 ("your call"); pick
 
 Status: landed 2026-09-03 — `434c7c24` (planner + tests), `9ca16505` (docs).
 
+## Queue — merge `IServiceManifest-repair` into main (owner 2026-09-03: "up next we merge into main")
+
+- The PR already exists: #274, draft, `IServiceManifest-repair` → `main`. Landing it is
+  `gh pr ready 274`, then the merge queue (required check `verify`); auto-merge is the default here.
+- Runs on the owner's go. Before readying: CI green on the tip, `git status` clean, this tasklist
+  current.
+- Fallout for the owner's word, not to pre-empt: `IServiceManifest-approved` (local + origin, zero
+  unique commits) is the base of draft PR #366, the review-ladder hook-middleware rework; once
+  main carries this branch, that ladder is moot unless he wants it kept.
+
 ## Open, owner's word (2026-09-03)
 
 - `INLINE_NO_SRC_ENTRY` second publish gate (section above).
