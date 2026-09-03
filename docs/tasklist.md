@@ -2375,7 +2375,11 @@ Design (discussed, not yet ruled):
 
 Ruled 2026-09-03: name `@rhombus-std/transforms`; option (b) — the real descriptor lives in the transforms package (`./ttsc` export), each extras keeps a one-line `ttsc.mjs` re-exporting it and its marker points at `./ttsc.mjs`; no upstream `ttsc` change. Consequence: the new name needs its npm placeholder + trusted-publisher binding like the other 32. Landed 2026-09-03: `a9944cdc` (package + descriptor + README + workspaces), `061370f8` (the four marker packages: `primitives.extras`, `di.extras`, `di.extras.options`, `config.extras`), `41416c36` (docs). Gates green; consumer proof from pnpm-packed tarballs built and ran the sidecar end to end.
 
-**Second publish gate, found by that proof, OWNER'S DECISION:** an installed `primitives.extras` emits `INLINE_NO_SRC_ENTRY` — the inline stage resolves a marker's `impl` by walking the package's `src/` re-export graph, and no `*.extras` ships `src/` (`files` = dist, ttsc.mjs, rhombus-std.json). Either every `*.extras` publishes `src/` too, or the inline stage learns to resolve `impl` through the published dist. Not started.
+**Second publish gate, found by that proof, OWNER'S DECISION:** an installed `primitives.extras` emits `INLINE_NO_SRC_ENTRY` — the inline stage resolves a marker's `impl` by walking the package's `src/` re-export graph, and no `*.extras` ships `src/` (`files` = dist, ttsc.mjs, rhombus-std.json). Either every `*.extras` publishes `src/` too, or the inline stage learns to resolve `impl` through the published dist.
+
+Ruled 2026-09-03 ("src it is"): every `*.extras` publishes `src/` beside dist, with a `source` condition on the `.` export pointing at `./src/index.ts` for the inline stage; `types` and `default` stay on dist. The build step stays — nothing in an extras package runs untransformed (`typefor`/`schemaof` throw, `registerInlineBodies` is empty, every sugar body routes through them), so dist's whole value is the rolled `.d.ts` plus the runtime stub whose one behavior is the "transform not applied" throw. Same directory, two readers. In flight.
+
+Alongside it (owner, same /go): audit every library's `exports`/`publishConfig.exports` for redundancy — conditions repeated where the fallback would resolve identically — and make them ideal. In flight.
 
 ## Session — PlannerVisitor threads an async context (owner spec 2026-09-03)
 
@@ -2445,4 +2449,5 @@ Status: landed 2026-09-03 — `434c7c24` (planner + tests), `9ca16505` (docs).
 
 ## Open, owner's word (2026-09-03)
 
-- `INLINE_NO_SRC_ENTRY` second publish gate (section above).
+- The rhombus-toolkit message the owner said is coming (a type there; obey it). Not yet arrived.
+- Then: the merge into main (queue section above).
