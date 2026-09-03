@@ -1,16 +1,20 @@
 # The tagged lifetime model — design
 
-Status: behavior and implementation shape given by the owner 2026-09-02; four points below await his
-word before the architecture is written.
+Status: behavior and implementation shape given by the owner 2026-09-02; his word on the numbered
+points is being applied as it arrives; the architecture follows the last of them.
 
 ## Behavior
 
 - The provider `Builder.build()` answers is transient: it caches nothing and tracks nothing. It has no
   lifetime behavior, only the ability to hand out a scope factory whose providers do.
-- The vocabulary is the user's own union of tags, the `Lifetime` type argument. The scope factory's
-  `openScope(lifetime)` takes one of them, typed by that argument, so resolving the factory spells
-  the union out every time; users are encouraged to wrap that in their own helper so their code does
-  not depend on the union.
+- The vocabulary is the user's own union of tags, the `Lifetime` type argument, and `undefined` is a
+  member of it: a registration whose lifetime is `undefined`, or omitted, is transient, cached by no
+  scope. The scope factory's `openScope(lifetime)` takes one of the tags, typed by that argument, so
+  resolving the factory spells the union out every time; users are encouraged to wrap that in their
+  own helper so their code does not depend on the union. There is no scope for `undefined`, since
+  nothing would be held in it.
+- The factory is the tagged model's own interface, separate from the standard model's
+  `IServiceScopeFactory`.
 - `openScope(lifetime)` answers a provider that manages the cache for that one lifetime. There is no
   dictated order in which scopes open.
 - The lifetime of what a scoped provider answers is bound to the variable holding that provider:
@@ -29,53 +33,66 @@ word before the architecture is written.
 - A factory resolved from a scoped provider holds that scope's middleware as its head, so lifetime
   middlewares stack, one per open scope in the chain. This is the mirror of the standard model, whose
   markers never stack.
-- Each layer's hooks act on a node only when the node's registration carries the lifetime that layer
-  is in charge of.
+- The addon stages one set of hooks, at build. A hook acts on a node through the layer in charge of
+  the node's lifetime, and finds that layer on the request: each layer's middleware records itself
+  there as the ask crosses it, so the request carries the chain in crossing order, the descendant
+  first.
 
 ## Mapping onto the API
 
 - **Same-tag nesting.** For different tags order never matters: a node has one tag, one layer in the
   chain claims it. It matters only when a scope is opened inside another of the same tag, and there
-  the descendant wins. Staged hooks run in the order they were staged, the parent's first, so the
-  request carries the order instead: on the way down, each layer records itself as the owner of its
-  tag on the request unless a layer already did, and the descendant writes first because the ask
-  enters its middleware first. In `beforeConstruct` a layer acts only when the ask's owner for the
-  node's tag is itself.
+  the descendant wins. The order comes from the middleware shape: the ask enters the descendant's
+  middleware first, each middleware appends its layer to the request's chain, and a hook takes the
+  first layer in the chain carrying the node's tag. No layer stages hooks of its own; the addon's
+  installer stages the one set and activates it at the head.
 
   ```ts
-  request[owner] ??= new Map();
-  if (!request[owner].has(tag)) {
-    request[owner].set(tag, layer);
+  function layerMiddleware(request: Request) {
+    (request[chain] ??= []).push(layer);
+    return head(request);
   }
-  return head(request.activate(handle));
+
+  function beforeConstruct(node, request) {
+    const layer = request[chain].find(candidate => candidate.tag === node.lifetime);
+    if (layer === undefined) {
+      return {}; // transient: constructed every time
+    }
+    ...
+  }
   ```
 
 - **Where a factory comes from.** A factory resolved from a scoped provider holds that layer's head,
   so it cannot be one shared value. The addon registers the factory as a factory registration whose
   implementer answers the root-bound factory, so the built provider hands one out and injection plans
-  normally; every layer's `beforeConstruct` overrides that node with a factory bound to itself, the
-  descendant winning by the same owner stamp.
+  normally; `beforeConstruct` overrides that node with the factory of the first layer in the request's
+  chain, the scope the ask entered through. The override checks the node's registration against the
+  addon's own by identity, so a user's registration of the factory address is a different
+  registration, untouched by the hook, and wins by the registry's order as any registration does.
 - **Disposal.** Each scoped provider subscribes the engine's dispose seam to release that layer's cache
   and captured instances, exactly as the standard model does. A disposed parent refuses every ask
   that passes through it, so its descendants are dead with it.
-- **State.** No layer threads state to route dependencies: a node's tag alone decides which layer
-  caches it, and every ancestor's hooks are active for an ask that entered a descendant.
+- **State.** No layer threads state to route dependencies: a node's tag and the request's chain
+  decide which layer caches it.
 
 ## Awaiting the owner's word
 
 Numbered as first put to him.
 
-1. Same-tag nesting: a scope opened inside another of the same tag, the descendant winning through
-   the owner stamp on the request, as laid out above. Confirm.
-2. Where a factory comes from: a factory registration whose implementer answers the root-bound
-   factory, every layer's `beforeConstruct` overriding that node with a factory bound to itself, the
-   descendant winning by the same stamp. Confirm.
-3. `IServiceProvider` injected into a tagged service: the provider the ask entered through, or the
-   provider of the scope that caches the instance. Recommended: the caching scope's, as the standard
-   model does, since the instance outlives the entering ask.
-4. Vocabulary: is an omitted lifetime admitted, meaning never cached at any scope? Recommended: yes,
-   which makes an untagged registration transient everywhere and matches the built provider being
-   transient.
-5. The factory abstraction: one generic `IServiceScopeFactory` shared with the standard model, whose
-   `openScope` takes the tag when the vocabulary needs one and nothing otherwise, or a second
-   interface. Recommended: one generic, so di.core carries a single scope-opening abstraction.
+1. Same-tag nesting: ruled 2026-09-02, the choice left to this session; chosen: the middleware shape,
+   the request's chain in crossing order, as laid out above.
+2. Where a factory comes from: the owner proposed the layer's middleware intercepting the ask for the
+   factory and answering its own, and asked for a better idea since that leaves a user's registration
+   unable to override it. Proposed above: the registration plus the hook override, the override
+   confined to the addon's own registration by identity. Awaiting his word.
+3. A tagged service, say `Session` registered under the tag `session`, has a constructor parameter of
+   type `IServiceProvider`. `Session` is resolved through a `request` scope opened inside a
+   `session` scope, and the instance lands in the `session` scope's cache. Which provider object does
+   the constructor receive: the `request` scope's, the one `resolve` was called on, or the `session`
+   scope's, the one whose cache holds the instance? Recommended: the `session` scope's, as the
+   standard model does, because the instance outlives the `request` scope and would otherwise hold a
+   provider that dies before it. Awaiting his word.
+4. Ruled 2026-09-02: `undefined` is in the vocabulary and is transient; refusing it would make
+   transient registrations impossible, which is not something to stop.
+5. Ruled 2026-09-02: separate interfaces, the tagged model's own beside the standard model's
+   `IServiceScopeFactory`. Its name is proposed in the architecture.
