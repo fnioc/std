@@ -366,7 +366,7 @@ disposable `Handle`; disposing it is the uninstall. Construction hooks fire only
 registration-carrying nodes — never at an engine-synthesised object, tuple, or collection node,
 and never at the engine's own seeded rows. `beforePlan` is the graph moment rather than the
 resolve moment: it runs once per registered node as the plan is made — lazily at the first
-resolution that needs it, or up front when `validateBuildability()` plans every address at build —
+resolution that needs it, or up front when `validateBuildability()` plans every registration at build —
 answering the state the node's dependencies are planned under, so a validator can judge the whole
 graph without plan trees ever reaching the public surface.
 
@@ -447,8 +447,9 @@ beneath: a genuine cycle through a second address still throws `CycleError`.
 Find every broken registration before the first ask, all at once. Two addons sweep the manifest at
 build and throw `ManifestValidationError` carrying every failure together, so one attempt surfaces
 the whole broken graph. `validateUniversalAddresses()` rejects a registration addressed by nothing
-but a hole; `validateBuildability()` plans every closed address the manifest answers, and a plan
-that cannot build is a failure.
+but a hole; `validateBuildability()` plans every registration of every closed address the manifest
+answers — a registration a newer one shadows included, since a collection ask still walks it — and a
+plan that cannot build is a failure.
 
 ```ts
 const provider = Builder
@@ -504,7 +505,9 @@ every later ask with `ObjectDisposedError`. Disposing the container's provider d
 singletons and closes every provider. A transient is owned by the scope the ask ran under: resolved
 from a scope, it goes with the scope; resolved from the container's provider, it is held until the
 container disposes; injected into a singleton, it lives as long as the singleton. An instance handed
-to a value registration is never disposed. Errors raised while disposing are collected — one
+to a value registration is never disposed. A construction still pending when its scope ends never
+reaches the caller: the value is disposed as it settles and the waiting ask is refused with
+`ObjectDisposedError`. Errors raised while disposing are collected — one
 rethrows as itself, several as one `AggregateError` — and every other instance still disposes.
 
 ```ts

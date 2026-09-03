@@ -38,10 +38,14 @@ export function validateUniversalAddresses<Lifetime>(): Addon<Lifetime> {
 }
 
 /**
- * Installs a middleware planning every closed address the manifest answers — a plan that cannot
- * build is a failure.
+ * Installs a middleware planning every registration of every closed address the manifest answers —
+ * a plan that cannot build is a failure.
  *
- * @throws {ManifestValidationError} when any address fails to plan.
+ * @remarks
+ * A registration a newer one shadows is planned on its own, since a collection ask walks it: a
+ * fault only the shadowed registration carries is reported here rather than at that ask.
+ *
+ * @throws {ManifestValidationError} when any registration fails to plan.
  */
 export function validateBuildability<Lifetime>(): Addon<Lifetime> {
   return {

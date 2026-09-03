@@ -185,7 +185,16 @@ export class PlannerVisitor extends Type.Visitor<Plan | undefined, PlanningConte
    * falls through to that.
    */
   visitShadow(address: Type, context: PlanningContext): Plan | undefined {
-    const plan = this.#registry.getMatches(address, undefined, context.planning!.index + 1)
+    return this.visitFrom(address, context.planning!.index + 1, context);
+  }
+
+  /**
+   * The answer for `address` among the registrations from `start` on — the walk that reaches a
+   * registration the newest one hides. No synthesis stands beneath the matches, so an address
+   * nothing from `start` on answers is unanswered rather than composed.
+   */
+  visitFrom(address: Type, start: number, context: PlanningContext): Plan | undefined {
+    const plan = this.#registry.getMatches(address, undefined, start)
       .map(match => Plan.fromMatch(address, match, this, context))
       .find(isDefined);
     if (plan === undefined && this.#diagnostics.missingDependency === undefined) {

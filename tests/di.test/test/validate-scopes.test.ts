@@ -190,6 +190,28 @@ describe('when the captive check fires', () => {
     expect((failures[0]!.error as ScopeValidationError).address).toBe(COUNTER);
   });
 
+  test('at build, for a shadowed registration whose address the newest registration answers cleanly', () => {
+    // The captive is hidden behind a later registration of the same address, so no single ask ever
+    // reaches it — a collection ask still walks it, and the build plans every registration.
+    let caught: unknown;
+    try {
+      Builder.useAddon(validateBuildability()).useAddon(validateScopes()).useAddon(standardLifetime())
+        .withServices(m =>
+          m
+            .add(COUNTER, Counter, Type.ctor(COUNTER, [[]]), 'scoped')
+            .add(HOLDER, Holder, Type.ctor(HOLDER, [[COUNTER]]), 'singleton')
+            .add(HOLDER, () => new Holder(new Counter()), Type.func(HOLDER, [[]]), 'singleton')
+        )
+        .build();
+    } catch (error) {
+      caught = error;
+    }
+    const failures = (caught as ManifestValidationError).failures;
+    expect(failures.map(failure => failure.address)).toEqual([HOLDER]);
+    expect(failures[0]!.error).toBeInstanceOf(ScopeValidationError);
+    expect((failures[0]!.error as ScopeValidationError).address).toBe(COUNTER);
+  });
+
   test('a pre-built instance never trips the check at build: it has no dependencies to plan', () => {
     expect(() =>
       Builder.useAddon(validateBuildability()).useAddon(validateScopes()).useAddon(standardLifetime())

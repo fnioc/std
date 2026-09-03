@@ -288,22 +288,7 @@ export namespace Plan {
           const visitor = new PlannerVisitor(registry, args, currentHooks);
           const plan = visitor.visit(address);
           if (plan === undefined) {
-            // Two failures reach here and a caller acts on them differently: nothing is registered
-            // for the request at all, or something is and the graph beneath it has the hole.
-            const registered = registry.hasMatch(address);
-            // The planning pass's own leaf failure, when it lies beneath address rather than being
-            // address itself, names the actual dependency that could not be met.
-            const missing = visitor.missingDependency;
-            const cause = missing !== undefined && missing !== address
-              ? new UnsatisfiableError(missing, 'nothing in the manifest produces it')
-              : undefined;
-            throw new UnsatisfiableError(
-              address,
-              registered
-                ? 'it is registered, but something it needs is not'
-                : 'nothing in the manifest produces it',
-              cause,
-            );
+            throw unsatisfiable(address, registry.hasMatch(address), visitor.missingDependency);
           }
           return plan;
         })
@@ -343,6 +328,43 @@ export namespace Plan {
 
     return from;
   })();
+
+  /**
+   * The plan for `address` answered by the registration at `start` or by an older one it shadows —
+   * how a whole-registry check reaches a registration the newest one hides, which a collection ask
+   * still walks. Nothing caches it: an ask for `address` itself is answered by the newest
+   * registration alone.
+   *
+   * @throws {UnsatisfiableError} when nothing from `start` on answers {@link address}, or something
+   * does and its own dependencies cannot be met.
+   */
+  export function fromShadowed(address: Type, registry: Registry, start: number, hooks?: PlanHooks): Plan {
+    const visitor = new PlannerVisitor(registry, undefined, hooks);
+    const plan = visitor.visitFrom(address, start, {});
+    if (plan === undefined) {
+      throw unsatisfiable(address, registry.hasMatch(address), visitor.missingDependency);
+    }
+    return plan;
+  }
+
+  /**
+   * The failure for an address nothing planned. Two failures reach here and a caller acts on them
+   * differently: nothing is registered for the request at all, or something is and the graph
+   * beneath it has the hole — and the pass's own leaf failure, when it lies beneath the address
+   * rather than being the address itself, rides along naming the dependency that could not be met.
+   */
+  function unsatisfiable(address: Type, registered: boolean, missing: Type | undefined): UnsatisfiableError {
+    const cause = missing !== undefined && missing !== address
+      ? new UnsatisfiableError(missing, 'nothing in the manifest produces it')
+      : undefined;
+    return new UnsatisfiableError(
+      address,
+      registered
+        ? 'it is registered, but something it needs is not'
+        : 'nothing in the manifest produces it',
+      cause,
+    );
+  }
 
   /**
    * Lowers `registration` as an invocation frame: nothing is registered, no lifetime datum stands
