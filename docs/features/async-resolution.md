@@ -48,12 +48,11 @@ const banner = await provider.resolveAsync<IBanner>(); // the same registration,
 
 Both calls reach the identical registration; the only difference is which address you asked for.
 
-The converse is refused rather than faked. A dependency that only a `Promise<IBanner>` registration
-can answer, reached with no enclosing await to hoist it onto, is unsatisfiable — outside a
-promise-addressed ask there is nothing to wait in. A constructor that depends on the settled
-`IBanner` while the manifest holds only its promise form fails with `UnsatisfiableError` at that
-dependency, telling you that only its promised form is registered and nothing encloses an await, so
-you can see exactly which spelling to use.
+The converse is not faked. A settled type that only a `Promise<IBanner>` registration can answer has
+no synchronous answer — outside a promise-addressed ask there is nothing to wait in — so it simply
+misses, the way any dependency the manifest does not produce does: an optional one falls back to its
+alternative, a required one is unsatisfiable. Reach for `resolveAsync` (or ask for the
+`Promise<IBanner>` address) to get the value the promise carries.
 
 ## Boundaries and waits
 
