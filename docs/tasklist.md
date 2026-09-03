@@ -2462,13 +2462,13 @@ Rulings on the open di items, each against the section that holds it. State is t
 - Collection ask refusing on silently dropped unbuildable members: not di (hosting's).
 - `Type | string` sweep, "a parameter naming an address is spelled `address`": LANDED `91ece28f` — the only live site was `Request.type` → `Request.address` (public member; `ServiceRequest` ctor param too); every other listed site was already `address` or in a since-deleted file.
 - `TypeFor<T>` (`## Authoring surface`): LANDED `447a915d` — the final fallback is `ObjectType | NamedType`, the named-or-structural pair.
-- `typefor` structural derivation (`## Structural synthesis`): RULED — "resolve ALL compositional types, that includes object." Tuples landed `fe1d1680`; object-literal derivation is owed, optional property as a union with `undefined`. Go lane.
-- "Parked: awaits its design ruling" comments on `visitCtor`/`visitAbstractCtor`: delete (no elaboration, no comment). Go lane.
+- `typefor` structural derivation (`## Structural synthesis`): LANDED `9f95dffb`..`df46c4cf` — object-literal derivation, parity fixtures (object, nested, optional, method), named callable alias gate fix.
+- "Parked: awaits its design ruling" comments on `visitCtor`/`visitAbstractCtor`: already deleted from Go files; TS side (`PlannerVisitor.ts:287`) is outside the Go lane's scope.
 - Local alias derives an unimportable name (overnight findings, b): closed — a local alias derives structurally. Owner's expectation on record: private types (not externally resolvable) resolve with their actual path through the `token/*` export; leave unless a known problem appears.
-- mergesynth indistinguishable-guard overloads (`## Merge-strategy guards`): RULED — report ONLY when the conflict occurs (two overloads whose guards are provably identical), never on every iterable; the iterable guard must at the very least check the `Symbol.iterator` member. Go lane.
-- Certify the static/namespace/const-member/class-member matchers: Go lane. Value-door authoring sugar: DROPPED.
-- `typeforhoist.Union` doc comment: Go lane.
-- Node-vocabulary-collapse review findings (10, Go transformer): Go lane, batched with the above so the cache stays warm.
+- mergesynth indistinguishable-guard overloads (`## Merge-strategy guards`): LANDED `b30dc662` — MERGESYNTH_INDISTINGUISHABLE_GUARDS diagnostic when two registrations produce identical guards; iterable guard checks `Symbol.iterator in input`.
+- Certify the static/namespace/const-member/class-member matchers: LANDED `646bfa1e` — resolvedDeclaration finds call sites for all four shapes. Value-door authoring sugar: DROPPED.
+- `typeforhoist.Union` doc comment: LANDED `9f95dffb`.
+- Node-vocabulary-collapse review findings (10, Go transformer): LANDED `df46c4cf` — named callable alias, symbol-keyed member refusal, withUndefined predicate, deriveTupleNode checker param, intersection key wrapping, object-key rule consolidation. Design forks left unpicked: optional-property union-alias identity loss (finding 3, unavoidable), Inject-pinned keyed base refusal (finding 6, arguable).
 - `asClass<T>` sugar leg (`## Authoring surface`): already exists in `di.extras` (`asClass(ctor)` over `typefor(ctor)`). Stale entry; closed.
 - `mergesynth.test.ts` parameter description: already fixed on this branch; nothing to do.
 - Review-lens-2 findings not taken (request-door session): moved to `docs/benchmarks.md`, the owner's word.
@@ -2486,6 +2486,4 @@ Owner: "for our new transform package, I want it to publish minified (e.g. `gith
 - JS bundles minify via `bun build`, each with its `.js.map` published beside it (`sourcemap: 'linked'`, the one mode that writes the map and the `sourceMappingURL` comment). LANDED `4079ce26`, unverified by a build until after the merge. Bun has no comment-retention option (`legalComments` unsupported), so bundles carry no comments; the `.d.ts` carries the docs.
 - Rolled `.d.ts` files minify keeping JSDoc: `dts-minify` (`keepJsDocs: true`) as a post step after `rollup-plugin-dts`, inside the build script. LANDED `4d68d80d`, unverified by a build until after the merge.
 - `*.extras` `src/` templates stay formatted: no tool minifies `.ts` while keeping it `.ts` and its doc comments (researched 2026-09-03); a custom pass is the only route, and the templates are a few one-line bodies.
-- `@rhombus-std/transforms` publishes its Go from a staged copy run through `minformat`, pinned per-project through mise's `go:` backend; `gofmt` reverts it; comments all go, doc comments included (owner: "nobody ever interacts with it directly"). The cloud lane already runs this way.
-
-Not started; sequenced after the exports-audit lane (shared files: `scripts/build-lib.ts`, `transforms/package.json`, the derive script).
+- `@rhombus-std/transforms` publishes its Go from a staged copy run through `minformat`, pinned per-project through mise's `go:` backend; `gofmt` reverts it; comments all go, doc comments included (owner: "nobody ever interacts with it directly"). LANDED `3700d415` (transforms half) — staging script, gominfmt tool, publishConfig.directory.
