@@ -5,6 +5,10 @@ reads one back. The two are exact inverses: stringifying a node and reading the 
 yields the identical node back, however deeply nested, and whatever characters its names or
 literal values happen to contain. This doc is the grammar both sides agree on.
 
+A node writes its own token wherever text is expected — `${type}`, `String(type)`,
+`type.toString()` — so `Type.stringify` is spelled out only where the token is wanted as a value
+rather than as part of a message.
+
 A token names exactly one type. Whitespace between tokens (around punctuation, inside generic
 argument lists) is insignificant and never appears in a written token; `Type.from` accepts it
 anywhere a reader would expect a boundary.

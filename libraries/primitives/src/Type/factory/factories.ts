@@ -498,6 +498,21 @@ const REQUIRED: Readonly<Record<Type['kind'], readonly string[]>> = {
 };
 
 /**
+ * Whether a value is written as a type: an object naming a kind and carrying that kind's fields.
+ *
+ * @remarks
+ * Shape alone, so a foreign object spelled exactly like a type reads as one — the price of a
+ * `kind` that stays unqualified.
+ */
+export function isRawType(value: unknown): value is Type.RawType {
+  if (typeof value !== 'object' || value === null) {
+    return false;
+  }
+  const required = REQUIRED[(value as Type).kind];
+  return required !== undefined && required.every(field => field in value);
+}
+
+/**
  * Checks a literal names a kind and carries that kind's fields, before the walk reads any of them.
  * Presence alone — a field's own contents are checked by the factory that adopts it, one level down.
  *

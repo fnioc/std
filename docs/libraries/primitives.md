@@ -50,6 +50,25 @@ Type.from('app:IClock') === Type.imported('IClock', 'app'); // true
 Type.adopt({ kind: 'imported', name: 'IClock', from: 'app', genericArgs: [] }); // the same node
 ```
 
+A type spells itself wherever text is expected, so an error message or a log line interpolates the
+node and gets its token — and so does a failed assertion, which prints the token rather than the
+tree.
+
+```ts
+throw new Error(`cannot satisfy ${type}`); // cannot satisfy app:IClock
+[a, b].join(' -> '); // app:A -> app:B
+```
+
+In JSON a type is its tree rather than its token: `JSON.stringify(type)` emits exactly the fields
+the node carries. A document that is one type reads back through `Type.adopt`; for types embedded
+anywhere inside a larger document, hand `Type.reviver` to `JSON.parse` and each one arrives as the
+node it names.
+
+```ts
+Type.adopt(JSON.parse(text)) === type; // a document that is one type
+JSON.parse(text, Type.reviver); // types anywhere inside one
+```
+
 A callable's signatures are one slot, so overloads are data you can read and match on: a tuple row
 for a fixed argument list (open-length when it carries a rest slot), a list row for a signature that
 is entirely a rest, or a union of rows for several overloads. `Type.signatures(rows)` builds the

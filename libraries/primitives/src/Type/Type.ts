@@ -355,6 +355,24 @@ export namespace Type {
   }
 
   /**
+   * A `JSON.parse` reviver that {@link adopt}s each type embedded in a document, leaving every
+   * other value as it was parsed.
+   *
+   * @remarks
+   * For a document that is one type, `Type.adopt(JSON.parse(text))` says the same thing more
+   * directly. A value is taken for a type when it names a kind and carries that kind's fields, so
+   * a foreign object wearing that exact shape is adopted too.
+   *
+   * @example
+   * ```ts
+   * JSON.parse(text, Type.reviver);
+   * ```
+   */
+  export function reviver(key: string, value: unknown): unknown {
+    return factory.isRawType(value) ? Type.adopt(value) : value;
+  }
+
+  /**
    * The given type wearing a tag — a distinct name for the same underlying type, so the same
    * type under a different tag is a different type.
    *
