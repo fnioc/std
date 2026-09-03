@@ -1,7 +1,7 @@
 # The tagged lifetime model — design
 
 Status: behavior and implementation shape given by the owner 2026-09-02; his word on the numbered
-points is being applied as it arrives; the architecture follows the last of them.
+points is applied as it arrives; the architecture is drafted, its rows pending points 2 and 3 marked.
 
 ## Behavior
 
@@ -96,3 +96,157 @@ Numbered as first put to him.
    transient registrations impossible, which is not something to stop.
 5. Ruled 2026-09-02: separate interfaces, the tagged model's own beside the standard model's
    `IServiceScopeFactory`. Its name is proposed in the architecture.
+
+## Architecture
+
+Drafted against the di API at `origin/feat-di-request-door` 803fde07, where both engine seams the
+standard model needed have landed: `Hooks.beforePlan`, and `ServiceProvider.whenDisposed` behind
+`IServiceProvider extends Disposable, AsyncDisposable`. Rows marked _pending_ follow the owner's word
+on points 2 and 3.
+
+### Placement
+
+| declaration                                                  | package | file                          | why there                                                                         |
+| ------------------------------------------------------------ | ------- | ----------------------------- | --------------------------------------------------------------------------------- |
+| `ITaggedServiceScopeFactory<Lifetime>`                       | di.core | named after the type          | a library opening scopes references abstractions only                             |
+| `taggedLifetime()`, the layer, the request symbol, the hooks | di      | `src/addons/tagged-lifetime/` | it constructs the concrete `ServiceProvider`, which only the engine package holds |
+
+`ObjectDisposedError` is the standard model's, in di.core, shared. `@rhombus-std/di` re-exports
+`taggedLifetime` beside `standardLifetime`; `@rhombus-std/di.core` re-exports the factory interface.
+The request symbol stays module-level within `di`.
+
+### Public declarations, all new
+
+```ts
+// di.core
+/**
+ * Opens scopes of the tagged lifetime model: one per tag of the vocabulary, each over the provider
+ * this factory was resolved from, so scopes opened from a scoped provider chain onto it.
+ */
+export interface ITaggedServiceScopeFactory<Lifetime> {
+  /** A provider caching registrations of `lifetime` alone; disposing it ends the scope. */
+  openScope(lifetime: Exclude<Lifetime, undefined>): IServiceProvider;
+}
+
+// di
+/** The tagged lifetime model as an addon over the user's vocabulary; `undefined` in it is transient. */
+export function taggedLifetime<Lifetime>(): Addon<Lifetime>;
+```
+
+The type parameter is the vocabulary exactly as the user spells it, `undefined` included, so the
+address the addon registers under is the address a user's `typefor` derives. `openScope` excludes
+`undefined` from what it takes, since no scope holds transients.
+
+### Usage
+
+```ts
+type Lifetime = 'session' | 'request' | undefined;
+
+await using root = Builder
+  .useAddon(taggedLifetime<Lifetime>())
+  .withServices(m => m.add(typefor<Session>(), Session, sessionCtorType, 'session'))
+  .build();
+
+using session = root.resolve(typefor<ITaggedServiceScopeFactory<Lifetime>>()).openScope('session');
+using request = session.resolve(typefor<ITaggedServiceScopeFactory<Lifetime>>()).openScope('request');
+const s = request.resolve(typefor<Session>()); // constructed once per session scope
+```
+
+### The chain
+
+The addon's one `Middleware` stages the hooks and answers the head. The head is what a factory
+resolved from the built provider binds to. A scope is a layer over the source of the provider it was
+opened from: the layer's middleware refuses when the layer is disposed, appends the layer to the
+request's chain on the way down, and passes the ask on. The provider it is minted over is the scope.
+
+```ts
+function middleware(next: GetService): GetService {
+  const control = next(new ControlRequest(typefor<ControlService>())) as ControlService;
+  const handle = control.stageHooks(hooks);
+  return function head(request) {
+    return next(request.activate(handle));
+  };
+}
+
+function openScope(parent: GetService, tag: Exclude<Lifetime, undefined>): IServiceProvider {
+  const layer = new Layer(tag);
+  layer.source = function scoped(request) {
+    if (layer.disposed) {
+      throw new ObjectDisposedError();
+    }
+    (request[chain] ??= []).push(layer);
+    return parent(request);
+  };
+  layer.provider = new ServiceProvider(layer.source);
+  layer.provider.whenDisposed(releaseOf(layer));
+  return layer.provider;
+}
+
+function factoryFor(source: GetService): ITaggedServiceScopeFactory<Lifetime> {
+  return { openScope: tag => openScope(source, tag) };
+}
+```
+
+An ask entering a `request` scope opened from a `session` scope crosses the `request` layer, then
+the `session` layer, then the head: its chain reads `[request, session]`, and the first layer carrying
+a node's tag is the innermost open scope of that tag.
+
+The factory is filed through `Addon.registrations` as a factory registration with no lifetime, its
+address `typefor<ITaggedServiceScopeFactory<Lifetime>>()` open over the vocabulary, its implementer
+answering the head-bound factory. That is what plans an injection site and what the built provider
+answers; under any layer the hook below answers a factory bound there instead. _Pending 2._
+
+### State
+
+```ts
+interface Layer {
+  readonly tag: Exclude<Lifetime, undefined>;
+  readonly cache: Map<Registration<unknown>, Map<Type, unknown>>; // by registration identity, then by populated address
+  readonly disposables: unknown[]; // capture order
+  source: GetService; // what openScope wraps and what a factory resolved here binds to
+  provider: IServiceProvider;
+  disposed: boolean;
+}
+
+interface State {
+  readonly chain: readonly Layer[]; // the request's, innermost first; empty through the built provider
+  readonly under: Layer | undefined; // the layer whose construction encloses this one
+}
+```
+
+The two-level cache key is the standard model's, for the same reasons: one entry per closing of an
+open registration, one per registration of an address. The built provider owns no layer: it caches
+nothing and captures nothing, so a transient reached through it is never captured.
+
+### The hooks
+
+| hook              | does                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                |
+| ----------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `beginResolve`    | answers `{ chain: request[chain] ?? [], under: undefined }`                                                                                                                                                                                                                                                                                                                                                                                                                                                         |
+| `beforeConstruct` | the addon's own factory registration, by identity: `{ result: factoryFor((state.under ?? state.chain[0])?.source ?? head) }`, _pending 2_. The engine's `IServiceProvider` row under a layer: `{ result: state.under.provider }`, _pending 3_. A value, an engine row, or a registration with no lifetime: `{ state }`. Otherwise `layer = chain.find(tag === lifetime)`: a hit in `layer.cache` answers `{ result }`, a miss `{ state: { chain, under: layer } }`. No layer on the chain carries the tag: point 6. |
+| `afterConstruct`  | a node with a lifetime stores under the same rule; then captures the instance in the owning layer's list when it has `Symbol.dispose` or `Symbol.asyncDispose`: its own layer for a tagged node, `state.under ?? state.chain[0]` for a transient, nowhere when that is undefined. An owning layer already disposed disposes the instance at once and throws `ObjectDisposedError`.                                                                                                                                  |
+| `canonicalize`    | not used                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            |
+| `beforePlan`      | not used                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            |
+
+What the construction produced is what is cached, a promise included; a rejecting promise evicts its
+entry, and its settled value is what is captured, on settlement, as in the standard model.
+
+### Disposal
+
+- Disposing a scope's provider: `whenDisposed` tells the layer, which marks itself disposed and runs
+  the standard model's walk over its list: deduplicated by reference, reverse order, every error
+  collected, one rethrown as itself and more than one as an `AggregateError`; the synchronous form
+  records an error for an instance with only `Symbol.asyncDispose`, the asynchronous form awaits
+  each. A second dispose is a no-op. Every ask through that provider, and through every provider
+  opened beneath it, refuses first with `ObjectDisposedError`, since a descendant's source calls its
+  parent's.
+- Disposing the built provider: it holds nothing, so nothing is released; the head refuses every ask
+  afterwards, which ends every open scope's resolutions with it. The head learns of that disposal
+  the way the standard model's container marker does.
+
+## Awaiting the owner's word, continued
+
+6. A tagged node asked through a chain with no open scope of its tag, the built provider included:
+   constructed as a transient, cached nowhere, or refused. Recommended: constructed as a transient,
+   matching the built provider being transient, with a refusing validator possible later as a
+   separate addon.
