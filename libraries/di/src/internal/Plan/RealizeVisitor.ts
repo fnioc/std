@@ -2,7 +2,7 @@ import { ControlRequest, type Handle, type Hooks, Registration, Request, Service
 import type { Type } from '@rhombus-std/primitives';
 import { typefor } from '@rhombus-std/primitives.extras';
 import type { Ctor, Func } from '@rhombus-toolkit/func';
-import { iterable } from '@rhombus-toolkit/obj';
+import { iterable } from '@rhombus-toolkit/iterable';
 import { assertNever } from '@rhombus-toolkit/type-guards';
 import type { Engine } from '../Engine.js';
 import { gather } from './gather.js';

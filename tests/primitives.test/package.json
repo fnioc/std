@@ -12,6 +12,6 @@
   "devDependencies": {
     "@rhombus-std/primitives": "workspace:*",
     "@rhombus-std/primitives.extras": "workspace:*",
-    "@rhombus-toolkit/obj": "^2.0.0"
+    "@rhombus-toolkit/iterable": "^1.0.0"
   }
 }

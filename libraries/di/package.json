@@ -42,7 +42,7 @@
   "dependencies": {
     "@rhombus-std/di.core": "workspace:^",
     "@rhombus-std/primitives": "workspace:^",
-    "@rhombus-toolkit/obj": "^2.0.0",
+    "@rhombus-toolkit/iterable": "^1.0.0",
     "@rhombus-toolkit/once": "^1.0.1",
     "@rhombus-toolkit/type-guards": "^3.1.0"
   },

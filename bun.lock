@@ -286,7 +286,7 @@
       "dependencies": {
         "@rhombus-std/di.core": "workspace:^",
         "@rhombus-std/primitives": "workspace:^",
-        "@rhombus-toolkit/obj": "^2.0.0",
+        "@rhombus-toolkit/iterable": "^1.0.0",
         "@rhombus-toolkit/once": "^1.0.1",
         "@rhombus-toolkit/type-guards": "^3.1.0",
       },
@@ -303,7 +303,7 @@
       "version": "10.1.0",
       "dependencies": {
         "@rhombus-std/primitives": "workspace:^",
-        "@rhombus-toolkit/obj": "^2.0.0",
+        "@rhombus-toolkit/iterable": "^1.0.0",
         "@rhombus-toolkit/type-guards": "^3.1.0",
         "@rhombus-toolkit/type-helpers": "^2.0.0",
         "@rhombus-toolkit/types": "^1.0.1",
@@ -1023,7 +1023,7 @@
       "devDependencies": {
         "@rhombus-std/primitives": "workspace:*",
         "@rhombus-std/primitives.extras": "workspace:*",
-        "@rhombus-toolkit/obj": "^2.0.0",
+        "@rhombus-toolkit/iterable": "^1.0.0",
       },
     },
     "tests/typefor.ttsc.e2e": {
@@ -1292,7 +1292,7 @@
 
     "@rhombus-toolkit/func": ["@rhombus-toolkit/func@3.6.0", "", {}, "sha512-2cWKXGCnkJ+Q7kinSTVEG7TIkSExfR4YQaMzd00IEHCtNXowr7KKSa9oJLFs6jozGgnd5dksGMfeBjBjoeNdAg=="],
 
-    "@rhombus-toolkit/obj": ["@rhombus-toolkit/obj@2.0.0", "", { "dependencies": { "@rhombus-toolkit/type-guards": "3.1.0", "@rhombus-toolkit/types": "1.0.1" } }, "sha512-LwbNYh8kz5T3w58Be+C7hUXdYU6JV1ZRP1L1HeEQRQi8LcmFHFDvLW2bOaU6eLDK2ZXjBeHsQlbeRQQFbXt5+A=="],
+    "@rhombus-toolkit/iterable": ["@rhombus-toolkit/iterable@1.0.0", "", { "dependencies": { "@rhombus-toolkit/type-guards": "3.1.0", "@rhombus-toolkit/types": "1.0.1" } }, "sha512-CIrCV9SNcv7FBZjR87+lb6OV4IyJ0zQem7HrQVbi7J2IuXzPPbNyXU25nqneokRyI54Ndo6DU+5NSbL9CA3Mrg=="],
 
     "@rhombus-toolkit/once": ["@rhombus-toolkit/once@1.0.1", "", { "dependencies": { "@rhombus-toolkit/types": "1.0.1" } }, "sha512-56Iui3ARySeCsP/hRnfoIxWNOuUtH2q5GsyfS3NUT/zIOQ/r9bgyxzQhgYN1qXdhPh+VxZd164pn0sbjBFMlGA=="],
 

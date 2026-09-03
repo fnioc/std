@@ -1,7 +1,7 @@
 import { type ControlService, type GetService, type IServiceProvider, Registration, type Request, type ServiceRequest, UnsatisfiableError } from '@rhombus-std/di.core';
 import { type FunctionType, type ListType, type TupleType, Type } from '@rhombus-std/primitives';
 import { typefor } from '@rhombus-std/primitives.extras';
-import { concat } from '@rhombus-toolkit/obj';
+import { concat } from '@rhombus-toolkit/iterable';
 import { ServiceProvider } from '../ServiceProvider.js';
 import { Plan, type VisitorContext } from './Plan/index.js';
 import { InstalledHooks, type PlanHooks } from './Plan/InstalledHooks.js';

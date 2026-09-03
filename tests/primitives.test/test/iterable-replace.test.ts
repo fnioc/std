@@ -2,7 +2,7 @@
 // paired with a value or mapper replacement, each either same-typed or
 // widening the yielded type.
 
-import { replace } from '@rhombus-toolkit/obj';
+import { replace } from '@rhombus-toolkit/iterable';
 import { describe, expect, test } from 'bun:test';
 
 describe('replace', () => {
