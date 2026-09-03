@@ -2362,3 +2362,14 @@ have no single-threaded analog and are marked so.
 
 - [x] Owner ruled §234 (`docs/decisions.v2.md`): prototype `toString`/`toStringTag`/inspect hook, no `toJSON`, `Type.reviver`, unqualified `kind`.
 - [x] Implemented in place: `b7bd72bd` (prototype, `Type.reviver` + `isRawType`, tests, docs), `3c90071d` (`${type}` at the call sites). Build/test/lint/format green; pushed.
+
+## Session — the Go engine as a published package, 2026-09-03
+
+Finding: a published `*.extras` cannot run its transforms. `ttsc` builds Go SOURCE on the consumer's machine (its own bundled Go SDK; it accepts no prebuilt binary), and nothing publishes `transforms/` — each extras' `ttsc.mjs` resolves `../../transforms/cmd/ttsc-std`, which in `node_modules` is nowhere. Gates the publish flip.
+
+Design (discussed, not yet ruled):
+- Publish `transforms/` (`cmd/`, `internal/`, `go.mod`, `go.sum`; never `go.work`) as one npm package; every `*.extras` takes it as a runtime `dependency` (`workspace:^` in-repo).
+- The `ttsc.plugin.transform` marker stays in every extras' `package.json`: `ttsc` reads only the consumer's DIRECT dependencies' manifests.
+- Descriptor location: stock `ttsc` resolves a bare `transform` specifier from the CONSUMER root (`require.resolve(spec, { paths: [projectRoot] })`), so a marker naming the transforms package fails under isolated linkers (this repo's own bunfig). `exports` cannot target another package; `imports` (`#`) is package-private. Options: (a) upstream `ttsc` to resolve from the marker package's root first, one line, recommended; (b) bridge: one-line `ttsc.mjs` per extras re-exporting the shared descriptor; (c) both — bridge now, drop it when (a) ships.
+
+Open, owner's word: the package name (directory is `transforms`); option (a)/(b)/(c). Consequence: a new published name needs its npm placeholder + trusted-publisher binding like the other 32.
