@@ -450,7 +450,7 @@ func (r *Registry) expr(n *Node) string {
 	case KindObject:
 		members := make([]string, len(n.object))
 		for i, member := range n.object {
-			members[i] = objectKey(member.Key) + ": " + r.names[member.Type.key]
+			members[i] = ObjectKey(member.Key) + ": " + r.names[member.Type.key]
 		}
 		return r.typeRef.Export + ".object({ " + strings.Join(members, ", ") + " })"
 	case KindIntersection:
@@ -539,14 +539,23 @@ func nameFor(key string) string {
 	return "$" + readable + "_" + suffix
 }
 
-// objectKey renders an object member's key the way the emitted call site spells
+// ObjectKey renders an object member's key the way an emitted call site spells
 // it: a bare identifier when the name is a legal JS identifier, else a quoted
-// string, so a hoisted `Type.object` const reads byte-for-byte like the inline one.
-func objectKey(name string) string {
-	if jsIdentifier.MatchString(name) {
+// string. Every renderer of an object member derives its key from this one rule,
+// so a hoisted `Type.object` const reads byte-for-byte like the inline call it
+// stands in for.
+func ObjectKey(name string) string {
+	if IsIdentifier(name) {
 		return name
 	}
 	return strconv.Quote(name)
+}
+
+// IsIdentifier reports whether a member name can be spelled bare, for a renderer
+// that builds a key node rather than a string and so needs the test without the
+// quoting.
+func IsIdentifier(name string) bool {
+	return jsIdentifier.MatchString(name)
 }
 
 var jsIdentifier = regexp.MustCompile(`^[A-Za-z_$][A-Za-z0-9_$]*$`)

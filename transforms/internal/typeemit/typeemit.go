@@ -13,8 +13,6 @@
 package typeemit
 
 import (
-	"regexp"
-
 	shimast "github.com/microsoft/typescript-go/shim/ast"
 
 	"github.com/fnioc/std/transforms/internal/tokens"
@@ -226,12 +224,11 @@ func Undefined(f *shimast.NodeFactory, binding *valueimport.Binding) *shimast.No
 	return Call(f, binding, "typeLiteral", []*shimast.Node{f.NewIdentifier("undefined")})
 }
 
-var jsIdentifier = regexp.MustCompile(`^[A-Za-z_$][A-Za-z0-9_$]*$`)
-
-// PropertyKey builds an object member's key node preserving its exact casing: a
-// bare identifier when the name is a valid JS identifier, else a string literal.
+// PropertyKey builds an object member's key node preserving its exact casing,
+// over the same identifier test the string renderer spells its keys with: a bare
+// identifier when the name is a valid JS identifier, else a string literal.
 func PropertyKey(f *shimast.NodeFactory, name string) *shimast.Node {
-	if jsIdentifier.MatchString(name) {
+	if typeforhoist.IsIdentifier(name) {
 		return f.NewIdentifier(name)
 	}
 	return f.NewStringLiteral(name, shimast.TokenFlagsNone)
