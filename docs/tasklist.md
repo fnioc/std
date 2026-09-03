@@ -2382,10 +2382,10 @@ Ruled 2026-09-03: name `@rhombus-std/transforms`; option (b) — the real descri
 Owner: the async behavior in `libraries/di/src/internal/Plan/PlannerVisitor.ts` is not what he wanted; there must be no `new PlannerVisitor` inside a walk. Names are his but changeable; the behavior is the requirement.
 
 - The planner threads a context value through `visit` (the base `TypeVisitor<Return, Context>` already carries a `context` argument through every `visitX`; `PlannerVisitor` pins it to `never` today). The context has an optional `asyncDescendants: AsyncPlan[]` — the collection point of the nearest enclosing await.
-- `visitGlobal` tests promise-likeness and forwards to a new `visitPromise`.
+- `visitGlobal` tests promise-likeness and forwards to a new `visitPromise`. `visitPromise` stashes/restores exactly like `visitAsync` (owner-confirmed).
 - Promise node (a promise IS requested) and async node (a promise is NOT requested, but the lookup for `T` misses and `Promise<T>` matches → forward to a new `visitAsync`) do the SAME thing: stash `context.asyncDescendants`, set it to the returning plan's own `descendants` (a prop on both `PromisePlan` and `AsyncPlan`; today `PromisePlan.inventory`, and `AsyncPlan` has none), walk children/deps, restore the stash. The one difference: the async node pushes itself onto the collection it stashed (the enclosing one); the promise node does not.
 - Reaching the async-node condition with `context.asyncDescendants` undefined is an ERROR (owner 2026-09-03): nothing encloses the await. Today `#awaitPromised` returns `undefined` there and keeps the near miss as a diagnostic; that becomes a thrown error (pick the class from di.core's taxonomy; ask if none fits).
-- Consequence: an `AsyncPlan` settles its own `descendants` before its inner realizes, the way `PromisePlan` does — `RealizeVisitor`'s async case gathers them too.
+- Consequence (owner-confirmed): an `AsyncPlan` settles its own `descendants` before its inner realizes, the way `PromisePlan` does — `RealizeVisitor`'s async case gathers them too. Order at an async node: collect its children, build the continuation chain over them, THEN hand itself off to the enclosing collection to be hoisted.
 - Today's shape being replaced: `#planDelivery` opens a second `PlannerVisitor` with a `BoundaryContext{collecting}`; `#awaitPromised` pushes onto `#collecting`. Both go.
 
 Status: spec confirmed by the owner; not started. Runs on his go.
