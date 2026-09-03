@@ -15,7 +15,7 @@ export class Engine {
   constructor(registrations: Iterable<Registration<unknown>>) {
     // A fresh view per handout, forwarding to the provider that opened the ask — provider
     // identity is never a contract, and the view is never the container object itself.
-    const provider = (request: ServiceRequest): IServiceProvider => new ServiceProvider(inner => request.serviceProvider.getService(inner.type));
+    const provider = (request: ServiceRequest): IServiceProvider => new ServiceProvider(inner => request.serviceProvider.getService(inner.address));
     const control = (): ControlService => this.#hooks;
     // The engine's own rows file after the given ones, so they are the OLDEST and any user
     // registration at the same address shadows them. Both carry a null lifetime — no model
@@ -41,7 +41,7 @@ export class Engine {
    * @throws {UnsatisfiableError} when the address is registered but something it needs is not.
    */
   getService(request: Request, next: GetService): any {
-    const address = request.type;
+    const address = request.address;
     if (address === undefined) {
       throw new TypeError('getService received no address — the caller resolved without a service type');
     }

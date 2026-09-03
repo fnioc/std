@@ -34,7 +34,7 @@ describe('the request as an address', () => {
     expect(provider.getService(CONN)).toBeInstanceOf(Conn);
     expect(seen).toHaveLength(1);
     expect(seen[0]).toBeInstanceOf(ServiceRequest);
-    expect(seen[0]!.type).toBe(CONN);
+    expect(seen[0]!.address).toBe(CONN);
     expect(seen[0]!.serviceProvider).toBe(provider);
   });
 

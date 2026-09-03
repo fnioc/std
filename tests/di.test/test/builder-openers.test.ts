@@ -29,7 +29,7 @@ describe('the chain openers', () => {
     const observing: Addon<unknown> = {
       registrations: [Registration.value(GREETING, 'hello')],
       middleware: next => request => {
-        seen.push(request.type);
+        seen.push(request.address);
         return next(request);
       },
     };

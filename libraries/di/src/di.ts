@@ -95,5 +95,5 @@ export namespace Builder {
 }
 
 const middlewareTermination: GetService = request => {
-  throw new UnsatisfiableError(request.type, 'nothing in the manifest produces it');
+  throw new UnsatisfiableError(request.address, 'nothing in the manifest produces it');
 };

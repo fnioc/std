@@ -543,7 +543,7 @@ describe('the marker contract', () => {
     return {
       registrations: [],
       middleware: next => request => {
-        if (request.type === COUNTER) {
+        if (request.address === COUNTER) {
           seen.push(request);
         }
         return next(request);

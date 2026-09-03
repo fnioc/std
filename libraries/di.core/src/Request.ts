@@ -26,7 +26,7 @@ export abstract class Request {
 
   [key: symbol]: unknown;
 
-  constructor(readonly type: Type) {}
+  constructor(readonly address: Type) {}
 
   /**
    * Records `handle` as active for this ask and answers the same request — a middleware layer
@@ -40,8 +40,8 @@ export abstract class Request {
 
 /** An ask a provider opened, carrying the provider so the ask resolves back to it. */
 export class ServiceRequest extends Request {
-  constructor(type: Type, readonly serviceProvider: IServiceProvider) {
-    super(type);
+  constructor(address: Type, readonly serviceProvider: IServiceProvider) {
+    super(address);
   }
 }
 

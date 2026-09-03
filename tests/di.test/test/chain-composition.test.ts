@@ -15,7 +15,7 @@ const LEAF = Type.imported('Leaf', 'app');
 class Leaf {}
 
 const terminus: GetService = request => {
-  throw new UnsatisfiableError(request.type, 'nothing beneath the engine produces it');
+  throw new UnsatisfiableError(request.address, 'nothing beneath the engine produces it');
 };
 
 /** Folds `chain` around `engine` exactly as the builder does, the first entry standing outermost. */
