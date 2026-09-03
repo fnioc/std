@@ -129,7 +129,7 @@ export function taggedLifetime<Lifetime>(): Addon<Lifetime>;
 
 The type parameter is the vocabulary exactly as the user spells it, `undefined` included, so the
 address the addon registers under is the address a user's `typefor` derives. `openScope` excludes
-`undefined` from what it takes, since no scope holds transients.
+`undefined` from what it takes, since no scope holds transients; ruled 2026-09-03.
 
 ### Usage
 
@@ -245,5 +245,5 @@ entry, and its settled value is what is captured, on settlement, as in the stand
 
 6. Ruled 2026-09-03: the model acts only on a node whose registered lifetime a layer on the chain
    carries; every other node goes to the engine untouched, so a tag with no open scope resolves as a
-   transient. Consequence written into the hooks: a transient is never captured for disposal, by any
+   transient. Confirmed 2026-09-03: a transient is never captured for disposal, by any
    layer.
