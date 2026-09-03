@@ -800,11 +800,11 @@ the implementer's behaviour-change list.
       `{ a?: Level }` derives `union(lit a, lit b, lit undefined)` rather than `named(Level)`, because
       the checker's `Level | undefined` carries no alias. `Type.isOptional` still answers, but
       `Type.isMatch(Level, …)` no longer does. May be unavoidable; decide and say so either way.
-- [ ] `tokens/generics.go:64-70` — `DeriveTokenF` strings are NOT byte-identical as claimed: a named
+- [x] `tokens/generics.go:64-70` — `DeriveTokenF` strings are NOT byte-identical as claimed: a named
       callable alias went from its name to a refusal, and a literal-union alias from its members to
       its name. Latent — `TokenForType`/`TokenForReturnType`/`ServiceBaseTokenFor`/`KeyedTokenFor`
       have no callers outside `internal/tokens` — but they are the package's exported surface.
-- [ ] `tokens/node_test.go:22` — `TestDeriveTokenFMatchesRendererOverDeriveNode` asserts an
+- [x] `tokens/node_test.go:22` — `TestDeriveTokenFMatchesRendererOverDeriveNode` asserts an
       expression equals itself now that `DeriveTokenF`'s whole body is `renderNode(DeriveNode(…))`.
       It would pass with every kind deleted.
 - [ ] `tokens/node.go:156-158` — a new refusal for an `Inject`-pinned keyed base, with no test and no
@@ -815,7 +815,7 @@ the implementer's behaviour-change list.
       `Union([Inter([A,B]), C])` and `Inter([A, Union([B,C])])` both key `"A & B | C"`. Unreachable
       today because TS distributes, but the union key was unambiguous before this kind existed. Wrap
       it as `Tuple` and `Object` wrap theirs.
-- [ ] `typeemit/typeemit.go:198-206`, `typeforhoist/hoist.go:511-521`,
+- [x] `typeemit/typeemit.go:198-206`, `typeforhoist/hoist.go:511-521`,
       `schemaoftransform/expand.go:317-320` — three independent copies of the object-key spelling
       rule, each with its own identifier regexp. Hoisted-to-inline byte parity now depends on all
       three staying identical.
@@ -845,7 +845,7 @@ Design recorded as §231.
 - [ ] Derivation must spell an optional property as a union with `undefined` — `ObjectType.members`
       carries no optional flag, and `Type.isOptional` already defines optional as exactly that union,
       so the union's literal fallback is what keeps a missing optional from failing the whole shape.
-- [ ] DELETE the "Parked: awaits its design ruling" comments on `visitCtor` and
+- [x] DELETE the "Parked: awaits its design ruling" comments on `visitCtor` and
       `visitAbstractCtor` — there is nothing to rule, so they promise work that is not coming. Add
       nothing in their place: every kind that synthesizes nothing just returns `undefined`, which
       the class doc already accounts for. `visitTag` needs no comment either.
@@ -2462,13 +2462,13 @@ Rulings on the open di items, each against the section that holds it. State is t
 - Collection ask refusing on silently dropped unbuildable members: not di (hosting's).
 - `Type | string` sweep, "a parameter naming an address is spelled `address`": LANDED `91ece28f` — the only live site was `Request.type` → `Request.address` (public member; `ServiceRequest` ctor param too); every other listed site was already `address` or in a since-deleted file.
 - `TypeFor<T>` (`## Authoring surface`): LANDED `447a915d` — the final fallback is `ObjectType | NamedType`, the named-or-structural pair.
-- `typefor` structural derivation (`## Structural synthesis`): LANDED `9f95dffb`..`df46c4cf` — object-literal derivation, parity fixtures (object, nested, optional, method), named callable alias gate fix.
-- "Parked: awaits its design ruling" comments on `visitCtor`/`visitAbstractCtor`: already deleted from Go files; TS side (`PlannerVisitor.ts:287`) is outside the Go lane's scope.
+- `typefor` structural derivation (`## Structural synthesis`): LANDED `6d91d781`..`dcc4811c` — object-literal derivation, parity fixtures (object, nested, optional, method), named callable alias gate fix.
+- "Parked: awaits its design ruling" comments on `visitCtor`/`visitAbstractCtor`: LANDED `54f32070` — the Go files carried none; the one TS comment is gone, with nothing in its place.
 - Local alias derives an unimportable name (overnight findings, b): closed — a local alias derives structurally. Owner's expectation on record: private types (not externally resolvable) resolve with their actual path through the `token/*` export; leave unless a known problem appears.
-- mergesynth indistinguishable-guard overloads (`## Merge-strategy guards`): LANDED `b30dc662` — MERGESYNTH_INDISTINGUISHABLE_GUARDS diagnostic when two registrations produce identical guards; iterable guard checks `Symbol.iterator in input`.
-- Certify the static/namespace/const-member/class-member matchers: LANDED `646bfa1e` — resolvedDeclaration finds call sites for all four shapes. Value-door authoring sugar: DROPPED.
-- `typeforhoist.Union` doc comment: LANDED `9f95dffb`.
-- Node-vocabulary-collapse review findings (10, Go transformer): LANDED `df46c4cf` — named callable alias, symbol-keyed member refusal, withUndefined predicate, deriveTupleNode checker param, intersection key wrapping, object-key rule consolidation. Design forks left unpicked: optional-property union-alias identity loss (finding 3, unavoidable), Inject-pinned keyed base refusal (finding 6, arguable).
+- mergesynth indistinguishable-guard overloads (`## Merge-strategy guards`): LANDED `2cebf73e` — MERGESYNTH_INDISTINGUISHABLE_GUARDS diagnostic when two registrations produce identical guards; iterable guard checks `Symbol.iterator in input`.
+- Certify the static/namespace/const-member/class-member matchers: LANDED `97f49ab4` — resolvedDeclaration finds call sites for all four shapes. Value-door authoring sugar: DROPPED.
+- `typeforhoist.Union` doc comment: LANDED `6d91d781`.
+- Node-vocabulary-collapse review findings (10, Go transformer): LANDED `dcc4811c` — named callable alias, symbol-keyed member refusal, withUndefined predicate, deriveTupleNode checker param, intersection key wrapping; `1d8af152` — the flat token per shape pinned against literal strings, over a test that had compared `DeriveTokenF` with its own body; `5502b7cb` — the object-key spelling rule reduced to one home, the string renderer's, which the AST renderer wraps. Design forks left unpicked: optional-property union-alias identity loss (finding 3, unavoidable), Inject-pinned keyed base refusal (finding 6, arguable). Wide `boolean` renders no token at all — it reaches the checker as a union carrying no intrinsic name, and the walk has never named it; unchanged by the collapse, unlisted by the review.
 - `asClass<T>` sugar leg (`## Authoring surface`): already exists in `di.extras` (`asClass(ctor)` over `typefor(ctor)`). Stale entry; closed.
 - `mergesynth.test.ts` parameter description: already fixed on this branch; nothing to do.
 - Review-lens-2 findings not taken (request-door session): moved to `docs/benchmarks.md`, the owner's word.
@@ -2486,4 +2486,4 @@ Owner: "for our new transform package, I want it to publish minified (e.g. `gith
 - JS bundles minify via `bun build`, each with its `.js.map` published beside it (`sourcemap: 'linked'`, the one mode that writes the map and the `sourceMappingURL` comment). LANDED `4079ce26`, unverified by a build until after the merge. Bun has no comment-retention option (`legalComments` unsupported), so bundles carry no comments; the `.d.ts` carries the docs.
 - Rolled `.d.ts` files minify keeping JSDoc: `dts-minify` (`keepJsDocs: true`) as a post step after `rollup-plugin-dts`, inside the build script. LANDED `4d68d80d`, unverified by a build until after the merge.
 - `*.extras` `src/` templates stay formatted: no tool minifies `.ts` while keeping it `.ts` and its doc comments (researched 2026-09-03); a custom pass is the only route, and the templates are a few one-line bodies.
-- `@rhombus-std/transforms` publishes its Go from a staged copy run through `minformat`, pinned per-project through mise's `go:` backend; `gofmt` reverts it; comments all go, doc comments included (owner: "nobody ever interacts with it directly"). LANDED `3700d415` (transforms half) — staging script, gominfmt tool, publishConfig.directory.
+- `@rhombus-std/transforms` publishes its Go from a staged copy run through `minformat`, pinned per-project through mise's `go:` backend; `gofmt` reverts it; comments all go, doc comments included (owner: "nobody ever interacts with it directly"). LANDED `b9c2260b` (transforms half) — staging script, publishConfig.directory; `e6b0822e` — minformat's own CLI pinned at an exact version through the `go:` backend, driven from the staging script, with a test parsing every staged file for surviving comments and a gofmt round trip.
