@@ -52,6 +52,13 @@ Two symbol-keyed props on the request:
 - A transient injected into a singleton lives as long as the singleton. That is not a validation
   error.
 
+A collection ask — the engine's synthesised collection over every registration of one address — is
+fresh per ask: the collection itself is never cached, and each element is answered by its own
+registration under that registration's lifetime, so a singleton element is the container-wide
+instance while a scoped element is that scope's. A registration whose product is an array is not
+that: it is one service like any other, with one lifetime over the whole array, cached and disposed
+as a unit, its elements never reached individually.
+
 ### Validation
 
 Optional, each an additional middleware layer, off unless added:

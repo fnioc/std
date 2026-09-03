@@ -328,6 +328,64 @@ describe('several registrations of one address', () => {
   });
 });
 
+describe('collection asks and registered arrays', () => {
+  const COUNTERS = Type.array(COUNTER);
+
+  test('a collection ask is fresh per ask: a new array every time, over the very instances each element registration answers', () => {
+    const provider = Builder.useAddon(standardLifetime())
+      .withServices(m =>
+        m
+          .add(COUNTER, Counter, Type.ctor(COUNTER, [[]]), 'singleton')
+          .add(COUNTER, Counter, Type.ctor(COUNTER, [[]]), 'singleton')
+      )
+      .build();
+
+    const first = provider.resolve(COUNTERS) as Counter[];
+    const second = provider.resolve(COUNTERS) as Counter[];
+    expect(second).not.toBe(first);
+    expect(second[0]).toBe(first[0]);
+    expect(second[1]).toBe(first[1]);
+  });
+
+  test("each element honours its own registration: a singleton element is shared across scopes, a scoped element is that scope's own", () => {
+    const provider = Builder.useAddon(standardLifetime())
+      .withServices(m =>
+        m
+          .add(COUNTER, Counter, Type.ctor(COUNTER, [[]]), 'singleton')
+          .add(COUNTER, Counter, Type.ctor(COUNTER, [[]]), 'scoped')
+      )
+      .build();
+    const a = openScope(provider);
+    const b = openScope(provider);
+
+    const fromA = a.resolve(COUNTERS) as Counter[];
+    const fromB = b.resolve(COUNTERS) as Counter[];
+    expect(fromB).not.toBe(fromA);
+    expect(fromA[0]).toBe(fromB[0]);
+    expect(fromA[1]).not.toBe(fromB[1]);
+    expect(fromA[1]).toBe(a.resolve(COUNTER));
+  });
+
+  test('a registration answering the array address is one service under one lifetime, not a collection', () => {
+    let made = 0;
+    const provider = Builder.useAddon(standardLifetime())
+      .withServices(m =>
+        m
+          .add(COUNTER, Counter, Type.ctor(COUNTER, [[]]), 'transient')
+          .add(COUNTERS, () => {
+            made++;
+            return [new Counter(), new Counter()];
+          }, Type.func(COUNTERS, [[]]), 'singleton')
+      )
+      .build();
+
+    const registered = provider.resolve(COUNTERS) as Counter[];
+    expect(provider.resolve(COUNTERS)).toBe(registered);
+    expect(openScope(provider).resolve(COUNTERS)).toBe(registered);
+    expect(made).toBe(1);
+  });
+});
+
 describe('open registrations', () => {
   test('an open singleton is cached once per closing', () => {
     const provider = Builder.useAddon(standardLifetime())

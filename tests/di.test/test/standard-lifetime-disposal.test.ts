@@ -666,6 +666,58 @@ describe('after disposal', () => {
   });
 });
 
+describe('a registered array', () => {
+  const RECORDERS = Type.array(RECORDER);
+
+  /** An array that disposes as one unit, logging `whole` — its elements log their own ids. */
+  function recorders(order: string[]): Recorder[] {
+    return Object.assign([new Recorder('first', order), new Recorder('second', order)], {
+      [Symbol.dispose]: () => order.push('whole'),
+    });
+  }
+
+  test('is one service under one lifetime: the same instance throughout its scope', () => {
+    let made = 0;
+    const provider = Builder.useAddon(standardLifetime())
+      .withServices(m =>
+        m.add(RECORDERS, () => {
+          made++;
+          return recorders([]);
+        }, Type.func(RECORDERS, [[]]), 'scoped')
+      )
+      .build();
+    const scope = openScope(provider);
+
+    expect(scope.resolve(RECORDERS)).toBe(scope.resolve(RECORDERS));
+    expect(made).toBe(1);
+  });
+
+  test('is disposed as one unit when its scope ends, its elements never individually', () => {
+    const order: string[] = [];
+    const provider = Builder.useAddon(standardLifetime())
+      .withServices(m => m.add(RECORDERS, () => recorders(order), Type.func(RECORDERS, [[]]), 'scoped'))
+      .build();
+    const scope = openScope(provider);
+    const array = scope.resolve(RECORDERS) as Recorder[];
+
+    scope[Symbol.dispose]();
+    expect(order).toEqual(['whole']);
+    expect(array.map(element => element.disposed)).toEqual([0, 0]);
+  });
+
+  test('offering no disposal protocol of its own, nothing it holds is disposed with the container', () => {
+    const order: string[] = [];
+    const elements = [new Recorder('first', order), new Recorder('second', order)];
+    const provider = Builder.useAddon(standardLifetime())
+      .withServices(m => m.add(RECORDERS, () => elements, Type.func(RECORDERS, [[]]), 'singleton'))
+      .build();
+
+    expect(provider.resolve(RECORDERS)).toBe(elements);
+    provider[Symbol.dispose]();
+    expect(order).toEqual([]);
+  });
+});
+
 describe('asynchronous products', () => {
   test('a promise product is captured on settlement and disposed with its scope', async () => {
     const provider = Builder.useAddon(standardLifetime())
