@@ -170,7 +170,16 @@ export async function stageLowering(options: StageLoweringOptions): Promise<stri
   const srcDir = join(dir, 'src');
   // Declaration files carry no runtime and are skipped, matching a `tsc` emit.
   const entrypoints = [...new Bun.Glob('**/*.ts').scanSync({ cwd: srcDir, absolute: true })].filter((path) => !path.endsWith('.d.ts'));
-  const staged = await Bun.build({ entrypoints, outdir: stageDir, root: srcDir, target: 'node', format: 'esm', external: ['*'], plugins: [await ttscBunPlugin(dir, ttscProject, ttscTransforms)] });
+  const staged = await Bun.build({
+    entrypoints,
+    outdir: stageDir,
+    root: srcDir,
+    target: 'node',
+    format: 'esm',
+    external: ['*'],
+    sourcemap: 'linked',
+    plugins: [await ttscBunPlugin(dir, ttscProject, ttscTransforms)],
+  });
   if (!staged.success) {
     for (const log of staged.logs) {
       console.error(log);
@@ -302,7 +311,16 @@ export async function buildPackage(options: BuildPackageOptions): Promise<void> 
   }
 
   if (emitJs) {
-    const js = await Bun.build({ entrypoints: jsEntrypoints, outdir: bundleDir, target: 'node', format: 'esm', external: [...external], splitting });
+    const js = await Bun.build({
+      entrypoints: jsEntrypoints,
+      outdir: bundleDir,
+      target: 'node',
+      format: 'esm',
+      external: [...external],
+      splitting,
+      minify: true,
+      sourcemap: 'linked',
+    });
     if (!js.success) {
       for (const log of js.logs) {
         console.error(log);
