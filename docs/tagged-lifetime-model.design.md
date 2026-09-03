@@ -63,13 +63,19 @@ word before the architecture is written.
 
 ## Awaiting the owner's word
 
-1. `IServiceProvider` injected into a tagged service: the provider the ask entered through, or the
+Numbered as first put to him.
+
+1. Same-tag nesting: a scope opened inside another of the same tag, the descendant winning through
+   the owner stamp on the request, as laid out above. Confirm.
+2. Where a factory comes from: a factory registration whose implementer answers the root-bound
+   factory, every layer's `beforeConstruct` overriding that node with a factory bound to itself, the
+   descendant winning by the same stamp. Confirm.
+3. `IServiceProvider` injected into a tagged service: the provider the ask entered through, or the
    provider of the scope that caches the instance. Recommended: the caching scope's, as the standard
    model does, since the instance outlives the entering ask.
-2. Vocabulary: is an omitted lifetime admitted, meaning never cached at any scope? Recommended: yes,
+4. Vocabulary: is an omitted lifetime admitted, meaning never cached at any scope? Recommended: yes,
    which makes an untagged registration transient everywhere and matches the built provider being
    transient.
-3. The factory abstraction: one generic `IServiceScopeFactory` shared with the standard model, whose
+5. The factory abstraction: one generic `IServiceScopeFactory` shared with the standard model, whose
    `openScope` takes the tag when the vocabulary needs one and nothing otherwise, or a second
    interface. Recommended: one generic, so di.core carries a single scope-opening abstraction.
-4. Same-tag nesting as laid out above, the descendant winning through the owner stamp: confirm.
