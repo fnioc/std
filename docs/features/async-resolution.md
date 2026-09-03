@@ -48,17 +48,19 @@ const banner = await provider.resolveAsync<IBanner>(); // the same registration,
 
 Both calls reach the identical registration; the only difference is which address you asked for.
 
-The converse is refused rather than faked. A plain `resolve<IBanner>()` against a manifest holding
-only the `Promise<IBanner>` registration throws `UnsatisfiableError`: outside a promise-addressed ask
-there is nothing to wait in, and the failure names the promise registration as the near miss so you
-can see exactly which spelling to use.
+The converse is refused rather than faked. A dependency that only a `Promise<IBanner>` registration
+can answer, reached with no enclosing await to hoist it onto, is unsatisfiable — outside a
+promise-addressed ask there is nothing to wait in. A constructor that depends on the settled
+`IBanner` while the manifest holds only its promise form fails with `UnsatisfiableError` at that
+dependency, telling you that only its promised form is registered and nothing encloses an await, so
+you can see exactly which spelling to use.
 
-## One boundary, one wait
+## Boundaries and waits
 
-Depth costs you nothing. A promise-addressed ask opens exactly one boundary around the graph it
-resolves; every dependency inside that graph that has nothing but a `Promise<...>` registration to
-answer it is hoisted onto that boundary's inventory, and the whole inventory settles together — the
-one point the resolution actually waits:
+Depth costs you little. A promise-addressed ask opens a boundary around the graph it resolves; every
+dependency inside that graph with nothing but a `Promise<...>` registration to answer it is hoisted
+onto the nearest enclosing boundary as one of its descendants, and a boundary settles all of its
+descendants together — the points the resolution actually waits:
 
 ```ts
 services = services
@@ -69,15 +71,16 @@ const repo = await provider.resolveAsync<IRepo>(); // one await, however deep th
 ```
 
 `SqlRepo` is written against `IClock`, not `Promise<IClock>`; the container does the awaiting where
-the constructor cannot. A dependency two levels down that is itself only reachable through a promise
-joins the same inventory as one a level down — the graph is walked once, everything it needs awaited
-is awaited in parallel rather than one boundary re-entering another, and once the inventory has
-settled the walk beneath reads each value from the boundary and never waits again.
+the constructor cannot. A dependency further down that is itself only reachable through a promise
+becomes a descendant of the await that encloses it, and settles its own descendants before it
+resolves — so the graph is walked once, the independent awaits at each level settle in parallel, and
+depth waits only as far as it nests. Once a boundary's descendants have settled the walk beneath
+reads each value and never waits again.
 
-Failure is reported whole. A failure anywhere in the inventory surfaces as one `AggregateError`
-naming the boundary's own address and how many of its dependencies failed, carrying every distinct
-reason rather than just the first one hit — so one failed startup tells you everything that was
-wrong with it.
+Failure is reported whole. A failure anywhere in a boundary's descendants surfaces as one
+`AggregateError` naming that boundary's own address and how many of its dependencies failed, carrying
+every distinct reason rather than just the first one hit — so one failed startup tells you everything
+that was wrong with it.
 
 A boundary is pure plan structure: the wrapping promise is minted afresh on every ask, and no
 lifetime model sees it. A registration that answers the promise address itself is the one exception

@@ -6,7 +6,7 @@ because a `Type` is an interned node and `typefor<IClock>()` is resolved at comp
 are plain TypeScript: a union parameter takes the first alternative that resolves, an optional one
 falls back to `undefined`, an object-shaped one is built from its properties, a `(customer: string)
 => Report` one becomes a factory that threads the caller's argument through. Async is one call —
-`resolveAsync` hoists every await in the graph onto one boundary and settles them in parallel. And
+`resolveAsync` hoists each await onto the boundary that encloses it and settles siblings in parallel. And
 there is one door: `Builder` opens a chain, every addon rides the same composable middleware pipeline
 the engine sits inside, and `build()` seals it. The manifest is immutable, so a registration you
 forgot to keep is a compile-visible bug rather than a silent one, and every failure is a typed error
@@ -150,10 +150,11 @@ model's jurisdiction and realizes afresh on every call.
 ### 5. Async resolution
 
 An async-built dependency composes like any other, and the container does the awaiting where a
-constructor cannot. `resolveAsync<T>()` asks for `Promise<T>` and settles everything beneath that
-only a promise registration can answer, in one wait, in parallel. Plain `resolve()` never awaits
-anything — asking it for the `Promise<T>` type itself hands back a promise as a value. Full
-mechanics: `docs/features/async-resolution.md`.
+constructor cannot. `resolveAsync<T>()` asks for `Promise<T>` and settles everything beneath it that
+only a promise registration can answer — each await hoisted onto the boundary that encloses it and
+settled with its siblings in parallel. Plain `resolve()` never awaits anything — asking it for the
+`Promise<T>` type itself hands back a promise as a value. Full mechanics:
+`docs/features/async-resolution.md`.
 
 ```ts
 services = services.add<Promise<IBanner>>(fetchBanner);
