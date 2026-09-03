@@ -3953,3 +3953,29 @@ the Go inline-transform unit tests as a stand-in primitive name. All of it is go
 stand-in instead.
 
 _Claude-verified 2026-09-01, closing §146's gate._
+
+## §234 — A `Type` spells itself in string contexts; its JSON form is the raw tree, read back by `Type.adopt` or `Type.reviver`
+
+Every interned node carries a shared prototype, installed in `intern` before the freeze so no factory can
+miss it: `toString` returning `Type.stringify(this)`, `Symbol.toStringTag` of `'Type'`, and the
+`nodejs.util.inspect.custom` hook so a failed assertion prints the token. `${type}`, `String(type)` and
+`type.toString()` all yield the token; `Type.stringify` stays as the named inverse of `Type.from`. No
+`Symbol.toPrimitive` — a plain `toString` already answers every coercion, and a Type has no number reading.
+
+No `toJSON`. A node's own properties are exactly its `RawType`, so `JSON.stringify(type)` already emits the
+canonical tree, and collapsing it to the token would forfeit the point of JSON over `toString`. The read
+side is `Type.adopt(JSON.parse(text))` for a document that is one Type, and the exported `Type.reviver`
+for a Type embedded anywhere in a larger document: it adopts a value whose `kind` is a Type kind and whose
+required fields for that kind are present, and passes everything else through. Revivers run innermost
+first, so parents arrive with interned slots and `adopt` returns them untouched.
+
+`kind` stays unqualified (`'literal'`, not `'type:literal'`). The only collision the qualifier would buy off
+is a foreign object that already has a Type kind and a Type shape; a kind string is spelled only at the
+discriminant and in visitor switches, so qualifying it later is a mechanical rename. An enum-like object of
+kind strings adds nothing — the literal union already completes in the editor.
+
+Nothing internal keys a record on `${type}`: TypeScript refuses an object as an index type, so a
+spelling-keyed record needs an explicit `${type}` and is caught in review like `Type.stringify` as a key is
+today. `Map`/`WeakMap` key on the node.
+
+_Owner-ruled 2026-09-03 ("i'll follow your advice"); not yet implemented._
