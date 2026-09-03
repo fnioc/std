@@ -2,7 +2,8 @@
 // activated them, installed hooks always active and outermost, disposal as the uninstall, and
 // where construction hooks fire — registered nodes only, never engine-synthesised ones.
 
-import type { Behavior, ControlService, GetService, Hooks } from '@rhombus-std/di.core';
+import { Builder, validateBuildability } from '@rhombus-std/di';
+import type { Addon, Behavior, ControlService, GetService, Hooks } from '@rhombus-std/di.core';
 import { ControlRequest, Registration } from '@rhombus-std/di.core';
 import { Engine } from '@rhombus-std/di/private/internal/Engine';
 import { ServiceProvider } from '@rhombus-std/di/private/ServiceProvider';
@@ -12,8 +13,12 @@ import { describe, expect, test } from 'bun:test';
 const DI_CORE = '@rhombus-std/di.core';
 const CONTROL = Type.imported('ControlService', DI_CORE);
 const CONN = Type.imported('Conn', 'app');
+const WIDGET = Type.imported('Widget', 'app');
 
 class Conn {}
+class Widget {
+  constructor(readonly conn: unknown) {}
+}
 
 /** An engine over `registrations` plus its head, terminating with a throw the way a built chain does. */
 function engineFor(registrations: Iterable<Registration<unknown>>) {
@@ -180,5 +185,87 @@ describe('where construction hooks fire', () => {
 
     a.provider.getService(CONN);
     expect(states).toEqual(['opened']);
+  });
+});
+
+describe('the plan hook', () => {
+  /** A behavior logging each planned node under `label` into `log`, leaving its state alone. */
+  function planning(label: string, log: string[]): Partial<Behavior> {
+    return {
+      beforePlan: (construction: Hooks.Construction) => {
+        log.push(`${label}:${Type.stringify(construction.populatedAddress)}`);
+        return construction.state;
+      },
+    };
+  }
+
+  test('fires once per registered node as the plan is made; a later resolve fires nothing', () => {
+    const log: string[] = [];
+    const { head, control } = engineFor([Registration.ctor(CONN, Conn, Type.ctor(CONN, [[]]))]);
+    control.installHooks(planning('installed', log));
+    const provider = new ServiceProvider(head);
+
+    provider.getService(CONN);
+    provider.getService(CONN);
+    expect(log).toEqual(['installed:app:Conn']);
+  });
+
+  test("a node's answer arrives as its dependencies' state, and synthesised nodes fire nothing", () => {
+    const states: Array<[string, unknown]> = [];
+    const { head, control } = engineFor([
+      Registration.ctor(CONN, Conn, Type.ctor(CONN, [[]])),
+      Registration.ctor(WIDGET, Widget, Type.ctor(WIDGET, [[CONN]])),
+    ]);
+    control.installHooks({
+      beforePlan: (construction: Hooks.Construction) => {
+        states.push([Type.stringify(construction.populatedAddress), construction.state]);
+        return `under ${Type.stringify(construction.populatedAddress)}`;
+      },
+    });
+
+    new ServiceProvider(head).getService(Type.object({ widget: WIDGET }));
+    expect(states).toEqual([
+      ['app:Widget', undefined],
+      ['app:Conn', 'under app:Widget'],
+    ]);
+  });
+
+  test('planning every address at build fires the hook ahead of any resolve, skipping the seeded rows', () => {
+    const seen: string[] = [];
+    const watching: Addon<unknown> = {
+      registrations: [],
+      middleware: next => {
+        const control = next(new ControlRequest(CONTROL)) as ControlService;
+        control.installHooks({
+          beforePlan: (construction: Hooks.Construction) => {
+            seen.push(Type.stringify(construction.populatedAddress));
+            return construction.state;
+          },
+        });
+        return next;
+      },
+    };
+    Builder.withServices(manifest => manifest.add(Registration.ctor(CONN, Conn, Type.ctor(CONN, [[]]))))
+      .useAddon(validateBuildability())
+      .useAddon(watching)
+      .build();
+
+    expect(seen).toEqual(['app:Conn']);
+  });
+
+  test('a staged plan hook fires only when the ask that makes the plan activated it', () => {
+    const first: string[] = [];
+    const one = engineFor([Registration.ctor(CONN, Conn, Type.ctor(CONN, [[]]))]);
+    const plain = new ServiceProvider(one.head);
+    const layerOne = layerProvider(one.head, one.control, planning('a', first));
+    plain.getService(CONN);
+    layerOne.provider.getService(CONN);
+    expect(first).toEqual([]);
+
+    const second: string[] = [];
+    const two = engineFor([Registration.ctor(CONN, Conn, Type.ctor(CONN, [[]]))]);
+    const layerTwo = layerProvider(two.head, two.control, planning('a', second));
+    layerTwo.provider.getService(CONN);
+    expect(second).toEqual(['a:app:Conn']);
   });
 });

@@ -6,7 +6,7 @@ import { iterable } from '@rhombus-toolkit/obj';
 import { assertNever } from '@rhombus-toolkit/type-guards';
 import type { Engine } from '../Engine.js';
 import { gather } from './gather.js';
-import type { AlwaysDispatch, AlwaysHook, Entry, InstalledHooks } from './InstalledHooks.js';
+import { type AlwaysDispatch, type AlwaysHook, type Entry, type InstalledHooks, withSlot } from './InstalledHooks.js';
 import type { ArrayPlan, AsyncIterablePlan, AsyncPlan, ConstantPlan, CtorPlan, FactoryPlan, InvokerPlan, IterablePlan, LateBoundArgPlan, LateBoundPlan, Plan, PromisePlan, RegisteredCtorPlan,
   RegisteredFactoryPlan, RegisteredPromisePlan, RequestPlan } from './Plan.js';
 
@@ -476,14 +476,4 @@ export class RealizeVisitor {
 /** Tells the redirected-states outcome apart from a `{ result }` interception. */
 function isStates(outcome: { readonly result: unknown; } | readonly unknown[]): outcome is readonly unknown[] {
   return Array.isArray(outcome);
-}
-
-/** `states` with `value` in `slot`, copied only when that changes anything. */
-function withSlot(states: readonly unknown[], slot: number, value: unknown): readonly unknown[] {
-  if (states[slot] === value) {
-    return states;
-  }
-  const next = states.slice();
-  next[slot] = value;
-  return next;
 }

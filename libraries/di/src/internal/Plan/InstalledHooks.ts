@@ -8,6 +8,7 @@ export interface Entry {
   readonly behavior: Partial<Behavior>;
   /** Gated: the hooks run only for an ask that activated this entry's handle. */
   readonly staged: boolean;
+  readonly beforePlan?: boolean;
   readonly beginResolve?: boolean;
   readonly beforeConstruct?: boolean;
   readonly canonicalize?: boolean;
@@ -28,13 +29,14 @@ export interface AlwaysHook {
 export interface AlwaysDispatch {
   /** How many always-active entries there are; their state slots are `0..count-1` in install order. */
   readonly count: number;
+  readonly beforePlan: readonly AlwaysHook[];
   readonly beginResolve: readonly AlwaysHook[];
   readonly beforeConstruct: readonly AlwaysHook[];
   readonly canonicalize: readonly AlwaysHook[];
   readonly afterConstruct: readonly AlwaysHook[];
 }
 
-const EMPTY_ALWAYS: AlwaysDispatch = { count: 0, beginResolve: [], beforeConstruct: [], canonicalize: [], afterConstruct: [] };
+const EMPTY_ALWAYS: AlwaysDispatch = { count: 0, beforePlan: [], beginResolve: [], beforeConstruct: [], canonicalize: [], afterConstruct: [] };
 
 /**
  * The engine's installed behaviors — its `ControlService` implementation, one per engine.
@@ -47,10 +49,17 @@ const EMPTY_ALWAYS: AlwaysDispatch = { count: 0, beginResolve: [], beforeConstru
 export class InstalledHooks implements ControlService {
   readonly registry: Iterable<Registration<unknown>>;
   readonly #entries: Array<Entry | undefined> = [];
+  readonly #seeds: ReadonlySet<Registration<unknown>>;
   #always: AlwaysDispatch = EMPTY_ALWAYS;
 
-  constructor(registry: Iterable<Registration<unknown>>) {
+  constructor(registry: Iterable<Registration<unknown>>, seeds: ReadonlySet<Registration<unknown>>) {
     this.registry = registry;
+    this.#seeds = seeds;
+  }
+
+  /** Whether `registration` is one of the engine's own seeded rows — the nodes no hook fires at. */
+  seeded(registration: Registration<unknown>): boolean {
+    return this.#seeds.has(registration);
   }
 
   /**
@@ -79,6 +88,7 @@ export class InstalledHooks implements ControlService {
     this.#entries.push({
       behavior,
       staged,
+      beforePlan: middlewareArity(behavior.beforePlan, 1),
       beginResolve: middlewareArity(behavior.beginResolve, 2),
       beforeConstruct: middlewareArity(behavior.beforeConstruct, 1),
       canonicalize: middlewareArity(behavior.canonicalize, 2),
@@ -103,6 +113,7 @@ export class InstalledHooks implements ControlService {
   }
 
   #rebuildAlways(): void {
+    const beforePlan: AlwaysHook[] = [];
     const beginResolve: AlwaysHook[] = [];
     const beforeConstruct: AlwaysHook[] = [];
     const canonicalize: AlwaysHook[] = [];
@@ -113,6 +124,9 @@ export class InstalledHooks implements ControlService {
         continue;
       }
       const slot = count++;
+      if (entry.beforePlan !== undefined) {
+        beforePlan.push({ slot, entry });
+      }
       if (entry.beginResolve !== undefined) {
         beginResolve.push({ slot, entry });
       }
@@ -126,11 +140,31 @@ export class InstalledHooks implements ControlService {
         afterConstruct.push({ slot, entry });
       }
     }
-    this.#always = { count, beginResolve, beforeConstruct, canonicalize, afterConstruct };
+    this.#always = { count, beforePlan, beginResolve, beforeConstruct, canonicalize, afterConstruct };
   }
+}
+
+/**
+ * What a planning pass fires its hooks through: the installed list and the handles the ask that
+ * opened the pass activated — empty where no ask stands behind the pass, so only always-active
+ * behaviors participate there.
+ */
+export interface PlanHooks {
+  readonly installed: InstalledHooks;
+  readonly active: readonly Handle[];
 }
 
 /** Whether the hook is declared as middleware — more parameters than its handler form takes. */
 function middlewareArity(hook: { readonly length: number; } | undefined, handlerArity: number): boolean | undefined {
   return hook === undefined ? undefined : hook.length > handlerArity;
+}
+
+/** `states` with `value` in `slot`, copied only when that changes anything. */
+export function withSlot(states: readonly unknown[], slot: number, value: unknown): readonly unknown[] {
+  if (states[slot] === value) {
+    return states;
+  }
+  const next = states.slice();
+  next[slot] = value;
+  return next;
 }

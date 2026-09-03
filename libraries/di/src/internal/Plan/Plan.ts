@@ -4,6 +4,7 @@ import type { Ctor, Func } from '@rhombus-toolkit/func';
 import { memo } from '@rhombus-toolkit/once';
 import { assertNever, isAllThere, isDefined, isReadonlyArray } from '@rhombus-toolkit/type-guards';
 import type { Match, Registry } from '../Registry.js';
+import type { PlanHooks } from './InstalledHooks.js';
 import { PlannerVisitor } from './PlannerVisitor.js';
 import { type RealizeOptions, RealizeVisitor } from './RealizeVisitor.js';
 
@@ -273,10 +274,15 @@ export namespace Plan {
    * own dependencies cannot be met.
    */
   export const from = (() => {
+    // The pass's hook context rides beside the memo rather than through it: it is not part of the
+    // plan's identity — whichever ask makes the plan supplies the hooks that fire — and planning
+    // is synchronous, so the slot is set only for the extent of one build.
+    let currentHooks: PlanHooks | undefined;
+
     const planFor = memo((registry: Registry) =>
       memo((address: Type) =>
         memo((args: ReadonlyMap<Type, number>) => {
-          const visitor = new PlannerVisitor(registry, args);
+          const visitor = new PlannerVisitor(registry, args, undefined, currentHooks);
           const plan = visitor.visit(address);
           if (plan === undefined) {
             // Two failures reach here and a caller acts on them differently: nothing is registered
@@ -307,14 +313,29 @@ export namespace Plan {
 
     /** The plain request's args: nothing bound. */
     const NO_ARGS: ReadonlyMap<Type, number> = new Map();
-    function from(address: Type, registry: Registry): Plan;
-    function from(address: Type, registry: Registry, signature: readonly Type[]): Plan;
-    function from(address: Type, registry: Registry, args: ReadonlyMap<Type, number>): Plan;
-    function from(address: Type, registry: Registry, args?: readonly Type[] | ReadonlyMap<Type, number>): Plan {
-      if (isReadonlyArray(args)) {
-        return from(address, registry, toArgs(args));
+    function from(address: Type, registry: Registry, hooks?: PlanHooks): Plan;
+    function from(address: Type, registry: Registry, signature: readonly Type[], hooks?: PlanHooks): Plan;
+    function from(address: Type, registry: Registry, args: ReadonlyMap<Type, number>, hooks?: PlanHooks): Plan;
+    function from(address: Type, registry: Registry, third?: readonly Type[] | ReadonlyMap<Type, number> | PlanHooks, fourth?: PlanHooks): Plan {
+      if (isReadonlyArray(third)) {
+        return from(address, registry, toArgs(third), fourth);
       }
-      return planFor(registry)(address)(args ?? NO_ARGS);
+      let args: ReadonlyMap<Type, number>;
+      let hooks: PlanHooks | undefined;
+      if (third !== undefined && 'installed' in third) {
+        args = NO_ARGS;
+        hooks = third;
+      } else {
+        args = third ?? NO_ARGS;
+        hooks = fourth;
+      }
+      const previous = currentHooks;
+      currentHooks = hooks;
+      try {
+        return planFor(registry)(address)(args);
+      } finally {
+        currentHooks = previous;
+      }
     }
 
     return from;
@@ -325,8 +346,8 @@ export namespace Plan {
    * behind the construction, and dependencies lower against `registry` as usual — so the plan
    * comes back synthesized, outside the lifetime model's jurisdiction.
    */
-  export function fromRegistration(registration: Registration<unknown>, registry: Registry): Plan | undefined {
-    const visitor = new PlannerVisitor(registry);
+  export function fromRegistration(registration: Registration<unknown>, registry: Registry, hooks?: PlanHooks): Plan | undefined {
+    const visitor = new PlannerVisitor(registry, undefined, undefined, hooks);
     const [kind, narrowed] = Registration.kind(registration);
     switch (kind) {
       case 'ctor': {
@@ -360,32 +381,51 @@ export namespace Plan {
       visit: address => address === populatedAddress ? visitor.visitBeneath(address, match.index) : visitor.visit(address),
     };
     const [kind, registration] = Registration.kind(wideRegistration);
+    // The node is made before its slots lower, so the plan hooks receive the very node the plan
+    // will hold and their answer stands while the dependencies are planned.
     switch (kind) {
       case 'ctor': {
-        const lowered = lowerSignature(registration.ctorType.signatures, generics, slots);
-        return Plan.registeredCtor({
-          ctor: registration.ctor,
-          args: lowered?.[0],
-          rest: lowered?.[1],
-          populatedAddress,
-          registration,
-        });
+        const node: Making<RegisteredCtorPlan> = { kind: 'registered-ctor', ctor: registration.ctor, args: [], rest: undefined, populatedAddress, registration };
+        const lowered = lowerPlanned(node, registration.ctorType.signatures, generics, slots, visitor);
+        if (lowered === undefined) {
+          return undefined;
+        }
+        [node.args, node.rest] = lowered;
+        return node;
       }
       case 'factory': {
-        const lowered = lowerSignature(registration.factoryType.signatures, generics, slots);
-        return Plan.registeredFactory({
-          factory: registration.factory,
-          args: lowered?.[0],
-          rest: lowered?.[1],
-          populatedAddress,
-          registration,
-        });
+        const node: Making<RegisteredFactoryPlan> = { kind: 'registered-factory', factory: registration.factory, args: [], rest: undefined, populatedAddress, registration };
+        const lowered = lowerPlanned(node, registration.factoryType.signatures, generics, slots, visitor);
+        if (lowered === undefined) {
+          return undefined;
+        }
+        [node.args, node.rest] = lowered;
+        return node;
       }
       case 'value': {
         return Plan.constant(registration.value);
       }
       default:
         return assertNever(registration);
+    }
+  }
+
+  /** A plan node while it is being made — its slots land once they have lowered. */
+  type Making<Node> = { -readonly [K in keyof Node]: Node[K]; };
+
+  /** Lowers a registered node's signature under the plan hooks fired for the node. */
+  function lowerPlanned(
+    node: Making<RegisteredCtorPlan> | Making<RegisteredFactoryPlan>,
+    signatures: TupleType | ListType | UnionType,
+    generics: Readonly<Record<string, Type>>,
+    slots: SlotLowering,
+    visitor: PlannerVisitor,
+  ): [args: Plan[], rest: Plan | undefined] | undefined {
+    const previous = visitor.openPlanned(node, node.populatedAddress, node.registration);
+    try {
+      return lowerSignature(signatures, generics, slots);
+    } finally {
+      visitor.closePlanned(previous);
     }
   }
 

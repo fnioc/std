@@ -1,10 +1,11 @@
-import { type ControlRequest, CycleError, type Invoker, type Request, type ServiceRequest } from '@rhombus-std/di.core';
+import { type ControlRequest, CycleError, type Hooks, type Invoker, type Registration, type Request, type ServiceRequest } from '@rhombus-std/di.core';
 import { type AbstractConstructorType, type ArrayType, type ConstructorType, type FunctionType, type GenericType, type GlobalType, type ImportedType, type IntersectionType, type IterableType,
   type ObjectType, type TagType, type TupleType, Type, type TypeLiteralType, type UnionType } from '@rhombus-std/primitives';
 import { type Generic, typefor } from '@rhombus-std/primitives.extras';
 import type { Ctor, Func } from '@rhombus-toolkit/func';
 import { isDefined } from '@rhombus-toolkit/type-guards';
 import type { Registry } from '../Registry.js';
+import { type AlwaysDispatch, type Entry, type PlanHooks, withSlot } from './InstalledHooks.js';
 import { type AsyncPlan, Plan } from './Plan.js';
 
 /**
@@ -25,14 +26,23 @@ export class PlannerVisitor extends Type.Visitor<Plan | undefined> {
    * dependency beneath it registers into; absent while nothing encloses the walk in a promise.
    */
   readonly #collecting: AsyncPlan[] | undefined;
+  /** What this pass fires plan hooks through; absent when nothing asked for them. */
+  readonly #hooks: PlanHooks | undefined;
+  /** The always-active dispatch as this pass opened. */
+  readonly #always: AlwaysDispatch | undefined;
+  /** Each participating behavior's threaded state at the walk's current position. */
+  #planStates: readonly unknown[] | undefined;
 
-  constructor(registry: Registry, args?: ReadonlyMap<Type, number>, boundary?: BoundaryContext) {
+  constructor(registry: Registry, args?: ReadonlyMap<Type, number>, boundary?: BoundaryContext, hooks?: PlanHooks) {
     super();
     this.#registry = registry;
     this.#args = args;
     this.#cycleGuard = boundary?.cycleGuard ?? new CycleGuard();
     this.#diagnostics = boundary?.diagnostics ?? { missingDependency: undefined };
     this.#collecting = boundary?.collecting;
+    this.#hooks = hooks;
+    this.#always = hooks?.installed.always;
+    this.#planStates = hooks === undefined ? undefined : new Array(this.#always!.count + hooks.active.length).fill(undefined);
   }
 
   /** The specific type the whole pass could not build from, once {@link visit} has returned `undefined`. */
@@ -88,7 +98,8 @@ export class PlannerVisitor extends Type.Visitor<Plan | undefined> {
       cycleGuard: this.#cycleGuard,
       diagnostics: this.#diagnostics,
       collecting: inventory,
-    });
+    }, this.#hooks);
+    boundary.#planStates = this.#planStates;
     const inner = produce(boundary);
     if (inner === undefined) {
       return undefined;
@@ -146,6 +157,67 @@ export class PlannerVisitor extends Type.Visitor<Plan | undefined> {
       this.#diagnostics.missingDependency = address;
     }
     return plan;
+  }
+
+  /**
+   * Fires the plan hooks for a registered node being made, before its slots lower: each layer
+   * reads its own state off the walk and answers the state the node's dependencies are planned
+   * under. Answers what {@link closePlanned} restores once the slots have lowered — `undefined`
+   * when nothing fires, including at the engine's own seeded rows.
+   */
+  openPlanned(node: object, populatedAddress: Type, registration: Registration<unknown>): readonly unknown[] | undefined {
+    const hooks = this.#hooks;
+    if (hooks === undefined || hooks.installed.seeded(registration)) {
+      return undefined;
+    }
+    const previous = this.#planStates!;
+    this.#planStates = this.#beforePlanFrom(0, node, populatedAddress, registration, previous);
+    return previous;
+  }
+
+  /** Restores what {@link openPlanned} answered, once the node's slots have lowered. */
+  closePlanned(previous: readonly unknown[] | undefined): void {
+    if (previous !== undefined) {
+      this.#planStates = previous;
+    }
+  }
+
+  /** Runs the plan-hook layers from combined position `k` on, outermost first, answering the states the node's slots lower under. */
+  #beforePlanFrom(k: number, node: object, populatedAddress: Type, registration: Registration<unknown>, states: readonly unknown[]): readonly unknown[] {
+    const always = this.#always!;
+    const list = always.beforePlan;
+    const active = this.#hooks!.active;
+    let slot = -1;
+    let entry: Entry | undefined;
+    while (true) {
+      if (k < list.length) {
+        ({ slot, entry } = list[k]!);
+        break;
+      }
+      const j = k - list.length;
+      if (j >= active.length) {
+        return states;
+      }
+      const candidate = this.#hooks!.installed.entryAt(active[j]!.index);
+      if (candidate !== undefined && candidate.staged && candidate.beforePlan !== undefined) {
+        slot = always.count + j;
+        entry = candidate;
+        break;
+      }
+      k++;
+    }
+    const construction: Hooks.Construction = { node, populatedAddress, registration, state: states[slot] };
+    const fn = entry.behavior.beforePlan!;
+    if (entry.beforePlan) {
+      let beneath: readonly unknown[] | undefined;
+      const answer = (fn as Func)(construction, (inner: Hooks.Construction) => {
+        beneath = this.#beforePlanFrom(k + 1, node, populatedAddress, registration, withSlot(states, slot, inner.state));
+        return inner.state;
+      });
+      return withSlot(beneath ?? states, slot, answer);
+    }
+    const answer = (fn as Hooks['beforePlan'])(construction);
+    return this.#beforePlanFrom(k + 1, node, populatedAddress, registration, withSlot(states, slot, answer));
   }
 
   protected override visitImported(type: ImportedType): Plan | undefined {

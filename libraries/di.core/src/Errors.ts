@@ -111,6 +111,22 @@ export class UniversalAddressError extends DiError {
   }
 }
 
+/**
+ * A resolution or scope opening reached a provider whose container or scope is already disposed —
+ * the standard lifetime model's refusal, a clone of the one
+ * Microsoft.Extensions.DependencyInjection raises.
+ *
+ * @remarks
+ * Disposing a scope's provider refuses every later ask through it; disposing the container's
+ * refuses every later ask through every provider, and refuses opening a scope.
+ */
+export class ObjectDisposedError extends DiError {
+  constructor() {
+    super('the provider is disposed — its container or scope has ended, so it can no longer resolve or open a scope');
+    this.name = 'ObjectDisposedError';
+  }
+}
+
 /** One registration that could not be lowered. */
 export interface ValidationFailure {
   /** The service type of the registration that failed. */

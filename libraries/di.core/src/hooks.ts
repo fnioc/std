@@ -28,6 +28,20 @@ export interface Handle extends Disposable {
  */
 export interface Hooks<State = unknown> {
   /**
+   * Runs once for a registered node as the planner makes it, answering the state the node's
+   * dependencies are planned under — `undefined` places them under none.
+   *
+   * @remarks
+   * A plan is made once per address and registry — lazily by the first resolution that needs it,
+   * and up front wherever every address is planned at build — so this hook sees the graph moment,
+   * not the resolve moment: a construction realized from an already-made plan fires no planning
+   * hook, and the state threads through the planning walk alone, never into a construction.
+   *
+   * Declared with a second `next` parameter, this hook runs as middleware; with one, as a plain
+   * handler.
+   */
+  readonly beforePlan: Func<[construction: Hooks.Construction<State>], State | undefined>;
+  /**
    * Opens one resolution, answering the state its constructions start under.
    *
    * @remarks

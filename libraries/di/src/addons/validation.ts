@@ -2,6 +2,7 @@ import { type Addon, ControlRequest, type ControlService, ManifestValidationErro
 import type { Type } from '@rhombus-std/primitives';
 import { typefor } from '@rhombus-std/primitives.extras';
 import { planClosedAddresses } from '../internal/closed-address-plans.js';
+import { InstalledHooks } from '../internal/Plan/InstalledHooks.js';
 import { Registry } from '../internal/Registry.js';
 
 /**
@@ -51,7 +52,10 @@ export function validateBuildability<Lifetime>(): Addon<Lifetime> {
       if (typeof control?.stageHooks !== 'function') {
         throw new UnsatisfiableError(address, 'a middleware answered the control ask with something other than the engine control');
       }
-      const failures: ValidationFailure[] = Iterator.from(planClosedAddresses(new Registry(control.registry)))
+      // Planning at build fires the always-active plan hooks: no ask stands behind this pass, so
+      // nothing staged participates.
+      const hooks = control instanceof InstalledHooks && control.always.beforePlan.length !== 0 ? { installed: control, active: [] } : undefined;
+      const failures: ValidationFailure[] = Iterator.from(planClosedAddresses(new Registry(control.registry), hooks))
         .filter((planned): planned is { address: Type; error: Error; } => 'error' in planned)
         .toArray();
       if (failures.length) {

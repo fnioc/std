@@ -354,7 +354,8 @@ const scoping: Middleware = next => request => {
 
 At install time a middleware reaches the engine's own controls through the same door, by minting a
 `ControlRequest` for `ControlService`. Its two hook verbs install a `Behavior` — any of
-`beginResolve` / `beforeConstruct` / `canonicalize` / `afterConstruct` — in one of two tiers.
+`beforePlan` / `beginResolve` / `beforeConstruct` / `canonicalize` / `afterConstruct` — in one of
+two tiers.
 `installHooks(hooks)` is always active: the hooks run for every ask, outermost — the audit and
 diagnostics tier. `stageHooks(hooks)` is gated: the hooks run only for an ask that activated the
 answered `Handle`, which is how a scope layer keeps its behavior to the asks that flowed through
@@ -362,7 +363,11 @@ it — two parallel layers over one chain never run each other's staged hooks, a
 closure invoked later still runs the hooks of the layer it was minted under. Either verb answers a
 disposable `Handle`; disposing it is the uninstall. Construction hooks fire only at
 registration-carrying nodes — never at an engine-synthesised object, tuple, or collection node,
-and never at the engine's own seeded rows.
+and never at the engine's own seeded rows. `beforePlan` is the graph moment rather than the
+resolve moment: it runs once per registered node as the plan is made — lazily at the first
+resolution that needs it, or up front when `validateBuildability()` plans every address at build —
+answering the state the node's dependencies are planned under, so a validator can judge the whole
+graph without plan trees ever reaching the public surface.
 
 ```ts
 const scopeLayer: Middleware = next => {
@@ -394,6 +399,13 @@ to the provider that opened the ask — never the container object itself, since
 is not a contract. The engine's two seeded rows — `IServiceProvider` and `ControlService` — file
 oldest, carry a `null` lifetime, and are visible in `ControlService.registry` like anything else;
 registering your own `IServiceProvider` shadows the seed.
+
+A provider is also where disposal enters: `IServiceProvider` is disposable in both forms, so a
+holder writes `using provider = Builder…build()` or `await using` and the provider is disposed on
+the way out — idempotently, and for free when nothing subscribed. Disposal never flows through
+`getService`, so no middleware observes it; an addon that must know when a particular provider
+ends subscribes on that provider (`ServiceProvider.whenDisposed`), and each subscriber is told
+once, most recent first, through whichever form the holder used.
 
 ### 14. Shadowing resolves beneath: decoration with no verb
 
@@ -440,6 +452,92 @@ for (const registration of control.registry) {
 }
 ```
 
+### 16. The standard lifetime model
+
+Three lifetimes, scopes, and disposal — a clone of Microsoft.Extensions.DependencyInjection's
+service lifetimes, on this repository's own API. `standardLifetime()` is an addon: install it and
+every constructed registration names `'singleton'`, `'scoped'` or `'transient'`. A singleton is one
+instance per container, shared by every scope. A scoped registration is one instance per scope. A
+transient is fresh per ask and per injection site. A value registration is handed back as it stands.
+
+```ts
+await using provider = Builder
+  .useAddon(standardLifetime())
+  .withServices(services =>
+    services
+      .add<IClock>(SystemClock, 'singleton')
+      .add<IRepo>(SqlRepo, 'scoped')
+      .add<IReport>(Report, 'transient')
+  )
+  .build();
+
+using scope = provider.resolve<IServiceScopeFactory>().openScope();
+const repo = scope.resolve<IRepo>(); // this scope's own; another scope gets another
+scope.resolve<IRepo>() === repo; // true
+provider.resolve<IClock>() === scope.resolve<IClock>(); // true: the container's one instance
+```
+
+A scope is its provider. `IServiceScopeFactory` is resolvable from every provider and is always the
+same instance; `openScope()` answers a new `IServiceProvider` that is a direct child of the
+container, never of the scope the factory was resolved from — scopes are flat and share nothing but
+the singletons. `IServiceProvider` resolved inside a scope is that scope's own provider; injected
+into a singleton, it is the container's, wherever the singleton was first reached.
+
+Disposal follows ownership. Disposing a scope's provider — `using`, or `Symbol.dispose` by hand —
+disposes every instance that scope constructed, most recent first, each once, and the scope refuses
+every later ask with `ObjectDisposedError`. Disposing the container's provider does the same for the
+singletons and closes every provider. A transient is owned by the scope the ask ran under: resolved
+from a scope, it goes with the scope; resolved from the container's provider, it is held until the
+container disposes; injected into a singleton, it lives as long as the singleton. An instance handed
+to a value registration is never disposed. Errors raised while disposing are collected — one
+rethrows as itself, several as one `AggregateError` — and every other instance still disposes.
+
+```ts
+const scope = provider.resolve<IServiceScopeFactory>().openScope();
+const conn = scope.resolve<IConnection>(); // scoped, disposable
+await scope[Symbol.asyncDispose](); // conn[Symbol.asyncDispose]() runs here
+scope.resolve<IConnection>(); // throws ObjectDisposedError
+```
+
+`await using` awaits each instance's `Symbol.asyncDispose` and calls a synchronous-only one directly.
+`using` calls `Symbol.dispose` and counts an instance offering only `Symbol.asyncDispose` as an
+error, so a container holding asynchronous disposables is disposed with `await using`.
+
+A scoped registration reached through the container's own provider is cached with the singletons —
+silently, exactly as Microsoft.Extensions.DependencyInjection does without scope validation.
+`validateScopes()` is the optional layer that refuses it: a scoped registration resolved from the
+container's provider, directly or beneath a transient, throws `ScopeValidationError` on every ask;
+a scoped registration consumed by a singleton — directly, through a transient, or through another
+singleton — throws `ScopeValidationError` wherever the singleton's dependencies are first planned,
+from any provider. A singleton may hold `IServiceScopeFactory`: it is a value, never constructed,
+so it trips neither check.
+
+```ts
+const provider = Builder
+  .useAddon(standardLifetime())
+  .useAddon(validateScopes())
+  .withServices(services => services.add<IRepo>(SqlRepo, 'scoped'))
+  .build();
+
+provider.resolve<IRepo>(); // throws ScopeValidationError: reached from the container's provider
+provider.resolve<IServiceScopeFactory>().openScope().resolve<IRepo>(); // answered
+```
+
+To refuse a captive dependency at build rather than at the first ask, add `validateBuildability()`
+ahead of `validateScopes()` — the chain folds innermost first, so the build-time plan runs under the
+captive check only when the validator that plans is composed outside the one that checks — and the
+refusal arrives inside the `ManifestValidationError`, paired with the singleton whose plan reached
+the scoped registration.
+
+```ts
+Builder
+  .useAddon(validateBuildability())
+  .useAddon(validateScopes())
+  .useAddon(standardLifetime())
+  .withServices(services => services.add<IRepo>(SqlRepo, 'scoped').add<ICache>(Cache, 'singleton')) // Cache takes an IRepo
+  .build(); // throws ManifestValidationError; the ICache failure's error is a ScopeValidationError naming IRepo
+```
+
 ---
 
 Every failure mode is a typed subclass of `DiError`, so a caller branches on `instanceof` instead of
@@ -450,6 +548,9 @@ with the path that closed it; a fault, deliberately not unsatisfiable. `Universa
 registration addressed by a bare hole. `ManifestValidationError` — every registration an up-front
 pass could not plan, `failures` pairing each with its address. `LifetimeModelError` — the installed
 lifetime model's own code threw while realizing an address; the model's error is the `cause`.
+`ObjectDisposedError` — an ask or a scope opening reached a provider whose container or scope has
+ended. `ScopeValidationError` — a scoped registration reached under the singleton scope, from the
+container's own provider or consumed by a singleton, with the scoped `address`.
 
 ```ts
 catch (error) {

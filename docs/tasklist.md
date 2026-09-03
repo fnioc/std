@@ -1605,3 +1605,217 @@ seeds, null lifetime, shadowing-beneath, hook tiers); §231 gains the request-cl
   (step 14) lands.
 - Gate after both: di.test 137 pass / 6 skip / 26 todo / 18 fail (same 18 dead-model load
   failures); the new files typecheck clean.
+
+**Addendum (design-session handoff, 2026-09-02): hook and dispose seams**
+
+- `beforePlan` joins `Hooks` (di.core): fired once per registered node as the planner makes it —
+  lazily at first resolution, and at build when `validateBuildability()` plans every closed
+  address — answering the state the node's dependencies are planned under; handler/koa by arity,
+  optional on `Behavior`, staged-vs-installed gating as the other four (a build pass has no ask
+  behind it, so only always-active behaviors participate there); never at seeded rows or
+  synthesised nodes; plan-memo hits fire nothing. Threading lives in `PlannerVisitor`
+  (`openPlanned`/`closePlanned`), the ask supplies its context through `Plan.from`'s trailing
+  hooks argument, and a hook-firing candidate whose signature then fails to lower is the one
+  soft edge (noted in the design doc's Open section... recorded here instead: the hook fires per
+  attempted match, so an unbuildable newest candidate fires before the older match answers).
+- `IServiceProvider extends Disposable, AsyncDisposable` (di.core); `ServiceProvider` implements
+  both, idempotent across forms, free when nothing subscribed, and `whenDisposed(subscriber)` is
+  the seam: each subscriber told once, most recent first, through the form the holder used —
+  per provider, never through `getService`.
+- Gates: di.test 148 pass / 6 skip / 26 todo / 18 fail (the known load-failing set unchanged);
+  di + di.core tsc/eslint clean; both example apps byte-match; dprint clean.
+
+## Session — standard lifetime model (2026-09-02, branch feat-di-standard-lifetime)
+
+Built from `21b569ed` on `IServiceManifest-repair` to `docs/standard-lifetime-model.design.md` and
+`docs/standard-lifetime-model.reference-behavior.md`, with the door session's seams cherry-picked
+(`2025c648..origin/feat-di-request-door`, three commits: the `beforePlan` hook, provider disposal
+with `ServiceProvider.whenDisposed`, and its tasklist addendum).
+
+**Landed**
+
+- `libraries/di.core/src/StandardLifetime.ts` — the vocabulary type.
+- `libraries/di.core/src/IServiceScopeFactory.ts` — `openScope()`.
+- `libraries/di.core/src/Errors.ts` — `ObjectDisposedError`; both types and the error on the
+  `di.core` barrel.
+- `libraries/di/src/addons/standard-lifetime/standard-lifetime.ts` — `standardLifetime()`: the
+  marker layer, the staged hooks (`beginResolve` / `beforeConstruct` / `afterConstruct`), the
+  value-registered scope factory, `openScope()` minting a `ServiceProvider` over its own marker,
+  release through `whenDisposed` in the form the holder used.
+- `libraries/di/src/addons/standard-lifetime/scope.ts` — the `Scope` state, the two-level cache,
+  capture, and the two disposal walks (dedupe by reference at first capture, reverse order, error
+  aggregation, idempotence).
+- `libraries/di/src/addons/standard-lifetime/validate-scopes.ts` — `validateScopes()` and
+  `ScopeValidationError`: the captive check on `beforePlan`, the per-ask check on
+  `beforeConstruct`, the kind threaded as its state.
+- `libraries/di/src/addons/standard-lifetime/symbols.ts` — the two request symbols, module-level.
+- `libraries/di/src/index.ts` — `standardLifetime`, `validateScopes`, `ScopeValidationError`
+  beside the two validators; `ObjectDisposedError` re-exported with the taxonomy.
+- Tests, `tests/di.test/test/`: `standard-lifetime.test.ts` (§1, §2, §5, §7),
+  `standard-lifetime-disposal.test.ts` (§3 and the after-disposal table of §2),
+  `validate-scopes.test.ts` (§4), and `lifetime-contract.test.ts` — the door session's 26 todo
+  entries, each now an executable test against the model.
+- Docs: `docs/libraries/di.md` §16 and the error paragraph; `libraries/di/README.md` and
+  `libraries/di.core/README.md` key-export rows and a note.
+
+**Gate numbers**
+
+- `tests/di.test`: 271 pass / 6 skip / 18 fail (base commit: 137 pass / 6 skip / 26 todo / 18 fail;
+  the 26 todos became passing tests; the 18 failures are the same 18 load failures as the base).
+  `tsc -p tsconfig.types.json` clean.
+- `bun run test`: red only in the same ten `*.test` packages as the base
+  (`augmentations`, `caching.memory`, `di`, `diagnostics.core`, `diagnostics`, `hosting.core`,
+  `hosting`, `logging.config`, `logging`, `options.augmentations`), every failure one of the 37
+  known deleted-export load sites (`noopLifetimeAddon` ×32, `di` ×2, `StandardScopeFactory` ×2,
+  `standardLifetimeAddon` ×1). No expect-level failure anywhere. `bun run test:e2e`: every suite
+  green except `inline.ttsc.e2e`, whose parity fixture imports the deleted `noopLifetimeAddon`
+  (pre-existing).
+- `bun run lint`: every library clean (di and di.core through eslint); red only in the same ten
+  test packages, same missing exports. `bun run format:check`: clean. `bun run build`: green.
+
+**Test files still red, and why**
+
+The 18 load failures under `tests/di.test/` are the same 18 as on the base commit; none is new,
+none was brought back, per the brief's rule for files that conflict or that the documents are
+silent on:
+
+- Silent — 15 files importing the deleted `di` builder, 14 of them with the deleted
+  `noopLifetimeAddon` (`di.usingLifetimeModel(noopLifetimeAddon()).configureServices(…)`):
+  `aggregate-resolution`,
+  `async-resolution`, `baseline-e2e`, `captivity-constant-products`, `chain-composition`,
+  `container-builder`, `describe-dialect`, `get-service-absence`, `get-service-value`,
+  `object-resolution`, `open-registration`, `open-signature`, `plan-cache`, `union-resolution`,
+  `whole-type-precedence`. They assert engine behavior
+  the design doc and the catalogue say nothing about, through a builder API that no longer exists.
+  Left as they are.
+- Silent — `tagged-lifetime-model.test.ts`: a different model (`taggedLifetimeAddon`,
+  `TaggedScopeFactory`) the documents do not mention. Left as it is.
+- Conflicts — `standard-lifetime-model.test.ts`, questions for the owner:
+  - `standardLifetimeAddon().name === 'standard'` and the `.transient` statics: no such members
+    in the design's public declarations.
+  - `StandardScopeFactory.address` on `di`: the design places `IServiceScopeFactory` in `di.core`.
+  - "refuses a scoped ask at the root scope" by default, as `LifetimeModelError` with cause
+    `ScopedAtRootError`; and "the two validation switches are both on by default" with options
+    `{ validateOnBuild, validateScopes }`: the design has validation off unless `validateScopes()`
+    is added, no options object, and `ScopeValidationError` thrown as itself.
+  - "a registration naming no lifetime is refused, naming the model": the design makes the
+    vocabulary strict at the type level and specifies no runtime refusal (see decisions).
+  - The assertions that fall inside the documents — singleton/scoped/transient identity, a scope
+    opened from inside a scope keeping its own instances, the unvalidated captive pair resolving
+    with the singleton holding the promoted instance — are covered by `standard-lifetime.test.ts`
+    and `lifetime-contract.test.ts`.
+- Conflicts — `standard-lifetime-model-disposal.test.ts`, questions for the owner:
+  - teardown reached by resolving a `StandardScopeTeardown` address, and "the provider the builder
+    seals carries neither symbol": `IServiceProvider` is now disposable in both forms and the
+    provider is the scope.
+  - "tears a child scope down before releasing what the parent itself kept": the catalogue (§2,
+    "Root disposal walks no scope list") has the container's disposal leave an open scope's
+    instances to that scope.
+  - "never disposes a transient instance, since nothing tracks it": the catalogue (§3) captures
+    transients in the resolving scope.
+  - the `{ keep, release }` datum widening (an `'external'` opt-out, a release override): not in
+    the design's vocabulary.
+  - `DisposedScopeError` naming the factory's address on `openScope` after disposal: the design
+    names `ObjectDisposedError`.
+  - a synchronous teardown meeting one async-only instance surfacing an `AggregateError` of one:
+    the catalogue rethrows a single error as itself.
+  - The refusal wrapped in `LifetimeModelError` with the model's error as `cause`: the design
+    throws `ObjectDisposedError` as itself.
+  - The assertions that fall inside — LIFO release, reference dedupe, idempotence in both forms,
+    aggregation of several failures, `Symbol.asyncDispose` preferred by the asynchronous form,
+    value registrations never disposed, a promise product awaited then released — are covered by
+    `standard-lifetime-disposal.test.ts`.
+- Green but stale: `disposal-error-taxonomy.test.ts` asserts only that `DisposedError` is not
+  exported, which holds; its header comment says the disposed refusal "stays model-private and
+  reaches a caller only wrapped in LifetimeModelError", which the design's `ObjectDisposedError`
+  in `di.core` contradicts. The test is left as it is.
+
+**Decisions the design doc did not settle**
+
+- `IServiceProvider` under a singleton's dependencies. The engine's seeded `IServiceProvider` row
+  is invisible to hooks, so the model cannot override it from `beforeConstruct` as the design
+  sketched. The model files its own `IServiceProvider` registration (a transient factory that is
+  never called) shadowing the seed, and answers it from `beforeConstruct` with the provider of the
+  scope the construction runs under: the scope's own provider object in a scope, the container's
+  under a `root` state. That row is a second entry in `Addon.registrations` beside the scope
+  factory, not a new public declaration. Consequence: `resolveMany(IServiceProvider)` now
+  enumerates the model's row and the seed.
+- The container's own provider is not reachable at fold time — `build()` mints it after the chain
+  folds and `whenDisposed` is an instance method — so the model adopts it on its first ask (every
+  `ServiceRequest` reaching the container's marker carries it, since the seed's views forward to
+  it) and subscribes then. Gap this leaves: a container disposed before any ask ever went through
+  it is never told, so a later ask or `openScope()` through it is not refused. Every scope is
+  opened through a factory resolved from the container, so this cannot affect scopes.
+- `validateScopes()` installs with `installHooks`, not `stageHooks`: a scope's provider is minted
+  over the shared implementation and never passes through another addon's middleware, so a staged
+  handle from a validator composed outside the model would never be activated for scope asks, and
+  the captive check while inside an open scope (§4) would be lost. Installed hooks also run for
+  the build-time plan under `validateBuildability()`.
+- Fold order decides when the captive check fires at build. The chain folds innermost first, so
+  `validateBuildability()` plans under `beforePlan` only when composed AHEAD of `validateScopes()`
+  (`Builder.useAddon(validateBuildability()).useAddon(validateScopes()).useAddon(standardLifetime())`).
+  Composed behind it, the plans are made before the hook exists and the per-ask check catches the
+  same graph at the first construction. Documented in di.md §16 and the di README; tested both
+  ways.
+- An ended scope leaves the `scopes` map instead of staying with `disposed: true`: the marker and
+  `beginResolve` treat an unknown id as disposed, which keeps every refusal the design lists while
+  not holding every scope a long-running container ever opened. The scope's cache object itself is
+  never cleared, as the design says.
+- The synchronous walk records a plain `Error` for an instance offering only
+  `Symbol.asyncDispose` (the design lists no error type for it and forbids new public types); the
+  instance is left undisposed, as in the catalogue.
+- A promise that settles after its owning scope ended: the settled value is disposed at once and
+  the `ObjectDisposedError` the design prescribes for a late capture is not thrown, since nothing
+  awaits the capture and the caller already holds the promise; throwing would only surface as an
+  unhandled rejection.
+- A registration whose lifetime is outside the vocabulary (a `null` or `undefined` lifetime the
+  types refuse but the runtime can carry): the model neither caches nor captures it and threads
+  the state through, as for a value. The old suite expected a runtime refusal; the design makes
+  the vocabulary strict at the type level and says nothing about a runtime guard.
+- `ScopeValidationError` carries one message for both conditions (the scoped address, and that it
+  was reached under the singleton scope from the container's provider or a singleton's
+  dependencies); the catalogue's three messages are collapsed, the conditions are not.
+- The design's `disposed(id)` check in the marker also covers a latebound closure minted in a
+  scope and invoked after that scope ended: such a call re-enters at the door without passing the
+  marker, so `beginResolve` repeats the refusal.
+
+**Could not do / deviations**
+
+- Author email: a push with `goliyth@gmail.com` as the committer email is rejected by GitHub
+  ("push declined due to email privacy restrictions"), so every commit carries
+  `Thomas Butler <2511516+fnrhombus@users.noreply.github.com>` instead — the same author as the
+  base commit.
+- The Workflow tool's subagents cannot call tools in this environment (every parameterized tool
+  call fails in the harness's permission handler), so the adversarial review ran through the
+  Agent tool in the same shape: five sonnet reviewers, one per catalogue section, each asked to
+  show a test and its catalogue section disagree. Five reviews returned. Nothing they reported was an implementation divergence the model can
+  fix within the design; two are divergences the design's own mechanisms cannot close, listed
+  under the owner's questions below; the rest were coverage gaps, all closed (scoped
+  retry-after-failure and pending-promise sharing, a scoped last registration promoted from the
+  container, `IServiceProvider` resolved from the container being that provider, a scope
+  surviving the disposal of the scope its factory was resolved from, a singleton dependency
+  captured before a sibling throws, a singleton promise pending when the container ends, the
+  built-ins never captured).
+- Catalogue §1's thread-safety items (call-site locks, per-scope `Sync`) have no analog in a
+  single-threaded runtime; the one observable, once-only creation under concurrent asynchronous
+  asks, is what the cached pending promise gives and what is tested.
+
+**Questions for the owner — behavior the catalogue names that the design's mechanisms cannot give**
+
+- A collection ask is a live query and is never cached as a whole. The catalogue (§1) has the
+  enumerable call site cached at the widest of its elements' locations, so an all-singleton
+  collection is one array for the container's life and a singleton-plus-scoped one is rebuilt once
+  per scope. Here each element honors its own lifetime and the collection object is fresh per ask.
+  Hooks fire only at registration-carrying nodes, never at the engine's synthesised collection
+  node, so a hooks-only model cannot cache the collection itself. Untested either way; the design's
+  behavior map names only the per-element mechanism.
+- A promise product that settles after its owning scope ended is disposed on settlement, but the
+  promise the caller holds still fulfils with the disposed instance. The catalogue (§3) has a
+  resolution racing a dispose "never return a value to its caller". Rejecting the caller's promise
+  needs the model to hand back a derived promise, which is `canonicalize` — the hook the design
+  marks "not used". Tested for what it does (disposal on settlement), not for what it cannot.
+- `validateBuildability()` plans one closed address once, so a captive dependency in a shadowed
+  registration of an address whose newest registration is clean is not reported at build; the
+  catalogue (§4) validates every descriptor. The per-ask check still refuses it when a collection
+  ask walks that element. The fix is in `Registry.closedAddresses` / `planClosedAddresses` under
+  `libraries/di/src/internal/`, which this session does not touch.

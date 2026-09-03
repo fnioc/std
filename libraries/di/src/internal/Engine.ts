@@ -4,15 +4,13 @@ import { typefor } from '@rhombus-std/primitives.extras';
 import { concat } from '@rhombus-toolkit/obj';
 import { ServiceProvider } from '../ServiceProvider.js';
 import { Plan, type VisitorContext } from './Plan/index.js';
-import { InstalledHooks } from './Plan/InstalledHooks.js';
+import { InstalledHooks, type PlanHooks } from './Plan/InstalledHooks.js';
 import { Registry } from './Registry.js';
 
 /** The resolution orchestrator: one per container. Composed as the innermost middleware element. */
 export class Engine {
   readonly #registry: Registry;
   readonly #hooks: InstalledHooks;
-  /** The engine's own two rows, by identity — the nodes no hook ever fires at. */
-  readonly #seeds: ReadonlySet<Registration<unknown>>;
 
   constructor(registrations: Iterable<Registration<unknown>>) {
     // A fresh view per handout, forwarding to the provider that opened the ask — provider
@@ -28,8 +26,7 @@ export class Engine {
     ];
     this.#registry = new Registry(concat<Registration<unknown>>(registrations, seeds));
     // Read back off the registry so seed identity tracks whatever it filed.
-    this.#seeds = new Set(this.#registry.registrations.slice(-seeds.length));
-    this.#hooks = new InstalledHooks(this.#registry.registrations);
+    this.#hooks = new InstalledHooks(this.#registry.registrations, new Set(this.#registry.registrations.slice(-seeds.length)));
   }
 
   // #region resolution
@@ -53,7 +50,7 @@ export class Engine {
     // synthesis, which a registration check up front would turn away.
     let plan: Plan;
     try {
-      plan = Plan.from(address, this.#registry);
+      plan = Plan.from(address, this.#registry, this.#planHooksFor(request));
     } catch (error) {
       if (error instanceof UnsatisfiableError && !this.#registry.hasMatch(address)) {
         return next(request);
@@ -79,7 +76,15 @@ export class Engine {
 
   /** Whether `registration` is one of this engine's own seeded rows. */
   isSeeded(registration: Registration<unknown>): boolean {
-    return this.#seeds.has(registration);
+    return this.#hooks.seeded(registration);
+  }
+
+  /** What a plan made for `request` fires its hooks through; `undefined` when nothing could fire. */
+  #planHooksFor(request: Request): PlanHooks | undefined {
+    const active = request['active'];
+    return this.#hooks.always.beforePlan.length === 0 && active.length === 0
+      ? undefined
+      : { installed: this.#hooks, active };
   }
 
   /**
@@ -87,7 +92,7 @@ export class Engine {
    * @throws {UnsatisfiableError} when no signature of {@link registration} can be satisfied.
    */
   resolveFrame(registration: Registration<unknown>, request: Request): unknown {
-    const plan = Plan.fromRegistration(registration, this.#registry);
+    const plan = Plan.fromRegistration(registration, this.#registry, this.#planHooksFor(request));
     if (plan === undefined) {
       throw new UnsatisfiableError(registration.address, 'no signature of the invoked callable can be satisfied');
     }
@@ -108,7 +113,7 @@ export class Engine {
     if (signature === undefined) {
       throw new TypeError(`${Type.stringify(funcType)} has no signature accepting ${providedArgs.length} arg(s)`);
     }
-    return Plan.realize(Plan.from(funcType.return, this.#registry, signature), { engine: this, context: { args: providedArgs }, request });
+    return Plan.realize(Plan.from(funcType.return, this.#registry, signature, this.#planHooksFor(request)), { engine: this, context: { args: providedArgs }, request });
   }
 
   // #endregion
