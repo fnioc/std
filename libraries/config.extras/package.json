@@ -1,7 +1,7 @@
 {
   "name": "@rhombus-std/config.extras",
   "version": "0.0.0",
-  "description": "The @rhombus-std/config authoring surface: types .withType<T>() onto ConfigBuilder and rewrites it into a generated .withSchema(Type.object({...})) call at compile time. A Go/ttsc descriptor package \u2014 the transform runs in the shared owner binary.",
+  "description": "The @rhombus-std/config authoring surface: types .withType<T>() onto ConfigBuilder and rewrites it into a generated .withSchema(Type.object({...})) call at compile time. A Go/ttsc descriptor package — the transform runs in the shared owner binary.",
   "keywords": [
     "configuration",
     "config",
@@ -32,8 +32,8 @@
   },
   "files": [
     "dist",
-    "ttsc.mjs",
-    "rhombus-std.json"
+    "src",
+    "ttsc.mjs"
   ],
   "scripts": {
     "build": "bun ../../scripts/build-lib.ts",
@@ -53,6 +53,7 @@
     "types": "./dist/bundle/index.d.ts",
     "exports": {
       ".": {
+        "source": "./src/index.ts",
         "types": "./dist/bundle/index.d.ts",
         "import": "./dist/bundle/index.js",
         "default": "./dist/bundle/index.js"

@@ -34,6 +34,7 @@
   },
   "files": [
     "dist",
+    "src",
     "ttsc.mjs",
     "rhombus-std.json"
   ],
@@ -48,6 +49,7 @@
     "types": "./dist/bundle/index.d.ts",
     "exports": {
       ".": {
+        "source": "./src/index.ts",
         "types": "./dist/bundle/index.d.ts",
         "import": "./dist/bundle/index.js",
         "default": "./dist/bundle/index.js"

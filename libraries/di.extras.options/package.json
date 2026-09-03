@@ -1,7 +1,7 @@
 {
   "name": "@rhombus-std/di.extras.options",
   "version": "0.0.0",
-  "description": "A @rhombus-std/di.extras satellite: the type-only declare-module for the addOptions<T>() sugar plus its rhombus-std inline body. A Go/ttsc descriptor package \u2014 the sugar is substituted from its inline body (this.addOptions(typefor(T))) by the shared owner binary's inline + typefor stages.",
+  "description": "A @rhombus-std/di.extras satellite: the type-only declare-module for the addOptions<T>() sugar plus its rhombus-std inline body. A Go/ttsc descriptor package — the sugar is substituted from its inline body (this.addOptions(typefor(T))) by the shared owner binary's inline + typefor stages.",
   "keywords": [
     "options",
     "dependency-injection",
@@ -35,8 +35,8 @@
   },
   "files": [
     "dist",
-    "ttsc.mjs",
-    "rhombus-std.json"
+    "src",
+    "ttsc.mjs"
   ],
   "scripts": {
     "build": "bun ../../scripts/build-lib.ts",
@@ -64,6 +64,7 @@
     "types": "./dist/bundle/index.d.ts",
     "exports": {
       ".": {
+        "source": "./src/index.ts",
         "types": "./dist/bundle/index.d.ts",
         "import": "./dist/bundle/index.js",
         "default": "./dist/bundle/index.js"

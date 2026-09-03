@@ -57,6 +57,7 @@ interface Manifest {
   readonly main?: string;
   readonly module?: string;
   readonly types?: string;
+  readonly files?: readonly string[];
   readonly exports?: Record<string, ExportEntry>;
   readonly publishConfig?: Record<string, unknown>;
   readonly rhombusBuild?: { readonly typesOnly?: boolean; };
@@ -93,10 +94,21 @@ function isTypesOnly(manifest: Manifest): boolean {
   return !Object.values(dot).some((value) => value.endsWith('.js'));
 }
 
+/** True when the tarball ships `src/`, so a `source` condition has a file to point at. */
+function shipsSrc(manifest: Manifest): boolean {
+  return manifest.files?.includes('src') ?? false;
+}
+
 /** The published conditions for one surviving subpath (the §7 dist-swap). */
-function derivePublishedConditions(conditions: Conditions, typesOnly: boolean): Conditions {
+function derivePublishedConditions(conditions: Conditions, typesOnly: boolean, withSource: boolean): Conditions {
   const typesSource = conditions.types ?? conditions.source ?? conditions.default;
   const out: Record<string, string> = {};
+  // A tarball that ships `src/` keeps its source entry addressable: the inline
+  // stage reads a marker's body out of the declaring package's own source, and
+  // the `.` runtime target is a bundle it cannot walk.
+  if (withSource && typesSource.startsWith('./src/')) {
+    out.source = typesSource;
+  }
   out.types = toDist(typesSource, 'dts');
   if (conditions.import !== undefined) {
     out.import = toDist(conditions.import, 'js');
@@ -119,6 +131,7 @@ function derivePublishedConditions(conditions: Conditions, typesOnly: boolean): 
 /** The derived `publishConfig.exports` for a whole manifest (scrub + dist-swap). */
 function derivePublishExports(manifest: Manifest): Record<string, ExportEntry> {
   const typesOnly = isTypesOnly(manifest);
+  const withSource = shipsSrc(manifest);
   const out: Record<string, ExportEntry> = {};
   for (const [subpath, entry] of Object.entries(manifest.exports ?? {})) {
     if (isInternal(subpath)) {
@@ -128,11 +141,11 @@ function derivePublishExports(manifest: Manifest): Record<string, ExportEntry> {
       // An in-repo `./src/*.ts` target publishes as the dist trio; any other
       // string target (the `./ttsc` descriptor) is already publish-shaped.
       out[subpath] = entry.startsWith('./src/')
-        ? derivePublishedConditions({ types: entry, import: entry, default: entry }, typesOnly)
+        ? derivePublishedConditions({ types: entry, import: entry, default: entry }, typesOnly, withSource)
         : entry;
       continue;
     }
-    out[subpath] = derivePublishedConditions(entry, typesOnly);
+    out[subpath] = derivePublishedConditions(entry, typesOnly, withSource);
   }
   return out;
 }

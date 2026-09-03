@@ -1,7 +1,7 @@
 {
   "name": "@rhombus-std/di.extras",
   "version": "10.1.0",
-  "description": "The ioc authoring surface: the build-time primitives a registration author writes against. A Go/ttsc descriptor package \u2014 the primitive-transform runs in the shared owner binary.",
+  "description": "The ioc authoring surface: the build-time primitives a registration author writes against. A Go/ttsc descriptor package — the primitive-transform runs in the shared owner binary.",
   "keywords": [
     "dependency-injection",
     "di",
@@ -34,8 +34,8 @@
   },
   "files": [
     "dist",
-    "ttsc.mjs",
-    "rhombus-std.json"
+    "src",
+    "ttsc.mjs"
   ],
   "scripts": {
     "build": "bun ../../scripts/build-lib.ts",
@@ -62,6 +62,7 @@
     "types": "./dist/bundle/index.d.ts",
     "exports": {
       ".": {
+        "source": "./src/index.ts",
         "types": "./dist/bundle/index.d.ts",
         "import": "./dist/bundle/index.js",
         "default": "./dist/bundle/index.js"
