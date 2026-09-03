@@ -2486,6 +2486,6 @@ Owner: "for our new transform package, I want it to publish minified (e.g. `gith
 - JS bundles minify via `bun build`, each with its `.js.map` published beside it; doc comments kept if bun has the option.
 - Rolled `.d.ts` files minify keeping JSDoc (candidate: `dts-minify` with its keep-JSDoc option), inside the build script.
 - `*.extras` `src/` templates minify keeping doc comments, pending a tool that keeps `.ts` syntax (research in flight).
-- `@rhombus-std/transforms` publishes its Go from a staged copy run through `minformat`, pinned per-project through mise's `go:` backend; `gofmt` reverts it; doc comments kept if the tool allows (research in flight; the cloud lane runs on the earlier wording and is corrected after).
+- `@rhombus-std/transforms` publishes its Go from a staged copy run through `minformat`, pinned per-project through mise's `go:` backend; `gofmt` reverts it; comments all go, doc comments included (owner: "nobody ever interacts with it directly"). The cloud lane already runs this way.
 
 Not started; sequenced after the exports-audit lane (shared files: `scripts/build-lib.ts`, `transforms/package.json`, the derive script).
