@@ -2431,7 +2431,7 @@ Two forks, the owner delegated the call to Claude 2026-09-03 ("your call"); pick
    PICK: widen — the rule is about the node ("a registration's slots resolve its own address
    beneath it"), not the slot's top-level shape, and it is the shape with nothing to clear.
 
-Status: ruled as above; implementation dispatched 2026-09-03 (Fable, in place on this branch).
+Status: landed 2026-09-03 — `434c7c24` (planner + tests), `9ca16505` (docs).
 
 ## Open, owner's word (2026-09-03)
 
