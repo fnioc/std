@@ -272,23 +272,22 @@ _Owner-directed 2026-07-18._
 
 ## §97 — White-box surface: `./private/*`; strict token derivation
 
-Every library exposes `./private/*` as its one white-box seam: `types`/`bun` → `./src/*.ts`,
-deliberately carrying no `default` so the subpath stays NON-PUBLIC to token derivation. It serves
-both typing and execution — a deep-imported source file lands on the same module instance the
-barrel resolves (source-first, §72/§192), lowered at load time where the package lowers. The root
-`.` export is the bare-string source barrel (§72). `./private/*` is in-repo only: `publishConfig`
-rewrites `exports` without it, and `files` excludes the stage emit directory.
+Every library exposes `./private/*` as its one white-box seam, a bare-string `./src/*.ts` target.
+It serves both typing and execution — a deep-imported source file lands on the same module instance
+the barrel resolves (source-first, §72/§192), lowered at load time where the package lowers. The
+root `.` export is the bare-string source barrel (§72). `./private/*` is in-repo only:
+`publishConfig` rewrites `exports` without it, and `files` excludes the stage emit directory.
 
 Token derivation for an exports-mapped file matches the **shortest** subpath among export entries
 carrying a `default` condition — public, where a bare-string target counts as carrying one — with
 ties broken lexicographically; the root `.` export is the shortest possible case, deriving the bare
-`pkg:Type` form. If no public entry reaches the file, `./private/*` — deliberately default-less, the
-one sanctioned in-repo internal surface — derives `pkg/private/<path>:Type`. If neither reaches it, a
-hard diagnostic names both fixes (export the type publicly, or expose its file via `./private/*`).
-Shortest-within-public supports deliberate public aliasing; only publish-surviving entries ever
-compete, so an internal or test mapping can never affect token identity. The derivation path for a
-package with no exports map is unchanged. `internal` is banned as an export alias, since it collides
-with same-named source folders.
+`pkg:Type` form. A file the barrel does not reach falls to `./private/*`, the one sanctioned
+in-repo internal surface, deriving `pkg/private/<path>:Type`. If neither reaches it, a hard
+diagnostic names both fixes (export the type publicly, or expose its file via `./private/*`).
+Shortest-within-public supports deliberate public aliasing, and the barrel is always shorter than a
+named subpath, so an internal or test mapping can never displace a publicly exported type's token.
+The derivation path for a package with no exports map is unchanged. `internal` is banned as an
+export alias, since it collides with same-named source folders.
 
 _Owner-directed 2026-07-18._
 
@@ -2747,9 +2746,9 @@ sanctioned non-public reach whose files mint `pkg/private/<path>` tokens, and an
 subpath reaching a file is a hard diagnostic.
 
 **The decision: the conventional shape is src-first in-repo.** Every library's dev exports resolve
-`./src/index.ts` for every consumer and every condition (`.` as a bare-string target); `main`/
-`types` point at src; `publishConfig` carries the dist surface unchanged. All custom conditions —
-the shared `source` and all seven `<pkg>-source` — are deleted: with src the uniform in-repo
+`./src/index.ts` for every consumer and every condition (`.` as a bare-string target); `main` points
+at src; `publishConfig` carries the dist surface unchanged. All custom conditions — the shared
+`source` and all seven `<pkg>-source` — are deleted: with src the uniform in-repo
 resolution there is nothing left for them to disambiguate, and the TS2664 self-augmentation fix
 falls out for free (a package's own `declare module` now resolves its own specifier to the same
 source files its program is compiling). This is the pattern the requirements + convention pin:
@@ -2775,10 +2774,9 @@ source files its program is compiling). This is the pattern the requirements + c
   build is untouched: stage-then-bundle stays, and the parity invariant (lowered == hand-written)
   is what makes running lowered-on-load src equivalent to running `dist`.
 - **The wire format does not move.** `.` stays public (its src stem is the same stem the build
-  program compiles); `./private/*` stays, non-public (`types`/`bun` → src, no `default`), so
-  internal types keep minting `pkg/private/<path>` tokens. White-box suites import src through
-  `./private/*` and the preload lowers it; `dist/stage` remains a build intermediate only. No
-  transforms/ change.
+  program compiles); `./private/*` stays, mapping straight to src, so internal types keep minting
+  `pkg/private/<path>` tokens. White-box suites import src through `./private/*` and the preload
+  lowers it; `dist/stage` remains a build intermediate only. No transforms/ change.
 - **Compile-scope typings travel with the source that needs them.** A consumer program compiling a
   dependency's src must see its `node:*` shims, so each src file importing a node builtin carries
   `/// <reference path="./node-builtins.d.ts" />`.
@@ -2791,7 +2789,7 @@ source files its program is compiling). This is the pattern the requirements + c
   half switches `node` → `bun` with the preload. The plain-node published-consumer proof belongs
   to a packed-artifact gate (out of scope here; noted as the conventional home).
 - **`derive-publish-config.ts`** learns the bare-string dev form (string entry on a publishable
-  subpath → dist-swapped conditions object), keeping the scrub mechanical.
+  subpath → the dist-swapped bundle target), keeping the scrub mechanical.
 
 **Accepted costs.** Any suite that touches a lowering library now needs the Go sidecar (previously
 only the ttsc e2es did); the shared content-keyed cache keeps that a once-per-machine cost. A

@@ -163,6 +163,10 @@ consumers. Nothing in-repo depends on dist being built.
 **`./private/*`** is the dev-only deep-import seam for white-box tests, scrubbed from
 `publishConfig.exports`.
 
+**Every `*.extras` ships `src/` beside dist**, and its published `.` export names it under a
+`source` condition — the inline stage reads a marker's body out of the declaring package's own
+source, which a bundle cannot serve.
+
 **Build args are derived, not authored.** No per-package `build.ts` — `scripts/build-lib.ts` derives
 args from the manifest (`external` = deps ∪ peers, lowering stage iff `tsconfig.ttsc.json` exists).
 `publishConfig` is derived too (`scripts/derive-publish-config.ts`, drift-checked by lint).
