@@ -236,6 +236,19 @@ original it replaced. Every weakening is reported as a `MERGESYNTH_PRIVATE_SURFA
 naming what the emit actually contains: a floored position, an unchecked position beside other
 working clauses, or a dropped parameter guard with arity bounds standing.
 
+**Iterable guard.** A parameter typed `Iterable<T>`, `IterableIterator<T>`, `ReadonlyArray<T>`,
+`ReadonlySet<T>` or `ReadonlyMap<K, V>` checks `Symbol.iterator in input` on top of the
+object-kind condition, narrowing past the floor that previously could not distinguish
+`Iterable<Foo>` from `Iterable<Bar>`.
+
+**Indistinguishable-guard diagnostic (`MERGESYNTH_INDISTINGUISHABLE_GUARDS`).** When two
+registrations for the same member in one file produce provably identical runtime guards, the
+second can never dispatch — the first always matches first. The stage reports this as an error
+naming the member. The guard identity is a structural classification of each parameter's type:
+two parameters that take the same guard path (the same `typeof` check, the same `instanceof`
+target, the same iterable gate) are identical, and two members whose every parameter classifies
+identically are indistinguishable.
+
 ## Domain lives in TypeScript, not in Go
 
 The old shape had three bespoke Go stages — one that understood `di.core`'s registration surface,
@@ -327,6 +340,17 @@ consumer dedupes to one spawn and one cache key, so nothing that varies per cons
 Emission never changes what a tree evaluates to — the runtime interns structurally identical types
 to one object — and `tests/typefor.ttsc.e2e` pins that by expanding every const back into its call
 sites and comparing against the inline emission byte for byte.
+
+**`typefor<T>()` structural derivation.** A `typefor` type argument that is an anonymous object
+literal derives as `Type.object({ key: <member>, ... })`, each member keyed by its property name
+in declaration order. An optional property is its type unioned with `undefined`, since
+`ObjectType.members` carries no optional flag and `Type.isOptional` defines optional as exactly that
+union. A method member derives as a `Type.func` typed property inside the object. Nested objects,
+tuples, unions, and intersections are each recursively derived by the same walk.
+
+A named callable alias (`type Handler = (x: string) => number`) derives by its name, not
+structurally as a callable — an addressable alias that carries call or construct signatures is
+intercepted ahead of the structural callable gates.
 
 **`schemaof<T>()` / `.withType<T>()` surface constraints.** The expansion uses the same
 `typesurface` enumeration as the guard walk, but reads the **writable** direction — coercion
