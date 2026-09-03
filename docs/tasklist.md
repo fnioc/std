@@ -2483,9 +2483,9 @@ Rulings on the open di items, each against the section that holds it. State is t
 
 Owner: "for our new transform package, I want it to publish minified (e.g. `github.com/go-toolsmith/minformat`). I want everything that is published minified, actually." RULED 2026-09-03: "use sourcemaps. include everything you can sourcemap, plus go (revertable with gofmt)." Refined the same day: minified output keeps DOC comments only ("most tools have options to keep doc comments"); every non-doc comment is stripped ("removing overly verbose non-doc comments is essential"). Nothing is excluded: everything published minifies.
 
-- JS bundles minify via `bun build`, each with its `.js.map` published beside it; doc comments kept if bun has the option.
-- Rolled `.d.ts` files minify keeping JSDoc (candidate: `dts-minify` with its keep-JSDoc option), inside the build script.
-- `*.extras` `src/` templates minify keeping doc comments, pending a tool that keeps `.ts` syntax (research in flight).
+- JS bundles minify via `bun build`, each with its `.js.map` published beside it. Bun has no comment-retention option (`legalComments` unsupported), so bundles carry no comments; the `.d.ts` carries the docs.
+- Rolled `.d.ts` files minify keeping JSDoc: `dts-minify` (`keepJsDocs: true`) as a post step after `rollup-plugin-dts`, inside the build script.
+- `*.extras` `src/` templates stay formatted: no tool minifies `.ts` while keeping it `.ts` and its doc comments (researched 2026-09-03); a custom pass is the only route, and the templates are a few one-line bodies.
 - `@rhombus-std/transforms` publishes its Go from a staged copy run through `minformat`, pinned per-project through mise's `go:` backend; `gofmt` reverts it; comments all go, doc comments included (owner: "nobody ever interacts with it directly"). The cloud lane already runs this way.
 
 Not started; sequenced after the exports-audit lane (shared files: `scripts/build-lib.ts`, `transforms/package.json`, the derive script).
