@@ -148,16 +148,21 @@ ask, so `Plan.from`'s per-registry memo never invalidates.
 ## Shadowing resolves beneath
 
 A registration whose own slot names its own address — a factory for `Foo` shaped `Func<[Foo], Foo>`
-— gets the SHADOWED (older) registration as that dependency: matching for a self-named slot starts
-after the registration being planned. Decoration with no verb. No older match is unsatisfiable
-(throws, never delegates). A collection ask still enumerates every match, decorator and shadowed
-both. The cycle guard still catches real cycles through a third address.
+— gets the SHADOWED (older) registration as that dependency: while the registration's slots are
+planned, matching for its own address starts after it. Decoration with no verb. The rule is the
+registration's, not the slot's top-level shape: the address resolves beneath wherever a slot names
+it, nested inside a union (`Func<[Foo | undefined], Foo>`), a tuple (`Func<[[Foo, Bar]], Foo>`) or
+an object member alike. No older match is unsatisfiable (throws, never delegates); the optional
+spelling falls through to `undefined`. A collection ask still enumerates every match, decorator
+and shadowed both. The cycle guard still catches real cycles through a third address.
 
 Mechanics: `Match` carries the matched registration's position in the registry;
-`Registry.getMatches` takes an optional start position; `Plan.fromMatch` hands `lowerSignature` a
-visitor view whose `visit` routes an arg equal to the plan's own populated address to
-`PlannerVisitor.visitBeneath(address, position)`, which searches only older registrations and skips
-the cycle guard for that one address (the nesting terminates because the position strictly grows).
+`Registry.getMatches` takes an optional start position; `PlanningContext.planning` is the registered
+node whose slots are lowering — its address and position — set by `Plan.fromMatch`'s slot lowering
+around the signature and restored after it. `PlannerVisitor.visit` opens by routing the frame's
+address to `PlannerVisitor.visitShadow(address, context)`, which searches only the registrations
+after the frame's position and skips the cycle guard for that one address (the nesting terminates
+because each registration matched beneath installs its own, strictly higher, position as the frame).
 
 ## Engine
 
@@ -269,8 +274,9 @@ stands. `Registry.getMatches` stays on `bindGenerics` as it is.
 - New: `di/src/internal/Plan/InstalledHooks.ts`.
 - `di/src/internal/Engine.ts`: the two seeds; the control branches delete; holds one
   `InstalledHooks`.
-- `Plan/Plan.ts`: `RequestPlan` + `Plan.request`; the beneath-aware visitor view in `fromMatch`.
-- `Plan/PlannerVisitor.ts`: the request addresses in `visitImported`; `visitBeneath`.
+- `Plan/Plan.ts`: `RequestPlan` + `Plan.request`; the planning frame set around `fromMatch`'s slot lowering.
+- `Plan/PlannerVisitor.ts`: the request addresses in `visitImported`; `PlanningContext.planning`;
+  `visitShadow`.
 - `Plan/RealizeVisitor.ts`: the `realize` door, `visitRequest`, `states`, hook dispatch on the
   three registered visits.
 - `di/src/internal/Registry.ts`: `Match.index`; `getMatches` start position.

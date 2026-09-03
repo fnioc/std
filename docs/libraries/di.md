@@ -411,9 +411,10 @@ once, most recent first, through whichever form the holder used.
 ### 14. Shadowing resolves beneath: decoration with no verb
 
 Registrations at one address shadow, newest first — and a registration whose own slot names its
-own address resolves that slot from what it shadows, because matching for a self-named slot starts
-after the registration being planned. So a factory for `Foo` shaped `Func<[Foo], Foo>` is a
-decorator with no decorator verb: it receives the older `Foo` and answers the address itself.
+own address resolves that address from what it shadows, because matching for a registration's own
+address, while its slots are planned, starts after the registration itself. So a factory for `Foo`
+shaped `Func<[Foo], Foo>` is a decorator with no decorator verb: it receives the older `Foo` and
+answers the address itself.
 
 ```ts
 services = services
@@ -423,10 +424,23 @@ services = services
 provider.resolve<IFoo>(); // a LoggingFoo wrapping the PlainFoo
 ```
 
+The rule is the registration's, not the slot's shape: its own address resolves beneath wherever
+a slot names it, at the top or nested inside — an optional `IFoo | undefined`, a tuple, an object
+member. A decorator that wraps whatever stood before it, and stands alone otherwise, is one optional
+slot.
+
+```ts
+services = services
+  .add(typefor<IFoo>(), (foo?: IFoo) => new LoggingFoo(foo ?? new PlainFoo()),
+    Type.func(typefor<IFoo>(), [[Type.union(typefor<IFoo>(), Type.typeLiteral(undefined))]]));
+
+provider.resolve<IFoo>(); // a LoggingFoo around a PlainFoo, with nothing older to wrap
+```
+
 A self-named slot with nothing older is unsatisfiable — the ask throws rather than delegating —
-and a collection ask still enumerates every match, decorator and shadowed both, in authored order.
-Only the self-named slot resolves beneath: a genuine cycle through a second address still throws
-`CycleError`.
+while the optional spelling falls through to `undefined`. A collection ask still enumerates every
+match, decorator and shadowed both, in authored order. Only the registration's own address resolves
+beneath: a genuine cycle through a second address still throws `CycleError`.
 
 ### 15. Validation addons
 
