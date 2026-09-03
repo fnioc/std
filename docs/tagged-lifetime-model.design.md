@@ -1,7 +1,7 @@
 # The tagged lifetime model — design
 
-Status: behavior and implementation shape given by the owner 2026-09-02; every numbered point ruled by
-2026-09-03; the architecture below stands on those rulings. Pending: the factory name.
+Status: behavior and implementation shape given by the owner 2026-09-02; every numbered point and the
+factory name ruled by 2026-09-03; the architecture below stands on those rulings.
 
 ## Behavior
 
@@ -90,7 +90,7 @@ Numbered as first put to him.
 4. Ruled 2026-09-02: `undefined` is in the vocabulary and is transient; refusing it would make
    transient registrations impossible, which is not something to stop.
 5. Ruled 2026-09-02: separate interfaces, the tagged model's own beside the standard model's
-   `IServiceScopeFactory`. Its name is proposed in the architecture.
+   `IServiceScopeFactory`, named `ITaggedServiceScopeFactory`, accepted 2026-09-03.
 
 ## Architecture
 
