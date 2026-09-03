@@ -20,10 +20,7 @@
   "exports": {
     ".": "./src/index.ts",
     "./ttsc": "./ttsc.mjs",
-    "./private/*": {
-      "types": "./src/*.ts",
-      "bun": "./src/*.ts"
-    }
+    "./private/*": "./src/*.ts"
   },
   "ttsc": {
     "plugin": {
@@ -50,18 +47,14 @@
     "access": "public",
     "provenance": true,
     "main": "./dist/bundle/index.js",
-    "types": "./dist/bundle/index.d.ts",
     "exports": {
       ".": {
         "source": "./src/index.ts",
-        "types": "./dist/bundle/index.d.ts",
-        "import": "./dist/bundle/index.js",
         "default": "./dist/bundle/index.js"
       },
       "./ttsc": "./ttsc.mjs"
     }
   },
   "main": "./src/index.ts",
-  "types": "./src/index.ts",
   "devDependencies": {}
 }
