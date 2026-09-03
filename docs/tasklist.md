@@ -2390,6 +2390,46 @@ Owner: the async behavior in `libraries/di/src/internal/Plan/PlannerVisitor.ts` 
 
 Status: landed in 3308a79a (code + tests) and e892e69a (docs). A union tolerates the new no-enclosing-await error so an optional dependency still falls back to `undefined`.
 
+## PlannerVisitor `visitShadow` — proposed 2026-09-03, awaiting the owner
+
+Owner's proposal: shadowing-resolves-beneath (a slot naming its own registration's address gets
+the older registration it shadows) moves INTO the planner as a `visitShadow` member, with the
+address it applies to passed in through the visitor's ctor, instead of today's routing in
+`Plan.fromMatch`: a `SlotLowering` closure that sends a slot equal to the node's address to
+`visitor.visitBeneath(address, match.index, context)` and every other slot to `visitor.visit`,
+threaded through `lowerPlanned` and `lowerSignature`.
+
+Claude's adjustment, not yet accepted: the address cannot come through the ctor. The visitor is
+built once per pass, so the ctor knows only the root request; the self-named slot is per registered
+node at any depth and needs that node's position too. The frame rides in `PlanningContext` under the
+same stash/set/walk/restore idiom `#collect` uses for `asyncDescendants`:
+
+- `PlanningContext` gains `planning?: { address: Type; index: number }` — the registered node whose
+  slots are lowering.
+- `lowerPlanned` stashes `context.planning`, sets it to the node's `populatedAddress` and
+  `match.index`, lowers the signature, restores — unconditionally (the hook states beside it are
+  gated on hooks being installed).
+- `visit` starts with `if (address === context.planning?.address) return this.visitShadow(address, context)`.
+- `visitShadow` is today's `visitBeneath` reading the start position from the frame:
+  `getMatches(address, undefined, context.planning.index + 1)`, no synthesis beneath, same
+  `missingDependency` bookkeeping.
+- Deleted: `SlotLowering`, the closure in `fromMatch`, the `slots` parameter through
+  `lowerPlanned`/`lowerSignature`, `visitBeneath`'s position argument. `Match.index` and
+  `Registry.getMatches(start)` stay.
+
+Two forks for the owner:
+
+1. Ctor-carried address as proposed, or context-carried as adjusted.
+2. Behavior: today only a slot that IS the node's address goes beneath; a self address nested inside
+   a synthesized slot (`Func<[Foo | undefined], Foo>`, `Func<[[Foo, Bar]], Foo>`) trips the cycle
+   guard. With the check in `visit`, the nested `Foo` resolves beneath too, so an optional
+   self-dependency falls through to `undefined` when nothing older exists. Keep direct-only
+   (the frame is cleared around each slot's descent into synthesis) or accept the widening.
+   Indirect loops through another registered node throw either way: that node's frame replaces the
+   one above.
+
+Status: not ruled, not started.
+
 ## Open, owner's word (2026-09-03)
 
 - `INLINE_NO_SRC_ENTRY` second publish gate (section above).
