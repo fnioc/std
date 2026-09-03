@@ -2,14 +2,14 @@
 // promise-only dependencies together rather than one after another, a plain `resolve` never
 // awaiting a promise address on the caller's behalf, and the `AsyncIterable<T>` collection form.
 
-import { di, noopLifetimeAddon } from '@rhombus-std/di';
+import { Builder } from '@rhombus-std/di';
 import { Manifest, Registration } from '@rhombus-std/di.core';
 import { Type } from '@rhombus-std/primitives';
 import { describe, expect, test } from 'bun:test';
 
-/** Seals `manifest` into a provider through the front door, on the noop lifetime model. */
+/** Seals `manifest` into a provider with no lifetime model: every ask constructs afresh. */
 function toProvider(manifest: Manifest<unknown>) {
-  return di.usingLifetimeModel(noopLifetimeAddon()).usingManifest(manifest).build();
+  return Builder.withServices(() => manifest).build();
 }
 
 const CLOCK = Type.imported('Clock', 'app');

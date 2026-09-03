@@ -3,7 +3,7 @@
 // resolve from the node's own parameter types. Nothing here is registered or cached — every call
 // builds fresh.
 
-import { di, noopLifetimeAddon } from '@rhombus-std/di';
+import { Builder } from '@rhombus-std/di';
 import { type IServiceProvider, Manifest, UnsatisfiableError } from '@rhombus-std/di.core';
 import { Type } from '@rhombus-std/primitives';
 import { describe, expect, test } from 'bun:test';
@@ -13,9 +13,9 @@ const Foo = Type.imported('Foo', 'app');
 const Empty = Type.imported('Empty', 'app');
 const Gadget = Type.imported('Gadget', 'app');
 
-/** Seals `manifest` into a provider through the front door, on the noop lifetime model. */
+/** Seals `manifest` into a provider with no lifetime model: every ask constructs afresh. */
 function toProvider(manifest: Manifest<string>): IServiceProvider {
-  return di.usingLifetimeModel(noopLifetimeAddon()).configureServices(m => m.add(manifest)).build();
+  return Builder.withServices(() => manifest).build();
 }
 
 function providerWithBar(bar: unknown): IServiceProvider {

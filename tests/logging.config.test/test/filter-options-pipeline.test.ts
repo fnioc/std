@@ -10,7 +10,7 @@
 // to the inline `typefor<IOptions<LoggerFilterOptions>>()` the library derives.
 
 import { ConfigBuilder, type IConfigRoot } from '@rhombus-std/config';
-import { di, noopLifetimeAddon } from '@rhombus-std/di';
+import { Builder } from '@rhombus-std/di';
 import { Manifest } from '@rhombus-std/di.core';
 import { LoggerFilterOptions, LoggingBuilder } from '@rhombus-std/logging';
 import { Type } from '@rhombus-std/primitives';
@@ -34,7 +34,7 @@ function filterOptionsFor(config: IConfigRoot): IOptions<LoggerFilterOptions> {
   // `addConfig`'s registrations — build the one the BUILDER holds afterwards.
   const builder = new LoggingBuilder(Manifest.empty<unknown>());
   builder.addConfig(config);
-  const provider = di.usingLifetimeModel(noopLifetimeAddon()).usingManifest(builder.services).build();
+  const provider = Builder.withServices(() => builder.services).build();
   const options: IOptions<LoggerFilterOptions> = provider.resolve(FILTER_OPTIONS_TYPE);
   return options;
 }
@@ -72,7 +72,7 @@ describe('addConfig — the LoggerFilterOptions pipeline', () => {
     // Information at addConfig time.
     config.set('LogLevel:Default', 'Error');
 
-    const provider = di.usingLifetimeModel(noopLifetimeAddon()).usingManifest(builder.services).build();
+    const provider = Builder.withServices(() => builder.services).build();
     const options: IOptions<LoggerFilterOptions> = provider.resolve(FILTER_OPTIONS_TYPE);
     expect(options.value.rules[0]!.logLevel).toBe(LogLevel.Error);
   });
@@ -111,7 +111,7 @@ describe('addConfig — the LoggerFilterOptions pipeline', () => {
     const builder = new LoggingBuilder(Manifest.empty<unknown>());
     LoggingBuilderConfigAugmentations.addConfig.call(builder, config);
 
-    const provider = di.usingLifetimeModel(noopLifetimeAddon()).usingManifest(builder.services).build();
+    const provider = Builder.withServices(() => builder.services).build();
     const options: IOptions<LoggerFilterOptions> = provider.resolve(FILTER_OPTIONS_TYPE);
     expect(options.value.rules[0]!.logLevel).toBe(LogLevel.Debug);
   });

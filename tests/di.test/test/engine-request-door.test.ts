@@ -37,6 +37,24 @@ describe('the request as an address', () => {
     expect(seen[0]!.serviceProvider).toBe(provider);
   });
 
+  test('the request is not registered: a user registration at a request address still answers first', () => {
+    const mine = { type: BAR } as unknown as ServiceRequest;
+    const seen: ServiceRequest[] = [];
+    const factory = (request: ServiceRequest) => {
+      seen.push(request);
+      return new Conn();
+    };
+    const provider = Builder.withServices(manifest =>
+      manifest
+        .add(Registration.value(SERVICE_REQUEST, mine))
+        .add(Registration.factory(CONN, factory, Type.func(CONN, [[SERVICE_REQUEST]])))
+    ).build();
+
+    expect(provider.getService(SERVICE_REQUEST)).toBe(mine);
+    expect(provider.getService(CONN)).toBeInstanceOf(Conn);
+    expect(seen).toEqual([mine]);
+  });
+
   test('a ServiceRequest slot under a control ask refuses', () => {
     const engine = new Engine([Registration.factory(CONN, (request: unknown) => request, Type.func(CONN, [[SERVICE_REQUEST]]))]);
     const ask = () => engine.getService(new ControlRequest(CONN), () => undefined);

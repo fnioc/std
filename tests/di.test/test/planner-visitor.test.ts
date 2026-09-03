@@ -332,12 +332,20 @@ describe('a union dependency', () => {
     expect(plan?.kind === 'factory' && plan.factory('bar-value', 'foo-value')).toEqual(['bar-value', 'foo-value']);
   });
 
-  // A union tries each member registration-then-synthesis in ONE PASS, in canonical order — it
-  // does not run a registration phase across every member ahead of a synthesis phase. So when
-  // the earlier-ordered member ([app:Bar, app:Foo]) synthesizes on its own, that answers the
-  // union outright; a later member's own registration ([app:Foo, app:Bar], here) never gets a
-  // turn. This test asserted the two-phase reading the design does not have.
-  test.skip("a member registration outranks another member's synthesis, whatever the member order", () => {});
+  test("an earlier member's synthesis answers before a later member's own registration gets a turn", () => {
+    // A union tries each member registration-then-synthesis in ONE PASS, in canonical order — it
+    // does not run a registration phase across every member ahead of a synthesis phase. So when
+    // [app:Bar, app:Foo] synthesizes on its own, that answers the union outright, and the
+    // registration for [app:Foo, app:Bar] is never consulted.
+    const manifest = Manifest.empty<unknown>()
+      .add(Registration.value(FOO, 'foo-value'))
+      .add(Registration.value(BAR, 'bar-value'))
+      .add(Registration.value(Type.tuple(FOO, BAR), 'registered-pair'));
+    const union = Type.union(Type.tuple(FOO, BAR), Type.tuple(BAR, FOO));
+    const plan = visitorFor(manifest).visit(union);
+    expect(plan?.kind).toBe('factory');
+    expect(plan?.kind === 'factory' && plan.factory('bar-value', 'foo-value')).toEqual(['bar-value', 'foo-value']);
+  });
 });
 
 describe('the cycle guard', () => {

@@ -38,12 +38,9 @@ describe('the leaf kinds', () => {
   });
 
   // IServiceProvider is an ordinary factory registration the engine seeds, its slot answered by
-  // the request in flight — see engine-request-door.test.ts for that path.
-
-  // Scope-opening is a registration each model publishes at its own address (see
-  // standard-lifetime-model.test.ts / tagged-lifetime-model.test.ts), so no plan kind of its
-  // own reaches here.
-  test.skip('service-scope-factory realizes to a working scope opener', () => {});
+  // the request in flight — see engine-request-door.test.ts for that path. A scope factory is a
+  // registration each lifetime model files at its own address (see standard-lifetime.test.ts and
+  // tagged-lifetime.test.ts), so neither has a plan kind of its own.
 });
 
 describe('ctor and factory plans', () => {
@@ -116,11 +113,6 @@ describe('a late-bound plan', () => {
   });
 });
 
-// Per-scope caching lives entirely in the lifetime models (see standard-lifetime-model.test.ts /
-// tagged-lifetime-model.test.ts), so the visitor has nothing of its own to pin down here.
-describe.skip('scoped caching', () => {
-  test.skip('a lifetime-tagged plan realizes once per scope and is cached for the next ask', () => {});
-  test.skip("a fresh scope never sees another scope's cached value", () => {});
-  test.skip('no scope in the walk means no caching, even with a lifetime tag', () => {});
-  test.skip('no lifetime on the plan means no caching, even inside a scope', () => {});
-});
+// Caching lives entirely in the lifetime models' hooks, staged through the door this visitor
+// opens (installed-hooks.test.ts); which scope keeps what is standard-lifetime.test.ts's and
+// tagged-lifetime.test.ts's to pin down, so the visitor has nothing of its own here.

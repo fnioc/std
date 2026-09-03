@@ -4,7 +4,8 @@
 // answer. Disposal and scope validation have suites of their own.
 
 import { Builder, standardLifetime } from '@rhombus-std/di';
-import { type IServiceProvider, type IServiceScopeFactory, Registration, type StandardLifetime } from '@rhombus-std/di.core';
+import { type Addon, type IServiceProvider, type IServiceScopeFactory, type Manifest, Registration, type Request, type StandardLifetime } from '@rhombus-std/di.core';
+import { lifetimeKind, scopeId } from '@rhombus-std/di/private/addons/standard-lifetime/symbols';
 import { Type } from '@rhombus-std/primitives';
 import { describe, expect, test } from 'bun:test';
 
@@ -131,6 +132,36 @@ describe('scoped', () => {
     const inner = openScope(outer);
     expect(inner.resolve(COUNTER)).not.toBe(outer.resolve(COUNTER));
     expect(inner.resolve(COUNTER)).toBe(inner.resolve(COUNTER));
+  });
+
+  test('a wide scoped tree resolves: every one of twelve scoped siblings is shared within a scope and fresh in another', () => {
+    const WIDE = Type.imported('Wide', 'app');
+    const SIBLINGS = Array.from({ length: 12 }, (_, i) => Type.imported(`Sibling${i}`, 'app'));
+    class Sibling {}
+    class Wide {
+      readonly siblings: Sibling[];
+      constructor(...siblings: Sibling[]) {
+        this.siblings = siblings;
+      }
+    }
+    const provider = Builder.useAddon(standardLifetime())
+      .withServices(m =>
+        SIBLINGS
+          .reduce((manifest: Manifest<StandardLifetime>, sibling) => manifest.add(sibling, Sibling, Type.ctor(sibling, [[]]), 'scoped'), m)
+          .add(WIDE, Wide, Type.ctor(WIDE, [SIBLINGS]), 'scoped')
+      )
+      .build();
+    const scope = openScope(provider);
+    const other = openScope(provider);
+
+    const wide = scope.resolve(WIDE) as Wide;
+    expect(wide.siblings).toHaveLength(12);
+    SIBLINGS.forEach((sibling, i) => {
+      expect(wide.siblings[i]).toBeInstanceOf(Sibling);
+      expect(scope.resolve(sibling)).toBe(wide.siblings[i]);
+      expect(other.resolve(sibling)).not.toBe(wide.siblings[i]);
+    });
+    expect((other.resolve(WIDE) as Wide).siblings).toEqual(SIBLINGS.map(sibling => other.resolve(sibling)));
   });
 
   test("resolved from the container's own provider without validation, it is cached with the singletons for every later container ask", () => {
@@ -503,6 +534,53 @@ describe('scopes', () => {
     // from the singleton cache, never from the scope the singleton was first reached through.
     expect(held.resolve(COUNTER)).not.toBe(scoped);
     expect(held.resolve(COUNTER)).toBe(provider.resolve(COUNTER));
+  });
+});
+
+describe('the marker contract', () => {
+  /** An addon composed after the model, so its middleware sits inside the marker and sees every {@link Counter} ask the marker stamped. */
+  function observing(seen: Request[]): Addon<StandardLifetime> {
+    return {
+      registrations: [],
+      middleware: next => request => {
+        if (request.type === COUNTER) {
+          seen.push(request);
+        }
+        return next(request);
+      },
+    };
+  }
+
+  test("an ask through the container's own provider carries the 'singleton' kind and no scope id", () => {
+    const seen: Request[] = [];
+    const provider = Builder.useAddon(standardLifetime())
+      .useAddon(observing(seen))
+      .withServices(m => m.add(COUNTER, Counter, Type.ctor(COUNTER, [[]]), 'transient'))
+      .build();
+
+    provider.resolve(COUNTER);
+    expect(seen).toHaveLength(1);
+    expect(seen[0]![lifetimeKind]).toBe('singleton');
+    expect(seen[0]![scopeId]).toBeUndefined();
+  });
+
+  test("an ask through an opened scope carries the 'scoped' kind and that scope's own id, a Symbol unique per scope", () => {
+    const seen: Request[] = [];
+    const provider = Builder.useAddon(standardLifetime())
+      .useAddon(observing(seen))
+      .withServices(m => m.add(COUNTER, Counter, Type.ctor(COUNTER, [[]]), 'transient'))
+      .build();
+    const scope = openScope(provider);
+    const other = openScope(provider);
+    seen.length = 0;
+
+    scope.resolve(COUNTER);
+    scope.resolve(COUNTER);
+    other.resolve(COUNTER);
+    expect(seen.map(request => request[lifetimeKind])).toEqual(['scoped', 'scoped', 'scoped']);
+    expect(typeof seen[0]![scopeId]).toBe('symbol');
+    expect(seen[1]![scopeId]).toBe(seen[0]![scopeId]);
+    expect(seen[2]![scopeId]).not.toBe(seen[0]![scopeId]);
   });
 });
 

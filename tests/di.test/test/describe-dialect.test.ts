@@ -4,7 +4,7 @@
 // produces, that the two produce the same one, and the refusals a caller typing through `any`
 // can still provoke.
 
-import { di, noopLifetimeAddon } from '@rhombus-std/di';
+import { Builder } from '@rhombus-std/di';
 import { Manifest, Registration } from '@rhombus-std/di.core';
 import { Type } from '@rhombus-std/primitives';
 import { describe, expect, test } from 'bun:test';
@@ -41,9 +41,9 @@ function withClock(): Manifest<'singleton'> {
   return Manifest.empty<'singleton'>().addValue(CLOCK, new FixedClock());
 }
 
-/** Seals `manifest` into a provider through the front door, on the noop lifetime model. */
+/** Seals `manifest` into a provider with no lifetime model: the lifetime each registration names is filed, never read. */
 function toProvider(manifest: Manifest<'singleton'>) {
-  return di.usingLifetimeModel(noopLifetimeAddon()).configureServices(m => m.add(manifest)).build();
+  return Builder.withServices(() => manifest).build();
 }
 
 describe('the impl doors', () => {

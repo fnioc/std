@@ -144,6 +144,28 @@ describe('which scope owns a transient', () => {
     expect(second.disposed).toBe(1);
   });
 
+  test('a transient holding the provider it was resolved from is disposed with its scope, exactly once', () => {
+    const HOLDING = Type.imported('ProviderHolder', 'app');
+    class ProviderHolder {
+      disposed = 0;
+      constructor(readonly provider: IServiceProvider) {}
+      [Symbol.dispose](): void {
+        this.disposed++;
+      }
+    }
+    const provider = Builder.useAddon(standardLifetime())
+      .withServices(m => m.add(HOLDING, ProviderHolder, Type.ctor(HOLDING, [[PROVIDER]]), 'transient'))
+      .build();
+    const scope = openScope(provider);
+    const held = scope.resolve(HOLDING) as ProviderHolder;
+    expect(held.provider).toBe(scope);
+
+    scope[Symbol.dispose]();
+    expect(held.disposed).toBe(1);
+    provider[Symbol.dispose]();
+    expect(held.disposed).toBe(1);
+  });
+
   test('a transient injected into a singleton is owned by the container, wherever the singleton was reached', () => {
     const provider = Builder.useAddon(standardLifetime())
       .withServices(m =>
@@ -556,6 +578,43 @@ describe('after disposal', () => {
     provider.resolve(RECORDER);
     provider[Symbol.dispose]();
     expect(() => provider.resolve(RECORDER)).toThrow(ObjectDisposedError);
+  });
+
+  test('a disposed scope refuses before any construction runs', () => {
+    let built = 0;
+    const provider = Builder.useAddon(standardLifetime())
+      .withServices(m =>
+        m.add(A, () => {
+          built++;
+          return new Recorder();
+        }, Type.func(A, [[]]), 'transient')
+      )
+      .build();
+    const scope = openScope(provider);
+    scope.resolve(A);
+    expect(built).toBe(1);
+
+    scope[Symbol.dispose]();
+    expect(() => scope.resolve(A)).toThrow(ObjectDisposedError);
+    expect(built).toBe(1);
+  });
+
+  test('the disposed container refuses before any construction runs', () => {
+    let built = 0;
+    const provider = Builder.useAddon(standardLifetime())
+      .withServices(m =>
+        m.add(A, () => {
+          built++;
+          return new Recorder();
+        }, Type.func(A, [[]]), 'transient')
+      )
+      .build();
+    provider.resolve(A);
+    expect(built).toBe(1);
+
+    provider[Symbol.dispose]();
+    expect(() => provider.resolve(A)).toThrow(ObjectDisposedError);
+    expect(built).toBe(1);
   });
 
   test('resolving from a scope that was open when the container was disposed refuses', () => {

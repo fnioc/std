@@ -1,7 +1,9 @@
-// Behaviour tests proving the standard model's captivity sweep leaves a value registration's
-// product alone: it has no lifetime to capture, so it never becomes a captor or a captive.
+// Behaviour tests for how a value registration meets validateScopes over the standard lifetime
+// model: a value names no lifetime and has no dependencies to plan, so it is never a captive, and
+// standing beside a real captive it never hides one.
 
-import { di, standardLifetimeAddon } from '@rhombus-std/di';
+import { Builder, ScopeValidationError, standardLifetime, validateBuildability, validateScopes } from '@rhombus-std/di';
+import { ManifestValidationError } from '@rhombus-std/di.core';
 import { Type } from '@rhombus-std/primitives';
 import { describe, expect, test } from 'bun:test';
 
@@ -15,11 +17,11 @@ class Holder {
   constructor(readonly label: unknown, readonly counter: unknown) {}
 }
 
-describe('captivity sweep and value registrations', () => {
-  test('a singleton depending on a plain value builds without a captivity error', () => {
-    const provider = di.usingLifetimeModel(standardLifetimeAddon())
-      .configureServices(manifest =>
-        manifest
+describe('a value registration under the captive check', () => {
+  test('a singleton consuming a value builds and resolves: a value is no captive', () => {
+    const provider = Builder.useAddon(validateBuildability()).useAddon(validateScopes()).useAddon(standardLifetime())
+      .withServices(m =>
+        m
           .addValue(LABEL, 'checkout')
           .add(COUNTER, Counter, Type.ctor(COUNTER, [[]]), 'singleton')
           .add(HOLDER, Holder, Type.ctor(HOLDER, [[LABEL, COUNTER]]), 'singleton')
@@ -31,16 +33,25 @@ describe('captivity sweep and value registrations', () => {
     expect(holder.counter).toBeInstanceOf(Counter);
   });
 
-  test('a value dependency sitting beside a real captive pair does not mask it', () => {
-    expect(() =>
-      di.usingLifetimeModel(standardLifetimeAddon())
-        .configureServices(manifest =>
-          manifest
+  test('a value beside a scoped dependency of a singleton does not hide the captive', () => {
+    let caught: unknown;
+    try {
+      Builder.useAddon(validateBuildability()).useAddon(validateScopes()).useAddon(standardLifetime())
+        .withServices(m =>
+          m
             .addValue(LABEL, 'checkout')
             .add(COUNTER, Counter, Type.ctor(COUNTER, [[]]), 'scoped')
             .add(HOLDER, Holder, Type.ctor(HOLDER, [[LABEL, COUNTER]]), 'singleton')
         )
-        .build()
-    ).toThrow();
+        .build();
+    } catch (error) {
+      caught = error;
+    }
+
+    expect(caught).toBeInstanceOf(ManifestValidationError);
+    const failures = (caught as ManifestValidationError).failures;
+    expect(failures.map(failure => failure.address)).toEqual([HOLDER]);
+    expect(failures[0]!.error).toBeInstanceOf(ScopeValidationError);
+    expect((failures[0]!.error as ScopeValidationError).address).toBe(COUNTER);
   });
 });

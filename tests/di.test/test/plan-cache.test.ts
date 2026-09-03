@@ -2,14 +2,14 @@
 // manifest it was built from; a latebound call resolves against that manifest composed with the
 // call's own arguments, which is a different set of registrations and so a different plan.
 
-import { di, noopLifetimeAddon } from '@rhombus-std/di';
+import { Builder } from '@rhombus-std/di';
 import { Manifest, Registration } from '@rhombus-std/di.core';
 import { Type } from '@rhombus-std/primitives';
 import { describe, expect, test } from 'bun:test';
 
-/** Seals `manifest` into a provider through the front door, on the noop lifetime model. */
+/** Seals `manifest` into a provider with no lifetime model: the lifetime each registration names is filed, never read. */
 function toProvider(manifest: Manifest<string>) {
-  return di.usingLifetimeModel(noopLifetimeAddon()).configureServices(m => m.add(manifest)).build();
+  return Builder.withServices(() => manifest).build();
 }
 
 const CONN = Type.imported('Conn', 'app');

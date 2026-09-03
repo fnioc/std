@@ -4,7 +4,7 @@
 // the options resolve), and the ILoggerFactory injection.
 
 import { getMemoryCacheManifest, MEMORY_CACHE_OPTIONS_ACCESSOR_TYPE, MEMORY_CACHE_TYPE, MemoryCache, MemoryCacheOptions } from '@rhombus-std/caching.memory';
-import { di, noopLifetimeAddon } from '@rhombus-std/di';
+import { Builder, standardLifetime } from '@rhombus-std/di';
 import { Manifest } from '@rhombus-std/di.core';
 import { LOGGER_FACTORY_TYPE, NullLogger } from '@rhombus-std/logging';
 import type { ILogger, ILoggerFactory, ILoggerProvider } from '@rhombus-std/logging.core';
@@ -22,8 +22,20 @@ class RecordingLoggerFactory implements ILoggerFactory {
 }
 
 describe('getMemoryCacheManifest', () => {
-  // Needs the standard lifetime model's singleton caching, not yet wired for this suite.
-  test.skip('registers a resolvable IMemoryCache singleton', () => {});
+  test('registers a resolvable IMemoryCache singleton', () => {
+    const services = getMemoryCacheManifest();
+
+    const provider = Builder.withServices(() => services).useAddon(standardLifetime()).build();
+    const cache: MemoryCache = provider.resolve(MEMORY_CACHE_TYPE);
+    expect(cache).toBeInstanceOf(MemoryCache);
+    // Singleton: the same instance on every resolve.
+    const cacheAgain: MemoryCache = provider.resolve(MEMORY_CACHE_TYPE);
+    expect(cacheAgain).toBe(cache);
+
+    // The resolved cache actually works.
+    cache.set('key', 'value');
+    expect(cache.get<string>('key')).toBe('value');
+  });
 
   test('setup joins the options pipeline lazily and configures the cache', () => {
     let ran = 0;
@@ -36,7 +48,7 @@ describe('getMemoryCacheManifest', () => {
       options.trackStatistics = true;
     });
 
-    const scope = di.usingLifetimeModel(noopLifetimeAddon()).usingManifest(returned).build();
+    const scope = Builder.withServices(() => returned).build();
     // Lazy: the configure step has not run at registration/build time.
     expect(ran).toBe(0);
 
@@ -52,7 +64,7 @@ describe('getMemoryCacheManifest', () => {
       options.name = 'configured';
     });
 
-    const scope = di.usingLifetimeModel(noopLifetimeAddon()).usingManifest(services).build();
+    const scope = Builder.withServices(() => services).build();
     const options: { value: MemoryCacheOptions; } = scope.resolve(MEMORY_CACHE_OPTIONS_ACCESSOR_TYPE);
     expect(options.value).toBeInstanceOf(MemoryCacheOptions);
     expect(options.value.name).toBe('configured');
@@ -63,7 +75,7 @@ describe('getMemoryCacheManifest', () => {
     let services: Manifest<unknown> = Manifest.empty<unknown>().addValue(LOGGER_FACTORY_TYPE, factory);
     services = services.add(getMemoryCacheManifest());
 
-    di.usingLifetimeModel(noopLifetimeAddon()).usingManifest(services).build().resolve(MEMORY_CACHE_TYPE);
+    Builder.withServices(() => services).build().resolve(MEMORY_CACHE_TYPE);
 
     expect(factory.categories).toEqual(['MemoryCache']);
   });
@@ -71,7 +83,7 @@ describe('getMemoryCacheManifest', () => {
   test('resolves without a registered ILoggerFactory (null-logger fallback)', () => {
     const services = getMemoryCacheManifest();
 
-    const cache: MemoryCache = di.usingLifetimeModel(noopLifetimeAddon()).usingManifest(services).build()
+    const cache: MemoryCache = Builder.withServices(() => services).build()
       .resolve(MEMORY_CACHE_TYPE);
     expect(cache).toBeInstanceOf(MemoryCache);
   });
@@ -85,7 +97,7 @@ describe('getMemoryCacheManifest', () => {
     // unconditionally -- so the sentinel already held for MEMORY_CACHE_TYPE survives.
     services = services.tryAdd(...getMemoryCacheManifest());
 
-    const resolved = di.usingLifetimeModel(noopLifetimeAddon()).usingManifest(services).build().resolve(MEMORY_CACHE_TYPE);
+    const resolved = Builder.withServices(() => services).build().resolve(MEMORY_CACHE_TYPE);
     expect(resolved).toBe(sentinel);
   });
 });

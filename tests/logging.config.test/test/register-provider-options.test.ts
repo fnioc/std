@@ -10,7 +10,7 @@
 // template), so nothing touches configuration until `IOptions<T>` materializes.
 
 import { ConfigBuilder, type IConfigRoot } from '@rhombus-std/config';
-import { di, noopLifetimeAddon } from '@rhombus-std/di';
+import { Builder } from '@rhombus-std/di';
 import { Manifest } from '@rhombus-std/di.core';
 import { LoggingBuilder } from '@rhombus-std/logging';
 import { LoggerProviderOptions } from '@rhombus-std/logging.config';
@@ -42,7 +42,7 @@ describe('LoggerProviderOptions.getProviderOptionsManifest', () => {
     services = services.addOptions(OPTIONS_TYPE, () => ({ Format: 'text' }));
     services = services.add(LoggerProviderOptions.getProviderOptionsManifest(OPTIONS_TYPE, FAKE_PROVIDER_TYPE));
 
-    const provider = di.usingLifetimeModel(noopLifetimeAddon()).usingManifest(services).build();
+    const provider = Builder.withServices(() => services).build();
     const options: IOptions<FakeProviderOptions> = provider.resolve(OPTIONS_ACCESSOR_TYPE);
 
     // Only FakeProvider's section binds; the configure step deep-merges onto
@@ -59,7 +59,7 @@ describe('LoggerProviderOptions.getProviderOptionsManifest', () => {
     services = services.addOptions(OPTIONS_TYPE, () => ({ Format: 'text' }));
     services = services.add(LoggerProviderOptions.getProviderOptionsManifest(OPTIONS_TYPE, FAKE_PROVIDER_TYPE));
 
-    const provider = di.usingLifetimeModel(noopLifetimeAddon()).usingManifest(services).build();
+    const provider = Builder.withServices(() => services).build();
     const options: IOptions<FakeProviderOptions> = provider.resolve(OPTIONS_ACCESSOR_TYPE);
     expect(options.value.Format).toBe('json');
 
@@ -88,7 +88,7 @@ describe('LoggerProviderOptions.getProviderOptionsManifest', () => {
       value.MaxDepth = '9';
     }));
 
-    const provider = di.usingLifetimeModel(noopLifetimeAddon()).usingManifest(services).build();
+    const provider = Builder.withServices(() => services).build();
     const options: IOptions<FakeProviderOptions> = provider.resolve(OPTIONS_ACCESSOR_TYPE);
 
     expect(options.value).toEqual({ Format: 'json', MaxDepth: '9' });

@@ -1,5 +1,4 @@
-// Side-effect: installs `build` onto di.core's Manifest.
-import { di, noopLifetimeAddon } from '@rhombus-std/di';
+import { Builder } from '@rhombus-std/di';
 import { DefaultManifest, type Manifest } from '@rhombus-std/di.core';
 import type { IOptions } from '@rhombus-std/options';
 import { Type } from '@rhombus-std/primitives';
@@ -645,13 +644,13 @@ describe.skipIf(!toolchainReady)('generic inline stage — lookup parity (W5)', 
 
     let keyed: Manifest<'singleton'> = new DefaultManifest<'singleton'>();
     keyed = keyed.addValue(composed, marker);
-    const keyedProvider = di.usingLifetimeModel(noopLifetimeAddon()).usingManifest(keyed).build();
+    const keyedProvider = Builder.withServices(() => keyed).build();
     expect(keyedProvider.resolve(composed)).toBe(marker);
 
     // An unkeyed registration of the same base does not answer the keyed lookup.
     let unkeyed: Manifest<'singleton'> = new DefaultManifest<'singleton'>();
     unkeyed = unkeyed.addValue(base, marker);
-    const unkeyedProvider = di.usingLifetimeModel(noopLifetimeAddon()).usingManifest(unkeyed).build();
+    const unkeyedProvider = Builder.withServices(() => unkeyed).build();
     expect(unkeyedProvider.resolve(Type.union(composed, Type.typeLiteral(undefined)))).toBeUndefined();
   });
 });
@@ -798,7 +797,7 @@ describe.skipIf(!toolchainReady)('generic inline stage — addOptions options wi
     services = services.addValue(optionsType, value);
     services = services.addOptions(optionsType);
 
-    const provider = di.usingLifetimeModel(noopLifetimeAddon()).usingManifest(services).build();
+    const provider = Builder.withServices(() => services).build();
     const options = provider.resolve(optionsAddressType(optionsType)) as IOptions<UserOptions>;
     // IOptions<T> resolves to a value that IS the registered T.
     expect(options.value).toBe(value);

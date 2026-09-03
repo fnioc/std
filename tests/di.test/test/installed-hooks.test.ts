@@ -101,6 +101,20 @@ describe('staged vs installed hooks', () => {
     expect(log).toEqual(['installed:app:Conn']);
   });
 
+  test('the chain never seals: hooks installed after asks have run fire for the next ask', () => {
+    const log: string[] = [];
+    const { head, control } = engineFor([Registration.ctor(CONN, Conn, Type.ctor(CONN, [[]]))]);
+    const provider = new ServiceProvider(head);
+
+    provider.getService(CONN);
+    provider.getService(CONN);
+    expect(log).toEqual([]);
+
+    control.installHooks(watching('installed', log));
+    provider.getService(CONN);
+    expect(log).toEqual(['installed:app:Conn']);
+  });
+
   test("a latebound minted inside a layer and invoked later still runs that layer's hooks", () => {
     const log: string[] = [];
     const { head, control } = engineFor([Registration.ctor(CONN, Conn, Type.ctor(CONN, [[]]))]);
@@ -148,6 +162,27 @@ describe('where construction hooks fire', () => {
 
     new ServiceProvider(head).getService(OUTER);
     expect(log).toEqual(['installed:app:Outer', 'installed:app:Conn']);
+  });
+
+  test('the consumer a construction sees is the nearest registered ancestor: a collection node between them is skipped', () => {
+    const states: Array<[string, unknown]> = [];
+    const { head, control } = engineFor([
+      Registration.ctor(CONN, Conn, Type.ctor(CONN, [[]])),
+      Registration.ctor(WIDGET, Widget, Type.ctor(WIDGET, [[Type.iterable(CONN)]])),
+    ]);
+    control.installHooks({
+      beforeConstruct: (construction: Hooks.Construction) => {
+        states.push([Type.stringify(construction.populatedAddress), construction.state]);
+        return { state: `under ${Type.stringify(construction.populatedAddress)}` };
+      },
+    });
+
+    const widget = new ServiceProvider(head).getService(WIDGET) as Widget;
+    expect([...(widget.conn as Iterable<unknown>)]).toHaveLength(1);
+    expect(states).toEqual([
+      ['app:Widget', undefined],
+      ['app:Conn', 'under app:Widget'],
+    ]);
   });
 
   test('afterConstruct is skipped when beforeConstruct answered a result', () => {

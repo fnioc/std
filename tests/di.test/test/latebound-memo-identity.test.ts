@@ -7,7 +7,7 @@ import { ControlRequest, Manifest, Registration, type Request } from '@rhombus-s
 import { Engine } from '@rhombus-std/di/private/internal/Engine';
 import { Plan } from '@rhombus-std/di/private/internal/Plan/Plan';
 import { PlannerVisitor } from '@rhombus-std/di/private/internal/Plan/PlannerVisitor';
-import { type FunctionType, Type } from '@rhombus-std/primitives';
+import { type FunctionType, type TupleType, Type } from '@rhombus-std/primitives';
 import { afterEach, describe, expect, spyOn, test } from 'bun:test';
 
 /** The request these tests realize under — nothing here reads `type`. */
@@ -139,8 +139,9 @@ describe('a rest-only row called with no args', () => {
 
 describe('the interned row array', () => {
   test('is one identity however it is spelled', () => {
-    const spelled = Type.tuple({ members: [CONN, WIDGET] }).members;
-    expect(Type.tuple({ members: [CONN, WIDGET] }).members).toBe(spelled);
+    // The spec form answers a tuple here, since it names no rest; its members are the same row.
+    const spelled = (Type.tuple({ members: [CONN, WIDGET], rest: undefined }) as TupleType).members;
+    expect((Type.tuple({ members: [CONN, WIDGET], rest: undefined }) as TupleType).members).toBe(spelled);
     expect(Type.tuple(CONN, WIDGET).members).toBe(spelled);
     expect(Type.tuple(...[CONN], ...Array.from({ length: 1 }, () => WIDGET)).members).toBe(spelled);
   });
