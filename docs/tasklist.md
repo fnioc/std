@@ -2481,11 +2481,11 @@ Rulings on the open di items, each against the section that holds it. State is t
 
 ## Queue — publish minified (owner 2026-09-03)
 
-Owner: "for our new transform package, I want it to publish minified (e.g. `github.com/go-toolsmith/minformat`). I want everything that is published minified, actually." RULED 2026-09-03: "use sourcemaps. include everything you can sourcemap, plus go (revertable with gofmt)."
+Owner: "for our new transform package, I want it to publish minified (e.g. `github.com/go-toolsmith/minformat`). I want everything that is published minified, actually." RULED 2026-09-03: "use sourcemaps. include everything you can sourcemap, plus go (revertable with gofmt)." Refined the same day: minified output keeps DOC comments only ("most tools have options to keep doc comments"); every non-doc comment is stripped ("removing overly verbose non-doc comments is essential"). Nothing is excluded: everything published minifies.
 
-- JS bundles minify via `bun build`, each with its `.js.map` published beside it.
-- Rolled `.d.ts` files stay formatted: no map restores stripped TSDoc.
-- `*.extras` `src/` templates stay formatted: the inline stage pastes their bodies into consumer code and nothing maps that back.
-- `@rhombus-std/transforms` publishes its Go from a staged copy run through `minformat`, pinned per-project through mise's `go:` backend; `gofmt` reverts it.
+- JS bundles minify via `bun build`, each with its `.js.map` published beside it; doc comments kept if bun has the option.
+- Rolled `.d.ts` files minify keeping JSDoc (candidate: `dts-minify` with its keep-JSDoc option), inside the build script.
+- `*.extras` `src/` templates minify keeping doc comments, pending a tool that keeps `.ts` syntax (research in flight).
+- `@rhombus-std/transforms` publishes its Go from a staged copy run through `minformat`, pinned per-project through mise's `go:` backend; `gofmt` reverts it; doc comments kept if the tool allows (research in flight; the cloud lane runs on the earlier wording and is corrected after).
 
 Not started; sequenced after the exports-audit lane (shared files: `scripts/build-lib.ts`, `transforms/package.json`, the derive script).
