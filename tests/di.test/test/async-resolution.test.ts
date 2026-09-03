@@ -81,20 +81,27 @@ describe('resolveAsync gathers one boundary at a time', () => {
   });
 });
 
-describe('an await with nothing to enclose it', () => {
+describe('the sync door has no async failure mode', () => {
   /** A synchronous dependent of the settled Clock, which only Promise<Clock> produces. */
   class SyncConsumer {
     constructor(readonly clock: Clock) {}
   }
 
-  test('a synchronous dependency on a value only its promised form produces is unsatisfiable', () => {
+  test('an optional dependency only a promise form produces falls back rather than failing', () => {
+    // With nothing enclosing the await, the settled value simply is not available synchronously, so
+    // the optional falls through to its `undefined` alternative like any unmet member.
+    const manifest = Manifest.empty<unknown>().addValue(Type.promise(CLOCK), Promise.resolve(new Clock()));
+    const provider = toProvider(manifest);
+
+    expect(provider.resolve(Type.union(CLOCK, Type.typeLiteral(undefined)))).toBeUndefined();
+  });
+
+  test('a required synchronous dependency on such a value is plainly unsatisfiable', () => {
     const manifest = Manifest.empty<unknown>()
       .addValue(Type.promise(CLOCK), Promise.resolve(new Clock()))
       .add(Registration.ctor(PAIR, SyncConsumer, Type.ctor(PAIR, [[CLOCK]])));
-    const provider = toProvider(manifest);
 
-    expect(() => provider.resolve(PAIR)).toThrow(UnsatisfiableError);
-    expect(() => provider.resolve(PAIR)).toThrow('nothing encloses an await to hoist it');
+    expect(() => toProvider(manifest).resolve(PAIR)).toThrow(UnsatisfiableError);
   });
 });
 

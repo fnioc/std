@@ -1,4 +1,4 @@
-import { type ControlRequest, CycleError, type Hooks, type Invoker, type Registration, type Request, type ServiceRequest, UnsatisfiableError } from '@rhombus-std/di.core';
+import { type ControlRequest, CycleError, type Hooks, type Invoker, type Registration, type Request, type ServiceRequest } from '@rhombus-std/di.core';
 import { type AbstractConstructorType, type ArrayType, type ConstructorType, type FunctionType, type GenericType, type GlobalType, type ImportedType, type IntersectionType, type IterableType,
   type ObjectType, type TagType, type TupleType, Type, type TypeLiteralType, type UnionType } from '@rhombus-std/primitives';
 import { type Generic, typefor } from '@rhombus-std/primitives.extras';
@@ -94,12 +94,9 @@ export class PlannerVisitor extends Type.Visitor<Plan | undefined, PlanningConte
   }
 
   /**
-   * The awaited answer for a missed `address`: when `Promise<address>` is registered, the settled
-   * value is served by awaiting that promise, hoisted onto the enclosing boundary. With no boundary
-   * to hoist onto, the await has nothing to wait in.
-   *
-   * @throws {UnsatisfiableError} when only the promised form is registered and nothing encloses an
-   * await to hoist it.
+   * The awaited answer for a missed `address`: inside a boundary, a `Promise<address>` registration
+   * serves the settled value, its await hoisted onto that boundary. Outside one there is nothing to
+   * wait in, so the near miss stays a miss rather than becoming an answer.
    */
   #awaitMissing(address: Type, context: PlanningContext): AsyncPlan | undefined {
     if (Type.isPromiseLike(address)) {
@@ -111,7 +108,7 @@ export class PlannerVisitor extends Type.Visitor<Plan | undefined, PlanningConte
       return undefined;
     }
     if (context.asyncDescendants === undefined) {
-      throw new UnsatisfiableError(address, `only ${promised} is registered, and nothing encloses an await to hoist it`);
+      return undefined;
     }
     return this.#visitAsync(address, context);
   }
@@ -340,23 +337,9 @@ export class PlannerVisitor extends Type.Visitor<Plan | undefined, PlanningConte
    * serving as the fallback of an optional dependency without being a special case.
    */
   protected override visitUnion(type: UnionType, context: PlanningContext): Plan | undefined {
-    // Members are alternatives, so a member served only by an await with nothing to enclose it is
-    // simply not available here — the union moves on to whatever else answers, a `undefined` literal
-    // among them. An unmet await surfaces at the dependency that needed it, never at a union that
-    // had another way to answer.
-    for (const member of type.members) {
-      try {
-        const plan = this.visit(member, context);
-        if (plan !== undefined) {
-          return plan;
-        }
-      } catch (error) {
-        if (!(error instanceof UnsatisfiableError)) {
-          throw error;
-        }
-      }
-    }
-    return undefined;
+    return Iterator.from(type.members)
+      .map(member => this.visit(member, context))
+      .find(Boolean);
   }
 
   /**
