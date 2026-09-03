@@ -414,6 +414,54 @@ describe('the cycle guard', () => {
     expect(visitorFor(manifest).visit(LOOP)).toBeUndefined();
   });
 
+  test('a self address inside a union slot resolves beneath', () => {
+    const manifest = Manifest.empty<unknown>()
+      .add(Registration.value(LOOP, 'older'))
+      .add(Registration.ctor(LOOP, Loop, Type.ctor(LOOP, [[Type.union(LOOP, Type.typeLiteral(undefined))]])));
+    const plan = visitorFor(manifest).visit(LOOP) as RegisteredCtorPlan;
+    expect(plan.kind).toBe('registered-ctor');
+    expect(plan.args[0]).toEqual(Plan.constant('older'));
+  });
+
+  test('a self address inside a union slot falls through to undefined when nothing older exists', () => {
+    const manifest = Manifest.empty<unknown>().add(Registration.ctor(LOOP, Loop, Type.ctor(LOOP, [[Type.union(LOOP, Type.typeLiteral(undefined))]])));
+    const plan = visitorFor(manifest).visit(LOOP) as RegisteredCtorPlan;
+    expect(plan.kind).toBe('registered-ctor');
+    expect(plan.args[0]).toEqual(Plan.constant(undefined));
+  });
+
+  test('a self address inside a tuple slot resolves beneath', () => {
+    const manifest = Manifest.empty<unknown>()
+      .add(Registration.value(LOOP, 'older'))
+      .add(Registration.value(BAR, 'bar'))
+      .add(Registration.ctor(LOOP, Loop, Type.ctor(LOOP, [[Type.tuple(LOOP, BAR)]])));
+    const plan = visitorFor(manifest).visit(LOOP) as RegisteredCtorPlan;
+    const pair = plan.args[0]!;
+    expect(pair.kind).toBe('factory');
+    expect(pair.kind === 'factory' && pair.args).toEqual([Plan.constant('older'), Plan.constant('bar')]);
+  });
+
+  test('a decorator chain resolves each beneath itself', () => {
+    const manifest = Manifest.empty<unknown>()
+      .add(Registration.value(LOOP, 'base'))
+      .add(Registration.ctor(LOOP, Loop, Type.ctor(LOOP, [[LOOP]])))
+      .add(Registration.ctor(LOOP, Loop, Type.ctor(LOOP, [[LOOP]])));
+    const outer = visitorFor(manifest).visit(LOOP) as RegisteredCtorPlan;
+    const middle = outer.args[0] as RegisteredCtorPlan;
+    expect(middle.kind).toBe('registered-ctor');
+    expect(middle.args[0]).toEqual(Plan.constant('base'));
+  });
+
+  test('an indirect loop through another registered node still throws', () => {
+    class Bar {
+      constructor(readonly loop: unknown) {}
+    }
+    const manifest = Manifest.empty<unknown>()
+      .add(Registration.ctor(LOOP, Loop, Type.ctor(LOOP, [[BAR]])))
+      .add(Registration.ctor(BAR, Bar, Type.ctor(BAR, [[LOOP]])));
+    expect(() => visitorFor(manifest).visit(LOOP)).toThrow(CycleError);
+  });
+
   test('a longer loop names every type on the path', () => {
     const A = Type.imported('A', 'app');
     const B = Type.imported('B', 'app');

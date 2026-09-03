@@ -20,6 +20,7 @@ const BAR = Type.imported('Bar', 'app');
 
 class Conn {}
 class Foo {}
+class Bar {}
 
 describe('the request as an address', () => {
   test("a factory slot naming ServiceRequest receives the ask's own request", () => {
@@ -129,6 +130,38 @@ describe('shadowing resolves beneath', () => {
     ).build();
 
     expect(provider.getService(FOO)).toBe('([base])');
+  });
+
+  test('a self address inside a union slot resolves beneath', () => {
+    const inner = new Foo();
+    const provider = Builder.withServices(manifest =>
+      manifest
+        .add(Registration.value(FOO, inner))
+        .add(Registration.factory(FOO, (foo: Foo | undefined) => ({ decorated: foo }), Type.func(FOO, [[Type.union(FOO, Type.typeLiteral(undefined))]])))
+    ).build();
+
+    expect(provider.getService(FOO).decorated).toBe(inner);
+  });
+
+  test('a self address inside a union slot falls through to undefined when nothing older exists', () => {
+    const provider = Builder.withServices(manifest =>
+      manifest.add(Registration.factory(FOO, (foo: Foo | undefined) => ({ decorated: foo }), Type.func(FOO, [[Type.union(FOO, Type.typeLiteral(undefined))]])))
+    ).build();
+
+    expect(provider.getService(FOO).decorated).toBeUndefined();
+  });
+
+  test('a self address inside a tuple slot resolves beneath', () => {
+    const inner = new Foo();
+    const bar = new Bar();
+    const provider = Builder.withServices(manifest =>
+      manifest
+        .add(Registration.value(FOO, inner))
+        .add(Registration.value(BAR, bar))
+        .add(Registration.factory(FOO, (pair: [Foo, Bar]) => ({ decorated: pair }), Type.func(FOO, [[Type.tuple(FOO, BAR)]])))
+    ).build();
+
+    expect(provider.getService(FOO).decorated).toEqual([inner, bar]);
   });
 
   test('a self-named slot with nothing older throws instead of delegating', () => {

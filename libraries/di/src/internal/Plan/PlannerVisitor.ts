@@ -10,11 +10,13 @@ import { type AsyncPlan, Plan } from './Plan.js';
 
 /**
  * What a planning walk threads through {@link PlannerVisitor.visit}: the collection point of the
- * nearest enclosing await, onto which an awaited dependency hoists itself. Absent while nothing
- * encloses the walk in a promise.
+ * nearest enclosing await, onto which an awaited dependency hoists itself, and the registered node
+ * whose slots are lowering, beneath which a slot naming that node's own address resolves. Each is
+ * absent while nothing encloses the walk in a promise or a registered node.
  */
 export interface PlanningContext {
   asyncDescendants?: AsyncPlan[];
+  planning?: { readonly address: Type; readonly index: number; };
 }
 
 /**
@@ -52,6 +54,9 @@ export class PlannerVisitor extends Type.Visitor<Plan | undefined, PlanningConte
   }
 
   public override visit(address: Type, context: PlanningContext = {}): Plan | undefined {
+    if (address === context.planning?.address) {
+      return this.visitShadow(address, context);
+    }
     if (Type.isOpen(address)) {
       return undefined;
     }
@@ -167,18 +172,20 @@ export class PlannerVisitor extends Type.Visitor<Plan | undefined, PlanningConte
   }
 
   /**
-   * The answer for `address` among only the registrations after `position` — how a slot naming
-   * its own registration's address resolves what that registration shadows. No guard frame opens
-   * for the address itself (the walk that reached the slot already holds it); the strictly
-   * growing position bounds the nesting, and a dependency elsewhere in the graph that loops back
-   * still trips the guard.
+   * The answer for the address of the registered node whose slots are lowering, among only the
+   * registrations after it — how a slot naming its own registration's address, at any depth
+   * inside the slot, resolves what that registration shadows. No guard frame opens for the
+   * address itself (the walk that reached the slot already holds it); each registration matched
+   * beneath replaces the frame with its own higher position, so the nesting is bounded, and a
+   * dependency elsewhere in the graph that loops back still trips the guard.
    *
    * @remarks
    * No synthesis stands beneath the matches: a self-named slot with nothing older to answer it is
-   * unsatisfiable.
+   * unsatisfiable on its own, though a slot that admits something else — `Foo | undefined` — still
+   * falls through to that.
    */
-  visitBeneath(address: Type, position: number, context: PlanningContext): Plan | undefined {
-    const plan = this.#registry.getMatches(address, undefined, position + 1)
+  visitShadow(address: Type, context: PlanningContext): Plan | undefined {
+    const plan = this.#registry.getMatches(address, undefined, context.planning!.index + 1)
       .map(match => Plan.fromMatch(address, match, this, context))
       .find(isDefined);
     if (plan === undefined && this.#diagnostics.missingDependency === undefined) {

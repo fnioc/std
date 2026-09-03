@@ -354,11 +354,11 @@ export namespace Plan {
     const [kind, narrowed] = Registration.kind(registration);
     switch (kind) {
       case 'ctor': {
-        const lowered = lowerSignature(narrowed.ctorType.signatures, Object.create(null), visitor);
+        const lowered = lowerSignature(narrowed.ctorType.signatures, Object.create(null), visitor, {});
         return lowered && Plan.ctor(narrowed.ctor, lowered[0], lowered[1]);
       }
       case 'factory': {
-        const lowered = lowerSignature(narrowed.factoryType.signatures, Object.create(null), visitor);
+        const lowered = lowerSignature(narrowed.factoryType.signatures, Object.create(null), visitor, {});
         return lowered && Plan.factory(narrowed.factory, lowered[0], lowered[1]);
       }
       case 'value':
@@ -374,22 +374,20 @@ export namespace Plan {
    * producing it. Undefined when no signature has every arg satisfiable.
    *
    * @remarks
-   * A slot naming the registration's own address resolves BENEATH it: matching starts after the
-   * registration being planned, so a factory for `Foo` shaped `Func<[Foo], Foo>` receives what it
-   * shadows rather than itself.
+   * The registration's own address resolves BENEATH it wherever a slot names it: the slots lower
+   * with the node as the walk's planning frame, and matching for that address starts after the
+   * registration being planned, so a factory for `Foo` shaped `Func<[Foo], Foo>` — or
+   * `Func<[Foo | undefined], Foo>` — receives what it shadows rather than itself.
    */
   export function fromMatch(populatedAddress: Type, match: Match, visitor: PlannerVisitor, context: PlanningContext): Plan | undefined {
     const { registration: wideRegistration, generics } = match;
-    const slots: SlotLowering = {
-      visit: address => address === populatedAddress ? visitor.visitBeneath(address, match.index, context) : visitor.visit(address, context),
-    };
     const [kind, registration] = Registration.kind(wideRegistration);
     // The node is made before its slots lower, so the plan hooks receive the very node the plan
     // will hold and their answer stands while the dependencies are planned.
     switch (kind) {
       case 'ctor': {
         const node: Making<RegisteredCtorPlan> = { kind: 'registered-ctor', ctor: registration.ctor, args: [], rest: undefined, populatedAddress, registration };
-        const lowered = lowerPlanned(node, registration.ctorType.signatures, generics, slots, visitor);
+        const lowered = lowerPlanned(node, match.index, registration.ctorType.signatures, generics, visitor, context);
         if (lowered === undefined) {
           return undefined;
         }
@@ -398,7 +396,7 @@ export namespace Plan {
       }
       case 'factory': {
         const node: Making<RegisteredFactoryPlan> = { kind: 'registered-factory', factory: registration.factory, args: [], rest: undefined, populatedAddress, registration };
-        const lowered = lowerPlanned(node, registration.factoryType.signatures, generics, slots, visitor);
+        const lowered = lowerPlanned(node, match.index, registration.factoryType.signatures, generics, visitor, context);
         if (lowered === undefined) {
           return undefined;
         }
@@ -416,25 +414,27 @@ export namespace Plan {
   /** A plan node while it is being made — its slots land once they have lowered. */
   type Making<Node> = { -readonly [K in keyof Node]: Node[K]; };
 
-  /** Lowers a registered node's signature under the plan hooks fired for the node. */
+  /**
+   * Lowers a registered node's signature with the node — its address and its position `index` in
+   * the registry — as the walk's planning frame, under the plan hooks fired for the node.
+   */
   function lowerPlanned(
     node: Making<RegisteredCtorPlan> | Making<RegisteredFactoryPlan>,
+    index: number,
     signatures: TupleType | ListType | UnionType,
     generics: Readonly<Record<string, Type>>,
-    slots: SlotLowering,
     visitor: PlannerVisitor,
+    context: PlanningContext,
   ): [args: Plan[], rest: Plan | undefined] | undefined {
+    const enclosing = context.planning;
+    context.planning = { address: node.populatedAddress, index };
     const previous = visitor.openPlanned(node, node.populatedAddress, node.registration);
     try {
-      return lowerSignature(signatures, generics, slots);
+      return lowerSignature(signatures, generics, visitor, context);
     } finally {
       visitor.closePlanned(previous);
+      context.planning = enclosing;
     }
-  }
-
-  /** What lowers one slot: the planner's own visit, or a view routing a self-named slot beneath its registration. */
-  interface SlotLowering {
-    visit(address: Type): Plan | undefined;
   }
 
   /**
@@ -447,10 +447,11 @@ export namespace Plan {
   function lowerSignature(
     signatures: TupleType | ListType | UnionType,
     generics: Readonly<Record<string, Type>>,
-    visitor: SlotLowering,
+    visitor: PlannerVisitor,
+    context: PlanningContext,
   ): [args: Plan[], rest: Plan | undefined] | undefined {
     return Iterator.from(Type.signatureRows(signatures).toSorted((a, b) => fixedLength(b) - fixedLength(a)))
-      .map(row => lowerRow(row, generics, visitor))
+      .map(row => lowerRow(row, generics, visitor, context))
       .find(isDefined);
   }
 
@@ -462,15 +463,16 @@ export namespace Plan {
   function lowerRow(
     row: TupleType | ListType,
     generics: Readonly<Record<string, Type>>,
-    visitor: SlotLowering,
+    visitor: PlannerVisitor,
+    context: PlanningContext,
   ): [args: Plan[], rest: Plan | undefined] | undefined {
     const list = restList(row);
-    const rest = list === undefined ? undefined : lowerArg(list, generics, visitor);
+    const rest = list === undefined ? undefined : lowerArg(list, generics, visitor, context);
     if (list !== undefined && rest === undefined) {
       return undefined;
     }
     const members = row.kind === 'tuple' ? row.members : [];
-    const args = members.map(arg => lowerArg(arg, generics, visitor));
+    const args = members.map(arg => lowerArg(arg, generics, visitor, context));
     return isAllThere(args) ? [args, rest] : undefined;
   }
 
@@ -491,12 +493,12 @@ export namespace Plan {
     return row;
   }
 
-  function lowerArg(arg: Type, generics: Readonly<Record<string, Type>>, visitor: SlotLowering): Plan | undefined {
+  function lowerArg(arg: Type, generics: Readonly<Record<string, Type>>, visitor: PlannerVisitor, context: PlanningContext): Plan | undefined {
     if (arg.kind === 'generic') {
       const closing = generics[arg.label];
       return closing && Plan.constant(closing);
     }
-    return visitor.visit(Type.substitute(arg, generics));
+    return visitor.visit(Type.substitute(arg, generics), context);
   }
 
   export function realize(plan: Plan, options: RealizeOptions): any {
