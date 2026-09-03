@@ -269,7 +269,7 @@ whole set is decided fresh when the slots above are rewritten, so this is a demo
 - [ ] `libraries/di/src/augmentations/ServiceProvider-resolution-augmentations.ts` is an empty stub — an empty
       `declare module` interface, `registerAugmentations({})`, and 4 unused imports. Dead scaffolding: delete it
       or fill it, per the vestigial rule — verify nothing imports it first.
-- [ ] `tests/mergesynth.ttsc.e2e/test/mergesynth.test.ts:285` still describes `registerAugmentations`/`augment`'s
+- [x] `tests/mergesynth.ttsc.e2e/test/mergesynth.test.ts:285` still describes `registerAugmentations`/`augment`'s
       parameter as `string | Type`; the parameter is `Type`-only now.
 
 - [x] **Conventional-commit labels on the owner's commits — CLOSED, no rewrite.** Authorship is
@@ -2460,7 +2460,7 @@ Rulings on the open di items, each against the section that holds it. State is t
 - A promise settling after its scope ended fulfils with a disposed instance: /go. Fix: the model's `canonicalize` hands the caller a derived promise that disposes the late value and rejects. In flight.
 - Collection ask cached as a whole: RULED — "arrays registered as a whole array get disposed as a whole, individual = individual." A registered array value is one service with one lifetime; a collection ask is fresh per ask and each element honours its own registration; the synthesised collection node is never cached. Differs from the reference's array-identity caching by the owner's word. Test to write. In flight.
 - Collection ask refusing on silently dropped unbuildable members: not di (hosting's).
-- `Type | string` sweep, "a parameter naming an address is spelled `address`": /go. In flight (`address-rename` lane).
+- `Type | string` sweep, "a parameter naming an address is spelled `address`": LANDED `91ece28f` — the only live site was `Request.type` → `Request.address` (public member; `ServiceRequest` ctor param too); every other listed site was already `address` or in a since-deleted file.
 - `TypeFor<T>` (`## Authoring surface`): /go. Only the final fallback is wrong: an object-shaped `T` falls to the full `Type` union; narrow it to the named-or-structural pair. In flight.
 - `typefor` structural derivation (`## Structural synthesis`): RULED — "resolve ALL compositional types, that includes object." Tuples landed `fe1d1680`; object-literal derivation is owed, optional property as a union with `undefined`. Go lane.
 - "Parked: awaits its design ruling" comments on `visitCtor`/`visitAbstractCtor`: delete (no elaboration, no comment). Go lane.
@@ -2470,7 +2470,7 @@ Rulings on the open di items, each against the section that holds it. State is t
 - `typeforhoist.Union` doc comment: Go lane.
 - Node-vocabulary-collapse review findings (10, Go transformer): Go lane, batched with the above so the cache stays warm.
 - `asClass<T>` sugar leg (`## Authoring surface`): already exists in `di.extras` (`asClass(ctor)` over `typefor(ctor)`). Stale entry; closed.
-- `mergesynth.test.ts` parameter description: /go. In flight (`address-rename` lane).
+- `mergesynth.test.ts` parameter description: already fixed on this branch; nothing to do.
 - Review-lens-2 findings not taken (request-door session): moved to `docs/benchmarks.md`, the owner's word.
 - Validation-middleware options surface on the builder: DROPPED. Unbounded `Type` caches: PUNTED.
 - One-signature callable's union collapses to a bare tuple (`## Signatures as a Type node`): RULED correct. Owed: a doc comment on the signatures property saying the `Type.signature` factory is how to build one. In flight.
