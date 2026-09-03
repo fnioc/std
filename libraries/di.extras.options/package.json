@@ -30,7 +30,7 @@
   },
   "ttsc": {
     "plugin": {
-      "transform": "@rhombus-std/di.extras.options/ttsc"
+      "transform": "./ttsc.mjs"
     }
   },
   "files": [
@@ -48,7 +48,8 @@
     "@rhombus-std/options": "workspace:*",
     "@rhombus-std/options.augmentations": "workspace:*",
     "@rhombus-std/primitives": "workspace:*",
-    "@rhombus-std/primitives.extras": "workspace:*"
+    "@rhombus-std/primitives.extras": "workspace:*",
+    "@rhombus-std/transforms": "workspace:^"
   },
   "peerDependencies": {
     "typescript": ">=5.2"

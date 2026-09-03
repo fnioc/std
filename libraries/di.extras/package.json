@@ -29,7 +29,7 @@
   },
   "ttsc": {
     "plugin": {
-      "transform": "@rhombus-std/di.extras/ttsc"
+      "transform": "./ttsc.mjs"
     }
   },
   "files": [
@@ -45,6 +45,7 @@
     "@rhombus-std/di.core": "workspace:*",
     "@rhombus-std/primitives": "workspace:*",
     "@rhombus-std/primitives.extras": "workspace:*",
+    "@rhombus-std/transforms": "workspace:^",
     "@rhombus-toolkit/func": "3.6.0",
     "@rhombus-toolkit/types": "^1.0.1"
   },

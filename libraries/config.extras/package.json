@@ -27,7 +27,7 @@
   },
   "ttsc": {
     "plugin": {
-      "transform": "@rhombus-std/config.extras/ttsc"
+      "transform": "./ttsc.mjs"
     }
   },
   "files": [
@@ -43,7 +43,8 @@
     "@rhombus-std/config": "workspace:*",
     "@rhombus-std/config.core": "workspace:*",
     "@rhombus-std/primitives": "workspace:*",
-    "@rhombus-std/primitives.extras": "workspace:*"
+    "@rhombus-std/primitives.extras": "workspace:*",
+    "@rhombus-std/transforms": "workspace:^"
   },
   "publishConfig": {
     "access": "public",

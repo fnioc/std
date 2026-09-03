@@ -18,6 +18,7 @@
   "type": "module",
   "dependencies": {
     "@rhombus-std/primitives": "workspace:^",
+    "@rhombus-std/transforms": "workspace:^",
     "@rhombus-toolkit/func": "^3.6.0"
   },
   "main": "./src/index.ts",
@@ -28,7 +29,7 @@
   },
   "ttsc": {
     "plugin": {
-      "transform": "@rhombus-std/primitives.extras/ttsc"
+      "transform": "./ttsc.mjs"
     }
   },
   "files": [
