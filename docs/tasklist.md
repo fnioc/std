@@ -2449,5 +2449,32 @@ Status: landed 2026-09-03 — `434c7c24` (planner + tests), `9ca16505` (docs).
 
 ## Open, owner's word (2026-09-03)
 
-- The rhombus-toolkit message the owner said is coming (a type there; obey it). Not yet arrived.
 - Then: the merge into main (queue section above).
+
+## Session — owner's item-by-item rulings on the di list (2026-09-03)
+
+Rulings on the open di items, each against the section that holds it. State is the current one.
+
+- `## Inline discovery` (#365, Go side + the `*.extras` repattern): LANDED `c2d5dd7f` (marker discovery, ownership claims, rest bodies); `di.extras`, `di.extras.options`, `config.extras` register through `registerInlineBodies` with no `rhombus-std.json`; `primitives.extras` keeps its one JSON entry (`registerAugmentations`, a non-augmentation inlinable). Stale entry; closed.
+- `validateBuildability()` misses captives in shadowed registrations (standard lifetime model, questions for the owner): /go. Fix: plan every registration of a closed address, not only the newest. In flight.
+- A promise settling after its scope ended fulfils with a disposed instance: /go. Fix: the model's `canonicalize` hands the caller a derived promise that disposes the late value and rejects. In flight.
+- Collection ask cached as a whole: RULED — "arrays registered as a whole array get disposed as a whole, individual = individual." A registered array value is one service with one lifetime; a collection ask is fresh per ask and each element honours its own registration; the synthesised collection node is never cached. Differs from the reference's array-identity caching by the owner's word. Test to write. In flight.
+- Collection ask refusing on silently dropped unbuildable members: not di (hosting's).
+- `Type | string` sweep, "a parameter naming an address is spelled `address`": /go. In flight (`address-rename` lane).
+- `TypeFor<T>` (`## Authoring surface`): /go. Only the final fallback is wrong: an object-shaped `T` falls to the full `Type` union; narrow it to the named-or-structural pair. In flight.
+- `typefor` structural derivation (`## Structural synthesis`): RULED — "resolve ALL compositional types, that includes object." Tuples landed `fe1d1680`; object-literal derivation is owed, optional property as a union with `undefined`. Go lane.
+- "Parked: awaits its design ruling" comments on `visitCtor`/`visitAbstractCtor`: delete (no elaboration, no comment). Go lane.
+- Local alias derives an unimportable name (overnight findings, b): closed — a local alias derives structurally. Owner's expectation on record: private types (not externally resolvable) resolve with their actual path through the `token/*` export; leave unless a known problem appears.
+- mergesynth indistinguishable-guard overloads (`## Merge-strategy guards`): RULED — report ONLY when the conflict occurs (two overloads whose guards are provably identical), never on every iterable; the iterable guard must at the very least check the `Symbol.iterator` member. Go lane.
+- Certify the static/namespace/const-member/class-member matchers: Go lane. Value-door authoring sugar: DROPPED.
+- `typeforhoist.Union` doc comment: Go lane.
+- Node-vocabulary-collapse review findings (10, Go transformer): Go lane, batched with the above so the cache stays warm.
+- `asClass<T>` sugar leg (`## Authoring surface`): already exists in `di.extras` (`asClass(ctor)` over `typefor(ctor)`). Stale entry; closed.
+- `mergesynth.test.ts` parameter description: /go. In flight (`address-rename` lane).
+- Review-lens-2 findings not taken (request-door session): moved to `docs/benchmarks.md`, the owner's word.
+- Validation-middleware options surface on the builder: DROPPED. Unbounded `Type` caches: PUNTED.
+- One-signature callable's union collapses to a bare tuple (`## Signatures as a Type node`): RULED correct. Owed: a doc comment on the signatures property saying the `Type.signature` factory is how to build one. In flight.
+- Registration carries no lifetime (`## Ideas`): DROPPED.
+- `*.ttsc.e2e` parity re-run with Go present: later.
+- rhombus-toolkit message (arrived 2026-09-03, obey): `ImmutableLinkedList` is published as `@rhombus-toolkit/collections@1.0.0`; delete std's copy (`libraries/primitives/src/toolkit/ImmutableLinkedList.ts`, its re-export, `tests/primitives.test/test/immutable-linked-list.test.ts`, the "Also here" mention in `docs/libraries/primitives.md`). Nothing in std imports it, so no dependency is added and primitives stays a leaf; it is a public removal from primitives' surface. `concat`/`iterable`/`replace` moved from `@rhombus-toolkit/obj` to `@rhombus-toolkit/iterable@1.0.0`; six import sites (`di.core/Manifest.ts`, `di.core/augmentations/Manifest-Registration-augmentations.ts`, `di/di.ts`, `di/internal/Engine.ts`, `di/internal/Plan/RealizeVisitor.ts`, `tests/primitives.test/test/iterable-replace.test.ts`); nothing else imports `obj`, so `obj` drops from `di.core`, `di`, `tests/primitives.test` in favour of `iterable`. In flight.
+- Go lane = a /goweb cloud run over `transforms/` once the local tip is pushed.

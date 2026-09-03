@@ -236,3 +236,19 @@ widens with graph size: near parity on a leaf, roughly 3x on the deep and wide g
   older engine has none to install.
 - **Live machine.** The desktop stayed up and the core was pinned but not reserved, so rounds carry
   interference the minimum-of-medians only partly removes; the per-round ranges show how much.
+
+## Engine cost: review findings not taken
+
+Performance observations from the request-door review, recorded here rather than acted on. None is a
+correctness defect; each trades engine simplicity for cycles, and "caches nothing" is the standing
+rule they would have to argue against.
+
+- **Per-ask precomputation of the activated per-kind lists.** Every hooked node rechecks a flag per
+  hook kind today, O(A) per kind per hooked node. Computing the activated list once per ask would
+  make that a lookup.
+- **One `Hooks.Construction` carrier per kind per behavior.** A behavior implementing all three
+  construction hooks gets three carriers. Sharing one changes carrier identity, which is why it
+  needs a ruling before it is a change.
+- **Memoizing the invoker path's per-call re-plan.** The invoker path plans on every call.
+- **A negative-plan marker for delegated misses.** Every delegated ask that misses pays a failed
+  plan plus a full registry scan. A marker would skip both, at the cost of caching something.
