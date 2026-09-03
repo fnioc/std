@@ -123,9 +123,8 @@ export class ServiceProvider implements IServiceProvider { … }
 
 ## Also here
 
-`ImmutableLinkedList` (a list whose every extension shares what was already there, readable from
-either end) and `NotImplementedError` (a member declared so callers can be written against it, which
-has no behaviour yet). The package stamps itself at load, so a second loaded copy fails fast rather
+`NotImplementedError` (a member declared so callers can be written against it, which has no
+behaviour yet). The package stamps itself at load, so a second loaded copy fails fast rather
 than forking the intern table and the augmentation registry — every bundle keeps it external, and
 identity holds across your whole dependency graph.
 
