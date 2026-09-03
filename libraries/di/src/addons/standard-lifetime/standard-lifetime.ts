@@ -2,7 +2,8 @@ import { type Addon, type Behavior, ControlRequest, type ControlService, type Ge
   ServiceRequest, type StandardLifetime, UnsatisfiableError } from '@rhombus-std/di.core';
 import { typefor } from '@rhombus-std/primitives.extras';
 import { ServiceProvider } from '../../ServiceProvider.js';
-import { capture, disposeScope, disposeScopeAsync, evict, lookup, newScope, type Scope, store } from './scope.js';
+import { capture, disposeScope, disposeScopeAsync, evict, lookup, store } from '../lifetime-scope.js';
+import { newScope, type Scope } from './scope.js';
 import { lifetimeKind, scopeId } from './symbols.js';
 
 /**

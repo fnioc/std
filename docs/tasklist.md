@@ -1819,3 +1819,116 @@ silent on:
   catalogue (§4) validates every descriptor. The per-ask check still refuses it when a collection
   ask walks that element. The fix is in `Registry.closedAddresses` / `planClosedAddresses` under
   `libraries/di/src/internal/`, which this session does not touch.
+
+## Session — tagged lifetime model (2026-09-03, branch feat-di-tagged-lifetime)
+
+Built from `origin/feat-di-standard-lifetime` at `263aca92` to `docs/tagged-lifetime-model.design.md`,
+rebased onto that branch's tip `76de762f` (the standard session's report push and the design doc's own
+commits). The standard session's report landed mid-session, so the disposal walk was moved to the
+shared module below rather than duplicated. Every commit is authored `Claude <noreply@anthropic.com>`:
+GitHub refused every push carrying `goliyth@gmail.com` (GH007, private-email protection), and the
+checkout's stop hook asks for that author; the owner was told live and can re-author.
+
+**Landed**
+
+- `libraries/di.core/src/ITaggedServiceScopeFactory.ts` — `ITaggedServiceScopeFactory<Lifetime>`
+  with `openScope(lifetime: Exclude<Lifetime, undefined>)`; on the `di.core` barrel.
+- `libraries/di/src/addons/tagged-lifetime/tagged-lifetime.ts` — `taggedLifetime<Lifetime>()`: the
+  installer middleware answering the head, the one staged set of hooks (`beginResolve` answers the
+  chain, `beforeConstruct` answers a hit or passes, `afterConstruct` binds the addon's own factory
+  registration by identity and stores and captures tagged nodes), the factory filed as a constructor
+  registration with no lifetime at `ITaggedServiceScopeFactory<%Lifetime>`.
+- `libraries/di/src/addons/tagged-lifetime/layer.ts` — `Layer`: the per-scope cache and owned
+  list, the source that refuses when ended and appends the layer to the ask's chain, the
+  `ServiceProvider` minted over it and subscribed through `whenDisposed`.
+- `libraries/di/src/addons/tagged-lifetime/TaggedServiceScopeFactory.ts` — the concrete factory,
+  `source` rebound by `afterConstruct`.
+- `libraries/di/src/addons/tagged-lifetime/symbols.ts` — the `chain` request symbol, module-level.
+- `libraries/di/src/addons/lifetime-scope.ts` — the two-level cache (`lookup`/`store`/`evict`),
+  `capture`, and both disposal walks, shared by the standard and tagged models and exported from no
+  barrel; `standard-lifetime/scope.ts` keeps the standard model's `Scope` over the shared shapes and
+  `standard-lifetime.ts` imports the walk from the shared module. Behavior unchanged.
+- `libraries/di/src/index.ts` — `taggedLifetime` beside `standardLifetime`.
+- Tests, `tests/di.test/test/`: `tagged-lifetime.test.ts` (caching, the chain, transients, the
+  factory, the provider, open registrations, several registrations, failures, promises),
+  `tagged-lifetime-disposal.test.ts` (capture, the walk, the two forms, errors, refusal after
+  disposal, promise products), `tagged-lifetime.types.ts` (`openScope(undefined)` and an unknown tag
+  do not compile; the addon locks the vocabulary).
+- Docs: `docs/libraries/di.md` §17 beside §16; `libraries/di/README.md` key-export row and note;
+  `libraries/di.core/README.md` factory row, and the `ObjectDisposedError` row now names both models.
+
+**Gate numbers**
+
+- `tests/di.test`: 341 pass / 6 skip / 18 fail (base tip: 271 pass / 6 skip / 18 fail; the 70 new
+  tests all pass; the 18 failures are the same 18 load failures as the base). `tsc -p tsconfig.types.json`
+  clean; the package's `tsc -p tsconfig.json` names none of the new files.
+- `bun run test`: red only in the same ten `*.test` packages as the base, every failure a deleted-export
+  load site (`noopLifetimeAddon` and the old `di` builder); no expect-level failure anywhere. The
+  `&&` in the root script stops before e2e when unit tests are red, so `bun run test:e2e` was run on
+  its own: five suites green, `inline.ttsc.e2e` red on the same deleted `noopLifetimeAddon` import.
+- `bun run lint`: every library clean (di and di.core through eslint); red only in the same ten test
+  packages, same missing exports. `bun run format:check`: clean. `bun run build`: green.
+
+**Test files still red, and why**
+
+The 18 load failures are the base's 18; none is new. Seventeen are the standard session's list
+(fifteen importing the deleted `di` builder, the two `standard-lifetime-model*` files) and are left
+as they were. The eighteenth is this model's:
+
+- `tagged-lifetime-model.test.ts` — written against a deleted API (`di.usingLifetimeModel`,
+  `taggedLifetimeAddon`, `TaggedScopeFactory`, `LifetimeModelError`). Its assertions fall in
+  three groups. Inside the design, replaced by tests of the same behavior in
+  `tagged-lifetime.test.ts` and `tagged-lifetime-disposal.test.ts`: kept by the scope carrying its
+  tag, separately per scope, reaching past scopes of other tags, shared by nested scopes, the nearest
+  same-tag scope wins, an untagged registration is fresh per ask, no scope carrying the tag resolves
+  transiently from the built provider and from another tag's scope and is kept again once a scope
+  opens, a `'session'`-tagged registration builds and resolves without any captivity sweep. Silent —
+  the design names no such members: `taggedLifetimeAddon().name === 'tagged'` and the `.transient`
+  statics. Conflicts, questions for the owner: `openScope` on a factory whose scope was disposed
+  throws at open time an error named `DisposedScopeError` whose message names `TaggedScopeFactory`
+  (line 117); the design names `ObjectDisposedError` and has the refusal fall on every ask through
+  the scope opened, not on `openScope` itself. The file also registers a tag named `'root'`. Left
+  red as it is.
+
+**Decisions the design did not settle**
+
+- The open factory address is spelled `typefor<ITaggedServiceScopeFactory<Generic<'Lifetime'>>>()`,
+  the repository's form for a hole; the ctor type is `Type.ctor(<that address>, [[]])`.
+- `TaggedServiceScopeFactory.source` starts as a function that throws a plain `Error` naming the
+  model, reached only if the factory were constructed outside an ask the model's hooks run under.
+- `openScope` over an ended scope does not throw at open time: the design's `openScope` carries no
+  check and the factory holds a source, not a layer; the scope it answers refuses every ask.
+- `beginResolve` throws `ObjectDisposedError` when the built provider or any layer on the ask's chain
+  has ended. Review found that a latebound closure re-enters under its captured request without
+  crossing the layers again, so without this an ended scope refused it only when the product was
+  disposable, and by reconstructing first. The hook still answers `{ chain }` for every live ask.
+- The head learns of the built provider on that provider's first `ServiceRequest` and subscribes its
+  `whenDisposed` then, the standard model's mechanism. A built provider disposed before it was ever
+  asked anything is not known to the model and goes on answering; the standard model has the same
+  edge. Closing it needs a build-time seam the engine does not offer.
+- `Layer.tag` is typed `unknown`: the layer is internal and compared by `===` to `registration.lifetime`.
+  A registration whose lifetime is `undefined` is left to the engine before any layer is consulted,
+  so a layer opened with `undefined` through a cast caches nothing.
+- `IServiceProvider` injected is the engine's own row: a fresh view forwarding to the provider the
+  ask came from, never the provider object itself, so the tests assert it by what it resolves rather
+  than by identity.
+- "A user's own registration of the factory address wins" holds by registry order: the test files the
+  user's registration through `withServices` after `useAddon(taggedLifetime())`, as the design's
+  usage does.
+- `afterConstruct` stores before it captures, as the design's row orders it, so a node constructed
+  while its layer ends leaves an entry in a cache no ask can reach again; review noted it, left as
+  designed.
+- The second-dispose test observes the contract through `ServiceProvider`, which already tells a
+  subscriber once; the walk's own guard is exercised only through that path.
+
+**Reviews** — three adversarial reviews against the design doc (behavior suite, disposal suite,
+implementation and docs). Fixed: a "descendants first" test that only showed sibling independence,
+a factory-binding test that could not tell the head from any other source, a missing shared-pending-
+promise-that-rejects case, the latebound re-entry refusal above, an asynchronous single-failure
+walk test, a `di.md` snippet that used a binding outside its block, a hoisted `typefor` const, the
+README's `ObjectDisposedError` row, and a sentence on which provider an injected factory binds to.
+
+**Not done** — no pull request, per the brief. Orchestration ran through the Agent tool (three
+sonnet reviewers; one Fable implementer) rather than the Workflow tool. The owner's live instruction
+mid-session to rebranch from `IServiceManifest-repair` was carried out and then withdrawn; nothing
+from that detour remains on the branch.

@@ -538,6 +538,77 @@ Builder
   .build(); // throws ManifestValidationError; the ICache failure's error is a ScopeValidationError naming IRepo
 ```
 
+### 17. The tagged lifetime model
+
+Name your own lifetimes, open a scope per name, and nest them in whatever order the program runs
+in. `taggedLifetime<Lifetime>()` is an addon over the vocabulary you spell: each constructed
+registration carries one of your tags, `openScope(tag)` answers a provider caching the registrations
+of that tag alone, and a scope opened from inside another scope chains onto it — an ask through the
+inner scope is checked by both, the inner one first, and a hit anywhere on the chain answers the
+cached instance. A registration whose lifetime is `undefined`, or omitted, is transient: fresh on
+every ask, from every provider.
+
+```ts
+type Lifetime = 'session' | 'request' | undefined;
+
+await using provider = Builder
+  .useAddon(taggedLifetime<Lifetime>())
+  .withServices(services =>
+    services
+      .add<ISession>(Session, 'session')
+      .add<IUnitOfWork>(UnitOfWork, 'request')
+      .add<IReport>(Report) // transient
+  )
+  .build();
+
+using session = provider.resolve<ITaggedServiceScopeFactory<Lifetime>>().openScope('session');
+using request = session.resolve<ITaggedServiceScopeFactory<Lifetime>>().openScope('request');
+
+request.resolve<ISession>() === session.resolve<ISession>(); // true: the session scope's one instance
+request.resolve<IUnitOfWork>() === request.resolve<IUnitOfWork>(); // true: this request scope's own
+session.resolve<IUnitOfWork>() !== session.resolve<IUnitOfWork>(); // true: no request scope on that chain
+```
+
+The provider `build()` answers caches nothing and captures nothing: through it every registration,
+tagged or not, is constructed afresh. The same holds for a tag with no open scope on the chain — a
+`'request'` registration asked of a `'session'` scope, or of the built provider, is a transient
+there and is cached again the moment a `'request'` scope is on the chain. Only the scopes on the
+chain decide, so there is no order in which scopes must open: a `'session'` scope inside a
+`'request'` scope caches the session tag all the same. Where two scopes of one tag nest, the inner
+one wins for asks through it and the outer one keeps its own.
+
+`ITaggedServiceScopeFactory<Lifetime>` is a registration like any other, constructed on every
+resolution and bound to the provider the ask came from — asked for directly or injected into a
+service, it opens scopes over that provider. The binding follows the ask, not the cache: a factory
+injected into a service the `'session'` scope caches, when that service is first asked for through
+a `'request'` scope beneath it, is bound to the `'request'` scope the ask came from. Resolving the
+factory spells the vocabulary out every time; wrap that in a helper so the rest of the program does
+not depend on the union:
+
+```ts
+function openScope(provider: IServiceProvider, tag: Exclude<Lifetime, undefined>): IServiceProvider {
+  return provider.resolve<ITaggedServiceScopeFactory<Lifetime>>().openScope(tag);
+}
+```
+
+Disposal follows the cache. Disposing a scope's provider — `using`, or `Symbol.dispose` by hand —
+disposes every instance that scope cached, most recent first, each once, and that scope, with every
+scope opened beneath it, refuses every later ask with `ObjectDisposedError`. A transient is never
+captured: resolved from a scope, from the built provider, or injected into a cached service, it is
+yours to dispose. An instance handed to a value registration is never disposed either. Errors raised
+while disposing are collected — one rethrows as itself, several as one `AggregateError` — and every
+other instance still disposes; `await using` awaits each instance's `Symbol.asyncDispose` and calls
+a synchronous-only one directly, while `using` counts an instance offering only
+`Symbol.asyncDispose` as an error. Disposing the built provider closes every provider but disposes
+nothing: what an open scope holds is disposed with that scope.
+
+```ts
+const request = session.resolve<ITaggedServiceScopeFactory<Lifetime>>().openScope('request');
+const work = request.resolve<IUnitOfWork>(); // cached by the request scope, disposable
+await request[Symbol.asyncDispose](); // work[Symbol.asyncDispose]() ran here; the session scope's instances are untouched
+request.resolve<IUnitOfWork>(); // throws ObjectDisposedError
+```
+
 ---
 
 Every failure mode is a typed subclass of `DiError`, so a caller branches on `instanceof` instead of

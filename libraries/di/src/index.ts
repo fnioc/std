@@ -6,5 +6,6 @@ export { CycleError, DiError, ManifestValidationError, ObjectDisposedError, Univ
 export type { Middleware, ValidationFailure } from '@rhombus-std/di.core';
 
 export { ScopeValidationError, standardLifetime, validateScopes } from './addons/standard-lifetime/index.js';
+export { taggedLifetime } from './addons/tagged-lifetime/index.js';
 export { validateBuildability, validateUniversalAddresses } from './addons/validation.js';
 export { Builder } from './di.js';

@@ -11,6 +11,7 @@ export * from './hooks';
 export type { Invoker } from './Invoker';
 export type * from './IServiceProvider';
 export type * from './IServiceScopeFactory';
+export type * from './ITaggedServiceScopeFactory';
 export type * from './LifetimeArgument';
 export * from './Manifest';
 export type * from './Middleware';
