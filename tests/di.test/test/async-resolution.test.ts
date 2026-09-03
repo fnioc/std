@@ -3,7 +3,7 @@
 // awaiting a promise address on the caller's behalf, and the `AsyncIterable<T>` collection form.
 
 import { Builder } from '@rhombus-std/di';
-import { Manifest, Registration } from '@rhombus-std/di.core';
+import { Manifest, Registration, UnsatisfiableError } from '@rhombus-std/di.core';
 import { Type } from '@rhombus-std/primitives';
 import { describe, expect, test } from 'bun:test';
 
@@ -78,6 +78,44 @@ describe('resolveAsync gathers one boundary at a time', () => {
     const aggregate = caught as AggregateError;
     expect(aggregate.errors).toHaveLength(2);
     expect(aggregate.message).toContain('2 of the dependencies it awaits failed');
+  });
+});
+
+describe('an await with nothing to enclose it', () => {
+  /** A synchronous dependent of the settled Clock, which only Promise<Clock> produces. */
+  class SyncConsumer {
+    constructor(readonly clock: Clock) {}
+  }
+
+  test('a synchronous dependency on a value only its promised form produces is unsatisfiable', () => {
+    const manifest = Manifest.empty<unknown>()
+      .addValue(Type.promise(CLOCK), Promise.resolve(new Clock()))
+      .add(Registration.ctor(PAIR, SyncConsumer, Type.ctor(PAIR, [[CLOCK]])));
+    const provider = toProvider(manifest);
+
+    expect(() => provider.resolve(PAIR)).toThrow(UnsatisfiableError);
+    expect(() => provider.resolve(PAIR)).toThrow('nothing encloses an await to hoist it');
+  });
+});
+
+describe('an await nested inside another', () => {
+  const HOLDER = Type.imported('Holder', 'app');
+  const DEEP = Type.imported('Deep', 'app');
+
+  class Deep {}
+  /** Wants the settled Holder, itself produced by awaiting a factory that wants the settled Deep. */
+  class Nested {
+    constructor(readonly holder: unknown) {}
+  }
+
+  test('the inner await settles before the outer one it hoists onto', async () => {
+    const manifest = Manifest.empty<unknown>()
+      .addValue(Type.promise(DEEP), Promise.resolve(new Deep()))
+      .add(Registration.factory(Type.promise(HOLDER), (deep: unknown) => Promise.resolve(deep), Type.func(Type.promise(HOLDER), [[DEEP]])))
+      .add(Registration.ctor(PAIR, Nested, Type.ctor(PAIR, [[HOLDER]])));
+
+    const nested = await toProvider(manifest).resolveAsync(PAIR) as Nested;
+    expect(nested.holder).toBeInstanceOf(Deep);
   });
 });
 

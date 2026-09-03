@@ -5,7 +5,7 @@ import { memo } from '@rhombus-toolkit/once';
 import { assertNever, isAllThere, isDefined, isReadonlyArray } from '@rhombus-toolkit/type-guards';
 import type { Match, Registry } from '../Registry.js';
 import type { PlanHooks } from './InstalledHooks.js';
-import { PlannerVisitor } from './PlannerVisitor.js';
+import { PlannerVisitor, type PlanningContext } from './PlannerVisitor.js';
 import { type RealizeOptions, RealizeVisitor } from './RealizeVisitor.js';
 
 export type Plan =
@@ -120,13 +120,13 @@ export interface ArrayPlan {
 
 /**
  * The async boundary: the wrapping promise a promise-addressed node hands over, minted afresh on
- * every ask. Everything in {@link inventory} is settled before {@link inner} realizes, which is
+ * every ask. Everything in {@link descendants} is settled before {@link inner} realizes, which is
  * the one place a walk waits.
  */
 export interface PromisePlan {
   readonly kind: 'promise';
   readonly inner: Plan;
-  readonly inventory: readonly AsyncPlan[];
+  readonly descendants: readonly AsyncPlan[];
   readonly populatedAddress: Type;
 }
 
@@ -143,11 +143,14 @@ export interface RegisteredPromisePlan {
 
 /**
  * One dependency the enclosing boundary settles on this node's behalf: the boundary realizes
- * {@link inner} and awaits it, and the walk beneath reads the settled value from here.
+ * {@link inner} and awaits it, and the walk beneath reads the settled value from here. Its own
+ * {@link descendants} settle before {@link inner} realizes, so the await this node hands up is
+ * itself a boundary.
  */
 export interface AsyncPlan {
   readonly kind: 'async';
   readonly inner: Plan;
+  readonly descendants: readonly AsyncPlan[];
   /** The address the slot asked for — the settled shape, never the promise. */
   readonly address: Type;
 }
@@ -230,10 +233,10 @@ export namespace Plan {
 
   /**
    * The boundary wrapping `inner` — the node for `populatedAddress`, whose realization is the
-   * promise `inventory` settles into.
+   * promise `descendants` settles into.
    */
-  export function promise(inner: Plan, inventory: readonly AsyncPlan[], populatedAddress: Type): PromisePlan {
-    return { kind: 'promise', inner, inventory, populatedAddress };
+  export function promise(inner: Plan, descendants: readonly AsyncPlan[], populatedAddress: Type): PromisePlan {
+    return { kind: 'promise', inner, descendants, populatedAddress };
   }
 
   /**
@@ -241,14 +244,14 @@ export namespace Plan {
    * the envelope's plain make and the registration rides this node — one node per address, so the
    * two never both claim it.
    */
-  export function registeredPromise(inner: RegisteredCtorPlan | RegisteredFactoryPlan, inventory: readonly AsyncPlan[], populatedAddress: Type): RegisteredPromisePlan {
+  export function registeredPromise(inner: RegisteredCtorPlan | RegisteredFactoryPlan, descendants: readonly AsyncPlan[], populatedAddress: Type): RegisteredPromisePlan {
     const make = inner.kind === 'registered-ctor' ? Plan.ctor(inner.ctor, inner.args, inner.rest) : Plan.factory(inner.factory, inner.args, inner.rest);
-    return { kind: 'registered-promise', registration: inner.registration, envelope: Plan.promise(make, inventory, populatedAddress) };
+    return { kind: 'registered-promise', registration: inner.registration, envelope: Plan.promise(make, descendants, populatedAddress) };
   }
 
-  /** A dependency the enclosing boundary settles: `address` is what the slot asked for. */
-  export function async(inner: Plan, address: Type): AsyncPlan {
-    return { kind: 'async', inner, address };
+  /** A dependency the enclosing boundary settles: `address` is what the slot asked for, and `descendants` are the awaits beneath it. */
+  export function async(inner: Plan, descendants: readonly AsyncPlan[], address: Type): AsyncPlan {
+    return { kind: 'async', inner, descendants, address };
   }
 
   /**
@@ -282,7 +285,7 @@ export namespace Plan {
     const planFor = memo((registry: Registry) =>
       memo((address: Type) =>
         memo((args: ReadonlyMap<Type, number>) => {
-          const visitor = new PlannerVisitor(registry, args, undefined, currentHooks);
+          const visitor = new PlannerVisitor(registry, args, currentHooks);
           const plan = visitor.visit(address);
           if (plan === undefined) {
             // Two failures reach here and a caller acts on them differently: nothing is registered
@@ -347,7 +350,7 @@ export namespace Plan {
    * comes back synthesized, outside the lifetime model's jurisdiction.
    */
   export function fromRegistration(registration: Registration<unknown>, registry: Registry, hooks?: PlanHooks): Plan | undefined {
-    const visitor = new PlannerVisitor(registry, undefined, undefined, hooks);
+    const visitor = new PlannerVisitor(registry, undefined, hooks);
     const [kind, narrowed] = Registration.kind(registration);
     switch (kind) {
       case 'ctor': {
@@ -375,10 +378,10 @@ export namespace Plan {
    * registration being planned, so a factory for `Foo` shaped `Func<[Foo], Foo>` receives what it
    * shadows rather than itself.
    */
-  export function fromMatch(populatedAddress: Type, match: Match, visitor: PlannerVisitor): Plan | undefined {
+  export function fromMatch(populatedAddress: Type, match: Match, visitor: PlannerVisitor, context: PlanningContext): Plan | undefined {
     const { registration: wideRegistration, generics } = match;
     const slots: SlotLowering = {
-      visit: address => address === populatedAddress ? visitor.visitBeneath(address, match.index) : visitor.visit(address),
+      visit: address => address === populatedAddress ? visitor.visitBeneath(address, match.index, context) : visitor.visit(address, context),
     };
     const [kind, registration] = Registration.kind(wideRegistration);
     // The node is made before its slots lower, so the plan hooks receive the very node the plan

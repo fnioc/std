@@ -3,7 +3,7 @@
 // or synthesis a whole-type miss falls back to.
 
 import { CycleError, Manifest, Registration } from '@rhombus-std/di.core';
-import { Plan } from '@rhombus-std/di/private/internal/Plan/Plan';
+import { type AsyncPlan, Plan, type PromisePlan, type RegisteredCtorPlan } from '@rhombus-std/di/private/internal/Plan/Plan';
 import { PlannerVisitor } from '@rhombus-std/di/private/internal/Plan/PlannerVisitor';
 import { Registry } from '@rhombus-std/di/private/internal/Registry';
 import { type ConstructorType, Type } from '@rhombus-std/primitives';
@@ -345,6 +345,64 @@ describe('a union dependency', () => {
     const plan = visitorFor(manifest).visit(union);
     expect(plan?.kind).toBe('factory');
     expect(plan?.kind === 'factory' && plan.factory('bar-value', 'foo-value')).toEqual(['bar-value', 'foo-value']);
+  });
+});
+
+describe('a promise boundary', () => {
+  const OUTER = Type.imported('Outer', 'app');
+  const INNER = Type.imported('Inner', 'app');
+  const DEEP = Type.imported('Deep', 'app');
+
+  class Outer {
+    constructor(readonly inner: unknown) {}
+  }
+
+  test('an async dependency hoists itself onto the enclosing boundary and is the same node the tree reads', () => {
+    // Outer wants the settled Inner, which only Promise<Inner> produces: an await hoisted onto the
+    // Promise<Outer> boundary.
+    const outerRegistration = Registration.ctor(OUTER, Outer, Type.ctor(OUTER, [[INNER]]));
+    const innerRegistration = Registration.value(Type.promise(INNER), Promise.resolve('inner'));
+    const manifest = Manifest.empty<unknown>().add(outerRegistration).add(innerRegistration);
+
+    const plan = visitorFor(manifest).visit(Type.promise(OUTER)) as PromisePlan;
+    expect(plan.kind).toBe('promise');
+    expect(plan.descendants).toHaveLength(1);
+
+    const hoisted = plan.descendants[0]!;
+    expect(hoisted.kind).toBe('async');
+    expect(hoisted.address).toBe(INNER);
+    // The hoisted node and the one Outer's constructor reads are one object, so the settled value
+    // written for it is the value the constructor sees.
+    expect((plan.inner as RegisteredCtorPlan).args[0]).toBe(hoisted);
+  });
+
+  test('a promise dependency is handed over as its own node, never hoisted onto the boundary', () => {
+    // Outer wants Promise<Inner> as it stands, so it is a nested boundary the constructor holds, not
+    // an await the enclosing boundary settles.
+    const outerRegistration = Registration.ctor(OUTER, Outer, Type.ctor(OUTER, [[Type.promise(INNER)]]));
+    const innerRegistration = Registration.value(Type.promise(INNER), Promise.resolve('inner'));
+    const manifest = Manifest.empty<unknown>().add(outerRegistration).add(innerRegistration);
+
+    const plan = visitorFor(manifest).visit(Type.promise(OUTER)) as PromisePlan;
+    expect(plan.kind).toBe('promise');
+    expect(plan.descendants).toHaveLength(0);
+    expect((plan.inner as RegisteredCtorPlan).args[0]!.kind).toBe('promise');
+  });
+
+  test('an async node settles its own descendants: an await beneath one collects onto it, not the boundary above', () => {
+    // Promise<Inner> is a factory needing the settled Deep, which only Promise<Deep> produces — a
+    // second await, nested inside the Inner await rather than beside it on the Outer boundary.
+    const outerRegistration = Registration.ctor(OUTER, Outer, Type.ctor(OUTER, [[INNER]]));
+    const innerRegistration = Registration.factory(Type.promise(INNER), (deep: unknown) => Promise.resolve(deep), Type.func(Type.promise(INNER), [[DEEP]]));
+    const deepRegistration = Registration.value(Type.promise(DEEP), Promise.resolve('deep'));
+    const manifest = Manifest.empty<unknown>().add(outerRegistration).add(innerRegistration).add(deepRegistration);
+
+    const plan = visitorFor(manifest).visit(Type.promise(OUTER)) as PromisePlan;
+    expect(plan.descendants).toHaveLength(1);
+    const inner = plan.descendants[0] as AsyncPlan;
+    expect(inner.address).toBe(INNER);
+    expect(inner.descendants).toHaveLength(1);
+    expect(inner.descendants[0]!.address).toBe(DEEP);
   });
 });
 

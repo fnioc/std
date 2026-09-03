@@ -1,4 +1,4 @@
-import { type ControlRequest, CycleError, type Hooks, type Invoker, type Registration, type Request, type ServiceRequest } from '@rhombus-std/di.core';
+import { type ControlRequest, CycleError, type Hooks, type Invoker, type Registration, type Request, type ServiceRequest, UnsatisfiableError } from '@rhombus-std/di.core';
 import { type AbstractConstructorType, type ArrayType, type ConstructorType, type FunctionType, type GenericType, type GlobalType, type ImportedType, type IntersectionType, type IterableType,
   type ObjectType, type TagType, type TupleType, Type, type TypeLiteralType, type UnionType } from '@rhombus-std/primitives';
 import { type Generic, typefor } from '@rhombus-std/primitives.extras';
@@ -9,23 +9,27 @@ import { type AlwaysDispatch, type Entry, type PlanHooks, withSlot } from './Ins
 import { type AsyncPlan, Plan } from './Plan.js';
 
 /**
+ * What a planning walk threads through {@link PlannerVisitor.visit}: the collection point of the
+ * nearest enclosing await, onto which an awaited dependency hoists itself. Absent while nothing
+ * encloses the walk in a promise.
+ */
+export interface PlanningContext {
+  asyncDescendants?: AsyncPlan[];
+}
+
+/**
  * Turns a type expression into the {@link Plan} that constructs a value for it.
  *
  * @remarks
  * Exact match lookup first, falling back to Type specific synthesis behavior.
  */
-export class PlannerVisitor extends Type.Visitor<Plan | undefined> {
+export class PlannerVisitor extends Type.Visitor<Plan | undefined, PlanningContext> {
   readonly #registry: Registry;
   /** A latebound caller's argument types, each naming the call position that supplies it. */
   readonly #args: ReadonlyMap<Type, number> | undefined;
-  readonly #cycleGuard: CycleGuard;
-  /** The whole pass's failure notes, shared by every boundary visitor the pass opens. */
-  readonly #diagnostics: PassDiagnostics;
-  /**
-   * The collection point this visitor's walk carries: the boundary inventory every awaited
-   * dependency beneath it registers into; absent while nothing encloses the walk in a promise.
-   */
-  readonly #collecting: AsyncPlan[] | undefined;
+  readonly #cycleGuard = new CycleGuard();
+  /** The whole pass's failure notes. */
+  readonly #diagnostics: PassDiagnostics = { missingDependency: undefined };
   /** What this pass fires plan hooks through; absent when nothing asked for them. */
   readonly #hooks: PlanHooks | undefined;
   /** The always-active dispatch as this pass opened. */
@@ -33,13 +37,10 @@ export class PlannerVisitor extends Type.Visitor<Plan | undefined> {
   /** Each participating behavior's threaded state at the walk's current position. */
   #planStates: readonly unknown[] | undefined;
 
-  constructor(registry: Registry, args?: ReadonlyMap<Type, number>, boundary?: BoundaryContext, hooks?: PlanHooks) {
+  constructor(registry: Registry, args?: ReadonlyMap<Type, number>, hooks?: PlanHooks) {
     super();
     this.#registry = registry;
     this.#args = args;
-    this.#cycleGuard = boundary?.cycleGuard ?? new CycleGuard();
-    this.#diagnostics = boundary?.diagnostics ?? { missingDependency: undefined };
-    this.#collecting = boundary?.collecting;
     this.#hooks = hooks;
     this.#always = hooks?.installed.always;
     this.#planStates = hooks === undefined ? undefined : new Array(this.#always!.count + hooks.active.length).fill(undefined);
@@ -50,7 +51,7 @@ export class PlannerVisitor extends Type.Visitor<Plan | undefined> {
     return this.#diagnostics.missingDependency;
   }
 
-  public override visit(address: Type): Plan | undefined {
+  public override visit(address: Type, context: PlanningContext = {}): Plan | undefined {
     if (Type.isOpen(address)) {
       return undefined;
     }
@@ -61,7 +62,7 @@ export class PlannerVisitor extends Type.Visitor<Plan | undefined> {
       return Plan.lateboundArg(argIndex);
     }
     using _guard = this.#cycleGuard.visiting(address);
-    const plan = this.#planDelivery(address, visitor => visitor.#answer(address)) ?? this.#awaitPromised(address);
+    const plan = this.#answer(address, context) ?? this.#awaitMissing(address, context);
     if (plan === undefined && this.#diagnostics.missingDependency === undefined) {
       this.#diagnostics.missingDependency = address;
     }
@@ -69,53 +70,38 @@ export class PlannerVisitor extends Type.Visitor<Plan | undefined> {
   }
 
   /**
-   * The exact-answer loop for `address`: the registrations answering it, newest first, then the
-   * kind's own synthesis.
+   * The answer for `address`: the newest registration answering it, then the kind's own synthesis.
+   * A promise-headed request is a boundary, so it goes straight to synthesis — {@link visitGlobal}
+   * routes it to {@link #visitPromise}, which mints the boundary around its own match and unwrap.
    */
-  #answer(address: Type): Plan | undefined {
+  #answer(address: Type, context: PlanningContext): Plan | undefined {
+    if (Type.isPromiseLike(address)) {
+      return this.#synthesize(address, context);
+    }
+    return this.#matched(address, context) ?? this.#synthesize(address, context);
+  }
+
+  /** The newest registration answering `address`, lowered under `context`; absent when none does. */
+  #matched(address: Type, context: PlanningContext): Plan | undefined {
     return this.#registry.getMatches(address)
-      .map(match => Plan.fromMatch(address, match, this))
-      .find(Boolean)
-      ?? this.#synthesize(address);
+      .map(match => Plan.fromMatch(address, match, this, context))
+      .find(Boolean);
   }
 
-  /** The kind's own synthesis for `address` — the base dispatch, reachable across visitor instances. */
-  #synthesize(address: Type): Plan | undefined {
-    return super.visit(address);
-  }
-
-  /**
-   * The delivery of what `produce` builds for `address`. A promise-addressed one is a boundary:
-   * every dependency beneath it that has to be awaited collects here, and the boundary hands over
-   * the wrapping promise rather than the value.
-   */
-  #planDelivery(address: Type, produce: Func<[PlannerVisitor], Plan | undefined>): Plan | undefined {
-    if (!Type.isPromiseLike(address)) {
-      return produce(this);
-    }
-    const inventory: AsyncPlan[] = [];
-    const boundary = new PlannerVisitor(this.#registry, this.#args, {
-      cycleGuard: this.#cycleGuard,
-      diagnostics: this.#diagnostics,
-      collecting: inventory,
-    }, this.#hooks);
-    boundary.#planStates = this.#planStates;
-    const inner = produce(boundary);
-    if (inner === undefined) {
-      return undefined;
-    }
-    if ((inner.kind === 'registered-ctor' || inner.kind === 'registered-factory') && inner.populatedAddress === address) {
-      return Plan.registeredPromise(inner, inventory, address);
-    }
-    return Plan.promise(inner, inventory, address);
+  /** The kind's own synthesis for `address` — the base dispatch. */
+  #synthesize(address: Type, context: PlanningContext): Plan | undefined {
+    return super.visit(address, context);
   }
 
   /**
-   * The awaited answer for `address`: inside a boundary, a `Promise<…>` registration serves a slot
-   * asking for the settled value, its await hoisted onto that boundary. Outside one there is
-   * nothing to wait in, so the near miss is kept for the failure instead of becoming an answer.
+   * The awaited answer for a missed `address`: when `Promise<address>` is registered, the settled
+   * value is served by awaiting that promise, hoisted onto the enclosing boundary. With no boundary
+   * to hoist onto, the await has nothing to wait in.
+   *
+   * @throws {UnsatisfiableError} when only the promised form is registered and nothing encloses an
+   * await to hoist it.
    */
-  #awaitPromised(address: Type): AsyncPlan | undefined {
+  #awaitMissing(address: Type, context: PlanningContext): AsyncPlan | undefined {
     if (Type.isPromiseLike(address)) {
       // Nothing distinguishes a promise of a promise, so a promise-headed miss is a plain miss.
       return undefined;
@@ -124,18 +110,63 @@ export class PlannerVisitor extends Type.Visitor<Plan | undefined> {
     if (!this.#registry.hasMatch(promised) || this.#cycleGuard.isVisiting(promised)) {
       return undefined;
     }
-    if (this.#collecting === undefined) {
+    if (context.asyncDescendants === undefined) {
+      throw new UnsatisfiableError(address, `only ${promised} is registered, and nothing encloses an await to hoist it`);
+    }
+    return this.#visitAsync(address, context);
+  }
+
+  /**
+   * The promise boundary for `type`: whatever answers it — a registration for the promise itself, or
+   * the settled value awaited — wrapped so the awaits beneath it collect and settle together.
+   */
+  #visitPromise(type: GlobalType, context: PlanningContext): Plan | undefined {
+    const built = this.#collect(context, () => this.#matched(type, context) ?? this.visit(Type.awaited(type), context));
+    return built && this.#promiseNode(built.inner, built.descendants, type);
+  }
+
+  /**
+   * The async node for a settled `address`: `Promise<address>` is registered, so the value is served
+   * by awaiting it. The node collects its own awaited descendants, then hands itself to the enclosing
+   * boundary to be hoisted.
+   */
+  #visitAsync(address: Type, context: PlanningContext): AsyncPlan | undefined {
+    const promised = Type.promise(address);
+    using _guard = this.#cycleGuard.visiting(promised);
+    const built = this.#collect(context, () => this.#matched(promised, context));
+    if (built === undefined) {
       return undefined;
     }
-    const inner = this.visit(promised);
-    if (inner === undefined) {
-      return undefined;
-    }
-    const hoisted = Plan.async(inner, address);
-    // The nested walk collected into its own boundary visitor, so this push lands on the boundary
-    // that will await it rather than on the one the walk just opened.
-    this.#collecting.push(hoisted);
+    const hoisted = Plan.async(built.inner, built.descendants, address);
+    context.asyncDescendants!.push(hoisted);
     return hoisted;
+  }
+
+  /**
+   * Opens a fresh collection point for the awaits beneath a promise boundary, runs `walk` under it,
+   * and answers what `walk` built alongside the descendants it collected; absent when `walk` finds
+   * nothing.
+   */
+  #collect(context: PlanningContext, walk: () => Plan | undefined): { inner: Plan; descendants: AsyncPlan[]; } | undefined {
+    const descendants: AsyncPlan[] = [];
+    const enclosing = context.asyncDescendants;
+    context.asyncDescendants = descendants;
+    try {
+      const inner = walk();
+      return inner === undefined ? undefined : { inner, descendants };
+    } finally {
+      context.asyncDescendants = enclosing;
+    }
+  }
+
+  /**
+   * Wraps a boundary's answer as its promise node — a registered promise when the registration owns
+   * the promise address itself, a plain one otherwise.
+   */
+  #promiseNode(inner: Plan, descendants: readonly AsyncPlan[], promiseAddress: Type): Plan {
+    return (inner.kind === 'registered-ctor' || inner.kind === 'registered-factory') && inner.populatedAddress === promiseAddress
+      ? Plan.registeredPromise(inner, descendants, promiseAddress)
+      : Plan.promise(inner, descendants, promiseAddress);
   }
 
   /**
@@ -149,9 +180,9 @@ export class PlannerVisitor extends Type.Visitor<Plan | undefined> {
    * No synthesis stands beneath the matches: a self-named slot with nothing older to answer it is
    * unsatisfiable.
    */
-  visitBeneath(address: Type, position: number): Plan | undefined {
+  visitBeneath(address: Type, position: number, context: PlanningContext): Plan | undefined {
     const plan = this.#registry.getMatches(address, undefined, position + 1)
-      .map(match => Plan.fromMatch(address, match, this))
+      .map(match => Plan.fromMatch(address, match, this, context))
       .find(isDefined);
     if (plan === undefined && this.#diagnostics.missingDependency === undefined) {
       this.#diagnostics.missingDependency = address;
@@ -234,13 +265,13 @@ export class PlannerVisitor extends Type.Visitor<Plan | undefined> {
    * answers what it carries, and a stepwise sequence carries one promise per element. Every other
    * global name describes none of itself to build from.
    */
-  protected override visitGlobal(type: GlobalType): Plan | undefined {
+  protected override visitGlobal(type: GlobalType, context: PlanningContext): Plan | undefined {
     if (Type.isPromiseLike(type)) {
-      return this.visit(Type.awaited(type));
+      return this.#visitPromise(type, context);
     }
     const [matched, generics] = Type.bindGenerics(typefor<AsyncIterable<Generic<'E'>>>(), type);
     if (matched) {
-      return Plan.asyncIterable(this.#planElements(Type.promise(generics.E!)));
+      return Plan.asyncIterable(this.#planElements(Type.promise(generics.E!), context));
     }
     return undefined;
   }
@@ -262,12 +293,12 @@ export class PlannerVisitor extends Type.Visitor<Plan | undefined> {
     return Plan.latebound(type);
   }
 
-  protected override visitArray(type: ArrayType): Plan | undefined {
-    return Plan.array(this.#planElements(type.element));
+  protected override visitArray(type: ArrayType, context: PlanningContext): Plan | undefined {
+    return Plan.array(this.#planElements(type.element, context));
   }
 
-  protected override visitIterable(type: IterableType): Plan | undefined {
-    return Plan.iterable(this.#planElements(type.element));
+  protected override visitIterable(type: IterableType, context: PlanningContext): Plan | undefined {
+    return Plan.iterable(this.#planElements(type.element, context));
   }
 
   protected override visitIntersection(_type: IntersectionType): Plan | undefined {
@@ -277,9 +308,9 @@ export class PlannerVisitor extends Type.Visitor<Plan | undefined> {
     return undefined;
   }
 
-  protected override visitObject(type: ObjectType): Plan | undefined {
+  protected override visitObject(type: ObjectType, context: PlanningContext): Plan | undefined {
     const names = Object.keys(type.members);
-    const properties = names.map(name => this.visit(type.members[name]!));
+    const properties = names.map(name => this.visit(type.members[name]!, context));
     if (properties.some(p => !p)) {
       return undefined;
     }
@@ -290,12 +321,12 @@ export class PlannerVisitor extends Type.Visitor<Plan | undefined> {
     return undefined;
   }
 
-  protected override visitTuple(type: TupleType): Plan | undefined {
-    const members = type.members.map(member => this.visit(member));
+  protected override visitTuple(type: TupleType, context: PlanningContext): Plan | undefined {
+    const members = type.members.map(member => this.visit(member, context));
     if (members.some(p => !p)) {
       return undefined;
     }
-    const rest = type.rest === undefined ? undefined : this.visit(Type.array(type.rest));
+    const rest = type.rest === undefined ? undefined : this.visit(Type.array(type.rest), context);
     return Plan.factory((...args: any[]) => args, members as Plan[], rest);
   }
 
@@ -308,10 +339,24 @@ export class PlannerVisitor extends Type.Visitor<Plan | undefined> {
    * member wins, in canonical order. With literals ordered last among members, a literal keeps
    * serving as the fallback of an optional dependency without being a special case.
    */
-  protected override visitUnion(type: UnionType): Plan | undefined {
-    return Iterator.from(type.members)
-      .map(member => this.visit(member))
-      .find(Boolean);
+  protected override visitUnion(type: UnionType, context: PlanningContext): Plan | undefined {
+    // Members are alternatives, so a member served only by an await with nothing to enclose it is
+    // simply not available here — the union moves on to whatever else answers, a `undefined` literal
+    // among them. An unmet await surfaces at the dependency that needed it, never at a union that
+    // had another way to answer.
+    for (const member of type.members) {
+      try {
+        const plan = this.visit(member, context);
+        if (plan !== undefined) {
+          return plan;
+        }
+      } catch (error) {
+        if (!(error instanceof UnsatisfiableError)) {
+          throw error;
+        }
+      }
+    }
+    return undefined;
   }
 
   /**
@@ -323,30 +368,34 @@ export class PlannerVisitor extends Type.Visitor<Plan | undefined> {
    * element still arrives as a promise; one pass over the registrations keeps the two spellings in
    * a single authored order.
    */
-  #planElements(elementType: Type): Plan[] {
+  #planElements(elementType: Type, context: PlanningContext): Plan[] {
     const settled = Type.awaited(elementType);
-
-    return this.#registry.getMatches(elementType, Type.isPromiseLike(elementType) ? settled : undefined)
-      .map(match => (visitor: PlannerVisitor) => Plan.fromMatch(match.address, match, visitor))
+    const producers = this.#registry.getMatches(elementType, Type.isPromiseLike(elementType) ? settled : undefined)
+      .map(match => (ctx: PlanningContext) => Plan.fromMatch(match.address, match, this, ctx))
       .toArray()
-      .reverse()
-      .concat(visitor => Type.isOpen(settled) ? undefined : visitor.#synthesize(settled))
-      .map(produce => this.#planDelivery(elementType, produce))
+      .reverse();
+    producers.push(ctx => Type.isOpen(settled) ? undefined : this.#synthesize(settled, ctx));
+    return producers
+      .map(produce => this.#deliverElement(elementType, produce, context))
       .filter(isDefined);
   }
-}
 
-/** The context a boundary visitor inherits from the walk that opened it. */
-interface BoundaryContext {
-  readonly cycleGuard: CycleGuard;
-  readonly diagnostics: PassDiagnostics;
-  readonly collecting: AsyncPlan[];
+  /**
+   * One collection element: passed through as it stands, or — for a promise-headed collection —
+   * wrapped as its own boundary so the element arrives as a promise however its producer is registered.
+   */
+  #deliverElement(elementType: Type, produce: Func<[PlanningContext], Plan | undefined>, context: PlanningContext): Plan | undefined {
+    if (!Type.isPromiseLike(elementType)) {
+      return produce(context);
+    }
+    const built = this.#collect(context, () => produce(context));
+    return built && this.#promiseNode(built.inner, built.descendants, elementType);
+  }
 }
 
 /**
  * One pass's failure notes: the first type the pass found nothing to build from — a true leaf,
- * since a deeper failure always sets it first — beside each address a `Promise<…>` registration
- * nearly answered with nothing standing by to await it.
+ * since a deeper failure always sets it first.
  */
 interface PassDiagnostics {
   missingDependency: Type | undefined;

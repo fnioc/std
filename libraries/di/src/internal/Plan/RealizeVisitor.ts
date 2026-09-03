@@ -245,7 +245,7 @@ export class RealizeVisitor {
 
   /** The wrapping promise this boundary hands over — pure plan structure, minted afresh per ask. */
   protected visitPromise(plan: PromisePlan, context: VisitorContext): any {
-    return this.#deliver(plan, context);
+    return this.#deliver(plan.inner, plan.descendants, plan.populatedAddress, context);
   }
 
   /**
@@ -253,18 +253,23 @@ export class RealizeVisitor {
    * delivered from the envelope — and the construction the hooks see at this node.
    */
   protected visitRegisteredPromise(plan: RegisteredPromisePlan, context: VisitorContext): any {
+    const { inner, descendants, populatedAddress } = plan.envelope;
     if (context.states === undefined || this.#engine.isSeeded(plan.registration)) {
-      return this.#deliver(plan.envelope, context);
+      return this.#deliver(inner, descendants, populatedAddress, context);
     }
-    return this.#constructed(plan, plan.envelope.populatedAddress, plan.registration, context, inner => this.#deliver(plan.envelope, inner));
+    return this.#constructed(plan, populatedAddress, plan.registration, context, ctx => this.#deliver(inner, descendants, populatedAddress, ctx));
   }
 
-  async #deliver(plan: PromisePlan, context: VisitorContext): Promise<unknown> {
-    if (!plan.inventory.length) {
-      return this.visit(plan.inner, context);
+  /**
+   * Settles a boundary's own awaited descendants, then realizes what it wraps under them — the one
+   * place a walk waits. An empty boundary yields its inner without an await.
+   */
+  async #deliver(inner: Plan, descendants: readonly AsyncPlan[], address: Type, context: VisitorContext): Promise<unknown> {
+    if (!descendants.length) {
+      return this.visit(inner, context);
     }
-    const hoisted = await gather(plan.inventory, plan.populatedAddress, entry => this.visit(entry.inner, context));
-    return this.visit(plan.inner, { ...context, hoisted });
+    const hoisted = await gather(descendants, address, entry => this.#deliver(entry.inner, entry.descendants, entry.address, context));
+    return this.visit(inner, { ...context, hoisted });
   }
 
   /** The boundary above settled this dependency already, so the walk beneath reads it and never waits. */
