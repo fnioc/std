@@ -2478,3 +2478,13 @@ Rulings on the open di items, each against the section that holds it. State is t
 - `*.ttsc.e2e` parity re-run with Go present: later.
 - rhombus-toolkit message (arrived 2026-09-03, obey): `ImmutableLinkedList` is published as `@rhombus-toolkit/collections@1.0.0`; delete std's copy (`libraries/primitives/src/toolkit/ImmutableLinkedList.ts`, its re-export, `tests/primitives.test/test/immutable-linked-list.test.ts`, the "Also here" mention in `docs/libraries/primitives.md`). Nothing in std imports it, so no dependency is added and primitives stays a leaf; it is a public removal from primitives' surface. `concat`/`iterable`/`replace` moved from `@rhombus-toolkit/obj` to `@rhombus-toolkit/iterable@1.0.0`; six import sites (`di.core/Manifest.ts`, `di.core/augmentations/Manifest-Registration-augmentations.ts`, `di/di.ts`, `di/internal/Engine.ts`, `di/internal/Plan/RealizeVisitor.ts`, `tests/primitives.test/test/iterable-replace.test.ts`); nothing else imports `obj`, so `obj` drops from `di.core`, `di`, `tests/primitives.test` in favour of `iterable`. In flight.
 - Go lane = a /goweb cloud run over `transforms/` once the local tip is pushed.
+
+## Queue — publish minified (owner 2026-09-03)
+
+Owner: "for our new transform package, I want it to publish minified (e.g. `github.com/go-toolsmith/minformat`). I want everything that is published minified, actually." Not started; awaiting two answers before the brief:
+
+- Do the rolled `.d.ts` files minify too (that strips every TSDoc comment, i.e. the intellisense), or stay as they are?
+- Do the `*.extras` `src/` templates minify (the inline stage pastes their bodies into consumer code), or stay formatted?
+- Sourcemaps beside the minified JS bundles, or not?
+
+Unambiguous part: JS bundles minified via `bun build`; `@rhombus-std/transforms` published from a staged copy run through `minformat`, pinned per-project through mise's `go:` backend.
