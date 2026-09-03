@@ -658,7 +658,7 @@ func literalNodeValue(t *shimchecker.Type) (LiteralValue, bool) {
 // String/Number/BigInt/BooleanLiteral — as a KindLiteral. A union (a pure-literal
 // one included) and the wide `boolean` scalar return ok=false: a union is
 // decomposed by the general-union gate, where each member reaches this classifier
-// in turn, and wide `boolean` is named by intrinsicToken.
+// in turn, and wide `boolean` is not a literal value.
 func deriveSingleLiteral(t *shimchecker.Type) (*Node, bool) {
 	if v, ok := literalNodeValue(t); ok {
 		return &Node{Kind: KindLiteral, Literal: v}, true

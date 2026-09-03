@@ -5,11 +5,9 @@ import (
 	"testing"
 )
 
-// These tests pin the renderer-over-structure equivalence the flat token relies
-// on: DeriveTokenF is literally renderNode(DeriveNode(...)), so proving the two
-// agree here guards against a future change that decouples them — a node with no
-// flat spelling (an object, a callable) refuses in renderNode exactly where
-// DeriveTokenF reports no token.
+// These tests pin what the derivation answers: the exact flat token per shape
+// (including the shapes with none), and the tree DeriveNode builds under it where
+// the rendered string alone would not distinguish two structures.
 
 func mustRender(t *testing.T, n *Node) string {
 	t.Helper()
@@ -20,31 +18,67 @@ func mustRender(t *testing.T, n *Node) string {
 	return s
 }
 
-func TestDeriveTokenFMatchesRendererOverDeriveNode(t *testing.T) {
+// TestDeriveTokenFRendersEachShapesToken pins the exact token string DeriveTokenF
+// answers per shape, and the refusal where a shape has no flat spelling. Two of
+// these come from a name gate rather than the structure the type carries: a named
+// callable alias renders its own name, and a union spelled through an addressable
+// alias renders that alias rather than its members. The wide `boolean` scalar
+// reaches the checker as a union of its two literals carrying no intrinsic name,
+// so it renders no token.
+func TestDeriveTokenFRendersEachShapesToken(t *testing.T) {
 	prog, ctx, main := loadGenerics(t)
 	defer func() { _ = prog.Close() }()
 
-	names := []string{
-		"litStr", "intr", "holeInThing", "plain", "anon", "nestedAnon",
-		"hole3", "puA", "puNonLit", "puNonUnion", "sWideBool", "sUnion",
+	cases := map[string]struct {
+		token string
+		ok    bool
+	}{
+		"litStr":      {`"lit"`, true},
+		"intr":        {"number", true},
+		"holeInThing": {"IThing<$1>", true},
+		"plain":       {"IThing<unknown>", true},
+		"anon":        {"", false},
+		"nestedAnon":  {"", false},
+		"hole3":       {"$3", true},
+		"handler":     {"Handler", true},
+		"level":       {"Level", true},
+		"puA":         {`"a" | "b"`, true},
+		"puNonLit":    {"", false},
+		"puNonUnion":  {`"a"`, true},
+		"sWideBool":   {"", false},
+		"sUnion":      {`"a" | 1`, true},
 	}
-	for _, name := range names {
+	for name, want := range cases {
 		t.Run(name, func(t *testing.T) {
 			decl := typeOfDecl(t, ctx.Checker, main, name)
 
-			wantStr, wantOk := DeriveTokenF(ctx, decl, nil)
-
-			var gotStr string
-			gotOk := false
-			if node, derived := DeriveNode(ctx, ctx.Checker, decl, nil); derived {
-				gotStr, gotOk = renderNode(node)
+			token, ok := DeriveTokenF(ctx, decl, nil)
+			if ok != want.ok || token != want.token {
+				t.Fatalf("DeriveTokenF = (%q, %v), want (%q, %v)", token, ok, want.token, want.ok)
 			}
 
-			if gotOk != wantOk || gotStr != wantStr {
-				t.Fatalf("renderNode(DeriveNode) = (%q, %v), want DeriveTokenF = (%q, %v)", gotStr, gotOk, wantStr, wantOk)
+			var rendered string
+			renderedOK := false
+			if node, derived := DeriveNode(ctx, ctx.Checker, decl, nil); derived {
+				rendered = mustRenderOrRefuse(t, node)
+				renderedOK = rendered != ""
+			}
+			if renderedOK != ok || rendered != token {
+				t.Fatalf("renderNode(DeriveNode) = (%q, %v), want the same token", rendered, renderedOK)
 			}
 		})
 	}
+}
+
+// mustRenderOrRefuse renders a node, answering "" for a kind with no flat token
+// spelling, so a refusal is a value the caller compares rather than a failure.
+func mustRenderOrRefuse(t *testing.T, n *Node) string {
+	t.Helper()
+	s, ok := renderNode(n)
+	if !ok {
+		return ""
+	}
+	return s
 }
 
 // TestDeriveNodeNestedGenericShape pins the actual TREE shape for a nested hole

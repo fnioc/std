@@ -74,6 +74,11 @@ declare const sNull: null;
 declare const sWideBool: boolean;
 declare const sUnion: "a" | 1;
 
+type Level = "info" | "warn";
+type Handler = (x: string) => number;
+declare const level: Level;
+declare const handler: Handler;
+
 type Pair = [IOther, ICache];
 declare class Widget { constructor(other: IOther, cache: ICache); }
 declare function build(other: IOther, cache: ICache): IOther;
