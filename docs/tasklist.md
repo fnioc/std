@@ -2417,9 +2417,10 @@ same stash/set/walk/restore idiom `#collect` uses for `asyncDescendants`:
   `lowerPlanned`/`lowerSignature`, `visitBeneath`'s position argument. `Match.index` and
   `Registry.getMatches(start)` stay.
 
-Two forks for the owner:
+Two forks, the owner delegated the call to Claude 2026-09-03 ("your call"); picks marked:
 
-1. Ctor-carried address as proposed, or context-carried as adjusted.
+1. Ctor-carried address as proposed, or context-carried as adjusted. PICK: context-carried — the
+   ctor cannot see a nested node or its position.
 2. Behavior: today only a slot that IS the node's address goes beneath; a self address nested inside
    a synthesized slot (`Func<[Foo | undefined], Foo>`, `Func<[[Foo, Bar]], Foo>`) trips the cycle
    guard. With the check in `visit`, the nested `Foo` resolves beneath too, so an optional
@@ -2427,8 +2428,10 @@ Two forks for the owner:
    (the frame is cleared around each slot's descent into synthesis) or accept the widening.
    Indirect loops through another registered node throw either way: that node's frame replaces the
    one above.
+   PICK: widen — the rule is about the node ("a registration's slots resolve its own address
+   beneath it"), not the slot's top-level shape, and it is the shape with nothing to clear.
 
-Status: not ruled, not started.
+Status: ruled as above; implementation dispatched 2026-09-03 (Fable, in place on this branch).
 
 ## Open, owner's word (2026-09-03)
 
