@@ -103,10 +103,13 @@ function derivePublishedEntry(entry: ExportEntry, withSource: boolean): ExportEn
   // `declare module` merges into. Such a subpath is NOT scrubbed (see isInternal):
   // unresolvable, the augmentation silently detaches into a fresh ambient module.
   const runtime = entry.default ?? entry.import;
-  if (runtime === undefined) {
-    return { types: toDist(entry.types, 'dts') };
+  if (runtime !== undefined) {
+    return derivePublishedEntry(runtime, withSource);
   }
-  return derivePublishedEntry(runtime, withSource);
+  if (entry.types === undefined) {
+    throw new Error(`export entry names neither a runtime target nor \`types\`: ${JSON.stringify(entry)}`);
+  }
+  return { types: toDist(entry.types, 'dts') };
 }
 
 /** The derived `publishConfig.exports` for a whole manifest (scrub + dist-swap). */

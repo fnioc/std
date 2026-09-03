@@ -15,9 +15,9 @@
 //     @rhombus-std/config folds in @rhombus-toolkit/proxy-base (whose
 //     published ESM uses extensionless relative imports Node's resolver
 //     rejects; bundling resolves them).
-//   - `entrypoints` = src/index.ts plus, for every exports subpath whose
-//     `import` condition points at a non-index dist/*.js, the matching
-//     src/*.ts. No package carries such a subpath today.
+//   - `entrypoints` = src/index.ts plus the runtime target of every exports
+//     subpath naming a non-index `./src/*.ts`. No package carries such a
+//     subpath today.
 //   - `dtsConfigs` = one rollup config per JS entrypoint (rollup.dts.mjs, plus
 //     rollup.<entry>.dts.mjs per extra entrypoint) -- the one-rolled-d.ts-per-
 //     entry invariant, asserted by existence.
@@ -67,16 +67,19 @@ if (typecheck.status !== 0) {
   process.exit(typecheck.status ?? 1);
 }
 
-// Entrypoints: src/index.ts + every exports subpath whose `import` condition
-// is a non-index dist/bundle/*.js. (`./private/*`, `./ttsc`, and bun-only
-// subpaths all fail the test and are correctly ignored.)
+// Entrypoints: src/index.ts + every exports subpath whose runtime target is a
+// non-index src module -- a bare string, or the `default` condition of an
+// object. A wildcard subpath (`./private/*`) is a pattern rather than one
+// module, so it names no entrypoint; `./ttsc` targets a file outside src; and a
+// types-only subpath (di.core's `./builders`) declares no runtime target at all.
 const entrypoints = ['src/index.ts'];
 const dtsConfigs = ['rollup.dts.mjs'];
 for (const [subpath, target] of Object.entries(manifest.exports ?? {})) {
-  if (subpath === '.' || typeof target === 'string') {
+  if (subpath === '.' || subpath.includes('*')) {
     continue;
   }
-  const match = /^\.\/dist\/bundle\/(?!index\.js$)(.+)\.js$/.exec(target.import ?? '');
+  const runtime = typeof target === 'string' ? target : target.default;
+  const match = /^\.\/src\/(?!index\.ts$)(.+)\.ts$/.exec(runtime ?? '');
   if (!match) {
     continue;
   }
