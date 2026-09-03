@@ -2388,7 +2388,7 @@ Owner: the async behavior in `libraries/di/src/internal/Plan/PlannerVisitor.ts` 
 - Consequence (owner-confirmed): an `AsyncPlan` settles its own `descendants` before its inner realizes, the way `PromisePlan` does — `RealizeVisitor`'s async case gathers them too. Order at an async node: collect its children, build the continuation chain over them, THEN hand itself off to the enclosing collection to be hoisted.
 - Today's shape being replaced: `#planDelivery` opens a second `PlannerVisitor` with a `BoundaryContext{collecting}`; `#awaitPromised` pushes onto `#collecting`. Both go.
 
-Status: spec confirmed by the owner; not started. Runs on his go.
+Status: landed in 93c64cc0 (code + tests) and e806c088 (docs). A union tolerates the new no-enclosing-await error so an optional dependency still falls back to `undefined`.
 
 ## Open, owner's word (2026-09-03)
 
