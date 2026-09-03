@@ -2481,10 +2481,11 @@ Rulings on the open di items, each against the section that holds it. State is t
 
 ## Queue — publish minified (owner 2026-09-03)
 
-Owner: "for our new transform package, I want it to publish minified (e.g. `github.com/go-toolsmith/minformat`). I want everything that is published minified, actually." Not started; awaiting two answers before the brief:
+Owner: "for our new transform package, I want it to publish minified (e.g. `github.com/go-toolsmith/minformat`). I want everything that is published minified, actually." RULED 2026-09-03: "use sourcemaps. include everything you can sourcemap, plus go (revertable with gofmt)."
 
-- Do the rolled `.d.ts` files minify too (that strips every TSDoc comment, i.e. the intellisense), or stay as they are?
-- Do the `*.extras` `src/` templates minify (the inline stage pastes their bodies into consumer code), or stay formatted?
-- Sourcemaps beside the minified JS bundles, or not?
+- JS bundles minify via `bun build`, each with its `.js.map` published beside it.
+- Rolled `.d.ts` files stay formatted: no map restores stripped TSDoc.
+- `*.extras` `src/` templates stay formatted: the inline stage pastes their bodies into consumer code and nothing maps that back.
+- `@rhombus-std/transforms` publishes its Go from a staged copy run through `minformat`, pinned per-project through mise's `go:` backend; `gofmt` reverts it.
 
-Unambiguous part: JS bundles minified via `bun build`; `@rhombus-std/transforms` published from a staged copy run through `minformat`, pinned per-project through mise's `go:` backend.
+Not started; sequenced after the exports-audit lane (shared files: `scripts/build-lib.ts`, `transforms/package.json`, the derive script).
