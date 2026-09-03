@@ -21,7 +21,10 @@ import { lifetimeKind, scopeId } from './symbols.js';
  *
  * What a construction produced is what is cached, a promise included, so concurrent asynchronous
  * asks share one pending construction; a promise that rejects is forgotten, so the next ask tries
- * again, and its settled value is what disposal reaches. A construction that throws caches nothing.
+ * again. The promise a caller is handed settles to the value the owning scope then holds for
+ * disposal — a scope that ended while the construction was still pending disposes that value and
+ * refuses the ask with {@link ObjectDisposedError} rather than answering it with an instance it has
+ * already let go. A construction that throws caches nothing.
  *
  * Disposing a scope's provider disposes what that scope owns, most recently constructed first, each
  * instance once; every error is collected — one rethrows as itself, several as one
@@ -186,14 +189,19 @@ class Model {
       }
     },
 
+    canonicalize: (construction: Hooks.Construction<Scope>, instance: unknown): unknown => {
+      const owner = this.#ownerOf(construction);
+      return owner !== undefined && isThenable(instance) ? settleUnder(owner, instance) : instance;
+    },
+
     afterConstruct: (construction: Hooks.Construction<Scope>, instance: unknown): void => {
       const { registration, populatedAddress, state } = construction;
       const lifetime = lifetimeOf(registration);
       const keeper = lifetime === 'singleton' ? this.#root : lifetime === 'scoped' ? state : undefined;
-      const owner = lifetime === 'singleton' ? this.#root : lifetime === undefined ? undefined : state;
       if (keeper !== undefined) {
         store(keeper, registration, populatedAddress, instance);
       }
+      const owner = this.#ownerOf(construction);
       if (owner === undefined) {
         return;
       }
@@ -201,23 +209,47 @@ class Model {
         capture(owner, instance);
         return;
       }
-      instance.then(
-        settled => {
-          try {
-            capture(owner, settled);
-          } catch {
-            // The owner ended while the construction was pending: the settled value is disposed
-            // and the caller, who already holds the promise, is not told twice.
-          }
-        },
-        () => {
-          if (keeper !== undefined) {
-            evict(keeper, registration, populatedAddress, instance);
-          }
-        },
-      );
+      // The promise the caller holds files the settled value itself. What is left here is the
+      // failure: a construction that rejected, or an owner that ended before it settled, is
+      // forgotten, so the next ask constructs again.
+      instance.then(undefined, () => {
+        if (keeper !== undefined) {
+          evict(keeper, registration, populatedAddress, instance);
+        }
+      });
     },
   };
+
+  /**
+   * The scope that disposes what a construction produced: the container's own beneath a singleton,
+   * the scope the ask ran under beneath a scoped or transient registration, and none for a value,
+   * which is handed back as it stands.
+   */
+  #ownerOf({ registration, state }: Hooks.Construction<Scope>): Scope | undefined {
+    const lifetime = lifetimeOf(registration);
+    if (lifetime === 'singleton') {
+      return this.#root;
+    }
+    return lifetime === undefined ? undefined : state;
+  }
+}
+
+/**
+ * The promise a caller is handed for a construction that produced one: it settles to the same
+ * value, filed for disposal with `owner` — or, where `owner` ended while the construction was
+ * pending, it disposes that value and rejects, so no ask is answered with an instance its scope
+ * has already let go.
+ */
+function settleUnder(owner: Scope, product: PromiseLike<unknown>): Promise<unknown> {
+  return Promise.resolve(product).then(settled => {
+    // capture disposes a settled value its scope can no longer own and refuses the ask; a value
+    // with nothing to dispose is refused here just the same.
+    capture(owner, settled);
+    if (owner.disposed) {
+      throw new ObjectDisposedError();
+    }
+    return settled;
+  });
 }
 
 /** The factory behind the model's `IServiceProvider` registration — never called, since the model answers that construction itself. */

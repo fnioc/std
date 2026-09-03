@@ -677,7 +677,7 @@ describe('asynchronous products', () => {
     expect(instance.disposed).toBe(1);
   });
 
-  test('a singleton promise product still pending when the container ends is disposed on settlement', async () => {
+  test('a singleton promise product still pending when the container ends is disposed on settlement, and the ask it was answering is refused', async () => {
     let settle: (recorder: Recorder) => void = () => undefined;
     const provider = Builder.useAddon(standardLifetime())
       .withServices(m => m.add(RECORDER, () => new Promise<Recorder>(resolve => (settle = resolve)), Type.func(Type.promise(RECORDER), [[]]), 'singleton'))
@@ -687,12 +687,11 @@ describe('asynchronous products', () => {
 
     const instance = new Recorder();
     settle(instance);
-    await pending;
-    await new Promise(resolve => setTimeout(resolve, 0));
+    await expect(pending).rejects.toThrow(ObjectDisposedError);
     expect(instance.disposed).toBe(1);
   });
 
-  test('a promise product still pending when its scope ends is disposed on settlement', async () => {
+  test('a promise product still pending when its scope ends is disposed on settlement, and the ask it was answering is refused', async () => {
     let settle: (recorder: Recorder) => void = () => undefined;
     const provider = Builder.useAddon(standardLifetime())
       .withServices(m => m.add(RECORDER, () => new Promise<Recorder>(resolve => (settle = resolve)), Type.func(Type.promise(RECORDER), [[]]), 'scoped'))
@@ -703,8 +702,37 @@ describe('asynchronous products', () => {
 
     const instance = new Recorder();
     settle(instance);
-    await pending;
-    await new Promise(resolve => setTimeout(resolve, 0));
+    await expect(pending).rejects.toThrow(ObjectDisposedError);
+    expect(instance.disposed).toBe(1);
+  });
+
+  test('a product with nothing to dispose is refused just the same when its scope ended while it was pending', async () => {
+    let settle: (value: object) => void = () => undefined;
+    const provider = Builder.useAddon(standardLifetime())
+      .withServices(m => m.add(A, () => new Promise<object>(resolve => (settle = resolve)), Type.func(Type.promise(A), [[]]), 'scoped'))
+      .build();
+    const scope = openScope(provider);
+    const pending = scope.resolveAsync(A) as Promise<object>;
+    scope[Symbol.dispose]();
+
+    settle({});
+    await expect(pending).rejects.toThrow(ObjectDisposedError);
+  });
+
+  test('a scope that is still open when the product settles answers the ask and owns the instance', async () => {
+    let settle: (recorder: Recorder) => void = () => undefined;
+    const provider = Builder.useAddon(standardLifetime())
+      .withServices(m => m.add(RECORDER, () => new Promise<Recorder>(resolve => (settle = resolve)), Type.func(Type.promise(RECORDER), [[]]), 'scoped'))
+      .build();
+    const scope = openScope(provider);
+    const pending = scope.resolveAsync(RECORDER) as Promise<Recorder>;
+
+    const instance = new Recorder();
+    settle(instance);
+    expect(await pending).toBe(instance);
+    expect(instance.disposed).toBe(0);
+
+    scope[Symbol.dispose]();
     expect(instance.disposed).toBe(1);
   });
 });
