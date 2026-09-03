@@ -957,6 +957,12 @@ layer deciding _which_ stages apply any more; that question doesn't exist in thi
 
 ## Toolchain & publishing
 
+The Go tree ships as its own package, `@rhombus-std/transforms`, carrying `cmd/`, `internal/`,
+`go.mod` and `go.sum`. Every `@rhombus-std/*.extras` package takes it as a runtime dependency, so
+it lands in a consumer's lockfile the moment they add any authoring package — `ttsc` compiles the
+plugin from source on the consuming machine, and the source has to be there to compile. Nobody
+depends on it directly; there is no JavaScript API to reach for.
+
 You do not need Go installed to build with these transformers. `ttsc` resolves a Go compiler in
 this order: an explicit override, then a platform-specific bundled SDK it installs as an optional
 dependency, then a couple of local fallback locations, then whatever `go` is on your `PATH`. For
@@ -984,10 +990,15 @@ The command itself is a thin `main` that composes the stage table into a `Host` 
 it to `stdhost.Run`; almost everything else — the per-file loop, the mergesynth pre-pass split,
 the emit sweep, and the JSON envelope `ttsc` reads back — lives in `stdhost`, not the command.
 
-Each `@rhombus-std/*.extras` package's `./ttsc` descriptor is a thin JS module (`ttsc.mjs`) that
-`ttsc` loads to resolve an absolute path back to `transforms/cmd/ttsc-std`; every descriptor
-resolving to that same directory is what lets `ttsc` dedupe every consumer to one cache key and
-one compiled binary regardless of how many descriptors are in play.
+The one real descriptor is `transforms/ttsc.mjs`, a thin JS module that `ttsc` loads to resolve an
+absolute path back to `transforms/cmd/ttsc-std`; it anchors that path on its own file rather than
+on the factory context's `dirname`, which names whichever module `ttsc` actually loaded. Each
+`@rhombus-std/*.extras` package's `./ttsc` descriptor is a one-line re-export of it, and its
+`ttsc.plugin.transform` marker points at that local `./ttsc.mjs` — a relative specifier, which
+`ttsc` resolves from the marker package's own root; a bare package specifier would resolve from
+the consuming project's root instead and find nothing under an isolated linker. Every descriptor
+resolving to that same source directory is what lets `ttsc` dedupe every consumer to one cache key
+and one compiled binary regardless of how many descriptors are in play.
 
 Adding a new primitive means: write the Go transform under `transforms/internal/<name>transform`,
 add its `Stage{...}` entry to `BaseStages()` at the position the canonical order calls for

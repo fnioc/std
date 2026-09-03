@@ -110,6 +110,8 @@ Confirm against `docs/decisions.v2.md` before touching these:
   `.extras` (sugar-only authoring package + ttsc descriptor). Config providers keep their own name
   (`config.json`, `config.env`, `config.commandline`, `config.file`, `config.ini`, `config.xml`);
   other families follow suit (`logging.console`, `logging.browserconsole`, `hosting.browser`).
+- **`@rhombus-std/transforms`** is outside the scheme: it is the shared build-time engine every
+  `*.extras` runs on, not a family of libraries.
 
 ## No-transformer-first
 
@@ -173,6 +175,12 @@ args from the manifest (`external` = deps ∪ peers, lowering stage iff `tsconfi
 A single Go/`ttsc` binary under `transforms/`. One always-on stage table
 (mergesynth → inline → typefor → schemaof) looped to a fixed point per file. Go comes from
 **mise only**. Full mechanics: `docs/features/transformer-architecture.md`.
+
+That tree is itself a workspace member and publishes as `@rhombus-std/transforms` — `ttsc`
+compiles the plugin from Go source on the consumer's machine, so every `*.extras` takes it as a
+runtime `dependency`. Its only export is the `./ttsc` descriptor each `*.extras` re-exports; it
+has no `src/`, no dist and no `build` script, which is why `scripts/derive-publish-config.ts`
+(`libraries/*` only) does not govern its `publishConfig`.
 
 The primitive roster is two verbs: `typefor<T>()` (names/observes a type) and `schemaof<T>()`
 (expands one into its member tree). Both live in `primitives.extras`.
