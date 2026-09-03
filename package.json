@@ -6,7 +6,8 @@
   "workspaces": [
     "libraries/*",
     "examples/*",
-    "tests/*"
+    "tests/*",
+    "transforms"
   ],
   "scripts": {
     "build": "bun scripts/build-all.ts",

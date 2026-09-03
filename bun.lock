@@ -204,6 +204,7 @@
         "@rhombus-std/config.core": "workspace:*",
         "@rhombus-std/primitives": "workspace:*",
         "@rhombus-std/primitives.extras": "workspace:*",
+        "@rhombus-std/transforms": "workspace:^",
       },
     },
     "libraries/config.file": {
@@ -322,6 +323,7 @@
         "@rhombus-std/di.core": "workspace:*",
         "@rhombus-std/primitives": "workspace:*",
         "@rhombus-std/primitives.extras": "workspace:*",
+        "@rhombus-std/transforms": "workspace:^",
         "@rhombus-toolkit/func": "3.6.0",
         "@rhombus-toolkit/types": "^1.0.1",
       },
@@ -342,6 +344,7 @@
         "@rhombus-std/options.augmentations": "workspace:*",
         "@rhombus-std/primitives": "workspace:*",
         "@rhombus-std/primitives.extras": "workspace:*",
+        "@rhombus-std/transforms": "workspace:^",
       },
       "devDependencies": {
         "typescript": "^6.0.3",
@@ -632,6 +635,7 @@
       "version": "10.1.0",
       "dependencies": {
         "@rhombus-std/primitives": "workspace:^",
+        "@rhombus-std/transforms": "workspace:^",
         "@rhombus-toolkit/func": "^3.6.0",
       },
     },
@@ -1033,6 +1037,10 @@
         "typescript": "^7.0.2",
       },
     },
+    "transforms": {
+      "name": "@rhombus-std/transforms",
+      "version": "0.0.0",
+    },
   },
   "overrides": {
     "@rhombus-toolkit/types": "1.0.1",
@@ -1277,6 +1285,8 @@
     "@rhombus-std/primitives.extras": ["@rhombus-std/primitives.extras@workspace:libraries/primitives.extras"],
 
     "@rhombus-std/primitives.test": ["@rhombus-std/primitives.test@workspace:tests/primitives.test"],
+
+    "@rhombus-std/transforms": ["@rhombus-std/transforms@workspace:transforms"],
 
     "@rhombus-std/typefor.ttsc.e2e": ["@rhombus-std/typefor.ttsc.e2e@workspace:tests/typefor.ttsc.e2e"],
 
