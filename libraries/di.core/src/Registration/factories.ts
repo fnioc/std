@@ -31,7 +31,7 @@ export function factory(address: Type, implementer: Func, factoryType: FunctionT
 export function value(address: Type, implementer: unknown): ValueRegistration {
   if (Type.isOpen(address) && !isCallable(address)) {
     throw new TypeError(
-      `${Type.stringify(address)} still holds a generic hole — one value cannot stand for every closing; only a callable can`,
+      `${address} still holds a generic hole — one value cannot stand for every closing; only a callable can`,
     );
   }
   return { address, value: implementer };

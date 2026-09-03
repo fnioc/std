@@ -155,7 +155,7 @@ function matchLiteral(raw: string, members: readonly Type[]): ParseResult<Litera
       }
     }
   }
-  const allowed = members.map((member) => Type.stringify(member)).join(', ');
+  const allowed = members.join(', ');
   return { ok: false, reason: `not one of ${allowed}` };
 }
 
@@ -207,7 +207,7 @@ function walkRequired(node: IConfig, type: Type, key: string, path: readonly str
   }
 
   issues.push(
-    `no configuration value coerces into ${Type.stringify(type)}, named by "${fullPath}" -- `
+    `no configuration value coerces into ${type}, named by "${fullPath}" -- `
       + 'a schema names string, number, boolean, object and literal-union types',
   );
   return undefined;

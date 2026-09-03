@@ -111,7 +111,7 @@ export class Engine {
       .find(candidate => candidate !== undefined);
 
     if (signature === undefined) {
-      throw new TypeError(`${Type.stringify(funcType)} has no signature accepting ${providedArgs.length} arg(s)`);
+      throw new TypeError(`${funcType} has no signature accepting ${providedArgs.length} arg(s)`);
     }
     return Plan.realize(Plan.from(funcType.return, this.#registry, signature, this.#planHooksFor(request)), { engine: this, context: { args: providedArgs }, request });
   }

@@ -386,7 +386,7 @@ class CycleGuard {
         const left = this.#visiting.pop();
         if (left !== address) {
           throw new Error(
-            `the planning pass unwound out of order — expected to leave "${Type.stringify(address)}" but left "${left ? Type.stringify(left) : '<empty>'}"`,
+            `the planning pass unwound out of order — expected to leave "${address}" but left "${left ?? '<empty>'}"`,
           );
         }
       },

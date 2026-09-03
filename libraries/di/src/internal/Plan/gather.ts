@@ -21,7 +21,7 @@ export async function gather(
   if (reasons.size > 0) {
     throw new AggregateError(
       [...reasons],
-      `cannot deliver ${Type.stringify(address)} — ${reasons.size} of the dependencies it awaits failed`,
+      `cannot deliver ${address} — ${reasons.size} of the dependencies it awaits failed`,
     );
   }
   return new Map(inventory.map((entry, at) => [entry, (outcomes[at] as PromiseFulfilledResult<unknown>).value]));

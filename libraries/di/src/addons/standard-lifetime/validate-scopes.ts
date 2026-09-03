@@ -14,7 +14,7 @@ export class ScopeValidationError extends DiError {
 
   constructor(address: Type) {
     super(
-      `cannot resolve scoped ${Type.stringify(address)} under the singleton scope — a scoped registration is reached through an opened scope, `
+      `cannot resolve scoped ${address} under the singleton scope — a scoped registration is reached through an opened scope, `
         + `never from the container's own provider or from a singleton's dependencies`,
     );
     this.name = 'ScopeValidationError';

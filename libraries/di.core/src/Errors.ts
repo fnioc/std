@@ -48,7 +48,7 @@ export class UnsatisfiableError extends DiError {
     reason: string,
     cause?: UnsatisfiableError,
   ) {
-    super(`cannot satisfy ${Type.stringify(address)} — ${reason}`, { cause });
+    super(`cannot satisfy ${address} — ${reason}`, { cause });
     this.name = 'UnsatisfiableError';
     this.address = address;
   }
@@ -68,7 +68,7 @@ export class CycleError extends DiError {
   readonly chain: readonly Type[];
 
   constructor(chain: readonly Type[]) {
-    super(`circular dependency: ${chain.map(type => Type.stringify(type)).join(' -> ')}`);
+    super(`circular dependency: ${chain.join(' -> ')}`);
     this.name = 'CycleError';
     this.chain = chain;
   }
@@ -87,7 +87,7 @@ export class LifetimeModelError extends DiError {
   readonly address: Type;
 
   constructor(address: Type, cause: unknown) {
-    super(`the lifetime model failed realizing ${Type.stringify(address)}`, { cause });
+    super(`the lifetime model failed realizing ${address}`, { cause });
     this.name = 'LifetimeModelError';
     this.address = address;
   }
@@ -103,7 +103,7 @@ export class UniversalAddressError extends DiError {
 
   constructor(address: Type) {
     super(
-      `${Type.stringify(address)} is nothing but a type parameter, so this registration answers every request no newer one does; `
+      `${address} is nothing but a type parameter, so this registration answers every request no newer one does; `
         + `give it the service type it provides and leave the hole inside — ILogger<%T> rather than %T`,
     );
     this.name = 'UniversalAddressError';
@@ -149,7 +149,7 @@ export class ManifestValidationError extends DiError {
   constructor(failures: readonly ValidationFailure[]) {
     super(
       `cannot satisfy every registration:\n`
-        + failures.map(failure => `  ${Type.stringify(failure.address)} — ${failure.error.message}`).join('\n'),
+        + failures.map(failure => `  ${failure.address} — ${failure.error.message}`).join('\n'),
     );
     this.name = 'ManifestValidationError';
     this.failures = failures;

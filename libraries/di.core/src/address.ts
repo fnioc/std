@@ -12,7 +12,7 @@ export function withKey(address: Type, key: string | undefined): Type {
     return address;
   }
   if (address.kind === 'tag') {
-    throw new Error(`${Type.stringify(address)} already carries a tag; it cannot take the key ${key}.`);
+    throw new Error(`${address} already carries a tag; it cannot take the key ${key}.`);
   }
   return Type.tag(address, key);
 }
