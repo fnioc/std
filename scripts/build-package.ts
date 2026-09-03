@@ -20,10 +20,12 @@
 // per build role. A types-only package (emitJs: false) asserts no runtime .js
 // slips into dist/bundle.
 
+import { createMinifier } from 'dts-minify';
 import { spawnSync } from 'node:child_process';
 import { existsSync, mkdirSync, readdirSync, readFileSync, renameSync, rmSync, writeFileSync } from 'node:fs';
 import { homedir } from 'node:os';
 import { join } from 'node:path';
+import * as ts from 'typescript';
 
 /**
  * Read the resolved transformer specifiers from a tsconfig's
@@ -288,6 +290,23 @@ export function ensureDtsModuleHood(bundleDir: string): void {
   }
 }
 
+const dtsMinifier = createMinifier(ts);
+
+/**
+ * Strips non-essential whitespace and non-doc comments from every rolled
+ * `.d.ts` under `bundleDir`, keeping the JSDoc that drives editor intellisense.
+ */
+export function minifyDtsFiles(bundleDir: string): void {
+  for (const entry of readdirSync(bundleDir)) {
+    if (!entry.endsWith('.d.ts')) {
+      continue;
+    }
+    const path = join(bundleDir, entry);
+    const content = readFileSync(path, 'utf8');
+    writeFileSync(path, dtsMinifier.minify(content, { keepJsDocs: true }));
+  }
+}
+
 /** Builds one package's dist artifacts (JS bundle + rolled .d.ts). */
 export async function buildPackage(options: BuildPackageOptions): Promise<void> {
   const { dir, name, entrypoints = ['src/index.ts'], external = [], emitJs = true, dtsConfigs = ['rollup.dts.mjs'], assertNoJs = false, splitting = entrypoints.length > 1, ttscProject,
@@ -341,6 +360,7 @@ export async function buildPackage(options: BuildPackageOptions): Promise<void> 
     }
   }
   ensureDtsModuleHood(bundleDir);
+  minifyDtsFiles(bundleDir);
 
   if (assertNoJs && existsSync(join(bundleDir, 'index.js'))) {
     throw new Error(`${name}: unexpected runtime artifact dist/bundle/index.js -- this package is types-only`);
