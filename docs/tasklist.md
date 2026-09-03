@@ -2392,5 +2392,4 @@ Status: spec confirmed by the owner; not started. Runs on his go.
 
 ## Open, owner's word (2026-09-03)
 
-- Delete the four landed cloud branches on origin (`feat-di-request-door` 8d432b94 — fully contained here; `feat-di-standard-lifetime`, `feat-di-tagged-lifetime`, `test-di-suite-complete`)? Asked twice, unanswered.
 - `INLINE_NO_SRC_ENTRY` second publish gate (section above).
