@@ -2361,4 +2361,4 @@ have no single-threaded analog and are marked so.
 ## Session — Type spells itself (§234), 2026-09-03
 
 - [x] Owner ruled §234 (`docs/decisions.v2.md`): prototype `toString`/`toStringTag`/inspect hook, no `toJSON`, `Type.reviver`, unqualified `kind`.
-- [ ] Implement in place on `IServiceManifest-repair` (opus agent): `intern.ts` prototype, `Type.reviver` + `isRawType`, `${type}` at the 14 stringify call sites, tests, docs. Gate: build → test → lint.
+- [x] Implemented in place: `b7bd72bd` (prototype, `Type.reviver` + `isRawType`, tests, docs), `3c90071d` (`${type}` at the call sites). Build/test/lint/format green; pushed.
