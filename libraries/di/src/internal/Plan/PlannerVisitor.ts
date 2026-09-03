@@ -293,7 +293,6 @@ export class PlannerVisitor extends Type.Visitor<Plan | undefined, PlanningConte
     return undefined;
   }
 
-  /** Parked: composing one from its arg types on a miss awaits its design ruling. */
   protected override visitCtor(_type: ConstructorType): Plan | undefined {
     return undefined;
   }
