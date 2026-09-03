@@ -197,6 +197,16 @@ func deriveNode(ctx *Context, checker *shimchecker.Checker, t *shimchecker.Type,
 		}
 	}
 
+	// A named callable ALIAS (`type Handler = (x: string) => number`) must derive
+	// by its name, not structurally as a callable. Only addressable aliases fire
+	// here; a declared function (`declare function f()`) carries no alias and falls
+	// through to the callable gates below.
+	if symbol := addressableAliasSymbol(ctx, t); symbol != nil && !isFuncPackageCallable(ctx, symbol) {
+		if hasCallableSignatures(checker, t) {
+			return deriveNamedNode(ctx, checker, t, symbol, failure, s)
+		}
+	}
+
 	if ctorSigs := shimchecker.Checker_getSignaturesOfType(checker, t, shimchecker.SignatureKindConstruct); len(ctorSigs) != 0 {
 		kind := KindCtor
 		if isAbstractConstructor(t) {
@@ -227,7 +237,7 @@ func deriveNode(ctx *Context, checker *shimchecker.Checker, t *shimchecker.Type,
 		return deriveUnionNode(ctx, checker, t, failure, s)
 	}
 
-	// An anonymous type that kept an addressable alias — a mapped-type alias whose
+	// An anonymous type that kept an addressable name — a mapped-type alias whose
 	// members were reminted under one name — is spelled by that name rather than
 	// opened up. A conditional or index-access that LOST its alias carries no such
 	// symbol and falls through to the structural shapes below.
@@ -309,7 +319,7 @@ func deriveTupleNode(ctx *Context, checker *shimchecker.Checker, t *shimchecker.
 			return nil, false
 		}
 	}
-	slots := ctx.Checker.GetTypeArguments(t)
+	slots := checker.GetTypeArguments(t)
 	members := make([]*Node, 0, len(slots))
 	var rest *Node
 	for i, slot := range slots {
@@ -340,8 +350,9 @@ func deriveObjectNode(ctx *Context, checker *shimchecker.Checker, t *shimchecker
 	if len(shimchecker.Checker_getIndexInfosOfType(checker, t)) != 0 {
 		return nil, false
 	}
-	properties := make([]Property, 0)
-	for _, sym := range shimchecker.Checker_getPropertiesOfType(checker, t) {
+	allProps := shimchecker.Checker_getPropertiesOfType(checker, t)
+	properties := make([]Property, 0, len(allProps))
+	for _, sym := range allProps {
 		if isInternalSymbolName(sym.Name) {
 			continue
 		}
@@ -357,6 +368,9 @@ func deriveObjectNode(ctx *Context, checker *shimchecker.Checker, t *shimchecker
 			member = withUndefined(member)
 		}
 		properties = append(properties, Property{Key: sym.Name, Type: member})
+	}
+	if len(allProps) != 0 && len(properties) == 0 {
+		return nil, false
 	}
 	return &Node{Kind: KindObject, Properties: properties}, true
 }
@@ -522,18 +536,23 @@ func isListNode(n *Node) bool {
 // per-key optional flag of its own.
 func withUndefined(member *Node) *Node {
 	undefined := &Node{Kind: KindLiteral, Literal: LiteralValue{Kind: LiteralUndefined}}
-	if isNullishLiteral(member) {
+	if isUndefinedLiteral(member) {
 		return member
 	}
 	if member.Kind == KindUnion {
 		for _, m := range member.Members {
-			if isNullishLiteral(m) {
+			if isUndefinedLiteral(m) {
 				return member
 			}
 		}
 		return &Node{Kind: KindUnion, Members: append(append([]*Node{}, member.Members...), undefined)}
 	}
 	return &Node{Kind: KindUnion, Members: []*Node{member, undefined}}
+}
+
+// isUndefinedLiteral reports whether a node is the `undefined` literal.
+func isUndefinedLiteral(n *Node) bool {
+	return n.Kind == KindLiteral && n.Literal.Kind == LiteralUndefined
 }
 
 // isNullishLiteral reports whether a node is the `null` or `undefined` literal.
@@ -576,6 +595,15 @@ func isFuncPackageCallable(ctx *Context, symbol *shimast.Symbol) bool {
 	}
 	pkg := nearestPackage(ctx, sourceFile.FileName())
 	return pkg != nil && pkg.name == "@rhombus-toolkit/func"
+}
+
+// hasCallableSignatures reports whether t carries call or construct signatures —
+// the shapes the callable gates would structurally derive if not intercepted.
+func hasCallableSignatures(checker *shimchecker.Checker, t *shimchecker.Type) bool {
+	if len(shimchecker.Checker_getSignaturesOfType(checker, t, shimchecker.SignatureKindConstruct)) != 0 {
+		return true
+	}
+	return len(shimchecker.Checker_getSignaturesOfType(checker, t, shimchecker.SignatureKindCall)) != 0
 }
 
 // isGeneralUnion reports whether t is a union this layer decomposes itself, rather

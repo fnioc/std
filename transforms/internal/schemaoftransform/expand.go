@@ -1,8 +1,6 @@
 package schemaoftransform
 
 import (
-	"regexp"
-
 	shimast "github.com/microsoft/typescript-go/shim/ast"
 	shimchecker "github.com/microsoft/typescript-go/shim/checker"
 
@@ -314,14 +312,8 @@ func isRecord(ex *expansion, t *shimchecker.Type) bool {
 	return true
 }
 
-var jsIdentifier = regexp.MustCompile(`^[A-Za-z_$][A-Za-z0-9_$]*$`)
-
-// propertyKey builds a property-name node preserving the member's exact casing: a
-// bare identifier when the name is a valid JS identifier, else a string literal.
-// `Host` stays `Host`.
+// propertyKey delegates to typeemit.PropertyKey — a bare identifier when the name
+// is a valid JS identifier, else a string literal.
 func propertyKey(f *shimast.NodeFactory, name string) *shimast.Node {
-	if jsIdentifier.MatchString(name) {
-		return f.NewIdentifier(name)
-	}
-	return f.NewStringLiteral(name, shimast.TokenFlagsNone)
+	return typeemit.PropertyKey(f, name)
 }
