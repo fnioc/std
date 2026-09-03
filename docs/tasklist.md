@@ -2376,3 +2376,20 @@ Design (discussed, not yet ruled):
 Ruled 2026-09-03: name `@rhombus-std/transforms`; option (b) — the real descriptor lives in the transforms package (`./ttsc` export), each extras keeps a one-line `ttsc.mjs` re-exporting it and its marker points at `./ttsc.mjs`; no upstream `ttsc` change. Consequence: the new name needs its npm placeholder + trusted-publisher binding like the other 32. Landed 2026-09-03: `a9944cdc` (package + descriptor + README + workspaces), `061370f8` (the four marker packages: `primitives.extras`, `di.extras`, `di.extras.options`, `config.extras`), `41416c36` (docs). Gates green; consumer proof from pnpm-packed tarballs built and ran the sidecar end to end.
 
 **Second publish gate, found by that proof, OWNER'S DECISION:** an installed `primitives.extras` emits `INLINE_NO_SRC_ENTRY` — the inline stage resolves a marker's `impl` by walking the package's `src/` re-export graph, and no `*.extras` ships `src/` (`files` = dist, ttsc.mjs, rhombus-std.json). Either every `*.extras` publishes `src/` too, or the inline stage learns to resolve `impl` through the published dist. Not started.
+
+## Session — PlannerVisitor threads an async context (owner spec 2026-09-03)
+
+Owner: the async behavior in `libraries/di/src/internal/Plan/PlannerVisitor.ts` is not what he wanted; there must be no `new PlannerVisitor` inside a walk. Names are his but changeable; the behavior is the requirement.
+
+- The planner threads a context value through `visit` (the base `TypeVisitor<Return, Context>` already carries a `context` argument through every `visitX`; `PlannerVisitor` pins it to `never` today). The context has an optional `asyncDescendants: AsyncPlan[]` — the collection point of the nearest enclosing await.
+- `visitGlobal` tests promise-likeness and forwards to a new `visitPromise`.
+- Promise node (a promise IS requested) and async node (a promise is NOT requested, but the lookup for `T` misses and `Promise<T>` matches → forward to a new `visitAsync`) do the SAME thing: stash `context.asyncDescendants`, set it to the returning plan's own `descendants` (a prop on both `PromisePlan` and `AsyncPlan`; today `PromisePlan.inventory`, and `AsyncPlan` has none), walk children/deps, restore the stash. The one difference: the async node pushes itself onto the collection it stashed (the enclosing one); the promise node does not.
+- Consequence: an `AsyncPlan` settles its own `descendants` before its inner realizes, the way `PromisePlan` does — `RealizeVisitor`'s async case gathers them too.
+- Today's shape being replaced: `#planDelivery` opens a second `PlannerVisitor` with a `BoundaryContext{collecting}`; `#awaitPromised` pushes onto `#collecting`. Both go.
+
+Status: spec confirmed by the owner; not started. Runs on his go.
+
+## Open, owner's word (2026-09-03)
+
+- Delete the four landed cloud branches on origin (`feat-di-request-door` 8d432b94 — fully contained here; `feat-di-standard-lifetime`, `feat-di-tagged-lifetime`, `test-di-suite-complete`)? Asked twice, unanswered.
+- `INLINE_NO_SRC_ENTRY` second publish gate (section above).
