@@ -66,6 +66,12 @@ export interface GenericType extends TypeBase<'generic'> {
 }
 
 export interface ConstructorType extends TypeBase<'ctor'> {
+  /**
+   * @remarks
+   * Built by {@link Type.signatures}: several overload rows collapse to a {@link UnionType}, one
+   * row collapses to its bare {@link TupleType} or {@link ListType}. Construct it through that
+   * factory rather than by hand.
+   */
   readonly signatures: TupleType | ListType | UnionType;
   readonly instance: Type;
 }
@@ -76,11 +82,23 @@ export interface ConstructorType extends TypeBase<'ctor'> {
  * by assignability; a position accepting either spells the union.
  */
 export interface AbstractConstructorType extends TypeBase<'abstract-ctor'> {
+  /**
+   * @remarks
+   * Built by {@link Type.signatures}: several overload rows collapse to a {@link UnionType}, one
+   * row collapses to its bare {@link TupleType} or {@link ListType}. Construct it through that
+   * factory rather than by hand.
+   */
   readonly signatures: TupleType | ListType | UnionType;
   readonly instance: Type;
 }
 
 export interface FunctionType extends TypeBase<'func'> {
+  /**
+   * @remarks
+   * Built by {@link Type.signatures}: several overload rows collapse to a {@link UnionType}, one
+   * row collapses to its bare {@link TupleType} or {@link ListType}. Construct it through that
+   * factory rather than by hand.
+   */
   readonly signatures: TupleType | ListType | UnionType;
   readonly return: Type;
 }
