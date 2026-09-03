@@ -1932,3 +1932,7 @@ README's `ObjectDisposedError` row, and a sentence on which provider an injected
 sonnet reviewers; one Fable implementer) rather than the Workflow tool. The owner's live instruction
 mid-session to rebranch from `IServiceManifest-repair` was carried out and then withdrawn; nothing
 from that detour remains on the branch.
+**Owner FYI (2026-09-02), recorded for the model sessions:** the old tagged tests — the deleted
+tagged lifetime model's suites among the load-failing files — are NOT to be read as requirements.
+This sharpens the clean-room brief's existing rule (the reference outranks the tests; over-spec is
+challenged and cut): for the tagged side, the surviving files carry no contract at all.
