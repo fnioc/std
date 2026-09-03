@@ -172,7 +172,7 @@ func Literal(text string) *Node {
 	return &Node{kind: KindLiteral, key: text, literal: text}
 }
 
-// Union builds a literal-union node. The key sorts the members, matching how the
+// Union builds a union node. The key sorts the members, matching how the
 // runtime intern table identifies a union, so member order never fragments one
 // type into two consts.
 func Union(members []*Node) *Node {
@@ -219,7 +219,7 @@ func Intersection(members []*Node) *Node {
 		keys[i] = m.key
 	}
 	sort.Strings(keys)
-	return &Node{kind: KindIntersection, key: strings.Join(keys, " & "), members: members}
+	return &Node{kind: KindIntersection, key: "(" + strings.Join(keys, " & ") + ")", members: members}
 }
 
 // Generic builds an open-generic hole node. label is the hole number's decimal

@@ -164,6 +164,7 @@ export const objOptional = typefor<{ readonly a: IA; readonly b?: IB }>();
 export const objDeepNested = typefor<{ readonly outer: { readonly list: IA[]; readonly pair: [IA, IB] } }>();
 export const unionOfObjOfTuple = typefor<{ readonly items: [() => IA, IB] } | IC>();
 export const optionalArrayOfPromises = typefor<{ readonly items?: Promise<IA>[] }>();
+export const objWithMethod = typefor<{ greet(name: string): IA }>();
 
 // Tuples: nested, an optional element, a trailing rest element.
 export const tupleNested = typefor<[IA, [IB, IC]]>();
@@ -354,6 +355,12 @@ describe.skipIf(!toolchainReady)('typefor compositional shapes', () => {
   test('an optional readonly property holding an array of promises', () => {
     expect(app).toContain(
       `optionalArrayOfPromises = Type.object({ items: Type.union(Type.global("Array", [Type.global("Promise", [${IA}])]), Type.typeLiteral(undefined)) })`,
+    );
+  });
+
+  test('an object with a method member derives the method as a func-typed property', () => {
+    expect(app).toContain(
+      `objWithMethod = Type.object({ greet: Type.func(${IA}, [[Type.global("string")]]) })`,
     );
   });
 

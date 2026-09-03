@@ -24,6 +24,7 @@ declare const tupleCallableSlot: [() => IThing, IThing];
 declare const objUnionProp: { readonly a: IThing | IOther };
 declare const objOptionalProp: { readonly a?: IThing };
 declare const objNested: { readonly outer: { readonly inner: IThing } };
+declare const objWithMethod: { greet(name: string): IThing };
 declare const inter: IThing & IOther;
 declare const selfRefNamed: INode;
 
@@ -169,6 +170,26 @@ func TestDeriveNodeSelfReferentialStructuralRefuses(t *testing.T) {
 
 	if n, ok := derive("selfRefStructural"); ok {
 		t.Fatalf("selfRefStructural derived %+v, want the recursion guard to refuse", n)
+	}
+}
+
+// An object with a callable member: the method derives as a KindFunc-typed
+// property inside a KindObject node, so a structural shape carrying a method
+// is lowered rather than refused.
+func TestDeriveNodeObjectWithMethodProperty(t *testing.T) {
+	derive, done := loadCollapse(t)
+	defer done()
+
+	n, ok := derive("objWithMethod")
+	if !ok || n.Kind != KindObject || len(n.Properties) != 1 {
+		t.Fatalf("objWithMethod derived %+v ok=%v, want a one-member object", n, ok)
+	}
+	prop := n.Properties[0]
+	if prop.Key != "greet" || prop.Type.Kind != KindFunc {
+		t.Fatalf("method property derived %+v, want a func-typed member `greet`", prop)
+	}
+	if prop.Type.Ret == nil || prop.Type.Ret.Kind != KindNamed || prop.Type.Ret.Name != "IThing" {
+		t.Fatalf("method return derived %+v, want the named IThing", prop.Type.Ret)
 	}
 }
 
