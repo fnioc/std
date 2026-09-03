@@ -2368,6 +2368,7 @@ have no single-threaded analog and are marked so.
 Finding: a published `*.extras` cannot run its transforms. `ttsc` builds Go SOURCE on the consumer's machine (its own bundled Go SDK; it accepts no prebuilt binary), and nothing publishes `transforms/` — each extras' `ttsc.mjs` resolves `../../transforms/cmd/ttsc-std`, which in `node_modules` is nowhere. Gates the publish flip.
 
 Design (discussed, not yet ruled):
+
 - Publish `transforms/` (`cmd/`, `internal/`, `go.mod`, `go.sum`; never `go.work`) as one npm package; every `*.extras` takes it as a runtime `dependency` (`workspace:^` in-repo).
 - The `ttsc.plugin.transform` marker stays in every extras' `package.json`: `ttsc` reads only the consumer's DIRECT dependencies' manifests.
 - Descriptor location: stock `ttsc` resolves a bare `transform` specifier from the CONSUMER root (`require.resolve(spec, { paths: [projectRoot] })`), so a marker naming the transforms package fails under isolated linkers (this repo's own bunfig). `exports` cannot target another package; `imports` (`#`) is package-private. Options: (a) upstream `ttsc` to resolve from the marker package's root first, one line, recommended; (b) bridge: one-line `ttsc.mjs` per extras re-exporting the shared descriptor; (c) both — bridge now, drop it when (a) ships.
