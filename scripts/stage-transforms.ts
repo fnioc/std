@@ -1,6 +1,6 @@
 // Stages the @rhombus-std/transforms package for publishing: copies the
-// published Go tree into a staging directory and runs minformat over every
-// .go file so the published source is minified (gofmt reverts it).
+// published Go tree into a staging directory and runs the mise-pinned minformat
+// over every .go file so the published source is minified (gofmt reverts it).
 // go.mod, go.sum and ttsc.mjs are copied verbatim.
 //
 // Usage: bun scripts/stage-transforms.ts
@@ -12,7 +12,6 @@ import { extname, join, relative, resolve } from 'node:path';
 const ROOT = resolve(import.meta.dir, '..');
 const TRANSFORMS = join(ROOT, 'transforms');
 const STAGE_DIR = join(TRANSFORMS, 'dist', 'publish');
-const TOOL_DIR = join(ROOT, 'tools', 'gominfmt');
 
 const PUBLISHED_DIRS = ['cmd', 'internal'];
 const PUBLISHED_FILES = ['go.mod', 'go.sum', 'ttsc.mjs'];
@@ -49,12 +48,15 @@ if (pkg.publishConfig) {
 }
 writeFileSync(join(STAGE_DIR, 'package.json'), JSON.stringify(pkg, null, 2) + '\n');
 
-const gominfmt = join(TOOL_DIR, 'gominfmt');
-execSync(`go build -o ${gominfmt} .`, { cwd: TOOL_DIR, stdio: 'inherit' });
+// The minifier is resolved through mise so the version pinned in mise.toml is
+// the one that runs. `cmd` is the binary's name: the CLI lives at the end of the
+// module path `github.com/go-toolsmith/minformat/cmd`.
+const minformat = execSync('mise which cmd', { cwd: ROOT, encoding: 'utf8' }).trim();
 
 const goFiles = findGoFiles(STAGE_DIR);
 for (const file of goFiles) {
-  execSync(`${gominfmt} -w ${file}`, { stdio: 'inherit' });
+  // The CLI writes to stdout and takes one file per run.
+  writeFileSync(file, execSync(`${minformat} ${file}`, { encoding: 'utf8', maxBuffer: 64 * 1024 * 1024 }));
 }
 
 console.log(`staged ${goFiles.length} .go files to ${relative(ROOT, STAGE_DIR)}`);

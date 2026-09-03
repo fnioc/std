@@ -21,4 +21,3 @@ transforms/ttsc-std-full
 # The per-file lowering stage's emit. A library build renames it into dist/stage;
 # an example build leaves it, and a failed build of either leaves it behind.
 .ttsc-out/
-tools/gominfmt/gominfmt
