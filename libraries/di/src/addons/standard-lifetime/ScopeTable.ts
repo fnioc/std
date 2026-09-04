@@ -3,7 +3,10 @@ import type { Caching, Owning } from '../lifetime-scope.js';
 
 /**
  * One scope under the standard lifetime model: what it caches, what it owns, and whether it has
- * ended. The singleton scope holds the singletons and is one entry like any other.
+ * ended.
+ *
+ * @remarks
+ * The singleton scope holds the singletons and is one entry like any other.
  */
 export interface Scope extends Caching, Owning {
   /** What the marker of this scope's provider stamps on every ask entering through it. */

@@ -38,11 +38,11 @@ export class ScopeFactory implements IServiceScopeFactory {
 
   openScope(): IServiceProvider {
     const { lifetime, scopes, singletons } = this.#state;
-    if (singletons.disposed || lifetime === undefined) {
+    if (singletons.disposed) {
       throw new ObjectDisposedError();
     }
     const scope = scopes.open();
-    const provider = new ServiceProvider(createMarkerMiddleware(scope.id)(lifetime));
+    const provider = new ServiceProvider(createMarkerMiddleware(scope.id)(lifetime!));
     scope.provider = provider;
     provider.whenDisposed({
       [Symbol.dispose]: () => {
