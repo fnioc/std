@@ -192,7 +192,7 @@ func deriveNode(ctx *Context, checker *shimchecker.Checker, t *shimchecker.Type,
 	// branches; a general union defers to its own gate; the func package's
 	// Ctor/Func/AbstractCtor are the narrow exception that derives structurally.
 	if t.ObjectFlags()&shimchecker.ObjectFlagsAnonymous == 0 && !isGeneralUnion(t) {
-		if symbol := resolvedSymbolFor(t); symbol != nil && !isFuncPackageCallable(ctx, symbol) {
+		if symbol := resolvedSymbolFor(t); symbol != nil && !isTypesPackageCallable(ctx, symbol) {
 			return deriveNamedNode(ctx, checker, t, symbol, failure, s)
 		}
 	}
@@ -201,7 +201,7 @@ func deriveNode(ctx *Context, checker *shimchecker.Checker, t *shimchecker.Type,
 	// by its name, not structurally as a callable. Only addressable aliases fire
 	// here; a declared function (`declare function f()`) carries no alias and falls
 	// through to the callable gates below.
-	if symbol := addressableAliasSymbol(ctx, t); symbol != nil && !isFuncPackageCallable(ctx, symbol) {
+	if symbol := addressableAliasSymbol(ctx, t); symbol != nil && !isTypesPackageCallable(ctx, symbol) {
 		if hasCallableSignatures(checker, t) {
 			return deriveNamedNode(ctx, checker, t, symbol, failure, s)
 		}
@@ -241,7 +241,7 @@ func deriveNode(ctx *Context, checker *shimchecker.Checker, t *shimchecker.Type,
 	// members were reminted under one name — is spelled by that name rather than
 	// opened up. A conditional or index-access that LOST its alias carries no such
 	// symbol and falls through to the structural shapes below.
-	if symbol := resolvedSymbolFor(t); symbol != nil && !isFuncPackageCallable(ctx, symbol) {
+	if symbol := resolvedSymbolFor(t); symbol != nil && !isTypesPackageCallable(ctx, symbol) {
 		return deriveNamedNode(ctx, checker, t, symbol, failure, s)
 	}
 
@@ -574,15 +574,15 @@ func resolvedSymbolFor(t *shimchecker.Type) *shimast.Symbol {
 	return symbol
 }
 
-// funcPackageCallableNames are the three func-package spellings that route to a
+// typesPackageCallableNames are the three types-package spellings that route to a
 // callable Type kind structurally regardless of naming. A same-named type declared
 // anywhere else is not exempt and derives by name like everything else.
-var funcPackageCallableNames = map[string]bool{"Ctor": true, "Func": true, "AbstractCtor": true}
+var typesPackageCallableNames = map[string]bool{"Ctor": true, "Func": true, "AbstractCtor": true}
 
-// isFuncPackageCallable reports whether symbol is Ctor, Func, or AbstractCtor as
-// exported by @rhombus-toolkit/func specifically.
-func isFuncPackageCallable(ctx *Context, symbol *shimast.Symbol) bool {
-	if !funcPackageCallableNames[symbol.Name] {
+// isTypesPackageCallable reports whether symbol is Ctor, Func, or AbstractCtor as
+// exported by @rhombus-toolkit/types specifically.
+func isTypesPackageCallable(ctx *Context, symbol *shimast.Symbol) bool {
+	if !typesPackageCallableNames[symbol.Name] {
 		return false
 	}
 	decl := primaryDeclaration(symbol)
@@ -594,7 +594,7 @@ func isFuncPackageCallable(ctx *Context, symbol *shimast.Symbol) bool {
 		return false
 	}
 	pkg := nearestPackage(ctx, sourceFile.FileName())
-	return pkg != nil && pkg.name == "@rhombus-toolkit/func"
+	return pkg != nil && pkg.name == "@rhombus-toolkit/types"
 }
 
 // hasCallableSignatures reports whether t carries call or construct signatures —

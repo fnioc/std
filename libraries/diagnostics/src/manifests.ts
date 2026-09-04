@@ -8,7 +8,7 @@ import { type IMetricsBuilder, type ITracingBuilder, MetricsOptions, TracingOpti
 import type { IConfigureOptions, IOptions } from '@rhombus-std/options';
 import type { IOptionsChangeTokenSource } from '@rhombus-std/options.augmentations';
 import { typefor } from '@rhombus-std/primitives.extras';
-import type { Func } from '@rhombus-toolkit/func';
+import type { Func } from '@rhombus-toolkit/types';
 import { assembleDiagnosticsOptions } from './assemble-diagnostics-options';
 import type { IMetricListenerConfigFactory } from './metrics/config/IMetricListenerConfigFactory';
 import { MetricListenerConfigFactory } from './metrics/config/MetricListenerConfigFactory';

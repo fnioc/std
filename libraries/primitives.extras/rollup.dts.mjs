@@ -16,6 +16,6 @@ export default {
   // Preserve these as external imports so `Type` keeps ONE identity across the graph. An inlined
   // copy carries its own `unique symbol` brand, which no other copy's node can satisfy, so the two
   // spellings of one type stop being assignable to each other.
-  external: [/^@rhombus-std\/primitives$/, /^@rhombus-toolkit\/func$/],
+  external: [/^@rhombus-std\/primitives$/, /^@rhombus-toolkit\/types$/],
   plugins: [dts({ tsconfig: join(PKG_ROOT, 'tsconfig.json'), respectExternal: true })],
 };

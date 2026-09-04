@@ -13,7 +13,7 @@ import type {} from '@rhombus-std/di.extras';
 import type { ILoggerProvider, ILoggingBuilder, LogLevel } from '@rhombus-std/logging.core';
 import type { IConfigureOptions } from '@rhombus-std/options';
 import { registerAugmentations } from '@rhombus-std/primitives.extras';
-import type { Flatten } from '@rhombus-toolkit/type-helpers';
+import type { Flatten } from '@rhombus-toolkit/types';
 import { DefaultLoggerLevelConfigureOptions } from './DefaultLoggerLevelConfigureOptions';
 import type { LoggerFilterOptions } from './LoggerFilterOptions';
 import { LOGGER_PROVIDER_TYPE } from './types';

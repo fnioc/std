@@ -9,7 +9,7 @@ import { Manifest } from '@rhombus-std/di.core';
 import { type IPostConfigureOptions, type IValidateOptions, ValidateOptionsResult } from '@rhombus-std/options';
 import { Type } from '@rhombus-std/primitives';
 import { registerAugmentations } from '@rhombus-std/primitives.extras';
-import type { Func } from '@rhombus-toolkit/func';
+import type { Func } from '@rhombus-toolkit/types';
 
 import type { DepTypes } from './dep-types.js';
 import { ensureOpenOptions } from './open-options.js';

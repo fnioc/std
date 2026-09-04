@@ -1,7 +1,7 @@
 import type { IHostApplicationLifetime, IHostLifetime } from '@rhombus-std/hosting.core';
 import { type ILogger, type ILoggerFactory, logDebug, logInformation } from '@rhombus-std/logging.core';
 import type { AbortSignal } from '@rhombus-std/primitives';
-import type { Func } from '@rhombus-toolkit/func';
+import type { Func } from '@rhombus-toolkit/types';
 import type { BrowserLifetimeOptions } from './BrowserLifetimeOptions';
 import type { PageLifecycleEvents } from './PageLifecycleEvents';
 

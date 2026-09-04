@@ -14,7 +14,7 @@ import type { ILogger } from '@rhombus-std/logging.core';
 import type { IStartupValidator } from '@rhombus-std/options';
 import { type AbortSignal, augment, Type } from '@rhombus-std/primitives';
 import { typefor } from '@rhombus-std/primitives.extras';
-import type { Func } from '@rhombus-toolkit/func';
+import type { Func } from '@rhombus-toolkit/types';
 import { BackgroundServiceErrorBehavior } from '../BackgroundServiceErrorBehavior';
 import type { HostOptions } from '../HostOptions';
 import { linkSignals, whenAborted } from '../signal-linking';

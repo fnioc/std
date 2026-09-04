@@ -1,6 +1,5 @@
 import { ConstructorType, FunctionType, Type } from '@rhombus-std/primitives';
-import type { Ctor, Func } from '@rhombus-toolkit/func';
-import type { Flatten } from '@rhombus-toolkit/type-helpers';
+import type { Ctor, Flatten, Func } from '@rhombus-toolkit/types';
 
 /**
  * One registration: what a manifest resolves `address` to. The member naming the

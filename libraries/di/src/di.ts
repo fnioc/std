@@ -1,6 +1,6 @@
 import { type Addon, type GetService, type IServiceProvider, Manifest, type Middleware, type Registration, UnsatisfiableError } from '@rhombus-std/di.core';
-import type { Func } from '@rhombus-toolkit/func';
 import { concat, iterable } from '@rhombus-toolkit/iterable';
+import type { Func } from '@rhombus-toolkit/types';
 import { Engine } from './internal/Engine.js';
 import { ServiceProvider } from './ServiceProvider.js';
 

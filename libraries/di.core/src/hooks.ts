@@ -1,5 +1,5 @@
 import type { Type } from '@rhombus-std/primitives';
-import type { Func } from '@rhombus-toolkit/func';
+import type { Func } from '@rhombus-toolkit/types';
 
 import type { Registration } from './Registration/index.js';
 import type { Request } from './Request.js';

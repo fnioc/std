@@ -6,7 +6,7 @@
 
 import type { IConfigBuilder, IConfigSource, IndexedSection } from '@rhombus-std/config.core';
 import { registerAugmentations } from '@rhombus-std/primitives.extras';
-import type { Flatten } from '@rhombus-toolkit/type-helpers';
+import type { Flatten } from '@rhombus-toolkit/types';
 import { type ConfigData, MemoryConfigSource } from './MemoryConfigSource';
 
 export { MemoryConfigProvider } from './MemoryConfigProvider';

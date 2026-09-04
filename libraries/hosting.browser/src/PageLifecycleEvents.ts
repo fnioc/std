@@ -1,4 +1,4 @@
-import type { Func } from '@rhombus-toolkit/func';
+import type { Func } from '@rhombus-toolkit/types';
 import { defaultPageContext, type PageContext, type PageTransitionEventLike } from './page-context';
 
 // Structural globalThis lookup for the one console method #notify needs (this

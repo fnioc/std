@@ -1,6 +1,6 @@
 import { type ConstructorType, type FunctionType, Type } from '@rhombus-std/primitives';
 import { registerAugmentations } from '@rhombus-std/primitives.extras';
-import type { Ctor, Func } from '@rhombus-toolkit/func';
+import type { Ctor, Func } from '@rhombus-toolkit/types';
 import { invokerAddress } from '../Invoker.js';
 import type { IServiceProvider } from '../IServiceProvider.js';
 

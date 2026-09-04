@@ -9,7 +9,7 @@ import type { IConfig } from '@rhombus-std/config.core';
 import { Manifest } from '@rhombus-std/di.core';
 import type { IConfigureOptions } from '@rhombus-std/options';
 import { Type } from '@rhombus-std/primitives';
-import type { Func } from '@rhombus-toolkit/func';
+import type { Func } from '@rhombus-toolkit/types';
 
 import { ConfigChangeTokenSource } from './ConfigChangeTokenSource.js';
 import { ConfigConfigureOptions } from './ConfigConfigureOptions.js';

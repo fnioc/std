@@ -14,8 +14,7 @@ import type {} from '@rhombus-std/di.extras';
 
 import type { IConfigureOptions } from '@rhombus-std/options';
 import { registerAugmentations } from '@rhombus-std/primitives.extras';
-import type { Func } from '@rhombus-toolkit/func';
-import type { Flatten } from '@rhombus-toolkit/type-helpers';
+import type { Flatten, Func } from '@rhombus-toolkit/types';
 
 import { ActivityListenerBuilder } from './ActivityListenerBuilder';
 import { ACTIVITY_SOURCE_SCOPES_ALL, ActivitySourceScopes } from './ActivitySourceScopes';

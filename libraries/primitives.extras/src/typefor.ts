@@ -1,5 +1,5 @@
 import type { AbstractConstructorType, ArrayType, ConstructorType, FunctionType, IterableType, NamedType, ObjectType, TupleType, Type, TypeLiteralType, UnionType } from '@rhombus-std/primitives';
-import type { Ctor, Func } from '@rhombus-toolkit/func';
+import type { Ctor, Func } from '@rhombus-toolkit/types';
 
 /** Does `T` inhabit `Shape` in both directions — the shape itself, not a subtype of it? */
 type Exactly<T, Shape> = [T] extends [Shape] ? [Shape] extends [T] ? true : false : false;

@@ -4,8 +4,8 @@
 
 import type { ConfigObject, IConfigProvider, IConfigRoot, IConfigSection, IndexedSection } from '@rhombus-std/config.core';
 import { ChangeToken, type IChangeToken } from '@rhombus-std/primitives';
-import type { Func } from '@rhombus-toolkit/func';
 import { IndexAccessed } from '@rhombus-toolkit/proxy-base';
+import type { Func } from '@rhombus-toolkit/types';
 import { parseBoolean, parseNumber } from './coerce';
 import { ConfigReloadToken } from './ConfigReloadToken';
 import { ConfigSection, subtreeToObject } from './ConfigSection';

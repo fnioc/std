@@ -9,7 +9,7 @@ import { ILoggerFactory, ILoggerProvider, type ILoggingBuilder, Logger as Logger
 import { type IConfigureOptions, IOptions } from '@rhombus-std/options';
 import { Type } from '@rhombus-std/primitives';
 import { typefor } from '@rhombus-std/primitives.extras';
-import type { Func } from '@rhombus-toolkit/func';
+import type { Func } from '@rhombus-toolkit/types';
 import { DefaultLoggerLevelConfigureOptions } from './DefaultLoggerLevelConfigureOptions';
 import { LoggerFactory } from './LoggerFactory';
 import { LoggerFilterOptions } from './LoggerFilterOptions';

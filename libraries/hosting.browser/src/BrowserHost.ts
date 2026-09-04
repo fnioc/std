@@ -21,7 +21,7 @@ import { MemoryConfigSource } from '@rhombus-std/config';
 import type { ConfigData } from '@rhombus-std/config';
 import { Host, type HostApplicationBuilder, HostApplicationBuilderSettings } from '@rhombus-std/hosting';
 import { BrowserConsoleLoggerAugmentations } from '@rhombus-std/logging.browserconsole';
-import type { Action, Func } from '@rhombus-toolkit/func';
+import type { Action, Func } from '@rhombus-toolkit/types';
 import { BrowserLifetimeOptions } from './BrowserLifetimeOptions';
 import type { PageContext } from './page-context';
 import { registerBrowserLifetime } from './register-browser-lifetime';

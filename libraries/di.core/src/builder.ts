@@ -1,5 +1,5 @@
 import type { ConstructorType, FunctionType, Type } from '@rhombus-std/primitives';
-import type { AbstractCtor, Ctor, Func } from '@rhombus-toolkit/func';
+import type { AbstractCtor, Ctor, Func } from '@rhombus-toolkit/types';
 import { withKey } from './address';
 import { type CtorRegistration, type FactoryRegistration, Registration, type ValueRegistration } from './Registration';
 

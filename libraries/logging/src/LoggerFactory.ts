@@ -18,7 +18,7 @@ import { type IExternalScopeProvider, type ILogger, type ILoggerFactory, type IL
 import { type IOptions, Options } from '@rhombus-std/options';
 import { augment } from '@rhombus-std/primitives';
 import { typefor } from '@rhombus-std/primitives.extras';
-import type { Func } from '@rhombus-toolkit/func';
+import type { Func } from '@rhombus-toolkit/types';
 import { Logger } from './Logger';
 import { LoggerExternalScopeProvider } from './LoggerExternalScopeProvider';
 import { LoggerFilterOptions } from './LoggerFilterOptions';

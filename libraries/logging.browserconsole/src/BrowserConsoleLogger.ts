@@ -9,7 +9,7 @@
 import { type EventId, type ILogger, LogLevel } from '@rhombus-std/logging.core';
 import { augment } from '@rhombus-std/primitives';
 import { typefor } from '@rhombus-std/primitives.extras';
-import type { Func } from '@rhombus-toolkit/func';
+import type { Func } from '@rhombus-toolkit/types';
 import type { ConsoleLike } from './ConsoleLike';
 
 /** The console method a {@link LogLevel} maps to. */

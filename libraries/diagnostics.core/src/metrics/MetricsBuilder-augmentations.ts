@@ -11,8 +11,7 @@ import type {} from '@rhombus-std/di.extras';
 import type { IConfigureOptions } from '@rhombus-std/options';
 import type { ConstructorType } from '@rhombus-std/primitives';
 import { registerAugmentations, typefor } from '@rhombus-std/primitives.extras';
-import type { Ctor, Func } from '@rhombus-toolkit/func';
-import type { Flatten } from '@rhombus-toolkit/type-helpers';
+import type { Ctor, Flatten, Func } from '@rhombus-toolkit/types';
 
 import type { IMetricsBuilder } from './IMetricsBuilder';
 import { METER_SCOPE_ALL, MeterScope } from './MeterScope';

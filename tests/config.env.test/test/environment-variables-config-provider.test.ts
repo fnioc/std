@@ -7,7 +7,7 @@
 // cleanup dance, and reloading with a different map fully replaces the data.
 
 import { ConfigBuilder, ConfigManager } from '@rhombus-std/config';
-import type { Func } from '@rhombus-toolkit/func';
+import type { Func } from '@rhombus-toolkit/types';
 import { describe, expect, test } from 'bun:test';
 import '@rhombus-std/config.env/private/index';
 import { EnvironmentVariablesConfigProvider } from '@rhombus-std/config.env/private/EnvironmentVariablesConfigProvider';

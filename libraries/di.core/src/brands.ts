@@ -3,7 +3,7 @@
 // type-argument witness (`Typeof`). Both erase — zero runtime footprint.
 
 import type { NamedType } from '@rhombus-std/primitives';
-import type { Func } from '@rhombus-toolkit/func';
+import type { Func } from '@rhombus-toolkit/types';
 
 /** True for a union, false for anything else — including `never`, which distributes to nothing. */
 type IsUnion<T, Members = T> = T extends unknown ? ([Members] extends [T] ? false : true) : never;

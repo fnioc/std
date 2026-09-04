@@ -15,8 +15,8 @@
 
 import { type ConfigObject, configPath, configSectionBrand, type IConfig, type IConfigSection, type IndexedSection } from '@rhombus-std/config.core';
 import type { IChangeToken } from '@rhombus-std/primitives';
-import type { Func } from '@rhombus-toolkit/func';
 import { IndexAccessed } from '@rhombus-toolkit/proxy-base';
+import type { Func } from '@rhombus-toolkit/types';
 import { parseBoolean, parseNumber } from './coerce';
 import type { ConfigRoot } from './ConfigRoot';
 import { getChildrenImplementation } from './internal-children';

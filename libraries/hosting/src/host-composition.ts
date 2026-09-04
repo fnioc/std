@@ -28,7 +28,7 @@ import { LoggerFactory } from '@rhombus-std/logging';
 import type { ILoggerFactory, ILoggerProvider } from '@rhombus-std/logging.core';
 import { Type } from '@rhombus-std/primitives';
 import { process } from '@rhombus-std/primitives';
-import type { Func } from '@rhombus-toolkit/func';
+import type { Func } from '@rhombus-toolkit/types';
 import { HOST_LIFETIME_TYPE, HOST_OPTIONS_CONFIGURE_TYPE } from './framework-types';
 import { HostOptions } from './HostOptions';
 import { ApplicationLifetime } from './internal/ApplicationLifetime';

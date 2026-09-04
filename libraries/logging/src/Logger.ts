@@ -13,7 +13,7 @@
 import type { EventId, ILogger, LogLevel } from '@rhombus-std/logging.core';
 import { augment } from '@rhombus-std/primitives';
 import { typefor } from '@rhombus-std/primitives.extras';
-import type { Func } from '@rhombus-toolkit/func';
+import type { Func } from '@rhombus-toolkit/types';
 import type { LoggerInformation, MessageLogger, ScopeLogger } from './LoggerInformation';
 
 /** A `Disposable` that does nothing on dispose — the shared no-op scope token. */

@@ -2,9 +2,9 @@
 
 import { augment } from '@rhombus-std/primitives';
 import { typefor } from '@rhombus-std/primitives.extras';
-import { Func } from '@rhombus-toolkit/func';
 import { concat } from '@rhombus-toolkit/iterable';
 import { assertNever } from '@rhombus-toolkit/type-guards';
+import { Func } from '@rhombus-toolkit/types';
 import { Registration } from './Registration';
 
 /**

@@ -8,8 +8,7 @@ import type { IFileProvider } from '@rhombus-std/fileproviders.core';
 import { PhysicalFileProvider } from '@rhombus-std/fileproviders.physical';
 import { process } from '@rhombus-std/primitives';
 import { registerAugmentations } from '@rhombus-std/primitives.extras';
-import type { Func } from '@rhombus-toolkit/func';
-import type { Flatten } from '@rhombus-toolkit/type-helpers';
+import type { Flatten, Func } from '@rhombus-toolkit/types';
 import type { FileLoadErrorContext } from './FileLoadErrorContext';
 
 // The `builder.properties` keys the default file provider and load-error

@@ -16,7 +16,7 @@ import type { IConfigureOptions } from '@rhombus-std/options';
 import { ConfigChangeTokenSource, type IOptionsChangeTokenSource } from '@rhombus-std/options.augmentations';
 import { Type } from '@rhombus-std/primitives';
 import { registerAugmentations, typefor } from '@rhombus-std/primitives.extras';
-import type { Flatten } from '@rhombus-toolkit/type-helpers';
+import type { Flatten } from '@rhombus-toolkit/types';
 import { loggerProviderConfigType } from './ILoggerProviderConfig';
 import type { ILoggerProviderConfigFactory } from './ILoggerProviderConfigFactory';
 import { LoggerFilterConfigureOptions } from './LoggerFilterConfigureOptions';

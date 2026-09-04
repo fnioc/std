@@ -1,4 +1,4 @@
-import type { Func } from '@rhombus-toolkit/func';
+import type { Func } from '@rhombus-toolkit/types';
 
 import type { Request } from './Request.js';
 

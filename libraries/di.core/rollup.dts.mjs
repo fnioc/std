@@ -1,6 +1,6 @@
 // Rolls the public type surface of @rhombus-std/di.core into dist/bundle/index.d.ts, and the
 // registration chain reached through the ./builders subpath into dist/bundle/builder.d.ts.
-// The type-only @rhombus-toolkit/func types are inlined (respectExternal) so the
+// The type-only @rhombus-toolkit/types imports are inlined (respectExternal) so the
 // published declaration has no external import and core ships with zero deps.
 // rollup-plugin-dts drives the TypeScript compiler with this package's tsconfig,
 // so NodeNext `.js` specifiers resolve to the `.ts` sources.

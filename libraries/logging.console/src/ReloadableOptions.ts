@@ -5,7 +5,7 @@
 // and notifies subscribers.
 
 import type { IOptions } from '@rhombus-std/options';
-import type { Func } from '@rhombus-toolkit/func';
+import type { Func } from '@rhombus-toolkit/types';
 
 /** A mutable options holder whose {@link reload} notifies subscribers. */
 export class ReloadableOptions<T> implements IOptions<T> {

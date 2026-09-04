@@ -1,7 +1,7 @@
 import type { CtorRegistration, FactoryRegistration } from '@rhombus-std/di.core';
 import type { IAsImplementer, RegistrationBuilder, Slot } from '@rhombus-std/di.core/builders';
 import { registerInlineBodies, typefor } from '@rhombus-std/primitives.extras';
-import type { AbstractCtor, Ctor, Func } from '@rhombus-toolkit/func';
+import type { AbstractCtor, Ctor, Func } from '@rhombus-toolkit/types';
 
 declare module '@rhombus-std/di.core/builders' {
   interface IAsImplementer<T, Lifetime, Slots extends Slot> {

@@ -1,5 +1,5 @@
 import { type ConstructorType, type FunctionType, Type } from '@rhombus-std/primitives';
-import type { Ctor, Func } from '@rhombus-toolkit/func';
+import type { Ctor, Func } from '@rhombus-toolkit/types';
 
 /**
  * Calls `callable`, its dependencies resolved from the constructor or function type it closes

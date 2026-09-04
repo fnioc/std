@@ -4,7 +4,7 @@
  * equality everywhere downstream.
  */
 
-import type { Func } from '@rhombus-toolkit/func';
+import type { Func } from '@rhombus-toolkit/types';
 import { GLOBAL_QUALIFIER, isListName, type ListName } from '../grammar.js';
 import type { AbstractConstructorType, ArrayType, ConstructorType, FunctionType, GenericType, GlobalType, ImportedType, IntersectionType, IterableType, ListType, LiteralValue, ObjectType, TagType,
   TupleType, Type, TypeLiteralType, UnionType } from '../Type.js';

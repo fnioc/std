@@ -1,6 +1,6 @@
 import { type AbortSignal } from '@rhombus-std/primitives';
 import { registerAugmentations } from '@rhombus-std/primitives.extras';
-import type { Flatten } from '@rhombus-toolkit/type-helpers';
+import type { Flatten } from '@rhombus-toolkit/types';
 import type { IHost } from './IHost';
 import type { IHostBuilder } from './IHostBuilder';
 

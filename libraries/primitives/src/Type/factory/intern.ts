@@ -18,7 +18,7 @@
  * external for that reason.
  */
 
-import type { Func } from '@rhombus-toolkit/func';
+import type { Func } from '@rhombus-toolkit/types';
 import type { Type } from '../Type.js';
 import { stringifyType } from '../visitor/StringifyVisitor.js';
 

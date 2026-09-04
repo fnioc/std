@@ -27,7 +27,7 @@ import type { IOptions } from '@rhombus-std/options';
 import { getConfigureManifest } from '@rhombus-std/options.augmentations';
 import { Type } from '@rhombus-std/primitives';
 import { typefor } from '@rhombus-std/primitives.extras';
-import type { Func } from '@rhombus-toolkit/func';
+import type { Func } from '@rhombus-toolkit/types';
 import { DISTRIBUTED_CACHE_TYPE } from './distributed-cache-type';
 import { MEMORY_CACHE_OPTIONS_TYPE, MEMORY_DISTRIBUTED_CACHE_OPTIONS_TYPE } from './memory-cache-options-type';
 import { MEMORY_CACHE_TYPE } from './memory-cache-type';

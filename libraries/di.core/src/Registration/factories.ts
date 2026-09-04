@@ -1,6 +1,6 @@
 import { Type } from '@rhombus-std/primitives';
 import type { ConstructorType, FunctionType } from '@rhombus-std/primitives';
-import type { Ctor, Func } from '@rhombus-toolkit/func';
+import type { Ctor, Func } from '@rhombus-toolkit/types';
 import type { CtorRegistration, FactoryRegistration, ValueRegistration } from './Registration';
 
 /**

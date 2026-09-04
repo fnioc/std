@@ -1,5 +1,5 @@
-import type { AbstractCtor, Func } from '@rhombus-toolkit/func';
-import type { obj } from '@rhombus-toolkit/type-helpers';
+import type { obj } from '@rhombus-toolkit/obj';
+import type { AbstractCtor, Func } from '@rhombus-toolkit/types';
 /**
  * A namespace of `this`-based augmentation functions all sharing receiver type R.
  */
@@ -40,7 +40,7 @@ export function applyAugmentations<Receiver extends object>(
   augmentations: AugmentationSet<Receiver>,
   merge: MergeStrategies<Receiver> = {},
 ): void {
-  const net = (Object.entries(augmentations) as obj.entries<AugmentationSet<Receiver>>)
+  const net = (Object.entries(augmentations) as ReturnType<typeof obj.entries<AugmentationSet<Receiver>>>)
     .map(([key, incoming]) => [key, incoming, ctor.prototype[key], merge[key]] as const)
     .map(([key, incoming, original, strategy]) => {
       return [key, (() => {

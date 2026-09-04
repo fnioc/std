@@ -1,13 +1,17 @@
-// Type-level checks for `obj.assign`: the `obj.assign<…>` alias and the wrapper
-// signature that returns it. Never executed -- `testit` is ambient, so calling it at runtime would
-// throw. The file earns its keep through `lint` (`tsc --noEmit`), which is why the name keeps it
-// out of bun's test glob.
+// Type-level checks for `obj.assign`: the result type and the wrapper signature that returns it.
+// Never executed -- `testit` is ambient, so calling it at runtime would throw. The file earns its
+// keep through `lint` (`tsc --noEmit`), which is why the name keeps it out of bun's test glob.
 //
 // The `@ts-expect-error` lines are the load-bearing half. A broken `assign` tends to collapse to
 // `never`, and `never` satisfies every constraint -- so the positive cases keep passing and only an
 // expected-error that stops erroring reveals it.
 
-import { obj } from '@rhombus-toolkit/type-helpers';
+import { obj } from '@rhombus-toolkit/obj';
+
+// `obj.assign`'s result type. The package names it as a value alone, so it is read back off the
+// wrapper's return rather than referenced directly.
+type assign<Parts extends [object, ...object[]]> = Parts extends [infer Target extends object, ...infer Sources extends object[]] ? ReturnType<typeof obj.assign<Target, Sources>>
+  : never;
 
 // Spelled out rather than inferred from a sparse literal, which is the point worth seeing: `[, 5]`
 // and `[undefined, 5]` infer the same tuple, so a hole is not something the type layer can react to.
@@ -34,46 +38,46 @@ testit([1] as const, obj.assign([], [1] as const));
 testit([] as const, obj.assign([], [1] as const));
 
 // A hole and an explicit `undefined` read alike in a tuple type, so both defer to the base.
-testit<[1, 5, 3], obj.assign<[A123, [undefined, 5]]>>();
+testit<[1, 5, 3], assign<[A123, [undefined, 5]]>>();
 testit([1, 5, 3] as const, obj.assign(a123, [undefined, 5] as const));
 // @ts-expect-error
-testit<[1, 5, 33], obj.assign<[A123, [undefined, 5]]>>();
+testit<[1, 5, 33], assign<[A123, [undefined, 5]]>>();
 // @ts-expect-error
 testit([1, 5, 33] as const, obj.assign(a123, [undefined, 5] as const));
 
 // A longer overlay extends the result; a shorter one leaves the tail alone.
-testit<[1, 5, 3, 4], obj.assign<[A123, A_5_4]>>();
+testit<[1, 5, 3, 4], assign<[A123, A_5_4]>>();
 testit([1, 5, 3, 4] as const, obj.assign(a123, a_5_4));
 // @ts-expect-error
-testit<[1, 5, 33, 4], obj.assign<[A123, A_5_4]>>();
+testit<[1, 5, 33, 4], assign<[A123, A_5_4]>>();
 // @ts-expect-error
 testit([1, 5, 33, 4] as const, obj.assign(a123, a_5_4));
 
-testit<[1, 7, 3, 4], obj.assign<[A123, A_5_4, A_7]>>();
+testit<[1, 7, 3, 4], assign<[A123, A_5_4, A_7]>>();
 testit([1, 7, 3, 4] as const, obj.assign(a123, a_5_4, a_7));
 // @ts-expect-error
-testit<[1, 7, 33, 4], obj.assign<[A123, A_5_4, A_7]>>();
+testit<[1, 7, 33, 4], assign<[A123, A_5_4, A_7]>>();
 // @ts-expect-error
 testit([1, 7, 33, 4] as const, obj.assign(a123, a_5_4, a_7));
 
-testit<[1, 'hotdog', 3, 4, 'banana'], obj.assign<[A123, A_5_4, A_7, A_HOTDOG__BANANA]>>();
+testit<[1, 'hotdog', 3, 4, 'banana'], assign<[A123, A_5_4, A_7, A_HOTDOG__BANANA]>>();
 testit([1, 'hotdog', 3, 4, 'banana'] as const, obj.assign(a123, a_5_4, a_7, a_HOTDOG__BANANA));
 // @ts-expect-error
-testit<[1, 'hotdog', 3, null, 'banana'], obj.assign<[A123, A_5_4, A_7, A_HOTDOG__BANANA]>>();
+testit<[1, 'hotdog', 3, null, 'banana'], assign<[A123, A_5_4, A_7, A_HOTDOG__BANANA]>>();
 // @ts-expect-error
 testit([1, 'hotdog', 3, null, 'banana'] as const, obj.assign(a123, a_5_4, a_7, a_HOTDOG__BANANA));
 
 // Objects merge by key rather than by index.
-testit<{ a: 12; b: 55; }, obj.assign<[{ a: 12; b: 44; }, { b: 55; }]>>();
+testit<{ a: 12; b: 55; }, assign<[{ a: 12; b: 44; }, { b: 55; }]>>();
 testit({ a: 12, b: 55 } as const, obj.assign({ a: 12, b: 44 } as const, { b: 55 } as const));
 // @ts-expect-error
-testit<{ a: 12; b: 44; }, obj.assign<[{ a: 12; b: 44; }, { b: 55; }]>>();
+testit<{ a: 12; b: 44; }, assign<[{ a: 12; b: 44; }, { b: 55; }]>>();
 // @ts-expect-error
 testit({ a: 12, b: 44 } as const, obj.assign({ a: 12, b: 44 } as const, { b: 55 } as const));
 
-testit<['A', 'X', 'C'], obj.assign<[AABC, A_X]>>();
+testit<['A', 'X', 'C'], assign<[AABC, A_X]>>();
 testit(['A', 'X', 'C'] as const, obj.assign(aABC, a_X));
 // @ts-expect-error
-testit<['A', 'B', 'C'], obj.assign<[AABC, A_X]>>();
+testit<['A', 'B', 'C'], assign<[AABC, A_X]>>();
 // @ts-expect-error
 testit(['A', 'B', 'C'] as const, obj.assign(aABC, a_X));

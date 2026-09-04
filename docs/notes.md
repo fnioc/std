@@ -385,7 +385,7 @@ land; delete the file when empty.
 - [x] **RULED AND LANDED `fbdd4c49` — a named type derives BY NAME; its kind never depends on a
       descendant's openness.** Type arguments derive recursively (a hole to `Type.generic(label)`,
       anything else to its own address). The exception set routed structurally to the callable
-      kinds is `Ctor`/`AbstractCtor` resolved specifically to `@rhombus-toolkit/func`, plus bare
+      kinds is `Ctor`/`AbstractCtor` resolved specifically to `@rhombus-toolkit/types`, plus bare
       TS callable syntax — `Func` needs no entry, being an alias to an anonymous function type,
       and anonymous types are excluded from the named branch so `typefor(SomeClass)` still
       observes a ctor. Gates: Go green; typefor.ttsc.e2e 11/0 and inline.ttsc.e2e 15/4, both
@@ -491,8 +491,8 @@ land; delete the file when empty.
 - [ ] **Mergesynth guard-warning noise** — a cold lowering cache replays ~256 benign
       "merge guard for X cannot check …" lines per full rebuild. Consider a quieter default or a
       summary line.
-- [ ] **Hoist `DistributiveOmit` + `ButNot` into `@rhombus-toolkit/type-helpers`** — currently in primitives
-      `src/toolkit/type-helpers.ts` (the toolkit dir is the migration queue); fully general, belongs beside `Flatten`. Ride the next type-helpers publish.
+- [x] **LANDED — `DistributiveOmit` and `ButNot` ship from `@rhombus-toolkit/types`**, beside
+      `Flatten`. Nothing type-level is left in primitives.
 - [x] **LANDED `950bcc44` — aggregate→list in the Go internals; every `nominal` occurrence KEPT,
       being nominal-vs-structural typing (an `instanceof`-checkable identity in guard synthesis),
       a different concept from the `NamedType` kind grouping.** Gates green, both e2e baselines
@@ -780,7 +780,7 @@ land; delete the file when empty.
       its own fix: an explicit return annotation on that one function. Until then only per-package
       `bun run build` works, and anything needing the whole topological build is stuck.
 - [ ] **FINDING — `typefor<Func<[ConcreteArg, ...], X>>()` cannot derive a `FunctionType` at all.**
-      `@rhombus-toolkit/func@3.6.0` added `in`/`out` variance annotations to `Func<Args, Return,
+      `@rhombus-toolkit/types` declares `in`/`out` variance annotations on `Func<Args, Return,
       This>`; TS takes a declared-variance fast path when comparing two instantiations of an
       annotated alias, and that path does a plain `never[] extends [ConcreteArg]` structural check
       instead of the lenient rest-parameter call-signature comparison an unannotated arrow type
@@ -788,7 +788,7 @@ land; delete the file when empty.
       nothing specific to any one type. A repo-wide grep finds ZERO existing call sites, so this is
       a previously-unexercised path rather than a regression, but every future one hits it. The
       workaround in the models is to build the node directly with `Type.func(...)`. A real fix is
-      upstream in `@rhombus-toolkit/func` or in `primitives.extras`'s `DerivedType`.
+      upstream in `@rhombus-toolkit/types` or in `primitives.extras`'s `DerivedType`.
 - [ ] **OPEN — the three `inline.ttsc.e2e` failures have two competing root causes on record.**
       The door-selection entry describes `add<IFoo>(Foo)` with the lifetime omitted failing both
       callable overloads on ARITY and falling through to the one-parameter VALUE overload. A fresh

@@ -9,7 +9,7 @@
 // these module-level Maps and silently splits the registry — a class decorated
 // against one copy never sees augmentations registered against the other.
 
-import type { Ctor, Func } from '@rhombus-toolkit/func';
+import type { Ctor, Func } from '@rhombus-toolkit/types';
 
 import { Type } from '../Type/index.js';
 import { applyAugmentations, type AugmentationSet, type MergeStrategies, type MergeStrategy } from './apply-augmentations.js';

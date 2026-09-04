@@ -1,5 +1,5 @@
 import { registerAugmentations } from '@rhombus-std/primitives.extras';
-import type { Flatten } from '@rhombus-toolkit/type-helpers';
+import type { Flatten } from '@rhombus-toolkit/types';
 import { Environments } from './Environments';
 import type { IHostEnvironment } from './IHostEnvironment';
 

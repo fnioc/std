@@ -5,7 +5,7 @@
 // disposing a scope restores its parent.
 
 import type { IExternalScopeProvider } from '@rhombus-std/logging.core';
-import type { Func } from '@rhombus-toolkit/func';
+import type { Func } from '@rhombus-toolkit/types';
 import { AsyncLocalStorage } from 'node:async_hooks';
 
 /**

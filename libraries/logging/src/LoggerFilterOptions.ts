@@ -1,7 +1,7 @@
 import { LogLevel } from '@rhombus-std/logging.core';
 import { augment } from '@rhombus-std/primitives';
 import { typefor } from '@rhombus-std/primitives.extras';
-import type { Func } from '@rhombus-toolkit/func';
+import type { Func } from '@rhombus-toolkit/types';
 
 /**
  * A rule used to filter log messages. `filter` receives

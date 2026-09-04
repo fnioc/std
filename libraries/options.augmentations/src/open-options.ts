@@ -2,7 +2,7 @@ import { type IServiceProvider, type Manifest } from '@rhombus-std/di.core';
 import type { IOptions } from '@rhombus-std/options';
 import { Type } from '@rhombus-std/primitives';
 import { type Generic, typefor } from '@rhombus-std/primitives.extras';
-import type { Func } from '@rhombus-toolkit/func';
+import type { Func } from '@rhombus-toolkit/types';
 
 import { assembleOptions } from './assemble-options.js';
 import { baseFactoryType } from './option-types.js';

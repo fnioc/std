@@ -10,9 +10,8 @@
 
 import { type IChangeToken, type MergeStrategies } from '@rhombus-std/primitives';
 import { registerAugmentations } from '@rhombus-std/primitives.extras';
-import type { Func } from '@rhombus-toolkit/func';
 import { hasMember } from '@rhombus-toolkit/type-guards';
-import type { Flatten } from '@rhombus-toolkit/type-helpers';
+import type { Flatten, Func } from '@rhombus-toolkit/types';
 import { CacheEntrySugarAugmentations } from './CacheEntry-Sugar-augmentations';
 import type { ICacheEntry } from './ICacheEntry';
 import type { IMemoryCache } from './IMemoryCache';

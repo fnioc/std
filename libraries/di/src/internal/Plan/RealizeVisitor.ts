@@ -1,9 +1,9 @@
 import { ControlRequest, type Handle, type Hooks, Registration, Request, ServiceRequest, UnsatisfiableError } from '@rhombus-std/di.core';
 import type { Type } from '@rhombus-std/primitives';
 import { typefor } from '@rhombus-std/primitives.extras';
-import type { Ctor, Func } from '@rhombus-toolkit/func';
 import { iterable } from '@rhombus-toolkit/iterable';
 import { assertNever } from '@rhombus-toolkit/type-guards';
+import type { Ctor, Func } from '@rhombus-toolkit/types';
 import type { Engine } from '../Engine.js';
 import { gather } from './gather.js';
 import { type AlwaysDispatch, type AlwaysHook, type Entry, type InstalledHooks, withSlot } from './InstalledHooks.js';

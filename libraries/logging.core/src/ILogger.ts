@@ -1,6 +1,6 @@
 // ILogger and the scope-provider contract.
 
-import type { Func } from '@rhombus-toolkit/func';
+import type { Func } from '@rhombus-toolkit/types';
 import type { EventId } from './EventId';
 import type { LogLevel } from './LogLevel';
 

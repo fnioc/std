@@ -4,7 +4,7 @@ import { NullFileProvider } from '@rhombus-std/fileproviders.core';
 import { BackgroundService, Environments, getHostedServiceManifest, HostAbortedError, HostDefaults, HOSTED_SERVICE_TYPE, hostedServiceCollectionType, HostEnvironmentEnvAugmentations,
   type IHostedService, type IHostEnvironment } from '@rhombus-std/hosting.core/private/index';
 import { Type } from '@rhombus-std/primitives';
-import type { Func } from '@rhombus-toolkit/func';
+import type { Func } from '@rhombus-toolkit/types';
 import { expect, test } from 'bun:test';
 
 async function waitUntil(condition: Func<[], boolean>, description: string): Promise<void> {
