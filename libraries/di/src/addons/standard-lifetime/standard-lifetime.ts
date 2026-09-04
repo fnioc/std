@@ -178,10 +178,9 @@ function lifetimeMiddleware(next: GetService, scopes: ScopeTable, singletons: Sc
  *
  * @remarks
  * The provider `build()` mints exists only once the chain has folded, so the first ask through it
- * is the earliest it can be known, and it is the one provider with a disposal to subscribe to. The
- * other branch covers a provider built by hand around this installation's middleware, outside
- * `build()`: nothing tells the model when it is disposed, so the singleton scope ends once that
- * provider is collected — best-effort by nature, since collection is not promised.
+ * is the earliest it can be known, and it is the one provider with a disposal to subscribe to: a
+ * provider built by hand around this installation's middleware, outside `build()`, is not wired
+ * here.
  */
 function adoptProvider(singletons: Scope, provider: IServiceProvider): void {
   if (provider instanceof ServiceProvider) {
@@ -189,15 +188,8 @@ function adoptProvider(singletons: Scope, provider: IServiceProvider): void {
       [Symbol.dispose]: () => disposeScope(singletons),
       [Symbol.asyncDispose]: () => disposeScopeAsync(singletons),
     });
-  } else {
-    orphaned.register(provider, singletons);
   }
 }
-
-/** Ends the singleton scope of a build whose hand-built provider has been collected. */
-const orphaned = new FinalizationRegistry((singletons: Scope) => {
-  void disposeScopeAsync(singletons);
-});
 
 /**
  * The promise a caller is handed for a construction that produced one: it settles to the same

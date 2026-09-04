@@ -231,10 +231,9 @@ function openScope(): IServiceProvider {
 ```
 
 The marker only stamps: an ask through a scope that has ended is refused by the reader instead,
-since `beginResolve` looks the id up in the table and finds nothing. The provider the first ask
-arrives through is subscribed the same way, to release the singleton scope; one built by hand,
-outside `build()`, has no disposal to subscribe to, so a finalization registry releases that scope
-when the provider is collected. The scope factory is
+since `beginResolve` looks the id up in the table and finds nothing. The provider `build()`
+returns is subscribed the same way, on its first ask, to release the singleton scope; a provider
+built by hand around the middleware, outside `build()`, is not subscribed. The scope factory is
 filed through `Addon.registrations` as a value registration, so it is the one instance everywhere
 and is never captured for disposal.
 

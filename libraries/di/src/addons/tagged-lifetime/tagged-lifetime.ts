@@ -107,9 +107,9 @@ class Model {
    * chain folds, so the first ask through it is the earliest its disposal can be subscribed to.
    *
    * @remarks
-   * A provider built by hand around this installation's middleware, outside `build()`, offers no
-   * disposal to subscribe to; it caches and captures nothing of its own, so dropping it leaves
-   * nothing unreleased and every scope opened through it answers until that scope is disposed.
+   * A provider built by hand around this installation's middleware, outside `build()`, is not
+   * wired here; it caches and captures nothing of its own, and every scope opened through it
+   * answers until that scope is disposed.
    */
   #adopt(provider: unknown): void {
     this.#adopted = true;
