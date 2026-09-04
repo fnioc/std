@@ -258,13 +258,13 @@ implementer confirms against the engine.
 
 The behavior threads one state: the `Scope` the current constructions run under.
 
-| hook               | does                                                                                                                                                                                                                                                                                                                                                                                                                       |
-| ------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `beginResolve`     | answers the `Scope` `request[scopeId]` names, refusing with `ObjectDisposedError` when it or the singleton scope has ended                                                                                                                                                                                                                                                                                                 |
-| `beforeConstruct`  | `singleton`: hit in `root.cache` answers `{ result }`, miss answers `{ state: root }` so the dependencies resolve under the container. `scoped`: same against `state.cache`, which is `root.cache` when the state is `root`. `transient`, a value, an engine row: `{ state }`.                                                                                                                                             |
-| `afterConstruct`   | stores under the same rule (`transient` stores nothing), then captures the instance in the owning scope's list when it has `Symbol.dispose` or `Symbol.asyncDispose`: `singleton` in `root`, `scoped` and `transient` in `state`. An owning scope already disposed disposes the instance at once and throws `ObjectDisposedError`. A promise is captured by the derived promise instead, and a rejection evicts the entry. |
-| `canonicalize`     | a construction that produced a promise is swapped for one derived from it: on settlement the value is captured in the owning scope, and an owning scope that ended meanwhile has the value disposed and the derived promise rejects with `ObjectDisposedError`                                                                                                                                                             |
-| the plan-time hook | not used by the model                                                                                                                                                                                                                                                                                                                                                                                                      |
+| hook               | does                                                                                                                                                                                                                                                                                                                                                                                                                             |
+| ------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `beginResolve`     | answers the `Scope` `request[scopeId]` names, refusing with `ObjectDisposedError` when it or the singleton scope has ended                                                                                                                                                                                                                                                                                                       |
+| `beforeConstruct`  | `singleton`: hit in `singletons.cache` answers `{ result }`, miss answers `{ state: singletons }` so the dependencies resolve under the container. `scoped`: same against `state.cache`, which is `singletons.cache` when the state is `singletons`. `transient`, a value, an engine row: `{ state }`.                                                                                                                           |
+| `afterConstruct`   | stores under the same rule (`transient` stores nothing), then captures the instance in the owning scope's list when it has `Symbol.dispose` or `Symbol.asyncDispose`: `singleton` in `singletons`, `scoped` and `transient` in `state`. An owning scope already disposed disposes the instance at once and throws `ObjectDisposedError`. A promise is captured by the derived promise instead, and a rejection evicts the entry. |
+| `canonicalize`     | a construction that produced a promise is swapped for one derived from it: on settlement the value is captured in the owning scope, and an owning scope that ended meanwhile has the value disposed and the derived promise rejects with `ObjectDisposedError`                                                                                                                                                                   |
+| the plan-time hook | not used by the model                                                                                                                                                                                                                                                                                                                                                                                                            |
 
 What the construction produced is what is cached — for a promise, the derived promise the caller is
 handed — so concurrent asynchronous resolutions share one pending construction. A promise that
@@ -273,7 +273,7 @@ disposal, on settlement.
 
 `IServiceProvider` resolved under a singleton's dependencies must be the container's own provider,
 not the provider the ask entered through. The engine's `IServiceProvider` row answers the request's
-provider; the model overrides it under a `root` state from `beforeConstruct`, if that row is a
+provider; the model overrides it under a `singletons` state from `beforeConstruct`, if that row is a
 construction the hook sees. The implementer confirms that against the engine.
 
 ### Disposal
@@ -284,7 +284,7 @@ construction the hook sees. The implementer confirms that against the engine.
   form records an error for an instance that has only `Symbol.asyncDispose`; the asynchronous form
   awaits each and calls a synchronous-only instance synchronously. A second dispose is a no-op. The
   cache is kept; resolution through that provider refuses first with `ObjectDisposedError`.
-- Disposing the container's provider: the same walk over `root`. Afterwards every provider, the
+- Disposing the container's provider: the same walk over `singletons`. Afterwards every provider, the
   container's and every scope's, throws `ObjectDisposedError` on resolution, and `openScope` throws.
   An open scope's own list is disposed only when that scope's provider is disposed.
 
@@ -302,13 +302,13 @@ holding it never trips either check.
 
 ### Behavior map
 
-| catalogue                                          | mechanism                                                                                    |
-| -------------------------------------------------- | -------------------------------------------------------------------------------------------- |
-| §1 caches, last wins, per-element lifetimes        | engine's registry order plus the two-level cache key                                         |
-| §1 once-only creation, failure never cached        | the cached promise for asynchronous builds; `afterConstruct` never runs for a throwing build |
-| §2 flat scopes, one factory, `IServiceProvider`    | `openScope` over the shared implementation; the value-registered factory; the row override   |
-| §2 unvalidated scoped from root promoted           | `state.cache` is `root.cache` under `root`                                                   |
-| §3 capture rules, ownership, order, dedupe, errors | `afterConstruct` capture; the disposal walk behind the provider's dispose seam               |
-| §4 validation, both checks at their own moments    | `validateScopes()` on the plan-time hook and on `beforeConstruct`                            |
-| §5 built-ins                                       | engine rows plus the value-registered scope factory                                          |
-| §6 keyed services                                  | out of scope                                                                                 |
+| catalogue                                                        | mechanism                                                                                    |
+| ---------------------------------------------------------------- | -------------------------------------------------------------------------------------------- |
+| §1 caches, last wins, per-element lifetimes                      | engine's registry order plus the two-level cache key                                         |
+| §1 once-only creation, failure never cached                      | the cached promise for asynchronous builds; `afterConstruct` never runs for a throwing build |
+| §2 flat scopes, one factory, `IServiceProvider`                  | `openScope` over the shared implementation; the value-registered factory; the row override   |
+| §2 unvalidated scoped from the container's own provider promoted | `state.cache` is `singletons.cache` under `singletons`                                       |
+| §3 capture rules, ownership, order, dedupe, errors               | `afterConstruct` capture; the disposal walk behind the provider's dispose seam               |
+| §4 validation, both checks at their own moments                  | `validateScopes()` on the plan-time hook and on `beforeConstruct`                            |
+| §5 built-ins                                                     | engine rows plus the value-registered scope factory                                          |
+| §6 keyed services                                                | out of scope                                                                                 |
