@@ -2562,3 +2562,16 @@ RULED (owner 2026-09-04): rename — `resolveMany` → `resolveIterable`; the `r
   owner (asked 2026-09-04, unanswered): "fix" (route the flat-token path through the `true | false`
   collapse the node path already does, so `boolean` spells `Type.global('boolean')` everywhere; one
   test flips from refusal to address) or "leave".
+
+## Session — /go 2026-09-04, the work queued behind the owner's review
+
+Three lanes dispatched concurrently; none touches this file. Excluded by design: drift fix 2 and the
+wide `boolean` token (each awaits one word), forks F3/F6, the merge into main.
+
+- Reverts 1–4 + marker drift fixes 1, 3, 4 — in place on `IServiceManifest-repair`, path-scoped
+  commits, no push until the run integrates. RUNNING.
+- `decisions.v2.md` dead-entry sweep (§204 §206 §207 §210 §211 §215-tail §219 §221 §222) — in place,
+  docs-only. RUNNING.
+- ServiceProvider ask sugar surface + the ruled renames — worktree `+feat-di-resolve-sugar`, branch
+  `feat-di-resolve-sugar`, pushed as its own branch, fast-forwarded onto `IServiceManifest-repair` by
+  the orchestrator after its gate. RUNNING.
