@@ -6,9 +6,9 @@ import { findSingletonScopeId } from './ScopeFactory.js';
 import { scopeId } from './symbols.js';
 
 /**
- * A scoped registration reached under the singleton scope: resolved from the container's own
- * provider, or consumed by a singleton — the conditions Microsoft.Extensions.DependencyInjection's
- * scope validation refuses.
+ * A scoped registration reached under the singleton scope: resolved outside an opened scope, or
+ * consumed by a singleton — the conditions Microsoft.Extensions.DependencyInjection's scope
+ * validation refuses.
  */
 export class ScopeValidationError extends DiError {
   /** The scoped service type that was reached. */
@@ -17,7 +17,7 @@ export class ScopeValidationError extends DiError {
   constructor(address: Type) {
     super(
       `cannot resolve scoped ${address} under the singleton scope — a scoped registration is reached through an opened scope, `
-        + `never from the container's own provider or from a singleton's dependencies`,
+        + `never from outside one and never from a singleton's dependencies`,
     );
     this.name = 'ScopeValidationError';
     this.address = address;
@@ -30,8 +30,8 @@ export class ScopeValidationError extends DiError {
  * unless added.
  *
  * @remarks
- * Two checks, both raising {@link ScopeValidationError}: a scoped registration resolved from the
- * container's own provider, directly or beneath a transient, checked on every ask; and a scoped
+ * Two checks, both raising {@link ScopeValidationError}: a scoped registration resolved outside an
+ * opened scope, directly or beneath a transient, checked on every ask; and a scoped
  * registration consumed by a singleton — directly, through a transient, or through another
  * singleton — checked wherever the singleton's dependencies are constructed, from any provider. A
  * singleton holding {@link IServiceScopeFactory} trips neither: the factory is a value, never

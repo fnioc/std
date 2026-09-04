@@ -94,7 +94,7 @@ stamp on the request.
 
 A collection ask — the engine's synthesised collection over every registration of one address — is
 fresh per ask: the collection itself is never cached, and each element is answered by its own
-registration under that registration's lifetime, so a singleton element is the container-wide
+registration under that registration's lifetime, so a singleton element is the build-wide
 instance while a scoped element is that scope's. A registration whose product is an array is not
 that: it is one service like any other, with one lifetime over the whole array, cached and disposed
 as a unit, its elements never reached individually.
@@ -150,13 +150,13 @@ Names follow this repository's conventions, not the clone's.
 /** The standard lifetime model's vocabulary: a clone of Microsoft.Extensions.DependencyInjection's service lifetimes. */
 export type StandardLifetime = 'singleton' | 'scoped' | 'transient';
 
-/** Opens scopes. One instance per container, resolvable from every provider, always the same one. */
+/** Opens scopes. One instance per build, resolvable from every provider, always the same one. */
 export interface IServiceScopeFactory {
   /** A new scope's provider, independent of every other scope; disposing it ends the scope. */
   openScope(): IServiceProvider;
 }
 
-/** A resolution or scope opening reached a provider whose container or scope is already disposed. */
+/** A resolution or scope opening reached a provider whose scope, or whose singleton scope, is already disposed. */
 export class ObjectDisposedError extends DiError {}
 
 // di
@@ -166,7 +166,7 @@ export function standardLifetime(): Addon<StandardLifetime>;
 /** Optional layer refusing a scoped registration reached under the singleton scope. */
 export function validateScopes(): Addon<StandardLifetime>;
 
-/** A scoped registration reached under the singleton scope: resolved from the container's own provider, or consumed by a singleton. */
+/** A scoped registration reached under the singleton scope: resolved outside an opened scope, or consumed by a singleton. */
 export class ScopeValidationError extends DiError {
   readonly address: Type;
 }
@@ -200,8 +200,8 @@ const foo = scope.resolve(typefor<Foo>());
 
 The addon's one `Middleware` composes the two layers at build time and hands the inner one to the
 scope factory. A scope's marker is nothing but the `source` its provider is minted over; the
-container's marker is the outer half of the addon's own middleware, since `build()` mints that
-provider:
+singleton scope's marker is the outer half of the addon's own middleware, since `build()` mints
+that provider:
 
 ```ts
 function middleware(next: GetService): GetService {
@@ -231,8 +231,10 @@ function openScope(): IServiceProvider {
 ```
 
 The marker only stamps: an ask through a scope that has ended is refused by the reader instead,
-since `beginResolve` looks the id up in the table and finds nothing. The container's own provider is
-subscribed the same way, on its first ask, to release the singleton scope. The scope factory is
+since `beginResolve` looks the id up in the table and finds nothing. The provider the first ask
+arrives through is subscribed the same way, to release the singleton scope; one built by hand,
+outside `build()`, has no disposal to subscribe to, so a finalization registry releases that scope
+when the provider is collected. The scope factory is
 filed through `Addon.registrations` as a value registration, so it is the one instance everywhere
 and is never captured for disposal.
 
@@ -245,7 +247,7 @@ interface Scope {
   disposed: boolean;
 }
 const scopes: Map<symbol, Scope>; // every open scope, keyed by the id its marker stamps
-const singletons: Scope; // one entry of that table, opened at build: the singletons, and everything the container's own provider owns
+const singletons: Scope; // one entry of that table, opened at build: the singletons, and everything owned outside an opened scope
 ```
 
 Keying by registration identity and then by populated address gives an open-generic registration
@@ -261,7 +263,7 @@ The behavior threads one state: the `Scope` the current constructions run under.
 | hook               | does                                                                                                                                                                                                                                                                                                                                                                                                                             |
 | ------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `beginResolve`     | answers the `Scope` `request[scopeId]` names, refusing with `ObjectDisposedError` when it or the singleton scope has ended                                                                                                                                                                                                                                                                                                       |
-| `beforeConstruct`  | `singleton`: hit in `singletons.cache` answers `{ result }`, miss answers `{ state: singletons }` so the dependencies resolve under the container. `scoped`: same against `state.cache`, which is `singletons.cache` when the state is `singletons`. `transient`, a value, an engine row: `{ state }`.                                                                                                                           |
+| `beforeConstruct`  | `singleton`: hit in `singletons.cache` answers `{ result }`, miss answers `{ state: singletons }` so the dependencies resolve under the singleton scope. `scoped`: same against `state.cache`, which is `singletons.cache` when the state is `singletons`. `transient`, a value, an engine row: `{ state }`.                                                                                                                     |
 | `afterConstruct`   | stores under the same rule (`transient` stores nothing), then captures the instance in the owning scope's list when it has `Symbol.dispose` or `Symbol.asyncDispose`: `singleton` in `singletons`, `scoped` and `transient` in `state`. An owning scope already disposed disposes the instance at once and throws `ObjectDisposedError`. A promise is captured by the derived promise instead, and a rejection evicts the entry. |
 | `canonicalize`     | a construction that produced a promise is swapped for one derived from it: on settlement the value is captured in the owning scope, and an owning scope that ended meanwhile has the value disposed and the derived promise rejects with `ObjectDisposedError`                                                                                                                                                                   |
 | the plan-time hook | not used by the model                                                                                                                                                                                                                                                                                                                                                                                                            |
@@ -271,10 +273,12 @@ handed — so concurrent asynchronous resolutions share one pending construction
 rejects evicts its entry, so the next ask retries; a promise's settled value is what is captured for
 disposal, on settlement.
 
-`IServiceProvider` resolved under a singleton's dependencies must be the container's own provider,
+`IServiceProvider` resolved under a singleton's dependencies must be a view on the singleton scope,
 not the provider the ask entered through. The engine's `IServiceProvider` row answers the request's
 provider; the model overrides it under a `singletons` state from `beforeConstruct`, if that row is a
-construction the hook sees. The implementer confirms that against the engine.
+construction the hook sees. The singleton scope stores no provider of its own, so each such answer
+is a fresh view entering the same asks the same way — provider identity is not a contract. The
+implementer confirms that against the engine.
 
 ### Disposal
 
@@ -284,8 +288,9 @@ construction the hook sees. The implementer confirms that against the engine.
   form records an error for an instance that has only `Symbol.asyncDispose`; the asynchronous form
   awaits each and calls a synchronous-only instance synchronously. A second dispose is a no-op. The
   cache is kept; resolution through that provider refuses first with `ObjectDisposedError`.
-- Disposing the container's provider: the same walk over `singletons`. Afterwards every provider, the
-  container's and every scope's, throws `ObjectDisposedError` on resolution, and `openScope` throws.
+- Disposing the provider `build()` returns: the same walk over `singletons`. Afterwards every
+  provider, that one and every scope's, throws `ObjectDisposedError` on resolution, and `openScope`
+  throws.
   An open scope's own list is disposed only when that scope's provider is disposed.
 
 ### `validateScopes()`
@@ -296,19 +301,19 @@ registration and throws `ScopeValidationError` for a scoped registration under t
 plan, which is at build under `validateBuildability()` and otherwise at first resolution.
 `beginResolve` answers `'singleton'` where `request[scopeId]` is the singleton scope's id — read off
 the scope factory the model registered — and `beforeConstruct` throws for a scoped registration
-under a `'singleton'` state, which is the per-resolution check for a scoped service reached through
-the container's own provider. The scope factory is a value, never constructed, so a singleton
+under a `'singleton'` state, which is the per-resolution check for a scoped service reached outside
+an opened scope. The scope factory is a value, never constructed, so a singleton
 holding it never trips either check.
 
 ### Behavior map
 
-| catalogue                                                        | mechanism                                                                                    |
-| ---------------------------------------------------------------- | -------------------------------------------------------------------------------------------- |
-| §1 caches, last wins, per-element lifetimes                      | engine's registry order plus the two-level cache key                                         |
-| §1 once-only creation, failure never cached                      | the cached promise for asynchronous builds; `afterConstruct` never runs for a throwing build |
-| §2 flat scopes, one factory, `IServiceProvider`                  | `openScope` over the shared implementation; the value-registered factory; the row override   |
-| §2 unvalidated scoped from the container's own provider promoted | `state.cache` is `singletons.cache` under `singletons`                                       |
-| §3 capture rules, ownership, order, dedupe, errors               | `afterConstruct` capture; the disposal walk behind the provider's dispose seam               |
-| §4 validation, both checks at their own moments                  | `validateScopes()` on the plan-time hook and on `beforeConstruct`                            |
-| §5 built-ins                                                     | engine rows plus the value-registered scope factory                                          |
-| §6 keyed services                                                | out of scope                                                                                 |
+| catalogue                                                   | mechanism                                                                                    |
+| ----------------------------------------------------------- | -------------------------------------------------------------------------------------------- |
+| §1 caches, last wins, per-element lifetimes                 | engine's registry order plus the two-level cache key                                         |
+| §1 once-only creation, failure never cached                 | the cached promise for asynchronous builds; `afterConstruct` never runs for a throwing build |
+| §2 flat scopes, one factory, `IServiceProvider`             | `openScope` over the shared implementation; the value-registered factory; the row override   |
+| §2 unvalidated scoped from outside an opened scope promoted | `state.cache` is `singletons.cache` under `singletons`                                       |
+| §3 capture rules, ownership, order, dedupe, errors          | `afterConstruct` capture; the disposal walk behind the provider's dispose seam               |
+| §4 validation, both checks at their own moments             | `validateScopes()` on the plan-time hook and on `beforeConstruct`                            |
+| §5 built-ins                                                | engine rows plus the value-registered scope factory                                          |
+| §6 keyed services                                           | out of scope                                                                                 |
