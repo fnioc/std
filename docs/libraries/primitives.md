@@ -80,15 +80,15 @@ Type.ctor(instance, [[a, b], []]); // new (a, b) => instance, and new () => inst
 Type.func(returns, Type.signatures([Type.tuple({ members: [a], rest: b })])); // (a, ...b[]) => returns
 ```
 
-Pattern matching over types with holes is built in. `Type.bindGenerics(pattern, candidate)` answers
+Pattern matching over types with holes is built in. `Type.extractMatchedGenerics(pattern, candidate)` answers
 whether some closing of the pattern equals the candidate and hands back the bindings; `Type.isMatch`
 is its boolean form, `Type.substitute` fills named holes, `Type.isOpen` / `Type.isClosed` say whether
-a hole remains. `Type.isPromiseLike` / `Type.awaited` / `Type.promise` read and build the one
+a hole remains. `Type.isPromise` / `Type.awaited` / `Type.promise` read and build the one
 deferred-delivery spelling, `Type.isOptional` asks whether a type admits `undefined`, and
 `Type.Visitor` is the dispatch base every walk over the node space subclasses.
 
 ```ts
-const [matched, generics] = Type.bindGenerics(typefor<Promise<Generic<'S'>>>(), type);
+const [matched, generics] = Type.extractMatchedGenerics(typefor<Promise<Generic<'S'>>>(), type);
 // matched: is `type` a Promise<…>; generics.S: what it carries
 ```
 

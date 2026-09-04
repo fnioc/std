@@ -29,7 +29,7 @@ describe('an open signature as a service type', () => {
   });
 
   test('closing discharges the hole, landing on the requested type itself', () => {
-    const [matched, generics] = Type.bindGenerics(OPEN, CLOSED);
+    const [matched, generics] = Type.extractMatchedGenerics(OPEN, CLOSED);
     expect(matched).toBe(true);
     expect(Type.substitute(OPEN, generics!)).toBe(CLOSED);
   });

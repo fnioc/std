@@ -1,4 +1,4 @@
-// Behaviour tests for Type.bindGenerics — unification over interned types. Matching is identity modulo
+// Behaviour tests for Type.extractMatchedGenerics — unification over interned types. Matching is identity modulo
 // holes: outside a generic hole the two sides must be the same interned node, a hole binds the
 // subject fragment standing in its place, and a repeated label must bind the same type each time.
 // There is no assignability anywhere: no width subtyping, no literal widening to its primitive,
@@ -14,12 +14,12 @@ const T = Type.generic('T');
 const U = Type.generic('U');
 
 function matches(candidate: Type, constraint: Type): boolean {
-  return Type.bindGenerics(candidate, constraint)[0];
+  return Type.extractMatchedGenerics(candidate, constraint)[0];
 }
 
-/** Asserts `Type.bindGenerics` found a match and returns its bindings, narrowed off the assertion. */
+/** Asserts `Type.extractMatchedGenerics` found a match and returns its bindings, narrowed off the assertion. */
 function expectBindings(pattern: Type, candidate: Type): Record<string, Type> {
-  const [matched, generics] = Type.bindGenerics(pattern, candidate);
+  const [matched, generics] = Type.extractMatchedGenerics(pattern, candidate);
   expect(matched).toBe(true);
   if (!matched) {
     throw new Error('unreachable: the assertion above already failed the test');
@@ -204,7 +204,7 @@ describe('the assignability rules are gone', () => {
 });
 
 describe('guard against an open constraint', () => {
-  test('Type.bindGenerics refuses a constraint that itself holds a generic hole', () => {
-    expect(() => Type.bindGenerics(A, T)).toThrow(/constraint type may not contain generic holes/);
+  test('Type.extractMatchedGenerics refuses a constraint that itself holds a generic hole', () => {
+    expect(() => Type.extractMatchedGenerics(A, T)).toThrow(/constraint type may not contain generic holes/);
   });
 });

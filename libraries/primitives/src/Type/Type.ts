@@ -503,13 +503,13 @@ export namespace Type {
   const PROMISE_PATTERN = Type.global('Promise', [Type.generic('S')]);
 
   /** Is `type` a `Promise<…>` — the one spelling the container reads as deferred delivery? */
-  export function isPromiseLike(type: Type): boolean {
+  export function isPromise(type: Type): boolean {
     return Type.isMatch(PROMISE_PATTERN, type);
   }
 
   /** What `type` settles to: the inner type for a `Promise<T>`, the type itself otherwise. */
   export function awaited(type: Type): Type {
-    const [matched, generics] = Type.bindGenerics(PROMISE_PATTERN, type);
+    const [matched, generics] = Type.extractMatchedGenerics(PROMISE_PATTERN, type);
     return matched ? generics.S! : type;
   }
 
@@ -524,7 +524,7 @@ export namespace Type {
    *
    * @throws Error - when `constraint` itself holds a generic hole.
    */
-  export const bindGenerics = (() => {
+  export const extractMatchedGenerics = (() => {
     const visitor = new MatchVisitor();
     return function bindGenerics(possiblyOpenCandidate: Type, closedConstraint: Type): [isMatch: false] | [isMatch: true, generics: Record<string, Type>] {
       if (possiblyOpenCandidate === closedConstraint) {
@@ -546,7 +546,7 @@ export namespace Type {
    * @throws Error - when `candidate` holds a generic hole.
    */
   export function isMatch(pattern: Type, candidate: Type): boolean {
-    return Type.bindGenerics(pattern, candidate)[0];
+    return Type.extractMatchedGenerics(pattern, candidate)[0];
   }
 
   /** Writes the type as its token spelling — the inverse of {@link from}. */

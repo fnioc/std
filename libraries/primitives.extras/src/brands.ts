@@ -15,7 +15,7 @@ declare const HOLE: unique symbol;
  *
  * @example
  * ```ts
- * const [matched, generics] = Type.bindGenerics(typefor<Promise<Generic<'S'>>>(), type);
+ * const [matched, generics] = Type.extractMatchedGenerics(typefor<Promise<Generic<'S'>>>(), type);
  * ```
  */
 export type Generic<L extends string, C = unknown> = C & { readonly [HOLE]?: L; };
