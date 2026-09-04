@@ -2607,7 +2607,22 @@ wide `boolean` token (each awaits one word), forks F3/F6, the merge into main.
      explicit overload to win. Latent overload collision.
   5. `docs/notes.md` untouched (dated RULED paragraphs recording the rename that produced `resolveMany`);
      di2 documents untouched.
-- Drift fix 2, final shape RULED (owner 2026-09-04): `singletons` never holds a provider (the prop is
+- Drift fix 2 LANDED `ea5fb7e8` (prop dropped, `providerOf` uncached, adopt renamed, hand-built
+  provider test) + `a06689b8` (no container/root under `libraries/di/src/addons/**` and the design
+  doc). The `FinalizationRegistry` else-branch in `ea5fb7e8` is WITHDRAWN (owner: several providers
+  may serve one singleton middleware, so no one provider's fate may end the scope) — removal in
+  flight on the same lane. Tagged lifetime never got one (its head is reachable from live scopes).
+  SUPERSEDING RULING (owner 2026-09-04, matching the reference, verified against its source: only the
+  concrete `ServiceProvider` class and `IServiceScope` dispose; `IServiceProvider` is `GetService`
+  only): `IServiceProvider` drops `extends Disposable, AsyncDisposable`; `ServiceProvider` stays the
+  `@augment`ed decorator implementing both; `build()` and `IServiceScopeFactory.openScope()` return
+  `IServiceProvider & Disposable & AsyncDisposable`; no scope wrapper type is made visible. A
+  hand-assembled provider then has nothing to dispose, as in the reference. Fallout = every holder
+  that disposes a provider typed as the interface (hosting, tests), surfaced by lint. Awaits the
+  owner's go. The di test files still say "container" in test names and one helper comment — the
+  owner's word (the sweep covered addon sources and the design doc only).
+- Drift fix 2, earlier shape (superseded above; kept for the record of what `ea5fb7e8` built):
+  `singletons` never holds a provider (the prop is
   dropped there; a singleton's `IServiceProvider` dependency needs only _a_ singleton-scoped view,
   never the specific provider `build()` returned); keep `instanceof ServiceProvider` → `whenDisposed`;
   else a `FinalizationRegistry` disposes the singleton scope when the user's hand-assembled provider is
