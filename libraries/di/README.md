@@ -38,7 +38,30 @@ provider.resolve(IGreeter).greet('world'); // "Hello, world!"
 
 `Builder.useAddon(addon)` and `Builder.withServices(fn)` open the chain, and the same two verbs extend it. `useAddon` installs an addon: `.build()` opens one installation of it, whose registrations file in call order and whose middleware composes into the resolution chain at that call's position. `withServices` installs the registrations a delegate composes onto an empty manifest, as an addon with no middleware of its own. The first input carrying a concrete lifetime vocabulary locks the chain onto it, and every addon after that must speak the same one. `.build()` seals everything into a provider; an ask nothing in the manifest answers throws `UnsatisfiableError`. Every verb returns a **new** `Builder`, so — exactly like `Manifest` itself — a discarded result configures nothing.
 
-`resolve(address)` and `resolveMany(address)` are `di.core`'s own augmentations on `IServiceProvider`, so they're available the moment `di.core` is loaded — which it always is, since `di` depends on it.
+The whole ask surface is `di.core`'s own set of augmentations on `IServiceProvider`, so it is there the moment `di.core` is loaded — which it always is, since `di` depends on it. Each verb names the shape you want and composes the address for it; `di.extras` derives that address from a type argument instead of taking it in front.
+
+| Ask for                                           | Explicit                             | Type-driven                          |
+| ------------------------------------------------- | ------------------------------------ | ------------------------------------ |
+| the value                                         | `resolve(address)`                   | `resolve<T>()`                       |
+| every registration, as an array                   | `resolveArray(address)`              | `resolveArray<T>()`                  |
+| every registration, walked lazily                 | `resolveIterable(address)`           | `resolveIterable<T>()`               |
+| the value, everything beneath it awaited          | `resolveAsync(address)`              | `resolveAsync<T>()`                  |
+| the array, awaited                                | `resolveArrayAsync(address)`         | `resolveArrayAsync<T>()`             |
+| the sequence, awaited                             | `resolveIterableAsync(address)`      | `resolveIterableAsync<T>()`          |
+| one element awaited per step of the walk          | `resolveAsyncIterable(address)`      | `resolveAsyncIterable<T>()`          |
+| what calling the registered callable returns      | `resolveWith(address, ...args)`      | `resolveWith<T, Args>(...args)`      |
+| the same, from a promise-returning callable       | `resolveWithAsync(address, ...args)` | `resolveWithAsync<T, Args>(...args)` |
+| a class you hold, built with its dependencies     | `instantiate(ctorType, ctor)`        | `instantiate(ctor)`                  |
+| a function you hold, called with its dependencies | `invoke(funcType, func)`             | `invoke(func)`                       |
+
+Every row has a `try` twin — `tryResolve`, `tryResolveArray`, `tryInvoke` — answering `undefined` where the plain verb throws, by asking for the same shape beside the `undefined` literal. The async twins settle on `undefined` rather than answering it, so their type is `Promise<T | undefined>`. An aggregate with no registrations is empty rather than absent, so a collection's `try` twin hands back the empty collection.
+
+```ts
+provider.resolveArray<IGreeting>(); // [formal, casual]
+provider.tryResolve<IMissing>(); // undefined, never a throw
+await provider.resolveAsync<IBanner>(); // the Promise<IBanner> registration, settled
+provider.instantiate(ReportBuilder); // fresh, never registered
+```
 
 ## Key exports
 

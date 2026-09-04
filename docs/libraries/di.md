@@ -163,6 +163,10 @@ const banner = await provider.resolveAsync<IBanner>(); // awaits the Promise<T> 
 const pending = provider.resolve<Promise<IBanner>>(); // same registration, un-awaited
 ```
 
+A `Promise<X>` registration answers a `Promise<X>` ask; on a miss an `X` registration answers it
+instead. `resolveArrayAsync<T>()` and `resolveIterableAsync<T>()` say the same thing about a
+collection — the whole aggregate settled before the walk begins.
+
 ### 6. Collection resolution
 
 Ask for the collection shape you mean and get exactly its semantics. Three wrapper addresses
@@ -171,15 +175,18 @@ registration of `T` in registration order, with the element's own synthesis (if 
 tail. `T[]` is a snapshot, every element realized eagerly; `Iterable<T>` is a live query, each
 iteration step realizing one element, re-iterable; `AsyncIterable<T>` settles one element per step.
 An unregistered element type aggregates to an empty collection; the bare element address still
-throws. `resolveMany<T>()` is `Iterable<T>` by name.
+throws. One verb names each shape, so the collection is the verb's own doing and the type argument
+stays the element: `resolveArray<T>()`, `resolveIterable<T>()`, `resolveAsyncIterable<T>()`.
 
 ```ts
 services = services.add<IGreeting>(FormalGreeting).add<IGreeting>(CasualGreeting);
 
-provider.resolve<IGreeting[]>(); // [formal, casual] — registration order
-provider.resolveMany<IGreeting>(); // Iterable<IGreeting>: lazy, re-iterable, same elements
+provider.resolveArray<IGreeting>(); // [formal, casual] — registration order
+provider.resolveIterable<IGreeting>(); // Iterable<IGreeting>: lazy, re-iterable, same elements
+for await (const greeting of provider.resolveAsyncIterable<IGreeting>()) { // one settled per step
+}
 
-provider.resolve<IPlugin[]>(); // no IPlugin registered anywhere → [], never throws
+provider.resolveArray<IPlugin>(); // no IPlugin registered anywhere → [], never throws
 provider.resolve<IPlugin>(); // same case, bare address → throws UnsatisfiableError
 ```
 
@@ -212,8 +219,15 @@ Optional parameters need no special case and no `!` casts. Canonical order puts 
 has no way to build. A caller for whom absence is an answer spells that in the address it asks for.
 
 ```ts
-provider.resolve(Type.union(typefor<IFoo>(), typefor<undefined>())); // IFoo, or undefined — never a throw
+provider.tryResolve<IFoo>(); // IFoo, or undefined — never a throw
+
+// the same ask, explicit:
+provider.resolve(Type.union(typefor<IFoo>(), typefor<undefined>()));
 ```
+
+Every ask verb has that `try` twin — `tryResolveArray`, `tryResolveAsync`, `tryInvoke` and the rest
+— each asking for its own shape beside the `undefined` literal. The async twins settle on
+`undefined` rather than answering it, so their type is `Promise<T | undefined>`.
 
 ### 8. Synthesis on a miss: literals, objects, tuples
 
@@ -284,12 +298,19 @@ const makeReport = provider.resolve<(customer: string) => Report>();
 makeReport('acme'); // log from the container, 'acme' threaded straight through
 ```
 
-`resolve(callableType, callable)` is the value path — construct or call something you hold in your
-hand with its dependencies filled in, registering and caching nothing. Two calls build two
+`instantiate(ctor)` and `invoke(func)` are the value path — construct or call something you hold in
+your hand with its dependencies filled in, registering and caching nothing. Two calls build two
 instances, even for a class separately registered under its own address.
+`resolveWith<T, Args>(...args)` is the registered counterpart: it resolves the callable and calls it
+with the arguments you supply.
 
 ```ts
-const report = provider.resolve(typefor(Report), Report); // fresh, never registered
+const report = provider.instantiate(Report); // fresh, never registered
+const described = provider.invoke(describeReport); // called, its dependencies filled in
+
+// the same two, explicit:
+provider.instantiate(typefor(Report), Report);
+provider.invoke(typefor(describeReport), describeReport);
 ```
 
 ### 11. Keyed registrations
