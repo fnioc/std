@@ -3,35 +3,14 @@ import { type Addon, type Behavior, ControlRequest, type ControlService, type Ge
 import { typefor } from '@rhombus-std/primitives.extras';
 import { ServiceProvider } from '../../ServiceProvider.js';
 import { capture, disposeScope, disposeScopeAsync, evict, lookup, store } from '../lifetime-scope.js';
-import { newScope, type Scope } from './scope.js';
-import { lifetimeKind, scopeId } from './symbols.js';
+import { createMarkerMiddleware } from './marker.js';
+import { type ModelState, ScopeFactory } from './ScopeFactory.js';
+import { type Scope, ScopeTable } from './ScopeTable.js';
+import { scopeId } from './symbols.js';
 
 /**
- * The standard lifetime model as an addon — a clone of Microsoft.Extensions.DependencyInjection's
- * service lifetimes, caching and disposal, on this repository's own API.
- *
- * @remarks
- * Every constructed registration names `'singleton'`, `'scoped'` or `'transient'`. A singleton is
- * one instance per container, shared by every scope and disposed with the container. A scoped
- * registration is one instance per scope opened through {@link IServiceScopeFactory}, disposed with
- * that scope; reached through the container's own provider it is cached with the singletons, which
- * {@link validateScopes} turns into a refusal. A transient is fresh per ask and per injection site,
- * owned for disposal by the scope the ask ran under — a transient injected into a singleton lives as
- * long as the singleton. A value registration is handed back as it stands and never disposed.
- *
- * What a construction produced is what is cached, a promise included, so concurrent asynchronous
- * asks share one pending construction; a promise that rejects is forgotten, so the next ask tries
- * again. The promise a caller is handed settles to the value the owning scope then holds for
- * disposal — a scope that ended while the construction was still pending disposes that value and
- * refuses the ask with {@link ObjectDisposedError} rather than answering it with an instance it has
- * already let go. A construction that throws caches nothing.
- *
- * Disposing a scope's provider disposes what that scope owns, most recently constructed first, each
- * instance once; every error is collected — one rethrows as itself, several as one
- * `AggregateError` — and the scope refuses every later ask with {@link ObjectDisposedError}.
- * Disposing the container's provider does the same for the singletons and refuses every provider
- * from then on. The synchronous dispose counts an instance offering only `Symbol.asyncDispose` as
- * an error; the asynchronous dispose awaits each such instance and calls the rest synchronously.
+ * The standard lifetime model as an addon: singleton, scoped and transient, a clone of
+ * Microsoft.Extensions.DependencyInjection's lifetimes on this repository's own API.
  *
  * @example
  * ```ts
@@ -45,139 +24,100 @@ import { lifetimeKind, scopeId } from './symbols.js';
  * ```
  */
 export function standardLifetime(): Addon<StandardLifetime> {
-  const model = new Model();
+  const scopes = new ScopeTable();
+  const singletons = scopes.open();
+  const state: ModelState = { lifetime: undefined, scopes, singletons };
   return {
-    registrations: model.registrations,
-    middleware: next => model.fold(next),
+    registrations: [Registration.value(typefor<IServiceScopeFactory>(), new ScopeFactory(state)), providerRegistration],
+    middleware: next => {
+      state.lifetime = lifetimeMiddleware(next, scopes, singletons);
+      const marked = createMarkerMiddleware(singletons.id)(state.lifetime);
+      return request => {
+        if (singletons.provider === undefined && request instanceof ServiceRequest) {
+          adoptContainer(singletons, request.serviceProvider);
+        }
+        return marked(request);
+      };
+    },
   };
 }
 
-/** The whole model behind one container: its scopes, its hooks, and the factory that opens scopes. */
-class Model {
-  /** The container's own scope: the singletons, and everything the container's provider owns. */
-  readonly #root: Scope = newScope();
-  /** One per `openScope()`, keyed by the id its provider's marker stamps; an ended scope leaves the map. */
-  readonly #scopes = new Map<symbol, Scope>();
-  #count = 0;
-  /** The chain beneath the markers: every provider of this container runs through it. */
-  #implementation: GetService | undefined;
-  readonly #factory: IServiceScopeFactory = { openScope: () => this.#openScope() };
-  /** Answers the provider of the scope the ask runs under — the container's own under a singleton's dependencies. */
-  readonly #providerRegistration = Registration.factory<StandardLifetime>(typefor<IServiceProvider>(), unreachableProvider, typefor(unreachableProvider), 'transient');
-  readonly registrations: ReadonlyArray<Registration<StandardLifetime>> = [
-    Registration.value(typefor<IServiceScopeFactory>(), this.#factory),
-    this.#providerRegistration,
-  ];
+/** Answers the provider of the scope the ask runs under — the container's own under a singleton's dependencies. */
+const providerRegistration = Registration.factory<StandardLifetime>(typefor<IServiceProvider>(), unreachableProvider, typefor(unreachableProvider), 'transient');
 
-  fold(next: GetService): GetService {
-    const address = typefor<ControlService>();
-    const control = next(new ControlRequest(address)) as ControlService;
-    if (typeof control?.stageHooks !== 'function') {
-      throw new UnsatisfiableError(address, 'a middleware answered the control ask with something other than the engine control');
-    }
-    const handle = control.stageHooks(this.#hooks);
-    const implementation: GetService = request => next(request.activate(handle));
-    this.#implementation = implementation;
-    const marker = this.#marker('singleton', undefined, implementation);
-    return request => {
-      if (this.#root.provider === undefined && request instanceof ServiceRequest) {
-        this.#adoptContainer(request.serviceProvider);
-      }
-      return marker(request);
-    };
+/**
+ * The model itself, built once from the engine's `getService`: every provider of this container
+ * runs its asks through this one function, so they share the singletons and differ only in the
+ * scope id their marker stamps.
+ *
+ * @remarks
+ * A singleton is one instance per container, disposed with it. A scoped registration is one
+ * instance per scope opened through {@link IServiceScopeFactory}, disposed with that scope; reached
+ * through the container's own provider it is cached with the singletons, which {@link
+ * validateScopes} turns into a refusal. A transient is fresh per ask and per injection site, owned
+ * for disposal by the scope the ask ran under — a transient injected into a singleton lives as long
+ * as the singleton. A value registration is handed back as it stands and never disposed.
+ *
+ * What a construction produced is what is cached, a promise included, so concurrent asynchronous
+ * asks share one pending construction; a promise that rejects is forgotten, so the next ask tries
+ * again. A construction that throws caches nothing.
+ */
+function lifetimeMiddleware(next: GetService, scopes: ScopeTable, singletons: Scope): GetService {
+  const address = typefor<ControlService>();
+  const control = next(new ControlRequest(address)) as ControlService;
+  if (typeof control?.stageHooks !== 'function') {
+    throw new UnsatisfiableError(address, 'a middleware answered the control ask with something other than the engine control');
   }
 
   /**
-   * The container's own provider, met on its first ask: what a singleton's dependencies resolve
-   * `IServiceProvider` to, and whose disposal ends the container's scope. The provider `build()`
-   * mints exists only after the chain folds, so the first ask through it is the earliest it can be
-   * known.
+   * @throws {ObjectDisposedError} once that scope, or the container itself, has ended.
    */
-  #adoptContainer(provider: IServiceProvider): void {
-    this.#root.provider = provider;
-    if (provider instanceof ServiceProvider) {
-      provider.whenDisposed(this.#release(this.#root));
-    }
-  }
-
-  /** The one layer a provider adds over the shared implementation: which scope its asks run under. */
-  #marker(kind: 'singleton' | 'scoped', id: symbol | undefined, implementation: GetService): GetService {
-    return request => {
-      if (this.#root.disposed || (id !== undefined && !this.#scopes.has(id))) {
-        throw new ObjectDisposedError();
-      }
-      request[lifetimeKind] = kind;
-      request[scopeId] = id;
-      return implementation(request);
-    };
-  }
-
-  /** What a provider's disposal runs for the scope it stands for, in the form the holder disposed through. */
-  #release(scope: Scope): Disposable & AsyncDisposable {
-    return {
-      [Symbol.dispose]: () => disposeScope(scope),
-      [Symbol.asyncDispose]: () => disposeScopeAsync(scope),
-    };
-  }
-
-  #openScope(): IServiceProvider {
-    const implementation = this.#implementation;
-    if (this.#root.disposed || implementation === undefined) {
-      throw new ObjectDisposedError();
-    }
-    const id = Symbol(`scope-${++this.#count}`);
-    const scope = newScope();
-    this.#scopes.set(id, scope);
-    const provider = new ServiceProvider(this.#marker('scoped', id, implementation));
-    scope.provider = provider;
-    provider.whenDisposed({
-      [Symbol.dispose]: () => this.#endScope(id, scope, disposeScope),
-      [Symbol.asyncDispose]: () => this.#endScope(id, scope, disposeScopeAsync),
-    });
-    return provider;
-  }
-
-  /** Ends an opened scope: it leaves the map first, so its provider refuses even while its instances are still disposing. */
-  #endScope<R>(id: symbol, scope: Scope, dispose: (scope: Scope) => R): R {
-    this.#scopes.delete(id);
-    return dispose(scope);
-  }
-
-  /**
-   * The provider asks under `scope` answer for `IServiceProvider`: the scope's own, or the
-   * container's. The container's is known from its first ask, and every scope is opened through a
-   * factory resolved from it, so the view minted here — the same asks, entered the same way — stands
-   * in only for a construction the container's own provider has somehow not yet preceded.
-   */
-  #providerOf(scope: Scope): IServiceProvider {
-    if (scope.provider === undefined) {
-      scope.provider = new ServiceProvider(this.#marker('singleton', undefined, this.#implementation!));
-    }
-    return scope.provider;
-  }
-
-  /** The scope an ask entered through, by the id its marker stamped. */
-  #scopeOf(request: Request): Scope {
-    const id = request[scopeId];
-    const scope = id === undefined ? this.#root : this.#scopes.get(id as symbol);
-    if (this.#root.disposed || scope === undefined || scope.disposed) {
+  function scopeOf(request: Request): Scope {
+    const scope = scopes.get(request[scopeId] as symbol);
+    if (singletons.disposed || scope === undefined || scope.disposed) {
       throw new ObjectDisposedError();
     }
     return scope;
   }
 
-  readonly #hooks: Behavior<Scope> = {
-    beginResolve: (request: Request): Scope => this.#scopeOf(request),
+  /**
+   * The provider asks under `scope` answer for `IServiceProvider`.
+   *
+   * @remarks
+   * Every opened scope is given its provider as it opens, and the container's own is known from its
+   * first ask, so the view minted here — the same asks, entered the same way — stands in only for a
+   * construction the container's own provider has somehow not yet preceded.
+   */
+  function providerOf(scope: Scope): IServiceProvider {
+    scope.provider ??= new ServiceProvider(createMarkerMiddleware(scope.id)(implementation));
+    return scope.provider;
+  }
+
+  /**
+   * The scope that disposes what a construction produced: the singleton scope beneath a singleton,
+   * the scope the ask ran under beneath a scoped or transient registration, and none for a value,
+   * which is handed back as it stands.
+   */
+  function ownerOf({ registration, state }: Hooks.Construction<Scope>): Scope | undefined {
+    const lifetime = lifetimeOf(registration);
+    if (lifetime === 'singleton') {
+      return singletons;
+    }
+    return lifetime === undefined ? undefined : state;
+  }
+
+  const hooks: Behavior<Scope> = {
+    beginResolve: (request: Request): Scope => scopeOf(request),
 
     beforeConstruct: (construction: Hooks.Construction<Scope>): Hooks.Interception<Scope> => {
       const { registration, populatedAddress, state } = construction;
-      if (registration === this.#providerRegistration) {
-        return { result: this.#providerOf(state) };
+      if (registration === providerRegistration) {
+        return { result: providerOf(state) };
       }
       switch (lifetimeOf(registration)) {
         case 'singleton': {
-          const cached = lookup(this.#root, registration, populatedAddress);
-          return cached.hit ? { result: cached.value } : { state: this.#root };
+          const cached = lookup(singletons, registration, populatedAddress);
+          return cached.hit ? { result: cached.value } : { state: singletons };
         }
         case 'scoped': {
           const cached = lookup(state, registration, populatedAddress);
@@ -190,18 +130,18 @@ class Model {
     },
 
     canonicalize: (construction: Hooks.Construction<Scope>, instance: unknown): unknown => {
-      const owner = this.#ownerOf(construction);
+      const owner = ownerOf(construction);
       return owner !== undefined && isThenable(instance) ? settleUnder(owner, instance) : instance;
     },
 
     afterConstruct: (construction: Hooks.Construction<Scope>, instance: unknown): void => {
       const { registration, populatedAddress, state } = construction;
       const lifetime = lifetimeOf(registration);
-      const keeper = lifetime === 'singleton' ? this.#root : lifetime === 'scoped' ? state : undefined;
+      const keeper = lifetime === 'singleton' ? singletons : lifetime === 'scoped' ? state : undefined;
       if (keeper !== undefined) {
         store(keeper, registration, populatedAddress, instance);
       }
-      const owner = this.#ownerOf(construction);
+      const owner = ownerOf(construction);
       if (owner === undefined) {
         return;
       }
@@ -220,17 +160,29 @@ class Model {
     },
   };
 
-  /**
-   * The scope that disposes what a construction produced: the container's own beneath a singleton,
-   * the scope the ask ran under beneath a scoped or transient registration, and none for a value,
-   * which is handed back as it stands.
-   */
-  #ownerOf({ registration, state }: Hooks.Construction<Scope>): Scope | undefined {
-    const lifetime = lifetimeOf(registration);
-    if (lifetime === 'singleton') {
-      return this.#root;
-    }
-    return lifetime === undefined ? undefined : state;
+  const handle = control.stageHooks(hooks);
+
+  function implementation(request: Request): unknown {
+    return next(request.activate(handle));
+  }
+  return implementation;
+}
+
+/**
+ * Takes the container's own provider, met on its first ask: what a singleton's dependencies resolve
+ * `IServiceProvider` to, and whose disposal ends the singleton scope.
+ *
+ * @remarks
+ * The provider `build()` mints exists only once the chain has folded, so the first ask through it
+ * is the earliest it can be known.
+ */
+function adoptContainer(singletons: Scope, provider: IServiceProvider): void {
+  singletons.provider = provider;
+  if (provider instanceof ServiceProvider) {
+    provider.whenDisposed({
+      [Symbol.dispose]: () => disposeScope(singletons),
+      [Symbol.asyncDispose]: () => disposeScopeAsync(singletons),
+    });
   }
 }
 

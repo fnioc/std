@@ -5,7 +5,7 @@
 
 import { Builder, standardLifetime } from '@rhombus-std/di';
 import { type Addon, type IServiceProvider, type IServiceScopeFactory, type Manifest, Registration, type Request, type StandardLifetime } from '@rhombus-std/di.core';
-import { lifetimeKind, scopeId } from '@rhombus-std/di/private/addons/standard-lifetime/symbols';
+import { scopeId } from '@rhombus-std/di/private/addons/standard-lifetime/symbols';
 import { Type } from '@rhombus-std/primitives';
 import { describe, expect, test } from 'bun:test';
 
@@ -609,7 +609,7 @@ describe('the marker contract', () => {
     };
   }
 
-  test("an ask through the container's own provider carries the 'singleton' kind and no scope id", () => {
+  test("an ask through the container's own provider carries the singleton scope's id, the same one every time", () => {
     const seen: Request[] = [];
     const provider = Builder.useAddon(standardLifetime())
       .useAddon(observing(seen))
@@ -617,17 +617,20 @@ describe('the marker contract', () => {
       .build();
 
     provider.resolve(COUNTER);
-    expect(seen).toHaveLength(1);
-    expect(seen[0]![lifetimeKind]).toBe('singleton');
-    expect(seen[0]![scopeId]).toBeUndefined();
+    provider.resolve(COUNTER);
+    expect(seen).toHaveLength(2);
+    expect(typeof seen[0]![scopeId]).toBe('symbol');
+    expect(seen[1]![scopeId]).toBe(seen[0]![scopeId]);
   });
 
-  test("an ask through an opened scope carries the 'scoped' kind and that scope's own id, a Symbol unique per scope", () => {
+  test("an ask through an opened scope carries that scope's own id, a Symbol unique per scope and never the singleton scope's", () => {
     const seen: Request[] = [];
     const provider = Builder.useAddon(standardLifetime())
       .useAddon(observing(seen))
       .withServices(m => m.add(COUNTER, Counter, Type.ctor(COUNTER, [[]]), 'transient'))
       .build();
+    provider.resolve(COUNTER);
+    const singletons = seen[0]![scopeId];
     const scope = openScope(provider);
     const other = openScope(provider);
     seen.length = 0;
@@ -635,10 +638,30 @@ describe('the marker contract', () => {
     scope.resolve(COUNTER);
     scope.resolve(COUNTER);
     other.resolve(COUNTER);
-    expect(seen.map(request => request[lifetimeKind])).toEqual(['scoped', 'scoped', 'scoped']);
     expect(typeof seen[0]![scopeId]).toBe('symbol');
     expect(seen[1]![scopeId]).toBe(seen[0]![scopeId]);
     expect(seen[2]![scopeId]).not.toBe(seen[0]![scopeId]);
+    expect(seen.map(request => request[scopeId])).not.toContain(singletons);
+  });
+
+  test('carries exactly one symbol-keyed prop, telling the singleton scope from an opened one', () => {
+    const seen: Request[] = [];
+    const provider = Builder.useAddon(standardLifetime())
+      .useAddon(observing(seen))
+      .withServices(m => m.add(COUNTER, Counter, Type.ctor(COUNTER, [[]]), 'transient'))
+      .build();
+
+    provider.resolve(COUNTER);
+    openScope(provider).resolve(COUNTER);
+
+    const stamped = seen.map(request => {
+      const keys = Object.getOwnPropertySymbols(request);
+      expect(keys).toHaveLength(1);
+      return request[keys[0]!];
+    });
+    expect(typeof stamped[0]).toBe('symbol');
+    expect(typeof stamped[1]).toBe('symbol');
+    expect(stamped[1]).not.toBe(stamped[0]);
   });
 });
 
