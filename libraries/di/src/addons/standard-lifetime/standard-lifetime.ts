@@ -178,7 +178,9 @@ function lifetimeMiddleware(next: GetService, scopes: ScopeTable, singletons: Sc
  *
  * @remarks
  * The provider `build()` mints exists only once the chain has folded, so the first ask through it
- * is the earliest it can be known.
+ * is the earliest it can be known. The engine mints only `ServiceProvider` and this addon mints
+ * every scope's provider itself, so the branch taken here is the one that wires the singleton
+ * scope's disposal to the provider `build()` returns.
  */
 function adoptContainer(singletons: Scope, provider: IServiceProvider): void {
   singletons.provider = provider;
