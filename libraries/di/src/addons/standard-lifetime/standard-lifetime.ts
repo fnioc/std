@@ -34,9 +34,11 @@ export function standardLifetime(): Addon<StandardLifetime> {
         middleware: next => {
           state.lifetime = lifetimeMiddleware(next, scopes, singletons);
           const marked = createMarkerMiddleware(singletons.id)(state.lifetime);
+          let adopted = false;
           return request => {
-            if (singletons.provider === undefined && request instanceof ServiceRequest) {
-              adoptContainer(singletons, request.serviceProvider);
+            if (!adopted && request instanceof ServiceRequest) {
+              adopted = true;
+              adoptProvider(singletons, request.serviceProvider);
             }
             return marked(request);
           };
@@ -46,18 +48,18 @@ export function standardLifetime(): Addon<StandardLifetime> {
   };
 }
 
-/** Answers the provider of the scope the ask runs under — the container's own under a singleton's dependencies. */
+/** Answers the provider of the scope the ask runs under — a singleton-scoped view under a singleton's dependencies. */
 const providerRegistration = Registration.factory<StandardLifetime>(typefor<IServiceProvider>(), unreachableProvider, typefor(unreachableProvider), 'transient');
 
 /**
- * The model itself, built once from the engine's `getService`: every provider of this container
- * runs its asks through this one function, so they share the singletons and differ only in the
- * scope id their marker stamps.
+ * The model itself, built once from the engine's `getService`: every provider of one build runs
+ * its asks through this one function, so they share the singletons and differ only in the scope id
+ * their marker stamps.
  *
  * @remarks
- * A singleton is one instance per container, disposed with it. A scoped registration is one
- * instance per scope opened through {@link IServiceScopeFactory}, disposed with that scope; reached
- * through the container's own provider it is cached with the singletons, which {@link
+ * A singleton is one instance per build, disposed with the singleton scope. A scoped registration
+ * is one instance per scope opened through {@link IServiceScopeFactory}, disposed with that scope;
+ * reached outside an opened scope it is cached with the singletons, which {@link
  * validateScopes} turns into a refusal. A transient is fresh per ask and per injection site, owned
  * for disposal by the scope the ask ran under — a transient injected into a singleton lives as long
  * as the singleton. A value registration is handed back as it stands and never disposed.
@@ -74,7 +76,7 @@ function lifetimeMiddleware(next: GetService, scopes: ScopeTable, singletons: Sc
   }
 
   /**
-   * @throws {ObjectDisposedError} once that scope, or the container itself, has ended.
+   * @throws {ObjectDisposedError} once that scope, or the singleton scope, has ended.
    */
   function scopeOf(request: Request): Scope {
     const scope = scopes.get(request[scopeId] as symbol);
@@ -88,13 +90,12 @@ function lifetimeMiddleware(next: GetService, scopes: ScopeTable, singletons: Sc
    * The provider asks under `scope` answer for `IServiceProvider`.
    *
    * @remarks
-   * Every opened scope is given its provider as it opens, and the container's own is known from its
-   * first ask, so the view minted here — the same asks, entered the same way — stands in only for a
-   * construction the container's own provider has somehow not yet preceded.
+   * An opened scope is given its provider as it opens; the singleton scope holds none, so it
+   * answers a view minted here — the same asks, entered the same way — since what a singleton
+   * needs is a singleton-scoped view rather than one particular provider.
    */
   function providerOf(scope: Scope): IServiceProvider {
-    scope.provider ??= new ServiceProvider(createMarkerMiddleware(scope.id)(implementation));
-    return scope.provider;
+    return scope.provider ?? new ServiceProvider(createMarkerMiddleware(scope.id)(implementation));
   }
 
   /**
@@ -173,24 +174,30 @@ function lifetimeMiddleware(next: GetService, scopes: ScopeTable, singletons: Sc
 }
 
 /**
- * Takes the container's own provider, met on its first ask: what a singleton's dependencies resolve
- * `IServiceProvider` to, and whose disposal ends the singleton scope.
+ * Ends the singleton scope with the provider the asks arrived through, met on the first of them.
  *
  * @remarks
  * The provider `build()` mints exists only once the chain has folded, so the first ask through it
- * is the earliest it can be known. The engine mints only `ServiceProvider` and this addon mints
- * every scope's provider itself, so the branch taken here is the one that wires the singleton
- * scope's disposal to the provider `build()` returns.
+ * is the earliest it can be known, and it is the one provider with a disposal to subscribe to. The
+ * other branch covers a provider built by hand around this installation's middleware, outside
+ * `build()`: nothing tells the model when it is disposed, so the singleton scope ends once that
+ * provider is collected — best-effort by nature, since collection is not promised.
  */
-function adoptContainer(singletons: Scope, provider: IServiceProvider): void {
-  singletons.provider = provider;
+function adoptProvider(singletons: Scope, provider: IServiceProvider): void {
   if (provider instanceof ServiceProvider) {
     provider.whenDisposed({
       [Symbol.dispose]: () => disposeScope(singletons),
       [Symbol.asyncDispose]: () => disposeScopeAsync(singletons),
     });
+  } else {
+    orphaned.register(provider, singletons);
   }
 }
+
+/** Ends the singleton scope of a build whose hand-built provider has been collected. */
+const orphaned = new FinalizationRegistry((singletons: Scope) => {
+  void disposeScopeAsync(singletons);
+});
 
 /**
  * The promise a caller is handed for a construction that produced one: it settles to the same

@@ -5,7 +5,7 @@ import { createMarkerMiddleware } from './marker.js';
 import type { Scope, ScopeTable } from './ScopeTable.js';
 
 /**
- * What the model holds behind one container: the scopes open under it, the singleton scope among
+ * What the model holds behind one build: the scopes open under it, the singleton scope among
  * them, and the slot its one lifetime middleware fills at fold time.
  */
 export interface ModelState {
@@ -20,7 +20,7 @@ export interface ModelState {
  *
  * @remarks
  * It reads the lifetime middleware out of the model's state rather than holding a provider, so the
- * scopes it opens are flat: each is a direct child of the container, whichever provider the factory
+ * scopes it opens are flat: each stands directly under the build, whichever provider the factory
  * was resolved from. The slot is never read empty — the factory is reachable only through a built
  * provider, and folding the chain is what fills it.
  */
@@ -31,7 +31,7 @@ export class ScopeFactory implements IServiceScopeFactory {
     this.#state = state;
   }
 
-  /** The id every ask through the container's own provider is stamped with. */
+  /** The id every ask entering outside an opened scope is stamped with. */
   get singletonScopeId(): symbol {
     return this.#state.singletons.id;
   }

@@ -4,8 +4,10 @@
 // answer. Disposal and scope validation have suites of their own.
 
 import { Builder, standardLifetime } from '@rhombus-std/di';
-import { type Addon, type IServiceProvider, type IServiceScopeFactory, type Manifest, Registration, type Request, type StandardLifetime } from '@rhombus-std/di.core';
+import { type Addon, type GetService, type IServiceProvider, type IServiceScopeFactory, Manifest, Registration, type Request, ServiceRequest, type StandardLifetime,
+  UnsatisfiableError } from '@rhombus-std/di.core';
 import { scopeId } from '@rhombus-std/di/private/addons/standard-lifetime/symbols';
+import { Engine } from '@rhombus-std/di/private/internal/Engine';
 import { Type } from '@rhombus-std/primitives';
 import { describe, expect, test } from 'bun:test';
 
@@ -553,9 +555,11 @@ describe('scopes', () => {
     expect(scope.resolve(PROVIDER)).toBe(scope);
   });
 
-  test("the provider resolved from the container's own provider is that provider itself", () => {
-    const provider = counterProvider('scoped');
-    expect(provider.resolve(PROVIDER)).toBe(provider);
+  test('the provider resolved outside an opened scope is a view answering under the singleton scope', () => {
+    const provider = counterProvider('singleton');
+    const view = provider.resolve(PROVIDER) as IServiceProvider;
+
+    expect(view.resolve(COUNTER)).toBe(provider.resolve(COUNTER));
   });
 
   test("the provider a scoped service is handed is that scope's own", () => {
@@ -571,7 +575,7 @@ describe('scopes', () => {
     expect((scope.resolve(HOLDING) as ProviderHolder).provider).toBe(scope);
   });
 
-  test("the provider a singleton is handed is the container's, wherever the singleton was first reached", () => {
+  test('the provider a singleton is handed answers under the singleton scope, wherever the singleton was first reached', () => {
     const HOLDING = Type.imported('ProviderHolder', 'app');
     class ProviderHolder {
       constructor(readonly provider: IServiceProvider) {}
@@ -588,7 +592,7 @@ describe('scopes', () => {
 
     const held = (scope.resolve(HOLDING) as ProviderHolder).provider;
     expect(held).not.toBe(scope);
-    // A scoped ask through the singleton's provider is the container's own ask: it is answered
+    // A scoped ask through the singleton's provider runs under the singleton scope: it is answered
     // from the singleton cache, never from the scope the singleton was first reached through.
     expect(held.resolve(COUNTER)).not.toBe(scoped);
     expect(held.resolve(COUNTER)).toBe(provider.resolve(COUNTER));
@@ -692,3 +696,32 @@ describe('the built-in registrations', () => {
     expect(openScope(provider).resolve(COUNTER)).toBe(instance);
   });
 });
+
+describe('a provider built by hand', () => {
+  const HOLDING = Type.imported('ProviderHolder', 'app');
+
+  class ProviderHolder {
+    constructor(readonly provider: IServiceProvider) {}
+  }
+
+  test('runs the model: the singletons are shared, and the provider a singleton is handed answers under their scope', () => {
+    const installation = standardLifetime().create();
+    const services = Manifest.build<StandardLifetime>(m =>
+      m
+        .add(COUNTER, Counter, Type.ctor(COUNTER, [[]]), 'singleton')
+        .add(HOLDING, ProviderHolder, Type.ctor(HOLDING, [[PROVIDER]]), 'singleton')
+    );
+    const engine = new Engine([...services, ...installation.registrations]);
+    const source = installation.middleware(request => engine.getService(request, unregistered));
+    const provider = { getService: (address: Type) => source(new ServiceRequest(address, provider)) } as IServiceProvider;
+
+    const counter = provider.getService(COUNTER);
+    expect(provider.getService(COUNTER)).toBe(counter);
+    expect((provider.getService(HOLDING) as ProviderHolder).provider.getService(COUNTER)).toBe(counter);
+  });
+});
+
+/** The end of a hand-built chain: nothing stands beneath the engine to answer what it could not. */
+const unregistered: GetService = request => {
+  throw new UnsatisfiableError(request.address, 'nothing in the manifest produces it');
+};

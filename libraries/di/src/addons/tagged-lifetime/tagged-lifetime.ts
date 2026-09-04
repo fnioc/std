@@ -34,7 +34,7 @@ import { TaggedServiceScopeFactory } from './TaggedServiceScopeFactory.js';
  * instance offering only `Symbol.asyncDispose` as an error; the asynchronous dispose awaits each
  * such instance and calls the rest synchronously.
  *
- * @typeParam Lifetime - the vocabulary exactly as the container spells it, `undefined` included;
+ * @typeParam Lifetime - the vocabulary exactly as the caller spells it, `undefined` included;
  * the model reads each registration's `lifetime` as one of its tags.
  *
  * @example
@@ -68,9 +68,9 @@ interface State {
   readonly chain: readonly Layer[];
 }
 
-/** The whole model behind one container: the head every scope chains down to, and the one staged set of hooks. */
+/** The whole model behind one build: the head every scope chains down to, and the one staged set of hooks. */
 class Model {
-  /** The chain beneath the built provider: what a factory resolved there binds to. */
+  /** The chain beneath the provider `build()` returns: what a factory resolved there binds to. */
   #head: GetService | undefined;
   /** Whether the built provider has been disposed, learnt through its dispose seam on its first ask. */
   #disposed = false;
@@ -105,6 +105,11 @@ class Model {
   /**
    * The built provider, met on its first ask: the provider `build()` mints exists only after the
    * chain folds, so the first ask through it is the earliest its disposal can be subscribed to.
+   *
+   * @remarks
+   * A provider built by hand around this installation's middleware, outside `build()`, offers no
+   * disposal to subscribe to; it caches and captures nothing of its own, so dropping it leaves
+   * nothing unreleased and every scope opened through it answers until that scope is disposed.
    */
   #adopt(provider: unknown): void {
     this.#adopted = true;

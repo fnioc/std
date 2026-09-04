@@ -11,11 +11,11 @@ import type { Caching, Owning } from '../lifetime-scope.js';
 export interface Scope extends Caching, Owning {
   /** What the marker of this scope's provider stamps on every ask entering through it. */
   readonly id: symbol;
-  /** The provider asks under this scope answer for `IServiceProvider`. */
+  /** The provider asks under this scope answer for `IServiceProvider`; absent for the singleton scope, which answers a fresh view instead. */
   provider: IServiceProvider | undefined;
 }
 
-/** Every scope still open under one container, by id. */
+/** Every scope still open under one build, by id. */
 export class ScopeTable {
   readonly #scopes = new Map<symbol, Scope>();
   #opened = 0;
