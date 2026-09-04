@@ -2568,8 +2568,12 @@ RULED (owner 2026-09-04): rename — `resolveMany` → `resolveIterable`; the `r
 Three lanes dispatched concurrently; none touches this file. Excluded by design: drift fix 2 and the
 wide `boolean` token (each awaits one word), forks F3/F6, the merge into main.
 
-- Reverts 1–4 + marker drift fixes 1, 3, 4 — in place on `IServiceManifest-repair`, path-scoped
-  commits, no push until the run integrates. RUNNING.
+- Reverts 1–4 + marker drift fixes 1, 3, 4 — LANDED in place: `b3efe676` (reverts, test reshaped to
+  enter the boundary through a dependent, async-resolution.md restated), `098732fa` (drift 1 + 4),
+  `15d800a6` (drift 3). Full gate green. Drift fix 2 RULED "state" (owner 2026-09-04: keep the
+  `instanceof ServiceProvider` check; no `FinalizationRegistry` backup — a held value that reaches the
+  provider pins it, finalization is best-effort, and the engine mints only `ServiceProvider`): the doc
+  comment says why the check holds. Same lane, in flight.
 - `decisions.v2.md` dead-entry sweep (§204 §206 §207 §210 §211 §215-tail §219 §221 §222) — in place,
   docs-only. LANDED `4e74d970`: deleted §206 §210 §219 §221 (subjects gone); rewritten in place §204
   §207 §211 §222; §215 tail removed and its body corrected to the present build fold. The lane
