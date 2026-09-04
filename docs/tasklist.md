@@ -293,7 +293,7 @@ Nothing. Every item this lane owns is committed.
 - [x] Instance disposal in the lifetime model.
 - [x] `Generic`/`Keyed`/`T` moved to `primitives.extras`, `$` dropped, scope machinery grouped
       under `lifetime/` with the models beneath it.
-- [x] `Type.isMatch`, replacing the two `bindGenerics` call sites that discarded the bindings.
+- [x] `Type.isMatch`, replacing the two `extractMatchedGenerics` call sites that discarded the bindings.
 - [x] di.core stops re-exporting `Type`/`ImportedType`/`NamedType`.
 - [x] The whole repo adapted to the replaced API surface — `addMany`, `withAddon`,
       `configureProvider`, `validation`, `ServiceProviderOptions` — across hosting, logging,
@@ -537,7 +537,7 @@ resolve from ~9x toward ~2x while a deep graph barely moves.
 **Cheaper leads, unmeasured.** `constructionForSlot` mints a view object per behaviour per node per
 hook. A transient registration reads its lifetime and switches twice per node to conclude there is
 nothing to keep — `registration.lifetime === model.transient` short-circuits both hooks, entirely
-inside the model. `bindGenerics` allocates a bindings record before knowing whether a candidate
+inside the model. `extractMatchedGenerics` allocates a bindings record before knowing whether a candidate
 matches.
 
 ## Hook chain — design, rework and open verdicts (2026-08-31)
@@ -1498,11 +1498,11 @@ contract forces.
       `next`) exists; the addon surface that places something beneath it is a later addition when a
       real fallback consumer exists. Alternative: give addons a position now. One word.
 - [x] RULED 2026-09-02: LEAVE — the owner had misread the code; the ask is withdrawn. **`Registry.getMatches` and `hasMatch`.** The owner asked for `getMatches` to use `hasMatch`
-      in its body and `hasMatch` to use `bindGenerics`; the second half is done. `getMatches` needs
-      the generics `bindGenerics` returns and `hasMatch` answers only a boolean, so the first half
+      in its body and `hasMatch` to use `extractMatchedGenerics`; the second half is done. `getMatches` needs
+      the generics `extractMatchedGenerics` returns and `hasMatch` answers only a boolean, so the first half
       means binding twice: a per-registration `hasMatch(registration, address)` used by both, with
       `getMatches` binding again for the generics on a hit — or leave `getMatches` on
-      `bindGenerics` as it is. One word: TWICE or LEAVE.
+      `extractMatchedGenerics` as it is. One word: TWICE or LEAVE.
 
 ## Session — phase 2 request door (2026-09-02, branch `feat-di-request-door`)
 
@@ -2437,6 +2437,14 @@ Two forks, the owner delegated the call to Claude 2026-09-03 ("your call"); pick
 
 Status: landed 2026-09-03 — `434c7c24` (planner + tests), `9ca16505` (docs).
 
+Status 2026-09-04: the one-rule generalization is COMMITTED as `1e12690e` (with the owner's hand-edits
+and `574ff82f`, the `Type.extractMatchedGenerics`/`Type.isPromise` rename). Still owed on the owner's
+`/go`: the audit's reverts 1–4 — drop the alternate spelling at the promise boundary (`#getPlan`'s
+`alternate`), key `#startFor` on the frame's own address instead of awaited equality, delete the
+caller-arg check ahead of the boundary match, reshape the direct `Promise<Foo>` test to enter through
+a dependent — and the doc sentences carrying them. Rule of record: every plan starts with an explicit
+match lookup; a `Promise<X>` registration answers a `Promise<X>` ask; the settled form only on a miss.
+
 ## Queue — merge `IServiceManifest-repair` into main (owner 2026-09-03: "up next we merge into main")
 
 - The PR already exists: #274, draft, `IServiceManifest-repair` → `main`. Landing it is
@@ -2487,3 +2495,56 @@ Owner: "for our new transform package, I want it to publish minified (e.g. `gith
 - Rolled `.d.ts` files minify keeping JSDoc: `dts-minify` (`keepJsDocs: true`) as a post step after `rollup-plugin-dts`, inside the build script. LANDED `4d68d80d`, unverified by a build until after the merge.
 - `*.extras` `src/` templates stay formatted: no tool minifies `.ts` while keeping it `.ts` and its doc comments (researched 2026-09-03); a custom pass is the only route, and the templates are a few one-line bodies.
 - `@rhombus-std/transforms` publishes its Go from a staged copy run through `minformat`, pinned per-project through mise's `go:` backend; `gofmt` reverts it; comments all go, doc comments included (owner: "nobody ever interacts with it directly"). LANDED `b9c2260b` (transforms half) — staging script, publishConfig.directory; `e6b0822e` — minformat's own CLI pinned at an exact version through the `go:` backend, driven from the staging script, with a test parsing every staged file for surviving comments and a gofmt round trip.
+
+## ServiceProvider ask sugar (owner 2026-09-04)
+
+Owner's spec, in order given. Every row has a hand-written form in `di.core` (explicit address) and
+a type-driven form in `di.extras` that inlines to it. Every row also has a `try` twin returning
+`T | undefined`; every `*Async` twin returns `Promise<T | undefined>` (owner: "all of the *Async ones
+await their result, so Promise<T | undefined> is correct"). The plain `resolveWith` needs no `?.`
+(the resolve throws when the callable cannot be planned); only the `try` forms call through `?.`.
+
+| di.core (explicit)                                              | di.extras (sugar)                                                     | lowers to                                                                                         |
+| --------------------------------------------------------------- | --------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------- |
+| `resolveArray(address)`                                         | `resolveArray<T>()`                                                   | `resolve(Type.array(address))`                                                                    |
+| `resolveIterable(address)` (today `resolveMany`)                | `resolveIterable<T>()` (today `resolveMany<T>()`)                     | `resolve(Type.iterable(address))`                                                                 |
+| `resolveAsync(address)` (exists)                                | `resolveAsync<T>()` (exists)                                          | `resolve(Type.promise(address))`                                                                  |
+| `resolveArrayAsync(address)`                                    | `resolveArrayAsync<T>()`                                              | `resolve(Type.promise(Type.array(address)))`                                                      |
+| `resolveIterableAsync(address)`                                 | `resolveIterableAsync<T>()`                                           | `resolve(Type.promise(Type.iterable(address)))`                                                   |
+| `resolveAsyncIterable(address)`                                 | `resolveAsyncIterable<T>()`                                           | `resolve(Type.global('AsyncIterable', [address]))` — one element at a time, each its own boundary |
+| `resolveWith(funcType, ...args)`                                | `resolveWith<T, Args extends unknown[]>(...args)`                     | `resolve(Func<Args, T>)(...args)`                                                                 |
+| `resolveWithAsync(funcType, ...args)`                           | `resolveWithAsync<T, Args extends unknown[]>(...args)`                | `resolve(Func<Args, Promise<T>>)(...args)`                                                        |
+| `instantiate(ctorType, ctor)` (today `resolve(ctorType, ctor)`) | `instantiate(ctor)` — `typefor(ctor)` on the value, no type parameter | `resolve(invokerAddress(ctorType))(ctor)`                                                         |
+| `invoke(funcType, func)` (today `resolve(funcType, func)`)      | `invoke(func)`                                                        | `resolve(invokerAddress(funcType))(func)`                                                         |
+
+RULED (owner 2026-09-04): rename — `resolveMany` → `resolveIterable`; the `resolve(ctorType, ctor)`/`resolve(funcType, func)` overloads → `instantiate`/`invoke`; the old names go. Public API change by his word. Not started; code on the owner's go.
+
+## Open, owner's word (2026-09-04)
+
+- RULED (owner 2026-09-04): "use latest/greatest for ALL toolkit deps, repo wide. get rid of primitives/src/toolkit, which has been imported into rhombus-toolkit. no archived/deprecated deps." `func` → `types`, `type-helpers` → `types`/`obj`/`restify` (`Opaque` → `Brand`), `libraries/primitives/src/toolkit` deleted. Lane dispatched 2026-09-04; commits local until the shadow diff is committed (two of its files carry archived imports).
+- Shadow resolution diff (uncommitted, this branch): owner ordered reverts 1–4 of the audit — drop
+  `#matched`'s alternate spelling at the promise boundary, key `#startFor` on the frame's own
+  address (not awaited equality), delete the caller-arg check ahead of the boundary match, reshape
+  the direct `Promise<Foo>` test to enter through a dependent — plus the doc sentences carrying
+  them. Rule of record: every plan starts with an explicit match lookup; a `Promise<X>` registration
+  answers a `Promise<X>` ask; the settled form only on a miss. Stays uncommitted for his review.
+- RULED (owner 2026-09-04), the standard model's markers: the addon's middleware builds the lifetime
+  middleware ONCE from the engine's `getService` and captures it; the provider `build()` returns is
+  that instance wrapped in a marker; a scope factory wraps the SAME captured instance in another
+  marker. Every scope has an id, the singleton scope included (opened at build), so there is ONE
+  marker middleware parameterized by scope id, one scope table, and the reader does one lookup —
+  no kind stamp, no `undefined` id. The lifetime rules find the singleton scope through the addon's
+  own reference to it. Design-table cell "absent" becomes "the singleton scope's id". Scope factory
+  (owner refinement): a stable class registered as a VALUE by the addon, its constructor taking a
+  reference to the slot where the lifetime middleware WILL be; the middleware call fills the slot
+  once (the one late binding) and `openScope` wraps the slot's function in a marker carrying the new
+  scope's id. The slot is never read empty: the factory is reachable only through a built provider. Also: the file
+  header's 26-line essay collapses to one sentence (plus the ruled ME.DI clone mention); the same
+  sweep over every lifetime-file doc comment. Not started; lands after the migration lane releases
+  the tree.
+- `@rhombus-toolkit/obj` 3.0.1 restores the type half of `entries`/`assign`; the bridge casts are gone
+  (`d8bfa51a`, local).
+- RULED (owner 2026-09-04): the `decisions.v2.md` entries still describing the deleted `useHooks`
+  surface (§204, §206, §207, §210, §211, §219, §221, §222, §215's tail) — delete the ones whose
+  subject no longer exists, rewrite the rest in place to the current design. Runs on his go, after
+  his review of the pending diff.
