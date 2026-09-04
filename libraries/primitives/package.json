@@ -35,7 +35,7 @@
     }
   },
   "dependencies": {
-    "@rhombus-toolkit/obj": "^3.0.0",
+    "@rhombus-toolkit/obj": "^3.0.1",
     "@rhombus-toolkit/once": "^2.0.0",
     "@rhombus-toolkit/platform": "^1.1.0",
     "@rhombus-toolkit/type-guards": "^4.0.0",
