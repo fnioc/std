@@ -19,7 +19,7 @@
   "dependencies": {
     "@rhombus-std/primitives": "workspace:^",
     "@rhombus-std/transforms": "workspace:^",
-    "@rhombus-toolkit/func": "^3.6.0"
+    "@rhombus-toolkit/types": "^2.0.0"
   },
   "main": "./src/index.ts",
   "exports": {

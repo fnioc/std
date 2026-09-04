@@ -12,6 +12,6 @@
   "devDependencies": {
     "@rhombus-std/config": "workspace:*",
     "@rhombus-std/config.env": "workspace:*",
-    "@rhombus-toolkit/func": "^3.6.0"
+    "@rhombus-toolkit/types": "^2.0.0"
   }
 }

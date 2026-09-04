@@ -14,6 +14,6 @@
     "@rhombus-std/di": "workspace:*",
     "@rhombus-std/di.core": "workspace:*",
     "@rhombus-std/primitives": "workspace:*",
-    "@rhombus-toolkit/type-helpers": "^2.0.0"
+    "@rhombus-toolkit/obj": "^3.0.0"
   }
 }

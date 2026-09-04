@@ -35,8 +35,7 @@
     "@rhombus-std/di.core": "workspace:*",
     "@rhombus-std/options": "workspace:*",
     "@rhombus-std/primitives": "workspace:*",
-    "@rhombus-toolkit/func": "^3.6.0",
-    "@rhombus-toolkit/type-helpers": "^2.0.0"
+    "@rhombus-toolkit/types": "^2.0.0"
   },
   "devDependencies": {
     "@rhombus-std/di.extras": "workspace:*",
