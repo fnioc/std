@@ -2571,7 +2571,14 @@ wide `boolean` token (each awaits one word), forks F3/F6, the merge into main.
 - Reverts 1–4 + marker drift fixes 1, 3, 4 — in place on `IServiceManifest-repair`, path-scoped
   commits, no push until the run integrates. RUNNING.
 - `decisions.v2.md` dead-entry sweep (§204 §206 §207 §210 §211 §215-tail §219 §221 §222) — in place,
-  docs-only. RUNNING.
+  docs-only. LANDED `4e74d970`: deleted §206 §210 §219 §221 (subjects gone); rewritten in place §204
+  §207 §211 §222; §215 tail removed and its body corrected to the present build fold. The lane
+  noticed, and did not touch, four more stale entries — for the owner's word whether to sweep them
+  the same way: §203/§205 (audit addon's state-envelope pack), §213 (an addon's middleware "returns
+  `next` unchanged"; the lifetime addons stage then activate per ask), §217 vs §229 (where captivity
+  validation lives; §229's `standardLifetimeAddon()`/`ScopedAtRootError`/`LifetimeModelError` are not
+  the shipped `standardLifetime()`/`validateScopes()`), §227 (states array minted by a compose fold;
+  the engine builds per-hook dispatch lists in install order).
 - ServiceProvider ask sugar surface + the ruled renames — worktree `+feat-di-resolve-sugar`, branch
   `feat-di-resolve-sugar`, pushed as its own branch, fast-forwarded onto `IServiceManifest-repair` by
   the orchestrator after its gate. RUNNING.
