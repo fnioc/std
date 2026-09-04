@@ -2548,3 +2548,17 @@ RULED (owner 2026-09-04): rename — `resolveMany` → `resolveIterable`; the `r
   surface (§204, §206, §207, §210, §211, §219, §221, §222, §215's tail) — delete the ones whose
   subject no longer exists, rewrite the rest in place to the current design. Runs on his go, after
   his review of the pending diff.
+- Standard-lifetime marker implementation (`58f4264d`, `bfed1163`, `5d19de3b`): drift review verdict
+  "honours the sketch", four drift points owed, on the owner's word (asked 2026-09-04, unanswered):
+  (1) `ScopeFactory.openScope` folds "lifetime slot empty" into the disposed guard — drop the clause,
+  the slot is never read empty; (2) adopting the provider on first ask wires disposal only
+  `if (provider instanceof ServiceProvider)` — ONE WORD: "wire" (unconditionally through the disposal
+  seam) or "state" (keep the check, say the engine mints only `ServiceProvider`); (3)
+  `docs/standard-lifetime-model.design.md` hooks table and behavior map still say `root`/`root.cache`
+  and "under a root state" — say the singleton scope; (4) `ScopeTable.ts` `Scope` doc has a second
+  sentence outside `@remarks`. Items 1, 3, 4 follow his rules and run with 2.
+- Wide `boolean` derives no flat token (`transforms/internal/tokens/generics.go`, pinned as a
+  refusal by `1d8af152`): a `boolean`-typed constructor slot hits a diagnostic. ONE WORD from the
+  owner (asked 2026-09-04, unanswered): "fix" (route the flat-token path through the `true | false`
+  collapse the node path already does, so `boolean` spells `Type.global('boolean')` everywhere; one
+  test flips from refusal to address) or "leave".
