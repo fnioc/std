@@ -1,8 +1,8 @@
 import { type CtorRegistration, type FactoryRegistration, Registration, UnsatisfiableError } from '@rhombus-std/di.core';
 import { type ConstructorType, type FunctionType, type ListType, type TupleType, Type, type UnionType } from '@rhombus-std/primitives';
-import type { Ctor, Func } from '@rhombus-toolkit/func';
 import { memo } from '@rhombus-toolkit/once';
 import { assertNever, isAllThere, isDefined, isReadonlyArray } from '@rhombus-toolkit/type-guards';
+import type { Ctor, Func } from '@rhombus-toolkit/types';
 import type { Match, Registry } from '../Registry.js';
 import type { PlanHooks } from './InstalledHooks.js';
 import { PlannerVisitor, type PlanningContext } from './PlannerVisitor.js';
@@ -332,15 +332,16 @@ export namespace Plan {
   /**
    * The plan for `address` answered by the registration at `start` or by an older one it shadows —
    * how a whole-registry check reaches a registration the newest one hides, which a collection ask
-   * still walks. Nothing caches it: an ask for `address` itself is answered by the newest
-   * registration alone.
+   * still walks. The walk opens with a planning frame just above `start`, so matching for `address`
+   * begins there and every other rule holds as in any ask. Nothing caches it: an ask for `address`
+   * itself is answered by the newest registration alone.
    *
    * @throws {UnsatisfiableError} when nothing from `start` on answers {@link address}, or something
    * does and its own dependencies cannot be met.
    */
   export function fromShadowed(address: Type, registry: Registry, start: number, hooks?: PlanHooks): Plan {
     const visitor = new PlannerVisitor(registry, undefined, hooks);
-    const plan = visitor.visitFrom(address, start, {});
+    const plan = visitor.visit(address, { planning: { address, index: start - 1 } });
     if (plan === undefined) {
       throw unsatisfiable(address, registry.hasMatch(address), visitor.missingDependency);
     }
@@ -397,9 +398,10 @@ export namespace Plan {
    *
    * @remarks
    * The registration's own address resolves BENEATH it wherever a slot names it: the slots lower
-   * with the node as the walk's planning frame, and matching for that address starts after the
-   * registration being planned, so a factory for `Foo` shaped `Func<[Foo], Foo>` — or
-   * `Func<[Foo | undefined], Foo>` — receives what it shadows rather than itself.
+   * with the node as the walk's planning frame, and matching for that address — in either
+   * spelling, settled or promise — starts after the registration being planned, so a factory for
+   * `Foo` shaped `Func<[Foo], Foo>` — or `Func<[Foo | undefined], Foo>`, or
+   * `Func<[Iterable<Foo>], Foo>` — receives what it shadows rather than itself.
    */
   export function fromMatch(populatedAddress: Type, match: Match, visitor: PlannerVisitor, context: PlanningContext): Plan | undefined {
     const { registration: wideRegistration, generics } = match;

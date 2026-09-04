@@ -29,9 +29,9 @@ the result.
 const banner = await provider.resolve(Type.promise(typefor<IBanner>()));
 ```
 
-`resolveAsync(address)` is `resolve(Promise<address>)` under the hood, and a `Promise<X>` ask with no
-`Promise<X>` registration is answered by an `X` registration, its product handed over inside a
-promise.
+`resolveAsync(address)` is `resolve(Promise<address>)` under the hood, and a `Promise<X>` ask admits
+both spellings in one authored order: the newest registration of `Promise<X>` or of `X` answers, an
+`X` registration's product handed over inside a promise.
 
 ## Plain `resolve` never awaits
 

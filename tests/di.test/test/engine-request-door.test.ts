@@ -186,6 +186,62 @@ describe('shadowing resolves beneath', () => {
     expect(elements[1].decorated).toBe(inner);
   });
 
+  test('a Func<[Iterable<Foo>], Foo> factory captures every registration it shadows, in authored order, never itself', () => {
+    const first = new Foo();
+    const second = new Foo();
+    const provider = Builder.withServices(manifest =>
+      manifest
+        .add(Registration.value(FOO, first))
+        .add(Registration.value(FOO, second))
+        .add(Registration.factory(FOO, (foos: Iterable<Foo>) => ({ captured: [...foos] }), Type.func(FOO, [[Type.iterable(FOO)]])))
+    ).build();
+    const captured = provider.getService(FOO).captured as Foo[];
+
+    expect(captured).toHaveLength(2);
+    expect(captured[0]).toBe(first);
+    expect(captured[1]).toBe(second);
+  });
+
+  test('a Func<[Foo], Foo> factory catches a registered Promise<Foo> under a promise ask', async () => {
+    const base = new Foo();
+    const provider = Builder.withServices(manifest =>
+      manifest
+        .addValue(Type.promise(FOO), Promise.resolve(base))
+        .add(Registration.factory(FOO, (foo: Foo) => ({ decorated: foo }), Type.func(FOO, [[FOO]])))
+    ).build();
+
+    const decorated = await provider.resolveAsync(FOO) as { decorated: Foo; };
+    expect(decorated.decorated).toBe(base);
+  });
+
+  test('the same pair misses on bare Foo — outside a boundary there is nothing to wait in', () => {
+    const provider = Builder.withServices(manifest =>
+      manifest
+        .addValue(Type.promise(FOO), Promise.resolve(new Foo()))
+        .add(Registration.factory(FOO, (foo: Foo) => ({ decorated: foo }), Type.func(FOO, [[FOO]])))
+    ).build();
+    const ask = () => provider.getService(FOO);
+
+    expect(ask).toThrow(UnsatisfiableError);
+    expect(ask).toThrow('it is registered, but something it needs is not');
+  });
+
+  test('a caller argument outranks the beneath lookup for a self-named slot', () => {
+    const older = new Foo();
+    const mine = new Foo();
+    const provider = Builder.withServices(manifest =>
+      manifest
+        .add(Registration.value(FOO, older))
+        .add(Registration.factory(FOO, (foo: Foo) => ({ decorated: foo }), Type.func(FOO, [[FOO]])))
+    ).build();
+    const make = provider.getService(Type.func(Type.iterable(FOO), [[FOO]])) as (foo: Foo) => Iterable<unknown>;
+    const elements = [...make(mine)];
+
+    expect(elements).toHaveLength(2);
+    expect(elements[0]).toBe(older);
+    expect((elements[1] as { decorated: Foo; }).decorated).toBe(mine);
+  });
+
   test('a real cycle through a second address still throws CycleError', () => {
     const provider = Builder.withServices(manifest =>
       manifest

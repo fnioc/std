@@ -151,18 +151,26 @@ A registration whose own slot names its own address — a factory for `Foo` shap
 — gets the SHADOWED (older) registration as that dependency: while the registration's slots are
 planned, matching for its own address starts after it. Decoration with no verb. The rule is the
 registration's, not the slot's top-level shape: the address resolves beneath wherever a slot names
-it, nested inside a union (`Func<[Foo | undefined], Foo>`), a tuple (`Func<[[Foo, Bar]], Foo>`) or
-an object member alike. No older match is unsatisfiable (throws, never delegates); the optional
-spelling falls through to `undefined`. A collection ask still enumerates every match, decorator
-and shadowed both. The cycle guard still catches real cycles through a third address.
+it, nested inside a union (`Func<[Foo | undefined], Foo>`), a tuple (`Func<[[Foo, Bar]], Foo>`),
+an object member or a collection alike — `Func<[Iterable<Foo>], Foo>` captures everything the
+registration shadows, in authored order, never itself. Apart from that starting position a
+self-named slot obeys every rule any slot obeys: a caller's argument outranks it, synthesis and the
+optional fall-through stand beneath the matches, and the async fall-through applies — under a
+promise ask, a `Func<[Foo], Foo>` factory catches a registered `Promise<Foo>`. No older match is
+unsatisfiable (throws, never delegates); the optional spelling falls through to `undefined`. A
+collection ask still enumerates every match, decorator and shadowed both. The cycle guard still
+catches real cycles through a third address.
 
 Mechanics: `Match` carries the matched registration's position in the registry;
 `Registry.getMatches` takes an optional start position; `PlanningContext.planning` is the registered
 node whose slots are lowering — its address and position — set by `Plan.fromMatch`'s slot lowering
-around the signature and restored after it. `PlannerVisitor.visit` opens by routing the frame's
-address to `PlannerVisitor.visitShadow(address, context)`, which searches only the registrations
-after the frame's position and skips the cycle guard for that one address (the nesting terminates
-because each registration matched beneath installs its own, strictly higher, position as the frame).
+around the signature and restored after it. Every registry lookup reads its start from the frame:
+beneath the frame when the looked-up address is the frame's own address in either spelling — itself
+or its promise — and the top of the registry otherwise, so `PlannerVisitor.visit` is the one entry
+every slot goes through. The cycle guard keys a visit by address plus start: a self-named slot
+re-enters its address at a strictly higher start — a fresh question, and bounded, since starts only
+rise along such a chain — while a loop through another registered node arrives at the same start
+and trips.
 
 ## Engine
 
@@ -261,7 +269,7 @@ pushes into the request's own array.
 ## Delegation
 
 No registration → `next`; registered but unbuildable → throw. Beneath the engine only the terminus
-stands. `Registry.getMatches` stays on `bindGenerics` as it is.
+stands. `Registry.getMatches` stays on `extractMatchedGenerics` as it is.
 
 ## Changes
 
@@ -276,7 +284,7 @@ stands. `Registry.getMatches` stays on `bindGenerics` as it is.
   `InstalledHooks`.
 - `Plan/Plan.ts`: `RequestPlan` + `Plan.request`; the planning frame set around `fromMatch`'s slot lowering.
 - `Plan/PlannerVisitor.ts`: the request addresses in `visitImported`; `PlanningContext.planning`;
-  `visitShadow`.
+  the frame-read start on every registry lookup.
 - `Plan/RealizeVisitor.ts`: the `realize` door, `visitRequest`, `states`, hook dispatch on the
   three registered visits.
 - `di/src/internal/Registry.ts`: `Match.index`; `getMatches` start position.
@@ -294,7 +302,9 @@ Engine delegation (no match → `next`; unbuildable → throws). The arm check (
 slot under a control ask refuses; a base `Request` slot answers either). The provider answered by
 reference to the minting request's provider, as a fresh view. A user `IServiceProvider`
 registration shadowing the seed. Shadowing-resolves-beneath (`Func<[Foo], Foo>` gets the older
-`Foo`; no older = throws; a collection enumerates both; a real cycle still throws `CycleError`).
+`Foo`; no older = throws; a collection enumerates both; a real cycle still throws `CycleError`;
+`Func<[Iterable<Foo>], Foo>` captures everything it shadows; under a promise ask a `Func<[Foo], Foo>`
+factory catches a registered `Promise<Foo>`; a caller argument outranks the beneath lookup).
 Staged vs installed hooks across two parallel scope layers over one base chain; dispose
 un-installs; a latebound created inside a layer and invoked later still runs that layer's hooks;
 hooks never fire at a synthesised node; `afterConstruct` skipped on a `beforeConstruct` answer.

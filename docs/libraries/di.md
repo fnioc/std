@@ -437,6 +437,20 @@ services = services
 provider.resolve<IFoo>(); // a LoggingFoo around a PlainFoo, with nothing older to wrap
 ```
 
+The slot needn't name the address alone. A factory shaped `Func<[Iterable<IFoo>], IFoo>` receives
+every registration it shadows, in authored order — the whole stack, never itself. And beneath
+follows every rule any slot follows, the async fall-through included: under a promise ask, a
+`Func<[IFoo], IFoo>` factory whose only older producer is a `Promise<IFoo>` registration catches
+the settled value.
+
+```ts
+services = services
+  .addValue(typefor<Promise<IFoo>>(), connectFoo()) // the base arrives later
+  .add(typefor<IFoo>(), (foo: IFoo) => new LoggingFoo(foo), Type.func(typefor<IFoo>(), [[typefor<IFoo>()]]));
+
+await provider.resolveAsync<IFoo>(); // a LoggingFoo wrapping what connectFoo() settled to
+```
+
 A self-named slot with nothing older is unsatisfiable — the ask throws rather than delegating —
 while the optional spelling falls through to `undefined`. A collection ask still enumerates every
 match, decorator and shadowed both, in authored order. Only the registration's own address resolves

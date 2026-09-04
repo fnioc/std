@@ -2609,13 +2609,14 @@ _Owner-ruled 2026-08-15, Claude-executed._
 
 ## §189 — The compile-time type machinery is the toolkit's; `obj` carries the `Object.*` precision
 
-`@rhombus-std/primitives` carries no type-level module of its own. `Flatten` is imported by every consumer straight from `@rhombus-toolkit/type-helpers`, and the precise `Object.keys`/`values`/`entries`/
-`assign`/`fromEntries` result types live on that package's `obj` module as WRAPPER FUNCTIONS —
+`@rhombus-std/primitives` carries no type-level module of its own. `Flatten` is imported by every
+consumer straight from `@rhombus-toolkit/types`, and the precise `Object.keys`/`values`/`entries`/
+`assign`/`fromEntries` result types live on `@rhombus-toolkit/obj`'s `obj` module as WRAPPER FUNCTIONS —
 `obj.keys(x)` at exactly the call sites that want the precision — with no `ObjectConstructor`
 augmentation anywhere: a global augmentation imposes the sharpened signatures on every file of every
 consuming program, where the wrapper is opt-in per call. Call sites that never needed the precision
 keep the stock `Object.*` statics. The supporting machinery (`UnionToTuple`, the counters, the
-index-wise array merge) serves those types inside `type-helpers` and is not part of primitives'
+index-wise array merge) serves those types inside the toolkit and is not part of primitives'
 surface.
 
 The registry keys its per-token bags as plain `Map<string, Contribution[]>` — no dedicated
@@ -3834,10 +3835,17 @@ engine's own reads and `ControlService.registry` admit `null`. Seeded rows plan 
 any other registration, are visible in the registry, and no hook ever fires at their nodes.
 
 Shadowing resolves beneath: a registration whose own slot names its own address (a factory for
-`Foo` shaped `Func<[Foo], Foo>`) gets the shadowed, older registration as that dependency —
-matching for a self-named slot starts after the registration being planned. Decoration with no
-verb. Nothing older makes the ask unsatisfiable (a throw, never a delegation); a collection ask
-still enumerates every match; a genuine cycle through a second address still throws `CycleError`.
+`Foo` shaped `Func<[Foo], Foo>`) gets the shadowed, older registration as that dependency — every
+registry lookup made while a registration's slots are planned starts beneath it for the
+registration's own address, in either spelling, settled or promise, and at the top of the registry
+for every other address. Apart from that starting position a self-named slot obeys every rule any
+slot obeys: a caller's argument outranks it, `Func<[Iterable<Foo>], Foo>` captures everything the
+registration shadows in authored order, and under a promise ask the async fall-through hands a
+`Func<[Foo], Foo>` factory a registered `Promise<Foo>`, settled. The cycle guard keys a visit by
+address plus start, so a self-named slot re-enters its address at a strictly higher start as a
+fresh, bounded question. Decoration with no verb. Nothing older makes the ask unsatisfiable (a
+throw, never a delegation); a collection ask still enumerates every match; a genuine cycle through
+a second address still throws `CycleError`.
 
 Hooks are one installed mechanism with two tiers, reached through `ControlService`:
 `installHooks(hooks)` is always active — every ask, outermost — and `stageHooks(hooks)` is gated,

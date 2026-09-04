@@ -54,12 +54,12 @@ export class Registry {
       .drop(start)
       .map((registration, dropped): Match | undefined => {
         const index = start + dropped;
-        const [isMatch, generics] = Type.bindGenerics(registration.address, primary);
+        const [isMatch, generics] = Type.extractMatchedGenerics(registration.address, primary);
         if (isMatch) {
           return { registration, generics, address: primary, index };
         }
         if (alternate !== undefined) {
-          const [isAlternateMatch, alternateGenerics] = Type.bindGenerics(registration.address, alternate);
+          const [isAlternateMatch, alternateGenerics] = Type.extractMatchedGenerics(registration.address, alternate);
           if (isAlternateMatch) {
             return { registration, generics: alternateGenerics, address: alternate, index };
           }
@@ -69,9 +69,9 @@ export class Registry {
       .filter(isDefined);
   }
 
-  /** Whether any registration matches `address` — an open address never is, since a hole on the asking side binds nothing. */
-  hasMatch(address: Type): boolean {
+  /** Whether any registration from `start` on matches `address` — an open address never is, since a hole on the asking side binds nothing. */
+  hasMatch(address: Type, start = 0): boolean {
     return Type.isClosed(address)
-      && this.#registrations.some(registration => Type.bindGenerics(registration.address, address)[0]);
+      && Iterator.from(this.#registrations).drop(start).some(registration => Type.extractMatchedGenerics(registration.address, address)[0]);
   }
 }
