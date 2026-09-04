@@ -2651,5 +2651,5 @@ scope wrapper is made visible (owner: "_almost_ always, i don't like returning i
 the named interface). GC-driven disposal REJECTED (non-deterministic, never at exit, cannot await
 async dispose, and a held value that reaches the middleware pins it). Owner's earlier
 `FinalizationRegistry` backup WITHDRAWN (several providers may serve one singleton middleware).
-Dispatched 2026-09-04 to the lifetime lane, in place. One divergence left as is: the reference hands
+Dispatched 2026-09-04 to the lifetime lane, in place — STOPPED mid-edit the same day (owner: "stop, i change my mind"); the tree is restored to `046a58ef`'s shape, the partial diff kept aside outside the repo. Direction pending the owner. One divergence left as is: the reference hands
 a singleton the real disposable object typed as the interface; we hand a non-disposable view.
