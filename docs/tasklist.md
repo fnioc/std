@@ -2636,3 +2636,20 @@ wide `boolean` token (each awaits one word), forks F3/F6, the merge into main.
   also lives in di.core public docs (`Errors.ts`, `IServiceScopeFactory.ts`, `Addon.ts`,
   `Registration.ts`, `Middleware.ts`, `StandardLifetime.ts`), `Engine.ts`, `ServiceProvider.ts`,
   `async-resolution.md` — ~30 sites outside the addons, for the owner's word.
+
+## Provider disposability (owner 2026-09-04, RULED)
+
+`IServiceProvider` is NOT disposable. `ServiceProvider` is NOT disposable. A second class,
+`DisposableServiceProvider extends ServiceProvider implements IDisposableServiceProvider` (the
+interface `extends IServiceProvider, Disposable, AsyncDisposable`, in di.core), decorates the plain
+provider with `whenDisposed` and both dispose symbols; `build()` and `openScope()` return it as
+`IDisposableServiceProvider`; views (`providerOf`, the engine's own `IServiceProvider` row) stay plain
+and non-disposable. Owner: "that's the same as MEDI, except we use decorator pattern instead of
+wrapper. we match MEDI in every other way." Verified against the reference source: only its concrete
+provider class and its scope wrapper dispose; its provider interface is `GetService` only. No named
+scope wrapper is made visible (owner: "_almost_ always, i don't like returning intersections", hence
+the named interface). GC-driven disposal REJECTED (non-deterministic, never at exit, cannot await
+async dispose, and a held value that reaches the middleware pins it). Owner's earlier
+`FinalizationRegistry` backup WITHDRAWN (several providers may serve one singleton middleware).
+Dispatched 2026-09-04 to the lifetime lane, in place. One divergence left as is: the reference hands
+a singleton the real disposable object typed as the interface; we hand a non-disposable view.
