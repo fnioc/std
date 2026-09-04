@@ -1,4 +1,5 @@
-import { type Addon, type Behavior, ControlRequest, type ControlService, DiError, type Hooks, Registration, type Request, type StandardLifetime, UnsatisfiableError } from '@rhombus-std/di.core';
+import { type Addon, type AddonInstallation, type Behavior, ControlRequest, type ControlService, DiError, type Hooks, Registration, type Request, type StandardLifetime,
+  UnsatisfiableError } from '@rhombus-std/di.core';
 import { Type } from '@rhombus-std/primitives';
 import { typefor } from '@rhombus-std/primitives.extras';
 import { findSingletonScopeId } from './ScopeFactory.js';
@@ -50,28 +51,33 @@ export class ScopeValidationError extends DiError {
  */
 export function validateScopes(): Addon<StandardLifetime> {
   return {
-    registrations: [],
-    middleware: next => {
-      const address = typefor<ControlService>();
-      const control = next(new ControlRequest(address)) as ControlService;
-      if (typeof control?.stageHooks !== 'function') {
-        throw new UnsatisfiableError(address, 'a middleware answered the control ask with something other than the engine control');
-      }
-      const singletonScopeId = findSingletonScopeId(control.registry);
-      const hooks: Behavior<Kind> = {
-        // The captive check, once per plan: a scoped node planned beneath a singleton is refused
-        // wherever the plan is made — at build under validateBuildability, else at the first ask.
-        beforePlan: (construction: Hooks.Construction<Kind>): Kind => check(construction),
+    create(): AddonInstallation<StandardLifetime> {
+      return {
+        registrations: [],
+        middleware: next => {
+          const address = typefor<ControlService>();
+          const control = next(new ControlRequest(address)) as ControlService;
+          if (typeof control?.stageHooks !== 'function') {
+            throw new UnsatisfiableError(address, 'a middleware answered the control ask with something other than the engine control');
+          }
+          const singletonScopeId = findSingletonScopeId(control.registry);
+          const hooks: Behavior<Kind> = {
+            // The captive check, once per plan: a scoped node planned beneath a singleton is
+            // refused wherever the plan is made — at build under validateBuildability, else at the
+            // first ask.
+            beforePlan: (construction: Hooks.Construction<Kind>): Kind => check(construction),
 
-        beginResolve: (request: Request): Kind => request[scopeId] === singletonScopeId ? 'singleton' : 'scoped',
+            beginResolve: (request: Request): Kind => request[scopeId] === singletonScopeId ? 'singleton' : 'scoped',
 
-        // The per-ask check: the kind the ask entered under reaches every node the ask constructs,
-        // so a scoped node under the singleton kind is refused on every ask, directly or beneath a
-        // transient.
-        beforeConstruct: (construction: Hooks.Construction<Kind>): Hooks.Interception<Kind> => ({ state: check(construction) }),
+            // The per-ask check: the kind the ask entered under reaches every node the ask
+            // constructs, so a scoped node under the singleton kind is refused on every ask,
+            // directly or beneath a transient.
+            beforeConstruct: (construction: Hooks.Construction<Kind>): Hooks.Interception<Kind> => ({ state: check(construction) }),
+          };
+          control.installHooks(hooks);
+          return next;
+        },
       };
-      control.installHooks(hooks);
-      return next;
     },
   };
 }

@@ -268,17 +268,19 @@ describe('the plan hook', () => {
   test('planning every address at build fires the hook ahead of any resolve, skipping the seeded rows', () => {
     const seen: string[] = [];
     const watching: Addon<unknown> = {
-      registrations: [],
-      middleware: next => {
-        const control = next(new ControlRequest(CONTROL)) as ControlService;
-        control.installHooks({
-          beforePlan: (construction: Hooks.Construction) => {
-            seen.push(Type.stringify(construction.populatedAddress));
-            return construction.state;
-          },
-        });
-        return next;
-      },
+      create: () => ({
+        registrations: [],
+        middleware: next => {
+          const control = next(new ControlRequest(CONTROL)) as ControlService;
+          control.installHooks({
+            beforePlan: (construction: Hooks.Construction) => {
+              seen.push(Type.stringify(construction.populatedAddress));
+              return construction.state;
+            },
+          });
+          return next;
+        },
+      }),
     };
     Builder.withServices(manifest => manifest.add(Registration.ctor(CONN, Conn, Type.ctor(CONN, [[]]))))
       .useAddon(validateBuildability())

@@ -77,11 +77,13 @@ describe('useAddon', () => {
   test('an ask crosses the addons in call order, the first installed outermost', () => {
     const order: string[] = [];
     const probe = (name: string): Addon<unknown> => ({
-      registrations: [],
-      middleware: next => request => {
-        order.push(name);
-        return next(request);
-      },
+      create: () => ({
+        registrations: [],
+        middleware: next => request => {
+          order.push(name);
+          return next(request);
+        },
+      }),
     });
 
     const provider = Builder.useAddon(probe('first'))
@@ -95,8 +97,10 @@ describe('useAddon', () => {
 
   test("a later addon's registration wins over an earlier one's at the same address", () => {
     const filing = (value: string): Addon<unknown> => ({
-      registrations: [Registration.value(A, value)],
-      middleware: next => next,
+      create: () => ({
+        registrations: [Registration.value(A, value)],
+        middleware: next => next,
+      }),
     });
 
     const provider = Builder.useAddon(filing('older')).useAddon(filing('newer')).build();

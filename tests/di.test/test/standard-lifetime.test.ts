@@ -599,13 +599,15 @@ describe('the marker contract', () => {
   /** An addon composed after the model, so its middleware sits inside the marker and sees every {@link Counter} ask the marker stamped. */
   function observing(seen: Request[]): Addon<StandardLifetime> {
     return {
-      registrations: [],
-      middleware: next => request => {
-        if (request.address === COUNTER) {
-          seen.push(request);
-        }
-        return next(request);
-      },
+      create: () => ({
+        registrations: [],
+        middleware: next => request => {
+          if (request.address === COUNTER) {
+            seen.push(request);
+          }
+          return next(request);
+        },
+      }),
     };
   }
 

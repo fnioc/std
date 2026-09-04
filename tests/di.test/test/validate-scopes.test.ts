@@ -4,7 +4,7 @@
 // several registrations of one address and a collection ask.
 
 import { Builder, ScopeValidationError, standardLifetime, validateBuildability, validateScopes } from '@rhombus-std/di';
-import { type IServiceProvider, type IServiceScopeFactory, type Manifest, ManifestValidationError, Registration, type StandardLifetime } from '@rhombus-std/di.core';
+import { type Addon, type IServiceProvider, type IServiceScopeFactory, type Manifest, ManifestValidationError, Registration, type StandardLifetime } from '@rhombus-std/di.core';
 import { Type } from '@rhombus-std/primitives';
 import { describe, expect, test } from 'bun:test';
 
@@ -28,8 +28,7 @@ function openScope(provider: IServiceProvider): IServiceProvider {
 }
 
 /** Every case's registrations, in registration order, under the lifetimes given. */
-function build(lifetimes: { counter: StandardLifetime; holder?: StandardLifetime; outer?: StandardLifetime; },
-  ...extra: Array<{ readonly registrations: Iterable<Registration<StandardLifetime>>; readonly middleware: any; }>): IServiceProvider {
+function build(lifetimes: { counter: StandardLifetime; holder?: StandardLifetime; outer?: StandardLifetime; }, ...extra: Array<Addon<StandardLifetime>>): IServiceProvider {
   let builder = Builder.useAddon(standardLifetime()).useAddon(validateScopes());
   for (const addon of extra) {
     builder = builder.useAddon(addon);

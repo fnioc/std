@@ -1,5 +1,5 @@
-import { type Addon, type Behavior, ControlRequest, type ControlService, type GetService, type Hooks, type ITaggedServiceScopeFactory, ObjectDisposedError, Registration, type Request, ServiceRequest,
-  UnsatisfiableError } from '@rhombus-std/di.core';
+import { type Addon, type AddonInstallation, type Behavior, ControlRequest, type ControlService, type GetService, type Hooks, type ITaggedServiceScopeFactory, ObjectDisposedError, Registration,
+  type Request, ServiceRequest, UnsatisfiableError } from '@rhombus-std/di.core';
 import { Type } from '@rhombus-std/primitives';
 import { type Generic, typefor } from '@rhombus-std/primitives.extras';
 import { ServiceProvider } from '../../ServiceProvider.js';
@@ -52,10 +52,14 @@ import { TaggedServiceScopeFactory } from './TaggedServiceScopeFactory.js';
  * ```
  */
 export function taggedLifetime<Lifetime>(): Addon<Lifetime> {
-  const model = new Model();
   return {
-    registrations: model.registrations as Iterable<Registration<Lifetime>>,
-    middleware: next => model.fold(next),
+    create(): AddonInstallation<Lifetime> {
+      const model = new Model();
+      return {
+        registrations: model.registrations as Iterable<Registration<Lifetime>>,
+        middleware: next => model.fold(next),
+      };
+    },
   };
 }
 

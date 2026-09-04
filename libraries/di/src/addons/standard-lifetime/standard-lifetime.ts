@@ -1,5 +1,5 @@
-import { type Addon, type Behavior, ControlRequest, type ControlService, type GetService, type Hooks, type IServiceProvider, type IServiceScopeFactory, ObjectDisposedError, Registration, type Request,
-  ServiceRequest, type StandardLifetime, UnsatisfiableError } from '@rhombus-std/di.core';
+import { type Addon, type AddonInstallation, type Behavior, ControlRequest, type ControlService, type GetService, type Hooks, type IServiceProvider, type IServiceScopeFactory, ObjectDisposedError,
+  Registration, type Request, ServiceRequest, type StandardLifetime, UnsatisfiableError } from '@rhombus-std/di.core';
 import { typefor } from '@rhombus-std/primitives.extras';
 import { ServiceProvider } from '../../ServiceProvider.js';
 import { capture, disposeScope, disposeScopeAsync, evict, lookup, store } from '../lifetime-scope.js';
@@ -24,19 +24,23 @@ import { scopeId } from './symbols.js';
  * ```
  */
 export function standardLifetime(): Addon<StandardLifetime> {
-  const scopes = new ScopeTable();
-  const singletons = scopes.open();
-  const state: ModelState = { lifetime: undefined, scopes, singletons };
   return {
-    registrations: [Registration.value(typefor<IServiceScopeFactory>(), new ScopeFactory(state)), providerRegistration],
-    middleware: next => {
-      state.lifetime = lifetimeMiddleware(next, scopes, singletons);
-      const marked = createMarkerMiddleware(singletons.id)(state.lifetime);
-      return request => {
-        if (singletons.provider === undefined && request instanceof ServiceRequest) {
-          adoptContainer(singletons, request.serviceProvider);
-        }
-        return marked(request);
+    create(): AddonInstallation<StandardLifetime> {
+      const scopes = new ScopeTable();
+      const singletons = scopes.open();
+      const state: ModelState = { lifetime: undefined, scopes, singletons };
+      return {
+        registrations: [Registration.value(typefor<IServiceScopeFactory>(), new ScopeFactory(state)), providerRegistration],
+        middleware: next => {
+          state.lifetime = lifetimeMiddleware(next, scopes, singletons);
+          const marked = createMarkerMiddleware(singletons.id)(state.lifetime);
+          return request => {
+            if (singletons.provider === undefined && request instanceof ServiceRequest) {
+              adoptContainer(singletons, request.serviceProvider);
+            }
+            return marked(request);
+          };
+        },
       };
     },
   };

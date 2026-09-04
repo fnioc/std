@@ -54,7 +54,7 @@ describe('request chain composition', () => {
 
   test('a lifetime model is an addon like any other, and composes wherever it is put', () => {
     const log: string[] = [];
-    const model = standardLifetime();
+    const model = standardLifetime().create();
     const registrations: Registration<unknown>[] = [
       ...Manifest.build<StandardLifetime>(m => m.add(LEAF, Leaf, Type.ctor(LEAF, [[]]), 'transient')),
       ...model.registrations,

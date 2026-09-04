@@ -1,4 +1,4 @@
-import { type Addon, type GetService, type IServiceProvider, Manifest, type Middleware, type Registration, UnsatisfiableError } from '@rhombus-std/di.core';
+import { type Addon, type AddonInstallation, type GetService, type IServiceProvider, Manifest, type Middleware, type Registration, UnsatisfiableError } from '@rhombus-std/di.core';
 import { concat, iterable } from '@rhombus-toolkit/iterable';
 import type { Func } from '@rhombus-toolkit/types';
 import { Engine } from './internal/Engine.js';
@@ -14,8 +14,9 @@ import { ServiceProvider } from './ServiceProvider.js';
  */
 export interface Builder<Lifetime> {
   /**
-   * Installs `addon`: its registrations file in call order, and its middleware composes into
-   * the same chain alongside every other addon's, at this call's position.
+   * Installs `addon`: {@link build} opens one installation of it, whose registrations file in call
+   * order and whose middleware composes into the same chain alongside every other installation's,
+   * at this call's position.
    */
   useAddon<Candidate>(
     addon: Addon<Candidate> & Addon<unknown extends Lifetime ? Candidate : Lifetime> & (0 extends 1 & Candidate ? never : unknown),
@@ -37,7 +38,11 @@ export interface Builder<Lifetime> {
 
 /** The addon `withServices` installs: the registrations `fn` composes, and no middleware of its own. */
 function servicesAddon<Lifetime>(fn: Func<[Manifest<Lifetime>], Iterable<Registration<Lifetime>>>): Addon<Lifetime> {
-  return { registrations: Manifest.build(fn), middleware: identityMiddleware };
+  return {
+    create(): AddonInstallation<Lifetime> {
+      return { registrations: Manifest.build(fn), middleware: identityMiddleware };
+    },
+  };
 }
 
 /**
@@ -61,14 +66,14 @@ class DefaultContext implements Builder<any> {
   }
 
   build(): IServiceProvider {
-    const addons = Array.from(this.#addons);
-    const engine = new Engine(addons.reduce((newer, addon) => concat(addon.registrations, newer), [] as Iterable<Registration<any>>));
+    const installations = Array.from(this.#addons, addon => addon.create());
+    const engine = new Engine(installations.reduce((newer, installation) => concat(installation.registrations, newer), [] as Iterable<Registration<any>>));
     // The engine composes exactly like any other middleware: it answers what its registrations
     // can produce and hands anything unregistered on through `next`.
     const engineMiddleware: Middleware = next => request => engine.getService(request, next);
 
-    const head = addons
-      .map(addon => addon.middleware)
+    const head = installations
+      .map(installation => installation.middleware)
       .concat(engineMiddleware)
       .reduceRight(
         (next, middleware) => middleware(next),

@@ -10,7 +10,7 @@
 // other side: `Equal` tells `any` and `unknown` apart, so a collapsed vocabulary fails the pin.
 
 import { Builder } from '@rhombus-std/di';
-import type { Addon, Manifest, Middleware, Registration } from '@rhombus-std/di.core';
+import type { Addon, AddonInstallation, Manifest, Registration } from '@rhombus-std/di.core';
 
 // #region devices
 
@@ -39,8 +39,7 @@ declare const anyAddon: Addon<any>;
 
 /** A vacuous addon: generic in the vocabulary, with nothing of its own fixing it. */
 declare class VacuousAddon<T> implements Addon<T> {
-  readonly registrations: Iterable<Registration<T>>;
-  readonly middleware: Middleware;
+  create(): AddonInstallation<T>;
 }
 
 // #endregion

@@ -17,8 +17,10 @@ describe('the chain openers', () => {
 
   test('useAddon opens the chain and its registrations resolve', () => {
     const addon: Addon<unknown> = {
-      registrations: [Registration.value(GREETING, 'hello')],
-      middleware: next => next,
+      create: () => ({
+        registrations: [Registration.value(GREETING, 'hello')],
+        middleware: next => next,
+      }),
     };
 
     expect(Builder.useAddon(addon).build().getService(GREETING)).toBe('hello');
@@ -27,11 +29,13 @@ describe('the chain openers', () => {
   test("an addon's middleware sees each ask on its way to the engine", () => {
     const seen: Type[] = [];
     const observing: Addon<unknown> = {
-      registrations: [Registration.value(GREETING, 'hello')],
-      middleware: next => request => {
-        seen.push(request.address);
-        return next(request);
-      },
+      create: () => ({
+        registrations: [Registration.value(GREETING, 'hello')],
+        middleware: next => request => {
+          seen.push(request.address);
+          return next(request);
+        },
+      }),
     };
 
     expect(Builder.useAddon(observing).build().getService(GREETING)).toBe('hello');
