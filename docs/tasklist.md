@@ -2583,6 +2583,40 @@ wide `boolean` token (each awaits one word), forks F3/F6, the merge into main.
   validation lives; §229's `standardLifetimeAddon()`/`ScopedAtRootError`/`LifetimeModelError` are not
   the shipped `standardLifetime()`/`validateScopes()`), §227 (states array minted by a compose fold;
   the engine builds per-hook dispatch lists in install order).
-- ServiceProvider ask sugar surface + the ruled renames — worktree `+feat-di-resolve-sugar`, branch
-  `feat-di-resolve-sugar`, pushed as its own branch, fast-forwarded onto `IServiceManifest-repair` by
-  the orchestrator after its gate. RUNNING.
+- ServiceProvider ask sugar surface + the ruled renames — on branch `feat-di-resolve-sugar` (pushed):
+  `f308988c` di.core explicit forms, `3282ec35` di.extras sugar, `d1df5ef6` docs. Gate green
+  (di.test 515 pass; e2e 6/6, inline parity 22 pass / 1 todo). Integrates onto
+  `IServiceManifest-repair` after the transforms fix below. Lane's calls and findings, for the
+  owner's word:
+  1. BLOCKER, lane dispatched: `typefor<Func<Args, ServiceType>>()` does not inline — the inline stage
+     substitutes a body type parameter standing alone as a type argument but not one nested inside a
+     composed type argument (`INLINE_UNLOWERED_PRIMITIVE`). The four `resolveWith` rows sit in
+     di.extras as specified, out of the parity fixture, `test.todo` naming the shape.
+  2. `resolveWith(address: Type, ...args)` rather than `funcType: FunctionType`: `typefor<Func<A, R>>()`
+     types as `FunctionType | NamedType` (an alias can hide the structure), so a `FunctionType`
+     parameter rejects the sugar's own derived address. `instantiate`/`invoke` keep `ctorType`/`funcType`
+     (`invokerAddress` needs the kind). Public signature, the lane's call — accept or narrow.
+  3. Nine of the eleven `try` twins never answer `undefined` as built: an aggregate of nothing is an
+     empty collection (ruled), and a callable address always plans, so `tryResolveWith`/`tryInstantiate`/
+     `tryInvoke` build the closure and the broken graph surfaces from inside the call as
+     `UnsatisfiableError`. The owner's spec says "the resolve throws when the callable cannot be
+     planned" — the engine defers a latebound callable's dependency planning to call time, so the spec
+     and the engine disagree; the lane's tests pin the engine. QUESTION: which is right.
+  4. The sugar `resolveWith<T, Args>(...args)` accepts any argument list, so an explicit
+     `resolveWith(address, ...args)` call also matches it; type-checks either way, nothing forces the
+     explicit overload to win. Latent overload collision.
+  5. `docs/notes.md` untouched (dated RULED paragraphs recording the rename that produced `resolveMany`);
+     di2 documents untouched.
+- Drift fix 2, final shape RULED (owner 2026-09-04): `singletons` never holds a provider (the prop is
+  dropped there; a singleton's `IServiceProvider` dependency needs only _a_ singleton-scoped view,
+  never the specific provider `build()` returned); keep `instanceof ServiceProvider` → `whenDisposed`;
+  else a `FinalizationRegistry` disposes the singleton scope when the user's hand-assembled provider is
+  orphaned — the registry makes the fold's function disposable in effect. Registry target is the
+  user's provider, not the middleware: the held value (the scope) reaches the middleware through any
+  singleton that injected `IServiceProvider`/`IServiceScopeFactory`, and a held value that reaches
+  its target never finalizes. No `WeakRef`. Same shape in the tagged lifetime addon. Same lane, in
+  flight, together with the vocabulary sweep of "container" out of `libraries/di/src/addons/**` and
+  the design doc (owner: "wtf is a container" — the engine has no root and no container). The word
+  also lives in di.core public docs (`Errors.ts`, `IServiceScopeFactory.ts`, `Addon.ts`,
+  `Registration.ts`, `Middleware.ts`, `StandardLifetime.ts`), `Engine.ts`, `ServiceProvider.ts`,
+  `async-resolution.md` — ~30 sites outside the addons, for the owner's word.
