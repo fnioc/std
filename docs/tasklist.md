@@ -2610,8 +2610,9 @@ wide `boolean` token (each awaits one word), forks F3/F6, the merge into main.
 - Drift fix 2 LANDED `ea5fb7e8` (prop dropped, `providerOf` uncached, adopt renamed, hand-built
   provider test) + `a06689b8` (no container/root under `libraries/di/src/addons/**` and the design
   doc). The `FinalizationRegistry` else-branch in `ea5fb7e8` is WITHDRAWN (owner: several providers
-  may serve one singleton middleware, so no one provider's fate may end the scope) — removal in
-  flight on the same lane. Tagged lifetime never got one (its head is reachable from live scopes).
+  may serve one singleton middleware, so no one provider's fate may end the scope) — removed
+  in `046a58ef` (forward commit; the design doc's sweep made a squash conflict, so history carries the
+  pair). Tagged lifetime never got one (its head is reachable from live scopes).
   SUPERSEDING RULING (owner 2026-09-04, matching the reference, verified against its source: only the
   concrete `ServiceProvider` class and `IServiceScope` dispose; `IServiceProvider` is `GetService`
   only): `IServiceProvider` drops `extends Disposable, AsyncDisposable`; `ServiceProvider` stays the
