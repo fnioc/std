@@ -32,20 +32,53 @@ on the condition that the architecture is complete first.
 
 ### The marker contract
 
-Two symbol-keyed props on the request:
+One symbol-keyed prop on the request: the id of the scope the ask entered through. Every scope has
+an id, the singleton scope included, so one marker middleware serves every provider and the reader
+does one table lookup.
 
-| key           | value                     | on the addon's provider | on an opened scope |
-| ------------- | ------------------------- | ----------------------- | ------------------ |
-| lifetime kind | `'singleton' \| 'scoped'` | `'singleton'`           | `'scoped'`         |
-| scope id      | a unique `Symbol`         | absent                  | the scope's id     |
+| key      | value             | on the addon's provider  | on an opened scope |
+| -------- | ----------------- | ------------------------ | ------------------ |
+| scope id | a unique `Symbol` | the singleton scope's id | the scope's id     |
+
+The shape (owner-approved 2026-09-04): the lifetime middleware is built once, when the addon's
+middleware receives the engine's `getService`, into a slot the scope factory already holds; the
+scope factory is a class registered as a value; each provider is that one function wrapped in a
+marker carrying its scope's id.
+
+```ts
+export function standardLifetime(): Addon<StandardLifetime> {
+  const state = { lifetime: undefined as GetService | undefined, scopes: new ScopeTable() };
+  const singletons = state.scopes.open();
+  return {
+    registrations: [Registration.value(typefor<IServiceScopeFactory>(), new ScopeFactory(state))],
+    middleware: getService => {
+      state.lifetime = lifetimeMiddleware(getService, state.scopes, singletons); // the one write
+      return createMarkerMiddleware(singletons.id)(state.lifetime);
+    },
+  };
+}
+
+class ScopeFactory implements IServiceScopeFactory {
+  constructor(readonly #state: { lifetime: GetService | undefined; scopes: ScopeTable }) {}
+  openScope(): IServiceProvider {
+    const scope = this.#state.scopes.open();
+    return new ServiceProvider(createMarkerMiddleware(scope.id)(this.#state.lifetime!));
+  }
+}
+```
+
+The slot is never read empty: the factory is reachable only through a built provider, and the
+middleware call that fills the slot runs before any provider exists. The lifetime rules and
+`validateScopes` find the singleton scope through the addon's own reference to it, never through a
+stamp on the request.
 
 ### Resolution behavior
 
-| registration lifetime | entered via the `'singleton'` provider                          | entered via a scope                          |
+| registration lifetime | entered via the addon's provider                                | entered via a scope                          |
 | --------------------- | --------------------------------------------------------------- | -------------------------------------------- |
 | singleton             | singleton cache                                                 | singleton cache                              |
 | scoped                | singleton cache (the validation layer turns this into an error) | that scope's cache                           |
-| transient             | fresh instance; the `'singleton'` provider owns its disposal    | fresh instance; that scope owns its disposal |
+| transient             | fresh instance; the singleton scope owns its disposal           | fresh instance; that scope owns its disposal |
 
 - A transient is resolvable from any provider. A disposable transient resolved from the
   `'singleton'` provider is held until that provider disposes.
