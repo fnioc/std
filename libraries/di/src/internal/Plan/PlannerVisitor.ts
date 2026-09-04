@@ -11,9 +11,8 @@ import { type AsyncPlan, Plan } from './Plan.js';
 /**
  * What a planning walk threads through {@link PlannerVisitor.visit}: the collection point of the
  * nearest enclosing await, onto which an awaited dependency hoists itself, and the registered node
- * whose slots are lowering, beneath which a slot naming that node's own address — in either
- * spelling, settled or promise — resolves. Each is absent while nothing encloses the walk in a
- * promise or a registered node.
+ * whose slots are lowering, beneath which a slot naming that node's own address resolves. Each is
+ * absent while nothing encloses the walk in a promise or a registered node.
  */
 export interface PlanningContext {
   asyncDescendants?: AsyncPlan[];
@@ -86,23 +85,20 @@ export class PlannerVisitor extends Type.Visitor<Plan | undefined, PlanningConte
 
   /**
    * The position matching for `address` starts from: beneath the registered node whose slots are
-   * lowering when `address` is that node's own address in either spelling — itself or its promise
-   * — so only what the node shadows can answer, and the top of the registry otherwise.
+   * lowering when `address` is that node's own address, so only what the node shadows can answer,
+   * and the top of the registry otherwise.
    */
   #getPlanningStartIndex(address: Type, context: PlanningContext): number {
     const planning = context.planning;
-    if (planning === undefined || Type.awaited(address) !== Type.awaited(planning.address)) {
+    if (planning === undefined || planning.address !== address) {
       return 0;
     }
     return planning.index + 1;
   }
 
-  /**
-   * The newest registration answering `address` — both spellings in one authored order when the
-   * settled `alternate` rides along — lowered under `context`; absent when none does.
-   */
-  #getPlan(address: Type, context: PlanningContext, alternate?: Type): Plan | undefined {
-    return this.#registry.getMatches(address, alternate, this.#getPlanningStartIndex(address, context))
+  /** The newest registration answering `address`, lowered under `context`; absent when none does. */
+  #getPlan(address: Type, context: PlanningContext): Plan | undefined {
+    return this.#registry.getMatches(address, undefined, this.#getPlanningStartIndex(address, context))
       .map(match => Plan.fromMatch(match.address, match, this, context))
       .find(hasValue);
   }
@@ -129,13 +125,13 @@ export class PlannerVisitor extends Type.Visitor<Plan | undefined, PlanningConte
   }
 
   /**
-   * The promise boundary for `type`: whatever answers it — the settled value a caller's argument
-   * supplies, the newest registration in either spelling, or the settled value resolved on its own
-   * — wrapped so the awaits beneath it collect and settle together.
+   * The promise boundary for `type`: whatever answers it — a registration for the promise itself,
+   * or the settled value resolved on its own — wrapped so the awaits beneath it collect and settle
+   * together.
    */
   #visitPromise(type: GlobalType, context: PlanningContext): Plan | undefined {
     const promiseValueType = Type.awaited(type);
-    const built = this.#collect(context, () => this.#tryGetPlanFromLateboundArgs(promiseValueType) ?? this.#getPlan(type, context, promiseValueType) ?? this.visit(promiseValueType, context));
+    const built = this.#collect(context, () => this.#getPlan(type, context) ?? this.visit(promiseValueType, context));
     return built && this.#promiseNode(built.result, built.descendants, type);
   }
 

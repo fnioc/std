@@ -202,19 +202,20 @@ describe('shadowing resolves beneath', () => {
     expect(captured[1]).toBe(second);
   });
 
-  test('a Func<[Foo], Foo> factory catches a registered Promise<Foo> under a promise ask', async () => {
+  test("a Func<[Foo], Foo> factory catches a registered Promise<Foo> beneath it, under a dependent's promise ask", async () => {
     const base = new Foo();
     const provider = Builder.withServices(manifest =>
       manifest
         .addValue(Type.promise(FOO), Promise.resolve(base))
         .add(Registration.factory(FOO, (foo: Foo) => ({ decorated: foo }), Type.func(FOO, [[FOO]])))
+        .add(Registration.factory(BAR, (foo: Foo) => ({ needed: foo }), Type.func(BAR, [[FOO]])))
     ).build();
 
-    const decorated = await provider.resolveAsync(FOO) as { decorated: Foo; };
-    expect(decorated.decorated).toBe(base);
+    const bar = await provider.resolveAsync(BAR) as { needed: { decorated: Foo; }; };
+    expect(bar.needed.decorated).toBe(base);
   });
 
-  test('the same pair misses on bare Foo — outside a boundary there is nothing to wait in', () => {
+  test('a registered Promise<Foo> misses on a bare Foo ask — outside a boundary there is nothing to wait in', () => {
     const provider = Builder.withServices(manifest =>
       manifest
         .addValue(Type.promise(FOO), Promise.resolve(new Foo()))
