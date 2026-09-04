@@ -2637,7 +2637,36 @@ wide `boolean` token (each awaits one word), forks F3/F6, the merge into main.
   `Registration.ts`, `Middleware.ts`, `StandardLifetime.ts`), `Engine.ts`, `ServiceProvider.ts`,
   `async-resolution.md` — ~30 sites outside the addons, for the owner's word.
 
-## Provider disposability (owner 2026-09-04, RULED)
+## Provider disposability — REAL PARITY (owner 2026-09-04, RULED, /go)
+
+Supersedes the decorator entry below (kept for the record of the discussion). Owner: "go for real
+parity. we're back to just one sp class that IS disposable, and the interface NOT disposable. use
+the FinalizationRegistry if the IServiceProvider isn't a ServiceProvider."
+
+1. `IServiceProvider` drops `extends Disposable, AsyncDisposable` (the reference's interface is
+   `GetService` only). One class, `ServiceProvider`, stays disposable as today. Since di.core cannot
+   name di's class, the two mint sites type their return as the named interface
+   `IDisposableServiceProvider extends IServiceProvider, Disposable, AsyncDisposable` (di.core; the
+   owner asked for a named interface over an intersection). `build()` and `openScope()` return it.
+2. A singleton's `IServiceProvider` dependency answers the REAL adopted provider again
+   (`singletons.provider` stored at first ask when it is a `ServiceProvider`; `providerOf`'s minted
+   view stays only as the fallback) — reverting today's `ea5fb7e8` prop drop, whose reason (the
+   registry pin) is gone.
+3. The engine's own `IServiceProvider` row answers `request.serviceProvider` itself, not a fresh view
+   (the reference answers the scope object the ask ran under). Reverses the fresh-wrap rule for this
+   one row.
+4. A first-ask provider that is NOT a `ServiceProvider` (built by hand around the installation's
+   middleware): not stored on the scope (a held value that reaches the registry's target never
+   finalizes), and registered with a module-level `FinalizationRegistry` whose held value is the
+   singleton scope; the callback runs `void disposeScopeAsync(singletons)`. Best-effort leak guard.
+   Owner's earlier objection (several providers over one middleware) stands noted; his call.
+5. Tagged lifetime: same interface fallout; the registry only if its adopt-disposal does not refuse
+   asks through scopes still alive (the earlier lane found its head reachable from live scopes) —
+   the lane reports which.
+
+Dispatched 2026-09-04, in place, one opus lane.
+
+## Provider disposability — decorator (owner 2026-09-04, SUPERSEDED the same day by the entry above)
 
 `IServiceProvider` is NOT disposable. `ServiceProvider` is NOT disposable. A second class,
 `DisposableServiceProvider extends ServiceProvider implements IDisposableServiceProvider` (the
