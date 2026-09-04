@@ -108,8 +108,9 @@ class Model {
    *
    * @remarks
    * A provider built by hand around this installation's middleware, outside `build()`, is not
-   * wired here; it caches and captures nothing of its own, and every scope opened through it
-   * answers until that scope is disposed.
+   * wired here, and its collection ends nothing: this disposal refuses every later ask through
+   * every scope, including scopes a caller still holds. Such a provider caches and captures
+   * nothing of its own, and every scope opened through it answers until that scope is disposed.
    */
   #adopt(provider: unknown): void {
     this.#adopted = true;

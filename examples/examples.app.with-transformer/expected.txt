@@ -73,7 +73,7 @@ async registrations — the promise is the registration
   the bare type has no registration: undefined
   resolveAsync unwraps the same registration directly: EUR at 0.85
 the provider as a service — usually a smell, occasionally correct
-  the injected view is a view onto it, not the container object: true
+  the injected provider is the one that opened the ask: true
 optional audit trail: 2 entries, last B-2002
 
 === di open generics — with transformer ===

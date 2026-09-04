@@ -11,7 +11,7 @@ import type { Caching, Owning } from '../lifetime-scope.js';
 export interface Scope extends Caching, Owning {
   /** What the marker of this scope's provider stamps on every ask entering through it. */
   readonly id: symbol;
-  /** The provider asks under this scope answer for `IServiceProvider`; absent for the singleton scope, which answers a fresh view instead. */
+  /** The provider asks under this scope answer for `IServiceProvider`; absent where the scope has none, which answers a fresh view instead. */
   provider: IServiceProvider | undefined;
 }
 

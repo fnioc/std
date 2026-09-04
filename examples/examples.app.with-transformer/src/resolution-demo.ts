@@ -176,7 +176,7 @@ async function* tour(provider: IServiceProvider): AsyncGenerator<string> {
   // The container can hand back ITSELF: a parameter typed `IServiceProvider`
   // gets the live provider, and `typefor<IServiceProvider>()` derives the type
   // that names it. The engine seeds an ordinary factory registration for it,
-  // answering a fresh view onto the provider that opened the ask.
+  // answering the provider that opened the ask.
   //
   // Injecting the provider is USUALLY a smell. It hides a class's real
   // dependencies from anyone reading its constructor, turns wiring mistakes from
@@ -190,8 +190,8 @@ async function* tour(provider: IServiceProvider): AsyncGenerator<string> {
   // gateway for whichever method the buyer picks", so the container itself is the
   // dependency.
   yield 'the provider as a service — usually a smell, occasionally correct';
-  const view = provider.resolve(typefor<IServiceProvider>()) as IServiceProvider;
-  yield `  the injected view is a view onto it, not the container object: ${view !== provider}`;
+  const handed = provider.resolve(typefor<IServiceProvider>()) as IServiceProvider;
+  yield `  the injected provider is the one that opened the ask: ${handed === provider}`;
 
   // ── what the optional sink recorded ────────────────────────────────────────
   const recorded = audit ? `${audit.entries.length} entries, last ${audit.entries.at(-1)}` : 'no sink wired';

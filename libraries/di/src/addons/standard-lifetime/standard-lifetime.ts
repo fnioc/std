@@ -48,7 +48,7 @@ export function standardLifetime(): Addon<StandardLifetime> {
   };
 }
 
-/** Answers the provider of the scope the ask runs under — a singleton-scoped view under a singleton's dependencies. */
+/** Answers the provider of the scope the ask runs under — the provider `build()` returned under a singleton's dependencies. */
 const providerRegistration = Registration.factory<StandardLifetime>(typefor<IServiceProvider>(), unreachableProvider, typefor(unreachableProvider), 'transient');
 
 /**
@@ -90,9 +90,9 @@ function lifetimeMiddleware(next: GetService, scopes: ScopeTable, singletons: Sc
    * The provider asks under `scope` answer for `IServiceProvider`.
    *
    * @remarks
-   * An opened scope is given its provider as it opens; the singleton scope holds none, so it
-   * answers a view minted here — the same asks, entered the same way — since what a singleton
-   * needs is a singleton-scoped view rather than one particular provider.
+   * An opened scope is given its provider as it opens, and the singleton scope is given the
+   * provider the first ask arrived through; a scope holding none answers a view minted here — the
+   * same asks, entered the same way.
    */
   function providerOf(scope: Scope): IServiceProvider {
     return scope.provider ?? new ServiceProvider(createMarkerMiddleware(scope.id)(implementation));
@@ -174,22 +174,32 @@ function lifetimeMiddleware(next: GetService, scopes: ScopeTable, singletons: Sc
 }
 
 /**
- * Ends the singleton scope with the provider the asks arrived through, met on the first of them.
+ * Ends the singleton scope with the provider the asks arrived through, met on the first of them,
+ * and stores that provider on the singleton scope so a singleton's `IServiceProvider` dependency
+ * answers it. A provider that is not a {@link ServiceProvider} cannot be subscribed to, so the
+ * singleton scope ends when that provider is collected instead, best-effort.
  *
  * @remarks
  * The provider `build()` mints exists only once the chain has folded, so the first ask through it
- * is the earliest it can be known, and it is the one provider with a disposal to subscribe to: a
- * provider built by hand around this installation's middleware, outside `build()`, is not wired
- * here.
+ * is the earliest it can be known. The scope must not hold a provider registered for collection,
+ * because a held value that reaches the registry's target keeps it alive.
  */
 function adoptProvider(singletons: Scope, provider: IServiceProvider): void {
   if (provider instanceof ServiceProvider) {
+    singletons.provider = provider;
     provider.whenDisposed({
       [Symbol.dispose]: () => disposeScope(singletons),
       [Symbol.asyncDispose]: () => disposeScopeAsync(singletons),
     });
+    return;
   }
+  orphaned.register(provider, singletons);
 }
+
+/** The singleton scopes waiting on a provider built by hand: collecting that provider ends its scope. */
+const orphaned = new FinalizationRegistry((singletons: Scope) => {
+  void disposeScopeAsync(singletons);
+});
 
 /**
  * The promise a caller is handed for a construction that produced one: it settles to the same

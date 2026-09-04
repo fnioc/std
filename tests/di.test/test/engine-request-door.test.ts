@@ -84,12 +84,10 @@ describe('the request as an address', () => {
 });
 
 describe('the seeded registrations', () => {
-  test('resolving IServiceProvider answers a fresh view forwarding to the asking provider', () => {
+  test('resolving IServiceProvider answers the provider the ask entered through', () => {
     const provider = Builder.withServices(manifest => manifest.add(Registration.value(CONN, new Conn()))).build();
-    const view = provider.getService(PROVIDER) as IServiceProvider;
 
-    expect(view).not.toBe(provider);
-    expect(view.getService(CONN)).toBeInstanceOf(Conn);
+    expect(provider.getService(PROVIDER)).toBe(provider);
   });
 
   test('a user registration at IServiceProvider shadows the seed', () => {

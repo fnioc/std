@@ -2,7 +2,6 @@ import { type ControlService, type GetService, type IServiceProvider, Registrati
 import { type FunctionType, type ListType, type TupleType, Type } from '@rhombus-std/primitives';
 import { typefor } from '@rhombus-std/primitives.extras';
 import { concat } from '@rhombus-toolkit/iterable';
-import { ServiceProvider } from '../ServiceProvider.js';
 import { Plan, type VisitorContext } from './Plan/index.js';
 import { InstalledHooks, type PlanHooks } from './Plan/InstalledHooks.js';
 import { Registry } from './Registry.js';
@@ -13,9 +12,8 @@ export class Engine {
   readonly #hooks: InstalledHooks;
 
   constructor(registrations: Iterable<Registration<unknown>>) {
-    // A fresh view per handout, forwarding to the provider that opened the ask — provider
-    // identity is never a contract, and the view is never the container object itself.
-    const provider = (request: ServiceRequest): IServiceProvider => new ServiceProvider(inner => request.serviceProvider.getService(inner.address));
+    // The provider the ask entered through.
+    const provider = (request: ServiceRequest): IServiceProvider => request.serviceProvider;
     const control = (): ControlService => this.#hooks;
     // The engine's own rows file after the given ones, so they are the OLDEST and any user
     // registration at the same address shadows them. Both carry a null lifetime — no model

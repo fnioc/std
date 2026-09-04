@@ -4,7 +4,7 @@
 // answer. Disposal and scope validation have suites of their own.
 
 import { Builder, standardLifetime } from '@rhombus-std/di';
-import { type Addon, type GetService, type IServiceProvider, type IServiceScopeFactory, Manifest, Registration, type Request, ServiceRequest, type StandardLifetime,
+import { type Addon, type GetService, type IDisposableServiceProvider, type IServiceProvider, type IServiceScopeFactory, Manifest, Registration, type Request, ServiceRequest, type StandardLifetime,
   UnsatisfiableError } from '@rhombus-std/di.core';
 import { scopeId } from '@rhombus-std/di/private/addons/standard-lifetime/symbols';
 import { Engine } from '@rhombus-std/di/private/internal/Engine';
@@ -35,13 +35,13 @@ class Box {
 }
 
 /** A container over {@link Counter} alone, under `lifetime`. */
-function counterProvider(lifetime: StandardLifetime): IServiceProvider {
+function counterProvider(lifetime: StandardLifetime): IDisposableServiceProvider {
   return Builder.useAddon(standardLifetime())
     .withServices(m => m.add(COUNTER, Counter, Type.ctor(COUNTER, [[]]), lifetime))
     .build();
 }
 
-function openScope(provider: IServiceProvider): IServiceProvider {
+function openScope(provider: IServiceProvider): IDisposableServiceProvider {
   return (provider.resolve(SCOPE_FACTORY) as IServiceScopeFactory).openScope();
 }
 
@@ -555,11 +555,9 @@ describe('scopes', () => {
     expect(scope.resolve(PROVIDER)).toBe(scope);
   });
 
-  test('the provider resolved outside an opened scope is a view answering under the singleton scope', () => {
-    const provider = counterProvider('singleton');
-    const view = provider.resolve(PROVIDER) as IServiceProvider;
-
-    expect(view.resolve(COUNTER)).toBe(provider.resolve(COUNTER));
+  test('the provider resolved outside an opened scope is the provider build() returned', () => {
+    const provider = counterProvider('scoped');
+    expect(provider.resolve(PROVIDER)).toBe(provider);
   });
 
   test("the provider a scoped service is handed is that scope's own", () => {
@@ -575,7 +573,7 @@ describe('scopes', () => {
     expect((scope.resolve(HOLDING) as ProviderHolder).provider).toBe(scope);
   });
 
-  test('the provider a singleton is handed answers under the singleton scope, wherever the singleton was first reached', () => {
+  test('the provider a singleton is handed is the provider build() returned, wherever the singleton was first reached', () => {
     const HOLDING = Type.imported('ProviderHolder', 'app');
     class ProviderHolder {
       constructor(readonly provider: IServiceProvider) {}
@@ -591,7 +589,7 @@ describe('scopes', () => {
     const scoped = scope.resolve(COUNTER);
 
     const held = (scope.resolve(HOLDING) as ProviderHolder).provider;
-    expect(held).not.toBe(scope);
+    expect(held).toBe(provider);
     // A scoped ask through the singleton's provider runs under the singleton scope: it is answered
     // from the singleton cache, never from the scope the singleton was first reached through.
     expect(held.resolve(COUNTER)).not.toBe(scoped);
