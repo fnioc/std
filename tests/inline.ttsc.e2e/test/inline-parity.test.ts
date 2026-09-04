@@ -269,6 +269,12 @@ export const iterableAsync = provider.resolveIterableAsync<IThing>();
 export const triedIterableAsync = provider.tryResolveIterableAsync<IThing>();
 export const asyncWalk = provider.resolveAsyncIterable<IThing>();
 export const triedAsyncWalk = provider.tryResolveAsyncIterable<IThing>();
+// The callable rows derive a whole function type from the two type arguments and
+// thread the call arguments through to the callable.
+export const gadget = provider.resolveWith<IGadget, [IBar]>(bar);
+export const triedGadget = provider.tryResolveWith<IGadget, [IBar]>(bar);
+export const gadgetAsync = provider.resolveWithAsync<IGadget, [IBar]>(bar);
+export const triedGadgetAsync = provider.tryResolveWithAsync<IGadget, [IBar]>(bar);
 // The value-driven rows observe the callable in hand instead of a type argument.
 export const built = provider.instantiate(Widget);
 export const triedBuild = provider.tryInstantiate(Widget);
@@ -656,13 +662,30 @@ describe.skipIf(!toolchainReady)('generic inline stage — lookup parity (W5)', 
     assertNoAuthoringSurvivors(resolveInline);
   });
 
-  // resolveWith<IGadget, [IBar]>(bar) must lower to
-  // `.resolveWith(Type.func($IGadget, [[$IBar]]), bar)`, and its async row to a
-  // `Type.global("Promise", [$IGadget])` return. The stage substitutes a body type
-  // parameter standing alone as a type argument (`typefor<ServiceType>()`) but not one
-  // nested inside a composed one (`typefor<Func<Args, ServiceType>>()`), which survives
-  // lowering verbatim and fails the compilation, so the fixture cannot carry the calls yet.
-  test.todo('the callable rows derive a whole function type and thread the call arguments through');
+  test('the callable rows derive a whole function type and thread the call arguments through', () => {
+    // The two type arguments compose one callable type inside the body's own
+    // `typefor<Func<Args, ServiceType>>()`, so the token is the whole function
+    // type — the SAME one `invoke` observes off a matching callable — and the
+    // call's own arguments follow it through to the lowered call.
+    const barType = constFor(chainModule, 'Type.imported("IBar", "chain-app/private/resolve")');
+    const gadget = constFor(chainModule, 'Type.imported("IGadget", "chain-app/private/resolve")');
+    const funcType = constFor(chainModule, `Type.func(${gadget}, [[${barType}]])`);
+    const promised = constFor(chainModule, `Type.global("Promise", [${gadget}])`);
+    const asyncFuncType = constFor(chainModule, `Type.func(${promised}, [[${barType}]])`);
+    const rows = [
+      ['gadget =', 'resolveWith', funcType],
+      ['triedGadget =', 'tryResolveWith', funcType],
+      ['gadgetAsync =', 'resolveWithAsync', asyncFuncType],
+      ['triedGadgetAsync =', 'tryResolveWithAsync', asyncFuncType],
+    ] as const;
+    for (const [needle, member, derived] of rows) {
+      const line = lineWith(resolveInline, needle);
+      expect(line).toBeDefined();
+      expect(line).toContain(`.${member}(${derived}, bar)`);
+      expect(line).not.toContain(`${member}<`);
+    }
+    assertNoAuthoringSurvivors(resolveInline);
+  });
 
   test('instantiate and invoke observe the callable in hand rather than a type argument', () => {
     const barType = constFor(chainModule, 'Type.imported("IBar", "chain-app/private/resolve")');
