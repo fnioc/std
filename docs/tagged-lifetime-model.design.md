@@ -96,7 +96,7 @@ Numbered as first put to him.
 
 Drafted against the di API at `origin/feat-di-request-door` 803fde07, where both engine seams the
 standard model needed have landed: `Hooks.beforePlan`, and `ServiceProvider.whenDisposed` behind
-`IServiceProvider extends Disposable, AsyncDisposable`.
+`IDisposableServiceProvider extends IServiceProvider, Disposable, AsyncDisposable`.
 
 ### Placement
 
@@ -119,7 +119,7 @@ The request symbol stays module-level within `di`.
  */
 export interface ITaggedServiceScopeFactory<Lifetime> {
   /** A provider caching registrations of `lifetime` alone; disposing it ends the scope. */
-  openScope(lifetime: Exclude<Lifetime, undefined>): IServiceProvider;
+  openScope(lifetime: Exclude<Lifetime, undefined>): IDisposableServiceProvider;
 }
 
 // di
@@ -162,7 +162,7 @@ function middleware(next: GetService): GetService {
   };
 }
 
-function openScope(parent: GetService, tag: Exclude<Lifetime, undefined>): IServiceProvider {
+function openScope(parent: GetService, tag: Exclude<Lifetime, undefined>): IDisposableServiceProvider {
   const layer = new Layer(tag);
   layer.source = function scoped(request) {
     if (layer.disposed) {
@@ -179,7 +179,7 @@ function openScope(parent: GetService, tag: Exclude<Lifetime, undefined>): IServ
 class TaggedServiceScopeFactory implements ITaggedServiceScopeFactory<Lifetime> {
   source: GetService = head; // rebound by afterConstruct to the source the ask came from
 
-  openScope(tag: Exclude<Lifetime, undefined>): IServiceProvider {
+  openScope(tag: Exclude<Lifetime, undefined>): IDisposableServiceProvider {
     return openScope(this.source, tag);
   }
 }
@@ -202,7 +202,7 @@ interface Layer {
   readonly cache: Map<Registration<unknown>, Map<Type, unknown>>; // by registration identity, then by populated address
   readonly disposables: unknown[]; // capture order
   source: GetService; // what openScope wraps and what a factory resolved here binds to
-  provider: IServiceProvider;
+  provider: IDisposableServiceProvider;
   disposed: boolean;
 }
 

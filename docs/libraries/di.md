@@ -395,13 +395,12 @@ services = services.add(
 ```
 
 That is also all `IServiceProvider` is: the engine seeds an ordinary factory registration reading
-the request, so a constructor parameter typed `IServiceProvider` receives a fresh view forwarding
-to the provider that opened the ask — never the container object itself, since provider identity
-is not a contract. The engine's two seeded rows — `IServiceProvider` and `ControlService` — file
+the request, so a constructor parameter typed `IServiceProvider` receives the provider that
+opened the ask. The engine's two seeded rows — `IServiceProvider` and `ControlService` — file
 oldest, carry a `null` lifetime, and are visible in `ControlService.registry` like anything else;
 registering your own `IServiceProvider` shadows the seed.
 
-A provider is also where disposal enters: `IServiceProvider` is disposable in both forms, so a
+A provider is also where disposal enters: `build()` returns an `IDisposableServiceProvider`, so a
 holder writes `using provider = Builder…build()` or `await using` and the provider is disposed on
 the way out — idempotently, and for free when nothing subscribed. Disposal never flows through
 `getService`, so no middleware observes it; an addon that must know when a particular provider

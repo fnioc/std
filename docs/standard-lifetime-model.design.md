@@ -67,7 +67,7 @@ export function standardLifetime(): Addon<StandardLifetime> {
 
 class ScopeFactory implements IServiceScopeFactory {
   constructor(readonly #state: { lifetime: GetService | undefined; scopes: ScopeTable }) {}
-  openScope(): IServiceProvider {
+  openScope(): IDisposableServiceProvider {
     const scope = this.#state.scopes.open();
     return new ServiceProvider(createMarkerMiddleware(scope.id)(this.#state.lifetime!));
   }
@@ -153,7 +153,7 @@ export type StandardLifetime = 'singleton' | 'scoped' | 'transient';
 /** Opens scopes. One instance per build, resolvable from every provider, always the same one. */
 export interface IServiceScopeFactory {
   /** A new scope's provider, independent of every other scope; disposing it ends the scope. */
-  openScope(): IServiceProvider;
+  openScope(): IDisposableServiceProvider;
 }
 
 /** A resolution or scope opening reached a provider whose scope, or whose singleton scope, is already disposed. */
@@ -172,8 +172,8 @@ export class ScopeValidationError extends DiError {
 }
 ```
 
-A scope is its provider: `IServiceProvider` is disposable, so `openScope()` answers the scope's
-provider and disposing it ends the scope. No scope type exists beyond that.
+A scope is its provider: `openScope()` answers an `IDisposableServiceProvider` and disposing it
+ends the scope. No scope type exists beyond that.
 
 Opening a scope goes through the factory alone: no augmentation puts `openScope` on `IServiceProvider`,
 so the core interface's shape carries no scope vocabulary. That can follow the day a concrete consumer
@@ -222,7 +222,7 @@ function createMarkerMiddleware(id: symbol): Middleware {
     };
 }
 
-function openScope(): IServiceProvider {
+function openScope(): IDisposableServiceProvider {
   const scope = scopes.open();
   const provider = new ServiceProvider(createMarkerMiddleware(scope.id)(state.lifetime));
   subscribe(provider, () => release(scope)); // the engine's dispose seam, name per the engine
@@ -232,8 +232,9 @@ function openScope(): IServiceProvider {
 
 The marker only stamps: an ask through a scope that has ended is refused by the reader instead,
 since `beginResolve` looks the id up in the table and finds nothing. The provider `build()`
-returns is subscribed the same way, on its first ask, to release the singleton scope; a provider
-built by hand around the middleware, outside `build()`, is not subscribed. The scope factory is
+returns is subscribed the same way, on its first ask, to release the singleton scope, and is
+stored on that scope; a provider built by hand around the middleware, outside `build()`, has no
+disposal to subscribe to, so its singleton scope is released when that provider is collected. The scope factory is
 filed through `Addon.registrations` as a value registration, so it is the one instance everywhere
 and is never captured for disposal.
 
@@ -272,12 +273,11 @@ handed — so concurrent asynchronous resolutions share one pending construction
 rejects evicts its entry, so the next ask retries; a promise's settled value is what is captured for
 disposal, on settlement.
 
-`IServiceProvider` resolved under a singleton's dependencies must be a view on the singleton scope,
-not the provider the ask entered through. The engine's `IServiceProvider` row answers the request's
-provider; the model overrides it under a `singletons` state from `beforeConstruct`, if that row is a
-construction the hook sees. The singleton scope stores no provider of its own, so each such answer
-is a fresh view entering the same asks the same way — provider identity is not a contract. The
-implementer confirms that against the engine.
+`IServiceProvider` resolved under a singleton's dependencies is the provider `build()` returned,
+not the scope the singleton was first reached through. The engine's `IServiceProvider` row answers
+the request's provider; the model overrides it under a `singletons` state from `beforeConstruct`,
+answering the provider stored on the singleton scope. A singleton scope beneath a provider built by
+hand stores none, and answers a fresh view entering the same asks the same way.
 
 ### Disposal
 
