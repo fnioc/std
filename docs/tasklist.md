@@ -2588,7 +2588,18 @@ wide `boolean` token (each awaits one word), forks F3/F6, the merge into main.
   (di.test 515 pass; e2e 6/6, inline parity 22 pass / 1 todo). Integrates onto
   `IServiceManifest-repair` after the transforms fix below. Lane's calls and findings, for the
   owner's word:
-  1. BLOCKER, lane dispatched: `typefor<Func<Args, ServiceType>>()` does not inline — the inline stage
+  1. BLOCKER — CLEARED on the branch: `aaaed147` (inline substitutes a type parameter nested inside a
+     composed type argument; `bodyextract.go consumedTypeParams`, `stage.go registerPrimitives`, new
+     `composedtypearg.go`/`instantiate.go`), `4c918405` (the four `resolveWith` rows back in the parity
+     fixture, real test; inline e2e 23 pass). FOR THE OWNER'S WORD — a coupling the lane chose:
+     composing `Func<Args, ServiceType>` uses the checker's own instantiation, reached by `go:linkname`
+     to the unexported `instantiateTypeWithAlias`/`newTypeMapper` (as `tokens/alias.go` and the shim
+     already reach unexported checker members); payoff is pointer-identical types, so the sugar mints
+     the same hoisted const the hand-written spelling does. Alternative: a syntactic derivation path
+     parallel to the token layer (the lane judged it worse). Known limit: a body in a file the
+     consumer's program never loads falls back to today's un-lowered-primitive diagnostic; every
+     di.extras body shares its file with the declare-module, so none is affected.
+     Was: `typefor<Func<Args, ServiceType>>()` does not inline — the inline stage
      substitutes a body type parameter standing alone as a type argument but not one nested inside a
      composed type argument (`INLINE_UNLOWERED_PRIMITIVE`). The four `resolveWith` rows sit in
      di.extras as specified, out of the parity fixture, `test.todo` naming the shape.
