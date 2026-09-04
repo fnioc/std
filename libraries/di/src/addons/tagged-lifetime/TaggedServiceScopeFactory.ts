@@ -1,4 +1,4 @@
-import type { GetService, IServiceProvider, ITaggedServiceScopeFactory } from '@rhombus-std/di.core';
+import type { GetService, IDisposableServiceProvider, ITaggedServiceScopeFactory } from '@rhombus-std/di.core';
 import { Layer } from './layer.js';
 
 /**
@@ -10,7 +10,7 @@ export class TaggedServiceScopeFactory<Lifetime> implements ITaggedServiceScopeF
   /** What a scope opened here wraps: the innermost scope the ask crossed, or the head beneath the built provider. */
   source: GetService = unbound;
 
-  openScope(lifetime: Exclude<Lifetime, undefined>): IServiceProvider {
+  openScope(lifetime: Exclude<Lifetime, undefined>): IDisposableServiceProvider {
     return new Layer(lifetime, this.source).provider;
   }
 }

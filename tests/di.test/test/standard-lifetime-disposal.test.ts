@@ -3,7 +3,7 @@
 // forms against the two protocols, and what every provider refuses once its scope has ended.
 
 import { Builder, standardLifetime } from '@rhombus-std/di';
-import { type IServiceProvider, type IServiceScopeFactory, ObjectDisposedError, type StandardLifetime } from '@rhombus-std/di.core';
+import { type IDisposableServiceProvider, type IServiceProvider, type IServiceScopeFactory, ObjectDisposedError, type StandardLifetime } from '@rhombus-std/di.core';
 import { Type } from '@rhombus-std/primitives';
 import { describe, expect, test } from 'bun:test';
 
@@ -51,12 +51,12 @@ class Holder {
   constructor(readonly recorder: Recorder) {}
 }
 
-function openScope(provider: IServiceProvider): IServiceProvider {
+function openScope(provider: IServiceProvider): IDisposableServiceProvider {
   return (provider.resolve(SCOPE_FACTORY) as IServiceScopeFactory).openScope();
 }
 
 /** A container over a factory-made {@link Recorder} alone, under `lifetime`. */
-function recorderProvider(lifetime: StandardLifetime, order: string[] = []): IServiceProvider {
+function recorderProvider(lifetime: StandardLifetime, order: string[] = []): IDisposableServiceProvider {
   return Builder.useAddon(standardLifetime())
     .withServices(m => m.add(RECORDER, () => new Recorder('recorder', order), Type.func(RECORDER, [[]]), lifetime))
     .build();
@@ -649,7 +649,7 @@ describe('after disposal', () => {
   });
 
   test('an instance constructed while its scope is disposing is disposed at once and the ask refuses', () => {
-    let scope: IServiceProvider | undefined;
+    let scope: IDisposableServiceProvider | undefined;
     const order: string[] = [];
     const provider = Builder.useAddon(standardLifetime())
       .withServices(m =>

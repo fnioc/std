@@ -1,4 +1,4 @@
-import { type GetService, type IServiceProvider, ObjectDisposedError, type Registration, type Request } from '@rhombus-std/di.core';
+import { type GetService, type IDisposableServiceProvider, ObjectDisposedError, type Registration, type Request } from '@rhombus-std/di.core';
 import type { Type } from '@rhombus-std/primitives';
 import { ServiceProvider } from '../../ServiceProvider.js';
 import { type Caching, disposeScope, disposeScopeAsync, type Owning } from '../lifetime-scope.js';
@@ -19,7 +19,7 @@ export class Layer implements Caching, Owning {
   /** What `openScope` wraps for a scope opened from this one, and what a factory resolved here binds to. */
   readonly source: GetService;
   /** The scope itself: disposing it ends the scope. */
-  readonly provider: IServiceProvider;
+  readonly provider: IDisposableServiceProvider;
   disposed = false;
 
   constructor(readonly tag: unknown, parent: GetService) {

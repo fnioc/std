@@ -1,4 +1,4 @@
-import { type Addon, type AddonInstallation, type GetService, type IServiceProvider, Manifest, type Middleware, type Registration, UnsatisfiableError } from '@rhombus-std/di.core';
+import { type Addon, type AddonInstallation, type GetService, type IDisposableServiceProvider, Manifest, type Middleware, type Registration, UnsatisfiableError } from '@rhombus-std/di.core';
 import { concat, iterable } from '@rhombus-toolkit/iterable';
 import type { Func } from '@rhombus-toolkit/types';
 import { Engine } from './internal/Engine.js';
@@ -33,7 +33,7 @@ export interface Builder<Lifetime> {
   ): Builder<unknown extends Lifetime ? Candidate : Lifetime>;
 
   /** Seals the configured manifest into a provider. */
-  build(): IServiceProvider;
+  build(): IDisposableServiceProvider;
 }
 
 /** The addon `withServices` installs: the registrations `fn` composes, and no middleware of its own. */
@@ -65,7 +65,7 @@ class DefaultContext implements Builder<any> {
     return new DefaultContext(iterable(() => concat(this.#addons, servicesAddon(fn))));
   }
 
-  build(): IServiceProvider {
+  build(): IDisposableServiceProvider {
     const installations = Array.from(this.#addons, addon => addon.create());
     const engine = new Engine(installations.reduce((newer, installation) => concat(installation.registrations, newer), [] as Iterable<Registration<any>>));
     // The engine composes exactly like any other middleware: it answers what its registrations

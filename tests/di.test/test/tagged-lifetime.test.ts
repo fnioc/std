@@ -5,7 +5,7 @@
 // meet the caches. Disposal has a suite of its own.
 
 import { Builder, taggedLifetime } from '@rhombus-std/di';
-import { type IServiceProvider, type ITaggedServiceScopeFactory, Registration } from '@rhombus-std/di.core';
+import { type IDisposableServiceProvider, type IServiceProvider, type ITaggedServiceScopeFactory, Registration } from '@rhombus-std/di.core';
 import { Type } from '@rhombus-std/primitives';
 import { describe, expect, test } from 'bun:test';
 
@@ -36,7 +36,7 @@ class Box {
 }
 
 /** A container over {@link Counter} alone, under `lifetime`. */
-function counterProvider(lifetime?: Lifetime): IServiceProvider {
+function counterProvider(lifetime?: Lifetime): IDisposableServiceProvider {
   return Builder.useAddon(taggedLifetime<Lifetime>())
     .withServices(m => m.add(COUNTER, Counter, Type.ctor(COUNTER, [[]]), lifetime))
     .build();
@@ -46,7 +46,7 @@ function factoryOf(provider: IServiceProvider): ITaggedServiceScopeFactory<Lifet
   return provider.resolve(SCOPE_FACTORY) as ITaggedServiceScopeFactory<Lifetime>;
 }
 
-function openScope(provider: IServiceProvider, tag: Tag): IServiceProvider {
+function openScope(provider: IServiceProvider, tag: Tag): IDisposableServiceProvider {
   return factoryOf(provider).openScope(tag);
 }
 

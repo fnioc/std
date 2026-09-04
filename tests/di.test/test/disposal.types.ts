@@ -1,11 +1,18 @@
-// Type-level check that `IServiceProvider` is disposable in both forms, so a provider — the
-// container's own or a scope's — binds under `using` and `await using` as it stands. Never
-// executed: the file earns its keep through `lint` (`tsc --noEmit`), which is why the name keeps
-// it out of bun's test glob, like `object-assign.types.ts` and `get-service-value.types.ts`.
+// Type-level check that disposability lives on `IDisposableServiceProvider` alone: a scope's
+// provider binds under `using` and `await using` as it stands, while the resolution interface
+// carries no disposal at all. Never executed: the file earns its keep through `lint`
+// (`tsc --noEmit`), which is why the name keeps it out of bun's test glob, like
+// `object-assign.types.ts` and `get-service-value.types.ts`.
 
-import type { IServiceProvider } from '@rhombus-std/di.core';
+import type { IDisposableServiceProvider, IServiceProvider } from '@rhombus-std/di.core';
 
-declare const provider: IServiceProvider;
+declare const resolver: IServiceProvider;
+declare const provider: IDisposableServiceProvider;
+
+// @ts-expect-error the resolution interface carries no synchronous disposal.
+export const noDispose = resolver[Symbol.dispose];
+// @ts-expect-error the resolution interface carries no asynchronous disposal.
+export const noAsyncDispose = resolver[Symbol.asyncDispose];
 
 provider[Symbol.dispose]() satisfies void;
 provider[Symbol.asyncDispose]() satisfies PromiseLike<void>;

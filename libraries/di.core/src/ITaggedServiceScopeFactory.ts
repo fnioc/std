@@ -1,4 +1,4 @@
-import type { IServiceProvider } from './IServiceProvider.js';
+import type { IDisposableServiceProvider } from './IDisposableServiceProvider.js';
 
 /**
  * Opens scopes under the tagged lifetime model: one per tag of the vocabulary, each over the
@@ -28,5 +28,5 @@ export interface ITaggedServiceScopeFactory<Lifetime> {
    * A provider caching registrations of `lifetime` alone, chained onto the provider this factory
    * came from; disposing it ends the scope.
    */
-  openScope(lifetime: Exclude<Lifetime, undefined>): IServiceProvider;
+  openScope(lifetime: Exclude<Lifetime, undefined>): IDisposableServiceProvider;
 }

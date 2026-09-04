@@ -1,4 +1,4 @@
-import type { IServiceProvider } from './IServiceProvider.js';
+import type { IDisposableServiceProvider } from './IDisposableServiceProvider.js';
 
 /**
  * Opens scopes under the standard lifetime model — a clone of
@@ -22,5 +22,5 @@ export interface IServiceScopeFactory {
    *
    * @throws {ObjectDisposedError} once the container is disposed.
    */
-  openScope(): IServiceProvider;
+  openScope(): IDisposableServiceProvider;
 }

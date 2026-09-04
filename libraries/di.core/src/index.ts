@@ -8,6 +8,7 @@ export type { RegistrationBuilderFor } from './builder';
 export type * from './ControlService';
 export * from './Errors';
 export * from './hooks';
+export type * from './IDisposableServiceProvider';
 export type { Invoker } from './Invoker';
 export type * from './IServiceProvider';
 export type * from './IServiceScopeFactory';

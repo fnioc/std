@@ -1,4 +1,4 @@
-import { type GetService, type IServiceProvider, type IServiceScopeFactory, ObjectDisposedError, Registration } from '@rhombus-std/di.core';
+import { type GetService, type IDisposableServiceProvider, type IServiceScopeFactory, ObjectDisposedError, Registration } from '@rhombus-std/di.core';
 import { ServiceProvider } from '../../ServiceProvider.js';
 import { disposeScope, disposeScopeAsync } from '../lifetime-scope.js';
 import { createMarkerMiddleware } from './marker.js';
@@ -36,7 +36,7 @@ export class ScopeFactory implements IServiceScopeFactory {
     return this.#state.singletons.id;
   }
 
-  openScope(): IServiceProvider {
+  openScope(): IDisposableServiceProvider {
     const { lifetime, scopes, singletons } = this.#state;
     if (singletons.disposed) {
       throw new ObjectDisposedError();

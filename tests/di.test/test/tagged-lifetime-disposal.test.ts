@@ -4,7 +4,7 @@
 // or the built provider has ended.
 
 import { Builder, taggedLifetime } from '@rhombus-std/di';
-import { type IServiceProvider, type ITaggedServiceScopeFactory, ObjectDisposedError } from '@rhombus-std/di.core';
+import { type IDisposableServiceProvider, type IServiceProvider, type ITaggedServiceScopeFactory, ObjectDisposedError } from '@rhombus-std/di.core';
 import { Type } from '@rhombus-std/primitives';
 import { describe, expect, test } from 'bun:test';
 
@@ -63,19 +63,19 @@ class Throwing {
   }
 }
 
-function openScope(provider: IServiceProvider, tag: Tag): IServiceProvider {
+function openScope(provider: IServiceProvider, tag: Tag): IDisposableServiceProvider {
   return (provider.resolve(SCOPE_FACTORY) as ITaggedServiceScopeFactory<Lifetime>).openScope(tag);
 }
 
 /** A container over a factory-made {@link Recorder} alone, under `lifetime`. */
-function recorderProvider(lifetime?: Lifetime, order: string[] = []): IServiceProvider {
+function recorderProvider(lifetime?: Lifetime, order: string[] = []): IDisposableServiceProvider {
   return Builder.useAddon(taggedLifetime<Lifetime>())
     .withServices(m => m.add(RECORDER, () => new Recorder('recorder', order), Type.func(RECORDER, [[]]), lifetime))
     .build();
 }
 
 /** A container over three factory-made recorders, every one tagged `'session'`, logging into `order`. */
-function threeProvider(order: string[], b: () => unknown = () => new Recorder('b', order)): IServiceProvider {
+function threeProvider(order: string[], b: () => unknown = () => new Recorder('b', order)): IDisposableServiceProvider {
   return Builder.useAddon(taggedLifetime<Lifetime>())
     .withServices(m =>
       m
@@ -525,7 +525,7 @@ describe('after disposal', () => {
   });
 
   test('an instance constructed while its scope is disposing is disposed at once and the ask refuses', () => {
-    let session: IServiceProvider | undefined;
+    let session: IDisposableServiceProvider | undefined;
     const order: string[] = [];
     const provider = Builder.useAddon(taggedLifetime<Lifetime>())
       .withServices(m =>

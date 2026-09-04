@@ -3,7 +3,7 @@
 // Scope validation is a separate addon, so its entries state both switch positions.
 
 import { Builder, ScopeValidationError, standardLifetime, validateBuildability, validateScopes } from '@rhombus-std/di';
-import { type IServiceProvider, type IServiceScopeFactory, ManifestValidationError, ObjectDisposedError, type StandardLifetime } from '@rhombus-std/di.core';
+import { type IDisposableServiceProvider, type IServiceProvider, type IServiceScopeFactory, ManifestValidationError, ObjectDisposedError, type StandardLifetime } from '@rhombus-std/di.core';
 import { Type } from '@rhombus-std/primitives';
 import { describe, expect, test } from 'bun:test';
 
@@ -30,18 +30,18 @@ class Pair {
   constructor(readonly first: Holder, readonly second: Holder) {}
 }
 
-function openScope(provider: IServiceProvider): IServiceProvider {
+function openScope(provider: IServiceProvider): IDisposableServiceProvider {
   return (provider.resolve(SCOPE_FACTORY) as IServiceScopeFactory).openScope();
 }
 
 /** A container over {@link Counter} alone, under `lifetime`, with or without scope validation. */
-function counterProvider(lifetime: StandardLifetime, validate = false): IServiceProvider {
+function counterProvider(lifetime: StandardLifetime, validate = false): IDisposableServiceProvider {
   const builder = validate ? Builder.useAddon(standardLifetime()).useAddon(validateScopes()) : Builder.useAddon(standardLifetime());
   return builder.withServices(m => m.add(COUNTER, Counter, Type.ctor(COUNTER, [[]]), lifetime)).build();
 }
 
 /** {@link Counter} under `counter` consumed by {@link Holder} under `holder`, with or without scope validation. */
-function holderProvider(counter: StandardLifetime, holder: StandardLifetime, validate = false): IServiceProvider {
+function holderProvider(counter: StandardLifetime, holder: StandardLifetime, validate = false): IDisposableServiceProvider {
   const builder = validate ? Builder.useAddon(standardLifetime()).useAddon(validateScopes()) : Builder.useAddon(standardLifetime());
   return builder
     .withServices(m =>

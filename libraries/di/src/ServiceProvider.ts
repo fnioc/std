@@ -1,4 +1,4 @@
-import { type GetService, type IServiceProvider, ServiceRequest } from '@rhombus-std/di.core';
+import { type GetService, type IDisposableServiceProvider, type IServiceProvider, ServiceRequest } from '@rhombus-std/di.core';
 import { augment, type Type } from '@rhombus-std/primitives';
 import { typefor } from '@rhombus-std/primitives.extras';
 
@@ -10,7 +10,7 @@ export interface ServiceProvider extends IServiceProvider {}
  * the provider that opened it.
  */
 @augment(typefor<IServiceProvider>())
-export class ServiceProvider implements IServiceProvider {
+export class ServiceProvider implements IDisposableServiceProvider {
   readonly #getService: GetService;
   #subscribers: Array<Disposable & AsyncDisposable> | undefined;
   #disposed = false;
