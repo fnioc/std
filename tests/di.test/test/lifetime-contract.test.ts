@@ -313,8 +313,8 @@ describe('collections under lifetimes', () => {
           .add(COUNTER, Counter, Type.ctor(COUNTER, [[]]), 'transient')
       )
       .build();
-    const first = Array.from(provider.resolveMany(COUNTER)) as Counter[];
-    const second = Array.from(provider.resolveMany(COUNTER)) as Counter[];
+    const first = Array.from(provider.resolveIterable(COUNTER)) as Counter[];
+    const second = Array.from(provider.resolveIterable(COUNTER)) as Counter[];
     expect(first[0]).toBe(second[0]);
     expect(first[1]).not.toBe(second[1]);
   });

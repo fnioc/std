@@ -440,7 +440,7 @@ function describeOrderContainer(services: Manifest<unknown>): string[] {
   return [`notify: ${notifier.notify('order-42')}`, `audit: ${audit.entries.length} entry, sink echo enabled=${flags.echoToSink}`, `keyed sink (key "email"): ${email.send('welcome')}`,
     `keyed value (key "vendor"): ${vendorClock.now()}`, `${countRegistrations(services, SINK_TYPE)} sinks share the IMessageSink type; the most recently `
     + `registered one wins a single request, and all of them answer a collection request `
-    + `(${[...app.resolveMany(SINK_TYPE)].length})`];
+    + `(${[...app.resolveIterable(SINK_TYPE)].length})`];
 }
 
 /**

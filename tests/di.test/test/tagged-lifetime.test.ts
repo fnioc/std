@@ -406,14 +406,14 @@ describe('several registrations of one address', () => {
     const sessionScope = openScope(provider, 'session');
     const requestScope = openScope(sessionScope, 'request');
 
-    const first = Array.from(requestScope.resolveMany(COUNTER)) as Counter[];
-    const second = Array.from(requestScope.resolveMany(COUNTER)) as Counter[];
+    const first = Array.from(requestScope.resolveIterable(COUNTER)) as Counter[];
+    const second = Array.from(requestScope.resolveIterable(COUNTER)) as Counter[];
     expect(first).toHaveLength(2);
     expect(first[0]).not.toBe(first[1]);
     expect(first[0]).toBe(second[0]);
     expect(first[1]).toBe(second[1]);
     expect(first[1]).toBe(requestScope.resolve(COUNTER));
-    expect(Array.from(sessionScope.resolveMany(COUNTER))[0]).toBe(first[0]);
+    expect(Array.from(sessionScope.resolveIterable(COUNTER))[0]).toBe(first[0]);
     // A single ask answers the last registration, whose tag the session scope does not carry.
     expect(sessionScope.resolve(COUNTER)).not.toBe(first[1]);
   });
@@ -428,10 +428,10 @@ describe('several registrations of one address', () => {
       .build();
     const session = openScope(provider, 'session');
 
-    const all = Array.from(session.resolveMany(COUNTER)) as Counter[];
+    const all = Array.from(session.resolveIterable(COUNTER)) as Counter[];
     expect(all[0]).not.toBe(all[1]);
     expect(all[1]).toBe(session.resolve(COUNTER));
-    expect(Array.from(session.resolveMany(COUNTER))).toEqual(all);
+    expect(Array.from(session.resolveIterable(COUNTER))).toEqual(all);
   });
 });
 

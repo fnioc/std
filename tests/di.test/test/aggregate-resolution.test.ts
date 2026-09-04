@@ -1,4 +1,4 @@
-// Behaviour tests for reading an aggregate back through `resolveMany` — the collection of every
+// Behaviour tests for reading an aggregate back through `resolveIterable` — the collection of every
 // registration for one element type.
 
 import { Builder } from '@rhombus-std/di';
@@ -13,10 +13,10 @@ function toProvider(manifest: Manifest<string>) {
 
 const A = Type.imported('A', 'app');
 
-describe('resolveMany', () => {
+describe('resolveIterable', () => {
   test('nothing registered is the empty sequence, not a failure', () => {
     const provider = toProvider(Manifest.empty<string>());
-    expect([...provider.resolveMany(A)]).toEqual([]);
+    expect([...provider.resolveIterable(A)]).toEqual([]);
   });
 
   test('reads the same aggregate the iterable address names', () => {
@@ -24,6 +24,6 @@ describe('resolveMany', () => {
       .add(Registration.value(A, 'first'))
       .add(Registration.value(A, 'second'));
     const provider = toProvider(manifest);
-    expect([...provider.resolveMany(A)]).toEqual([...provider.resolve(Type.iterable(A))]);
+    expect([...provider.resolveIterable(A)]).toEqual([...provider.resolve(Type.iterable(A))]);
   });
 });

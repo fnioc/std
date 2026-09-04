@@ -90,18 +90,18 @@ async function* tour(provider: IServiceProvider): AsyncGenerator<string> {
 
   // ── collection resolution ──────────────────────────────────────────────────
   //
-  // Three classes registered under one type. `resolveMany` aggregates all three
+  // Three classes registered under one type. `resolveIterable` aggregates all three
   // in registration order; asking for the bare type would hand back only one of
   // them. This is the shape for "several things, all of them run": validators,
   // event handlers, middleware, plugins. An unregistered element type aggregates
   // to an EMPTY list rather than throwing, so a pipeline with nothing plugged in
   // still runs.
   //
-  // `resolveMany(element)` is sugar for asking for the collection type over it;
+  // `resolveIterable(element)` is sugar for asking for the collection type over it;
   // `Type.iterable(element)` spells that type, and either request reaches the
   // same aggregation.
   yield 'collection resolution — 3 registrations share one type, all of them run';
-  const validators = [...provider.resolveMany(typefor<IOrderValidator>())] as IOrderValidator[];
+  const validators = [...provider.resolveIterable(typefor<IOrderValidator>())] as IOrderValidator[];
   for (const order of [ORDER_A, ORDER_X]) {
     for (const validator of validators) {
       yield `  ${order.reference}: ${validator.name} → ${attempted(() => validator.check(order))}`;
@@ -130,7 +130,7 @@ async function* tour(provider: IServiceProvider): AsyncGenerator<string> {
     | undefined;
   yield `  resolve at key "crypto": ${crypto?.label}`;
   yield `  a keyed registration is not in the bare base's collection: `
-    + `${[...provider.resolveMany(typefor<IPaymentGateway>())].length} gateways`;
+    + `${[...provider.resolveIterable(typefor<IPaymentGateway>())].length} gateways`;
 
   // ── factory slots ──────────────────────────────────────────────────────────
   //

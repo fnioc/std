@@ -252,7 +252,7 @@ const singletons: Scope; // one entry of that table, opened at build: the single
 
 Keying by registration identity and then by populated address gives an open-generic registration
 one entry per closing, and gives several registrations of one address one entry each, which is what
-keeps `resolveMany` elements distinct and the newest one identical to the single resolution. An
+keeps `resolveIterable` elements distinct and the newest one identical to the single resolution. An
 interned `Type` keys the inner map by identity; otherwise a structural key does, which the
 implementer confirms against the engine.
 

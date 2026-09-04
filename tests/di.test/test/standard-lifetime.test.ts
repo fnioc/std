@@ -280,7 +280,7 @@ describe('several registrations of one address', () => {
 
     const promoted = provider.resolve(COUNTER);
     expect(provider.resolve(COUNTER)).toBe(promoted);
-    expect(Array.from(provider.resolveMany(COUNTER))[0]).not.toBe(promoted);
+    expect(Array.from(provider.resolveIterable(COUNTER))[0]).not.toBe(promoted);
   });
 
   test('a collection ask answers every registration in registration order, each under its own lifetime', () => {
@@ -290,8 +290,8 @@ describe('several registrations of one address', () => {
       .withServices(m => m.add(singleton).add(transient))
       .build();
 
-    const first = Array.from(provider.resolveMany(COUNTER)) as Counter[];
-    const second = Array.from(provider.resolveMany(COUNTER)) as Counter[];
+    const first = Array.from(provider.resolveIterable(COUNTER)) as Counter[];
+    const second = Array.from(provider.resolveIterable(COUNTER)) as Counter[];
     expect(first).toHaveLength(2);
     expect(first[0]).toBe(second[0]);
     expect(first[1]).not.toBe(second[1]);
@@ -306,7 +306,7 @@ describe('several registrations of one address', () => {
       )
       .build();
 
-    const all = Array.from(provider.resolveMany(COUNTER)) as Counter[];
+    const all = Array.from(provider.resolveIterable(COUNTER)) as Counter[];
     expect(all[0]).not.toBe(all[1]);
     expect(all[1]).toBe(provider.resolve(COUNTER));
   });
@@ -322,8 +322,8 @@ describe('several registrations of one address', () => {
     const a = openScope(provider);
     const b = openScope(provider);
 
-    const fromA = Array.from(a.resolveMany(COUNTER)) as Counter[];
-    const fromB = Array.from(b.resolveMany(COUNTER)) as Counter[];
+    const fromA = Array.from(a.resolveIterable(COUNTER)) as Counter[];
+    const fromB = Array.from(b.resolveIterable(COUNTER)) as Counter[];
     expect(fromA[0]).toBe(fromB[0]);
     expect(fromA[1]).not.toBe(fromB[1]);
     expect(fromA[1]).toBe(a.resolve(COUNTER));

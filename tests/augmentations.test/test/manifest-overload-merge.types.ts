@@ -63,10 +63,58 @@ manifest.addOptions(WIDGET, () => new Widget());
 provider.resolve(WIDGET);
 provider.resolve<IWidget>();
 
-// resolveMany (base, di.core) / resolveMany<T> (sugar, di.extras)
-provider.resolveMany(WIDGET);
-provider.resolveMany<IWidget>();
+// resolveIterable (base, di.core) / resolveIterable<T> (sugar, di.extras)
+provider.resolveIterable(WIDGET);
+provider.resolveIterable<IWidget>();
 
 // resolve (base, di.core) / resolve<T> (sugar, di.extras)
 provider.resolve(WIDGET);
 provider.resolve<IWidget>();
+
+// every remaining ask row, the address-taking base form (di.core) beside the
+// tokenless sugar form (di.extras), and the `try` twin of each
+provider.tryResolve(WIDGET);
+provider.tryResolve<IWidget>();
+provider.resolveArray(WIDGET);
+provider.resolveArray<IWidget>();
+provider.tryResolveArray(WIDGET);
+provider.tryResolveArray<IWidget>();
+provider.tryResolveIterable(WIDGET);
+provider.tryResolveIterable<IWidget>();
+provider.resolveAsync(WIDGET);
+provider.resolveAsync<IWidget>();
+provider.tryResolveAsync(WIDGET);
+provider.tryResolveAsync<IWidget>();
+provider.resolveArrayAsync(WIDGET);
+provider.resolveArrayAsync<IWidget>();
+provider.tryResolveArrayAsync(WIDGET);
+provider.tryResolveArrayAsync<IWidget>();
+provider.resolveIterableAsync(WIDGET);
+provider.resolveIterableAsync<IWidget>();
+provider.tryResolveIterableAsync(WIDGET);
+provider.tryResolveIterableAsync<IWidget>();
+provider.resolveAsyncIterable(WIDGET);
+provider.resolveAsyncIterable<IWidget>();
+provider.tryResolveAsyncIterable(WIDGET);
+provider.tryResolveAsyncIterable<IWidget>();
+
+// resolveWith / resolveWithAsync: the address-taking form names the callable's
+// own type in front, the sugar derives it from the type arguments
+provider.resolveWith(Type.func(WIDGET, [[]]));
+provider.resolveWith<IWidget, []>();
+provider.tryResolveWith(Type.func(WIDGET, [[]]));
+provider.tryResolveWith<IWidget, []>();
+provider.resolveWithAsync(Type.func(WIDGET, [[]]));
+provider.resolveWithAsync<IWidget, []>();
+provider.tryResolveWithAsync(Type.func(WIDGET, [[]]));
+provider.tryResolveWithAsync<IWidget, []>();
+
+// instantiate / invoke: the type-taking form beside the observed form
+provider.instantiate(Type.ctor(WIDGET, [[]]), Widget);
+provider.instantiate(Widget);
+provider.tryInstantiate(Type.ctor(WIDGET, [[]]), Widget);
+provider.tryInstantiate(Widget);
+provider.invoke(Type.func(WIDGET, [[]]), () => new Widget());
+provider.invoke(() => new Widget());
+provider.tryInvoke(Type.func(WIDGET, [[]]), () => new Widget());
+provider.tryInvoke(() => new Widget());

@@ -110,8 +110,8 @@ describe('aggregate resolution', () => {
     .add(Registration.ctor(SINK, ConsoleSink, Type.ctor(SINK, [[]])))
     .add(Registration.ctor(SINK, FileSink, Type.ctor(SINK, [[]])));
 
-  test('resolveMany reads every registration for the address', () => {
-    const sinks = [...toProvider(manifest).resolveMany(SINK)];
+  test('resolveIterable reads every registration for the address', () => {
+    const sinks = [...toProvider(manifest).resolveIterable(SINK)];
     expect(sinks).toHaveLength(2);
     expect(sinks.some(sink => sink instanceof ConsoleSink)).toBe(true);
     expect(sinks.some(sink => sink instanceof FileSink)).toBe(true);
@@ -128,14 +128,14 @@ describe('latebound resolution', () => {
   const manifest = Manifest.empty<unknown>().add(Registration.ctor(CLOCK, Clock, Type.ctor(CLOCK, [[]])));
   const provider = toProvider(manifest);
 
-  test('resolve(ctorType, ctor) constructs the caller-supplied class from the manifest', () => {
-    const handler = provider.resolve(Type.ctor(HANDLER, [[CLOCK]]), Handler);
+  test('instantiate(ctorType, ctor) constructs the caller-supplied class from the manifest', () => {
+    const handler = provider.instantiate(Type.ctor(HANDLER, [[CLOCK]]), Handler);
     expect(handler).toBeInstanceOf(Handler);
     expect(handler.clock).toBeInstanceOf(Clock);
   });
 
-  test('resolve(funcType, func) calls the caller-supplied function with resolved arguments', () => {
-    const described = provider.resolve(Type.func(DESCRIPTION, [[CLOCK]]), describeClock);
+  test('invoke(funcType, func) calls the caller-supplied function with resolved arguments', () => {
+    const described = provider.invoke(Type.func(DESCRIPTION, [[CLOCK]]), describeClock);
     expect(described).toBe('clock:true');
   });
 });

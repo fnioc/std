@@ -254,7 +254,7 @@ describe('several registrations of one address', () => {
       .withServices(m => m.add(COUNTER, Counter, Type.ctor(COUNTER, [[]]), 'singleton').add(COUNTER, Counter, Type.ctor(COUNTER, [[]]), 'scoped'))
       .build();
 
-    const elements = provider.resolveMany(COUNTER)[Symbol.iterator]();
+    const elements = provider.resolveIterable(COUNTER)[Symbol.iterator]();
     expect(elements.next().value).toBeInstanceOf(Counter);
     expect(() => elements.next()).toThrow(ScopeValidationError);
   });

@@ -184,7 +184,7 @@ export class RealizeVisitor {
   }
 
   /**
-   * The closure `resolve(callableType, callable)` hands back: each call synthesizes a throwaway
+   * The closure `instantiate` and `invoke` hand back: each call synthesizes a throwaway
    * registration for the caller's own `callable`, under `callableType` itself as the address, and
    * hands it to the engine as an invocation frame — nothing here is registered or cached.
    */
