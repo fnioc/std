@@ -865,7 +865,10 @@ identity** (not by name or position), against the checker-bound type or value fr
 call site:
 
 - a **type-argument** primitive (`typefor<T>()`, `schemaof<T>()`) records the bound
-  `*checker.Type` for each type parameter;
+  `*checker.Type` for each type argument — the binding itself where the argument IS a type
+  parameter, and where the argument merely contains one (`typefor<Func<Args, T>>()`) the written
+  type instantiated with those bindings, which lands on the very type the same argument spelled by
+  hand resolves to;
 - a **value-argument** primitive (`typefor(value)`) records the original, program-bound argument
   node itself, so the consuming stage can still query the checker through it even though the
   primitive's own callee is synthetic.
