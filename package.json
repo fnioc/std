@@ -21,7 +21,7 @@
     "release": "semantic-release"
   },
   "overrides": {
-    "@rhombus-toolkit/types": "1.0.1"
+    "@rhombus-toolkit/types": "2.0.0"
   },
   "devDependencies": {
     "@semantic-release/exec": "^7.1.0",

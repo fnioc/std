@@ -34,12 +34,12 @@
     "@rhombus-std/config.core": "workspace:*",
     "@rhombus-std/primitives": "workspace:*",
     "@rhombus-toolkit/func": "^3.6.0",
-    "@rhombus-toolkit/type-guards": "^3.1.0",
+    "@rhombus-toolkit/type-guards": "^4.0.0",
     "@rhombus-toolkit/type-helpers": "^2.0.0"
   },
   "devDependencies": {
     "@rhombus-std/primitives.extras": "workspace:*",
-    "@rhombus-toolkit/proxy-base": "^1.1.1",
+    "@rhombus-toolkit/proxy-base": "^1.2.0",
     "@ttsc/unplugin": "^0.18.1",
     "ttsc": "^0.18.1",
     "typescript": "^6.0.3"

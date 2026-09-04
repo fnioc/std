@@ -43,7 +43,7 @@
     "@rhombus-std/primitives.extras": "workspace:*",
     "@rhombus-std/transforms": "workspace:^",
     "@rhombus-toolkit/func": "3.6.0",
-    "@rhombus-toolkit/types": "^1.0.1"
+    "@rhombus-toolkit/types": "^2.0.0"
   },
   "peerDependencies": {
     "typescript": ">=5.2"

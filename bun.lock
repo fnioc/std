@@ -105,7 +105,7 @@
       "dependencies": {
         "@rhombus-std/primitives": "workspace:*",
         "@rhombus-toolkit/func": "^3.6.0",
-        "@rhombus-toolkit/type-guards": "^3.1.0",
+        "@rhombus-toolkit/type-guards": "^4.0.0",
         "@rhombus-toolkit/type-helpers": "^2.0.0",
       },
       "devDependencies": {
@@ -126,7 +126,7 @@
         "@rhombus-std/options.augmentations": "workspace:*",
         "@rhombus-std/primitives": "workspace:*",
         "@rhombus-toolkit/func": "^3.6.0",
-        "@rhombus-toolkit/type-guards": "^3.1.0",
+        "@rhombus-toolkit/type-guards": "^4.0.0",
       },
       "devDependencies": {
         "@rhombus-std/di.extras": "workspace:*",
@@ -143,12 +143,12 @@
         "@rhombus-std/config.core": "workspace:*",
         "@rhombus-std/primitives": "workspace:*",
         "@rhombus-toolkit/func": "^3.6.0",
-        "@rhombus-toolkit/type-guards": "^3.1.0",
+        "@rhombus-toolkit/type-guards": "^4.0.0",
         "@rhombus-toolkit/type-helpers": "^2.0.0",
       },
       "devDependencies": {
         "@rhombus-std/primitives.extras": "workspace:*",
-        "@rhombus-toolkit/proxy-base": "^1.1.1",
+        "@rhombus-toolkit/proxy-base": "^1.2.0",
         "@ttsc/unplugin": "^0.18.1",
         "ttsc": "^0.18.1",
         "typescript": "^6.0.3",
@@ -176,7 +176,7 @@
       "dependencies": {
         "@rhombus-std/primitives": "workspace:*",
         "@rhombus-toolkit/func": "^3.6.0",
-        "@rhombus-toolkit/type-guards": "^3.1.0",
+        "@rhombus-toolkit/type-guards": "^4.0.0",
         "@rhombus-toolkit/type-helpers": "^2.0.0",
       },
     },
@@ -287,9 +287,9 @@
       "dependencies": {
         "@rhombus-std/di.core": "workspace:^",
         "@rhombus-std/primitives": "workspace:^",
-        "@rhombus-toolkit/iterable": "^1.0.0",
-        "@rhombus-toolkit/once": "^1.0.1",
-        "@rhombus-toolkit/type-guards": "^3.1.0",
+        "@rhombus-toolkit/iterable": "^1.1.0",
+        "@rhombus-toolkit/once": "^2.0.0",
+        "@rhombus-toolkit/type-guards": "^4.0.0",
       },
       "devDependencies": {
         "@rhombus-std/primitives.extras": "workspace:*",
@@ -304,10 +304,10 @@
       "version": "10.1.0",
       "dependencies": {
         "@rhombus-std/primitives": "workspace:^",
-        "@rhombus-toolkit/iterable": "^1.0.0",
-        "@rhombus-toolkit/type-guards": "^3.1.0",
+        "@rhombus-toolkit/iterable": "^1.1.0",
+        "@rhombus-toolkit/type-guards": "^4.0.0",
         "@rhombus-toolkit/type-helpers": "^2.0.0",
-        "@rhombus-toolkit/types": "^1.0.1",
+        "@rhombus-toolkit/types": "^2.0.0",
       },
       "devDependencies": {
         "@rhombus-std/primitives.extras": "workspace:*",
@@ -326,7 +326,7 @@
         "@rhombus-std/primitives.extras": "workspace:*",
         "@rhombus-std/transforms": "workspace:^",
         "@rhombus-toolkit/func": "3.6.0",
-        "@rhombus-toolkit/types": "^1.0.1",
+        "@rhombus-toolkit/types": "^2.0.0",
       },
       "devDependencies": {
         "typescript": "^6.0.3",
@@ -565,7 +565,7 @@
         "@rhombus-std/logging.core": "workspace:*",
         "@rhombus-std/options": "workspace:*",
         "@rhombus-std/primitives": "workspace:*",
-        "@rhombus-toolkit/type-guards": "^3.1.0",
+        "@rhombus-toolkit/type-guards": "^4.0.0",
         "@rhombus-toolkit/type-helpers": "^2.0.0",
       },
       "devDependencies": {
@@ -624,11 +624,11 @@
       "version": "0.0.0",
       "dependencies": {
         "@rhombus-toolkit/func": "^3.6.0",
-        "@rhombus-toolkit/once": "^1.0.1",
+        "@rhombus-toolkit/once": "^2.0.0",
         "@rhombus-toolkit/platform": "^1.1.0",
-        "@rhombus-toolkit/type-guards": "^3.1.0",
+        "@rhombus-toolkit/type-guards": "^4.0.0",
         "@rhombus-toolkit/type-helpers": "^2.0.0",
-        "@rhombus-toolkit/types": "^1.0.1",
+        "@rhombus-toolkit/types": "^2.0.0",
       },
     },
     "libraries/primitives.extras": {
@@ -1024,7 +1024,7 @@
       "devDependencies": {
         "@rhombus-std/primitives": "workspace:*",
         "@rhombus-std/primitives.extras": "workspace:*",
-        "@rhombus-toolkit/iterable": "^1.0.0",
+        "@rhombus-toolkit/iterable": "^1.1.0",
       },
     },
     "tests/typefor.ttsc.e2e": {
@@ -1044,7 +1044,7 @@
     },
   },
   "overrides": {
-    "@rhombus-toolkit/types": "1.0.1",
+    "@rhombus-toolkit/types": "2.0.0",
   },
   "packages": {
     "@actions/core": ["@actions/core@3.0.1", "", { "dependencies": { "@actions/exec": "^3.0.0", "@actions/http-client": "^4.0.0" } }, "sha512-a6d/Nwahm9fliVGRhdhofo40HjHQasUPusmc7vBfyky+7Z+P2A1J68zyFVaNcEclc/Se+eO595oAr5nwEIoIUA=="],
@@ -1293,19 +1293,19 @@
 
     "@rhombus-toolkit/func": ["@rhombus-toolkit/func@3.6.0", "", {}, "sha512-2cWKXGCnkJ+Q7kinSTVEG7TIkSExfR4YQaMzd00IEHCtNXowr7KKSa9oJLFs6jozGgnd5dksGMfeBjBjoeNdAg=="],
 
-    "@rhombus-toolkit/iterable": ["@rhombus-toolkit/iterable@1.0.0", "", { "dependencies": { "@rhombus-toolkit/type-guards": "3.1.0", "@rhombus-toolkit/types": "1.0.1" } }, "sha512-CIrCV9SNcv7FBZjR87+lb6OV4IyJ0zQem7HrQVbi7J2IuXzPPbNyXU25nqneokRyI54Ndo6DU+5NSbL9CA3Mrg=="],
+    "@rhombus-toolkit/iterable": ["@rhombus-toolkit/iterable@1.1.0", "", { "dependencies": { "@rhombus-toolkit/type-guards": "3.1.0", "@rhombus-toolkit/types": "2.0.0" } }, "sha512-0RKYvz/K4CzTHz7m6iu5zEfSBHuGdiVcfqCH6VTad6aLiJVi/6LFyUNRq8TUdr9VBwJUj+X/Id56EKRss37kxw=="],
 
-    "@rhombus-toolkit/once": ["@rhombus-toolkit/once@1.0.1", "", { "dependencies": { "@rhombus-toolkit/types": "1.0.1" } }, "sha512-56Iui3ARySeCsP/hRnfoIxWNOuUtH2q5GsyfS3NUT/zIOQ/r9bgyxzQhgYN1qXdhPh+VxZd164pn0sbjBFMlGA=="],
+    "@rhombus-toolkit/once": ["@rhombus-toolkit/once@2.0.0", "", { "dependencies": { "@rhombus-toolkit/types": "2.0.0" } }, "sha512-RMAe1J6FEBfF1KGneSAFGmmUkXJKQ1eMQw7dfe+S07mslIcn3nA5FzIQ5qTubyTVY3y0YtslBDypRjdnQZq7sQ=="],
 
     "@rhombus-toolkit/platform": ["@rhombus-toolkit/platform@1.1.0", "", { "dependencies": { "@rhombus-toolkit/types": "1.0.0" } }, "sha512-SvBUnmm7/3FkcRFnoE9OO3R04QSI8ftoNCc9ktjW9Py1YTMEzFx5J8mweC5BHB/rPGRzh7E54UwYytiI7fKMzg=="],
 
-    "@rhombus-toolkit/proxy-base": ["@rhombus-toolkit/proxy-base@1.1.1", "", {}, "sha512-eiwzIL40FGqbvEfYz2ngiGmvJqW/KtDAFMMPH15oWCTVrO+jqzwmKEs9ML4lSrtRV+UTgAzbUaIArvhXwfoCww=="],
+    "@rhombus-toolkit/proxy-base": ["@rhombus-toolkit/proxy-base@1.2.0", "", {}, "sha512-bdFMpvhcexwC3wufdBA+h/9/tcWXZ8h4SOZkT2RNZRA0bGzOssL5eU0oA9MCWY9fGArb0EbAcQSYYSoUCpBtKA=="],
 
-    "@rhombus-toolkit/type-guards": ["@rhombus-toolkit/type-guards@3.1.0", "", { "dependencies": { "@rhombus-toolkit/types": "1.0.1" } }, "sha512-0TZkjygrGFBO7V4U+N1ZaKbzoby89degQp/N6EmNB9nglXYHRk3kETSR4IngQ2wyhbB1M6oksPpebo7pQGNBmw=="],
+    "@rhombus-toolkit/type-guards": ["@rhombus-toolkit/type-guards@4.0.0", "", { "dependencies": { "@rhombus-toolkit/types": "2.0.0" } }, "sha512-B2ANOvX+PWBEHr1F/9k+bXsOYSw53iYlITX0WBGVkfa4c/TdbQWXyM9vTKDlIRlbGpaZqWHy+QZt3momgb4n3w=="],
 
     "@rhombus-toolkit/type-helpers": ["@rhombus-toolkit/type-helpers@2.0.0", "", { "dependencies": { "@rhombus-toolkit/func": "3.6.0" } }, "sha512-OMNOzwMPQPMkQTNDi8PrnPA5wn8dsec0fGR+5cWpRSg5WcOXCDp9ice9eoT9HPsgIo/JjQYIc+T4sbD7/ipT6A=="],
 
-    "@rhombus-toolkit/types": ["@rhombus-toolkit/types@1.0.1", "", {}, "sha512-Tm+6nV0pZWIdloFOcUuoNIhE8BIB/OclCRwMSDsO7ixERqd2y2o23dNUtgwNp0q7xVYFPM/oVRsvKkU73IrliQ=="],
+    "@rhombus-toolkit/types": ["@rhombus-toolkit/types@2.0.0", "", {}, "sha512-02ICYQuYSk5IdPSGMDSok4YA3sY2+ylGKKi8ep2OybSrPzInhkhNRUyDYvpYTERCwKZVtn1Yuu0obCEc0A0YtA=="],
 
     "@rollup/rollup-android-arm-eabi": ["@rollup/rollup-android-arm-eabi@4.62.2", "", { "os": "android", "cpu": "arm" }, "sha512-6o7ZLZK+BeenkZCFNDXqpbjw9bD6nuWonvS/lwQJp7NoVVxm6p3qE7qQ5jGuBjiFsgvqjD8mZAU5oWxTmbOeOg=="],
 
@@ -2018,6 +2018,8 @@
     "@rhombus-std/mergesynth.ttsc.e2e/typescript": ["typescript@7.0.2", "", { "optionalDependencies": { "@typescript/typescript-aix-ppc64": "7.0.2", "@typescript/typescript-darwin-arm64": "7.0.2", "@typescript/typescript-darwin-x64": "7.0.2", "@typescript/typescript-freebsd-arm64": "7.0.2", "@typescript/typescript-freebsd-x64": "7.0.2", "@typescript/typescript-linux-arm": "7.0.2", "@typescript/typescript-linux-arm64": "7.0.2", "@typescript/typescript-linux-loong64": "7.0.2", "@typescript/typescript-linux-mips64el": "7.0.2", "@typescript/typescript-linux-ppc64": "7.0.2", "@typescript/typescript-linux-riscv64": "7.0.2", "@typescript/typescript-linux-s390x": "7.0.2", "@typescript/typescript-linux-x64": "7.0.2", "@typescript/typescript-netbsd-arm64": "7.0.2", "@typescript/typescript-netbsd-x64": "7.0.2", "@typescript/typescript-openbsd-arm64": "7.0.2", "@typescript/typescript-openbsd-x64": "7.0.2", "@typescript/typescript-sunos-x64": "7.0.2", "@typescript/typescript-win32-arm64": "7.0.2", "@typescript/typescript-win32-x64": "7.0.2" }, "bin": { "tsc": "bin/tsc" } }, "sha512-8FYau96o3NKOhbjKi/qNvG/W5jhzxkbdm5sj9AbZ/5T5sWqn3hJgLfGx27sRKZWTvyzCP8dLRBTf5tBTSRVUNA=="],
 
     "@rhombus-std/typefor.ttsc.e2e/typescript": ["typescript@7.0.2", "", { "optionalDependencies": { "@typescript/typescript-aix-ppc64": "7.0.2", "@typescript/typescript-darwin-arm64": "7.0.2", "@typescript/typescript-darwin-x64": "7.0.2", "@typescript/typescript-freebsd-arm64": "7.0.2", "@typescript/typescript-freebsd-x64": "7.0.2", "@typescript/typescript-linux-arm": "7.0.2", "@typescript/typescript-linux-arm64": "7.0.2", "@typescript/typescript-linux-loong64": "7.0.2", "@typescript/typescript-linux-mips64el": "7.0.2", "@typescript/typescript-linux-ppc64": "7.0.2", "@typescript/typescript-linux-riscv64": "7.0.2", "@typescript/typescript-linux-s390x": "7.0.2", "@typescript/typescript-linux-x64": "7.0.2", "@typescript/typescript-netbsd-arm64": "7.0.2", "@typescript/typescript-netbsd-x64": "7.0.2", "@typescript/typescript-openbsd-arm64": "7.0.2", "@typescript/typescript-openbsd-x64": "7.0.2", "@typescript/typescript-sunos-x64": "7.0.2", "@typescript/typescript-win32-arm64": "7.0.2", "@typescript/typescript-win32-x64": "7.0.2" }, "bin": { "tsc": "bin/tsc" } }, "sha512-8FYau96o3NKOhbjKi/qNvG/W5jhzxkbdm5sj9AbZ/5T5sWqn3hJgLfGx27sRKZWTvyzCP8dLRBTf5tBTSRVUNA=="],
+
+    "@rhombus-toolkit/iterable/@rhombus-toolkit/type-guards": ["@rhombus-toolkit/type-guards@3.1.0", "", { "dependencies": { "@rhombus-toolkit/types": "1.0.1" } }, "sha512-0TZkjygrGFBO7V4U+N1ZaKbzoby89degQp/N6EmNB9nglXYHRk3kETSR4IngQ2wyhbB1M6oksPpebo7pQGNBmw=="],
 
     "@semantic-release/github/aggregate-error": ["aggregate-error@5.0.0", "", { "dependencies": { "clean-stack": "^5.2.0", "indent-string": "^5.0.0" } }, "sha512-gOsf2YwSlleG6IjRYG2A7k0HmBMEo6qVNk9Bp/EaLgAJT5ngH6PXbqa4ItvnEwCm/velL5jAnQgsHsWnjhGmvw=="],
 

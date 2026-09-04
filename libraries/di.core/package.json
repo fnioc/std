@@ -46,10 +46,10 @@
   },
   "dependencies": {
     "@rhombus-std/primitives": "workspace:^",
-    "@rhombus-toolkit/iterable": "^1.0.0",
-    "@rhombus-toolkit/type-guards": "^3.1.0",
+    "@rhombus-toolkit/iterable": "^1.1.0",
+    "@rhombus-toolkit/type-guards": "^4.0.0",
     "@rhombus-toolkit/type-helpers": "^2.0.0",
-    "@rhombus-toolkit/types": "^1.0.1"
+    "@rhombus-toolkit/types": "^2.0.0"
   },
   "devDependencies": {
     "@rhombus-std/primitives.extras": "workspace:*",
