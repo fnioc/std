@@ -40,20 +40,26 @@ does one table lookup.
 | -------- | ----------------- | ------------------------ | ------------------ |
 | scope id | a unique `Symbol` | the singleton scope's id | the scope's id     |
 
-The shape (owner-approved 2026-09-04): the lifetime middleware is built once, when the addon's
-middleware receives the engine's `getService`, into a slot the scope factory already holds; the
-scope factory is a class registered as a value; each provider is that one function wrapped in a
-marker carrying its scope's id.
+The shape (owner-approved 2026-09-04): an `Addon` is stateless and reusable; its `create()` runs
+once per installation and returns an `AddonInstallation`, the `{ registrations, middleware }` pair.
+Inside `create()`: the lifetime middleware is built once, when the installation's middleware
+receives the engine's `getService`, into a slot the scope factory already holds; the scope factory
+is a class registered as a value; each provider is that one function wrapped in a marker carrying
+its scope's id.
 
 ```ts
 export function standardLifetime(): Addon<StandardLifetime> {
-  const state = { lifetime: undefined as GetService | undefined, scopes: new ScopeTable() };
-  const singletons = state.scopes.open();
   return {
-    registrations: [Registration.value(typefor<IServiceScopeFactory>(), new ScopeFactory(state))],
-    middleware: getService => {
-      state.lifetime = lifetimeMiddleware(getService, state.scopes, singletons); // the one write
-      return createMarkerMiddleware(singletons.id)(state.lifetime);
+    create(): AddonInstallation<StandardLifetime> {
+      const state = { lifetime: undefined as GetService | undefined, scopes: new ScopeTable() };
+      const singletons = state.scopes.open();
+      return {
+        registrations: [Registration.value(typefor<IServiceScopeFactory>(), new ScopeFactory(state))],
+        middleware: getService => {
+          state.lifetime = lifetimeMiddleware(getService, state.scopes, singletons); // the one write
+          return createMarkerMiddleware(singletons.id)(state.lifetime);
+        },
+      };
     },
   };
 }
