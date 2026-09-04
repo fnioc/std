@@ -250,11 +250,30 @@ function makeGadget(bar: IBar): IGadget {
 }
 
 declare const provider: IServiceProvider;
+declare const bar: IBar;
 
 export const tokenful = provider.resolve<IThing>();
 export const tryTok = provider.resolve<IThing>();
 export const asyncThing = provider.resolveAsync<IThing>();
-export const many = provider.resolveMany<IThing>();
+export const many = provider.resolveIterable<IThing>();
+// Every remaining ask row: each derives the ELEMENT type and leaves the shape to
+// the verb, and each \`try\` twin lowers to the twin, never to the plain form.
+export const tried = provider.tryResolve<IThing>();
+export const arrayed = provider.resolveArray<IThing>();
+export const triedArray = provider.tryResolveArray<IThing>();
+export const triedIterable = provider.tryResolveIterable<IThing>();
+export const triedAsync = provider.tryResolveAsync<IThing>();
+export const arrayAsync = provider.resolveArrayAsync<IThing>();
+export const triedArrayAsync = provider.tryResolveArrayAsync<IThing>();
+export const iterableAsync = provider.resolveIterableAsync<IThing>();
+export const triedIterableAsync = provider.tryResolveIterableAsync<IThing>();
+export const asyncWalk = provider.resolveAsyncIterable<IThing>();
+export const triedAsyncWalk = provider.tryResolveAsyncIterable<IThing>();
+// The value-driven rows observe the callable in hand instead of a type argument.
+export const built = provider.instantiate(Widget);
+export const triedBuild = provider.tryInstantiate(Widget);
+export const invoked = provider.invoke(makeGadget);
+export const triedInvoke = provider.tryInvoke(makeGadget);
 // A type LITERAL is a service type like any other: it derives its own token
 // rather than collapsing to the literal value.
 export const singular = provider.resolve<'dev'>();
@@ -601,14 +620,68 @@ describe.skipIf(!toolchainReady)('generic inline stage — lookup parity (W5)', 
     assertNoAuthoringSurvivors(resolveInline);
   });
 
-  test('resolveMany<I>() derives the ELEMENT type, not a collection type', () => {
+  test('resolveIterable<I>() derives the ELEMENT type, not a collection type', () => {
     // The collection is the verb's own doing; the type argument names one element,
     // so the token is the bare element type.
     const line = lineWith(resolveInline, 'many =');
     expect(line).toBeDefined();
     const thing = constFor(chainModule, 'Type.imported("IThing", "chain-app/private/resolve")');
-    expect(line).toContain(`.resolveMany(${thing})`);
-    expect(line).not.toContain('resolveMany<');
+    expect(line).toContain(`.resolveIterable(${thing})`);
+    expect(line).not.toContain('resolveIterable<');
+  });
+
+  test('every other ask row lowers to its own Type-taking member, the try twins included', () => {
+    // The shape is the verb's own doing throughout, so each row derives the bare
+    // element type and a `try` twin lowers to the twin rather than the plain form.
+    const thing = constFor(chainModule, 'Type.imported("IThing", "chain-app/private/resolve")');
+    const rows = [
+      ['tried =', 'tryResolve'],
+      ['arrayed =', 'resolveArray'],
+      ['triedArray =', 'tryResolveArray'],
+      ['triedIterable =', 'tryResolveIterable'],
+      ['triedAsync =', 'tryResolveAsync'],
+      ['arrayAsync =', 'resolveArrayAsync'],
+      ['triedArrayAsync =', 'tryResolveArrayAsync'],
+      ['iterableAsync =', 'resolveIterableAsync'],
+      ['triedIterableAsync =', 'tryResolveIterableAsync'],
+      ['asyncWalk =', 'resolveAsyncIterable'],
+      ['triedAsyncWalk =', 'tryResolveAsyncIterable'],
+    ] as const;
+    for (const [needle, member] of rows) {
+      const line = lineWith(resolveInline, needle);
+      expect(line).toBeDefined();
+      expect(line).toContain(`.${member}(${thing})`);
+      expect(line).not.toContain(`${member}<`);
+    }
+    assertNoAuthoringSurvivors(resolveInline);
+  });
+
+  // resolveWith<IGadget, [IBar]>(bar) must lower to
+  // `.resolveWith(Type.func($IGadget, [[$IBar]]), bar)`, and its async row to a
+  // `Type.global("Promise", [$IGadget])` return. The stage substitutes a body type
+  // parameter standing alone as a type argument (`typefor<ServiceType>()`) but not one
+  // nested inside a composed one (`typefor<Func<Args, ServiceType>>()`), which survives
+  // lowering verbatim and fails the compilation, so the fixture cannot carry the calls yet.
+  test.todo('the callable rows derive a whole function type and thread the call arguments through');
+
+  test('instantiate and invoke observe the callable in hand rather than a type argument', () => {
+    const barType = constFor(chainModule, 'Type.imported("IBar", "chain-app/private/resolve")');
+    const gadget = constFor(chainModule, 'Type.imported("IGadget", "chain-app/private/resolve")');
+    const widget = constFor(chainModule, 'Type.imported("Widget", "chain-app/private/resolve")');
+    const ctorType = constFor(chainModule, `Type.ctor(${widget}, [[${barType}]])`);
+    const funcType = constFor(chainModule, `Type.func(${gadget}, [[${barType}]])`);
+    const rows = [
+      ['built =', 'instantiate', ctorType, 'Widget'],
+      ['triedBuild =', 'tryInstantiate', ctorType, 'Widget'],
+      ['invoked =', 'invoke', funcType, 'makeGadget'],
+      ['triedInvoke =', 'tryInvoke', funcType, 'makeGadget'],
+    ] as const;
+    for (const [needle, member, derived, callable] of rows) {
+      const line = lineWith(resolveInline, needle);
+      expect(line).toBeDefined();
+      expect(line).toContain(`.${member}(${derived}, ${callable})`);
+    }
+    assertNoAuthoringSurvivors(resolveInline);
   });
 
   test('a type LITERAL derives its own token like any other service type', () => {
