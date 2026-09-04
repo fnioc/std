@@ -3074,30 +3074,32 @@ _Owner-ruled; Claude-recorded 2026-08-27._
 
 ---
 
-## §204 — One aggregated engine handler; Starfish composes by fold; providers are state-transforming closures
+## §204 — The door files a bundle; dispatch is precomputed per hook kind; a behavior threads its own state
 
-The engine holds exactly one handler, born of aggregation, carrying all four members
-(`beginResolve`/`beforeConstruct`/`canonicalize`/`afterConstruct`) — never a list the realize walk
-iterates. Its `realize` is a straight script: the single fork it runs is whichever the caller
-supplied or, absent that, the one it builds itself: no branch-per-addon, no dispatch table.
+The engine holds one entry per installed behavior — `InstalledHooks` keeps the list — and install
+and dispose each rebuild the always-active dispatch: per hook kind, the entries implementing it, in
+install order. The ask path therefore walks only what can run and steps over every kind nobody
+implements, and a resolution reads the snapshot it opened under, so an install made while it is in
+flight reaches the next resolution instead.
 
-The door files per bundle, not per hook: `useHooks` takes one `Behavior` whose up to four members
-each accept either a plain handler function or Koa-style middleware with a trailing `next`,
-discriminated by the filed function's declared arity. Every contribution composes by fold, not by
-list-and-iterate-at-call-time; the built chain sits outermost and the first-filed bundle
-innermost, so a scope's keepers — filed first, per request — run closest to the construction and
-an addon middleware observing through `next` sees a scope-cache answer come back.
+The door files per bundle, not per hook: one `Behavior` whose five members
+(`beforePlan`/`beginResolve`/`beforeConstruct`/`canonicalize`/`afterConstruct`) each accept either
+a plain handler function or Koa-style middleware with a trailing `next`, discriminated by the filed
+function's declared arity and read once, at install.
 
-A provider is one closure that decorates the walk: it injects its own state at resolution-open,
-which means `beginResolve` is, structurally, a state transformer — it receives the incoming state
-and answers the state the rest of the walk sees, never a side channel. An addon that needs a
-private compartment invisible to sibling addons packs that compartment itself, in middleware form,
-closing over its own state; the platform manages no slots, roster, or namespace on an addon's
-behalf.
+Always-active entries run first, in install order; the ask's activated staged entries follow, in
+activation order — so a lifetime model's own staged behavior, activated by the layer the ask entered
+through, runs closest to the construction, and an always-active behavior stands outside it and sees
+that answer come back through its `next`.
 
-An addon contributes its permanent hooks as data on its installation; the builder composes them
-once into the built chain, so hook count at registration time costs nothing at call time beyond
-the folds already paid for — never a runtime layer the walk must additionally step through.
+A behavior threads its own state and nothing else: `beginResolve` receives the incoming state and
+answers the state the rest of the walk sees for that behavior alone, never a side channel, each
+behavior's answers living in its own slot (§227). An addon needing a private compartment has one by
+construction; the platform manages no roster or namespace on an addon's behalf.
+
+An addon plants its permanent hooks itself, at build: its middleware asks the engine for its control
+through `next` and installs there, so hook count at install time costs nothing at call time beyond
+the dispatch lists already built — never a runtime layer the walk must additionally step through.
 
 `scope` names only the lifetime models' own vocabulary; `walk` names only the realize visitor's
 traversal. Neither hook, provider, nor addon machinery borrows either word.
@@ -3132,142 +3134,62 @@ ambient lifetime model plus its companion addon, authored against `di.core` alon
 
 ---
 
-## §206 — Resolution is a decorator stack; every provider is a just-in-time skin; middleware is builder sugar
+## §207 — The observing surface is vocabulary-blind; the threaded data is named `state`; the pipeline type stands alone
 
-The resolution surface is a decorator stack with the engine as its terminus. A builder-fed
-`MiddlewareServiceProvider` is the captured head of that stack — the layer a builder assembled from
-its own registered middleware, sitting in front of the engine and nothing else. An empty builder
-composes an empty chain, and elides to the bare engine: a provider with no middleware pays no
-wrapping cost, and defaults live in builders, never in the core.
+`Middleware` — the curried pipeline type a builder composes — stands in its own di.core module.
+There is no internal protocol type: what a container resolves through is a plain `IServiceProvider`
+over one `GetService`.
 
-Every provider a caller holds is a skin: the empty augmented `ServiceProvider` surface, minted
-just-in-time over an internal open-speaking layer underneath. The skin carries no state of its
-own — it exists to give the caller the augmented public shape over whatever internal layer is
-actually doing the speaking.
-
-A scope is a per-scope factory minting its own skin, and the skin carries the whole lifetime
-implementation hardcoded to its scope: its keeper hooks ride each request as per-request filings
-down to the engine. Those keepers are scope-local: they die with the scope's provider, and they
-are never a door registration — nothing installs a scope's keeping into the manifest, because
-nothing outside the scope's own lifetime should ever reach it.
-
-The scope provider's per-request seed is what opens the resolution's state: it answers the
-captured state where one exists — a re-entering closure keeps the world it was minted in — and
-its own scope otherwise. There is no second path to a resolution's state; every opening goes
-through the aggregated `beginResolve`.
-
-Middleware is authorship sugar on the builder (`use`) — a way to add to the chain without
-touching a decorator by hand. Decorators are the composition idiom itself, and carry no registration
-API of their own: a decorator is written and wrapped, never registered. Starfish carries `useHooks`
-and `getService` — file on the door, resolve through the door — and `bind` and
-`Binding` do not exist, here or anywhere in this stack.
-
-_Owner-ruled; Claude-recorded 2026-08-27._
-
----
-
-## §207 — The observing surface is vocabulary-blind; the threaded data is named `state`; the head stands apart
-
-`Middleware` — the curried decorator of the provider contract a builder composes — stands
-in its own di.core module. There is no internal protocol type: the thing a container resolves
-through is a plain `IServiceProvider`, and the lifetime-model contract's attach receives exactly
-that.
-
-The addon and hook surfaces carry no lifetime generic. `Addon` and `AddonInstallation` are
-non-generic, and an installation's registrations are `Iterable<Registration<any>>`: a generic
-addon takes its lifetime as an argument (`LifetimeArgument`) precisely because it cannot know the
-container's vocabulary, so a type-level ferry of that vocabulary buys nothing the model's own
-runtime read doesn't already enforce with a better error. The observing types — `Construction`,
-the four handler/middleware families, `Hooks`, the `Starfish` door — are likewise
-vocabulary-blind: `Construction.registration` is `Registration<unknown>`, and the one party that
-interprets lifetimes, the model, narrows structurally the way `LifetimePolicy.classify` does. The
-`Lifetime` generic survives only where vocabulary is authored: the `Addon<Lifetime>` a lifetime
-model is, the manifest, the builder.
+The observing types are vocabulary-blind. `Hooks`, `Behavior`, `Hooks.Construction` and
+`Hooks.Interception` name no lifetime, and `Construction.registration` is `Registration<unknown>`:
+the one party that interprets a lifetime is the model, which narrows structurally at runtime, with
+a better error than a type-level ferry of the vocabulary would buy. The `Lifetime` generic lives
+where vocabulary is authored — the manifest, the builder, and the `Addon<Lifetime>` a lifetime
+model is, whose installation files `Iterable<Registration<Lifetime>>` so the builder's locked-on
+vocabulary is the one its registrations name. A generic addon that cannot know the container's
+vocabulary takes its lifetime as an argument (`LifetimeArgument`).
 
 A lifetime model has no contract of its own: it is an `Addon<Lifetime>`, installed through the
 builder's `useAddon`, and its middleware receives `next` exactly as every other addon's does
 (§215).
 
 The per-resolution threaded data is named **state** — the `State` generic on the observing types
-and `Construction.state`. 'Context' names nothing in this stack; `Interception.state` and the
+and `Construction.state`. 'Context' names nothing on that surface; `Interception.state` and the
 `injected` parameter keep their names.
 
 _Owner-ruled; Claude-recorded 2026-08-27._
 
 ---
 
-## §210 — Lifetime classification ranks numeric keeper tiers; the three-word vocabulary belongs to the standard model alone
+## §211 — One hooks control; a staged install gates on the ask that activated it, an always-active one runs for every ask
 
-`LifetimePolicy.classify` answers `{ tier, label } | 'unkept' | undefined`: tier 0 is the
-container root and a higher tier a narrower keeper, `label` is the tier's human name for error
-text, `'unkept'` means constructed per ask and kept by nothing (transparent to captivity in both
-directions — never captive as a dependency, looked through as a consumer), and `undefined` means
-the lifetime is model-defined and ranks only at runtime (owner: "undefined isn't opt-out, it's
-model defined"). The validator flags a captive wherever a kept registration's subtree constructs
-one kept by a strictly narrower tier, the nearest kept ancestor serving as the keeper context —
-so a model with several nested tiers gets inter-tier captivity detection the words could not
-express (owner: tiers "accomplish the same validation, but more generalized"; implemented on his
-"fix the classifier if you're confident that it's correct"). `StandardLifetime` thereby stops
-being the validator's vocabulary and lives beside the `standard` model in `di`, exactly as
-`TaggedLifetime` lives beside `tagged`; di.core's `LifetimeArgument.ts` keeps only
-`LifetimeArgument`. The engine-hook vocabulary
-(`Construction`, `Interception`, the handler/middleware pairs, `Hooks`, `Behavior`) is not
-lifetime material and lives in `di.core/src/hooks.ts` (owner: "the majority are not lifetime
-related (just bc lifetime uses them doesn't count)").
+There is one hook door and one install model. `ControlService` — a public `di.core` interface — is
+the single control the engine answers for hook access, reached through the chain like any service:
+a middleware asks for it at fold time with `next(new ControlRequest(typefor<ControlService>()))`.
 
-Validation itself belongs to each model rather than to a shared addon reading this policy — see
-§229, which is where the error's wording is answered.
+It carries two installs, both taking effect immediately and both undone by disposing the `Handle`
+they answer. `installHooks(hooks)` runs them for every ask, outermost, ahead of every staged
+behavior. `stageHooks(hooks)` gates them: they run only for an ask that activated the handle, which
+a layer writes as `next(request.activate(handle))`. Permanent installation and per-ask installation
+are not two mechanisms — they differ in that gate, in where the install is made, and in whether the
+disposer is ever run: held for the container's life, or bracketed in a `using` block.
 
-_Owner-directed; Claude-recorded 2026-08-28._
+Install and dispose are cold. The engine keeps one entry list: installing appends, disposing empties
+that slot and never reuses it, and each rebuilds the always-active dispatch once — so nothing on the
+ask path installs, splices or checks for removal, and a request still naming a disposed handle
+simply fails its gate. There is no separate "window" tier and no per-addon tier standing at its own
+distance from the walk: an always-active entry's distance is where its install stands among the
+others, and every staged entry stands inside every always-active one.
 
-## §211 — One stateful install list replaces Starfish; permanent vs scoped is only where useHooks is called
+An addon's own middleware asks for `ControlService` once, at fold time, stages its behavior there,
+and activates the handle on every ask it forwards: `next(request.activate(handle))`. Every control
+ask passes straight through such a layer unchanged — no branch, no special case at all: "no special
+cases" is the standing rule, and the single-door model means a control reaching a layer needs
+nothing done to it.
 
-There is one hook door and one install model. `Control<IEngineHooks>` — now a public `di.core`
-interface — is the single control the engine answers for hook access; `Starfish` is gone.
-`IEngineHooks.useHooks(hooks: Behavior): Disposable` installs `hooks` immediately, over every
-resolution the container answers from that point on, and disposing the answer uninstalls exactly
-that install. Permanent installation and scoped installation are not two mechanisms — they are the
-same call, differing only in where it is made and whether the disposer is ever run: held for the
-container's life, or bracketed in a `using` block. The owner's own framing: "drop the starfish
-interface. all hooks ALWAYS install immediately, and are ALL uninstallable via a disposer returned
-from the useHooks call. permanant installation vs getService scoped is just in _where_ it's called
-and _if_ it's disposed." And on the mechanism itself: "why don't you just keep a stateful array of
-hooks on the engine, and dispose removes them the list referentially?"
-
-The engine keeps exactly that: one `#installed: HookLayer[]`, seeded at construction from the
-built chain's own behaviors, appended to by every later `useHooks` call, and spliced by referential
-`lastIndexOf` when a disposer runs — the same disposer shape the removed `activate` used, now the
-only shape there is. Folding a resolution's hooks is uniform LIFO: the most recently installed
-layer stands innermost, closest to the construction, and the earliest-installed layer — the built
-chain — stands outermost, `installed.reduceRight(layered, identity)`. There is no separate
-"window" tier and no separate "activation" tier standing at different distances from the walk; an
-install is an install, and its distance from the walk is purely a function of when it was made
-relative to everything else still installed.
-
-`ScopeProvider` asks for `Control<IEngineHooks>` once, at construction, and stores the handle
-alongside its own `keeping` and `probing` behaviors — minted once, installed fresh around every
-forwarded ask: `using _probing = hooks.useHooks(probing); using _keeping = hooks.useHooks(keeping);`
-before `#inner.getService(address)`. Installing probing first and keeping second keeps keeping
-innermost, matching the order the prior activation handle held its own entries in. Every control
-ask now passes straight through this provider unchanged — there is no `Control<Starfish>` branch,
-no `ProviderBoundStarfish`, no special case at all: "no special cases" is the standing rule, and
-the single-door model means a control reaching this provider needs nothing done to it.
-
-The scope's learned-answers memo now serves unconditionally, before any bracket is installed: "the
-short circuit SHOULD bypass EVERYTHING, including hooks. later, if we need, we can add a
-configuration option to disable it." A future opt-out is a config knob to add when a use case
-demands it, not a branch to pre-build now.
-
-Deleted: `Starfish` (di.core), `VolatileStarfish`, `IEngineHookState`, `IActivatable`, the
-`ProviderBoundStarfish` class, `HookHandle`, `aggregateHooks`, `Engine#activate`,
-`Engine#openWindow`. `aggregate-hooks.ts` keeps `hookLayer`, the identity chain, and the four
-compose functions, and now exports one fold, `foldHooks`.
-
-This also closes the private-specifier concern the hooks control ask used to carry: `IEngineHooks`
-lived under an internal, unpublished module path, so an error naming that control address in text
-a published consumer could see cited a specifier nothing outside the package could resolve.
-`IEngineHooks` is now `di.core` public surface, so the address it derives from is one every
-consumer of the package can already resolve.
+`ControlService` is `di.core` public surface, so the address it derives from is one every consumer
+of the package can resolve, and an error naming that address in text a consumer sees cites a
+specifier they can reach.
 
 _Owner-ruled; Claude-recorded 2026-08-28._
 
@@ -3346,55 +3268,15 @@ tracked will be just a func, not an sp." `ServiceProvider` holds exactly that on
 one `@augment` carrier.
 
 A lifetime model is an `Addon`, `{ middleware, registrations }`, and nothing more. A model's
-`middleware` composes exactly like any other: it receives `next` (what `attach` used to receive as `inner`, renamed to match every other middleware's own parameter)
-and answers what runs in its place. Choosing a lifetime model is the builder's first call, so its
-middleware is the first entry in `di.ts`'s one middleware list — `[modelMiddleware, ...installations
-.map(...)]` — and the standing rule ("first call composes outermost") places it outermost without
-a special case for models at all. `registrations` files at the floor, exactly where `scopeFactory`
-used to. `build()` folds that one list with `reduceRight` around `address => engine.getService
-(address)` and hands the result straight to `new ServiceProvider(head)` — one mint site, unconditional,
-closing the open wrap-coverage question `MiddlewareServiceProvider` used to leave: an empty
-middleware list needs no identity-elision branch, since folding zero middlewares around the base
-function returns that function unchanged. `MiddlewareServiceProvider.ts` is deleted; the fold it
-existed for is the same three lines inline in `build()`.
-
-`standard`'s and `tagged`'s root-scope machinery — mint the root, answer where a later ask sits
-relative to it — was identical between them but for how a child scope's own constructor is called,
-so it is now shared plumbing, `anchorRoot(kind, root)` in a new `models/root-anchor.ts`, returning
-`{ middleware, enclosingScope, openChild }`; each model supplies only its own `openFrom` closure and
-child-construction call. `noop` needed no change — `{}` already satisfied the new shape.
-
-Two picks the owner left to my judgment, both flagged for his review rather than decided quietly:
-
-_The `resolvesFrom` replacement._ `ScopeProvider` — the class that used to BE the per-scope
-`IServiceProvider`, letting `instanceof ScopeProvider` answer "is this ours" — is gone; the class
-dropping out of the provider-decorator role is the whole point of this ruling. What replaces it,
-`ScopeBinding` (`models/ScopeBinding.ts`, renamed from `ScopeProvider.ts`), mints a scope's bracket,
-its memo, and a `new ServiceProvider(dispatch)` face, and records the pairing in a module-private
-`WeakMap<IServiceProvider, ScopeBinding>`. `resolvesFrom` keeps its name, per the brief, but its
-signature changes from a type predicate (`container is ScopeProvider<S>`) to `S | undefined` — the
-scope itself, when `container` is a face this module minted and it resolves from a scope of `kind`,
-`undefined` otherwise. A caller wanting only the yes/no reads it as truthy; `root-anchor.ts`'s
-`enclosingScope` wants the scope itself, so the richer answer serves both without a second lookup.
-
-_The `scope.provider` face, and what it costs._ `Scope.provider` (read by `keeping`'s
-`beforeConstruct` to answer an `IServiceProvider` slot) is now the `ServiceProvider` `ScopeBinding`
-mints for that scope — the honest, augmented face, as ruled — rather than an internal object with no
-`resolve`/`resolveMany` sugar. The concrete consequence: for the ROOT scope specifically, this face
-is a DIFFERENT `ServiceProvider` instance than the one `di.ts`'s `build()` mints when it wraps the
-final folded `head` — both close over the identical dispatch function underneath (so both resolve
-every address identically), but they are not `===`. The smoke harness's two identity assertions on
-an injected root-scope `IServiceProvider` (`x.provider === container`) had to become behavioral
-checks (`x.provider.getService(K) === container.getService(K)`) to keep passing. This is a direct
-reading of the ruling as given — "Container = `new ServiceProvider(head)`" is unconditional, no
-special case reusing a scope's own minted face — but it is a real, observable shape change from the
-prior single-object-per-root-container invariant, worth the owner's eyes before it settles.
-
-Alongside the reshape: the interface `ChainAddon` renames to `Addon` — `libraries/di.core/src
-/ChainAddon.ts` moves to `Addon.ts`. `AddonInstallation` keeps its own name; only the addon contract
-itself was named `ChainAddon`, and nothing about what it describes changed. Every reference follows:
-the `di.core` barrel (alphabetical position moves ahead of `brands`), `di.ts`'s `useAddon` parameter,
-and both addons (`auditAddon`, `validation`).
+`middleware` composes exactly like any other: it receives `next` and answers what runs in its place,
+taking its position in `di.ts`'s one middleware list where `useAddon` was called — choosing a model
+is typically the builder's first call, and the standing rule ("first call composes outermost")
+places it outermost with no special case for models at all. Its `registrations` file at the floor,
+beneath every later addon's. `build()` folds that one list — every installation's middleware, the
+engine's own appended last — with `reduceRight` around a terminus that refuses an address nothing
+produces, and hands the result straight to `new ServiceProvider(head)`: one mint site,
+unconditional, since folding zero middlewares around the base function returns that function
+unchanged.
 
 _Owner-ruled; Claude-recorded 2026-08-28._
 
@@ -3510,122 +3392,29 @@ exists for, proven rather than reasoned about.
 
 _Owner-ruled; Claude-recorded 2026-08-28._
 
-## §219 — A scope's memo learns only the address its own dispatch was asked for; a noop container's injected provider is the augmented face
+## §222 — `Hooks` spells every signature inline; `Behavior` is derived from it
 
-`ScopeBinding`'s learned-answers memo commits only a construction whose address AND instance both
-match what its own `dispatch` call actually returns — address alone is not enough. `#dispatchedAddress`
-holds the address the innermost `dispatch` call on the stack was asked for; `#pending` holds the
-`[address, instance]` pair `probing`'s `learn` callback proposes for it, provisional until `dispatch`
-compares it against its own `next(address)` return value and commits it to `#learnedAnswers` only on
-a match. Both fields shadow and restore around a nested `dispatch` through the same binding the same
-way, in the same `finally`, so a unit of work opened from inside another still proposes under its own
-address and instance, exactly as before. A construction reached along the way with a different
-`populatedAddress` than the dispatch it was reached under — a collection member sharing its element's
-address, a nested address a `use()` middleware answers specially at the top level — is never even
-proposed. But address match alone isn't proof the proposal IS the dispatch's answer: a lazily-drained
-collection (`visitIterable`'s deferred realize, running through hooks captured at an earlier,
-unrelated dispatch) can realize an element sharing the CURRENT dispatch's own address while that
-dispatch is still on the stack, coincidentally matching on address while proposing an instance nobody
-asked for. The identity check is what refuses that proposal while still committing the dispatch's own
-real answer. Two consequences follow, accepted: a `use()` middleware that decorates its own address is
-never fast-pathed here — the raw instance `probing` sees is never the decorated instance the
-middleware hands back, so the memo never commits and the middleware keeps running on every ask, with
-correctness intact regardless since this memo bypasses everything for what it does learn — and a
-union-addressed ask never memoizes at all, since `populatedAddress` is the resolved member, never the
-union asked for; perf-only, since the scope's own instance map still answers it correctly.
+`Hooks`' five members spell their handler-form signature directly — `beginResolve: Func<[request:
+Request, injected: State], State>` and so on — the one place the signatures and their per-hook docs
+live, `canonicalize`'s built-only/no-thenable remark among them. There are no per-hook handler and
+middleware alias types standing beside them; the owner weighed several naming shapes for such a set
+and settled on the most direct answer himself, then delegated the pick outright: "choose the answer
+you like best and do it. proceed with plan." `Construction` and `Interception` sit inside the
+`Hooks` namespace — `Hooks.Construction<State>`, `Hooks.Interception<State>` — the owner's "do it
+for hooks" ruling; `hooks.ts` carries the `Handle` and `Hooks` interfaces and that namespace, and
+nothing else.
 
-A `noopLifetimeAddon()` container's injected `IServiceProvider` slot is the engine's own augmented face now, not
-the bare `Engine`. `Engine` merges in `resolve`/`resolveMany` at the type level, but only the public
-`ServiceProvider` wrapper carries the `@augment` install, so an `Engine` handed
-out directly threw `TypeError` the moment anything called the augmented verbs on it. `RealizeVisitor`
-mints one `ServiceProvider` per `Engine` the first time anything asks, cached in a module-level
-`WeakMap<Engine, ServiceProvider>` — one stable face per engine across every construction that
-reaches it, not a fresh wrapper each time. `RealizeVisitor.ts` was already committed as owner-approved
-before this fix; this is a post-approval change riding the same commit as the memo fix.
+`Behavior` is derived, not hand-spelled, per the owner's directive: "make a mapped type for the koa
+pattern". `Koa<Handler>` is the koa pattern as a conditional type — a handler's middleware form is
+the same signature with a trailing `next`, standing for everything beneath the layer: `Handler
+extends Func<infer Args, infer Answer> ? Func<[...Args, next: Handler], Answer> : never`.
+`Behavior<State>` is the mapped type over `Hooks`' own shape, each member optional and widened to
+its handler-or-middleware union: `{ readonly [K in keyof Hooks<State>]?: Hooks<State>[K] |
+Koa<Hooks<State>[K]> }`. A standalone implementation of one member, predefined before it's assigned, is
+typed by indexed access — `Hooks['beginResolve']`, `Behavior['beforeConstruct']`.
 
-Cheap hardening from the same review: `auditAddon`'s `beforeConstruct`/`canonicalize`/
-`afterConstruct` used to destructure `construction.state` as its own pack unconditionally; all three
-now check `isOwnPack` first, the same guard `beginResolve` already used, and pass the construction
-through unchanged when the state isn't this addon's own — nothing to contribute, nothing safe to
-unwrap. `Engine.useHooks`'s disposer guards its `lastIndexOf` result before splicing, so a
-hypothetical miss can't remove an unrelated layer at the same index. Left alone, both noted rather
-than fixed: the `{state: undefined}` keeper crash, and `resolvesFrom`'s
-cross-container discrimination, which has no live path to reach today.
-
-Of the concerns this verification pass raised, one is resolved and two stay open. The `noopLifetimeAddon()` face
-fix — an injected `IServiceProvider` slot answering the engine's own augmented face rather than the
-raw `Engine` — is accepted as shipped: "pending your in-flight changes, everything is approved."
-Still open, awaiting the owner: `resolvesFrom`'s `WeakMap` keys the public `face`, and
-nothing distinguishes a provider's own identity from the container it resolves from if two bindings
-ever shared a face; and `Audit`'s placeholder registration body's wording ("the audit-addon
-addon answers this at construction") reads as an implementation note rather than caller-facing
-guidance.
-
-_Owner-ruled; Claude-recorded 2026-08-28._
-
-## §221 — `Behavior` owns its own composition
-
-`Behavior.compose(behavior, inner)` — a namespace merged onto the `Behavior` interface, both now in
-their own `Behavior.ts` — is the one exported member: `behavior` standing over `inner`, each of the
-four hooks `behavior` wrote composing over `inner`'s own and a member it left off passing `inner`'s
-straight through. The four per-hook composers and the middleware-vs-handler arity check live in the
-namespace alongside it, unexported. `hooks.ts` keeps the rest of the vocabulary the two files once
-shared — the handler/middleware aliases, `Construction`, `Interception`, `Hooks` — and carries its
-own namespace merge, `Hooks.identity`: the chain that supplies nothing, changes nothing, and passes
-state straight through, the same value `aggregate-hooks.ts` once held under that name.
-`aggregate-hooks.ts` is deleted outright — `foldHooks` (single-use) inlines at its one call site in
-`getService`: `this.#installed.reduceRight((inner, layer) => layer(inner), Hooks.identity)`.
-`HookLayer` has exactly one remaining use once `foldHooks` is gone — the `#installed` field's
-annotation — so the type itself inlines too, `Array<Func<[inner: Hooks], Hooks>>`, its doc carried
-onto the field: each layer is the chain standing outside whatever it's handed, held by identity as
-the token `useHooks`'s disposer looks up to remove exactly the one it installed. The `const layer`
-local inside `useHooks` stays a named binding — `push` and the disposer's `lastIndexOf` both need
-the same identity to hand back later, so it isn't a spot an anonymous expression can take its place.
-`Behavior` was already an interface, so no alias-to-interface conversion was needed for the merge.
-
-_Owner-ruled; Claude-recorded 2026-08-28._
-
-## §222 — The eight hook alias types are gone; every signature spells inline
-
-`BeginResolveHandler`/`BeginResolveMiddleware`, `BeforeConstructHandler`/`BeforeConstructMiddleware`,
-`CanonicalizeHandler`/`CanonicalizeMiddleware`, and `AfterConstructHandler`/`AfterConstructMiddleware`
-don't exist. The owner weighed several naming shapes for the eight and settled on the most direct
-one himself, then delegated the pick outright: "choose the answer you like best and do it. proceed
-with plan." `Hooks`' four members spell their handler-form signature directly —
-`beginResolve: Func<[request: Type, injected: State], State>` and so on — the one place the
-signatures and their per-hook docs live, `canonicalize`'s built-only/no-thenable remark folded in
-from where `Behavior` used to carry it. `Construction` and `Interception` move into the `Hooks`
-namespace — `Hooks.Construction<State>`, `Hooks.Interception<State>` — the owner's "do it for hooks"
-ruling; `hooks.ts`'s top level is now the `Hooks` interface and namespace alone.
-
-`Behavior` is derived, not hand-spelled, per two more owner directives: "make a mapped type for the
-koa pattern and type the compose functions properly -- no casts" and "make a generic generalized
-version for the first half of all those compose functions." `Koa<Handler>` is the koa pattern as a
-conditional type — a handler's middleware form is the same signature with a trailing `next`,
-standing for everything beneath the layer: `Handler extends Func<infer Args, infer Answer> ?
-Func<[...Args, next: Handler], Answer> : never`. `Behavior<State>` is the mapped type over `Hooks`'
-own shape, each member optional and widened to its handler-or-middleware union: `{ readonly [K in
-keyof Hooks<State>]?: Hooks<State>[K] | Koa<Hooks<State>[K]> }` — an interface converts to a type
-alias to hold it, alias and namespace coexisting the same way `Type` already does in `primitives`. A
-standalone implementation of one member, predefined before it's assigned, is typed the same
-indexed-access way either interface always allowed — `Hooks['beginResolve']`,
-`Behavior['beforeConstruct']`.
-
-`Behavior.compose` is castless. `ownsChain` is a typed guard, `hook is Middleware`, so both its
-branches narrow on their own; one generic helper, `composeMember`, covers the uniform first half of
-all four composers — absent, middleware, or handler are the same three-way branch for every hook,
-with `next.length` standing in for the per-hook handler arity the four now-deleted aliases used to
-carry as a magic number (verified equal to each handler's own declared arity in all four cases). An
-absent hook is the first branch, `if (!hook) { return next; }`, so `compose`'s own body drops its
-per-member ternaries for four plain assignments — the guard lives once, at `composeMember`'s top,
-and the four per-hook second halves (how a HANDLER combines with `next`) never see an absent one.
-`audit-addon.ts` restructures per the owner's own observation: its four hooks predefine together as
-one `Behavior<unknown>` object literal — contextual typing carries each slot's shape without a
-per-member alias annotation, each hook's doc sitting directly above its own property.
-`classifying-hooks.ts`'s `ConstructionHooks<State>` and `ScopeBinding.ts`'s `ownScopeKeeps`/
-`RealizeVisitor.ts`'s `#realize` name `Hooks.Construction<State>` where they need the shape
-explicitly; `ScopeBinding.ts`'s `keeping` gives its `beginResolve` arrow explicit parameter types
-where the union contextual-types an anonymous function ambiguously otherwise.
+Which form a filed member takes is read from its declared arity, once, at install (§204), so a hook
+declaring more parameters than its handler form runs as middleware.
 
 _Owner-ruled; Claude-recorded 2026-08-28._
 
