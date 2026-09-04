@@ -10,8 +10,8 @@ on the condition that the architecture is complete first.
 
 - The standard lifetime model is an addon. The engine knows nothing of lifetimes.
 - The addon installs two middlewares on the provider it builds, outermost first:
-  1. **The marker middleware.** Stamps every request with the lifetime kind of the provider it
-     entered through. On the addon's own provider the kind is `'singleton'`.
+  1. **The marker middleware.** Stamps every request with the id of the scope of the provider it
+     entered through. On the addon's own provider that is the singleton scope's id.
   2. **The implementation middleware.** The whole lifetime model, implemented with hooks only. It
      holds every cache: the singleton cache, and one cache plus one disposable set per open scope,
      keyed by scope id.
@@ -21,8 +21,8 @@ on the condition that the architecture is complete first.
 ### Opening a scope
 
 - `openScope()` takes no argument. Each call mints a fresh scope id (a `Symbol`), builds a marker
-  middleware stamping kind `'scoped'` and that id, and returns a new `ServiceProvider` whose
-  pipeline is that marker over the same implementation middleware.
+  middleware stamping that id, and returns a new `ServiceProvider` whose pipeline is that marker
+  over the same implementation middleware.
 - Markers never stack: exactly one per provider. The operation is identical whether the factory was
   resolved from the `'singleton'` provider or from a scope.
 - Every open scope is independent: its own cache, its own disposables. Only singletons are shared,
@@ -210,33 +210,31 @@ function middleware(next: GetService): GetService {
   function implementation(request: Request) {
     return next(request.activate(handle));
   }
-  scopeFactory.attach(implementation);
-  return marker('singleton', undefined, implementation);
+  state.lifetime = implementation;
+  return createMarkerMiddleware(singletons.id)(implementation);
 }
 
-function marker(kind: 'singleton' | 'scoped', id: symbol | undefined, implementation: GetService): GetService {
-  return function mark(request) {
-    if (disposed(id)) {
-      throw new ObjectDisposedError();
-    }
-    request[lifetimeKind] = kind;
-    request[scopeId] = id;
-    return implementation(request);
-  };
+function createMarkerMiddleware(id: symbol): Middleware {
+  return next =>
+    function mark(request) {
+      request[scopeId] = id;
+      return next(request);
+    };
 }
 
 function openScope(): IServiceProvider {
-  const id = Symbol(`scope-${++count}`);
-  scopes.set(id, newScope());
-  const provider = new ServiceProvider(marker('scoped', id, implementation));
-  subscribe(provider, () => release(id)); // the engine's dispose seam, name per the engine
+  const scope = scopes.open();
+  const provider = new ServiceProvider(createMarkerMiddleware(scope.id)(state.lifetime));
+  subscribe(provider, () => release(scope)); // the engine's dispose seam, name per the engine
   return provider;
 }
 ```
 
-The container's own provider is subscribed the same way, at fold time, to release `root`. The scope
-factory is filed through `Addon.registrations` as a value registration, so it is the one instance
-everywhere and is never captured for disposal.
+The marker only stamps: an ask through a scope that has ended is refused by the reader instead,
+since `beginResolve` looks the id up in the table and finds nothing. The container's own provider is
+subscribed the same way, on its first ask, to release the singleton scope. The scope factory is
+filed through `Addon.registrations` as a value registration, so it is the one instance everywhere
+and is never captured for disposal.
 
 ### State inside the implementation
 
@@ -246,8 +244,8 @@ interface Scope {
   readonly disposables: unknown[]; // capture order
   disposed: boolean;
 }
-const root: Scope; // the container's own: singletons, and everything owned by the 'singleton' provider
-const scopes: Map<symbol, Scope>; // one per openScope(), keyed by the id the marker stamps
+const scopes: Map<symbol, Scope>; // every open scope, keyed by the id its marker stamps
+const singletons: Scope; // one entry of that table, opened at build: the singletons, and everything the container's own provider owns
 ```
 
 Keying by registration identity and then by populated address gives an open-generic registration
@@ -262,7 +260,7 @@ The behavior threads one state: the `Scope` the current constructions run under.
 
 | hook               | does                                                                                                                                                                                                                                                                                                                                                                                                                       |
 | ------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `beginResolve`     | answers the `Scope` for `request[scopeId]`, `root` when the key is absent                                                                                                                                                                                                                                                                                                                                                  |
+| `beginResolve`     | answers the `Scope` `request[scopeId]` names, refusing with `ObjectDisposedError` when it or the singleton scope has ended                                                                                                                                                                                                                                                                                                 |
 | `beforeConstruct`  | `singleton`: hit in `root.cache` answers `{ result }`, miss answers `{ state: root }` so the dependencies resolve under the container. `scoped`: same against `state.cache`, which is `root.cache` when the state is `root`. `transient`, a value, an engine row: `{ state }`.                                                                                                                                             |
 | `afterConstruct`   | stores under the same rule (`transient` stores nothing), then captures the instance in the owning scope's list when it has `Symbol.dispose` or `Symbol.asyncDispose`: `singleton` in `root`, `scoped` and `transient` in `state`. An owning scope already disposed disposes the instance at once and throws `ObjectDisposedError`. A promise is captured by the derived promise instead, and a rejection evicts the entry. |
 | `canonicalize`     | a construction that produced a promise is swapped for one derived from it: on settlement the value is captured in the owning scope, and an owning scope that ended meanwhile has the value disposed and the derived promise rejects with `ObjectDisposedError`                                                                                                                                                             |
@@ -296,7 +294,8 @@ A separate addon staging its own hooks and threading its own state, the kind its
 under. The plan-time hook carries the captive check: it answers `'singleton'` under a singleton
 registration and throws `ScopeValidationError` for a scoped registration under that state, once per
 plan, which is at build under `validateBuildability()` and otherwise at first resolution.
-`beginResolve` reads `request[lifetimeKind]` and `beforeConstruct` throws for a scoped registration
+`beginResolve` answers `'singleton'` where `request[scopeId]` is the singleton scope's id — read off
+the scope factory the model registered — and `beforeConstruct` throws for a scoped registration
 under a `'singleton'` state, which is the per-resolution check for a scoped service reached through
 the container's own provider. The scope factory is a value, never constructed, so a singleton
 holding it never trips either check.
