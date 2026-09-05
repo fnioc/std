@@ -2586,8 +2586,10 @@ wide `boolean` token (each awaits one word), forks F3/F6, the merge into main.
 - ServiceProvider ask sugar surface + the ruled renames — on branch `feat-di-resolve-sugar` (pushed):
   `f308988c` di.core explicit forms, `3282ec35` di.extras sugar, `d1df5ef6` docs. Gate green
   (di.test 515 pass; e2e 6/6, inline parity 22 pass / 1 todo). Integrates onto
-  `IServiceManifest-repair` after the transforms fix below. Lane's calls and findings, for the
-  owner's word:
+  `IServiceManifest-repair` — INTEGRATED 2026-09-05: rebased onto the parity tip, one README conflict
+  resolved (the `IDisposableServiceProvider` row kept beside the renamed ask surface), full gate green,
+  fast-forwarded and pushed; branch and worktree removed. Lane's calls and findings, for the owner's
+  word:
   1. BLOCKER — CLEARED on the branch: `aaaed147` (inline substitutes a type parameter nested inside a
      composed type argument; `bodyextract.go consumedTypeParams`, `stage.go registerPrimitives`, new
      `composedtypearg.go`/`instantiate.go`), `4c918405` (the four `resolveWith` rows back in the parity
