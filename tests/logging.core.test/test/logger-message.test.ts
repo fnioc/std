@@ -19,9 +19,7 @@ function recordingLogger(enabled = true): { logger: ILogger; written: Written[];
   // Partial ILogger double — only the primitives this test exercises; cast past
   // the merged wrapper members (§80) it never calls.
   const logger = {
-    log<TState>(logLevel: LogLevel, eventId: EventId, state: TState, error: Error | undefined,
-      formatter: (state: TState, error: Error | undefined) => string): void
-    {
+    log<TState>(logLevel: LogLevel, eventId: EventId, state: TState, error: Error | undefined, formatter: (state: TState, error: Error | undefined) => string): void {
       written.push({ logLevel, eventId, message: formatter(state, error), error });
     },
     isEnabled(): boolean {
@@ -51,8 +49,7 @@ describe('LoggerMessage.define', () => {
 
   test('substitutes typed args into the template in order', () => {
     const { logger, written } = recordingLogger();
-    const logConnected = LoggerMessage.define<string, number>(LogLevel.Warning, new EventId(2),
-      'Connected to {Host} on attempt {Attempt}');
+    const logConnected = LoggerMessage.define<string, number>(LogLevel.Warning, new EventId(2), 'Connected to {Host} on attempt {Attempt}');
 
     logConnected(logger, 'db-primary', 3, undefined);
 

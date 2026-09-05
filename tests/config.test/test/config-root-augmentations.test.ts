@@ -3,8 +3,7 @@
 // processValue override. Black-box through the public @rhombus-std/config
 // surface via the standalone member form.
 
-import { ConfigBuilder, type ConfigDebugViewContext, ConfigRootAugmentations,
-  type IConfigRoot } from '@rhombus-std/config';
+import { ConfigBuilder, type ConfigDebugViewContext, ConfigRootAugmentations, type IConfigRoot } from '@rhombus-std/config';
 import { describe, expect, test } from 'bun:test';
 import { rootOf } from './support';
 
@@ -12,12 +11,11 @@ const { getDebugView } = ConfigRootAugmentations;
 
 describe('getDebugView', () => {
   function tree(): IConfigRoot {
-    return rootOf({ 'Server:Host': 'localhost', 'Server:Port': '8080',
-      'ConnectionStrings:Default': 'secret-value' }) as IConfigRoot;
+    return rootOf({ 'Server:Host': 'localhost', 'Server:Port': '8080', 'ConnectionStrings:Default': 'secret-value' }) as IConfigRoot;
   }
 
   test('renders leaves as key=value (provider) and intermediate nodes as key:', () => {
-    const view = getDebugView(tree());
+    const view = getDebugView.call(tree());
     const lines = view.split('\n');
 
     // Intermediate section node -- has children, no own value.
@@ -32,7 +30,7 @@ describe('getDebugView', () => {
 
   test("processValue can transform a leaf's rendered value and sees full context", () => {
     const seen: ConfigDebugViewContext[] = [];
-    const view = getDebugView(tree(), (context) => {
+    const view = getDebugView.call(tree(), (context) => {
       seen.push(context);
       return context.path === 'ConnectionStrings:Default' ? '***' : (context.value ?? '');
     });
@@ -55,13 +53,13 @@ describe('getDebugView', () => {
       'Server:Port': '9090',
     }).build() as unknown as IConfigRoot;
 
-    const view = getDebugView(root);
+    const view = getDebugView.call(root);
     expect(view).toContain('  Port=9090 (MemoryConfigProvider)');
     expect(view).not.toContain('8080');
   });
 
   test('an empty root renders as the empty string', () => {
     const root = new ConfigBuilder().build() as unknown as IConfigRoot;
-    expect(getDebugView(root)).toBe('');
+    expect(getDebugView.call(root)).toBe('');
   });
 });

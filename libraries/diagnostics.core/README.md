@@ -27,17 +27,15 @@ describing an instrument, find the single most-specific matching rule and
 read its `enable` flag.
 
 ```ts
-import { getMostSpecificInstrumentRule, InstrumentRule,
-  MeterScope } from '@rhombus-std/diagnostics.core';
+import { getMostSpecificInstrumentRule, InstrumentRule, MeterScope } from '@rhombus-std/diagnostics.core';
 
 const rules = [
   new InstrumentRule(undefined, undefined, undefined, MeterScope.Global, false), // disable everything
-  new InstrumentRule('MyApp.Orders', undefined, undefined, MeterScope.Global,
-    true), // re-enable this meter
+  new InstrumentRule('MyApp.Orders', undefined, undefined, MeterScope.Global, true), // re-enable this meter
 ];
 
-const rule = getMostSpecificInstrumentRule(rules, { meterName: 'MyApp.Orders',
-  instrumentName: 'orders-created', isLocalScope: false });
+const rule = getMostSpecificInstrumentRule(rules, { meterName: 'MyApp.Orders', instrumentName: 'orders-created',
+  isLocalScope: false });
 
 rule?.enable ?? false; // true — the meter-specific rule beats the blanket disable
 ```
@@ -51,13 +49,11 @@ Rules are usually appended through the builder-targeted or options-targeted
 augmentation functions rather than constructed one at a time:
 
 ```ts
-import { MetricsOptions,
-  MetricsOptionsExtensions } from '@rhombus-std/diagnostics.core';
+import { MetricsOptions, MetricsOptionsExtensions } from '@rhombus-std/diagnostics.core';
 
 const options = new MetricsOptions();
 MetricsOptionsExtensions.enableMetrics(options, 'MyApp.Orders');
-MetricsOptionsExtensions.disableMetrics(options, 'MyApp.Orders',
-  'orders-created', 'debug-listener');
+MetricsOptionsExtensions.disableMetrics(options, 'MyApp.Orders', 'orders-created', 'debug-listener');
 ```
 
 These same members are also installed as instance methods on `MetricsOptions`

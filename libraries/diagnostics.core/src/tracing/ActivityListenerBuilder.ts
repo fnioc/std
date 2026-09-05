@@ -1,4 +1,4 @@
-import type { Func } from '@rhombus-toolkit/func';
+import type { Func } from '@rhombus-toolkit/types';
 
 /**
  * The user-configurable surface of a tracing listener: a name plus optional

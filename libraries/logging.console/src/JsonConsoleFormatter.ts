@@ -4,7 +4,7 @@
 import type { IExternalScopeProvider, LogEntry } from '@rhombus-std/logging.core';
 import { LogLevel } from '@rhombus-std/logging.core';
 import type { IOptions } from '@rhombus-std/options';
-import { assertNever } from '@rhombus-toolkit/type-guards';
+import { assertNever, isIterable } from '@rhombus-toolkit/type-guards';
 import { ConsoleFormatter } from './ConsoleFormatter';
 import { ConsoleFormatterNames } from './ConsoleFormatterNames';
 import { formatTimestamp } from './date-format';
@@ -68,11 +68,11 @@ function toJsonValue(value: unknown): JsonValue {
  * else yields `undefined`.
  */
 function asKeyValuePairs(value: unknown): Array<[string, unknown]> | undefined {
-  if (value === null || typeof value !== 'object' || !(Symbol.iterator in value)) {
+  if (!isIterable(value)) {
     return undefined;
   }
   const pairs: Array<[string, unknown]> = [];
-  for (const item of value as Iterable<unknown>) {
+  for (const item of value) {
     if (!Array.isArray(item) || item.length !== 2 || typeof item[0] !== 'string') {
       return undefined;
     }
@@ -100,9 +100,7 @@ export class JsonConsoleFormatter extends ConsoleFormatter implements Disposable
     this.#optionsReloadToken?.[Symbol.dispose]();
   }
 
-  public override write<TState>(logEntry: LogEntry<TState>, scopeProvider: IExternalScopeProvider | undefined,
-    textWriter: TextWriter): void
-  {
+  public override write<TState>(logEntry: LogEntry<TState>, scopeProvider: IExternalScopeProvider | undefined, textWriter: TextWriter): void {
     const message = logEntry.formatter(logEntry.state, logEntry.error);
 
     const entry: { [key: string]: JsonValue; } = {};
@@ -140,7 +138,7 @@ export class JsonConsoleFormatter extends ConsoleFormatter implements Disposable
 
     const scopes = this.#collectScopes(scopeProvider);
     if (scopes !== undefined) {
-      entry['Scopes'] = scopes;
+      entry['Lifetime'] = scopes;
     }
 
     const writerOptions = this.formatterOptions.jsonWriterOptions;

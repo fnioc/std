@@ -4,13 +4,15 @@
 // IStartupValidator.Validate() runs after resolving hosted services, before
 // StartingAsync); a passing one lets start proceed.
 //
-// Exercised through the real Host DI: the `validateOnStart` augmentation
-// registers the built-in IStartupValidator, and Host.start resolves and forces
-// it. `@rhombus-std/options.augmentations` is a side-effect import so the
-// `addOptions`/`validate`/`validateOnStart` manifest verbs are installed.
+// Exercised through the real Host DI: the `validateOnStart` registration
+// (merged in via `add`) registers the built-in IStartupValidator, and
+// Host.start resolves and forces it.
 
-import { HostBuilder } from '@rhombus-std/hosting/private/index';
+import { getHostedServiceManifest, HostBuilder, HOSTED_SERVICE_TYPE } from '@rhombus-std/hosting';
 import { OptionsValidationError } from '@rhombus-std/options';
+import { getValidateManifest, getValidateOnStartManifest } from '@rhombus-std/options.augmentations';
+import { Type } from '@rhombus-std/primitives';
+// Installs the `addOptions` verb onto di.core's Manifest.
 import '@rhombus-std/options.augmentations';
 import { expect, test } from 'bun:test';
 
@@ -18,7 +20,7 @@ interface ServerOptions {
   port: number;
 }
 
-const OPTIONS_TOKEN = 'test:ServerOptions';
+const OPTIONS_TYPE: Type = Type.from('test:ServerOptions');
 
 test('a failing validateOnStart aborts host start before any hosted service runs', async () => {
   let started = false;
@@ -32,10 +34,10 @@ test('a failing validateOnStart aborts host start before any hosted service runs
 
   const builder = new HostBuilder();
   builder.configureServices((_context, services) => {
-    services = services.addOptions<ServerOptions>(OPTIONS_TOKEN, () => ({ port: 0 })).as('singleton');
-    services = services.validate<ServerOptions>(OPTIONS_TOKEN, (o) => o.port > 0, 'port must be positive');
-    services = services.validateOnStart(OPTIONS_TOKEN);
-    services = services.addHostedService(Worker, [[]]);
+    services = services.addOptions(OPTIONS_TYPE, () => ({ port: 0 }));
+    services = services.add(getValidateManifest(OPTIONS_TYPE, (o: ServerOptions) => o.port > 0, 'port must be positive'));
+    services = services.add(getValidateOnStartManifest(OPTIONS_TYPE));
+    services = services.add(getHostedServiceManifest(Worker, Type.ctor(HOSTED_SERVICE_TYPE, [[]])));
     return services;
   });
 
@@ -61,10 +63,10 @@ test('valid options let validateOnStart pass and the host starts normally', asyn
 
   const builder = new HostBuilder();
   builder.configureServices((_context, services) => {
-    services = services.addOptions<ServerOptions>(OPTIONS_TOKEN, () => ({ port: 8080 })).as('singleton');
-    services = services.validate<ServerOptions>(OPTIONS_TOKEN, (o) => o.port > 0, 'port must be positive');
-    services = services.validateOnStart(OPTIONS_TOKEN);
-    services = services.addHostedService(Worker, [[]]);
+    services = services.addOptions(OPTIONS_TYPE, () => ({ port: 8080 }));
+    services = services.add(getValidateManifest(OPTIONS_TYPE, (o: ServerOptions) => o.port > 0, 'port must be positive'));
+    services = services.add(getValidateOnStartManifest(OPTIONS_TYPE));
+    services = services.add(getHostedServiceManifest(Worker, Type.ctor(HOSTED_SERVICE_TYPE, [[]])));
     return services;
   });
 

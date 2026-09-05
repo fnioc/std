@@ -7,8 +7,8 @@ import { describe, expect, test } from 'bun:test';
 
 describe('LogEntry', () => {
   test('bundles the deconstructed ILogger.log arguments', () => {
-    const entry: LogEntry<string> = { logLevel: LogLevel.Information, category: 'Orders',
-      eventId: new EventId(1, 'placed'), state: 'order placed', error: undefined, formatter: (state, _error) => state };
+    const entry: LogEntry<string> = { logLevel: LogLevel.Information, category: 'Orders', eventId: new EventId(1, 'placed'), state: 'order placed', error: undefined,
+      formatter: (state, _error) => state };
 
     expect(entry.logLevel).toBe(LogLevel.Information);
     expect(entry.category).toBe('Orders');

@@ -10,12 +10,10 @@ export abstract class HybridCache {
    * Gets the value for `key` if present; otherwise runs `factory` to generate
    * one, caches it, and returns it.
    */
-  public abstract getOrCreate<T>(key: string, factory: (abortSignal: AbortSignal) => Promise<T>,
-    options?: HybridCacheEntryOptions, tags?: Iterable<string>, abortSignal?: AbortSignal): Promise<T>;
+  public abstract getOrCreate<T>(key: string, factory: (abortSignal: AbortSignal) => Promise<T>, options?: HybridCacheEntryOptions, tags?: Iterable<string>, abortSignal?: AbortSignal): Promise<T>;
 
   /** Sets or overwrites the value for `key`. */
-  public abstract set<T>(key: string, value: T, options?: HybridCacheEntryOptions, tags?: Iterable<string>,
-    abortSignal?: AbortSignal): Promise<void>;
+  public abstract set<T>(key: string, value: T, options?: HybridCacheEntryOptions, tags?: Iterable<string>, abortSignal?: AbortSignal): Promise<void>;
 
   /** Asynchronously removes the value associated with the key if it exists. */
   public abstract remove(key: string, abortSignal?: AbortSignal): Promise<void>;

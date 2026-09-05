@@ -12,14 +12,14 @@
 //     reaches every subscribed prototype -- the decorator's listener stays
 //     subscribed, so the bag re-installs on each later registerAugmentations.
 
-import { ServiceManifest } from '@rhombus-std/di';
+import { Builder } from '@rhombus-std/di';
+import { type IServiceProvider, Manifest } from '@rhombus-std/di.core';
 import { MetricsBuilder as DiagnosticsMetricsBuilder } from '@rhombus-std/diagnostics';
-import { METRICS_CONFIGURE_TOKEN } from '@rhombus-std/diagnostics.core';
-// The IMetricsBuilder augmentation-registry token is derived by `tokenfor<IMetricsBuilder>()`
+// The IMetricsBuilder augmentation-registry token is derived by `typefor<IMetricsBuilder>()`
 // at each library's build time; this test (no transformer) uses the derived literal directly.
-const METRICS_BUILDER_AUGMENTATION_TOKEN = '@rhombus-std/diagnostics.core:IMetricsBuilder';
+const METRICS_BUILDER_RECEIVER = Type.from('@rhombus-std/diagnostics.core:IMetricsBuilder');
 import { HostApplicationBuilder, MetricsBuilder as HostingMetricsBuilder } from '@rhombus-std/hosting';
-import { registerAugmentations } from '@rhombus-std/primitives';
+import { registerAugmentations, Type } from '@rhombus-std/primitives';
 import { describe, expect, test } from 'bun:test';
 
 describe("hosting's MetricsBuilder receives the diagnostics-family augmentations", () => {
@@ -34,12 +34,15 @@ describe("hosting's MetricsBuilder receives the diagnostics-family augmentations
     // The call registered a IConfigureOptions<MetricsOptions> step on the
     // builder's manifest, proving the member is diagnostics' real
     // implementation, not a lookalike.
-    const configureSteps = builder.services.build().resolve<unknown[]>(`Array<${METRICS_CONFIGURE_TOKEN}>`);
+    const provider = Builder.withServices(() => builder.services).build();
+    const configureSteps: unknown[] = (provider as unknown as IServiceProvider).resolve(
+      Type.array(Type.imported('IConfigureOptions', '@rhombus-std/options', [Type.imported('MetricsOptions', '@rhombus-std/diagnostics.core')])),
+    );
     expect(configureSteps).toHaveLength(1);
   });
 
   test('the config-binding member registered downstream reaches it too', () => {
-    const metrics = new HostingMetricsBuilder(new ServiceManifest());
+    const metrics = new HostingMetricsBuilder(Manifest.empty<unknown>());
     expect(metrics.addMetricsConfig).toBeInstanceOf(Function);
   });
 });
@@ -48,17 +51,17 @@ describe('late registration reaches every decorated class sharing the token', ()
   test("a set registered NOW installs onto both families' MetricsBuilders", () => {
     // Both concrete classes were decorated at module load, long before this
     // registration. The decorator's listener must still pull the new member.
-    registerAugmentations(METRICS_BUILDER_AUGMENTATION_TOKEN, { lateRegisteredProbe(builder: unknown): unknown {
-      return builder;
+    registerAugmentations(METRICS_BUILDER_RECEIVER, { lateRegisteredProbe(this: unknown): unknown {
+      return this;
     } });
 
     type Probed = { lateRegisteredProbe(): unknown; };
-    const hosting = new HostingMetricsBuilder(new ServiceManifest()) as unknown as Probed;
-    const diagnostics = new DiagnosticsMetricsBuilder(new ServiceManifest()) as unknown as Probed;
+    const hosting = new HostingMetricsBuilder(Manifest.empty<unknown>()) as unknown as Probed;
+    const diagnostics = new DiagnosticsMetricsBuilder(Manifest.empty<unknown>()) as unknown as Probed;
 
     expect(hosting.lateRegisteredProbe).toBeInstanceOf(Function);
     expect(diagnostics.lateRegisteredProbe).toBeInstanceOf(Function);
-    // Receiver-first thunking: the method form forwards `this`.
+    // Verbatim install: called as a method, the member's `this` is the receiver.
     expect(hosting.lateRegisteredProbe()).toBe(hosting);
     expect(diagnostics.lateRegisteredProbe()).toBe(diagnostics);
   });

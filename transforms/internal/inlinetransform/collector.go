@@ -19,7 +19,7 @@ type OwnedEntry struct {
 }
 
 // ProjectScan is the result of ONE workspace dependency walk (§100): the inline
-// BODIES every reachable package declares (its package.json "rhombus.inline").
+// BODIES every reachable package declares (its package.json "rhombus-std" marker).
 // Stage selection is retired (W7 — every stage is always on), so the scan no
 // longer collects stage ids; body substitution is its sole remaining face.
 type ProjectScan struct {
@@ -41,6 +41,12 @@ type ProjectScan struct {
 //     core that devDeps its own authoring package (di.core -> primitives.extras)
 //     from dragging that package's sugar onto every di.core consumer.
 //
+// Each visited package publishes entries through TWO channels, merged with
+// duplicates removed on (type, impl, member): its JSON publish list, and the
+// `registerInlineBodies` marker calls its source carries — so a package may
+// publish by JSON, by marker, or by both, and a JSON entry the marker also
+// discovers yields one entry, not two.
+//
 // The consumer package itself is visited too, so a consumer that declares its own
 // inline entries is honored. Output order is deterministic (walk order with
 // dependency names sorted), for stable diagnostics and parity.
@@ -56,6 +62,7 @@ func CollectProject(consumerCwd string) (ProjectScan, error) {
 		return ProjectScan{}, nil
 	}
 	wsMap := workspaceMap(consumerRoot)
+	ex := newBodyExtractor()
 
 	var bodies []OwnedEntry
 	visited := map[string]bool{}
@@ -71,7 +78,11 @@ func CollectProject(consumerCwd string) (ProjectScan, error) {
 		if lerr != nil {
 			return lerr
 		}
-		for _, e := range entries {
+		discovered, derr := discoverMarkerEntries(ex, dir)
+		if derr != nil {
+			return derr
+		}
+		for _, e := range mergeEntries(entries, discovered) {
 			bodies = append(bodies, OwnedEntry{Entry: e, PackageDir: dir})
 		}
 
@@ -94,6 +105,28 @@ func CollectProject(consumerCwd string) (ProjectScan, error) {
 		return ProjectScan{}, err
 	}
 	return ProjectScan{Bodies: bodies}, nil
+}
+
+// mergeEntries concatenates the JSON publish list with the marker-discovered
+// entries, dropping a discovered entry the list already carries — same type,
+// impl, and member — so both channels naming one body yield one entry.
+func mergeEntries(listed, discovered []Entry) []Entry {
+	if len(discovered) == 0 {
+		return listed
+	}
+	seen := map[Entry]bool{}
+	for _, e := range listed {
+		seen[e] = true
+	}
+	out := listed
+	for _, e := range discovered {
+		if seen[e] {
+			continue
+		}
+		seen[e] = true
+		out = append(out, e)
+	}
+	return out
 }
 
 // Collect is the body-only face of CollectProject, retained for callers (and

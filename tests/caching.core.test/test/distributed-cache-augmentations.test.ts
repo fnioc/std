@@ -1,11 +1,10 @@
-// DistributedCacheExtensions over a hand-written IDistributedCache fake. After
+// DistributedCacheSugarAugmentations over a hand-written IDistributedCache fake. After
 // the §36/§48 many-implementers carve-out retirement (§80), the wrapper methods
 // are merged onto IDistributedCache, so the fake binds them via an empty
 // `extends IDistributedCache` beside its four primitive members; this test
 // exercises the STANDALONE member surface.
 
-import { DistributedCacheEntryOptions, DistributedCacheExtensions,
-  type IDistributedCache } from '@rhombus-std/caching.core';
+import { DistributedCacheEntryOptions, DistributedCacheSugarAugmentations, type IDistributedCache } from '@rhombus-std/caching.core';
 import { describe, expect, test } from 'bun:test';
 
 /** A minimal in-process IDistributedCache: a Map of payloads, options recorded per set. */
@@ -36,12 +35,12 @@ class FakeDistributedCache implements IDistributedCache {
   }
 }
 
-describe('DistributedCacheExtensions', () => {
+describe('DistributedCacheSugarAugmentations', () => {
   test('set applies the shared default options, and they are frozen', async () => {
     const cache = new FakeDistributedCache();
     const payload = new Uint8Array([1, 2, 3]);
 
-    await DistributedCacheExtensions.set(cache, 'key', payload);
+    await DistributedCacheSugarAugmentations.set.call(cache, 'key', payload);
 
     expect(cache.store.get('key')).toBe(payload);
     const options = cache.lastSetOptions!;
@@ -64,22 +63,22 @@ describe('DistributedCacheExtensions', () => {
   test('setString/getString round-trip UTF-8, including non-ASCII', async () => {
     const cache = new FakeDistributedCache();
 
-    await DistributedCacheExtensions.setString(cache, 'greeting', 'héllo ✓ caché');
+    await DistributedCacheSugarAugmentations.setString.call(cache, 'greeting', 'héllo ✓ caché');
 
     const stored = cache.store.get('greeting')!;
     expect(stored).toBeInstanceOf(Uint8Array);
     expect(stored.length).toBeGreaterThan('héllo ✓ caché'.length); // multi-byte
-    expect(await DistributedCacheExtensions.getString(cache, 'greeting')).toBe('héllo ✓ caché');
+    expect(await DistributedCacheSugarAugmentations.getString.call(cache, 'greeting')).toBe('héllo ✓ caché');
   });
 
   test('setString passes explicit options through; omitted options fall back to the frozen default', async () => {
     const cache = new FakeDistributedCache();
     const options = new DistributedCacheEntryOptions();
 
-    await DistributedCacheExtensions.setString(cache, 'a', 'x', options);
+    await DistributedCacheSugarAugmentations.setString.call(cache, 'a', 'x', options);
     expect(cache.lastSetOptions).toBe(options);
 
-    await DistributedCacheExtensions.setString(cache, 'b', 'y');
+    await DistributedCacheSugarAugmentations.setString.call(cache, 'b', 'y');
     expect(cache.lastSetOptions).not.toBe(options);
     expect(() => {
       cache.lastSetOptions!.slidingExpiration = 1_000;
@@ -88,10 +87,10 @@ describe('DistributedCacheExtensions', () => {
 
   test('getString on a missing key resolves undefined', async () => {
     const cache = new FakeDistributedCache();
-    expect(await DistributedCacheExtensions.getString(cache, 'absent')).toBeUndefined();
+    expect(await DistributedCacheSugarAugmentations.getString.call(cache, 'absent')).toBeUndefined();
   });
 
   test('standalone surface snapshot (member names)', () => {
-    expect(Object.keys(DistributedCacheExtensions).sort()).toEqual(['getString', 'set', 'setString']);
+    expect(Object.keys(DistributedCacheSugarAugmentations).toSorted()).toEqual(['getString', 'set', 'setString']);
   });
 });

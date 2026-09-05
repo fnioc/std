@@ -7,8 +7,8 @@
 // so a consumer depending on this package alone gets the abstractions too.
 export * from '@rhombus-std/fileproviders.core';
 
-export { ExclusionFilters } from './ExclusionFilters.js';
-export { PhysicalDirectoryContents } from './PhysicalDirectoryContents.js';
-export { PhysicalDirectoryInfo } from './PhysicalDirectoryInfo.js';
-export { PhysicalFileInfo } from './PhysicalFileInfo.js';
-export { PhysicalFileProvider } from './PhysicalFileProvider.js';
+export * from './ExclusionFilters.js';
+export * from './PhysicalDirectoryContents.js';
+export * from './PhysicalDirectoryInfo.js';
+export * from './PhysicalFileInfo.js';
+export * from './PhysicalFileProvider.js';

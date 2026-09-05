@@ -17,3 +17,7 @@ transforms/go.work.sum
 # Stray `go build ./cmd/<host>` outputs in transforms/ (gates build with -o /dev/null or ./...)
 transforms/ttsc-std
 transforms/ttsc-std-full
+
+# The per-file lowering stage's emit. A library build renames it into dist/stage;
+# an example build leaves it, and a failed build of either leaves it behind.
+.ttsc-out/

@@ -5,19 +5,19 @@
 // application builder's live configuration / services when the host is built
 // (`applyChanges`, invoked from `HostApplicationBuilder.build()`).
 //
-// Container customization (`useServiceProviderFactory` / `configureContainer`)
-// is a no-op, matching this repo's single-container design -- the application
-// builder's own `configureContainer` is likewise a no-op. `build()` is
+// Container customization (`configureContainer`) is a no-op, matching this
+// repo's single-container design -- the application builder's own
+// `configureContainer` is likewise a no-op. `build()` is
 // unsupported; the adapter only mutates the application builder it wraps.
 
 import type { IConfigBuilder, IConfigManager } from '@rhombus-std/config.core';
-import type { IServiceManifest, IServiceManifestHolder } from '@rhombus-std/di.core';
-import type { IServiceProviderFactory } from '@rhombus-std/di.core';
+import type { Manifest } from '@rhombus-std/di.core';
 import { type HostBuilderContext, HostDefaults, type IHost, type IHostBuilder } from '@rhombus-std/hosting.core';
 import { augment, process } from '@rhombus-std/primitives';
-import { tokenfor } from '@rhombus-std/primitives.extras';
-import type { Action, Func } from '@rhombus-toolkit/func';
+import { typefor } from '@rhombus-std/primitives.extras';
+import type { Action, Func } from '@rhombus-toolkit/types';
 import { resolveContentRootPath } from '../host-composition';
+import type { ManifestSlot } from '../MetricsBuilder';
 
 /** Ordinal case-insensitive comparison, treating an absent value as the empty string. */
 function equalsIgnoreCase(left: string | undefined, right: string | undefined): boolean {
@@ -31,21 +31,21 @@ function equalsIgnoreCase(left: string | undefined, right: string | undefined): 
 export interface HostBuilderAdapter extends IHostBuilder {}
 
 /** The classic-builder adapter over a modern application builder. */
-@augment(tokenfor<IHostBuilder>())
+@augment(typefor<IHostBuilder>())
 export class HostBuilderAdapter implements IHostBuilder {
   readonly #config: IConfigManager;
   // The wrapped application builder ITSELF, held as its services slot -- not a
   // snapshot of the manifest. The chain is immutable, so `applyChanges` has to
   // write each delegate's returned manifest back into the live slot; a captured
   // manifest would replay the delegates onto a chain nobody builds from.
-  readonly #holder: IServiceManifestHolder;
+  readonly #holder: ManifestSlot;
   readonly #context: HostBuilderContext;
 
   readonly #configureHostConfigActions: Array<Action<[IConfigBuilder]>> = [];
   readonly #configureAppConfigActions: Array<Action<[HostBuilderContext, IConfigBuilder]>> = [];
-  readonly #configureServicesActions: Array<Func<[HostBuilderContext, IServiceManifest], IServiceManifest>> = [];
+  readonly #configureServicesActions: Array<Func<[HostBuilderContext, Manifest<unknown>], Manifest<unknown>>> = [];
 
-  public constructor(config: IConfigManager, holder: IServiceManifestHolder, context: HostBuilderContext) {
+  public constructor(config: IConfigManager, holder: ManifestSlot, context: HostBuilderContext) {
     this.#config = config;
     this.#holder = holder;
     this.#context = context;
@@ -66,19 +66,14 @@ export class HostBuilderAdapter implements IHostBuilder {
     return this;
   }
 
-  public configureServices(configureDelegate: Func<[HostBuilderContext, IServiceManifest], IServiceManifest>): this {
+  public configureServices(configureDelegate: Func<[HostBuilderContext, Manifest<unknown>], Manifest<unknown>>): this {
     this.#configureServicesActions.push(configureDelegate);
     return this;
   }
 
   /** No-op single-container hook, mirroring the application builder. */
-  public useServiceProviderFactory<TContainerBuilder>(_factory: IServiceProviderFactory<TContainerBuilder>): this {
-    return this;
-  }
-
-  /** No-op single-container hook, mirroring the application builder. */
-  public configureContainer<TContainerBuilder>(
-    _configureDelegate: Func<[HostBuilderContext, TContainerBuilder], TContainerBuilder>,
+  public configureContainer(
+    _configureDelegate: Func<[HostBuilderContext, Manifest<unknown>], Manifest<unknown>>,
   ): this {
     return this;
   }
@@ -125,8 +120,7 @@ export class HostBuilderAdapter implements IHostBuilder {
       // path the environment was built with; anything else is unsupported.
       const currentContentRootConfig = config.get(HostDefaults.contentRootKey);
       if (!equalsIgnoreCase(previousContentRootConfig, currentContentRootConfig)
-        && !equalsIgnoreCase(previousContentRootPath, resolveContentRootPath(currentContentRootConfig, process.cwd())))
-      {
+        && !equalsIgnoreCase(previousContentRootPath, resolveContentRootPath(currentContentRootConfig, process.cwd()))) {
         throw new Error(
           `The content root changed from "${previousContentRootConfig}" to `
             + `"${currentContentRootConfig}". Changing host settings after the host builder `

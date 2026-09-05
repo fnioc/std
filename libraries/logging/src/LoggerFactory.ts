@@ -9,22 +9,24 @@
 // it is reactive, the factory re-runs `applyFilters` for every existing logger
 // on each change, so a configuration reload re-filters live loggers.
 
-import { ServiceManifest } from '@rhombus-std/di';
-import type { IServiceProvider } from '@rhombus-std/di.core';
-import { type IExternalScopeProvider, type ILogger, type ILoggerFactory, type ILoggerProvider, type ILoggingBuilder,
-  LogLevel } from '@rhombus-std/logging.core';
+// Type-only: puts di.extras' declare-module sugar faces in the program with
+// no runtime import of the authoring package.
+import type {} from '@rhombus-std/di.extras';
+
+import { Builder } from '@rhombus-std/di';
+import { type IExternalScopeProvider, type ILogger, type ILoggerFactory, type ILoggerProvider, type ILoggingBuilder, LogLevel } from '@rhombus-std/logging.core';
 import { type IOptions, Options } from '@rhombus-std/options';
 import { augment } from '@rhombus-std/primitives';
-import { tokenfor } from '@rhombus-std/primitives.extras';
-import type { Func } from '@rhombus-toolkit/func';
+import { typefor } from '@rhombus-std/primitives.extras';
+import type { Func } from '@rhombus-toolkit/types';
 import { Logger } from './Logger';
 import { LoggerExternalScopeProvider } from './LoggerExternalScopeProvider';
 import { LoggerFilterOptions } from './LoggerFilterOptions';
 import { LoggerInformation, MessageLogger, ScopeLogger } from './LoggerInformation';
 import { LoggerRuleSelector } from './LoggerRuleSelector';
+import { getLoggingManifest } from './manifests';
 import { NullLogger } from './null-logger';
 import { isSupportExternalScope } from './support-external-scope-guard';
-import { LOGGER_FACTORY_TOKEN } from './tokens';
 
 /** A provider plus whether the factory owns its disposal. */
 interface ProviderRegistration {
@@ -35,7 +37,7 @@ interface ProviderRegistration {
 // `@augment` installs the registry's `createLogger(type)` dispatcher onto this
 // factory's prototype at runtime (see logging.core's logger-factory-augmentations.ts) —
 // not visible in the static type.
-@augment(tokenfor<ILoggerFactory>())
+@augment(typefor<ILoggerFactory>())
 export class LoggerFactory implements ILoggerFactory {
   readonly #loggers = new Map<string, Logger>();
   readonly #providerRegistrations: ProviderRegistration[] = [];
@@ -44,9 +46,7 @@ export class LoggerFactory implements ILoggerFactory {
   #changeSubscription: Disposable | undefined;
   #disposed = false;
 
-  public constructor(providers: Iterable<ILoggerProvider> = [],
-    filterOptions?: LoggerFilterOptions | IOptions<LoggerFilterOptions>, scopeProvider?: IExternalScopeProvider)
-  {
+  public constructor(providers: Iterable<ILoggerProvider> = [], filterOptions?: LoggerFilterOptions | IOptions<LoggerFilterOptions>, scopeProvider?: IExternalScopeProvider) {
     this.#scopeProvider = scopeProvider;
 
     const source: IOptions<LoggerFilterOptions> = filterOptions === undefined
@@ -66,13 +66,11 @@ export class LoggerFactory implements ILoggerFactory {
   public createLogger(categoryName: string): ILogger {
     this.#throwIfDisposed();
 
-    let logger = this.#loggers.get(categoryName);
-    if (logger === undefined) {
-      logger = new Logger(categoryName, this.#createLoggers(categoryName));
+    return this.#loggers.getOrInsertComputed(categoryName, (categoryName) => {
+      const logger = new Logger(categoryName, this.#createLoggers(categoryName));
       this.#applyFiltersTo(logger);
-      this.#loggers.set(categoryName, logger);
-    }
-    return logger;
+      return logger;
+    });
   }
 
   public addProvider(provider: ILoggerProvider): void {
@@ -142,8 +140,7 @@ export class LoggerFactory implements ILoggerFactory {
     const scopeLoggers: ScopeLogger[] | undefined = this.#filterOptions.captureScopes ? [] : undefined;
 
     for (const information of logger.loggers) {
-      const { minLevel, filter } = LoggerRuleSelector.select(this.#filterOptions, information.providerType,
-        information.category);
+      const { minLevel, filter } = LoggerRuleSelector.select(this.#filterOptions, information.providerType, information.category);
 
       // A rule selecting a level above Critical (i.e. None) disables the sink
       // entirely — skip it rather than adding a never-enabled message logger.
@@ -170,34 +167,13 @@ export class LoggerFactory implements ILoggerFactory {
 
   /**
    * Creates a configured {@link ILoggerFactory} from an {@link ILoggingBuilder}
-   * delegate. Spins up a {@link ServiceManifest}, runs `addLogging(configure)`,
-   * builds the container, opens the singleton scope, and resolves the factory.
-   * The returned {@link ILoggerFactory} owns the container: disposing it
-   * disposes the scope (and everything it built, the factory included).
+   * delegate: builds the logging manifest, builds the container, and resolves
+   * the factory.
    */
   public static create(configure: Func<[ILoggingBuilder], void>): ILoggerFactory {
-    const services = new ServiceManifest().addLogging(configure);
-    const provider = services.build();
-    const singletonScope = provider.createScope('singleton');
-    const factory = singletonScope.resolve<ILoggerFactory>(LOGGER_FACTORY_TOKEN);
-    return new DisposingLoggerFactory(factory, singletonScope);
-  }
-}
-
-/** Wraps a container-resolved {@link ILoggerFactory} so disposing the factory disposes the owning container scope. */
-@augment(tokenfor<ILoggerFactory>())
-class DisposingLoggerFactory implements ILoggerFactory {
-  public constructor(private readonly factory: ILoggerFactory, private readonly scope: IServiceProvider) {}
-
-  public createLogger(categoryName: string): ILogger {
-    return this.factory.createLogger(categoryName);
-  }
-
-  public addProvider(provider: ILoggerProvider): void {
-    this.factory.addProvider(provider);
-  }
-
-  public [Symbol.dispose](): void {
-    this.scope[Symbol.dispose]();
+    const services = getLoggingManifest(configure);
+    return Builder.withServices(manifest => manifest.add(services))
+      .build()
+      .resolve<ILoggerFactory>();
   }
 }

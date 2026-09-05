@@ -10,7 +10,7 @@ import (
 // plus a live `import { tokenOf } from 'p'` that anchors the free-function check.
 const residueSource = `import { tokenOf } from 'p';
 declare const x: any;
-const a = tokenfor<Foo>();
+const a = typefor<Foo>();
 const b = x.isService<Foo>();
 const c = tokenOf(1);
 `
@@ -21,8 +21,8 @@ const c = tokenOf(1);
 func activeResidueArtifacts() *Artifacts {
 	a := NewArtifacts()
 	a.Active = true
-	a.SugarMembers["isService"] = MemberShape{TypeArgCount: 1, ValueArgCount: 0}
-	a.SugarFunctions["tokenOf"] = "p"
+	a.SugarMembers["isService"] = []MemberShape{{TypeArgCount: 1, MinValueArgCount: 0, MaxValueArgCount: 0}}
+	a.FunctionSugars = append(a.FunctionSugars, &Resolved{Member: "tokenOf", Module: "p"})
 	return a
 }
 
@@ -36,7 +36,7 @@ func TestSweepFlagsResidue(t *testing.T) {
 
 	diags := Sweep(sf, activeResidueArtifacts())
 	if len(diags) != 3 {
-		t.Fatalf("expected 3 diagnostics (tokenfor primitive, isService member sugar, tokenOf free-fn sugar), got %d: %+v", len(diags), diags)
+		t.Fatalf("expected 3 diagnostics (typefor primitive, isService member sugar, tokenOf free-fn sugar), got %d: %+v", len(diags), diags)
 	}
 
 	codes := map[string]int{}
@@ -44,15 +44,45 @@ func TestSweepFlagsResidue(t *testing.T) {
 		codes[d.Code]++
 	}
 	if codes["INLINE_UNLOWERED_PRIMITIVE"] != 1 {
-		t.Errorf("want 1 INLINE_UNLOWERED_PRIMITIVE (the surviving tokenfor<Foo>()), got %d: %+v", codes["INLINE_UNLOWERED_PRIMITIVE"], diags)
+		t.Errorf("want 1 INLINE_UNLOWERED_PRIMITIVE (the surviving typefor<Foo>()), got %d: %+v", codes["INLINE_UNLOWERED_PRIMITIVE"], diags)
 	}
 	if codes["INLINE_UNLOWERED_SUGAR"] != 2 {
 		t.Errorf("want 2 INLINE_UNLOWERED_SUGAR (isService member + tokenOf free-fn), got %d: %+v", codes["INLINE_UNLOWERED_SUGAR"], diags)
 	}
 }
 
+// TestSweepFlagsEveryShapeOfOneMember covers a member several entries contribute
+// to, each with its own arity: getService answers both a 0-value-arg tokenless
+// call and a 1-value-arg value-driven one. Residue in EITHER arity is residue, so
+// one entry's shape must not stand in for the whole name.
+func TestSweepFlagsEveryShapeOfOneMember(t *testing.T) {
+	sf := parse(t, "/sweep/shapes.ts", `declare const x: any;
+declare const V: any;
+const a = x.getService<Foo>();
+const b = x.getService<Foo>(V);
+`)
+	shimast.SetParentInChildrenUnset(sf.AsNode())
+
+	a := NewArtifacts()
+	a.Active = true
+	a.SugarMembers["getService"] = []MemberShape{
+		{TypeArgCount: 1, MinValueArgCount: 0, MaxValueArgCount: 0},
+		{TypeArgCount: 1, MinValueArgCount: 1, MaxValueArgCount: 1},
+	}
+
+	diags := Sweep(sf, a)
+	if len(diags) != 2 {
+		t.Fatalf("want one diagnostic per surviving arity, got %d: %+v", len(diags), diags)
+	}
+	for _, d := range diags {
+		if d.Code != "INLINE_UNLOWERED_SUGAR" {
+			t.Errorf("diagnostic code = %q, want INLINE_UNLOWERED_SUGAR: %+v", d.Code, d)
+		}
+	}
+}
+
 // TestSweepFlagsRegisteredPrimitiveNode covers the sweep's first branch: a call
-// still carried in artifacts.PrimitiveCalls (a substituted primitive the tokenfor
+// still carried in artifacts.PrimitiveCalls (a substituted primitive the typefor
 // stage never lowered) is flagged INLINE_UNLOWERED_PRIMITIVE by node identity,
 // independent of its callee text or shape.
 func TestSweepFlagsRegisteredPrimitiveNode(t *testing.T) {
@@ -65,7 +95,7 @@ func TestSweepFlagsRegisteredPrimitiveNode(t *testing.T) {
 	registered := callContaining(t, sf, "plain(")
 	artifacts := NewArtifacts()
 	artifacts.Active = true
-	artifacts.PrimitiveCalls[registered] = PrimitiveUse{Name: "tokenfor"}
+	artifacts.PrimitiveCalls[registered] = PrimitiveUse{Name: "typefor"}
 
 	diags := Sweep(sf, artifacts)
 	if len(diags) != 1 || diags[0].Code != "INLINE_UNLOWERED_PRIMITIVE" {
@@ -97,7 +127,7 @@ const b = x.isService<Foo>('token');
 		shimast.SetParentInChildrenUnset(sf.AsNode())
 		a := NewArtifacts()
 		a.Active = true
-		a.SugarMembers["isService"] = MemberShape{TypeArgCount: 1, ValueArgCount: 0}
+		a.SugarMembers["isService"] = []MemberShape{{TypeArgCount: 1, MinValueArgCount: 0, MaxValueArgCount: 0}}
 		if diags := Sweep(sf, a); len(diags) != 0 {
 			t.Fatalf("a shape-mismatched member call must not be flagged, got %+v", diags)
 		}
@@ -112,31 +142,187 @@ const b = x.isService<Foo>('token');
 		shimast.SetParentInChildrenUnset(sf.AsNode())
 		a := NewArtifacts()
 		a.Active = true
-		a.SugarFunctions["tokenOf"] = "p"
+		a.FunctionSugars = append(a.FunctionSugars, &Resolved{Member: "tokenOf", Module: "p"})
 		if diags := Sweep(sf, a); len(diags) != 0 {
 			t.Fatalf("a free-function call whose import was elided must not be flagged, got %+v", diags)
 		}
 	})
 }
 
-// TestSweepFlagsSurvivingSingularValue covers the §94 targeted-diagnostic branch: a
-// registered `singularValue<T>()` that SURVIVED lowering (the singular stage left it
-// un-lowered over a non-singular type, and no fold pruned it) is flagged with the
-// specific SINGULAR_VALUE_NON_SINGULAR code — naming the failure — not the generic
-// INLINE_UNLOWERED_PRIMITIVE. A guarded singularValue is pruned before the sweep, so
-// one that reaches here is unguarded over a non-singular type.
-func TestSweepFlagsSurvivingSingularValue(t *testing.T) {
-	sf := parse(t, "/sweep/singular.ts", `const s = singularValue<Foo>();
+// TestSweepIgnoresSameNameFromAnotherModule: a free-function sugar is identified by
+// its declaring package, not by its spelling. A call to a same-named function
+// imported from somewhere else is a different function — the pairing a sugar body
+// that forwards to its own runtime namesake makes ordinary.
+func TestSweepIgnoresSameNameFromAnotherModule(t *testing.T) {
+	sf := parse(t, "/sweep/other-module.ts", `import { tokenOf } from 'q';
+export const v = tokenOf(1);
 `)
 	shimast.SetParentInChildrenUnset(sf.AsNode())
 
-	registered := callContaining(t, sf, "singularValue<")
-	artifacts := NewArtifacts()
-	artifacts.Active = true
-	artifacts.PrimitiveCalls[registered] = PrimitiveUse{Name: "singularValue"}
+	if diags := Sweep(sf, activeResidueArtifacts()); len(diags) != 0 {
+		t.Fatalf("a same-named function from another module is not the sugar, got %+v", diags)
+	}
+}
 
-	diags := Sweep(sf, artifacts)
-	if len(diags) != 1 || diags[0].Code != "SINGULAR_VALUE_NON_SINGULAR" {
-		t.Fatalf("expected 1 SINGULAR_VALUE_NON_SINGULAR from the surviving-singularValue branch, got %+v", diags)
+// TestSweepFlagsSugarFromItsDeclaringModule is the same shape from the package that
+// DOES declare the sugar: the call is the sugar, un-lowered, and must be flagged.
+func TestSweepFlagsSugarFromItsDeclaringModule(t *testing.T) {
+	sf := parse(t, "/sweep/own-module.ts", `import { tokenOf } from 'p';
+export const v = tokenOf(1);
+`)
+	shimast.SetParentInChildrenUnset(sf.AsNode())
+
+	diags := Sweep(sf, activeResidueArtifacts())
+	if len(diags) != 1 || diags[0].Code != "INLINE_UNLOWERED_SUGAR" {
+		t.Fatalf("want one INLINE_UNLOWERED_SUGAR, got %+v", diags)
+	}
+}
+
+// TestSweepIgnoresRuntimeForwardingTarget: a floater's body may forward its
+// calls to a same-named runtime function in another package (the substitution
+// mechanism materializes an import from that package). A surviving call to
+// THAT target is never mistaken for sugar residue — only a call importing the
+// name from the floater's OWN declaring package (Module) is.
+func TestSweepIgnoresRuntimeForwardingTarget(t *testing.T) {
+	sf := parse(t, "/sweep/forward-target.ts", `import { tokenOf } from 'runtime-pkg';
+export const v = tokenOf(1);
+`)
+	shimast.SetParentInChildrenUnset(sf.AsNode())
+
+	a := NewArtifacts()
+	a.Active = true
+	a.FunctionSugars = append(a.FunctionSugars, &Resolved{Member: "tokenOf", Module: "p"})
+	if diags := Sweep(sf, a); len(diags) != 0 {
+		t.Fatalf("a call to the runtime forwarding target must not be flagged, got %+v", diags)
+	}
+}
+
+// TestSugarShapeMatches is a table test of the arity-matching rule itself: the
+// type-argument count is exact, and the value-argument count spans the required
+// parameters up to the whole list — the optional tail a call may stop short of.
+func TestSugarShapeMatches(t *testing.T) {
+	// `getService<T>()`: no parameters at all.
+	nullary := MemberShape{TypeArgCount: 1, MinValueArgCount: 0, MaxValueArgCount: 0}
+	// `addClass<T>(ctor, implementerType, scope?, key?)`: two required, two optional.
+	optionalTail := MemberShape{TypeArgCount: 1, MinValueArgCount: 2, MaxValueArgCount: 4}
+
+	cases := []struct {
+		name      string
+		shape     MemberShape
+		typeArgs  int
+		valueArgs int
+		want      bool
+	}{
+		{"nullary exact match", nullary, 1, 0, true},
+		{"nullary with an argument", nullary, 1, 1, false},
+		{"nullary wrong type-arg count", nullary, 0, 0, false},
+
+		{"required parameters only", optionalTail, 1, 2, true},
+		{"part of the optional tail supplied", optionalTail, 1, 3, true},
+		{"whole parameter list supplied", optionalTail, 1, 4, true},
+		{"short of the required parameters", optionalTail, 1, 1, false},
+		{"past the parameter list", optionalTail, 1, 5, false},
+		// Zero type arguments is the SUBSTITUTION OUTPUT shape
+		// (`this.addClass(typefor<T>(), ctor, ...)` lowers its own explicit type
+		// argument away), not surviving sugar — must not match at any arity.
+		{"zero type args is the lowered form, not residue", optionalTail, 0, 3, false},
+		{"more type args than certified", optionalTail, 2, 3, false},
+	}
+	for _, c := range cases {
+		t.Run(c.name, func(t *testing.T) {
+			got := sugarShapeMatches(c.shape, c.typeArgs, c.valueArgs)
+			if got != c.want {
+				t.Errorf("sugarShapeMatches(%+v, typeArgs=%d, valueArgs=%d) = %v, want %v",
+					c.shape, c.typeArgs, c.valueArgs, got, c.want)
+			}
+		})
+	}
+}
+
+// TestSweepFlagsSugarShortOfTheOptionalTail: a call that supplies the required
+// parameters and stops short of the optional ones is still that sugar, so an
+// unlowered one is flagged — the arity span, not an exact count, is what the
+// sweep tests, and only the explicit type argument keeps it distinguishable
+// from lowered output.
+func TestSweepFlagsSugarShortOfTheOptionalTail(t *testing.T) {
+	sf := parse(t, "/sweep/short-tail-residue.ts", `declare const m: any;
+declare const Impl: any;
+declare const sigs: any;
+const a = m.addClass<Impl>(Impl, sigs);
+`)
+	shimast.SetParentInChildrenUnset(sf.AsNode())
+
+	a := NewArtifacts()
+	a.Active = true
+	a.SugarMembers["addClass"] = []MemberShape{{TypeArgCount: 1, MinValueArgCount: 2, MaxValueArgCount: 4}}
+
+	diags := Sweep(sf, a)
+	if len(diags) != 1 || diags[0].Code != "INLINE_UNLOWERED_SUGAR" {
+		t.Fatalf("want exactly 1 INLINE_UNLOWERED_SUGAR for the 2-value-arg explicit-type-argument call, got %+v", diags)
+	}
+}
+
+// TestSweepIgnoresLoweredSugarOutput: the inline stage's OWN substitution output
+// — a property-access call on the same member name, its explicit type argument
+// already consumed into a token argument, several value arguments — must never
+// be flagged. This is exactly what a correctly lowered
+// `addClass<ILogger>(ConsoleLogger, sigs)` call looks like on disk:
+// `services.addClass(Type.global(...), ConsoleLogger, sigs)`.
+func TestSweepIgnoresLoweredSugarOutput(t *testing.T) {
+	sf := parse(t, "/sweep/lowered-output.ts", `declare const services: any;
+declare const token: any;
+declare const ConsoleLogger: any;
+declare const sigs: any;
+export const closed = (services as any).addClass(token, ConsoleLogger, sigs, 'singleton');
+`)
+	shimast.SetParentInChildrenUnset(sf.AsNode())
+
+	a := NewArtifacts()
+	a.Active = true
+	a.SugarMembers["addClass"] = []MemberShape{{TypeArgCount: 1, MinValueArgCount: 2, MaxValueArgCount: 4}}
+
+	if diags := Sweep(sf, a); len(diags) != 0 {
+		t.Fatalf("a correctly lowered zero-type-arg call must not be flagged as residue, got %+v", diags)
+	}
+}
+
+// TestSweepFlagsNullaryShapeExactly: a member taking no parameters at all (the
+// ServiceProvider getService/getRequiredService/getServices family) has a
+// zero-width arity span, so a call carrying an argument is a different member
+// and is left alone.
+func TestSweepFlagsNullaryShapeExactly(t *testing.T) {
+	sf := parse(t, "/sweep/nullary.ts", `declare const x: any;
+const matches = x.isService<Foo>();
+const mismatches = x.isService<Foo>('token');
+`)
+	shimast.SetParentInChildrenUnset(sf.AsNode())
+
+	a := NewArtifacts()
+	a.Active = true
+	a.SugarMembers["isService"] = []MemberShape{{TypeArgCount: 1, MinValueArgCount: 0, MaxValueArgCount: 0}}
+
+	diags := Sweep(sf, a)
+	if len(diags) != 1 || diags[0].Code != "INLINE_UNLOWERED_SUGAR" {
+		t.Fatalf("want exactly 1 INLINE_UNLOWERED_SUGAR for the exact-shape call only, got %+v", diags)
+	}
+}
+
+// TestSweepIgnoresUnregisteredSameNameMember: a call whose callee name does not
+// resolve to any registered sugar member at all (no entry in SugarMembers) is
+// left alone regardless of its arity — the arity span is consulted only for a
+// CERTIFIED shape, and matching never runs on name alone.
+func TestSweepIgnoresUnregisteredSameNameMember(t *testing.T) {
+	sf := parse(t, "/sweep/unregistered.ts", `declare const m: any;
+declare const Impl: any;
+declare const sigs: any;
+const a = m.addClass(Impl, sigs);
+`)
+	shimast.SetParentInChildrenUnset(sf.AsNode())
+
+	a := NewArtifacts()
+	a.Active = true
+	// addClass is deliberately NOT registered in SugarMembers here.
+	if diags := Sweep(sf, a); len(diags) != 0 {
+		t.Fatalf("a call to a member with no certified sugar shape must not be flagged, got %+v", diags)
 	}
 }

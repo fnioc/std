@@ -1,7 +1,7 @@
 import type { IHostApplicationLifetime, IHostLifetime } from '@rhombus-std/hosting.core';
 import { type ILogger, type ILoggerFactory, logDebug, logInformation } from '@rhombus-std/logging.core';
 import type { AbortSignal } from '@rhombus-std/primitives';
-import type { Func } from '@rhombus-toolkit/func';
+import type { Func } from '@rhombus-toolkit/types';
 import type { BrowserLifetimeOptions } from './BrowserLifetimeOptions';
 import type { PageLifecycleEvents } from './PageLifecycleEvents';
 
@@ -30,9 +30,7 @@ export class BrowserLifetime implements IHostLifetime, Disposable {
    *   disposes it on `stop`/dispose, preventing a listener leak across host
    *   cycles over a shared document.
    */
-  public constructor(options: BrowserLifetimeOptions, applicationLifetime: IHostApplicationLifetime,
-    loggerFactory: ILoggerFactory, pageLifecycleEvents: PageLifecycleEvents)
-  {
+  public constructor(options: BrowserLifetimeOptions, applicationLifetime: IHostApplicationLifetime, loggerFactory: ILoggerFactory, pageLifecycleEvents: PageLifecycleEvents) {
     this.#options = options;
     this.#applicationLifetime = applicationLifetime;
     this.#logger = loggerFactory.createLogger(BROWSER_LIFETIME_CATEGORY);

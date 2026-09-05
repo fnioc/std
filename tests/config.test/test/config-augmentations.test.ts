@@ -13,12 +13,12 @@ const { asIterable, getConnectionString, getRequiredSection } = ConfigAugmentati
 describe('getConnectionString', () => {
   test('returns the connection string under ConnectionStrings', () => {
     const root = rootOf({ 'ConnectionStrings:Default': 'Server=db;Database=app' });
-    expect(getConnectionString(root, 'Default')).toBe('Server=db;Database=app');
+    expect(getConnectionString.call(root, 'Default')).toBe('Server=db;Database=app');
   });
 
   test('returns undefined for an absent name', () => {
     const root = rootOf({ 'ConnectionStrings:Default': 'Server=db' });
-    expect(getConnectionString(root, 'Missing')).toBeUndefined();
+    expect(getConnectionString.call(root, 'Missing')).toBeUndefined();
   });
 });
 
@@ -55,26 +55,25 @@ describe('exists', () => {
 describe('getRequiredSection', () => {
   test('returns the section when it exists', () => {
     const root = rootOf({ 'Server:Port': '8080' });
-    const server = getRequiredSection(root, 'Server');
+    const server = getRequiredSection.call(root, 'Server');
     expect(server.path).toBe('Server');
     expect(server.get('Port')).toBe('8080');
   });
 
   test('throws naming the key when the section is absent', () => {
     const root = rootOf({ 'Server:Port': '8080' });
-    expect(() => getRequiredSection(root, 'Missing')).toThrow(/Missing/);
+    expect(() => getRequiredSection.call(root, 'Missing')).toThrow(/Missing/);
   });
 });
 
 describe('asIterable', () => {
   // A small nested tree: two leaves under Server, one two levels deep.
   function tree(): IConfigRoot {
-    return rootOf({ 'Server:Host': 'localhost', 'Server:Port': '8080',
-      'Logging:Level:Default': 'Info' }) as IConfigRoot;
+    return rootOf({ 'Server:Host': 'localhost', 'Server:Port': '8080', 'Logging:Level:Default': 'Info' }) as IConfigRoot;
   }
 
   test("from a root, yields every section's full path (root itself excluded)", () => {
-    const pairs = new Map(asIterable(tree()));
+    const pairs = new Map(asIterable.call(tree()));
 
     // The non-section root is never yielded; intermediate section nodes are
     // (with an undefined value), leaves carry their value.
@@ -90,7 +89,7 @@ describe('asIterable', () => {
 
   test('makePathsRelative=false from a section keeps full paths and yields the section itself', () => {
     const server = tree().getSection('Server');
-    const pairs = new Map(asIterable(server, false));
+    const pairs = new Map(asIterable.call(server, false));
 
     expect(pairs.has('Server')).toBe(true); // the section root IS yielded here
     expect(pairs.get('Server:Host')).toBe('localhost');
@@ -99,7 +98,7 @@ describe('asIterable', () => {
 
   test('makePathsRelative=true from a section trims the section path and drops its empty key', () => {
     const server = tree().getSection('Server');
-    const keys = [...asIterable(server, true)].map(([key]) => key).sort();
+    const keys = [...asIterable.call(server, true)].map(([key]) => key).sort();
 
     // "Server" prefix (plus its delimiter) is trimmed; the now-empty root key
     // is omitted.
@@ -114,7 +113,7 @@ describe('asIterable', () => {
     const server = root.getSection('Server');
     expect(server.value).toBe('self-value');
 
-    const pairs = new Map(asIterable(server, true));
+    const pairs = new Map(asIterable.call(server, true));
     expect(pairs.has('')).toBe(false); // the section's own (empty-key) value is dropped
     expect(pairs.get('Host')).toBe('localhost');
   });
@@ -122,7 +121,7 @@ describe('asIterable', () => {
   test('makePathsRelative=true from a root is a no-op on paths (root is not a section)', () => {
     // The root is not an IConfigSection, so no prefix is trimmed and the
     // root contributes no empty key either.
-    const keys = new Set([...asIterable(tree(), true)].map(([key]) => key));
+    const keys = new Set([...asIterable.call(tree(), true)].map(([key]) => key));
     expect(keys.has('Server:Host')).toBe(true);
     expect(keys.has('Server:Port')).toBe(true);
     expect(keys.has('Logging:Level:Default')).toBe(true);
@@ -130,6 +129,6 @@ describe('asIterable', () => {
 
   test('empty configuration yields nothing', () => {
     const root = new ConfigBuilder().build() as unknown as IConfigRoot;
-    expect([...asIterable(root)]).toEqual([]);
+    expect([...asIterable.call(root)]).toEqual([]);
   });
 });

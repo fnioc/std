@@ -1,3 +1,4 @@
+/// <reference path="./node-builtins.d.ts" />
 // Hands out an IChangeToken for a watched target and fires it once the target
 // changes. Two modes, selected per provider:
 //
@@ -17,8 +18,7 @@ import { type FSWatcher, watch } from 'node:fs';
 import { basename, dirname, isAbsolute, join, resolve } from 'node:path';
 
 import { NullChangeToken } from '@rhombus-std/fileproviders.core';
-import { AbortController, CancellationChangeToken, clearTimeout, type IChangeToken, setTimeout,
-  type TimeoutHandle } from '@rhombus-std/primitives';
+import { AbortController, CancellationChangeToken, clearTimeout, type IChangeToken, setTimeout, type TimeoutHandle } from '@rhombus-std/primitives';
 
 import type { ExclusionFilters } from './ExclusionFilters.js';
 import { isDirectoryPath, pathNavigatesAboveRoot } from './PathUtils.js';

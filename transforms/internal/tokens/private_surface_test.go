@@ -1,6 +1,6 @@
 package tokens
 
-// The two property walks in holes.go — the phantom-brand detector (isBrandObject)
+// The two property walks in generics.go — the phantom-brand detector (isBrandObject)
 // and the brand-payload reader (brandLiteralFor) — consume the whole property
 // list with no accessibility filter. Both only ever ACCEPT a computed-symbol
 // property signature, so a non-public member (a `#`-named field, a

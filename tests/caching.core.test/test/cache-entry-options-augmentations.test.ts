@@ -1,11 +1,10 @@
-// Black-box tests for the `MemoryCacheEntryExtensions` fluent wrappers (the
-// ME.Caching.Abstractions `MemoryCacheEntryExtensions` port) -- both the
+// Black-box tests for the `MemoryCacheEntryOptionsSugarAugmentations` fluent wrappers (the
+// ME.Caching.Abstractions `MemoryCacheEntryOptionsSugarAugmentations` port) -- both the
 // standalone object-literal member form and the prototype method form the
 // CLOSED-set install merges onto MemoryCacheEntryOptions, plus the end-to-end
 // path: build a bag fluently, apply it to a live entry via `setOptions`.
 
-import { CacheItemPriority, type ICacheEntry, MemoryCacheEntryExtensions, MemoryCacheEntryOptions,
-  type PostEvictionDelegate } from '@rhombus-std/caching.core';
+import { CacheItemPriority, type ICacheEntry, MemoryCacheEntryOptions, MemoryCacheEntryOptionsSugarAugmentations, type PostEvictionDelegate } from '@rhombus-std/caching.core';
 import { MemoryCache, MemoryCacheOptions } from '@rhombus-std/caching.memory';
 import type { IChangeToken } from '@rhombus-std/primitives';
 import { describe, expect, test } from 'bun:test';
@@ -16,18 +15,20 @@ function makeToken(): IChangeToken {
   } };
 }
 
-describe('MemoryCacheEntryExtensions — standalone member form', () => {
+describe('MemoryCacheEntryOptionsSugarAugmentations — standalone member form', () => {
   test('each member sets its option and returns the bag for chaining', () => {
     const options = new MemoryCacheEntryOptions();
     const token = makeToken();
     const callback: PostEvictionDelegate = () => {};
     const state = { tag: 'state' };
 
-    const chained = MemoryCacheEntryExtensions.registerPostEvictionCallback(
-      MemoryCacheEntryExtensions.addExpirationToken(
-        MemoryCacheEntryExtensions.setSlidingExpiration(
-          MemoryCacheEntryExtensions.setSize(MemoryCacheEntryExtensions.setPriority(options, CacheItemPriority.High),
-            42),
+    const chained = MemoryCacheEntryOptionsSugarAugmentations.registerPostEvictionCallback.call(
+      MemoryCacheEntryOptionsSugarAugmentations.addExpirationToken.call(
+        MemoryCacheEntryOptionsSugarAugmentations.setSlidingExpiration.call(
+          MemoryCacheEntryOptionsSugarAugmentations.setSize.call(
+            MemoryCacheEntryOptionsSugarAugmentations.setPriority.call(options, CacheItemPriority.High),
+            42,
+          ),
           1_000,
         ),
         token,
@@ -47,26 +48,30 @@ describe('MemoryCacheEntryExtensions — standalone member form', () => {
   });
 
   test('setAbsoluteExpiration discriminates ms-relative from absolute Date', () => {
-    const relative = MemoryCacheEntryExtensions.setAbsoluteExpiration(new MemoryCacheEntryOptions(), 5_000);
+    const relative = MemoryCacheEntryOptionsSugarAugmentations.setAbsoluteExpiration.call(new MemoryCacheEntryOptions(), 5_000);
     expect(relative.absoluteExpirationRelativeToNow).toBe(5_000);
     expect(relative.absoluteExpiration).toBeUndefined();
 
     const when = new Date(Date.now() + 60_000);
-    const absolute = MemoryCacheEntryExtensions.setAbsoluteExpiration(new MemoryCacheEntryOptions(), when);
+    const absolute = MemoryCacheEntryOptionsSugarAugmentations.setAbsoluteExpiration.call(new MemoryCacheEntryOptions(), when);
     expect(absolute.absoluteExpiration).toBe(when);
     expect(absolute.absoluteExpirationRelativeToNow).toBeUndefined();
   });
 
   test("invalid values throw the bag's own RangeErrors", () => {
-    expect(() => MemoryCacheEntryExtensions.setSize(new MemoryCacheEntryOptions(), -1)).toThrow(RangeError);
-    expect(() => MemoryCacheEntryExtensions.setSlidingExpiration(new MemoryCacheEntryOptions(), 0)).toThrow(RangeError);
-    expect(() => MemoryCacheEntryExtensions.setAbsoluteExpiration(new MemoryCacheEntryOptions(), -5)).toThrow(
+    expect(() => MemoryCacheEntryOptionsSugarAugmentations.setSize.call(new MemoryCacheEntryOptions(), -1)).toThrow(
       RangeError,
     );
+    expect(() => MemoryCacheEntryOptionsSugarAugmentations.setSlidingExpiration.call(new MemoryCacheEntryOptions(), 0))
+      .toThrow(RangeError);
+    expect(() => MemoryCacheEntryOptionsSugarAugmentations.setAbsoluteExpiration.call(new MemoryCacheEntryOptions(), -5))
+      .toThrow(
+        RangeError,
+      );
   });
 });
 
-describe('MemoryCacheEntryExtensions — method form (CLOSED-set install)', () => {
+describe('MemoryCacheEntryOptionsSugarAugmentations — method form (CLOSED-set install)', () => {
   test('fluent method chain equals the standalone member form', () => {
     const token = makeToken();
     const callback: PostEvictionDelegate = () => {};
@@ -76,12 +81,12 @@ describe('MemoryCacheEntryExtensions — method form (CLOSED-set install)', () =
       2_000,
     ).setAbsoluteExpiration(when).addExpirationToken(token).registerPostEvictionCallback(callback);
 
-    const viaMember = MemoryCacheEntryExtensions.registerPostEvictionCallback(
-      MemoryCacheEntryExtensions.addExpirationToken(
-        MemoryCacheEntryExtensions.setAbsoluteExpiration(
-          MemoryCacheEntryExtensions.setSlidingExpiration(
-            MemoryCacheEntryExtensions.setSize(
-              MemoryCacheEntryExtensions.setPriority(new MemoryCacheEntryOptions(), CacheItemPriority.Low),
+    const viaMember = MemoryCacheEntryOptionsSugarAugmentations.registerPostEvictionCallback.call(
+      MemoryCacheEntryOptionsSugarAugmentations.addExpirationToken.call(
+        MemoryCacheEntryOptionsSugarAugmentations.setAbsoluteExpiration.call(
+          MemoryCacheEntryOptionsSugarAugmentations.setSlidingExpiration.call(
+            MemoryCacheEntryOptionsSugarAugmentations.setSize.call(
+              MemoryCacheEntryOptionsSugarAugmentations.setPriority.call(new MemoryCacheEntryOptions(), CacheItemPriority.Low),
               7,
             ),
             2_000,
@@ -104,7 +109,7 @@ describe('MemoryCacheEntryExtensions — method form (CLOSED-set install)', () =
   });
 });
 
-describe('MemoryCacheEntryExtensions — end-to-end via setOptions', () => {
+describe('MemoryCacheEntryOptionsSugarAugmentations — end-to-end via setOptions', () => {
   test('a fluently built bag applies to a live cache entry', () => {
     const cache = new MemoryCache(new MemoryCacheOptions());
     const token = makeToken();

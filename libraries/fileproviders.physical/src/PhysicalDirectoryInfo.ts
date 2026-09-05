@@ -1,3 +1,4 @@
+/// <reference path="./node-builtins.d.ts" />
 // Both an IFileInfo (describing the directory entry itself: length -1,
 // isDirectory true, createReadStream throws) and an IDirectoryContents (its
 // lazily-enumerated, exclusion-filtered children). Enumeration swallows a

@@ -8,14 +8,14 @@
 // Black-box via the public logging.core surface.
 
 import { NullLogger } from '@rhombus-std/logging';
-import { EventId, FormattedLogValues, type ILogger, LoggerExtensions, LogLevel } from '@rhombus-std/logging.core';
-import { augment } from '@rhombus-std/primitives';
+import { EventId, FormattedLogValues, type ILogger, LoggerAugmentations, LogLevel } from '@rhombus-std/logging.core';
+import { augment, Type } from '@rhombus-std/primitives';
 import { describe, expect, test } from 'bun:test';
 
-// The `tokenfor<ILogger>()`-derived augmentation token (a no-transformer test uses
+// The `typefor<ILogger>()`-derived augmentation token (a no-transformer test uses
 // the derived literal directly). `ILogger`'s defaulted `TCategoryName` parameter
 // lowers into the token as `<unknown>`.
-const ILOGGER_TOKEN = '@rhombus-std/logging.core:ILogger<unknown>';
+const ILOGGER_RECEIVER = Type.from('@rhombus-std/logging.core:ILogger<unknown>');
 
 /** A logger that records the state handed to `beginScope` and returns a token. */
 function recordingLogger(): { logger: ILogger; scopes: unknown[]; } {
@@ -35,9 +35,7 @@ function recordingLogger(): { logger: ILogger; scopes: unknown[]; } {
 class DecoratedRecordingLogger implements ILogger {
   public readonly scopes: unknown[] = [];
   public readonly logs: Array<{ eventId: EventId; state: unknown; }> = [];
-  public log<TState>(_logLevel: LogLevel, eventId: EventId, state: TState, _error: Error | undefined,
-    _formatter: (state: TState, error: Error | undefined) => string): void
-  {
+  public log<TState>(_logLevel: LogLevel, eventId: EventId, state: TState, _error: Error | undefined, _formatter: (state: TState, error: Error | undefined) => string): void {
     this.logs.push({ eventId, state });
   }
   public isEnabled(): boolean {
@@ -52,32 +50,30 @@ class DecoratedRecordingLogger implements ILogger {
 // `implements ILogger` now requires them on the class — the empty extends-merge
 // binds them body-free (§71/§80), exactly as the concrete loggers do.
 interface DecoratedRecordingLogger extends ILogger {}
-augment(ILOGGER_TOKEN)(DecoratedRecordingLogger);
+augment(ILOGGER_RECEIVER)(DecoratedRecordingLogger);
 
 // The convenience method forms `@augment` installs at runtime — not statically
 // typed onto the class (TS2430: `log`/`beginScope` share their names with
 // `ILogger`'s body-declared primitives), so intersected in at the call site.
-type LoggerConvenience = { log(logLevel: LogLevel, message: string, ...args: unknown[]): void;
-  beginScope(messageFormat: string, ...args: unknown[]): Disposable | undefined; };
+type LoggerConvenience = { log(logLevel: LogLevel, message: string, ...args: unknown[]): void; beginScope(messageFormat: string, ...args: unknown[]): Disposable | undefined; };
 
 /** A decorated recording logger widened to its runtime convenience method forms. */
 function decoratedLogger(): DecoratedRecordingLogger & LoggerConvenience {
   return new DecoratedRecordingLogger() as DecoratedRecordingLogger & LoggerConvenience;
 }
 
-describe('LoggerExtensions.beginScope', () => {
+describe('LoggerAugmentations.beginScope', () => {
   test('formats the template into a FormattedLogValues state and opens the scope', () => {
     const { logger, scopes } = recordingLogger();
 
-    const scope = LoggerExtensions.beginScope(logger, 'Processing request {Id} from {Address}', 42, '10.0.0.1');
+    const scope = LoggerAugmentations.beginScope.call(logger, 'Processing request {Id} from {Address}', 42, '10.0.0.1');
 
     expect(scope).toBeDefined();
     expect(scopes).toHaveLength(1);
     const state = scopes[0];
     expect(state).toBeInstanceOf(FormattedLogValues);
     expect(String(state)).toBe('Processing request 42 from 10.0.0.1');
-    expect([...(state as FormattedLogValues)]).toEqual([['Id', 42], ['Address', '10.0.0.1'], ['{OriginalFormat}',
-      'Processing request {Id} from {Address}']]);
+    expect([...(state as FormattedLogValues)]).toEqual([['Id', 42], ['Address', '10.0.0.1'], ['{OriginalFormat}', 'Processing request {Id} from {Address}']]);
   });
 
   test("a concrete logger's beginScope primitive still takes raw state (no recursion)", () => {
@@ -110,7 +106,7 @@ describe('LoggerExtensions.beginScope', () => {
   });
 });
 
-describe('LoggerExtensions.log (dispatched over the primitive)', () => {
+describe('LoggerAugmentations.log (dispatched over the primitive)', () => {
   test('a message string routes to the wrapper (convenience dot-callable)', () => {
     const logger = decoratedLogger();
 

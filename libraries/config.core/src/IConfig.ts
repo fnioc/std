@@ -1,5 +1,5 @@
 import type { IChangeToken } from '@rhombus-std/primitives';
-import type { Func } from '@rhombus-toolkit/func';
+import type { Func } from '@rhombus-toolkit/types';
 import type { IConfigSection } from './IConfigSection';
 import type { ConfigObject } from './types';
 

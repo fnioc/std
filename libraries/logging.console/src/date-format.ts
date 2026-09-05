@@ -28,8 +28,7 @@ interface DateParts {
 
 function getParts(date: Date, utc: boolean): DateParts {
   if (utc) {
-    return { year: date.getUTCFullYear(), month: date.getUTCMonth() + 1, day: date.getUTCDate(),
-      hours: date.getUTCHours(), minutes: date.getUTCMinutes(), seconds: date.getUTCSeconds(),
+    return { year: date.getUTCFullYear(), month: date.getUTCMonth() + 1, day: date.getUTCDate(), hours: date.getUTCHours(), minutes: date.getUTCMinutes(), seconds: date.getUTCSeconds(),
       milliseconds: date.getUTCMilliseconds(), offsetMinutes: 0 };
   }
   return {

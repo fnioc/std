@@ -65,10 +65,18 @@ func PosixRelative(from, to string) (string, bool) {
 
 // PackagePrivateToken renders the tier-2 (app-internal) base token
 // `packageName/<decl path relative to package root, ext stripped>:<exportName>`,
-// with a leading `src/` segment rewritten to `tokens/` so the token equals the
-// package's `./tokens/*` white-box import specifier (the source-referenced token
+// with a leading `src/` segment rewritten to `private/` so the token equals the
+// package's `./private/*` white-box import specifier (the source-referenced token
 // surface a non-barrel type is reached through).
 func PackagePrivateToken(pkgName, pkgDir, declPath, exportName string) string {
+	from, name := PackagePrivateTokenParts(pkgName, pkgDir, declPath, exportName)
+	return from + ":" + name
+}
+
+// PackagePrivateTokenParts is PackagePrivateToken split into the FROM/NAME pair
+// it joins with `:` — the source specifier a structural `Type.imported` call takes
+// as its first two arguments, rather than the flat token string.
+func PackagePrivateTokenParts(pkgName, pkgDir, declPath, exportName string) (from, name string) {
 	rel, ok := PosixRelative(pkgDir, declPath)
 	var base string
 	if ok {
@@ -77,15 +85,22 @@ func PackagePrivateToken(pkgName, pkgDir, declPath, exportName string) string {
 		base = StripExt(strings.TrimLeft(Normalize(declPath), "/"))
 	}
 	if strings.HasPrefix(base, "src/") {
-		base = "tokens/" + base[len("src/"):]
+		base = "private/" + base[len("src/"):]
 	}
-	return pkgName + "/" + base + ":" + exportName
+	return pkgName + "/" + base, exportName
 }
 
 // RootlessToken renders the tier-3 (rootless) base token
 // `./<decl path relative to project root, ext stripped>:<exportName>` for a
 // declaration with no owning package.json up-tree.
 func RootlessToken(declPath, exportName, projectRoot string) string {
+	from, name := RootlessTokenParts(declPath, exportName, projectRoot)
+	return from + ":" + name
+}
+
+// RootlessTokenParts is RootlessToken split into the FROM/NAME pair it joins
+// with `:`.
+func RootlessTokenParts(declPath, exportName, projectRoot string) (from, name string) {
 	rel, ok := PosixRelative(projectRoot, declPath)
 	var base string
 	if ok {
@@ -93,5 +108,5 @@ func RootlessToken(declPath, exportName, projectRoot string) string {
 	} else {
 		base = StripExt(strings.TrimLeft(Normalize(declPath), "/"))
 	}
-	return "./" + base + ":" + exportName
+	return "./" + base, exportName
 }

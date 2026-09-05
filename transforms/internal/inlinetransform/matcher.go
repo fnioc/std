@@ -1,33 +1,31 @@
 // Package inlinetransform holds the matching and side-parse foundations for the
 // generic single-expression function-inlining transform stage. It carries no
-// per-library semantic knowledge: a hand-authored `rhombus.inline` publish-list
-// entry names an interface member (or free function), and this package resolves
-// that entry ONCE per program to a member symbol and its full declaration set,
-// then decides — per call site, by symbol/declaration IDENTITY, never by string
-// key — whether a call is an inlineable one.
+// per-library semantic knowledge: a publish-list entry — a JSON `inline` entry
+// or one a `registerInlineBodies` marker call discovers — names an interface
+// member (or free function), and this package resolves that entry ONCE per
+// program to the publisher's own declarations, then inlines each call the
+// checker resolves to one of them.
 //
-// The two load-bearing checker compositions live here:
+// The two load-bearing steps:
 //
-//   - Entry resolution (ResolveEntry): the entry's `type` token names an
-//     interface; that resolves to a module symbol, then the interface's member
-//     symbol, then the member's declaration set. TypeScript declaration merging
-//     has already unified every duplicate declaration (base + each
-//     `declare module` augmentation) into that one symbol, so the set is
-//     authoritative and complete.
+//   - Declaration lookup (markerMemberDeclarations): the entry's `type` token
+//     resolves to a module symbol and then an exported type symbol, and every
+//     type on that surface — the named one and each it transitively extends — is
+//     asked for its OWN member of that name. The union is the member's
+//     declaration set, whichever member a property lookup would have preferred;
+//     the subset whose source files the entry's impl PACKAGE owns is what the
+//     body serves, since a publisher declares nothing onto a receiver that is
+//     not sugar.
 //
-//   - Call-site matching (ResolvedEntry.Match): a call resolves through the
-//     checker to a signature, the signature to its declaration node, and the
-//     match is set membership of that node in the resolved declaration set.
-//     Whichever overload the call bound to, its declaration is one of the merged
-//     declarations iff the call targets the entry's member.
-//
-// Because matching is by identity, a same-named member on an UNRELATED symbol
-// (an accidental or dist-skewed duplicate) resolves to a declaration that is NOT
-// in the set — the rogue-duplicate tripwire the design calls for.
+//   - Selection is the checker's resolution, full stop: the signature the
+//     checker resolved a call to — the one the author's editor displayed — is
+//     the selection, and the engine inlines the body assigned to exactly that
+//     declaration (assignBodies). The engine performs no overload resolution of
+//     its own, and a publisher-owned face with no body is a resolution-time
+//     hard error rather than a nearest-match substitution.
 package inlinetransform
 
 import (
-	"fmt"
 	"strings"
 
 	shimast "github.com/microsoft/typescript-go/shim/ast"
@@ -35,95 +33,106 @@ import (
 	"github.com/samchon/ttsc/packages/ttsc/driver"
 )
 
-// Entry is one hand-authored `rhombus.inline` publish-list entry. Field presence
-// distinguishes the kinds: an interface-member entry carries Type + Member (Impl
-// names the declaring export); a free-function entry omits Member. Only the
-// interface-member shape is exercised by the pilot.
+// Entry is one hand-authored `rhombus-std` marker `inline` publish-list entry.
+// Field KIND distinguishes the shapes: type names a TYPE (the interface an
+// instance member is declared on); impl names a VALUE (a fully-qualified
+// export — the body holder for an ambient member, or a floater's own
+// function); member is the member name, shared by both member shapes. See
+// Entry.Kind (entries.go) for the full grammar.
 type Entry struct {
-	// Type is a nameof token, "<package>:<TypeName>", identifying the interface
-	// whose member is inlineable. It is the match anchor.
+	// Type is a "<package>:<TypeName>" reference identifying the interface an
+	// instance member is declared on — the match anchor. Absent for a floater
+	// or a static member.
 	Type string
-	// Impl is the export name (within the declaring package) that holds the
-	// inlineable body. Self-relative, resolved through the workspace.
+	// Impl is a "<package>:<Name>" reference to the export holding the
+	// inlineable body: an ambient member's body-holder value, or a floater's
+	// own function. Absent for an own-body instance member.
 	Impl string
-	// Member is the member name, shared by the interface side and the impl side
-	// (structurally identical by the registry-install mechanism).
+	// Member is the member name, shared by both member shapes (instance and
+	// static). Absent for a floater.
 	Member string
 }
 
-// ResolvedEntry is an Entry resolved once per program to a concrete member symbol
-// and the set of declaration nodes that symbol carries. Match tests call sites
-// against this set.
-type ResolvedEntry struct {
-	Entry           Entry
-	InterfaceSymbol *shimast.Symbol
-	MemberSymbol    *shimast.Symbol
-	// Declarations is the member symbol's full merged declaration set, used as
-	// the identity set for call-site matching. Keyed by declaration node.
-	Declarations map[*shimast.Node]bool
+// markerMemberDeclarations returns every declaration of member the marker's named
+// type carries: its own, and those of each type it extends, transitively.
+//
+// It deliberately does not ask the type for its PROPERTY of that name. A property
+// lookup answers with one declaration set per name, and an interface reaching two
+// same-named members through two `extends` clauses resolves the collision by
+// keeping one and hiding the other — so the sugar declaration a marker names can
+// be entirely invisible to it. The marker names a member on a SURFACE, so the
+// surface is walked and every contributing type is asked for its own member of
+// that name.
+//
+// An empty result means the marker names a member that exists nowhere on the
+// surface it named; the caller raises that rather than skipping.
+func markerMemberDeclarations(checker *shimchecker.Checker, typeSym *shimast.Symbol, member string) []*shimast.Node {
+	var out []*shimast.Node
+	seen := map[*shimast.Node]bool{}
+	for _, surface := range surfaceTypes(checker, typeSym) {
+		memberSym := checker.GetPropertyOfType(surface, member)
+		if memberSym == nil {
+			continue
+		}
+		for _, decl := range memberSym.Declarations {
+			if seen[decl] {
+				continue
+			}
+			seen[decl] = true
+			out = append(out, decl)
+		}
+	}
+	return out
 }
 
-// ResolveEntry resolves an interface-member entry against a loaded program:
-// type ref -> module symbol -> interface symbol -> member symbol -> declarations
-// set. It returns an error (never a silent miss) when any leg fails to resolve,
-// so a malformed or dist-skewed publish list is a loud build failure.
-func ResolveEntry(prog *driver.Program, checker *shimchecker.Checker, e Entry) (*ResolvedEntry, error) {
-	pkg, typeName, ok := splitTypeToken(e.Type)
-	if !ok {
-		return nil, fmt.Errorf("inline: malformed type token %q (want \"<package>:<TypeName>\")", e.Type)
+// surfaceTypes returns the type a marker names together with every type it
+// extends, transitively. Order is deterministic — the named type first, then each
+// base in declaration order — so a declaration set built from it is stable across
+// runs.
+func surfaceTypes(checker *shimchecker.Checker, typeSym *shimast.Symbol) []*shimchecker.Type {
+	var out []*shimchecker.Type
+	seen := map[*shimchecker.Type]bool{}
+	var visit func(t *shimchecker.Type)
+	visit = func(t *shimchecker.Type) {
+		if t == nil || seen[t] {
+			return
+		}
+		seen[t] = true
+		out = append(out, t)
+		for _, base := range baseTypesOf(checker, t) {
+			visit(base)
+		}
 	}
-
-	moduleSym := resolveModuleSymbol(prog, checker, pkg)
-	if moduleSym == nil {
-		return nil, fmt.Errorf("inline: cannot resolve module %q for entry %q", pkg, e.Type)
-	}
-
-	ifaceSym := exportedMember(checker, moduleSym, typeName)
-	if ifaceSym == nil {
-		return nil, fmt.Errorf("inline: module %q does not export type %q", pkg, typeName)
-	}
-
-	declared := checker.GetDeclaredTypeOfSymbol(ifaceSym)
-	if declared == nil {
-		return nil, fmt.Errorf("inline: %s:%s has no declared type", pkg, typeName)
-	}
-
-	// GetPropertyOfType over the interface's declared type returns the MERGED
-	// member symbol: TS folds the base declaration and every `declare module`
-	// augmentation of the interface into one symbol whose Declarations span all
-	// contributing files.
-	memberSym := checker.GetPropertyOfType(declared, e.Member)
-	if memberSym == nil {
-		return nil, fmt.Errorf("inline: %s:%s has no member %q", pkg, typeName, e.Member)
-	}
-
-	decls := map[*shimast.Node]bool{}
-	for _, d := range memberSym.Declarations {
-		decls[d] = true
-	}
-	if len(decls) == 0 {
-		return nil, fmt.Errorf("inline: member %q on %s:%s carries no declarations", e.Member, pkg, typeName)
-	}
-
-	return &ResolvedEntry{
-		Entry:           e,
-		InterfaceSymbol: ifaceSym,
-		MemberSymbol:    memberSym,
-		Declarations:    decls,
-	}, nil
+	visit(checker.GetDeclaredTypeOfSymbol(typeSym))
+	return out
 }
 
-// Match reports whether call is an invocation of this entry's member. It resolves
-// the call to its signature, the signature to a declaration node, and tests that
-// node for membership in the entry's merged declaration set. A call to a
-// same-named member on a different symbol resolves to a declaration outside the
-// set and is rejected.
-func (r *ResolvedEntry) Match(checker *shimchecker.Checker, call *shimast.Node) bool {
-	decl := resolvedDeclaration(checker, call)
-	if decl == nil {
-		return false
+// baseTypesOf returns t's `extends` bases. A generic base arrives INSTANTIATED,
+// and an instantiation carries no interface shape of its own, so the walk steps
+// through such a type's symbol to its declared type first — otherwise it stops at
+// the first generic link in the chain.
+func baseTypesOf(checker *shimchecker.Checker, t *shimchecker.Type) []*shimchecker.Type {
+	if t == nil {
+		return nil
 	}
-	return r.Declarations[decl]
+	if t.ObjectFlags()&shimchecker.ObjectFlagsClassOrInterface == 0 {
+		t = declaredTypeOf(checker, t.Symbol())
+	}
+	if t == nil || t.ObjectFlags()&shimchecker.ObjectFlagsClassOrInterface == 0 {
+		return nil
+	}
+	return shimchecker.Checker_getBaseTypes(checker, t)
+}
+
+// declaredTypeOf returns the type a class, interface or alias symbol declares, or
+// nil for a symbol that declares no type at all — the shape a base's symbol takes
+// when it is not itself a named type.
+func declaredTypeOf(checker *shimchecker.Checker, sym *shimast.Symbol) *shimchecker.Type {
+	const declaresAType = shimast.SymbolFlagsClass | shimast.SymbolFlagsInterface | shimast.SymbolFlagsTypeAlias
+	if sym == nil || sym.Flags&declaresAType == 0 {
+		return nil
+	}
+	return checker.GetDeclaredTypeOfSymbol(sym)
 }
 
 // resolvedDeclaration returns the declaration node the call binds to. For an
@@ -157,9 +166,17 @@ func resolvedDeclaration(checker *shimchecker.Checker, call *shimast.Node) *shim
 //     parameter that appears in a parameter position, so this recovers every
 //     inferred argument the checker bound.
 //
-// ok is false when the call binds no type arguments (non-generic) or an inferred
-// binding cannot be recovered for every parameter.
-func RecoverTypeArguments(checker *shimchecker.Checker, call *shimast.Node) ([]*shimchecker.Type, bool) {
+// required marks, by type-parameter POSITION, which bindings the caller
+// actually needs; a nil required treats every position as needed. A position
+// beyond required's length is treated as needed too, so a length mismatch
+// fails safe rather than silently skipping a check.
+//
+// On the INFERRED path, a position the caller does not need is free to go
+// unbound — nothing in the call's arguments has to determine it — and its slot
+// in the returned slice is left nil rather than sinking the whole recovery. ok
+// is false when the call binds no type arguments (non-generic) or a NEEDED
+// position's binding cannot be recovered.
+func RecoverTypeArguments(checker *shimchecker.Checker, call *shimast.Node, required []bool) ([]*shimchecker.Type, bool) {
 	callExpr := call.AsCallExpression()
 	if callExpr == nil {
 		return nil, false
@@ -217,8 +234,9 @@ func RecoverTypeArguments(checker *shimchecker.Checker, call *shimast.Node) ([]*
 		bindings[idx] = checker.GetTypeOfSymbol(instParams[i])
 	}
 
-	for _, b := range bindings {
-		if b == nil {
+	for i, b := range bindings {
+		needed := required == nil || i >= len(required) || required[i]
+		if needed && b == nil {
 			return nil, false
 		}
 	}
@@ -246,7 +264,7 @@ func splitTypeToken(token string) (pkg, typeName string, ok bool) {
 //     ITS location.
 //
 //  2. Real module RESOLUTION from a consumer source file (the transitive-witness
-//     fix, §94's W5 scope addition). A dist-referenced re-export
+//     fix). A dist-referenced re-export
 //     (`@rhombus-std/di`'s bundle `export … from '@rhombus-std/di.core'`) carries
 //     the specifier but does NOT resolve from di's OWN dist location under the
 //     isolated linker, so (1) returns nil for a consumer that reaches the target

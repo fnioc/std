@@ -10,17 +10,14 @@ import type { IConfig, IConfigSection } from '@rhombus-std/config.core';
 import { InstrumentRule, METER_SCOPE_ALL, MeterScope, MetricsOptions } from '@rhombus-std/diagnostics.core';
 import type { IConfigureOptions } from '@rhombus-std/options';
 
-import { DEFAULT_KEY, equalsIgnoreCase, flattenLeaves, hasChildren, parseBool,
-  sectionExists } from '../../config-rule-parsing';
+import { DEFAULT_KEY, equalsIgnoreCase, flattenLeaves, hasChildren, parseBool, sectionExists } from '../../config-rule-parsing';
 
 const ENABLED_METRICS_KEY = 'EnabledMetrics';
 const ENABLED_GLOBAL_METRICS_KEY = 'EnabledGlobalMetrics';
 const ENABLED_LOCAL_METRICS_KEY = 'EnabledLocalMetrics';
 
 /** Appends per-instrument rules from an object of `{InstrumentName} = bool` leaves. */
-function loadInstrumentRules(options: MetricsOptions, meterSection: IConfigSection, scopes: MeterScope,
-  listenerName: string | undefined): void
-{
+function loadInstrumentRules(options: MetricsOptions, meterSection: IConfigSection, scopes: MeterScope, listenerName: string | undefined): void {
   for (const [relativePath, rawValue] of flattenLeaves(meterSection)) {
     const enabled = parseBool(rawValue);
     if (enabled === undefined) {
@@ -32,9 +29,7 @@ function loadInstrumentRules(options: MetricsOptions, meterSection: IConfigSecti
 }
 
 /** Appends per-meter rules (bool leaf) or recurses into per-instrument rules (object). */
-function loadMeterRules(options: MetricsOptions, scopeSection: IConfigSection, scopes: MeterScope,
-  listenerName: string | undefined): void
-{
+function loadMeterRules(options: MetricsOptions, scopeSection: IConfigSection, scopes: MeterScope, listenerName: string | undefined): void {
   for (const meterSection of scopeSection.getChildren()) {
     if (hasChildren(meterSection)) {
       loadInstrumentRules(options, meterSection, scopes, listenerName);

@@ -2,24 +2,27 @@
 // surface (the barrel), plus @rhombus-std/logging's LoggingBuilder for the
 // registry-installed method forms.
 
-import type { IServiceManifest, Token } from '@rhombus-std/di.core';
-import { LOGGER_PROVIDER_TOKEN, LoggingBuilder } from '@rhombus-std/logging';
-import { ConsoleFormatter, ConsoleFormatterNames, ConsoleLoggerExtensions, ConsoleLoggerOptions, ConsoleLoggerProvider,
-  ConsoleLoggerQueueFullMode, type LogEntry, StringWriter, type TextWriter } from '@rhombus-std/logging.console';
+import type { Manifest } from '@rhombus-std/di.core';
+import { LOGGER_PROVIDER_TYPE, LoggingBuilder } from '@rhombus-std/logging';
+import { ConsoleFormatter, ConsoleFormatterNames, ConsoleLoggerAugmentations, ConsoleLoggerOptions, ConsoleLoggerProvider, ConsoleLoggerQueueFullMode, type LogEntry, StringWriter,
+  type TextWriter } from '@rhombus-std/logging.console';
 import { EventId, type IExternalScopeProvider, type ILoggingBuilder, LogLevel } from '@rhombus-std/logging.core';
 import { Options } from '@rhombus-std/options';
+import type { Type } from '@rhombus-std/primitives';
 import { expect, test } from 'bun:test';
 
 /** A recording stand-in for the di.core registration builder. */
-function fakeServices(): { services: IServiceManifest; values: Array<[Token, unknown]>; } {
-  const values: Array<[Token, unknown]> = [];
-  const services = { addValue(token: Token, value: unknown): void {
-    values.push([token, value]);
-  } } as unknown as IServiceManifest;
-  return { services, values };
+function fakeServices(): { services: Manifest<unknown>; values: Array<[Type, unknown]>; } {
+  const values: Array<[Type, unknown]> = [];
+  const make = (): Manifest<unknown> =>
+    ({ addValue(address: Type, value: unknown): Manifest<unknown> {
+      values.push([address, value]);
+      return make();
+    } }) as unknown as Manifest<unknown>;
+  return { services: make(), values };
 }
 
-function builderOver(services: IServiceManifest): ILoggingBuilder {
+function builderOver(services: Manifest<unknown>): ILoggingBuilder {
   return new LoggingBuilder(services);
 }
 
@@ -29,9 +32,7 @@ class UpperFormatter extends ConsoleFormatter {
     super('upper');
   }
 
-  public override write<TState>(logEntry: LogEntry<TState>, _scopeProvider: IExternalScopeProvider | undefined,
-    textWriter: TextWriter): void
-  {
+  public override write<TState>(logEntry: LogEntry<TState>, _scopeProvider: IExternalScopeProvider | undefined, textWriter: TextWriter): void {
     textWriter.write(`${logEntry.formatter(logEntry.state, logEntry.error).toUpperCase()}\n`);
   }
 }
@@ -151,13 +152,13 @@ test('addConsole registers exactly one provider per manifest', () => {
   const { services, values } = fakeServices();
   const builder = builderOver(services);
 
-  ConsoleLoggerExtensions.addConsole(builder);
-  ConsoleLoggerExtensions.addConsole(builder, (options) => {
+  ConsoleLoggerAugmentations.addConsole.call(builder);
+  ConsoleLoggerAugmentations.addConsole.call(builder, (options) => {
     options.maxQueueLength = 7;
   });
-  ConsoleLoggerExtensions.addSimpleConsole(builder);
+  ConsoleLoggerAugmentations.addSimpleConsole.call(builder);
 
-  const providers = values.filter(([token]) => token === LOGGER_PROVIDER_TOKEN);
+  const providers = values.filter(([address]) => address === LOGGER_PROVIDER_TYPE);
   expect(providers).toHaveLength(1);
   expect(providers[0]?.[1]).toBeInstanceOf(ConsoleLoggerProvider);
 });
@@ -178,11 +179,11 @@ test('configure delegates accumulate onto the shared options and reach the provi
   const builder = builderOver(services);
   const writes: string[] = [];
 
-  ConsoleLoggerExtensions.addConsole(builder);
+  ConsoleLoggerAugmentations.addConsole.call(builder);
   // A configure applied AFTER the provider exists must still land (the
   // reference OnChange route): select the custom formatter registered late.
-  ConsoleLoggerExtensions.addConsoleFormatter(builder, new UpperFormatter());
-  ConsoleLoggerExtensions.addConsole(builder, (options) => {
+  ConsoleLoggerAugmentations.addConsoleFormatter.call(builder, new UpperFormatter());
+  ConsoleLoggerAugmentations.addConsole.call(builder, (options) => {
     options.formatterName = 'upper';
   });
 
@@ -212,7 +213,7 @@ test("addSimpleConsole's configure reaches the built-in simple formatter", async
   const builder = builderOver(services);
   const writes: string[] = [];
 
-  ConsoleLoggerExtensions.addSimpleConsole(builder, (options) => {
+  ConsoleLoggerAugmentations.addSimpleConsole.call(builder, (options) => {
     options.singleLine = true;
   });
 

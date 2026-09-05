@@ -64,7 +64,7 @@ export function instrumentRuleMatches(rule: InstrumentRule, query: InstrumentRul
     return false;
   }
 
-  // Scopes: the rule must cover the instrument's scope.
+  // Lifetime: the rule must cover the instrument's scope.
   const scopeCovered = query.isLocalScope
     ? (rule.scopes & MeterScope.Local) !== 0
     : (rule.scopes & MeterScope.Global) !== 0;
@@ -100,9 +100,7 @@ export function instrumentRuleMatches(rule: InstrumentRule, query: InstrumentRul
  * the more specific. Returns `true` on a full tie, so a fold over a rule list
  * keeps the LAST of equally specific rules.
  */
-export function isMoreSpecificInstrumentRule(rule: InstrumentRule, best: InstrumentRule | undefined,
-  isLocalScope: boolean): boolean
-{
+export function isMoreSpecificInstrumentRule(rule: InstrumentRule, best: InstrumentRule | undefined, isLocalScope: boolean): boolean {
   if (best === undefined) {
     return true;
   }
@@ -164,8 +162,7 @@ export function isMoreSpecificInstrumentRule(rule: InstrumentRule, best: Instrum
  */
 export function getMostSpecificInstrumentRule(rules: readonly InstrumentRule[], query: InstrumentRuleQuery):
   | InstrumentRule
-  | undefined
-{
+  | undefined {
   let best: InstrumentRule | undefined;
   for (const rule of rules) {
     if (instrumentRuleMatches(rule, query) && isMoreSpecificInstrumentRule(rule, best, query.isLocalScope)) {

@@ -59,7 +59,7 @@ func firstCall(t *testing.T, sf *shimast.SourceFile) *shimast.Node {
 // first-pass matcher behaves exactly as it did before anchoring.
 func TestAnchorIsIdentityOnAParseNode(t *testing.T) {
 	ec := shimprinter.NewEmitContext()
-	sf := parse(t, "/app.ts", "tokenfor(Foo);\n")
+	sf := parse(t, "/app.ts", "typefor(Foo);\n")
 	call := firstCall(t, sf)
 
 	if got := NewCheckerAnchor(ec, sf)(call); got != call {
@@ -73,11 +73,11 @@ func TestAnchorIsIdentityOnAParseNode(t *testing.T) {
 // matcher must skip it rather than hand the checker a node the binder never saw.
 func TestAnchorRejectsAMintedNode(t *testing.T) {
 	ec := shimprinter.NewEmitContext()
-	sf := parse(t, "/app.ts", "tokenfor(Foo);\n")
+	sf := parse(t, "/app.ts", "typefor(Foo);\n")
 	factory := ec.Factory.AsNodeFactory()
 
 	minted := factory.NewCallExpression(
-		factory.NewIdentifier("tokenfor"),
+		factory.NewIdentifier("typefor"),
 		nil,
 		nil,
 		factory.NewNodeList([]*shimast.Node{factory.NewIdentifier("Foo")}),
@@ -96,7 +96,7 @@ func TestAnchorRejectsAMintedNode(t *testing.T) {
 // rebuilds as the loop performs.
 func TestAnchorResolvesARebuiltNode(t *testing.T) {
 	ec := shimprinter.NewEmitContext()
-	sf := parse(t, "/app.ts", "tokenfor(Foo);\n")
+	sf := parse(t, "/app.ts", "typefor(Foo);\n")
 	call := firstCall(t, sf)
 	factory := ec.Factory.AsNodeFactory()
 
@@ -165,7 +165,7 @@ func TestAnchorRejectsAForeignFileNode(t *testing.T) {
 // anything else anchors to nil rather than to a mistyped node.
 func TestAnchoredCallRejectsANonCall(t *testing.T) {
 	ec := shimprinter.NewEmitContext()
-	sf := parse(t, "/app.ts", "tokenfor(Foo);\n")
+	sf := parse(t, "/app.ts", "typefor(Foo);\n")
 	call := firstCall(t, sf)
 	anchor := NewCheckerAnchor(ec, sf)
 

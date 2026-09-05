@@ -17,12 +17,7 @@ export class BrowserConsoleLoggerProvider implements ILoggerProvider {
 
   /** Creates (or returns the cached) {@link BrowserConsoleLogger} for `name`. */
   public createLogger(name: string): ILogger {
-    let logger = this.#loggers.get(name);
-    if (logger === undefined) {
-      logger = new BrowserConsoleLogger(name, this.#console);
-      this.#loggers.set(name, logger);
-    }
-    return logger;
+    return this.#loggers.getOrInsertComputed(name, (name) => new BrowserConsoleLogger(name, this.#console));
   }
 
   /** Nothing to release: the console is a borrowed global. */

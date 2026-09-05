@@ -12,12 +12,14 @@ import { basename, join, resolve } from 'node:path';
 // explicit tsconfig `plugins` array:
 //
 //   1. a marked authoring dep spawns the host — a consumer that DIRECTLY devDeps
-//      di.extras (which carries the ttsc.plugin marker) and calls tokenfor<T>().
+//      di.extras (which carries the ttsc.plugin marker) and calls typefor<T>().
 //      Auto-discovery spawns the host off di.extras; the always-on host lowers
-//      tokenfor<T>() to its token.
+//      typefor<T>() to its `Type.*` tree. The fixture pins inline emission so the
+//      lowered call site is a single self-contained assertion — hoisted-vs-inline
+//      is the typefor.ttsc.e2e suite's own concern, not this one's.
 //   2. cores don't spawn the host — a consumer that deps ONLY di.core (a core, no
 //      ttsc.plugin marker, though di.core itself devDeps primitives.extras to build
-//      ITSELF). Auto-discovery finds no marker, so NO host spawns and tokenfor<T>()
+//      ITSELF). Auto-discovery finds no marker, so NO host spawns and typefor<T>()
 //      is emitted UNTOUCHED. di.core's own devDep must not spill onto its consumer.
 //
 // The fixture root lives OUTSIDE the repo tree, per-worktree, at
@@ -52,16 +54,16 @@ const ttscCache = process.env.TTSC_CACHE_DIR ?? join(homedir(), '.cache', 'fnioc
 const goBuildTmp = process.env.GOTMPDIR ?? join(homedir(), '.cache', 'fnioc-ttsc', 'gotmp');
 const COLD_BUILD_MS = 600_000;
 
-// A lone tokenfor<T>() over a local interface — the observable both fixtures share:
-// lowered to "@fixture/consumer/tokens/app:IWidget" (the named-package consumer's
-// package-qualified self-token) when the primitive stages activate, left as a bare
-// tokenfor() call when they do not.
+// A lone typefor<T>() over a local interface — the observable both fixtures share:
+// lowered to Type.imported("IWidget", "@fixture/consumer/private/app") (the
+// named-package consumer's package-qualified self-import) when the primitive
+// stages activate, left as a bare typefor() call when they do not.
 const APP_SOURCE = `
-import { tokenfor } from "./tokenfor";
+import { typefor } from "./typefor";
 
 export interface IWidget {}
 
-export const widgetToken = tokenfor<IWidget>();
+export const widgetToken = typefor<IWidget>();
 `;
 
 function link(target: string, linkPath: string): void {
@@ -72,7 +74,7 @@ function link(target: string, linkPath: string): void {
   }
 }
 
-/** A build env with a single self-consistent Go toolchain (see the tokenfor e2e). */
+/** A build env with a single self-consistent Go toolchain (see the typefor e2e). */
 function goEnv(): NodeJS.ProcessEnv {
   const env = { ...process.env } as NodeJS.ProcessEnv;
   delete env.GOROOT;
@@ -98,14 +100,12 @@ function goEnv(): NodeJS.ProcessEnv {
 function writeProject(projDir: string): void {
   mkdirSync(join(projDir, 'src'), { recursive: true });
   rmSync(join(projDir, 'dist'), { recursive: true, force: true });
-  writeFileSync(join(projDir, 'src', 'tokenfor.ts'), `export declare function tokenfor<T>(): string;\n`);
+  writeFileSync(join(projDir, 'src', 'typefor.ts'), `export declare function typefor<T>(): unknown;\n`);
   writeFileSync(join(projDir, 'src', 'app.ts'), APP_SOURCE);
-  writeFileSync(join(projDir, 'tsconfig.json'),
-    JSON.stringify({
-      compilerOptions: { target: 'ES2022', module: 'ESNext', moduleResolution: 'Bundler', lib: ['ES2022'], strict: true,
-        outDir: 'dist', rootDir: 'src', skipLibCheck: true, noEmitOnError: false },
-      include: ['src/**/*'],
-    }));
+  writeFileSync(join(projDir, 'tsconfig.json'), JSON.stringify({
+    compilerOptions: { target: 'ES2022', module: 'ESNext', moduleResolution: 'Bundler', lib: ['ESNext'], strict: true, outDir: 'dist', rootDir: 'src', skipLibCheck: true, noEmitOnError: false },
+    include: ['src/**/*'],
+  }));
 }
 
 /** Link the shared ttsc toolchain into a fixture's node_modules. */
@@ -145,11 +145,11 @@ beforeAll(async () => {
   mkdirSync(CORE_ONLY, { recursive: true });
 
   // Fixture 1: devDeps di.extras (the transitivity proof). di.extras's
-  // own primitives.extras dependency is what carries the tokenfor stage; the
+  // own primitives.extras dependency is what carries the typefor stage; the
   // host reaches it through the scan. The transitive @rhombus-std packages are
   // linked so the host's walk resolves them from the fixture's node_modules.
   writeFileSync(join(CONSUMER, 'package.json'),
-    JSON.stringify({ name: '@fixture/consumer', private: true, devDependencies: { '@rhombus-std/di.extras': '*' } }));
+    JSON.stringify({ name: '@fixture/consumer', private: true, devDependencies: { '@rhombus-std/di.extras': '*' }, 'rhombus-std': { typefor: { emit: 'inline' } } }));
   linkToolchain(CONSUMER);
   const cScoped = join(CONSUMER, 'node_modules', '@rhombus-std');
   link(lib('di.extras'), join(cScoped, 'di.extras'));
@@ -162,8 +162,7 @@ beforeAll(async () => {
   // auto-discovery spawns no host — even though di.core devDeps
   // primitives.extras to lower its OWN source (a transitive devDep that must
   // not leak).
-  writeFileSync(join(CORE_ONLY, 'package.json'),
-    JSON.stringify({ name: '@fixture/core-only', private: true, dependencies: { '@rhombus-std/di.core': '*' } }));
+  writeFileSync(join(CORE_ONLY, 'package.json'), JSON.stringify({ name: '@fixture/core-only', private: true, dependencies: { '@rhombus-std/di.core': '*' } }));
   linkToolchain(CORE_ONLY);
   link(lib('di.core'), join(CORE_ONLY, 'node_modules', '@rhombus-std', 'di.core'));
   writeProject(CORE_ONLY);
@@ -182,17 +181,17 @@ beforeAll(async () => {
 }, COLD_BUILD_MS);
 
 describe.skipIf(!toolchainReady)('declare-by-depending through real ttsc', () => {
-  test('a direct di.extras dep spawns the always-on host and lowers tokenfor', () => {
+  test('a direct di.extras dep spawns the always-on host and lowers typefor', () => {
     // Auto-discovery spawned the host off di.extras's ttsc.plugin marker; the
-    // always-on host lowered tokenfor<IWidget>() to its token.
-    expect(consumerApp).toContain('"@fixture/consumer/tokens/app:IWidget"');
-    expect(consumerApp).not.toContain('tokenfor');
+    // always-on host lowered typefor<IWidget>() to its `Type.imported` tree.
+    expect(consumerApp).toContain('Type.imported("IWidget", "@fixture/consumer/private/app")');
+    expect(consumerApp).not.toContain('typefor');
   });
 
   test("a di.core-only consumer is left untouched (cores don't spawn the host)", () => {
-    // No *.extras dep → auto-discovery spawns no host → tokenfor<IWidget>()
+    // No *.extras dep → auto-discovery spawns no host → typefor<IWidget>()
     // survives unlowered. di.core's own primitives.extras devDep did not leak.
-    expect(coreOnlyApp).toContain('tokenfor');
-    expect(coreOnlyApp).not.toContain('"@fixture/consumer/tokens/app:IWidget"');
+    expect(coreOnlyApp).toContain('typefor');
+    expect(coreOnlyApp).not.toContain('Type.imported(');
   });
 });

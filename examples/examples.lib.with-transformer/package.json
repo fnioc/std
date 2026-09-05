@@ -2,18 +2,12 @@
   "name": "@rhombus-std/examples.lib.with-transformer",
   "private": true,
   "version": "0.0.0",
-  "description": "Example dependency library authored in the tokenless di dialect and built via the Go/ttsc engine. Its build is its only consumable form \u2014 every exports condition resolves to dist, so raw source never bypasses the transformer lowering.",
+  "description": "Example dependency library authored in the tokenless di dialect and built via the Go/ttsc engine. In-repo consumers resolve its source and lower it at load time; the build is what a published consumer would receive.",
   "license": "MIT",
   "type": "module",
-  "main": "./dist/index.js",
-  "types": "./dist/index.d.ts",
+  "main": "./src/index.ts",
   "exports": {
-    ".": {
-      "bun": "./dist/index.js",
-      "types": "./dist/index.d.ts",
-      "import": "./dist/index.js",
-      "default": "./dist/index.js"
-    }
+    ".": "./src/index.ts"
   },
   "files": [
     "dist"
@@ -22,10 +16,11 @@
     "build": "bun build.ts",
     "lint": "bun x tsc --noEmit -p tsconfig.json"
   },
-  "//dependencies": "di.core ONLY — never @rhombus-std/di. A library contributes registrations and takes its dependencies as parameters; the resolution engine belongs to the entrypoint packages that build a container. di.extras is a devDependency because it is the AUTHORING surface (declare-module sugar + inline bodies), not a runtime dependency, and it peers on di.core rather than on the engine; primitives.extras is likewise authoring-only (every tokenfor call folds to a string literal and its import is elided).",
+  "//dependencies": "di.core ONLY — never @rhombus-std/di. A library contributes registrations and takes its dependencies as parameters; the resolution engine belongs to the entrypoint packages that build a container. di.extras is a devDependency because it is the AUTHORING surface (declare-module sugar + inline bodies), not a runtime dependency, and it peers on di.core rather than on the engine; primitives.extras is likewise authoring-only — but its typefor<T>() folds to a Type EXPRESSION, so the lowered output imports @rhombus-std/primitives at run time and that one is a real dependency, kept external in the bundle so the Type intern table stays shared.",
   "dependencies": {
     "@rhombus-std/di.core": "workspace:*",
-    "@rhombus-std/examples.contracts": "workspace:*"
+    "@rhombus-std/examples.contracts": "workspace:*",
+    "@rhombus-std/primitives": "workspace:*"
   },
   "devDependencies": {
     "@rhombus-std/di.extras": "workspace:*",
@@ -33,6 +28,6 @@
     "@rhombus-std/primitives.extras": "workspace:*",
     "@ttsc/unplugin": "^0.18.1",
     "ttsc": "^0.18.1",
-    "typescript": "^5.9.0"
+    "typescript": "^6.0.3"
   }
 }

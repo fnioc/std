@@ -2,76 +2,60 @@
 // rule directly) and `ILoggingBuilder` (registers a configure step that appends
 // the same rule once the options pipeline assembles the LoggerFilterOptions).
 
-// Side-effect + merge: installs `configure` (and the rest of the options
-// pipeline verbs) onto di.core's ServiceManifest, and brings the interface
-// merge that types `builder.services.configure(...)` below into the program.
-import '@rhombus-std/options.augmentations';
-
 import type { ILoggingBuilder, LogLevel } from '@rhombus-std/logging.core';
-import { applyAugmentations, type AugmentationSet, registerAugmentations } from '@rhombus-std/primitives';
-import { tokenfor } from '@rhombus-std/primitives.extras';
-import type { Func } from '@rhombus-toolkit/func';
+import { getConfigureManifest } from '@rhombus-std/options.augmentations';
+import { registerAugmentations } from '@rhombus-std/primitives.extras';
+import type { Flatten, Func } from '@rhombus-toolkit/types';
 import { LoggerFilterOptions, LoggerFilterRule } from './LoggerFilterOptions';
-import { LOGGER_FILTER_OPTIONS_TOKEN } from './tokens';
+import { LOGGER_FILTER_OPTIONS_TYPE } from './types';
 
-export const LoggerFilterOptionsExtensions = {
+export namespace LoggerFilterOptionsExtensions {
   /** Adds a `(category, level)` rule, or a raw `(providerName, categoryName, level) => boolean` filter. */
-  addFilter(options: LoggerFilterOptions,
-    ...rest: [category: string | undefined, level: LogLevel] | [
-      filter: Func<[string | undefined, string | undefined, LogLevel], boolean>,
-    ]): LoggerFilterOptions
-  {
-    const [categoryOrFilter, level] = rest;
-    if (typeof categoryOrFilter === 'function') {
-      options.rules.push(new LoggerFilterRule(undefined, undefined, undefined, categoryOrFilter));
+  export function addFilter<Self extends LoggerFilterOptions>(this: Self, category: string | undefined, level: LogLevel): Self;
+  export function addFilter<Self extends LoggerFilterOptions>(this: Self, filter: Func<[string | undefined, string | undefined, LogLevel], boolean>): Self;
+  export function addFilter<Self extends LoggerFilterOptions>(this: Self, first: string | undefined | Func<[string | undefined, string | undefined, LogLevel], boolean>,
+    ...rest: readonly any[]): Self {
+    if (typeof first === 'function') {
+      this.rules.push(new LoggerFilterRule(undefined, undefined, undefined, first));
     } else {
-      options.rules.push(new LoggerFilterRule(undefined, categoryOrFilter, level, undefined));
+      this.rules.push(new LoggerFilterRule(undefined, first, rest[0] as LogLevel, undefined));
     }
-    return options;
-  },
-} satisfies AugmentationSet<LoggerFilterOptions>;
-
-declare module './LoggerFilterOptions' {
-  interface LoggerFilterOptions {
-    addFilter(category: string | undefined, level: LogLevel): this;
-    addFilter(filter: Func<[string | undefined, string | undefined, LogLevel], boolean>): this;
+    return this;
   }
 }
 
-applyAugmentations(LoggerFilterOptions, LoggerFilterOptionsExtensions);
+declare module './LoggerFilterOptions' {
+  interface LoggerFilterOptions extends Flatten<typeof LoggerFilterOptionsExtensions> {}
+}
 
-export const FilterLoggingBuilderExtensions = {
+registerAugmentations<LoggerFilterOptions>(LoggerFilterOptionsExtensions);
+
+export namespace FilterLoggingBuilderExtensions {
   /** Adds a `(category, level)` rule, or a raw `(providerName, categoryName, level) => boolean` filter. */
-  addFilter(builder: ILoggingBuilder,
-    ...rest: [category: string | undefined, level: LogLevel] | [
-      filter: Func<[string | undefined, string | undefined, LogLevel], boolean>,
-    ]): ILoggingBuilder
-  {
-    return configureFilter(builder, (options) => {
-      if (rest.length === 2) {
-        LoggerFilterOptionsExtensions.addFilter(options, rest[0], rest[1]);
+  export function addFilter<Self extends ILoggingBuilder>(this: Self, category: string | undefined, level: LogLevel): Self;
+  export function addFilter<Self extends ILoggingBuilder>(this: Self, filter: Func<[string | undefined, string | undefined, LogLevel], boolean>): Self;
+  export function addFilter<Self extends ILoggingBuilder>(this: Self, first: string | undefined | Func<[string | undefined, string | undefined, LogLevel], boolean>, ...rest: readonly any[]): Self {
+    return configureFilter(this, (options) => {
+      if (typeof first === 'function') {
+        options.addFilter(first);
       } else {
-        LoggerFilterOptionsExtensions.addFilter(options, rest[0]);
+        options.addFilter(first, rest[0] as LogLevel);
       }
-    });
-  },
-} satisfies AugmentationSet<ILoggingBuilder>;
-
-/** Registers `configureOptions` as a configure step for the {@link LOGGER_FILTER_OPTIONS_TOKEN} pipeline. */
-function configureFilter(builder: ILoggingBuilder,
-  configureOptions: Func<[LoggerFilterOptions], void>): ILoggingBuilder
-{
-  // The chain is immutable: `configure` hands back a NEW manifest, so it must be
-  // written into the builder's slot -- a bare call would register nothing.
-  builder.services = builder.services.configure(LOGGER_FILTER_OPTIONS_TOKEN, configureOptions);
-  return builder;
+    }) as Self;
+  }
 }
 
 declare module '@rhombus-std/logging.core' {
-  interface ILoggingBuilder {
-    addFilter(category: string | undefined, level: LogLevel): this;
-    addFilter(filter: Func<[string | undefined, string | undefined, LogLevel], boolean>): this;
-  }
+  interface ILoggingBuilder extends Flatten<typeof FilterLoggingBuilderExtensions> {}
 }
 
-registerAugmentations(tokenfor<ILoggingBuilder>(), FilterLoggingBuilderExtensions);
+/** Registers `configureOptions` as a configure step for the {@link LOGGER_FILTER_OPTIONS_TYPE} pipeline. */
+function configureFilter(builder: ILoggingBuilder, configureOptions: Func<[LoggerFilterOptions], void>): ILoggingBuilder {
+  // getConfigureManifest returns its own self-contained manifest; merging it in
+  // is what writes the step into the builder's slot -- a bare call would
+  // register nothing.
+  builder.services = builder.services.add(getConfigureManifest(LOGGER_FILTER_OPTIONS_TYPE, configureOptions));
+  return builder;
+}
+
+registerAugmentations<ILoggingBuilder>(FilterLoggingBuilderExtensions);

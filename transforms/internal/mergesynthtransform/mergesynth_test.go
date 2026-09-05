@@ -86,7 +86,7 @@ func runWith(t *testing.T, source string, extra map[string]string) (string, []Di
 func TestSynthesizesGuardedStrategyFromUnionParameter(t *testing.T) {
 	out, diags := run(t, `
 export const AlphaExtensions = {
-  describe(self: IAlpha, opts: { verbose: boolean } | number): string {
+  describe(opts: { verbose: boolean } | number): string {
     return String(opts);
   },
 };
@@ -112,7 +112,7 @@ registerAugmentations("t:IAlpha", AlphaExtensions);
 		}
 	}
 	// Dispatch shape: guard hit -> extension, miss -> original.
-	if !strings.Contains(out, "extension(this, ...args)") || !strings.Contains(out, "original.call(this, ...args)") {
+	if !strings.Contains(out, "extension.call(this, ...args)") || !strings.Contains(out, "original.call(this, ...args)") {
 		t.Fatalf("dispatcher does not route between extension and original:\n%s", out)
 	}
 }
@@ -120,8 +120,8 @@ registerAugmentations("t:IAlpha", AlphaExtensions);
 func TestHandAuthoredStrategyWinsAndIsNotSynthesized(t *testing.T) {
 	out, diags := run(t, `
 export const AlphaExtensions = {
-  describe(self: IAlpha, opts: number): string { return String(opts); },
-  tag(self: IAlpha, name: string): string { return name; },
+  describe(opts: number): string { return String(opts); },
+  tag(name: string): string { return name; },
 };
 const handMerge = {
   describe(original: (...a: unknown[]) => unknown, extension: (...a: unknown[]) => unknown) {
@@ -151,7 +151,7 @@ registerAugmentations("t:IAlpha", AlphaExtensions, handMerge);
 func TestFullyCoveredCallIsLeftUntouched(t *testing.T) {
 	source := `
 export const AlphaExtensions = {
-  describe(self: IAlpha, opts: number): string { return String(opts); },
+  describe(opts: number): string { return String(opts); },
 };
 const handMerge = {
   describe(original: (...a: unknown[]) => unknown, extension: (...a: unknown[]) => unknown) {
@@ -171,10 +171,10 @@ registerAugmentations("t:IAlpha", AlphaExtensions, handMerge);
 
 func TestUnDerivableMemberFallsBackToAlwaysPass(t *testing.T) {
 	for name, decl := range map[string]string{
-		"generic": `pick<T>(self: IAlpha, value: T): T { return value; }`,
-		"unknown": `pick(self: IAlpha, value: unknown): unknown { return value; }`,
-		"any":     `pick(self: IAlpha, value: any): unknown { return value; }`,
-		"untyped": `pick(self: IAlpha, value = 1): unknown { return value; }`,
+		"generic": `pick<T>(value: T): T { return value; }`,
+		"unknown": `pick(value: unknown): unknown { return value; }`,
+		"any":     `pick(value: any): unknown { return value; }`,
+		"untyped": `pick(value = 1): unknown { return value; }`,
 	} {
 		out, diags := run(t, `
 export const AlphaExtensions = { `+decl+` };
@@ -194,7 +194,7 @@ registerAugmentations("t:IAlpha", AlphaExtensions);
 		if strings.Contains(out, "original.call") {
 			t.Fatalf("%s: un-derivable member routes to original:\n%s", name, out)
 		}
-		if !strings.Contains(out, "extension(this, ...args)") {
+		if !strings.Contains(out, "extension.call(this, ...args)") {
 			t.Fatalf("%s: extension not invoked:\n%s", name, out)
 		}
 	}
@@ -203,7 +203,7 @@ registerAugmentations("t:IAlpha", AlphaExtensions);
 func TestOptionalParameterAndArityBounds(t *testing.T) {
 	out, diags := run(t, `
 export const AlphaExtensions = {
-  fmt(self: IAlpha, a: string, b?: number): string { return a + String(b); },
+  fmt(a: string, b?: number): string { return a + String(b); },
 };
 registerAugmentations("t:IAlpha", AlphaExtensions);
 `)
@@ -224,7 +224,7 @@ registerAugmentations("t:IAlpha", AlphaExtensions);
 func TestRestParameterGuardsTheSliceWithoutUpperBound(t *testing.T) {
 	out, diags := run(t, `
 export const AlphaExtensions = {
-  store(self: IAlpha, ...rest: [key: string] | [key: string, ttl: number]): void {},
+  store(...rest: [key: string] | [key: string, ttl: number]): void {},
 };
 registerAugmentations("t:IAlpha", AlphaExtensions);
 `)
@@ -243,7 +243,7 @@ func TestApplyAugmentationsIsRewrittenToo(t *testing.T) {
 	out, diags := run(t, `
 export class Alpha implements IAlpha { id = 1; }
 export const AlphaExtensions = {
-  describe(self: IAlpha, opts: number): string { return String(opts); },
+  describe(opts: number): string { return String(opts); },
 };
 applyAugmentations(Alpha, AlphaExtensions);
 `)
@@ -275,7 +275,7 @@ func TestGuardValidatesDeepObjectShape(t *testing.T) {
 	out, diags := run(t, `
 interface EntryOptions { size?: number; sliding?: number; tag: string; }
 export const AlphaExtensions = {
-  configure(self: IAlpha, options: EntryOptions): void {},
+  configure(options: EntryOptions): void {},
 };
 registerAugmentations("t:IAlpha", AlphaExtensions);
 `)
@@ -289,25 +289,18 @@ registerAugmentations("t:IAlpha", AlphaExtensions);
 	}
 }
 
-// TestHandMergeReWrapsOnSecondPass reproduces the concrete defect that bans
-// mergesynth from the fixed-point loop and motivates its ONE-SHOT PRE-PASS
-// placement (host.go / Open issue 2): the stage is NOT idempotent on its own
-// output. strategyNames has no spread-assignment case, so when the first pass
-// spreads the hand-merge object into the synthesized third argument, a second pass
-// cannot see the names that spread already covers and re-synthesizes them, wrapping
-// the call again — inside the loop it would never reach a fixed point. Running it
-// exactly once before the loop sidesteps this entirely (its matches are only ever
-// the source-written installs; no sugar body mints one).
-//
-// The fixture hand-authors a `describe` strategy. Pass 1 therefore synthesizes only
-// the uncovered `tag`, leaving `describe` alone (hand-authored wins). Pass 2, blind
-// to the `...handMerge` spread, treats `describe` as uncovered and re-synthesizes
-// it — the appearance of a synthesized `describe` strategy is the re-wrap.
-func TestHandMergeReWrapsOnSecondPass(t *testing.T) {
+// TestRewrittenInstallSettlesOnSecondPass pins the settle condition that lets
+// mergesynth run inside the fixed-point loop: a second pass over a call the
+// first pass rewrote is a POINTER-IDENTITY no-op. The delicate shape is the
+// hand-merge install — the first pass emits the synthesized entries with the
+// hand-authored object spread LAST, and strategyNames recurses through that
+// spread, so the second pass reads every member as covered instead of
+// re-wrapping the call forever.
+func TestRewrittenInstallSettlesOnSecondPass(t *testing.T) {
 	prog, sf := loadFixture(t, `
 export const AlphaExtensions = {
-  describe(self: IAlpha, opts: number): string { return String(opts); },
-  tag(self: IAlpha, name: string): string { return name; },
+  describe(opts: number): string { return String(opts); },
+  tag(name: string): string { return name; },
 };
 const handMerge = {
   describe(original: (...a: unknown[]) => unknown, extension: (...a: unknown[]) => unknown) {
@@ -331,12 +324,35 @@ registerAugmentations("t:IAlpha", AlphaExtensions, handMerge);
 	}
 
 	second := transform(ec, first)
-	if second == nil || second == first {
-		t.Fatal("second pass was a no-op — mergesynth would be safe inside the loop, contradicting the pre-pass rationale")
+	if second != first {
+		t.Fatalf("second pass rewrote an already-covered install — the loop would never settle:\n%s", reprintMerge(ec, second))
 	}
-	shimast.SetParentInChildrenUnset(second.AsNode())
-	if !strings.Contains(reprintMerge(ec, second), "describe: function (original, extension)") {
-		t.Fatalf("second pass did not re-synthesize the hand-covered describe — the non-idempotence this test guards did not reproduce:\n%s", reprintMerge(ec, second))
+}
+
+// The plain no-hand-merge install settles the same way: the first pass's fully
+// synthesized map covers every member, so the second pass changes nothing.
+func TestPlainRewrittenInstallSettlesOnSecondPass(t *testing.T) {
+	prog, sf := loadFixture(t, `
+export const AlphaExtensions = {
+  describe(opts: number): string { return String(opts); },
+  tag(name: string): string { return name; },
+};
+registerAugmentations("t:IAlpha", AlphaExtensions);
+`)
+	defer func() { _ = prog.Close() }()
+
+	transform := New(prog, func(Diagnostic) {})
+	ec := shimprinter.NewEmitContext()
+
+	first := transform(ec, sf)
+	if first == nil || first == sf {
+		t.Fatal("first pass did not rewrite the install")
+	}
+	shimast.SetParentInChildrenUnset(first.AsNode())
+
+	second := transform(ec, first)
+	if second != first {
+		t.Fatalf("second pass rewrote an already-covered install — the loop would never settle:\n%s", reprintMerge(ec, second))
 	}
 }
 
@@ -356,5 +372,73 @@ func write(t *testing.T, path, content string) {
 	}
 	if err := os.WriteFile(path, []byte(content), 0o644); err != nil {
 		t.Fatal(err)
+	}
+}
+
+func TestIdenticalGuardsReported(t *testing.T) {
+	_, diags := run(t, `
+export const SetA = {
+  read(this: IAlpha, items: Iterable<string>): void {},
+} satisfies Record<string, (...a: any[]) => any>;
+registerAugmentations("t:IAlpha", SetA);
+
+export const SetB = {
+  read(this: IAlpha, items: Iterable<number>): void {},
+} satisfies Record<string, (...a: any[]) => any>;
+registerAugmentations("t:IAlpha", SetB);
+`)
+	found := false
+	for _, d := range diags {
+		if d.Code == "MERGESYNTH_INDISTINGUISHABLE_GUARDS" {
+			found = true
+		}
+	}
+	if !found {
+		t.Fatalf("expected MERGESYNTH_INDISTINGUISHABLE_GUARDS, got %+v", diags)
+	}
+}
+
+func TestDifferentGuardsNotReported(t *testing.T) {
+	_, diags := run(t, `
+export const SetA = {
+  read(this: IAlpha, items: Iterable<string>): void {},
+} satisfies Record<string, (...a: any[]) => any>;
+registerAugmentations("t:IAlpha", SetA);
+
+export const SetB = {
+  read(this: IAlpha, items: string): void {},
+} satisfies Record<string, (...a: any[]) => any>;
+registerAugmentations("t:IAlpha", SetB);
+`)
+	for _, d := range diags {
+		if d.Code == "MERGESYNTH_INDISTINGUISHABLE_GUARDS" {
+			t.Fatalf("should not report MERGESYNTH_INDISTINGUISHABLE_GUARDS for different parameter types, got %+v", diags)
+		}
+	}
+}
+
+func TestLoneIterableNotReported(t *testing.T) {
+	_, diags := run(t, `
+export const SetA = {
+  read(this: IAlpha, items: Iterable<string>): void {},
+} satisfies Record<string, (...a: any[]) => any>;
+registerAugmentations("t:IAlpha", SetA);
+`)
+	for _, d := range diags {
+		if d.Code == "MERGESYNTH_INDISTINGUISHABLE_GUARDS" {
+			t.Fatalf("should not report MERGESYNTH_INDISTINGUISHABLE_GUARDS for a lone iterable overload, got %+v", diags)
+		}
+	}
+}
+
+func TestIterableGuardChecksSymbolIterator(t *testing.T) {
+	out, _ := run(t, `
+export const SetA = {
+  read(this: IAlpha, items: Iterable<string>): void {},
+} satisfies Record<string, (...a: any[]) => any>;
+registerAugmentations("t:IAlpha", SetA);
+`)
+	if !strings.Contains(out, "Symbol.iterator") {
+		t.Fatalf("iterable guard must check Symbol.iterator:\n%s", out)
 	}
 }

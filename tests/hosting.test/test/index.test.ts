@@ -1,9 +1,19 @@
 import { MemoryConfigSource } from '@rhombus-std/config';
-import { BackgroundService, Host, HOST_APPLICATION_LIFETIME_TOKEN, HOST_ENVIRONMENT_TOKEN, HostBuilder,
-  type IHostApplicationLifetime, type IHostedLifecycleService,
-  type IHostEnvironment } from '@rhombus-std/hosting/private/index';
-import { HOSTED_SERVICE_TOKEN } from '@rhombus-std/hosting/private/internal/Host';
+import { BackgroundService, getHostedServiceManifest, Host, HOST_APPLICATION_LIFETIME_TYPE, HOST_ENVIRONMENT_TYPE, HostBuilder, HOSTED_SERVICE_TYPE, type IHostApplicationLifetime,
+  type IHostedLifecycleService, type IHostEnvironment } from '@rhombus-std/hosting';
+import { Type } from '@rhombus-std/primitives';
+import type { Func } from '@rhombus-toolkit/types';
 import { expect, test } from 'bun:test';
+
+async function waitUntil(condition: Func<[], boolean>, description: string): Promise<void> {
+  for (let spins = 0; spins < 100_000; spins++) {
+    if (condition()) {
+      return;
+    }
+    await Promise.resolve();
+  }
+  throw new Error(`Timed out waiting for ${description}.`);
+}
 
 test('Host.createDefaultBuilder returns a configured builder', () => {
   const builder = Host.createDefaultBuilder();
@@ -24,7 +34,7 @@ test('HostBuilder.build runs and stops its hosted services', async () => {
   }
 
   const builder = new HostBuilder();
-  builder.configureServices((_context, services) => services.addHostedService(Worker, [[]]));
+  builder.configureServices((_context, services) => services.add(getHostedServiceManifest(Worker, Type.ctor(HOSTED_SERVICE_TYPE, [[]]))));
 
   const host = builder.build();
   expect(host.services).toBeDefined();
@@ -63,10 +73,12 @@ test('lifecycle ordering: starting -> start -> started -> applicationStarted -> 
   }
 
   const builder = new HostBuilder();
-  builder.configureServices((_context, services) => services.addHostedService(Recorder, [[]]));
+  builder.configureServices((_context, services) => services.add(getHostedServiceManifest(Recorder, Type.ctor(HOSTED_SERVICE_TYPE, [[]]))));
 
   const host = builder.build();
-  const lifetime = host.services.resolve<IHostApplicationLifetime>(HOST_APPLICATION_LIFETIME_TOKEN);
+  const lifetime: IHostApplicationLifetime = host.services.resolve(
+    HOST_APPLICATION_LIFETIME_TYPE,
+  );
   lifetime.applicationStarted.addEventListener('abort', () => events.push('applicationStarted'), { once: true });
   lifetime.applicationStopping.addEventListener('abort', () => events.push('applicationStopping'), { once: true });
   lifetime.applicationStopped.addEventListener('abort', () => events.push('applicationStopped'), { once: true });
@@ -74,8 +86,7 @@ test('lifecycle ordering: starting -> start -> started -> applicationStarted -> 
   await host.start();
   await host.stop();
 
-  expect(events).toEqual(['starting', 'start', 'started', 'applicationStarted', 'stopping', 'applicationStopping',
-    'stop', 'stopped', 'applicationStopped']);
+  expect(events).toEqual(['starting', 'start', 'started', 'applicationStarted', 'stopping', 'applicationStopping', 'stop', 'stopped', 'applicationStopped']);
 
   host[Symbol.dispose]();
 });
@@ -83,7 +94,9 @@ test('lifecycle ordering: starting -> start -> started -> applicationStarted -> 
 test('IHostApplicationLifetime.stopApplication triggers applicationStopping directly', () => {
   const builder = new HostBuilder();
   const host = builder.build();
-  const lifetime = host.services.resolve<IHostApplicationLifetime>(HOST_APPLICATION_LIFETIME_TOKEN);
+  const lifetime: IHostApplicationLifetime = host.services.resolve(
+    HOST_APPLICATION_LIFETIME_TYPE,
+  );
 
   expect(lifetime.applicationStopping.aborted).toBe(false);
   lifetime.stopApplication();
@@ -113,15 +126,13 @@ test('BackgroundService: execute runs on start; stop aborts its stopping signal'
   }
 
   const builder = new HostBuilder();
-  builder.configureServices((_context, services) => services.addHostedService(Worker, [[]]));
+  builder.configureServices((_context, services) => services.add(getHostedServiceManifest(Worker, Type.ctor(HOSTED_SERVICE_TYPE, [[]]))));
 
   const host = builder.build();
   await host.start();
 
   // start() kicks execute() without awaiting; wait for it to actually begin.
-  while (!executing) {
-    await Promise.resolve();
-  }
+  await waitUntil(() => executing, 'the background service to begin executing');
   expect(stoppingAborted).toBe(false);
 
   await host.stop();
@@ -154,14 +165,14 @@ test('addHostedService registers many under one shared token; the host resolves 
 
   const builder = new HostBuilder();
   builder.configureServices((_context, services) => {
-    services = services.addHostedService(A, [[]]);
-    services = services.addHostedService(B, [[]]);
-    services = services.addHostedService(C, [[]]);
+    services = services.add(getHostedServiceManifest(A, Type.ctor(HOSTED_SERVICE_TYPE, [[]])));
+    services = services.add(getHostedServiceManifest(B, Type.ctor(HOSTED_SERVICE_TYPE, [[]])));
+    services = services.add(getHostedServiceManifest(C, Type.ctor(HOSTED_SERVICE_TYPE, [[]])));
     return services;
   });
 
   const host = builder.build();
-  expect(host.services.isService(HOSTED_SERVICE_TOKEN)).toBe(true);
+  expect(host.services.resolve(HOSTED_SERVICE_TYPE)).toBeDefined();
 
   await host.start();
   expect(started).toEqual(['A', 'B', 'C']);
@@ -177,7 +188,7 @@ test("IHostEnvironment predicates reflect the built host's environment", async (
   });
 
   const host = builder.build();
-  const environment = host.services.resolve<IHostEnvironment>(HOST_ENVIRONMENT_TOKEN);
+  const environment: IHostEnvironment = host.services.resolve(HOST_ENVIRONMENT_TYPE);
 
   expect(environment.environmentName).toBe('Development');
   // The fluent method form is installed onto HostingEnvironment by @rhombus-std/hosting.
@@ -224,7 +235,7 @@ test('Host.createApplicationBuilder().build() produces a runnable IHost', async 
   expect(builder.config).toBeDefined();
   expect(builder.logging).toBeDefined();
 
-  builder.services = builder.services.addHostedService(Worker, [[]]);
+  builder.services = builder.services.add(getHostedServiceManifest(Worker, Type.ctor(HOSTED_SERVICE_TYPE, [[]])));
 
   const host = builder.build();
   await host.start();

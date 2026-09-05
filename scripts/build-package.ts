@@ -17,13 +17,15 @@
 //
 // The bundled artifacts live under dist/bundle/ — a role-named sibling of the
 // dist/stage/ lowering emit (see `ttscProject`), so `dist` holds one directory
-// per build role. core is the one exception: it is types-only (emitJs: false)
-// and asserts no runtime .js slips into dist/bundle.
+// per build role. A types-only package (emitJs: false) asserts no runtime .js
+// slips into dist/bundle.
 
+import { createMinifier } from 'dts-minify';
 import { spawnSync } from 'node:child_process';
-import { existsSync, mkdirSync, renameSync, rmSync } from 'node:fs';
+import { existsSync, mkdirSync, readdirSync, readFileSync, renameSync, rmSync, writeFileSync } from 'node:fs';
 import { homedir } from 'node:os';
 import { join } from 'node:path';
+import * as ts from 'typescript';
 
 /**
  * Read the resolved transformer specifiers from a tsconfig's
@@ -32,16 +34,13 @@ import { join } from 'node:path';
  * an extended base is still seen.
  */
 export function readTsconfigTransforms(dir: string, tsconfigRel: string): string[] {
-  const res = spawnSync('bun', ['x', 'tsc', '--showConfig', '-p', join(dir, tsconfigRel)], { cwd: dir,
-    encoding: 'utf8' });
+  const res = spawnSync('bun', ['x', 'tsc', '--showConfig', '-p', join(dir, tsconfigRel)], { cwd: dir, encoding: 'utf8' });
   if (res.status !== 0) {
     throw new Error(`${tsconfigRel}: tsc --showConfig failed:\n${res.stderr}`);
   }
   const config = JSON.parse(res.stdout) as { compilerOptions?: { plugins?: readonly { transform?: unknown; }[]; }; };
   const plugins = config.compilerOptions?.plugins ?? [];
-  return plugins.map((plugin) => plugin.transform).filter((transform): transform is string =>
-    typeof transform === 'string'
-  );
+  return plugins.map((plugin) => plugin.transform).filter((transform): transform is string => typeof transform === 'string');
 }
 
 /**
@@ -120,21 +119,81 @@ export function ttscEnv(): NodeJS.ProcessEnv {
  * aggregate host: ttsc rejects multiple native backends in one pass, so such a
  * consumer passes the one aggregate specifier here.
  */
-export async function ttscBunPlugin(dir: string, ttscProject: string,
-  transforms?: readonly string[]): Promise<Bun.BunPlugin>
-{
+export async function ttscBunPlugin(dir: string, ttscProject: string, transforms?: readonly string[], compilerOptions?: Readonly<Record<string, unknown>>): Promise<Bun.BunPlugin> {
   Object.assign(process.env, ttscEnv());
   const adapter = Bun.resolveSync('@ttsc/unplugin/bun', dir);
-  const ttscBun = (await import(adapter)).default as (
-    options: { project: string; plugins?: readonly { transform: string; }[]; },
-  ) => Bun.BunPlugin;
-  const options: { project: string; plugins?: readonly { transform: string; }[]; } = {
-    project: join(dir, ttscProject),
-  };
+  interface AdapterOptions {
+    project: string;
+    plugins?: readonly { transform: string; }[];
+    compilerOptions?: Readonly<Record<string, unknown>>;
+  }
+  const ttscBun = (await import(adapter)).default as (options: AdapterOptions) => Bun.BunPlugin;
+  const options: AdapterOptions = { project: join(dir, ttscProject) };
   if (transforms) {
     options.plugins = transforms.map((transform) => ({ transform }));
   }
+  if (compilerOptions) {
+    options.compilerOptions = compilerOptions;
+  }
   return ttscBun(options);
+}
+
+export interface StageLoweringOptions {
+  /** The package root. */
+  readonly dir: string;
+  /** The package name, for error messages. */
+  readonly name: string;
+  /** The tsconfig (relative to `dir`) the Go/ttsc engine reads. */
+  readonly ttscProject: string;
+  /** An explicit plugin list; omit to let ttsc auto-discovery run. */
+  readonly ttscTransforms?: readonly string[];
+}
+
+/**
+ * Compile every `src/**\/*.ts` as its own entrypoint with ALL imports external
+ * and the `@ttsc/unplugin/bun` adapter active, so each file is lowered but
+ * nothing is bundled, and return the stage directory the emit landed in.
+ *
+ * The stage directory is `<dir>/.ttsc-out`, which every `tsconfig.ttsc.json`
+ * also names as its `outDir` -- so the engine writes its own generated modules
+ * (the hoisted `Type` consts a `typefor<T>()` call site references) into the
+ * same directory, and the bundle pass that consumes this emit resolves them
+ * alongside the lowered files. The directory is emptied first, so a build never
+ * inherits a file the current sources no longer produce.
+ *
+ * Shared by {@link buildPackage} and the example build scripts: both stage, then
+ * bundle the stage with no plugin. Lowering commutes with bundling, so the
+ * bundle is what a no-transformer author would have hand-written.
+ */
+export async function stageLowering(options: StageLoweringOptions): Promise<string> {
+  const { dir, name, ttscProject, ttscTransforms } = options;
+  const stageDir = join(dir, '.ttsc-out');
+  rmSync(stageDir, { recursive: true, force: true });
+  const srcDir = join(dir, 'src');
+  // Declaration files carry no runtime and are skipped, matching a `tsc` emit.
+  const entrypoints = [...new Bun.Glob('**/*.ts').scanSync({ cwd: srcDir, absolute: true })].filter((path) => !path.endsWith('.d.ts'));
+  const staged = await Bun.build({
+    entrypoints,
+    outdir: stageDir,
+    root: srcDir,
+    target: 'node',
+    format: 'esm',
+    external: ['*'],
+    sourcemap: 'linked',
+    plugins: [await ttscBunPlugin(dir, ttscProject, ttscTransforms)],
+  });
+  if (!staged.success) {
+    for (const log of staged.logs) {
+      console.error(log);
+    }
+    throw new Error(`${name}: ttsc lowering stage failed (${ttscProject})`);
+  }
+  return stageDir;
+}
+
+/** The stage file a `src`-relative entrypoint was lowered into. */
+export function stagedEntrypoint(stageDir: string, entry: string): string {
+  return join(stageDir, entry.replace(/^src\//, '').replace(/\.ts$/, '.js'));
 }
 
 export interface BuildPackageOptions {
@@ -155,35 +214,33 @@ export interface BuildPackageOptions {
   /**
    * Code-split shared modules into chunks instead of inlining a private copy
    * into each entrypoint. Required when multiple entrypoints must share
-   * runtime identity -- e.g. @rhombus-std/config's barrel and its
-   * with-type-augment side-effect module both patch the SAME
-   * ConfigurationBuilder.prototype. Defaults to `true` when there is more than
-   * one entrypoint.
+   * runtime identity -- two entrypoints that patch the SAME prototype must
+   * see one copy of it. Defaults to `true` when there is more than one
+   * entrypoint.
    */
   readonly splitting?: boolean;
   /**
    * A tsconfig (relative to `dir`) whose existence opts the package into the
-   * ttsc/Go lowering that rewrites authoring sugar (`tokenfor<T>()` and the
+   * ttsc/Go lowering that rewrites authoring sugar (`typefor<T>()` and the
    * inline-substituted registration / options / config forms). When
    * set, the JS pipeline gains a lowering STAGE that runs before the bundle:
    *
-   *   1. STAGE — a per-file `Bun.build` compiles every `src/**\/*.ts` as its own
+   *   1. STAGE — {@link stageLowering} compiles every `src/**\/*.ts` as its own
    *      entrypoint with ALL imports external and the `@ttsc/unplugin/bun` adapter
-   *      active, so each file is lowered (its `nameof`/`add`/… rewritten) but not
-   *      bundled. The lowered per-file JS lands in a stage dir (`.ttsc-out/`).
+   *      active, so each file is lowered (its `typefor`/`add`/… rewritten) but not
+   *      bundled. The lowered per-file JS lands in a stage dir (`.ttsc-out/`),
+   *      beside the modules the engine generates for itself.
    *   2. BUNDLE — the existing `bun build` pass then bundles the STAGE emit (NOT
    *      raw src) with no plugin, resolving the extensionless relative imports the
    *      stage preserved. Lowering commutes with bundling, so the shipped
    *      `dist/*.js` is what a no-transformer author would have hand-written.
    *
-   * The d.ts pipeline is unaffected (`nameof` and friends have no type-level
+   * The d.ts pipeline is unaffected (`typefor` and friends have no type-level
    * footprint). After bundling, the per-file lowered emit is KEPT at `dist/stage/`
-   * — named for its build role — and the package's `./private/*` export alias
-   * points its `bun` condition there (alias and disk path are independent): so
-   * white-box consumers (sibling test packages) execute the same lowered JS a
-   * published consumer would, instead of raw src whose un-lowered `nameof<T>()`
-   * throws at import time. `dist/stage` is publish-excluded via a `"!dist/stage"`
-   * entry in the package's `files`.
+   * — named for its build role — as an inspectable record of what the bundle
+   * consumed. It is publish-excluded via a `"!dist/stage"` entry in the
+   * package's `files`; in-repo consumers never resolve it (they run source,
+   * lowered at load time by scripts/ttsc-preload.ts).
    *
    * The Go plugin is compiled and cached on first use (once per cache key —
    * several minutes cold, since the typescript-go graph must compile, though its
@@ -203,10 +260,57 @@ export interface BuildPackageOptions {
   readonly ttscTransforms?: readonly string[];
 }
 
+/**
+ * A rolled `.d.ts` whose only surviving content is a `declare module '…' { … }`
+ * augmentation block loses module-hood the moment rollup-plugin-dts drops the
+ * now-unused imports around it: a file with no top-level `import`/`export`
+ * statement is a GLOBAL SCRIPT to TypeScript, so its `declare module` block is
+ * read as a fresh module declaration rather than an augmentation of the named
+ * module wherever a consuming program also sees that module's real exports —
+ * corrupting the whole program. This is common for an augmentation whose
+ * members return the receiver type they augment (a chaining verb): the only
+ * import that referenced the receiver becomes dead, since the identifier
+ * inside `declare module` resolves to the block's own reopened interface, not
+ * the import.
+ *
+ * Appends a bare `export {};` to any rolled `.d.ts` under `bundleDir` that has
+ * no top-level `import`/`export` line, restoring module-hood without changing
+ * the augmentation's meaning.
+ */
+export function ensureDtsModuleHood(bundleDir: string): void {
+  for (const entry of readdirSync(bundleDir)) {
+    if (!entry.endsWith('.d.ts')) {
+      continue;
+    }
+    const path = join(bundleDir, entry);
+    const content = readFileSync(path, 'utf8');
+    if (!/^(import|export)\b/m.test(content)) {
+      writeFileSync(path, `${content.trimEnd()}\nexport {};\n`);
+    }
+  }
+}
+
+const dtsMinifier = createMinifier(ts);
+
+/**
+ * Strips non-essential whitespace and non-doc comments from every rolled
+ * `.d.ts` under `bundleDir`, keeping the JSDoc that drives editor intellisense.
+ */
+export function minifyDtsFiles(bundleDir: string): void {
+  for (const entry of readdirSync(bundleDir)) {
+    if (!entry.endsWith('.d.ts')) {
+      continue;
+    }
+    const path = join(bundleDir, entry);
+    const content = readFileSync(path, 'utf8');
+    writeFileSync(path, dtsMinifier.minify(content, { keepJsDocs: true }));
+  }
+}
+
 /** Builds one package's dist artifacts (JS bundle + rolled .d.ts). */
 export async function buildPackage(options: BuildPackageOptions): Promise<void> {
-  const { dir, name, entrypoints = ['src/index.ts'], external = [], emitJs = true, dtsConfigs = ['rollup.dts.mjs'],
-    assertNoJs = false, splitting = entrypoints.length > 1, ttscProject, ttscTransforms } = options;
+  const { dir, name, entrypoints = ['src/index.ts'], external = [], emitJs = true, dtsConfigs = ['rollup.dts.mjs'], assertNoJs = false, splitting = entrypoints.length > 1, ttscProject,
+    ttscTransforms } = options;
 
   const dist = join(dir, 'dist');
   const bundleDir = join(dist, 'bundle');
@@ -216,37 +320,26 @@ export async function buildPackage(options: BuildPackageOptions): Promise<void> 
   // lowers every src file in isolation, and the main bundle then consumes that
   // stage emit with no plugin. Lowering commutes with bundling, so the shipped
   // bundle matches the hand-written no-transformer form — while the separate
-  // per-file stage emit is retained as `dist/stage/` (reached through the
-  // `./private/*` export alias, the white-box runtime surface). A package opts in
-  // by setting `ttscProject`.
+  // per-file stage emit is retained as `dist/stage/`. A package opts in by
+  // setting `ttscProject`.
   let stageDir: string | undefined;
   let jsEntrypoints = entrypoints.map((entry) => join(dir, entry));
   if (emitJs && ttscProject) {
-    stageDir = join(dir, '.ttsc-out');
-    rmSync(stageDir, { recursive: true, force: true });
-    const srcDir = join(dir, 'src');
-    // Every src module as its own entrypoint (declaration files carry no runtime
-    // and are skipped, matching a `tsc` emit). ALL imports external so the stage
-    // is a pure per-file transform — nothing is bundled here, the specifiers are
-    // preserved for the bundle pass to resolve.
-    const stageEntrypoints = [...new Bun.Glob('**/*.ts').scanSync({ cwd: srcDir, absolute: true })].filter((path) =>
-      !path.endsWith('.d.ts')
-    );
-    const staged = await Bun.build({ entrypoints: stageEntrypoints, outdir: stageDir, root: srcDir, target: 'node',
-      format: 'esm', external: ['*'], plugins: [await ttscBunPlugin(dir, ttscProject, ttscTransforms)] });
-    if (!staged.success) {
-      for (const log of staged.logs) {
-        console.error(log);
-      }
-      throw new Error(`${name}: ttsc lowering stage failed (${ttscProject})`);
-    }
-    // Map each src entrypoint onto its emitted stage file (src/x.ts -> .ttsc-out/x.js).
-    jsEntrypoints = entrypoints.map((entry) => join(stageDir!, entry.replace(/^src\//, '').replace(/\.ts$/, '.js')));
+    stageDir = await stageLowering({ dir, name, ttscProject, ttscTransforms });
+    jsEntrypoints = entrypoints.map((entry) => stagedEntrypoint(stageDir!, entry));
   }
 
   if (emitJs) {
-    const js = await Bun.build({ entrypoints: jsEntrypoints, outdir: bundleDir, target: 'node', format: 'esm',
-      external: [...external], splitting });
+    const js = await Bun.build({
+      entrypoints: jsEntrypoints,
+      outdir: bundleDir,
+      target: 'node',
+      format: 'esm',
+      external: [...external],
+      splitting,
+      minify: true,
+      sourcemap: 'linked',
+    });
     if (!js.success) {
       for (const log of js.logs) {
         console.error(log);
@@ -254,8 +347,7 @@ export async function buildPackage(options: BuildPackageOptions): Promise<void> 
       throw new Error(`${name}: bun build failed`);
     }
     if (stageDir) {
-      // Keep the per-file lowered emit at dist/stage -- the white-box runtime
-      // surface reached through the `./private/*` alias (see the `ttscProject`
+      // Keep the per-file lowered emit at dist/stage (see the `ttscProject`
       // doc above).
       renameSync(stageDir, join(dist, 'stage'));
     }
@@ -267,6 +359,8 @@ export async function buildPackage(options: BuildPackageOptions): Promise<void> 
       throw new Error(`${name}: rollup d.ts bundling failed (${config})`);
     }
   }
+  ensureDtsModuleHood(bundleDir);
+  minifyDtsFiles(bundleDir);
 
   if (assertNoJs && existsSync(join(bundleDir, 'index.js'))) {
     throw new Error(`${name}: unexpected runtime artifact dist/bundle/index.js -- this package is types-only`);

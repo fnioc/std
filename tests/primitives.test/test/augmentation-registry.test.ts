@@ -11,22 +11,22 @@
 // tolerates a second same-name registration (§73/3) -- it accumulates, and the
 // collision throw is deferred to install.
 //
-// Each test uses a UNIQUE token string so the module-level bag/bus (a process
+// Each test mints a UNIQUE receiver type so the module-level bag/bus (a process
 // singleton) does not leak state between cases.
 
-import { augment, type AugmentationSet, type MergeStrategies, registerAugmentations } from '@rhombus-std/primitives';
+import { augment, type AugmentationSet, type MergeStrategies, registerAugmentations, Type } from '@rhombus-std/primitives';
 import { describe, expect, test } from 'bun:test';
 
 let counter = 0;
-/** A fresh token per call, so no two tests share a registry bag. */
-function freshToken(): string {
+/** A fresh receiver type per call, so no two tests share a registry bag. */
+function freshReceiver(): Type {
   counter += 1;
-  return `test:token:${counter}`;
+  return Type.from(`test/registry:IReceiver${counter}`);
 }
 
 describe('register-then-decorate', () => {
   test('a class decorated after registration gets the methods immediately', () => {
-    const TOKEN = freshToken();
+    const RECEIVER = freshReceiver();
 
     class Box {
       value = 1;
@@ -36,15 +36,15 @@ describe('register-then-decorate', () => {
       read(): number;
     }
 
-    const BoxExtensions = { double(box: Box): Box {
-      box.value *= 2;
-      return box;
-    }, read(box: Box): number {
-      return box.value;
+    const BoxExtensions = { double(this: Box): Box {
+      this.value *= 2;
+      return this;
+    }, read(this: Box): number {
+      return this.value;
     } } satisfies AugmentationSet<Box>;
 
-    registerAugmentations(TOKEN, BoxExtensions);
-    augment(TOKEN)(Box);
+    registerAugmentations<Box>(RECEIVER, BoxExtensions);
+    augment(RECEIVER)(Box);
 
     const box = new Box();
     expect(box.double().read()).toBe(2);
@@ -53,7 +53,7 @@ describe('register-then-decorate', () => {
 
 describe('decorate-then-register (late registration reaches the prototype)', () => {
   test('a registration AFTER decoration still reaches the prototype via its delta', () => {
-    const TOKEN = freshToken();
+    const RECEIVER = freshReceiver();
 
     class Widget {
       count = 0;
@@ -64,18 +64,18 @@ describe('decorate-then-register (late registration reaches the prototype)', () 
 
     // Decorate FIRST -- the bag is empty at this point, so nothing is installed
     // yet. The listener stays subscribed.
-    augment(TOKEN)(Widget);
+    augment(RECEIVER)(Widget);
 
     const before = new Widget() as Widget & { bump?: unknown; };
     expect(before.bump).toBeUndefined();
 
-    const WidgetExtensions = { bump(widget: Widget): Widget {
-      widget.count += 1;
-      return widget;
+    const WidgetExtensions = { bump(this: Widget): Widget {
+      this.count += 1;
+      return this;
     } } satisfies AugmentationSet<Widget>;
 
     // Register LATER -- the delta dispatch reaches the already-decorated class.
-    registerAugmentations(TOKEN, WidgetExtensions);
+    registerAugmentations<Widget>(RECEIVER, WidgetExtensions);
 
     expect(new Widget().bump().count).toBe(1);
   });
@@ -85,13 +85,13 @@ describe('the 8x config-provider reality (the killer regression, §73/1)', () =>
   // The shape that used to re-install a member once per later registration:
   // MANY packages register DIFFERENT-named members onto ONE shared token, and
   // TWO concrete classes (a builder and a manager) are decorated with it -- the
-  // real `tokenfor<IConfigBuilder>()` fan-out across config.json / .env /
+  // real `typefor<IConfigBuilder>()` fan-out across config.json / .env /
   // .commandline / .ini / .xml / .file plus config's memory + chained sources.
   // The live proof runs in `config.tests.integration`; this reproduces the shape
   // over synthetic classes so the mechanism is pinned in the leaf package too.
 
   test('every member is callable, NOTHING throws, and no member is re-installed', () => {
-    const TOKEN = freshToken();
+    const RECEIVER = freshReceiver();
 
     class ConfigBuilder {
       readonly added: string[] = [];
@@ -115,19 +115,19 @@ describe('the 8x config-provider reality (the killer regression, §73/1)', () =>
     // Both concrete classes are decorated up front, BEFORE any provider registers
     // (config's classes load first, then each provider package registers as it
     // is imported) -- so every member arrives as a delta onto both prototypes.
-    augment(TOKEN)(ConfigBuilder);
-    augment(TOKEN)(ConfigManager);
+    augment(RECEIVER)(ConfigBuilder);
+    augment(RECEIVER)(ConfigManager);
 
-    const names = ['addJsonFile', 'addEnvironmentVariables', 'addCommandLine', 'addIniFile', 'addXmlFile', 'addFile',
-      'addMemory', 'addConfig'] as const;
+    const names = ['addJsonFile', 'addEnvironmentVariables', 'addCommandLine', 'addIniFile', 'addXmlFile', 'addFile', 'addMemory', 'addConfig'] as const;
 
     // Each provider registers its ONE differently-named member in a SEPARATE
     // `registerAugmentations` call -- eight dispatches over the shared token.
     for (const name of names) {
-      const set = { [name](receiver: { added: string[]; }): void {
-        receiver.added.push(name);
+      const set = { [name](this: { added: string[]; }): void {
+        this.added.push(name);
       } } satisfies AugmentationSet<{ added: string[]; }>;
-      expect(() => registerAugmentations(TOKEN, set)).not.toThrow();
+      expect(() => registerAugmentations<{ added: string[]; }>(RECEIVER, set)).not
+        .toThrow();
     }
 
     // Capture each installed slot AFTER all eight dispatches: because the install
@@ -140,8 +140,10 @@ describe('the 8x config-provider reality (the killer regression, §73/1)', () =>
 
     // Re-register a fresh distinct member: the eight existing slots must be the
     // SAME function objects -- proof nothing was re-installed over itself.
-    registerAugmentations(TOKEN, { addProbe(receiver: { added: string[]; }): void {
-      receiver.added.push('addProbe');
+    registerAugmentations<{ added: string[]; addProbe(): void; }>(RECEIVER, { addProbe(this: {
+      added: string[];
+    }): void {
+      this.added.push('addProbe');
     } });
     names.forEach((name, i) => {
       expect(builderProto[name]).toBe(slotsAfterAll[i]);
@@ -162,12 +164,12 @@ describe('the 8x config-provider reality (the killer regression, §73/1)', () =>
   });
 
   test('a class decorated AFTER all registrations catches up on everything, once, no throw', () => {
-    const TOKEN = freshToken();
+    const RECEIVER = freshReceiver();
 
     const names = ['addJsonFile', 'addEnvironmentVariables', 'addCommandLine', 'addIniFile'] as const;
     for (const name of names) {
-      registerAugmentations(TOKEN, { [name](receiver: { added: string[]; }): void {
-        receiver.added.push(name);
+      registerAugmentations<{ added: string[]; }>(RECEIVER, { [name](this: { added: string[]; }): void {
+        this.added.push(name);
       } } satisfies AugmentationSet<{ added: string[]; }>);
     }
 
@@ -183,7 +185,7 @@ describe('the 8x config-provider reality (the killer regression, §73/1)', () =>
 
     // Late catch-up must install every accumulated member exactly once, without
     // throwing (each name is distinct -> free slot -> plain install).
-    expect(() => augment(TOKEN)(LateBuilder)).not.toThrow();
+    expect(() => augment(RECEIVER)(LateBuilder)).not.toThrow();
 
     const late = new LateBuilder();
     late.addJsonFile();
@@ -196,7 +198,7 @@ describe('the 8x config-provider reality (the killer regression, §73/1)', () =>
 
 describe('multi-set merge (two consts, one token)', () => {
   test("both sets' members land on the prototype", () => {
-    const TOKEN = freshToken();
+    const RECEIVER = freshReceiver();
 
     class Svc {}
     interface Svc {
@@ -204,16 +206,16 @@ describe('multi-set merge (two consts, one token)', () => {
       b(): string;
     }
 
-    const First = { a(_svc: Svc): string {
+    const First = { a(): string {
       return 'a';
     } } satisfies AugmentationSet<Svc>;
-    const Second = { b(_svc: Svc): string {
+    const Second = { b(): string {
       return 'b';
     } } satisfies AugmentationSet<Svc>;
 
-    augment(TOKEN)(Svc);
-    registerAugmentations(TOKEN, First);
-    registerAugmentations(TOKEN, Second);
+    augment(RECEIVER)(Svc);
+    registerAugmentations<Svc>(RECEIVER, First);
+    registerAugmentations<Svc>(RECEIVER, Second);
 
     const svc = new Svc();
     expect(svc.a()).toBe('a');
@@ -223,33 +225,33 @@ describe('multi-set merge (two consts, one token)', () => {
 
 describe('bag tolerates a second same-name registration (§73/3)', () => {
   test("registering a member name already in the token's bag does NOT throw at registration", () => {
-    const TOKEN = freshToken();
+    const RECEIVER = freshReceiver();
 
-    const One = { configure(_r: object): void {} } satisfies AugmentationSet<object>;
-    const Two = { configure(_r: object): void {} } satisfies AugmentationSet<object>;
+    const One = { configure(): void {} } satisfies AugmentationSet<object>;
+    const Two = { configure(): void {} } satisfies AugmentationSet<object>;
 
     // The old registry threw here; §73/3 moves the throw to install time. With no
     // class yet decorated, both registrations simply accumulate in the bag.
     expect(() => {
-      registerAugmentations(TOKEN, One);
-      registerAugmentations(TOKEN, Two);
+      registerAugmentations<object>(RECEIVER, One);
+      registerAugmentations<object>(RECEIVER, Two);
     }).not.toThrow();
   });
 
   test('the accumulated same-name pair throws at install when unresolved (no strategy)', () => {
-    const TOKEN = freshToken();
+    const RECEIVER = freshReceiver();
 
-    registerAugmentations(TOKEN, { configure(_r: object): void {} });
-    registerAugmentations(TOKEN, { configure(_r: object): void {} });
+    registerAugmentations(RECEIVER, { configure(): void {} });
+    registerAugmentations(RECEIVER, { configure(): void {} });
 
     class Sink {}
     // Catch-up replays both contributions: the first mounts, the second finds the
     // name taken and -- with no strategy -- refuses.
-    expect(() => augment(TOKEN)(Sink)).toThrow(/augmentation "configure" collides on Sink/);
+    expect(() => augment(RECEIVER)(Sink)).toThrow(/augmentation "configure" collides on Sink/);
   });
 
   test('the accumulated same-name pair CHAINS when a strategy is supplied', () => {
-    const TOKEN = freshToken();
+    const RECEIVER = freshReceiver();
 
     class Node {}
     interface Node {
@@ -260,18 +262,18 @@ describe('bag tolerates a second same-name registration (§73/3)', () => {
     // member, everything else falls through to the earlier (First) member.
     const merge = { visit(original, extension) {
       return function(this: Node, x: unknown, ...rest: unknown[]) {
-        return typeof x === 'number' ? extension(this, x, ...rest) : original.call(this, x, ...rest);
+        return typeof x === 'number' ? extension.call(this, x, ...rest) : original.call(this, x, ...rest);
       };
-    } } satisfies MergeStrategies;
+    } } satisfies MergeStrategies<Node>;
 
-    registerAugmentations(TOKEN, { visit(_node: Node, x: unknown): string {
+    registerAugmentations(RECEIVER, { visit(x: unknown): string {
       return `first:${String(x)}`;
     } });
-    registerAugmentations(TOKEN, { visit(_node: Node, x: unknown): string {
+    registerAugmentations(RECEIVER, { visit(x: unknown): string {
       return `second:${String(x)}`;
     } }, merge);
 
-    augment(TOKEN)(Node);
+    augment(RECEIVER)(Node);
 
     const node = new Node();
     expect(node.visit('a')).toBe('first:a');
@@ -281,7 +283,7 @@ describe('bag tolerates a second same-name registration (§73/3)', () => {
 
 describe('fluent-return preservation', () => {
   test("the installed method returns the callee's result (chaining survives)", () => {
-    const TOKEN = freshToken();
+    const RECEIVER = freshReceiver();
 
     class Builder {
       readonly steps: string[] = [];
@@ -290,13 +292,13 @@ describe('fluent-return preservation', () => {
       step(name: string): Builder;
     }
 
-    const BuilderExtensions = { step(builder: Builder, name: string): Builder {
-      builder.steps.push(name);
-      return builder;
+    const BuilderExtensions = { step(this: Builder, name: string): Builder {
+      this.steps.push(name);
+      return this;
     } } satisfies AugmentationSet<Builder>;
 
-    registerAugmentations(TOKEN, BuilderExtensions);
-    augment(TOKEN)(Builder);
+    registerAugmentations<Builder>(RECEIVER, BuilderExtensions);
+    augment(RECEIVER)(Builder);
 
     const built = new Builder().step('one').step('two');
     expect(built.steps).toEqual(['one', 'two']);
@@ -305,7 +307,7 @@ describe('fluent-return preservation', () => {
 
 describe('install-time collision with a class primitive (§73/2)', () => {
   test('a strategy-LESS augmentation colliding with an own method throws at install', () => {
-    const TOKEN = freshToken();
+    const RECEIVER = freshReceiver();
 
     class Box {
       compute(): string {
@@ -314,15 +316,15 @@ describe('install-time collision with a class primitive (§73/2)', () => {
     }
 
     // `compute` shares its name with Box's own method and carries no strategy.
-    registerAugmentations(TOKEN, { compute(_box: Box): string {
+    registerAugmentations(RECEIVER, { compute(): string {
       return 'ext';
     } });
 
-    expect(() => augment(TOKEN)(Box)).toThrow(/augmentation "compute" collides on Box/);
+    expect(() => augment(RECEIVER)(Box)).toThrow(/augmentation "compute" collides on Box/);
   });
 
   test('a strategy installs a dispatcher routing primitive- and extension-shaped calls', () => {
-    const TOKEN = freshToken();
+    const RECEIVER = freshReceiver();
 
     class Box {
       compute(x: unknown): string {
@@ -333,19 +335,19 @@ describe('install-time collision with a class primitive (§73/2)', () => {
       compute(x: unknown): string;
     }
 
-    const BoxExtensions = { compute(_box: Box, x: unknown): string {
+    const BoxExtensions = { compute(x: unknown): string {
       return `ext:${String(x)}`;
     } } satisfies AugmentationSet<Box>;
 
     // Route a string to the extension, everything else to the primitive.
     const merge = { compute(original, extension) {
       return function(this: Box, x: unknown, ...rest: unknown[]) {
-        return typeof x === 'string' ? extension(this, x, ...rest) : original.call(this, x, ...rest);
+        return typeof x === 'string' ? extension.call(this, x, ...rest) : original.call(this, x, ...rest);
       };
-    } } satisfies MergeStrategies;
+    } } satisfies MergeStrategies<Box>;
 
-    registerAugmentations(TOKEN, BoxExtensions, merge);
-    augment(TOKEN)(Box);
+    registerAugmentations<Box>(RECEIVER, BoxExtensions, merge);
+    augment(RECEIVER)(Box);
 
     const box = new Box();
     expect(box.compute(7)).toBe('primitive:7'); // primitive-shaped
@@ -353,7 +355,7 @@ describe('install-time collision with a class primitive (§73/2)', () => {
   });
 
   test('a later delta does NOT re-wrap the primitive dispatcher (no self-recursion)', () => {
-    const TOKEN = freshToken();
+    const RECEIVER = freshReceiver();
 
     class Box {
       compute(x: unknown): string {
@@ -367,19 +369,19 @@ describe('install-time collision with a class primitive (§73/2)', () => {
 
     const merge = { compute(original, extension) {
       return function(this: Box, x: unknown, ...rest: unknown[]) {
-        return typeof x === 'string' ? extension(this, x, ...rest) : original.call(this, x, ...rest);
+        return typeof x === 'string' ? extension.call(this, x, ...rest) : original.call(this, x, ...rest);
       };
-    } } satisfies MergeStrategies;
+    } } satisfies MergeStrategies<Box>;
 
-    registerAugmentations(TOKEN, { compute(_box: Box, x: unknown): string {
+    registerAugmentations(RECEIVER, { compute(x: unknown): string {
       return `ext:${String(x)}`;
     } }, merge);
-    augment(TOKEN)(Box);
+    augment(RECEIVER)(Box);
 
     // A LATER, differently-named registration dispatches its own delta only; the
     // `compute` dispatcher installed above is untouched -- it still routes over
     // the PRIMITIVE, not itself.
-    registerAugmentations(TOKEN, { other(_box: Box): string {
+    registerAugmentations(RECEIVER, { other(): string {
       return 'other';
     } });
 
@@ -399,7 +401,7 @@ describe('dispatch-path collision propagates to the registrant (§79 defect fix)
   // and silently drop the colliding member.
 
   test('a strategy-LESS collision onto an already-decorated class THROWS from registerAugmentations', () => {
-    const TOKEN = freshToken();
+    const RECEIVER = freshReceiver();
 
     class Recv {
       readonly seen: string[] = [];
@@ -409,16 +411,20 @@ describe('dispatch-path collision propagates to the registrant (§79 defect fix)
     }
 
     // Decorate FIRST, then register the first member -- it installs via delta.
-    augment(TOKEN)(Recv);
-    registerAugmentations(TOKEN, { addFoo(receiver: { seen: string[]; }): void {
-      receiver.seen.push('first');
+    augment(RECEIVER)(Recv);
+    registerAugmentations<Recv>(RECEIVER, { addFoo(this: {
+      seen: string[];
+    }): void {
+      this.seen.push('first');
     } });
 
     // A SECOND same-name registration with no strategy collides at install. The
     // throw must surface HERE (not be swallowed out-of-band).
     expect(() =>
-      registerAugmentations(TOKEN, { addFoo(receiver: { seen: string[]; }): void {
-        receiver.seen.push('second');
+      registerAugmentations<Recv>(RECEIVER, { addFoo(this: {
+        seen: string[];
+      }): void {
+        this.seen.push('second');
       } })
     ).toThrow(/augmentation "addFoo" collides on Recv/);
 
@@ -430,7 +436,7 @@ describe('dispatch-path collision propagates to the registrant (§79 defect fix)
   });
 
   test('a strategy-carrying collision onto an already-decorated class CHAINS (both reachable)', () => {
-    const TOKEN = freshToken();
+    const RECEIVER = freshReceiver();
 
     class Recv {}
     interface Recv {
@@ -439,17 +445,17 @@ describe('dispatch-path collision propagates to the registrant (§79 defect fix)
 
     const merge = { pick(original, extension) {
       return function(this: Recv, x: unknown, ...rest: unknown[]) {
-        return typeof x === 'number' ? extension(this, x, ...rest) : original.call(this, x, ...rest);
+        return typeof x === 'number' ? extension.call(this, x, ...rest) : original.call(this, x, ...rest);
       };
-    } } satisfies MergeStrategies;
+    } } satisfies MergeStrategies<Recv>;
 
-    augment(TOKEN)(Recv);
-    registerAugmentations(TOKEN, { pick(_r: Recv, x: unknown): string {
+    augment(RECEIVER)(Recv);
+    registerAugmentations(RECEIVER, { pick(x: unknown): string {
       return `first:${String(x)}`;
     } });
     // Later delta collides but carries a strategy -- both signatures stay live.
     expect(() =>
-      registerAugmentations(TOKEN, { pick(_r: Recv, x: unknown): string {
+      registerAugmentations(RECEIVER, { pick(x: unknown): string {
         return `second:${String(x)}`;
       } }, merge)
     ).not.toThrow();
@@ -467,18 +473,18 @@ describe('cross-token collision (two tokens, one class, same member name, §73/2
   // question is "is the name already taken on this prototype?".
 
   test('a strategy-LESS second token colliding on the same name THROWS (no silent clobber)', () => {
-    const A = freshToken();
-    const B = freshToken();
+    const A = freshReceiver();
+    const B = freshReceiver();
 
     class Widget {}
     interface Widget {
       describe(): string;
     }
 
-    registerAugmentations(A, { describe(_w: Widget): string {
+    registerAugmentations(A, { describe(): string {
       return 'A';
     } });
-    registerAugmentations(B, { describe(_w: Widget): string {
+    registerAugmentations(B, { describe(): string {
       return 'B';
     } });
 
@@ -489,25 +495,25 @@ describe('cross-token collision (two tokens, one class, same member name, §73/2
   });
 
   test('a strategy on the second token installs a dispatcher reaching BOTH signatures', () => {
-    const A = freshToken();
-    const B = freshToken();
+    const A = freshReceiver();
+    const B = freshReceiver();
 
     class Widget {}
     interface Widget {
       describe(x: unknown): string;
     }
 
-    registerAugmentations(A, { describe(_w: Widget, x: unknown): string {
+    registerAugmentations(A, { describe(x: unknown): string {
       return `A:${String(x)}`;
     } });
     // The colliding token carries a strategy: numbers route to B, everything else
     // falls through to the member already installed (A's thunk).
     const merge = { describe(original, extension) {
       return function(this: Widget, x: unknown, ...rest: unknown[]) {
-        return typeof x === 'number' ? extension(this, x, ...rest) : original.call(this, x, ...rest);
+        return typeof x === 'number' ? extension.call(this, x, ...rest) : original.call(this, x, ...rest);
       };
-    } } satisfies MergeStrategies;
-    registerAugmentations(B, { describe(_w: Widget, x: unknown): string {
+    } } satisfies MergeStrategies<Widget>;
+    registerAugmentations(B, { describe(x: unknown): string {
       return `B:${String(x)}`;
     } }, merge);
 
@@ -522,15 +528,15 @@ describe('cross-token collision (two tokens, one class, same member name, §73/2
 
 describe('@augment decorator syntax (TC39 standard class decorator)', () => {
   test('the decorator form installs the same as the statement form', () => {
-    const TOKEN = freshToken();
+    const RECEIVER = freshReceiver();
 
-    const CounterExtensions = { inc(counter: Counter): Counter {
-      counter.n += 1;
-      return counter;
+    const CounterExtensions = { inc(this: Counter): Counter {
+      this.n += 1;
+      return this;
     } } satisfies AugmentationSet<Counter>;
-    registerAugmentations(TOKEN, CounterExtensions);
+    registerAugmentations<Counter>(RECEIVER, CounterExtensions);
 
-    @augment(TOKEN)
+    @augment(RECEIVER)
     class Counter {
       n = 0;
     }
@@ -539,5 +545,36 @@ describe('@augment decorator syntax (TC39 standard class decorator)', () => {
     }
 
     expect(new Counter().inc().inc().n).toBe(2);
+  });
+});
+
+describe('a receiver is a type, however it is spelled', () => {
+  test('every spelling of one type reaches one bag', () => {
+    // Types intern, so the boundary converter and the factory yield ONE node.
+    registerAugmentations(Type.from('spelling/one:IReceiver'), { fromString: () => 'string' } as AugmentationSet<unknown>);
+    registerAugmentations(Type.imported('IReceiver', 'spelling/one'), { fromType: () => 'type' } as AugmentationSet<unknown>);
+
+    @augment(Type.from('spelling/one:IReceiver'))
+    class Receiver {}
+    interface Receiver {
+      fromString(): string;
+      fromType(): string;
+    }
+
+    const receiver = new Receiver();
+    expect(receiver.fromString()).toBe('string');
+    expect(receiver.fromType()).toBe('type');
+  });
+
+  test('a class decorated by one spelling sees a registration made by the other', () => {
+    @augment(Type.imported('IReceiver', 'spelling/two'))
+    class Receiver {}
+    interface Receiver {
+      late(): string;
+    }
+
+    registerAugmentations(Type.from('spelling/two:IReceiver'), { late: () => 'installed' } as AugmentationSet<unknown>);
+
+    expect(new Receiver().late()).toBe('installed');
   });
 });

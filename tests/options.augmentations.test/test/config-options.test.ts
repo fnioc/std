@@ -3,9 +3,11 @@
 // bridge (#40) exercised through its public authoring surface only.
 
 import { ConfigBuilder, type IConfigRoot } from '@rhombus-std/config';
-import { ServiceManifest } from '@rhombus-std/di';
+import { Builder } from '@rhombus-std/di';
+import { Manifest } from '@rhombus-std/di.core';
 import type { IOptions } from '@rhombus-std/options';
-import '@rhombus-std/options.augmentations';
+import { getConfigureManifest, optionsAddressType } from '@rhombus-std/options.augmentations';
+import { Type } from '@rhombus-std/primitives';
 import { describe, expect, test } from 'bun:test';
 
 interface WidgetOptions {
@@ -13,7 +15,7 @@ interface WidgetOptions {
   Retries?: string;
 }
 
-const TOKEN = 'test:WidgetOptions';
+const WIDGET_OPTIONS_TYPE: Type = Type.from('test:WidgetOptions');
 
 function rootWith(data: Record<string, string>): IConfigRoot {
   // build() is typed to the index-navigable Section (the coercion seam); the
@@ -25,12 +27,12 @@ describe('configure — section-to-options binding', () => {
   test("resolving IOptions<T> binds the section's values into the base", () => {
     const config = rootWith({ 'Widget:Url': 'http://first', 'Widget:Retries': '3' });
 
-    let services = new ServiceManifest<'singleton'>();
-    services = services.addOptions<WidgetOptions>(TOKEN, () => ({ Url: '' })).as('singleton');
-    services = services.configure(TOKEN, config.getSection('Widget'));
+    let services: Manifest<unknown> = Manifest.empty<unknown>();
+    services = services.addOptions(WIDGET_OPTIONS_TYPE, () => ({ Url: '' }));
+    services = services.add(getConfigureManifest(WIDGET_OPTIONS_TYPE, config.getSection('Widget')));
 
-    const provider = services.build().createScope('singleton');
-    const options = provider.resolve<IOptions<WidgetOptions>>(TOKEN);
+    const provider = Builder.withServices(() => services).build();
+    const options: IOptions<WidgetOptions> = provider.resolve(optionsAddressType(WIDGET_OPTIONS_TYPE));
 
     expect(options.value).toEqual({ Url: 'http://first', Retries: '3' });
   });
@@ -38,12 +40,12 @@ describe('configure — section-to-options binding', () => {
   test('a reload delivers a fresh value and fires subscribe with it', () => {
     const config = rootWith({ 'Widget:Url': 'http://first' });
 
-    let services = new ServiceManifest<'singleton'>();
-    services = services.addOptions<WidgetOptions>(TOKEN, () => ({ Url: '' })).as('singleton');
-    services = services.configure(TOKEN, config.getSection('Widget'));
+    let services: Manifest<unknown> = Manifest.empty<unknown>();
+    services = services.addOptions(WIDGET_OPTIONS_TYPE, () => ({ Url: '' }));
+    services = services.add(getConfigureManifest(WIDGET_OPTIONS_TYPE, config.getSection('Widget')));
 
-    const provider = services.build().createScope('singleton');
-    const options = provider.resolve<IOptions<WidgetOptions>>(TOKEN);
+    const provider = Builder.withServices(() => services).build();
+    const options: IOptions<WidgetOptions> = provider.resolve(optionsAddressType(WIDGET_OPTIONS_TYPE));
 
     const seen: WidgetOptions[] = [];
     const registration = options.subscribe!((value) => seen.push(value));
@@ -68,13 +70,13 @@ describe('configure — section-to-options binding', () => {
   test('two configure calls deep-merge their sections into one value', () => {
     const config = rootWith({ 'Widget:Url': 'http://a', 'Extra:Retries': '5' });
 
-    let services = new ServiceManifest<'singleton'>();
-    services = services.addOptions<WidgetOptions>(TOKEN, () => ({ Url: '' })).as('singleton');
-    services = services.configure(TOKEN, config.getSection('Widget'));
-    services = services.configure(TOKEN, config.getSection('Extra'));
+    let services: Manifest<unknown> = Manifest.empty<unknown>();
+    services = services.addOptions(WIDGET_OPTIONS_TYPE, () => ({ Url: '' }));
+    services = services.add(getConfigureManifest(WIDGET_OPTIONS_TYPE, config.getSection('Widget')));
+    services = services.add(getConfigureManifest(WIDGET_OPTIONS_TYPE, config.getSection('Extra')));
 
-    const provider = services.build().createScope('singleton');
-    const options = provider.resolve<IOptions<WidgetOptions>>(TOKEN);
+    const provider = Builder.withServices(() => services).build();
+    const options: IOptions<WidgetOptions> = provider.resolve(optionsAddressType(WIDGET_OPTIONS_TYPE));
 
     expect(options.value).toEqual({ Url: 'http://a', Retries: '5' });
   });
@@ -82,11 +84,11 @@ describe('configure — section-to-options binding', () => {
 
 describe('addOptions — no configured source', () => {
   test('delivers a static snapshot (value from makeBase, no subscribe)', () => {
-    let services = new ServiceManifest<'singleton'>();
-    services = services.addOptions<WidgetOptions>(TOKEN, () => ({ Url: 'default' })).as('singleton');
+    let services: Manifest<unknown> = Manifest.empty<unknown>();
+    services = services.addOptions(WIDGET_OPTIONS_TYPE, () => ({ Url: 'default' }));
 
-    const provider = services.build().createScope('singleton');
-    const options = provider.resolve<IOptions<WidgetOptions>>(TOKEN);
+    const provider = Builder.withServices(() => services).build();
+    const options: IOptions<WidgetOptions> = provider.resolve(optionsAddressType(WIDGET_OPTIONS_TYPE));
 
     expect(options.value).toEqual({ Url: 'default' });
     expect(options.subscribe).toBeUndefined();

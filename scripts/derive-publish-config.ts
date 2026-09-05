@@ -1,38 +1,36 @@
 // Derives every publishable library's `publishConfig` from its DEV `exports`,
-// enforcing the §7 white-box scrub mechanically instead of by hand-editing each
-// manifest (docs/decisions.md §7; §43's derived-not-authored spirit).
-//
-// The §7 derivation rule (confirmed against the hand-authored pairs):
+// so the published surface is generated once here rather than hand-maintained in
+// thirty-odd manifests.
 //
 //   publishConfig.exports = exports, with two transforms:
-//     1. SCRUB   -- every white-box subpath (`./tokens/*` and `./private/*`) is
-//                   dropped, so a published consumer can't reach the seam even
-//                   though src/ still ships in the tarball (§7). This is the whole
-//                   point: pnpm honours publishConfig.exports, and omitting the
-//                   key makes it non-importable.
-//     2. DIST-SWAP -- each surviving subpath collapses its dev-resolution
-//                   conditions to the published trio, in canonical order:
-//                     types   <- swap the src `.ts` type entry to the rolled
-//                                `./dist/bundle/*.d.ts`
-//                     import  <- present iff the dev entry has an `import`
-//                                condition (a runtime lib); the `./dist/bundle/*.js`
-//                                bundle
-//                     default <- the `./dist/bundle/*.js` bundle (or, for a
-//                                types-only package, the `./dist/bundle/*.d.ts` --
-//                                there is no JS)
-//                   The dev-only conditions (`source`, `bun`, and di's `built`)
-//                   are dropped -- published consumers resolve through
-//                   import/default/types only.
+//     1. SCRUB     -- the white-box `./private/*` subpath is dropped, so a
+//                     published consumer can't reach the seam even though src/
+//                     may still ship in the tarball. pnpm honours
+//                     publishConfig.exports, and omitting the key makes the
+//                     subpath non-importable.
+//     2. DIST-SWAP -- each surviving subpath swaps its in-repo `./src/*.ts`
+//                     target for the `./dist/bundle/*.js` bundle, spelled as a
+//                     bare string: the rolled `./dist/bundle/*.d.ts` sits beside
+//                     it, and every resolver reading `exports` finds a target's
+//                     sibling declarations on its own.
+//                     A manifest whose `files` ships `src` gets a `source`
+//                     condition naming the dev target ahead of the bundle -- the
+//                     inline stage reads a marker's body out of the declaring
+//                     package's own source, which a bundle cannot serve.
+//                     A subpath declaring no runtime condition publishes as
+//                     `types` alone.
+//                     A string target OUTSIDE `./src/` (the `./ttsc` descriptor)
+//                     passes through verbatim.
 //
-//   Top-level publishConfig.main/module/types are the same dist-swap of the
-//   top-level fields, emitted only for the fields the package actually declares
-//   (a types-only package has no `main`).
+//   publishConfig.main is the same dist-swap of the top-level `main`. It serves
+//   node10-style resolvers, which are also the only ones that read it; they strip
+//   its `.js` and find the sibling `.d.ts` themselves.
 //
 //   Non-derived publishConfig fields (`access`, `provenance`) are preserved
 //   verbatim -- they are publish policy, not derivable from `exports`.
 //
-// Two packages are held hand-authored (NON_DERIVABLE below) because their
-// published surface is a deliberate semantic reshape, not a mechanical swap.
+// A package whose published surface is a deliberate semantic reshape rather than
+// this mechanical swap is held hand-authored (NON_DERIVABLE below).
 //
 // Modes:
 //   --check   exit non-zero listing packages whose publishConfig drifts from
@@ -46,12 +44,9 @@ const ROOT = join(import.meta.dir, '..');
 const LIBS = join(ROOT, 'libraries');
 
 // Packages whose publishConfig is a deliberate semantic reshape of `exports`,
-// not a mechanical dist-swap -- kept hand-authored, never rewritten here:
-//   @rhombus-std/config -- its `./configuration-builder` / `./configuration-manager`
-//     alias subpaths COLLAPSE onto the rolled `./dist/bundle/index.*` bundle at publish
-//     (they exist so a consumer can deep-import a barrel re-export), which no
-//     path-swap of their dev `src`/`internal` targets can reproduce.
-const NON_DERIVABLE = new Set(['@rhombus-std/config']);
+// not a mechanical dist-swap -- kept hand-authored, never rewritten here.
+// Currently none.
+const NON_DERIVABLE = new Set<string>([]);
 
 interface Conditions {
   readonly [condition: string]: string;
@@ -62,18 +57,14 @@ interface Manifest {
   readonly name: string;
   readonly private?: boolean;
   readonly main?: string;
-  readonly module?: string;
-  readonly types?: string;
+  readonly files?: readonly string[];
   readonly exports?: Record<string, ExportEntry>;
   readonly publishConfig?: Record<string, unknown>;
-  readonly rhombusBuild?: { readonly typesOnly?: boolean; };
 }
 
-/** True for a white-box seam subpath dropped from the published surface (§7).
- * Both halves of the seam are dev-only: `./tokens/*` (the source token surface)
- * and `./private/*` (the built lowered runtime). */
+/** True for the white-box seam subpath dropped from the published surface. */
 function isInternal(subpath: string): boolean {
-  return subpath.startsWith('./tokens/') || subpath.startsWith('./private/');
+  return subpath.startsWith('./private/');
 }
 
 /**
@@ -90,44 +81,46 @@ function toDist(path: string, kind: 'js' | 'dts'): string {
   return inDist.replace(/\.(d\.ts|ts|js)$/, ext);
 }
 
-/** A package with no `.js` anywhere in its `.` conditions ships declarations only. */
-function isTypesOnly(manifest: Manifest): boolean {
-  if (manifest.rhombusBuild?.typesOnly) {
-    return true;
-  }
-  const dot = manifest.exports?.['.'];
-  if (dot === undefined || typeof dot === 'string') {
-    return false;
-  }
-  return !Object.values(dot).some((value) => value.endsWith('.js'));
+/** True when the tarball ships `src`, so a `source` condition has a file to point at. */
+function shipsSrc(manifest: Manifest): boolean {
+  return manifest.files?.includes('src') ?? false;
 }
 
-/** The published conditions trio for one surviving subpath (the §7 dist-swap). */
-function derivePublishedConditions(conditions: Conditions, typesOnly: boolean): Conditions {
-  const typesSource = conditions.types ?? conditions.source ?? conditions.default;
-  const out: Record<string, string> = {};
-  out.types = toDist(typesSource, 'dts');
-  if (conditions.import !== undefined) {
-    out.import = toDist(conditions.import, 'js');
+/** The published entry for one surviving subpath (the dist-swap). */
+function derivePublishedEntry(entry: ExportEntry, withSource: boolean): ExportEntry {
+  if (typeof entry === 'string') {
+    // A string target outside `./src/` -- the `./ttsc` descriptor -- is already
+    // publish-shaped and ships as authored.
+    if (!entry.startsWith('./src/')) {
+      return entry;
+    }
+    return withSource ? { source: entry, default: toDist(entry, 'js') } : toDist(entry, 'js');
   }
-  const defaultSource = conditions.default ?? conditions.import ?? conditions.bun;
-  out.default = toDist(defaultSource, typesOnly ? 'dts' : 'js');
-  return out;
+  // A subpath declaring no runtime condition publishes as `types` alone: there is
+  // nothing for `default` to resolve to, and a resolver reaching it for a value
+  // import should find nothing. That is an augmentation anchor like di.core's
+  // `./builders`, whose whole job is to stay resolvable to the declarations a
+  // `declare module` merges into. Such a subpath is NOT scrubbed (see isInternal):
+  // unresolvable, the augmentation silently detaches into a fresh ambient module.
+  const runtime = entry.default ?? entry.import;
+  if (runtime !== undefined) {
+    return derivePublishedEntry(runtime, withSource);
+  }
+  if (entry.types === undefined) {
+    throw new Error(`export entry names neither a runtime target nor \`types\`: ${JSON.stringify(entry)}`);
+  }
+  return { types: toDist(entry.types, 'dts') };
 }
 
 /** The derived `publishConfig.exports` for a whole manifest (scrub + dist-swap). */
 function derivePublishExports(manifest: Manifest): Record<string, ExportEntry> {
-  const typesOnly = isTypesOnly(manifest);
+  const withSource = shipsSrc(manifest);
   const out: Record<string, ExportEntry> = {};
   for (const [subpath, entry] of Object.entries(manifest.exports ?? {})) {
     if (isInternal(subpath)) {
       continue;
     }
-    if (typeof entry === 'string') {
-      out[subpath] = entry;
-      continue;
-    }
-    out[subpath] = derivePublishedConditions(entry, typesOnly);
+    out[subpath] = derivePublishedEntry(entry, withSource);
   }
   return out;
 }
@@ -136,14 +129,11 @@ function derivePublishExports(manifest: Manifest): Record<string, ExportEntry> {
 function derivePublishConfig(manifest: Manifest): Record<string, unknown> {
   const existing = manifest.publishConfig ?? {};
   const derived: Record<string, unknown> = { ...existing };
+  // `exports` and `main` between them address every published file; a top-level
+  // `types` would be a second spelling of declarations both already reach.
+  delete derived.types;
   if (manifest.main !== undefined) {
     derived.main = toDist(manifest.main, 'js');
-  }
-  if (manifest.module !== undefined) {
-    derived.module = toDist(manifest.module, 'js');
-  }
-  if (manifest.types !== undefined) {
-    derived.types = toDist(manifest.types, 'dts');
   }
   derived.exports = derivePublishExports(manifest);
   return derived;

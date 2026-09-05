@@ -2,31 +2,31 @@
 // distributed cache contracts, their options and convenience methods, and the
 // hybrid-cache abstractions.
 
-export { CacheItemPriority } from './CacheItemPriority';
-export { EvictionReason } from './EvictionReason';
-export { PostEvictionCallbackRegistration } from './PostEvictionCallbackRegistration';
-export type { PostEvictionDelegate } from './PostEvictionDelegate';
+export * from './CacheItemPriority';
+export * from './EvictionReason';
+export * from './PostEvictionCallbackRegistration';
+export type * from './PostEvictionDelegate';
 
-export type { ICacheEntry } from './ICacheEntry';
-export type { CacheTryGetResult, IMemoryCache } from './IMemoryCache';
-export { MemoryCacheEntryOptions } from './MemoryCacheEntryOptions';
-export { MemoryCacheStatistics } from './MemoryCacheStatistics';
+export type * from './ICacheEntry';
+export type * from './IMemoryCache';
+export * from './MemoryCacheEntryOptions';
+export * from './MemoryCacheStatistics';
 
-export { CacheEntryExtensions } from './CacheEntryExtensions';
-export { CacheExtensions } from './CacheExtensions';
-export { MemoryCacheEntryExtensions } from './MemoryCacheEntryExtensions';
+export * from './CacheEntry-Sugar-augmentations';
+export * from './MemoryCache-Sugar-augmentations';
+export * from './MemoryCacheEntryOptions-Sugar-augmentations';
 
 // The distributed-cache surface (`freezeDistributedCacheEntryOptions` is
 // intentionally not re-exported).
-export { DistributedCacheEntryExtensions } from './DistributedCacheEntryExtensions';
+export * from './DistributedCache-Sugar-augmentations';
 export { DistributedCacheEntryOptions } from './DistributedCacheEntryOptions';
-export { DistributedCacheExtensions } from './DistributedCacheExtensions';
-export type { IDistributedCache } from './IDistributedCache';
+export * from './DistributedCacheEntryOptions-Sugar-augmentations';
+export type * from './IDistributedCache';
 
 // The hybrid-cache surface (`toDistributedCacheEntryOptions` is intentionally
 // not re-exported).
-export { HybridCache } from './hybrid/HybridCache';
-export { HybridCacheEntryFlags } from './hybrid/HybridCacheEntryFlags';
+export * from './hybrid/HybridCache';
+export * from './hybrid/HybridCacheEntryFlags';
 export { HybridCacheEntryOptions } from './hybrid/HybridCacheEntryOptions';
-export type { IHybridCacheSerializer } from './hybrid/IHybridCacheSerializer';
-export type { IHybridCacheSerializerFactory } from './hybrid/IHybridCacheSerializerFactory';
+export type * from './hybrid/IHybridCacheSerializer';
+export type * from './hybrid/IHybridCacheSerializerFactory';

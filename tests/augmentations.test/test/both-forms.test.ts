@@ -12,22 +12,27 @@
 //     LoggerFilterOptions, and enableMetrics/enableTracing on
 //     MetricsOptions/TracingOptions -- installed onto the concrete option class.
 
-import { CacheEntryExtensions, CacheExtensions, CacheItemPriority } from '@rhombus-std/caching.core';
+import type { IMemoryCache } from '@rhombus-std/caching.core';
+import { CacheEntrySugarAugmentations, CacheItemPriority, MemoryCacheSugarAugmentations } from '@rhombus-std/caching.core';
 import { MemoryCache, MemoryCacheOptions } from '@rhombus-std/caching.memory';
-import { ConfigBuilder, MemoryConfigBuilderExtensions } from '@rhombus-std/config';
-import type { IServiceManifestBase } from '@rhombus-std/di.core';
+import { ConfigBuilder, MemoryConfigBuilderAugmentations } from '@rhombus-std/config';
+import { type Manifest } from '@rhombus-std/di.core';
 import { MetricsBuilder } from '@rhombus-std/diagnostics';
-import { type IMetricsListener, METRICS_LISTENER_TOKEN, MetricsBuilderExtensions, MetricsOptions,
-  MetricsOptionsExtensions, TracingOptions, TracingOptionsExtensions } from '@rhombus-std/diagnostics.core';
+import { type IMetricsListener, MetricsBuilderAugmentations, MetricsOptions, MetricsOptionsAugmentations, TracingOptions, TracingOptionsAugmentations } from '@rhombus-std/diagnostics.core';
 import { LoggerFilterOptions, LoggerFilterOptionsExtensions } from '@rhombus-std/logging';
 import { LogLevel } from '@rhombus-std/logging.core';
+import { Type } from '@rhombus-std/primitives';
 import { describe, expect, test } from 'bun:test';
+
+const METRICS_LISTENER_TYPE = Type.imported('IMetricsListener', '@rhombus-std/diagnostics.core');
 
 describe('foreign-class direction — addInMemoryCollection', () => {
   test('method form and standalone form yield the same configuration', () => {
     const viaMethod = new ConfigBuilder().addInMemoryCollection({ Key: 'value' }).build();
-    const viaMember = MemoryConfigBuilderExtensions.addInMemoryCollection(new ConfigBuilder(), { Key: 'value' })
-      .build();
+    // The standalone form's `Self` collapses to its structural constraint through
+    // `.call`, so the receiver type is reasserted to reach `build()`.
+    const viaMember = (MemoryConfigBuilderAugmentations.addInMemoryCollection
+      .call(new ConfigBuilder(), { Key: 'value' }) as ConfigBuilder).build();
 
     expect(viaMethod.get('Key')).toBe('value');
     expect(viaMethod.get('Key')).toBe(viaMember.get('Key'));
@@ -39,12 +44,16 @@ describe('reverse direction — MemoryCache / ICacheEntry', () => {
     const cache = new MemoryCache(new MemoryCacheOptions());
 
     cache.set('a', 1); // method form
-    CacheExtensions.set(cache, 'b', 2); // standalone member form
+    MemoryCacheSugarAugmentations.set.call<IMemoryCache, [unknown, number], number>(
+      cache as IMemoryCache,
+      'b',
+      2,
+    ); // standalone member form
 
     expect(cache.get<number>('a')).toBe(1);
-    expect(CacheExtensions.get<number>(cache, 'b')).toBe(2);
+    expect(MemoryCacheSugarAugmentations.get.call(cache, 'b')).toBe(2);
     // cross-check: the two read forms agree on the same key.
-    expect(cache.get('b')).toBe(CacheExtensions.get(cache, 'b'));
+    expect(cache.get<number>('b')).toBe(MemoryCacheSugarAugmentations.get.call(cache, 'b') as number);
   });
 
   test('entry setPriority method form equals the object-literal member form', () => {
@@ -54,7 +63,7 @@ describe('reverse direction — MemoryCache / ICacheEntry', () => {
     viaMethod.setPriority(CacheItemPriority.High);
 
     const viaMember = cache.createEntry('y');
-    CacheEntryExtensions.setPriority(viaMember, CacheItemPriority.High);
+    CacheEntrySugarAugmentations.setPriority.call(viaMember, CacheItemPriority.High);
 
     expect(viaMethod.priority).toBe(CacheItemPriority.High);
     expect(viaMethod.priority).toBe(viaMember.priority);
@@ -67,30 +76,35 @@ describe('reverse direction — MetricsBuilder (.core interface, downstream conc
     // the real immutable chain does — a double that returned `undefined` (or
     // itself) would hide the threading the augmentation now has to do.
     const recorded: Array<[unknown, unknown]> = [];
-    const make = (): IServiceManifestBase => {
-      return { add: () => make(), addFactory: () => make(), addValue: (token: unknown, value: unknown) => {
-        recorded.push([token, value]);
+    const make = (): Manifest<unknown> => {
+      return { addValue: (address: unknown, value: unknown) => {
+        recorded.push([address, value]);
         return make();
-      }, build: () => undefined } as unknown as IServiceManifestBase;
+      }, build: () => undefined } as unknown as Manifest<unknown>;
     };
 
     const builder = new MetricsBuilder(make());
     const listener = { name: 'listener' } as IMetricsListener;
 
     builder.addMetricsListener(listener); // method form
-    MetricsBuilderExtensions.addMetricsListener(builder, listener); // standalone member form
+    MetricsBuilderAugmentations.addMetricsListener.call(builder, listener); // standalone member form
 
-    expect(recorded).toEqual([[METRICS_LISTENER_TOKEN, listener], [METRICS_LISTENER_TOKEN, listener]]);
+    expect(recorded).toEqual([[METRICS_LISTENER_TYPE, listener], [METRICS_LISTENER_TYPE, listener]]);
   });
 });
 
-describe('reverse direction, value-object receiver — LoggerFilterOptions.addFilter (§29/#105)', () => {
+describe('reverse direction, value-object receiver — LoggerFilterOptions.addFilter', () => {
+  // The predicate arm of the overload set. Both routes to it are exercised: the
+  // method the prototype install put on the receiver, and the namespace member
+  // called standalone against the same receiver.
   test('addFilter method form equals the object-literal member form', () => {
+    const filter = (): boolean => true;
+
     const viaMethod = new LoggerFilterOptions();
-    viaMethod.addFilter('Cat', LogLevel.Warning); // method form
+    viaMethod.addFilter(filter); // method form
 
     const viaMember = new LoggerFilterOptions();
-    LoggerFilterOptionsExtensions.addFilter(viaMember, 'Cat', LogLevel.Warning); // standalone member form
+    LoggerFilterOptionsExtensions.addFilter.call(viaMember, filter); // standalone member form
 
     expect(viaMethod.rules.length).toBe(1);
     expect(viaMethod.rules[0]).toEqual(viaMember.rules[0]);
@@ -107,8 +121,8 @@ describe('reverse direction, value-object receiver — MetricsOptions (§29/#105
     viaMethod.disableMetrics('meter', 'instrument');
 
     const viaMember = new MetricsOptions();
-    MetricsOptionsExtensions.enableMetrics(viaMember, 'meter'); // standalone member form
-    MetricsOptionsExtensions.disableMetrics(viaMember, 'meter', 'instrument');
+    MetricsOptionsAugmentations.enableMetrics.call(viaMember, 'meter'); // standalone member form
+    MetricsOptionsAugmentations.disableMetrics.call(viaMember, 'meter', 'instrument');
 
     expect(viaMethod.rules).toEqual(viaMember.rules);
     expect(viaMethod.rules.map((r) => r.enable)).toEqual([true, false]);
@@ -124,8 +138,8 @@ describe('reverse direction, value-object receiver — TracingOptions (§29/#105
     viaMethod.disableTracing('source', 'operation');
 
     const viaMember = new TracingOptions();
-    TracingOptionsExtensions.enableTracing(viaMember, 'source'); // standalone member form
-    TracingOptionsExtensions.disableTracing(viaMember, 'source', 'operation');
+    TracingOptionsAugmentations.enableTracing.call(viaMember, 'source'); // standalone member form
+    TracingOptionsAugmentations.disableTracing.call(viaMember, 'source', 'operation');
 
     expect(viaMethod.rules).toEqual(viaMember.rules);
     expect(viaMethod.rules.map((r) => r.enable)).toEqual([true, false]);

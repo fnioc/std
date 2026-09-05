@@ -36,8 +36,10 @@ import (
 
 	"github.com/fnioc/std/transforms/internal/inlinetransform"
 	"github.com/fnioc/std/transforms/internal/plugin"
-	"github.com/fnioc/std/transforms/internal/signatures"
 	"github.com/fnioc/std/transforms/internal/tokens"
+	"github.com/fnioc/std/transforms/internal/typeemit"
+	"github.com/fnioc/std/transforms/internal/typeforhoist"
+	"github.com/fnioc/std/transforms/internal/typefortransform"
 )
 
 const (
@@ -80,12 +82,15 @@ type Stage struct {
 
 // Env carries the cross-stage state a builder may need: the project working
 // directory, the per-run inline artifacts (populated by the inline stage, read by
-// nameof and the emit sweep), and the inline BODIES the host pre-collected in its
-// single §100 dependency scan (threaded to the inline stage so the walk runs once).
+// typefor and the emit sweep), the inline BODIES the host pre-collected in its
+// single dependency scan (threaded to the inline stage so the walk runs once),
+// and the project's typefor const table (nil when the project spells its derived
+// types inline).
 type Env struct {
 	Cwd       string
 	Artifacts *inlinetransform.Artifacts
 	Bodies    []inlinetransform.OwnedEntry
+	Hoist     *typefortransform.Hoist
 }
 
 // Sink receives one diagnostic from a stage's transform.
@@ -93,11 +98,15 @@ type Sink func(Diag)
 
 // Diag is a stage diagnostic destined for the envelope. Warning diagnostics
 // are reported without failing the emit; everything else is a hard error.
+// Line and Character are 1-based source positions, populated when the
+// diagnostic anchors to a known location; nil when it does not.
 type Diag struct {
-	File    string
-	Warning bool
-	Code    string
-	Message string
+	File      string
+	Warning   bool
+	Code      string
+	Message   string
+	Line      *int
+	Character *int
 }
 
 // Builder adapts a stage's native transform factory (each with its own
@@ -114,16 +123,24 @@ func DiagFromPlugin(d plugin.Diagnostic) Diag {
 	}
 }
 
-// DiagFromDi converts a signatures.Diagnostic, honoring its advisory Warning
-// vs hard Error category so a warning does not fail emit. It carries the shared
-// signature-extraction engine's §4.5 advisory the signatureof stage surfaces.
-func DiagFromDi(d signatures.Diagnostic) Diag {
-	return Diag{
+// DiagFromTypeScript converts one of the consumer program's own ordinary
+// TypeScript diagnostics (a real TS2xxx/TS1xxx error the checker or parser
+// raised against the author's source, as opposed to a diagnostic one of this
+// host's own stages emitted) into a hard-error Diag, carrying its source
+// position when the diagnostic has one.
+func DiagFromTypeScript(d driver.Diagnostic) Diag {
+	diag := Diag{
 		File:    d.File,
-		Warning: d.Category == signatures.Warning,
-		Code:    d.Code,
+		Code:    fmt.Sprintf("TS%d", d.Code),
 		Message: d.Message,
 	}
+	if d.Line > 0 {
+		line := d.Line
+		character := d.Column
+		diag.Line = &line
+		diag.Character = &character
+	}
+	return diag
 }
 
 // Run dispatches the host command line: the transform-stage contract the ttsc
@@ -212,6 +229,15 @@ func runTransform(host Host, args []string) int {
 		return 2
 	}
 
+	// How this project spells the types typefor derives. It rides the project's
+	// own package.json, never the shared descriptor every consumer dedupes to one
+	// spawn — so two consumers of the same host can disagree.
+	emission, emissionErr := readEmission(cwd)
+	if emissionErr != nil {
+		fmt.Fprintf(stderr, "%s: %v\n", host.Name, emissionErr)
+		return 2
+	}
+
 	// No selection: the whole stage table runs on every file. A stage that matches
 	// nothing in this program is a cheap no-op (disjoint match sets), and a program
 	// with no sugar and no matching source simply emits unchanged — a legitimate
@@ -252,26 +278,39 @@ func runTransform(host Host, args []string) int {
 		}
 	}
 	// Route the token core's hard derivation diagnostics (a type reachable only
-	// through a non-barrel, non-tokens export subpath) into the envelope as errors.
+	// through a non-barrel, non-private export subpath) into the envelope as errors.
 	ctx.Diag = func(file string, start int, code, message string) {
 		emit(DiagFromPlugin(plugin.Diagnostic{File: file, Start: start, Code: code, Message: message}))
 	}
 
+	// The Go host type-checks the whole consumer program to run its stages —
+	// tsgo's checker runs regardless — but with noEmitOnError left off (the host
+	// always emits, see ForceEmit above) those diagnostics were never carried
+	// into the envelope. Collecting them once, program-wide, here surfaces the
+	// program's own ordinary TypeScript errors (a broken declare-module merge,
+	// a bad call, …) alongside this host's stage diagnostics, rather than
+	// silently dropping them while the program still "builds".
+	for _, d := range prog.Diagnostics() {
+		if !d.IsError() {
+			continue
+		}
+		emit(DiagFromTypeScript(d))
+	}
+
 	artifacts := inlinetransform.NewArtifacts()
 	env := &Env{Cwd: cwd, Artifacts: artifacts, Bodies: scan.Bodies}
-
-	// Split the selected stages into the one-shot PRE-PASS (mergesynth) and the
-	// LOOPED set (everything else), then build each into its FileTransform — see
-	// partitionStages for the why. The prePass runs once before the loop; the loop
-	// runs the rest to a fixed point.
-	prePassStages, loopStages := partitionStages(selected)
-	tracker := &phaseTracker{}
-	prePass := make([]plugin.FileTransform, 0, len(prePassStages))
-	for _, stage := range prePassStages {
-		prePass = append(prePass, tracker.watch(stage.Name, stage.Build(prog, ctx, env, emit)))
+	var roots emitRoots
+	if emission == EmissionHoisted {
+		roots = resolveEmitRoots(prog, cwd)
+		env.Hoist = &typefortransform.Hoist{Registry: typeforhoist.NewRegistry(typeemit.HoistRef()), SourceRoot: roots.source}
 	}
-	loop := make([]plugin.FileTransform, 0, len(loopStages))
-	for _, stage := range loopStages {
+
+	// Build every selected stage into its FileTransform. The WHOLE table runs
+	// under the fixed-point loop — mergesynth included, since the inline stage
+	// mints install calls mid-loop that mergesynth must re-see.
+	tracker := &phaseTracker{}
+	loop := make([]plugin.FileTransform, 0, len(selected))
+	for _, stage := range selected {
 		loop = append(loop, tracker.watch(stage.Name, stage.Build(prog, ctx, env, emit)))
 	}
 
@@ -283,7 +322,7 @@ func runTransform(host Host, args []string) int {
 		if filepath.IsAbs(key) || key == ".." || strings.HasPrefix(key, "../") {
 			continue
 		}
-		lowered, survived := transformFileToTypeScript(prog, prePass, loop, sf, artifacts, emit, tracker)
+		lowered, survived := transformFileToTypeScript(prog, loop, sf, artifacts, emit, tracker)
 		if !survived {
 			// ABORT THE WHOLE RUN on the first panicking file rather than
 			// reporting it and lowering the rest.
@@ -304,6 +343,17 @@ func runTransform(host Host, args []string) int {
 		out.TypeScript[key] = lowered
 	}
 
+	// The const table is complete only once every file has contributed, so the
+	// generated module is written after the loop — and never when a stage already
+	// failed, since a half-derived table would describe a program that was not
+	// emitted.
+	if env.Hoist != nil && !hasError {
+		if err := writeHoistedModule(env.Hoist.Registry, roots); err != nil {
+			fmt.Fprintf(stderr, "%s: %v\n", host.Name, err)
+			return 3
+		}
+	}
+
 	if err := json.NewEncoder(stdout).Encode(out); err != nil {
 		fmt.Fprintf(stderr, "%s: encode output: %v\n", host.Name, err)
 		return 3
@@ -312,26 +362,6 @@ func runTransform(host Host, args []string) int {
 		return 3
 	}
 	return 0
-}
-
-// partitionStages splits the selected stages into the one-shot PRE-PASS
-// (mergesynth) and the LOOPED set (everything else). Mergesynth is
-// augmentation-side: its matches are source-written
-// registerAugmentations/applyAugmentations installs, and NO sugar body mints one,
-// so the loop can never produce fresh work for it — running it exactly once before
-// the loop keeps termination trivially explainable (Open issue 2). The rest run
-// repeatedly to a fixed point, since each sugar chain peels one layer per pass. The
-// relative order within each group is preserved from selection; the loop's
-// correctness does not depend on it (disjoint match sets).
-func partitionStages(selected []Stage) (prePass, loop []Stage) {
-	for _, stage := range selected {
-		if stage.Name == stagePrefix+"mergesynth" {
-			prePass = append(prePass, stage)
-		} else {
-			loop = append(loop, stage)
-		}
-	}
-	return prePass, loop
 }
 
 // knownValueFlags names the flags this host reads, each of which takes a value.
@@ -434,25 +464,19 @@ func (t *phaseTracker) watch(name string, transform plugin.FileTransform) plugin
 // fails cleanly through the envelope instead of dying. It is an engine bug every
 // time, never a user error, but the user is the one who has to report it.
 //
-// Mergesynth is a ONE-SHOT PRE-PASS, run once before the loop (Open issue 2): it
-// is augmentation-side, its matches are only ever the SOURCE-WRITTEN
-// registerAugmentations/applyAugmentations installs, and no sugar body mints one,
-// so the loop can never create fresh work for it — and one-shot placement makes
-// termination trivially explainable. (In the loop it also misbehaves: its
-// strategyNames has no spread-assignment case, so it re-wraps a hand-merge install
-// every pass and never settles — mergesynth.go.) REJOIN CONDITION, if a future
-// sugar body ever EMITS an install call: mergesynth must move back INTO the loop
-// AND gain a spread-recursing strategyNames (recurse through resolveObjectLiteral)
-// so the loop's newly-minted installs are re-seen.
-//
-// The remaining stages run under RunToFixedPoint — the whole set, back to back,
-// until a full pass changes nothing. Change detection is pointer identity (every
+// Every stage — mergesynth included — runs under RunToFixedPoint: the whole
+// set, back to back, until a full pass changes nothing. Mergesynth sits in the
+// loop because the registerAugmentations authoring sugar's inline body EMITS
+// the install call it must rewrite, so the install's final shape is minted
+// mid-loop; it settles because a call it already rewrote reads as fully
+// covered (its strategyNames recurses through the spread its own rewrite
+// emits) and comes back untouched. Change detection is pointer identity (every
 // stage returns the identical *SourceFile on a no-op). Only after the loop settles
 // does the emit sweep run (tripwire 2) — once, over the fully-lowered, fully-
 // parented output — so a synthetic node can walk to a positioned ancestor.
 func transformFileToTypeScript(
 	prog *driver.Program,
-	prePass, loop []plugin.FileTransform,
+	loop []plugin.FileTransform,
 	sf *shimast.SourceFile,
 	artifacts *inlinetransform.Artifacts,
 	emit Sink,
@@ -489,17 +513,6 @@ func transformFileToTypeScript(
 	ec := shimprinter.NewEmitContext()
 	result := sf
 
-	prePassChanged := false
-	for _, transform := range prePass {
-		if next := transform(ec, result); next != nil && next != result {
-			result = next
-			prePassChanged = true
-		}
-	}
-	if prePassChanged {
-		shimast.SetParentInChildrenUnset(result.AsNode())
-	}
-
 	var exhausted bool
 	result, _, exhausted = plugin.RunToFixedPoint(ec, loop, result, maxLoopPasses)
 	if exhausted {
@@ -532,6 +545,8 @@ type envelopeDiagnostic struct {
 	File        *string `json:"file"`
 	Category    string  `json:"category"`
 	Code        string  `json:"code"`
+	Line        *int    `json:"line,omitempty"`
+	Character   *int    `json:"character,omitempty"`
 	MessageText string  `json:"messageText"`
 }
 
@@ -545,6 +560,8 @@ func envelopeFromDiag(d Diag) envelopeDiagnostic {
 		File:        filePointer(d.File),
 		Category:    category,
 		Code:        d.Code,
+		Line:        d.Line,
+		Character:   d.Character,
 		MessageText: d.Message,
 	}
 }

@@ -44,13 +44,13 @@ up with duplicate console output if it's called from more than one place.
 
 ## Key exports
 
-| Export                           | What it is                                                                                                                                                        |
-| -------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `BrowserConsoleLoggerProvider`   | An `ILoggerProvider` that hands out `BrowserConsoleLogger` instances, one per category name, cached.                                                              |
-| `BrowserConsoleLogger`           | An `ILogger` that formats `category[eventId] message` and writes it through a `ConsoleLike`.                                                                      |
-| `BrowserConsoleLoggerExtensions` | The `addBrowserConsole(builder)` registration function — also reachable as the `builder.addBrowserConsole()` method once this package is imported.                |
-| `ConsoleLike`                    | The four-method console surface (`error`/`warn`/`info`/`debug`) this package writes through — swap in a fake for tests.                                           |
-| `consoleMethodFor(logLevel)`     | Maps a `LogLevel` onto the console method it writes through: `Trace`/`Debug` → `debug`, `Information` → `info`, `Warning` → `warn`, `Error`/`Critical` → `error`. |
+| Export                              | What it is                                                                                                                                                        |
+| ----------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `BrowserConsoleLoggerProvider`      | An `ILoggerProvider` that hands out `BrowserConsoleLogger` instances, one per category name, cached.                                                              |
+| `BrowserConsoleLogger`              | An `ILogger` that formats `category[eventId] message` and writes it through a `ConsoleLike`.                                                                      |
+| `BrowserConsoleLoggerAugmentations` | The `addBrowserConsole(builder)` registration function — also reachable as the `builder.addBrowserConsole()` method once this package is imported.                |
+| `ConsoleLike`                       | The four-method console surface (`error`/`warn`/`info`/`debug`) this package writes through — swap in a fake for tests.                                           |
+| `consoleMethodFor(logLevel)`        | Maps a `LogLevel` onto the console method it writes through: `Trace`/`Debug` → `debug`, `Information` → `info`, `Warning` → `warn`, `Error`/`Critical` → `error`. |
 
 ### How a log line is written
 

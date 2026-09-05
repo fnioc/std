@@ -1,7 +1,7 @@
 {
   "name": "@rhombus-std/primitives",
   "version": "0.0.0",
-  "description": "The change-token primitives ported from ME.Primitives: IChangeToken, ChangeToken.onChange, CancellationChangeToken, CompositeChangeToken. A leaf package -- zero dependencies.",
+  "description": "Change-token primitives (IChangeToken, ChangeToken.onChange, CancellationChangeToken, CompositeChangeToken), the augmentation registry, and the Type system every other family builds on. A leaf package -- zero dependencies.",
   "keywords": [
     "primitives",
     "change-token",
@@ -14,21 +14,10 @@
     "directory": "libraries/primitives"
   },
   "type": "module",
-  "main": "./dist/bundle/index.js",
-  "types": "./dist/bundle/index.d.ts",
+  "main": "./src/index.ts",
   "exports": {
-    ".": {
-      "source": "./src/index.ts",
-      "bun": "./dist/bundle/index.js",
-      "types": "./dist/bundle/index.d.ts",
-      "import": "./dist/bundle/index.js",
-      "default": "./dist/bundle/index.js"
-    },
-    "./tokens/*": {
-      "source": "./src/*.ts",
-      "bun": "./src/*.ts",
-      "types": "./src/*.ts"
-    }
+    ".": "./src/index.ts",
+    "./private/*": "./src/*.ts"
   },
   "files": [
     "dist"
@@ -41,16 +30,15 @@
     "access": "public",
     "provenance": true,
     "main": "./dist/bundle/index.js",
-    "types": "./dist/bundle/index.d.ts",
     "exports": {
-      ".": {
-        "types": "./dist/bundle/index.d.ts",
-        "import": "./dist/bundle/index.js",
-        "default": "./dist/bundle/index.js"
-      }
+      ".": "./dist/bundle/index.js"
     }
   },
   "dependencies": {
-    "@rhombus-toolkit/func": "^3.5.3"
+    "@rhombus-toolkit/obj": "^3.0.1",
+    "@rhombus-toolkit/once": "^2.0.0",
+    "@rhombus-toolkit/platform": "^1.1.0",
+    "@rhombus-toolkit/type-guards": "^4.0.0",
+    "@rhombus-toolkit/types": "^2.0.0"
   }
 }

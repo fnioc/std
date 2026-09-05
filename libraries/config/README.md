@@ -18,12 +18,9 @@ interface AppConfig {
   Database: { Primary: { Host: string; PoolSize: number; }; };
 }
 
-const config = new ConfigBuilder().addJsonFile('appsettings.json').addJsonFile(
-  'appsettings.Development.json',
-  { optional: true },
-).addEnvironmentVariables({ prefix: 'APP_' }).addCommandLine(
-  process.argv.slice(2),
-).withType<AppConfig>() // ← generates the schema from your interface. that's it.
+const config = new ConfigBuilder().addJsonFile('appsettings.json').addJsonFile('appsettings.Development.json', {
+  optional: true,
+}).addEnvironmentVariables({ prefix: 'APP_' }).addCommandLine(process.argv.slice(2)).withType<AppConfig>() // ← generates the schema from your interface. that's it.
   .build();
 
 config.Server.Port; // number — typed AND coerced from the string "8080"
@@ -33,7 +30,7 @@ config.Database.Primary.Host; // string
 No `z.object({...})` to keep in sync. No class wall of decorators. No codegen
 step to remember to run. `AppConfig` is both the type you already wanted and
 the schema `@rhombus-std/config` validates against — `.withType<AppConfig>()`
-is compiled away into a `.withSchema({...})` literal by
+is compiled away into a `.withSchema(Type.object({...}))` call by
 `@rhombus-std/config.extras`, an optional build-time transformer, so
 there's nothing left to run beyond your normal build.
 
@@ -101,9 +98,7 @@ not three functions deep into a request handler:
 
 ```ts
 // appsettings.json is missing Database.Primary.PoolSize
-const config = new ConfigBuilder().addJsonFile('appsettings.json').withType<
-  AppConfig
->().build();
+const config = new ConfigBuilder().addJsonFile('appsettings.json').withType<AppConfig>().build();
 // throws SchemaCoercionError at build(), naming every missing/invalid key at
 // once — not silently `undefined` at 2am
 ```
@@ -115,10 +110,20 @@ a compile error, never a silent no-op. And it only does anything once
 it, the call reaches a throwing runtime stub instead of silently skipping
 validation.
 
-The transformer supports `string` / `number` / `boolean` leaves, nested
-object types, and `foo?: T` optional fields — anything else (a non-boolean
-union, an array, a function, a library type like `Date`) is a compile error
-naming the offending field, not a silent partial schema.
+The transformer expands your interface into a `Type` tree: `string` / `number`
+/ `boolean` leaves, nested structures, literals and literal unions, tuples,
+arrays, and any member whose own type has a name — that member is kept as its
+name rather than expanded. Only a callable member, an index signature, or an
+anonymous structure with nothing nameable about it is a compile error naming
+the offending field.
+
+That vocabulary is wider than what `build()` actually coerces, and it's worth
+knowing where the line falls. Coercion reaches `string` / `number` / `boolean`
+leaves, nested object members, and optional members built from those —
+a schema naming anything wider (a tuple, an array, a literal, or a member
+that stayed a name) throws `SchemaCoercionError` at `build()`, naming the
+path. Nest a member's structure inline in your interface rather than pointing
+at a separate named interface for it when you want it coerced.
 
 ## Layered sources, last one wins
 
@@ -130,14 +135,11 @@ import '@rhombus-std/config.json';
 import '@rhombus-std/config.env';
 import '@rhombus-std/config.commandline';
 
-const config = new ConfigBuilder().addInMemoryCollection({
-  'Server:Port': '3000',
-}) // 1. baseline defaults
+const config = new ConfigBuilder().addInMemoryCollection({ 'Server:Port': '3000' }) // 1. baseline defaults
   .addJsonFile('appsettings.json') // 2. checked-in config
   .addJsonFile('appsettings.Development.json', { optional: true }) // 2b. overlay, ok if absent
   .addEnvironmentVariables({ prefix: 'APP_' }) // 3. env vars, prefix stripped
-  .addCommandLine(process.argv.slice(2), { '-p': 'Server:Port',
-    '-h': 'Server:Host' }) // 4. short flags, highest wins
+  .addCommandLine(process.argv.slice(2), { '-p': 'Server:Port', '-h': 'Server:Host' }) // 4. short flags, highest wins
   .build();
 ```
 
@@ -165,14 +167,29 @@ schema.
 **Tier 1 — hand-write the schema once.**
 
 ```ts
-import { ConfigBuilder, OPTIONAL } from '@rhombus-std/config';
+import { ConfigBuilder } from '@rhombus-std/config';
+import { Type } from '@rhombus-std/primitives';
 
-const config = new ConfigBuilder().addJsonFile('appsettings.json').withSchema({
-  Server: { Host: 'string', Port: 'number', Ssl: { [OPTIONAL]: 'boolean' } },
-}).build();
+interface ServerConfig {
+  Server: { Host: string; Port: number; Ssl?: boolean; };
+}
+
+const config = new ConfigBuilder().addJsonFile('appsettings.json').withSchema<ServerConfig>(Type.object({
+  Server: Type.object({
+    Host: Type.global('string'),
+    Port: Type.global('number'),
+    Ssl: Type.union(Type.global('boolean'), Type.typeLiteral(undefined)),
+  }),
+})).build();
 
 config.Server.Port; // number — same typed, coerced tree as the transformer path
 ```
+
+Here you write both the interface and the tree that describes it — the tree
+carries no type-level image of its own, so `withSchema`'s type argument names
+the shape and the `Type` tree describes it at runtime. The transformer tier
+above is what removes that duplication: `.withType<AppConfig>()` derives the
+tree from the interface for you.
 
 **Tier 0 — skip the schema, coerce ad hoc.**
 
@@ -223,7 +240,8 @@ No implicit coercion, no truthy/falsy guessing, no `parseInt` landmines.
 Skip the transformer and there's nothing to run before `build()` — every
 source is read, merged, and coerced at runtime, on every process start. Add
 `@rhombus-std/config.extras` when (and only when) you want
-`.withType<T>()` to save you from writing `.withSchema({...})` yourself.
+`.withType<T>()` to save you from writing `.withSchema(Type.object({...}))`
+yourself.
 
 ## Key exports
 
@@ -235,7 +253,7 @@ source is read, merged, and coerced at runtime, on every process start. Add
 | `ConfigProvider`                                     | Abstract base a configuration source's provider extends.                                                 |
 | `addInMemoryCollection`                              | Bundled in-memory source — set config values directly, no file or env involved.                          |
 | `addConfig`                                          | Wraps an already-built `IConfig` as a source layer inside another builder.                               |
-| `Schema`, `Infer`, `OPTIONAL`                        | The hand-written schema surface (Tier 1) — `Infer<S>` gives you the resulting TypeScript type.           |
+| `Type` (from `@rhombus-std/primitives`)              | The schema vocabulary — `Type.object`/`Type.global`/`Type.union`/etc. build the tree `withSchema` takes. |
 | `SchemaCoercionError`                                | Thrown by `build()` when a required key is missing or fails coercion; lists every offending key at once. |
 | `compareConfigKeys`                                  | The `:`-segment-aware comparer configuration keys sort by.                                               |
 | `exists`, `ConfigExtensions`, `ConfigRootExtensions` | Small convenience helpers over a built config (existence checks, debug views).                           |
@@ -247,7 +265,8 @@ reload tokens, the in-memory and chained-config sources, and the runtime
 schema. It depends on
 [`@rhombus-std/config.core`](../config.core/README.md) for the
 `IConfig*` interfaces and on
-[`@rhombus-std/primitives`](../primitives/README.md) for change tokens.
+[`@rhombus-std/primitives`](../primitives/README.md) for change tokens and
+the `Type` tree the schema is built from.
 
 Install source packages alongside it as needed —
 [`@rhombus-std/config.json`](../config.json/README.md),

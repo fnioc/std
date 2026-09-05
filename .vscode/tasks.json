@@ -1,0 +1,56 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "build",
+      "type": "shell",
+      "command": "bun run build",
+      "group": { "kind": "build", "isDefault": false },
+      "problemMatcher": ["$tsc"]
+    },
+    {
+      "label": "build di",
+      "type": "shell",
+      "command": "bun run --cwd libraries/primitives build && bun run --cwd libraries/primitives.extras build && bun run --cwd libraries/di.core build && bun run --cwd libraries/di build",
+      "group": { "kind": "build", "isDefault": true },
+      "problemMatcher": ["$tsc"]
+    },
+    {
+      "label": "test",
+      "type": "shell",
+      "command": "bun run test",
+      "group": { "kind": "test", "isDefault": true },
+      "problemMatcher": []
+    },
+    {
+      "label": "build app.with-transformer",
+      "type": "shell",
+      "command": "bun run build",
+      "options": { "cwd": "${workspaceFolder}/examples/examples.app.with-transformer" },
+      "problemMatcher": []
+    },
+    {
+      "label": "build app.without-transformer",
+      "type": "shell",
+      "command": "bun run build",
+      "options": { "cwd": "${workspaceFolder}/examples/examples.app.without-transformer" },
+      "problemMatcher": ["$tsc"]
+    },
+    {
+      "label": "bootstrap",
+      "type": "shell",
+      "command": "git pull && bun install",
+      "runOptions": { "runOn": "folderOpen" },
+      "problemMatcher": []
+    },
+    {
+      "label": "install watch",
+      "type": "shell",
+      "command": "bun scripts/install-watch.ts",
+      "isBackground": true,
+      "runOptions": { "runOn": "folderOpen" },
+      "presentation": { "reveal": "silent", "panel": "dedicated" },
+      "problemMatcher": []
+    }
+  ]
+}

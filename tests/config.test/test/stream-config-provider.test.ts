@@ -5,8 +5,7 @@
 // throws too), and throws when the source's stream payload is unset.
 // Black-box through @rhombus-std/config.
 
-import { ConfigBuilder, ConfigRoot, type IConfigBuilder, type IConfigProvider, StreamConfigProvider, StreamConfigSource,
-  type StreamPayload } from '@rhombus-std/config';
+import { ConfigBuilder, ConfigRoot, type IConfigBuilder, type IConfigProvider, StreamConfigProvider, StreamConfigSource, type StreamPayload } from '@rhombus-std/config';
 import { describe, expect, test } from 'bun:test';
 
 /** A minimal concrete pair: each `key=value` line of the payload becomes one entry. */

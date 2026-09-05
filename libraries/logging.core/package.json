@@ -1,7 +1,7 @@
 {
   "name": "@rhombus-std/logging.core",
   "version": "0.0.0",
-  "description": "Logging abstractions ported from ME.Logging.Abstractions: ILogger/ILoggerFactory/ILoggerProvider/ILoggingBuilder + LogLevel/EventId, plus the real-runtime logInformation/logError/... convenience wrappers. Depends on @rhombus-std/di.core for the ServiceManifest type only.",
+  "description": "Logging abstractions: ILogger/ILoggerFactory/ILoggerProvider/ILoggingBuilder + LogLevel/EventId, plus the real-runtime logInformation/logError/... convenience wrappers. Depends on @rhombus-std/di.core for the Manifest type ILoggingBuilder wraps.",
   "keywords": [
     "logging",
     "abstractions",
@@ -15,25 +15,10 @@
     "directory": "libraries/logging.core"
   },
   "type": "module",
-  "main": "./dist/bundle/index.js",
-  "types": "./dist/bundle/index.d.ts",
+  "main": "./src/index.ts",
   "exports": {
-    ".": {
-      "source": "./src/index.ts",
-      "bun": "./dist/bundle/index.js",
-      "types": "./dist/bundle/index.d.ts",
-      "import": "./dist/bundle/index.js",
-      "default": "./dist/bundle/index.js"
-    },
-    "./tokens/*": {
-      "source": "./src/*.ts",
-      "bun": "./src/*.ts",
-      "types": "./src/*.ts"
-    },
-    "./private/*": {
-      "types": "./src/*.ts",
-      "bun": "./dist/stage/*.js"
-    }
+    ".": "./src/index.ts",
+    "./private/*": "./src/*.ts"
   },
   "files": [
     "dist",
@@ -45,26 +30,21 @@
   },
   "dependencies": {
     "@rhombus-std/di.core": "workspace:*",
-    "@rhombus-std/primitives": "workspace:*"
+    "@rhombus-std/primitives": "workspace:*",
+    "@rhombus-toolkit/types": "^2.0.0"
   },
   "devDependencies": {
     "@rhombus-std/primitives.extras": "workspace:*",
-    "@rhombus-toolkit/func": "3.5.3",
     "@ttsc/unplugin": "^0.18.1",
     "ttsc": "^0.18.1",
-    "typescript": "^5.9.0"
+    "typescript": "^6.0.3"
   },
   "publishConfig": {
     "access": "public",
     "provenance": true,
     "main": "./dist/bundle/index.js",
-    "types": "./dist/bundle/index.d.ts",
     "exports": {
-      ".": {
-        "types": "./dist/bundle/index.d.ts",
-        "import": "./dist/bundle/index.js",
-        "default": "./dist/bundle/index.js"
-      }
+      ".": "./dist/bundle/index.js"
     }
   }
 }

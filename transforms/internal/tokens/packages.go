@@ -50,11 +50,11 @@ func nearestPackage(ctx *Context, fromPath string) *packageInfo {
 //     the SHORTEST subpath wins (lexicographic tiebreak on equal length), so the
 //     root barrel `.` (→ bare `pkg`) is preferred and a public `./sub` mints
 //     `pkg/sub`. Multiple public matches are not an error — shortest wins.
-//  2. No public match, but a `./tokens/*` subpath reaches it → ok=false with no
-//     diagnostic, so baseTokenFor's fallback mints the `pkg/tokens/<path>` token
+//  2. No public match, but a `./private/*` subpath reaches it → ok=false with no
+//     diagnostic, so baseTokenFor's fallback mints the `pkg/private/<path>` token
 //     over the source-referenced white-box surface.
 //  3. Reached ONLY through some other named subpath (a friendly deep-import alias
-//     that is neither public nor `./tokens/*`) → a hard diagnostic (via ctx.Diag),
+//     that is neither public nor `./private/*`) → a hard diagnostic (via ctx.Diag),
 //     because that alias must not silently become part of a token.
 //
 // ok=false with no diagnostic also covers a type not publicly reachable at all —
@@ -143,8 +143,8 @@ type specifierDecision struct {
 	// only when found is true.
 	subpath string
 	found   bool
-	// diagSubpath, when non-empty, is the non-public, non-tokens named subpath that
-	// forces the hard diagnostic (no public or `./tokens/*` entry reached the file).
+	// diagSubpath, when non-empty, is the non-public, non-private named subpath that
+	// forces the hard diagnostic (no public or `./private/*` entry reached the file).
 	diagSubpath string
 }
 
@@ -155,7 +155,7 @@ type specifierDecision struct {
 func selectSpecifier(reaching []reachingEntry) specifierDecision {
 	bestPublic := ""
 	havePublic := false
-	haveTokens := false
+	havePrivate := false
 	bestOther := ""
 	haveOther := false
 	for _, e := range reaching {
@@ -165,8 +165,8 @@ func selectSpecifier(reaching []reachingEntry) specifierDecision {
 				bestPublic = e.subpath
 				havePublic = true
 			}
-		case e.subpath == "tokens" || strings.HasPrefix(e.subpath, "tokens/"):
-			haveTokens = true
+		case e.subpath == "private" || strings.HasPrefix(e.subpath, "private/"):
+			havePrivate = true
 		default:
 			if !haveOther || shorterSubpath(e.subpath, bestOther) {
 				bestOther = e.subpath
@@ -177,7 +177,7 @@ func selectSpecifier(reaching []reachingEntry) specifierDecision {
 	if havePublic {
 		return specifierDecision{subpath: bestPublic, found: true}
 	}
-	if haveTokens {
+	if havePrivate {
 		return specifierDecision{}
 	}
 	if haveOther {
@@ -196,7 +196,7 @@ func shorterSubpath(a, b string) bool {
 }
 
 // reportNonPublicSubpath fires ctx.Diag for a type reachable only via a named
-// export subpath that is neither the barrel nor `./tokens/*`. Anchored at the
+// export subpath that is neither the barrel nor `./private/*`. Anchored at the
 // type's own declaration so the message points at the file whose exports must
 // change. Naming both fixes keeps the remedy unambiguous.
 func reportNonPublicSubpath(ctx *Context, target *shimast.Symbol, declFile *shimast.SourceFile, pkg *packageInfo, subpath string) {
@@ -213,8 +213,8 @@ func reportNonPublicSubpath(ctx *Context, target *shimast.Symbol, declFile *shim
 		"TOKEN_SUBPATH_NOT_PUBLIC",
 		"cannot derive a token for \""+target.Name+"\": it is reachable from \""+pkg.name+
 			"\" only through the \"./"+subpath+"\" export subpath, which is neither the package "+
-			"barrel nor \"./tokens/*\". Export it from the barrel (the package's main index), or "+
-			"expose its file through a \"./tokens/*\" subpath, so the derived token has a stable "+
+			"barrel nor \"./private/*\". Export it from the barrel (the package's main index), or "+
+			"expose its file through a \"./private/*\" subpath, so the derived token has a stable "+
 			"public import specifier.",
 	)
 }

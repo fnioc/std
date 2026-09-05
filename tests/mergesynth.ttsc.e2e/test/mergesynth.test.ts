@@ -20,7 +20,7 @@ import { basename, join, resolve } from 'node:path';
 //      strategy wins over synthesis, an un-derivable member falls back to
 //      extension-wins, and — the headline — a strategy-less collision that
 //      throws under the no-transformer runtime no longer throws;
-//   3. the tokenfor stage still lowers byte-identical tokens (same stage code, now
+//   3. the typefor stage still lowers byte-identical types (same stage code, now
 //      the one owner binary rather than a full-host sibling).
 //
 // The throwaway project lives OUTSIDE the repo tree, per-worktree, at
@@ -65,7 +65,7 @@ function link(target: string, linkPath: string): void {
   }
 }
 
-/** A build env with a single self-consistent Go toolchain (see the tokenfor e2e). */
+/** A build env with a single self-consistent Go toolchain (see the typefor e2e). */
 function goEnv(): NodeJS.ProcessEnv {
   const env = { ...process.env } as NodeJS.ProcessEnv;
   delete env.GOROOT;
@@ -91,22 +91,22 @@ function goEnv(): NodeJS.ProcessEnv {
   return env;
 }
 
-// The collision fixture: one token, four registrations exercising each
-// synthesis contract. Tokens are inline tokenfor calls (lowered by the full
-// host's tokenfor stage); the registry and installer are the REAL
+// The collision fixture: one interface, four registrations exercising each
+// synthesis contract. The tokens are inline typefor calls (lowered by the full
+// host's typefor stage); the registry and installer are the REAL
 // @rhombus-std/primitives runtime.
 const APP_SOURCE = `
 import { augment, registerAugmentations, type MergeStrategies } from "@rhombus-std/primitives";
-import { tokenfor } from "./tokenfor";
+import { typefor } from "./typefor";
 
 export interface IAlpha {}
 
-// First holder of both names: mounts as plain thunks (no collision yet).
+// First holder of both names: mounts verbatim (no collision yet).
 export const AlphaExtensions = {
-  describe(self: IAlpha, opts: { verbose: boolean } | number): string {
+  describe(opts: { verbose: boolean } | number): string {
     return typeof opts === "number" ? \`A:number:\${opts}\` : \`A:object:\${String(opts.verbose)}\`;
   },
-  pick(self: IAlpha, value: string): string {
+  pick(value: string): string {
     return \`A:pick:\${value}\`;
   },
 };
@@ -116,7 +116,7 @@ export const AlphaExtensions = {
 // Under the no-transformer runtime this registration THROWS (strategy-less
 // collision); this module importing cleanly IS the no-throw proof.
 export const BetaExtensions = {
-  describe(self: IAlpha, tag: string): string {
+  describe(tag: string): string {
     return \`B:string:\${tag}\`;
   },
 };
@@ -124,7 +124,7 @@ export const BetaExtensions = {
 // Un-derivable parameter (unknown): always-pass fallback — this extension wins
 // every pick call, chain order breaking the tie.
 export const DeltaExtensions = {
-  pick(self: IAlpha, value: unknown): string {
+  pick(value: unknown): string {
     return "D:pick";
   },
 };
@@ -134,10 +134,10 @@ export const DeltaExtensions = {
 // The uncovered sibling member (label) forces the gap-fill shape: a
 // synthesized map with the hand-authored object spread LAST over it.
 export const GammaExtensions = {
-  describe(self: IAlpha, flag: boolean): string {
+  describe(flag: boolean): string {
     return \`G:bool:\${String(flag)}\`;
   },
-  label(self: IAlpha, n: number): string {
+  label(n: number): string {
     return \`G:label:\${n}\`;
   },
 };
@@ -147,16 +147,16 @@ const gammaMerge = {
       return \`HAND:\${String(original.call(this, ...args))}\`;
     };
   },
-} satisfies MergeStrategies;
+} satisfies MergeStrategies<IAlpha>;
 
 // Arity discrimination: same leading parameter type, different arity.
 export const EpsilonExtensions = {
-  fmt(self: IAlpha, a: number, b: string): string {
+  fmt(a: number, b: string): string {
     return \`E:\${a}:\${b}\`;
   },
 };
 export const ZetaExtensions = {
-  fmt(self: IAlpha, a: number): string {
+  fmt(a: number): string {
     return \`Z:\${a}\`;
   },
 };
@@ -176,16 +176,16 @@ export class EntryOptions {
   private internal: number = 0;
 }
 
-// First holder: mounts as a plain thunk, so it is what a failed guard falls
+// First holder: mounts verbatim, so it is what a failed guard falls
 // through to.
 export const EtaExtensions = {
-  setOptions(self: IAlpha, tag: string): string {
+  setOptions(tag: string): string {
     return \`ETA:\${String(tag)}\`;
   },
 };
 // Collides on setOptions with the accessor-bearing class as its parameter.
 export const ThetaExtensions = {
-  setOptions(self: IAlpha, options: EntryOptions): string {
+  setOptions(options: EntryOptions): string {
     return \`THETA:\${String(options.label)}\`;
   },
 };
@@ -193,26 +193,26 @@ export const ThetaExtensions = {
 // The same class reached ONLY through a record's value type — a position no
 // property or type-argument walk passes through.
 export const IotaExtensions = {
-  configure(self: IAlpha, tag: string): string {
+  configure(tag: string): string {
     return \`IOTA:\${tag}\`;
   },
 };
 export const KappaExtensions = {
-  configure(self: IAlpha, bag: Record<string, EntryOptions>): string {
+  configure(bag: Record<string, EntryOptions>): string {
     return \`KAPPA:\${Object.keys(bag).join(",")}\`;
   },
 };
 
 // A Map carrying a diverging value type: checked the way a hand-written guard
 // checks a Map — \`instanceof\` plus its entries — so a non-Map argument still
-// falls through to the plain thunk that held the name first.
+// falls through to the plain member that held the name first.
 export const LambdaExtensions = {
-  store(self: IAlpha, tag: string): string {
+  store(tag: string): string {
     return \`LAMBDA:\${String(tag)}\`;
   },
 };
 export const MuExtensions = {
-  store(self: IAlpha, entries: Map<string, EntryOptions>): string {
+  store(entries: Map<string, EntryOptions>): string {
     return "MU";
   },
 };
@@ -221,33 +221,33 @@ export const MuExtensions = {
 // which still rejects a value of the wrong runtime kind, and the arity bounds
 // stand on top of it.
 export const NuExtensions = {
-  fetch(self: IAlpha, tag: string): string {
+  fetch(tag: string): string {
     return \`NU:\${String(tag)}\`;
   },
 };
 export const XiExtensions = {
-  fetch(self: IAlpha, pending: Promise<EntryOptions>): string {
+  fetch(pending: Promise<EntryOptions>): string {
     return "XI";
   },
 };
 
-registerAugmentations(tokenfor<IAlpha>(), AlphaExtensions);
-registerAugmentations(tokenfor<IAlpha>(), BetaExtensions);
-registerAugmentations(tokenfor<IAlpha>(), DeltaExtensions);
-registerAugmentations(tokenfor<IAlpha>(), GammaExtensions, gammaMerge);
-registerAugmentations(tokenfor<IAlpha>(), EpsilonExtensions);
-registerAugmentations(tokenfor<IAlpha>(), ZetaExtensions);
-registerAugmentations(tokenfor<IAlpha>(), EtaExtensions);
-registerAugmentations(tokenfor<IAlpha>(), ThetaExtensions);
-registerAugmentations(tokenfor<IAlpha>(), IotaExtensions);
-registerAugmentations(tokenfor<IAlpha>(), KappaExtensions);
-registerAugmentations(tokenfor<IAlpha>(), LambdaExtensions);
-registerAugmentations(tokenfor<IAlpha>(), MuExtensions);
-registerAugmentations(tokenfor<IAlpha>(), NuExtensions);
-registerAugmentations(tokenfor<IAlpha>(), XiExtensions);
+registerAugmentations(typefor<IAlpha>(), AlphaExtensions);
+registerAugmentations(typefor<IAlpha>(), BetaExtensions);
+registerAugmentations(typefor<IAlpha>(), DeltaExtensions);
+registerAugmentations(typefor<IAlpha>(), GammaExtensions, gammaMerge);
+registerAugmentations(typefor<IAlpha>(), EpsilonExtensions);
+registerAugmentations(typefor<IAlpha>(), ZetaExtensions);
+registerAugmentations(typefor<IAlpha>(), EtaExtensions);
+registerAugmentations(typefor<IAlpha>(), ThetaExtensions);
+registerAugmentations(typefor<IAlpha>(), IotaExtensions);
+registerAugmentations(typefor<IAlpha>(), KappaExtensions);
+registerAugmentations(typefor<IAlpha>(), LambdaExtensions);
+registerAugmentations(typefor<IAlpha>(), MuExtensions);
+registerAugmentations(typefor<IAlpha>(), NuExtensions);
+registerAugmentations(typefor<IAlpha>(), XiExtensions);
 
 export class Alpha implements IAlpha {}
-augment(tokenfor<IAlpha>())(Alpha);
+augment(typefor<IAlpha>())(Alpha);
 `;
 
 let app = '';
@@ -280,23 +280,26 @@ beforeAll(async () => {
   link(PRIM_TRANSFORMER, join(nm, '@rhombus-std', 'primitives.extras'));
   link(PRIMITIVES, join(nm, '@rhombus-std', 'primitives'));
 
-  writeFileSync(join(projDir, 'src', 'tokenfor.ts'), `export declare function tokenfor<T>(): string;\n`);
+  // Untyped `any` return (rather than `unknown`, which the other typefor e2e
+  // stubs use) — here the call feeds registerAugmentations/augment's
+  // `Type` parameter directly, and the stage matches by callee symbol
+  // name alone, so the stub's declared type only needs to satisfy the checker.
+  writeFileSync(join(projDir, 'src', 'typefor.ts'), `export declare function typefor<T>(): any;\n`);
   writeFileSync(join(projDir, 'src', 'app.ts'), APP_SOURCE);
   // A fixture package.json declaring the primitives.extras devDep: ttsc's
   // auto-discovery reads it, finds the ttsc.plugin marker, and spawns the one
   // owner host. The host runs its whole always-on stage table (W7 — no selection),
   // mergesynth included, exactly as a real augmentation package's build does. No
   // tsconfig `plugins` array (an explicit list would suppress discovery and never
-  // spawn the host).
+  // spawn the host). Inline emission is pinned so every call site is a
+  // self-contained assertion rather than a reference into a generated module.
   writeFileSync(join(projDir, 'package.json'),
-    JSON.stringify({ name: '@fixture/mergesynth-consumer', private: true,
-      devDependencies: { '@rhombus-std/primitives.extras': '*', '@rhombus-std/primitives': '*' } }));
-  writeFileSync(join(projDir, 'tsconfig.json'),
-    JSON.stringify({
-      compilerOptions: { target: 'ES2022', module: 'ESNext', moduleResolution: 'Bundler', lib: ['ES2022'], strict: true,
-        outDir: 'dist', rootDir: 'src', skipLibCheck: true, noEmitOnError: false },
-      include: ['src/**/*'],
-    }));
+    JSON.stringify({ name: '@fixture/mergesynth-consumer', private: true, devDependencies: { '@rhombus-std/primitives.extras': '*', '@rhombus-std/primitives': '*' },
+      'rhombus-std': { typefor: { emit: 'inline' } } }));
+  writeFileSync(join(projDir, 'tsconfig.json'), JSON.stringify({
+    compilerOptions: { target: 'ES2022', module: 'ESNext', moduleResolution: 'Bundler', lib: ['ESNext'], strict: true, outDir: 'dist', rootDir: 'src', skipLibCheck: true, noEmitOnError: false },
+    include: ['src/**/*'],
+  }));
 
   const result = spawnSync('node', [TTSC, '-p', 'tsconfig.json'], { cwd: projDir, encoding: 'utf8', env: goEnv() });
   if (result.status !== 0) {
@@ -372,9 +375,9 @@ describe.skipIf(!toolchainReady)('mergesynth on the collapsed host — emitted J
     expect(app).toContain('Object.values(');
   });
 
-  test('tokenfor lowering is byte-identical on the collapsed host', () => {
-    expect(app).toContain('"@fixture/mergesynth-consumer/tokens/app:IAlpha"');
-    expect(app).not.toContain('tokenfor');
+  test('typefor lowering is byte-identical on the collapsed host', () => {
+    expect(app).toContain('Type.imported("IAlpha", "@fixture/mergesynth-consumer/private/app")');
+    expect(app).not.toContain('typefor');
   });
 });
 
@@ -389,7 +392,7 @@ describe.skipIf(!toolchainReady)('mergesynth on the collapsed host — runtime d
 
   test('colliding describe dispatches by argument shape', () => {
     // Gamma's hand strategy wraps the WHOLE prior chain (dispatcher order:
-    // hand(Gamma) over guard(Beta) over thunk(Alpha)).
+    // hand(Gamma) over guard(Beta) over plain(Alpha)).
     expect(instance.describe(3)).toBe('HAND:A:number:3');
     expect(instance.describe('x')).toBe('HAND:B:string:x');
     expect(instance.describe({ verbose: true })).toBe('HAND:A:object:true');
@@ -410,7 +413,7 @@ describe.skipIf(!toolchainReady)('mergesynth on the collapsed host — runtime d
     expect(instance.setOptions({ absoluteExpirationRelativeToNow: 5, label: 'x' })).toBe('THETA:x');
     expect(instance.setOptions({ absoluteExpirationRelativeToNow: undefined, label: 'y' })).toBe('THETA:y');
     // …and one whose accessor field holds the wrong type does not — it falls
-    // through to Eta, the plain thunk that held the name first. Under a guard
+    // through to Eta, the plain member that held the name first. Under a guard
     // keyed on the #private backing field this clause is `undefined === undefined`
     // and the wrong-shaped object dispatches to Theta.
     expect(instance.setOptions({ absoluteExpirationRelativeToNow: 'nope', label: 'x' })).toBe('ETA:[object Object]');
@@ -421,7 +424,7 @@ describe.skipIf(!toolchainReady)('mergesynth on the collapsed host — runtime d
     // whose entry carries the public shape dispatches to Kappa…
     expect(instance.configure({ a: { absoluteExpirationRelativeToNow: 5, label: 'x' } })).toBe('KAPPA:a');
     // …and one whose entry holds the wrong type does not — it falls through to
-    // Iota, the plain thunk that held the name first.
+    // Iota, the plain member that held the name first.
     expect(instance.configure({ a: { absoluteExpirationRelativeToNow: 'nope', label: 'x' } })).toBe(
       'IOTA:[object Object]',
     );

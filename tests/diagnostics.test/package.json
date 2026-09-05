@@ -12,7 +12,9 @@
   "devDependencies": {
     "@rhombus-std/config": "workspace:*",
     "@rhombus-std/di": "workspace:*",
+    "@rhombus-std/di.core": "workspace:*",
     "@rhombus-std/diagnostics": "workspace:*",
-    "@rhombus-std/diagnostics.core": "workspace:*"
+    "@rhombus-std/diagnostics.core": "workspace:*",
+    "@rhombus-std/primitives": "workspace:*"
   }
 }

@@ -41,7 +41,5 @@ hostBuilder.ConfigureServices((context, services) => {
 });
 
 // here: the delegate returns the manifest carrying its additions
-hostBuilder.configureServices((context, services) =>
-  services.addClass<ILogger>(ConsoleLogger).as<'singleton'>()
-);
+hostBuilder.configureServices((context, services) => services.addClass<ILogger>(ConsoleLogger).as<'singleton'>());
 ```

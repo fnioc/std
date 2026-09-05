@@ -1,7 +1,7 @@
 {
   "name": "@rhombus-std/logging.config",
   "version": "0.0.0",
-  "description": "The logging config-binding surface ported from ME.Logging.Configuration: binds LoggerFilterOptions/LoggerFilterRule from an @rhombus-std/config IConfig via addConfiguration.",
+  "description": "The logging config-binding surface: binds LoggerFilterOptions/LoggerFilterRule from an @rhombus-std/config IConfig via addConfig.",
   "keywords": [
     "logging",
     "configuration",
@@ -16,25 +16,10 @@
   },
   "type": "module",
   "sideEffects": true,
-  "main": "./dist/bundle/index.js",
-  "types": "./dist/bundle/index.d.ts",
+  "main": "./src/index.ts",
   "exports": {
-    ".": {
-      "source": "./src/index.ts",
-      "bun": "./dist/bundle/index.js",
-      "types": "./dist/bundle/index.d.ts",
-      "import": "./dist/bundle/index.js",
-      "default": "./dist/bundle/index.js"
-    },
-    "./tokens/*": {
-      "source": "./src/*.ts",
-      "bun": "./src/*.ts",
-      "types": "./src/*.ts"
-    },
-    "./private/*": {
-      "types": "./src/*.ts",
-      "bun": "./dist/stage/*.js"
-    }
+    ".": "./src/index.ts",
+    "./private/*": "./src/*.ts"
   },
   "files": [
     "dist",
@@ -52,25 +37,22 @@
     "@rhombus-std/logging.core": "workspace:*",
     "@rhombus-std/options": "workspace:*",
     "@rhombus-std/options.augmentations": "workspace:*",
-    "@rhombus-std/primitives": "workspace:*"
+    "@rhombus-std/primitives": "workspace:*",
+    "@rhombus-toolkit/types": "^2.0.0"
   },
   "publishConfig": {
     "access": "public",
     "provenance": true,
     "main": "./dist/bundle/index.js",
-    "types": "./dist/bundle/index.d.ts",
     "exports": {
-      ".": {
-        "types": "./dist/bundle/index.d.ts",
-        "import": "./dist/bundle/index.js",
-        "default": "./dist/bundle/index.js"
-      }
+      ".": "./dist/bundle/index.js"
     }
   },
   "devDependencies": {
+    "@rhombus-std/di.extras": "workspace:*",
     "@rhombus-std/primitives.extras": "workspace:*",
     "@ttsc/unplugin": "^0.18.1",
     "ttsc": "^0.18.1",
-    "typescript": "^5.9.0"
+    "typescript": "^6.0.3"
   }
 }

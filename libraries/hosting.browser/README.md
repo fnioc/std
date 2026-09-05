@@ -23,8 +23,7 @@ import { BrowserHost } from '@rhombus-std/hosting.browser';
 
 // Builds the browser-composed host, starts it, waits for shutdown (a terminal
 // pagehide), then stops and disposes — all in one call.
-await BrowserHost.run({ environmentName: 'Production',
-  applicationName: 'my-app' }, (builder) => {
+await BrowserHost.run({ environmentName: 'Production', applicationName: 'my-app' }, (builder) => {
   // Register your services on the ordinary builder surface here.
   builder.services.addHostedService(MyWorker, [[]]);
 });
@@ -53,7 +52,7 @@ sources, or override any of the defaults on the returned builder.
 | `BrowserLifetime`                                                               | The `IHostLifetime` driven by the Page Lifecycle API — requests a shutdown on a terminal `pagehide`, never on one that's entering the back/forward cache.                                                                    |
 | `BrowserLifetimeOptions`                                                        | Options for `BrowserLifetime` — currently just `stopOnPagehide` (default `true`).                                                                                                                                            |
 | `registerBrowserLifetime(services, options, context?)`                          | Registers the lifetime, its options, and the lifecycle bridge directly on a `ServiceManifest`, for compositions that don't go through the facade or the builder augmentation.                                                |
-| `BrowserLifetimeHostBuilderAugmentations.useBrowserLifetime(configureOptions?)` | The classic-builder form — available as `hostBuilder.useBrowserLifetime(...)` once this package is imported (see below).                                                                                                     |
+| `HostBuilderBrowserLifetimeAugmentations.useBrowserLifetime(configureOptions?)` | The classic-builder form — available as `hostBuilder.useBrowserLifetime(...)` once this package is imported (see below).                                                                                                     |
 | `PageLifecycleEvents`                                                           | The injectable page-lifecycle bridge: a `phase`/`subscribe` pair shaped for `useSyncExternalStore`, a recurring `onFlush` signal, and an `onRestore` event fired each time the page is restored from the back/forward cache. |
 | `PageLifecyclePhase`                                                            | The bridge's phase values: `'visible' \| 'hidden' \| 'frozen' \| 'terminated'`.                                                                                                                                              |
 | `createBrowserEnvironment(settings?)`                                           | Builds a standalone browser `IHostEnvironment` — content root `"/"`, a no-op `NullFileProvider` — for classic-builder compositions or tests.                                                                                 |

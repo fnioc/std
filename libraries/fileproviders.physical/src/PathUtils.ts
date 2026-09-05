@@ -1,3 +1,4 @@
+/// <reference path="./node-builtins.d.ts" />
 // On POSIX the only character invalid in a path segment is the NUL byte
 // (`/` is the separator and is allowed in a full path), so the invalid-char
 // checks below test for NUL only. `hasInvalidFilterChars` would additionally

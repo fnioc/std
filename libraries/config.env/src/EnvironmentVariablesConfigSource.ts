@@ -4,7 +4,7 @@
 
 import type { IConfigBuilder, IConfigProvider, IConfigSource } from '@rhombus-std/config.core';
 import { process } from '@rhombus-std/primitives';
-import type { Func } from '@rhombus-toolkit/func';
+import type { Func } from '@rhombus-toolkit/types';
 import { EnvironmentVariablesConfigProvider } from './EnvironmentVariablesConfigProvider';
 
 export interface EnvironmentVariablesConfigSourceOptions {

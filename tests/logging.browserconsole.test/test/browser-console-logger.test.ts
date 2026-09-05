@@ -1,8 +1,8 @@
-import type { IServiceManifest, Token } from '@rhombus-std/di.core';
-import { LOGGER_PROVIDER_TOKEN, LoggingBuilder } from '@rhombus-std/logging';
-import { BrowserConsoleLogger, BrowserConsoleLoggerExtensions, BrowserConsoleLoggerProvider, type ConsoleLike,
-  consoleMethodFor } from '@rhombus-std/logging.browserconsole';
+import type { Manifest } from '@rhombus-std/di.core';
+import { LOGGER_PROVIDER_TYPE, LoggingBuilder } from '@rhombus-std/logging';
+import { BrowserConsoleLogger, BrowserConsoleLoggerAugmentations, BrowserConsoleLoggerProvider, type ConsoleLike, consoleMethodFor } from '@rhombus-std/logging.browserconsole';
 import { EventId, LogLevel } from '@rhombus-std/logging.core';
+import type { Type } from '@rhombus-std/primitives';
 import { expect, test } from 'bun:test';
 
 /**
@@ -11,13 +11,13 @@ import { expect, test } from 'bun:test';
  * immutable chain — a double that returned itself would hide exactly the
  * silent-drop bug this shape exists to catch.
  */
-function fakeServices(): { services: IServiceManifest; values: Array<[Token, unknown]>; } {
-  const values: Array<[Token, unknown]> = [];
-  const make = (): IServiceManifest => {
-    return { addValue(token: Token, value: unknown): IServiceManifest {
-      values.push([token, value]);
+function fakeServices(): { services: Manifest<unknown>; values: Array<[Type, unknown]>; } {
+  const values: Array<[Type, unknown]> = [];
+  const make = (): Manifest<unknown> => {
+    return { addValue(address: Type, value: unknown): Manifest<unknown> {
+      values.push([address, value]);
       return make();
-    } } as unknown as IServiceManifest;
+    } } as unknown as Manifest<unknown>;
   };
   return { services: make(), values };
 }
@@ -30,8 +30,7 @@ function makeConsoleSpy(): { console: ConsoleLike; calls: Array<[string, unknown
       calls.push([method, args]);
     };
   };
-  return { console: { error: record('error'), warn: record('warn'), info: record('info'), debug: record('debug') },
-    calls };
+  return { console: { error: record('error'), warn: record('warn'), info: record('info'), debug: record('debug') }, calls };
 }
 
 function write(logger: BrowserConsoleLogger, level: LogLevel, message: string, error?: Error): void {
@@ -118,11 +117,11 @@ test('addBrowserConsole registers ONE provider per manifest, however many calls 
   const { services, values } = fakeServices();
   const builder = new LoggingBuilder(services);
 
-  BrowserConsoleLoggerExtensions.addBrowserConsole(builder);
-  BrowserConsoleLoggerExtensions.addBrowserConsole(builder);
+  BrowserConsoleLoggerAugmentations.addBrowserConsole.call(builder);
+  BrowserConsoleLoggerAugmentations.addBrowserConsole.call(builder);
 
-  const providers = values.filter(([token]) => {
-    return token === LOGGER_PROVIDER_TOKEN;
+  const providers = values.filter(([address]) => {
+    return address === LOGGER_PROVIDER_TYPE;
   });
   expect(providers).toHaveLength(1);
   expect(providers[0]?.[1]).toBeInstanceOf(BrowserConsoleLoggerProvider);
@@ -134,12 +133,12 @@ test('the per-builder dedup is keyed by the builder, not effectively global', ()
   const first = fakeServices();
   const second = fakeServices();
 
-  BrowserConsoleLoggerExtensions.addBrowserConsole(new LoggingBuilder(first.services));
-  BrowserConsoleLoggerExtensions.addBrowserConsole(new LoggingBuilder(second.services));
+  BrowserConsoleLoggerAugmentations.addBrowserConsole.call(new LoggingBuilder(first.services));
+  BrowserConsoleLoggerAugmentations.addBrowserConsole.call(new LoggingBuilder(second.services));
 
-  const providersFor = (values: Array<[Token, unknown]>) => {
-    return values.filter(([token]) => {
-      return token === LOGGER_PROVIDER_TOKEN;
+  const providersFor = (values: Array<[Type, unknown]>) => {
+    return values.filter(([address]) => {
+      return address === LOGGER_PROVIDER_TYPE;
     });
   };
   expect(providersFor(first.values)).toHaveLength(1);

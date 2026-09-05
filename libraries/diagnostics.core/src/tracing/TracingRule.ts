@@ -24,9 +24,7 @@ export class TracingRule {
    * @param enable `true` to enable matched activities for the listener; otherwise `false`.
    * @throws {@link Error} if `sourceName` contains more than one `*` wildcard.
    */
-  public constructor(sourceName: string | undefined, operationName: string | undefined,
-    listenerName: string | undefined, scopes: ActivitySourceScopes, enable: boolean)
-  {
+  public constructor(sourceName: string | undefined, operationName: string | undefined, listenerName: string | undefined, scopes: ActivitySourceScopes, enable: boolean) {
     // Validated here (not lazily at match time) so a malformed pattern
     // surfaces at construction.
     if (sourceName) {

@@ -18,18 +18,19 @@
 // it peers on di.core rather than on the engine.
 //
 // The mirror of this package is `@rhombus-std/examples.lib.without-transformer`:
-// the same shapes, the same output, hand-written tokens and slot arrays. The two
+// the same shapes, the same output, hand-written Types and slot arrays. The two
 // are behaviourally equivalent by design — that is the no-transformer-first rule
 // made checkable, since both example apps register both libraries and byte-diff
 // their stdout against a checked-in `expected.txt`.
 
 // ── the library's front door ─────────────────────────────────────────────────
 
-// ONE function that takes the application's manifest and hands it back with this
-// library's services registered. Everything an app needs to consume this package
-// is this call plus, for a manual-dialect app, the token strings below.
+// ONE function that builds its own self-contained manifest with this library's
+// services registered and hands it back for the caller to merge. Everything an
+// app needs to consume this package is this call plus, for a manual-dialect app,
+// the Types below.
 export { addWithTransformerExamples } from './add-with-transformer-examples.js';
-export { EXAMPLE_TOKENS } from './tokens.js';
+export { EXAMPLE_TYPES } from './types.js';
 
 // ── the services it registers ────────────────────────────────────────────────
 
@@ -42,17 +43,14 @@ export { makeServerReport } from './server-report.js';
 
 // ── the di feature tour ──────────────────────────────────────────────────────
 
-// The library-author infrastructure surface (`IServiceManifestHolder`, the
-// caller/container partition of an ad-hoc factory slot, `EmptyServiceProvider`),
-// demonstrated from inside a library because that is where those pieces are
-// actually reached for. The mirror of
-// `@rhombus-std/examples.lib.without-transformer`'s demonstration: same scenario,
-// same lines, tokenless dialect.
+// The library-author infrastructure surface (the manifest slot, the
+// caller/container partition of an ad-hoc factory slot), demonstrated from
+// inside a library because that is where those pieces are actually reached for.
+// The mirror of `@rhombus-std/examples.lib.without-transformer`'s
+// demonstration: same scenario, same lines, tokenless dialect.
 //
 // The chapter's container-building half lives in each app's own
 // `src/infrastructure-demo.ts`; what this package exports is the pieces it
-// registers and the no-container demonstration.
-export { demonstrateNullProvider } from './infrastructure-demo.js';
-export { addGreetingWorkshop, GreetingCard, GreetingWorkshop, GreetingWorkshopBuilder, LocatorGreetingWorkshop,
-  PlainStationery, WorkshopGreeting } from './infrastructure-greeting-workshop.js';
+// registers.
+export { addGreetingWorkshop, GreetingCard, GreetingWorkshop, GreetingWorkshopBuilder, LocatorGreetingWorkshop, PlainStationery, WorkshopGreeting } from './infrastructure-greeting-workshop.js';
 export type { ICardRecipient, ICardStationery, IGreetingWorkshopBuilder } from './infrastructure-greeting-workshop.js';

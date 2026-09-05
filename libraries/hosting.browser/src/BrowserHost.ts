@@ -7,10 +7,10 @@
 //   - a browser-shaped environment (names from settings, content root "/",
 //     NullFileProvider — the HostingEnvironment default),
 //   - browser console logging (@rhombus-std/logging.browserconsole),
-//   - the BrowserLifetime registered under the imported HOST_LIFETIME_TOKEN
+//   - the BrowserLifetime registered under the imported HOST_LIFETIME_TYPE
 //     (last registration wins over the default NullLifetime), alongside the
 //     eagerly-attached PageLifecycleEvents bridge under
-//     PAGE_LIFECYCLE_EVENTS_TOKEN — both via registerBrowserLifetime, the seam
+//     PAGE_LIFECYCLE_EVENTS_TYPE — both via registerBrowserLifetime, the seam
 //     the classic useBrowserLifetime path shares.
 //
 // Running: `BrowserHost.run()` builds and drives the full pipeline (start ->
@@ -20,8 +20,8 @@
 import { MemoryConfigSource } from '@rhombus-std/config';
 import type { ConfigData } from '@rhombus-std/config';
 import { Host, type HostApplicationBuilder, HostApplicationBuilderSettings } from '@rhombus-std/hosting';
-import { BrowserConsoleLoggerExtensions } from '@rhombus-std/logging.browserconsole';
-import type { Action, Func } from '@rhombus-toolkit/func';
+import { BrowserConsoleLoggerAugmentations } from '@rhombus-std/logging.browserconsole';
+import type { Action, Func } from '@rhombus-toolkit/types';
 import { BrowserLifetimeOptions } from './BrowserLifetimeOptions';
 import type { PageContext } from './page-context';
 import { registerBrowserLifetime } from './register-browser-lifetime';
@@ -68,7 +68,7 @@ export const BrowserHost = {
     // (via the settings override above) and the HostingEnvironment default
     // NullFileProvider — see ./browser-environment for the standalone factory.
 
-    BrowserConsoleLoggerExtensions.addBrowserConsole(builder.logging);
+    BrowserConsoleLoggerAugmentations.addBrowserConsole.call(builder.logging);
 
     const lifetimeOptions = new BrowserLifetimeOptions();
     settings?.configureLifetime?.(lifetimeOptions);
@@ -93,9 +93,7 @@ export const BrowserHost = {
    * {@link import("./PageLifecycleEvents").PageLifecycleEvents.onFlush}
    * (synchronous), not a hosted service's `stop()`.
    */
-  run(settings?: BrowserHostApplicationBuilderSettings,
-    configureApp?: Action<[HostApplicationBuilder]>): Promise<void>
-  {
+  run(settings?: BrowserHostApplicationBuilderSettings, configureApp?: Action<[HostApplicationBuilder]>): Promise<void> {
     const builder = BrowserHost.createApplicationBuilder(settings);
     configureApp?.(builder);
     return builder.build().runAsync();

@@ -1,7 +1,7 @@
 # @rhombus-std/di.extras.options
 
 **A compile-time plugin that turns `addOptions<T>()` into a fully-typed
-options registration — no manual tokens to write.**
+options registration — no `Type` to build by hand.**
 
 It's a small satellite of [`@rhombus-std/di.extras`](../di.extras):
 where that plugin lowers `add<T>()` and friends, this one lowers the
@@ -23,30 +23,28 @@ this is the real, complete form, and it works with plain `tsc`:
 
 ```ts
 import '@rhombus-std/options.augmentations'; // installs the runtime addOptions verb
+import { typefor } from '@rhombus-std/primitives.extras';
 
-services = services.addOptions('@rhombus-std/options:IOptions<app:AppOptions>',
-  'app:AppOptions').as('singleton');
+services = services.addOptions(typefor<AppOptions>());
 ```
 
-Writing that wrapper token out by hand is what this plugin exists to remove. Importing
-`@rhombus-std/di.extras.options` (or listing it in your `tsconfig.json`'s `types` array)
-brings the 0-argument sugar into scope for typechecking, alongside `@rhombus-std/di.extras`
+Writing `typefor<AppOptions>()` out at the call site is what this plugin exists to remove.
+Importing `@rhombus-std/di.extras.options` (or listing it in your `tsconfig.json`'s `types`
+array) brings the 0-argument sugar into scope for typechecking, alongside `@rhombus-std/di.extras`
 (the two compose; order doesn't matter). With both in scope, you write:
 
 ```ts
-services = services.addOptions<AppOptions>().as('singleton');
+services = services.addOptions<AppOptions>();
 ```
 
-and it compiles to exactly the explicit call above — the plugin derives both
-tokens from the `AppOptions` type argument and rewrites the call before your
-code ever runs. Nothing about behavior changes; the plugin only saves you
-from typing the tokens yourself.
+and it compiles to exactly the explicit call above — the plugin derives the `Type` from the
+`AppOptions` type argument and rewrites the call before your code ever runs. Nothing about
+behavior changes; the plugin only saves you from writing the `Type` yourself.
 
-The registration wraps the already-bound `AppOptions` value (resolved from
-its own token) in an `IOptions<AppOptions>`. It binds no configuration on its
-own — pairing an options section with a configuration source is
-`options.augmentations`'s `configure(token, section)` job, not this
-plugin's.
+The registration wraps the already-bound `AppOptions` value (resolved from whatever `AppOptions`
+itself resolves to) in an `IOptions<AppOptions>`. It binds no configuration on its own — pairing
+an options section with a configuration source is `options.augmentations`'s
+`getConfigureManifest(optionsType, section)` job, not this plugin's.
 
 ## Key exports
 
@@ -59,9 +57,9 @@ silent no-op form waiting to compile-but-misbehave under plain `tsc`.
 
 ## How it fits
 
-- Depends on [`@rhombus-std/primitives.extras`](../primitives.extras) for its token
+- Depends on [`@rhombus-std/primitives.extras`](../primitives.extras) for its type
   derivation, the same engine [`@rhombus-std/di.extras`](../di.extras) depends on — this
-  plugin never touches the DI runtime directly, only types and tokens.
+  plugin never touches the DI runtime directly, only types.
 - Targets the explicit registration verb that
   [`@rhombus-std/options.augmentations`](../options.augmentations) installs
   on the registration builder; install that package for the runtime side of
@@ -70,15 +68,15 @@ silent no-op form waiting to compile-but-misbehave under plain `tsc`.
   builder interface it extends) and [`@rhombus-std/options`](../options)
   (home of the `IOptions<T>` type it wraps values in).
 - Install it whenever you use `addOptions<T>()`'s type-argument form; skip it
-  entirely and call `addOptions(token, tToken)` by hand if you'd rather not
-  add a build plugin.
+  entirely and call `addOptions(typefor<AppOptions>())` by hand if you'd rather not
+  add this plugin.
 
 ## Notes
 
 - This plugin's type augmentation has no effect unless it's in scope (via import or the `types`
   array, described above) — `addOptions<T>()` doesn't exist as a method otherwise. There is
-  deliberately no runtime fallback for the 0-argument form; the actual token rewrite still needs
+  deliberately no runtime fallback for the 0-argument form; the actual rewrite still needs
   the build-time engine to run.
-- It emits diagnostics (not silent skips) when a type argument's token can't
+- It emits diagnostics (not silent skips) when a type argument's `Type` can't
   be derived, or when `@rhombus-std/options`'s `IOptions<T>` isn't reachable
   in your program.

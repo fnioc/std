@@ -1,16 +1,13 @@
 // Build @rhombus-std/examples.app.with-transformer via the ttsc/Go engine.
 //
-// The with-transformer composition root: src/main.ts is authored in the
-// tokenless dialect. Every tokenless form — add/addFactory/addValue,
-// resolve/resolveAsync/tryResolve/isService, the trailing `.as<>()`, and
-// addOptions<T>() — lowers through the ONE always-on engine: the generic inline
-// stage substitutes each sugar body (from di.extras / di.extras.options), then
-// the primitive stages (nameof/signatureof/keyof/valueof/mergesynth) peel the
-// resulting tokenfor/signatureof/keyof/valueof calls under the fixed-point loop.
-// There are no bespoke di / di_options / config stages any more (W6p3 deleted
-// them). This is the ttsc/Go analog of the former per-file transformer build:
-// @ttsc/unplugin/bun runs the Go plugins as onLoad transforms while Bun.build
-// emits dist/main.js.
+// The with-transformer composition root: its src is authored in the type-driven
+// dialect, where every service Type — registered, looked up, or published — is
+// minted by `typefor<T>()`. It is a primitive the Go engine folds at build time,
+// in two passes: a per-file STAGE lowers each src file in isolation (and the
+// engine writes the generated `Type` consts a call site references into the same
+// stage directory), then a plugin-free BUNDLE pass folds that emit into
+// dist/main.js. So what ships is exactly what the without-transformer twin wrote
+// out by hand.
 //
 // Every workspace dependency stays EXTERNAL so main.js imports the SAME
 // @rhombus-std/* runtime a published consumer would — the augmentation registry
@@ -19,40 +16,32 @@
 
 import { rmSync } from 'node:fs';
 import { join } from 'node:path';
-import { readTsconfigTransforms, ttscBunPlugin } from '../../scripts/build-package';
+import { readTsconfigTransforms, stagedEntrypoint, stageLowering } from '../../scripts/build-package';
 
 const dir = import.meta.dir;
 const dist = join(dir, 'dist');
 rmSync(dist, { recursive: true, force: true });
 
-// Stage selection is declare-by-depending, resolved HOST-SIDE (§100): with no
-// tsconfig.ttsc.json plugins array, @ttsc/unplugin/bun's auto-discovery spawns the
-// one owner host from this app's direct *.extras devDeps (di.extras +
-// di.extras.options), and the host runs its whole always-on stage table
-// — the generic inline stage plus the primitive stages reached through their
-// primitives.extras dep — from its own dependency scan. Compute the override:
-// a non-empty manual plugins array wins; otherwise `undefined` (NEVER [], which
-// would suppress discovery and never spawn the host).
+// Stage selection is declare-by-depending, resolved HOST-SIDE: with no
+// tsconfig.ttsc.json plugins array, @ttsc/unplugin/bun's auto-discovery spawns
+// the one owner host from this app's direct *.extras devDeps, and the host runs
+// its whole always-on stage table from its own dependency scan. Compute the
+// override: a non-empty manual plugins array wins; otherwise `undefined` (NEVER
+// [], which would suppress discovery and never spawn the host).
 const manual = readTsconfigTransforms(dir, 'tsconfig.ttsc.json');
 const ttscTransforms = manual.length > 0 ? manual : undefined;
 
+const stageDir = await stageLowering({ dir, name: 'examples.app.with-transformer', ttscProject: 'tsconfig.ttsc.json', ttscTransforms });
+
 const js = await Bun.build({
-  entrypoints: [join(dir, 'src/main.ts')],
+  entrypoints: [stagedEntrypoint(stageDir, 'src/main.ts')],
   outdir: dist,
   target: 'node',
   format: 'esm',
+  sourcemap: 'linked',
   external: [
     '@rhombus-std/config',
     '@rhombus-std/di',
-    // di.core is external because the LOWERING materializes a runtime import of
-    // it: the §99 override form `addClass<I>(C, overrides)` in
-    // src/registration-demo.ts lowers to
-    // `addClass(token, C, overrideSignatures(signatureof(C), overrides), …)`,
-    // and `overrideSignatures` is a di.core RUNTIME helper the inline stage
-    // imports into the emitted file. Inline it and Bun pulls di.core (and
-    // transitively @rhombus-std/primitives) into dist/main.js, forking
-    // `ServiceManifestClass` identity and the augmentation registry — the exact
-    // fork §9/§38 forbid. Nothing in the AUTHORED source imports di.core.
     '@rhombus-std/di.core',
     '@rhombus-std/examples.contracts',
     '@rhombus-std/examples.lib.with-transformer',
@@ -62,12 +51,13 @@ const js = await Bun.build({
     '@rhombus-std/logging.core',
     '@rhombus-std/options',
     '@rhombus-std/options.augmentations',
+    // `typefor<T>()` folds to a `Type` EXPRESSION, so the lowered output imports
+    // @rhombus-std/primitives at run time even though nothing in the authored
+    // source names it. Inlining it would fork the `Type` intern table, and this
+    // app's whole point is that a derived type and a hand-composed one are the
+    // same object.
+    '@rhombus-std/primitives',
   ],
-  // ttscTransforms is undefined by default, so @ttsc/unplugin/bun runs its
-  // auto-discovery — spawning the one owner host from the app's direct
-  // *.extras deps, which ttsc dedupes to a single spawn. The host then
-  // self-selects the transitive stage union from its own dependency scan.
-  plugins: [await ttscBunPlugin(dir, 'tsconfig.ttsc.json', ttscTransforms)],
 });
 if (!js.success) {
   for (const log of js.logs) {

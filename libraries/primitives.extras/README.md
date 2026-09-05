@@ -1,20 +1,20 @@
 # @rhombus-std/primitives.extras
 
-**A compile-time transformer that turns `tokenfor<T>()` into a stable string
-token for a TypeScript type — no reflection, no decorators, no runtime cost.**
+**A compile-time transformer that turns `typefor<T>()` into a structured runtime
+`Type` value for a TypeScript type — no reflection, no decorators, no runtime cost.**
 
 Libraries that key things by type (a dependency-injection container, an
 augmentation registry, anything that needs "the identity of this interface" as
-a plain string) need a token that is stable across a rename-resistant type
-reference. Hand-writing those strings works, but it's brittle: rename the
-type, forget to update the string, and things silently stop matching. This
-package gives you a `tokenfor<T>()` call that a build-time transformer rewrites,
-at compile time, into the exact token string you'd otherwise have had to write
+a plain value) need a `Type` that is stable across a rename-resistant type
+reference. Hand-writing those values works, but it's brittle: rename the
+type, forget to update the reference, and things silently stop matching. This
+package gives you a `typefor<T>()` call that a build-time transformer rewrites,
+at compile time, into the exact `Type` tree you'd otherwise have had to build
 by hand.
 
 It has no dependency on any dependency-injection runtime — it's the
-standalone token-derivation toolkit that any package can use to mint tokens
-from types.
+standalone type-derivation toolkit that any package can use to mint `Type`
+values from types.
 
 ## Install
 
@@ -22,60 +22,80 @@ from types.
 bun add @rhombus-std/primitives.extras @rhombus-std/primitives
 ```
 
-`primitives.extras` supplies the build-time engine; `tokenfor<T>()` itself is an ordinary
-import from `@rhombus-std/primitives` (below) — you need both packages.
+`primitives.extras` supplies both the build-time engine and the `typefor<T>()` import
+itself (below); it depends on `@rhombus-std/primitives` in turn, so both packages
+end up in your lockfile either way.
 
 ## Usage
 
-The explicit form — passing a token string directly — is the real, complete
+The explicit form — passing a `Type` value directly — is the real, complete
 API. It works everywhere, with or without a build step:
 
 ```ts
-const token = 'my-package:IUserRepository';
+import { Type } from '@rhombus-std/primitives';
+
+const type = Type.imported('IUserRepository', 'my-package');
 ```
 
-`tokenfor<T>()` is optional sugar over exactly that: write the type instead of
-the string, and let the transformer fill in the string for you.
+`typefor<T>()` is optional sugar over exactly that: write the type instead of
+building the `Type` tree by hand, and let the transformer fill it in for you.
 
 ```ts
-import { tokenfor } from '@rhombus-std/primitives';
+import { typefor } from '@rhombus-std/primitives.extras';
 
 interface IUserRepository {
   findById(id: string): Promise<User>;
 }
 
-const token = tokenfor<IUserRepository>();
-// compiled to: const token = "my-package:IUserRepository";
+const type = typefor<IUserRepository>();
+// compiled to: const type = Type.imported('IUserRepository', 'my-package');
 ```
 
-Calling `tokenfor<T>()` without the build-time engine wired up throws a clear error naming the
+Calling `typefor<T>()` without the build-time engine wired up throws a clear error naming the
 missing plugin at runtime — it never silently returns `undefined`. An optional Go/`ttsc` engine
-lowers the call, at build time, into exactly the string literal shown above.
+lowers the call, at build time, into exactly the `Type.*` tree shown above.
 
-## Token grammar
+A value argument derives from the value's OWN type, never unwrapped: a class arrives as the
+constructor it is, not the instance it builds.
 
-A token is a plain string, `<source>:<exportName>`, derived from where the
-type is actually declared and how a caller would import it:
+```ts
+class SqlUserRepository implements IUserRepository {/* … */}
 
-- a type exported from a package's public entry tokenizes to that package's
-  exact import specifier (`my-package:IUserRepository`, or
-  `my-package/contracts:IUserRepository` for a subpath export);
-- a type that's only internal to a package (owned by a `package.json`,
-  not publicly exported) tokenizes to a package-qualified path;
-- a type with no owning `package.json` falls back to a best-effort
-  project-relative path.
+const ctorType = typefor(SqlUserRepository);
+// compiled to: const ctorType = Type.ctor(Type.imported('SqlUserRepository', 'my-package'), […]);
+const instanceType = ctorType.instanceType; // → Type.imported('SqlUserRepository', 'my-package')
+```
+
+## Type grammar
+
+A derived `Type` addresses where the underlying type is actually declared and how a caller would
+import it:
+
+- a type exported from a package's public entry derives `Type.imported(name, from)` with that
+  package's exact import specifier (`Type.imported('IUserRepository', 'my-package')`, or
+  `Type.imported('IUserRepository', 'my-package/contracts')` for a subpath export);
+- a type that's only internal to a package (owned by a `package.json`, not publicly exported)
+  derives a package-qualified specifier;
+- a type with no owning `package.json` falls back to a best-effort project-relative specifier;
+- a built-in or ambient type derives `Type.global(name, genericArgs?)` instead.
 
 Generic references close over their arguments recursively —
-`tokenfor<Array<IUserRepository>>()` derives `Array<my-package:IUserRepository>`
-— and literal types (`tokenfor<"dev" | "prod">()`) derive a sorted,
-`|`-joined literal token. The package version is deliberately excluded, so
-compatible versions of the same dependency unify on one token.
+`typefor<Array<IUserRepository>>()` derives
+`Type.global('Array', [Type.imported('IUserRepository', 'my-package')])` — and literal types
+(`typefor<'dev' | 'prod'>()`) derive a sorted `Type.union` of `Type.typeLiteral` members. The
+package version is deliberately excluded, so compatible versions of the same dependency unify on
+one `Type`.
 
 ## Key exports
 
-This package has no JavaScript API of its own — it's a build-time-only Go/`ttsc` engine
-descriptor. The one thing you actually import, `tokenfor<T>()`, is exported by
-[`@rhombus-std/primitives`](../primitives/README.md); see [Usage](#usage) above.
+Its JavaScript API is `typefor<T>()` / `typefor(value)` — one function, narrowed by which overload
+a call site binds to — plus its build-time-only guard-rail error. Alongside it: `schemaof<T>()`,
+expanding a type into the `Type` tree describing its members; `registerAugmentations<R>(set, merge?)`,
+registering an augmentation set against a receiver type by deriving its `Type` the same way
+`typefor<T>()` does; and `registerInlineBodies(bodies)`, a runtime no-op that marks an object
+literal, in code, as the inline sugar body set published in the package's `package.json`
+`"rhombus-std"` marker's `"inline"` list. Everything else this package carries is the Go/`ttsc`
+engine descriptor those calls lower through. See [Usage](#usage) above.
 
 ## How it fits
 
@@ -85,20 +105,20 @@ design — it's a pure Go/`ttsc` engine descriptor with nothing beyond the
 TypeScript compiler API underneath it.
 
 Downstream, `di.extras` and `di.extras.options` declare it as a
-dependency so `ttsc` activates its `nameof`/`inline`/`signatureof` stages
+dependency so `ttsc` activates its `inline`/`typefor` stages
 alongside their own; a dependency-injection consumer usually doesn't need to
 reference this package directly. A library author minting their own
-augmentation tokens, outside dependency injection entirely, can depend on it
-the same way and call `tokenfor<T>()` (from
-[`@rhombus-std/primitives`](../primitives/README.md)) on their own terms.
+augmentation types, outside dependency injection entirely, can depend on it
+the same way and call `typefor<T>()` directly on their own terms.
 
 ## Notes
 
-- This package is build-time only — a pure Go/`ttsc` engine descriptor with no JavaScript API
-  and no runtime footprint at all. The `tokenfor<T>()` guard-rail error lives in
-  [`@rhombus-std/primitives`](../primitives/README.md), which owns the runtime stub.
-- `tokenfor<T>()`'s runtime body only ever executes if the transformer isn't
+- Its JavaScript surface is small on purpose: `typefor<T>()` / `typefor(value)`, `schemaof<T>()`,
+  `registerAugmentations`, and `registerInlineBodies` (see [Key exports](#key-exports) above) are
+  the whole of it — everything else the package carries is the build-time-only Go/`ttsc` engine
+  descriptor those calls lower through.
+- `typefor<T>()`'s runtime body only ever executes if the transformer isn't
   wired up; a correctly configured build never reaches it.
-- `tokenfor<T>()` calls are rewritten in the same pass as `di.extras`'s own stages — the
+- `typefor<T>()` calls are rewritten in the same pass as `di.extras`'s own stages — the
   build-time engine runs every activated stage together in one hardcoded order, not as separate
   plugins racing to rewrite the same call.

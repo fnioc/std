@@ -6,21 +6,17 @@
 // synonym. Non-bool values are skipped.
 
 import type { IConfig, IConfigSection } from '@rhombus-std/config.core';
-import { ACTIVITY_SOURCE_SCOPES_ALL, ActivitySourceScopes, TracingOptions,
-  TracingRule } from '@rhombus-std/diagnostics.core';
+import { ACTIVITY_SOURCE_SCOPES_ALL, ActivitySourceScopes, TracingOptions, TracingRule } from '@rhombus-std/diagnostics.core';
 import type { IConfigureOptions } from '@rhombus-std/options';
 
-import { DEFAULT_KEY, equalsIgnoreCase, flattenLeaves, hasChildren, parseBool,
-  sectionExists } from '../../config-rule-parsing';
+import { DEFAULT_KEY, equalsIgnoreCase, flattenLeaves, hasChildren, parseBool, sectionExists } from '../../config-rule-parsing';
 
 const ENABLED_TRACING_KEY = 'EnabledTracing';
 const ENABLED_GLOBAL_TRACING_KEY = 'EnabledGlobalTracing';
 const ENABLED_LOCAL_TRACING_KEY = 'EnabledLocalTracing';
 
 /** Appends per-operation rules from an object of `{OperationName} = bool` leaves. */
-function loadActivityRules(options: TracingOptions, sourceSection: IConfigSection, scopes: ActivitySourceScopes,
-  listenerName: string | undefined): void
-{
+function loadActivityRules(options: TracingOptions, sourceSection: IConfigSection, scopes: ActivitySourceScopes, listenerName: string | undefined): void {
   for (const [relativePath, rawValue] of flattenLeaves(sourceSection)) {
     const enabled = parseBool(rawValue);
     if (enabled === undefined) {
@@ -32,9 +28,7 @@ function loadActivityRules(options: TracingOptions, sourceSection: IConfigSectio
 }
 
 /** Appends per-source rules (bool leaf) or recurses into per-operation rules (object). */
-function loadActivitySourceRules(options: TracingOptions, scopeSection: IConfigSection, scopes: ActivitySourceScopes,
-  listenerName: string | undefined): void
-{
+function loadActivitySourceRules(options: TracingOptions, scopeSection: IConfigSection, scopes: ActivitySourceScopes, listenerName: string | undefined): void {
   for (const sourceSection of scopeSection.getChildren()) {
     if (hasChildren(sourceSection)) {
       loadActivityRules(options, sourceSection, scopes, listenerName);

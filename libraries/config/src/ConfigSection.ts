@@ -13,14 +13,13 @@
 // or any Object.prototype name) is UNREACHABLE via `config.X` -- reach it with
 // `config.getSection("X")` instead.
 
-import { type ConfigObject, configPath, configSectionBrand, type IConfig, type IConfigSection,
-  type IndexedSection } from '@rhombus-std/config.core';
+import { type ConfigObject, configPath, configSectionBrand, type IConfig, type IConfigSection, type IndexedSection } from '@rhombus-std/config.core';
 import type { IChangeToken } from '@rhombus-std/primitives';
-import type { Func } from '@rhombus-toolkit/func';
 import { IndexAccessed } from '@rhombus-toolkit/proxy-base';
+import type { Func } from '@rhombus-toolkit/types';
 import { parseBoolean, parseNumber } from './coerce';
 import type { ConfigRoot } from './ConfigRoot';
-import { InternalConfigRootExtensions } from './InternalConfigRootExtensions';
+import { getChildrenImplementation } from './internal-children';
 
 /**
  * A section of configuration values, identified by its full colon-delimited
@@ -28,7 +27,9 @@ import { InternalConfigRootExtensions } from './InternalConfigRootExtensions';
  * {@link ConfigRoot.getSection} / {@link IConfig.getSection};
  * never instantiated directly by consumers.
  */
-export class ConfigSection extends IndexAccessed<IndexedSection> implements IConfigSection {
+export interface ConfigSection extends IConfigSection {}
+
+export class ConfigSection extends IndexAccessed<IndexedSection> {
   // Public runtime brand so config.core's `isConfigSection` can distinguish a
   // genuine section from a root at runtime, which TS type erasure alone
   // cannot do. A class FIELD (not a `this.x =` assignment) so it lands as a
@@ -118,7 +119,7 @@ export class ConfigSection extends IndexAccessed<IndexedSection> implements ICon
 
   /** The immediate descendant sections of this section. */
   public getChildren(): Iterable<IConfigSection> {
-    return InternalConfigRootExtensions.getChildrenImplementation(this.#root, this.#path);
+    return getChildrenImplementation(this.#root, this.#path);
   }
 
   /** This section's subtree as a nested plain string object. */

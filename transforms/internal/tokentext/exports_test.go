@@ -133,7 +133,7 @@ func TestCollectExportEntriesPublicClassification(t *testing.T) {
 		"exports": {
 			".": { "bun": "./dist/index.js", "types": "./dist/index.d.ts", "import": "./dist/index.js", "default": "./dist/index.js" },
 			"./bare": "./bare/index.js",
-			"./tokens/*": { "source": "./src/*.ts", "types": "./src/*.ts" }
+			"./private/*": { "source": "./src/*.ts", "types": "./src/*.ts" }
 		}
 	}`)
 	if !ok {
@@ -150,7 +150,7 @@ func TestCollectExportEntriesPublicClassification(t *testing.T) {
 		"=>dist/index.js":     true,  // reached via `default` (and non-public bun/import)
 		"=>dist/index.d.ts":   false, // `types` only — not public
 		"bare=>bare/index.js": true,  // bare string — public
-		"tokens/*=>src/*.ts":  false, // `source`/`types` only — not public
+		"private/*=>src/*.ts": false, // `source`/`types` only — not public
 	}
 	for key, wantPublic := range want {
 		got, seen := publicByTarget[key]

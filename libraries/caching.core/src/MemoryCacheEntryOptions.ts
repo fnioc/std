@@ -2,7 +2,7 @@ import type { IChangeToken } from '@rhombus-std/primitives';
 import { type CacheItemPriority, CacheItemPriority as Priority } from './CacheItemPriority';
 import type { PostEvictionCallbackRegistration } from './PostEvictionCallbackRegistration';
 
-/** A reusable bag of the cache options applied to an entry via `CacheEntryExtensions.setOptions`. */
+/** A reusable bag of the cache options applied to an entry via `CacheEntrySugarAugmentations.setOptions`. */
 export class MemoryCacheEntryOptions {
   #absoluteExpirationRelativeToNow: number | undefined = undefined;
   #slidingExpiration: number | undefined = undefined;

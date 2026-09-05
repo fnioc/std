@@ -24,10 +24,7 @@ bun add @rhombus-std/config.ini @rhombus-std/config
 import { ConfigBuilder } from '@rhombus-std/config';
 import '@rhombus-std/config.ini';
 
-const config = new ConfigBuilder().addIniFile('appsettings.ini', {
-  optional: true,
-  reloadOnChange: true,
-}).build();
+const config = new ConfigBuilder().addIniFile('appsettings.ini', { optional: true, reloadOnChange: true }).build();
 
 config.get('Server:Host');
 ```

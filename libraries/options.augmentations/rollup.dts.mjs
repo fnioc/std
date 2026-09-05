@@ -10,8 +10,6 @@ import { dts } from 'rollup-plugin-dts';
 
 const PKG_ROOT = dirname(fileURLToPath(import.meta.url));
 
-export default { input: join(PKG_ROOT, 'src', 'index.ts'),
-  output: { file: join(PKG_ROOT, 'dist', 'bundle', 'index.d.ts'), format: 'es' },
-  external: [/^@rhombus-std\/di\.core$/, /^@rhombus-std\/options$/, /^@rhombus-std\/config\.core$/,
-    /^@rhombus-std\/primitives$/],
+export default { input: join(PKG_ROOT, 'src', 'index.ts'), output: { file: join(PKG_ROOT, 'dist', 'bundle', 'index.d.ts'), format: 'es' },
+  external: [/^@rhombus-std\/di\.core$/, /^@rhombus-std\/di\.extras$/, /^@rhombus-std\/options$/, /^@rhombus-std\/config\.core$/, /^@rhombus-std\/primitives$/],
   plugins: [dts({ tsconfig: join(PKG_ROOT, 'tsconfig.json'), respectExternal: true })] };

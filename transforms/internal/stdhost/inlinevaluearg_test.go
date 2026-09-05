@@ -19,9 +19,8 @@ import (
 // whatever is inside its arguments, rebuilding them through factory.Update*. On the
 // pass that finally reaches it, `callArguments(call)` hands back those REBUILT
 // nodes, and registerPrimitives recorded one as the value-argument primitive's
-// `ValueArg`. Both consumers of that field — the nameof stage's tokenfor/tokenof
-// value branches and the signatureof stage's artifacts branch — hand it straight to
-// the checker, which resolves the enclosing call's overloads, contextually types the
+// `ValueArg`. The typefor stage's artifacts branch hands it straight to the
+// checker, which resolves the enclosing call's overloads, contextually types the
 // rebuilt (symbol-less) property assignment, and nil-derefs in
 // getContextualTypeForObjectLiteralElement. The whole file is then lost: the panic
 // aborts before anything is emitted.
@@ -35,26 +34,37 @@ import (
 //
 // WHAT THESE TESTS PROTECT. The crash pin below fails LOUDLY on a regression (the
 // host emits a STAGE_PANIC diagnostic and no file at all), and the parity pin holds
-// the fix honest: the token must be derived from the SOURCE-WRITTEN argument, so a
+// the fix honest: the type must be derived from the SOURCE-WRITTEN argument, so a
 // registration lowers identically whether it inlined on pass 0 or waited a pass.
 
 // sugarWorkspaceRootPkg makes the fixture a workspace root, so CollectProject
 // walks into packages/* and finds the core package's inline entries.
 const sugarWorkspaceRootPkg = `{ "name": "ws", "private": true, "workspaces": ["packages/*"] }`
 
-// sugarCorePkg is the sugar-owning package: it declares two inline entries whose
-// bodies live out of barrel in src/inline.ts, mirroring the real di.extras shapes
-// (`addClass<T>(ctor)` carries a VALUE-argument signatureof, `addValue(value)` a
-// VALUE-argument tokenof).
+// sugarCorePkg is the runtime package: the receiver and its explicit token
+// forms, with no sugar of its own.
 const sugarCorePkg = `{
   "name": "@scope/core",
   "version": "1.0.0",
+  "exports": { ".": { "types": "./src/index.ts", "default": "./src/index.ts" } }
+}`
+
+// sugarSugarPkg is the sugar-owning package: it declares two inline entries
+// whose bodies live out of barrel in src/inline.ts, mirroring the real
+// di.extras shapes (`addClass<T>(ctor)` and `addValue(value)` each carrying a
+// VALUE-argument typefor).
+const sugarSugarPkg = `{
+  "name": "@scope/sugar",
+  "version": "1.0.0",
   "exports": { ".": { "types": "./src/index.ts", "default": "./src/index.ts" } },
-  "rhombus.inline": {
-    "entries": [
-      { "type": "@scope/core:IManifest", "impl": "ManifestInline", "member": "addClass" },
-      { "type": "@scope/core:IManifest", "impl": "ManifestInline", "member": "addValue" }
-    ]
+  "dependencies": { "@scope/core": "workspace:*" },
+  "rhombus-std": {
+    "inline": {
+      "entries": [
+        { "type": "@scope/core:IManifest", "impl": "@scope/sugar:ManifestInline", "member": "addClass" },
+        { "type": "@scope/core:IManifest", "impl": "@scope/sugar:ManifestInline", "member": "addValue" }
+      ]
+    }
   }
 }`
 
@@ -66,31 +76,31 @@ const sugarCoreIndex = `export interface IChain {
   as(scope: string): IChain;
 }
 export interface IManifest {
-  addClass(token: string, ctor: unknown, sig: unknown): IChain;
-  addValue(token: string, value: unknown): IManifest;
+  addClass(token: unknown, ctor: unknown, sig: unknown): IChain;
+  addValue(token: unknown, value: unknown): IManifest;
 }
 export declare const services: IManifest;
 `
 
 // sugarCoreInline holds the single-expression sugar bodies. Both pass their own
-// parameter straight into a value-argument primitive — the shape whose recorded
-// argument this file is about.
-const sugarCoreInline = `import { tokenfor, tokenof } from '@rhombus-std/primitives.extras';
-import { signatureof } from '@rhombus-std/di.extras';
-import type { IChain, IManifest } from './index';
+// parameter straight into a value-argument typefor call — the shape whose
+// recorded argument this file is about.
+const sugarCoreInline = `import { typefor } from '@rhombus-std/primitives.extras';
+import type { IChain, IManifest } from '@scope/core';
 export const ManifestInline = {
   addClass<T>(this: IManifest, ctor: unknown): IChain {
-    return this.addClass(tokenfor<T>(), ctor, signatureof(ctor));
+    return this.addClass(typefor<T>(), ctor, typefor(ctor));
   },
   addValue(this: IManifest, value: unknown): IManifest {
-    return this.addValue(tokenof(value), value);
+    return this.addValue(typefor(value), value);
   },
 };
 `
 
-// sugarAppSugarDts is the consumer-side declaration merge the transformer matches
-// against — the authoring overloads layered over the explicit forms above.
-const sugarAppSugarDts = `declare module '@scope/core' {
+// sugarSugarDts is the sugar package's own declaration merge the transformer
+// matches against — the authoring overloads layered over the explicit forms
+// above, owned by the package whose bodies serve them.
+const sugarSugarDts = `declare module '@scope/core' {
   interface IManifest {
     addClass<T>(ctor: unknown): IChain;
     addValue(value: unknown): IManifest;
@@ -106,13 +116,13 @@ const sugarAppTsconfig = `{
     "target": "ES2022", "module": "esnext", "moduleResolution": "bundler",
     "strict": true, "skipLibCheck": true, "noEmitOnError": false
   },
-  "files": ["main.ts", "prim.ts", "sugar.d.ts", "node_modules/@scope/core/src/index.ts"]
+  "files": ["main.ts", "prim.ts", "node_modules/@scope/core/src/index.ts", "node_modules/@scope/sugar/src/index.ts"]
 }`
 
-// sugarAppPrim is a local `tokenfor` stub. It gives the fixture a SOURCE-WRITTEN
+// sugarAppPrim is a local `typefor` stub. It gives the fixture a SOURCE-WRITTEN
 // primitive to place inside a registration's value argument — the thing an earlier
 // pass rewrites while the enclosing sugar call waits.
-const sugarAppPrim = `export declare function tokenfor<T>(): string;
+const sugarAppPrim = `export declare function typefor<T>(): unknown;
 `
 
 // symlinkPkg links name into dir/node_modules so Bundler resolution finds the
@@ -138,15 +148,26 @@ func buildSugarWorkspace(t *testing.T, mainSrc string) string {
 	core := filepath.Join(root, "packages", "core")
 	writeFixtureFile(t, core, "package.json", sugarCorePkg)
 	writeFixtureFile(t, core, "src/index.ts", sugarCoreIndex)
-	writeFixtureFile(t, core, "src/inline.ts", sugarCoreInline)
+
+	sugar := filepath.Join(root, "packages", "sugar")
+	writeFixtureFile(t, sugar, "package.json", sugarSugarPkg)
+	writeFixtureFile(t, sugar, "src/index.ts", sugarSugarDts)
+	writeFixtureFile(t, sugar, "src/inline.ts", sugarCoreInline)
+	symlinkPkg(t, sugar, "@scope/core", core)
 
 	app := filepath.Join(root, "packages", "app")
-	writeFixtureFile(t, app, "package.json", `{"name":"@scope/app","version":"1.0.0","dependencies":{"@scope/core":"workspace:*"}}`)
-	writeFixtureFile(t, app, "sugar.d.ts", sugarAppSugarDts)
+	// Inline emission, so an assertion below reads the derived tree where it was
+	// derived. What these fixtures pin is the inline STAGE's fixed-point behaviour
+	// over a rewritten value argument, which is the same either way; spelling the
+	// tree at the call site is simply what makes the pin legible.
+	writeFixtureFile(t, app, "package.json", `{"name":"@scope/app","version":"1.0.0",`+
+		`"dependencies":{"@scope/core":"workspace:*","@scope/sugar":"workspace:*"},`+
+		`"rhombus-std":{"typefor":{"emit":"inline"}}}`)
 	writeFixtureFile(t, app, "prim.ts", sugarAppPrim)
 	writeFixtureFile(t, app, "main.ts", mainSrc)
 	writeFixtureFile(t, app, "tsconfig.json", sugarAppTsconfig)
 	symlinkPkg(t, app, "@scope/core", core)
+	symlinkPkg(t, app, "@scope/sugar", sugar)
 	return app
 }
 
@@ -170,18 +191,18 @@ func lowerSugarApp(t *testing.T, mainSrc string) (string, decodedEnvelope) {
 
 // TestWaitingSugarOverRewrittenValueArgumentDoesNotCrash is the crash pin. The
 // `addValue(...)` sugar sits in RECEIVER position under `addClass<IWidget>(...)`,
-// so it is not reached on pass 0; meanwhile the source-written `tokenfor<IClock>()`
+// so it is not reached on pass 0; meanwhile the source-written `typefor<IClock>()`
 // inside its object-literal argument lowers, rebuilding that literal. When the
 // receiver finally inlines, the argument it splices — and, before the repair,
 // recorded — is the rebuilt one.
 //
-// The value's type is an anonymous object literal, which has no derivable token, so
-// the correct outcome is the NAMED diagnostic. The point of the pin is that a named
-// diagnostic is what a lowering failure looks like: the run reports it and still
-// emits the file, with the sibling registration fully lowered.
+// The value's type is an anonymous object literal, which derives to a
+// `Type.object` token over its members. The point of the pin is that the run
+// lowers cleanly and still emits the file, with the sibling registration fully
+// lowered — the crash-repair holds whether or not the rewritten argument derives.
 func TestWaitingSugarOverRewrittenValueArgumentDoesNotCrash(t *testing.T) {
 	lowered, env := lowerSugarApp(t, `import { services } from '@scope/core';
-import { tokenfor } from './prim';
+import { typefor } from './prim';
 
 export interface IClock {}
 export interface IWidget {}
@@ -190,33 +211,39 @@ export class Widget {
 }
 
 export const registered = services
-  .addValue({ clockToken: tokenfor<IClock>(), retries: 3 })
+  .addValue({ clockToken: typefor<IClock>(), retries: 3 })
   .addClass<IWidget>(Widget);
 `)
 
 	// The registration that DID inline on pass 0 must be fully lowered — a repair
 	// that stopped the crash by lowering less would leave the sugar standing.
-	if !strings.Contains(lowered, `.addClass("@scope/app/main:IWidget", Widget, [["@scope/app/main:IClock"]])`) {
+	if !strings.Contains(lowered, `.addClass(Type.imported("IWidget", "@scope/app/main"), Widget, `+
+		`Type.ctor(Type.imported("Widget", "@scope/app/main"), [[Type.imported("IClock", "@scope/app/main")]]))`) {
 		t.Fatalf("the pass-0 registration did not lower:\n%s", lowered)
 	}
 	// The source-written primitive inside the waiting call's argument lowered too.
-	if !strings.Contains(lowered, `"@scope/app/main:IClock", retries: 3`) {
-		t.Fatalf("the source-written tokenfor inside the waiting call's argument did not lower:\n%s", lowered)
+	if !strings.Contains(lowered, `Type.imported("IClock", "@scope/app/main"), retries: 3`) {
+		t.Fatalf("the source-written typefor inside the waiting call's argument did not lower:\n%s", lowered)
 	}
-	// The underivable value reports itself by name rather than taking the process down.
-	if findDiag(env, "VALUE_ARG_TOKEN_UNDERIVABLE") == nil {
-		t.Fatalf("an anonymous object-literal value must report VALUE_ARG_TOKEN_UNDERIVABLE; diagnostics = %+v", env.Diagnostics)
+	// The rewritten object-literal value derives its token as a Type.object over
+	// its members, so the run lowers cleanly rather than taking the process down.
+	if !strings.Contains(lowered, `.addValue(Type.object({ clockToken: `) ||
+		!strings.Contains(lowered, `retries: Type.global("number") }),`) {
+		t.Fatalf("the object-literal value's token did not derive to Type.object:\n%s", lowered)
+	}
+	if len(env.Diagnostics) != 0 {
+		t.Fatalf("the clean lowering must report no diagnostic; diagnostics = %+v", env.Diagnostics)
 	}
 }
 
 // TestWaitingSugarDerivesFromTheSourceWrittenArgument is the parity half: the
-// token must come from the argument as the AUTHOR wrote it, so a registration
+// type must come from the argument as the AUTHOR wrote it, so a registration
 // lowers identically whether it inlined on pass 0 or waited for the pass above it
 // to finish. It is what stops "record the parse node" from silently becoming
 // "record whatever the loop happens to have left there".
 func TestWaitingSugarDerivesFromTheSourceWrittenArgument(t *testing.T) {
 	const prelude = `import { services } from '@scope/core';
-import { tokenfor } from './prim';
+import { typefor } from './prim';
 
 export interface IClock {}
 export interface IWidget {}
@@ -227,19 +254,20 @@ export class Widget {
 
 `
 	// WAITING: the addValue sugar is the receiver, so it inlines a pass late, over
-	// an argument the tokenfor lowering has already rebuilt.
+	// an argument the typefor lowering has already rebuilt.
 	waiting, _ := lowerSugarApp(t, prelude+`export const registered = services
-  .addValue({ clockToken: tokenfor<IClock>(), retries: 3 } as IAppSettings)
+  .addValue({ clockToken: typefor<IClock>(), retries: 3 } as IAppSettings)
   .addClass<IWidget>(Widget);
 `)
 	// PASS-0: the same two registrations, split so each is reached immediately.
-	immediate, _ := lowerSugarApp(t, prelude+`export const a = services.addValue({ clockToken: tokenfor<IClock>(), retries: 3 } as IAppSettings);
+	immediate, _ := lowerSugarApp(t, prelude+`export const a = services.addValue({ clockToken: typefor<IClock>(), retries: 3 } as IAppSettings);
 export const b = services.addClass<IWidget>(Widget);
 `)
 
-	const wantValue = `.addValue("@scope/app/main:IAppSettings", { clockToken: "@scope/app/main:IClock", retries: 3 } as IAppSettings)`
+	const wantValue = `.addValue(Type.imported("IAppSettings", "@scope/app/main"), ` +
+		`{ clockToken: Type.imported("IClock", "@scope/app/main"), retries: 3 } as IAppSettings)`
 	if !strings.Contains(waiting, wantValue) {
-		t.Fatalf("the waiting registration did not derive its token from the source-written argument.\nwant to contain:\n%s\ngot:\n%s", wantValue, waiting)
+		t.Fatalf("the waiting registration did not derive its type from the source-written argument.\nwant to contain:\n%s\ngot:\n%s", wantValue, waiting)
 	}
 	if !strings.Contains(immediate, wantValue) {
 		t.Fatalf("the pass-0 control did not lower as expected.\nwant to contain:\n%s\ngot:\n%s", wantValue, immediate)
@@ -248,13 +276,14 @@ export const b = services.addClass<IWidget>(Widget);
 	// also the sugar-path coverage for the shape the direct-form pins cover: an
 	// optional parameter reached through `addClass<T>()` rather than a hand-written
 	// registration.
-	const wantClass = `.addClass("@scope/app/main:IWidget", Widget, ` +
-		`[["@scope/app/main:IClock", { union: ["@scope/app/main:IAppSettings", { value: void 0 }] }]])`
+	const wantClass = `.addClass(Type.imported("IWidget", "@scope/app/main"), Widget, Type.ctor(` +
+		`Type.imported("Widget", "@scope/app/main"), [[Type.imported("IClock", "@scope/app/main"), ` +
+		`Type.union(Type.imported("IAppSettings", "@scope/app/main"), Type.typeLiteral(undefined))]]))`
 	for name, out := range map[string]string{"waiting": waiting, "immediate": immediate} {
 		if !strings.Contains(out, wantClass) {
 			t.Fatalf("the %s registration did not mint the optional parameter's union slot.\nwant to contain:\n%s\ngot:\n%s", name, wantClass, out)
 		}
-		if strings.Contains(out, "tokenfor") || strings.Contains(out, "tokenof") || strings.Contains(out, "signatureof") {
+		if strings.Contains(out, "typefor") {
 			t.Fatalf("a primitive survived the %s lowering:\n%s", name, out)
 		}
 	}
@@ -278,8 +307,9 @@ export class Widget {
 }
 
 `
-	const wantRegistration = `services.addClass("@scope/app/main:IWidget", Widget, ` +
-		`[["@scope/app/main:IClock", { union: ["@scope/app/main:IOptions", { value: void 0 }] }]])`
+	const wantRegistration = `services.addClass(Type.imported("IWidget", "@scope/app/main"), Widget, Type.ctor(` +
+		`Type.imported("Widget", "@scope/app/main"), [[Type.imported("IClock", "@scope/app/main"), ` +
+		`Type.union(Type.imported("IOptions", "@scope/app/main"), Type.typeLiteral(undefined))]]))`
 
 	control, _ := lowerSugarApp(t, prelude+"export const m = services.addClass<IWidget>(Widget);\n")
 	if !strings.Contains(control, wantRegistration) {
@@ -290,7 +320,7 @@ export class Widget {
 	if !strings.Contains(chained, wantRegistration+`.as("singleton")`) {
 		t.Fatalf("the chained shape did not lower to the control plus its trailing call.\nwant to contain:\n%s\ngot:\n%s", wantRegistration+`.as("singleton")`, chained)
 	}
-	if strings.Contains(chained, "signatureof") || strings.Contains(chained, "addClass<") {
+	if strings.Contains(chained, "typefor") || strings.Contains(chained, "addClass<") {
 		t.Fatalf("authoring surface survived the chained lowering:\n%s", chained)
 	}
 }

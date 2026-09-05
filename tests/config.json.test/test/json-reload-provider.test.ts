@@ -13,7 +13,7 @@ import '@rhombus-std/config.json';
 import type { IDirectoryContents, IFileInfo, IFileProvider } from '@rhombus-std/fileproviders.core';
 import { PhysicalFileProvider } from '@rhombus-std/fileproviders.physical';
 import type { IChangeToken } from '@rhombus-std/primitives';
-import type { Func } from '@rhombus-toolkit/func';
+import type { Func } from '@rhombus-toolkit/types';
 import { afterEach, describe, expect, test } from 'bun:test';
 import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
@@ -67,8 +67,7 @@ class FakeFileProvider implements IFileProvider {
 
   public getFileInfo(): IFileInfo {
     const path = this.#physicalPath;
-    return { exists: true, length: -1, physicalPath: path, name: basename(path), lastModified: new Date(0),
-      isDirectory: false, createReadStream(): never {
+    return { exists: true, length: -1, physicalPath: path, name: basename(path), lastModified: new Date(0), isDirectory: false, createReadStream(): never {
       throw new Error('unused');
     } };
   }

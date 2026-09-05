@@ -1,3 +1,4 @@
+/// <reference path="./node-builtins.d.ts" />
 // A change token that detects changes by polling rather than by an OS file
 // watcher. `hasChanged` re-reads the target's signature -- a file's mtime, or
 // a directory's sorted `path:mtimeMs` pairs for its subtree -- at most once

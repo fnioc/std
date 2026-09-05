@@ -1,13 +1,13 @@
 {
   "name": "@rhombus-std/primitives.extras",
   "version": "10.1.0",
-  "description": "The standalone token-derivation authoring transformer: the nameof<T>() compile-time token mechanism plus the inline and signatureof primitive stages. A Go/ttsc descriptor package — the derivation runs in the shared owner binary, di-independent so any family can mint augmentation tokens from types.",
+  "description": "The standalone type-derivation authoring transformer: the typefor<T>() compile-time Type mechanism plus the inline primitive stage. A Go/ttsc descriptor package — the derivation runs in the shared owner binary, di-independent so any family can mint augmentation tokens from types.",
   "keywords": [
     "primitives",
     "typescript",
     "transformer",
     "compiler",
-    "nameof"
+    "typefor"
   ],
   "license": "MIT",
   "repository": {
@@ -16,26 +16,26 @@
     "directory": "libraries/primitives.extras"
   },
   "type": "module",
-  "main": "./dist/bundle/index.js",
-  "types": "./dist/bundle/index.d.ts",
+  "dependencies": {
+    "@rhombus-std/primitives": "workspace:^",
+    "@rhombus-std/transforms": "workspace:^",
+    "@rhombus-toolkit/types": "^2.0.0"
+  },
+  "main": "./src/index.ts",
   "exports": {
-    ".": {
-      "source": "./src/index.ts",
-      "bun": "./dist/bundle/index.js",
-      "types": "./dist/bundle/index.d.ts",
-      "import": "./dist/bundle/index.js",
-      "default": "./dist/bundle/index.js"
-    },
+    ".": "./src/index.ts",
     "./ttsc": "./ttsc.mjs"
   },
   "ttsc": {
     "plugin": {
-      "transform": "@rhombus-std/primitives.extras/ttsc"
+      "transform": "./ttsc.mjs"
     }
   },
   "files": [
     "dist",
-    "ttsc.mjs"
+    "src",
+    "ttsc.mjs",
+    "rhombus-std.json"
   ],
   "scripts": {
     "build": "bun ../../scripts/build-lib.ts",
@@ -45,11 +45,9 @@
     "access": "public",
     "provenance": true,
     "main": "./dist/bundle/index.js",
-    "types": "./dist/bundle/index.d.ts",
     "exports": {
       ".": {
-        "types": "./dist/bundle/index.d.ts",
-        "import": "./dist/bundle/index.js",
+        "source": "./src/index.ts",
         "default": "./dist/bundle/index.js"
       },
       "./ttsc": "./ttsc.mjs"

@@ -18,8 +18,7 @@ The modern, property-based builder is the easiest way in:
 
 ```ts
 import { Host, HOST_APPLICATION_LIFETIME_TOKEN } from '@rhombus-std/hosting';
-import type { IHostApplicationLifetime,
-  IHostedService } from '@rhombus-std/hosting';
+import type { IHostApplicationLifetime, IHostedService } from '@rhombus-std/hosting';
 
 class Worker implements IHostedService {
   public constructor(private readonly lifetime: IHostApplicationLifetime) {}
@@ -48,7 +47,7 @@ await host.runAsync();
 | `HostApplicationBuilder`                                                                                                                              | The modern, property-based builder — `configuration`, `environment`, `logging`, `metrics`, `services` as live properties; `build()`; `asHostBuilder()` for tooling that expects the classic shape.                                |
 | `HostApplicationBuilderSettings`                                                                                                                      | Options passed to `HostApplicationBuilder`'s constructor: `args`, `applicationName`, `environmentName`, `contentRootPath`, `disableDefaults`, an existing `configuration`.                                                        |
 | `HostOptions`                                                                                                                                         | Per-host tuning: `shutdownTimeout`/`startupTimeout` (milliseconds), `servicesStartConcurrently`/`servicesStopConcurrently`, `backgroundServiceErrorBehavior`.                                                                     |
-| `HostingHostBuilderAugmentations`                                                                                                                     | The `IHostBuilder` fluent methods: `configureDefaults`, `useEnvironment`, `useContentRoot`, `configureHostOptions`, `configureLogging`, `configureMetrics`, `useDefaultServiceProvider`, `useConsoleLifetime`, `runConsoleAsync`. |
+| `HostBuilderHostingAugmentations`                                                                                                                     | The `IHostBuilder` fluent methods: `configureDefaults`, `useEnvironment`, `useContentRoot`, `configureHostOptions`, `configureLogging`, `configureMetrics`, `useDefaultServiceProvider`, `useConsoleLifetime`, `runConsoleAsync`. |
 | `ConsoleLifetime`, `ConsoleLifetimeOptions`                                                                                                           | The lifetime that listens for Ctrl+C / SIGTERM / SIGQUIT and requests a graceful shutdown; `suppressStatusMessages` turns off its startup banner.                                                                                 |
 | `NullLifetime`                                                                                                                                        | The default lifetime when nothing else is configured — never triggers shutdown on its own.                                                                                                                                        |
 | `BackgroundServiceErrorBehavior`                                                                                                                      | What an unhandled error from a `BackgroundService` does to the host: `StopHost` (stop the host) or `Ignore` (log it and keep going).                                                                                              |
@@ -66,5 +65,5 @@ For running the same host model inside a web page instead of a process, see [`ho
 ## Notes
 
 - The bundled logging sink is console-only for now; other sinks aren't wired into `configureDefaults` yet.
-- `useServiceProviderFactory` is accepted for call-site compatibility but is a no-op — there's a single container implementation, so there's no alternate factory to swap in. `configureContainer` does run its delegates (against the same `ServiceManifest` the container builds from), for the same reason.
+- `configureContainer` does run its delegates (against the same manifest the container builds from), but there is a single container implementation, so there is no alternate provider factory to swap in.
 - Around `start`/`stop`, the host also runs `IHostedLifecycleService`'s `starting`/`started` (before/after `start`) and `stopping`/`stopped` (before/after `stop`) hooks, and fires the `IHostApplicationLifetime` signals `applicationStarted`, `applicationStopping`, and `applicationStopped` at the corresponding points. Implement the plain `IHostedService`'s bare `start`/`stop` if you don't need the finer-grained hooks.

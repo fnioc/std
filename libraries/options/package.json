@@ -1,7 +1,7 @@
 {
   "name": "@rhombus-std/options",
   "version": "0.0.0",
-  "description": "The collapsed IOptions<T> accessor ported from ME.Options: IOptions/IOptionsSnapshot/IOptionsMonitor.CurrentValue collapse into one value, with change-notification as an optional subscribe capability backed by @rhombus-std/primitives.",
+  "description": "The collapsed IOptions<T> accessor: one value type standing in for every options read-scope, with change-notification as an optional subscribe capability backed by @rhombus-std/primitives.",
   "keywords": [
     "options",
     "configuration",
@@ -14,21 +14,10 @@
     "directory": "libraries/options"
   },
   "type": "module",
-  "main": "./dist/bundle/index.js",
-  "types": "./dist/bundle/index.d.ts",
+  "main": "./src/index.ts",
   "exports": {
-    ".": {
-      "source": "./src/index.ts",
-      "bun": "./dist/bundle/index.js",
-      "types": "./dist/bundle/index.d.ts",
-      "import": "./dist/bundle/index.js",
-      "default": "./dist/bundle/index.js"
-    },
-    "./tokens/*": {
-      "source": "./src/*.ts",
-      "bun": "./src/*.ts",
-      "types": "./src/*.ts"
-    }
+    ".": "./src/index.ts",
+    "./private/*": "./src/*.ts"
   },
   "files": [
     "dist"
@@ -40,19 +29,14 @@
   "dependencies": {
     "@rhombus-std/di.core": "workspace:*",
     "@rhombus-std/primitives": "workspace:*",
-    "@rhombus-toolkit/func": "^3.5.3"
+    "@rhombus-toolkit/types": "^2.0.0"
   },
   "publishConfig": {
     "access": "public",
     "provenance": true,
     "main": "./dist/bundle/index.js",
-    "types": "./dist/bundle/index.d.ts",
     "exports": {
-      ".": {
-        "types": "./dist/bundle/index.d.ts",
-        "import": "./dist/bundle/index.js",
-        "default": "./dist/bundle/index.js"
-      }
+      ".": "./dist/bundle/index.js"
     }
   }
 }
