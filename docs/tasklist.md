@@ -2447,6 +2447,40 @@ match lookup; a `Promise<X>` registration answers a `Promise<X>` ask; the settle
 
 ## Queue — merge `IServiceManifest-repair` into main (owner 2026-09-03: "up next we merge into main")
 
+LANDED 2026-09-05 as `d80c422a` on `main` via PR #368 — one locally signed commit (`git commit-tree -S`)
+carrying the branch tip's tree, because `main`'s `required_signatures` rule refused #274's mixed
+history (330 unsigned August commits, 15 signed with the cloud lane's Anthropic-owned key, which
+cannot be registered on the owner's account — see memory `cloud-commits-sign-with-anthropic-key` and
+user prefs `CLAUDE.git.md` § Commit signing). #274 closed with a pointer. Release workflow skipped
+(`PUBLISHING_ENABLED` unset). Main CI green. No `closes` lines were carried: #365 #367 #362 #330 are
+still open — close by hand on the owner's word. `IServiceManifest-approved` + draft PR #366: now moot
+unless the owner wants the ladder kept — his word. This branch continues as the working branch until
+he names another; any future PR to `main` must pass the all-`G` signature check first.
+
+## Published — `@next` hand publish (owner 2026-09-05)
+
+`@rhombus-std/{primitives,primitives.extras,di.core,di,di.extras,transforms}@0.1.0-next.0` on the
+`next` dist-tag, from `bd2074fa` (the parity + ask-surface tip), names unchanged. Recipe facts that
+the repo's scripts did not cover, for the next hand publish: pnpm needs its own `pnpm install` to
+resolve `workspace:` (bun's is not enough); pnpm ignores the root `overrides` field, so
+`pnpm.overrides."@rhombus-toolkit/types"` must be injected; `stage-transforms` runs BEFORE `pnpm
+install` (the workspace link targets `transforms/dist/publish`); `publishConfig.provenance` must be
+stripped for a token publish; a version already on the registry must be skipped, not re-sent. A
+brand-new package name (`transforms`) reads 404 through the CDN for a while after publish; the
+version document answers 200.
+
+## npm scope — open fork (owner 2026-09-05, leaning, NOT ruled)
+
+Stay `@rhombus-std` (per-product scope, hyphen brand-product, dot family.qualifier — matches
+`@rhombus-toolkit`) vs go domain-rooted brand-wide: `@std.rhombus.rocks/di.core`,
+`@toolkit.rhombus.rocks/types`, scope = docs host, so a package's docs URL derives from its name.
+Owner: "i'd do it for everything", "i'll at the very least cname them to the right place", then "for
+now, continue as the code is written now i.e. 'rhombus-std'" (a rename touches every import, package
+name, README, publish config and the identity guard). If it goes: std first (only `next`
+prereleases published), toolkit on its next major. Awaits the owner's word.
+
+### Original merge notes
+
 - The PR already exists: #274, draft, `IServiceManifest-repair` → `main`. Landing it is
   `gh pr ready 274`, then the merge queue (required check `verify`); auto-merge is the default here.
 - Runs on the owner's go. Before readying: CI green on the tip, `git status` clean, this tasklist
