@@ -11,7 +11,7 @@ import { type IMetricsBuilder, MetricsOptions } from '@rhombus-std/diagnostics.c
 import type { IConfigureOptions } from '@rhombus-std/options';
 import { ConfigChangeTokenSource, type IOptionsChangeTokenSource } from '@rhombus-std/options.augmentations';
 import { registerAugmentations, typefor } from '@rhombus-std/primitives.extras';
-import type { Flatten } from '@rhombus-toolkit/type-helpers';
+import type { Flatten } from '@rhombus-toolkit/types';
 
 import { MetricsConfig } from './MetricsConfig';
 import { MetricsConfigureOptions } from './MetricsConfigureOptions';

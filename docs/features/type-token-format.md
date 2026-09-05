@@ -5,9 +5,20 @@ reads one back. The two are exact inverses: stringifying a node and reading the 
 yields the identical node back, however deeply nested, and whatever characters its names or
 literal values happen to contain. This doc is the grammar both sides agree on.
 
+A node writes its own token wherever text is expected — `${type}`, `String(type)`,
+`type.toString()` — so `Type.stringify` is spelled out only where the token is wanted as a value
+rather than as part of a message.
+
 A token names exactly one type. Whitespace between tokens (around punctuation, inside generic
 argument lists) is insignificant and never appears in a written token; `Type.from` accepts it
 anywhere a reader would expect a boundary.
+
+`Type.from` reads in two steps. The parser turns the spelling into a plain node tree exactly as
+written — grammar only — and `Type.adopt` brings that tree in through the factories, so a token is
+canonicalized precisely as a hand-built node is: union members flattened, deduped and sorted, a
+rest-only tuple collapsed to its list, `Array<E>` landing on the array node. A malformed token is
+a `TypeParseError` from the parser; a well-formed token spelling a type the factories refuse is
+their own `TypeError`.
 
 ## Names
 
@@ -199,11 +210,20 @@ precedence, so a nested arrow needs no extra parentheses:
 
 ## Tuples
 
-A fixed-length, ordered list of member types is comma-separated inside square brackets:
+An ordered list of member types is comma-separated inside square brackets. At most one slot,
+written last, may be a trailing rest: `...` followed by the list the open length draws from —
+either list spelling reads, and the tuple stores the list's element alone, so `Type.stringify`
+always re-emits an `Array` spelling. A tuple that is nothing but a rest is the array its element
+fills, so `[...Array<app:B>]` — and, the list kind not being part of what the slot stores,
+`[...Iterable<app:B>]` — reads as the very node `Array<app:B>` names and stringifies back to that
+spelling; `[]` with no rest is the zero-length tuple. A slot that may be absent carries
+`undefined` in its own type, the same as an optional object member.
 
 ```
 [app:A, 5]
 []
+[app:A, app:B | undefined]
+[app:A, ...Array<app:B>]
 ```
 
 Members are written at the loosest precedence, the same as an object member's type or a generic
@@ -221,16 +241,26 @@ new (app:B) => app:A
 abstract new (app:A) => app:B
 ```
 
-**Signatures** are a callable's parameter lists — one signature per overload, semicolon-separated, each signature a
-comma-separated list of parameter types. A callable answers to at least one call, so an empty signature
-list is never written; a callable taking no parameters at all is one signature that is itself empty:
+**Signatures** are a callable's parameter lists — one signature per overload, semicolon-separated,
+each signature a comma-separated list of parameter types. A callable answers to at least one call,
+so an empty signature list is never written; a callable taking no parameters at all is one
+signature that is itself empty. The node behind the parentheses is the union of the per-overload
+rows — each row a tuple, or a list for a signature that is entirely a rest — so overloads read
+back in the union's one canonical order however they were written:
 
 ```
 () => app:A                    -- one signature, taking nothing
 (app:A) => app:B               -- one signature, one parameter
 (app:A; app:B, app:A) => app:B -- two signatures: [app:A], then [app:B, app:A]
-(app:A; ) => app:B             -- two signatures: [app:A], then an empty signature, written last
-(; app:A) => app:B             -- two signatures: an empty signature written first, then [app:A]
+(; app:A) => app:B             -- two signatures: an empty signature, then [app:A]
+```
+
+A signature's last slot may be a trailing rest, `...` followed by the list its open length draws
+from; a signature that is nothing but that slot IS the list itself:
+
+```
+(...Array<app:A>) => app:B           -- any number of app:A arguments
+(app:A, ...Array<app:B>) => app:C    -- one app:A, then any number of app:B
 ```
 
 An opening `(` only begins a function type when, once its matching `)` is found, the very next
@@ -265,11 +295,13 @@ primary      := literal
               | "%" segment
               | name
               | "(" type ")"
-              | "[" list(type) "]"
+              | "[" tuple "]"
               | "{" members "}"
-signatures         := signature (";" signature)*
-signature          := list(type)?
+signatures   := signature (";" signature)*
+signature    := (type ("," type)* ("," rest)? | rest)?
 members      := (segment ":" type (";" segment ":" type)*)? "}"
+tuple        := (type ("," type)* ("," rest)? | rest)?
+rest         := "..." type
 list(type)   := (type ("," type)*)?
 name         := segment (":" segment genericArgs?)?
 genericArgs  := "<" list(type) ">"
@@ -280,3 +312,6 @@ segment      := plain-identifier | "\" escaped-body
 `name` covers both forms: a bare segment names a global type (or, unescaped and reserved, one of
 the readings in [Reserved names](#reserved-names)); `segment ":" segment` names an import, or —
 when the first segment is exactly `global` — the same global type its bare name would.
+
+A `rest` slot's type must read as a list — `Array<E>` or `Iterable<E>`, however that list is
+spelled; `...` in front of anything else is malformed.

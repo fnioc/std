@@ -1,84 +1,104 @@
-import { DefaultManifest, IServiceProvider, type LifetimeModel, Manifest, type Registration } from '@rhombus-std/di.core';
-import { concat, iterable } from '@rhombus-std/primitives';
-import type { Func } from '@rhombus-toolkit/func';
+import { type Addon, type AddonInstallation, type GetService, type IDisposableServiceProvider, Manifest, type Middleware, type Registration, UnsatisfiableError } from '@rhombus-std/di.core';
+import { concat, iterable } from '@rhombus-toolkit/iterable';
+import type { Func } from '@rhombus-toolkit/types';
+import { Engine } from './internal/Engine.js';
 import { ServiceProvider } from './ServiceProvider.js';
-import { ServiceProviderOptions } from './ServiceProviderOptions.js';
 
 /**
- * Assembles a service provider: every genesis input — the manifest content and the provider
- * options — arrives through this one surface, and {@link build} seals them into a provider.
+ * Assembles a service provider: every genesis input — the lifetime model, every other addon, and
+ * any manifest content — arrives through this one surface, and {@link build} seals it into a
+ * provider. The builder holds one list; registrations are an addon like any other.
+ *
+ * @typeParam Lifetime - the lifetime vocabulary every addon on this builder must thread: `unknown`
+ * until the first input carrying a vocabulary locks it on, and fixed for the chain from there.
  */
-export interface ContainerBuilder<Lifetime> {
-  /** Composes registrations onto the manifest; delegates apply in call order, each receiving the previous one's result. */
-  configureServices(configure: Func<[Manifest<Lifetime>], Manifest<Lifetime>>): ContainerBuilder<Lifetime>;
+export interface Builder<Lifetime> {
+  /**
+   * Installs `addon`: {@link build} opens one installation of it, whose registrations file in call
+   * order and whose middleware composes into the same chain alongside every other installation's,
+   * at this call's position.
+   */
+  useAddon<Candidate>(
+    addon: Addon<Candidate> & Addon<unknown extends Lifetime ? Candidate : Lifetime> & (0 extends 1 & Candidate ? never : unknown),
+  ): Builder<unknown extends Lifetime ? Candidate : Lifetime>;
 
   /**
-   * Seeds the manifest from an existing registration stream, discarding anything configured before
-   * this call — the registration stream layers over the model floor, never replacing it.
-   * @param manifest - iteration order is registration order (newest first), exactly as a
-   * {@link Manifest} iterates.
+   * Installs the registrations `fn` composes onto an empty manifest, as an addon contributing no
+   * middleware of its own.
    */
-  usingManifest(manifest: Iterable<Registration<Lifetime>>): ContainerBuilder<Lifetime>;
-
-  /** Composes provider options; delegates apply in call order, each receiving the previous one's result. */
-  configureProvider(configure: Func<[ServiceProviderOptions], ServiceProviderOptions>): ContainerBuilder<Lifetime>;
+  withServices<Candidate>(
+    fn:
+      & Func<[Manifest<unknown extends Lifetime ? Candidate : Lifetime>], Iterable<Registration<unknown extends Lifetime ? Candidate : Lifetime>>>
+      & (0 extends 1 & Candidate ? never : unknown),
+  ): Builder<unknown extends Lifetime ? Candidate : Lifetime>;
 
   /** Seals the configured manifest into a provider. */
-  build(): IServiceProvider;
+  build(): IDisposableServiceProvider;
 }
 
-export class DefaultContainerBuilder<Lifetime> implements ContainerBuilder<Lifetime> {
-  readonly #lifetimeModel: LifetimeModel<Lifetime>;
-  readonly #manifestSteps: Iterable<Func<[Manifest<Lifetime>], Iterable<Registration<Lifetime>>>>;
-  readonly #optionSteps: Iterable<Func<[ServiceProviderOptions], ServiceProviderOptions>>;
+/** The addon `withServices` installs: the registrations `fn` composes, and no middleware of its own. */
+function servicesAddon<Lifetime>(fn: Func<[Manifest<Lifetime>], Iterable<Registration<Lifetime>>>): Addon<Lifetime> {
+  return {
+    create(): AddonInstallation<Lifetime> {
+      return { registrations: Manifest.build(fn), middleware: identityMiddleware };
+    },
+  };
+}
 
-  constructor(
-    lifetimeModel: LifetimeModel<Lifetime>,
-    manifestSteps: Iterable<Func<[Manifest<Lifetime>], Iterable<Registration<Lifetime>>>>,
-    optionSteps: Iterable<Func<[ServiceProviderOptions], ServiceProviderOptions>>,
-  ) {
-    this.#lifetimeModel = lifetimeModel;
-    this.#manifestSteps = manifestSteps;
-    this.#optionSteps = optionSteps;
+/**
+ * The one builder. The vocabulary is a compile-time thread the {@link Builder} interface carries;
+ * at runtime every addon folds into one manifest, so the class holds none and the openers hand it
+ * out under whichever vocabulary their caller locked on.
+ */
+class DefaultContext implements Builder<any> {
+  readonly #addons: Iterable<Addon<any>>;
+
+  constructor(addons: Iterable<Addon<any>> = []) {
+    this.#addons = addons;
   }
 
-  configureServices(configure: Func<[Manifest<Lifetime>], Iterable<Registration<Lifetime>>>): ContainerBuilder<Lifetime> {
-    return new DefaultContainerBuilder(
-      this.#lifetimeModel,
-      iterable(() => concat(this.#manifestSteps, configure)),
-      this.#optionSteps,
-    );
+  useAddon(addon: Addon<any>): Builder<any> {
+    return new DefaultContext(iterable(() => concat(this.#addons, addon)));
   }
 
-  usingManifest(manifest: Iterable<Registration<Lifetime>>): ContainerBuilder<Lifetime> {
-    return new DefaultContainerBuilder(
-      this.#lifetimeModel,
-      [floor => new DefaultManifest<Lifetime>(() => concat(manifest, floor))],
-      this.#optionSteps,
-    );
+  withServices(fn: Func<[Manifest<any>], Iterable<Registration<any>>>): Builder<any> {
+    return new DefaultContext(iterable(() => concat(this.#addons, servicesAddon(fn))));
   }
 
-  configureProvider(configure: Func<[ServiceProviderOptions], ServiceProviderOptions>): ContainerBuilder<Lifetime> {
-    return new DefaultContainerBuilder(
-      this.#lifetimeModel,
-      this.#manifestSteps,
-      iterable(() => concat(this.#optionSteps, configure)),
-    );
-  }
+  build(): IDisposableServiceProvider {
+    const installations = Array.from(this.#addons, addon => addon.create());
+    const engine = new Engine(installations.reduce((newer, installation) => concat(installation.registrations, newer), [] as Iterable<Registration<any>>));
+    // The engine composes exactly like any other middleware: it answers what its registrations
+    // can produce and hands anything unregistered on through `next`.
+    const engineMiddleware: Middleware = next => request => engine.getService(request, next);
 
-  build(): IServiceProvider {
-    const { realizer, scopeFactory } = this.#lifetimeModel.createRealizer();
-    const floor = scopeFactory ? Manifest.empty<Lifetime>().add(scopeFactory) : Manifest.empty<Lifetime>();
-    const manifest = Iterator.from(this.#manifestSteps).reduce((manifest, step) => new DefaultManifest(step(manifest)), floor);
-    const options = Iterator.from(this.#optionSteps).reduce((options, step) => step(options), ServiceProviderOptions.defaults);
-    return new ServiceProvider(realizer, manifest, options);
+    const head = installations
+      .map(installation => installation.middleware)
+      .concat(engineMiddleware)
+      .reduceRight(
+        (next, middleware) => middleware(next),
+        middlewareTermination,
+      );
+    return new ServiceProvider(head);
   }
 }
 
-/** The entry point: genesis starts by choosing the lifetime model. */
-export namespace di {
-  /** Opens a {@link ContainerBuilder} whose manifests and provider run on the given lifetime model. */
-  export function usingLifetimeModel<Lifetime>(lifetimeModel: LifetimeModel<Lifetime>): ContainerBuilder<Lifetime> {
-    return new DefaultContainerBuilder(lifetimeModel, [], []);
+/** The identity middleware: passes every request through unchanged. */
+const identityMiddleware: Middleware = next => next;
+
+/** The chain openers — services or the model may come first, and either fixes the vocabulary. */
+export namespace Builder {
+  export function useAddon<Lifetime>(addon: Addon<Lifetime> & (0 extends 1 & Lifetime ? never : unknown)): Builder<Lifetime> {
+    return new DefaultContext([addon]);
+  }
+
+  export function withServices<Lifetime>(
+    fn: Func<[Manifest<Lifetime>], Iterable<Registration<Lifetime>>> & (0 extends 1 & Lifetime ? never : unknown),
+  ): Builder<Lifetime> {
+    return new DefaultContext([servicesAddon(fn)]);
   }
 }
+
+const middlewareTermination: GetService = request => {
+  throw new UnsatisfiableError(request.address, 'nothing in the manifest produces it');
+};

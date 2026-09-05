@@ -11,7 +11,7 @@
 // private AbortController.
 
 import { AbortController, CancellationChangeToken, type IChangeToken } from '@rhombus-std/primitives';
-import type { Func } from '@rhombus-toolkit/func';
+import type { Func } from '@rhombus-toolkit/types';
 
 export class ConfigReloadToken implements IChangeToken {
   readonly #controller = new AbortController();

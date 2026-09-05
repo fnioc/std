@@ -120,6 +120,9 @@ export const level = typefor<Level>();
 export const clockCtor = typefor<typeof SystemClock>();
 export const abstractClockCtor = typefor<typeof AbstractClock>();
 export const clockFactory = typefor<typeof makeClock>();
+export const clockPair = typefor<[IClock, IAuditLog]>();
+export const ctorParams = typefor<ConstructorParameters<typeof SystemClock>>();
+export const config = typefor<{ readonly host: string; port: number }>();
 `;
 
 type Mode = 'hoisted' | 'inline' | 'default' | 'override';
@@ -308,8 +311,17 @@ describe('typefor emission modes', () => {
     // An `abstract class` constructor spells its own kind's factory, same shape.
     const abstractClock = nameOf('Type.imported("AbstractClock", "typefor-emit-app/private/app")');
     expect([...declared.values()]).toContain(`Type.abstractCtor(${abstractClock}, [[${log}]])`);
+
+    // A tuple's slots are members too, named in order. ConstructorParameters<>
+    // resolves to a concrete tuple before derivation sees it, so it interns as
+    // one alongside the tuple written out by hand.
+    expect([...declared.values()]).toContain(`Type.tuple(${clock}, ${log})`);
+    expect([...declared.values()]).toContain(`Type.tuple(${log})`);
     for (const spelling of declared.values()) {
-      if (spelling.startsWith('Type.ctor(') || spelling.startsWith('Type.abstractCtor(') || spelling.startsWith('Type.func(')) {
+      if (
+        spelling.startsWith('Type.ctor(') || spelling.startsWith('Type.abstractCtor(')
+        || spelling.startsWith('Type.func(') || spelling.startsWith('Type.tuple(')
+      ) {
         expect(spelling).not.toContain('Type.imported(');
         expect(spelling).not.toContain('Type.global(');
       }
@@ -328,6 +340,15 @@ describe('typefor emission modes', () => {
     // address must not shift with the union's membership.
     expect(app).toContain('Type.imported("Level", "typefor-emit-app/private/app")');
     expect(app).not.toContain('Type.union(');
+    expect(app).toContain(
+      'Type.tuple(Type.imported("IClock", "typefor-emit-app/private/app"), '
+        + 'Type.imported("IAuditLog", "typefor-emit-app/private/app"))',
+    );
+    // An anonymous record spells `Type.object`, its members keyed by name in
+    // declaration order.
+    expect(app).toContain(
+      'Type.object({ host: Type.global("string"), port: Type.global("number") })',
+    );
   });
 
   test.skipIf(!toolchainReady)('each mode materializes only the import it needs', () => {

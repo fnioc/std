@@ -18,11 +18,11 @@ Weigh every design decision against this split.
 
 - "Scope" names the PROVIDER-side runtime scope. No composition-side scope construct exists — the
   manifest is one flat registration space.
-- The SCOPE MODEL is the installed scope system. Public API naming uses `ScopeModel*`.
+- The SCOPE MODEL is the installed scope system. Public API naming uses `LifetimeModel*`.
 - Resolution phases: **plan time** (pure, memoized) → **hoist** (async pre-pass) → **gather** (the
   one await point) → **plug** (final sync walk). "Realize" names only an invocation of the sync
-  realize visitor — once per hoisted entry (on that site's inner subtree) plus once as the plug.
-  An async site is bound at hoist/gather and read at realize; awaits never live inside a realize
+  realize visitor — once per hoisted entry (on that plan node's inner subtree) plus once as the plug.
+  An async plan is bound at hoist/gather and read at realize; awaits never live inside a realize
   walk.
 
 ## The resolution surface
@@ -41,17 +41,17 @@ Weigh every design decision against this split.
 ## Async — plan layer
 
 - NO ASYNC KIND EXISTS IN THE TYPE GRAMMAR. "T delivered later" is spelled by the ordinary global
-  generic `Promise` node; AsyncIterable factors into async delivery (site) × iterable
+  generic `Promise` node; AsyncIterable factors into async delivery (plan node) × iterable
   resolution (grammar — `Type.iterable`/`Type.array` are the collection doors). Async is purely
-  SITE behavior: async resolution rules activate whenever an ancestor site is a promise
-  — the nearest enclosing promise site is the async boundary, and the awaiting happens
+  PLAN-NODE behavior: async resolution rules activate whenever an ancestor plan node is a promise
+  — the nearest enclosing promise plan is the async boundary, and the awaiting happens
   WITHIN that promise. A top-level `Promise` request is the root case of the same rule. The async
-  site recognizes two requested shapes: `Type.global('Promise', [X])` (X delivered later,
+  plan recognizes two requested shapes: `Type.global('Promise', [X])` (X delivered later,
   single) and `Type.global('AsyncIterable', [E])` (the E collection streamed per-item over the
   same iterable resolution the sync path uses).
-- An async site is a PLAN-NODE kind, never a Type; the generic kind stays exclusively the
+- An async plan is a PLAN-NODE kind, never a Type; the generic kind stays exclusively the
   match-walk capture hole — engine bookkeeping never enters the Type vocabulary.
-- THE PROMISE SITE: every site whose as-requested type is a promise is wrapped with a
+- THE PROMISE PLAN: every plan node whose as-requested type is a promise is wrapped with a
   `PromisePlan` — the async boundary node. Its realize is a transparent wrapping promise that
   awaits its collected deps then yields the requested value. The plan-construction visitor
   context carries a COLLECTION POINT: a minted `PromisePlan` threads a clean one; when its
@@ -68,20 +68,20 @@ Weigh every design decision against this split.
   async-registered → sync-wanting; the wrap adapts sync-registered → promise-wanting; a
   consumer's declared delivery mode is fully decoupled from the registration's actual mode.
 - AN `AsyncPlan`'s INNER IS ITSELF A BOUNDARY: its inner is the `Promise<T>` candidate's
-  site — promise-typed as-requested — so a new collection point opens beneath it
+  plan node — promise-typed as-requested — so a new collection point opens beneath it
   automatically. The two kinds differ only in delivery: `PromisePlan` hands over the promise
   UNAWAITED; `AsyncPlan` is awaited by its enclosing `PromisePlan`'s hoist and delivers
   the settled value. Consequence: LAYERS DO NOT EXIST within a `PromisePlan` — they are
-  nested `PromisePlan`s. A boundary's sites are mutually independent by construction, so no
+  nested `PromisePlan`s. A boundary's plan nodes are mutually independent by construction, so no
   dependency edges and no topological ordering exist: the boundary realizes first, builds one
-  entry per site (`realize(inner) → await`), gathers them with a flat `allSettled` inside its own
+  entry per plan node (`realize(inner) → await`), gathers them with a flat `allSettled` inside its own
   wrapping promise, writes settled values into the context-borne map, and the plug walk beneath
-  reads by site identity. Depth serializes through promise nesting; sibling entries and their
+  reads by node identity. Depth serializes through promise nesting; sibling entries and their
   nested gathers run concurrently.
 - Hoist links are HARD, identity-keyed: a per-resolution `Map<AsyncPlan, …>` — no string
   labels, no parallel namespace. The map is CONTEXT-BORNE and therefore per-resolution by nature:
   the boundary's realize mints a fresh map and threads it through the realize context — the same
-  channel that threads the scope model, delivered subtree-scoped. Keys are site nodes, never
+  channel that threads the scope model, delivered subtree-scoped. Keys are plan nodes, never
   promises. OCCURRENCE IDENTITY is the invariant: two occurrences of the same async dep are two
   distinct node objects; if plan subtrees are ever shared, the wrapper is minted fresh per
   inclusion point while its inner points at the shared subtree.
@@ -96,7 +96,7 @@ Weigh every design decision against this split.
   `UnsatisfiableError`, no async-specific taxonomy member. Plans are pure and cache-independent,
   so no cache state can make a sync plan exist for such a graph.
 - NEAR-MISS DIAGNOSTICS: the promise fallback LOOKUP is ungated — on a final miss it runs in both
-  modes, and only the consequence is mode-dependent: under a boundary a hit mints the async site;
+  modes, and only the consequence is mode-dependent: under a boundary a hit mints the async plan;
   outside one a hit throws the ordinary `UnsatisfiableError` carrying async-hint data ("a
   `Promise<T>` registration exists — did you mean an async request?"). The throw happens at the
   exact failing dependency. Pins: the hint is data on the existing error (no new taxonomy
@@ -127,7 +127,7 @@ Weigh every design decision against this split.
   membership level. Re-iteration mints a FRESH walk per `Symbol.iterator`/`Symbol.asyncIterator`
   call — never a one-shot iterator object; a stable snapshot is spelled `Array<T>`.
 - THE ELEMENT-UNIVERSE RULE (derived, not legislated): an aggregate SPREADS into one element-typed
-  member site per candidate, each planned individually by the ordinary visitor — membership is
+  member plan node per candidate, each planned individually by the ordinary visitor — membership is
   per-candidate slot planning under standard arms, nothing aggregate-specific. Consequences: a
   promise-headed element (`Promise<T>[]`, `Iterable<Promise<T>>`) admits both `Promise<T>`
   registrations (exact) and sync `T` registrations (the wrap — sync-honest, so the whole spelling
@@ -138,7 +138,7 @@ Weigh every design decision against this split.
   on zero). The key behavioral pair: `AsyncIterable<T>` resolves services added via
   `add<Promise<T>>()`; sync `Iterable<T>` cannot (its steps run at user iteration time, no await
   structurally available).
-- THE ASYNCITERABLE ARM: the fallback plans element sites per the element-universe rule, each
+- THE ASYNCITERABLE ARM: the fallback plans element nodes per the element-universe rule, each
   element subtree under its own clean collection — PER-ELEMENT inventories. Realize is an async
   generator: each `next()` runs that element's flat gather, plugs the element, yields —
   pull-based and lazy (elements never iterated never resolve; no prefetch); an empty element set
@@ -150,7 +150,7 @@ Weigh every design decision against this split.
 
 ## Latebound
 
-- A latebound closure captures the SCOPE MODEL in effect at its mint site and re-enters against
+- A latebound closure captures the SCOPE MODEL in effect at its minting plan node and re-enters against
   it — captured-scope semantics by construction, since the scope model is the context. A model
   wanting reset-to-root or ambient binding controls what it forwards to latebound factories. The
   engine keeps only what is uniform: the re-entry path follows the declared return type (a
@@ -161,8 +161,8 @@ Weigh every design decision against this split.
 ## The scope model contract
 
 - THE WHOLE PICTURE: the scope system is ONE CALLABLE riding the visitor context. At each
-  site visit the engine calls it — `(site identity, address AS-REQUESTED,
-  Registration | absent for engine-synthesized sites, factory)` — and it returns the
+  plan-node visit the engine calls it — `(node identity, address AS-REQUESTED,
+  Registration | absent for engine-synthesized plan nodes, factory)` — and it returns the
   instance/value. Hit-vs-make is INTERNAL: the engine always receives the value it uses, and a
   hit prunes the subtree simply because the factory was never invoked. The scope model also
   supplies the (possibly different) scope model governing ALL DESCENDANT visits — delivered with
@@ -176,19 +176,19 @@ Weigh every design decision against this split.
   The PLAN memo keys on the interned request node alone — multi-registrations are disambiguated
   inside plan trees at construction, never by the plan key. How a scope model keys its instance
   storage is its own business.
-- ENGINE GUARANTEES: one call per LIVE site; deterministic pre-order; site identity in the call;
+- ENGINE GUARANTEES: one call per LIVE plan node; deterministic pre-order; node identity in the call;
   faithful subtree-scoped delivery of the descendant scope model — per-subtree, by argument
-  through the recursive walk, never global. The only thing foreclosed is observing sites pruned
+  through the recursive walk, never global. The only thing foreclosed is observing plan nodes pruned
   by an ancestor hit — inherent to caching.
-- VALUE SITES BYPASS THE SCOPE MODEL ENTIRELY: a value registration presents no make, and makes are
+- VALUE PLAN NODES BYPASS THE SCOPE MODEL ENTIRELY: a value registration presents no make, and makes are
   the scope model's whole jurisdiction — `asValue` registrations, latebound call args, and
   invocation-frame args are never asked, stored, tracked, or disposed by any scope model; realize
   reads the payload straight from the registration, and ownership stays with whoever supplied the
-  value. REGISTRATION-LESS engine-synthesized sites (invocation frames, construct-on-miss) are
+  value. REGISTRATION-LESS engine-synthesized plan nodes (invocation frames, construct-on-miss) are
   likewise outside the datum domain — the engine controls their per-call freshness directly,
   under every model; their results are caller-owned.
 - Because the scope model performs every make, it OBSERVES every instance by construction; only
-  the bypassed sites above fall outside its view, and those are caller-owned.
+  the bypassed plan nodes above fall outside its view, and those are caller-owned.
 
 ## Lifetime data
 
@@ -282,7 +282,7 @@ Weigh every design decision against this split.
 - The scope model has every tool the hard cases need — it observes every make, owns the settle
   path of every promise it built, owns its own disposal members, and holds the release vocabulary
   in every call. A value settling after dispose, construct-on-miss disposables (caller-owned by
-  the value-site rule), root-transient tracking, and a throwing model's unwind are all
+  the value plan-node rule), root-transient tracking, and a throwing model's unwind are all
   implementable model policy; none is contract.
 - Design checklist for the default model's disposal lane: per-registration disposer; teardown in
   reverse dependency order including on partial-init failure; release seeing the outcome for
@@ -292,12 +292,13 @@ Weigh every design decision against this split.
 
 - The ENGINE's structural guarantee is exactly one thing: faithful subtree delivery of whatever
   context the scope model forwarded. Under the DEFAULT model's forwarding policy (a singleton
-  site forwards root), the classic stale-capture harm cannot occur — a singleton's dependencies
+  plan node forwards root), the classic stale-capture harm cannot occur — a singleton's dependencies
   never come from a shorter-lived scope. An arbitrary model forwards whatever it chooses and OWNS
   its resulting captivity story; only it knows what its keys mean, so only it can define a
-  violation — any captive lint is therefore necessarily model-shipped and
-  composition-root-invoked with the manifest the root already holds. The model never receives the
-  manifest; its job stays resolution-time. No such lint is planned or ordered.
+  violation — the model therefore EXPORTS that meaning as a policy object (`LifetimePolicy`), and
+  the captive guard ships as a separately-installable validation addon consuming it: a runtime
+  hook entry threading lifetime marks down the walk, plus a build-time sweep over plan view
+  nodes. The model never receives the manifest; its job stays resolution-time.
 
 ## Engine hardening
 
@@ -306,7 +307,7 @@ Weigh every design decision against this split.
 - A disposed latch on the engine-minted root provider — resolution after root disposal fails
   loudly at the engine door.
 - An attribution wrap around scope-model calls: a throw mid-resolution surfaces as
-  `ScopeModelError` naming the failing site, cause inside.
+  `LifetimeModelError` naming the failing plan node, cause inside.
 
 ## Concurrency
 
@@ -316,10 +317,11 @@ Weigh every design decision against this split.
   promise; run-to-completion makes the check-and-insert atomic; the model owns the settle path
   for store/evict-on-reject. Engine-side coherence: the second walk's subtree never runs
   (in-flight generalizes hit-pruning), and a shared rejection lands in each walk's own deduped
-  `AggregateError`. Scope attribution and ambience are likewise model-implementable
-  (retrospective via a model-kept `WeakMap<instance, box>` behind a registered inspector service;
-  mid-construction via the model wrapping its own factory invocations in its own ambient frame —
-  the model, not the engine, invokes factories). No engine involvement in any of it.
+  `AggregateError`. Scope attribution is likewise model-implementable retrospectively (a
+  model-kept `WeakMap<instance, box>` behind a registered inspector service). Mid-construction
+  ambience is OPEN: the engine, not the model, invokes factories, so a `currentScope()` visible
+  inside a constructor requires an engine-provided seam if it is ever wanted — an owner call,
+  currently unmade.
 
 ## Coverage and extensibility
 
@@ -332,13 +334,16 @@ Weigh every design decision against this split.
   mutation (activation-pipeline, not lifetime; factory territory here), and per-scope
   registrations (`BeginLifetimeScope(builder =>)`) — per-scope context is model/userland
   territory (the scoped-holder pattern serves the use case).
-- NO middleware/interception chain, in the engine or the scope system. Every surveyed middleware
-  use-case decomposes into: factories, plan-time composition, registration data, the scope-model
-  call, or a read-only observer seam. Purpose-built seams ship on NAMED demand.
+- Resolution IS a chain: build-composed middleware links (`wrapResolve`, model innermost) plus
+  the named-event hook roster around construction and resolution — those two are the
+  purpose-built seams, and every surveyed middleware use-case lands on one of them (or on
+  factories, plan-time composition, registration data). Seams beyond them still ship only on
+  NAMED demand.
 - Joints vs surfaces discipline: architectural joints are reserved before freeze; additive
   surfaces ship on demand. The named extension points the coverage verdict is conditional on: the
-  scope-model call; manifest-as-data + registration verbs; latebound re-entry; construct-on-miss;
-  open (`$T`) registrations; the augmentation registry; the disposal vocabulary.
+  hook-event roster; the chain-addon seam; manifest-as-data + registration verbs; latebound
+  re-entry; construct-on-miss; open (`$T`) registrations; the augmentation registry; the disposal
+  vocabulary.
 
 ## Invocation coupling
 
@@ -360,10 +365,10 @@ client:
 Replace value-registration layering for latebound call args with PLAN-TIME ARG BINDING: when
 planning the latebound subtree, every slot checks the `Func` type's args row FIRST (preserving
 args-outrank-the-manifest, statically); a match compiles to an `ArgPlan(index)` — a
-value-site kind, structurally outside the scope model. At call time the closure realizes its plan
+value plan-node kind, structurally outside the scope model. At call time the closure realizes its plan
 with the caller's values riding the realize context (`ctx.args[index]`). The plan lives in the
 PROVIDER's plan memo keyed on the interned `Func` type (pure function of manifest + type; the
-return type alone sets the re-entry root), shared across all latebound sites and ad-hoc requests
+return type alone sets the re-entry root), shared across all latebound plan nodes and ad-hoc requests
 of the same type; population stays LAZY at first call (the cycle-breaking deferral). Semantics
 unchanged: type-keyed binding, args beat registrations, one value serves same-typed slots.
 `additionalRegistrations` then has one consumer: invocation frames. Not part of the current lane —
@@ -396,10 +401,10 @@ contract above is complete without it.
   with no implicit meaning, scope lifetime bound to the holding variable via the `using`
   protocol) is a sibling candidate model; root-pinning and ask-scope caching are its own
   interpretation choices.
-- **Instance cache key**: `(site's as-requested type, answering registration)` — the registration
+- **Instance cache key**: `(plan node's as-requested type, answering registration)` — the registration
   half makes the unit of "single" the registration-within-a-scope, letting resolve-one and
   resolve-all share storage while same-type multi-registrations stay distinct; identity, not
-  ordinals. Registration-less synthesized sites never cache — no registration, no datum, nothing to
+  ordinals. Registration-less synthesized plan nodes never cache — no registration, no datum, nothing to
   instruct caching.
 - **Adopt-or-store write-back**: re-check the cache after promise resolution — atomic because the
   post-await re-check-and-store runs synchronously in one continuation. First store wins; a
@@ -420,11 +425,13 @@ contract above is complete without it.
   is per-registration, so userland single-flight is wrong there; a construction-economy answer arm
   remains an additive contract extension if a model ever names the demand.
 - **Attribution / ambience patterns**: retrospective instance→scope via `WeakMap` behind a
-  registered inspector service; mid-construction `currentScope()` via the model wrapping its own
-  factory invocations in its own `AsyncLocalStorage` frame (`run`, never `enterWith`).
-- **Captive intent lint** (placement-if-ever; none planned): a model with ordered lifetime
-  vocabulary can ship `validate(manifest)` walking registrations (types, args rows, datums) with
-  its own ordering, invoked by the composition root.
+  registered inspector service. Mid-construction `currentScope()` is unresolved — factories are
+  engine-invoked, so it requires an engine-provided seam (which would run the invocation inside a
+  model-configured `AsyncLocalStorage` frame — `run`, never `enterWith`) if it is ever wanted;
+  owner call, currently unmade.
+- **Captive lint**: ships as the validation addon — a chain addon consuming the model's exported
+  `LifetimePolicy`, composition-root-installed; a runtime guard hook entry plus a build-time
+  plan sweep.
 - **Web Locks note**: `navigator.locks` (Node ≥22.5; absent in Bun) is the wrong tool for
   in-agent dedup (async grant latency, string names, serialize-then-recheck); its niche is
   cross-agent external-effect exclusion INSIDE user factories.

@@ -14,14 +14,14 @@ const SAFE = /[A-Za-z0-9_$@/.-]/;
 const PLAIN = /^[A-Za-z_$@][A-Za-z0-9_$@/.-]*$/;
 
 /** The unqualified spellings that name a literal value rather than a type. */
-export const KEYWORD_LITERALS: ReadonlyMap<string, LiteralValue> = new Map<string, LiteralValue>([
-  ['Infinity', Infinity],
-  ['NaN', NaN],
-  ['false', false],
-  ['null', null],
-  ['true', true],
-  ['undefined', undefined],
-]);
+export const KEYWORD_LITERALS: Readonly<Record<string, LiteralValue>> = {
+  Infinity: Infinity,
+  NaN: NaN,
+  false: false,
+  null: null,
+  true: true,
+  undefined: undefined,
+};
 
 /** The qualifier naming the ambient scope: the one source an import can never be written against. */
 export const GLOBAL_QUALIFIER = 'global';
@@ -54,7 +54,7 @@ export const SERVICE_PROVIDER_FROM = '@rhombus-std/di.core';
  * (`app:Func`) already disambiguates, so only an unqualified name consults this set.
  */
 export const RESERVED_NAMES: ReadonlySet<string> = new Set([
-  ...KEYWORD_LITERALS.keys(),
+  ...Object.keys(KEYWORD_LITERALS),
   ...Object.keys(LIST_KINDS),
   'Ctor',
   'Func',

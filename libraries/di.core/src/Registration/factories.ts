@@ -1,6 +1,6 @@
 import { Type } from '@rhombus-std/primitives';
 import type { ConstructorType, FunctionType } from '@rhombus-std/primitives';
-import type { Ctor, Func } from '@rhombus-toolkit/func';
+import type { Ctor, Func } from '@rhombus-toolkit/types';
 import type { CtorRegistration, FactoryRegistration, ValueRegistration } from './Registration';
 
 /**
@@ -31,7 +31,7 @@ export function factory(address: Type, implementer: Func, factoryType: FunctionT
 export function value(address: Type, implementer: unknown): ValueRegistration {
   if (Type.isOpen(address) && !isCallable(address)) {
     throw new TypeError(
-      `${Type.stringify(address)} still holds a generic hole — one value cannot stand for every closing; only a callable can`,
+      `${address} still holds a generic hole — one value cannot stand for every closing; only a callable can`,
     );
   }
   return { address, value: implementer };

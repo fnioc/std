@@ -26,7 +26,7 @@ export const LoggerProviderOptions = {
    * the `TOptions` type: a provider-bound configure step and change-token
    * source for `optionsType`'s pipeline slots, on the narrowest lifetime
    * vocabulary they use. A consumer merges this in
-   * (`services.addMany(LoggerProviderOptions.getProviderOptionsManifest(…))`).
+   * (`services.add(LoggerProviderOptions.getProviderOptionsManifest(…))`).
    * Requires the provider-configuration services (the no-arg `addConfig`) and
    * a prior `addOptions(optionsType, …)` for the type.
    *

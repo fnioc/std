@@ -34,11 +34,11 @@ export {};
 // overload sharing the sugar face's counts — must be left alone: ownership keeps
 // it out of the inline plan, and the call emerges untouched with no diagnostic.
 func TestUnrelatedOverloadIsNotClaimed(t *testing.T) {
-	inlineBody := `import { tokenfor } from '@rhombus-std/primitives.extras';
+	inlineBody := `import { typefor } from '@rhombus-std/primitives.extras';
 import type { IQuery } from '@scope/core';
 export namespace QueryInline {
   export function isService<T>(this: IQuery, extra: number): boolean {
-    return this.isService(tokenfor<T>(), extra);
+    return this.isService(typefor<T>(), extra);
   }
 }
 `
@@ -71,11 +71,11 @@ export const bad = provider.isService('x');
 // call's arguments past the named parameters splice in as a group, so the
 // emitted call is the one a hand author writes.
 func TestRestShapedImplementationBlanketsTheFace(t *testing.T) {
-	inlineBody := `import { tokenfor } from '@rhombus-std/primitives.extras';
+	inlineBody := `import { typefor } from '@rhombus-std/primitives.extras';
 import type { IQuery } from '@scope/core';
 export namespace QueryInline {
   export function isService<T>(this: IQuery, ...rest: any[]): boolean {
-    return this.isService(tokenfor<T>(), ...rest);
+    return this.isService(typefor<T>(), ...rest);
   }
 }
 `
@@ -100,7 +100,7 @@ export const ok = provider.isService<Foo>(5);
 	if strings.Contains(out, "isService<") {
 		t.Errorf("sugar form isService<> survived:\n%s", out)
 	}
-	if !strings.Contains(out, "provider.isService(tokenfor(), 5)") && !strings.Contains(out, ", 5)") {
+	if !strings.Contains(out, "provider.isService(typefor(), 5)") && !strings.Contains(out, ", 5)") {
 		t.Errorf("expected the rest group spliced after the token argument:\n%s", out)
 	}
 	if shape := artifacts.SugarMembers["isService"]; len(shape) != 1 || !shape[0].Unbounded {

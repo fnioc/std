@@ -3,10 +3,10 @@
 // or synthesis a whole-type miss falls back to.
 
 import { CycleError, Manifest, Registration } from '@rhombus-std/di.core';
-import { Plan } from '@rhombus-std/di/private/internal/Plan/Plan';
+import { type AsyncPlan, Plan, type PromisePlan, type RegisteredCtorPlan } from '@rhombus-std/di/private/internal/Plan/Plan';
 import { PlannerVisitor } from '@rhombus-std/di/private/internal/Plan/PlannerVisitor';
 import { Registry } from '@rhombus-std/di/private/internal/Registry';
-import { Type } from '@rhombus-std/primitives';
+import { type ConstructorType, Type } from '@rhombus-std/primitives';
 import { describe, expect, test } from 'bun:test';
 
 const CONN = Type.imported('Conn', 'app');
@@ -98,6 +98,39 @@ describe('signature selection', () => {
   });
 });
 
+describe('a rest signature', () => {
+  test('an all-rest row lowers the whole argument list as one list plan', () => {
+    const connRegistration = Registration.ctor(CONN, Conn, Type.ctor(CONN, [[]]));
+    const widgetRegistration = Registration.ctor(WIDGET, Widget, Type.ctor(WIDGET, Type.array(CONN)));
+    const manifest = Manifest.empty<unknown>().add(connRegistration).add(widgetRegistration);
+    expect(visitorFor(manifest).visit(WIDGET)).toEqual(
+      Plan.registeredCtor({
+        ctor: Widget,
+        args: [],
+        rest: Plan.array([Plan.registeredCtor(Conn, [], CONN, connRegistration)]),
+        populatedAddress: WIDGET,
+        registration: widgetRegistration,
+      }),
+    );
+  });
+
+  test('a required prefix plus a trailing rest lowers the prefix per slot and the open length as its list', () => {
+    const connRegistration = Registration.ctor(CONN, Conn, Type.ctor(CONN, [[]]));
+    const crateRegistration = Registration.ctor(FOO, Crate, Type.ctor(FOO, Type.tuple({ members: [CONN], rest: CONN })));
+    const manifest = Manifest.empty<unknown>().add(connRegistration).add(crateRegistration);
+    const connPlan = Plan.registeredCtor(Conn, [], CONN, connRegistration);
+    expect(visitorFor(manifest).visit(FOO)).toEqual(
+      Plan.registeredCtor({
+        ctor: Crate,
+        args: [connPlan],
+        rest: Plan.array([connPlan]),
+        populatedAddress: FOO,
+        registration: crateRegistration,
+      }),
+    );
+  });
+});
+
 describe('a bare generic-hole parameter', () => {
   test('receives the closing type as a ConstantPlan', () => {
     const registration = Registration.ctor(box(T), Box, Type.ctor(box(T), [[T]]));
@@ -155,19 +188,8 @@ describe('tagged types', () => {
   });
 });
 
-describe('the service provider', () => {
-  test('IServiceProvider resolves under its declaring-module address, with no registration', () => {
-    const visitor = visitorFor(Manifest.empty<unknown>());
-    expect(visitor.visit(Type.imported('IServiceProvider', '@rhombus-std/di.core'))).toEqual(
-      Plan.serviceProvider(),
-    );
-  });
-
-  test('a same-named import from an unrecognized module is not the provider', () => {
-    const visitor = visitorFor(Manifest.empty<unknown>());
-    expect(visitor.visit(Type.imported('IServiceProvider', 'somewhere-else'))).toBeUndefined();
-  });
-});
+// IServiceProvider carries no special case here: it resolves through an ordinary factory
+// registration the engine seeds, whose slot names the request in flight.
 
 describe('a function type standing for a late-bound call', () => {
   test('lowers to a LateBoundPlan naming the return type and argument signatures', () => {
@@ -310,24 +332,134 @@ describe('a union dependency', () => {
     expect(plan?.kind === 'factory' && plan.factory('bar-value', 'foo-value')).toEqual(['bar-value', 'foo-value']);
   });
 
-  // A union tries each member registration-then-synthesis in ONE PASS, in canonical order — it
-  // does not run a registration phase across every member ahead of a synthesis phase. So when
-  // the earlier-ordered member ([app:Bar, app:Foo]) synthesizes on its own, that answers the
-  // union outright; a later member's own registration ([app:Foo, app:Bar], here) never gets a
-  // turn. This test asserted the two-phase reading the design does not have.
-  test.skip("a member registration outranks another member's synthesis, whatever the member order", () => {});
+  test("an earlier member's synthesis answers before a later member's own registration gets a turn", () => {
+    // A union tries each member registration-then-synthesis in ONE PASS, in canonical order — it
+    // does not run a registration phase across every member ahead of a synthesis phase. So when
+    // [app:Bar, app:Foo] synthesizes on its own, that answers the union outright, and the
+    // registration for [app:Foo, app:Bar] is never consulted.
+    const manifest = Manifest.empty<unknown>()
+      .add(Registration.value(FOO, 'foo-value'))
+      .add(Registration.value(BAR, 'bar-value'))
+      .add(Registration.value(Type.tuple(FOO, BAR), 'registered-pair'));
+    const union = Type.union(Type.tuple(FOO, BAR), Type.tuple(BAR, FOO));
+    const plan = visitorFor(manifest).visit(union);
+    expect(plan?.kind).toBe('factory');
+    expect(plan?.kind === 'factory' && plan.factory('bar-value', 'foo-value')).toEqual(['bar-value', 'foo-value']);
+  });
+});
+
+describe('a promise boundary', () => {
+  const OUTER = Type.imported('Outer', 'app');
+  const INNER = Type.imported('Inner', 'app');
+  const DEEP = Type.imported('Deep', 'app');
+
+  class Outer {
+    constructor(readonly inner: unknown) {}
+  }
+
+  test('an async dependency hoists itself onto the enclosing boundary and is the same node the tree reads', () => {
+    // Outer wants the settled Inner, which only Promise<Inner> produces: an await hoisted onto the
+    // Promise<Outer> boundary.
+    const outerRegistration = Registration.ctor(OUTER, Outer, Type.ctor(OUTER, [[INNER]]));
+    const innerRegistration = Registration.value(Type.promise(INNER), Promise.resolve('inner'));
+    const manifest = Manifest.empty<unknown>().add(outerRegistration).add(innerRegistration);
+
+    const plan = visitorFor(manifest).visit(Type.promise(OUTER)) as PromisePlan;
+    expect(plan.kind).toBe('promise');
+    expect(plan.descendants).toHaveLength(1);
+
+    const hoisted = plan.descendants[0]!;
+    expect(hoisted.kind).toBe('async');
+    expect(hoisted.address).toBe(INNER);
+    // The hoisted node and the one Outer's constructor reads are one object, so the settled value
+    // written for it is the value the constructor sees.
+    expect((plan.inner as RegisteredCtorPlan).args[0]).toBe(hoisted);
+  });
+
+  test('a promise dependency is handed over as its own node, never hoisted onto the boundary', () => {
+    // Outer wants Promise<Inner> as it stands, so it is a nested boundary the constructor holds, not
+    // an await the enclosing boundary settles.
+    const outerRegistration = Registration.ctor(OUTER, Outer, Type.ctor(OUTER, [[Type.promise(INNER)]]));
+    const innerRegistration = Registration.value(Type.promise(INNER), Promise.resolve('inner'));
+    const manifest = Manifest.empty<unknown>().add(outerRegistration).add(innerRegistration);
+
+    const plan = visitorFor(manifest).visit(Type.promise(OUTER)) as PromisePlan;
+    expect(plan.kind).toBe('promise');
+    expect(plan.descendants).toHaveLength(0);
+    expect((plan.inner as RegisteredCtorPlan).args[0]!.kind).toBe('promise');
+  });
+
+  test('an async node settles its own descendants: an await beneath one collects onto it, not the boundary above', () => {
+    // Promise<Inner> is a factory needing the settled Deep, which only Promise<Deep> produces — a
+    // second await, nested inside the Inner await rather than beside it on the Outer boundary.
+    const outerRegistration = Registration.ctor(OUTER, Outer, Type.ctor(OUTER, [[INNER]]));
+    const innerRegistration = Registration.factory(Type.promise(INNER), (deep: unknown) => Promise.resolve(deep), Type.func(Type.promise(INNER), [[DEEP]]));
+    const deepRegistration = Registration.value(Type.promise(DEEP), Promise.resolve('deep'));
+    const manifest = Manifest.empty<unknown>().add(outerRegistration).add(innerRegistration).add(deepRegistration);
+
+    const plan = visitorFor(manifest).visit(Type.promise(OUTER)) as PromisePlan;
+    expect(plan.descendants).toHaveLength(1);
+    const inner = plan.descendants[0] as AsyncPlan;
+    expect(inner.address).toBe(INNER);
+    expect(inner.descendants).toHaveLength(1);
+    expect(inner.descendants[0]!.address).toBe(DEEP);
+  });
 });
 
 describe('the cycle guard', () => {
-  test('throws CycleError naming the path back to the repeat', () => {
+  // A slot naming its own registration's address is not a cycle: it resolves beneath, against
+  // only what that registration shadows, and with nothing older it is simply unsatisfiable.
+  test('a self-named slot with nothing beneath it is unsatisfiable, not a cycle', () => {
     const manifest = Manifest.empty<unknown>().add(Registration.ctor(LOOP, Loop, Type.ctor(LOOP, [[LOOP]])));
-    try {
-      visitorFor(manifest).visit(LOOP);
-      throw new Error('expected a CycleError');
-    } catch (error) {
-      expect(error).toBeInstanceOf(CycleError);
-      expect((error as CycleError).chain).toEqual([LOOP, LOOP]);
+    expect(visitorFor(manifest).visit(LOOP)).toBeUndefined();
+  });
+
+  test('a self address inside a union slot resolves beneath', () => {
+    const manifest = Manifest.empty<unknown>()
+      .add(Registration.value(LOOP, 'older'))
+      .add(Registration.ctor(LOOP, Loop, Type.ctor(LOOP, [[Type.union(LOOP, Type.typeLiteral(undefined))]])));
+    const plan = visitorFor(manifest).visit(LOOP) as RegisteredCtorPlan;
+    expect(plan.kind).toBe('registered-ctor');
+    expect(plan.args[0]).toEqual(Plan.constant('older'));
+  });
+
+  test('a self address inside a union slot falls through to undefined when nothing older exists', () => {
+    const manifest = Manifest.empty<unknown>().add(Registration.ctor(LOOP, Loop, Type.ctor(LOOP, [[Type.union(LOOP, Type.typeLiteral(undefined))]])));
+    const plan = visitorFor(manifest).visit(LOOP) as RegisteredCtorPlan;
+    expect(plan.kind).toBe('registered-ctor');
+    expect(plan.args[0]).toEqual(Plan.constant(undefined));
+  });
+
+  test('a self address inside a tuple slot resolves beneath', () => {
+    const manifest = Manifest.empty<unknown>()
+      .add(Registration.value(LOOP, 'older'))
+      .add(Registration.value(BAR, 'bar'))
+      .add(Registration.ctor(LOOP, Loop, Type.ctor(LOOP, [[Type.tuple(LOOP, BAR)]])));
+    const plan = visitorFor(manifest).visit(LOOP) as RegisteredCtorPlan;
+    const pair = plan.args[0]!;
+    expect(pair.kind).toBe('factory');
+    expect(pair.kind === 'factory' && pair.args).toEqual([Plan.constant('older'), Plan.constant('bar')]);
+  });
+
+  test('a decorator chain resolves each beneath itself', () => {
+    const manifest = Manifest.empty<unknown>()
+      .add(Registration.value(LOOP, 'base'))
+      .add(Registration.ctor(LOOP, Loop, Type.ctor(LOOP, [[LOOP]])))
+      .add(Registration.ctor(LOOP, Loop, Type.ctor(LOOP, [[LOOP]])));
+    const outer = visitorFor(manifest).visit(LOOP) as RegisteredCtorPlan;
+    const middle = outer.args[0] as RegisteredCtorPlan;
+    expect(middle.kind).toBe('registered-ctor');
+    expect(middle.args[0]).toEqual(Plan.constant('base'));
+  });
+
+  test('an indirect loop through another registered node still throws', () => {
+    class Bar {
+      constructor(readonly loop: unknown) {}
     }
+    const manifest = Manifest.empty<unknown>()
+      .add(Registration.ctor(LOOP, Loop, Type.ctor(LOOP, [[BAR]])))
+      .add(Registration.ctor(BAR, Bar, Type.ctor(BAR, [[LOOP]])));
+    expect(() => visitorFor(manifest).visit(LOOP)).toThrow(CycleError);
   });
 
   test('a longer loop names every type on the path', () => {
@@ -355,5 +487,19 @@ describe('the cycle guard', () => {
 describe('an unanswered address', () => {
   test('returns undefined rather than throwing', () => {
     expect(visitorFor(Manifest.empty<unknown>()).visit(FOO)).toBeUndefined();
+  });
+});
+
+describe('a malformed signature row', () => {
+  test('is refused at planning, never spread as arguments', () => {
+    // Forged past the factories, the way no interned node can be built: the registration's
+    // ctor node claims a bare named type as its whole signatures slot.
+    const forged = {
+      kind: 'ctor',
+      instance: CONN,
+      signatures: Type.global('string'),
+    } as unknown as ConstructorType;
+    const manifest = Manifest.empty<unknown>().add(Registration.ctor(CONN, Conn, forged));
+    expect(() => visitorFor(manifest).visit(CONN)).toThrow(/a global row reached planning unvalidated/);
   });
 });

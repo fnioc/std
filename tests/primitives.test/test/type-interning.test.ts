@@ -42,6 +42,24 @@ describe('one object per type', () => {
     expect(forged).not.toBe(A);
     expect(Type.tuple(forged)).toBe(Type.tuple(A));
   });
+
+  test("a tuple's rest slot is part of its identity", () => {
+    const rest = Type.tuple({ members: [A], rest: B });
+    expect(rest).not.toBe(Type.tuple(A, B));
+    expect(rest).not.toBe(Type.tuple(A));
+    expect(Type.tuple({ members: [A], rest: B })).toBe(rest);
+  });
+
+  test('a tuple that is nothing but a rest collapses to the list itself', () => {
+    expect(Type.tuple({ members: [], rest: B })).toBe(Type.array(B));
+    expect(Type.adopt({ kind: 'tuple', members: [], rest: B })).toBe(Type.array(B));
+  });
+
+  test('the empty tuple stays a tuple — no rest, nothing to collapse into', () => {
+    const empty = Type.tuple({ members: [], rest: undefined });
+    expect(empty.kind).toBe('tuple');
+    expect(empty).toBe(Type.tuple());
+  });
 });
 
 describe('canonical form', () => {
@@ -118,13 +136,13 @@ describe('interned nodes are sealed', () => {
 describe('substitution', () => {
   test('a substitution that changes nothing returns the same object', () => {
     const open = Type.imported('Box', 'app', [Type.generic('T')]);
-    expect(Type.substitute(open, new Map())).toBe(open);
-    expect(Type.substitute(open, new Map([['U', A]]))).toBe(open);
+    expect(Type.substitute(open, {})).toBe(open);
+    expect(Type.substitute(open, { U: A })).toBe(open);
   });
 
   test('a closed type is the one the factory would have built', () => {
     const open = Type.imported('Box', 'app', [Type.generic('T')]);
-    expect(Type.substitute(open, new Map([['T', A]]))).toBe(Type.imported('Box', 'app', [A]));
+    expect(Type.substitute(open, { T: A })).toBe(Type.imported('Box', 'app', [A]));
   });
 });
 
@@ -207,7 +225,7 @@ describe('Type.adopt', () => {
   });
 
   test('the kind written decides the node handed back, so its own members read without a cast', () => {
-    const adopted = Type.adopt({ kind: 'ctor', instance: A, signatures: [[B]] });
+    const adopted = Type.adopt({ kind: 'ctor', instance: A, signatures: Type.tuple(B) });
     expect(adopted.instance).toBe(A);
     expect(adopted).toBe(Type.ctor(A, [[B]]));
   });
@@ -223,18 +241,53 @@ describe('Type.adopt', () => {
   test('an already-interned node adopts to itself', () => {
     expect(Type.adopt(A)).toBe(A);
   });
+
+  test("a tree revived from JSON adopts, though serialization drops a fixed tuple's absent rest", () => {
+    expect(Type.adopt(JSON.parse(JSON.stringify(Type.tuple(A))))).toBe(Type.tuple(A));
+    expect(Type.adopt(JSON.parse(JSON.stringify(Type.func(A, [[A, B]]))))).toBe(Type.func(A, [[A, B]]));
+  });
 });
 
 describe('a callable factory takes its parameter signatures whole', () => {
   test('the positional form spells every signature', () => {
     expect(Type.stringify(Type.ctor(A, [[B]]))).toBe('new (app:B) => app:A');
     expect(Type.stringify(Type.ctor(A, [[]]))).toBe('new () => app:A');
-    expect(Type.stringify(Type.func(A, [[B], []]))).toBe('(app:B; ) => app:A');
+    // An overload set stores its rows canonically, shorter first, and spells in that order.
+    expect(Type.stringify(Type.func(A, [[B], []]))).toBe('(; app:B) => app:A');
   });
 
   test("the object form names the node's own fields, and lands on the same node", () => {
     expect(Type.ctor({ instance: A, signatures: [[B]] })).toBe(Type.ctor(A, [[B]]));
     expect(Type.func({ return: A, signatures: [[B]] })).toBe(Type.func(A, [[B]]));
+  });
+
+  test('an empty rows array is refused — a callable answers to at least one call', () => {
+    expect(() => Type.func(A, [])).toThrow(/at least one/);
+  });
+});
+
+describe('every door into a signatures slot runs the row check', () => {
+  test('a pre-built union slot with a non-row member is refused', () => {
+    const slot = Type.union(Type.tuple(A), B);
+    if (slot.kind !== 'union') {
+      throw new Error('the probe union collapsed');
+    }
+    expect(() => Type.ctor(A, slot)).toThrow(/a signature row is a tuple or a list — got app:B/);
+    expect(() => Type.abstractCtor(A, slot)).toThrow(/a signature row is a tuple or a list — got app:B/);
+    expect(() => Type.func(A, slot)).toThrow(/a signature row is a tuple or a list — got app:B/);
+  });
+
+  test('a pre-built slot that is no row at all is refused', () => {
+    expect(() => Type.func(A, B as never)).toThrow(/a signature row is a tuple or a list — got app:B/);
+  });
+
+  test('a revived tree with a malformed signatures slot is refused', () => {
+    const revived = {
+      kind: 'func',
+      return: { kind: 'imported', name: 'A', from: 'app', genericArgs: [] },
+      signatures: { kind: 'global', name: 'string', genericArgs: [] },
+    };
+    expect(() => Type.adopt(revived as never)).toThrow(/a signature row is a tuple or a list — got string/);
   });
 });
 

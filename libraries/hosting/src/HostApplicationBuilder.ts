@@ -11,13 +11,12 @@
 
 import { ConfigManager } from '@rhombus-std/config';
 import type { IConfigManager } from '@rhombus-std/config.core';
-import type { ServiceProviderOptions } from '@rhombus-std/di';
 import { Manifest } from '@rhombus-std/di.core';
 import type { IMetricsBuilder } from '@rhombus-std/diagnostics.core';
 import { type HostBuilderContext, HostDefaults, type IHost, type IHostApplicationBuilder, type IHostBuilder, type IHostEnvironment } from '@rhombus-std/hosting.core';
 import { LoggingBuilder } from '@rhombus-std/logging';
 import type { ILoggingBuilder } from '@rhombus-std/logging.core';
-import type { Action } from '@rhombus-toolkit/func';
+import type { Action } from '@rhombus-toolkit/types';
 import { addCommandLineConfig, addDefaultServices, applyDefaultAppConfig, createDefaultServiceProviderOptions, HOST_ENVIRONMENT_VARIABLE_PREFIX, setDefaultContentRoot } from './default-config';
 import { createFrameworkServices, createHostingEnvironment, type FrameworkServices, populateFrameworkServices, resolveHost } from './host-composition';
 import { HostApplicationBuilderSettings } from './HostApplicationBuilderSettings';
@@ -43,7 +42,7 @@ export class HostApplicationBuilder implements IHostApplicationBuilder {
   readonly #logging: LoggingBuilder;
   readonly #metrics: MetricsBuilder;
   readonly #framework: FrameworkServices;
-  readonly #serviceProviderOptions: ServiceProviderOptions | undefined;
+  readonly #serviceProviderOptions: { validateOnBuild?: boolean; } | undefined;
 
   #hostBuilderAdapter?: HostBuilderAdapter;
   #hostBuilt = false;

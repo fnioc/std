@@ -1,5 +1,5 @@
-import type { AbstractConstructorType, ArrayType, ConstructorType, FunctionType, IterableType, NamedType, TupleType, Type, TypeLiteralType, UnionType } from '@rhombus-std/primitives';
-import type { Ctor, Func } from '@rhombus-toolkit/func';
+import type { AbstractConstructorType, ArrayType, ConstructorType, FunctionType, IterableType, NamedType, ObjectType, TupleType, Type, TypeLiteralType, UnionType } from '@rhombus-std/primitives';
+import type { Ctor, Func } from '@rhombus-toolkit/types';
 
 /** Does `T` inhabit `Shape` in both directions — the shape itself, not a subtype of it? */
 type Exactly<T, Shape> = [T] extends [Shape] ? [Shape] extends [T] ? true : false : false;
@@ -24,7 +24,7 @@ type DerivedType<T, Alias> = [T] extends [never] ? Type
   : [T] extends [undefined] ? TypeLiteralType<undefined> | Alias
   : [T] extends [null] ? TypeLiteralType<null> | Alias
   : [T] extends [Iterable<infer E>] ? [Iterable<E>] extends [T] ? IterableType | Alias : Type
-  : Type;
+  : ObjectType | Alias;
 
 /**
  * The {@link Type} `typefor<T>()` yields — the structural kind `T`'s spelling reads back as, or a
@@ -40,9 +40,11 @@ type DerivedType<T, Alias> = [T] extends [never] ? Type
  * An alias derives to the ALIAS's name, since the address must not shift with the aliased
  * structure, and nothing in the type says which of the two spellings the call site wrote. So every
  * branch an alias can stand in front of answers with its structural kind OR a named address, and
- * the caller checks `kind` before reading the members only one of them carries. Interfaces are why
- * no object branch exists: an interface is structurally identical to an inline object type, and an
- * interface address is the dominant call.
+ * the caller checks `kind` before reading the members only one of them carries. An object-shaped
+ * `T` — an interface or a class instance — derives to an {@link ObjectType} OR a named address,
+ * since TypeScript cannot tell a named interface from an inline object type at the type level; the
+ * `ObjectType`'s members are read structurally off `T`, with an optional property spelled as a
+ * union with `undefined`.
  */
 export type TypeFor<T> = DerivedType<T, NamedType>;
 

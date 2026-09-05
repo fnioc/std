@@ -1,6 +1,5 @@
-import type { Func } from '@rhombus-toolkit/func';
-
-import type { AbortSignal } from '../platform/abort.js';
+import type { AbortSignal } from '@rhombus-toolkit/platform';
+import type { Func } from '@rhombus-toolkit/types';
 import type { IChangeToken } from './IChangeToken.js';
 
 /**

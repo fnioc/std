@@ -1,7 +1,7 @@
 // The `addOptions` verb: offers `IOptions<any>` for an options type -- one
 // open registration answering every `IOptions<…>` request, closed by
 // whatever type asks. `postConfigure` and `validate` each return their own
-// self-contained manifest for the caller to merge in with `addMany`. The
+// self-contained manifest for the caller to merge in with `add`. The
 // `configure` step is the sibling ./configure-manifests set, and
 // `validateOnStart` the sibling ./validate-on-start-manifests one.
 
@@ -9,7 +9,7 @@ import { Manifest } from '@rhombus-std/di.core';
 import { type IPostConfigureOptions, type IValidateOptions, ValidateOptionsResult } from '@rhombus-std/options';
 import { Type } from '@rhombus-std/primitives';
 import { registerAugmentations } from '@rhombus-std/primitives.extras';
-import type { Func } from '@rhombus-toolkit/func';
+import type { Func } from '@rhombus-toolkit/types';
 
 import type { DepTypes } from './dep-types.js';
 import { ensureOpenOptions } from './open-options.js';
@@ -64,7 +64,7 @@ registerAugmentations<Manifest<unknown>>(ServiceManifestOptionsAugmentations);
 /**
  * A post-configure step for `optionsType`, run after every configure step, as
  * its own manifest — merge it into a container's registrations with
- * `addMany`. Accepts a {@link IPostConfigureOptions} or a bare
+ * `add`. Accepts a {@link IPostConfigureOptions} or a bare
  * `(options) => void` delegate.
  */
 export function getPostConfigureManifest(optionsType: Type, step: IPostConfigureOptions<any> | Func<[any], void>): Manifest<unknown>;
@@ -100,7 +100,7 @@ const DEFAULT_VALIDATION_FAILURE_MESSAGE = 'A validation error has occurred.';
 
 /**
  * A validate step for `optionsType`, as its own manifest — merge it into a
- * container's registrations with `addMany`. `validate` runs against the
+ * container's registrations with `add`. `validate` runs against the
  * fully-configured value; a `false` result fails validation with
  * `failureMessage`.
  */

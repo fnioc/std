@@ -1,7 +1,7 @@
-import { memo } from '../../toolkit/memo.js';
+import { memo } from '@rhombus-toolkit/once';
 import { escapeSegment } from '../grammar.js';
-import type { AbstractConstructorType, ArrayType, ConstructorType, FunctionType, GenericType, GlobalType, ImportedType, IntersectionType, IterableType, ObjectType, TagType, TupleType, Type,
-  TypeLiteralType, UnionType } from '../Type.js';
+import { type AbstractConstructorType, type ArrayType, type ConstructorType, type FunctionType, type GenericType, type GlobalType, type ImportedType, type IntersectionType, type IterableType,
+  type ListType, type ObjectType, type TagType, type TupleType, Type, type TypeLiteralType, type UnionType } from '../Type.js';
 import { TypeVisitor } from './TypeVisitor.js';
 
 /**
@@ -71,7 +71,11 @@ class StringifyVisitor extends TypeVisitor<string, Precedence> {
     return this.#parenthesize(tagged, Precedence.tag, minimum);
   }
   protected override visitTuple(type: TupleType): string {
-    return `[${this.#list(type.members)}]`;
+    const slots = type.members.map(member => this.visit(member, Precedence.arrow));
+    if (type.rest !== undefined) {
+      slots.push(`...Array<${this.visit(type.rest, Precedence.arrow)}>`);
+    }
+    return `[${slots.join(', ')}]`;
   }
   protected override visitTypeLiteral(type: TypeLiteralType): string {
     return this.#literal(type.value);
@@ -94,10 +98,22 @@ class StringifyVisitor extends TypeVisitor<string, Precedence> {
   }
   /**
    * A callable's signatures, semicolons between them — the same separator an overload set is
-   * written with. One signature therefore spells as its args alone.
+   * written with. One signature therefore spells as its args alone: a tuple row as its slots, a
+   * rest slot as `...` plus the list it draws from, and a row that IS a list as that lone slot.
    */
-  #signatures(signatures: Type.Signatures): string {
-    return signatures.map(signature => this.#list(signature)).join('; ');
+  #signatures(slot: TupleType | ListType | UnionType): string {
+    return Type.signatureRows(slot).map(row => this.#signature(row)).join('; ');
+  }
+
+  #signature(row: TupleType | ListType): string {
+    if (row.kind !== 'tuple') {
+      return `...${this.visit(row, Precedence.arrow)}`;
+    }
+    const slots = row.members.map(member => this.visit(member, Precedence.arrow));
+    if (row.rest !== undefined) {
+      slots.push(`...Array<${this.visit(row.rest, Precedence.arrow)}>`);
+    }
+    return slots.join(', ');
   }
   #genericTypes(types: readonly Type[]): string {
     return types.length ? `<${this.#list(types)}>` : '';

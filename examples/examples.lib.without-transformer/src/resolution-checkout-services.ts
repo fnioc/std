@@ -23,9 +23,10 @@
 // one — an ad-hoc FACTORY parameter — so the comparison is readable in one
 // constructor.
 
-import { Manifest, Type } from '@rhombus-std/di.core';
+import { Manifest } from '@rhombus-std/di.core';
 import type { Inject, IServiceProvider, Typeof } from '@rhombus-std/di.core';
 import type { CheckoutOrder, IAuditTrail, IExchangeRates, IOrderValidator, IPaymentGateway, IPaymentRouter, IReceipt, IReceiptNumbering } from '@rhombus-std/examples.contracts';
+import { Type } from '@rhombus-std/primitives';
 
 // ── types ────────────────────────────────────────────────────────────────────
 
@@ -66,9 +67,9 @@ export const CHECKOUT_TYPES = {
   /**
    * di's INTRINSIC provider Type — the ONE entry in this bag with a reserved
    * spelling of its own. `'ServiceProvider'` names the provider itself in the
-   * token grammar, the engine recognises the type it reads to without any
-   * registration existing for it, and the reserved word keeps this bag from
-   * hand-composing the address the engine compares against.
+   * token grammar, the engine seeds a registration answering it, and the
+   * reserved word keeps this bag from hand-composing the address that
+   * registration files under.
    */
   resolver: Type.from('ServiceProvider'),
 } as const;
@@ -315,7 +316,7 @@ export class PaymentRouter implements IPaymentRouter {
  * Builds the whole checkout container as its own manifest, on the narrowest
  * lifetime vocabulary it needs — `'singleton'`, the one lifetime every
  * registration below uses. The caller merges the result into their own manifest
- * (`services = services.addMany(addCheckoutServices())`); nothing here ever sees
+ * (`services = services.add(addCheckoutServices())`); nothing here ever sees
  * the caller's manifest, so it composes into any vocabulary that admits
  * `'singleton'`.
  *

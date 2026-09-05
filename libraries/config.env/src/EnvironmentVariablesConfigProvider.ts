@@ -19,7 +19,7 @@
 // -- so it lands where a connection-string lookup expects it.
 
 import { ConfigProvider } from '@rhombus-std/config';
-import type { Func } from '@rhombus-toolkit/func';
+import type { Func } from '@rhombus-toolkit/types';
 import type { EnvironmentVariablesConfigSource } from './EnvironmentVariablesConfigSource';
 
 /**

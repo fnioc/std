@@ -26,7 +26,8 @@ import (
 // isolated fixtures here.
 
 // fixtureSrc declares every type the checker-backed generics tests read, one per
-// `declare const`, plus the self-contained Hole / Inject / Keyed brands. Every base
+// `declare const`, plus the self-contained Hole / Inject / Keyed brands and the
+// class and function whose parameter lists the tuple utility types read. Every base
 // token renders bare because the test Context reports every file as a default lib
 // (so the assertions pin the hole / key / literal grammar, not the package tier).
 const fixtureSrc = `declare const HOLE: unique symbol;
@@ -72,6 +73,34 @@ declare const sUndef: undefined;
 declare const sNull: null;
 declare const sWideBool: boolean;
 declare const sUnion: "a" | 1;
+
+type Level = "info" | "warn";
+type Handler = (x: string) => number;
+declare const level: Level;
+declare const handler: Handler;
+
+type Pair = [IOther, ICache];
+declare class Widget { constructor(other: IOther, cache: ICache); }
+declare function build(other: IOther, cache: ICache): IOther;
+
+declare const tuple: [IOther, ICache];
+declare const tupleNested: [IOther, [ICache, IOther]];
+declare const tupleHole: [IOther, Hole<"1">];
+declare const tupleKeyed: [Keyed<ICache, "redis">, "a" | "b"];
+declare const tupleEmpty: [];
+declare const tupleReadonly: readonly [IOther, ICache];
+declare const tupleLabeled: [first: IOther, second: ICache];
+declare const tupleAliased: Pair;
+declare const tupleOptional: [IOther, ICache?];
+declare const tupleRest: [IOther, ...ICache[]];
+declare const tupleRestOnly: [...ICache[]];
+declare const tupleCtorParams: ConstructorParameters<typeof Widget>;
+declare const tupleFnParams: Parameters<typeof build>;
+
+class OptionalWidget { constructor(readonly cache?: ICache) {} }
+class DefaultedWidget { constructor(readonly cache: ICache = { cache: 0 }) {} }
+declare const optionalCtor: typeof OptionalWidget;
+declare const defaultedCtor: typeof DefaultedWidget;
 
 declare const puA: "a" | "b";
 declare const puNonLit: "a" | number;

@@ -10,10 +10,11 @@
 // The standalone form calls `Set.member.call(builder, ...)`: the augmentation
 // methods are `this`-based and installed verbatim.
 
-import { di, noop } from '@rhombus-std/di';
-import { Manifest, Type } from '@rhombus-std/di.core';
+import { Builder } from '@rhombus-std/di';
+import { Manifest } from '@rhombus-std/di.core';
 import { MetricsBuilder, TracingBuilder } from '@rhombus-std/diagnostics';
 import { type IMetricsBuilder, type IMetricsListener, type ITracingBuilder, MetricsBuilderAugmentations, TracingBuilderAugmentations } from '@rhombus-std/diagnostics.core';
+import { Type } from '@rhombus-std/primitives';
 import { describe, expect, test } from 'bun:test';
 
 // The slot addresses as a plugin-less author spells them — the same interned
@@ -36,7 +37,7 @@ function listener(name: string): IMetricsListener {
  * single one of these registrations — only the one the builder now holds does.
  */
 function registered(builder: { services: Manifest<unknown>; }, type: Type): unknown[] {
-  const provider = di.usingLifetimeModel(noop()).usingManifest(builder.services).build();
+  const provider = Builder.withServices(() => builder.services).build();
   const results: unknown[] = provider.resolve(Type.array(type));
   return results;
 }

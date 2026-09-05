@@ -24,7 +24,7 @@ manifest to merge, never a container.
 ## Usage
 
 ```ts
-import { di, noop } from '@rhombus-std/di';
+import { Builder } from '@rhombus-std/di';
 import { Manifest, Type } from '@rhombus-std/di.core';
 import { getMetricsManifest } from '@rhombus-std/diagnostics';
 
@@ -34,7 +34,7 @@ services = services.addMany(getMetricsManifest((builder) => {
   builder.disableMetrics('MyApp.Http', 'request.duration'); // ...except one instrument
 }));
 
-const provider = di.usingLifetimeModel(noop()).usingManifest(services).build();
+const provider = Builder.withServices(() => services).build();
 const METRICS_OPTIONS_TYPE: Type = Type.from(
   '@rhombus-std/options:IOptions<@rhombus-std/diagnostics.core:MetricsOptions>',
 );

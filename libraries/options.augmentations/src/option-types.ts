@@ -8,26 +8,30 @@
 // Every slot keys on the BARE `T`, never on `IOptions<T>`: one open registration
 // serves the whole family and derives these from the type that closed it.
 
+import type { IConfigureOptions, IOptions, IPostConfigureOptions, IValidateOptions } from '@rhombus-std/options';
 import { Type } from '@rhombus-std/primitives';
+import { type Generic, typefor } from '@rhombus-std/primitives.extras';
+
+import type { IOptionsChangeTokenSource } from './IOptionsChangeTokenSource.js';
 
 /** The `IConfigureOptions<optionsType>` contract — its collection holds the type's configure steps. */
 export function configureStepType(optionsType: Type): Type {
-  return Type.imported('IConfigureOptions', '@rhombus-std/options', [optionsType]);
+  return Type.substitute(typefor<IConfigureOptions<Generic<'T'>>>(), { T: optionsType });
 }
 
 /** The `IPostConfigureOptions<optionsType>` contract — its collection holds the type's post-configure steps. */
 export function postConfigureStepType(optionsType: Type): Type {
-  return Type.imported('IPostConfigureOptions', '@rhombus-std/options', [optionsType]);
+  return Type.substitute(typefor<IPostConfigureOptions<Generic<'T'>>>(), { T: optionsType });
 }
 
 /** The `IValidateOptions<optionsType>` contract — its collection holds the type's validate steps. */
 export function validateStepType(optionsType: Type): Type {
-  return Type.imported('IValidateOptions', '@rhombus-std/options', [optionsType]);
+  return Type.substitute(typefor<IValidateOptions<Generic<'T'>>>(), { T: optionsType });
 }
 
 /** The `IOptionsChangeTokenSource<optionsType>` contract — its collection holds the type's reload sources. */
 export function changeTokenSourceType(optionsType: Type): Type {
-  return Type.imported('IOptionsChangeTokenSource', '@rhombus-std/options.augmentations', [optionsType]);
+  return Type.substitute(typefor<IOptionsChangeTokenSource<Generic<'T'>>>(), { T: optionsType });
 }
 
 /**
@@ -52,5 +56,5 @@ export function baseFactoryType(optionsType: Type): Type {
  * `StartupValidator` resolves each target and reads `.value` off it.
  */
 export function optionsAddressType(optionsType: Type): Type {
-  return Type.imported('IOptions', '@rhombus-std/options', [optionsType]);
+  return Type.substitute(typefor<IOptions<Generic<'T'>>>(), { T: optionsType });
 }

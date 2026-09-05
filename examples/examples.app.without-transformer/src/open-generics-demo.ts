@@ -36,8 +36,9 @@
 // independently; the same label appearing twice in one registration binds to one
 // captured type wherever it appears.
 
-import { di, noop } from '@rhombus-std/di';
-import { Manifest, Type } from '@rhombus-std/di.core';
+import { Builder } from '@rhombus-std/di';
+import { Manifest } from '@rhombus-std/di.core';
+import { Type } from '@rhombus-std/primitives';
 
 import type { AuditEvent, Entity, IJoin, IRepository, ITable, Order, Seed, User } from '@rhombus-std/examples.contracts';
 
@@ -293,7 +294,7 @@ manifest = manifest.add(ORDER_JOIN_TEMPLATE, OrderJoin, Type.ctor(ORDER_JOIN_TEM
  * an unordered collection.
  */
 export function* demonstrateOpenGenerics(): Generator<string> {
-  const app = di.usingLifetimeModel(noop()).usingManifest(manifest).build();
+  const app = Builder.withServices(() => manifest).build();
 
   // Two closings of ONE registration. Neither type was ever registered.
   const users = app.resolve(repositoryOf(USER_TYPE)) as IRepository<User>;

@@ -18,7 +18,9 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"fmt"
+	"regexp"
 	"sort"
+	"strconv"
 	"strings"
 )
 
@@ -62,21 +64,30 @@ const (
 	KindLiteral
 	// KindUnion is `Type.union(...members)`.
 	KindUnion
+	// KindTuple is `Type.tuple(...members)` — an ordered slot list, open-length
+	// when it carries a rest slot, whose ORDER is part of the type where a
+	// union's member order is not.
+	KindTuple
 	// KindGeneric is `Type.generic(label)` — an open-generic hole.
 	KindGeneric
-	// KindFunc is `Type.func(returns, rows)`, rows the return type's parameter
-	// rows as an array of arrays.
+	// KindFunc is `Type.func(returns, signatures)`, signatures the slot node the
+	// callable answers to.
 	KindFunc
-	// KindCtor is `Type.ctor(instance, rows)`, rows the instance type's
-	// parameter rows as an array of arrays.
+	// KindCtor is `Type.ctor(instance, signatures)` — the same slot shape as
+	// KindFunc, headed by the instance type.
 	KindCtor
-	// KindAbstractCtor is `Type.abstractCtor(instance, rows)` — the same shape
-	// as KindCtor, for a construct signature coming from an `abstract class`
+	// KindAbstractCtor is `Type.abstractCtor(instance, signatures)` — the same
+	// shape as KindCtor, for a construct signature coming from an `abstract class`
 	// declaration. Its own kind rather than a flag on KindCtor, matching the
 	// `Type` node contract's own `'ctor'`/`'abstract-ctor'` split.
 	KindAbstractCtor
 	// KindTag is `Type.tag(inner, key)`.
 	KindTag
+	// KindObject is `Type.object({ key: member, ... })` — a record of named
+	// members, each keyed by its property name.
+	KindObject
+	// KindIntersection is `Type.intersection(...members)`.
+	KindIntersection
 	// KindUndefined and KindNull are the two nullish singletons, each its own
 	// `Type.typeLiteral` call. They are kinds rather than literals because the
 	// token grammar's literal values exclude them.
@@ -98,16 +109,21 @@ type Node struct {
 	from string
 	args []*Node
 
-	// rows are a KindFunc / KindCtor / KindAbstractCtor signature's parameter
-	// rows — one row per call it answers to, each holding that call's
-	// parameter types in order.
-	rows [][]*Node
+	// sig is a KindFunc / KindCtor / KindAbstractCtor node's signatures slot —
+	// a tuple or list node for a single signature, a union of those for an
+	// overload set.
+	sig *Node
 
 	// literal is a KindLiteral node's value as its TypeScript expression text.
 	literal string
 
-	// members are a KindUnion's member nodes, in the order they are emitted.
+	// members are a KindUnion's or a KindTuple's member nodes, in the order they
+	// are emitted.
 	members []*Node
+
+	// tupleRest is a KindTuple's open length: a trailing rest slot's element
+	// node, nil for a fixed-length tuple.
+	tupleRest *Node
 
 	// label is a KindGeneric's hole number as decimal text.
 	label string
@@ -119,6 +135,16 @@ type Node struct {
 	// inner and tag spell a KindTag: the branded base and the key branded onto it.
 	inner *Node
 	tag   string
+
+	// object are a KindObject's members, each a property name paired with its
+	// type node, in declaration order.
+	object []ObjectMember
+}
+
+// ObjectMember is one member of a KindObject node: a property name and its type.
+type ObjectMember struct {
+	Key  string
+	Type *Node
 }
 
 // Key is the node's canonical identity — the string the registry interns on and
@@ -146,7 +172,7 @@ func Literal(text string) *Node {
 	return &Node{kind: KindLiteral, key: text, literal: text}
 }
 
-// Union builds a literal-union node. The key sorts the members, matching how the
+// Union builds a union node. The key sorts the members, matching how the
 // runtime intern table identifies a union, so member order never fragments one
 // type into two consts.
 func Union(members []*Node) *Node {
@@ -158,31 +184,69 @@ func Union(members []*Node) *Node {
 	return &Node{kind: KindUnion, key: strings.Join(keys, " | "), members: members}
 }
 
+// Tuple builds a slot-list node. Where a union's key sorts its members, this
+// one keeps the order given: two tuples over the same types in two orders are
+// two types, and so two consts. rest states the tuple's open length, if any —
+// an open tuple appends it to the key a fixed-length one keys by, so the two
+// forms of one slot list intern as distinct consts.
+func Tuple(members []*Node, rest *Node) *Node {
+	key := "[" + joinKeys(members, ",") + "]"
+	if rest != nil {
+		key += "~" + rest.key
+	}
+	return &Node{kind: KindTuple, key: key, members: members, tupleRest: rest}
+}
+
+// Object builds a record node. The key sorts the members by name, matching how
+// the runtime intern table identifies an object, so declaration order never
+// fragments one type into two consts; the members are kept in the order given so
+// the rendered const reads the way the call site derived it.
+func Object(members []ObjectMember) *Node {
+	entries := make([]string, len(members))
+	for i, m := range members {
+		entries[i] = strconv.Quote(m.Key) + ":" + m.Type.key
+	}
+	sort.Strings(entries)
+	return &Node{kind: KindObject, key: "{" + strings.Join(entries, ",") + "}", object: members}
+}
+
+// Intersection builds an intersection node. Like a union, its key sorts the
+// members so member order never fragments one type, while the members render in
+// the order given.
+func Intersection(members []*Node) *Node {
+	keys := make([]string, len(members))
+	for i, m := range members {
+		keys[i] = m.key
+	}
+	sort.Strings(keys)
+	return &Node{kind: KindIntersection, key: "(" + strings.Join(keys, " & ") + ")", members: members}
+}
+
 // Generic builds an open-generic hole node. label is the hole number's decimal
 // text ("1" for $1).
 func Generic(label string) *Node {
 	return &Node{kind: KindGeneric, key: "$" + label, label: label}
 }
 
-// Func builds a call-signature node from its return type and parameter rows.
-func Func(ret *Node, rows [][]*Node) *Node {
-	return &Node{kind: KindFunc, key: signatureKey("func", ret, rows), ret: ret, rows: rows}
+// Func builds a call-signature node from its return type and signatures slot.
+func Func(ret *Node, sig *Node) *Node {
+	return &Node{kind: KindFunc, key: signatureKey("func", ret, sig), ret: ret, sig: sig}
 }
 
-// Ctor builds a construct-signature node from its instance type and parameter
-// rows.
-func Ctor(instance *Node, rows [][]*Node) *Node {
-	return &Node{kind: KindCtor, key: signatureKey("ctor", instance, rows), ret: instance, rows: rows}
+// Ctor builds a construct-signature node from its instance type and signatures
+// slot.
+func Ctor(instance *Node, sig *Node) *Node {
+	return &Node{kind: KindCtor, key: signatureKey("ctor", instance, sig), ret: instance, sig: sig}
 }
 
 // AbstractCtor builds a construct-signature node — instance type and
-// parameter rows, exactly like Ctor — for a construct signature coming from an
+// signatures slot, exactly like Ctor — for a construct signature coming from an
 // `abstract class` declaration. Its own method name in the key ("abstractCtor"
 // vs "ctor") is what keeps a concrete and an abstract constructor sharing
 // every other field interned to two distinct consts; no separate flag is
 // needed.
-func AbstractCtor(instance *Node, rows [][]*Node) *Node {
-	return &Node{kind: KindAbstractCtor, key: signatureKey("abstractCtor", instance, rows), ret: instance, rows: rows}
+func AbstractCtor(instance *Node, sig *Node) *Node {
+	return &Node{kind: KindAbstractCtor, key: signatureKey("abstractCtor", instance, sig), ret: instance, sig: sig}
 }
 
 // Tag builds a keyed node — the branded base with the key composed into it.
@@ -200,30 +264,14 @@ func Null() *Node {
 	return &Node{kind: KindNull, key: "#null"}
 }
 
-// signatureKey spells a Func / Ctor / AbstractCtor key. Each parameter row is
-// delimited by its own parentheses, so a callable answering to one empty call
-// and one answering to no call at all key differently — the same identity the
-// runtime intern table gives them. The leading `#` can only ever start a
-// composite: a leaf's key starts with a quote (a string literal), a digit or
-// sign (a number), or an identifier character. method itself is what keeps a
-// concrete and an abstract constructor over the same shape apart — "ctor" vs
-// "abstractCtor" — so no separate marker is needed.
-func signatureKey(method string, ret *Node, rows [][]*Node) string {
-	spelled := "#" + method + "(" + ret.key
-	for _, row := range rows {
-		spelled += "(" + joinKeys(row, ",") + ")"
-	}
-	return spelled + ")"
-}
-
-// flatRows is every parameter of every row, in order — the walk order a node's
-// children are interned and rendered in.
-func flatRows(rows [][]*Node) []*Node {
-	out := make([]*Node, 0, len(rows))
-	for _, row := range rows {
-		out = append(out, row...)
-	}
-	return out
+// signatureKey spells a Func / Ctor / AbstractCtor key over the head's key and
+// the slot's own. The leading `#` can only ever start a composite: a leaf's key
+// starts with a quote (a string literal), a digit or sign (a number), or an
+// identifier character. method itself is what keeps a concrete and an abstract
+// constructor over the same shape apart — "ctor" vs "abstractCtor" — so no
+// separate marker is needed.
+func signatureKey(method string, ret *Node, sig *Node) string {
+	return "#" + method + "(" + ret.key + ")(" + sig.key + ")"
 }
 
 func joinKeys(nodes []*Node, sep string) string {
@@ -315,12 +363,30 @@ func (n *Node) children() []*Node {
 		return n.args
 	case KindUnion:
 		return n.members
+	case KindTuple:
+		if n.tupleRest != nil {
+			return append(append([]*Node{}, n.members...), n.tupleRest)
+		}
+		return n.members
 	case KindFunc, KindCtor, KindAbstractCtor:
-		out := make([]*Node, 0, len(n.rows)+1)
-		out = append(out, n.ret)
-		return append(out, flatRows(n.rows)...)
+		if rows, fixed := fixedSlotRows(n.sig); fixed {
+			out := []*Node{n.ret}
+			for _, row := range rows {
+				out = append(out, row...)
+			}
+			return out
+		}
+		return []*Node{n.ret, n.sig}
 	case KindTag:
 		return []*Node{n.inner}
+	case KindObject:
+		out := make([]*Node, 0, len(n.object))
+		for _, member := range n.object {
+			out = append(out, member.Type)
+		}
+		return out
+	case KindIntersection:
+		return n.members
 	default:
 		return nil
 	}
@@ -366,6 +432,11 @@ func (r *Registry) expr(n *Node) string {
 		return r.typeRef.Export + ".typeLiteral(" + n.literal + ")"
 	case KindUnion:
 		return r.typeRef.Export + ".union(" + r.joinNames(n.members) + ")"
+	case KindTuple:
+		if n.tupleRest == nil {
+			return r.typeRef.Export + ".tuple(" + r.joinNames(n.members) + ")"
+		}
+		return r.typeRef.Export + ".tuple({ members: [" + r.joinNames(n.members) + "], rest: " + r.names[n.tupleRest.key] + " })"
 	case KindGeneric:
 		return r.typeRef.Export + ".generic(\"" + n.label + "\")"
 	case KindFunc:
@@ -376,6 +447,14 @@ func (r *Registry) expr(n *Node) string {
 		return r.signature(n, "abstractCtor")
 	case KindTag:
 		return r.typeRef.Export + ".tag(" + r.names[n.inner.key] + ", \"" + n.tag + "\")"
+	case KindObject:
+		members := make([]string, len(n.object))
+		for i, member := range n.object {
+			members[i] = ObjectKey(member.Key) + ": " + r.names[member.Type.key]
+		}
+		return r.typeRef.Export + ".object({ " + strings.Join(members, ", ") + " })"
+	case KindIntersection:
+		return r.typeRef.Export + ".intersection(" + r.joinNames(n.members) + ")"
 	case KindUndefined:
 		return r.typeRef.Export + ".typeLiteral(undefined)"
 	case KindNull:
@@ -395,14 +474,37 @@ func (r *Registry) expr(n *Node) string {
 }
 
 // signature renders a KindFunc / KindCtor / KindAbstractCtor const — the
-// return / instance type followed by its parameter rows as one array of
-// arrays, whether the callable answers to one row or several.
+// return / instance type followed by its signatures. A slot of fixed argument
+// lists renders as the rows spelling over member consts, the same text a hand
+// author writes, so no const is minted for the rows themselves; a slot carrying
+// an open length references the slot node's own const instead.
 func (r *Registry) signature(n *Node, method string) string {
-	rows := make([]string, len(n.rows))
-	for i, row := range n.rows {
-		rows[i] = "[" + r.joinNames(row) + "]"
+	if rows, fixed := fixedSlotRows(n.sig); fixed {
+		parts := make([]string, len(rows))
+		for i, row := range rows {
+			parts[i] = "[" + r.joinNames(row) + "]"
+		}
+		return r.typeRef.Export + "." + method + "(" + r.names[n.ret.key] + ", [" + strings.Join(parts, ", ") + "])"
 	}
-	return r.typeRef.Export + "." + method + "(" + r.names[n.ret.key] + ", [" + strings.Join(rows, ", ") + "])"
+	return r.typeRef.Export + "." + method + "(" + r.names[n.ret.key] + ", " + r.names[n.sig.key] + ")"
+}
+
+// fixedSlotRows reads a signatures slot back as fixed parameter rows — ok=false
+// when any signature carries an open length (a rest slot, or a row that IS a
+// list), which the rows spelling cannot state.
+func fixedSlotRows(sig *Node) ([][]*Node, bool) {
+	rowNodes := []*Node{sig}
+	if sig.kind == KindUnion {
+		rowNodes = sig.members
+	}
+	rows := make([][]*Node, 0, len(rowNodes))
+	for _, row := range rowNodes {
+		if row.kind != KindTuple || row.tupleRest != nil {
+			return nil, false
+		}
+		rows = append(rows, row.members)
+	}
+	return rows, true
 }
 
 func (r *Registry) joinNames(nodes []*Node) string {
@@ -436,6 +538,27 @@ func nameFor(key string) string {
 	}
 	return "$" + readable + "_" + suffix
 }
+
+// ObjectKey renders an object member's key the way an emitted call site spells
+// it: a bare identifier when the name is a legal JS identifier, else a quoted
+// string. Every renderer of an object member derives its key from this one rule,
+// so a hoisted `Type.object` const reads byte-for-byte like the inline call it
+// stands in for.
+func ObjectKey(name string) string {
+	if IsIdentifier(name) {
+		return name
+	}
+	return strconv.Quote(name)
+}
+
+// IsIdentifier reports whether a member name can be spelled bare, for a renderer
+// that builds a key node rather than a string and so needs the test without the
+// quoting.
+func IsIdentifier(name string) bool {
+	return jsIdentifier.MatchString(name)
+}
+
+var jsIdentifier = regexp.MustCompile(`^[A-Za-z_$][A-Za-z0-9_$]*$`)
 
 // sanitize replaces every non-alphanumeric rune with "_", collapsing runs and
 // trimming the ends, so the readable part of a name is a legal identifier body.

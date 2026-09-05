@@ -1,6 +1,6 @@
 // The logging registrations, published as a manifest built on the narrowest
 // lifetime vocabulary it actually uses. A consumer merges it into their own
-// manifest -- `services.addMany(getLoggingManifest())` -- and that merge is
+// manifest -- `services.add(getLoggingManifest())` -- and that merge is
 // what checks their vocabulary covers what these registrations ask for.
 
 import { Manifest } from '@rhombus-std/di.core';
@@ -9,7 +9,7 @@ import { ILoggerFactory, ILoggerProvider, type ILoggingBuilder, Logger as Logger
 import { type IConfigureOptions, IOptions } from '@rhombus-std/options';
 import { Type } from '@rhombus-std/primitives';
 import { typefor } from '@rhombus-std/primitives.extras';
-import type { Func } from '@rhombus-toolkit/func';
+import type { Func } from '@rhombus-toolkit/types';
 import { DefaultLoggerLevelConfigureOptions } from './DefaultLoggerLevelConfigureOptions';
 import { LoggerFactory } from './LoggerFactory';
 import { LoggerFilterOptions } from './LoggerFilterOptions';

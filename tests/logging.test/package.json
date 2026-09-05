@@ -14,6 +14,7 @@
     "@rhombus-std/di.core": "workspace:*",
     "@rhombus-std/logging": "workspace:*",
     "@rhombus-std/logging.core": "workspace:*",
-    "@rhombus-toolkit/func": "3.6.0"
+    "@rhombus-std/primitives": "workspace:*",
+    "@rhombus-toolkit/types": "2.0.0"
   }
 }

@@ -3,7 +3,7 @@
 import type { StreamPayload } from '@rhombus-std/config';
 import type { IConfigBuilder, IConfigSource, IndexedSection } from '@rhombus-std/config.core';
 import { registerAugmentations } from '@rhombus-std/primitives.extras';
-import type { Flatten } from '@rhombus-toolkit/type-helpers';
+import type { Flatten } from '@rhombus-toolkit/types';
 import { JsonConfigSource, type JsonConfigSourceOptions } from './JsonConfigSource';
 import { JsonStreamConfigSource } from './JsonStreamConfigSource';
 

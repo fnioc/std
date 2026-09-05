@@ -7,7 +7,7 @@
 // and resolves it. Covers both dual-export forms, both overload shapes, rule
 // accumulation across calls, and chaining.
 
-import { di, noop } from '@rhombus-std/di';
+import { Builder } from '@rhombus-std/di';
 import { Manifest } from '@rhombus-std/di.core';
 import { FilterLoggingBuilderExtensions, LOGGER_FILTER_OPTIONS_ACCESSOR_TYPE, LOGGER_FILTER_OPTIONS_TYPE, LoggerFilterOptions, LoggingBuilder } from '@rhombus-std/logging';
 import type { ILoggingBuilder } from '@rhombus-std/logging.core';
@@ -27,7 +27,7 @@ import { describe, expect, test } from 'bun:test';
  */
 function resolveFilterOptions(builder: ILoggingBuilder): LoggerFilterOptions {
   const services = builder.services.addOptions(LOGGER_FILTER_OPTIONS_TYPE, () => new LoggerFilterOptions());
-  const provider = di.usingLifetimeModel(noop()).usingManifest(services).build();
+  const provider = Builder.withServices(() => services).build();
   const options: IOptions<LoggerFilterOptions> = provider.resolve(LOGGER_FILTER_OPTIONS_ACCESSOR_TYPE);
   return options.value;
 }

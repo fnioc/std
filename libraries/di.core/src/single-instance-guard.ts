@@ -5,4 +5,4 @@
 import { stampSingleInstance } from '@rhombus-std/primitives';
 
 // The bare-library `ImportMeta` type lacks `url`, so the cast supplies it.
-stampSingleInstance('@rhombus-std/di.core', (import.meta as unknown as { url: string; }).url);
+stampSingleInstance('@rhombus-std/di.core', (import.meta as any).url);

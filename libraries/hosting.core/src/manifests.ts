@@ -10,7 +10,7 @@
 import { type IServiceProvider, Manifest } from '@rhombus-std/di.core';
 import { type ConstructorType, Type } from '@rhombus-std/primitives';
 import { typefor } from '@rhombus-std/primitives.extras';
-import type { Ctor, Func } from '@rhombus-toolkit/func';
+import type { Ctor, Func } from '@rhombus-toolkit/types';
 import type { IHostedService } from './IHostedService';
 import { HOSTED_SERVICE_TYPE } from './types';
 

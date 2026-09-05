@@ -1,5 +1,5 @@
 import { AbortController, type AbortSignal, clearTimeout, setTimeout } from '@rhombus-std/primitives';
-import type { Func } from '@rhombus-toolkit/func';
+import type { Func } from '@rhombus-toolkit/types';
 
 /** A linked {@link AbortSignal} plus the teardown for its wiring. */
 export interface LinkedSignal extends Disposable {

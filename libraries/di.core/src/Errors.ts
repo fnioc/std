@@ -27,7 +27,7 @@ export abstract class DiError extends Error {}
  *
  * @remarks
  * Catch this to fall back to another candidate — a union member, a later signature.
- * Anything else escaping a resolution walk is a fault rather than an unsatisfiable
+ * Anything else escaping a resolution is a fault rather than an unsatisfiable
  * request, so a handler that swallows it should rethrow what it does not recognise:
  *
  * ```ts
@@ -43,8 +43,12 @@ export class UnsatisfiableError extends DiError {
   /** The service type that could not be resolved. */
   readonly address: Type;
 
-  constructor(address: Type, reason: string, cause?: UnsatisfiableError) {
-    super(`cannot satisfy ${Type.stringify(address)} — ${reason}`, { cause });
+  constructor(
+    address: Type,
+    reason: string,
+    cause?: UnsatisfiableError,
+  ) {
+    super(`cannot satisfy ${address} — ${reason}`, { cause });
     this.name = 'UnsatisfiableError';
     this.address = address;
   }
@@ -64,7 +68,7 @@ export class CycleError extends DiError {
   readonly chain: readonly Type[];
 
   constructor(chain: readonly Type[]) {
-    super(`circular dependency: ${chain.map(type => Type.stringify(type)).join(' -> ')}`);
+    super(`circular dependency: ${chain.join(' -> ')}`);
     this.name = 'CycleError';
     this.chain = chain;
   }
@@ -83,32 +87,43 @@ export class LifetimeModelError extends DiError {
   readonly address: Type;
 
   constructor(address: Type, cause: unknown) {
-    super(`the lifetime model failed realizing ${Type.stringify(address)}`, { cause });
+    super(`the lifetime model failed realizing ${address}`, { cause });
     this.name = 'LifetimeModelError';
     this.address = address;
   }
 }
 
 /**
- * A registration is kept by the scope wearing {@link tag}, and no scope open where it was asked
- * for wears it.
+ * A registration is addressed by a bare type parameter, which unifies with every request — so it
+ * answers every address no newer registration already answers.
  */
-export class ScopeTagUnmatchedError extends DiError {
-  /** What the lifetime model that refused calls itself. */
-  readonly modelName: string;
-  /** The tag the registration named. */
-  readonly tag: string;
-  /** The service type of the registration that named it. */
+export class UniversalAddressError extends DiError {
+  /** The address that is nothing but a hole. */
   readonly address: Type;
 
-  constructor(modelName: string, tag: string, address: Type) {
+  constructor(address: Type) {
     super(
-      `the ${modelName} lifetime model keeps ${Type.stringify(address)} in the scope tagged '${tag}', and no open scope carries that tag`,
+      `${address} is nothing but a type parameter, so this registration answers every request no newer one does; `
+        + `give it the service type it provides and leave the hole inside — ILogger<%T> rather than %T`,
     );
-    this.name = 'ScopeTagUnmatchedError';
-    this.modelName = modelName;
-    this.tag = tag;
+    this.name = 'UniversalAddressError';
     this.address = address;
+  }
+}
+
+/**
+ * A resolution or scope opening reached a provider whose container or scope is already disposed —
+ * the standard lifetime model's refusal, a clone of the one
+ * Microsoft.Extensions.DependencyInjection raises.
+ *
+ * @remarks
+ * Disposing a scope's provider refuses every later ask through it; disposing the container's
+ * refuses every later ask through every provider, and refuses opening a scope.
+ */
+export class ObjectDisposedError extends DiError {
+  constructor() {
+    super('the provider is disposed — its container or scope has ended, so it can no longer resolve or open a scope');
+    this.name = 'ObjectDisposedError';
   }
 }
 
@@ -134,7 +149,7 @@ export class ManifestValidationError extends DiError {
   constructor(failures: readonly ValidationFailure[]) {
     super(
       `cannot satisfy every registration:\n`
-        + failures.map(failure => `  ${Type.stringify(failure.address)} — ${failure.error.message}`).join('\n'),
+        + failures.map(failure => `  ${failure.address} — ${failure.error.message}`).join('\n'),
     );
     this.name = 'ManifestValidationError';
     this.failures = failures;

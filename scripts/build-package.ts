@@ -20,10 +20,12 @@
 // per build role. A types-only package (emitJs: false) asserts no runtime .js
 // slips into dist/bundle.
 
+import { createMinifier } from 'dts-minify';
 import { spawnSync } from 'node:child_process';
 import { existsSync, mkdirSync, readdirSync, readFileSync, renameSync, rmSync, writeFileSync } from 'node:fs';
 import { homedir } from 'node:os';
 import { join } from 'node:path';
+import * as ts from 'typescript';
 
 /**
  * Read the resolved transformer specifiers from a tsconfig's
@@ -170,7 +172,16 @@ export async function stageLowering(options: StageLoweringOptions): Promise<stri
   const srcDir = join(dir, 'src');
   // Declaration files carry no runtime and are skipped, matching a `tsc` emit.
   const entrypoints = [...new Bun.Glob('**/*.ts').scanSync({ cwd: srcDir, absolute: true })].filter((path) => !path.endsWith('.d.ts'));
-  const staged = await Bun.build({ entrypoints, outdir: stageDir, root: srcDir, target: 'node', format: 'esm', external: ['*'], plugins: [await ttscBunPlugin(dir, ttscProject, ttscTransforms)] });
+  const staged = await Bun.build({
+    entrypoints,
+    outdir: stageDir,
+    root: srcDir,
+    target: 'node',
+    format: 'esm',
+    external: ['*'],
+    sourcemap: 'linked',
+    plugins: [await ttscBunPlugin(dir, ttscProject, ttscTransforms)],
+  });
   if (!staged.success) {
     for (const log of staged.logs) {
       console.error(log);
@@ -210,7 +221,7 @@ export interface BuildPackageOptions {
   readonly splitting?: boolean;
   /**
    * A tsconfig (relative to `dir`) whose existence opts the package into the
-   * ttsc/Go lowering that rewrites authoring sugar (`tokenfor<T>()` and the
+   * ttsc/Go lowering that rewrites authoring sugar (`typefor<T>()` and the
    * inline-substituted registration / options / config forms). When
    * set, the JS pipeline gains a lowering STAGE that runs before the bundle:
    *
@@ -279,6 +290,23 @@ export function ensureDtsModuleHood(bundleDir: string): void {
   }
 }
 
+const dtsMinifier = createMinifier(ts);
+
+/**
+ * Strips non-essential whitespace and non-doc comments from every rolled
+ * `.d.ts` under `bundleDir`, keeping the JSDoc that drives editor intellisense.
+ */
+export function minifyDtsFiles(bundleDir: string): void {
+  for (const entry of readdirSync(bundleDir)) {
+    if (!entry.endsWith('.d.ts')) {
+      continue;
+    }
+    const path = join(bundleDir, entry);
+    const content = readFileSync(path, 'utf8');
+    writeFileSync(path, dtsMinifier.minify(content, { keepJsDocs: true }));
+  }
+}
+
 /** Builds one package's dist artifacts (JS bundle + rolled .d.ts). */
 export async function buildPackage(options: BuildPackageOptions): Promise<void> {
   const { dir, name, entrypoints = ['src/index.ts'], external = [], emitJs = true, dtsConfigs = ['rollup.dts.mjs'], assertNoJs = false, splitting = entrypoints.length > 1, ttscProject,
@@ -302,7 +330,16 @@ export async function buildPackage(options: BuildPackageOptions): Promise<void> 
   }
 
   if (emitJs) {
-    const js = await Bun.build({ entrypoints: jsEntrypoints, outdir: bundleDir, target: 'node', format: 'esm', external: [...external], splitting });
+    const js = await Bun.build({
+      entrypoints: jsEntrypoints,
+      outdir: bundleDir,
+      target: 'node',
+      format: 'esm',
+      external: [...external],
+      splitting,
+      minify: true,
+      sourcemap: 'linked',
+    });
     if (!js.success) {
       for (const log of js.logs) {
         console.error(log);
@@ -323,6 +360,7 @@ export async function buildPackage(options: BuildPackageOptions): Promise<void> 
     }
   }
   ensureDtsModuleHood(bundleDir);
+  minifyDtsFiles(bundleDir);
 
   if (assertNoJs && existsSync(join(bundleDir, 'index.js'))) {
     throw new Error(`${name}: unexpected runtime artifact dist/bundle/index.js -- this package is types-only`);

@@ -272,23 +272,22 @@ _Owner-directed 2026-07-18._
 
 ## §97 — White-box surface: `./private/*`; strict token derivation
 
-Every library exposes `./private/*` as its one white-box seam: `types`/`bun` → `./src/*.ts`,
-deliberately carrying no `default` so the subpath stays NON-PUBLIC to token derivation. It serves
-both typing and execution — a deep-imported source file lands on the same module instance the
-barrel resolves (source-first, §72/§192), lowered at load time where the package lowers. The root
-`.` export is the bare-string source barrel (§72). `./private/*` is in-repo only: `publishConfig`
-rewrites `exports` without it, and `files` excludes the stage emit directory.
+Every library exposes `./private/*` as its one white-box seam, a bare-string `./src/*.ts` target.
+It serves both typing and execution — a deep-imported source file lands on the same module instance
+the barrel resolves (source-first, §72/§192), lowered at load time where the package lowers. The
+root `.` export is the bare-string source barrel (§72). `./private/*` is in-repo only:
+`publishConfig` rewrites `exports` without it, and `files` excludes the stage emit directory.
 
 Token derivation for an exports-mapped file matches the **shortest** subpath among export entries
 carrying a `default` condition — public, where a bare-string target counts as carrying one — with
 ties broken lexicographically; the root `.` export is the shortest possible case, deriving the bare
-`pkg:Type` form. If no public entry reaches the file, `./private/*` — deliberately default-less, the
-one sanctioned in-repo internal surface — derives `pkg/private/<path>:Type`. If neither reaches it, a
-hard diagnostic names both fixes (export the type publicly, or expose its file via `./private/*`).
-Shortest-within-public supports deliberate public aliasing; only publish-surviving entries ever
-compete, so an internal or test mapping can never affect token identity. The derivation path for a
-package with no exports map is unchanged. `internal` is banned as an export alias, since it collides
-with same-named source folders.
+`pkg:Type` form. A file the barrel does not reach falls to `./private/*`, the one sanctioned
+in-repo internal surface, deriving `pkg/private/<path>:Type`. If neither reaches it, a hard
+diagnostic names both fixes (export the type publicly, or expose its file via `./private/*`).
+Shortest-within-public supports deliberate public aliasing, and the barrel is always shorter than a
+named subpath, so an internal or test mapping can never displace a publicly exported type's token.
+The derivation path for a package with no exports map is unchanged. `internal` is banned as an
+export alias, since it collides with same-named source folders.
 
 _Owner-directed 2026-07-18._
 
@@ -543,9 +542,9 @@ _Owner-directed (the mutable-slot seam, forced by the immutable-manifest design)
 
 ## §108 — `Manifest` is an interface; its own body carries three primitives, every registration verb arrives through augmentation
 
-`Manifest<Scopes>` (`libraries/di.core/src/Manifest.ts`) is an interface extending `Iterable<Registration<Scopes>>`, and its own body declares exactly three members — `add`, `remove`, `replace`, each taking one registration — each returning a NEW manifest rather than mutating the receiver, so a call whose result is discarded registers nothing. `DefaultManifest` is the concrete, `@augment`-decorated class: an immutable decorator chain where `add` prepends one registration via a generator that yields the new registration then delegates to the rest, so iteration order is newest-registration-first.
+`Manifest<Scopes>` (`libraries/di.core/src/Manifest.ts`) is an interface extending `Iterable<Registration<Scopes>>`, and its own body declares exactly three primitives — `_add`, `_remove`, `_replace`, each taking one registration — each returning a NEW manifest rather than mutating the receiver, so a call whose result is discarded registers nothing. `DefaultManifest` is the concrete, `@augment`-decorated class: an immutable decorator chain where `add` prepends one registration via a generator that yields the new registration then delegates to the rest, so iteration order is newest-registration-first.
 
-Every other registration verb — `addMany`, `addClass`, `addFactory`, `addValue`, `tryAdd` and its typed siblings, `replaceClass`/`replaceFactory`/`replaceValue`, `removeAll` — arrives through augmentation onto `Manifest`, in `libraries/di.core/src/augmentations/`. Augmentation also contributes further `add` shapes on the primitive's own name: a lambda that walks the per-registration builder (§109), or an implementation plus its composed call-shape type positionally (§188). `addClass`/`addFactory`/`addValue` are separate convenience verbs that compose a `Registration` from a type, an implementation, and the implementation's own composed `Type` (`libraries/di.core/src/Registration/Registration.ts`), then forward to `add`. Builders that wrap a manifest and are configured by a caller delegate keep mutation-shaped ergonomics on top via a mutable-slot seam (§114). _Owner-directed (the immutable-chain, verb-carried-by-augmentation direction); the builder's slot mechanics (§109) are Claude's._
+Every registration verb — `add`, `tryAdd`, `replace`, `addValue`/`tryAddValue`/`replaceValue`, `remove`, `removeAll`, `describe` — arrives through augmentation onto `Manifest`, in `libraries/di.core/src/augmentations/`, composing down to the three primitives; §193 records the landed verb surface. Builders that wrap a manifest and are configured by a caller delegate keep mutation-shaped ergonomics on top via a mutable-slot seam (§114). _Owner-directed (the immutable-chain, verb-carried-by-augmentation direction); the builder's slot mechanics (§109) are Claude's._
 
 ---
 
@@ -884,10 +883,10 @@ hole either is one, by the one parser's rule, or the text after `%` names someth
 ## §130 — A library references the abstractions package; only an entry point references the engine
 
 The whole di error taxonomy is DECLARED in `@rhombus-std/di.core` and re-exported from
-`@rhombus-std/di`. `UnsatisfiableError`, `CycleError`, `AmbiguousUnionError`, and
-`ManifestValidationError` join the `DiError` root — `libraries/di.core/src/Errors.ts` declares all
-five. `libraries/di/src/index.ts` re-exports them directly, with no separate `errors.ts` file of its
-own, so every `from '@rhombus-std/di'` import naming one keeps working unchanged.
+`@rhombus-std/di`. `UnsatisfiableError`, `CycleError`, `LifetimeModelError`, `UniversalAddressError`,
+and `ManifestValidationError` join the `DiError` root — `libraries/di.core/src/Errors.ts` declares
+them. `libraries/di/src/index.ts` re-exports the taxonomy directly, with no separate `errors.ts`
+file of its own, so every `from '@rhombus-std/di'` import naming one keeps working unchanged.
 
 **The rule this enforces.** A library references the abstractions package; only an entry point
 references the engine. It is repo-wide, not an examples-only convention. `examples.lib.*` are its
@@ -916,22 +915,16 @@ for every one of them, and an error thrown by the engine satisfies `instanceof` 
 imported from `di.core`.
 
 **`logging` is an exception. The rule stands.** `logging` and `hosting` are the only libraries
-carrying a RUNTIME `@rhombus-std/di` dependency. `di.core` ships `DefaultManifest`, the concrete
-`Manifest` implementation; `di` installs `build()` onto every `Manifest` (an augmentation sealing it
-into a `ServiceProvider`, `libraries/di/src/Manifest-ContainerBuilder-augmentations.ts`). `hosting`
-is an entry point by job description, so it is not an exception at all. `logging` is:
-`LoggerFactory.create` (`libraries/logging/src/LoggerFactory.ts`) does `new
-DefaultManifest().addLogging(configure)`, then `.build()`, then resolves the factory out of the
-provider — entry-point work by this entry's letter, inside a library.
+carrying a RUNTIME `@rhombus-std/di` dependency — `di`'s `Builder` is the one thing that seals
+registrations into a provider, and both call it. `hosting` is an entry point by job description, so
+it is not an exception at all. `logging` is: `LoggerFactory.create`
+(`libraries/logging/src/LoggerFactory.ts`) builds the logging manifest from its configure delegate,
+then `Builder.withServices(...).build()`, then resolves the factory out of the provider —
+entry-point work by this entry's letter, inside a library.
 
 It stays. The API is a legitimate convenience for a consumer who wants logging without composing a
-container, and the returned `DisposingLoggerFactory`'s `[Symbol.dispose]` forwards to the provider
-it built, so the intended shape is "the factory owns the scope it made." Whether that forward
-actually disposes anything today rides on the still-unbuilt scope/dispose model:
-`ServiceProvider.dispose()`/`disposeAsync()` (`libraries/di/src/ServiceProvider.ts`) are currently
-`NotImplementedError` stubs, so calling `LoggerFactory.create`'s disposal path throws rather than
-tearing anything down — a gap in the scope/dispose model generally, not a defect specific to
-`logging`'s carve-out.
+container. What the factory's own disposal tears down rides on the still-unbuilt scope/dispose
+model — a gap in that model generally, not a defect specific to `logging`'s carve-out.
 
 **The exception is `logging`, by name. The list is closed.** The paragraph above explains why
 `logging` earned it; it is not a test anyone else may apply. No other library builds a container,
@@ -1262,8 +1255,7 @@ loudly (an uncertified-kind diagnostic), never silently.
 Matching stays certified only for the shapes already landed (§91: interface member and free
 function). Static / namespace / const-member and class-member (shape-1-without-`impl`) matching are
 grammar-valid but their matchers are not yet certified, and nested member paths (`A.B.fn`) are
-describable by the grammar but deliberately unimplemented — both open edges, pending certification
-work.
+describable by the grammar but deliberately unimplemented.
 
 Go stays agnostic of the inlinable roster itself (U2, `decisions.user.md`; the general
 source-agnostic principle is §117's) — nothing in the marker grammar introduces a name table, a
@@ -1491,7 +1483,7 @@ throws or returns `undefined` for zero matches — the empty aggregate is the an
 
 _Owner-directed 2026-08-13._
 
-## §146 — di2's `IOptions<T>` is one open registration; the composed-generic derivation question is still open
+## §146 — di2's `IOptions<T>` is one open registration, and the composed-generic derivation question dissolves with it
 
 `IOptions<T>` is served by ONE open registration in di2 — `IOptions<$T>` with a
 placeholder-parameterized impl, the same mechanism the open logger registration already uses. No
@@ -1503,10 +1495,6 @@ registration through the ordinary match walk.
 The consequence is that the composed-generic derivation question dissolves for this case — no
 engine grammar extension, no new derivation path is needed — and the `tokenfor`/`tokenof`/
 `nameoftransform` trio retires once the `addOptions` body is rewritten to bare `typefor<T>()`.
-
-**Still open**: whether a bare `typefor<T>()` derives correctly inside a SUBSTITUTED body is
-unverified — its sibling `tokenof<T>()` is witnessed working there, but `typefor<T>()`'s own
-substituted-body behavior is the premise to probe before the trio retirement can proceed.
 
 _Owner-directed 2026-08-13._
 
@@ -1577,11 +1565,11 @@ _Owner-directed 2026-08-13._
 
 ## §151 — Delivery is not a node kind: `Type.async` and the `asyncIterable` kind are cancelled
 
-Handing a value over later is a property of the site, not of the type being named. "A `T`
+Handing a value over later is a property of the plan node, not of the type being named. "A `T`
 delivered later" is `Promise<T>` — the ordinary global generic that a `Promise<T>` reference already
 derives to — so `Type.async` and the `Async<E>` wire spelling are gone with nothing replacing them.
 
-`AsyncIterable<E>` factors the same way: an async sequence is a site's iteration protocol over a
+`AsyncIterable<E>` factors the same way: an async sequence is a plan node's iteration protocol over a
 collection, and `AsyncIterable` is a real TypeScript name that spells as an ordinary global generic.
 Its dedicated aggregate kind is gone too, and with no kind left to produce one, the engine's
 async-iterable plan node and its realization go with it.
@@ -1804,7 +1792,7 @@ It is composed inside the verb, never at a call site.
 
 _Claude-directed 2026-08-13, executing the owner's standing options ruling._
 
-## §161 — `tokenfor`/`tokenof` leave the authoring surface; their Go stage stays, pending its own pass
+## §161 — `tokenfor`/`tokenof` leave the authoring surface
 
 The two token primitives are gone from `primitives.extras`. Their last call site was the
 `addOptions<T>()` sugar body, which composed `IOptions<T>`; once one open registration serves the
@@ -1975,8 +1963,8 @@ for a sugar overload and an explicit-node one alike). A Go regression test
 (`TestResolveMemberUnmatchedDespiteArityCollidingOverload`, `resolve_test.go`) pins the shape red
 before the fix, green after.
 
-**The authoring sugar this door was meant to pair with is held**, pending a settled spelling for
-its inline body. Nothing in this entry describes that door; it ships separately.
+**The authoring sugar this door was meant to pair with is held.** Nothing in this entry describes
+that door; it ships separately.
 
 _Owner-directed 2026-08-13._
 
@@ -2005,8 +1993,13 @@ exported roster carries no per-factory spec interface.
 every field it publishes, `kind` included, minus the intern-table brand (`RawType<T>`) — it
 canonicalizes, freezes and interns it, and hands back the canonical instance, so `===` decides its
 equality exactly as any other factory's result does. It's the door a tree arriving from outside
-takes — a value revived from JSON, one a cast produced — and the mechanism every other factory
-already shared; `adopt` names and publishes it rather than adding a second one.
+takes — a value revived from JSON, one a cast produced, the tree the parser reads out of a token —
+and the mechanism every other factory already shared; `adopt` names and publishes it rather than
+adding a second one. It is also the ONE semantic door: a visitor whose every case is a factory
+call, so whatever a factory canonicalizes, collapses or refuses applies to a revived node. The
+parser owns grammar alone — it parses a token literally into `RawType` data and `Type.from(token)`
+is `adopt(parseLiteral(token))` — so the grammar cannot drift from the factories. `Type.from`
+takes a string only; plain data goes through `Type.adopt` directly, one input per door.
 
 Interning identity includes the rows: the intern key brackets each row separately, which is what
 keeps a callable's one-empty-row shape distinct from every other row shape it could carry.
@@ -2431,8 +2424,8 @@ the walk's own engine and provider. This is the existing pattern for `IServicePr
 rather than invented, and it is what let `createScope`'s current implementation start working
 without being touched.
 
-**A lifetime tag gates caching; its VALUE is ignored.** A ctor/factory site whose registration carries
-any lifetime caches into whichever scope is asking, keyed by that registration; a site with none
+**A lifetime tag gates caching; its VALUE is ignored.** A ctor/factory plan node whose registration carries
+any lifetime caches into whichever scope is asking, keyed by that registration; a plan node with none
 realizes fresh every time. There is no matching-scope-by-tag search, no ancestor lookup, and no
 distinction between different tag strings — every registration in the repo today tags `'singleton'`
 and nothing else, so this is the cheapest gate that already satisfies all of them. Multiple named
@@ -2494,16 +2487,16 @@ function's own doc comment says scope AND build-time validation are Development-
 implementation only ever set `validateOnBuild`. `validateScopes` now follows the same
 `isDevelopment` value.
 
-## §186 — Async resolution is site behavior
+## §186 — Async resolution is plan-node behavior
 
 The container has no async type kind and no async resolution machinery of its own: asynchrony is
-site behavior. `getServiceAsync` wraps the synchronous resolution in a `Promise` and
+plan-node behavior. `getServiceAsync` wraps the synchronous resolution in a `Promise` and
 forwards; everything reachable asynchronously is reachable through `getService`. A dependency on
 `Promise<T>` or `AsyncIterable<T>` is spelled with the ordinary global generics — there is no
 dedicated node kind for either. The parts that interact with scope — the hoist walk consulting
-the scope cache per async site, per-occurrence placeholder labels, and the concurrent-miss
+the scope cache per async plan, per-occurrence placeholder labels, and the concurrent-miss
 double-instantiation question — are held in docs/di2.scope-notes.md for the scope design session;
-none of them changes the site principle.
+none of them changes the plan-node principle.
 
 _Owner-ruled (pre-compact session record), Claude-recorded 2026-08-14._
 
@@ -2616,13 +2609,14 @@ _Owner-ruled 2026-08-15, Claude-executed._
 
 ## §189 — The compile-time type machinery is the toolkit's; `obj` carries the `Object.*` precision
 
-`@rhombus-std/primitives` carries no type-level module of its own. `Flatten` is imported by every consumer straight from `@rhombus-toolkit/type-helpers`, and the precise `Object.keys`/`values`/`entries`/
-`assign`/`fromEntries` result types live on that package's `obj` module as WRAPPER FUNCTIONS —
+`@rhombus-std/primitives` carries no type-level module of its own. `Flatten` is imported by every
+consumer straight from `@rhombus-toolkit/types`, and the precise `Object.keys`/`values`/`entries`/
+`assign`/`fromEntries` result types live on `@rhombus-toolkit/obj`'s `obj` module as WRAPPER FUNCTIONS —
 `obj.keys(x)` at exactly the call sites that want the precision — with no `ObjectConstructor`
 augmentation anywhere: a global augmentation imposes the sharpened signatures on every file of every
 consuming program, where the wrapper is opt-in per call. Call sites that never needed the precision
 keep the stock `Object.*` statics. The supporting machinery (`UnionToTuple`, the counters, the
-index-wise array merge) serves those types inside `type-helpers` and is not part of primitives'
+index-wise array merge) serves those types inside the toolkit and is not part of primitives'
 surface.
 
 The registry keys its per-token bags as plain `Map<string, Contribution[]>` — no dedicated
@@ -2753,9 +2747,9 @@ sanctioned non-public reach whose files mint `pkg/private/<path>` tokens, and an
 subpath reaching a file is a hard diagnostic.
 
 **The decision: the conventional shape is src-first in-repo.** Every library's dev exports resolve
-`./src/index.ts` for every consumer and every condition (`.` as a bare-string target); `main`/
-`types` point at src; `publishConfig` carries the dist surface unchanged. All custom conditions —
-the shared `source` and all seven `<pkg>-source` — are deleted: with src the uniform in-repo
+`./src/index.ts` for every consumer and every condition (`.` as a bare-string target); `main` points
+at src; `publishConfig` carries the dist surface unchanged. All custom conditions — the shared
+`source` and all seven `<pkg>-source` — are deleted: with src the uniform in-repo
 resolution there is nothing left for them to disambiguate, and the TS2664 self-augmentation fix
 falls out for free (a package's own `declare module` now resolves its own specifier to the same
 source files its program is compiling). This is the pattern the requirements + convention pin:
@@ -2781,10 +2775,9 @@ source files its program is compiling). This is the pattern the requirements + c
   build is untouched: stage-then-bundle stays, and the parity invariant (lowered == hand-written)
   is what makes running lowered-on-load src equivalent to running `dist`.
 - **The wire format does not move.** `.` stays public (its src stem is the same stem the build
-  program compiles); `./private/*` stays, non-public (`types`/`bun` → src, no `default`), so
-  internal types keep minting `pkg/private/<path>` tokens. White-box suites import src through
-  `./private/*` and the preload lowers it; `dist/stage` remains a build intermediate only. No
-  transforms/ change.
+  program compiles); `./private/*` stays, mapping straight to src, so internal types keep minting
+  `pkg/private/<path>` tokens. White-box suites import src through `./private/*` and the preload
+  lowers it; `dist/stage` remains a build intermediate only. No transforms/ change.
 - **Compile-scope typings travel with the source that needs them.** A consumer program compiling a
   dependency's src must see its `node:*` shims, so each src file importing a node builtin carries
   `/// <reference path="./node-builtins.d.ts" />`.
@@ -2797,7 +2790,7 @@ source files its program is compiling). This is the pattern the requirements + c
   half switches `node` → `bun` with the preload. The plain-node published-consumer proof belongs
   to a packed-artifact gate (out of scope here; noted as the conventional home).
 - **`derive-publish-config.ts`** learns the bare-string dev form (string entry on a publishable
-  subpath → dist-swapped conditions object), keeping the scrub mechanical.
+  subpath → the dist-swapped bundle target), keeping the scrub mechanical.
 
 **Accepted costs.** Any suite that touches a lowering library now needs the Go sidecar (previously
 only the ttsc e2es did); the shared content-keyed cache keeps that a once-per-machine cost. A
@@ -2895,7 +2888,8 @@ _Owner-ruled (U5); Claude-recorded 2026-08-22._
 ## §195 — Union and intersection members store in one canonical order: kind rank, scalars, children
 
 `canonicalMembers` (`libraries/primitives/src/Type/factory/factories.ts`) sorts composite members
-with a fixed comparator instead of the token spelling: a rank per kind — holes first, literals
+with a fixed comparator instead of the token spelling — TS7's own `CompareTypes` shape translated
+to this vocabulary, diverging only by carrying no declaration-order or id residue: a rank per kind — holes first, literals
 last — then the kind's own scalars (name/from/tag/value, literal values by category then value),
 then children pairwise (fewer first, then position by position, rows likewise). Identity
 short-circuits the comparison; no declaration order and no id residue enters it. Literals ranking
@@ -3046,3 +3040,737 @@ them. The guarantee is documented on the `Manifest` interface; `_add` always cha
 always new.
 
 _Owner-ruled; Claude-recorded 2026-08-22._
+
+---
+
+## §203 — The realize walk stays opaque to lifetime vocabulary; audit is an addon behind a shared `beginResolve` hook
+
+`RealizeVisitor` names no lifetime, scope, or audit vocabulary of its own: each addon reads only
+the one strand it contributed, and the walk's binding does the same. `Construction` and `Hooks`
+carry their `State` generic with no model-imposed bound — `State = unknown` — so the state a
+lifetime model threads stays purely the vocabulary it invents for itself, never a shape
+the walk constrains. An injected opening or a `{state}` answer that names no state is not normalized to
+some empty sentinel; it stays `undefined`, and the addon that produced it is the one that reads
+its own absence back.
+
+`LifetimeModelError` is minted by the lifetime models themselves, wrapping a throw from their own
+hook — the engine passes the throw through and knows nothing of the error type.
+
+The `beginResolve(request, injected)` hook joins the one shared `Hooks` roster rather than opening
+a second door: hooks stay together for now, and a dedicated interception point is minted only once
+a genuinely foreign domain needs one of its own. `beginResolve` opens each resolution and answers
+the state it runs under; a hook nobody files against composes to the identity, so a build with
+none pays nothing for it.
+
+Audit is an addon, `audit-addon`, not engine machinery. It registers `Audit` the same way
+any other registration would — the placement ladder runs registration, then addon, before ever
+reaching for an engine change — threads its own frame chain through its own strand via `{state}`,
+and supplies the audit instance from `beforeConstruct` at the `Audit` address. The
+consequence is that audit is install-to-use: without the `audit-addon` addon installed,
+resolving `Audit` is `Unsatisfiable` like any other unregistered address. The dedicated
+`audit-addon` plan kind and its planner-side synthesis do not exist.
+
+_Owner-ruled; Claude-recorded 2026-08-27._
+
+---
+
+## §204 — The door files a bundle; dispatch is precomputed per hook kind; a behavior threads its own state
+
+The engine holds one entry per installed behavior — `InstalledHooks` keeps the list — and install
+and dispose each rebuild the always-active dispatch: per hook kind, the entries implementing it, in
+install order. The ask path therefore walks only what can run and steps over every kind nobody
+implements, and a resolution reads the snapshot it opened under, so an install made while it is in
+flight reaches the next resolution instead.
+
+The door files per bundle, not per hook: one `Behavior` whose five members
+(`beforePlan`/`beginResolve`/`beforeConstruct`/`canonicalize`/`afterConstruct`) each accept either
+a plain handler function or Koa-style middleware with a trailing `next`, discriminated by the filed
+function's declared arity and read once, at install.
+
+Always-active entries run first, in install order; the ask's activated staged entries follow, in
+activation order — so a lifetime model's own staged behavior, activated by the layer the ask entered
+through, runs closest to the construction, and an always-active behavior stands outside it and sees
+that answer come back through its `next`.
+
+A behavior threads its own state and nothing else: `beginResolve` receives the incoming state and
+answers the state the rest of the walk sees for that behavior alone, never a side channel, each
+behavior's answers living in its own slot (§227). An addon needing a private compartment has one by
+construction; the platform manages no roster or namespace on an addon's behalf.
+
+An addon plants its permanent hooks itself, at build: its middleware asks the engine for its control
+through `next` and installs there, so hook count at install time costs nothing at call time beyond
+the dispatch lists already built — never a runtime layer the walk must additionally step through.
+
+`scope` names only the lifetime models' own vocabulary; `walk` names only the realize visitor's
+traversal. Neither hook, provider, nor addon machinery borrows either word.
+
+_Owner-ruled; Claude-recorded 2026-08-27._
+
+---
+
+## §205 — Capture-at-mint closures; every resolution opens through `beginResolve`; ambient scoping stays parked
+
+A latebound closure and an invoker closure each capture the state at the position they were
+minted, not the state the whole resolution opened under, and re-enter through that captured
+value on every call. The model's `{state}` re-threading is what makes the mint position the
+honest ownership state: a singleton's factory closes over the root-threaded state once and
+keeps it for the life of the container, while a scoped service's factory closes over its own
+scope's state — so a cached holder never smuggles a first caller's state into a later one.
+
+Every resolution opens through `beginResolve(request, injected)` — a fresh top-level ask, an
+invocation frame, and a latebound call alike, re-entries included, never only the outermost one.
+This is the ambient-adoption seam: an opener that reads ambient state decides there, and nothing
+downstream may bypass the handler to inject state directly. An addon that packs its own
+compartment into the threaded state therefore has to recognize a re-entry that hands its own
+pack back as `injected` — `audit-addon` does this by remembering every pack it has minted and
+unwrapping to the inner state before folding in a fresh compartment, so a re-entered resolution
+never mistakes its own bookkeeping tuple for someone else's ambient value.
+
+Ambient scoping itself stays parked. Browsers have no `AsyncLocalStorage`, and TC39's
+`AsyncContext` is still Stage 2, so an ambient lifetime model has no portable primitive to stand
+on today. It arrives, when the platform does, as an outside node/bun-only package shipping an
+ambient lifetime model plus its companion addon, authored against `di.core` alone — `di` and
+`di.core` themselves stay unchanged.
+
+---
+
+## §207 — The observing surface is vocabulary-blind; the threaded data is named `state`; the pipeline type stands alone
+
+`Middleware` — the curried pipeline type a builder composes — stands in its own di.core module.
+There is no internal protocol type: what a container resolves through is a plain `IServiceProvider`
+over one `GetService`.
+
+The observing types are vocabulary-blind. `Hooks`, `Behavior`, `Hooks.Construction` and
+`Hooks.Interception` name no lifetime, and `Construction.registration` is `Registration<unknown>`:
+the one party that interprets a lifetime is the model, which narrows structurally at runtime, with
+a better error than a type-level ferry of the vocabulary would buy. The `Lifetime` generic lives
+where vocabulary is authored — the manifest, the builder, and the `Addon<Lifetime>` a lifetime
+model is, whose installation files `Iterable<Registration<Lifetime>>` so the builder's locked-on
+vocabulary is the one its registrations name. A generic addon that cannot know the container's
+vocabulary takes its lifetime as an argument (`LifetimeArgument`).
+
+A lifetime model has no contract of its own: it is an `Addon<Lifetime>`, installed through the
+builder's `useAddon`, and its middleware receives `next` exactly as every other addon's does
+(§215).
+
+The per-resolution threaded data is named **state** — the `State` generic on the observing types
+and `Construction.state`. 'Context' names nothing on that surface; `Interception.state` and the
+`injected` parameter keep their names.
+
+_Owner-ruled; Claude-recorded 2026-08-27._
+
+---
+
+## §211 — One hooks control; a staged install gates on the ask that activated it, an always-active one runs for every ask
+
+There is one hook door and one install model. `ControlService` — a public `di.core` interface — is
+the single control the engine answers for hook access, reached through the chain like any service:
+a middleware asks for it at fold time with `next(new ControlRequest(typefor<ControlService>()))`.
+
+It carries two installs, both taking effect immediately and both undone by disposing the `Handle`
+they answer. `installHooks(hooks)` runs them for every ask, outermost, ahead of every staged
+behavior. `stageHooks(hooks)` gates them: they run only for an ask that activated the handle, which
+a layer writes as `next(request.activate(handle))`. Permanent installation and per-ask installation
+are not two mechanisms — they differ in that gate, in where the install is made, and in whether the
+disposer is ever run: held for the container's life, or bracketed in a `using` block.
+
+Install and dispose are cold. The engine keeps one entry list: installing appends, disposing empties
+that slot and never reuses it, and each rebuilds the always-active dispatch once — so nothing on the
+ask path installs, splices or checks for removal, and a request still naming a disposed handle
+simply fails its gate. There is no separate "window" tier and no per-addon tier standing at its own
+distance from the walk: an always-active entry's distance is where its install stands among the
+others, and every staged entry stands inside every always-active one.
+
+An addon's own middleware asks for `ControlService` once, at fold time, stages its behavior there,
+and activates the handle on every ask it forwards: `next(request.activate(handle))`. Every control
+ask passes straight through such a layer unchanged — no branch, no special case at all: "no special
+cases" is the standing rule, and the single-door model means a control reaching a layer needs
+nothing done to it.
+
+`ControlService` is `di.core` public surface, so the address it derives from is one every consumer
+of the package can resolve, and an error naming that address in text a consumer sees cites a
+specifier they can reach.
+
+_Owner-ruled; Claude-recorded 2026-08-28._
+
+## §212 — The addon contract is `{ registrations, middleware }`; the lifetime model mints its own machinery the same way
+
+An addon states its whole contribution to a build through two members — the `registrations` it
+files and the `middleware` it composes — and an addon's hooks ride its `middleware`: one hook
+shape, one name, wherever it appears. The owner's own framing: "the 'addon' contract will now be
+`di.useAddon(addon:{create():{middleware:Func<...>, registrations:Iterable<Registration<any>>});`.
+lifetime model _could_ follow this pattern, but it's a special case bc the builder needs to
+forward the generic arg to the registration builder (i.e. manifest). we need to get validation to
+conform next -- let me look over what it does. go ahead and refactor the audit service into this
+shape."
+
+`Addon<Lifetime>` (`libraries/di.core/src/Addon.ts`) carries exactly those two members, and the
+builder's `useAddon` installs one, matching the verb to what an addon is. A lifetime model is an
+`Addon` outright, with no contract of its own, and it folds into the addon list the same way
+anything else does: the builder's `useAddon` installs it. The `Lifetime`-generic-forwarding
+concern the quote above raises dissolves in the type itself: `Addon<Lifetime>` carries the
+vocabulary, and the builder chain locks onto the first input that names a concrete one.
+
+_Owner-ruled; Claude-recorded 2026-08-28._
+
+## §213 — An addon's `middleware` is a `Middleware`; there is no `atBuild`; a permanent hook installs itself through the same door a scope does
+
+`Addon.middleware` is a `Middleware` — the ordinary request-grain kind the builder
+composes around the engine — not a `Behavior`. The owner's own
+correction: "yes, the member i named middleware is suppoed to be a middleware. didn't think i'd
+need to say that." An addon wanting a permanent hook plants it itself, at build, through the same
+door a scope's own keeping installs through: its middleware asks for the engine's hooks control
+through `next`, installs, and returns `next` unchanged — stepping aside once its install-time work
+is done. Nothing about the engine or the builder singles out "addon hooks" as their own kind of
+contribution — an addon that wants one installs it exactly the way anything else would.
+
+There is no `atBuild` member and no separate addon-hook tier: `useAddon` feeds one middleware
+list in builder-call order, the first call composing outermost, and an addon's own middleware
+takes its place in that list at the position `useAddon` was called. `build()` reads
+`registrations` and `middleware` off every addon and composes the one chain — §216 records the
+fold.
+
+A second control answers the manifest a container resolves against: `typefor<Control<Iterable
+<Registration<unknown>>>>()`, answered with `new Control(this.#registry.registrations)` — the
+registry's own frozen array serves as the iterable, a read-only view built from public types alone.
+`typefor` derived this spelling cleanly on the first attempt; the `Control<Manifest<unknown>>`
+fallback the spec allowed for was never needed. The validation addons are this control's consumers: each middleware asks for it
+through `next` (`registryOf`), builds a `Registry` from what comes back, and sweeps that — nothing
+about validating a registration set needs the engine concrete.
+
+_Owner-ruled; Claude-recorded 2026-08-28._
+
+## §214 — The pipeline type is named `Middleware`, unqualified
+
+The container's one pipeline type is `Middleware` — `libraries/di.core/src/Middleware.ts`. The
+owner's own reasoning: "`ResolveMiddleware` is a bad name bc it has that
+installer stage, optionally modifying the resolve pipeline. call it either DiMiddleware
+(DIMiddleware? they're both kinda ugly) or just plan Middleware." `Middleware`, unqualified, is
+what shipped: the container has exactly one pipeline type, so it needs no qualifier to tell it
+apart from anything else in scope. The hook vocabulary is untouched by this — its signatures spell
+inline on `Hooks`/`Behavior` (§222).
+
+`Middleware.ts`'s own doc states plainly what the type covers: a factory that composes once, at
+build, and may do install-time work of its own there — planting a permanent hook, sweeping the
+manifest — before answering the function each request runs through.
+
+_Owner-ruled; Claude-recorded 2026-08-28._
+
+## §215 — The head every provider tracks is a plain func; the model mints it through the same middleware every addon does
+
+The container's tracked identity is a plain func — `GetService` (request in, product out; §230) —
+not an `IServiceProvider`. The owner's own reversal, verbatim: "i think i want to change `LifetimeModel.create` to return a
+normal middleware, and change the ServiceProvider ctor to `class ServiceProvider {
+#getService:Func<[Type], unknown>; constructor(source:IServiceProvider|Func<[Type], unknown>);
+}`. this reverses what i said before about 'decorator pattern being king'. the head that's being
+tracked will be just a func, not an sp." `ServiceProvider` holds exactly that one call —
+`constructor(source: GetService)` — and every ask forwards through it; it remains the package's
+one `@augment` carrier.
+
+A lifetime model is an `Addon`, `{ middleware, registrations }`, and nothing more. A model's
+`middleware` composes exactly like any other: it receives `next` and answers what runs in its place,
+taking its position in `di.ts`'s one middleware list where `useAddon` was called — choosing a model
+is typically the builder's first call, and the standing rule ("first call composes outermost")
+places it outermost with no special case for models at all. Its `registrations` file at the floor,
+beneath every later addon's. `build()` folds that one list — every installation's middleware, the
+engine's own appended last — with `reduceRight` around a terminus that refuses an address nothing
+produces, and hands the result straight to `new ServiceProvider(head)`: one mint site,
+unconditional, since folding zero middlewares around the base function returns that function
+unchanged.
+
+_Owner-ruled; Claude-recorded 2026-08-28._
+
+## §216 — The builder holds exactly one list: every input is an addon, replayed at build
+
+`DefaultContext`'s only private state is `#addons` — one `Addon` per `useAddon`/`withServices`
+call, in call order. No `#lifetimeModel` field exists: a lifetime model is an addon, full stop, as
+§212 also records, and nothing distinguishes installing one from any other `useAddon` call.
+`withServices(fn)` is registration authoring as an addon too: it wraps the registrations `fn`
+composes onto an empty manifest into an addon contributing identity middleware. Every verb returns
+a NEW `Builder`, so a discarded result configures nothing — exactly as `Manifest`'s own verbs
+behave.
+
+`build()` replays the list once: it folds every addon's `registrations` into one stream — a later
+addon's filings landing ahead of an earlier one's, newest first — mints the `Engine` over that,
+and `reduceRight`s every addon's `middleware` around the engine's own middleware, which answers
+what its registrations can produce and hands anything unregistered on through `next`.
+`new ServiceProvider(head)` is the one mint site, unconditional: folding zero middlewares around
+the base function returns that function unchanged, so an empty chain needs no identity-elision
+branch.
+
+**`Manifest.add` carries batch overloads** — `add(manifest)`, the order-preserving merge, and
+`add(registrations)`, the consecutive-adds fold; §218 records their exact dispatch. `Manifest.ts`
+declares only the underscore-prefixed `_add`/`_replace`/`_remove` as `DefaultManifest`'s real
+primitives; every public `add` shape, singular included, lives entirely in
+`Manifest-Registration-augmentations.ts`.
+
+_Owner-ruled; Claude-recorded 2026-08-28._
+
+## §217 — Validation is independently installable middlewares, one per check
+
+There is no aggregate `validation(policy)` addon: `validateUniversalAddresses()` and
+`validateBuildability()` are each their own `Addon`, each throwing its own
+`ManifestValidationError` over only its own failure kind — and captivity validation is model-owned
+(§229), never a shared validator. The owner's own ruling: "there should be a validation middleware
+for each validation so that the user can custimize. we'll prob make an 'options' surface in the di
+builder that selectively installs them, but not now. commit validations soon as they fit that
+bill." That options surface is explicitly deferred — the validators install as ordinary addons,
+`useAddon`ed individually, nothing scaffolded toward selecting a subset for the owner later.
+
+`validateUniversalAddresses` rejects a registration addressed by nothing but a hole; needs no
+policy. `validateBuildability` plans every closed address, failing the ones that don't build; needs
+no policy. The shared plumbing — the roster control ask into a `Registry`, and enumerating every
+closed address's plan-or-error — lives in `closed-address-plans.ts` (`registryOf`,
+`planClosedAddresses`), private to `di`'s internals.
+
+`hosting` installs `validateBuildability` behind its `serviceProviderOptions.validateOnBuild`
+toggle; omitted means an unvalidated build.
+
+_Owner-ruled; Claude-recorded 2026-08-28._
+
+## §218 — `add` carries three overloads, `ButNot` forking the batch shapes; `apply` and `addMany` are both gone
+
+`Manifest.add` is three overloads, one name: `add(registration: Registration<Lifetime>)`, unchanged;
+`add(manifest: Manifest<Lifetime>)`, the order-preserving wholesale merge — `new DefaultManifest(()
+=> concat(manifest, this))`, the stream's own order landing intact ahead of everything already in
+the chain; and `add(registrations: ButNot<Iterable<Registration<Lifetime>>, Manifest<any>>)`, the
+consecutive-adds fold — each filed in turn, the last ending up newest. There is
+no `addManifest` — the owner overruled minting one: "actualy,
+should we just overload add on Manifest for the order behavior?" then, settling it, "that's what
+ButNot is for." `apply` does not exist, in any overload — "get rid of
+apply, i never sanctioned that. do the work at the callsite." `addMany` does not exist either —
+the consecutive-adds shape lives on `add` itself, per the owner's framing: "either way, only one should
+exist. `add` is better if it's safe. need to make sure the `add<T>(value)` version in extras doesn't
+hog."
+
+**The runtime dispatch cannot tell `add(manifest)` from `add(registrations)` at all — proven, not
+assumed.** A throw planted in each contribution showed the `Manifest`-shaped handler never fires,
+for any call, including one whose STATIC argument type is `Manifest<Lifetime>` outright. Every call to `add` with one iterable-shaped argument lands in the consecutive-adds
+contribution, full stop; the separate `Manifest` contribution exists for the static overload set to
+have a corresponding implementation and stays correct if the dispatch is ever fixed to actually
+route to it, but today it is dead code. What makes the merge behavior real is the owner's own
+sanctioned mechanism: "the iterable overload can do an instanceof test to be extra safe" — the
+consecutive-adds body opens with `registrations instanceof DefaultManifest`, and reroutes to the
+identical order-preserving merge when it fires. The guard is a concrete-class test, not a structural
+one: a third-party `Manifest` implementation that isn't a `DefaultManifest` instance would fall to
+consecutive-adds instead of the merge — accepted, and now documented rather than silently true. The
+same throw-per-contribution technique confirms a bare `Registration` also lands in the
+consecutive-adds contribution by default, not the dedicated `add(registration)` one — harmless, since
+`concat`'s accept-permissive single-value handling plus the `_add`-direct fold answer it correctly
+regardless.
+
+Made safe: `di.extras`'s type-driven value sugar, `add<ServiceType>(value: ButNot<ServiceType, Func
+| AbstractCtor | Registration<any>>)`, extends its exclusion to `ButNot<ServiceType, Func |
+AbstractCtor | Registration<any> | Iterable<Registration<any>>>` — both the `declare module` face
+and the `ManifestRegistrationValueAugmentations` marker body; a `Manifest` is itself an
+`Iterable<Registration<any>>`, so it is covered by the same exclusion without a further change. No
+ttsc e2e fixture exercises the bare single-argument `add<T>(value)` sugar form with a plain value
+(every fixture touching the value shape goes through the explicit `addValue<T>()` door instead), so
+nothing in the parity suite changes.
+
+**A real dispatch bug, found and fixed along the way, not just a rename.** Giving `add`'s
+consecutive-adds body `addMany`'s old fold exposed that a bare `Registration` handed to `add` was
+ALWAYS routing to the iterable overload at runtime, never to the single-`Registration` one; the two
+have shared this ambiguity since the iterable overload was introduced. It stayed invisible because
+the iterable body used to delegate to `apply`, which built its result with `concat`, whose own
+accept-permissive design (`isIterable(p) ? p : [p]`) silently treats one non-iterable item as a
+one-element sequence — masking the mis-route by accident rather than resolving it. A body that
+genuinely iterates has no such forgiveness and threw outright; a first fix that only wrapped the
+argument in `concat` for the same forgiveness still recursed infinitely, since the fold's own
+`man.add(registration)` call hits the identical mis-route on every element. The fix: `add`'s
+consecutive-adds body, and `tryAdd`'s identical fold, both call the manifest's own `_add` primitive
+directly instead of re-entering the ambiguous `add` — the same primitive `add(registration)`'s own
+handler already calls. `replace` and `tryAdd`'s other internal recursions were checked and are not
+ambiguous the same way (neither has a competing overload sharing its argument shape).
+
+**Executable proof, not code reading** — three smoke cases: `add(aManifest)` on a source whose own
+newest wins the merge; `add(anArray)` on the same two registrations, where the array's LAST element
+wins instead (consecutive-adds); and a `Manifest` assigned to a variable statically widened to
+`Iterable<Registration<...>>`, forcing TypeScript itself to bind the consecutive-adds overload,
+still landing on the order-preserving merge at runtime — the exact case the `instanceof` guard
+exists for, proven rather than reasoned about.
+
+_Owner-ruled; Claude-recorded 2026-08-28._
+
+## §222 — `Hooks` spells every signature inline; `Behavior` is derived from it
+
+`Hooks`' five members spell their handler-form signature directly — `beginResolve: Func<[request:
+Request, injected: State], State>` and so on — the one place the signatures and their per-hook docs
+live, `canonicalize`'s built-only/no-thenable remark among them. There are no per-hook handler and
+middleware alias types standing beside them; the owner weighed several naming shapes for such a set
+and settled on the most direct answer himself, then delegated the pick outright: "choose the answer
+you like best and do it. proceed with plan." `Construction` and `Interception` sit inside the
+`Hooks` namespace — `Hooks.Construction<State>`, `Hooks.Interception<State>` — the owner's "do it
+for hooks" ruling; `hooks.ts` carries the `Handle` and `Hooks` interfaces and that namespace, and
+nothing else.
+
+`Behavior` is derived, not hand-spelled, per the owner's directive: "make a mapped type for the koa
+pattern". `Koa<Handler>` is the koa pattern as a conditional type — a handler's middleware form is
+the same signature with a trailing `next`, standing for everything beneath the layer: `Handler
+extends Func<infer Args, infer Answer> ? Func<[...Args, next: Handler], Answer> : never`.
+`Behavior<State>` is the mapped type over `Hooks`' own shape, each member optional and widened to
+its handler-or-middleware union: `{ readonly [K in keyof Hooks<State>]?: Hooks<State>[K] |
+Koa<Hooks<State>[K]> }`. A standalone implementation of one member, predefined before it's assigned, is
+typed by indexed access — `Hooks['beginResolve']`, `Behavior['beforeConstruct']`.
+
+Which form a filed member takes is read from its declared arity, once, at install (§204), so a hook
+declaring more parameters than its handler form runs as middleware.
+
+_Owner-ruled; Claude-recorded 2026-08-28._
+
+## §223 — Two disposal boundaries
+
+The policy for unkept disposables — those a model keeps nothing for — is **model-defined**:
+"that'll be LifetimeModel configuration, or different LifetimeModels. bottom line is it will be
+model defined." Never engine policy.
+
+A callable outliving the scope it was minted in collides with nothing of that scope's, because
+nothing built from a latebound argument is ever kept in one. §230 carries the rule and the reason.
+
+## §224 — The keeper caches the make's product, promise included; the async double-make race dissolves by construction
+
+A scope's cache stores whatever the make returned — a promise product included; the model is fully
+async-blind and never insists on settled values. A promise plan's product is its boundary's own
+wrapping promise, minted and stored in one synchronous run-to-completion block, so concurrent walks
+share one promise and double-instantiation is impossible by construction. The governing invariants,
+owner-stated: promises hoist to their nearest parent promise; realization stays synchronous
+throughout; a promise needing dep promises becomes a node in the hoist tree collecting its deps'
+awaits.
+
+This supersedes the in-flight single-flight map and the adopt-or-store write-back from
+`docs/di2.scope-async.requirements.md`'s addendum — with one make and one settle continuation per
+product, both are dead machinery. A gather hit on a settled cached promise costs one microtask,
+consistent with "the sync/async distinction is decided by plan structure, never by cache state."
+
+Standard-model rejection policy (Claude-defaulted, flagged for owner override): at store, a thenable
+product (a thenable-protocol check, never `instanceof Promise`) gets a rejection handler that evicts
+the entry — failures never cache, retry works; concurrent holders still share that rejection, deduped
+per walk.
+
+Also ruled the same day: the `di.extras` `resolveAsync` sugar entry is licensed; docs, tests, and
+examples for the async lane are deferred until the code is owner-reviewed (priority: review-ready
+ASAP).
+
+_Owner-ruled 2026-08-28, Claude-recorded._
+
+## §225 — Instance disposal lives entirely in the lifetime model; the engine is untouched
+
+Disposal is contained wholly to the scope blackbox and the existing hook seam — the engine carries no
+new contract and no new vocabulary, no change of any kind. Two lines of
+`docs/di2.scope-async.requirements.md`'s Disposal/Engine-hardening sections are overridden by this
+ruling: the disposed latch that section put on the engine-minted root provider moves model-side, and
+the per-registration disposal vocabulary is NOT engine-defined.
+
+The disposed latch: the model's own minted provider objects and keeper refuse any ask after teardown;
+a latebound re-entry hits the captured scope model and gets the same refusal. Nothing sits at the
+engine door.
+
+No dispose members on `ServiceProvider` or the func-head surface: root teardown is resolution-driven,
+mirroring `createScope` — the model registers its own teardown-bearing surface, and its scope objects
+(root included) carry `Symbol.dispose`/`Symbol.asyncDispose` as model-minted values.
+
+The release vocabulary rides the LIFETIME DATUM — the model's own total property — rather than any
+engine-defined field: no `externallyOwned()`/`withRelease()` verbs, no `Registration` field, zero new
+manifest surface. The standard model widens its own datum type to carry release policy (an
+external-ownership opt-out, a release override such as return-to-pool).
+
+No `DisposedError` in the `di.core` taxonomy: the standard model throws its own disposed-scope error,
+surfaced via `LifetimeModelError` (`.cause`) — the `ScopeTagUnmatchedError` precedent.
+
+The rest stands as specced: the keeper tracks at make time with no new hook, since it performs every
+make and its disposal knowledge is total by construction; value registrations bypass the model and
+are never tracked. Standard-model policy: LIFO release of a scope's kept instances,
+reference-deduped; children-before-parent cascade; unkept/transient instances untracked,
+consumer-owned (transient-disposable policy stays model-defined). `asyncDispose` is preferred over
+`dispose` per instance; a synchronous dispose meeting an async-only disposable throws loudly naming
+the instance's address; a promise product the container never awaited — delivered as a promise by a synchronous
+`resolve` — is out of the scope's reach and is not released at all, its holder owns what settles;
+a promise product the container itself awaited (`resolveAsync`, or any boundary it settled) puts
+the settled value in reach, is released by `asyncDispose` awaiting it and releasing that value,
+and is an async-only disposable to a synchronous dispose, which throws as above. A second
+dispose is an idempotent no-op; release failures aggregate, never abort-on-first.
+
+Implementation queues behind the async lane, in the lifetime model.
+
+_Owner-delegated 2026-08-28 (behavior Claude-owned, owner reviews patterns/style; always
+model-defined; containment owner-ruled), Claude-designed._
+
+## §226 — The instance cache keys as-registered, never as-requested
+
+The unit of "single" is the ANSWERING REGISTRATION: the instance cache keys on the registration's
+identity, paired with its capture bindings for an open registration — `ILogger<A>` and `ILogger<B>`
+close one registration into distinct instances. The requested spelling never splits the key. This
+supersedes `docs/di2.scope-async.requirements.md`'s line that the request key is the as-requested
+type.
+
+Why the request cannot be the key: delivery-mode decoupling makes one registration reachable under
+many spellings — `T` via the boundary fallback and `Promise<T>` name the same singleton; a union
+settling on a member shares it with the direct member ask; an aggregate's element plan node shares it with
+resolve-one. Keyed as-requested, each pair double-makes one singleton registration.
+
+The wrap direction caches the sync registration's instance, never the wrapping promise — the wrap is
+plan-node structure, minted per plan node over the shared instance.
+
+Two memos deliberately stay request-keyed and do not conflict: the plan memo (plans are per-request
+structure; registrations are disambiguated inside plan trees, never by the plan key) and the scope's
+learned memo, a request-keyed shortcut aliasing the registration-keyed truth — one product memoized
+under several spellings is harmless.
+
+_Owner-ruled 2026-08-28, Claude-recorded._
+
+## §227 — Every addon threads its own private state; the walk carries an engine-owned VisitorContext
+
+Every installed behavior/addon has its own PRIVATE threaded state. The `VisitorContext` the realize
+walk threads is IMMUTABLE end to end, and the states it carries are BLACKBOXES the driver moves and
+never reads into. The states member is not a keyed map — a terrible immutable carrier, since a
+wholesale copy per derivation loses structural sharing — but a FROZEN POSITIONAL ARRAY, one slot per
+fold position, minted together with the hook chain from one snapshot of the install list: each
+wrapper the compose fold mints closes over its own index, and the chain+states pair travels and is
+captured together, latebound included, so positions never dangle — a later install or dispose
+re-folds the NEXT resolution while an in-flight walk keeps its own captured pair. A behavior object
+installed twice gets two slots natively, one per fold position. `VisitorContext` also carries the
+latebound call args and the boundary's hoisted map as an engine transient. This supersedes
+`docs/di2.scope-async.requirements.md`'s line that no separate context token exists, and retires the
+single-opaque-state channel.
+
+Derivation is `states.with(index, answered)`, batched per construction into one derived context the
+dependency subtree realizes under. No behavior can observe or clobber another's — the crash class
+where an upstream `{state: undefined}` reaches the keeper dissolves structurally
+rather than by guards.
+
+The state-envelope pattern — an addon packing its compartment over "whatever sits beneath",
+recognized by identity and unwrapped around every hook — is dead machinery under positional slots:
+the audit-addon addon keeps only its frame chain and view, its hooks becoming plain slot reads.
+
+A boundary's plug walk derives a child context carrying its own gathered map — no fresh visitor per
+boundary — and a latebound closure strips boundary transients from its captured pair, so its future
+call never sees an old hoisted map. States are PER-RESOLVE VOLATILE: born at `beginResolve`, dead at
+resolution end; durable state lives on the scope object or the behavior's own closure, never in the
+slots. A latebound capture extends its own walk's states for re-entry — that walk's world, never
+shared forward.
+
+Implementation rides branch `refactor-di-visitor-context` off the async head, landing after the async
+review.
+
+_Owner-ruled 2026-08-29, Claude-recorded._
+
+## §229 — Captivity validation is model-owned middleware; there is no generic validator
+
+Scope captivity — a longer-lived keeper holding a shorter-lived dependency — is structurally
+impossible when the threaded state is used correctly: a keeper's dependencies resolve under the
+state its own construction was threaded, so the model that keeps them decides their ownership.
+Anywhere that does not hold is the lifetime model's own business, never the engine's and never a
+generic addon's — the same ownership §228 already settled, carried through to its consequence.
+
+There is therefore no cross-model lifetime-tier abstraction and no shared validator:
+`LifetimePolicy` (`di.core`) and `validateCaptivity(policy)` (`di`'s validation addon) are removed.
+Each lifetime model decides whether it needs a validator at all.
+
+The standard model needs one: its tiers (singleton over scoped over unkept) are fixed, so a
+singleton→scoped edge is decidable from the plans before anything resolves. The standard model's
+own module owns that validator, exports it as a middleware — an addon where it needs services
+registered — and the model's main addon (`standardLifetimeAddon()`) composes it in by default — validation is on unless the composer removes it. At
+runtime the standard model's behavior is two independent switches, both on by default: `validateOnBuild`
+runs the build-time sweep, and `validateScopes` makes a scoped ask arriving under root state
+throw a model-local `ScopedAtRootError`, surfaced through `LifetimeModelError`; with `validateScopes` off, root keeps the instance. The standard
+model always matches its reference implementation's behavior — an owner ruling, never a Claude
+default.
+
+The tagged model needs none and cannot have a correct one: tag nesting is decided at runtime by
+which tags get opened under which, so no static order exists; its runtime refusal
+(`ScopeTagUnmatchedError` when no ancestor carries the tag) is the whole mechanism.
+
+`hosting` installs the standard model's addon and inherits its validator rather than installing
+`validation(standardValidationPolicy, …)`.
+
+_Owner-ruled 2026-08-30, Claude-recorded._
+
+## §230 — The resolution door carries a request
+
+`getService(Type)` becomes `getService(Request)` for the middleware chain and the engine;
+`IServiceProvider` keeps its own signature. `Request` is an exported abstract class in `di.core`
+with two exported inheritors — the arms, told apart by `instanceof`: `ServiceRequest` (an ask a
+provider opened, carrying `serviceProvider`) and `ControlRequest` (an ask a middleware makes at
+fold time, adding nothing). `ServiceProvider` allocates one `ServiceRequest` per call and puts
+itself on it, and it is the only `IServiceProvider` implementation; a middleware mints
+`new ControlRequest(typefor<ControlService>())` for its fold-time control asks. The class also
+carries the activation surface: `activate(handle): this` records a staged-hook handle on the ask
+(a `private readonly active` list the engine reads by element access) and answers the same
+request, written `next(request.activate(handle))`.
+
+The index signature `[key: symbol]: unknown` declares the attachment mechanism without naming any
+contents, so a core type carries no lifetime vocabulary while an addon still attaches what it
+needs, under a symbol it exports. A string key would be reachable by anyone who types the same
+string with nothing recording that they did; an imported symbol is reachable only through an import
+a reviewer can see. Attachment happens on the way DOWN, before `next` — the object is shared with
+every layer beneath and with the engine, so a write on the unwind is invisible to everything it was
+meant for.
+
+The request is NOT registered. The planner answers a slot naming `Request`, `ServiceRequest` or
+`ControlRequest` with its own plan kind (`RequestPlan`), and the realize walk answers the ask in
+flight when it is an instance of the asked class — the base answers either arm — else throws
+`UnsatisfiableError`. Addresses stay fixed at build and only the answer arrives per ask, so the
+per-registry plan memo never invalidates.
+
+The engine seeds exactly two registrations, appended after the user's so they file oldest and a
+user registration at the same address shadows them — "permanent" means always present, not
+unbeatable. `IServiceProvider` is a factory whose slot is `ServiceRequest`, answering a fresh
+provider view forwarding to the minting request's provider (provider identity is never a
+contract); `ControlService` — one umbrella control interface exported from `di.core` — answers the
+engine's own surface: `registry` (the registrations the engine resolves against) and the two hook
+verbs. The seeded lifetime is `null` at runtime, hidden on inputs and explicit on outputs: the
+registration factories, the builder and `Manifest.add` type the slot `Lifetime`, while the
+engine's own reads and `ControlService.registry` admit `null`. Seeded rows plan their slots like
+any other registration, are visible in the registry, and no hook ever fires at their nodes.
+
+Shadowing resolves beneath: a registration whose own slot names its own address (a factory for
+`Foo` shaped `Func<[Foo], Foo>`) gets the shadowed, older registration as that dependency — every
+registry lookup made while a registration's slots are planned starts beneath it for the
+registration's own address, in either spelling, settled or promise, and at the top of the registry
+for every other address. Apart from that starting position a self-named slot obeys every rule any
+slot obeys: a caller's argument outranks it, `Func<[Iterable<Foo>], Foo>` captures everything the
+registration shadows in authored order, and under a promise ask the async fall-through hands a
+`Func<[Foo], Foo>` factory a registered `Promise<Foo>`, settled. The cycle guard keys a visit by
+address plus start, so a self-named slot re-enters its address at a strictly higher start as a
+fresh, bounded question. Decoration with no verb. Nothing older makes the ask unsatisfiable (a
+throw, never a delegation); a collection ask still enumerates every match; a genuine cycle through
+a second address still throws `CycleError`.
+
+Hooks are one installed mechanism with two tiers, reached through `ControlService`:
+`installHooks(hooks)` is always active — every ask, outermost — and `stageHooks(hooks)` is gated,
+in effect only for an ask that activated the answered `Handle`. `Handle extends Disposable` with
+an `index`; disposing is the uninstall, and a captured request naming a disposed handle simply
+fails its gate. Install and dispose are cold and rebuild the engine's precomputed per-kind
+dispatch; the ask path walks only what is active, allocates nothing of its own, and skips every
+hook kind nobody implements. Construction hooks fire only at registration-carrying nodes, never at
+engine-synthesised ones, and the consumer a hook sees is the nearest registered ancestor;
+`afterConstruct` is skipped when `beforeConstruct` answered a result. The chain never seals:
+layers and hooks may be added at any time.
+
+The chain is folded by `di.build` and nowhere else. That is the builder's rule; everything past it
+is the model's own business. A lifetime model is a black box: nothing in the door, the engine or
+the chain says how one organizes itself, and a model acts only through the hooks — which is what
+makes the seeded rows structurally uncacheable.
+
+A scope never captures a value built from a latebound argument: the address is the cache key and it
+does not carry the arguments, so a cached value would be handed to callers whose arguments could
+never have produced it. The taint propagates upward — a construction is uncacheable when anything in
+its subtree consumed a latebound argument — and it is a static property of the plan tree. A request is
+captured for the whole lifecycle of the `getService` that opened it, latebounds constructed under it
+included, so a latebound call carries the request it was minted under rather than meeting a new one —
+which is what keeps a closure invoked through some other provider filing its untainted dependencies
+into the scope it was minted in, and running that scope's staged hooks however it is invoked.
+
+`Invoker` stays. Spelling a late registration as a branded argument was refused: a temporary
+registration produces a value the cache cannot honestly key, so an instance built from a registration
+that exists for one frame would be handed out afterwards to asks that could never have produced it.
+
+_Owner-ruled 2026-09-01 and 2026-09-02, Claude-recorded._
+
+## §231 — An unregistered object or tuple type synthesizes when every member resolves
+
+All of them or none — one unresolvable member leaves the whole shape unsatisfiable rather than
+half-built, which is the rule tuple synthesis already applied to its members. `visitObject` composes a
+shape from its own properties on the same terms, and `#answer`'s existing order does the rest: a
+registration for the shape itself answers first, and only a miss falls through to building one.
+
+A NAME is a name: a named type resolves nominally, through a registration, and never composes from
+its members. (The three request classes are the one named exception — answered from the ask in
+flight, §230 — and still compose from nothing.) Matching is identity modulo holes — no assignability, no width subtyping, no member
+search — and letting a named shape fall back to its members would be that analysis by another route.
+The difference is only the fallback. Registrations answer first for every address alike — `#answer`
+consults the registry before ever reaching a kind's own synthesis — so an anonymous shape is
+registerable exactly like a named one, and interning is what lets a registration made against one
+spelling be found by the same shape spelled somewhere else. What a named type lacks is the fallback:
+a miss ends there, where an anonymous shape goes on to compose from its members. A utility type lands
+on whichever side its alias leaves it, with no special case either way.
+
+Optional properties are carried as a union with `undefined`, since `ObjectType.members` holds no
+optional flag and `Type.isOptional` already defines optional as exactly that union. The union's
+literal fallback is what keeps an unresolvable optional property from failing the whole shape.
+
+Synthesis from shape requires the members to reach the planner. A named shape derives by its own name,
+which discards them, so a name resolves through a registration and never through synthesis; an
+anonymous one does not derive at all. Structural derivation in `typefor` is therefore the gap that
+gates this, not the planner.
+
+`visitTag` refuses for a reason of its own: synthesizing a tag would fall back to its base, so a keyed
+address would silently resolve to the unkeyed service. `visitCtor` and `visitAbstractCtor` have
+nothing to answer — a constructor value cannot be composed from a signature, only carried by a
+registration, and handing back a closure that constructs is what `visitFunc` already returns.
+
+_Owner-ruled 2026-09-01, Claude-recorded._
+
+## §232 — The transformer's node vocabulary mirrors the `Type` union
+
+The Go side generates TypeScript `Type` expressions, so it carries one node vocabulary with one kind
+per member of that union and children of the same node type. A container's member can then be any
+kind, because there is no poorer half to fall into.
+
+Two partial vocabularies split along a seam with no meaning on the TypeScript side — one the tree
+form of a string walk, the other a classification layered over it — left `Tag` in both, `Undefined`
+and `Null` redundant with `Literal`, `Union` implemented twice incompatibly, and `Object`,
+`Intersection` and `List` absent. The cost was not academic: a container's members were typed by the
+poorer half, so the walk a container recursed through was dictated by a field type rather than by the
+shape being derived — a tuple slot that was a general union refused the whole tuple, and a callable
+slot derived as a service token where the same type inside a union derived correctly.
+
+The invariant this buys: a derivation refusal means exactly one thing — `Type` cannot express this
+shape. Every refusal is justifiable by naming the missing `Type` member, and refusals stay loud
+rather than becoming silent approximations.
+
+_Owner-ruled 2026-09-01, Claude-recorded._
+
+## §233 — A bare `typefor<T>()` derives correctly inside a substituted body; the `tokenfor`/`tokenof`/`nameoftransform` trio is retired
+
+§146's gate is cleared. A real project compiled through the actual `ttsc` host — `add<ServiceType>(implementer)`
+and `addValue<ServiceType>(value)`, whose sugar bodies call nothing but a bare `typefor<ServiceType>()` —
+lowers exactly as a hand-writer would spell it:
+
+```ts
+services.add($di_reg_app_private_app_IFoo_3a8ff602b3, Foo, $vate_app_Foo_di_reg_app_private_app_IDep_7befee0871,
+  'singleton');
+services.addValue($di_reg_app_private_app_IBaz_bf0fe67954, bazValue);
+```
+
+where `$di_reg_app_private_app_IFoo_3a8ff602b3` is the hoisted `Type.imported("IFoo", "di-reg-app/private/app")`
+const — the same address a hand-written `typefor<IFoo>()` at that call site derives, and the same the
+`tests/di.registration.ttsc.e2e` parity suite already pins byte-for-byte against the explicit form. No
+`typefor<`/`typefor(` survives the emit, matching every other substituted-body call site in `di.extras`
+(`resolve<T>()`, `tryAdd<T>()`, `describe<T>()`, …), which already rely on the identical bare-call shape.
+
+`tokenfor`/`tokenof` carried no live definition to retire — `primitives.extras` exports only `typefor` and
+`schemaof`, and the Go `nameof` stage was already gone (`ed69175f`). What remained was residue: the
+`tokenfor`/`tokenof` entries in the inline stage's `knownPrimitives` allow-list and the matching ESLint
+`PRIMITIVE_HOMES` table, a `tokenof` mention in the artifacts doc comments, and `tokenfor` used throughout
+the Go inline-transform unit tests as a stand-in primitive name. All of it is gone; the Go tests now use
+`typefor` (or, where a fixture needed two distinct sibling primitives, `typefor` + `schemaof`) as their
+stand-in instead.
+
+_Claude-verified 2026-09-01, closing §146's gate._
+
+## §234 — A `Type` spells itself in string contexts; its JSON form is the raw tree, read back by `Type.adopt` or `Type.reviver`
+
+Every interned node carries a shared prototype, installed in `intern` before the freeze so no factory can
+miss it: `toString` returning `Type.stringify(this)`, `Symbol.toStringTag` of `'Type'`, and the
+`nodejs.util.inspect.custom` hook so a failed assertion prints the token. `${type}`, `String(type)` and
+`type.toString()` all yield the token; `Type.stringify` stays as the named inverse of `Type.from`. No
+`Symbol.toPrimitive` — a plain `toString` already answers every coercion, and a Type has no number reading.
+
+No `toJSON`. A node's own properties are exactly its `RawType`, so `JSON.stringify(type)` already emits the
+canonical tree, and collapsing it to the token would forfeit the point of JSON over `toString`. The read
+side is `Type.adopt(JSON.parse(text))` for a document that is one Type, and the exported `Type.reviver`
+for a Type embedded anywhere in a larger document: it adopts a value whose `kind` is a Type kind and whose
+required fields for that kind are present, and passes everything else through. Revivers run innermost
+first, so parents arrive with interned slots and `adopt` returns them untouched.
+
+`kind` stays unqualified (`'literal'`, not `'type:literal'`). The only collision the qualifier would buy off
+is a foreign object that already has a Type kind and a Type shape; a kind string is spelled only at the
+discriminant and in visitor switches, so qualifying it later is a mechanical rename. An enum-like object of
+kind strings adds nothing — the literal union already completes in the editor.
+
+Nothing internal keys a record on `${type}`: TypeScript refuses an object as an index type, so a
+spelling-keyed record needs an explicit `${type}` and is caught in review like `Type.stringify` as a key is
+today. `Map`/`WeakMap` key on the node.
+
+_Owner-ruled 2026-09-03 ("i'll follow your advice"); not yet implemented._

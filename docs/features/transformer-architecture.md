@@ -236,6 +236,19 @@ original it replaced. Every weakening is reported as a `MERGESYNTH_PRIVATE_SURFA
 naming what the emit actually contains: a floored position, an unchecked position beside other
 working clauses, or a dropped parameter guard with arity bounds standing.
 
+**Iterable guard.** A parameter typed `Iterable<T>`, `IterableIterator<T>`, `ReadonlyArray<T>`,
+`ReadonlySet<T>` or `ReadonlyMap<K, V>` checks `Symbol.iterator in input` on top of the
+object-kind condition, narrowing past the floor that previously could not distinguish
+`Iterable<Foo>` from `Iterable<Bar>`.
+
+**Indistinguishable-guard diagnostic (`MERGESYNTH_INDISTINGUISHABLE_GUARDS`).** When two
+registrations for the same member in one file produce provably identical runtime guards, the
+second can never dispatch — the first always matches first. The stage reports this as an error
+naming the member. The guard identity is a structural classification of each parameter's type:
+two parameters that take the same guard path (the same `typeof` check, the same `instanceof`
+target, the same iterable gate) are identical, and two members whose every parameter classifies
+identically are indistinguishable.
+
 ## Domain lives in TypeScript, not in Go
 
 The old shape had three bespoke Go stages — one that understood `di.core`'s registration surface,
@@ -327,6 +340,17 @@ consumer dedupes to one spawn and one cache key, so nothing that varies per cons
 Emission never changes what a tree evaluates to — the runtime interns structurally identical types
 to one object — and `tests/typefor.ttsc.e2e` pins that by expanding every const back into its call
 sites and comparing against the inline emission byte for byte.
+
+**`typefor<T>()` structural derivation.** A `typefor` type argument that is an anonymous object
+literal derives as `Type.object({ key: <member>, ... })`, each member keyed by its property name
+in declaration order. An optional property is its type unioned with `undefined`, since
+`ObjectType.members` carries no optional flag and `Type.isOptional` defines optional as exactly that
+union. A method member derives as a `Type.func` typed property inside the object. Nested objects,
+tuples, unions, and intersections are each recursively derived by the same walk.
+
+A named callable alias (`type Handler = (x: string) => number`) derives by its name, not
+structurally as a callable — an addressable alias that carries call or construct signatures is
+intercepted ahead of the structural callable gates.
 
 **`schemaof<T>()` / `.withType<T>()` surface constraints.** The expansion uses the same
 `typesurface` enumeration as the guard walk, but reads the **writable** direction — coercion
@@ -841,7 +865,10 @@ identity** (not by name or position), against the checker-bound type or value fr
 call site:
 
 - a **type-argument** primitive (`typefor<T>()`, `schemaof<T>()`) records the bound
-  `*checker.Type` for each type parameter;
+  `*checker.Type` for each type argument — the binding itself where the argument IS a type
+  parameter, and where the argument merely contains one (`typefor<Func<Args, T>>()`) the written
+  type instantiated with those bindings, which lands on the very type the same argument spelled by
+  hand resolves to;
 - a **value-argument** primitive (`typefor(value)`) records the original, program-bound argument
   node itself, so the consuming stage can still query the checker through it even though the
   primitive's own callee is synthetic.
@@ -957,6 +984,12 @@ layer deciding _which_ stages apply any more; that question doesn't exist in thi
 
 ## Toolchain & publishing
 
+The Go tree ships as its own package, `@rhombus-std/transforms`, carrying `cmd/`, `internal/`,
+`go.mod` and `go.sum`. Every `@rhombus-std/*.extras` package takes it as a runtime dependency, so
+it lands in a consumer's lockfile the moment they add any authoring package — `ttsc` compiles the
+plugin from source on the consuming machine, and the source has to be there to compile. Nobody
+depends on it directly; there is no JavaScript API to reach for.
+
 You do not need Go installed to build with these transformers. `ttsc` resolves a Go compiler in
 this order: an explicit override, then a platform-specific bundled SDK it installs as an optional
 dependency, then a couple of local fallback locations, then whatever `go` is on your `PATH`. For
@@ -984,10 +1017,15 @@ The command itself is a thin `main` that composes the stage table into a `Host` 
 it to `stdhost.Run`; almost everything else — the per-file loop, the mergesynth pre-pass split,
 the emit sweep, and the JSON envelope `ttsc` reads back — lives in `stdhost`, not the command.
 
-Each `@rhombus-std/*.extras` package's `./ttsc` descriptor is a thin JS module (`ttsc.mjs`) that
-`ttsc` loads to resolve an absolute path back to `transforms/cmd/ttsc-std`; every descriptor
-resolving to that same directory is what lets `ttsc` dedupe every consumer to one cache key and
-one compiled binary regardless of how many descriptors are in play.
+The one real descriptor is `transforms/ttsc.mjs`, a thin JS module that `ttsc` loads to resolve an
+absolute path back to `transforms/cmd/ttsc-std`; it anchors that path on its own file rather than
+on the factory context's `dirname`, which names whichever module `ttsc` actually loaded. Each
+`@rhombus-std/*.extras` package's `./ttsc` descriptor is a one-line re-export of it, and its
+`ttsc.plugin.transform` marker points at that local `./ttsc.mjs` — a relative specifier, which
+`ttsc` resolves from the marker package's own root; a bare package specifier would resolve from
+the consuming project's root instead and find nothing under an isolated linker. Every descriptor
+resolving to that same source directory is what lets `ttsc` dedupe every consumer to one cache key
+and one compiled binary regardless of how many descriptors are in play.
 
 Adding a new primitive means: write the Go transform under `transforms/internal/<name>transform`,
 add its `Stage{...}` entry to `BaseStages()` at the position the canonical order calls for

@@ -1,7 +1,7 @@
-// Side-effect: installs `build` onto di.core's Manifest.
-import { di, noop } from '@rhombus-std/di';
-import { DefaultManifest, type Manifest, Type } from '@rhombus-std/di.core';
+import { Builder } from '@rhombus-std/di';
+import { DefaultManifest, type Manifest } from '@rhombus-std/di.core';
 import type { IOptions } from '@rhombus-std/options';
+import { Type } from '@rhombus-std/primitives';
 import { beforeAll, describe, expect, test } from 'bun:test';
 import { spawnSync } from 'node:child_process';
 import { mkdirSync, readFileSync, rmSync, symlinkSync, writeFileSync } from 'node:fs';
@@ -127,7 +127,7 @@ function goEnv(): NodeJS.ProcessEnv {
 // Three shapes of service type reach the same verb:
 //
 //   1. closed        services.add<ILogger>(ConsoleLogger, 'singleton')
-//   2. open template services.add<IRepo<$<'1'>>>(ThingRepo)  (hole-carrying dep)
+//   2. open template services.add<IRepo<Generic<'1'>>>(ThingRepo)  (hole-carrying dep)
 //   3. keyed         services.add<Keyed<ICache, 'redis'>>(RedisCache)
 //
 // WIRING. The chain sandbox deps {di.core, di.extras}, symlinks the authoring
@@ -161,7 +161,8 @@ export {};
 // The closed and open service types, kept in one file so a whole-file compare
 // pins import elision and surrounding text alongside the per-line tokens.
 const CHAIN_SOURCE = `
-import type { $, Manifest } from '@rhombus-std/di.core';
+import type { Manifest } from '@rhombus-std/di.core';
+import type { Generic } from '@rhombus-std/primitives.extras';
 
 interface ILogger {}
 interface IClock {}
@@ -175,7 +176,7 @@ class ConsoleLogger implements ILogger {
 }
 class NoDepsLogger implements ILogger {}
 class ThingRepo {
-  constructor(store: IStore<$<'1'>>) {
+  constructor(store: IStore<Generic<'1'>>) {
     void store;
   }
 }
@@ -186,14 +187,15 @@ export const closed = services.add<ILogger>(ConsoleLogger, 'singleton');
 
 export const emptySig = services.add<ILogger>(NoDepsLogger, 'singleton');
 
-export const open = services.add<IRepo<$<'1'>>>(ThingRepo, 'singleton');
+export const open = services.add<IRepo<Generic<'1'>>>(ThingRepo, 'singleton');
 `;
 
 // A KEYED service type. Base and key compose into ONE tag token, and the lookup
 // side mints the identical token — that identity is what makes a keyed
 // registration and a keyed lookup meet. Own file so the compare is isolated.
 const KEYED_SOURCE = `
-import type { Keyed, Manifest } from '@rhombus-std/di.core';
+import type { Manifest } from '@rhombus-std/di.core';
+import type { Keyed } from '@rhombus-std/primitives.extras';
 
 interface ICache {}
 class RedisCache implements ICache {}
@@ -223,7 +225,8 @@ export const self = services.add(SelfRepo, 'singleton');
 // two siblings, the type minted by the typefor stage. Own file so the lookup
 // compare is isolated from the registration whole-file compare.
 const RESOLVE_SOURCE = `
-import type { IServiceProvider, Keyed } from '@rhombus-std/di.core';
+import type { IServiceProvider } from '@rhombus-std/di.core';
+import type { Keyed } from '@rhombus-std/primitives.extras';
 
 // The tokenless get* overloads come from the real di.extras declare-module
 // merge (the type-only import below); the value-driven faces are di.core's
@@ -247,10 +250,36 @@ function makeGadget(bar: IBar): IGadget {
 }
 
 declare const provider: IServiceProvider;
+declare const bar: IBar;
 
 export const tokenful = provider.resolve<IThing>();
 export const tryTok = provider.resolve<IThing>();
-export const many = provider.resolveMany<IThing>();
+export const asyncThing = provider.resolveAsync<IThing>();
+export const many = provider.resolveIterable<IThing>();
+// Every remaining ask row: each derives the ELEMENT type and leaves the shape to
+// the verb, and each \`try\` twin lowers to the twin, never to the plain form.
+export const tried = provider.tryResolve<IThing>();
+export const arrayed = provider.resolveArray<IThing>();
+export const triedArray = provider.tryResolveArray<IThing>();
+export const triedIterable = provider.tryResolveIterable<IThing>();
+export const triedAsync = provider.tryResolveAsync<IThing>();
+export const arrayAsync = provider.resolveArrayAsync<IThing>();
+export const triedArrayAsync = provider.tryResolveArrayAsync<IThing>();
+export const iterableAsync = provider.resolveIterableAsync<IThing>();
+export const triedIterableAsync = provider.tryResolveIterableAsync<IThing>();
+export const asyncWalk = provider.resolveAsyncIterable<IThing>();
+export const triedAsyncWalk = provider.tryResolveAsyncIterable<IThing>();
+// The callable rows derive a whole function type from the two type arguments and
+// thread the call arguments through to the callable.
+export const gadget = provider.resolveWith<IGadget, [IBar]>(bar);
+export const triedGadget = provider.tryResolveWith<IGadget, [IBar]>(bar);
+export const gadgetAsync = provider.resolveWithAsync<IGadget, [IBar]>(bar);
+export const triedGadgetAsync = provider.tryResolveWithAsync<IGadget, [IBar]>(bar);
+// The value-driven rows observe the callable in hand instead of a type argument.
+export const built = provider.instantiate(Widget);
+export const triedBuild = provider.tryInstantiate(Widget);
+export const invoked = provider.invoke(makeGadget);
+export const triedInvoke = provider.tryInvoke(makeGadget);
 // A type LITERAL is a service type like any other: it derives its own token
 // rather than collapsing to the literal value.
 export const singular = provider.resolve<'dev'>();
@@ -588,14 +617,94 @@ describe.skipIf(!toolchainReady)('generic inline stage — lookup parity (W5)', 
     assertNoAuthoringSurvivors(resolveInline);
   });
 
-  test('resolveMany<I>() derives the ELEMENT type, not a collection type', () => {
+  test('resolveAsync<I>() lowers to the Type-taking member, the same as resolve<I>()', () => {
+    const line = lineWith(resolveInline, 'asyncThing =');
+    expect(line).toBeDefined();
+    const thing = constFor(chainModule, 'Type.imported("IThing", "chain-app/private/resolve")');
+    expect(line).toContain(`.resolveAsync(${thing})`);
+    expect(line).not.toContain('resolveAsync<');
+    assertNoAuthoringSurvivors(resolveInline);
+  });
+
+  test('resolveIterable<I>() derives the ELEMENT type, not a collection type', () => {
     // The collection is the verb's own doing; the type argument names one element,
     // so the token is the bare element type.
     const line = lineWith(resolveInline, 'many =');
     expect(line).toBeDefined();
     const thing = constFor(chainModule, 'Type.imported("IThing", "chain-app/private/resolve")');
-    expect(line).toContain(`.resolveMany(${thing})`);
-    expect(line).not.toContain('resolveMany<');
+    expect(line).toContain(`.resolveIterable(${thing})`);
+    expect(line).not.toContain('resolveIterable<');
+  });
+
+  test('every other ask row lowers to its own Type-taking member, the try twins included', () => {
+    // The shape is the verb's own doing throughout, so each row derives the bare
+    // element type and a `try` twin lowers to the twin rather than the plain form.
+    const thing = constFor(chainModule, 'Type.imported("IThing", "chain-app/private/resolve")');
+    const rows = [
+      ['tried =', 'tryResolve'],
+      ['arrayed =', 'resolveArray'],
+      ['triedArray =', 'tryResolveArray'],
+      ['triedIterable =', 'tryResolveIterable'],
+      ['triedAsync =', 'tryResolveAsync'],
+      ['arrayAsync =', 'resolveArrayAsync'],
+      ['triedArrayAsync =', 'tryResolveArrayAsync'],
+      ['iterableAsync =', 'resolveIterableAsync'],
+      ['triedIterableAsync =', 'tryResolveIterableAsync'],
+      ['asyncWalk =', 'resolveAsyncIterable'],
+      ['triedAsyncWalk =', 'tryResolveAsyncIterable'],
+    ] as const;
+    for (const [needle, member] of rows) {
+      const line = lineWith(resolveInline, needle);
+      expect(line).toBeDefined();
+      expect(line).toContain(`.${member}(${thing})`);
+      expect(line).not.toContain(`${member}<`);
+    }
+    assertNoAuthoringSurvivors(resolveInline);
+  });
+
+  test('the callable rows derive a whole function type and thread the call arguments through', () => {
+    // The two type arguments compose one callable type inside the body's own
+    // `typefor<Func<Args, ServiceType>>()`, so the token is the whole function
+    // type — the SAME one `invoke` observes off a matching callable — and the
+    // call's own arguments follow it through to the lowered call.
+    const barType = constFor(chainModule, 'Type.imported("IBar", "chain-app/private/resolve")');
+    const gadget = constFor(chainModule, 'Type.imported("IGadget", "chain-app/private/resolve")');
+    const funcType = constFor(chainModule, `Type.func(${gadget}, [[${barType}]])`);
+    const promised = constFor(chainModule, `Type.global("Promise", [${gadget}])`);
+    const asyncFuncType = constFor(chainModule, `Type.func(${promised}, [[${barType}]])`);
+    const rows = [
+      ['gadget =', 'resolveWith', funcType],
+      ['triedGadget =', 'tryResolveWith', funcType],
+      ['gadgetAsync =', 'resolveWithAsync', asyncFuncType],
+      ['triedGadgetAsync =', 'tryResolveWithAsync', asyncFuncType],
+    ] as const;
+    for (const [needle, member, derived] of rows) {
+      const line = lineWith(resolveInline, needle);
+      expect(line).toBeDefined();
+      expect(line).toContain(`.${member}(${derived}, bar)`);
+      expect(line).not.toContain(`${member}<`);
+    }
+    assertNoAuthoringSurvivors(resolveInline);
+  });
+
+  test('instantiate and invoke observe the callable in hand rather than a type argument', () => {
+    const barType = constFor(chainModule, 'Type.imported("IBar", "chain-app/private/resolve")');
+    const gadget = constFor(chainModule, 'Type.imported("IGadget", "chain-app/private/resolve")');
+    const widget = constFor(chainModule, 'Type.imported("Widget", "chain-app/private/resolve")');
+    const ctorType = constFor(chainModule, `Type.ctor(${widget}, [[${barType}]])`);
+    const funcType = constFor(chainModule, `Type.func(${gadget}, [[${barType}]])`);
+    const rows = [
+      ['built =', 'instantiate', ctorType, 'Widget'],
+      ['triedBuild =', 'tryInstantiate', ctorType, 'Widget'],
+      ['invoked =', 'invoke', funcType, 'makeGadget'],
+      ['triedInvoke =', 'tryInvoke', funcType, 'makeGadget'],
+    ] as const;
+    for (const [needle, member, derived, callable] of rows) {
+      const line = lineWith(resolveInline, needle);
+      expect(line).toBeDefined();
+      expect(line).toContain(`.${member}(${derived}, ${callable})`);
+    }
+    assertNoAuthoringSurvivors(resolveInline);
   });
 
   test('a type LITERAL derives its own token like any other service type', () => {
@@ -631,13 +740,13 @@ describe.skipIf(!toolchainReady)('generic inline stage — lookup parity (W5)', 
 
     let keyed: Manifest<'singleton'> = new DefaultManifest<'singleton'>();
     keyed = keyed.addValue(composed, marker);
-    const keyedProvider = di.usingLifetimeModel(noop()).usingManifest(keyed).build();
+    const keyedProvider = Builder.withServices(() => keyed).build();
     expect(keyedProvider.resolve(composed)).toBe(marker);
 
     // An unkeyed registration of the same base does not answer the keyed lookup.
     let unkeyed: Manifest<'singleton'> = new DefaultManifest<'singleton'>();
     unkeyed = unkeyed.addValue(base, marker);
-    const unkeyedProvider = di.usingLifetimeModel(noop()).usingManifest(unkeyed).build();
+    const unkeyedProvider = Builder.withServices(() => unkeyed).build();
     expect(unkeyedProvider.resolve(Type.union(composed, Type.typeLiteral(undefined)))).toBeUndefined();
   });
 });
@@ -670,9 +779,10 @@ const OPTIONS_DIR = join(homedir(), '.cache', 'fnioc-ttsc', 'sandboxes', basenam
 // same route, so every published body resolves against the publisher's own
 // declarations.
 const OPTIONS_AUTHORING = `
-import type { Manifest, Type } from '@rhombus-std/di.core';
+import type { Manifest } from '@rhombus-std/di.core';
 import type {} from '@rhombus-std/di.extras';
 import type {} from '@rhombus-std/di.extras.options';
+import type { Type } from '@rhombus-std/primitives';
 export type __Keep = [Manifest<unknown>, Type];
 export {};
 `;
@@ -783,7 +893,7 @@ describe.skipIf(!toolchainReady)('generic inline stage — addOptions options wi
     services = services.addValue(optionsType, value);
     services = services.addOptions(optionsType);
 
-    const provider = di.usingLifetimeModel(noop()).usingManifest(services).build();
+    const provider = Builder.withServices(() => services).build();
     const options = provider.resolve(optionsAddressType(optionsType)) as IOptions<UserOptions>;
     // IOptions<T> resolves to a value that IS the registered T.
     expect(options.value).toBe(value);

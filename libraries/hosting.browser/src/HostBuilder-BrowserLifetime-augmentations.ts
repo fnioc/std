@@ -16,8 +16,7 @@
 
 import type { IHostBuilder } from '@rhombus-std/hosting.core';
 import { registerAugmentations } from '@rhombus-std/primitives.extras';
-import type { Func } from '@rhombus-toolkit/func';
-import type { Flatten } from '@rhombus-toolkit/type-helpers';
+import type { Flatten, Func } from '@rhombus-toolkit/types';
 import { BrowserLifetimeOptions } from './BrowserLifetimeOptions';
 import { registerBrowserLifetime } from './register-browser-lifetime';
 

@@ -3,13 +3,25 @@
 // and the resolved singleton's end-to-end behavior.
 
 import { DISTRIBUTED_CACHE_TYPE, getDistributedMemoryCacheManifest, MemoryDistributedCache, MemoryDistributedCacheOptions } from '@rhombus-std/caching.memory';
-import { di, noop } from '@rhombus-std/di';
+import { Builder, standardLifetime } from '@rhombus-std/di';
 import { type Manifest } from '@rhombus-std/di.core';
 import { describe, expect, test } from 'bun:test';
 
 describe('getDistributedMemoryCacheManifest', () => {
-  // Needs the standard lifetime model's singleton caching, not yet wired for this suite.
-  test.skip('registers a resolvable IDistributedCache singleton', () => {});
+  test('registers a resolvable IDistributedCache singleton', async () => {
+    const services = getDistributedMemoryCacheManifest();
+
+    const provider = Builder.withServices(() => services).useAddon(standardLifetime()).build();
+    const cache: MemoryDistributedCache = provider.resolve(DISTRIBUTED_CACHE_TYPE);
+    expect(cache).toBeInstanceOf(MemoryDistributedCache);
+    // Singleton: the same instance on every resolve.
+    const cacheAgain: MemoryDistributedCache = provider.resolve(DISTRIBUTED_CACHE_TYPE);
+    expect(cacheAgain).toBe(cache);
+
+    // The resolved cache actually works.
+    await cache.setString('key', 'value');
+    expect(await cache.getString('key')).toBe('value');
+  });
 
   test('setup joins the options pipeline lazily', () => {
     let seen: MemoryDistributedCacheOptions | undefined;
@@ -24,7 +36,7 @@ describe('getDistributedMemoryCacheManifest', () => {
     // configure step runs when the options resolve, not at registration.
     expect(seen).toBeUndefined();
 
-    const cache: MemoryDistributedCache = di.usingLifetimeModel(noop()).usingManifest(returned).build()
+    const cache: MemoryDistributedCache = Builder.withServices(() => returned).build()
       .resolve(DISTRIBUTED_CACHE_TYPE);
     expect(cache).toBeInstanceOf(MemoryDistributedCache);
     expect(seen).toBeInstanceOf(MemoryDistributedCacheOptions);

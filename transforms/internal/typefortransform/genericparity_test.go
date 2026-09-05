@@ -1,9 +1,6 @@
 package typefortransform
 
-import (
-	"strings"
-	"testing"
-)
+import "testing"
 
 // TestTypeforValueArgGenericRendering is the load-bearing proof of the value-argument
 // hole contract: an open-template value `C<$<L>>`'s bare-hole slot spells as
@@ -74,16 +71,15 @@ class Svc<T> implements ISvc<$<'1'>> { constructor(store: IStore<T>, logger: ILo
 	}
 }
 
-// TestTypeforValueArgFactoryParamGenericIsAKnownGap pins a scope limitation
-// adjacent to the ctor cases above: a FACTORY value whose OWN parameter
-// directly names an open-template hole (`(store: IStore<$<'1'>>) => ...`, not
-// through a class's own generic instantiation) fails to derive — the checker
-// resolves that parameter's type differently for an arrow function literal
-// than for a constructor parameter of the identical syntactic shape, and
-// tokens.DeriveTyped reports it underivable rather than guess at a node. The
-// call is left un-lowered, matching every other underivable shape's
-// degradation.
-func TestTypeforValueArgFactoryParamGenericIsAKnownGap(t *testing.T) {
+// TestTypeforValueArgFactoryParamGenericDerives pins a shape adjacent to the
+// ctor cases above: a FACTORY value whose OWN parameter directly names an
+// open-template hole (`(store: IStore<$<'1'>>) => ...`, not through a class's
+// own generic instantiation), with an implicit `void` return the body's
+// `void`-only statements leave inferred. Both the hole-carrying parameter and
+// the void return derive cleanly — a callable's return type and its parameter
+// rows are derived independently, so an implicit void return never blocks an
+// otherwise-derivable parameter list.
+func TestTypeforValueArgFactoryParamGenericDerives(t *testing.T) {
 	src := `import { typefor, $ } from '@rhombus-std/primitives.extras';
 interface IStore<T> {}
 interface ILogger {}
@@ -93,10 +89,12 @@ export const s = typefor(factory);
 	prog, app := buildTypeforWorkspace(t, src)
 	defer func() { _ = prog.Close() }()
 	out, diags := lowerTypeforDiags(t, prog, app)
-	if !strings.Contains(out, "typefor(factory)") {
-		t.Errorf("a factory with a directly-holed param must leave the call un-lowered:\n%s", out)
+	if len(diags) != 0 {
+		t.Fatalf("unexpected diagnostics: %+v", diags)
 	}
-	if len(diags) != 1 || diags[0].Code != valueArgUnderivableCode {
-		t.Fatalf("expected one %s diagnostic, got %+v", valueArgUnderivableCode, diags)
+	want := `Type.func(Type.typeLiteral(undefined), ` +
+		`[[Type.imported("IStore", "@scope/app/main", [Type.generic("1")]), Type.imported("ILogger", "@scope/app/main")]])`
+	if got := exprFor(t, out, "s"); got != want {
+		t.Fatalf("factory rendering mismatch:\n got  = %s\n want = %s", got, want)
 	}
 }

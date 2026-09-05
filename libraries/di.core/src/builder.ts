@@ -1,5 +1,5 @@
 import type { ConstructorType, FunctionType, Type } from '@rhombus-std/primitives';
-import type { AbstractCtor, Ctor, Func } from '@rhombus-toolkit/func';
+import type { AbstractCtor, Ctor, Func } from '@rhombus-toolkit/types';
 import { withKey } from './address';
 import { type CtorRegistration, type FactoryRegistration, Registration, type ValueRegistration } from './Registration';
 
@@ -56,7 +56,7 @@ export function openRegistration<Lifetime>(address: Type): RegistrationBuilderFo
   return new PendingRegistration<Lifetime>(address) as unknown as RegistrationBuilderFor<any, Lifetime>;
 }
 
-/** The node the chain walks before an implementer is chosen. */
+/** The node the chain passes through before an implementer is chosen. */
 class PendingRegistration<Lifetime> {
   readonly #baseAddress: Type;
   readonly #lifetime: Lifetime | undefined;

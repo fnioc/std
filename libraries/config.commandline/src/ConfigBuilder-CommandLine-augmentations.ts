@@ -2,7 +2,7 @@
 
 import type { IConfigBuilder, IConfigSource, IndexedSection } from '@rhombus-std/config.core';
 import { registerAugmentations } from '@rhombus-std/primitives.extras';
-import type { Flatten } from '@rhombus-toolkit/type-helpers';
+import type { Flatten } from '@rhombus-toolkit/types';
 import { CommandLineConfigSource, type CommandLineConfigSourceOptions } from './CommandLineConfigSource';
 
 /** The subset of {@link IConfigBuilder} and `config`'s `ConfigBuilder<T>` this sugar's `add` call touches. */

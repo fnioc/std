@@ -22,9 +22,9 @@
 //    dependencies" is written `Type.ctor(theAddress, [[]])` — one overload,
 //    taking nothing beyond the address.
 
-import { di, noop } from '@rhombus-std/di';
-import { Manifest, Type } from '@rhombus-std/di.core';
-import type { Registration } from '@rhombus-std/di.core';
+import { Builder } from '@rhombus-std/di';
+import { Manifest, type Registration } from '@rhombus-std/di.core';
+import { Type } from '@rhombus-std/primitives';
 
 // ── the domain ───────────────────────────────────────────────────────────────
 
@@ -320,7 +320,7 @@ function* demonstrateRegistrationVerbs(): Generator<string> {
   let application: Manifest<unknown> = Manifest.empty<unknown>();
   application = application.add(DEFAULT_SINK_TYPE, RecordingSink, Type.ctor(DEFAULT_SINK_TYPE, [[]]), 'singleton');
   application = application.tryAdd(...addOrderDefaults());
-  const kept = di.usingLifetimeModel(noop()).usingManifest(application).build()
+  const kept = Builder.withServices(() => application).build()
     .resolve(DEFAULT_SINK_TYPE) as IMessageSink;
   yield `defaults: an application that registered its own sink keeps it (${kept.name})`;
 
@@ -329,7 +329,7 @@ function* demonstrateRegistrationVerbs(): Generator<string> {
   host = host.replace(DEFAULT_CLOCK_TYPE, new FixedClock());
   host = host.replace(DEFAULT_SINK_TYPE, RecordingSink, Type.ctor(DEFAULT_SINK_TYPE, [[]]), 'singleton');
   host = host.replace(DEFAULT_NOTIFIER_TYPE, makeOrderNotifier, Type.func(DEFAULT_NOTIFIER_TYPE, [[DEFAULT_SINK_TYPE]]), 'singleton');
-  const hostProvider = di.usingLifetimeModel(noop()).usingManifest(host).build();
+  const hostProvider = Builder.withServices(() => host).build();
   const recorder = hostProvider.resolve(DEFAULT_SINK_TYPE) as RecordingSink;
   yield `override: replace swapped all three defaults; the host sink is ${recorder.name}, and `
     + `${countRegistrations(host, DEFAULT_SINK_TYPE)} registration is left at its type`;
@@ -417,16 +417,15 @@ function demonstrateDescribedRegistration(): string {
       .withLifetime('singleton'),
   );
 
-  const sink = di.usingLifetimeModel(noop()).usingManifest(services).build()
+  const sink = Builder.withServices(() => services).build()
     .resolve(SINK_TYPE) as IMessageSink;
   return `described by chain: ${sink.send('order-99 shipped')}`;
 }
 
 /** Exercises the container and reports what each registration produced. */
 function describeOrderContainer(services: Manifest<unknown>): string[] {
-  // The front door: every genesis starts by choosing the lifetime model, then
-  // seeds the manifest this file already built.
-  const app = di.usingLifetimeModel(noop()).usingManifest(services).build();
+  // The front door: seeds the manifest this file already built.
+  const app = Builder.withServices(() => services).build();
 
   const notifier = app.resolve(NOTIFIER_TYPE) as IOrderNotifier;
   const audit = app.resolve(AUDIT_TYPE) as IAuditLog;
@@ -441,7 +440,7 @@ function describeOrderContainer(services: Manifest<unknown>): string[] {
   return [`notify: ${notifier.notify('order-42')}`, `audit: ${audit.entries.length} entry, sink echo enabled=${flags.echoToSink}`, `keyed sink (key "email"): ${email.send('welcome')}`,
     `keyed value (key "vendor"): ${vendorClock.now()}`, `${countRegistrations(services, SINK_TYPE)} sinks share the IMessageSink type; the most recently `
     + `registered one wins a single request, and all of them answer a collection request `
-    + `(${[...app.resolveMany(SINK_TYPE)].length})`];
+    + `(${[...app.resolveIterable(SINK_TYPE)].length})`];
 }
 
 /**
@@ -451,7 +450,7 @@ function describeOrderContainer(services: Manifest<unknown>): string[] {
  */
 function describeSinklessFork(services: Manifest<unknown>): string {
   const noSinks = services.removeAll(SINK_TYPE);
-  const audit = di.usingLifetimeModel(noop()).usingManifest(noSinks).build()
+  const audit = Builder.withServices(() => noSinks).build()
     .resolve(AUDIT_TYPE) as IAuditLog;
   audit.record('order-42 shipped');
 

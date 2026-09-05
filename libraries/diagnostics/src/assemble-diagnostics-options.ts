@@ -3,7 +3,7 @@ import { collectionType } from '@rhombus-std/diagnostics.core';
 import { type IConfigureOptions, type IOptions, Options } from '@rhombus-std/options';
 import type { IOptionsChangeTokenSource } from '@rhombus-std/options.augmentations';
 import { Type } from '@rhombus-std/primitives';
-import type { Func } from '@rhombus-toolkit/func';
+import type { Func } from '@rhombus-toolkit/types';
 
 import { CompositeChangeToken } from './CompositeChangeToken';
 

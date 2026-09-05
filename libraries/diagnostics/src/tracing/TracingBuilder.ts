@@ -5,7 +5,7 @@ import type { Manifest } from '@rhombus-std/di.core';
 import type { ITracingBuilder } from '@rhombus-std/diagnostics.core';
 import { augment } from '@rhombus-std/primitives';
 import { typefor } from '@rhombus-std/primitives.extras';
-import type { Func } from '@rhombus-toolkit/func';
+import type { Func } from '@rhombus-toolkit/types';
 
 // Interface-extends merge: binding the ITracingBuilder SYMBOL flows every
 // in-program augmentation of the interface (the listener/rule members from

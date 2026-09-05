@@ -13,12 +13,12 @@
 // no runtime import of the authoring package.
 import type {} from '@rhombus-std/di.extras';
 
-import { di, noop } from '@rhombus-std/di';
+import { Builder } from '@rhombus-std/di';
 import { type IExternalScopeProvider, type ILogger, type ILoggerFactory, type ILoggerProvider, type ILoggingBuilder, LogLevel } from '@rhombus-std/logging.core';
 import { type IOptions, Options } from '@rhombus-std/options';
 import { augment } from '@rhombus-std/primitives';
 import { typefor } from '@rhombus-std/primitives.extras';
-import type { Func } from '@rhombus-toolkit/func';
+import type { Func } from '@rhombus-toolkit/types';
 import { Logger } from './Logger';
 import { LoggerExternalScopeProvider } from './LoggerExternalScopeProvider';
 import { LoggerFilterOptions } from './LoggerFilterOptions';
@@ -172,8 +172,7 @@ export class LoggerFactory implements ILoggerFactory {
    */
   public static create(configure: Func<[ILoggingBuilder], void>): ILoggerFactory {
     const services = getLoggingManifest(configure);
-    return di.usingLifetimeModel(noop())
-      .usingManifest(services)
+    return Builder.withServices(manifest => manifest.add(services))
       .build()
       .resolve<ILoggerFactory>();
   }

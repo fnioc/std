@@ -99,16 +99,19 @@ func TestUnionIdentityIgnoresMemberOrder(t *testing.T) {
 
 func TestKeyMirrorsTheFlatTokenSpelling(t *testing.T) {
 	cases := map[string]*Node{
-		"IClock":                       Named("IClock", "global", nil),
-		"orders:IClock":                Named("IClock", "orders", nil),
-		"Promise<orders:IClock>":       Named("Promise", "global", []*Node{Named("IClock", "orders", nil)}),
-		"$1":                           Generic("1"),
-		`"a" | "b"`:                    Union([]*Node{Literal(`"a"`), Literal(`"b"`)}),
-		`#tag(orders:IClock,"vendor")`: Tag(Named("IClock", "orders", nil), "vendor"),
-		"#func(IClock())":              Func(Named("IClock", "global", nil), [][]*Node{nil}),
-		"#ctor(IClock(orders:IClock))": Ctor(Named("IClock", "global", nil), [][]*Node{{Named("IClock", "orders", nil)}}),
-		"#abstractCtor(IClock(orders:IClock))": AbstractCtor(
-			Named("IClock", "global", nil), [][]*Node{{Named("IClock", "orders", nil)}},
+		"IClock":                        Named("IClock", "global", nil),
+		"orders:IClock":                 Named("IClock", "orders", nil),
+		"Promise<orders:IClock>":        Named("Promise", "global", []*Node{Named("IClock", "orders", nil)}),
+		"$1":                            Generic("1"),
+		`"a" | "b"`:                     Union([]*Node{Literal(`"a"`), Literal(`"b"`)}),
+		`#tag(orders:IClock,"vendor")`:  Tag(Named("IClock", "orders", nil), "vendor"),
+		"[orders:IClock]~orders:IStore": Tuple([]*Node{Named("IClock", "orders", nil)}, Named("IStore", "orders", nil)),
+		"#func(IClock)([])":             Func(Named("IClock", "global", nil), Tuple(nil, nil)),
+		"#ctor(IClock)([orders:IClock])": Ctor(
+			Named("IClock", "global", nil), Tuple([]*Node{Named("IClock", "orders", nil)}, nil),
+		),
+		"#abstractCtor(IClock)([orders:IClock])": AbstractCtor(
+			Named("IClock", "global", nil), Tuple([]*Node{Named("IClock", "orders", nil)}, nil),
 		),
 	}
 	for want, node := range cases {
@@ -118,18 +121,59 @@ func TestKeyMirrorsTheFlatTokenSpelling(t *testing.T) {
 	}
 }
 
-// TestACallableAlwaysSpellsItsRowsArray: a const holding a callable renders its
-// parameter rows as one array of arrays, whether it answers to one row or
-// several.
-func TestACallableAlwaysSpellsItsRowsArray(t *testing.T) {
+// TestObjectAndIntersectionRender pins the record and intersection consts: an
+// object references each member by name keyed on its property, an intersection
+// references its members positionally, and both key structurally so declaration
+// order never fragments one type into two consts.
+func TestObjectAndIntersectionRender(t *testing.T) {
+	registry := NewRegistry(TypeRef{Module: "@rhombus-std/primitives", Export: "Type"})
+	str := Named("string", "global", nil)
+	num := Named("number", "global", nil)
+	thing := Named("IThing", "orders", nil)
+	other := Named("IOther", "orders", nil)
+
+	object := Object([]ObjectMember{{Key: "host", Type: str}, {Key: "port", Type: num}})
+	inter := Intersection([]*Node{thing, other})
+	for _, node := range []*Node{object, inter} {
+		if _, err := registry.Ref(node); err != nil {
+			t.Fatal(err)
+		}
+	}
+
+	module := registry.Module()
+	wantObject := "export const " + refOf(t, registry, object) + " = Type.object({ host: " +
+		refOf(t, registry, str) + ", port: " + refOf(t, registry, num) + " });"
+	if !strings.Contains(module, wantObject) {
+		t.Errorf("want %q in:\n%s", wantObject, module)
+	}
+	wantInter := "export const " + refOf(t, registry, inter) + " = Type.intersection(" +
+		refOf(t, registry, thing) + ", " + refOf(t, registry, other) + ");"
+	if !strings.Contains(module, wantInter) {
+		t.Errorf("want %q in:\n%s", wantInter, module)
+	}
+
+	// Member order does not fragment an object's identity.
+	reordered := Object([]ObjectMember{{Key: "port", Type: num}, {Key: "host", Type: str}})
+	if reordered.Key() != object.Key() {
+		t.Fatalf("object key depends on member order: %q vs %q", reordered.Key(), object.Key())
+	}
+}
+
+// TestACallableSpellsFixedRowsAndReferencesAnOpenSlot: a const holding a
+// callable renders a slot of fixed argument lists as the rows spelling over
+// member consts — one array per signature — while a slot carrying an open
+// length references the slot node's own const.
+func TestACallableSpellsFixedRowsAndReferencesAnOpenSlot(t *testing.T) {
 	registry := NewRegistry(TypeRef{Module: "@rhombus-std/primitives", Export: "Type"})
 	widget := Named("IWidget", "orders", nil)
 	clock := Named("IClock", "orders", nil)
 	options := Named("IOptions", "orders", nil)
 
-	oneRow := Ctor(widget, [][]*Node{{clock}})
-	several := Ctor(widget, [][]*Node{{clock}, {clock, options}})
-	for _, node := range []*Node{oneRow, several} {
+	oneRow := Ctor(widget, Tuple([]*Node{clock}, nil))
+	several := Ctor(widget, Union([]*Node{Tuple([]*Node{clock}, nil), Tuple([]*Node{clock, options}, nil)}))
+	openSlot := Tuple([]*Node{clock}, options)
+	open := Ctor(widget, openSlot)
+	for _, node := range []*Node{oneRow, several, open} {
 		if _, err := registry.Ref(node); err != nil {
 			t.Fatal(err)
 		}
@@ -148,6 +192,14 @@ func TestACallableAlwaysSpellsItsRowsArray(t *testing.T) {
 	if !strings.Contains(module, wantSeveral) {
 		t.Errorf("want %q in:\n%s", wantSeveral, module)
 	}
+	wantOpen := "export const " + refOf(t, registry, open) + " = Type.ctor(" + widgetName + ", " + refOf(t, registry, openSlot) + ");"
+	if !strings.Contains(module, wantOpen) {
+		t.Errorf("want %q in:\n%s", wantOpen, module)
+	}
+	wantSlot := "export const " + refOf(t, registry, openSlot) + " = Type.tuple({ members: [" + clockName + "], rest: " + optionsName + " });"
+	if !strings.Contains(module, wantSlot) {
+		t.Errorf("want %q in:\n%s", wantSlot, module)
+	}
 }
 
 // TestARowShapeIsPartOfIdentity: two callables over the same head and the same
@@ -160,9 +212,9 @@ func TestARowShapeIsPartOfIdentity(t *testing.T) {
 	clock := Named("IClock", "orders", nil)
 	options := Named("IOptions", "orders", nil)
 
-	together := Func(head, [][]*Node{{clock, options}})
-	apart := Func(head, [][]*Node{{clock}, {options}})
-	takesNothing := Func(head, [][]*Node{nil})
+	together := Func(head, Tuple([]*Node{clock, options}, nil))
+	apart := Func(head, Union([]*Node{Tuple([]*Node{clock}, nil), Tuple([]*Node{options}, nil)}))
+	takesNothing := Func(head, Tuple(nil, nil))
 	if together.Key() == apart.Key() {
 		t.Errorf("one row of two parameters keys the same as two rows of one: %s", together.Key())
 	}
@@ -174,23 +226,25 @@ func TestARowShapeIsPartOfIdentity(t *testing.T) {
 			t.Fatal(err)
 		}
 	}
-	// The three callables plus the three names they are built over.
+	// The three callables plus the three names they are built over — a fixed
+	// slot's rows spell inline, so they mint no consts of their own.
 	if registry.Len() != 6 {
 		t.Fatalf("want 6 distinct nodes, got %d:\n%s", registry.Len(), registry.Module())
 	}
 }
 
 // TestAbstractCtorIsItsOwnKind: a concrete and an abstract constructor over
-// the same instance type and rows are two distinct kinds, so they key — and
-// intern — differently, and each renders through its own factory method with
-// no shared trailing flag.
+// the same instance type and signatures are two distinct kinds, so they key —
+// and intern — differently, and each renders through its own factory method
+// with no shared trailing flag.
 func TestAbstractCtorIsItsOwnKind(t *testing.T) {
 	registry := NewRegistry(TypeRef{Module: "@rhombus-std/primitives", Export: "Type"})
 	instance := Named("IWidget", "orders", nil)
 	clock := Named("IClock", "orders", nil)
 
-	concrete := Ctor(instance, [][]*Node{{clock}})
-	abstract := AbstractCtor(instance, [][]*Node{{clock}})
+	sig := Tuple([]*Node{clock}, nil)
+	concrete := Ctor(instance, sig)
+	abstract := AbstractCtor(instance, sig)
 	if concrete.Key() == abstract.Key() {
 		t.Errorf("a concrete and an abstract constructor over the same shape key the same: %s", concrete.Key())
 	}
@@ -236,5 +290,36 @@ func TestAnAlphanumericKeyNamesItself(t *testing.T) {
 	}
 	if !strings.HasPrefix(nameFor("orders:IClock"), "$orders_IClock_") {
 		t.Fatalf("want a readable prefix, got %s", nameFor("orders:IClock"))
+	}
+}
+
+// TestTupleKeepsSlotOrder: a tuple's identity is its slots IN ORDER, where a
+// union's is its sorted member set, so two tuples over the same two names are
+// two consts — each one factory call over its slots by name.
+func TestTupleKeepsSlotOrder(t *testing.T) {
+	registry := NewRegistry(TypeRef{Module: "@rhombus-std/primitives", Export: "Type"})
+	clock := Named("IClock", "orders", nil)
+	store := Named("IStore", "orders", nil)
+
+	forward := Tuple([]*Node{clock, store}, nil)
+	reversed := Tuple([]*Node{store, clock}, nil)
+	if forward.Key() == reversed.Key() {
+		t.Errorf("both slot orders key the same: %s", forward.Key())
+	}
+	for _, node := range []*Node{forward, reversed} {
+		if _, err := registry.Ref(node); err != nil {
+			t.Fatal(err)
+		}
+	}
+	// The two tuples plus the two names they are built over.
+	if registry.Len() != 4 {
+		t.Fatalf("want 4 distinct nodes, got %d:\n%s", registry.Len(), registry.Module())
+	}
+
+	module := registry.Module()
+	want := "export const " + refOf(t, registry, forward) + " = Type.tuple(" +
+		refOf(t, registry, clock) + ", " + refOf(t, registry, store) + ");"
+	if !strings.Contains(module, want) {
+		t.Errorf("want %q in:\n%s", want, module)
 	}
 }

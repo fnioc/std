@@ -15,13 +15,9 @@
   },
   "type": "module",
   "main": "./src/index.ts",
-  "types": "./src/index.ts",
   "exports": {
     ".": "./src/index.ts",
-    "./private/*": {
-      "types": "./src/*.ts",
-      "bun": "./src/*.ts"
-    }
+    "./private/*": "./src/*.ts"
   },
   "files": [
     "dist"
@@ -34,17 +30,15 @@
     "access": "public",
     "provenance": true,
     "main": "./dist/bundle/index.js",
-    "types": "./dist/bundle/index.d.ts",
     "exports": {
-      ".": {
-        "types": "./dist/bundle/index.d.ts",
-        "import": "./dist/bundle/index.js",
-        "default": "./dist/bundle/index.js"
-      }
+      ".": "./dist/bundle/index.js"
     }
   },
   "dependencies": {
-    "@rhombus-toolkit/func": "^3.6.0",
-    "@rhombus-toolkit/type-helpers": "^2.0.0"
+    "@rhombus-toolkit/obj": "^3.0.1",
+    "@rhombus-toolkit/once": "^2.0.0",
+    "@rhombus-toolkit/platform": "^1.1.0",
+    "@rhombus-toolkit/type-guards": "^4.0.0",
+    "@rhombus-toolkit/types": "^2.0.0"
   }
 }

@@ -1,9 +1,10 @@
 // DO NOT ADD MEMBERS TO THE TYPES IN THIS FILE
 
-import { augment, concat } from '@rhombus-std/primitives';
+import { augment } from '@rhombus-std/primitives';
 import { typefor } from '@rhombus-std/primitives.extras';
-import { Func } from '@rhombus-toolkit/func';
+import { concat } from '@rhombus-toolkit/iterable';
 import { assertNever } from '@rhombus-toolkit/type-guards';
+import { Func } from '@rhombus-toolkit/types';
 import { Registration } from './Registration';
 
 /**
@@ -32,6 +33,11 @@ export interface Manifest<Lifetime> extends Iterable<Registration<Lifetime>> {
 export namespace Manifest {
   export function empty<Lifetime>(): Manifest<Lifetime> {
     return new DefaultManifest<Lifetime>();
+  }
+
+  /** The registrations `fn` composes onto an empty manifest. */
+  export function build<Lifetime>(fn: Func<[Manifest<Lifetime>], Iterable<Registration<Lifetime>>>): Iterable<Registration<Lifetime>> {
+    return fn(empty<Lifetime>());
   }
 }
 export interface DefaultManifest<Lifetime> extends Manifest<Lifetime> {}

@@ -2,12 +2,13 @@
 // surface (the barrel), plus @rhombus-std/logging's LoggingBuilder for the
 // registry-installed method forms.
 
-import type { Manifest, Type } from '@rhombus-std/di.core';
+import type { Manifest } from '@rhombus-std/di.core';
 import { LOGGER_PROVIDER_TYPE, LoggingBuilder } from '@rhombus-std/logging';
 import { ConsoleFormatter, ConsoleFormatterNames, ConsoleLoggerAugmentations, ConsoleLoggerOptions, ConsoleLoggerProvider, ConsoleLoggerQueueFullMode, type LogEntry, StringWriter,
   type TextWriter } from '@rhombus-std/logging.console';
 import { EventId, type IExternalScopeProvider, type ILoggingBuilder, LogLevel } from '@rhombus-std/logging.core';
 import { Options } from '@rhombus-std/options';
+import type { Type } from '@rhombus-std/primitives';
 import { expect, test } from 'bun:test';
 
 /** A recording stand-in for the di.core registration builder. */

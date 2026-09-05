@@ -1,8 +1,5 @@
+import { isPromiseLike } from '@rhombus-toolkit/type-guards';
 import type { ChangeTokenConsumer, ChangeTokenProducer, IChangeToken } from './IChangeToken.js';
-
-function isThenable(value: void | PromiseLike<void>): value is PromiseLike<void> {
-  return typeof (value as PromiseLike<void> | undefined)?.then === 'function';
-}
 
 /**
  * One live subscription: holds the consumer against whatever token the producer
@@ -69,7 +66,7 @@ export class ChangeTokenRegistration<TState> {
       throw error;
     }
 
-    if (isThenable(result)) {
+    if (isPromiseLike(result)) {
       // Async completion: re-register only once the consumer's promise settles.
       // A rejection can't reach the trigger code without blocking, so it is left
       // unobserved -- a consumer that needs its async failures seen must handle

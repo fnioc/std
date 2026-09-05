@@ -4,10 +4,10 @@
 // runtime -- the augmentation wiring is covered black-box in
 // options.augmentations.test.
 
-import { Type } from '@rhombus-std/di.core';
 import type { IOptions } from '@rhombus-std/options/private/IOptions';
 import { OptionsValidationError } from '@rhombus-std/options/private/OptionsValidationError';
 import { StartupValidator } from '@rhombus-std/options/private/StartupValidator';
+import { Type } from '@rhombus-std/primitives';
 import { describe, expect, test } from 'bun:test';
 
 // The constructor's first parameter is di.core's `IServiceProvider`; reference

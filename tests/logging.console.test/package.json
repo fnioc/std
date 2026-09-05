@@ -14,6 +14,7 @@
     "@rhombus-std/logging": "workspace:*",
     "@rhombus-std/logging.console": "workspace:*",
     "@rhombus-std/logging.core": "workspace:*",
-    "@rhombus-std/options": "workspace:*"
+    "@rhombus-std/options": "workspace:*",
+    "@rhombus-std/primitives": "workspace:*"
   }
 }

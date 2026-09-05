@@ -6,7 +6,7 @@
 // either disqualifies the page from the back/forward cache, so this package
 // must never be able to name them.
 
-import type { Func } from '@rhombus-toolkit/func';
+import type { Func } from '@rhombus-toolkit/types';
 
 /** The `document.visibilityState` values. */
 export type DocumentVisibilityState = 'visible' | 'hidden';

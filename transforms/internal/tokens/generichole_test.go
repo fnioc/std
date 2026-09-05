@@ -7,7 +7,7 @@ import (
 	shimast "github.com/microsoft/typescript-go/shim/ast"
 )
 
-// These tests pin how DeriveTyped classifies an OPEN type — one carrying the
+// These tests pin how DeriveNode classifies an OPEN type — one carrying the
 // `Generic<L, C>` / `$<L>` hole brand. A hole, and any template applied with
 // one, derives by the node it is spelled as, ahead of the callable/union
 // classification: a constrained hole is still a hole even though its constraint
@@ -44,7 +44,7 @@ declare const widgetCtor: typeof Widget;
 // every-file-is-a-default-lib Context the other derivation tests use, so every
 // named node derives with the bare "global" FROM and the assertions pin only
 // the hole grammar.
-func loadGenericHoles(t *testing.T) (func(name string) *Derived, func()) {
+func loadGenericHoles(t *testing.T) (func(name string) *Node, func()) {
 	t.Helper()
 	prog, main := loadFixtureProgram(t, genericHoleFixtureSrc, false)
 	ctx := &Context{
@@ -52,44 +52,40 @@ func loadGenericHoles(t *testing.T) (func(name string) *Derived, func()) {
 		ProjectRoot:  filepath.Dir(main.FileName()),
 		IsDefaultLib: func(*shimast.SourceFile) bool { return true },
 	}
-	derive := func(name string) *Derived {
+	derive := func(name string) *Node {
 		t.Helper()
-		d, ok := DeriveTyped(ctx, ctx.Checker, typeOfDecl(t, ctx.Checker, main, name), nil)
+		n, ok := DeriveNode(ctx, ctx.Checker, typeOfDecl(t, ctx.Checker, main, name), nil)
 		if !ok {
 			t.Fatalf("%s did not derive", name)
 		}
-		return d
+		return n
 	}
 	return derive, func() { _ = prog.Close() }
 }
 
-// requirePlaceholderLeaf asserts d is a DerivedLeaf holding a hole node with the
-// expected label.
-func requirePlaceholderLeaf(t *testing.T, d *Derived, label string) {
+// requireHole asserts n is the hole node with the expected label.
+func requireHole(t *testing.T, n *Node, label string) {
 	t.Helper()
-	if d.Kind != DerivedLeaf || d.Leaf == nil {
-		t.Fatalf("expected a leaf, got %+v", d)
-	}
-	if d.Leaf.Kind != TypeNodePlaceholder || d.Leaf.Label != label {
-		t.Fatalf("expected the hole %q, got %+v", label, d.Leaf)
+	if n.Kind != KindGeneric || n.Label != label {
+		t.Fatalf("expected the hole %q, got %+v", label, n)
 	}
 }
 
-func TestDeriveTypedBareHole(t *testing.T) {
+func TestDeriveNodeBareHole(t *testing.T) {
 	derive, done := loadGenericHoles(t)
 	defer done()
 
-	requirePlaceholderLeaf(t, derive("bareHole"), "X")
+	requireHole(t, derive("bareHole"), "X")
 }
 
-func TestDeriveTypedConstrainedHoleIgnoresItsConstraint(t *testing.T) {
+func TestDeriveNodeConstrainedHoleIgnoresItsConstraint(t *testing.T) {
 	derive, done := loadGenericHoles(t)
 	defer done()
 
-	requirePlaceholderLeaf(t, derive("constrainedHole"), "C")
+	requireHole(t, derive("constrainedHole"), "C")
 }
 
-func TestDeriveTypedOpenTemplateNamesItsArgument(t *testing.T) {
+func TestDeriveNodeOpenTemplateNamesItsArgument(t *testing.T) {
 	derive, done := loadGenericHoles(t)
 	defer done()
 
@@ -98,47 +94,44 @@ func TestDeriveTypedOpenTemplateNamesItsArgument(t *testing.T) {
 		{"openOpener", "Opener", "T"},
 	} {
 		t.Run(tc.decl, func(t *testing.T) {
-			node := requireNamedLeaf(t, derive(tc.decl))
+			node := requireNamed(t, derive(tc.decl))
 			if node.Name != tc.name || node.From != "global" {
 				t.Fatalf("open template derived %+v, want the bare name %s", node, tc.name)
 			}
 			if len(node.Args) != 1 {
 				t.Fatalf("expected exactly one generic arg, got %d: %+v", len(node.Args), node.Args)
 			}
-			arg := node.Args[0]
-			if arg.Kind != TypeNodePlaceholder || arg.Label != tc.label {
-				t.Fatalf("expected the hole %q as the argument, got %+v", tc.label, arg)
-			}
+			requireHole(t, node.Args[0], tc.label)
 		})
 	}
 }
 
-func TestDeriveTypedClosedCallableTemplateStaysNamed(t *testing.T) {
+func TestDeriveNodeClosedCallableTemplateStaysNamed(t *testing.T) {
 	derive, done := loadGenericHoles(t)
 	defer done()
 
-	node := requireNamedLeaf(t, derive("closedOpener"))
+	node := requireNamed(t, derive("closedOpener"))
 	if node.Name != "Opener" || node.From != "global" {
 		t.Fatalf("closed callable template derived %+v, want the bare name Opener", node)
 	}
 	if len(node.Args) != 1 {
 		t.Fatalf("expected exactly one generic arg, got %d: %+v", len(node.Args), node.Args)
 	}
-	if node.Args[0].Kind != TypeNodeNamed || node.Args[0].Name != "IProvider" {
+	if node.Args[0].Kind != KindNamed || node.Args[0].Name != "IProvider" {
 		t.Fatalf("expected IProvider as the closed argument, got %+v", node.Args[0])
 	}
 }
 
-func TestDeriveTypedHoleInASignatureSlotKeepsTheCallable(t *testing.T) {
+func TestDeriveNodeHoleInASignatureSlotKeepsTheCallable(t *testing.T) {
 	derive, done := loadGenericHoles(t)
 	defer done()
 
-	d := derive("widgetCtor")
-	if d.Kind != DerivedCtor {
-		t.Fatalf("open constructor derived kind %v, want a constructor: %+v", d.Kind, d)
+	n := derive("widgetCtor")
+	if n.Kind != KindCtor {
+		t.Fatalf("open constructor derived kind %v, want a constructor: %+v", n.Kind, n)
 	}
-	if len(d.Args) != 1 || len(d.Args[0]) != 1 {
-		t.Fatalf("expected one signature of one parameter, got %+v", d.Args)
+	if n.Sig == nil || n.Sig.Kind != KindTuple || len(n.Sig.Members) != 1 {
+		t.Fatalf("expected one signature of one parameter, got %+v", n.Sig)
 	}
-	requirePlaceholderLeaf(t, d.Args[0][0], "1")
+	requireHole(t, n.Sig.Members[0], "1")
 }

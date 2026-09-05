@@ -4,7 +4,7 @@
 // to many entries via `CacheEntrySugarAugmentations.setOptions`.
 
 import { applyAugmentations, type IChangeToken } from '@rhombus-std/primitives';
-import type { Flatten } from '@rhombus-toolkit/type-helpers';
+import type { Flatten } from '@rhombus-toolkit/types';
 import type { CacheItemPriority } from './CacheItemPriority';
 import { MemoryCacheEntryOptions } from './MemoryCacheEntryOptions';
 import { PostEvictionCallbackRegistration } from './PostEvictionCallbackRegistration';

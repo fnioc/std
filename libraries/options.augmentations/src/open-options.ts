@@ -1,19 +1,13 @@
 import { type IServiceProvider, type Manifest } from '@rhombus-std/di.core';
 import type { IOptions } from '@rhombus-std/options';
 import { Type } from '@rhombus-std/primitives';
-import { typefor } from '@rhombus-std/primitives.extras';
-import type { Func } from '@rhombus-toolkit/func';
+import { type Generic, typefor } from '@rhombus-std/primitives.extras';
+import type { Func } from '@rhombus-toolkit/types';
 
 import { assembleOptions } from './assemble-options.js';
 import { baseFactoryType } from './option-types.js';
 
 const hole = Type.generic('$T');
-
-/**
- * `IOptions<$T>` left open — the one address every `IOptions<T>` request in the
- * container resolves through.
- */
-const openOptionsType = Type.imported('IOptions', '@rhombus-std/options', [hole]);
 
 /**
  * Ensures the container carries the single open `IOptions<$T>` registration,
@@ -32,8 +26,8 @@ const openOptionsType = Type.imported('IOptions', '@rhombus-std/options', [hole]
  */
 export function ensureOpenOptions(manifest: Manifest<unknown>): Manifest<unknown> {
   return manifest.tryAdd(
-    openOptionsType,
+    typefor<IOptions<Generic<'$T'>>>(),
     (resolver: IServiceProvider, optionsType: Type, makeBase: Func<[], unknown>): IOptions<unknown> => assembleOptions(resolver, optionsType, makeBase),
-    Type.func(openOptionsType, [[typefor<IServiceProvider>(), hole, baseFactoryType(hole)]]),
+    Type.func(typefor<IOptions<Generic<'$T'>>>(), [[typefor<IServiceProvider>(), hole, baseFactoryType(hole)]]),
   );
 }

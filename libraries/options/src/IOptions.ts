@@ -1,5 +1,5 @@
 import { ChangeToken, type ChangeTokenProducer } from '@rhombus-std/primitives';
-import type { Func } from '@rhombus-toolkit/func';
+import type { Func } from '@rhombus-toolkit/types';
 
 /**
  * A bound options object of type `T`: `value` reads the current value, and the

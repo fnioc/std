@@ -10,7 +10,7 @@
 
 import type { MergeStrategies } from '@rhombus-std/primitives';
 import { registerAugmentations } from '@rhombus-std/primitives.extras';
-import type { AbstractCtor } from '@rhombus-toolkit/func';
+import type { AbstractCtor } from '@rhombus-toolkit/types';
 import type { ILogger } from './ILogger';
 import type { ILoggerFactory } from './logger-factory';
 

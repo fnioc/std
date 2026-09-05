@@ -1,5 +1,5 @@
 // The memory-cache and distributed-memory-cache registrations, each published
-// as a manifest a consumer merges into their own with `addMany`.
+// as a manifest a consumer merges into their own with `add`.
 //
 // `addOptions` registers the `IOptions<T>` assembly for the options type;
 // `setup`, merged in through `getConfigureManifest`, becomes a LAZY code
@@ -27,7 +27,7 @@ import type { IOptions } from '@rhombus-std/options';
 import { getConfigureManifest } from '@rhombus-std/options.augmentations';
 import { Type } from '@rhombus-std/primitives';
 import { typefor } from '@rhombus-std/primitives.extras';
-import type { Func } from '@rhombus-toolkit/func';
+import type { Func } from '@rhombus-toolkit/types';
 import { DISTRIBUTED_CACHE_TYPE } from './distributed-cache-type';
 import { MEMORY_CACHE_OPTIONS_TYPE, MEMORY_DISTRIBUTED_CACHE_OPTIONS_TYPE } from './memory-cache-options-type';
 import { MEMORY_CACHE_TYPE } from './memory-cache-type';
@@ -48,7 +48,7 @@ export function getMemoryCacheManifest(setup?: Func<[MemoryCacheOptions], void>)
   if (setup !== undefined) {
     // `setup` joins the options pipeline as a configure step: it runs
     // lazily, when the options first resolve, not at registration.
-    m = m.addMany(getConfigureManifest(MEMORY_CACHE_OPTIONS_TYPE, setup));
+    m = m.add(getConfigureManifest(MEMORY_CACHE_OPTIONS_TYPE, setup));
   }
   // `tryAdd` only registers if the type is still free, keeping any
   // earlier registration. `resolve` returns `undefined` when no
@@ -73,7 +73,7 @@ export function getDistributedMemoryCacheManifest(setup?: Func<[MemoryDistribute
   // own private MemoryCache.
   let m = Manifest.empty<unknown>().addOptions(MEMORY_DISTRIBUTED_CACHE_OPTIONS_TYPE, () => new MemoryDistributedCacheOptions());
   if (setup !== undefined) {
-    m = m.addMany(getConfigureManifest(MEMORY_DISTRIBUTED_CACHE_OPTIONS_TYPE, setup));
+    m = m.add(getConfigureManifest(MEMORY_DISTRIBUTED_CACHE_OPTIONS_TYPE, setup));
   }
   return m.tryAdd(DISTRIBUTED_CACHE_TYPE, (resolver: IServiceProvider) =>
     new MemoryDistributedCache(

@@ -5,13 +5,13 @@
 // StartingAsync); a passing one lets start proceed.
 //
 // Exercised through the real Host DI: the `validateOnStart` registration
-// (merged in via `addMany`) registers the built-in IStartupValidator, and
+// (merged in via `add`) registers the built-in IStartupValidator, and
 // Host.start resolves and forces it.
 
-import { Type } from '@rhombus-std/di.core';
 import { getHostedServiceManifest, HostBuilder, HOSTED_SERVICE_TYPE } from '@rhombus-std/hosting';
 import { OptionsValidationError } from '@rhombus-std/options';
 import { getValidateManifest, getValidateOnStartManifest } from '@rhombus-std/options.augmentations';
+import { Type } from '@rhombus-std/primitives';
 // Installs the `addOptions` verb onto di.core's Manifest.
 import '@rhombus-std/options.augmentations';
 import { expect, test } from 'bun:test';
@@ -35,9 +35,9 @@ test('a failing validateOnStart aborts host start before any hosted service runs
   const builder = new HostBuilder();
   builder.configureServices((_context, services) => {
     services = services.addOptions(OPTIONS_TYPE, () => ({ port: 0 }));
-    services = services.addMany(getValidateManifest(OPTIONS_TYPE, (o: ServerOptions) => o.port > 0, 'port must be positive'));
-    services = services.addMany(getValidateOnStartManifest(OPTIONS_TYPE));
-    services = services.addMany(getHostedServiceManifest(Worker, Type.ctor(HOSTED_SERVICE_TYPE, [[]])));
+    services = services.add(getValidateManifest(OPTIONS_TYPE, (o: ServerOptions) => o.port > 0, 'port must be positive'));
+    services = services.add(getValidateOnStartManifest(OPTIONS_TYPE));
+    services = services.add(getHostedServiceManifest(Worker, Type.ctor(HOSTED_SERVICE_TYPE, [[]])));
     return services;
   });
 
@@ -64,9 +64,9 @@ test('valid options let validateOnStart pass and the host starts normally', asyn
   const builder = new HostBuilder();
   builder.configureServices((_context, services) => {
     services = services.addOptions(OPTIONS_TYPE, () => ({ port: 8080 }));
-    services = services.addMany(getValidateManifest(OPTIONS_TYPE, (o: ServerOptions) => o.port > 0, 'port must be positive'));
-    services = services.addMany(getValidateOnStartManifest(OPTIONS_TYPE));
-    services = services.addMany(getHostedServiceManifest(Worker, Type.ctor(HOSTED_SERVICE_TYPE, [[]])));
+    services = services.add(getValidateManifest(OPTIONS_TYPE, (o: ServerOptions) => o.port > 0, 'port must be positive'));
+    services = services.add(getValidateOnStartManifest(OPTIONS_TYPE));
+    services = services.add(getHostedServiceManifest(Worker, Type.ctor(HOSTED_SERVICE_TYPE, [[]])));
     return services;
   });
 

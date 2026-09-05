@@ -67,79 +67,70 @@ func newHoistEmitter(
 	}
 }
 
-// hoistNode mirrors a derived tree onto the const table's own node form, whose
-// canonical key is the identity two call sites share a const by. It is the
-// structural twin of typeemit.EmitDerived over the same tree, so a const holds
-// exactly what an inline emission would have spelled.
-func hoistNode(d *tokens.Derived) *typeforhoist.Node {
-	switch d.Kind {
-	case tokens.DerivedFunc:
-		return typeforhoist.Func(hoistNode(d.Ret), hoistRows(d.Args))
-	case tokens.DerivedCtor:
-		return typeforhoist.Ctor(hoistNode(d.Ret), hoistRows(d.Args))
-	case tokens.DerivedAbstractCtor:
-		return typeforhoist.AbstractCtor(hoistNode(d.Ret), hoistRows(d.Args))
-	case tokens.DerivedTag:
-		return typeforhoist.Tag(hoistNode(d.Inner), d.Tag)
-	case tokens.DerivedUnion:
-		return typeforhoist.Union(hoistNodes(d.Members))
-	case tokens.DerivedUndefined:
-		return typeforhoist.Undefined()
-	case tokens.DerivedNull:
-		return typeforhoist.Null()
-	default: // tokens.DerivedLeaf
-		return hoistLeaf(d.Leaf)
-	}
-}
-
-func hoistNodes(ds []*tokens.Derived) []*typeforhoist.Node {
-	out := make([]*typeforhoist.Node, 0, len(ds))
-	for _, d := range ds {
-		out = append(out, hoistNode(d))
-	}
-	return out
-}
-
-// hoistRows mirrors a callable's parameter rows, one row per call it answers to.
-func hoistRows(rows [][]*tokens.Derived) [][]*typeforhoist.Node {
-	out := make([][]*typeforhoist.Node, 0, len(rows))
-	for _, row := range rows {
-		out = append(out, hoistNodes(row))
-	}
-	return out
-}
-
-// hoistLeaf mirrors the unclassified named / literal / union / placeholder tree.
-// A named type's generic arguments become CHILD nodes rather than part of the
-// parent's spelling, so each closed argument earns its own const and is
-// referenced by name.
-func hoistLeaf(n *tokens.TypeNode) *typeforhoist.Node {
+// hoistFromNode mirrors a derived tree onto the const table's own node form,
+// whose canonical key is the identity two call sites share a const by. It is the
+// structural twin of typeemit.EmitNode over the same tree, so a const holds
+// exactly what an inline emission would have spelled. A composite's members
+// become CHILD nodes rather than part of the parent's spelling, so each earns its
+// own const and is referenced by name.
+func hoistFromNode(n *tokens.Node) *typeforhoist.Node {
 	switch n.Kind {
-	case tokens.TypeNodeLiteral:
-		return typeforhoist.Literal(tokens.RenderTypeNode(n))
-	case tokens.TypeNodeUnion:
-		members := make([]*typeforhoist.Node, 0, len(n.Members))
-		for _, m := range n.Members {
-			members = append(members, hoistLeaf(m))
+	case tokens.KindFunc:
+		return typeforhoist.Func(hoistFromNode(n.Ret), hoistFromNode(n.Sig))
+	case tokens.KindCtor:
+		return typeforhoist.Ctor(hoistFromNode(n.Ret), hoistFromNode(n.Sig))
+	case tokens.KindAbstractCtor:
+		return typeforhoist.AbstractCtor(hoistFromNode(n.Ret), hoistFromNode(n.Sig))
+	case tokens.KindTag:
+		return typeforhoist.Tag(hoistFromNode(n.Inner), n.Tag)
+	case tokens.KindUnion:
+		return typeforhoist.Union(hoistNodes(n.Members))
+	case tokens.KindIntersection:
+		return typeforhoist.Intersection(hoistNodes(n.Members))
+	case tokens.KindTuple:
+		var rest *typeforhoist.Node
+		if n.TupleRest != nil {
+			rest = hoistFromNode(n.TupleRest)
 		}
-		return typeforhoist.Union(members)
-	case tokens.TypeNodePlaceholder:
+		return typeforhoist.Tuple(hoistNodes(n.Members), rest)
+	case tokens.KindObject:
+		members := make([]typeforhoist.ObjectMember, 0, len(n.Properties))
+		for _, property := range n.Properties {
+			members = append(members, typeforhoist.ObjectMember{Key: property.Key, Type: hoistFromNode(property.Type)})
+		}
+		return typeforhoist.Object(members)
+	case tokens.KindGeneric:
 		return typeforhoist.Generic(n.Label)
-	case tokens.TypeNodeTag:
-		return typeforhoist.Tag(hoistLeaf(n.Inner), n.Tag)
-	default: // tokens.TypeNodeNamed
+	case tokens.KindLiteral:
+		switch n.Literal.Kind {
+		case tokens.LiteralUndefined:
+			return typeforhoist.Undefined()
+		case tokens.LiteralNull:
+			return typeforhoist.Null()
+		default:
+			return typeforhoist.Literal(tokens.LiteralText(n.Literal))
+		}
+	default: // tokens.KindNamed
 		args := make([]*typeforhoist.Node, 0, len(n.Args))
 		for _, a := range n.Args {
-			args = append(args, hoistLeaf(a))
+			args = append(args, hoistFromNode(a))
 		}
 		return typeforhoist.Named(n.Name, n.From, args)
 	}
 }
 
+func hoistNodes(ns []*tokens.Node) []*typeforhoist.Node {
+	out := make([]*typeforhoist.Node, 0, len(ns))
+	for _, n := range ns {
+		out = append(out, hoistFromNode(n))
+	}
+	return out
+}
+
 // node interns the derived tree and returns the identifier the const is
 // referenced by, or nil when naming failed (reported as a hard diagnostic).
-func (e *hoistEmitter) node(d *tokens.Derived) *shimast.Node {
-	name, err := e.registry.Ref(hoistNode(d))
+func (e *hoistEmitter) node(n *tokens.Node) *shimast.Node {
+	name, err := e.registry.Ref(hoistFromNode(n))
 	if err != nil {
 		e.emit(plugin.Diagnostic{
 			Code:    hoistCollisionCode,
@@ -190,11 +181,11 @@ func NewHoistEmitter(
 	return newHoistEmitter(factory, hoist, sourceFile, emit)
 }
 
-// Node interns d in the shared const table and returns the reference to its
+// Node interns n in the shared const table and returns the reference to its
 // const, or nil when naming failed (reported through emit) — the entry point a
 // sibling primitive's own leaf emission shares with typefor's.
-func (e *hoistEmitter) Node(d *tokens.Derived) *shimast.Node {
-	return e.node(d)
+func (e *hoistEmitter) Node(n *tokens.Node) *shimast.Node {
+	return e.node(n)
 }
 
 // Imports are the file's hoisted-const bindings, in a stable order — what a

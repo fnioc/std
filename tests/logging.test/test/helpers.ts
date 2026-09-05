@@ -3,7 +3,7 @@
 // point of exercising the filter engine.
 
 import type { EventId, IExternalScopeProvider, ILogger, ILoggerProvider, ISupportExternalScope, LogLevel } from '@rhombus-std/logging.core';
-import type { Func } from '@rhombus-toolkit/func';
+import type { Func } from '@rhombus-toolkit/types';
 
 /** A recorded write: its level and rendered message. */
 export interface Record {

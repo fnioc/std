@@ -16,6 +16,6 @@
     "@rhombus-std/fileproviders.core": "workspace:*",
     "@rhombus-std/fileproviders.physical": "workspace:*",
     "@rhombus-std/primitives": "workspace:*",
-    "@rhombus-toolkit/func": "^3.6.0"
+    "@rhombus-toolkit/types": "^2.0.0"
   }
 }

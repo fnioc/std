@@ -1,13 +1,13 @@
 import { type ConstructorType, type FunctionType, Type } from '@rhombus-std/primitives';
-import type { Ctor, Func } from '@rhombus-toolkit/func';
+import type { Ctor, Func } from '@rhombus-toolkit/types';
 
 /**
  * Calls `callable`, its dependencies resolved from the constructor or function type it closes
  * over — the same shape any other registered implementer carries.
  *
  * @remarks
- * Nothing registers one — the engine answers the address by synthesis; `resolve`'s callable
- * overloads are the usual door.
+ * Nothing registers one — the engine answers the address by synthesis; `instantiate` and `invoke`
+ * are the usual door.
  */
 export interface Invoker<C extends Ctor | Func> {
   (callable: C): C extends Ctor<any[], infer R> ? R : C extends Func<any[], infer R> ? R : never;

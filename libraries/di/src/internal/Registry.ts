@@ -1,12 +1,17 @@
-import { type Registration } from '@rhombus-std/di.core';
+import type { Registration } from '@rhombus-std/di.core';
 import { Type } from '@rhombus-std/primitives';
+import { isDefined } from '@rhombus-toolkit/type-guards';
 
 /** A registration that can serve a request, and what the match captured to make it fit. */
 export interface Match {
   /** The registration as authored — an open one still holds its holes. */
   readonly registration: Registration<unknown>;
   /** One binding per hole the match filled; empty for a registration that had none. */
-  readonly generics: ReadonlyMap<string, Type>;
+  readonly generics: Readonly<Record<string, Type>>;
+  /** The address it was matched against, which is the address this match answers. */
+  readonly address: Type;
+  /** The registration's position among the registrations, newest first — where a search for what it shadows starts after. */
+  readonly index: number;
 }
 
 /**
@@ -19,29 +24,54 @@ export class Registry {
     this.#registrations = Iterator.from(registrations).map(registration => Object.freeze(registration)).toArray();
   }
 
+  /** Every registration filed, newest first. */
+  get registrations(): ReadonlyArray<Registration<unknown>> {
+    return this.#registrations;
+  }
+
   /**
-   * Every address a closed registration answers — what a whole-registry check has to walk, since
-   * an open registration has no request to close its holes against.
+   * Every address a closed registration answers — what a whole-registry check has to enumerate,
+   * since an open registration has no request to close its holes against.
    */
   get closedAddresses(): ReadonlySet<Type> {
     return new Set(
       Iterator.from(this.#registrations)
         .map(registration => registration.address)
-        .filter(address => !Type.isOpen(address)),
+        .filter(Type.isClosed),
     );
   }
 
   /**
-   * Every registration matching exactly {@link address}'s own address, newest first — a
-   * closed registration by interned identity, an open one by unification.
+   * Every registration matching {@link primary} or {@link alternate}, newest first — one pass
+   * over the registrations, so a registration matching both is answered once under
+   * {@link primary}. A closed registration matches by interned identity, an open one by unification.
+   *
+   * @param start - the position to search from; a registration resolving a slot naming its own
+   * address passes its own position plus one, so only what it shadows can answer.
    */
-  matching(address: Type): IteratorObject<Match, undefined> {
+  getMatches(primary: Type, alternate?: Type, start = 0) {
     return Iterator.from(this.#registrations)
-      .map(registration => ({
-        registration,
-        bound: Type.bindGenerics(registration.address, address),
-      }))
-      .filter((candidate): candidate is { registration: Registration<unknown>; bound: [true, Map<string, Type>]; } => candidate.bound[0])
-      .map(({ registration, bound: [, generics] }) => ({ registration, generics }));
+      .drop(start)
+      .map((registration, dropped): Match | undefined => {
+        const index = start + dropped;
+        const [isMatch, generics] = Type.extractMatchedGenerics(registration.address, primary);
+        if (isMatch) {
+          return { registration, generics, address: primary, index };
+        }
+        if (alternate !== undefined) {
+          const [isAlternateMatch, alternateGenerics] = Type.extractMatchedGenerics(registration.address, alternate);
+          if (isAlternateMatch) {
+            return { registration, generics: alternateGenerics, address: alternate, index };
+          }
+        }
+        return undefined;
+      })
+      .filter(isDefined);
+  }
+
+  /** Whether any registration from `start` on matches `address` — an open address never is, since a hole on the asking side binds nothing. */
+  hasMatch(address: Type, start = 0): boolean {
+    return Type.isClosed(address)
+      && Iterator.from(this.#registrations).drop(start).some(registration => Type.extractMatchedGenerics(registration.address, address)[0]);
   }
 }

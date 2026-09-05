@@ -81,7 +81,7 @@ func TestExtractRejects(t *testing.T) {
 			// alias in the body is a free identifier. The alias is the outer callee
 			// here so the free-identifier walk reaches it directly.
 			name: "aliased primitive reference fails the free-identifier walk",
-			inline: `import { tokenfor as n } from '@rhombus-std/primitives.extras';
+			inline: `import { typefor as n } from '@rhombus-std/primitives.extras';
 export const QueryInline = {
   bar<T>(this: any): string { return n<T>(); },
 };
@@ -96,7 +96,7 @@ export const QueryInline = {
 			// callee halted the sibling walk before the argument was ever checked.
 			// The skip-set fix keeps siblings walking, so `n` is caught here too.
 			name: "free identifier as an argument after a property-access callee",
-			inline: `import { tokenfor as n } from '@rhombus-std/primitives.extras';
+			inline: `import { typefor as n } from '@rhombus-std/primitives.extras';
 export const QueryInline = {
   bar<T>(this: any): boolean { return this.isService(n<T>()); },
 };
@@ -151,11 +151,11 @@ func TestLocateImplFollowsReExports(t *testing.T) {
 // BLOCK body both extract; an arrow with an EXPRESSION body is rejected
 // INLINE_BODY_SHAPE — pinning the current rejection as intended.
 func TestExtractPropertyAssignmentAndArrowForms(t *testing.T) {
-	inline := `import { tokenfor } from '@rhombus-std/primitives.extras';
+	inline := `import { typefor } from '@rhombus-std/primitives.extras';
 export const QueryInline = {
-  bar: function<T>(this: any): boolean { return this.isService(tokenfor<T>()); },
-  baz: <T>(): boolean => { return this.isService(tokenfor<T>()); },
-  qux: <T>(): boolean => this.isService(tokenfor<T>()),
+  bar: function<T>(this: any): boolean { return this.isService(typefor<T>()); },
+  baz: <T>(): boolean => { return this.isService(typefor<T>()); },
+  qux: <T>(): boolean => this.isService(typefor<T>()),
 };
 `
 	dir := oneImplPackage(t, indexStub, inline)
@@ -188,9 +188,9 @@ export const QueryInline = {
 // statement must not disturb the declaration lookup or the free-identifier walk,
 // which read only the impl's own declaration.
 func TestExtractIgnoresAuthoringMarker(t *testing.T) {
-	inline := `import { registerInlineBodies, tokenfor } from '@rhombus-std/primitives.extras';
+	inline := `import { registerInlineBodies, typefor } from '@rhombus-std/primitives.extras';
 export const QueryInline = {
-  bar<T>(this: any): boolean { return this.isService(tokenfor<T>()); },
+  bar<T>(this: any): boolean { return this.isService(typefor<T>()); },
 };
 registerInlineBodies(QueryInline);
 `
@@ -200,8 +200,8 @@ registerInlineBodies(QueryInline);
 	if err != nil {
 		t.Fatalf("Extract with an authoring marker present: %v", err)
 	}
-	if rb.PrimitiveImports["tokenfor"] != "tokenfor" {
-		t.Fatalf("tokenfor should still be a recorded primitive import, got %+v", rb.PrimitiveImports)
+	if rb.PrimitiveImports["typefor"] != "typefor" {
+		t.Fatalf("typefor should still be a recorded primitive import, got %+v", rb.PrimitiveImports)
 	}
 	if ref, recorded := rb.ValueImports["registerInlineBodies"]; recorded {
 		t.Fatalf("the authoring marker must not be recorded as a value import, got %+v", ref)
@@ -231,9 +231,9 @@ export const QueryInline = {
 // else names the callee.
 func TestExtractRecordsImportedValue(t *testing.T) {
 	inline := `import { merge } from '@scope/runtime';
-import { tokenfor } from '@rhombus-std/primitives.extras';
+import { typefor } from '@rhombus-std/primitives.extras';
 export const QueryInline = {
-  bar<T>(this: any): boolean { return merge(this.isService(tokenfor<T>())); },
+  bar<T>(this: any): boolean { return merge(this.isService(typefor<T>())); },
 };
 `
 	dir := oneImplPackage(t, indexStub, inline)

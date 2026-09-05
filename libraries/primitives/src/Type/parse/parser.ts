@@ -1,19 +1,33 @@
 import { TypeParseError } from '../../TypeParseError.js';
-import { abstractCtor, ctor, func, generic, global, imported, intersection, literal, object, tag, tuple, union } from '../factory/factories.js';
-import { GLOBAL_QUALIFIER, KEYWORD_LITERALS, SERVICE_PROVIDER_FROM } from '../grammar.js';
-import type { AbstractConstructorType, ConstructorType, FunctionType, ObjectType, Type } from '../Type.js';
+import { GLOBAL_QUALIFIER, isListName, KEYWORD_LITERALS, SERVICE_PROVIDER_FROM } from '../grammar.js';
+import type { AbstractConstructorType, ConstructorType, FunctionType, GenericType, GlobalType, ImportedType, IntersectionType, ObjectType, TagType, TupleType, Type, TypeLiteralType,
+  UnionType } from '../Type.js';
 import { lex, type LexToken } from './lexer.js';
 
 const OPENERS = new Set(['(', '[', '{', '<']);
 const CLOSERS = new Set([')', ']', '}', '>']);
 
 /**
- * Reads a type token back into the {@link Type} it spells.
+ * Reads a type token into the plain node tree it spells, exactly as written: grammar only, with
+ * nothing canonicalized, collapsed or interned. {@link Type.adopt} is where the tree gains meaning.
  *
  * @throws TypeParseError when the token is malformed.
  */
-export function parseTypeString(token: string): Type {
+export function parseLiteral(token: string): Type.RawType {
   return new TypeParser(token).parse();
+}
+
+/**
+ * A parsed node, typed as the slot it fills. The brand it lacks is phantom, so nothing is forged
+ * here: every node the parser builds is raw, and the tree is real only once adopted.
+ */
+function rawNode<T extends Type>(node: Type.RawType<T>): T {
+  return node as unknown as T;
+}
+
+/** A callable's signatures slot: one row is the row itself, several are their union. */
+function signatureSlot(rows: readonly TupleType[]): TupleType | UnionType {
+  return rows.length === 1 ? rows[0]! : rawNode<UnionType>({ kind: 'union', members: rows });
 }
 
 /**
@@ -54,11 +68,11 @@ class TypeParser {
     if (!this.#at('|')) {
       return first;
     }
-    const types: Type[] = [first];
+    const members: Type[] = [first];
     while (this.#take('|')) {
-      types.push(this.#intersection());
+      members.push(this.#intersection());
     }
-    return union(types);
+    return rawNode<UnionType>({ kind: 'union', members });
   }
 
   #intersection(): Type {
@@ -66,11 +80,11 @@ class TypeParser {
     if (!this.#at('&')) {
       return first;
     }
-    const types: Type[] = [first];
+    const members: Type[] = [first];
     while (this.#take('&')) {
-      types.push(this.#tagged());
+      members.push(this.#tagged());
     }
-    return intersection(types);
+    return rawNode<IntersectionType>({ kind: 'intersection', members });
   }
 
   #tagged(): Type {
@@ -79,7 +93,7 @@ class TypeParser {
       if (type.kind === 'tag') {
         throw this.#error(this.#lexed[this.#index - 1]!.position, 'no second tag — a type wears at most one');
       }
-      type = tag(type, this.#segment());
+      type = rawNode<TagType>({ kind: 'tag', tag: this.#segment(), type });
     }
     return type;
   }
@@ -91,7 +105,7 @@ class TypeParser {
     }
     if (token.kind === 'literal') {
       this.#index++;
-      return literal(token.value);
+      return rawNode<TypeLiteralType>({ kind: 'literal', value: token.value });
     }
     if (token.kind === 'name') {
       return this.#named();
@@ -105,15 +119,15 @@ class TypeParser {
       }
       case '[': {
         this.#index++;
-        return tuple(this.#typeList(']'));
+        return this.#tuple();
       }
       case '{': {
         this.#index++;
-        return object(this.#members());
+        return rawNode<ObjectType>({ kind: 'object', members: this.#members() });
       }
       case '%': {
         this.#index++;
-        return generic(this.#segment());
+        return rawNode<GenericType>({ kind: 'generic', label: this.#segment() });
       }
       default: {
         throw this.#error(token.position, 'a type');
@@ -127,7 +141,9 @@ class TypeParser {
     if (this.#take(':')) {
       const name = this.#segment();
       const genericArgs = this.#genericTypes();
-      return first.text === GLOBAL_QUALIFIER ? global(name, genericArgs) : imported(name, first.text, genericArgs);
+      return first.text === GLOBAL_QUALIFIER
+        ? rawNode<GlobalType>({ kind: 'global', name, genericArgs })
+        : rawNode<ImportedType>({ kind: 'imported', name, from: first.text, genericArgs });
     }
     if (!first.escaped) {
       const reserved = this.#reserved(first);
@@ -135,36 +151,36 @@ class TypeParser {
         return reserved;
       }
     }
-    return global(first.text, this.#genericTypes());
+    return rawNode<GlobalType>({ kind: 'global', name: first.text, genericArgs: this.#genericTypes() });
   }
 
   /**
    * The readings an unescaped, unqualified name carries instead of naming a type. `string`,
    * `number` and the other value types are deliberately absent — they name types like any other.
-   * The list spellings are absent too: the global door canonicalizes them, so parsing one
-   * as an ordinary name already lands on its kind node.
+   * The list spellings are absent too: they parse as ordinary global names, and adoption lands
+   * them on their own kind.
    */
   #reserved(name: LexToken): Type | undefined {
-    if (KEYWORD_LITERALS.has(name.text)) {
+    if (Object.hasOwn(KEYWORD_LITERALS, name.text)) {
       if (this.#at('<')) {
         throw this.#error(this.#peek()!.position, `no type arguments — \`${name.text}\` is a literal`);
       }
-      return literal(KEYWORD_LITERALS.get(name.text));
+      return rawNode<TypeLiteralType>({ kind: 'literal', value: KEYWORD_LITERALS[name.text] });
     }
     switch (name.text) {
       case 'Func': {
         const [returns, signatures] = this.#reservedSignature(name, 'Func<Return, ...Args>');
-        return func(returns, signatures);
+        return rawNode<FunctionType>({ kind: 'func', signatures, return: returns });
       }
       case 'Ctor': {
         const [instance, signatures] = this.#reservedSignature(name, 'Ctor<Instance, ...Args>');
-        return ctor(instance, signatures);
+        return rawNode<ConstructorType>({ kind: 'ctor', signatures, instance });
       }
       case 'ServiceProvider': {
         if (this.#at('<')) {
           throw this.#error(this.#peek()!.position, 'no type arguments — `ServiceProvider` names the provider itself');
         }
-        return imported('IServiceProvider', SERVICE_PROVIDER_FROM, []);
+        return rawNode<ImportedType>({ kind: 'imported', name: 'IServiceProvider', from: SERVICE_PROVIDER_FROM, genericArgs: [] });
       }
       default: {
         return undefined;
@@ -177,7 +193,7 @@ class TypeParser {
    * signatures — `Ctor<Instance, A, B; C>`. The head is separated from the first signature by the same comma
    * every other argument uses, so a one-signature spelling reads as one flat list.
    */
-  #reservedSignature(name: LexToken, spelling: string): [head: Type, signatures: Type.Signatures] {
+  #reservedSignature(name: LexToken, spelling: string): [head: Type, slot: TupleType | UnionType] {
     if (!this.#take('<')) {
       throw this.#error(name.position, `\`${spelling}\``);
     }
@@ -186,13 +202,13 @@ class TypeParser {
     }
     const head = this.#type();
     if (this.#take('>')) {
-      return [head, [[]]];
+      return [head, this.#fixedTuple([])];
     }
     if (this.#take(';')) {
-      return [head, [[], ...this.#signatureList('>')]];
+      return [head, signatureSlot([this.#fixedTuple([]), ...this.#signatureRows('>')])];
     }
     this.#expect(',');
-    return [head, this.#signatureList('>')];
+    return [head, signatureSlot(this.#signatureRows('>'))];
   }
 
   #genericTypes(): readonly Type[] {
@@ -211,30 +227,74 @@ class TypeParser {
    * list of types. An empty list is ONE empty signature — a callable taking no args, rather than
    * one answering to no call.
    */
-  #signatureList(closer: string): Type.Signatures {
-    const signatures: Array<readonly Type[]> = [];
+  #signatureRows(closer: string): TupleType[] {
+    const rows: TupleType[] = [];
     for (;;) {
-      signatures.push(this.#signature(closer));
+      rows.push(this.#signature(closer));
       if (this.#take(closer)) {
-        return signatures;
+        return rows;
       }
       this.#expect(';');
     }
   }
 
-  /** One signature's arg types, stopping at its `;` or at `closer` without consuming either. */
-  #signature(closer: string): readonly Type[] {
-    const types: Type[] = [];
+  /**
+   * One signature, stopping at its `;` or at `closer` without consuming either: a tuple of the
+   * fixed arg types, its rest slot the element of a trailing `...` list.
+   */
+  #signature(closer: string): TupleType {
+    const members: Type[] = [];
     if (this.#at(closer) || this.#at(';')) {
-      return types;
+      return this.#fixedTuple(members);
     }
     for (;;) {
-      types.push(this.#type());
+      if (this.#take('...')) {
+        const rest = this.#restElement();
+        if (!(this.#at(closer) || this.#at(';'))) {
+          throw this.#error(this.#peek()?.position ?? this.#token.length, 'the signature to end — a rest slot comes last');
+        }
+        return rawNode<TupleType>({ kind: 'tuple', members, rest });
+      }
+      members.push(this.#type());
       if (this.#at(closer) || this.#at(';')) {
-        return types;
+        return this.#fixedTuple(members);
       }
       this.#expect(',');
     }
+  }
+
+  /** The element of the list a `...` slot draws from — the one argument of a list spelling. */
+  #restElement(): Type {
+    const position = this.#peek()?.position ?? this.#token.length;
+    const list = this.#type();
+    if (list.kind !== 'global' || !isListName(list.name) || list.genericArgs.length !== 1) {
+      throw this.#error(position, 'a list type after `...`');
+    }
+    return list.genericArgs[0]!;
+  }
+
+  /** A tuple's slot list: fixed members, then at most one rest (`...List<T>`) slot, which comes last. */
+  #tuple(): TupleType {
+    const members: Type[] = [];
+    if (this.#take(']')) {
+      return this.#fixedTuple(members);
+    }
+    for (;;) {
+      if (this.#take('...')) {
+        const rest = this.#restElement();
+        this.#expect(']');
+        return rawNode<TupleType>({ kind: 'tuple', members, rest });
+      }
+      members.push(this.#type());
+      if (this.#take(']')) {
+        return this.#fixedTuple(members);
+      }
+      this.#expect(',');
+    }
+  }
+
+  #fixedTuple(members: readonly Type[]): TupleType {
+    return rawNode<TupleType>({ kind: 'tuple', members, rest: undefined });
   }
 
   #typeList(closer: string): readonly Type[] {
@@ -304,18 +364,21 @@ class TypeParser {
 
   #function(): FunctionType {
     this.#expect('(');
-    const signatures = this.#signatureList(')');
+    const signatures = signatureSlot(this.#signatureRows(')'));
     this.#expect('=>');
-    return func(this.#type(), signatures);
+    return rawNode<FunctionType>({ kind: 'func', signatures, return: this.#type() });
   }
 
   #ctor(): ConstructorType | AbstractConstructorType {
     const abstract = this.#takeName('abstract');
     this.#index++;
     this.#expect('(');
-    const signatures = this.#signatureList(')');
+    const signatures = signatureSlot(this.#signatureRows(')'));
     this.#expect('=>');
-    return abstract ? abstractCtor(this.#type(), signatures) : ctor(this.#type(), signatures);
+    const instance = this.#type();
+    return abstract
+      ? rawNode<AbstractConstructorType>({ kind: 'abstract-ctor', signatures, instance })
+      : rawNode<ConstructorType>({ kind: 'ctor', signatures, instance });
   }
 
   #peek(): LexToken | undefined {

@@ -125,11 +125,11 @@ func TestRestShapeUnboundedInSweep(t *testing.T) {
 // signature no body spells — and no rest body blankets — is a hard error at
 // resolution, never a silent runtime death.
 func TestAssignBodiesFaceWithoutBodyDiagnosed(t *testing.T) {
-	inlineBody := `import { tokenfor } from '@rhombus-std/primitives.extras';
+	inlineBody := `import { typefor } from '@rhombus-std/primitives.extras';
 import type { IQuery } from '@scope/core';
 export namespace QueryInline {
   export function isService<T>(this: IQuery, other: string): boolean {
-    return this.isService(tokenfor<T>(), other);
+    return this.isService(typefor<T>(), other);
   }
 }
 `
@@ -188,11 +188,11 @@ export {};
 // level is exactly what the tuple shape absorbs, so the two serve the same
 // signature and no INLINE_FACE_WITHOUT_BODY / INLINE_BODY_WITHOUT_FACE fires.
 func TestRestTupleFaceMatchesOptionalBody(t *testing.T) {
-	inlineBody := `import { tokenfor } from '@rhombus-std/primitives.extras';
+	inlineBody := `import { typefor } from '@rhombus-std/primitives.extras';
 import type { IQuery } from '@scope/core';
 export namespace QueryInline {
   export function isService<T, L>(this: IQuery, extra: number, lifetime?: unknown): boolean {
-    return this.isService(tokenfor<T>(), extra, lifetime);
+    return this.isService(typefor<T>(), extra, lifetime);
   }
 }
 `
@@ -265,11 +265,11 @@ declare module '@scope/core' {
 }
 export {};
 `)
-	write(t, filepath.Join(sugar, "src", "inline.ts"), `import { tokenfor } from '@rhombus-std/primitives.extras';
+	write(t, filepath.Join(sugar, "src", "inline.ts"), `import { typefor } from '@rhombus-std/primitives.extras';
 import type { IQuery } from '@scope/core';
 export namespace QueryInline {
   export function isService<T, L>(this: IQuery, extra: number, lifetime?: unknown): boolean {
-    return this.isService(tokenfor<T>(), extra, lifetime);
+    return this.isService(typefor<T>(), extra, lifetime);
   }
 }
 `)
@@ -334,11 +334,11 @@ declare module '@scope/core' {
 }
 export {};
 `
-	inlineBody := `import { tokenfor } from '@rhombus-std/primitives.extras';
+	inlineBody := `import { typefor } from '@rhombus-std/primitives.extras';
 import type { IQuery } from '@scope/core';
 export namespace QueryInline {
   export function isService<T, L>(this: IQuery, extra: number, lifetime: unknown): boolean {
-    return this.isService(tokenfor<T>(), extra, lifetime);
+    return this.isService(typefor<T>(), extra, lifetime);
   }
 }
 `
@@ -371,11 +371,11 @@ export const withLifetime = provider.isService<Foo, string>(5, 'x');
 // INLINE_FACE_WITHOUT_BODY / INLINE_BODY_WITHOUT_FACE, exactly as an
 // ordinary (non-tuple) signature mismatch does.
 func TestRestTupleFaceNameMismatchStillDiagnosed(t *testing.T) {
-	inlineBody := `import { tokenfor } from '@rhombus-std/primitives.extras';
+	inlineBody := `import { typefor } from '@rhombus-std/primitives.extras';
 import type { IQuery } from '@scope/core';
 export namespace QueryInline {
   export function isService<T, L>(this: IQuery, extra: number, something?: unknown): boolean {
-    return this.isService(tokenfor<T>(), extra, something);
+    return this.isService(typefor<T>(), extra, something);
   }
 }
 `

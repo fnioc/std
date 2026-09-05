@@ -1,6 +1,6 @@
-import { Type } from '@rhombus-std/di.core';
 import { HostBuilder, type IHostEnvironment } from '@rhombus-std/hosting';
 import { createDefaultServiceProviderOptions } from '@rhombus-std/hosting/private/default-config';
+import { Type } from '@rhombus-std/primitives';
 import { expect, test } from 'bun:test';
 
 function fakeEnvironment(environmentName: string): IHostEnvironment {
@@ -38,7 +38,7 @@ test('useDefaultServiceProvider threads validateOnBuild into the provider build'
 
 test('useDefaultServiceProvider validate-on-build accepts a sound host graph (framework services validate cleanly)', () => {
   const builder = new HostBuilder();
-  builder.useDefaultServiceProvider((options) => ({ ...options, validateScopes: true, validateOnBuild: true }));
+  builder.useDefaultServiceProvider((options) => ({ ...options, validateOnBuild: true }));
   expect(() => builder.build()).not.toThrow();
 });
 

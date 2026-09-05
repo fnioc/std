@@ -1,7 +1,7 @@
 {
   "name": "@rhombus-std/di.extras",
   "version": "10.1.0",
-  "description": "The ioc authoring surface: the build-time primitives a registration author writes against. A Go/ttsc descriptor package \u2014 the primitive-transform runs in the shared owner binary.",
+  "description": "The ioc authoring surface: the build-time primitives a registration author writes against. A Go/ttsc descriptor package — the primitive-transform runs in the shared owner binary.",
   "keywords": [
     "dependency-injection",
     "di",
@@ -18,24 +18,20 @@
   },
   "type": "module",
   "main": "./src/index.ts",
-  "types": "./src/index.ts",
   "exports": {
     ".": "./src/index.ts",
     "./ttsc": "./ttsc.mjs",
-    "./private/*": {
-      "types": "./src/*.ts",
-      "bun": "./src/*.ts"
-    }
+    "./private/*": "./src/*.ts"
   },
   "ttsc": {
     "plugin": {
-      "transform": "@rhombus-std/di.extras/ttsc"
+      "transform": "./ttsc.mjs"
     }
   },
   "files": [
     "dist",
-    "ttsc.mjs",
-    "rhombus-std.json"
+    "src",
+    "ttsc.mjs"
   ],
   "scripts": {
     "build": "bun ../../scripts/build-lib.ts",
@@ -45,9 +41,8 @@
     "@rhombus-std/di.core": "workspace:*",
     "@rhombus-std/primitives": "workspace:*",
     "@rhombus-std/primitives.extras": "workspace:*",
-    "@rhombus-toolkit/func": "3.6.0",
-    "@rhombus-toolkit/type-guards": "^1.3.4",
-    "@rhombus-toolkit/type-helpers": "^2.0.0"
+    "@rhombus-std/transforms": "workspace:^",
+    "@rhombus-toolkit/types": "^2.0.0"
   },
   "peerDependencies": {
     "typescript": ">=5.2"
@@ -59,11 +54,9 @@
     "access": "public",
     "provenance": true,
     "main": "./dist/bundle/index.js",
-    "types": "./dist/bundle/index.d.ts",
     "exports": {
       ".": {
-        "types": "./dist/bundle/index.d.ts",
-        "import": "./dist/bundle/index.js",
+        "source": "./src/index.ts",
         "default": "./dist/bundle/index.js"
       },
       "./ttsc": "./ttsc.mjs"

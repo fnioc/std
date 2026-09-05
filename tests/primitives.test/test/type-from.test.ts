@@ -43,6 +43,21 @@ describe('Type.from', () => {
     expect(Type.from('(app:A | app:B)#primary')).toBe(Type.tag(Type.union(A, B) as UnionType, 'primary'));
   });
 
+  test("reads a tuple with a trailing rest slot, which stores the list's element", () => {
+    expect(Type.from('[app:A, ...Array<app:B>]')).toBe(Type.tuple({ members: [A], rest: B }));
+    expect(Type.from('[app:A, ...Iterable<app:B>]')).toBe(Type.tuple({ members: [A], rest: B }));
+  });
+
+  test('a rest slot draws from a list', () => {
+    expect(() => Type.from('[app:A, ...app:B]')).toThrow(TypeParseError);
+  });
+
+  test('a tuple that is nothing but a rest reads as the array its element fills', () => {
+    expect(Type.from('[...Array<app:B>]')).toBe(Type.array(B));
+    // The rest slot stores the element alone, so the list it drew from is not part of what the tuple spells.
+    expect(Type.from('[...Iterable<app:B>]')).toBe(Type.array(B));
+  });
+
   test('reads tuples, generic holes and literals', () => {
     expect(Type.from('[app:A, 5]')).toBe(Type.tuple(A, Type.typeLiteral(5)));
     expect(Type.from('[]')).toBe(Type.tuple());
@@ -67,7 +82,8 @@ describe('Type.from', () => {
   test('a callable with one signature spells exactly as it always has', () => {
     expect(Type.stringify(Type.func(B, [[A]]))).toBe('(app:A) => app:B');
     expect(Type.stringify(Type.ctor(B, [[]]))).toBe('new () => app:B');
-    expect(Type.stringify(Type.func({ return: B, signatures: [[A], []] }))).toBe('(app:A; ) => app:B');
+    // An overload set stores its rows canonically, shorter first, and spells in that order.
+    expect(Type.stringify(Type.func({ return: B, signatures: [[A], []] }))).toBe('(; app:A) => app:B');
   });
 
   test('an abstract constructor carries the prefix, round-tripping both directions', () => {
@@ -191,6 +207,17 @@ describe('malformed tokens', () => {
 });
 
 describe('round trip', () => {
+  test('every open-row shape reads back as the identical node', () => {
+    const listRow = Type.func(A, Type.signatures([Type.array(B)]));
+    expect(Type.from(Type.stringify(listRow))).toBe(listRow);
+
+    const prefixRestRow = Type.func(A, Type.signatures([Type.tuple({ members: [A], rest: B })]));
+    expect(Type.from(Type.stringify(prefixRestRow))).toBe(prefixRestRow);
+
+    const both = Type.func(A, Type.signatures([Type.array(B), Type.tuple({ members: [A], rest: B })]));
+    expect(Type.from(Type.stringify(both))).toBe(both);
+  });
+
   test('every generated type reads back from its own spelling', () => {
     for (let seed = 1; seed <= 2000; seed++) {
       const original = generate(makeRandom(seed), 4);
@@ -295,7 +322,8 @@ function generate(random: () => number, depth: number): Type {
       return Type.intersection(...Array.from({ length: 2 + many(2) }, child));
     }
     case 'tuple': {
-      return Type.tuple(...children(3));
+      const members = children(3);
+      return Type.tuple({ members, rest: members.length && many(1) ? child() : undefined });
     }
     case 'func': {
       return Type.func({ return: child(), signatures: signatures() });

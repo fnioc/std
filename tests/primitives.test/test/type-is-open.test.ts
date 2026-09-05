@@ -52,6 +52,11 @@ describe('Type.isOpen', () => {
     expect(Type.isOpen(Type.tuple(A, B))).toBe(false);
   });
 
+  test('a tuple is open through its rest slot too', () => {
+    expect(Type.isOpen(Type.tuple({ members: [A], rest: T }))).toBe(true);
+    expect(Type.isOpen(Type.tuple({ members: [A], rest: B }))).toBe(false);
+  });
+
   test('an object is open through any one member value', () => {
     expect(Type.isOpen(Type.object({ a: A, b: T }))).toBe(true);
     expect(Type.isOpen(Type.object({ a: A, b: B }))).toBe(false);

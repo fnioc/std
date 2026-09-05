@@ -1,6 +1,5 @@
 import { ConstructorType, FunctionType, Type } from '@rhombus-std/primitives';
-import type { Ctor, Func } from '@rhombus-toolkit/func';
-import type { Flatten } from '@rhombus-toolkit/type-helpers';
+import type { Ctor, Flatten, Func } from '@rhombus-toolkit/types';
 
 /**
  * One registration: what a manifest resolves `address` to. The member naming the
@@ -14,9 +13,8 @@ export type Registration<Lifetime> =
   | ValueRegistration;
 
 /**
- * The lifetime a constructed registration is cached under, omittable only where the vocabulary
- * admits `undefined` — in which case absence means the manifest's default. A vocabulary of named
- * lifetimes has no reading for silence, so its registrations must name one.
+ * The lifetime a constructed registration is cached under — a model's own vocabulary value.
+ * Omittable only where the vocabulary admits `undefined`.
  */
 interface WithLifetimeMembers<Lifetime> {
   readonly lifetime: Lifetime;

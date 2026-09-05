@@ -1,8 +1,6 @@
 package schemaoftransform
 
 import (
-	"regexp"
-
 	shimast "github.com/microsoft/typescript-go/shim/ast"
 	shimchecker "github.com/microsoft/typescript-go/shim/checker"
 
@@ -70,11 +68,21 @@ type expansion struct {
 // inline at the call site. The object/tuple/union shapes schemaof composes
 // AROUND a leaf are always inline: they are this expansion's own structure, not
 // a type a hand-writer would address by name.
-func emitLeaf(ex *expansion, d *tokens.Derived) *shimast.Node {
+func emitLeaf(ex *expansion, n *tokens.Node) *shimast.Node {
 	if ex.hoisted != nil {
-		return ex.hoisted.Node(d)
+		return ex.hoisted.Node(n)
 	}
-	return typeemit.EmitDerived(ex.factory, ex.binding, d)
+	return typeemit.EmitNode(ex.factory, ex.binding, n)
+}
+
+// undefinedNode and nullNode are the two nullish literals an expansion spells
+// directly: an optional member's absence and an explicit `null` alternative.
+func undefinedNode() *tokens.Node {
+	return &tokens.Node{Kind: tokens.KindLiteral, Literal: tokens.LiteralValue{Kind: tokens.LiteralUndefined}}
+}
+
+func nullNode() *tokens.Node {
+	return &tokens.Node{Kind: tokens.KindLiteral, Literal: tokens.LiteralValue{Kind: tokens.LiteralNull}}
 }
 
 // expandRoot builds the `Type.object({...})` tree for a root type t (anchor is the
@@ -129,7 +137,7 @@ func memberFor(ex *expansion, t *shimchecker.Type, optional bool, anchor *shimas
 	}
 	nodes := alternativeNodes(ex, alternatives, anchor)
 	if optional {
-		nodes = append(nodes, emitLeaf(ex, &tokens.Derived{Kind: tokens.DerivedUndefined}))
+		nodes = append(nodes, emitLeaf(ex, undefinedNode()))
 	}
 	if len(nodes) == 1 {
 		return nodes[0]
@@ -178,10 +186,7 @@ func hasBothBooleanLiterals(types []*shimchecker.Type) bool {
 
 // booleanNode is the intrinsic `boolean` spelled as its own address.
 func booleanNode(ex *expansion) *shimast.Node {
-	return emitLeaf(ex, &tokens.Derived{
-		Kind: tokens.DerivedLeaf,
-		Leaf: &tokens.TypeNode{Kind: tokens.TypeNodeNamed, Name: "boolean", From: typeemit.GlobalFrom},
-	})
+	return emitLeaf(ex, &tokens.Node{Kind: tokens.KindNamed, Name: "boolean", From: typeemit.GlobalFrom})
 }
 
 // singleFor spells one union-free type.
@@ -209,13 +214,20 @@ func singleFor(ex *expansion, t *shimchecker.Type, anchor *shimast.Node) *shimas
 	// The nullish singletons are literal values with no token spelling of their
 	// own, so they never reach the address deriver below.
 	if t.Flags()&shimchecker.TypeFlagsUndefined != 0 {
-		return emitLeaf(ex, &tokens.Derived{Kind: tokens.DerivedUndefined})
+		return emitLeaf(ex, undefinedNode())
 	}
 	if t.Flags()&shimchecker.TypeFlagsNull != 0 {
-		return emitLeaf(ex, &tokens.Derived{Kind: tokens.DerivedNull})
+		return emitLeaf(ex, nullNode())
 	}
-	if node, ok := tokens.DeriveTypeF(ex.types, t, nil); ok {
-		return emitLeaf(ex, &tokens.Derived{Kind: tokens.DerivedLeaf, Leaf: node})
+	if node, ok := tokens.DeriveNode(ex.types, ex.checker, t, nil); ok && expandable(node) {
+		// An anonymous record is opened through schemaof's own writable surface,
+		// not kept as the derived object node — coercion writes into a member, so a
+		// get-only accessor and a private-only surface are refused, which the walk
+		// below decides. Every other derivable leaf is kept as its own address.
+		if node.Kind == tokens.KindObject {
+			return objectFor(ex, t, anchor)
+		}
+		return emitLeaf(ex, node)
 	}
 	if isRecord(ex, t) {
 		return objectFor(ex, t, anchor)
@@ -224,6 +236,19 @@ func singleFor(ex *expansion, t *shimchecker.Type, anchor *shimast.Node) *shimas
 	ex.addDiagnostic(CodeUnsupportedType, MessageUnsupportedType, anchor)
 	// A harmless placeholder; the failed flag aborts the whole tree.
 	return typeemit.Named(f, ex.binding, "unknown", typeemit.GlobalFrom, nil)
+}
+
+// expandable reports whether a derived node is a shape schemaof spells — a name,
+// literal, hole, tag, tuple, or record. A callable and a bare intersection are
+// not: neither is a member a coercion can write, so both are refused loudly rather
+// than emitted.
+func expandable(n *tokens.Node) bool {
+	switch n.Kind {
+	case tokens.KindFunc, tokens.KindCtor, tokens.KindAbstractCtor, tokens.KindIntersection:
+		return false
+	default:
+		return true
+	}
 }
 
 // unionMembers flattens a union into its alternatives, or yields t alone.
@@ -287,14 +312,8 @@ func isRecord(ex *expansion, t *shimchecker.Type) bool {
 	return true
 }
 
-var jsIdentifier = regexp.MustCompile(`^[A-Za-z_$][A-Za-z0-9_$]*$`)
-
-// propertyKey builds a property-name node preserving the member's exact casing: a
-// bare identifier when the name is a valid JS identifier, else a string literal.
-// `Host` stays `Host`.
+// propertyKey delegates to typeemit.PropertyKey — a bare identifier when the name
+// is a valid JS identifier, else a string literal.
 func propertyKey(f *shimast.NodeFactory, name string) *shimast.Node {
-	if jsIdentifier.MatchString(name) {
-		return f.NewIdentifier(name)
-	}
-	return f.NewStringLiteral(name, shimast.TokenFlagsNone)
+	return typeemit.PropertyKey(f, name)
 }

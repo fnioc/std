@@ -26,9 +26,10 @@
 // infrastructure-greeting-workshop.ts`: the same scenario, the same output, the
 // type-driven dialect. Diff them to see exactly what the transformer removes.
 
-import { Manifest, Type } from '@rhombus-std/di.core';
+import { Manifest } from '@rhombus-std/di.core';
 import type { IServiceProvider } from '@rhombus-std/di.core';
 import type { IGreeting } from '@rhombus-std/examples.contracts';
+import { Type } from '@rhombus-std/primitives';
 
 import { GREETING_TYPE } from './types.js';
 
@@ -319,7 +320,7 @@ export class GreetingWorkshopBuilder implements IGreetingWorkshopBuilder {
  * it through a fluent builder, on the narrowest lifetime vocabulary it needs —
  * `'singleton'` for the workshop itself and its locator twin, plus `undefined`
  * for the one transient registration (the card). A caller merges the result
- * into their own manifest (`services = services.addMany(addGreetingWorkshop(…))`).
+ * into their own manifest (`services = services.add(addGreetingWorkshop(…))`).
  *
  * @param configure Receives the builder; its return value is deliberately ignored.
  */

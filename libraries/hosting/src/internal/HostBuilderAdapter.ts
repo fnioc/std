@@ -15,7 +15,7 @@ import type { Manifest } from '@rhombus-std/di.core';
 import { type HostBuilderContext, HostDefaults, type IHost, type IHostBuilder } from '@rhombus-std/hosting.core';
 import { augment, process } from '@rhombus-std/primitives';
 import { typefor } from '@rhombus-std/primitives.extras';
-import type { Action, Func } from '@rhombus-toolkit/func';
+import type { Action, Func } from '@rhombus-toolkit/types';
 import { resolveContentRootPath } from '../host-composition';
 import type { ManifestSlot } from '../MetricsBuilder';
 

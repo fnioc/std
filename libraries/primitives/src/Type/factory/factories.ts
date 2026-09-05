@@ -4,7 +4,7 @@
  * equality everywhere downstream.
  */
 
-import type { Func } from '@rhombus-toolkit/func';
+import type { Func } from '@rhombus-toolkit/types';
 import { GLOBAL_QUALIFIER, isListName, type ListName } from '../grammar.js';
 import type { AbstractConstructorType, ArrayType, ConstructorType, FunctionType, GenericType, GlobalType, ImportedType, IntersectionType, IterableType, ListType, LiteralValue, ObjectType, TagType,
   TupleType, Type, TypeLiteralType, UnionType } from '../Type.js';
@@ -17,8 +17,8 @@ type Composite = 'union' | 'intersection';
 
 /**
  * Stamps a built node as a {@link Type}. The brand exists only in the type system, so there is no
- * value to supply for it and no way to state that in an assertion; this is the one place that gap
- * is crossed, leaving every factory below fully checked against the shape it claims to build.
+ * value to supply for it and no way to state that in an assertion; the factories cross that gap
+ * here, leaving every one below fully checked against the shape it claims to build.
  */
 function node<T extends Type>(raw: Type.RawType<T>): T {
   return raw as unknown as T;
@@ -38,56 +38,109 @@ export function intersection(members: readonly Type[]): Type {
   return composite('intersection', members);
 }
 
-export function tuple(members: readonly Type[]): TupleType {
+/**
+ * A tuple that is nothing but a rest slot is the list its open length draws from, so it collapses
+ * to {@link array} of the rest; an empty members list with no rest stays the zero-length tuple.
+ */
+export function tuple(members: readonly Type[], rest: Type | undefined): TupleType | ListType {
   const slots = members.map(adopt);
-  return intern(`tuple\0${slots.map(id).join(',')}`, () => node<TupleType>({ kind: 'tuple', members: slots }));
+  const restSlot = rest === undefined ? undefined : adopt(rest);
+  if (restSlot !== undefined && !slots.length) {
+    return array(restSlot);
+  }
+  return intern(
+    `tuple\0${restSlot === undefined ? '' : id(restSlot)}\0${slots.map(id).join(',')}`,
+    () => node<TupleType>({ kind: 'tuple', members: slots, rest: restSlot }),
+  );
 }
 
-export function func(returns: Type, signatures: Type.Signatures): FunctionType {
+/**
+ * One signature row: a {@link TupleType} (a fixed argument list, open-length with a rest slot) or
+ * a {@link ListType} (a signature that is entirely a rest).
+ *
+ * @throws TypeError - when the row is neither.
+ */
+function checkSignatureRow(row: Type): void {
+  if (row.kind !== 'tuple' && row.kind !== 'array' && row.kind !== 'iterable') {
+    throw new TypeError(`a signature row is a tuple or a list — got ${stringifyType(row)}`);
+  }
+}
+
+/**
+ * The signatures slot a callable factory receives, adopted and checked: a lone node is one row, a
+ * union is one row per member, and a slot carrying anything else is refused before it interns.
+ *
+ * @throws TypeError - when the slot, or a member of its union, is not a signature row.
+ */
+function adoptSignatureSlot(slot: TupleType | ListType | UnionType): TupleType | ListType | UnionType {
+  const adopted = adopt(slot as Type);
+  for (const row of adopted.kind === 'union' ? adopted.members : [adopted]) {
+    checkSignatureRow(row);
+  }
+  return adopted as TupleType | ListType | UnionType;
+}
+
+/**
+ * The signatures a callable answers to, as one node. Each row is a {@link TupleType} (a fixed
+ * argument list, open-length when it carries a rest slot) or a {@link ListType} (a signature that
+ * is entirely a rest), and several rows are a {@link UnionType} of those.
+ *
+ * @remarks
+ * Delegates to {@link union} for canonicalization, so a callable with one signature yields that
+ * row directly, two yield a union, and identical rows collapse.
+ *
+ * @throws TypeError - when no row is given (a callable answers to at least one call), or a row is
+ * neither a tuple nor a list.
+ */
+export function signatures(rows: readonly (TupleType | ListType)[]): TupleType | ListType | UnionType {
+  if (!rows.length) {
+    throw new TypeError('a callable answers to at least one call — pass at least one signature row');
+  }
+  const slots = rows.map(row => adopt(row));
+  for (const slot of slots) {
+    checkSignatureRow(slot);
+  }
+  return union(slots) as TupleType | ListType | UnionType;
+}
+
+/**
+ * The slot form of a callable's second argument: a pre-built slot passes through, and the
+ * fixed-arity rows spelling — one array of arg types per overload — builds one tuple per row
+ * through {@link signatures}.
+ */
+export function toSignatureSlot(input: TupleType | ListType | UnionType | readonly (readonly Type[])[]): TupleType | ListType | UnionType {
+  if (Array.isArray(input)) {
+    const rows = input as readonly (readonly Type[])[];
+    return signatures(rows.map(row => tuple(row, undefined)));
+  }
+  return input as TupleType | ListType | UnionType;
+}
+
+export function func(returns: Type, slot: TupleType | ListType | UnionType): FunctionType {
   const result = adopt(returns);
-  const adopted = adoptSignatures(signatures);
+  const adopted = adoptSignatureSlot(slot);
   return intern(
-    `func\0${id(result)}\0${signaturesKey(adopted)}`,
+    `func\0${id(result)}\0${id(adopted)}`,
     () => node<FunctionType>({ kind: 'func', signatures: adopted, return: result }),
   );
 }
 
-export function ctor(instance: Type, signatures: Type.Signatures): ConstructorType {
-  const slot = adopt(instance);
-  const adopted = adoptSignatures(signatures);
+export function ctor(instance: Type, slot: TupleType | ListType | UnionType): ConstructorType {
+  const head = adopt(instance);
+  const adopted = adoptSignatureSlot(slot);
   return intern(
-    `ctor\0${id(slot)}\0${signaturesKey(adopted)}`,
-    () => node<ConstructorType>({ kind: 'ctor', signatures: adopted, instance: slot }),
+    `ctor\0${id(head)}\0${id(adopted)}`,
+    () => node<ConstructorType>({ kind: 'ctor', signatures: adopted, instance: head }),
   );
 }
 
-export function abstractCtor(instance: Type, signatures: Type.Signatures): AbstractConstructorType {
-  const slot = adopt(instance);
-  const adopted = adoptSignatures(signatures);
+export function abstractCtor(instance: Type, slot: TupleType | ListType | UnionType): AbstractConstructorType {
+  const head = adopt(instance);
+  const adopted = adoptSignatureSlot(slot);
   return intern(
-    `abstract-ctor\0${id(slot)}\0${signaturesKey(adopted)}`,
-    () => node<AbstractConstructorType>({ kind: 'abstract-ctor', signatures: adopted, instance: slot }),
+    `abstract-ctor\0${id(head)}\0${id(adopted)}`,
+    () => node<AbstractConstructorType>({ kind: 'abstract-ctor', signatures: adopted, instance: head }),
   );
-}
-
-/**
- * @throws TypeError - when no signature survives; a callable answering to no call has no spelling, and
- * `[]` is the shape an author reaches for meaning the one call that takes nothing.
- */
-function adoptSignatures(signatures: Type.Signatures): Type.Signatures {
-  if (!signatures.length) {
-    throw new TypeError('a callable answers to at least one call — write `[[]]` for one taking no args');
-  }
-  return signatures.map(signature => signature.map(adopt));
-}
-
-/**
- * The signatures as one key fragment. Each signature is delimited by its own brackets rather than
- * joined with a separator, so a callable answering to one empty call and one answering to no call
- * at all are told apart.
- */
-function signaturesKey(signatures: Type.Signatures): string {
-  return signatures.map(signature => `(${signature.map(id).join(',')})`).join('');
 }
 
 export function array(element: Type): ArrayType {
@@ -305,27 +358,38 @@ function compareChildren(left: Type, right: Type): number {
     case 'tag': {
       return compareTypes(left.type, (right as TagType).type);
     }
-    case 'tuple':
     case 'union':
     case 'intersection': {
-      return comparePairwise(left.members, (right as TupleType | UnionType | IntersectionType).members);
+      return comparePairwise(left.members, (right as UnionType | IntersectionType).members);
+    }
+    case 'tuple': {
+      const other = right as TupleType;
+      return comparePairwise(left.members, other.members) || compareRestSlot(left.rest, other.rest);
     }
     case 'object': {
       return compareObjectMembers(left, right as ObjectType);
     }
     case 'func': {
       const other = right as FunctionType;
-      return compareSignatures(left.signatures, other.signatures) || compareTypes(left.return, other.return);
+      return compareTypes(left.signatures, other.signatures) || compareTypes(left.return, other.return);
     }
     case 'ctor':
     case 'abstract-ctor': {
       const other = right as ConstructorType | AbstractConstructorType;
-      return compareSignatures(left.signatures, other.signatures) || compareTypes(left.instance, other.instance);
+      return compareTypes(left.signatures, other.signatures) || compareTypes(left.instance, other.instance);
     }
     default: {
       return 0;
     }
   }
+}
+
+/** No rest sorts before a rest of any type; two rests compare by their own type. */
+function compareRestSlot(left: Type | undefined, right: Type | undefined): number {
+  if (left === undefined || right === undefined) {
+    return (left === undefined ? 0 : 1) - (right === undefined ? 0 : 1);
+  }
+  return compareTypes(left, right);
 }
 
 /** Fewer children first, then position `i` against position `i`. */
@@ -335,19 +399,6 @@ function comparePairwise(left: readonly Type[], right: readonly Type[]): number 
   }
   for (let index = 0; index < left.length; index++) {
     const order = compareTypes(left[index]!, right[index]!);
-    if (order) {
-      return order;
-    }
-  }
-  return 0;
-}
-
-function compareSignatures(left: Type.Signatures, right: Type.Signatures): number {
-  if (left.length !== right.length) {
-    return left.length - right.length;
-  }
-  for (let index = 0; index < left.length; index++) {
-    const order = comparePairwise(left[index]!, right[index]!);
     if (order) {
       return order;
     }
@@ -447,6 +498,21 @@ const REQUIRED: Readonly<Record<Type['kind'], readonly string[]>> = {
 };
 
 /**
+ * Whether a value is written as a type: an object naming a kind and carrying that kind's fields.
+ *
+ * @remarks
+ * Shape alone, so a foreign object spelled exactly like a type reads as one — the price of a
+ * `kind` that stays unqualified.
+ */
+export function isRawType(value: unknown): value is Type.RawType {
+  if (typeof value !== 'object' || value === null) {
+    return false;
+  }
+  const required = REQUIRED[(value as Type).kind];
+  return required !== undefined && required.every(field => field in value);
+}
+
+/**
  * Checks a literal names a kind and carries that kind's fields, before the walk reads any of them.
  * Presence alone — a field's own contents are checked by the factory that adopts it, one level down.
  *
@@ -502,7 +568,7 @@ class AdoptVisitor extends TypeVisitor<Type> {
     return tag(type.type, type.tag);
   }
   protected override visitTuple(type: TupleType): Type {
-    return tuple(type.members);
+    return tuple(type.members, type.rest);
   }
   protected override visitTypeLiteral(type: TypeLiteralType): Type {
     return literal(type.value);

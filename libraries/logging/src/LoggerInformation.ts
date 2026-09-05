@@ -3,7 +3,7 @@
 // consults them at log time.
 
 import type { IExternalScopeProvider, ILogger, ILoggerProvider, LogLevel } from '@rhombus-std/logging.core';
-import type { Func } from '@rhombus-toolkit/func';
+import type { Func } from '@rhombus-toolkit/types';
 import { isSupportExternalScope } from './support-external-scope-guard';
 
 /** The filter delegate shape: `(providerName, categoryName, level) => enabled`. */

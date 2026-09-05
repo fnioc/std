@@ -4,9 +4,10 @@
 // `typefor` import. It is a TYPE/VALUE-argument primitive that derives the
 // STRUCTURED runtime `Type` value a checker type spells, narrowed to
 // `Type.func` / `Type.ctor` for a function / constructor type, `Type.tag` for a
-// `Keyed<T, K>` brand, and `Type.global` / `Type.imported` / `Type.typeLiteral` /
-// `Type.union` / `Type.generic` for everything else (tokens.DeriveTypeF; see
-// derive.go).
+// `Keyed<T, K>` brand, `Type.object` / `Type.intersection` for an anonymous
+// record or intersection, and `Type.global` / `Type.imported` / `Type.typeLiteral`
+// / `Type.union` / `Type.tuple` / `Type.generic` for everything else
+// (tokens.DeriveNode; see derive.go).
 //
 // A value argument derives from the value's OWN type, never unwrapped: a class
 // arrives as the constructor it is (a ConstructorType), not the instance it
@@ -62,13 +63,13 @@ const accessorMismatchCode = "TYPEFOR_ACCESSOR_MISMATCH"
 // property Type.ts's kind-specific interfaces expose, plus the `kind`
 // discriminant every one of them shares.
 var accessorNames = map[string]bool{
-	"instance": true,
-	"return":   true,
-	"args":     true,
-	"value":    true,
-	"tag":      true,
-	"type":     true,
-	"kind":     true,
+	"instance":   true,
+	"return":     true,
+	"signatures": true,
+	"value":      true,
+	"tag":        true,
+	"type":       true,
+	"kind":       true,
 }
 
 // New builds the per-file transform: it visits every call expression, replacing
@@ -168,7 +169,7 @@ func lowerTyped(
 	t *shimchecker.Type,
 	sourceWritten bool,
 ) *shimast.Node {
-	d, ok := tokens.DeriveTyped(ctx, checker, t, nil)
+	d, ok := tokens.DeriveNode(ctx, checker, t, nil)
 	if !ok {
 		if sourceWritten {
 			emit(plugin.Diagnostic{
@@ -199,7 +200,7 @@ func lowerValueArg(
 	emit func(plugin.Diagnostic),
 	call, arg *shimast.Node,
 ) *shimast.Node {
-	d, ok := tokens.DeriveTyped(ctx, checker, checker.GetTypeAtLocation(arg), nil)
+	d, ok := tokens.DeriveNode(ctx, checker, checker.GetTypeAtLocation(arg), nil)
 	if !ok {
 		emit(plugin.Diagnostic{
 			Code:    valueArgUnderivableCode,
@@ -256,7 +257,7 @@ func tryFoldAccessor(
 		return nil, false
 	}
 
-	d, ok := tokens.DeriveTyped(ctx, checker, base, nil)
+	d, ok := tokens.DeriveNode(ctx, checker, base, nil)
 	if !ok {
 		// The base type itself is underivable — leave the whole expression for the
 		// bare call's own visit to report the targeted diagnostic.

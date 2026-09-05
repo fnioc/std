@@ -7,6 +7,7 @@ package inlinetransform
 
 import (
 	"fmt"
+	"path/filepath"
 	"sort"
 	"strings"
 
@@ -95,6 +96,8 @@ func Build(prog *driver.Program, owned []OwnedEntry, artifacts *Artifacts, emit 
 		}
 	}
 
+	implFiles := programFilesByPath(prog)
+
 	return func(ec *shimprinter.EmitContext, sf *shimast.SourceFile) *shimast.SourceFile {
 		st := &fileState{
 			ec:            ec,
@@ -106,9 +109,20 @@ func Build(prog *driver.Program, owned []OwnedEntry, artifacts *Artifacts, emit 
 			memberNames:   memberNames,
 			functionNames: functionNames,
 			emit:          emit,
+			implFiles:     implFiles,
 		}
 		return st.run(sf)
 	}
+}
+
+// programFilesByPath indexes the program's source files by cleaned path, so a
+// side-parsed impl file can be paired with the program's own copy of it.
+func programFilesByPath(prog *driver.Program) map[string]*shimast.SourceFile {
+	files := map[string]*shimast.SourceFile{}
+	for _, sf := range prog.SourceFiles() {
+		files[filepath.ToSlash(filepath.Clean(sf.FileName()))] = sf
+	}
+	return files
 }
 
 // assignBodies pairs every publisher-owned face with the body serving it and
@@ -289,6 +303,12 @@ type fileState struct {
 	// file is the source file the current pass is rewriting, which value bindings
 	// resolve against.
 	file *shimast.SourceFile
+	// implFiles is the consumer program's own copy of each source file, by path.
+	// A body reaches this stage side-parsed — outside the program, and so beyond
+	// the checker — but a COMPOSED type argument (`typefor<Func<Args, T>>()`) has
+	// to be read as a type before its type parameters can be substituted, and the
+	// program's copy of the same file is the node the checker will answer about.
+	implFiles map[string]*shimast.SourceFile
 }
 
 func (st *fileState) run(sf *shimast.SourceFile) *shimast.SourceFile {
@@ -574,7 +594,7 @@ func (st *fileState) inlineCall(node, anchored *shimast.Node, target *matchTarge
 	// after a downstream TS->JS type-strip).
 	res.Expr = st.normalizeInstantiationArgs(res.Expr)
 
-	st.registerPrimitives(res.Expr, body, env, argAnchors)
+	st.registerPrimitives(res.Expr, body, env, st.composedTypeArgs(body, env), argAnchors)
 	return wrapForPrecedence(st.ec, res.Expr), true
 }
 
@@ -639,11 +659,13 @@ func (st *fileState) normalizeInstantiationArgs(expr *shimast.Node) *shimast.Nod
 //
 // argAnchors pairs each spliced argument with its pass-0 counterpart, so a
 // VALUE-argument primitive records a node the checker may safely be asked about
-// (anchorValueArg).
+// (anchorValueArg). composed carries the body's COMPOSED type arguments, already
+// substituted, keyed by shape.
 func (st *fileState) registerPrimitives(
 	expr *shimast.Node,
 	body *ResolvedBody,
 	env map[string]*shimchecker.Type,
+	composed map[string]*shimchecker.Type,
 	argAnchors map[*shimast.Node]*shimast.Node,
 ) {
 	walk(expr, func(n *shimast.Node) bool {
@@ -662,23 +684,22 @@ func (st *fileState) registerPrimitives(
 		bound := []*shimchecker.Type{}
 		if typeArgs != nil {
 			for _, ta := range typeArgs.Nodes {
-				if ta.Kind != shimast.KindTypeReference {
-					continue
-				}
-				name := ta.AsTypeReferenceNode().TypeName
-				if name == nil || name.Kind != shimast.KindIdentifier {
-					continue
-				}
-				if t, has := env[name.Text()]; has {
+				if t, has := env[bareTypeParamName(ta)]; has {
 					// A bare type-parameter reference (`typefor<T>()`): the env
 					// binding IS the token source.
+					bound = append(bound, t)
+					continue
+				}
+				if t, has := composed[typeArgShape(ta)]; has {
+					// A composed one (`typefor<Func<Args, T>>()`): the written type
+					// with its type parameters already substituted.
 					bound = append(bound, t)
 				}
 			}
 		}
 		use := PrimitiveUse{Name: prim, TypeArgs: bound}
-		// A VALUE-argument primitive (typefor(ctor), tokenof(value)) records the
-		// PARSE node behind its spliced argument, because the consuming stage's only
+		// A VALUE-argument primitive (typefor(ctor)) records the PARSE node
+		// behind its spliced argument, because the consuming stage's only
 		// use for it is a checker query. A TYPE-argument primitive (typefor<T>()) has
 		// no value argument and leaves this nil.
 		if args := n.AsCallExpression().Arguments; args != nil && len(args.Nodes) == 1 {

@@ -35,12 +35,14 @@
 // independently; the same label appearing twice in one registration binds to one
 // captured type wherever it appears.
 
-import { di, noop } from '@rhombus-std/di';
-import { type Generic, Manifest, Type } from '@rhombus-std/di.core';
-import { typefor } from '@rhombus-std/primitives.extras';
+import { Builder } from '@rhombus-std/di';
+import { Manifest } from '@rhombus-std/di.core';
+import { Type } from '@rhombus-std/primitives';
+import { type Generic, typefor } from '@rhombus-std/primitives.extras';
 
 import type { AuditEvent, Entity, IJoin, IRepository, ITable, Order, Seed, User } from '@rhombus-std/examples.contracts';
 import '@rhombus-std/di.extras';
+
 // ── the service types ───────────────────────────────────────────────────────
 //
 // Every type below — open or closed — is derived from a type expression. A hole
@@ -270,7 +272,7 @@ manifest = manifest.add(ORDER_JOIN_TEMPLATE, OrderJoin, Type.ctor(ORDER_JOIN_TEM
  * an unordered collection.
  */
 export function* demonstrateOpenGenerics(): Generator<string> {
-  const app = di.usingLifetimeModel(noop()).usingManifest(manifest).build();
+  const app = Builder.withServices(() => manifest).build();
 
   // Two closings of ONE registration. Neither type was ever registered.
   const users = app.resolve(typefor<IRepository<User>>()) as IRepository<User>;

@@ -374,3 +374,71 @@ func write(t *testing.T, path, content string) {
 		t.Fatal(err)
 	}
 }
+
+func TestIdenticalGuardsReported(t *testing.T) {
+	_, diags := run(t, `
+export const SetA = {
+  read(this: IAlpha, items: Iterable<string>): void {},
+} satisfies Record<string, (...a: any[]) => any>;
+registerAugmentations("t:IAlpha", SetA);
+
+export const SetB = {
+  read(this: IAlpha, items: Iterable<number>): void {},
+} satisfies Record<string, (...a: any[]) => any>;
+registerAugmentations("t:IAlpha", SetB);
+`)
+	found := false
+	for _, d := range diags {
+		if d.Code == "MERGESYNTH_INDISTINGUISHABLE_GUARDS" {
+			found = true
+		}
+	}
+	if !found {
+		t.Fatalf("expected MERGESYNTH_INDISTINGUISHABLE_GUARDS, got %+v", diags)
+	}
+}
+
+func TestDifferentGuardsNotReported(t *testing.T) {
+	_, diags := run(t, `
+export const SetA = {
+  read(this: IAlpha, items: Iterable<string>): void {},
+} satisfies Record<string, (...a: any[]) => any>;
+registerAugmentations("t:IAlpha", SetA);
+
+export const SetB = {
+  read(this: IAlpha, items: string): void {},
+} satisfies Record<string, (...a: any[]) => any>;
+registerAugmentations("t:IAlpha", SetB);
+`)
+	for _, d := range diags {
+		if d.Code == "MERGESYNTH_INDISTINGUISHABLE_GUARDS" {
+			t.Fatalf("should not report MERGESYNTH_INDISTINGUISHABLE_GUARDS for different parameter types, got %+v", diags)
+		}
+	}
+}
+
+func TestLoneIterableNotReported(t *testing.T) {
+	_, diags := run(t, `
+export const SetA = {
+  read(this: IAlpha, items: Iterable<string>): void {},
+} satisfies Record<string, (...a: any[]) => any>;
+registerAugmentations("t:IAlpha", SetA);
+`)
+	for _, d := range diags {
+		if d.Code == "MERGESYNTH_INDISTINGUISHABLE_GUARDS" {
+			t.Fatalf("should not report MERGESYNTH_INDISTINGUISHABLE_GUARDS for a lone iterable overload, got %+v", diags)
+		}
+	}
+}
+
+func TestIterableGuardChecksSymbolIterator(t *testing.T) {
+	out, _ := run(t, `
+export const SetA = {
+  read(this: IAlpha, items: Iterable<string>): void {},
+} satisfies Record<string, (...a: any[]) => any>;
+registerAugmentations("t:IAlpha", SetA);
+`)
+	if !strings.Contains(out, "Symbol.iterator") {
+		t.Fatalf("iterable guard must check Symbol.iterator:\n%s", out)
+	}
+}

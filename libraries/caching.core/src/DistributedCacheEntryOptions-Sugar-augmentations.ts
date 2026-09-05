@@ -2,7 +2,7 @@
 // expiration -- dot-callable on any options bag. Each returns it for chaining.
 
 import { applyAugmentations } from '@rhombus-std/primitives';
-import type { Flatten } from '@rhombus-toolkit/type-helpers';
+import type { Flatten } from '@rhombus-toolkit/types';
 import { DistributedCacheEntryOptions } from './DistributedCacheEntryOptions';
 
 export namespace DistributedCacheEntryOptionsSugarAugmentations {

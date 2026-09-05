@@ -1,7 +1,6 @@
 import { tag as tagType } from '../factory/factories.js';
 import { type AbstractConstructorType, type ArrayType, type ConstructorType, type FunctionType, type GenericType, type GlobalType, type ImportedType, type IntersectionType, type IterableType,
-  type ObjectType, type TagType, type TupleType, Type, type TypeLiteralType, type UnionType } from '../Type.js';
-import { isOpenType } from './IsOpenVisitor.js';
+  type ListType, type ObjectType, type TagType, type TupleType, Type, type TypeLiteralType, type UnionType } from '../Type.js';
 import { TypeVisitor } from './TypeVisitor.js';
 
 /**
@@ -12,10 +11,10 @@ import { TypeVisitor } from './TypeVisitor.js';
  * One pass, no re-entry: a substituted type is spliced in as-is and never re-scanned, so
  * mapping `T` to a type containing `%T` terminates instead of looping.
  */
-class SubstituteVisitor extends TypeVisitor<Type> {
-  readonly #substitutions: ReadonlyMap<string, Type>;
+export class SubstituteVisitor extends TypeVisitor<Type> {
+  readonly #substitutions: Readonly<Record<string, Type>>;
 
-  constructor(substitutions: ReadonlyMap<string, Type>) {
+  constructor(substitutions: Readonly<Record<string, Type>>) {
     super();
     this.#substitutions = substitutions;
   }
@@ -25,28 +24,19 @@ class SubstituteVisitor extends TypeVisitor<Type> {
   }
 
   protected override visitCtor(type: ConstructorType): Type {
-    return Type.ctor({
-      instance: this.visit(type.instance),
-      signatures: this.#allSignatures(type.signatures),
-    });
+    return Type.ctor(this.visit(type.instance), this.#signatures(type.signatures));
   }
 
   protected override visitAbstractCtor(type: AbstractConstructorType): Type {
-    return Type.abstractCtor({
-      instance: this.visit(type.instance),
-      signatures: this.#allSignatures(type.signatures),
-    });
+    return Type.abstractCtor(this.visit(type.instance), this.#signatures(type.signatures));
   }
 
   protected override visitFunc(type: FunctionType): Type {
-    return Type.func({
-      return: this.visit(type.return),
-      signatures: this.#allSignatures(type.signatures),
-    });
+    return Type.func(this.visit(type.return), this.#signatures(type.signatures));
   }
 
   protected override visitGeneric(type: GenericType): Type {
-    return this.#substitutions.get(type.label) ?? type;
+    return this.#substitutions[type.label] ?? type;
   }
 
   protected override visitGlobal(type: GlobalType): Type {
@@ -77,7 +67,10 @@ class SubstituteVisitor extends TypeVisitor<Type> {
   }
 
   protected override visitTuple(type: TupleType): Type {
-    return Type.tuple(...this.#all(type.members));
+    return Type.tuple({
+      members: this.#all(type.members),
+      rest: type.rest === undefined ? undefined : this.visit(type.rest),
+    });
   }
 
   protected override visitTypeLiteral(type: TypeLiteralType): Type {
@@ -92,15 +85,8 @@ class SubstituteVisitor extends TypeVisitor<Type> {
     return types.map(type => this.visit(type));
   }
 
-  #allSignatures(signatures: Type.Signatures): Type.Signatures {
-    return signatures.map(signature => this.#all(signature));
+  /** Each row substituted stays a tuple or a list, so the slot rebuilds through the one door that builds one. */
+  #signatures(slot: TupleType | ListType | UnionType): TupleType | ListType | UnionType {
+    return Type.signatures(Type.signatureRows(slot).map(row => this.visit(row) as TupleType | ListType));
   }
-}
-
-export function substituteType(type: Type, substitutions: ReadonlyMap<string, Type>): Type {
-  // Nothing to put in, or no holes to fill: the tree is already its own substitution.
-  if (!substitutions.size || !isOpenType(type)) {
-    return type;
-  }
-  return new SubstituteVisitor(substitutions).visit(type);
 }

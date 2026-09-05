@@ -18,12 +18,31 @@
  * external for that reason.
  */
 
-import type { Func } from '@rhombus-toolkit/func';
+import type { Func } from '@rhombus-toolkit/types';
 import type { Type } from '../Type.js';
+import { stringifyType } from '../visitor/StringifyVisitor.js';
 
-const table = new Map<string, Type>();
+const table: Record<string, Type> = {};
 const ids = new WeakMap<Type, number>();
 let nextId = 0;
+
+/**
+ * Lets a node spell itself wherever text is expected — a template literal, `String`, the inspect
+ * hook a failed assertion prints through.
+ *
+ * @remarks
+ * A prototype rather than own properties: a node's own properties are exactly the fields its kind
+ * carries, which is what the freeze walk, every visitor, and `JSON.stringify` read.
+ */
+const nodePrototype = {
+  toString(this: Type): string {
+    return stringifyType(this);
+  },
+  [Symbol.toStringTag]: 'Type',
+  [Symbol.for('nodejs.util.inspect.custom')](this: Type): string {
+    return stringifyType(this);
+  },
+};
 
 /**
  * The interned node for `key`, minting one from `build` the first time the key is seen.
@@ -32,11 +51,16 @@ let nextId = 0;
  * for a node the table already holds.
  */
 export function intern<T extends Type>(key: string, build: Func<[], T>): T {
-  return table.getOrInsertComputed(key, () => {
-    const minted = freeze(build());
-    ids.set(minted, nextId++);
-    return minted;
-  }) as T;
+  const existing = table[key];
+  if (existing !== undefined) {
+    return existing as T;
+  }
+  const built = build();
+  Object.setPrototypeOf(built, nodePrototype);
+  const minted = freeze(built);
+  ids.set(minted, nextId++);
+  table[key] = minted;
+  return minted as T;
 }
 
 /**
@@ -57,18 +81,13 @@ export function id(type: Type): number {
 }
 
 /**
- * Seals a node and the arrays or records holding its children, a callable's signatures
- * included. The children themselves arrive already interned, and so already frozen.
+ * Seals a node and the arrays or records holding its children. The children themselves arrive
+ * already interned, and so already frozen.
  */
 function freeze<T extends Type>(node: T): T {
   for (const slot of Object.values(node)) {
     if (typeof slot === 'object' && slot !== null) {
       Object.freeze(slot);
-      for (const nested of Object.values(slot as object)) {
-        if (Array.isArray(nested)) {
-          Object.freeze(nested);
-        }
-      }
     }
   }
   return Object.freeze(node);

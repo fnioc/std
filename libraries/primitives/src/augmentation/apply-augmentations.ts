@@ -1,5 +1,5 @@
-import type { AbstractCtor, Func } from '@rhombus-toolkit/func';
-import type { obj } from '@rhombus-toolkit/type-helpers';
+import type { obj } from '@rhombus-toolkit/obj';
+import type { AbstractCtor, Func } from '@rhombus-toolkit/types';
 /**
  * A namespace of `this`-based augmentation functions all sharing receiver type R.
  */

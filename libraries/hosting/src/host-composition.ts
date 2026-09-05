@@ -21,20 +21,21 @@
 import type {} from '@rhombus-std/di.extras';
 
 import type { IConfig } from '@rhombus-std/config.core';
-import { di, noop, ServiceProviderOptions } from '@rhombus-std/di';
+import { Builder, validateBuildability } from '@rhombus-std/di';
 import { type Manifest } from '@rhombus-std/di.core';
 import { Environments, type HostBuilderContext, HostDefaults, type IHost, type IHostApplicationLifetime, type IHostEnvironment, type IHostLifetime } from '@rhombus-std/hosting.core';
 import { LoggerFactory } from '@rhombus-std/logging';
 import type { ILoggerFactory, ILoggerProvider } from '@rhombus-std/logging.core';
 import { Type } from '@rhombus-std/primitives';
 import { process } from '@rhombus-std/primitives';
-import type { Func } from '@rhombus-toolkit/func';
+import type { Func } from '@rhombus-toolkit/types';
 import { HOST_LIFETIME_TYPE, HOST_OPTIONS_CONFIGURE_TYPE } from './framework-types';
 import { HostOptions } from './HostOptions';
 import { ApplicationLifetime } from './internal/ApplicationLifetime';
 import { Host } from './internal/Host';
 import { HostingEnvironment } from './internal/HostingEnvironment';
 import { NullLifetime } from './internal/NullLifetime';
+import type { ServiceProviderOptions } from './ServiceProviderOptionsFactory';
 
 /** The category the internal host writes its lifecycle log messages under. */
 const HOST_LOGGER_CATEGORY = 'Rhombus.Hosting.Host';
@@ -181,13 +182,15 @@ export function populateFrameworkServices(services: Manifest<unknown>, context: 
  * {@link HostOptions} before the `configureHostOptions` mutations run.
  *
  * `serviceProviderOptions` carries the `validateOnBuild` toggle the builders
- * resolved; omitted ⇒ an unvalidated build.
+ * resolved, wired to the `validateBuildability` addon; omitted ⇒ an
+ * unvalidated build.
  */
 export function resolveHost(services: Manifest<unknown>, framework: FrameworkServices, config: IConfig, serviceProviderOptions?: ServiceProviderOptions): IHost {
-  const provider = di.usingLifetimeModel(noop())
-    .usingManifest(services)
-    .configureProvider(() => serviceProviderOptions ?? ServiceProviderOptions.defaults)
-    .build();
+  let builder = Builder.withServices(() => services);
+  if (serviceProviderOptions?.validateOnBuild) {
+    builder = builder.useAddon(validateBuildability());
+  }
+  const provider = builder.build();
 
   const loggerProviders: ILoggerProvider[] = provider.resolve<ILoggerProvider[]>();
   for (const loggerProvider of loggerProviders) {

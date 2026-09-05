@@ -2,7 +2,7 @@
 // the same-named ITracingBuilder methods, distinguished only by receiver.
 
 import { applyAugmentations } from '@rhombus-std/primitives';
-import type { Flatten } from '@rhombus-toolkit/type-helpers';
+import type { Flatten } from '@rhombus-toolkit/types';
 
 import { ACTIVITY_SOURCE_SCOPES_ALL, ActivitySourceScopes } from './ActivitySourceScopes';
 import { TracingOptions } from './TracingOptions';

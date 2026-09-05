@@ -1,5 +1,5 @@
-// A package-internal side channel carrying the pending ServiceProviderOptions
-// for a classic HostBuilder from the point they are chosen (configureDefaults /
+// A package-internal side channel carrying the pending validation options for
+// a classic HostBuilder from the point they are chosen (configureDefaults /
 // useDefaultServiceProvider) to the point the provider is built
 // (HostBuilder.build()).
 //
@@ -11,10 +11,21 @@
 // default (which depends on the resolved hosting environment) can be computed
 // once the context exists. Last write wins.
 
-import type { ServiceProviderOptions } from '@rhombus-std/di';
 import type { HostBuilderContext, IHostBuilder } from '@rhombus-std/hosting.core';
 
-/** Produces the {@link ServiceProviderOptions} from the fully-resolved build context. */
+/** The validation a service-provider build honours: `validateOnBuild` plans every closed address at build time. */
+export interface ServiceProviderOptions {
+  readonly validateOnBuild?: boolean;
+}
+
+export namespace ServiceProviderOptions {
+  /** What a build without options gets: no validation. */
+  export const defaults: ServiceProviderOptions = {
+    validateOnBuild: false,
+  };
+}
+
+/** Produces the {@link ServiceProviderOptions} for a build, from the fully-resolved build context. */
 export type ServiceProviderOptionsFactory = (context: HostBuilderContext) => ServiceProviderOptions;
 
 const SERVICE_PROVIDER_OPTIONS_FACTORY = Symbol('serviceProviderOptionsFactory');
@@ -28,9 +39,7 @@ export function setServiceProviderOptionsFactory(builder: IHostBuilder, factory:
  * Resolves the recorded options against `context`, or `undefined` when none was
  * set (a plain, unvalidated build).
  */
-export function resolveServiceProviderOptions(builder: IHostBuilder, context: HostBuilderContext):
-  | ServiceProviderOptions
-  | undefined {
+export function resolveServiceProviderOptions(builder: IHostBuilder, context: HostBuilderContext): ServiceProviderOptions | undefined {
   const factory = builder.properties.get(SERVICE_PROVIDER_OPTIONS_FACTORY) as ServiceProviderOptionsFactory | undefined;
   return factory?.(context);
 }

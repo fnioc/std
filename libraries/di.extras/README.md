@@ -35,11 +35,11 @@ manifest.add(Type.imported('IGreeter', 'app'), ConsoleGreeter, Type.ctor(Type.im
 | ---------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `ManifestRegistrationAugmentations`      | The type-argument-derived bodies for `add`, `addValue`, `tryAdd`, `tryAddValue`, `replace`, `replaceValue`, `removeAll`, and `describe`. `ManifestRegistrationValueAugmentations` carries `add`/`tryAdd`/`replace`'s value shape as a second set, since one object literal can't declare two same-named members. |
 | `AsImplementerRegistrationAugmentations` | The type-argument-derived bodies for `describe(...).asClass(ctor)` / `.asFactory(fn)` — the implementer's type derived from the value instead of taken explicitly.                                                                                                                                               |
-| `ServiceProviderServiceAugmentations`    | The type-argument-derived bodies backing `resolve<T>()` / `resolveMany<T>()` on `IServiceProvider`.                                                                                                                                                                                                              |
+| `ServiceProviderServiceAugmentations`    | The type-argument-derived bodies backing the ask surface on `IServiceProvider` — `resolve<T>()`, `resolveArray<T>()`, `resolveIterable<T>()`, their async and `AsyncIterable` siblings, `resolveWith<T, Args>()`, the value-observing `instantiate(ctor)` / `invoke(func)`, and a `try` twin of each.            |
 
 `di.extras` carries no primitive of its own: every body above imports `typefor<T>()` from [`@rhombus-std/primitives.extras`](../primitives.extras/README.md) to derive the address or implementer type it needs, then forwards its remaining arguments untouched.
 
-These three augmentation sets aren't meant to be called directly — they're what the transform's marker roster (`package.json`'s `"rhombus-std": { "inline": { "entries": [...] } }`) points at as each type-argument-derived verb's source body.
+These three augmentation sets aren't meant to be called directly — they're what the transform's marker list (`package.json`'s `"rhombus-std": { "inline": { "entries": [...] } }`) points at as each type-argument-derived verb's source body.
 
 ## How it fits
 

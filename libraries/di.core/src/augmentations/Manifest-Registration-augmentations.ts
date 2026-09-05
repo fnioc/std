@@ -1,9 +1,10 @@
-import { type ButNot, concat, type ConstructorType, type FunctionType, type Type } from '@rhombus-std/primitives';
+import { type ConstructorType, type FunctionType, type Type } from '@rhombus-std/primitives';
 import { registerAugmentations } from '@rhombus-std/primitives.extras';
-import type { AbstractCtor, Ctor, Func } from '@rhombus-toolkit/func';
+import { concat } from '@rhombus-toolkit/iterable';
+import type { AbstractCtor, ButNot, Ctor, Func } from '@rhombus-toolkit/types';
 
 import { openRegistration, type RegistrationBuilderFor } from '../builder';
-import type { LifetimeArgument } from '../LifetimeModel';
+import type { LifetimeArgument } from '../LifetimeArgument';
 import { DefaultManifest, type Manifest } from '../Manifest';
 import { Registration } from '../Registration';
 
@@ -12,6 +13,17 @@ declare module '@rhombus-std/di.core' {
     /** Prepends `registration`, ahead of every registration already in the chain. */
     add(registration: Registration<Lifetime>): Manifest<Lifetime>;
     /**
+     * Merges `manifest`'s registrations in as one batch, ahead of everything already in the
+     * chain, in `manifest`'s own order.
+     */
+    add(manifest: Manifest<Lifetime>): Manifest<Lifetime>;
+    /**
+     * Files each registration in `registrations` in turn, exactly as calling {@link Manifest.add}
+     * for each in order would — the last one ends up newest. A `Manifest` binds the wholesale-merge
+     * overload above instead, order preserved.
+     */
+    add(registrations: ButNot<Iterable<Registration<Lifetime>>, Manifest<any>>): Manifest<Lifetime>;
+    /**
      * Swaps in `registration` for the first registration registered under the same service type, leaving
      * every other registration untouched.
      */
@@ -19,16 +31,6 @@ declare module '@rhombus-std/di.core' {
     /** Drops the registration that is {@link Registration.equals} to `registration`, if one is present. */
     remove(registration: Registration<Lifetime>): Manifest<Lifetime>;
 
-    /** Adds every registration in `registrations`, in order — the last one ends up newest. */
-    addMany(registrations: Iterable<Registration<Lifetime>>): Manifest<Lifetime>;
-    /**
-     * Folds `source`'s registrations in as one batch, ahead of everything already in the chain and
-     * in `source`'s own order — `source` re-invoked once per resulting manifest iteration, never
-     * called here.
-     */
-    apply(source: Func<[], Iterable<Registration<Lifetime>>>): Manifest<Lifetime>;
-    /** {@link Manifest.apply}'s plain-iterable shape — `source` re-iterated once per resulting manifest iteration, never read here. */
-    apply(source: Iterable<Registration<Lifetime>>): Manifest<Lifetime>;
     /** Adds each registration whose service type has no registration yet. */
     tryAdd(...registrations: ReadonlyArray<Registration<Lifetime>>): Manifest<Lifetime>;
 
@@ -95,20 +97,35 @@ registerAugmentations<Manifest<unknown>>({
   },
 });
 
-// Iterable<Registration>
+registerAugmentations<Manifest<unknown>>({
+  add(this: Manifest<unknown>, manifest: Manifest<unknown>): Manifest<unknown> {
+    return new DefaultManifest<unknown>(() => concat(manifest, this));
+  },
+});
+
+registerAugmentations<Manifest<unknown>>({
+  add(this: Manifest<unknown>, registrations: Iterable<Registration<unknown>>): Manifest<unknown> {
+    // The synthesized dispatch never actually reaches the Manifest-shaped contribution above — a
+    // Manifest is itself iterable, and every call lands here regardless of its static overload.
+    // This check is what makes the merge behavior real: a Manifest gets the order-preserving
+    // merge, anything else the consecutive-adds fold.
+    if (registrations instanceof DefaultManifest) {
+      return new DefaultManifest<unknown>(() => concat(registrations, this));
+    }
+    return Iterator.from(concat(registrations)).reduce((man, registration) => man._add(registration), this);
+  },
+});
+
 // Registration[]
 // ServiceType
 registerAugmentations<Manifest<unknown>>({
-  addMany(this: Manifest<unknown>, registrations: Iterable<Registration<unknown>>): Manifest<unknown> {
-    return Iterator.from(registrations).reduce((man, registration) => man.add(registration), this);
-  },
-  apply(this: Manifest<unknown>, source: Iterable<Registration<unknown>>): Manifest<unknown> {
-    return new DefaultManifest<unknown>(() => concat(source, this));
-  },
   tryAdd(this: Manifest<unknown>, ...registrations: ReadonlyArray<Registration<unknown>>): Manifest<unknown> {
-    return Iterator.from(registrations)
-      .filter(newRegistration => !Iterator.from(this).some(existingRegistration => existingRegistration.address === newRegistration.address))
-      .reduce((man, registration) => man.add(registration), this);
+    return registrations.reduce<Manifest<unknown>>((man, registration) => {
+      if (Iterator.from(man).some(existing => existing.address === registration.address)) {
+        return man;
+      }
+      return man._add(registration);
+    }, this);
   },
   remove(this: Manifest<unknown>, address: Type): Manifest<unknown> {
     const found = Iterator.from(this).find(registration => registration.address === address);
@@ -172,12 +189,5 @@ registerAugmentations<Manifest<unknown>>({
 registerAugmentations<Manifest<unknown>>({
   describe(this: Manifest<unknown>, address: Type): RegistrationBuilderFor<any, unknown> {
     return openRegistration(address);
-  },
-});
-
-// Func<[], Iterable<Registration>>
-registerAugmentations<Manifest<unknown>>({
-  apply(this: Manifest<unknown>, source: Func<[], Iterable<Registration<unknown>>>): Manifest<unknown> {
-    return new DefaultManifest<unknown>(() => concat(source(), this));
   },
 });

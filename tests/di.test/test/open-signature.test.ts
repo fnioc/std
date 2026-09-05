@@ -1,14 +1,14 @@
 // Behaviour tests for a signature carrying a generic hole in its return type — an open callable
 // address, closed positionally by a request for the instantiated shape.
 
-import { di, noop } from '@rhombus-std/di';
+import { Builder } from '@rhombus-std/di';
 import { Manifest, Registration } from '@rhombus-std/di.core';
 import { Type } from '@rhombus-std/primitives';
 import { describe, expect, test } from 'bun:test';
 
-/** Seals `manifest` into a provider through the front door, on the noop lifetime model. */
+/** Seals `manifest` into a provider with no lifetime model: every ask constructs afresh. */
 function toProvider(manifest: Manifest<string>) {
-  return di.usingLifetimeModel(noop()).usingManifest(manifest).build();
+  return Builder.withServices(() => manifest).build();
 }
 
 const T = Type.generic('T');
@@ -29,7 +29,7 @@ describe('an open signature as a service type', () => {
   });
 
   test('closing discharges the hole, landing on the requested type itself', () => {
-    const [matched, generics] = Type.bindGenerics(OPEN, CLOSED);
+    const [matched, generics] = Type.extractMatchedGenerics(OPEN, CLOSED);
     expect(matched).toBe(true);
     expect(Type.substitute(OPEN, generics!)).toBe(CLOSED);
   });

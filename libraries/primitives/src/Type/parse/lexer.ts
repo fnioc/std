@@ -34,6 +34,14 @@ export function* lex(token: string): Generator<LexToken> {
       index += 2;
       continue;
     }
+    if (char === '.' && !startsNumber(token, index)) {
+      if (token[index + 1] !== '.' || token[index + 2] !== '.') {
+        throw new TypeParseError(token, index, '`...`');
+      }
+      yield punct('...', index);
+      index += 3;
+      continue;
+    }
     if (PUNCTUATION.has(char)) {
       yield punct(char, index);
       index++;

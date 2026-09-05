@@ -14,9 +14,9 @@
 // resolve to the SAME interned `Type` object, and exporting it from the
 // producer is how a plugin-less codebase keeps them in step.
 
-import { di, noop } from '@rhombus-std/di';
-import { Type } from '@rhombus-std/di.core';
+import { Builder } from '@rhombus-std/di';
 import type { IServiceProvider } from '@rhombus-std/di.core';
+import { Type } from '@rhombus-std/primitives';
 
 import type { CheckoutOrder, IAuditTrail, IExchangeRates, IOrderValidator, IPaymentGateway, IPaymentRouter, IReceipt } from '@rhombus-std/examples.contracts';
 import { addCheckoutServices, CHECKOUT_TYPES } from '@rhombus-std/examples.lib.without-transformer';
@@ -88,18 +88,18 @@ async function* tour(provider: IServiceProvider): AsyncGenerator<string> {
 
   // ── collection resolution ──────────────────────────────────────────────────
   //
-  // Three classes registered under one type. `resolveMany` aggregates all three
+  // Three classes registered under one type. `resolveIterable` aggregates all three
   // in registration order; asking for the bare type would hand back only one of
   // them. This is the shape for "several things, all of them run": validators,
   // event handlers, middleware, plugins. An unregistered element type aggregates
   // to an EMPTY list rather than throwing, so a pipeline with nothing plugged in
   // still runs.
   //
-  // `resolveMany(element)` is sugar for asking for the collection type over it;
+  // `resolveIterable(element)` is sugar for asking for the collection type over it;
   // `Type.iterable(element)` spells that type, and either request reaches the
   // same aggregation.
   yield 'collection resolution — 3 registrations share one type, all of them run';
-  const validators = [...provider.resolveMany(t.validator)] as IOrderValidator[];
+  const validators = [...provider.resolveIterable(t.validator)] as IOrderValidator[];
   for (const order of [ORDER_A, ORDER_X]) {
     for (const validator of validators) {
       yield `  ${order.reference}: ${validator.name} → ${attempted(() => validator.check(order))}`;
@@ -126,7 +126,7 @@ async function* tour(provider: IServiceProvider): AsyncGenerator<string> {
   const crypto = provider.resolve(Type.union(Type.tag(t.gateway, 'crypto'), Type.typeLiteral(undefined))) as IPaymentGateway | undefined;
   yield `  resolve at key "crypto": ${crypto?.label}`;
   yield `  a keyed registration is not in the bare base's collection: `
-    + `${[...provider.resolveMany(t.gateway)].length} gateways`;
+    + `${[...provider.resolveIterable(t.gateway)].length} gateways`;
 
   // ── factory slots ──────────────────────────────────────────────────────────
   //
@@ -162,11 +162,18 @@ async function* tour(provider: IServiceProvider): AsyncGenerator<string> {
   yield `  rates as of ${rates.asOf}, EUR at ${rates.rate('EUR')}`;
   yield `  the bare type has no registration: ${provider.resolve(Type.union(t.rates, Type.typeLiteral(undefined)))}`;
 
+  // `resolveAsync(address)` is `resolve(Promise<address>)` and an await folded
+  // into one call — the same `Promise<…:IExchangeRates>` registration answering
+  // both spellings.
+  const ratesAgain = await (provider.resolveAsync(t.rates) as Promise<IExchangeRates>);
+  yield `  resolveAsync unwraps the same registration directly: EUR at ${ratesAgain.rate('EUR')}`;
+
   // ── the provider as a service ──────────────────────────────────────────────
   //
   // The container can hand back ITSELF: a parameter typed `IServiceProvider`
   // gets the live provider, and the reserved `'ServiceProvider'` token names
-  // it. No registration exists for it — the engine supplies it structurally.
+  // it. The engine seeds an ordinary factory registration for it, answering the
+  // provider that opened the ask.
   //
   // Injecting the provider is USUALLY a smell. It hides a class's real
   // dependencies from anyone reading its constructor, turns wiring mistakes from
@@ -180,8 +187,8 @@ async function* tour(provider: IServiceProvider): AsyncGenerator<string> {
   // gateway for whichever method the buyer picks", so the container itself is the
   // dependency.
   yield 'the provider as a service — usually a smell, occasionally correct';
-  const view = provider.resolve(Type.from('ServiceProvider')) as IServiceProvider;
-  yield `  the injected view IS the live container: ${view === provider}`;
+  const handed = provider.resolve(Type.from('ServiceProvider')) as IServiceProvider;
+  yield `  the injected provider is the one that opened the ask: ${handed === provider}`;
 
   // ── what the optional sink recorded ────────────────────────────────────────
   const recorded = audit ? `${audit.entries.length} entries, last ${audit.entries.at(-1)}` : 'no sink wired';
@@ -196,5 +203,5 @@ async function* tour(provider: IServiceProvider): AsyncGenerator<string> {
  * asynchronously — every other chapter is an ordinary generator.
  */
 export function demonstrateResolution(): AsyncGenerator<string> {
-  return tour(di.usingLifetimeModel(noop()).usingManifest(addCheckoutServices()).build());
+  return tour(Builder.withServices(manifest => manifest.add(addCheckoutServices())).build());
 }

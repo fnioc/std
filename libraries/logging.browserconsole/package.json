@@ -19,13 +19,9 @@
   "type": "module",
   "sideEffects": true,
   "main": "./src/index.ts",
-  "types": "./src/index.ts",
   "exports": {
     ".": "./src/index.ts",
-    "./private/*": {
-      "types": "./src/*.ts",
-      "bun": "./src/*.ts"
-    }
+    "./private/*": "./src/*.ts"
   },
   "files": [
     "dist",
@@ -39,11 +35,10 @@
     "@rhombus-std/logging": "workspace:*",
     "@rhombus-std/logging.core": "workspace:*",
     "@rhombus-std/primitives": "workspace:*",
-    "@rhombus-toolkit/type-helpers": "^2.0.0"
+    "@rhombus-toolkit/types": "^2.0.0"
   },
   "devDependencies": {
     "@rhombus-std/primitives.extras": "workspace:*",
-    "@rhombus-toolkit/func": "3.6.0",
     "@ttsc/unplugin": "^0.18.1",
     "ttsc": "^0.18.1",
     "typescript": "^6.0.3"
@@ -52,13 +47,8 @@
     "access": "public",
     "provenance": true,
     "main": "./dist/bundle/index.js",
-    "types": "./dist/bundle/index.d.ts",
     "exports": {
-      ".": {
-        "types": "./dist/bundle/index.d.ts",
-        "import": "./dist/bundle/index.js",
-        "default": "./dist/bundle/index.js"
-      }
+      ".": "./dist/bundle/index.js"
     }
   }
 }

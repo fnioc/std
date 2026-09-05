@@ -1,10 +1,9 @@
 // Compile-time phantom brands, read off a constructor or factory arg's TYPE
-// to decide what fills its dependency slot: a pinned token (`Inject`), an
-// open-generic hole (`Generic` / `$`), a resolution key (`Keyed`), and a
-// type-argument witness (`Typeof`). All of them erase — zero runtime footprint.
+// to decide what fills its dependency slot: a pinned token (`Inject`) and a
+// type-argument witness (`Typeof`). Both erase — zero runtime footprint.
 
 import type { NamedType } from '@rhombus-std/primitives';
-import type { Func } from '@rhombus-toolkit/func';
+import type { Func } from '@rhombus-toolkit/types';
 
 /** True for a union, false for anything else — including `never`, which distributes to nothing. */
 type IsUnion<T, Members = T> = T extends unknown ? ([Members] extends [T] ? false : true) : never;
@@ -32,57 +31,6 @@ declare const TOKEN: unique symbol;
  * ```
  */
 export type Inject<T, K extends string> = T & { readonly [TOKEN]?: K; };
-
-// ── Generic ───────────────────────────────────────────────────────────────────
-
-declare const HOLE: unique symbol;
-
-/**
- * Stands for a type argument an open registration has not been closed against
- * yet — the arg's slot is filled by whatever the request closes it to.
- *
- * @remarks
- * `L` labels the hole so several can be told apart and a repeated one binds
- * consistently; any string serves, so a label may read as a name (`'TEntity'`)
- * rather than a position. `C` constrains what may close it, and defaults to
- * anything.
- */
-export type Generic<L extends string, C = unknown> = C & { readonly [HOLE]?: L; };
-
-/**
- * {@link Generic} without a constraint.
- *
- * @deprecated Spell an unconstrained hole as `Generic<'T'>`.
- */
-export type $<L extends string> = Generic<L>;
-
-// ── Keyed ─────────────────────────────────────────────────────────────────────
-
-declare const KEY: unique symbol;
-
-/**
- * Pins a resolution key, distinguishing one registration of a service type from
- * another.
- *
- * @remarks
- * A key is not a parallel lookup: it tags the service type, so the key travels
- * inside the type rather than beside it and a request has to spell the same tag
- * to reach the registration. `Keyed<ICache, 'redis'>` is therefore one type, not
- * a type plus an argument.
- *
- * The value type stays `T` — a plain `T` remains assignable, because the brand
- * property is optional — and `K` is always a string literal. It stacks with
- * {@link Inject}, both being optional-property intersections: `Keyed<Inject<T,
- * 'tok'>, 'k'>` pins the type and tags it.
- *
- * @example
- * ```ts
- * class Handler {
- *   public constructor(redis: Keyed<ICache, 'redis'>) {}
- * }
- * ```
- */
-export type Keyed<T, K extends string> = T & { readonly [KEY]?: K; };
 
 // ── Typeof ────────────────────────────────────────────────────────────────────
 

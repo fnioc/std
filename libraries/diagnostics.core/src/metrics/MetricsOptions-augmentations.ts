@@ -4,7 +4,7 @@
 // `undefined` name arguments match anything.
 
 import { applyAugmentations } from '@rhombus-std/primitives';
-import type { Flatten } from '@rhombus-toolkit/type-helpers';
+import type { Flatten } from '@rhombus-toolkit/types';
 
 import { InstrumentRule } from './InstrumentRule';
 import { METER_SCOPE_ALL, MeterScope } from './MeterScope';

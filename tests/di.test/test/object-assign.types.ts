@@ -1,13 +1,12 @@
-// Type-level checks for `obj.assign`: the `obj.assign<…>` alias and the wrapper
-// signature that returns it. Never executed -- `testit` is ambient, so calling it at runtime would
-// throw. The file earns its keep through `lint` (`tsc --noEmit`), which is why the name keeps it
-// out of bun's test glob.
+// Type-level checks for `obj.assign`: the result type and the wrapper signature that returns it.
+// Never executed -- `testit` is ambient, so calling it at runtime would throw. The file earns its
+// keep through `lint` (`tsc --noEmit`), which is why the name keeps it out of bun's test glob.
 //
 // The `@ts-expect-error` lines are the load-bearing half. A broken `assign` tends to collapse to
 // `never`, and `never` satisfies every constraint -- so the positive cases keep passing and only an
 // expected-error that stops erroring reveals it.
 
-import { obj } from '@rhombus-toolkit/type-helpers';
+import { obj } from '@rhombus-toolkit/obj';
 
 // Spelled out rather than inferred from a sparse literal, which is the point worth seeing: `[, 5]`
 // and `[undefined, 5]` infer the same tuple, so a hole is not something the type layer can react to.

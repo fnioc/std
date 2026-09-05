@@ -4,14 +4,14 @@
 // wins. Literals order last among members, which is what keeps a literal member as the fallback
 // of an optional dependency.
 
-import { di, noop } from '@rhombus-std/di';
+import { Builder } from '@rhombus-std/di';
 import { CycleError, Manifest, Registration, UnsatisfiableError } from '@rhombus-std/di.core';
 import { Type } from '@rhombus-std/primitives';
 import { describe, expect, test } from 'bun:test';
 
-/** Seals `manifest` into a provider through the front door, on the noop lifetime model. */
+/** Seals `manifest` into a provider with no lifetime model: the lifetime each registration names is filed, never read. */
 function toProvider(manifest: Manifest<string>) {
-  return di.usingLifetimeModel(noop()).usingManifest(manifest).build();
+  return Builder.withServices(() => manifest).build();
 }
 
 const CACHE = Type.imported('Cache', 'app');
@@ -107,8 +107,19 @@ describe('a union-typed registration', () => {
 });
 
 describe('the cycle guard', () => {
-  test('still closes a loop after the move to identity comparison', () => {
+  test('a slot naming its own address resolves beneath, and with nothing older it is unsatisfiable, not a cycle', () => {
     const manifest = Manifest.empty<string>().add(Registration.ctor(LOOP, Loop, Type.ctor(LOOP, [[LOOP]]), 'singleton'));
-    expect(() => toProvider(manifest).resolve(LOOP)).toThrow(CycleError);
+    const ask = () => toProvider(manifest).resolve(LOOP);
+    expect(ask).toThrow(UnsatisfiableError);
+    expect(ask).not.toThrow(CycleError);
+  });
+
+  test('a loop closed through a union member on a second address is still a cycle', () => {
+    // Report wants `Cache | Loop`; nothing registers Cache, so the Loop member is tried, and Loop
+    // wants Report again.
+    const manifest = Manifest.empty<string>()
+      .add(Registration.ctor(REPORT, Report, Type.ctor(REPORT, [[Type.union(CACHE, LOOP)]]), 'singleton'))
+      .add(Registration.ctor(LOOP, Loop, Type.ctor(LOOP, [[REPORT]]), 'singleton'));
+    expect(() => toProvider(manifest).resolve(REPORT)).toThrow(CycleError);
   });
 });

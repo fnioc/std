@@ -1,7 +1,7 @@
 {
   "name": "@rhombus-std/di.extras.options",
   "version": "0.0.0",
-  "description": "A @rhombus-std/di.extras satellite: the type-only declare-module for the addOptions<T>() sugar plus its rhombus-std inline body. A Go/ttsc descriptor package \u2014 the sugar is substituted from its inline body (this.addOptions(typefor(T))) by the shared owner binary's inline + typefor stages.",
+  "description": "A @rhombus-std/di.extras satellite: the type-only declare-module for the addOptions<T>() sugar plus its rhombus-std inline body. A Go/ttsc descriptor package — the sugar is substituted from its inline body (this.addOptions(typefor(T))) by the shared owner binary's inline + typefor stages.",
   "keywords": [
     "options",
     "dependency-injection",
@@ -19,24 +19,20 @@
   },
   "type": "module",
   "main": "./src/index.ts",
-  "types": "./src/index.ts",
   "exports": {
     ".": "./src/index.ts",
     "./ttsc": "./ttsc.mjs",
-    "./private/*": {
-      "types": "./src/*.ts",
-      "bun": "./src/*.ts"
-    }
+    "./private/*": "./src/*.ts"
   },
   "ttsc": {
     "plugin": {
-      "transform": "@rhombus-std/di.extras.options/ttsc"
+      "transform": "./ttsc.mjs"
     }
   },
   "files": [
     "dist",
-    "ttsc.mjs",
-    "rhombus-std.json"
+    "src",
+    "ttsc.mjs"
   ],
   "scripts": {
     "build": "bun ../../scripts/build-lib.ts",
@@ -48,7 +44,8 @@
     "@rhombus-std/options": "workspace:*",
     "@rhombus-std/options.augmentations": "workspace:*",
     "@rhombus-std/primitives": "workspace:*",
-    "@rhombus-std/primitives.extras": "workspace:*"
+    "@rhombus-std/primitives.extras": "workspace:*",
+    "@rhombus-std/transforms": "workspace:^"
   },
   "peerDependencies": {
     "typescript": ">=5.2"
@@ -60,11 +57,9 @@
     "access": "public",
     "provenance": true,
     "main": "./dist/bundle/index.js",
-    "types": "./dist/bundle/index.d.ts",
     "exports": {
       ".": {
-        "types": "./dist/bundle/index.d.ts",
-        "import": "./dist/bundle/index.js",
+        "source": "./src/index.ts",
         "default": "./dist/bundle/index.js"
       },
       "./ttsc": "./ttsc.mjs"

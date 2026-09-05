@@ -12,24 +12,24 @@ const T = Type.generic('T');
 
 describe('Type.substitute on identifiers', () => {
   test('a matched hole is replaced', () => {
-    expect(Type.substitute(T, new Map([['T', A]]))).toBe(A);
+    expect(Type.substitute(T, { T: A })).toBe(A);
   });
 
   test('an unmatched hole is left alone', () => {
-    expect(Type.substitute(T, new Map([['U', A]]))).toBe(T);
+    expect(Type.substitute(T, { U: A })).toBe(T);
   });
 
   test('global and imported generic arguments are substituted', () => {
-    expect(Type.substitute(Type.global('Box', [T]), new Map([['T', A]]))).toBe(Type.global('Box', [A]));
-    expect(Type.substitute(Type.imported('Box', 'app', [T]), new Map([['T', A]])))
+    expect(Type.substitute(Type.global('Box', [T]), { T: A })).toBe(Type.global('Box', [A]));
+    expect(Type.substitute(Type.imported('Box', 'app', [T]), { T: A }))
       .toBe(Type.imported('Box', 'app', [A]));
   });
 });
 
 describe('Type.substitute on aggregates', () => {
   test('array and iterable substitute their element', () => {
-    expect(Type.substitute(Type.array(T), new Map([['T', A]]))).toBe(Type.array(A));
-    expect(Type.substitute(Type.iterable(T), new Map([['T', A]]))).toBe(Type.iterable(A));
+    expect(Type.substitute(Type.array(T), { T: A })).toBe(Type.array(A));
+    expect(Type.substitute(Type.iterable(T), { T: A })).toBe(Type.iterable(A));
   });
 });
 
@@ -37,59 +37,65 @@ describe('Type.substitute on callables', () => {
   test('a constructor substitutes its instance and every parameter signature', () => {
     const open = Type.ctor({ instance: T, signatures: [[T], [A, T]] });
     const closed = Type.ctor({ instance: A, signatures: [[A], [A, A]] });
-    expect(Type.substitute(open, new Map([['T', A]]))).toBe(closed);
+    expect(Type.substitute(open, { T: A })).toBe(closed);
   });
 
   test('a function substitutes its return and every parameter signature', () => {
     const open = Type.func({ return: T, signatures: [[T, B]] });
-    expect(Type.substitute(open, new Map([['T', A]]))).toBe(Type.func({ return: A, signatures: [[A, B]] }));
+    expect(Type.substitute(open, { T: A })).toBe(Type.func({ return: A, signatures: [[A, B]] }));
   });
 
   test('the result stays the same callable kind, so a caller keeps its narrower type', () => {
-    const closed = Type.substitute(Type.ctor(T, [[]]), new Map([['T', A]]));
+    const closed = Type.substitute(Type.ctor(T, [[]]), { T: A });
     expect(closed.kind).toBe('ctor');
   });
 });
 
 describe('Type.substitute on composites', () => {
   test('a union or intersection substitutes every member', () => {
-    expect(Type.substitute(Type.union(T, B), new Map([['T', A]]))).toBe(Type.union(A, B));
+    expect(Type.substitute(Type.union(T, B), { T: A })).toBe(Type.union(A, B));
     const open = Type.intersection(Type.object({ a: T }), Type.object({ b: B }));
     const closed = Type.intersection(Type.object({ a: A }), Type.object({ b: B }));
-    expect(Type.substitute(open, new Map([['T', A]]))).toBe(closed);
+    expect(Type.substitute(open, { T: A })).toBe(closed);
   });
 
   test('a tuple substitutes every member', () => {
-    expect(Type.substitute(Type.tuple(T, B), new Map([['T', A]]))).toBe(Type.tuple(A, B));
+    expect(Type.substitute(Type.tuple(T, B), { T: A })).toBe(Type.tuple(A, B));
+  });
+
+  test('a tuple substitutes its rest slot too', () => {
+    const open = Type.tuple({ members: [T, B], rest: T });
+    const closed = Type.tuple({ members: [A, B], rest: A });
+    expect(Type.substitute(open, { T: A })).toBe(closed);
   });
 
   test('an object substitutes every member value, keeping the keys', () => {
-    expect(Type.substitute(Type.object({ a: T, b: B }), new Map([['T', A]]))).toBe(Type.object({ a: A, b: B }));
+    expect(Type.substitute(Type.object({ a: T, b: B }), { T: A })).toBe(Type.object({ a: A, b: B }));
   });
 });
 
 describe('Type.substitute on a tag', () => {
   test('the inner type is substituted, the tag itself untouched', () => {
-    expect(Type.substitute(Type.tag(T, 'primary'), new Map([['T', A]]))).toBe(Type.tag(A, 'primary'));
+    expect(Type.substitute(Type.tag(T, 'primary'), { T: A })).toBe(Type.tag(A, 'primary'));
   });
 
   test('substituting a hole with an already-tagged type is refused', () => {
     const alreadyTagged = Type.tag(B, 'secondary');
-    expect(() => Type.substitute(Type.tag(T, 'primary'), new Map([['T', alreadyTagged]]))).toThrow(TypeError);
+    expect(() => Type.substitute(Type.tag(T, 'primary'), { T: alreadyTagged })).toThrow(TypeError);
   });
 });
 
 describe('Type.substitute on a literal', () => {
   test('a literal has nothing to substitute and is returned unchanged', () => {
     const literal = Type.typeLiteral('fast');
-    expect(Type.substitute(literal, new Map([['T', A]]))).toBe(literal);
+    expect(Type.substitute(literal, { T: A })).toBe(literal);
   });
 });
 
 describe('one pass, no re-entry', () => {
   test('a substituted type is spliced in as-is, not re-scanned for the holes it still carries', () => {
     const replacement = Type.tuple(T, A);
-    const result = Type.substitute(T, new Map([['T', replacement]])) as TupleType;
+    const result = Type.substitute(T, { T: replacement }) as TupleType;
     expect(result).toBe(replacement);
     expect(result.members[0]).toBe(T);
   });

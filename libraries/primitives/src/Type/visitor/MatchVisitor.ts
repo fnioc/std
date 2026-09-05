@@ -1,15 +1,13 @@
 import type { AbstractConstructorType, ArrayType, ConstructorType, FunctionType, GenericType, GlobalType, ImportedType, IntersectionType, IterableType, ObjectType, TagType, TupleType, Type,
   TypeLiteralType, UnionType } from '../Type.js';
-import { isOpenType } from './IsOpenVisitor.js';
-import { stringifyType } from './StringifyVisitor.js';
 import { TypeVisitor } from './TypeVisitor.js';
 
 /** What a match threads through the walk: the subject fragment in play, and the bindings so far. */
-interface MatchContext {
+export interface MatchContext {
   /** The subject fragment standing where the current pattern node does. */
   readonly subject: Type;
   /** One entry per hole label bound so far, shared by the whole walk. */
-  readonly bindings: Map<string, Type>;
+  readonly bindings: Record<string, Type>;
 }
 
 /**
@@ -25,7 +23,7 @@ interface MatchContext {
  * no width subtyping, no literal widening to its primitive, no member search. With no choice
  * points, a failed branch has nothing to roll back.
  */
-class MatchVisitor extends TypeVisitor<boolean, MatchContext> {
+export class MatchVisitor extends TypeVisitor<boolean, MatchContext> {
   public override visit(pattern: Type): boolean;
   public override visit(pattern: Type, context: MatchContext): boolean;
   public override visit(pattern: Type, context?: MatchContext): boolean {
@@ -41,24 +39,24 @@ class MatchVisitor extends TypeVisitor<boolean, MatchContext> {
 
   protected override visitCtor(pattern: ConstructorType, { subject, bindings }: MatchContext): boolean {
     return subject.kind === 'ctor'
-      && this.#signaturesPairwise(pattern.signatures, subject.signatures, bindings)
+      && this.visit(pattern.signatures, { subject: subject.signatures, bindings })
       && this.visit(pattern.instance, { subject: subject.instance, bindings });
   }
 
   protected override visitAbstractCtor(pattern: AbstractConstructorType, { subject, bindings }: MatchContext): boolean {
     return subject.kind === 'abstract-ctor'
-      && this.#signaturesPairwise(pattern.signatures, subject.signatures, bindings)
+      && this.visit(pattern.signatures, { subject: subject.signatures, bindings })
       && this.visit(pattern.instance, { subject: subject.instance, bindings });
   }
 
   protected override visitFunc(pattern: FunctionType, { subject, bindings }: MatchContext): boolean {
     return subject.kind === 'func'
-      && this.#signaturesPairwise(pattern.signatures, subject.signatures, bindings)
+      && this.visit(pattern.signatures, { subject: subject.signatures, bindings })
       && this.visit(pattern.return, { subject: subject.return, bindings });
   }
 
   protected override visitGeneric(pattern: GenericType, { subject, bindings }: MatchContext): boolean {
-    return bindings.getOrInsert(pattern.label, subject) === subject;
+    return (bindings[pattern.label] ??= subject) === subject;
   }
 
   protected override visitGlobal(pattern: GlobalType, { subject, bindings }: MatchContext): boolean {
@@ -88,7 +86,7 @@ class MatchVisitor extends TypeVisitor<boolean, MatchContext> {
     }
     const patternEntries = Object.entries(pattern.members);
     return patternEntries.length === Object.keys(subject.members).length
-      && patternEntries.every(([name, member]) => name in subject.members && this.visit(member, { subject: subject.members[name]!, bindings }));
+      && patternEntries.every(([name, member]) => Object.hasOwn(subject.members, name) && this.visit(member, { subject: subject.members[name]!, bindings }));
   }
 
   protected override visitTag(pattern: TagType, { subject, bindings }: MatchContext): boolean {
@@ -98,7 +96,9 @@ class MatchVisitor extends TypeVisitor<boolean, MatchContext> {
   }
 
   protected override visitTuple(pattern: TupleType, { subject, bindings }: MatchContext): boolean {
-    return subject.kind === 'tuple' && this.#pairwise(pattern.members, subject.members, bindings);
+    return subject.kind === 'tuple'
+      && this.#pairwise(pattern.members, subject.members, bindings)
+      && this.#restSlot(pattern.rest, subject.rest, bindings);
   }
 
   protected override visitTypeLiteral(pattern: TypeLiteralType, { subject }: MatchContext): boolean {
@@ -110,32 +110,16 @@ class MatchVisitor extends TypeVisitor<boolean, MatchContext> {
   }
 
   /** Same count, and position `i` of the pattern matches position `i` of the subject. */
-  #pairwise(patterns: readonly Type[], subjects: readonly Type[], bindings: Map<string, Type>): boolean {
+  #pairwise(patterns: readonly Type[], subjects: readonly Type[], bindings: Record<string, Type>): boolean {
     return patterns.length === subjects.length
       && patterns.every((pattern, index) => this.visit(pattern, { subject: subjects[index]!, bindings }));
   }
 
-  /** Same signature count, signature `i` against signature `i`, each signature pairwise. */
-  #signaturesPairwise(patterns: Type.Signatures, subjects: Type.Signatures, bindings: Map<string, Type>): boolean {
-    return patterns.length === subjects.length
-      && patterns.every((signature, index) => this.#pairwise(signature, subjects[index]!, bindings));
+  /** A tuple's rest slot: absent on both sides, or present on both and matching. */
+  #restSlot(pattern: Type | undefined, subject: Type | undefined, bindings: Record<string, Type>): boolean {
+    if (pattern === undefined || subject === undefined) {
+      return pattern === subject;
+    }
+    return this.visit(pattern, { subject, bindings });
   }
-}
-
-const matchVisitor = new MatchVisitor();
-
-/**
- * Does some instantiation of {@link candidate} equal {@link constraint}? Success carries the
- * instantiation: one entry per generic label in the candidate.
- */
-export function matchType(candidate: Type, constraint: Type): [matched: false] | [matched: true, generics: Map<string, Type>] {
-  if (isOpenType(constraint)) {
-    throw new Error(`bindGenerics: the constraint type may not contain generic holes — got ${stringifyType(constraint)}`);
-  }
-  // Interned identity IS the closed-candidate match; the walk exists for the holes.
-  if (candidate === constraint) {
-    return [true, new Map()];
-  }
-  const bindings = new Map<string, Type>();
-  return matchVisitor.visit(candidate, { subject: constraint, bindings }) ? [true, bindings] : [false];
 }

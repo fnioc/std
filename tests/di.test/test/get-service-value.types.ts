@@ -34,18 +34,18 @@ declare const gadget: { readonly bar: unknown; };
 declare const wrongShape: { readonly nope: true; };
 
 // A ConstructorType node paired with a constructor infers `R` as the instance type.
-testit(widget, provider.resolve(widgetNode, Widget));
+testit(widget, provider.instantiate(widgetNode, Widget));
 // @ts-expect-error
-testit(wrongShape, provider.resolve(widgetNode, Widget));
+testit(wrongShape, provider.instantiate(widgetNode, Widget));
 
 // A FunctionType node paired with a function infers `R` as its return type.
-testit(gadget, provider.resolve(gadgetNode, makeGadget));
+testit(gadget, provider.invoke(gadgetNode, makeGadget));
 // @ts-expect-error
-testit(wrongShape, provider.resolve(gadgetNode, makeGadget));
+testit(wrongShape, provider.invoke(gadgetNode, makeGadget));
 
 // Both overloads reach an IServiceProvider-typed caller, not only the concrete ServiceProvider.
-testit(widget, providerInterface.resolve(widgetNode, Widget));
-testit(gadget, providerInterface.resolve(gadgetNode, makeGadget));
+testit(widget, providerInterface.instantiate(widgetNode, Widget));
+testit(gadget, providerInterface.invoke(gadgetNode, makeGadget));
 
 // A string is not an address: the boundary converter is the only string door.
 declare const spelled: string;
@@ -57,4 +57,4 @@ provider.resolve(spelled);
 provider.resolve(Widget);
 // A ConstructorType node paired with an incompatible value fails too.
 // @ts-expect-error
-provider.resolve(widgetNode, makeGadget);
+provider.instantiate(widgetNode, makeGadget);

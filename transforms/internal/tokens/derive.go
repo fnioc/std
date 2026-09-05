@@ -22,8 +22,8 @@ import (
 var collectionTokenBases = map[string]bool{"Array": true, "AsyncIterable": true, "Iterable": true}
 
 // This file holds the shared token-derivation helpers (intrinsic / literal / base
-// / generic-argument rendering) that DeriveTypeF (typenode.go) composes into the
-// ONE derivation the engine uses; DeriveTokenF (generics.go) renders that tree into
+// / generic-argument rendering) that DeriveNode (node.go) composes into the ONE
+// derivation the engine uses; DeriveTokenF (generics.go) renders that tree into
 // the flat token string every string caller wants.
 
 // intrinsicToken returns the bare token for an intrinsic type (string / number /

@@ -14,7 +14,7 @@
 
 import type { MergeStrategies } from '@rhombus-std/primitives';
 import { registerAugmentations } from '@rhombus-std/primitives.extras';
-import type { Flatten } from '@rhombus-toolkit/type-helpers';
+import type { Flatten } from '@rhombus-toolkit/types';
 import { EventId } from './EventId';
 import { formatLogValues, FormattedLogValues } from './formatted-log-values';
 import type { ILogger } from './ILogger';

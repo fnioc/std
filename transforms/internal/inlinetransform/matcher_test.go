@@ -28,7 +28,7 @@ export declare const manifest: IServiceManifest;
 `
 
 // First augmentation file: the inlineable sugar overload of isService (the pilot
-// body is ` return this.isService(tokenfor<T>()) `) and a second member `pick`
+// body is ` return this.isService(typefor<T>()) `) and a second member `pick`
 // whose type parameter appears in a value position so it is INFERABLE.
 const fixtureSugar = `declare module './core' {
   interface IServiceManifest {
@@ -339,4 +339,104 @@ func typeNames(checker *shimchecker.Checker, ts []*shimchecker.Type) []string {
 		out[i] = typeName(checker, t)
 	}
 	return out
+}
+
+// ── static / namespace / const-member / class-member resolution ─────────────
+
+const staticFixtureSrc = `export class Klass {
+  static doStatic(): number { return 1; }
+  doInstance(): string { return "a"; }
+}
+
+export namespace Ns {
+  export function doNamespace(): boolean { return true; }
+}
+
+export const Obj = {
+  doConst(): string { return "c"; },
+};
+
+const inst = new Klass();
+Klass.doStatic();
+inst.doInstance();
+Ns.doNamespace();
+Obj.doConst();
+`
+
+func loadStaticFixture(t *testing.T) (*driver.Program, *shimchecker.Checker, *shimast.SourceFile) {
+	t.Helper()
+	root := t.TempDir()
+	write(t, filepath.Join(root, "tsconfig.json"), `{
+  "compilerOptions": {
+    "target": "ES2022", "module": "esnext", "moduleResolution": "bundler",
+    "strict": true, "noEmit": true
+  },
+  "files": ["main.ts"]
+}`)
+	write(t, filepath.Join(root, "main.ts"), staticFixtureSrc)
+	prog, diags, err := driver.LoadProgram(root, "tsconfig.json", driver.LoadProgramOptions{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(diags) != 0 {
+		t.Fatalf("config diagnostics: %v", diags)
+	}
+	main := sourceFileWithSuffix(t, prog, "main.ts")
+	return prog, prog.Checker, main
+}
+
+func TestStaticMemberCallResolvesToDeclaration(t *testing.T) {
+	prog, checker, main := loadStaticFixture(t)
+	defer func() { _ = prog.Close() }()
+
+	call := callContaining(t, main, "Klass.doStatic()")
+	decl := resolvedDeclaration(checker, call)
+	if decl == nil {
+		t.Fatal("Klass.doStatic() did not resolve to a declaration")
+	}
+	if name := decl.Name(); name == nil || name.Text() != "doStatic" {
+		t.Fatalf("resolved declaration named %v, want doStatic", name)
+	}
+}
+
+func TestNamespaceMemberCallResolvesToDeclaration(t *testing.T) {
+	prog, checker, main := loadStaticFixture(t)
+	defer func() { _ = prog.Close() }()
+
+	call := callContaining(t, main, "Ns.doNamespace()")
+	decl := resolvedDeclaration(checker, call)
+	if decl == nil {
+		t.Fatal("Ns.doNamespace() did not resolve to a declaration")
+	}
+	if name := decl.Name(); name == nil || name.Text() != "doNamespace" {
+		t.Fatalf("resolved declaration named %v, want doNamespace", name)
+	}
+}
+
+func TestConstMemberCallResolvesToDeclaration(t *testing.T) {
+	prog, checker, main := loadStaticFixture(t)
+	defer func() { _ = prog.Close() }()
+
+	call := callContaining(t, main, "Obj.doConst()")
+	decl := resolvedDeclaration(checker, call)
+	if decl == nil {
+		t.Fatal("Obj.doConst() did not resolve to a declaration")
+	}
+	if name := decl.Name(); name == nil || name.Text() != "doConst" {
+		t.Fatalf("resolved declaration named %v, want doConst", name)
+	}
+}
+
+func TestClassInstanceMemberCallResolvesToDeclaration(t *testing.T) {
+	prog, checker, main := loadStaticFixture(t)
+	defer func() { _ = prog.Close() }()
+
+	call := callContaining(t, main, "inst.doInstance()")
+	decl := resolvedDeclaration(checker, call)
+	if decl == nil {
+		t.Fatal("inst.doInstance() did not resolve to a declaration")
+	}
+	if name := decl.Name(); name == nil || name.Text() != "doInstance" {
+		t.Fatalf("resolved declaration named %v, want doInstance", name)
+	}
 }

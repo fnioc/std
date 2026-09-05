@@ -9,12 +9,12 @@ import (
 
 // The impl source is parsed with NO program, NO checker, NO module graph — the
 // exact "non-driver context" the inline stage extracts bodies from. It contains
-// deliberately UNCHECKABLE code (`tokenfor<T>()`, a property access on `unknown`):
+// deliberately UNCHECKABLE code (`typefor<T>()`, a property access on `unknown`):
 // body extraction is syntax-only, and the consumer program's checker takes over
 // only after substitution.
 const implSource = `export const ServiceManifestExtensions = {
   isService(receiver: IServiceManifest) {
-    return receiver.isService(tokenfor<T>());
+    return receiver.isService(typefor<T>());
   },
   install(receiver: IServiceManifest) {
     receiver.prepare();
@@ -57,8 +57,8 @@ func TestExtractSingleReturnBody(t *testing.T) {
 		t.Fatal("SingleReturnExpression returned nil for a single-return body")
 	}
 	got := shimast.NodeText(expr)
-	if !strings.Contains(got, "tokenfor<T>()") || !strings.Contains(got, "receiver.isService") {
-		t.Fatalf("extracted expression = %q, want the `receiver.isService(tokenfor<T>())` body", got)
+	if !strings.Contains(got, "typefor<T>()") || !strings.Contains(got, "receiver.isService") {
+		t.Fatalf("extracted expression = %q, want the `receiver.isService(typefor<T>())` body", got)
 	}
 
 	// The multi-statement member violates the single-return hygiene rule and must

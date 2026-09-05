@@ -9,10 +9,10 @@
 // Exercised through the public authoring surface only (black-box).
 
 import { ConfigBuilder, type IConfig } from '@rhombus-std/config';
-import { di, noop } from '@rhombus-std/di';
-import { Type } from '@rhombus-std/di.core';
+import { Builder, standardLifetime } from '@rhombus-std/di';
 import { ActivityListenerConfigFactory, DefaultActivityListenerConfigFactory, getMetricsManifest, getTracingManifest, type IMetricListenerConfigFactory, MetricListenerConfigFactory, MetricsConfig,
   TracingConfig } from '@rhombus-std/diagnostics';
+import { Type } from '@rhombus-std/primitives';
 import { describe, expect, test } from 'bun:test';
 
 // The factory addresses as a plugin-less author spells them — the same interned
@@ -73,13 +73,12 @@ describe('DefaultActivityListenerConfigFactory', () => {
 });
 
 describe('addMetrics registers the metrics factory', () => {
-  // Needs the standard lifetime model's singleton caching, not yet wired for this suite.
-  test.skip('resolves as a singleton fed by every addMetricsConfig call', () => {
+  test('resolves as a singleton fed by every addMetricsConfig call', () => {
     const manifest = getMetricsManifest((metrics) => {
       metrics.addMetricsConfig(first()).addMetricsConfig(second());
     });
 
-    const provider = di.usingLifetimeModel(noop()).usingManifest(manifest).build();
+    const provider = Builder.withServices(m => m.add(manifest)).useAddon(standardLifetime()).build();
     const factory: IMetricListenerConfigFactory = provider.resolve(
       METRICS_LISTENER_CONFIGURATION_FACTORY_TYPE,
     );
@@ -96,7 +95,7 @@ describe('addMetrics registers the metrics factory', () => {
   test('with no bound configuration the factory yields empty views', () => {
     const manifest = getMetricsManifest();
 
-    const factory: IMetricListenerConfigFactory = di.usingLifetimeModel(noop()).usingManifest(manifest).build().resolve(
+    const factory: IMetricListenerConfigFactory = Builder.withServices(m => m.add(manifest)).build().resolve(
       METRICS_LISTENER_CONFIGURATION_FACTORY_TYPE,
     );
     expect([...factory.getConfig('MyListener').getChildren()]).toHaveLength(0);
@@ -104,13 +103,12 @@ describe('addMetrics registers the metrics factory', () => {
 });
 
 describe('addTracing registers the tracing factory', () => {
-  // Needs the standard lifetime model's singleton caching, not yet wired for this suite.
-  test.skip('resolves as a singleton fed by every addTracingConfig call', () => {
+  test('resolves as a singleton fed by every addTracingConfig call', () => {
     const manifest = getTracingManifest((tracing) => {
       tracing.addTracingConfig(first()).addTracingConfig(second());
     });
 
-    const provider = di.usingLifetimeModel(noop()).usingManifest(manifest).build();
+    const provider = Builder.withServices(m => m.add(manifest)).useAddon(standardLifetime()).build();
     const factory: ActivityListenerConfigFactory = provider.resolve(
       TRACING_LISTENER_CONFIGURATION_FACTORY_TYPE,
     );

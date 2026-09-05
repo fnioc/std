@@ -14,7 +14,7 @@ import { Manifest } from '@rhombus-std/di.core';
 import type { HostBuilderContext, IHost, IHostBuilder } from '@rhombus-std/hosting.core';
 import { augment } from '@rhombus-std/primitives';
 import { typefor } from '@rhombus-std/primitives.extras';
-import type { Action, Func } from '@rhombus-toolkit/func';
+import type { Action, Func } from '@rhombus-toolkit/types';
 import { createFrameworkServices, createHostingEnvironment, populateFrameworkServices, resolveHost } from './host-composition';
 import { resolveServiceProviderOptions } from './ServiceProviderOptionsFactory';
 

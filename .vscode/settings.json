@@ -35,7 +35,9 @@
     // "package.json":"tsconfig.json"
   },
   "explorerExclude.backup": {},
-  "typescript.tsserver.experimental.enableProjectDiagnostics": true,
+  // Disabled: resolves tsserver's relative paths from workspace root instead of
+  // tsconfig dir, producing wrong absolute paths in monorepo subdirectories.
+  // "typescript.tsserver.experimental.enableProjectDiagnostics": true,
   "explorerExcludeManager.backup": {},
   "js/ts.tsdk.path": "node_modules/typescript/lib"
 }

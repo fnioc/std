@@ -1,7 +1,7 @@
 {
   "name": "@rhombus-std/config.extras",
   "version": "0.0.0",
-  "description": "The @rhombus-std/config authoring surface: types .withType<T>() onto ConfigBuilder and rewrites it into a generated .withSchema(Type.object({...})) call at compile time. A Go/ttsc descriptor package \u2014 the transform runs in the shared owner binary.",
+  "description": "The @rhombus-std/config authoring surface: types .withType<T>() onto ConfigBuilder and rewrites it into a generated .withSchema(Type.object({...})) call at compile time. A Go/ttsc descriptor package — the transform runs in the shared owner binary.",
   "keywords": [
     "configuration",
     "config",
@@ -20,20 +20,17 @@
   "exports": {
     ".": "./src/index.ts",
     "./ttsc": "./ttsc.mjs",
-    "./private/*": {
-      "types": "./src/*.ts",
-      "bun": "./src/*.ts"
-    }
+    "./private/*": "./src/*.ts"
   },
   "ttsc": {
     "plugin": {
-      "transform": "@rhombus-std/config.extras/ttsc"
+      "transform": "./ttsc.mjs"
     }
   },
   "files": [
     "dist",
-    "ttsc.mjs",
-    "rhombus-std.json"
+    "src",
+    "ttsc.mjs"
   ],
   "scripts": {
     "build": "bun ../../scripts/build-lib.ts",
@@ -43,23 +40,21 @@
     "@rhombus-std/config": "workspace:*",
     "@rhombus-std/config.core": "workspace:*",
     "@rhombus-std/primitives": "workspace:*",
-    "@rhombus-std/primitives.extras": "workspace:*"
+    "@rhombus-std/primitives.extras": "workspace:*",
+    "@rhombus-std/transforms": "workspace:^"
   },
   "publishConfig": {
     "access": "public",
     "provenance": true,
     "main": "./dist/bundle/index.js",
-    "types": "./dist/bundle/index.d.ts",
     "exports": {
       ".": {
-        "types": "./dist/bundle/index.d.ts",
-        "import": "./dist/bundle/index.js",
+        "source": "./src/index.ts",
         "default": "./dist/bundle/index.js"
       },
       "./ttsc": "./ttsc.mjs"
     }
   },
   "main": "./src/index.ts",
-  "types": "./src/index.ts",
   "devDependencies": {}
 }

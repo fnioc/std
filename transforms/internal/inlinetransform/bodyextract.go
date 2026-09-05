@@ -14,28 +14,20 @@ import (
 )
 
 // knownPrimitives maps each compile-time primitive an inlineable body may call to
-// its HOME module — the module an inline body is allowed to import it from.
-// `tokenfor<T>()` / `tokenfor(value)` derives from a TYPE or the value's PRODUCED
-// type (construct/call-sig return; the `addClass` / `addFactory` self forms), and
-// `tokenof<T>()` / `tokenof(value)` from the raw type / the value's OWN type with
-// no unwrap (the `addValue` self form, which registers an already-built value
-// under its own type — matching the di engine's raw-type `addValue` derivation).
-// Both home in the authoring package `@rhombus-std/primitives.extras` (constraint
-// 11: pure transformables, moved out of the runtime `@rhombus-std/primitives`
-// leaf — every call is elided from the shipped output after lowering, so nothing
-// ships a reference and a consumer deps the authoring package build-time only).
-// `schemaof<T>()` binds a TYPE argument and lowers to the config family's runtime
-// schema object literal — the engine half of the `.withType<T>()` sugar body
-// `this.withSchema(schemaof<T>())`. It is authoring-time-only and homes beside
-// the other primitive verbs in `@rhombus-std/primitives.extras`.
+// its HOME module — the module an inline body is allowed to import it from. Both
+// home in the authoring package `@rhombus-std/primitives.extras` (constraint 11:
+// pure transformables, moved out of the runtime `@rhombus-std/primitives` leaf —
+// every call is elided from the shipped output after lowering, so nothing ships a
+// reference and a consumer deps the authoring package build-time only).
 // `typefor<T>()` / `typefor(value)` bind a TYPE or VALUE argument and lower to a
 // structured runtime `Type` value (the `Type.*` factory tree the argument
 // spells); a VALUE argument also carries a constructor's or factory's
-// dependency-signature derivation. It homes beside `tokenfor` / `tokenof` in
-// `@rhombus-std/primitives.extras`.
+// dependency-signature derivation.
+// `schemaof<T>()` binds a TYPE argument and lowers to the config family's runtime
+// schema object literal — the engine half of the `.withType<T>()` sugar body
+// `this.withSchema(schemaof<T>())`. It is authoring-time-only and homes beside
+// `typefor` in `@rhombus-std/primitives.extras`.
 var knownPrimitives = map[string]string{
-	"tokenfor": "@rhombus-std/primitives.extras",
-	"tokenof":  "@rhombus-std/primitives.extras",
 	"schemaof": "@rhombus-std/primitives.extras",
 	"typefor":  "@rhombus-std/primitives.extras",
 }
@@ -691,13 +683,13 @@ func functionLikeParams(node *shimast.Node) []*shimast.Node {
 	return list.Nodes
 }
 
-// consumedTypeParams walks body for calls to one of primImports whose written
-// type-argument nodes are bare identifier references to one of typeParams, and
-// returns the set of names so referenced. `typefor<T>()` consumes T;
-// `typefor(value)` — a value-argument call with no type-argument list at all —
-// consumes nothing; `typefor<Marker>()` over some other, concrete type consumes
-// nothing either, since the reference is not to one of the body's own type
-// parameters.
+// consumedTypeParams walks body for calls to one of primImports and returns the
+// set of typeParams their written type-argument nodes reference, at any depth.
+// `typefor<T>()` consumes T and so does `typefor<Func<Args, T>>()`, which spells
+// both of its own; `typefor(value)` — a value-argument call with no type-argument
+// list at all — consumes nothing; `typefor<Marker>()` over some other, concrete
+// type consumes nothing either, since the reference is not to one of the body's
+// own type parameters.
 func consumedTypeParams(body *shimast.Node, typeParams []string, primImports map[string]string) map[string]bool {
 	declared := make(map[string]bool, len(typeParams))
 	for _, tp := range typeParams {
@@ -720,20 +712,42 @@ func consumedTypeParams(body *shimast.Node, typeParams []string, primImports map
 			return false
 		}
 		for _, ta := range typeArgs.Nodes {
-			if ta.Kind != shimast.KindTypeReference {
-				continue
-			}
-			name := ta.AsTypeReferenceNode().TypeName
-			if name == nil || name.Kind != shimast.KindIdentifier {
-				continue
-			}
-			if declared[name.Text()] {
-				consumed[name.Text()] = true
+			for _, name := range typeParamsIn(ta, declared) {
+				consumed[name] = true
 			}
 		}
 		return false
 	})
 	return consumed
+}
+
+// typeParamsIn returns, in first-appearance order, the declared type parameters a
+// type node references anywhere within it — the node itself when it is a bare
+// reference, and every reference nested inside a composed one (a generic
+// instantiation's own type arguments, a tuple's elements, a union's members, a
+// function type's parameters and return).
+func typeParamsIn(node *shimast.Node, declared map[string]bool) []string {
+	var found []string
+	seen := map[string]bool{}
+	var visit func(n *shimast.Node)
+	visit = func(n *shimast.Node) {
+		if n == nil {
+			return
+		}
+		if n.Kind == shimast.KindTypeReference {
+			name := n.AsTypeReferenceNode().TypeName
+			if name != nil && name.Kind == shimast.KindIdentifier && declared[name.Text()] && !seen[name.Text()] {
+				seen[name.Text()] = true
+				found = append(found, name.Text())
+			}
+		}
+		n.ForEachChild(func(child *shimast.Node) bool {
+			visit(child)
+			return false
+		})
+	}
+	visit(node)
+	return found
 }
 
 // primitiveImports reads sf's top-level named imports and returns a local-name ->

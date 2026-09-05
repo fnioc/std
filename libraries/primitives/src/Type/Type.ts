@@ -1,11 +1,12 @@
-import type { DistributiveOmit } from '../toolkit/index.js';
+import { memo } from '@rhombus-toolkit/once';
+import type { DistributiveOmit } from '@rhombus-toolkit/types';
 import * as factory from './factory/factories.js';
 import type { LIST_KINDS, ListName } from './grammar.js';
-import { parseTypeString } from './parse/parser.js';
-import { isOpenType } from './visitor/IsOpenVisitor.js';
-import { matchType } from './visitor/MatchVisitor.js';
+import { parseLiteral } from './parse/parser.js';
+import { IsOpenVisitor } from './visitor/IsOpenVisitor.js';
+import { MatchVisitor } from './visitor/MatchVisitor.js';
 import { stringifyType } from './visitor/StringifyVisitor.js';
-import { substituteType } from './visitor/SubstituteVisitor.js';
+import { SubstituteVisitor } from './visitor/SubstituteVisitor.js';
 import { TypeVisitor } from './visitor/TypeVisitor.js';
 
 // #region types
@@ -65,7 +66,13 @@ export interface GenericType extends TypeBase<'generic'> {
 }
 
 export interface ConstructorType extends TypeBase<'ctor'> {
-  readonly signatures: Type.Signatures;
+  /**
+   * @remarks
+   * Built by {@link Type.signatures}: several overload rows collapse to a {@link UnionType}, one
+   * row collapses to its bare {@link TupleType} or {@link ListType}. Construct it through that
+   * factory rather than by hand.
+   */
+  readonly signatures: TupleType | ListType | UnionType;
   readonly instance: Type;
 }
 
@@ -75,12 +82,24 @@ export interface ConstructorType extends TypeBase<'ctor'> {
  * by assignability; a position accepting either spells the union.
  */
 export interface AbstractConstructorType extends TypeBase<'abstract-ctor'> {
-  readonly signatures: Type.Signatures;
+  /**
+   * @remarks
+   * Built by {@link Type.signatures}: several overload rows collapse to a {@link UnionType}, one
+   * row collapses to its bare {@link TupleType} or {@link ListType}. Construct it through that
+   * factory rather than by hand.
+   */
+  readonly signatures: TupleType | ListType | UnionType;
   readonly instance: Type;
 }
 
 export interface FunctionType extends TypeBase<'func'> {
-  readonly signatures: Type.Signatures;
+  /**
+   * @remarks
+   * Built by {@link Type.signatures}: several overload rows collapse to a {@link UnionType}, one
+   * row collapses to its bare {@link TupleType} or {@link ListType}. Construct it through that
+   * factory rather than by hand.
+   */
+  readonly signatures: TupleType | ListType | UnionType;
   readonly return: Type;
 }
 
@@ -108,7 +127,10 @@ export interface TagType extends TypeBase<'tag'> {
 }
 
 export interface TupleType extends TypeBase<'tuple'> {
+  /** Every fixed slot in order. A slot that may be absent admits `undefined`, like any other optional position. */
   readonly members: readonly Type[];
+  /** A trailing rest slot's element type, or undefined for a fixed-length tuple. */
+  readonly rest: Type | undefined;
 }
 
 /** Any type that `typeof` can resolve */
@@ -136,14 +158,26 @@ export namespace Type {
   type Spec<T extends Type> = Omit<RawType<T>, 'kind'>;
 
   /**
-   * Brings a Type into the system, thus guaranteeing referential equality
+   * Brings a Type into the system, thus guaranteeing referential equality.
+   *
+   * @remarks
+   * The one door meaning enters by: every kind is rebuilt through its own factory, so whatever a
+   * factory canonicalizes, collapses or refuses applies to a node arriving as plain data — a tree
+   * revived from JSON, one a cast produced, the tree {@link from} reads out of a token. A tuple
+   * node that is nothing but a rest slot adopts as the list it collapses to, so a tuple-kind node
+   * can answer a {@link ListType}.
+   *
+   * @throws TypeError - when the node names no kind, lacks a field its kind carries, or spells a
+   * type its factory refuses.
    *
    * @example
    * ```ts
    * Type.adopt({ kind: 'imported', name: 'IClock', from: 'app', genericArgs: [] });
    * ```
    */
-  export function adopt<const Node extends RawType>(node: Node): Extract<Type, { kind: Node['kind']; }>;
+  export function adopt<const Node extends RawType>(
+    node: Node,
+  ): Extract<Type, { kind: Node['kind']; }> | ('tuple' extends Node['kind'] ? ListType : never);
   export function adopt(node: RawType): Type {
     return factory.adopt(node as Type);
   }
@@ -160,19 +194,24 @@ export namespace Type {
    *
    * @example
    * ```ts
-   * Type.ctor(box, [[string]]);                               // new (string) => box
-   * Type.ctor(box, [[string], []]);                           // new (string; ) => box
-   * Type.ctor({ instance: box, signatures: [[]] });
+   * Type.ctor(box, [[string]]);                                             // new (string) => box
+   * Type.ctor(box, [[string], []]);                                         // new (; string) => box
+   * Type.ctor(box, Type.signatures([Type.tuple(string), Type.tuple()]));    // same, slot pre-built
+   * Type.ctor({ instance: box, signatures: Type.signatures([Type.tuple()]) });
    * ```
+   *
+   * @throws TypeError - when a pre-built slot carries a row that is neither a tuple nor a list.
    */
-  export function ctor(instance: Type, signatures: Type.Signatures): ConstructorType;
+  export function ctor(instance: Type, signatures: TupleType | ListType | UnionType): ConstructorType;
+  export function ctor(instance: Type, signatures: readonly (readonly Type[])[]): ConstructorType;
   export function ctor(spec: Spec<ConstructorType>): ConstructorType;
+  export function ctor(spec: { instance: Type; signatures: readonly (readonly Type[])[]; }): ConstructorType;
   export function ctor(...args: any[]): ConstructorType {
     if (args.length > 1) {
-      return factory.ctor(args[0], atLeastOneSignature(args[1]));
+      return factory.ctor(args[0], factory.toSignatureSlot(args[1]));
     }
-    const spec = args[0] as Spec<ConstructorType>;
-    return factory.ctor(spec.instance, atLeastOneSignature(spec.signatures));
+    const spec = args[0];
+    return factory.ctor(spec.instance, factory.toSignatureSlot(spec.signatures));
   }
 
   /**
@@ -181,33 +220,46 @@ export namespace Type {
    * @example
    * ```ts
    * Type.abstractCtor(box, [[]]);                             // abstract new () => box
-   * Type.abstractCtor({ instance: box, signatures: [[]] });
+   * Type.abstractCtor(box, Type.signatures([Type.tuple()]));  // same, slot pre-built
+   * Type.abstractCtor({ instance: box, signatures: Type.signatures([Type.tuple()]) });
    * ```
+   *
+   * @throws TypeError - when a pre-built slot carries a row that is neither a tuple nor a list.
    */
-  export function abstractCtor(instance: Type, signatures: Type.Signatures): AbstractConstructorType;
+  export function abstractCtor(instance: Type, signatures: TupleType | ListType | UnionType): AbstractConstructorType;
+  export function abstractCtor(instance: Type, signatures: readonly (readonly Type[])[]): AbstractConstructorType;
   export function abstractCtor(spec: Spec<AbstractConstructorType>): AbstractConstructorType;
+  export function abstractCtor(spec: { instance: Type; signatures: readonly (readonly Type[])[]; }): AbstractConstructorType;
   export function abstractCtor(...args: any[]): AbstractConstructorType {
     if (args.length > 1) {
-      return factory.abstractCtor(args[0], atLeastOneSignature(args[1]));
+      return factory.abstractCtor(args[0], factory.toSignatureSlot(args[1]));
     }
-    const spec = args[0] as Spec<AbstractConstructorType>;
-    return factory.abstractCtor(spec.instance, atLeastOneSignature(spec.signatures));
+    const spec = args[0];
+    return factory.abstractCtor(spec.instance, factory.toSignatureSlot(spec.signatures));
   }
 
   /**
    * Reads a type token back into the {@link Type} it spells — the inverse of {@link stringify}.
    *
    * @remarks
-   * The token format: `docs/features/type-token-format.md`.
+   * The token format: `docs/features/type-token-format.md`. The token is read literally and the
+   * tree handed to {@link adopt}, so a token is canonicalized exactly as a hand-built node is.
    *
    * @throws TypeParseError - when the token is malformed.
    */
   export const from = (() => {
-    /** Every token that has already been read, so a repeated request skips the lexer. */
-    const parsed = new Map<string, Type>();
+    /**
+     * Every token that has already been read, so a repeated request skips the lexer.
+     *
+     * @remarks
+     * A prototype-less object, since a caller-spelled token may legally coincide with a name
+     * `Object.prototype` already carries — `toString`, `constructor` — and a plain `{}` would
+     * answer those from the inherited method rather than the cache.
+     */
+    const parsed: Record<string, Type> = Object.create(null);
 
-    return function from(type: string | Type): Type {
-      return typeof type === 'string' ? parsed.getOrInsertComputed(type, parseTypeString) : Type.adopt(type);
+    return function from(token: string): Type {
+      return parsed[token] ??= Type.adopt(parseLiteral(token));
     };
   })();
 
@@ -216,19 +268,24 @@ export namespace Type {
    *
    * @example
    * ```ts
-   * Type.func(box, [[string]]);                             // (string) => box
-   * Type.func(box, [[string], []]);                         // (string; ) => box
-   * Type.func({ return: box, signatures: [[]] });
+   * Type.func(box, [[string]]);                                             // (string) => box
+   * Type.func(box, [[string], []]);                                         // (; string) => box
+   * Type.func(box, Type.signatures([Type.tuple(string), Type.tuple()]));    // same, slot pre-built
+   * Type.func({ return: box, signatures: Type.signatures([Type.tuple()]) });
    * ```
+   *
+   * @throws TypeError - when a pre-built slot carries a row that is neither a tuple nor a list.
    */
-  export function func(returns: Type, signatures: Type.Signatures): FunctionType;
+  export function func(returns: Type, signatures: TupleType | ListType | UnionType): FunctionType;
+  export function func(returns: Type, signatures: readonly (readonly Type[])[]): FunctionType;
   export function func(spec: Spec<FunctionType>): FunctionType;
+  export function func(spec: { return: Type; signatures: readonly (readonly Type[])[]; }): FunctionType;
   export function func(...args: any[]): FunctionType {
     if (args.length > 1) {
-      return factory.func(args[0], atLeastOneSignature(args[1]));
+      return factory.func(args[0], factory.toSignatureSlot(args[1]));
     }
-    const spec = args[0] as Spec<FunctionType>;
-    return Type.adopt({ ...spec, signatures: atLeastOneSignature(spec.signatures), kind: 'func' });
+    const spec = args[0];
+    return factory.func(spec.return, factory.toSignatureSlot(spec.signatures));
   }
 
   /** An open generic argument — a labeled hole standing for a type bound later. */
@@ -310,6 +367,29 @@ export namespace Type {
     return factory.object(members);
   }
 
+  /** `Promise<settled>` — idempotent: `promise(Promise<X>)` returns the interned `Promise<X>`. */
+  export function promise(settled: Type): GlobalType {
+    return Type.global('Promise', [Type.awaited(settled)]);
+  }
+
+  /**
+   * A `JSON.parse` reviver that {@link adopt}s each type embedded in a document, leaving every
+   * other value as it was parsed.
+   *
+   * @remarks
+   * For a document that is one type, `Type.adopt(JSON.parse(text))` says the same thing more
+   * directly. A value is taken for a type when it names a kind and carries that kind's fields, so
+   * a foreign object wearing that exact shape is adopted too.
+   *
+   * @example
+   * ```ts
+   * JSON.parse(text, Type.reviver);
+   * ```
+   */
+  export function reviver(key: string, value: unknown): unknown {
+    return factory.isRawType(value) ? Type.adopt(value) : value;
+  }
+
   /**
    * The given type wearing a tag — a distinct name for the same underlying type, so the same
    * type under a different tag is a different type.
@@ -325,14 +405,29 @@ export namespace Type {
     return tag;
   })();
 
-  /** A fixed-length, ordered list of member types — `[A, B, C]`. */
+  /**
+   * An ordered list of member types — `[A, B, C]`. The variadic spelling is fixed-length; a
+   * trailing rest slot needs the spec form.
+   *
+   * @remarks
+   * A tuple that is nothing but a rest slot is the list its open length draws from, so
+   * `{ members: [], rest: x }` collapses to `Type.array(x)`; `{ members: [] }` with no rest is
+   * the zero-length tuple.
+   *
+   * @example
+   * ```ts
+   * Type.tuple(a, b);                          // [a, b]
+   * Type.tuple({ members: [a], rest: b });     // [a, ...b[]]
+   * Type.tuple({ members: [], rest: b });      // b[] — the list itself
+   * ```
+   */
   export function tuple(...types: readonly Type[]): TupleType;
-  export function tuple(spec: Spec<TupleType>): TupleType;
-  export function tuple(...args: readonly Type[] | [Spec<TupleType>]): TupleType {
+  export function tuple(spec: Spec<TupleType>): TupleType | ListType;
+  export function tuple(...args: readonly Type[] | [Spec<TupleType>]): TupleType | ListType {
     const [first] = args;
     return first !== undefined && !isNode(first)
-      ? factory.tuple(first.members)
-      : factory.tuple(args as readonly Type[]);
+      ? factory.tuple(first.members, first.rest)
+      : factory.tuple(args as readonly Type[], undefined);
   }
 
   /** A single literal value as a type — `'on'`, `42`, `true`, `null`. */
@@ -386,13 +481,36 @@ export namespace Type {
   })();
 
   /** Does `type` still hold a generic hole anywhere? */
-  export function isOpen(type: Type): boolean {
-    return isOpenType(type);
+  export const isOpen = (() => {
+    const visitor = new IsOpenVisitor();
+    const check = memo(function isOpen(type: Type): boolean {
+      return visitor.visit(type);
+    });
+    return function isOpen(type: Type): boolean {
+      return check(type);
+    };
+  })();
+
+  export function isClosed(type: Type): boolean {
+    return !Type.isOpen(type);
   }
 
   /** Does the type admit `undefined` — the `undefined` literal itself, or a union carrying it? */
   export function isOptional(type: Type): boolean {
     return type === Type.typeLiteral(undefined) || type.kind === 'union' && type.members.includes(Type.typeLiteral(undefined));
+  }
+
+  const PROMISE_PATTERN = Type.global('Promise', [Type.generic('S')]);
+
+  /** Is `type` a `Promise<…>` — the one spelling the container reads as deferred delivery? */
+  export function isPromise(type: Type): boolean {
+    return Type.isMatch(PROMISE_PATTERN, type);
+  }
+
+  /** What `type` settles to: the inner type for a `Promise<T>`, the type itself otherwise. */
+  export function awaited(type: Type): Type {
+    const [matched, generics] = Type.extractMatchedGenerics(PROMISE_PATTERN, type);
+    return matched ? generics.S! : type;
   }
 
   /**
@@ -406,8 +524,29 @@ export namespace Type {
    *
    * @throws Error - when `constraint` itself holds a generic hole.
    */
-  export function bindGenerics(candidate: Type, constraint: Type) {
-    return matchType(candidate, constraint);
+  export const extractMatchedGenerics = (() => {
+    const visitor = new MatchVisitor();
+    return function bindGenerics(possiblyOpenCandidate: Type, closedConstraint: Type): [isMatch: false] | [isMatch: true, generics: Record<string, Type>] {
+      if (possiblyOpenCandidate === closedConstraint) {
+        return [true, Object.create(null) as Record<string, Type>];
+      }
+      if (Type.isOpen(closedConstraint)) {
+        throw new Error(`bindGenerics: the constraint type may not contain generic holes — got ${Type.stringify(closedConstraint)}`);
+      }
+      const bindings: Record<string, Type> = Object.create(null);
+      return visitor.visit(possiblyOpenCandidate, { subject: closedConstraint, bindings }) ? [true, bindings] : [false];
+    };
+  })();
+
+  /**
+   * Does some instantiation of `pattern` equal `candidate`?
+   *
+   * @param pattern - may contain generic holes.
+   * @param candidate - may not contain generic holes.
+   * @throws Error - when `candidate` holds a generic hole.
+   */
+  export function isMatch(pattern: Type, candidate: Type): boolean {
+    return Type.extractMatchedGenerics(pattern, candidate)[0];
   }
 
   /** Writes the type as its token spelling — the inverse of {@link from}. */
@@ -416,31 +555,44 @@ export namespace Type {
   }
 
   /** Replaces each generic hole whose label the map names; other holes stay. */
-  export function substitute(type: ConstructorType, substitutions: ReadonlyMap<string, Type>): ConstructorType;
-  export function substitute(type: FunctionType, substitutions: ReadonlyMap<string, Type>): FunctionType;
-  export function substitute(type: Type, substitutions: ReadonlyMap<string, Type>): Type;
-  export function substitute(type: Type, substitutions: ReadonlyMap<string, Type>): Type {
-    return substituteType(type, substitutions);
+  export function substitute(type: ConstructorType, substitutions: Readonly<Record<string, Type>>): ConstructorType;
+  export function substitute(type: FunctionType, substitutions: Readonly<Record<string, Type>>): FunctionType;
+  export function substitute(type: Type, substitutions: Readonly<Record<string, Type>>): Type;
+  export function substitute(type: Type, substitutions: Readonly<Record<string, Type>>): Type {
+    if (Type.isClosed(type)) {
+      return type;
+    }
+    return new SubstituteVisitor(substitutions).visit(type);
   }
 
-  /** The lenient no-arg spelling: `[]` names no call, so it reads as one empty signature. */
-  function atLeastOneSignature(signatures: Type.Signatures): Type.Signatures {
-    return signatures.length ? signatures : [[]];
+  /**
+   * Builds the signatures slot a callable carries. Each row is one overload: a {@link TupleType}
+   * for a fixed argument list (an open one when it carries a rest slot), a {@link ListType} for a
+   * signature that is entirely a rest. Several rows become a union; one returns the row itself.
+   *
+   * @throws TypeError - when no row is given (a callable answers to at least one call), or a row
+   * is neither a tuple nor a list.
+   */
+  export function signatures(rows: readonly (TupleType | ListType)[]): TupleType | ListType | UnionType {
+    return factory.signatures(rows);
+  }
+
+  /**
+   * The per-overload rows a callable's signature slot carries, in stored order: one entry per
+   * overload, each a {@link TupleType} (fixed arity) or a {@link ListType} (rest-only).
+   *
+   * @remarks
+   * A union's members are returned as-stored — the canonical order the slot was interned with.
+   * Consumers that need a different order (e.g. longest-first) sort the result themselves.
+   */
+  export function signatureRows(slot: TupleType | ListType | UnionType): readonly (TupleType | ListType)[] {
+    if (slot.kind === 'union') {
+      return slot.members as readonly (TupleType | ListType)[];
+    }
+    return [slot];
   }
 
   // #endregion
-
-  // #region types
-
-  /**
-   * The signatures a callable answers to — one signature per overload, in declaration order, each signature
-   * holding that overload's arg types in order.
-   *
-   * @remarks
-   * An un-overloaded callable carries exactly one signature, and one that takes no args carries one EMPTY
-   * signature — a node never holds `[]`, which the factories accept only as a lenient spelling of `[[]]`.
-   */
-  export type Signatures = ReadonlyArray<readonly Type[]>;
 
   /**
    * The dispatch surface over the node kinds — subclass it and implement the `visit*` member for

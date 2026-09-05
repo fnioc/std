@@ -150,6 +150,7 @@ func New(prog *driver.Program, addDiagnostic func(Diagnostic)) plugin.FileTransf
 			anchor:        plugin.NewCheckerAnchor(ec, sf),
 			addDiagnostic: addDiagnostic,
 			verbose:       os.Getenv(mergesynthVerboseEnv) == "1",
+			guardKeys:     map[string]string{},
 		}
 		var visitor *shimast.NodeVisitor
 		visit := func(node *shimast.Node) *shimast.Node {
@@ -187,6 +188,11 @@ type synthesizer struct {
 	// synthesizer is built — the escape hatch back to a MERGESYNTH_PRIVATE_SURFACE
 	// diagnostic per weakened guard. Unset, a weakened guard is reported nowhere.
 	verbose bool
+	// guardKeys tracks the guard parameter signature each member name has been
+	// assigned, across registrations in one file. When a later registration
+	// assigns a provably identical guard to the same member, the conflict is
+	// reported.
+	guardKeys map[string]string
 }
 
 func (s *synthesizer) factory() *shimast.NodeFactory {
@@ -517,12 +523,87 @@ func (s *synthesizer) strategyFor(m member) *shimast.Node {
 	}
 	s.reportPrivateSurface(receiver, m.name, findings)
 
+	guardKey := s.guardKey(guardable, typeParams)
+	if prev, exists := s.guardKeys[m.name]; exists && prev == guardKey {
+		s.addDiagnostic(Diagnostic{
+			File:     s.file.FileName(),
+			Category: Error,
+			Code:     "MERGESYNTH_INDISTINGUISHABLE_GUARDS",
+			Message:  "two registrations for \"" + m.name + "\" produce identical runtime guards — the second can never dispatch",
+		})
+	}
+	s.guardKeys[m.name] = guardKey
+
 	// No parameter type could be derived AND none was refused: nothing at all is
 	// known about the call, so the extension silently wins.
 	if len(guards) == 0 && !refused {
 		return s.alwaysPassStrategy()
 	}
 	return s.guardedStrategy(guards, minArity, maxArity, hasRest)
+}
+
+// guardKey derives a string that identifies the runtime guard a member's
+// parameters produce. Two members whose guardKeys are equal produce provably
+// identical runtime dispatch — the second can never fire.
+func (s *synthesizer) guardKey(params []*shimast.Node, typeParams map[string]bool) string {
+	parts := make([]string, 0, len(params))
+	for _, p := range params {
+		typeNode := p.AsParameterDeclaration().Type
+		if typeNode == nil {
+			parts = append(parts, "_")
+			continue
+		}
+		if typeNode.Kind == shimast.KindAnyKeyword || typeNode.Kind == shimast.KindUnknownKeyword {
+			parts = append(parts, "_")
+			continue
+		}
+		if referencesTypeParameter(typeNode, typeParams) {
+			parts = append(parts, "_")
+			continue
+		}
+		t := s.checker.GetTypeFromTypeNode(typeNode)
+		if t == nil {
+			parts = append(parts, "_")
+			continue
+		}
+		parts = append(parts, s.guardClassification(t))
+	}
+	return strings.Join(parts, ",")
+}
+
+// guardClassification returns a string classifying what runtime guard a type
+// produces. Two types with the same classification produce identical guards.
+func (s *synthesizer) guardClassification(t *shimchecker.Type) string {
+	switch {
+	case s.typiaFaithful(t, map[*shimchecker.Type]bool{}):
+		return "faithful:" + s.checker.TypeToString(t)
+	case t.Flags()&shimchecker.TypeFlagsESSymbolLike != 0:
+		return "typeof:symbol"
+	case t.Flags()&shimchecker.TypeFlagsUnion != 0:
+		return "union:" + s.checker.TypeToString(t)
+	case t.Flags()&shimchecker.TypeFlagsIntersection != 0:
+		return "intersection:" + s.checker.TypeToString(t)
+	case shimchecker.IsTupleType(t):
+		return "tuple:" + s.checker.TypeToString(t)
+	case s.arrayElementType(t) != nil:
+		return "array:" + s.checker.TypeToString(t)
+	case s.isCallable(t):
+		return "callable"
+	case s.nominalGlobalOf(t) != "":
+		return "nominal:" + s.nominalGlobalOf(t)
+	case s.stringIndexValueType(t) != nil:
+		return "record:" + s.checker.TypeToString(t)
+	case s.isIterableType(t):
+		return "iterable"
+	case typesurface.FromLibrary(s.prog, t):
+		return "floor:library"
+	case t.Flags()&shimchecker.TypeFlagsObject != 0:
+		return "object:" + s.checker.TypeToString(t)
+	case t.Flags()&shimchecker.TypeFlagsNonPrimitive != 0:
+		return "floor:nonprimitive"
+	default:
+		return "unknown:" + s.checker.TypeToString(t)
+	}
 }
 
 // reportPrivateSurface emits, under TTSC_MERGESYNTH_VERBOSE=1, ONE
@@ -707,6 +788,8 @@ func (s *synthesizer) guardForType(
 		return s.nominalGuard(context, t, seen)
 	case s.stringIndexValueType(t) != nil:
 		return s.recordGuard(context, t, seen)
+	case s.isIterableType(t):
+		return s.iterableGuard()
 	case typesurface.FromLibrary(s.prog, t):
 		// Some other built-in. Its members are an implementation of an identity,
 		// not the identity itself, so per-member clauses would say nothing about
@@ -738,6 +821,45 @@ func (s *synthesizer) objectFloor(reason string) guard {
 func (s *synthesizer) nonPrimitiveGuard() guard {
 	f := s.factory()
 	return guard{node: guardClosure(f, nil, objectKindCondition(f)), floor: true}
+}
+
+// iterableNames are the library interface names that define the iteration
+// protocol — a value of any of these carries `Symbol.iterator`.
+var iterableNames = map[string]bool{
+	"Iterable": true, "IterableIterator": true, "ReadonlyArray": true,
+	"ReadonlySet": true, "ReadonlyMap": true,
+}
+
+// isIterableType reports whether t is one of the library iteration-protocol
+// interfaces whose defining runtime property is `Symbol.iterator`.
+func (s *synthesizer) isIterableType(t *shimchecker.Type) bool {
+	if !typesurface.FromLibrary(s.prog, t) {
+		return false
+	}
+	return iterableNames[typeSymbolName(t)]
+}
+
+// iterableGuard emits a guard that checks both the object kind and the
+// `Symbol.iterator` member:
+//
+//	(input) => (typeof input === "object" || typeof input === "function")
+//	    && input !== null && Symbol.iterator in input
+func (s *synthesizer) iterableGuard() guard {
+	f := s.factory()
+	condition := f.NewBinaryExpression(
+		nil,
+		objectKindCondition(f),
+		nil,
+		f.NewToken(shimast.KindAmpersandAmpersandToken),
+		f.NewBinaryExpression(
+			nil,
+			f.NewPropertyAccessExpression(f.NewIdentifier("Symbol"), nil, f.NewIdentifier("iterator"), shimast.NodeFlagsNone),
+			nil,
+			f.NewToken(shimast.KindInKeyword),
+			f.NewIdentifier("input"),
+		),
+	)
+	return guard{node: guardClosure(f, nil, condition)}
 }
 
 // firstReason is the first non-empty of two weakening reasons — a guard reports

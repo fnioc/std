@@ -37,8 +37,9 @@
 // then either app's `errors-demo.ts`; the line between the two files is the line
 // between the abstractions and the engine.
 
-import { CycleError, DiError, ManifestValidationError, Type, UnsatisfiableError } from '@rhombus-std/di.core';
+import { CycleError, DiError, ManifestValidationError, UnsatisfiableError } from '@rhombus-std/di.core';
 import type { Manifest } from '@rhombus-std/di.core';
+import { Type } from '@rhombus-std/primitives';
 
 // ── types ────────────────────────────────────────────────────────────────────
 //

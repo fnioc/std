@@ -14,6 +14,7 @@
     "@rhombus-std/di": "workspace:*",
     "@rhombus-std/di.core": "workspace:*",
     "@rhombus-std/options": "workspace:*",
-    "@rhombus-std/options.augmentations": "workspace:*"
+    "@rhombus-std/options.augmentations": "workspace:*",
+    "@rhombus-std/primitives": "workspace:*"
   }
 }
