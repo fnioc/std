@@ -5,6 +5,7 @@
 import { LoggerFactory, LoggerFilterOptions } from '@rhombus-std/logging';
 import { logError, logInformation, LogLevel, logTrace, logWarning } from '@rhombus-std/logging.core';
 import { describe, expect, test } from 'bun:test';
+import { AsyncResource } from 'node:async_hooks';
 import { RecordingProvider, ScopeAwareProvider } from './helpers';
 
 /** The levels the provider's sink for `category` actually recorded. */
@@ -112,8 +113,14 @@ describe('LoggerFactory external scope', () => {
 
     expect(provider.scopeProvider).toBeDefined();
 
-    using _scope = logger.beginScope('op-1');
-    logError(logger, 'boom');
+    // The scope provider threads the ambient stack with enterWith, which swaps
+    // the current async-context frame. Confine that swap to a child scope: the
+    // test runner's own frame (its completion tracking rides it) must survive
+    // this test for every test that runs after.
+    new AsyncResource('scope-probe').runInAsyncScope(() => {
+      using _scope = logger.beginScope('op-1');
+      logError(logger, 'boom');
+    });
 
     expect(provider.seenScopes).toEqual([['op-1']]);
   });

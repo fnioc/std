@@ -359,3 +359,115 @@ const after = 2;
 		t.Errorf("reprint produced no statements:\n%s", out)
 	}
 }
+
+// Every parameter is named, so a call that stops short has omitted the optional
+// tail: those names reach Substitute as unbound and their argument-position
+// references drop out, leaving exactly the call a hand author would have
+// written. Driven at all arities, because the interesting boundaries are "one"
+// and "none".
+func TestSubstituteOmittedArgumentsDropOut(t *testing.T) {
+	params := []string{"ctor", "signatures", "scope"}
+	cases := []struct {
+		name string
+		call string
+		want string
+	}{
+		{"every argument supplied", `reg.addClass(Foo, sigs, scope);`, `reg.register(tok, Foo, sigs, scope)`},
+		{"the optional tail omitted", `reg.addClass(Foo, sigs);`, `reg.register(tok, Foo, sigs)`},
+		{"a single argument", `reg.addClass(Foo);`, `reg.register(tok, Foo)`},
+		{"no arguments at all", `reg.addClass();`, `reg.register(tok)`},
+	}
+	for _, c := range cases {
+		t.Run(c.name, func(t *testing.T) {
+			ec := shimprinter.NewEmitContext()
+
+			decl := parse(t, "declaring.ts", `
+export function addClass(ctor, signatures, scope) {
+	return this.register(tok, ctor, signatures, scope);
+}
+`)
+			body := returnExpr(t, decl)
+
+			consumer := parse(t, "consumer.ts", "const answer = "+c.call+"\n")
+			call, receiver, args := findCall(t, consumer, "addClass")
+
+			res := Substitute(ec, Inlining{
+				Body:     body,
+				Receiver: receiver,
+				Params:   params,
+				Args:     args,
+				Unbound:  params[len(args):],
+			})
+
+			out := reprint(ec, splice(ec, consumer, call, res.Expr))
+			if !strings.Contains(out, c.want) {
+				t.Errorf("expected %q, got:\n%s", c.want, out)
+			}
+			for _, name := range params[len(args):] {
+				if strings.Contains(out, name) {
+					t.Errorf("the omitted parameter %q must not survive substitution, got:\n%s", name, out)
+				}
+			}
+		})
+	}
+}
+
+// An omission can only be honored at the tail. A body that reads an omitted
+// parameter ahead of one the call did supply leaves the name standing, and
+// danglingParam is what turns that into a loud diagnostic rather than emitted
+// code referencing a binding that does not exist.
+func TestDanglingParamFindsANonTrailingOmission(t *testing.T) {
+	ec := shimprinter.NewEmitContext()
+
+	decl := parse(t, "declaring.ts", `
+export function addClass(scope, ctor) {
+	return this.register(ctor, scope);
+}
+`)
+	body := returnExpr(t, decl)
+
+	consumer := parse(t, "consumer.ts", "const answer = reg.addClass(here);\n")
+	_, receiver, args := findCall(t, consumer, "addClass")
+
+	params := []string{"scope", "ctor"}
+	in := Inlining{Body: body, Receiver: receiver, Params: params, Args: args, Unbound: params[len(args):]}
+	res := Substitute(ec, in)
+
+	if got := danglingParam(res.Expr, in.unbound()); got != "ctor" {
+		t.Errorf("danglingParam = %q, want %q", got, "ctor")
+	}
+}
+
+// A `this` behind a nested non-arrow function belongs to that function's own
+// scope and must survive substitution untouched, while an arrow inherits the
+// enclosing `this` and is substituted. The two substitutable sites sit on a
+// simple receiver, so they duplicate without a temp.
+func TestSubstituteStopsAtOwnThisBoundaries(t *testing.T) {
+	ec := shimprinter.NewEmitContext()
+
+	decl := parse(t, "declaring.ts", `
+export function wire() {
+	return this.use(() => this.tag, function () { return this.tag; });
+}
+`)
+	body := returnExpr(t, decl)
+
+	consumer := parse(t, "consumer.ts", "const answer = reg.wire();\n")
+	call, receiver, args := findCall(t, consumer, "wire")
+
+	res := Substitute(ec, Inlining{Body: body, Receiver: receiver, Args: args})
+	if res.NeedsTempHoist {
+		t.Fatalf("simple receiver must duplicate, not hoist a temp")
+	}
+
+	out := reprint(ec, splice(ec, consumer, call, res.Expr))
+	if !strings.Contains(out, "reg.use(") {
+		t.Errorf("outer `this` must become the receiver, got:\n%s", out)
+	}
+	if !strings.Contains(out, "=> reg.tag") {
+		t.Errorf("an arrow's `this` inherits the inline site and must be substituted, got:\n%s", out)
+	}
+	if !strings.Contains(out, "this.tag") {
+		t.Errorf("a nested function's own `this` must survive untouched, got:\n%s", out)
+	}
+}

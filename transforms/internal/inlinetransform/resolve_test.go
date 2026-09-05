@@ -11,12 +11,12 @@ import (
 )
 
 // pilotMemberEntry is the standard IQuery/QueryInline/isService member entry a
-// buildWorkspace workspace declares, owned by its core package.
+// buildWorkspace workspace declares, owned by its sugar package.
 func pilotMemberEntry(app string) OwnedEntry {
-	core := filepath.Join(filepath.Dir(app), "core")
+	sugar := filepath.Join(filepath.Dir(app), "sugar")
 	return OwnedEntry{
-		Entry:      Entry{Type: "@scope/core:IQuery", Impl: "QueryInline", Member: "isService"},
-		PackageDir: core,
+		Entry:      Entry{Type: "@scope/core:IQuery", Impl: "@scope/sugar:QueryInline", Member: "isService"},
+		PackageDir: sugar,
 	}
 }
 
@@ -26,39 +26,39 @@ const pilotCoreIndex = `export interface IQuery {
 export declare const provider: IQuery;
 `
 
-const pilotInlineBody = `import { tokenfor } from '@rhombus-std/primitives.extras';
-import type { IQuery } from './index';
+const pilotInlineBody = `import { typefor } from '@rhombus-std/primitives.extras';
+import type { IQuery } from '@scope/core';
 export const QueryInline = {
   isService<T>(this: IQuery): boolean {
-    return this.isService(tokenfor<T>());
+    return this.isService(typefor<T>());
   },
 };
 `
 
-// TestResolveMemberInertNoWitness: the entry's module is never witnessed by the
+// TestResolveMemberAbsentNoWitness: the entry's module is never witnessed by the
 // program (main.ts neither imports @scope/core nor carries the declare-module),
-// so resolution is inert — skip silently, never an error.
-func TestResolveMemberInertNoWitness(t *testing.T) {
+// so the entry contributes nothing — skip silently, never an error.
+func TestResolveMemberAbsentNoWitness(t *testing.T) {
 	prog, app := buildWorkspace(t, pilotCoreIndex, pilotInlineBody, `export {};
 `, `export const x = 1;
 `)
 	defer func() { _ = prog.Close() }()
 
-	_, inert, err := Resolve(prog, prog.Checker, newBodyExtractor(), pilotMemberEntry(app))
+	_, outcome, err := Resolve(prog, prog.Checker, newBodyExtractor(), pilotMemberEntry(app))
 	if err != nil {
 		t.Fatalf("Resolve: %v", err)
 	}
-	if !inert {
-		t.Fatal("expected inert — @scope/core is not witnessed by the program")
+	if outcome != OutcomeAbsent {
+		t.Fatalf("outcome = %v, want OutcomeAbsent — @scope/core is not witnessed by the program", outcome)
 	}
 }
 
-// TestResolveMemberInertNoSugarOverload: the module IS witnessed but the sugar
+// TestResolveMemberUnmatchedPublishesShape: the module IS witnessed but the sugar
 // overload (`isService<T>()`) is not loaded — only the primitive `isService(token)`
-// exists — so the member symbol resolves yet no declaration matches the impl
-// discriminator. That is inert (declMap empty), never an error, and Build over
-// the workspace leaves artifacts inactive.
-func TestResolveMemberInertNoSugarOverload(t *testing.T) {
+// exists — so no declaration matches the impl discriminator. Nothing can inline,
+// yet the entry still publishes its call shape: a call written in that shape has
+// no way to lower and must reach the sweep rather than pass through.
+func TestResolveMemberUnmatchedPublishesShape(t *testing.T) {
 	mainSrc := `import { provider } from '@scope/core';
 export const y = provider.isService('x');
 `
@@ -66,23 +66,74 @@ export const y = provider.isService('x');
 `, mainSrc)
 	defer func() { _ = prog.Close() }()
 
-	_, inert, err := Resolve(prog, prog.Checker, newBodyExtractor(), pilotMemberEntry(app))
+	_, outcome, err := Resolve(prog, prog.Checker, newBodyExtractor(), pilotMemberEntry(app))
 	if err != nil {
 		t.Fatalf("Resolve: %v", err)
 	}
-	if !inert {
-		t.Fatal("expected inert — the sugar overload is not present, only the primitive")
+	if outcome != OutcomeUnmatched {
+		t.Fatalf("outcome = %v, want OutcomeUnmatched — the sugar overload is not present, only the primitive", outcome)
 	}
 
-	// Build must reflect the same: no entry resolves active → inactive artifacts.
 	artifacts := NewArtifacts()
 	var diags []plugin.Diagnostic
 	Build(prog, bodiesFor(t, app), artifacts, func(d plugin.Diagnostic) { diags = append(diags, d) })
 	if len(diags) != 0 {
 		t.Fatalf("Build raised diagnostics: %+v", diags)
 	}
-	if artifacts.Active {
-		t.Fatal("artifacts.Active should be false when every entry is inert")
+	if !artifacts.Active {
+		t.Fatal("artifacts.Active should be true — the marker's surface is in this program")
+	}
+	shapes := artifacts.SugarMembers["isService"]
+	if len(shapes) != 1 {
+		t.Fatal("the unmatched member published no shape, so the sweep cannot see a call to it")
+	}
+	if shapes[0].TypeArgCount != 1 {
+		t.Fatalf("published shape = %+v, want the body's one type parameter", shapes[0])
+	}
+}
+
+// coreIndexWithArityCollidingOverload is TestResolveMemberUnmatchedPublishesShape's
+// fixture plus ONE further declaration: a second, wholly unrelated overload of
+// isService that happens to share the sugar body's type-parameter count (one) but
+// takes two value parameters where the sugar body takes none — the exact shape
+// IServiceProvider.getService gained once it carried the two-argument
+// ConstructorType/FunctionType overloads alongside its base form.
+const coreIndexWithArityCollidingOverload = `export interface IQuery {
+  isService(token: string): boolean;
+  isService<T>(node: string, value: string): boolean;
+}
+export declare const provider: IQuery;
+`
+
+// TestResolveMemberUnmatchedDespiteArityCollidingOverload is the regression for
+// the type-parameter-count-only signal anyDeclarationTakes used to decide between
+// a silent OutcomeUnmatched and a hard INLINE_DISCRIMINATOR_MISMATCH. The sugar
+// overload itself (isService<T>(): boolean, zero value parameters) is genuinely
+// NOT loaded here — only the primitive and the arity-colliding overload above
+// are — so this must still resolve as unmatched, not error: type-parameter count
+// alone cannot tell "the sugar's own declaration" apart from "a same-arity-count
+// coincidence with something else entirely". Before the fix, the colliding
+// overload's shared type-parameter count made anyDeclarationTakes report the
+// sugar as present, turning this into a hard error over a program that never
+// loaded the sugar at all — exactly what broke di.extras' pre-existing
+// zero-argument getService<T>() sugar the moment IServiceProvider gained direct
+// getService overloads of its own carrying one type parameter each.
+func TestResolveMemberUnmatchedDespiteArityCollidingOverload(t *testing.T) {
+	mainSrc := `import { provider } from '@scope/core';
+export const y = provider.isService('x');
+`
+	prog, app := buildWorkspace(t, coreIndexWithArityCollidingOverload, pilotInlineBody, `export {};
+`, mainSrc)
+	defer func() { _ = prog.Close() }()
+
+	_, outcome, err := Resolve(prog, prog.Checker, newBodyExtractor(), pilotMemberEntry(app))
+	if err != nil {
+		t.Fatalf("Resolve: %v — the arity-colliding overload's shared type-parameter count must not "+
+			"turn a genuinely-absent sugar overload into a hard error", err)
+	}
+	if outcome != OutcomeUnmatched {
+		t.Fatalf("outcome = %v, want OutcomeUnmatched — the sugar overload is not present, "+
+			"only the primitive and an unrelated same-type-parameter-count overload", outcome)
 	}
 }
 
@@ -93,14 +144,14 @@ export const y = provider.isService('x');
 func TestResolveUnresolvedTypeAndMember(t *testing.T) {
 	// The impl carries BOTH isService and a `missing` member, so Extract of the
 	// `missing` member succeeds and resolution reaches the interface-member check.
-	inlineBody := `import { tokenfor } from '@rhombus-std/primitives.extras';
-import type { IQuery } from './index';
+	inlineBody := `import { typefor } from '@rhombus-std/primitives.extras';
+import type { IQuery } from '@scope/core';
 export const QueryInline = {
   isService<T>(this: IQuery): boolean {
-    return this.isService(tokenfor<T>());
+    return this.isService(typefor<T>());
   },
   missing<T>(this: IQuery): boolean {
-    return this.isService(tokenfor<T>());
+    return this.isService(typefor<T>());
   },
 };
 `
@@ -112,32 +163,26 @@ export const known = provider.isService<Foo>();
 	prog, app := buildWorkspace(t, pilotCoreIndex, inlineBody, pilotSugarDTS, mainSrc)
 	defer func() { _ = prog.Close() }()
 
-	core := filepath.Join(filepath.Dir(app), "core")
+	sugar := filepath.Join(filepath.Dir(app), "sugar")
 
 	t.Run("unresolved type", func(t *testing.T) {
-		e := OwnedEntry{Entry: Entry{Type: "@scope/core:Missing", Impl: "QueryInline", Member: "isService"}, PackageDir: core}
-		_, inert, err := Resolve(prog, prog.Checker, newBodyExtractor(), e)
-		if inert {
-			t.Fatal("a misspelled type must be a hard error, not inert")
-		}
+		e := OwnedEntry{Entry: Entry{Type: "@scope/core:Missing", Impl: "@scope/sugar:QueryInline", Member: "isService"}, PackageDir: sugar}
+		_, _, err := Resolve(prog, prog.Checker, newBodyExtractor(), e)
 		if err == nil || !strings.Contains(err.Error(), "INLINE_UNRESOLVED_TYPE") {
 			t.Fatalf("want INLINE_UNRESOLVED_TYPE, got %v", err)
 		}
 	})
 
 	t.Run("unresolved member", func(t *testing.T) {
-		e := OwnedEntry{Entry: Entry{Type: "@scope/core:IQuery", Impl: "QueryInline", Member: "missing"}, PackageDir: core}
-		_, inert, err := Resolve(prog, prog.Checker, newBodyExtractor(), e)
-		if inert {
-			t.Fatal("a member absent from the interface must be a hard error, not inert")
-		}
+		e := OwnedEntry{Entry: Entry{Type: "@scope/core:IQuery", Impl: "@scope/sugar:QueryInline", Member: "missing"}, PackageDir: sugar}
+		_, _, err := Resolve(prog, prog.Checker, newBodyExtractor(), e)
 		if err == nil || !strings.Contains(err.Error(), "INLINE_UNRESOLVED_MEMBER") {
 			t.Fatalf("want INLINE_UNRESOLVED_MEMBER, got %v", err)
 		}
 	})
 }
 
-// setupOverloadedFunctionWorkspace lays out an impl-only free-function whose
+// setupOverloadedFunctionWorkspace lays out an impl-only floater whose
 // export is OVERLOADED (a signature declaration plus its implementation).
 func setupOverloadedFunctionWorkspace(t *testing.T) (*driver.Program, string) {
 	t.Helper()
@@ -149,7 +194,7 @@ func setupOverloadedFunctionWorkspace(t *testing.T) (*driver.Program, string) {
   "name": "@scope/prims",
   "version": "1.0.0",
   "exports": { ".": { "types": "./src/index.ts", "default": "./src/index.ts" } },
-  "rhombus.inline": { "entries": [ { "impl": "identity" } ] }
+  "rhombus-std": { "inline": { "entries": [ { "impl": "@scope/prims:identity" } ] } }
 }`)
 	write(t, filepath.Join(prims, "src", "index.ts"), `export function identity<T>(value: T): T;
 export function identity<T>(value: T): T {
@@ -185,10 +230,10 @@ export const x = identity<number>(1);
 	return prog, app
 }
 
-// TestResolveFreeFunctionOverloadedRejected: an overloaded free function is not
+// TestResolveFreeFunctionOverloadedRejected: an overloaded floater is not
 // certified. The rejection surfaces as INLINE_BODY_SHAPE, because Extract runs
 // first and the first-found declaration is the bodyless overload signature — the
-// fnDecls!=1 (INLINE_ENTRY_SHAPE) guard in resolveFunction sits behind it as
+// fnDecls!=1 (INLINE_ENTRY_SHAPE) guard in resolveFloater sits behind it as
 // defense in depth. This pins the reachable behavior.
 //
 // Spec deviation: the gap named the fnDecls!=1 / INLINE_ENTRY_SHAPE branch; that
@@ -199,21 +244,18 @@ func TestResolveFreeFunctionOverloadedRejected(t *testing.T) {
 	defer func() { _ = prog.Close() }()
 
 	e := collectFreeFunction(t, app)
-	_, inert, err := Resolve(prog, prog.Checker, newBodyExtractor(), e)
-	if inert {
-		t.Fatal("an overloaded free function must be a hard error, not inert")
-	}
+	_, _, err := Resolve(prog, prog.Checker, newBodyExtractor(), e)
 	if err == nil || !strings.Contains(err.Error(), "INLINE_BODY_SHAPE") {
 		t.Fatalf("want INLINE_BODY_SHAPE (Extract sees the bodyless overload signature first), got %v", err)
 	}
 }
 
-// setupFunctionWorkspace lays out a two-package workspace for the impl-only
-// free-function grammar row: a scoped-name `@scope/prims` package that exports a
-// function and declares it inlineable with an `{ "impl": "identity" }` entry (no
-// type — no type-side anchor exists), plus an `app` consumer that imports and
-// calls it (the witness). importsPrims toggles whether the app imports the
-// package, exercising the witness/inert branch.
+// setupFunctionWorkspace lays out a two-package workspace for the floater
+// grammar row: a scoped-name `@scope/prims` package that exports a function
+// and declares it inlineable with an `{ "impl": "@scope/prims:identity" }`
+// entry (no type — no type-side anchor exists), plus an `app` consumer that
+// imports and calls it (the witness). importsPrims toggles whether the app
+// imports the package, exercising the witness/inert branch.
 func setupFunctionWorkspace(t *testing.T, importsPrims bool) (*driver.Program, string) {
 	t.Helper()
 	root := t.TempDir()
@@ -224,8 +266,8 @@ func setupFunctionWorkspace(t *testing.T, importsPrims bool) (*driver.Program, s
   "name": "@scope/prims",
   "version": "1.0.0",
   "exports": { ".": { "types": "./src/index.ts", "default": "./src/index.ts" } },
-  "rhombus.inline": {
-    "entries": [ { "impl": "identity" } ]
+  "rhombus-std": {
+    "inline": { "entries": [ { "impl": "@scope/prims:identity" } ] }
   }
 }`)
 	write(t, filepath.Join(prims, "src", "index.ts"), `export function identity<T>(value: T): T {
@@ -280,11 +322,11 @@ func collectFreeFunction(t *testing.T, app string) OwnedEntry {
 		t.Fatalf("Collect: %v", err)
 	}
 	for _, oe := range owned {
-		if oe.Entry.Impl == "identity" && oe.Entry.Type == "" && oe.Entry.Member == "" {
+		if oe.Entry.Impl == "@scope/prims:identity" && oe.Entry.Type == "" && oe.Entry.Member == "" {
 			return oe
 		}
 	}
-	t.Fatalf("free-function entry not collected: %+v", owned)
+	t.Fatalf("floater entry not collected: %+v", owned)
 	return OwnedEntry{}
 }
 
@@ -296,15 +338,15 @@ func TestResolveFreeFunctionAgainstOwningPackage(t *testing.T) {
 	defer func() { _ = prog.Close() }()
 
 	fnEntry := collectFreeFunction(t, app)
-	resolved, inert, rerr := Resolve(prog, prog.Checker, newBodyExtractor(), fnEntry)
+	resolved, outcome, rerr := Resolve(prog, prog.Checker, newBodyExtractor(), fnEntry)
 	if rerr != nil {
 		t.Fatalf("Resolve: %v", rerr)
 	}
-	if inert {
-		t.Fatal("free-function entry resolved inert — the owning package name did not anchor a witness")
+	if outcome != OutcomeActive {
+		t.Fatalf("outcome = %v, want OutcomeActive — the owning package name did not anchor a witness", outcome)
 	}
-	if resolved.Kind != KindFunction {
-		t.Fatalf("Kind = %v, want KindFunction", resolved.Kind)
+	if resolved.Kind != KindFloater {
+		t.Fatalf("Kind = %v, want KindFloater", resolved.Kind)
 	}
 	if resolved.Module != "@scope/prims" {
 		t.Fatalf("Module = %q, want @scope/prims (the owning package name)", resolved.Module)
@@ -314,20 +356,20 @@ func TestResolveFreeFunctionAgainstOwningPackage(t *testing.T) {
 	}
 }
 
-// TestResolveFreeFunctionInert asserts the witness rule for the impl-only row:
-// when the owning package's module is not touched by the program, the entry is
-// inert (skip silently), never an error.
-func TestResolveFreeFunctionInert(t *testing.T) {
+// TestResolveFreeFunctionAbsent asserts the witness rule for the impl-only row:
+// when the owning package's module is not touched by the program, the entry
+// contributes nothing (skip silently), never an error.
+func TestResolveFreeFunctionAbsent(t *testing.T) {
 	prog, app := setupFunctionWorkspace(t, false)
 	defer func() { _ = prog.Close() }()
 
 	fnEntry := collectFreeFunction(t, app)
-	resolved, inert, rerr := Resolve(prog, prog.Checker, newBodyExtractor(), fnEntry)
+	resolved, outcome, rerr := Resolve(prog, prog.Checker, newBodyExtractor(), fnEntry)
 	if rerr != nil {
 		t.Fatalf("Resolve: %v", rerr)
 	}
-	if !inert {
-		t.Fatalf("expected inert (no witness for @scope/prims), got resolved=%+v", resolved)
+	if outcome != OutcomeAbsent {
+		t.Fatalf("expected OutcomeAbsent (no witness for @scope/prims), got %v resolved=%+v", outcome, resolved)
 	}
 }
 
@@ -339,8 +381,8 @@ func TestResolveRejectsUncertifiedKinds(t *testing.T) {
 	defer func() { _ = prog.Close() }()
 
 	cases := map[string]Entry{
-		"class member":          {Type: "@scope/prims:Foo", Member: "bar"},
-		"object-literal member": {Impl: "FooLiteral", Member: "bar"},
+		"own-body member": {Type: "@scope/prims:Foo", Member: "bar"},
+		"static member":   {Impl: "@scope/prims:FooBase", Member: "bar"},
 	}
 	for name, e := range cases {
 		t.Run(name, func(t *testing.T) {

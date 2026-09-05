@@ -11,11 +11,12 @@
 // Environment variables are supplied through the injected `env` map (#16), so
 // these tests never touch the ambient `process.env`.
 
+import { describe, test } from 'bun:test';
 import assert from 'node:assert/strict';
 import { join } from 'node:path';
-import { describe, test } from 'node:test';
 
 import { ConfigBuilder } from '@rhombus-std/config';
+import { Type } from '@rhombus-std/primitives';
 // Bare side-effect imports: install addJsonFile / addEnvironmentVariables /
 // addCommandLine onto ConfigBuilder.prototype from each provider's
 // built dist.
@@ -50,9 +51,10 @@ describe('layering: addJsonFile / addEnvironmentVariables / addCommandLine (buil
     assert.equal(config.get('Server:Port'), '7070');
     // Same, seen through a typed section-scoped build (case-insensitive resolution).
     const typed = new ConfigBuilder().addJsonFile(`${FIXTURES}/base.json`).addJsonFile(`${FIXTURES}/overlay.json`)
-      .addEnvironmentVariables({ prefix: 'APP_', env: { APP_SERVER__PORT: '7070' } }).withSchema({
-        Server: { Port: 'number' },
-      }).build();
+      .addEnvironmentVariables({ prefix: 'APP_', env: { APP_SERVER__PORT: '7070' } })
+      .withSchema<{ Server: { Port: number; }; }>(Type.object({
+        Server: Type.object({ Port: Type.global('number') }),
+      })).build();
     assert.equal(typed.Server.Port, 7070);
 
     assert.equal(config.get('Server:Host'), 'localhost');
@@ -69,8 +71,7 @@ describe('layering: addJsonFile / addEnvironmentVariables / addCommandLine (buil
 
   test('command line overrides both JSON and environment variables', () => {
     const config = new ConfigBuilder().addJsonFile(`${FIXTURES}/base.json`).addJsonFile(`${FIXTURES}/overlay.json`)
-      .addEnvironmentVariables({ prefix: 'APP_', env: { APP_Server__Port: '7070' } }).addCommandLine(['--Server:Port',
-        '6060']).build();
+      .addEnvironmentVariables({ prefix: 'APP_', env: { APP_Server__Port: '7070' } }).addCommandLine(['--Server:Port', '6060']).build();
 
     assert.equal(config.get('Server:Port'), '6060');
     assert.equal(config.get('Server:Host'), 'localhost');

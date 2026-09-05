@@ -3,13 +3,13 @@
 // no ANSI: the browser devtools style each severity channel.
 //
 // IMPORTING THIS PACKAGE HAS A SIDE EFFECT: it registers the
-// `BrowserConsoleLoggerExtensions` set (the `addBrowserConsole` member) against
-// logging.core's ILoggingBuilder augmentation token, so the @augment-decorated
+// `BrowserConsoleLoggerAugmentations` set (the `addBrowserConsole` member) against
+// logging.core's ILoggingBuilder augmentation type, so the @augment-decorated
 // concrete LoggingBuilder gains the fluent `addBrowserConsole()` method form.
 
-export { BrowserConsoleLogger, type ConsoleMethod, consoleMethodFor } from './BrowserConsoleLogger';
-export { BrowserConsoleLoggerProvider } from './BrowserConsoleLoggerProvider';
+export * from './BrowserConsoleLogger';
+export * from './BrowserConsoleLoggerProvider';
 export type { ConsoleLike } from './ConsoleLike';
 
 // The ILoggingBuilder augmentation set (+ its side-effect registration).
-export { BrowserConsoleLoggerExtensions } from './BrowserConsoleLoggerExtensions';
+export * from './LoggingBuilder-BrowserConsole-augmentations';

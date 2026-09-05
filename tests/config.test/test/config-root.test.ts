@@ -5,8 +5,7 @@
 // (possibly empty) section, and getChildren dedup + numeric ordering at the
 // root.
 
-import { ConfigBuilder, ConfigReloadToken, ConfigRoot, type IConfigProvider, type IConfigRoot,
-  type ITryGetResult } from '@rhombus-std/config';
+import { ConfigBuilder, ConfigReloadToken, ConfigRoot, type IConfigProvider, type IConfigRoot, type ITryGetResult } from '@rhombus-std/config';
 import { ChangeToken, type IChangeToken } from '@rhombus-std/primitives';
 import { describe, expect, test } from 'bun:test';
 import { rootOf } from './support';
@@ -163,8 +162,7 @@ describe('ConfigRoot[Symbol.dispose] (releases registrations + disposable provid
   });
 
   test('dispose tolerates providers with no Symbol.dispose', () => {
-    const plain: IConfigProvider = { tryGet: () => [false], set: () => {},
-      getReloadToken: () => new ConfigReloadToken(), load: () => {}, getChildKeys: (earlierKeys) => earlierKeys };
+    const plain: IConfigProvider = { tryGet: () => [false], set: () => {}, getReloadToken: () => new ConfigReloadToken(), load: () => {}, getChildKeys: (earlierKeys) => earlierKeys };
     const root = new ConfigRoot([plain]);
 
     expect(() => root[Symbol.dispose]()).not.toThrow();

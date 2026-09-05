@@ -22,8 +22,7 @@ package.
 import '@rhombus-std/config.env'; // unlocks .addEnvironmentVariables() on ConfigBuilder
 import { ConfigBuilder } from '@rhombus-std/config';
 
-const config = new ConfigBuilder().addEnvironmentVariables({ prefix: 'APP_' })
-  .build();
+const config = new ConfigBuilder().addEnvironmentVariables({ prefix: 'APP_' }).build();
 
 // APP_SERVER__PORT=8080 in the environment resolves as:
 config.get('Server:Port'); // "8080"

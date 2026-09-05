@@ -10,8 +10,7 @@ import { describe, expect, test } from 'bun:test';
 // Side-effect import: installs `addJsonFile` + `addJsonStream` onto both builders.
 import '@rhombus-std/config.json';
 
-const PAYLOAD = JSON.stringify({ TopLevel: 'value',
-  Server: { Host: 'localhost', Port: 8080, UseTls: true, Tags: ['a', 'b'], Nullable: null } });
+const PAYLOAD = JSON.stringify({ TopLevel: 'value', Server: { Host: 'localhost', Port: 8080, UseTls: true, Tags: ['a', 'b'], Nullable: null } });
 
 describe('JsonStreamConfigProvider', () => {
   test('flattens a string payload with the same rules as the file provider', () => {

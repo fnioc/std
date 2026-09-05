@@ -31,13 +31,7 @@ func TestBaseStagesCanonicalOrder(t *testing.T) {
 	want := []string{
 		stagePrefix + "inline",
 		stagePrefix + "mergesynth",
-		stagePrefix + "nameof",
-		stagePrefix + "signatureof",
-		stagePrefix + "keyof",
-		stagePrefix + "valueof",
-		stagePrefix + "singular",
-		stagePrefix + "factory",
-		stagePrefix + "fold",
+		stagePrefix + "typefor",
 		stagePrefix + "schemaof",
 	}
 	got := stageNames(BaseStages())

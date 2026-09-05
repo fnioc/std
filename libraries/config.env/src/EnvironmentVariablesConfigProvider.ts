@@ -19,7 +19,7 @@
 // -- so it lands where a connection-string lookup expects it.
 
 import { ConfigProvider } from '@rhombus-std/config';
-import type { Func } from '@rhombus-toolkit/func';
+import type { Func } from '@rhombus-toolkit/types';
 import type { EnvironmentVariablesConfigSource } from './EnvironmentVariablesConfigSource';
 
 /**
@@ -27,9 +27,8 @@ import type { EnvironmentVariablesConfigSource } from './EnvironmentVariablesCon
  * platforms inject connection strings. A matching variable is re-keyed into
  * the `ConnectionStrings` section (the prefix stripped).
  */
-const CONNECTION_STRING_PREFIXES: readonly string[] = ['MYSQLCONNSTR_', 'SQLAZURECONNSTR_', 'SQLCONNSTR_',
-  'POSTGRESQLCONNSTR_', 'CUSTOMCONNSTR_', 'APIHUBCONNSTR_', 'DOCDBCONNSTR_', 'EVENTHUBCONNSTR_',
-  'NOTIFICATIONHUBCONNSTR_', 'REDISCACHECONNSTR_', 'SERVICEBUSCONNSTR_'];
+const CONNECTION_STRING_PREFIXES: readonly string[] = ['MYSQLCONNSTR_', 'SQLAZURECONNSTR_', 'SQLCONNSTR_', 'POSTGRESQLCONNSTR_', 'CUSTOMCONNSTR_', 'APIHUBCONNSTR_', 'DOCDBCONNSTR_',
+  'EVENTHUBCONNSTR_', 'NOTIFICATIONHUBCONNSTR_', 'REDISCACHECONNSTR_', 'SERVICEBUSCONNSTR_'];
 
 export class EnvironmentVariablesConfigProvider extends ConfigProvider {
   readonly #source: EnvironmentVariablesConfigSource;

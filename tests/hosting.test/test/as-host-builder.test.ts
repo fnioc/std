@@ -1,5 +1,6 @@
 import { MemoryConfigSource } from '@rhombus-std/config';
-import { Host } from '@rhombus-std/hosting/private/index';
+import { Host } from '@rhombus-std/hosting';
+import { Type } from '@rhombus-std/primitives';
 import { expect, test } from 'bun:test';
 
 test('asHostBuilder returns a cached classic IHostBuilder view', () => {
@@ -19,7 +20,7 @@ test('asHostBuilder replays accumulated configureServices onto the application b
   let replayed = false;
   hostBuilder.configureServices((_context, services) => {
     replayed = true;
-    return services.addValue('test:Marker', 'present');
+    return services.addValue(Type.from('test:Marker'), 'present');
   });
 
   // Not applied until the application builder is built.
@@ -27,7 +28,7 @@ test('asHostBuilder replays accumulated configureServices onto the application b
 
   const host = appBuilder.build();
   expect(replayed).toBe(true);
-  expect(host.services.resolve<string>('test:Marker')).toBe('present');
+  expect(host.services.resolve(Type.from('test:Marker'))).toBe('present');
 
   host[Symbol.dispose]();
 });

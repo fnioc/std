@@ -3,7 +3,7 @@
 // provider is the NullFileProvider (every lookup misses, watch monitors
 // nothing).
 //
-// The backing class is decorated `@augment(tokenfor<IHostEnvironment>())` so
+// The backing class is decorated `@augment(typefor<IHostEnvironment>())` so
 // it pulls hosting.core's environment predicates (isDevelopment/…) from the
 // augmentation registry, and class-side-merged below so it still SATISFIES
 // the fully-merged interface.
@@ -11,7 +11,7 @@
 import { NullFileProvider } from '@rhombus-std/fileproviders.core';
 import { Environments, type IHostEnvironment } from '@rhombus-std/hosting.core';
 import { augment } from '@rhombus-std/primitives';
-import { tokenfor } from '@rhombus-std/primitives.extras';
+import { typefor } from '@rhombus-std/primitives.extras';
 
 /** The name/application settings the browser environment reads. */
 export interface BrowserEnvironmentSettings {
@@ -22,16 +22,16 @@ export interface BrowserEnvironmentSettings {
 }
 
 // Interface-extends merge (augmentation doctrine): the registry-installed
-// environment predicates (hosting.core's HostEnvironmentEnvExtensions) reach the
+// environment predicates (hosting.core's HostEnvironmentEnvAugmentations) reach the
 // IHostEnvironment interface via hosting.core's own merge; binding the interface
 // SYMBOL here flows every current and future IHostEnvironment augmentation onto
 // this concrete holder, so it satisfies `implements IHostEnvironment` without
 // restating any member.
-export interface BrowserHostingEnvironment extends IHostEnvironment {}
+interface BrowserHostingEnvironment extends IHostEnvironment {}
 
 /** The mutable browser {@link IHostEnvironment} — see the module documentation. */
-@augment(tokenfor<IHostEnvironment>())
-export class BrowserHostingEnvironment implements IHostEnvironment {
+@augment(typefor<IHostEnvironment>())
+class BrowserHostingEnvironment implements IHostEnvironment {
   public environmentName: string = Environments.Production;
   public applicationName = '';
   public contentRootPath = '/';

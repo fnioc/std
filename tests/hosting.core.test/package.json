@@ -11,7 +11,10 @@
   },
   "devDependencies": {
     "@rhombus-std/di": "workspace:*",
+    "@rhombus-std/di.core": "workspace:*",
     "@rhombus-std/fileproviders.core": "workspace:*",
-    "@rhombus-std/hosting.core": "workspace:*"
+    "@rhombus-std/hosting.core": "workspace:*",
+    "@rhombus-std/primitives": "workspace:*",
+    "@rhombus-toolkit/types": "^2.0.0"
   }
 }

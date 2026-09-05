@@ -59,7 +59,7 @@ func findDiag(env decodedEnvelope, code string) *struct {
 // on the panic.
 func TestStagePanicIsReportedWithFileAndStage(t *testing.T) {
 	dir := t.TempDir()
-	writeFixture(t, dir, selfFixturePkg, nameofAppSrc)
+	writeFixture(t, dir, selfFixturePkg, typeforAppSrc)
 
 	host := Host{Name: "ttsc-std", Stages: []Stage{
 		boomStage(func(name string) bool { return strings.HasSuffix(name, "app.ts") }, "checker nil-deref"),
@@ -99,9 +99,9 @@ func TestStagePanicIsReportedWithFileAndStage(t *testing.T) {
 // every later file's lowering is untrustworthy.
 func TestStagePanicAbortsTheRun(t *testing.T) {
 	dir := t.TempDir()
-	writeFixture(t, dir, selfFixturePkg, nameofAppSrc)
-	if len(nameofAppSrc) < 2 {
-		t.Fatalf("this test needs a multi-file fixture to prove the abort; got %d files", len(nameofAppSrc))
+	writeFixture(t, dir, selfFixturePkg, typeforAppSrc)
+	if len(typeforAppSrc) < 2 {
+		t.Fatalf("this test needs a multi-file fixture to prove the abort; got %d files", len(typeforAppSrc))
 	}
 
 	host := Host{Name: "ttsc-std", Stages: []Stage{
@@ -119,12 +119,12 @@ func TestStagePanicAbortsTheRun(t *testing.T) {
 		}
 	}
 	if panics != 1 {
-		t.Fatalf("the run must abort on the FIRST panicking file; got %d %s diagnostics over %d source files", panics, stagePanicCode, len(nameofAppSrc))
+		t.Fatalf("the run must abort on the FIRST panicking file; got %d %s diagnostics over %d source files", panics, stagePanicCode, len(typeforAppSrc))
 	}
 	// The panicking file contributes no lowered output — a half-transformed file
 	// must never reach the envelope.
-	if len(env.TypeScript) >= len(nameofAppSrc) {
-		t.Errorf("the aborted run emitted %d lowered files for a %d-file fixture; the panicking file must be dropped", len(env.TypeScript), len(nameofAppSrc))
+	if len(env.TypeScript) >= len(typeforAppSrc) {
+		t.Errorf("the aborted run emitted %d lowered files for a %d-file fixture; the panicking file must be dropped", len(env.TypeScript), len(typeforAppSrc))
 	}
 }
 
@@ -142,7 +142,7 @@ func TestPrintPhasePanicNamesThePrint(t *testing.T) {
 	defer func() { _ = prog.Close() }()
 
 	var diags []Diag
-	_, survived := transformFileToTypeScript(prog, nil, []plugin.FileTransform{transform}, sf, nil, func(d Diag) { diags = append(diags, d) }, tracker)
+	_, survived := transformFileToTypeScript(prog, []plugin.FileTransform{transform}, sf, nil, func(d Diag) { diags = append(diags, d) }, tracker)
 	if !survived {
 		t.Fatalf("a non-panicking run must survive; diags = %+v", diags)
 	}

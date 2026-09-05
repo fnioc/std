@@ -8,20 +8,16 @@
 //   2. the three external-provider add* augmentations are actually installed on
 //      the SAME ConfigBuilder the consumer imports (they survived
 //      bundling with @rhombus-std/config kept external, and the `declare module`
-//      survived rollup-plugin-dts), and
-//   3. the Tier 2 with-type-augment subpath ships its throwing stub in dist and
-//      throws under node -- the published-mode behavior a source-mode bun test
-//      can't observe.
+//      survived rollup-plugin-dts).
 
+import { describe, test } from 'bun:test';
 import assert from 'node:assert/strict';
-import { describe, test } from 'node:test';
 
 import { ConfigBuilder } from '@rhombus-std/config';
-import { CommandLineConfigProvider, CommandLineConfigSource,
-  type CommandLineConfigSourceOptions } from '@rhombus-std/config.commandline';
-import { defaultVariableNameTransformation, EnvironmentVariablesConfigProvider, EnvironmentVariablesConfigSource,
-  type EnvironmentVariablesConfigSourceOptions } from '@rhombus-std/config.env';
+import { CommandLineConfigProvider, CommandLineConfigSource, type CommandLineConfigSourceOptions } from '@rhombus-std/config.commandline';
+import { defaultVariableNameTransformation, EnvironmentVariablesConfigProvider, EnvironmentVariablesConfigSource, type EnvironmentVariablesConfigSourceOptions } from '@rhombus-std/config.env';
 import { JsonConfigProvider, JsonConfigSource, type JsonConfigSourceOptions } from '@rhombus-std/config.json';
+import { Type } from '@rhombus-std/primitives';
 
 describe('cross-package public surface (built dist)', () => {
   test('each provider package exports its Source and Provider runtime bindings', () => {
@@ -45,7 +41,10 @@ describe('cross-package public surface (built dist)', () => {
     const config: { readonly Host: string; readonly Port: number; } = new ConfigBuilder().addCommandLine([
       '--Host=localhost',
       '--Port=8080',
-    ]).withSchema({ Host: 'string', Port: 'number' }).build();
+    ]).withSchema<{ Host: string; Port: number; }>(Type.object({
+      Host: Type.global('string'),
+      Port: Type.global('number'),
+    })).build();
 
     assert.deepEqual(config, { Host: 'localhost', Port: 8080 });
     // Compile-time: the builder threads the generic so `Port` is a `number`.
@@ -53,11 +52,14 @@ describe('cross-package public surface (built dist)', () => {
     assert.equal(port, 8080);
   });
 
-  test('the with-type-augment subpath ships its throwing stub in dist and throws under node', async () => {
-    await import('@rhombus-std/config/with-type-augment');
-    const builder = new ConfigBuilder();
-    assert.equal(typeof builder.withType, 'function');
-    assert.throws(() => builder.withType(), /@rhombus-std\/config.extras/);
+  test('withSchema(...).build() coerces a literal-union member through the built dist', () => {
+    const config: { readonly Mode: 'fast' | 'slow'; } = new ConfigBuilder().addCommandLine([
+      '--Mode=fast',
+    ]).withSchema<{ Mode: 'fast' | 'slow'; }>(Type.object({
+      Mode: Type.union(Type.typeLiteral('fast'), Type.typeLiteral('slow')),
+    })).build();
+
+    assert.deepEqual(config, { Mode: 'fast' });
   });
 
   test('provider option types are usable in a type position', () => {

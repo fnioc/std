@@ -2,17 +2,18 @@
 // at the top of the tree. Reads resolve last-registered-wins (providers are
 // checked in reverse per lookup); writes fan out to every provider.
 
-import type { ConfigObject, IConfigProvider, IConfigRoot, IConfigSection,
-  IndexedSection } from '@rhombus-std/config.core';
+import type { ConfigObject, IConfigProvider, IConfigRoot, IConfigSection, IndexedSection } from '@rhombus-std/config.core';
 import { ChangeToken, type IChangeToken } from '@rhombus-std/primitives';
-import type { Func } from '@rhombus-toolkit/func';
 import { IndexAccessed } from '@rhombus-toolkit/proxy-base';
+import type { Func } from '@rhombus-toolkit/types';
 import { parseBoolean, parseNumber } from './coerce';
 import { ConfigReloadToken } from './ConfigReloadToken';
 import { ConfigSection, subtreeToObject } from './ConfigSection';
-import { InternalConfigRootExtensions } from './InternalConfigRootExtensions';
+import { getChildrenImplementation } from './internal-children';
 
-export class ConfigRoot extends IndexAccessed<IndexedSection> implements IConfigRoot, Disposable {
+export interface ConfigRoot extends IConfigRoot {}
+
+export class ConfigRoot extends IndexAccessed<IndexedSection> implements Disposable {
   readonly #providers: IConfigProvider[];
   readonly #changeTokenRegistrations: Disposable[] = [];
   #changeToken = new ConfigReloadToken();
@@ -148,7 +149,7 @@ export class ConfigRoot extends IndexAccessed<IndexedSection> implements IConfig
 
   /** The immediate top-level sections of this root. */
   public getChildren(): Iterable<IConfigSection> {
-    return InternalConfigRootExtensions.getChildrenImplementation(this, undefined);
+    return getChildrenImplementation(this, undefined);
   }
 
   /** The whole tree as a nested plain string object. */

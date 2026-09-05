@@ -6,9 +6,7 @@ import type { IOptions } from '@rhombus-std/options';
 import { MemoryCacheOptions } from './MemoryCacheOptions';
 
 /** Options for a {@link MemoryDistributedCache}. */
-export class MemoryDistributedCacheOptions extends MemoryCacheOptions
-  implements IOptions<MemoryDistributedCacheOptions>
-{
+export class MemoryDistributedCacheOptions extends MemoryCacheOptions implements IOptions<MemoryDistributedCacheOptions> {
   public constructor() {
     super();
     this.sizeLimit = 200 * 1024 * 1024;

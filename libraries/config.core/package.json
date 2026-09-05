@@ -1,7 +1,7 @@
 {
   "name": "@rhombus-std/config.core",
   "version": "0.0.0",
-  "description": "Configuration abstractions (the assembly mirroring the reference .Configuration.Abstractions): the IConfig* interfaces and ITryGetResult, plus the abstraction-level runtime that belongs here by parity -- the configPath helpers, the ConfigAugmentations/ConfigRootAugmentations convenience sets + exists, and the isConfigSection runtime discriminant. Depends on @rhombus-std/primitives for the IChangeToken/AugmentationSet types.",
+  "description": "Configuration abstractions: the IConfig* interfaces and ITryGetResult, plus the abstraction-level runtime that belongs here -- the configPath helpers, the ConfigAugmentations/ConfigRootAugmentations convenience sets + exists, and the isConfigSection runtime discriminant. Depends on @rhombus-std/primitives for the IChangeToken/AugmentationSet types.",
   "keywords": [
     "configuration",
     "config",
@@ -16,16 +16,9 @@
     "directory": "libraries/config.core"
   },
   "type": "module",
-  "main": "./dist/bundle/index.js",
-  "types": "./dist/bundle/index.d.ts",
+  "main": "./src/index.ts",
   "exports": {
-    ".": {
-      "source": "./src/index.ts",
-      "bun": "./dist/bundle/index.js",
-      "types": "./dist/bundle/index.d.ts",
-      "import": "./dist/bundle/index.js",
-      "default": "./dist/bundle/index.js"
-    }
+    ".": "./src/index.ts"
   },
   "files": [
     "dist"
@@ -36,19 +29,15 @@
   },
   "dependencies": {
     "@rhombus-std/primitives": "workspace:*",
-    "@rhombus-toolkit/func": "^3.5.3"
+    "@rhombus-toolkit/type-guards": "^4.0.0",
+    "@rhombus-toolkit/types": "^2.0.0"
   },
   "publishConfig": {
     "access": "public",
     "provenance": true,
     "main": "./dist/bundle/index.js",
-    "types": "./dist/bundle/index.d.ts",
     "exports": {
-      ".": {
-        "types": "./dist/bundle/index.d.ts",
-        "import": "./dist/bundle/index.js",
-        "default": "./dist/bundle/index.js"
-      }
+      ".": "./dist/bundle/index.js"
     }
   }
 }

@@ -15,7 +15,7 @@ import '@rhombus-std/config.file';
 import type { IDirectoryContents, IFileInfo, IFileProvider } from '@rhombus-std/fileproviders.core';
 import { PhysicalFileProvider } from '@rhombus-std/fileproviders.physical';
 import type { IChangeToken } from '@rhombus-std/primitives';
-import type { Func } from '@rhombus-toolkit/func';
+import type { Func } from '@rhombus-toolkit/types';
 import { afterEach, describe, expect, test } from 'bun:test';
 import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
@@ -57,11 +57,9 @@ class FakeFileProvider implements IFileProvider {
     const provider = this;
     return { get exists() {
       return provider.exists;
-    }, length: -1, physicalPath: provider.physicalPath,
-      name: provider.physicalPath ? basename(provider.physicalPath) : '', lastModified: new Date(0), isDirectory: false,
-      createReadStream(): never {
-        throw new Error('not used in these tests');
-      } };
+    }, length: -1, physicalPath: provider.physicalPath, name: provider.physicalPath ? basename(provider.physicalPath) : '', lastModified: new Date(0), isDirectory: false, createReadStream(): never {
+      throw new Error('not used in these tests');
+    } };
   }
 
   public getDirectoryContents(): IDirectoryContents {
@@ -327,7 +325,7 @@ describe('FileConfigProvider reload', () => {
   });
 });
 
-describe('FileConfigAugmentations builder augmentation', () => {
+describe('ConfigBuilderFileAugmentations builder augmentation', () => {
   test('getFileProvider defaults to a cwd-rooted PhysicalFileProvider', () => {
     const builder = new ConfigBuilder();
     expect(builder.getFileProvider()).toBeInstanceOf(PhysicalFileProvider);

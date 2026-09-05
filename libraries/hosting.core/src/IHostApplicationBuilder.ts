@@ -1,8 +1,8 @@
 import type { IConfigManager } from '@rhombus-std/config.core';
-import type { IServiceManifest, IServiceProviderFactory } from '@rhombus-std/di.core';
+import type { Manifest } from '@rhombus-std/di.core';
 import type { IMetricsBuilder } from '@rhombus-std/diagnostics.core';
 import type { ILoggingBuilder } from '@rhombus-std/logging.core';
-import type { Action } from '@rhombus-toolkit/func';
+import type { Action } from '@rhombus-toolkit/types';
 import type { IHostEnvironment } from './IHostEnvironment';
 
 /**
@@ -33,23 +33,17 @@ export interface IHostApplicationBuilder {
 
   /**
    * A collection of services for the application to compose. WRITABLE (a
-   * di.core `IServiceManifestHolder`): the manifest chain is immutable, so
+   * di.core `ManifestSlot`): the manifest chain is immutable, so
    * registering something reassigns `builder.services =
-   * builder.services.addClass(...)`. The same slot backs `logging` and `metrics`, so
+   * builder.services.add(...)`. The same slot backs `logging` and `metrics`, so
    * every registration route lands on one chain.
    */
-  services: IServiceManifest;
+  services: Manifest<unknown>;
 
   /**
-   * Registers a factory used to create the service provider. The `configure`
-   * delegate runs after all other services have been registered. Multiple calls
-   * replace the previously stored factory and delegate.
-   *
-   * @remarks
-   * `factory`'s type matches {@link IHostBuilder.useServiceProviderFactory}, but
-   * `TContainerBuilder` has no effect here — this always builds through the one
-   * real service provider.
+   * Configures the instantiated dependency container. The `configure` delegate
+   * runs after all other services have been registered. Multiple calls replace
+   * the previously stored delegate.
    */
-  configureContainer<TContainerBuilder>(factory: IServiceProviderFactory<TContainerBuilder>,
-    configure?: Action<[TContainerBuilder]>): void;
+  configureContainer(configure?: Action<[Manifest<unknown>]>): void;
 }

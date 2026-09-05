@@ -64,6 +64,8 @@
 package mergesynthtransform
 
 import (
+	"fmt"
+	"os"
 	"strings"
 
 	shimast "github.com/microsoft/typescript-go/shim/ast"
@@ -96,9 +98,36 @@ type Diagnostic struct {
 	Message  string
 }
 
+// mergesynthVerboseEnv is the escape hatch out of the default silent path:
+// unset, MERGESYNTH_PRIVATE_SURFACE reports nothing at all — a cold-cache
+// rebuild otherwise floods hundreds of near-identical lines. Set to "1" to get
+// the per-member detail, once per member per host process (mergesynthVerboseSeen).
+const mergesynthVerboseEnv = "TTSC_MERGESYNTH_VERBOSE"
+
+// mergesynthVerboseSeen is the process-wide set of (file, member) pairs already
+// reported under TTSC_MERGESYNTH_VERBOSE=1. The host's file loop can revisit
+// the same file more than once within one process — once per entrypoint
+// compile, or a cache-warmed envelope replaying a prior file's diagnostics —
+// and a member's line is worth reading once, not once per revisit. The host
+// runs its whole file loop on one goroutine (see typeforhoist's own note on
+// the same shape of state), so a plain map needs no lock.
+var mergesynthVerboseSeen = map[string]bool{}
+
+// markPrivateSurfaceSeen reports whether (file, member) already had its
+// MERGESYNTH_PRIVATE_SURFACE line reported this process, marking it seen as a
+// side effect — so a caller checking it can suppress exactly the repeats.
+func markPrivateSurfaceSeen(file, member string) (alreadySeen bool) {
+	key := file + "\x00" + member
+	if mergesynthVerboseSeen[key] {
+		return true
+	}
+	mergesynthVerboseSeen[key] = true
+	return false
+}
+
 // The install functions this stage rewrites, matched on the callee's resolved
-// symbol name (following import aliases) — the same looseness as the nameof
-// stage's matcher, and unambiguous for these two first-party names.
+// symbol name (following import aliases) — unambiguous for these two first-party
+// names.
 const (
 	registerName = "registerAugmentations"
 	applyName    = "applyAugmentations"
@@ -107,7 +136,10 @@ const (
 // New builds the per-file transform: every 2-argument (or gap-carrying
 // 3-argument) `registerAugmentations` / `applyAugmentations` call whose set
 // argument resolves to a statically-known object literal gains a synthesized
-// per-member merge-strategy map as its third argument.
+// per-member merge-strategy map as its third argument. It runs inside the
+// fixed-point loop, so it re-sees a call it already rewrote (fully covered —
+// the identical node comes back) and picks up an install call another stage
+// minted mid-loop.
 func New(prog *driver.Program, addDiagnostic func(Diagnostic)) plugin.FileTransform {
 	return func(ec *shimprinter.EmitContext, sf *shimast.SourceFile) *shimast.SourceFile {
 		s := &synthesizer{
@@ -115,7 +147,10 @@ func New(prog *driver.Program, addDiagnostic func(Diagnostic)) plugin.FileTransf
 			checker:       prog.Checker,
 			ec:            ec,
 			file:          sf,
+			anchor:        plugin.NewCheckerAnchor(ec, sf),
 			addDiagnostic: addDiagnostic,
+			verbose:       os.Getenv(mergesynthVerboseEnv) == "1",
+			guardKeys:     map[string]string{},
 		}
 		var visitor *shimast.NodeVisitor
 		visit := func(node *shimast.Node) *shimast.Node {
@@ -125,7 +160,7 @@ func New(prog *driver.Program, addDiagnostic func(Diagnostic)) plugin.FileTransf
 			if node.Kind == shimast.KindCallExpression {
 				if next := s.maybeRewrite(node.AsCallExpression()); next != nil {
 					// No recursion into the rewritten call: its original
-					// argument nodes (the nameof token derivation among them)
+					// argument nodes (the typefor token derivation among them)
 					// are preserved as-is for the later primitive stages'
 					// own full-file visits.
 					return next
@@ -147,7 +182,17 @@ type synthesizer struct {
 	checker       *shimchecker.Checker
 	ec            *shimprinter.EmitContext
 	file          *shimast.SourceFile
+	anchor        plugin.CheckerAnchor
 	addDiagnostic func(Diagnostic)
+	// verbose is TTSC_MERGESYNTH_VERBOSE=1, read once when the file's
+	// synthesizer is built — the escape hatch back to a MERGESYNTH_PRIVATE_SURFACE
+	// diagnostic per weakened guard. Unset, a weakened guard is reported nowhere.
+	verbose bool
+	// guardKeys tracks the guard parameter signature each member name has been
+	// assigned, across registrations in one file. When a later registration
+	// assigns a provably identical guard to the same member, the conflict is
+	// reported.
+	guardKeys map[string]string
 }
 
 func (s *synthesizer) factory() *shimast.NodeFactory {
@@ -213,33 +258,60 @@ func (s *synthesizer) maybeRewrite(call *shimast.CallExpression) *shimast.Node {
 	)
 }
 
-// isInstallCall reports whether call's callee resolves (through import
-// aliases) to `registerAugmentations` or `applyAugmentations`. The checker
-// panics on a synthetic callee, so a position-less node is a clean skip.
-//
-// THIS STAGE NEEDS NO PARSE ANCHOR, because of WHERE it runs, not what it does.
-// It is a one-shot PRE-PASS (stdhost.partitionStages) executed before the
-// fixed-point loop mutates anything, so every node it queries is still the node
-// the binder saw — there is no rewritten tree to be walked into, which is the
-// hazard plugin.CheckerAnchor exists for. If mergesynth ever REJOINS the loop
-// (the documented rejoin condition: a sugar body starts emitting install calls),
-// it must take the anchor at the same time, or it inherits the crash: this
-// predicate and resolveObjectLiteral below are exactly the syntax-driven
-// GetSymbolAtLocation queries the anchor governs everywhere else.
+// isInstallCall reports whether call is a receiver-taking install call —
+// `registerAugmentations(receiver, set, merge?)` / `applyAugmentations(Class,
+// set, merge?)`. This stage runs inside the fixed-point loop, so the checker is
+// only ever asked about parse-tree nodes (plugin.CheckerAnchor): a
+// source-written call resolves its callee through the anchor; a call with no
+// same-file anchor is engine-minted — an inline-substituted install whose
+// callee identifier is the value-import binding for the runtime install
+// function — and is matched by that identifier's text, the checker having no
+// location to resolve a minted node from.
 func (s *synthesizer) isInstallCall(call *shimast.CallExpression) bool {
-	if call.Expression.Pos() < 0 {
-		return false
-	}
-	symbol := s.checker.GetSymbolAtLocation(call.Expression)
-	if symbol == nil {
-		return false
-	}
-	if symbol.Flags&shimast.SymbolFlagsAlias != 0 {
-		if aliased := s.checker.GetAliasedSymbol(symbol); aliased != nil {
-			symbol = aliased
+	if anchored := s.anchor.AnchoredCall(call.AsNode()); anchored != nil {
+		symbol := s.checker.GetSymbolAtLocation(anchored.Expression)
+		if symbol == nil {
+			return false
 		}
+		if symbol.Flags&shimast.SymbolFlagsAlias != 0 {
+			if aliased := s.checker.GetAliasedSymbol(symbol); aliased != nil {
+				symbol = aliased
+			}
+		}
+		if symbol.Name != registerName && symbol.Name != applyName {
+			return false
+		}
+		return installTakesReceiver(symbol)
 	}
-	return symbol.Name == registerName || symbol.Name == applyName
+	callee := call.Expression
+	if callee == nil || callee.Kind != shimast.KindIdentifier {
+		return false
+	}
+	return callee.Text() == registerName || callee.Text() == applyName
+}
+
+// installTakesReceiver reports whether the resolved install function's own
+// declaration takes the receiver as its first PARAMETER (three parameters:
+// receiver, set, merge?). The authoring sugar shares the install's name but
+// takes the receiver as a TYPE argument, so its two-parameter call carries the
+// set in first position — rewriting that call would guard the merge map's own
+// entries as if they were the set. The sugar lowers into the receiver-taking
+// form, which this stage matches on a later pass. An unreadable declaration
+// counts as receiver-taking, keeping the plain name match for a fixture-local
+// declare.
+func installTakesReceiver(symbol *shimast.Symbol) bool {
+	decl := symbol.ValueDeclaration
+	if decl == nil && len(symbol.Declarations) > 0 {
+		decl = symbol.Declarations[0]
+	}
+	if decl == nil {
+		return true
+	}
+	params := functionParameters(decl)
+	if params == nil {
+		return true
+	}
+	return len(params) != 2
 }
 
 // setMembers enumerates the augmentation set's members in declaration order:
@@ -275,15 +347,24 @@ func (s *synthesizer) setMembers(setArg *shimast.Node) []member {
 	return members
 }
 
-// strategyNames enumerates the statically-known member names of a hand-authored
-// merge expression. Unresolvable shapes yield an empty set — synthesis then
-// covers every member and the runtime spread keeps the hand-authored entries
-// winning.
+// strategyNames enumerates the statically-known member names of a merge
+// expression, recursing through spread assignments whose expression resolves
+// to an object literal — the shape this stage's own rewrite emits (synthesized
+// entries with the hand-authored merge spread last), so a call already rewritten
+// reads as fully covered and the loop settles. Unresolvable shapes yield an
+// empty set — synthesis then covers every member and the runtime spread keeps
+// the hand-authored entries winning.
 func (s *synthesizer) strategyNames(mergeArg *shimast.Node) map[string]bool {
 	names := map[string]bool{}
-	literal := s.resolveObjectLiteral(mergeArg)
+	s.collectStrategyNames(s.resolveObjectLiteral(mergeArg), names)
+	return names
+}
+
+// collectStrategyNames accumulates literal's statically-known member names into
+// names, following resolvable spreads.
+func (s *synthesizer) collectStrategyNames(literal *shimast.ObjectLiteralExpression, names map[string]bool) {
 	if literal == nil {
-		return names
+		return
 	}
 	for _, prop := range literal.Properties.Nodes {
 		switch prop.Kind {
@@ -299,15 +380,18 @@ func (s *synthesizer) strategyNames(mergeArg *shimast.Node) map[string]bool {
 			if name := staticName(prop.Name()); name != "" {
 				names[name] = true
 			}
+		case shimast.KindSpreadAssignment:
+			s.collectStrategyNames(s.resolveObjectLiteral(prop.AsSpreadAssignment().Expression), names)
 		}
 	}
-	return names
 }
 
 // resolveObjectLiteral resolves an expression to the object literal it
 // statically denotes: the expression itself, or the initializer of the const
 // variable its identifier resolves to, in both cases unwrapping
-// `satisfies`/`as`/parenthesized wrappers.
+// `satisfies`/`as`/parenthesized wrappers. The checker is only ever asked
+// about the identifier's parse anchor — a minted identifier has none and is a
+// clean skip.
 func (s *synthesizer) resolveObjectLiteral(expr *shimast.Node) *shimast.ObjectLiteralExpression {
 	unwrapped := skipWrappers(expr)
 	if unwrapped == nil {
@@ -316,10 +400,14 @@ func (s *synthesizer) resolveObjectLiteral(expr *shimast.Node) *shimast.ObjectLi
 	if unwrapped.Kind == shimast.KindObjectLiteralExpression {
 		return unwrapped.AsObjectLiteralExpression()
 	}
-	if unwrapped.Kind != shimast.KindIdentifier || unwrapped.Pos() < 0 {
+	if unwrapped.Kind != shimast.KindIdentifier {
 		return nil
 	}
-	symbol := s.checker.GetSymbolAtLocation(unwrapped)
+	anchored := s.anchor(unwrapped)
+	if anchored == nil {
+		return nil
+	}
+	symbol := s.checker.GetSymbolAtLocation(anchored)
 	if symbol == nil {
 		return nil
 	}
@@ -356,19 +444,41 @@ type guardedParam struct {
 	guard *shimast.Node
 }
 
+// privateSurfaceFinding is one parameter position synthesizeGuard could not
+// fully cover — its own arg index and declared type spelling, why (reason),
+// and what the emitted guard still checks despite it (tail). One member can
+// carry several — a multi-parameter member with more than one weakened
+// position reports every one of them, not just the first.
+type privateSurfaceFinding struct {
+	index    int
+	typeText string
+	reason   string
+	tail     string
+}
+
 // strategyFor synthesizes one member's merge strategy. The result is always a
 // valid strategy expression; the fallback for a fully un-derivable member is
 // the bare always-pass form (extension wins, chain order breaks ties).
 func (s *synthesizer) strategyFor(m member) *shimast.Node {
 	params := functionParameters(m.fn)
-	if len(params) < 1 {
-		return s.alwaysPassStrategy()
-	}
 	typeParams := typeParameterNames(m.fn)
 
-	// Non-receiver parameters, positionally: params[i+1] guards args[i].
-	guardable := params[1:]
+	// Parameters pair with the call positionally: params[i] guards args[i]. An
+	// explicit `this` parameter is type-only and never part of the call, but
+	// its declared type — the receiver — is what labels a MERGESYNTH_PRIVATE_SURFACE
+	// finding: "Manifest.remove", not just "remove".
+	guardable := params
+	receiver := ""
+	if len(guardable) > 0 {
+		if name := guardable[0].AsParameterDeclaration().Name(); name != nil && name.Kind == shimast.KindIdentifier && name.Text() == "this" {
+			if t := guardable[0].AsParameterDeclaration().Type; t != nil {
+				receiver = typeNameOf(t)
+			}
+			guardable = guardable[1:]
+		}
+	}
 	guards := make([]guardedParam, 0, len(guardable))
+	var findings []privateSurfaceFinding
 	minArity := 0
 	maxArity := 0
 	hasRest := false
@@ -399,7 +509,10 @@ func (s *synthesizer) strategyFor(m member) *shimast.Node {
 		if referencesTypeParameter(typeNode, typeParams) {
 			continue
 		}
-		node, ok := s.synthesizeGuard(typeNode, m.name, kind)
+		node, ok, finding := s.synthesizeGuard(typeNode, m.name, kind, i)
+		if finding != nil {
+			findings = append(findings, *finding)
+		}
 		if !ok {
 			// The type was known; nothing about a value of it could be checked.
 			// That is a refusal, not an un-derivable parameter.
@@ -408,6 +521,18 @@ func (s *synthesizer) strategyFor(m member) *shimast.Node {
 		}
 		guards = append(guards, guardedParam{index: i, kind: kind, guard: node})
 	}
+	s.reportPrivateSurface(receiver, m.name, findings)
+
+	guardKey := s.guardKey(guardable, typeParams)
+	if prev, exists := s.guardKeys[m.name]; exists && prev == guardKey {
+		s.addDiagnostic(Diagnostic{
+			File:     s.file.FileName(),
+			Category: Error,
+			Code:     "MERGESYNTH_INDISTINGUISHABLE_GUARDS",
+			Message:  "two registrations for \"" + m.name + "\" produce identical runtime guards — the second can never dispatch",
+		})
+	}
+	s.guardKeys[m.name] = guardKey
 
 	// No parameter type could be derived AND none was refused: nothing at all is
 	// known about the call, so the extension silently wins.
@@ -417,6 +542,100 @@ func (s *synthesizer) strategyFor(m member) *shimast.Node {
 	return s.guardedStrategy(guards, minArity, maxArity, hasRest)
 }
 
+// guardKey derives a string that identifies the runtime guard a member's
+// parameters produce. Two members whose guardKeys are equal produce provably
+// identical runtime dispatch — the second can never fire.
+func (s *synthesizer) guardKey(params []*shimast.Node, typeParams map[string]bool) string {
+	parts := make([]string, 0, len(params))
+	for _, p := range params {
+		typeNode := p.AsParameterDeclaration().Type
+		if typeNode == nil {
+			parts = append(parts, "_")
+			continue
+		}
+		if typeNode.Kind == shimast.KindAnyKeyword || typeNode.Kind == shimast.KindUnknownKeyword {
+			parts = append(parts, "_")
+			continue
+		}
+		if referencesTypeParameter(typeNode, typeParams) {
+			parts = append(parts, "_")
+			continue
+		}
+		t := s.checker.GetTypeFromTypeNode(typeNode)
+		if t == nil {
+			parts = append(parts, "_")
+			continue
+		}
+		parts = append(parts, s.guardClassification(t))
+	}
+	return strings.Join(parts, ",")
+}
+
+// guardClassification returns a string classifying what runtime guard a type
+// produces. Two types with the same classification produce identical guards.
+func (s *synthesizer) guardClassification(t *shimchecker.Type) string {
+	switch {
+	case s.typiaFaithful(t, map[*shimchecker.Type]bool{}):
+		return "faithful:" + s.checker.TypeToString(t)
+	case t.Flags()&shimchecker.TypeFlagsESSymbolLike != 0:
+		return "typeof:symbol"
+	case t.Flags()&shimchecker.TypeFlagsUnion != 0:
+		return "union:" + s.checker.TypeToString(t)
+	case t.Flags()&shimchecker.TypeFlagsIntersection != 0:
+		return "intersection:" + s.checker.TypeToString(t)
+	case shimchecker.IsTupleType(t):
+		return "tuple:" + s.checker.TypeToString(t)
+	case s.arrayElementType(t) != nil:
+		return "array:" + s.checker.TypeToString(t)
+	case s.isCallable(t):
+		return "callable"
+	case s.nominalGlobalOf(t) != "":
+		return "nominal:" + s.nominalGlobalOf(t)
+	case s.stringIndexValueType(t) != nil:
+		return "record:" + s.checker.TypeToString(t)
+	case s.isIterableType(t):
+		return "iterable"
+	case typesurface.FromLibrary(s.prog, t):
+		return "floor:library"
+	case t.Flags()&shimchecker.TypeFlagsObject != 0:
+		return "object:" + s.checker.TypeToString(t)
+	case t.Flags()&shimchecker.TypeFlagsNonPrimitive != 0:
+		return "floor:nonprimitive"
+	default:
+		return "unknown:" + s.checker.TypeToString(t)
+	}
+}
+
+// reportPrivateSurface emits, under TTSC_MERGESYNTH_VERBOSE=1, ONE
+// MERGESYNTH_PRIVATE_SURFACE diagnostic for the whole member naming every
+// weakened parameter position findings collected — not just the first, the
+// way a single `guard.reason` string would collapse to. Silent by default
+// (findings is always collected regardless, so the counting cost is the same
+// either way, but nothing is reported unless verbose), and deduped once per
+// (file, member) per host process the same as every other verbose line.
+func (s *synthesizer) reportPrivateSurface(receiver, member string, findings []privateSurfaceFinding) {
+	if len(findings) == 0 || !s.verbose {
+		return
+	}
+	label := member
+	if receiver != "" {
+		label = receiver + "." + member
+	}
+	if markPrivateSurfaceSeen(s.file.FileName(), label) {
+		return
+	}
+	parts := make([]string, len(findings))
+	for i, f := range findings {
+		parts[i] = fmt.Sprintf("arg %d (%s): %s; %s", f.index, f.typeText, f.reason, f.tail)
+	}
+	s.addDiagnostic(Diagnostic{
+		File:     s.file.FileName(),
+		Category: Warning,
+		Code:     "MERGESYNTH_PRIVATE_SURFACE",
+		Message:  fmt.Sprintf("merge guard for %q cannot fully check: %s", label, strings.Join(parts, " | ")),
+	})
+}
+
 // synthesizeGuard derives one parameter's guard function expression from its
 // ORIGINAL type node. A typia TransformerError (unsupported type, unresolved
 // shape) surfaces as a panic; it is recovered here and the parameter degrades to
@@ -424,10 +643,12 @@ func (s *synthesizer) strategyFor(m member) *shimast.Node {
 // A guard that requested a typia runtime helper import is likewise dropped (§87:
 // the emitted JS must stay typia-free), with a warning naming the member.
 //
-// Whatever the composer could not cover is reported here, whether or not a guard
-// survived it: a guard weaker than its type is emitted (it still narrows
+// Whatever the composer could not cover is returned as finding rather than
+// reported here directly, so the caller (strategyFor) can fold every weakened
+// parameter of one member into a single diagnostic instead of one per
+// parameter: a guard weaker than its type is emitted (it still narrows
 // dispatch) but never silently.
-func (s *synthesizer) synthesizeGuard(typeNode *shimast.Node, memberName string, kind paramKind) (node *shimast.Node, ok bool) {
+func (s *synthesizer) synthesizeGuard(typeNode *shimast.Node, memberName string, kind paramKind, index int) (node *shimast.Node, ok bool, finding *privateSurfaceFinding) {
 	importer := nativecontext.NewImportProgrammer(nativecontext.ImportProgrammer_IOptions{
 		InternalPrefix: "typia_transform_",
 	})
@@ -450,16 +671,16 @@ func (s *synthesizer) synthesizeGuard(typeNode *shimast.Node, memberName string,
 
 	defer func() {
 		if recovered := recover(); recovered != nil {
-			node, ok = nil, false
+			node, ok, finding = nil, false, nil
 		}
 	}()
 
 	if typeNode.Pos() < 0 {
-		return nil, false
+		return nil, false, nil
 	}
 	t := s.checker.GetTypeFromTypeNode(typeNode)
 	if t == nil {
-		return nil, false
+		return nil, false, nil
 	}
 
 	built := s.guardForType(context, t, typeNameOf(typeNode), map[*shimchecker.Type]bool{})
@@ -479,28 +700,23 @@ func (s *synthesizer) synthesizeGuard(typeNode *shimast.Node, memberName string,
 			Code:     "MERGESYNTH_RUNTIME_IMPORT",
 			Message:  "merge guard for \"" + memberName + "\" needs a typia runtime helper import; dropped (the emitted JS must stay typia-free, §87)",
 		})
-		return nil, false
+		return nil, false, nil
 	}
 	if built.reason != "" {
 		// Each tail says what the emit actually contains. Calling a position
 		// "unchecked" when a clause was in fact emitted for it sends a reader
-		// looking for the wrong thing — and the whole point of the report is that
-		// what got emitted is weaker than the declared type, not absent.
-		tail := "; the guard checks every position it could reach, and the arity bounds stand"
+		// looking for the wrong thing — and the whole point of the report is
+		// that what got emitted is weaker than the declared type, not absent.
+		tail := "the guard checks every position it could reach, and the arity bounds stand"
 		switch {
 		case built.node == nil:
-			tail = "; dropped (that parameter carries no clause, but its arity bounds stand)"
+			tail = "dropped (that parameter carries no clause, but its arity bounds stand)"
 		case built.floor:
-			tail = "; the guard checks only that the value's runtime kind is one the type admits, and the arity bounds stand"
+			tail = "the guard checks only that the value's runtime kind is one the type admits, and the arity bounds stand"
 		}
-		s.addDiagnostic(Diagnostic{
-			File:     s.file.FileName(),
-			Category: Warning,
-			Code:     "MERGESYNTH_PRIVATE_SURFACE",
-			Message:  "merge guard for \"" + memberName + "\" cannot check " + built.reason + tail,
-		})
+		finding = &privateSurfaceFinding{index: index, typeText: typeNameOf(typeNode), reason: built.reason, tail: tail}
 	}
-	return built.node, built.node != nil
+	return built.node, built.node != nil, finding
 }
 
 // guard is one position's synthesized check.
@@ -567,11 +783,13 @@ func (s *synthesizer) guardForType(
 	case s.arrayElementType(t) != nil:
 		return s.arrayGuard(context, t, seen)
 	case s.isCallable(t):
-		return guard{node: typeofGuard(s.factory(), "function")}
+		return s.callableGuard(t)
 	case s.nominalGlobalOf(t) != "":
 		return s.nominalGuard(context, t, seen)
 	case s.stringIndexValueType(t) != nil:
 		return s.recordGuard(context, t, seen)
+	case s.isIterableType(t):
+		return s.iterableGuard()
 	case typesurface.FromLibrary(s.prog, t):
 		// Some other built-in. Its members are an implementation of an identity,
 		// not the identity itself, so per-member clauses would say nothing about
@@ -603,6 +821,45 @@ func (s *synthesizer) objectFloor(reason string) guard {
 func (s *synthesizer) nonPrimitiveGuard() guard {
 	f := s.factory()
 	return guard{node: guardClosure(f, nil, objectKindCondition(f)), floor: true}
+}
+
+// iterableNames are the library interface names that define the iteration
+// protocol — a value of any of these carries `Symbol.iterator`.
+var iterableNames = map[string]bool{
+	"Iterable": true, "IterableIterator": true, "ReadonlyArray": true,
+	"ReadonlySet": true, "ReadonlyMap": true,
+}
+
+// isIterableType reports whether t is one of the library iteration-protocol
+// interfaces whose defining runtime property is `Symbol.iterator`.
+func (s *synthesizer) isIterableType(t *shimchecker.Type) bool {
+	if !typesurface.FromLibrary(s.prog, t) {
+		return false
+	}
+	return iterableNames[typeSymbolName(t)]
+}
+
+// iterableGuard emits a guard that checks both the object kind and the
+// `Symbol.iterator` member:
+//
+//	(input) => (typeof input === "object" || typeof input === "function")
+//	    && input !== null && Symbol.iterator in input
+func (s *synthesizer) iterableGuard() guard {
+	f := s.factory()
+	condition := f.NewBinaryExpression(
+		nil,
+		objectKindCondition(f),
+		nil,
+		f.NewToken(shimast.KindAmpersandAmpersandToken),
+		f.NewBinaryExpression(
+			nil,
+			f.NewPropertyAccessExpression(f.NewIdentifier("Symbol"), nil, f.NewIdentifier("iterator"), shimast.NodeFlagsNone),
+			nil,
+			f.NewToken(shimast.KindInKeyword),
+			f.NewIdentifier("input"),
+		),
+	)
+	return guard{node: guardClosure(f, nil, condition)}
 }
 
 // firstReason is the first non-empty of two weakening reasons — a guard reports
@@ -1057,8 +1314,10 @@ func (s *synthesizer) nominalGuard(
 // set-only accessor — keeps the object floor and nothing else: per-member clauses
 // would be keyed on names no value carries. The same holds one member at a time:
 // a symbol-keyed member is one a caller CAN supply but no string key reads, so
-// the clauses around it stand while its absence is reported. `internal/schema`
-// refuses the mirror-image shape (nothing WRITABLE) on the same predicate.
+// the clauses around it stand while its absence is reported. A member whose key
+// never exists at runtime is not reported at all — there is no value carrying it
+// for a caller to have lost. `internal/schema` refuses the mirror-image shape
+// (nothing WRITABLE) on the same predicate.
 func (s *synthesizer) objectGuard(
 	context nativecontext.ITypiaContext,
 	t *shimchecker.Type,
@@ -1342,8 +1601,11 @@ func (s *synthesizer) objectFaithful(t *shimchecker.Type, seen map[*shimchecker.
 	indexInfos := shimchecker.Checker_getIndexInfosOfType(s.checker, t)
 	surface := typesurface.For(s.checker, t, nil)
 	switch {
-	// Keyed on the checker's internal mangled name, which no object carries.
-	case surface.PrivateNamed > 0 || surface.SymbolKeyed > 0:
+	// Keyed on the checker's internal mangled name, which no object carries. A
+	// phantom member counts here even though nothing needs checking for it: typia
+	// enumerates the declaration either way, so the mangled key still reaches the
+	// emit.
+	case surface.PrivateNamed > 0 || surface.SymbolKeyed > 0 || surface.Phantom > 0:
 		return false
 	// Skipped outright, so the member goes unchecked. typia decides this on the
 	// member's DECLARATION, so it holds through a mapped type (`Partial<T>`,
@@ -1397,14 +1659,94 @@ func typeSymbolName(t *shimchecker.Type) string {
 	return ""
 }
 
-// isCallable reports whether values of t are functions — an object type with a
-// call or construct signature.
-func (s *synthesizer) isCallable(t *shimchecker.Type) bool {
+// callableKinds reports which callable signature kinds t carries, each read as
+// its own query so a constructor type is recognized distinctly from a plain
+// function type.
+func (s *synthesizer) callableKinds(t *shimchecker.Type) (call, construct bool) {
 	if t == nil || t.Flags()&shimchecker.TypeFlagsObject == 0 {
-		return false
+		return false, false
 	}
-	return len(shimchecker.Checker_getSignaturesOfType(s.checker, t, shimchecker.SignatureKindCall)) > 0 ||
-		len(shimchecker.Checker_getSignaturesOfType(s.checker, t, shimchecker.SignatureKindConstruct)) > 0
+	call = len(shimchecker.Checker_getSignaturesOfType(s.checker, t, shimchecker.SignatureKindCall)) > 0
+	construct = len(shimchecker.Checker_getSignaturesOfType(s.checker, t, shimchecker.SignatureKindConstruct)) > 0
+	return call, construct
+}
+
+// isCallable reports whether values of t are functions — an object type with a
+// call or construct signature, either kind.
+func (s *synthesizer) isCallable(t *shimchecker.Type) bool {
+	call, construct := s.callableKinds(t)
+	return call || construct
+}
+
+// callableGuard is the guard for a callable type. Every callable is
+// `typeof === "function"`; a type carrying ONLY construct signatures is
+// further discriminated as a constructor (constructorCondition). A type with
+// call signatures keeps the bare typeof check even when construct signatures
+// sit beside them: an ordinary function declaration is itself constructible,
+// so no runtime read separates "callable" from "also constructible" without
+// rejecting genuine values.
+func (s *synthesizer) callableGuard(t *shimchecker.Type) guard {
+	f := s.factory()
+	call, construct := s.callableKinds(t)
+	if construct && !call {
+		condition := f.NewBinaryExpression(
+			nil,
+			f.NewParenthesizedExpression(f.NewBinaryExpression(
+				nil,
+				f.NewTypeOfExpression(f.NewIdentifier("input")),
+				nil,
+				f.NewToken(shimast.KindEqualsEqualsEqualsToken),
+				f.NewStringLiteral("function", shimast.TokenFlagsNone),
+			)),
+			nil,
+			f.NewToken(shimast.KindAmpersandAmpersandToken),
+			f.NewCallExpression(constructorCondition(f), nil, nil,
+				f.NewNodeList([]*shimast.Node{f.NewIdentifier("input")}), shimast.NodeFlagsNone),
+		)
+		return guard{node: guardClosure(f, nil, condition)}
+	}
+	return guard{node: typeofGuard(f, "function")}
+}
+
+// constructorCondition emits the constructor discrimination a construct-only
+// type adds over the typeof check:
+//
+//	(input) => { try { Reflect.construct(Boolean, [], input); return true; }
+//	             catch { return false; } }
+//
+// Reflect.construct with input as the newTarget is the language's own
+// IsConstructor test and runs none of input's code — Boolean's construction
+// runs, input only supplies the prototype — so an arrow function or a method,
+// callable but never constructible, fails the guard the way it fails the type.
+func constructorCondition(f *shimast.NodeFactory) *shimast.Node {
+	probe := f.NewCallExpression(
+		f.NewPropertyAccessExpression(f.NewIdentifier("Reflect"), nil, f.NewIdentifier("construct"), shimast.NodeFlagsNone),
+		nil, nil,
+		f.NewNodeList([]*shimast.Node{
+			f.NewIdentifier("Boolean"),
+			f.NewArrayLiteralExpression(f.NewNodeList(nil), false),
+			f.NewIdentifier("input"),
+		}),
+		shimast.NodeFlagsNone,
+	)
+	tryBlock := f.NewBlock(f.NewNodeList([]*shimast.Node{
+		f.NewExpressionStatement(probe),
+		f.NewReturnStatement(f.NewKeywordExpression(shimast.KindTrueKeyword)),
+	}), false)
+	catchBlock := f.NewBlock(f.NewNodeList([]*shimast.Node{
+		f.NewReturnStatement(f.NewKeywordExpression(shimast.KindFalseKeyword)),
+	}), false)
+	body := f.NewBlock(f.NewNodeList([]*shimast.Node{
+		f.NewTryStatement(tryBlock, f.NewCatchClause(nil, catchBlock), nil),
+	}), false)
+	arrow := f.NewArrowFunction(
+		nil, nil,
+		f.NewNodeList([]*shimast.Node{f.NewParameterDeclaration(nil, nil, f.NewIdentifier("input"), nil, nil, nil)}),
+		nil, nil,
+		f.NewToken(shimast.KindEqualsGreaterThanToken),
+		body,
+	)
+	return f.NewParenthesizedExpression(arrow)
 }
 
 // stringIndexValueType returns the value type of a composable record — an object
@@ -1465,11 +1807,11 @@ func typeNameOf(typeNode *shimast.Node) string {
 // alwaysPassStrategy emits the un-derivable-member fallback:
 //
 //	function (original, extension) {
-//	    return function (...args) { return extension(this, ...args); };
+//	    return function (...args) { return extension.call(this, ...args); };
 //	}
 func (s *synthesizer) alwaysPassStrategy() *shimast.Node {
 	f := s.factory()
-	inner := s.dispatcherFunction(callReceiverFirst(f, "extension"))
+	inner := s.dispatcherFunction(callBound(f, "extension"))
 	return strategyFunction(f, f.NewBlock(f.NewNodeList([]*shimast.Node{f.NewReturnStatement(inner)}), true))
 }
 
@@ -1558,9 +1900,9 @@ func (s *synthesizer) guardedStrategy(guards []guardedParam, minArity, maxArity 
 	dispatch := f.NewConditionalExpression(
 		condition,
 		f.NewToken(shimast.KindQuestionToken),
-		callReceiverFirst(f, "extension"),
+		callBound(f, "extension"),
 		f.NewToken(shimast.KindColonToken),
-		callOriginal(f),
+		callBound(f, "original"),
 	)
 	inner := s.dispatcherFunction(dispatch)
 
@@ -1592,26 +1934,11 @@ func strategyFunction(f *shimast.NodeFactory, body *shimast.Node) *shimast.Node 
 	return f.NewFunctionExpression(nil, nil, nil, nil, f.NewNodeList(parameters), nil, nil, body)
 }
 
-// callReceiverFirst emits `<name>(this, ...args)` — the receiver-first calling
-// convention of an augmentation function.
-func callReceiverFirst(f *shimast.NodeFactory, name string) *shimast.Node {
+// callBound emits `<name>.call(this, ...args)` — both dispatch arms are
+// `this`-based members, forwarded with the dispatcher's own receiver.
+func callBound(f *shimast.NodeFactory, name string) *shimast.Node {
 	return f.NewCallExpression(
-		f.NewIdentifier(name),
-		nil,
-		nil,
-		f.NewNodeList([]*shimast.Node{
-			f.NewKeywordExpression(shimast.KindThisKeyword),
-			f.NewSpreadElement(f.NewIdentifier("args")),
-		}),
-		shimast.NodeFlagsNone,
-	)
-}
-
-// callOriginal emits `original.call(this, ...args)` — the this-bound fall
-// through to whatever previously held the member slot.
-func callOriginal(f *shimast.NodeFactory) *shimast.Node {
-	return f.NewCallExpression(
-		f.NewPropertyAccessExpression(f.NewIdentifier("original"), nil, f.NewIdentifier("call"), shimast.NodeFlagsNone),
+		f.NewPropertyAccessExpression(f.NewIdentifier(name), nil, f.NewIdentifier("call"), shimast.NodeFlagsNone),
 		nil,
 		nil,
 		f.NewNodeList([]*shimast.Node{

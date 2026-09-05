@@ -8,8 +8,8 @@
 
 import { type EventId, type ILogger, LogLevel } from '@rhombus-std/logging.core';
 import { augment } from '@rhombus-std/primitives';
-import { tokenfor } from '@rhombus-std/primitives.extras';
-import type { Func } from '@rhombus-toolkit/func';
+import { typefor } from '@rhombus-std/primitives.extras';
+import type { Func } from '@rhombus-toolkit/types';
 import type { ConsoleLike } from './ConsoleLike';
 
 /** The console method a {@link LogLevel} maps to. */
@@ -45,11 +45,11 @@ export function consoleMethodFor(logLevel: LogLevel): ConsoleMethod {
 
 // Binds the `ILogger` interface symbol onto the class so the interface-merged
 // wrapper methods (logInformation/…) flow onto `BrowserConsoleLogger`, beside
-// the `@augment(tokenfor<ILogger>())` install below.
+// the `@augment(typefor<ILogger>())` install below.
 export interface BrowserConsoleLogger extends ILogger {}
 
 /** An {@link ILogger} that writes through the browser console global. */
-@augment(tokenfor<ILogger>())
+@augment(typefor<ILogger>())
 export class BrowserConsoleLogger implements ILogger {
   readonly #name: string;
   readonly #console: ConsoleLike;
@@ -59,9 +59,7 @@ export class BrowserConsoleLogger implements ILogger {
     this.#console = console;
   }
 
-  public log<TState>(logLevel: LogLevel, eventId: EventId, state: TState, error: Error | undefined,
-    formatter: Func<[TState, Error | undefined], string>): void
-  {
+  public log<TState>(logLevel: LogLevel, eventId: EventId, state: TState, error: Error | undefined, formatter: Func<[TState, Error | undefined], string>): void {
     if (!this.isEnabled(logLevel)) {
       return;
     }
@@ -80,7 +78,7 @@ export class BrowserConsoleLogger implements ILogger {
     return logLevel !== LogLevel.None;
   }
 
-  /** Scopes are unsupported — plain formatting has nowhere to render them. */
+  /** Lifetime are unsupported — plain formatting has nowhere to render them. */
   public beginScope<TState>(_state: TState): Disposable | undefined {
     return undefined;
   }

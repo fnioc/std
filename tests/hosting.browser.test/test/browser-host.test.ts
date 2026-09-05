@@ -1,10 +1,11 @@
-import { HOST_LIFETIME_TOKEN } from '@rhombus-std/hosting';
-import { BROWSER_LIFETIME_OPTIONS_TOKEN, BrowserHost, BrowserLifetime, type BrowserLifetimeOptions,
-  createBrowserEnvironment, PAGE_LIFECYCLE_EVENTS_TOKEN, PageLifecycleEvents } from '@rhombus-std/hosting.browser';
-import { Environments, type IHostLifetime } from '@rhombus-std/hosting.core';
-import { LOGGER_PROVIDER_TOKEN } from '@rhombus-std/logging';
+import { HOST_LIFETIME_TYPE } from '@rhombus-std/hosting';
+import { BROWSER_LIFETIME_OPTIONS_TYPE, BrowserHost, BrowserLifetime, type BrowserLifetimeOptions, createBrowserEnvironment, PAGE_LIFECYCLE_EVENTS_TYPE,
+  PageLifecycleEvents } from '@rhombus-std/hosting.browser';
+import { Environments, getHostedServiceManifest, HOSTED_SERVICE_TYPE, type IHostLifetime } from '@rhombus-std/hosting.core';
+import { LOGGER_PROVIDER_TYPE } from '@rhombus-std/logging';
 import { BrowserConsoleLoggerProvider } from '@rhombus-std/logging.browserconsole';
 import type { ILoggerProvider } from '@rhombus-std/logging.core';
+import { Type } from '@rhombus-std/primitives';
 import { expect, test } from 'bun:test';
 import { makeFakePage } from './fakes';
 
@@ -23,10 +24,9 @@ test("createBrowserEnvironment: names from settings, content root '/', null file
 test('the facade composes settings config, browser environment, console logging, lifetime, and the bridge', () => {
   const page = makeFakePage();
 
-  const builder = BrowserHost.createApplicationBuilder({ environmentName: Environments.Development,
-    applicationName: 'spa', initialData: { 'feature:flag': 'on' }, configureLifetime: (options) => {
-      options.stopOnPagehide = false;
-    }, pageContext: page.context });
+  const builder = BrowserHost.createApplicationBuilder({ environmentName: Environments.Development, applicationName: 'spa', initialData: { 'feature:flag': 'on' }, configureLifetime: (options) => {
+    options.stopOnPagehide = false;
+  }, pageContext: page.context });
 
   // Environment: browser-shaped through the ordinary builder settings.
   expect(builder.environment.environmentName).toBe('Development');
@@ -40,20 +40,20 @@ test('the facade composes settings config, browser environment, console logging,
   const host = builder.build();
 
   // Logging: the browser console provider is registered.
-  const providers = host.services.resolve<ILoggerProvider[]>(`Array<${LOGGER_PROVIDER_TOKEN}>`);
+  const providers: ILoggerProvider[] = host.services.resolve(Type.array(LOGGER_PROVIDER_TYPE));
   expect(providers.some((provider) => {
     return provider instanceof BrowserConsoleLoggerProvider;
   })).toBe(true);
 
   // Lifetime: the BrowserLifetime registration wins over the NullLifetime
   // default (last registration wins), with the configured options.
-  const lifetime = host.services.resolve<IHostLifetime>(HOST_LIFETIME_TOKEN);
+  const lifetime: IHostLifetime = host.services.resolve(HOST_LIFETIME_TYPE);
   expect(lifetime).toBeInstanceOf(BrowserLifetime);
-  const options = host.services.resolve<BrowserLifetimeOptions>(BROWSER_LIFETIME_OPTIONS_TOKEN);
+  const options: BrowserLifetimeOptions = host.services.resolve(BROWSER_LIFETIME_OPTIONS_TYPE);
   expect(options.stopOnPagehide).toBe(false);
 
   // The bridge: registered as a value, eagerly attached to the page context.
-  const bridge = host.services.resolve<PageLifecycleEvents>(PAGE_LIFECYCLE_EVENTS_TOKEN);
+  const bridge: PageLifecycleEvents = host.services.resolve(PAGE_LIFECYCLE_EVENTS_TYPE);
   expect(bridge).toBeInstanceOf(PageLifecycleEvents);
   expect(page.document.registeredTypes).toContain('visibilitychange');
 
@@ -68,7 +68,7 @@ test('host stop disposes the single bridge listener set — no leak across host 
 
   // The bridge — the single DOM-listening component — attaches its five
   // listeners eagerly at composition.
-  const bridge = host.services.resolve<PageLifecycleEvents>(PAGE_LIFECYCLE_EVENTS_TOKEN);
+  const bridge: PageLifecycleEvents = host.services.resolve(PAGE_LIFECYCLE_EVENTS_TYPE);
   expect(bridge).toBeInstanceOf(PageLifecycleEvents);
   expect(page.document.listenerCount + page.window.listenerCount).toBe(5);
 
@@ -90,14 +90,14 @@ test('BrowserHost.run() starts, ignores a bfcache pagehide, and stops on a termi
   const events: string[] = [];
 
   const runPromise = BrowserHost.run({ pageContext: page.context }, (builder) => {
-    builder.services = builder.services.addHostedService(class Worker {
+    builder.services = builder.services.add(getHostedServiceManifest(class Worker {
       public async start(): Promise<void> {
         events.push('start');
       }
       public async stop(): Promise<void> {
         events.push('stop');
       }
-    }, [[]]);
+    }, Type.ctor(HOSTED_SERVICE_TYPE, [[]])));
   });
 
   // Wait until the host has started (the lifetime subscribes before hosted

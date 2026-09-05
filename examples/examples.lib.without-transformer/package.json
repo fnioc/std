@@ -2,19 +2,12 @@
   "name": "@rhombus-std/examples.lib.without-transformer",
   "private": true,
   "version": "0.0.0",
-  "description": "Example dependency library authored in the manual di dialect (explicit tokens + plain-data signatures). Depends on @rhombus-std/di.core ALONE — no resolution engine — which is the property it exists to prove. Gets a real build for consistency and genuine consumption; ordinary source-libs conditions are fine.",
+  "description": "Example dependency library authored in the manual di dialect (explicit tokens + plain-data signatures). Depends on @rhombus-std/di.core and @rhombus-std/primitives alone — no resolution engine — which is the property it exists to prove. Gets a real build for consistency and genuine consumption; ordinary source-libs conditions are fine.",
   "license": "MIT",
   "type": "module",
-  "main": "./dist/index.js",
-  "types": "./src/index.ts",
+  "main": "./src/index.ts",
   "exports": {
-    ".": {
-      "source": "./src/index.ts",
-      "bun": "./src/index.ts",
-      "types": "./src/index.ts",
-      "import": "./dist/index.js",
-      "default": "./dist/index.js"
-    }
+    ".": "./src/index.ts"
   },
   "files": [
     "dist"
@@ -25,9 +18,10 @@
   },
   "dependencies": {
     "@rhombus-std/di.core": "workspace:*",
-    "@rhombus-std/examples.contracts": "workspace:*"
+    "@rhombus-std/examples.contracts": "workspace:*",
+    "@rhombus-std/primitives": "workspace:*"
   },
   "devDependencies": {
-    "typescript": "^5.9.0"
+    "typescript": "^6.0.3"
   }
 }

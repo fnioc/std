@@ -2,12 +2,11 @@
 // the timestamp token formatter, and the ANSI escape-code tables — via the
 // library's `internal/*` subpath (docs §7/§40).
 
-import { ConsoleColor, DEFAULT_BACKGROUND_COLOR, DEFAULT_FOREGROUND_COLOR, getBackgroundColorEscapeCode,
-  getForegroundColorEscapeCode } from '@rhombus-std/logging.console/private/ConsoleColor';
+import { ConsoleColor, DEFAULT_BACKGROUND_COLOR, DEFAULT_FOREGROUND_COLOR, getBackgroundColorEscapeCode, getForegroundColorEscapeCode } from '@rhombus-std/logging.console/private/ConsoleColor';
 import { ConsoleControlCharacterSanitizer } from '@rhombus-std/logging.console/private/ConsoleControlCharacterSanitizer';
 import { formatTimestamp } from '@rhombus-std/logging.console/private/date-format';
 import { StringWriter } from '@rhombus-std/logging.console/private/text-writer';
-import { TextWriterExtensions } from '@rhombus-std/logging.console/private/TextWriterExtensions';
+import { writeColoredMessage } from '@rhombus-std/logging.console/private/write-colored-message';
 import { expect, test } from 'bun:test';
 
 // --- sanitizer ---
@@ -53,10 +52,10 @@ test('background codes: only the 8 base colors have codes', () => {
 
 test('writeColoredMessage wraps with set/reset pairs and skips absent colors', () => {
   const both = new StringWriter();
-  TextWriterExtensions.writeColoredMessage(both, 'msg', ConsoleColor.Black, ConsoleColor.Yellow);
+  writeColoredMessage(both, 'msg', ConsoleColor.Black, ConsoleColor.Yellow);
   expect(both.toString()).toBe(`\x1b[40m\x1b[1m\x1b[33mmsg${DEFAULT_FOREGROUND_COLOR}${DEFAULT_BACKGROUND_COLOR}`);
 
   const none = new StringWriter();
-  TextWriterExtensions.writeColoredMessage(none, 'msg', undefined, undefined);
+  writeColoredMessage(none, 'msg', undefined, undefined);
   expect(none.toString()).toBe('msg');
 });

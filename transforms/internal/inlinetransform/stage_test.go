@@ -1,6 +1,7 @@
 package inlinetransform
 
 import (
+	"fmt"
 	"os"
 	"path/filepath"
 	"strings"
@@ -13,13 +14,24 @@ import (
 	"github.com/fnioc/std/transforms/internal/plugin"
 )
 
-// buildWorkspace lays out the standard two-package member-sugar workspace with
-// caller-supplied core barrel, impl body, consumer declare-module, and consumer
-// main. The rhombus.inline entry is always the pilot member entry (IQuery /
-// QueryInline / isService). It returns the loaded consumer program and app dir.
-// Focused variants that need a different entry (free-function, no-witness) have
-// their own setup.
+// buildWorkspace lays out the standard three-package member-sugar workspace:
+// core (the receiver and its primitive members), sugar (the declare-module
+// faces, the impl body, and the inline entry — the publisher whose ownership
+// claims the body), and app (the consumer). The rhombus-std inline entry is
+// always the pilot member entry (IQuery / QueryInline / isService). It returns
+// the loaded consumer program and app dir. Focused variants that need a
+// different entry (free-function, no-witness) have their own setup.
 func buildWorkspace(t *testing.T, coreIndex, inlineBody, sugarDTS, mainSrc string) (*driver.Program, string) {
+	t.Helper()
+	return buildWorkspaceWithEntries(t, coreIndex, inlineBody, sugarDTS, mainSrc, pilotEntries)
+}
+
+// pilotEntries is the standard workspace's one inline entry: the isService
+// member sugar. A test needing a second entry on the same interface builds its
+// own entries array and calls buildWorkspaceWithEntries directly.
+const pilotEntries = `[ { "type": "@scope/core:IQuery", "impl": "@scope/sugar:QueryInline", "member": "isService" } ]`
+
+func buildWorkspaceWithEntries(t *testing.T, coreIndex, inlineBody, sugarDTS, mainSrc, entries string) (*driver.Program, string) {
 	t.Helper()
 	root := t.TempDir()
 	write(t, filepath.Join(root, "package.json"), `{ "name": "ws", "private": true, "workspaces": ["packages/*"] }`)
@@ -28,29 +40,40 @@ func buildWorkspace(t *testing.T, coreIndex, inlineBody, sugarDTS, mainSrc strin
 	write(t, filepath.Join(core, "package.json"), `{
   "name": "@scope/core",
   "version": "1.0.0",
-  "exports": { ".": { "types": "./src/index.ts", "default": "./src/index.ts" } },
-  "rhombus.inline": {
-    "entries": [ { "type": "@scope/core:IQuery", "impl": "QueryInline", "member": "isService" } ]
-  }
+  "exports": { ".": { "types": "./src/index.ts", "default": "./src/index.ts" } }
 }`)
 	write(t, filepath.Join(core, "src", "index.ts"), coreIndex)
-	write(t, filepath.Join(core, "src", "inline.ts"), inlineBody)
+
+	sugar := filepath.Join(root, "packages", "sugar")
+	write(t, filepath.Join(sugar, "package.json"), fmt.Sprintf(`{
+  "name": "@scope/sugar",
+  "version": "1.0.0",
+  "exports": { ".": { "types": "./src/index.ts", "default": "./src/index.ts" } },
+  "dependencies": { "@scope/core": "workspace:*" },
+  "rhombus-std": { "inline": { "entries": %s } }
+}`, entries))
+	write(t, filepath.Join(sugar, "src", "index.ts"), sugarDTS)
+	write(t, filepath.Join(sugar, "src", "inline.ts"), inlineBody)
+	linkPackage(t, sugar, "@scope/core", core)
 
 	app := filepath.Join(root, "packages", "app")
 	write(t, filepath.Join(app, "package.json"), `{
   "name": "@scope/app",
   "version": "1.0.0",
-  "dependencies": { "@scope/core": "workspace:*" }
+  "dependencies": { "@scope/core": "workspace:*", "@scope/sugar": "workspace:*" }
 }`)
 	linkPackage(t, app, "@scope/core", core)
-	write(t, filepath.Join(app, "sugar.d.ts"), sugarDTS)
+	linkPackage(t, app, "@scope/sugar", sugar)
+	// The sugar faces load through the sugar package's own entry, so a fixture
+	// main that still spells the old same-dir reference keeps working.
+	mainSrc = strings.ReplaceAll(mainSrc, "/// <reference path=\"./sugar.d.ts\" />\n", "")
 	write(t, filepath.Join(app, "main.ts"), mainSrc)
 	write(t, filepath.Join(app, "tsconfig.json"), `{
   "compilerOptions": {
     "target": "ES2022", "module": "esnext", "moduleResolution": "bundler",
     "strict": true, "noEmit": true, "skipLibCheck": true
   },
-  "files": ["main.ts", "sugar.d.ts", "node_modules/@scope/core/src/index.ts"]
+  "files": ["main.ts", "node_modules/@scope/core/src/index.ts", "node_modules/@scope/sugar/src/index.ts"]
 }`)
 
 	prog, diags, err := driver.LoadProgram(app, "tsconfig.json", driver.LoadProgramOptions{})
@@ -148,11 +171,11 @@ func TestStageHoistsEffectfulReceiverTemp(t *testing.T) {
 }
 export declare function makeProvider(): IQuery;
 `
-	inlineBody := `import { tokenfor } from '@rhombus-std/primitives.extras';
-import type { IQuery } from './index';
+	inlineBody := `import { typefor } from '@rhombus-std/primitives.extras';
+import type { IQuery } from '@scope/core';
 export const QueryInline = {
   isService<T>(this: IQuery): boolean {
-    return this.isService(tokenfor<T>()) && this.isService(tokenfor<T>());
+    return this.isService(typefor<T>()) && this.isService(typefor<T>());
   },
 };
 `
@@ -192,27 +215,51 @@ export const known = makeProvider().isService<Foo>();
 // argument cannot be recovered (`provider.isService()` binds T to unknown) must
 // fail loud with INLINE_INFERRED_TYPE_ARGUMENT and be left un-inlined, not ship a
 // tokenless call. The sibling explicit call still inlines.
+//
+// A second entry on the same interface, `pick<T>(value)`, carries a declared
+// type parameter its body never spells as a type argument — it feeds T only to
+// a VALUE-argument primitive call, so T is unconsumed. An inferred call to it
+// (no written type argument, same shape as the hard-error case above) must
+// inline without complaint: an unconsumed type parameter is never recovered
+// and so never raises INLINE_INFERRED_TYPE_ARGUMENT.
 func TestStageUnrecoverableTypeArgIsHardError(t *testing.T) {
 	coreIndex := `export interface IQuery {
   isService(token: string): boolean;
 }
 export declare const provider: IQuery;
 `
-	inlineBody := `import { tokenfor } from '@rhombus-std/primitives.extras';
-import type { IQuery } from './index';
+	inlineBody := `import { typefor } from '@rhombus-std/primitives.extras';
+import type { IQuery } from '@scope/core';
 export const QueryInline = {
   isService<T>(this: IQuery): boolean {
-    return this.isService(tokenfor<T>());
+    return this.isService(typefor<T>());
+  },
+  pick<T>(this: IQuery, value: T): boolean {
+    return this.isService(typefor(value));
   },
 };
 `
+	sugarDTS := `declare module '@scope/core' {
+  interface IQuery {
+    isService<T>(): boolean;
+    pick<T>(value: T): boolean;
+  }
+}
+export {};
+`
+	entries := `[
+  { "type": "@scope/core:IQuery", "impl": "@scope/sugar:QueryInline", "member": "isService" },
+  { "type": "@scope/core:IQuery", "impl": "@scope/sugar:QueryInline", "member": "pick" }
+]`
 	mainSrc := `/// <reference path="./sugar.d.ts" />
 import { provider } from '@scope/core';
 interface Foo { readonly brand: 'foo'; }
+declare const theFoo: Foo;
 export const known = provider.isService<Foo>();
 export const bad = provider.isService();
+export const picked = provider.pick(theFoo);
 `
-	prog, app := buildWorkspace(t, coreIndex, inlineBody, pilotSugarDTS, mainSrc)
+	prog, app := buildWorkspaceWithEntries(t, coreIndex, inlineBody, sugarDTS, mainSrc, entries)
 	defer func() { _ = prog.Close() }()
 
 	artifacts := NewArtifacts()
@@ -236,35 +283,43 @@ export const bad = provider.isService();
 	if inferred != 1 {
 		t.Fatalf("expected exactly 1 INLINE_INFERRED_TYPE_ARGUMENT, got %d: %+v", inferred, diags)
 	}
+	// The unconsumed-type-parameter call inlines despite writing no type
+	// argument: its body is spliced in, `pick(` is gone.
+	if strings.Contains(out, "provider.pick(") {
+		t.Errorf("provider.pick(theFoo) should have inlined despite the unwritten type argument, got:\n%s", out)
+	}
+	if !strings.Contains(out, "isService(typefor(theFoo))") {
+		t.Errorf("expected the pick body spliced in as isService(typefor(theFoo)), got:\n%s", out)
+	}
 	// The unrecoverable call is left untouched in the output.
 	if !strings.Contains(out, "provider.isService()") {
 		t.Errorf("the unrecoverable call should be left un-inlined, got:\n%s", out)
 	}
 }
 
-// TestBodyWithConcreteNameofTypeArg PINS the current emergent behavior for an
-// impl body that calls a primitive over a CONCRETE type (`tokenfor<Marker>()`)
+// TestBodyWithConcreteTypeforTypeArg PINS the current emergent behavior for an
+// impl body that calls a primitive over a CONCRETE type (`typefor<Marker>()`)
 // rather than the impl's own type parameter (gap 19). Today: the body passes the
 // Go extract (checkFreeIdentifiers does not descend into primitive type-args), it
-// is inlined, the synthetic `tokenfor<Marker>()` registers with ZERO bound type
-// args (Marker is not in the impl's type-param env), the tokenfor stage cannot
-// lower a zero-arg registration, so it survives — and the emit sweep hard-fails
-// it as INLINE_UNLOWERED_PRIMITIVE. This is a late, confusing failure for a
+// is inlined, the synthetic `typefor<Marker>()` registers with ZERO bound type
+// args (Marker is not in the impl's type-param env), no primitive stage can lower
+// a zero-arg registration, so it survives — and the emit sweep hard-fails it as
+// INLINE_UNLOWERED_PRIMITIVE. This is a late, confusing failure for a
 // plausibly-legitimate authoring choice; the behavior is characterized here and
-// FLAGGED FOR AN OWNER DESIGN DECISION (lower the concrete token, or reject early
+// FLAGGED FOR AN OWNER DESIGN DECISION (lower the concrete type, or reject early
 // at extract/lint). This test locks the status quo until that decision lands.
-func TestBodyWithConcreteNameofTypeArg(t *testing.T) {
+func TestBodyWithConcreteTypeforTypeArg(t *testing.T) {
 	coreIndex := `export interface IQuery {
   isService(token: string): boolean;
 }
 export interface Marker { readonly m: 'marker'; }
 export declare const provider: IQuery;
 `
-	inlineBody := `import { tokenfor } from '@rhombus-std/primitives.extras';
-import type { IQuery, Marker } from './index';
+	inlineBody := `import { typefor } from '@rhombus-std/primitives.extras';
+import type { IQuery, Marker } from '@scope/core';
 export const QueryInline = {
   isService<T>(this: IQuery): boolean {
-    return this.isService(tokenfor<Marker>());
+    return this.isService(typefor<Marker>());
   },
 };
 `
@@ -280,10 +335,10 @@ export const known = provider.isService<Foo>();
 	var diags []plugin.Diagnostic
 	transform := Build(prog, bodiesFor(t, app), artifacts, func(d plugin.Diagnostic) { diags = append(diags, d) })
 	if len(diags) != 0 {
-		t.Fatalf("Build raised diagnostics (the concrete-tokenfor body currently passes extract): %+v", diags)
+		t.Fatalf("Build raised diagnostics (the concrete-typefor body currently passes extract): %+v", diags)
 	}
 	if !artifacts.Active {
-		t.Fatal("artifacts not active — the concrete-tokenfor entry did not resolve/inline")
+		t.Fatal("artifacts not active — the concrete-typefor entry did not resolve/inline")
 	}
 
 	ec := shimprinter.NewEmitContext()
@@ -292,8 +347,8 @@ export const known = provider.isService<Foo>();
 
 	// The concrete-type primitive survives the inline stage unlowered.
 	out := reprint(ec, result)
-	if !strings.Contains(out, "tokenfor<Marker>") {
-		t.Fatalf("expected the concrete-type tokenfor<Marker>() to survive the inline stage, got:\n%s", out)
+	if !strings.Contains(out, "typefor<Marker>") {
+		t.Fatalf("expected the concrete-type typefor<Marker>() to survive the inline stage, got:\n%s", out)
 	}
 
 	// The sweep is the backstop that turns the silent survival into a hard error.
@@ -325,7 +380,7 @@ func setupFreeFunctionInlineWorkspace(t *testing.T) (*driver.Program, string) {
   "name": "@scope/prims",
   "version": "1.0.0",
   "exports": { ".": { "types": "./src/index.ts", "default": "./src/index.ts" } },
-  "rhombus.inline": { "entries": [ { "impl": "identity" } ] }
+  "rhombus-std": { "inline": { "entries": [ { "impl": "@scope/prims:identity" } ] } }
 }`)
 	write(t, filepath.Join(prims, "src", "index.ts"), `export function identity<T>(value: T): T {
   return value;
@@ -398,10 +453,135 @@ func TestStageInlinesFreeFunction(t *testing.T) {
 	if !strings.Contains(out, "keep") {
 		t.Errorf("the still-used `keep` import must survive elision, got:\n%s", out)
 	}
-	if got := artifacts.SugarFunctions["identity"]; got != "@scope/prims" {
-		t.Fatalf("SugarFunctions[identity] = %q, want @scope/prims", got)
+	found := false
+	for _, fn := range artifacts.FunctionSugars {
+		if fn.Member == "identity" {
+			found = true
+			if fn.Module != "@scope/prims" {
+				t.Fatalf("FunctionSugars[identity].Module = %q, want @scope/prims", fn.Module)
+			}
+		}
+	}
+	if !found {
+		t.Fatal("FunctionSugars has no entry for identity")
 	}
 	parse(t, "/free-out.ts", out)
+}
+
+// setupImportedValueWorkspace lays out a free-function sugar whose body calls a
+// value its own file imports under an ALIAS (`record as capture`). The consumer
+// imports only the sugar, so the runtime import must be carried across to it — and
+// under the name the CONSUMER file binds, not the body's alias.
+func setupImportedValueWorkspace(t *testing.T) (*driver.Program, string) {
+	t.Helper()
+	root := t.TempDir()
+	write(t, filepath.Join(root, "package.json"), `{ "name": "ws", "private": true, "workspaces": ["packages/*"] }`)
+
+	runtime := filepath.Join(root, "packages", "runtime")
+	write(t, filepath.Join(runtime, "package.json"), `{
+  "name": "@scope/runtime",
+  "version": "1.0.0",
+  "exports": { ".": { "types": "./src/index.ts", "default": "./src/index.ts" } }
+}`)
+	write(t, filepath.Join(runtime, "src", "index.ts"), `export function record<T>(value: T): T {
+  return value;
+}
+`)
+
+	prims := filepath.Join(root, "packages", "prims")
+	write(t, filepath.Join(prims, "package.json"), `{
+  "name": "@scope/prims",
+  "version": "1.0.0",
+  "exports": { ".": { "types": "./src/index.ts", "default": "./src/index.ts" } },
+  "rhombus-std": { "inline": { "entries": [ { "impl": "@scope/prims:wrap" } ] } }
+}`)
+	linkPackage(t, prims, "@scope/runtime", runtime)
+	write(t, filepath.Join(prims, "src", "index.ts"), `import { record as capture } from '@scope/runtime';
+export function wrap<T>(value: T): T {
+  return capture(value);
+}
+`)
+
+	app := filepath.Join(root, "packages", "app")
+	write(t, filepath.Join(app, "package.json"), `{
+  "name": "@scope/app",
+  "version": "1.0.0",
+  "dependencies": { "@scope/prims": "workspace:*" }
+}`)
+	linkPackage(t, app, "@scope/prims", prims)
+	linkPackage(t, app, "@scope/runtime", runtime)
+	write(t, filepath.Join(app, "main.ts"), `import { wrap } from '@scope/prims';
+export const x = wrap<number>(1);
+`)
+	write(t, filepath.Join(app, "quiet.ts"), `export const untouched = 1;
+`)
+	write(t, filepath.Join(app, "tsconfig.json"), `{
+  "compilerOptions": {
+    "target": "ES2022", "module": "esnext", "moduleResolution": "bundler",
+    "strict": true, "noEmit": true, "skipLibCheck": true
+  },
+  "files": ["main.ts", "quiet.ts", "node_modules/@scope/prims/src/index.ts"]
+}`)
+
+	prog, diags, err := driver.LoadProgram(app, "tsconfig.json", driver.LoadProgramOptions{})
+	if err != nil {
+		t.Fatalf("LoadProgram: %v", err)
+	}
+	if len(diags) != 0 {
+		t.Fatalf("config diagnostics: %v", diags)
+	}
+	return prog, app
+}
+
+// TestStageMaterializesImportedValue drives the import-following mechanism end to
+// end: the substituted body's `record(...)` call survives lowering, and the import
+// that declared it in the body's own file is injected into the consumer so the call
+// resolves there too. The sugar's own import is elided, having no reference left.
+func TestStageMaterializesImportedValue(t *testing.T) {
+	prog, app := setupImportedValueWorkspace(t)
+	defer func() { _ = prog.Close() }()
+
+	artifacts := NewArtifacts()
+	var diags []plugin.Diagnostic
+	transform := Build(prog, bodiesFor(t, app), artifacts, func(d plugin.Diagnostic) { diags = append(diags, d) })
+	if len(diags) != 0 {
+		t.Fatalf("Build raised diagnostics: %+v", diags)
+	}
+
+	ec := shimprinter.NewEmitContext()
+	main := sourceFileWithSuffix(t, prog, "main.ts")
+	out := reprint(ec, transform(ec, main))
+
+	if !strings.Contains(out, "record(1)") {
+		t.Errorf("the imported callee must survive lowering under the CONSUMER's name for it, got:\n%s", out)
+	}
+	if strings.Contains(out, "capture") {
+		t.Errorf("the body's own alias names nothing in the consumer and must not survive, got:\n%s", out)
+	}
+	if !strings.Contains(out, `from "@scope/runtime"`) && !strings.Contains(out, "from '@scope/runtime'") {
+		t.Errorf("the body's own import must be materialized into the consumer, got:\n%s", out)
+	}
+	if strings.Contains(out, "wrap") {
+		t.Errorf("the inlined sugar's import must be elided, got:\n%s", out)
+	}
+	parse(t, "/imported-value-out.ts", out)
+}
+
+// TestStageLeavesUninlinedFileIdentical: a file the stage changes nothing in comes
+// back as the SAME source file. Import materialization must not mint a new node when
+// no body was substituted — the fixed-point loop reads pointer identity as "no
+// change", and a fresh pointer each pass would never terminate.
+func TestStageLeavesUninlinedFileIdentical(t *testing.T) {
+	prog, app := setupImportedValueWorkspace(t)
+	defer func() { _ = prog.Close() }()
+
+	transform := Build(prog, bodiesFor(t, app), NewArtifacts(), func(plugin.Diagnostic) {})
+
+	ec := shimprinter.NewEmitContext()
+	quiet := sourceFileWithSuffix(t, prog, "quiet.ts")
+	if got := transform(ec, quiet); got != quiet {
+		t.Fatalf("a file with no inlined call must return the same source file pointer")
+	}
 }
 
 // linkPackage symlinks appDir/node_modules/<name> to target, mirroring the bun
@@ -417,83 +597,36 @@ func linkPackage(t *testing.T, appDir, name, target string) {
 	}
 }
 
-// setupWorkspace lays out a two-package workspace mirroring the pilot: a `core`
-// package declaring the interface, its sugar augmentation, and the impl body
-// (kept out of the barrel in src/inline.ts), plus an `app` consumer program that
-// calls the sugar. It returns the app program and directory.
+// setupWorkspace lays out the standard workspace through the shared harness: a
+// core package declaring the receiver and its primitive, a sugar package
+// declaring the sugar face and holding the impl body, and an app consumer
+// calling both forms. It returns the app program and directory.
 func setupWorkspace(t *testing.T) (*driver.Program, string) {
 	t.Helper()
-	root := t.TempDir()
-	write(t, filepath.Join(root, "package.json"), `{ "name": "ws", "private": true, "workspaces": ["packages/*"] }`)
-
-	core := filepath.Join(root, "packages", "core")
-	write(t, filepath.Join(core, "package.json"), `{
-  "name": "@scope/core",
-  "version": "1.0.0",
-  "exports": { ".": { "types": "./src/index.ts", "default": "./src/index.ts" } },
-  "rhombus.inline": {
-    "entries": [ { "type": "@scope/core:IQuery", "impl": "QueryInline", "member": "isService" } ]
-  }
-}`)
-	write(t, filepath.Join(core, "src", "index.ts"), `export interface IQuery {
+	coreIndex := `export interface IQuery {
   isService(token: string): boolean;
 }
 export declare const provider: IQuery;
-`)
-	// The impl body — authored over the tokenfor primitive, kept out of the barrel.
-	write(t, filepath.Join(core, "src", "inline.ts"), `import { tokenfor } from '@rhombus-std/primitives.extras';
-import type { IQuery } from './index';
+`
+	inlineBody := `import { typefor } from '@rhombus-std/primitives.extras';
+import type { IQuery } from '@scope/core';
 export const QueryInline = {
   isService<T>(this: IQuery): boolean {
-    return this.isService(tokenfor<T>());
+    return this.isService(typefor<T>());
   },
 };
-`)
-
-	app := filepath.Join(root, "packages", "app")
-	write(t, filepath.Join(app, "package.json"), `{
-  "name": "@scope/app",
-  "version": "1.0.0",
-  "dependencies": { "@scope/core": "workspace:*" }
-}`)
-	// Symlink-free dep resolution: app/node_modules/@scope/core -> the core dir,
-	// mirroring what the bun linker produces. The collector resolves through it.
-	linkPackage(t, app, "@scope/core", core)
-
-	write(t, filepath.Join(app, "sugar.d.ts"), `declare module '@scope/core' {
-  interface IQuery {
-    isService<T>(): boolean;
-  }
-}
-export {};
-`)
-	write(t, filepath.Join(app, "main.ts"), `/// <reference path="./sugar.d.ts" />
-import { provider } from '@scope/core';
+`
+	mainSrc := `import { provider } from '@scope/core';
 interface Foo { readonly brand: 'foo'; }
 export const known = provider.isService<Foo>();
 export const literal = provider.isService('x');
-`)
-	write(t, filepath.Join(app, "tsconfig.json"), `{
-  "compilerOptions": {
-    "target": "ES2022", "module": "esnext", "moduleResolution": "bundler",
-    "strict": true, "noEmit": true, "skipLibCheck": true
-  },
-  "files": ["main.ts", "sugar.d.ts", "node_modules/@scope/core/src/index.ts"]
-}`)
-
-	prog, diags, err := driver.LoadProgram(app, "tsconfig.json", driver.LoadProgramOptions{})
-	if err != nil {
-		t.Fatalf("LoadProgram: %v", err)
-	}
-	if len(diags) != 0 {
-		t.Fatalf("config diagnostics: %v", diags)
-	}
-	return prog, app
+`
+	return buildWorkspace(t, coreIndex, inlineBody, pilotSugarDTS, mainSrc)
 }
 
 // TestStageInlinesMemberSugar drives the whole stage over the workspace: collect
 // the publish list, resolve the entry, substitute the body at the explicit call,
-// and register the synthetic tokenfor call. It asserts the sugar call is gone, the
+// and register the synthetic typefor call. It asserts the sugar call is gone, the
 // primitive form remains, exactly one primitive was registered, and the
 // primitive-form (non-sugar) call passed through untouched.
 func TestStageInlinesMemberSugar(t *testing.T) {
@@ -528,26 +661,26 @@ func TestStageInlinesMemberSugar(t *testing.T) {
 		t.Fatalf("expected exactly 1 registered primitive call, got %d", len(artifacts.PrimitiveCalls))
 	}
 	for _, use := range artifacts.PrimitiveCalls {
-		if use.Name != "tokenfor" || len(use.TypeArgs) != 1 {
-			t.Fatalf("registered primitive = %+v, want tokenfor with 1 type arg", use)
+		if use.Name != "typefor" || len(use.TypeArgs) != 1 {
+			t.Fatalf("registered primitive = %+v, want typefor with 1 type arg", use)
 		}
 		if typeName(prog.Checker, use.TypeArgs[0]) != "Foo" {
 			t.Fatalf("registered primitive type arg = %q, want Foo", typeName(prog.Checker, use.TypeArgs[0]))
 		}
 	}
-	if artifacts.SugarMembers["isService"].TypeArgCount != 1 {
+	if shapes := artifacts.SugarMembers["isService"]; len(shapes) != 1 || shapes[0].TypeArgCount != 1 {
 		t.Fatalf("sugar member shape not recorded: %+v", artifacts.SugarMembers)
 	}
 }
 
-// setupDeclareModuleOverloadWorkspace lays out the repo's standard OPEN-receiver
-// shape: the interface is EMPTY in the core barrel and both its sugar overload
-// (`isService<T>()`) AND its non-sugar primitive overload (`isService(token)`)
-// are contributed by a consumer `declare module` augmentation. A primitive-form
-// call then binds to a declaration that sits inside a declare-module block for
-// the entry's package and shares its TypeName — the exact provenance the
-// rogue-duplicate heuristic keys on, but a legitimate merged sibling, not a
-// dist-skew copy.
+// setupDeclareModuleOverloadWorkspace lays out the standard OPEN-receiver
+// shape: the interface is EMPTY in the core barrel, the sugar overload
+// (`isService<T>()`) arrives through the sugar package's own `declare module`,
+// and a non-sugar primitive overload (`isService(token)`) arrives through the
+// CONSUMER's declare-module augmentation. A primitive-form call then binds to a
+// declaration that sits inside a declare-module block for the entry's package
+// and shares its TypeName — the exact provenance the rogue-duplicate heuristic
+// keys on, but a legitimate merged sibling, not a dist-skew copy.
 func setupDeclareModuleOverloadWorkspace(t *testing.T) (*driver.Program, string) {
 	t.Helper()
 	root := t.TempDir()
@@ -557,46 +690,59 @@ func setupDeclareModuleOverloadWorkspace(t *testing.T) (*driver.Program, string)
 	write(t, filepath.Join(core, "package.json"), `{
   "name": "@scope/core",
   "version": "1.0.0",
-  "exports": { ".": { "types": "./src/index.ts", "default": "./src/index.ts" } },
-  "rhombus.inline": {
-    "entries": [ { "type": "@scope/core:IQuery", "impl": "QueryInline", "member": "isService" } ]
-  }
+  "exports": { ".": { "types": "./src/index.ts", "default": "./src/index.ts" } }
 }`)
-	// The interface is empty here — every isService overload arrives through the
-	// consumer's declare-module augmentation below.
+	// The interface is empty here — every isService overload arrives through a
+	// declare-module augmentation.
 	write(t, filepath.Join(core, "src", "index.ts"), `export interface IQuery {}
 export declare const provider: IQuery;
 `)
-	write(t, filepath.Join(core, "src", "inline.ts"), `import { tokenfor } from '@rhombus-std/primitives.extras';
-import type { IQuery } from './index';
-export const QueryInline = {
-  isService<T>(this: IQuery): boolean {
-    return this.isService(tokenfor<T>());
-  },
-};
-`)
 
-	app := filepath.Join(root, "packages", "app")
-	write(t, filepath.Join(app, "package.json"), `{
-  "name": "@scope/app",
+	sugar := filepath.Join(root, "packages", "sugar")
+	write(t, filepath.Join(sugar, "package.json"), `{
+  "name": "@scope/sugar",
   "version": "1.0.0",
-  "dependencies": { "@scope/core": "workspace:*" }
+  "exports": { ".": { "types": "./src/index.ts", "default": "./src/index.ts" } },
+  "dependencies": { "@scope/core": "workspace:*" },
+  "rhombus-std": { "inline": { "entries": [ { "type": "@scope/core:IQuery", "impl": "@scope/sugar:QueryInline", "member": "isService" } ] } }
 }`)
-	linkPackage(t, app, "@scope/core", core)
-
-	// Both overloads live in the declare-module augmentation — the non-sugar
-	// `isService(token: string)` is the OPEN-receiver primitive whose call must
-	// NOT be flagged as a rogue duplicate.
-	write(t, filepath.Join(app, "sugar.d.ts"), `declare module '@scope/core' {
+	write(t, filepath.Join(sugar, "src", "index.ts"), `declare module '@scope/core' {
   interface IQuery {
-    isService(token: string): boolean;
     isService<T>(): boolean;
   }
 }
 export {};
 `)
-	write(t, filepath.Join(app, "main.ts"), `/// <reference path="./sugar.d.ts" />
-import { provider } from '@scope/core';
+	write(t, filepath.Join(sugar, "src", "inline.ts"), `import { typefor } from '@rhombus-std/primitives.extras';
+import type { IQuery } from '@scope/core';
+export const QueryInline = {
+  isService<T>(this: IQuery): boolean {
+    return this.isService(typefor<T>());
+  },
+};
+`)
+	linkPackage(t, sugar, "@scope/core", core)
+
+	app := filepath.Join(root, "packages", "app")
+	write(t, filepath.Join(app, "package.json"), `{
+  "name": "@scope/app",
+  "version": "1.0.0",
+  "dependencies": { "@scope/core": "workspace:*", "@scope/sugar": "workspace:*" }
+}`)
+	linkPackage(t, app, "@scope/core", core)
+	linkPackage(t, app, "@scope/sugar", sugar)
+
+	// The non-sugar `isService(token: string)` overload is the OPEN-receiver
+	// primitive a third party contributes; a call binding to it must NOT be
+	// flagged as a rogue duplicate.
+	write(t, filepath.Join(app, "augment.d.ts"), `declare module '@scope/core' {
+  interface IQuery {
+    isService(token: string): boolean;
+  }
+}
+export {};
+`)
+	write(t, filepath.Join(app, "main.ts"), `import { provider } from '@scope/core';
 interface Foo { readonly brand: 'foo'; }
 export const known = provider.isService<Foo>();
 export const literal = provider.isService('x');
@@ -606,7 +752,7 @@ export const literal = provider.isService('x');
     "target": "ES2022", "module": "esnext", "moduleResolution": "bundler",
     "strict": true, "noEmit": true, "skipLibCheck": true
   },
-  "files": ["main.ts", "sugar.d.ts", "node_modules/@scope/core/src/index.ts"]
+  "files": ["main.ts", "augment.d.ts", "node_modules/@scope/core/src/index.ts", "node_modules/@scope/sugar/src/index.ts"]
 }`)
 
 	prog, diags, err := driver.LoadProgram(app, "tsconfig.json", driver.LoadProgramOptions{})

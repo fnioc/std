@@ -1,13 +1,13 @@
 import type { IConfigBuilder } from '@rhombus-std/config.core';
-import type { IServiceManifest, IServiceProviderFactory } from '@rhombus-std/di.core';
-import type { Action, Func } from '@rhombus-toolkit/func';
+import type { Manifest } from '@rhombus-std/di.core';
+import type { Action, Func } from '@rhombus-toolkit/types';
 import type { HostBuilderContext } from './HostBuilderContext';
 import type { IHost } from './IHost';
 
 /**
  * A program initialization abstraction. The primary API surface for assembling
  * a host: configuration wiring (`@rhombus-std/config`) and service registration
- * (`@rhombus-std/di`'s {@link IServiceManifest}) are threaded through the
+ * (`@rhombus-std/di`'s {@link Manifest}) are threaded through the
  * configure delegates.
  */
 export interface IHostBuilder {
@@ -48,30 +48,15 @@ export interface IHostBuilder {
    * delegate that registers something and returns the manifest it was given
    * would silently drop that registration.
    */
-  configureServices(configureDelegate: Func<[HostBuilderContext, IServiceManifest], IServiceManifest>): this;
-
-  /**
-   * Overrides the factory used to create the service provider.
-   *
-   * @remarks
-   * {@link IServiceProviderFactory} is generic over a container-builder type,
-   * but this host only ever builds one container type
-   * ({@link IServiceManifest}) — a factory for any other `TContainerBuilder`
-   * is accepted here but has no effect; the default `IServiceManifest` build
-   * path always runs.
-   */
-  useServiceProviderFactory<TContainerBuilder>(factory: IServiceProviderFactory<TContainerBuilder>): this;
+  configureServices(configureDelegate: Func<[HostBuilderContext, Manifest<unknown>], Manifest<unknown>>): this;
 
   /**
    * Enables configuring the instantiated dependency container. Additive
    * across calls. (Context form; see {@link configureAppConfig} for the
-   * no-context remark.) `TContainerBuilder` is always {@link IServiceManifest}
-   * here, so the delegate returns it for the same immutability reason
-   * {@link configureServices} does.
+   * no-context remark.) The delegate returns the {@link Manifest} for the
+   * same immutability reason {@link configureServices} does.
    */
-  configureContainer<TContainerBuilder>(
-    configureDelegate: Func<[HostBuilderContext, TContainerBuilder], TContainerBuilder>,
-  ): this;
+  configureContainer(configureDelegate: Func<[HostBuilderContext, Manifest<unknown>], Manifest<unknown>>): this;
 
   /** Runs the configuration actions and produces an initialized {@link IHost}. */
   build(): IHost;

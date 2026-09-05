@@ -1,7 +1,7 @@
 {
   "name": "@rhombus-std/logging",
   "version": "0.0.0",
-  "description": "Logging runtime ported from ME.Logging: LoggerFactory/Logger/NullLogger, LoggerFilterOptions/Rule, and the addLogging augmentation that patches @rhombus-std/di.core's ServiceManifest. Providers are out of scope (see issue #75).",
+  "description": "Logging runtime: LoggerFactory/Logger/NullLogger, LoggerFilterOptions/Rule, and getLoggingManifest -- the logging registrations, published as a manifest to merge into your own. Providers are out of scope.",
   "keywords": [
     "logging",
     "ioc",
@@ -14,26 +14,11 @@
     "directory": "libraries/logging"
   },
   "type": "module",
-  "main": "./dist/bundle/index.js",
-  "types": "./dist/bundle/index.d.ts",
+  "main": "./src/index.ts",
   "sideEffects": true,
   "exports": {
-    ".": {
-      "source": "./src/index.ts",
-      "bun": "./dist/bundle/index.js",
-      "types": "./dist/bundle/index.d.ts",
-      "import": "./dist/bundle/index.js",
-      "default": "./dist/bundle/index.js"
-    },
-    "./tokens/*": {
-      "source": "./src/*.ts",
-      "bun": "./src/*.ts",
-      "types": "./src/*.ts"
-    },
-    "./private/*": {
-      "types": "./src/*.ts",
-      "bun": "./dist/stage/*.js"
-    }
+    ".": "./src/index.ts",
+    "./private/*": "./src/*.ts"
   },
   "files": [
     "dist",
@@ -45,33 +30,26 @@
   },
   "dependencies": {
     "@rhombus-std/di": "workspace:*",
+    "@rhombus-std/di.core": "workspace:*",
     "@rhombus-std/logging.core": "workspace:*",
     "@rhombus-std/options": "workspace:*",
     "@rhombus-std/options.augmentations": "workspace:*",
-    "@rhombus-std/primitives": "workspace:*"
-  },
-  "peerDependencies": {
-    "@rhombus-std/di.core": "workspace:^"
+    "@rhombus-std/primitives": "workspace:*",
+    "@rhombus-toolkit/types": "^2.0.0"
   },
   "devDependencies": {
-    "@rhombus-std/di.core": "workspace:*",
+    "@rhombus-std/di.extras": "workspace:*",
     "@rhombus-std/primitives.extras": "workspace:*",
-    "@rhombus-toolkit/func": "3.5.3",
     "@ttsc/unplugin": "^0.18.1",
     "ttsc": "^0.18.1",
-    "typescript": "^5.9.0"
+    "typescript": "^6.0.3"
   },
   "publishConfig": {
     "access": "public",
     "provenance": true,
     "main": "./dist/bundle/index.js",
-    "types": "./dist/bundle/index.d.ts",
     "exports": {
-      ".": {
-        "types": "./dist/bundle/index.d.ts",
-        "import": "./dist/bundle/index.js",
-        "default": "./dist/bundle/index.js"
-      }
+      ".": "./dist/bundle/index.js"
     }
   }
 }

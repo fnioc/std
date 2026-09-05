@@ -11,19 +11,14 @@
 
 import { ConfigManager } from '@rhombus-std/config';
 import type { IConfigManager } from '@rhombus-std/config.core';
-import { ServiceManifest } from '@rhombus-std/di';
-import type { IServiceManifest } from '@rhombus-std/di.core';
-import type { IServiceProviderFactory, ServiceProviderOptions } from '@rhombus-std/di.core';
+import { Manifest } from '@rhombus-std/di.core';
 import type { IMetricsBuilder } from '@rhombus-std/diagnostics.core';
-import { type HostBuilderContext, HostDefaults, type IHost, type IHostApplicationBuilder, type IHostBuilder,
-  type IHostEnvironment } from '@rhombus-std/hosting.core';
+import { type HostBuilderContext, HostDefaults, type IHost, type IHostApplicationBuilder, type IHostBuilder, type IHostEnvironment } from '@rhombus-std/hosting.core';
 import { LoggingBuilder } from '@rhombus-std/logging';
 import type { ILoggingBuilder } from '@rhombus-std/logging.core';
-import type { Action } from '@rhombus-toolkit/func';
-import { addCommandLineConfig, addDefaultServices, applyDefaultAppConfig, createDefaultServiceProviderOptions,
-  HOST_ENVIRONMENT_VARIABLE_PREFIX, setDefaultContentRoot } from './default-config';
-import { createFrameworkServices, createHostingEnvironment, type FrameworkServices, populateFrameworkServices,
-  resolveHost } from './host-composition';
+import type { Action } from '@rhombus-toolkit/types';
+import { addCommandLineConfig, addDefaultServices, applyDefaultAppConfig, createDefaultServiceProviderOptions, HOST_ENVIRONMENT_VARIABLE_PREFIX, setDefaultContentRoot } from './default-config';
+import { createFrameworkServices, createHostingEnvironment, type FrameworkServices, populateFrameworkServices, resolveHost } from './host-composition';
 import { HostApplicationBuilderSettings } from './HostApplicationBuilderSettings';
 import { HostBuilderAdapter } from './internal/HostBuilderAdapter';
 import { MetricsBuilder } from './MetricsBuilder';
@@ -37,17 +32,17 @@ export class HostApplicationBuilder implements IHostApplicationBuilder {
   // every registration call site now uses.
   //
   // THIS FIELD IS THE ONE SLOT. `#logging`, `#metrics`, and the classic-builder
-  // adapter are all constructed over `this` as their `IServiceManifestHolder`,
+  // adapter are all constructed over `this` as their `ManifestSlot`,
   // so they read and write here rather than each carrying a fork of the chain.
   // Handing them a manifest VALUE instead would let `builder.logging.addConsole()`
   // build a chain that `build()` never sees.
-  #services: IServiceManifest = new ServiceManifest();
+  #services: Manifest<unknown> = Manifest.empty<unknown>();
   readonly #environment: IHostEnvironment;
   readonly #context: HostBuilderContext;
   readonly #logging: LoggingBuilder;
   readonly #metrics: MetricsBuilder;
   readonly #framework: FrameworkServices;
-  readonly #serviceProviderOptions: ServiceProviderOptions | undefined;
+  readonly #serviceProviderOptions: { validateOnBuild?: boolean; } | undefined;
 
   #hostBuilderAdapter?: HostBuilderAdapter;
   #hostBuilt = false;
@@ -92,11 +87,9 @@ export class HostApplicationBuilder implements IHostApplicationBuilder {
     }
 
     this.#environment = createHostingEnvironment(this.#config);
-    this.#context = { hostingEnvironment: this.#environment, config: this.#config,
-      properties: new Map<string | symbol, unknown>() };
+    this.#context = { hostingEnvironment: this.#environment, config: this.#config, properties: new Map<string | symbol, unknown>() };
 
-    this.#services = populateFrameworkServices(this.#services, this.#context, this.#environment, this.#config,
-      this.#framework);
+    this.#services = populateFrameworkServices(this.#services, this.#context, this.#environment, this.#config, this.#framework);
 
     if (!resolved.disableDefaults) {
       applyDefaultAppConfig(this.#config, this.#environment, resolved.args);
@@ -141,7 +134,7 @@ export class HostApplicationBuilder implements IHostApplicationBuilder {
   }
 
   /** The collection of services for the application to compose. */
-  public get services(): IServiceManifest {
+  public get services(): Manifest<unknown> {
     return this.#services;
   }
 
@@ -149,20 +142,18 @@ export class HostApplicationBuilder implements IHostApplicationBuilder {
    * Rebinds the live services manifest. di.core's `ServiceManifest` chain is
    * immutable -- every registration verb returns a NEW manifest -- so a
    * caller registering something reassigns `builder.services =
-   * builder.services.addClass(...)` rather than mutating in place.
+   * builder.services.add(...)` rather than mutating in place.
    */
-  public set services(value: IServiceManifest) {
+  public set services(value: Manifest<unknown>) {
     this.#services = value;
   }
 
   /**
-   * Registers a factory used to create the service provider. This repo has a
-   * SINGLE container type, so this is a minimal no-op single-container hook: the
-   * default `ServiceManifest` build path is always used.
+   * Configures the instantiated dependency container. This repo has a SINGLE
+   * container type, so this is a minimal no-op single-container hook: the
+   * default build path is always used.
    */
-  public configureContainer<TContainerBuilder>(_factory: IServiceProviderFactory<TContainerBuilder>,
-    _configure?: Action<[TContainerBuilder]>): void
-  {}
+  public configureContainer(_configure?: Action<[Manifest<unknown>]>): void {}
 
   /**
    * Returns a classic {@link IHostBuilder} view over this builder. Lazily

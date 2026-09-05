@@ -8,20 +8,28 @@ export default tseslint.config({
   files: ['libraries/*/src/**/*.ts', 'examples/*/src/**/*.ts'],
   extends: [tseslint.configs.base],
   languageOptions: { parserOptions: { projectService: true, tsconfigRootDir: import.meta.dirname } },
-  rules: { curly: ['error', 'all'],
-    '@typescript-eslint/strict-boolean-expressions': ['error', { allowNullableBoolean: true, allowNullableString: true,
-      allowNullableNumber: true }], '@typescript-eslint/switch-exhaustiveness-check': 'error',
-    '@typescript-eslint/array-type': ['error', { default: 'array-simple' }] },
+  rules: { curly: ['error', 'all'], '@typescript-eslint/switch-exhaustiveness-check': 'error', '@typescript-eslint/array-type': ['warn', { default: 'array-simple' }],
+    '@typescript-eslint/no-restricted-imports': ['error', {
+      patterns: [{
+        group: ['@rhombus-std/*/tokens/**'],
+        message: 'White-box seam (tests only) — import from the package barrel instead.',
+      }],
+    }] },
 }, {
   // Inline-sugar authoring files: the hygiene the generic inline stage relies
   // on (single return expression over compile-time primitives). Rides the
-  // type-aware block's parser settings; the rule itself uses none.
-  files: ['libraries/*/src/inline.ts'],
+  // type-aware block's parser settings; the rule itself uses none. A marker
+  // body lives wherever its declaring package puts it — the rule locates it by
+  // walking that package's own `rhombus-std` inline publish list, not by file
+  // name — so the glob only needs to reach every candidate file; a package's
+  // barrel, its `inline.ts`, and its `augmentations/*.ts` are the shapes in use
+  // today.
+  files: ['libraries/*/src/index.ts', 'libraries/*/src/inline.ts', 'libraries/*/src/augmentations/*.ts'],
   plugins: { 'rhombus-inline': rhombusInline },
   rules: { 'rhombus-inline/inline-authoring': 'error' },
 }, {
   // Tests: not in any tsconfig → syntactic rules only (no type info, no parsing error)
-  files: ['libraries/*/test/**/*.ts', 'examples/*/test/**/*.ts', 'tests/*.test/test/**/*.ts'],
+  files: ['tests/*.test/test/**/*.ts'],
   extends: [tseslint.configs.base],
-  rules: { curly: ['error', 'all'], '@typescript-eslint/array-type': ['error', { default: 'array-simple' }] },
+  rules: { curly: ['error', 'all'], '@typescript-eslint/array-type': ['warn', { default: 'array-simple' }] },
 });

@@ -15,9 +15,9 @@
 
 import { NullChangeToken } from '@rhombus-std/fileproviders.core';
 import { PhysicalFileProvider } from '@rhombus-std/fileproviders.physical';
-import { ExclusionFilters } from '@rhombus-std/fileproviders.physical/tokens/ExclusionFilters';
-import { PhysicalFilesWatcher } from '@rhombus-std/fileproviders.physical/tokens/PhysicalFilesWatcher';
-import { PollingFileChangeToken } from '@rhombus-std/fileproviders.physical/tokens/PollingFileChangeToken';
+import { ExclusionFilters } from '@rhombus-std/fileproviders.physical/private/ExclusionFilters';
+import { PhysicalFilesWatcher } from '@rhombus-std/fileproviders.physical/private/PhysicalFilesWatcher';
+import { PollingFileChangeToken } from '@rhombus-std/fileproviders.physical/private/PollingFileChangeToken';
 import { afterEach, beforeEach, describe, expect, test } from 'bun:test';
 import { mkdirSync, mkdtempSync, rmSync, statSync, utimesSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
@@ -94,7 +94,7 @@ describe('PhysicalFileProvider.watch polling (exact file)', () => {
     expect(token.hasChanged).toBe(true);
 
     // Reverting the mtime must not clear the latched change.
-    const original = statSync(join(root, 'a.txt')).mtime;
+    const original = statSync(join(root, 'a.txt'), { throwIfNoEntry: false })!.mtime;
     utimesSync(join(root, 'a.txt'), original, original);
     expect(token.hasChanged).toBe(true);
   });
@@ -154,9 +154,8 @@ describe('PhysicalFileProvider.watch active mode (best-effort)', () => {
     expect(() => provider[Symbol.dispose]()).not.toThrow();
   });
 
-  // White-box against PhysicalFilesWatcher: the `.` export is dist-referenced,
-  // so exercising the shared-timer statics (src copies) through the built
-  // provider bundle can't reach them -- the watcher is driven directly, the
+  // White-box against PhysicalFilesWatcher: the shared-timer statics are
+  // exercised on the class directly rather than through a provider -- the
   // same seam PollingFileChangeToken's own unit tests use.
   test('disposal does NOT fire outstanding active tokens', () => {
     writeFileSync(join(root, 'a.txt'), 'v1');

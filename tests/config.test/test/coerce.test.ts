@@ -1,7 +1,7 @@
 // Coercion primitives -- the single source of truth for number/boolean parsing
 // shared by the on-demand section helpers and the schema-walker.
 
-import { parseBoolean, parseNumber } from '@rhombus-std/config/private/coerce';
+import { parseBigInt, parseBoolean, parseNumber } from '@rhombus-std/config/private/coerce';
 import { describe, expect, test } from 'bun:test';
 
 describe('parseNumber', () => {
@@ -34,6 +34,20 @@ describe('parseBoolean', () => {
   test('rejects anything else', () => {
     for (const raw of ['maybe', '2', '']) {
       expect(parseBoolean(raw).ok).toBe(false);
+    }
+  });
+});
+
+describe('parseBigInt', () => {
+  test('accepts signed integer strings', () => {
+    for (const [raw, value] of [['0', 0n], ['8080', 8080n], ['-5', -5n]] as const) {
+      expect(parseBigInt(raw)).toEqual({ ok: true, value });
+    }
+  });
+
+  test('rejects blank, decimal, and non-numeric strings', () => {
+    for (const raw of ['', '   ', '3.14', 'abc', '1e3']) {
+      expect(parseBigInt(raw).ok).toBe(false);
     }
   });
 });

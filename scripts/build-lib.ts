@@ -15,14 +15,14 @@
 //     @rhombus-std/config folds in @rhombus-toolkit/proxy-base (whose
 //     published ESM uses extensionless relative imports Node's resolver
 //     rejects; bundling resolves them).
-//   - `entrypoints` = src/index.ts plus, for every exports subpath whose
-//     `import` condition points at a non-index dist/*.js, the matching
-//     src/*.ts (today: config's ./with-type-augment side-effect seam).
+//   - `entrypoints` = src/index.ts plus the runtime target of every exports
+//     subpath naming a non-index `./src/*.ts`. No package carries such a
+//     subpath today.
 //   - `dtsConfigs` = one rollup config per JS entrypoint (rollup.dts.mjs, plus
 //     rollup.<entry>.dts.mjs per extra entrypoint) -- the one-rolled-d.ts-per-
 //     entry invariant, asserted by existence.
 //   - lowering engine: tsconfig.ttsc.json present -> the Go/ttsc engine lowers
-//     `nameof<T>()` (and the registration/options/config sugar) in a per-file
+//     `typefor<T>()` (and the registration/options/config sugar) in a per-file
 //     stage before the bundle. Absent -> no lowering stage. WHICH stages run is
 //     declare-by-depending, resolved HOST-SIDE (§100): ttsc auto-discovery spawns
 //     the one owner host from the package's direct `*.extras` dep, and the
@@ -30,15 +30,9 @@
 //     scan. So this script passes NO explicit plugin list (a non-empty manual
 //     `tsconfig.ttsc.json` `plugins` array is the only override). See below.
 //
-// The optional `rhombusBuild` manifest field carries the few per-package
-// overrides (each override package documents its why in a `//rhombusBuild`
-// neighbor key):
-//
-//   | package            | field                                  | why                                              |
-//   |--------------------|----------------------------------------|--------------------------------------------------|
-//   | config.core        | typesOnly: true                        | pure-types package -- no JS bundle, asserted (§40) |
-//   | di.extras     | inline: [primitives.extras, func] | dist-parity carve-out -- its bespoke build inlined these; aligning to the rule is a follow-up |
-//   | config.extras | forbidImports: ["@rhombus-std/config"] | its bundle must be @rhombus-std-free -- the only "@rhombus-std/config" occurrence is the codegen'd import-specifier string |
+// The optional `rhombusBuild` manifest field carries per-package overrides
+// (each override package documents its why in a `//rhombusBuild` neighbor
+// key). No package carries one today.
 
 import { spawnSync } from 'node:child_process';
 import { existsSync, readFileSync } from 'node:fs';
@@ -73,16 +67,19 @@ if (typecheck.status !== 0) {
   process.exit(typecheck.status ?? 1);
 }
 
-// Entrypoints: src/index.ts + every exports subpath whose `import` condition
-// is a non-index dist/bundle/*.js. (`./tokens/*`, `./private/*`, `./ttsc`, and
-// bun-only subpaths all fail the test and are correctly ignored.)
+// Entrypoints: src/index.ts + every exports subpath whose runtime target is a
+// non-index src module -- a bare string, or the `default` condition of an
+// object. A wildcard subpath (`./private/*`) is a pattern rather than one
+// module, so it names no entrypoint; `./ttsc` targets a file outside src; and a
+// types-only subpath (di.core's `./builders`) declares no runtime target at all.
 const entrypoints = ['src/index.ts'];
 const dtsConfigs = ['rollup.dts.mjs'];
 for (const [subpath, target] of Object.entries(manifest.exports ?? {})) {
-  if (subpath === '.' || typeof target === 'string') {
+  if (subpath === '.' || subpath.includes('*')) {
     continue;
   }
-  const match = /^\.\/dist\/bundle\/(?!index\.js$)(.+)\.js$/.exec(target.import ?? '');
+  const runtime = typeof target === 'string' ? target : target.default;
+  const match = /^\.\/src\/(?!index\.ts$)(.+)\.ts$/.exec(runtime ?? '');
   if (!match) {
     continue;
   }
@@ -129,8 +126,7 @@ if (ttscProject) {
   ttscTransforms = manual.length > 0 ? manual : undefined;
 }
 
-await buildPackage({ dir, name: manifest.name, entrypoints, external, dtsConfigs,
-  emitJs: !(overrides.typesOnly ?? false), assertNoJs: overrides.typesOnly ?? false, ttscProject, ttscTransforms });
+await buildPackage({ dir, name: manifest.name, entrypoints, external, dtsConfigs, emitJs: !(overrides.typesOnly ?? false), assertNoJs: overrides.typesOnly ?? false, ttscProject, ttscTransforms });
 
 // Guard: the emitted bundle must carry no real ESM import from the forbidden
 // specifiers. A literal occurrence as a STRING (e.g. a transformer's codegen'd

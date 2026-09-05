@@ -11,7 +11,7 @@
 // cross-package internal reach in the meantime.
 
 import type { IChangeToken } from '@rhombus-std/primitives';
-import type { Func } from '@rhombus-toolkit/func';
+import type { Func } from '@rhombus-toolkit/types';
 
 /**
  * An {@link IChangeToken} over a set of child tokens: {@link hasChanged} when any

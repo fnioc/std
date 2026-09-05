@@ -1,0 +1,5 @@
+{
+  "extends": "./tsconfig.json",
+  "include": [],
+  "files": ["test/builder-lock-on.types.test.ts"]
+}

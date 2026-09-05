@@ -1,15 +1,15 @@
-// ITracingBuilder carries the DI registration surface that tracing extension
+// ITracingBuilder carries the DI registration surface that tracing augmentation
 // functions register against -- the tracing counterpart of IMetricsBuilder.
 //
-// `services` is WRITABLE (not `readonly`): di.core's `ServiceManifest` chain is
+// `services` is WRITABLE (not `readonly`): di.core's `Manifest` chain is
 // immutable -- every registration verb returns a NEW manifest -- so an
-// extension function that registers something reassigns
-// `builder.services = builder.services.addClass(...)` rather than mutating in place.
+// augmentation function that registers something reassigns
+// `builder.services = builder.services.add(...)` rather than mutating in place.
 
-import type { IServiceManifestBase } from '@rhombus-std/di.core';
+import type { Manifest } from '@rhombus-std/di.core';
 
 /** Configures the tracing system by registering listeners and rules. */
 export interface ITracingBuilder {
-  /** The registration builder that extension functions register services against. */
-  services: IServiceManifestBase;
+  /** The registration builder that augmentation functions register services against. */
+  services: Manifest<unknown>;
 }

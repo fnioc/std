@@ -12,8 +12,8 @@
 
 import type { EventId, ILogger, LogLevel } from '@rhombus-std/logging.core';
 import { augment } from '@rhombus-std/primitives';
-import { tokenfor } from '@rhombus-std/primitives.extras';
-import type { Func } from '@rhombus-toolkit/func';
+import { typefor } from '@rhombus-std/primitives.extras';
+import type { Func } from '@rhombus-toolkit/types';
 import type { LoggerInformation, MessageLogger, ScopeLogger } from './LoggerInformation';
 
 /** A `Disposable` that does nothing on dispose — the shared no-op scope token. */
@@ -21,10 +21,10 @@ const NULL_SCOPE: Disposable = { [Symbol.dispose]() {} };
 
 // Binds the `ILogger` interface onto the class so the interface-merged
 // wrapper methods (logInformation/…) flow onto `Logger`, beside the
-// `@augment(tokenfor<ILogger>())` install below.
+// `@augment(typefor<ILogger>())` install below.
 export interface Logger extends ILogger {}
 
-@augment(tokenfor<ILogger>())
+@augment(typefor<ILogger>())
 export class Logger implements ILogger {
   /** The provider-participation records — resized in place by the factory on `addProvider`. */
   public loggers: LoggerInformation[];
@@ -37,9 +37,7 @@ export class Logger implements ILogger {
     this.loggers = loggers;
   }
 
-  public log<TState>(logLevel: LogLevel, eventId: EventId, state: TState, error: Error | undefined,
-    formatter: Func<[TState, Error | undefined], string>): void
-  {
+  public log<TState>(logLevel: LogLevel, eventId: EventId, state: TState, error: Error | undefined, formatter: Func<[TState, Error | undefined], string>): void {
     const loggers = this.messageLoggers;
     if (loggers === undefined) {
       return;

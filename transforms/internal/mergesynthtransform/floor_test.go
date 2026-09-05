@@ -39,6 +39,7 @@ export class P2 { private a: number = 1; private b: string = ""; }
 // A whole guard used to be lost to one undecomposable member. The clauses beside
 // it are unaffected by it.
 func TestUndecomposableMemberCostsOnlyItsOwnClause(t *testing.T) {
+	t.Setenv("TTSC_MERGESYNTH_VERBOSE", "1")
 	out, diags := run(t, setOptionsFixture(divergingInner+`
 export interface Holder { label: string; p: Promise<Inner>; }
 `, "Holder"))
@@ -55,7 +56,7 @@ func TestRefusedParameterDoesNotDisarmItsSibling(t *testing.T) {
 	out, _ := run(t, `
 export class Sealed { #a: number = 0; }
 export const AlphaExtensions = {
-  setOptions(self: IAlpha, a: string, b: Sealed): void {},
+  setOptions(a: string, b: Sealed): void {},
 };
 registerAugmentations("t:IAlpha", AlphaExtensions);
 `)
@@ -74,7 +75,7 @@ registerAugmentations("t:IAlpha", AlphaExtensions);
 func TestRestParameterKeepsAGuardOverItsElements(t *testing.T) {
 	out, diags := run(t, divergingInner+`
 export const AlphaExtensions = {
-  setOptions(self: IAlpha, ...o: Map<string, Inner>[]): void {},
+  setOptions(...o: Map<string, Inner>[]): void {},
 };
 registerAugmentations("t:IAlpha", AlphaExtensions);
 `)
@@ -98,10 +99,11 @@ registerAugmentations("t:IAlpha", AlphaExtensions);
 // emitted is the floor over the SLICE — `Array.isArray(args.slice(0))` can never
 // be false, the slice being an array by construction.
 func TestRestParameterOverAFlooredElementStillNarrows(t *testing.T) {
+	t.Setenv("TTSC_MERGESYNTH_VERBOSE", "1")
 	out, diags := run(t, `
 export class Sealed { #a: number = 0; }
 export const AlphaExtensions = {
-  setOptions(self: IAlpha, ...o: Sealed[]): void {},
+  setOptions(...o: Sealed[]): void {},
 };
 registerAugmentations("t:IAlpha", AlphaExtensions);
 `)
@@ -169,7 +171,7 @@ func TestObjectKeywordKeepsItsFloor(t *testing.T) {
 func TestObjectKeywordRestParameterNarrowsByItsElements(t *testing.T) {
 	out, diags := run(t, `
 export const AlphaExtensions = {
-  setOptions(self: IAlpha, ...o: object[]): void {},
+  setOptions(...o: object[]): void {},
 };
 registerAugmentations("t:IAlpha", AlphaExtensions);
 `)
@@ -189,6 +191,7 @@ registerAugmentations("t:IAlpha", AlphaExtensions);
 // "unchecked" when a clause was emitted for it is the same class of defect as
 // emitting a clause that decides nothing.
 func TestDiagnosticDoesNotCallAnEmittedClauseUnchecked(t *testing.T) {
+	t.Setenv("TTSC_MERGESYNTH_VERBOSE", "1")
 	out, diags := run(t, setOptionsFixture("", "Function"))
 	guard := strategyText(t, out, "setOptions")
 	if !strings.Contains(guard, `typeof input === "object"`) {

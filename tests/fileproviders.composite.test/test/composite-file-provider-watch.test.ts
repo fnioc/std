@@ -5,8 +5,7 @@
 // fires.
 
 import { CompositeFileProvider } from '@rhombus-std/fileproviders.composite';
-import { type IDirectoryContents, type IFileInfo, type IFileProvider, NotFoundDirectoryContents, NotFoundFileInfo,
-  NullChangeToken } from '@rhombus-std/fileproviders.core';
+import { type IDirectoryContents, type IFileInfo, type IFileProvider, NotFoundDirectoryContents, NotFoundFileInfo, NullChangeToken } from '@rhombus-std/fileproviders.core';
 import { CompositeChangeToken, type IChangeToken } from '@rhombus-std/primitives';
 import { describe, expect, test } from 'bun:test';
 
@@ -70,16 +69,14 @@ class WatchOnlyProvider implements IFileProvider {
 
 describe('CompositeFileProvider.watch', () => {
   test('returns the NullChangeToken singleton when no provider emits changes', () => {
-    const provider = new CompositeFileProvider(new WatchOnlyProvider(NullChangeToken.singleton),
-      new WatchOnlyProvider(NullChangeToken.singleton));
+    const provider = new CompositeFileProvider(new WatchOnlyProvider(NullChangeToken.singleton), new WatchOnlyProvider(NullChangeToken.singleton));
 
     expect(provider.watch('**/*.txt')).toBe(NullChangeToken.singleton);
   });
 
   test("passes a single change-emitting provider's token through untouched", () => {
     const token = new TestChangeToken();
-    const provider = new CompositeFileProvider(new WatchOnlyProvider(NullChangeToken.singleton),
-      new WatchOnlyProvider(token));
+    const provider = new CompositeFileProvider(new WatchOnlyProvider(NullChangeToken.singleton), new WatchOnlyProvider(token));
 
     expect(provider.watch('**/*.txt')).toBe(token);
   });
@@ -98,8 +95,7 @@ describe('CompositeFileProvider.watch', () => {
   test('composes 2+ change-emitting providers into one token that fires on any inner change', () => {
     const firstToken = new TestChangeToken();
     const secondToken = new TestChangeToken();
-    const provider = new CompositeFileProvider(new WatchOnlyProvider(firstToken),
-      new WatchOnlyProvider(NullChangeToken.singleton), new WatchOnlyProvider(secondToken));
+    const provider = new CompositeFileProvider(new WatchOnlyProvider(firstToken), new WatchOnlyProvider(NullChangeToken.singleton), new WatchOnlyProvider(secondToken));
 
     const composite = provider.watch('**/*.txt');
     expect(composite).toBeInstanceOf(CompositeChangeToken);

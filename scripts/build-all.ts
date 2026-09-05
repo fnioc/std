@@ -1,24 +1,22 @@
 // Topological build runner for the @rhombus-std workspace.
 //
-// `bun --filter '*' build` runs every package's build in PARALLEL with no
-// ordering. That is fine for packages that consume their siblings from SOURCE
-// (the `source`/`bun`/`types` export conditions point at `.ts`, always present),
-// but WRONG for the transformer-active packages and the with-transformer example
-// builds: they resolve their upstream through its rolled `.d.ts`, not source
-// (docs/decisions.md §1/§9). If that upstream dist is missing or being rewritten
-// while they compile, the type-facing condition silently falls back to source,
-// and the augmented core class fails its own augmented interface (TS2416/TS2420)
-// -- the order-dependent, stale-dist failure this runner exists to remove.
+// In-repo resolution is source-first, so no package's typecheck or lowering
+// stage reads a sibling's dist -- correctness no longer depends on build
+// order. The tiers are kept for determinism: every package's publish
+// artifacts are produced against a workspace whose upstream dists are
+// complete rather than mid-rewrite, and a failure surfaces at the shallowest
+// package that owns it instead of at whichever downstream build happened to
+// race past it.
 //
 // It topologically orders the per-package `build` scripts by their workspace
-// dependency graph and runs each tier to completion before the next begins, so
-// every `built`-condition consumer sees a complete, stable upstream dist. A
+// dependency graph and runs each tier to completion before the next begins. A
 // tier's packages have no ordering between them and build in parallel (one
 // `bun --filter` invocation per tier).
 
-import { spawnSync } from 'node:child_process';
+import { spawn } from 'node:child_process';
 import { readdirSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
+import { createInterface } from 'node:readline';
 
 interface Manifest {
   readonly name: string;
@@ -31,6 +29,8 @@ interface Manifest {
 interface Package {
   readonly name: string;
   readonly hasBuild: boolean;
+  /** Workspace-relative directory (`libraries/di.core`), for rewriting diagnostic paths. */
+  readonly dir: string;
   /** Workspace-sibling package names this one depends on (any dependency kind). */
   readonly deps: readonly string[];
 }
@@ -68,8 +68,7 @@ function discoverPackages(): Map<string, Package> {
       } catch {
         continue;
       }
-      packages.set(manifest.name, { name: manifest.name, hasBuild: Boolean(manifest.scripts?.build),
-        deps: [...new Set(workspaceDeps(manifest))] });
+      packages.set(manifest.name, { name: manifest.name, hasBuild: Boolean(manifest.scripts?.build), dir: `${group}/${entry}`, deps: [...new Set(workspaceDeps(manifest))] });
     }
   }
   return packages;
@@ -107,6 +106,27 @@ function computeTiers(packages: Map<string, Package>): string[][] {
 const packages = discoverPackages();
 const tiers = computeTiers(packages);
 
+const PREFIXED_LINE = /^(?<name>@\S+) build: (?<rest>.*)$/;
+const TSC_DIAGNOSTIC = /^[^\s(][^(]*\(\d+,\d+\): (?:error|warning) TS\d+: /;
+
+/**
+ * Rewrites a `--filter`-prefixed tsc diagnostic onto its workspace-relative
+ * path (`@x build: src/F.ts(1,2): error …` → `libraries/x/src/F.ts(1,2): error …`),
+ * so an editor problem matcher can resolve the file. Every other line passes
+ * through untouched, prefix and all.
+ */
+function rewrite(line: string): string {
+  const prefixed = PREFIXED_LINE.exec(line);
+  if (!prefixed?.groups) {
+    return line;
+  }
+  const dir = packages.get(prefixed.groups.name!)?.dir;
+  if (dir && TSC_DIAGNOSTIC.test(prefixed.groups.rest!)) {
+    return `${dir}/${prefixed.groups.rest!}`;
+  }
+  return line;
+}
+
 for (const tier of tiers) {
   const toBuild = tier.filter((name) => packages.get(name)?.hasBuild);
   if (!toBuild.length) {
@@ -114,8 +134,19 @@ for (const tier of tiers) {
   }
   console.log(`\n▶ build tier: ${toBuild.join(', ')}`);
   const filters = toBuild.flatMap((name) => ['--filter', name]);
-  const result = spawnSync('bun', [...filters, 'build'], { cwd: ROOT, stdio: 'inherit' });
-  if (result.status !== 0) {
-    process.exit(result.status ?? 1);
+  const child = spawn('bun', [...filters, 'build'], { cwd: ROOT, stdio: ['ignore', 'pipe', 'pipe'] });
+  createInterface({ input: child.stdout }).on('line', (line) => {
+    console.log(rewrite(line));
+  });
+  createInterface({ input: child.stderr }).on('line', (line) => {
+    console.error(rewrite(line));
+  });
+  const status = await new Promise<number>((resolve) => {
+    child.on('close', (code) => {
+      resolve(code ?? 1);
+    });
+  });
+  if (status !== 0) {
+    process.exit(status);
   }
 }

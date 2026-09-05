@@ -1,24 +1,22 @@
 import { beforeAll, describe, expect, test } from 'bun:test';
 import { spawnSync } from 'node:child_process';
-import { mkdirSync, readdirSync, rmSync, symlinkSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, readdirSync, readFileSync, rmSync, symlinkSync, writeFileSync } from 'node:fs';
 import { homedir } from 'node:os';
 import { basename, join, resolve } from 'node:path';
 
-// Production-path e2e for the config.extras INLINE + schemaof lowering, the
-// sole path now that the bespoke config stage is deleted (W6p3). It drives the real
-// ttsc (typescript-go) HOST over a temp project wired through the
+// Production-path e2e for the config.extras INLINE + schemaof transform. It
+// drives the real ttsc (typescript-go) HOST over a temp project wired through the
 // `@rhombus-std/config.extras/ttsc` descriptor against a REAL resolvable
 // @rhombus-std/config package: the declare-by-depending scan activates inline +
 // schemaof, the config.extras body substitutes `.withType<T>()` ->
-// `this.withSchema(schemaof<T>())`, and schemaof lowers it to the runtime schema
-// literal. `ttsc -p` prints the `{ typescript }` envelope to stdout (it writes no
-// dist JS) — the exact lowered source @ttsc/unplugin/bun consumes. Lowering, OPTIONAL
-// import injection, and receiver-shape discrimination are asserted against it.
+// `this.withSchema(schemaof<T>())`, and schemaof expands it into the runtime Type
+// tree. `ttsc -p` prints the `{ typescript }` envelope to stdout (it writes no
+// dist JS) — the exact emitted source @ttsc/unplugin/bun consumes. Each expectation
+// is what an author would have written by hand with the Type factories.
 //
-// The schemaof≡config byte-parity and the 992001/992002 rejection table (formerly
-// this suite's config-stage oracle + direct-sidecar diagnostics projects) are frozen
-// at the Go tier: transforms/internal/schemaoftransform parity_test.go. The parity
-// corpus these mirror is tests/config.extras.test.
+// The expansion's own rules — the per-shape trees, the token `from` a member's
+// name derives, and the 992001/992002/992003 rejection table — are pinned at the
+// Go tier: transforms/internal/schemaoftransform.
 //
 // The working tree lives per-worktree OUTSIDE the repo tree, at
 // ~/.cache/fnioc-ttsc/sandboxes/<worktree-dirname> — it must sit outside any
@@ -76,12 +74,16 @@ function resolveGo(): string {
 const goBin = resolveGo();
 const toolchainReady = goBin.length > 0;
 
+/** The generated hoist module's name, fixed by the engine. */
+const TYPE_MODULE = '__typefor__.js';
+
 const PKG_ROOT = resolve(import.meta.dir, '..');
 const REPO_ROOT = resolve(PKG_ROOT, '..', '..');
 const TTSC = join(PKG_ROOT, 'node_modules', 'ttsc', 'lib', 'launcher', 'ttsc.js');
 const TS7 = join(PKG_ROOT, 'node_modules', 'typescript');
 const UNPLUGIN = join(PKG_ROOT, 'node_modules', '@ttsc', 'unplugin');
 const CONFIG_TR = join(REPO_ROOT, 'libraries', 'config.extras');
+const CONFIG = join(REPO_ROOT, 'libraries', 'config');
 
 // The working tree is per-worktree and OUTSIDE the repo tree (an enclosing
 // package.json re-roots token derivation; a fixed global home path collided across
@@ -93,11 +95,7 @@ const WORK_ROOT = join(homedir(), '.cache', 'fnioc-ttsc', 'sandboxes', basename(
 // consumer package.json, so the host's declare-by-depending scan activates the
 // full stage set (inline + schemaof) and the config.extras inline body
 // substitutes `.withType<T>()` -> `this.withSchema(schemaof<T>())`, which the
-// schemaof stage lowers. This is the SOLE lowering path now that the bespoke
-// config stage is deleted (W6p3); the ambient-mock config-stage oracle + its
-// direct-sidecar rejection projects were removed — their schemaof≡config
-// byte-parity and 992001/992002 rejection table are frozen at the Go tier
-// (transforms/internal/schemaoftransform parity_test.go).
+// schemaof stage expands.
 const projInline = join(WORK_ROOT, 'inline');
 const goTmp = process.env.GOTMPDIR ?? join(homedir(), '.cache', 'fnioc-ttsc', 'gotmp');
 const ttscCache = process.env.TTSC_CACHE_DIR ?? join(homedir(), '.cache', 'fnioc-ttsc', 'cache');
@@ -136,39 +134,18 @@ function goEnv(): NodeJS.ProcessEnv {
   return env;
 }
 
-const APP_HEADER = `import { ConfigBuilder } from "@rhombus-std/config";\n`;
+// The type-only config.extras import is what puts the publisher's own
+// `withType` declaration in the program — the face its ownership claims for
+// the discovered body.
+const APP_HEADER = `import { ConfigBuilder } from "@rhombus-std/config";
+import type {} from "@rhombus-std/config.extras";\n`;
 
-// A REAL resolvable @rhombus-std/config package (a .d.ts module + a stub .js), so
-// the consumer import resolves AND the inline stage's witness resolves the module —
-// unlike the ambient-only happy/diag projects, where an empty dependency scan
-// leaves inline inert. `withType<U>()` merges onto the class via a TOP-LEVEL
-// interface (NOT a `declare module` block), so the config-stage matcher — which
-// requires the member declared inside `declare module '@rhombus-std/config'` —
-// deliberately IGNORES it, while the config.extras inline body still resolves
-// it off the merged ConfigBuilder symbol. Any lowering here is therefore PROVABLY
-// the inline + schemaof path, not the config-stage oracle.
-const REAL_CONFIG_DTS = `export const OPTIONAL: unique symbol;
-export class ConfigBuilder<T = unknown> {
-  add(source: unknown): this;
-  withSchema(schema: unknown): ConfigBuilder<unknown>;
-}
-export interface ConfigBuilder<T = unknown> {
-  withType<U>(): ConfigBuilder<U>;
-}
-`;
-const REAL_CONFIG_JS = `export class ConfigBuilder {}
-export const OPTIONAL = Symbol("OPTIONAL");
-`;
-const REAL_CONFIG_PKG = JSON.stringify({ name: '@rhombus-std/config', version: '0.0.0', type: 'module',
-  types: './index.d.ts', main: './index.js',
-  exports: { '.': { types: './index.d.ts', import: './index.js', default: './index.js' } } });
-const INLINE_CONSUMER_PKG = JSON.stringify({ name: 'config-inline-consumer', version: '0.0.0', type: 'module',
-  dependencies: { '@rhombus-std/config': '*', '@rhombus-std/config.extras': '*' } });
+const INLINE_CONSUMER_PKG = JSON.stringify({ name: 'config-inline-consumer', version: '0.0.0', type: 'module', dependencies: { '@rhombus-std/config': '*', '@rhombus-std/config.extras': '*' } });
 
-/** Wire the inline-path consumer: shared toolchain + a real @rhombus-std/config. */
+/** Wire the inline-path consumer: shared toolchain + the real @rhombus-std/config. */
 function setupInlineProject(dir: string): void {
   const nm = join(dir, 'node_modules');
-  mkdirSync(join(nm, '@rhombus-std', 'config'), { recursive: true });
+  mkdirSync(join(nm, '@rhombus-std'), { recursive: true });
   mkdirSync(join(nm, '@ttsc'), { recursive: true });
   // Clear src on reuse so a stale fixture from an earlier run (the `include`
   // glob would still compile it) never lingers.
@@ -180,12 +157,10 @@ function setupInlineProject(dir: string): void {
   link(join(PKG_ROOT, 'node_modules', 'ttsc'), join(nm, 'ttsc'));
   link(UNPLUGIN, join(nm, '@ttsc', 'unplugin'));
   link(CONFIG_TR, join(nm, '@rhombus-std', 'config.extras'));
-
-  // The real @rhombus-std/config package (written, not linked): a consumer import
-  // and the inline witness both resolve it.
-  writeFileSync(join(nm, '@rhombus-std', 'config', 'package.json'), REAL_CONFIG_PKG);
-  writeFileSync(join(nm, '@rhombus-std', 'config', 'index.d.ts'), REAL_CONFIG_DTS);
-  writeFileSync(join(nm, '@rhombus-std', 'config', 'index.js'), REAL_CONFIG_JS);
+  // The real @rhombus-std/config: a stale directory from the fabricated-package
+  // era would shadow the symlink, so clear it first.
+  rmSync(join(nm, '@rhombus-std', 'config'), { recursive: true, force: true });
+  link(CONFIG, join(nm, '@rhombus-std', 'config'));
   // A consumer package.json so CollectProject scans deps and activates inline +
   // schemaof (the ambient-only projects have no package.json -> empty scan).
   writeFileSync(join(dir, 'package.json'), INLINE_CONSUMER_PKG);
@@ -193,17 +168,39 @@ function setupInlineProject(dir: string): void {
 
 function tsconfig(withPlugin: boolean): string {
   return JSON.stringify({
-    compilerOptions: { target: 'ES2022', module: 'ESNext', moduleResolution: 'Bundler', lib: ['ES2022'], strict: true,
-      outDir: 'dist', rootDir: 'src', skipLibCheck: true, noEmitOnError: false,
+    compilerOptions: { target: 'ES2022', module: 'ESNext', moduleResolution: 'Bundler', lib: ['ESNext'], strict: true, outDir: 'dist', rootDir: 'src', skipLibCheck: true, noEmitOnError: false,
       ...(withPlugin ? { plugins: [{ transform: '@rhombus-std/config.extras/ttsc' }] } : {}) },
     include: ['src/**/*'],
   });
 }
 
-type Envelope = { diagnostics?: Array<{ code: string; messageText: string; file: string | null; }>;
-  typescript: Record<string, string>; };
+type Envelope = { diagnostics?: Array<{ code: string; messageText: string; file: string | null; }>; typescript: Record<string, string>; };
 
 let inlineEnv: Envelope = { typescript: {} };
+
+/** Every `export const <name> = <expression>;` the generated hoist module declares. */
+function constants(module: string): Map<string, string> {
+  const found = new Map<string, string>();
+  for (const line of module.split('\n')) {
+    const match = /^export const (\$\w+) = (.+);$/.exec(line);
+    if (match !== null) {
+      found.set(match[1]!, match[2]!);
+    }
+  }
+  return found;
+}
+
+let declared = new Map<string, string>();
+
+/** The hoisted const name whose expression is exactly `spelling`. */
+function nameOf(spelling: string): string {
+  for (const [name, held] of declared) {
+    if (held === spelling) {
+      return name;
+    }
+  }
+  throw new Error(`no hoisted const holds ${spelling}; declared: ${[...declared.entries()]}`);
+}
 
 beforeAll(() => {
   if (!toolchainReady) {
@@ -217,8 +214,7 @@ beforeAll(() => {
   //    config.extras body lowers `.withType<T>()` via the primitive path.
   setupInlineProject(projInline);
   const isrc = join(projInline, 'src');
-  writeFileSync(join(isrc, 'server.ts'),
-    `${APP_HEADER}interface ServerConfig { host: string; port: number; ssl?: boolean }
+  writeFileSync(join(isrc, 'server.ts'), `${APP_HEADER}interface ServerConfig { host: string; port: number; ssl?: boolean }
 export const b = new ConfigBuilder().withType<ServerConfig>();
 `);
   writeFileSync(join(isrc, 'nested.ts'), `${APP_HEADER}interface AppConfig {
@@ -230,16 +226,19 @@ export const b = new ConfigBuilder().withType<AppConfig>();
   writeFileSync(join(isrc, 'flags.ts'), `${APP_HEADER}interface Flags { flag: boolean }
 export const b = new ConfigBuilder().withType<Flags>();
 `);
-  // Receiver-discrimination positives (ported from the deleted config-stage
-  // project): the inline body anchors on the REAL @rhombus-std/config
-  // ConfigBuilder.withType member, so a builder chain and every ConfigBuilder-typed
-  // receiver shape lowers. (Receiver NEGATIVES — a like-named local class, a
+  writeFileSync(join(isrc, 'named-member.ts'), `${APP_HEADER}interface Inner { deep: string }
+interface Outer { inner: Inner }
+export const b = new ConfigBuilder().withType<Outer>();
+`);
+  // Receiver-discrimination positives: the inline body anchors on the REAL
+  // @rhombus-std/config ConfigBuilder.withType member, so a builder chain and every
+  // ConfigBuilder-typed receiver shape lowers. (Receiver NEGATIVES — a like-named local class, a
   // structural object — are covered at the Go tier by inlinetransform's
   // resolve_test/matcher_test: they carry a sugar-named `withType` call that the
   // inline stage's name-based INLINE_UNLOWERED_SUGAR sweep would flag on the emit
   // path, so they cannot ride an inline e2e fixture.)
   writeFileSync(join(isrc, 'chain.ts'), `${APP_HEADER}interface Server { Host: string; Port: number }
-declare const src: unknown;
+declare const src: never;
 export const b = new ConfigBuilder().add(src).withType<Server>();
 `);
   writeFileSync(join(isrc, 'shapes.ts'), `${APP_HEADER}interface T { Host: string }
@@ -256,8 +255,7 @@ export function useGeneric<B extends ConfigBuilder>(b: B) {
 `);
   writeFileSync(join(projInline, 'tsconfig.json'), tsconfig(true));
 
-  const inlineHost = spawnSync('node', [TTSC, '-p', 'tsconfig.json'], { cwd: projInline, encoding: 'utf8',
-    env: goEnv() });
+  const inlineHost = spawnSync('node', [TTSC, '-p', 'tsconfig.json'], { cwd: projInline, encoding: 'utf8', env: goEnv() });
   if (inlineHost.status !== 0) {
     throw new Error(
       `inline ttsc host failed (status ${inlineHost.status}):\n${inlineHost.stdout}\n${inlineHost.stderr}`,
@@ -268,53 +266,80 @@ export function useGeneric<B extends ConfigBuilder>(b: B) {
   } catch {
     throw new Error(`inline ttsc host envelope parse failed:\n${inlineHost.stdout}\n${inlineHost.stderr}`);
   }
+
+  // The project declares no emission, so it takes the default (hoisted): schemaof's
+  // leaf members reference this shared const table instead of spelling their factory
+  // call at each call site.
+  const modulePath = join(projInline, 'dist', TYPE_MODULE);
+  declared = existsSync(modulePath) ? constants(readFileSync(modulePath, 'utf8')) : new Map();
 }, COLD_BUILD_MS);
 
 function inlined(name: string): string {
   return inlineEnv.typescript[`src/${name}.ts`] ?? '';
 }
 
+/** The emitted source with runs of whitespace collapsed, so line breaking stays
+ * out of a byte comparison. */
+function flat(name: string): string {
+  return inlined(name).split(/\s+/).join(' ');
+}
+
 describe.skipIf(!toolchainReady)('ttsc/Go config withType->withSchema byte-parity', () => {
-  // ── the inline + schemaof consumer path (real ttsc host, real config package) ──
   // The scan activates inline + schemaof; the config.extras body substitutes
   // `.withType<T>()` -> `this.withSchema(schemaof<T>())` and the schemaof stage
-  // lowers it to the SAME literal the config-stage oracle emits above. No
-  // `schemaof(` survives the emit (the sweep would fail the build otherwise).
-  test('inline: flat interface lowers through inline + schemaof to the schema literal', () => {
-    const server = inlined('server');
-    expect(server).toContain(`host: "string"`);
-    expect(server).toContain(`port: "number"`);
-    expect(server).toContain(`ssl: { [OPTIONAL]: "boolean" }`);
-    expect(server).toContain('.withSchema(');
-    expect(server).not.toContain('.withType');
-    expect(server).not.toContain('schemaof');
+  // expands it into the Type tree. This project declares no emission, so it
+  // takes the default (hoisted): a member that stops at a name, literal, or
+  // nullish singleton references the project's shared const table (`declared`)
+  // instead of spelling its factory call at the call site, while the
+  // object/union structure schemaof composes around such a member stays
+  // inline. No `schemaof(` survives the emit (the sweep would fail the build
+  // otherwise).
+  test('inline: a flat interface expands to the Type tree, optional member unioned with undefined', () => {
+    const string_ = nameOf('Type.global("string")');
+    const number_ = nameOf('Type.global("number")');
+    const boolean_ = nameOf('Type.global("boolean")');
+    const undefined_ = nameOf('Type.typeLiteral(undefined)');
+    expect(flat('server')).toContain(
+      `.withSchema(Type.object({ host: ${string_}, `
+        + `port: ${number_}, `
+        + `ssl: Type.union(${boolean_}, ${undefined_}) }))`,
+    );
+    expect(inlined('server')).not.toContain('.withType');
+    expect(inlined('server')).not.toContain('schemaof');
   });
 
-  test('inline: injects the named OPTIONAL import for a wrapped field', () => {
-    expect(inlined('server')).toContain(`import { OPTIONAL } from "@rhombus-std/config"`);
+  test('inline: injects the named Type import the tree is spelled through', () => {
+    expect(inlined('server')).toContain(`import { Type } from "@rhombus-std/primitives"`);
   });
 
-  test('inline: nested objects recurse, casing preserved', () => {
-    const nested = inlined('nested');
-    expect(nested).toContain(`Host: "string"`);
-    expect(nested).toContain(`PoolSize: "number"`);
-    expect(nested).toMatch(/Database:\s*\{\s*Primary:\s*\{/);
-    expect(nested).not.toContain('schemaof');
+  test('inline: an inline structural member expands in place, casing preserved', () => {
+    const string_ = nameOf('Type.global("string")');
+    const number_ = nameOf('Type.global("number")');
+    expect(flat('nested')).toContain(
+      `.withSchema(Type.object({ Server: Type.object({ Host: ${string_}, `
+        + `Port: ${number_} }), `
+        + `Database: Type.object({ Primary: Type.object({ Host: ${string_}, `
+        + `PoolSize: ${number_} }) }) }))`,
+    );
+    expect(inlined('nested')).not.toContain('schemaof');
   });
 
-  test('inline: a required boolean lowers to "boolean", no injected import', () => {
+  test('inline: a required boolean is the hoisted boolean address, never its two literals', () => {
+    const boolean_ = nameOf('Type.global("boolean")');
     const flags = inlined('flags');
-    expect(flags).toContain(`flag: "boolean"`);
-    expect(flags).not.toContain(`import { OPTIONAL }`);
-    expect(flags).toContain('.withSchema(');
+    expect(flat('flags')).toContain(`.withSchema(Type.object({ flag: ${boolean_} }))`);
+    expect(flags).not.toContain('typeLiteral(true)');
     expect(flags).not.toContain('schemaof');
   });
 
   test('inline: builder chain preserved, add(src) kept, type argument dropped', () => {
+    const string_ = nameOf('Type.global("string")');
+    const number_ = nameOf('Type.global("number")');
     const chain = inlined('chain');
     expect(chain).toMatch(/\.add\(src\)\s*\.withSchema\(/);
-    expect(chain).toContain(`Host: "string"`);
-    expect(chain).toContain(`Port: "number"`);
+    expect(flat('chain')).toContain(
+      `Type.object({ Host: ${string_}, Port: ${number_} })`,
+    );
     expect(chain).not.toContain('withSchema<');
     expect(chain).not.toContain('.withType');
     expect(chain).not.toContain('schemaof');
@@ -326,5 +351,21 @@ describe.skipIf(!toolchainReady)('ttsc/Go config withType->withSchema byte-parit
     const schemaCount = shapes.split('.withSchema(').length - 1;
     expect(schemaCount).toBe(3);
     expect(shapes).not.toContain('schemaof');
+  });
+
+  test('inline: a member naming another interface stays that name, un-expanded', () => {
+    // `Inner` keeps its address; its own member never enters the tree.
+    const inner = nameOf('Type.imported("Inner", "config-inline-consumer/private/named-member")');
+    expect(flat('named-member')).toContain(
+      `.withSchema(Type.object({ inner: ${inner} }))`,
+    );
+    expect(inlined('named-member')).not.toContain('schemaof');
+  });
+
+  test('a leaf schemaof derives across several files shares one const with the others', () => {
+    // string/number/boolean each recur across server, nested, and chain; each name
+    // still earns exactly one entry in the shared table.
+    expect(new Set(declared.values()).size).toBe(declared.size);
+    expect(declared.size).toBe(5);
   });
 });

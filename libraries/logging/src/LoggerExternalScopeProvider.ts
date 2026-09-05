@@ -1,10 +1,11 @@
+/// <reference path="./node-builtins.d.ts" />
 // The default IExternalScopeProvider. Keeps the current scope in an
 // `AsyncLocalStorage` (node:async_hooks), so pushing a scope threads a new node
 // onto the ambient stack and it stays isolated across concurrent async flows;
 // disposing a scope restores its parent.
 
 import type { IExternalScopeProvider } from '@rhombus-std/logging.core';
-import type { Func } from '@rhombus-toolkit/func';
+import type { Func } from '@rhombus-toolkit/types';
 import { AsyncLocalStorage } from 'node:async_hooks';
 
 /**
@@ -15,9 +16,7 @@ import { AsyncLocalStorage } from 'node:async_hooks';
 class Scope implements Disposable {
   #isDisposed = false;
 
-  public constructor(public readonly state: unknown, public readonly parent: Scope | undefined,
-    private readonly restore: Func<[Scope | undefined], void>)
-  {}
+  public constructor(public readonly state: unknown, public readonly parent: Scope | undefined, private readonly restore: Func<[Scope | undefined], void>) {}
 
   public toString(): string {
     return this.state === undefined || this.state === null ? '' : String(this.state);

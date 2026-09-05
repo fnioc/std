@@ -1,552 +1,91 @@
 # @rhombus-std/di
 
-**A dependency-injection container built on string tokens, not decorators.**
+**The dependency-injection engine — open a `Builder` chain, feed it addons and registrations, and seal the result into a provider you resolve services out of.**
 
-Register classes, factories, and values against tokens; resolve a graph of instances with correct scope lifetimes, cycle detection, and native disposal. No `reflect-metadata`, no runtime type introspection — tokens and dependency arrays are either written by hand or generated once at compile time by an optional transformer.
+`@rhombus-std/di` builds on [`@rhombus-std/di.core`](../di.core/README.md) — the `Manifest` registration surface and the error taxonomy — adding the genesis front door (`Builder.useAddon(...)` / `Builder.withServices(...)`) and the concrete provider it produces. Install this at your application's composition root, the place that actually builds the container. A library that only needs to declare registrations or accept an already-built `IServiceProvider` should depend on `di.core` alone.
 
 ## Install
 
 ```sh
-bun add @rhombus-std/di @rhombus-std/di.core @rhombus-std/primitives
+bun add @rhombus-std/di
 ```
 
-`@rhombus-std/di.core` carries the registration-builder types this package re-exports; `@rhombus-std/primitives` is the shared runtime dependency both packages build on. Add `@rhombus-std/di.extras` alongside if you want the type-driven `addClass<IFoo>(Foo)` sugar — it's optional, and everything below works without it.
+`@rhombus-std/di.core` and `@rhombus-std/primitives` are dependencies and are pulled in automatically.
 
 ## Usage
 
 ```ts
-import { ServiceManifest } from '@rhombus-std/di';
+import { Builder } from '@rhombus-std/di';
+import { Manifest, Type } from '@rhombus-std/di.core';
 
-interface ILogger {
-  log(msg: string): void;
+interface IGreeter {
+  greet(name: string): string;
 }
-class ConsoleLogger implements ILogger {
-  log(msg: string) {
-    console.log(msg);
+const IGreeter = Type.imported('IGreeter', 'app');
+
+class ConsoleGreeter implements IGreeter {
+  greet(name: string) {
+    return `Hello, ${name}!`;
   }
 }
 
-// A manifest is IMMUTABLE: every registration returns a NEW manifest and
-// leaves the receiver alone, so the result has to be kept.
-const services = new ServiceManifest<'singleton'>().addClass('app:ILogger',
-  ConsoleLogger, [[]], 'singleton');
+const manifest = Manifest.empty<unknown>().add(IGreeter, ConsoleGreeter, Type.ctor(IGreeter, [[]]));
 
-const provider = services.build(); // frameless — nothing pre-opened
-const app = provider.createScope('singleton'); // open the singleton frame
+const provider = Builder.withServices(() => manifest).build();
 
-const logger = app.resolve<ILogger>('app:ILogger');
-logger.log('hello'); // -> "hello"
-
-app.dispose();
+provider.resolve(IGreeter).greet('world'); // "Hello, world!"
 ```
 
-This is the hand-written, no-transformer form: `addClass(token, Ctor, signatures, scope?)` takes a plain string token, a constructor, the constructor's dependency signatures, and optionally the lifetime scope; `build()` seals the registration map into a provider; and `createScope(name)` opens a scope frame that owns and caches singleton instances. With the optional transformer, `services.addClass<ILogger>(ConsoleLogger).as<'singleton'>()` lowers to exactly the call shown above.
+`Builder.useAddon(addon)` and `Builder.withServices(fn)` open the chain, and the same two verbs extend it. `useAddon` installs an addon: `.build()` opens one installation of it, whose registrations file in call order and whose middleware composes into the resolution chain at that call's position. `withServices` installs the registrations a delegate composes onto an empty manifest, as an addon with no middleware of its own. The first input carrying a concrete lifetime vocabulary locks the chain onto it, and every addon after that must speak the same one. `.build()` seals everything into a provider; an ask nothing in the manifest answers throws `UnsatisfiableError`. Every verb returns a **new** `Builder`, so — exactly like `Manifest` itself — a discarded result configures nothing.
 
-**Everything returns a new manifest.** The chain never mutates, so a bare
-`services.addClass(...)` statement registers _nothing_ — its result is the only place
-the registration exists:
+The whole ask surface is `di.core`'s own set of augmentations on `IServiceProvider`, so it is there the moment `di.core` is loaded — which it always is, since `di` depends on it. Each verb names the shape you want and composes the address for it; `di.extras` derives that address from a type argument instead of taking it in front.
+
+| Ask for                                           | Explicit                             | Type-driven                          |
+| ------------------------------------------------- | ------------------------------------ | ------------------------------------ |
+| the value                                         | `resolve(address)`                   | `resolve<T>()`                       |
+| every registration, as an array                   | `resolveArray(address)`              | `resolveArray<T>()`                  |
+| every registration, walked lazily                 | `resolveIterable(address)`           | `resolveIterable<T>()`               |
+| the value, everything beneath it awaited          | `resolveAsync(address)`              | `resolveAsync<T>()`                  |
+| the array, awaited                                | `resolveArrayAsync(address)`         | `resolveArrayAsync<T>()`             |
+| the sequence, awaited                             | `resolveIterableAsync(address)`      | `resolveIterableAsync<T>()`          |
+| one element awaited per step of the walk          | `resolveAsyncIterable(address)`      | `resolveAsyncIterable<T>()`          |
+| what calling the registered callable returns      | `resolveWith(address, ...args)`      | `resolveWith<T, Args>(...args)`      |
+| the same, from a promise-returning callable       | `resolveWithAsync(address, ...args)` | `resolveWithAsync<T, Args>(...args)` |
+| a class you hold, built with its dependencies     | `instantiate(ctorType, ctor)`        | `instantiate(ctor)`                  |
+| a function you hold, called with its dependencies | `invoke(funcType, func)`             | `invoke(func)`                       |
+
+Every row has a `try` twin — `tryResolve`, `tryResolveArray`, `tryInvoke` — answering `undefined` where the plain verb throws, by asking for the same shape beside the `undefined` literal. The async twins settle on `undefined` rather than answering it, so their type is `Promise<T | undefined>`. An aggregate with no registrations is empty rather than absent, so a collection's `try` twin hands back the empty collection.
 
 ```ts
-let services = new ServiceManifest<'singleton'>();
-services = services.addClass('app:ILogger', ConsoleLogger, [[]], 'singleton'); // kept
-services.addClass('app:IClock', SystemClock, [[]]); // SILENTLY REGISTERS NOTHING
+provider.resolveArray<IGreeting>(); // [formal, casual]
+provider.tryResolve<IMissing>(); // undefined, never a throw
+await provider.resolveAsync<IBanner>(); // the Promise<IBanner> registration, settled
+provider.instantiate(ReportBuilder); // fresh, never registered
 ```
-
-## Design philosophy — scopes are uniform tags
-
-**Scopes are uniform tags — there is no root.** `"singleton"` is literally just a tag you happen to open once at the top. You can run the container without ever opening a scope at all; with no matching frame open, resolution is transient.
-
-`build()` returns a **frameless** provider — nothing is pre-opened, and there is no provider-level instance cache. A registration's lifetime tag caches its instance in the nearest enclosing **open** frame carrying that tag; if no such frame is open, the instance resolves transiently (fresh, no cache, no error) — exactly like an untagged registration. Open a frame with `createScope(name)` when you want a tag to cache. Captive-dependency safety is preserved structurally: a service's deps resolve relative to the frame that owns it, so a longer-lived service can never cache-capture a shorter-lived one — it gets a fresh transient instead.
 
 ## Key exports
 
-| Export                                                                                                                                                                                                                                                                                                                                                              | What it is                                                                                                                                                                                            |
-| ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `ServiceManifest<Scopes>`                                                                                                                                                                                                                                                                                                                                           | The immutable registration builder — `.addClass()` / `.addFactory()` / `.addValue()` / `.build()`.                                                                                                    |
-| `ServiceProviderClass`                                                                                                                                                                                                                                                                                                                                              | The concrete container implementation backing `IServiceProvider`, exported for white-box use.                                                                                                         |
-| `IServiceProvider<Scopes>` (type)                                                                                                                                                                                                                                                                                                                                   | The public container surface: `resolve`, `resolveAsync`, `resolveFactory`, `createScope`, disposal.                                                                                                   |
-| `IResolver`, `IScopeFactory`, `IRequiredResolver`, `IServiceQuery` (types)                                                                                                                                                                                                                                                                                          | The capability interfaces `IServiceProvider` composes.                                                                                                                                                |
-| `RESOLVER_TOKEN`                                                                                                                                                                                                                                                                                                                                                    | The intrinsic token a `IResolver`-typed constructor parameter derives, for factories that want the live provider.                                                                                     |
-| `EmptyServiceProvider`                                                                                                                                                                                                                                                                                                                                              | A null-object provider that resolves nothing.                                                                                                                                                         |
-| `closeToken`, `isOpenToken`, `parseToken`, `unkeyedToken`, `typeArg`, `union`                                                                                                                                                                                                                                                                                       | Token-grammar helpers for open generics and union slots without a transformer.                                                                                                                        |
-| `CircularDependencyError`, `UnregisteredTokenError`, `OpenTokenResolutionError`, `OpenTokenRegistrationError`, `FactoryTargetError`, `MissingMetadataError`, `AsyncResolutionRequiredError`, `AsyncDisposalRequiredError`, `NoSatisfiableSignatureError`, `NoSatisfiableUnionError`, `ProviderDisposedError`, `RegistrationValidationError`, `ScopeValidationError` | The error types the container throws — see below for when each fires. Declared in `@rhombus-std/di.core` and re-exported here, so both imports name the same class and `instanceof` holds either way. |
-
-## `ServiceManifest<Scopes>`
-
-The entry point. `Scopes` is the union of declarable scope-name tags (default `"singleton"`). The tags the `scope` argument, `.as()`, and `createScope()` accept are exactly its members. Transient (no cache, fresh instance on every resolve) is the default — there is no `"transient"` scope; a registration with no scope, or with no open frame for its tag, is transient.
-
-```ts
-import { ServiceManifest } from '@rhombus-std/di';
-
-const services = new ServiceManifest<'singleton' | 'request'>();
-```
-
-Registration is append-only: each token holds a **list** of registrations in registration order, and resolution picks the most-recent (last) one. A later `addClass` for the same token therefore overrides an earlier one without deleting it.
-
-The manifest itself is an **immutable iterable decorator chain**: each verb returns a new manifest that yields the previous one's entries first and its own last, so iteration order is authoring order. Nothing is ever mutated in place — thread the result (`services = services.addClass(...)`).
-
-### `.addClass<Interface>(Concrete).as<"scope">()`
-
-Register a concrete implementation against an interface token. The transformer rewrites `addClass<IFoo>(Foo)` to `addClass("pkg:IFoo", Foo, [[…]])` at build time — deriving the signature it injects. Hand-fed consumers pass the token string and the signature directly.
-
-```ts
-// With transformer (author form) — each call still returns a new manifest:
-services = services.addClass<ILogger>(ConsoleLogger).as<'singleton'>();
-services = services.addClass<IUserRepo>(SqlUserRepo).as<'request'>();
-services = services.addClass<IRequestId>(UuidRequestId); // no .as() → transient
-
-// Without transformer (lowered form, or plugin-less):
-services = services.addClass('pkg:ILogger', ConsoleLogger, [[]], 'singleton');
-services = services.addClass('pkg:IUserRepo', SqlUserRepo, [[]], 'request');
-services = services.addClass('pkg:IRequestId', UuidRequestId, [[]]);
-```
-
-The type constraint on `Concrete` is `new (...args: any[]) => Interface` — plain `new`, not `abstract new`. Abstract classes are correctly rejected because the container instantiates the concrete.
-
-`.as<S>()` checks at compile time that `S` is a declared scope name. Passing an undeclared string is a type error. The positional `scope` argument is checked the same way.
-
-**Positional or fluent, never both.** A registration call hands back an `AddChain<Scopes, Slots, Gated>` — a manifest (or, under the gate below, not yet one) widened with a modifier face for each slot the call did _not_ fill positionally (`withSignature`, `withSignatures`, `as`, `withKey`). Filling a slot consumes its face, so `.as('a').as('b')` is a compile error, while `.withKey('k').as('a')` and `.as('a').withKey('k')` both type-check. Prefer the positional form: it is one call and one assignment.
-
-**The bare `addClass<I>(Concrete)` sugar form is GATED.** With no signature to derive-and-inject yet on the plugin-less path, `addClass(token, ctor)` — no `signatures` argument at all — withholds the manifest face (`build` / `addClass` / `seal` absent from the type) until `.withSignature(...)` or `.withSignatures(...)` supplies one; `.as(...)` / `.withKey(...)` still work without opening it. The transformer's sugar form (`addClass<I>(C)`) derives the signature automatically, so it's never gated — `withSignature<T>()` / `withSignatures<T>()` there are overrides, not gate-openers. See [`@rhombus-std/di.core`](../di.core/README.md#the-fluent-chain) for the full gate mechanics.
-
-### `addClass<I>(Concrete, overrides)` — registration-time signature override
-
-For third-party classes (constructor not editable) or generic instantiations the transformer cannot infer, supply a positional override array alongside the class:
-
-```ts
-addClass<ICache>(RedisCache, ['pkg:IRedisClient', undefined, 'pkg:ILogger']);
-```
-
-`overrides` is `readonly (string | undefined)[]` — a positional sparse override over the transformer-generated signature. A token at a position overrides the generated token there; `undefined` keeps the generated token. Use explicit `undefined` rather than sparse elision.
-
-Pure token users (no transformer) supply a complete signature via the registration's own third argument (`addClass(token, C, signatures)`) instead.
-
-### `addClass(token, Ctor, signatures?, scope?, key?)` — registration-carried dependency signatures
-
-Not to be confused with the sparse `overrides` array above — that's a type-driven, compile-time-only feature consumed entirely by the transformer. This is the **runtime** form of `addClass`: an optional third argument, `signatures` — present, it's a complete (non-sparse) multi-signature array carried directly on the registration record and the chain is ungated from the start; absent, the chain is GATED until `.withSignature(...)` / `.withSignatures(...)` supplies one.
-
-```ts
-addClass(token: Token, ctor: Ctor): AddChain<Scopes, 'signature' | 'signatures' | 'scope' | 'key', true> // gated
-addClass(token: Token, ctor: Ctor, signatures: DepSignatures): AddChain<Scopes, 'signature' | 'scope' | 'key', true>
-addClass(token: Token, ctor: Ctor, signatures: DepSignatures, scope: Scopes): AddChain<Scopes, 'signature' | 'key', true>
-addClass(token: Token, ctor: Ctor, signatures: DepSignatures, scope: Scopes, key: string): AddChain<Scopes, 'signature', true>
-// addFactory takes the identical four overloads with `factory: Factory` in place of `ctor`.
-```
-
-There is no global, constructor-keyed metadata store — this array **is** the sole signature channel, for both classes (`addClass`) and factories (`addFactory`). Keying it on the registration rather than the constructor function is what lets one JS class back **any number of independent registrations** with different signatures — the mechanism open-generic registrations depend on, where the same erased class serves every closing of a template (see [Open generics](#open-generics) below). `@rhombus-std/di.extras` emits this array inline for every registration it can statically extract a signature from — `addClass<IFoo>(Foo)` lowers to `addClass("pkg:IFoo", Foo, [[...]])`, with no separate prelude call and nothing hoisted. Hand-write it directly for the plugin-less path.
-
-A service with no dependencies states that explicitly with `signatures: [[]]`, never by omitting the argument (omitting it gates the chain instead — see above). `[[]]` is a declaration, not an absence: a constructor that does take parameters but is registered with `[[]]` is built with **no injected arguments** (its parameters arrive `undefined`), because one empty signature is what you said you wanted. `MissingMetadataError` fires for the different case — a registration carrying **no** signature at all whose producer declares parameters.
-
-### `addFactory(token, factory, signatures?)` and `addValue(token, value)`
-
-Two more registration surfaces alongside `addClass` — recommended for test doubles, third-party instances, and plugin-less consumers.
-
-```ts
-import { RESOLVER_TOKEN } from '@rhombus-std/di';
-
-// Factory that wants the live IResolver: declare it as a provider-typed param
-// (its slot is the intrinsic RESOLVER_TOKEN), resolve its own deps by hand.
-services = services.addFactory('pkg:IDb',
-  (sp) => new PostgresDb(sp.resolve<IConfig>('pkg:IConfig')), [[
-  RESOLVER_TOKEN,
-]], 'singleton');
-
-// Factory with a signature: each param is injected by its slot, like `addClass`.
-services = services.addFactory('pkg:IDb', (config) => new PostgresDb(config), [[
-  'pkg:IConfig',
-]], 'singleton');
-
-// Value: a pre-constructed instance (re-used as-is, no lifetime)
-services = services.addValue('pkg:ICache', new NullCache());
-```
-
-`addFactory` takes the same positional `scope` / `key` tail as `addClass` — `"singleton"` caches the result in the nearest enclosing open `"singleton"` frame; no scope runs the factory fresh on every resolve (transient). A factory that wants the live `IResolver` declares it as an ordinary parameter — the provider is an intrinsically resolvable type (a `IResolver`-typed param derives `RESOLVER_TOKEN`), so "I want the provider" is plain DI. A factory registered with the empty signature `[[]]` simply runs with no injected args — nothing is auto-supplied. `addValue` takes neither signatures nor a lifetime (the value is always the same reference), only an optional trailing `key`; like every other verb it returns the new manifest.
-
-To override a registration for a specific context (e.g. a test double), register a later spec for the same token before calling `build()`. The registration map is append-only and last-registration-wins. `build()` materializes the chain by iterating it, so what a provider contains is exactly the manifest you called `build()` on — an earlier manifest in the chain is unaffected by anything registered after it.
-
-## Scope model
-
-Scopes are uniform tags forming a parent-linked chain. There is no root: `build()` returns a frameless provider, and frames are opened only by an explicit `createScope` — never auto-created. `"singleton"` is just the tag you open once at the top.
-
-```ts
-const provider = services.build(); // frameless — nothing pre-opened
-const app = provider.createScope('singleton'); // open the app-lifetime frame
-const req = app.createScope('request'); // per HTTP request
-```
-
-**Resolution walks the enclosing chain for instance ownership:** the lifetime tag names which enclosing open frame caches the instance. Walk up to the nearest enclosing frame whose name matches the tag and cache there. (Registration lookup is flat — the sealed map is shared across the whole tree.)
-
-**Lifetime rules:**
-
-| Registration                     | Behavior                                                                               |
-| -------------------------------- | -------------------------------------------------------------------------------------- |
-| No scope (transient)             | Fresh instance on every resolve. Never cached.                                         |
-| Scope `"singleton"`              | Owned and cached by the nearest enclosing **open** `"singleton"` frame.                |
-| Scope `"request"`                | Owned and cached by the nearest enclosing **open** `"request"` frame.                  |
-| Tag with no enclosing open frame | **Transient.** Fresh instance, no cache, no error — an absent frame is just transient. |
-
-### Captive-dependency protection
-
-The critical correctness rule: deps are resolved **relative to the frame that will own the instance**, not the frame that triggered the resolve. This is what keeps a longer-lived service from cache-capturing a shorter-lived one.
-
-```ts
-let services = new ServiceManifest<'singleton' | 'request'>();
-services = services.addClass<ICache>(RedisCache).as<'singleton'>();
-services = services.addClass<IUserContext>(HttpUserContext).as<'request'>();
-services = services.addClass<IUserService>(UserService).as<'singleton'>();
-// UserService constructor: (cache: ICache, ctx: IUserContext)
-
-const app = services.build().createScope('singleton');
-const req = app.createScope('request');
-
-req.resolve<IUserService>('pkg:IUserService');
-// UserService is singleton-owned. Its deps resolve from the singleton frame's
-// chain, which has no ENCLOSING "request" frame (request is a descendant). So
-// IUserContext resolves to a FRESH transient — never the request's cached
-// instance. The singleton cannot capture one request's IUserContext and hold it
-// across every subsequent request.
-```
-
-The construct-relative-to-owner rule guarantees a fresh transient is the worst that can happen when a longer-lived service depends on a shorter-lived one — never a captured, stale cached instance.
-
-## Open generics
-
-A registration whose service token contains a **hole** (`$1`, `$2`, …) is an _open_ (template) registration — it doesn't cache one instance, it matches **any** closing of its base + arity at resolve time.
-
-```ts
-// Open registration: matches any closing of IRepository<T>, one hole per arg
-services = services.addClass<IRepository<$<1>>>(SqlRepository<$<1>>).as<
-  'singleton'
->();
-
-// Each closing resolves and caches independently
-const userRepo = scope.resolve<IRepository<User>>(); // "pkg:IRepository<pkg:User>"
-const orderRepo = scope.resolve<IRepository<Order>>(); // "pkg:IRepository<pkg:Order>"
-// distinct singleton instances — the closed token is the cache key
-```
-
-### Registration rules
-
-- **Concrete args and holes mix freely.** `IFoo<$1,User>` pins its second position and binds the first; `IFoo<$1,$1>` means "match only equal args"; `IFoo<Box<$1>>` nests. Only a template no closing could ever match is rejected: one the token grammar refuses, and a bare hole (`$1`), which names no base to file under.
-- **Class registrations only.** `addValue`/`addFactory` reject an open token — there is no single value or factory that could serve every closing.
-- **The scope tag applies per closing**, not to the template as a whole — `IRepository<A>` and `IRepository<B>` are distinct singletons, each cached in the nearest enclosing frame carrying `tag`, exactly like two unrelated `.as("singleton")` registrations.
-- **Most specific wins** among the open registrations matching one closing, ties broken by last-registered. Once a template may mix concrete args and holes, overlap on one base is the normal case (`IRepo<User,$1>` and `IRepo<$1,$2>` both file under `IRepo`), so recency alone would silently serve the general template to an author who registered the specific one first.
-- **A key rides along.** `addClass("pkg:IRepo<$1>", Impl, sigs, "singleton", "redis")` (or `.withKey("redis")`, or the key spelled straight into the token as `"pkg:IRepo<$1>#redis"` — all three agree) files the template under `pkg:IRepo#redis`, and only a keyed closing — `resolve("pkg:IRepo<pkg:User>", "redis")` — reaches it. The plural form `resolve("pkg:IRepo<pkg:User>", /re/)` scans template closings alongside exact registrations, so both views of one keyed template agree.
-
-### Resolve-time fallback and memoization
-
-Resolving a token the exact-match map has no entry for falls through, in order:
-
-1. **Memo** — a closed token already synthesized on a previous resolve returns the _same_ `Registration` object (identity-stable — this is what makes per-closing caching correct across repeat resolves).
-2. **Parse.** A non-generic token that misses here is simply unregistered.
-3. **Open-table match** — search open registrations filed under the same base (and key), most-specific-first with ties to the latest registered, unifying each template against the closing: a concrete arg must match exactly, a hole binds, a repeated label must bind equal.
-4. **Substitute** — the open registration's carried dependency signatures are substituted with the closing's concrete type args (`TypeArgRef` slots become `LiteralRef`s carrying the substituted token).
-5. **Synthesize** a class `Registration` for the closed token — a constructor-wrapping producer that inherits the constructor and scope tag and carries the substituted signatures — and memoize it.
-
-**Exact beats open.** An exact registration for a closed token — one you registered directly, e.g. `services = services.addClass<IRepository<User>>(SpecialUserRepo)` alongside the open `IRepository<$<1>>` registration — is checked _before_ the memo and the open-table fallback, so it always wins.
-
-**Resolving a token that still contains a hole throws** — with or without a key. `scope.resolve("pkg:IRepository<$1>")` is not a valid resolve target, and neither is `scope.resolve("pkg:IRepository<$1>", "redis")`; only closed tokens resolve. See `OpenTokenResolutionError` below.
-
-**A mis-authored template is skipped, not fatal.** A template whose signatures name a hole its own token never binds (`IRepo<$1,$3>` depending on `$2`) cannot be closed, so it drops out of the candidate list exactly as a non-matching template does. Siblings that _do_ match still serve the closing; when it was the only candidate, the token is simply unregistered.
-
-### Errors
-
-| Error                                       | Thrown when                                                                                                                                                                                                                                                         |
-| ------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `OpenTokenResolutionError(token)`           | `resolve()` (directly or transitively) is asked for a token that still contains an unbound hole.                                                                                                                                                                    |
-| `OpenTokenRegistrationError(token, method)` | `addClass()` is given an open token no closing could ever match (one the grammar refuses, or a bare hole), or `addValue()`/`addFactory()` is given any open token. `method` names the call that rejected it — currently `"addClass"`, `"addValue"`, `"addFactory"`. |
-
-### Manual / plugin-less path
-
-No transformer required — template tokens are just strings with `$N` holes, and the grammar helpers are plain functions:
-
-```ts
-import { closeToken, typeArg } from '@rhombus-std/di';
-
-// Template registration — carried signatures include a TypeArgRef via typeArg(1)
-services = services.addClass('app:IRepository<$1>', SqlRepository, [[
-  'app:IDbConnection',
-  typeArg(1),
-]], 'singleton');
-
-// Resolve closings by hand-closing the token
-const userToken = closeToken('app:IRepository', 'app:User'); // "app:IRepository<app:User>"
-scope.resolve(userToken);
-```
-
-Because the signature array lives on the **registration**, not on the constructor object, the same class can back any number of independent templates (or an open template alongside a closed override) without collision — each `addClass(...)` call carries its own array:
-
-```ts
-// SqlRepository backs an open template...
-services = services.addClass('app:IRepository<$1>', SqlRepository, [[
-  'app:IDbConnection',
-  typeArg(1),
-]]);
-
-// ...and a second, unrelated open template for a different service base,
-// with its own independent signature array. No collision: each registration
-// owns its own signatures.
-services = services.addClass('app:IAuditLog<$1>', SqlRepository, [[
-  'app:IAuditConnection',
-  typeArg(1),
-]]);
-```
-
-## Greedy overload selection
-
-When a registration's carried signature array holds multiple entries (one per constructor overload), the engine selects by scanning **longest → shortest** and picking the first signature where every resolvable parameter token is satisfiable (registered in the container). Equal-arity ties break by array order.
-
-```ts
-// Two overloads: prefer the one with ILogger if available
-class MyService {
-  constructor(logOrDb: ILogger | IDb, db?: IDb) {/* ... */}
-}
-
-services = services.addClass('pkg:myService', MyService, [['pkg:IDb'], [
-  'pkg:ILogger',
-  'pkg:IDb',
-]]);
-```
-
-If `ILogger` is registered, the two-parameter signature wins. If not, the one-parameter signature is used.
-
-## Cycle detection
-
-The engine maintains a resolution stack per `resolve()` call. If a token appears on the stack when it is about to be pushed again, it throws with the full path:
-
-```
-Circular dependency detected:
-  pkg:IUserRepo → pkg:IDb → pkg:IConnectionPool → pkg:IDb
-```
-
-## Disposal
-
-Closing a scope disposes the instances it owns in **reverse construction order**. Only instances implementing the native TC39 disposal contract are disposed.
-
-```ts
-// Sync disposal
-scope.dispose(): void
-
-// Async disposal
-scope.disposeAsync(): Promise<void>
-
-// Native using / await using (TypeScript 5.2+, requires "ESNext.Disposable" in lib)
-{
-  await using req = root.createScope("request");
-  // req.disposeAsync() called automatically on block exit
-}
-```
-
-`Symbol.dispose` and `Symbol.asyncDispose` only — no custom `dispose()` interface. Sync `dispose()` throws if the scope owns a `Promise`-valued disposable, directing you to `disposeAsync()`. Async teardown is never silently skipped.
-
-Instances owned by ancestor scopes are disposed when those scopes close, not when child scopes close.
-
-A closed scope is closed for good: `resolve`, `resolveAsync`, `tryResolve`, `isService`, `resolveFactory`, and `createScope` all throw `ProviderDisposedError` afterwards, on the provider itself, on any `IResolver` view injected from it, and on any factory callable it minted. Closing is idempotent, so a disposed scope would never drain a second time — an instance built after teardown would be cached and then leaked undisposed. Resolve from a live scope, or open a fresh one.
-
-Disposal doesn't cascade, so a child scope opened before its parent closed stays usable — but only for what the closed frame doesn't own. Resolving a registration tagged with the closed scope's name from that child throws `ProviderDisposedError` too: the instance would be cached in a frame nothing will drain again. Transient registrations and the child's own scoped ones are unaffected.
-
-## Async resolution
-
-`resolve()` never lies about what it returns — it's synchronous, full stop. Two entry points, two honesty guarantees:
-
-- **`resolve<T>(token)`** — synchronous. If satisfying `token` would require waiting on an in-flight async construction (a concurrent `resolveAsync` mid-build for the same cached instance), it throws `AsyncResolutionRequiredError` rather than block or hand back an unsettled value.
-- **`resolveAsync<T>(token)`** — always returns a `Promise<T>`. It is the **only** path that can satisfy a lookup miss via the token's honest `Promise<T>` counterpart.
-
-### Honest `Promise<T>` token-split
-
-An async dependency is tokenized at its **true** `Promise<X>` type — never unwrapped to `X`. Register the async factory under the `Promise<X>` token directly:
-
-```ts
-services = services.addFactory('Promise<pkg:IDb>', async (sp) => {
-  const pool = sp.resolve<IConnectionPool>('pkg:IConnectionPool');
-  return new PostgresDb(await pool.connect());
-}, [[RESOLVER_TOKEN]], 'singleton');
-```
-
-- `resolve<Promise<IDb>>("Promise<pkg:IDb>")` returns the **raw promise** — the honest, synchronous view of an async registration.
-- `resolveAsync<IDb>("pkg:IDb")` finds no direct `"pkg:IDb"` registration, falls back to `"Promise<pkg:IDb>"`, and awaits it — delivering the settled `IDb`. A constructor parameter typed as the bare interface (`IDb`, not `Promise<IDb>`) hits exactly this path: it's satisfiable only in async mode, and the value the constructor actually receives is the **awaited** result, never the promise itself.
-
-```ts
-class UserRepo {
-  constructor(private db: IDb) {}
-  findUser(id: string) {
-    return this.db.query(`SELECT * FROM users WHERE id = $1`, [id]);
-  }
-}
-
-const repo = await root.resolveAsync<UserRepo>('pkg:UserRepo');
-```
-
-The container caches whatever a factory returns, verbatim — for an async factory, that's the `Promise` itself. Every resolve of the same cached token gets the same `Promise`; the factory runs exactly once. Single-flight applies across overlapping `resolveAsync` calls: the in-flight promise lands in the cache before it settles, so concurrent resolves for the same singleton share one construction instead of racing to build it twice.
-
-`@rhombus-std/di.extras` derives tokens just as honestly: a constructor parameter or factory return typed `Promise<IDb>` derives the token `Promise<pkg:IDb>`, at any depth, never unwrapped. See [`@rhombus-std/di.extras`](../di.extras/README.md#async-dependencies) for the token-derivation side.
-
-## Factory injection
-
-A constructor parameter whose type annotation is an inline function type returning a registered interface is injected as a **factory** — a callable that builds the target on demand — rather than a resolved instance.
-
-```ts
-// IDb is a registered class. This parameter receives a callable:
-constructor(makeDb: () => IDb) { /* ... */ }
-
-// Partial factory — the caller fills caller-supplied params:
-constructor(makeRepo: (tableName: string) => IUserRepo) { /* ... */ }
-```
-
-### Named function-interface opt-out
-
-A **named** callable interface is NOT treated as a factory — it resolves as a normal service keyed on that interface's own token:
-
-```ts
-interface IDbFactory {
-  (): IDb;
-}
-
-// Resolves as the "pkg:IDbFactory" token, not a factory for IDb
-constructor(dbFactory: IDbFactory) { /* ... */ }
-```
-
-Name the interface to opt out of factory interpretation whenever your function-typed service should itself be a registered dependency.
-
-### `resolveFactory(type, params?)`
-
-Resolve a factory callable for the token rather than an instance:
-
-```ts
-// Without params → strict zero-arg () => T; every slot must resolve from the container
-const makeDb = scope.resolveFactory('pkg:IDb');
-const db = makeDb(); // all deps resolved from container
-
-// With params → factory (...params) => T; named tokens filled by caller, rest from container
-const makeRepo = scope.resolveFactory('pkg:IUserRepo', ['app:tableName']);
-const repo = makeRepo('users'); // tableName filled by caller; ILogger, IDb from container
-```
-
-`params` is the complete authored-order list of caller-supplied token strings, matched by token (first-occurrence, left-to-right). Passing `params` pins the factory's shape — it no longer drifts as registration state changes.
-
-### Partial / positional factories
-
-The injected callable exposes **only the target constructor's caller-supplied parameters**, in their relative order. Registered deps are resolved by the container at call time.
-
-```ts
-// IUserRepo concrete: constructor(log: ILogger, tableName: string, db: IDb)
-// ILogger and IDb are registered; tableName is not registered (caller-supplied).
-// Injected factory type: (tableName: string) => IUserRepo
-
-class RequestHandler {
-  constructor(private makeRepo: (tableName: string) => IUserRepo) {}
-
-  handle() {
-    const repo = this.makeRepo('users');
-    // At call time: new UserRepo(resolve(ILogger), "users", resolve(IDb))
-  }
-}
-```
-
-There are no positional placeholders. The factory's call arity is exactly the count of caller-supplied parameters; the caller never sees the full constructor shape.
-
-**Caller-supplied override is direct-slot-only, not transitive.** A caller-supplied value binds to a **direct constructor slot of the target itself** — it never reaches a dependency-of-a-dependency:
-
-```ts
-// UserRepo concrete: constructor(log: ILogger, db: IDb)
-// Report concrete:   constructor(repo: IUserRepo)  — no direct ILogger slot
-
-constructor(makeReport: (log: ILogger) => IReport) { /* ... */ }
-```
-
-If `Report`'s own constructor has no `ILogger` slot, a `log` param naming `ILogger` here has nothing to bind to — it's simply unclaimed, and `IUserRepo` (and, through it, `ILogger`) resolves normally from the container. Overriding a dependency two or more levels down the graph is deliberately not supported — plan for direct-slot overrides only.
-
-### Lifetime semantics
-
-The injected factory is a closure captured at injection time, referencing the owning scope. How the target's instance is managed depends on whether the factory is parameterized:
-
-| Factory kind                                                | Lifetime behavior                                                                                                                                                                                                    |
-| ----------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **Zero-arg** (`() => IFoo`, no caller-supplied params)      | Routes through normal `resolve` — respects the target's registered lifetime. A singleton target returns the same instance on every call; a transient target yields a fresh one.                                      |
-| **Parameterized** (caller args fill caller-supplied params) | Builds a **fresh instance on every call**, bypassing the instance cache. Caller args differ per invocation, so caching would be wrong — two calls with different arguments must not collapse to one cached instance. |
-
-The captive-dependency rule holds at call time: the target's own deps are resolved relative to the frame that owns the factory-holding instance. A factory captured by a singleton that builds a request-scoped target whose `"request"` frame is not enclosing produces a fresh transient when invoked — never a cache-captured request instance.
-
-### `FactoryTargetError`
-
-Thrown when the factory's target token has no registration — there is nothing for the injected callable to build. Register the target with `services = services.addClass(...)` first. `reason` carries the single value `"unregistered"`; a value or factory target is fine (it becomes a thunk returning the stored instance), so there is no "not a class" case.
-
-For an **injected** factory slot, `FactoryTargetError` is raised while the owning class's signature is selected, not when the callable is invoked. A factory slot whose target is missing simply makes that signature unsatisfiable, so greedy selection falls through to a shorter one that builds; the error surfaces only when no signature does. An explicit `resolveFactory(token)` call has no signature to fall back to, so it raises immediately.
-
-## Union slots
-
-A `Union` dep slot tries each member in declaration order and resolves to the first registered one. A member that is statically resolvable but throws at build time (a cycle, an unresolvable nested dependency) falls through to the next. Throws if none resolves.
-
-```ts
-import { union } from '@rhombus-std/di';
-
-services = services.addClass('pkg:IHandler', Handler, [[
-  union('pkg:IRedis', 'pkg:IMemoryCache'),
-  'pkg:ILogger',
-]]);
-```
-
-Token users construct `Union` slots with `union(...)`. Transformer users write an inline `A | B` annotation and the transformer lowers it automatically. See [`@rhombus-std/di.extras`](../di.extras/README.md) for the named-vs-inline distinction.
-
-## API reference
-
-### `ServiceManifest<Scopes>`
-
-Zero-argument constructor — scopes are just tags, there is no root name to configure.
-
-| Member                                                  | Signature                                                                                             | Description                                                                                                                                                                |
-| ------------------------------------------------------- | ----------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `addClass<I>(Concrete)`                                 | `(ctor: new (...) => I) => AddChain` (gated until a signature is derived)                             | Register a concrete class against interface `I`.                                                                                                                           |
-| `addClass<I>(Concrete, overrides)`                      | `(ctor, overrides: readonly (string \| undefined)[]) => AddChain`                                     | Register with a positional signature override.                                                                                                                             |
-| `.as<S>()`                                              | `(scope: S) => AddChain`                                                                              | Set the lifetime scope tag, returning the new manifest. No call → transient. Does not open the gate.                                                                       |
-| `.withKey(k)`                                           | `(key: string) => AddChain`                                                                           | Make the registration keyed — its token becomes `base#key`. Does not open the gate.                                                                                        |
-| `.withSignature(...slots)`                              | `(...slots: readonly DepSlot[]) => AddChain`                                                          | Append one dependency-signature overload; repeatable. Opens the gate on the no-sugar path.                                                                                 |
-| `.withSignatures(...sigs)`                              | `(...sigs: readonly (readonly DepSlot[])[]) => AddChain`                                              | Replace the whole signature set in bulk, once. Opens the gate on the no-sugar path.                                                                                        |
-| `addClass(token, ctor, signatures?, scope?, key?)`      | `(token, ctor, signatures?: DepSignatures, scope?, key?) => AddChain \| IServiceManifest`             | Class registration (lowered form). An open (holey) token routes to the open-registration table; omitting `signatures` gates the chain instead of registering with no deps. |
-| `addFactory(token, factory, signatures?, scope?, key?)` | `(token, factory: Factory, signatures?: DepSignatures, scope?, key?) => AddChain \| IServiceManifest` | Factory registration. Each call param is injected by its slot, like `addClass`; `[[RESOLVER_TOKEN]]` hands the factory the live resolver.                                  |
-| `addValue(token, value, key?)`                          | `(token: string, value: unknown, key?: string) => IServiceManifest`                                   | Value registration. A pre-built instance, re-used as-is.                                                                                                                   |
-| `build()`                                               | `() => IServiceProvider<Scopes>`                                                                      | Seal the registration map and return a **frameless** `IServiceProvider` (no scope pre-opened). No post-build mutation is possible.                                         |
-
-### `IServiceProvider<Scopes>`
-
-Implements `IResolver` + `IScopeFactory` + `Disposable` / `AsyncDisposable`.
-
-| Member                          | Signature                                                      | Description                                                                                                                                                                                                                   |
-| ------------------------------- | -------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `resolve<T>(token)`             | `(token: string) => T`                                         | Resolve an instance synchronously. A tagged registration with no enclosing open frame resolves transiently; throws on unregistered token, a cycle, or a cached in-flight async construction (`AsyncResolutionRequiredError`). |
-| `resolveAsync<T>(token)`        | `(token: string) => Promise<T>`                                | Resolve asynchronously. The only path that can satisfy a lookup miss via its honest `Promise<T>` registration (see [Async resolution](#async-resolution)).                                                                    |
-| `resolveFactory(type, params?)` | `(type: string, params?: readonly string[]) => (...args) => T` | Resolve a factory callable. Without `params`, strict zero-arg `() => T`; with `params`, `(...params) => T` matched by token.                                                                                                  |
-| `createScope(name)`             | `(name: Scopes) => IServiceProvider<Scopes>`                   | Create a nested child scope.                                                                                                                                                                                                  |
-| `dispose()`                     | `() => void`                                                   | Sync close. Throws if any owned instance has async-only disposal.                                                                                                                                                             |
-| `disposeAsync()`                | `() => Promise<void>`                                          | Async close.                                                                                                                                                                                                                  |
-| `[Symbol.dispose]()`            | —                                                              | Native `using` support.                                                                                                                                                                                                       |
-| `[Symbol.asyncDispose]()`       | —                                                              | Native `await using` support.                                                                                                                                                                                                 |
-
-## TypeScript configuration
-
-Disposal support requires `"ESNext.Disposable"` in your `lib` array. `"ES2022"` alone does not include the disposal symbols.
-
-```jsonc
-{
-  "compilerOptions": {
-    "target": "ES2022",
-    "lib": ["ES2022", "ESNext.Disposable"],
-  },
-}
-```
+| Export                                                                                                                                        | What it is                                                                                                                                                                                                                                                                                                                                     |
+| --------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `Builder`                                                                                                                                     | The one entry point: `Builder.useAddon(...)` / `Builder.withServices(...)` open a chain, `useAddon` / `withServices` extend it, and `build()` seals it into an `IServiceProvider`.                                                                                                                                                             |
+| `validateUniversalAddresses`, `validateBuildability`                                                                                          | Validation addons: the first rejects a registration addressed by nothing but a hole, the second plans every registration of every closed address while building, a shadowed registration included — so an unsatisfiable graph fails at the build instead of at some later resolution.                                                          |
+| `standardLifetime`                                                                                                                            | The standard lifetime model as an addon — a clone of Microsoft.Extensions.DependencyInjection's service lifetimes, caching and disposal: `'singleton'` / `'scoped'` / `'transient'` registrations, scopes opened through `IServiceScopeFactory`, and disposal of what each scope constructed when its provider is disposed.                    |
+| `taggedLifetime`                                                                                                                              | The tagged lifetime model as an addon over a vocabulary of your own: each constructed registration carries one of your tags, `openScope(tag)` on `ITaggedServiceScopeFactory<Lifetime>` answers a provider caching that tag alone, a scope opened from a scope chains onto it, and an omitted or `undefined` lifetime is transient everywhere. |
+| `validateScopes`, `ScopeValidationError`                                                                                                      | The optional layer over the model refusing a scoped registration reached under the singleton scope — resolved from the container's own provider, or consumed by a singleton — with `ScopeValidationError` naming the scoped address.                                                                                                           |
+| `DiError`, `UnsatisfiableError`, `CycleError`, `ManifestValidationError`, `UniversalAddressError`, `ObjectDisposedError`, `ValidationFailure` | Re-exported from `di.core` — the same classes, so `instanceof` holds whichever package a caller imports the taxonomy from.                                                                                                                                                                                                                     |
 
 ## How it fits
 
-`@rhombus-std/di` is the resolution engine on top of `@rhombus-std/di.core`, which owns the abstractions and the `ServiceManifest` registration builder itself — a library author can depend on `di.core` alone to declare registrations without pulling in the resolution engine. `@rhombus-std/di` re-exports `di.core`'s authoring surface so a consumer reaches everything through one import.
+`@rhombus-std/di` depends on [`@rhombus-std/di.core`](../di.core/README.md) for the `Manifest`/`Registration`/`Addon` surface and `@rhombus-std/primitives` for `Type` and the augmentation registry. It re-exports the whole `di.core` error taxonomy, so code that already imports the engine doesn't need a second import from the abstractions package just to catch what it throws.
 
-- **`@rhombus-std/di.core`** — the abstractions and the registration builder this package resolves against. See [`../di.core/README.md`](../di.core/README.md).
-- **`@rhombus-std/di.extras`** — the optional compile-time plugin that lowers `addClass<IFoo>(Foo)` and inline `A | B` annotations into the explicit token form shown throughout this README. See [`../di.extras/README.md`](../di.extras/README.md).
-- **`@rhombus-std/di.extras.options`** — a `di.extras` satellite that lowers `addOptions<T>()` sugar.
-- **`@rhombus-std/options`** and **`@rhombus-std/options.augmentations`** — build an `IOptions<T>` accessor and configuration-binding pipeline on top of a `ServiceManifest`.
-- **`@rhombus-std/hosting`** — composes `di` with configuration and logging into a full application host.
+[`@rhombus-std/di.extras`](../di.extras/README.md) supplies type-argument-derived (`<T>`-only) authoring sugar for the registration verbs, for a program built through this repo's Go/ttsc transform; `di` and `di.core` work identically without it.
 
 ## Notes
 
-- No decorators, no `reflect-metadata`, no runtime type introspection. The container works purely on string tokens and the positional `DepSignatures` carried on each registration.
-- The internal scope frame (instance cache + disposal + parent link) is not exported — consumers see only the `IServiceProvider` interface a scope backs, never the frame implementation.
-- `sideEffects: true` in `package.json` matters: importing `@rhombus-std/di` runs a load-time side effect that attaches `build()`'s engine-constructing half onto `ServiceManifest`. Import the package normally and this happens automatically — no separate side-effect import is needed for the base runtime (only the optional transformer and providers in other families use that pattern).
+- A discarded `.add(...)`, `.describe(...)`, or `.withServices(...)` result configures nothing — both `Manifest` and `Builder` are immutable, so always chain or reassign.
+- The engine seeds two registrations of its own, filed oldest so yours shadow them: `IServiceProvider` — a factory answering the provider that opened the ask — and `ControlService`, the control surface a middleware resolves at fold time for the registry and the two hook verbs (`stageHooks`/`installHooks`, each answering a disposable `Handle`). A factory slot typed `ServiceRequest` (or the base `Request`) receives the live ask itself.
+- `build()` and `openScope()` return an `IDisposableServiceProvider`, disposable in both forms (`using` / `await using`): disposing tells that provider's subscribers once, most recent first, through the form the holder used — the seam an addon releases per-provider state through — and never flows through `getService`.
+- Under `standardLifetime()`, disposing a scope's provider disposes what that scope constructed, most recent first, and the scope refuses every later ask with `ObjectDisposedError`; disposing the container's provider does the same for the singletons and closes every provider. A construction still pending when its scope ends is disposed as it settles and the ask waiting on it is refused. Add `validateBuildability()` ahead of `validateScopes()` in the chain to refuse a captive dependency at build rather than at the first ask.
+- Under `taggedLifetime<Lifetime>()`, the built provider caches and captures nothing; a scope caches its own tag, passes every other tag through, and is checked before the scopes it was opened from. Disposing a scope's provider disposes what that scope cached and closes every scope opened beneath it; a transient is never captured.
+- A registration whose own slot names its own address resolves that slot from what it shadows — a factory for `IFoo` shaped `Func<[IFoo], IFoo>` decorates the older `IFoo` registration, with no decorator verb. Nothing older makes the ask unsatisfiable; a collection ask still enumerates decorator and shadowed both.
+- A union dependency settles deterministically: a registration for the union's own address answers it outright; otherwise each member is tried, registration then synthesis, in the union's canonical order, and the first one that resolves settles it. Literals order last among members, which is what keeps a literal member (such as `undefined`) as the fallback of an optional dependency.

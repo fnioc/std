@@ -4,21 +4,18 @@
 // application configuration -> framework services -> the internal host.
 //
 // Configuration flows through `@rhombus-std/config`'s `ConfigBuilder`
-// (the provider `add*` sugar is installed by the `configureDefaults` extension,
+// (the provider `add*` sugar is installed by the `configureDefaults` augmentation,
 // which side-effect-imports the provider packages). Service registration flows
 // through `@rhombus-std/di`'s `ServiceManifest`.
 
 import { ConfigManager } from '@rhombus-std/config';
 import type { IConfigBuilder } from '@rhombus-std/config.core';
-import { ServiceManifest } from '@rhombus-std/di';
-import type { IServiceManifest } from '@rhombus-std/di.core';
-import type { IServiceProviderFactory } from '@rhombus-std/di.core';
+import { Manifest } from '@rhombus-std/di.core';
 import type { HostBuilderContext, IHost, IHostBuilder } from '@rhombus-std/hosting.core';
 import { augment } from '@rhombus-std/primitives';
-import { tokenfor } from '@rhombus-std/primitives.extras';
-import type { Action, Func } from '@rhombus-toolkit/func';
-import { createFrameworkServices, createHostingEnvironment, populateFrameworkServices,
-  resolveHost } from './host-composition';
+import { typefor } from '@rhombus-std/primitives.extras';
+import type { Action, Func } from '@rhombus-toolkit/types';
+import { createFrameworkServices, createHostingEnvironment, populateFrameworkServices, resolveHost } from './host-composition';
 import { resolveServiceProviderOptions } from './ServiceProviderOptionsFactory';
 
 // Interface-extends merge (augmentation doctrine): binding the IHostBuilder SYMBOL
@@ -29,7 +26,7 @@ import { resolveServiceProviderOptions } from './ServiceProviderOptionsFactory';
 export interface HostBuilder extends IHostBuilder {}
 
 /** A program initialization utility -- the classic {@link IHostBuilder}. */
-@augment(tokenfor<IHostBuilder>())
+@augment(typefor<IHostBuilder>())
 export class HostBuilder implements IHostBuilder {
   readonly properties = new Map<string | symbol, unknown>();
 
@@ -38,8 +35,8 @@ export class HostBuilder implements IHostBuilder {
   // Both hold RETURNING delegates: the manifest chain is immutable, so `build()`
   // threads each delegate's return into the next instead of letting them all
   // register into one shared mutable collection.
-  readonly #configureServicesActions: Array<Func<[HostBuilderContext, IServiceManifest], IServiceManifest>> = [];
-  readonly #configureContainerActions: Array<Func<[HostBuilderContext, unknown], unknown>> = [];
+  readonly #configureServicesActions: Array<Func<[HostBuilderContext, Manifest<unknown>], Manifest<unknown>>> = [];
+  readonly #configureContainerActions: Array<Func<[HostBuilderContext, Manifest<unknown>], Manifest<unknown>>> = [];
 
   #hostBuilt = false;
 
@@ -56,25 +53,13 @@ export class HostBuilder implements IHostBuilder {
   }
 
   /** Adds services to the container. Additive across calls; the delegate RETURNS the manifest. */
-  public configureServices(configureDelegate: Func<[HostBuilderContext, IServiceManifest], IServiceManifest>): this {
+  public configureServices(configureDelegate: Func<[HostBuilderContext, Manifest<unknown>], Manifest<unknown>>): this {
     this.#configureServicesActions.push(configureDelegate);
     return this;
   }
 
-  /**
-   * Overrides the factory used to create the service provider. This repo has a
-   * SINGLE container type, so this is a minimal no-op single-container hook: the
-   * default `ServiceManifest` build path is always used to produce the provider.
-   */
-  public useServiceProviderFactory<TContainerBuilder>(_factory: IServiceProviderFactory<TContainerBuilder>): this {
-    return this;
-  }
-
-  /** Enables configuring the instantiated dependency container. Additive across calls. */
-  public configureContainer<TContainerBuilder>(
-    configureDelegate: Func<[HostBuilderContext, TContainerBuilder], TContainerBuilder>,
-  ): this {
-    this.#configureContainerActions.push(configureDelegate as Func<[HostBuilderContext, unknown], unknown>);
+  public configureContainer(configureDelegate: Func<[HostBuilderContext, Manifest<unknown>], Manifest<unknown>>): this {
+    this.#configureContainerActions.push(configureDelegate);
     return this;
   }
 
@@ -98,8 +83,7 @@ export class HostBuilder implements IHostBuilder {
     const hostingEnvironment = createHostingEnvironment(hostConfig);
 
     // 3. Host-builder context.
-    const hostBuilderContext: HostBuilderContext = { hostingEnvironment, config: hostConfig,
-      properties: this.properties };
+    const hostBuilderContext: HostBuilderContext = { hostingEnvironment, config: hostConfig, properties: this.properties };
 
     // 4. Application configuration (host configuration chained in first --
     // a live read-through, not a snapshot, so a later host-configuration
@@ -113,16 +97,11 @@ export class HostBuilder implements IHostBuilder {
     hostBuilderContext.config = appConfig;
 
     // 5. Framework services + the user's configure-services delegates.
-    let services: IServiceManifest = new ServiceManifest();
+    let services: Manifest<unknown> = Manifest.empty<unknown>();
     const framework = createFrameworkServices();
     services = populateFrameworkServices(services, hostBuilderContext, hostingEnvironment, appConfig, framework);
 
-    for (const action of this.#configureServicesActions) {
-      services = action(hostBuilderContext, services);
-    }
-    for (const action of this.#configureContainerActions) {
-      services = action(hostBuilderContext, services) as IServiceManifest;
-    }
+    services = this.#configureServicesActions.concat(this.#configureContainerActions).reduce((services, action) => action(hostBuilderContext, services), services);
 
     // 6. Build the provider and construct the internal host. The service-provider
     // options (from `useDefaultServiceProvider` / `configureDefaults`) are

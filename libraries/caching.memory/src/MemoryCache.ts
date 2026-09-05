@@ -5,14 +5,13 @@
 // eviction callbacks on remove/replace/expire/capacity; and opt-in statistics
 // and linked-entry tracking (both captured once at construction).
 
-import { CacheItemPriority, type CacheTryGetResult, EvictionReason, type ICacheEntry, type IMemoryCache,
-  MemoryCacheStatistics } from '@rhombus-std/caching.core';
+import { CacheItemPriority, type CacheTryGetResult, EvictionReason, type ICacheEntry, type IMemoryCache, MemoryCacheStatistics } from '@rhombus-std/caching.core';
 import type { ILogger, ILoggerFactory } from '@rhombus-std/logging.core';
 import type { IOptions } from '@rhombus-std/options';
 import { augment } from '@rhombus-std/primitives';
-import { tokenfor } from '@rhombus-std/primitives.extras';
-import type { Func } from '@rhombus-toolkit/func';
+import { typefor } from '@rhombus-std/primitives.extras';
 import { assertNever } from '@rhombus-toolkit/type-guards';
+import type { Func } from '@rhombus-toolkit/types';
 import { CacheEntry, type IMemoryCacheHost } from './CacheEntry';
 import type { MemoryCacheOptions } from './MemoryCacheOptions';
 import { NullLogger } from './NullLogger';
@@ -24,7 +23,7 @@ import { NullLogger } from './NullLogger';
 export interface MemoryCache extends IMemoryCache {}
 
 /** A local in-memory cache backed by a `Map`. */
-@augment(tokenfor<IMemoryCache>())
+@augment(typefor<IMemoryCache>())
 export class MemoryCache implements IMemoryCache, IMemoryCacheHost {
   readonly #entries = new Map<unknown, CacheEntry>();
   readonly #options: MemoryCacheOptions;
@@ -160,8 +159,8 @@ export class MemoryCache implements IMemoryCache, IMemoryCacheHost {
     if (!this.#trackStatistics) {
       return undefined;
     }
-    return new MemoryCacheStatistics({ totalMisses: this.#misses, totalHits: this.#hits, currentEntryCount: this.count,
-      currentEstimatedSize: this.#hasSizeLimit ? this.#cacheSize : undefined, totalEvictions: this.#evictions });
+    return new MemoryCacheStatistics({ totalMisses: this.#misses, totalHits: this.#hits, currentEntryCount: this.count, currentEstimatedSize: this.#hasSizeLimit ? this.#cacheSize : undefined,
+      totalEvictions: this.#evictions });
   }
 
   public [Symbol.dispose](): void {

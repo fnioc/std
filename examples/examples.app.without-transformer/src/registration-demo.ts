@@ -1,13 +1,12 @@
 // A tour of the di REGISTRATION surface, authored WITHOUT the transformer:
-// every token is a hand-written string and every dependency signature is
-// plain data. This is the PRIMARY surface — the type-driven forms in
-// ../../examples.app.with-transformer/src/registration-demo.ts are sugar that
-// lowers to exactly the calls below, and the two print the same report.
+// every token is hand-written and every dependency signature is spelled out.
+// This is the PRIMARY surface — the type-driven forms in
+// ../../examples.app.with-transformer/src/registration-demo.ts are sugar for
+// exactly the calls below, and the two print the same report.
 //
 // THE SCENARIO: an order-shipping notifier. A notification goes to a message
-// SINK; an AUDIT LOG records what was sent; a REPOSITORY loads the order. Every
-// registration verb below earns its place in that one story rather than
-// standing alone.
+// SINK, and an AUDIT LOG records what was sent. Every registration verb below
+// earns its place in that one story rather than standing alone.
 //
 // The demo builds its own container instead of registering into the host's, so
 // it reads top-to-bottom and can be run from anywhere in the app.
@@ -16,15 +15,16 @@
 //
 // 1. THE MANIFEST IS IMMUTABLE. Every verb returns a NEW manifest and leaves
 //    the receiver alone, so a call whose result is discarded registers NOTHING.
-//    Thread it: `services = services.addClass(...)`. `demonstrateDiscardTrap`
+//    Thread it: `services = services.add(...)`. `demonstrateDiscardTrap`
 //    below shows the failure mode on purpose.
-// 2. A SIGNATURE IS ALWAYS STATED, never inferred. Without the transformer
-//    there is nothing to derive a dependency list from, so "this class takes no
-//    dependencies" is written `[[]]` — an absent argument means "not supplied
-//    yet", which is a different (and gated) state.
+// 2. A CONSTRUCTOR TYPE IS ALWAYS STATED, never inferred. Without the
+//    transformer there is nothing to derive one from, so "this class takes no
+//    dependencies" is written `Type.ctor(theAddress, [[]])` — one overload,
+//    taking nothing beyond the address.
 
-import { ServiceManifest, typeArg, union } from '@rhombus-std/di';
-import type { IServiceManifest, IServiceProvider, ManifestEntry, Token } from '@rhombus-std/di';
+import { Builder } from '@rhombus-std/di';
+import { Manifest, type Registration } from '@rhombus-std/di.core';
+import { Type } from '@rhombus-std/primitives';
 
 // ── the domain ───────────────────────────────────────────────────────────────
 
@@ -64,22 +64,11 @@ interface IAuditLog {
 }
 
 /**
- * A metrics recorder. Also never registered — it is the PREFERRED member of the
- * notifier's union slot, so resolution falls through it to the audit log.
+ * A metrics recorder. Also never registered — it is one member of the notifier's
+ * union slot, so resolution settles on the audit log instead.
  */
 interface IMetricsRecorder {
   count(name: string): void;
-}
-
-/** The entity the open repository template is closed over. */
-interface Order {
-  readonly id: string;
-}
-
-/** An open-generic repository: registered ONCE as a template, closed per entity. */
-interface IRepository<T> {
-  readonly entityToken: Token;
-  describe(entity: T): string;
 }
 
 /** The service the whole scenario exists to build. */
@@ -104,7 +93,8 @@ class FixedClock implements IClock, ILegacyClock {
 /**
  * The default sink. Its second constructor parameter is a plain string that no
  * container could resolve, so its signature supplies it DIRECTLY as a literal
- * slot (`{ value: 'production' }`) instead of as a token — no lookup happens.
+ * slot (`Type.typeLiteral('production')`) instead of as a service type — no
+ * lookup happens.
  */
 class PlainTextSink implements IMessageSink {
   public readonly name = 'text';
@@ -174,8 +164,9 @@ class RecordingSink implements IMessageSink {
 /**
  * The audit log. Its `sink` parameter is OPTIONAL, which is the honest way to
  * say "use one if the container has one". That is expressed in the signature as
- * a UNION whose last member is the literal `undefined` — so the slot is always
- * satisfiable and simply yields `undefined` when no sink is registered.
+ * a UNION whose other member is the literal `undefined` — a member that supplies
+ * itself, so the slot is always satisfiable and simply yields `undefined` when
+ * no sink is registered.
  */
 class AuditLog implements IAuditLog {
   readonly #clock: IClock;
@@ -198,32 +189,8 @@ class AuditLog implements IAuditLog {
 }
 
 /**
- * The open repository template. ONE JavaScript class serves every closing: its
- * first parameter receives the TOKEN STRING of whichever entity the closing
- * bound, which is what the `typeArg(1)` slot supplies.
- */
-class SqlRepository<T> implements IRepository<T> {
-  public readonly entityToken: Token;
-  readonly #clock: IClock;
-
-  public constructor(entityToken: Token, clock: IClock) {
-    this.entityToken = entityToken;
-    this.#clock = clock;
-  }
-
-  public describe(entity: T): string {
-    // `entityToken` is the full token of whatever the closing bound. Only its
-    // tail is printed, so this line reads the same in both authoring dialects —
-    // they pick their tokens differently, but bind the same entity.
-    const name = this.entityToken.slice(this.entityToken.lastIndexOf(':') + 1);
-    return `${name} ${JSON.stringify(entity)} at ${this.#clock.now()}`;
-  }
-}
-
-/**
  * The notifier factory. `recorder` takes either a metrics recorder or the audit
- * log — a genuine either/or, registered as a union slot whose members are tried
- * in order.
+ * log — a genuine either/or, registered as a union slot.
  */
 function makeOrderNotifier(sink: IMessageSink, recorder?: IMetricsRecorder | IAuditLog): IOrderNotifier {
   return { notify(orderId: string): string {
@@ -235,53 +202,45 @@ function makeOrderNotifier(sink: IMessageSink, recorder?: IMetricsRecorder | IAu
   } };
 }
 
-// ── tokens ───────────────────────────────────────────────────────────────────
+// ── the service types ────────────────────────────────────────────────────────
 
-// A hand author picks the token strings; they only have to be stable and unique.
-// These are short for readability. When you need to INTEROPERATE with
-// registrations the transformer produced, spell the token exactly as it derives
-// it instead — see examples.lib.without-transformer/src/tokens.ts.
-const CLOCK_TOKEN = 'orders:IClock';
-const SINK_TOKEN = 'orders:IMessageSink';
-const EMAIL_OPTIONS_TOKEN = 'orders:IEmailOptions';
-const AUDIT_TOKEN = 'orders:IAuditLog';
-const METRICS_TOKEN = 'orders:IMetricsRecorder';
-const NOTIFIER_TOKEN = 'orders:IOrderNotifier';
-const FLAGS_TOKEN = 'orders:FeatureFlags';
+// A hand author picks these token strings; they only have to be stable and
+// unique. These are short for readability. When you need to INTEROPERATE with
+// registrations the transformer produced, compose the same Type it derives
+// instead — see examples.lib.without-transformer/src/types.ts.
+const CLOCK_TYPE = Type.imported('IClock', 'orders');
+const SINK_TYPE = Type.imported('IMessageSink', 'orders');
+const EMAIL_OPTIONS_TYPE = Type.imported('IEmailOptions', 'orders');
+const AUDIT_TYPE = Type.imported('IAuditLog', 'orders');
+const METRICS_TYPE = Type.imported('IMetricsRecorder', 'orders');
+const NOTIFIER_TYPE = Type.imported('IOrderNotifier', 'orders');
+const FLAGS_TYPE = Type.imported('FeatureFlags', 'orders');
 
-// A KEYED token is not a parallel subsystem — it is the base token with a
-// `#<key>` suffix, composed by the `key` argument or by `.withKey()`. Writing
-// the composed form by hand (as this slot does) hits exactly the same lookup.
-const VENDOR_CLOCK_TOKEN = `${CLOCK_TOKEN}#vendor`;
+// A KEY is a TAG ON the service type rather than a parallel lookup: `Type.tag`
+// composes one type that carries it, so a keyed request hits exactly the same
+// exact-match lookup an unkeyed one does.
+const VENDOR_CLOCK_TYPE = Type.tag(CLOCK_TYPE, 'vendor');
+const EMAIL_SINK_TYPE = Type.tag(SINK_TYPE, 'email');
 
-// An OPEN template token: at least one type argument is a `$N` hole (the rest
-// may be concrete). It never resolves directly — resolving a CLOSED token that
-// has no exact registration matches against the templates and synthesizes a
-// registration for that closing.
-const REPOSITORY_TEMPLATE = 'orders:IRepository<$1>';
-const ORDER_TOKEN = 'orders:Order';
-// A CLOSED token is the template with its hole filled in — plain string
-// composition, which is all "closing a generic" amounts to on the wire.
-const ORDER_REPOSITORY_TOKEN = `orders:IRepository<${ORDER_TOKEN}>`;
-
-// The library-defaults scenario keeps its own namespace, so the descriptor
-// verbs below name tokens this file owns end-to-end.
-const DEFAULT_CLOCK_TOKEN = 'orders.defaults:IClock';
-const DEFAULT_SINK_TOKEN = 'orders.defaults:IMessageSink';
-const DEFAULT_NOTIFIER_TOKEN = 'orders.defaults:IOrderNotifier';
+// The library-defaults scenario keeps its own namespace, so the registration
+// verbs below name types this file owns end-to-end.
+const DEFAULT_CLOCK_TYPE = Type.imported('IClock', 'orders.defaults');
+const DEFAULT_SINK_TYPE = Type.imported('IMessageSink', 'orders.defaults');
+const DEFAULT_NOTIFIER_TYPE = Type.imported('IOrderNotifier', 'orders.defaults');
 
 // ── helpers ──────────────────────────────────────────────────────────────────
 
 /**
- * Counts the registrations bound to `token`. A manifest is an
- * `Iterable<ManifestEntry>` whose entries come out in AUTHORING order, so this
- * is the honest way to observe what a chain of verbs actually recorded —
- * no build, no resolution.
+ * Counts the registrations bound to `type`. A manifest is an
+ * `Iterable<Registration>`, so this is the honest way to observe what a
+ * chain of verbs actually recorded — no build, no resolution. Types are
+ * INTERNED, so two spellings of one type are one object and `===` is the whole
+ * comparison.
  */
-function countRegistrations(services: Iterable<ManifestEntry>, token: Token): number {
+function countRegistrations(services: Iterable<Registration<unknown>>, type: Type): number {
   let count = 0;
-  for (const entry of services) {
-    if (entry.kind === 'exact' && entry.token === token) {
+  for (const registration of services) {
+    if (registration.address === type) {
       count += 1;
     }
   }
@@ -293,208 +252,195 @@ function countRegistrations(services: Iterable<ManifestEntry>, token: Token): nu
 /**
  * Shows, on purpose, the one mistake this API makes easy to catch: a
  * registration call whose result is thrown away registers nothing. The manifest
- * is a frozen linked list — every verb wraps the receiver in a NEW node — so
- * the only way to keep a registration is to keep the value it returns.
+ * is a frozen chain — every verb wraps the receiver in a NEW node — so the only
+ * way to keep a registration is to keep the value it returns.
  */
 function demonstrateDiscardTrap(): string {
-  const empty = new ServiceManifest<'singleton'>();
+  const empty = Manifest.empty<unknown>();
 
   // WRONG — the new manifest is built and immediately dropped on the floor.
   // `empty` is exactly as empty as it was. This compiles, and it is silent.
-  empty.addClass(FLAGS_TOKEN, FeatureFlags, [[]], 'singleton');
+  empty.add(FLAGS_TYPE, FeatureFlags, Type.ctor(FLAGS_TYPE, [[]]), 'singleton');
 
   // RIGHT — thread the result back in.
-  const threaded = empty.addClass(FLAGS_TOKEN, FeatureFlags, [[]], 'singleton');
+  const threaded = empty.add(FLAGS_TYPE, FeatureFlags, Type.ctor(FLAGS_TYPE, [[]]), 'singleton');
 
-  return `immutability: the discarded call registered ${countRegistrations(empty, FLAGS_TOKEN)}, `
-    + `the threaded one registered ${countRegistrations(threaded, FLAGS_TOKEN)}`;
+  return `immutability: the discarded call registered ${countRegistrations(empty, FLAGS_TYPE)}, `
+    + `the threaded one registered ${countRegistrations(threaded, FLAGS_TYPE)}`;
 }
 
 // ── 2. the library's defaults, and a host overriding them ────────────────────
 
 /**
- * What a library ships: registrations an application gets for free. Every verb
- * here is a `tryAdd*` — "register this only if nobody already has" — which is
- * what makes calling it twice, or calling it after the application wired its
- * own implementation, harmless. Under an immutable manifest the
- * already-registered branch simply hands the receiver back, so the caller
- * threads the result either way.
- *
- * The scope union is generic so any application union works, and `| 'singleton'`
- * states the one scope these defaults register at.
- *
- * @param services The application's registration builder.
+ * What a library ships: registrations an application gets for free, built as
+ * its own manifest on the narrowest lifetime vocabulary it needs —
+ * `'singleton'`, the one lifetime every default here registers at. Every verb
+ * here is a `tryAdd` — "register this only if nobody already has" — so a
+ * caller merging the result in with `services.tryAdd(...addOrderDefaults())`
+ * stays idempotent too: calling this twice, or after the application wired its
+ * own implementation, changes nothing, because `tryAdd`'s existing-registration
+ * check runs against the same service types either way.
  */
-function addOrderDefaults<S extends string>(
-  services: IServiceManifest<S | 'singleton'>,
-): IServiceManifest<S | 'singleton'> {
+function addOrderDefaults(): Manifest<'singleton'> {
+  let services = Manifest.empty<'singleton'>();
   // A default VALUE — the clock every other default depends on.
-  services = services.tryAddValue(DEFAULT_CLOCK_TOKEN, new FixedClock());
+  services = services.tryAdd(DEFAULT_CLOCK_TYPE, new FixedClock());
   // A default CLASS.
-  services = services.tryAdd(DEFAULT_SINK_TOKEN, PlainTextSink, [[DEFAULT_CLOCK_TOKEN, { value: 'production' }]],
-    'singleton');
+  services = services.tryAdd(DEFAULT_SINK_TYPE, PlainTextSink, Type.ctor(DEFAULT_SINK_TYPE, [[DEFAULT_CLOCK_TYPE, Type.typeLiteral('production')]]), 'singleton');
   // A default FACTORY.
-  services = services.tryAddFactory(DEFAULT_NOTIFIER_TOKEN, makeOrderNotifier, [[DEFAULT_SINK_TOKEN]], 'singleton');
+  services = services.tryAdd(DEFAULT_NOTIFIER_TYPE, makeOrderNotifier, Type.func(DEFAULT_NOTIFIER_TYPE, [[DEFAULT_SINK_TYPE]]), 'singleton');
   return services;
 }
 
 /**
- * The descriptor verbs, in the order a real application meets them:
+ * The registration verbs, in the order a real application meets them:
  *
- *   - `tryAdd*`  — IDEMPOTENT DEFAULTS. A library registers only what is
+ *   - `tryAdd`   — IDEMPOTENT DEFAULTS. A library registers only what is
  *                  missing, so applying its defaults twice, or applying them
  *                  after the application registered its own, changes nothing.
- *   - `replace*` — HOST OVERRIDE. The application wants ITS implementation to
- *                  be the only one at that token: drop what is there, register
- *                  anew. (Plain `addClass` would leave both, and collection
+ *   - `replace`  — HOST OVERRIDE. The application wants ITS implementation to
+ *                  be the only one at that type: drop what is there, register
+ *                  anew. (A plain `add` would leave both, and collection
  *                  resolution would see the loser too.)
- *   - `removeAll`— TEARDOWN. Strip a token back to nothing, which is what a
+ *   - `removeAll`— TEARDOWN. Strip a type back to nothing, which is what a
  *                  test host or a "no default providers" switch needs.
  *
  * None of these has a type-driven form, so this function is IDENTICAL in the
  * with-transformer app.
  */
-function demonstrateDescriptorVerbs(): string[] {
-  const lines: string[] = [];
-
+function* demonstrateRegistrationVerbs(): Generator<string> {
   // Applying the defaults twice leaves exactly one of each.
-  let library = new ServiceManifest<'singleton'>();
-  library = addOrderDefaults(library);
-  library = addOrderDefaults(library);
-  lines.push(
-    `defaults: applying them twice leaves ${countRegistrations(library, DEFAULT_SINK_TOKEN)} sink `
-      + `(tryAdd* only registers what is missing)`,
-  );
+  let library: Manifest<unknown> = Manifest.empty<unknown>();
+  library = library.tryAdd(...addOrderDefaults());
+  library = library.tryAdd(...addOrderDefaults());
+  yield `defaults: applying them twice leaves ${countRegistrations(library, DEFAULT_SINK_TYPE)} sink `
+    + `(tryAdd only registers what is missing)`;
 
   // An application that already wired its own sink keeps it.
-  let application = new ServiceManifest<'singleton'>();
-  application = application.addClass(DEFAULT_SINK_TOKEN, RecordingSink, [[]], 'singleton');
-  application = addOrderDefaults(application);
-  const kept = application.build().createScope('singleton').resolve<IMessageSink>(DEFAULT_SINK_TOKEN);
-  lines.push(`defaults: an application that registered its own sink keeps it (${kept.name})`);
+  let application: Manifest<unknown> = Manifest.empty<unknown>();
+  application = application.add(DEFAULT_SINK_TYPE, RecordingSink, Type.ctor(DEFAULT_SINK_TYPE, [[]]), 'singleton');
+  application = application.tryAdd(...addOrderDefaults());
+  const kept = Builder.withServices(() => application).build()
+    .resolve(DEFAULT_SINK_TYPE) as IMessageSink;
+  yield `defaults: an application that registered its own sink keeps it (${kept.name})`;
 
   // The host overrides all three defaults outright.
-  let host = addOrderDefaults(new ServiceManifest<'singleton'>());
-  host = host.replaceValue(DEFAULT_CLOCK_TOKEN, new FixedClock());
-  host = host.replace(DEFAULT_SINK_TOKEN, RecordingSink, [[]], 'singleton');
-  host = host.replaceFactory(DEFAULT_NOTIFIER_TOKEN, makeOrderNotifier, [[DEFAULT_SINK_TOKEN]], 'singleton');
-  const hostScope = host.build().createScope('singleton');
-  hostScope.resolve<IOrderNotifier>(DEFAULT_NOTIFIER_TOKEN).notify('order-7');
-  const recorder = hostScope.resolve<RecordingSink>(DEFAULT_SINK_TOKEN);
-  lines.push(
-    `override: replace* swapped all three defaults; the host sink is ${recorder.name}, it captured `
-      + `${recorder.captured.length} message, and ${countRegistrations(host, DEFAULT_SINK_TOKEN)} `
-      + `registration is left at its token`,
-  );
+  let host: Manifest<unknown> = Manifest.empty<unknown>().tryAdd(...addOrderDefaults());
+  host = host.replace(DEFAULT_CLOCK_TYPE, new FixedClock());
+  host = host.replace(DEFAULT_SINK_TYPE, RecordingSink, Type.ctor(DEFAULT_SINK_TYPE, [[]]), 'singleton');
+  host = host.replace(DEFAULT_NOTIFIER_TYPE, makeOrderNotifier, Type.func(DEFAULT_NOTIFIER_TYPE, [[DEFAULT_SINK_TYPE]]), 'singleton');
+  const hostProvider = Builder.withServices(() => host).build();
+  const recorder = hostProvider.resolve(DEFAULT_SINK_TYPE) as RecordingSink;
+  yield `override: replace swapped all three defaults; the host sink is ${recorder.name}, and `
+    + `${countRegistrations(host, DEFAULT_SINK_TYPE)} registration is left at its type`;
 
-  // Teardown strips the token completely.
-  const stripped = host.removeAll(DEFAULT_SINK_TOKEN);
-  lines.push(
-    `teardown: removeAll left ${countRegistrations(stripped, DEFAULT_SINK_TOKEN)} sinks on the new manifest, `
-      + `and ${countRegistrations(host, DEFAULT_SINK_TOKEN)} on the original (nothing mutates)`,
-  );
-
-  return lines;
+  // Teardown strips the type completely.
+  const stripped = host.removeAll(DEFAULT_SINK_TYPE);
+  yield `teardown: removeAll left ${countRegistrations(stripped, DEFAULT_SINK_TYPE)} sinks on the new manifest, `
+    + `and ${countRegistrations(host, DEFAULT_SINK_TYPE)} on the original (nothing mutates)`;
 }
 
 // ── 3. the application container ─────────────────────────────────────────────
 
 /**
  * Registers the whole scenario. Read it as one pass down the registration
- * surface: a value (twice, once keyed), two sinks sharing one token plus a
- * keyed third, an optional dependency, a factory with two overloads, an open
- * template, and a zero-dependency class.
+ * surface: a value (twice, once keyed), two sinks sharing one type plus a keyed
+ * third, an optional dependency, a factory with two overloads, and a
+ * zero-dependency class.
  */
-function buildOrderContainer(): IServiceManifest<'singleton'> {
-  let services = new ServiceManifest<'singleton'>();
+function buildOrderContainer(): Manifest<unknown> {
+  let services: Manifest<unknown> = Manifest.empty<unknown>();
   const clock = new FixedClock();
 
-  // addValue — an already-built instance. No signature (there is nothing to
+  // A value — an already-built instance. No signature (there is nothing to
   // construct) and no scope (a value IS its instance, so caching is moot).
-  services = services.addValue(CLOCK_TOKEN, clock);
+  services = services.add(CLOCK_TYPE, clock);
 
-  // The SAME instance again under a KEYED token, `orders:IClock#vendor`. The
-  // third argument is the key; `addValue` has no fluent chain to hang a
-  // `.withKey()` on, because it has no other slot left to fill.
-  services = services.addValue(CLOCK_TOKEN, clock, 'vendor');
+  // The SAME instance again under a KEYED type. The key rides the type itself:
+  // registering at the tagged `VENDOR_CLOCK_TYPE` composed above is all a keyed
+  // registration is.
+  services = services.add(VENDOR_CLOCK_TYPE, clock);
 
   // A third-party class adapted onto our own clock: its constructor names the
-  // vendor's `ILegacyClock`, but the signature is ours to write, so the slot
-  // simply points at the keyed clock registered above.
-  services = services.addClass(SINK_TOKEN, VendorSink, [[VENDOR_CLOCK_TOKEN]], 'singleton');
+  // vendor's `ILegacyClock`, but the composed constructor type is ours to
+  // write, so the argument simply names the keyed clock registered above.
+  services = services.add(SINK_TYPE, VendorSink, Type.ctor(SINK_TYPE, [[VENDOR_CLOCK_TYPE]]), 'singleton');
 
-  // addClass, 4-argument form: token, ctor, signatures, scope. The second slot
-  // is a LITERAL — its value is injected verbatim, with no container lookup.
-  // (The 5-argument form takes a key after the scope, and is exactly
-  // `.as(scope).withKey(key)` written positionally.)
+  // The 4-argument constructor form: address, ctor, implementerType, scope. The second
+  // argument is a LITERAL — its value is injected verbatim, with no container
+  // lookup.
   //
-  // This lands at the SAME token as the vendor sink above. Registering twice at
-  // one token is legal and useful — a collection resolve sees both — and a
-  // single resolve takes the LAST one registered, so this is the sink the rest
+  // This lands at the SAME type as the vendor sink above. Registering twice at
+  // one type is legal and useful — a collection request sees both — and a single
+  // request takes the MOST RECENTLY registered one, so this is the sink the rest
   // of the scenario gets.
-  services = services.addClass(SINK_TOKEN, PlainTextSink, [[CLOCK_TOKEN, { value: 'production' }]], 'singleton');
+  services = services.add(SINK_TYPE, PlainTextSink, Type.ctor(SINK_TYPE, [[CLOCK_TYPE, Type.typeLiteral('production')]]), 'singleton');
 
-  // The GATED 2-argument form: no signature is supplied, so the returned chain
-  // WITHHOLDS the manifest face — `build`/`addClass` are absent until a
-  // signature arrives. `withSignatures` supplies the whole set at once and
-  // opens the gate; it is once-only (it consumes both signature slots), so it
-  // can never follow an append. `.withKey()` then makes the registration keyed
-  // and `.as()` names its lifetime; the modifiers may come in any order.
-  //
-  // The two overloads are tried longest-first: `[clock, options]` needs
-  // `IEmailOptions`, which nothing registers, so the `[clock]` overload wins
-  // and the sink falls back to its built-in address.
-  services = services.addClass(SINK_TOKEN, EmailSink).withSignatures([CLOCK_TOKEN], [CLOCK_TOKEN, EMAIL_OPTIONS_TOKEN])
-    .withKey('email').as('singleton');
+  // TWO OVERLOADS for one class, and a KEY — the tagged address. Each parameter row is one
+  // constructor overload, and the engine takes the first whose every argument it
+  // can supply, longest row first: the two-argument row needs `IEmailOptions`,
+  // which nothing registers, so the single-argument row wins and the sink falls
+  // back to its built-in address.
+  services = services.add(Type.tag(SINK_TYPE, 'email'), EmailSink, Type.ctor({ instance: SINK_TYPE, signatures: [[CLOCK_TYPE, EMAIL_OPTIONS_TYPE], [CLOCK_TYPE]] }), 'singleton');
 
-  // An OPTIONAL dependency, spelled honestly: a union whose last member is the
-  // literal `undefined`. Union members are tried in order and the first
-  // resolvable one wins, so this yields the sink when one is registered and
-  // `undefined` when none is — and the slot is never unsatisfiable.
-  services = services.addClass(AUDIT_TOKEN, AuditLog, [[CLOCK_TOKEN, union(SINK_TOKEN, { value: undefined })]],
-    'singleton');
+  // An OPTIONAL dependency, spelled honestly: a union whose other member is the
+  // literal `undefined`. A literal member supplies ITSELF rather than competing
+  // for the argument, so this yields the sink when one is registered and
+  // `undefined` when none is — and the argument is never unsatisfiable.
+  services = services.add(AUDIT_TYPE, AuditLog, Type.ctor(AUDIT_TYPE, [[CLOCK_TYPE, Type.union(SINK_TYPE, Type.typeLiteral(undefined))]]), 'singleton');
 
-  // The gated form again, opened by `withSignature` — which APPENDS one
-  // overload and is REPEATABLE, unlike the bulk `withSignatures` above. The
-  // second slot is a union of two SERVICES plus the literal `undefined` (the
-  // factory's parameter is optional): the metrics recorder is preferred but
-  // never registered, so resolution falls through to the audit log. The second
-  // call appends a leaner fallback overload.
-  services = services.addFactory(NOTIFIER_TOKEN, makeOrderNotifier).withSignature(SINK_TOKEN,
-    union(METRICS_TOKEN, AUDIT_TOKEN, { value: undefined })).withSignature(SINK_TOKEN).as('singleton');
+  // The same shape on a FACTORY, whose second argument is a union of two
+  // SERVICES plus the literal `undefined`. Only the audit log is registered, so
+  // exactly one member can be supplied and the argument settles on it without
+  // ambiguity.
+  services = services.add(NOTIFIER_TYPE, makeOrderNotifier, Type.func(NOTIFIER_TYPE, [[SINK_TYPE, Type.union(METRICS_TYPE, AUDIT_TYPE, Type.typeLiteral(undefined))]]), 'singleton');
 
-  // An OPEN template. `typeArg(1)` is the positional way to say "this parameter
-  // receives the token string of the registration's first type argument"; when
-  // a closing is resolved, substitution turns it into a literal carrying that
-  // argument's token.
-  services = services.addClass(REPOSITORY_TEMPLATE, SqlRepository, [[typeArg(1), CLOCK_TOKEN]], 'singleton');
-
-  // A zero-dependency class. `[[]]` is not decoration: it STATES that the class
-  // takes nothing, which is different from not having supplied a signature yet.
-  services = services.addClass(FLAGS_TOKEN, FeatureFlags, [[]], 'singleton');
+  // A zero-dependency class: a composed constructor type that carries no
+  // argument types beyond the address.
+  services = services.add(FLAGS_TYPE, FeatureFlags, Type.ctor(FLAGS_TYPE, [[]]), 'singleton');
 
   return services;
 }
 
+/**
+ * The other way to spell a registration: a chain opened at `describe`, walked
+ * step by step. Each step returns a NEW node — the same rule the manifest
+ * itself follows — and once an implementer door is taken the node IS a
+ * Registration, so the finished chain hands straight to the
+ * registration-taking `add`, sits in a variable, or travels between helpers.
+ */
+function demonstrateDescribedRegistration(): string {
+  const withClock: Manifest<unknown> = Manifest.empty<unknown>().add(CLOCK_TYPE, new FixedClock());
+  const services = withClock.add(
+    withClock.describe(SINK_TYPE)
+      .asClass(PlainTextSink, Type.ctor(SINK_TYPE, [[CLOCK_TYPE, Type.typeLiteral('staging')]]))
+      .withLifetime('singleton'),
+  );
+
+  const sink = Builder.withServices(() => services).build()
+    .resolve(SINK_TYPE) as IMessageSink;
+  return `described by chain: ${sink.send('order-99 shipped')}`;
+}
+
 /** Exercises the container and reports what each registration produced. */
-function describeOrderContainer(services: IServiceManifest<'singleton'>): string[] {
-  // `build()` opens no frame; a scope has to be opened for `'singleton'`
-  // registrations to cache.
-  const app: IServiceProvider<'singleton'> = services.build().createScope('singleton');
+function describeOrderContainer(services: Manifest<unknown>): string[] {
+  // The front door: seeds the manifest this file already built.
+  const app = Builder.withServices(() => services).build();
 
-  const notifier = app.resolve<IOrderNotifier>(NOTIFIER_TOKEN);
-  const audit = app.resolve<IAuditLog>(AUDIT_TOKEN);
-  const email = app.resolve<IMessageSink>(SINK_TOKEN, 'email');
-  const vendorClock = app.resolve<IClock>(CLOCK_TOKEN, 'vendor');
-  const repository = app.resolve<IRepository<Order>>(ORDER_REPOSITORY_TOKEN);
-  const flags = app.resolve<FeatureFlags>(FLAGS_TOKEN);
+  const notifier = app.resolve(NOTIFIER_TYPE) as IOrderNotifier;
+  const audit = app.resolve(AUDIT_TYPE) as IAuditLog;
+  const email = app.resolve(EMAIL_SINK_TYPE) as IMessageSink;
+  const vendorClock = app.resolve(VENDOR_CLOCK_TYPE) as IClock;
+  const flags = app.resolve(FLAGS_TYPE) as FeatureFlags;
 
-  return [`notify: ${notifier.notify('order-42')}`,
-    `audit: ${audit.entries.length} entry, sink echo enabled=${flags.echoToSink}`,
-    `keyed sink (key "email"): ${email.send('welcome')}`, `keyed value (key "vendor"): ${vendorClock.now()}`,
-    `open template, closed per entity: ${repository.describe({ id: 'order-42' })}`,
-    `${countRegistrations(services, SINK_TOKEN)} sinks share the IMessageSink token; the last one `
-    + `registered wins a single resolve`];
+  // The optional sink slot found a sink, so the entry the audit log records is
+  // echoed to it as well as kept.
+  audit.record('order-42 shipped');
+
+  return [`notify: ${notifier.notify('order-42')}`, `audit: ${audit.entries.length} entry, sink echo enabled=${flags.echoToSink}`, `keyed sink (key "email"): ${email.send('welcome')}`,
+    `keyed value (key "vendor"): ${vendorClock.now()}`, `${countRegistrations(services, SINK_TYPE)} sinks share the IMessageSink type; the most recently `
+    + `registered one wins a single request, and all of them answer a collection request `
+    + `(${[...app.resolveIterable(SINK_TYPE)].length})`];
 }
 
 /**
@@ -502,26 +448,31 @@ function describeOrderContainer(services: IServiceManifest<'singleton'>): string
  * slot falls through to `undefined` rather than failing, and — because nothing
  * mutates — the container it was forked from still has all of its sinks.
  */
-function describeSinklessFork(services: IServiceManifest<'singleton'>): string {
-  const noSinks = services.removeAll(SINK_TOKEN);
-  const audit = noSinks.build().createScope('singleton').resolve<IAuditLog>(AUDIT_TOKEN);
+function describeSinklessFork(services: Manifest<unknown>): string {
+  const noSinks = services.removeAll(SINK_TYPE);
+  const audit = Builder.withServices(() => noSinks).build()
+    .resolve(AUDIT_TYPE) as IAuditLog;
   audit.record('order-42 shipped');
 
-  return `fork: removeAll left ${countRegistrations(noSinks, SINK_TOKEN)} sinks (the original still has `
-    + `${countRegistrations(services, SINK_TOKEN)}), so the audit log's optional sink slot resolved to `
+  return `fork: removeAll left ${countRegistrations(noSinks, SINK_TYPE)} sinks (the original still has `
+    + `${countRegistrations(services, SINK_TYPE)}), so the audit log's optional sink slot resolved to `
     + `undefined and it recorded ${audit.entries.length} entry anyway`;
 }
 
 // ── entry point ──────────────────────────────────────────────────────────────
 
 /**
- * Runs the whole registration tour and returns a deterministic report, leaving
+ * Runs the whole registration tour, yielding a deterministic report and leaving
  * the caller to decide where the lines go. The with-transformer app returns the
  * same body from the type-driven dialect.
  */
-export function demonstrateRegistration(): readonly string[] {
+export function* demonstrateRegistration(): Generator<string> {
   const services = buildOrderContainer();
 
-  return ['=== di registration — without transformer ===', demonstrateDiscardTrap(), ...demonstrateDescriptorVerbs(),
-    ...describeOrderContainer(services), describeSinklessFork(services)];
+  yield '=== di registration — without transformer ===';
+  yield demonstrateDiscardTrap();
+  yield* demonstrateRegistrationVerbs();
+  yield* describeOrderContainer(services);
+  yield demonstrateDescribedRegistration();
+  yield describeSinklessFork(services);
 }

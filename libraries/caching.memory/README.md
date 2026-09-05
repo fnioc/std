@@ -11,15 +11,16 @@ code paths that expect a distributed cache but only ever run on one process.
 ## Install
 
 ```sh
-bun add @rhombus-std/caching.memory @rhombus-std/caching.core
+bun add @rhombus-std/caching.memory @rhombus-std/caching.core @rhombus-std/di.core @rhombus-std/di @rhombus-std/options
 ```
 
-If you also want the fluent `manifest.addMemoryCache()` / `addDistributedMemoryCache()`
-registration methods, install a dependency-injection container alongside it:
-
-```sh
-bun add @rhombus-std/di
-```
+`@rhombus-std/caching.core` and `@rhombus-std/di.core` are peer dependencies —
+install them alongside. `@rhombus-std/options` supplies `Options.of`, used
+below to wrap a `MemoryCacheOptions` value as the `IOptions<T>` `MemoryCache`
+expects. `@rhombus-std/di` is what turns a manifest into a resolvable
+container; `@rhombus-std/caching.memory` doesn't depend on it itself, since
+`getMemoryCacheManifest`/`getDistributedMemoryCacheManifest` only ever hand
+you a manifest to merge.
 
 ## Usage
 
@@ -27,13 +28,19 @@ The hand-written form — no container required:
 
 ```ts
 import { MemoryCache, MemoryCacheOptions } from '@rhombus-std/caching.memory';
+import { Options } from '@rhombus-std/options';
 
-const cache = new MemoryCache(new MemoryCacheOptions());
+const cache = new MemoryCache(Options.of(new MemoryCacheOptions()));
 
 cache.set('greeting', 'hello'); // from @rhombus-std/caching.core's convenience wrappers
 cache.get<string>('greeting'); // 'hello'
 cache.remove('greeting');
 ```
+
+`MemoryCache` takes its options as an `IOptions<MemoryCacheOptions>` rather
+than a bare `MemoryCacheOptions` — `Options.of(value)` wraps a fixed value as
+a static, non-reactive one; a container-resolved `MemoryCache` gets a live,
+reload-reactive one instead (see below).
 
 `MemoryCache` implements the `IMemoryCache` contract from
 [`@rhombus-std/caching.core`](../caching.core/README.md), so every convenience
@@ -42,37 +49,46 @@ friends — works on it directly.
 
 ### Registering it with a container
 
-Import the package for its side effect and a `ServiceManifest` gains
-`addMemoryCache()`:
+`getMemoryCacheManifest` builds the registration as its own manifest,
+`Manifest<unknown>`: the cache itself registers at `'singleton'`, but a
+`setup` callback folds in its own configure step, which carries no lifetime of
+its own, so the manifest as a whole stays at the wider `unknown`. A caller
+merges the result with `tryAdd`, spreading its registrations: that keeps the
+semantics `tryAdd` always had here — an earlier registration for the same
+type is kept, while configure steps still accumulate:
 
 ```ts
-import '@rhombus-std/caching.memory';
-import { ServiceManifest } from '@rhombus-std/di';
+import type { IMemoryCache } from '@rhombus-std/caching.core';
+import { getMemoryCacheManifest, MEMORY_CACHE_TYPE } from '@rhombus-std/caching.memory';
+import { Builder } from '@rhombus-std/di';
+import { Manifest } from '@rhombus-std/di.core';
 
-const manifest = new ServiceManifest().addMemoryCache((options) => {
+let services: Manifest<unknown> = Manifest.empty<unknown>();
+services = services.tryAdd(...getMemoryCacheManifest((options) => {
   options.sizeLimit = 1024;
-});
+}));
+
+const provider = Builder.withServices(() => services).build();
+const cache: IMemoryCache = provider.resolve(MEMORY_CACHE_TYPE);
 ```
 
-`addMemoryCache` registers the `IOptions<MemoryCacheOptions>` pipeline plus a
-singleton `IMemoryCache`, resolvable through the `MEMORY_CACHE_TOKEN` string
-this package exports. The `setup` callback runs lazily, the first time the
-options resolve, so it's safe to call `addMemoryCache` more than once and
-layer configuration.
+The `setup` callback runs lazily, the first time the options resolve, so it's
+safe to merge `getMemoryCacheManifest` more than once and layer configuration
+— each merge's configure step accumulates onto the same options pipeline
+rather than replacing the one before it.
 
 ### A distributed-cache stand-in
 
-`addDistributedMemoryCache` does the same for `IDistributedCache`, backed by
-its own private `MemoryCache` instance (never the one `addMemoryCache`
-registers):
+`getDistributedMemoryCacheManifest` does the same for `IDistributedCache`,
+backed by its own private `MemoryCache` instance (never the one
+`getMemoryCacheManifest` registers):
 
 ```ts
-import '@rhombus-std/caching.memory';
-import { ServiceManifest } from '@rhombus-std/di';
+import { getDistributedMemoryCacheManifest } from '@rhombus-std/caching.memory';
 
-const manifest = new ServiceManifest().addDistributedMemoryCache((options) => {
+services = services.tryAdd(...getDistributedMemoryCacheManifest((options) => {
   options.sizeLimit = 50 * 1024 * 1024; // bytes; defaults to 200 MB
-});
+}));
 ```
 
 Useful for local development or single-instance deployments where code is
@@ -111,16 +127,17 @@ if (options.trackStatistics) {
 
 ## Key exports
 
-| Export                                                                 | What it is                                                                                                                                                  |
-| ---------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `MemoryCache`                                                          | The `IMemoryCache` implementation: `createEntry`, `tryGetValue`, `remove`, `clear`, `compact(percentage)`, `getCurrentStatistics()`, `count`, `keys`.       |
-| `MemoryCacheOptions`                                                   | Configures a `MemoryCache` — `sizeLimit`, `compactionPercentage`, `expirationScanFrequency`, `trackStatistics`, `trackLinkedCacheEntries`, `clock`, `name`. |
-| `MemoryCacheEntryOptions`                                              | Re-exported from `@rhombus-std/caching.core` for convenience — the per-entry options bag.                                                                   |
-| `MemoryDistributedCache`                                               | An `IDistributedCache` implementation backed by a private `MemoryCache`; byte-payload `get`/`set`/`refresh`/`remove`.                                       |
-| `MemoryDistributedCacheOptions`                                        | A `MemoryCacheOptions` subclass defaulting `sizeLimit` to 200 MB.                                                                                           |
-| `MEMORY_CACHE_TOKEN`, `DISTRIBUTED_CACHE_TOKEN`                        | The resolution tokens `addMemoryCache`/`addDistributedMemoryCache` register against.                                                                        |
-| `MEMORY_CACHE_OPTIONS_TOKEN`, `MEMORY_DISTRIBUTED_CACHE_OPTIONS_TOKEN` | The tokens their respective options pipelines resolve at.                                                                                                   |
-| `ISystemClock`                                                         | Interface for supplying a custom `utcNow` — plug in for deterministic expiration in tests.                                                                  |
+| Export                                                               | What it is                                                                                                                                                  |
+| -------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `MemoryCache`                                                        | The `IMemoryCache` implementation: `createEntry`, `tryGetValue`, `remove`, `clear`, `compact(percentage)`, `getCurrentStatistics()`, `count`, `keys`.       |
+| `MemoryCacheOptions`                                                 | Configures a `MemoryCache` — `sizeLimit`, `compactionPercentage`, `expirationScanFrequency`, `trackStatistics`, `trackLinkedCacheEntries`, `clock`, `name`. |
+| `MemoryCacheEntryOptions`                                            | Re-exported from `@rhombus-std/caching.core` for convenience — the per-entry options bag.                                                                   |
+| `MemoryDistributedCache`                                             | An `IDistributedCache` implementation backed by a private `MemoryCache`; byte-payload `get`/`set`/`refresh`/`remove`.                                       |
+| `MemoryDistributedCacheOptions`                                      | A `MemoryCacheOptions` subclass defaulting `sizeLimit` to 200 MB.                                                                                           |
+| `getMemoryCacheManifest`, `getDistributedMemoryCacheManifest`        | Build the `IMemoryCache`/`IDistributedCache` registration (plus its options pipeline) as its own manifest — merge the result into your own with `tryAdd`.   |
+| `MEMORY_CACHE_TYPE`, `DISTRIBUTED_CACHE_TYPE`                        | The addresses `getMemoryCacheManifest`/`getDistributedMemoryCacheManifest` register against.                                                                |
+| `MEMORY_CACHE_OPTIONS_TYPE`, `MEMORY_DISTRIBUTED_CACHE_OPTIONS_TYPE` | The addresses their respective options pipelines resolve at.                                                                                                |
+| `ISystemClock`                                                       | Interface for supplying a custom `utcNow` — plug in for deterministic expiration in tests.                                                                  |
 
 ## How it fits
 
@@ -129,29 +146,28 @@ if (options.trackStatistics) {
 `ICacheEntry`/`IDistributedCache` contracts and convenience wrappers, on
 [`@rhombus-std/options`](../options/README.md) and
 [`@rhombus-std/options.augmentations`](../options.augmentations/README.md) for
-its options pipeline, on
-[`@rhombus-std/logging.core`](../logging.core/README.md) for the optional
-logger it accepts, and on
-[`@rhombus-std/primitives`](../primitives/README.md) for the augmentation
-plumbing that installs `addMemoryCache`/`addDistributedMemoryCache`.
+its options pipeline, on [`@rhombus-std/logging.core`](../logging.core/README.md)
+for the optional logger it accepts, on
+[`@rhombus-std/primitives`](../primitives/README.md) for the addresses
+`getMemoryCacheManifest`/`getDistributedMemoryCacheManifest` register under,
+and on its [`@rhombus-std/di.core`](../di.core/README.md) peer for the
+`Manifest` they build on.
 
-Those two registration methods land on
-[`@rhombus-std/di.core`](../di.core/README.md)'s `ServiceManifest` — install
-[`@rhombus-std/di`](../di/README.md) (or any container built on `di.core`) to
-call them from a builder. If you separately install
-[`@rhombus-std/logging`](../logging/README.md)'s `addLogging`, the registered
-`MemoryCache` picks up the resolved `ILoggerFactory` automatically; without
-it, the cache logs nowhere and works exactly the same otherwise.
+Install [`@rhombus-std/di`](../di/README.md) (or any container built on
+`di.core`) to turn the merged manifest into a resolvable provider. If you
+separately merge in [`@rhombus-std/logging`](../logging/README.md)'s
+`getLoggingManifest`, the registered `MemoryCache` picks up the resolved
+`ILoggerFactory` automatically; without it, the cache logs nowhere and works
+exactly the same otherwise.
 
 ## Notes
 
-- `addMemoryCache` and `addDistributedMemoryCache` are only available once
-  you've imported `@rhombus-std/caching.memory` somewhere in your program —
-  it's a side-effect import. This package ships `"sideEffects": true` in its
-  `package.json` specifically so a bundler won't tree-shake that import away.
+- `getMemoryCacheManifest` and `getDistributedMemoryCacheManifest` are
+  ordinary function exports, callable directly off a normal import — neither
+  needs a side-effect import to unlock it.
 - `MemoryCache` and `MemoryDistributedCache` are independent stores.
-  `addDistributedMemoryCache` never reads from or writes to the cache
-  `addMemoryCache` registers, even in the same process.
+  `getDistributedMemoryCacheManifest` never reads from or writes to the cache
+  `getMemoryCacheManifest` registers, even in the same process.
 - Expiration is enforced lazily on access, plus a periodic sweep gated by
   `expirationScanFrequency` — an expired entry can still be returned by
   `tryGetValue` for a moment during a `Replaced` transition, matching how a

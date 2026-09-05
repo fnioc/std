@@ -1,12 +1,12 @@
 // DistributedCacheEntryOptions: setter validation and the
-// DistributedCacheEntryExtensions dual export (standalone member and
+// DistributedCacheEntryOptionsSugarAugmentations dual export (standalone member and
 // prototype-installed method form, docs §28/§38). The freeze guard (the
 // reference's internal `Freeze()`) is covered black-box in
 // distributed-cache-augmentations.test.ts through the frozen default-options
 // singleton -- these tests exercise the public barrel, not the `private/*`
 // white-box seam.
 
-import { DistributedCacheEntryExtensions, DistributedCacheEntryOptions } from '@rhombus-std/caching.core';
+import { DistributedCacheEntryOptions, DistributedCacheEntryOptionsSugarAugmentations } from '@rhombus-std/caching.core';
 import { describe, expect, test } from 'bun:test';
 
 describe('DistributedCacheEntryOptions', () => {
@@ -53,7 +53,7 @@ describe('DistributedCacheEntryOptions', () => {
   });
 });
 
-describe('DistributedCacheEntryExtensions — both forms', () => {
+describe('DistributedCacheEntryOptionsSugarAugmentations — both forms', () => {
   test('method form chains and discriminates relative vs absolute', () => {
     const absolute = new Date('2030-01-01T00:00:00Z');
     const options = new DistributedCacheEntryOptions().setAbsoluteExpiration(absolute).setSlidingExpiration(2_000);
@@ -66,8 +66,8 @@ describe('DistributedCacheEntryExtensions — both forms', () => {
   });
 
   test('standalone member form matches the method form', () => {
-    const viaMember = DistributedCacheEntryExtensions.setSlidingExpiration(
-      DistributedCacheEntryExtensions.setAbsoluteExpiration(new DistributedCacheEntryOptions(), 3_000),
+    const viaMember = DistributedCacheEntryOptionsSugarAugmentations.setSlidingExpiration.call(
+      DistributedCacheEntryOptionsSugarAugmentations.setAbsoluteExpiration.call(new DistributedCacheEntryOptions(), 3_000),
       2_000,
     );
     expect(viaMember.absoluteExpirationRelativeToNow).toBe(3_000);

@@ -1,10 +1,10 @@
 // Rolls the public type surface of @rhombus-std/di into a single dist/bundle/index.d.ts.
 // @rhombus-std/di.core is kept EXTERNAL — the output re-exports the abstraction
-// interfaces (`IResolver`, `IServiceProvider`, `AddChain`, `IServiceManifestBase`,
+// interfaces (`Manifest`, `IServiceProvider`, `Registration`,
 // …) FROM `@rhombus-std/di.core` rather than inlining them. This is load-bearing:
-// `@rhombus-std/di.extras` augments `declare module "@rhombus-std/di.core"`, so
+// an authoring package augments `declare module "@rhombus-std/di.core"`, so
 // the interfaces a consumer holds must carry the `@rhombus-std/di.core` module
-// identity for the tokenless authoring forms (`resolve<T>()`, `add<I>()`) to
+// identity for the tokenless authoring forms (`addClass<I>()`, `getRequiredService<T>()`) to
 // merge onto them. Inlining core would fork that identity and the augmentation
 // would attach to nothing. The @rhombus-toolkit type-only deps stay inlined.
 // rollup-plugin-dts drives the TypeScript compiler with this package's tsconfig,
@@ -20,7 +20,10 @@ export default {
   input: join(PKG_ROOT, 'src', 'index.ts'),
   output: { file: join(PKG_ROOT, 'dist', 'bundle', 'index.d.ts'), format: 'es' },
   // Preserve `@rhombus-std/di.core` as an external import so its module identity
-  // (the augmentation target) survives into the published declaration.
-  external: [/^@rhombus-std\/di\.core$/],
+  // (the augmentation target) survives into the published declaration, and
+  // `@rhombus-std/primitives` so `Type` keeps ONE identity across the graph — an inlined copy
+  // carries its own `unique symbol` brand, which no other copy's node can satisfy, so a consumer
+  // importing both packages finds their `Type`s mutually unassignable.
+  external: [/^@rhombus-std\/di\.core$/, /^@rhombus-std\/primitives$/],
   plugins: [dts({ tsconfig: join(PKG_ROOT, 'tsconfig.json'), respectExternal: true })],
 };

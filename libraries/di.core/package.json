@@ -1,7 +1,7 @@
 {
   "name": "@rhombus-std/di.core",
   "version": "10.1.0",
-  "description": "The ioc abstractions substrate: the dependency-signature data format, the slot/token surface + helpers, and the concrete registration builder (ServiceManifest) a library author depends on to author registrations without the di resolution engine. Depends only on the primitives leaf for the augmentation registry.",
+  "description": "The ioc abstractions substrate: the dependency-signature data format, the slot/token surface + helpers, and the concrete registration builder (Manifest) a library author depends on to author registrations without the di resolution engine. Depends only on the primitives leaf for the augmentation registry.",
   "keywords": [
     "dependency-injection",
     "di",
@@ -16,17 +16,14 @@
   },
   "type": "module",
   "sideEffects": true,
-  "main": "./dist/bundle/index.js",
-  "types": "./dist/bundle/index.d.ts",
+  "main": "./src/index.ts",
+  "//exports": "./builders is the anchor a registration-authoring package augments IAsImplementer through, so it must stay resolvable for a published consumer — an unresolvable specifier turns the augmentation into a fresh ambient module and it silently stops applying. It carries a `types` condition and no `default`: the chain's implementation reaches a caller through the root barrel, and this subpath adds no second runtime copy of it.",
   "exports": {
-    ".": {
-      "source": "./src/index.ts",
-      "di-core-source": "./src/index.ts",
-      "bun": "./dist/bundle/index.js",
-      "types": "./dist/bundle/index.d.ts",
-      "import": "./dist/bundle/index.js",
-      "default": "./dist/bundle/index.js"
-    }
+    ".": "./src/index.ts",
+    "./builders": {
+      "types": "./src/builder.ts"
+    },
+    "./private/*": "./src/*.ts"
   },
   "files": [
     "dist",
@@ -40,23 +37,23 @@
     "access": "public",
     "provenance": true,
     "main": "./dist/bundle/index.js",
-    "types": "./dist/bundle/index.d.ts",
     "exports": {
-      ".": {
-        "types": "./dist/bundle/index.d.ts",
-        "import": "./dist/bundle/index.js",
-        "default": "./dist/bundle/index.js"
+      ".": "./dist/bundle/index.js",
+      "./builders": {
+        "types": "./dist/bundle/builder.d.ts"
       }
     }
   },
   "dependencies": {
-    "@rhombus-std/primitives": "workspace:^"
+    "@rhombus-std/primitives": "workspace:^",
+    "@rhombus-toolkit/iterable": "^1.1.0",
+    "@rhombus-toolkit/type-guards": "^4.0.0",
+    "@rhombus-toolkit/types": "^2.0.0"
   },
   "devDependencies": {
     "@rhombus-std/primitives.extras": "workspace:*",
-    "@rhombus-toolkit/func": "3.5.3",
     "@ttsc/unplugin": "^0.18.1",
     "ttsc": "^0.18.1",
-    "typescript": "^5.9.0"
+    "typescript": "^6.0.3"
   }
 }

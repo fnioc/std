@@ -2,9 +2,7 @@ package tokens
 
 import (
 	"fmt"
-	"sort"
 	"strconv"
-	"strings"
 
 	shimast "github.com/microsoft/typescript-go/shim/ast"
 	shimchecker "github.com/microsoft/typescript-go/shim/checker"
@@ -12,15 +10,21 @@ import (
 	"github.com/fnioc/std/transforms/internal/tokentext"
 )
 
-// collectionTokenBases are the default-lib collection wrappers whose token keeps
-// only the element type argument (`Array<elem>` / `Iterable<elem>`).
-var collectionTokenBases = map[string]bool{"Array": true, "Iterable": true}
+// collectionTokenBases are the default-lib list spellings whose token keeps
+// only the ELEMENT type argument.
+//
+// The lib declares `Iterable<T, TReturn = any, TNext = any>` and `AsyncIterable`
+// the same way, and a bare `Iterable<E>` reference still resolves all three — so
+// without trimming, the two defaulted tail arguments ride along into the token and
+// the list is never spelled as one: the `named` door mints a list kind only from
+// a SINGLE argument under `global`, so a three-argument spelling lands as an
+// ordinary named type that no list registration answers.
+var collectionTokenBases = map[string]bool{"Array": true, "AsyncIterable": true, "Iterable": true}
 
 // This file holds the shared token-derivation helpers (intrinsic / literal / base
-// / generic-argument rendering) that DeriveTokenF (holes.go) composes into the ONE
-// derivation the engine uses. The former plain, non-hole-aware DeriveToken was
-// removed in W6p3 with its last caller (the deleted di_options stage); DeriveTokenF
-// is byte-identical to it for a closed (hole-free) type and is now the sole entry.
+// / generic-argument rendering) that DeriveNode (node.go) composes into the ONE
+// derivation the engine uses; DeriveTokenF (generics.go) renders that tree into
+// the flat token string every string caller wants.
 
 // intrinsicToken returns the bare token for an intrinsic type (string / number /
 // boolean / symbol / bigint / any / unknown / void / never), or ok=false for a
@@ -43,37 +47,6 @@ func intrinsicToken(t *shimchecker.Type) (string, bool) {
 		return "", false
 	}
 	return name, true
-}
-
-// literalToken renders a single literal type or a pure-literal union as its
-// deterministic token, or ok=false for a non-literal type. Union members are
-// rendered as valid TS, sorted, and ` | `-joined. Wide boolean (the false | true
-// union) is excluded so it tokenizes as the bare scalar "boolean".
-func literalToken(t *shimchecker.Type) (string, bool) {
-	flags := t.Flags()
-	if flags&shimchecker.TypeFlagsBoolean != 0 && flags&shimchecker.TypeFlagsBooleanLiteral == 0 {
-		return "", false
-	}
-	if text, ok := literalText(t); ok {
-		return text, true
-	}
-	if flags&shimchecker.TypeFlagsUnion != 0 {
-		members := t.Types()
-		parts := make([]string, 0, len(members))
-		for _, member := range members {
-			text, ok := literalText(member)
-			if !ok {
-				return "", false
-			}
-			parts = append(parts, text)
-		}
-		if len(parts) == 0 {
-			return "", false
-		}
-		sort.Strings(parts)
-		return strings.Join(parts, " | "), true
-	}
-	return "", false
 }
 
 // literalText renders a single literal type as its valid-TS text (string
@@ -191,22 +164,49 @@ func primaryDeclaration(symbol *shimast.Symbol) *shimast.Node {
 	return decls[0]
 }
 
+// isAbstractConstructor reports whether a construct-signature-bearing type
+// comes from an `abstract class` declaration. A bare abstract-constructor
+// type literal with no backing class declaration reads as false — the
+// checker's own signature-level abstract flag isn't reachable through the
+// current ttsc shim, so this only covers the declaration-bearing case.
+func isAbstractConstructor(t *shimchecker.Type) bool {
+	symbol := t.Symbol()
+	if symbol == nil {
+		return false
+	}
+	decl := primaryDeclaration(symbol)
+	if decl == nil || decl.Kind != shimast.KindClassDeclaration {
+		return false
+	}
+	return shimast.GetCombinedModifierFlags(decl)&shimast.ModifierFlagsAbstract != 0
+}
+
 // baseTokenFor renders the base token `<source>:<exportName>` for a named
 // symbol. A default-lib type tokenizes as its bare symbol name.
 func baseTokenFor(ctx *Context, symbol *shimast.Symbol, sourceFile *shimast.SourceFile) string {
+	from, name := baseTokenForPair(ctx, symbol, sourceFile)
+	return renderNamedBase(from, name)
+}
+
+// baseTokenForPair is baseTokenFor split into the FROM/NAME pair a structural
+// `Type.imported(name, from)` call takes, rather than the flat token string. A
+// default-lib type's FROM is the "global" sentinel — the same value that means
+// "no qualifier" when renderNamedBase joins the pair back into a bare name, and
+// that spells the type as `Type.global(name)` instead.
+func baseTokenForPair(ctx *Context, symbol *shimast.Symbol, sourceFile *shimast.SourceFile) (from, name string) {
 	if ctx.IsDefaultLib != nil && ctx.IsDefaultLib(sourceFile) {
-		return symbol.Name
+		return "global", symbol.Name
 	}
 	exportName := qualifiedExportName(symbol)
 	declPath := sourceFile.FileName()
 	pkg := nearestPackage(ctx, declPath)
 	if pkg != nil {
 		if spec, ok := publicImportSpecifier(ctx, pkg, symbol, sourceFile); ok {
-			return spec + ":" + exportName
+			return spec, exportName
 		}
-		return tokentext.PackagePrivateToken(pkg.name, pkg.dir, declPath, exportName)
+		return tokentext.PackagePrivateTokenParts(pkg.name, pkg.dir, declPath, exportName)
 	}
-	return tokentext.RootlessToken(declPath, exportName, ctx.ProjectRoot)
+	return tokentext.RootlessTokenParts(declPath, exportName, ctx.ProjectRoot)
 }
 
 // qualifiedExportName is the module-qualified declared name of a symbol: bare for

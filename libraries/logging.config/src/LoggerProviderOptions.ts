@@ -1,51 +1,43 @@
 // Exported as a plain object rather than an ILoggingBuilder augmentation set
 // -- no registry install, no `declare module` merge. The call surface is
-// `LoggerProviderOptions.registerProviderOptions(services, …)`.
+// `LoggerProviderOptions.getProviderOptionsManifest(…)`.
 //
-// `registerProviderOptions` registers a CLASS at the options token's derived
-// pipeline slots (`configureStepToken`/`changeTokenSourceToken`), with the
-// closed `ILoggerProviderConfig<TProvider>` token as its dep slot -- resolved
-// through the open template the no-arg `addConfig` registers, so the whole
-// chain stays lazy: nothing touches configuration until the
-// `IOptions<TOptions>` assembly materializes.
+// The returned manifest registers a CLASS at the options type's pipeline
+// slots (`configureStepType`/`changeTokenSourceType`), with the closed
+// `ILoggerProviderConfig<TProvider>` type as its dep slot -- resolved through
+// the open template the no-arg `addConfig` registers, so the whole chain stays
+// lazy: nothing touches configuration until the `IOptions<TOptions>` assembly
+// materializes.
 //
-// `TOptions`/`TProvider` reify as runtime tokens (`optionsToken`,
-// `providerType`), since type arguments erase here. Calling this twice for
-// the same (options, provider) pair appends the pipeline step twice --
-// an idempotent re-bind, but not deduped.
+// `TOptions`/`TProvider` reify as runtime types (`optionsType`,
+// `providerType`), since type arguments erase here.
 
-import type { IServiceManifest, Token, Typeof } from '@rhombus-std/di.core';
-import type { IOptions } from '@rhombus-std/options';
-import { changeTokenSourceToken, configureStepToken } from '@rhombus-std/options.augmentations';
-import { loggerProviderConfigToken } from './ILoggerProviderConfig';
+import { Manifest } from '@rhombus-std/di.core';
+import { changeTokenSourceType, configureStepType } from '@rhombus-std/options.augmentations';
+import { Type } from '@rhombus-std/primitives';
+import { loggerProviderConfigType } from './ILoggerProviderConfig';
 import { LoggerProviderConfigureOptions } from './LoggerProviderConfigureOptions';
 import { LoggerProviderOptionsChangeTokenSource } from './LoggerProviderOptionsChangeTokenSource';
 
 /** Helpers to initialize options objects from logger provider configuration. */
 export const LoggerProviderOptions = {
   /**
-   * Indicates that settings for the provider `TProvider` should be loaded
-   * into the `TOptions` type: appends a provider-bound configure step and
-   * change-token source to `optionsToken`'s pipeline slots. Requires the
-   * provider-configuration services (the no-arg `addConfig`) and an
-   * `addOptions(optionsToken, …)` assembly registration for the token.
+   * The registrations that load settings for the provider `TProvider` into
+   * the `TOptions` type: a provider-bound configure step and change-token
+   * source for `optionsType`'s pipeline slots, on the narrowest lifetime
+   * vocabulary they use. A consumer merges this in
+   * (`services.add(LoggerProviderOptions.getProviderOptionsManifest(…))`).
+   * Requires the provider-configuration services (the no-arg `addConfig`) and
+   * a prior `addOptions(optionsType, …)` for the type.
    *
-   * @param services The registration builder to register on.
-   * @param optionsToken The `IOptions<TOptions>` token the steps attach to —
-   * the same token the `addOptions`/`configure` pipeline uses.
-   * @param providerType The provider type's token (`tokenfor<TProvider>()`).
-   * @returns The manifest carrying both registrations. The chain is immutable,
-   * so the caller MUST keep it (`services = LoggerProviderOptions
-   * .registerProviderOptions(services, …)`) — the `services` passed in is
-   * unchanged.
+   * @param optionsType The BARE `TOptions` type the steps attach to — the same
+   * type the `addOptions`/`configure` pipeline uses.
+   * @param providerType The provider type.
    */
-  registerProviderOptions<TOptions, TProvider>(services: IServiceManifest, optionsToken: Typeof<IOptions<TOptions>>,
-    providerType: Typeof<TProvider>): IServiceManifest
-  {
-    const providerConfig: Token = loggerProviderConfigToken(providerType);
-    return services.addClass(configureStepToken(optionsToken), LoggerProviderConfigureOptions, [[providerConfig]],
-      'singleton').addClass(changeTokenSourceToken(optionsToken), LoggerProviderOptionsChangeTokenSource, [[
-        providerConfig,
-      ]], 'singleton');
+  getProviderOptionsManifest<TOptions, TProvider>(optionsType: Type, providerType: Type): Manifest<'singleton'> {
+    const providerConfig = loggerProviderConfigType(providerType);
+    return Manifest.empty<'singleton'>()
+      .add(configureStepType(optionsType), LoggerProviderConfigureOptions, Type.ctor(configureStepType(optionsType), [[providerConfig]]), 'singleton')
+      .add(changeTokenSourceType(optionsType), LoggerProviderOptionsChangeTokenSource, Type.ctor(changeTokenSourceType(optionsType), [[providerConfig]]), 'singleton');
   },
 };

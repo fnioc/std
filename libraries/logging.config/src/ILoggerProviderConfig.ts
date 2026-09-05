@@ -1,37 +1,40 @@
-// `T` is a compile-time phantom -- it only selects which closed di token to
-// resolve. The runtime identity is the closed token
-// {@link loggerProviderConfigToken} derives; the open template (`...<$1>`)
-// is registered by the no-arg `addConfig`, so resolving any closing
-// constructs a `LoggerProviderConfig` for that provider.
+// `T` is a compile-time phantom -- it only selects which closed service type to
+// resolve. The runtime identity is what {@link loggerProviderConfigType} builds,
+// and the open template it builds from a generic hole is registered by the no-arg
+// `addConfig`, so resolving any closing constructs a `LoggerProviderConfig` for
+// that provider.
 
 import type { IConfig } from '@rhombus-std/config.core';
-import { closeToken, type Token } from '@rhombus-std/di.core';
+import { type ImportedType, Type } from '@rhombus-std/primitives';
+import { typefor } from '@rhombus-std/primitives.extras';
 
 /**
  * Allows access to the configuration section associated with a logger
  * provider.
  *
  * @typeParam T The type of logger provider to get configuration for
- * (compile-time phantom; the runtime counterpart is the token argument of
- * {@link loggerProviderConfigToken}).
+ * (compile-time phantom; the runtime counterpart is the argument to
+ * {@link loggerProviderConfigType}).
  */
 export interface ILoggerProviderConfig<T> {
   /** The configuration section for the requested logger provider. */
   readonly config: IConfig;
 }
 
-// The token base — what `tokenfor<ILoggerProviderConfig<…>>()` derives as
-// the generic's base for this declaring package. Kept module-local; every
-// external use site goes through the closing helper below (or derives the
-// closed token inline with `tokenfor`).
-const LOGGER_PROVIDER_CONFIGURATION_BASE: Token = '@rhombus-std/logging.config:ILoggerProviderConfig';
+// The generic's base, derived rather than spelled. The argument is discarded --
+// only `name` and `from` are read -- and the cast is needed because a derivation
+// narrows to a kind only for a constructor or a function.
+const BASE = typefor<ILoggerProviderConfig<unknown>>() as ImportedType;
 
 /**
- * The closed di token for {@link ILoggerProviderConfig}`<providerType>`
- * — byte-identical to what `tokenfor<ILoggerProviderConfig<TProvider>>()`
- * derives for that provider type. Pass `"$1"` to spell the open
- * registration template.
+ * The `ILoggerProviderConfig<argument>` service type.
+ *
+ * @remarks
+ * One function serves both the closed and the open form, because an open
+ * template differs only in taking a generic hole as its argument. Pass the same
+ * hole to the registration's service type and to its dependency slot, so the two
+ * cannot drift.
  */
-export function loggerProviderConfigToken(providerType: Token): Token {
-  return closeToken(LOGGER_PROVIDER_CONFIGURATION_BASE, providerType);
+export function loggerProviderConfigType(argument: Type): Type {
+  return Type.imported(BASE.name, BASE.from, [argument]);
 }

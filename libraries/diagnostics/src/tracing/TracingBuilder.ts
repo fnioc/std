@@ -1,10 +1,11 @@
 // TracingBuilder -- the concrete ITracingBuilder the addTracing augmentation hands
 // to a consumer's configure callback.
 
-import type { IServiceManifestBase } from '@rhombus-std/di.core';
+import type { Manifest } from '@rhombus-std/di.core';
 import type { ITracingBuilder } from '@rhombus-std/diagnostics.core';
 import { augment } from '@rhombus-std/primitives';
-import { tokenfor } from '@rhombus-std/primitives.extras';
+import { typefor } from '@rhombus-std/primitives.extras';
+import type { Func } from '@rhombus-toolkit/types';
 
 // Interface-extends merge: binding the ITracingBuilder SYMBOL flows every
 // in-program augmentation of the interface (the listener/rule members from
@@ -17,18 +18,24 @@ export interface TracingBuilder extends ITracingBuilder {}
  * The concrete {@link ITracingBuilder}.
  *
  * `@augment` subscribes this class to the OPEN `ITracingBuilder` bag: every set
- * registered against tokenfor<ITracingBuilder>() -- the listener/rule members
+ * registered against typefor<ITracingBuilder>() -- the listener/rule members
  * (diagnostics.core) and the config-binding member (this package) -- is
  * installed onto the prototype, now and on any later registration.
  */
-@augment(tokenfor<ITracingBuilder>())
+@augment(typefor<ITracingBuilder>())
 export class TracingBuilder implements ITracingBuilder {
   // Writable (not `readonly`): registering something reassigns `services` to
   // the new manifest the immutable chain returns (see ITracingBuilder).
-  services: IServiceManifestBase;
+  services: Manifest<unknown>;
 
-  /** @param services The registration surface extension functions register against. */
-  public constructor(services: IServiceManifestBase) {
+  /** @param services The registration surface augmentation functions register against. */
+  public constructor(services: Manifest<unknown>) {
     this.services = services;
+  }
+
+  static run<Lifetime>(manifest: Manifest<Lifetime>, configure?: Func<[ITracingBuilder], void>) {
+    const builder = new TracingBuilder(manifest as any);
+    configure?.(builder);
+    return builder.services as typeof manifest;
   }
 }

@@ -61,9 +61,9 @@ builder as its first argument — useful for a hand-written call site that
 doesn't hold an object with the method merged on:
 
 ```ts
-import { ConsoleLoggerExtensions } from '@rhombus-std/logging.console';
+import { ConsoleLoggerAugmentations } from '@rhombus-std/logging.console';
 
-ConsoleLoggerExtensions.addConsole(builder);
+ConsoleLoggerAugmentations.addConsole(builder);
 ```
 
 The two forms lower to the same registration; the instance-method form is
@@ -73,7 +73,7 @@ just the merged-in convenience.
 
 | Export                          | What it is                                                                                                                                                                                       |
 | ------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| `ConsoleLoggerExtensions`       | The `addConsole` / `addSimpleConsole` / `addJsonConsole` / `addSystemdConsole` / `addConsoleFormatter` builder methods, as a standalone object and as the source of the `ILoggingBuilder` merge. |
+| `ConsoleLoggerAugmentations`    | The `addConsole` / `addSimpleConsole` / `addJsonConsole` / `addSystemdConsole` / `addConsoleFormatter` builder methods, as a standalone object and as the source of the `ILoggingBuilder` merge. |
 | `ConsoleLoggerProvider`         | An `ILoggerProvider` that creates and owns `ConsoleLogger` instances, the formatter registry, and the background write queue. Constructible directly when you're not going through a builder.    |
 | `ConsoleLogger`                 | The `ILogger` implementation that renders through a `ConsoleFormatter` and hands the result to the queue.                                                                                        |
 | `ConsoleFormatter`              | The abstract base for a pluggable log-message formatter — implement `write()` to add your own output shape.                                                                                      |

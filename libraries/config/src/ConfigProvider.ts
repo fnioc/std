@@ -113,8 +113,7 @@ export abstract class ConfigProvider implements IConfigProvider {
       for (const [, [originalKey]] of this.data) {
         if (originalKey.length > parentPath.length
           && foldKey(originalKey).startsWith(foldedParent)
-          && originalKey[parentPath.length] === configPath.KeyDelimiter)
-        {
+          && originalKey[parentPath.length] === configPath.KeyDelimiter) {
           results.push(segment(originalKey, parentPath.length + 1));
         }
       }

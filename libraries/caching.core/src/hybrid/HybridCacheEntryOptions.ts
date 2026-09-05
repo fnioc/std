@@ -47,11 +47,9 @@ export function toDistributedCacheEntryOptions(
   if (options.expiration === undefined) {
     return undefined;
   }
-  let distributed = memoizedDistributedOptions.get(options);
-  if (distributed === undefined) {
-    distributed = new DistributedCacheEntryOptions();
+  return memoizedDistributedOptions.getOrInsertComputed(options, () => {
+    const distributed = new DistributedCacheEntryOptions();
     distributed.absoluteExpirationRelativeToNow = options.expiration;
-    memoizedDistributedOptions.set(options, distributed);
-  }
-  return distributed;
+    return distributed;
+  });
 }

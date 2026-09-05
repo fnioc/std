@@ -4,8 +4,8 @@
 // helpers), the engine classes (ConfigBuilder / ConfigRoot /
 // ConfigSection / the abstract ConfigProvider base) +
 // compareConfigKeys, the bundled Memory provider + its
-// addInMemoryCollection augmentation, and the runtime schema surface
-// (Schema/Infer/OPTIONAL + the coercing build path). Provider packages
+// addInMemoryCollection augmentation, and the coercing build path a
+// `Type`-tree schema drives. Provider packages
 // (@rhombus-std/config.json/-env/-commandline) peer-depend on this package, extend
 // ConfigProvider, implement IConfigSource, and augment
 // ConfigBuilder with their own add* sugar.
@@ -19,29 +19,22 @@
 // config's public surface stays a superset of core's.
 export * from '@rhombus-std/config.core';
 
-// Install the convenience augmentations' fluent forms onto the concrete engine
-// classes. The member sets themselves are re-exported from core by the
-// `export *` above; these side-effect imports run the `applyAugmentations`
-// calls and carry the `declare module` merges.
-import './config-augmentations-install';
-import './config-root-augmentations-install';
-
 // Engine.
-export { compareConfigKeys } from './config-key-comparer';
-export { ConfigBuilder } from './ConfigBuilder';
-export { ConfigManager } from './ConfigManager';
-export { ConfigProvider } from './ConfigProvider';
-export { ConfigReloadToken } from './ConfigReloadToken';
-export { ConfigRoot } from './ConfigRoot';
+export * from './config-key-comparer';
+export * from './ConfigBuilder';
+export * from './ConfigManager';
+export * from './ConfigProvider';
+export * from './ConfigReloadToken';
+export * from './ConfigRoot';
 export { ConfigSection } from './ConfigSection';
 
 // Memory provider. The re-export is side-effectful: importing this module
 // registers the `addInMemoryCollection` augmentation against the shared
-// IConfigBuilder token, reaching both decorated builders.
+// IConfigBuilder type, reaching both decorated builders.
 export * from './memory';
 
 // Chained provider. Side-effectful re-export: registers the `addConfig`
-// augmentation against the same IConfigBuilder token, wrapping an
+// augmentation against the same IConfigBuilder type, wrapping an
 // already-built IConfig as a live source.
 export * from './chained';
 
@@ -49,10 +42,9 @@ export * from './chained';
 // provider packages (e.g. @rhombus-std/config.json's addJsonStream) extend.
 export * from './stream';
 
-// Runtime coercion + schema. `withType` (Tier 2) is intentionally NOT
-// re-exported here -- it's opt-in via `import "@rhombus-std/config/with-type-augment"`.
+// Runtime coercion. `withType` is not here: it is typed and lowered by
+// @rhombus-std/config.extras, so depending on that package is what puts the
+// member on `ConfigBuilder`.
 export { SchemaCoercionError } from './coerce';
-export { OPTIONAL } from './schema';
-export type { Infer, ObjectSchema, OptionalSchema, Schema } from './schema';
 
 // ConfigObject + IndexedSection flow through `export * from "@rhombus-std/config.core"` above.

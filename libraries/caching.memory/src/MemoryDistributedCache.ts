@@ -7,17 +7,17 @@ import type { DistributedCacheEntryOptions, IDistributedCache } from '@rhombus-s
 import type { ILoggerFactory } from '@rhombus-std/logging.core';
 import type { IOptions } from '@rhombus-std/options';
 import { type AbortSignal, augment } from '@rhombus-std/primitives';
-import { tokenfor } from '@rhombus-std/primitives.extras';
+import { typefor } from '@rhombus-std/primitives.extras';
 import { MemoryCache } from './MemoryCache';
 import type { MemoryDistributedCacheOptions } from './MemoryDistributedCacheOptions';
 
 // Binds the `IDistributedCache` interface symbol onto the class so the
 // interface-merged wrapper methods (setString/getString) flow onto it, beside
-// the `@augment(tokenfor<IDistributedCache>())` install below.
+// the `@augment(typefor<IDistributedCache>())` install below.
 export interface MemoryDistributedCache extends IDistributedCache {}
 
 /** Implements `IDistributedCache` by storing items in a private in-memory {@link MemoryCache}. */
-@augment(tokenfor<IDistributedCache>())
+@augment(typefor<IDistributedCache>())
 export class MemoryDistributedCache implements IDistributedCache {
   readonly #memCache: MemoryCache;
 
@@ -39,9 +39,7 @@ export class MemoryDistributedCache implements IDistributedCache {
   }
 
   /** Sets the byte payload associated with `key`, sized at its byte length. */
-  public set(key: string, value: Uint8Array, options: DistributedCacheEntryOptions,
-    _abortSignal?: AbortSignal): Promise<void>
-  {
+  public set(key: string, value: Uint8Array, options: DistributedCacheEntryOptions, _abortSignal?: AbortSignal): Promise<void> {
     // Dispose in `finally`: a validating setter that throws must still
     // dispose the entry so the linked-entry tracking chain (if enabled on
     // the inner cache) is popped.

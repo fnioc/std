@@ -1,3 +1,4 @@
+/// <reference path="./node-builtins.d.ts" />
 // FileConfigSource -- the abstract base for every file-backed
 // configuration source (JSON, INI, XML). Holds the file provider + path +
 // optionality + reload settings a concrete source's `build` turns into a
@@ -8,7 +9,7 @@
 import type { IConfigBuilder, IConfigProvider, IConfigSource } from '@rhombus-std/config.core';
 import type { IFileProvider } from '@rhombus-std/fileproviders.core';
 import { PhysicalFileProvider } from '@rhombus-std/fileproviders.physical';
-import type { Func } from '@rhombus-toolkit/func';
+import type { Func } from '@rhombus-toolkit/types';
 import { basename, dirname, isAbsolute } from 'node:path';
 import type { FileLoadErrorContext } from './FileLoadErrorContext';
 

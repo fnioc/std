@@ -36,17 +36,13 @@ func buildTransitiveWorkspace(t *testing.T, mainSrc string) (*driver.Program, st
 	writeT(t, filepath.Join(core, "package.json"), `{
   "name": "@scope/core",
   "version": "1.0.0",
-  "exports": { ".": { "types": "./src/index.ts", "default": "./src/index.ts" } },
-  "rhombus.inline": {
-    "entries": [ { "type": "@scope/core:IQuery", "impl": "QueryInline", "member": "isService" } ]
-  }
+  "exports": { ".": { "types": "./src/index.ts", "default": "./src/index.ts" } }
 }`)
 	writeT(t, filepath.Join(core, "src", "index.ts"), `export interface IQuery {
   isService(token: string): boolean;
 }
 export declare const provider: IQuery;
 `)
-	writeT(t, filepath.Join(core, "src", "inline.ts"), pilotInlineBody)
 
 	// The middle di package re-exports the core (the real di bundle shape). The
 	// core is deliberately NOT linked under di, so this re-export does not resolve
@@ -78,6 +74,9 @@ declare module '@scope/core' {
   }
 }
 `)
+	writeT(t, filepath.Join(sugar, "src", "index.ts"), `export {};
+`)
+	writeT(t, filepath.Join(sugar, "src", "inline.ts"), pilotInlineBody)
 	linkPackage(t, sugar, "@scope/core", core)
 
 	app := filepath.Join(root, "packages", "app")
@@ -124,10 +123,10 @@ func writeT(t *testing.T, path, content string) {
 }
 
 func transitiveEntry(app string) OwnedEntry {
-	core := filepath.Join(filepath.Dir(app), "core")
+	sugar := filepath.Join(filepath.Dir(app), "sugar")
 	return OwnedEntry{
-		Entry:      Entry{Type: "@scope/core:IQuery", Impl: "QueryInline", Member: "isService"},
-		PackageDir: core,
+		Entry:      Entry{Type: "@scope/core:IQuery", Impl: "@scope/sugar:QueryInline", Member: "isService"},
+		PackageDir: sugar,
 	}
 }
 
@@ -158,11 +157,11 @@ export const ok = provider.isService<IThing>();
 		t.Fatal("resolveModuleSymbol(@scope/core) returned nil — the module-resolution fallback did not anchor the transitive target")
 	}
 
-	_, inert, err := Resolve(prog, prog.Checker, newBodyExtractor(), transitiveEntry(app))
+	_, outcome, err := Resolve(prog, prog.Checker, newBodyExtractor(), transitiveEntry(app))
 	if err != nil {
 		t.Fatalf("Resolve: %v", err)
 	}
-	if inert {
-		t.Fatal("entry went inert for a transitive consumer — the transitive-witness fix regressed")
+	if outcome != OutcomeActive {
+		t.Fatalf("outcome = %v for a transitive consumer — the transitive-witness fix regressed", outcome)
 	}
 }

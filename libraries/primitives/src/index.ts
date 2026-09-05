@@ -1,19 +1,13 @@
 // Public entry point for @rhombus-std/primitives.
 
-export { AbortController, neverSignal } from './abort.js';
-export type { AbortControllerConstructor, AbortSignal } from './abort.js';
-export { augment, registerAugmentations } from './augmentation-registry.js';
-export { applyAugmentations } from './augmentations.js';
-export type { AugmentationSet, MergeStrategies, MergeStrategy } from './augmentations.js';
-export { CancellationChangeToken } from './CancellationChangeToken.js';
-export { ChangeToken } from './ChangeToken.js';
-export type { ChangeTokenConsumer, ChangeTokenProducer } from './ChangeToken.js';
-export { CompositeChangeToken } from './CompositeChangeToken.js';
-export type { IChangeToken } from './IChangeToken.js';
-export { Multimap } from './Multimap.js';
-export { process } from './process.js';
-export type { ProcessLike } from './process.js';
-export type { ReadableStream } from './ReadableStream.js';
-export { clearTimeout, setTimeout } from './TimeoutHandle.js';
-export type { TimeoutHandle } from './TimeoutHandle.js';
-export type { Token } from './Token.js';
+import { stampSingleInstance } from '@rhombus-toolkit/platform';
+
+// The bare-library `ImportMeta` type lacks `url`, so the cast supplies it.
+stampSingleInstance('@rhombus-std/primitives', (import.meta as unknown as { url: string; }).url);
+
+export * from '@rhombus-toolkit/platform';
+export * from './augmentation';
+export * from './change-token';
+export * from './NotImplementedError';
+export * from './Type';
+export * from './TypeParseError';

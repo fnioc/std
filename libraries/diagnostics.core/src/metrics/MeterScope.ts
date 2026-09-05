@@ -1,5 +1,5 @@
 /**
- * Scopes used by {@link InstrumentRule} to distinguish global meters (created
+ * Lifetime used by {@link InstrumentRule} to distinguish global meters (created
  * via a meter constructor) from local meters (created via a DI meter factory).
  * A bitwise-flag enum: {@link MeterScope.Global} and {@link MeterScope.Local}
  * combine, and {@link METER_SCOPE_ALL} is both.

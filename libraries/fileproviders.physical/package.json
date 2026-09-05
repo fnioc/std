@@ -1,7 +1,7 @@
 {
   "name": "@rhombus-std/fileproviders.physical",
   "version": "0.0.0",
-  "description": "Disk-backed file provider ported from ME.FileProviders.Physical: PhysicalFileProvider serves IFileInfo/IDirectoryContents off the on-disk file system and watches exact files and directory prefixes for changes. Depends on @rhombus-std/fileproviders.core and @rhombus-std/primitives.",
+  "description": "Disk-backed file provider: PhysicalFileProvider serves IFileInfo/IDirectoryContents off the on-disk file system and watches exact files and directory prefixes for changes. Depends on @rhombus-std/fileproviders.core and @rhombus-std/primitives.",
   "keywords": [
     "fileproviders",
     "filesystem",
@@ -15,21 +15,10 @@
     "directory": "libraries/fileproviders.physical"
   },
   "type": "module",
-  "main": "./dist/bundle/index.js",
-  "types": "./dist/bundle/index.d.ts",
+  "main": "./src/index.ts",
   "exports": {
-    ".": {
-      "source": "./src/index.ts",
-      "bun": "./dist/bundle/index.js",
-      "types": "./dist/bundle/index.d.ts",
-      "import": "./dist/bundle/index.js",
-      "default": "./dist/bundle/index.js"
-    },
-    "./tokens/*": {
-      "source": "./src/*.ts",
-      "bun": "./src/*.ts",
-      "types": "./src/*.ts"
-    }
+    ".": "./src/index.ts",
+    "./private/*": "./src/*.ts"
   },
   "files": [
     "dist"
@@ -46,13 +35,8 @@
     "access": "public",
     "provenance": true,
     "main": "./dist/bundle/index.js",
-    "types": "./dist/bundle/index.d.ts",
     "exports": {
-      ".": {
-        "types": "./dist/bundle/index.d.ts",
-        "import": "./dist/bundle/index.js",
-        "default": "./dist/bundle/index.js"
-      }
+      ".": "./dist/bundle/index.js"
     }
   }
 }

@@ -7,23 +7,25 @@
   "type": "module",
   "scripts": {
     "build": "bun x tsc -p tsconfig.json",
-    "start": "bun run build && node dist/main.js",
-    "test": "bun run build && node dist/main.js > /tmp/rhombus-std-app-without-transformer.out && diff -u expected.txt /tmp/rhombus-std-app-without-transformer.out",
+    "start": "bun run build && bun dist/main.js",
+    "test": "bun run build && bun dist/main.js > /tmp/rhombus-std-app-without-transformer.out && diff -u expected.txt /tmp/rhombus-std-app-without-transformer.out",
     "lint": "bun x tsc --noEmit -p tsconfig.json"
   },
   "dependencies": {
     "@rhombus-std/config": "workspace:*",
     "@rhombus-std/di": "workspace:*",
+    "@rhombus-std/di.core": "workspace:*",
     "@rhombus-std/examples.lib.with-transformer": "workspace:*",
     "@rhombus-std/examples.lib.without-transformer": "workspace:*",
     "@rhombus-std/hosting": "workspace:*",
     "@rhombus-std/logging": "workspace:*",
     "@rhombus-std/logging.core": "workspace:*",
     "@rhombus-std/options": "workspace:*",
-    "@rhombus-std/options.augmentations": "workspace:*"
+    "@rhombus-std/options.augmentations": "workspace:*",
+    "@rhombus-std/primitives": "workspace:*"
   },
   "devDependencies": {
     "@rhombus-std/examples.contracts": "workspace:*",
-    "typescript": "^5.9.0"
+    "typescript": "^6.0.3"
   }
 }

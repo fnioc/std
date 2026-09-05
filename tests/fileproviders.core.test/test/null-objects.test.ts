@@ -3,8 +3,7 @@
 // NullChangeToken, and NullFileProvider. These have no dedicated coverage
 // elsewhere -- this suite pins their "represents nothing" contracts.
 
-import { NotFoundDirectoryContents, NotFoundFileInfo, NullChangeToken,
-  NullFileProvider } from '@rhombus-std/fileproviders.core';
+import { NotFoundDirectoryContents, NotFoundFileInfo, NullChangeToken, NullFileProvider } from '@rhombus-std/fileproviders.core';
 import { describe, expect, test } from 'bun:test';
 
 describe('NotFoundFileInfo', () => {

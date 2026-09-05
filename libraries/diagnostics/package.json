@@ -1,7 +1,7 @@
 {
   "name": "@rhombus-std/diagnostics",
   "version": "0.0.0",
-  "description": "Diagnostics implementation ported from ME.Diagnostics: concrete MetricsBuilder/TracingBuilder, config-binding of MetricsOptions/TracingOptions, and the addMetrics/addTracing service-registration augmentation. The metrics/tracing listener runtime is intentionally not implemented.",
+  "description": "Diagnostics implementation: concrete MetricsBuilder/TracingBuilder, config-binding of MetricsOptions/TracingOptions, and getMetricsManifest/getTracingManifest -- the service registrations, published as a manifest to merge into your own. The metrics/tracing listener runtime is intentionally not implemented.",
   "keywords": [
     "diagnostics",
     "metrics",
@@ -17,26 +17,11 @@
     "directory": "libraries/diagnostics"
   },
   "type": "module",
-  "main": "./dist/bundle/index.js",
-  "types": "./dist/bundle/index.d.ts",
+  "main": "./src/index.ts",
   "sideEffects": true,
   "exports": {
-    ".": {
-      "source": "./src/index.ts",
-      "bun": "./dist/bundle/index.js",
-      "types": "./dist/bundle/index.d.ts",
-      "import": "./dist/bundle/index.js",
-      "default": "./dist/bundle/index.js"
-    },
-    "./tokens/*": {
-      "source": "./src/*.ts",
-      "bun": "./src/*.ts",
-      "types": "./src/*.ts"
-    },
-    "./private/*": {
-      "types": "./src/*.ts",
-      "bun": "./dist/stage/*.js"
-    }
+    ".": "./src/index.ts",
+    "./private/*": "./src/*.ts"
   },
   "files": [
     "dist",
@@ -49,33 +34,26 @@
   "dependencies": {
     "@rhombus-std/config": "workspace:*",
     "@rhombus-std/config.core": "workspace:*",
+    "@rhombus-std/di.core": "workspace:*",
     "@rhombus-std/diagnostics.core": "workspace:*",
     "@rhombus-std/options": "workspace:*",
     "@rhombus-std/options.augmentations": "workspace:*",
     "@rhombus-std/primitives": "workspace:*",
-    "@rhombus-toolkit/func": "^3.5.3"
-  },
-  "peerDependencies": {
-    "@rhombus-std/di.core": "workspace:^"
+    "@rhombus-toolkit/types": "^2.0.0"
   },
   "devDependencies": {
-    "@rhombus-std/di.core": "workspace:*",
+    "@rhombus-std/di.extras": "workspace:*",
     "@rhombus-std/primitives.extras": "workspace:*",
     "@ttsc/unplugin": "^0.18.1",
     "ttsc": "^0.18.1",
-    "typescript": "^5.9.0"
+    "typescript": "^6.0.3"
   },
   "publishConfig": {
     "access": "public",
     "provenance": true,
     "main": "./dist/bundle/index.js",
-    "types": "./dist/bundle/index.d.ts",
     "exports": {
-      ".": {
-        "types": "./dist/bundle/index.d.ts",
-        "import": "./dist/bundle/index.js",
-        "default": "./dist/bundle/index.js"
-      }
+      ".": "./dist/bundle/index.js"
     }
   }
 }

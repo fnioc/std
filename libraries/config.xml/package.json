@@ -16,26 +16,11 @@
     "directory": "libraries/config.xml"
   },
   "type": "module",
-  "main": "./dist/bundle/index.js",
-  "types": "./dist/bundle/index.d.ts",
+  "main": "./src/index.ts",
   "sideEffects": true,
   "exports": {
-    ".": {
-      "source": "./src/index.ts",
-      "bun": "./dist/bundle/index.js",
-      "types": "./dist/bundle/index.d.ts",
-      "import": "./dist/bundle/index.js",
-      "default": "./dist/bundle/index.js"
-    },
-    "./tokens/*": {
-      "source": "./src/*.ts",
-      "bun": "./src/*.ts",
-      "types": "./src/*.ts"
-    },
-    "./private/*": {
-      "types": "./src/*.ts",
-      "bun": "./dist/stage/*.js"
-    }
+    ".": "./src/index.ts",
+    "./private/*": "./src/*.ts"
   },
   "files": [
     "dist",
@@ -46,32 +31,25 @@
     "lint": "bun x tsc --noEmit -p tsconfig.ci.json"
   },
   "dependencies": {
+    "@rhombus-std/config": "workspace:*",
     "@rhombus-std/config.core": "workspace:*",
     "@rhombus-std/config.file": "workspace:*",
     "@rhombus-std/fileproviders.core": "workspace:*",
-    "@rhombus-std/primitives": "workspace:*"
-  },
-  "peerDependencies": {
-    "@rhombus-std/config": "workspace:^"
+    "@rhombus-std/primitives": "workspace:*",
+    "@rhombus-toolkit/types": "^2.0.0"
   },
   "devDependencies": {
-    "@rhombus-std/config": "workspace:*",
     "@rhombus-std/primitives.extras": "workspace:*",
     "@ttsc/unplugin": "^0.18.1",
     "ttsc": "^0.18.1",
-    "typescript": "^5.9.0"
+    "typescript": "^6.0.3"
   },
   "publishConfig": {
     "access": "public",
     "provenance": true,
     "main": "./dist/bundle/index.js",
-    "types": "./dist/bundle/index.d.ts",
     "exports": {
-      ".": {
-        "types": "./dist/bundle/index.d.ts",
-        "import": "./dist/bundle/index.js",
-        "default": "./dist/bundle/index.js"
-      }
+      ".": "./dist/bundle/index.js"
     }
   }
 }

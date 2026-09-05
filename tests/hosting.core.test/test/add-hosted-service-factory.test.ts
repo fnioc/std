@@ -1,7 +1,7 @@
-import { ServiceManifest } from '@rhombus-std/di';
-import { hostedServiceCollectionToken, type IHostedService } from '@rhombus-std/hosting.core/private/index';
-// Side-effect: installs `addHostedService` onto di.core's ServiceManifest.
-import '@rhombus-std/hosting.core/private/index';
+import { Builder } from '@rhombus-std/di';
+import { Manifest } from '@rhombus-std/di.core';
+import { getHostedServiceManifest, HOSTED_SERVICE_TYPE, hostedServiceCollectionType, type IHostedService } from '@rhombus-std/hosting.core/private/index';
+import { Type } from '@rhombus-std/primitives';
 import { expect, test } from 'bun:test';
 
 test("addHostedService(factory) registers the factory's result under the hosted-service token", async () => {
@@ -14,14 +14,13 @@ test("addHostedService(factory) registers the factory's result under the hosted-
     public async stop(): Promise<void> {}
   }
 
-  let manifest = new ServiceManifest();
+  let manifest: Manifest<unknown> = Manifest.empty<unknown>();
   const singleton = new Worker();
   // The factory form surfaces an already-constructed instance as a hosted service.
-  manifest = manifest.addHostedService(() => singleton);
+  manifest = manifest.add(getHostedServiceManifest(() => singleton));
 
-  const provider = manifest.build();
-  const scope = provider.createScope('singleton');
-  const services = scope.resolve<IHostedService[]>(hostedServiceCollectionToken());
+  const provider = Builder.withServices(() => manifest).build();
+  const services: IHostedService[] = provider.resolve(hostedServiceCollectionType());
 
   expect(services).toHaveLength(1);
   expect(services[0]).toBe(singleton);
@@ -36,15 +35,17 @@ test('addHostedService(factory) injects the live resolver so the factory can pul
     public async stop(): Promise<void> {}
   }
 
-  let manifest = new ServiceManifest();
-  manifest = manifest.addClass('test:Dependency', Dependency, [[]]);
+  let manifest: Manifest<unknown> = Manifest.empty<unknown>();
+  manifest = manifest.add(Type.from('test:Dependency'), Dependency, Type.ctor(Type.from('test:Dependency'), [[]]));
   // The factory receives the resolver -- the reference `Func<IServiceProvider, T>`
   // form used to promote a separately-registered service to a hosted service.
-  manifest = manifest.addHostedService((resolver) => resolver.resolve<Dependency>('test:Dependency'));
+  manifest = manifest.add(getHostedServiceManifest((resolver) => {
+    const dependency: Dependency = resolver.resolve(Type.from('test:Dependency'));
+    return dependency;
+  }));
 
-  const provider = manifest.build();
-  const scope = provider.createScope('singleton');
-  const services = scope.resolve<IHostedService[]>(hostedServiceCollectionToken());
+  const provider = Builder.withServices(() => manifest).build();
+  const services: IHostedService[] = provider.resolve(hostedServiceCollectionType());
 
   expect(services).toHaveLength(1);
   expect(services[0]).toBeInstanceOf(Dependency);
@@ -66,13 +67,12 @@ test('addHostedService(ctor) and addHostedService(factory) coexist under the sha
     public async stop(): Promise<void> {}
   }
 
-  let manifest = new ServiceManifest();
-  manifest = manifest.addHostedService(CtorWorker, [[]]);
-  manifest = manifest.addHostedService(() => new FactoryWorker());
+  let manifest: Manifest<unknown> = Manifest.empty<unknown>();
+  manifest = manifest.add(getHostedServiceManifest(CtorWorker, Type.ctor(HOSTED_SERVICE_TYPE, [[]])));
+  manifest = manifest.add(getHostedServiceManifest(() => new FactoryWorker()));
 
-  const provider = manifest.build();
-  const scope = provider.createScope('singleton');
-  const services = scope.resolve<IHostedService[]>(hostedServiceCollectionToken());
+  const provider = Builder.withServices(() => manifest).build();
+  const services: IHostedService[] = provider.resolve(hostedServiceCollectionType());
 
   expect(services).toHaveLength(2);
   for (const service of services) {

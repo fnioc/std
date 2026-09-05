@@ -1,7 +1,7 @@
 import type { IHostApplicationLifetime, IHostEnvironment, IHostLifetime } from '@rhombus-std/hosting.core';
 import { type ILogger, type ILoggerFactory, logInformation, LogLevel } from '@rhombus-std/logging.core';
 import { type AbortSignal, process } from '@rhombus-std/primitives';
-import type { Func } from '@rhombus-toolkit/func';
+import type { Func } from '@rhombus-toolkit/types';
 import type { ConsoleLifetimeOptions } from '../ConsoleLifetimeOptions';
 
 /** The logging category the console lifetime writes its status banner under. */
@@ -21,9 +21,7 @@ export class ConsoleLifetime implements IHostLifetime, Disposable {
   #onStopping?: Func<[], void>;
   #signalHandler?: Func<[], void>;
 
-  public constructor(options: ConsoleLifetimeOptions, environment: IHostEnvironment,
-    applicationLifetime: IHostApplicationLifetime, loggerFactory: ILoggerFactory)
-  {
+  public constructor(options: ConsoleLifetimeOptions, environment: IHostEnvironment, applicationLifetime: IHostApplicationLifetime, loggerFactory: ILoggerFactory) {
     this.#options = options;
     this.#environment = environment;
     this.#applicationLifetime = applicationLifetime;

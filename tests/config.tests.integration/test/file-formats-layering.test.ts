@@ -1,6 +1,4 @@
-// Cross-format layering, run against the BUILT DIST of every package (under
-// `node`, whose import/default condition resolves each `@rhombus-std/config.*`
-// bare import to its `dist/bundle/index.js`). Exercises the JSON + INI + XML providers
+// Cross-format layering across the whole config family. Exercises the JSON + INI + XML providers
 // TOGETHER on one builder: their add* augmentations must all be installed on
 // the shared dist ConfigBuilder (each survived bundling with
 // @rhombus-std/config kept external, and its `declare module` survived
@@ -8,12 +6,12 @@
 //
 // In-memory stream payloads are used so the test needs no fixture files.
 
+import { describe, test } from 'bun:test';
 import assert from 'node:assert/strict';
-import { describe, test } from 'node:test';
 
 import { ConfigBuilder } from '@rhombus-std/config';
 // Bare side-effect imports: install addJsonStream / addIniStream / addXmlStream
-// onto ConfigBuilder.prototype from each provider's built dist.
+// onto ConfigBuilder.prototype.
 import '@rhombus-std/config.ini';
 import '@rhombus-std/config.json';
 import '@rhombus-std/config.xml';

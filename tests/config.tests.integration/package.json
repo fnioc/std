@@ -2,21 +2,21 @@
   "name": "@rhombus-std/config.tests.integration",
   "private": true,
   "version": "0.0.0",
-  "description": "End-to-end integration tests against the BUILT DIST of @rhombus-std/config + the three provider packages. Proves the ConfigBuilder add* augmentation survives bundling -- the one place a sideEffects/tree-shaking or rollup-plugin-dts regression would surface. Not published.",
+  "description": "End-to-end integration tests across @rhombus-std/config + the three provider packages on one builder: the ConfigBuilder add* augmentations from every provider install together and later sources override earlier ones. The published-artifact (packed tarball under plain node) proof is a recorded follow-up. Not published.",
   "license": "MIT",
   "type": "module",
   "scripts": {
-    "test": "node --test test/**/*.test.ts",
+    "test": "bun test",
     "lint": "bun x tsc --noEmit -p tsconfig.json"
   },
   "devDependencies": {
     "@rhombus-std/config": "workspace:*",
-    "@rhombus-std/config.core": "workspace:*",
     "@rhombus-std/config.commandline": "workspace:*",
     "@rhombus-std/config.env": "workspace:*",
     "@rhombus-std/config.ini": "workspace:*",
     "@rhombus-std/config.json": "workspace:*",
     "@rhombus-std/config.xml": "workspace:*",
+    "@rhombus-std/primitives": "workspace:*",
     "@types/node": "^24.13.2"
   }
 }

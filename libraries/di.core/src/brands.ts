@@ -1,111 +1,65 @@
-// Compile-time phantom brands read off a constructor or factory parameter's TYPE
-// to derive its dependency slot: a pinned token (`Inject`), an open-generic
-// skolem (`Hole` / `$`), a type-argument witness (`Typeof`), and a resolution key
-// (`Keyed`). All of them erase — zero runtime footprint.
+// Compile-time phantom brands, read off a constructor or factory arg's TYPE
+// to decide what fills its dependency slot: a pinned token (`Inject`) and a
+// type-argument witness (`Typeof`). Both erase — zero runtime footprint.
 
-import type { Token } from './types.js';
+import type { NamedType } from '@rhombus-std/primitives';
+import type { Func } from '@rhombus-toolkit/types';
 
-// ── Inject brand ──────────────────────────────────────────────────────────────
+/** True for a union, false for anything else — including `never`, which distributes to nothing. */
+type IsUnion<T, Members = T> = T extends unknown ? ([Members] extends [T] ? false : true) : never;
+
+// ── Inject ────────────────────────────────────────────────────────────────────
+
+declare const TOKEN: unique symbol;
 
 /**
- * Pins a specific token for one constructor or factory parameter, overriding the
- * token its type would otherwise derive.
+ * Pins one arg's service type, overriding the type it would otherwise
+ * derive from its own declaration.
  *
- * The value type stays `T` — a plain `T` is assignable because the brand
+ * @remarks
+ * The value type stays `T` — a plain `T` remains assignable, because the brand
  * property is optional.
  *
  * @example
  * ```ts
  * class Handler {
- *   constructor(
- *     cache: Inject<ICache, "pkg:redis-cache">,  // pinned token
- *     log: ILogger,                              // derived normally
+ *   public constructor(
+ *     cache: Inject<ICache, 'pkg:redis-cache'>, // pinned
+ *     log: ILogger, // derived
  *   ) {}
  * }
  * ```
  */
-declare const TOK: unique symbol;
-export type Inject<T, K extends Token> = T & { readonly [TOK]?: K; };
+export type Inject<T, K extends string> = T & { readonly [TOKEN]?: K; };
 
-// ── Hole brand (open generics) ────────────────────────────────────────────────
-
-/**
- * Stands in for the `N`th type argument of an open template. Labels are 1-BASED
- * and carry no leading zero — `$0` and `$01` are not holes, in this type grammar
- * or in the token-string grammar (`token/parse.ts`). Writing
- * `addClass<IRepository<$<1>>>(SqlRepository<$<1>>)` binds the hole.
- *
- * `C` is the constraint carrier: `Hole<1, Entity>` IS an `Entity` (the brand
- * property is optional, so the intersection stays assignable to `C`), which
- * lets a constrained implementation `class Repo<T extends Entity>` accept a
- * hole as its type argument.
- */
-declare const HOLE: unique symbol;
-export type Hole<N extends number, C = unknown> = C & { readonly [HOLE]?: N; };
+// ── Typeof ────────────────────────────────────────────────────────────────────
 
 /**
- * Shorthand for the common unconstrained hole: `$<1>`, `$<2>`, … `$<N>`.
- * `$<N>` is exactly `Hole<N>`; reach for `Hole<N, C>` when the implementation's
- * type parameter carries a constraint the skolem must satisfy.
+ * Marks a constructor arg that receives the {@link NamedType} of a type argument instead of a
+ * resolved instance of it — `Logger<T>` naming its category after `T` rather than constructing one.
  *
- * It is the ONE spelling of a bare hole at every label: `$1` is the wire text of
- * a hole inside a token STRING (`"pkg:IRepo<$1>"`), never a type.
- */
-export type $<N extends number> = Hole<N>;
-
-// ── Typeof brand ────────────────────────────────────────────────────────
-
-/**
- * Marks a constructor parameter that receives the TOKEN STRING of type argument
- * `T`. The value type stays `Token` (a plain string is assignable; the brand
- * property is optional).
+ * @remarks
+ * A bare type argument in a signature already means "resolve the service of the closing type", so
+ * the witness has to be spelled differently; this is that spelling.
  *
- * When `T` is a `Hole`, the derived slot is an open `{ typeArg: N }` that
- * substitution closes per registration; when `T` is concrete, the slot is the
- * derived token itself. `typeArg(n)` is the positional counterpart, naming the
- * hole by number rather than by type.
+ * A witness is only useful when the type has a name to read, so anything else resolves to `never`
+ * and is refused where it is written rather than arriving as an `undefined` name. The refusal is
+ * type-level because it has to hold for a caller who never runs the transformer.
+ *
+ * Witnesses for different types do not interchange, so a swapped one is refused where it is passed.
+ * Two structurally identical types are one type here as everywhere, and share a witness.
  *
  * @example
  * ```ts
- * class SqlRepository<T> {
- *   constructor(readonly entityToken: Typeof<T>) {}
+ * class Logger<T> {
+ *   public constructor(factory: ILoggerFactory, category: Typeof<T>) {
+ *     this.#logger = factory.createLogger(category.name);
+ *   }
  * }
  * ```
  */
-declare const ARG: unique symbol;
-export type Typeof<T> = Token & { readonly [ARG]?: T; };
+declare const WITNESS: unique symbol;
 
-// ── Keyed brand ─────────────────────────────────────────────────────────────
-
-/**
- * Pins a resolution KEY for one constructor or factory parameter. A key is not a
- * parallel resolution subsystem — it is a `"#<key>"` suffix on the token the
- * parameter would otherwise derive, so a keyed service registers and resolves
- * under the ordinary composed token `caching.core:ICache#redis`.
- *
- * How that composed token is spelled depends on the verb's shape:
- *   - a DEPENDENCY slot and the key-less query verbs (`isService`,
- *     `resolveAsync`) carry the SINGLE composed token — `Keyed<ICache, "redis">`
- *     derives `"caching.core:ICache#redis"` directly;
- *   - `resolve` / `tryResolve` take a tail key parameter, so
- *     `resolve("caching.core:ICache", "redis")` composes `base#key` for the
- *     lookup — the same token identity, reached two ways.
- *
- * The value type stays `T` — a plain `T` is assignable because the brand
- * property is optional. `K` is always a string LITERAL (the key text).
- *
- * The brand stacks ORTHOGONALLY with `Inject`: both are optional-property
- * intersections on `T`, so `Keyed<Inject<T, "tok">, "k">` fixes the base token
- * AND appends `"#k"` to it.
- *
- * @example
- * ```ts
- * class Handler {
- *   constructor(
- *     redis: Keyed<ICache, "redis">,  // dep slot: "caching.core:ICache#redis"
- *   ) {}
- * }
- * ```
- */
-declare const KEY: unique symbol;
-export type Keyed<T, K extends string> = T & { readonly [KEY]?: K; };
+export type Typeof<T> = IsUnion<T> extends true ? never
+  : [T] extends [Func<never[], unknown>] ? never
+  : NamedType & { readonly [WITNESS]?: T; };

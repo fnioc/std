@@ -1,0 +1,43 @@
+{
+  "ts.preferences.importModuleSpecifierEnding": "minimal",
+  "js.preferences.importModuleSpecifierEnding": "minimal",
+  "editor.defaultFormatter": "dprint.dprint",
+  "[typescript]": {
+    "editor.defaultFormatter": "dprint.dprint"
+  },
+  "[javascript]": {
+    "editor.defaultFormatter": "dprint.dprint"
+  },
+  "[json]": {
+    "editor.defaultFormatter": "dprint.dprint"
+  },
+  "[jsonc]": {
+    "editor.defaultFormatter": "dprint.dprint"
+  },
+  "[markdown]": {
+    "editor.defaultFormatter": "dprint.dprint"
+  },
+  "files.exclude": {
+    "**/.git": true,
+    "**/.svn": true,
+    "**/.hg": true,
+    "**/.DS_Store": true,
+    "**/Thumbs.db": true,
+    "**/rollup.dts.mjs": true,
+    "**/dist": true,
+    "**/node_modules": true
+  },
+  // Interleave directories with files in one alphabetical list, so a ProperCased
+  // directory sorts beside the siblings it was split out of rather than above them.
+  "explorer.sortOrder": "mixed",
+  "explorer.fileNesting.patterns": {
+    "tsconfig.ci.json": "tsconfig.ttsc.json"
+    // "package.json":"tsconfig.json"
+  },
+  "explorerExclude.backup": {},
+  // Disabled: resolves tsserver's relative paths from workspace root instead of
+  // tsconfig dir, producing wrong absolute paths in monorepo subdirectories.
+  // "typescript.tsserver.experimental.enableProjectDiagnostics": true,
+  "explorerExcludeManager.backup": {},
+  "js/ts.tsdk.path": "node_modules/typescript/lib"
+}

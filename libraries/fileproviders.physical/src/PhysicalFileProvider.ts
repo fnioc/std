@@ -1,3 +1,4 @@
+/// <reference path="./node-builtins.d.ts" />
 // Serves IFileInfo/IDirectoryContents off the on-disk file system rooted at
 // an absolute directory, and watches exact files / directory prefixes for
 // changes via a lazily-created PhysicalFilesWatcher. Every lookup is guarded
@@ -11,14 +12,12 @@
 import { statSync } from 'node:fs';
 import { isAbsolute, join, resolve } from 'node:path';
 
-import { type IDirectoryContents, type IFileInfo, type IFileProvider, NotFoundDirectoryContents, NotFoundFileInfo,
-  NullChangeToken } from '@rhombus-std/fileproviders.core';
+import { type IDirectoryContents, type IFileInfo, type IFileProvider, NotFoundDirectoryContents, NotFoundFileInfo, NullChangeToken } from '@rhombus-std/fileproviders.core';
 import { type IChangeToken, process } from '@rhombus-std/primitives';
 
 import { ExclusionFilters } from './ExclusionFilters.js';
 import { isExcluded } from './FileSystemInfoHelper.js';
-import { ensureTrailingSeparator, hasInvalidFilterChars, hasInvalidPathChars, pathNavigatesAboveRoot,
-  trimStartSeparators } from './PathUtils.js';
+import { ensureTrailingSeparator, hasInvalidFilterChars, hasInvalidPathChars, pathNavigatesAboveRoot, trimStartSeparators } from './PathUtils.js';
 import { PhysicalDirectoryContents } from './PhysicalDirectoryContents.js';
 import { PhysicalFileInfo } from './PhysicalFileInfo.js';
 import { PhysicalFilesWatcher } from './PhysicalFilesWatcher.js';
@@ -110,8 +109,7 @@ export class PhysicalFileProvider implements IFileProvider {
 
   #getFileWatcher(): PhysicalFilesWatcher {
     if (this.#fileWatcher === undefined) {
-      this.#fileWatcher = new PhysicalFilesWatcher(this.#root, this.usePollingFileWatcher, this.useActivePolling,
-        this.#filters);
+      this.#fileWatcher = new PhysicalFilesWatcher(this.#root, this.usePollingFileWatcher, this.useActivePolling, this.#filters);
     }
     return this.#fileWatcher;
   }

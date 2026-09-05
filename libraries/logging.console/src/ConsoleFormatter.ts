@@ -16,6 +16,5 @@ export abstract class ConsoleFormatter {
    * @remarks
    * To write colors to the console, embed ANSI color codes directly into the written string.
    */
-  public abstract write<TState>(logEntry: LogEntry<TState>, scopeProvider: IExternalScopeProvider | undefined,
-    textWriter: TextWriter): void;
+  public abstract write<TState>(logEntry: LogEntry<TState>, scopeProvider: IExternalScopeProvider | undefined, textWriter: TextWriter): void;
 }

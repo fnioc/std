@@ -125,7 +125,7 @@ func TestEntrySourceFile(t *testing.T) {
 
 // finalSpecifier renders selectSpecifier's decision the way publicImportSpecifier
 // does: the bare package for the root subpath, else `pkg/<subpath>`. ok=false when
-// no public specifier was found (the `./tokens/*` / app-internal / diagnostic
+// no public specifier was found (the `./private/*` / app-internal / diagnostic
 // tiers, which fall through to baseTokenFor's own fallback).
 func finalSpecifier(pkgName string, d specifierDecision) (string, bool) {
 	if !d.found {
@@ -207,22 +207,22 @@ func TestSelectSpecifier(t *testing.T) {
 		}
 	})
 
-	t.Run("no public match but a tokens subpath reaches: fall through, no diagnostic", func(t *testing.T) {
-		// A `./tokens/*` reach (the source-referenced white-box surface) is not a
+	t.Run("no public match but a private subpath reaches: fall through, no diagnostic", func(t *testing.T) {
+		// A `./private/*` reach (the source-referenced white-box surface) is not a
 		// public specifier and is NOT a violation: selectSpecifier yields no
-		// specifier and no diagnostic, so baseTokenFor mints the `pkg/tokens/<path>`
+		// specifier and no diagnostic, so baseTokenFor mints the `pkg/private/<path>`
 		// app-internal token.
-		decision := selectSpecifier([]reachingEntry{{subpath: "tokens/foo", public: false}})
+		decision := selectSpecifier([]reachingEntry{{subpath: "private/foo", public: false}})
 		if _, ok := finalSpecifier("your-lib", decision); ok {
-			t.Fatalf("tokens-only reach should not resolve a public specifier: %+v", decision)
+			t.Fatalf("private-only reach should not resolve a public specifier: %+v", decision)
 		}
 		if decision.diagSubpath != "" {
-			t.Fatalf("tokens-only reach must not raise a diagnostic, got %q", decision.diagSubpath)
+			t.Fatalf("private-only reach must not raise a diagnostic, got %q", decision.diagSubpath)
 		}
 	})
 
 	t.Run("reached only through a non-public named subpath raises the diagnostic", func(t *testing.T) {
-		// A friendly deep-import alias that is neither public nor `./tokens/*` is the
+		// A friendly deep-import alias that is neither public nor `./private/*` is the
 		// strict-rule violation: no specifier, and diagSubpath names the offending
 		// subpath so publicImportSpecifier fires TOKEN_SUBPATH_NOT_PUBLIC.
 		decision := selectSpecifier([]reachingEntry{{subpath: "contracts", public: false}})
@@ -234,13 +234,13 @@ func TestSelectSpecifier(t *testing.T) {
 		}
 	})
 
-	t.Run("public alongside tokens and a non-public other: public wins, no diagnostic", func(t *testing.T) {
+	t.Run("public alongside private and a non-public other: public wins, no diagnostic", func(t *testing.T) {
 		// Mixed-tier precedence: a type reachable through the public barrel AND a
-		// `./tokens/*` white-box subpath AND a non-public `./contracts` alias resolves
+		// `./private/*` white-box subpath AND a non-public `./contracts` alias resolves
 		// to the public barrel with no diagnostic — the public tier dominates.
 		decision := selectSpecifier([]reachingEntry{
 			{subpath: "contracts", public: false},
-			{subpath: "tokens/foo", public: false},
+			{subpath: "private/foo", public: false},
 			{subpath: "", public: true},
 		})
 		spec, ok := finalSpecifier("your-lib", decision)
@@ -249,19 +249,19 @@ func TestSelectSpecifier(t *testing.T) {
 		}
 	})
 
-	t.Run("tokens alongside a non-public other: tokens rescues, no diagnostic", func(t *testing.T) {
-		// haveTokens short-circuits BEFORE haveOther, so a type exported via both a
-		// `./tokens/*` subpath and a non-public `./contracts` alias must NOT diagnose —
-		// the tokens reach rescues it to the app-internal fallback token.
+	t.Run("private alongside a non-public other: private rescues, no diagnostic", func(t *testing.T) {
+		// havePrivate short-circuits BEFORE haveOther, so a type exported via both a
+		// `./private/*` subpath and a non-public `./contracts` alias must NOT diagnose —
+		// the private reach rescues it to the app-internal fallback token.
 		decision := selectSpecifier([]reachingEntry{
 			{subpath: "contracts", public: false},
-			{subpath: "tokens/foo", public: false},
+			{subpath: "private/foo", public: false},
 		})
 		if _, ok := finalSpecifier("your-lib", decision); ok {
-			t.Fatalf("tokens+other must not resolve a public specifier: %+v", decision)
+			t.Fatalf("private+other must not resolve a public specifier: %+v", decision)
 		}
 		if decision.diagSubpath != "" {
-			t.Fatalf("tokens short-circuit must suppress the diagnostic, got %q", decision.diagSubpath)
+			t.Fatalf("private short-circuit must suppress the diagnostic, got %q", decision.diagSubpath)
 		}
 	})
 

@@ -110,7 +110,7 @@ labels:
     color: 7057ff
     description: Good for newcomers
   - name: help wanted
-    color: '008672'
+    color: "008672"
     description: Extra attention is needed
   - name: invalid
     color: e4e669
@@ -183,7 +183,7 @@ rulesets:
     conditions:
       ref_name:
         include:
-          - '~DEFAULT_BRANCH'
+          - "~DEFAULT_BRANCH"
         exclude: []
 
     # Empty = nobody bypasses, including org and repo admins. Adding an entry
@@ -325,15 +325,15 @@ rulesets:
     conditions:
       ref_name:
         include:
-          - '~ALL'
+          - "~ALL"
         exclude:
-          - '~DEFAULT_BRANCH'
+          - "~DEFAULT_BRANCH"
     bypass_actors: []
     rules:
       - type: branch_name_pattern
         parameters:
           operator: regex
-          pattern: '.*'
+          pattern: ".*"
           name: any branch name
           negate: false
 
@@ -345,7 +345,7 @@ rulesets:
     conditions:
       ref_name:
         include:
-          - 'refs/tags/v*'
+          - "refs/tags/v*"
         exclude: []
     bypass_actors: []
     rules:

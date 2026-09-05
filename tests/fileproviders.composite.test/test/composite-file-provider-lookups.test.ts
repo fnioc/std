@@ -7,8 +7,7 @@
 // and reports `exists` only after at least one provider matched.
 
 import { CompositeDirectoryContents, CompositeFileProvider } from '@rhombus-std/fileproviders.composite';
-import { type IDirectoryContents, type IFileInfo, type IFileProvider, NotFoundDirectoryContents, NotFoundFileInfo,
-  NullChangeToken } from '@rhombus-std/fileproviders.core';
+import { type IDirectoryContents, type IFileInfo, type IFileProvider, NotFoundDirectoryContents, NotFoundFileInfo, NullChangeToken } from '@rhombus-std/fileproviders.core';
 import type { IChangeToken } from '@rhombus-std/primitives';
 import { describe, expect, test } from 'bun:test';
 
@@ -108,8 +107,7 @@ describe('CompositeFileProvider.getDirectoryContents', () => {
 
   test('de-duplicates by name -- the first provider wins', () => {
     const first = providerWithDir('sub', [new StubFileInfo('dup.txt', 'first')]);
-    const second = providerWithDir('sub', [new StubFileInfo('dup.txt', 'second'),
-      new StubFileInfo('unique.txt', 'second')]);
+    const second = providerWithDir('sub', [new StubFileInfo('dup.txt', 'second'), new StubFileInfo('unique.txt', 'second')]);
     const provider = new CompositeFileProvider(first, second);
 
     const entries = [...provider.getDirectoryContents('sub')] as StubFileInfo[];
@@ -131,11 +129,10 @@ describe('CompositeFileProvider.getDirectoryContents', () => {
 describe('CompositeDirectoryContents', () => {
   test('initializes lazily -- providers are not consulted until iterated or exists is read', () => {
     let consulted = 0;
-    const provider: IFileProvider = { getFileInfo: (subpath) => new NotFoundFileInfo(subpath),
-      getDirectoryContents: (subpath) => {
-        consulted++;
-        return new StubDirectoryContents(true, [new StubFileInfo('x.txt', 'p')]);
-      }, watch: () => NullChangeToken.singleton };
+    const provider: IFileProvider = { getFileInfo: (subpath) => new NotFoundFileInfo(subpath), getDirectoryContents: (subpath) => {
+      consulted++;
+      return new StubDirectoryContents(true, [new StubFileInfo('x.txt', 'p')]);
+    }, watch: () => NullChangeToken.singleton };
 
     const contents = new CompositeDirectoryContents([provider], 'sub');
     expect(consulted).toBe(0);

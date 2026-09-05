@@ -4,14 +4,14 @@
 // addJsonFile/addEnvironmentVariables/etc. baked in. Each provider package (and
 // the in-package Memory/Chained providers) bolts its own add* sugar on via TS
 // declaration merging + an augmentation registered against the shared
-// IConfigBuilder token; this class is decorated for that token at the
+// IConfigBuilder type; this class is decorated for that type at the
 // bottom of the file. add* return `this` so those
 // augmentations type-check without a cast and preserve `T` through the fluent
 // chain.
 //
 // The generic `T` is the type build() returns:
 //   - default `IndexedSection` (Tier 0) -- the proxy-wrapped root, untyped tree.
-//   - `Infer<S>` after withSchema(S) (Tier 1) -- a fully-coerced plain object.
+//   - the shape named at withSchema (Tier 1) -- a fully-coerced plain object.
 // build() is the ONE place coercion happens, driven by the runtime schema
 // recorded by withSchema, so it is immune to call-site rewriting and dynamic
 // paths.
@@ -23,23 +23,22 @@
 // an IConfigBuilder, so `this` is cast at the one call site.
 
 import type { IConfigBuilder, IConfigProvider, IConfigSource, IndexedSection } from '@rhombus-std/config.core';
-import { augment } from '@rhombus-std/primitives';
-import { tokenfor } from '@rhombus-std/primitives.extras';
+import { augment, type ObjectType } from '@rhombus-std/primitives';
+import { typefor } from '@rhombus-std/primitives.extras';
 import { coerceBySchema } from './coerce';
 import { ConfigRoot } from './ConfigRoot';
-import type { Infer, ObjectSchema, Schema } from './schema';
 
 /**
  * `@augment` decorates the concrete builder for the OPEN IConfigBuilder
- * receiver: it (re)installs the tokenfor<IConfigBuilder>() bag
+ * receiver: it (re)installs the typefor<IConfigBuilder>() bag
  * onto the prototype now and on every later registration, so downstream
  * provider packages' add* sugar reaches it.
  */
-@augment(tokenfor<IConfigBuilder>())
+@augment(typefor<IConfigBuilder>())
 export class ConfigBuilder<T = IndexedSection> {
   readonly #sources: IConfigSource[] = [];
   readonly #properties = new Map<string, unknown>();
-  #schema?: Schema;
+  #schema?: ObjectType;
 
   /**
    * The shared key/value bag between this builder and its registered sources
@@ -68,14 +67,36 @@ export class ConfigBuilder<T = IndexedSection> {
   }
 
   /**
-   * Records a runtime schema and re-types the builder so `build()` returns the
-   * inferred, fully-coerced object shape `Infer<S>`. The `const` type parameter
-   * preserves the schema literal without the caller writing `as const`.
-   * `S extends ObjectSchema` forbids a bare-leaf top-level schema.
+   * Records the schema `build()` coerces against, and re-types the builder to the
+   * shape `U` names.
+   *
+   * @remarks
+   * The schema is a `Type` tree: `Type.object({...})` at every level, a global
+   * `string` / `number` / `boolean` at each leaf, and a union with `undefined`
+   * for a member the configuration may leave out. Name `U` at the call site —
+   * the schema describes the shape at runtime and the type argument states the
+   * same shape to the compiler.
+   *
+   * @example
+   * ```ts
+   * interface ServerConfig {
+   *   Host: string;
+   *   Port: number;
+   *   Ssl?: boolean;
+   * }
+   *
+   * const server = builder
+   *   .withSchema<ServerConfig>(Type.object({
+   *     Host: Type.global('string'),
+   *     Port: Type.global('number'),
+   *     Ssl: Type.union(Type.global('boolean'), Type.typeLiteral(undefined)),
+   *   }))
+   *   .build();
+   * ```
    */
-  public withSchema<const S extends ObjectSchema>(schema: S): ConfigBuilder<Infer<S>> {
+  public withSchema<U>(schema: ObjectType): ConfigBuilder<U> {
     this.#schema = schema;
-    return this as unknown as ConfigBuilder<Infer<S>>;
+    return this as unknown as ConfigBuilder<U>;
   }
 
   /**

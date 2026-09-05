@@ -1,6 +1,17 @@
 [tools]
 bun = "latest"
+# The formatter behind `bun run format` / `format:check`, the pre-commit hook and
+# the CI gate. Pinned exactly, not "latest": formatting output shifts between
+# versions, so a float would let a locally-clean tree fail `dprint check` in CI.
+dprint = "0.55.2"
 go = "latest"
+# The minifier behind `bun scripts/stage-transforms.ts`, which strips every
+# comment from the Go source @rhombus-std/transforms publishes (`gofmt` restores
+# readable formatting on the consumer's side). Its module path ends in `cmd`, so
+# that is what the binary is called. Pinned exactly, not "latest": the minified
+# bytes ARE the published artifact, so the tool that produces them cannot drift
+# under a publish.
+"go:github.com/go-toolsmith/minformat/cmd" = "0.1.0"
 node = "24"
 # The dead-code scanner behind `bun run knip` (config: knip.jsonc). Pinned to an
 # exact version, not "latest": the scan's output is a committed worklist

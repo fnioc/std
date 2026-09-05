@@ -233,8 +233,7 @@ function spawnWorker(n) {
     + `Read .claude/agents/plan-issue-worker.md and follow it exactly to drain issue #${n}. `
     + `Do the work autonomously; do not ask questions.`;
 
-  const child = spawn('claude', ['-p', prompt, '--permission-mode', 'bypassPermissions', '--output-format',
-    'stream-json', '--verbose', '--max-turns', String(MAX_TURNS)], { cwd: REPO_ROOT,
+  const child = spawn('claude', ['-p', prompt, '--permission-mode', 'bypassPermissions', '--output-format', 'stream-json', '--verbose', '--max-turns', String(MAX_TURNS)], { cwd: REPO_ROOT,
     stdio: ['ignore', 'pipe', 'pipe'] });
 
   active.set(n, child);
@@ -316,8 +315,7 @@ function spawnWorker(n) {
 async function readQueue() {
   try {
     await execFileAsync('git', ['fetch', 'origin', 'bot/plan-doc', '-q'], { cwd: REPO_ROOT });
-    const { stdout } = await execFileAsync('git', ['show', 'origin/bot/plan-doc:ready.json'], { cwd: REPO_ROOT,
-      maxBuffer: 16 * 1024 * 1024 });
+    const { stdout } = await execFileAsync('git', ['show', 'origin/bot/plan-doc:ready.json'], { cwd: REPO_ROOT, maxBuffer: 16 * 1024 * 1024 });
     const parsed = JSON.parse(stdout);
     const eligible = parsed.filter((entry) => {
       if (LABEL_FILTER.size === 0) {

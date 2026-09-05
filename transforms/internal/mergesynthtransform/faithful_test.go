@@ -24,7 +24,7 @@ export class Inner {
 func setOptionsFixture(decls, paramType string) string {
 	return decls + `
 export const AlphaExtensions = {
-  setOptions(self: IAlpha, o: ` + paramType + `): void {},
+  setOptions(o: ` + paramType + `): void {},
 };
 registerAugmentations("t:IAlpha", AlphaExtensions);
 `
@@ -91,8 +91,9 @@ func TestRecordInsideAnArrayIsNotWavedThrough(t *testing.T) {
 // clause — but the members beside it are still checkable, and dropping them too
 // would widen dispatch for nothing.
 func TestSymbolKeyedMemberCostsOnlyItsOwnClause(t *testing.T) {
+	t.Setenv("TTSC_MERGESYNTH_VERBOSE", "1")
 	out, diags := run(t, setOptionsFixture(`
-declare const MARK: unique symbol;
+const MARK: unique symbol = Symbol("m");
 export class R2 { public [MARK]: string = "t"; public host: string = ""; }
 `, "R2"))
 	assertNoMangledKey(t, out)
@@ -108,6 +109,7 @@ export class R2 { public [MARK]: string = "t"; public host: string = ""; }
 // A built-in whose membership is an identity no structural clause can test keeps
 // the object floor: a value of the wrong runtime kind must still fall through.
 func TestPromiseParameterKeepsTheObjectFloor(t *testing.T) {
+	t.Setenv("TTSC_MERGESYNTH_VERBOSE", "1")
 	out, diags := run(t, setOptionsFixture("", "Promise<string>"))
 	assertNoMangledKey(t, out)
 	assertPrivateSurfaceWarning(t, diags)
@@ -120,6 +122,7 @@ func TestPromiseParameterKeepsTheObjectFloor(t *testing.T) {
 // filters those members correctly and so emits a guard that is simply `true` —
 // which accepts every value. The floor accepts only an object.
 func TestModifierHiddenOnlyClassKeepsTheObjectFloor(t *testing.T) {
+	t.Setenv("TTSC_MERGESYNTH_VERBOSE", "1")
 	out, diags := run(t, setOptionsFixture(`
 export class P2 { private a: number = 1; private b: string = ""; }
 `, "P2"))
@@ -221,6 +224,7 @@ export class Half {
 // Nothing readable at all means no member clause — and the object floor, which
 // is the whole of what such a type can still be checked for.
 func TestSetOnlyAccessorOnlyClassKeepsTheObjectFloor(t *testing.T) {
+	t.Setenv("TTSC_MERGESYNTH_VERBOSE", "1")
 	out, diags := run(t, setOptionsFixture(`
 export class AllWrite {
   #v = 0;
@@ -242,7 +246,7 @@ func TestTypeParameterInsideAContainerRefuses(t *testing.T) {
 	out, diags := run(t, `
 export interface Box<T> { item: T; }
 export const AlphaExtensions = {
-  setOptions(self: IAlpha, o: Box<Inner>): void {},
+  setOptions(o: Box<Inner>): void {},
 };
 export class Inner {
   #v: number = 0;

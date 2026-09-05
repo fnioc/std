@@ -1,6 +1,6 @@
 // registerInlineBodies is a runtime no-op that documents, in code, that an
 // inline sugar body set is published in the declaring package's
-// `package.json` "rhombus.inline" list. Nothing in TypeScript imports such a
+// `package.json` "rhombus-std" marker's "inline" list. Nothing in TypeScript imports such a
 // set, so without this call it reads as dead code and a reader has no way to
 // tell why it exists; calling it beside the declaration fixes both problems.
 
@@ -21,7 +21,7 @@ export interface InlineBody {
 
 /**
  * An object literal of {@link InlineBody} members, named by the matching
- * entry's `impl` in the declaring package's `package.json` "rhombus.inline"
+ * entry's `impl` in the declaring package's `package.json` "rhombus-std" marker "inline"
  * list. Every member must be function-like — a member with no body has
  * nothing to substitute.
  */
@@ -31,7 +31,7 @@ export interface InlineBodySet {
 
 /**
  * Declares, in code, that `bodies` is an inline sugar body set published in
- * the declaring package's `package.json` "rhombus.inline" list.
+ * the declaring package's `package.json` "rhombus-std" marker "inline" list.
  *
  * @remarks
  * A runtime no-op — the file these sets live in is never bundled or executed.
@@ -41,14 +41,14 @@ export interface InlineBodySet {
  *
  * @example
  * ```ts
- * export const ManifestChainInline = {
- *   as<Scope extends string>(this: IInlineChainTarget): IServiceManifest {
- *     return this.as(valueof<Scope>());
+ * export const ConfigBuilderInline = {
+ *   withType<T>(this: IWithSchemaTarget): unknown {
+ *     return this.withSchema(schemaof<T>());
  *   },
  * };
- * registerInlineBodies(ManifestChainInline);
+ * registerInlineBodies(ConfigBuilderInline);
  * ```
  */
-export function registerInlineBodies(_bodies: InlineBodySet): void {
+export function registerInlineBodies<Receiver>(_bodies: InlineBodySet): void {
   // Intentionally empty -- see the file header.
 }

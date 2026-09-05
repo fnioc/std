@@ -11,26 +11,18 @@ export interface LogDefineOptions {
   skipEnabledCheck?: boolean;
 }
 
-function define(logLevel: LogLevel, eventId: EventIdLike, formatString: string,
-  options?: LogDefineOptions): (logger: ILogger, error: Error | undefined) => void;
-function define<T1>(logLevel: LogLevel, eventId: EventIdLike, formatString: string,
-  options?: LogDefineOptions): (logger: ILogger, arg1: T1, error: Error | undefined) => void;
-function define<T1, T2>(logLevel: LogLevel, eventId: EventIdLike, formatString: string,
-  options?: LogDefineOptions): (logger: ILogger, arg1: T1, arg2: T2, error: Error | undefined) => void;
+function define(logLevel: LogLevel, eventId: EventIdLike, formatString: string, options?: LogDefineOptions): (logger: ILogger, error: Error | undefined) => void;
+function define<T1>(logLevel: LogLevel, eventId: EventIdLike, formatString: string, options?: LogDefineOptions): (logger: ILogger, arg1: T1, error: Error | undefined) => void;
+function define<T1, T2>(logLevel: LogLevel, eventId: EventIdLike, formatString: string, options?: LogDefineOptions): (logger: ILogger, arg1: T1, arg2: T2, error: Error | undefined) => void;
 function define<T1, T2, T3>(logLevel: LogLevel, eventId: EventIdLike, formatString: string,
   options?: LogDefineOptions): (logger: ILogger, arg1: T1, arg2: T2, arg3: T3, error: Error | undefined) => void;
 function define<T1, T2, T3, T4>(logLevel: LogLevel, eventId: EventIdLike, formatString: string,
-  options?: LogDefineOptions
-): (logger: ILogger, arg1: T1, arg2: T2, arg3: T3, arg4: T4, error: Error | undefined) => void;
+  options?: LogDefineOptions): (logger: ILogger, arg1: T1, arg2: T2, arg3: T3, arg4: T4, error: Error | undefined) => void;
 function define<T1, T2, T3, T4, T5>(logLevel: LogLevel, eventId: EventIdLike, formatString: string,
-  options?: LogDefineOptions
-): (logger: ILogger, arg1: T1, arg2: T2, arg3: T3, arg4: T4, arg5: T5, error: Error | undefined) => void;
+  options?: LogDefineOptions): (logger: ILogger, arg1: T1, arg2: T2, arg3: T3, arg4: T4, arg5: T5, error: Error | undefined) => void;
 function define<T1, T2, T3, T4, T5, T6>(logLevel: LogLevel, eventId: EventIdLike, formatString: string,
-  options?: LogDefineOptions
-): (logger: ILogger, arg1: T1, arg2: T2, arg3: T3, arg4: T4, arg5: T5, arg6: T6, error: Error | undefined) => void;
-function define(logLevel: LogLevel, eventId: EventIdLike, formatString: string,
-  options?: LogDefineOptions): (logger: ILogger, ...rest: unknown[]) => void
-{
+  options?: LogDefineOptions): (logger: ILogger, arg1: T1, arg2: T2, arg3: T3, arg4: T4, arg5: T5, arg6: T6, error: Error | undefined) => void;
+function define(logLevel: LogLevel, eventId: EventIdLike, formatString: string, options?: LogDefineOptions): (logger: ILogger, ...rest: unknown[]) => void {
   const id = EventId.from(eventId);
   const skipEnabledCheck = options?.skipEnabledCheck === true;
   return (logger: ILogger, ...rest: unknown[]): void => {

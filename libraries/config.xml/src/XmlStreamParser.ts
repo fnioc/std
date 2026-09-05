@@ -242,9 +242,7 @@ function provideConfig(root: XmlElement | undefined): Array<[key: string, value:
   return pairs;
 }
 
-function processElement(prefix: Prefix, element: XmlElement, pairs: Array<[key: string, value: string]>,
-  seen: Set<string>): void
-{
+function processElement(prefix: Prefix, element: XmlElement, pairs: Array<[key: string, value: string]>, seen: Set<string>): void {
   for (const attribute of element.attributes) {
     prefix.push(attribute.name);
     addPair(prefix.value, attribute.value, pairs, seen);
@@ -264,9 +262,7 @@ function processElement(prefix: Prefix, element: XmlElement, pairs: Array<[key: 
   }
 }
 
-function processChild(prefix: Prefix, child: XmlElement, index: number | undefined,
-  pairs: Array<[key: string, value: string]>, seen: Set<string>): void
-{
+function processChild(prefix: Prefix, child: XmlElement, index: number | undefined, pairs: Array<[key: string, value: string]>, seen: Set<string>): void {
   prefix.push(child.elementName);
   if (child.nameAttribute) {
     prefix.push(child.nameAttribute);
@@ -288,17 +284,7 @@ function processChild(prefix: Prefix, child: XmlElement, index: number | undefin
 
 /** Groups children by their (case-insensitive) sibling name, preserving first-seen order. */
 function groupChildren(children: XmlElement[]): XmlElement[][] {
-  const groups = new Map<string, XmlElement[]>();
-  for (const child of children) {
-    const key = child.siblingName.toLowerCase();
-    const existing = groups.get(key);
-    if (existing) {
-      existing.push(child);
-    } else {
-      groups.set(key, [child]);
-    }
-  }
-  return [...groups.values()];
+  return [...Map.groupBy(children, (child) => child.siblingName.toLowerCase()).values()];
 }
 
 function addPair(key: string, value: string, pairs: Array<[key: string, value: string]>, seen: Set<string>): void {

@@ -7,30 +7,28 @@
 
 export * from '@rhombus-std/hosting.core';
 
-// Side-effect import: registers HostingHostBuilderAugmentations.
-import './HostingHostBuilderAugmentations';
+// Side-effect import: registers HostBuilderHostingAugmentations.
+import './HostBuilder-Hosting-augmentations';
 
-export { Host } from './Host';
-export { HostApplicationBuilder } from './HostApplicationBuilder';
-export { HostApplicationBuilderSettings } from './HostApplicationBuilderSettings';
-export { HostBuilder } from './HostBuilder';
+export * from './Host';
+export * from './HostApplicationBuilder';
+export * from './HostApplicationBuilderSettings';
+export * from './HostBuilder';
 
-export { BackgroundServiceErrorBehavior } from './BackgroundServiceErrorBehavior';
-export { ConsoleLifetimeOptions } from './ConsoleLifetimeOptions';
-export { HostOptions } from './HostOptions';
-export { ConsoleLifetime, HOSTING_LIFETIME_CATEGORY } from './internal/ConsoleLifetime';
-export { NullLifetime } from './internal/NullLifetime';
+export * from './BackgroundServiceErrorBehavior';
+export * from './ConsoleLifetimeOptions';
+export * from './HostOptions';
+export * from './internal/ConsoleLifetime';
+export * from './internal/NullLifetime';
 export { MetricsBuilder } from './MetricsBuilder';
 
-export { HostingHostBuilderAugmentations } from './HostingHostBuilderAugmentations';
+export * from './HostBuilder-Hosting-augmentations';
 
-// Re-exported from di.core, which owns it; this is the type
-// `useDefaultServiceProvider` configures.
-export type { ServiceProviderOptions } from '@rhombus-std/di.core';
+// The service-provider validation toggles `useDefaultServiceProvider` configures.
+export type { ServiceProviderOptions } from './ServiceProviderOptionsFactory';
 
 // The environment-variable prefix the default host configuration reads.
 export { HOST_ENVIRONMENT_VARIABLE_PREFIX } from './default-config';
 
 // The framework-service DI tokens (a consumer resolves these off `IHost.services`).
-export { CONFIG_TOKEN, CONSOLE_LIFETIME_OPTIONS_TOKEN, HOST_BUILDER_CONTEXT_TOKEN, HOST_ENVIRONMENT_TOKEN,
-  HOST_LIFETIME_TOKEN, HOST_OPTIONS_TOKEN } from './framework-tokens';
+export { CONFIG_TYPE, CONSOLE_LIFETIME_OPTIONS_TYPE, HOST_BUILDER_CONTEXT_TYPE, HOST_ENVIRONMENT_TYPE, HOST_LIFETIME_TYPE, HOST_OPTIONS_TYPE } from './framework-types';

@@ -72,7 +72,7 @@ func ParseToken(token string) (ParsedToken, bool) {
 // is an open template rather than a resolvable token. Grammar-aware: a `$N`
 // inside a quoted literal arg is not a hole.
 func IsOpenToken(token string) bool {
-	if isHoleNode(token) {
+	if isGenericNode(token) {
 		return true
 	}
 	parsed, ok := ParseToken(token)
@@ -87,9 +87,9 @@ func IsOpenToken(token string) bool {
 	return false
 }
 
-// isHoleNode reports whether token is exactly a hole node `$N` with decimal
+// isGenericNode reports whether token is exactly a hole node `$N` with decimal
 // N >= 1 (no leading zero).
-func isHoleNode(token string) bool {
+func isGenericNode(token string) bool {
 	if len(token) < 2 || token[0] != '$' {
 		return false
 	}

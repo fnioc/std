@@ -1,7 +1,7 @@
 {
   "name": "@rhombus-std/caching.core",
   "version": "0.0.0",
-  "description": "Cache abstractions ported from ME.Caching.Abstractions: IMemoryCache/ICacheEntry + CacheItemPriority/EvictionReason/PostEvictionDelegate, IDistributedCache/DistributedCacheEntryOptions, the hybrid-cache abstractions (HybridCache, HybridCacheEntryOptions/Flags, IHybridCacheSerializer/IHybridCacheSerializerFactory), plus the real-runtime get/set/getOrCreate/tryGetValue/setString/getString convenience wrappers.",
+  "description": "Cache abstractions: IMemoryCache/ICacheEntry + CacheItemPriority/EvictionReason/PostEvictionDelegate, IDistributedCache/DistributedCacheEntryOptions, the hybrid-cache abstractions (HybridCache, HybridCacheEntryOptions/Flags, IHybridCacheSerializer/IHybridCacheSerializerFactory), plus the real-runtime get/set/getOrCreate/tryGetValue/setString/getString convenience wrappers.",
   "keywords": [
     "caching",
     "cache",
@@ -16,25 +16,10 @@
     "directory": "libraries/caching.core"
   },
   "type": "module",
-  "main": "./dist/bundle/index.js",
-  "types": "./dist/bundle/index.d.ts",
+  "main": "./src/index.ts",
   "exports": {
-    ".": {
-      "source": "./src/index.ts",
-      "bun": "./dist/bundle/index.js",
-      "types": "./dist/bundle/index.d.ts",
-      "import": "./dist/bundle/index.js",
-      "default": "./dist/bundle/index.js"
-    },
-    "./tokens/*": {
-      "source": "./src/*.ts",
-      "bun": "./src/*.ts",
-      "types": "./src/*.ts"
-    },
-    "./private/*": {
-      "types": "./src/*.ts",
-      "bun": "./dist/stage/*.js"
-    }
+    ".": "./src/index.ts",
+    "./private/*": "./src/*.ts"
   },
   "files": [
     "dist",
@@ -46,25 +31,21 @@
   },
   "dependencies": {
     "@rhombus-std/primitives": "workspace:*",
-    "@rhombus-toolkit/func": "^3.5.3"
+    "@rhombus-toolkit/type-guards": "^4.0.0",
+    "@rhombus-toolkit/types": "^2.0.0"
   },
   "devDependencies": {
     "@rhombus-std/primitives.extras": "workspace:*",
     "@ttsc/unplugin": "^0.18.1",
     "ttsc": "^0.18.1",
-    "typescript": "^5.9.0"
+    "typescript": "^6.0.3"
   },
   "publishConfig": {
     "access": "public",
     "provenance": true,
     "main": "./dist/bundle/index.js",
-    "types": "./dist/bundle/index.d.ts",
     "exports": {
-      ".": {
-        "types": "./dist/bundle/index.d.ts",
-        "import": "./dist/bundle/index.js",
-        "default": "./dist/bundle/index.js"
-      }
+      ".": "./dist/bundle/index.js"
     }
   }
 }

@@ -12,21 +12,23 @@ import (
 	"github.com/samchon/ttsc/packages/ttsc/driver"
 )
 
-// The fixture is one program that mirrors the isService pilot's real shape: a
-// primitive interface (`core.ts`) whose inlineable member is added by TWO
-// `declare module` augmentation files, plus a consumer (`main.ts`) that calls it
-// explicitly, in primitive form, and — via a second member — with an INFERRED
-// type argument. These probe files ARE the unit tests: each named checker
-// composition the inline stage rests on is asserted here.
+// The fixture is one program carrying the two receiver shapes the anchor has to
+// survive. `core.ts` declares primitive members; `sugar.d.ts` and `sugar2.d.ts`
+// add overloads of one the ordinary way — DIRECTLY on the interface, which merges
+// into a single member. `hidden.d.ts` adds an overload the other way, through an
+// `extends` clause on a member-map interface, which does not merge: the property
+// lookup keeps the interface's own declaration and hides the map's. Both shapes
+// must resolve to the declaration the marker names, and calls to both must match.
 
 const fixtureCore = `export interface IServiceManifest {
   isService(token: string): boolean;
+  reach(token: string): boolean;
 }
 export declare const manifest: IServiceManifest;
 `
 
 // First augmentation file: the inlineable sugar overload of isService (the pilot
-// body is ` return this.isService(tokenfor<T>()) `) and a second member `pick`
+// body is ` return this.isService(typefor<T>()) `) and a second member `pick`
 // whose type parameter appears in a value position so it is INFERABLE.
 const fixtureSugar = `declare module './core' {
   interface IServiceManifest {
@@ -38,7 +40,7 @@ export {};
 `
 
 // Second augmentation file: a THIRD declaration of isService, in a different
-// file, so the merged member symbol provably spans three sources. Its arity
+// file, so the marker's declaration set provably spans three sources. Its arity
 // differs from the primitive form to keep primitive-call overload resolution
 // unambiguous.
 const fixtureSugar2 = `declare module './core' {
@@ -49,8 +51,22 @@ const fixtureSugar2 = `declare module './core' {
 export {};
 `
 
+// Third augmentation file: `reach<T>()` arrives through a member-map `extends`
+// clause rather than as a direct member, so the interface's own `reach` shadows
+// it. This is the shape a real augmentation package publishes, and the one a
+// property lookup cannot see past.
+const fixtureHidden = `interface IReachAugmentations {
+  reach<T>(): boolean;
+}
+declare module './core' {
+  interface IServiceManifest extends IReachAugmentations {}
+}
+export {};
+`
+
 const fixtureMain = `/// <reference path="./sugar.d.ts" />
 /// <reference path="./sugar2.d.ts" />
+/// <reference path="./hidden.d.ts" />
 import { manifest } from './core';
 
 interface Foo { readonly brand: 'foo'; }
@@ -59,13 +75,8 @@ declare const theFoo: Foo;
 manifest.isService<Foo>();     // explicit sugar — the (a) target
 manifest.isService('literal'); // primitive form — matches the member, no type arg to inline
 manifest.pick(theFoo);         // inferred T = Foo — the (b) target
+manifest.reach<Foo>();         // the hidden-declaration target
 `
-
-// isServiceEntry is the pilot publish-list entry, resolved against the fixture's
-// relative module. In production the token package part is a bare specifier
-// ("@rhombus-std/di.core"); a relative "./core" exercises the identical
-// resolution path.
-var isServiceEntry = Entry{Type: "./core:IServiceManifest", Impl: "ServiceManifestExtensions", Member: "isService"}
 
 func loadFixture(t *testing.T) (*driver.Program, *shimchecker.Checker, *shimast.SourceFile) {
 	t.Helper()
@@ -78,12 +89,13 @@ func loadFixture(t *testing.T) (*driver.Program, *shimchecker.Checker, *shimast.
     "strict": true,
     "noEmit": true
   },
-  "files": ["main.ts", "core.ts", "sugar.d.ts", "sugar2.d.ts"]
+  "files": ["main.ts", "core.ts", "sugar.d.ts", "sugar2.d.ts", "hidden.d.ts"]
 }
 `)
 	write(t, filepath.Join(root, "core.ts"), fixtureCore)
 	write(t, filepath.Join(root, "sugar.d.ts"), fixtureSugar)
 	write(t, filepath.Join(root, "sugar2.d.ts"), fixtureSugar2)
+	write(t, filepath.Join(root, "hidden.d.ts"), fixtureHidden)
 	write(t, filepath.Join(root, "main.ts"), fixtureMain)
 
 	prog, diags, err := driver.LoadProgram(root, "tsconfig.json", driver.LoadProgramOptions{})
@@ -100,18 +112,39 @@ func loadFixture(t *testing.T) (*driver.Program, *shimchecker.Checker, *shimast.
 	return prog, prog.Checker, main
 }
 
+// markerType resolves the fixture's IServiceManifest to its symbol the way
+// resolveMember does: module specifier, then exported type. In production the
+// package part is a bare specifier ("@rhombus-std/di.core"); a relative "./core"
+// exercises the identical resolution path.
+func markerType(t *testing.T, prog *driver.Program, checker *shimchecker.Checker) *shimast.Symbol {
+	t.Helper()
+	moduleSym := resolveModuleSymbol(prog, checker, "./core")
+	if moduleSym == nil {
+		t.Fatal("./core did not resolve to a module symbol")
+	}
+	typeSym := exportedMember(checker, moduleSym, "IServiceManifest")
+	if typeSym == nil {
+		t.Fatal("./core exports no IServiceManifest")
+	}
+	return typeSym
+}
+
+// receiverOf returns the receiver expression of a property-access call.
+func receiverOf(call *shimast.Node) *shimast.Node {
+	return call.AsCallExpression().Expression.AsPropertyAccessExpression().Expression
+}
+
 // TestResolvedSignatureToDeclarationForExplicitCall is probe (a): the whole build
-// dies if this fails. It proves the call-site half of matching —
-// GetResolvedSignature -> declaration -> set membership — binds an explicit
-// `manifest.isService<Foo>()` to the authored sugar overload, which is one of the
-// member symbol's merged declarations.
+// dies if this fails. An explicit `manifest.isService<Foo>()` binds to the
+// authored sugar overload, and that overload is one of the declarations the
+// marker names — the fast path where binding and marker agree.
 func TestResolvedSignatureToDeclarationForExplicitCall(t *testing.T) {
 	prog, checker, main := loadFixture(t)
 	defer func() { _ = prog.Close() }()
 
-	resolved, err := ResolveEntry(prog, checker, isServiceEntry)
-	if err != nil {
-		t.Fatalf("ResolveEntry: %v", err)
+	named := map[*shimast.Node]bool{}
+	for _, decl := range markerMemberDeclarations(checker, markerType(t, prog, checker), "isService") {
+		named[decl] = true
 	}
 
 	explicit := callContaining(t, main, "isService<Foo>")
@@ -122,8 +155,8 @@ func TestResolvedSignatureToDeclarationForExplicitCall(t *testing.T) {
 	if decl.Kind != shimast.KindMethodSignature {
 		t.Fatalf("resolved declaration kind = %v, want a method signature", decl.Kind)
 	}
-	if !resolved.Match(checker, explicit) {
-		t.Fatal("explicit isService<Foo>() did not match the resolved entry's declaration set")
+	if !named[decl] {
+		t.Fatal("explicit isService<Foo>() bound outside the marker's declaration set")
 	}
 
 	// The resolved overload must be the generic sugar form (one type parameter,
@@ -133,14 +166,15 @@ func TestResolvedSignatureToDeclarationForExplicitCall(t *testing.T) {
 		t.Fatalf("explicit call resolved to a %d-parameter overload, want the 0-parameter sugar form", got)
 	}
 
-	// The primitive form shares the member symbol, so it Matches too — but it is
-	// gated OUT of inlining downstream by carrying no recoverable type argument.
-	// That gate, not the member match, is the sugar/primitive discriminator.
+	// The primitive form shares the member, so its declaration is named too — but
+	// it is gated OUT of inlining downstream by carrying no recoverable type
+	// argument. That gate, not the member match, is the sugar/primitive
+	// discriminator.
 	primitive := callContaining(t, main, "isService('literal')")
-	if !resolved.Match(checker, primitive) {
-		t.Fatal("primitive isService('literal') unexpectedly failed member-identity match")
+	if !named[resolvedDeclaration(checker, primitive)] {
+		t.Fatal("primitive isService('literal') bound outside the marker's declaration set")
 	}
-	if _, ok := RecoverTypeArguments(checker, primitive); ok {
+	if _, ok := RecoverTypeArguments(checker, primitive, nil); ok {
 		t.Fatal("primitive isService('literal') must yield no type arguments (the inlining gate)")
 	}
 }
@@ -154,7 +188,7 @@ func TestRecoverTypeArgumentsExplicitAndInferred(t *testing.T) {
 	defer func() { _ = prog.Close() }()
 
 	explicit := callContaining(t, main, "isService<Foo>")
-	args, ok := RecoverTypeArguments(checker, explicit)
+	args, ok := RecoverTypeArguments(checker, explicit, nil)
 	if !ok {
 		t.Fatal("RecoverTypeArguments failed for explicit isService<Foo>()")
 	}
@@ -163,7 +197,7 @@ func TestRecoverTypeArgumentsExplicitAndInferred(t *testing.T) {
 	}
 
 	inferred := callContaining(t, main, "pick(theFoo)")
-	iargs, ok := RecoverTypeArguments(checker, inferred)
+	iargs, ok := RecoverTypeArguments(checker, inferred, nil)
 	if !ok {
 		t.Fatal("RecoverTypeArguments failed for INFERRED pick(theFoo) — kill signal")
 	}
@@ -172,81 +206,65 @@ func TestRecoverTypeArgumentsExplicitAndInferred(t *testing.T) {
 	}
 }
 
-// TestMergedMemberCarriesAllDeclarations is probe (c): the entry's member symbol,
-// resolved once, carries EVERY duplicate declaration TS declaration-merging
-// unified — the base in core.ts plus both `declare module` augmentations — so the
-// declaration set is authoritative regardless of which file a call binds to.
-func TestMergedMemberCarriesAllDeclarations(t *testing.T) {
-	prog, checker, main := loadFixture(t)
+// TestMarkerDeclarationsSpanEveryContributingFile is probe (c): the marker names
+// EVERY declaration of the member on the surface it named — the base in core.ts
+// plus both `declare module` augmentations — so the set is authoritative
+// regardless of which file a call binds to.
+func TestMarkerDeclarationsSpanEveryContributingFile(t *testing.T) {
+	prog, checker, _ := loadFixture(t)
 	defer func() { _ = prog.Close() }()
 
-	resolved, err := ResolveEntry(prog, checker, isServiceEntry)
-	if err != nil {
-		t.Fatalf("ResolveEntry: %v", err)
-	}
-
-	if len(resolved.Declarations) != 3 {
-		t.Fatalf("merged isService carries %d declarations, want 3 (core + sugar + sugar2)", len(resolved.Declarations))
+	declarations := markerMemberDeclarations(checker, markerType(t, prog, checker), "isService")
+	if len(declarations) != 3 {
+		t.Fatalf("marker names %d declarations of isService, want 3 (core + sugar + sugar2)", len(declarations))
 	}
 
 	files := map[string]bool{}
-	for decl := range resolved.Declarations {
+	for _, decl := range declarations {
 		sf := shimast.GetSourceFileOfNode(decl)
 		if sf == nil {
-			t.Fatal("a merged declaration has no source file")
+			t.Fatal("a marker declaration has no source file")
 		}
 		files[filepath.Base(sf.FileName())] = true
 	}
 	for _, want := range []string{"core.ts", "sugar.d.ts", "sugar2.d.ts"} {
 		if !files[want] {
-			t.Fatalf("merged declaration set missing a declaration from %s; got files %v", want, files)
+			t.Fatalf("marker declaration set missing a declaration from %s; got files %v", want, files)
 		}
-	}
-
-	// Both a sugar-form and the primitive-form call bind to declarations inside
-	// this one set — the merged symbol is the single anchor for every overload.
-	if !resolved.Match(checker, callContaining(t, main, "isService<Foo>")) {
-		t.Fatal("sugar call not covered by the merged declaration set")
-	}
-	if !resolved.Match(checker, callContaining(t, main, "isService('literal')")) {
-		t.Fatal("primitive call not covered by the merged declaration set")
 	}
 }
 
-// TestRogueDuplicateIsNotMatched is the identity tripwire: a same-NAMED member on
-// an unrelated interface resolves to a declaration OUTSIDE the set, so it does
-// not match — matching is by symbol/declaration identity, never by string key.
-func TestRogueDuplicateIsNotMatched(t *testing.T) {
+// TestMarkerReachesAMemberMapDeclaration is the regression the anchor exists for.
+// `reach<T>()` is declared on a member map the receiver extends, and the
+// receiver's own `reach` hides it: the property lookup answers with the primitive
+// and never mentions the generic one. Walking the surface finds both, so the
+// marker still names the declaration it was told to.
+func TestMarkerReachesAMemberMapDeclaration(t *testing.T) {
 	prog, checker, main := loadFixture(t)
 	defer func() { _ = prog.Close() }()
 
-	resolved, err := ResolveEntry(prog, checker, isServiceEntry)
-	if err != nil {
-		t.Fatalf("ResolveEntry: %v", err)
+	typeSym := markerType(t, prog, checker)
+
+	// What a property lookup alone can see: the primitive, and nothing generic.
+	lookup := checker.GetPropertyOfType(checker.GetDeclaredTypeOfSymbol(typeSym), "reach")
+	if lookup == nil {
+		t.Fatal("the fixture no longer declares reach on IServiceManifest itself")
+	}
+	for _, decl := range lookup.Declarations {
+		if len(typeParamNames(decl)) != 0 {
+			t.Fatal("the property lookup surfaced the generic declaration — the fixture no longer hides it")
+		}
 	}
 
-	root := t.TempDir()
-	write(t, filepath.Join(root, "tsconfig.json"), `{
-  "compilerOptions": { "target": "ES2022", "module": "esnext", "moduleResolution": "bundler", "strict": true, "noEmit": true },
-  "files": ["rogue.ts"]
-}
-`)
-	write(t, filepath.Join(root, "rogue.ts"), `interface Other { isService<T>(): boolean; }
-declare const other: Other;
-other.isService<number>();
-`)
-	rogueProg, diags, err := driver.LoadProgram(root, "tsconfig.json", driver.LoadProgramOptions{})
-	if err != nil || len(diags) != 0 {
-		t.Fatalf("rogue program load failed: err=%v diags=%v", err, diags)
+	// What the marker names: both, the hidden generic one included.
+	generic := 0
+	for _, decl := range markerMemberDeclarations(checker, typeSym, "reach") {
+		if len(typeParamNames(decl)) == 1 {
+			generic++
+		}
 	}
-	defer func() { _ = rogueProg.Close() }()
-
-	rogueMain := sourceFileWithSuffix(t, rogueProg, "rogue.ts")
-	rogueCall := callContaining(t, rogueMain, "isService<number>")
-	// Matched against the FIXTURE's resolved entry but using the rogue program's
-	// checker: an unrelated same-named member is not in the fixture's set.
-	if resolved.Match(rogueProg.Checker, rogueCall) {
-		t.Fatal("a same-named member on an unrelated interface matched — identity matching is broken")
+	if generic != 1 {
+		t.Fatalf("marker names %d generic declarations of reach, want 1 — the member map was not walked", generic)
 	}
 	_ = main
 }
@@ -321,4 +339,104 @@ func typeNames(checker *shimchecker.Checker, ts []*shimchecker.Type) []string {
 		out[i] = typeName(checker, t)
 	}
 	return out
+}
+
+// ── static / namespace / const-member / class-member resolution ─────────────
+
+const staticFixtureSrc = `export class Klass {
+  static doStatic(): number { return 1; }
+  doInstance(): string { return "a"; }
+}
+
+export namespace Ns {
+  export function doNamespace(): boolean { return true; }
+}
+
+export const Obj = {
+  doConst(): string { return "c"; },
+};
+
+const inst = new Klass();
+Klass.doStatic();
+inst.doInstance();
+Ns.doNamespace();
+Obj.doConst();
+`
+
+func loadStaticFixture(t *testing.T) (*driver.Program, *shimchecker.Checker, *shimast.SourceFile) {
+	t.Helper()
+	root := t.TempDir()
+	write(t, filepath.Join(root, "tsconfig.json"), `{
+  "compilerOptions": {
+    "target": "ES2022", "module": "esnext", "moduleResolution": "bundler",
+    "strict": true, "noEmit": true
+  },
+  "files": ["main.ts"]
+}`)
+	write(t, filepath.Join(root, "main.ts"), staticFixtureSrc)
+	prog, diags, err := driver.LoadProgram(root, "tsconfig.json", driver.LoadProgramOptions{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(diags) != 0 {
+		t.Fatalf("config diagnostics: %v", diags)
+	}
+	main := sourceFileWithSuffix(t, prog, "main.ts")
+	return prog, prog.Checker, main
+}
+
+func TestStaticMemberCallResolvesToDeclaration(t *testing.T) {
+	prog, checker, main := loadStaticFixture(t)
+	defer func() { _ = prog.Close() }()
+
+	call := callContaining(t, main, "Klass.doStatic()")
+	decl := resolvedDeclaration(checker, call)
+	if decl == nil {
+		t.Fatal("Klass.doStatic() did not resolve to a declaration")
+	}
+	if name := decl.Name(); name == nil || name.Text() != "doStatic" {
+		t.Fatalf("resolved declaration named %v, want doStatic", name)
+	}
+}
+
+func TestNamespaceMemberCallResolvesToDeclaration(t *testing.T) {
+	prog, checker, main := loadStaticFixture(t)
+	defer func() { _ = prog.Close() }()
+
+	call := callContaining(t, main, "Ns.doNamespace()")
+	decl := resolvedDeclaration(checker, call)
+	if decl == nil {
+		t.Fatal("Ns.doNamespace() did not resolve to a declaration")
+	}
+	if name := decl.Name(); name == nil || name.Text() != "doNamespace" {
+		t.Fatalf("resolved declaration named %v, want doNamespace", name)
+	}
+}
+
+func TestConstMemberCallResolvesToDeclaration(t *testing.T) {
+	prog, checker, main := loadStaticFixture(t)
+	defer func() { _ = prog.Close() }()
+
+	call := callContaining(t, main, "Obj.doConst()")
+	decl := resolvedDeclaration(checker, call)
+	if decl == nil {
+		t.Fatal("Obj.doConst() did not resolve to a declaration")
+	}
+	if name := decl.Name(); name == nil || name.Text() != "doConst" {
+		t.Fatalf("resolved declaration named %v, want doConst", name)
+	}
+}
+
+func TestClassInstanceMemberCallResolvesToDeclaration(t *testing.T) {
+	prog, checker, main := loadStaticFixture(t)
+	defer func() { _ = prog.Close() }()
+
+	call := callContaining(t, main, "inst.doInstance()")
+	decl := resolvedDeclaration(checker, call)
+	if decl == nil {
+		t.Fatal("inst.doInstance() did not resolve to a declaration")
+	}
+	if name := decl.Name(); name == nil || name.Text() != "doInstance" {
+		t.Fatalf("resolved declaration named %v, want doInstance", name)
+	}
 }

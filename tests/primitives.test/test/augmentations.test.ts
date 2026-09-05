@@ -1,8 +1,7 @@
 // Behaviour tests for the dual-export augmentation infrastructure
-// (@rhombus-std/primitives/augmentations): `applyAugmentations` mounts
-// receiver-first functions onto a prototype as `this`-forwarding methods, and the
-// method form must be behaviour-equivalent to calling the object-literal member
-// directly.
+// (@rhombus-std/primitives/augmentations): `applyAugmentations` mounts a
+// `this`-based method verbatim onto a prototype, and the method form must be
+// behaviour-equivalent to calling the object-literal member directly.
 
 import { applyAugmentations, type AugmentationSet } from '@rhombus-std/primitives';
 import { describe, expect, test } from 'bun:test';
@@ -18,11 +17,11 @@ interface Box {
   read(): number;
 }
 
-const BoxExtensions = { add(box: Box, n: number): Box {
-  box.value += n;
-  return box;
-}, read(box: Box): number {
-  return box.value;
+const BoxExtensions = { add(this: Box, n: number): Box {
+  this.value += n;
+  return this;
+}, read(this: Box): number {
+  return this.value;
 } } satisfies AugmentationSet<Box>;
 
 // Install once for the whole file (mirrors how a library author installs at
@@ -48,14 +47,14 @@ describe('applyAugmentations', () => {
     const viaMember = new Box();
 
     viaMethod.add(7);
-    BoxExtensions.add(viaMember, 7);
+    BoxExtensions.add.call(viaMember, 7);
 
-    expect(viaMethod.read()).toBe(BoxExtensions.read(viaMember));
+    expect(viaMethod.read()).toBe(BoxExtensions.read.call(viaMember));
     expect(viaMethod.value).toBe(viaMember.value);
   });
 
-  test('the augmentation set is a plain object of receiver-first functions', () => {
+  test('the augmentation set is a plain object of this-based functions', () => {
     expect(BoxExtensions.add).toBeInstanceOf(Function);
-    expect(Object.keys(BoxExtensions).sort()).toEqual(['add', 'read']);
+    expect(Object.keys(BoxExtensions).toSorted()).toEqual(['add', 'read']);
   });
 });

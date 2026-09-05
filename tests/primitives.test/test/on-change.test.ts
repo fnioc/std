@@ -2,8 +2,8 @@
 // load-bearing part: a fired token must produce a fresh registration, and
 // state must flow through untouched.
 
-import { ChangeToken } from '@rhombus-std/primitives/tokens/ChangeToken';
-import type { IChangeToken } from '@rhombus-std/primitives/tokens/IChangeToken';
+import type { IChangeToken } from '@rhombus-std/primitives/private/change-token/IChangeToken';
+import { ChangeToken } from '@rhombus-std/primitives/private/change-token/on-change';
 import { describe, expect, test } from 'bun:test';
 
 // A minimal, mutable IChangeToken stub -- fires every registered callback

@@ -2,9 +2,8 @@
 // returns true, so the FILTER layer (not the sink) is what gates a write — the
 // point of exercising the filter engine.
 
-import type { EventId, IExternalScopeProvider, ILogger, ILoggerProvider, ISupportExternalScope,
-  LogLevel } from '@rhombus-std/logging.core';
-import type { Func } from '@rhombus-toolkit/func';
+import type { EventId, IExternalScopeProvider, ILogger, ILoggerProvider, ISupportExternalScope, LogLevel } from '@rhombus-std/logging.core';
+import type { Func } from '@rhombus-toolkit/types';
 
 /** A recorded write: its level and rendered message. */
 export interface Record {
@@ -22,9 +21,7 @@ export class RecordingLogger implements ILogger {
 
   public constructor(public readonly category: string) {}
 
-  public log<TState>(logLevel: LogLevel, _eventId: EventId, state: TState, error: Error | undefined,
-    formatter: Func<[TState, Error | undefined], string>): void
-  {
+  public log<TState>(logLevel: LogLevel, _eventId: EventId, state: TState, error: Error | undefined, formatter: Func<[TState, Error | undefined], string>): void {
     this.records.push({ level: logLevel, message: formatter(state, error) });
   }
 

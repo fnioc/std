@@ -1,6 +1,6 @@
 // ILogger and the scope-provider contract.
 
-import type { Func } from '@rhombus-toolkit/func';
+import type { Func } from '@rhombus-toolkit/types';
 import type { EventId } from './EventId';
 import type { LogLevel } from './LogLevel';
 
@@ -14,9 +14,9 @@ import type { LogLevel } from './LogLevel';
  * `state`/`formatter` for you.
  *
  * @typeParam TCategoryName - A phantom marker only; the platform erases it, so a
- * generic-category logger's category comes from its di token at registration
- * (see {@link Logger} in `@rhombus-std/logging`), not from this type. The bare
- * `ILogger` is `ILogger<unknown>`.
+ * generic-category logger's category comes from the closing type at registration
+ * (see {@link Logger} in `@rhombus-std/logging`), not from this type parameter. The
+ * bare `ILogger` is `ILogger<unknown>`.
  */
 export interface ILogger<TCategoryName = unknown> {
   /**
@@ -26,8 +26,7 @@ export interface ILogger<TCategoryName = unknown> {
    * may read it instead of rendering.
    * @param formatter - Renders `state` (and `error`) into the message string.
    */
-  log<TState>(logLevel: LogLevel, eventId: EventId, state: TState, error: Error | undefined,
-    formatter: Func<[TState, Error | undefined], string>): void;
+  log<TState>(logLevel: LogLevel, eventId: EventId, state: TState, error: Error | undefined, formatter: Func<[TState, Error | undefined], string>): void;
 
   isEnabled(logLevel: LogLevel): boolean;
 

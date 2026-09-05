@@ -6,7 +6,7 @@
 // either disqualifies the page from the back/forward cache, so this package
 // must never be able to name them.
 
-import type { Func } from '@rhombus-toolkit/func';
+import type { Func } from '@rhombus-toolkit/types';
 
 /** The `document.visibilityState` values. */
 export type DocumentVisibilityState = 'visible' | 'hidden';
@@ -53,8 +53,7 @@ export interface PageContext {
  * `undefined` deeper inside a lifetime/bridge.
  */
 export function defaultPageContext(): PageContext {
-  const { document, window } = globalThis as unknown as { document: DocumentLike | undefined;
-    window: WindowLike | undefined; };
+  const { document, window } = globalThis as unknown as { document: DocumentLike | undefined; window: WindowLike | undefined; };
   if (document === undefined || window === undefined) {
     throw new Error(
       '@rhombus-std/hosting.browser requires a browser page context (document/window); '

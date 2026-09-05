@@ -4,9 +4,8 @@
 // data store of its own: every read/write, reload token, and child-key
 // enumeration delegates straight through to the chained configuration.
 
-import { ChainedConfigProvider, ChainedConfigSource, ConfigBuilder, ConfigManager, type ConfigObject, ConfigProvider,
-  ConfigReloadToken, type IConfig, type IConfigBuilder, type IConfigProvider, type IConfigSection,
-  type IConfigSource } from '@rhombus-std/config';
+import { ChainedConfigProvider, ChainedConfigSource, ConfigBuilder, ConfigManager, type ConfigObject, ConfigProvider, ConfigReloadToken, type IConfig, type IConfigBuilder, type IConfigProvider,
+  type IConfigSection, type IConfigSource } from '@rhombus-std/config';
 import type { IChangeToken } from '@rhombus-std/primitives';
 import { describe, expect, test } from 'bun:test';
 
@@ -59,8 +58,7 @@ describe('ChainedConfigProvider', () => {
   });
 
   test("getChildKeys combines the chained configuration's own children with earlierKeys, sorted", () => {
-    const inner = new ConfigBuilder().addInMemoryCollection({ 'Server:Port': '8080', 'Server:Host': 'localhost',
-      'Logging:Level': 'Info' }).build();
+    const inner = new ConfigBuilder().addInMemoryCollection({ 'Server:Port': '8080', 'Server:Host': 'localhost', 'Logging:Level': 'Info' }).build();
     const provider = new ChainedConfigSource({ config: inner }).build(new ConfigBuilder());
 
     expect([...provider.getChildKeys(['Zeta'], undefined)]).toEqual(['Logging', 'Server', 'Zeta']);
@@ -118,8 +116,15 @@ describe('ChainedConfigSource', () => {
   });
 });
 
-/** A minimal Disposable IConfig stand-in -- only `[Symbol.dispose]` is exercised below. */
-class FakeDisposableConfig implements IConfig, Disposable {
+/**
+ * A minimal Disposable IConfig stand-in -- only `[Symbol.dispose]` is exercised
+ * below. It MERGES IConfig rather than implementing it: the interface carries
+ * augmented members that only exist once the registry installs them, so
+ * `implements` would demand a body for each of them here.
+ */
+interface FakeDisposableConfig extends IConfig {}
+
+class FakeDisposableConfig implements Disposable {
   public disposed = false;
   public readonly value: string | undefined = undefined;
   public get(): string | undefined {

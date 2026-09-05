@@ -2,7 +2,7 @@
 // provider-side sink (a console formatter, a buffered writer) can pass one value
 // around instead of six.
 
-import type { Func } from '@rhombus-toolkit/func';
+import type { Func } from '@rhombus-toolkit/types';
 import type { EventId } from './EventId';
 import type { ILogger } from './ILogger';
 import type { LogLevel } from './LogLevel';

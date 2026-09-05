@@ -4,7 +4,7 @@ The collapsed `IOptions<T>` accessor + the configure / post-configure / validate
 pipeline, plus startup validation (`IStartupValidator`/`StartupValidator`, forced by `Host.start`)
 and `ValidateOptionsResultBuilder` for multi-failure aggregation. `options.augmentations` is the
 one place di and config meet — the config→`IOptions<T>` bridge — and exports the pipeline
-slot-token grammar (`configureStepToken` et al.) so a downstream package can register a step for a
+slot-token grammar (`configureStepType` et al.) so a downstream package can register a step for a
 type it doesn't own.
 
 ## Justified divergences
@@ -43,9 +43,7 @@ re-arms the next change token automatically after each fire.
 
 ```ts
 // libraries/options/src/options.ts
-function watch<T>(getValue: Func<[], T>,
-  produceToken: ChangeTokenProducer): IOptions<T>
-{
+function watch<T>(getValue: Func<[], T>, produceToken: ChangeTokenProducer): IOptions<T> {
   return { get value(): T {
     return getValue();
   }, subscribe(listener: Func<[T], void>): Disposable {
@@ -101,18 +99,18 @@ hand, adding no capability.
 ### 5. The pipeline slot-token grammar is public API
 
 The reference hides its per-options pipeline registrations behind named-options internals. Here
-the slot tokens are a derived, public grammar (`configureStepToken`, `postConfigureStepToken`,
-`validateStepToken`, `changeTokenSourceToken`) — so a downstream package can append a pipeline step
-for a `TOptions` it doesn't own, by deriving the same slot token the assembly reads.
+the slot tokens are a derived, public grammar (`configureStepType`, `postConfigureStepType`,
+`validateStepType`, `changeTokenSourceType`) — so a downstream package can append a pipeline step
+for a `TOptions` it doesn't own, by deriving the same slot type the assembly reads.
 
 ```ts
-// libraries/options.augmentations/src/option-tokens.ts
-export function configureStepToken(optionsToken: Token): Token {
-  return `${NAMESPACE}/configure/${optionsToken}`;
+// libraries/options.augmentations/src/option-types.ts
+export function configureStepType(optionsType: Type): Type {
+  return Type.global(`${NAMESPACE}/configure`, [optionsType]);
 }
 ```
 
-Registering a step is just `addValue(configureStepToken(token), step)` — the same call the
+Registering a step is just `addValue(configureStepType(type), step)` — the same call the
 `configure` augmentation makes internally, now reachable by any consumer.
 
 ### 6. DI-injected pipeline steps via a variadic `DepTokens` form
@@ -124,14 +122,11 @@ closures.
 
 ```ts
 // tests/options.augmentations.test/test/di-injected-steps.test.ts
-services.configure<WidgetOptions, [UrlProvider, { attempts: number; }]>(
-  OPTIONS_TOKEN,
-  [URL_PROVIDER_TOKEN, RETRY_POLICY_TOKEN],
-  (options, urls, policy) => {
-    options.url = urls.base;
-    options.retries = policy.attempts;
-  },
-);
+services.configure<WidgetOptions, [UrlProvider, { attempts: number; }]>(OPTIONS_TOKEN, [URL_PROVIDER_TOKEN,
+  RETRY_POLICY_TOKEN], (options, urls, policy) => {
+  options.url = urls.base;
+  options.retries = policy.attempts;
+});
 ```
 
 The same variadic form serves `postConfigure` and `validate`.
@@ -169,9 +164,7 @@ function bindSection(config: IConfig, target: Record<string, unknown>): void {
     const grandchildren = [...child.getChildren()];
     if (grandchildren.length) {
       const existing = target[child.key];
-      const nested = (typeof existing === 'object' && existing !== null)
-        ? existing as Record<string, unknown>
-        : {};
+      const nested = (typeof existing === 'object' && existing !== null) ? existing as Record<string, unknown> : {};
       target[child.key] = nested;
       bindSection(child, nested); // recurse — compose, don't clobber
     } else if (child.value !== undefined) {
