@@ -20,7 +20,9 @@ export const tagOfTag: TypeRule = {
   id: 'DI1001',
   level: 'warning',
   check(node: Type): string | undefined {
-    return node.kind === 'tag' && node.type.kind === 'tag' ? 'keyed twice, and the two keys have no canonical order to file it under' : undefined;
+    return Type.some(node, candidate => candidate.kind === 'tag' && candidate.type.kind === 'tag')
+      ? 'keyed twice, and the two keys have no canonical order to file it under'
+      : undefined;
   },
 };
 
@@ -29,7 +31,9 @@ export const tagOfOptional: TypeRule = {
   id: 'DI1002',
   level: 'warning',
   check(node: Type): string | undefined {
-    return node.kind === 'tag' && Type.isOptional(node.type) ? 'keyed over an optional, so the key names the absent value as much as the present one' : undefined;
+    return Type.some(node, candidate => candidate.kind === 'tag' && Type.isOptional(candidate.type))
+      ? 'keyed over an optional, so the key names the absent value as much as the present one'
+      : undefined;
   },
 };
 
@@ -38,7 +42,9 @@ export const tagOfLiteral: TypeRule = {
   id: 'DI1003',
   level: 'warning',
   check(node: Type): string | undefined {
-    return node.kind === 'tag' && node.type.kind === 'literal' ? 'keyed over a literal value, which names no service for the key to tell apart' : undefined;
+    return Type.some(node, candidate => candidate.kind === 'tag' && candidate.type.kind === 'literal')
+      ? 'keyed over a literal value, which names no service for the key to tell apart'
+      : undefined;
   },
 };
 
@@ -47,7 +53,9 @@ export const tagWithEmptyKey: TypeRule = {
   id: 'DI1004',
   level: 'warning',
   check(node: Type): string | undefined {
-    return node.kind === 'tag' && !node.tag ? 'keyed with the empty string, which reads as the unkeyed type without being it' : undefined;
+    return Type.some(node, candidate => candidate.kind === 'tag' && !candidate.tag)
+      ? 'keyed with the empty string, which reads as the unkeyed type without being it'
+      : undefined;
   },
 };
 
@@ -56,7 +64,7 @@ export const promiseOfPromise: TypeRule = {
   id: 'DI1005',
   level: 'warning',
   check(node: Type): string | undefined {
-    return Type.isClosed(node) && Type.isPromise(node) && Type.isPromise(Type.awaited(node))
+    return Type.some(node, candidate => Type.isClosed(candidate) && Type.isMatch(typefor<Promise<Promise<Generic<'S'>>>>(), candidate))
       ? 'a promise of a promise, which delivers exactly what the inner one delivers'
       : undefined;
   },
@@ -67,7 +75,7 @@ export const promiseOfAsyncIterable: TypeRule = {
   id: 'DI1006',
   level: 'warning',
   check(node: Type): string | undefined {
-    return Type.isClosed(node) && Type.isPromise(node) && Type.isMatch(typefor<AsyncIterable<Generic<'E'>>>(), Type.awaited(node))
+    return Type.some(node, candidate => Type.isClosed(candidate) && Type.isPromise(candidate) && Type.isMatch(typefor<AsyncIterable<Generic<'E'>>>(), Type.awaited(candidate)))
       ? 'a promise of an asynchronous sequence, which already arrives one element at a time'
       : undefined;
   },
@@ -78,7 +86,7 @@ export const promiseOfLiteral: TypeRule = {
   id: 'DI1007',
   level: 'warning',
   check(node: Type): string | undefined {
-    return Type.isClosed(node) && Type.isPromise(node) && Type.awaited(node).kind === 'literal'
+    return Type.some(node, candidate => Type.isClosed(candidate) && Type.isPromise(candidate) && Type.awaited(candidate).kind === 'literal')
       ? 'a promise of a literal value, which has nothing to wait for'
       : undefined;
   },
@@ -89,8 +97,10 @@ export const aggregateOfOptional: TypeRule = {
   id: 'DI1008',
   level: 'warning',
   check(node: Type): string | undefined {
-    const element = getAggregateElement(node);
-    return element !== undefined && Type.isOptional(element)
+    return Type.some(node, candidate => {
+        const element = getAggregateElement(candidate);
+        return element !== undefined && Type.isOptional(element);
+      })
       ? 'an aggregate of an optional, so the optional fallback arrives as a phantom undefined element'
       : undefined;
   },
@@ -101,7 +111,7 @@ export const unionOfTaggedBesideBare: TypeRule = {
   id: 'DI1009',
   level: 'warning',
   check(node: Type): string | undefined {
-    return node.kind === 'union' && node.members.some(member => member.kind === 'tag' && node.members.includes(member.type))
+    return Type.some(node, candidate => candidate.kind === 'union' && candidate.members.some(member => member.kind === 'tag' && candidate.members.includes(member.type)))
       ? 'a keyed member beside the same type unkeyed, so the key decides nothing about which arm answers'
       : undefined;
   },
@@ -112,7 +122,7 @@ export const unionOfAggregates: TypeRule = {
   id: 'DI1010',
   level: 'warning',
   check(node: Type): string | undefined {
-    return node.kind === 'union' && node.members.filter(member => getAggregateElement(member) !== undefined).length > 1
+    return Type.some(node, candidate => candidate.kind === 'union' && candidate.members.filter(member => getAggregateElement(member) !== undefined).length > 1)
       ? 'two aggregates in one union, so the arm that answers is whichever the union tries first'
       : undefined;
   },
@@ -123,7 +133,12 @@ export const unionOfPromiseBesideSettled: TypeRule = {
   id: 'DI1011',
   level: 'warning',
   check(node: Type): string | undefined {
-    return node.kind === 'union' && node.members.some(member => Type.isClosed(member) && Type.isPromise(member) && node.members.includes(Type.awaited(member)))
+    return Type.some(
+        node,
+        candidate =>
+          candidate.kind === 'union'
+          && candidate.members.some(member => Type.isClosed(member) && Type.isPromise(member) && candidate.members.includes(Type.awaited(member))),
+      )
       ? 'a promise beside the value it settles to, so the caller cannot tell which arm answered'
       : undefined;
   },
@@ -156,7 +171,7 @@ export const registrationUnderLiteral: TypeRule = {
   },
 };
 
-/** The rules both sides read: shapes that are suspect wherever they are spelled. */
+/** The rules both sides read: shapes that are suspect wherever inside the address they are spelled. */
 const SHARED_RULES: readonly TypeRule[] = [
   tagOfTag,
   tagOfOptional,
@@ -175,6 +190,10 @@ const SHARED_RULES: readonly TypeRule[] = [
  * The address rules, grouped by the side of the door that reads them.
  *
  * @remarks
+ * A rule is a predicate over the whole address, read once. The shared rules mean "anywhere in the
+ * address" and search it themselves; the three a single side reads speak of the address as filed
+ * or asked for, so they read only the address itself.
+ *
  * Every rule is a warning: an address spelled this way is legal and matched by identity like any
  * other, and the report says only that the spelling is more likely a slip than an intention.
  */

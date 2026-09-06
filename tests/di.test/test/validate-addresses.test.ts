@@ -69,6 +69,24 @@ describe('validateAddresses', () => {
     expect(provider.getService(CONN)).toBe('conn');
   });
 
+  test('passes a tryResolve ask, whose address carries the undefined literal as its fallback', () => {
+    const provider = Builder.withServices(manifest => manifest.add(Registration.value(CONN, 'conn')))
+      .useAddon(validateAddresses({ warningsAsErrors: true }))
+      .build();
+
+    expect(provider.tryResolve(CONN)).toBe('conn');
+    expect(provider.tryResolve(WIDGET)).toBeUndefined();
+  });
+
+  test('passes a tryResolveAsync ask, whose address is a promise of that same fallback', async () => {
+    const provider = Builder.withServices(manifest => manifest.add(Registration.value(CONN, 'conn')))
+      .useAddon(validateAddresses({ warningsAsErrors: true }))
+      .build();
+
+    await expect(provider.tryResolveAsync(CONN)).resolves.toBe('conn');
+    await expect(provider.tryResolveAsync(WIDGET)).resolves.toBeUndefined();
+  });
+
   test('reads the rules handed to it in place of the preset', () => {
     const build = () =>
       Builder.withServices(manifest => manifest.add(Registration.value(Type.union(CONN, WIDGET), 'either')))

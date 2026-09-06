@@ -509,8 +509,8 @@ for (const registration of control.registry) {
 registrable and every address is matched by identity, so nothing here is illegal: each rule reports a
 warning saying the spelling is likelier a slip than an intention. It reads every registration address
 at build and every ask's address at the door, and `warningsAsErrors` is what turns a report into a
-refusal — an `AggregateError` whose leaves each name the rule they tripped and the node that tripped
-it.
+refusal — an `AggregateError` whose leaves each name the rule they tripped and the address that
+tripped it.
 
 ```ts
 const provider = Builder
@@ -533,6 +533,11 @@ id, and `warningsAsErrors` makes a warning stop. The default lists are `addressR
 and `addressRules.ask`, and `addressRules.byId` answers every rule under its id. `DI1001`–`DI1011`
 are read on both sides, `DI1012` on an ask only, `DI1013`–`DI1014` on a registration only.
 
+Each rule is a predicate over the address, read once. `DI1001`–`DI1011` mean "anywhere in this
+address" and search it with `Type.find`, so a promise of a promise is caught in a callable's return
+slot as surely as at the top; `DI1012`–`DI1014` speak of the address as filed or asked for, so they
+read only the address itself and leave the `undefined` a `tryResolve` ask carries alone.
+
 | Id       | The address it objects to                                                                       |
 | -------- | ----------------------------------------------------------------------------------------------- |
 | `DI1001` | keyed twice, and the two keys have no canonical order to file it under                          |
@@ -549,8 +554,6 @@ are read on both sides, `DI1012` on an ask only, `DI1013`–`DI1014` on a regist
 | `DI1012` | an ask for undefined itself, which no registration produces                                     |
 | `DI1013` | filed under a union, which answers only an ask spelling that whole union                        |
 | `DI1014` | filed under a literal value, which answers only an ask spelling that literal                    |
-
-A promise rule reads a callable's return slot too, since the walk reaches every node of the address.
 
 ### 16. The standard lifetime model
 
