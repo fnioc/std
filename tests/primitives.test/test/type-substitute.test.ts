@@ -79,9 +79,10 @@ describe('Type.substitute on a tag', () => {
     expect(Type.substitute(Type.tag(T, 'primary'), { T: A })).toBe(Type.tag(A, 'primary'));
   });
 
-  test('substituting a hole with an already-tagged type is refused', () => {
+  test('substituting a hole with an already-tagged type nests the tags', () => {
     const alreadyTagged = Type.tag(B, 'secondary');
-    expect(() => Type.substitute(Type.tag(T, 'primary'), { T: alreadyTagged })).toThrow(TypeError);
+    const result = Type.substitute(Type.tag(T, 'primary'), { T: alreadyTagged });
+    expect(result).toBe(Type.tag(alreadyTagged, 'primary'));
   });
 });
 

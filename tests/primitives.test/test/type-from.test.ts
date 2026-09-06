@@ -207,6 +207,11 @@ describe('malformed tokens', () => {
 });
 
 describe('round trip', () => {
+  test('a nested tag round-trips through its token', () => {
+    const nested = Type.tag(Type.tag(A, 'a'), 'b');
+    expect(Type.from(Type.stringify(nested))).toBe(nested);
+  });
+
   test('every open-row shape reads back as the identical node', () => {
     const listRow = Type.func(A, Type.signatures([Type.array(B)]));
     expect(Type.from(Type.stringify(listRow))).toBe(listRow);
@@ -341,9 +346,7 @@ function generate(random: () => number, depth: number): Type {
       return Type.generic(pick(NAMES));
     }
     case 'tag': {
-      // A tagged type is spellable only under a tag-free one, so a tagged pick contributes its own inner type.
-      const inner = child();
-      return Type.tag(inner.kind === 'tag' ? inner.type : inner, pick(NAMES));
+      return Type.tag(child(), pick(NAMES));
     }
     case 'global': {
       return Type.global(pick(NAMES), children(2));

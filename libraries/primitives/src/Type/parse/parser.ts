@@ -90,9 +90,6 @@ class TypeParser {
   #tagged(): Type {
     let type = this.#primary();
     while (this.#take('#')) {
-      if (type.kind === 'tag') {
-        throw this.#error(this.#lexed[this.#index - 1]!.position, 'no second tag — a type wears at most one');
-      }
       type = rawNode<TagType>({ kind: 'tag', tag: this.#segment(), type });
     }
     return type;
