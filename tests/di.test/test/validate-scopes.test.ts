@@ -4,8 +4,7 @@
 // several registrations of one address and a collection ask.
 
 import { Builder, ScopeValidationError, standardLifetime, validateBuildability, validateScopes } from '@rhombus-std/di';
-import { type Addon, type IDisposableServiceProvider, type IServiceProvider, type IServiceScopeFactory, type Manifest, ManifestValidationError, Registration,
-  type StandardLifetime } from '@rhombus-std/di.core';
+import { type Addon, type IDisposableServiceProvider, type IServiceProvider, type IServiceScopeFactory, type Manifest, Registration, type StandardLifetime } from '@rhombus-std/di.core';
 import { Type } from '@rhombus-std/primitives';
 import { describe, expect, test } from 'bun:test';
 
@@ -173,21 +172,22 @@ describe('when the captive check fires', () => {
         .add(HOLDER, Holder, Type.ctor(HOLDER, [[COUNTER]]), 'singleton')
         .add(COUNTER, Counter, Type.ctor(COUNTER, [[]]), 'scoped');
 
-    expect(build(captive)).toThrow(ManifestValidationError);
-    expect(build(reversed)).toThrow(ManifestValidationError);
+    expect(build(captive)).toThrow(AggregateError);
+    expect(build(reversed)).toThrow(AggregateError);
   });
 
-  test('the build-time failure names the singleton whose plan reached the scoped registration, with the refusal as its error', () => {
+  test('the build-time failure carries the scope refusal naming the scoped registration reached', () => {
     let caught: unknown;
     try {
       Builder.useAddon(validateBuildability()).useAddon(validateScopes()).useAddon(standardLifetime()).withServices(captive).build();
     } catch (error) {
       caught = error;
     }
-    const failures = (caught as ManifestValidationError).failures;
-    expect(failures.map(failure => failure.address)).toEqual([HOLDER]);
-    expect(failures[0]!.error).toBeInstanceOf(ScopeValidationError);
-    expect((failures[0]!.error as ScopeValidationError).address).toBe(COUNTER);
+    expect(caught).toBeInstanceOf(AggregateError);
+    const errors = (caught as AggregateError).errors as Error[];
+    expect(errors).toHaveLength(1);
+    expect(errors[0]).toBeInstanceOf(ScopeValidationError);
+    expect((errors[0] as ScopeValidationError).address).toBe(COUNTER);
   });
 
   test('at build, for a shadowed registration whose address the newest registration answers cleanly', () => {
@@ -206,10 +206,11 @@ describe('when the captive check fires', () => {
     } catch (error) {
       caught = error;
     }
-    const failures = (caught as ManifestValidationError).failures;
-    expect(failures.map(failure => failure.address)).toEqual([HOLDER]);
-    expect(failures[0]!.error).toBeInstanceOf(ScopeValidationError);
-    expect((failures[0]!.error as ScopeValidationError).address).toBe(COUNTER);
+    expect(caught).toBeInstanceOf(AggregateError);
+    const errors = (caught as AggregateError).errors as Error[];
+    expect(errors).toHaveLength(1);
+    expect(errors[0]).toBeInstanceOf(ScopeValidationError);
+    expect((errors[0] as ScopeValidationError).address).toBe(COUNTER);
   });
 
   test('a pre-built instance never trips the check at build: it has no dependencies to plan', () => {

@@ -37,7 +37,7 @@
 // then either app's `errors-demo.ts`; the line between the two files is the line
 // between the abstractions and the engine.
 
-import { CycleError, DiError, ManifestValidationError, UnsatisfiableError } from '@rhombus-std/di.core';
+import { CycleError, DiError, UnsatisfiableError } from '@rhombus-std/di.core';
 import type { Manifest } from '@rhombus-std/di.core';
 import { Type } from '@rhombus-std/primitives';
 
@@ -76,11 +76,12 @@ export function describeDiError(error: unknown): string {
 /**
  * Turns a caught value into one operator-facing line.
  *
- * Every class below extends `DiError` directly, so no branch shadows another —
+ * Every di class below extends `DiError` directly, so no branch shadows another —
  * but the root test still goes LAST, because it would swallow all of them. The
- * last three arms are the honest catch-alls: an engine failure this diagnostic
- * has not been taught yet, an error that was never ours, and a thrown value that
- * was not an error at all.
+ * eager build check raises the platform's `AggregateError`, which the `DiError`
+ * root would miss, so its arm goes first. The last three arms are the honest
+ * catch-alls: an engine failure this diagnostic has not been taught yet, an error
+ * that was never ours, and a thrown value that was not an error at all.
  *
  * Every branch names a `@rhombus-std/di.core` export, which is what lets the
  * table be COMPLETE inside a library. Provoking these takes a composition root;
@@ -91,11 +92,12 @@ export function describeDiError(error: unknown): string {
  */
 export function diagnose(error: unknown): string {
   // ── build time: the eager whole-graph check ────────────────────────────────
-  if (error instanceof ManifestValidationError) {
+  if (error instanceof AggregateError) {
     // Every broken registration at once rather than the first, so an operator
-    // gets one round-trip instead of one per hole.
-    const types = error.failures.map(failure => Type.stringify(failure.address)).join(', ');
-    return `ManifestValidationError — ${error.failures.length} registration(s) cannot be satisfied: ${types}`;
+    // gets one round-trip instead of one per hole. Each leaf is itself a taxonomy
+    // member carrying the address it names.
+    const leaves = error.errors.map(leaf => leaf instanceof Error ? leaf.name : String(leaf)).join(', ');
+    return `AggregateError — ${error.errors.length} registration(s) cannot be satisfied: ${leaves}`;
   }
 
   // ── resolution time ────────────────────────────────────────────────────────

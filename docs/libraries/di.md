@@ -482,7 +482,7 @@ beneath: a genuine cycle through a second address still throws `CycleError`.
 ### 15. Validation addons
 
 Find every broken registration before the first ask, all at once. Two addons sweep the manifest at
-build and throw `ManifestValidationError` carrying every failure together, so one attempt surfaces
+build and throw an `AggregateError` carrying every leaf failure together, so one attempt surfaces
 the whole broken graph. `validateUniversalAddresses()` rejects a registration addressed by nothing
 but a hole; `validateBuildability()` plans every registration of every closed address the manifest
 answers — a registration a newer one shadows included, since a collection ask still walks it — and a
@@ -492,7 +492,7 @@ plan that cannot build is a failure.
 const provider = Builder
   .withServices(services => services.add<IRepo>(SqlRepo)) // IRepo needs an IClock nobody registered
   .useAddon(validateBuildability())
-  .build(); // throws ManifestValidationError naming IRepo, before any ask
+  .build(); // throws an AggregateError whose one error names IRepo, before any ask
 ```
 
 Your own build-time sweep is a middleware away: `ControlService.registry` is the registrations the
@@ -581,8 +581,8 @@ provider.resolve<IServiceScopeFactory>().openScope().resolve<IRepo>(); // answer
 To refuse a captive dependency at build rather than at the first ask, add `validateBuildability()`
 ahead of `validateScopes()` — the chain folds innermost first, so the build-time plan runs under the
 captive check only when the validator that plans is composed outside the one that checks — and the
-refusal arrives inside the `ManifestValidationError`, paired with the singleton whose plan reached
-the scoped registration.
+refusal arrives as a `ScopeValidationError` inside the `AggregateError`, naming the scoped
+registration the singleton's plan reached.
 
 ```ts
 Builder
@@ -590,7 +590,7 @@ Builder
   .useAddon(validateScopes())
   .useAddon(standardLifetime())
   .withServices(services => services.add<IRepo>(SqlRepo, 'scoped').add<ICache>(Cache, 'singleton')) // Cache takes an IRepo
-  .build(); // throws ManifestValidationError; the ICache failure's error is a ScopeValidationError naming IRepo
+  .build(); // throws an AggregateError; its one error is a ScopeValidationError naming IRepo
 ```
 
 ### 17. The tagged lifetime model
@@ -671,13 +671,13 @@ parsing a message, and a library holding only the abstractions can classify what
 provider threw at it. `UnsatisfiableError` — nothing produces the address; the candidate to fall
 back from, carrying the actual missing dependency as its `cause`. `CycleError` — the graph loops,
 with the path that closed it; a fault, deliberately not unsatisfiable. `UniversalAddressError` — a
-registration addressed by a bare hole. `ManifestValidationError` — every registration an up-front
-pass could not plan, `failures` pairing each with its address. `LifetimeModelError` — the installed
+registration addressed by a bare hole. `LifetimeModelError` — the installed
 lifetime model's own code threw while realizing an address; the model's error is the `cause`.
 `ObjectDisposedError` — an ask or a scope opening reached a disposed provider — the one `build()`
 returns, or an opened scope. `ScopeValidationError` — a scoped registration reached under the
 singleton scope, from the provider `build()` returns or consumed by a singleton, with the scoped
-`address`.
+`address`. The up-front validation addons collect the leaves they gather into the platform's
+`AggregateError`, whose `errors` are these classes, each naming its own address.
 
 ```ts
 catch (error) {

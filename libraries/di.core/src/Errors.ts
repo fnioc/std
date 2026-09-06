@@ -141,33 +141,3 @@ export class ObjectDisposedError extends DiError {
     this.name = 'ObjectDisposedError';
   }
 }
-
-/** One registration that could not be lowered. */
-export interface ValidationFailure {
-  /** The service type of the registration that failed. */
-  readonly address: Type;
-  /** What lowering it produced — an {@link UnsatisfiableError}, a {@link CycleError}, or a fault. */
-  readonly error: Error;
-}
-
-/**
- * Every registration an up-front validation pass could not lower, raised together so one attempt
- * surfaces the whole broken graph instead of its first fault. {@link errors} carries the failures
- * themselves, positionally matching {@link failures}.
- */
-export class ManifestValidationError extends DiError {
-  /** Each failure paired with the registration it came from. */
-  readonly failures: readonly ValidationFailure[];
-  /** The failures themselves, positionally matching {@link failures}. */
-  readonly errors: readonly Error[];
-
-  constructor(failures: readonly ValidationFailure[]) {
-    super(
-      `cannot satisfy every registration:\n`
-        + failures.map(failure => `  ${failure.address} — ${failure.error.message}`).join('\n'),
-    );
-    this.name = 'ManifestValidationError';
-    this.failures = failures;
-    this.errors = failures.map(failure => failure.error);
-  }
-}

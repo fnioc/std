@@ -28,7 +28,7 @@
 // same reason.
 
 import { Builder, validateBuildability } from '@rhombus-std/di';
-import { DiError, Manifest, ManifestValidationError } from '@rhombus-std/di.core';
+import { DiError, Manifest } from '@rhombus-std/di.core';
 import { demonstrateRegistrationErrors, diagnose, stagedFailure } from '@rhombus-std/examples.lib.without-transformer';
 import { Type } from '@rhombus-std/primitives';
 
@@ -90,7 +90,7 @@ export function* demonstrateErrors(): Generator<string> {
   //
   // `validateBuildability` plans every registration while the provider is being
   // built — nothing is constructed — and collects EVERY failure into one
-  // `ManifestValidationError` rather than stopping at the first. That is the
+  // `AggregateError` rather than stopping at the first. That is the
   // difference between one deployment round-trip and one per hole.
   yield stagedFailure(
     'building with validateBuildability',
@@ -100,10 +100,9 @@ export function* demonstrateErrors(): Generator<string> {
         .build(),
   );
 
-  // The registrations that could not be planned come back on `failures`, each
-  // paired with the error planning it produced — one classified failure per
-  // hole, which is what makes the aggregate readable instead of a first-hole
-  // report.
+  // The errors planning each registration produced come back on `errors` — one
+  // classified failure per hole, each carrying the address it names, which is
+  // what makes the aggregate readable instead of a first-hole report.
   yield `  the failure inside it: ${diagnose(collectValidationErrors()[0])}`;
 
   // ── resolution time ────────────────────────────────────────────────────────
@@ -133,14 +132,16 @@ export function* demonstrateErrors(): Generator<string> {
 
   // ── and the escape hatch ───────────────────────────────────────────────────
   //
-  // Everything above extends ONE root, and that root is declared by di.core —
+  // Every engine failure extends ONE root, and that root is declared by di.core —
   // which is what lets `diagnose` live in a library at all. The engine
   // re-exports the same classes rather than declaring its own, so there is one
   // runtime identity per class and the `instanceof` below holds no matter which
-  // specifier a caller reached them through. A consumer that does not want to
-  // enumerate the taxonomy catches `DiError` and knows it has caught an engine
-  // problem rather than swallowed a bug in its own code.
-  yield `every failure above shares one root: ${new ManifestValidationError([]) instanceof DiError}`;
+  // specifier a caller reached them through. The build-time aggregate is the
+  // platform's own `AggregateError`, and the leaf it collects is one of these
+  // classes. A consumer that does not want to enumerate the taxonomy catches
+  // `DiError` and knows it has caught an engine problem rather than swallowed a
+  // bug in its own code.
+  yield `each collected failure shares one root: ${collectValidationErrors()[0] instanceof DiError}`;
   yield `something else entirely: ${diagnose(new TypeError('not ours'))}`;
 }
 
@@ -151,7 +152,7 @@ function collectValidationErrors(): readonly Error[] {
       .useAddon(validateBuildability())
       .build();
   } catch (error) {
-    if (error instanceof ManifestValidationError) {
+    if (error instanceof AggregateError) {
       return error.errors;
     }
     throw error;

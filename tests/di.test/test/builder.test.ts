@@ -3,7 +3,7 @@
 // return registers, and what an intermediate `build()` sees, are the properties worth pinning down.
 
 import { Builder, validateBuildability } from '@rhombus-std/di';
-import { type Addon, type IServiceScopeFactory, Manifest, ManifestValidationError, Registration, UnsatisfiableError } from '@rhombus-std/di.core';
+import { type Addon, type IServiceScopeFactory, Manifest, Registration, UnsatisfiableError } from '@rhombus-std/di.core';
 import { Type } from '@rhombus-std/primitives';
 import { describe, expect, test } from 'bun:test';
 
@@ -109,13 +109,13 @@ describe('useAddon', () => {
 });
 
 describe('the validateBuildability addon', () => {
-  test('throws ManifestValidationError when a closed address is unsatisfiable', () => {
+  test('throws an AggregateError when a closed address is unsatisfiable', () => {
     expect(
       () =>
         Builder.withServices(manifest => manifest.add(A, NeedsB, Type.ctor(A, [[B]])))
           .useAddon(validateBuildability())
           .build(),
-    ).toThrow(ManifestValidationError);
+    ).toThrow(AggregateError);
   });
 
   test('without the addon, an unsatisfiable graph builds — the failure surfaces on resolution', () => {

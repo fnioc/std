@@ -3,7 +3,7 @@
 // registry through the chain itself, so every case goes through the builder.
 
 import { Builder, validateBuildability, validateUniversalAddresses } from '@rhombus-std/di';
-import { ManifestValidationError, Registration, UnsatisfiableError } from '@rhombus-std/di.core';
+import { Registration, UnsatisfiableError } from '@rhombus-std/di.core';
 import { Type } from '@rhombus-std/primitives';
 import { describe, expect, test } from 'bun:test';
 
@@ -63,9 +63,18 @@ describe('validateBuildability', () => {
         .useAddon(validateBuildability())
         .build();
 
-    expect(build).toThrow(ManifestValidationError);
-    expect(build).toThrow('cannot satisfy every registration');
-    expect(build).toThrow('app:Widget');
+    let caught: unknown;
+    try {
+      build();
+    } catch (error) {
+      caught = error;
+    }
+    expect(caught).toBeInstanceOf(AggregateError);
+    expect((caught as AggregateError).message).toContain('cannot satisfy every registration');
+    const errors = (caught as AggregateError).errors as Error[];
+    expect(errors).toHaveLength(1);
+    expect(errors[0]).toBeInstanceOf(UnsatisfiableError);
+    expect(errors[0]!.message).toContain('app:Widget');
   });
 
   test('passes an open registration, which has no closed address to plan', () => {
