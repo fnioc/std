@@ -520,6 +520,14 @@ const provider = Builder
   .build(); // AggregateError, one leaf: DI1013: filed under a union … — app:IClock | app:IRepo
 ```
 
+The addon also files every objection it sees — stopping or not, at build and at every ask — into an
+`IAddressDiagnostics` the built provider resolves, so warnings that never stopped anything are still
+readable.
+
+```ts
+const seen = provider.resolve<IAddressDiagnostics>().diagnostics; // each carries its id, level, node and message
+```
+
 `registration` and `ask` replace the rule list each side reads, `suppress` drops rules from both by
 id, and `warningsAsErrors` makes a warning stop. The default lists are `addressRules.registration`
 and `addressRules.ask`, and `addressRules.byId` answers every rule under its id. `DI1001`–`DI1011`
@@ -552,9 +560,13 @@ every constructed registration names `'singleton'`, `'scoped'` or `'transient'`.
 instance across the whole provider, shared by every scope. A scoped registration is one instance per scope. A
 transient is fresh per ask and per injection site. A value registration is handed back as it stands.
 
+`Builder.withDefaults()` is the common-path opener: it seeds this model, always-on address
+validation, and — each behind an option (`validateScopes`, `validateOnBuild`, both off by default) —
+scope and buildability validation, then chains like any builder.
+
 ```ts
 await using provider = Builder
-  .useAddon(standardLifetime())
+  .withDefaults()
   .withServices(services =>
     services
       .add<IClock>(SystemClock, 'singleton')

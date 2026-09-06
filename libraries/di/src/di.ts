@@ -1,6 +1,10 @@
-import { type Addon, type AddonInstallation, type GetService, type IDisposableServiceProvider, Manifest, type Middleware, type Registration, UnsatisfiableError } from '@rhombus-std/di.core';
+import { type Addon, type AddonInstallation, type GetService, type IDisposableServiceProvider, Manifest, type Middleware, type Registration, type StandardLifetime,
+  UnsatisfiableError } from '@rhombus-std/di.core';
 import { concat, iterable } from '@rhombus-toolkit/iterable';
 import type { Func } from '@rhombus-toolkit/types';
+import { standardLifetime, validateScopes } from './addons/standard-lifetime/index.js';
+import { validateAddresses } from './addons/validate-addresses.js';
+import { validateBuildability } from './addons/validation.js';
 import { Engine } from './internal/Engine.js';
 import { ServiceProvider } from './ServiceProvider.js';
 
@@ -96,6 +100,22 @@ export namespace Builder {
     fn: Func<[Manifest<Lifetime>], Iterable<Registration<Lifetime>>> & (0 extends 1 & Lifetime ? never : unknown),
   ): Builder<Lifetime> {
     return new DefaultContext([servicesAddon(fn)]);
+  }
+
+  /**
+   * Opens the chain on the standard lifetime model, always-on address validation, and — each behind
+   * its option — scope validation and build-time buildability validation.
+   */
+  export function withDefaults(options: { validateScopes?: boolean; validateOnBuild?: boolean; } = {}): Builder<StandardLifetime> {
+    const addons: Array<Addon<StandardLifetime>> = [standardLifetime()];
+    if (options.validateScopes) {
+      addons.push(validateScopes());
+    }
+    if (options.validateOnBuild) {
+      addons.push(validateBuildability<StandardLifetime>());
+    }
+    addons.push(validateAddresses<StandardLifetime>());
+    return new DefaultContext(addons);
   }
 }
 
