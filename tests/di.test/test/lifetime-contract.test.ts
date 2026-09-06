@@ -3,7 +3,7 @@
 // Scope validation is a separate addon, so its entries state both switch positions.
 
 import { Builder, ScopeValidationError, standardLifetime, validateBuildability, validateScopes } from '@rhombus-std/di';
-import { type IDisposableServiceProvider, type IServiceProvider, type IServiceScopeFactory, ManifestValidationError, ObjectDisposedError, type StandardLifetime } from '@rhombus-std/di.core';
+import { type IDisposableServiceProvider, type IServiceProvider, type IServiceScopeFactory, ObjectDisposedError, type StandardLifetime } from '@rhombus-std/di.core';
 import { Type } from '@rhombus-std/primitives';
 import { describe, expect, test } from 'bun:test';
 
@@ -343,9 +343,9 @@ describe('build-time validation', () => {
     } catch (error) {
       caught = error;
     }
-    expect(caught).toBeInstanceOf(ManifestValidationError);
-    const failures = (caught as ManifestValidationError).failures;
-    expect(failures.map(failure => Type.stringify(failure.address)).sort()).toEqual(['app:Holder', 'app:Pair']);
-    expect(failures.find(failure => failure.address === HOLDER)?.error).toBeInstanceOf(ScopeValidationError);
+    expect(caught).toBeInstanceOf(AggregateError);
+    const errors = (caught as AggregateError).errors as Error[];
+    expect(errors).toHaveLength(2);
+    expect(errors.every(error => error instanceof ScopeValidationError)).toBe(true);
   });
 });

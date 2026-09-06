@@ -3,7 +3,6 @@
 // standing beside a real captive it never hides one.
 
 import { Builder, ScopeValidationError, standardLifetime, validateBuildability, validateScopes } from '@rhombus-std/di';
-import { ManifestValidationError } from '@rhombus-std/di.core';
 import { Type } from '@rhombus-std/primitives';
 import { describe, expect, test } from 'bun:test';
 
@@ -48,10 +47,10 @@ describe('a value registration under the captive check', () => {
       caught = error;
     }
 
-    expect(caught).toBeInstanceOf(ManifestValidationError);
-    const failures = (caught as ManifestValidationError).failures;
-    expect(failures.map(failure => failure.address)).toEqual([HOLDER]);
-    expect(failures[0]!.error).toBeInstanceOf(ScopeValidationError);
-    expect((failures[0]!.error as ScopeValidationError).address).toBe(COUNTER);
+    expect(caught).toBeInstanceOf(AggregateError);
+    const errors = (caught as AggregateError).errors as Error[];
+    expect(errors).toHaveLength(1);
+    expect(errors[0]).toBeInstanceOf(ScopeValidationError);
+    expect((errors[0] as ScopeValidationError).address).toBe(COUNTER);
   });
 });

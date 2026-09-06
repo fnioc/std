@@ -142,8 +142,8 @@ export function* demonstrateInfrastructure(): Generator<string> {
   const missing = defaultProvider.resolve(Type.optional(typefor<IHealthCheck>()));
   yield `asking optionally for an unregistered type: ${missing}`;
 
-  // The eager whole-graph pass is where an unsatisfiable registration turns into
-  // something the taxonomy names.
+  // The eager whole-graph pass raises an AggregateError, and each error inside it
+  // is a taxonomy member: absence turns into something a library can name.
   try {
     const brokenManifest = newWorkshopManifest()
       .add(typefor<IHealthCheck>(), GreetingWorkshop, Type.ctor(typefor<IHealthCheck>(), [[typefor<IGreeting>()]]), 'singleton');
@@ -151,6 +151,6 @@ export function* demonstrateInfrastructure(): Generator<string> {
       .useAddon(validateBuildability())
       .build();
   } catch (error) {
-    yield `building a graph with a hole in it: ${describeDiError(error)}`;
+    yield `building a graph with a hole in it: ${describeDiError((error as AggregateError).errors[0])}`;
   }
 }
