@@ -121,6 +121,13 @@ describe('distinctions the table keeps', () => {
     expect(Type.tag(A, 'primary')).not.toBe(Type.tag(A, 'secondary'));
     expect(Type.from('app:A#primary')).toBe(Type.tag(A, 'primary'));
   });
+
+  test('a nested tag interns by identity', () => {
+    const nested = Type.tag(Type.tag(A, 'a'), 'b');
+    expect(nested.kind).toBe('tag');
+    expect(nested.type.kind).toBe('tag');
+    expect(Type.tag(Type.tag(A, 'a'), 'b')).toBe(nested);
+  });
 });
 
 describe('interned nodes are sealed', () => {

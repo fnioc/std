@@ -218,14 +218,8 @@ export function generic(label: string): GenericType {
   );
 }
 
-/**
- * @throws TypeError - when the type already carries a tag.
- */
 export function tag(type: Type, name: string): TagType {
   const inner = adopt(type);
-  if (inner.kind === 'tag') {
-    throw new TypeError(`${stringifyType(inner)} already carries a tag — a type wears at most one`);
-  }
   return intern(
     `tag\0${JSON.stringify(name)}\0${id(inner)}`,
     () => node<TagType>({ kind: 'tag', tag: name, type: inner }),

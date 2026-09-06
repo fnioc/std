@@ -123,7 +123,7 @@ export interface ObjectType extends TypeBase<'object'> {
 
 export interface TagType extends TypeBase<'tag'> {
   readonly tag: string;
-  readonly type: Exclude<Type, TagType>;
+  readonly type: Type;
 }
 
 export interface TupleType extends TypeBase<'tuple'> {
@@ -390,14 +390,9 @@ export namespace Type {
     return factory.isRawType(value) ? Type.adopt(value) : value;
   }
 
-  /**
-   * The given type wearing a tag — a distinct name for the same underlying type, so the same
-   * type under a different tag is a different type.
-   *
-   * @throws TypeError - when the type is already tagged; a type wears at most one tag.
-   */
+  /** The given type wearing a tag — a distinct name for the same underlying type, so the same type under a different tag is a different type. */
   export const tag = (() => {
-    function tag(type: Exclude<Type, TagType>, tag: string): TagType;
+    function tag(type: Type, tag: string): TagType;
     function tag(spec: Spec<TagType>): TagType;
     function tag(first: Type | Spec<TagType>, tag?: string): TagType {
       return isNode(first) ? factory.tag(first, tag!) : factory.tag(first.type, first.tag);

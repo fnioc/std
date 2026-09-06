@@ -322,7 +322,7 @@ A key is a tag on the address, so a keyed type is one type rather than a type pl
 a constructor asks for the keyed one by type alone. `Keyed<IStore, 'sql'>` derives as `IStore`
 wearing the tag `sql`, `taggedAs('sql')` on the `describe` chain files under it, and a parameter
 typed `Keyed<IStore, 'sql'>` asks for exactly that. A tagged address is distinct from the bare one,
-so `IStore[]` collects the untagged registrations only, and a type wears at most one tag.
+so `IStore[]` collects the untagged registrations only. `withKey` refuses a type that already carries a tag, since re-keying would file the registration somewhere neither side named.
 
 ```ts
 services = services

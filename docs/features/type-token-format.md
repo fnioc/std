@@ -189,7 +189,7 @@ app:B | app:A#x             -- a tag over one union member needs nothing beyond 
 app:A#primary
 ```
 
-A type wears at most one tag — a second `#` on an already-tagged type is malformed.
+Tags nest: `app:A#a#b` is a tag `b` over the tag `a` over `app:A`.
 
 ## Objects
 

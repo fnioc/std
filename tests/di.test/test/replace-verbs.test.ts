@@ -108,10 +108,11 @@ describe('the string boundary', () => {
     expect(values(manifest.replaceValue(Type.from('app:A'), 'a-new'))).toEqual(['a-new']);
   });
 
-  test('tagging a type that already carries a tag is a contradiction', () => {
-    // Statically refused (a tagged base is not a legal tag base); the cast
-    // reaches the runtime guard a checker-less caller would hit.
-    expect(() => Type.tag(Type.tag(A, 'primary') as any, 'secondary')).toThrow();
+  test('a tag over a tag builds a nested tag', () => {
+    const inner = Type.tag(A, 'primary');
+    const outer = Type.tag(inner, 'secondary');
+    expect(outer.kind).toBe('tag');
+    expect(outer.type).toBe(inner);
   });
 });
 

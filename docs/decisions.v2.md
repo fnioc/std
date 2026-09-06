@@ -94,13 +94,12 @@ independent sources: `registerAugmentations` call sites, and any namespace a `de
 merges onto a receiver via `extends Flatten<typeof Ns>` with no accompanying register call. Missing
 either source undercounts the inventory.
 
-## §150 — A type wears at most one tag
+## §150 — The one-tag rule is di's, not the node space's
 
-A tag type's inner type excludes `TagType` itself, so a type carries at most one tag; the type system
-refuses a tag over an already-tagged type wherever the base is statically known, and the interning path
-and token reader refuse the rest at runtime. This rejects re-keying: a keyed registration composes its
-key into the address, so silently replacing or nesting a key would file a registration under an
-address neither side named, surfacing a miss far from its cause.
+The type node space is unconstrained: `TagType.type` is `Type`, and `Type.tag` accepts any type
+including another `TagType`. The "a type wears at most one tag" rule lives in di.core's `withKey`,
+which refuses a tagged input because re-keying would file a registration under an address neither
+side named.
 
 ## §169 — The token grammar spells overload rows with semicolons, inside the one parameter position
 
