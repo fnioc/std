@@ -180,54 +180,14 @@ export const y = provider.isService('x');
 	}
 }
 
-// TestResolveMemberSugarOnlyDriftRaises: the drift case the check still exists
-// for. The publishing package DOES augment the receiver in this program, yet the
-// marker names a member its augmentation never declares — the marker and the
-// loaded surface genuinely disagree, so this raises rather than skips.
-func TestResolveMemberSugarOnlyDriftRaises(t *testing.T) {
-	// The impl carries both the augmented member and a `missing` one, so Extract of
-	// `missing` succeeds and resolution reaches the declaration check.
+// TestResolveUnresolvedType: the loud-failure guarantee. A type token naming a
+// member the module does not export → INLINE_UNRESOLVED_TYPE, a hard error,
+// never inert.
+func TestResolveUnresolvedType(t *testing.T) {
 	inlineBody := `import { typefor } from '@rhombus-std/primitives.extras';
 import type { IQuery } from '@scope/core';
 export const QueryInline = {
   isService<T>(this: IQuery): boolean {
-    return this.isService(typefor<T>());
-  },
-  missing<T>(this: IQuery): boolean {
-    return this.isService(typefor<T>());
-  },
-};
-`
-	mainSrc := `import { provider } from '@scope/core';
-export const y = provider.isService('x');
-`
-	// pilotSugarDTS augments IQuery with the sugar member, so the receiver's surface
-	// carries a declaration from the sugar package.
-	prog, app := buildWorkspace(t, pilotCoreIndex, inlineBody, pilotSugarDTS, mainSrc)
-	defer func() { _ = prog.Close() }()
-
-	sugar := filepath.Join(filepath.Dir(app), "sugar")
-	e := OwnedEntry{Entry: Entry{Type: "@scope/core:IQuery", Impl: "@scope/sugar:QueryInline", Member: "missing"}, PackageDir: sugar}
-	_, _, err := Resolve(prog, prog.Checker, newBodyExtractor(), e)
-	if err == nil || !strings.Contains(err.Error(), "INLINE_UNRESOLVED_MEMBER") {
-		t.Fatalf("want INLINE_UNRESOLVED_MEMBER — the publisher augments the receiver here yet declares no such member, got %v", err)
-	}
-}
-
-// TestResolveUnresolvedTypeAndMember: the two loud-failure guarantees. A type
-// token naming a member the module does not export → INLINE_UNRESOLVED_TYPE; an
-// interface member the type does not carry (but the impl does, so Extract passes)
-// → INLINE_UNRESOLVED_MEMBER. Both are hard errors, never inert.
-func TestResolveUnresolvedTypeAndMember(t *testing.T) {
-	// The impl carries BOTH isService and a `missing` member, so Extract of the
-	// `missing` member succeeds and resolution reaches the interface-member check.
-	inlineBody := `import { typefor } from '@rhombus-std/primitives.extras';
-import type { IQuery } from '@scope/core';
-export const QueryInline = {
-  isService<T>(this: IQuery): boolean {
-    return this.isService(typefor<T>());
-  },
-  missing<T>(this: IQuery): boolean {
     return this.isService(typefor<T>());
   },
 };
@@ -242,21 +202,11 @@ export const known = provider.isService<Foo>();
 
 	sugar := filepath.Join(filepath.Dir(app), "sugar")
 
-	t.Run("unresolved type", func(t *testing.T) {
-		e := OwnedEntry{Entry: Entry{Type: "@scope/core:Missing", Impl: "@scope/sugar:QueryInline", Member: "isService"}, PackageDir: sugar}
-		_, _, err := Resolve(prog, prog.Checker, newBodyExtractor(), e)
-		if err == nil || !strings.Contains(err.Error(), "INLINE_UNRESOLVED_TYPE") {
-			t.Fatalf("want INLINE_UNRESOLVED_TYPE, got %v", err)
-		}
-	})
-
-	t.Run("unresolved member", func(t *testing.T) {
-		e := OwnedEntry{Entry: Entry{Type: "@scope/core:IQuery", Impl: "@scope/sugar:QueryInline", Member: "missing"}, PackageDir: sugar}
-		_, _, err := Resolve(prog, prog.Checker, newBodyExtractor(), e)
-		if err == nil || !strings.Contains(err.Error(), "INLINE_UNRESOLVED_MEMBER") {
-			t.Fatalf("want INLINE_UNRESOLVED_MEMBER, got %v", err)
-		}
-	})
+	e := OwnedEntry{Entry: Entry{Type: "@scope/core:Missing", Impl: "@scope/sugar:QueryInline", Member: "isService"}, PackageDir: sugar}
+	_, _, err := Resolve(prog, prog.Checker, newBodyExtractor(), e)
+	if err == nil || !strings.Contains(err.Error(), "INLINE_UNRESOLVED_TYPE") {
+		t.Fatalf("want INLINE_UNRESOLVED_TYPE, got %v", err)
+	}
 }
 
 // setupOverloadedFunctionWorkspace lays out an impl-only floater whose

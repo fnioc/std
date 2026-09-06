@@ -602,9 +602,12 @@ reading as dead code:
 ```ts
 export const ConfigBuilderInline = { withType<T>(this: IWithSchemaTarget): unknown {
   return this.withSchema(schemaof<T>());
-} };
-registerInlineBodies(ConfigBuilderInline);
+} } satisfies AugmentationSet<ConfigBuilder>;
+registerInlineBodies<ConfigBuilder>(ConfigBuilderInline);
 ```
+
+The `satisfies` clause is what types the set: a member the receiver does not declare is rejected
+where it is written, rather than at the call.
 
 It is the inline-body sister of the augmentation registry's `registerAugmentations` — a statement
 next to the declaration that names its registered role — and it is a deliberate runtime **no-op**:

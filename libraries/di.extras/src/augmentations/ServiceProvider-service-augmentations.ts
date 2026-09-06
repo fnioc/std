@@ -1,4 +1,5 @@
 import type { IServiceProvider } from '@rhombus-std/di.core';
+import type { AugmentationSet } from '@rhombus-std/primitives';
 import { registerInlineBodies, typefor } from '@rhombus-std/primitives.extras';
 import type { Ctor, Func } from '@rhombus-toolkit/types';
 
@@ -120,5 +121,5 @@ export const ServiceProviderServiceAugmentations = {
   tryInvoke<Result>(this: IServiceProvider, func: Func<any[], Result>): Result | undefined {
     return this.tryInvoke(typefor(func), func);
   },
-};
+} satisfies AugmentationSet<IServiceProvider>;
 registerInlineBodies<IServiceProvider>(ServiceProviderServiceAugmentations);

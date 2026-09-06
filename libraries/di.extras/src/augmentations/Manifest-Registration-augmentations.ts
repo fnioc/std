@@ -1,4 +1,5 @@
 import type { LifetimeArgument, Manifest, Registration, RegistrationBuilderFor } from '@rhombus-std/di.core';
+import type { AugmentationSet } from '@rhombus-std/primitives';
 import { registerInlineBodies, typefor } from '@rhombus-std/primitives.extras';
 import type { AbstractCtor, ButNot, Ctor, Func } from '@rhombus-toolkit/types';
 
@@ -85,7 +86,7 @@ export const ManifestRegistrationAugmentations = {
   describe<ServiceType>(this: Manifest<unknown>) {
     return this.describe(typefor<ServiceType>());
   },
-};
+} satisfies AugmentationSet<Manifest<unknown>>;
 registerInlineBodies<Manifest<unknown>>(ManifestRegistrationAugmentations);
 
 // A separate set because its `add` is the value shape's own body — an object literal cannot
@@ -100,5 +101,5 @@ export const ManifestRegistrationValueAugmentations = {
   replace<ServiceType>(this: Manifest<unknown>, value: ButNot<ServiceType, Func | AbstractCtor | Registration<any>>): Manifest<unknown> {
     return this.replaceValue(typefor<ServiceType>(), value);
   },
-};
+} satisfies AugmentationSet<Manifest<unknown>>;
 registerInlineBodies<Manifest<unknown>>(ManifestRegistrationValueAugmentations);

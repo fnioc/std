@@ -92,7 +92,7 @@ Its JavaScript API is `typefor<T>()` / `typefor(value)` — one function, narrow
 a call site binds to — plus its build-time-only guard-rail error. Alongside it: `schemaof<T>()`,
 expanding a type into the `Type` tree describing its members; `registerAugmentations<R>(set, merge?)`,
 registering an augmentation set against a receiver type by deriving its `Type` the same way
-`typefor<T>()` does; and `registerInlineBodies(bodies)`, a runtime no-op that marks an object
+`typefor<T>()` does; and `registerInlineBodies<R>(bodies)`, a runtime no-op that marks an object
 literal, in code, as the inline sugar body set published in the package's `package.json`
 `"rhombus-std"` marker's `"inline"` list. Everything else this package carries is the Go/`ttsc`
 engine descriptor those calls lower through. See [Usage](#usage) above.

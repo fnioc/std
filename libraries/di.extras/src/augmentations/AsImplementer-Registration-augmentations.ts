@@ -1,5 +1,6 @@
 import type { CtorRegistration, FactoryRegistration } from '@rhombus-std/di.core';
 import type { IAsImplementer, RegistrationBuilder, Slot } from '@rhombus-std/di.core/builders';
+import type { AugmentationSet } from '@rhombus-std/primitives';
 import { registerInlineBodies, typefor } from '@rhombus-std/primitives.extras';
 import type { AbstractCtor, Ctor, Func } from '@rhombus-toolkit/types';
 
@@ -25,5 +26,5 @@ export const AsImplementerRegistrationAugmentations = {
   asFactory(this: IAsImplementer<any, any, Slot>, fn: Func): RegistrationBuilder<any, any, Exclude<Slot, 'implementer'>, FactoryRegistration<any>> {
     return this.asFactory(fn, typefor(fn));
   },
-};
+} satisfies AugmentationSet<IAsImplementer<any, any, Slot>>;
 registerInlineBodies<IAsImplementer<any, any, Slot>>(AsImplementerRegistrationAugmentations);
