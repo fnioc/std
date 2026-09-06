@@ -64,6 +64,9 @@ func EmitNode(f *shimast.NodeFactory, binding *valueimport.Binding, n *tokens.No
 	case tokens.KindAbstractCtor:
 		return signatureShaped(f, binding, n, "abstractCtor")
 	case tokens.KindUnion:
+		if member, optional := optionalMember(n); optional {
+			return Call(f, binding, "optional", []*shimast.Node{EmitNode(f, binding, member)})
+		}
 		return Call(f, binding, "union", emitMembers(f, binding, n.Members))
 	case tokens.KindTuple:
 		return emitTuple(f, binding, n)
@@ -78,6 +81,17 @@ func EmitNode(f *shimast.NodeFactory, binding *valueimport.Binding, n *tokens.No
 		}
 		return Named(f, binding, n.Name, n.From, args)
 	}
+}
+
+// optionalMember reads the one type a union carries beside a trailing `undefined`
+// literal — the shape `Type.optional` spells. The literal must come last, since
+// that is the order `Type.optional` rebuilds, and a union of two or more other
+// members keeps its plain member list.
+func optionalMember(n *tokens.Node) (*tokens.Node, bool) {
+	if len(n.Members) != 2 || !n.Members[1].IsUndefinedLiteral() || n.Members[0].IsUndefinedLiteral() {
+		return nil, false
+	}
+	return n.Members[0], true
 }
 
 // emitMembers builds the factory call for each member of a composite, in order.
@@ -176,9 +190,9 @@ func Named(f *shimast.NodeFactory, binding *valueimport.Binding, name, from stri
 	return Call(f, binding, method, callArgs)
 }
 
-// LiteralNode builds a literal type's factory call: the two nullish singletons as
-// `Type.typeLiteral(undefined)` / `Type.typeLiteral(null)`, every scalar literal as
-// `Type.typeLiteral(<value>)`.
+// LiteralNode builds a literal type's factory call: `Type.undefinedLiteral` for the
+// `undefined` singleton, `Type.typeLiteral(null)` for `null`, every scalar literal
+// as `Type.typeLiteral(<value>)`.
 func LiteralNode(f *shimast.NodeFactory, binding *valueimport.Binding, v tokens.LiteralValue) *shimast.Node {
 	switch v.Kind {
 	case tokens.LiteralUndefined:
@@ -218,10 +232,11 @@ func Literal(f *shimast.NodeFactory, v tokens.LiteralValue) *shimast.Node {
 	}
 }
 
-// Undefined is the `undefined` literal type's factory call — the member an
-// optional slot carries beside its own type.
+// Undefined is the `undefined` literal type — the member an optional slot carries
+// beside its own type, named directly rather than spelled through a factory call.
 func Undefined(f *shimast.NodeFactory, binding *valueimport.Binding) *shimast.Node {
-	return Call(f, binding, "typeLiteral", []*shimast.Node{f.NewIdentifier("undefined")})
+	binding.Used = true
+	return f.NewPropertyAccessExpression(binding.Expr(f), nil, f.NewIdentifier("undefinedLiteral"), 0)
 }
 
 // PropertyKey builds an object member's key node preserving its exact casing,

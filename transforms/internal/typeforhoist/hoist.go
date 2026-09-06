@@ -88,9 +88,10 @@ const (
 	KindObject
 	// KindIntersection is `Type.intersection(...members)`.
 	KindIntersection
-	// KindUndefined and KindNull are the two nullish singletons, each its own
-	// `Type.typeLiteral` call. They are kinds rather than literals because the
-	// token grammar's literal values exclude them.
+	// KindUndefined and KindNull are the two nullish singletons — the first named
+	// directly as `Type.undefinedLiteral`, the second a `Type.typeLiteral` call.
+	// They are kinds rather than literals because the token grammar's literal
+	// values exclude them.
 	KindUndefined
 	KindNull
 )
@@ -456,7 +457,7 @@ func (r *Registry) expr(n *Node) string {
 	case KindIntersection:
 		return r.typeRef.Export + ".intersection(" + r.joinNames(n.members) + ")"
 	case KindUndefined:
-		return r.typeRef.Export + ".typeLiteral(undefined)"
+		return r.typeRef.Export + ".undefinedLiteral"
 	case KindNull:
 		return r.typeRef.Export + ".typeLiteral(null)"
 	default: // KindNamed

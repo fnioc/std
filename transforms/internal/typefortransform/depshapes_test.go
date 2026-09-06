@@ -44,7 +44,7 @@ export const ctorValue = typefor(Ctor);
 			`[[Type.func(Type.imported("IThing", "@scope/app/main"), [[Type.imported("IDep", "@scope/app/main")]])]])`,
 		// Optional param → its type unioned with the nullish singleton, non-nullish first.
 		"optParam": `Type.ctor(Type.imported("OptParam", "@scope/app/main"), ` +
-			`[[Type.union(Type.imported("IDep", "@scope/app/main"), Type.typeLiteral(undefined))]])`,
+			`[[Type.optional(Type.imported("IDep", "@scope/app/main"))]])`,
 		// Inline union param → Type.union(...) over both members.
 		"unionParam": `Type.ctor(Type.imported("UnionParam", "@scope/app/main"), ` +
 			`[[Type.union(Type.imported("IDep", "@scope/app/main"), Type.imported("IOther", "@scope/app/main"))]])`,

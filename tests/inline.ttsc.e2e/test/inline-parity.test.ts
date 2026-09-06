@@ -260,15 +260,10 @@ export const many = provider.resolveIterable<IThing>();
 // the verb, and each \`try\` twin lowers to the twin, never to the plain form.
 export const tried = provider.tryResolve<IThing>();
 export const arrayed = provider.resolveArray<IThing>();
-export const triedArray = provider.tryResolveArray<IThing>();
-export const triedIterable = provider.tryResolveIterable<IThing>();
 export const triedAsync = provider.tryResolveAsync<IThing>();
 export const arrayAsync = provider.resolveArrayAsync<IThing>();
-export const triedArrayAsync = provider.tryResolveArrayAsync<IThing>();
 export const iterableAsync = provider.resolveIterableAsync<IThing>();
-export const triedIterableAsync = provider.tryResolveIterableAsync<IThing>();
 export const asyncWalk = provider.resolveAsyncIterable<IThing>();
-export const triedAsyncWalk = provider.tryResolveAsyncIterable<IThing>();
 // The callable rows derive a whole function type from the two type arguments and
 // thread the call arguments through to the callable.
 export const gadget = provider.resolveWith<IGadget, [IBar]>(bar);
@@ -643,15 +638,10 @@ describe.skipIf(!toolchainReady)('generic inline stage — lookup parity (W5)', 
     const rows = [
       ['tried =', 'tryResolve'],
       ['arrayed =', 'resolveArray'],
-      ['triedArray =', 'tryResolveArray'],
-      ['triedIterable =', 'tryResolveIterable'],
       ['triedAsync =', 'tryResolveAsync'],
       ['arrayAsync =', 'resolveArrayAsync'],
-      ['triedArrayAsync =', 'tryResolveArrayAsync'],
       ['iterableAsync =', 'resolveIterableAsync'],
-      ['triedIterableAsync =', 'tryResolveIterableAsync'],
       ['asyncWalk =', 'resolveAsyncIterable'],
-      ['triedAsyncWalk =', 'tryResolveAsyncIterable'],
     ] as const;
     for (const [needle, member] of rows) {
       const line = lineWith(resolveInline, needle);
@@ -662,27 +652,29 @@ describe.skipIf(!toolchainReady)('generic inline stage — lookup parity (W5)', 
     assertNoAuthoringSurvivors(resolveInline);
   });
 
-  test('the callable rows derive a whole function type and thread the call arguments through', () => {
+  test('the callable rows resolve a whole function type and thread the call arguments through', () => {
     // The two type arguments compose one callable type inside the body's own
     // `typefor<Func<Args, ServiceType>>()`, so the token is the whole function
     // type — the SAME one `invoke` observes off a matching callable — and the
-    // call's own arguments follow it through to the lowered call.
+    // call's own arguments follow it through to the call the body makes. The
+    // async rows spell the promise into the callable's return slot.
     const barType = constFor(chainModule, 'Type.imported("IBar", "chain-app/private/resolve")');
     const gadget = constFor(chainModule, 'Type.imported("IGadget", "chain-app/private/resolve")');
     const funcType = constFor(chainModule, `Type.func(${gadget}, [[${barType}]])`);
     const promised = constFor(chainModule, `Type.global("Promise", [${gadget}])`);
     const asyncFuncType = constFor(chainModule, `Type.func(${promised}, [[${barType}]])`);
     const rows = [
-      ['gadget =', 'resolveWith', funcType],
-      ['triedGadget =', 'tryResolveWith', funcType],
-      ['gadgetAsync =', 'resolveWithAsync', asyncFuncType],
-      ['triedGadgetAsync =', 'tryResolveWithAsync', asyncFuncType],
+      ['gadget =', 'resolve', funcType],
+      ['triedGadget =', 'tryResolve', funcType],
+      ['gadgetAsync =', 'resolve', asyncFuncType],
+      ['triedGadgetAsync =', 'tryResolve', asyncFuncType],
     ] as const;
     for (const [needle, member, derived] of rows) {
       const line = lineWith(resolveInline, needle);
       expect(line).toBeDefined();
-      expect(line).toContain(`.${member}(${derived}, bar)`);
-      expect(line).not.toContain(`${member}<`);
+      expect(line).toContain(`.${member}(${derived})`);
+      expect(line).toContain('(bar)');
+      expect(line).not.toContain('resolveWith');
     }
     assertNoAuthoringSurvivors(resolveInline);
   });
@@ -732,7 +724,7 @@ describe.skipIf(!toolchainReady)('generic inline stage — lookup parity (W5)', 
 
   test('runtime round-trip: the emitted keyed token hits a keyed registration and misses an unkeyed one', () => {
     // The text compares above prove the emitted bytes; this EXECUTES against the
-    // real container, using the tag the transformer actually minted, so a keyed
+    // real provider, using the tag the transformer actually minted, so a keyed
     // registration and a keyed lookup are shown to meet rather than assumed to.
     const marker = { tag: 'redis-cache' };
     const base = Type.imported('ICache', 'chain-app/private/resolve');
@@ -747,7 +739,7 @@ describe.skipIf(!toolchainReady)('generic inline stage — lookup parity (W5)', 
     let unkeyed: Manifest<'singleton'> = new DefaultManifest<'singleton'>();
     unkeyed = unkeyed.addValue(base, marker);
     const unkeyedProvider = Builder.withServices(() => unkeyed).build();
-    expect(unkeyedProvider.resolve(Type.union(composed, Type.typeLiteral(undefined)))).toBeUndefined();
+    expect(unkeyedProvider.resolve(Type.optional(composed))).toBeUndefined();
   });
 });
 

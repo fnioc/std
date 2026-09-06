@@ -28,7 +28,7 @@ type matchTarget struct {
 }
 
 // Build constructs the inline FileTransform from the project scan's pre-collected
-// body entries. The host runs ONE dependency scan for stages AND bodies (§100)
+// body entries. The host runs ONE dependency scan for stages AND bodies
 // and threads `owned` here, so the walk never runs twice. It resolves every entry,
 // populates artifacts, and returns a transform that inlines matched calls. A
 // zero-entry / all-inert program yields a no-op transform and leaves artifacts
@@ -783,7 +783,7 @@ func (st *fileState) isRogueDuplicate(decl *shimast.Node, calleeName string) boo
 }
 
 // hoistTemps prepends a `var <temp>;` declaration for every single-eval temp the
-// pass minted. Spec §6d wants enclosing-function scope; this pass hoists to file
+// pass minted. Enclosing-function scope would be the correct target; this pass hoists to file
 // scope (a module-level `var` — correct for the non-reentrant expression-temp
 // case), a documented simplification flagged for follow-up.
 func (st *fileState) hoistTemps(sf *shimast.SourceFile) *shimast.SourceFile {

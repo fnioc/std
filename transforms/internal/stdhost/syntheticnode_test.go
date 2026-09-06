@@ -11,7 +11,7 @@ import (
 // FIXED, with the same fixtures asserting lowered output instead of a crash.
 //
 // THE MECHANISM. A slot for an OPTIONAL (or defaulted) constructor parameter
-// lowers to a `Type.union(...)` node — minted through the emit factory. A
+// lowers to a `Type.optional(...)` node — minted through the emit factory. A
 // minted node was never seen by the binder, so it carries no symbol. On the
 // NEXT pass of the fixed-point loop a stage asked the checker about the
 // enclosing call chain (typefor resolved the callee's symbol, the inline stage
@@ -96,7 +96,7 @@ export class Widget {
 const syntheticLoweredRegistration = `manifest.addClass("pkg:Widget", Widget, Type.ctor(` +
 	`Type.imported("Widget", "@rhombus-std/synthetic-fixture/private/app"), [[` +
 	`Type.imported("IClock", "@rhombus-std/synthetic-fixture/private/app"), ` +
-	`Type.union(Type.imported("IOptions", "@rhombus-std/synthetic-fixture/private/app"), Type.typeLiteral(undefined))]]))`
+	`Type.optional(Type.imported("IOptions", "@rhombus-std/synthetic-fixture/private/app"))]]))`
 
 // syntheticFixture assembles the two-file fixture around one registration
 // statement.
@@ -167,8 +167,8 @@ func TestUnchainedRegistrationLowersIdentically(t *testing.T) {
 	if !strings.Contains(lowered, syntheticLoweredRegistration) {
 		t.Fatalf("the control registration did not lower as expected.\nwant to contain:\n%s\ngot:\n%s", syntheticLoweredRegistration, lowered)
 	}
-	if !strings.Contains(lowered, "Type.union(") {
-		t.Fatalf("the fixture did not mint the union node the chained cases depend on — the pins above would be vacuous:\n%s", lowered)
+	if !strings.Contains(lowered, "Type.optional(") {
+		t.Fatalf("the fixture did not mint the optional slot the chained cases depend on — the pins above would be vacuous:\n%s", lowered)
 	}
 	if strings.Contains(lowered, "typefor(") {
 		t.Fatalf("typefor survived lowering:\n%s", lowered)
@@ -205,8 +205,8 @@ export const m = manifest.addClass("pkg:Widget", Widget, typefor(Widget)).as("si
 		t.Fatalf("an all-required constructor must lower cleanly; code = %d\ndiagnostics = %+v\nstderr: %s", code, env.Diagnostics, stderr)
 	}
 	lowered := loweredApp(t, env)
-	if strings.Contains(lowered, "Type.union(") {
-		t.Fatalf("an all-required constructor must derive plain Type nodes, no union:\n%s", lowered)
+	if strings.Contains(lowered, "Type.optional(") {
+		t.Fatalf("an all-required constructor must derive plain Type nodes, no optional slot:\n%s", lowered)
 	}
 	if strings.Contains(lowered, "typefor(") {
 		t.Fatalf("typefor survived lowering:\n%s", lowered)

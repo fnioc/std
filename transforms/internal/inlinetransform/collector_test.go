@@ -104,7 +104,7 @@ func TestCollectPeerAndDevDeps(t *testing.T) {
 }
 
 // TestCollectProjectBodiesRootOnlyDevDeps exercises the root-only-devDeps
-// refinement of the body walk (§100): the root's own devDep bodies and the
+// refinement of the body walk: the root's own devDep bodies and the
 // transitive dep/peer bodies are collected, but a transitive dependency's devDep
 // bodies are NOT — a core that devDeps its own authoring package must never drag
 // that package's sugar onto a consumer of the core. (Stage selection is retired,

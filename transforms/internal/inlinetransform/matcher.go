@@ -85,6 +85,26 @@ func markerMemberDeclarations(checker *shimchecker.Checker, typeSym *shimast.Sym
 	return out
 }
 
+// surfaceAugmentedBy reports whether any type on the marker's receiver surface
+// carries a declaration from implPkg — the publishing package's declare-module
+// augmentation of the receiver being loaded in this program. It reads the same
+// surface markerMemberDeclarations walks, so it answers about exactly the surface
+// a member is searched on.
+func surfaceAugmentedBy(checker *shimchecker.Checker, typeSym *shimast.Symbol, ex *bodyExtractor, implPkg string) bool {
+	for _, surface := range surfaceTypes(checker, typeSym) {
+		sym := surface.Symbol()
+		if sym == nil {
+			continue
+		}
+		for _, decl := range checker.GetMergedSymbol(sym).Declarations {
+			if ex.declarationPackage(decl) == implPkg {
+				return true
+			}
+		}
+	}
+	return false
+}
+
 // surfaceTypes returns the type a marker names together with every type it
 // extends, transitively. Order is deterministic — the named type first, then each
 // base in declaration order — so a declaration set built from it is stable across

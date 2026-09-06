@@ -8,7 +8,7 @@
 // reaches any @rhombus-std/*.extras dependency spawns this one host through
 // ttsc's auto-discovery, and the host runs its whole stage table over every
 // file — the stages own disjoint match sets, so a stage with nothing to match is
-// a cheap no-op. WHICH sugar bodies are substituted still comes from the §100
+// a cheap no-op. WHICH sugar bodies are substituted still comes from the workspace
 // dependency scan (CollectProject), but WHICH stages run no longer does.
 //
 // There is ONE host. It links typia through the merge-synthesis stage
@@ -219,7 +219,7 @@ func runTransform(host Host, args []string) int {
 		}
 	}
 
-	// §100 declare-by-depending: ONE workspace dependency scan yields the inline
+	// declare-by-depending: ONE workspace dependency scan yields the inline
 	// BODIES to substitute at this consumer's call sites. It no longer selects
 	// stages — every stage is always on — but it still decides which sugar bodies
 	// are in play, threaded into the inline stage so the walk runs exactly once.

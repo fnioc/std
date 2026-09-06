@@ -137,6 +137,83 @@ export const y = provider.isService('x');
 	}
 }
 
+// TestResolveMemberSugarOnlyAbsentSkipsSilently: a sugar-only member — one the
+// receiver's own package never declares — is not in play when the package that
+// would augment the receiver with it is not loaded here. The receiver's surface
+// carries no declaration from that package, so the entry is skipped rather than
+// raised: a call to the member would be a type error of its own.
+func TestResolveMemberSugarOnlyAbsentSkipsSilently(t *testing.T) {
+	// The receiver's own package declares only the primitive member; the sugar-only
+	// member lives nowhere on the loaded surface.
+	coreIndex := `export interface IQuery {
+  isService(token: string): boolean;
+}
+export declare const provider: IQuery;
+`
+	// The impl carries the sugar-only member, so Extract passes and resolution
+	// reaches the declaration check.
+	inlineBody := `import { typefor } from '@rhombus-std/primitives.extras';
+import type { IQuery } from '@scope/core';
+export const QueryInline = {
+  resolveThing<T>(this: IQuery): boolean {
+    return this.isService(typefor<T>());
+  },
+};
+`
+	// The sugar package is loaded but augments nothing — the receiver's surface
+	// carries no declaration from it.
+	mainSrc := `import { provider } from '@scope/core';
+export const y = provider.isService('x');
+`
+	prog, app := buildWorkspace(t, coreIndex, inlineBody, `export {};
+`, mainSrc)
+	defer func() { _ = prog.Close() }()
+
+	sugar := filepath.Join(filepath.Dir(app), "sugar")
+	e := OwnedEntry{Entry: Entry{Type: "@scope/core:IQuery", Impl: "@scope/sugar:QueryInline", Member: "resolveThing"}, PackageDir: sugar}
+	_, outcome, err := Resolve(prog, prog.Checker, newBodyExtractor(), e)
+	if err != nil {
+		t.Fatalf("Resolve: %v — a sugar-only member whose publisher does not augment the receiver here must skip, not error", err)
+	}
+	if outcome != OutcomeAbsent {
+		t.Fatalf("outcome = %v, want OutcomeAbsent — the sugar-only member is not in play", outcome)
+	}
+}
+
+// TestResolveMemberSugarOnlyDriftRaises: the drift case the check still exists
+// for. The publishing package DOES augment the receiver in this program, yet the
+// marker names a member its augmentation never declares — the marker and the
+// loaded surface genuinely disagree, so this raises rather than skips.
+func TestResolveMemberSugarOnlyDriftRaises(t *testing.T) {
+	// The impl carries both the augmented member and a `missing` one, so Extract of
+	// `missing` succeeds and resolution reaches the declaration check.
+	inlineBody := `import { typefor } from '@rhombus-std/primitives.extras';
+import type { IQuery } from '@scope/core';
+export const QueryInline = {
+  isService<T>(this: IQuery): boolean {
+    return this.isService(typefor<T>());
+  },
+  missing<T>(this: IQuery): boolean {
+    return this.isService(typefor<T>());
+  },
+};
+`
+	mainSrc := `import { provider } from '@scope/core';
+export const y = provider.isService('x');
+`
+	// pilotSugarDTS augments IQuery with the sugar member, so the receiver's surface
+	// carries a declaration from the sugar package.
+	prog, app := buildWorkspace(t, pilotCoreIndex, inlineBody, pilotSugarDTS, mainSrc)
+	defer func() { _ = prog.Close() }()
+
+	sugar := filepath.Join(filepath.Dir(app), "sugar")
+	e := OwnedEntry{Entry: Entry{Type: "@scope/core:IQuery", Impl: "@scope/sugar:QueryInline", Member: "missing"}, PackageDir: sugar}
+	_, _, err := Resolve(prog, prog.Checker, newBodyExtractor(), e)
+	if err == nil || !strings.Contains(err.Error(), "INLINE_UNRESOLVED_MEMBER") {
+		t.Fatalf("want INLINE_UNRESOLVED_MEMBER — the publisher augments the receiver here yet declares no such member, got %v", err)
+	}
+}
+
 // TestResolveUnresolvedTypeAndMember: the two loud-failure guarantees. A type
 // token naming a member the module does not export → INLINE_UNRESOLVED_TYPE; an
 // interface member the type does not carry (but the impl does, so Extract passes)

@@ -278,7 +278,7 @@ export const b = services.addClass<IWidget>(Widget);
 	// registration.
 	const wantClass = `.addClass(Type.imported("IWidget", "@scope/app/main"), Widget, Type.ctor(` +
 		`Type.imported("Widget", "@scope/app/main"), [[Type.imported("IClock", "@scope/app/main"), ` +
-		`Type.union(Type.imported("IAppSettings", "@scope/app/main"), Type.typeLiteral(undefined))]]))`
+		`Type.optional(Type.imported("IAppSettings", "@scope/app/main"))]]))`
 	for name, out := range map[string]string{"waiting": waiting, "immediate": immediate} {
 		if !strings.Contains(out, wantClass) {
 			t.Fatalf("the %s registration did not mint the optional parameter's union slot.\nwant to contain:\n%s\ngot:\n%s", name, wantClass, out)
@@ -309,7 +309,7 @@ export class Widget {
 `
 	const wantRegistration = `services.addClass(Type.imported("IWidget", "@scope/app/main"), Widget, Type.ctor(` +
 		`Type.imported("Widget", "@scope/app/main"), [[Type.imported("IClock", "@scope/app/main"), ` +
-		`Type.union(Type.imported("IOptions", "@scope/app/main"), Type.typeLiteral(undefined))]]))`
+		`Type.optional(Type.imported("IOptions", "@scope/app/main"))]]))`
 
 	control, _ := lowerSugarApp(t, prelude+"export const m = services.addClass<IWidget>(Widget);\n")
 	if !strings.Contains(control, wantRegistration) {
