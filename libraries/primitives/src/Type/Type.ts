@@ -643,13 +643,21 @@ export namespace Type {
   }
 
   /**
+   * Does `diagnostic` stop what it objects to — an error-level objection always, a warning-level
+   * one only when `warningsAsErrors` says warnings stop too?
+   */
+  export function stopsValidation(diagnostic: TypeDiagnostic, warningsAsErrors = false): boolean {
+    return warningsAsErrors || diagnostic.level === 'error';
+  }
+
+  /**
    * Runs `rules` over `type` and raises what stops it — an error-level objection always, a
    * warning-level one when `warningsAsErrors` says warnings stop too.
    *
    * @throws AggregateError - carrying one {@link TypeValidationError} per stopping diagnostic.
    */
   export function validate(type: Type, rules: Iterable<TypeRule>, warningsAsErrors = false): void {
-    const stopping = Type.getDiagnostics(type, rules).filter(diagnostic => warningsAsErrors || diagnostic.level === 'error');
+    const stopping = Type.getDiagnostics(type, rules).filter(diagnostic => Type.stopsValidation(diagnostic, warningsAsErrors));
     if (!stopping.length) {
       return;
     }
