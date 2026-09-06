@@ -7,7 +7,7 @@
  * back as it stands, exactly as a pre-built instance is under
  * Microsoft.Extensions.DependencyInjection.
  *
- * - `'singleton'` — one instance per container, shared by every scope, disposed with the container.
+ * - `'singleton'` — one instance across the whole provider, shared by every scope, disposed with it.
  * - `'scoped'` — one instance per opened scope, disposed with that scope.
  * - `'transient'` — a fresh instance per ask and per injection site, disposed with whichever scope
  *   the ask ran under.

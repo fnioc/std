@@ -65,7 +65,7 @@ describe('several suppliable members', () => {
 });
 
 describe('a self-supplying member is the fallback', () => {
-  const OPTIONAL = Type.union(CACHE, Type.typeLiteral(undefined));
+  const OPTIONAL = Type.optional(CACHE);
 
   function optionalManifest(registerCache: boolean) {
     const manifest = Manifest.empty<string>()
@@ -85,7 +85,7 @@ describe('a self-supplying member is the fallback', () => {
 
   test('a registered literal member wins the registration phase like any other', () => {
     const manifest = optionalManifest(false)
-      .add(Registration.value(Type.typeLiteral(undefined), 'registered-for-undefined'));
+      .add(Registration.value(Type.undefinedLiteral, 'registered-for-undefined'));
     const report = toProvider(manifest).resolve(REPORT) as Report;
     expect(report.cache).toBe('registered-for-undefined');
   });

@@ -6,7 +6,7 @@ import { Plan, type VisitorContext } from './Plan/index.js';
 import { InstalledHooks, type PlanHooks } from './Plan/InstalledHooks.js';
 import { Registry } from './Registry.js';
 
-/** The resolution orchestrator: one per container. Composed as the innermost middleware element. */
+/** The resolution orchestrator: one per built provider. Composed as the innermost middleware element. */
 export class Engine {
   readonly #registry: Registry;
   readonly #hooks: InstalledHooks;
@@ -38,7 +38,7 @@ export class Engine {
    *
    * @throws {UnsatisfiableError} when the address is registered but something it needs is not.
    */
-  getService(request: Request, next: GetService): any {
+  getService(request: Request, next: GetService): unknown {
     const address = request.address;
     if (address === undefined) {
       throw new TypeError('getService received no address — the caller resolved without a service type');

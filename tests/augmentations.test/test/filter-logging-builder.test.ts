@@ -1,4 +1,4 @@
-// The ILoggingBuilder half of the filter augmentations (docs §28/§38): the
+// The ILoggingBuilder half of the filter augmentations: the
 // builder-level `addFilter` routes through the options-configure pipeline — the
 // port of the reference's `builder.Services.Configure<LoggerFilterOptions>(...)`
 // bridge. Each call registers a configure step against
@@ -28,7 +28,7 @@ import { describe, expect, test } from 'bun:test';
 function resolveFilterOptions(builder: ILoggingBuilder): LoggerFilterOptions {
   const services = builder.services.addOptions(LOGGER_FILTER_OPTIONS_TYPE, () => new LoggerFilterOptions());
   const provider = Builder.withServices(() => services).build();
-  const options: IOptions<LoggerFilterOptions> = provider.resolve(LOGGER_FILTER_OPTIONS_ACCESSOR_TYPE);
+  const options = provider.resolve(LOGGER_FILTER_OPTIONS_ACCESSOR_TYPE) as IOptions<LoggerFilterOptions>;
   return options.value;
 }
 

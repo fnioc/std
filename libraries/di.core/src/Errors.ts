@@ -1,10 +1,10 @@
 import { Type } from '@rhombus-std/primitives';
 
 /**
- * The root every error the container raises extends.
+ * The root every error the engine raises extends.
  *
  * @remarks
- * A library holding only the abstractions can tell a container failure from anything else with
+ * A library holding only the abstractions can tell an engine failure from anything else with
  * one check, without naming the engine or knowing which failure it was:
  *
  * ```ts
@@ -93,6 +93,21 @@ export class LifetimeModelError extends DiError {
   }
 }
 
+/** A registration produced a thenable that is not a `Promise`, met where the engine would have to await it. */
+export class NonPromiseThenableError extends DiError {
+  /** The service type whose registration produced the thenable. */
+  readonly address: Type;
+
+  constructor(address: Type) {
+    super(
+      `${Type.stringify(address)} produced a thenable that is not a Promise; `
+        + `a then member would lead to unpredictable results when the value is awaited`,
+    );
+    this.name = 'NonPromiseThenableError';
+    this.address = address;
+  }
+}
+
 /**
  * A registration is addressed by a bare type parameter, which unifies with every request — so it
  * answers every address no newer registration already answers.
@@ -112,17 +127,17 @@ export class UniversalAddressError extends DiError {
 }
 
 /**
- * A resolution or scope opening reached a provider whose container or scope is already disposed —
- * the standard lifetime model's refusal, a clone of the one
+ * A resolution or scope opening reached a disposed provider — the one `build()` returns, or an
+ * opened scope — the standard lifetime model's refusal, a clone of the one
  * Microsoft.Extensions.DependencyInjection raises.
  *
  * @remarks
- * Disposing a scope's provider refuses every later ask through it; disposing the container's
- * refuses every later ask through every provider, and refuses opening a scope.
+ * Disposing a scope's provider refuses every later ask through it; disposing the provider
+ * `build()` returns refuses every later ask through every provider, and refuses opening a scope.
  */
 export class ObjectDisposedError extends DiError {
   constructor() {
-    super('the provider is disposed — its container or scope has ended, so it can no longer resolve or open a scope');
+    super('the provider is disposed — it or its scope has ended, so it can no longer resolve or open a scope');
     this.name = 'ObjectDisposedError';
   }
 }

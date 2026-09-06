@@ -1,6 +1,6 @@
 # `@rhombus-std/di`
 
-A container whose addresses are your types. `add<IClock>(SystemClock)` registers against the
+A resolution engine whose addresses are your types. `add<IClock>(SystemClock)` registers against the
 interface itself — no string keys, no tokens to keep in sync, no decorators, no reflection polyfill —
 because a `Type` is an interned node and `typefor<IClock>()` is resolved at compile time. Constructors
 are plain TypeScript: a union parameter takes the first alternative that resolves, an optional one
@@ -15,7 +15,7 @@ you branch on with `instanceof`.
 `di.core` (the abstractions: the immutable `Manifest` and its `Registration`s, the `describe`
 chain, `Addon` / `Middleware`, the `Request` classes, `IServiceProvider`, the whole error taxonomy,
 and the `ControlService` control surface) ← `di` (the engine: `Builder`, the plan-and-realize resolution core, the
-`ServiceProvider` every container is minted with, and the validation addons; it re-exports the
+`ServiceProvider` every `build()` call is minted with, and the validation addons; it re-exports the
 taxonomy so both imports name the same classes). A library references `di.core`; only an entry point
 references `di`. `di.extras` (the type-argument sugar — `add<T>()`, `describe<T>()`,
 `resolve<T>()` — and the implementer-observing `asClass(ctor)` / `asFactory(fn)` doors) depends on
@@ -29,7 +29,7 @@ so every snippet reassigns `services = services.add(...)` rather than calling it
 
 ### 1. One door: the builder and the chain
 
-Everything a container is made of arrives through one surface, and the type system checks that the
+Everything the engine is made of arrives through one surface, and the type system checks that the
 pieces agree. `Builder.withServices(fn)` installs the registrations `fn` composes onto an empty
 manifest, `Builder.useAddon(addon)` installs an addon, and either may open the chain. Every input
 threads one lifetime vocabulary — `unknown` until the first input carrying one locks it on, and
@@ -50,7 +50,7 @@ const clock = provider.resolve<IClock>();
 ```
 
 An addon is two things: the registrations it files, and the middleware it composes into the
-container's one chain. Registrations are an addon like any other — `withServices` is an addon
+engine's one chain. Registrations are an addon like any other — `withServices` is an addon
 contributing no middleware of its own — so a library ships its whole contribution as one value.
 
 ```ts
@@ -78,12 +78,12 @@ services = services.replace<IClock>(WallClock); // swaps the first IClock regist
 services = services.removeAll<IClock>(); // every IClock registration gone
 ```
 
-Manifests compose. `add` also takes a whole manifest, merged as one batch in its own order, or any
-iterable of registrations, filed one after another — so a feature's registrations are a value you
-build once and hand around.
+Manifests compose. `import` takes a whole manifest, merged as one batch in its own order, and `add`
+takes any iterable of registrations, filed one after another — so a feature's registrations are a
+value you build once and hand around.
 
 ```ts
-services = services.add(Manifest.build(m => m.add<IClock>(SystemClock)));
+services = services.import(Manifest.build(m => m.add<IClock>(SystemClock)));
 ```
 
 ### 3. Registrations are data, and `describe` builds one
@@ -127,7 +127,7 @@ services = services.addValue<() => Date>(() => new Date()); // a function meant 
 
 ### 4. Lifetime is a vocabulary you choose
 
-The container does not dictate your lifetimes; it carries them. A registration holds a `lifetime`
+The engine does not dictate your lifetimes; it carries them. A registration holds a `lifetime`
 from the chain's vocabulary — the `Lifetime` type argument on `Manifest<Lifetime>` and
 `Builder<Lifetime>`. A vocabulary that admits `undefined` lets the argument be omitted; one that does
 not makes every constructed registration name a value, and the `describe` chain withholds
@@ -149,7 +149,7 @@ model's jurisdiction and realizes afresh on every call.
 
 ### 5. Async resolution
 
-An async-built dependency composes like any other, and the container does the awaiting where a
+An async-built dependency composes like any other, and the engine does the awaiting where a
 constructor cannot. `resolveAsync<T>()` asks for `Promise<T>` and settles everything beneath it that
 only a promise registration can answer — each await hoisted onto the boundary that encloses it and
 settled with its siblings in parallel. Plain `resolve()` never awaits anything — asking it for the
@@ -225,9 +225,11 @@ provider.tryResolve<IFoo>(); // IFoo, or undefined — never a throw
 provider.resolve(Type.union(typefor<IFoo>(), typefor<undefined>()));
 ```
 
-Every ask verb has that `try` twin — `tryResolveArray`, `tryResolveAsync`, `tryInvoke` and the rest
-— each asking for its own shape beside the `undefined` literal. The async twins settle on
-`undefined` rather than answering it, so their type is `Promise<T | undefined>`.
+`resolve`, `resolveAsync`, `resolveWith`, `resolveWithAsync`, `instantiate` and `invoke` each have
+that `try` twin — `tryResolve`, `tryResolveAsync`, `tryInvoke` and the rest — asking for its own
+shape beside the `undefined` literal. The async twins settle on `undefined` rather than answering
+it, so their type is `Promise<T | undefined>`. The aggregate verbs have no twin: nothing registered
+is an empty collection, never an absence.
 
 ### 8. Synthesis on a miss: literals, objects, tuples
 
@@ -279,7 +281,7 @@ A registration addressed by nothing but a hole would unify with every request; t
 
 ### 10. Callable slots: latebound factories and invokers
 
-A parameter typed as a function is a factory the container writes for you. A function-typed
+A parameter typed as a function is a factory the engine writes for you. A function-typed
 address resolves to a function: each call plans the return type with the call's own arguments bound
 positionally to the signature row whose arity fits, and an argument the caller supplies outranks
 every registration of that type — the manifest is never consulted for it. A call may stop short of
@@ -288,21 +290,22 @@ the full row wherever the remaining slots admit `undefined`.
 ```ts
 class Report {
   constructor(
-    private readonly log: ILogger, // container-resolved
+    private readonly log: ILogger, // engine-resolved
     public readonly customer: string, // caller-supplied
   ) {}
 }
 services = services.add<ILogger>(ConsoleLogger).add<Report>(Report);
 
 const makeReport = provider.resolve<(customer: string) => Report>();
-makeReport('acme'); // log from the container, 'acme' threaded straight through
+makeReport('acme'); // log from the engine, 'acme' threaded straight through
 ```
 
 `instantiate(ctor)` and `invoke(func)` are the value path — construct or call something you hold in
 your hand with its dependencies filled in, registering and caching nothing. Two calls build two
 instances, even for a class separately registered under its own address.
 `resolveWith<T, Args>(...args)` is the registered counterpart: it resolves the callable and calls it
-with the arguments you supply.
+with the arguments you supply. It is sugar only — hand-written, you resolve the function address and
+call what comes back — and `resolveWithAsync<T, Args>` is the same over a promise-returning callable.
 
 ```ts
 const report = provider.instantiate(Report); // fresh, never registered
@@ -452,7 +455,7 @@ slot.
 ```ts
 services = services
   .add(typefor<IFoo>(), (foo?: IFoo) => new LoggingFoo(foo ?? new PlainFoo()),
-    Type.func(typefor<IFoo>(), [[Type.union(typefor<IFoo>(), Type.typeLiteral(undefined))]]));
+    Type.func(typefor<IFoo>(), [[Type.optional(typefor<IFoo>())]]));
 
 provider.resolve<IFoo>(); // a LoggingFoo around a PlainFoo, with nothing older to wrap
 ```
@@ -493,7 +496,7 @@ const provider = Builder
 ```
 
 Your own build-time sweep is a middleware away: `ControlService.registry` is the registrations the
-container resolves against, read through the door at fold time.
+engine resolves against, read through the door at fold time.
 
 ```ts
 const control = next(new ControlRequest(typefor<ControlService>())) as ControlService;
@@ -507,7 +510,7 @@ for (const registration of control.registry) {
 Three lifetimes, scopes, and disposal — a clone of Microsoft.Extensions.DependencyInjection's
 service lifetimes, on this repository's own API. `standardLifetime()` is an addon: install it and
 every constructed registration names `'singleton'`, `'scoped'` or `'transient'`. A singleton is one
-instance per container, shared by every scope. A scoped registration is one instance per scope. A
+instance across the whole provider, shared by every scope. A scoped registration is one instance per scope. A
 transient is fresh per ask and per injection site. A value registration is handed back as it stands.
 
 ```ts
@@ -524,21 +527,21 @@ await using provider = Builder
 using scope = provider.resolve<IServiceScopeFactory>().openScope();
 const repo = scope.resolve<IRepo>(); // this scope's own; another scope gets another
 scope.resolve<IRepo>() === repo; // true
-provider.resolve<IClock>() === scope.resolve<IClock>(); // true: the container's one instance
+provider.resolve<IClock>() === scope.resolve<IClock>(); // true: the provider's one instance
 ```
 
 A scope is its provider. `IServiceScopeFactory` is resolvable from every provider and is always the
 same instance; `openScope()` answers a new `IServiceProvider` that is a direct child of the
-container, never of the scope the factory was resolved from — scopes are flat and share nothing but
+provider `build()` returns, never of the scope the factory was resolved from — scopes are flat and share nothing but
 the singletons. `IServiceProvider` resolved inside a scope is that scope's own provider; injected
-into a singleton, it is the container's, wherever the singleton was first reached.
+into a singleton, it is the provider `build()` returns, wherever the singleton was first reached.
 
 Disposal follows ownership. Disposing a scope's provider — `using`, or `Symbol.dispose` by hand —
 disposes every instance that scope constructed, most recent first, each once, and the scope refuses
-every later ask with `ObjectDisposedError`. Disposing the container's provider does the same for the
+every later ask with `ObjectDisposedError`. Disposing the provider `build()` returns does the same for the
 singletons and closes every provider. A transient is owned by the scope the ask ran under: resolved
-from a scope, it goes with the scope; resolved from the container's provider, it is held until the
-container disposes; injected into a singleton, it lives as long as the singleton. An instance handed
+from a scope, it goes with the scope; resolved from the provider `build()` returns, it is held until that
+provider disposes; injected into a singleton, it lives as long as the singleton. An instance handed
 to a value registration is never disposed. A construction still pending when its scope ends never
 reaches the caller: the value is disposed as it settles and the waiting ask is refused with
 `ObjectDisposedError`. Errors raised while disposing are collected — one
@@ -553,12 +556,12 @@ scope.resolve<IConnection>(); // throws ObjectDisposedError
 
 `await using` awaits each instance's `Symbol.asyncDispose` and calls a synchronous-only one directly.
 `using` calls `Symbol.dispose` and counts an instance offering only `Symbol.asyncDispose` as an
-error, so a container holding asynchronous disposables is disposed with `await using`.
+error, so a provider holding asynchronous disposables is disposed with `await using`.
 
-A scoped registration reached through the container's own provider is cached with the singletons —
+A scoped registration reached through the provider `build()` returns is cached with the singletons —
 silently, exactly as Microsoft.Extensions.DependencyInjection does without scope validation.
 `validateScopes()` is the optional layer that refuses it: a scoped registration resolved from the
-container's provider, directly or beneath a transient, throws `ScopeValidationError` on every ask;
+provider `build()` returns, directly or beneath a transient, throws `ScopeValidationError` on every ask;
 a scoped registration consumed by a singleton — directly, through a transient, or through another
 singleton — throws `ScopeValidationError` wherever the singleton's dependencies are first planned,
 from any provider. A singleton may hold `IServiceScopeFactory`: it is a value, never constructed,
@@ -571,7 +574,7 @@ const provider = Builder
   .withServices(services => services.add<IRepo>(SqlRepo, 'scoped'))
   .build();
 
-provider.resolve<IRepo>(); // throws ScopeValidationError: reached from the container's provider
+provider.resolve<IRepo>(); // throws ScopeValidationError: reached from the provider `build()` returns
 provider.resolve<IServiceScopeFactory>().openScope().resolve<IRepo>(); // answered
 ```
 
@@ -665,15 +668,16 @@ request.resolve<IUnitOfWork>(); // throws ObjectDisposedError
 
 Every failure mode is a typed subclass of `DiError`, so a caller branches on `instanceof` instead of
 parsing a message, and a library holding only the abstractions can classify what a caller's
-container threw at it. `UnsatisfiableError` — nothing produces the address; the candidate to fall
+provider threw at it. `UnsatisfiableError` — nothing produces the address; the candidate to fall
 back from, carrying the actual missing dependency as its `cause`. `CycleError` — the graph loops,
 with the path that closed it; a fault, deliberately not unsatisfiable. `UniversalAddressError` — a
 registration addressed by a bare hole. `ManifestValidationError` — every registration an up-front
 pass could not plan, `failures` pairing each with its address. `LifetimeModelError` — the installed
 lifetime model's own code threw while realizing an address; the model's error is the `cause`.
-`ObjectDisposedError` — an ask or a scope opening reached a provider whose container or scope has
-ended. `ScopeValidationError` — a scoped registration reached under the singleton scope, from the
-container's own provider or consumed by a singleton, with the scoped `address`.
+`ObjectDisposedError` — an ask or a scope opening reached a disposed provider — the one `build()`
+returns, or an opened scope. `ScopeValidationError` — a scoped registration reached under the
+singleton scope, from the provider `build()` returns or consumed by a singleton, with the scoped
+`address`.
 
 ```ts
 catch (error) {

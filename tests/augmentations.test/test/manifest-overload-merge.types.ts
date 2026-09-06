@@ -17,6 +17,7 @@ class Widget implements IWidget {}
 const WIDGET = Type.imported('Widget', 'test');
 
 declare const manifest: Manifest<'singleton'>;
+declare const registrations: Iterable<Registration<'singleton'>>;
 declare const provider: IServiceProvider;
 
 // add: registration / token constructor / token factory / token value / sugar
@@ -29,6 +30,14 @@ manifest.add<IWidget>(() => new Widget(), 'singleton');
 
 // addValue / addValue<T>
 manifest.addValue<IWidget>(new Widget());
+
+// add's batch shape takes any iterable of registrations; a whole manifest goes
+// through `import` instead, and the veto is decided per call
+manifest.add([Registration.value(WIDGET, new Widget())]);
+manifest.add(registrations);
+// @ts-expect-error a Manifest is not one of the iterables `add` files one by one
+manifest.add(manifest);
+manifest.import(manifest);
 
 // tryAdd: registration / token forms / sugar
 manifest.tryAdd(Registration.value(WIDGET, new Widget()));
@@ -72,41 +81,27 @@ provider.resolve(WIDGET);
 provider.resolve<IWidget>();
 
 // every remaining ask row, the address-taking base form (di.core) beside the
-// tokenless sugar form (di.extras), and the `try` twin of each
+// tokenless sugar form (di.extras), and their `try` twins
 provider.tryResolve(WIDGET);
 provider.tryResolve<IWidget>();
 provider.resolveArray(WIDGET);
 provider.resolveArray<IWidget>();
-provider.tryResolveArray(WIDGET);
-provider.tryResolveArray<IWidget>();
-provider.tryResolveIterable(WIDGET);
-provider.tryResolveIterable<IWidget>();
 provider.resolveAsync(WIDGET);
 provider.resolveAsync<IWidget>();
 provider.tryResolveAsync(WIDGET);
 provider.tryResolveAsync<IWidget>();
 provider.resolveArrayAsync(WIDGET);
 provider.resolveArrayAsync<IWidget>();
-provider.tryResolveArrayAsync(WIDGET);
-provider.tryResolveArrayAsync<IWidget>();
 provider.resolveIterableAsync(WIDGET);
 provider.resolveIterableAsync<IWidget>();
-provider.tryResolveIterableAsync(WIDGET);
-provider.tryResolveIterableAsync<IWidget>();
 provider.resolveAsyncIterable(WIDGET);
 provider.resolveAsyncIterable<IWidget>();
-provider.tryResolveAsyncIterable(WIDGET);
-provider.tryResolveAsyncIterable<IWidget>();
 
-// resolveWith / resolveWithAsync: the address-taking form names the callable's
-// own type in front, the sugar derives it from the type arguments
-provider.resolveWith(Type.func(WIDGET, [[]]));
+// resolveWith / resolveWithAsync: sugar only, the callable's type derived from
+// the type arguments
 provider.resolveWith<IWidget, []>();
-provider.tryResolveWith(Type.func(WIDGET, [[]]));
 provider.tryResolveWith<IWidget, []>();
-provider.resolveWithAsync(Type.func(WIDGET, [[]]));
 provider.resolveWithAsync<IWidget, []>();
-provider.tryResolveWithAsync(Type.func(WIDGET, [[]]));
 provider.tryResolveWithAsync<IWidget, []>();
 
 // instantiate / invoke: the type-taking form beside the observed form

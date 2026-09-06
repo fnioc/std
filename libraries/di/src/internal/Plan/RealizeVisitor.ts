@@ -1,9 +1,9 @@
-import { ControlRequest, type Handle, type Hooks, Registration, Request, ServiceRequest, UnsatisfiableError } from '@rhombus-std/di.core';
+import { ControlRequest, type Handle, type Hooks, NonPromiseThenableError, Registration, Request, ServiceRequest, UnsatisfiableError } from '@rhombus-std/di.core';
 import type { Type } from '@rhombus-std/primitives';
 import { typefor } from '@rhombus-std/primitives.extras';
 import { iterable } from '@rhombus-toolkit/iterable';
 import { assertNever } from '@rhombus-toolkit/type-guards';
-import type { Ctor, Func } from '@rhombus-toolkit/types';
+import type { ButNot, Ctor, Func } from '@rhombus-toolkit/types';
 import type { Engine } from '../Engine.js';
 import { gather } from './gather.js';
 import { type AlwaysDispatch, type AlwaysHook, type Entry, type InstalledHooks, withSlot } from './InstalledHooks.js';
@@ -257,7 +257,10 @@ export class RealizeVisitor {
     if (context.states === undefined || this.#engine.isSeeded(plan.registration)) {
       return this.#deliver(inner, descendants, populatedAddress, context);
     }
-    return this.#constructed(plan, populatedAddress, plan.registration, context, ctx => this.#deliver(inner, descendants, populatedAddress, ctx));
+    return this.#constructed(plan, populatedAddress, plan.registration, context, ctx => {
+      const product = this.#deliver(inner, descendants, populatedAddress, ctx);
+      return refusingNonPromiseThenable(product, populatedAddress);
+    });
   }
 
   /**
@@ -266,10 +269,10 @@ export class RealizeVisitor {
    */
   async #deliver(inner: Plan, descendants: readonly AsyncPlan[], address: Type, context: VisitorContext): Promise<unknown> {
     if (!descendants.length) {
-      return this.visit(inner, context);
+      return refusingNonPromiseThenable(this.visit(inner, context), address);
     }
-    const hoisted = await gather(descendants, address, entry => this.#deliver(entry.inner, entry.descendants, entry.address, context));
-    return this.visit(inner, { ...context, hoisted });
+    const hoisted = await gather(descendants, address, entry => refusingNonPromiseThenable(this.#deliver(entry.inner, entry.descendants, entry.address, context), entry.address));
+    return refusingNonPromiseThenable(this.visit(inner, { ...context, hoisted }), address);
   }
 
   /** The boundary above settled this dependency already, so the walk beneath reads it and never waits. */
@@ -292,7 +295,7 @@ export class RealizeVisitor {
    */
   async *#drain(plan: AsyncIterablePlan, context: VisitorContext): AsyncGenerator<unknown> {
     for (const element of plan.elements) {
-      yield await this.visit(element, context);
+      yield await refusingNonPromiseThenable(this.visit(element, context), this.#request.address);
     }
   }
 
@@ -476,6 +479,20 @@ export class RealizeVisitor {
   }
 
   // #endregion
+}
+
+/** Does `value` carry `then` without being the one deferral the engine reads? */
+function isNonPromiseThenable(value: unknown): value is ButNot<{ then: Func; }, Promise<any>> {
+  return typeof value === 'object' && value !== null && typeof (value as { then?: unknown; }).then === 'function'
+    && !(value instanceof Promise);
+}
+
+/** `value` itself, once it is nothing the language would adopt on the engine's behalf. */
+function refusingNonPromiseThenable(value: unknown, address: Type): unknown {
+  if (isNonPromiseThenable(value)) {
+    throw new NonPromiseThenableError(address);
+  }
+  return value;
 }
 
 /** Tells the redirected-states outcome apart from a `{ result }` interception. */

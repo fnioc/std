@@ -1,6 +1,6 @@
 // Behaviour tests for the ask surface on `IServiceProvider`: the collection, async and callable
-// shapes each verb spells on the caller's behalf, and the `try` twin of each, which asks for that
-// same shape beside the `undefined` literal. Every verb here composes an address and hands it to
+// shapes each verb spells on the caller's behalf, and the `try` twins, which ask for that same
+// shape beside the `undefined` literal. Every verb here composes an address and hands it to
 // one `getService`, so what each answers is the engine's reading of the address it built.
 
 import { Builder } from '@rhombus-std/di';
@@ -69,7 +69,7 @@ describe('the collection shapes', () => {
 
   test('resolveIterable walks the same elements as the iterable address names', () => {
     const provider = toProvider(sinks);
-    expect([...provider.resolveIterable(SINK)]).toEqual([...provider.resolve(Type.iterable(SINK))]);
+    expect([...provider.resolveIterable(SINK)]).toEqual([...provider.resolve(Type.iterable(SINK)) as Iterable<string>]);
   });
 
   test('resolveAsyncIterable yields the same elements, one step at a time', async () => {
@@ -91,50 +91,35 @@ describe('the collection shapes', () => {
     expect(provider.resolveArray(MISSING)).toEqual([]);
     expect([...provider.resolveIterable(MISSING)]).toEqual([]);
   });
-
-  test('the try twins answer that same empty collection, since an aggregate is never absent', async () => {
-    const provider = toProvider(sinks);
-    expect(provider.tryResolveArray(MISSING)).toEqual([]);
-    expect([...provider.tryResolveIterable(MISSING)!]).toEqual([]);
-    expect(provider.tryResolveAsyncIterable(MISSING)).toBeDefined();
-    await expect(provider.tryResolveArrayAsync(MISSING)).resolves.toEqual([]);
-    expect([...(await provider.tryResolveIterableAsync(MISSING))!]).toEqual([]);
-  });
 });
 
-describe('calling what the container holds', () => {
-  test('resolveWith calls the callable at the address with the arguments threaded through', () => {
+describe('calling a registered callable', () => {
+  test('a resolved callable threads the call arguments through to the construction', () => {
     const passed = new CallConn();
-    const widget = toProvider(widgets).resolveWith(Type.func(WIDGET, [[CONN]]), passed) as Widget;
-    expect(widget.conn).toBe(passed);
+    const make = toProvider(widgets).resolve(Type.func(WIDGET, [[CONN]])) as (conn: CallConn) => Widget;
+    expect(make(passed).conn).toBe(passed);
   });
 
-  test('tryResolveWith reaches the same callable', () => {
+  test('the same callable resolved through the try twin reaches the same construction', () => {
     const passed = new CallConn();
-    const widget = toProvider(widgets).tryResolveWith(Type.func(WIDGET, [[CONN]]), passed) as Widget;
-    expect(widget.conn).toBe(passed);
+    const make = toProvider(widgets).tryResolve(Type.func(WIDGET, [[CONN]])) as (conn: CallConn) => Widget;
+    expect(make(passed).conn).toBe(passed);
   });
 
-  test('resolveWithAsync settles on what the promise-returning callable returns', async () => {
-    const provider = toProvider(widgets);
+  test('a promise-returning callable settles on what the construction produced', async () => {
     const passed = new CallConn();
-    const widget = await provider.resolveWithAsync(Type.func(Type.promise(WIDGET), [[CONN]]), passed) as Widget;
-    expect(widget.conn).toBe(passed);
+    const make = toProvider(widgets).resolve(Type.func(Type.promise(WIDGET), [[CONN]])) as (conn: CallConn) => Promise<Widget>;
+    await expect(make(passed).then(widget => widget.conn)).resolves.toBe(passed);
   });
 
-  test('tryResolveWithAsync settles the same way', async () => {
-    const provider = toProvider(widgets);
-    const passed = new CallConn();
-    const widget = await provider.tryResolveWithAsync(Type.func(Type.promise(WIDGET), [[CONN]]), passed) as Widget;
-    expect(widget.conn).toBe(passed);
-  });
-
-  test('a callable whose return nothing can build throws, through the try twin as well', () => {
+  test('a callable whose return nothing can build throws from inside the call, through the try twin as well', () => {
     // The `undefined` member answers an address nothing can PRODUCE; a callable address is always
     // produceable, so the broken graph surfaces from inside the call either way.
     const provider = toProvider(widgets);
-    expect(() => provider.resolveWith(Type.func(MISSING, [[]]))).toThrow(UnsatisfiableError);
-    expect(() => provider.tryResolveWith(Type.func(MISSING, [[]]))).toThrow(UnsatisfiableError);
+    const make = provider.resolve(Type.func(MISSING, [[]])) as () => unknown;
+    const tried = provider.tryResolve(Type.func(MISSING, [[]])) as () => unknown;
+    expect(() => make()).toThrow(UnsatisfiableError);
+    expect(() => tried()).toThrow(UnsatisfiableError);
   });
 });
 

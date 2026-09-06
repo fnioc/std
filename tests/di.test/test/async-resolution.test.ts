@@ -3,7 +3,7 @@
 // awaiting a promise address on the caller's behalf, and the `AsyncIterable<T>` collection form.
 
 import { Builder } from '@rhombus-std/di';
-import { Manifest, Registration, UnsatisfiableError } from '@rhombus-std/di.core';
+import { Manifest, NonPromiseThenableError, Registration, UnsatisfiableError } from '@rhombus-std/di.core';
 import { Type } from '@rhombus-std/primitives';
 import { describe, expect, test } from 'bun:test';
 
@@ -93,7 +93,7 @@ describe('the sync door has no async failure mode', () => {
     const manifest = Manifest.empty<unknown>().addValue(Type.promise(CLOCK), Promise.resolve(new Clock()));
     const provider = toProvider(manifest);
 
-    expect(provider.resolve(Type.union(CLOCK, Type.typeLiteral(undefined)))).toBeUndefined();
+    expect(provider.resolve(Type.optional(CLOCK))).toBeUndefined();
   });
 
   test('a required synchronous dependency on such a value is plainly unsatisfiable', () => {
@@ -177,5 +177,62 @@ describe('AsyncIterable<T> collections', () => {
 
     await iterator.next();
     expect(made).toEqual([1, 2]);
+  });
+});
+
+describe('a thenable that is not a Promise', () => {
+  /** Carries `then` without being a Promise, so the language would adopt it wherever it is awaited. */
+  const foreign = {
+    then(resolve: (value: unknown) => void) {
+      resolve('adopted');
+    },
+  };
+
+  const FOREIGN = Type.imported('Foreign', 'app');
+  const HOLDER = Type.imported('Holder', 'app');
+
+  /** Registers `foreign` as a plain value under its own address. */
+  function withForeign() {
+    return Manifest.empty<unknown>().addValue(FOREIGN, foreign);
+  }
+
+  test('the sync ask answers the object itself', () => {
+    expect(toProvider(withForeign()).resolve(FOREIGN)).toBe(foreign);
+  });
+
+  test('resolveAsync refuses it, naming the boundary address', async () => {
+    const ask = toProvider(withForeign()).resolveAsync(FOREIGN);
+    await expect(ask).rejects.toThrow(NonPromiseThenableError);
+    await expect(ask).rejects.toThrow('Promise<app:Foreign> produced a thenable that is not a Promise');
+  });
+
+  test('an awaited dependency carrying one fails its boundary', async () => {
+    class Holder {
+      constructor(readonly held: unknown) {}
+    }
+    const manifest = Manifest.empty<unknown>()
+      .addValue(Type.promise(FOREIGN), foreign)
+      .add(Registration.ctor(HOLDER, Holder, Type.ctor(HOLDER, [[FOREIGN]])));
+
+    let caught: unknown;
+    try {
+      await toProvider(manifest).resolveAsync(HOLDER);
+    } catch (error) {
+      caught = error;
+    }
+
+    const aggregate = caught as AggregateError;
+    expect(aggregate).toBeInstanceOf(AggregateError);
+    expect(aggregate.errors[0]).toBeInstanceOf(NonPromiseThenableError);
+  });
+
+  test('an AsyncIterable element carrying one refuses at that element', async () => {
+    const manifest = Manifest.empty<unknown>()
+      .addValue(ITEM, new Item(1))
+      .addValue(ITEM, foreign);
+
+    const iterator = (toProvider(manifest).resolve(Type.global('AsyncIterable', [ITEM])) as AsyncIterable<unknown>)[Symbol.asyncIterator]();
+    await expect(iterator.next()).resolves.toEqual({ done: false, value: new Item(1) });
+    await expect(iterator.next()).rejects.toThrow(NonPromiseThenableError);
   });
 });

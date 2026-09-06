@@ -55,7 +55,7 @@ function openScope(provider: IServiceProvider): IDisposableServiceProvider {
   return (provider.resolve(SCOPE_FACTORY) as IServiceScopeFactory).openScope();
 }
 
-/** A container over a factory-made {@link Recorder} alone, under `lifetime`. */
+/** A provider over a factory-made {@link Recorder} alone, under `lifetime`. */
 function recorderProvider(lifetime: StandardLifetime, order: string[] = []): IDisposableServiceProvider {
   return Builder.useAddon(standardLifetime())
     .withServices(m => m.add(RECORDER, () => new Recorder('recorder', order), Type.func(RECORDER, [[]]), lifetime))
@@ -63,7 +63,7 @@ function recorderProvider(lifetime: StandardLifetime, order: string[] = []): IDi
 }
 
 describe('what is captured', () => {
-  test('a constructed singleton is disposed with the container', () => {
+  test('a constructed singleton is disposed with the provider', () => {
     const provider = recorderProvider('singleton');
     const instance = provider.resolve(RECORDER) as Recorder;
     provider[Symbol.dispose]();
@@ -79,7 +79,7 @@ describe('what is captured', () => {
     expect(instance.disposed).toBe(1);
   });
 
-  test('an instance handed to a registration is never disposed by the container', () => {
+  test('an instance handed to a registration is never disposed by the provider', () => {
     const instance = new Recorder();
     const provider = Builder.useAddon(standardLifetime())
       .withServices(m => m.addValue(RECORDER, instance))
@@ -109,7 +109,7 @@ describe('what is captured', () => {
     expect(other.disposed).toBe(0);
   });
 
-  test("a scoped instance reached from the container's own provider is disposed with the container", () => {
+  test('a scoped instance reached from the provider `build()` returns is disposed with the provider', () => {
     const provider = recorderProvider('scoped');
     const instance = provider.resolve(RECORDER) as Recorder;
     provider[Symbol.dispose]();
@@ -132,7 +132,7 @@ describe('which scope owns a transient', () => {
     expect(fromContainer.disposed).toBe(1);
   });
 
-  test("a transient resolved from the container's own provider is held until the container disposes", () => {
+  test('a transient resolved from the provider `build()` returns is held until the provider disposes', () => {
     const provider = recorderProvider('transient');
     const first = provider.resolve(RECORDER) as Recorder;
     const second = provider.resolve(RECORDER) as Recorder;
@@ -166,7 +166,7 @@ describe('which scope owns a transient', () => {
     expect(held.disposed).toBe(1);
   });
 
-  test('a transient injected into a singleton is owned by the container, wherever the singleton was reached', () => {
+  test('a transient injected into a singleton is owned by the provider, wherever the singleton was reached', () => {
     const provider = Builder.useAddon(standardLifetime())
       .withServices(m =>
         m
@@ -298,7 +298,7 @@ describe('the walk', () => {
     expect(instance.disposed).toBe(1);
   });
 
-  test("disposing the container leaves an open scope's own instances to that scope", () => {
+  test("disposing the provider leaves an open scope's own instances to that scope", () => {
     const provider = Builder.useAddon(standardLifetime())
       .withServices(m =>
         m
@@ -335,7 +335,7 @@ describe('the walk', () => {
     expect(kept.disposed).toBe(1);
   });
 
-  test('a singleton dependency constructed before a sibling throws is owned by the container, and disposed with it', () => {
+  test('a singleton dependency constructed before a sibling throws is owned by the provider, and disposed with it', () => {
     const order: string[] = [];
     const provider = Builder.useAddon(standardLifetime())
       .withServices(m =>
@@ -562,7 +562,7 @@ describe('errors during disposal', () => {
 });
 
 describe('after disposal', () => {
-  test('resolving from a disposed scope refuses, while the container and other scopes go on', () => {
+  test('resolving from a disposed scope refuses, while the provider and other scopes go on', () => {
     const provider = recorderProvider('scoped');
     const scope = openScope(provider);
     const other = openScope(provider);
@@ -573,7 +573,7 @@ describe('after disposal', () => {
     expect(openScope(provider).resolve(RECORDER)).toBeInstanceOf(Recorder);
   });
 
-  test('resolving from the disposed container refuses', () => {
+  test('resolving from the disposed provider refuses', () => {
     const provider = recorderProvider('singleton');
     provider.resolve(RECORDER);
     provider[Symbol.dispose]();
@@ -599,7 +599,7 @@ describe('after disposal', () => {
     expect(built).toBe(1);
   });
 
-  test('the disposed container refuses before any construction runs', () => {
+  test('the disposed provider refuses before any construction runs', () => {
     let built = 0;
     const provider = Builder.useAddon(standardLifetime())
       .withServices(m =>
@@ -617,7 +617,7 @@ describe('after disposal', () => {
     expect(built).toBe(1);
   });
 
-  test('resolving from a scope that was open when the container was disposed refuses', () => {
+  test('resolving from a scope that was open when the provider was disposed refuses', () => {
     const provider = recorderProvider('scoped');
     const scope = openScope(provider);
     scope.resolve(RECORDER);
@@ -625,14 +625,14 @@ describe('after disposal', () => {
     expect(() => scope.resolve(RECORDER)).toThrow(ObjectDisposedError);
   });
 
-  test('opening a scope from the disposed container refuses, through a factory resolved earlier', () => {
+  test('opening a scope from the disposed provider refuses, through a factory resolved earlier', () => {
     const provider = recorderProvider('scoped');
     const factory = provider.resolve(SCOPE_FACTORY) as IServiceScopeFactory;
     provider[Symbol.dispose]();
     expect(() => factory.openScope()).toThrow(ObjectDisposedError);
   });
 
-  test('a scope factory resolved from a disposed scope still opens scopes: it belongs to the container', () => {
+  test('a scope factory resolved from a disposed scope still opens scopes: it belongs to the provider', () => {
     const provider = recorderProvider('scoped');
     const scope = openScope(provider);
     const factory = scope.resolve(SCOPE_FACTORY) as IServiceScopeFactory;
@@ -705,7 +705,7 @@ describe('a registered array', () => {
     expect(array.map(element => element.disposed)).toEqual([0, 0]);
   });
 
-  test('offering no disposal protocol of its own, nothing it holds is disposed with the container', () => {
+  test('offering no disposal protocol of its own, nothing it holds is disposed with the provider', () => {
     const order: string[] = [];
     const elements = [new Recorder('first', order), new Recorder('second', order)];
     const provider = Builder.useAddon(standardLifetime())
@@ -729,7 +729,7 @@ describe('asynchronous products', () => {
     expect(instance.disposed).toBe(1);
   });
 
-  test('a singleton promise product still pending when the container ends is disposed on settlement, and the ask it was answering is refused', async () => {
+  test('a singleton promise product still pending when the provider ends is disposed on settlement, and the ask it was answering is refused', async () => {
     let settle: (recorder: Recorder) => void = () => undefined;
     const provider = Builder.useAddon(standardLifetime())
       .withServices(m => m.add(RECORDER, () => new Promise<Recorder>(resolve => (settle = resolve)), Type.func(Type.promise(RECORDER), [[]]), 'singleton'))

@@ -1,12 +1,12 @@
 # Async resolution
 
 Some dependencies are only ever ready after an await — a remote config fetch, a warmed connection
-pool, a schema read off disk. Most containers make that your problem: every consumer above the
+pool, a schema read off disk. Most engines make that your problem: every consumer above the
 async piece turns async too, or you bolt a two-phase startup on the side. Here you register the
 promise and ask for the value. Resolution stays synchronous end to end unless a registration itself
 is asynchronous, `Promise<T>` is the one spelling that makes it so, and `resolveAsync<T>()` is the one
 path that unwraps it — awaiting the promise and everything beneath it that needed awaiting, in one
-wait, in parallel, on your behalf. Nothing else in the container ever awaits anything for you, so a
+wait, in parallel, on your behalf. Nothing else in the engine ever awaits anything for you, so a
 synchronous graph stays exactly as fast and as predictable as it was.
 
 ## Register the promise, ask for the value
@@ -69,7 +69,7 @@ services = services
 const repo = await provider.resolveAsync<IRepo>(); // one await, however deep the promised deps run
 ```
 
-`SqlRepo` is written against `IClock`, not `Promise<IClock>`; the container does the awaiting where
+`SqlRepo` is written against `IClock`, not `Promise<IClock>`; the engine does the awaiting where
 the constructor cannot. A dependency further down that is itself only reachable through a promise
 becomes a descendant of the await that encloses it, and settles its own descendants before it
 resolves — so the graph is walked once, the independent awaits at each level settle in parallel, and
@@ -92,6 +92,11 @@ services = services.add<Promise<IBanner>>(fetchBanner, 'app'); // the promise is
 
 How long a construction is kept is the lifetime model's own concern, installed as an addon; the
 engine says only which node the construction happens at.
+
+Deferral is `Promise` by identity. A value carrying `then` that is not a `Promise` is an ordinary
+service on the synchronous path, handed back as it stands, but it is refused at the async boundary
+— the ask fails naming that boundary's address — because the language would otherwise adopt it
+wherever the engine awaits, on terms the engine never chose.
 
 ## Async collections
 

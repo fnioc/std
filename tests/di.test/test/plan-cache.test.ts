@@ -90,7 +90,7 @@ describe('a chosen member that fails while being built', () => {
     }
     const manifest = Manifest.empty<string>()
       .add(
-        Registration.ctor(REPORT, Report, Type.ctor(REPORT, [[Type.union(CACHE, Type.typeLiteral(undefined))]]), 'singleton'),
+        Registration.ctor(REPORT, Report, Type.ctor(REPORT, [[Type.optional(CACHE)]]), 'singleton'),
       )
       .add(Registration.ctor(CACHE, Exploding, Type.ctor(CACHE, [[]]), 'singleton'));
 

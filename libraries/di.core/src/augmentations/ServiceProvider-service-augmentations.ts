@@ -11,7 +11,7 @@ declare module '@rhombus-std/di.core' {
      *
      * @throws UnsatisfiableError - when nothing can produce `address`.
      */
-    resolve(address: Type): any;
+    resolve(address: Type): unknown;
     /**
      * The value registered for `address`, or `undefined` once nothing can produce it.
      *
@@ -19,24 +19,14 @@ declare module '@rhombus-std/di.core' {
      * Asks for `address | undefined`, where the `undefined` literal orders last, so it answers
      * only after `address` itself has been tried and found unbuildable.
      */
-    tryResolve(address: Type): any;
+    tryResolve(address: Type): unknown;
     /** Every registration of `address`, oldest first, as one array. */
-    resolveArray(address: Type): any[];
-    /**
-     * Every registration of `address` as one array, or `undefined` once nothing can produce that.
-     *
-     * @remarks
-     * An aggregate with no registrations is empty rather than absent, so the `undefined` answer
-     * belongs to an `address` no aggregate can be built over at all.
-     */
-    tryResolveArray(address: Type): any[] | undefined;
+    resolveArray(address: Type): unknown[];
     /**
      * Every registration of `address`, oldest first, as one sequence. Nothing registered is an
      * empty sequence rather than an absence, so this neither throws nor answers `undefined`.
      */
-    resolveIterable(address: Type): Iterable<any>;
-    /** Every registration of `address` as one sequence, or `undefined` once nothing can produce that. */
-    tryResolveIterable(address: Type): Iterable<any> | undefined;
+    resolveIterable(address: Type): Iterable<unknown>;
     /**
      * The value registered for `address`, delivered asynchronously: every dependency beneath it
      * that arrives as a promise is awaited before the value is handed over.
@@ -47,41 +37,23 @@ declare module '@rhombus-std/di.core' {
      *
      * @throws UnsatisfiableError - when nothing can produce `address`.
      */
-    resolveAsync(address: Type): Promise<any>;
+    resolveAsync(address: Type): Promise<unknown>;
     /** The value registered for `address`, delivered asynchronously, settling on `undefined` once nothing can produce it. */
-    tryResolveAsync(address: Type): Promise<any>;
+    tryResolveAsync(address: Type): Promise<unknown | undefined>;
     /** Every registration of `address` as one array, delivered asynchronously. */
-    resolveArrayAsync(address: Type): Promise<any[]>;
-    /** Every registration of `address` as one array, delivered asynchronously, settling on `undefined` once nothing can produce that. */
-    tryResolveArrayAsync(address: Type): Promise<any[] | undefined>;
+    resolveArrayAsync(address: Type): Promise<unknown[]>;
     /** Every registration of `address` as one sequence, delivered asynchronously. */
-    resolveIterableAsync(address: Type): Promise<Iterable<any>>;
-    /** Every registration of `address` as one sequence, delivered asynchronously, settling on `undefined` once nothing can produce that. */
-    tryResolveIterableAsync(address: Type): Promise<Iterable<any> | undefined>;
+    resolveIterableAsync(address: Type): Promise<Iterable<unknown>>;
     /**
      * Every registration of `address`, each element awaited as the walk reaches it rather than
      * the whole sequence up front.
      */
-    resolveAsyncIterable(address: Type): AsyncIterable<any>;
-    /** Every registration of `address` as one awaited walk, or `undefined` once nothing can produce that. */
-    tryResolveAsyncIterable(address: Type): AsyncIterable<any> | undefined;
-    /**
-     * Calls the callable registered for `address` with `args`, handing back what it returns.
-     *
-     * @throws UnsatisfiableError - when nothing can produce `address`.
-     */
-    resolveWith(address: Type, ...args: any[]): any;
-    /** Calls the callable registered for `address` with `args`, or answers `undefined` once nothing can produce it. */
-    tryResolveWith(address: Type, ...args: any[]): any;
-    /**
-     * Calls the promise-returning callable registered for `address` with `args`, handing back
-     * what it returns.
-     *
-     * @throws UnsatisfiableError - when nothing can produce `address`.
-     */
-    resolveWithAsync(address: Type, ...args: any[]): Promise<any>;
-    /** Calls the promise-returning callable registered for `address` with `args`, settling on `undefined` once nothing can produce it. */
-    tryResolveWithAsync(address: Type, ...args: any[]): Promise<any>;
+    resolveAsyncIterable(address: Type): AsyncIterable<unknown>;
+    // Sugar only: its rest parameter would swallow any (funcType, ...args) call, so these can't bind.
+    // resolveWith(funcType: FunctionType, ...args: unknown[]): unknown;
+    // tryResolveWith(funcType: FunctionType, ...args: unknown[]): unknown;
+    // resolveWithAsync(funcType: FunctionType, ...args: unknown[]): Promise<unknown>;
+    // tryResolveWithAsync(funcType: FunctionType, ...args: unknown[]): Promise<unknown | undefined>;
     /**
      * Constructs `ctor` fresh, its dependencies resolved from `ctorType` — `ctor`'s own arg
      * types, in order, the same shape {@link ConstructorType} carries for any other registered
@@ -109,79 +81,49 @@ declare module '@rhombus-std/di.core' {
 }
 
 registerAugmentations<IServiceProvider>({
-  resolve(this: IServiceProvider, address: Type): any {
+  resolve(this: IServiceProvider, address: Type): unknown {
     return this.getService(address);
   },
 });
 
 registerAugmentations<IServiceProvider>({
-  tryResolve(this: IServiceProvider, address: Type): any {
-    return this.resolve(Type.union(address, Type.typeLiteral(undefined)));
+  tryResolve(this: IServiceProvider, address: Type): unknown {
+    return this.resolve(Type.optional(address));
   },
-  resolveArray(this: IServiceProvider, address: Type): any[] {
-    return this.resolve(Type.array(address));
+  resolveArray(this: IServiceProvider, address: Type): unknown[] {
+    return this.resolve(Type.array(address)) as unknown[];
   },
-  tryResolveArray(this: IServiceProvider, address: Type): any[] | undefined {
-    return this.tryResolve(Type.array(address));
+  resolveIterable(this: IServiceProvider, address: Type): Iterable<unknown> {
+    return this.resolve(Type.iterable(address)) as Iterable<unknown>;
   },
-  resolveIterable(this: IServiceProvider, address: Type): Iterable<any> {
-    return this.resolve(Type.iterable(address));
+  resolveAsync(this: IServiceProvider, address: Type): Promise<unknown> {
+    return this.resolve(Type.promise(address)) as Promise<unknown>;
   },
-  tryResolveIterable(this: IServiceProvider, address: Type): Iterable<any> | undefined {
-    return this.tryResolve(Type.iterable(address));
+  tryResolveAsync(this: IServiceProvider, address: Type): Promise<unknown | undefined> {
+    return this.resolveAsync(Type.optional(address));
   },
-  resolveAsync(this: IServiceProvider, address: Type): Promise<any> {
-    return this.resolve(Type.promise(address));
+  resolveArrayAsync(this: IServiceProvider, address: Type): Promise<unknown[]> {
+    return this.resolveAsync(Type.array(address)) as Promise<unknown[]>;
   },
-  tryResolveAsync(this: IServiceProvider, address: Type): Promise<any> {
-    return this.resolveAsync(Type.union(address, Type.typeLiteral(undefined)));
+  resolveIterableAsync(this: IServiceProvider, address: Type): Promise<Iterable<unknown>> {
+    return this.resolveAsync(Type.iterable(address)) as Promise<Iterable<unknown>>;
   },
-  resolveArrayAsync(this: IServiceProvider, address: Type): Promise<any[]> {
-    return this.resolveAsync(Type.array(address));
-  },
-  tryResolveArrayAsync(this: IServiceProvider, address: Type): Promise<any[] | undefined> {
-    return this.resolveAsync(Type.union(Type.array(address), Type.typeLiteral(undefined)));
-  },
-  resolveIterableAsync(this: IServiceProvider, address: Type): Promise<Iterable<any>> {
-    return this.resolveAsync(Type.iterable(address));
-  },
-  tryResolveIterableAsync(this: IServiceProvider, address: Type): Promise<Iterable<any> | undefined> {
-    return this.resolveAsync(Type.union(Type.iterable(address), Type.typeLiteral(undefined)));
-  },
-  resolveAsyncIterable(this: IServiceProvider, address: Type): AsyncIterable<any> {
-    return this.resolve(Type.global('AsyncIterable', [address]));
-  },
-  tryResolveAsyncIterable(this: IServiceProvider, address: Type): AsyncIterable<any> | undefined {
-    return this.tryResolve(Type.global('AsyncIterable', [address]));
-  },
-});
-
-registerAugmentations<IServiceProvider>({
-  resolveWith(this: IServiceProvider, address: Type, ...args: any[]): any {
-    return this.resolve(address)(...args);
-  },
-  tryResolveWith(this: IServiceProvider, address: Type, ...args: any[]): any {
-    return this.tryResolve(address)?.(...args);
-  },
-  resolveWithAsync(this: IServiceProvider, address: Type, ...args: any[]): Promise<any> {
-    return this.resolve(address)(...args);
-  },
-  async tryResolveWithAsync(this: IServiceProvider, address: Type, ...args: any[]): Promise<any> {
-    return this.tryResolve(address)?.(...args);
+  resolveAsyncIterable(this: IServiceProvider, address: Type): AsyncIterable<unknown> {
+    return this.resolve(Type.global('AsyncIterable', [address])) as AsyncIterable<unknown>;
   },
 });
 
 registerAugmentations<IServiceProvider>({
   instantiate<R>(this: IServiceProvider, ctorType: ConstructorType, ctor: Ctor<any[], R>): R {
-    return this.resolve(invokerAddress(ctorType))(ctor);
+    return (this.resolve(invokerAddress(ctorType)) as Func<[Ctor<any[], R>], R>)(ctor);
   },
   tryInstantiate<R>(this: IServiceProvider, ctorType: ConstructorType, ctor: Ctor<any[], R>): R | undefined {
-    return this.tryResolve(invokerAddress(ctorType))?.(ctor);
+    return (this.tryResolve(invokerAddress(ctorType)) as Func<[Ctor<any[], R>], R> | undefined)?.(ctor);
   },
   invoke<R>(this: IServiceProvider, funcType: FunctionType, func: Func<any[], R>): R {
-    return this.resolve(invokerAddress(funcType))(func);
+    return (this.resolve(invokerAddress(funcType)) as Func<[Func<any[], R>], R>)(func);
   },
   tryInvoke<R>(this: IServiceProvider, funcType: FunctionType, func: Func<any[], R>): R | undefined {
-    return this.tryResolve(invokerAddress(funcType))?.(func);
+    return (this.tryResolve(invokerAddress(funcType)) as Func<[Func<any[], R>], R> | undefined)?.(func);
   },
 });

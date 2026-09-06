@@ -5,7 +5,7 @@ import { typefor } from '@rhombus-std/primitives.extras';
 export interface ServiceProvider extends IServiceProvider {}
 
 /**
- * The user-facing provider every container is minted with: one held call, forwarded on every ask.
+ * The user-facing provider every `build()` call is minted with: one held call, forwarded on every ask.
  * Allocates a {@link ServiceRequest} per call, putting itself on it so the ask resolves back to
  * the provider that opened it.
  */
@@ -19,7 +19,7 @@ export class ServiceProvider implements IDisposableServiceProvider {
     this.#getService = source;
   }
 
-  getService(address: Type): any {
+  getService(address: Type): unknown {
     return this.#getService(new ServiceRequest(address, this));
   }
 

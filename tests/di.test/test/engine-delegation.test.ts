@@ -78,7 +78,7 @@ describe('what the engine answers itself', () => {
     const answer = engine.getService(new ControlRequest(Type.object({ conn: CONN })), request => {
       seen.push(request);
       return undefined;
-    });
+    }) as { conn: unknown; };
 
     expect(answer.conn).toBeInstanceOf(Conn);
     expect(seen).toEqual([]);

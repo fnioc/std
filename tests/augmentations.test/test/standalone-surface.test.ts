@@ -1,5 +1,5 @@
 // Snapshot the exported STANDALONE augmentation surface -- the member-name set of
-// each named object literal added by the foreign-class sites (docs §28),
+// each named object literal added by the foreign-class sites,
 // mirroring #95's token-snapshot approach. A member added or removed here is a
 // deliberate, version-bump-gated change, so this test must be updated in the same
 // commit that changes the surface.
@@ -36,7 +36,7 @@ describe('standalone augmentation surface (member-name snapshots)', () => {
     expect(keys(ServiceManifestOptionsAugmentations)).toEqual(['addOptions']);
   });
 
-  test('value-object augmentations (§29/#105)', () => {
+  test('value-object augmentations', () => {
     expect(keys(LoggerFilterOptionsExtensions)).toEqual(['addFilter']);
     expect(keys(MetricsOptionsAugmentations)).toEqual(['disableMetrics', 'enableMetrics']);
     expect(keys(TracingOptionsAugmentations)).toEqual(['disableTracing', 'enableTracing']);

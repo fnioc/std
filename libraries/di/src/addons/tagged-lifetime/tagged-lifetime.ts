@@ -158,7 +158,7 @@ class Model {
         return;
       }
       store(layer, registration, populatedAddress, instance);
-      if (!isThenable(instance)) {
+      if (!(instance instanceof Promise)) {
         capture(layer, instance);
         return;
       }
@@ -191,8 +191,4 @@ function layerFor(chain: readonly Layer[], registration: Registration<unknown>):
     return undefined;
   }
   return chain.find(layer => layer.tag === tag);
-}
-
-function isThenable(value: unknown): value is PromiseLike<unknown> {
-  return typeof value === 'object' && value !== null && typeof (value as PromiseLike<unknown>).then === 'function';
 }

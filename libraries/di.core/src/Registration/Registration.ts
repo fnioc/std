@@ -21,7 +21,7 @@ interface WithLifetimeMembers<Lifetime> {
 }
 type WithLifetime<Lifetime> = Readonly<undefined extends Lifetime ? Partial<WithLifetimeMembers<Lifetime>> : Required<WithLifetimeMembers<Lifetime>>>;
 /**
- * A registration the container constructs with `new`.
+ * A registration the engine constructs with `new`.
  *
  * @remarks
  * `ctorType` is where the registration's signatures live, so `ctor` and the calls it answers
@@ -35,7 +35,7 @@ export type CtorRegistration<Lifetime> = Flatten<
   } & WithLifetime<Lifetime>
 >;
 
-/** A registration the container calls. */
+/** A registration the engine calls. */
 export type FactoryRegistration<Lifetime> = Flatten<
   {
     readonly address: Type;
@@ -45,7 +45,7 @@ export type FactoryRegistration<Lifetime> = Flatten<
 >;
 
 /**
- * A registration the container hands back as it stands.
+ * A registration the engine hands back as it stands.
  *
  * @remarks
  * It carries no lifetime: a value IS its instance, so there is no construction for a lifetime to

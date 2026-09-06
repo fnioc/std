@@ -16,13 +16,13 @@ declare module '@rhombus-std/di.core' {
      * Merges `manifest`'s registrations in as one batch, ahead of everything already in the
      * chain, in `manifest`'s own order.
      */
-    add(manifest: Manifest<Lifetime>): Manifest<Lifetime>;
+    import(manifest: Manifest<any>): Manifest<Lifetime>;
     /**
      * Files each registration in `registrations` in turn, exactly as calling {@link Manifest.add}
-     * for each in order would — the last one ends up newest. A `Manifest` binds the wholesale-merge
-     * overload above instead, order preserved.
+     * for each in order would — the last one ends up newest. A `Manifest` goes through
+     * {@link Manifest.import} instead, order preserved.
      */
-    add(registrations: ButNot<Iterable<Registration<Lifetime>>, Manifest<any>>): Manifest<Lifetime>;
+    add<Registrations extends Iterable<Registration<Lifetime>>>(registrations: ButNot<Registrations, Manifest<any>>): Manifest<Lifetime>;
     /**
      * Swaps in `registration` for the first registration registered under the same service type, leaving
      * every other registration untouched.
@@ -98,17 +98,15 @@ registerAugmentations<Manifest<unknown>>({
 });
 
 registerAugmentations<Manifest<unknown>>({
-  add(this: Manifest<unknown>, manifest: Manifest<unknown>): Manifest<unknown> {
+  import(this: Manifest<unknown>, manifest: Manifest<unknown>): Manifest<unknown> {
     return new DefaultManifest<unknown>(() => concat(manifest, this));
   },
 });
 
 registerAugmentations<Manifest<unknown>>({
   add(this: Manifest<unknown>, registrations: Iterable<Registration<unknown>>): Manifest<unknown> {
-    // The synthesized dispatch never actually reaches the Manifest-shaped contribution above — a
-    // Manifest is itself iterable, and every call lands here regardless of its static overload.
-    // This check is what makes the merge behavior real: a Manifest gets the order-preserving
-    // merge, anything else the consecutive-adds fold.
+    // A Manifest is itself iterable, so one handed to `add` lands here: the check is what gives
+    // it the order-preserving merge, and anything else the consecutive-adds fold.
     if (registrations instanceof DefaultManifest) {
       return new DefaultManifest<unknown>(() => concat(registrations, this));
     }

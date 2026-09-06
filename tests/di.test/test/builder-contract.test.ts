@@ -1,10 +1,10 @@
-// Black-box behavior tests for the container-agnostic floor: every case here uses only
-// capabilities any mainstream constructor-injection container offers — construction with
+// Black-box behavior tests for the engine-agnostic floor: every case here uses only
+// capabilities any mainstream constructor-injection engine offers — construction with
 // injected dependencies, last-registration-wins, factories taking the provider, collection
 // resolution in registration order, keyed addresses, open generics, cycle refusal — and asserts
 // nothing about this engine's own extensions. The request classes, hooks, delegation and
 // shadowing-resolves-beneath live in their own suites; a self-referential registration in
-// particular is NOT here, because this container decorates where others refuse.
+// particular is NOT here, because this engine decorates where others refuse.
 
 import { Builder } from '@rhombus-std/di';
 import { CycleError, type IServiceProvider, Registration, UnsatisfiableError } from '@rhombus-std/di.core';
@@ -88,14 +88,14 @@ describe('collections', () => {
         .add(Registration.value(GREETING, 'casual'))
     ).build();
 
-    expect([...provider.getService(Type.iterable(GREETING))]).toEqual(['formal', 'casual']);
+    expect([...provider.getService(Type.iterable(GREETING)) as Iterable<string>]).toEqual(['formal', 'casual']);
     expect(provider.getService(Type.array(GREETING))).toEqual(['formal', 'casual']);
   });
 
   test('an unregistered element type yields an empty collection while the bare address still refuses', () => {
     const provider = Builder.withServices(manifest => manifest.add(Registration.value(CONN, new Conn()))).build();
 
-    expect([...provider.getService(Type.iterable(MISSING))]).toEqual([]);
+    expect([...provider.getService(Type.iterable(MISSING)) as Iterable<unknown>]).toEqual([]);
     expect(() => provider.getService(MISSING)).toThrow(UnsatisfiableError);
   });
 });
@@ -110,7 +110,7 @@ describe('keyed registrations', () => {
 
     expect(provider.getService(STORE)).toBe('plain');
     expect(provider.getService(Type.tag(STORE, 'sql'))).toBe('sql-store');
-    expect([...provider.getService(Type.iterable(STORE))]).toEqual(['plain']);
+    expect([...provider.getService(Type.iterable(STORE)) as Iterable<string>]).toEqual(['plain']);
   });
 });
 

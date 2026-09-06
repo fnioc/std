@@ -34,7 +34,7 @@ class Box {
   constructor(readonly closing: unknown) {}
 }
 
-/** A container over {@link Counter} alone, under `lifetime`. */
+/** A provider over {@link Counter} alone, under `lifetime`. */
 function counterProvider(lifetime: StandardLifetime): IDisposableServiceProvider {
   return Builder.useAddon(standardLifetime())
     .withServices(m => m.add(COUNTER, Counter, Type.ctor(COUNTER, [[]]), lifetime))
@@ -46,7 +46,7 @@ function openScope(provider: IServiceProvider): IDisposableServiceProvider {
 }
 
 describe('singleton', () => {
-  test('one instance per container: every resolve and every injection site shares it', () => {
+  test('one instance across the whole provider: every resolve and every injection site shares it', () => {
     const provider = Builder.useAddon(standardLifetime())
       .withServices(m =>
         m
@@ -94,13 +94,13 @@ describe('singleton', () => {
     expect(built).toBe(1);
   });
 
-  test('resolving from a scope answers the container-wide instance', () => {
+  test("resolving from a scope answers the provider's singleton instance", () => {
     const provider = counterProvider('singleton');
     expect(openScope(provider).resolve(COUNTER)).toBe(provider.resolve(COUNTER));
     expect(openScope(provider).resolve(COUNTER)).toBe(openScope(provider).resolve(COUNTER));
   });
 
-  test('a singleton first reached from a scope is the very instance the container then answers', () => {
+  test('a singleton first reached from a scope is the very instance the provider then answers', () => {
     const provider = counterProvider('singleton');
     const fromScope = openScope(provider).resolve(COUNTER);
     expect(provider.resolve(COUNTER)).toBe(fromScope);
@@ -163,10 +163,10 @@ describe('scoped', () => {
       expect(scope.resolve(sibling)).toBe(wide.siblings[i]);
       expect(other.resolve(sibling)).not.toBe(wide.siblings[i]);
     });
-    expect((other.resolve(WIDE) as Wide).siblings).toEqual(SIBLINGS.map(sibling => other.resolve(sibling)));
+    expect((other.resolve(WIDE) as Wide).siblings).toEqual(SIBLINGS.map(sibling => other.resolve(sibling) as Sibling));
   });
 
-  test("resolved from the container's own provider without validation, it is cached with the singletons for every later container ask", () => {
+  test('resolved from the provider `build()` returns without validation, it is cached with the singletons for every later ask', () => {
     const provider = counterProvider('scoped');
     const promoted = provider.resolve(COUNTER);
 
@@ -187,11 +187,11 @@ describe('scoped', () => {
 
     const holder = scope.resolve(HOLDER) as Holder;
     expect(holder.counter).not.toBe(scope.resolve(COUNTER));
-    expect(holder.counter).toBe(provider.resolve(COUNTER));
+    expect(holder.counter).toBe(provider.resolve(COUNTER) as Counter);
     expect(provider.resolve(HOLDER)).toBe(holder);
   });
 
-  test("a scope's own instance is never promoted: the container's provider still constructs its own", () => {
+  test("a scope's own instance is never promoted: the provider `build()` returns still constructs its own", () => {
     const provider = counterProvider('scoped');
     const scope = openScope(provider);
     const scoped = scope.resolve(COUNTER);
@@ -257,7 +257,7 @@ describe('several registrations of one address', () => {
     expect(provider.resolve(COUNTER)).not.toBe(provider.resolve(COUNTER));
   });
 
-  test('a single ask answers the last registration even when an earlier one is scoped and the ask comes from the container', () => {
+  test('a single ask answers the last registration even when an earlier one is scoped and the ask comes from the provider `build()` returns', () => {
     const provider = Builder.useAddon(standardLifetime())
       .withServices(m =>
         m
@@ -269,7 +269,7 @@ describe('several registrations of one address', () => {
     expect(provider.resolve(COUNTER)).toBe(provider.resolve(COUNTER));
   });
 
-  test("a scoped last registration resolved from the container's provider is promoted, never the earlier singleton", () => {
+  test('a scoped last registration resolved from the provider `build()` returns is promoted, never the earlier singleton', () => {
     const provider = Builder.useAddon(standardLifetime())
       .withServices(m =>
         m
@@ -308,10 +308,10 @@ describe('several registrations of one address', () => {
 
     const all = Array.from(provider.resolveIterable(COUNTER)) as Counter[];
     expect(all[0]).not.toBe(all[1]);
-    expect(all[1]).toBe(provider.resolve(COUNTER));
+    expect(all[1]).toBe(provider.resolve(COUNTER) as Counter);
   });
 
-  test('a collection ask in a scope keeps scoped elements per scope and singleton elements per container', () => {
+  test('a collection ask in a scope keeps scoped elements per scope and singleton elements across the whole provider', () => {
     const provider = Builder.useAddon(standardLifetime())
       .withServices(m =>
         m
@@ -326,7 +326,7 @@ describe('several registrations of one address', () => {
     const fromB = Array.from(b.resolveIterable(COUNTER)) as Counter[];
     expect(fromA[0]).toBe(fromB[0]);
     expect(fromA[1]).not.toBe(fromB[1]);
-    expect(fromA[1]).toBe(a.resolve(COUNTER));
+    expect(fromA[1]).toBe(a.resolve(COUNTER) as Counter);
   });
 });
 
@@ -365,7 +365,7 @@ describe('collection asks and registered arrays', () => {
     expect(fromB).not.toBe(fromA);
     expect(fromA[0]).toBe(fromB[0]);
     expect(fromA[1]).not.toBe(fromB[1]);
-    expect(fromA[1]).toBe(a.resolve(COUNTER));
+    expect(fromA[1]).toBe(a.resolve(COUNTER) as Counter);
   });
 
   test('a registration answering the array address is one service under one lifetime, not a collection', () => {
@@ -517,7 +517,7 @@ describe('asynchronous constructions', () => {
 });
 
 describe('scopes', () => {
-  test('the scope factory is resolvable from the container and from any scope, always the same instance', () => {
+  test('the scope factory is resolvable from the provider `build()` returns and from any scope, always the same instance', () => {
     const provider = counterProvider('scoped');
     const factory = provider.resolve(SCOPE_FACTORY) as IServiceScopeFactory;
     const scope = factory.openScope();
@@ -526,7 +526,7 @@ describe('scopes', () => {
     expect((scope.resolve(SCOPE_FACTORY) as IServiceScopeFactory).openScope().resolve(SCOPE_FACTORY)).toBe(factory);
   });
 
-  test('a scope opened through a factory resolved inside a scope is a child of the container, not of that scope', () => {
+  test('a scope opened through a factory resolved inside a scope is a child of the provider `build()` returns, not of that scope', () => {
     const provider = counterProvider('scoped');
     const outer = openScope(provider);
     const inner = openScope(outer);
@@ -545,8 +545,8 @@ describe('scopes', () => {
     const b = openScope(provider);
 
     expect(a.resolve(COUNTER)).not.toBe(b.resolve(COUNTER));
-    expect((a.resolve(HOLDER) as Holder).counter).toBe(a.resolve(COUNTER));
-    expect((b.resolve(HOLDER) as Holder).counter).toBe(b.resolve(COUNTER));
+    expect((a.resolve(HOLDER) as Holder).counter).toBe(a.resolve(COUNTER) as Counter);
+    expect((b.resolve(HOLDER) as Holder).counter).toBe(b.resolve(COUNTER) as Counter);
   });
 
   test("the provider resolved inside a scope is that scope's own", () => {
@@ -613,7 +613,7 @@ describe('the marker contract', () => {
     };
   }
 
-  test("an ask through the container's own provider carries the singleton scope's id, the same one every time", () => {
+  test("an ask through the provider `build()` returns carries the singleton scope's id, the same one every time", () => {
     const seen: Request[] = [];
     const provider = Builder.useAddon(standardLifetime())
       .useAddon(observing(seen))
@@ -680,7 +680,7 @@ describe('the built-in registrations', () => {
       .build();
 
     const holder = provider.resolve(HOLDING) as FactoryHolder;
-    expect(holder.factory).toBe(provider.resolve(SCOPE_FACTORY));
+    expect(holder.factory).toBe(provider.resolve(SCOPE_FACTORY) as IServiceScopeFactory);
     expect(holder.factory.openScope().resolve(COUNTER)).toBeInstanceOf(Counter);
   });
 

@@ -1,5 +1,5 @@
 // The disposed refusal's place in the di.core taxonomy: `ObjectDisposedError` is the one error a
-// resolution or scope opening raises once its container or scope has ended, shared by both
+// resolution or scope opening raises once its provider or scope has ended, shared by both
 // lifetime models and reachable from the abstractions alone.
 
 import * as di from '@rhombus-std/di';

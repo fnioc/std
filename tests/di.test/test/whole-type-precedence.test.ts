@@ -57,7 +57,7 @@ describe('an iterable address', () => {
     const manifest = Manifest.empty<string>()
       .addValue(A, 'a-val')
       .addValue(Type.union(A, B), 'either');
-    const gathered = [...toProvider(manifest).resolve(Type.iterable(Type.union(A, B)))];
+    const gathered = [...toProvider(manifest).resolve(Type.iterable(Type.union(A, B))) as Iterable<string>];
     expect(gathered).toHaveLength(2);
     expect(gathered).toContain('a-val');
     expect(gathered).toContain('either');

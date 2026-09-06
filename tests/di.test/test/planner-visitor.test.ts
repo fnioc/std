@@ -304,7 +304,7 @@ describe('a union dependency', () => {
   });
 
   test('a self-supplying member is the fallback for when nothing else is registered', () => {
-    const optional = Type.union(CACHE, Type.typeLiteral(undefined));
+    const optional = Type.optional(CACHE);
     const cacheRegistration = Registration.ctor(CACHE, MemoryCache, Type.ctor(CACHE, [[]]));
     const withCache = Manifest.empty<unknown>().add(cacheRegistration);
     expect(visitorFor(withCache).visit(optional)).toEqual(Plan.registeredCtor(MemoryCache, [], CACHE, cacheRegistration));
@@ -417,14 +417,14 @@ describe('the cycle guard', () => {
   test('a self address inside a union slot resolves beneath', () => {
     const manifest = Manifest.empty<unknown>()
       .add(Registration.value(LOOP, 'older'))
-      .add(Registration.ctor(LOOP, Loop, Type.ctor(LOOP, [[Type.union(LOOP, Type.typeLiteral(undefined))]])));
+      .add(Registration.ctor(LOOP, Loop, Type.ctor(LOOP, [[Type.optional(LOOP)]])));
     const plan = visitorFor(manifest).visit(LOOP) as RegisteredCtorPlan;
     expect(plan.kind).toBe('registered-ctor');
     expect(plan.args[0]).toEqual(Plan.constant('older'));
   });
 
   test('a self address inside a union slot falls through to undefined when nothing older exists', () => {
-    const manifest = Manifest.empty<unknown>().add(Registration.ctor(LOOP, Loop, Type.ctor(LOOP, [[Type.union(LOOP, Type.typeLiteral(undefined))]])));
+    const manifest = Manifest.empty<unknown>().add(Registration.ctor(LOOP, Loop, Type.ctor(LOOP, [[Type.optional(LOOP)]])));
     const plan = visitorFor(manifest).visit(LOOP) as RegisteredCtorPlan;
     expect(plan.kind).toBe('registered-ctor');
     expect(plan.args[0]).toEqual(Plan.constant(undefined));

@@ -6,9 +6,9 @@ import type { Registration } from './Registration/index.js';
  *
  * @remarks
  * The addon itself is the reusable handle — a plain object or an instance carrying whatever state
- * it was constructed with. Everything one container needs of its own is minted by {@link create},
+ * it was constructed with. Everything one installation needs of its own is minted by {@link create},
  * which the builder calls once per installation, so installing the same addon on two builders
- * shares nothing between the two containers.
+ * shares nothing between the two installations.
  *
  * @typeParam Lifetime - the lifetime vocabulary this addon's registrations name values from.
  */
@@ -19,7 +19,7 @@ export interface Addon<Lifetime> {
 
 /**
  * What one installation of an addon contributes: the registrations it files and the middleware it
- * composes into the container's one chain.
+ * composes into the engine's one chain.
  *
  * @typeParam Lifetime - the lifetime vocabulary this installation's registrations name values from.
  */
@@ -28,7 +28,7 @@ export interface AddonInstallation<Lifetime> {
   readonly registrations: Iterable<Registration<Lifetime>>;
 
   /**
-   * Middleware the builder composes into the container's one chain, alongside every other
+   * Middleware the builder composes into the engine's one chain, alongside every other
    * installation's, in call order.
    *
    * @remarks
