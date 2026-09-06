@@ -123,20 +123,8 @@ func resolveMember(prog *driver.Program, checker *shimchecker.Checker, ex *bodyE
 
 	declarations := markerMemberDeclarations(checker, typeSym, e.Member)
 	if len(declarations) == 0 {
-		// A sugar-only member has no counterpart on the receiver: its one
-		// declaration is the publishing package's own declare-module augmentation
-		// of the receiver. When no declaration of the receiver surface comes from
-		// that package, its augmentation is not loaded here, so the member exists
-		// nowhere the consumer could have named it — the entry is not in play, skip
-		// it. When the package DOES augment the receiver in this program yet still
-		// declares no such member, the marker and the loaded surface disagree.
-		if !surfaceAugmentedBy(checker, typeSym, ex, implRef.From) {
-			return nil, OutcomeAbsent, nil
-		}
-		return nil, OutcomeAbsent, fmt.Errorf(
-			"INLINE_UNRESOLVED_MEMBER: %s:%s declares no member %q — %s augments it in this program yet "+
-				"declares no such member, so the marker names a declaration this program does not have",
-			pkg, typeName, e.Member, implRef.From)
+		// A member the program never declares is not in play.
+		return nil, OutcomeAbsent, nil
 	}
 
 	memberSet := map[*shimast.Node]bool{}

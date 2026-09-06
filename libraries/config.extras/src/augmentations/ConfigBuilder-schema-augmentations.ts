@@ -5,6 +5,7 @@
 
 import type { ConfigBuilder } from '@rhombus-std/config';
 import type { IndexedSection } from '@rhombus-std/config.core';
+import type { AugmentationSet } from '@rhombus-std/primitives';
 import { registerInlineBodies, schemaof } from '@rhombus-std/primitives.extras';
 
 // The declaration targets the package barrel `@rhombus-std/config` — the same
@@ -33,5 +34,5 @@ export const ConfigBuilderInline = {
   withType<T>(this: IWithSchemaTarget): unknown {
     return this.withSchema(schemaof<T>());
   },
-};
+} satisfies AugmentationSet<ConfigBuilder>;
 registerInlineBodies<ConfigBuilder>(ConfigBuilderInline);
