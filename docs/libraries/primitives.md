@@ -84,8 +84,11 @@ Pattern matching over types with holes is built in. `Type.extractMatchedGenerics
 whether some closing of the pattern equals the candidate and hands back the bindings; `Type.isMatch`
 is its boolean form, `Type.substitute` fills named holes, `Type.isOpen` / `Type.isClosed` say whether
 a hole remains. `Type.isPromise` / `Type.awaited` / `Type.promise` read and build the one
-deferred-delivery spelling, `Type.isOptional` asks whether a type admits `undefined`, and
-`Type.Visitor` is the dispatch base every walk over the node space subclasses.
+deferred-delivery spelling — `awaited` settles however many promise layers deep, so
+`Promise<Promise<IClock>>` settles to `IClock` — `Type.isOptional` asks whether a type admits
+`undefined`, `Type.find(type, predicate)` / `Type.some(type, predicate)` answer the first node
+anywhere inside a type that a predicate accepts and whether one exists, and `Type.Visitor` is the
+dispatch base every walk over the node space subclasses.
 
 ```ts
 const [matched, generics] = Type.extractMatchedGenerics(typefor<Promise<Generic<'S'>>>(), type);
@@ -94,8 +97,9 @@ const [matched, generics] = Type.extractMatchedGenerics(typefor<Promise<Generic<
 
 A type can also be checked before anything is filed under it. A `TypeRule` is one thing to look for —
 an `id`, a `level` of `'warning'` or `'error'`, and a `check(node)` answering why that node is
-suspect. `Type.getDiagnostics(type, rules)` offers every node of the tree to every rule, in
-pre-order, and hands back one `TypeDiagnostic` per objection, raising nothing;
+suspect. A rule is a predicate over the type it is handed, read once; a rule that means "anywhere
+inside this type" searches it with `Type.find`. `Type.getDiagnostics(type, rules)` reads `type` by
+every rule in the order given and hands back one `TypeDiagnostic` per objection, raising nothing;
 `Type.validate(type, rules, warningsAsErrors?)` raises what stopped — an `AggregateError` carrying
 one `TypeValidationError` per stopping objection, each spelling its rule id first so a report is
 searchable. What a shape means belongs to whoever reads it, so the rules themselves live where that
@@ -103,7 +107,7 @@ reading happens: the address rules are `di.core`'s.
 
 ```ts
 const noUnions: TypeRule = { id: 'APP1', level: 'error',
-  check: node => node.kind === 'union' ? 'a union names two things' : undefined };
+  check: node => Type.some(node, inner => inner.kind === 'union') ? 'a union names two things' : undefined };
 
 Type.getDiagnostics(Type.optional(clock), [noUnions]); // [{ id: 'APP1', level: 'error', type: app:IClock | undefined, message: 'a union names two things' }]
 Type.validate(Type.optional(clock), [noUnions]); // AggregateError: app:IClock | undefined fails validation (1)

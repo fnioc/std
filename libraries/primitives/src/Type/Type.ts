@@ -1,10 +1,10 @@
 import { memo } from '@rhombus-toolkit/once';
-import type { DistributiveOmit } from '@rhombus-toolkit/types';
+import type { DistributiveOmit, Func } from '@rhombus-toolkit/types';
 import { TypeValidationError } from '../TypeValidationError.js';
 import * as factory from './factory/factories.js';
 import type { LIST_KINDS, ListName } from './grammar.js';
 import { parseLiteral } from './parse/parser.js';
-import { DiagnosticsVisitor } from './visitor/DiagnosticsVisitor.js';
+import { FindVisitor } from './visitor/FindVisitor.js';
 import { IsOpenVisitor } from './visitor/IsOpenVisitor.js';
 import { MatchVisitor } from './visitor/MatchVisitor.js';
 import { stringifyType } from './visitor/StringifyVisitor.js';
@@ -145,11 +145,11 @@ export interface UnionType extends TypeBase<'union'> {
 }
 
 /**
- * One thing a type may be checked for, asked of a single node.
+ * One thing a type may be checked for, asked once of the whole type.
  *
  * @remarks
- * A rule reads the node it is handed and that node's own children; the walk to the children
- * themselves belongs to {@link Type.getDiagnostics}, which offers every node in turn.
+ * A rule is a predicate over the type it is handed; one that means "anywhere in this type"
+ * searches it with {@link Type.some} or {@link Type.find} and says so in its message.
  */
 export interface TypeRule {
   /** What identifies this rule wherever it is reported or suppressed. */
@@ -160,15 +160,15 @@ export interface TypeRule {
   check(node: Type): string | undefined;
 }
 
-/** One rule's objection to one node. */
+/** One rule's objection to one type. */
 export interface TypeDiagnostic {
   /** The rule that objected. */
   readonly id: string;
   /** How hard that rule pushes back. */
   readonly level: 'warning' | 'error';
-  /** The node it objected to. */
+  /** The type it read — what a rule reports about, whether the objection is to that type itself or to something inside it. */
   readonly type: Type;
-  /** Why that node is suspect. */
+  /** Why that type is suspect. */
   readonly message: string;
 }
 
@@ -486,6 +486,24 @@ export namespace Type {
   // #region ops
 
   /**
+   * The first node of `type` that `predicate` says yes to — `type` itself, then everything it
+   * holds, in pre-order — or `undefined` when no node does.
+   *
+   * @remarks
+   * Every slot a node carries is reached: a callable's signatures and return, a key's inner type,
+   * a promise's argument, a list's element, a union's members. A node standing in several
+   * positions is one interned node, so it is offered once however many positions reach it.
+   */
+  export function find(type: Type, predicate: Func<[Type], boolean>): Type | undefined {
+    return new FindVisitor(predicate).visit(type);
+  }
+
+  /** Does any node of `type` — `type` itself included — satisfy `predicate`? */
+  export function some(type: Type, predicate: Func<[Type], boolean>): boolean {
+    return Type.find(type, predicate) !== undefined;
+  }
+
+  /**
    * Is `type` address-only — a pure reference, with nothing of its own to build from?
    *
    * @remarks
@@ -543,10 +561,10 @@ export namespace Type {
     return Type.isMatch(PROMISE_PATTERN, type);
   }
 
-  /** What `type` settles to: the inner type for a `Promise<T>`, the type itself otherwise. */
+  /** What `type` settles to, however many promise layers deep — `Promise<Promise<T>>` settles to `T`, and a type that is not a promise settles to itself. */
   export function awaited(type: Type): Type {
     const [matched, generics] = Type.extractMatchedGenerics(PROMISE_PATTERN, type);
-    return matched ? generics.S! : type;
+    return matched ? Type.awaited(generics.S!) : type;
   }
 
   /**
@@ -629,17 +647,20 @@ export namespace Type {
   }
 
   /**
-   * What `rules` object to anywhere in `type` — every node in pre-order, the rules in the order
-   * given, and nothing raised.
+   * What `rules` object to in `type` — each rule read once, in the order given, and nothing raised.
    *
    * @remarks
-   * A node standing in several positions is one interned node, so it is offered once and reports
-   * once however many positions reach it.
+   * A rule that means "anywhere in this type" does its own searching, so the reach of an objection
+   * is the rule's to decide rather than something imposed on every rule alike.
    */
   export function getDiagnostics(type: Type, rules: Iterable<TypeRule>): TypeDiagnostic[] {
-    const visitor = new DiagnosticsVisitor(rules);
-    visitor.visit(type);
-    return visitor.diagnostics;
+    return Iterator.from(rules)
+      .map(rule => {
+        const message = rule.check(type);
+        return message === undefined ? undefined : { id: rule.id, level: rule.level, type, message };
+      })
+      .filter(diagnostic => diagnostic !== undefined)
+      .toArray();
   }
 
   /**
