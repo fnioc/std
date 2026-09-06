@@ -3,7 +3,7 @@
 //
 // `undefined` name arguments match anything.
 
-import { applyAugmentations } from '@rhombus-std/primitives';
+import { registerAugmentations } from '@rhombus-std/primitives.extras';
 import type { Flatten } from '@rhombus-toolkit/types';
 
 import { InstrumentRule } from './InstrumentRule';
@@ -28,4 +28,4 @@ declare module '@rhombus-std/diagnostics.core' {
   interface MetricsOptions extends Flatten<typeof MetricsOptionsAugmentations> {}
 }
 
-applyAugmentations(MetricsOptions, MetricsOptionsAugmentations);
+registerAugmentations<MetricsOptions>(MetricsOptionsAugmentations);

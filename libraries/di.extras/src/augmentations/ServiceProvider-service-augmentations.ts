@@ -15,15 +15,11 @@ declare module '@rhombus-std/di.core' {
     tryResolve<ServiceType>(): ServiceType | undefined;
     /** Every registration of `ServiceType`, the service type derived from the type argument instead of taken explicitly, as one array. */
     resolveArray<ServiceType>(): ServiceType[];
-    /** Every registration of `ServiceType` as one array, or `undefined` once nothing can produce that. */
-    tryResolveArray<ServiceType>(): ServiceType[] | undefined;
     /**
      * Every registration of `ServiceType`, the service type derived from the type argument
      * instead of taken explicitly, as one sequence.
      */
     resolveIterable<ServiceType>(): Iterable<ServiceType>;
-    /** Every registration of `ServiceType` as one sequence, or `undefined` once nothing can produce that. */
-    tryResolveIterable<ServiceType>(): Iterable<ServiceType> | undefined;
     /**
      * The value registered for `ServiceType`, the service type derived from the type argument
      * instead of taken explicitly, delivered asynchronously — every dependency beneath it that
@@ -36,36 +32,28 @@ declare module '@rhombus-std/di.core' {
     tryResolveAsync<ServiceType>(): Promise<ServiceType | undefined>;
     /** Every registration of `ServiceType` as one array, delivered asynchronously. */
     resolveArrayAsync<ServiceType>(): Promise<ServiceType[]>;
-    /** Every registration of `ServiceType` as one array, delivered asynchronously, settling on `undefined` once nothing can produce that. */
-    tryResolveArrayAsync<ServiceType>(): Promise<ServiceType[] | undefined>;
     /** Every registration of `ServiceType` as one sequence, delivered asynchronously. */
     resolveIterableAsync<ServiceType>(): Promise<Iterable<ServiceType>>;
-    /** Every registration of `ServiceType` as one sequence, delivered asynchronously, settling on `undefined` once nothing can produce that. */
-    tryResolveIterableAsync<ServiceType>(): Promise<Iterable<ServiceType> | undefined>;
     /**
      * Every registration of `ServiceType`, the service type derived from the type argument
      * instead of taken explicitly, each element awaited as the walk reaches it.
      */
     resolveAsyncIterable<ServiceType>(): AsyncIterable<ServiceType>;
-    /** Every registration of `ServiceType` as one awaited walk, or `undefined` once nothing can produce that. */
-    tryResolveAsyncIterable<ServiceType>(): AsyncIterable<ServiceType> | undefined;
     /**
-     * Calls the callable registered for `Func<Args, ServiceType>` with `args`, the callable's
-     * type derived from the type arguments instead of taken explicitly.
+     * Resolves the callable registered for `Func<Args, ServiceType>` and calls it with `args`.
      *
      * @throws UnsatisfiableError - when nothing can produce that callable.
      */
     resolveWith<ServiceType, Args extends unknown[]>(...args: Args): ServiceType;
-    /** Calls the callable registered for `Func<Args, ServiceType>` with `args`, or answers `undefined` once nothing can produce it. */
+    /** Resolves the callable registered for `Func<Args, ServiceType>` and calls it with `args`, or answers `undefined` once nothing can produce it. */
     tryResolveWith<ServiceType, Args extends unknown[]>(...args: Args): ServiceType | undefined;
     /**
-     * Calls the callable registered for `Func<Args, Promise<ServiceType>>` with `args`, the
-     * callable's type derived from the type arguments instead of taken explicitly.
+     * Resolves the callable registered for `Func<Args, Promise<ServiceType>>` and calls it with `args`.
      *
      * @throws UnsatisfiableError - when nothing can produce that callable.
      */
     resolveWithAsync<ServiceType, Args extends unknown[]>(...args: Args): Promise<ServiceType>;
-    /** Calls the callable registered for `Func<Args, Promise<ServiceType>>` with `args`, settling on `undefined` once nothing can produce it. */
+    /** Resolves the callable registered for `Func<Args, Promise<ServiceType>>` and calls it with `args`, settling on `undefined` once nothing can produce it. */
     tryResolveWithAsync<ServiceType, Args extends unknown[]>(...args: Args): Promise<ServiceType | undefined>;
     /** Constructs `ctor` fresh with the constructor type observed from `ctor` instead of taken explicitly. */
     instantiate<Instance>(ctor: Ctor<any[], Instance>): Instance;
@@ -80,58 +68,45 @@ declare module '@rhombus-std/di.core' {
 
 export const ServiceProviderServiceAugmentations = {
   resolve<ServiceType>(this: IServiceProvider): ServiceType {
-    return this.resolve(typefor<ServiceType>());
+    return this.resolve(typefor<ServiceType>()) as ServiceType;
   },
   tryResolve<ServiceType>(this: IServiceProvider): ServiceType | undefined {
-    return this.tryResolve(typefor<ServiceType>());
+    return this.tryResolve(typefor<ServiceType>()) as ServiceType | undefined;
   },
   resolveArray<ServiceType>(this: IServiceProvider): ServiceType[] {
-    return this.resolveArray(typefor<ServiceType>());
-  },
-  tryResolveArray<ServiceType>(this: IServiceProvider): ServiceType[] | undefined {
-    return this.tryResolveArray(typefor<ServiceType>());
+    return this.resolveArray(typefor<ServiceType>()) as ServiceType[];
   },
   resolveIterable<ServiceType>(this: IServiceProvider): Iterable<ServiceType> {
-    return this.resolveIterable(typefor<ServiceType>());
-  },
-  tryResolveIterable<ServiceType>(this: IServiceProvider): Iterable<ServiceType> | undefined {
-    return this.tryResolveIterable(typefor<ServiceType>());
+    return this.resolveIterable(typefor<ServiceType>()) as Iterable<ServiceType>;
   },
   resolveAsync<ServiceType>(this: IServiceProvider): Promise<ServiceType> {
-    return this.resolveAsync(typefor<ServiceType>());
+    return this.resolveAsync(typefor<ServiceType>()) as Promise<ServiceType>;
   },
   tryResolveAsync<ServiceType>(this: IServiceProvider): Promise<ServiceType | undefined> {
-    return this.tryResolveAsync(typefor<ServiceType>());
+    return this.tryResolveAsync(typefor<ServiceType>()) as Promise<ServiceType | undefined>;
   },
   resolveArrayAsync<ServiceType>(this: IServiceProvider): Promise<ServiceType[]> {
-    return this.resolveArrayAsync(typefor<ServiceType>());
-  },
-  tryResolveArrayAsync<ServiceType>(this: IServiceProvider): Promise<ServiceType[] | undefined> {
-    return this.tryResolveArrayAsync(typefor<ServiceType>());
+    return this.resolveArrayAsync(typefor<ServiceType>()) as Promise<ServiceType[]>;
   },
   resolveIterableAsync<ServiceType>(this: IServiceProvider): Promise<Iterable<ServiceType>> {
-    return this.resolveIterableAsync(typefor<ServiceType>());
-  },
-  tryResolveIterableAsync<ServiceType>(this: IServiceProvider): Promise<Iterable<ServiceType> | undefined> {
-    return this.tryResolveIterableAsync(typefor<ServiceType>());
+    return this.resolveIterableAsync(typefor<ServiceType>()) as Promise<Iterable<ServiceType>>;
   },
   resolveAsyncIterable<ServiceType>(this: IServiceProvider): AsyncIterable<ServiceType> {
-    return this.resolveAsyncIterable(typefor<ServiceType>());
-  },
-  tryResolveAsyncIterable<ServiceType>(this: IServiceProvider): AsyncIterable<ServiceType> | undefined {
-    return this.tryResolveAsyncIterable(typefor<ServiceType>());
+    return this.resolveAsyncIterable(typefor<ServiceType>()) as AsyncIterable<ServiceType>;
   },
   resolveWith<ServiceType, Args extends unknown[]>(this: IServiceProvider, ...args: Args): ServiceType {
-    return this.resolveWith(typefor<Func<Args, ServiceType>>(), ...args);
+    return (this.resolve(typefor<Func<Args, ServiceType>>()) as Func<Args, ServiceType>)(...args);
   },
   tryResolveWith<ServiceType, Args extends unknown[]>(this: IServiceProvider, ...args: Args): ServiceType | undefined {
-    return this.tryResolveWith(typefor<Func<Args, ServiceType>>(), ...args);
+    return (this.tryResolve(typefor<Func<Args, ServiceType>>()) as Func<Args, ServiceType> | undefined)?.(...args);
   },
   resolveWithAsync<ServiceType, Args extends unknown[]>(this: IServiceProvider, ...args: Args): Promise<ServiceType> {
-    return this.resolveWithAsync(typefor<Func<Args, Promise<ServiceType>>>(), ...args);
+    return (this.resolve(typefor<Func<Args, Promise<ServiceType>>>()) as Func<Args, Promise<ServiceType>>)(...args);
   },
   tryResolveWithAsync<ServiceType, Args extends unknown[]>(this: IServiceProvider, ...args: Args): Promise<ServiceType | undefined> {
-    return this.tryResolveWithAsync(typefor<Func<Args, Promise<ServiceType>>>(), ...args);
+    return (this.tryResolve(typefor<Func<Args, Promise<ServiceType>>>()) as Func<Args, Promise<ServiceType>> | undefined)?.(...args) as Promise<
+      ServiceType | undefined
+    >;
   },
   instantiate<Instance>(this: IServiceProvider, ctor: Ctor<any[], Instance>): Instance {
     return this.instantiate(typefor(ctor), ctor);

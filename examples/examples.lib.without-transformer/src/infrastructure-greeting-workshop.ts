@@ -7,7 +7,7 @@
 // application configures and then asks for a rendered greeting card. Like every
 // library, it CONTRIBUTES REGISTRATIONS and nothing else: `addGreetingWorkshop`
 // takes the caller's manifest and hands it back with the workshop in it. The
-// application owns the container, so the demo's registrations cannot perturb
+// application owns the provider, so the demo's registrations cannot perturb
 // anything the app did not ask them to.
 //
 // What each piece is here to teach:
@@ -15,7 +15,7 @@
 //   - `ManifestSlot` — the mutable-slot seam that makes a
 //     `configure(builder)` callback API possible at all (see the builder below).
 //   - THE AD-HOC FACTORY PARAMETER — a library needing to build something on
-//     demand asks for a CALLABLE in its constructor, not for the container. The
+//     demand asks for a CALLABLE in its constructor, not for the provider. The
 //     workshop is the worked example, and it is the most important thing in this
 //     file.
 //   - the discouraged twin — `LocatorGreetingWorkshop` does the same job by
@@ -50,7 +50,7 @@ interface ManifestSlot {
 /**
  * The per-card recipient. Deliberately NEVER registered: it is an argument, not
  * a service, and that is the whole point of the factory below — a slot the
- * container cannot fill has to come from the caller.
+ * provider cannot fill has to come from the caller.
  */
 const CARD_RECIPIENT_TYPE = Type.imported('ICardRecipient', '@rhombus-std/examples.lib.without-transformer');
 
@@ -84,7 +84,7 @@ export class PlainStationery implements ICardStationery {
 }
 
 /**
- * The greeting this demo's containers are configured with. Local to the
+ * The greeting this demo's providers are configured with. Local to the
  * workshop rather than the package's own `CasualGreeting`, so that this file and
  * its with-transformer mirror render the same text and the two demos can be
  * diffed line for line.
@@ -99,10 +99,10 @@ export class WorkshopGreeting implements IGreeting {
 
 /**
  * One rendered greeting card. There is a fresh one per recipient, and one of its
- * constructor arguments — the recipient — is data the container has no way to
+ * constructor arguments — the recipient — is data the provider has no way to
  * know. It is registered anyway, because a registration is what carries the
  * DEPENDENCY SIGNATURE; a factory slot then splits that signature in two,
- * filling the greeting slot from the container and leaving the recipient slot to
+ * filling the greeting slot from the provider and leaving the recipient slot to
  * the caller.
  */
 export class GreetingCard {
@@ -125,7 +125,7 @@ export class GreetingCard {
  *
  * The workshop mints a fresh {@link GreetingCard} per recipient, so it genuinely
  * needs something built later, on demand, against whatever the application
- * registered. The tempting answer is to inject the container and look the card
+ * registered. The tempting answer is to inject the provider and look the card
  * up when one is wanted. The correct answer is the constructor below: ASK FOR
  * THE CALLABLE. Both dependencies come in as ordinary parameters —
  *
@@ -133,7 +133,7 @@ export class GreetingCard {
  *     type, `Type.func(GREETING_CARD_TYPE, [[CARD_RECIPIENT_TYPE]])`: the return
  *     type is what the callable produces, and its argument types are the ones
  *     the CALLER supplies, so every other slot in the target's signature is
- *     resolved from the container as usual. The container hands over a
+ *     resolved from the provider as usual. The provider hands over a
  *     `(recipient) => GreetingCard` already wired to the app's greeting, and the
  *     recipient — which no registration stands behind, and none should — arrives
  *     per call. A parameterized factory deliberately does not cache: the
@@ -147,9 +147,9 @@ export class GreetingCard {
  *
  * What this buys, and it is not stylistic. The class's real dependencies are
  * visible in its own signature; a test constructs it with two plain values and
- * no container at all; the wiring mistakes that a locator defers to the first
+ * no provider at all; the wiring mistakes that a locator defers to the first
  * `card()` call surface when the workshop is built; and there is no memo to
- * keep, because the container worked the slot plan out once at construction.
+ * keep, because the engine worked the slot plan out once at construction.
  *
  * Compare with {@link LocatorGreetingWorkshop} below, which is this class
  * rewritten the wrong way.
@@ -167,14 +167,14 @@ export class GreetingWorkshop {
 
   public constructor(mintCard: (recipient: ICardRecipient) => GreetingCard, stationery?: ICardStationery) {
     this.#mintCard = mintCard;
-    // Recorded here rather than asked of the container later, which is the point:
+    // Recorded here rather than asked of the provider later, which is the point:
     // "did the app override this?" is answerable from the parameter itself.
     this.#overridden = stationery !== undefined;
     this.stationery = stationery ?? new PlainStationery();
   }
 
   /**
-   * Renders a card for `name`. The greeting comes from the container; the
+   * Renders a card for `name`. The greeting comes from the provider; the
    * recipient is the caller's.
    */
   public card(name: string): string {
@@ -195,9 +195,9 @@ export class GreetingWorkshop {
  * Everything it does, the class above does better. Read the two constructors
  * together and the cost is plain: this one declares a single `IServiceProvider`
  * parameter, so its REAL dependencies — a card factory and some stationery — are
- * invisible to anyone reading the signature, invisible to the container's
+ * invisible to anyone reading the signature, invisible to the provider's
  * validation, and discoverable only by reading the method bodies. A test cannot
- * pass fakes; it has to stand up a container. A typo in a hand-composed Type
+ * pass fakes; it has to stand up a service provider. A typo in a hand-composed Type
  * survives construction and fails at the first `card()` call, in production,
  * on the request that happened to need one.
  *
@@ -218,9 +218,9 @@ export class LocatorGreetingWorkshop {
   /**
    * The card factory, built on FIRST USE and then reused. Resolving
    * `Type.func(GREETING_CARD_TYPE, [[CARD_RECIPIENT_TYPE]])` works the slot plan out
-   * once — which slot the caller fills, which the container resolves — so paying
+   * once — which slot the caller fills, which the provider resolves — so paying
    * for that per card would be waste. The memo is pure overhead the
-   * injected-callable version does not have: the container already did this work.
+   * injected-callable version does not have: the provider already did this work.
    */
   #mintCard: ((recipient: ICardRecipient) => GreetingCard) | undefined;
 
@@ -235,14 +235,14 @@ export class LocatorGreetingWorkshop {
 
   public constructor(resolver: IServiceProvider) {
     this.#resolver = resolver;
-    this.stationery = (resolver.resolve(Type.union(CARD_STATIONERY_TYPE, Type.typeLiteral(undefined))) as ICardStationery | undefined)
+    this.stationery = (resolver.resolve(Type.optional(CARD_STATIONERY_TYPE)) as ICardStationery | undefined)
       ?? new PlainStationery();
   }
 
   /**
    * `Type.func(result, [[...args]])` IS the partition, spelled as a type: the listed
    * arguments are the ones the CALLER supplies, and every other slot in the
-   * target's signature resolves from the container.
+   * target's signature resolves from the provider.
    * `Type.func(GREETING_CARD_TYPE, [[CARD_RECIPIENT_TYPE]])` means "a callable producing a card, whose one argument
    * is the recipient" — the same plan the good class receives as a constructor
    * parameter, except asked for here in a method body where nothing can check it.
@@ -254,9 +254,9 @@ export class LocatorGreetingWorkshop {
     return this.#mintCard({ name }).render(this.stationery.border);
   }
 
-  /** Whether the app registered its own stationery, asked of the container rather than known. */
+  /** Whether the app registered its own stationery, asked of the provider rather than known. */
   public get stationeryIsOverridden(): boolean {
-    return this.#resolver.resolve(Type.union(CARD_STATIONERY_TYPE, Type.typeLiteral(undefined))) !== undefined;
+    return this.#resolver.resolve(Type.optional(CARD_STATIONERY_TYPE)) !== undefined;
   }
 }
 
@@ -336,12 +336,12 @@ export function addGreetingWorkshop(configure: (builder: IGreetingWorkshopBuilde
 
   // The workshop itself goes on last so a consumer cannot forget it. Its whole
   // dependency plan is right here, in the composed constructor type, where the
-  // container can check it: a CALLABLE argument for the card (whose own
+  // engine can check it: a CALLABLE argument for the card (whose own
   // argument types are the caller's half) and an OPTIONAL stationery argument,
   // spelled as the union of the stationery with a literal `undefined` that
   // always resolves.
   holder.services = holder.services.add(GREETING_WORKSHOP_TYPE, GreetingWorkshop,
-    Type.ctor(GREETING_WORKSHOP_TYPE, [[Type.func(GREETING_CARD_TYPE, [[CARD_RECIPIENT_TYPE]]), Type.union(CARD_STATIONERY_TYPE, Type.typeLiteral(undefined))]]), 'singleton');
+    Type.ctor(GREETING_WORKSHOP_TYPE, [[Type.func(GREETING_CARD_TYPE, [[CARD_RECIPIENT_TYPE]]), Type.optional(CARD_STATIONERY_TYPE)]]), 'singleton');
 
   // The discouraged twin, registered beside it so a reader can resolve both and
   // watch them produce identical cards from very different constructors. The

@@ -152,8 +152,8 @@ func TestStageRogueDuplicateFires(t *testing.T) {
 		t.Fatal("a declare-module member declaration outside the merged set was not flagged as a rogue duplicate")
 	}
 	// Positive control: once the same declaration IS in the merged set (a
-	// legitimate augmentation sibling), it must NOT be flagged — this is the
-	// §8f36a63 exclusion the negative test guards from the other side.
+	// legitimate augmentation sibling), it must NOT be flagged — this exclusion is
+	// what the negative test guards from the other side.
 	resolved.MemberSet[decl] = true
 	if st.isRogueDuplicate(decl, "isService") {
 		t.Fatal("a merged declaration must never be flagged rogue")

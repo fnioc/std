@@ -3,7 +3,7 @@ import type { AbortSignal } from '@rhombus-std/primitives';
 
 /**
  * A program abstraction: the running application host, the root object owning
- * the service container and its lifetime.
+ * the service provider and its lifetime.
  *
  * @remarks
  * `services` is the non-generic {@link IServiceProvider} view: a caller resolves

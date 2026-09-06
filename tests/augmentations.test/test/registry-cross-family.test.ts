@@ -1,13 +1,12 @@
-// Cross-family augmentation-registry behaviour (docs decisions.md §38): the
+// Cross-family augmentation-registry behaviour: the
 // registry decouples WHERE a set registers (the owning package, beside the
 // const) from WHERE it installs (every `@augment`-decorated class sharing the
 // token) -- including classes in packages the registrant has never heard of.
 //
 //   - hosting's independent MetricsBuilder receives the IMetricsBuilder members
-//     registered by diagnostics.core / diagnostics. This is the regression test
-//     for the pre-registry orphaned-builder bug: `builder.metrics.enableMetrics`
-//     used to be missing because the direct applyAugmentations install in
-//     diagnostics could not reach hosting's concrete class.
+//     registered by diagnostics.core / diagnostics: `builder.metrics.enableMetrics`
+//     works because the registry bridges registrations to every `@augment`-decorated
+//     class sharing the token, regardless of package boundaries.
 //   - a LATE registration (after every decorated class is long defined) still
 //     reaches every subscribed prototype -- the decorator's listener stays
 //     subscribed, so the bag re-installs on each later registerAugmentations.
@@ -35,9 +34,9 @@ describe("hosting's MetricsBuilder receives the diagnostics-family augmentations
     // builder's manifest, proving the member is diagnostics' real
     // implementation, not a lookalike.
     const provider = Builder.withServices(() => builder.services).build();
-    const configureSteps: unknown[] = (provider as unknown as IServiceProvider).resolve(
+    const configureSteps = (provider as unknown as IServiceProvider).resolve(
       Type.array(Type.imported('IConfigureOptions', '@rhombus-std/options', [Type.imported('MetricsOptions', '@rhombus-std/diagnostics.core')])),
-    );
+    ) as unknown[];
     expect(configureSteps).toHaveLength(1);
   });
 

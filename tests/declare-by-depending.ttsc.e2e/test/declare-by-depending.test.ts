@@ -4,7 +4,7 @@ import { existsSync, mkdirSync, readFileSync, rmSync, symlinkSync, writeFileSync
 import { homedir } from 'node:os';
 import { basename, join, resolve } from 'node:path';
 
-// End-to-end proof of declare-by-depending, driven through the REAL ttsc (§100).
+// End-to-end proof of declare-by-depending, driven through the REAL ttsc.
 // There is no stage selection (W7): the one owner host runs its WHOLE always-on
 // stage table once spawned, and SPAWNING is what a dependency governs — ttsc's own
 // auto-discovery spawns the host from a consumer's DIRECT *.extras dep (its

@@ -1,7 +1,7 @@
 // clearMetricsListeners / clearTracingListeners -- the ports of the reference
 // `MetricsBuilderAugmentations.ClearListeners` / `TracingBuilderAugmentations.ClearListeners`
 // (`builder.Services.RemoveAll<...>()` through di.core's removeAll registration
-// verb). Exercised in both dual-export forms (docs §28): the standalone
+// verb). Exercised in both dual-export forms: the standalone
 // `Set.member(builder, ...)` call and the registry-installed method, both
 // against the concrete @rhombus-std/diagnostics builders (the interface-side
 // merge makes the augmented members part of IMetricsBuilder/ITracingBuilder,
@@ -38,7 +38,7 @@ function listener(name: string): IMetricsListener {
  */
 function registered(builder: { services: Manifest<unknown>; }, type: Type): unknown[] {
   const provider = Builder.withServices(() => builder.services).build();
-  const results: unknown[] = provider.resolve(Type.array(type));
+  const results = provider.resolve(Type.array(type)) as unknown[];
   return results;
 }
 

@@ -1,9 +1,9 @@
-// THE RESOLUTION SURFACE, authored by hand — every way to ask the container for
+// THE RESOLUTION SURFACE, authored by hand — every way to ask the provider for
 // something, with an explicit, hand-composed `Type` at every call site and no
 // transformer anywhere.
 //
 // This file is the twin of ../../examples.app.with-transformer/src/resolution-demo.ts.
-// The two register the SAME container (both call `addCheckoutServices`) and print
+// The two register the SAME manifest (both call `addCheckoutServices`) and print
 // the SAME lines; diff them and the only difference is the authoring dialect. That
 // is the repo's no-transformer-first rule made checkable: the explicit forms below
 // are the primary, complete API, and the type-driven forms in the twin are sugar
@@ -43,7 +43,7 @@ function attempted(attempt: () => string): string {
  * Runs the resolution tour, yielding the report lines.
  *
  * `provider` is typed as the `IServiceProvider` INTERFACE rather than the
- * container class: everything below is available to any injected dependency that
+ * a concrete implementation: everything below is available to any injected dependency that
  * declares an `IServiceProvider` parameter, not just to code holding the root
  * provider.
  */
@@ -57,7 +57,7 @@ async function* tour(provider: IServiceProvider): AsyncGenerator<string> {
   // nothing can answer — it does not soften a miss on its own. What decides
   // whether absence is a wiring fault or a legitimate answer is the ADDRESS:
   // asking for the bare type is a hard requirement, while asking for
-  // `Type.union(type, Type.typeLiteral(undefined))` adds the literal as a
+  // `Type.optional(type)` adds the literal as a
   // FALLBACK, so an absent registration answers `undefined` instead of
   // throwing. The distinction below is entirely in which address each call
   // spells, never in a second verb.
@@ -75,16 +75,16 @@ async function* tour(provider: IServiceProvider): AsyncGenerator<string> {
   } catch (error) {
     yield `  resolve(IFraudScreen): ${(error as Error).name} — a required miss is loud`;
   }
-  const audit = provider.resolve(Type.union(t.audit, Type.typeLiteral(undefined))) as IAuditTrail | undefined;
+  const audit = provider.resolve(Type.optional(t.audit)) as IAuditTrail | undefined;
   yield `  resolve(IAuditTrail): ${audit ? 'present' : 'absent'}`;
-  yield `  resolve(IFraudScreen): ${provider.resolve(Type.union(t.fraudScreen, Type.typeLiteral(undefined)))}`;
+  yield `  resolve(IFraudScreen): ${provider.resolve(Type.optional(t.fraudScreen))}`;
   // A presence question is exactly a union-wrapped lookup compared against
   // `undefined`: the literal fallback answers `undefined` instead of throwing,
   // so there is no dedicated member to reach for. Unlike a pure existence
   // check, this DOES resolve the service when one exists — cheap here, since
   // IFraudScreen is never registered at all, but worth naming: a presence
   // probe on something expensive to build is no longer free.
-  yield `  resolve(IFraudScreen) !== undefined: ${provider.resolve(Type.union(t.fraudScreen, Type.typeLiteral(undefined))) !== undefined}`;
+  yield `  resolve(IFraudScreen) !== undefined: ${provider.resolve(Type.optional(t.fraudScreen)) !== undefined}`;
 
   // ── collection resolution ──────────────────────────────────────────────────
   //
@@ -123,7 +123,7 @@ async function* tour(provider: IServiceProvider): AsyncGenerator<string> {
     // The optional sink, used only because the probe above found one.
     audit?.record(order.reference);
   }
-  const crypto = provider.resolve(Type.union(Type.tag(t.gateway, 'crypto'), Type.typeLiteral(undefined))) as IPaymentGateway | undefined;
+  const crypto = provider.resolve(Type.union(Type.tag(t.gateway, 'crypto'), Type.undefinedLiteral)) as IPaymentGateway | undefined;
   yield `  resolve at key "crypto": ${crypto?.label}`;
   yield `  a keyed registration is not in the bare base's collection: `
     + `${[...provider.resolveIterable(t.gateway)].length} gateways`;
@@ -131,16 +131,16 @@ async function* tour(provider: IServiceProvider): AsyncGenerator<string> {
   // ── factory slots ──────────────────────────────────────────────────────────
   //
   // A FACTORY SLOT injects a CALLABLE instead of an instance, and it is the
-  // answer to "I need one of these later, with an argument the container cannot
+  // answer to "I need one of these later, with an argument the provider cannot
   // know". `Type.func(result, [[...callerArgs]])` spells it: the listed arguments
   // are the ones the CALLER supplies, and every other slot in the target's
-  // signature is resolved from the container as usual.
+  // signature is resolved from the provider as usual.
   //
   // `PaymentRouter` takes exactly that — `mintReceipt: (order) => IReceipt` —
   // which is how the checkout lines above minted their receipts. A parameterized
   // factory builds a fresh instance per call, because the arguments differ every
   // time and a cached one would answer the wrong question.
-  yield 'factory slots — the caller supplies what the container cannot know';
+  yield 'factory slots — the caller supplies what the provider cannot know';
   yield `  mint ${ORDER_C.reference}: ${router.checkout(ORDER_C)}`;
   // The same slot asked for from OUTSIDE a constructor, rather than injected
   // into one: `resolve` over the callable's own `Type.func` type hands
@@ -155,12 +155,12 @@ async function* tour(provider: IServiceProvider): AsyncGenerator<string> {
   //
   // Nothing is registered at the bare rates type; the only registration is
   // `Promise<…:IExchangeRates>`, which is the honest way to say "this arrives
-  // later". The container hands back the promise it was told about and the
+  // later". The provider hands back the promise it was told about and the
   // caller awaits it — no half-built value ever appears.
   yield 'async registrations — the promise is the registration';
   const rates = await (provider.resolve(t.ratesPromise) as Promise<IExchangeRates>);
   yield `  rates as of ${rates.asOf}, EUR at ${rates.rate('EUR')}`;
-  yield `  the bare type has no registration: ${provider.resolve(Type.union(t.rates, Type.typeLiteral(undefined)))}`;
+  yield `  the bare type has no registration: ${provider.resolve(Type.optional(t.rates))}`;
 
   // `resolveAsync(address)` is `resolve(Promise<address>)` and an await folded
   // into one call — the same `Promise<…:IExchangeRates>` registration answering
@@ -170,21 +170,21 @@ async function* tour(provider: IServiceProvider): AsyncGenerator<string> {
 
   // ── the provider as a service ──────────────────────────────────────────────
   //
-  // The container can hand back ITSELF: a parameter typed `IServiceProvider`
+  // The provider can hand back ITSELF: a parameter typed `IServiceProvider`
   // gets the live provider, and the reserved `'ServiceProvider'` token names
   // it. The engine seeds an ordinary factory registration for it, answering the
   // provider that opened the ask.
   //
   // Injecting the provider is USUALLY a smell. It hides a class's real
   // dependencies from anyone reading its constructor, turns wiring mistakes from
-  // startup failures into runtime ones, and forces tests to build a container
+  // startup failures into runtime ones, and forces tests to build a service provider
   // where a fake object would have done. The honest test: could this have been an
   // ordinary constructor parameter? If yes, make it one.
   //
   // It is occasionally correct, and this example contains both legitimate cases:
   // `PaymentRouter` and `MethodIsConfigured` select a service by a KEY that does
   // not exist until an order arrives. No constructor parameter can express "the
-  // gateway for whichever method the buyer picks", so the container itself is the
+  // gateway for whichever method the buyer picks", so the provider itself is the
   // dependency.
   yield 'the provider as a service — usually a smell, occasionally correct';
   const handed = provider.resolve(Type.from('ServiceProvider')) as IServiceProvider;
@@ -196,12 +196,12 @@ async function* tour(provider: IServiceProvider): AsyncGenerator<string> {
 }
 
 /**
- * Builds a container for the checkout scenario and walks the whole resolution
+ * Builds a provider for the checkout scenario and walks the whole resolution
  * surface over it, yielding a deterministic report for the caller to print.
  *
  * The tour awaits a promised registration part-way through, so its lines arrive
  * asynchronously — every other chapter is an ordinary generator.
  */
 export function demonstrateResolution(): AsyncGenerator<string> {
-  return tour(Builder.withServices(manifest => manifest.add(addCheckoutServices())).build());
+  return tour(Builder.withServices(manifest => manifest.import(addCheckoutServices())).build());
 }

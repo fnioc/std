@@ -3,7 +3,8 @@
 // returns it for chaining, so one reusable bag can be built fluently and applied
 // to many entries via `CacheEntrySugarAugmentations.setOptions`.
 
-import { applyAugmentations, type IChangeToken } from '@rhombus-std/primitives';
+import type { IChangeToken } from '@rhombus-std/primitives';
+import { registerAugmentations } from '@rhombus-std/primitives.extras';
 import type { Flatten } from '@rhombus-toolkit/types';
 import type { CacheItemPriority } from './CacheItemPriority';
 import { MemoryCacheEntryOptions } from './MemoryCacheEntryOptions';
@@ -59,4 +60,4 @@ declare module '@rhombus-std/caching.core' {
   interface MemoryCacheEntryOptions extends Flatten<typeof MemoryCacheEntryOptionsSugarAugmentations> {}
 }
 
-applyAugmentations(MemoryCacheEntryOptions, MemoryCacheEntryOptionsSugarAugmentations);
+registerAugmentations<MemoryCacheEntryOptions>(MemoryCacheEntryOptionsSugarAugmentations);

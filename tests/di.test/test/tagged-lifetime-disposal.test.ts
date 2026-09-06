@@ -12,7 +12,7 @@ type Lifetime = 'session' | 'request' | undefined;
 type Tag = Exclude<Lifetime, undefined>;
 
 const SCOPE_FACTORY = Type.imported('ITaggedServiceScopeFactory', '@rhombus-std/di.core', [
-  Type.union(Type.typeLiteral('session'), Type.typeLiteral('request'), Type.typeLiteral(undefined)),
+  Type.union(Type.typeLiteral('session'), Type.typeLiteral('request'), Type.undefinedLiteral),
 ]);
 const RECORDER = Type.imported('Recorder', 'app');
 const A = Type.imported('A', 'app');
@@ -67,14 +67,14 @@ function openScope(provider: IServiceProvider, tag: Tag): IDisposableServiceProv
   return (provider.resolve(SCOPE_FACTORY) as ITaggedServiceScopeFactory<Lifetime>).openScope(tag);
 }
 
-/** A container over a factory-made {@link Recorder} alone, under `lifetime`. */
+/** A provider over a factory-made {@link Recorder} alone, under `lifetime`. */
 function recorderProvider(lifetime?: Lifetime, order: string[] = []): IDisposableServiceProvider {
   return Builder.useAddon(taggedLifetime<Lifetime>())
     .withServices(m => m.add(RECORDER, () => new Recorder('recorder', order), Type.func(RECORDER, [[]]), lifetime))
     .build();
 }
 
-/** A container over three factory-made recorders, every one tagged `'session'`, logging into `order`. */
+/** A provider over three factory-made recorders, every one tagged `'session'`, logging into `order`. */
 function threeProvider(order: string[], b: () => unknown = () => new Recorder('b', order)): IDisposableServiceProvider {
   return Builder.useAddon(taggedLifetime<Lifetime>())
     .withServices(m =>

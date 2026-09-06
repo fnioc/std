@@ -127,6 +127,7 @@ export declare class RestOnlyOverloadWidget {
 }
 export declare class HiddenWidget { private constructor(a: IA); }
 export declare class ReadonlyPairWidget { constructor(pair: readonly [IA, IB]); }
+export declare class BooleanSlotWidget { constructor(enabled: boolean); }
 export class DefaultedWidget { constructor(readonly a: IA = {}) {} }
 type SeedThenMore = [IA, ...IB[]];
 export declare class AliasSeededWidget { constructor(seed: SeedThenMore); }
@@ -202,6 +203,7 @@ export const restCallbackCtor = typefor<typeof RestCallbackWidget>();
 export const restOnlyOverloadCtor = typefor<typeof RestOnlyOverloadWidget>();
 export const hiddenCtor = typefor<typeof HiddenWidget>();
 export const readonlyPairCtor = typefor<typeof ReadonlyPairWidget>();
+export const booleanSlotCtor = typefor<typeof BooleanSlotWidget>();
 export const defaultedCtor = typefor<typeof DefaultedWidget>();
 export const aliasSeededCtor = typefor<typeof AliasSeededWidget>();
 
@@ -311,7 +313,11 @@ describe.skipIf(!toolchainReady)('typefor compositional shapes', () => {
   // `undefined` literal SingletonValue (transforms/internal/tokens/generics.go)
   // already gives it.
   test('void reads as the undefined literal', () => {
-    expect(app).toContain('voidType = Type.typeLiteral(undefined)');
+    expect(app).toContain('voidType = Type.undefinedLiteral');
+  });
+
+  test('a wide boolean constructor slot spells the scalar', () => {
+    expect(app).toContain(`booleanSlotCtor = Type.ctor(${local('BooleanSlotWidget')}, [[Type.global("boolean")]])`);
   });
 
   test('constructor, abstract-constructor, and function addresses by name', () => {
@@ -336,7 +342,7 @@ describe.skipIf(!toolchainReady)('typefor compositional shapes', () => {
   });
 
   test('object literal with an optional member', () => {
-    expect(app).toContain(`objOptional = Type.object({ a: ${IA}, b: Type.union(${IB}, Type.typeLiteral(undefined)) })`);
+    expect(app).toContain(`objOptional = Type.object({ a: ${IA}, b: Type.optional(${IB}) })`);
   });
 
   test('deeply nested object whose leaves are a tuple and an array — members keyed in SORTED order', () => {
@@ -354,7 +360,7 @@ describe.skipIf(!toolchainReady)('typefor compositional shapes', () => {
 
   test('an optional readonly property holding an array of promises', () => {
     expect(app).toContain(
-      `optionalArrayOfPromises = Type.object({ items: Type.union(Type.global("Array", [Type.global("Promise", [${IA}])]), Type.typeLiteral(undefined)) })`,
+      `optionalArrayOfPromises = Type.object({ items: Type.optional(Type.global("Array", [Type.global("Promise", [${IA}])])) })`,
     );
   });
 
@@ -369,7 +375,7 @@ describe.skipIf(!toolchainReady)('typefor compositional shapes', () => {
   });
 
   test("a tuple with an optional element carries undefined in that slot's own type", () => {
-    expect(app).toContain(`tupleOptional = Type.tuple(${IA}, Type.union(${IB}, Type.typeLiteral(undefined)))`);
+    expect(app).toContain(`tupleOptional = Type.tuple(${IA}, Type.optional(${IB}))`);
   });
 
   test('a tuple with a trailing rest element states its open length', () => {
@@ -386,7 +392,7 @@ describe.skipIf(!toolchainReady)('typefor compositional shapes', () => {
   });
 
   test('a function with an optional parameter', () => {
-    expect(app).toContain(`optParamFunc = Type.func(${IC}, [[${IA}, Type.union(${IB}, Type.typeLiteral(undefined))]])`);
+    expect(app).toContain(`optParamFunc = Type.func(${IC}, [[${IA}, Type.optional(${IB})]])`);
   });
 
   test('a function with a required prefix and a trailing rest derives an open-length tuple row', () => {
@@ -402,7 +408,7 @@ describe.skipIf(!toolchainReady)('typefor compositional shapes', () => {
     expect(app).toContain('negNum = Type.typeLiteral(-5)');
     expect(app).toContain('negBig = Type.typeLiteral(-7n)');
     expect(app).toContain('nullLit = Type.typeLiteral(null)');
-    expect(app).toContain('undefLit = Type.typeLiteral(undefined)');
+    expect(app).toContain('undefLit = Type.undefinedLiteral');
   });
 
   test('true | false widens to boolean before a union is ever derived, leaving a plain boolean | null union', () => {
@@ -469,26 +475,26 @@ describe.skipIf(!toolchainReady)('blind shapes: the derived node is the hand-bui
   test('an optional prefix and a trailing rest share one open row', () => {
     const hand = Type.func(
       imported('IC'),
-      Type.tuple({ members: [Type.union(imported('IA'), Type.typeLiteral(undefined))], rest: imported('IB') }),
+      Type.tuple({ members: [Type.optional(imported('IA'))], rest: imported('IB') }),
     );
     expect(evaluate(emitted('optPrefixRestFunc'))).toBe(hand);
     // `optPrefixRestFn()`, `(a)` and `(a, b, b)` are all hand-written calls: one
     // fixed slot admitting undefined, then the open length.
     expect(Type.signatureRows(hand.signatures)).toEqual([
-      Type.tuple({ members: [Type.union(imported('IA'), Type.typeLiteral(undefined))], rest: imported('IB') }),
+      Type.tuple({ members: [Type.optional(imported('IA'))], rest: imported('IB') }),
     ]);
   });
 
   test('an optional-only prefix and a trailing rest on a constructor share one open row', () => {
     const hand = Type.ctor(
       imported('OptPrefixRestWidget'),
-      Type.tuple({ members: [Type.union(imported('IA'), Type.typeLiteral(undefined))], rest: imported('IB') }),
+      Type.tuple({ members: [Type.optional(imported('IA'))], rest: imported('IB') }),
     );
     expect(evaluate(emitted('optPrefixRestCtor'))).toBe(hand);
     // `new OptPrefixRestWidget()`, `(a)` and `(a, b, b)` are all hand-written
     // calls: one fixed slot admitting undefined, then the open length.
     expect(Type.signatureRows(hand.signatures)).toEqual([
-      Type.tuple({ members: [Type.union(imported('IA'), Type.typeLiteral(undefined))], rest: imported('IB') }),
+      Type.tuple({ members: [Type.optional(imported('IA'))], rest: imported('IB') }),
     ]);
   });
 
@@ -540,7 +546,7 @@ describe.skipIf(!toolchainReady)('blind shapes: the derived node is the hand-bui
   test('a default-valued parameter is optional to its callers, so its slot admits undefined', () => {
     const hand = Type.ctor(
       imported('DefaultedWidget'),
-      [[Type.union(imported('IA'), Type.typeLiteral(undefined))]],
+      [[Type.optional(imported('IA'))]],
     );
     expect(evaluate(emitted('defaultedCtor'))).toBe(hand);
     // `new DefaultedWidget()` and `new DefaultedWidget(undefined)` are both
@@ -548,7 +554,7 @@ describe.skipIf(!toolchainReady)('blind shapes: the derived node is the hand-bui
     // `new (a?: IA) => DefaultedWidget` — so the one slot admits undefined
     // exactly as an explicit `a?: IA` spells it.
     expect(Type.signatureRows(hand.signatures)).toEqual([
-      Type.tuple(Type.union(imported('IA'), Type.typeLiteral(undefined))),
+      Type.tuple(Type.optional(imported('IA'))),
     ]);
   });
 

@@ -98,7 +98,7 @@ SHARE instance caches — each registration caches under its own slot, the singu
 0, the enumerable path reads every slot. Without it, resolve-one and resolve-all cache separately
 and a scoped/singleton instance can double-instantiate. Our newest-first singular iteration makes
 the reverse-index convention line up exactly (winner ≡ slot 0), and slots are computable once at
-container build from the registration chain.
+provider build from the registration chain.
 
 Our translation is cheaper than the reference's: with interned Types (`===`), a
 `ServiceIdentifier` can itself be interned on `(type, key)` — every cache becomes a plain

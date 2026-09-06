@@ -25,15 +25,15 @@ describe('postConfigure — bare form', () => {
   test('a plain delegate runs after configure, seeing the configured value', () => {
     let services: Manifest<unknown> = Manifest.empty<unknown>();
     services = services.addOptions(OPTIONS_TYPE, () => ({ suffix: '' }));
-    services = services.add(getConfigureManifest(OPTIONS_TYPE, (options: WidgetOptions) => {
+    services = services.import(getConfigureManifest(OPTIONS_TYPE, (options: WidgetOptions) => {
       options.suffix = 'base';
     }));
-    services = services.add(getPostConfigureManifest(OPTIONS_TYPE, (options: WidgetOptions) => {
+    services = services.import(getPostConfigureManifest(OPTIONS_TYPE, (options: WidgetOptions) => {
       options.suffix += '!';
     }));
 
     const provider = Builder.withServices(() => services).build();
-    const options: IOptions<WidgetOptions> = provider.resolve(optionsAddressType(OPTIONS_TYPE));
+    const options = provider.resolve(optionsAddressType(OPTIONS_TYPE)) as IOptions<WidgetOptions>;
 
     // 'base!' proves ordering: the post-configure ran after the configure and
     // appended to its result, not before it.
@@ -43,16 +43,16 @@ describe('postConfigure — bare form', () => {
   test('a pre-built IPostConfigureOptions object runs after configure', () => {
     let services: Manifest<unknown> = Manifest.empty<unknown>();
     services = services.addOptions(OPTIONS_TYPE, () => ({ suffix: '' }));
-    services = services.add(getConfigureManifest(OPTIONS_TYPE, (options: WidgetOptions) => {
+    services = services.import(getConfigureManifest(OPTIONS_TYPE, (options: WidgetOptions) => {
       options.suffix = 'base';
     }));
     const step: IPostConfigureOptions<WidgetOptions> = { postConfigure(options) {
       options.suffix += '!';
     } };
-    services = services.add(getPostConfigureManifest(OPTIONS_TYPE, step));
+    services = services.import(getPostConfigureManifest(OPTIONS_TYPE, step));
 
     const provider = Builder.withServices(() => services).build();
-    const options: IOptions<WidgetOptions> = provider.resolve(optionsAddressType(OPTIONS_TYPE));
+    const options = provider.resolve(optionsAddressType(OPTIONS_TYPE)) as IOptions<WidgetOptions>;
 
     expect(options.value.suffix).toBe('base!');
   });
@@ -60,15 +60,15 @@ describe('postConfigure — bare form', () => {
   test('every registered post-configure step runs, in registration order', () => {
     let services: Manifest<unknown> = Manifest.empty<unknown>();
     services = services.addOptions(OPTIONS_TYPE, () => ({ suffix: 'base' }));
-    services = services.add(getPostConfigureManifest(OPTIONS_TYPE, (options: WidgetOptions) => {
+    services = services.import(getPostConfigureManifest(OPTIONS_TYPE, (options: WidgetOptions) => {
       options.suffix += '-a';
     }));
-    services = services.add(getPostConfigureManifest(OPTIONS_TYPE, { postConfigure(options: WidgetOptions) {
+    services = services.import(getPostConfigureManifest(OPTIONS_TYPE, { postConfigure(options: WidgetOptions) {
       options.suffix += '-b';
     } }));
 
     const provider = Builder.withServices(() => services).build();
-    const options: IOptions<WidgetOptions> = provider.resolve(optionsAddressType(OPTIONS_TYPE));
+    const options = provider.resolve(optionsAddressType(OPTIONS_TYPE)) as IOptions<WidgetOptions>;
 
     expect(options.value.suffix).toBe('base-a-b');
   });

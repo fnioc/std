@@ -1,6 +1,6 @@
 // MemoryDistributedCache behavior: byte round-trips, entry-options-driven
 // expiration over a fake clock, refresh's sliding-window reset, and the
-// registry-installed setString/getString method form (docs §38/§40).
+// registry-installed setString/getString method form.
 
 import { DistributedCacheEntryOptions, DistributedCacheSugarAugmentations } from '@rhombus-std/caching.core';
 import { type ISystemClock, MemoryDistributedCache, MemoryDistributedCacheOptions } from '@rhombus-std/caching.memory';

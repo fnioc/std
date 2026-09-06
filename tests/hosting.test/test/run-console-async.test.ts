@@ -21,7 +21,7 @@ test('runConsoleAsync (signal-only form) starts the host and shuts down when the
   }
 
   const builder = new HostBuilder();
-  builder.configureServices((_context, services) => services.add(getHostedServiceManifest(Worker, Type.ctor(HOSTED_SERVICE_TYPE, [[]]))));
+  builder.configureServices((_context, services) => services.import(getHostedServiceManifest(Worker, Type.ctor(HOSTED_SERVICE_TYPE, [[]]))));
 
   const controller = new AbortController();
   const run = builder.runConsoleAsync(controller.signal);
@@ -44,11 +44,11 @@ test('runConsoleAsync (configureOptions form) applies the options, and they reac
 
   const builder = new HostBuilder();
   builder.configureServices((_context, services) => {
-    services = services.add(getHostedServiceManifest((resolver) => {
+    services = services.import(getHostedServiceManifest((resolver) => {
       // The same options singleton is what the ConsoleLifetime constructor read,
       // so observing it here observes exactly what the lifetime holds.
-      const options: ConsoleLifetimeOptions = resolver.resolve(CONSOLE_LIFETIME_OPTIONS_TYPE);
-      const lifetime: IHostLifetime = resolver.resolve(HOST_LIFETIME_TYPE);
+      const options = resolver.resolve(CONSOLE_LIFETIME_OPTIONS_TYPE) as ConsoleLifetimeOptions;
+      const lifetime = resolver.resolve(HOST_LIFETIME_TYPE) as IHostLifetime;
       return { async start(): Promise<void> {
         seenSuppress = options.suppressStatusMessages;
         lifetimeIsConsole = lifetime instanceof ConsoleLifetime;
@@ -80,8 +80,8 @@ test('runConsoleAsync without a configureOptions delegate leaves the console lif
 
   const builder = new HostBuilder();
   builder.configureServices((_context, services) => {
-    services = services.add(getHostedServiceManifest((resolver) => {
-      const options: ConsoleLifetimeOptions = resolver.resolve(CONSOLE_LIFETIME_OPTIONS_TYPE);
+    services = services.import(getHostedServiceManifest((resolver) => {
+      const options = resolver.resolve(CONSOLE_LIFETIME_OPTIONS_TYPE) as ConsoleLifetimeOptions;
       return { async start(): Promise<void> {
         seenSuppress = options.suppressStatusMessages;
       }, async stop(): Promise<void> {} };
@@ -113,7 +113,7 @@ test('runConsoleAsync stays pending until the abort signal fires, then resolves'
   }
 
   const builder = new HostBuilder();
-  builder.configureServices((_context, services) => services.add(getHostedServiceManifest(Worker, Type.ctor(HOSTED_SERVICE_TYPE, [[]]))));
+  builder.configureServices((_context, services) => services.import(getHostedServiceManifest(Worker, Type.ctor(HOSTED_SERVICE_TYPE, [[]]))));
 
   const controller = new AbortController();
   const run = builder.runConsoleAsync(controller.signal);

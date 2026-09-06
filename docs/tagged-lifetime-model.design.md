@@ -239,7 +239,7 @@ entry, and its settled value is what is captured, on settlement, as in the stand
   parent's.
 - Disposing the built provider: it holds nothing, so nothing is released; the head refuses every ask
   afterwards, which ends every open scope's resolutions with it. The head learns of that disposal
-  the way the standard model's container marker does.
+  the way the standard model's singleton-scope marker does.
 
 ## Awaiting the owner's word, continued
 

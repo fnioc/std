@@ -140,7 +140,7 @@ function validate(o: { port: number; host: string; }) {
 configuration or on the dependency-injection engine itself.
 
 It doesn't know how to bind a value from a configuration tree, and it
-doesn't register anything into a dependency-injection container on its own.
+doesn't register anything into a service manifest on its own.
 That's [`@rhombus-std/options.augmentations`](../options.augmentations/README.md):
 it's the package that adds `addOptions`/`configure`/`postConfigure`/
 `validate`/`validateOnStart` onto a service registration builder, and — for
@@ -150,7 +150,7 @@ Install `options.augmentations` alongside this package if you want either of
 those capabilities; install `@rhombus-std/options` alone if you just need
 the `IOptions<T>` accessor shape or the `OptionsFactory` pipeline in
 isolation (for example, in a library that builds its own settings object
-without a full container).
+without a service provider).
 
 ## Notes
 

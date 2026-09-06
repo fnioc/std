@@ -58,7 +58,7 @@ describe('structural object resolution', () => {
 
   test('an optional property falls back to undefined instead of failing the shape', () => {
     const provider = toProvider(manifestWith('clock'));
-    const optionalCache = Type.union(CACHE, Type.typeLiteral(undefined));
+    const optionalCache = Type.optional(CACHE);
 
     const built = provider.getService(Type.object({ cache: optionalCache, clock: CLOCK })) as Record<string, unknown>;
 

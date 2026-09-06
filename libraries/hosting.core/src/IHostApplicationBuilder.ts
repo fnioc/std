@@ -41,7 +41,7 @@ export interface IHostApplicationBuilder {
   services: Manifest<unknown>;
 
   /**
-   * Configures the instantiated dependency container. The `configure` delegate
+   * Configures the instantiated dependency provider. The `configure` delegate
    * runs after all other services have been registered. Multiple calls replace
    * the previously stored delegate.
    */

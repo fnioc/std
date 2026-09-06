@@ -3,8 +3,8 @@
 //
 // Why the implementations live in ONE library rather than being duplicated per
 // app: the point of the resolution examples is that the two authoring dialects
-// differ ONLY in how they ASK the container for things. Sharing the registrations
-// keeps the container identical on both sides, so the two `resolution-demo.ts`
+// differ ONLY in how they ASK the provider for things. Sharing the registrations
+// keeps the manifest identical on both sides, so the two `resolution-demo.ts`
 // files can be diffed line for line and every difference is a resolution
 // difference.
 //
@@ -16,7 +16,7 @@
 // Type anywhere — the two sides meet on one INTERNED object.
 //
 // Like every file in this library it imports `@rhombus-std/di.core` and never
-// `@rhombus-std/di`: it hands back registrations and leaves the container to the
+// `@rhombus-std/di`: it hands back registrations and leaves the provider to the
 // application. Two classes below DO take the live provider as a dependency; the
 // comments on each say why that is legitimate rather than the usual smell, and
 // `PaymentRouter` deliberately sits the discouraged shape next to the correct
@@ -129,7 +129,7 @@ export class AmountIsPositive implements IOrderValidator {
 /**
  * Rejects an order whose payment method has no gateway wired up.
  *
- * This validator takes the CONTAINER as a dependency, which is normally a smell —
+ * This validator takes the PROVIDER as a dependency, which is normally a smell —
  * it hides the real dependencies from anyone reading the constructor. It is the
  * right call here for a specific reason, and the test is worth stating as a rule:
  * ASK WHETHER THE DEPENDENCY COULD HAVE BEEN A PARAMETER. Almost always it could
@@ -167,7 +167,7 @@ export class MethodIsConfigured implements IOrderValidator {
     // instead of throwing, so presence is exactly a `resolve` that came back
     // non-`undefined`. Every gateway below is a stateless value object with no
     // dependencies of its own, so resolving one to answer the question is free.
-    if (this.#resolver.resolve(Type.union(Type.tag(this.#gatewayType, order.method), Type.typeLiteral(undefined))) !== undefined) {
+    if (this.#resolver.resolve(Type.union(Type.tag(this.#gatewayType, order.method), Type.undefinedLiteral)) !== undefined) {
       return 'ok';
     }
     return `no gateway for "${order.method}"`;
@@ -218,9 +218,9 @@ export class ReceiptNumbering implements IReceiptNumbering {
 /**
  * A receipt. Its constructor mixes the two kinds of parameter a PARAMETERIZED
  * factory partitions: `order` is caller-supplied (nothing registers
- * `…:CheckoutOrder`) and `numbering` is resolved from the container. Because of
+ * `…:CheckoutOrder`) and `numbering` is resolved from the provider. Because of
  * that split, `Receipt` is NOT resolvable on its own — asking for
- * `…:IReceipt` directly fails, since the container cannot invent an order. It is
+ * `…:IReceipt` directly fails, since the provider cannot invent an order. It is
  * reachable only through the factory form, which is exactly the intent.
  */
 export class Receipt implements IReceipt {
@@ -268,16 +268,16 @@ export async function fetchExchangeRates(): Promise<IExchangeRates> {
  *
  *   - `mintReceipt` — THE CORRECT ANSWER, and the one to reach for by default. A
  *     dependency that is itself a FACTORY: a parameter typed as a function is not
- *     resolved as an instance; the container injects a callable that builds one
+ *     resolved as an instance; the provider injects a callable that builds one
  *     on demand. Because this factory declares a parameter, it is PARAMETERIZED:
- *     `order` comes from the caller, `numbering` from the container, and a fresh
+ *     `order` comes from the caller, `numbering` from the provider, and a fresh
  *     receipt is built per call (a cached receipt would be wrong — the arguments
  *     differ every time). The dependency stays VISIBLE in the constructor, a test
- *     passes a stub function, and no container is involved.
+ *     passes a stub function, and no provider is involved.
  *
- *   - `resolver` — the live container, and USUALLY the wrong move: it turns a
+ *   - `resolver` — the live provider, and USUALLY the wrong move: it turns a
  *     class's real dependencies invisible, defers every wiring mistake to
- *     runtime, and makes tests stand up a container instead of passing fakes.
+ *     runtime, and makes tests stand up a service provider instead of passing fakes.
  *     Legitimate here for the same reason as in `MethodIsConfigured`: the gateway
  *     is chosen by a KEY that only exists once an order is in hand, and a factory
  *     slot's target Type is FIXED at registration time, so `mintReceipt`'s shape
@@ -313,7 +313,7 @@ export class PaymentRouter implements IPaymentRouter {
 // ── registration ────────────────────────────────────────────────────────────
 
 /**
- * Builds the whole checkout container as its own manifest, on the narrowest
+ * Builds the whole checkout surface as its own manifest, on the narrowest
  * lifetime vocabulary it needs — `'singleton'`, the one lifetime every
  * registration below uses. The caller merges the result into their own manifest
  * (`services = services.add(addCheckoutServices())`); nothing here ever sees
@@ -322,8 +322,8 @@ export class PaymentRouter implements IPaymentRouter {
  *
  * Kept as its own `add*` entry rather than folded into
  * `addWithoutTransformerExamples`, because the resolution chapter deliberately
- * gets its OWN container: these registrations exist to be resolved against in
- * isolation, and putting them in the application's host container would perturb
+ * gets its OWN provider: these registrations exist to be resolved against in
+ * isolation, and putting them in the application's host provider would perturb
  * what every other chapter sees.
  *
  * Registration ORDER is observable and therefore part of the contract: a
@@ -381,7 +381,7 @@ export function addCheckoutServices(): Manifest<'singleton'> {
     // provider argument · witness argument · CALLABLE argument.
     // `Type.func(result, [[...args]])` says "inject a callable producing `result`, whose own arguments
     // are `args`"; every other argument in the target's constructor is resolved
-    // from the container instead.
+    // from the provider instead.
     Type.ctor(t.router, [[t.resolver, GATEWAY_WITNESS_TYPE, Type.func(t.receipt, [[t.order]])]]),
     'singleton',
   );

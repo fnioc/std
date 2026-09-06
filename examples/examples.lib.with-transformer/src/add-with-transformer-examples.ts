@@ -1,7 +1,7 @@
 // THE LIBRARY'S FRONT DOOR — and the shape every library in this repo is meant
 // to have.
 //
-// A library CONTRIBUTES REGISTRATIONS. It does not own a container: it never
+// A library CONTRIBUTES REGISTRATIONS. It does not own a provider: it never
 // calls `build()`, never opens a scope and never resolves. It exports ONE
 // function that builds its own self-contained manifest and hands it back; the
 // application — the only thing that knows what it is composing — merges it into
@@ -11,8 +11,8 @@
 // library depends on `@rhombus-std/di.core` (the abstractions: the manifest, the
 // tokens, the slot grammar) and NOT on `@rhombus-std/di` (the resolution
 // engine), and every file in the package holds to that. A library that reached
-// for the engine would take the choice of container away from its consumer, and
-// would fork the container the moment the app built its own. `add*` is the seam
+// for the engine would take the choice of provider away from its consumer, and
+// would fork the provider the moment the app built its own. `add*` is the seam
 // that keeps the choice where it belongs.
 //
 // Authored in the TOKENLESS dialect, and behaviourally identical to the manual
@@ -64,7 +64,7 @@ export function addWithTransformerExamples(): Manifest<'singleton'> {
   // The banner, registered ONLY in its `Promise<…>` wrapper. Registering the
   // honest promise (rather than pretending an async fetch is a synchronous value)
   // is what makes an awaited resolution work and a plain one fail loudly — the
-  // container never silently hands back an unsettled value.
+  // provider never silently hands back an unsettled value.
   services = services.add(typefor<Promise<IBanner>>(), fetchBanner, typefor(fetchBanner), 'singleton');
 
   // The report factory, and the densest argument list anywhere in these examples:

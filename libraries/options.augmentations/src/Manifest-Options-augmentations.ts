@@ -47,7 +47,7 @@ export namespace ServiceManifestOptionsAugmentations {
     // differ only in where the base value comes from. A given factory IS the
     // `() => T` the slot names, handed back as-is — a value registration.
     // Given nothing, the base is whatever `optionsType` itself resolves to,
-    // injected here so the resolution is the container's, not ours.
+    // injected here so the resolution is the provider's, not ours.
     if (makeBase) {
       return manifest.addValue(baseFactoryType(optionsType), makeBase);
     }
@@ -63,7 +63,7 @@ registerAugmentations<Manifest<unknown>>(ServiceManifestOptionsAugmentations);
 
 /**
  * A post-configure step for `optionsType`, run after every configure step, as
- * its own manifest — merge it into a container's registrations with
+ * its own manifest — merge it into your own manifest with
  * `add`. Accepts a {@link IPostConfigureOptions} or a bare
  * `(options) => void` delegate.
  */
@@ -99,8 +99,8 @@ export function getPostConfigureManifest<Deps extends readonly unknown[]>(option
 const DEFAULT_VALIDATION_FAILURE_MESSAGE = 'A validation error has occurred.';
 
 /**
- * A validate step for `optionsType`, as its own manifest — merge it into a
- * container's registrations with `add`. `validate` runs against the
+ * A validate step for `optionsType`, as its own manifest — merge it into
+ * your own manifest with `add`. `validate` runs against the
  * fully-configured value; a `false` result fails validation with
  * `failureMessage`.
  */

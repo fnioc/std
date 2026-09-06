@@ -3,7 +3,7 @@
 // useDefaultServiceProvider) to the point the provider is built
 // (HostBuilder.build()).
 //
-// This repo has a single container type, so the options ride the builder's
+// This repo has a single provider type, so the options ride the builder's
 // own `properties` bag instead, under a module-private symbol key:
 // `HostBuilder.build()` already threads that same Map into
 // `HostBuilderContext.properties`, so it's exactly the per-builder build-time

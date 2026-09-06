@@ -2447,6 +2447,40 @@ match lookup; a `Promise<X>` registration answers a `Promise<X>` ask; the settle
 
 ## Queue — merge `IServiceManifest-repair` into main (owner 2026-09-03: "up next we merge into main")
 
+LANDED 2026-09-05 as `d80c422a` on `main` via PR #368 — one locally signed commit (`git commit-tree -S`)
+carrying the branch tip's tree, because `main`'s `required_signatures` rule refused #274's mixed
+history (330 unsigned August commits, 15 signed with the cloud lane's Anthropic-owned key, which
+cannot be registered on the owner's account — see memory `cloud-commits-sign-with-anthropic-key` and
+user prefs `CLAUDE.git.md` § Commit signing). #274 closed with a pointer. Release workflow skipped
+(`PUBLISHING_ENABLED` unset). Main CI green. No `closes` lines were carried: #365 #367 #362 #330 are
+still open — close by hand on the owner's word. `IServiceManifest-approved` + draft PR #366: now moot
+unless the owner wants the ladder kept — his word. This branch continues as the working branch until
+he names another; any future PR to `main` must pass the all-`G` signature check first.
+
+## Published — `@next` hand publish (owner 2026-09-05)
+
+`@rhombus-std/{primitives,primitives.extras,di.core,di,di.extras,transforms}@0.1.0-next.0` on the
+`next` dist-tag, from `bd2074fa` (the parity + ask-surface tip), names unchanged. Recipe facts that
+the repo's scripts did not cover, for the next hand publish: pnpm needs its own `pnpm install` to
+resolve `workspace:` (bun's is not enough); pnpm ignores the root `overrides` field, so
+`pnpm.overrides."@rhombus-toolkit/types"` must be injected; `stage-transforms` runs BEFORE `pnpm
+install` (the workspace link targets `transforms/dist/publish`); `publishConfig.provenance` must be
+stripped for a token publish; a version already on the registry must be skipped, not re-sent. A
+brand-new package name (`transforms`) reads 404 through the CDN for a while after publish; the
+version document answers 200.
+
+## npm scope — open fork (owner 2026-09-05, leaning, NOT ruled)
+
+Stay `@rhombus-std` (per-product scope, hyphen brand-product, dot family.qualifier — matches
+`@rhombus-toolkit`) vs go domain-rooted brand-wide: `@std.rhombus.rocks/di.core`,
+`@toolkit.rhombus.rocks/types`, scope = docs host, so a package's docs URL derives from its name.
+Owner: "i'd do it for everything", "i'll at the very least cname them to the right place", then "for
+now, continue as the code is written now i.e. 'rhombus-std'" (a rename touches every import, package
+name, README, publish config and the identity guard). If it goes: std first (only `next`
+prereleases published), toolkit on its next major. Awaits the owner's word.
+
+### Original merge notes
+
 - The PR already exists: #274, draft, `IServiceManifest-repair` → `main`. Landing it is
   `gh pr ready 274`, then the merge queue (required check `verify`); auto-merge is the default here.
 - Runs on the owner's go. Before readying: CI green on the tip, `git status` clean, this tasklist
@@ -2512,12 +2546,44 @@ await their result, so Promise<T | undefined> is correct"). The plain `resolveWi
 | `resolveArrayAsync(address)`                                    | `resolveArrayAsync<T>()`                                              | `resolve(Type.promise(Type.array(address)))`                                                      |
 | `resolveIterableAsync(address)`                                 | `resolveIterableAsync<T>()`                                           | `resolve(Type.promise(Type.iterable(address)))`                                                   |
 | `resolveAsyncIterable(address)`                                 | `resolveAsyncIterable<T>()`                                           | `resolve(Type.global('AsyncIterable', [address]))` — one element at a time, each its own boundary |
-| `resolveWith(funcType, ...args)`                                | `resolveWith<T, Args extends unknown[]>(...args)`                     | `resolve(Func<Args, T>)(...args)`                                                                 |
-| `resolveWithAsync(funcType, ...args)`                           | `resolveWithAsync<T, Args extends unknown[]>(...args)`                | `resolve(Func<Args, Promise<T>>)(...args)`                                                        |
+| — (sugar only)                                                  | `resolveWith<T, Args extends unknown[]>(...args)`                     | `resolve(Func<Args, T>)(...args)`                                                                 |
+| — (sugar only)                                                  | `resolveWithAsync<T, Args extends unknown[]>(...args)`                | `resolve(Func<Args, Promise<T>>)(...args)`                                                        |
 | `instantiate(ctorType, ctor)` (today `resolve(ctorType, ctor)`) | `instantiate(ctor)` — `typefor(ctor)` on the value, no type parameter | `resolve(invokerAddress(ctorType))(ctor)`                                                         |
 | `invoke(funcType, func)` (today `resolve(funcType, func)`)      | `invoke(func)`                                                        | `resolve(invokerAddress(funcType))(func)`                                                         |
 
 RULED (owner 2026-09-04): rename — `resolveMany` → `resolveIterable`; the `resolve(ctorType, ctor)`/`resolve(funcType, func)` overloads → `instantiate`/`invoke`; the old names go. Public API change by his word. Not started; code on the owner's go.
+
+RULED (owner 2026-09-05, live review of the surface as shipped):
+
+1. The five aggregate `try` twins are DELETED (`tryResolveArray`, `tryResolveIterable`,
+   `tryResolveArrayAsync`, `tryResolveIterableAsync`, `tryResolveAsyncIterable`): an aggregate
+   address always plans, so none ever answered `undefined`. The callable twins stay as built —
+   a broken graph throws from inside the call, never `undefined` — matching the reference, where
+   `GetService` and `GetRequiredService` both throw on a missing dependency and differ only on an
+   unregistered address. The spec line "the resolve throws when the callable cannot be planned" is
+   corrected: the engine plans a callable's dependencies at the call.
+2. Every explicit form returns `unknown` (`getService` too); the `try` twins of the scalar/callable
+   rows spell `unknown | undefined` knowing it collapses. The sugar's `<T>()` body is the one place
+   the address and the type are asserted equal (`as ServiceType`).
+3. `resolveWith` family: ONE shape per member, `(funcType: FunctionType, ...args: unknown[])`; the
+   async twins add the promise to the callable's return slot in the verb
+   (`Type.func(Type.promise(funcType.return), funcType.signatures)`), so every sugar row passes the
+   plain `typefor<Func<Args, ServiceType>>()`. A second `(address: Type, argTypes: TupleType,
+   ...args)` overload was proposed and DROPPED: the mergesynth audit found the pair ambiguous —
+   `FunctionType` is an arm of `Type`, so the address guard nests the function guard and the rest
+   parameter carries no guard; dispatch would be registration-order-dependent and the
+   indistinguishable-guards diagnostic never fires (classification strings differ).
+4. `Type.optional(type)` / `Type.undefinedLiteral` added to primitives (owner's hand edit); the
+   tree's `Type.union(x, Type.typeLiteral(undefined))` spellings swept to it.
+
+Lane `ask-surface-unknown` (opus-5, in place, no commits while the review is live) carries 1–3
+through di.core, di.extras, tests, README and docs/libraries/di.md; gate on its report.
+
+FOR THE OWNER'S WORD (mergesynth audit, 2026-09-05): `Manifest.add`'s `Manifest`-typed block
+(`Manifest-Registration-augmentations.ts`, the one beside the `Iterable` block) is unreachable —
+a manifest also satisfies the `Iterable` guard, and that block's body patches around it with a
+manual `instanceof`. Everything else contributed across separate blocks discriminates cleanly via
+a companion type-node parameter with a mutually exclusive `kind`.
 
 ## Open, owner's word (2026-09-04)
 
@@ -2562,6 +2628,51 @@ RULED (owner 2026-09-04): rename — `resolveMany` → `resolveIterable`; the `r
   owner (asked 2026-09-04, unanswered): "fix" (route the flat-token path through the `true | false`
   collapse the node path already does, so `boolean` spells `Type.global('boolean')` everywhere; one
   test flips from refusal to address) or "leave".
+
+## Session — live review of the ask surface, 2026-09-05/06 (owner rulings; queue of record)
+
+Rulings, all landed: six signed commits replayed onto main as PR #369 (auto-merge, squash by the queue); the branch and this worktree go once it merges.
+
+1. Aggregate `try` twins deleted; explicit forms return `unknown`; callable `try` twins throw
+   from inside the call (reference parity: `GetService`/`GetRequiredService` both throw on a
+   missing dependency).
+2. `resolveWith`/`tryResolveWith`/`resolveWithAsync`/`tryResolveWithAsync`: SUGAR ONLY. The
+   hand-written forms are dropped (left commented out in di.core with a ≤100-char reason): the
+   sugar's `...args: Args` matches any argument list, so an explicit `(funcType, ...args)` call
+   binds the sugar or not by declaration order (probed with tsc; removing the spread does not
+   help). The sugar lowers straight to `resolve(typefor<Func<Args, T>>())(...args)`.
+3. `Manifest.add(manifest)` → `Manifest.import(manifest)`; the iterable `add` row's DECLARATION is
+   generic, `add<Registrations extends Iterable<…>>(registrations: ButNot<Registrations,
+   Manifest<any>>)`, so `ButNot` vetoes a manifest per call (the veto needs an inferred `T`; a
+   fixed `T` decides once at the declaration and keeps). The implementation stays concrete so
+   mergesynth keeps its iterable guard. Mergesynth does NOT learn `ButNot` (audit: di.core shapes
+   discriminate by arity + `kind` literals; sugar sets install nothing at runtime).
+4. Deferral is `instanceof Promise`, identity only; a thenable that is not a Promise is refused at
+   the engine's async boundaries (`RealizeVisitor`, three sites) with the new
+   `NonPromiseThenableError` ("a then member would lead to unpredictable results when the value is
+   awaited"); the sync path treats it as an ordinary value. Lifetime addons no longer sniff `then`.
+   No guard in `Type.promise` (it names a legal TS type; typefor prints `Type.global`).
+5. `Type.optional(x)` / `Type.undefinedLiteral`: convenience spellings, not identity (same
+   interned node). The inline emitter prints `Type.optional(member)` for a two-member optional and
+   `Type.undefinedLiteral` for the literal; the hoisted-const module keeps `Type.union(...)`, one
+   const per node. The name `undefinedLiteral` stays (`Type.undefined` would shadow the global
+   inside the namespace; `void` cannot be declared).
+6. Wide `boolean` flat token: FIXED (spells `Type.global('boolean')`). `go:linkname` into the
+   checker's instantiation: KEPT (mine); the only unserved layout is a sugar body in a file the
+   consumer's program never loads, which fails on the existing diagnostic.
+7. `applyAugmentations` un-exported; ONE install form for every receiver, interface or class
+   (declare-module + `registerAugmentations<R>` + `@augment`), so a class can later become an
+   interface untouched. Receiver model unchanged (no abstract-class Manifest).
+8. "container"/"root" swept from di tests and di.core/engine docs; `§N` refs swept from code
+   comments (sonnet lane). `docs/decisions.md` swept to nothing and DELETED (its one survivor, the
+   error-never-exception rule, now lives in CLAUDE.md); `docs/decisions.v2.md` swept 149 → 20
+   entries with delete-by-default (§162 removed with `applyAugmentations`).
+9. Review ladder torn down: #366 closed, `IServiceManifest-approved` deleted. #365 #367 #362 #330
+   close via PR #369's body. Owner: "just get it merged" — done as PR #369.
+
+FOR THE OWNER (parked, his call): gospel conflict — `decisions.user.md` U4 says the tag's inner
+type "is unconstrained"; the code and v2 §150 say `TagType.type: Exclude<Type, TagType>`. Only he
+edits U4. npm scope fork unchanged ("for now, continue as the code is written").
 
 ## Session — /go 2026-09-04, the work queued behind the owner's review
 

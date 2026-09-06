@@ -50,18 +50,11 @@ boundary, not a temporary gap.
 
 Steps, for a receiver interface `IConfigBuilder`:
 
-**1. Decide OPEN or CLOSED.** A receiver is **OPEN** if it's extended by downstream packages that
-load after its concrete class already exists (`Manifest`, `IConfigBuilder`, `ILoggingBuilder`,
-`IMetricsBuilder`, `ITracingBuilder`, `IHost`, `IHostBuilder`, `IHostEnvironment`) — these need the
-token registry (see below). A receiver is **CLOSED** if the interface (or concrete class) and every
-one of its augmentations live inside one family's own package (`MemoryCacheEntryOptions`,
-`MetricsOptions`, `LoggerFilterOptions`) — these install directly, no token needed.
-
-**2. Name the file `<Receiver>-<Topic>-augmentations.ts`**, where `Receiver` is the receiver's name
+**1. Name the file `<Receiver>-<Topic>-augmentations.ts`**, where `Receiver` is the receiver's name
 with a leading `I` dropped and `Topic` is a short word for the member group (`Json`, `Registration`,
 `Service`, `Sugar`).
 
-**3. Write the implementation as a namespace of exported function declarations.** This namespace is
+**2. Write the implementation as a namespace of exported function declarations.** This namespace is
 the one place a member's implementation shape is written — its parameters and its generics — and
 every other surface an augmentation touches derives from it.
 
@@ -152,7 +145,7 @@ answer for. Authoring one is a loud, load-time `INLINE_REST_BODY` error naming t
 not a silent widening. A call that stops short of the implementation's own optional tail simply
 omits those trailing arguments from the emitted call — it isn't padded with `undefined`.
 
-**4. Merge the namespace onto the receiver interface with `Flatten<typeof TheNamespace>`,** in the
+**3. Merge the namespace onto the receiver interface with `Flatten<typeof TheNamespace>`,** in the
 same file as the receiver's own declaring module:
 
 ```ts
@@ -236,45 +229,33 @@ have it call itself. `IDistributedCache.set` is this case: it's dropped from bot
 merge and the install, reachable only standalone as
 `DistributedCacheSugarAugmentations.set.call(cache, key, value, signal)`.
 
-**5. Register the namespace — it is what gets installed, with nothing further to write:**
+**4. Register the namespace — it is what gets installed, with nothing further to write.** Pass the
+namespace straight to `registerAugmentations`, naming the receiver as an explicit type argument:
 
-- **OPEN receiver** — pass the namespace straight to `registerAugmentations`, naming the receiver
-  as an explicit type argument:
+```ts
+import { registerAugmentations } from '@rhombus-std/primitives.extras';
 
-  ```ts
-  import { registerAugmentations } from '@rhombus-std/primitives.extras';
+registerAugmentations<IConfigBuilder>(ConfigBuilderJsonAugmentations);
+```
 
-  registerAugmentations<IConfigBuilder>(ConfigBuilderJsonAugmentations);
-  ```
+Any class decorated `@augment(typefor<IConfigBuilder>())` — anywhere, imported in any order,
+defined before or after this call runs — picks the new member up automatically. A member that
+collides with the receiver's own primitive registers with a second argument, one merge strategy
+per colliding name:
 
-  Any class decorated `@augment(tokenfor<IConfigBuilder>())` — anywhere, imported in any order,
-  defined before or after this call runs — picks the new member up automatically. A member that
-  collides with the receiver's own primitive registers with a second argument, one merge strategy
-  per colliding name:
+```ts
+registerAugmentations<ILogger>(LoggerAugmentations, {
+  log(original, incoming) {
+    return function(this: ILogger, logLevel: LogLevel, second: unknown, ...rest: unknown[]) {
+      return second instanceof EventId
+        ? original.call(this, logLevel, second, ...rest)
+        : incoming.call(this, logLevel, second, ...rest);
+    };
+  },
+});
+```
 
-  ```ts
-  registerAugmentations<ILogger>(LoggerAugmentations, {
-    log(original, incoming) {
-      return function(this: ILogger, logLevel: LogLevel, second: unknown, ...rest: unknown[]) {
-        return second instanceof EventId
-          ? original.call(this, logLevel, second, ...rest)
-          : incoming.call(this, logLevel, second, ...rest);
-      };
-    },
-  });
-  ```
-
-- **CLOSED receiver** — call `applyAugmentations(ConcreteClass, TheNamespace)` directly, wherever
-  the concrete class is defined:
-
-  ```ts
-  applyAugmentations(MemoryCacheEntryOptions, MemoryCacheEntryOptionsSugarAugmentations);
-  ```
-
-  Only the install call differs from the OPEN case; the namespace and its `declare module` merge
-  are identical either way.
-
-The namespace **is** the callable surface either way, with no installation step —
+The namespace **is** the callable surface, with no installation step —
 `ConfigBuilderJsonAugmentations.addJsonFile.call(builder, path)` already works, the way any plain
 function is called on an explicit receiver. Installation is what additionally makes
 `builder.addJsonFile(path)` work.
@@ -396,10 +377,9 @@ registry never receives augmentations registered against the other.
 
 ## Gotchas
 
-- **OPEN vs CLOSED is a one-time call per receiver, not a spectrum.** Get it backwards and you
-  either build registry plumbing a receiver never needed, or — the bug that motivated the registry
-  in the first place — a legitimate downstream extender has no path to reach a concrete class it's
-  never heard of (an independent builder never receiving an augmentation meant for it).
+- **Every receiver goes through the registry.** `registerAugmentations` + `@augment` is the one
+  install form — whether the receiver is extended by downstream packages or consumed only within
+  its own family.
 - **A namespace's functions are the entire contract — no rest parameters in an implementation,
   ever.** A member with several call shapes is several real overloads with named parameters; a
   genuinely variadic one leads with a named parameter before its trailing rest. The inline stage
@@ -434,7 +414,7 @@ registry never receives augmentations registered against the other.
   the receiver's own `set` in primitive shape), it's excluded from the install entirely and reached
   only as `Namespace.member.call(receiver, ...)`.
 - **A duplicated signature and a merge strategy answer two different questions.** A duplicated
-  signature (step 4) is for a name two contributors both declare where the shapes DO unify into
+  signature (step 3) is for a name two contributors both declare where the shapes DO unify into
   overloads — the runtime side already works via the registry; only the interface-typed _type_
   needs the duplicate to see every overload. A merge strategy is for a name that's already taken on
   the receiver's prototype — its own hand-written primitive, or an earlier registration — where the

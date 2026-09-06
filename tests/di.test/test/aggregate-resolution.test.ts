@@ -24,6 +24,6 @@ describe('resolveIterable', () => {
       .add(Registration.value(A, 'first'))
       .add(Registration.value(A, 'second'));
     const provider = toProvider(manifest);
-    expect([...provider.resolveIterable(A)]).toEqual([...provider.resolve(Type.iterable(A))]);
+    expect([...provider.resolveIterable(A)]).toEqual([...provider.resolve(Type.iterable(A)) as Iterable<string>]);
   });
 });

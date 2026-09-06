@@ -9,7 +9,7 @@
 // SINK, and an AUDIT LOG records what was sent. Every registration verb below
 // earns its place in that one story rather than standing alone.
 //
-// The demo builds its own container instead of registering into the host's, so
+// The demo builds its own provider instead of registering into the host's, so
 // it reads top-to-bottom and can be run from anywhere in the app.
 //
 // ── the two things to take away ──────────────────────────────────────────────
@@ -65,7 +65,7 @@ interface IEmailOptions {
   readonly address: string;
 }
 
-/** Records what was sent, echoing to a sink when the container has one. */
+/** Records what was sent, echoing to a sink when the provider has one. */
 interface IAuditLog {
   record(line: string): void;
   readonly entries: readonly string[];
@@ -100,7 +100,7 @@ class FixedClock implements IClock, ILegacyClock {
 
 /**
  * The default sink. Its second constructor parameter is a plain string that no
- * container could resolve, so its signature supplies it DIRECTLY as a literal
+ * provider could resolve, so its signature supplies it DIRECTLY as a literal
  * slot (`Type.typeLiteral('production')`) instead of as a service type — no
  * lookup happens.
  */
@@ -171,7 +171,7 @@ class RecordingSink implements IMessageSink {
 
 /**
  * The audit log. Its `sink` parameter is OPTIONAL, which is the honest way to
- * say "use one if the container has one". That is expressed in the signature as
+ * say "use one if the provider has one". That is expressed in the signature as
  * a UNION whose other member is the literal `undefined` — a member that supplies
  * itself, so the slot is always satisfiable and simply yields `undefined` when
  * no sink is registered.
@@ -231,7 +231,7 @@ const EMAIL_SINK_TYPE = Type.tag(SINK_TYPE, 'email');
 
 // The library-defaults scenario needs its own service types rather than the
 // application's, so that the registration verbs below can register, override and
-// strip them without touching the container the rest of the chapter builds. They
+// strip them without touching the provider the rest of the chapter builds. They
 // are tagged rather than separately declared: a tag makes one more type out of a
 // type that already exists.
 const DEFAULT_CLOCK_TYPE = Type.tag(CLOCK_TYPE, 'defaults');
@@ -350,7 +350,7 @@ function* demonstrateRegistrationVerbs(): Generator<string> {
     + `and ${countRegistrations(host, DEFAULT_SINK_TYPE)} on the original (nothing mutates)`;
 }
 
-// ── 3. the application container ─────────────────────────────────────────────
+// ── 3. the application provider ──────────────────────────────────────────────
 
 /**
  * Registers the whole scenario. Read it as one pass down the registration
@@ -377,7 +377,7 @@ function buildOrderContainer(): Manifest<unknown> {
   services = services.add(SINK_TYPE, VendorSink, Type.ctor(SINK_TYPE, [[VENDOR_CLOCK_TYPE]]), 'singleton');
 
   // The 4-argument constructor form: address, ctor, implementerType, scope. The second
-  // argument is a LITERAL — its value is injected verbatim, with no container
+  // argument is a LITERAL — its value is injected verbatim, with no provider
   // lookup.
   //
   // This lands at the SAME type as the vendor sink above. Registering twice at
@@ -432,7 +432,7 @@ function demonstrateDescribedRegistration(): string {
   return `described by chain: ${sink.send('order-99 shipped')}`;
 }
 
-/** Exercises the container and reports what each registration produced. */
+/** Exercises the provider and reports what each registration produced. */
 function describeOrderContainer(services: Manifest<unknown>): string[] {
   // The front door: seeds the manifest this file already built.
   const app = Builder.withServices(() => services).build();
@@ -454,9 +454,9 @@ function describeOrderContainer(services: Manifest<unknown>): string[] {
 }
 
 /**
- * Forks the container with every sink removed. The audit log's optional sink
+ * Forks the manifest with every sink removed. The audit log's optional sink
  * slot falls through to `undefined` rather than failing, and — because nothing
- * mutates — the container it was forked from still has all of its sinks.
+ * mutates — the manifest it was forked from still has all of its sinks.
  */
 function describeSinklessFork(services: Manifest<unknown>): string {
   const noSinks = services.removeAll(SINK_TYPE);

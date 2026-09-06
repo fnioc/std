@@ -4,7 +4,7 @@ import type { Ctor, Func } from '@rhombus-toolkit/types';
 import type { CtorRegistration, FactoryRegistration, ValueRegistration } from './Registration';
 
 /**
- * Each factory names how the container reaches the service, which its implementer's type cannot
+ * Each factory names how the engine reaches the service, which its implementer's type cannot
  * say on its own: a function registered as a VALUE is handed back, never called.
  *
  * @remarks

@@ -17,8 +17,8 @@ bun add @rhombus-std/logging @rhombus-std/di.core @rhombus-std/di
 ```
 
 `@rhombus-std/di.core` is a peer dependency — bring your own version of the
-container abstractions this package registers against. `@rhombus-std/di` is
-what turns a manifest into a resolvable container.
+abstractions this package registers against. `@rhombus-std/di` is what turns
+a manifest into a service provider.
 
 Importing the package installs the `ILoggingBuilder` augmentations
 (`addProvider`/`setMinimumLevel`/`addFilter`/`clearProviders`) as a side
@@ -30,7 +30,7 @@ import '@rhombus-std/logging';
 
 ## Usage
 
-The smallest path — no container, just a factory:
+The smallest path — no manifest, just a factory:
 
 ```ts
 import { LoggerFactory } from '@rhombus-std/logging';
@@ -51,8 +51,8 @@ name; `logInformation`/`logWarning`/`logError`/… come from
 `@rhombus-std/logging.core`'s convenience wrappers, as either a method on the
 logger or a standalone function taking the logger as its first argument.
 
-Wired into a container you're building yourself, `getLoggingManifest` is
-something you merge in rather than a method you call on your own manifest:
+When you're assembling your own manifest, `getLoggingManifest` is something
+you merge in rather than a method you call on it directly:
 
 ```ts
 import { Builder } from '@rhombus-std/di';
@@ -115,7 +115,7 @@ builder.
 | `LoggerFilterOptions`, `LoggerFilterRule`                                                                          | The filter configuration: a minimum level, a `captureScopes` flag, and the rule list `addFilter` appends to.                                                                                                                                        |
 | `LoggerExternalScopeProvider`                                                                                      | The default `IExternalScopeProvider` — threads `beginScope` state through concurrent async work via ambient storage.                                                                                                                                |
 | `NullLogger`, `NullLoggerFactory`, `NullLoggerProvider`                                                            | No-op implementations — useful as a default when logging is optional or not yet configured.                                                                                                                                                         |
-| `LOGGER_FACTORY_TYPE`, `LOGGER_FILTER_OPTIONS_TYPE`, `LOGGER_FILTER_OPTIONS_ACCESSOR_TYPE`, `LOGGER_PROVIDER_TYPE` | The container addresses `getLoggingManifest` registers under, for anyone composing registrations by hand.                                                                                                                                           |
+| `LOGGER_FACTORY_TYPE`, `LOGGER_FILTER_OPTIONS_TYPE`, `LOGGER_FILTER_OPTIONS_ACCESSOR_TYPE`, `LOGGER_PROVIDER_TYPE` | The addresses `getLoggingManifest` registers under, for anyone composing registrations by hand.                                                                                                                                                     |
 | `LoggingBuilderProviderAugmentations`, `FilterLoggingBuilderExtensions`, `LoggerFilterOptionsExtensions`           | Standalone forms of `addProvider`/`setMinimumLevel`/`clearProviders`/`addFilter`, for calling them without the method-form sugar.                                                                                                                   |
 
 Every method above is also reachable directly on the object it's attached
@@ -131,7 +131,7 @@ neither form requires a compile-time transformer.
 `ILoggerFactory`/`ILoggerProvider` contracts and the `log*` convenience
 wrappers, on its `@rhombus-std/di.core` peer for the `Manifest` a caller
 merges `getLoggingManifest`'s result into (and on `@rhombus-std/di` to turn
-that manifest into a resolvable container), and on
+that manifest into a service provider), and on
 [`@rhombus-std/options`](../options/README.md) /
 [`@rhombus-std/options.augmentations`](../options.augmentations/README.md) to
 run `LoggerFilterOptions` through the configure/reload pipeline.

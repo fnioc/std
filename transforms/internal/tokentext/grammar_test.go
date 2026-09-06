@@ -46,7 +46,7 @@ func TestIsOpenToken(t *testing.T) {
 		{"$1", true},
 		{"$12", true},
 		// Hole labels are 1-based with no leading zero. di.core's tree parser
-		// states the same grammar (§129), so the two engines agree on every
+		// states the same grammar, so the two engines agree on every
 		// spelling, not just the ones a transform emits.
 		{"$0", false},
 		{"$01", false},

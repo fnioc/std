@@ -35,9 +35,9 @@ test('a failing validateOnStart aborts host start before any hosted service runs
   const builder = new HostBuilder();
   builder.configureServices((_context, services) => {
     services = services.addOptions(OPTIONS_TYPE, () => ({ port: 0 }));
-    services = services.add(getValidateManifest(OPTIONS_TYPE, (o: ServerOptions) => o.port > 0, 'port must be positive'));
-    services = services.add(getValidateOnStartManifest(OPTIONS_TYPE));
-    services = services.add(getHostedServiceManifest(Worker, Type.ctor(HOSTED_SERVICE_TYPE, [[]])));
+    services = services.import(getValidateManifest(OPTIONS_TYPE, (o: ServerOptions) => o.port > 0, 'port must be positive'));
+    services = services.import(getValidateOnStartManifest(OPTIONS_TYPE));
+    services = services.import(getHostedServiceManifest(Worker, Type.ctor(HOSTED_SERVICE_TYPE, [[]])));
     return services;
   });
 
@@ -64,9 +64,9 @@ test('valid options let validateOnStart pass and the host starts normally', asyn
   const builder = new HostBuilder();
   builder.configureServices((_context, services) => {
     services = services.addOptions(OPTIONS_TYPE, () => ({ port: 8080 }));
-    services = services.add(getValidateManifest(OPTIONS_TYPE, (o: ServerOptions) => o.port > 0, 'port must be positive'));
-    services = services.add(getValidateOnStartManifest(OPTIONS_TYPE));
-    services = services.add(getHostedServiceManifest(Worker, Type.ctor(HOSTED_SERVICE_TYPE, [[]])));
+    services = services.import(getValidateManifest(OPTIONS_TYPE, (o: ServerOptions) => o.port > 0, 'port must be positive'));
+    services = services.import(getValidateOnStartManifest(OPTIONS_TYPE));
+    services = services.import(getHostedServiceManifest(Worker, Type.ctor(HOSTED_SERVICE_TYPE, [[]])));
     return services;
   });
 

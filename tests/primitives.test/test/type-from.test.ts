@@ -64,7 +64,7 @@ describe('Type.from', () => {
     expect(Type.from('%T')).toBe(Type.generic('T'));
     expect(Type.from('42n')).toBe(Type.typeLiteral(42n));
     expect(Type.from('-Infinity')).toBe(Type.typeLiteral(-Infinity));
-    expect(Type.from('undefined')).toBe(Type.typeLiteral(undefined));
+    expect(Type.from('undefined')).toBe(Type.undefinedLiteral);
   });
 
   test('reads a callable answering to several calls, semicolons between its signatures', () => {

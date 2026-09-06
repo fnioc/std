@@ -1,3 +1,5 @@
+import { augment } from '@rhombus-std/primitives';
+import { typefor } from '@rhombus-std/primitives.extras';
 import type { InstrumentRule } from './InstrumentRule';
 
 /**
@@ -9,6 +11,7 @@ import type { InstrumentRule } from './InstrumentRule';
  * Rules can arrive from two places: the builder rule-configuration augmentation
  * methods, and the config-binding step in `@rhombus-std/diagnostics`.
  */
+@augment(typefor<MetricsOptions>())
 export class MetricsOptions {
   /** The instrument rules, in registration order. */
   readonly rules: InstrumentRule[] = [];

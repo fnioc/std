@@ -136,7 +136,7 @@ describe('where construction hooks fire', () => {
     const { head, control } = engineFor([Registration.ctor(CONN, Conn, Type.ctor(CONN, [[]]))]);
     const a = layerProvider(head, control, watching('a', log));
 
-    const shape = a.provider.getService(Type.object({ conn: CONN }));
+    const shape = a.provider.getService(Type.object({ conn: CONN })) as { conn: unknown; };
     expect(shape.conn).toBeInstanceOf(Conn);
     expect(log).toEqual(['a:app:Conn']);
   });

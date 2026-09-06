@@ -5,7 +5,7 @@
 // `@rhombus-std/di.core` and nothing else: they are handed a manifest, they
 // contribute registrations to it, they hand it back. Only a root references
 // `@rhombus-std/di` — the resolution engine — because only a root is allowed to
-// make a container, build it, or resolve out of it. Grep this file for
+// make a manifest, build a provider, or resolve out of it. Grep this file for
 // `@rhombus-std/di` and then grep either library for it; the difference is the
 // architecture the two packages exist to express.
 //
@@ -66,9 +66,9 @@ import { addWithoutTransformerExamples } from '@rhombus-std/examples.lib.without
 // and the spacing — see the tour at the bottom.
 //
 // One of them is DIALECT-INDEPENDENT and is still here rather than in a library:
-// staging a container failure needs a `build()`, and `build()` is the engine.
+// staging a di failure needs a `build()`, and `build()` is the engine.
 // What the libraries keep is everything that chapter does which is NOT the
-// container — the error classifier — so the file below is the composition-root
+// engine — the error classifier — so the file below is the composition-root
 // half of a chapter whose other half is one package over.
 import { demonstrateErrors } from './errors-demo.js';
 import { demonstrateInfrastructure } from './infrastructure-demo.js';
@@ -136,10 +136,10 @@ function makeServerOptions(config: ConfigRoot): IOptions<ServerOptions> {
  *
  * This is the one class in the example set that takes the provider and is not
  * apologised for: it is the ROOT's own top-level service, the thing the single
- * `runAsync` resolve lands on, and reaching further into the container from
+ * `runAsync` resolve lands on, and reaching further into the provider from
  * there is the composition root doing its job. The rule the libraries live under
  * ("declare what you need as a parameter") is about LIBRARY code; a root is the
- * one place that is allowed to know the container exists.
+ * one place that is allowed to know the provider exists.
  */
 class InteropWorker implements IHostedLifecycleService {
   readonly #provider: IServiceProvider;
@@ -164,7 +164,7 @@ class InteropWorker implements IHostedLifecycleService {
 
     // The two Types the with-transformer library exports, because ASKING for
     // its services is the one thing the library cannot do on this root's behalf.
-    // The banner is registered in its `Promise<…>` wrapper, so the container
+    // The banner is registered in its `Promise<…>` wrapper, so the provider
     // hands back the promise and the caller awaits it.
     const report = this.#provider.resolve(EXAMPLE_TYPES.report) as IServerReport;
     const banner = await (this.#provider.resolve(EXAMPLE_TYPES.banner) as Promise<IBanner>);
@@ -216,7 +216,7 @@ const config = buildConfig();
 const serverOptions = makeServerOptions(config);
 
 // STEP 1 — make the manifest. The Generic Host owns it here and hands it over as
-// a writable slot; a container-only app would write `Manifest.empty()` instead,
+// a writable slot; a bare di app would write `Manifest.empty()` instead,
 // exactly as the tour's chapters do further down. Either way it is the ROOT that
 // starts the chain.
 const builder = Host.createApplicationBuilder();
@@ -234,8 +234,8 @@ let services = builder.services;
 // The manifest is IMMUTABLE, so every merge is threaded back into `services`; a
 // bare `services.add(addWithoutTransformerExamples())` statement whose
 // result went unassigned would register nothing at all.
-services = services.add(addWithTransformerExamples());
-services = services.add(addWithoutTransformerExamples());
+services = services.import(addWithTransformerExamples());
+services = services.import(addWithoutTransformerExamples());
 
 // STEP 3 — add what the APPLICATION owns.
 //
@@ -263,7 +263,7 @@ services = services.add(CONFIG_TYPE, config);
 // The composed chain goes BACK onto the builder. `builder.services` is a live
 // slot over an immutable chain, so everything registered into the local
 // `services` above is invisible to `build()` until it is handed back here.
-builder.services = services.add(
+builder.services = services.import(
   getHostedServiceManifest(InteropWorker, Type.ctor(HOSTED_SERVICE_TYPE, [[Type.from('ServiceProvider'), HOST_APPLICATION_LIFETIME_TYPE, LOGGER_FACTORY_TYPE, CONFIG_TYPE]])),
 );
 
@@ -274,7 +274,7 @@ const host = builder.build();
 // STEP 5 — the one top-level resolve. `runAsync` resolves the registered
 // `IHostedService` collection and drives it through its lifecycle; every other
 // object in the application is constructed because something above it declared a
-// dependency on it. That single entry is what a container is FOR. Shutdown ends
+// dependency on it. That single entry is what the engine is for. Shutdown ends
 // by asking the provider to release what it built.
 await host.runAsync();
 
@@ -282,13 +282,13 @@ await host.runAsync();
 //
 // The host scenario above is ONE application seen end to end. What follows is a
 // guided tour of the di surface itself, in the order a reader meets it: what you
-// can put IN a container, how you get things OUT, how one registration serves
+// can put IN a manifest, how you get things OUT of a provider, how one registration serves
 // every closing of a generic, what happens when something is wrong, and finally
 // the pieces a LIBRARY author (rather than an application) reaches for.
 //
-// Each chapter owns its own container, so nothing here can perturb the host's —
+// Each chapter owns its own provider, so nothing here can perturb the host's —
 // and each yields its lines rather than printing, which is what lets this file
-// decide the order and the spacing. A chapter is a generator, so its container
+// decide the order and the spacing. A chapter is a generator, so its provider
 // is built as its lines are drawn; the loop below draws each one to exhaustion
 // before starting the next, so the chapters stay as isolated as they read.
 // The resolution chapter awaits a promised registration part-way through and is

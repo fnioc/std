@@ -72,7 +72,7 @@ export interface IBanner {
  *
  * Every one of those arrives as a FACTORY PARAMETER — a collection, two
  * `IOptions<T>` wrappers and an optional union — so the factory's dependencies
- * are exactly what its signature says and it never asks the container a
+ * are exactly what its signature says and it never asks the provider a
  * question. Deriving those four slots from the parameter types is the densest
  * piece of boilerplate the sugar removes anywhere in these examples; that
  * derivation is also why the library must ship its BUILD rather than its source,

@@ -13,7 +13,7 @@ type Lifetime = 'session' | 'request' | undefined;
 type Tag = Exclude<Lifetime, undefined>;
 
 const DI_CORE = '@rhombus-std/di.core';
-const SCOPE_FACTORY = Type.imported('ITaggedServiceScopeFactory', DI_CORE, [Type.union(Type.typeLiteral('session'), Type.typeLiteral('request'), Type.typeLiteral(undefined))]);
+const SCOPE_FACTORY = Type.imported('ITaggedServiceScopeFactory', DI_CORE, [Type.union(Type.typeLiteral('session'), Type.typeLiteral('request'), Type.undefinedLiteral)]);
 const PROVIDER = Type.imported('IServiceProvider', DI_CORE);
 const COUNTER = Type.imported('Counter', 'app');
 const HOLDER = Type.imported('Holder', 'app');
@@ -35,7 +35,7 @@ class Box {
   constructor(readonly closing: unknown) {}
 }
 
-/** A container over {@link Counter} alone, under `lifetime`. */
+/** A provider over {@link Counter} alone, under `lifetime`. */
 function counterProvider(lifetime?: Lifetime): IDisposableServiceProvider {
   return Builder.useAddon(taggedLifetime<Lifetime>())
     .withServices(m => m.add(COUNTER, Counter, Type.ctor(COUNTER, [[]]), lifetime))
@@ -167,7 +167,7 @@ describe('the chain', () => {
 
     const holder = request.resolve(HOLDER) as Holder;
     expect(request.resolve(HOLDER)).toBe(holder);
-    expect(holder.counter).toBe(session.resolve(COUNTER));
+    expect(holder.counter).toBe(session.resolve(COUNTER) as Counter);
     expect((openScope(session, 'request').resolve(HOLDER) as Holder).counter).toBe(holder.counter);
   });
 
@@ -412,7 +412,7 @@ describe('several registrations of one address', () => {
     expect(first[0]).not.toBe(first[1]);
     expect(first[0]).toBe(second[0]);
     expect(first[1]).toBe(second[1]);
-    expect(first[1]).toBe(requestScope.resolve(COUNTER));
+    expect(first[1]).toBe(requestScope.resolve(COUNTER) as Counter);
     expect(Array.from(sessionScope.resolveIterable(COUNTER))[0]).toBe(first[0]);
     // A single ask answers the last registration, whose tag the session scope does not carry.
     expect(sessionScope.resolve(COUNTER)).not.toBe(first[1]);
@@ -430,7 +430,7 @@ describe('several registrations of one address', () => {
 
     const all = Array.from(session.resolveIterable(COUNTER)) as Counter[];
     expect(all[0]).not.toBe(all[1]);
-    expect(all[1]).toBe(session.resolve(COUNTER));
+    expect(all[1]).toBe(session.resolve(COUNTER) as Counter);
     expect(Array.from(session.resolveIterable(COUNTER))).toEqual(all);
   });
 });

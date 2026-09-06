@@ -11,7 +11,7 @@ import type { IDisposableServiceProvider } from './IDisposableServiceProvider.js
  * the cached instance; a registration whose tag no open scope on the chain carries is constructed
  * afresh, as a registration naming no lifetime always is.
  *
- * @typeParam Lifetime - the vocabulary exactly as the container spells it, `undefined` included;
+ * @typeParam Lifetime - the vocabulary exactly as the engine spells it, `undefined` included;
  * `openScope` takes every member but `undefined`, since no scope holds transients.
  *
  * @example

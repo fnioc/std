@@ -8,7 +8,7 @@
 //
 // The problem being solved: a persistence layer with N entity types should not
 // need N repository registrations. Register the repository ONCE against a type
-// that still has a HOLE in it — `IRepository<$1>` — and the container mints a
+// that still has a HOLE in it — `IRepository<$1>` — and the engine mints a
 // closed registration on demand for whichever closing is asked for. Adding a
 // fourth entity later costs one `Seed<T>` value and nothing else.
 //
@@ -26,7 +26,7 @@
 // ONE of its type arguments still serve every closing of the others.
 //
 // Two templates over one base therefore OVERLAP, and both of them match. The
-// container settles that the same way it settles two registrations of one plain
+// engine settles that the same way it settles two registrations of one plain
 // type: the MOST RECENTLY REGISTERED match wins. So a pinned template has to be
 // registered AFTER the general one it is meant to override, and the ordering
 // below says so at the call site.

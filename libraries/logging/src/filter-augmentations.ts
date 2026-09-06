@@ -54,7 +54,7 @@ function configureFilter(builder: ILoggingBuilder, configureOptions: Func<[Logge
   // getConfigureManifest returns its own self-contained manifest; merging it in
   // is what writes the step into the builder's slot -- a bare call would
   // register nothing.
-  builder.services = builder.services.add(getConfigureManifest(LOGGER_FILTER_OPTIONS_TYPE, configureOptions));
+  builder.services = builder.services.import(getConfigureManifest(LOGGER_FILTER_OPTIONS_TYPE, configureOptions));
   return builder;
 }
 

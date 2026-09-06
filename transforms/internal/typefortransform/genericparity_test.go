@@ -92,7 +92,7 @@ export const s = typefor(factory);
 	if len(diags) != 0 {
 		t.Fatalf("unexpected diagnostics: %+v", diags)
 	}
-	want := `Type.func(Type.typeLiteral(undefined), ` +
+	want := `Type.func(Type.undefinedLiteral, ` +
 		`[[Type.imported("IStore", "@scope/app/main", [Type.generic("1")]), Type.imported("ILogger", "@scope/app/main")]])`
 	if got := exprFor(t, out, "s"); got != want {
 		t.Fatalf("factory rendering mismatch:\n got  = %s\n want = %s", got, want)

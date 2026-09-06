@@ -5,8 +5,8 @@
 // application builder's live configuration / services when the host is built
 // (`applyChanges`, invoked from `HostApplicationBuilder.build()`).
 //
-// Container customization (`configureContainer`) is a no-op, matching this
-// repo's single-container design -- the application builder's own
+// Provider customization (`configureContainer`) is a no-op, matching this
+// repo's single-provider design -- the application builder's own
 // `configureContainer` is likewise a no-op. `build()` is
 // unsupported; the adapter only mutates the application builder it wraps.
 
@@ -71,7 +71,7 @@ export class HostBuilderAdapter implements IHostBuilder {
     return this;
   }
 
-  /** No-op single-container hook, mirroring the application builder. */
+  /** No-op single-provider hook, mirroring the application builder. */
   public configureContainer(
     _configureDelegate: Func<[HostBuilderContext, Manifest<unknown>], Manifest<unknown>>,
   ): this {

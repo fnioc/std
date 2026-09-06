@@ -1,4 +1,4 @@
-// Behaviour tests for `Builder`, the container's front door. It composes services and addons in
+// Behaviour tests for `Builder`, the engine's front door. It composes services and addons in
 // call order, and every step is a pure delegate over an immutable value — so what a discarded
 // return registers, and what an intermediate `build()` sees, are the properties worth pinning down.
 
@@ -137,7 +137,7 @@ describe('the scope-opening address', () => {
     expect(() => provider.resolve(SCOPE_FACTORY)).toThrow(UnsatisfiableError);
   });
 
-  test('is a registration like any other, so a container can answer it itself', () => {
+  test('is a registration like any other, so the engine can answer it itself', () => {
     const scope = Builder.withServices(manifest => manifest).build();
     const provider = Builder.withServices(manifest => manifest.addValue(SCOPE_FACTORY, { openScope: () => scope })).build();
 

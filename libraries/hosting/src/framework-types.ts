@@ -26,4 +26,4 @@ export const CONSOLE_LIFETIME_OPTIONS_TYPE: Type = typefor<ConsoleLifetimeOption
  * `build()` and applies each to the shared
  * {@link import("./HostOptions").HostOptions} instance.
  */
-export const HOST_OPTIONS_CONFIGURE_TYPE: Type = Type.func(Type.typeLiteral(undefined), [[HOST_OPTIONS_TYPE]]);
+export const HOST_OPTIONS_CONFIGURE_TYPE: Type = Type.func(Type.undefinedLiteral, [[HOST_OPTIONS_TYPE]]);

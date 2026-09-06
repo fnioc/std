@@ -298,7 +298,7 @@ describe.skipIf(!toolchainReady)('ttsc/Go config withType->withSchema byte-parit
     const string_ = nameOf('Type.global("string")');
     const number_ = nameOf('Type.global("number")');
     const boolean_ = nameOf('Type.global("boolean")');
-    const undefined_ = nameOf('Type.typeLiteral(undefined)');
+    const undefined_ = nameOf('Type.undefinedLiteral');
     expect(flat('server')).toContain(
       `.withSchema(Type.object({ host: ${string_}, `
         + `port: ${number_}, `

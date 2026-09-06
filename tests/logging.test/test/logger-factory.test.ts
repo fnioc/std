@@ -41,7 +41,7 @@ describe('LoggerFactory', () => {
 
   test('a constructor-supplied provider is NOT disposed by the factory', () => {
     // Mirrors the reference: providers supplied at construction are owned by the
-    // caller / container, not the factory (ProviderRegistration.ShouldDispose = false).
+    // caller / engine, not the factory (ProviderRegistration.ShouldDispose = false).
     const provider = new RecordingProvider();
     const factory = new LoggerFactory([provider]);
     factory[Symbol.dispose]();

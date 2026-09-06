@@ -2,7 +2,7 @@
 
 **The runtime that assembles dependency injection, configuration, and logging into one application host.**
 
-Instead of wiring a container, a config tree, and a logger by hand in every process, you build a `Host`: register your services and background workers on it, call `build()`, then run it. The host starts every hosted service in order, keeps the process alive until something asks it to stop, and stops those services in reverse order — with a timeout, and without leaving half-started work behind.
+Instead of wiring a service provider, a config tree, and a logger by hand in every process, you build a `Host`: register your services and background workers on it, call `build()`, then run it. The host starts every hosted service in order, keeps the process alive until something asks it to stop, and stops those services in reverse order — with a timeout, and without leaving half-started work behind.
 
 ## Install
 
@@ -65,5 +65,5 @@ For running the same host model inside a web page instead of a process, see [`ho
 ## Notes
 
 - The bundled logging sink is console-only for now; other sinks aren't wired into `configureDefaults` yet.
-- `configureContainer` does run its delegates (against the same manifest the container builds from), but there is a single container implementation, so there is no alternate provider factory to swap in.
+- `configureContainer` does run its delegates (against the same manifest `build()` reads), but there is a single provider implementation, so there is no alternate provider factory to swap in.
 - Around `start`/`stop`, the host also runs `IHostedLifecycleService`'s `starting`/`started` (before/after `start`) and `stopping`/`stopped` (before/after `stop`) hooks, and fires the `IHostApplicationLifetime` signals `applicationStarted`, `applicationStopping`, and `applicationStopped` at the corresponding points. Implement the plain `IHostedService`'s bare `start`/`stop` if you don't need the finer-grained hooks.

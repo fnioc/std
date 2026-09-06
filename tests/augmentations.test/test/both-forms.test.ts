@@ -1,5 +1,5 @@
 // Behaviour-equivalence tests across BOTH directions of the dual-export
-// convention (docs decisions.md §28): the standalone object-literal member and
+// convention: the standalone object-literal member and
 // the prototype/instance method must produce identical results.
 //
 //   - foreign-class direction (a class owned by another package): config's
@@ -8,7 +8,7 @@
 //     downstream concrete class): caching's get/set/setPriority on
 //     MemoryCache/ICacheEntry, and diagnostics' addMetricsListener on the
 //     .core-interface / downstream-concrete MetricsBuilder.
-//   - reverse direction, value-object receiver (§29/#105): addFilter on
+//   - reverse direction, value-object receiver: addFilter on
 //     LoggerFilterOptions, and enableMetrics/enableTracing on
 //     MetricsOptions/TracingOptions -- installed onto the concrete option class.
 
@@ -114,7 +114,7 @@ describe('reverse direction, value-object receiver — LoggerFilterOptions.addFi
   });
 });
 
-describe('reverse direction, value-object receiver — MetricsOptions (§29/#105)', () => {
+describe('reverse direction, value-object receiver — MetricsOptions', () => {
   test('enableMetrics/disableMetrics method form equals the object-literal member form', () => {
     const viaMethod = new MetricsOptions();
     viaMethod.enableMetrics('meter'); // method form
@@ -131,7 +131,7 @@ describe('reverse direction, value-object receiver — MetricsOptions (§29/#105
   });
 });
 
-describe('reverse direction, value-object receiver — TracingOptions (§29/#105)', () => {
+describe('reverse direction, value-object receiver — TracingOptions', () => {
   test('enableTracing/disableTracing method form equals the object-literal member form', () => {
     const viaMethod = new TracingOptions();
     viaMethod.enableTracing('source'); // method form

@@ -1,5 +1,5 @@
 // White-box queue-processor and logger tests — reach the internals through the
-// library's `internal/*` subpath (lowered per-file JS; docs §7/§40).
+// library's `internal/*` subpath (lowered per-file JS).
 
 import { ConsoleLogger } from '@rhombus-std/logging.console/private/ConsoleLogger';
 import { ConsoleLoggerOptions } from '@rhombus-std/logging.console/private/ConsoleLoggerOptions';

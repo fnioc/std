@@ -1,14 +1,14 @@
 // Behaviour tests for the augmentation REGISTRY -- the OPEN-set install path
-// (@rhombus-std/primitives/augmentation-registry), docs/decisions.md §38/§73.
+// (@rhombus-std/primitives/augmentation-registry).
 //
 // The registry accumulates a per-token bag and notifies a bus; `augment(token)`
 // decorates a concrete class so the token's members install onto its prototype.
-// The install is a DELTA install (§73/1): the initial `@augment` application
+// The install is a DELTA install: the initial `@augment` application
 // catches up on everything registered so far ONCE, and every LATER registration
 // installs only its own set -- never the whole accumulated bag again. Collision
-// is resolved BLIND at install time (§73/2): a name already taken on the
+// is resolved BLIND at install time: a name already taken on the
 // prototype is a dispatcher (with a strategy) or a throw (without one). The bag
-// tolerates a second same-name registration (§73/3) -- it accumulates, and the
+// tolerates a second same-name registration -- it accumulates, and the
 // collision throw is deferred to install.
 //
 // Each test mints a UNIQUE receiver type so the module-level bag/bus (a process
@@ -81,7 +81,7 @@ describe('decorate-then-register (late registration reaches the prototype)', () 
   });
 });
 
-describe('the 8x config-provider reality (the killer regression, §73/1)', () => {
+describe('the 8x config-provider reality (the killer regression)', () => {
   // The shape that used to re-install a member once per later registration:
   // MANY packages register DIFFERENT-named members onto ONE shared token, and
   // TWO concrete classes (a builder and a manager) are decorated with it -- the
@@ -223,14 +223,15 @@ describe('multi-set merge (two consts, one token)', () => {
   });
 });
 
-describe('bag tolerates a second same-name registration (§73/3)', () => {
+describe('bag tolerates a second same-name registration', () => {
   test("registering a member name already in the token's bag does NOT throw at registration", () => {
     const RECEIVER = freshReceiver();
 
     const One = { configure(): void {} } satisfies AugmentationSet<object>;
     const Two = { configure(): void {} } satisfies AugmentationSet<object>;
 
-    // The old registry threw here; §73/3 moves the throw to install time. With no
+    // A second same-name registration never throws at registration; the collision
+    // throw is deferred to install time. With no
     // class yet decorated, both registrations simply accumulate in the bag.
     expect(() => {
       registerAugmentations<object>(RECEIVER, One);
@@ -305,7 +306,7 @@ describe('fluent-return preservation', () => {
   });
 });
 
-describe('install-time collision with a class primitive (§73/2)', () => {
+describe('install-time collision with a class primitive', () => {
   test('a strategy-LESS augmentation colliding with an own method throws at install', () => {
     const RECEIVER = freshReceiver();
 
@@ -392,7 +393,7 @@ describe('install-time collision with a class primitive (§73/2)', () => {
   });
 });
 
-describe('dispatch-path collision propagates to the registrant (§79 defect fix)', () => {
+describe('dispatch-path collision propagates to the registrant', () => {
   // The collision throw must reach the `registerAugmentations` CALLER even when
   // the receiving class is ALREADY decorated (the registry's primary open-set
   // scenario: a downstream package registers onto a token whose concrete class
@@ -466,7 +467,7 @@ describe('dispatch-path collision propagates to the registrant (§79 defect fix)
   });
 });
 
-describe('cross-token collision (two tokens, one class, same member name, §73/2)', () => {
+describe('cross-token collision (two tokens, one class, same member name)', () => {
   // Two DIFFERENT tokens each contribute a same-NAMED member onto the SAME class.
   // The per-token bag cannot see this (two tokens = two bags), so the guard lives
   // at install time and is BLIND to which token the member came from -- the only

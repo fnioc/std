@@ -35,7 +35,7 @@
 // unexamined position defaulting to a composed guard or a refusal, both of which
 // are honest.
 //
-// §87 containment: the emitted guards are self-contained plain JS. A guard
+// Containment: the emitted guards are self-contained plain JS. A guard
 // that would need one of typia's runtime helper imports is DROPPED (that
 // parameter simply goes unguarded) with a warning diagnostic — the published
 // artifacts must never grow a typia runtime import. typia is a build-time-only
@@ -640,8 +640,8 @@ func (s *synthesizer) reportPrivateSurface(receiver, member string, findings []p
 // ORIGINAL type node. A typia TransformerError (unsupported type, unresolved
 // shape) surfaces as a panic; it is recovered here and the parameter degrades to
 // unguarded — under this stage nothing ever fails the build over a merge guard.
-// A guard that requested a typia runtime helper import is likewise dropped (§87:
-// the emitted JS must stay typia-free), with a warning naming the member.
+// A guard that requested a typia runtime helper import is likewise dropped (the
+// emitted JS must stay typia-free), with a warning naming the member.
 //
 // Whatever the composer could not cover is returned as finding rather than
 // reported here directly, so the caller (strategyFor) can fold every weakened
@@ -698,7 +698,7 @@ func (s *synthesizer) synthesizeGuard(typeNode *shimast.Node, memberName string,
 			File:     s.file.FileName(),
 			Category: Warning,
 			Code:     "MERGESYNTH_RUNTIME_IMPORT",
-			Message:  "merge guard for \"" + memberName + "\" needs a typia runtime helper import; dropped (the emitted JS must stay typia-free, §87)",
+			Message:  "merge guard for \"" + memberName + "\" needs a typia runtime helper import; dropped (the emitted JS must stay typia-free)",
 		})
 		return nil, false, nil
 	}

@@ -34,7 +34,7 @@ type ExportEntry struct {
 // program. It is the single shared convention both Go token-derivation call
 // sites use — publicImportSpecifier's entrySourceFile (the general token
 // derivation) and dioptionstransform's isRootExportTarget (the Options<T> base
-// scan) — so the two cannot drift (parity, decisions §41). The candidates are:
+// scan) — so the two cannot drift. The candidates are:
 //
 //  1. The LITERAL target stem (`<pkgDir>/dist/bundle/index` from
 //     `./dist/bundle/index.js`, or `<pkgDir>/index` from a raw `./index.js`) —

@@ -18,7 +18,7 @@ type OwnedEntry struct {
 	PackageDir string
 }
 
-// ProjectScan is the result of ONE workspace dependency walk (§100): the inline
+// ProjectScan is the result of ONE workspace dependency walk: the inline
 // BODIES every reachable package declares (its package.json "rhombus-std" marker).
 // Stage selection is retired (W7 — every stage is always on), so the scan no
 // longer collects stage ids; body substitution is its sole remaining face.
@@ -277,7 +277,7 @@ func resolveDependencyDir(name string, wsMap map[string]string, fromDir, consume
 // dependencyNames reads dir/package.json and returns the sorted set of dependency
 // names to traverse: dependencies ∪ peerDependencies always, plus devDependencies
 // ONLY at the root consumer (isRoot). A transitive dependency's devDeps are its
-// own build tooling and are never inherited (§100 root-only-devDeps).
+// own build tooling and are never inherited (the root-only-devDeps rule).
 func dependencyNames(dir string, isRoot bool) ([]string, error) {
 	data, err := os.ReadFile(filepath.Join(dir, "package.json"))
 	if err != nil {

@@ -1,4 +1,4 @@
-// Baseline coverage across the container's core capabilities: the three registration doors,
+// Baseline coverage across the engine's core capabilities: the three registration doors,
 // aggregate reads, latebound invocation, the async boundary, provider self-injection, open
 // registrations, and union resolution.
 

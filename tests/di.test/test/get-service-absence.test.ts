@@ -9,7 +9,7 @@ import { describe, expect, test } from 'bun:test';
 const A = Type.imported('A', 'app');
 const Missing = Type.imported('Missing', 'app');
 /** What `typefor<undefined>()` derives — the literal that orders last in a union. */
-const UNDEFINED = Type.typeLiteral(undefined);
+const UNDEFINED = Type.undefinedLiteral;
 
 function emptyProvider(): IServiceProvider {
   return Builder.withServices(manifest => manifest).build();

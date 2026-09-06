@@ -26,10 +26,10 @@ describe('getMemoryCacheManifest', () => {
     const services = getMemoryCacheManifest();
 
     const provider = Builder.withServices(() => services).useAddon(standardLifetime()).build();
-    const cache: MemoryCache = provider.resolve(MEMORY_CACHE_TYPE);
+    const cache = provider.resolve(MEMORY_CACHE_TYPE) as MemoryCache;
     expect(cache).toBeInstanceOf(MemoryCache);
     // Singleton: the same instance on every resolve.
-    const cacheAgain: MemoryCache = provider.resolve(MEMORY_CACHE_TYPE);
+    const cacheAgain = provider.resolve(MEMORY_CACHE_TYPE) as MemoryCache;
     expect(cacheAgain).toBe(cache);
 
     // The resolved cache actually works.
@@ -52,7 +52,7 @@ describe('getMemoryCacheManifest', () => {
     // Lazy: the configure step has not run at registration/build time.
     expect(ran).toBe(0);
 
-    const cache: MemoryCache = scope.resolve(MEMORY_CACHE_TYPE);
+    const cache = scope.resolve(MEMORY_CACHE_TYPE) as MemoryCache;
     expect(ran).toBe(1);
     // The configured options reached the cache: statistics are tracked.
     cache.get('absent');
@@ -65,7 +65,7 @@ describe('getMemoryCacheManifest', () => {
     });
 
     const scope = Builder.withServices(() => services).build();
-    const options: { value: MemoryCacheOptions; } = scope.resolve(MEMORY_CACHE_OPTIONS_ACCESSOR_TYPE);
+    const options = scope.resolve(MEMORY_CACHE_OPTIONS_ACCESSOR_TYPE) as { value: MemoryCacheOptions; };
     expect(options.value).toBeInstanceOf(MemoryCacheOptions);
     expect(options.value.name).toBe('configured');
   });
@@ -73,7 +73,7 @@ describe('getMemoryCacheManifest', () => {
   test('injects the registered ILoggerFactory into the cache', () => {
     const factory = new RecordingLoggerFactory();
     let services: Manifest<unknown> = Manifest.empty<unknown>().addValue(LOGGER_FACTORY_TYPE, factory);
-    services = services.add(getMemoryCacheManifest());
+    services = services.import(getMemoryCacheManifest());
 
     Builder.withServices(() => services).build().resolve(MEMORY_CACHE_TYPE);
 
@@ -83,8 +83,8 @@ describe('getMemoryCacheManifest', () => {
   test('resolves without a registered ILoggerFactory (null-logger fallback)', () => {
     const services = getMemoryCacheManifest();
 
-    const cache: MemoryCache = Builder.withServices(() => services).build()
-      .resolve(MEMORY_CACHE_TYPE);
+    const cache = Builder.withServices(() => services).build()
+      .resolve(MEMORY_CACHE_TYPE) as MemoryCache;
     expect(cache).toBeInstanceOf(MemoryCache);
   });
 

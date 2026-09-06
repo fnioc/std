@@ -1,6 +1,6 @@
 // DistributedCacheEntryOptions: setter validation and the
 // DistributedCacheEntryOptionsSugarAugmentations dual export (standalone member and
-// prototype-installed method form, docs §28/§38). The freeze guard (the
+// prototype-installed method form). The freeze guard (the
 // reference's internal `Freeze()`) is covered black-box in
 // distributed-cache-augmentations.test.ts through the frozen default-options
 // singleton -- these tests exercise the public barrel, not the `private/*`

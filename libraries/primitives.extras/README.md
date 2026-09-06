@@ -3,7 +3,7 @@
 **A compile-time transformer that turns `typefor<T>()` into a structured runtime
 `Type` value for a TypeScript type — no reflection, no decorators, no runtime cost.**
 
-Libraries that key things by type (a dependency-injection container, an
+Libraries that key things by type (a dependency-injection engine, an
 augmentation registry, anything that needs "the identity of this interface" as
 a plain value) need a `Type` that is stable across a rename-resistant type
 reference. Hand-writing those values works, but it's brittle: rename the

@@ -1,6 +1,10 @@
+import { augment } from '@rhombus-std/primitives';
+import { typefor } from '@rhombus-std/primitives.extras';
+
 const frozenInstances = new WeakSet<DistributedCacheEntryOptions>();
 
 /** Provides the cache options for an entry in an `IDistributedCache`. */
+@augment(typefor<DistributedCacheEntryOptions>())
 export class DistributedCacheEntryOptions {
   #absoluteExpiration: Date | undefined = undefined;
   #absoluteExpirationRelativeToNow: number | undefined = undefined;

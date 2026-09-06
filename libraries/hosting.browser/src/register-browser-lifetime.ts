@@ -27,7 +27,7 @@ import { PageLifecycleEvents } from './PageLifecycleEvents';
  * {@link HOST_LIFETIME_TYPE} — last registration wins over the default
  * NullLifetime). Both the modern facade and the classic `useBrowserLifetime`
  * route through here, so the bridge is registered on BOTH paths. The bridge is
- * an unowned value the container never disposes, so it is handed to the
+ * an unowned value the provider never disposes, so it is handed to the
  * lifetime, whose `stop`/dispose detaches it — see {@link BrowserLifetime}.
  * `context` is threaded for tests; production callers omit it and both the
  * lifetime and the bridge attach to the platform document/window. Returns the

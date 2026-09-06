@@ -32,8 +32,8 @@ import { Manifest } from '@rhombus-std/di.core';
 import type { IGreeting, IHealthCheck } from '@rhombus-std/examples.contracts';
 import { Type } from '@rhombus-std/primitives';
 import { typefor } from '@rhombus-std/primitives.extras';
-// `describeDiError` is the LIBRARY's — classifying what a container threw needs
-// di.core and nothing more. Building the container is this root's, because that
+// `describeDiError` is the LIBRARY's — classifying what a provider threw needs
+// di.core and nothing more. Building the provider is this root's, because that
 // is the one thing the engine is for.
 import { addGreetingWorkshop, GreetingWorkshop, LocatorGreetingWorkshop, WorkshopGreeting } from '@rhombus-std/examples.lib.with-transformer';
 import { describeDiError } from '@rhombus-std/examples.lib.without-transformer';
@@ -81,7 +81,7 @@ export function* demonstrateInfrastructure(): Generator<string> {
 
   // ── 2. the same library, with the app overriding a default ─────────────────
   // The workshop's optional stationery slot now has a registration behind it, so
-  // the container fills the parameter instead of leaving it undefined. Same
+  // the provider fills the parameter instead of leaving it undefined. Same
   // library code, both branches.
   const customised = addGreetingWorkshop((workshop) => {
     workshop.useGreeting(WorkshopGreeting).useStationery({ border: '***' });
@@ -95,7 +95,7 @@ export function* demonstrateInfrastructure(): Generator<string> {
 
   // ── 3. the same card, two ways to get the dependencies ─────────────────────
   //
-  // Both classes are registered in the container from section 1 and both render
+  // Both classes are registered in the provider from section 1 and both render
   // the identical card, which is the point: the OUTPUT never tells you which
   // shape a class chose, so the choice has to be made on other grounds.
   //
@@ -104,11 +104,11 @@ export function* demonstrateInfrastructure(): Generator<string> {
   //                              passes two plain values; a missing registration
   //                              is a startup failure; and the ad-hoc factory
   //                              slot is how it gets a card per recipient without
-  //                              ever holding the container.
+  //                              ever holding the provider.
   //   `LocatorGreetingWorkshop`  takes the provider and looks the same two things
   //                              up itself. Its constructor says it needs
   //                              "everything". A test has to stand up a
-  //                              container; a missing registration surfaces on
+  //                              service provider; a missing registration surfaces on
   //                              some later call; and nothing at the call site
   //                              hints at either dependency.
   //
@@ -132,14 +132,14 @@ export function* demonstrateInfrastructure(): Generator<string> {
 
   // ── 4. absence, and the taxonomy root ──────────────────────────────────────
   // `DiError` is shared by di.core and the resolution engine, so ONE
-  // `instanceof DiError` catch covers a consumer's whole container lifecycle.
+  // `instanceof DiError` catch covers a consumer's whole engine lifecycle.
   // The full catalogue, with each error class named and caught individually, is
   // the dialect-independent errors chapter; what belongs here is the pair of
   // answers a library gets when something is simply not registered.
   //
   // A union with the literal `undefined` treats absence as an answer, so
   // nothing is thrown at all and there is nothing to classify.
-  const missing = defaultProvider.resolve(Type.union(typefor<IHealthCheck>(), Type.typeLiteral(undefined)));
+  const missing = defaultProvider.resolve(Type.optional(typefor<IHealthCheck>()));
   yield `asking optionally for an unregistered type: ${missing}`;
 
   // The eager whole-graph pass is where an unsatisfiable registration turns into

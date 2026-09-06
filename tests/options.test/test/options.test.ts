@@ -1,6 +1,5 @@
-// Behavior tests for IOptions<T> -- the collapsed accessor (docs/decisions.md
-// §4.2). `Options.of` is a static snapshot; `Options.watch` is the reactive
-// form.
+// Behavior tests for IOptions<T> -- the collapsed accessor. `Options.of` is a
+// static snapshot; `Options.watch` is the reactive form.
 //
 // `Options.watch`'s produceToken is re-invoked after every fire (see
 // @rhombus-std/primitives' ChangeToken.onChange), and a token producer that

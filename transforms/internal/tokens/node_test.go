@@ -24,7 +24,7 @@ func mustRender(t *testing.T, n *Node) string {
 // callable alias renders its own name, and a union spelled through an addressable
 // alias renders that alias rather than its members. The wide `boolean` scalar
 // reaches the checker as a union of its two literals carrying no intrinsic name,
-// so it renders no token.
+// and is named directly, so it renders the scalar.
 func TestDeriveTokenFRendersEachShapesToken(t *testing.T) {
 	prog, ctx, main := loadGenerics(t)
 	defer func() { _ = prog.Close() }()
@@ -45,7 +45,7 @@ func TestDeriveTokenFRendersEachShapesToken(t *testing.T) {
 		"puA":         {`"a" | "b"`, true},
 		"puNonLit":    {"", false},
 		"puNonUnion":  {`"a"`, true},
-		"sWideBool":   {"", false},
+		"sWideBool":   {"boolean", true},
 		"sUnion":      {`"a" | 1`, true},
 	}
 	for name, want := range cases {

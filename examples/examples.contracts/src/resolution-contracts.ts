@@ -1,5 +1,5 @@
 // The contract surface for the RESOLUTION demonstration — a small checkout
-// pipeline that exercises every way a consumer can ask the container for
+// pipeline that exercises every way a consumer can ask the provider for
 // something: required and non-throwing lookups, registration probes, collections,
 // keys, factories, async, and the provider itself.
 //
@@ -15,9 +15,9 @@
 
 /**
  * The order being checked out — a plain DATA shape, not a service, hence no `I`
- * prefix. It is deliberately NEVER registered in the container: it is the
+ * prefix. It is deliberately NEVER registered in the manifest: it is the
  * caller-supplied argument of a PARAMETERIZED factory (`(order) => IReceipt`),
- * which is the whole point of that form — the container fills what it knows and
+ * which is the whole point of that form — the provider fills what it knows and
  * the caller fills what only the call site knows.
  */
 export interface CheckoutOrder {
@@ -61,7 +61,7 @@ export interface IReceipt {
   readonly text: string;
 }
 
-/** A shared, monotonically increasing receipt number — one instance per container. */
+/** A shared, monotonically increasing receipt number — one instance per provider. */
 export interface IReceiptNumbering {
   next(): number;
 }
@@ -100,7 +100,7 @@ export interface IExchangeRates {
 
 /**
  * The service that picks a gateway per order. It is the one place in this
- * example where injecting the container itself is the RIGHT answer: which
+ * example where injecting the provider itself is the RIGHT answer: which
  * gateway to use is not known until an order arrives, so the choice cannot be
  * expressed as a constructor dependency.
  */

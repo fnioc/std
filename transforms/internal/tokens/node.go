@@ -148,6 +148,12 @@ func deriveNode(ctx *Context, checker *shimchecker.Checker, t *shimchecker.Type,
 	if name, ok := intrinsicToken(t); ok {
 		return &Node{Kind: KindNamed, Name: name, From: "global"}, true
 	}
+	// The wide `boolean` arrives as the union of its two literals, carrying no
+	// intrinsic name of its own, so it is named here — the same collapse a union
+	// carrying both literals beside other members performs.
+	if isWideBoolean(t) {
+		return &Node{Kind: KindNamed, Name: "boolean", From: "global"}, true
+	}
 	// A Hole-branded placeholder is read before the alias/symbol path: an aliased
 	// or constrained hole carries a symbol that would otherwise mint a named node,
 	// and the bare `Hole<"1">` is an anonymous `__type`.
@@ -555,6 +561,11 @@ func isUndefinedLiteral(n *Node) bool {
 	return n.Kind == KindLiteral && n.Literal.Kind == LiteralUndefined
 }
 
+// IsUndefinedLiteral reports whether a node is the `undefined` literal.
+func (n *Node) IsUndefinedLiteral() bool {
+	return isUndefinedLiteral(n)
+}
+
 // isNullishLiteral reports whether a node is the `null` or `undefined` literal.
 func isNullishLiteral(n *Node) bool {
 	return n.Kind == KindLiteral && (n.Literal.Kind == LiteralNull || n.Literal.Kind == LiteralUndefined)
@@ -611,11 +622,19 @@ func hasCallableSignatures(checker *shimchecker.Checker, t *shimchecker.Type) bo
 // `boolean` intrinsic, which is internally a union of its two literals but is named
 // directly instead of decomposed.
 func isGeneralUnion(t *shimchecker.Type) bool {
-	flags := t.Flags()
-	if flags&shimchecker.TypeFlagsUnion == 0 {
+	if t.Flags()&shimchecker.TypeFlagsUnion == 0 {
 		return false
 	}
-	return flags&shimchecker.TypeFlagsBoolean == 0 || flags&shimchecker.TypeFlagsBooleanLiteral != 0
+	return !isWideBoolean(t)
+}
+
+// isWideBoolean reports whether t is the wide `boolean`: the union of `true` and
+// `false` the checker hands over in place of the intrinsic, carrying the Boolean
+// flag without either literal's own.
+func isWideBoolean(t *shimchecker.Type) bool {
+	flags := t.Flags()
+	return flags&shimchecker.TypeFlagsUnion != 0 && flags&shimchecker.TypeFlagsBoolean != 0 &&
+		flags&shimchecker.TypeFlagsBooleanLiteral == 0
 }
 
 // KeyedBaseType returns the underlying T of a `Keyed<T, K>` brand, for a caller

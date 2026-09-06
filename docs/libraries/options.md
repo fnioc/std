@@ -38,7 +38,7 @@ or a live-reloading one.
 
 The reactive capability (the reference's `IOptionsMonitor.OnChange`) is orthogonal to lifetime, so
 it survives as `subscribe` — and `Options.watch` gives you a live options object standalone, with
-no container and no options-builder at all. `.value` re-reads on every access; `subscribe`
+no provider and no options-builder at all. `.value` re-reads on every access; `subscribe`
 re-arms the next change token automatically after each fire.
 
 ```ts

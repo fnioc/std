@@ -11,7 +11,7 @@
 The user who never makes a choice gets the default — so every stability guarantee attaches to
 defaults, and every freedom attaches to deliberate opt-ins. Judge each default by the user who
 will never think about it (conventional, stable, frozen at birth); judge each capability by the
-user who deliberately swaps it in (total, unhedged power — IoC applied to the container itself).
+user who deliberately swaps it in (total, unhedged power — IoC applied to the engine itself).
 Weigh every design decision against this split.
 
 ## Vocabulary
@@ -85,7 +85,7 @@ Weigh every design decision against this split.
   promises. OCCURRENCE IDENTITY is the invariant: two occurrences of the same async dep are two
   distinct node objects; if plan subtrees are ever shared, the wrapper is minted fresh per
   inclusion point while its inner points at the shared subtree.
-- Gather semantics are container-level and uniform across every scope model: awaits live only in
+- Gather semantics are engine-level and uniform across every scope model: awaits live only in
   the gather, `allSettled`-shaped, failures thrown as one `AggregateError` deduped by reason
   identity.
 - HIT-SKIPS: each `AsyncPlan` entry consults the scope for `T` before `realize(inner)`; a hit
@@ -203,7 +203,7 @@ Weigh every design decision against this split.
   specific entry-point shape (e.g. a di-builder fluent API) is an open design slot.
 - `undefined` IS A KEY LIKE ANY OTHER, BOUND BY THE SCOPE MODEL: the whole datum domain,
   `undefined` included, is keys into the installed model's behavior — swap the model in one line
-  and every registration's behavior changes, omissions included; IoC applied to the container
+  and every registration's behavior changes, omissions included; IoC applied to the engine
   itself. Riders: the DEFAULT model binds `undefined` → transient, FROZEN AT BIRTH; birth-frozen
   generalizes as a model-author convention (a published model's `undefined`-binding is immutable
   post-birth, so omission's meaning never changes except by the user's own deliberate engine

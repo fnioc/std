@@ -45,7 +45,7 @@ export namespace HostBuilderHostingAugmentations {
     this.configureHostConfig((configBuilder) => applyDefaultHostConfig(configBuilder, args));
     this.configureAppConfig((context, configBuilder) => applyDefaultAppConfig(configBuilder, context.hostingEnvironment, args));
     this.configureServices((_context, services) => addDefaultServices(services));
-    // The single-container `build()` reads the service-provider options from a
+    // The single-provider `build()` reads the service-provider options from a
     // side channel; the factory computes them at build time, once the hosting
     // environment is resolved.
     setServiceProviderOptionsFactory(this, (context) => createDefaultServiceProviderOptions(context.hostingEnvironment));
@@ -130,7 +130,7 @@ export namespace HostBuilderHostingAugmentations {
   /**
    * Specifies the default service-provider configuration. The delegate receives
    * {@link ServiceProviderOptions.defaults} and returns the options `build()`
-   * then threads into the container it assembles. Overrides any options set by
+   * then threads into the provider it assembles. Overrides any options set by
    * an earlier `configureDefaults`.
    */
   export function useDefaultServiceProvider<Self extends IHostBuilder>(this: Self, configure: Func<[ServiceProviderOptions], ServiceProviderOptions>): Self {

@@ -3,12 +3,12 @@
 Types you can compare with `===`. Every `Type` node is interned, so two spellings of the same type —
 built by hand, derived by `typefor<T>()`, or read back from a token string — are one object, and a
 type can be a `Map` key, a registry key, or a service address with no equality helper anywhere.
-That is the foundation everything above it stands on: the container's addresses, the augmentation
+That is the foundation everything above it stands on: the engine's addresses, the augmentation
 registry's receivers, and the type tokens that travel through config and logs are all the same
 nodes. Beside it, the zero-dependency leaf carries the change-token trio (`IChangeToken`,
 `ChangeToken.onChange`, `CompositeChangeToken`) underpinning live-reload, the augmentation
 infrastructure that lets a package add dot-callable members to an interface it does not own
-(`registerAugmentations`, `@augment`, `applyAugmentations`, `AugmentationSet<R>` — see
+(`registerAugmentations`, `@augment`, `AugmentationSet<R>` — see
 `docs/features/augmentations.md`), and the structural platform typings (`AbortSignal`,
 `AbortController`, `ProcessLike`, `TimeoutHandle`, `ReadableStream<R>`, `URL`) that keep the library
 tier free of `lib.dom`, `@types/node` and bun-types. `primitives.extras` is the authoring surface on
@@ -111,10 +111,10 @@ using subscription = ChangeToken.onChange(() => source.getReloadToken(), () => r
 ## Augmentations
 
 Add members to an interface you do not own, dot-callable on every value of it, with no wrapper type
-and no patching of the declaring package. A CLOSED receiver installs directly with
-`applyAugmentations(Ctor, set)`; an OPEN receiver registers with `registerAugmentations(receiver,
-set)` and the concrete class subscribes with `@augment(receiver)`, so registration and decoration
-work in either order and any number of times. Full mechanics: `docs/features/augmentations.md`.
+and no patching of the declaring package. `registerAugmentations<Receiver>(set)` registers the
+member set and `@augment(typefor<Receiver>())` subscribes the concrete class, so registration and
+decoration work in either order and any number of times. Full mechanics:
+`docs/features/augmentations.md`.
 
 ```ts
 @augment(typefor<IServiceProvider>())

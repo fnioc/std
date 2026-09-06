@@ -24,10 +24,10 @@ describe('validateOnStart', () => {
   test('registers a resolvable IStartupValidator', () => {
     let services: Manifest<unknown> = Manifest.empty<unknown>();
     services = services.addOptions(OPTIONS_TYPE, () => ({ port: 8080 }));
-    services = services.add(getValidateOnStartManifest(OPTIONS_TYPE));
+    services = services.import(getValidateOnStartManifest(OPTIONS_TYPE));
 
     const provider = Builder.withServices(() => services).build();
-    const validator: IStartupValidator = provider.resolve(STARTUP_VALIDATOR_TYPE);
+    const validator = provider.resolve(STARTUP_VALIDATOR_TYPE) as IStartupValidator;
 
     expect(typeof validator.validate).toBe('function');
   });
@@ -35,11 +35,11 @@ describe('validateOnStart', () => {
   test('valid options -> validate() does not throw', () => {
     let services: Manifest<unknown> = Manifest.empty<unknown>();
     services = services.addOptions(OPTIONS_TYPE, () => ({ port: 8080 }));
-    services = services.add(getValidateManifest(OPTIONS_TYPE, (o: ServerOptions) => o.port > 0, 'port must be positive'));
-    services = services.add(getValidateOnStartManifest(OPTIONS_TYPE));
+    services = services.import(getValidateManifest(OPTIONS_TYPE, (o: ServerOptions) => o.port > 0, 'port must be positive'));
+    services = services.import(getValidateOnStartManifest(OPTIONS_TYPE));
 
     const provider = Builder.withServices(() => services).build();
-    const validator: IStartupValidator = provider.resolve(STARTUP_VALIDATOR_TYPE);
+    const validator = provider.resolve(STARTUP_VALIDATOR_TYPE) as IStartupValidator;
 
     expect(() => validator.validate()).not.toThrow();
   });
@@ -47,11 +47,11 @@ describe('validateOnStart', () => {
   test('a failing validate step surfaces as OptionsValidationError', () => {
     let services: Manifest<unknown> = Manifest.empty<unknown>();
     services = services.addOptions(OPTIONS_TYPE, () => ({ port: 0 }));
-    services = services.add(getValidateManifest(OPTIONS_TYPE, (o: ServerOptions) => o.port > 0, 'port must be positive'));
-    services = services.add(getValidateOnStartManifest(OPTIONS_TYPE));
+    services = services.import(getValidateManifest(OPTIONS_TYPE, (o: ServerOptions) => o.port > 0, 'port must be positive'));
+    services = services.import(getValidateOnStartManifest(OPTIONS_TYPE));
 
     const provider = Builder.withServices(() => services).build();
-    const validator: IStartupValidator = provider.resolve(STARTUP_VALIDATOR_TYPE);
+    const validator = provider.resolve(STARTUP_VALIDATOR_TYPE) as IStartupValidator;
 
     expect(() => validator.validate()).toThrow(OptionsValidationError);
     expect(() => validator.validate()).toThrow('port must be positive');
@@ -60,15 +60,15 @@ describe('validateOnStart', () => {
   test('two failing registrations aggregate into one AggregateError', () => {
     let services: Manifest<unknown> = Manifest.empty<unknown>();
     services = services.addOptions(OPTIONS_TYPE, () => ({ port: 0 }));
-    services = services.add(getValidateManifest(OPTIONS_TYPE, (o: ServerOptions) => o.port > 0, 'first bad'));
-    services = services.add(getValidateOnStartManifest(OPTIONS_TYPE));
+    services = services.import(getValidateManifest(OPTIONS_TYPE, (o: ServerOptions) => o.port > 0, 'first bad'));
+    services = services.import(getValidateOnStartManifest(OPTIONS_TYPE));
 
     services = services.addOptions(OTHER_TYPE, () => ({ port: -1 }));
-    services = services.add(getValidateManifest(OTHER_TYPE, (o: ServerOptions) => o.port > 0, 'second bad'));
-    services = services.add(getValidateOnStartManifest(OTHER_TYPE));
+    services = services.import(getValidateManifest(OTHER_TYPE, (o: ServerOptions) => o.port > 0, 'second bad'));
+    services = services.import(getValidateOnStartManifest(OTHER_TYPE));
 
     const provider = Builder.withServices(() => services).build();
-    const validator: IStartupValidator = provider.resolve(STARTUP_VALIDATOR_TYPE);
+    const validator = provider.resolve(STARTUP_VALIDATOR_TYPE) as IStartupValidator;
 
     try {
       validator.validate();

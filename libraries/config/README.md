@@ -178,7 +178,7 @@ const config = new ConfigBuilder().addJsonFile('appsettings.json').withSchema<Se
   Server: Type.object({
     Host: Type.global('string'),
     Port: Type.global('number'),
-    Ssl: Type.union(Type.global('boolean'), Type.typeLiteral(undefined)),
+    Ssl: Type.optional(Type.global('boolean')),
   }),
 })).build();
 

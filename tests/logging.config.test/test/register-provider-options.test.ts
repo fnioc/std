@@ -5,7 +5,7 @@
 // `addOptions(optionsType, makeBase)` assembly.
 //
 // The whole chain is exercised through DI: the step
-// classes are constructed lazily by the container (their dep is the CLOSED
+// classes are constructed lazily by the provider (their dep is the CLOSED
 // `ILoggerProviderConfig<TProvider>` resolved through the open
 // template), so nothing touches configuration until `IOptions<T>` materializes.
 
@@ -40,10 +40,10 @@ describe('LoggerProviderOptions.getProviderOptionsManifest', () => {
     logging.addConfig(config);
     let services = logging.services;
     services = services.addOptions(OPTIONS_TYPE, () => ({ Format: 'text' }));
-    services = services.add(LoggerProviderOptions.getProviderOptionsManifest(OPTIONS_TYPE, FAKE_PROVIDER_TYPE));
+    services = services.import(LoggerProviderOptions.getProviderOptionsManifest(OPTIONS_TYPE, FAKE_PROVIDER_TYPE));
 
     const provider = Builder.withServices(() => services).build();
-    const options: IOptions<FakeProviderOptions> = provider.resolve(OPTIONS_ACCESSOR_TYPE);
+    const options = provider.resolve(OPTIONS_ACCESSOR_TYPE) as IOptions<FakeProviderOptions>;
 
     // Only FakeProvider's section binds; the configure step deep-merges onto
     // the makeBase value.
@@ -57,10 +57,10 @@ describe('LoggerProviderOptions.getProviderOptionsManifest', () => {
     logging.addConfig(config);
     let services = logging.services;
     services = services.addOptions(OPTIONS_TYPE, () => ({ Format: 'text' }));
-    services = services.add(LoggerProviderOptions.getProviderOptionsManifest(OPTIONS_TYPE, FAKE_PROVIDER_TYPE));
+    services = services.import(LoggerProviderOptions.getProviderOptionsManifest(OPTIONS_TYPE, FAKE_PROVIDER_TYPE));
 
     const provider = Builder.withServices(() => services).build();
-    const options: IOptions<FakeProviderOptions> = provider.resolve(OPTIONS_ACCESSOR_TYPE);
+    const options = provider.resolve(OPTIONS_ACCESSOR_TYPE) as IOptions<FakeProviderOptions>;
     expect(options.value.Format).toBe('json');
 
     const seen: FakeProviderOptions[] = [];
@@ -82,14 +82,14 @@ describe('LoggerProviderOptions.getProviderOptionsManifest', () => {
     logging.addConfig(config);
     let services = logging.services;
     services = services.addOptions(OPTIONS_TYPE, () => ({ Format: 'text' }));
-    services = services.add(LoggerProviderOptions.getProviderOptionsManifest(OPTIONS_TYPE, FAKE_PROVIDER_TYPE));
+    services = services.import(LoggerProviderOptions.getProviderOptionsManifest(OPTIONS_TYPE, FAKE_PROVIDER_TYPE));
     // One more configure source in the SAME pipeline, running after the provider bind.
-    services = services.add(getConfigureManifest(OPTIONS_TYPE, (value: FakeProviderOptions) => {
+    services = services.import(getConfigureManifest(OPTIONS_TYPE, (value: FakeProviderOptions) => {
       value.MaxDepth = '9';
     }));
 
     const provider = Builder.withServices(() => services).build();
-    const options: IOptions<FakeProviderOptions> = provider.resolve(OPTIONS_ACCESSOR_TYPE);
+    const options = provider.resolve(OPTIONS_ACCESSOR_TYPE) as IOptions<FakeProviderOptions>;
 
     expect(options.value).toEqual({ Format: 'json', MaxDepth: '9' });
   });

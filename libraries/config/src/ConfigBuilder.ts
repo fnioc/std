@@ -89,7 +89,7 @@ export class ConfigBuilder<T = IndexedSection> {
    *   .withSchema<ServerConfig>(Type.object({
    *     Host: Type.global('string'),
    *     Port: Type.global('number'),
-   *     Ssl: Type.union(Type.global('boolean'), Type.typeLiteral(undefined)),
+   *     Ssl: Type.optional(Type.global('boolean')),
    *   }))
    *   .build();
    * ```

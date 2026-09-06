@@ -10,7 +10,6 @@ Project-specific rules only. General git/commit/worktree conventions live in use
 
 - **`decisions.user.md` — GOSPEL.** Owner's decisions only. Never write without the owner's knowledge.
 - **`decisions.v2.md` — NOT gospel.** Claude's own decision log. Write freely.
-- **`decisions.md` — retired; never write to it.**
 - **No entry ever overrides another — correct the original in place instead.** Entries speak only of
   the present, never of how things used to be.
 - **di2 decisions stay distinct from di** until the owner says otherwise.
@@ -69,7 +68,7 @@ an `ME.*` shape conflicts with what's most correct for TS, prefer correctness.
 
 - **`primitives`**, **`primitives.extras`** — hand-made original; the universal zero-dep leaf. Type
   node space, change tokens, augmentation infrastructure, platform typings.
-- **`di`**, **`di.core`**, **`di.extras`** — hand-made original; the DI container. di.core is the
+- **`di`**, **`di.core`**, **`di.extras`** — hand-made original; the DI engine. di.core is the
   abstractions (`Manifest`, `Registration`, error taxonomy), di is the resolution engine.
 - **`options`** — port, reworked for platform differences. `options.augmentations` is the one place
   di and config meet.
@@ -95,8 +94,8 @@ Confirm against `docs/decisions.v2.md` before touching these:
   load time. Every bundling package keeps `@rhombus-std/primitives` and `@rhombus-std/di.core`
   external — inlining forks identity. Same for the rolled `.d.ts`.
 - **Augmentations** — file naming: `<Receiver>-<Topic>-augmentations.ts` (receiver's leading `I`
-  dropped). OPEN receivers use `registerAugmentations` + `@augment`; CLOSED use
-  `applyAugmentations`. Full mechanics: `docs/features/augmentations.md`.
+  dropped). Every receiver uses `registerAugmentations` + `@augment`. Full mechanics:
+  `docs/features/augmentations.md`.
 
 **Keep this digest in step with `docs/decisions.v2.md`.**
 
@@ -125,6 +124,13 @@ Transformers are pure ergonomics layered on afterward. A transformer must lower 
 boilerplate, never add a capability or change behavior. So the explicit forms
 (`add(token, …)`, `addOptions(token, …)`) are primary and complete; the type-driven forms
 (`add<T>()`, `addOptions<T>()`) are sugar rewritten _into_ them.
+
+## Error, never exception
+
+The ported surface says "error", never "exception": identifiers, type names, enum and union member
+strings, log field names, error messages, and prose about this repo's own behavior. "Exception" stays
+only when naming another codebase's class or property verbatim, in a platform type name such as
+`NodeJS.ErrnoException`, or in the plain English sense of an exception to a rule.
 
 ## typefor calls are always inline
 

@@ -1,5 +1,5 @@
 // Behaviour tests for validateScopes over the standard lifetime model: the two checks it adds —
-// a scoped registration resolved from the container's own provider, and a scoped registration
+// a scoped registration resolved from the provider `build()` returns, and a scoped registration
 // consumed by a singleton — at the moments each fires, what each lets stand, and how it meets
 // several registrations of one address and a collection ask.
 
@@ -48,7 +48,7 @@ function build(lifetimes: { counter: StandardLifetime; holder?: StandardLifetime
     .build();
 }
 
-describe("a scoped registration reached from the container's own provider", () => {
+describe('a scoped registration reached from the provider `build()` returns', () => {
   test('resolved directly, it is refused, naming the scoped address', () => {
     const provider = build({ counter: 'scoped' });
 
@@ -77,7 +77,7 @@ describe("a scoped registration reached from the container's own provider", () =
     const provider = build({ counter: 'scoped', holder: 'transient' });
     const scope = openScope(provider);
     expect(scope.resolve(COUNTER)).toBeInstanceOf(Counter);
-    expect((scope.resolve(HOLDER) as Holder).counter).toBe(scope.resolve(COUNTER));
+    expect((scope.resolve(HOLDER) as Holder).counter).toBe(scope.resolve(COUNTER) as Counter);
   });
 
   test('a refusal caches nothing: the scoped registration is still answered from a scope afterwards', () => {
@@ -88,7 +88,7 @@ describe("a scoped registration reached from the container's own provider", () =
 });
 
 describe('a scoped registration consumed by a singleton', () => {
-  test('directly, it is refused when the singleton is resolved from the container', () => {
+  test('directly, it is refused when the singleton is resolved from the provider `build()` returns', () => {
     const provider = build({ counter: 'scoped', holder: 'singleton' });
     expect(() => provider.resolve(HOLDER)).toThrow(ScopeValidationError);
   });
@@ -135,12 +135,12 @@ describe('what the checks let stand', () => {
   test('a scoped registration consumed by a scoped registration, in a scope', () => {
     const provider = build({ counter: 'scoped', holder: 'scoped' });
     const scope = openScope(provider);
-    expect((scope.resolve(HOLDER) as Holder).counter).toBe(scope.resolve(COUNTER));
+    expect((scope.resolve(HOLDER) as Holder).counter).toBe(scope.resolve(COUNTER) as Counter);
   });
 
   test('a singleton consumed by a scoped registration, in a scope', () => {
     const provider = build({ counter: 'singleton', holder: 'scoped' });
-    expect((openScope(provider).resolve(HOLDER) as Holder).counter).toBe(provider.resolve(COUNTER));
+    expect((openScope(provider).resolve(HOLDER) as Holder).counter).toBe(provider.resolve(COUNTER) as Counter);
   });
 
   test('the scope factory held by a singleton', () => {
@@ -234,7 +234,7 @@ describe('when the captive check fires', () => {
 });
 
 describe('several registrations of one address', () => {
-  test('a single ask from the container is refused only when the last registration is scoped', () => {
+  test('a single ask from the provider `build()` returns is refused only when the last registration is scoped', () => {
     const scopedLast = Builder.useAddon(standardLifetime())
       .useAddon(validateScopes())
       .withServices(m => m.add(COUNTER, Counter, Type.ctor(COUNTER, [[]]), 'singleton').add(COUNTER, Counter, Type.ctor(COUNTER, [[]]), 'scoped'))
@@ -248,7 +248,7 @@ describe('several registrations of one address', () => {
     expect(singletonLast.resolve(COUNTER)).toBeInstanceOf(Counter);
   });
 
-  test('a collection ask from the container is refused only where a scoped element is walked', () => {
+  test('a collection ask from the provider `build()` returns is refused only where a scoped element is walked', () => {
     const provider = Builder.useAddon(standardLifetime())
       .useAddon(validateScopes())
       .withServices(m => m.add(COUNTER, Counter, Type.ctor(COUNTER, [[]]), 'singleton').add(COUNTER, Counter, Type.ctor(COUNTER, [[]]), 'scoped'))

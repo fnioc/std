@@ -42,17 +42,17 @@ a thenable, `onChange` waits for it to settle before re-subscribing.
 
 ## Key exports
 
-| Export                                                                         | What it does                                                                                                                                                                                                                                                    |
-| ------------------------------------------------------------------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `IChangeToken`                                                                 | The interface every change token implements: `hasChanged`, `activeChangeCallbacks`, and `registerChangeCallback(callback, state?)`.                                                                                                                             |
-| `ChangeToken.onChange(produceToken, consumeToken, state?)`                     | Subscribes `consumeToken` to a token, re-subscribing to a fresh token after every fire. Returns a `Disposable` that unsubscribes.                                                                                                                               |
-| `CancellationChangeToken`                                                      | An `IChangeToken` backed by a platform `AbortSignal`. `hasChanged` mirrors `signal.aborted`; registering a callback after the signal has already aborted invokes it immediately.                                                                                |
-| `CompositeChangeToken`                                                         | Combines several `IChangeToken`s into one. It reflects a change from any inner token that raises callbacks; changes in tokens that don't raise callbacks are only caught when `hasChanged` is polled.                                                           |
-| `AbortController`, `neverSignal`                                               | The platform `AbortController`, re-exported with a self-contained `AbortSignal` type so consumers don't need `lib.dom`/`@types/node` to name it. `neverSignal` is an inert signal that never aborts, for APIs that require a signal but have nothing to cancel. |
-| `process`, `ProcessLike`                                                       | The platform `process` global, typed against the small surface this stack actually touches (`env`, `cwd()`, `stdout.write`, `on`/`off`).                                                                                                                        |
-| `setTimeout`, `clearTimeout`, `TimeoutHandle`                                  | Typed re-exports of the platform timer functions, with an opaque handle type that round-trips only through these two functions.                                                                                                                                 |
-| `ReadableStream<R>`                                                            | A structural `ReadableStream` type covering the members common across the major platform stream variants.                                                                                                                                                       |
-| `registerAugmentations`, `augment`, `applyAugmentations`, `AugmentationSet<R>` | Infrastructure for attaching extension methods to a class after the fact — see Notes below. Most consumers of this stack never call these directly.                                                                                                             |
+| Export                                                     | What it does                                                                                                                                                                                                                                                    |
+| ---------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `IChangeToken`                                             | The interface every change token implements: `hasChanged`, `activeChangeCallbacks`, and `registerChangeCallback(callback, state?)`.                                                                                                                             |
+| `ChangeToken.onChange(produceToken, consumeToken, state?)` | Subscribes `consumeToken` to a token, re-subscribing to a fresh token after every fire. Returns a `Disposable` that unsubscribes.                                                                                                                               |
+| `CancellationChangeToken`                                  | An `IChangeToken` backed by a platform `AbortSignal`. `hasChanged` mirrors `signal.aborted`; registering a callback after the signal has already aborted invokes it immediately.                                                                                |
+| `CompositeChangeToken`                                     | Combines several `IChangeToken`s into one. It reflects a change from any inner token that raises callbacks; changes in tokens that don't raise callbacks are only caught when `hasChanged` is polled.                                                           |
+| `AbortController`, `neverSignal`                           | The platform `AbortController`, re-exported with a self-contained `AbortSignal` type so consumers don't need `lib.dom`/`@types/node` to name it. `neverSignal` is an inert signal that never aborts, for APIs that require a signal but have nothing to cancel. |
+| `process`, `ProcessLike`                                   | The platform `process` global, typed against the small surface this stack actually touches (`env`, `cwd()`, `stdout.write`, `on`/`off`).                                                                                                                        |
+| `setTimeout`, `clearTimeout`, `TimeoutHandle`              | Typed re-exports of the platform timer functions, with an opaque handle type that round-trips only through these two functions.                                                                                                                                 |
+| `ReadableStream<R>`                                        | A structural `ReadableStream` type covering the members common across the major platform stream variants.                                                                                                                                                       |
+| `registerAugmentations`, `augment`, `AugmentationSet<R>`   | Infrastructure for attaching extension methods to a class after the fact — see Notes below. Most consumers of this stack never call these directly.                                                                                                             |
 
 ## How it fits
 
@@ -78,8 +78,8 @@ code that composes several of them.
 
 ## Notes
 
-The augmentation helpers (`registerAugmentations`, `augment`,
-`applyAugmentations`) exist so that a package can add methods onto a class
+The augmentation helpers (`registerAugmentations`, `augment`) exist so that
+a package can add methods onto a class
 defined in a _different_ package — for example, a configuration provider
 adding an `addJsonFile` method onto the shared configuration builder. This
 is infrastructure that library authors across the stack use to extend each

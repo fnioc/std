@@ -136,7 +136,7 @@ function lifetimeMiddleware(next: GetService, scopes: ScopeTable, singletons: Sc
 
     canonicalize: (construction: Hooks.Construction<Scope>, instance: unknown): unknown => {
       const owner = ownerOf(construction);
-      return owner !== undefined && isThenable(instance) ? settleUnder(owner, instance) : instance;
+      return owner !== undefined && instance instanceof Promise ? settleUnder(owner, instance) : instance;
     },
 
     afterConstruct: (construction: Hooks.Construction<Scope>, instance: unknown): void => {
@@ -150,7 +150,7 @@ function lifetimeMiddleware(next: GetService, scopes: ScopeTable, singletons: Sc
       if (owner === undefined) {
         return;
       }
-      if (!isThenable(instance)) {
+      if (!(instance instanceof Promise)) {
         capture(owner, instance);
         return;
       }
@@ -207,8 +207,8 @@ const orphaned = new FinalizationRegistry((singletons: Scope) => {
  * pending, it disposes that value and rejects, so no ask is answered with an instance its scope
  * has already let go.
  */
-function settleUnder(owner: Scope, product: PromiseLike<unknown>): Promise<unknown> {
-  return Promise.resolve(product).then(settled => {
+function settleUnder(owner: Scope, product: Promise<unknown>): Promise<unknown> {
+  return product.then(settled => {
     // capture disposes a settled value its scope can no longer own and refuses the ask; a value
     // with nothing to dispose is refused here just the same.
     capture(owner, settled);
@@ -230,8 +230,4 @@ function lifetimeOf(registration: Registration<unknown>): StandardLifetime | und
   }
   const lifetime = registration.lifetime;
   return lifetime === 'singleton' || lifetime === 'scoped' || lifetime === 'transient' ? lifetime : undefined;
-}
-
-function isThenable(value: unknown): value is PromiseLike<unknown> {
-  return typeof value === 'object' && value !== null && typeof (value as PromiseLike<unknown>).then === 'function';
 }

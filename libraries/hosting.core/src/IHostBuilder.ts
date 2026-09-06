@@ -38,7 +38,7 @@ export interface IHostBuilder {
   configureAppConfig(configureDelegate: Action<[HostBuilderContext, IConfigBuilder]>): this;
 
   /**
-   * Adds services to the container. Additive across calls. (Context form;
+   * Adds services to the manifest. Additive across calls. (Context form;
    * see {@link configureAppConfig} for the no-context remark.)
    *
    * @remarks
@@ -51,7 +51,7 @@ export interface IHostBuilder {
   configureServices(configureDelegate: Func<[HostBuilderContext, Manifest<unknown>], Manifest<unknown>>): this;
 
   /**
-   * Enables configuring the instantiated dependency container. Additive
+   * Enables configuring the instantiated dependency provider. Additive
    * across calls. (Context form; see {@link configureAppConfig} for the
    * no-context remark.) The delegate returns the {@link Manifest} for the
    * same immutability reason {@link configureServices} does.

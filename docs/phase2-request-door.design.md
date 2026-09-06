@@ -108,8 +108,8 @@ dispatch keys seed-ness on — a user registration that happens to carry a `null
 the engine's, and hooks fire at and beneath it.
 
 The provider factory mints a fresh provider wrap per handout, forwarding every ask to the minting
-request's provider — provider identity is never a contract, and the handed-out view is never the
-container object. Seeded registrations plan their slots like any other: the provider seed's
+request's provider — provider identity is never a contract, and the handed-out view is never a
+single underlying object. Seeded registrations plan their slots like any other: the provider seed's
 `ServiceRequest` slot lowers through `lowerArg` to a `RequestPlan`.
 
 ## The request as an address

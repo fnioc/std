@@ -1,7 +1,6 @@
 // NullLogger — the no-op ILogger, including the generic-category `NullLogger<T>`
 // spelling. `ILogger<TCategoryName>`'s parameter is phantom, so the singleton and
-// any `NullLogger<T>` are the same no-op; the parameter is reference-parity only
-// (decisions.md §77).
+// any `NullLogger<T>` are the same no-op; the parameter is reference-parity only.
 
 import { NullLogger } from '@rhombus-std/logging';
 import { EventId, type ILogger, logError, LogLevel } from '@rhombus-std/logging.core';

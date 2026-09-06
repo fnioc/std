@@ -24,8 +24,8 @@ describe('addOptions(optionsType) — wrap the bound T', () => {
     services = services.addValue(WIDGET_TYPE, widget);
     services = services.addOptions(WIDGET_TYPE);
 
-    const provider = Builder.withServices(m => m.add(services)).build();
-    const options: IOptions<Widget> = provider.resolve(optionsAddressType(WIDGET_TYPE));
+    const provider = Builder.withServices(m => m.import(services)).build();
+    const options = provider.resolve(optionsAddressType(WIDGET_TYPE)) as IOptions<Widget>;
 
     // The value IS the instance bound at the options type.
     expect(options.value).toBe(widget);
@@ -44,10 +44,10 @@ describe('addOptions(optionsType) — wrap the bound T', () => {
     services = services.add(ENGINE_TYPE, Engine, Type.ctor(ENGINE_TYPE, [[]]), 'singleton');
     services = services.addOptions(ENGINE_TYPE);
 
-    const provider = Builder.withServices(m => m.add(services)).build();
-    const options: IOptions<Engine> = provider.resolve(optionsAddressType(ENGINE_TYPE));
+    const provider = Builder.withServices(m => m.import(services)).build();
+    const options = provider.resolve(optionsAddressType(ENGINE_TYPE)) as IOptions<Engine>;
 
-    // The value is what the container built for the options type -- asserted by
+    // The value is what the provider built for the options type -- asserted by
     // construction rather than by instance identity, which belongs to the
     // lifetime model, not to this verb.
     expect(options.value).toBeInstanceOf(Engine);
@@ -62,18 +62,18 @@ describe('addOptions(optionsType) — wrap the bound T', () => {
     services = services.addOptions(A_TYPE, () => ({ which: 'a' }));
     services = services.addOptions(B_TYPE, () => ({ which: 'b' }));
 
-    const provider = Builder.withServices(m => m.add(services)).build();
+    const provider = Builder.withServices(m => m.import(services)).build();
 
-    expect(provider.resolve(optionsAddressType(A_TYPE)).value).toEqual({ which: 'a' });
-    expect(provider.resolve(optionsAddressType(B_TYPE)).value).toEqual({ which: 'b' });
+    expect((provider.resolve(optionsAddressType(A_TYPE)) as IOptions<{ which: string; }>).value).toEqual({ which: 'a' });
+    expect((provider.resolve(optionsAddressType(B_TYPE)) as IOptions<{ which: string; }>).value).toEqual({ which: 'b' });
   });
 
   test('a type nobody offered is not answered', () => {
     const services: Manifest<'singleton'> = Manifest.empty<'singleton'>();
-    const provider = Builder.withServices(m => m.add(services)).build();
+    const provider = Builder.withServices(m => m.import(services)).build();
 
     // The open registration takes the base slot as a dependency, so a type with
     // no `addOptions` leaves it unlowerable rather than assembling an empty value.
-    expect(provider.resolve(Type.union(optionsAddressType(Type.from('test:NeverOffered')), Type.typeLiteral(undefined)))).toBeUndefined();
+    expect(provider.resolve(Type.optional(optionsAddressType(Type.from('test:NeverOffered'))))).toBeUndefined();
   });
 });

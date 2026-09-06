@@ -54,8 +54,8 @@ describe('the public slot-type grammar', () => {
     } });
     services = services.addValue(changeTokenSourceType(WIDGET_OPTIONS_TYPE), new ConfigChangeTokenSource(config));
 
-    const provider = Builder.withServices(m => m.add(services)).build();
-    const options: IOptions<WidgetOptions> = provider.resolve(optionsAddressType(WIDGET_OPTIONS_TYPE));
+    const provider = Builder.withServices(m => m.import(services)).build();
+    const options = provider.resolve(optionsAddressType(WIDGET_OPTIONS_TYPE)) as IOptions<WidgetOptions>;
     expect(options.value).toEqual({ Url: 'http://first' });
 
     const seen: WidgetOptions[] = [];

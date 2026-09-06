@@ -160,7 +160,7 @@ func TestSchemaofExpansion(t *testing.T) {
 		{
 			name:  "optional-boolean",
 			iface: `ssl?: boolean`,
-			want:  `({ ssl: Type.union(Type.global("boolean"), Type.typeLiteral(undefined)) })`,
+			want:  `({ ssl: Type.union(Type.global("boolean"), Type.undefinedLiteral) })`,
 		},
 		{
 			name:  "literal-union",

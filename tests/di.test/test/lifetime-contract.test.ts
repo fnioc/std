@@ -34,7 +34,7 @@ function openScope(provider: IServiceProvider): IDisposableServiceProvider {
   return (provider.resolve(SCOPE_FACTORY) as IServiceScopeFactory).openScope();
 }
 
-/** A container over {@link Counter} alone, under `lifetime`, with or without scope validation. */
+/** A provider over {@link Counter} alone, under `lifetime`, with or without scope validation. */
 function counterProvider(lifetime: StandardLifetime, validate = false): IDisposableServiceProvider {
   const builder = validate ? Builder.useAddon(standardLifetime()).useAddon(validateScopes()) : Builder.useAddon(standardLifetime());
   return builder.withServices(m => m.add(COUNTER, Counter, Type.ctor(COUNTER, [[]]), lifetime)).build();
@@ -53,7 +53,7 @@ function holderProvider(counter: StandardLifetime, holder: StandardLifetime, val
 }
 
 describe('singleton', () => {
-  test('one instance per container: every resolve and every injection site shares it', () => {
+  test('one instance across the whole provider: every resolve and every injection site shares it', () => {
     const provider = Builder.useAddon(standardLifetime())
       .withServices(m =>
         m
@@ -107,7 +107,7 @@ describe('singleton', () => {
     expect(openScope(provider).resolve(COUNTER)).toBe(instance);
   });
 
-  test('resolving from a scope answers the container-wide instance', () => {
+  test("resolving from a scope answers the provider's singleton instance", () => {
     const provider = counterProvider('singleton');
     expect(openScope(provider).resolve(COUNTER)).toBe(provider.resolve(COUNTER));
   });
@@ -117,7 +117,7 @@ describe('scoped', () => {
   test('one instance per scope, shared by everything resolved in that scope', () => {
     const provider = holderProvider('scoped', 'transient');
     const scope = openScope(provider);
-    expect((scope.resolve(HOLDER) as Holder).counter).toBe(scope.resolve(COUNTER));
+    expect((scope.resolve(HOLDER) as Holder).counter).toBe(scope.resolve(COUNTER) as Counter);
     expect(scope.resolve(COUNTER)).toBe(scope.resolve(COUNTER));
   });
 
@@ -133,13 +133,13 @@ describe('scoped', () => {
     expect(inner.resolve(COUNTER)).not.toBe(outer.resolve(COUNTER));
   });
 
-  test('resolving a scoped service from the root is refused while scope validation is on', () => {
+  test('resolving a scoped service from the provider `build()` returns is refused while scope validation is on', () => {
     const provider = counterProvider('scoped', true);
     expect(() => provider.resolve(COUNTER)).toThrow(ScopeValidationError);
     expect(openScope(provider).resolve(COUNTER)).toBeInstanceOf(Counter);
   });
 
-  test("with scope validation off, a scoped service resolved from the root behaves as the root scope's own", () => {
+  test("with scope validation off, a scoped service resolved from the provider `build()` returns behaves as the singleton scope's own", () => {
     const provider = counterProvider('scoped');
     const instance = provider.resolve(COUNTER) as Counter;
     expect(provider.resolve(COUNTER)).toBe(instance);
@@ -179,18 +179,18 @@ describe('captive dependencies', () => {
     expect(() => provider.resolve(HOLDER)).toThrow(ScopeValidationError);
   });
 
-  test("with scope validation off, the singleton captures the root scope's instance", () => {
+  test("with scope validation off, the singleton captures the provider's own instance", () => {
     const provider = holderProvider('scoped', 'singleton');
     const scope = openScope(provider);
     const holder = scope.resolve(HOLDER) as Holder;
     expect(holder.counter).not.toBe(scope.resolve(COUNTER));
-    expect(holder.counter).toBe(provider.resolve(COUNTER));
+    expect(holder.counter).toBe(provider.resolve(COUNTER) as Counter);
     expect((openScope(provider).resolve(HOLDER) as Holder).counter).toBe(holder.counter);
   });
 });
 
 describe('disposal', () => {
-  test('disposing the container disposes the singletons it constructed, most recent first', () => {
+  test('disposing the provider disposes the singletons it constructed, most recent first', () => {
     const order: string[] = [];
     const provider = Builder.useAddon(standardLifetime())
       .withServices(m =>
@@ -221,7 +221,7 @@ describe('disposal', () => {
     expect(order).toEqual(['second', 'first']);
   });
 
-  test('an instance handed to a registration is never disposed by the container', () => {
+  test('an instance handed to a registration is never disposed by the provider', () => {
     const instance = new Counter();
     const provider = Builder.useAddon(standardLifetime())
       .withServices(m => m.addValue(COUNTER, instance))
@@ -262,7 +262,7 @@ describe('disposal', () => {
     expect(other.disposed).toBe(0);
   });
 
-  test('resolving from a disposed scope or container refuses', () => {
+  test('resolving from a disposed scope or provider refuses', () => {
     const provider = counterProvider('transient');
     const scope = openScope(provider);
     scope[Symbol.dispose]();
@@ -272,7 +272,7 @@ describe('disposal', () => {
     expect(() => provider.resolve(COUNTER)).toThrow(ObjectDisposedError);
   });
 
-  test('opening a scope from a disposed container refuses', () => {
+  test('opening a scope from a disposed provider refuses', () => {
     const provider = counterProvider('transient');
     const factory = provider.resolve(SCOPE_FACTORY) as IServiceScopeFactory;
     provider[Symbol.dispose]();
@@ -281,7 +281,7 @@ describe('disposal', () => {
 });
 
 describe('scopes', () => {
-  test('the scope opener is resolvable from the root and from any scope', () => {
+  test('the scope opener is resolvable from the provider `build()` returns and from any scope', () => {
     const provider = counterProvider('scoped');
     const factory = provider.resolve(SCOPE_FACTORY) as IServiceScopeFactory;
     const scope = factory.openScope();

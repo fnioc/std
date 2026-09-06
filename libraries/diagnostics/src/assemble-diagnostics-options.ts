@@ -20,12 +20,12 @@ import { CompositeChangeToken } from './CompositeChangeToken';
  * @param makeBase Produces the base instance each build starts from.
  */
 export function assembleDiagnosticsOptions<T>(resolver: IServiceProvider, configureType: Type, sourceType: Type, makeBase: Func<[], T>): IOptions<T> {
-  const steps: ReadonlyArray<IConfigureOptions<T>> = resolver.resolve(
+  const steps = resolver.resolve(
     collectionType(configureType),
-  );
-  const sources: readonly IOptionsChangeTokenSource[] = resolver.resolve(
+  ) as ReadonlyArray<IConfigureOptions<T>>;
+  const sources = resolver.resolve(
     collectionType(sourceType),
-  );
+  ) as readonly IOptionsChangeTokenSource[];
 
   const build = (): T => {
     const options = makeBase();

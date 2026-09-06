@@ -1,6 +1,6 @@
 // addLogging registration + LoggerFactory.create + the open ILogger<T>
 // registration + setMinimumLevel — black-box, resolving through a real
-// @rhombus-std/di container.
+// @rhombus-std/di provider.
 
 import { Builder, standardLifetime } from '@rhombus-std/di';
 import { getLoggingManifest, LOGGER_FACTORY_TYPE, LoggerFactory } from '@rhombus-std/logging';
@@ -23,9 +23,9 @@ describe('addLogging', () => {
     const provider = new RecordingProvider();
     const services = getLoggingManifest((builder) => builder.addProvider(provider));
 
-    const root = Builder.withServices(m => m.add(services)).useAddon(standardLifetime()).build();
-    const factory: ILoggerFactory = root.resolve(LOGGER_FACTORY_TYPE);
-    const another: ILoggerFactory = root.resolve(LOGGER_FACTORY_TYPE);
+    const root = Builder.withServices(m => m.import(services)).useAddon(standardLifetime()).build();
+    const factory = root.resolve(LOGGER_FACTORY_TYPE) as ILoggerFactory;
+    const another = root.resolve(LOGGER_FACTORY_TYPE) as ILoggerFactory;
     expect(factory).toBe(another); // singleton
 
     const logger = factory.createLogger('App');
@@ -37,8 +37,8 @@ describe('addLogging', () => {
     const provider = new RecordingProvider();
     const services = getLoggingManifest((builder) => builder.addProvider(provider));
 
-    const root = Builder.withServices(m => m.add(services)).build();
-    const factory: ILoggerFactory = root.resolve(LOGGER_FACTORY_TYPE);
+    const root = Builder.withServices(m => m.import(services)).build();
+    const factory = root.resolve(LOGGER_FACTORY_TYPE) as ILoggerFactory;
     const logger = factory.createLogger('App');
 
     logTrace(logger, 't');
@@ -51,9 +51,9 @@ describe('addLogging', () => {
     const services = getLoggingManifest((builder) => builder.addProvider(provider));
 
     const iLoggerBase = Type.from(ILOGGER_TOKEN) as ImportedType;
-    const logger: ILogger = Builder.withServices(m => m.add(services)).build().resolve(
+    const logger = Builder.withServices(m => m.import(services)).build().resolve(
       Type.imported(iLoggerBase.name, iLoggerBase.from, [Type.from('svc:PaymentService')]),
-    );
+    ) as ILogger;
     logError(logger, 'boom');
 
     expect(levels(provider, 'PaymentService')).toEqual([LogLevel.Error]);

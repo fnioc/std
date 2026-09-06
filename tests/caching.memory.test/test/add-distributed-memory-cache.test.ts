@@ -12,10 +12,10 @@ describe('getDistributedMemoryCacheManifest', () => {
     const services = getDistributedMemoryCacheManifest();
 
     const provider = Builder.withServices(() => services).useAddon(standardLifetime()).build();
-    const cache: MemoryDistributedCache = provider.resolve(DISTRIBUTED_CACHE_TYPE);
+    const cache = provider.resolve(DISTRIBUTED_CACHE_TYPE) as MemoryDistributedCache;
     expect(cache).toBeInstanceOf(MemoryDistributedCache);
     // Singleton: the same instance on every resolve.
-    const cacheAgain: MemoryDistributedCache = provider.resolve(DISTRIBUTED_CACHE_TYPE);
+    const cacheAgain = provider.resolve(DISTRIBUTED_CACHE_TYPE) as MemoryDistributedCache;
     expect(cacheAgain).toBe(cache);
 
     // The resolved cache actually works.
@@ -36,8 +36,8 @@ describe('getDistributedMemoryCacheManifest', () => {
     // configure step runs when the options resolve, not at registration.
     expect(seen).toBeUndefined();
 
-    const cache: MemoryDistributedCache = Builder.withServices(() => returned).build()
-      .resolve(DISTRIBUTED_CACHE_TYPE);
+    const cache = Builder.withServices(() => returned).build()
+      .resolve(DISTRIBUTED_CACHE_TYPE) as MemoryDistributedCache;
     expect(cache).toBeInstanceOf(MemoryDistributedCache);
     expect(seen).toBeInstanceOf(MemoryDistributedCacheOptions);
   });

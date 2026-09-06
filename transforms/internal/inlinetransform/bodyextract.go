@@ -349,6 +349,11 @@ func (b *bodyExtractor) checkFreeIdentifiers(rb *ResolvedBody, e Entry, fileValu
 			}
 			check(base)
 			return
+		case shimast.KindAsExpression:
+			// A cast names a TYPE, not a value, so only the expression beneath it is
+			// walked — the same position a call's type arguments occupy.
+			check(n.AsAsExpression().Expression)
+			return
 		case shimast.KindCallExpression:
 			call := n.AsCallExpression()
 			check(call.Expression)

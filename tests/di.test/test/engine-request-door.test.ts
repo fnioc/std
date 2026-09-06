@@ -116,7 +116,7 @@ describe('shadowing resolves beneath', () => {
         .add(Registration.factory(FOO, (foo: Foo) => ({ decorated: foo }), Type.func(FOO, [[FOO]])))
     ).build();
 
-    expect(provider.getService(FOO).decorated).toBe(inner);
+    expect((provider.getService(FOO) as { decorated: unknown; }).decorated).toBe(inner);
   });
 
   test('stacked decorators each resolve the one beneath', () => {
@@ -135,18 +135,16 @@ describe('shadowing resolves beneath', () => {
     const provider = Builder.withServices(manifest =>
       manifest
         .add(Registration.value(FOO, inner))
-        .add(Registration.factory(FOO, (foo: Foo | undefined) => ({ decorated: foo }), Type.func(FOO, [[Type.union(FOO, Type.typeLiteral(undefined))]])))
+        .add(Registration.factory(FOO, (foo: Foo | undefined) => ({ decorated: foo }), Type.func(FOO, [[Type.optional(FOO)]])))
     ).build();
 
-    expect(provider.getService(FOO).decorated).toBe(inner);
+    expect((provider.getService(FOO) as { decorated: unknown; }).decorated).toBe(inner);
   });
 
   test('a self address inside a union slot falls through to undefined when nothing older exists', () => {
-    const provider = Builder.withServices(manifest =>
-      manifest.add(Registration.factory(FOO, (foo: Foo | undefined) => ({ decorated: foo }), Type.func(FOO, [[Type.union(FOO, Type.typeLiteral(undefined))]])))
-    ).build();
+    const provider = Builder.withServices(manifest => manifest.add(Registration.factory(FOO, (foo: Foo | undefined) => ({ decorated: foo }), Type.func(FOO, [[Type.optional(FOO)]])))).build();
 
-    expect(provider.getService(FOO).decorated).toBeUndefined();
+    expect((provider.getService(FOO) as { decorated: unknown; }).decorated).toBeUndefined();
   });
 
   test('a self address inside a tuple slot resolves beneath', () => {
@@ -159,7 +157,7 @@ describe('shadowing resolves beneath', () => {
         .add(Registration.factory(FOO, (pair: [Foo, Bar]) => ({ decorated: pair }), Type.func(FOO, [[Type.tuple(FOO, BAR)]])))
     ).build();
 
-    expect(provider.getService(FOO).decorated).toEqual([inner, bar]);
+    expect((provider.getService(FOO) as { decorated: unknown; }).decorated).toEqual([inner, bar]);
   });
 
   test('a self-named slot with nothing older throws instead of delegating', () => {
@@ -177,11 +175,11 @@ describe('shadowing resolves beneath', () => {
         .add(Registration.value(FOO, inner))
         .add(Registration.factory(FOO, (foo: Foo) => ({ decorated: foo }), Type.func(FOO, [[FOO]])))
     ).build();
-    const elements = [...provider.getService(Type.iterable(FOO))];
+    const elements = [...provider.getService(Type.iterable(FOO)) as Iterable<unknown>];
 
     expect(elements).toHaveLength(2);
     expect(elements[0]).toBe(inner);
-    expect(elements[1].decorated).toBe(inner);
+    expect((elements[1] as { decorated: unknown; }).decorated).toBe(inner);
   });
 
   test('a Func<[Iterable<Foo>], Foo> factory captures every registration it shadows, in authored order, never itself', () => {
@@ -193,7 +191,7 @@ describe('shadowing resolves beneath', () => {
         .add(Registration.value(FOO, second))
         .add(Registration.factory(FOO, (foos: Iterable<Foo>) => ({ captured: [...foos] }), Type.func(FOO, [[Type.iterable(FOO)]])))
     ).build();
-    const captured = provider.getService(FOO).captured as Foo[];
+    const captured = (provider.getService(FOO) as { captured: Foo[]; }).captured;
 
     expect(captured).toHaveLength(2);
     expect(captured[0]).toBe(first);

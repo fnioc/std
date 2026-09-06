@@ -3,7 +3,7 @@ import type { Func } from '@rhombus-toolkit/types';
 import type { Request } from './Request.js';
 
 /**
- * The container's one request-grain pipeline type: what the builder composes around the engine,
+ * The one request-grain pipeline type: what the builder composes around the resolution engine,
  * and what an addon's own contribution rides too.
  *
  * @remarks

@@ -273,7 +273,7 @@ func TestMarkerReachesAMemberMapDeclaration(t *testing.T) {
 
 // bodiesFor collects the inline bodies for a fixture consumer dir, failing the
 // test on error. Build now takes pre-collected bodies (the host runs the one
-// §100 scan for stages and bodies); tests that set up a fixture workspace collect
+// dependency scan for stages and bodies); tests that set up a fixture workspace collect
 // through this helper.
 func bodiesFor(t *testing.T, cwd string) []OwnedEntry {
 	t.Helper()

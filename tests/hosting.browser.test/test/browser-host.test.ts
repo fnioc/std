@@ -40,20 +40,20 @@ test('the facade composes settings config, browser environment, console logging,
   const host = builder.build();
 
   // Logging: the browser console provider is registered.
-  const providers: ILoggerProvider[] = host.services.resolve(Type.array(LOGGER_PROVIDER_TYPE));
+  const providers = host.services.resolve(Type.array(LOGGER_PROVIDER_TYPE)) as ILoggerProvider[];
   expect(providers.some((provider) => {
     return provider instanceof BrowserConsoleLoggerProvider;
   })).toBe(true);
 
   // Lifetime: the BrowserLifetime registration wins over the NullLifetime
   // default (last registration wins), with the configured options.
-  const lifetime: IHostLifetime = host.services.resolve(HOST_LIFETIME_TYPE);
+  const lifetime = host.services.resolve(HOST_LIFETIME_TYPE) as IHostLifetime;
   expect(lifetime).toBeInstanceOf(BrowserLifetime);
-  const options: BrowserLifetimeOptions = host.services.resolve(BROWSER_LIFETIME_OPTIONS_TYPE);
+  const options = host.services.resolve(BROWSER_LIFETIME_OPTIONS_TYPE) as BrowserLifetimeOptions;
   expect(options.stopOnPagehide).toBe(false);
 
   // The bridge: registered as a value, eagerly attached to the page context.
-  const bridge: PageLifecycleEvents = host.services.resolve(PAGE_LIFECYCLE_EVENTS_TYPE);
+  const bridge = host.services.resolve(PAGE_LIFECYCLE_EVENTS_TYPE) as PageLifecycleEvents;
   expect(bridge).toBeInstanceOf(PageLifecycleEvents);
   expect(page.document.registeredTypes).toContain('visibilitychange');
 
@@ -68,7 +68,7 @@ test('host stop disposes the single bridge listener set — no leak across host 
 
   // The bridge — the single DOM-listening component — attaches its five
   // listeners eagerly at composition.
-  const bridge: PageLifecycleEvents = host.services.resolve(PAGE_LIFECYCLE_EVENTS_TYPE);
+  const bridge = host.services.resolve(PAGE_LIFECYCLE_EVENTS_TYPE) as PageLifecycleEvents;
   expect(bridge).toBeInstanceOf(PageLifecycleEvents);
   expect(page.document.listenerCount + page.window.listenerCount).toBe(5);
 
@@ -76,7 +76,7 @@ test('host stop disposes the single bridge listener set — no leak across host 
   await host.start();
   expect(page.document.listenerCount + page.window.listenerCount).toBe(5);
 
-  // Stop disposes the (unowned, so container-undisposed) bridge via the
+  // Stop disposes the (unowned, so provider-undisposed) bridge via the
   // lifetime — or a multi-host page leaks five listeners per cycle.
   await host.stop();
   expect(page.document.listenerCount).toBe(0);
@@ -90,7 +90,7 @@ test('BrowserHost.run() starts, ignores a bfcache pagehide, and stops on a termi
   const events: string[] = [];
 
   const runPromise = BrowserHost.run({ pageContext: page.context }, (builder) => {
-    builder.services = builder.services.add(getHostedServiceManifest(class Worker {
+    builder.services = builder.services.import(getHostedServiceManifest(class Worker {
       public async start(): Promise<void> {
         events.push('start');
       }
