@@ -505,6 +505,45 @@ for (const registration of control.registry) {
 }
 ```
 
+`validateAddresses()` reads the addresses themselves rather than the graph behind them. Any type is
+registrable and every address is matched by identity, so nothing here is illegal: each rule reports a
+warning saying the spelling is likelier a slip than an intention. It reads every registration address
+at build and every ask's address at the door, and `warningsAsErrors` is what turns a report into a
+refusal — an `AggregateError` whose leaves each name the rule they tripped and the node that tripped
+it.
+
+```ts
+const provider = Builder
+  .useAddon(standardLifetime())
+  .useAddon(validateAddresses({ warningsAsErrors: true }))
+  .withServices(services => services.addValue(typefor<IRepo | IClock>(), repo))
+  .build(); // AggregateError, one leaf: DI1013: filed under a union … — app:IClock | app:IRepo
+```
+
+`registration` and `ask` replace the rule list each side reads, `suppress` drops rules from both by
+id, and `warningsAsErrors` makes a warning stop. The default lists are `addressRules.registration`
+and `addressRules.ask`, and `addressRules.byId` answers every rule under its id. `DI1001`–`DI1011`
+are read on both sides, `DI1012` on an ask only, `DI1013`–`DI1014` on a registration only.
+
+| Id       | The address it objects to                                                                       |
+| -------- | ----------------------------------------------------------------------------------------------- |
+| `DI1001` | keyed twice, and the two keys have no canonical order to file it under                          |
+| `DI1002` | keyed over an optional, so the key names the absent value as much as the present one            |
+| `DI1003` | keyed over a literal value, which names no service for the key to tell apart                    |
+| `DI1004` | keyed with the empty string, which reads as the unkeyed type without being it                   |
+| `DI1005` | a promise of a promise, which delivers exactly what the inner one delivers                      |
+| `DI1006` | a promise of an asynchronous sequence, which already arrives one element at a time              |
+| `DI1007` | a promise of a literal value, which has nothing to wait for                                     |
+| `DI1008` | an aggregate of an optional, so the optional fallback arrives as a phantom undefined element    |
+| `DI1009` | a keyed member beside the same type unkeyed, so the key decides nothing about which arm answers |
+| `DI1010` | two aggregates in one union, so the arm that answers is whichever the union tries first         |
+| `DI1011` | a promise beside the value it settles to, so the caller cannot tell which arm answered          |
+| `DI1012` | an ask for undefined itself, which no registration produces                                     |
+| `DI1013` | filed under a union, which answers only an ask spelling that whole union                        |
+| `DI1014` | filed under a literal value, which answers only an ask spelling that literal                    |
+
+A promise rule reads a callable's return slot too, since the walk reaches every node of the address.
+
 ### 16. The standard lifetime model
 
 Three lifetimes, scopes, and disposal — a clone of Microsoft.Extensions.DependencyInjection's

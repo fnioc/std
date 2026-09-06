@@ -40,19 +40,36 @@ the producer keeps returning the same stale token.
 The consumer callback may be synchronous or return a thenable; if it returns
 a thenable, `onChange` waits for it to settle before re-subscribing.
 
+A type node can be checked before anything is filed under it. A `TypeRule` is
+one thing to look for; `Type.getDiagnostics` offers every node of the tree to
+every rule and reports what they object to, and `Type.validate` raises what
+stopped.
+
+```ts
+import { Type, type TypeRule } from '@rhombus-std/primitives';
+
+const noUnions: TypeRule = { id: 'APP1', level: 'error',
+  check: node => node.kind === 'union' ? 'a union names two things' : undefined };
+
+Type.validate(Type.optional(Type.imported('IClock', 'app')), [noUnions]);
+// AggregateError: app:IClock | undefined fails validation (1)
+```
+
 ## Key exports
 
-| Export                                                     | What it does                                                                                                                                                                                                                                                    |
-| ---------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `IChangeToken`                                             | The interface every change token implements: `hasChanged`, `activeChangeCallbacks`, and `registerChangeCallback(callback, state?)`.                                                                                                                             |
-| `ChangeToken.onChange(produceToken, consumeToken, state?)` | Subscribes `consumeToken` to a token, re-subscribing to a fresh token after every fire. Returns a `Disposable` that unsubscribes.                                                                                                                               |
-| `CancellationChangeToken`                                  | An `IChangeToken` backed by a platform `AbortSignal`. `hasChanged` mirrors `signal.aborted`; registering a callback after the signal has already aborted invokes it immediately.                                                                                |
-| `CompositeChangeToken`                                     | Combines several `IChangeToken`s into one. It reflects a change from any inner token that raises callbacks; changes in tokens that don't raise callbacks are only caught when `hasChanged` is polled.                                                           |
-| `AbortController`, `neverSignal`                           | The platform `AbortController`, re-exported with a self-contained `AbortSignal` type so consumers don't need `lib.dom`/`@types/node` to name it. `neverSignal` is an inert signal that never aborts, for APIs that require a signal but have nothing to cancel. |
-| `process`, `ProcessLike`                                   | The platform `process` global, typed against the small surface this stack actually touches (`env`, `cwd()`, `stdout.write`, `on`/`off`).                                                                                                                        |
-| `setTimeout`, `clearTimeout`, `TimeoutHandle`              | Typed re-exports of the platform timer functions, with an opaque handle type that round-trips only through these two functions.                                                                                                                                 |
-| `ReadableStream<R>`                                        | A structural `ReadableStream` type covering the members common across the major platform stream variants.                                                                                                                                                       |
-| `registerAugmentations`, `augment`, `AugmentationSet<R>`   | Infrastructure for attaching extension methods to a class after the fact — see Notes below. Most consumers of this stack never call these directly.                                                                                                             |
+| Export                                                                              | What it does                                                                                                                                                                                                                                                                                                  |
+| ----------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `IChangeToken`                                                                      | The interface every change token implements: `hasChanged`, `activeChangeCallbacks`, and `registerChangeCallback(callback, state?)`.                                                                                                                                                                           |
+| `ChangeToken.onChange(produceToken, consumeToken, state?)`                          | Subscribes `consumeToken` to a token, re-subscribing to a fresh token after every fire. Returns a `Disposable` that unsubscribes.                                                                                                                                                                             |
+| `CancellationChangeToken`                                                           | An `IChangeToken` backed by a platform `AbortSignal`. `hasChanged` mirrors `signal.aborted`; registering a callback after the signal has already aborted invokes it immediately.                                                                                                                              |
+| `CompositeChangeToken`                                                              | Combines several `IChangeToken`s into one. It reflects a change from any inner token that raises callbacks; changes in tokens that don't raise callbacks are only caught when `hasChanged` is polled.                                                                                                         |
+| `AbortController`, `neverSignal`                                                    | The platform `AbortController`, re-exported with a self-contained `AbortSignal` type so consumers don't need `lib.dom`/`@types/node` to name it. `neverSignal` is an inert signal that never aborts, for APIs that require a signal but have nothing to cancel.                                               |
+| `process`, `ProcessLike`                                                            | The platform `process` global, typed against the small surface this stack actually touches (`env`, `cwd()`, `stdout.write`, `on`/`off`).                                                                                                                                                                      |
+| `setTimeout`, `clearTimeout`, `TimeoutHandle`                                       | Typed re-exports of the platform timer functions, with an opaque handle type that round-trips only through these two functions.                                                                                                                                                                               |
+| `ReadableStream<R>`                                                                 | A structural `ReadableStream` type covering the members common across the major platform stream variants.                                                                                                                                                                                                     |
+| `Type.getDiagnostics(type, rules)`, `Type.validate(type, rules, warningsAsErrors?)` | Runs `TypeRule`s over every node of a type, in pre-order. The first hands back one `TypeDiagnostic` per objection and raises nothing; the second raises an `AggregateError` of `TypeValidationError` leaves for the objections that stop — every error, and every warning too when `warningsAsErrors` is set. |
+| `TypeRule`, `TypeDiagnostic`, `TypeValidationError`                                 | A rule is an `id`, a `level` of `'warning'` or `'error'`, and a `check(node)` answering why that node is suspect; a diagnostic is one objection to one node; the error is the leaf an aggregate carries, spelling its rule id first. Primitives owns no rules of its own — the address rules are `di.core`'s. |
+| `registerAugmentations`, `augment`, `AugmentationSet<R>`                            | Infrastructure for attaching extension methods to a class after the fact — see Notes below. Most consumers of this stack never call these directly.                                                                                                                                                           |
 
 ## How it fits
 

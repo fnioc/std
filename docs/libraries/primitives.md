@@ -92,6 +92,23 @@ const [matched, generics] = Type.extractMatchedGenerics(typefor<Promise<Generic<
 // matched: is `type` a Promise<…>; generics.S: what it carries
 ```
 
+A type can also be checked before anything is filed under it. A `TypeRule` is one thing to look for —
+an `id`, a `level` of `'warning'` or `'error'`, and a `check(node)` answering why that node is
+suspect. `Type.getDiagnostics(type, rules)` offers every node of the tree to every rule, in
+pre-order, and hands back one `TypeDiagnostic` per objection, raising nothing;
+`Type.validate(type, rules, warningsAsErrors?)` raises what stopped — an `AggregateError` carrying
+one `TypeValidationError` per stopping objection, each spelling its rule id first so a report is
+searchable. What a shape means belongs to whoever reads it, so the rules themselves live where that
+reading happens: the address rules are `di.core`'s.
+
+```ts
+const noUnions: TypeRule = { id: 'APP1', level: 'error',
+  check: node => node.kind === 'union' ? 'a union names two things' : undefined };
+
+Type.getDiagnostics(Type.optional(clock), [noUnions]); // [{ id: 'APP1', level: 'error', type: app:IClock | undefined, message: 'a union names two things' }]
+Type.validate(Type.optional(clock), [noUnions]); // AggregateError: app:IClock | undefined fails validation (1)
+```
+
 A malformed token is a `TypeParseError` pointing at the offset and what the reader expected there; a
 well-formed token spelling a type the factories refuse is their own `TypeError`.
 
