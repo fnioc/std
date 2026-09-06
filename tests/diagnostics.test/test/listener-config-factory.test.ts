@@ -78,26 +78,26 @@ describe('addMetrics registers the metrics factory', () => {
       metrics.addMetricsConfig(first()).addMetricsConfig(second());
     });
 
-    const provider = Builder.withServices(m => m.add(manifest)).useAddon(standardLifetime()).build();
-    const factory: IMetricListenerConfigFactory = provider.resolve(
+    const provider = Builder.withServices(m => m.import(manifest)).useAddon(standardLifetime()).build();
+    const factory = provider.resolve(
       METRICS_LISTENER_CONFIGURATION_FACTORY_TYPE,
-    );
+    ) as IMetricListenerConfigFactory;
     expect(factory).toBeInstanceOf(MetricListenerConfigFactory);
     expect(factory.getConfig('MyListener').get('Key')).toBe('second');
 
     // Singleton: repeated resolution yields the same instance.
-    const factoryAgain: IMetricListenerConfigFactory = provider.resolve(
+    const factoryAgain = provider.resolve(
       METRICS_LISTENER_CONFIGURATION_FACTORY_TYPE,
-    );
+    ) as IMetricListenerConfigFactory;
     expect(factoryAgain).toBe(factory);
   });
 
   test('with no bound configuration the factory yields empty views', () => {
     const manifest = getMetricsManifest();
 
-    const factory: IMetricListenerConfigFactory = Builder.withServices(m => m.add(manifest)).build().resolve(
+    const factory = Builder.withServices(m => m.import(manifest)).build().resolve(
       METRICS_LISTENER_CONFIGURATION_FACTORY_TYPE,
-    );
+    ) as IMetricListenerConfigFactory;
     expect([...factory.getConfig('MyListener').getChildren()]).toHaveLength(0);
   });
 });
@@ -108,15 +108,15 @@ describe('addTracing registers the tracing factory', () => {
       tracing.addTracingConfig(first()).addTracingConfig(second());
     });
 
-    const provider = Builder.withServices(m => m.add(manifest)).useAddon(standardLifetime()).build();
-    const factory: ActivityListenerConfigFactory = provider.resolve(
+    const provider = Builder.withServices(m => m.import(manifest)).useAddon(standardLifetime()).build();
+    const factory = provider.resolve(
       TRACING_LISTENER_CONFIGURATION_FACTORY_TYPE,
-    );
+    ) as ActivityListenerConfigFactory;
     expect(factory).toBeInstanceOf(DefaultActivityListenerConfigFactory);
     expect(factory.getConfig('MyListener').get('Key')).toBe('second');
-    const factoryAgain: ActivityListenerConfigFactory = provider.resolve(
+    const factoryAgain = provider.resolve(
       TRACING_LISTENER_CONFIGURATION_FACTORY_TYPE,
-    );
+    ) as ActivityListenerConfigFactory;
     expect(factoryAgain).toBe(factory);
   });
 });
