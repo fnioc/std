@@ -2639,7 +2639,10 @@ landed first: #371 (a tag may wrap any type), #372 (`AggregateError` of leaves,
 
 FOR THE OWNER'S WORD (lane findings, none acted on):
 
-- (g) DEFAULT ROSTER not done: `Builder`/`DefaultContext.build()` composes only the caller's addons
+- (g) RULED (owner 2026-09-06): `Builder.withDefaults(…)` in the namespace seeds the standard
+  lifetime + the validations the reference has (`validateScopes`, `validateBuildability`, each a
+  boolean option) + `validateAddresses()`; the addon registers a resolvable diagnostics report
+  service. Lane dispatched. Was: `Builder`/`DefaultContext.build()` composes only the caller's addons
   plus the engine middleware — there is no default-roster mechanism to add to (`di.ts:72,100,106`).
   And a default install would be unobservable today: every address rule is a warning, warnings
   never throw unless `warningsAsErrors`, and `Type.validate` has no sink for non-stopping
@@ -2648,7 +2651,18 @@ FOR THE OWNER'S WORD (lane findings, none acted on):
   diagnostics report, e.g. an `IAddressDiagnostics` service holding what the last build/asks
   produced; alternatives: a logger hook, or "warnings exist only to be flipped by
   `warningsAsErrors`", which makes a default install pointless).
-- (h) Rules DI1012–DI1014 are meant for the WHOLE address (an ask for the bare undefined literal, a
+- (h) RULED (owner 2026-09-06, "a visitor is the wrong tool"): a rule is a predicate over the address it is
+  handed; "anywhere" rules search with a new `Type.find(type, predicate)`; the walker goes;
+  `Type.awaited` recurses like `Awaited<T>` (Promise layers only); DI1005 matches the nested shape
+  directly (lane `address-rules-search`, worktree `+refactor-di-address-rules-search`, in flight at
+  session end 2026-09-06 — if it never opened a PR, its worktree holds its work; resume or redo from
+  this record); `Builder.withDefaults` + `IAddressDiagnostics` is PR #375 (queued); `Type.awaited` mirrors `Awaited<T>` IN FULL (Promise, `PromiseLike`, structural `then`
+  whose first parameter is a callable → that callback's first parameter; a callable `then` whose
+  first parameter is not a callable → never; a NON-callable `then` → the type itself, as
+  `Promise.resolve({ then: 33 })` settles to the object), because `Type.promise` mirrors `Promise.resolve` (`Promise<Awaited<T>>`) and a
+  `Promise<PromiseLike<X>>` node is a type no value can inhabit — RULED 2026-09-06. DI1005 also
+  reports a promise of a thenable-shaped inner. (i) closes with the same lane: each search rule skips
+  a node with a hole itself. Lane dispatched. Was: rules DI1012–DI1014 are meant for the WHOLE address (an ask for the bare undefined literal, a
   registration under a union/literal) but fire at nested nodes too, because `TypeRule.check(node)`
   cannot tell the root from a child — so `Promise<X | undefined>` (listed FINE) trips DI1013/DI1014
   inside. Fix needs a position on the check (recommended: `check(node, parent?: Type)`, root =
