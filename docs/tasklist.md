@@ -2654,9 +2654,9 @@ FOR THE OWNER'S WORD (lane findings, none acted on):
 - (h) RULED (owner 2026-09-06, "a visitor is the wrong tool"): a rule is a predicate over the address it is
   handed; "anywhere" rules search with a new `Type.find(type, predicate)`; the walker goes;
   `Type.awaited` recurses like `Awaited<T>` (Promise layers only); DI1005 matches the nested shape
-  directly (lane `address-rules-search`, worktree `+refactor-di-address-rules-search`, in flight at
-  session end 2026-09-06 — if it never opened a PR, its worktree holds its work; resume or redo from
-  this record); `Builder.withDefaults` + `IAddressDiagnostics` is PR #375 (queued); `Type.awaited` mirrors `Awaited<T>` IN FULL (Promise, `PromiseLike`, structural `then`
+  directly — LANDED 2026-09-06 (PR #377, `0522cbb4`: `Type.find`, `DiagnosticsVisitor` deleted,
+  DI1001–DI1011 search and skip holes, DI1012–DI1014 root-only, `Type.awaited` in full); `Builder.withDefaults` +
+  `IAddressDiagnostics` LANDED (PR #375, `b7864dd7`); `Type.awaited` mirrors `Awaited<T>` IN FULL (Promise, `PromiseLike`, structural `then`
   whose first parameter is a callable → that callback's first parameter; a callable `then` whose
   first parameter is not a callable → never; a NON-callable `then` → the type itself, as
   `Promise.resolve({ then: 33 })` settles to the object), because `Type.promise` mirrors `Promise.resolve` (`Promise<Awaited<T>>`) and a
